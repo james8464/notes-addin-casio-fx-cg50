@@ -14972,6 +14972,21 @@ static bool extract_system_expr_vars_n(std::string expr, std::vector<std::string
     return true;
 }
 
+static bool extract_system_expr_vars2_any(std::string expr, std::vector<std::string> &eqs, std::vector<std::string> &vars)
+{
+    if(auto inner = unwrap_call_text(expr, "solve"); !inner.empty()) expr = inner;
+    auto parts = split_csv(expr);
+    if(parts.size() < 2) return false;
+    std::string body = trim_text(parts[0]);
+    std::string var_body = trim_text(parts[1]);
+    if(body.size() < 2 || body.front() != '[' || body.back() != ']') return false;
+    if(var_body.size() < 2 || var_body.front() != '[' || var_body.back() != ']') return false;
+    eqs = split_csv(body.substr(1, body.size() - 2));
+    vars = split_csv(var_body.substr(1, var_body.size() - 2));
+    for(auto &v : vars) v = trim_text(v);
+    return eqs.size() >= 2 && vars.size() == 2 && !vars[0].empty() && !vars[1].empty();
+}
+
 struct Linear2Parts
 {
     NodeId a0 = 0;
@@ -15114,6 +15129,96 @@ static std::optional<std::vector<std::string>> exact_linear2_system_route(Arena 
     if(d0 && std::isfinite(*d0)) out.push_back(vars[0] + " ~= " + format_double_compact(*d0));
     if(d1 && std::isfinite(*d1)) out.push_back(vars[1] + " ~= " + format_double_compact(*d1));
     out.push_back("(" + vars[0] + "," + vars[1] + ") = [(" + format_expr(a, v0) + "," + format_expr(a, v1) + ")]");
+    return out;
+}
+
+static std::optional<std::vector<std::string>> linear2_any_system_route(Arena &a, std::string const &expr)
+{
+    std::vector<std::string> eq_texts, vars;
+    if(!extract_system_expr_vars2_any(expr, eq_texts, vars)) return std::nullopt;
+
+    std::vector<Linear2Parts> rows;
+    std::vector<NodeId> residuals;
+    std::vector<std::string> out;
+    NodeId zero = zero_node(a);
+    for(auto const &txt : eq_texts) {
+        auto eq = casio::parse_equation(a, txt);
+        if(!eq) return std::nullopt;
+        NodeId residual = casio::simplify(a, sub_node(a, eq->lhs, eq->rhs));
+        residuals.push_back(residual);
+        out.push_back(format_expr(a, residual) + " = 0");
+        if(casio::same_by_sig(a, residual, zero)) continue;
+        if(!contains_either_symbol(a, residual, vars[0], vars[1])) {
+            out.push_back("(" + vars[0] + "," + vars[1] + ") = []");
+            return out;
+        }
+        auto row = linear2_parts(a, residual, vars[0], vars[1]);
+        if(!row) return std::nullopt;
+        rows.push_back(*row);
+    }
+    if(rows.empty()) {
+        out.push_back(vars[0] + "," + vars[1] + " all real");
+        return out;
+    }
+
+    auto ft = [&](NodeId n) { return format_expr(a, collect_single_symbol_poly(a, exact_eval_simplify(a, n))); };
+    auto mt = [&](NodeId n) {
+        std::string s = ft(n);
+        return (s.find(" + ") != std::string::npos || s.find(" - ") != std::string::npos) ? "(" + s + ")" : s;
+    };
+    auto det2 = [&](Linear2Parts const &r, Linear2Parts const &s) {
+        return casio::simplify(a, sub_node(a, casio::mul(a, {r.a0, s.a1}), casio::mul(a, {s.a0, r.a1})));
+    };
+
+    for(std::size_t i = 0; i < rows.size(); ++i) {
+        for(std::size_t j = i + 1; j < rows.size(); ++j) {
+            NodeId det = det2(rows[i], rows[j]);
+            if(casio::same_by_sig(a, det, zero)) continue;
+            NodeId r0 = exact_eval_simplify(a, neg_node(a, rows[i].c));
+            NodeId r1 = exact_eval_simplify(a, neg_node(a, rows[j].c));
+            NodeId v0 = exact_eval_simplify(a, casio::div(a, sub_node(a, casio::mul(a, {r0, rows[j].a1}), casio::mul(a, {r1, rows[i].a1})), det));
+            NodeId v1 = exact_eval_simplify(a, casio::div(a, sub_node(a, casio::mul(a, {rows[i].a0, r1}), casio::mul(a, {rows[j].a0, r0})), det));
+            bool ok = true;
+            for(NodeId residual : residuals) {
+                NodeId sub = clone_with_substitution(a, residual, vars[0], v0);
+                sub = exact_eval_simplify(a, clone_with_substitution(a, sub, vars[1], v1));
+                if(!casio::same_by_sig(a, sub, zero)) {
+                    ok = false;
+                    break;
+                }
+            }
+            if(!ok) continue;
+            out.push_back("D = " + mt(rows[i].a0) + "*" + mt(rows[j].a1) + " - " +
+                          mt(rows[j].a0) + "*" + mt(rows[i].a1) + " = " + ft(det));
+            out.push_back(vars[0] + " = " + ft(v0));
+            out.push_back(vars[1] + " = " + ft(v1));
+            out.push_back("(" + vars[0] + "," + vars[1] + ") = [(" + ft(v0) + "," + ft(v1) + ")]");
+            return out;
+        }
+    }
+
+    Linear2Parts const &base = rows.front();
+    bool consistent = true;
+    for(std::size_t i = 1; i < rows.size(); ++i) {
+        NodeId m01 = casio::simplify(a, sub_node(a, casio::mul(a, {base.a0, rows[i].a1}), casio::mul(a, {rows[i].a0, base.a1})));
+        NodeId m0c = casio::simplify(a, sub_node(a, casio::mul(a, {base.a0, rows[i].c}), casio::mul(a, {rows[i].a0, base.c})));
+        NodeId m1c = casio::simplify(a, sub_node(a, casio::mul(a, {base.a1, rows[i].c}), casio::mul(a, {rows[i].a1, base.c})));
+        if(!casio::same_by_sig(a, m01, zero) || !casio::same_by_sig(a, m0c, zero) || !casio::same_by_sig(a, m1c, zero)) {
+            consistent = false;
+            break;
+        }
+    }
+    if(!consistent) {
+        out.push_back("(" + vars[0] + "," + vars[1] + ") = []");
+        return out;
+    }
+    if(!casio::same_by_sig(a, base.a0, zero)) {
+        NodeId rhs = exact_eval_simplify(a, casio::div(a, neg_node(a, casio::add(a, {casio::mul(a, {base.a1, casio::sym(a, vars[1])}), base.c})), base.a0));
+        out.push_back(vars[0] + " = " + ft(rhs));
+        return out;
+    }
+    NodeId rhs = exact_eval_simplify(a, casio::div(a, neg_node(a, base.c), base.a1));
+    out.push_back(vars[1] + " = " + ft(rhs));
     return out;
 }
 
@@ -31353,6 +31458,7 @@ static std::optional<std::vector<std::string>> system_solve_route(Arena &a, std:
     if(auto eg = exponential_growth_system_route(a, expr)) return *eg;
     if(auto lsys3 = exact_linear3_system_route(a, expr)) return *lsys3;
     if(auto lsys = exact_linear2_system_route(a, expr)) return *lsys;
+    if(auto lany = linear2_any_system_route(a, expr)) return *lany;
     if(auto lss = linear_surd_square_system_route(a, expr)) return *lss;
     if(auto elys = exp_log_y_linear_system(a, expr)) return *elys;
 
@@ -31572,6 +31678,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(auto rpp = reciprocal_power_plus_var_system_route(arena, req.expr)) return *rpp;
             if(auto lsys3 = exact_linear3_system_route(arena, req.expr)) return *lsys3;
             if(auto lsys = exact_linear2_system_route(arena, req.expr)) return *lsys;
+            if(auto lany = linear2_any_system_route(arena, req.expr)) return *lany;
             if(auto lss = linear_surd_square_system_route(arena, req.expr)) return *lss;
             if(auto rps = rational_parabola_system(arena, key)) return *rps;
             if(auto fourthsys = fourth_power_sum_linear_system(arena, key)) return *fourthsys;
@@ -31666,6 +31773,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(auto rpp = reciprocal_power_plus_var_system_route(arena, key)) return *rpp;
             if(auto lsys3 = exact_linear3_system_route(arena, key)) return *lsys3;
             if(auto lsys = exact_linear2_system_route(arena, key)) return *lsys;
+            if(auto lany = linear2_any_system_route(arena, key)) return *lany;
             if(auto lsub = linear_substitution2_system_route(arena, key)) return *lsub;
             if(auto elys = exp_log_y_linear_system(arena, key)) return *elys;
             if(auto system = symmetric_sum_product_system(key)) return *system;
