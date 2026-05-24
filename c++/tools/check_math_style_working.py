@@ -756,6 +756,30 @@ CASES = [
         ("n = -1/2: C(n,0) = 1", "C(n,4) = 35/128", "Terms: 1 - 1/2*(2*x)", "Valid for abs(x) < 1/2", "1 - x + 3/2*x^2 - 5/2*x^3 + 35/8*x^4"),
     ),
     (
+        "finite binomial has no validity",
+        ["--alg", "binomial((1+x)^5,x,0,5)"],
+        ("n = 5: C(n,0) = 1", "T5 = x^5", "1 + 5*x + 10*x^2 + 10*x^3 + 5*x^4 + x^5"),
+        ("Valid for", "|u| < 1"),
+    ),
+    (
+        "finite binomial sum has no validity",
+        ["--alg", "series((1+x)^2+(1+x)^3,x,0,3)"],
+        ("(x + 1)^2 = 1 + 2*x + x^2", "(x + 1)^3 = 1 + 3*x + 3*x^2 + x^3", "2 + 5*x + 4*x^2 + x^3"),
+        ("Valid for",),
+    ),
+    (
+        "finite binomial product has no validity",
+        ["--alg", "series((1+2*x)^2*(1+3*x),x,0,3)"],
+        ("(2*x + 1)^2 = 1 + 4*x + 4*x^2", "1 + 7*x + 16*x^2 + 12*x^3"),
+        ("Valid for", "T_r = C(n,r)*u^r", "Keep powers"),
+    ),
+    (
+        "finite polynomial product is direct",
+        ["--alg", "series((1+2*x)*(1+3*x),x,0,2)"],
+        ("(2*x + 1)*(3*x + 1) = 1 + 5*x + 6*x^2", "1 + 5*x + 6*x^2"),
+        ("Valid for", "T_r = C(n,r)*u^r", "Keep powers"),
+    ),
+    (
         "binomial two-linear PF series",
         ["--alg", "binomial((5*x+3)/((1-x)*(1+3*x)),x,0,3)"],
         ("PF: 2/(- x + 1) + 1/(3*x + 1)", "Valid for abs(x) < 1/3", "3 - x + 11*x^2 - 25*x^3"),

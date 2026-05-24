@@ -3589,6 +3589,7 @@ struct BinomSeries
     std::vector<std::string> lines;
     std::optional<Rational> bound;
     bool has_series = false;
+    bool binomial = false;
 };
 
 static std::vector<Rational> poly_coeffs(Poly2 const &p, int degree)
@@ -3659,12 +3660,13 @@ static std::optional<BinomSeries> linear_power_series(Arena &a,
         for(int j = 0; j <= degree; ++j)
             out.c[j] = r_add(out.c[j], r_mul(*factor, r_mul(binom_rat(power, i), upow[j])));
     }
-    if(!is_zero(u[1])) {
+    bool infinite = power.den != 1 || power.num < 0;
+    if(infinite && !is_zero(u[1])) {
         Rational b{std::llabs(u[1].den), std::llabs(u[1].num)};
         b.normalize();
         out.bound = b;
     }
-    else if(!is_zero(u[2])) {
+    else if(infinite && !is_zero(u[2])) {
         Rational b{std::llabs(u[2].den), std::llabs(u[2].num)};
         b.normalize();
         std::int64_t rn = 0, rd = 0;
@@ -3673,7 +3675,8 @@ static std::optional<BinomSeries> linear_power_series(Arena &a,
             out.bound->normalize();
         }
     }
-    out.has_series = power.den != 1 || power.num < 0 || degree > 1;
+    out.has_series = infinite;
+    out.binomial = true;
     std::string u_text = series_answer_text(a, u, var);
     out.lines.push_back("(" + format_expr(a, base) + ")^" + rat_node_text(a, power) + " = " +
                         rat_node_text(a, *factor) + "*(1+(" + u_text + "))^" +
@@ -3712,51 +3715,294 @@ static std::optional<BinomSeries> simple_factor_series(Arena &a, NodeId n, std::
     return std::nullopt;
 }
 
+struct SymbolicBinomSeries
+{
+    std::vector<NodeId> c;
+    std::vector<std::string> lines;
+    std::vector<std::string> valid;
+    bool has_series = false;
+};
+
+static bool has_symbol_except(Arena &a, NodeId n, std::string const &var)
+{
+    std::vector<std::string> syms;
+    collect_symbols(a, n, syms);
+    for(auto const &s : syms)
+        if(s != var) return true;
+    return false;
+}
+
+static bool node_zero(Arena &a, NodeId n)
+{
+    NodeId s = exact_eval_simplify(a, n);
+    if(auto r = as_num(a, s); r && is_zero(*r)) return true;
+    return casio::same_by_sig(a, s, casio::num(a, 0));
+}
+
+static std::vector<NodeId> symbolic_zero_series(Arena &a, int degree)
+{
+    return std::vector<NodeId>(degree + 1, casio::num(a, 0));
+}
+
+static std::vector<NodeId> symbolic_convolve_series(Arena &a,
+                                                    std::vector<NodeId> const &lhs,
+                                                    std::vector<NodeId> const &rhs,
+                                                    int degree)
+{
+    auto out = symbolic_zero_series(a, degree);
+    for(int i = 0; i <= degree && i < (int)lhs.size(); ++i) {
+        if(node_zero(a, lhs[i])) continue;
+        for(int j = 0; i + j <= degree && j < (int)rhs.size(); ++j) {
+            if(node_zero(a, rhs[j])) continue;
+            out[i + j] = exact_eval_simplify(a, casio::add(a, {
+                out[i + j],
+                casio::mul(a, {lhs[i], rhs[j]})
+            }));
+        }
+    }
+    return out;
+}
+
+static std::string symbolic_series_answer_text(Arena &a, std::vector<NodeId> const &coeffs, std::string const &var)
+{
+    auto coeff_text = [&](NodeId coeff, int p) {
+        NodeId c = exact_eval_simplify(a, coeff);
+        std::string ct = trim_text(format_expr(a, c));
+        bool add_coeff = a.get(c).kind == NodeKind::Add;
+        if(p == 0) return ct;
+        if(casio::same_by_sig(a, c, one_node(a))) return p == 1 ? var : var + "^" + std::to_string(p);
+        if(casio::same_by_sig(a, c, casio::neg(a, one_node(a))))
+            return p == 1 ? "-" + var : "-" + var + "^" + std::to_string(p);
+        if(add_coeff) ct = "(" + ct + ")";
+        return p == 1 ? ct + "*" + var : ct + "*" + var + "^" + std::to_string(p);
+    };
+    std::string out;
+    for(int i = 0; i < (int)coeffs.size(); ++i) {
+        if(node_zero(a, coeffs[i])) continue;
+        std::string s = coeff_text(coeffs[i], i);
+        if(s.empty() || s == "0") continue;
+        if(out.empty()) out = s;
+        else if(s.rfind("- ", 0) == 0) out += " - " + trim_text(s.substr(2));
+        else if(s[0] == '-') out += " - " + trim_text(s.substr(1));
+        else out += " + " + s;
+    }
+    return out.empty() ? "0" : out;
+}
+
+static std::optional<SymbolicBinomSeries> symbolic_linear_power_series(Arena &a,
+                                                                       NodeId base,
+                                                                       Rational power,
+                                                                       std::string const &var,
+                                                                       int degree)
+{
+    auto lin = symbolic_linear_parts(a, base, var);
+    if(!lin || contains_symbol(a, lin->c, var)) return std::nullopt;
+    auto cnum = as_num(a, exact_eval_simplify(a, lin->c));
+    if(!cnum || is_zero(*cnum)) return std::nullopt;
+    auto factor = rational_power_factor(*cnum, power);
+    if(!factor) return std::nullopt;
+
+    Rational inv_c{cnum->den, cnum->num};
+    inv_c.normalize();
+    NodeId q = exact_eval_simplify(a, casio::mul(a, {a.num(inv_c), lin->m}));
+    SymbolicBinomSeries out;
+    out.c = symbolic_zero_series(a, degree);
+    for(int i = 0; i <= degree; ++i) {
+        NodeId coeff = a.num(r_mul(*factor, binom_rat(power, i)));
+        if(i > 0) {
+            NodeId qp = i == 1 ? q : casio::power(a, q, a.num(Rational{i, 1}));
+            coeff = casio::mul(a, {coeff, qp});
+        }
+        out.c[i] = exact_eval_simplify(a, coeff);
+    }
+    bool infinite = power.den != 1 || power.num < 0;
+    out.has_series = infinite;
+
+    std::vector<NodeId> ucoeffs(degree + 1, casio::num(a, 0));
+    ucoeffs[0] = one_node(a);
+    for(int i = 1; i <= degree; ++i) {
+        NodeId coeff = a.num(binom_rat(power, i));
+        NodeId qp = i == 1 ? q : casio::power(a, q, a.num(Rational{i, 1}));
+        ucoeffs[i] = exact_eval_simplify(a, casio::mul(a, {coeff, qp}));
+    }
+
+    std::string lhs = "(" + format_expr(a, base) + ")^" + rat_node_text(a, power);
+    std::string core = "(1+(" + format_expr(a, q) + ")*" + var + ")^" + rat_node_text(a, power);
+    std::string rewrite = r_cmp(*factor, Rational{1, 1}) == 0 ? core : rat_node_text(a, *factor) + "*" + core;
+    out.lines.push_back(lhs + " = " + rewrite);
+    out.lines.push_back(lhs + " = " + symbolic_series_answer_text(a, out.c, var));
+    if(infinite) out.valid.push_back("abs(" + format_expr(a, casio::mul(a, {q, casio::sym(a, var)})) + ") < 1");
+    return out;
+}
+
+static std::optional<SymbolicBinomSeries> symbolic_factor_series(Arena &a, NodeId n, std::string const &var, int degree)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Sqrt)
+        return symbolic_linear_power_series(a, x.a, Rational{1, 2}, var, degree);
+    if(x.kind == NodeKind::Pow) {
+        Node const &e = a.get(x.b);
+        if(e.kind != NodeKind::Num) return std::nullopt;
+        Node const &base = a.get(x.a);
+        if(base.kind == NodeKind::Fn && base.fkind == FnKind::Sqrt)
+            return symbolic_linear_power_series(a, base.a, r_mul(e.num, Rational{1, 2}), var, degree);
+        return symbolic_linear_power_series(a, x.a, e.num, var, degree);
+    }
+    if(x.kind == NodeKind::Div) {
+        if(contains_symbol(a, x.a, var)) return std::nullopt;
+        Node const &den = a.get(x.b);
+        std::optional<SymbolicBinomSeries> s;
+        if(den.kind == NodeKind::Fn && den.fkind == FnKind::Sqrt)
+            s = symbolic_linear_power_series(a, den.a, Rational{-1, 2}, var, degree);
+        else if(den.kind == NodeKind::Pow) {
+            Node const &e = a.get(den.b);
+            if(e.kind == NodeKind::Num) s = symbolic_linear_power_series(a, den.a, r_neg(e.num), var, degree);
+        }
+        else s = symbolic_linear_power_series(a, x.b, Rational{-1, 1}, var, degree);
+        if(!s) return std::nullopt;
+        NodeId scale = x.a;
+        for(auto &c : s->c) c = exact_eval_simplify(a, casio::mul(a, {scale, c}));
+        return s;
+    }
+    return std::nullopt;
+}
+
+static std::optional<SymbolicBinomSeries> symbolic_combined_series(Arena &a,
+                                                                   NodeId n,
+                                                                   std::string const &var,
+                                                                   int degree)
+{
+    if(auto factor = symbolic_factor_series(a, n, var, degree)) return factor;
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Num) {
+        SymbolicBinomSeries out;
+        out.c = symbolic_zero_series(a, degree);
+        out.c[0] = n;
+        return out;
+    }
+    if(x.kind == NodeKind::Sym) {
+        SymbolicBinomSeries out;
+        out.c = symbolic_zero_series(a, degree);
+        if(x.text == var) {
+            if(degree >= 1) out.c[1] = one_node(a);
+        }
+        else out.c[0] = n;
+        return out;
+    }
+    if(x.kind == NodeKind::Add) {
+        SymbolicBinomSeries out;
+        out.c = symbolic_zero_series(a, degree);
+        for(NodeId kid : x.kids) {
+            auto s = symbolic_combined_series(a, kid, var, degree);
+            if(!s) return std::nullopt;
+            out.has_series = out.has_series || s->has_series;
+            for(int i = 0; i <= degree; ++i)
+                out.c[i] = exact_eval_simplify(a, casio::add(a, {out.c[i], s->c[i]}));
+            out.lines.insert(out.lines.end(), s->lines.begin(), s->lines.end());
+            for(auto const &v : s->valid) push_unique(out.valid, v);
+        }
+        return out;
+    }
+    if(x.kind == NodeKind::Mul) {
+        SymbolicBinomSeries out;
+        out.c = symbolic_zero_series(a, degree);
+        out.c[0] = one_node(a);
+        for(NodeId kid : x.kids) {
+            auto s = symbolic_combined_series(a, kid, var, degree);
+            if(!s) return std::nullopt;
+            out.has_series = out.has_series || s->has_series;
+            out.c = symbolic_convolve_series(a, out.c, s->c, degree);
+            out.lines.insert(out.lines.end(), s->lines.begin(), s->lines.end());
+            for(auto const &v : s->valid) push_unique(out.valid, v);
+        }
+        return out;
+    }
+    if(x.kind == NodeKind::Div && !contains_symbol(a, x.b, var)) {
+        auto s = symbolic_combined_series(a, x.a, var, degree);
+        if(!s) return std::nullopt;
+        for(auto &c : s->c) c = exact_eval_simplify(a, casio::div(a, c, x.b));
+        return s;
+    }
+    return std::nullopt;
+}
+
+static std::optional<std::vector<std::string>> symbolic_combined_binomial_series_route(Arena &a,
+                                                                                       NodeId parsed,
+                                                                                       std::string const &var,
+                                                                                       int degree)
+{
+    if(!has_symbol_except(a, parsed, var)) return std::nullopt;
+    auto s = symbolic_combined_series(a, parsed, var, degree);
+    if(!s || (!s->has_series && s->lines.empty())) return std::nullopt;
+    std::vector<std::string> out{format_expr(a, parsed)};
+    for(auto const &line : s->lines) push_unique(out, line);
+    if(!s->valid.empty()) {
+        std::string v = s->valid[0];
+        for(std::size_t i = 1; i < s->valid.size(); ++i) v += ", " + s->valid[i];
+        out.push_back("Valid for " + v);
+    }
+    out.push_back(symbolic_series_answer_text(a, s->c, var));
+    return out;
+}
+
 static std::optional<BinomSeries> combined_series(Arena &a, NodeId n, std::string const &var, int degree)
 {
     Node const &x = a.get(n);
+    if(auto sf = simple_factor_series(a, n, var, degree)) return *sf;
     if(x.kind == NodeKind::Add) {
         BinomSeries out;
         out.c.assign(degree + 1, Rational{0, 1});
         bool any_series = false;
+        bool any_binomial = false;
         for(NodeId kid : x.kids) {
             auto s = combined_series(a, kid, var, degree);
             if(!s) return std::nullopt;
             any_series = any_series || s->has_series;
+            any_binomial = any_binomial || s->binomial;
             for(int i = 0; i <= degree; ++i) out.c[i] = r_add(out.c[i], s->c[i]);
             out.bound = min_bound(out.bound, s->bound);
             out.lines.insert(out.lines.end(), s->lines.begin(), s->lines.end());
         }
-        if(!any_series) return std::nullopt;
-        out.has_series = true;
+        if(!any_series && !any_binomial && out.lines.empty())
+            out.lines.push_back(format_expr(a, n) + " = " + series_answer_text(a, out.c, var));
+        out.has_series = any_series;
+        out.binomial = any_binomial;
         return out;
     }
-    if(auto p = poly_of(a, n, var); p && p->ok) {
-        BinomSeries out;
-        out.c = poly_coeffs(*p, degree);
-        return out;
+    if(x.kind != NodeKind::Mul) {
+        if(auto p = poly_of(a, n, var); p && p->ok) {
+            BinomSeries out;
+            out.c = poly_coeffs(*p, degree);
+            if(x.kind == NodeKind::Div)
+                out.lines.push_back(format_expr(a, n) + " = " + series_answer_text(a, out.c, var));
+            return out;
+        }
     }
     if(x.kind == NodeKind::Mul) {
         BinomSeries out;
         out.c.assign(degree + 1, Rational{0, 1});
         out.c[0] = Rational{1, 1};
         bool any_series = false;
+        bool any_binomial = false;
         for(NodeId kid : x.kids) {
             BinomSeries s;
-            if(auto p = poly_of(a, kid, var); p && p->ok) {
+            if(auto sf = simple_factor_series(a, kid, var, degree)) {
+                s = *sf;
+                any_series = any_series || s.has_series;
+            }
+            else if(auto p = poly_of(a, kid, var); p && p->ok) {
                 s.c = poly_coeffs(*p, degree);
             }
-            else if(auto sf = simple_factor_series(a, kid, var, degree)) {
-                s = *sf;
-                any_series = true;
-            }
             else return std::nullopt;
+            any_binomial = any_binomial || s.binomial;
             out.c = convolve_series(out.c, s.c, degree);
             out.bound = min_bound(out.bound, s.bound);
             out.lines.insert(out.lines.end(), s.lines.begin(), s.lines.end());
         }
-        if(!any_series) return std::nullopt;
-        out.has_series = true;
+        if(!any_series && !any_binomial && out.lines.empty())
+            out.lines.push_back(format_expr(a, n) + " = " + series_answer_text(a, out.c, var));
+        out.has_series = any_series;
+        out.binomial = any_binomial;
         return out;
     }
     if(x.kind == NodeKind::Div) {
@@ -3785,6 +4031,7 @@ static std::optional<BinomSeries> combined_series(Arena &a, NodeId n, std::strin
                 acc.c = convolve_series(acc.c, sf->c, degree);
                 acc.bound = min_bound(acc.bound, sf->bound);
                 acc.lines.insert(acc.lines.end(), sf->lines.begin(), sf->lines.end());
+                acc.binomial = acc.binomial || sf->binomial;
             }
             acc.has_series = true;
             den_series = acc;
@@ -3816,12 +4063,14 @@ static std::optional<std::vector<std::string>> combined_binomial_series_route(Ar
         if(top && top->num == top->den) return std::nullopt;
     }
     auto s = combined_series(a, parsed, var, degree);
-    if(!s || !s->has_series) return std::nullopt;
+    if(!s || (!s->binomial && !s->has_series && s->lines.empty())) return std::nullopt;
     std::vector<std::string> out;
     out.push_back(format_expr(a, parsed));
     for(auto const &line : s->lines) out.push_back(line);
-    out.push_back("T_r = C(n,r)*u^r");
-    out.push_back("Keep powers <= " + var + "^" + std::to_string(degree));
+    if(s->has_series) {
+        out.push_back("T_r = C(n,r)*u^r");
+        out.push_back("Keep powers <= " + var + "^" + std::to_string(degree));
+    }
     if(s->bound) out.push_back("Valid for abs(" + var + ") < " + rat_node_text(a, *s->bound));
     out.push_back(series_answer_text(a, s->c, var));
     return out;
@@ -4313,8 +4562,9 @@ static std::optional<std::vector<std::string>> binomial_series_route(Arena &a, s
         return out;
     }
     if(auto symrecip = symbolic_reciprocal_linear_series_route(a, parsed, var, degree)) return *symrecip;
-    if(auto combo = combined_binomial_series_route(a, parsed, var, degree)) return *combo;
     if(auto sym = symbolic_finite_binomial_route(a, parsed, var, degree)) return *sym;
+    if(auto symcombo = symbolic_combined_binomial_series_route(a, parsed, var, degree)) return *symcombo;
+    if(auto combo = combined_binomial_series_route(a, parsed, var, degree)) return *combo;
     NodeId base = 0;
     Rational power{1, 1};
     if(x.kind == NodeKind::Fn && x.fkind == FnKind::Sqrt) {
@@ -4455,9 +4705,10 @@ static std::optional<std::vector<std::string>> binomial_series_route(Arena &a, s
         else ordered_answer += " + " + term;
     }
     if(ordered_answer.empty()) ordered_answer = format_expr(a, ans);
+    bool infinite = power.den != 1 || power.num < 0;
     std::string validity_cond = "|" + rat_node_text(a, m) + "*" + var + "| < 1";
     std::string validity = "Valid for " + validity_cond + ".";
-    if(m.num != 0) {
+    if(infinite && m.num != 0) {
         Rational bound{std::llabs(m.den), std::llabs(m.num)};
         bound.normalize();
         validity_cond = "abs(" + var + ") < " + rat_node_text(a, bound);
@@ -4503,10 +4754,12 @@ static std::optional<std::vector<std::string>> binomial_series_route(Arena &a, s
         "7. " + term_line + ".",
         "8. " + simplified_line + ".",
         "9. Keep terms up to " + var + "^" + std::to_string(degree) + ".",
-        "10. |u| < 1 => abs(" + rat_node_text(a, m) + "*" + var + ") < 1 => " + validity_cond + ".",
-        "11. " + validity,
-        "Answer: " + ordered_answer,
     };
+    if(infinite) {
+        out.push_back("10. |u| < 1 => abs(" + rat_node_text(a, m) + "*" + var + ") < 1 => " + validity_cond + ".");
+        out.push_back("11. " + validity);
+    }
+    out.push_back("Answer: " + ordered_answer);
     if(from_recip) out.insert(out.begin() + 1, "2. Use previous expansion/reverse-power relation if already found.");
     return out;
 }
