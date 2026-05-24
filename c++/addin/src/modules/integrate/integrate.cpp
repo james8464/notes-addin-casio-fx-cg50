@@ -940,6 +940,69 @@ static std::pair<Rational, NodeId> split_numeric_factor(Arena &a, NodeId n)
     return {c, mul_or_one_int(a, rest)};
 }
 
+static NodeId mul_rational_expr(Arena &a, Rational scale, NodeId n)
+{
+    if(r_eq(scale, Rational{1, 1})) return n;
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Num) {
+        Rational r = r_mul(scale, x.num);
+        return casio::num(a, r.num, r.den);
+    }
+    if(x.kind == NodeKind::Add) {
+        std::vector<NodeId> terms;
+        for(NodeId k : x.kids) terms.push_back(mul_rational_expr(a, scale, k));
+        return casio::simplify(a, casio::add(a, terms));
+    }
+    if(x.kind == NodeKind::Div) {
+        if(auto den = as_num(a, x.b); den && den->num != 0) return mul_rational_expr(a, r_div(scale, *den), x.a);
+        return casio::simplify(a, casio::div(a, mul_rational_expr(a, scale, x.a), x.b));
+    }
+    if(x.kind == NodeKind::Mul) {
+        std::vector<NodeId> kids;
+        bool used = false;
+        for(NodeId k : x.kids) {
+            if(!used) {
+                if(auto r = as_num(a, k)) {
+                    Rational q = r_mul(scale, *r);
+                    kids.push_back(casio::num(a, q.num, q.den));
+                    used = true;
+                    continue;
+                }
+            }
+            kids.push_back(k);
+        }
+        if(!used) kids.insert(kids.begin(), casio::num(a, scale.num, scale.den));
+        return casio::simplify(a, casio::mul(a, kids));
+    }
+    return casio::simplify(a, casio::mul(a, {casio::num(a, scale.num, scale.den), n}));
+}
+
+static std::optional<std::string> de_scaled_constant_line(Arena &a, NodeId lhs, NodeId rhs, std::string const &dep)
+{
+    Rational coeff{1, 1};
+    NodeId core = lhs;
+    Node const &x = a.get(lhs);
+    if(x.kind == NodeKind::Div) {
+        auto den = as_num(a, x.b);
+        if(!den || den->num == 0) return std::nullopt;
+        auto split = split_numeric_factor(a, x.a);
+        coeff = r_div(split.first, *den);
+        core = split.second;
+    }
+    else if(x.kind == NodeKind::Mul) {
+        auto split = split_numeric_factor(a, lhs);
+        coeff = split.first;
+        core = split.second;
+    }
+    else return std::nullopt;
+    if(coeff.num == 0 || r_eq(coeff, Rational{1, 1})) return std::nullopt;
+    core = casio::simplify(a, core);
+    if(!contains_var(a, core, dep)) return std::nullopt;
+    Rational scale = r_div(Rational{1, 1}, coeff);
+    NodeId scaled_rhs = casio::simplify(a, mul_rational_expr(a, scale, rhs));
+    return format_expr(a, core) + " = " + format_expr(a, scaled_rhs) + " + C";
+}
+
 static NodeId drop_additive_constant(Arena &a, NodeId n, std::string const &var)
 {
     auto keep_linear_var = [&](NodeId term) -> std::optional<NodeId> {
@@ -2513,15 +2576,21 @@ static std::vector<std::string> solve_de_mode(std::string const &payload)
         else if(auto pl = var_power_integral_line(a, invY, tok->y)) steps.push_back(*pl);
         else append_int_steps(Li);
         append_int_steps(Ri);
-        steps.push_back(format_expr(a, *Li.result) + " = " + format_expr(a, Rint) + " + C");
+        std::string answer = format_expr(a, *Li.result) + " = " + format_expr(a, Rint) + " + C";
+        steps.push_back(answer);
+        auto log_left = log_left_form(a, *Li.result);
+        if(!log_left) {
+            if(auto scaled = de_scaled_constant_line(a, *Li.result, Rint, tok->y)) {
+                steps.push_back(*scaled);
+                answer = *scaled;
+            }
+        }
 
         BoundaryDE B = parse_de_bc(a, bc, tok->y, tok->x);
         bool used_bc = false;
         bool explicit_answer = false;
         std::optional<Rational> Cval;
         NodeId final_rhs_node = 0;
-        std::string answer = format_expr(a, *Li.result) + " = " + format_expr(a, Rint) + " + C";
-        auto log_left = log_left_form(a, *Li.result);
         if(log_left && B.have_y0) {
             NodeId log_arg = log_left->arg;
             NodeId log_rhs = div_by_coeff(a, Rint, log_left->scale);
@@ -2753,10 +2822,21 @@ static std::vector<std::string> solve_de_mode(std::string const &payload)
                 }
             }
             else if(auto pe = power_left_factor(a, *Li.result, tok->y); pe && pe->first.num != 0 && pe->second.num != 0) {
-                NodeId y_power_rhs = div_by_coeff(a, final_rhs_node, pe->first);
+                NodeId y_power_rhs_raw = div_by_coeff(a, final_rhs_node, pe->first);
+                NodeId y_power_rhs = casio::simplify(a, mul_rational_expr(a, r_div(Rational{1, 1}, pe->first), final_rhs_node));
                 NodeId y_rhs = invert_power_rhs(a, y_power_rhs, pe->second);
                 if(!r_eq(pe->second, Rational{1, 1})) {
-                    steps.push_back(y_power_text(tok->y, pe->second) + " = " + format_expr(a, y_power_rhs));
+                    std::string raw_power = format_expr(a, y_power_rhs_raw);
+                    std::string scaled_power = format_expr(a, y_power_rhs);
+                    steps.push_back(y_power_text(tok->y, pe->second) + " = " + raw_power);
+                    if(raw_power != scaled_power) steps.push_back(y_power_text(tok->y, pe->second) + " = " + scaled_power);
+                    NodeId y_rhs_raw = invert_power_rhs(a, y_power_rhs_raw, pe->second);
+                    y_rhs_raw = fold_exact_roots(a, cancel_div_den_double_negative_deep(a, y_rhs_raw));
+                    auto raw_compact = affine_reciprocal_text(a, y_rhs_raw, tok->x);
+                    if(!raw_compact) raw_compact = reciprocal_linear_text(a, y_rhs_raw, tok->x);
+                    std::string raw_answer = tok->y + " = " + raw_compact.value_or(format_expr(a, y_rhs_raw));
+                    std::string scaled_answer = tok->y + " = " + format_expr(a, fold_exact_roots(a, cancel_div_den_double_negative_deep(a, y_rhs)));
+                    if(raw_answer != scaled_answer) steps.push_back(raw_answer);
                 }
                 y_rhs = fold_exact_roots(a, cancel_div_den_double_negative_deep(a, y_rhs));
                 auto compact_rhs = affine_reciprocal_text(a, y_rhs, tok->x);
@@ -2764,12 +2844,21 @@ static std::vector<std::string> solve_de_mode(std::string const &payload)
                 answer = tok->y + " = " + compact_rhs.value_or(format_expr(a, y_rhs));
             }
             else if(auto ap = affine_power_left_factor(a, *Li.result, tok->y); ap && ap->coeff.num != 0 && ap->exp.num != 0) {
-                NodeId base_power_rhs = div_by_coeff(a, final_rhs_node, ap->coeff);
+                NodeId base_power_rhs_raw = div_by_coeff(a, final_rhs_node, ap->coeff);
+                NodeId base_power_rhs = casio::simplify(a, mul_rational_expr(a, r_div(Rational{1, 1}, ap->coeff), final_rhs_node));
                 base_power_rhs = fold_exact_roots(a, cancel_div_den_double_negative_deep(a, base_power_rhs));
+                NodeId base_rhs_raw = invert_power_rhs(a, base_power_rhs_raw, ap->exp);
+                base_rhs_raw = fold_exact_roots(a, cancel_div_den_double_negative_deep(a, base_rhs_raw));
                 NodeId base_rhs = invert_power_rhs(a, base_power_rhs, ap->exp);
                 base_rhs = fold_exact_roots(a, cancel_div_den_double_negative_deep(a, base_rhs));
-                steps.push_back(power_text(format_expr(a, ap->base), ap->exp) + " = " + format_expr(a, base_power_rhs));
-                steps.push_back(format_expr(a, ap->base) + " = " + format_expr(a, base_rhs));
+                std::string raw_power = format_expr(a, base_power_rhs_raw);
+                std::string scaled_power = format_expr(a, base_power_rhs);
+                steps.push_back(power_text(format_expr(a, ap->base), ap->exp) + " = " + raw_power);
+                if(raw_power != scaled_power) steps.push_back(power_text(format_expr(a, ap->base), ap->exp) + " = " + scaled_power);
+                std::string raw_base = format_expr(a, base_rhs_raw);
+                std::string scaled_base = format_expr(a, base_rhs);
+                steps.push_back(format_expr(a, ap->base) + " = " + raw_base);
+                if(raw_base != scaled_base) steps.push_back(format_expr(a, ap->base) + " = " + scaled_base);
                 auto lin = linear_parts_node(a, ap->base, tok->y);
                 auto A = lin ? as_num(a, lin->first) : std::optional<Rational>{};
                 if(lin && A && A->num != 0) {
