@@ -686,7 +686,7 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "June 2023 Q13 exact substitution integral",
         ["--int", "defint(6*x/(3+x)^2,x,0.2,0.4),method=sub"],
-        ["u = x + 3", "F(0.4) - F(0.2)", "-45/136 + 6*ln(17/16)"],
+        ["u = x + 3", "F(0.4) - F(0.2)", "6*ln(17/16) - 45/136"],
         ["No elementary primitive", "ERR:"],
     ),
     (
