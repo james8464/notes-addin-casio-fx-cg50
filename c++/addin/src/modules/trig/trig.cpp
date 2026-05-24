@@ -15,6 +15,7 @@
 #include <cstdlib>
 #include <algorithm>
 #include <iomanip>
+#include <map>
 #include <numeric>
 #include <sstream>
 #include <optional>
@@ -1226,6 +1227,128 @@ static std::string rat_text(long long n, long long d = 1)
     }
     if(d == 1) return std::to_string(n);
     return std::to_string(n) + "/" + std::to_string(d);
+}
+
+static std::string signed_factor_text(Rational r)
+{
+    r.normalize();
+    std::string s = rat_text(r.num, r.den);
+    return r.num < 0 ? "(" + s + ")" : s;
+}
+
+struct ExactSinCosPair
+{
+    std::optional<Rational> s;
+    std::optional<Rational> c;
+    std::string quadrant;
+};
+
+static std::optional<Rational> parse_small_rational_text(std::string const &s)
+{
+    std::size_t slash = s.find('/');
+    char *end = nullptr;
+    long long n = std::strtoll(s.c_str(), &end, 10);
+    if(end == s.c_str()) return std::nullopt;
+    long long d = 1;
+    if(slash != std::string::npos) {
+        n = std::strtoll(s.substr(0, slash).c_str(), nullptr, 10);
+        d = std::strtoll(s.substr(slash + 1).c_str(), nullptr, 10);
+    }
+    if(d == 0) return std::nullopt;
+    Rational r{n, d};
+    r.normalize();
+    return r;
+}
+
+static std::optional<int> missing_trig_sign(std::string const &q, bool want_sin)
+{
+    std::string k = compact_key(q);
+    if(k == "acute" || k == "q1" || k == "quadrant1") return 1;
+    if(k == "obtuse" || k == "q2" || k == "quadrant2") return want_sin ? 1 : -1;
+    if(k == "reflex" || k == "q3" || k == "quadrant3") return -1;
+    if(k == "q4" || k == "quadrant4" || k == "fourth") return want_sin ? -1 : 1;
+    return std::nullopt;
+}
+
+static std::optional<Rational> pythag_missing_ratio(Rational known, int sign)
+{
+    known.normalize();
+    long long top = known.den * known.den - known.num * known.num;
+    if(top < 0) return std::nullopt;
+    long long root = static_cast<long long>(std::sqrt(static_cast<double>(top)) + 0.5);
+    if(root * root != top) return std::nullopt;
+    Rational out{sign * root, known.den};
+    out.normalize();
+    return out;
+}
+
+static std::optional<std::vector<std::string>> exact_sin_compound_from_given_route(std::vector<std::string> const &parts)
+{
+    if(parts.size() < 4) return std::nullopt;
+    std::string target = compact_key(parts[0]);
+    if(target.rfind("sin(", 0) != 0 || target.back() != ')') return std::nullopt;
+    std::string inner = target.substr(4, target.size() - 5);
+    std::size_t pos = inner.find('-');
+    bool minus = true;
+    if(pos == std::string::npos) {
+        pos = inner.find('+');
+        minus = false;
+    }
+    if(pos == std::string::npos) return std::nullopt;
+    std::string A = inner.substr(0, pos);
+    std::string B = inner.substr(pos + 1);
+    if(A.empty() || B.empty()) return std::nullopt;
+
+    std::map<std::string, ExactSinCosPair> vals;
+    for(std::size_t i = 1; i < parts.size(); ++i) {
+        std::string p = compact_key(parts[i]);
+        auto eq = p.find('=');
+        if(eq == std::string::npos) continue;
+        std::string lhs = p.substr(0, eq);
+        std::string rhs = p.substr(eq + 1);
+        if(lhs.rfind("sin(", 0) == 0 && lhs.back() == ')') {
+            std::string v = lhs.substr(4, lhs.size() - 5);
+            if(auto q = parse_small_rational_text(rhs)) vals[v].s = *q;
+        }
+        else if(lhs.rfind("cos(", 0) == 0 && lhs.back() == ')') {
+            std::string v = lhs.substr(4, lhs.size() - 5);
+            if(auto q = parse_small_rational_text(rhs)) vals[v].c = *q;
+        }
+        else if(!lhs.empty()) vals[lhs].quadrant = rhs;
+    }
+    auto fill = [&](std::string const &v) -> bool {
+        auto it = vals.find(v);
+        if(it == vals.end()) return false;
+        auto &z = it->second;
+        if(!z.s && z.c) {
+            auto sign = missing_trig_sign(z.quadrant, true);
+            if(!sign) return false;
+            z.s = pythag_missing_ratio(*z.c, *sign);
+        }
+        if(!z.c && z.s) {
+            auto sign = missing_trig_sign(z.quadrant, false);
+            if(!sign) return false;
+            z.c = pythag_missing_ratio(*z.s, *sign);
+        }
+        return z.s && z.c;
+    };
+    if(!fill(A) || !fill(B)) return std::nullopt;
+    auto a = vals[A], b = vals[B];
+    Rational term1 = qmul(*a.s, *b.c);
+    Rational term2 = qmul(*a.c, *b.s);
+    Rational ans = minus ? qsub(term1, term2) : qadd(term1, term2);
+    std::string op = minus ? "-" : "+";
+    std::string first = "sin(" + A + op + B + ")=sin(" + A + ")cos(" + B + ")" + op + "cos(" + A + ")sin(" + B + ")";
+    std::string sub = "sin(" + A + op + B + ")=" + signed_factor_text(*a.s) + "*" + signed_factor_text(*b.c) +
+                      op + signed_factor_text(*a.c) + "*" + signed_factor_text(*b.s);
+    return std::vector<std::string>{
+        first,
+        "sin(" + A + ")=" + rat_text(a.s->num, a.s->den) + ", cos(" + A + ")=" + rat_text(a.c->num, a.c->den),
+        "sin(" + B + ")=" + rat_text(b.s->num, b.s->den) + ", cos(" + B + ")=" + rat_text(b.c->num, b.c->den),
+        sub,
+        "= " + rat_text(term1.num, term1.den) + (minus ? " - " : " + ") + signed_factor_text(term2),
+        rat_text(ans.num, ans.den),
+    };
 }
 
 static std::string atan_ratio_text(long long n, long long d)
@@ -11412,12 +11535,16 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             return casio::exam_block(
                 "trig identity",
                 {
-                    "Start from cos(3" + v + ") = cos(2" + v + "+" + v + ").",
-                    "Use cos(A+B)=cos(A)cos(B)-sin(A)sin(B).",
-                    "Use cos(2" + v + ")=2cos(" + v + ")^2-1 and sin(2" + v + ")=2sin(" + v + ")cos(" + v + ").",
-                    "Use sin(" + v + ")^2=1-cos(" + v + ")^2 and collect.",
+                    "cos(3*" + v + ")=cos(2*" + v + "+" + v + ")",
+                    "cos(A+B)=cos(A)cos(B)-sin(A)sin(B)",
+                    "= cos(2*" + v + ")cos(" + v + ")-sin(2*" + v + ")sin(" + v + ")",
+                    "= (2cos(" + v + ")^2-1)cos(" + v + ")-(2sin(" + v + ")cos(" + v + "))sin(" + v + ")",
+                    "= 2cos(" + v + ")^3-cos(" + v + ")-2sin(" + v + ")^2cos(" + v + ")",
+                    "sin(" + v + ")^2=1-cos(" + v + ")^2",
+                    "= 2cos(" + v + ")^3-cos(" + v + ")-2(1-cos(" + v + ")^2)cos(" + v + ")",
+                    "= 4cos(" + v + ")^3-3cos(" + v + ")",
                 },
-                "cos(3" + v + ") = 4*cos(" + v + ")^3-3*cos(" + v + ")"
+                "cos(3*" + v + ") = 4*cos(" + v + ")^3 - 3*cos(" + v + ")"
             );
         }
         if((lk == "tan(3theta)" && rk == "(3tan(theta)-tan(theta)^3)/(1-3tan(theta)^2)") ||
@@ -11579,6 +11706,25 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     // "eq, var, lo, hi"
     auto early_parts = split_csv(req.expr);
     std::string early_key = compact_key(early_parts.empty() ? req.expr : early_parts[0]);
+    if(auto exact_compound = exact_sin_compound_from_given_route(early_parts)) return *exact_compound;
+    for(std::string v : {"x", "theta", "t"}) {
+        if(early_key == "cos(3" + v + ")=4cos(" + v + ")^3-3cos(" + v + ")") {
+            return casio::exam_block(
+                "trig identity",
+                {
+                    "cos(3*" + v + ")=cos(2*" + v + "+" + v + ")",
+                    "cos(A+B)=cos(A)cos(B)-sin(A)sin(B)",
+                    "= cos(2*" + v + ")cos(" + v + ")-sin(2*" + v + ")sin(" + v + ")",
+                    "= (2cos(" + v + ")^2-1)cos(" + v + ")-(2sin(" + v + ")cos(" + v + "))sin(" + v + ")",
+                    "= 2cos(" + v + ")^3-cos(" + v + ")-2sin(" + v + ")^2cos(" + v + ")",
+                    "sin(" + v + ")^2=1-cos(" + v + ")^2",
+                    "= 2cos(" + v + ")^3-cos(" + v + ")-2(1-cos(" + v + ")^2)cos(" + v + ")",
+                    "= 4cos(" + v + ")^3-3cos(" + v + ")",
+                },
+                "cos(3*" + v + ") = 4*cos(" + v + ")^3 - 3*cos(" + v + ")"
+            );
+        }
+    }
     if(early_key == "(1-cos(2theta)+sin(2theta))/(1+cos(2theta)+sin(2theta))=tan(theta)" ||
        early_key == "(1-cos(2x)+sin(2x))/(1+cos(2x)+sin(2x))=tan(x)") {
         std::string v = early_key.find("theta") != std::string::npos ? "theta" : "x";

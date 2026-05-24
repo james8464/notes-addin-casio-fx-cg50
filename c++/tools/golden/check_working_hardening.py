@@ -2826,6 +2826,36 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["y(ln(9))=11/18", "0<y<=11/18"],
         ["ERR:"],
     ),
+    (
+        "trig",
+        "sin(x-y),sin(x)=12/13,cos(y)=15/17,x=obtuse,y=acute,method=identity",
+        ["sin(x-y)=sin(x)cos(y)-cos(x)sin(y)", "cos(x)=-5/13", "sin(y)=8/17", "220/221"],
+        ["ERR:", "x = []"],
+    ),
+    (
+        "trig",
+        "sin(a+b),cos(a)=3/5,sin(b)=5/13,a=acute,b=obtuse,method=identity",
+        ["sin(a+b)=sin(a)cos(b)+cos(a)sin(b)", "sin(a)=4/5", "cos(b)=-12/13", "-33/65"],
+        ["ERR:", "a = []"],
+    ),
+    (
+        "trig",
+        "cos(3*x)=4*cos(x)^3-3*cos(x),method=identity",
+        ["cos(3*x)=cos(2*x+x)", "2cos(x)^3-cos(x)-2sin(x)^2cos(x)", "4cos(x)^3-3cos(x)"],
+        ["ERR:", "x = []"],
+    ),
+    (
+        "alg",
+        "evalat(ln(1+x^2)+2*x^2/(1+x^2),x,1)",
+        ["f(1)=ln(2)+1"],
+        ["1.693147", "ERR:"],
+    ),
+    (
+        "alg",
+        "evalat(-((1-x)/(1+x))^(-1/2)*(1+x)^-2*(2*x+1)+2*sqrt((1-x)/(1+x)),x,1/2)",
+        ["f(1/2)=-2/9*sqrt(3)"],
+        ["0.384900", "ERR:"],
+    ),
 ]
 
 REMOVED_FEATURE_MARKERS = (

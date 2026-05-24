@@ -968,6 +968,8 @@ static NodeId exact_eval_simplify(Arena &a, NodeId n)
             std::int64_t rn = 0, rd = 0;
             if(is_square_i64(u.num.num, rn) && is_square_i64(u.num.den, rd) && rd != 0)
                 return casio::num(a, rn, rd);
+            if(u.num.num == 1 && u.num.den > 1)
+                return casio::simplify(a, casio::div(a, casio::fn(a, "sqrt", casio::num(a, u.num.den)), casio::num(a, u.num.den)));
         }
         if(x.fkind == FnKind::Sqrt && (u.kind == NodeKind::Mul || u.kind == NodeKind::Div)) {
             Rational c{1, 1};
@@ -1055,6 +1057,8 @@ static NodeId exact_eval_simplify(Arena &a, NodeId n)
             }
             if(expo.num.num == 1 && expo.num.den == 2)
                 return exact_eval_simplify(a, casio::fn(a, "sqrt", lhs));
+            if(expo.num.num == -1 && expo.num.den == 2 && base.kind == NodeKind::Num && base.num.num > 0)
+                return exact_eval_simplify(a, casio::fn(a, "sqrt", casio::num(a, base.num.den, base.num.num)));
             if(base.kind == NodeKind::Fn && base.fkind == FnKind::Sqrt &&
                expo.num.num == 2 && expo.num.den == 1)
                 return exact_eval_simplify(a, base.a);
@@ -1068,6 +1072,7 @@ static NodeId exact_eval_simplify(Arena &a, NodeId n)
     if(x.kind == NodeKind::Div) {
         NodeId lhs = exact_eval_simplify(a, x.a);
         NodeId rhs = exact_eval_simplify(a, x.b);
+        if(casio::same_by_sig(a, lhs, rhs)) return casio::num(a, 1);
         auto exp_arg = [&](NodeId id) -> std::optional<NodeId> {
             Node const &u = a.get(id);
             if(u.kind == NodeKind::Pow && is_e_const_node(a, u.a)) return u.b;
@@ -1088,13 +1093,14 @@ static NodeId exact_eval_simplify(Arena &a, NodeId n)
             if(auto rd = strip_whole_negative(a, rhs))
                 return casio::simplify(a, casio::div(a, *ln, *rd));
         }
-        return casio::simplify(a, casio::div(a, lhs, rhs));
+        NodeId r = casio::simplify(a, casio::div(a, lhs, rhs));
+        return format_expr(a, r) == format_expr(a, n) ? r : exact_eval_simplify(a, r);
     }
     std::vector<NodeId> kids;
     kids.reserve(x.kids.size());
     for(auto k : x.kids) kids.push_back(exact_eval_simplify(a, k));
     NodeId r = casio::simplify(a, x.kind == NodeKind::Add ? casio::add(a, kids) : casio::mul(a, kids));
-    return casio::same_by_sig(a, r, n) ? r : exact_eval_simplify(a, r);
+    return format_expr(a, r) == format_expr(a, n) ? r : exact_eval_simplify(a, r);
 }
 
 static NodeId cancel_log_exp_only(Arena &a, NodeId n)
@@ -32386,6 +32392,8 @@ algebra_compare_transform_modes:
                 };
             };
             if(!syms.empty() || contains_const(arena, v, ConstKind::Pi) || contains_exp_log_exact(arena, v) ||
+               contains_fn_kind(arena, n, FnKind::Sqrt) ||
+               contains_fn_kind(arena, n, FnKind::Log) ||
                contains_fn_kind(arena, v, FnKind::Sqrt)) {
                 NodeId sub = exact_eval_simplify(arena, clone_with_substitution(arena, n, var, v));
                 NodeId sub2 = exact_eval_simplify(arena, expand_square_powers(arena, sub));
