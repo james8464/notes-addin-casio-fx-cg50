@@ -1835,6 +1835,203 @@ static std::optional<std::vector<Rational>> poly_node_local(Arena &a, NodeId n, 
     return std::nullopt;
 }
 
+static std::optional<std::vector<Rational>> sqrt_poly_node(Arena &a, NodeId n, std::string const &var, int max_degree)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Num) return std::vector<Rational>{x.num};
+    if(x.kind == NodeKind::Sym && x.text == var) return std::vector<Rational>{Rational{0, 1}, Rational{0, 1}, Rational{1, 1}};
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Sqrt) {
+        Node const &r = a.get(x.a);
+        if(r.kind == NodeKind::Sym && r.text == var) return std::vector<Rational>{Rational{0, 1}, Rational{1, 1}};
+    }
+    if(x.kind == NodeKind::Add) {
+        std::vector<Rational> out{Rational{0, 1}};
+        for(NodeId k : x.kids) {
+            auto p = sqrt_poly_node(a, k, var, max_degree);
+            if(!p) return std::nullopt;
+            out = poly_add_local(out, *p);
+        }
+        return out;
+    }
+    if(x.kind == NodeKind::Mul) {
+        std::vector<Rational> out{Rational{1, 1}};
+        for(NodeId k : x.kids) {
+            auto p = sqrt_poly_node(a, k, var, max_degree);
+            if(!p) return std::nullopt;
+            auto m = poly_mul_local(out, *p, max_degree);
+            if(!m) return std::nullopt;
+            out = *m;
+        }
+        return out;
+    }
+    if(x.kind == NodeKind::Pow) {
+        auto e = as_num(a, x.b);
+        if(!e || e->den != 1 || e->num < 0 || e->num > max_degree) return std::nullopt;
+        auto base = sqrt_poly_node(a, x.a, var, max_degree);
+        if(!base) return std::nullopt;
+        std::vector<Rational> out{Rational{1, 1}};
+        for(int i = 0; i < static_cast<int>(e->num); ++i) {
+            auto m = poly_mul_local(out, *base, max_degree);
+            if(!m) return std::nullopt;
+            out = *m;
+        }
+        return out;
+    }
+    if(x.kind == NodeKind::Div) {
+        auto top = sqrt_poly_node(a, x.a, var, max_degree);
+        auto den = as_num(a, x.b);
+        if(!top || !den || rat_zero_local(*den)) return std::nullopt;
+        for(auto &r : *top) r = rat_div_local(r, *den);
+        trim_poly_local(*top);
+        return top;
+    }
+    return std::nullopt;
+}
+
+static std::optional<std::pair<std::vector<Rational>, std::vector<Rational>>> poly_divide_local(
+    std::vector<Rational> num,
+    std::vector<Rational> den)
+{
+    trim_poly_local(num);
+    trim_poly_local(den);
+    if(den.empty() || rat_zero_local(den.back())) return std::nullopt;
+    std::vector<Rational> q(num.size(), Rational{0, 1});
+    while(num.size() >= den.size() && !(num.size() == 1 && rat_zero_local(num[0]))) {
+        std::size_t shift = num.size() - den.size();
+        Rational c = rat_div_local(num.back(), den.back());
+        q[shift] = rat_add_local(q[shift], c);
+        for(std::size_t i = 0; i < den.size(); ++i)
+            num[i + shift] = rat_sub_local(num[i + shift], rat_mul_local(c, den[i]));
+        trim_poly_local(num);
+    }
+    trim_poly_local(q);
+    return std::make_pair(q, num);
+}
+
+static std::vector<Rational> poly_derivative_local(std::vector<Rational> const &p)
+{
+    if(p.size() <= 1) return {Rational{0, 1}};
+    std::vector<Rational> out(p.size() - 1, Rational{0, 1});
+    for(std::size_t i = 1; i < p.size(); ++i) out[i - 1] = rat_mul_local(p[i], Rational{static_cast<long long>(i), 1});
+    trim_poly_local(out);
+    return out;
+}
+
+static NodeId linear_sqrt_base_node(Arena &a, std::vector<Rational> const &base, std::string const &var)
+{
+    std::vector<NodeId> terms;
+    if(base.size() > 1 && !rat_zero_local(base[1]))
+        terms.push_back(casio::mul(a, {a.num(base[1]), a.fn(FnKind::Sqrt, a.sym(var))}));
+    if(!base.empty() && !rat_zero_local(base[0])) terms.push_back(a.num(base[0]));
+    if(terms.empty()) return a.num(Rational{0, 1});
+    return casio::simplify(a, casio::add(a, terms));
+}
+
+static std::string coeff_over_text(Arena &a, Rational c, std::string const &den)
+{
+    c.normalize();
+    auto wrap_den = [](std::string const &s) {
+        return (s.find('*') != std::string::npos || s.find(" + ") != std::string::npos ||
+                s.find(" - ") != std::string::npos) ? "(" + s + ")" : s;
+    };
+    std::string d0 = wrap_den(den);
+    if(c.num == c.den) return "1/" + d0;
+    if(c.num == -c.den) return "-1/" + d0;
+    if(c.den != 1) {
+        std::string d = std::to_string(c.den) + "*" + den;
+        if(c.num == 1) return "1/(" + d + ")";
+        if(c.num == -1) return "-1/(" + d + ")";
+        return rat_text(a, c.num, 1) + "/(" + d + ")";
+    }
+    return rat_text(a, c.num, 1) + "/" + d0;
+}
+
+static std::optional<std::pair<std::vector<std::string>, std::string>> sqrt_rationalized_derivative_route(
+    Arena &a, NodeId n, std::string const &var)
+{
+    NodeId num = 0, den_base_node = 0;
+    int den_pow = 1;
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Div) {
+        num = x.a;
+        den_base_node = x.b;
+    }
+    else if(x.kind == NodeKind::Mul) {
+        std::vector<NodeId> top;
+        for(NodeId k : x.kids) {
+            Node const &p = a.get(k);
+            auto e = p.kind == NodeKind::Pow ? as_num(a, p.b) : std::optional<Rational>{};
+            if(e && e->den == 1 && e->num < 0 && !den_base_node) {
+                den_base_node = p.a;
+                den_pow = static_cast<int>(-e->num);
+            }
+            else top.push_back(k);
+        }
+        if(!den_base_node || top.empty()) return std::nullopt;
+        num = top.size() == 1 ? top[0] : casio::simplify(a, casio::mul(a, top));
+    }
+    else return std::nullopt;
+    Node const &db = a.get(den_base_node);
+    if(db.kind == NodeKind::Pow) {
+        auto e = as_num(a, db.b);
+        if(!e || e->den != 1 || e->num <= 0 || e->num > 4) return std::nullopt;
+        den_base_node = db.a;
+        den_pow *= static_cast<int>(e->num);
+    }
+    auto pnum = sqrt_poly_node(a, num, var, 6);
+    auto pbase = sqrt_poly_node(a, den_base_node, var, 2);
+    if(!pnum || !pbase || pbase->size() != 2 || rat_zero_local((*pbase)[1]) || den_pow < 1 || den_pow > 4)
+        return std::nullopt;
+    std::vector<Rational> den_poly{Rational{1, 1}};
+    for(int i = 0; i < den_pow; ++i) {
+        auto m = poly_mul_local(den_poly, *pbase, 8);
+        if(!m) return std::nullopt;
+        den_poly = *m;
+    }
+    auto div = poly_divide_local(*pnum, den_poly);
+    if(!div) return std::nullopt;
+    auto q = div->first;
+    auto rem = div->second;
+    bool rem_zero = rem.size() == 1 && rat_zero_local(rem[0]);
+    bool rem_const = rem.size() == 1;
+    auto qd = poly_derivative_local(q);
+    bool qd_zero = qd.size() == 1 && rat_zero_local(qd[0]);
+    if(!rem_zero && (!rem_const || !qd_zero)) return std::nullopt;
+
+    std::string base_u = poly_coeffs_text(*pbase, "u");
+    std::string den_u = den_pow == 1 ? base_u : "(" + base_u + ")^" + std::to_string(den_pow);
+    std::string y_u = poly_coeffs_text(q, "u");
+    if(!rem_zero) {
+        std::string rtxt = coeff_over_text(a, rem[0], den_u);
+        y_u += rem[0].num < 0 ? " - " + rtxt.substr(1) : " + " + rtxt;
+    }
+    NodeId base_x = linear_sqrt_base_node(a, *pbase, var);
+    std::string base_x_txt = format_expr_human(a, base_x);
+    std::string answer;
+    std::string dydu;
+    if(rem_zero && qd.size() == 1 && !rat_zero_local(qd[0])) {
+        dydu = poly_coeffs_text(qd, "u");
+        Rational c = rat_div_local(qd[0], Rational{2, 1});
+        answer = coeff_over_text(a, c, "sqrt(" + var + ")");
+    }
+    else if(!rem_zero && qd_zero) {
+        Rational c = rat_mul_local(rem[0], rat_mul_local(Rational{-den_pow, 1}, (*pbase)[1]));
+        dydu = coeff_over_text(a, c, "(" + base_u + ")^" + std::to_string(den_pow + 1));
+        Rational cx = rat_div_local(c, Rational{2, 1});
+        std::string den = "sqrt(" + var + ")*(" + base_x_txt + ")^" + std::to_string(den_pow + 1);
+        answer = coeff_over_text(a, cx, den);
+    }
+    else return std::nullopt;
+    std::vector<std::string> steps{
+        "u = sqrt(" + var + "), so " + var + " = u^2 and du/d" + var + " = 1/(2*sqrt(" + var + ")).",
+        "y = (" + poly_coeffs_text(*pnum, "u") + ")/(" + den_u + ").",
+        "y = " + y_u + ".",
+        "dy/du = " + dydu + ".",
+        "dy/d" + var + " = (dy/du)*(du/d" + var + ").",
+    };
+    return std::make_pair(steps, "dy/d" + var + " = " + answer);
+}
+
 static long long poly_int_gcd(std::vector<Rational> const &c)
 {
     long long g = 0;
@@ -4516,6 +4713,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             expr_key.erase(std::remove_if(expr_key.begin(), expr_key.end(), [](unsigned char ch) {
                 return std::isspace(ch) || ch == '*';
             }), expr_key.end());
+            if(auto sr = sqrt_rationalized_derivative_route(arena, n, var))
+                return casio::exam_block("differentiate", sr->first, sr->second);
             if(req.mode == 1 && expr_key == "3sin(" + var + ")/(2sin(" + var + ")+2cos(" + var + "))") {
                 return casio::exam_block(
                     "differentiate",

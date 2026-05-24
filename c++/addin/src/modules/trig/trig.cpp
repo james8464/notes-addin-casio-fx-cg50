@@ -771,6 +771,35 @@ static std::optional<ExactSC> exact_angle_sincos(Arena &a, NodeId n)
         if(!sc) return std::nullopt;
         return ExactSC{casio::simplify(a, casio::neg(a, sc->s)), sc->c};
     }
+    if(x.kind == NodeKind::Mul && x.kids.size() == 2) {
+        NodeId angle = 0;
+        Rational k{0, 1};
+        for(NodeId t : x.kids) {
+            if(auto q = as_num(a, t)) k = *q;
+            else angle = t;
+        }
+        if(angle && k.den == 1 && std::llabs(k.num) <= 8) {
+            auto sc = exact_angle_sincos(a, angle);
+            if(!sc) return std::nullopt;
+            if(k.num < 0) {
+                sc->s = casio::simplify(a, casio::neg(a, sc->s));
+                k.num = -k.num;
+            }
+            ExactSC acc{casio::num(a, 0), casio::num(a, 1)};
+            for(long long i = 0; i < k.num; ++i) {
+                NodeId ns = casio::simplify(a, casio::add(a, {
+                    casio::mul(a, {acc.s, sc->c}),
+                    casio::mul(a, {acc.c, sc->s})
+                }));
+                NodeId nc = casio::simplify(a, casio::add(a, {
+                    casio::mul(a, {acc.c, sc->c}),
+                    casio::neg(a, casio::mul(a, {acc.s, sc->s}))
+                }));
+                acc = ExactSC{ns, nc};
+            }
+            return acc;
+        }
+    }
     if(x.kind == NodeKind::Add) {
         ExactSC acc{casio::num(a, 0), casio::num(a, 1)};
         for(NodeId k : x.kids) {
@@ -789,6 +818,46 @@ static std::optional<ExactSC> exact_angle_sincos(Arena &a, NodeId n)
         return acc;
     }
     return std::nullopt;
+}
+
+static bool exact_zero(Arena &a, NodeId n)
+{
+    NodeId s = casio::simplify(a, n);
+    Node const &x = a.get(s);
+    return x.kind == NodeKind::Num && x.num.num == 0;
+}
+
+static bool exact_minus_one(Arena &a, NodeId n)
+{
+    NodeId s = casio::simplify(a, n);
+    Node const &x = a.get(s);
+    if(x.kind == NodeKind::Num && x.num.num == -x.num.den) return true;
+    auto v = numeric_eval(a, s, 0.0);
+    return v && std::isfinite(*v) && std::fabs(*v + 1.0) < 1e-10;
+}
+
+static bool contains_inverse_trig(Arena &a, NodeId n);
+
+static std::optional<std::vector<std::string>> inverse_trig_pi_identity_route(Arena &a, NodeId lhs, NodeId rhs)
+{
+    auto run = [&](NodeId U, NodeId R) -> std::optional<std::vector<std::string>> {
+        Node const &r = a.get(casio::simplify(a, R));
+        if(!(r.kind == NodeKind::Const && r.ckind == ConstKind::Pi)) return std::nullopt;
+        if(!contains_inverse_trig(a, U)) return std::nullopt;
+        auto sc = exact_angle_sincos(a, U);
+        if(!sc || !exact_zero(a, sc->s) || !exact_minus_one(a, sc->c)) return std::nullopt;
+        std::string Ut = format_expr(a, U);
+        return std::vector<std::string>{
+            "U = " + Ut,
+            "Use tan(A+B)=(tan(A)+tan(B))/(1-tan(A)tan(B)).",
+            "sin(U) = 0, cos(U) = -1.",
+            "pi/2 < U < 3*pi/2.",
+            "U = pi",
+            Ut + " = pi",
+        };
+    };
+    if(auto r = run(lhs, rhs)) return r;
+    return run(rhs, lhs);
 }
 
 static bool contains_inverse_trig(Arena &a, NodeId n)
@@ -4451,6 +4520,68 @@ static std::optional<std::vector<std::string>> solve_sin_over_sqrt_cos_eq(
     std::sort(xs.begin(), xs.end());
     steps.push_back(interval_text(angle_bounds(a, lo_text, hi_text, rad), var) + " => " + format_solution_list(var, rad, xs));
     return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
+}
+
+static bool match_tan_sum_diff_side(Arena &a, NodeId n, NodeId &x, NodeId &y, int sign)
+{
+    Node const &t = a.get(n);
+    if(t.kind != NodeKind::Fn || t.fkind != FnKind::Tan) return false;
+    Node const &arg = a.get(t.a);
+    if(arg.kind != NodeKind::Add || arg.kids.size() != 2) return false;
+    NodeId pos = 0, neg = 0;
+    for(NodeId k : arg.kids) {
+        Node const &q = a.get(k);
+        if(q.kind == NodeKind::Mul && q.kids.size() == 2) {
+            auto c0 = as_num(a, q.kids[0]);
+            auto c1 = as_num(a, q.kids[1]);
+            if(c0 && c0->num == -c0->den) { neg = q.kids[1]; continue; }
+            if(c1 && c1->num == -c1->den) { neg = q.kids[0]; continue; }
+        }
+        pos = k;
+    }
+    if(sign > 0) {
+        if(neg) return false;
+        x = arg.kids[0];
+        y = arg.kids[1];
+        return true;
+    }
+    if(!pos || !neg) return false;
+    x = pos;
+    y = neg;
+    return true;
+}
+
+static std::optional<std::vector<std::string>> tan_sum_diff_ratio_proof(Arena &a, NodeId lhs, NodeId rhs)
+{
+    auto run = [&](NodeId L, NodeId R) -> std::optional<std::vector<std::string>> {
+        NodeId x1 = 0, y1 = 0, x2 = 0, y2 = 0;
+        if(!match_tan_sum_diff_side(a, L, x1, y1, +1)) return std::nullopt;
+        Rational k{1, 1};
+        NodeId body = R;
+        Node const &r = a.get(R);
+        if(r.kind == NodeKind::Mul && r.kids.size() == 2) {
+            if(auto q = as_num(a, r.kids[0])) { k = *q; body = r.kids[1]; }
+            else if(auto q = as_num(a, r.kids[1])) { k = *q; body = r.kids[0]; }
+        }
+        if(k.num == k.den || !match_tan_sum_diff_side(a, body, x2, y2, -1)) return std::nullopt;
+        if(!same_sig(a, x1, x2) || !same_sig(a, y1, y2)) return std::nullopt;
+        Rational km1 = qsub(k, Rational{1, 1});
+        Rational kp1 = qadd(k, Rational{1, 1});
+        if(km1.num == 0) return std::nullopt;
+        Rational target = qdiv(kp1, km1);
+        std::string X = format_expr(a, x1), Y = format_expr(a, y1), K = format_expr(a, a.num(k));
+        return std::vector<std::string>{
+            "tan(" + X + "+" + Y + ") = " + K + "*tan(" + X + "-" + Y + ")",
+            "(tan(" + X + ")+tan(" + Y + "))/(1-tan(" + X + ")tan(" + Y + ")) = " +
+                K + "*(tan(" + X + ")-tan(" + Y + "))/(1+tan(" + X + ")tan(" + Y + "))",
+            format_expr(a, a.num(km1)) + "*tan(" + X + ")*(1+tan(" + Y + ")^2) = " +
+                format_expr(a, a.num(kp1)) + "*tan(" + Y + ")*(1+tan(" + X + ")^2)",
+            "sin(2A)=2tan(A)/(1+tan(A)^2)",
+            "sin(2*" + X + ")/sin(2*" + Y + ") = " + format_expr(a, a.num(target)),
+        };
+    };
+    if(auto r = run(lhs, rhs)) return r;
+    return run(rhs, lhs);
 }
 
 static std::string trig_base_angle_line(FnKind fk, std::string const &arg, double r)
@@ -10429,6 +10560,8 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
     pre.parsed = equation_for_parse;
     pre.simplified = casio::format_expr(a, lhs) + " = " + casio::format_expr(a, rhs);
 
+    if(auto inv_pi = inverse_trig_pi_identity_route(a, lhs, rhs)) return *inv_pi;
+    if(auto tan_ratio = tan_sum_diff_ratio_proof(a, lhs, rhs)) return *tan_ratio;
     if(general) {
         if(auto ts = solve_linear_sincos_zero_tan(a, lhs, rhs, var, lo_text, hi_text, rad, general)) return *ts;
     }

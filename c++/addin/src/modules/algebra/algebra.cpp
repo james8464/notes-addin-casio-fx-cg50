@@ -4692,6 +4692,169 @@ static std::optional<std::vector<std::string>> exp_difference_square_cancel_rout
     return casio::exam_block("algebra simplify", steps, format_expr(a, ans));
 }
 
+static bool match_exp_pm_one(Arena &a, NodeId n, int exp_sign, int one_sign, NodeId &u)
+{
+    std::vector<NodeId> terms;
+    add_terms_flat(a, n, terms);
+    bool got_exp = false, got_one = false;
+    for(NodeId t : terms) {
+        NodeId coef = 0, earg = 0;
+        if(const_times_exp(a, t, coef, earg)) {
+            auto c = num_node_early(a, exact_eval_simplify(a, coef));
+            if(!c || c->num != exp_sign * c->den) return false;
+            NodeId pos = exact_eval_simplify(a, casio::neg(a, earg));
+            if(got_exp && !casio::same_by_sig(a, u, pos)) return false;
+            u = pos;
+            got_exp = true;
+            continue;
+        }
+        auto q = num_node_early(a, exact_eval_simplify(a, t));
+        if(!q || q->num != one_sign * q->den) return false;
+        got_one = true;
+    }
+    return got_exp && got_one;
+}
+
+static std::optional<std::vector<std::string>> exp_negative_mobius_odd_route(Arena &a, NodeId parsed, NodeId simplified)
+{
+    Node const &d = a.get(simplified);
+    if(d.kind != NodeKind::Div) return std::nullopt;
+    NodeId u1 = 0, u2 = 0;
+    if(!match_exp_pm_one(a, d.a, +1, -1, u1) || !match_exp_pm_one(a, d.b, +1, +1, u2) ||
+       !casio::same_by_sig(a, u1, u2)) return std::nullopt;
+    NodeId eu = casio::power(a, a.constant(ConstKind::E), u1);
+    NodeId ans = casio::neg(a, casio::div(a, casio::add(a, {eu, casio::num(a, -1)}),
+                                           casio::add(a, {eu, casio::num(a, 1)})));
+    std::string U = format_expr(a, u1);
+    std::vector<std::string> steps{format_expr(a, parsed)};
+    std::string simp = format_expr(a, simplified);
+    if(compact_input_key(steps.back()) != compact_input_key(simp)) steps.push_back("= " + simp);
+    steps.push_back("= (1 - e^(" + U + "))/(1 + e^(" + U + "))");
+    steps.push_back("= -(e^(" + U + ") - 1)/(e^(" + U + ") + 1)");
+    return casio::exam_block("algebra simplify", steps, format_expr(a, exact_eval_simplify(a, ans)));
+}
+
+static bool match_one_pm_expr(Arena &a, NodeId n, int sign, NodeId &expr)
+{
+    std::vector<NodeId> terms;
+    add_terms_flat(a, n, terms);
+    bool got_one = false, got_expr = false;
+    for(NodeId t : terms) {
+        auto q = num_node_early(a, exact_eval_simplify(a, t));
+        if(q && q->num == q->den) {
+            got_one = true;
+            continue;
+        }
+        Rational c;
+        NodeId body = 0;
+        bool has = false;
+        split_coeff_body(a, t, c, body, has);
+        if(!has || c.num != sign * c.den) return false;
+        if(got_expr && !casio::same_by_sig(a, expr, body)) return false;
+        expr = body;
+        got_expr = true;
+    }
+    return got_one && got_expr;
+}
+
+static std::optional<std::pair<std::string, std::vector<std::string>>> simplify_log_one_plus_ratio(
+    Arena &a, NodeId log_node)
+{
+    Node const &fn = a.get(log_node);
+    if(fn.kind != NodeKind::Fn || fn.fkind != FnKind::Log) return std::nullopt;
+    Node const &arg = a.get(fn.a);
+    if(arg.kind != NodeKind::Div) return std::nullopt;
+    NodeId r1 = 0, r2 = 0;
+    if(!match_one_pm_expr(a, arg.a, +1, r1) || !match_one_pm_expr(a, arg.b, -1, r2) ||
+       !casio::same_by_sig(a, r1, r2)) return std::nullopt;
+    Node const &r = a.get(r1);
+    if(r.kind != NodeKind::Div) return std::nullopt;
+    std::vector<std::string> vars;
+    collect_symbols(a, r1, vars);
+    std::sort(vars.begin(), vars.end());
+    vars.erase(std::unique(vars.begin(), vars.end()), vars.end());
+    if(vars.size() != 1) return std::nullopt;
+    std::string var = vars[0];
+    auto P = poly_of(a, r.a, var);
+    auto Q = poly_of(a, r.b, var);
+    if(!P || !Q || !P->ok || !Q->ok) return std::nullopt;
+    Poly2 top = add_poly(*Q, *P);
+    Poly2 bot = sub_poly(*Q, *P);
+    if(!top.ok || !bot.ok) return std::nullopt;
+    NodeId top_node = poly2_to_node(a, top, var);
+    NodeId bot_node = poly2_to_node(a, bot, var);
+    NodeId ratio = exact_eval_simplify(a, casio::div(a, top_node, bot_node));
+    std::string ratio_txt = format_expr(a, ratio);
+    std::string ans = "ln(" + ratio_txt + ")";
+    std::vector<std::string> extra{"= ln((" + format_expr(a, top_node) + ")/(" + format_expr(a, bot_node) + "))"};
+    if(is_zero(bot.a2) && is_zero(bot.a1) && !is_zero(bot.a0)) {
+        Poly2 scaled = scale_poly(top, r_div(Rational{1, 1}, bot.a0));
+        Rational two{2, 1};
+        if(r_cmp(scaled.a2, Rational{1, 1}) == 0) {
+            Rational c = r_div(scaled.a1, two);
+            if(r_cmp(r_mul(c, c), scaled.a0) == 0) {
+                std::string lin = format_expr(a, poly2_to_node(a, Poly2{Rational{0, 1}, Rational{1, 1}, c, true}, var));
+                extra.push_back("= ln((" + lin + ")^2)");
+                ans = "2*ln(" + lin + ")";
+                extra.push_back("= " + ans);
+            }
+        }
+    }
+    return std::make_pair(ans, extra);
+}
+
+static std::optional<std::vector<std::string>> log_one_plus_rational_route(Arena &a, NodeId parsed, NodeId simplified)
+{
+    auto work = simplify_log_one_plus_ratio(a, simplified);
+    if(!work) return std::nullopt;
+    std::vector<std::string> steps{format_expr(a, parsed)};
+    std::string simp = format_expr(a, simplified);
+    if(compact_input_key(steps.back()) != compact_input_key(simp)) steps.push_back("= " + simp);
+    steps.insert(steps.end(), work->second.begin(), work->second.end());
+    return casio::exam_block("algebra simplify", steps, work->first);
+}
+
+static std::optional<std::vector<std::string>> solve_exp_mobius_route(
+    Arena &a, NodeId lhs, NodeId rhs, std::string const &var, std::vector<std::string> out)
+{
+    auto run = [&](NodeId L, NodeId R) -> std::optional<std::vector<std::string>> {
+        Node const &d = a.get(L);
+        if(d.kind != NodeKind::Div || contains_symbol(a, R, var)) return std::nullopt;
+        NodeId u1 = 0, u2 = 0;
+        if(!match_exp_pm_one(a, d.a, +1, -1, u1) || !match_exp_pm_one(a, d.b, +1, +1, u2) ||
+           !casio::same_by_sig(a, u1, u2) || !contains_symbol(a, u1, var)) return std::nullopt;
+        NodeId log_arg = casio::div(a, casio::add(a, {casio::num(a, 1), R}),
+                                    casio::add(a, {casio::num(a, 1), casio::neg(a, R)}));
+        NodeId log_node = casio::fn(a, "ln", log_arg);
+        NodeId exp_arg = casio::simplify(a, casio::neg(a, u1));
+        std::string rhs_txt = format_expr(a, R);
+        std::vector<std::string> res = out;
+        res.push_back("e^(" + format_expr(a, exp_arg) + ") = (1 + " + rhs_txt + ")/(1 - " + rhs_txt + ")");
+        std::string ans = "ln(" + format_expr(a, exact_eval_simplify(a, log_arg)) + ")";
+        if(auto simp = simplify_log_one_plus_ratio(a, log_node)) {
+            res.insert(res.end(), simp->second.begin(), simp->second.end());
+            ans = simp->first;
+        }
+        auto lp = linear_poly_coeffs(a, exp_arg, var);
+        if(!lp) return std::nullopt;
+        bool direct = (lp->first.num == lp->first.den && lp->second.num == 0);
+        if(!direct) res.push_back(format_expr(a, exp_arg) + " = " + ans);
+        std::string var_ans = ans;
+        if(!direct) {
+            NodeId ans_node = casio::parse_expr(a, ans);
+            NodeId sol = casio::div(a,
+                                    casio::add(a, {ans_node, casio::num(a, -lp->second.num, lp->second.den)}),
+                                    casio::num(a, lp->first.num, lp->first.den));
+            var_ans = format_expr(a, exact_eval_simplify(a, sol));
+        }
+        res.push_back(var + " = " + var_ans);
+        res.push_back(var + " = [" + var_ans + "]");
+        return res;
+    };
+    if(auto r = run(lhs, rhs)) return r;
+    return run(rhs, lhs);
+}
+
 static std::optional<std::vector<std::string>> power_model_route(Arena &a, std::string const &expr)
 {
     std::string body = unwrap_call_text(expr, "power_model");
@@ -20166,6 +20329,29 @@ static bool has_variable_exponent(Arena &a, NodeId n, std::string const &var)
     return false;
 }
 
+static std::optional<std::string> first_variable_power_base(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Pow) {
+        std::vector<std::string> vars;
+        collect_symbols(a, x.b, vars);
+        if(std::find(vars.begin(), vars.end(), var) != vars.end() && !contains_symbol(a, x.a, var))
+            return format_expr(a, x.a);
+        if(auto r = first_variable_power_base(a, x.a, var)) return r;
+        return first_variable_power_base(a, x.b, var);
+    }
+    if(x.kind == NodeKind::Fn) return first_variable_power_base(a, x.a, var);
+    if(x.kind == NodeKind::Div) {
+        if(auto r = first_variable_power_base(a, x.a, var)) return r;
+        return first_variable_power_base(a, x.b, var);
+    }
+    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        for(auto k : x.kids)
+            if(auto r = first_variable_power_base(a, k, var)) return r;
+    }
+    return std::nullopt;
+}
+
 static NodeId sqrt_var_sub_node(Arena &a, NodeId n, std::string const &var)
 {
     Node const &x = a.get(n);
@@ -23505,8 +23691,9 @@ static void append_nonrat_equation_route(Arena &a, std::vector<std::string> &out
         wrote = true;
     }
     if(has_variable_exponent(a, rearr, var)) {
-        out.push_back("u=a^" + var + " or u=e^" + var + ", with u>0.");
-        out.push_back(var + "=log_a(u).");
+        std::string base = first_variable_power_base(a, rearr, var).value_or("base");
+        out.push_back("u=(" + base + ")^" + var + ", with u>0.");
+        out.push_back(var + "=ln(u)/ln(" + base + ").");
         wrote = true;
     }
     if(contains_fn_kind(a, rearr, FnKind::Abs)) {
@@ -32303,6 +32490,8 @@ algebra_compare_transform_modes:
             NodeId n = exact_eval_simplify(arena, parsed);
             auto n_text = simplify_log_exp_text(arena, n);
             if(auto ec = exp_difference_square_cancel_route(arena, parsed, n)) return *ec;
+            if(auto odd = exp_negative_mobius_odd_route(arena, parsed, n)) return *odd;
+            if(auto logr = log_one_plus_rational_route(arena, parsed, n)) return *logr;
             if(auto surd = numeric_surd_simplify_route(compact_input_key(format_expr(arena, n)))) return *surd;
             if(auto idx_text = numeric_negative_index_sum_text_route(req.expr, format_expr(arena, n))) return *idx_text;
             if(auto cube = cube_root_power_sum_route(arena, parsed, n)) return *cube;
@@ -32532,6 +32721,7 @@ algebra_compare_transform_modes:
         };
         if(auto iso = direct_constant_solution(lhs, rhs)) return *iso;
         if(auto iso = direct_constant_solution(rhs, lhs)) return *iso;
+        if(auto mobius = solve_exp_mobius_route(arena, lhs, rhs, solve_var, out)) return *mobius;
 
         if(auto log_trig = log_sin_cos_product_route(arena, equation_text, solve_var)) {
             out.insert(out.end(), log_trig->begin(), log_trig->end());

@@ -1915,6 +1915,42 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["theta = []", "ERR:"],
     ),
     (
+        "alg",
+        "simplify((e^(-x)-1)/(e^(-x)+1))",
+        ["= (1 - e^(x))/(1 + e^(x))", "= -(e^(x) - 1)/(e^(x) + 1)"],
+        ["ERR:", "Done", "Chk"],
+    ),
+    (
+        "alg",
+        "simplify(ln((1+(x^2+6*x+8)/(x^2+6*x+10))/(1-(x^2+6*x+8)/(x^2+6*x+10))))",
+        ["= ln((x + 3)^2)", "2*ln(x + 3)"],
+        ["ERR:", "Done", "Chk"],
+    ),
+    (
+        "derive",
+        "(x-4)/(sqrt(x)+2),x",
+        ["u = sqrt(x)", "y = u - 2", "dy/dx = 1/(2*sqrt(x))"],
+        ["ERR:", "Done", "Chk"],
+    ),
+    (
+        "derive",
+        "(4*x-8*sqrt(x)+3)/(sqrt(x)-1)^2,x",
+        ["u = sqrt(x)", "y = 4 - 1/((u - 1)^2)", "dy/dx = 1/(sqrt(x)*(sqrt(x) - 1)^3)"],
+        ["ERR:", "Done", "Chk"],
+    ),
+    (
+        "trig",
+        "4*atan(1/2)+atan(24/7)=pi,method=identity",
+        ["sin(U) = 0, cos(U) = -1", "U = pi", "4*atan(1/2) + atan(24/7) = pi"],
+        ["ERR:", "x = []"],
+    ),
+    (
+        "trig",
+        "tan(x+y)=2*tan(x-y),method=identity",
+        ["tan(x+y) = 2*tan(x-y)", "sin(2*x)/sin(2*y) = 3"],
+        ["ERR:", "x = []"],
+    ),
+    (
         "trig",
         "4*sin(x)-3*cos(x),method=rform",
         ["R = sqrt(4^2+3^2) = 5", "R*sin(x-alpha)", "5*sin(x-atan(3/4))"],
