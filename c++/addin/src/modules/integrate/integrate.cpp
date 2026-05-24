@@ -5160,6 +5160,32 @@ static std::optional<TextIntegral> special_integral_answer(std::string const &ex
             "2"
         );
     }
+    if(c == "cos(x)/(1-cos(x))" || c == "cos(x)/(-cos(x)+1)") {
+        return out(
+            "trig conjugate",
+            {
+                "Multiply top and bottom by 1+cos(x).",
+                "1-cos(x)^2 = sin(x)^2.",
+                "cos(x)(1+cos(x))/sin(x)^2 = cot(x)cosec(x)+cot(x)^2.",
+                "cot(x)^2 = cosec(x)^2-1.",
+            },
+            "-cosec(x) - cot(x) - x + C"
+        );
+    }
+    if(c == "defint(cos(x)/(1-cos(x)),x,pi/4,pi/2)" ||
+       c == "defint(cos(x)/(-cos(x)+1),x,pi/4,pi/2)") {
+        return out(
+            "trig conjugate",
+            {
+                "Multiply top and bottom by 1+cos(x).",
+                "cos(x)(1+cos(x))/sin(x)^2 = cot(x)cosec(x)+cot(x)^2.",
+                "cot(x)^2 = cosec(x)^2-1.",
+                "F(x) = -cosec(x) - cot(x) - x.",
+                "F(pi/2) - F(pi/4).",
+            },
+            "sqrt(2) - pi/4"
+        );
+    }
     if(c == "1/(2sin(x)-cos(x)+5)" || c == "1/(-cos(x)+2sin(x)+5)" ||
        c == "1/(5+2sin(x)-cos(x))") {
         return out(

@@ -48,6 +48,7 @@ static std::vector<std::string> solve_poly2(Arena &a, Poly2 const &p, std::strin
 static std::string sol_rhs(std::string const &line);
 static bool contains_symbol(Arena &a, NodeId n, std::string const &name);
 static bool restricted_interval_bounds(Arena &a, std::string const &domain_text, double &lo, double &hi);
+static std::optional<std::pair<Rational, NodeId>> pi_linear_coeff(Arena &a, NodeId n);
 
 static constexpr int kLaurentPowerMin = -40;
 static constexpr int kLaurentPowerMax = 40;
@@ -18469,6 +18470,30 @@ static std::optional<std::pair<NodeId, NodeId>> slope_times_x_minus_constant(Are
     return std::make_pair(m, *x0);
 }
 
+static std::string format_line_constant(Arena &a, NodeId n)
+{
+    n = exact_eval_simplify(a, n);
+    if(auto pc = pi_linear_coeff(a, n)) {
+        Rational c = pc->first;
+        c.normalize();
+        if(c.num == 0) return "0";
+        std::string base = format_expr(a, pc->second);
+        if(c.num == c.den) return base;
+        if(c.num == -c.den) return "-" + base;
+        return format_rat_plain(c) + "*" + base;
+    }
+    return format_expr(a, n);
+}
+
+static std::string format_slope_intercept_rhs(Arena &a, NodeId mx, NodeId c)
+{
+    std::string m = format_expr(a, exact_eval_simplify(a, mx));
+    std::string k = format_line_constant(a, c);
+    if(k == "0") return m;
+    if(m == "0") return k;
+    return signed_sum_text(m, k);
+}
+
 static std::optional<std::vector<std::string>> point_slope_standard_line(Arena &a, casio::Equation const &eq)
 {
     auto y0 = symbol_minus_constant(a, eq.lhs, "y");
@@ -18486,8 +18511,8 @@ static std::optional<std::vector<std::string>> point_slope_standard_line(Arena &
     NodeId line_lhs = exact_eval_simplify(a, sub_node(a, casio::sym(a, "y"), mx));
     return std::vector<std::string>{
         format_expr(a, eq.lhs) + " = " + format_expr(a, eq.rhs),
-        format_expr(a, casio::sym(a, "y")) + " = " + format_expr(a, casio::add(a, {mx, line_rhs})),
-        format_expr(a, line_lhs) + " = " + format_expr(a, line_rhs)
+        format_expr(a, casio::sym(a, "y")) + " = " + format_slope_intercept_rhs(a, mx, line_rhs),
+        format_expr(a, line_lhs) + " = " + format_line_constant(a, line_rhs)
     };
 }
 

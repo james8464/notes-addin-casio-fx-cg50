@@ -959,6 +959,39 @@ static int matching_paren_text(std::string const &s, std::size_t open)
     return -1;
 }
 
+static std::string reciprocal_trig_power_text(std::string s)
+{
+    struct Repl { char const *from; char const *to; };
+    for(auto const &r : {Repl{"cosec", "sin"}, Repl{"csc", "sin"}, Repl{"sec", "cos"}}) {
+        std::string needle = std::string(r.from) + "(";
+        std::size_t pos = 0;
+        while((pos = s.find(needle, pos)) != std::string::npos) {
+            if(pos && std::isalpha(static_cast<unsigned char>(s[pos - 1]))) {
+                pos += needle.size();
+                continue;
+            }
+            int close = matching_paren_text(s, pos + needle.size() - 1);
+            if(close < 0) {
+                pos += needle.size();
+                continue;
+            }
+            std::size_t pow = static_cast<std::size_t>(close) + 1;
+            std::string suffix;
+            if(s.compare(pow, 3, "^-1") == 0) suffix = "";
+            else if(s.compare(pow, 3, "^-2") == 0) suffix = "^2";
+            else {
+                pos = pow;
+                continue;
+            }
+            std::string arg = s.substr(pos + needle.size(), static_cast<std::size_t>(close) - pos - needle.size());
+            std::string repl = std::string(r.to) + "(" + arg + ")" + suffix;
+            s.replace(pos, pow + 3 - pos, repl);
+            pos += repl.size();
+        }
+    }
+    return s;
+}
+
 static std::string strip_outer_parens_text(std::string s)
 {
     bool changed = true;
@@ -5679,7 +5712,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             pre.norm = casio::normalize_text(eq_text);
             pre.parsed = req.expr;
             pre.simplified = casio::format_expr(arena, left) + " = " + casio::format_expr(arena, right);
-            std::string answer = dname + " = " + format_expr_human(arena, ans);
+            std::string answer = dname + " = " + reciprocal_trig_power_text(clean_math_text(format_expr_human(arena, ans)));
             std::string compact = eq_text;
             compact.erase(std::remove_if(compact.begin(), compact.end(), [](unsigned char ch) { return std::isspace(ch) || ch == '*'; }), compact.end());
             if(auto route = inverse_sqrt_linear_product_route(arena, left, right, var, dep, dname)) {
@@ -5902,14 +5935,14 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             std::string fy_s = clean_math_text(format_expr_human(arena, fy));
             if(cleared_ans) {
                 if(sqrt_ans) {
-                    answer = dname + " = " + format_expr_human(arena, *sqrt_ans);
+                    answer = dname + " = " + reciprocal_trig_power_text(clean_math_text(format_expr_human(arena, *sqrt_ans)));
                     steps.push_back(sqrt_line + ".");
                     steps.push_back(answer + ".");
                 }
-                else answer = dname + " = " + format_expr_human(arena, *cleared_ans);
+                else answer = dname + " = " + reciprocal_trig_power_text(clean_math_text(format_expr_human(arena, *cleared_ans)));
             }
             else {
-                if(sqrt_ans) answer = dname + " = " + format_expr_human(arena, *sqrt_ans);
+                if(sqrt_ans) answer = dname + " = " + reciprocal_trig_power_text(clean_math_text(format_expr_human(arena, *sqrt_ans)));
                 steps.push_back("F(x,y) = " + clean_math_text(format_expr_human(arena, work)) + " = 0.");
                 steps.push_back("F_x = " + fx_s + ".");
                 steps.push_back("F_y = " + fy_s + ".");
