@@ -18848,6 +18848,75 @@ static std::optional<std::string> reciprocal_affine_trig_range(Arena &a, NodeId 
     return format_expr(a, y1) + " <= y <= " + format_expr(a, y0);
 }
 
+static bool term_is_tan_with_coeff(Arena &a, NodeId n, Rational &coeff, std::string &arg)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Tan) {
+        coeff = Rational{1, 1};
+        arg = format_expr(a, x.a);
+        return true;
+    }
+    if(x.kind == NodeKind::Mul && x.kids.size() == 2) {
+        auto c0 = node_num(a, x.kids[0]);
+        auto c1 = node_num(a, x.kids[1]);
+        Node const &n0 = a.get(x.kids[0]);
+        Node const &n1 = a.get(x.kids[1]);
+        if(c0 && n1.kind == NodeKind::Fn && n1.fkind == FnKind::Tan) {
+            coeff = *c0;
+            arg = format_expr(a, n1.a);
+            return true;
+        }
+        if(c1 && n0.kind == NodeKind::Fn && n0.fkind == FnKind::Tan) {
+            coeff = *c1;
+            arg = format_expr(a, n0.a);
+            return true;
+        }
+    }
+    return false;
+}
+
+static std::optional<std::string> reciprocal_tan_half_open_range(
+    Arena &a,
+    NodeId n,
+    std::string const &var,
+    std::optional<double> lo_v,
+    std::optional<double> hi_v,
+    bool lo_open,
+    bool hi_open,
+    std::vector<std::string> &steps)
+{
+    if(!lo_v || !hi_v || lo_open || !hi_open) return std::nullopt;
+    if(std::fabs(*lo_v) > 1e-9 || std::fabs(*hi_v - M_PI / 2.0) > 1e-7) return std::nullopt;
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Div) return std::nullopt;
+    auto top = node_num(a, x.a);
+    if(!top || top->num == 0) return std::nullopt;
+    Node const &den = a.get(x.b);
+    if(den.kind != NodeKind::Add) return std::nullopt;
+    Rational c{0, 1}, k{0, 1};
+    std::string arg;
+    bool seen = false;
+    for(NodeId term : den.kids) {
+        if(auto r = node_num(a, term)) {
+            c = r_add(c, *r);
+            continue;
+        }
+        Rational tk{0, 1};
+        std::string ta;
+        if(!term_is_tan_with_coeff(a, term, tk, ta)) return std::nullopt;
+        if(seen || ta != var) return std::nullopt;
+        seen = true;
+        arg = ta;
+        k = tk;
+    }
+    if(!seen || c.num <= 0 || k.num <= 0) return std::nullopt;
+    Rational endpoint = r_div(*top, c);
+    steps.push_back("0 <= " + var + " < pi/2 => 0 <= tan(" + var + ") < infinity.");
+    steps.push_back(format_rat(a, c) + " <= " + format_expr(a, x.b) + " < infinity.");
+    if(top->num > 0) return "0 < y <= " + format_rat(a, endpoint);
+    return format_rat(a, endpoint) + " <= y < 0";
+}
+
 static std::optional<std::string> squared_affine_trig_range(Arena &a, NodeId n, std::string const &var, std::vector<std::string> &steps)
 {
     Node const &x = a.get(n);
@@ -26090,7 +26159,13 @@ static std::optional<double> eval_node_env(Arena &a, NodeId id, std::vector<std:
         case FnKind::Abs: return std::fabs(u);
         case FnKind::Sign: return (u > 0) - (u < 0);
         case FnKind::Log: return u <= 0 ? std::optional<double>{} : std::log(u);
+        case FnKind::Log10: return u <= 0 ? std::optional<double>{} : std::log10(u);
         case FnKind::Exp: return std::exp(u);
+        case FnKind::Asin:
+            return (u < -1.0 - 1e-12 || u > 1.0 + 1e-12) ? std::optional<double>{} : std::asin(std::max(-1.0, std::min(1.0, u)));
+        case FnKind::Acos:
+            return (u < -1.0 - 1e-12 || u > 1.0 + 1e-12) ? std::optional<double>{} : std::acos(std::max(-1.0, std::min(1.0, u)));
+        case FnKind::Atan: return std::atan(u);
         default: return std::nullopt;
         }
     }
@@ -31008,6 +31083,10 @@ algebra_compare_transform_modes:
                 }
                 else if(auto rec_cos = reciprocal_cos_range(arena, n, steps)) {
                     range_answer = *rec_cos;
+                    steps.push_back("Range: " + range_answer + ".");
+                }
+                else if(auto rec_tan = reciprocal_tan_half_open_range(arena, n, var, lo_v, hi_v, lo_open, hi_open, steps)) {
+                    range_answer = *rec_tan;
                     steps.push_back("Range: " + range_answer + ".");
                 }
                 else if(auto rec_trig = reciprocal_affine_trig_range(arena, n, var, steps)) {

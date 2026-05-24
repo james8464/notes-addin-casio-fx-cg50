@@ -133,6 +133,12 @@ CASES = [
         ("ERR:", "Done"),
     ),
     (
+        "evalat inverse trig endpoints",
+        ["--alg", "evalat(4*acos(x)-x-1,x,1)"],
+        ("x = 1", "f(1) = -2"),
+        ("ERR:", "undefined"),
+    ),
+    (
         "atan complement derivative family",
         ["--derive", "atan(x)+atan((1-x)/(1+x)),x"],
         ("v = (1-u)/(1+u)", "dy/dx = 0"),
@@ -189,6 +195,12 @@ CASES = [
         "reciprocal sincos range",
         ["--alg", "range(1/(5+sin(x)+sqrt(3)*cos(x)),x,0,2*pi)"],
         ("R = sqrt((1)^2 + (sqrt(3))^2) = 2", "3 <= denominator <= 7", "Range: 1/7 <= y <= 1/3"),
+        ("unrestricted", "ERR:"),
+    ),
+    (
+        "half-open tan reciprocal range",
+        ["--alg", "range(1/(1+tan(x)),0<=x,x<pi/2)"],
+        ("0 <= x < pi/2 => 0 <= tan(x) < infinity", "1 <= tan(x) + 1 < infinity", "Range: 0 < y <= 1"),
         ("unrestricted", "ERR:"),
     ),
     (

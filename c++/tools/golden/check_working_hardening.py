@@ -1015,6 +1015,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["Unexpected end of input", "Answer: solve(compare", "ERR:"],
     ),
     (
+        "alg",
+        "evalat(4*acos(x)-x-1,x,1)",
+        ["x=1", "f(1)=-2"],
+        ["ERR:", "undefined"],
+    ),
+    (
         "derive",
         "1/(2*x+1)+1/(y+1)=x^2,x,method=implicit",
         ["Domain: denoms !=0", "y + 2*x - x^2*(2*x + 1)*(y + 1) + 2 = 0", "d/dx(LHS) = d/dx(RHS)", "collect dy/dx", "dy/dx = (2*x*(2*x + 1)*(y + 1) + 2*x^2*(y + 1) - 2)/(- x^2*(2*x + 1) + 1)"],
@@ -1714,6 +1720,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         "alg",
         "range(1/(5+sin(x)+sqrt(3)*cos(x)),x,0,2*pi)",
         ["R = sqrt((1)^2 + (sqrt(3))^2) = 2", "3 <= denominator <= 7", "Answer: 1/7 <= y <= 1/3"],
+        ["unrestricted", "ERR:"],
+    ),
+    (
+        "alg",
+        "range(1/(1+tan(x)),0<=x,x<pi/2)",
+        ["0<=x<pi/2=>0<=tan(x)<infinity", "1<=tan(x)+1<infinity", "Answer: 0<y<=1"],
         ["unrestricted", "ERR:"],
     ),
     (
