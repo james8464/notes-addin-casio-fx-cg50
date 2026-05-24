@@ -15517,6 +15517,72 @@ static std::optional<NodeId> integrate_cos_even_over_sin(Arena &a, NodeId expr, 
     return casio::simplify(a, mul_coeff(a, r_div(coeff, *lc), add_or_zero_int(a, terms)));
 }
 
+static std::optional<NodeId> integrate_inverse_trig_linear_term(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
+{
+    auto fac = split_rat_factor(a, casio::simplify(a, expr));
+    Node const &fn = a.get(fac.second);
+    if(fn.kind != NodeKind::Fn || (fn.fkind != FnKind::Asin && fn.fkind != FnKind::Acos && fn.fkind != FnKind::Atan)) return std::nullopt;
+    auto lc = linear_coeff(a, fn.a, var);
+    if(!lc || r_zero(*lc)) return std::nullopt;
+    char const *name = fn.fkind == FnKind::Asin ? "asin" : (fn.fkind == FnKind::Acos ? "acos" : "atan");
+    NodeId w = fn.a;
+    NodeId wf = casio::fn(a, name, w);
+    NodeId first = casio::mul(a, {w, wf});
+    NodeId second = 0;
+    std::string rule;
+    if(fn.fkind == FnKind::Atan) {
+        second = casio::neg(a, casio::div(a, casio::fn(a, "log", casio::add(a, {casio::num(a, 1), casio::power(a, w, casio::num(a, 2))})), casio::num(a, 2)));
+        rule = "Apply inverse trig rule: Int arctan(w) dw = w*arctan(w) - 1/2*ln(1+w^2).";
+        if(is_sym(a, w, var)) rule = "Apply inverse trig rule: Int arctan(" + var + ") d" + var + " = " + var + "*arctan(" + var + ") - 1/2*ln(1+" + var + "^2).";
+    }
+    else {
+        NodeId root = casio::fn(a, "sqrt", casio::add(a, {casio::num(a, 1), casio::neg(a, casio::power(a, w, casio::num(a, 2)))}));
+        second = fn.fkind == FnKind::Asin ? root : casio::neg(a, root);
+        rule = fn.fkind == FnKind::Asin
+            ? "Apply inverse trig rule: Int asin(w) dw = w*asin(w) + sqrt(1-w^2)."
+            : "Apply inverse trig rule: Int acos(w) dw = w*acos(w) - sqrt(1-w^2).";
+    }
+    Rational scale = r_div(fac.first, *lc);
+    NodeId prim = casio::simplify(a, mul_coeff(a, scale, casio::add(a, {first, second})));
+    steps.push_back("Let w=" + format_expr(a, w) + ", so dw=" + format_expr(a, a.num(*lc)) + " d" + var + ".");
+    if(!r_eq(fac.first, Rational{1, 1}) || !r_eq(*lc, Rational{1, 1}))
+        steps.push_back("Integral term scale = " + rat_text(scale) + ".");
+    steps.push_back(rule);
+    steps.push_back("Back-substitute w.");
+    return prim;
+}
+
+static std::optional<IntegrateResult> integrate_inverse_trig_linear_sum(Arena &a, NodeId expr, std::string const &var)
+{
+    Node const &x = a.get(expr);
+    std::vector<NodeId> terms = x.kind == NodeKind::Add ? x.kids : std::vector<NodeId>{expr};
+    std::vector<NodeId> primitives;
+    std::vector<std::string> steps;
+    bool saw_inverse = false;
+    for(NodeId t : terms) {
+        std::vector<std::string> term_steps;
+        if(auto prim = integrate_inverse_trig_linear_term(a, t, var, term_steps)) {
+            saw_inverse = true;
+            primitives.push_back(*prim);
+            for(auto const &s : term_steps) steps.push_back(s);
+            continue;
+        }
+        if(!contains_var(a, t, var)) {
+            primitives.push_back(casio::simplify(a, casio::mul(a, {t, casio::sym(a, var)})));
+            steps.push_back("Int(" + format_expr(a, t) + ") d" + var + " = " + format_expr(a, primitives.back()) + ".");
+            continue;
+        }
+        return std::nullopt;
+    }
+    if(!saw_inverse) return std::nullopt;
+    IntegrateResult out;
+    if(terms.size() > 1) steps.insert(steps.begin(), "Step 2: Split the integral over the sum.");
+    out.result = casio::simplify(a, casio::add(a, primitives));
+    steps.push_back("Add the primitives.");
+    out.steps = std::move(steps);
+    return out;
+}
+
 // Integration by table lookup (Giac-style)
 static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string const &var)
 {
@@ -15539,6 +15605,8 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
         out.steps.push_back(step3.str());
         return out;
     }
+
+    if(auto inv = integrate_inverse_trig_linear_sum(a, expr, var)) return *inv;
 
     if(contains_log10(a, expr)) {
         NodeId rew = rewrite_log10(a, expr);

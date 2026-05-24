@@ -46,6 +46,8 @@ static NodeId exact_eval_simplify(Arena &a, NodeId n);
 static bool split_coeff_body(Arena &a, NodeId term, Rational &coef, NodeId &body, bool &has_body);
 static std::vector<std::string> solve_poly2(Arena &a, Poly2 const &p, std::string const &var);
 static std::string sol_rhs(std::string const &line);
+static bool contains_symbol(Arena &a, NodeId n, std::string const &name);
+static bool restricted_interval_bounds(Arena &a, std::string const &domain_text, double &lo, double &hi);
 
 static constexpr int kLaurentPowerMin = -40;
 static constexpr int kLaurentPowerMax = 40;
@@ -1447,7 +1449,7 @@ static std::optional<NodeId> inverse_simple_function(Arena &a, NodeId expr)
     return std::nullopt;
 }
 
-static std::optional<NodeId> inverse_restricted_trig(Arena &a, NodeId expr)
+static std::optional<NodeId> inverse_restricted_trig(Arena &a, NodeId expr, std::string const &domain_text)
 {
     NodeId inner = expr;
     Rational m{1, 1}, b{0, 1};
@@ -1467,6 +1469,83 @@ static std::optional<NodeId> inverse_restricted_trig(Arena &a, NodeId expr)
     FnKind inv_kind = fn.fkind == FnKind::Sin ? FnKind::Asin : fn.fkind == FnKind::Cos ? FnKind::Acos : FnKind::Atan;
     NodeId angle = a.fn(inv_kind, trig_y);
     NodeId top = casio::add(a, {angle, casio::neg(a, casio::num(a, p->a0.num, p->a0.den))});
+    return exact_eval_simplify(a, casio::div(a, top, casio::num(a, p->a1.num, p->a1.den)));
+}
+
+static std::optional<NodeId> inverse_restricted_affine_trig(Arena &a, NodeId expr, std::string const &domain_text)
+{
+    NodeId s = casio::num(a, 0), c = casio::num(a, 0), off = casio::num(a, 0), arg = 0;
+    auto add_term = [&](auto &&self, NodeId term) -> bool {
+        Node const &t = a.get(term);
+        if(t.kind == NodeKind::Add) {
+            for(NodeId k : t.kids)
+                if(!self(self, k)) return false;
+            return true;
+        }
+        if(!contains_symbol(a, term, "x")) {
+            off = exact_eval_simplify(a, casio::add(a, {off, term}));
+            return true;
+        }
+        NodeId fn_id = 0;
+        std::vector<NodeId> coeffs;
+        if(t.kind == NodeKind::Fn && (t.fkind == FnKind::Sin || t.fkind == FnKind::Cos)) fn_id = term;
+        else if(t.kind == NodeKind::Mul) {
+            for(NodeId k : t.kids) {
+                Node const &kid = a.get(k);
+                if(!fn_id && kid.kind == NodeKind::Fn && (kid.fkind == FnKind::Sin || kid.fkind == FnKind::Cos)) fn_id = k;
+                else {
+                    if(contains_symbol(a, k, "x")) return false;
+                    coeffs.push_back(k);
+                }
+            }
+        }
+        else return false;
+        if(!fn_id) return false;
+        Node const &fn = a.get(fn_id);
+        if(arg && !casio::same_by_sig(a, arg, fn.a)) return false;
+        arg = fn.a;
+        NodeId coef = coeffs.empty() ? casio::num(a, 1) : exact_eval_simplify(a, casio::mul(a, coeffs));
+        if(fn.fkind == FnKind::Sin) s = exact_eval_simplify(a, casio::add(a, {s, coef}));
+        else c = exact_eval_simplify(a, casio::add(a, {c, coef}));
+        return true;
+    };
+    if(!add_term(add_term, expr) || !arg) return std::nullopt;
+    auto p = poly_of(a, arg, "x");
+    if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a1)) return std::nullopt;
+    auto sv = eval_node(a, s, "x", 0.0), cv = eval_node(a, c, "x", 0.0), ov = eval_node(a, off, "x", 0.0);
+    if(!sv || !cv || !ov) return std::nullopt;
+    double R = std::hypot(*sv, *cv);
+    if(R < 1e-12) return std::nullopt;
+    double lo = 0.0, hi = 0.0;
+    if(!restricted_interval_bounds(a, domain_text, lo, hi) || !std::isfinite(lo) || !std::isfinite(hi)) return std::nullopt;
+    double a1 = (double)p->a1.num / (double)p->a1.den;
+    double a0 = (double)p->a0.num / (double)p->a0.den;
+    double alpha = std::atan2(-*sv, *cv);
+    double mid = (lo + hi) / 2.0;
+    bool increasing = -R * a1 * std::sin(a1 * mid + a0 + alpha) > 0.0;
+    auto pi_text = [](double rad) -> std::optional<std::string> {
+        double q = rad / M_PI;
+        for(int den : {1, 2, 3, 4, 6, 12}) {
+            int num = (int)std::llround(q * den);
+            if(std::fabs(q - (double)num / den) > 1e-9) continue;
+            int g = std::gcd(std::abs(num), den);
+            num /= g; den /= g;
+            if(num == 0) return std::string("0");
+            std::string sign = num < 0 ? "-" : "";
+            num = std::abs(num);
+            if(den == 1) return sign + (num == 1 ? "pi" : std::to_string(num) + "*pi");
+            return sign + (num == 1 ? "pi/" + std::to_string(den) : std::to_string(num) + "*pi/" + std::to_string(den));
+        }
+        return std::nullopt;
+    };
+    NodeId y = casio::sym(a, "x");
+    NodeId Rn = exact_eval_simplify(a, casio::fn(a, "sqrt", casio::add(a, {casio::power(a, s, casio::num(a, 2)), casio::power(a, c, casio::num(a, 2))})));
+    NodeId target = exact_eval_simplify(a, casio::div(a, casio::add(a, {y, casio::neg(a, off)}), Rn));
+    NodeId acos_part = a.fn(FnKind::Acos, target);
+    double base = (increasing ? 2.0 * M_PI : 0.0) - alpha - a0;
+    NodeId base_node = casio::parse_expr(a, pi_text(base).value_or(format_double_compact(base)));
+    NodeId top = increasing ? casio::add(a, {base_node, casio::neg(a, acos_part)})
+                            : casio::add(a, {base_node, acos_part});
     return exact_eval_simplify(a, casio::div(a, top, casio::num(a, p->a1.num, p->a1.den)));
 }
 
@@ -30659,11 +30738,12 @@ algebra_compare_transform_modes:
         }
         if(req.mode == 8) {
             std::string func_text = trim_text(req.expr);
-            auto comma = func_text.find(',');
             std::string domain_text;
-            if(comma != std::string::npos) {
-                domain_text = trim_text(func_text.substr(comma + 1));
-                func_text = trim_text(func_text.substr(0, comma));
+            auto inv_args = split_csv(func_text);
+            if(inv_args.size() >= 2) {
+                func_text = trim_text(inv_args[0]);
+                std::vector<std::string> rest(inv_args.begin() + 1, inv_args.end());
+                domain_text = join_text(rest, ",");
                 while(!domain_text.empty() && domain_text.back() == '.') domain_text.pop_back();
             }
             NodeId n = casio::simplify(arena, casio::parse_expr(arena, func_text));
@@ -30671,7 +30751,8 @@ algebra_compare_transform_modes:
             if(!inv && !domain_text.empty()) inv = inverse_restricted_recip_square(arena, n, domain_text);
             if(!inv && !domain_text.empty()) inv = inverse_restricted_sqrt_recip_square(arena, n, domain_text);
             if(!inv && !domain_text.empty()) inv = inverse_restricted_quadratic_rational(arena, n, domain_text);
-            if(!inv && !domain_text.empty()) inv = inverse_restricted_trig(arena, n);
+            if(!inv && !domain_text.empty()) inv = inverse_restricted_trig(arena, n, domain_text);
+            if(!inv && !domain_text.empty()) inv = inverse_restricted_affine_trig(arena, n, domain_text);
             if(!inv) inv = inverse_simple_function(arena, n);
             if(!inv) {
                 auto rp = ratpoly_of_node(arena, n, "x");

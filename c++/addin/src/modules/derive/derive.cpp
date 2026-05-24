@@ -3871,6 +3871,7 @@ static bool append_quotient_rule_detail(
     std::string term2 = mul_txt(q.a, u, dv, vp);
     std::string raw_subst = "dy/d" + var + " = [(" + up + ")*(" + v + ")-(" + u + ")*(" + vp + ")]/(" + v + ")^2";
     std::string subst = "dy/d" + var + " = (" + term1 + " - " + term2 + ")/(" + v + ")^2";
+    subst = clean_math_text(subst);
     bool subst_pushed = false;
     if(raw_subst != subst && raw_subst.size() <= 220) steps.push_back(raw_subst + ".");
     if(subst.size() <= 220) {

@@ -2083,6 +2083,30 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["x=[]", "ERR:"],
     ),
     (
+        "int",
+        "pi-acos(x+1)",
+        ["Int(pi) dx = pi*x", "w=x+1", "Apply inverse trig rule: Int acos(w) dw = w*acos(w) - sqrt(1-w^2)", "pi*x-(x+1)*acos(x+1)+sqrt(-(x+1)^2+1)+C"],
+        ["No elementary primitive found", "ERR:"],
+    ),
+    (
+        "int",
+        "defint(pi-acos(x+1),x,-2,0)",
+        ["F(0)-F(-2)", "F(-2)=-pi", "pi"],
+        ["No elementary primitive found", "ERR:"],
+    ),
+    (
+        "trig",
+        "cos(x)=sin(x-45),x,0,360,10,method=identity",
+        ["sin(U+B)=sin(U)cos(B)+cos(U)sin(B)", "tan(x)=1+sqrt(2)", "x=[67.5,247.5]"],
+        ["tan(x)=2.41421", "ERR:"],
+    ),
+    (
+        "alg",
+        "inverse(sqrt(3)*cos(x)-sin(x),5*pi/6<=x,x<=11*pi/6)",
+        ["y=11*pi/6-acos(x/2)", "f^-1(x)=11*pi/6-acos(x/2)", "Given domain:5*pi/6<=x,x<=11*pi/6"],
+        ["no inverse on all real x", "ERR:"],
+    ),
+    (
         "alg",
         "solve(2*asin(x)-pi/3=0,x)",
         ["asin(x)=pi/6", "-1<=x<=1", "x=sin(pi/6)", "x=1/2"],
