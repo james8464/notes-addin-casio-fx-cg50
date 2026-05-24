@@ -3955,6 +3955,96 @@ static std::optional<std::vector<std::string>> linear_sincos_rform_real(Arena &a
     return std::nullopt;
 }
 
+static std::optional<std::vector<std::string>> solve_rform_same_cos_equation(
+    Arena &a,
+    NodeId lhs,
+    NodeId rhs,
+    std::string const &var,
+    std::string const &lo_text,
+    std::string const &hi_text,
+    bool rad,
+    bool general = false
+)
+{
+    auto match_scaled_cos = [&](NodeId n, double &coeff, NodeId &arg) -> bool {
+        Node const &x = a.get(n);
+        if(x.kind == NodeKind::Fn && x.fkind == FnKind::Cos) {
+            coeff = 1.0;
+            arg = x.a;
+            return true;
+        }
+        NodeId rest = n;
+        bool has_rest = true;
+        if(!split_coeff_term(a, n, coeff, rest, has_rest) || !has_rest) return false;
+        Node const &r = a.get(rest);
+        if(r.kind != NodeKind::Fn || r.fkind != FnKind::Cos) return false;
+        arg = r.a;
+        return true;
+    };
+
+    auto route = [&](NodeId mixed, NodeId scaled) -> std::optional<std::vector<std::string>> {
+        auto p = collect_mixed_trig_poly(a, mixed);
+        if(!p || std::fabs(p->c) > 1e-12 || std::fabs(p->s2) > 1e-12 ||
+           std::fabs(p->c2) > 1e-12 || std::fabs(p->sc) > 1e-12)
+            return std::nullopt;
+        double C = p->c1, S = p->s1;
+        if(std::fabs(C) < 1e-12 || std::fabs(S) < 1e-12) return std::nullopt;
+        double R = std::sqrt(C * C + S * S);
+        double k = 1.0;
+        NodeId rhs_arg = 0;
+        if(!match_scaled_cos(scaled, k, rhs_arg) || std::fabs(std::fabs(k) - R) > 1e-9) return std::nullopt;
+        auto U = linear_angle(a, p->arg, var, rad);
+        auto V = linear_angle(a, rhs_arg, var, rad);
+        if(!U || !V) return std::nullopt;
+
+        double alpha_deg = std::atan2(S, C) * 180.0 / M_PI;
+        std::string A = linear_angle_text(U->first, U->second - alpha_deg, var, rad);
+        std::string B = linear_angle_text(V->first, V->second + (k < 0.0 ? 180.0 : 0.0), var, rad);
+        NodeId lhs0 = a.fn(FnKind::Cos, casio::parse_expr(a, A));
+        NodeId rhs0 = a.fn(FnKind::Cos, casio::parse_expr(a, B));
+        auto nested = solve_same_fn_linear(a, lhs0, rhs0, var, lo_text, hi_text, rad, general);
+        if(!nested) return std::nullopt;
+
+        std::string Rtxt = trig_root_text(R);
+        std::string Ctxt = trig_root_text(C);
+        std::string Stxt = trig_root_text(S);
+        auto sqtxt = [](std::string const &s) {
+            return !s.empty() && s[0] == '-' ? "(" + s + ")^2" : s + "^2";
+        };
+        auto negtxt = [](std::string const &s) {
+            return !s.empty() && s[0] == '-' ? s.substr(1) : "-" + s;
+        };
+        auto ratio_txt = [&](std::string n, std::string d) {
+            if(!d.empty() && d[0] == '-') {
+                n = negtxt(n);
+                d = d.substr(1);
+            }
+            return n + "/" + d;
+        };
+        std::string alpha = rad ? format_pi_degrees(alpha_deg) : format_double_compact(alpha_deg);
+        std::string lhs_txt = casio::format_expr(a, mixed);
+        std::string rhs_txt = casio::format_expr(a, scaled);
+        std::string rcosA = Rtxt == "1" ? "cos(" + A + ")" : Rtxt + "*cos(" + A + ")";
+        std::vector<std::string> out{
+            "R=sqrt(" + sqtxt(Ctxt) + "+" + sqtxt(Stxt) + ")=" + Rtxt,
+            "tan(alpha)=" + ratio_txt(Stxt, Ctxt),
+            "alpha=" + alpha,
+            lhs_txt + " = " + rcosA,
+            rcosA + " = " + rhs_txt,
+        };
+        if(k < 0.0) out.push_back("cos(" + A + ") = cos(" + B + ")");
+        else out.push_back("cos(" + A + ") = cos(" + casio::format_expr(a, rhs_arg) + ")");
+        for(std::string const &line : *nested) {
+            if(!out.empty() && compact_key(line) == compact_key(out.back())) continue;
+            out.push_back(line);
+        }
+        return out;
+    };
+
+    if(auto out = route(lhs, rhs)) return out;
+    return route(rhs, lhs);
+}
+
 static std::string trig_base_angle_line(FnKind fk, std::string const &arg, double r)
 {
     std::string f = fk == FnKind::Sin ? "arcsin" : fk == FnKind::Cos ? "arccos" : "arctan";
@@ -9930,6 +10020,8 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
     pre.norm = casio::normalize_text(equation_for_parse);
     pre.parsed = equation_for_parse;
     pre.simplified = casio::format_expr(a, lhs) + " = " + casio::format_expr(a, rhs);
+
+    if(auto rf = solve_rform_same_cos_equation(a, lhs, rhs, var, lo_text, hi_text, rad, general)) return *rf;
 
     auto reciprocal_linear_sincos = [&](NodeId left, NodeId right) -> std::optional<std::vector<std::string>> {
         struct Iso

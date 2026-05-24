@@ -1874,6 +1874,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "trig",
+        "cos(2*theta)+sqrt(3)*sin(2*theta)=2*cos(theta),theta,0,2*pi,10,method=rform",
+        ["cos(2*theta)+sqrt(3)*sin(2*theta)=2*cos(2*theta-pi/3)", "cos(2*theta-pi/3)=cos(theta)", "theta=[pi/9,pi/3,7*pi/9,13*pi/9]"],
+        ["theta = []", "ERR:"],
+    ),
+    (
+        "trig",
         "4*sin(x)-3*cos(x),method=rform",
         ["R = sqrt(4^2+3^2) = 5", "R*sin(x-alpha)", "5*sin(x-atan(3/4))"],
         ["ERR:"],
