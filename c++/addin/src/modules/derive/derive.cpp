@@ -3200,6 +3200,128 @@ static std::optional<std::string> exp_linear_sincos_product_final(Arena &a, std:
     return std::nullopt;
 }
 
+static std::optional<NodeId> factor_common_exp_from_sum(Arena &a, NodeId n);
+static NodeId factor_int_content_from_mul_add(Arena &a, NodeId n);
+
+struct TextProduct
+{
+    Rational coeff{1, 1};
+    std::vector<std::string> parts;
+};
+
+static bool top_level_sum_text(std::string const &s)
+{
+    int depth = 0;
+    for(std::size_t i = 0; i < s.size(); ++i) {
+        char c = s[i];
+        if(c == '(') ++depth;
+        else if(c == ')') --depth;
+        else if(depth == 0 && c == '+') return true;
+        else if(depth == 0 && c == '-' && i > 0 && s[i - 1] != '^') return true;
+    }
+    return false;
+}
+
+static std::string product_factor_text(std::string s)
+{
+    s = clean_math_text(std::move(s));
+    if(s == "1") return "";
+    if(top_level_sum_text(s)) return "(" + s + ")";
+    return s;
+}
+
+static void append_text_factors(Arena &a, NodeId n, TextProduct &out)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Num) {
+        out.coeff = rat_mul_local(out.coeff, x.num);
+        return;
+    }
+    if(x.kind == NodeKind::Mul) {
+        for(NodeId k : x.kids) append_text_factors(a, k, out);
+        return;
+    }
+    std::string text = product_factor_text(format_expr_human(a, n));
+    if(!text.empty()) out.parts.push_back(text);
+}
+
+static bool powerable_text_factor(std::string const &s)
+{
+    if(s.empty()) return false;
+    if(!(std::isalpha(static_cast<unsigned char>(s[0])) || s[0] == '_')) return false;
+    for(char c : s)
+        if(!(std::isalnum(static_cast<unsigned char>(c)) || c == '_')) return false;
+    return s != "e" && s != "pi";
+}
+
+static void combine_repeated_text_factors(std::vector<std::string> &parts)
+{
+    for(std::size_t i = 0; i < parts.size(); ++i) {
+        if(!powerable_text_factor(parts[i])) continue;
+        int count = 1;
+        for(std::size_t j = i + 1; j < parts.size();) {
+            if(parts[j] == parts[i]) {
+                ++count;
+                parts.erase(parts.begin() + j);
+            }
+            else ++j;
+        }
+        if(count > 1) parts[i] += "^" + std::to_string(count);
+    }
+}
+
+static std::string text_product_term(TextProduct p, bool first)
+{
+    p.coeff.normalize();
+    if(p.coeff.num == 0) return "";
+    combine_repeated_text_factors(p.parts);
+    bool neg = p.coeff.num < 0;
+    Rational absr = p.coeff;
+    if(absr.num < 0) absr.num = -absr.num;
+    absr.normalize();
+    std::string body;
+    bool unit = absr.num == absr.den;
+    if(!unit && !p.parts.empty() && p.parts.front().rfind("1/", 0) == 0) {
+        std::string den = p.parts.front().substr(2);
+        if(absr.num == 1) body = "1/(" + std::to_string(absr.den) + "*" + den + ")";
+        else body = std::to_string(absr.num) + "/(" + std::to_string(absr.den) + "*" + den + ")";
+        p.parts.erase(p.parts.begin());
+        unit = true;
+    }
+    if(!unit || p.parts.empty()) body = rat_abs_text(absr);
+    for(std::string const &part : p.parts) {
+        if(part.empty()) continue;
+        if(!body.empty()) body += "*";
+        body += part;
+    }
+    if(body.empty()) body = "1";
+    if(first) return neg ? "- " + body : body;
+    return neg ? " - " + body : " + " + body;
+}
+
+static std::string exam_product_substitution_line(
+    Arena &a,
+    std::vector<NodeId> const &constants,
+    std::vector<NodeId> const &factors,
+    std::vector<NodeId> const &derivatives,
+    std::string const &var
+)
+{
+    std::string rhs;
+    bool first = true;
+    for(std::size_t i = 0; i < factors.size(); ++i) {
+        TextProduct term;
+        for(NodeId c : constants) append_text_factors(a, c, term);
+        for(std::size_t j = 0; j < factors.size(); ++j)
+            append_text_factors(a, i == j ? derivatives[j] : factors[j], term);
+        std::string part = text_product_term(term, first);
+        if(part.empty()) continue;
+        rhs += part;
+        first = false;
+    }
+    return rhs.empty() ? "" : "dy/d" + var + " = " + rhs;
+}
+
 static bool append_product_rule_detail(
     Arena &a,
     NodeId n,
@@ -3244,6 +3366,7 @@ static bool append_product_rule_detail(
 
     std::vector<std::string> factor_txts;
     std::vector<std::string> deriv_txts;
+    std::vector<NodeId> deriv_nodes;
     std::vector<std::string> inner_deriv_txts(factors.size());
     std::vector<bool> exp_factors(factors.size(), false);
     for(std::size_t i = 0; i < factors.size(); ++i) {
@@ -3253,6 +3376,7 @@ static bool append_product_rule_detail(
         std::string dtxt = clean_math_text(format_expr_human(a, fp));
         factor_txts.push_back(ftxt);
         deriv_txts.push_back(dtxt);
+        deriv_nodes.push_back(fp);
         steps.push_back(label + " = " + ftxt + ".");
         Node const &fac = a.get(factors[i]);
         NodeId inner = 0;
@@ -3289,6 +3413,11 @@ static bool append_product_rule_detail(
         }
         if(has_const) subst += ")";
         steps.push_back(subst + ".");
+        if(factors.size() == 2) {
+            std::string exam_subst = exam_product_substitution_line(a, constants, factors, deriv_nodes, var);
+            if(!exam_subst.empty() && compact_math_key(exam_subst) != compact_math_key(subst))
+                steps.push_back(exam_subst + ".");
+        }
     }
     if(factors.size() == 2) {
         for(std::size_t i = 0; i < 2; ++i) {
@@ -3301,10 +3430,25 @@ static bool append_product_rule_detail(
                 break;
             }
         }
+        bool handled_exp_combo = false;
         if(auto ans = exp_linear_sincos_product_final(a, factors, var)) {
             std::string line = "dy/d" + var + " = " + *ans;
             if(answer_override) *answer_override = line;
             else steps.push_back(line + ".");
+            handled_exp_combo = true;
+        }
+        if(!handled_exp_combo) {
+            NodeId raw_diff = casio::simplify(a, diff(a, n, var));
+            if(auto factored = factor_common_exp_from_sum(a, raw_diff)) {
+                NodeId nice = factor_int_content_from_mul_add(a, *factored);
+                std::string raw = clean_math_text(format_expr_human(a, raw_diff));
+                std::string ans = clean_math_text(format_expr_human(a, nice));
+                if(!ans.empty() && compact_math_key(ans) != compact_math_key(raw) && node_weight(a, nice) <= 80) {
+                    std::string line = "dy/d" + var + " = " + ans;
+                    steps.push_back(line + ".");
+                    if(answer_override) *answer_override = line;
+                }
+            }
         }
     }
     if(node_weight(a, n) <= 45 && simple_polynomial_node(a, n, var)) {
@@ -3351,6 +3495,36 @@ static NodeId product_or_one_local(Arena &a, std::vector<NodeId> const &factors)
     return casio::simplify(a, casio::mul(a, factors));
 }
 
+static NodeId divide_add_by_int(Arena &a, NodeId n, long long g)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Add || g == 0) return n;
+    std::vector<NodeId> terms;
+    terms.reserve(x.kids.size());
+    for(NodeId k : x.kids)
+        terms.push_back(casio::simplify(a, casio::div(a, k, casio::num(a, g))));
+    return casio::simplify(a, casio::add(a, terms));
+}
+
+static NodeId factor_int_content_from_mul_add(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Mul) return n;
+    for(std::size_t i = 0; i < x.kids.size(); ++i) {
+        Node const &k = a.get(x.kids[i]);
+        if(k.kind != NodeKind::Add) continue;
+        long long g = int_content(a, x.kids[i]);
+        if(g <= 1) continue;
+        std::vector<NodeId> factors;
+        factors.reserve(x.kids.size() + 1);
+        factors.push_back(casio::num(a, g));
+        for(std::size_t j = 0; j < x.kids.size(); ++j)
+            factors.push_back(i == j ? divide_add_by_int(a, x.kids[j], g) : x.kids[j]);
+        return casio::simplify(a, casio::mul(a, factors));
+    }
+    return n;
+}
+
 static std::optional<NodeId> factor_common_exp_from_sum(Arena &a, NodeId n)
 {
     Node const &x = a.get(n);
@@ -3381,7 +3555,43 @@ static std::optional<NodeId> factor_common_exp_from_sum(Arena &a, NodeId n)
         rest_terms.push_back(product_or_one_local(a, rest));
     }
     NodeId rest_sum = casio::simplify(a, casio::add(a, rest_terms));
+    if(node_weight(a, rest_sum) <= 60)
+        rest_sum = casio::simplify(a, expand_small(a, rest_sum, 2));
     return casio::simplify(a, casio::mul(a, {exp_factor, rest_sum}));
+}
+
+static std::optional<std::string> factor_common_exp_text_from_sum(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Add || x.kids.size() < 2) return std::nullopt;
+    std::string exp_key, exp_txt, body;
+    bool first = true;
+    for(NodeId term : x.kids) {
+        Node const &t = a.get(term);
+        std::vector<NodeId> factors = t.kind == NodeKind::Mul ? t.kids : std::vector<NodeId>{term};
+        TextProduct rest;
+        bool seen = false;
+        for(NodeId f : factors) {
+            NodeId exponent = 0;
+            if(!seen && exp_factor_local(a, f, exponent)) {
+                std::string key = compact_math_key(format_expr_human(a, f));
+                if(exp_key.empty()) {
+                    exp_key = key;
+                    exp_txt = clean_math_text(format_expr_human(a, f));
+                }
+                else if(key != exp_key) return std::nullopt;
+                seen = true;
+            }
+            else append_text_factors(a, f, rest);
+        }
+        if(!seen) return std::nullopt;
+        std::string part = text_product_term(rest, first);
+        if(part.empty()) continue;
+        body += part;
+        first = false;
+    }
+    if(exp_txt.empty() || body.empty()) return std::nullopt;
+    return exp_txt + "*(" + body + ")";
 }
 
 static bool append_log_exp_cos_detail(Arena &a, NodeId n, std::string const &var,
@@ -3666,6 +3876,14 @@ static bool append_quotient_rule_detail(
     std::string nt = clean_math_text(format_expr_human(a, top));
     if(node_weight(a, top) <= 40 && !nt.empty() && nt.size() + 18 < subst.size()) {
         steps.push_back("[(" + up + ")*(" + v + ")-(" + u + ")*(" + vp + ")] = " + nt + ".");
+        if(auto factored_text = factor_common_exp_text_from_sum(a, top)) {
+            if(compact_math_key(*factored_text) != compact_math_key(nt)) {
+                steps.push_back(nt + " = " + *factored_text + ".");
+                if(answer_override)
+                    *answer_override = "dy/d" + var + " = " + fraction_num_text(*factored_text) + "/(" + v + ")^2";
+                return true;
+            }
+        }
         if(auto factored = factor_common_exp_from_sum(a, top)) {
             std::string ft = clean_math_text(format_expr_human(a, *factored));
             if(!ft.empty() && compact_math_key(ft) != compact_math_key(nt)) {

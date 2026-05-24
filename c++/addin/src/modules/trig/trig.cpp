@@ -388,7 +388,7 @@ static std::string format_pi_degrees(double deg)
     return oss.str();
 }
 
-static NodeId sqrt_int(Arena &a, int n)
+static NodeId sqrt_int(Arena &a, long long n)
 {
     return a.fn(FnKind::Sqrt, casio::num(a, n));
 }
@@ -525,6 +525,68 @@ static std::optional<NodeId> exact_trig(Arena &a, FnKind fk, NodeId arg)
         }
     }
     return out;
+}
+
+static std::string rat_text(long long n, long long d);
+
+static std::optional<std::vector<std::string>> atan_ratio_exact_route(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Fn) return std::nullopt;
+    if(!(x.fkind == FnKind::Sin || x.fkind == FnKind::Cos || x.fkind == FnKind::Tan ||
+         x.fkind == FnKind::Sec || x.fkind == FnKind::Cosec || x.fkind == FnKind::Cot)) return std::nullopt;
+    Node const &inner = a.get(x.a);
+    if(inner.kind != NodeKind::Fn || inner.fkind != FnKind::Atan) return std::nullopt;
+    NodeId arg = casio::simplify(a, inner.a);
+    auto q = as_num(a, arg);
+    if(!q || q->den == 0) return std::nullopt;
+    q->normalize();
+    long long opp = q->num;
+    long long adj = q->den;
+    long long hyp2 = opp * opp + adj * adj;
+    if(hyp2 <= 0) return std::nullopt;
+    long long hyp_root = static_cast<long long>(std::sqrt(static_cast<double>(hyp2)) + 0.5);
+    bool hyp_square = hyp_root > 0 && hyp_root * hyp_root == hyp2;
+    NodeId hyp = hyp_square ? casio::num(a, hyp_root) : sqrt_int(a, hyp2);
+    NodeId ans = 0;
+    std::string ratio = rat_text(opp, adj);
+    std::string fname = trig_name(x.fkind);
+    std::string frac;
+    if(x.fkind == FnKind::Sin) {
+        ans = casio::simplify(a, casio::div(a, casio::num(a, opp), hyp));
+        frac = "opp/hyp";
+    }
+    else if(x.fkind == FnKind::Cos) {
+        ans = casio::simplify(a, casio::div(a, casio::num(a, adj), hyp));
+        frac = "adj/hyp";
+    }
+    else if(x.fkind == FnKind::Tan) {
+        ans = casio::num(a, opp, adj);
+        frac = "opp/adj";
+    }
+    else if(x.fkind == FnKind::Sec) {
+        ans = casio::simplify(a, casio::div(a, hyp, casio::num(a, adj)));
+        frac = "hyp/adj";
+    }
+    else if(x.fkind == FnKind::Cosec) {
+        if(opp == 0) return std::nullopt;
+        ans = casio::simplify(a, casio::div(a, hyp, casio::num(a, opp)));
+        frac = "hyp/opp";
+    }
+    else {
+        if(opp == 0) return std::nullopt;
+        ans = casio::simplify(a, casio::div(a, casio::num(a, adj), casio::num(a, opp)));
+        frac = "adj/opp";
+    }
+    std::string u = "atan(" + ratio + ")";
+    std::string h = hyp_square ? std::to_string(hyp_root) : "sqrt(" + std::to_string(hyp2) + ")";
+    std::string final = format_expr(a, casio::simplify(a, ans));
+    return std::vector<std::string>{
+        "tan(" + u + ") = " + ratio + ".",
+        "opp = " + std::to_string(opp) + ", adj = " + std::to_string(adj) + ", hyp = " + h + ".",
+        fname + "(" + u + ") = " + frac + " = " + final,
+        final,
+    };
 }
 
 static std::vector<std::string> split_csv(std::string const &s)
@@ -10061,6 +10123,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     if(x.kind == NodeKind::Fn) {
         if(x.fkind == FnKind::Sin || x.fkind == FnKind::Cos || x.fkind == FnKind::Tan ||
            x.fkind == FnKind::Sec || x.fkind == FnKind::Cosec || x.fkind == FnKind::Cot) {
+            if(auto atan_exact = atan_ratio_exact_route(arena, n)) return *atan_exact;
             if(auto exact = exact_trig(arena, x.fkind, x.a)) {
                 *exact = casio::simplify(arena, *exact);
                 return {"Answer: " + format_expr(arena, *exact)};

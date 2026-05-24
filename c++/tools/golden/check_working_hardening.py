@@ -1039,6 +1039,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["ERR:"],
     ),
     (
+        "derive",
+        "e^(2*x)*(x^2-4*x-2),x,method=product",
+        ["dy/dx=(e^(2*x))*((2)*(x^2-4*x-2)+(2*x-4))", "dy/dx=2*e^(2*x)*(x^2-3*x-4)"],
+        ["ERR:"],
+    ),
+    (
         "int",
         "x*ln(5*x)",
         ["u=ln(5*x)", "dv=x dx", "du=1/x dx", "v=x^2/2", "I=uv-Int(vdu)", "1/2*x^2*ln(5*x) - 1/4*x^2 + C"],
@@ -1343,6 +1349,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         "sec(2*x)\n1/(1-2*sin(x)^2)",
         ["sec(2x)=1/cos(2x)", "cos(2x)=1-2sin(x)^2", "Answer: sec(2x) = 1/(1-2sin(x)^2)"],
         ["LHS=RHS", "ERR:"],
+    ),
+    (
+        "trig",
+        "cosec(atan(1/2)),method=auto",
+        ["tan(atan(1/2))=1/2", "opp=1,adj=2,hyp=sqrt(5)", "cosec(atan(1/2))=hyp/opp=sqrt(5)"],
+        ["ERR:"],
     ),
     (
         "trig",

@@ -23,6 +23,11 @@ CASES = [
         ("dy/dx = (e^(3*x))*((3)*(sin(x) + cos(x)) + (cos(x) - sin(x)))", "dy/dx = 2*e^(3*x)*(sin(x) + 2*cos(x))"),
     ),
     (
+        "exp polynomial product final",
+        ["--derive", "e^(2*x)*(x^2-4*x-2),x,method=product"],
+        ("dy/dx = (e^(2*x))*((2)*(x^2 - 4*x - 2) + (2*x - 4))", "dy/dx = 2*e^(2*x)*(x^2 - 3*x - 4)"),
+    ),
+    (
         "single chain",
         ["--derive", "sin((x+1)^2),x,method=chain"],
         ("u = (x + 1)^2", "du/dx = 2*(x + 1)", "dy/dx = cos(u)*du/dx"),
@@ -270,6 +275,12 @@ CASES = [
         ["--trig", "2*cos(theta)*tan(theta)=sqrt(3),theta,0,360,method=general"],
         ("cos(A)*tan(A) = sin(A), cos(A)!=0", "sin(A) = sqrt(3)/2", "theta = 60 + n*360 or 120 + n*360"),
         ("theta = []", "Failed to isolate"),
+    ),
+    (
+        "atan ratio exact triangle",
+        ["--trig", "cosec(atan(1/2)),method=auto"],
+        ("tan(atan(1/2)) = 1/2", "opp = 1, adj = 2, hyp = sqrt(5)", "cosec(atan(1/2)) = hyp/opp = sqrt(5)"),
+        ("ERR:",),
     ),
     (
         "sec double-angle reciprocal proof",
