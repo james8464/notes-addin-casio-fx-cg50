@@ -4344,6 +4344,39 @@ static std::optional<ConstCosDen> const_plus_cos_den(Arena &a, NodeId n)
     return out;
 }
 
+struct HalfAngleTrigRatio
+{
+    NodeId expr;
+    std::string identity;
+};
+
+static std::optional<HalfAngleTrigRatio> reduce_sin_cos_over_cos2_affine(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Div) return std::nullopt;
+    TrigMono m;
+    if(!collect_trig_mono(a, x.a, 1, m) || !m.arg) return std::nullopt;
+    if(m.sin_pow != 1 || m.cos_pow != 1) return std::nullopt;
+    auto den = const_plus_cos_den(a, x.b);
+    if(!den || rat_zero_local(den->c)) return std::nullopt;
+    auto half = half_of_double_arg(a, den->arg);
+    if(!half || !same_expr_key(a, m.arg, *half)) return std::nullopt;
+    bool one_minus = rat_zero_local(rat_add_local(den->c, den->cos_c));
+    bool one_plus = rat_zero_local(rat_sub_local(den->c, den->cos_c));
+    if(!one_minus && !one_plus) return std::nullopt;
+    Rational coeff = rat_div_local(m.coeff, rat_mul_local(Rational{2, 1}, den->c));
+    FnKind fk = one_minus ? FnKind::Cot : FnKind::Tan;
+    NodeId trig = a.fn(fk, *half);
+    NodeId out = coeff.num == coeff.den ? trig : casio::simplify(a, casio::mul(a, {a.num(coeff), trig}));
+    std::string u = clean_math_text(format_expr_human(a, *half));
+    std::string two_u = clean_math_text(format_expr_human(a, den->arg));
+    return HalfAngleTrigRatio{
+        out,
+        one_minus ? "1-cos(" + two_u + ") = 2*sin(" + u + ")^2."
+                  : "1+cos(" + two_u + ") = 2*cos(" + u + ")^2."
+    };
+}
+
 static bool append_sin_over_const_cos_quotient_detail(
     Arena &a,
     NodeId num,
@@ -6112,6 +6145,16 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     double_angle_shorter = true;
                 }
             }
+            bool half_angle_shorter = false;
+            std::string half_angle_identity;
+            if(auto ha = reduce_sin_cos_over_cos2_affine(arena, dydx)) {
+                if(compact_math_key(format_expr_human(arena, ha->expr)) != compact_math_key(format_expr_human(arena, dydx)) &&
+                   node_weight(arena, ha->expr) <= node_weight(arena, dydx) + 3) {
+                    answer = "dy/dx = " + format_expr_human(arena, ha->expr);
+                    half_angle_shorter = true;
+                    half_angle_identity = ha->identity;
+                }
+            }
             if(compact == "t^2+1/t,t^2-1/t,t" || compact == "t^2+t^-1,t^2-t^-1,t")
                 answer = "dy/dx = (2*t^3 + 1)/(2*t^3 - 1)";
             else if(compact == "e^tcos(t),e^tsin(t),t" || compact == "exp(t)cos(t),exp(t)sin(t),t")
@@ -6271,6 +6314,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 steps.push_back("Cancel common trig factors.");
             if(double_angle_shorter)
                 steps.push_back("sin(2u)=2sin(u)cos(u).");
+            if(half_angle_shorter)
+                steps.push_back(half_angle_identity);
             if(auto e = negative_power_clear_exp(dy_text, dx_text, tvar)) {
                 std::string factor = tvar + (*e == 1 ? "" : "^" + std::to_string(*e));
                 steps.push_back("dy/dx = ((" + dy_text + ")*" + factor + ")/((" + dx_text + ")*" + factor + ")");

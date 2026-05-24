@@ -94,6 +94,11 @@ CASES = [
         ("sin(2u) = 2sin(u)cos(u)", "dy/dx = -3*sin(theta)/2"),
     ),
     (
+        "param half-angle denominator simplify",
+        ["--derive", "6*(2*theta-sin(2*theta)),6*(1-cos(2*theta)),theta,method=param"],
+        ("1-cos(2*theta) = 2*sin(theta)^2", "dy/dx = cot(theta)"),
+    ),
+    (
         "param reciprocal power simplify",
         ["--derive", "1/t+1/t^2,1/t-1/t^2,t,method=param"],
         ("dy/dx = ((- t^-2 + 2*t^-3)*t^3)/((- t^-2 - 2*t^-3)*t^3)", "dy/dx = (t - 2)/(t + 2)"),

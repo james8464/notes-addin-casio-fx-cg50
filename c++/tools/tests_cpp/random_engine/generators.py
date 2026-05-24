@@ -443,7 +443,11 @@ class AdversarialGenerator:
             (
                 "parametric_first",
                 "derive",
-                ["x=t^2+1/t,y=t^2-1/t,t,method=param", "x=exp(t)*cos(t),y=exp(t)*sin(t),t,method=param"][cycle % 2],
+                [
+                    "x=t^2+1/t,y=t^2-1/t,t,method=param",
+                    "x=exp(t)*cos(t),y=exp(t)*sin(t),t,method=param",
+                    "x=6*(2*theta-sin(2*theta)),y=6*(1-cos(2*theta)),theta,method=param",
+                ][cycle % 3],
                 "diff",
                 "x(t),y(t),t,method=param",
                 "param",
