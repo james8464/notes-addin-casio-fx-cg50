@@ -66,6 +66,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "trig",
+        "sin(4*theta)+sin(2*theta)=cos(theta),theta,0,pi,10,method=identity",
+        ["sin(A)+sin(B)", "cos(theta)*(2*sin(3*theta)-1)=0", "theta = [pi/18, 5*pi/18, pi/2, 13*pi/18, 17*pi/18]"],
+        ["theta = []", "Failed to isolate", "ERR:"],
+    ),
+    (
+        "trig",
         "2*cos(theta)*tan(theta)=sqrt(3),theta,0,360,method=general",
         ["cos(A)tan(A)=sin(A),cos(A)!=0", "sin(A)=sqrt(3)/2", "theta=60+n*360or120+n*360"],
         ["theta = []", "Failed to isolate"],
@@ -87,6 +93,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         "tan(pi/4-atan(t)),method=compound_angle",
         ["tan(A)=1,tan(B)=-t", "N=1-t", "D=1+t", "(1-t)/(1+t)"],
         ["N/D", "ERR:"],
+    ),
+    (
+        "trig",
+        "cos(pi-asin(8/17)+acos(5/13)),method=compound_angle",
+        ["sin(U)=-140/221", "cos(U)=-171/221", "-171/221"],
+        ["ERR:"],
     ),
     (
         "trig",
@@ -881,6 +893,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         "6/sqrt(3*x+1)",
         ["6/sqrt(3*x + 1) = 6*(3*x + 1)^(-1/2)", "u = 3*x + 1", "4*sqrt(3*x + 1) + C"],
         ["No elementary primitive"],
+    ),
+    (
+        "alg",
+        "simplify(1-1/(x-2)+3/(x^2-x-2))",
+        ["(x^2 - 2*x)/(x^2 - x - 2)", "x/(x + 1)"],
+        ["ERR:"],
     ),
     (
         "int",

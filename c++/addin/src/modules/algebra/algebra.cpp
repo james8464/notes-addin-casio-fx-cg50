@@ -21018,22 +21018,33 @@ static std::optional<NodeId> cancel_poly_any_fraction(Arena &a, NodeId n, std::s
     PolyAny nn = *num, dd = *den;
     bool changed = false;
     for(;;) {
-        PolyAny cand = primitive_integer_root_poly(nn);
-        auto lead = as_int64(cand.c.back()), cnst = as_int64(cand.c.front());
-        if(!lead || !cnst) break;
-        bool found = false;
-        for(long long pp : divisors_i64(*cnst)) {
-            for(long long qq : divisors_i64(*lead)) {
-                if(qq == 0) continue;
-                for(int sgn : {-1, 1}) {
-                    Rational r{sgn * pp, qq};
-                    r.normalize();
-                    if(!is_zero(poly_any_eval(nn, r)) || !is_zero(poly_any_eval(dd, r))) continue;
-                    if(!divide_linear(nn, r) || !divide_linear(dd, r)) continue;
-                    changed = found = true;
-                    goto next_common_factor;
+        std::vector<Rational> candidates;
+        auto add_candidates = [&](PolyAny const &p) {
+            PolyAny cand = primitive_integer_root_poly(p);
+            auto lead = as_int64(cand.c.back()), cnst = as_int64(cand.c.front());
+            if(!lead || !cnst) return;
+            for(long long pp : divisors_i64(*cnst)) {
+                for(long long qq : divisors_i64(*lead)) {
+                    if(qq == 0) continue;
+                    for(int sgn : {-1, 1}) {
+                        Rational r{sgn * pp, qq};
+                        r.normalize();
+                        bool seen = false;
+                        for(auto const &old : candidates) if(r_cmp(old, r) == 0) { seen = true; break; }
+                        if(!seen) candidates.push_back(r);
+                    }
                 }
             }
+        };
+        add_candidates(nn);
+        add_candidates(dd);
+        if(candidates.empty()) break;
+        bool found = false;
+        for(Rational r : candidates) {
+            if(!is_zero(poly_any_eval(nn, r)) || !is_zero(poly_any_eval(dd, r))) continue;
+            if(!divide_linear(nn, r) || !divide_linear(dd, r)) continue;
+            changed = found = true;
+            goto next_common_factor;
         }
 next_common_factor:
         if(!found) break;
