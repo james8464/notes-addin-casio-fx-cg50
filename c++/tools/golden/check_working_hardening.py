@@ -1891,6 +1891,30 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["Source = target", "ERR:"],
     ),
     (
+        "alg",
+        "simplify((e-(e^(x+1/2)/e^(-2*x))^2)/(e^(3*x)+ln(e)))",
+        ["= e*(1 - e^(6*x))/(1 + e^(3*x))", "1 - e^(6*x) = (1 - e^(3*x))*(1 + e^(3*x))", "e - e^(3*x + 1)"],
+        ["ERR:", "Done", "Chk"],
+    ),
+    (
+        "trig",
+        "sin(x)*cos(x)+1/2=cos(x/2-pi/6)^2,x,0,pi,20,method=identity",
+        ["sin(2*x)=cos(2*(x/2-pi/6))", "sin(2*x)=sin(pi/2-2*(x/2-pi/6))", "x=[pi/6,5*pi/18,17*pi/18]"],
+        ["x = []", "ERR:"],
+    ),
+    (
+        "trig",
+        "sin(2*theta)/(1+sin(theta))=1-sin(theta),theta,method=identity",
+        ["sin(2*theta)=(1-sin(theta))(1+sin(theta))", "2tan(theta)=1", "tan(theta)=1/2"],
+        ["theta = []", "ERR:"],
+    ),
+    (
+        "trig",
+        "-3+6*sin(theta)/sqrt(5-4*cos(theta))=0,theta,0,pi,20,method=identity",
+        ["6^2*sin(theta)^2=3^2*(5-4*cos(theta))", "36u^2-36u+9=0", "theta=[pi/3]"],
+        ["theta = []", "ERR:"],
+    ),
+    (
         "trig",
         "4*sin(x)-3*cos(x),method=rform",
         ["R = sqrt(4^2+3^2) = 5", "R*sin(x-alpha)", "5*sin(x-atan(3/4))"],

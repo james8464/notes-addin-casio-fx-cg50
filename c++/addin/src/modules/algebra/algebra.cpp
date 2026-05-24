@@ -4550,6 +4550,148 @@ static std::optional<double> eval_node(Arena &a, NodeId id, std::string const &v
 }
 
 static NodeId zero_node(Arena &a) { return a.num(Rational{0, 1}); }
+
+static bool match_one_plus_exp_term(Arena &a, NodeId n, NodeId &exponent)
+{
+    std::vector<NodeId> terms;
+    add_terms_flat(a, n, terms);
+    bool got_one = false, got_exp = false;
+    for(NodeId t : terms) {
+        if(auto r = num_node_early(a, exact_eval_simplify(a, t)); r && r->num == r->den) {
+            got_one = true;
+            continue;
+        }
+        NodeId coef = 0, expn = 0;
+        if(!const_times_exp(a, t, coef, expn)) return false;
+        auto cr = num_node_early(a, exact_eval_simplify(a, coef));
+        if(!cr || cr->num != cr->den) return false;
+        if(got_exp && !casio::same_by_sig(a, exponent, expn)) return false;
+        exponent = expn;
+        got_exp = true;
+    }
+    return got_one && got_exp;
+}
+
+static bool exp_cancel_same_expr(Arena &a, NodeId lhs, NodeId rhs)
+{
+    if(casio::same_by_sig(a, lhs, rhs)) return true;
+    NodeId diff = exact_eval_simplify(a, casio::add(a, {lhs, casio::neg(a, rhs)}));
+    if(auto dz = num_node_early(a, diff); dz && dz->num == 0) return true;
+    std::vector<std::string> vars;
+    collect_symbols(a, lhs, vars);
+    collect_symbols(a, rhs, vars);
+    std::sort(vars.begin(), vars.end());
+    vars.erase(std::unique(vars.begin(), vars.end()), vars.end());
+    if(vars.size() > 1) return false;
+    std::string v = vars.empty() ? "x" : vars[0];
+    for(double x : {-2.0, -0.5, 0.25, 1.3}) {
+        auto l = eval_node(a, lhs, v, x);
+        auto r = eval_node(a, rhs, v, x);
+        if(!l || !r || !std::isfinite(*l) || !std::isfinite(*r) || std::fabs(*l - *r) > 1e-8) return false;
+    }
+    return true;
+}
+
+static bool match_e_minus_exp_2u_plus_1(Arena &a, NodeId n, NodeId u)
+{
+    std::vector<NodeId> terms;
+    add_terms_flat(a, n, terms);
+    bool got_e = false, got_exp = false;
+    NodeId want = exact_eval_simplify(a, casio::add(a, {
+        casio::mul(a, {casio::num(a, 2), u}),
+        casio::num(a, 1),
+    }));
+    for(NodeId t : terms) {
+        if(is_e_const_node(a, exact_eval_simplify(a, t))) {
+            got_e = true;
+            continue;
+        }
+        NodeId coef = 0, expn = 0;
+        if(!const_times_exp(a, t, coef, expn)) return false;
+        auto cr = num_node_early(a, exact_eval_simplify(a, coef));
+        if(!cr || cr->num != -cr->den) return false;
+        NodeId have = exact_eval_simplify(a, expn);
+        if(!exp_cancel_same_expr(a, have, want)) return false;
+        got_exp = true;
+    }
+    return got_e && got_exp;
+}
+
+static std::string strip_outer_key_parens_exp_cancel(std::string s)
+{
+    for(;;) {
+        if(s.size() < 2 || s.front() != '(' || s.back() != ')') return s;
+        int depth = 0;
+        bool wraps = true;
+        for(std::size_t i = 0; i < s.size(); ++i) {
+            if(s[i] == '(') ++depth;
+            else if(s[i] == ')') --depth;
+            if(depth == 0 && i + 1 < s.size()) {
+                wraps = false;
+                break;
+            }
+        }
+        if(!wraps) return s;
+        s = s.substr(1, s.size() - 2);
+    }
+}
+
+static std::optional<NodeId> exp_difference_square_cancel_key_u(Arena &a, NodeId simplified)
+{
+    std::string key = compact_input_key(format_expr(a, simplified));
+    auto parts = split_top_key(key, '/');
+    if(parts.size() != 2) return std::nullopt;
+    std::string num = strip_outer_key_parens_exp_cancel(parts[0]);
+    std::string den = strip_outer_key_parens_exp_cancel(parts[1]);
+    auto read_exp_arg = [](std::string const &s, std::string &arg) {
+        if(s.rfind("e^(", 0) != 0 || s.back() != ')') return false;
+        arg = s.substr(3, s.size() - 4);
+        return true;
+    };
+    std::string u_txt;
+    if(den.size() > 3 && den.substr(den.size() - 2) == "+1") {
+        std::string epart = den.substr(0, den.size() - 2);
+        if(!read_exp_arg(epart, u_txt)) return std::nullopt;
+    }
+    else if(den.rfind("1+", 0) == 0) {
+        if(!read_exp_arg(den.substr(2), u_txt)) return std::nullopt;
+    }
+    else return std::nullopt;
+    if(num.rfind("e-e^(", 0) != 0 || num.back() != ')') return std::nullopt;
+    std::string v_txt = num.substr(5, num.size() - 6);
+    NodeId u = exact_eval_simplify(a, casio::parse_expr(a, u_txt));
+    NodeId v = exact_eval_simplify(a, casio::parse_expr(a, v_txt));
+    NodeId want = exact_eval_simplify(a, casio::add(a, {casio::mul(a, {casio::num(a, 2), u}), casio::num(a, 1)}));
+    if(!exp_cancel_same_expr(a, v, want)) return std::nullopt;
+    return u;
+}
+
+static std::optional<std::vector<std::string>> exp_difference_square_cancel_route(Arena &a, NodeId parsed, NodeId simplified)
+{
+    Node const &d = a.get(simplified);
+    NodeId u = 0;
+    bool ok = d.kind == NodeKind::Div && match_one_plus_exp_term(a, d.b, u) && match_e_minus_exp_2u_plus_1(a, d.a, u);
+    if(!ok) {
+        auto ku = exp_difference_square_cancel_key_u(a, simplified);
+        if(!ku) return std::nullopt;
+        u = *ku;
+    }
+
+    NodeId E = a.constant(ConstKind::E);
+    NodeId E2u = casio::power(a, E, casio::mul(a, {casio::num(a, 2), u}));
+    NodeId ans = exact_eval_simplify(a, casio::add(a, {E, casio::neg(a, casio::power(a, E, casio::add(a, {u, casio::num(a, 1)})))}));
+
+    std::vector<std::string> steps{format_expr(a, parsed)};
+    std::string simp = format_expr(a, simplified);
+    if(compact_input_key(steps.back()) != compact_input_key(simp)) steps.push_back("= " + simp);
+    std::string eu = "e^(" + format_expr(a, u) + ")";
+    std::string e2u = format_expr(a, E2u);
+    steps.push_back("= e*(1 - " + e2u + ")/(1 + " + eu + ")");
+    steps.push_back("1 - " + e2u + " = (1 - " + eu + ")*(1 + " + eu + ")");
+    steps.push_back("= e*(1 - " + eu + ")");
+    return casio::exam_block("algebra simplify", steps, format_expr(a, ans));
+}
+
 static std::optional<std::vector<std::string>> power_model_route(Arena &a, std::string const &expr)
 {
     std::string body = unwrap_call_text(expr, "power_model");
@@ -32160,6 +32302,7 @@ algebra_compare_transform_modes:
             }
             NodeId n = exact_eval_simplify(arena, parsed);
             auto n_text = simplify_log_exp_text(arena, n);
+            if(auto ec = exp_difference_square_cancel_route(arena, parsed, n)) return *ec;
             if(auto surd = numeric_surd_simplify_route(compact_input_key(format_expr(arena, n)))) return *surd;
             if(auto idx_text = numeric_negative_index_sum_text_route(req.expr, format_expr(arena, n))) return *idx_text;
             if(auto cube = cube_root_power_sum_route(arena, parsed, n)) return *cube;
