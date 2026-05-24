@@ -495,7 +495,7 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "int",
         "de_solve(dy/dx=(x^2+1)*(y+3),y(0)=1)",
-        ["1/(y + 3) dy = x^2 + 1 dx", "C = ln(4)", "y + 3 = 4*e^(x^3/3 + x)", "y = 4*e^(x^3/3 + x) - 3"],
+        ["1/(y + 3) dy = x^2 + 1 dx", "C = ln(4)", "y + 3 = 4*e^(x^3/3 + x)", "y = -3 + 4*e^(x^3/3 + x)"],
         ["Try dy/dx", "unsupported DE route", "ERR:"],
     ),
     (

@@ -2066,20 +2066,22 @@ static std::optional<std::string> explicit_logistic_text(Arena &a, LinFrac lf, R
     };
     if(lf.c.num == 0) {
         Rational m = r_mul(lf.d, q);
-        if(lf.a.num == -lf.a.den && lf.b.num != 0) {
-            std::string rhs = rat_text_small(a, lf.b);
-            Rational am = m.num < 0 ? r_neg(m) : m;
-            std::string term = am.num == am.den ? E : rat_text_small(a, am) + "*" + E;
-            rhs += m.num < 0 ? " + " + term : " - " + term;
-            return rhs;
+        if(lf.a.num == 0) return std::nullopt;
+        Rational e_coeff = r_div(m, lf.a);
+        Rational constant = r_div(r_neg(lf.b), lf.a);
+        auto e_term = [&](Rational r) {
+            if(r.num < 0) r = r_neg(r);
+            if(r.num == r.den) return E;
+            return rat_text_small(a, r) + "*" + E;
+        };
+        std::string rhs;
+        if(constant.num != 0) rhs = rat_text_small(a, constant);
+        if(e_coeff.num != 0) {
+            std::string term = e_term(e_coeff);
+            if(rhs.empty()) rhs = e_coeff.num < 0 ? "-" + term : term;
+            else rhs += e_coeff.num < 0 ? " - " + term : " + " + term;
         }
-        std::string top;
-        if(m.num == m.den) top = E;
-        else if(m.num == -m.den) top = "-" + E;
-        else top = rat_text_small(a, m) + "*" + E;
-        if(lf.b.num != 0) top += " " + signed_rat_text(a, r_neg(lf.b));
-        if(lf.a.num == lf.a.den) return top;
-        return "(" + top + ")/" + rat_text_small(a, lf.a);
+        return rhs.empty() ? std::optional<std::string>("0") : std::optional<std::string>(rhs);
     }
     if(lf.d.num != 0 && lf.b.num == 0) {
         Rational k0 = r_div(r_neg(lf.c), lf.d);

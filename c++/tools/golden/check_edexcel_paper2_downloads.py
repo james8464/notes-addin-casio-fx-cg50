@@ -302,7 +302,7 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "October 2021 Q14 tank separable DE",
         ["--int", "de_solve(dh/dt=(24-5*h)/1200,h(0)=2)"],
-        ["1/(- 5*h + 24) dh = 1/1200 dt", "h(0) = 2", "h = (14*e^(-1/240*t) - 24)/-5"],
+        ["1/(- 5*h + 24) dh = 1/1200 dt", "h(0) = 2", "h = 24/5 - 14/5*e^(-1/240*t)"],
         ["ERR:", "1/h = 1/h"],
     ),
     (
