@@ -5677,6 +5677,19 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 std::string roots = first_sign_exclusion_from_key(compact_math_key(format_expr_human(arena, n)), var);
                 if(!roots.empty()) final_answer += ", " + var + " != " + roots;
             }
+            if(var == "y") {
+                auto relabel = [](std::string &s) {
+                    auto replace_all = [&](std::string const &from, std::string const &to) {
+                        for(std::size_t p = 0; (p = s.find(from, p)) != std::string::npos; p += to.size())
+                            s.replace(p, from.size(), to);
+                    };
+                    replace_all("dy/dy", "df/dy");
+                    replace_all("y'", "f'");
+                    if(s.rfind("y = ", 0) == 0) s.replace(0, 4, "f(y) = ");
+                };
+                for(auto &s : steps) relabel(s);
+                relabel(final_answer);
+            }
             return casio::exam_block(
                 req.mode == 4 ? "second derivative" : "differentiate",
                 steps,

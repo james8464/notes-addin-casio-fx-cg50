@@ -392,7 +392,7 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "June 2022 Q10 fractional-linear decomposition",
         ["--alg", "partfrac((8*x+5)/(2*x+3))"],
-        ["= 4 - 7/(2*x + 3)", "4 - 7/2/(x + 3/2)"],
+        ["= 4 - 7/(2*x + 3)", "4 - 7/(2*(x + 3/2))"],
         ["ERR:"],
     ),
     (

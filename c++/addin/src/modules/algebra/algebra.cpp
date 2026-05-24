@@ -3382,6 +3382,13 @@ static std::string quotient_term_text(Arena &a, Rational k, std::string const &d
     if(is_zero(k)) return "";
     if(k.num == k.den) return "1/(" + den + ")";
     if(k.num == -k.den) return "-1/(" + den + ")";
+    if(k.den != 1) {
+        Rational abs_k = r_abs(k);
+        std::string top = abs_k.num == 1 ? "1" : std::to_string(abs_k.num);
+        bool simple_den = den.find_first_of(" +-") == std::string::npos;
+        std::string body = top + "/(" + std::to_string(abs_k.den) + "*" + (simple_den ? den : "(" + den + ")") + ")";
+        return k.num < 0 ? "-" + body : body;
+    }
     return rat_node_text(a, k) + "/(" + den + ")";
 }
 
@@ -7894,6 +7901,104 @@ static std::optional<std::vector<std::string>> partial_fraction_distinct_linear_
     }
     out.push_back(ans);
     return out;
+}
+
+static std::optional<int> x_power_factor(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Sym && x.text == var) return 1;
+    if(x.kind != NodeKind::Pow || !is_sym_var(a, x.a, var)) return std::nullopt;
+    auto e = as_num(a, x.b);
+    if(!e || e->den != 1 || e->num < 1 || e->num > 8) return std::nullopt;
+    return static_cast<int>(e->num);
+}
+
+static std::string monomial_pf_term_text(Arena &a, Rational k, std::string const &den)
+{
+    if(is_zero(k)) return "";
+    if(k.num == k.den) return "1/" + den;
+    if(k.num == -k.den) return "-1/" + den;
+    if(k.den != 1) {
+        Rational abs_k = r_abs(k);
+        std::string top = abs_k.num == 1 ? "1" : std::to_string(abs_k.num);
+        std::string body = top + "/(" + std::to_string(abs_k.den) + "*" + den + ")";
+        return k.num < 0 ? "-" + body : body;
+    }
+    return rat_node_text(a, k) + "/" + den;
+}
+
+static std::optional<std::vector<std::string>> partial_fraction_xpower_linear(Arena &a, NodeId parsed, std::string const &var)
+{
+    Node const &d = a.get(parsed);
+    if(d.kind != NodeKind::Div) return std::nullopt;
+    auto num = poly_any_of(a, d.a, var);
+    if(!num || !num->ok) return std::nullopt;
+
+    Node const &den = a.get(d.b);
+    if(den.kind != NodeKind::Mul) return std::nullopt;
+    int xp = 0;
+    Rational den_scale{1, 1};
+    std::optional<std::pair<Rational, Rational>> lin;
+    NodeId lin_node = 0;
+    for(NodeId kid : den.kids) {
+        if(auto c = as_num(a, kid)) {
+            if(is_zero(*c)) return std::nullopt;
+            den_scale = r_mul(den_scale, *c);
+            continue;
+        }
+        if(auto p = x_power_factor(a, kid, var)) {
+            xp += *p;
+            if(xp > 8) return std::nullopt;
+            continue;
+        }
+        if(auto lp = linear_poly_coeffs(a, kid, var)) {
+            if(lin) return std::nullopt;
+            lin = *lp;
+            lin_node = kid;
+            continue;
+        }
+        return std::nullopt;
+    }
+    if(xp < 3 || !lin || is_zero(lin->first) || is_zero(lin->second) || is_zero(den_scale)) return std::nullopt;
+
+    trim_poly_any(*num);
+    for(auto &c : num->c) c = r_div(c, den_scale);
+    trim_poly_any(*num);
+    if(static_cast<int>(num->c.size()) - 1 > xp) return std::nullopt;
+
+    std::vector<Rational> p(xp + 1, Rational{0, 1});
+    for(std::size_t i = 0; i < num->c.size(); ++i) p[i] = num->c[i];
+    Rational a1 = lin->first, b0 = lin->second;
+    std::vector<Rational> coef(xp, Rational{0, 1});
+    coef[xp - 1] = r_div(p[0], b0);
+    for(int m = 1; m < xp; ++m) {
+        coef[xp - m - 1] = r_div(r_sub(p[m], r_mul(a1, coef[xp - m])), b0);
+    }
+    Rational last = r_sub(p[xp], r_mul(a1, coef[0]));
+
+    static char const *names[] = {"A", "B", "C", "D", "E", "F", "G", "H", "I"};
+    std::string lin_txt = format_expr(a, lin_node);
+    std::string form, vals, ans;
+    for(int i = 0; i < xp; ++i) {
+        std::string den_txt = i == 0 ? var : var + "^" + std::to_string(i + 1);
+        form = signed_sum_text(form, std::string(names[i]) + "/" + den_txt);
+        if(!vals.empty()) vals += ", ";
+        vals += std::string(names[i]) + "=" + rat_node_text(a, coef[i]);
+        ans = signed_sum_text(ans, monomial_pf_term_text(a, coef[i], den_txt));
+    }
+    form = signed_sum_text(form, std::string(names[xp]) + "/(" + lin_txt + ")");
+    if(!vals.empty()) vals += ", ";
+    vals += std::string(names[xp]) + "=" + rat_node_text(a, last);
+    ans = signed_sum_text(ans, quotient_term_text(a, last, lin_txt));
+    if(ans.empty()) return std::nullopt;
+
+    std::string xp_txt = xp == 1 ? var : var + "^" + std::to_string(xp);
+    return std::vector<std::string>{
+        form,
+        "Multiply by " + xp_txt + "*(" + lin_txt + ")",
+        "Compare coefficients: " + vals,
+        ans,
+    };
 }
 
 static std::optional<std::string> quartic_finite_interval_range(
@@ -31704,6 +31809,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(auto pf = partial_fraction_quadratic_over_repeated_linear(arena, parsed, pfv)) return *pf;
             if(auto pf = partial_fraction_quadratic_over_two_linear(arena, parsed, pfv)) return *pf;
             if(auto pf = improper_rational_division_route(arena, parsed, pfv)) return *pf;
+            if(auto pf = partial_fraction_xpower_linear(arena, parsed, pfv)) return *pf;
             if(auto pf = partial_fraction_x2_linear(arena, parsed, req.expr, pfv)) return *pf;
             if(auto pf = partial_fraction_repeated_linear(arena, parsed, pfv)) return *pf;
             if(auto pf = partial_fraction_two_linear(arena, parsed, pfv)) return *pf;
@@ -33353,6 +33459,7 @@ algebra_compare_transform_modes:
                 if(auto pf = partial_fraction_quadratic_over_repeated_linear(arena, parsed, pfv)) return *pf;
                 if(auto pf = partial_fraction_quadratic_over_two_linear(arena, parsed, pfv)) return *pf;
                 if(auto pf = improper_rational_division_route(arena, parsed, pfv)) return *pf;
+                if(auto pf = partial_fraction_xpower_linear(arena, parsed, pfv)) return *pf;
                 if(auto pf = partial_fraction_x2_linear(arena, parsed, req.expr, pfv)) return *pf;
                 if(auto pf = partial_fraction_repeated_linear(arena, parsed, pfv)) return *pf;
                 if(auto pf = partial_fraction_two_linear(arena, parsed, pfv)) return *pf;
