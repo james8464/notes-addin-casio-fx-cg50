@@ -3375,6 +3375,46 @@ static std::string quotient_term_text(Arena &a, Rational k, std::string const &d
     return rat_node_text(a, k) + "/(" + den + ")";
 }
 
+static std::optional<std::vector<std::string>> partial_fraction_quadratic_over_repeated_linear(Arena &a, NodeId parsed, std::string const &var)
+{
+    auto rp = ratpoly_of_node(a, parsed, var);
+    if(!rp.ok || is_zero(rp.den.a2)) return std::nullopt;
+    auto roots = rational_quadratic_roots(rp.den);
+    if(!roots || r_cmp(roots->first, roots->second) != 0) return std::nullopt;
+    Rational r = roots->first;
+    Rational lead = rp.den.a2;
+    Rational q = r_div(rp.num.a2, lead);
+    Poly2 rem = sub_poly(rp.num, scale_poly(rp.den, q));
+    Poly2 monic_rem = scale_poly(rem, r_div(Rational{1, 1}, lead));
+    if(!is_zero(monic_rem.a2)) return std::nullopt;
+    Rational B = monic_rem.a1;
+    Rational C = r_add(monic_rem.a0, r_mul(B, r));
+    NodeId factor = poly2_to_node(a, Poly2{Rational{0, 1}, Rational{1, 1}, r_neg(r), true}, var);
+    std::string den = format_expr(a, factor);
+    std::string qtxt = rat_node_text(a, q);
+    std::string btxt = quotient_term_text(a, B, den);
+    std::string ctxt = quotient_term_text(a, C, den + ")^2");
+    if(!ctxt.empty()) {
+        std::string prefix = rat_node_text(a, C);
+        if(prefix == "1") ctxt = "1/(" + den + ")^2";
+        else if(prefix == "-1") ctxt = "-1/(" + den + ")^2";
+        else ctxt = prefix + "/(" + den + ")^2";
+    }
+    std::string ans = signed_sum_text(qtxt, btxt);
+    ans = signed_sum_text(ans, ctxt);
+    std::string rem_txt = format_expr(a, poly2_to_node(a, rem, var));
+    return std::vector<std::string>{
+        format_expr(a, parsed),
+        "Divide: " + format_expr(a, poly2_to_node(a, rp.num, var)) + " = " + qtxt + "*(" + format_expr(a, poly2_to_node(a, rp.den, var)) + ") + (" + rem_txt + ")",
+        "(" + rem_txt + ")/(" + den + ")^2 = B/(" + den + ")+C/(" + den + ")^2",
+        rem_txt + " = B*(" + den + ")+C",
+        var + " = " + rat_node_text(a, r) + ": C = " + rat_node_text(a, C),
+        "Compare " + var + " coefficients: B = " + rat_node_text(a, B),
+        "A = " + qtxt + ", B = " + rat_node_text(a, B) + ", C = " + rat_node_text(a, C),
+        ans,
+    };
+}
+
 static std::optional<std::vector<std::string>> partial_fraction_linear_over_linear(Arena &a, NodeId parsed, std::string const &var)
 {
     auto rp = ratpoly_of_node(a, parsed, var);
@@ -3777,6 +3817,148 @@ static NodeId pow_int_node(Arena &a, NodeId base, int p)
     return casio::power(a, base, a.num(Rational{p, 1}));
 }
 
+static std::optional<std::vector<std::string>> symbolic_reciprocal_linear_series_route(Arena &a,
+                                                                                       NodeId parsed,
+                                                                                       std::string const &var,
+                                                                                       int degree)
+{
+    auto coeff_of_var = [&](auto const &self, NodeId t) -> std::optional<NodeId> {
+        Node const &x = a.get(t);
+        if(x.kind == NodeKind::Sym && x.text == var) return one_node(a);
+        if(x.kind == NodeKind::Div && !contains_symbol(a, x.b, var)) {
+            auto top = self(self, x.a);
+            if(!top) return std::nullopt;
+            return exact_eval_simplify(a, casio::div(a, *top, x.b));
+        }
+        if(x.kind != NodeKind::Mul) return std::nullopt;
+        bool saw = false;
+        std::vector<NodeId> rest;
+        for(NodeId k : x.kids) {
+            Node const &z = a.get(k);
+            if(!saw && z.kind == NodeKind::Sym && z.text == var) {
+                saw = true;
+                continue;
+            }
+            if(contains_symbol(a, k, var)) return std::nullopt;
+            rest.push_back(k);
+        }
+        if(!saw) return std::nullopt;
+        return mul_or_one(a, rest);
+    };
+    auto linear_base = [&](NodeId base) -> std::optional<std::pair<Rational, NodeId>> {
+        std::vector<NodeId> terms;
+        add_terms_flat(a, base, terms);
+        std::vector<NodeId> cterms, bterms;
+        for(NodeId t : terms) {
+            if(!contains_symbol(a, t, var)) cterms.push_back(t);
+            else if(auto c = coeff_of_var(coeff_of_var, t)) bterms.push_back(*c);
+            else return std::nullopt;
+        }
+        if(bterms.empty()) return std::nullopt;
+        NodeId c0 = cterms.empty() ? casio::num(a, 0) : exact_eval_simplify(a, casio::add(a, cterms));
+        auto c = as_num(a, c0);
+        if(!c || is_zero(*c)) return std::nullopt;
+        NodeId b = exact_eval_simplify(a, casio::add(a, bterms));
+        std::vector<std::string> bsyms;
+        collect_symbols(a, b, bsyms);
+        if(bsyms.empty()) return std::nullopt;
+        return std::make_pair(*c, b);
+    };
+    auto split = [&](NodeId n) -> std::optional<std::pair<NodeId, std::pair<NodeId, int>>> {
+        Node const &x = a.get(n);
+        if(x.kind == NodeKind::Pow) {
+            auto e = as_num(a, x.b);
+            if(e && e->den == 1 && e->num < 0) return std::make_pair(one_node(a), std::make_pair(x.a, (int)e->num));
+        }
+        if(x.kind == NodeKind::Div) {
+            Node const &d = a.get(x.b);
+            if(d.kind == NodeKind::Pow) {
+                auto e = as_num(a, d.b);
+                if(e && e->den == 1 && e->num > 0) return std::make_pair(x.a, std::make_pair(d.a, (int)-e->num));
+            }
+        }
+        if(x.kind == NodeKind::Mul) {
+            std::vector<NodeId> top;
+            std::optional<std::pair<NodeId, int>> bp;
+            for(NodeId k : x.kids) {
+                Node const &z = a.get(k);
+                if(!bp && z.kind == NodeKind::Pow) {
+                    auto e = as_num(a, z.b);
+                    if(e && e->den == 1 && e->num < 0) {
+                        bp = std::make_pair(z.a, (int)e->num);
+                        continue;
+                    }
+                }
+                top.push_back(k);
+            }
+            if(bp) return std::make_pair(mul_or_one(a, top), *bp);
+        }
+        return std::nullopt;
+    };
+    auto sp = split(parsed);
+    if(!sp) return std::nullopt;
+    int power = sp->second.second;
+    if(power < -8 || power >= 0) return std::nullopt;
+    auto lb = linear_base(sp->second.first);
+    if(!lb) return std::nullopt;
+    auto top_poly = poly_of(a, sp->first, var);
+    if(!top_poly || !top_poly->ok) return std::nullopt;
+    std::vector<Rational> top = poly_coeffs(*top_poly, degree);
+    NodeId m = exact_eval_simplify(a, casio::div(a, lb->second, a.num(lb->first)));
+    Rational factor = r_pow_int(lb->first, power);
+    std::vector<NodeId> base_coeffs(degree + 1), coeffs(degree + 1);
+    for(int i = 0; i <= degree; ++i) {
+        base_coeffs[i] = exact_eval_simplify(a, casio::mul(a, {
+            a.num(r_mul(factor, binom_rat(Rational{power, 1}, i))),
+            pow_int_node(a, m, i),
+        }));
+        coeffs[i] = casio::num(a, 0);
+    }
+    for(int i = 0; i <= degree; ++i) {
+        for(int j = 0; j <= i && j < (int)top.size(); ++j) {
+            if(is_zero(top[j])) continue;
+            coeffs[i] = exact_eval_simplify(a, casio::add(a, {coeffs[i], casio::mul(a, {a.num(top[j]), base_coeffs[i - j]})}));
+        }
+    }
+    auto answer = [&]() {
+        std::string out;
+        for(int i = 0; i <= degree; ++i) {
+            NodeId term = coeffs[i];
+            if(i == 1) term = casio::mul(a, {term, casio::sym(a, var)});
+            else if(i > 1) term = casio::mul(a, {term, casio::power(a, casio::sym(a, var), a.num(Rational{i, 1}))});
+            std::string s = trim_text(format_expr(a, exact_eval_simplify(a, term)));
+            if(s.empty() || s == "0") continue;
+            if(out.empty()) out = s;
+            else if(s.rfind("- ", 0) == 0) out += " - " + trim_text(s.substr(2));
+            else if(s[0] == '-') out += " - " + trim_text(s.substr(1));
+            else out += " + " + s;
+        }
+        return out.empty() ? std::string("0") : out;
+    };
+    auto u_series = [&]() {
+        std::string out;
+        for(int i = 0; i <= degree; ++i) {
+            NodeId term = a.num(binom_rat(Rational{power, 1}, i));
+            if(i == 1) term = casio::mul(a, {term, casio::sym(a, "u")});
+            else if(i > 1) term = casio::mul(a, {term, casio::power(a, casio::sym(a, "u"), a.num(Rational{i, 1}))});
+            std::string s = trim_text(format_expr(a, exact_eval_simplify(a, term)));
+            if(s.empty() || s == "0") continue;
+            if(out.empty()) out = s;
+            else if(s.rfind("- ", 0) == 0) out += " - " + trim_text(s.substr(2));
+            else if(s[0] == '-') out += " - " + trim_text(s.substr(1));
+            else out += " + " + s;
+        }
+        return out;
+    };
+    std::vector<std::string> out{format_expr(a, parsed)};
+    out.push_back("u = " + format_expr(a, casio::mul(a, {m, casio::sym(a, var)})));
+    out.push_back("(1+u)^" + std::to_string(power) + " = " + u_series() + " + ...");
+    if(format_expr(a, sp->first) != "1") out.push_back("Multiply by " + format_expr(a, sp->first) + " and keep powers <= " + var + "^" + std::to_string(degree));
+    out.push_back("Valid for abs(" + format_expr(a, casio::mul(a, {m, casio::sym(a, var)})) + ") < 1");
+    out.push_back(answer());
+    return out;
+}
+
 static std::optional<std::vector<std::string>> symbolic_finite_binomial_route(Arena &a,
                                                                               NodeId parsed,
                                                                               std::string const &var,
@@ -4113,6 +4295,7 @@ static std::optional<std::vector<std::string>> binomial_series_route(Arena &a, s
         out.push_back(ans);
         return out;
     }
+    if(auto symrecip = symbolic_reciprocal_linear_series_route(a, parsed, var, degree)) return *symrecip;
     if(auto combo = combined_binomial_series_route(a, parsed, var, degree)) return *combo;
     if(auto sym = symbolic_finite_binomial_route(a, parsed, var, degree)) return *sym;
     NodeId base = 0;
@@ -31413,6 +31596,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             NodeId parsed = casio::parse_expr(arena, req.expr);
             std::string pfv = pf_var_for(arena, parsed);
             if(auto pf = partial_fraction_linear_over_linear(arena, parsed, pfv)) return *pf;
+            if(auto pf = partial_fraction_quadratic_over_repeated_linear(arena, parsed, pfv)) return *pf;
             if(auto pf = partial_fraction_quadratic_over_two_linear(arena, parsed, pfv)) return *pf;
             if(auto pf = improper_rational_division_route(arena, parsed, pfv)) return *pf;
             if(auto pf = partial_fraction_x2_linear(arena, parsed, req.expr, pfv)) return *pf;
@@ -33060,6 +33244,7 @@ algebra_compare_transform_modes:
             if(req.method == "pf" || req.method == "partfrac") {
                 std::string pfv = pf_var_for(arena, parsed);
                 if(auto pf = partial_fraction_linear_over_linear(arena, parsed, pfv)) return *pf;
+                if(auto pf = partial_fraction_quadratic_over_repeated_linear(arena, parsed, pfv)) return *pf;
                 if(auto pf = partial_fraction_quadratic_over_two_linear(arena, parsed, pfv)) return *pf;
                 if(auto pf = improper_rational_division_route(arena, parsed, pfv)) return *pf;
                 if(auto pf = partial_fraction_x2_linear(arena, parsed, req.expr, pfv)) return *pf;

@@ -3090,6 +3090,22 @@ static std::vector<std::string> solve_de_mode(std::string const &payload)
                 }
             }
         }
+        if(log_left && !B.have_y0) {
+            std::string pat = "A*abs(" + tok->x + ")";
+            std::string repl = "A*" + tok->x;
+            auto absorb = [&](std::string s) {
+                std::size_t p = 0;
+                while((p = s.find(pat, p)) != std::string::npos) {
+                    s.replace(p, pat.size(), repl);
+                    p += repl.size();
+                }
+                return s;
+            };
+            answer = absorb(answer);
+            for(std::string &s : steps) {
+                if(s.rfind(tok->y + " =", 0) == 0) s = absorb(s);
+            }
+        }
         for(std::string &s : steps) {
             for(std::size_t p = 0; (p = s.find("\n+ C", p)) != std::string::npos;) s.erase(p, 4);
         }
