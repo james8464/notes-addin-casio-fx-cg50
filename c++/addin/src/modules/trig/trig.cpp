@@ -3869,7 +3869,7 @@ static std::string trig_root_text(double r)
     if(std::fabs(r + tan225) < 1e-9) return "1-sqrt(2)";
     if(std::fabs(r - inv_sqrt3) < 1e-9) return "sqrt(3)/3";
     if(std::fabs(r + inv_sqrt3) < 1e-9) return "-sqrt(3)/3";
-    for(int rad : {2, 3, 5, 6, 7, 10}) {
+    for(int rad : {2, 3, 5, 6, 7, 10, 19}) {
         double root = std::sqrt((double)rad);
         for(int den = 1; den <= 24; ++den) {
             for(int num = 1; num <= 48; ++num) {

@@ -2616,6 +2616,30 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["f(-5*pi/6) = -1/2"],
         ["f(-5*pi/6) = 1/2", "ERR:"],
     ),
+    (
+        "alg",
+        "partfrac((2*x^3+x^2-4*x+1)/(x^2+x-2))",
+        ["= 2*x - 1 + 1/(x + 2)", "A = 2, B = -1, C = 1, D = 2"],
+        ["ERR:"],
+    ),
+    (
+        "alg",
+        "evalat(x*e^(2*x),x,1/2)",
+        ["f(1/2) = 1/2*e"],
+        ["1.359140", "ERR:"],
+    ),
+    (
+        "alg",
+        "solve(x^4+x^2+2=0,x,method=substitution)",
+        ["u = x^2", "D = -7 < 0", "x = []"],
+        ["ERR:"],
+    ),
+    (
+        "trig",
+        "8*sin(theta)+2*sqrt(3)*cos(theta)=6,theta,0,180,10,method=rform",
+        ["R = sqrt(2*sqrt(3)^2+8^2) = 2*sqrt(19)", "sin(theta+alpha) = 3*sqrt(19)/19", "theta = [20.0782948987, 113.095256209]"],
+        ["R = sqrt(2*sqrt(3)^2+8^2) = 8.717", "ERR:"],
+    ),
 ]
 
 REMOVED_FEATURE_MARKERS = (

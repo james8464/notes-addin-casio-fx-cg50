@@ -497,6 +497,42 @@ static bool contains_exp_log_exact(Arena &a, NodeId n)
     return false;
 }
 
+static bool is_e_const_node(Arena &a, NodeId n);
+
+static bool simple_exact_e_value_rec(Arena &a, NodeId n, bool &has_e)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Const) {
+        if(x.ckind == ConstKind::E) has_e = true;
+        return true;
+    }
+    if(x.kind == NodeKind::Num || x.kind == NodeKind::Sym) return true;
+    if(x.kind == NodeKind::Fn) return false;
+    if(x.kind == NodeKind::Pow) {
+        if(is_e_const_node(a, x.a)) return false;
+        return simple_exact_e_value_rec(a, x.a, has_e) &&
+               simple_exact_e_value_rec(a, x.b, has_e);
+    }
+    if(x.kind == NodeKind::Div)
+        return simple_exact_e_value_rec(a, x.a, has_e) &&
+               simple_exact_e_value_rec(a, x.b, has_e);
+    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        for(auto k : x.kids)
+            if(!simple_exact_e_value_rec(a, k, has_e)) return false;
+        return true;
+    }
+    return false;
+}
+
+static bool simple_exact_e_value(Arena &a, NodeId n)
+{
+    bool has_e = false;
+    if(!simple_exact_e_value_rec(a, n, has_e) || !has_e) return false;
+    std::vector<std::string> syms;
+    collect_symbols(a, n, syms);
+    return syms.empty();
+}
+
 static bool is_e_const_node(Arena &a, NodeId n)
 {
     Node const &x = a.get(n);
@@ -6581,6 +6617,13 @@ static std::optional<std::vector<std::string>> biquadratic_route(Arena &a,
     std::vector<std::string> out;
     out.push_back("u = " + var + "^2");
     out.push_back(format_expr(a, poly2_to_node(a, ueq, "u")) + " = 0");
+    if(us.empty()) {
+        Rational D = r_sub(r_mul(ueq.a1, ueq.a1), r_mul(Rational{4, 1}, r_mul(ueq.a2, ueq.a0)));
+        out.push_back("D = " + rat_node_text(a, D) + (D.num < 0 ? " < 0" : ""));
+        out.push_back("u = []");
+        out.push_back(var + " = []");
+        return out;
+    }
     for(auto const &s : us) out.push_back(s);
     std::vector<std::string> xs;
     auto sqrt_rat = [&](Rational r) {
@@ -20964,6 +21007,27 @@ static bool poly_any_div_exact(PolyAny const &num, PolyAny const &den, PolyAny &
     return true;
 }
 
+static bool poly_any_div_rem(PolyAny const &num, PolyAny const &den, PolyAny &quot, PolyAny &rem_out)
+{
+    if(!num.ok || !den.ok || den.c.size() < 2 || is_zero(den.c.back()) || num.c.size() < den.c.size()) return false;
+    std::vector<Rational> rem = num.c;
+    std::vector<Rational> q(num.c.size() - den.c.size() + 1, Rational{0, 1});
+    int dn = (int)den.c.size() - 1;
+    for(int k = (int)rem.size() - 1; k >= dn; --k) {
+        Rational lead = r_div(rem[k], den.c[dn]);
+        int qi = k - dn;
+        q[qi] = lead;
+        if(is_zero(lead)) continue;
+        for(int j = 0; j <= dn; ++j)
+            rem[qi + j] = r_sub(rem[qi + j], r_mul(lead, den.c[j]));
+    }
+    quot = PolyAny{q, true};
+    rem_out = PolyAny{std::vector<Rational>(rem.begin(), rem.begin() + dn), true};
+    trim_poly_any(quot);
+    trim_poly_any(rem_out);
+    return true;
+}
+
 static std::string poly_any_desc_text(Arena &a, PolyAny p, std::string const &var)
 {
     trim_poly_any(p);
@@ -20979,6 +21043,98 @@ static std::string poly_any_desc_text(Arena &a, PolyAny p, std::string const &va
         else out += " + " + s;
     }
     return out.empty() ? "0" : out;
+}
+
+static std::optional<NodeId> cancel_poly_any_fraction(Arena &a, NodeId n, std::string const &var);
+
+static std::optional<std::string> factor_poly_any_linear_text(Arena &a, PolyAny p, std::string const &var)
+{
+    trim_poly_any(p);
+    if(p.c.size() < 2) return std::nullopt;
+    Rational lead = p.c.back();
+    std::vector<Rational> roots;
+    while(p.c.size() > 1) {
+        bool found = false;
+        PolyAny cand = primitive_integer_root_poly(p);
+        auto l = as_int64(cand.c.back()), c = as_int64(cand.c.front());
+        std::vector<Rational> trial;
+        if(c && *c == 0) trial.push_back(Rational{0, 1});
+        if(l && c) {
+            for(long long pp : divisors_i64(*c)) for(long long qq : divisors_i64(*l)) {
+                if(qq == 0) continue;
+                for(int sgn : {-1, 1}) {
+                    Rational r{sgn * pp, qq};
+                    r.normalize();
+                    trial.push_back(r);
+                }
+            }
+        }
+        for(Rational r : trial) {
+            if(!is_zero(poly_any_eval(p, r))) continue;
+            if(!divide_linear(p, r)) continue;
+            roots.push_back(r);
+            found = true;
+            break;
+        }
+        if(!found) return std::nullopt;
+    }
+    std::sort(roots.begin(), roots.end(), [](Rational a, Rational b) { return r_cmp(a, b) < 0; });
+    std::string out;
+    if(!(lead.num == lead.den)) out = format_rat_plain(lead) + "*";
+    for(Rational r : roots) {
+        if(!out.empty() && out.back() != '*') out += "*";
+        out += linear_factor_from_root(a, var, r);
+    }
+    return out.empty() ? std::nullopt : std::optional<std::string>(out);
+}
+
+static std::string add_term_text(std::string a, std::string b)
+{
+    if(b.empty() || b == "0") return a;
+    if(!b.empty() && b[0] == '-') return a + " - " + trim_text(b.substr(1));
+    return a + " + " + b;
+}
+
+static std::optional<std::vector<std::string>> improper_rational_division_route(Arena &a, NodeId parsed, std::string const &var)
+{
+    Node const &x = a.get(parsed);
+    if(x.kind != NodeKind::Div) return std::nullopt;
+    auto num = poly_any_of(a, x.a, var);
+    auto den = poly_any_of(a, x.b, var);
+    if(!num || !den || !num->ok || !den->ok || den->c.size() < 2 || num->c.size() < den->c.size()) return std::nullopt;
+    PolyAny q, rem;
+    if(!poly_any_div_rem(*num, *den, q, rem) || poly_any_zero(q)) return std::nullopt;
+    NodeId qn = exact_eval_simplify(a, poly_any_to_node(a, q, var));
+    NodeId dn = exact_eval_simplify(a, poly_any_to_node(a, *den, var));
+    NodeId remn = exact_eval_simplify(a, poly_any_to_node(a, rem, var));
+    NodeId frac = exact_eval_simplify(a, casio::div(a, remn, dn));
+    NodeId sfrac = poly_any_zero(rem) ? zero_node(a) : (cancel_poly_any_fraction(a, frac, var).value_or(frac));
+    std::string qtxt = format_expr(a, qn);
+    std::string raw_frac = format_expr(a, frac);
+    std::string simp_frac = format_expr(a, sfrac);
+    std::string split = poly_any_zero(rem) ? qtxt : add_term_text(qtxt, simp_frac);
+    std::vector<std::string> out{format_expr(a, parsed)};
+    if(!poly_any_zero(rem)) out.push_back("= " + add_term_text(qtxt, raw_frac));
+    if(auto f = factor_poly_any_linear_text(a, *den, var))
+        out.push_back(format_expr(a, dn) + " = " + *f);
+    if(!poly_any_zero(rem) && simp_frac != raw_frac) out.push_back("= " + split);
+    out.push_back(split);
+    Node const &sf = a.get(sfrac);
+    PolyAny fn, fd;
+    bool frac_ok = false;
+    if(sf.kind == NodeKind::Div) {
+        auto n = poly_any_of(a, sf.a, var), d = poly_any_of(a, sf.b, var);
+        if(n && d && n->ok && d->ok) { fn = *n; fd = *d; frac_ok = true; }
+    }
+    if(frac_ok && q.c.size() <= 2 && fn.c.size() == 1 && fd.c.size() == 2 && !is_zero(fd.c[1])) {
+        Rational A = q.c.size() > 1 ? q.c[1] : Rational{0, 1};
+        Rational B = q.c.empty() ? Rational{0, 1} : q.c[0];
+        Rational C = r_div(fn.c[0], fd.c[1]);
+        Rational D = r_div(fd.c[0], fd.c[1]);
+        out.push_back("A = " + format_rat_plain(A) + ", B = " + format_rat_plain(B) +
+                      ", C = " + format_rat_plain(C) + ", D = " + format_rat_plain(D));
+    }
+    return out;
 }
 
 static std::optional<std::vector<std::string>> shifted_roots_route(Arena &a, std::string const &expr)
@@ -30331,6 +30487,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             std::string pfv = pf_var_for(arena, parsed);
             if(auto pf = partial_fraction_linear_over_linear(arena, parsed, pfv)) return *pf;
             if(auto pf = partial_fraction_quadratic_over_two_linear(arena, parsed, pfv)) return *pf;
+            if(auto pf = improper_rational_division_route(arena, parsed, pfv)) return *pf;
             if(auto pf = partial_fraction_x2_linear(arena, parsed, req.expr, pfv)) return *pf;
             if(auto pf = partial_fraction_repeated_linear(arena, parsed, pfv)) return *pf;
             if(auto pf = partial_fraction_two_linear(arena, parsed, pfv)) return *pf;
@@ -31692,17 +31849,26 @@ algebra_compare_transform_modes:
             NodeId v = casio::simplify(arena, casio::parse_expr(arena, value));
             std::vector<std::string> syms;
             collect_symbols(arena, v, syms);
-            if(!syms.empty() || contains_const(arena, v, ConstKind::Pi) || contains_exp_log_exact(arena, v) || contains_fn_kind(arena, v, FnKind::Sqrt)) {
-                NodeId sub = exact_eval_simplify(arena, clone_with_substitution(arena, n, var, v));
-                NodeId sub2 = exact_eval_simplify(arena, expand_square_powers(arena, sub));
+            auto exact_lines = [&](NodeId sub2) {
                 std::string sub_txt = format_expr(arena, sub2);
                 if(auto ms = eval_multi_surd(arena, sub2))
                     sub_txt = multi_surd_text(arena, *ms);
-                return {
+                return std::vector<std::string>{
                     var + " = " + format_expr(arena, v),
                     "f(" + var + ") = " + format_expr(arena, n),
                     "f(" + format_expr(arena, v) + ") = " + sub_txt,
                 };
+            };
+            if(!syms.empty() || contains_const(arena, v, ConstKind::Pi) || contains_exp_log_exact(arena, v) ||
+               contains_fn_kind(arena, v, FnKind::Sqrt)) {
+                NodeId sub = exact_eval_simplify(arena, clone_with_substitution(arena, n, var, v));
+                NodeId sub2 = exact_eval_simplify(arena, expand_square_powers(arena, sub));
+                return exact_lines(sub2);
+            }
+            if(contains_exp_log_exact(arena, n)) {
+                NodeId sub = exact_eval_simplify(arena, clone_with_substitution(arena, n, var, v));
+                NodeId sub2 = exact_eval_simplify(arena, expand_square_powers(arena, sub));
+                if(simple_exact_e_value(arena, sub2)) return exact_lines(sub2);
             }
             collect_symbols(arena, n, syms);
             bool has_param = false;
@@ -31924,7 +32090,9 @@ algebra_compare_transform_modes:
             }
             if(req.method == "pf" || req.method == "partfrac") {
                 std::string pfv = pf_var_for(arena, parsed);
+                if(auto pf = partial_fraction_linear_over_linear(arena, parsed, pfv)) return *pf;
                 if(auto pf = partial_fraction_quadratic_over_two_linear(arena, parsed, pfv)) return *pf;
+                if(auto pf = improper_rational_division_route(arena, parsed, pfv)) return *pf;
                 if(auto pf = partial_fraction_x2_linear(arena, parsed, req.expr, pfv)) return *pf;
                 if(auto pf = partial_fraction_repeated_linear(arena, parsed, pfv)) return *pf;
                 if(auto pf = partial_fraction_two_linear(arena, parsed, pfv)) return *pf;
