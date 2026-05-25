@@ -8826,10 +8826,169 @@ static bool geometric_power_term(Arena &a, NodeId term, std::string const &var, 
     return base != 0;
 }
 
+struct PowerSeriesTerm
+{
+    Rational coef{1, 1};
+    Rational q{1, 1};
+    PolyAny poly{{Rational{1, 1}}, true};
+    bool has_q = false;
+};
+
+static bool power_series_absorb_factor(Arena &a, NodeId f, std::string const &var, int side, PowerSeriesTerm &out)
+{
+    Node const &x = a.get(f);
+    if(x.kind == NodeKind::Num) {
+        if(is_zero(x.num)) return false;
+        out.coef = side > 0 ? r_mul(out.coef, x.num) : r_div(out.coef, x.num);
+        return true;
+    }
+    if(x.kind == NodeKind::Mul) {
+        for(NodeId k : x.kids)
+            if(!power_series_absorb_factor(a, k, var, side, out)) return false;
+        return true;
+    }
+    if(x.kind == NodeKind::Div) {
+        return power_series_absorb_factor(a, x.a, var, side, out)
+            && power_series_absorb_factor(a, x.b, var, -side, out);
+    }
+    if(x.kind == NodeKind::Pow && !contains_symbol(a, x.a, var)) {
+        auto base = as_num(a, x.a);
+        if(base && is_zero(*base)) return false;
+        auto lin = symbolic_linear_parts(a, x.b, var);
+        auto m = lin ? as_num(a, lin->m) : std::optional<Rational>{};
+        auto c = lin ? as_num(a, lin->c) : std::optional<Rational>{};
+        if(base && m && c && !is_zero(*m)) {
+            Rational s{side, 1};
+            auto q = rational_power_factor(*base, r_mul(s, *m));
+            auto k = rational_power_factor(*base, r_mul(s, *c));
+            if(!q || !k) return false;
+            out.q = r_mul(out.q, *q);
+            out.coef = r_mul(out.coef, *k);
+            out.has_q = true;
+            return true;
+        }
+    }
+    if(side > 0) {
+        auto p = poly_any_of(a, f, var);
+        if(p && p->ok && p->c.size() <= 3) {
+            out.poly = poly_any_mul(out.poly, *p);
+            return out.poly.ok && out.poly.c.size() <= 3;
+        }
+    }
+    return false;
+}
+
+static std::optional<PowerSeriesTerm> power_series_term(Arena &a, NodeId term, std::string const &var)
+{
+    PowerSeriesTerm out;
+    if(!power_series_absorb_factor(a, term, var, 1, out) || !out.has_q || out.poly.c.size() > 3) return std::nullopt;
+    trim_poly_any(out.poly);
+    return out;
+}
+
 static bool inf_text(std::string s)
 {
     s = trim_text(s);
     return s == "inf" || s == "infty" || s == "infinity";
+}
+
+static Rational tail_basis_sum(Rational q, long long lo, int degree)
+{
+    Rational one{1, 1};
+    Rational den = r_sub(one, q);
+    Rational qm = r_pow_int(q, static_cast<int>(lo));
+    if(degree == 0) return r_div(qm, den);
+    if(degree == 1) {
+        Rational top = r_add(Rational{lo, 1}, r_mul(Rational{1 - lo, 1}, q));
+        return r_div(r_mul(qm, top), r_pow_int(den, 2));
+    }
+    Rational m{lo, 1};
+    Rational m2 = r_mul(m, m);
+    Rational b = r_sub(Rational{2 * lo + 1, 1}, r_mul(Rational{2, 1}, m2));
+    Rational c = Rational{(lo - 1) * (lo - 1), 1};
+    Rational top = r_add(m2, r_add(r_mul(b, q), r_mul(c, r_mul(q, q))));
+    return r_div(r_mul(qm, top), r_pow_int(den, 3));
+}
+
+static std::string qpow_text(std::string const &q, long long p)
+{
+    if(p == 0) return "1";
+    std::string b = "(" + q + ")";
+    return p == 1 ? b : b + "^" + std::to_string(p);
+}
+
+static std::string signed_int_mul_text(long long k, std::string const &body)
+{
+    if(k == 0) return "";
+    std::string out = k > 0 ? "+" : "-";
+    long long a = k > 0 ? k : -k;
+    if(a != 1) out += std::to_string(a) + "*";
+    out += body;
+    return out;
+}
+
+static std::string tail_basis_text(Arena &a, Rational q, long long lo, int degree)
+{
+    std::string qt = format_rat(a, q);
+    std::string aq = format_rat(a, r_abs(q));
+    std::string qp = qpow_text(qt, lo);
+    std::string den = q.num < 0 ? "(1+" + aq + ")" : "(1-" + qt + ")";
+    std::string one_plus_q = q.num < 0 ? "(1-" + aq + ")" : "(1+" + qt + ")";
+    if(lo == 1) {
+        if(degree == 0) return qp + "/" + den;
+        if(degree == 1) return qp + "/" + den + "^2";
+        return qp + "*" + one_plus_q + "/" + den + "^3";
+    }
+    if(degree == 0) return qp + "/" + den;
+    if(degree == 1) {
+        return qp + "*(" + std::to_string(lo) + signed_int_mul_text(1 - lo, "(" + qt + ")") + ")/" + den + "^2";
+    }
+    long long b = 2 * lo + 1 - 2 * lo * lo;
+    long long c = (lo - 1) * (lo - 1);
+    return qp + "*(" + std::to_string(lo * lo)
+        + signed_int_mul_text(b, "(" + qt + ")")
+        + signed_int_mul_text(c, "(" + qt + ")^2") + ")/" + den + "^3";
+}
+
+static std::optional<std::vector<std::string>> infinite_power_series_sum_route(
+    Arena &a,
+    std::string const &expr_txt,
+    std::string const &var,
+    long long lo
+)
+{
+    if(lo < -1000000 || lo > 1000000) return std::nullopt;
+    NodeId expr = casio::parse_expr(a, expr_txt);
+    std::vector<NodeId> terms;
+    add_terms_flat(a, expr, terms);
+    if(terms.empty()) return std::nullopt;
+
+    bool exact_total = lo >= -50 && lo <= 50;
+    Rational total{0, 1};
+    std::vector<std::string> formulas;
+    for(NodeId term : terms) {
+        auto ps = power_series_term(a, term, var);
+        if(!ps || r_cmp(r_abs(ps->q), Rational{1, 1}) >= 0) return std::nullopt;
+        bool term_exact = exact_total && std::llabs(ps->q.num) <= 10 && ps->q.den <= 10;
+        if(!term_exact) exact_total = false;
+        Rational part{0, 1};
+        std::string formula;
+        for(std::size_t i = 0; i < ps->poly.c.size(); ++i) {
+            Rational c = ps->poly.c[i];
+            if(is_zero(c)) continue;
+            if(term_exact) part = r_add(part, r_mul(c, tail_basis_sum(ps->q, lo, static_cast<int>(i))));
+            append_signed_term(formula, sum_factor_text(a, c, tail_basis_text(a, ps->q, lo, static_cast<int>(i))));
+        }
+        if(formula.empty()) formula = "0";
+        if(term_exact) total = r_add(total, r_mul(ps->coef, part));
+        formulas.push_back(sum_factor_text(a, ps->coef, formula));
+    }
+
+    std::string sigma = "sum_{" + var + "=" + std::to_string(lo) + "}^inf (" + format_expr(a, expr) + ")";
+    std::string formula_line = join_text(formulas, " + ");
+    std::string ans = exact_total ? format_rat(a, total) : formula_line;
+    if(!exact_total) return std::vector<std::string>{sigma, "|q| < 1", "= " + formula_line, ans};
+    return std::vector<std::string>{sigma, "|q| < 1", "= " + formula_line, "= " + ans, ans};
 }
 
 static std::optional<std::vector<std::string>> infinite_geometric_sum_route(
@@ -8942,7 +9101,10 @@ static std::optional<std::vector<std::string>> finite_sum_route(Arena &a, std::s
     std::string var = trim_text(parts[1]);
     auto lo = parse_int(parts[2]);
     if(var.empty() || !lo) return std::nullopt;
-    if(inf_text(parts[3])) return infinite_geometric_sum_route(a, expr_txt, var, *lo);
+    if(inf_text(parts[3])) {
+        if(auto geo = infinite_geometric_sum_route(a, expr_txt, var, *lo)) return *geo;
+        return infinite_power_series_sum_route(a, expr_txt, var, *lo);
+    }
     auto hi = parse_int(parts[3]);
     if(!hi || *hi < *lo || *hi - *lo > 2000) return std::nullopt;
 
@@ -32255,6 +32417,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(req.expr.find("log(") == std::string::npos && req.expr.find("ln(") == std::string::npos)
                 if(auto etp = exact_trig_poly_equation_solve_route(arena, req.expr)) return *etp;
         }
+        if(auto fs = finite_sum_route(arena, req.expr)) return *fs;
         if(req.mode == 3 || req.method == "expand") {
             NodeId parsed = casio::parse_expr(arena, req.expr);
             if(auto neg_power = rational_negative_power_expand_route(arena, parsed)) return *neg_power;
@@ -32287,7 +32450,6 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(req.mode == 0 && (req.method.empty() || req.method == "coeff" || req.method == "binom_coeff")) {
             if(auto bc = binomial_coefficient_route(arena, req.expr)) return *bc;
         }
-        if(auto fs = finite_sum_route(arena, req.expr)) return *fs;
         if(req.method == "standard_line" || req.method == "line_standard") {
             if(auto sl = standard_line_route(arena, req.expr)) return *sl;
         }

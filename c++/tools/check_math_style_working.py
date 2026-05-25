@@ -928,6 +928,30 @@ CASES = [
         ("Valid for", "T_r = C(n,r)*u^r", "Keep powers"),
     ),
     (
+        "infinite arithmetico-geometric sum shifted",
+        ["--alg", "sum(r/2^(r-1),r,1,inf)"],
+        ("sum_{r = 1}^inf (r/2^(r - 1))", "|q| < 1", "2*((1/2)/(1-1/2)^2)", "4"),
+        ("Err:", "Answer:"),
+    ),
+    (
+        "infinite quadratic-geometric sum",
+        ["--alg", "sum(n^2/2^n,n,1,inf)"],
+        ("sum_{n = 1}^inf (n^2/2^n)", "|q| < 1", "(1/2)*(1+1/2)/(1-1/2)^3", "6"),
+        ("Err:", "Answer:"),
+    ),
+    (
+        "infinite geometric sum rejects zero base denominator",
+        ["--alg", "sum(1/0^n,n,1,inf)"],
+        ("Err:",),
+        ("|q| < 1", "= 0"),
+    ),
+    (
+        "infinite arithmetico-geometric large lower bound",
+        ["--alg", "sum(n/2^n,n,100,inf)"],
+        ("sum_{n = 100}^inf (n/2^n)", "|q| < 1", "(1/2)^100*(100-99*(1/2))/(1-1/2)^2"),
+        ("Err:", "Answer:"),
+    ),
+    (
         "large finite binomial has no validity",
         ["--alg", "series((3+2*x)^20,x,0,5)"],
         ("(2*x + 3)^20 = 3486784401*(1+(2/3)*x)^20", "7118894532096*x^5"),
