@@ -16,7 +16,7 @@ MANIFEST = CORPUS / "manifest_latest.jsonl"
 
 def classify(path: Path) -> str:
     s = path.name.lower()
-    if any(t in s for t in ("mark-scheme", "mark_scheme", "marking-scheme", "_ms", "-ms", " ms.", "rms", "msc")):
+    if re.search(r"mark[-_ ]?scheme|(?<![a-z0-9])ms(?=\.|_|-|\(|$)|rms|msc", s):
         return "ms"
     if any(t in s for t in ("question-paper", "question_paper", "_qp", "-qp", " que_", " qp.", "past_paper")):
         return "qp"

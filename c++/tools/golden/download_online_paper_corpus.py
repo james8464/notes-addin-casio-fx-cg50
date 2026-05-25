@@ -200,11 +200,11 @@ def extract_text(pdf: Path, txt: Path) -> str:
 
 def paper_kind(url: str, label: str) -> str:
     s = (url + " " + label).lower()
-    if any(t in s for t in ("mark scheme", "ms.pdf", "-ms", "_ms", "rms", "msc")):
+    if re.search(r"mark[-_ ]?scheme|(?<![a-z0-9])ms(?=\s|\.|_|-|\(|$)|rms|msc", s):
         return "ms"
     if any(t in s for t in ("question paper", "qp.pdf", "-qp", "_qp", "que_")):
         return "qp"
-    if any(t in s for t in ("solution", "worked", "answers")):
+    if any(t in s for t in ("solution", "worked", "answer")):
         return "solution"
     return "other"
 
