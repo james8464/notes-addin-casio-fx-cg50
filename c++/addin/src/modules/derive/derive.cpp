@@ -4691,6 +4691,73 @@ static bool is_named_symbol(Arena &a, NodeId n, std::string const &name)
     return x.kind == NodeKind::Sym && x.text == name;
 }
 
+static std::string reciprocal_coeff_over_product(Arena &a, Rational k, std::string const &den)
+{
+    k.normalize();
+    if(k.num == 0) return "";
+    Rational c{k.den, k.num};
+    c.normalize();
+    bool neg = c.num < 0;
+    if(neg) c.num = -c.num;
+    std::string sign = neg ? "-" : "";
+    if(c.den == 1) {
+        if(c.num == 1) return sign + "1/(" + den + ")";
+        return sign + rat_text(a, c.num, 1) + "/(" + den + ")";
+    }
+    std::string bot = rat_text(a, c.den, 1) + "*" + den;
+    if(c.num == 1) return sign + "1/(" + bot + ")";
+    return sign + rat_text(a, c.num, 1) + "/(" + bot + ")";
+}
+
+static std::optional<std::vector<std::string>> implicit_sec_inverse_route(
+    Arena &a,
+    NodeId left,
+    NodeId right,
+    std::string const &var,
+    std::string const &dep,
+    std::string const &dname
+)
+{
+    std::optional<NodeId> sec_node;
+    if(is_named_symbol(a, left, var)) sec_node = right;
+    else if(is_named_symbol(a, right, var)) sec_node = left;
+    if(!sec_node) return std::nullopt;
+    Node const &s = a.get(*sec_node);
+    if(s.kind != NodeKind::Fn || s.fkind != FnKind::Sec) return std::nullopt;
+    auto lp = linear_in_symbol(a, s.a, dep);
+    if(!lp) return std::nullopt;
+    auto rest = as_num(a, lp->rest);
+    if(!rest || rest->num != 0) return std::nullopt;
+
+    std::string u = clean_math_text(format_expr_human(a, s.a));
+    std::string sec_tan = "sec(" + u + ")*tan(" + u + ")";
+    std::string root = "sqrt(" + var + "^2 - 1)";
+    std::string den = var + "*" + root;
+    std::string dydx0, dydx;
+    auto k_num = as_num(a, lp->coef);
+    if(k_num) {
+        if(k_num->num == 0) return std::nullopt;
+        dydx0 = reciprocal_coeff_over_product(a, *k_num, sec_tan);
+        dydx = reciprocal_coeff_over_product(a, *k_num, den);
+    }
+    else {
+        std::string k_text = clean_math_text(format_expr_human(a, lp->coef));
+        if(k_text.empty()) return std::nullopt;
+        dydx0 = "1/(" + k_text + "*" + sec_tan + ")";
+        dydx = "1/(" + k_text + "*" + den + ")";
+    }
+    std::string dxdy = k_num ? coeff_text(a, *k_num, sec_tan) : clean_math_text(format_expr_human(a, lp->coef)) + "*" + sec_tan;
+    return std::vector<std::string>{
+        var + " = sec(" + u + ").",
+        "d" + var + "/d" + dep + " = " + dxdy + ".",
+        dname + " = " + dydx0 + ".",
+        "sec(" + u + ") = " + var + ".",
+        "tan(" + u + ")^2 = sec(" + u + ")^2 - 1 = " + var + "^2 - 1.",
+        "tan(" + u + ") = " + root + ".",
+        dname + " = " + dydx
+    };
+}
+
 static std::optional<std::vector<std::string>> inverse_sqrt_linear_product_route(
     Arena &a,
     NodeId left,
@@ -5767,6 +5834,11 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 return casio::exam_block("implicit inverse derivative", *route, route_answer);
             }
             if(auto route = inverse_sqrt_poly_product_route(arena, left, right, var, dep, dname)) {
+                std::string route_answer = route->back();
+                route->pop_back();
+                return casio::exam_block("implicit inverse derivative", *route, route_answer);
+            }
+            if(auto route = implicit_sec_inverse_route(arena, left, right, var, dep, dname)) {
                 std::string route_answer = route->back();
                 route->pop_back();
                 return casio::exam_block("implicit inverse derivative", *route, route_answer);
