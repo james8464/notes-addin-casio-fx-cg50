@@ -2787,7 +2787,7 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "trig",
         "8*sin(theta)+2*sqrt(3)*cos(theta)=6,theta,0,180,10,method=rform",
-        ["R = sqrt(2*sqrt(3)^2+8^2) = 2*sqrt(19)", "sin(theta+alpha) = 3*sqrt(19)/19", "theta = [20.0782948987, 113.095256209]"],
+        ["R = sqrt((2*sqrt(3))^2+8^2) = 2*sqrt(19)", "sin(theta+alpha) = 3*sqrt(19)/19", "theta = [20.0782948987, 113.095256209]"],
         ["R = sqrt(2*sqrt(3)^2+8^2) = 8.717", "ERR:"],
     ),
     (
