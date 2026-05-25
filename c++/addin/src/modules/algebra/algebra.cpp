@@ -10715,6 +10715,15 @@ static std::optional<std::vector<std::string>> expanded_square_power_solve_route
             }
         return std::nullopt;
     }
+    if(auto roots = rational_quadratic_roots(*p)) {
+        std::string factored = quadratic_factor_text(a, *p, var);
+        if(!factored.empty()) {
+            out.push_back(factored + " = 0");
+            std::string f1 = linear_factor_from_root(a, var, roots->first);
+            std::string f2 = linear_factor_from_root(a, var, roots->second);
+            out.push_back(f1 == f2 ? f1 + " = 0" : f1 + " = 0 or " + f2 + " = 0");
+        }
+    }
     auto sols = filter_real_solutions(a, rearr, var, solve_poly2(a, *p, var), lo, hi);
     filter_open_interval_solutions(a, sols, lo, hi, lo_open, hi_open);
     if(sols.empty()) {
