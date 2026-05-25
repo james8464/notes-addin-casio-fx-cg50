@@ -103,6 +103,11 @@ def removed_case(case: dict[str, Any]) -> bool:
     return any(marker.lower() in lo for marker in REMOVED_FEATURE_MARKERS)
 
 
+def outside_standard_corpus(case: dict[str, Any]) -> bool:
+    src = str(case.get("source_pdf", ""))
+    return src.startswith("MadAsMaths A-level booklets/")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--skip-host", action="store_true")
@@ -139,6 +144,8 @@ def main() -> int:
 
     for case in cases:
         if removed_case(case):
+            continue
+        if outside_standard_corpus(case):
             continue
         args_list = case.get("args")
         if not args_list:

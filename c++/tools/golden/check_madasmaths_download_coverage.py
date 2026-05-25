@@ -33,17 +33,22 @@ def is_question_pdf(name: str) -> bool:
     )
 
 
-def manual_refs() -> set[str]:
+def manual_refs() -> tuple[set[str], set[str]]:
     refs: set[str] = set()
+    booklet_refs: set[str] = set()
     for row in load_jsonl(MANUAL_CASES):
         src = str(row.get("source_pdf", ""))
         if src.startswith(("MadAsMaths papers/", "legacy/")):
             refs.add(Path(src).name.lower())
+        if src.startswith("MadAsMaths A-level booklets/"):
+            parts = Path(src).parts
+            if len(parts) >= 3:
+                booklet_refs.add(f"{parts[-2].lower()}/{parts[-1].lower()}")
     for row in load_jsonl(FULL_LEDGER):
         paper = str(row.get("paper", ""))
         if paper.startswith("mp2_") and row.get("verdict") == "PASS":
             refs.add(paper + ".pdf")
-    return refs
+    return refs, booklet_refs
 
 
 def standard_refs() -> set[str]:
@@ -64,7 +69,7 @@ def main() -> int:
         return 0
 
     manifest = load_jsonl(MANIFEST)
-    manual = manual_refs()
+    manual, booklet_manual = manual_refs()
     standard = standard_refs()
     rows: list[dict[str, object]] = []
     counts: Counter[str] = Counter()
@@ -86,6 +91,9 @@ def main() -> int:
         elif family == "madas_booklets_a_level" and name.lower() in standard:
             status = "covered"
             reason = "duplicate of standard-topic strict ledger"
+        elif family == "madas_booklets_a_level" and f"{page.lower()}/{name.lower()}" in booklet_manual:
+            status = "covered"
+            reason = "manual booklet case ledger"
         elif family == "madas_iygb" and name.lower() in manual:
             status = "covered"
             reason = "manual paper case ledger"

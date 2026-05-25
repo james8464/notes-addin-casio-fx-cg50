@@ -35015,12 +35015,11 @@ algebra_compare_transform_modes:
         if(req.method == "factor" && is_zero(rp.den.a1) && is_zero(rp.den.a2) && !is_zero(rp.num.a2)) {
             if(auto roots = rational_quadratic_roots(rp.num)) {
                 std::string factored = quadratic_factor_text(arena, rp.num, solve_var);
+                std::string f1 = linear_factor_from_root(arena, solve_var, roots->first);
+                std::string f2 = linear_factor_from_root(arena, solve_var, roots->second);
                 out.push_back("2. Move all terms: " + format_expr(arena, rearr) + " = 0");
                 out.push_back("3. Factor: " + factored + " = 0");
-                out.push_back(
-                    "4. So " + linear_factor_from_root(arena, solve_var, roots->first) + " = 0 or " +
-                    linear_factor_from_root(arena, solve_var, roots->second) + " = 0."
-                );
+                out.push_back(f1 == f2 ? "4. " + f1 + " = 0" : "4. " + f1 + " = 0 or " + f2 + " = 0");
                 out.push_back("5. Check roots in the original equation.");
                 auto sols = solve_poly2(arena, rp.num, solve_var);
                 sols = filter_real_solutions(arena, rearr, solve_var, sols, interval_lo, interval_hi);
@@ -35160,10 +35159,9 @@ algebra_compare_transform_modes:
                 }
                 std::string factored = quadratic_factor_text(arena, rp.num, solve_var);
                 out.push_back("3. Factor: " + factored + " = 0");
-                out.push_back(
-                    "4. " + linear_factor_from_root(arena, solve_var, roots->first) + " = 0 or " +
-                    linear_factor_from_root(arena, solve_var, roots->second) + " = 0"
-                );
+                std::string f1 = linear_factor_from_root(arena, solve_var, roots->first);
+                std::string f2 = linear_factor_from_root(arena, solve_var, roots->second);
+                out.push_back(f1 == f2 ? "4. " + f1 + " = 0" : "4. " + f1 + " = 0 or " + f2 + " = 0");
             }
             else {
                 out.push_back("3. Use quadratic formula: " + solve_var + " = (-b +/- sqrt(b^2-4ac))/(2a).");
