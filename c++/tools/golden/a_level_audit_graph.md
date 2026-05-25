@@ -10,6 +10,8 @@ graph TD
   D --> P["PDF cache in Downloads"]
   D --> X["manifest_latest.jsonl"]
   OD --> OX["online manifest"]
+  X --> XC["972 rows: Pearson 67 + Edexcel scrape 48 + MadAs 857"]
+  OX --> OC["1221 PDFs: 13 online sources"]
   X --> V["check_a_level_source_downloads.py"]
   OX --> OV["check_online_paper_corpus_inventory.py"]
   P --> E["Edexcel corpus checks"]
@@ -28,3 +30,10 @@ graph TD
   T --> G
   G --> Z["delete audited PDFs/images"]
 ```
+
+Latest refresh: 2026-05-25.
+
+- `check_a_level_source_downloads.py`: `rows=972`, no failures.
+- `check_edexcel_public_paper_corpus.py`: `54` official Pearson 9MA0 PDFs, `27` question papers + `27` mark schemes.
+- `check_online_paper_corpus_inventory.py`: `1221` PDFs, `1156` text extracts, `6766` question-marker hits.
+- Current working help/templates are external in `c++/prizm/help/*.HLP/*.TPL` and packed to `CASIOCAS.PAK`; keep verbose help out of `.g3a`.

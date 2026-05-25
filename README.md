@@ -29,6 +29,9 @@ c++/prizm/help/CASIOCAS.WORK.TPL
 c++/prizm/help/CASIOCAS.HLP
 ```
 
+Verbose F6 help and worked-template records are packed into `CASIOCAS.PAK`;
+keep long help text in `c++/prizm/help/`, not inside `.g3a` source strings.
+
 Use `c++/addin/host/build/device_solver_smoke` only for the separate native/fallback add-in route.
 
 ## Structure
@@ -81,6 +84,14 @@ python3 c++/tools/golden/render_audit_pdf_pages.py --format jpeg ~/Downloads/"Ma
 python3 c++/tools/golden/check_madasmaths_standard_topics_audit.py
 python3 c++/tools/golden/check_madasmaths_full_audit.py --no-render --strict-skips
 python3 c++/tools/golden/check_a_level_audit_tracker.py
+```
+
+Current audit refresh evidence is tracked in:
+
+```text
+c++/tools/golden/a_level_audit_graph.md
+c++/tests/reports/a_level_source_downloads/summary_latest.txt
+c++/tests/reports/online_paper_corpus/inventory_latest.md
 ```
 
 Clean generated/local files (dry-run first):
