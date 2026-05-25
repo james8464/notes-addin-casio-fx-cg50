@@ -1600,6 +1600,36 @@ static std::optional<NodeId> inverse_exp_mobius(Arena &a, NodeId expr)
     return casio::simplify(a, casio::div(a, shifted, a.num(p->a1)));
 }
 
+static std::optional<std::vector<std::string>> inverse_sqrt_affine_context(Arena &a, NodeId expr)
+{
+    NodeId inner = expr;
+    Rational scale{1, 1}, shift{0, 1};
+    NodeId wrapped = 0;
+    Rational m, b;
+    if(affine_wrapper(a, expr, wrapped, m, b) && wrapped != expr) {
+        inner = wrapped;
+        scale = m;
+        shift = b;
+    }
+    if(is_zero(scale)) return std::nullopt;
+
+    Node const &x = a.get(inner);
+    if(x.kind != NodeKind::Fn || x.fkind != FnKind::Sqrt) return std::nullopt;
+    auto p = poly_of(a, x.a, "x");
+    if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a1)) return std::nullopt;
+
+    Rational bound = r_div(r_neg(p->a0), p->a1);
+    bool dom_ge = p->a1.num > 0;
+    bool range_ge = scale.num > 0;
+    std::string bound_text = format_rat(a, bound);
+    std::string shift_text = format_rat(a, shift);
+    return std::vector<std::string>{
+        std::string("Domain f: x ") + (dom_ge ? ">= " : "<= ") + bound_text,
+        std::string("Range f: y ") + (range_ge ? ">= " : "<= ") + shift_text,
+        std::string("Domain f^-1: x ") + (range_ge ? ">= " : "<= ") + shift_text,
+    };
+}
+
 static std::optional<NodeId> inverse_simple_function(Arena &a, NodeId expr)
 {
     if(auto inv = inverse_exp_mobius(a, expr)) return inv;
@@ -33002,6 +33032,12 @@ algebra_compare_transform_modes:
                 "4. y = " + ans + ".",
                 "5. Answer: f^-1(x) = " + ans,
             };
+            if(domain_text.empty()) {
+                if(auto ctx = inverse_sqrt_affine_context(arena, n)) {
+                    out.insert(out.begin() + 2, ctx->begin(), ctx->begin() + 2);
+                    out.insert(out.end() - 1, ctx->back());
+                }
+            }
             if(auto rp = ratpoly_of_node(arena, n, "x"); rp.ok && is_degree_at_most_one(rp.num) &&
                is_degree_at_most_one(rp.den) && !is_zero(rp.den.a1)) {
                 out.push_back("Domain: x != " + format_rat(arena, r_div(rp.num.a1, rp.den.a1)));

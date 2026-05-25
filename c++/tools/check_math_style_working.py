@@ -629,6 +629,30 @@ CASES = [
         ("Constant/non-monotone",),
     ),
     (
+        "sqrt affine inverse inferred context",
+        ["--alg", "inverse(sqrt(5*x+3))"],
+        (
+            "y = f(x) = sqrt(5*x + 3)",
+            "Domain f: x >= -3/5",
+            "Range f: y >= 0",
+            "Domain f^-1: x >= 0",
+            "f^-1(x) = (x^2 - 3)/5",
+        ),
+        ("Given domain:", "Constant/non-monotone"),
+    ),
+    (
+        "negative affine sqrt inverse inferred context",
+        ["--alg", "inverse(1-sqrt(x-5))"],
+        (
+            "y = f(x) = - sqrt(x - 5) + 1",
+            "Domain f: x >= 5",
+            "Range f: y <= 1",
+            "Domain f^-1: x <= 1",
+            "f^-1(x) = (- x + 1)^2 + 5",
+        ),
+        ("Given domain:", "Constant/non-monotone"),
+    ),
+    (
         "sqrt linear half-line range",
         ["--alg", "range(sqrt(x+1),x,0,inf)"],
         ("Endpoint gives y = 1", "Range: y >= 1"),
