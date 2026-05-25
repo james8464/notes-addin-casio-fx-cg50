@@ -18117,6 +18117,243 @@ static NodeId substitute_var(Arena &a, NodeId n, std::string const &var, NodeId 
     return n;
 }
 
+static int rat_cmp_local(Rational a, Rational b)
+{
+    a.normalize();
+    b.normalize();
+    __int128 lhs = static_cast<__int128>(a.num) * b.den;
+    __int128 rhs = static_cast<__int128>(b.num) * a.den;
+    return lhs < rhs ? -1 : (lhs > rhs ? 1 : 0);
+}
+
+static bool rat_less_local(Rational a, Rational b) { return rat_cmp_local(a, b) < 0; }
+
+static void add_unique_rat(std::vector<Rational> &xs, Rational r)
+{
+    r.normalize();
+    for(Rational const &x : xs) {
+        if(r_eq(x, r)) return;
+    }
+    xs.push_back(r);
+}
+
+static bool collect_abs_affine_roots(Arena &a, NodeId n, std::string const &var, std::vector<Rational> &roots)
+{
+    Node const x = a.get(n);
+    if(x.kind == NodeKind::Fn) {
+        if(x.fkind == FnKind::Abs) {
+            auto af = affine_form(a, x.a, var);
+            if(af && !r_zero(af->first))
+                add_unique_rat(roots, r_div(r_neg(af->second), af->first));
+            return true;
+        }
+        return collect_abs_affine_roots(a, x.a, var, roots);
+    }
+    if(x.kind == NodeKind::Pow || x.kind == NodeKind::Div) {
+        return collect_abs_affine_roots(a, x.a, var, roots) &&
+               collect_abs_affine_roots(a, x.b, var, roots);
+    }
+    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        for(NodeId k : x.kids)
+            if(!collect_abs_affine_roots(a, k, var, roots)) return false;
+    }
+    return true;
+}
+
+static std::optional<int> affine_mid_sign_exact(std::pair<Rational, Rational> const &af,
+                                                std::optional<Rational> const &left,
+                                                std::optional<Rational> const &right)
+{
+    if(!left || !right || r_zero(af.first)) return std::nullopt;
+    Rational mid = r_div(r_add(*left, *right), Rational{2, 1});
+    Rational root = r_div(r_neg(af.second), af.first);
+    int side = rat_cmp_local(mid, root);
+    if(side == 0) return 0;
+    Rational slope = af.first;
+    slope.normalize();
+    return slope.num < 0 ? -side : side;
+}
+
+static void push_unique_text(std::vector<std::string> &xs, std::string s)
+{
+    for(std::string const &x : xs)
+        if(x == s) return;
+    xs.push_back(std::move(s));
+}
+
+static NodeId replace_abs_affine_on_interval(Arena &a,
+                                             NodeId n,
+                                             std::string const &var,
+                                             std::optional<Rational> const &left,
+                                             std::optional<Rational> const &right,
+                                             double mid,
+                                             bool &ok,
+                                             bool &changed,
+                                             std::vector<std::string> &rules)
+{
+    Node const x = a.get(n);
+    if(x.kind == NodeKind::Fn) {
+        if(x.fkind == FnKind::Abs) {
+            auto af = affine_form(a, x.a, var);
+            if(!af || r_zero(af->first)) return n;
+            int sign = 0;
+            if(auto exact = affine_mid_sign_exact(*af, left, right)) {
+                sign = *exact;
+            } else {
+                double val = (static_cast<double>(af->first.num) / af->first.den) * mid +
+                             (static_cast<double>(af->second.num) / af->second.den);
+                if(std::fabs(val) >= 1e-12) sign = val > 0 ? 1 : -1;
+            }
+            if(sign == 0) {
+                ok = false;
+                return n;
+            }
+            changed = true;
+            NodeId repl = sign > 0 ? x.a : casio::neg(a, x.a);
+            push_unique_text(rules, "abs(" + format_expr_human(a, x.a) + ") = " + format_expr_human(a, repl));
+            return casio::simplify(a, repl);
+        }
+        return a.fn(x.fkind, replace_abs_affine_on_interval(a, x.a, var, left, right, mid, ok, changed, rules));
+    }
+    if(x.kind == NodeKind::Pow)
+        return casio::power(a,
+                            replace_abs_affine_on_interval(a, x.a, var, left, right, mid, ok, changed, rules),
+                            replace_abs_affine_on_interval(a, x.b, var, left, right, mid, ok, changed, rules));
+    if(x.kind == NodeKind::Div)
+        return casio::div(a,
+                          replace_abs_affine_on_interval(a, x.a, var, left, right, mid, ok, changed, rules),
+                          replace_abs_affine_on_interval(a, x.b, var, left, right, mid, ok, changed, rules));
+    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        std::vector<NodeId> kids;
+        kids.reserve(x.kids.size());
+        for(NodeId k : x.kids) kids.push_back(replace_abs_affine_on_interval(a, k, var, left, right, mid, ok, changed, rules));
+        return x.kind == NodeKind::Add ? casio::add(a, kids) : casio::mul(a, kids);
+    }
+    return n;
+}
+
+static std::string join_texts(std::vector<std::string> const &xs, std::string const &sep)
+{
+    std::string out;
+    for(std::size_t i = 0; i < xs.size(); ++i) {
+        if(i) out += sep;
+        out += xs[i];
+    }
+    return out;
+}
+
+static std::string signed_sum_text(Arena &a, std::vector<NodeId> const &parts)
+{
+    std::string out;
+    for(NodeId p : parts) {
+        std::string t = format_expr_human(a, p);
+        if(out.empty()) out = t;
+        else if(t.rfind("- ", 0) == 0) out += " - " + t.substr(2);
+        else if(!t.empty() && t[0] == '-') out += " - " + t.substr(1);
+        else out += " + " + t;
+    }
+    return out;
+}
+
+static std::optional<double> const_value_double(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Num) return static_cast<double>(x.num.num) / static_cast<double>(x.num.den);
+    if(x.kind == NodeKind::Const) return x.ckind == ConstKind::Pi ? std::acos(-1.0) : std::exp(1.0);
+    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        double out = x.kind == NodeKind::Add ? 0.0 : 1.0;
+        for(NodeId k : x.kids) {
+            auto v = const_value_double(a, k);
+            if(!v) return std::nullopt;
+            if(x.kind == NodeKind::Add) out += *v;
+            else out *= *v;
+        }
+        return out;
+    }
+    if(x.kind == NodeKind::Div) {
+        auto top = const_value_double(a, x.a);
+        auto bot = const_value_double(a, x.b);
+        if(!top || !bot || std::fabs(*bot) < 1e-15) return std::nullopt;
+        return *top / *bot;
+    }
+    if(x.kind == NodeKind::Pow) {
+        auto base = const_value_double(a, x.a);
+        auto exp = const_value_double(a, x.b);
+        if(!base || !exp) return std::nullopt;
+        return std::pow(*base, *exp);
+    }
+    if(x.kind == NodeKind::Fn) {
+        auto v = const_value_double(a, x.a);
+        if(!v) return std::nullopt;
+        if(x.fkind == FnKind::Sqrt && *v >= 0) return std::sqrt(*v);
+        if(x.fkind == FnKind::Exp) return std::exp(*v);
+        if(x.fkind == FnKind::Log && *v > 0) return std::log(*v);
+        if(x.fkind == FnKind::Log10 && *v > 0) return std::log10(*v);
+        if(x.fkind == FnKind::Abs) return std::fabs(*v);
+    }
+    return std::nullopt;
+}
+
+static std::optional<std::vector<std::string>> run_abs_affine_definite_integral(Arena &a,
+                                                                               NodeId node,
+                                                                               std::string const &var,
+                                                                               std::string const &lo_text,
+                                                                               std::string const &hi_text)
+{
+    std::vector<Rational> roots;
+    if(!collect_abs_affine_roots(a, node, var, roots) || roots.empty()) return std::nullopt;
+    NodeId lo_node = simplify_known_endpoint_values(a, parse_expr(a, lo_text));
+    NodeId hi_node = simplify_known_endpoint_values(a, parse_expr(a, hi_text));
+    auto lo_val = const_value_double(a, lo_node);
+    auto hi_val = const_value_double(a, hi_node);
+    if(!lo_val || !hi_val || !std::isfinite(*lo_val) || !std::isfinite(*hi_val) || *lo_val >= *hi_val - 1e-12) return std::nullopt;
+
+    struct Point {
+        NodeId node = 0;
+        std::string text;
+        double val = 0.0;
+        std::optional<Rational> rat;
+    };
+
+    std::sort(roots.begin(), roots.end(), rat_less_local);
+    std::vector<Point> pts{{lo_node, format_expr_human(a, lo_node), *lo_val, as_num(a, lo_node)}};
+    for(Rational r : roots) {
+        double rv = static_cast<double>(r.num) / static_cast<double>(r.den);
+        if(*lo_val + 1e-12 < rv && rv < *hi_val - 1e-12)
+            pts.push_back(Point{a.num(r), rat_text(r), rv, r});
+    }
+    pts.push_back(Point{hi_node, format_expr_human(a, hi_node), *hi_val, as_num(a, hi_node)});
+    if(pts.size() < 3) return std::nullopt;
+
+    std::vector<std::string> root_texts;
+    for(std::size_t i = 1; i + 1 < pts.size(); ++i) root_texts.push_back(var + " = " + pts[i].text);
+    std::vector<std::string> steps{"Split at " + join_texts(root_texts, ", ") + "."};
+    std::vector<NodeId> parts;
+    NodeId total = casio::num(a, 0);
+    for(std::size_t i = 0; i + 1 < pts.size(); ++i) {
+        Point const &L = pts[i], &R = pts[i + 1];
+        double mid = (L.val + R.val) / 2.0;
+        bool ok = true, changed = false;
+        std::vector<std::string> rules;
+        NodeId piece = replace_abs_affine_on_interval(a, node, var, L.rat, R.rat, mid, ok, changed, rules);
+        if(!ok || !changed) return std::nullopt;
+        piece = casio::simplify(a, piece);
+        auto poly = poly_of_any(a, piece, var);
+        if(!poly || !poly->ok || poly_degree(*poly) < 0) return std::nullopt;
+        NodeId expanded = poly_to_node(a, *poly, var);
+        NodeId primitive = integrate_poly_node(a, *poly, var);
+        NodeId f_hi = simplify_known_endpoint_values(a, substitute_var(a, primitive, var, R.node));
+        NodeId f_lo = simplify_known_endpoint_values(a, substitute_var(a, primitive, var, L.node));
+        NodeId part = simplify_known_endpoint_values(a, casio::add(a, {f_hi, casio::neg(a, f_lo)}));
+        parts.push_back(part);
+        total = simplify_known_endpoint_values(a, casio::add(a, {total, part}));
+        steps.push_back(L.text + " <= " + var + " <= " + R.text + ": " + join_texts(rules, ", ") + ".");
+        steps.push_back("Int_" + L.text + "^" + R.text + " (" + format_expr_human(a, expanded) + ") d" + var + " = " + format_expr_human(a, part));
+    }
+    steps.push_back(signed_sum_text(a, parts) + " = " + format_expr_human(a, total));
+    return casio::exam_block("modulus definite integration", steps, format_expr_human(a, total));
+}
+
 static std::optional<Rational> pi_multiple(Arena &a, NodeId n)
 {
     Node const &x = a.get(n);
@@ -19185,6 +19422,7 @@ static std::optional<std::vector<std::string>> run_definite_integral(Arena &aren
     NodeId simple_node = casio::simplify(arena, parsed);
     NodeId node = casio::simplify(arena, compact_zero_exp(arena, compact_exp_product(arena, simple_node)));
     node = expand_squared_numeric_product(arena, node);
+    if(auto abs_split = run_abs_affine_definite_integral(arena, node, var, lo_text, hi_text)) return *abs_split;
     if(auto trig_sub = definite_cos_one_minus_sin_sub(arena, node, var, lo_text, hi_text)) return *trig_sub;
     if(auto expanded = expand_single_add_product(arena, node, var)) {
         node = casio::simplify(arena, merge_product_divs(arena, *expanded));

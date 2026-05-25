@@ -5857,6 +5857,94 @@ static std::optional<std::vector<std::string>> solve_exp_mobius_route(
 
 static std::optional<std::vector<std::string>> power_model_route(Arena &a, std::string const &expr)
 {
+    std::string log_body = unwrap_call_text(expr, "log_linearize");
+    if(log_body.empty()) log_body = unwrap_call_text(expr, "loglinear");
+    if(!log_body.empty()) {
+        auto args = split_csv(log_body);
+        if(args.empty() || args.size() > 2) return std::nullopt;
+        auto eq = casio::parse_equation(a, args[0]);
+        if(!eq) return std::nullopt;
+        std::string forced_x = args.size() >= 2 ? trim_text(args[1]) : "";
+
+        struct Model {
+            std::string y;
+            std::string x;
+            NodeId coef = 0;
+            NodeId power = 0;
+            NodeId model = 0;
+        };
+        auto collect_factors = [&](auto &&self, NodeId n, std::vector<NodeId> &out) -> void {
+            Node const &t = a.get(n);
+            if(t.kind == NodeKind::Mul) {
+                for(NodeId k : t.kids) self(self, k, out);
+            } else out.push_back(n);
+        };
+        auto parse_model = [&](NodeId yside, NodeId model) -> std::optional<Model> {
+            Node const &yn = a.get(yside);
+            if(yn.kind != NodeKind::Sym) return std::nullopt;
+            std::string y_name = yn.text;
+            std::vector<NodeId> factors;
+            collect_factors(collect_factors, model, factors);
+            std::vector<NodeId> coeffs;
+            NodeId xbase = 0, power = 0;
+            for(NodeId f : factors) {
+                Node const &fn = a.get(f);
+                NodeId cand_base = 0, cand_power = 0;
+                if(fn.kind == NodeKind::Pow && a.get(fn.a).kind == NodeKind::Sym) {
+                    cand_base = fn.a;
+                    cand_power = fn.b;
+                } else if(!forced_x.empty() && fn.kind == NodeKind::Sym && fn.text == forced_x) {
+                    cand_base = f;
+                    cand_power = one_node(a);
+                }
+                if(cand_base) {
+                    std::string base_name = a.get(cand_base).text;
+                    if(!forced_x.empty() && base_name != forced_x) {
+                        coeffs.push_back(f);
+                        continue;
+                    }
+                    if(xbase) return std::nullopt;
+                    xbase = cand_base;
+                    power = cand_power;
+                } else coeffs.push_back(f);
+            }
+            if(!xbase || contains_symbol(a, power, a.get(xbase).text) || contains_symbol(a, power, y_name)) return std::nullopt;
+            NodeId coef = coeffs.empty() ? one_node(a) :
+                casio::simplify(a, coeffs.size() == 1 ? coeffs.front() : casio::mul(a, coeffs));
+            std::string x_name = a.get(xbase).text;
+            if(contains_symbol(a, power, x_name) || contains_symbol(a, power, y_name)) return std::nullopt;
+            if(contains_symbol(a, coef, x_name) || contains_symbol(a, coef, y_name)) return std::nullopt;
+            return Model{y_name, x_name, coef, power, model};
+        };
+
+        auto m = parse_model(eq->lhs, eq->rhs);
+        if(!m) m = parse_model(eq->rhs, eq->lhs);
+        if(!m) return std::nullopt;
+        std::string y = m->y, x = m->x;
+        std::string coeff = format_expr(a, m->coef);
+        std::string p = format_expr(a, m->power);
+        bool coeff_one = casio::same_by_sig(a, m->coef, one_node(a));
+        bool power_one = casio::same_by_sig(a, m->power, one_node(a));
+        bool simple_power_text = !p.empty() && p.find_first_of(" +-*/") == std::string::npos;
+        std::string xpow = power_one ? x : x + "^" + (simple_power_text ? p : "(" + p + ")");
+        std::string pcoef = simple_power_text ? p : "(" + p + ")";
+        std::string pterm = power_one ? "log10(" + x + ")" : pcoef + "*log10(" + x + ")";
+        std::vector<std::string> out{
+            y + " = " + format_expr(a, m->model),
+            "log10(" + y + ") = log10(" + format_expr(a, m->model) + ")",
+        };
+        if(coeff_one) {
+            out.push_back("log10(" + y + ") = log10(" + xpow + ")");
+            if(!power_one) out.push_back("log10(" + xpow + ") = " + pterm);
+            out.push_back("log10(" + y + ") = " + pterm);
+        } else {
+            out.push_back("log10(" + y + ") = log10(" + coeff + ") + log10(" + xpow + ")");
+            if(!power_one) out.push_back("log10(" + xpow + ") = " + pterm);
+            out.push_back("log10(" + y + ") = " + pterm + " + log10(" + coeff + ")");
+        }
+        return out;
+    }
+
     std::string body = unwrap_call_text(expr, "power_model");
     if(body.empty()) body = unwrap_call_text(expr, "log_model");
     if(body.empty()) return std::nullopt;

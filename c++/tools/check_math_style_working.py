@@ -952,6 +952,30 @@ CASES = [
         ("Err:", "Answer:"),
     ),
     (
+        "log-linear model derivation",
+        ["--alg", "log_linearize(T=a*l^b)"],
+        ("T = a*l^b", "log10(T) = log10(a) + log10(l^b)", "log10(l^b) = b*log10(l)", "log10(T) = b*log10(l) + log10(a)"),
+        ("Err:", "Answer:"),
+    ),
+    (
+        "log-linear grouped exponent coefficient",
+        ["--alg", "log_linearize(y=a*x^(n-1),x)"],
+        ("log10(x^(n - 1)) = (n - 1)*log10(x)", "log10(y) = (n - 1)*log10(x) + log10(a)"),
+        ("n - 1*log10(x)", "Err:"),
+    ),
+    (
+        "loglinear alias model derivation",
+        ["--alg", "loglinear(a*l^b=T,l)"],
+        ("T = a*l^b", "log10(T) = b*log10(l) + log10(a)"),
+        ("Err:", "Answer:"),
+    ),
+    (
+        "log-linear stray argument rejects",
+        ["--alg", "log_linearize(T=a*l^b,l,unused)"],
+        ("Err:",),
+        ("log10(T) = b*log10(l) + log10(a)",),
+    ),
+    (
         "large finite binomial has no validity",
         ["--alg", "series((3+2*x)^20,x,0,5)"],
         ("(2*x + 3)^20 = 3486784401*(1+(2/3)*x)^20", "7118894532096*x^5"),
@@ -1262,6 +1286,24 @@ CASES = [
         "defint expands polynomial power",
         ["--int", "defint((4-x^2)^2,x,0,2)"],
         ("(- x^2 + 4)^2 = x^4 - 8*x^2 + 16", "F(2) - F(0)", "256/15"),
+    ),
+    (
+        "defint modulus affine splitter",
+        ["--int", "defint(2*(x+abs(x))-7*x*abs(x),x,-1,1)"],
+        ("Split at x = 0", "-1 <= x <= 0: abs(x) = -x", "Int_-1^0 (7*x^2) dx = 7/3", "Int_0^1 (4*x - 7*x^2) dx = -1/3", "2"),
+        ("ERR:", "No elementary primitive", "Answer:"),
+    ),
+    (
+        "defint modulus pi bounds",
+        ["--int", "defint(abs(x),x,-pi,pi)"],
+        ("Split at x = 0", "-pi <= x <= 0: abs(x) = -x", "Int_-pi^0 (-x) dx = 1/2*pi^2", "pi^2"),
+        ("ERR:", "No elementary primitive", "Answer:"),
+    ),
+    (
+        "defint modulus keeps constant abs factor",
+        ["--int", "defint(abs(3)*abs(x-1),x,0,2)"],
+        ("I = abs(3)*J, J = Int(abs(x - 1)) dx", "F(2) - F(0)", "3"),
+        ("ERR:", "No elementary primitive", "Answer:"),
     ),
     (
         "generic denominator derivative log rule",
