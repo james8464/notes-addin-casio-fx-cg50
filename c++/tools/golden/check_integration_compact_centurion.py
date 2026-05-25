@@ -35,7 +35,7 @@ def main() -> int:
     weak = 0
     lines = [
         "Compact Centurion latest report",
-        "Status: WEAK means no answer or limited/no method working.",
+        "Status note: weak rows have no answer or limited/no method working.",
         "",
     ]
 

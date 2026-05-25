@@ -36,7 +36,7 @@ def main() -> int:
     weak = 0
     lines: list[str] = [
         "Integration Centurion latest report",
-        "Status: LOCKED cases fail CI; WEAK cases are backlog probes.",
+        "Status note: locked failures fail CI; weak rows are backlog probes.",
         "",
     ]
 
