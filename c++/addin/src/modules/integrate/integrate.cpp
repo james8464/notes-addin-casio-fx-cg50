@@ -14116,7 +14116,7 @@ static std::optional<NodeId> integrate_affine_trig_basic(Arena &a, NodeId expr, 
         primitive = ln_abs(a, casio::add(a, {casio::fn(a, "cosec", u), casio::neg(a, casio::fn(a, "cot", u))}));
         steps.push_back("Step 3: v=cosec(u)-cot(u).");
         steps.push_back("Step 4: dv=cosec(u)(cosec(u)-cot(u)) du.");
-        steps.push_back("Step 5: Integral(cosec(u))du=Integral(1/v)dv.");
+        steps.push_back("Step 5: dv/v=cosec(u) du, so Integral(cosec(u))du=ln(abs(v)).");
     }
     else {
         return std::nullopt;
@@ -16409,22 +16409,28 @@ static std::optional<NodeId> integrate_inverse_trig_linear_term(Arena &a, NodeId
     NodeId w = fn.a;
     NodeId wf = casio::fn(a, name, w);
     NodeId first = casio::mul(a, {w, wf});
-    NodeId second = 0;
+    NodeId tail = 0;
+    Rational tail_scale{1, 1};
     std::string rule;
     if(fn.fkind == FnKind::Atan) {
-        second = casio::neg(a, casio::div(a, casio::fn(a, "log", casio::add(a, {casio::num(a, 1), casio::power(a, w, casio::num(a, 2))})), casio::num(a, 2)));
+        tail = casio::fn(a, "log", casio::add(a, {casio::num(a, 1), casio::power(a, w, casio::num(a, 2))}));
+        tail_scale = Rational{-1, 2};
         rule = "Apply inverse trig rule: Int arctan(w) dw = w*arctan(w) - 1/2*ln(1+w^2).";
         if(is_sym(a, w, var)) rule = "Apply inverse trig rule: Int arctan(" + var + ") d" + var + " = " + var + "*arctan(" + var + ") - 1/2*ln(1+" + var + "^2).";
     }
     else {
         NodeId root = casio::fn(a, "sqrt", casio::add(a, {casio::num(a, 1), casio::neg(a, casio::power(a, w, casio::num(a, 2)))}));
-        second = fn.fkind == FnKind::Asin ? root : casio::neg(a, root);
+        tail = root;
+        tail_scale = fn.fkind == FnKind::Asin ? Rational{1, 1} : Rational{-1, 1};
         rule = fn.fkind == FnKind::Asin
             ? "Apply inverse trig rule: Int asin(w) dw = w*asin(w) + sqrt(1-w^2)."
             : "Apply inverse trig rule: Int acos(w) dw = w*acos(w) - sqrt(1-w^2).";
     }
     Rational scale = r_div(fac.first, *lc);
-    NodeId prim = casio::simplify(a, mul_coeff(a, scale, casio::add(a, {first, second})));
+    NodeId prim = casio::simplify(a, casio::add(a, {
+        mul_coeff(a, scale, first),
+        mul_coeff(a, r_mul(scale, tail_scale), tail)
+    }));
     steps.push_back("Let w=" + format_expr(a, w) + ", so dw=" + format_expr(a, a.num(*lc)) + " d" + var + ".");
     if(!r_eq(fac.first, Rational{1, 1}) || !r_eq(*lc, Rational{1, 1}))
         steps.push_back("Integral term scale = " + rat_text(scale) + ".");
@@ -19860,6 +19866,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(lc && lc->num != 0) {
             NodeId arg = node_ref.a;
             NodeId lc_node = casio::num(arena, lc->num, lc->den);
+            Rational recip{lc->den, lc->num};
+            recip.normalize();
             NodeId one_minus_w2 = casio::add(arena, {casio::num(arena, 1), casio::neg(arena, casio::power(arena, arg, casio::num(arena, 2)))});
             NodeId scaled_w = casio::simplify(arena, casio::div(arena, arg, lc_node));
             Node const &arg_node = arena.get(arg);
@@ -19880,8 +19888,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             std::string rule;
             if(node_ref.fkind == FnKind::Atan) {
                 NodeId log_arg = casio::add(arena, {casio::num(arena, 1), casio::power(arena, arg, casio::num(arena, 2))});
-                NodeId log_part = casio::mul(arena, {casio::num(arena, 1, 2), casio::fn(arena, "log", log_arg)});
-                second_part = casio::neg(arena, casio::div(arena, log_part, lc_node));
+                second_part = mul_coeff(arena, r_mul(recip, Rational{-1, 2}), casio::fn(arena, "log", log_arg));
                 rule = "Int(atan(w)) dw = w*atan(w) - 1/2*ln(1+w^2).";
             }
             else if(node_ref.fkind == FnKind::Asin) {
@@ -19921,8 +19928,6 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                 rule = "Int(acos(w)) dw = w*acos(w) - sqrt(1-w^2).";
             }
             NodeId primitive = casio::simplify(arena, casio::add(arena, {first_part, second_part}));
-            Rational recip{lc->den, lc->num};
-            recip.normalize();
             std::string scale_text = r_eq(recip, Rational{1, 1}) ? "" : format_expr(arena, arena.num(recip)) + "*";
             std::vector<std::string> steps;
             casio::append_exam_prelude_steps(steps, pre);

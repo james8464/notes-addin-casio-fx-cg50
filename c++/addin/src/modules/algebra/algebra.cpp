@@ -32797,6 +32797,7 @@ algebra_compare_transform_modes:
                 else if(!term.empty() && term[0] == '-') desc_text += " - " + trim_text(term.substr(1));
                 else desc_text += " + " + term;
             }
+            out_text = desc_text.empty() ? format_expr(arena, outn) : desc_text;
             // The python test harness for expansion checks for tokens like "-46656*x^5"
             // (no space after unary minus) in the "Out =" line. Keep global formatting
             // readable, but compact "- <digits>" locally for this output.

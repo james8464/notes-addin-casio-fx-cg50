@@ -48,6 +48,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "expand((5*x-3)^8)",
+        ["(ax+b)^n with a = 5, b = -3, n = 8", "390625*x^8 - 1875000*x^7", "390625*x^8 -1875000*x^7"],
+        ["-87480*x + 510300*x^2", "ERR:"],
+    ),
+    (
+        "alg",
         "solve(x^2-6*sqrt(2)*x-14=0,x)",
         ["(x - 3*sqrt(2))^2 = 32", "x - 3*sqrt(2) = +/-4*sqrt(2)", "x = 7*sqrt(2)", "x = -sqrt(2)"],
         ["sqrt((-3*sqrt(2))^2 + 14)", "ERR:"],
@@ -875,6 +881,18 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         "asin((x-3)/8),method=parts",
         ["Use parts", "u=asin(w)", "dv=dw", "du=1/sqrt(1-w^2) dw", "v=w", "Answer:"],
         ["Classify the integrand", "ERR:"],
+    ),
+    (
+        "int",
+        "atan(2*x-3),method=auto",
+        ["w = 2*x - 3", "I = 1/2*Int(atan(w)) dw", "- 1/4*ln((2*x - 3)^2 + 1)"],
+        ["- 1/2*ln((2*x - 3)^2 + 1)/2", "ERR:"],
+    ),
+    (
+        "int",
+        "2*atan(x),method=parts",
+        ["Int arctan(x) dx = x*arctan(x) - 1/2*ln(1+x^2)", "2*x*atan(x) - ln(x^2 + 1) + C"],
+        ["2*(x*atan(x) - ln(x^2 + 1)/2)", "ERR:"],
     ),
     (
         "int",
@@ -1835,6 +1853,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         "sec(x),method=auto",
         ["v = sec(u)+tan(u)", "dv = sec(u)(sec(u)+tan(u)) du", "Int(sec(u))du = Int(1/v)dv", "Answer: ln(abs(sec(x) + tan(x))) + C"],
         ["Integral(sec u)du", "Answer: int", "ERR:"],
+    ),
+    (
+        "int",
+        "cosec(2*x+pi/6),method=auto",
+        ["u = 2*x + pi/6", "dv/v=cosec(u) du", "Integral(cosec(u))du=ln(abs(v))", "Answer: ln(abs(cosec(2*x + pi/6) - cot(2*x + pi/6)))/2 + C"],
+        ["Answer: int", "ERR:"],
     ),
     (
         "int",
