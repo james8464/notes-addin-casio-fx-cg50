@@ -4425,6 +4425,17 @@ static bool append_quotient_rule_detail(
     std::string v = clean_math_text(format_expr_human(a, q.b));
     std::string up = clean_math_text(format_expr_human(a, du));
     std::string vp = clean_math_text(format_expr_human(a, dv));
+    if(!depends_on(a, q.b, var)) {
+        NodeId out = casio::simplify(a, casio::div(a, du, q.b));
+        std::string ot = clean_math_text(format_expr_human(a, out));
+        steps.push_back("v = " + v + " is constant.");
+        steps.push_back("y = (" + u + ")/(" + v + ").");
+        steps.push_back("d/d" + var + "(" + u + ") = " + up + ".");
+        if(!ot.empty() && compact_math_key(ot) != compact_math_key("(" + up + ")/(" + v + ")"))
+            steps.push_back("(" + up + ")/(" + v + ") = " + ot + ".");
+        if(answer_override) *answer_override = "dy/d" + var + " = " + ot;
+        return true;
+    }
     steps.push_back("u = " + u + ".");
     steps.push_back("u' = " + up + ".");
     steps.push_back("v = " + v + ".");
@@ -5548,7 +5559,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                         steps.push_back("d(f(g(" + var + ")))/d" + var + "=f'(g(" + var + "))*g'(" + var + ").");
                         return steps;
                     }(),
-                    "d/d" + var + "(" + pre.simplified + ")"
+                    "dy/d" + var + " = d/d" + var + "(" + pre.simplified + ")"
                 );
             }
             {
