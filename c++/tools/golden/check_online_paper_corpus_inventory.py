@@ -32,7 +32,20 @@ def classify(path: Path) -> str:
 def load_manifest() -> list[dict[str, object]]:
     if not MANIFEST.exists():
         return []
-    return [json.loads(line) for line in MANIFEST.read_text(encoding="utf-8").splitlines() if line.strip()]
+    rows: list[dict[str, object]] = []
+    for lineno, line in enumerate(MANIFEST.read_text(encoding="utf-8").splitlines(), 1):
+        if not line.strip():
+            continue
+        try:
+            item = json.loads(line)
+        except json.JSONDecodeError as exc:
+            print(f"FAIL invalid manifest JSONL {MANIFEST}:{lineno}: {exc.msg}", file=sys.stderr)
+            raise SystemExit(1)
+        if not isinstance(item, dict):
+            print(f"FAIL manifest row is not object {MANIFEST}:{lineno}", file=sys.stderr)
+            raise SystemExit(1)
+        rows.append(item)
+    return rows
 
 
 def count_questions(txt: Path) -> int:
