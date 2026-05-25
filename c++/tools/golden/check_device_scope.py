@@ -103,6 +103,12 @@ CASES: tuple[Case, ...] = (
     Case("removed_laplace", "shell", "laplace(sin(x),x,s)", ("Err: unsupported function.",), True, 1),
     Case("removed_taylor", "shell", "taylor(ln(x),x,1,2)", ("Err: unsupported function.",), True, 1),
     Case("removed_uniformd", "shell", "uniformd(0,1,0.5)", ("Err: unsupported function.",), True, 1),
+    Case("removed_poisson", "shell", "poisson(3,2)", ("Err: unsupported function.",), True, 1),
+    Case("removed_studentd", "shell", "studentd(10,0)", ("Err: unsupported function.",), True, 1),
+    Case("removed_regression_variant", "shell", "exponential_regression([1,2],[3,4])", ("Err: unsupported function.",), True, 1),
+    Case("removed_recurrence", "shell", "rsolve(u(n)=u(n-1)+1,u(n),u(0)=0)", ("Err: unsupported function.",), True, 1),
+    Case("removed_newton_native", "shell", "newton(x^2-2,x,1)", ("Err: unsupported function.",), True, 1),
+    Case("removed_norm", "shell", "norm([3,4])", ("Err: unsupported function.",), True, 1),
 )
 
 

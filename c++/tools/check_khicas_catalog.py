@@ -9,6 +9,7 @@ ROOT = Path(__file__).resolve().parents[2]
 CATALOG = ROOT / "c++/khicas/upstream/giac90_1addin/catalogen.cpp"
 CATALOG_FR = ROOT / "c++/khicas/upstream/giac90_1addin/catalogfr.cpp"
 MAIN = ROOT / "c++/khicas/upstream/giac90_1addin/main.cc"
+SCOPE_GUARD = ROOT / "c++/addin/src/core/scope_guard.hpp"
 HELP = ROOT / "c++/prizm/help/CASIOCAS.HLP"
 TPL_DIR = ROOT / "c++/prizm/help"
 STATIC_LEXER = ROOT / "c++/khicas/upstream/giac90_1addin/static_lexer.h"
@@ -144,17 +145,90 @@ REMOVED_LEXER_NAMES = [
     "covariance_correlation",
     "disque",
     "disque_centre",
+    "erf",
+    "erfc",
+    "erfs",
+    "betad",
+    "betad_cdf",
+    "betad_icdf",
+    "cauchyd",
+    "cauchyd_cdf",
+    "cauchyd_icdf",
+    "chisquared",
+    "chisquared_cdf",
+    "chisquared_icdf",
+    "expovariate",
+    "exponentiald_cdf",
+    "exponentiald_icdf",
     "linear_regression",
     "linear_regression_plot",
+    "exponential_regression",
+    "logarithmic_regression",
+    "polynomial_regression",
+    "power_regression",
+    "fisher",
+    "fisher_cdf",
+    "fisher_icdf",
+    "fisherd",
+    "fisherd_cdf",
+    "fisherd_icdf",
+    "gammad",
+    "gammad_cdf",
+    "gammad_icdf",
+    "geometric",
+    "geometric_cdf",
+    "geometric_icdf",
+    "indets",
+    "is_matrix",
     "mean",
     "median",
     "median_line",
+    "matrix_norm",
+    "norm",
+    "frobenius_norm",
+    "l1norm",
+    "l2norm",
+    "linfnorm",
+    "maxnorm",
+    "colnorm",
+    "rownorm",
+    "negbinomial",
+    "negbinomial_cdf",
+    "negbinomial_icdf",
+    "newton",
     "normald",
     "NORMALD",
     "normald_cdf",
     "normald_icdf",
+    "normalvariate",
+    "odesolve",
+    "poisson",
+    "poisson_cdf",
+    "poisson_icdf",
     "randNorm",
+    "randbinomial",
+    "randchisquare",
+    "randchisquared",
+    "randexp",
+    "randfisher",
+    "randfisherd",
+    "randgeometric",
+    "randmatrix",
+    "randmultinomial",
     "randnormald",
+    "randpoisson",
+    "randpoly",
+    "randrange",
+    "randstudentd",
+    "randvector",
+    "reverse_rsolve",
+    "rsolve",
+    "snedecord",
+    "snedecord_cdf",
+    "snedecord_icdf",
+    "studentd",
+    "studentd_cdf",
+    "studentd_icdf",
     "area_between",
     "plot",
     "areaplot",
@@ -275,8 +349,19 @@ REMOVED_LEXER_NAMES = [
     "trace",
     "tran",
     "transpose",
+    "uniform",
+    "uniform_cdf",
+    "uniform_icdf",
     "uniformd",
+    "uniformd_cdf",
+    "uniformd_icdf",
     "variance",
+    "weibull",
+    "weibull_cdf",
+    "weibull_icdf",
+    "weibulld",
+    "weibulld_cdf",
+    "weibulld_icdf",
 ]
 
 REQUIRED_PROGCMD_SURFACES = [
@@ -383,6 +468,27 @@ def expected_lexer_pointer(name: str) -> str:
     return LEXER_POINTER_ALIASES.get(name, name)
 
 
+def removed_fnv1a(name: str) -> int:
+    h = 2166136261
+    for b in name.lower().encode("ascii"):
+        h = ((h ^ b) * 16777619) & 0xFFFFFFFF
+    return h
+
+
+def removed_identifier_hash_names() -> dict[int, str]:
+    out: dict[int, str] = {}
+    for name in REMOVED_LEXER_NAMES:
+        if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name):
+            out.setdefault(removed_fnv1a(name), name)
+    return out
+
+
+def switch_case_hashes(text: str, marker: str) -> set[int]:
+    start = text.index(marker)
+    end = text.index("return true;", start)
+    return {int(m.group(1), 16) for m in re.finditer(r"case 0x([0-9a-fA-F]+)u:", text[start:end])}
+
+
 def without_if0(text: str) -> str:
     out = []
     skip = 0
@@ -409,6 +515,7 @@ def main() -> int:
     catalog_fr = CATALOG_FR.read_text(errors="ignore")
     active_catalog_fr = without_if0(catalog_fr)
     main_cc = MAIN.read_text(errors="ignore")
+    scope_guard = SCOPE_GUARD.read_text(errors="ignore")
     help_text = HELP.read_text(errors="ignore") if HELP.exists() else ""
     template_text = "\n".join(p.read_text(errors="ignore") for p in sorted(TPL_DIR.glob("CASIOCAS*.TPL")))
     lexer_text = STATIC_LEXER.read_text(errors="ignore")
@@ -528,6 +635,18 @@ def main() -> int:
         return fail("working-line output hook missing")
     if "cascas_contains_removed_function" not in main_cc or "Err: unsupported function." not in main_cc:
         return fail("removed/Further-only runtime guard missing")
+    removed_hash_names = removed_identifier_hash_names()
+    required_removed_hashes = set(removed_hash_names)
+    scope_hashes = switch_case_hashes(scope_guard, "is_removed_function_hash")
+    main_hashes = switch_case_hashes(main_cc, "cascas_removed_function_hash")
+    missing_scope_hashes = sorted(required_removed_hashes - scope_hashes)
+    if missing_scope_hashes:
+        return fail("removed addin hashes missing: " + ", ".join(removed_hash_names[h] for h in missing_scope_hashes[:12]))
+    missing_main_hashes = sorted(required_removed_hashes - main_hashes)
+    if missing_main_hashes:
+        return fail("removed source-built hashes missing: " + ", ".join(removed_hash_names[h] for h in missing_main_hashes[:12]))
+    if scope_hashes != main_hashes:
+        return fail("removed hash guard mismatch between addin and source-built main")
     if "cascas_extract_method" not in main_cc or "cascas_strip_method_args" not in main_cc:
         return fail("method extraction hook missing")
     if "u = " not in template_text or "v = Int dv" not in template_text:

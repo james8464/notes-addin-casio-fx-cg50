@@ -124,6 +124,13 @@ def main() -> int:
         "fourier_an(sin(x),x,2*pi,1,0)", "taylor(ln(x),x,1,2)",
         "normald_cdf(0)", "normald_icdf(0.5)", "exponentiald(2,3)", "uniformd(0,1,0.5)",
         "quartiles([1,2,3])",
+        "erf(x)", "erfc(x)", "poisson(3,2)", "poisson_cdf(3,2)",
+        "geometric(0.4,3)", "negbinomial(3,0.2,4)", "studentd(10,0)",
+        "fisher(2,3,1)", "weibulld(1,2,3)", "exponential_regression([1,2],[3,4])",
+        "logarithmic_regression([1,2],[3,4])", "power_regression([1,2],[3,4])",
+        "rsolve(u(n)=u(n-1)+1,u(n),u(0)=0)", "odesolve(y,x,0,1)",
+        "newton(x^2-2,x,1)", "norm([3,4])", "matrix_norm([[1,2],[3,4]])",
+        "randmatrix(2,2)", "normalvariate(0,1)", "expovariate(1)",
     ]
     for expr in removed_alg:
         require("removed_alg_" + expr.split("(")[0], run_host("--alg", expr), ("Err: unsupported function",))
