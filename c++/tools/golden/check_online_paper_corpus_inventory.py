@@ -14,8 +14,8 @@ REPORT_MD = CORPUS / "inventory_latest.md"
 MANIFEST = CORPUS / "manifest_latest.jsonl"
 
 
-def classify(path: Path) -> str:
-    s = path.name.lower()
+def classify_text(s: str) -> str:
+    s = s.lower()
     if re.search(r"mark[-_ ]?scheme|(?<![a-z0-9])ms(?=\.|_|-|\(|$)|rms|msc", s):
         return "ms"
     if any(t in s for t in ("question-paper", "question_paper", "_qp", "-qp", " que_", " qp.", "past_paper")):
@@ -25,10 +25,14 @@ def classify(path: Path) -> str:
     return "other"
 
 
-def manifest_rows() -> int:
+def classify(path: Path) -> str:
+    return classify_text(path.name)
+
+
+def load_manifest() -> list[dict[str, object]]:
     if not MANIFEST.exists():
-        return 0
-    return sum(1 for line in MANIFEST.read_text(encoding="utf-8").splitlines() if line.strip())
+        return []
+    return [json.loads(line) for line in MANIFEST.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
 def count_questions(txt: Path) -> int:
@@ -45,19 +49,35 @@ def main() -> int:
         print(f"SKIP online corpus inventory: missing corpus dir {CORPUS}")
         return 0
 
+    manifest_rows = load_manifest()
+    manifest_by_source: dict[str, list[dict[str, object]]] = {}
+    for item in manifest_rows:
+        manifest_by_source.setdefault(str(item.get("source", "")), []).append(item)
+
     sources: list[dict[str, object]] = []
-    totals = {"pdf": 0, "txt": 0, "qp": 0, "ms": 0, "solution": 0, "other": 0, "question_markers": 0}
-    for source_dir in sorted(p for p in CORPUS.iterdir() if p.is_dir()):
+    totals = {"pdf": 0, "pdf_files": 0, "txt": 0, "qp": 0, "ms": 0, "solution": 0, "other": 0, "question_markers": 0}
+    source_names = sorted({p.name for p in CORPUS.iterdir() if p.is_dir()} | set(manifest_by_source))
+    for source_name in source_names:
+        source_dir = CORPUS / source_name
         pdfs = sorted((source_dir / "pdfs").glob("*.pdf"))
         txts = sorted((source_dir / "txt").glob("*.txt"))
+        mrows = [m for m in manifest_by_source.get(source_name, []) if m.get("status") == "download"]
         kinds = {"qp": 0, "ms": 0, "solution": 0, "other": 0}
-        kind_basis = pdfs if pdfs else txts
-        for p in kind_basis:
-            kinds[classify(p)] += 1
+        if pdfs:
+            for p in pdfs:
+                kinds[classify(p)] += 1
+        elif mrows:
+            for item in mrows:
+                kinds[classify_text(" ".join(str(item.get(k, "")) for k in ("pdf", "url", "label", "kind")))] += 1
+        else:
+            for p in txts:
+                kinds[classify(p)] += 1
+        pdf_count = len(pdfs) if pdfs else len(mrows)
         q_markers = sum(count_questions(t) for t in txts)
         row = {
-            "source": source_dir.name,
-            "pdf": len(pdfs),
+            "source": source_name,
+            "pdf": pdf_count,
+            "pdf_files": len(pdfs),
             "txt": len(txts),
             "qp": kinds["qp"],
             "ms": kinds["ms"],
@@ -66,13 +86,14 @@ def main() -> int:
             "question_markers": q_markers,
         }
         sources.append(row)
-        totals["pdf"] += len(pdfs)
+        totals["pdf"] += pdf_count
+        totals["pdf_files"] += len(pdfs)
         totals["txt"] += len(txts)
         totals["question_markers"] += q_markers
         for k in ("qp", "ms", "solution", "other"):
             totals[k] += kinds[k]
 
-    manifest = manifest_rows()
+    manifest = len(manifest_rows)
     payload = {"totals": totals, "manifest_rows": manifest, "sources": sources}
     REPORT_JSON.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
@@ -80,6 +101,7 @@ def main() -> int:
         "# Online Paper Corpus Inventory",
         "",
         f"- pdf: {totals['pdf']}",
+        f"- pdf file cache: {totals['pdf_files']}",
         f"- txt: {totals['txt']}",
         f"- manifest rows: {manifest}",
         f"- question-marker hits: {totals['question_markers']}",
