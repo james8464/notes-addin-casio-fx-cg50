@@ -74,6 +74,23 @@ A_LEVEL_MATHS_SOURCES = {
     "simplestudy_edexcel",
 }
 
+KNOWN_DEAD_LINKS = (
+    "A-level-Pure-Practice-Paper-2-M11__.pdf",
+    "A-level-Pure-Practice-Paper-2-J12-Mark-Scheme.pdf",
+    "A-level-Pure-Practice-Paper-2-M12-Mark-Scheme.pdf",
+    "A-level-Pure-Practice-Paper-2-M13-Mark-Scheme.pdf",
+    "A-level-Pure-Practice-Paper-2-M14-Mark-Scheme.pdf",
+)
+
+NON_PAPER_API_MARKERS = (
+    "/api/download/modules/?id=",
+    "/api/download/modules/formulae-and-syllabus/A",
+    "/api/download/modules/formulae-and-syllabus/EDEXCEL",
+    "/api/download/modules/A-Level/Past-Papers/Edexcel-GCE/A-Level-Year-2/JUNE",
+    "/api/download/modules/A-Level/Past-Papers/Edexcel-GCE/A-Level-Year-2/A",
+    "/api/download/modules/A-Level/Past-Papers/Edexcel-GCE/A-Level-Year-2/MOCK",
+)
+
 
 class LinkParser(html.parser.HTMLParser):
     def __init__(self) -> None:
@@ -178,6 +195,15 @@ def in_a_level_maths_scope(url: str, label: str) -> bool:
     return True
 
 
+def skip_link(source: str, url: str, label: str) -> str:
+    s = urllib.parse.unquote(url + " " + label)
+    if source == "pmt_edexcel" and any(marker in s for marker in KNOWN_DEAD_LINKS):
+        return "known-dead-third-party-link"
+    if source == "mymathscloud_edexcel" and ".pdf" not in s.lower() and any(marker in s for marker in NON_PAPER_API_MARKERS):
+        return "non-paper-api-link"
+    return ""
+
+
 def download_pdf(url: str, path: Path) -> tuple[bool, str]:
     try:
         data = fetch(url)
@@ -216,6 +242,7 @@ def main() -> int:
     ap.add_argument("--all-sources", action="store_true", help="include non-Edexcel, AS/IAL, and Further sources")
     ap.add_argument("--clean", action="store_true", help="remove the existing corpus before downloading")
     ap.add_argument("--force", action="store_true", help="redownload PDFs even when a local copy exists")
+    ap.add_argument("--keep-pdfs", action="store_true", help="keep downloaded PDF cache after text extraction")
     ap.add_argument("--sleep", type=float, default=0.05)
     args = ap.parse_args()
 
@@ -226,8 +253,10 @@ def main() -> int:
     OUT.mkdir(parents=True, exist_ok=True)
     manifest = OUT / "manifest_latest.jsonl"
     failures = OUT / "download_failures.txt"
+    skipped = OUT / "skipped_links.txt"
     rows: list[dict[str, object]] = []
     fail_lines: list[str] = []
+    skip_lines: list[str] = []
 
     for source, page in sources.items():
         pdf_dir = OUT / source / "pdfs"
@@ -245,6 +274,10 @@ def main() -> int:
             links = links[: args.max_per_source]
         print(f"{source}: links={len(links)}", flush=True)
         for i, (url, text) in enumerate(links, 1):
+            reason = skip_link(source, url, text)
+            if reason:
+                skip_lines.append(f"{source}\t{url}\t{reason}")
+                continue
             stem_src = Path(urllib.parse.urlparse(url).path).name or text or f"{source}_{i:03d}.pdf"
             if not stem_src.lower().endswith(".pdf"):
                 stem_src += ".pdf"
@@ -262,6 +295,8 @@ def main() -> int:
                 size = int(detail)
                 time.sleep(args.sleep)
             text_status = extract_text(pdf, txt) if args.force or not txt.exists() else "exists"
+            if not args.keep_pdfs:
+                pdf.unlink(missing_ok=True)
             rows.append(
                 {
                     "source": source,
@@ -279,9 +314,11 @@ def main() -> int:
 
     manifest.write_text("\n".join(json.dumps(r, ensure_ascii=False) for r in rows) + ("\n" if rows else ""), encoding="utf-8")
     failures.write_text("\n".join(fail_lines) + ("\n" if fail_lines else ""), encoding="utf-8")
+    skipped.write_text("\n".join(skip_lines) + ("\n" if skip_lines else ""), encoding="utf-8")
     print(f"downloaded/indexed {len(rows)} pdfs", flush=True)
     print(f"manifest {manifest}", flush=True)
     print(f"failures {len(fail_lines)}", flush=True)
+    print(f"skipped {len(skip_lines)}", flush=True)
     return 0 if rows else 1
 
 

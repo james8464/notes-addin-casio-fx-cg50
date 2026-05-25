@@ -85,6 +85,7 @@ python3 c++/tools/golden/check_edexcel_question_audit_coverage.py
 python3 c++/tools/golden/render_audit_pdf_pages.py --format jpeg ~/Downloads/"MadAsMaths standard topics" ~/Downloads/"MadAsMaths A-level booklets" ~/Downloads/"MadAsMaths papers" ~/Downloads/"Edexcel A Level Maths past papers" ~/Downloads/"Edexcel A Level Maths support materials"
 python3 c++/tools/golden/check_madasmaths_standard_topics_audit.py
 python3 c++/tools/golden/check_madasmaths_full_audit.py --no-render --strict-skips
+python3 c++/tools/golden/check_madasmaths_download_coverage.py
 python3 c++/tools/golden/check_a_level_audit_tracker.py
 ```
 
@@ -94,6 +95,7 @@ Current audit refresh evidence is tracked in:
 c++/tools/golden/a_level_audit_graph.md
 c++/tests/reports/a_level_source_downloads/summary_latest.txt
 c++/tests/reports/online_paper_corpus/inventory_latest.md
+c++/tests/reports/madasmaths_download_coverage/summary_latest.md
 ```
 
 The online paper audit keeps `manifest_latest.jsonl` and extracted text for
