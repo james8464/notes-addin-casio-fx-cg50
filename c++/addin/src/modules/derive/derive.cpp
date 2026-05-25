@@ -3197,6 +3197,26 @@ static bool is_zero_node(Arena &a, NodeId n)
     return x.kind == NodeKind::Num && x.num.num == 0;
 }
 
+static NodeId divide_by_numeric_constant(Arena &a, NodeId top, Rational den)
+{
+    Rational coeff{1, 1};
+    std::vector<NodeId> rest;
+    Node const &x = a.get(top);
+    if(x.kind == NodeKind::Mul) {
+        for(NodeId k : x.kids) {
+            if(auto q = as_num(a, k)) coeff = rat_mul_local(coeff, *q);
+            else rest.push_back(k);
+        }
+    }
+    else if(auto q = as_num(a, top)) coeff = *q;
+    else rest.push_back(top);
+    coeff = rat_div_local(coeff, den);
+    if(coeff.num == 0) return casio::num(a, 0);
+    if(rest.empty()) return casio::num(a, coeff.num, coeff.den);
+    if(coeff.num != coeff.den) rest.insert(rest.begin(), casio::num(a, coeff.num, coeff.den));
+    return casio::simplify(a, rest.size() == 1 ? rest.front() : casio::mul(a, rest));
+}
+
 static std::optional<NodeId> scaled_var(Arena &a, NodeId n, std::string const &var)
 {
     if(is_var(a, n, var)) return casio::num(a, 1);
@@ -3411,6 +3431,10 @@ static NodeId diff(Arena &a, NodeId n, std::string const &var, std::string const
         NodeId v = x.b;
         NodeId up = diff(a, u, var, dep);
         NodeId vp = diff(a, v, var, dep);
+        if(is_zero_node(a, vp)) {
+            if(auto den = as_num(a, v); den && den->num != 0) return divide_by_numeric_constant(a, up, *den);
+            return casio::simplify(a, casio::div(a, up, v));
+        }
         NodeId top = casio::add(a, {casio::mul(a, {up, v}), casio::neg(a, casio::mul(a, {u, vp}))});
         NodeId bot = casio::power(a, v, casio::num(a, 2));
         return casio::simplify(a, casio::div(a, top, bot));

@@ -20455,6 +20455,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     }
     
     NodeId simp = casio::simplify(arena, *result.result);
+    if(simple_algebraic_integrand(arena, simp, req.var))
+        simp = casio::simplify(arena, distribute_numeric_add_products(arena, simp));
     std::string ans = format_expr_human(arena, simp);
     ans = combine_same_formatted_terms(ans);
     

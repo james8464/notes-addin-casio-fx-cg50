@@ -741,7 +741,7 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "June 2023 Q1 power integral",
         ["--int", "(1/3)*sqrt(x)*(2*x-5)"],
-        ["sqrt(x)*(2*x - 5) = 2*sqrt(x)*x - 5*sqrt(x)", "x^(3/2)", "1/3*(4/5*x^(5/2) - 10/3*x^(3/2)) + C"],
+        ["sqrt(x)*(2*x - 5) = 2*sqrt(x)*x - 5*sqrt(x)", "x^(3/2)", "4/15*x^(5/2) - 10/9*x^(3/2) + C"],
         ["ERR:", "No elementary primitive"],
     ),
     (
