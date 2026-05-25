@@ -1600,10 +1600,11 @@ static std::optional<NodeId> inverse_exp_mobius(Arena &a, NodeId expr)
     return casio::simplify(a, casio::div(a, shifted, a.num(p->a1)));
 }
 
-static std::optional<std::vector<std::string>> inverse_sqrt_affine_context(Arena &a, NodeId expr)
+static void inverse_affine_core(Arena &a, NodeId expr, NodeId &inner, Rational &scale, Rational &shift)
 {
-    NodeId inner = expr;
-    Rational scale{1, 1}, shift{0, 1};
+    inner = expr;
+    scale = Rational{1, 1};
+    shift = Rational{0, 1};
     NodeId wrapped = 0;
     Rational m, b;
     if(affine_wrapper(a, expr, wrapped, m, b) && wrapped != expr) {
@@ -1611,6 +1612,13 @@ static std::optional<std::vector<std::string>> inverse_sqrt_affine_context(Arena
         scale = m;
         shift = b;
     }
+}
+
+static std::optional<std::vector<std::string>> inverse_sqrt_affine_context(Arena &a, NodeId expr)
+{
+    NodeId inner = expr;
+    Rational scale{1, 1}, shift{0, 1};
+    inverse_affine_core(a, expr, inner, scale, shift);
     if(is_zero(scale)) return std::nullopt;
 
     Node const &x = a.get(inner);
@@ -1628,6 +1636,74 @@ static std::optional<std::vector<std::string>> inverse_sqrt_affine_context(Arena
         std::string("Range f: y ") + (range_ge ? ">= " : "<= ") + shift_text,
         std::string("Domain f^-1: x ") + (range_ge ? ">= " : "<= ") + shift_text,
     };
+}
+
+static std::optional<std::vector<std::string>> inverse_log_affine_context(Arena &a, NodeId expr)
+{
+    NodeId inner = expr;
+    Rational scale{1, 1}, shift{0, 1};
+    inverse_affine_core(a, expr, inner, scale, shift);
+    if(is_zero(scale)) return std::nullopt;
+
+    Node const &x = a.get(inner);
+    if(x.kind != NodeKind::Fn || x.fkind != FnKind::Log) return std::nullopt;
+    auto p = poly_of(a, x.a, "x");
+    if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a1)) return std::nullopt;
+
+    Rational bound = r_div(r_neg(p->a0), p->a1);
+    bool dom_gt = p->a1.num > 0;
+    return std::vector<std::string>{
+        std::string("Domain f: x ") + (dom_gt ? "> " : "< ") + format_rat(a, bound),
+        "Range f: -inf < y < inf",
+        "Domain f^-1: -inf < x < inf",
+    };
+}
+
+static std::optional<std::vector<std::string>> inverse_exp_affine_context(Arena &a, NodeId expr)
+{
+    NodeId inner = expr;
+    Rational scale{1, 1}, shift{0, 1};
+    inverse_affine_core(a, expr, inner, scale, shift);
+    if(is_zero(scale)) return std::nullopt;
+
+    NodeId expn = 0;
+    if(!exp_factor(a, inner, expn)) return std::nullopt;
+    auto p = poly_of(a, expn, "x");
+    if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a1)) return std::nullopt;
+
+    bool range_gt = scale.num > 0;
+    std::string shift_text = format_rat(a, shift);
+    return std::vector<std::string>{
+        "Domain f: -inf < x < inf",
+        std::string("Range f: y ") + (range_gt ? "> " : "< ") + shift_text,
+        std::string("Domain f^-1: x ") + (range_gt ? "> " : "< ") + shift_text,
+    };
+}
+
+static std::optional<std::vector<std::string>> inverse_mobius_context(Arena &a, NodeId expr)
+{
+    auto rp = ratpoly_of_node(a, expr, "x");
+    if(!rp.ok || !is_degree_at_most_one(rp.num) || !is_degree_at_most_one(rp.den) || is_zero(rp.den.a1))
+        return std::nullopt;
+    Rational det = r_sub(r_mul(rp.num.a1, rp.den.a0), r_mul(rp.num.a0, rp.den.a1));
+    if(is_zero(det)) return std::nullopt;
+    Rational pole = r_div(r_neg(rp.den.a0), rp.den.a1);
+    Rational asym = r_div(rp.num.a1, rp.den.a1);
+    std::string asym_text = format_rat(a, asym);
+    return std::vector<std::string>{
+        "Domain f: x != " + format_rat(a, pole),
+        "Range f: y != " + asym_text,
+        "Domain f^-1: x != " + asym_text,
+    };
+}
+
+static std::optional<std::vector<std::string>> inverse_basic_context(Arena &a, NodeId expr)
+{
+    if(auto ctx = inverse_sqrt_affine_context(a, expr)) return ctx;
+    if(auto ctx = inverse_log_affine_context(a, expr)) return ctx;
+    if(auto ctx = inverse_exp_affine_context(a, expr)) return ctx;
+    if(auto ctx = inverse_mobius_context(a, expr)) return ctx;
+    return std::nullopt;
 }
 
 static std::optional<NodeId> inverse_simple_function(Arena &a, NodeId expr)
@@ -33033,7 +33109,7 @@ algebra_compare_transform_modes:
                 "5. Answer: f^-1(x) = " + ans,
             };
             if(domain_text.empty()) {
-                if(auto ctx = inverse_sqrt_affine_context(arena, n)) {
+                if(auto ctx = inverse_basic_context(arena, n)) {
                     out.insert(out.begin() + 2, ctx->begin(), ctx->begin() + 2);
                     out.insert(out.end() - 1, ctx->back());
                 }

@@ -548,17 +548,70 @@ CASES = [
     (
         "affine log inverse",
         ["--alg", "inverse(3-ln(x))"],
-        ("y = f(x) = - ln(x) + 3", "y = e^(- x + 3)", "f^-1(x) = e^(- x + 3)"),
+        (
+            "y = f(x) = - ln(x) + 3",
+            "Domain f: x > 0",
+            "Range f: -inf < y < inf",
+            "y = e^(- x + 3)",
+            "Domain f^-1: -inf < x < inf",
+            "f^-1(x) = e^(- x + 3)",
+        ),
     ),
     (
         "affine exp inverse",
         ["--alg", "inverse(2*e^(3*x)-5)"],
-        ("y = f(x) = 2*e^(3*x) - 5", "y = ln((x + 5)/2)/3", "f^-1(x) = ln((x + 5)/2)/3"),
+        (
+            "y = f(x) = 2*e^(3*x) - 5",
+            "Domain f: -inf < x < inf",
+            "Range f: y > -5",
+            "y = ln((x + 5)/2)/3",
+            "Domain f^-1: x > -5",
+            "f^-1(x) = ln((x + 5)/2)/3",
+        ),
     ),
     (
         "divided affine log inverse",
         ["--alg", "inverse((1+ln(x+3))/2)"],
-        ("y = f(x) = (ln(x + 3) + 1)/2", "y = e^(2*(x - 1/2)) - 3", "f^-1(x) = e^(2*(x - 1/2)) - 3"),
+        (
+            "y = f(x) = (ln(x + 3) + 1)/2",
+            "Domain f: x > -3",
+            "Range f: -inf < y < inf",
+            "y = e^(2*(x - 1/2)) - 3",
+            "Domain f^-1: -inf < x < inf",
+            "f^-1(x) = e^(2*(x - 1/2)) - 3",
+        ),
+    ),
+    (
+        "negative affine log inverse context",
+        ["--alg", "inverse(4-3*ln(2*x-1))"],
+        (
+            "y = f(x) = - 3*ln(2*x - 1) + 4",
+            "Domain f: x > 1/2",
+            "Range f: -inf < y < inf",
+            "Domain f^-1: -inf < x < inf",
+        ),
+    ),
+    (
+        "negative affine exp inverse context",
+        ["--alg", "inverse(5-2*e^(x-1))"],
+        (
+            "y = f(x) = - 2*e^(x - 1) + 5",
+            "Domain f: -inf < x < inf",
+            "Range f: y < 5",
+            "Domain f^-1: x < 5",
+        ),
+    ),
+    (
+        "mobius inverse context",
+        ["--alg", "inverse((x-3)/(x+5))"],
+        (
+            "y = f(x) = (x - 3)/(x + 5)",
+            "Domain f: x != -5",
+            "Range f: y != 1",
+            "y = (- 5*x - 3)/(x - 1)",
+            "Domain f^-1: x != 1",
+            "f^-1(x) = (- 5*x - 3)/(x - 1)",
+        ),
     ),
     (
         "log of affine exp exact solve",
