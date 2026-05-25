@@ -920,6 +920,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "int",
+        "x^2/((x+1)*(x+2)),method=auto",
+        ["Divide: N/D = Q + R/D", "Q = 1, R = - 3*x - 2", "R/D = -4/(x + 2) + 1/(x + 1)", "x - 4*ln(abs(x + 2)) + ln(abs(x + 1)) + C"],
+        ["- 3/2*ln(abs((x + 1)*(x + 2)))", "ERR:"],
+    ),
+    (
+        "int",
         "(3*x^2+5*x+7)/((x-1)^2*(x^2+1)),method=pf",
         ["A/(x-1)+B/(x-1)^2+(Cx+D)/(x^2+1)", "coefficient equations", "Answer:"],
         ["No elementary primitive found", "ERR:"],

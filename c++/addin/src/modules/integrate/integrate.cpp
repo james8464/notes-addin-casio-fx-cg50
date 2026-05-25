@@ -14999,7 +14999,7 @@ static std::optional<NodeId> integrate_partial_fraction_simple(Arena &a, NodeId 
     return std::nullopt;
 }
 
-static std::optional<NodeId> integrate_distinct_linear_poly_pf(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps)
+static std::optional<NodeId> integrate_distinct_linear_poly_pf(Arena &a, NodeId expr, std::string const &var, std::vector<std::string> &steps, bool require_improper = false)
 {
     Node const &x = a.get(expr);
     if(x.kind != NodeKind::Div) return std::nullopt;
@@ -15007,7 +15007,15 @@ static std::optional<NodeId> integrate_distinct_linear_poly_pf(Arena &a, NodeId 
     auto d = poly_of_any(a, x.b, var);
     if(!n || !d || !n->ok || !d->ok) return std::nullopt;
     int deg = poly_degree(*d);
-    if(deg < 2 || deg > 4 || poly_degree(*n) >= deg) return std::nullopt;
+    if(deg < 2 || deg > 4) return std::nullopt;
+    bool improper = poly_degree(*n) >= deg;
+    if(require_improper && !improper) return std::nullopt;
+    if(!require_improper && improper) return std::nullopt;
+    auto qr = poly_divmod(*n, *d);
+    if(!qr) return std::nullopt;
+    Poly q = qr->first;
+    Poly rpoly = qr->second;
+    if(improper && poly_degree(q) > 2) return std::nullopt;
 
     std::vector<Rational> roots;
     for(int den = 1; den <= 12 && static_cast<int>(roots.size()) < deg; ++den) {
@@ -15024,22 +15032,39 @@ static std::optional<NodeId> integrate_distinct_linear_poly_pf(Arena &a, NodeId 
 
     Poly dp = poly_derivative(*d);
     std::vector<NodeId> terms;
+    if(poly_degree(q) >= 0) terms.push_back(integrate_poly_node(a, q, var));
     std::vector<std::string> factors;
     std::vector<std::string> coeffs;
+    std::vector<std::string> pf_terms;
     NodeId vx = casio::sym(a, var);
     for(Rational r : roots) {
         Rational dpr = poly_eval(dp, r);
         if(r_zero(dpr)) return std::nullopt;
-        Rational A = r_div(poly_eval(*n, r), dpr);
+        Rational A = r_div(poly_eval(rpoly, r), dpr);
         NodeId lin = casio::simplify(a, casio::add(a, {vx, a.num(r_neg(r))}));
-        factors.push_back(format_expr_human(a, lin));
+        std::string lin_text = format_expr_human(a, lin);
+        factors.push_back(lin_text);
         coeffs.push_back("r=" + format_expr(a, a.num(r)) + " -> " + format_expr(a, a.num(A)));
-        if(!r_zero(A)) terms.push_back(mul_coeff(a, A, ln_abs(a, lin)));
+        if(!r_zero(A)) {
+            terms.push_back(mul_coeff(a, A, ln_abs(a, lin)));
+            Rational mag = r_sign(A) < 0 ? r_neg(A) : A;
+            std::string term = format_expr(a, a.num(mag)) + "/(" + lin_text + ")";
+            if(pf_terms.empty()) pf_terms.push_back(r_sign(A) < 0 ? "-" + term : term);
+            else pf_terms.push_back(std::string(r_sign(A) < 0 ? "- " : "+ ") + term);
+        }
     }
     if(terms.empty()) return casio::num(a, 0);
-    steps.push_back("Step 2: D=" + join_strings(factors, ", ") + ".");
-    steps.push_back("Step 3: Use A_i=N(r_i)/D'(r): " + join_strings(coeffs, ", ") + ".");
-    steps.push_back("Step 4: Int(A_i/(x-r_i))dx=A_i*ln(abs(x-r_i)).");
+    if(improper) {
+        steps.push_back("Step 2: Divide: N/D = Q + R/D.");
+        steps.push_back("Q = " + format_expr_human(a, poly_to_node(a, q, var)) + ", R = " + format_expr_human(a, poly_to_node(a, rpoly, var)) + ".");
+        steps.push_back("Step 3: D factors: " + join_strings(factors, ", ") + ".");
+        steps.push_back("Step 4: Use A_i=R(r_i)/D'(r_i): " + join_strings(coeffs, ", ") + ".");
+        if(!pf_terms.empty()) steps.push_back("R/D = " + join_strings(pf_terms, " ") + ".");
+    } else {
+        steps.push_back("Step 2: D=" + join_strings(factors, ", ") + ".");
+        steps.push_back("Step 3: Use A_i=N(r_i)/D'(r): " + join_strings(coeffs, ", ") + ".");
+        steps.push_back("Step 4: Int(A_i/(x-r_i))dx=A_i*ln(abs(x-r_i)).");
+    }
     return casio::simplify(a, casio::add(a, terms));
 }
 
@@ -17285,6 +17310,12 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
     if(auto tcg = integrate_trig_conjugate_forms(a, expr, var, out.steps)) {
         out.result = *tcg;
         out.steps.push_back("Step 3: Simplify. Add constant C.");
+        return out;
+    }
+
+    if(auto linear_pf = integrate_distinct_linear_poly_pf(a, expr, var, out.steps, true)) {
+        out.result = *linear_pf;
+        out.steps.push_back("Step 5: Simplify. Add constant C.");
         return out;
     }
 
