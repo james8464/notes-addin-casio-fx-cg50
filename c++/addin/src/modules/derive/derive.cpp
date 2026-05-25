@@ -1157,6 +1157,44 @@ static NodeId nicer_derivative_final(Arena &a, NodeId n)
     return best;
 }
 
+static NodeId expanded_derivative_final(Arena &a, NodeId n)
+{
+    NodeId best = roundtrip_simplify(a, n);
+    NodeId expanded = casio::simplify(a, expand_small(a, best));
+    if(node_weight(a, expanded) <= node_weight(a, best) + 2) best = expanded;
+    if(auto recip = reciprocal_product_denominator(a, best)) best = *recip;
+    if(auto split = split_add_over_common_den(a, best)) best = *split;
+    return best;
+}
+
+static bool has_laurent_poly_product(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Mul) {
+        bool has_add = false;
+        bool has_neg_var_pow = false;
+        for(NodeId k : x.kids) {
+            Node const &t = a.get(k);
+            if(t.kind == NodeKind::Add && depends_on(a, k, var)) has_add = true;
+            if(t.kind == NodeKind::Pow) {
+                Node const &base = a.get(t.a);
+                auto e = as_num(a, t.b);
+                if(base.kind == NodeKind::Sym && base.text == var && e && e->den == 1 && e->num < 0)
+                    has_neg_var_pow = true;
+            }
+        }
+        if(has_add && has_neg_var_pow) return true;
+    }
+    if(x.kind == NodeKind::Fn) return has_laurent_poly_product(a, x.a, var);
+    if(x.kind == NodeKind::Pow || x.kind == NodeKind::Div)
+        return has_laurent_poly_product(a, x.a, var) || has_laurent_poly_product(a, x.b, var);
+    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        for(NodeId k : x.kids)
+            if(has_laurent_poly_product(a, k, var)) return true;
+    }
+    return false;
+}
+
 static std::optional<NodeId> param_cancel_common_factors(Arena &a, NodeId top, NodeId bot)
 {
     std::vector<NodeId> n = a.get(top).kind == NodeKind::Mul ? a.get(top).kids : std::vector<NodeId>{top};
@@ -5959,11 +5997,13 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     append_common_denominator_derivative(arena, out, var, label, steps, answer_override);
                 if(!used_rule) steps.push_back("dy/d" + var + " = " + clean_math_text(format_expr_human(arena, out)) + ".");
             }
-            if(answer_override.empty() && allow_power_chain_final) {
-                NodeId nice = nicer_derivative_final(arena, out);
+            bool laurent_product_final = has_laurent_poly_product(arena, out, var);
+            if(answer_override.empty() && (allow_power_chain_final || laurent_product_final)) {
+                NodeId nice = laurent_product_final ? expanded_derivative_final(arena, out) : nicer_derivative_final(arena, out);
                 std::string raw_txt = clean_math_text(format_expr_human(arena, out));
                 std::string nice_txt = clean_math_text(format_expr_human(arena, nice));
-                if(!nice_txt.empty() && !same_expr_key(arena, nice, out) && nice_txt.size() <= raw_txt.size() + 12)
+                std::size_t allowance = laurent_product_final ? 2 : 12;
+                if(!nice_txt.empty() && !same_expr_key(arena, nice, out) && nice_txt.size() <= raw_txt.size() + allowance)
                     out = nice;
             }
             std::string final_answer = answer_override.empty() ? label + " = " + clean_math_text(format_expr_human(arena, out)) : answer_override;
