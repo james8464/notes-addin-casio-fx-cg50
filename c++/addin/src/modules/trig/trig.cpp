@@ -4156,6 +4156,126 @@ static std::vector<double> solve_quadratic_d(double a, double b, double c)
     return roots;
 }
 
+static long double poly4_even_linear_value_ld(long double q4, long double q2, long double q1, long double q0, long double u)
+{
+    return ((q4 * u * u + q2) * u + q1) * u + q0;
+}
+
+static long double poly3_depressed_value_ld(long double a, long double b, long double c, long double u)
+{
+    return (a * u * u + b) * u + c;
+}
+
+static void add_unique_ld(std::vector<long double> &xs, long double x)
+{
+    if(!std::isfinite(x)) return;
+    for(long double old : xs)
+        if(std::fabs(old - x) < 1e-10L * std::max(1.0L, std::max(std::fabs(old), std::fabs(x)))) return;
+    xs.push_back(x);
+}
+
+static std::vector<double> solve_depressed_cubic_d(double a, double b, double c)
+{
+    std::vector<double> roots;
+    long double scale = std::max({std::fabs((long double)a), std::fabs((long double)b), std::fabs((long double)c)});
+    if(!std::isfinite(scale) || scale < 1e-300L) return roots;
+    long double A = (long double)a / scale, B = (long double)b / scale, C = (long double)c / scale;
+    if(A == 0.0L) return solve_quadratic_d(0.0, (double)B, (double)C);
+    long double bound = 1.0L + std::max(std::fabs(B / A), std::fabs(C / A));
+    if(!std::isfinite(bound)) return roots;
+
+    std::vector<long double> pts;
+    add_unique_ld(pts, -bound);
+    long double e = -B / (3.0L * A);
+    if(e > 0.0L) {
+        long double s = std::sqrt(e);
+        add_unique_ld(pts, -s);
+        add_unique_ld(pts, s);
+    }
+    add_unique_ld(pts, bound);
+    std::sort(pts.begin(), pts.end());
+
+    double const eps = 1e-10;
+    for(long double x : pts) {
+        long double fx = poly3_depressed_value_ld(A, B, C, x);
+        if(std::isfinite(fx) && std::fabs(fx) < eps) add_unique(roots, (double)x);
+    }
+    for(std::size_t i = 1; i < pts.size(); ++i) {
+        long double lo = pts[i - 1], hi = pts[i];
+        long double flo = poly3_depressed_value_ld(A, B, C, lo);
+        long double fhi = poly3_depressed_value_ld(A, B, C, hi);
+        if(!std::isfinite(flo) || !std::isfinite(fhi) || flo * fhi > 0.0L) continue;
+        for(int it = 0; it < 90; ++it) {
+            long double mid = lo + (hi - lo) / 2.0L;
+            long double fm = poly3_depressed_value_ld(A, B, C, mid);
+            if(!std::isfinite(fm)) break;
+            if(flo * fm <= 0.0L) {
+                hi = mid;
+                fhi = fm;
+            }
+            else {
+                lo = mid;
+                flo = fm;
+            }
+        }
+        add_unique(roots, (double)(lo + (hi - lo) / 2.0L));
+    }
+    std::sort(roots.begin(), roots.end());
+    return roots;
+}
+
+static std::vector<double> solve_poly4_even_linear(double q4, double q2, double q1, double q0)
+{
+    double coeff_scale = std::max({std::fabs(q4), std::fabs(q2), std::fabs(q1), std::fabs(q0)});
+    if(!std::isfinite(coeff_scale) || coeff_scale < 1e-300) return {};
+    q4 /= coeff_scale;
+    q2 /= coeff_scale;
+    q1 /= coeff_scale;
+    q0 /= coeff_scale;
+    if(q4 == 0.0) return solve_quadratic_d(q2, q1, q0);
+
+    long double Q4 = q4, Q2 = q2, Q1 = q1, Q0 = q0;
+    long double bound = 1.0L + std::max({std::fabs(Q2 / Q4), std::fabs(Q1 / Q4), std::fabs(Q0 / Q4)});
+    if(!std::isfinite(bound)) return {};
+    double const root_eps = 1e-8;
+    std::vector<double> roots;
+
+    std::vector<long double> pts;
+    add_unique_ld(pts, -bound);
+    for(double x : solve_depressed_cubic_d(4.0 * q4, 2.0 * q2, q1)) {
+        if(std::isfinite(x) && (long double)x > -bound && (long double)x < bound) add_unique_ld(pts, x);
+    }
+    add_unique_ld(pts, bound);
+    std::sort(pts.begin(), pts.end());
+
+    for(long double x : pts) {
+        long double fx = poly4_even_linear_value_ld(Q4, Q2, Q1, Q0, x);
+        if(std::isfinite(fx) && std::fabs(fx) < root_eps) add_unique(roots, (double)x);
+    }
+    for(std::size_t i = 1; i < pts.size(); ++i) {
+        long double lo = pts[i - 1], hi = pts[i];
+        long double flo = poly4_even_linear_value_ld(Q4, Q2, Q1, Q0, lo);
+        long double fhi = poly4_even_linear_value_ld(Q4, Q2, Q1, Q0, hi);
+        if(!std::isfinite(flo) || !std::isfinite(fhi) || flo * fhi > 0.0L) continue;
+        for(int it = 0; it < 100; ++it) {
+            long double mid = lo + (hi - lo) / 2.0L;
+            long double fm = poly4_even_linear_value_ld(Q4, Q2, Q1, Q0, mid);
+            if(!std::isfinite(fm)) break;
+            if(flo * fm <= 0.0L) {
+                hi = mid;
+                fhi = fm;
+            }
+            else {
+                lo = mid;
+                flo = fm;
+            }
+        }
+        add_unique(roots, (double)(lo + (hi - lo) / 2.0L));
+    }
+    std::sort(roots.begin(), roots.end());
+    return roots;
+}
+
 static std::string trig_root_text(double r)
 {
     double rt2 = std::sqrt(2.0) / 2.0;
@@ -4984,6 +5104,22 @@ static std::string recip_poly_text(std::vector<double> const &c)
         }
     }
     return out.empty() ? "0=0." : out + "=0.";
+}
+
+static std::string recip_poly_text_preserve_small(std::vector<double> c)
+{
+    double mn = 0.0, mx = 0.0;
+    for(double v : c) {
+        double av = std::fabs(v);
+        if(av == 0.0) continue;
+        mx = std::max(mx, av);
+        mn = mn == 0.0 ? av : std::min(mn, av);
+    }
+    if(mn > 0.0 && mn < 1e-12 && mx / mn < 1e15) {
+        double scale = 1.0 / mn;
+        for(double &v : c) v *= scale;
+    }
+    return recip_poly_text(c);
 }
 
 static std::optional<std::vector<std::string>> solve_recip_trig_poly(
@@ -7979,6 +8115,21 @@ static bool match_tan_double_term(Arena &a, NodeId n, double &coef, NodeId &arg)
     return true;
 }
 
+static bool match_sec2_term(Arena &a, NodeId n, double &coef, NodeId &arg)
+{
+    NodeId rest = n;
+    bool has_rest = true;
+    coef = 1.0;
+    if(!split_coeff_term(a, n, coef, rest, has_rest) || !has_rest) return false;
+    Node const &r = a.get(rest);
+    if(r.kind != NodeKind::Pow) return false;
+    auto q = as_num(a, r.b);
+    Node const &b = a.get(r.a);
+    if(!q || q->num != 2 || q->den != 1 || b.kind != NodeKind::Fn || b.fkind != FnKind::Sec) return false;
+    arg = b.a;
+    return true;
+}
+
 static bool match_cot_sec2_term(Arena &a, NodeId n, double &coef, NodeId &arg)
 {
     coef = 1.0;
@@ -8040,6 +8191,82 @@ static bool match_sin_double_sq_term(Arena &a, NodeId n, double &coef, NodeId &a
     if(!inner) return false;
     arg = *inner;
     return true;
+}
+
+static std::optional<std::vector<std::string>> solve_sec2_tan_double_poly(
+    Arena &a,
+    NodeId residual,
+    std::string const &var,
+    std::string const &lo_text,
+    std::string const &hi_text,
+    bool rad
+)
+{
+    Node const &r = a.get(residual);
+    if(r.kind != NodeKind::Add) return std::nullopt;
+    double sec2 = 0.0, tan2 = 0.0, c = 0.0;
+    NodeId arg = 0;
+    bool got_sec2 = false, got_tan2 = false;
+    auto same_or_set = [&](NodeId n) {
+        if(!arg) {
+            arg = n;
+            return true;
+        }
+        return same_sig(a, arg, n);
+    };
+    for(NodeId k : r.kids) {
+        double coef = 0.0;
+        NodeId a0 = 0;
+        if(match_sec2_term(a, k, coef, a0)) {
+            if(!same_or_set(a0)) return std::nullopt;
+            sec2 += coef;
+            got_sec2 = true;
+            continue;
+        }
+        if(match_tan_double_term(a, k, coef, a0)) {
+            if(!same_or_set(a0)) return std::nullopt;
+            tan2 += coef;
+            got_tan2 = true;
+            continue;
+        }
+        if(contains_var(a, k, var)) return std::nullopt;
+        auto kv = numeric_eval(a, k, 0.0);
+        if(!kv || !std::isfinite(*kv)) return std::nullopt;
+        c += *kv;
+    }
+    if(!got_sec2 || !got_tan2 || !arg) return std::nullopt;
+    double q4 = -sec2, q2 = -c, q1 = 2.0 * tan2, q0 = sec2 + c;
+    auto roots = solve_poly4_even_linear(q4, q2, q1, q0);
+    if(roots.empty()) return std::nullopt;
+
+    std::string A = format_expr(a, arg);
+    std::vector<std::string> steps{
+        format_expr(a, residual) + " = 0.",
+        "u=tan(" + A + ").",
+        "sec(" + A + ")^2=1+u^2.",
+        "tan(2*" + A + ")=2u/(1-u^2), u!=+/-1.",
+        "Multiply by 1-u^2.",
+        recip_poly_text_preserve_small({q0, q1, q2, 0.0, q4}),
+    };
+    std::string line = "u=";
+    bool any = false;
+    std::vector<double> xs;
+    for(double u : roots) {
+        if(std::fabs(std::fabs(u) - 1.0) < 1e-8) {
+            steps.push_back("Reject u=" + trig_root_text(u) + ": tan(2*" + A + ") undefined.");
+            continue;
+        }
+        if(any) line += " or u=";
+        line += trig_root_text(u);
+        any = true;
+        auto vals = x_values_from_angle_degrees(a, arg, var, lo_text, hi_text, rad, base_trig_degrees(FnKind::Tan, u));
+        for(double x : vals) add_unique(xs, x);
+    }
+    if(!any) return std::nullopt;
+    std::sort(xs.begin(), xs.end());
+    steps.push_back(line + ".");
+    steps.push_back(interval_text(angle_bounds(a, lo_text, hi_text, rad), var) + " => " + format_solution_list(var, rad, xs) + ".");
+    return casio::exam_block("trig solve", steps, format_solution_list(var, rad, xs));
 }
 
 static std::optional<std::vector<std::string>> solve_tan_double_cot_sec2(
@@ -11674,6 +11901,7 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
     if(auto same_res = solve_same_fn_residual(a, residual, var, lo_text, hi_text, rad, general)) return *same_res;
     if(auto tc2 = solve_tan_cos2_sin2sq(a, residual, var, lo_text, hi_text, rad)) return *tc2;
     if(auto tdc = solve_tan_double_cot_sec2(a, residual, var, lo_text, hi_text, rad)) return *tdc;
+    if(auto s2td = solve_sec2_tan_double_poly(a, residual, var, lo_text, hi_text, rad)) return *s2td;
     if(auto shifted = solve_shifted_linear_trig(a, residual, var, lo_text, hi_text, rad, general)) return *shifted;
     if(auto cosq = solve_cos_quadratic(a, residual, var, lo_text, hi_text, rad)) return *cosq;
     if(auto sinq = solve_sin_quadratic(a, residual, var, lo_text, hi_text, rad)) return *sinq;

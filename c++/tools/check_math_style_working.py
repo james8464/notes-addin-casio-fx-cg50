@@ -99,6 +99,36 @@ CASES = [
         ("1-cos(2*theta) = 2*sin(theta)^2", "dy/dx = cot(theta)"),
     ),
     (
+        "mixed sec2 tan double substitution",
+        ["--trig", "6*sec(x)^2+5*tan(2*x)=12,x,0,pi,12,method=identity"],
+        ("u = tan(x)", "tan(2*x) = 2u/(1-u^2)", "x = [0.391556582423, 1.01964878668]"),
+        ("x = []",),
+    ),
+    (
+        "mixed sec2 tan double repeated root",
+        ["--trig", "sec(x)^2-3.6*tan(2*x)-9.8=0,x,0,pi,12,method=identity"],
+        ("u = tan(x)", "u = -3.3416407865 or u = -0.6583592135 or u = 2", "x = [1.10714871779, 1.86156874966, 2.55936343624]"),
+        ("x = []",),
+    ),
+    (
+        "mixed sec2 tan double scaled coefficients",
+        ["--trig", "1000000000000*sec(x)^2-3600000000000*tan(2*x)-9800000000000=0,x,0,pi,12,method=identity"],
+        ("u = -3.3416407865 or u = -0.6583592135 or u = 2", "x = [1.10714871779, 1.86156874966, 2.55936343624]"),
+        ("x = []",),
+    ),
+    (
+        "mixed sec2 tan double high-bound quartic",
+        ["--trig", "-sec(x)^2+10000000000*tan(2*x)+10000000000=0,x,0,pi,12,method=identity"],
+        ("u = -100000.99998", "u = 99998.99998", "x = [3*pi/8, 1.57078632669, 1.57080632669, 7*pi/8]"),
+        ("x = []",),
+    ),
+    (
+        "mixed sec2 tan double tiny sec coefficient",
+        ["--trig", "1/100000000000000*sec(x)^2+tan(2*x)=0,x,0,pi,12,method=identity"],
+        ("-u^4 + 200000000000000u + 1 = 0", "u = 0 or u = 58480.3547643", "x = [0, 1.57077922704, pi]"),
+        ("2u = 0", "x = []"),
+    ),
+    (
         "param reciprocal power simplify",
         ["--derive", "1/t+1/t^2,1/t-1/t^2,t,method=param"],
         ("dy/dx = ((- t^-2 + 2*t^-3)*t^3)/((- t^-2 - 2*t^-3)*t^3)", "dy/dx = (t - 2)/(t + 2)"),
