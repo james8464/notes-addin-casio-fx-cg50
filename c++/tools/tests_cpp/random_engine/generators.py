@@ -466,7 +466,7 @@ class AdversarialGenerator:
                 "eq,var,lo,hi,max,method",
                 "rform",
                 ("identity", "general_or_cast", "interval_filter"),
-                "exam: show identity/R-form, general roots, interval filtering, reject invalid roots",
+                "exam: show identity/R-form, general roots, interval filtering",
             ),
             (
                 "trig_poly_reject",

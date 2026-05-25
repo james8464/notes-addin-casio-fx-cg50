@@ -241,7 +241,7 @@ def classify_output_quality(output: str, expects_working: bool = True) -> Output
     if ("mod 2*pi" in text or "modulo 2*pi" in text or "interval" in text) and "x =" in text:
         if not any(word in text for word in ("base", "arcsin", "arccos", "arctan", "atan", "asin", "acos")):
             return OutputQuality("review", "trig solve base angle missing")
-        if not any(word in text for word in ("keep", "interval", "check", "reject")):
+        if not any(word in text for word in ("keep", "interval", "filter", "check", "reject")):
             return OutputQuality("review", "trig interval/check step missing")
     if "binomial" in text and not any(word in text for word in ("valid", "|x|", "range")):
         return OutputQuality("review", "binomial validity range missing")
