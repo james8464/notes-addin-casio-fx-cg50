@@ -16,6 +16,7 @@ graph TD
   OX --> OV["check_online_paper_corpus_inventory.py"]
   P --> E["Edexcel corpus checks"]
   P --> S["Madas scan checks"]
+  S --> M["standard question corpus"]
   P --> R["render_audit_pdf_pages.py --format jpeg"]
   R --> I["manual-review images"]
   I --> Q["manual Q review"]
@@ -36,5 +37,6 @@ Latest refresh: 2026-05-25.
 - `check_a_level_source_downloads.py`: `rows=972`, no failures.
 - `check_edexcel_public_paper_corpus.py`: `54` official Pearson 9MA0 PDFs, `27` question papers + `27` mark schemes.
 - `check_online_paper_corpus_inventory.py`: `1221` indexed PDFs, `0` cached PDF files after cleanup, `1156` text extracts, `6766` question-marker hits.
-- `check_a_level_audit_tracker.py`: `1344` reviewed rows, `1158` host-pass, `186` unsupported-ok, `3008` host runs.
+- `check_a_level_audit_tracker.py`: `1344` reviewed rows, `1159` host-pass, `185` unsupported-ok, `3009` host runs.
+- `check_madasmaths_standard_question_corpus.py`: `4554` rows, `5654` manual cases, no failures.
 - Current working help/templates are external in `c++/prizm/help/*.HLP/*.TPL` and packed to `CASIOCAS.PAK`; keep verbose help out of `.g3a`.
