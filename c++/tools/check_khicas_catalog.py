@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
 CATALOG = ROOT / "c++/khicas/upstream/giac90_1addin/catalogen.cpp"
+CATALOG_FR = ROOT / "c++/khicas/upstream/giac90_1addin/catalogfr.cpp"
 MAIN = ROOT / "c++/khicas/upstream/giac90_1addin/main.cc"
 HELP = ROOT / "c++/prizm/help/CASIOCAS.HLP"
 TPL_DIR = ROOT / "c++/prizm/help"
 STATIC_LEXER = ROOT / "c++/khicas/upstream/giac90_1addin/static_lexer.h"
+STATIC_LEXER_PTR = ROOT / "c++/khicas/upstream/giac90_1addin/static_lexer_.h"
 STATIC_LEXER_FULL = ROOT / "c++/khicas/upstream/giac90_1addin/static_lexer_full.h"
 DCONSOLE = ROOT / "c++/khicas/upstream/giac90_1addin/dConsole.cpp"
 DMAIN = ROOT / "c++/khicas/upstream/giac90_1addin/dmain.cpp"
@@ -316,10 +319,68 @@ FM_ONLY_INACTIVE_CATALOG_SURFACES = [
 
 FM_ONLY_HIDDEN_PREFIXES = ["fourier_", "laplace", "ilaplace"]
 
+LEXER_POINTER_ALIASES = {
+    "%": "PERCENT",
+    "%CHANGE": "PERCENTCHANGE",
+    "%TOTAL": "PERCENTTOTAL",
+    ".": "struct_dot",
+    "assert": "giac_assert",
+    "affichage": "display",
+    "bin": "binprint",
+    "coordonnees": "coordinates",
+    "draw_pixel": "set_pixel",
+    "efface": "efface_logo",
+    "expovariate": "randexp",
+    "get_key": "getKey",
+    "hex": "hexprint",
+    "linetan": "LineTan",
+    "normalvariate": "randNorm",
+    "oct": "octprint",
+    "regroup": "regrouper",
+    "snedecord_cdf": "fisher_cdf",
+}
+
 
 def fail(msg: str) -> int:
     print(f"FAIL {msg}")
     return 1
+
+
+def command_name(surface: str) -> str:
+    name = surface.split("(", 1)[0].strip()
+    if not name:
+        return ""
+    return name.split()[0].lower()
+
+
+def removed_catalog_names() -> set[str]:
+    return {name for name in (command_name(x) for x in REMOVED_SURFACES) if name}
+
+
+def catalog_command_names(text: str) -> set[str]:
+    names: set[str] = set()
+    for match in re.finditer(r'\{\s*"([^"]+)"', text):
+        name = command_name(match.group(1))
+        if name:
+            names.add(name)
+    return names
+
+
+def lexer_names(text: str) -> list[str]:
+    return [m.group(1) for m in re.finditer(r'\{\s*"([^"]+)"', without_if0(text))]
+
+
+def lexer_pointer_names(text: str) -> list[str]:
+    names: list[str] = []
+    for line in without_if0(text).splitlines():
+        name = line.strip().rstrip(",")
+        if name.startswith("at_"):
+            names.append(name[3:])
+    return names
+
+
+def expected_lexer_pointer(name: str) -> str:
+    return LEXER_POINTER_ALIASES.get(name, name)
 
 
 def without_if0(text: str) -> str:
@@ -327,24 +388,31 @@ def without_if0(text: str) -> str:
     skip = 0
     for line in text.splitlines():
         stripped = line.strip()
+        if stripped.startswith("//"):
+            continue
+        if skip:
+            if stripped.startswith("#if"):
+                skip += 1
+            elif stripped == "#endif":
+                skip -= 1
+            continue
         if stripped == "#if 0":
-            skip += 1
+            skip = 1
             continue
-        if stripped == "#endif" and skip:
-            skip -= 1
-            continue
-        if not skip:
-            out.append(line)
+        out.append(line)
     return "\n".join(out)
 
 
 def main() -> int:
     catalog = CATALOG.read_text(errors="ignore")
     active_catalog = without_if0(catalog)
+    catalog_fr = CATALOG_FR.read_text(errors="ignore")
+    active_catalog_fr = without_if0(catalog_fr)
     main_cc = MAIN.read_text(errors="ignore")
     help_text = HELP.read_text(errors="ignore") if HELP.exists() else ""
     template_text = "\n".join(p.read_text(errors="ignore") for p in sorted(TPL_DIR.glob("CASIOCAS*.TPL")))
     lexer_text = STATIC_LEXER.read_text(errors="ignore")
+    lexer_ptr_text = STATIC_LEXER_PTR.read_text(errors="ignore")
     lexer_full_text = STATIC_LEXER_FULL.read_text(errors="ignore")
     dconsole = DCONSOLE.read_text(errors="ignore")
     dmain = DMAIN.read_text(errors="ignore")
@@ -372,6 +440,14 @@ def main() -> int:
             return fail("syntax colour alias missing from calculator/main shell: " + marker)
     if '{"normal_cdf",0,0,9,13}' not in lexer_text:
         return fail("source-built normal_cdf lexer entry missing")
+    lexer_name_list = lexer_names(lexer_text)
+    lexer_ptr_list = lexer_pointer_names(lexer_ptr_text)
+    if len(lexer_name_list) != len(lexer_ptr_list):
+        return fail(f"source-built lexer pointer count mismatch: {len(lexer_name_list)} names vs {len(lexer_ptr_list)} ptrs")
+    for i, (name, ptr) in enumerate(zip(lexer_name_list, lexer_ptr_list)):
+        expected = expected_lexer_pointer(name)
+        if expected.lower() != ptr.lower():
+            return fail(f"source-built lexer pointer mismatch at {i}: {name} -> at_{ptr}, expected at_{expected}")
     for marker in ['cascas_rewrite_normalcdf_call', '"normalcdf("', '"evalf(normal_cdf("']:
         if marker not in main_cc:
             return fail("source-built normalcdf wrapper missing: " + marker)
@@ -412,6 +488,13 @@ def main() -> int:
     still_catalogued = [x for x in REMOVED_SURFACES if x in catalog]
     if still_catalogued:
         return fail("removed surfaces still in catalogue: " + ", ".join(still_catalogued))
+    removed_names = removed_catalog_names()
+    active_catalogued = sorted(removed_names & catalog_command_names(active_catalog))
+    if active_catalogued:
+        return fail("removed names still active in catalogue: " + ", ".join(active_catalogued))
+    active_catalogued_fr = sorted(removed_names & catalog_command_names(active_catalog_fr))
+    if active_catalogued_fr:
+        return fail("removed names still active in FR catalogue: " + ", ".join(active_catalogued_fr))
     still_helped = ["@" + x for x in REMOVED_SURFACES if "@" + x in help_text]
     if still_helped:
         return fail("removed surfaces still in help: " + ", ".join(still_helped))
