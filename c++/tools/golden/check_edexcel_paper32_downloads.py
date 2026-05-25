@@ -65,7 +65,7 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "June 2019 Q2 distance AB",
         ["--alg", "compare(sqrt(12^2+(-8)^2),4*sqrt(13))"],
-        ["E1 = sqrt(208)", "E2 = 4*sqrt(13)", "equivalent"],
+        ["E1 = 4*sqrt(13)", "E2 = 4*sqrt(13)", "equivalent"],
         ["ERR:"],
     ),
     (

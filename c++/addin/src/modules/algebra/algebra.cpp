@@ -191,13 +191,118 @@ static std::optional<std::vector<std::string>> symbolic_quadratic_solve_route(Ar
 static bool is_square_i64(std::int64_t n, std::int64_t &root_out)
 {
     if(n < 0) return false;
-    std::int64_t r = 0;
-    while((r + 1) * (r + 1) <= n && r < 3037000499LL) r++;
-    if(r * r == n) {
+    if(n == 0) {
+        root_out = 0;
+        return true;
+    }
+    std::int64_t r = static_cast<std::int64_t>(std::sqrt(static_cast<long double>(n)));
+    while(r > 0 && r > n / r) --r;
+    while(r < 3037000499LL && r + 1 <= n / (r + 1)) ++r;
+    if(n % r == 0 && n / r == r) {
         root_out = r;
         return true;
     }
     return false;
+}
+
+static std::uint64_t gcd_u64(std::uint64_t a, std::uint64_t b)
+{
+    while(b) {
+        std::uint64_t t = a % b;
+        a = b;
+        b = t;
+    }
+    return a;
+}
+
+static std::uint64_t mul_mod_u64(std::uint64_t a, std::uint64_t b, std::uint64_t mod)
+{
+    return static_cast<std::uint64_t>((static_cast<__uint128_t>(a) * b) % mod);
+}
+
+static std::uint64_t pow_mod_u64(std::uint64_t a, std::uint64_t e, std::uint64_t mod)
+{
+    std::uint64_t r = 1;
+    while(e) {
+        if(e & 1) r = mul_mod_u64(r, a, mod);
+        a = mul_mod_u64(a, a, mod);
+        e >>= 1;
+    }
+    return r;
+}
+
+static bool is_prime_u64(std::uint64_t n)
+{
+    if(n < 2) return false;
+    for(std::uint64_t p : {2ULL, 3ULL, 5ULL, 7ULL, 11ULL, 13ULL, 17ULL, 19ULL, 23ULL, 29ULL, 31ULL, 37ULL}) {
+        if(n == p) return true;
+        if(n % p == 0) return false;
+    }
+    std::uint64_t d = n - 1, s = 0;
+    while((d & 1) == 0) { d >>= 1; ++s; }
+    for(std::uint64_t a : {2ULL, 3ULL, 5ULL, 7ULL, 11ULL, 13ULL, 17ULL, 19ULL, 23ULL, 29ULL, 31ULL, 37ULL}) {
+        if(a >= n) continue;
+        std::uint64_t x = pow_mod_u64(a, d, n);
+        if(x == 1 || x == n - 1) continue;
+        bool witness = true;
+        for(std::uint64_t r = 1; r < s; ++r) {
+            x = mul_mod_u64(x, x, n);
+            if(x == n - 1) {
+                witness = false;
+                break;
+            }
+        }
+        if(witness) return false;
+    }
+    return true;
+}
+
+static std::uint64_t pollard_factor_u64(std::uint64_t n)
+{
+    if(n % 2 == 0) return 2;
+    if(n % 3 == 0) return 3;
+    for(std::uint64_t c = 1; c < 64; ++c) {
+        std::uint64_t x = 2 + c, y = x, d = 1;
+        auto f = [&](std::uint64_t v) { return (mul_mod_u64(v, v, n) + c) % n; };
+        for(int iter = 0; d == 1 && iter < 200000; ++iter) {
+            x = f(x);
+            y = f(f(y));
+            d = x > y ? gcd_u64(x - y, n) : gcd_u64(y - x, n);
+        }
+        if(d > 1 && d < n) return d;
+    }
+    return n;
+}
+
+static void factor_u64_rec(std::uint64_t n, std::map<std::uint64_t, int> &out)
+{
+    if(n <= 1) return;
+    if(is_prime_u64(n)) {
+        ++out[n];
+        return;
+    }
+    std::uint64_t d = pollard_factor_u64(n);
+    if(d == n) {
+        ++out[n];
+        return;
+    }
+    factor_u64_rec(d, out);
+    factor_u64_rec(n / d, out);
+}
+
+static std::pair<std::int64_t, std::int64_t> square_factor_complete_i64(std::int64_t n)
+{
+    std::int64_t root = 0;
+    if(is_square_i64(n, root)) return {root, 1};
+    if(n <= 1) return {1, n};
+    std::map<std::uint64_t, int> factors;
+    factor_u64_rec(static_cast<std::uint64_t>(n), factors);
+    std::uint64_t outside = 1, inside = 1;
+    for(auto const &kv : factors) {
+        for(int i = 0; i < kv.second / 2; ++i) outside *= kv.first;
+        if(kv.second & 1) inside *= kv.first;
+    }
+    return {static_cast<std::int64_t>(outside), static_cast<std::int64_t>(inside)};
 }
 
 static std::optional<Poly2> poly_of(Arena &a, NodeId n, std::string const &var)
@@ -1010,12 +1115,25 @@ static NodeId exact_eval_simplify(Arena &a, NodeId n)
             NodeId arg2 = exact_eval_simplify(a, expand_square_powers(a, arg));
             if(format_expr(a, arg2) != format_expr(a, arg))
                 return exact_eval_simplify(a, casio::fn(a, "sqrt", arg2));
+            if(u.kind == NodeKind::Pow && a.get(u.a).kind == NodeKind::Sym) {
+                auto e = as_num(a, u.b);
+                if(e && e->den == 1 && e->num > 0 && e->num % 2 == 0)
+                    return exact_eval_simplify(a, casio::fn(a, "abs", casio::power(a, u.a, casio::num(a, e->num / 2))));
+            }
         }
         if(x.fkind == FnKind::Abs && u.kind == NodeKind::Num) return a.num(r_abs(u.num));
         if(x.fkind == FnKind::Sqrt && u.kind == NodeKind::Num && u.num.num >= 0) {
             std::int64_t rn = 0, rd = 0;
             if(is_square_i64(u.num.num, rn) && is_square_i64(u.num.den, rd) && rd != 0)
                 return casio::num(a, rn, rd);
+            if(u.num.den == 1) {
+                auto sf = square_factor_complete_i64(u.num.num);
+                if(sf.first > 1)
+                    return exact_eval_simplify(a, casio::mul(a, {
+                        casio::num(a, sf.first),
+                        casio::fn(a, "sqrt", casio::num(a, sf.second))
+                    }));
+            }
             bool num_sq = is_square_i64(u.num.num, rn);
             bool den_sq = is_square_i64(u.num.den, rd) && rd != 0;
             if(u.num.den > 1 && num_sq)
@@ -1049,7 +1167,8 @@ static NodeId exact_eval_simplify(Arena &a, NodeId n)
                 if(denom) return false;
                 else if(m.kind == NodeKind::Pow && a.get(m.a).kind == NodeKind::Sym) {
                     auto e = as_num(a, m.b);
-                    if(e && e->num == 2 && e->den == 1) outside.push_back(m.a);
+                    if(e && e->den == 1 && e->num > 0 && e->num % 2 == 0)
+                        outside.push_back(casio::fn(a, "abs", casio::power(a, m.a, casio::num(a, e->num / 2))));
                     else rest.push_back(id);
                 }
                 else rest.push_back(id);
@@ -8503,6 +8622,57 @@ next_root:
     }
     if(!factored.empty() && factored.back() == '*') factored.pop_back();
     return std::vector<std::string>{format_expr(a, n), "= " + factored, factored};
+}
+
+static std::optional<std::vector<std::string>> factor_bilinear_route(Arena &a, NodeId n, std::vector<std::string> const &syms)
+{
+    if(syms.size() != 2) return std::nullopt;
+    std::string const &u = syms[0], &v = syms[1];
+    Rational c[2][2] = {{{0, 1}, {0, 1}}, {{0, 1}, {0, 1}}};
+    auto parse_term = [&](auto &&self, NodeId id, Rational &coef, int &up, int &vp) -> bool {
+        Node const &x = a.get(id);
+        if(x.kind == NodeKind::Num) { coef = r_mul(coef, x.num); return true; }
+        if(x.kind == NodeKind::Sym) {
+            if(x.text == u) { ++up; return up <= 1; }
+            if(x.text == v) { ++vp; return vp <= 1; }
+            return false;
+        }
+        if(x.kind == NodeKind::Mul) {
+            for(NodeId k : x.kids) if(!self(self, k, coef, up, vp)) return false;
+            return true;
+        }
+        return false;
+    };
+    auto add_term = [&](NodeId id) -> bool {
+        Rational coef{1, 1};
+        int up = 0, vp = 0;
+        if(!parse_term(parse_term, id, coef, up, vp)) return false;
+        c[up][vp] = r_add(c[up][vp], coef);
+        return true;
+    };
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Add) {
+        for(NodeId k : x.kids) if(!add_term(k)) return std::nullopt;
+    }
+    else if(!add_term(n)) return std::nullopt;
+    if(is_zero(c[1][1])) return std::nullopt;
+    if(!is_zero(r_sub(r_mul(c[0][0], c[1][1]), r_mul(c[1][0], c[0][1])))) return std::nullopt;
+    auto lin = [&](Rational m, std::string const &s, Rational b) {
+        return exact_eval_simplify(a, casio::add(a, {casio::mul(a, {a.num(m), casio::sym(a, s)}), a.num(b)}));
+    };
+    NodeId f1 = 0, f2 = 0;
+    if(!is_zero(c[0][1])) {
+        f1 = lin(c[0][1], v, c[0][0]);
+        f2 = lin(r_div(c[1][1], c[0][1]), u, Rational{1, 1});
+    }
+    else if(!is_zero(c[1][0])) {
+        f1 = lin(c[1][0], u, c[0][0]);
+        f2 = lin(r_div(c[1][1], c[1][0]), v, Rational{1, 1});
+    }
+    else return std::nullopt;
+    NodeId prod = casio::mul(a, {f1, f2});
+    std::string ans = format_expr(a, prod);
+    return std::vector<std::string>{format_expr(a, n), "= " + ans, ans};
 }
 
 static std::string sum_factor_text(Arena &a, Rational c, std::string const &body)
@@ -17603,14 +17773,9 @@ static std::optional<std::vector<std::string>> radical_decomposition_rewrite(std
     if(4 * m * n != *B) return std::nullopt;
     if(m < n) std::swap(m, n);
     auto sqrt_i64_text = [](long long v) {
-        long long best = 1;
-        for(long long k = static_cast<long long>(std::sqrt(static_cast<double>(v))); k >= 2; --k) {
-            if(v % (k * k) == 0) {
-                best = k;
-                break;
-            }
-        }
-        long long rem = v / (best * best);
+        auto sf = square_factor_complete_i64(v);
+        long long best = sf.first;
+        long long rem = sf.second;
         if(rem == 1) return std::to_string(best);
         std::string core = "sqrt(" + std::to_string(rem) + ")";
         return best == 1 ? core : std::to_string(best) + "*" + core;
@@ -17640,15 +17805,10 @@ static std::optional<std::vector<std::string>> numeric_surd_simplify_route(std::
     if(inner.rfind(prefix, 0) != 0 || inner.empty() || inner.back() != ')') return std::nullopt;
     auto n = parse_i64_text(inner.substr(prefix.size(), inner.size() - prefix.size() - 1));
     if(!n || *n <= 0) return std::nullopt;
-    long long best = 1;
-    for(long long k = static_cast<long long>(std::sqrt(static_cast<double>(*n))); k >= 2; --k) {
-        if(*n % (k * k) == 0) {
-            best = k;
-            break;
-        }
-    }
+    auto sf = square_factor_complete_i64(*n);
+    long long best = sf.first;
     if(best == 1) return std::nullopt;
-    long long rem = *n / (best * best);
+    long long rem = sf.second;
     std::string ans = rem == 1 ? std::to_string(best) : std::to_string(best) + "*sqrt(" + std::to_string(rem) + ")";
     std::vector<std::string> out{"sqrt(" + std::to_string(*n) + ")"};
     if(rem == 1) out.push_back("= " + ans);
@@ -17675,14 +17835,7 @@ static bool rat_is_one(Rational r)
 
 static std::pair<long long, long long> square_factor_i64(long long n)
 {
-    long long best = 1;
-    for(long long k = static_cast<long long>(std::sqrt(static_cast<double>(n))); k >= 2; --k) {
-        if(n % (k * k) == 0) {
-            best = k;
-            break;
-        }
-    }
-    return {best, n / (best * best)};
+    return square_factor_complete_i64(n);
 }
 
 static SimpleSurd fold_simple_surd(SimpleSurd s)
@@ -27506,14 +27659,16 @@ static std::optional<std::vector<std::string>> symbolic_quadratic_solve_route(Ar
         NodeId half_b = casio::simplify(a, casio::div(a, q->b, two));
         NodeId shifted = casio::simplify(a, casio::add(a, {v, half_b}));
         NodeId rhs = compact_single_other_quadratic(a, casio::simplify(a, sub_node(a, casio::power(a, half_b, two), q->c)), var);
-        NodeId root = casio::simplify(a, casio::fn(a, "sqrt", rhs));
+        rhs = exact_eval_simplify(a, rhs);
+        NodeId root = exact_eval_simplify(a, casio::fn(a, "sqrt", rhs));
         Node const &rv = a.get(rhs);
         if(rv.kind == NodeKind::Pow && !contains_symbol(a, rv.a, var)) {
             auto e = as_num(a, rv.b);
             if(e && e->num == 2 && e->den == 1) root = rv.a;
         }
-        NodeId plus = casio::simplify(a, casio::add(a, {casio::neg(a, half_b), root}));
-        NodeId minus = casio::simplify(a, casio::add(a, {casio::neg(a, half_b), casio::neg(a, root)}));
+        root = exact_eval_simplify(a, root);
+        NodeId plus = exact_eval_simplify(a, casio::add(a, {casio::neg(a, half_b), root}));
+        NodeId minus = exact_eval_simplify(a, casio::add(a, {casio::neg(a, half_b), casio::neg(a, root)}));
         out.push_back("(" + format_expr(a, shifted) + ")^2 = " + format_expr(a, rhs));
         out.push_back(format_expr(a, shifted) + " = +/-" + format_expr(a, root));
         out.push_back(var + " = " + format_expr(a, plus));
@@ -27570,6 +27725,77 @@ static std::optional<std::vector<std::string>> symbolic_quadratic_solve_route(Ar
     out.push_back(var + " = " + format_expr(a, plus));
     out.push_back(var + " = " + format_expr(a, minus));
     out.push_back(solution_list_line(var, {var + " = " + format_expr(a, plus), var + " = " + format_expr(a, minus)}));
+    return out;
+}
+
+static std::optional<std::vector<std::string>> reciprocal_symbolic_quadratic_route(Arena &a,
+                                                                                   NodeId rearr,
+                                                                                   std::string const &var,
+                                                                                   std::optional<double> lo,
+                                                                                   std::optional<double> hi,
+                                                                                   bool lo_open,
+                                                                                   bool hi_open)
+{
+    NodeId v = casio::sym(a, var);
+    NodeId A = zero_node(a), B = zero_node(a), C = zero_node(a);
+    auto add_to = [&](NodeId &dst, NodeId term) {
+        dst = exact_eval_simplify(a, casio::add(a, {dst, term}));
+    };
+    auto is_inv = [&](NodeId id) {
+        Node const &x = a.get(id);
+        if(x.kind == NodeKind::Div && casio::same_by_sig(a, x.a, one_node(a)) && casio::same_by_sig(a, x.b, v)) return true;
+        if(x.kind == NodeKind::Pow && casio::same_by_sig(a, x.a, v)) {
+            auto e = as_num(a, x.b);
+            return e && e->num == -1 && e->den == 1;
+        }
+        return false;
+    };
+    auto parse = [&](NodeId term) -> bool {
+        if(!contains_symbol(a, term, var)) {
+            add_to(C, term);
+            return true;
+        }
+        if(casio::same_by_sig(a, term, v)) {
+            add_to(A, one_node(a));
+            return true;
+        }
+        Node const &x = a.get(term);
+        if(x.kind == NodeKind::Div && casio::same_by_sig(a, x.b, v) && !contains_symbol(a, x.a, var)) {
+            add_to(B, x.a);
+            return true;
+        }
+        std::vector<NodeId> factors = x.kind == NodeKind::Mul ? x.kids : std::vector<NodeId>{term};
+        int var_count = 0, inv_count = 0;
+        std::vector<NodeId> rest;
+        for(NodeId f : factors) {
+            if(casio::same_by_sig(a, f, v)) { ++var_count; continue; }
+            if(is_inv(f)) { ++inv_count; continue; }
+            if(contains_symbol(a, f, var)) return false;
+            rest.push_back(f);
+        }
+        if(var_count + inv_count != 1) return false;
+        NodeId coef = rest.empty() ? one_node(a) : exact_eval_simplify(a, casio::mul(a, rest));
+        if(var_count) add_to(A, coef);
+        else add_to(B, coef);
+        return true;
+    };
+    Node const &x = a.get(rearr);
+    if(x.kind == NodeKind::Add) {
+        for(NodeId k : x.kids) if(!parse(k)) return std::nullopt;
+    }
+    else if(!parse(rearr)) return std::nullopt;
+    if(casio::same_by_sig(a, A, zero_node(a)) || casio::same_by_sig(a, B, zero_node(a))) return std::nullopt;
+    NodeId poly = exact_eval_simplify(a, casio::add(a, {
+        casio::mul(a, {A, casio::power(a, v, casio::num(a, 2))}),
+        casio::mul(a, {C, v}),
+        B
+    }));
+    auto solved = symbolic_quadratic_solve_route(a, poly, var, lo, hi, lo_open, hi_open);
+    if(!solved) return std::nullopt;
+    std::vector<std::string> out;
+    out.push_back(format_expr(a, rearr) + " = 0");
+    out.push_back("Multiply by " + var + ": " + format_expr(a, poly) + " = 0");
+    out.insert(out.end(), solved->begin(), solved->end());
     return out;
 }
 
@@ -33755,6 +33981,7 @@ algebra_compare_transform_modes:
             collect_symbols(arena, n, syms);
             if(syms.size() == 1) fvar = syms[0];
             if(auto fa = factor_poly_any_route(arena, n, fvar)) return *fa;
+            if(auto fb = factor_bilinear_route(arena, n, syms)) return *fb;
             auto p = poly_of(arena, n, fvar);
             if(!p || !p->ok) {
                 return {
@@ -34302,6 +34529,10 @@ algebra_compare_transform_modes:
         }
         if(auto sdr = square_difference_ratio_route(arena, lhs, rhs, solve_var)) return *sdr;
         if(auto cbr = cubic_minus_cube_root_proof_route(equation_text, solve_var)) return *cbr;
+        if(auto rsq = reciprocal_symbolic_quadratic_route(arena, rearr, solve_var, interval_lo, interval_hi, interval_lo_open, interval_hi_open)) {
+            out.insert(out.end(), rsq->begin(), rsq->end());
+            return out;
+        }
         if(auto sq = symbolic_quadratic_solve_route(arena, rearr, solve_var, interval_lo, interval_hi, interval_lo_open, interval_hi_open)) {
             out.insert(out.end(), sq->begin(), sq->end());
             return out;

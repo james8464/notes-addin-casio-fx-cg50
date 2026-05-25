@@ -531,7 +531,7 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "October 2021 Q7 circle complete square",
         ["--alg", "complete_square(x^2+y^2-10*x+4*y+11)"],
-        ["(x - 5)^2 + (y + 2)^2 = 18", "centre = (5,-2)", "r = sqrt(18)"],
+        ["(x - 5)^2 + (y + 2)^2 = 18", "centre = (5,-2)", "r = 3*sqrt(2)"],
         ["ERR:", "not a quadratic"],
     ),
     (

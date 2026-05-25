@@ -35,6 +35,30 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["x = []", "ERR:"],
     ),
     (
+        "alg",
+        "(2*p*q^2)^4*5*p*sqrt(q^6)",
+        ["80*p^5*q^8*abs(q^3)"],
+        ["ERR:"],
+    ),
+    (
+        "alg",
+        "sqrt(x^6)",
+        ["abs(x^3)"],
+        ["\nx^3\n", "ERR:"],
+    ),
+    (
+        "alg",
+        "solve(x^2-6*sqrt(2)*x-14=0,x)",
+        ["(x - 3*sqrt(2))^2 = 32", "x - 3*sqrt(2) = +/-4*sqrt(2)", "x = 7*sqrt(2)", "x = -sqrt(2)"],
+        ["sqrt((-3*sqrt(2))^2 + 14)", "ERR:"],
+    ),
+    (
+        "alg",
+        "solve(x-14/x=6*sqrt(2),x)",
+        ["Multiply by x: x^2 - 6*sqrt(2)*x - 14 = 0", "x = 7*sqrt(2)", "x = -sqrt(2)"],
+        ["x = -1.41421356237", "x = 9.89949493662", "ERR:"],
+    ),
+    (
         "derive",
         "x=y*sqrt(9-4*y^2)",
         ["dx/dy = (-8*y^2 + 9)/sqrt(-4*y^2 + 9)", "dy/dx = sqrt(-4*y^2 + 9)/(-8*y^2 + 9)"],
@@ -1196,6 +1220,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "factor(2*C*T-2*C+T-1)",
+        ["(T - 1)*(2*C + 1)"],
+        ["Err: numeric coeffs needed", "not factorable"],
+    ),
+    (
+        "alg",
         "rewrite(sqrt(12+sqrt(140)))",
         ["Let sqrt(12+sqrt(140)) = sqrt(m)+sqrt(n)", "m+n=12", "4*m*n=140", "Answer: sqrt(7)+sqrt(5)"],
         ["rewrite*sqrt", "ERR:"],
@@ -1208,8 +1238,20 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "sqrt(9223372030926249001)",
+        ["3037000499"],
+        ["ERR:", "Timeout"],
+    ),
+    (
+        "alg",
+        "sqrt(2036162)",
+        ["sqrt(1018081*2)", "1009*sqrt(2)"],
+        ["ERR:", "Answer: sqrt(2036162)"],
+    ),
+    (
+        "alg",
         "sqrt((9-3)^2+(8-20)^2)",
-        ["sqrt(36*5)", "6*sqrt(5)"],
+        ["sqrt(180)", "6*sqrt(5)"],
         ["ERR:", "Answer: sqrt(180)"],
     ),
     (
@@ -1689,7 +1731,7 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "alg",
         "solve(z*sqrt(8)-6=2*z/sqrt(2),z)",
-        ["z = 6/(sqrt(8) + -2/sqrt(2))", "= 3*sqrt(2)", "z = 3*sqrt(2)"],
+        ["z = 6/(2*sqrt(2) + -2/sqrt(2))", "= 3*sqrt(2)", "z = 3*sqrt(2)"],
         ["z = [6/(sqrt(8)", "Traceback"],
     ),
     (
