@@ -37,6 +37,8 @@ def manual_refs() -> tuple[set[str], set[str]]:
     refs: set[str] = set()
     booklet_refs: set[str] = set()
     for row in load_jsonl(MANUAL_CASES):
+        if str(row.get("coverage", "")) == "partial":
+            continue
         src = str(row.get("source_pdf", ""))
         if src.startswith(("MadAsMaths papers/", "legacy/")):
             refs.add(Path(src).name.lower())
