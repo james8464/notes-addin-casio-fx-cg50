@@ -1119,6 +1119,11 @@ static NodeId exact_eval_simplify(Arena &a, NodeId n)
                 auto e = as_num(a, u.b);
                 if(e && e->den == 1 && e->num > 0 && e->num % 2 == 0)
                     return exact_eval_simplify(a, casio::fn(a, "abs", casio::power(a, u.a, casio::num(a, e->num / 2))));
+                if(e && e->den == 1 && e->num > 1 && e->num % 2 != 0)
+                    return exact_eval_simplify(a, casio::mul(a, {
+                        casio::power(a, u.a, casio::num(a, e->num / 2)),
+                        casio::fn(a, "sqrt", u.a)
+                    }));
             }
         }
         if(x.fkind == FnKind::Abs && u.kind == NodeKind::Num) return a.num(r_abs(u.num));
