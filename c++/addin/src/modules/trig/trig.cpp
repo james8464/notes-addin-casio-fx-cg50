@@ -9584,6 +9584,36 @@ static std::optional<std::vector<std::string>> direct_double_angle_rewrite(Arena
     return std::nullopt;
 }
 
+static std::optional<std::vector<std::string>> half_angle_quotient_rewrite_key(std::string const &key)
+{
+    for(std::string const &v : {"x", "theta", "t", "u"}) {
+        std::string sden = "sin(" + v + ")";
+        std::string cden = "cos(" + v + ")";
+        std::string n1 = "1-cos(2" + v + ")";
+        std::string n2 = "1+cos(2" + v + ")";
+        auto hit = [&](std::string const &num, std::string const &den) {
+            return key == "(" + num + ")/" + den || key == "(" + num + ")/(" + den + ")";
+        };
+        if(hit(n1, sden)) {
+            return std::vector<std::string>{
+                "1-cos(2*" + v + ") = 2sin(" + v + ")^2",
+                "(1-cos(2*" + v + "))/sin(" + v + ") = 2sin(" + v + ")^2/sin(" + v + ")",
+                "= 2sin(" + v + ")",
+                "2*sin(" + v + ")"
+            };
+        }
+        if(hit(n2, cden)) {
+            return std::vector<std::string>{
+                "1+cos(2*" + v + ") = 2cos(" + v + ")^2",
+                "(1+cos(2*" + v + "))/cos(" + v + ") = 2cos(" + v + ")^2/cos(" + v + ")",
+                "= 2cos(" + v + ")",
+                "2*cos(" + v + ")"
+            };
+        }
+    }
+    return std::nullopt;
+}
+
 static bool squared_trig_fn(Arena &a, NodeId n, FnKind fk, NodeId &arg)
 {
     Node const &x = a.get(n);
@@ -11476,8 +11506,8 @@ static std::vector<std::string> solve_simple_trig_eq(Arena &a, std::string const
             "trig solve",
             {
                 "cos(x)*sin(2x)=0.",
-                "cos(x)=0 => x=90+180n.",
-                "sin(2x)=0 => x=90n.",
+                "cos(x)=0 => " + format_general_trig_family(var, rad, {90.0}, 180.0) + ".",
+                "sin(2x)=0 => " + (rad ? var + " = n*pi/2" : var + " = 90n") + ".",
                 "interval => union.",
             },
             format_solution_list(var, rad, xs)
@@ -12443,6 +12473,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(auto py_key = direct_pythagorean_key(key)) return *py_key;
         if(auto py = direct_pythagorean_rewrite(arena, raw)) return *py;
         if(auto da = direct_double_angle_rewrite(arena, raw)) return *da;
+        if(auto hq = half_angle_quotient_rewrite_key(key)) return *hq;
         if(auto rr = minor_trig_ratio_rewrite(arena, raw)) return *rr;
         if(auto inv_compound = inverse_trig_compound_exact_route(arena, raw)) return *inv_compound;
         if(auto compound = compound_angle_rewrite(arena, raw)) return *compound;
@@ -12644,6 +12675,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     NodeId parsed = casio::parse_expr(arena, req.expr);
     {
         std::string key0 = compact_key(req.expr);
+        if(auto hq = half_angle_quotient_rewrite_key(key0)) return *hq;
         if(key0 == "cos(x)^3sin(x)-sin(x)^3cos(x)") {
             return {
                 "cos(x)^3sin(x)-sin(x)^3cos(x)",

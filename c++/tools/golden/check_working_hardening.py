@@ -29,6 +29,18 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["ERR:"],
     ),
     (
+        "trig",
+        "(1-cos(2*x))/(sin(x)),method=manip_trig",
+        ["1-cos(2*x) = 2sin(x)^2", "(1-cos(2*x))/sin(x) = 2sin(x)^2/sin(x)", "2*sin(x)"],
+        ["Answer:", "ERR:"],
+    ),
+    (
+        "trig",
+        "(1+cos(2*x))/(cos(x)),method=manip_trig",
+        ["1+cos(2*x) = 2cos(x)^2", "(1+cos(2*x))/cos(x) = 2cos(x)^2/cos(x)", "2*cos(x)"],
+        ["Answer:", "ERR:"],
+    ),
+    (
         "alg",
         "solve(abs(9*x^2+6*x+2)=9*x^2+6*x+2,x)",
         ["abs(A)=A => A >= 0", "D = -36 <= 0", "x = all real"],

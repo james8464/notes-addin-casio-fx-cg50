@@ -372,6 +372,18 @@ CASES = [
         ("x = []", "Failed to isolate"),
     ),
     (
+        "madas product cos sin2x rad families",
+        ["--trig", "cos(x)*sin(2*x)=0,x,-pi,2*pi"],
+        ("cos(x)=0 => x = pi/2 + n*pi", "sin(2x)=0 => x = n*pi/2", "x = [-pi, -pi/2, 0, pi/2, pi, 3*pi/2, 2*pi]"),
+        ("cos(x)=0 => x=90+180n", "sin(2x)=0 => x=90n"),
+    ),
+    (
+        "madas product cos sin2x deg families",
+        ["--trig", "cos(x)*sin(2*x)=0,x,0,360"],
+        ("cos(x)=0 => x = 90 + n*180", "sin(2x)=0 => x = 90n", "x = [0, 90, 180, 270, 360]"),
+        ("x = []", "ERR:"),
+    ),
+    (
         "madas general sin sum",
         ["--trig", "sin(5*x)+sin(3*x)=0,x,0,2*pi,method=general"],
         ("sin(A)+sin(B) = 2*sin((A+B)/2)*cos((A-B)/2)", "2*sin(4*x)*cos(x) = 0", "x = 0 + n*pi/4", "x = pi/2 + n*pi"),

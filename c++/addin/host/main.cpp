@@ -594,7 +594,8 @@ int main(int argc, char **argv)
                     }
                     casio::trig::Request treq;
                     treq.mode = (method == "rform" || method == "sin_cos" || method == "pythag" ||
-                                 method == "double_angle" || method == "compound_angle") ? 4 : 0;
+                                 method == "double_angle" || method == "compound_angle" ||
+                                 method == "manip_trig") ? 4 : 0;
                     treq.expr = trig_expr;
                     auto lines = casio::trig::run(arena, treq);
                     print_lines(lines);
@@ -685,7 +686,7 @@ int main(int argc, char **argv)
                 trig_equation = true;
             }
             if(!trig_equation && (method == "rform" || method == "sin_cos" || method == "pythag" ||
-               method == "double_angle" || method == "compound_angle")) {
+               method == "double_angle" || method == "compound_angle" || method == "manip_trig")) {
                 req.mode = 4;
             }
             if(!target.empty()) {
