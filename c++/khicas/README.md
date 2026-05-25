@@ -11,6 +11,6 @@ Active `/compile` builds the edited KhiCAS source by default with a Linux amd64 
 
 Transfer files are copied to the top-level `calculator_files/` folder:
 - `CasioCAS.g3a` - visible add-in executable.
-- `CASIOCAS.PAK` - external F6 help and working-template pack generated from `c++/prizm/help/CASIOCAS.HLP` and `c++/prizm/help/CASIOCAS.TPL`.
+- `CASIOCAS.PAK` - external F6 help and working-template pack generated from `c++/prizm/help/CASIOCAS.HLP` and `c++/prizm/help/CASIOCAS*.TPL`.
 
 License note: KhiCAS/Giac is upstream GPL-family code; preserve upstream notices when modifying or redistributing.

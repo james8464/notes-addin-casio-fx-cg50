@@ -12,7 +12,7 @@ graph TD
   Docker --> Src["c++/khicas/upstream/giac90_1addin"]
   Src --> G3A["c++/prizm/build/CasioCAS.g3a"]
   Assets["c++/prizm/assets/*.png"] --> Src
-  HelpSrc["c++/prizm/help/CASIOCAS.HLP + CASIOCAS.TPL"] --> Pack["build_external_pack.py"]
+  HelpSrc["c++/prizm/help/CASIOCAS.HLP + CASIOCAS*.TPL"] --> Pack["build_external_pack.py"]
   Pack --> PAK["CASIOCAS.PAK"]
   G3A --> Patch["patch_g3a_metadata.py"]
   PAK --> Transfer
@@ -27,7 +27,7 @@ Patch production calculator behavior in:
 - `c++/khicas/upstream/giac90_1addin/main.cc`
 - `c++/khicas/upstream/giac90_1addin/catalogen.cpp`
 - `c++/prizm/help/CASIOCAS.HLP` for F6 help source
-- `c++/prizm/help/CASIOCAS.TPL` for offloaded working templates
+- `c++/prizm/help/CASIOCAS*.TPL` for offloaded working/menu templates
 
 Patch host/golden behavior in:
 - `c++/addin/src/core/*`
@@ -214,7 +214,7 @@ graph TD
 ```
 
 Safe-ish size levers:
-- keep verbose help/examples/templates in `CASIOCAS.PAK` via `CASIOCAS.HLP`/`CASIOCAS.TPL` sources
+- keep verbose help/examples/templates in `CASIOCAS.PAK` via `CASIOCAS.HLP`/`CASIOCAS*.TPL` sources
 - hide/remove non-scope UI surfaces first
 - remove linked legacy objects only one at a time with full gates
 - preserve core Giac paths used by solve/diff/int/trig/stats
