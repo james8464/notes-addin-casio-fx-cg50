@@ -2636,6 +2636,216 @@ static NodeId monomial_half_power_node(Arena &a, Rational coef, Rational power, 
     return casio::mul(a, {a.num(coef), body});
 }
 
+static bool monomial_rational_power(Arena &a, NodeId n, std::string const &var, Rational &coef, Rational &power)
+{
+    coef = Rational{1, 1};
+    power = Rational{0, 1};
+    Node x = a.get(n);
+    if(x.kind == NodeKind::Num) {
+        coef = x.num;
+        return true;
+    }
+    if(x.kind == NodeKind::Sym) {
+        if(x.text != var) return false;
+        power = Rational{1, 1};
+        return true;
+    }
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Sqrt) {
+        Rational c, p;
+        if(!monomial_rational_power(a, x.a, var, c, p) || !rat_is_one(c)) return false;
+        if(a.get(x.a).kind != NodeKind::Sym && p.num % 2 == 0) return false;
+        power = rat_div_local(p, Rational{2, 1});
+        return true;
+    }
+    if(x.kind == NodeKind::Pow) {
+        Rational c, p;
+        auto e = as_num(a, x.b);
+        if(!e || !monomial_rational_power(a, x.a, var, c, p) || !rat_is_one(c)) return false;
+        if(e->den % 2 == 0 && p.num % 2 == 0 && depends_on(a, x.a, var)) return false;
+        power = rat_mul_local(p, *e);
+        return true;
+    }
+    if(x.kind == NodeKind::Mul) {
+        for(NodeId k : x.kids) {
+            Rational c, p;
+            if(!monomial_rational_power(a, k, var, c, p)) return false;
+            coef = rat_mul_local(coef, c);
+            power = rat_add_local(power, p);
+        }
+        return true;
+    }
+    if(x.kind == NodeKind::Div) {
+        Rational tc, tp, bc, bp;
+        if(!monomial_rational_power(a, x.a, var, tc, tp) || !monomial_rational_power(a, x.b, var, bc, bp) ||
+           rat_zero_local(bc))
+            return false;
+        coef = rat_div_local(tc, bc);
+        power = rat_sub_local(tp, bp);
+        return true;
+    }
+    return false;
+}
+
+static std::optional<NodeId> canonical_power_monomial(Arena &a, NodeId n, std::string const &var)
+{
+    Rational c, p;
+    if(!monomial_rational_power(a, n, var, c, p)) return std::nullopt;
+    if(rat_zero_local(c)) return casio::num(a, 0);
+    return casio::simplify(a, monomial_half_power_node(a, c, p, var));
+}
+
+static bool is_laurent_power_sum(Arena &a, NodeId n, std::string const &var)
+{
+    Node x = a.get(n);
+    if(x.kind == NodeKind::Add) {
+        for(NodeId k : x.kids) {
+            Rational c, p;
+            if(!monomial_rational_power(a, k, var, c, p)) return false;
+        }
+        return true;
+    }
+    Rational c, p;
+    return monomial_rational_power(a, n, var, c, p);
+}
+
+static bool laurent_power_domain(Arena &a, NodeId n, std::string const &var)
+{
+    Node x = a.get(n);
+    if(x.kind == NodeKind::Num) return true;
+    if(x.kind == NodeKind::Sym) return x.text == var;
+    if(x.kind == NodeKind::Fn) return x.fkind == FnKind::Sqrt && laurent_power_domain(a, x.a, var);
+    if(x.kind == NodeKind::Pow) return as_num(a, x.b).has_value() && laurent_power_domain(a, x.a, var);
+    if(x.kind == NodeKind::Div) return laurent_power_domain(a, x.a, var) && laurent_power_domain(a, x.b, var);
+    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        for(NodeId k : x.kids)
+            if(!laurent_power_domain(a, k, var)) return false;
+        return true;
+    }
+    return false;
+}
+
+static bool has_laurent_index_feature(Arena &a, NodeId n, std::string const &var)
+{
+    Node x = a.get(n);
+    if(x.kind == NodeKind::Fn) return x.fkind == FnKind::Sqrt || has_laurent_index_feature(a, x.a, var);
+    if(x.kind == NodeKind::Div) {
+        Rational c, p;
+        bool den_mono = monomial_rational_power(a, x.b, var, c, p);
+        return (den_mono && depends_on(a, x.b, var)) || has_laurent_index_feature(a, x.a, var) ||
+            has_laurent_index_feature(a, x.b, var);
+    }
+    if(x.kind == NodeKind::Pow) {
+        auto e = as_num(a, x.b);
+        if(e && depends_on(a, x.a, var) && (e->den != 1 || e->num < 0)) return true;
+        return has_laurent_index_feature(a, x.a, var) || has_laurent_index_feature(a, x.b, var);
+    }
+    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        for(NodeId k : x.kids)
+            if(has_laurent_index_feature(a, k, var)) return true;
+    }
+    return false;
+}
+
+static NodeId rewrite_laurent_power_expression(Arena &a, NodeId n, std::string const &var, bool &changed, int depth = 4)
+{
+    if(auto m = canonical_power_monomial(a, n, var)) {
+        if(!same_expr_key(a, *m, n)) changed = true;
+        return *m;
+    }
+    if(depth <= 0) return n;
+
+    Node x = a.get(n);
+    if(x.kind == NodeKind::Pow) {
+        auto e = as_num(a, x.b);
+        if(e && e->den == 1 && e->num >= 2 && e->num <= 3) {
+            Node base = a.get(x.a);
+            NodeId expanded = 0;
+            if(base.kind == NodeKind::Add) {
+                std::vector<NodeId> terms{casio::num(a, 1)};
+                for(long long i = 0; i < e->num; ++i) {
+                    std::vector<NodeId> next;
+                    for(NodeId t : terms)
+                        for(NodeId k : base.kids)
+                            next.push_back(casio::simplify(a, casio::mul(a, {t, k})));
+                    terms = std::move(next);
+                }
+                expanded = casio::simplify(a, casio::add(a, terms));
+            }
+            else {
+                std::vector<NodeId> factors;
+                for(long long i = 0; i < e->num; ++i) factors.push_back(x.a);
+                expanded = expand_small(a, casio::mul(a, factors), 3);
+            }
+            if(is_laurent_power_sum(a, expanded, var)) {
+                changed = true;
+                return rewrite_laurent_power_expression(a, expanded, var, changed, depth - 1);
+            }
+        }
+        NodeId base = rewrite_laurent_power_expression(a, x.a, var, changed, depth - 1);
+        NodeId exp = rewrite_laurent_power_expression(a, x.b, var, changed, depth - 1);
+        return casio::simplify(a, casio::power(a, base, exp));
+    }
+    if(x.kind == NodeKind::Div) {
+        NodeId top = rewrite_laurent_power_expression(a, x.a, var, changed, depth - 1);
+        top = expand_small(a, top, 3);
+        Node top_node = a.get(top);
+        if(top_node.kind == NodeKind::Add) {
+            std::vector<NodeId> terms;
+            bool ok = true;
+            for(NodeId t : top_node.kids) {
+                auto m = canonical_power_monomial(a, casio::div(a, t, x.b), var);
+                if(!m) {
+                    ok = false;
+                    break;
+                }
+                terms.push_back(*m);
+            }
+            if(ok) {
+                changed = true;
+                return casio::simplify(a, casio::add(a, terms));
+            }
+        }
+        NodeId b2 = rewrite_laurent_power_expression(a, x.b, var, changed, depth - 1);
+        return casio::simplify(a, casio::div(a, top, b2));
+    }
+    if(x.kind == NodeKind::Mul) {
+        NodeId expanded = expand_small(a, n, 3);
+        if(!same_expr_key(a, expanded, n) && is_laurent_power_sum(a, expanded, var)) {
+            changed = true;
+            return rewrite_laurent_power_expression(a, expanded, var, changed, depth - 1);
+        }
+        std::vector<NodeId> kids;
+        kids.reserve(x.kids.size());
+        for(NodeId k : x.kids) kids.push_back(rewrite_laurent_power_expression(a, k, var, changed, depth - 1));
+        NodeId rebuilt = casio::simplify(a, casio::mul(a, kids));
+        NodeId expanded2 = expand_small(a, rebuilt, 3);
+        if(!same_expr_key(a, expanded2, rebuilt) && is_laurent_power_sum(a, expanded2, var)) {
+            changed = true;
+            return rewrite_laurent_power_expression(a, expanded2, var, changed, depth - 1);
+        }
+        return rebuilt;
+    }
+    if(x.kind == NodeKind::Add) {
+        std::vector<NodeId> kids;
+        kids.reserve(x.kids.size());
+        for(NodeId k : x.kids) kids.push_back(rewrite_laurent_power_expression(a, k, var, changed, depth - 1));
+        return casio::simplify(a, casio::add(a, kids));
+    }
+    if(x.kind == NodeKind::Fn) {
+        return n;
+    }
+    return n;
+}
+
+static std::optional<NodeId> laurent_power_derivative_final(Arena &a, NodeId n, std::string const &var)
+{
+    if(!laurent_power_domain(a, n, var) || !has_laurent_index_feature(a, n, var)) return std::nullopt;
+    bool changed = false;
+    NodeId rewritten = rewrite_laurent_power_expression(a, n, var, changed);
+    if(!changed) return std::nullopt;
+    return casio::simplify(a, diff(a, rewritten, var, ""));
+}
+
 static bool half_power_factor(Arena &a, NodeId n, std::string const &var, Rational &power)
 {
     Node const &x = a.get(n);
@@ -6031,6 +6241,15 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     out = nice;
             }
             std::string final_answer = answer_override.empty() ? label + " = " + clean_math_text(format_expr_human(arena, out)) : answer_override;
+            if(req.mode != 4) {
+                if(auto nice = laurent_power_derivative_final(arena, n, var)) {
+                    std::string nice_answer = label + " = " + clean_math_text(format_expr_human(arena, *nice));
+                    if(!nice_answer.empty() && compact_math_key(nice_answer) != compact_math_key(final_answer)) {
+                        push_unique_step(steps, final_answer + ".");
+                        final_answer = nice_answer;
+                    }
+                }
+            }
             if(answer_override.empty() && contains_fn_kind(arena, n, FnKind::Sign)) {
                 std::string roots = first_sign_exclusion_from_key(compact_math_key(format_expr_human(arena, n)), var);
                 if(!roots.empty()) final_answer += ", " + var + " != " + roots;

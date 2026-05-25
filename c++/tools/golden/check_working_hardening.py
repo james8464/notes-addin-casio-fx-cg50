@@ -59,6 +59,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["\nx^3\n", "ERR:"],
     ),
     (
+        "derive",
+        "sqrt(x^2),x",
+        ["dy/dx = x/sqrt(x^2)"],
+        ["\ndy/dx = 1\n", "ERR:"],
+    ),
+    (
         "alg",
         "expand((5*x-3)^8)",
         ["(ax+b)^n with a = 5, b = -3, n = 8", "390625*x^8 - 1875000*x^7", "390625*x^8 -1875000*x^7"],
