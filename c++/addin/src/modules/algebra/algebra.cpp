@@ -176,6 +176,7 @@ static std::optional<double> eval_node_env(Arena &a, NodeId id, std::vector<std:
 static std::string format_double_compact(double x);
 static std::string format_rat(Arena &a, Rational r);
 static std::optional<Rational> as_num(Arena &a, NodeId n);
+static Rational r_pow_int(Rational r, int p);
 static std::optional<Rational> rational_power_factor(Rational base, Rational power);
 static std::optional<Rational> rational_ratio_power(Rational base, Rational value);
 static std::optional<std::vector<std::string>> symbolic_linear_solve_route(Arena &a, NodeId rearr, std::string const &var);
@@ -1091,6 +1092,46 @@ static std::optional<Rational> square_surd_product_value(Arena &a, NodeId n)
     return acc;
 }
 
+static std::optional<NodeId> surd_product_int_power(Arena &a, NodeId n, int p)
+{
+    if(p <= 1 || p > 8) return std::nullopt;
+    Rational coeff{1, 1}, rad{1, 1};
+    bool ok = true;
+    bool saw_surd = false;
+    auto collect = [&](auto &&self, NodeId id) -> void {
+        if(!ok) return;
+        Node const &t = a.get(id);
+        if(t.kind == NodeKind::Num) {
+            coeff = r_mul(coeff, t.num);
+            return;
+        }
+        if(t.kind == NodeKind::Mul) {
+            for(NodeId k : t.kids) self(self, k);
+            return;
+        }
+        if(t.kind == NodeKind::Fn && t.fkind == FnKind::Sqrt) {
+            NodeId arg = exact_eval_simplify(a, t.a);
+            Node const &u = a.get(arg);
+            if(u.kind != NodeKind::Num || u.num.num < 0) {
+                ok = false;
+                return;
+            }
+            rad = r_mul(rad, u.num);
+            saw_surd = true;
+            return;
+        }
+        ok = false;
+    };
+    collect(collect, n);
+    if(!ok || !saw_surd) return std::nullopt;
+    Rational outside = r_mul(r_pow_int(coeff, p), r_pow_int(rad, p / 2));
+    std::vector<NodeId> factors;
+    if(outside.num != outside.den) factors.push_back(casio::num(a, outside.num, outside.den));
+    if(p % 2) factors.push_back(casio::fn(a, "sqrt", casio::num(a, rad.num, rad.den)));
+    if(factors.empty()) return casio::num(a, 1);
+    return exact_eval_simplify(a, casio::mul(a, factors));
+}
+
 static NodeId exact_eval_simplify(Arena &a, NodeId n)
 {
     Node x = a.get(n);
@@ -1236,6 +1277,9 @@ static NodeId exact_eval_simplify(Arena &a, NodeId n)
             if(expo.num.num == 2 && expo.num.den == 1) {
                 if(auto sq = square_surd_product_value(a, lhs))
                     return casio::num(a, sq->num, sq->den);
+            }
+            if(expo.num.den == 1 && expo.num.num > 1) {
+                if(auto sp = surd_product_int_power(a, lhs, static_cast<int>(expo.num.num))) return *sp;
             }
             if(base.kind == NodeKind::Num) {
                 if(auto f = rational_power_factor(base.num, expo.num))
