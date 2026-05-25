@@ -2986,6 +2986,13 @@ static bool split_coeff_term(Arena &a, NodeId n, double &coeff, NodeId &rest, bo
         has_rest = false;
         return true;
     }
+    if(x.kind == NodeKind::Div && !has_any_symbol(a, x.b)) {
+        auto den = numeric_eval(a, x.b, 0.0);
+        if(!den || !std::isfinite(*den) || std::fabs(*den) < 1e-300) return false;
+        if(!split_coeff_term(a, x.a, coeff, rest, has_rest)) return false;
+        coeff /= *den;
+        return true;
+    }
     if(x.kind != NodeKind::Mul) return true;
     std::optional<NodeId> factor;
     for(NodeId kid : x.kids) {
@@ -5661,19 +5668,39 @@ static std::optional<NodeId> double_angle_inner(Arena &a, NodeId arg)
 {
     Node const &x = a.get(arg);
     if(x.kind != NodeKind::Mul) return std::nullopt;
-    NodeId inner = 0;
-    bool saw_two = false;
+    std::vector<NodeId> inner;
+    bool halved = false;
     for(NodeId kid : x.kids) {
         auto q = as_num(a, kid);
-        if(q && q->num == 2 && q->den == 1 && !saw_two) {
-            saw_two = true;
+        if(q && !halved && q->num == 2 && q->den == 1) {
+            halved = true;
             continue;
         }
-        if(inner) return std::nullopt;
-        inner = kid;
+        inner.push_back(kid);
     }
-    if(!saw_two || !inner) return std::nullopt;
-    return inner;
+    if(!halved || inner.empty()) return std::nullopt;
+    return inner.size() == 1 ? inner.front() : casio::simplify(a, casio::mul(a, inner));
+}
+
+static std::optional<NodeId> scaled_double_angle_inner(Arena &a, NodeId arg)
+{
+    Node const &x = a.get(arg);
+    if(x.kind != NodeKind::Mul) return std::nullopt;
+    std::vector<NodeId> inner;
+    bool halved = false;
+    for(NodeId kid : x.kids) {
+        auto q = as_num(a, kid);
+        if(q && !halved && q->num % 2 == 0) {
+            Rational h{q->num / 2, q->den};
+            h.normalize();
+            if(!(h.num == 1 && h.den == 1)) inner.push_back(casio::num(a, h.num, h.den));
+            halved = true;
+            continue;
+        }
+        inner.push_back(kid);
+    }
+    if(!halved || inner.empty()) return std::nullopt;
+    return inner.size() == 1 ? inner.front() : casio::simplify(a, casio::mul(a, inner));
 }
 
 static bool add_sc_raw(SCPoly &p, Arena &a, NodeId arg, double k, int s, int c)
@@ -8110,6 +8137,7 @@ static bool match_tan_double_term(Arena &a, NodeId n, double &coef, NodeId &arg)
     Node const &r = a.get(rest);
     if(r.kind != NodeKind::Fn || r.fkind != FnKind::Tan) return false;
     auto inner = double_angle_inner(a, r.a);
+    if(!inner) inner = scaled_double_angle_inner(a, r.a);
     if(!inner) return false;
     arg = *inner;
     return true;
@@ -8202,8 +8230,6 @@ static std::optional<std::vector<std::string>> solve_sec2_tan_double_poly(
     bool rad
 )
 {
-    Node const &r = a.get(residual);
-    if(r.kind != NodeKind::Add) return std::nullopt;
     double sec2 = 0.0, tan2 = 0.0, c = 0.0;
     NodeId arg = 0;
     bool got_sec2 = false, got_tan2 = false;
@@ -8214,26 +8240,44 @@ static std::optional<std::vector<std::string>> solve_sec2_tan_double_poly(
         }
         return same_sig(a, arg, n);
     };
-    for(NodeId k : r.kids) {
-        double coef = 0.0;
+
+    auto collect = [&](auto &&self, NodeId n, double scale) -> bool {
+        double coeff = 1.0;
+        NodeId rest = n;
+        bool has_rest = true;
+        if(!split_coeff_term(a, n, coeff, rest, has_rest)) return false;
+        coeff *= scale;
+        if(!has_rest) {
+            c += coeff;
+            return true;
+        }
+        Node const &rn = a.get(rest);
+        if(rn.kind == NodeKind::Add) {
+            for(NodeId k : rn.kids)
+                if(!self(self, k, coeff)) return false;
+            return true;
+        }
+        double kcoef = 0.0;
         NodeId a0 = 0;
-        if(match_sec2_term(a, k, coef, a0)) {
-            if(!same_or_set(a0)) return std::nullopt;
-            sec2 += coef;
+        if(match_sec2_term(a, rest, kcoef, a0)) {
+            if(!same_or_set(a0)) return false;
+            sec2 += coeff * kcoef;
             got_sec2 = true;
-            continue;
+            return true;
         }
-        if(match_tan_double_term(a, k, coef, a0)) {
-            if(!same_or_set(a0)) return std::nullopt;
-            tan2 += coef;
+        if(match_tan_double_term(a, rest, kcoef, a0)) {
+            if(!same_or_set(a0)) return false;
+            tan2 += coeff * kcoef;
             got_tan2 = true;
-            continue;
+            return true;
         }
-        if(contains_var(a, k, var)) return std::nullopt;
-        auto kv = numeric_eval(a, k, 0.0);
-        if(!kv || !std::isfinite(*kv)) return std::nullopt;
-        c += *kv;
-    }
+        if(contains_var(a, rest, var)) return false;
+        auto kv = numeric_eval(a, rest, 0.0);
+        if(!kv || !std::isfinite(*kv)) return false;
+        c += coeff * *kv;
+        return true;
+    };
+    if(!collect(collect, residual, 1.0)) return std::nullopt;
     if(!got_sec2 || !got_tan2 || !arg) return std::nullopt;
     double q4 = -sec2, q2 = -c, q1 = 2.0 * tan2, q0 = sec2 + c;
     auto roots = solve_poly4_even_linear(q4, q2, q1, q0);

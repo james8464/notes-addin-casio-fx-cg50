@@ -129,6 +129,30 @@ CASES = [
         ("2u = 0", "x = []"),
     ),
     (
+        "mixed sec2 tan double outer factor",
+        ["--trig", "2*(sec(x)^2+5*tan(2*x)-12)=0,x,0,pi,12,method=identity"],
+        ("u = tan(x)", "-2u^4 + 24u^2 + 20u - 22 = 0", "x = [0.56498895011, 1.30866413083, 1.95200074222, 2.06274036432]"),
+        ("x = []",),
+    ),
+    (
+        "mixed sec2 tan double divided residual",
+        ["--trig", "(sec(x)^2+5*tan(2*x))/2=12,x,0,pi,12,method=identity"],
+        ("u = tan(x)", "-0.5u^4 + 12u^2 + 5u - 23/2 = 0", "x = [0.675392781925, 1.37370675812, 1.78720095712, 2.24148942083]"),
+        ("x = []",),
+    ),
+    (
+        "mixed sec2 tan double scaled angle",
+        ["--trig", "sec(2*x)^2+tan(4*x)=0,x,0,pi,12,method=identity"],
+        ("u = tan(2*x)", "-u^4 + 2u + 1 = 0", "x = [0.474484010182, 1.3492245039, 2.04528033698, 2.9200208307]"),
+        ("x = []",),
+    ),
+    (
+        "mixed sec2 tan double divided term",
+        ["--trig", "sec(x)^2+tan(2*x)/2=0,x,0,pi,12,method=identity"],
+        ("u = tan(x)", "-u^4 + u + 1 = 0", "x = [0.884473667712, 2.51461754688]"),
+        ("x = []",),
+    ),
+    (
         "param reciprocal power simplify",
         ["--derive", "1/t+1/t^2,1/t-1/t^2,t,method=param"],
         ("dy/dx = ((- t^-2 + 2*t^-3)*t^3)/((- t^-2 - 2*t^-3)*t^3)", "dy/dx = (t - 2)/(t + 2)"),
