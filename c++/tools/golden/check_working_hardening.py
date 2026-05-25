@@ -41,6 +41,24 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["-x/(", "ERR:"],
     ),
     (
+        "derive",
+        "1/x^3,x,method=first_principles",
+        ["[1/(x+h)^3-1/x^3]/h", "x^3-(x+h)^3 = -3*x^2*h-3*x*h^2-h^3", "h->0", "d/dx 1/x^3 = -3/x^4"],
+        ["No first-principles route", "ERR:"],
+    ),
+    (
+        "derive",
+        "1/(2*x^3),x,method=first_principles",
+        ["[1/(2*(x+h)^3)-1/(2*x^3)]/h", "x^3-(x+h)^3 = -3*x^2*h-3*x*h^2-h^3", "d/dx 1/(2*x^3) = -3/(2*x^4)"],
+        ["No first-principles route", "ERR:"],
+    ),
+    (
+        "derive",
+        "-1/(2*x^3),x,method=first_principles",
+        ["[-1/(2*(x+h)^3)+1/(2*x^3)]/h", "x^3-(x+h)^3 = -3*x^2*h-3*x*h^2-h^3", "d/dx -1/(2*x^3) = 3/(2*x^4)"],
+        ["No first-principles route", "ERR:"],
+    ),
+    (
         "alg",
         "evalat(y*sqrt(9-4*y^2),y,3*sqrt(2)/4)",
         ["f(3*sqrt(2)/4) = 9/4"],

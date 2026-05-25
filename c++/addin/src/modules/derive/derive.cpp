@@ -4890,6 +4890,188 @@ static Rational rat_pow_local(Rational r, int p)
     return out;
 }
 
+static std::string power_text(std::string const &base, int p)
+{
+    if(p == 0) return "";
+    if(p == 1) return base;
+    return base + "^" + std::to_string(p);
+}
+
+static std::string join_product(std::vector<std::string> const &f)
+{
+    std::string out;
+    for(auto const &s : f) {
+        if(s.empty()) continue;
+        if(!out.empty()) out += "*";
+        out += s;
+    }
+    return out.empty() ? "1" : out;
+}
+
+static std::string binomial_xh_text(std::string const &var, int n, bool drop_first, bool after_cancel)
+{
+    std::string out;
+    int first = after_cancel ? 0 : (drop_first ? 1 : 0);
+    int last = after_cancel ? n - 1 : n;
+    for(int k = first; k <= last; ++k) {
+        long long c = comb_i64(n, k + (after_cancel ? 1 : 0));
+        std::vector<std::string> factors;
+        if(c != 1) factors.push_back(std::to_string(c));
+        factors.push_back(power_text(var, n - k - (after_cancel ? 1 : 0)));
+        factors.push_back(power_text("h", k));
+        std::string term = join_product(factors);
+        if(out.empty()) out = term;
+        else out += "+" + term;
+    }
+    return out;
+}
+
+static std::string neg_binomial_tail_text(std::string const &var, int n)
+{
+    std::string out;
+    for(int k = 1; k <= n; ++k) {
+        long long c = comb_i64(n, k);
+        std::vector<std::string> factors;
+        if(c != 1) factors.push_back(std::to_string(c));
+        factors.push_back(power_text(var, n - k));
+        factors.push_back(power_text("h", k));
+        std::string term = join_product(factors);
+        out += out.empty() ? "-" + term : "-" + term;
+    }
+    return out.empty() ? "0" : out;
+}
+
+static std::string coeff_over_x_power_text(Arena &a, Rational c, std::string const &var, int p)
+{
+    c.normalize();
+    if(c.num == 0) return "0";
+    bool neg = c.num < 0;
+    if(neg) c.num = -c.num;
+    std::string sign = neg ? "-" : "";
+    std::string den = power_text(var, p);
+    if(c.den == 1) {
+        if(c.num == 1) return sign + "1/" + den;
+        return sign + rat_text(a, c.num, 1) + "/" + den;
+    }
+    std::string bot = rat_text(a, c.den, 1) + "*" + den;
+    if(c.num == 1) return sign + "1/(" + bot + ")";
+    return sign + rat_text(a, c.num, 1) + "/(" + bot + ")";
+}
+
+static std::string subtract_text(std::string left, std::string right)
+{
+    if(!right.empty() && right.front() == '-') return left + "+" + right.substr(1);
+    return left + "-" + right;
+}
+
+static std::optional<int> var_power_node(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Sym && x.text == var) return 1;
+    if(x.kind != NodeKind::Pow) return std::nullopt;
+    Node const &base = a.get(x.a);
+    auto e = as_num(a, x.b);
+    if(base.kind != NodeKind::Sym || base.text != var || !e || e->den != 1 || e->num < 1 || e->num > 8)
+        return std::nullopt;
+    return static_cast<int>(e->num);
+}
+
+struct ScaledVarPower
+{
+    Rational scale{1, 1};
+    int pow = 0;
+};
+
+static std::optional<ScaledVarPower> scaled_var_power_node(Arena &a, NodeId n, std::string const &var)
+{
+    if(auto p = var_power_node(a, n, var)) return ScaledVarPower{Rational{1, 1}, *p};
+    Node const &x = a.get(n);
+    if(x.kind != NodeKind::Mul) return std::nullopt;
+    Rational scale{1, 1};
+    int pow = 0;
+    for(NodeId k : x.kids) {
+        Node const &t = a.get(k);
+        if(t.kind == NodeKind::Num) {
+            scale = rat_mul_local(scale, t.num);
+            continue;
+        }
+        auto p = var_power_node(a, k, var);
+        if(!p) return std::nullopt;
+        pow += *p;
+    }
+    if(pow < 1 || pow > 8 || rat_zero_local(scale)) return std::nullopt;
+    return ScaledVarPower{scale, pow};
+}
+
+struct ReciprocalPower
+{
+    Rational coeff{1, 1};
+    int pow = 0;
+};
+
+static std::optional<ReciprocalPower> reciprocal_power_node(Arena &a, NodeId n, std::string const &var)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Div) {
+        auto top = as_num(a, x.a);
+        auto den = scaled_var_power_node(a, x.b, var);
+        if(top && den) return ReciprocalPower{rat_div_local(*top, den->scale), den->pow};
+        return std::nullopt;
+    }
+    if(x.kind == NodeKind::Pow) {
+        Node const &base = a.get(x.a);
+        auto e = as_num(a, x.b);
+        if(base.kind == NodeKind::Sym && base.text == var && e && e->den == 1 && e->num < 0 && e->num >= -8)
+            return ReciprocalPower{Rational{1, 1}, static_cast<int>(-e->num)};
+        return std::nullopt;
+    }
+    if(x.kind != NodeKind::Mul) return std::nullopt;
+    Rational coeff{1, 1};
+    int pow = 0;
+    for(NodeId k : x.kids) {
+        Node const &t = a.get(k);
+        if(t.kind == NodeKind::Num) {
+            coeff = rat_mul_local(coeff, t.num);
+            continue;
+        }
+        auto r = reciprocal_power_node(a, k, var);
+        if(!r || pow) return std::nullopt;
+        coeff = rat_mul_local(coeff, r->coeff);
+        pow = r->pow;
+    }
+    if(pow < 1) return std::nullopt;
+    return ReciprocalPower{coeff, pow};
+}
+
+static std::optional<std::vector<std::string>> first_principles_recip_power_route(
+    Arena &a,
+    NodeId f,
+    std::string const &var
+)
+{
+    auto rp = reciprocal_power_node(a, f, var);
+    if(!rp || rat_zero_local(rp->coeff)) return std::nullopt;
+    int n = rp->pow;
+    Rational neg_c = rat_neg_local(rp->coeff);
+    Rational ans_c = rat_mul_local(neg_c, Rational{n, 1});
+    std::string xpow = power_text(var, n);
+    std::string xhp = power_text("(" + var + "+h)", n);
+    std::string den = xpow + "*" + xhp;
+    std::string tail = binomial_xh_text(var, n, true, true);
+    std::string ftxt = coeff_over_text(a, rp->coeff, xpow);
+    std::string diff = subtract_text(coeff_over_text(a, rp->coeff, xhp), coeff_over_text(a, rp->coeff, xpow));
+    return std::vector<std::string>{
+        "[f(" + var + "+h)-f(" + var + ")]/h",
+        "[" + diff + "]/h",
+        "= " + coeff_text(a, rp->coeff, "[" + xpow + "-" + xhp + "]") + "/[h*" + den + "]",
+        xhp + " = " + binomial_xh_text(var, n, false, false),
+        xpow + "-" + xhp + " = " + neg_binomial_tail_text(var, n),
+        "= " + coeff_text(a, neg_c, "(" + tail + ")") + "/(" + den + ")",
+        "h->0",
+        "d/d" + var + " " + ftxt + " = " + coeff_over_x_power_text(a, ans_c, var, n + 1),
+    };
+}
+
 static std::optional<std::vector<std::string>> first_principles_point_poly_route(
     Arena &a,
     NodeId f,
@@ -4956,6 +5138,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
                     if(auto route = first_principles_point_poly_route(arena, fp_node, var, *point)) return *route;
                 }
             }
+            if(auto route = first_principles_recip_power_route(arena, fp_node, var)) return *route;
             if(key == var + "^2") {
                 return casio::exam_block(
                     "first principles",
