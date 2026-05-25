@@ -94,6 +94,9 @@ c++/tests/reports/a_level_source_downloads/summary_latest.txt
 c++/tests/reports/online_paper_corpus/inventory_latest.md
 ```
 
+The online paper audit keeps `manifest_latest.jsonl` and extracted text for
+evidence, but deletes generated PDF caches after review to save disk space.
+
 Clean generated/local files (dry-run first):
 
 ```bash
@@ -113,6 +116,6 @@ Transfer files are published under `calculator_files/`, then `./compile` copies 
 ## Notes
 
 - Generated files, editor state, virtualenvs, reports, and local graph outputs are intentionally not kept in git.
-- External paper PDFs and rendered page images live under `~/Downloads`; only audit scripts and manual trackers belong in git.
+- External paper PDFs and rendered page images are temporary audit inputs; only manifests, scripts, and manual trackers belong in git.
 - `run_tests.py` is C++-only.
 - Host build outputs belong under `c++/addin/host/build/`.
