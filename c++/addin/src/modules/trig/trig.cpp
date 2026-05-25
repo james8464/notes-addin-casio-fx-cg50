@@ -4348,6 +4348,12 @@ static std::optional<std::vector<std::string>> linear_sincos_rform_real(Arena &a
     std::string Rtxt = trig_root_text(R);
     bool degrees = compact_key(v).find("theta") != std::string::npos;
     auto prod = [&](std::string const &body) { return Rtxt == "1" ? body : Rtxt + "*" + body; };
+    auto ratio = [](std::string const &num, std::string const &den) {
+        auto wrap = [](std::string const &s) {
+            return s.find('*') == std::string::npos && s.find('/') == std::string::npos ? s : "(" + s + ")";
+        };
+        return wrap(num) + "/" + wrap(den);
+    };
     if(C > 1e-12) {
         double A = std::fabs(S);
         bool plus = S < 0.0;
@@ -4361,7 +4367,7 @@ static std::optional<std::vector<std::string>> linear_sincos_rform_real(Arena &a
             "R=sqrt(" + Ctxt + "^2+" + absS + "^2)=" + Rtxt + ".",
             "R*cos(" + v + sign + "alpha)=R*cos(" + v + ")*cos(alpha)" + std::string(plus ? "-R*sin(" : "+R*sin(") + v + ")*sin(alpha).",
             "R*cos(alpha)=" + Ctxt + ", R*sin(alpha)=" + absS + ".",
-            "tan(alpha)=" + absS + "/" + Ctxt + ".",
+            "tan(alpha)=" + ratio(absS, Ctxt) + ".",
             "alpha=" + alpha + std::string(degrees ? " deg." : "."),
             lhs + "=" + final + ".",
         };
@@ -4387,7 +4393,7 @@ static std::optional<std::vector<std::string>> linear_sincos_rform_real(Arena &a
             "R=sqrt(" + Stxt + "^2+" + absC + "^2)=" + Rtxt + ".",
             "R*sin(" + v + sign + "alpha)=R*sin(" + v + ")*cos(alpha)" + std::string(plus ? "+R*cos(" : "-R*cos(") + v + ")*sin(alpha).",
             "R*cos(alpha)=" + Stxt + ", R*sin(alpha)=" + absC + ".",
-            "tan(alpha)=" + absC + "/" + Stxt + ".",
+            "tan(alpha)=" + ratio(absC, Stxt) + ".",
             "alpha=" + alpha + std::string(degrees ? " deg." : "."),
             lhs + "=" + final + ".",
         };
@@ -8595,15 +8601,21 @@ static std::optional<std::vector<std::string>> solve_mixed_trig_poly(
         std::string var_key = compact_key(var);
         std::string sin_aux = var_key == "alpha" ? "beta" : "alpha";
         std::string cos_aux = var_key == "beta" ? "alpha" : "beta";
+        auto ratio = [](std::string const &num, std::string const &den) {
+            auto wrap = [](std::string const &s) {
+                return s.find('*') == std::string::npos && s.find('/') == std::string::npos ? s : "(" + s + ")";
+            };
+            return wrap(num) + "/" + wrap(den);
+        };
         steps.push_back("a=" + c_txt + ", b=" + s_txt + " for a*cos(A)+b*sin(A).");
         steps.push_back("R=sqrt(" + c_abs_txt + "^2+" + s_abs_txt + "^2)=" + r_txt + ".");
         steps.push_back("R*cos(A-" + cos_aux + ")=R*cos(A)*cos(" + cos_aux + ")+R*sin(A)*sin(" + cos_aux + ").");
-        steps.push_back("R*cos(" + cos_aux + ")=" + c_txt + ", R*sin(" + cos_aux + ")=" + s_txt + ", tan(" + cos_aux + ")=" + s_txt + "/" + c_txt + ".");
+        steps.push_back("R*cos(" + cos_aux + ")=" + c_txt + ", R*sin(" + cos_aux + ")=" + s_txt + ", tan(" + cos_aux + ")=" + ratio(s_txt, c_txt) + ".");
         steps.push_back(cos_aux + "=" + beta_txt + unit_txt + ", so " + c_txt + "*cos(A)+" + s_txt + "*sin(A)=R*cos(A-" + cos_aux + ").");
         steps.push_back("cos(" + arg_text + "-" + cos_aux + ")=" + target_txt + ".");
         steps.push_back("R*sin(A+" + sin_aux + ")=R*sin(A)*cos(" + sin_aux + ")+R*cos(A)*sin(" + sin_aux + ").");
         steps.push_back("R*cos(" + sin_aux + ")=" + s_txt + ", R*sin(" + sin_aux + ")=" + c_txt + ".");
-        steps.push_back("tan(" + sin_aux + ")=" + c_txt + "/" + s_txt + ".");
+        steps.push_back("tan(" + sin_aux + ")=" + ratio(c_txt, s_txt) + ".");
         steps.push_back(sin_aux + "=" + alpha_txt + unit_txt + ", so " + s_txt + "*sin(A)+" + c_txt + "*cos(A)=R*sin(A+" + sin_aux + ").");
         steps.push_back("R*sin(" + arg_text + "+" + sin_aux + ")=" + trig_root_text(-poly->c) + ".");
         steps.push_back("sin(" + arg_text + "+" + sin_aux + ")=" + target_txt + ".");

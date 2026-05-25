@@ -24432,6 +24432,17 @@ static std::optional<std::vector<std::string>> nested_sqrt_plus_linear_route(
     return out;
 }
 
+static std::optional<std::vector<std::string>> exp_substitution_route(
+    Arena &a,
+    NodeId residual,
+    std::string const &var,
+    std::vector<std::string> out,
+    std::optional<double> lo,
+    std::optional<double> hi,
+    bool lo_open,
+    bool hi_open
+);
+
 static std::optional<std::vector<std::string>> single_sqrt_polynomial_route(
     Arena &a,
     NodeId lhs,
@@ -24541,6 +24552,13 @@ static std::optional<std::vector<std::string>> single_sqrt_polynomial_route(
         }
     }
     if(raw.empty()) {
+        auto rhs_v = eval_node_env(a, rhs_iso, {});
+        if(rhs_v && std::isfinite(*rhs_v) && *rhs_v >= -1e-12) {
+            NodeId exp_residual = exact_eval_simplify(a, squared);
+            std::vector<std::string> out;
+            append_sqrt_setup(out, format_expr(a, exp_residual));
+            if(auto er = exp_substitution_route(a, exp_residual, var, out, lo, hi, lo_open, hi_open)) return *er;
+        }
         auto rad_lin = symbolic_linear_parts(a, rad, var);
         auto rhs_lin = symbolic_linear_parts(a, rhs_iso, var);
         if(!rad_lin || !rhs_lin) return std::nullopt;
