@@ -143,10 +143,14 @@ def generated_cases() -> list[dict[str, Any]]:
             "topic": "partial_fractions",
             "cmd": ["--int", expr],
             "expected_answer_markers": ["Answer:", "+ C"],
-            "expected_working_markers": [
-                ("Factor D(x)" if "x^3" in expr else ("Equate" if "x^4" not in expr and "x^2*" not in expr else ("Ax+B" if "x^4" in expr else "A/x + B/x^2 + C/(x+1)"))),
-                route_marker,
-            ],
+            "expected_working_markers": (
+                ["(x + 1)/(x^3 - x) = 1/(x*(x - 1))", "A = -1, B = 1"]
+                if expr == "(x+1)/(x^3-x),method=pf"
+                else [
+                    ("Factor D(x)" if "x^3" in expr else ("Equate" if "x^4" not in expr and "x^2*" not in expr else ("Ax+B" if "x^4" in expr else "A/x + B/x^2 + C/(x+1)"))),
+                    route_marker,
+                ]
+            ),
             "forbidden_markers": ["No elementary primitive found", "Answer: int(", "ERR:"],
         })
     for expr in (

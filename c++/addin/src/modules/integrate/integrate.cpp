@@ -13477,6 +13477,132 @@ static Rational poly_eval(Poly const &p, Rational x)
     return out;
 }
 
+static std::optional<Poly> poly_divide_by_linear_root(Poly p, Rational root)
+{
+    poly_trim(p);
+    int deg = poly_degree(p);
+    if(deg < 1 || !r_zero(poly_eval(p, root))) return std::nullopt;
+    Poly q;
+    q.c.assign(static_cast<std::size_t>(deg), Rational{0, 1});
+    q.c[static_cast<std::size_t>(deg - 1)] = poly_at(p, deg);
+    for(int i = deg - 2; i >= 0; --i) {
+        q.c[static_cast<std::size_t>(i)] = r_add(poly_at(p, i + 1), r_mul(root, q.c[static_cast<std::size_t>(i + 1)]));
+    }
+    Rational rem = r_add(poly_at(p, 0), r_mul(root, q.c[0]));
+    if(!r_zero(rem)) return std::nullopt;
+    poly_trim(q);
+    return q;
+}
+
+static std::optional<Rational> find_small_rational_root(Poly const &p)
+{
+    for(int den = 1; den <= 12; ++den) {
+        for(int num = -48; num <= 48; ++num) {
+            if(den != 1 && std::gcd(std::abs(num), den) != 1) continue;
+            Rational r{num, den};
+            r.normalize();
+            if(r_zero(poly_eval(p, r))) return r;
+        }
+    }
+    return std::nullopt;
+}
+
+static bool has_repeated_small_rational_root(Poly const &p)
+{
+    for(int den = 1; den <= 12; ++den) {
+        for(int num = -48; num <= 48; ++num) {
+            if(den != 1 && std::gcd(std::abs(num), den) != 1) continue;
+            Rational root{num, den};
+            root.normalize();
+            if(!r_zero(poly_eval(p, root))) continue;
+            auto q = poly_divide_by_linear_root(p, root);
+            if(q && r_zero(poly_eval(*q, root))) return true;
+        }
+    }
+    return false;
+}
+
+static void cancel_common_linear_roots(RatPoly &r)
+{
+    for(int guard = 0; guard < 12; ++guard) {
+        bool changed = false;
+        for(int den = 1; den <= 12 && !changed; ++den) {
+            for(int num = -48; num <= 48 && !changed; ++num) {
+                if(den != 1 && std::gcd(std::abs(num), den) != 1) continue;
+                Rational root{num, den};
+                root.normalize();
+                if(!r_zero(poly_eval(r.num, root)) || !r_zero(poly_eval(r.den, root))) continue;
+                auto nn = poly_divide_by_linear_root(r.num, root);
+                auto dd = poly_divide_by_linear_root(r.den, root);
+                if(!nn || !dd) continue;
+                r.num = *nn;
+                r.den = *dd;
+                changed = true;
+            }
+        }
+        if(!changed) break;
+    }
+}
+
+static std::optional<NodeId> factored_linear_denominator(Arena &a, Poly den, std::string const &var, Rational &lead)
+{
+    std::vector<NodeId> factors;
+    NodeId vx = casio::sym(a, var);
+    while(poly_degree(den) > 0) {
+        auto root = find_small_rational_root(den);
+        if(!root) return std::nullopt;
+        int count = 0;
+        while(auto q = poly_divide_by_linear_root(den, *root)) {
+            den = *q;
+            ++count;
+        }
+        NodeId lin = casio::simplify(a, casio::add(a, {vx, a.num(r_neg(*root))}));
+        factors.push_back(count == 1 ? lin : casio::power(a, lin, a.num(Rational{count, 1})));
+    }
+    lead = poly_at(den, 0);
+    if(r_zero(lead) || factors.empty()) return std::nullopt;
+    return factors.size() == 1 ? factors[0] : casio::mul(a, factors);
+}
+
+static bool contains_div_node(Arena &a, NodeId n, int depth = 0)
+{
+    if(depth > 24) return false;
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Div) return true;
+    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        for(NodeId k : x.kids) if(contains_div_node(a, k, depth + 1)) return true;
+    }
+    if(x.kind == NodeKind::Pow || x.kind == NodeKind::Fn) return contains_div_node(a, x.a, depth + 1);
+    return false;
+}
+
+static std::optional<NodeId> rewrite_rational_to_factored_linear_den(Arena &a, NodeId expr, std::string const &var)
+{
+    Node const &x = a.get(expr);
+    if(x.kind != NodeKind::Div) return std::nullopt;
+    Node const &den0 = a.get(x.b);
+    bool nested_den = contains_div_node(a, x.b);
+    auto r = rational_poly_of(a, expr, var);
+    if(!r || !r->num.ok || !r->den.ok) return std::nullopt;
+    int num_before = poly_degree(r->num);
+    int den_before = poly_degree(r->den);
+    cancel_common_linear_roots(*r);
+    bool cancelled = num_before != poly_degree(r->num) || den_before != poly_degree(r->den);
+    bool structural_need = nested_den || cancelled;
+    if(!structural_need && den0.kind != NodeKind::Mul && den_before > 2) {
+        structural_need = has_repeated_small_rational_root(r->den);
+    }
+    if(!structural_need && !cancelled) return std::nullopt;
+    int deg = poly_degree(r->den);
+    if(deg < 2 || deg > 4) return std::nullopt;
+    Rational lead{1, 1};
+    auto den = factored_linear_denominator(a, r->den, var, lead);
+    if(!den) return std::nullopt;
+    Poly num = r->num;
+    if(!r_eq(lead, Rational{1, 1})) num = poly_scale(num, r_div(Rational{1, 1}, lead));
+    return casio::div(a, poly_to_node(a, num, var), *den);
+}
+
 static std::string join_strings(std::vector<std::string> const &v, char const *sep)
 {
     std::string s;
@@ -17311,6 +17437,19 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
         out.result = *tcg;
         out.steps.push_back("Step 3: Simplify. Add constant C.");
         return out;
+    }
+
+    if(auto factored = rewrite_rational_to_factored_linear_den(a, expr, var)) {
+        if(compact_key(format_expr(a, *factored)) != compact_key(format_expr(a, expr))) {
+            auto inner = integrate_giac_style(a, *factored, var);
+            if(inner.result) {
+                out.steps.push_back("Step 2: Simplify rational expression.");
+                out.steps.push_back(format_expr_human(a, expr) + " = " + format_expr_human(a, *factored) + ".");
+                for(auto const &s : inner.steps) out.steps.push_back(s);
+                out.result = *inner.result;
+                return out;
+            }
+        }
     }
 
     if(auto linear_pf = integrate_distinct_linear_poly_pf(a, expr, var, out.steps, true)) {

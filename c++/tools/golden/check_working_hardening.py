@@ -926,6 +926,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "int",
+        "1/((x-3)^2*((x^2-1)/(x-1))),method=pf",
+        ["1/((x - 3)^2*(x^2 - 1)/(x - 1)) = 1/((x + 1)*(x - 3)^2)", "A/(x - 3)+B/(x - 3)^2+C/(x + 1)", "A = -1/16, B = 1/4, C = 1/16", "-1/16*ln(abs(x - 3))", "-1/(4*(x - 3))", "1/16*ln(abs(x + 1)) + C"],
+        ["No elementary", "ERR:"],
+    ),
+    (
+        "int",
         "(3*x^2+5*x+7)/((x-1)^2*(x^2+1)),method=pf",
         ["A/(x-1)+B/(x-1)^2+(Cx+D)/(x^2+1)", "coefficient equations", "Answer:"],
         ["No elementary primitive found", "ERR:"],
