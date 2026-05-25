@@ -24,6 +24,7 @@ python3 run_tests.py tui
 python3 c++/tools/golden/check_online_paper_corpus_inventory.py
 python3 c++/tools/golden/check_online_paper_manual_cases.py
 python3 c++/tools/golden/check_edexcel_public_paper_corpus.py
+python3 c++/tools/golden/check_edexcel_question_audit_coverage.py
 python3 c++/tools/golden/check_edexcel_paper1_downloads.py
 python3 c++/tools/golden/check_edexcel_paper2_downloads.py
 python3 c++/tools/golden/check_edexcel_paper31_downloads.py
@@ -42,6 +43,7 @@ python3 c++/tools/golden/download_online_paper_corpus.py --clean --force
 python3 c++/tools/golden/check_a_level_source_downloads.py
 python3 c++/tools/golden/check_online_paper_corpus_inventory.py
 python3 c++/tools/golden/check_edexcel_public_paper_corpus.py
+python3 c++/tools/golden/check_edexcel_question_audit_coverage.py
 python3 c++/tools/golden/render_audit_pdf_pages.py --format jpeg ~/Downloads/"Edexcel A Level Maths past papers" --first 2
 ```
 
@@ -81,3 +83,6 @@ rendered MadAsMaths standard-topic PDFs and records the latest local report.
 `check_a_level_audit_tracker.py` runs every command recorded in
 `a_level_audit_tracker.jsonl`; it is a stale-command guard, not proof of full
 manual mark-scheme coverage.
+
+`check_edexcel_question_audit_coverage.py` verifies every official Pearson 9MA0
+question paper has tracker rows for all inferred question numbers.

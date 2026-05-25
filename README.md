@@ -81,6 +81,7 @@ python3 c++/tools/golden/download_online_paper_corpus.py --clean --force
 python3 c++/tools/golden/check_a_level_source_downloads.py
 python3 c++/tools/golden/check_online_paper_corpus_inventory.py
 python3 c++/tools/golden/check_edexcel_public_paper_corpus.py
+python3 c++/tools/golden/check_edexcel_question_audit_coverage.py
 python3 c++/tools/golden/render_audit_pdf_pages.py --format jpeg ~/Downloads/"MadAsMaths standard topics" ~/Downloads/"MadAsMaths A-level booklets" ~/Downloads/"MadAsMaths papers" ~/Downloads/"Edexcel A Level Maths past papers" ~/Downloads/"Edexcel A Level Maths support materials"
 python3 c++/tools/golden/check_madasmaths_standard_topics_audit.py
 python3 c++/tools/golden/check_madasmaths_full_audit.py --no-render --strict-skips
