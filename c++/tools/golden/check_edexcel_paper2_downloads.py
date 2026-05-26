@@ -56,7 +56,7 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "June 2018 Q6 cubic factor theorem",
         ["--alg", "factor(-3*x^3+8*x^2-9*x+10)"],
-        ["(x - 2)", "- 3*x^2 + 2*x - 5"],
+        ["(x - 2)", "(3*x^2 - 2*x + 5)"],
         ["numeric coeffs needed", "ERR:"],
     ),
     (

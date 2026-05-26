@@ -2114,6 +2114,7 @@ static void collect_mul_factors(Arena &a, NodeId n, std::vector<NodeId> &out);
 struct PolyAny;
 static NodeId poly_any_to_node(Arena &a, PolyAny const &p, std::string const &var);
 static bool poly_any_zero(PolyAny const &p);
+static std::string poly_any_text_desc(PolyAny p, std::string const &var);
 static std::string sqrt_rational_surd_text(Arena &a, Rational r);
 static std::string cube_root_rational_text(Arena &a, Rational r);
 static std::string multiply_root_text(Rational c, std::string root);
@@ -9390,6 +9391,36 @@ next_root:
         return r_cmp(u.first, v.first) < 0;
     });
     std::string factored = p.c.size() == 1 ? rational_root_factor_product_text(a, p.c[0], roots, var) : "";
+    auto quadratic_real_factor_text = [&](Poly2 const &q) -> std::string {
+        Rational D = r_sub(r_mul(q.a1, q.a1), r_mul(Rational{4, 1}, r_mul(q.a2, q.a0)));
+        if(is_zero(q.a2)) return "";
+        if(D.num < 0) {
+            PolyAny raw{{q.a0, q.a1, q.a2}, true};
+            PolyAny prim = primitive_integer_root_poly(raw);
+            if(prim.c.size() != raw.c.size() || is_zero(prim.c.back())) return "";
+            Rational scale = r_div(raw.c.back(), prim.c.back());
+            std::string body = "(" + poly_any_text_desc(prim, var) + ")";
+            if(scale.num == scale.den) return body;
+            if(scale.num == -scale.den) return "-" + body;
+            return format_rat_plain(scale) + "*" + body;
+        }
+        if(auto rat = quadratic_factor_text(a, q, var); !rat.empty()) return rat;
+        if(q.a0.den != 1 || q.a1.den != 1 || q.a2.den != 1 || q.a2.num != 1)
+            return "(" + poly_any_text_desc(PolyAny{{q.a0, q.a1, q.a2}, true}, var) + ")";
+        std::string root = sqrt_rational_surd_text(a, D);
+        Rational den = r_mul(Rational{2, 1}, q.a2);
+        Rational base = r_div(r_neg(q.a1), den);
+        auto factor = [&](Rational sign) {
+            std::string s = var;
+            if(!is_zero(base)) s = signed_sum_text(s, format_rat_plain(r_neg(base)));
+            std::string rt = multiply_root_text(r_neg(r_div(sign, den)), root);
+            if(rt != "0") s = signed_sum_text(s, rt);
+            return "(" + s + ")";
+        };
+        std::string out;
+        if(q.a2.num != q.a2.den) out = format_rat_plain(q.a2) + "*";
+        return out + factor(Rational{1, 1}) + "*" + factor(Rational{-1, 1});
+    };
     if(p.c.size() != 1) {
         for(auto const &rm : roots) {
             std::string f = linear_factor_from_root(a, var, rm.first);
@@ -9399,7 +9430,12 @@ next_root:
     }
     if(p.c.size() == 3) {
         Poly2 q{p.c[2], p.c[1], p.c[0], true};
-        factored += "(" + format_expr(a, poly2_to_node(a, q, var)) + ")*";
+        std::string qt = quadratic_real_factor_text(q);
+        if(qt.empty()) qt = "(" + poly_any_text_desc(PolyAny{{q.a0, q.a1, q.a2}, true}, var) + ")";
+        if(!factored.empty() && qt.rfind("-", 0) == 0)
+            factored = "-" + qt.substr(1) + "*" + factored;
+        else
+            factored += qt + "*";
     }
     if(!factored.empty() && factored.back() == '*') factored.pop_back();
     return std::vector<std::string>{format_expr(a, n), "= " + factored, factored};
@@ -31569,8 +31605,8 @@ static std::optional<std::vector<std::string>> fit_constant_coeff_route(
     std::vector<std::string> const &unknowns,
     std::vector<std::string> const &indep)
 {
-    if(unknowns.size() != 1 || indep.size() != 1) return std::nullopt;
-    std::string const &k = unknowns[0], &x = indep[0];
+    if(indep.size() != 1 || unknowns.empty() || unknowns.size() > 4) return std::nullopt;
+    std::string const &x = indep[0];
     auto L = top_bot(a, lhs), R = top_bot(a, rhs);
     NodeId left = exact_eval_simplify(a, casio::mul(a, {L.first, R.second}));
     NodeId right = exact_eval_simplify(a, casio::mul(a, {R.first, L.second}));
@@ -31581,6 +31617,111 @@ static std::optional<std::vector<std::string>> fit_constant_coeff_route(
     for(int i = 0; i < (int)coeffs.size(); ++i)
         if(!casio::same_by_sig(a, exact_eval_simplify(a, coeffs[i]), zero_node(a))) deg = i;
     if(deg < 1) return std::nullopt;
+
+    if(unknowns.size() > 1) {
+        std::vector<NodeId> eqs;
+        for(auto c : coeffs) {
+            c = exact_eval_simplify(a, c);
+            if(!casio::same_by_sig(a, c, zero_node(a))) eqs.push_back(c);
+        }
+        struct ExactSol { std::vector<std::pair<std::string, NodeId>> v; };
+        std::vector<ExactSol> sols;
+        auto solved = [](std::vector<std::pair<std::string, NodeId>> const &s, std::string const &u) {
+            for(auto const &kv : s) if(kv.first == u) return true;
+            return false;
+        };
+        auto sub_all = [&](NodeId n, std::vector<std::pair<std::string, NodeId>> const &s) {
+            NodeId out = n;
+            for(auto const &kv : s)
+                out = exact_eval_simplify(a, clone_with_substitution(a, out, kv.first, kv.second));
+            return exact_eval_simplify(a, out);
+        };
+        auto add_candidate = [&](std::vector<NodeId> &cand, NodeId v) {
+            v = exact_eval_simplify(a, v);
+            for(auto c : cand) if(casio::same_by_sig(a, c, v)) return;
+            if(cand.size() < 4) cand.push_back(v);
+        };
+        std::function<void(std::vector<std::pair<std::string, NodeId>>, int)> dfs;
+        dfs = [&](std::vector<std::pair<std::string, NodeId>> s, int depth) {
+            if(sols.size() >= 8 || depth > 10) return;
+            std::vector<NodeId> rem;
+            for(NodeId e : eqs) {
+                NodeId t = sub_all(e, s);
+                if(!casio::same_by_sig(a, t, zero_node(a))) rem.push_back(t);
+            }
+            if(rem.empty()) {
+                if(s.size() == unknowns.size()) sols.push_back(ExactSol{s});
+                return;
+            }
+            if(s.size() == unknowns.size()) return;
+            for(auto const &u : unknowns) {
+                if(solved(s, u)) continue;
+                std::vector<NodeId> cand;
+                for(NodeId e : rem) {
+                    if(!contains_symbol(a, e, u)) continue;
+                    bool other = false;
+                    for(auto const &v : unknowns)
+                        if(v != u && !solved(s, v) && contains_symbol(a, e, v)) other = true;
+                    if(other) continue;
+                    if(auto p = poly_of(a, e, u); p && p->ok) {
+                        for(auto const &line : solve_poly2(a, *p, u)) {
+                            if(line.rfind(u + " = ", 0) != 0) continue;
+                            std::string r = sol_rhs(line);
+                            if(r.empty() || r.find('[') != std::string::npos || r.find("*i") != std::string::npos) continue;
+                            try { add_candidate(cand, casio::parse_expr(a, r)); } catch(...) {}
+                        }
+                    }
+                    if(cand.empty()) {
+                        if(auto lin = symbolic_linear_parts(a, e, u);
+                           lin && !contains_symbol(a, lin->m, u) && !contains_symbol(a, lin->c, u) &&
+                           !casio::same_by_sig(a, lin->m, zero_node(a))) {
+                            add_candidate(cand, casio::div(a, casio::neg(a, lin->c), lin->m));
+                        }
+                    }
+                    if(!cand.empty()) break;
+                }
+                if(cand.empty()) continue;
+                for(NodeId v : cand) {
+                    auto ns = s;
+                    ns.push_back({u, v});
+                    dfs(ns, depth + 1);
+                }
+                if(!sols.empty()) return;
+            }
+        };
+        dfs({}, 0);
+        if(!sols.empty()) {
+            std::vector<std::string> out;
+            out.push_back("identity " + equation);
+            out.push_back(format_expr(a, left) + " = " + format_expr(a, right));
+            out.push_back("expand => " + format_expr(a, residual) + " = 0");
+            auto xp = [&](int p) {
+                if(p == 0) return std::string("1");
+                if(p == 1) return x;
+                return x + "^" + std::to_string(p);
+            };
+            for(int i = deg; i >= 0; --i) {
+                NodeId c = exact_eval_simplify(a, coeffs[i]);
+                if(!casio::same_by_sig(a, c, zero_node(a)))
+                    out.push_back(xp(i) + ": " + format_expr(a, c) + " = 0");
+            }
+            for(auto const &sol : sols) {
+                std::string line;
+                for(std::size_t i = 0; i < unknowns.size(); ++i) {
+                    if(i) line += ", ";
+                    for(auto const &kv : sol.v) if(kv.first == unknowns[i]) {
+                        line += kv.first + " = " + format_expr(a, kv.second);
+                        break;
+                    }
+                }
+                out.push_back(line);
+            }
+            return out;
+        }
+        return std::nullopt;
+    }
+
+    std::string const &k = unknowns[0];
 
     std::vector<NodeId> cand;
     auto add_candidates = [&](NodeId c) {
@@ -35264,7 +35405,25 @@ static std::optional<std::vector<std::string>> symbolic_quadratic_factor_route(
     auto A = as_num(a, q->A);
     auto D = as_num(a, q->D);
     Rational sqrtD;
-    if(!A || !D || !square_rat_root(*D, sqrtD)) return std::nullopt;
+    if(!A || !D || D->num < 0) return std::nullopt;
+    if(!square_rat_root(*D, sqrtD)) {
+        auto B = as_num(a, q->B);
+        if(!B) return std::nullopt;
+        std::string root = sqrt_rational_surd_text(a, *D);
+        Rational den = r_mul(Rational{2, 1}, *A);
+        Rational base = r_div(r_neg(*B), den);
+        auto factor = [&](Rational sign) {
+            std::string s = var;
+            if(!is_zero(base)) s = signed_sum_text(s, format_rat_plain(r_neg(base)));
+            std::string rt = multiply_root_text(r_neg(r_div(sign, den)), root);
+            if(rt != "0") s = signed_sum_text(s, rt);
+            return "(" + s + ")";
+        };
+        std::string ans;
+        if(A->num != A->den) ans = format_rat_plain(*A) + "*";
+        ans += factor(Rational{1, 1}) + "*" + factor(Rational{-1, 1});
+        return std::vector<std::string>{"D = " + format_expr(a, q->D), ans};
+    }
 
     NodeId twoA = casio::mul(a, {casio::num(a, 2), q->A});
     Rational scale = r_div(Rational{1, 1}, r_mul(Rational{4, 1}, *A));
@@ -37370,6 +37529,20 @@ algebra_compare_transform_modes:
         if(req.mode == 13) {
             // Factor: simple factorization for ax^2+bx+c
             NodeId n = casio::simplify(arena, casio::parse_expr(arena, req.expr));
+            if(auto q = as_num(arena, n); q && q->den == 1 && std::llabs(q->num) > 1) {
+                long long v = std::llabs(q->num);
+                std::vector<std::string> parts;
+                if(q->num < 0) parts.push_back("-1");
+                for(long long d = 2; d * d <= v; ++d) {
+                    while(v % d == 0) {
+                        parts.push_back(std::to_string(d));
+                        v /= d;
+                    }
+                }
+                if(v > 1) parts.push_back(std::to_string(v));
+                std::string ans = join_text(parts, "*");
+                return {format_expr(arena, n), "= " + ans, ans};
+            }
             std::string fvar = "x";
             std::vector<std::string> syms;
             collect_symbols(arena, n, syms);

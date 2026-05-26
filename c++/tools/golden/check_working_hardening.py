@@ -114,6 +114,24 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "fitconst((x+3)*(A*x^2+B*x+C)=2*x^3+2*x^2+D*x+9,[A,B,C,D])",
+        ["x^3: A - 2 = 0", "x^2: 3*A + B - 2 = 0", "A = 2, B = -4, C = 3, D = -9"],
+        ["ERR:", "Done", "constants not isolated"],
+    ),
+    (
+        "alg",
+        "fitconst(A-(B*x+C)^2=140+12*x-9*x^2,[A,B,C])",
+        ["x^2: - B^2 + 9 = 0", "A = 144, B = -3, C = 2", "A = 144, B = 3, C = -2"],
+        ["ERR:", "Done", "constants not isolated"],
+    ),
+    (
+        "alg",
+        "factor(x^3-3*x^2-3*x+1)",
+        ["(x + 1)*(x - 2 - sqrt(3))*(x - 2 + sqrt(3))"],
+        ["ERR:", "non-square discriminant", "(x + 1)*(x^2 - 4*x + 1)"],
+    ),
+    (
+        "alg",
         "solve((3*x+1)/(x+1)-3*x/(y-2)+2/(x+1)=0,y)",
         ["LHS - RHS = -3*x/(y - 2) + 3", "y - 2 = x", "y = x + 2"],
         ["ERR:", "Done", "symbolic parameters unsupported"],
