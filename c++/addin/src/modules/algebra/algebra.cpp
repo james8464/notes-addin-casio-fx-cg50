@@ -408,9 +408,10 @@ static NodeId scaled_node(Arena &a, Rational c, NodeId n)
     if(c.num == c.den) return n;
     Node const &x = a.get(n);
     if(x.kind == NodeKind::Add) {
+        std::vector<NodeId> kids = x.kids;
         std::vector<NodeId> terms;
-        terms.reserve(x.kids.size());
-        for(NodeId k : x.kids) terms.push_back(scaled_node(a, c, k));
+        terms.reserve(kids.size());
+        for(NodeId k : kids) terms.push_back(scaled_node(a, c, k));
         return casio::simplify(a, casio::add(a, terms));
     }
     return casio::mul(a, {a.num(c), n});
@@ -422,11 +423,12 @@ static NodeId expanded_square(Arena &a, NodeId n)
     Node const &x = a.get(s);
     if(x.kind != NodeKind::Add || x.kids.size() < 2)
         return casio::power(a, s, casio::num(a, 2));
+    std::vector<NodeId> kids = x.kids;
     std::vector<NodeId> terms;
-    for(std::size_t i = 0; i < x.kids.size(); ++i) {
-        terms.push_back(casio::power(a, x.kids[i], casio::num(a, 2)));
-        for(std::size_t j = i + 1; j < x.kids.size(); ++j)
-            terms.push_back(casio::mul(a, {casio::num(a, 2), x.kids[i], x.kids[j]}));
+    for(std::size_t i = 0; i < kids.size(); ++i) {
+        terms.push_back(casio::power(a, kids[i], casio::num(a, 2)));
+        for(std::size_t j = i + 1; j < kids.size(); ++j)
+            terms.push_back(casio::mul(a, {casio::num(a, 2), kids[i], kids[j]}));
     }
     return casio::simplify(a, casio::add(a, terms));
 }
@@ -435,17 +437,28 @@ static NodeId expand_square_powers(Arena &a, NodeId n)
 {
     Node const &x = a.get(n);
     if(x.kind == NodeKind::Pow) {
-        Node const &e = a.get(x.b);
-        NodeId base = expand_square_powers(a, x.a);
-        if(e.kind == NodeKind::Num && e.num.num == 2 && e.num.den == 1) return expanded_square(a, base);
-        return casio::power(a, base, expand_square_powers(a, x.b));
+        NodeId base_id = x.a, exp_id = x.b;
+        Node const &e = a.get(exp_id);
+        bool square = e.kind == NodeKind::Num && e.num.num == 2 && e.num.den == 1;
+        NodeId base = expand_square_powers(a, base_id);
+        if(square) return expanded_square(a, base);
+        return casio::power(a, base, expand_square_powers(a, exp_id));
     }
-    if(x.kind == NodeKind::Fn) return a.fn(x.fkind, expand_square_powers(a, x.a));
-    if(x.kind == NodeKind::Div) return casio::div(a, expand_square_powers(a, x.a), expand_square_powers(a, x.b));
+    if(x.kind == NodeKind::Fn) {
+        FnKind fkind = x.fkind;
+        NodeId arg = x.a;
+        return a.fn(fkind, expand_square_powers(a, arg));
+    }
+    if(x.kind == NodeKind::Div) {
+        NodeId top = x.a, bot = x.b;
+        return casio::div(a, expand_square_powers(a, top), expand_square_powers(a, bot));
+    }
     if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        NodeKind kind = x.kind;
+        std::vector<NodeId> raw = x.kids;
         std::vector<NodeId> kids;
-        for(NodeId k : x.kids) kids.push_back(expand_square_powers(a, k));
-        return x.kind == NodeKind::Add ? casio::add(a, kids) : casio::mul(a, kids);
+        for(NodeId k : raw) kids.push_back(expand_square_powers(a, k));
+        return kind == NodeKind::Add ? casio::add(a, kids) : casio::mul(a, kids);
     }
     return n;
 }
@@ -18462,6 +18475,58 @@ static std::optional<std::vector<std::string>> linear_substitution2_system_route
     return std::nullopt;
 }
 
+static std::optional<std::vector<std::string>> linear_substitution2_system_route_any_order(Arena &a, std::string const &expr)
+{
+    if(auto direct = linear_substitution2_system_route(a, expr)) {
+        if(!direct->empty()) return direct;
+    }
+
+    std::vector<std::string> eq_texts, vars;
+    if(!extract_system_expr_vars(expr, eq_texts, vars) || eq_texts.size() != 2 || vars.size() != 2)
+        return std::nullopt;
+
+    std::string swapped = "solve([" + eq_texts[1] + "," + eq_texts[0] + "],[" +
+                          vars[0] + "," + vars[1] + "])";
+    if(swapped == expr) return std::nullopt;
+    auto out = linear_substitution2_system_route(a, swapped);
+    if(out && !out->empty()) return out;
+    return std::nullopt;
+}
+
+static std::optional<std::vector<std::string>> subtract_to_line_system_route(Arena &a, std::string const &expr)
+{
+    std::vector<std::string> eq_texts, vars;
+    if(!extract_system_expr_vars(expr, eq_texts, vars)) return std::nullopt;
+
+    std::vector<NodeId> res;
+    for(auto const &txt : eq_texts) {
+        auto eq = casio::parse_equation(a, txt);
+        if(!eq) return std::nullopt;
+        NodeId raw = system_residual(a, *eq, vars[0], vars[1]);
+        res.push_back(exact_eval_simplify(a, expand_square_powers(a, clear_system_denoms(a, raw))));
+    }
+
+    if(linear2_parts(a, res[0], vars[0], vars[1]) ||
+       linear2_parts(a, res[1], vars[0], vars[1]))
+        return std::nullopt;
+
+    NodeId delta = exact_eval_simplify(a, expand_square_powers(a, sub_node(a, res[0], res[1])));
+    if(!linear2_parts(a, delta, vars[0], vars[1])) return std::nullopt;
+
+    std::string syn = "solve([" + format_expr(a, delta) + "=0," + format_expr(a, res[0]) +
+                      "=0],[" + vars[0] + "," + vars[1] + "])";
+    auto solved = linear_substitution2_system_route_any_order(a, syn);
+    if(!solved) return std::nullopt;
+
+    std::vector<std::string> out{
+        format_expr(a, res[0]) + " = 0",
+        format_expr(a, res[1]) + " = 0",
+        "Subtract: " + format_expr(a, delta) + " = 0",
+    };
+    out.insert(out.end(), solved->begin(), solved->end());
+    return out;
+}
+
 static void collect_log_domain_args(Arena &a, NodeId n, std::vector<std::string> &args)
 {
     Node const &x = a.get(n);
@@ -18537,7 +18602,7 @@ static std::optional<std::vector<std::string>> log_law_system2_route(Arena &a, s
     }
     std::string syn = "solve([" + format_expr(a, cleared[0]) + "=0," +
                       format_expr(a, cleared[1]) + "=0],[" + vars[0] + "," + vars[1] + "])";
-    if(auto solved = linear_substitution2_system_route(a, syn)) {
+    if(auto solved = linear_substitution2_system_route_any_order(a, syn)) {
         out.insert(out.end(), solved->begin(), solved->end());
         return out;
     }
@@ -34951,7 +35016,8 @@ static std::optional<std::vector<std::string>> system_solve_route(Arena &a, std:
     if(auto expsys = exp_xy_square_system(a, key)) return *expsys;
     if(auto bxyz = bilinear_xyz_system_route(key)) return *bxyz;
     if(auto system = symmetric_sum_product_system(wrapped)) return *system;
-    if(auto lsub = linear_substitution2_system_route(a, expr)) return *lsub;
+    if(auto subline = subtract_to_line_system_route(a, expr)) return *subline;
+    if(auto lsub = linear_substitution2_system_route_any_order(a, expr)) return *lsub;
     return std::nullopt;
 }
 
@@ -35162,7 +35228,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(auto rps = rational_parabola_system(arena, key)) return *rps;
             if(auto fourthsys = fourth_power_sum_linear_system(arena, key)) return *fourthsys;
             if(auto dcube = difference_cubes_system(arena, key)) return *dcube;
-            if(auto lsub = linear_substitution2_system_route(arena, req.expr)) return *lsub;
+            if(auto lsub = linear_substitution2_system_route_any_order(arena, req.expr)) return *lsub;
             if(auto elys = exp_log_y_linear_system(arena, req.expr)) return *elys;
             if(auto sroot = shifted_roots_route(arena, req.expr)) return *sroot;
             if(req.mode == 0) {
@@ -35253,7 +35319,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(auto lsys3 = exact_linear3_system_route(arena, key)) return *lsys3;
             if(auto lsys = exact_linear2_system_route(arena, key)) return *lsys;
             if(auto lany = linear2_any_system_route(arena, key)) return *lany;
-            if(auto lsub = linear_substitution2_system_route(arena, key)) return *lsub;
+            if(auto subline = subtract_to_line_system_route(arena, key)) return *subline;
+            if(auto lsub = linear_substitution2_system_route_any_order(arena, key)) return *lsub;
             if(auto elys = exp_log_y_linear_system(arena, key)) return *elys;
             if(auto system = symmetric_sum_product_system(key)) return *system;
             if(auto radical = radical_decomposition_rewrite(key)) return *radical;
