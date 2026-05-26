@@ -25578,7 +25578,7 @@ static std::optional<std::vector<std::string>> rational_sum_simplify_route(
     return out;
 }
 
-static std::optional<std::vector<std::string>> common_denominator_sum_route(Arena &a, NodeId expr)
+static std::optional<NodeId> common_denominator_sum_node(Arena &a, NodeId expr)
 {
     Node const &x = a.get(expr);
     if(x.kind != NodeKind::Add) return std::nullopt;
@@ -25615,13 +25615,45 @@ static std::optional<std::vector<std::string>> common_denominator_sum_route(Aren
         }
         num_terms.push_back(exact_eval_simplify(a, factors.size() == 1 ? factors[0] : casio::mul(a, factors)));
     }
-
     NodeId num = exact_eval_simplify(a, casio::add(a, num_terms));
     NodeId ans = exact_eval_simplify(a, casio::div(a, num, common));
     if(casio::same_by_sig(a, ans, expr) || !numeric_same(a, expr, ans)) return std::nullopt;
+    return ans;
+}
+
+static std::optional<std::vector<std::string>> reciprocal_common_denominator_simplify_route(Arena &a, NodeId expr)
+{
+    Node const &x = a.get(expr);
+    NodeId inner = 0;
+    if(x.kind == NodeKind::Div && is_one_num(a, x.a)) inner = x.b;
+    else if(x.kind == NodeKind::Pow) {
+        auto e = as_num(a, x.b);
+        if(e && e->num == -1 && e->den == 1) inner = x.a;
+    }
+    if(!inner) return std::nullopt;
+    auto den = common_denominator_sum_node(a, inner);
+    if(!den) return std::nullopt;
+    Node const &dn = a.get(*den);
+    if(dn.kind != NodeKind::Div) return std::nullopt;
+    NodeId ans = exact_eval_simplify(a, casio::div(a, dn.b, dn.a));
+    std::string lhs = format_expr(a, expr);
+    std::string mid = "1/(" + format_expr(a, *den) + ")";
+    std::string rhs = format_expr(a, ans);
+    if(rhs == lhs || rhs.size() > 180) return std::nullopt;
+    std::vector<std::string> out{lhs};
+    if(mid != lhs && mid != rhs) out.push_back("= " + mid);
+    out.push_back("= " + rhs);
+    out.push_back(rhs);
+    return out;
+}
+
+static std::optional<std::vector<std::string>> common_denominator_sum_route(Arena &a, NodeId expr)
+{
+    auto ans_id = common_denominator_sum_node(a, expr);
+    if(!ans_id) return std::nullopt;
 
     std::string lhs = format_expr(a, expr);
-    std::string rhs = format_expr(a, ans);
+    std::string rhs = format_expr(a, *ans_id);
     if(rhs == lhs || rhs.size() > 180) return std::nullopt;
     return std::vector<std::string>{lhs, "= " + rhs, rhs};
 }
@@ -30507,7 +30539,8 @@ static std::optional<std::vector<std::string>> reciprocal_symbolic_quadratic_rou
         }
         return false;
     };
-    auto parse = [&](NodeId term) -> bool {
+    std::function<bool(NodeId)> parse;
+    parse = [&](NodeId term) -> bool {
         if(!contains_symbol(a, term, var)) {
             add_to(C, term);
             return true;
@@ -30520,6 +30553,29 @@ static std::optional<std::vector<std::string>> reciprocal_symbolic_quadratic_rou
         if(x.kind == NodeKind::Div && casio::same_by_sig(a, x.b, v) && !contains_symbol(a, x.a, var)) {
             add_to(B, x.a);
             return true;
+        }
+        if(x.kind == NodeKind::Mul) {
+            NodeId sum = 0;
+            std::vector<NodeId> rest;
+            for(NodeId f : x.kids) {
+                Node const &fn = a.get(f);
+                if(fn.kind == NodeKind::Add && contains_symbol(a, f, var)) {
+                    if(sum) return false;
+                    sum = f;
+                    continue;
+                }
+                if(contains_symbol(a, f, var)) {
+                    sum = 0;
+                    break;
+                }
+                rest.push_back(f);
+            }
+            if(sum) {
+                NodeId coeff = rest.empty() ? one_node(a) : exact_eval_simplify(a, casio::mul(a, rest));
+                for(NodeId k : a.get(sum).kids)
+                    if(!parse(exact_eval_simplify(a, casio::mul(a, {coeff, k})))) return false;
+                return true;
+            }
         }
         std::vector<NodeId> factors = x.kind == NodeKind::Mul ? x.kids : std::vector<NodeId>{term};
         int var_count = 0, inv_count = 0;
@@ -37500,6 +37556,8 @@ algebra_compare_transform_modes:
                     return *fcp;
                 if(auto ds = diff_square_cancel_simplify_route(arena, parsed))
                     return *ds;
+                if(auto rcd = reciprocal_common_denominator_simplify_route(arena, parsed))
+                    return *rcd;
                 if(auto rat_sum = rational_sum_simplify_route(arena, parsed, simp_var))
                     return *rat_sum;
                 if(auto rat_expr = rational_expression_simplify_route(arena, parsed, simp_var))
@@ -37554,6 +37612,8 @@ algebra_compare_transform_modes:
                 return *fcp;
             if(auto ds = diff_square_cancel_simplify_route(arena, parsed))
                 return *ds;
+            if(auto rcd = reciprocal_common_denominator_simplify_route(arena, parsed))
+                return *rcd;
             if(auto rat_sum = rational_sum_simplify_route(arena, parsed, simp_var))
                 return *rat_sum;
             if(auto rat_expr = rational_expression_simplify_route(arena, parsed, simp_var))

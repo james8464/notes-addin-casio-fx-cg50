@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import argparse
 import subprocess
 import sys
 from pathlib import Path
@@ -16,6 +17,7 @@ REPO = Path(__file__).resolve().parents[3]
 HOST = REPO / "c++" / "addin" / "host" / "build" / "casio_host"
 CASES = REPO / "c++" / "tools" / "golden" / "madasmaths_standard_manual_cases.jsonl"
 REPORT = REPO / "c++" / "tests" / "reports" / "madasmaths_standard_topics_audit" / "manual_cases_latest.txt"
+FILTERED_REPORT = REPO / "c++" / "tests" / "reports" / "madasmaths_standard_topics_audit" / "manual_cases_filtered_latest.txt"
 REMOVED_FEATURE_MARKERS = (
     "mean_value(", "volume_x(", "volume_y(", "area_between(",
     "param_area(", "param_area_y(", "param_volume",
@@ -57,14 +59,42 @@ def command_specs(case: dict[str, Any]) -> list[tuple[str, list[str], list[str],
     return specs
 
 
+def parse_args() -> argparse.Namespace:
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--source", action="append", default=[], help="Only check rows whose source_pdf contains this text.")
+    ap.add_argument("--id-prefix", action="append", default=[], help="Only check rows whose id starts with this prefix.")
+    ap.add_argument("--last", type=int, default=0, help="Only check the last N JSONL rows after other filters.")
+    return ap.parse_args()
+
+
+def select_cases(cases: list[dict[str, Any]], args: argparse.Namespace) -> list[dict[str, Any]]:
+    out = cases
+    if args.source:
+        needles = [s.lower() for s in args.source]
+        out = [c for c in out if any(n in str(c.get("source_pdf", "")).lower() for n in needles)]
+    if args.id_prefix:
+        prefixes = tuple(args.id_prefix)
+        out = [c for c in out if str(c.get("id", "")).startswith(prefixes)]
+    if args.last:
+        out = out[-args.last:]
+    return out
+
+
 def main() -> int:
+    args = parse_args()
     if not HOST.exists():
         print(f"FAIL host missing: {HOST}")
         return 1
-    cases = [json.loads(line) for line in CASES.read_text().splitlines() if line.strip()]
-    REPORT.parent.mkdir(parents=True, exist_ok=True)
+    all_cases = [json.loads(line) for line in CASES.read_text().splitlines() if line.strip()]
+    cases = select_cases(all_cases, args)
+    report_path = FILTERED_REPORT if (args.source or args.id_prefix or args.last) else REPORT
+    report_path.parent.mkdir(parents=True, exist_ok=True)
     bad: list[str] = []
-    lines = ["MadAsMaths standard manual cases", ""]
+    lines = ["MadAsMaths standard manual cases", f"selected={len(cases)} total={len(all_cases)}", ""]
+    if not cases:
+        print("FAIL no cases selected")
+        report_path.write_text("\n".join(lines + ["summary: bad=1 total=0"]) + "\n")
+        return 1
     for case in cases:
         if removed_case(case):
             print("SKIP removed", case["id"])
@@ -103,8 +133,8 @@ def main() -> int:
             bad.append(case["id"])
         lines.append("")
     lines.append(f"summary: bad={len(bad)} total={len(cases)}")
-    REPORT.write_text("\n".join(lines) + "\n")
-    print(f"report {REPORT}")
+    report_path.write_text("\n".join(lines) + "\n")
+    print(f"report {report_path}")
     print(f"done bad {len(bad)} / {len(cases)}")
     return 1 if bad else 0
 

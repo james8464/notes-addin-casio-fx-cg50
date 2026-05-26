@@ -72,6 +72,18 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "simplify(1/(1/v-1/f))",
+        ["= v*f/(f - v)", "\nv*f/(f - v)\n"],
+        ["ERR:", "Done", "1/(1/v + -1/f)\n= 1/(1/v + -1/f)"],
+    ),
+    (
+        "alg",
+        "simplify(1/(1/a+1/b))",
+        ["= a*b/(b + a)", "\na*b/(b + a)\n"],
+        ["ERR:", "Done", "1/(1/a + 1/b)\n= 1/(1/a + 1/b)"],
+    ),
+    (
+        "alg",
         "simplify((x*(x-6)-(x-1)*(x+5))/(1-2*x))",
         ["= 5", "\n5\n"],
         ["ERR:", "Done", "\n5*(2*x - 1)/(2*x - 1)\n"],
@@ -81,6 +93,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         "solve((x^2+3*x)/(x^2+5*x+6)=(2*x^2-x-1)/(x^2+8*x-9),x)",
         ["x^2 - 4*x + 2 = 0", "x = 2 + sqrt(2)", "x = 2 - sqrt(2)", "x = [2 - sqrt(2), 2 + sqrt(2)]"],
         ["ERR:", "Done", "x = [0.585786437616, 3.41421356238]"],
+    ),
+    (
+        "alg",
+        "solve(sqrt(3)*(x+6/x)=9,x)",
+        ["Multiply by x: sqrt(3)*x^2 - 9*x + 6*sqrt(3) = 0", "D = b^2 - 4ac = 9", "x = sqrt(3)", "x = 2*sqrt(3)"],
+        ["ERR:", "Done", "1.73205080756", "3.46410161513"],
     ),
     (
         "alg",

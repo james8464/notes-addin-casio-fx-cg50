@@ -52,6 +52,7 @@ class AuditStats:
     downloaded_known: int
     source_rows: int
     complete_sources: int
+    complete_local: int
     tracked_sources: int
     manual_rows: int
     host_commands: int
@@ -210,7 +211,9 @@ def collect_stats() -> AuditStats:
         if r.get("args"):
             host_commands += 1
         host_commands += sum(1 for v in r.get("variants", []) if isinstance(v, dict) and v.get("args"))
+    complete_local = len(pdf_names & complete_rows)
     pending = sorted(pdf_names - complete_rows)
+    known_total = max(len(pdfs), count_download_manifest(), len(complete_rows), len(source_rows))
     current = "none"
     tmp = latest_path([p for p in TMP_AUDIT.rglob("*")] if TMP_AUDIT.exists() else [])
     if tmp:
@@ -225,12 +228,13 @@ def collect_stats() -> AuditStats:
     if bad:
         phase = "fix failing manual cases"
     if not pending and bad == 0:
-        phase = "all downloaded complete"
+        phase = "all local complete"
     return AuditStats(
         pdf_count=len(pdfs),
-        downloaded_known=max(len(pdfs), count_download_manifest()),
+        downloaded_known=known_total,
         source_rows=len(source_rows),
         complete_sources=len(complete_rows),
+        complete_local=complete_local,
         tracked_sources=len(source_rows),
         manual_rows=len(cases),
         host_commands=host_commands,
@@ -291,7 +295,8 @@ def render(stats: AuditStats, frame: int, width: int, height: int, enabled: bool
         code = C.green if stats.report_bad == 0 else C.red
         report = color(f"bad {stats.report_bad} / {stats.report_total}", code, enabled)
     dirty_code = C.green if stats.git_dirty == 0 else C.yellow if stats.git_dirty > 0 else C.red
-    pending_count = max(0, stats.pdf_count - stats.complete_sources)
+    pending_count = max(0, stats.pdf_count - stats.complete_local)
+    corpus_pending = max(0, stats.downloaded_known - stats.complete_sources)
     lines = [
         fit(f"{title} {spin}  {stats.phase}  live {clock}", width),
         fit("─" * width, width),
@@ -300,9 +305,10 @@ def render(stats: AuditStats, frame: int, width: int, height: int, enabled: bool
         row("report", f"{report}   git {color(str(stats.git_dirty), dirty_code, enabled)} dirty   {stats.host_commands} host cases", width, enabled),
         "",
         fit(color("Progress", C.bold, enabled), width),
-        fit(f"downloads  {bar(stats.pdf_count, stats.downloaded_known or stats.pdf_count, bar_w, enabled)} {stats.pdf_count}/{stats.downloaded_known or stats.pdf_count} PDFs", width),
-        fit(f"audit      {live_bar(stats.complete_sources, stats.pdf_count or stats.complete_sources, bar_w, frame, enabled)} {stats.complete_sources}/{stats.pdf_count} done · {pending_count} pending", width),
-        fit(f"tracked    {bar(stats.tracked_sources, stats.pdf_count or stats.tracked_sources, bar_w, enabled)} {stats.tracked_sources}/{stats.pdf_count} sources", width),
+        fit(f"corpus     {live_bar(stats.complete_sources, stats.downloaded_known or stats.complete_sources, bar_w, frame, enabled)} {stats.complete_sources}/{stats.downloaded_known} done · {corpus_pending} left", width),
+        fit(f"local pdfs {bar(stats.pdf_count, stats.downloaded_known or stats.pdf_count, bar_w, enabled)} {stats.pdf_count}/{stats.downloaded_known} present on disk", width),
+        fit(f"local audit{live_bar(stats.complete_local, stats.pdf_count or stats.complete_local, bar_w, frame, enabled)} {stats.complete_local}/{stats.pdf_count} done · {pending_count} pending", width),
+        fit(f"tracked    {bar(stats.tracked_sources, stats.downloaded_known or stats.tracked_sources, bar_w, enabled)} {stats.tracked_sources}/{stats.downloaded_known} sources", width),
         fit(f"manual     {stats.manual_rows} rows · {stats.unsupported_rows} unsupported-ok/context", width),
         "",
         fit(color("Artifacts", C.bold, enabled), width),
