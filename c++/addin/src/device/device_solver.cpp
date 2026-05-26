@@ -554,6 +554,122 @@ static void add_method_fallback(
     out.add("Err: unsupported form.");
 }
 
+static bool read_signed_int(const char *s, int &i, int end, int &out)
+{
+    int sign = 1;
+    if(i < end && s[i] == '-') {
+        sign = -1;
+        ++i;
+    }
+    int value = 0;
+    if(!read_int(s, i, end, value)) return false;
+    out = sign * value;
+    return true;
+}
+
+static bool parse_int_vector(const char *s, int &i, int end, int *v, int &n)
+{
+    if(i >= end || s[i++] != '[') return false;
+    n = 0;
+    while(i < end && n < 3) {
+        if(!read_signed_int(s, i, end, v[n++])) return false;
+        if(i < end && s[i] == ',') {
+            ++i;
+            continue;
+        }
+        break;
+    }
+    return n >= 2 && i < end && s[i++] == ']';
+}
+
+static void append_int_vector(FixedString<96> &line, const int *v, int n)
+{
+    line.append("(");
+    for(int i = 0; i < n; ++i) {
+        if(i) line.append(",");
+        line.append_int(v[i]);
+    }
+    line.append(")");
+}
+
+static bool solve_vector_shell_call(const char *input, OutputLines &out)
+{
+    char s[128];
+    int len = compact(input, s, (int)sizeof(s));
+    int u[3]{}, v[3]{}, nu = 0, nv = 0;
+    if(starts_with(s, "dot(")) {
+        int i = 4;
+        if(!parse_int_vector(s, i, len, u, nu) || i >= len || s[i++] != ',' ||
+           !parse_int_vector(s, i, len, v, nv) || i >= len || s[i++] != ')' ||
+           i != len || nu != nv) return false;
+        int ans = 0;
+        add_input_line(out, "", input);
+        FixedString<96> &line = out.next();
+        for(int k = 0; k < nu; ++k) {
+            if(k) line.append(" + ");
+            line.append_int(u[k]);
+            line.append("*");
+            line.append_int(v[k]);
+            ans += u[k] * v[k];
+        }
+        line.append(" = ");
+        line.append_int(ans);
+        FixedString<96> &final = out.next();
+        final.append("Answer: ");
+        final.append_int(ans);
+        return true;
+    }
+    if(starts_with(s, "norm(")) {
+        int i = 5;
+        if(!parse_int_vector(s, i, len, u, nu) || i >= len || s[i++] != ')' || i != len) return false;
+        int sum = 0, root = 0;
+        add_input_line(out, "", input);
+        FixedString<96> &line = out.next();
+        line.append("sqrt(");
+        for(int k = 0; k < nu; ++k) {
+            if(k) line.append(" + ");
+            line.append_int(u[k]);
+            line.append("^2");
+            sum += u[k] * u[k];
+        }
+        line.append(")");
+        bool square = is_square_int(sum, root);
+        if(square) {
+            line.append(" = ");
+            line.append_int(root);
+        }
+        FixedString<96> &final = out.next();
+        final.append("Answer: ");
+        if(square) final.append_int(root);
+        else {
+            final.append("sqrt(");
+            final.append_int(sum);
+            final.append(")");
+        }
+        return true;
+    }
+    if(starts_with(s, "cross(")) {
+        int i = 6;
+        if(!parse_int_vector(s, i, len, u, nu) || i >= len || s[i++] != ',' ||
+           !parse_int_vector(s, i, len, v, nv) || i >= len || s[i++] != ')' ||
+           i != len || nu != 3 || nv != 3) return false;
+        int c[3]{
+            u[1] * v[2] - u[2] * v[1],
+            u[2] * v[0] - u[0] * v[2],
+            u[0] * v[1] - u[1] * v[0],
+        };
+        add_input_line(out, "", input);
+        FixedString<96> &line = out.next();
+        line.append("cross = ");
+        append_int_vector(line, c, 3);
+        FixedString<96> &final = out.next();
+        final.append("Answer: ");
+        append_int_vector(final, c, 3);
+        return true;
+    }
+    return false;
+}
+
 static void append_fraction_value(FixedString<96> &line, int num, int den)
 {
     Fraction f = make_fraction(num, den);
@@ -2678,6 +2794,7 @@ bool solve(Module module, const char *input, OutputLines &out)
             if(starts_with(input, "range(")) return solve_utility_call(input, "range(", 22, out);
             if(starts_with(input, "domrng(")) return solve_utility_call(input, "domrng(", 22, out);
             if(starts_with(input, "fitconst(")) return solve_utility_call(input, "fitconst(", 25, out);
+            if(solve_vector_shell_call(input, out)) return true;
             if(starts_with(input, "simplify(")) return solve_wrapped_call(input, "simplify(", Module::Simplify, out);
             if(starts_with(input, "expand(")) return solve_wrapped_call(input, "expand(", Module::Simplify, out);
             if(starts_with(input, "solve(")) return solve_wrapped_call(input, "solve(", Module::Algebra, out);

@@ -33,6 +33,7 @@ python3 c++/tools/golden/check_madasmaths_full_audit.py
 python3 c++/tools/golden/check_madasmaths_standard_topics_audit.py
 python3 c++/tools/golden/check_madasmaths_standard_question_corpus.py
 python3 c++/tools/golden/check_madasmaths_standard_manual_cases.py
+python3 c++/tools/golden/check_manual_question_triage_notes.py
 ```
 
 External source setup:
@@ -49,6 +50,8 @@ python3 c++/tools/golden/render_audit_pdf_pages.py --format jpeg ~/Downloads/"Ed
 
 Audit flow graph: `c++/tools/golden/a_level_audit_graph.md`.
 Manual cross-source audit tracker: `c++/tools/golden/a_level_audit_tracker.jsonl`.
+Parallel manual triage prompt: `c++/tools/golden/manual_question_triage_prompt.md`.
+Append-only triage notes: `c++/tools/golden/manual_question_triage_notes.jsonl`.
 
 `download_a_level_audit_sources.py` defaults to normal Edexcel A-level Maths
 (`--scope edexcel-9ma0`). Use `--clean` to remove only managed download folders
@@ -86,3 +89,8 @@ manual mark-scheme coverage.
 
 `check_edexcel_question_audit_coverage.py` verifies every official Pearson 9MA0
 question paper has tracker rows for all inferred question numbers.
+
+`manual_question_triage_notes.jsonl` is for parallel review agents only: record
+manual page-image question/mark-scheme notes there, validate with
+`check_manual_question_triage_notes.py`, then let the main audit agent convert
+useful rows into executable host checks.

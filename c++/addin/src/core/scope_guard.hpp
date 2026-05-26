@@ -59,7 +59,6 @@ inline bool is_removed_function_hash(uint32_t h)
         case 0x262cfcabu:
         case 0x26851732u:
         case 0x2733f84au:
-        case 0x29f5189bu:
         case 0x2b8eb358u:
         case 0x2ba548a6u:
         case 0x2d5f622cu:
@@ -176,7 +175,6 @@ inline bool is_removed_function_hash(uint32_t h)
         case 0x9f634068u:
         case 0xa1cf14d3u:
         case 0xa3325c6fu:
-        case 0xa58b212fu:
         case 0xa71467f9u:
         case 0xa893baa8u:
         case 0xa9c8feadu:
@@ -222,7 +220,6 @@ inline bool is_removed_function_hash(uint32_t h)
         case 0xcf9fd8f0u:
         case 0xd04036f3u:
         case 0xd2353873u:
-        case 0xd3689f20u:
         case 0xd4d5660fu:
         case 0xd4f0716cu:
         case 0xd4f67cfdu:

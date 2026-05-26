@@ -87,12 +87,14 @@ python3 c++/tools/golden/check_madasmaths_standard_topics_audit.py
 python3 c++/tools/golden/check_madasmaths_full_audit.py --no-render --strict-skips
 python3 c++/tools/golden/check_madasmaths_download_coverage.py
 python3 c++/tools/golden/check_a_level_audit_tracker.py
+python3 c++/tools/golden/check_manual_question_triage_notes.py
 ```
 
 Current audit refresh evidence is tracked in:
 
 ```text
 c++/tools/golden/a_level_audit_graph.md
+c++/tools/golden/manual_question_triage_notes.jsonl
 c++/tests/reports/a_level_source_downloads/summary_latest.txt
 c++/tests/reports/online_paper_corpus/inventory_latest.md
 c++/tests/reports/madasmaths_download_coverage/summary_latest.md

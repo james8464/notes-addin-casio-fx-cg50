@@ -470,10 +470,12 @@ int main(int argc, char **argv)
                 req.expr = inner;
             }
             else if(!(inner = unwrap_call(expr, "partfrac(")).empty() ||
-                    !(inner = unwrap_call(expr, "pf(")).empty()) {
+                    !(inner = unwrap_call(expr, "pf(")).empty() ||
+                    !(inner = unwrap_call(expr, "apart(")).empty()) {
                 req.mode = 0;
                 req.method = "partfrac";
-                req.expr = inner;
+                auto parts = split_top_csv(inner);
+                req.expr = parts.empty() ? inner : parts[0];
             }
             else if(!(inner = unwrap_call(expr, "binomial(")).empty() ||
                     !(inner = unwrap_call(expr, "binomial_series(")).empty()) {
@@ -502,6 +504,16 @@ int main(int argc, char **argv)
                 req.mode = 0;
                 req.method = "evalat";
                 req.expr = inner;
+            }
+            else if(!(inner = unwrap_call(expr, "n(")).empty()) {
+                req.mode = 0;
+                req.method = "numeric";
+                req.expr = inner;
+            }
+            else if(expr.size() > 3 && (expr[0] == 'N' || expr[0] == 'n') && expr[1] == '[' && expr.back() == ']') {
+                req.mode = 0;
+                req.method = "numeric";
+                req.expr = expr.substr(2, expr.size() - 3);
             }
             else if(!(inner = unwrap_call(expr, "compose(")).empty()) {
                 auto parts = split_top_csv(inner);
@@ -675,6 +687,15 @@ int main(int argc, char **argv)
         if(is_trig) {
             std::string method, method_u, target;
             expr = strip_method_args(expr, method, method_u, false, &target);
+            std::string inner;
+            if(!(inner = unwrap_call(expr, "expand(")).empty() ||
+               (lower_ascii(expr).rfind("expand(", 0) == 0 && !(inner = expr.substr(7)).empty())) {
+                std::string inner_method, inner_u, inner_target;
+                inner = strip_method_args(inner, inner_method, inner_u, false, &inner_target);
+                if(method.empty() && !inner_method.empty()) method = inner_method;
+                if(target.empty() && !inner_target.empty()) target = inner_target;
+                expr = inner;
+            }
             if(!print_method_header("trig", method, method_u)) return 1;
             casio::trig::Request req;
             req.mode = 0;

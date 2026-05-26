@@ -99,7 +99,7 @@ CASES: tuple[Case, ...] = (
     Case("removed_complex", "shell", "csolve(x^2+1=0,x)", ("Err: unsupported function.",), True, 1),
     Case("removed_matrix", "shell", "det(matrix(2,2,1))", ("Err: unsupported function.",), True, 1),
     Case("removed_matrix_inv", "shell", "inv([[1,2],[3,4]])", ("Err: unsupported function.",), True, 1),
-    Case("removed_vector_dot", "shell", "dot([1,2],[3,4])", ("Err: unsupported function.",), True, 1),
+    Case("vector_dot_supported", "shell", "dot([1,2],[3,4])", ("= 11",), False, 0),
     Case("removed_laplace", "shell", "laplace(sin(x),x,s)", ("Err: unsupported function.",), True, 1),
     Case("removed_taylor", "shell", "taylor(ln(x),x,1,2)", ("Err: unsupported function.",), True, 1),
     Case("removed_uniformd", "shell", "uniformd(0,1,0.5)", ("Err: unsupported function.",), True, 1),
@@ -108,7 +108,7 @@ CASES: tuple[Case, ...] = (
     Case("removed_regression_variant", "shell", "exponential_regression([1,2],[3,4])", ("Err: unsupported function.",), True, 1),
     Case("removed_recurrence", "shell", "rsolve(u(n)=u(n-1)+1,u(n),u(0)=0)", ("Err: unsupported function.",), True, 1),
     Case("removed_newton_native", "shell", "newton(x^2-2,x,1)", ("Err: unsupported function.",), True, 1),
-    Case("removed_norm", "shell", "norm([3,4])", ("Err: unsupported function.",), True, 1),
+    Case("vector_norm_supported", "shell", "norm([3,4])", ("5",), False, 0),
 )
 
 

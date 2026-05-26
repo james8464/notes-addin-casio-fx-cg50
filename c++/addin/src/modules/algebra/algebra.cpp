@@ -44,6 +44,8 @@ static bool reciprocal_power_term(Arena &a, NodeId term, std::string const &var,
 static std::optional<std::vector<std::pair<int, Rational>>> reciprocal_power_coeffs(Arena &a, NodeId n, std::string const &var);
 static Poly2 scale_poly(Poly2 p, Rational k);
 static NodeId exact_eval_simplify(Arena &a, NodeId n);
+static NodeId zero_node(Arena &a);
+static NodeId neg_node(Arena &a, NodeId n);
 static std::optional<NodeId> rational_half_power_node(Arena &a, Rational base, Rational expo);
 static NodeId distribute_const_over_add_once(Arena &a, NodeId n, std::string const &var);
 static bool split_coeff_body(Arena &a, NodeId term, Rational &coef, NodeId &body, bool &has_body);
@@ -2366,12 +2368,607 @@ static std::vector<std::string> split_csv(std::string const &s)
     return parts;
 }
 
+static std::optional<std::size_t> matching_delim(std::string const &s, std::size_t pos, char open, char close);
+
 static std::string unwrap_call_text(std::string s, std::string const &name)
 {
     s = trim_text(s);
     std::string pre = name + "(";
     if(s.rfind(pre, 0) != 0 || s.empty() || s.back() != ')') return "";
     return trim_text(s.substr(pre.size(), s.size() - pre.size() - 1));
+}
+
+static std::string unwrap_whole_call_text(std::string s, std::string const &name)
+{
+    s = trim_text(s);
+    std::string pre = name + "(";
+    if(s.rfind(pre, 0) != 0 || s.empty() || s.back() != ')') return "";
+    auto close = matching_delim(s, name.size(), '(', ')');
+    if(!close || *close + 1 != s.size()) return "";
+    return trim_text(s.substr(pre.size(), s.size() - pre.size() - 1));
+}
+
+static std::optional<std::size_t> matching_delim(std::string const &s, std::size_t pos, char open, char close)
+{
+    if(pos >= s.size() || s[pos] != open) return std::nullopt;
+    int depth = 0;
+    for(std::size_t i = pos; i < s.size(); ++i) {
+        if(s[i] == open) depth++;
+        else if(s[i] == close) {
+            depth--;
+            if(depth == 0) return i;
+        }
+    }
+    return std::nullopt;
+}
+
+static std::string paren_if_needed(std::string s)
+{
+    s = trim_text(s);
+    if(s.empty()) return s;
+    if(s[0] == '-' || s.find(" + ") != std::string::npos || s.find(" - ") != std::string::npos) return "(" + s + ")";
+    return s;
+}
+
+static std::string vector_text(Arena &a, std::vector<NodeId> const &v)
+{
+    std::vector<std::string> parts;
+    for(NodeId n : v) parts.push_back(format_expr(a, exact_eval_simplify(a, n)));
+    return "(" + join_text(parts, ",") + ")";
+}
+
+static std::optional<std::vector<NodeId>> parse_vector_literal(Arena &a, std::string text)
+{
+    text = trim_text(text);
+    if(text.size() < 2 || text.front() != '[' || text.back() != ']') return std::nullopt;
+    auto parts = split_csv(text.substr(1, text.size() - 2));
+    if(parts.size() < 2 || parts.size() > 3) return std::nullopt;
+    std::vector<NodeId> out;
+    for(auto const &p : parts) out.push_back(exact_eval_simplify(a, casio::parse_expr(a, p)));
+    return out;
+}
+
+static std::vector<std::pair<int, std::string>> split_vector_terms(std::string const &s)
+{
+    std::vector<std::pair<int, std::string>> out;
+    std::string cur;
+    int sign = 1;
+    int depth = 0;
+    for(std::size_t i = 0; i < s.size(); ++i) {
+        char c = s[i];
+        if(c == '(' || c == '[' || c == '{') depth++;
+        else if(c == ')' || c == ']' || c == '}') depth--;
+        if(depth == 0 && (c == '+' || c == '-') && !trim_text(cur).empty()) {
+            out.push_back({sign, trim_text(cur)});
+            cur.clear();
+            sign = c == '-' ? -1 : 1;
+            continue;
+        }
+        if(depth == 0 && cur.empty() && (c == '+' || c == '-')) {
+            sign = c == '-' ? -1 : 1;
+            continue;
+        }
+        cur.push_back(c);
+    }
+    if(!trim_text(cur).empty()) out.push_back({sign, trim_text(cur)});
+    return out;
+}
+
+static std::optional<std::vector<NodeId>> parse_vector_term(Arena &a, std::string term, int sign)
+{
+    term = trim_text(term);
+    std::size_t lb = std::string::npos;
+    int depth = 0;
+    for(std::size_t i = 0; i < term.size(); ++i) {
+        char c = term[i];
+        if(c == '[' && depth == 0) {
+            lb = i;
+            break;
+        }
+        if(c == '(' || c == '{') depth++;
+        else if(c == ')' || c == '}') depth--;
+    }
+    if(lb == std::string::npos) return std::nullopt;
+    auto rb = matching_delim(term, lb, '[', ']');
+    if(!rb) return std::nullopt;
+    auto v = parse_vector_literal(a, term.substr(lb, *rb - lb + 1));
+    if(!v) return std::nullopt;
+    std::string left = trim_text(term.substr(0, lb));
+    std::string right = trim_text(term.substr(*rb + 1));
+    std::string scalar = sign < 0 ? "-1" : "1";
+    if(!left.empty() && right.empty()) {
+        if(left.back() == '*') left.pop_back();
+        scalar = trim_text(left);
+        if(sign < 0) scalar = "-(" + scalar + ")";
+    }
+    else if(left.empty() && !right.empty()) {
+        if(right.front() != '*') return std::nullopt;
+        scalar = trim_text(right.substr(1));
+        if(sign < 0) scalar = "-(" + scalar + ")";
+    }
+    else if(!left.empty() || !right.empty()) return std::nullopt;
+    NodeId scale = exact_eval_simplify(a, casio::parse_expr(a, scalar));
+    for(NodeId &n : *v) n = exact_eval_simplify(a, casio::mul(a, {scale, n}));
+    return v;
+}
+
+static std::optional<std::vector<NodeId>> parse_vector_expr(Arena &a, std::string text)
+{
+    text = trim_text(text);
+    if(text.size() >= 2 && text.front() == '(') {
+        if(auto end = matching_delim(text, 0, '(', ')')) {
+            std::string inner = text.substr(1, *end - 1);
+            std::string rest = trim_text(text.substr(*end + 1));
+            if(rest.empty()) return parse_vector_expr(a, inner);
+            if(rest.size() >= 2 && (rest[0] == '*' || rest[0] == '/')) {
+                auto v = parse_vector_expr(a, inner);
+                if(!v) return std::nullopt;
+                NodeId scalar = exact_eval_simplify(a, casio::parse_expr(a, trim_text(rest.substr(1))));
+                if(rest[0] == '/') scalar = exact_eval_simplify(a, casio::div(a, casio::num(a, 1), scalar));
+                for(NodeId &n : *v) n = exact_eval_simplify(a, casio::mul(a, {n, scalar}));
+                return v;
+            }
+        }
+    }
+    auto terms = split_vector_terms(text);
+    if(terms.empty()) return std::nullopt;
+    std::vector<NodeId> acc;
+    for(auto const &t : terms) {
+        auto v = parse_vector_term(a, t.second, t.first);
+        if(!v) return std::nullopt;
+        if(acc.empty()) acc.assign(v->size(), casio::num(a, 0));
+        if(v->size() != acc.size()) return std::nullopt;
+        for(std::size_t i = 0; i < acc.size(); ++i) acc[i] = exact_eval_simplify(a, casio::add(a, {acc[i], (*v)[i]}));
+    }
+    return acc;
+}
+
+static std::optional<NodeId> vector_dot_node(Arena &a, std::vector<NodeId> const &u, std::vector<NodeId> const &v)
+{
+    if(u.empty() || u.size() != v.size()) return std::nullopt;
+    std::vector<NodeId> terms;
+    for(std::size_t i = 0; i < u.size(); ++i) terms.push_back(casio::mul(a, {u[i], v[i]}));
+    return exact_eval_simplify(a, casio::add(a, terms));
+}
+
+static std::optional<NodeId> vector_norm_node(Arena &a, std::vector<NodeId> const &v)
+{
+    if(v.empty()) return std::nullopt;
+    std::vector<NodeId> squares;
+    for(NodeId n : v) squares.push_back(casio::power(a, n, casio::num(a, 2)));
+    return exact_eval_simplify(a, casio::fn(a, "sqrt", casio::add(a, squares)));
+}
+
+static std::optional<std::vector<NodeId>> vector_cross_nodes(Arena &a, std::vector<NodeId> const &u, std::vector<NodeId> const &v)
+{
+    if(u.size() != 3 || v.size() != 3) return std::nullopt;
+    return std::vector<NodeId>{
+        exact_eval_simplify(a, casio::add(a, {casio::mul(a, {u[1], v[2]}), casio::neg(a, casio::mul(a, {u[2], v[1]}))})),
+        exact_eval_simplify(a, casio::add(a, {casio::mul(a, {u[2], v[0]}), casio::neg(a, casio::mul(a, {u[0], v[2]}))})),
+        exact_eval_simplify(a, casio::add(a, {casio::mul(a, {u[0], v[1]}), casio::neg(a, casio::mul(a, {u[1], v[0]}))})),
+    };
+}
+
+static std::optional<Rational> vector_dot_rational(Arena &a, std::vector<NodeId> const &u, std::vector<NodeId> const &v)
+{
+    if(u.empty() || u.size() != v.size()) return std::nullopt;
+    Rational acc{0, 1};
+    for(std::size_t i = 0; i < u.size(); ++i) {
+        auto ui = as_num(a, exact_eval_simplify(a, u[i]));
+        auto vi = as_num(a, exact_eval_simplify(a, v[i]));
+        if(!ui || !vi) return std::nullopt;
+        acc = r_add(acc, r_mul(*ui, *vi));
+    }
+    return acc;
+}
+
+static std::optional<std::vector<std::string>> vector_cos_ratio_route(Arena &a, std::string const &expr)
+{
+    std::string s = trim_text(expr);
+    std::size_t dp = s.find("dot(");
+    if(dp == std::string::npos) return std::nullopt;
+    std::size_t open = dp + 3;
+    auto close = matching_delim(s, open, '(', ')');
+    if(!close) return std::nullopt;
+    auto dparts = split_csv(s.substr(open + 1, *close - open - 1));
+    if(dparts.size() != 2) return std::nullopt;
+    if(s.find("norm(") == std::string::npos) return std::nullopt;
+    auto u = parse_vector_expr(a, dparts[0]);
+    auto v = parse_vector_expr(a, dparts[1]);
+    if(!u || !v) return std::nullopt;
+    auto dot = vector_dot_rational(a, *u, *v);
+    auto su = vector_dot_rational(a, *u, *u);
+    auto sv = vector_dot_rational(a, *v, *v);
+    if(!dot || !su || !sv) return std::nullopt;
+    Rational prod = r_mul(*su, *sv);
+    if(prod.den != 1 || prod.num < 0) return std::nullopt;
+    std::int64_t root = 0;
+    if(!is_square_i64(prod.num, root) || root == 0) return std::nullopt;
+    Rational ans = r_div(*dot, Rational{root, 1});
+    std::string ans_txt = format_rat(a, ans);
+    return casio::exam_block("vectors", {
+        vector_text(a, *u) + "." + vector_text(a, *v) + " = " + format_rat(a, *dot),
+        "|" + vector_text(a, *u) + "|^2 = " + format_rat(a, *su),
+        "|" + vector_text(a, *v) + "|^2 = " + format_rat(a, *sv),
+        "cos(theta) = " + ans_txt,
+    }, ans_txt);
+}
+
+static std::optional<std::string> replace_vector_scalar_calls(Arena &a, std::string text)
+{
+    bool changed = false;
+    for(;;) {
+        std::size_t dp = text.find("dot(");
+        std::size_t np = text.find("norm(");
+        if(dp == std::string::npos && np == std::string::npos) break;
+        bool is_dot = dp != std::string::npos && (np == std::string::npos || dp < np);
+        std::size_t pos = is_dot ? dp : np;
+        std::size_t open = pos + (is_dot ? 3 : 4);
+        auto close = matching_delim(text, open, '(', ')');
+        if(!close) return std::nullopt;
+        std::string body = text.substr(open + 1, *close - open - 1);
+        NodeId repl = 0;
+        if(is_dot) {
+            auto parts = split_csv(body);
+            if(parts.size() != 2) return std::nullopt;
+            auto u = parse_vector_expr(a, parts[0]);
+            auto v = parse_vector_expr(a, parts[1]);
+            auto d = (u && v) ? vector_dot_node(a, *u, *v) : std::nullopt;
+            if(!d) return std::nullopt;
+            repl = *d;
+        }
+        else {
+            auto v = parse_vector_expr(a, body);
+            auto n = v ? vector_norm_node(a, *v) : std::nullopt;
+            if(!n) return std::nullopt;
+            repl = *n;
+        }
+        text.replace(pos, *close - pos + 1, paren_if_needed(format_expr(a, repl)));
+        changed = true;
+    }
+    return changed ? std::optional<std::string>(text) : std::nullopt;
+}
+
+static std::optional<std::vector<std::string>> vector_angle_route(Arena &a, std::string const &expr)
+{
+    std::string body = unwrap_whole_call_text(trim_text(expr), "acos");
+    if(body.empty() || body.find("dot(") == std::string::npos || body.find("norm(") == std::string::npos) return std::nullopt;
+    std::size_t dp = body.find("dot(") + 3;
+    auto de = matching_delim(body, dp, '(', ')');
+    if(!de) return std::nullopt;
+    auto dparts = split_csv(body.substr(dp + 1, *de - dp - 1));
+    if(dparts.size() != 2) return std::nullopt;
+    auto u = parse_vector_expr(a, dparts[0]);
+    auto v = parse_vector_expr(a, dparts[1]);
+    if(!u || !v) return std::nullopt;
+    auto dot = vector_dot_node(a, *u, *v);
+    auto nu = vector_norm_node(a, *u);
+    auto nv = vector_norm_node(a, *v);
+    if(!dot || !nu || !nv) return std::nullopt;
+    NodeId abs_dot = casio::fn(a, "abs", *dot);
+    NodeId cosv = exact_eval_simplify(a, casio::div(a, abs_dot, casio::mul(a, {*nu, *nv})));
+    NodeId theta = exact_eval_simplify(a, casio::fn(a, "acos", cosv));
+    std::vector<std::string> steps{
+        "cos(theta) = |" + format_expr(a, *dot) + "|/(" + format_expr(a, *nu) + "*" + format_expr(a, *nv) + ")",
+        "theta = " + format_expr(a, theta),
+    };
+    std::string ans = format_expr(a, theta);
+    if(auto c = eval_node_env(a, cosv, {})) {
+        double deg = std::acos(std::max(-1.0, std::min(1.0, *c))) * 180.0 / 3.14159265358979323846;
+        ans = "theta ~= " + format_double_compact(deg);
+        steps.push_back(ans);
+    }
+    return casio::exam_block("vectors", steps, ans);
+}
+
+static std::optional<std::vector<std::string>> vector_algebra_route(Arena &a, std::string const &expr)
+{
+    if(expr.find('=') != std::string::npos || expr.find("solve(") != std::string::npos) return std::nullopt;
+    if(auto ang = vector_angle_route(a, expr)) return ang;
+    if(auto cosr = vector_cos_ratio_route(a, expr)) return cosr;
+    std::string body = unwrap_whole_call_text(expr, "dot");
+    if(!body.empty()) {
+        auto parts = split_csv(body);
+        if(parts.size() != 2) return std::nullopt;
+        auto u = parse_vector_expr(a, parts[0]);
+        auto v = parse_vector_expr(a, parts[1]);
+        auto d = (u && v) ? vector_dot_node(a, *u, *v) : std::nullopt;
+        if(!u || !v || !d) return std::nullopt;
+        std::vector<std::string> prod;
+        for(std::size_t i = 0; i < u->size(); ++i)
+            prod.push_back(paren_if_needed(format_expr(a, (*u)[i])) + "*" + paren_if_needed(format_expr(a, (*v)[i])));
+        std::string ans = format_expr(a, *d);
+        return casio::exam_block("vectors", {
+            vector_text(a, *u) + "." + vector_text(a, *v) + " = " + join_text(prod, " + "),
+            "= " + ans,
+        }, ans);
+    }
+    body = unwrap_whole_call_text(expr, "cross");
+    if(!body.empty()) {
+        auto parts = split_csv(body);
+        if(parts.size() != 2) return std::nullopt;
+        auto u = parse_vector_expr(a, parts[0]);
+        auto v = parse_vector_expr(a, parts[1]);
+        auto c = (u && v) ? vector_cross_nodes(a, *u, *v) : std::nullopt;
+        if(!u || !v || !c) return std::nullopt;
+        std::string ans = vector_text(a, *c);
+        return casio::exam_block("vectors", {
+            vector_text(a, *u) + " x " + vector_text(a, *v),
+            "= (" + format_expr(a, exact_eval_simplify(a, casio::add(a, {casio::mul(a, {(*u)[1], (*v)[2]}), casio::neg(a, casio::mul(a, {(*u)[2], (*v)[1]}))}))) + "," +
+                   format_expr(a, exact_eval_simplify(a, casio::add(a, {casio::mul(a, {(*u)[2], (*v)[0]}), casio::neg(a, casio::mul(a, {(*u)[0], (*v)[2]}))}))) + "," +
+                   format_expr(a, exact_eval_simplify(a, casio::add(a, {casio::mul(a, {(*u)[0], (*v)[1]}), casio::neg(a, casio::mul(a, {(*u)[1], (*v)[0]}))}))) + ")",
+        }, ans);
+    }
+    body = unwrap_whole_call_text(expr, "norm");
+    if(!body.empty()) {
+        auto v = parse_vector_expr(a, body);
+        auto n = v ? vector_norm_node(a, *v) : std::nullopt;
+        if(!v || !n) return std::nullopt;
+        std::vector<std::string> squares;
+        for(NodeId x : *v) squares.push_back(paren_if_needed(format_expr(a, x)) + "^2");
+        std::string ans = format_expr(a, *n);
+        return casio::exam_block("vectors", {
+            "|" + vector_text(a, *v) + "| = sqrt(" + join_text(squares, " + ") + ")",
+            "= " + ans,
+        }, ans);
+    }
+    if(auto replaced = replace_vector_scalar_calls(a, expr)) {
+        NodeId out = exact_eval_simplify(a, casio::parse_expr(a, *replaced));
+        std::string ans = format_expr(a, out);
+        return casio::exam_block("vectors", {trim_text(expr) + " = " + *replaced, "= " + ans}, ans);
+    }
+    if(expr.find('[') != std::string::npos) {
+        std::size_t lb = expr.find('[');
+        if(expr.substr(0, lb).find('(') != std::string::npos && trim_text(expr).front() != '(') return std::nullopt;
+        std::optional<std::vector<NodeId>> v;
+        try { v = parse_vector_expr(a, expr); } catch(...) { v = std::nullopt; }
+        if(v) {
+            std::string ans = vector_text(a, *v);
+            return casio::exam_block("vectors", {trim_text(expr) + " = " + ans}, ans);
+        }
+    }
+    return std::nullopt;
+}
+
+static std::optional<std::vector<std::string>> evalat_embedded_route(Arena &a, std::string const &expr)
+{
+    std::string s = trim_text(expr);
+    std::size_t p = s.find("evalat(");
+    if(p == std::string::npos) return std::nullopt;
+    std::size_t open = p + 6;
+    auto close = matching_delim(s, open, '(', ')');
+    if(!close) return std::nullopt;
+    std::string body = s.substr(open + 1, *close - open - 1);
+    auto parts = split_csv(body);
+    if(parts.size() < 2) return std::nullopt;
+
+    std::string f_text = trim_text(parts[0]);
+    std::vector<std::pair<std::string, NodeId>> subs;
+    if(parts.size() == 2) {
+        std::string rhs = trim_text(parts[1]);
+        if(rhs.size() >= 2 && rhs.front() == '[' && rhs.back() == ']') {
+            auto kvs = split_csv(rhs.substr(1, rhs.size() - 2));
+            for(auto const &kv : kvs) {
+                auto eq = kv.find('=');
+                if(eq == std::string::npos) return std::nullopt;
+                subs.push_back({trim_text(kv.substr(0, eq)), exact_eval_simplify(a, casio::parse_expr(a, trim_text(kv.substr(eq + 1))))});
+            }
+        }
+        else {
+            auto eq = rhs.find('=');
+            if(eq == std::string::npos) return std::nullopt;
+            subs.push_back({trim_text(rhs.substr(0, eq)), exact_eval_simplify(a, casio::parse_expr(a, trim_text(rhs.substr(eq + 1))))});
+        }
+    }
+    else {
+        subs.push_back({trim_text(parts[1]), exact_eval_simplify(a, casio::parse_expr(a, trim_text(parts[2])))});
+    }
+    if(subs.empty()) return std::nullopt;
+    NodeId val = casio::simplify(a, casio::parse_expr(a, f_text));
+    for(auto const &kv : subs) val = clone_with_substitution(a, val, kv.first, kv.second);
+    val = exact_eval_polish(a, expand_square_powers(a, val));
+    std::string val_text = format_expr(a, val);
+    std::string replaced = s;
+    replaced.replace(p, *close - p + 1, paren_if_needed(val_text));
+    NodeId ans = exact_eval_polish(a, casio::parse_expr(a, replaced));
+    std::vector<std::string> sub_txt;
+    for(auto const &kv : subs) sub_txt.push_back(kv.first + " = " + format_expr(a, kv.second));
+    std::string answer = format_expr(a, ans);
+    return std::vector<std::string>{
+        join_text(sub_txt, ", "),
+        "evalat(" + f_text + ") = " + val_text,
+        replaced + " = " + answer,
+        answer,
+    };
+}
+
+static std::optional<std::vector<std::string>> maximize_exp_cos_route(Arena &a, std::string const &expr)
+{
+    std::string key = compact_input_key(expr);
+    bool maximize = key.rfind("maximize(", 0) == 0;
+    if(!maximize && key.rfind("maximum(", 0) != 0) return std::nullopt;
+    std::string body = key.substr(maximize ? 9 : 8, key.size() - (maximize ? 10 : 9));
+    auto parts = split_top_key(body, ',');
+    if(parts.size() < 2) return std::nullopt;
+    std::string cond = parts[1];
+    std::size_t rel = cond.find(">=");
+    if(rel == std::string::npos) rel = cond.find('>');
+    std::string var = rel == std::string::npos ? "" : cond.substr(0, rel);
+    if(var.empty()) return std::nullopt;
+
+    std::string f = parts[0];
+    std::size_t ep = f.find("exp(");
+    if(ep == std::string::npos || f.back() != ')') return std::nullopt;
+    std::string coeff_txt = f.substr(0, ep);
+    if(coeff_txt.empty()) coeff_txt = "1";
+    auto coeff = parse_rational_key(coeff_txt);
+    if(!coeff || coeff->num <= 0) return std::nullopt;
+    std::string arg = f.substr(ep + 4, f.size() - ep - 5);
+
+    std::size_t minus = std::string::npos;
+    int depth = 0;
+    for(std::size_t i = 0; i < arg.size(); ++i) {
+        if(arg[i] == '(') ++depth;
+        else if(arg[i] == ')') --depth;
+        else if(arg[i] == '-' && depth == 0) { minus = i; break; }
+    }
+    if(minus == std::string::npos) return std::nullopt;
+    auto offset = parse_rational_key(arg.substr(0, minus));
+    std::string cos_term = arg.substr(minus + 1);
+    if(!offset || cos_term.rfind("cos(", 0) != 0 || cos_term.back() != ')') return std::nullopt;
+    std::string angle = cos_term.substr(4, cos_term.size() - 5);
+    if(angle.find(var) == std::string::npos) return std::nullopt;
+
+    Rational max_exp = r_add(*offset, Rational{1, 1});
+    std::string c = format_rat_plain(*coeff);
+    std::string e = format_rat_plain(max_exp);
+    std::string ans = c == "1" ? "e^" + e : c + "*e^" + e;
+    NodeId ans_node = exact_eval_simplify(a, casio::mul(a, {a.num(*coeff), casio::power(a, casio::constant_e(a), a.num(max_exp))}));
+    auto v = eval_node_env(a, ans_node, {});
+    std::vector<std::string> out{
+        "x=" + c + "e^(" + arg + ")",
+        "-1 <= cos(" + angle + ") <= 1",
+        "max when cos(" + angle + ")=-1",
+        "maximum height=" + ans,
+    };
+    if(v && std::isfinite(*v)) out.push_back("maximum height ~= " + format_double_compact(*v));
+    out.push_back(ans);
+    return out;
+}
+
+static std::optional<NodeId> vector_component_base(Arena &a, NodeId component, std::string const &var)
+{
+    std::function<std::optional<std::pair<NodeId, NodeId>>(NodeId)> lin_parts;
+    lin_parts = [&](NodeId n) -> std::optional<std::pair<NodeId, NodeId>> {
+        if(!contains_symbol(a, n, var)) return std::make_pair(zero_node(a), n);
+        Node const &sn = a.get(n);
+        if(sn.kind == NodeKind::Sym && sn.text == var) return std::make_pair(casio::num(a, 1), zero_node(a));
+        Node const &x = a.get(n);
+        if(x.kind == NodeKind::Add) {
+            std::vector<NodeId> ms, cs;
+            for(NodeId k : x.kids) {
+                auto p = lin_parts(k);
+                if(!p) return std::nullopt;
+                ms.push_back(p->first);
+                cs.push_back(p->second);
+            }
+            return std::make_pair(exact_eval_simplify(a, casio::add(a, ms)), exact_eval_simplify(a, casio::add(a, cs)));
+        }
+        if(x.kind == NodeKind::Mul) {
+            std::vector<NodeId> scale;
+            std::optional<std::pair<NodeId, NodeId>> body;
+            for(NodeId k : x.kids) {
+                if(contains_symbol(a, k, var)) {
+                    if(body) return std::nullopt;
+                    body = lin_parts(k);
+                    if(!body) return std::nullopt;
+                }
+                else scale.push_back(k);
+            }
+            if(!body) return std::nullopt;
+            NodeId s = scale.empty() ? casio::num(a, 1) : casio::mul(a, scale);
+            return std::make_pair(exact_eval_simplify(a, casio::mul(a, {s, body->first})),
+                                  exact_eval_simplify(a, casio::mul(a, {s, body->second})));
+        }
+        if(x.kind == NodeKind::Div && !contains_symbol(a, x.b, var)) {
+            auto p = lin_parts(x.a);
+            if(!p) return std::nullopt;
+            return std::make_pair(exact_eval_simplify(a, casio::div(a, p->first, x.b)),
+                                  exact_eval_simplify(a, casio::div(a, p->second, x.b)));
+        }
+        return std::nullopt;
+    };
+    auto lin = lin_parts(component);
+    if(!lin) return std::nullopt;
+    auto m = as_num(a, exact_eval_simplify(a, lin->first));
+    if(!m || m->num != m->den) return std::nullopt;
+    return exact_eval_simplify(a, neg_node(a, lin->second));
+}
+
+static std::optional<std::vector<std::string>> param_line_perp_dot_route(Arena &a, std::string const &expr)
+{
+    std::string body = unwrap_call_text(expr, "solve");
+    if(body.empty()) {
+        std::string t = trim_text(expr);
+        if(t.rfind("[", 0) != 0) return std::nullopt;
+        body = t;
+    }
+    auto top = split_csv(body);
+    if(top.size() < 2) return std::nullopt;
+    std::string eq_list = trim_text(top[0]);
+    if(eq_list.size() < 2 || eq_list.front() != '[' || eq_list.back() != ']') return std::nullopt;
+    auto eqs = split_csv(eq_list.substr(1, eq_list.size() - 2));
+
+    NodeId coord[3] = {0, 0, 0};
+    std::string dot_lhs, dot_rhs;
+    for(auto const &e : eqs) {
+        auto p = e.find('=');
+        if(p == std::string::npos) continue;
+        std::string lhs = trim_text(e.substr(0, p));
+        std::string rhs = trim_text(e.substr(p + 1));
+        if(lhs == "x") coord[0] = casio::parse_expr(a, rhs);
+        else if(lhs == "y") coord[1] = casio::parse_expr(a, rhs);
+        else if(lhs == "z") coord[2] = casio::parse_expr(a, rhs);
+        else if(lhs.rfind("dot(", 0) == 0) {
+            dot_lhs = lhs;
+            dot_rhs = rhs;
+        }
+    }
+    if(!coord[0] || !coord[1] || !coord[2] || dot_lhs.empty()) return std::nullopt;
+
+    std::string param;
+    for(NodeId c : coord) {
+        std::vector<std::string> syms;
+        collect_symbols(a, c, syms);
+        for(auto const &s : syms) if(s != "x" && s != "y" && s != "z") param = s;
+    }
+    if(param.empty()) return std::nullopt;
+
+    std::string dot_body = unwrap_call_text(dot_lhs, "dot");
+    auto dparts = split_csv(dot_body);
+    if(dparts.size() != 2) return std::nullopt;
+    auto left = parse_vector_expr(a, dparts[0]);
+    auto normal = parse_vector_expr(a, dparts[1]);
+    if(!left || !normal || left->size() != 3 || normal->size() != 3) return std::nullopt;
+
+    std::vector<NodeId> base(3);
+    for(std::size_t i = 0; i < 3; ++i) {
+        char v = "xyz"[i];
+        auto b = vector_component_base(a, (*left)[i], std::string(1, v));
+        if(!b) return std::nullopt;
+        base[i] = *b;
+    }
+    std::vector<NodeId> C(3);
+    for(std::size_t i = 0; i < 3; ++i)
+        C[i] = exact_eval_simplify(a, casio::add(a, {base[i], (*normal)[i]}));
+
+    std::vector<NodeId> sub_left;
+    for(NodeId n : *left) {
+        n = clone_with_substitution(a, n, "x", coord[0]);
+        n = clone_with_substitution(a, n, "y", coord[1]);
+        n = clone_with_substitution(a, n, "z", coord[2]);
+        sub_left.push_back(exact_eval_simplify(a, n));
+    }
+    auto dot = vector_dot_node(a, sub_left, *normal);
+    if(!dot) return std::nullopt;
+    NodeId rhs = dot_rhs.empty() ? zero_node(a) : casio::parse_expr(a, dot_rhs);
+    NodeId residual = exact_eval_simplify(a, casio::add(a, {*dot, neg_node(a, rhs)}));
+    auto p = poly_of(a, residual, param);
+    if(!p || !p->ok || !is_zero(p->a2) || is_zero(p->a1)) return std::nullopt;
+    Rational pv = r_div(r_neg(p->a0), p->a1);
+    NodeId param_node = a.num(pv);
+    std::vector<NodeId> D(3);
+    for(std::size_t i = 0; i < 3; ++i)
+        D[i] = exact_eval_simplify(a, clone_with_substitution(a, coord[i], param, param_node));
+
+    return std::vector<std::string>{
+        "line: (x,y,z) = " + vector_text(a, {coord[0], coord[1], coord[2]}),
+        "C=" + vector_text(a, C),
+        vector_text(a, sub_left) + "." + vector_text(a, *normal) + " = 0",
+        format_expr(a, residual) + " = 0",
+        param + " = " + format_expr(a, param_node),
+        "D=" + vector_text(a, D),
+    };
 }
 
 static std::optional<std::vector<std::string>> tangent_normal_line_route(Arena &a, std::string const &expr, bool normal)
@@ -5430,6 +6027,14 @@ static std::optional<std::vector<std::string>> binomial_coefficient_route(Arena 
     }
     auto args = split_csv(body);
     if(args.size() != 3) return std::nullopt;
+    bool from_series = false;
+    if(auto series_body = unwrap_call_text(args[0], "series"); !series_body.empty()) {
+        auto sargs = split_csv(series_body);
+        if(sargs.empty()) return std::nullopt;
+        args[0] = sargs[0];
+        if(args[1].empty() && sargs.size() >= 2) args[1] = sargs[1];
+        from_series = true;
+    }
     std::string var = trim_text(args[1]);
     auto kk = parse_rational_text(trim_text(args[2]));
     if(var.empty() || !kk || kk->den != 1 || kk->num < kLaurentPowerMin || kk->num > kLaurentPowerMax) return std::nullopt;
@@ -5605,6 +6210,24 @@ static std::optional<std::vector<std::string>> binomial_coefficient_route(Arena 
     };
 
     NodeId n = casio::parse_expr(a, trim_text(args[0]));
+    if(from_series && want >= 0) {
+        if(auto s = combined_series(a, n, var, want); s && (int)s->c.size() > want) {
+            NodeId coeff = a.num(s->c[(std::size_t)want]);
+            return std::vector<std::string>{
+                "Series: " + series_answer_text(a, s->c, var),
+                "Coefficient of " + var + "^" + std::to_string(want) + " = " + format_expr(a, coeff),
+                format_expr(a, coeff),
+            };
+        }
+        if(auto sym = symbolic_combined_series(a, n, var, want); sym && (int)sym->c.size() > want) {
+            NodeId coeff = exact_eval_simplify(a, sym->c[(std::size_t)want]);
+            return std::vector<std::string>{
+                "Series: " + symbolic_series_answer_text(a, sym->c, var),
+                "Coefficient of " + var + "^" + std::to_string(want) + " = " + format_expr(a, coeff),
+                format_expr(a, coeff),
+            };
+        }
+    }
     std::function<std::optional<std::vector<NodeId>>(NodeId)> poly_coeffs;
     poly_coeffs = [&](NodeId id) -> std::optional<std::vector<NodeId>> {
         if(want < 0) return std::nullopt;
@@ -10928,6 +11551,149 @@ static std::optional<std::string> limit_body_key(std::string const &key)
             return key.substr(name.size(), key.size() - name.size() - 1);
     }
     return std::nullopt;
+}
+
+static std::optional<NodeId> exp_decay_limit_node(Arena &a, NodeId id, std::string const &var, bool &changed)
+{
+    Node const &x = a.get(id);
+    if(!contains_symbol(a, id, var)) return id;
+    if(x.kind == NodeKind::Sym) return std::nullopt;
+    auto exp_arg_limit = [&](NodeId arg) -> std::optional<NodeId> {
+        auto lin = symbolic_linear_parts(a, arg, var);
+        if(!lin) return contains_symbol(a, arg, var) ? std::nullopt : std::optional<NodeId>(arg);
+        auto m = as_num(a, lin->m);
+        if(!m) return std::nullopt;
+        if(m->num < 0) {
+            changed = true;
+            return zero_node(a);
+        }
+        return std::nullopt;
+    };
+    if(x.kind == NodeKind::Fn) {
+        if(x.fkind == FnKind::Exp) return exp_arg_limit(x.a);
+        auto arg = exp_decay_limit_node(a, x.a, var, changed);
+        if(!arg) return std::nullopt;
+        return a.fn(x.fkind, *arg);
+    }
+    if(x.kind == NodeKind::Pow) {
+        if(is_e_const_node(a, x.a)) return exp_arg_limit(x.b);
+        auto base = exp_decay_limit_node(a, x.a, var, changed);
+        auto expo = exp_decay_limit_node(a, x.b, var, changed);
+        if(!base || !expo) return std::nullopt;
+        return casio::power(a, *base, *expo);
+    }
+    if(x.kind == NodeKind::Div) {
+        auto top = exp_decay_limit_node(a, x.a, var, changed);
+        auto bot = exp_decay_limit_node(a, x.b, var, changed);
+        if(!top || !bot) return std::nullopt;
+        return casio::div(a, *top, *bot);
+    }
+    if(x.kind == NodeKind::Add || x.kind == NodeKind::Mul) {
+        std::vector<NodeId> kids;
+        kids.reserve(x.kids.size());
+        for(NodeId k : x.kids) {
+            auto nk = exp_decay_limit_node(a, k, var, changed);
+            if(!nk) return std::nullopt;
+            kids.push_back(*nk);
+        }
+        return x.kind == NodeKind::Add ? casio::add(a, kids) : casio::mul(a, kids);
+    }
+    return std::nullopt;
+}
+
+static std::optional<std::vector<std::string>> limit_exp_decay_infinity_route(Arena &a, std::string const &expr)
+{
+    auto body = limit_body_key(compact_input_key(expr));
+    if(!body) return std::nullopt;
+    auto parts = split_top_key(*body, ',');
+    if(parts.size() != 3) return std::nullopt;
+    std::string endpoint = parts[2];
+    if(endpoint != "infinity" && endpoint != "inf" && endpoint != "oo") return std::nullopt;
+    std::string var = parts[1];
+    if(var.empty()) return std::nullopt;
+    NodeId parsed = casio::parse_expr(a, parts[0]);
+    bool changed = false;
+    auto lim = exp_decay_limit_node(a, parsed, var, changed);
+    if(!lim || !changed) return std::nullopt;
+    NodeId ans = exact_eval_simplify(a, *lim);
+    if(contains_symbol(a, ans, var)) return std::nullopt;
+    return std::vector<std::string>{
+        var + " -> infinity",
+        "exp(-k*" + var + ") -> 0 for k > 0",
+        parts[0] + " -> " + format_expr(a, ans),
+        format_expr(a, ans),
+    };
+}
+
+static std::optional<std::vector<std::string>> limit_exp_growth_ratio_infinity_route(std::string const &expr)
+{
+    auto body = limit_body_key(compact_input_key(expr));
+    if(!body) return std::nullopt;
+    auto parts = split_top_key(*body, ',');
+    if(parts.size() != 3) return std::nullopt;
+    if(parts[2] != "infinity" && parts[2] != "inf" && parts[2] != "oo") return std::nullopt;
+    std::string var = parts[1];
+    auto frac = split_top_key(parts[0], '/');
+    if(frac.size() != 2) return std::nullopt;
+    auto strip_wrap = [](std::string s) {
+        while(s.size() >= 2 && s.front() == '(' && s.back() == ')') {
+            int depth = 0;
+            bool wraps = true;
+            for(std::size_t i = 0; i < s.size(); ++i) {
+                if(s[i] == '(') ++depth;
+                else if(s[i] == ')' && --depth == 0 && i + 1 < s.size()) {
+                    wraps = false;
+                    break;
+                }
+            }
+            if(!wraps) break;
+            s = s.substr(1, s.size() - 2);
+        }
+        return s;
+    };
+
+    auto exp_term = [&](std::string s) -> std::optional<std::pair<Rational, Rational>> {
+        s = strip_wrap(s);
+        auto ep = s.find("exp(");
+        std::size_t off = 4;
+        if(ep == std::string::npos) {
+            ep = s.find("e^(");
+            off = 3;
+        }
+        if(ep == std::string::npos || s.back() != ')') return std::nullopt;
+        std::string coeff_txt = s.substr(0, ep);
+        if(coeff_txt.empty()) coeff_txt = "1";
+        auto coeff = parse_rational_key(coeff_txt);
+        if(!coeff) return std::nullopt;
+        std::string arg = s.substr(ep + off, s.size() - ep - off - 1);
+        Rational slope{0, 1};
+        if(arg == var) slope = Rational{1, 1};
+        else {
+            if(arg.size() <= var.size() || arg.compare(arg.size() - var.size(), var.size(), var) != 0) return std::nullopt;
+            auto k = parse_rational_key(arg.substr(0, arg.size() - var.size()));
+            if(!k) return std::nullopt;
+            slope = *k;
+        }
+        if(slope.num <= 0) return std::nullopt;
+        return std::make_pair(slope, *coeff);
+    };
+
+    auto top = exp_term(frac[0]);
+    if(!top) return std::nullopt;
+    Rational den_coeff{0, 1};
+    for(auto const &term : split_top_key(strip_wrap(frac[1]), '+')) {
+        if(auto et = exp_term(term); et && et->first.num == top->first.num && et->first.den == top->first.den)
+            den_coeff = r_add(den_coeff, et->second);
+    }
+    if(is_zero(den_coeff)) return std::nullopt;
+    Rational ans = r_div(top->second, den_coeff);
+    std::string ans_text = format_rat_plain(ans);
+    return std::vector<std::string>{
+        parts[1] + " -> infinity",
+        "divide by exp(" + format_rat_plain(top->first) + "*" + parts[1] + ")",
+        parts[0] + " -> " + ans_text,
+        ans_text,
+    };
 }
 
 static std::optional<std::vector<std::string>> limit_ln_one_route_key(std::string const &key)
@@ -36287,6 +37053,17 @@ std::vector<std::string> run(Arena &arena, Request const &req)
 {
     if(req.expr.empty()) return {"Enter expression/equation."};
     if(casio::contains_removed_function(req.expr)) return {"Err: unsupported function."};
+    if(auto vec = vector_algebra_route(arena, req.expr)) return *vec;
+    if(auto ev = evalat_embedded_route(arena, req.expr)) return *ev;
+    if(auto mx = maximize_exp_cos_route(arena, req.expr)) return *mx;
+    if(auto limratio = limit_exp_growth_ratio_infinity_route(req.expr)) return *limratio;
+    if(auto limexp = limit_exp_decay_infinity_route(arena, req.expr)) return *limexp;
+    if(auto pd = param_line_perp_dot_route(arena, req.expr)) return *pd;
+    if(auto replaced = replace_vector_scalar_calls(arena, req.expr)) {
+        Request next = req;
+        next.expr = *replaced;
+        return run(arena, next);
+    }
 
     try {
         if(auto rr = repeated_root_route(arena, req.expr)) return *rr;
@@ -36376,6 +37153,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             std::string key = compact_input_key(req.expr);
             if(auto surd = numeric_surd_simplify_route(key)) return *surd;
             if(auto ecc = eccentricity_e_solve_route_key(key)) return *ecc;
+            if(auto limexp = limit_exp_decay_infinity_route(arena, req.expr)) return *limexp;
+            if(auto limratio = limit_exp_growth_ratio_infinity_route(req.expr)) return *limratio;
             if(auto ll = limit_ln_one_route_key(key)) return *ll;
             if(auto ls = limit_ln_square_one_route_key(key)) return *ls;
             if(auto lh = limit_lhospital_tan_cosec_route_key(key)) return *lh;
@@ -38108,10 +38887,49 @@ algebra_compare_transform_modes:
 
         if(req.method == "evalat") {
             auto parts = split_csv(req.expr);
+            if(parts.size() == 2) {
+                std::string rhs = trim_text(parts[1]);
+                if(rhs.size() >= 2 && rhs.front() == '[' && rhs.back() == ']') {
+                    auto subs = split_csv(rhs.substr(1, rhs.size() - 2));
+                    std::vector<std::pair<std::string, NodeId>> kvs;
+                    for(auto const &s0 : subs) {
+                        auto eqp = s0.find('=');
+                        if(eqp == std::string::npos) return {"Err: need expr,var,value."};
+                        kvs.push_back({trim_text(s0.substr(0, eqp)),
+                                       casio::simplify(arena, casio::parse_expr(arena, trim_text(s0.substr(eqp + 1))))});
+                    }
+                    auto apply_subs = [&](NodeId n) {
+                        for(auto const &kv : kvs) n = clone_with_substitution(arena, n, kv.first, kv.second);
+                        return exact_eval_polish(arena, expand_square_powers(arena, n));
+                    };
+                    std::vector<std::string> sub_txt;
+                    for(auto const &kv : kvs) sub_txt.push_back(kv.first + " = " + format_expr(arena, kv.second));
+                    if(auto vec = parse_vector_expr(arena, parts[0])) {
+                        for(NodeId &n : *vec) n = apply_subs(n);
+                        std::string ans = vector_text(arena, *vec);
+                        return {join_text(sub_txt, ", "), trim_text(parts[0]) + " = " + ans, ans};
+                    }
+                    NodeId n = casio::simplify(arena, casio::parse_expr(arena, trim_text(parts[0])));
+                    NodeId sub = apply_subs(n);
+                    std::string ans = format_expr(arena, sub);
+                    return {join_text(sub_txt, ", "), trim_text(parts[0]) + " = " + ans, ans};
+                }
+                auto eqp = rhs.find('=');
+                if(eqp != std::string::npos) {
+                    parts.push_back(trim_text(rhs.substr(eqp + 1)));
+                    parts[1] = trim_text(rhs.substr(0, eqp));
+                }
+            }
             if(parts.size() < 3) return {"Err: need expr,var,value."};
             std::string expr = trim_text(parts[0]);
             std::string var = trim_text(parts[1]);
             std::string value = trim_text(parts[2]);
+            if(auto vec = parse_vector_expr(arena, expr)) {
+                NodeId v = casio::simplify(arena, casio::parse_expr(arena, value));
+                for(NodeId &n : *vec) n = exact_eval_polish(arena, expand_square_powers(arena, clone_with_substitution(arena, n, var, v)));
+                std::string ans = vector_text(arena, *vec);
+                return {var + " = " + format_expr(arena, v), expr + " = " + ans, ans};
+            }
             NodeId n = casio::simplify(arena, casio::parse_expr(arena, expr));
             NodeId v = casio::simplify(arena, casio::parse_expr(arena, value));
             std::vector<std::string> syms;

@@ -118,7 +118,7 @@ def main() -> int:
         "complex(1,2)", "arg(1+i)", "re(1+i)", "im(1+i)", "conj(1+i)",
         "matrix(2,2,1)", "det(matrix(2,2,1))", "rref(matrix(2,2,1))",
         "jordan(matrix(2,2,1))", "svd(matrix(2,2,1))", "inv([[1,2],[3,4]])",
-        "dot([1,2],[3,4])", "cross([1,2,3],[4,5,6])", "linsolve([x+y=1],[x,y])",
+        "linsolve([x+y=1],[x,y])",
         "polar2rectangular(1,pi/3)", "rectangular2polar(1+i)",
         "laplace(sin(x),x,s)", "ilaplace(1/(s^2+1),s,x)",
         "fourier_an(sin(x),x,2*pi,1,0)", "taylor(ln(x),x,1,2)",
@@ -129,11 +129,14 @@ def main() -> int:
         "fisher(2,3,1)", "weibulld(1,2,3)", "exponential_regression([1,2],[3,4])",
         "logarithmic_regression([1,2],[3,4])", "power_regression([1,2],[3,4])",
         "rsolve(u(n)=u(n-1)+1,u(n),u(0)=0)", "odesolve(y,x,0,1)",
-        "newton(x^2-2,x,1)", "norm([3,4])", "matrix_norm([[1,2],[3,4]])",
+        "newton(x^2-2,x,1)", "matrix_norm([[1,2],[3,4]])",
         "randmatrix(2,2)", "normalvariate(0,1)", "expovariate(1)",
     ]
     for expr in removed_alg:
         require("removed_alg_" + expr.split("(")[0], run_host("--alg", expr), ("Err: unsupported function",))
+    require("vector_dot_supported", run_host("--alg", "dot([1,2],[3,4])"), ("= 11",))
+    require("vector_cross_supported", run_host("--alg", "cross([1,2,3],[4,5,6])"), ("(-3,6,-3)",))
+    require("vector_norm_supported", run_host("--alg", "norm([3,4])"), ("5",))
     require(
         "weierstrass_method_removed",
         run_host_err_ok("--int", "1/(2*sin(x)-cos(x)+5),method=weierstrass"),

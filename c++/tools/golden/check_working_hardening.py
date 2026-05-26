@@ -378,6 +378,84 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "dot([3,-1,2],[-4,2,7])",
+        ["(3,-1,2).(-4,2,7) = 3*(-4) + (-1)*2 + 2*7", "= 0", "\n0\n"],
+        ["ERR:", "unsupported function"],
+    ),
+    (
+        "alg",
+        "2*[-1,1,9]-[3,-1,2]",
+        ["2*[-1,1,9]-[3,-1,2] = (-5,3,16)", "\n(-5,3,16)\n"],
+        ["ERR:"],
+    ),
+    (
+        "alg",
+        "norm([6,1,-2]-[7,2,3])",
+        ["|(-1,-1,-5)| = sqrt((-1)^2 + (-1)^2 + (-5)^2)", "3*sqrt(3)"],
+        ["ERR:", "unsupported function"],
+    ),
+    (
+        "alg",
+        "acos(abs(dot([3,-2,1],[-1,1,1]))/(norm([3,-2,1])*norm([-1,1,1])))",
+        ["cos(theta) = |-4|/(sqrt(14)*sqrt(3))", "theta = acos(4/(sqrt(14)*sqrt(3)))", "theta ~= 51.887073499"],
+        ["ERR:", "unsupported function"],
+    ),
+    (
+        "alg",
+        "([7,2,3]+[3,-2,1])/2",
+        ["([7,2,3]+[3,-2,1])/2 = (5,0,2)", "\n(5,0,2)\n"],
+        ["ERR:"],
+    ),
+    (
+        "alg",
+        "dot([-1,-7,5],[7,-1,5])/(norm([-1,-7,5])*norm([7,-1,5]))",
+        ["(-1,-7,5).(7,-1,5) = 25", "|(-1,-7,5)|^2 = 75", "cos(theta) = 1/3", "\n1/3\n"],
+        ["ERR:", "unsupported function"],
+    ),
+    (
+        "alg",
+        "cross([2,0,-1],[-2,4,-3])",
+        ["(2,0,-1) x (-2,4,-3)", "(4,8,8)"],
+        ["ERR:", "unsupported function"],
+    ),
+    (
+        "alg",
+        "solve([x=-5*mu-7,y=6,z=2*mu-4,dot([x-5,y,z-5],[3,6,-15])=0],[x,y,z,mu])",
+        ["C = (8,6,-10)", "mu = 3", "D = (-22,6,2)"],
+        ["ERR:", "unsupported function"],
+    ),
+    (
+        "alg",
+        "partfrac(20/(P*(2*P-1)),P)",
+        ["A/(P)+B/(2*P - 1)", "A = 20/-1 = -20", "B = 20/1/2 = 40"],
+        ["ERR:", "Unexpected token"],
+    ),
+    (
+        "alg",
+        "limit(2*exp(2*t)/(1+exp(2*t)),t,inf)",
+        ["t=>infinity", "2exp(2t)/(1+exp(2t))=>2", "\n2\n"],
+        ["ERR:", "Expected )"],
+    ),
+    (
+        "alg",
+        "maximize(6*exp(1-cos(2*t)),t>=0)",
+        ["-1 <= cos(2t) <= 1", "maximum height = 6*e^2", "44.334"],
+        ["ERR:", "Unexpected character"],
+    ),
+    (
+        "int",
+        "defint(sqrt(3)/(2+sin(2*x)),x,0,pi/4)",
+        ["u = tan(x)", "I = sqrt(3)/2*Int_0^1", "pi/6"],
+        ["ERR:", "No elementary"],
+    ),
+    (
+        "trig",
+        "expand((1+cos(2*x))^2,target=3/2+2*cos(2*x)+1/2*cos(4*x),method=identity",
+        ["Source = target", "3/2 + 2*cos(2*x) + 1/2*cos(4*x)"],
+        ["ERR:", "Only one '=' supported"],
+    ),
+    (
+        "alg",
         "gradient_points(2*(x-2)^3,x,6,x!=3)",
         ["6*(x - 2)^2", "x = 1: y = -2", "(1, -2)"],
         ["ERR:", "Done", "(3, 2)"],
@@ -2895,7 +2973,7 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "int",
         "defint(1/(1+x^2)^2,x,0,1)",
-        ["x=tan(t)", "I=Int_0^(pi/4)cos(t)^2dt", "1/8*(pi+2)"],
+        ["x=tan(theta)", "I=Int_0^pi/4 1*cos(theta)^2 dtheta", "1/8*pi + 1/4"],
         ["ERR:", "No elementary primitive"],
     ),
     (
