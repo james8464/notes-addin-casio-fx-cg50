@@ -423,7 +423,7 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "June 2024 Q9 index-law geometric parameter",
         ["--alg", "solve((3^(2*(7-2*k)))/(3^(4*k-5))=(3^(2*(k-1)))/(3^(2*(7-2*k))),k)"],
-        ["u = (3)^k, with u>0", "k = 5/2", "k = [5/2]"],
+        ["3^(- 8*k + 19) = 3^(6*k - 16)", "- 8*k + 19 = 6*k - 16", "k = 5/2", "k = [5/2]"],
         ["ERR:", "k = []"],
     ),
     (
