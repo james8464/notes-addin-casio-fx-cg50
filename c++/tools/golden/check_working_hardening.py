@@ -810,6 +810,18 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "solve([y^(log(10,x))=100,log(10,sqrt(x*y/10))=1],[x,y])",
+        ["X = log(10,x), Y = log(10,y)", "X*Y = 2", "X + Y = 3", "(x,y) = [(100,10), (10,100)]"],
+        ["solve([", "ERR:"],
+    ),
+    (
+        "alg",
+        "solve([a^(2*x)*b^(3*y)=c^5,a^(3*x)*b^(2*y)=c^10],[x,y])",
+        ["ln(a^(2*x)*b^(3*y)) = ln(c^5)", "2*x*ln(a) + 3*y*ln(b) = 5*ln(c)", "x = 4*ln(c)/ln(a)", "y = -ln(c)/ln(b)"],
+        ["solve([", "ERR:"],
+    ),
+    (
+        "alg",
         "coeff(((y+16)/4)^5,y,2)",
         ["Term in y^2", "Coefficient = 40"],
         ["Unexpected token", "ERR:"],
