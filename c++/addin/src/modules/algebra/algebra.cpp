@@ -31694,13 +31694,119 @@ static std::optional<std::vector<std::string>> fit_constants_route(Arena &a, std
     if(args.empty()) return std::nullopt;
     std::string equation = args[0];
     std::vector<std::string> unknowns;
-    if(args.size() >= 2) {
-        std::string vars = trim_text(args[1]);
+    auto read_unknowns = [&](std::string vars) {
+        std::vector<std::string> out;
+        vars = trim_text(vars);
         if(vars.size() >= 2 && vars.front() == '[' && vars.back() == ']') vars = vars.substr(1, vars.size() - 2);
         for(auto v : split_csv(vars)) {
             v = trim_text(v);
-            if(!v.empty()) unknowns.push_back(v);
+            if(!v.empty()) out.push_back(v);
         }
+        return out;
+    };
+    if(args.size() >= 3) {
+        unknowns = read_unknowns(args.back());
+        std::string pts_text = trim_text(args[1]);
+        if(!unknowns.empty() && (pts_text.empty() || pts_text.front() == '(' || pts_text.front() == '[')) {
+            std::vector<std::string> pts;
+            if(pts_text.size() >= 2 && pts_text.front() == '[' && pts_text.back() == ']')
+                pts = split_csv(pts_text.substr(1, pts_text.size() - 2));
+            else
+                pts.push_back(pts_text);
+            try {
+                NodeId f = casio::simplify(a, casio::parse_expr(a, equation));
+                std::vector<std::string> eqs, out;
+                std::vector<NodeId> residuals;
+                out.push_back("f(x) = " + format_expr(a, f));
+                for(auto ptxt : pts) {
+                    ptxt = trim_text(ptxt);
+                    if(ptxt.size() >= 2 && ptxt.front() == '(' && ptxt.back() == ')') ptxt = ptxt.substr(1, ptxt.size() - 2);
+                    auto p = split_csv(ptxt);
+                    if(p.size() != 3) return std::optional<std::vector<std::string>>{};
+                    std::string var = trim_text(p[0]);
+                    NodeId xv = exact_eval_simplify(a, casio::parse_expr(a, trim_text(p[1])));
+                    NodeId yv = exact_eval_simplify(a, casio::parse_expr(a, trim_text(p[2])));
+                    NodeId sub = exact_eval_simplify(a, expand_square_powers(a, clone_with_substitution(a, f, var, xv)));
+                    NodeId residual = exact_eval_simplify(a, sub_node(a, sub, yv));
+                    out.push_back(var + " = " + format_expr(a, xv) + ": " + format_expr(a, sub) + " = " + format_expr(a, yv));
+                    residuals.push_back(residual);
+                    eqs.push_back(format_expr(a, residual) + "=0");
+                }
+                if(unknowns.size() == 1) {
+                    NodeId sol = 0;
+                    bool have = false;
+                    for(NodeId residual : residuals) {
+                        auto lin = symbolic_linear_parts(a, residual, unknowns[0]);
+                        if(!lin || contains_symbol(a, lin->m, unknowns[0]) || contains_symbol(a, lin->c, unknowns[0]) ||
+                           casio::same_by_sig(a, lin->m, zero_node(a)))
+                            continue;
+                        sol = exact_eval_simplify(a, casio::div(a, casio::neg(a, lin->c), lin->m));
+                        have = true;
+                        break;
+                    }
+                    if(have) {
+                        bool ok = true;
+                        for(NodeId residual : residuals) {
+                            NodeId chk = exact_eval_simplify(a, clone_with_substitution(a, residual, unknowns[0], sol));
+                            if(!casio::same_by_sig(a, chk, zero_node(a))) ok = false;
+                        }
+                        if(ok) {
+                            out.push_back(unknowns[0] + " = " + format_expr(a, sol));
+                            return out;
+                        }
+                    }
+                }
+                if(unknowns.size() == 2 || unknowns.size() == 3) {
+                    std::string sys = "[";
+                    for(std::size_t i = 0; i < eqs.size(); ++i) {
+                        if(i) sys += ",";
+                        sys += eqs[i];
+                    }
+                    sys += "],[";
+                    for(std::size_t i = 0; i < unknowns.size(); ++i) {
+                        if(i) sys += ",";
+                        sys += unknowns[i];
+                    }
+                    sys += "]";
+                    std::optional<std::vector<std::string>> solved =
+                        unknowns.size() == 2 ? exact_linear2_system_route(a, sys) : exact_linear3_system_route(a, sys);
+                    if(solved) {
+                        out.insert(out.end(), solved->begin(), solved->end());
+                        return out;
+                    }
+                }
+                if(unknowns.size() <= 3) {
+                    std::vector<int> cand(unknowns.size(), 0);
+                    std::function<bool(std::size_t)> dfs = [&](std::size_t i) -> bool {
+                        if(i < unknowns.size()) {
+                            for(int v = -12; v <= 12; ++v) {
+                                cand[i] = v;
+                                if(dfs(i + 1)) return true;
+                            }
+                            return false;
+                        }
+                        for(NodeId residual : residuals) {
+                            for(std::size_t j = 0; j < unknowns.size(); ++j)
+                                residual = exact_eval_simplify(a, clone_with_substitution(a, residual, unknowns[j], casio::num(a, cand[j])));
+                            if(!casio::same_by_sig(a, residual, zero_node(a))) return false;
+                        }
+                        return true;
+                    };
+                    if(dfs(0)) {
+                        std::string ans;
+                        for(std::size_t i = 0; i < unknowns.size(); ++i) {
+                            if(i) ans += ", ";
+                            ans += unknowns[i] + " = " + std::to_string(cand[i]);
+                        }
+                        out.push_back(ans);
+                        return out;
+                    }
+                }
+            } catch(...) {}
+        }
+    }
+    if(args.size() >= 2 && unknowns.empty()) {
+        unknowns = read_unknowns(args[1]);
     }
     auto eq = casio::parse_equation(a, equation);
     if(!eq) return std::nullopt;

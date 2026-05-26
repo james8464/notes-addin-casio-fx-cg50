@@ -1400,6 +1400,18 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "fitconst((x+a)*(x+b)^2,[(x,1,0),(x,-2,0)],[a,b])",
+        ["f(x) = (x + a)*(x + b)^2", "x = 1:", "x = -2:", "a = -1", "b = 2"],
+        ["constants not isolated", "Unexpected end of input", "Answer: solve(fitconst", "ERR:"],
+    ),
+    (
+        "alg",
+        "fitconst(2*x^3+a*x^2+b*x+c,[(x,2,0),(x,-1,0),(x,1,-14)],[a,b,c])",
+        ["x = 2:", "x = -1:", "x = 1:", "a = 3", "b = -9", "c = -10"],
+        ["constants not isolated", "Unexpected end of input", "Answer: solve(fitconst", "ERR:"],
+    ),
+    (
+        "alg",
         "compare((x^2-1)/(x-1),x+1)",
         ["E1 =", "E2 =", "E1-E2 = 0", "equivalent"],
         ["Unexpected end of input", "Answer: solve(compare", "ERR:"],
