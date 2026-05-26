@@ -62,6 +62,7 @@ def has_strong_output(text: str) -> bool:
 def markers_present(text: str, markers: list[str]) -> bool:
     flat = compact_math(text)
     flat_nogroup = flat.replace("(", "").replace(")", "")
+    singleton_list = re.compile(r"^([a-z][a-z0-9_]*)=\(([^,()]+(?:\([^)]*\)[^,()]*)*)\)$")
     def flip_zero_poly(form: str) -> str | None:
         if not form.startswith("expand=>") or not form.endswith("=0"):
             return None
@@ -96,6 +97,10 @@ def markers_present(text: str, markers: list[str]) -> bool:
             continue
         forms = [compact_math(marker)]
         forms += [strip_zero_surd_prefix(form) for form in list(forms)]
+        for form in list(forms):
+            m = singleton_list.match(form)
+            if m:
+                forms.append(f"{m.group(1)}={m.group(2)}")
         low = marker.strip().lower()
         if low.startswith("let "):
             forms.append(compact_math(marker.strip()[4:]))

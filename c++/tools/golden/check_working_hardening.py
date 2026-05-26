@@ -72,6 +72,24 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "simplify((x*(x-6)-(x-1)*(x+5))/(1-2*x))",
+        ["= 5", "\n5\n"],
+        ["ERR:", "Done", "\n5*(2*x - 1)/(2*x - 1)\n"],
+    ),
+    (
+        "alg",
+        "solve((x^2+3*x)/(x^2+5*x+6)=(2*x^2-x-1)/(x^2+8*x-9),x)",
+        ["x^2 - 4*x + 2 = 0", "x = 2 + sqrt(2)", "x = 2 - sqrt(2)", "x = [2 - sqrt(2), 2 + sqrt(2)]"],
+        ["ERR:", "Done", "x = [0.585786437616, 3.41421356238]"],
+    ),
+    (
+        "alg",
+        "solve((3*x+1)/(x+1)-3*x/(y-2)+2/(x+1)=0,y)",
+        ["LHS - RHS = -3*x/(y - 2) + 3", "y - 2 = x", "y = x + 2"],
+        ["ERR:", "Done", "symbolic parameters unsupported"],
+    ),
+    (
+        "alg",
         "partfrac((1-x)/((x^2+1)*(x+1)))",
         ["(A*x + B)/(x^2 + 1) + (C)/(x + 1)", "B = -1", "C = 1", "(-x)/(x^2 + 1) + 1/(x + 1)"],
         ["ERR:", "Done"],
@@ -86,6 +104,18 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         "alg",
         "partfrac((4*x^3-3*x^2+4)/((2*x-1)*(x^2+1)))",
         ["(A)/(2*x - 1) + (B*x + C)/(x^2 + 1)", "A = 3", "B = -3", "2 + 3/(2*x - 1) + (- 2*x - 3)/(x^2 + 1)"],
+        ["ERR:", "Done"],
+    ),
+    (
+        "alg",
+        "partfrac(4/(x^4+1))",
+        ["x^4 + 1 = (x^2 + sqrt(2)*x + 1)*(x^2 - sqrt(2)*x + 1)", "A = sqrt(2)", "(2 + sqrt(2)*x)/(x^2 + sqrt(2)*x + 1)"],
+        ["ERR:", "Done"],
+    ),
+    (
+        "alg",
+        "partfrac((2*x+1)^2/(x*(x+1)^4))",
+        ["A/(x) + B/(x + 1)", "A = 1", "E = -1", "1/(x) - 1/(x + 1) - 1/((x + 1)^2) + 3/((x + 1)^3) - 1/((x + 1)^4)"],
         ["ERR:", "Done"],
     ),
     (
