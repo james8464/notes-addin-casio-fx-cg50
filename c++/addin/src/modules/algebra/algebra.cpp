@@ -19349,6 +19349,59 @@ static bool square_sum_equation(Arena &a, std::string const &txt, std::vector<st
     return true;
 }
 
+static bool sum_equation(Arena &a, std::string const &txt, std::vector<std::string> const &vars, Rational &sum)
+{
+    auto eq = casio::parse_equation(a, txt);
+    if(!eq) return false;
+    NodeId residual = exact_eval_simplify(a, sub_node(a, eq->lhs, eq->rhs));
+    std::map<std::pair<int, int>, Rational> c;
+    if(!two_var_coeffs(a, residual, vars, c)) return false;
+    Rational ax = c[{1, 0}], ay = c[{0, 1}], k = c[{0, 0}];
+    if(is_zero(ax) || r_cmp(ax, ay) != 0) return false;
+    for(auto const &kv : c)
+        if(kv.first != std::make_pair(1, 0) && kv.first != std::make_pair(0, 1) &&
+           kv.first != std::make_pair(0, 0) && !is_zero(kv.second)) return false;
+    sum = r_div(r_neg(k), ax);
+    return true;
+}
+
+static std::optional<std::vector<std::string>> product_sum_system_route(Arena &a, std::string const &expr)
+{
+    std::vector<std::string> eqs, vars;
+    if(!extract_system_expr_vars(expr, eqs, vars)) return std::nullopt;
+    Rational p{0, 1}, s{0, 1};
+    bool have_p = false, have_s = false;
+    for(auto const &e : eqs) {
+        Rational v{0, 1};
+        if(product_equation(a, e, vars, v)) { p = v; have_p = true; }
+        else if(sum_equation(a, e, vars, v)) { s = v; have_s = true; }
+    }
+    if(!have_p || !have_s) return std::nullopt;
+    Poly2 tp = primitive_poly2(Poly2{Rational{1, 1}, r_neg(s), p, true});
+    auto ts = solve_poly2(a, tp, "t");
+    std::vector<std::string> vals;
+    for(auto const &line : ts) {
+        std::string v = sol_rhs(line);
+        if(v.find('i') == std::string::npos) vals.push_back(v);
+    }
+    std::vector<std::string> out;
+    out.push_back(vars[0] + "+" + vars[1] + " = " + format_rat_plain(s));
+    out.push_back(vars[0] + "*" + vars[1] + " = " + format_rat_plain(p));
+    out.push_back("t^2 - (" + format_rat_plain(s) + ")*t + " + format_rat_plain(p) + " = 0");
+    if(vals.empty()) {
+        out.push_back("(" + vars[0] + "," + vars[1] + ") = []");
+        return out;
+    }
+    if(vals.size() == 1) {
+        out.push_back("(" + vars[0] + "," + vars[1] + ") = [(" + vals[0] + "," + vals[0] + ")]");
+        return out;
+    }
+    std::vector<std::string> pairs{"(" + vals[0] + "," + vals[1] + ")"};
+    if(vals[0] != vals[1]) pairs.push_back("(" + vals[1] + "," + vals[0] + ")");
+    out.push_back("(" + vars[0] + "," + vars[1] + ") = [" + join_text(pairs, ", ") + "]");
+    return out;
+}
+
 static std::optional<std::vector<std::string>> product_square_sum_system_route(Arena &a, std::string const &expr)
 {
     std::vector<std::string> eqs, vars;
@@ -37155,6 +37208,7 @@ static std::optional<std::vector<std::string>> system_solve_route(Arena &a, std:
     if(auto gp = gp_first_third_sum_system_route(a, expr)) return *gp;
     if(auto gpf = gp_finite_sum_system_route(a, expr)) return *gpf;
     if(auto sec = sector_system_route(a, expr)) return *sec;
+    if(auto ps = product_sum_system_route(a, expr)) return *ps;
     if(auto pss = product_square_sum_system_route(a, expr)) return *pss;
     if(auto c3 = circle_three_point_system_route(a, expr)) return *c3;
     if(auto eg = exponential_growth_system_route(a, expr)) return *eg;
