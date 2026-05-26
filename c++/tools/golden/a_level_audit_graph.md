@@ -32,7 +32,7 @@ graph TD
   F --> T["focused + core gates"]
   T --> G
   G --> Z["delete audited PDFs/images"]
-  Q --> QSeries["latest complete: series mixed exam Q1-Q33"]
+  Q --> QSurd["latest complete: surd exam Q1-Q97"]
 ```
 
 Latest refresh: 2026-05-26.
@@ -42,6 +42,6 @@ Latest refresh: 2026-05-26.
 - `check_edexcel_question_audit_coverage.py`: `27` official question papers have tracker rows for all inferred questions.
 - `check_online_paper_corpus_inventory.py`: `1222` indexed PDFs, `0` cached PDF files after cleanup, `1157` text extracts, `6766` question-marker hits, `11` skipped known-dead/non-paper links.
 - `check_a_level_audit_tracker.py`: `1344` reviewed rows, `1159` host-pass, `185` unsupported-ok, `3009` host runs.
-- `check_madasmaths_standard_question_corpus.py`: `4554` rows, `5975` manual cases, no failures.
-- `check_madasmaths_download_coverage.py`: `462` downloaded MadAsMaths question PDFs, `236` covered, `226` still gap-listed for future manual audit.
+- `check_madasmaths_standard_question_corpus.py`: `4554` rows, `5983` manual cases, no failures.
+- `check_madasmaths_download_coverage.py`: `462` downloaded MadAsMaths question PDFs, `237` covered, `225` still gap-listed for future manual audit.
 - Current working help/templates are external in `c++/prizm/help/*.HLP/*.TPL` and packed to `CASIOCAS.PAK`; keep verbose help out of `.g3a`.

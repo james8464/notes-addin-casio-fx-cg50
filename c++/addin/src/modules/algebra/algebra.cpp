@@ -9111,12 +9111,13 @@ static std::string simplify_nested_surd_text(std::string s)
     };
     std::size_t cstart = p;
     while(cstart > 0 && in[cstart - 1] >= '0' && in[cstart - 1] <= '9') --cstart;
+    std::size_t before_end = cstart;
     int sign = 1;
     if(cstart > 0 && in[cstart - 1] == '-') {
         sign = -1;
-        --cstart;
+        before_end = cstart - 1;
     }
-    else if(cstart > 0 && in[cstart - 1] == '+') --cstart;
+    else if(cstart > 0 && in[cstart - 1] == '+') before_end = cstart - 1;
     std::string btxt = in.substr(cstart, p - cstart);
     if(!btxt.empty() && btxt[0] == '-') {
         sign = -1;
@@ -9127,7 +9128,7 @@ static std::string simplify_nested_surd_text(std::string s)
     if(!B || close == std::string::npos) return s;
     auto C = parse_ll(in.substr(p + 6, close - (p + 6)));
     if(!C || *B <= 0 || *C <= 0) return s;
-    std::string before = in.substr(0, cstart);
+    std::string before = in.substr(0, before_end);
     std::string tail = in.substr(close + 1);
     std::optional<long long> A;
     if(!before.empty()) {
@@ -9136,20 +9137,108 @@ static std::string simplify_nested_surd_text(std::string s)
     }
     else if(!tail.empty() && tail[0] == '+') A = parse_ll(tail.substr(1));
     if(!A || *A <= 0) return s;
-    long long prod4 = (*B) * (*B) * (*C);
-    for(long long m = *A; m >= 1; --m) {
-        long long n = *A - m;
-        if(n <= 0 || 4 * m * n != prod4) continue;
-        std::int64_t sm = 0;
-        if(!is_square_i64(m, sm)) continue;
-        std::int64_t sn = 0;
-        std::string nt;
-        if(is_square_i64(n, sn)) nt = std::to_string(sn);
-        else nt = "sqrt(" + std::to_string(n) + ")";
-        if(nt == "0") return std::to_string(sm);
-        return sign > 0 ? std::to_string(sm) + " + " + nt : std::to_string(sm) + " - " + nt;
+    long long disc = (*A) * (*A) - (*B) * (*B) * (*C);
+    std::int64_t rd = 0;
+    if(disc <= 0 || !is_square_i64(disc, rd)) return s;
+    long long hi = *A + rd;
+    long long lo = *A - rd;
+    if(hi <= 0 || lo <= 0 || (hi % 2) || (lo % 2)) return s;
+    Rational m{hi / 2, 1};
+    Rational n{lo / 2, 1};
+    auto sqrt_rat_text = [](Rational r) -> std::string {
+        r.normalize();
+        if(r.num <= 0 || r.den <= 0) return "";
+        std::int64_t rn = 0, rd0 = 0;
+        if(is_square_i64(r.num, rn) && is_square_i64(r.den, rd0) && rd0 != 0) {
+            Rational q{rn, rd0};
+            q.normalize();
+            return format_rat_plain(q);
+        }
+        long long rad = r.num * r.den;
+        auto sf = square_factor_complete_i64(rad);
+        long long outside = sf.first;
+        long long inside = sf.second;
+        Rational coef{outside, r.den};
+        coef.normalize();
+        if(inside == 1) return format_rat_plain(coef);
+        std::string core = "sqrt(" + std::to_string(inside) + ")";
+        if(coef.num == coef.den) return core;
+        if(coef.num == -coef.den) return "-" + core;
+        return format_rat_plain(coef) + "*" + core;
+    };
+    std::string mt = sqrt_rat_text(m);
+    std::string nt = sqrt_rat_text(n);
+    if(mt.empty() || nt.empty()) return s;
+    if(nt == "0") return mt;
+    return sign > 0 ? mt + " + " + nt : mt + " - " + nt;
+}
+
+struct NestedSurdDecomposition
+{
+    long long A = 0;
+    long long B = 0;
+    long long C = 0;
+    int sign = 1;
+    std::string ans;
+};
+
+static std::optional<NestedSurdDecomposition> nested_surd_decomposition(std::string const &inner)
+{
+    auto parse_ll = [](std::string const &t) -> std::optional<long long> {
+        if(t.empty()) return std::nullopt;
+        long long v = 0;
+        for(char ch : t) {
+            if(ch < '0' || ch > '9') return std::nullopt;
+            v = 10 * v + (ch - '0');
+        }
+        return v;
+    };
+    std::size_t p = inner.find("*sqrt(");
+    if(p == std::string::npos) return std::nullopt;
+    std::size_t cstart = p;
+    while(cstart > 0 && inner[cstart - 1] >= '0' && inner[cstart - 1] <= '9') --cstart;
+    std::size_t before_end = cstart;
+    int sign = 1;
+    if(cstart > 0 && inner[cstart - 1] == '-') {
+        sign = -1;
+        before_end = cstart - 1;
+    } else if(cstart > 0 && inner[cstart - 1] == '+') {
+        before_end = cstart - 1;
     }
-    return s;
+    auto B = parse_ll(inner.substr(cstart, p - cstart));
+    std::size_t close = inner.find(')', p + 6);
+    if(!B || close == std::string::npos) return std::nullopt;
+    auto C = parse_ll(inner.substr(p + 6, close - (p + 6)));
+    if(!C) return std::nullopt;
+    std::string before = inner.substr(0, before_end);
+    std::string after = inner.substr(close + 1);
+    if(!before.empty() && (before.back() == '+' || before.back() == '-')) before.pop_back();
+    std::optional<long long> A;
+    if(!before.empty()) A = parse_ll(before);
+    else if(!after.empty() && after[0] == '+') A = parse_ll(after.substr(1));
+    if(!A || *A <= 0 || *B <= 0 || *C <= 0) return std::nullopt;
+    std::string raw = "sqrt(" + inner + ")";
+    std::string ans = simplify_nested_surd_text(raw);
+    if(ans == raw) return std::nullopt;
+    return NestedSurdDecomposition{*A, *B, *C, sign, ans};
+}
+
+static std::optional<std::vector<std::string>> nested_surd_decomposition_route(std::string const &key)
+{
+    std::string const prefix = "rewrite(sqrt(";
+    std::string const suffix = "))";
+    if(key.rfind(prefix, 0) != 0 || key.size() <= prefix.size() + suffix.size()) return std::nullopt;
+    if(key.compare(key.size() - suffix.size(), suffix.size(), suffix) != 0) return std::nullopt;
+    std::string inner = key.substr(prefix.size(), key.size() - prefix.size() - suffix.size());
+    auto d = nested_surd_decomposition(inner);
+    if(!d) return std::nullopt;
+    std::string op = d->sign > 0 ? "+" : "-";
+    return std::vector<std::string>{
+        "1. sqrt(" + inner + ") = sqrt(m)" + op + "sqrt(n).",
+        "2. m+n=" + std::to_string(d->A) + " and 2*sqrt(m*n)=" + std::to_string(d->B) + "*sqrt(" + std::to_string(d->C) + ").",
+        "3. m*n=" + std::to_string(d->B * d->B * d->C) + "/4.",
+        d->ans,
+    };
 }
 
 static std::optional<std::vector<std::string>> biquadratic_route(Arena &a,
@@ -12138,15 +12227,113 @@ struct LogTermKey
     std::string arg;
 };
 
+static bool parse_ln_call_key(std::string const &s, std::size_t pos, std::string &arg, std::size_t &next)
+{
+    if(s.compare(pos, 3, "ln(") != 0) return false;
+    std::size_t begin = pos + 3;
+    int depth = 1;
+    for(std::size_t i = begin; i < s.size(); ++i) {
+        if(s[i] == '(') depth++;
+        else if(s[i] == ')') {
+            depth--;
+            if(depth == 0) {
+                arg = s.substr(begin, i - begin);
+                next = i + 1;
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+static std::string strip_outer_parens_key(std::string s)
+{
+    bool changed = true;
+    while(changed && s.size() >= 2 && s.front() == '(' && s.back() == ')') {
+        changed = false;
+        int depth = 0;
+        bool wraps = true;
+        for(std::size_t i = 0; i < s.size(); ++i) {
+            if(s[i] == '(') ++depth;
+            else if(s[i] == ')' && --depth == 0 && i + 1 < s.size()) {
+                wraps = false;
+                break;
+            }
+        }
+        if(wraps) {
+            s = s.substr(1, s.size() - 2);
+            changed = true;
+        }
+    }
+    return s;
+}
+
+static std::optional<Rational> parse_log_coeff_prefix_key(std::string pre)
+{
+    if(!pre.empty() && pre.back() == '*') pre.pop_back();
+    pre = strip_outer_parens_key(pre);
+    if(pre.empty()) return Rational{1, 1};
+    if(pre == "-") return Rational{-1, 1};
+    return parse_rational_key(pre);
+}
+
+static std::optional<LogTermKey> parse_ln_ratio_term_key(std::string const &term)
+{
+    std::size_t pos = term.find("ln(");
+    if(pos == std::string::npos) return std::nullopt;
+    auto coeff = parse_log_coeff_prefix_key(term.substr(0, pos));
+    if(!coeff) return std::nullopt;
+
+    std::string arg;
+    std::size_t next = 0;
+    if(!parse_ln_call_key(term, pos, arg, next)) return std::nullopt;
+    if(next >= term.size() || term[next] != '/') return std::nullopt;
+    ++next;
+
+    Rational den_coeff{1, 1};
+    std::string base;
+    std::size_t after_den = 0;
+    if(next < term.size() && term[next] == '(' && term.back() == ')') {
+        std::string inner = term.substr(next + 1, term.size() - next - 2);
+        std::size_t ln_pos = inner.find("ln(");
+        if(ln_pos == std::string::npos) return std::nullopt;
+        auto c = parse_log_coeff_prefix_key(inner.substr(0, ln_pos));
+        if(!c) return std::nullopt;
+        den_coeff = *c;
+        std::size_t inner_next = 0;
+        if(!parse_ln_call_key(inner, ln_pos, base, inner_next) || inner_next != inner.size()) return std::nullopt;
+        after_den = term.size();
+    }
+    else {
+        std::size_t ln_pos = term.find("ln(", next);
+        if(ln_pos == std::string::npos) return std::nullopt;
+        auto c = parse_log_coeff_prefix_key(term.substr(next, ln_pos - next));
+        if(!c) return std::nullopt;
+        den_coeff = *c;
+        if(!parse_ln_call_key(term, ln_pos, base, after_den)) return std::nullopt;
+    }
+    if(is_zero(den_coeff)) return std::nullopt;
+    *coeff = r_div(*coeff, den_coeff);
+    if(after_den < term.size()) {
+        if(term[after_den] != '/') return std::nullopt;
+        auto c = parse_rational_key(term.substr(after_den + 1));
+        if(!c || is_zero(*c)) return std::nullopt;
+        *coeff = r_div(*coeff, *c);
+        after_den = term.size();
+    }
+    if(after_den != term.size()) return std::nullopt;
+    return LogTermKey{*coeff, base, arg};
+}
+
 static std::optional<LogTermKey> parse_log_term_key(std::string const &term)
 {
     std::size_t pos = term.find("log(");
     std::size_t pos10 = term.find("log10(");
     if(pos == std::string::npos || (pos10 != std::string::npos && pos10 < pos)) pos = pos10;
-    if(pos == std::string::npos) return std::nullopt;
+    if(pos == std::string::npos) return parse_ln_ratio_term_key(term);
     Rational coeff{1, 1};
     if(pos > 0) {
-        auto c = parse_rational_key(term.substr(0, pos));
+        auto c = parse_log_coeff_prefix_key(term.substr(0, pos));
         if(!c) return std::nullopt;
         coeff = *c;
     }
@@ -12154,6 +12341,42 @@ static std::optional<LogTermKey> parse_log_term_key(std::string const &term)
     std::size_t next = 0;
     if(!parse_log_call_key(term, pos, base, arg, next) || next != term.size()) return std::nullopt;
     return LogTermKey{coeff, base, arg};
+}
+
+static std::string nospace_key(std::string text)
+{
+    text = casio::normalize_text(std::move(text));
+    std::string out;
+    out.reserve(text.size());
+    for(char c : text) {
+        if(c == ' ' || c == '\t' || c == '\r' || c == '\n') continue;
+        out.push_back(c);
+    }
+    return out;
+}
+
+static std::optional<LogTermKey> parse_log_term_preserve_mul_key(std::string const &term)
+{
+    std::size_t pos = term.find("log(");
+    std::size_t pos10 = term.find("log10(");
+    if(pos == std::string::npos || (pos10 != std::string::npos && pos10 < pos)) pos = pos10;
+    if(pos == std::string::npos) return std::nullopt;
+    auto coeff = parse_log_coeff_prefix_key(compact_input_key(term.substr(0, pos)));
+    if(!coeff) return std::nullopt;
+    bool is_log10 = term.compare(pos, 6, "log10(") == 0;
+    std::size_t begin = pos + (is_log10 ? 6 : 4);
+    int depth = 1;
+    for(std::size_t i = begin; i < term.size(); ++i) {
+        if(term[i] == '(') ++depth;
+        else if(term[i] == ')' && --depth == 0) {
+            if(i + 1 != term.size()) return std::nullopt;
+            if(is_log10) return LogTermKey{*coeff, "10", term.substr(begin, i - begin)};
+            auto args = split_top_key(term.substr(begin, i - begin), ',');
+            if(args.size() != 2) return std::nullopt;
+            return LogTermKey{*coeff, compact_input_key(args[0]), args[1]};
+        }
+    }
+    return std::nullopt;
 }
 
 static std::optional<int> integer_power_of_base(std::string const &base_text, std::string const &value_text)
@@ -14386,6 +14609,116 @@ static std::optional<std::vector<std::string>> power_quadratic_substitution_rout
     return out;
 }
 
+static std::optional<std::vector<std::string>> single_sqrt_polynomial_route(
+    Arena &a,
+    NodeId lhs,
+    NodeId rhs,
+    NodeId rearr,
+    std::string const &var,
+    std::optional<double> lo,
+    std::optional<double> hi,
+    bool lo_open,
+    bool hi_open
+);
+
+static NodeId pow_if_needed(Arena &a, NodeId n, long long p)
+{
+    return p == 1 ? n : casio::power(a, n, a.num(Rational{p, 1}));
+}
+
+static std::optional<std::vector<std::string>> same_base_log_coeff_route(
+    Arena &a,
+    NodeId lhs,
+    NodeId rhs,
+    NodeId rearr,
+    std::string const &var
+)
+{
+    auto read = [&](NodeId n, Rational &coef, NodeId &arg, NodeId &base) {
+        NodeId body = n;
+        bool has_body = true;
+        split_coeff_body(a, n, coef, body, has_body);
+        if(!has_body) return false;
+        bool has_base = false;
+        if(log_piece(a, body, arg, base, has_base) && has_base) return true;
+        Node const &b = a.get(body);
+        if(b.kind == NodeKind::Div) {
+            Node const &top = a.get(b.a);
+            if(top.kind != NodeKind::Fn || top.fkind != FnKind::Log) return false;
+            Rational dc{1, 1};
+            NodeId dbody = 0;
+            bool dhas = true;
+            split_coeff_body(a, b.b, dc, dbody, dhas);
+            if(!dhas || is_zero(dc)) return false;
+            Node const &denlog = a.get(dbody);
+            if(denlog.kind != NodeKind::Fn || denlog.fkind != FnKind::Log) return false;
+            coef = r_div(coef, dc);
+            arg = top.a;
+            base = denlog.a;
+            return true;
+        }
+        return false;
+    };
+    Rational lc{1, 1}, rc{1, 1};
+    NodeId la = 0, lb = 0, ra = 0, rb = 0;
+    if(!read(lhs, lc, la, lb) || !read(rhs, rc, ra, rb)) return std::nullopt;
+    if(lc.num <= 0 || rc.num <= 0) return std::nullopt;
+    NodeId base = lb;
+    if(!casio::same_by_sig(a, lb, rb)) {
+        std::string bt = format_expr(a, lb), rt = format_expr(a, rb);
+        if(auto m = power_of_base_text(a, bt, rt); m && *m > 1) {
+            rc = r_div(rc, Rational{*m, 1});
+            base = lb;
+        }
+        else if(auto m = power_of_base_text(a, rt, bt); m && *m > 1) {
+            lc = r_div(lc, Rational{*m, 1});
+            base = rb;
+        }
+        else return std::nullopt;
+    }
+
+    long long mult = lcm_abs_ll(lc.den, rc.den);
+    Rational lp = r_mul(lc, Rational{mult, 1});
+    Rational rp = r_mul(rc, Rational{mult, 1});
+    if(lp.den != 1 || rp.den != 1 || lp.num <= 0 || rp.num <= 0 || lp.num > 6 || rp.num > 6 ||
+       (lp.num == 1 && rp.num == 1))
+        return std::nullopt;
+
+    NodeId left = exact_eval_simplify(a, pow_if_needed(a, la, lp.num));
+    NodeId right = exact_eval_simplify(a, pow_if_needed(a, ra, rp.num));
+    NodeId residual = exact_eval_simplify(a, sub_node(a, left, right));
+
+    std::vector<std::string> out;
+    out.push_back(format_rat_plain(lc) + "*log(" + format_expr(a, base) + "," + format_expr(a, la) + ") = " +
+                  format_rat_plain(rc) + "*log(" + format_expr(a, rb) + "," + format_expr(a, ra) + ")");
+    if(mult != 1)
+        out.push_back(format_rat_plain(lp) + "*log(" + format_expr(a, base) + "," + format_expr(a, la) + ") = " +
+                      format_rat_plain(rp) + "*log(" + format_expr(a, base) + "," + format_expr(a, ra) + ")");
+    out.push_back("log(" + format_expr(a, base) + "," + format_expr(a, left) + ") = log(" +
+                  format_expr(a, base) + "," + format_expr(a, right) + ")");
+    out.push_back(format_expr(a, left) + " = " + format_expr(a, right));
+
+    auto raw = [&]() {
+        auto rp0 = ratpoly_of_node(a, residual, var);
+        return rp0.ok ? solve_poly2(a, rp0.num, var) : std::vector<std::string>{};
+    }();
+    if(!raw.empty()) {
+        auto valid = filter_real_solutions(a, rearr, var, raw, std::nullopt, std::nullopt);
+        append_rejected_by_domain(out, var, raw, valid);
+        append_answer(out, var, valid);
+        return out;
+    }
+    if(auto sq = single_sqrt_polynomial_route(a, left, right, residual, var, std::nullopt, std::nullopt, false, false)) {
+        out.insert(out.end(), sq->begin(), sq->end());
+        return out;
+    }
+    if(auto pq = power_quadratic_substitution_route(a, residual, var, std::nullopt, std::nullopt)) {
+        out.insert(out.end(), pq->begin(), pq->end());
+        return out;
+    }
+    return std::nullopt;
+}
+
 static std::optional<std::vector<std::string>> custom_log_base_route(
     Arena &a,
     std::string const &equation_text,
@@ -14397,6 +14730,13 @@ static std::optional<std::vector<std::string>> custom_log_base_route(
     if(sides.size() != 2) return std::nullopt;
     auto lhs_terms = split_top_key(sides[0], '+');
     auto rhs_terms = split_top_key(sides[1], '+');
+    std::string raw_key = nospace_key(equation_text);
+    auto raw_sides = split_top_key(raw_key, '=');
+    std::vector<std::string> raw_lhs_terms, raw_rhs_terms;
+    if(raw_sides.size() == 2) {
+        raw_lhs_terms = split_top_key(raw_sides[0], '+');
+        raw_rhs_terms = split_top_key(raw_sides[1], '+');
+    }
 
     std::vector<std::string> out;
 
@@ -14689,6 +15029,8 @@ static std::optional<std::vector<std::string>> custom_log_base_route(
                 std::string B = format_key_expr(a, right->log.arg);
                 std::string ratio = "(" + left->log.arg + ")/(" + right->log.arg + ")";
                 std::string factor_text = format_rat_plain(*factor);
+                out.push_back("Domain: " + A + " > 0");
+                out.push_back("Domain: " + B + " > 0");
                 out.push_back("log(" + left->log.base + "," + format_key_expr(a, ratio) + ") = " + format_rat_plain(exponent));
                 out.push_back(format_key_expr(a, ratio) + " = " + factor_text);
                 out.push_back(A + " = " + factor_text + "*(" + B + ")");
@@ -14788,6 +15130,80 @@ static std::optional<std::vector<std::string>> custom_log_base_route(
                 append_rejected_by_domain(out, var, raw, valid);
                 append_answer(out, var, valid);
                 return out;
+            }
+        }
+    }
+
+    // p*log_b(A)=q*log_b(B)  =>  A^p=B^q after clearing fractions.
+    if(lhs_terms.size() == 1 && rhs_terms.size() == 1) {
+        auto l = parse_log_term_key(lhs_terms[0]);
+        auto r = parse_log_term_key(rhs_terms[0]);
+        if(raw_lhs_terms.size() == 1 && raw_rhs_terms.size() == 1) {
+            auto raw_l = parse_log_term_preserve_mul_key(raw_lhs_terms[0]);
+            auto raw_r = parse_log_term_preserve_mul_key(raw_rhs_terms[0]);
+            if(raw_l && raw_r) {
+                l = raw_l;
+                r = raw_r;
+            }
+        }
+        if(l && r && l->base == r->base && l->coeff.num > 0 && r->coeff.num > 0) {
+            long long mult = lcm_abs_ll(l->coeff.den, r->coeff.den);
+            Rational lp = r_mul(l->coeff, Rational{mult, 1});
+            Rational rp = r_mul(r->coeff, Rational{mult, 1});
+            if(lp.den == 1 && rp.den == 1 && lp.num > 0 && rp.num > 0 &&
+               lp.num <= 6 && rp.num <= 6 && !(lp.num == 1 && rp.num == 1)) {
+                auto pow_key = [](std::string const &arg, long long p) {
+                    return p == 1 ? "(" + arg + ")" : "(" + arg + ")^" + std::to_string(p);
+                };
+                std::string left = pow_key(l->arg, lp.num);
+                std::string right = pow_key(r->arg, rp.num);
+                std::string poly = "(" + left + ")-(" + right + ")";
+                std::vector<std::string> res;
+                res.push_back(format_rat_plain(l->coeff) + "*log(" + l->base + "," + format_key_expr(a, l->arg) + ") = " +
+                              format_rat_plain(r->coeff) + "*log(" + r->base + "," + format_key_expr(a, r->arg) + ")");
+                if(mult != 1)
+                    res.push_back(format_rat_plain(lp) + "*log(" + l->base + "," + format_key_expr(a, l->arg) + ") = " +
+                                  format_rat_plain(rp) + "*log(" + r->base + "," + format_key_expr(a, r->arg) + ")");
+                res.push_back("log(" + l->base + "," + format_key_expr(a, left) + ") = log(" + r->base + "," + format_key_expr(a, right) + ")");
+                res.push_back(format_key_expr(a, left) + " = " + format_key_expr(a, right));
+                try {
+                    NodeId residual = exact_eval_simplify(a, casio::parse_expr(a, poly));
+                    res.push_back(format_expr(a, residual) + " = 0");
+                    auto raw = solve_poly_from_key(a, poly, var);
+                    if(!raw.empty()) {
+                        auto valid = filter_solutions_by_original_key(a, raw, "(" + sides[0] + ")-(" + sides[1] + ")", var);
+                        append_rejected_by_domain(res, var, raw, valid);
+                        append_answer(res, var, valid);
+                        return res;
+                    }
+                    NodeId ln = casio::parse_expr(a, left);
+                    NodeId rn = casio::parse_expr(a, right);
+                    NodeId rr = exact_eval_simplify(a, sub_node(a, ln, rn));
+                    if(auto sp = single_sqrt_polynomial_route(a, ln, rn, rr, var, std::nullopt, std::nullopt, false, false)) {
+                        res.insert(res.end(), sp->begin(), sp->end());
+                        return res;
+                    }
+                    if(auto pq = power_quadratic_substitution_route(a, residual, var, std::nullopt, std::nullopt)) {
+                        res.insert(res.end(), pq->begin(), pq->end());
+                        return res;
+                    }
+                    if(auto frac = fractional_same_power_quadratic_route(a, residual, var)) {
+                        res.insert(res.end(), frac->begin(), frac->end());
+                        return res;
+                    }
+                    Request next;
+                    next.mode = 6;
+                    next.expr = format_key_expr(a, left) + "=" + format_key_expr(a, right) + "," + var;
+                    auto solved = run(a, next);
+                    if(!solved.empty() &&
+                       std::none_of(solved.begin(), solved.end(), [](std::string const &s) {
+                           return s.find("unsupported") != std::string::npos || s.find("LHS - RHS") != std::string::npos;
+                       })) {
+                        res.insert(res.end(), solved.begin(), solved.end());
+                        return res;
+                    }
+                }
+                catch(...) {}
             }
         }
     }
@@ -20419,6 +20835,15 @@ static bool log_monomial_exponents(
         if(!log_monomial_exponents(a, x.b, vars, den, den_coeff) || den_coeff.num <= 0) return false;
         coeff = r_div(coeff, den_coeff);
         for(std::size_t i = 0; i < vars.size(); ++i) exps[i] = r_sub(exps[i], den[i]);
+        return true;
+    }
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Sqrt) {
+        std::vector<Rational> inner(vars.size(), Rational{0, 1});
+        Rational c{1, 1};
+        if(!log_monomial_exponents(a, x.a, vars, inner, c)) return false;
+        if(!(c.num == 1 && c.den == 1)) return false;
+        for(std::size_t i = 0; i < vars.size(); ++i)
+            exps[i] = r_add(exps[i], r_div(inner[i], Rational{2, 1}));
         return true;
     }
     return false;
@@ -37872,6 +38297,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             auto parts = split_csv(solve_inner);
             if(parts.size() >= 2) {
                 std::string var = trim_text(parts[1]);
+                if(auto log_route = custom_log_base_route(arena, parts[0], var)) return *log_route;
                 if(auto log_trig = log_sin_cos_product_route(arena, parts[0], var)) return *log_trig;
             }
         }
@@ -37886,6 +38312,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             auto parts = split_csv(req.expr);
             if(parts.size() >= 2) {
                 std::string var = trim_text(parts[1]);
+                if(auto log_route = custom_log_base_route(arena, parts[0], var)) return *log_route;
                 if(auto log_trig = log_sin_cos_product_route(arena, parts[0], var)) return *log_trig;
             }
             if(req.expr.find("log(") == std::string::npos && req.expr.find("ln(") == std::string::npos)
@@ -38134,6 +38561,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(auto elys = exp_log_y_linear_system(arena, key)) return *elys;
             if(auto system = symmetric_sum_product_system(key)) return *system;
             if(auto radical = radical_decomposition_rewrite(key)) return *radical;
+            if(auto nested = nested_surd_decomposition_route(key)) return *nested;
             if(key == "make_subject(y=3/(x+2),x)") {
                 return casio::exam_block(
                     "make subject",
@@ -38776,6 +39204,7 @@ algebra_compare_transform_modes:
                 std::string rkey = "rewrite(" + compact_input_key(expr) + ")";
                 if(auto surd = numeric_surd_simplify_route(rkey)) return *surd;
                 if(auto radical = radical_decomposition_rewrite(rkey)) return *radical;
+                if(auto nested = nested_surd_decomposition_route(rkey)) return *nested;
             }
             NodeId raw_n = casio::parse_expr(arena, expr);
             NodeId n = casio::simplify(arena, raw_n);
@@ -39954,6 +40383,7 @@ algebra_compare_transform_modes:
             if(auto odd = exp_negative_mobius_odd_route(arena, parsed, n)) return *odd;
             if(auto logr = log_one_plus_rational_route(arena, parsed, n)) return *logr;
             if(auto surd = numeric_surd_simplify_route(compact_input_key(format_expr(arena, n)))) return *surd;
+            if(auto nested = nested_surd_decomposition_route("rewrite(" + compact_input_key(format_expr(arena, n)) + ")")) return *nested;
             if(auto idx_text = numeric_negative_index_sum_text_route(req.expr, format_expr(arena, n))) return *idx_text;
             if(auto cube = cube_root_power_sum_route(arena, parsed, n)) return *cube;
             if(auto idx = numeric_index_power_route(arena, parsed, n)) return *idx;
@@ -40223,6 +40653,10 @@ algebra_compare_transform_modes:
             out.insert(out.end(), log_trig->begin(), log_trig->end());
             return out;
         }
+        if(auto log_coeff = same_base_log_coeff_route(arena, lhs, rhs, rearr, solve_var)) {
+            out.insert(out.end(), log_coeff->begin(), log_coeff->end());
+            return out;
+        }
         if(auto aself = abs_self_nonnegative_route(arena, lhs, rhs, solve_var)) return *aself;
         if(auto anlog = abs_negative_log_linear_route(arena, lhs, rhs, solve_var)) return *anlog;
         if(auto asl = abs_symbolic_linear_equation_route(arena, lhs, rhs, solve_var)) return *asl;
@@ -40258,6 +40692,15 @@ algebra_compare_transform_modes:
         if(auto log_route = custom_log_base_route(arena, equation_text, solve_var)) {
             out.insert(out.end(), log_route->begin(), log_route->end());
             return out;
+        }
+        {
+            std::string formatted_log_eq = format_expr(arena, lhs) + "=" + format_expr(arena, rhs);
+            if(formatted_log_eq != equation_text) {
+                if(auto log_route = custom_log_base_route(arena, formatted_log_eq, solve_var)) {
+                    out.insert(out.end(), log_route->begin(), log_route->end());
+                    return out;
+                }
+            }
         }
         if(auto log_lin = log_linear_combination_exact_route(arena, lhs, rhs, solve_var)) return *log_lin;
         if(auto log_sym = log_linear_symbolic_route(arena, rearr, solve_var)) {

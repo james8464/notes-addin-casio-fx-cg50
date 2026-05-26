@@ -2775,7 +2775,7 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "alg",
         "solve(2*log(10,4-x)=log(10,x+8),x,method=log_exp)",
-        ["log(10,(4-x)^2)", "x = 8 or 1", "x = 8 rejected by domain", "x = [1]"],
+        ["log(10,(- x + 4)^2) = log(10,x + 8)", "(- x + 4)^2 - x - 8 = 0", "x = 8 rejected by domain", "x = [1]"],
         ["log/exp laws to combine", "Exponentiate, solve", "ERR:"],
     ),
     (
@@ -2787,7 +2787,7 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "alg",
         "solve(log10(3*x-1)=log10(x+5),x)",
-        ["Domain: 3*x - 1 > 0", "ln((3*x - 1)/(x + 5)) = 0", "x = [3]"],
+        ["Domain: 3*x - 1 > 0", "Domain: x + 5 > 0", "log(10,(3*x - 1)/(x + 5)) = 0", "x = [3]"],
         ["rejected by domain", "x = []", "ERR:"],
     ),
     (
