@@ -571,7 +571,9 @@ static NodeId simplify_div(Arena &a, NodeId top, NodeId bot)
             }
             for(std::size_t i = 0; i < den_k.size(); i++) {
                 for(std::size_t j = 0; j < num_k.size(); j++) {
-                    if(same_atom(a.get(den_k[i]), a.get(num_k[j]))) {
+                    NodeKind den_kind = a.get(den_k[i]).kind;
+                    bool structured_same = den_kind != NodeKind::Add && den_kind != NodeKind::Mul && same_tree(a, den_k[i], num_k[j]);
+                    if(structured_same || same_atom(a.get(den_k[i]), a.get(num_k[j]))) {
                         den_k.erase(den_k.begin() + i);
                         num_k.erase(num_k.begin() + j);
                         i = (i == 0) ? 0 : i - 1;

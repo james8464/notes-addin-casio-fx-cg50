@@ -21,7 +21,7 @@ CASES: list[tuple[str, list[str], list[str], list[str]]] = [
     (
         "June 2018 Q1 small-angle approximation",
         ["--trig", "(1-cos(4*theta))/(2*theta*sin(3*theta)),method=small"],
-        ["cos(4*theta) ~ 1 - (4*theta)^2/2", "sin(3*theta) ~ 3*theta", "~ 8*theta^2/(6*theta^2)", "= 4/3"],
+        ["cos(4*theta) ~ 1 - (4*theta)^2/2", "sin(3*theta) ~ 3*theta", "~ 4/3"],
         ["ERR:", "Answer:"],
     ),
     (

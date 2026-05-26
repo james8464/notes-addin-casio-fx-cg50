@@ -221,6 +221,36 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
         ["ERR:", "Done", "abs("],
     ),
     (
+        "alg",
+        "simplify((17/9)^(3/2))",
+        ["17*sqrt(17)/27"],
+        ["ERR:", "Done"],
+    ),
+    (
+        "alg",
+        "expand((5-x^(-2))*(2*x^3-x))",
+        ["10*x^3 - 7*x + x^-1"],
+        ["ERR:", "Done"],
+    ),
+    (
+        "alg",
+        "expand((x^(3/2)+2*x^(-3/2))^2)",
+        ["x^3 + 4 + 4*x^-3"],
+        ["ERR:", "Done"],
+    ),
+    (
+        "alg",
+        "solve(2^z=sqrt(2)/2^(z+1),z)",
+        ["2*ln(2)*z = -1/2*ln(2)", "z = -1/4", "z = [-1/4]"],
+        ["ERR:", "Done", "ln(2)/(2*ln(2))"],
+    ),
+    (
+        "alg",
+        "solve(w^(3/2)-8*w^(-1/2)=0,w)",
+        ["w > 0", "Multiply by w^(1/2)", "w^(2) = 8", "w = [2*sqrt(2)]"],
+        ["ERR:", "Done", "2.828427"],
+    ),
+    (
         "derive",
         "sqrt(x^2),x",
         ["dy/dx = x/sqrt(x^2)"],
@@ -1659,7 +1689,7 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "alg",
         "9*x^6*y^4/(3*x^2*y)^3",
-        ["(9*x^6*y^4)/(27*x^6*y^3)", "(9/27)*x^(6-6)*y^(4-3)", "y/3"],
+        ["y^4/(3*y^3)", "(1/3)*y^(4-3)", "y/3"],
         ["ERR:", "Answer: y/3"],
     ),
     (

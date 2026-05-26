@@ -262,7 +262,7 @@ CASES = [
     (
         "small-angle quotient",
         ["--trig", "(1-cos(4*theta))/(2*theta*sin(3*theta)),method=small"],
-        ("cos(4*theta) ~ 1 - (4*theta)^2/2", "sin(3*theta) ~ 3*theta", "~ 8*theta^2/(6*theta^2)", "= 4/3"),
+        ("cos(4*theta) ~ 1 - (4*theta)^2/2", "sin(3*theta) ~ 3*theta", "~ 4/3"),
     ),
     (
         "affine trig range",
@@ -989,7 +989,7 @@ CASES = [
     (
         "irrational factor binomial sign",
         ["--alg", "series((3+2*x)^(7/2),x,0,5)"],
-        ("(2*x + 3)^7/2 = 3^(7/2)*(1+(2/3)*x)^7/2", "c3/c2 = 1/3", "- 7/1944*3^(7/2)*x^5"),
+        ("(2*x + 3)^7/2 = 27*sqrt(3)*(1+(2/3)*x)^7/2", "c3/c2 = 1/3", "- 7/72*sqrt(3)*x^5"),
     ),
     (
         "binomial two-linear PF series",

@@ -44,6 +44,7 @@ static bool reciprocal_power_term(Arena &a, NodeId term, std::string const &var,
 static std::optional<std::vector<std::pair<int, Rational>>> reciprocal_power_coeffs(Arena &a, NodeId n, std::string const &var);
 static Poly2 scale_poly(Poly2 p, Rational k);
 static NodeId exact_eval_simplify(Arena &a, NodeId n);
+static std::optional<NodeId> rational_half_power_node(Arena &a, Rational base, Rational expo);
 static NodeId distribute_const_over_add_once(Arena &a, NodeId n, std::string const &var);
 static bool split_coeff_body(Arena &a, NodeId term, Rational &coef, NodeId &body, bool &has_body);
 static std::vector<std::string> solve_poly2(Arena &a, Poly2 const &p, std::string const &var);
@@ -1301,6 +1302,8 @@ static NodeId exact_eval_simplify(Arena &a, NodeId n)
             if(base.kind == NodeKind::Num) {
                 if(auto f = rational_power_factor(base.num, expo.num))
                     return casio::num(a, f->num, f->den);
+                if(auto hp = rational_half_power_node(a, base.num, expo.num))
+                    return *hp;
             }
             if(expo.num.num == 1 && expo.num.den == 2)
                 return exact_eval_simplify(a, casio::fn(a, "sqrt", lhs));
@@ -12900,6 +12903,44 @@ static std::optional<std::vector<std::string>> two_power_factor_route(Arena &a,
     out.push_back(var_power_text(var, p1) + " = 0 or " + var_power_text(var, diff) + " = " + format_rat_plain(target));
     append_answer(out, var, valid);
     append_numeric_3dp(a, out, var, valid);
+    return out;
+}
+
+static std::optional<std::vector<std::string>> two_power_index_law_route(Arena &a,
+                                                                         NodeId rearr,
+                                                                         std::string const &var)
+{
+    std::vector<NodeId> terms;
+    add_terms_flat(a, rearr, terms);
+    if(terms.size() != 2) return std::nullopt;
+    Rational c1{1, 1}, c2{1, 1}, p1{0, 1}, p2{0, 1};
+    if(!rational_power_term(a, terms[0], var, c1, p1) || !rational_power_term(a, terms[1], var, c2, p2))
+        return std::nullopt;
+    if(is_zero(c1) || is_zero(c2) || is_zero(p1) || is_zero(p2)) return std::nullopt;
+    if(r_cmp(p2, p1) < 0) {
+        std::swap(c1, c2);
+        std::swap(p1, p2);
+    }
+    if(p1.num >= 0 || p1.den != p2.den || (p1.den == 1 && p2.den == 1)) return std::nullopt;
+    Rational diff = r_sub(p2, p1);
+    if(diff.den != 1 || diff.num <= 0 || diff.num > 8) return std::nullopt;
+    Rational target = r_div(r_neg(c1), c2);
+    if(target.num <= 0) return std::nullopt;
+    int d = static_cast<int>(diff.num);
+    std::vector<std::string> sols;
+    bool positive_domain = (p1.den % 2 == 0);
+    std::string root = rational_power_root_text(a, target, d);
+    sols.push_back(var + " = " + root);
+    if(d % 2 == 0 && !positive_domain) sols.push_back(var + " = -" + root);
+    sort_solution_lines(a, sols);
+
+    std::vector<std::string> out;
+    out.push_back(var + (positive_domain ? " > 0" : " != 0"));
+    out.push_back("Multiply by " + var_power_text(var, r_neg(p1)) + ".");
+    out.push_back(signed_sum_text(format_rat_plain(c1), coef_power_text(c2, var_power_text(var, diff))) + " = 0");
+    out.push_back(var_power_text(var, diff) + " = " + format_rat_plain(target));
+    append_answer(out, var, sols);
+    append_numeric_3dp(a, out, var, sols);
     return out;
 }
 
@@ -29457,6 +29498,18 @@ static bool pow_rat_exact(Rational r, Rational p, Rational &out)
     return true;
 }
 
+static std::optional<NodeId> rational_half_power_node(Arena &a, Rational base, Rational expo)
+{
+    base.normalize();
+    expo.normalize();
+    if(base.num <= 0 || base.den <= 0 || expo.den != 2 || expo.num == 0 || std::llabs(expo.num) > 18)
+        return std::nullopt;
+    Rational raised = r_pow_int(base, static_cast<int>(std::llabs(expo.num)));
+    NodeId root = exact_eval_simplify(a, casio::fn(a, "sqrt", casio::num(a, raised.num, raised.den)));
+    if(expo.num < 0) root = exact_eval_simplify(a, casio::div(a, casio::num(a, 1), root));
+    return root;
+}
+
 static bool read_multi_rat_monomial(Arena &a, NodeId n, MultiRatMono &out);
 
 static bool multiply_multi_rat_power(Arena &a, MultiRatMono const &base, Rational p, MultiRatMono &out)
@@ -29509,11 +29562,192 @@ static bool read_multi_rat_monomial(Arena &a, NodeId n, MultiRatMono &out)
     return false;
 }
 
+static void clean_multi_rat_mono(MultiRatMono &m)
+{
+    for(auto it = m.pow.begin(); it != m.pow.end();) {
+        it->second.normalize();
+        if(is_zero(it->second)) it = m.pow.erase(it);
+        else ++it;
+    }
+    m.coef.normalize();
+}
+
+static std::string multi_rat_key(MultiRatMono m)
+{
+    clean_multi_rat_mono(m);
+    std::string out;
+    for(auto const &kv : m.pow) {
+        out += kv.first + "^" + format_rat_plain(kv.second) + ";";
+    }
+    return out;
+}
+
+static MultiRatMono multi_rat_mul(MultiRatMono a, MultiRatMono b)
+{
+    a.coef = r_mul(a.coef, b.coef);
+    for(auto const &kv : b.pow) a.pow[kv.first] = r_add(a.pow[kv.first], kv.second);
+    clean_multi_rat_mono(a);
+    return a;
+}
+
+static MultiRatMono multi_rat_div_mono(MultiRatMono a, MultiRatMono b)
+{
+    a.coef = r_div(a.coef, b.coef);
+    for(auto const &kv : b.pow) a.pow[kv.first] = r_sub(a.pow[kv.first], kv.second);
+    clean_multi_rat_mono(a);
+    return a;
+}
+
+static std::optional<std::vector<MultiRatMono>> expand_index_terms(Arena &a, NodeId n, int depth = 0)
+{
+    if(depth > 8) return std::nullopt;
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Add) {
+        std::vector<MultiRatMono> out;
+        for(NodeId k : x.kids) {
+            auto part = expand_index_terms(a, k, depth + 1);
+            if(!part) return std::nullopt;
+            out.insert(out.end(), part->begin(), part->end());
+            if(out.size() > 32) return std::nullopt;
+        }
+        return out;
+    }
+    if(x.kind == NodeKind::Mul) {
+        std::vector<MultiRatMono> acc(1);
+        for(NodeId k : x.kids) {
+            auto part = expand_index_terms(a, k, depth + 1);
+            if(!part) return std::nullopt;
+            std::vector<MultiRatMono> next;
+            for(auto const &u : acc)
+                for(auto const &v : *part) {
+                    next.push_back(multi_rat_mul(u, v));
+                    if(next.size() > 40) return std::nullopt;
+                }
+            acc.swap(next);
+        }
+        return acc;
+    }
+    if(x.kind == NodeKind::Div) {
+        auto top = expand_index_terms(a, x.a, depth + 1);
+        MultiRatMono bot;
+        if(!top || !read_multi_rat_monomial(a, x.b, bot) || bot.coef.num == 0) return std::nullopt;
+        for(auto &t : *top) t = multi_rat_div_mono(t, bot);
+        return top;
+    }
+    if(x.kind == NodeKind::Pow) {
+        auto e = as_num(a, x.b);
+        Node const &base = a.get(x.a);
+        if(e && e->den == 1 && e->num > 1 && e->num <= 8 && base.kind == NodeKind::Add) {
+            auto base_terms = expand_index_terms(a, x.a, depth + 1);
+            if(!base_terms) return std::nullopt;
+            std::vector<MultiRatMono> acc(1);
+            for(int i = 0; i < static_cast<int>(e->num); ++i) {
+                std::vector<MultiRatMono> next;
+                for(auto const &u : acc)
+                    for(auto const &v : *base_terms) {
+                        next.push_back(multi_rat_mul(u, v));
+                        if(next.size() > 40) return std::nullopt;
+                    }
+                acc.swap(next);
+            }
+            return acc;
+        }
+    }
+    MultiRatMono mono;
+    if(!read_multi_rat_monomial(a, n, mono)) return std::nullopt;
+    clean_multi_rat_mono(mono);
+    return std::vector<MultiRatMono>{mono};
+}
+
 static bool multi_rat_has_symbol(MultiRatMono const &m)
 {
     for(auto const &kv : m.pow)
         if(!is_zero(kv.second)) return true;
     return false;
+}
+
+static bool multi_rat_has_non_integer_power(MultiRatMono const &m)
+{
+    for(auto const &kv : m.pow)
+        if(kv.second.den != 1 || kv.second.num < 0) return true;
+    return false;
+}
+
+static bool multi_rat_has_fractional_power(MultiRatMono const &m)
+{
+    for(auto const &kv : m.pow)
+        if(kv.second.den != 1) return true;
+    return false;
+}
+
+static std::string mono_index_power_text(std::string const &v, Rational p)
+{
+    p.normalize();
+    if(p.num == p.den) return v;
+    if(p.den == 1) return v + "^" + std::to_string(p.num);
+    return v + "^(" + format_rat_plain(p) + ")";
+}
+
+static std::string multi_rat_index_term_text(MultiRatMono m)
+{
+    clean_multi_rat_mono(m);
+    bool neg = m.coef.num < 0;
+    Rational c = m.coef;
+    if(c.num < 0) c.num = -c.num;
+    std::vector<std::string> factors;
+    for(auto const &kv : m.pow) factors.push_back(mono_index_power_text(kv.first, kv.second));
+    bool has_body = !factors.empty();
+    std::string body = join_factor_text(factors);
+    std::string out;
+    if(!has_body) out = format_rat_plain(c);
+    else if(c.num == c.den) out = body;
+    else out = format_rat_plain(c) + "*" + body;
+    if(neg) out = "-" + out;
+    return out;
+}
+
+static std::optional<std::vector<std::string>> index_sum_expand_route(Arena &a, NodeId parsed)
+{
+    auto raw_terms = expand_index_terms(a, parsed);
+    if(!raw_terms || raw_terms->empty()) return std::nullopt;
+    bool saw_symbol = false, saw_index_power = false, saw_fractional_power = false;
+    std::map<std::string, bool> symbols;
+    std::map<std::string, MultiRatMono> combined;
+    for(auto t : *raw_terms) {
+        clean_multi_rat_mono(t);
+        if(multi_rat_has_symbol(t)) saw_symbol = true;
+        if(multi_rat_has_non_integer_power(t)) saw_index_power = true;
+        if(multi_rat_has_fractional_power(t)) saw_fractional_power = true;
+        for(auto const &kv : t.pow)
+            if(!is_zero(kv.second)) symbols[kv.first] = true;
+        std::string key = multi_rat_key(t);
+        auto it = combined.find(key);
+        if(it == combined.end()) combined.emplace(key, t);
+        else {
+            it->second.coef = r_add(it->second.coef, t.coef);
+            clean_multi_rat_mono(it->second);
+        }
+    }
+    bool expansion_shape = a.get(parsed).kind != NodeKind::Add;
+    if(!saw_symbol || !saw_index_power || (!saw_fractional_power && !expansion_shape) ||
+       symbols.size() != 1 || combined.size() == 1) return std::nullopt;
+    std::vector<MultiRatMono> terms;
+    for(auto const &kv : combined)
+        if(!is_zero(kv.second.coef)) terms.push_back(kv.second);
+    if(terms.empty()) terms.push_back(MultiRatMono{Rational{0, 1}, {}});
+    std::sort(terms.begin(), terms.end(), [](MultiRatMono const &a0, MultiRatMono const &b0) {
+        auto ax = a0.pow.empty() ? Rational{0, 1} : a0.pow.begin()->second;
+        auto bx = b0.pow.empty() ? Rational{0, 1} : b0.pow.begin()->second;
+        int cmp = r_cmp(ax, bx);
+        if(cmp != 0) return cmp > 0;
+        return multi_rat_key(a0) < multi_rat_key(b0);
+    });
+    std::vector<std::string> pieces;
+    for(auto const &t : terms) pieces.push_back(multi_rat_index_term_text(t));
+    std::string ans = signed_term_join(pieces);
+    std::string raw = format_expr(a, parsed);
+    if(compact_input_key(raw) == compact_input_key(ans)) return std::nullopt;
+    return std::vector<std::string>{raw, "= " + ans, ans};
 }
 
 static std::string mono_rat_power_text(std::string const &v, Rational p)
@@ -36149,6 +36383,7 @@ algebra_compare_transform_modes:
             NodeId n = casio::simplify(arena, casio::parse_expr(arena, req.expr));
             Node const &x = arena.get(n);
             if(x.kind != NodeKind::Pow) {
+                if(auto idx_expand = index_sum_expand_route(arena, n)) return *idx_expand;
                 std::string var = choose_solve_var(arena, n, "");
                 if(auto p = poly_any_of(arena, n, var); p && p->ok) {
                     std::string expanded = poly_any_text_desc(*p, var);
@@ -37714,6 +37949,7 @@ algebra_compare_transform_modes:
             if(auto msurd = multi_surd_expression_route(arena, parsed)) return *msurd;
             if(auto imono = index_monomial_simplify_route(arena, parsed)) return *imono;
             if(auto mono = monomial_fraction_route(arena, parsed)) return *mono;
+            if(auto idx_expand = index_sum_expand_route(arena, parsed)) return *idx_expand;
             if(req.method == "expand") {
                 std::string ans = n_text ? *n_text : format_expr(arena, n);
                 return {format_expr(arena, parsed), "Answer: " + ans};
@@ -37974,6 +38210,7 @@ algebra_compare_transform_modes:
         if(auto neg_frac = negative_fractional_power_const_route(arena, lhs, rhs, rearr, solve_var)) return *neg_frac;
         if(auto frac_power = fractional_recip_power_route(arena, equation_text, solve_var)) return *frac_power;
         if(auto frac_same = fractional_same_power_quadratic_route(arena, rearr, solve_var)) return *frac_same;
+        if(auto idx2 = two_power_index_law_route(arena, rearr, solve_var)) return *idx2;
         if(!interval_lo && !interval_hi)
             if(auto rcube = reciprocal_square_cube_route(arena, rearr, solve_var)) return *rcube;
         if(auto nr = real_exact_nth_power_route(arena, lhs, rhs, rearr, solve_var, interval_lo, interval_hi, interval_lo_open, interval_hi_open)) return *nr;
