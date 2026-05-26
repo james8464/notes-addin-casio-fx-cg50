@@ -14799,6 +14799,50 @@ static std::optional<std::vector<std::string>> rational_inequality_route(Arena &
     return out;
 }
 
+static std::optional<std::vector<std::string>> monotonic_route(Arena &a, std::string const &expr)
+{
+    bool inc = true;
+    std::string body = unwrap_call_text(expr, "increasing");
+    if(body.empty()) {
+        body = unwrap_call_text(expr, "decreasing");
+        inc = false;
+    }
+    if(body.empty()) {
+        body = unwrap_call_text(expr, "monotonic");
+        if(body.empty()) return std::nullopt;
+    }
+    auto parts = split_csv(body);
+    if(parts.size() < 2) return std::vector<std::string>{"Err: need expr,var."};
+    std::string var = trim_text(parts[1]);
+    if(var.empty()) var = "x";
+    size_t interval_arg = 2;
+    if(parts.size() >= 3) {
+        std::string m = compact_input_key(parts[2]);
+        if(m == "dec" || m == "decreasing" || m == "<") { inc = false; interval_arg = 3; }
+        if(m == "inc" || m == "increasing" || m == ">") { inc = true; interval_arg = 3; }
+    }
+    NodeId f = casio::simplify(a, casio::parse_expr(a, parts[0]));
+    NodeId df = exact_eval_polish(a, casio::derive::differentiate_node(a, f, var, ""));
+    if(auto clean = rational_power_sum_node(a, df, var)) df = *clean;
+    std::string op = inc ? ">" : "<";
+    std::string ineq = format_expr(a, df) + op + "0," + var;
+    if(parts.size() >= interval_arg + 2) ineq += "," + parts[interval_arg] + "," + parts[interval_arg + 1];
+    std::vector<std::string> out{
+        "y = " + format_expr(a, f),
+        "dy/d" + var + " = " + format_expr(a, df),
+        std::string(inc ? "increasing" : "decreasing") + ": dy/d" + var + " " + op + " 0",
+    };
+    auto sol = rational_inequality_route(a, ineq);
+    if(!sol) {
+        out.push_back("Err: unsupported inequality.");
+        return out;
+    }
+    for(auto const &line : *sol)
+        if(line != out[1].substr(out[1].find('=') + 2) + " " + op + " 0")
+            out.push_back(line);
+    return out;
+}
+
 static std::optional<Rational> square_from_root_text(std::string s)
 {
     s = trim_text(s);
@@ -33342,6 +33386,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(auto tl = tangent_normal_line_route(arena, req.expr, false)) return *tl;
         if(auto nl = tangent_normal_line_route(arena, req.expr, true)) return *nl;
         if(auto sp = stationary_points_route(arena, req.expr)) return *sp;
+        if(auto mono = monotonic_route(arena, req.expr)) return *mono;
         if(req.mode == 6) {
             if(auto sys = system_solve_route(arena, req.expr)) return *sys;
         }

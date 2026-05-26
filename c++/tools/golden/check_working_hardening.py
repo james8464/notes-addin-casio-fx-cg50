@@ -90,6 +90,30 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "increasing(2*x^3-3*x^2-12*x+2,x)",
+        ["dy/dx = 6*x^2 - 6*x - 12", "increasing: dy/dx > 0", "x < -1 or x > 2"],
+        ["ERR:", "Done"],
+    ),
+    (
+        "alg",
+        "decreasing(4*x^3-3*x,x)",
+        ["dy/dx = 12*x^2 - 3", "decreasing: dy/dx < 0", "-1/2 < x < 1/2"],
+        ["ERR:", "Done"],
+    ),
+    (
+        "alg",
+        "increasing(2*x^3-3*x^2-12*x+2,x,0,10)",
+        ["Interval: 0 <= x <= 10", "2 < x <= 10"],
+        ["ERR:", "Done"],
+    ),
+    (
+        "alg",
+        "monotonic(4*x^3-3*x,x,dec,-1,1)",
+        ["decreasing: dy/dx < 0", "Interval: -1 <= x <= 1", "-1/2 < x < 1/2"],
+        ["ERR:", "Done"],
+    ),
+    (
+        "alg",
         "expand((5*x-3)^8)",
         ["(ax+b)^n with a = 5, b = -3, n = 8", "390625*x^8 - 1875000*x^7", "390625*x^8 -1875000*x^7"],
         ["-87480*x + 510300*x^2", "ERR:"],
