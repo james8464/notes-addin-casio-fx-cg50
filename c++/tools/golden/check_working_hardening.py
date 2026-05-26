@@ -114,6 +114,18 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "gradient_at(3*x^2-8*x+2,x,-1)",
+        ["dy/dx = 6*x - 8", "x = -1", "m = -14"],
+        ["ERR:", "Done"],
+    ),
+    (
+        "alg",
+        "gradient_points(x^3-11*x+1,x,1)",
+        ["dy/dx = 3*x^2 - 11", "dy/dx = 1", "(2, -13) or (-2, 15)"],
+        ["ERR:", "Done"],
+    ),
+    (
+        "alg",
         "expand((5*x-3)^8)",
         ["(ax+b)^n with a = 5, b = -3, n = 8", "390625*x^8 - 1875000*x^7", "390625*x^8 -1875000*x^7"],
         ["-87480*x + 510300*x^2", "ERR:"],

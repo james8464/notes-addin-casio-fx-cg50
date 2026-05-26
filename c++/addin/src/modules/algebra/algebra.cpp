@@ -8954,6 +8954,70 @@ static std::optional<std::vector<std::string>> stationary_points_route(Arena &a,
     return out;
 }
 
+static std::optional<std::vector<std::string>> gradient_at_route(Arena &a, std::string const &expr)
+{
+    std::string body = unwrap_call_text(expr, "gradient_at");
+    if(body.empty()) body = unwrap_call_text(expr, "slope_at");
+    if(body.empty()) return std::nullopt;
+    auto parts = split_csv(body);
+    if(parts.size() < 3) return std::vector<std::string>{"Err: need expr,var,x0."};
+    std::string var = trim_text(parts[1]);
+    if(var.empty()) var = "x";
+    NodeId f = casio::simplify(a, casio::parse_expr(a, parts[0]));
+    NodeId x0 = exact_eval_polish(a, casio::parse_expr(a, parts[2]));
+    NodeId df = exact_eval_polish(a, casio::derive::differentiate_node(a, f, var, ""));
+    if(auto clean = rational_power_sum_node(a, df, var)) df = *clean;
+    NodeId m = exact_eval_polish(a, clone_with_substitution(a, df, var, x0));
+    return std::vector<std::string>{
+        "y = " + format_expr(a, f),
+        "dy/d" + var + " = " + format_expr(a, df),
+        var + " = " + format_expr(a, x0),
+        "m = " + format_expr(a, m),
+    };
+}
+
+static std::optional<std::vector<std::string>> gradient_points_route(Arena &a, std::string const &expr)
+{
+    std::string body = unwrap_call_text(expr, "gradient_points");
+    if(body.empty()) body = unwrap_call_text(expr, "points_with_gradient");
+    if(body.empty()) return std::nullopt;
+    auto parts = split_csv(body);
+    if(parts.size() < 3) return std::vector<std::string>{"Err: need expr,var,m."};
+    std::string var = trim_text(parts[1]);
+    if(var.empty()) var = "x";
+    std::string domain = parts.size() >= 4 ? trim_text(parts[3]) : "";
+    NodeId f = casio::simplify(a, casio::parse_expr(a, parts[0]));
+    NodeId target = exact_eval_polish(a, casio::parse_expr(a, parts[2]));
+    NodeId df = exact_eval_polish(a, casio::derive::differentiate_node(a, f, var, ""));
+    if(auto clean = rational_power_sum_node(a, df, var)) df = *clean;
+    NodeId residual = exact_eval_polish(a, casio::add(a, {df, casio::neg(a, target)}));
+    if(auto clean = rational_power_sum_node(a, residual, var)) residual = *clean;
+    std::vector<std::string> out{
+        "y = " + format_expr(a, f),
+        "dy/d" + var + " = " + format_expr(a, df),
+        "dy/d" + var + " = " + format_expr(a, target),
+    };
+    auto roots = stationary_roots(a, residual, var, domain, out);
+    if(roots.empty()) {
+        out.push_back(var + " = []");
+        return out;
+    }
+    std::vector<std::string> finals;
+    for(NodeId x : roots) {
+        NodeId y = exact_eval_simplify(a, clone_with_substitution(a, f, var, x));
+        std::string ytxt = rational_power_sum_eval_text(a, f, var, x).value_or(format_expr(a, y));
+        out.push_back(var + " = " + format_expr(a, x) + ": y = " + ytxt);
+        finals.push_back("(" + format_expr(a, x) + ", " + ytxt + ")");
+    }
+    std::string final_line;
+    for(std::size_t i = 0; i < finals.size(); ++i) {
+        if(i) final_line += " or ";
+        final_line += finals[i];
+    }
+    out.push_back(final_line);
+    return out;
+}
+
 static std::optional<std::vector<std::string>> partial_fraction_distinct_linear_any(Arena &a, NodeId parsed, std::string const &var)
 {
     Node const &x = a.get(parsed);
@@ -33386,6 +33450,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(auto tl = tangent_normal_line_route(arena, req.expr, false)) return *tl;
         if(auto nl = tangent_normal_line_route(arena, req.expr, true)) return *nl;
         if(auto sp = stationary_points_route(arena, req.expr)) return *sp;
+        if(auto ga = gradient_at_route(arena, req.expr)) return *ga;
+        if(auto gp = gradient_points_route(arena, req.expr)) return *gp;
         if(auto mono = monotonic_route(arena, req.expr)) return *mono;
         if(req.mode == 6) {
             if(auto sys = system_solve_route(arena, req.expr)) return *sys;
