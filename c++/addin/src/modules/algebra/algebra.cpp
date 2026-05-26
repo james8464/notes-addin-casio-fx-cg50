@@ -183,6 +183,7 @@ static std::optional<double> eval_node_env(Arena &a, NodeId id, std::vector<std:
 static std::string format_double_compact(double x);
 static std::string format_rat(Arena &a, Rational r);
 static std::string format_rat_plain(Rational r);
+static std::string rat_node_text(Arena &a, Rational r);
 static std::optional<Rational> as_num(Arena &a, NodeId n);
 static Rational r_pow_int(Rational r, int p);
 static std::optional<Rational> rational_power_factor(Rational base, Rational power);
@@ -1327,6 +1328,18 @@ static NodeId exact_eval_simplify(Arena &a, NodeId n)
         NodeId lhs = exact_eval_simplify(a, x.a);
         NodeId rhs = exact_eval_simplify(a, x.b);
         if(casio::same_by_sig(a, lhs, rhs)) return casio::num(a, 1);
+        Node const &rhs_node = a.get(rhs);
+        if(rhs_node.kind == NodeKind::Fn && rhs_node.fkind == FnKind::Sqrt) {
+            NodeId rad = exact_eval_simplify(a, rhs_node.a);
+            Node const &rad_node = a.get(rad);
+            if(rad_node.kind == NodeKind::Num && rad_node.num.num > 0) {
+                NodeId rat = exact_eval_simplify(a, casio::div(a,
+                    casio::mul(a, {lhs, casio::fn(a, "sqrt", rad)}),
+                    rad));
+                if(format_expr(a, rat).size() <= format_expr(a, casio::div(a, lhs, rhs)).size() + 8)
+                    return rat;
+            }
+        }
         auto exp_arg = [&](NodeId id) -> std::optional<NodeId> {
             Node const &u = a.get(id);
             if(u.kind == NodeKind::Pow && is_e_const_node(a, u.a)) return u.b;
@@ -2426,6 +2439,175 @@ static std::optional<std::vector<NodeId>> parse_vector_literal(Arena &a, std::st
     std::vector<NodeId> out;
     for(auto const &p : parts) out.push_back(exact_eval_simplify(a, casio::parse_expr(a, p)));
     return out;
+}
+
+static bool parse_point2_rational(Arena &a, std::string text, Rational &x, Rational &y)
+{
+    text = trim_text(text);
+    if(text.size() >= 2 && ((text.front() == '[' && text.back() == ']') || (text.front() == '(' && text.back() == ')')))
+        text = text.substr(1, text.size() - 2);
+    auto parts = split_csv(text);
+    if(parts.size() != 2) return false;
+    auto px = as_num(a, exact_eval_simplify(a, casio::parse_expr(a, parts[0])));
+    auto py = as_num(a, exact_eval_simplify(a, casio::parse_expr(a, parts[1])));
+    if(!px || !py) return false;
+    x = *px;
+    y = *py;
+    x.normalize();
+    y.normalize();
+    return true;
+}
+
+static std::string point2_text(Arena &a, Rational x, Rational y)
+{
+    return "(" + rat_node_text(a, x) + "," + rat_node_text(a, y) + ")";
+}
+
+static std::string minus_value_text(Arena &a, char const *var, Rational v)
+{
+    if(v.num < 0) return std::string(var) + " + " + rat_node_text(a, r_abs(v));
+    return std::string(var) + " - " + rat_node_text(a, v);
+}
+
+static std::string signed_sub_text(Arena &a, Rational left, Rational right)
+{
+    if(right.num < 0) return rat_node_text(a, left) + " + " + rat_node_text(a, r_abs(right));
+    return rat_node_text(a, left) + " - " + rat_node_text(a, right);
+}
+
+static std::int64_t coord_lcm_i64(std::int64_t a, std::int64_t b)
+{
+    a = std::llabs(a);
+    b = std::llabs(b);
+    if(a == 0 || b == 0) return 1;
+    return a / std::gcd(a, b) * b;
+}
+
+static std::string line_coeff_text(std::int64_t A, std::int64_t B, std::int64_t C)
+{
+    std::int64_t g = std::gcd(std::gcd(std::llabs(A), std::llabs(B)), std::llabs(C));
+    if(g > 1) {
+        A /= g;
+        B /= g;
+        C /= g;
+    }
+    if(A < 0 || (A == 0 && B < 0)) {
+        A = -A;
+        B = -B;
+        C = -C;
+    }
+    auto add = [](std::string &s, std::int64_t k, char const *v) {
+        if(k == 0) return;
+        std::int64_t a = std::llabs(k);
+        std::string term = v ? (a == 1 ? std::string(v) : std::to_string(a) + "*" + v) : std::to_string(a);
+        if(s.empty()) s = k < 0 ? "-" + term : term;
+        else s += k < 0 ? " - " + term : " + " + term;
+    };
+    std::string out;
+    add(out, A, "x");
+    add(out, B, "y");
+    add(out, C, nullptr);
+    if(out.empty()) out = "0";
+    return out + " = 0";
+}
+
+static std::string line_from_points_text(Rational x1, Rational y1, Rational x2, Rational y2)
+{
+    Rational dx = r_sub(x2, x1);
+    Rational dy = r_sub(y2, y1);
+    Rational A = dy;
+    Rational B = r_neg(dx);
+    Rational C = r_sub(r_mul(dx, y1), r_mul(dy, x1));
+    std::int64_t lcm = coord_lcm_i64(coord_lcm_i64(A.den, B.den), C.den);
+    return line_coeff_text(A.num * (lcm / A.den), B.num * (lcm / B.den), C.num * (lcm / C.den));
+}
+
+static std::optional<std::vector<std::string>> coordinate_geometry_route(Arena &a, std::string const &expr)
+{
+    std::string body = unwrap_call_text(expr, "line2p");
+    if(body.empty()) body = unwrap_call_text(expr, "line_points");
+    if(body.empty()) body = unwrap_call_text(expr, "line_through_points");
+    if(!body.empty()) {
+        auto parts = split_csv(body);
+        if(parts.size() != 2) return std::vector<std::string>{"Err: need two points."};
+        Rational x1, y1, x2, y2;
+        if(!parse_point2_rational(a, parts[0], x1, y1) || !parse_point2_rational(a, parts[1], x2, y2))
+            return std::vector<std::string>{"Err: need rational points."};
+        Rational dx = r_sub(x2, x1), dy = r_sub(y2, y1);
+        if(is_zero(dx) && is_zero(dy)) return std::vector<std::string>{"Err: repeated point."};
+        std::string final_line = line_from_points_text(x1, y1, x2, y2);
+        if(is_zero(dx)) return std::vector<std::string>{
+            "A=" + point2_text(a, x1, y1) + ", B=" + point2_text(a, x2, y2),
+            "x = " + rat_node_text(a, x1),
+            final_line,
+        };
+        Rational m = r_div(dy, dx);
+        return std::vector<std::string>{
+            "A=" + point2_text(a, x1, y1) + ", B=" + point2_text(a, x2, y2),
+            "m = (" + signed_sub_text(a, y2, y1) + ")/(" + signed_sub_text(a, x2, x1) + ") = " + rat_node_text(a, m),
+            minus_value_text(a, "y", y1) + " = " + rat_node_text(a, m) + "*(" + minus_value_text(a, "x", x1) + ")",
+            final_line,
+        };
+    }
+
+    body = unwrap_call_text(expr, "gradient2p");
+    if(body.empty()) body = unwrap_call_text(expr, "grad2p");
+    if(!body.empty()) {
+        auto parts = split_csv(body);
+        if(parts.size() != 2) return std::vector<std::string>{"Err: need two points."};
+        Rational x1, y1, x2, y2;
+        if(!parse_point2_rational(a, parts[0], x1, y1) || !parse_point2_rational(a, parts[1], x2, y2))
+            return std::vector<std::string>{"Err: need rational points."};
+        Rational dx = r_sub(x2, x1), dy = r_sub(y2, y1);
+        if(is_zero(dx)) return std::vector<std::string>{"m = undefined", "x = " + rat_node_text(a, x1)};
+        Rational m = r_div(dy, dx);
+        return std::vector<std::string>{
+            "m = (" + signed_sub_text(a, y2, y1) + ")/(" + signed_sub_text(a, x2, x1) + ")",
+            "m = " + rat_node_text(a, m),
+        };
+    }
+
+    body = unwrap_call_text(expr, "midpoint");
+    if(!body.empty()) {
+        auto parts = split_csv(body);
+        if(parts.size() != 2) return std::vector<std::string>{"Err: need two points."};
+        Rational x1, y1, x2, y2;
+        if(!parse_point2_rational(a, parts[0], x1, y1) || !parse_point2_rational(a, parts[1], x2, y2))
+            return std::vector<std::string>{"Err: need rational points."};
+        Rational mx = r_div(r_add(x1, x2), Rational{2, 1});
+        Rational my = r_div(r_add(y1, y2), Rational{2, 1});
+        std::string ans = point2_text(a, mx, my);
+        return std::vector<std::string>{
+            "M = ((" + rat_node_text(a, x1) + " + " + rat_node_text(a, x2) + ")/2, (" + rat_node_text(a, y1) + " + " + rat_node_text(a, y2) + ")/2)",
+            "M = " + ans,
+            ans,
+        };
+    }
+
+    body = unwrap_call_text(expr, "dist2p");
+    if(body.empty()) body = unwrap_call_text(expr, "distance2p");
+    if(!body.empty()) {
+        auto parts = split_csv(body);
+        if(parts.size() != 2) return std::vector<std::string>{"Err: need two points."};
+        Rational x1, y1, x2, y2;
+        if(!parse_point2_rational(a, parts[0], x1, y1) || !parse_point2_rational(a, parts[1], x2, y2))
+            return std::vector<std::string>{"Err: need rational points."};
+        NodeId dx = casio::num(a, r_sub(x2, x1).num, r_sub(x2, x1).den);
+        NodeId dy = casio::num(a, r_sub(y2, y1).num, r_sub(y2, y1).den);
+        NodeId sq = exact_eval_simplify(a, casio::add(a, {
+            casio::power(a, dx, casio::num(a, 2)),
+            casio::power(a, dy, casio::num(a, 2)),
+        }));
+        NodeId ans = exact_eval_simplify(a, casio::fn(a, "sqrt", sq));
+        std::string at = format_expr(a, ans);
+        return std::vector<std::string>{
+            "d = sqrt((" + signed_sub_text(a, x2, x1) + ")^2 + (" + signed_sub_text(a, y2, y1) + ")^2)",
+            "d = " + at,
+            at,
+        };
+    }
+
+    return std::nullopt;
 }
 
 static std::vector<std::pair<int, std::string>> split_vector_terms(std::string const &s)
@@ -37177,6 +37359,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(auto nl = tangent_normal_line_route(arena, req.expr, true)) return *nl;
         if(auto sp = stationary_points_route(arena, req.expr)) return *sp;
         if(auto ix = index_form_route(arena, req.expr)) return *ix;
+        if(auto cg = coordinate_geometry_route(arena, req.expr)) return *cg;
         if(auto ga = gradient_at_route(arena, req.expr)) return *ga;
         if(auto gp = gradient_points_route(arena, req.expr)) return *gp;
         if(auto mono = monotonic_route(arena, req.expr)) return *mono;

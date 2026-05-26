@@ -82,6 +82,8 @@ the ledger is expected to have no unaudited calculator-testable rows.
 
 `check_madasmaths_standard_manual_cases.py` runs hand-transcribed cases from
 rendered MadAsMaths standard-topic PDFs and records the latest local report.
+Line-coordinate booklet coverage is represented by grouped executable algebra
+cores plus unsupported-ok notes for sketch/proof-only parts.
 
 `check_a_level_audit_tracker.py` runs every command recorded in
 `a_level_audit_tracker.jsonl`; it is a stale-command guard, not proof of full

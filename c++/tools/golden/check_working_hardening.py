@@ -2271,7 +2271,7 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "alg",
         "solve(z*sqrt(8)-6=2*z/sqrt(2),z)",
-        ["z = 6/(2*sqrt(2) + -2/sqrt(2))", "= 3*sqrt(2)", "z = 3*sqrt(2)"],
+        ["sqrt(8) + -2/sqrt(2) != 0", "z = 3*sqrt(2)"],
         ["z = [6/(sqrt(8)", "Traceback"],
     ),
     (

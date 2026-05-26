@@ -655,7 +655,7 @@ Ex F2: sign(-3)
 @simplify(expr,[method])
 F2:simplify(sin(3x)/sin(x),method=canonical)
 simplify(expr,[method])
-Simplify. Methods: expand,factor,collect,target.
+Simplify. Methods: expand,factor,collect,target. Rationalises simple surds.
 Req: expr.
 Opt: method.
 Ex F2: simplify(sin(3x)/sin(x),method=canonical)
