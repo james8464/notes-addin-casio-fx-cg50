@@ -8,6 +8,7 @@
 #include "core/parse_equation.hpp"
 #include "core/scope_guard.hpp"
 #include "core/simplify.hpp"
+#include "modules/derive/derive.hpp"
 #include "modules/integrate/integrate.hpp"
 #include "modules/trig/trig.hpp"
 
@@ -43,6 +44,7 @@ static bool reciprocal_power_term(Arena &a, NodeId term, std::string const &var,
 static std::optional<std::vector<std::pair<int, Rational>>> reciprocal_power_coeffs(Arena &a, NodeId n, std::string const &var);
 static Poly2 scale_poly(Poly2 p, Rational k);
 static NodeId exact_eval_simplify(Arena &a, NodeId n);
+static NodeId distribute_const_over_add_once(Arena &a, NodeId n, std::string const &var);
 static bool split_coeff_body(Arena &a, NodeId term, Rational &coef, NodeId &body, bool &has_body);
 static std::vector<std::string> solve_poly2(Arena &a, Poly2 const &p, std::string const &var);
 static std::string sol_rhs(std::string const &line);
@@ -2160,6 +2162,47 @@ static std::string unwrap_call_text(std::string s, std::string const &name)
     std::string pre = name + "(";
     if(s.rfind(pre, 0) != 0 || s.empty() || s.back() != ')') return "";
     return trim_text(s.substr(pre.size(), s.size() - pre.size() - 1));
+}
+
+static std::optional<std::vector<std::string>> tangent_normal_line_route(Arena &a, std::string const &expr, bool normal)
+{
+    std::string body = unwrap_call_text(expr, normal ? "normal_line" : "tangent_line");
+    if(body.empty()) return std::nullopt;
+    auto parts = split_csv(body);
+    if(parts.size() < 3) return std::vector<std::string>{"Err: need expr,var,x0."};
+    std::string var = trim_text(parts[1]);
+    if(var.empty()) var = "x";
+    NodeId f = casio::simplify(a, casio::parse_expr(a, parts[0]));
+    NodeId x0 = exact_eval_polish(a, casio::parse_expr(a, parts[2]));
+    NodeId df = exact_eval_polish(a, casio::derive::differentiate_node(a, f, var, ""));
+    NodeId y0 = exact_eval_polish(a, clone_with_substitution(a, f, var, x0));
+    NodeId mt = exact_eval_polish(a, clone_with_substitution(a, df, var, x0));
+    std::vector<std::string> out{
+        "y = " + format_expr(a, f),
+        "dy/d" + var + " = " + format_expr(a, df),
+        var + " = " + format_expr(a, x0) + ", y = " + format_expr(a, y0),
+    };
+    NodeId m = mt;
+    if(normal) {
+        out.push_back("m_t = " + format_expr(a, mt));
+        auto mt_num = as_num(a, mt);
+        if(mt_num && mt_num->num == 0) {
+            out.push_back("m_n undefined");
+            out.push_back(var + " = " + format_expr(a, x0));
+            return out;
+        }
+        m = exact_eval_polish(a, casio::div(a, casio::num(a, -1), mt));
+        out.push_back("m_n = -1/m_t = " + format_expr(a, m));
+    }
+    else {
+        out.push_back("m = " + format_expr(a, m));
+    }
+    NodeId x = casio::sym(a, var);
+    NodeId rhs = casio::add(a, {y0, casio::mul(a, {m, casio::add(a, {x, casio::neg(a, x0)})})});
+    rhs = exact_eval_polish(a, distribute_const_over_add_once(a, rhs, var));
+    out.push_back("y - " + format_expr(a, y0) + " = " + format_expr(a, m) + "*(" + var + " - " + format_expr(a, x0) + ")");
+    out.push_back("y = " + format_expr(a, rhs));
+    return out;
 }
 
 static void collect_symbols(Arena &a, NodeId n, std::vector<std::string> &out)
@@ -32987,6 +33030,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     if(casio::contains_removed_function(req.expr)) return {"Err: unsupported function."};
 
     try {
+        if(auto tl = tangent_normal_line_route(arena, req.expr, false)) return *tl;
+        if(auto nl = tangent_normal_line_route(arena, req.expr, true)) return *nl;
         if(req.mode == 6) {
             if(auto sys = system_solve_route(arena, req.expr)) return *sys;
         }

@@ -66,6 +66,18 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "tangent_line(x^2-9*x+13,x,6)",
+        ["dy/dx = 2*x - 9", "x = 6, y = -5", "y = 3*x - 23"],
+        ["ERR:", "Done"],
+    ),
+    (
+        "alg",
+        "normal_line(x^3-4*x^2+1,x,2)",
+        ["m_t = -4", "m_n = -1/m_t = 1/4", "y = 1/4*x - 15/2"],
+        ["ERR:", "Done"],
+    ),
+    (
+        "alg",
         "expand((5*x-3)^8)",
         ["(ax+b)^n with a = 5, b = -3, n = 8", "390625*x^8 - 1875000*x^7", "390625*x^8 -1875000*x^7"],
         ["-87480*x + 510300*x^2", "ERR:"],
