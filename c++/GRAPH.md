@@ -202,7 +202,7 @@ Current policy:
 - tracked ledgers contain only compact manual verdicts/commands
 - parallel triage rows are append-only evidence, not executable proof
 - failed third-party links are recorded, but Pearson/MadAs required corpus must be complete
-- latest MadAs coverage: 462 downloaded question PDFs, 233 covered, 229 gaps
+- latest MadAs coverage: 462 downloaded question PDFs, 234 covered, 228 gaps
 
 ## ROM / Storage
 
