@@ -2099,6 +2099,7 @@ static std::string compact_input_key(std::string text);
 static void collect_mul_factors(Arena &a, NodeId n, std::vector<NodeId> &out);
 struct PolyAny;
 static NodeId poly_any_to_node(Arena &a, PolyAny const &p, std::string const &var);
+static bool poly_any_zero(PolyAny const &p);
 static std::string sqrt_rational_surd_text(Arena &a, Rational r);
 static std::string cube_root_rational_text(Arena &a, Rational r);
 static std::string multiply_root_text(Rational c, std::string root);
@@ -25010,6 +25011,316 @@ static std::optional<std::vector<std::string>> rational_sum_simplify_route(
     return out;
 }
 
+static std::optional<std::vector<std::string>> common_denominator_sum_route(Arena &a, NodeId expr)
+{
+    Node const &x = a.get(expr);
+    if(x.kind != NodeKind::Add) return std::nullopt;
+    std::vector<NodeId> terms;
+    add_terms_flat(a, expr, terms);
+    if(terms.size() < 2 || terms.size() > 5) return std::nullopt;
+
+    struct FracTerm { NodeId num; NodeId den; };
+    std::vector<FracTerm> fracs;
+    std::vector<NodeId> den_factors;
+    int frac_count = 0;
+    for(NodeId t : terms) {
+        Node const &tn = a.get(t);
+        if(tn.kind == NodeKind::Div) {
+            fracs.push_back({tn.a, tn.b});
+            if(!is_one_num(a, tn.b)) {
+                den_factors.push_back(tn.b);
+                ++frac_count;
+            }
+        }
+        else {
+            fracs.push_back({t, one_node(a)});
+        }
+    }
+    if(frac_count < 2 || den_factors.empty()) return std::nullopt;
+
+    NodeId common = exact_eval_simplify(a, den_factors.size() == 1 ? den_factors[0] : casio::mul(a, den_factors));
+    std::vector<NodeId> num_terms;
+    for(std::size_t i = 0; i < fracs.size(); ++i) {
+        std::vector<NodeId> factors{fracs[i].num};
+        for(std::size_t j = 0; j < fracs.size(); ++j) {
+            if(i == j || is_one_num(a, fracs[j].den)) continue;
+            factors.push_back(fracs[j].den);
+        }
+        num_terms.push_back(exact_eval_simplify(a, factors.size() == 1 ? factors[0] : casio::mul(a, factors)));
+    }
+
+    NodeId num = exact_eval_simplify(a, casio::add(a, num_terms));
+    NodeId ans = exact_eval_simplify(a, casio::div(a, num, common));
+    if(casio::same_by_sig(a, ans, expr) || !numeric_same(a, expr, ans)) return std::nullopt;
+
+    std::string lhs = format_expr(a, expr);
+    std::string rhs = format_expr(a, ans);
+    if(rhs == lhs || rhs.size() > 180) return std::nullopt;
+    return std::vector<std::string>{lhs, "= " + rhs, rhs};
+}
+
+static int poly_any_degree(PolyAny p)
+{
+    trim_poly_any(p);
+    return static_cast<int>(p.c.size()) - 1;
+}
+
+static PolyAny poly_any_pow_small(PolyAny base, int n)
+{
+    PolyAny out{{Rational{1, 1}}, true};
+    for(int i = 0; i < n; ++i) out = poly_any_mul(out, base);
+    return out;
+}
+
+static std::string poly_any_signature(PolyAny p)
+{
+    trim_poly_any(p);
+    std::string s;
+    for(auto c : p.c) {
+        c.normalize();
+        s += std::to_string(c.num) + "/" + std::to_string(c.den) + ";";
+    }
+    return s;
+}
+
+static bool poly_any_quadratic_reducible_rational(PolyAny p)
+{
+    trim_poly_any(p);
+    if(poly_any_degree(p) != 2) return false;
+    Rational c = p.c[0], b = p.c[1], aa = p.c[2];
+    Rational disc = r_sub(r_mul(b, b), r_mul(Rational{4, 1}, r_mul(aa, c)));
+    Rational root;
+    return square_rat_root(disc, root);
+}
+
+static bool solve_rational_linear_system(std::vector<std::vector<Rational>> m, std::vector<Rational> &sol)
+{
+    if(m.empty()) return false;
+    int rows = static_cast<int>(m.size());
+    int cols = static_cast<int>(m[0].size()) - 1;
+    int r = 0;
+    std::vector<int> pivot_col;
+    for(int c = 0; c < cols && r < rows; ++c) {
+        int piv = -1;
+        for(int i = r; i < rows; ++i) {
+            if(!is_zero(m[i][c])) { piv = i; break; }
+        }
+        if(piv < 0) continue;
+        if(piv != r) std::swap(m[piv], m[r]);
+        Rational p = m[r][c];
+        for(int j = c; j <= cols; ++j) m[r][j] = r_div(m[r][j], p);
+        for(int i = 0; i < rows; ++i) {
+            if(i == r || is_zero(m[i][c])) continue;
+            Rational f = m[i][c];
+            for(int j = c; j <= cols; ++j) m[i][j] = r_sub(m[i][j], r_mul(f, m[r][j]));
+        }
+        pivot_col.push_back(c);
+        ++r;
+    }
+    for(int i = 0; i < rows; ++i) {
+        bool all_zero = true;
+        for(int c = 0; c < cols; ++c) if(!is_zero(m[i][c])) { all_zero = false; break; }
+        if(all_zero && !is_zero(m[i][cols])) return false;
+    }
+    if(static_cast<int>(pivot_col.size()) != cols) return false;
+    sol.assign(cols, Rational{0, 1});
+    for(int i = 0; i < cols; ++i) sol[pivot_col[i]] = m[i][cols];
+    return true;
+}
+
+static std::optional<std::vector<std::string>> partial_fraction_quadratic_factors(Arena &a, NodeId parsed, std::string const &var)
+{
+    Node const &x = a.get(parsed);
+    if(x.kind != NodeKind::Div) return std::nullopt;
+    auto num0 = poly_any_of(a, x.a, var);
+    auto den0 = poly_any_of(a, x.b, var);
+    if(!num0 || !den0 || !num0->ok || !den0->ok) return std::nullopt;
+    trim_poly_any(*num0);
+    trim_poly_any(*den0);
+    if(poly_any_degree(*den0) < 3 || poly_any_degree(*den0) > 4) return std::nullopt;
+
+    PolyAny q{{Rational{0, 1}}, true}, rem = *num0;
+    if(poly_any_degree(*num0) >= poly_any_degree(*den0)) {
+        if(!poly_any_div_rem(*num0, *den0, q, rem)) return std::nullopt;
+    }
+    trim_poly_any(q);
+    trim_poly_any(rem);
+
+    struct Factor { PolyAny p; int mult; std::string text; };
+    std::vector<Factor> factors;
+    auto add_factor = [&](PolyAny p, int mult, std::string text) {
+        trim_poly_any(p);
+        if(poly_any_degree(p) < 1 || poly_any_degree(p) > 2 || mult < 1) return false;
+        std::string sig = poly_any_signature(p);
+        for(auto &f : factors) {
+            if(poly_any_signature(f.p) == sig) {
+                f.mult += mult;
+                return true;
+            }
+        }
+        factors.push_back(Factor{p, mult, text});
+        return true;
+    };
+
+    std::vector<NodeId> raw_factors;
+    collect_mul_factors(a, x.b, raw_factors);
+    bool explicit_ok = raw_factors.size() > 1;
+    if(explicit_ok) {
+        for(NodeId fnode : raw_factors) {
+            Node const &fn = a.get(fnode);
+            if(fn.kind == NodeKind::Num) continue;
+            int mult = 1;
+            NodeId base = fnode;
+            if(fn.kind == NodeKind::Pow) {
+                auto e = as_num(a, fn.b);
+                if(!e || e->den != 1 || e->num < 1 || e->num > 4) { explicit_ok = false; break; }
+                mult = static_cast<int>(e->num);
+                base = fn.a;
+            }
+            auto p = poly_any_of(a, base, var);
+            if(!p || !p->ok || !add_factor(*p, mult, format_expr(a, base))) { explicit_ok = false; break; }
+        }
+    }
+
+    if(!explicit_ok || factors.empty()) {
+        factors.clear();
+        PolyAny r = *den0;
+        while(poly_any_degree(r) > 2) {
+            PolyAny cand = primitive_integer_root_poly(r);
+            auto lead = as_int64(cand.c.back()), cnst = as_int64(cand.c.front());
+            if(!lead || !cnst) return std::nullopt;
+            bool found = false;
+            for(long long pp : divisors_i64(*cnst)) for(long long qq : divisors_i64(*lead)) {
+                if(qq == 0) continue;
+                for(int sgn : {-1, 1}) {
+                    Rational root{sgn * pp, qq};
+                    root.normalize();
+                    if(!is_zero(poly_any_eval(r, root))) continue;
+                    PolyAny lin{{r_neg(root), Rational{1, 1}}, true};
+                    add_factor(lin, 1, format_expr(a, poly_any_to_node(a, lin, var)));
+                    if(!divide_linear(r, root)) return std::nullopt;
+                    found = true;
+                    goto got_pf_root;
+                }
+            }
+got_pf_root:
+            if(!found) return std::nullopt;
+        }
+        if(poly_any_degree(r) >= 1) {
+            if(r.c.back().num < 0) scale_poly_any_in_place(r, Rational{-1, 1});
+            add_factor(r, 1, format_expr(a, poly_any_to_node(a, r, var)));
+        }
+    }
+    bool has_quadratic_factor = false;
+    for(auto const &f : factors) {
+        if(poly_any_degree(f.p) == 2 && !poly_any_quadratic_reducible_rational(f.p)) {
+            has_quadratic_factor = true;
+            break;
+        }
+    }
+    if(!has_quadratic_factor) return std::nullopt;
+
+    struct Unknown { int factor; int power; int deg; };
+    std::vector<Unknown> unk;
+    std::vector<PolyAny> basis;
+    for(std::size_t i = 0; i < factors.size(); ++i) {
+        int deg = poly_any_degree(factors[i].p);
+        for(int power = 1; power <= factors[i].mult; ++power) {
+            PolyAny den_part = poly_any_pow_small(factors[i].p, power);
+            PolyAny quot;
+            if(!poly_any_div_exact(*den0, den_part, quot)) return std::nullopt;
+            for(int d = 0; d < deg; ++d) {
+                PolyAny n{{Rational{0, 1}}, true};
+                n.c.assign(static_cast<std::size_t>(d + 1), Rational{0, 1});
+                n.c[static_cast<std::size_t>(d)] = Rational{1, 1};
+                unk.push_back(Unknown{static_cast<int>(i), power, d});
+                basis.push_back(poly_any_mul(n, quot));
+            }
+        }
+    }
+    if(unk.empty() || unk.size() > 8) return std::nullopt;
+    int rows = std::max<int>(static_cast<int>(unk.size()), poly_any_degree(*den0));
+    rows = std::max(rows, poly_any_degree(rem) + 1);
+    std::vector<std::vector<Rational>> mat(static_cast<std::size_t>(rows), std::vector<Rational>(unk.size() + 1, Rational{0, 1}));
+    for(std::size_t c = 0; c < basis.size(); ++c) {
+        for(std::size_t r = 0; r < basis[c].c.size() && r < static_cast<std::size_t>(rows); ++r)
+            mat[r][c] = basis[c].c[r];
+    }
+    for(std::size_t r = 0; r < rem.c.size() && r < static_cast<std::size_t>(rows); ++r)
+        mat[r][unk.size()] = rem.c[r];
+    std::vector<Rational> sol;
+    if(!solve_rational_linear_system(mat, sol)) return std::nullopt;
+
+    static char const *names[] = {"A","B","C","D","E","F","G","H"};
+    std::string form, vals, ans;
+    for(std::size_t i = 0, k = 0; i < factors.size(); ++i) {
+        int deg = poly_any_degree(factors[i].p);
+        for(int power = 1; power <= factors[i].mult; ++power) {
+            std::string den_txt = power == 1 ? factors[i].text : "(" + factors[i].text + ")^" + std::to_string(power);
+            std::string top;
+            if(deg == 1) top = names[k++];
+            else {
+                top = std::string(names[k]) + "*" + var + " + " + names[k + 1];
+                k += 2;
+            }
+            form = signed_sum_text(form, "(" + top + ")/(" + den_txt + ")");
+        }
+    }
+    for(std::size_t i = 0; i < sol.size(); ++i) {
+        if(!vals.empty()) vals += ", ";
+        vals += std::string(names[i]) + "=" + rat_node_text(a, sol[i]);
+    }
+    for(std::size_t i = 0; i < factors.size(); ++i) {
+        int deg = poly_any_degree(factors[i].p);
+        for(int power = 1; power <= factors[i].mult; ++power) {
+            PolyAny np{{Rational{0, 1}}, true};
+            np.c.assign(static_cast<std::size_t>(deg), Rational{0, 1});
+            for(std::size_t u = 0; u < unk.size(); ++u) {
+                if(unk[u].factor == static_cast<int>(i) && unk[u].power == power)
+                    np.c[static_cast<std::size_t>(unk[u].deg)] = sol[u];
+            }
+            trim_poly_any(np);
+            if(poly_any_zero(np)) continue;
+            std::string den_txt = power == 1 ? factors[i].text : "(" + factors[i].text + ")^" + std::to_string(power);
+            std::string top_txt = format_expr(a, poly_any_to_node(a, np, var));
+            std::string t;
+            if(np.c.size() == 1) t = quotient_term_text(a, np.c[0], den_txt);
+            else t = "(" + top_txt + ")/(" + den_txt + ")";
+            ans = signed_sum_text(ans, t);
+        }
+    }
+    if(ans.empty()) return std::nullopt;
+    if(!poly_any_zero(q)) ans = signed_sum_text(format_expr(a, poly_any_to_node(a, q, var)), ans);
+
+    std::vector<std::string> out;
+    out.push_back(form);
+    out.push_back("Compare coefficients: " + vals);
+    out.push_back(ans);
+    return out;
+}
+
+static std::optional<std::vector<std::string>> fractional_coeff_polynomial_route(Arena &a, NodeId expr, std::string const &var)
+{
+    auto p = poly_any_of(a, expr, var);
+    if(!p || !p->ok || p->c.empty()) return std::nullopt;
+    if(poly_any_degree(*p) < 1) return std::nullopt;
+    long long l = 1;
+    bool has_fraction = false;
+    for(auto c : p->c) {
+        c.normalize();
+        if(c.den != 1) has_fraction = true;
+        l = lcm_abs_ll(l, c.den);
+    }
+    if(!has_fraction || l <= 1 || l > 10000) return std::nullopt;
+    PolyAny num = *p;
+    scale_poly_any_in_place(num, Rational{l, 1});
+    std::string lhs = format_expr(a, expr);
+    std::string nt = format_expr(a, poly_any_to_node(a, num, var));
+    std::string rhs = paren_math(nt) + "/" + std::to_string(l);
+    if(rhs == lhs) return std::nullopt;
+    return std::vector<std::string>{lhs, "= " + rhs, rhs};
+}
+
 static std::optional<std::vector<std::string>> rational_root_poly_substitution_route(Arena &a, NodeId rearr, std::string const &var,
                                                                                      std::optional<double> lo,
                                                                                      std::optional<double> hi)
@@ -33927,6 +34238,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
             if(auto pf = partial_fraction_linear_over_linear(arena, parsed, pfv)) return *pf;
             if(auto pf = partial_fraction_quadratic_over_repeated_linear(arena, parsed, pfv)) return *pf;
             if(auto pf = partial_fraction_quadratic_over_two_linear(arena, parsed, pfv)) return *pf;
+            if(auto pf = partial_fraction_quadratic_factors(arena, parsed, pfv)) return *pf;
             if(auto pf = improper_rational_division_route(arena, parsed, pfv)) return *pf;
             if(auto pf = partial_fraction_xpower_linear(arena, parsed, pfv)) return *pf;
             if(auto pf = partial_fraction_x2_linear(arena, parsed, req.expr, pfv)) return *pf;
@@ -35572,10 +35884,16 @@ algebra_compare_transform_modes:
                     return *slc;
                 if(auto rat_cancel = two_term_rational_factor_cancel(arena, parsed, simp_var))
                     return *rat_cancel;
+                if(auto fcp = fractional_coeff_polynomial_route(arena, parsed, simp_var))
+                    return *fcp;
+                if(auto fcp = fractional_coeff_polynomial_route(arena, n, simp_var))
+                    return *fcp;
                 if(auto rat_sum = rational_sum_simplify_route(arena, parsed, simp_var))
                     return *rat_sum;
                 if(auto rat_expr = rational_expression_simplify_route(arena, parsed, simp_var))
                     return *rat_expr;
+                if(auto cd = common_denominator_sum_route(arena, parsed))
+                    return *cd;
                 if(auto logc = log_constant_simplify_route(arena, parsed)) return *logc;
                 steps.push_back(format_expr(arena, parsed));
                 steps.push_back("= " + (n_text ? *n_text : format_expr(arena, n)));
@@ -35586,6 +35904,7 @@ algebra_compare_transform_modes:
                 if(auto pf = partial_fraction_linear_over_linear(arena, parsed, pfv)) return *pf;
                 if(auto pf = partial_fraction_quadratic_over_repeated_linear(arena, parsed, pfv)) return *pf;
                 if(auto pf = partial_fraction_quadratic_over_two_linear(arena, parsed, pfv)) return *pf;
+                if(auto pf = partial_fraction_quadratic_factors(arena, parsed, pfv)) return *pf;
                 if(auto pf = improper_rational_division_route(arena, parsed, pfv)) return *pf;
                 if(auto pf = partial_fraction_xpower_linear(arena, parsed, pfv)) return *pf;
                 if(auto pf = partial_fraction_x2_linear(arena, parsed, req.expr, pfv)) return *pf;
@@ -35615,10 +35934,16 @@ algebra_compare_transform_modes:
             std::string simp_var = choose_solve_var(arena, parsed, "");
             if(auto rat_cancel = two_term_rational_factor_cancel(arena, parsed, simp_var))
                 return *rat_cancel;
+            if(auto fcp = fractional_coeff_polynomial_route(arena, parsed, simp_var))
+                return *fcp;
+            if(auto fcp = fractional_coeff_polynomial_route(arena, n, simp_var))
+                return *fcp;
             if(auto rat_sum = rational_sum_simplify_route(arena, parsed, simp_var))
                 return *rat_sum;
             if(auto rat_expr = rational_expression_simplify_route(arena, parsed, simp_var))
                 return *rat_expr;
+            if(auto cd = common_denominator_sum_route(arena, parsed))
+                return *cd;
             if(auto slc = symbolic_linear_coeff_simplify_route(arena, parsed, simp_var))
                 return *slc;
             if(auto logc = log_constant_simplify_route(arena, parsed)) return *logc;
