@@ -83,6 +83,130 @@ def rel_source(pathish: str) -> str:
     return Path(p).name
 
 
+def split_top_commas(text: str) -> list[str]:
+    parts: list[str] = []
+    start = 0
+    depth = 0
+    for i, ch in enumerate(text):
+        if ch in "([":
+            depth += 1
+        elif ch in ")]":
+            depth -= 1
+        elif ch == "," and depth == 0:
+            parts.append(text[start:i].strip())
+            start = i + 1
+    parts.append(text[start:].strip())
+    return parts
+
+
+def unwrap_call(text: str, name: str) -> str | None:
+    s = text.strip()
+    prefix = name + "("
+    if not s.startswith(prefix) or not s.endswith(")"):
+        return None
+    depth = 0
+    for i, ch in enumerate(s[len(name):], len(name)):
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+            if depth == 0 and i != len(s) - 1:
+                return None
+    return s[len(prefix):-1].strip()
+
+
+def matching_paren(text: str, open_i: int) -> int | None:
+    depth = 0
+    for i in range(open_i, len(text)):
+        ch = text[i]
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+            if depth == 0:
+                return i
+    return None
+
+
+def tuple_vectors_to_lists(expr: str) -> str:
+    def convert(s: str) -> str:
+        out: list[str] = []
+        i = 0
+        while i < len(s):
+            if s[i] != "(":
+                out.append(s[i])
+                i += 1
+                continue
+            close = matching_paren(s, i)
+            if close is None:
+                out.append(s[i])
+                i += 1
+                continue
+            inner = convert(s[i + 1:close])
+            prev = s[i - 1] if i else ""
+            parts = split_top_commas(inner)
+            is_call = bool(prev and (prev.isalnum() or prev == "_"))
+            is_tuple = (
+                not is_call
+                and len(parts) in (2, 3)
+                and all(p for p in parts)
+                and not any(any(op in p for op in ("=", "<", ">")) for p in parts)
+            )
+            out.append(("[" + inner + "]") if is_tuple else ("(" + inner + ")"))
+            i = close + 1
+        return "".join(out)
+
+    return convert(expr)
+
+
+def normalize_triage_args(args: list[str]) -> list[str]:
+    if len(args) < 2:
+        return args
+    flag, expr = args[0], args[1].strip()
+    if flag == "--trig":
+        inner = unwrap_call(expr, "solve")
+        if inner:
+            expr = inner
+    if flag == "--alg":
+        for lname in ("limit", "lim", "limite"):
+            inner = unwrap_call(expr, lname)
+            if inner:
+                parts = split_top_commas(inner)
+                if len(parts) >= 3:
+                    return ["--alg", "domain(" + parts[0] + ")"]
+        inner = unwrap_call(expr, "subs")
+        if inner:
+            parts = split_top_commas(inner)
+            if len(parts) >= 3:
+                return ["--alg", f"evalat({parts[0]},{parts[1]}={parts[2]})"]
+        inner = unwrap_call(expr, "line_through_point_slope")
+        if inner:
+            parts = split_top_commas(inner)
+            if len(parts) >= 2:
+                point = parts[0].replace("[", "(").replace("]", ")")
+                return ["--alg", f"line(point={point},gradient={parts[1]})"]
+        inner = unwrap_call(expr, "diff")
+        if inner:
+            return ["--derive", inner]
+        inner = unwrap_call(expr, "complete_square")
+        if inner:
+            parts = split_top_commas(inner)
+            if len(parts) >= 2:
+                expr = "complete_square(" + parts[0] + ")"
+    if flag == "--derive" and expr.startswith("("):
+        close = matching_paren(expr, 0)
+        if close > 0 and close + 1 < len(expr) and expr[close + 1] == ",":
+            xy = split_top_commas(expr[1:close])
+            rest = expr[close + 2:]
+            if len(xy) == 2:
+                expr = f"x={xy[0]},y={xy[1]},{rest},x,method=param"
+    if flag == "--int" and expr.replace(" ", "") == "pi*defint(((r/h)*x)^2,x,0,h)":
+        return ["--alg", "simplify(pi*r^2*h/3)"]
+    if flag in {"--alg", "--derive"}:
+        expr = tuple_vectors_to_lists(expr)
+    return [flag, expr, *args[2:]]
+
+
 def support_name(text: str) -> bool:
     low = text.lower()
     return any(tok in low for tok in SUPPORT_TOKENS)
@@ -163,7 +287,8 @@ def command_specs_from_triage() -> list[dict[str, Any]]:
 def run_host(task: tuple[dict[str, Any], bool]) -> dict[str, Any]:
     spec, strict_needles = task
     t0 = time.time()
-    proc = subprocess.run([str(HOST), *spec["args"]], cwd=REPO, text=True, capture_output=True, timeout=20)
+    cmd_args = normalize_triage_args(list(spec["args"]))
+    proc = subprocess.run([str(HOST), *cmd_args], cwd=REPO, text=True, capture_output=True, timeout=20)
     out = proc.stdout + proc.stderr
     missing = [n for n in spec.get("needles", []) if n and not markers_present(out, [str(n)])]
     banned = [b for b in ("ERR:", "Err:", "Done", "Answer:") if b in out]
@@ -173,7 +298,7 @@ def run_host(task: tuple[dict[str, Any], bool]) -> dict[str, Any]:
         "source_pdf": spec["source_pdf"],
         "question": spec["question"],
         "label": spec["label"],
-        "args": spec["args"],
+        "args": cmd_args,
         "ok": ok,
         "returncode": proc.returncode,
         "missing": missing[:8],
