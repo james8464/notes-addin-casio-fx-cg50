@@ -9671,7 +9671,7 @@ static NodeId mul_simple_expand_terms(Arena &a, NodeId lhs, NodeId rhs, std::str
     return casio::simplify(a, casio::mul(a, {lhs, rhs}));
 }
 
-static std::optional<NodeId> expand_simple_power(Arena &a, NodeId expr, std::string const &var)
+static std::optional<NodeId> expand_simple_power(Arena &a, NodeId expr, std::string const &var, bool allow_linear = false)
 {
     Node const &x = a.get(expr);
     if(x.kind != NodeKind::Pow) return std::nullopt;
@@ -9679,7 +9679,7 @@ static std::optional<NodeId> expand_simple_power(Arena &a, NodeId expr, std::str
     if(!e || e->den != 1 || e->num < 2 || e->num > 3) return std::nullopt;
     Node const &base = a.get(x.a);
     if(base.kind != NodeKind::Add || base.kids.size() > 3) return std::nullopt;
-    if(linear_coeff(a, x.a, var)) return std::nullopt;
+    if(!allow_linear && linear_coeff(a, x.a, var)) return std::nullopt;
     std::vector<NodeId> terms{casio::num(a, 1)};
     for(std::int64_t i = 0; i < e->num; ++i) {
         std::vector<NodeId> next;
@@ -9724,7 +9724,7 @@ static std::optional<NodeId> expand_mul_simple_powers(Arena &a, NodeId expr, std
     std::vector<NodeId> factors;
     bool hit = false;
     for(NodeId k : x.kids) {
-        if(auto e = expand_simple_power(a, k, var)) {
+        if(auto e = expand_simple_power(a, k, var, true)) {
             factors.push_back(*e);
             hit = true;
         } else factors.push_back(k);
@@ -9733,6 +9733,18 @@ static std::optional<NodeId> expand_mul_simple_powers(Arena &a, NodeId expr, std
     NodeId m = casio::simplify(a, casio::mul(a, factors));
     if(auto expanded = expand_single_add_product(a, m, var)) return expanded;
     return m;
+}
+
+static std::optional<NodeId> expand_div_numerator_simple_powers(Arena &a, NodeId expr, std::string const &var)
+{
+    Node const &x = a.get(expr);
+    if(x.kind != NodeKind::Div) return std::nullopt;
+    std::optional<NodeId> top;
+    if(auto p = expand_simple_power(a, x.a, var, true)) top = *p;
+    else if(auto p = expand_mul_simple_powers(a, x.a, var)) top = *p;
+    else if(auto p = expand_single_add_product(a, x.a, var)) top = *p;
+    if(!top || same_expr(a, *top, x.a)) return std::nullopt;
+    return casio::simplify(a, casio::div(a, *top, x.b));
 }
 
 static std::optional<NodeId> reciprocal_product_power(Arena &a, NodeId expr)
@@ -16803,6 +16815,29 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
     }
 
     if(x.kind == NodeKind::Mul) {
+        auto has_div_factor = [&](NodeId n) {
+            Node const &m = a.get(n);
+            if(m.kind != NodeKind::Mul) return false;
+            for(NodeId k : m.kids)
+                if(a.get(k).kind == NodeKind::Div) return true;
+            return false;
+        };
+        if(has_div_factor(expr)) {
+            NodeId merged = merge_product_divs(a, expr);
+            if(!has_div_factor(merged)) {
+                auto inner = integrate_giac_style(a, merged, var);
+                if(inner.result) {
+                    std::string before = format_expr_human(a, expr), after = format_expr_human(a, merged);
+                    if(before != after) out.steps.push_back(before + " = " + after);
+                    for(auto const &s : inner.steps) out.steps.push_back(s);
+                    out.result = *inner.result;
+                    return out;
+                }
+            }
+        }
+    }
+
+    if(x.kind == NodeKind::Mul) {
         Rational coeff{1, 1};
         std::vector<NodeId> coeffs, rest;
         for(NodeId kid : x.kids) {
@@ -16938,6 +16973,16 @@ static IntegrateResult integrate_giac_style(Arena &a, NodeId expr, std::string c
         auto inner = integrate_giac_style(a, *split, var);
         if(inner.result) {
             out.steps.push_back(format_expr_human(a, expr) + " = " + format_expr_human(a, *split));
+            for(auto const &s : inner.steps) out.steps.push_back(s);
+            out.result = *inner.result;
+            return out;
+        }
+    }
+
+    if(auto expanded_top = expand_div_numerator_simple_powers(a, expr, var)) {
+        auto inner = integrate_giac_style(a, *expanded_top, var);
+        if(inner.result) {
+            out.steps.push_back(format_expr_human(a, expr) + " = " + format_expr_human(a, *expanded_top));
             for(auto const &s : inner.steps) out.steps.push_back(s);
             out.result = *inner.result;
             return out;
@@ -18859,6 +18904,16 @@ static NodeId simplify_known_endpoint_values(Arena &a, NodeId n)
         NodeId exp = simplify_known_endpoint_values(a, x.b);
         Node const &base_node = a.get(base);
         auto exp_num = as_num(a, exp);
+        if(exp_num && exp_num->den > 1 && exp_num->den <= 8) {
+            if(auto b = as_num(a, base); b && (exp_num->num >= 0 || !r_zero(*b))) {
+                if(auto root = nth_root_rat_exact(*b, static_cast<int>(exp_num->den))) {
+                    Rational p = r_pow(*root, static_cast<int>(std::llabs(exp_num->num)));
+                    if(exp_num->num < 0) p = Rational{p.den, p.num};
+                    p.normalize();
+                    return a.num(p);
+                }
+            }
+        }
         if(exp_num && exp_num->num > 0) {
             if(auto b = as_num(a, base); b && r_zero(*b)) return casio::num(a, 0);
         }

@@ -2534,6 +2534,24 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "int",
+        "2/x^(3/2)*((7*x^3-5*x^2)/(4*x))",
+        ["= 7/2*sqrt(x) - 5/2*x^(-1/2)", "7/3*x^(3/2) - 5*sqrt(x) + C"],
+        ["ERR:", "No elementary primitive"],
+    ),
+    (
+        "int",
+        "defint(15*(2*x+1)^2/(2*sqrt(x)),x,0,1)",
+        ["15*(2*x + 1)^2/(2*sqrt(x)) = (60*x^2 + 60*x + 15)/(2*sqrt(x))", "F(1) = 47", "47"],
+        ["ERR:", "No elementary primitive"],
+    ),
+    (
+        "int",
+        "defint((2*cuberoot(x)-3)^2,x,1,8)",
+        ["(2*x^(1/3) - 3)^2 = 4*x^(2/3) - 12*x^(1/3) + 9", "F(8) = 24/5", "12/5"],
+        ["8^(5/3)", "ERR:", "No elementary primitive"],
+    ),
+    (
+        "int",
         "defint(1/(20-sqrt(x)),x,0,100)",
         ["u=sqrt(x)", "I=Int_0^10 2u/(20-u) du", "40*ln(2)-20"],
         ["ERR:", "No elementary primitive"],
