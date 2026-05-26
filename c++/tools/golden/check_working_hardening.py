@@ -108,6 +108,30 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "simplify(log(2,7)+log(2,2))",
+        ["= log(2,14)"],
+        ["ERR:", "Done", "ln(7)/ln(2) + 1"],
+    ),
+    (
+        "alg",
+        "simplify(3*log(5,2)+log(5,8))",
+        ["= log(5,64)"],
+        ["ERR:", "Done", "3*ln(2)/ln(5) + 3*ln(2)/ln(5)"],
+    ),
+    (
+        "alg",
+        "simplify(log10(8)+log10(5)-log10(0.5))",
+        ["= log10(80)"],
+        ["ERR:", "Done"],
+    ),
+    (
+        "alg",
+        "simplify(2*log(20,5)-2*log(20,0.25))",
+        ["= log(20,400)", "\n2\n"],
+        ["ERR:", "Done"],
+    ),
+    (
+        "alg",
         "solve([a*r^4=12,a*r^5=-8],[a,r])",
         ["r^(1) = -2/3", "r = -2/3", "(a,r) = [(243/4,-2/3)]"],
         ["ERR:", "Done", "(a,r) = []"],

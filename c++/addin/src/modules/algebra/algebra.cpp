@@ -11066,7 +11066,61 @@ static std::optional<std::string> exact_log_base_value_key(std::string const &ke
     if(arg == "1") return std::string("0");
     if(auto n = integer_power_of_base(base, arg)) return std::to_string(*n);
     if(auto n = integer_power_of_base(arg, base); n && *n != 0) return std::string("1/") + std::to_string(*n);
+    auto rb = parse_rational_key(base);
+    auto ra = parse_rational_key(arg);
+    if(rb && ra && rb->num > 0 && rb->den > 0 && ra->num > 0 && ra->den > 0 &&
+       !(rb->num == rb->den)) {
+        for(int p = -12; p <= 12; ++p) {
+            Rational v = r_pow_int(*rb, p);
+            if(v.num == ra->num && v.den == ra->den) return std::to_string(p);
+        }
+    }
     return std::nullopt;
+}
+
+static std::optional<std::vector<std::string>> log_sum_to_single_route(Arena &a, NodeId parsed)
+{
+    std::vector<NodeId> terms;
+    add_terms_flat(a, parsed, terms);
+    if(terms.size() < 2) return std::nullopt;
+    bool saw_log = false;
+    NodeId common_base = 0;
+    std::vector<NodeId> top, bot;
+    for(NodeId term : terms) {
+        Rational coef;
+        NodeId body = 0;
+        bool has_body = false;
+        if(!split_coeff_body(a, term, coef, body, has_body) || !has_body) return std::nullopt;
+        NodeId arg = 0, base = 0;
+        bool has_base = false;
+        if(!log_piece(a, body, arg, base, has_base)) return std::nullopt;
+        if(!has_base) return std::nullopt;
+        if(!saw_log)
+            common_base = base;
+        else {
+            if(!casio::same_by_sig(a, common_base, base)) return std::nullopt;
+        }
+        saw_log = true;
+        if(is_zero(coef)) continue;
+        NodeId factor = log_power_factor(a, arg, coef);
+        if(coef.num > 0) top.push_back(factor);
+        else bot.push_back(factor);
+    }
+    if(!saw_log || top.empty()) return std::nullopt;
+    NodeId total = product_or_one(a, top);
+    if(!bot.empty())
+        total = exact_eval_simplify(a, casio::div(a, total, product_or_one(a, bot)));
+    else
+        total = exact_eval_simplify(a, total);
+    std::string total_txt = format_expr(a, total);
+    std::string base_txt = format_expr(a, common_base);
+    std::string log_txt = base_txt == "10" ? "log10(" + total_txt + ")" : "log(" + base_txt + "," + total_txt + ")";
+    std::string ans = log_txt;
+    if(auto exact = exact_log_base_value_key("log(" + base_txt + "," + total_txt + ")"))
+        ans = *exact;
+    std::vector<std::string> out{format_expr(a, parsed), "= " + log_txt};
+    out.push_back(ans);
+    return out;
 }
 
 static bool log_base_rational_value(std::string const &base, Rational v, Rational &out)
@@ -37928,6 +37982,7 @@ algebra_compare_transform_modes:
         if(!eq) {
             NodeId parsed = casio::parse_expr(arena, req.expr);
             auto pre = casio::build_exam_prelude(arena, req.expr, parsed);
+            if(auto logs = log_sum_to_single_route(arena, parsed)) return *logs;
             if(req.method == "numeric" && !has_symbols(arena, parsed)) {
                 auto v = eval_node(arena, parsed, "x", 0.0);
                 if(v && std::isfinite(*v)) {
