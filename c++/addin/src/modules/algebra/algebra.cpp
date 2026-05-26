@@ -12170,6 +12170,23 @@ static std::optional<int> integer_power_of_base(std::string const &base_text, st
     return std::nullopt;
 }
 
+static std::optional<int> power_of_base_text(Arena &a, std::string const &base_text, std::string const &value_text)
+{
+    if(auto m = integer_power_of_base(base_text, value_text)) return m;
+    try {
+        NodeId base = casio::parse_expr(a, base_text);
+        NodeId value = casio::parse_expr(a, value_text);
+        if(casio::same_by_sig(a, base, value)) return 1;
+        Node const &v = a.get(value);
+        if(v.kind == NodeKind::Pow && casio::same_by_sig(a, base, v.a)) {
+            auto e = as_num(a, v.b);
+            if(e && e->den == 1 && e->num > 0 && e->num <= 12) return static_cast<int>(e->num);
+        }
+    }
+    catch(...) {}
+    return std::nullopt;
+}
+
 static std::string format_power_answer(std::string const &base, Rational expo)
 {
     expo.normalize();
@@ -14442,6 +14459,132 @@ static std::optional<std::vector<std::string>> custom_log_base_route(
     };
     if(auto r = run_log_difference(sides[0], sides[1])) return *r;
     if(auto r = run_log_difference(sides[1], sides[0])) return *r;
+
+    // log_b(A)-log_{b^m}(B)=c  =>  m*log_b(A)-log_b(B)=m*c.
+    auto run_power_related_log_difference = [&](std::string const &log_side, std::string const &value_side) -> std::optional<std::vector<std::string>> {
+        auto diff = parse_log_difference(log_side);
+        auto exponent = parse_rational_key(value_side);
+        if(!diff || !exponent || diff->first.base == diff->second.base) return std::nullopt;
+
+        std::string base;
+        Rational cA{1, 1}, cB{1, 1};
+        if(auto m = integer_power_of_base(diff->first.base, diff->second.base); m && *m > 1) {
+            base = diff->first.base;
+            cB = Rational{1, *m};
+        }
+        else if(auto m = integer_power_of_base(diff->second.base, diff->first.base); m && *m > 1) {
+            base = diff->second.base;
+            cA = Rational{1, *m};
+        }
+        else return std::nullopt;
+
+        auto lcm_ll = [](long long x, long long y) {
+            x = std::llabs(x);
+            y = std::llabs(y);
+            return x / std::gcd(x, y) * y;
+        };
+        long long mult = lcm_ll(lcm_ll(cA.den, cB.den), exponent->den);
+        Rational pA = r_mul(cA, Rational{mult, 1});
+        Rational pB = r_mul(cB, Rational{mult, 1});
+        Rational target_exp = r_mul(*exponent, Rational{mult, 1});
+        if(pA.den != 1 || pB.den != 1 || pA.num <= 0 || pB.num <= 0 || pA.num > 6 || pB.num > 6)
+            return std::nullopt;
+        auto factor = integer_base_power_rational(base, target_exp);
+        if(!factor) return std::nullopt;
+
+        auto pow_key = [](std::string const &arg, long long p) {
+            if(p == 1) return "(" + arg + ")";
+            return "(" + arg + ")^" + std::to_string(p);
+        };
+        std::string A = format_key_expr(a, diff->first.arg);
+        std::string B = format_key_expr(a, diff->second.arg);
+        std::string factor_text = format_rat_plain(*factor);
+        std::string left_key = pow_key(diff->first.arg, pA.num);
+        std::string right_key = pow_key(diff->second.arg, pB.num);
+        std::string ratio_key = "(" + left_key + ")/(" + right_key + ")";
+        std::string poly_key = "(" + left_key + ")-(" + factor_text + ")*(" + right_key + ")";
+
+        try {
+            NodeId poly_node = casio::simplify(a, casio::parse_expr(a, poly_key));
+            auto rp = ratpoly_of_node(a, poly_node, var);
+            if(!rp.ok) return std::nullopt;
+            Poly2 prim = primitive_poly2(rp.num);
+
+            std::vector<std::string> res;
+            res.push_back("Domain: " + A + " > 0");
+            res.push_back("Domain: " + B + " > 0");
+            if(cA.den != 1)
+                res.push_back("log(" + diff->first.base + "," + A + ") = " + format_rat_plain(cA) + "*log(" + base + "," + A + ")");
+            if(cB.den != 1)
+                res.push_back("log(" + diff->second.base + "," + B + ") = " + format_rat_plain(cB) + "*log(" + base + "," + B + ")");
+            res.push_back(format_rat_plain(pA) + "*log(" + base + "," + A + ") - " +
+                          format_rat_plain(pB) + "*log(" + base + "," + B + ") = " +
+                          format_rat_plain(target_exp));
+            res.push_back("log(" + base + "," + format_key_expr(a, ratio_key) + ") = " + format_rat_plain(target_exp));
+            res.push_back(format_key_expr(a, ratio_key) + " = " + factor_text);
+            res.push_back(format_expr(a, poly2_to_node(a, prim, var)) + " = 0");
+            auto raw = solve_poly2(a, prim, var);
+            auto valid = filter_solutions_by_original_key(a, raw, "(" + sides[0] + ")-(" + sides[1] + ")", var);
+            append_rejected_by_domain(res, var, raw, valid);
+            append_answer(res, var, valid);
+            return res;
+        }
+        catch(...) {
+            return std::nullopt;
+        }
+    };
+    if(auto r = run_power_related_log_difference(sides[0], sides[1])) return *r;
+    if(auto r = run_power_related_log_difference(sides[1], sides[0])) return *r;
+
+    // log_b(A)=log_{b^m}(B)  =>  A^m=B.
+    if(lhs_terms.size() == 1 && rhs_terms.size() == 1) {
+        auto l = parse_log_term_key(lhs_terms[0]);
+        auto r = parse_log_term_key(rhs_terms[0]);
+        if(l && r && l->coeff.num == 1 && l->coeff.den == 1 && r->coeff.num == 1 && r->coeff.den == 1) {
+            std::string base;
+            int lp = 1, rp = 1;
+            if(auto m = power_of_base_text(a, l->base, r->base)) {
+                base = l->base;
+                rp = *m;
+            }
+            else if(auto m = power_of_base_text(a, r->base, l->base)) {
+                base = r->base;
+                lp = *m;
+            }
+            if(!base.empty() && lp != rp && lp > 0 && rp > 0 && lp <= 6 && rp <= 6) {
+                auto pow_key = [](std::string const &arg, int p) {
+                    return p == 1 ? "(" + arg + ")" : "(" + arg + ")^" + std::to_string(p);
+                };
+                std::string A = format_key_expr(a, l->arg);
+                std::string B = format_key_expr(a, r->arg);
+                std::string left_key = pow_key(l->arg, rp);
+                std::string right_key = pow_key(r->arg, lp);
+                std::string poly_key = "(" + left_key + ")-(" + right_key + ")";
+                try {
+                    NodeId poly_node = casio::simplify(a, casio::parse_expr(a, poly_key));
+                    auto rpoly = ratpoly_of_node(a, poly_node, var);
+                    if(rpoly.ok) {
+                        Poly2 prim = primitive_poly2(rpoly.num);
+                        std::vector<std::string> res;
+                        res.push_back("Domain: " + A + " > 0");
+                        res.push_back("Domain: " + B + " > 0");
+                        if(lp != 1) res.push_back("log(" + l->base + "," + A + ") = 1/" + std::to_string(lp) + "*log(" + base + "," + A + ")");
+                        if(rp != 1) res.push_back("log(" + r->base + "," + B + ") = 1/" + std::to_string(rp) + "*log(" + base + "," + B + ")");
+                        res.push_back(std::to_string(rp) + "*log(" + base + "," + A + ") = " +
+                                      std::to_string(lp) + "*log(" + base + "," + B + ")");
+                        res.push_back(format_key_expr(a, left_key) + " = " + format_key_expr(a, right_key));
+                        res.push_back(format_expr(a, poly2_to_node(a, prim, var)) + " = 0");
+                        auto raw = solve_poly2(a, prim, var);
+                        auto valid = filter_solutions_by_original_key(a, raw, "(" + sides[0] + ")-(" + sides[1] + ")", var);
+                        append_rejected_by_domain(res, var, raw, valid);
+                        append_answer(res, var, valid);
+                        return res;
+                    }
+                }
+                catch(...) {}
+            }
+        }
+    }
 
     // log_x(A)=c  =>  x^c=A, with x>0 and x!=1.
     if(lhs_terms.size() == 1 && rhs_terms.size() == 1) {
@@ -20174,21 +20317,27 @@ static std::optional<std::vector<std::string>> log_law_system2_route(Arena &a, s
     std::vector<NodeId> cleared;
     std::vector<std::string> domains;
     std::vector<std::string> out;
+    bool saw_log = false;
     for(auto const &txt : eq_texts) {
         auto eq = casio::parse_equation(a, txt);
         if(!eq) return std::nullopt;
         NodeId residual = casio::simplify(a, sub_node(a, eq->lhs, eq->rhs));
-        if(!contains_exp_log_exact(a, residual)) return std::nullopt;
-        collect_log_domain_args(a, residual, domains);
-        auto alts = log_residual_alts(a, residual);
-        if(!alts) return std::nullopt;
-        NodeId c = exact_eval_simplify(a, alts->cleared);
-        cleared.push_back(c);
         out.push_back(format_expr(a, eq->lhs) + " = " + format_expr(a, eq->rhs));
-        if(auto direct = same_log_arg_equation(a, *eq)) out.push_back(*direct);
-        out.push_back("log laws: " + format_expr(a, c) + " = 0");
+        if(contains_exp_log_exact(a, residual)) {
+            collect_log_domain_args(a, residual, domains);
+            auto alts = log_residual_alts(a, residual);
+            if(!alts) return std::nullopt;
+            NodeId c = exact_eval_simplify(a, alts->cleared);
+            cleared.push_back(c);
+            if(auto direct = same_log_arg_equation(a, *eq)) out.push_back(*direct);
+            out.push_back("log laws: " + format_expr(a, c) + " = 0");
+            saw_log = true;
+        }
+        else {
+            cleared.push_back(exact_eval_simplify(a, residual));
+        }
     }
-    if(cleared.size() != 2) return std::nullopt;
+    if(cleared.size() != 2 || !saw_log) return std::nullopt;
     if(!domains.empty()) {
         std::string line = "Domain: ";
         for(std::size_t i = 0; i < domains.size(); ++i) {
@@ -20199,6 +20348,10 @@ static std::optional<std::vector<std::string>> log_law_system2_route(Arena &a, s
     }
     std::string syn = "solve([" + format_expr(a, cleared[0]) + "=0," +
                       format_expr(a, cleared[1]) + "=0],[" + vars[0] + "," + vars[1] + "])";
+    if(auto solved = product_sum_system_route(a, syn)) {
+        out.insert(out.end(), solved->begin(), solved->end());
+        return out;
+    }
     if(auto solved = linear_substitution2_system_route_any_order(a, syn)) {
         out.insert(out.end(), solved->begin(), solved->end());
         return out;
@@ -20334,7 +20487,18 @@ static std::optional<std::vector<std::string>> log_monomial_system2_route(Arena 
             if(!log_piece(a, body, arg, base, has_base) || !has_base) return false;
             std::string bt = compact_input_key(format_expr(a, base));
             if(b.empty()) b = bt;
-            else if(b != bt) return false;
+            else if(b != bt) {
+                if(auto m = integer_power_of_base(b, bt); m && *m > 1) {
+                    c = r_div(c, Rational{*m, 1});
+                }
+                else if(auto m = integer_power_of_base(bt, b); m && *m > 1) {
+                    Rational scale{1, *m};
+                    for(Rational &v : row) v = r_mul(v, scale);
+                    c0 = r_mul(c0, scale);
+                    b = bt;
+                }
+                else return false;
+            }
             std::vector<Rational> exps(vars.size(), Rational{0, 1});
             Rational coeff{1, 1};
             if(!log_monomial_exponents(a, arg, vars, exps, coeff)) return false;
@@ -20414,6 +20578,122 @@ static std::optional<std::vector<std::string>> log_monomial_system2_route(Arena 
     out.push_back(vars[1] + " = " + ys);
     out.push_back("(" + vars[0] + "," + vars[1] + ") = [(" + xs + "," + ys + ")]");
     return out;
+}
+
+static std::optional<std::vector<std::string>> log_monomial_with_algebra_system2_route(Arena &a, std::string const &expr)
+{
+    std::vector<std::string> eq_texts, vars;
+    if(!extract_system_expr_vars_n(expr, eq_texts, vars, 2)) return std::nullopt;
+
+    std::vector<std::string> converted;
+    std::vector<std::string> out;
+    std::vector<std::string> domains;
+    int log_count = 0;
+
+    auto convert_log_eq = [&](std::string const &txt) -> std::optional<std::string> {
+        auto eq = casio::parse_equation(a, txt);
+        if(!eq) return std::nullopt;
+        NodeId residual = casio::simplify(a, sub_node(a, eq->lhs, eq->rhs));
+        if(!contains_exp_log_exact(a, residual)) return std::nullopt;
+        collect_log_domain_args(a, residual, domains);
+        std::vector<NodeId> terms;
+        add_terms_flat(a, residual, terms);
+        std::vector<Rational> row(vars.size(), Rational{0, 1});
+        Rational c0{0, 1};
+        std::string base_key;
+        for(NodeId t : terms) {
+            Rational c;
+            NodeId body = 0;
+            bool has_body = false;
+            split_coeff_body(a, t, c, body, has_body);
+            if(!has_body) {
+                c0 = r_add(c0, c);
+                continue;
+            }
+            NodeId arg = 0, base = 0;
+            bool has_base = false;
+            if(!log_piece(a, body, arg, base, has_base) || !has_base) return std::optional<std::string>{};
+            std::string bt = compact_input_key(format_expr(a, base));
+            if(base_key.empty()) base_key = bt;
+            else if(base_key != bt) {
+                if(auto m = integer_power_of_base(base_key, bt); m && *m > 1) {
+                    c = r_div(c, Rational{*m, 1});
+                }
+                else if(auto m = integer_power_of_base(bt, base_key); m && *m > 1) {
+                    Rational scale{1, *m};
+                    for(Rational &v : row) v = r_mul(v, scale);
+                    c0 = r_mul(c0, scale);
+                    base_key = bt;
+                }
+                else return std::optional<std::string>{};
+            }
+            std::vector<Rational> exps(vars.size(), Rational{0, 1});
+            Rational coeff{1, 1};
+            if(!log_monomial_exponents(a, arg, vars, exps, coeff)) return std::optional<std::string>{};
+            if(!(coeff.num == 1 && coeff.den == 1)) {
+                Rational lc;
+                if(!log_base_rational_value(base_key, coeff, lc)) return std::optional<std::string>{};
+                c0 = r_add(c0, r_mul(c, lc));
+            }
+            for(std::size_t i = 0; i < vars.size(); ++i)
+                row[i] = r_add(row[i], r_mul(c, exps[i]));
+        }
+        if(base_key.empty()) return std::nullopt;
+        Rational target = r_neg(c0);
+        long long mult = target.den;
+        for(auto const &r : row) mult = mult / std::gcd(mult, r.den) * r.den;
+        Rational rhs_exp = r_mul(target, Rational{mult, 1});
+        if(rhs_exp.den != 1) return std::optional<std::string>{};
+        auto rhs_val = integer_base_power_rational(base_key, rhs_exp);
+        if(!rhs_val) return std::optional<std::string>{};
+        std::vector<NodeId> top, bot;
+        for(std::size_t i = 0; i < vars.size(); ++i) {
+            Rational e = r_mul(row[i], Rational{mult, 1});
+            if(e.den != 1 || std::llabs(e.num) > 6) return std::optional<std::string>{};
+            if(e.num == 0) continue;
+            NodeId v = casio::sym(a, vars[i]);
+            NodeId p = std::llabs(e.num) == 1 ? v : casio::power(a, v, casio::num(a, std::llabs(e.num)));
+            (e.num > 0 ? top : bot).push_back(p);
+        }
+        if(top.empty()) top.push_back(one_node(a));
+        NodeId lhs = product_or_one(a, top);
+        if(!bot.empty()) lhs = exact_eval_simplify(a, casio::div(a, lhs, product_or_one(a, bot)));
+        NodeId rhs = casio::num(a, rhs_val->num, rhs_val->den);
+        out.push_back(format_expr(a, eq->lhs) + " = " + format_expr(a, eq->rhs));
+        out.push_back("log laws: " + format_expr(a, lhs) + " = " + format_expr(a, rhs));
+        return format_expr(a, lhs) + "=" + format_expr(a, rhs);
+    };
+
+    for(auto const &txt : eq_texts) {
+        if(auto c = convert_log_eq(txt)) {
+            converted.push_back(*c);
+            ++log_count;
+        }
+        else converted.push_back(txt);
+    }
+    if(log_count == 0) return std::nullopt;
+    if(!domains.empty()) {
+        std::string line = "Domain: ";
+        for(std::size_t i = 0; i < domains.size(); ++i) {
+            if(i) line += ", ";
+            line += domains[i] + " > 0";
+        }
+        out.insert(out.begin(), line);
+    }
+    std::string syn = "solve([" + converted[0] + "," + converted[1] + "],[" + vars[0] + "," + vars[1] + "])";
+    if(auto ps = product_sum_system_route(a, syn)) {
+        out.insert(out.end(), ps->begin(), ps->end());
+        return out;
+    }
+    if(auto sub = linear_substitution2_system_route_any_order(a, syn)) {
+        out.insert(out.end(), sub->begin(), sub->end());
+        return out;
+    }
+    if(auto lin = exact_linear2_system_route(a, syn)) {
+        out.insert(out.end(), lin->begin(), lin->end());
+        return out;
+    }
+    return std::nullopt;
 }
 
 static bool parse_log_power_eq_key(std::string const &eq, std::string const &xvar, std::string const &yvar, Rational &m)
@@ -37202,6 +37482,7 @@ static std::optional<std::vector<std::string>> system_solve_route(Arena &a, std:
     if(auto elsq = exp_log_square_system_route(a, expr)) return *elsq;
     if(auto lpscale = log_power_scaled_system_route(a, expr)) return *lpscale;
     if(auto lms = log_monomial_system2_route(a, expr)) return *lms;
+    if(auto lma = log_monomial_with_algebra_system2_route(a, expr)) return *lma;
     if(auto lls = log_law_system2_route(a, expr)) return *lls;
     if(auto lps = log_power_linear2_system_route(a, expr)) return *lps;
     if(auto rpp = reciprocal_power_plus_var_system_route(a, expr)) return *rpp;
@@ -39915,7 +40196,12 @@ algebra_compare_transform_modes:
             }
             res.push_back(solve_var + " = " + exact);
             res.push_back(solve_var + " = [" + exact + "]");
-            if(!has_symbols(arena, value)) {
+            bool exact_symbolic_constant =
+                exact.find("ln(") != std::string::npos ||
+                exact.find("log(") != std::string::npos ||
+                exact.find("pi") != std::string::npos ||
+                exact.find('e') != std::string::npos;
+            if(!exact_symbolic_constant && !has_symbols(arena, value)) {
                 auto vv = eval_node(arena, value, solve_var, 0.0);
                 if(vv && std::isfinite(*vv)) {
                     std::string nval = format_double_compact(*vv);
@@ -39969,6 +40255,10 @@ algebra_compare_transform_modes:
             }
             if(auto log_quad = log_quadratic_common_factor_route(arena, lhs, rhs, solve_var)) return *log_quad;
         }
+        if(auto log_route = custom_log_base_route(arena, equation_text, solve_var)) {
+            out.insert(out.end(), log_route->begin(), log_route->end());
+            return out;
+        }
         if(auto log_lin = log_linear_combination_exact_route(arena, lhs, rhs, solve_var)) return *log_lin;
         if(auto log_sym = log_linear_symbolic_route(arena, rearr, solve_var)) {
             out.insert(out.end(), log_sym->begin(), log_sym->end());
@@ -39982,10 +40272,6 @@ algebra_compare_transform_modes:
         }
         if(auto log_pow = log_power_substitution_route(arena, equation_text, solve_var)) {
             out.insert(out.end(), log_pow->begin(), log_pow->end());
-            return out;
-        }
-        if(auto log_route = custom_log_base_route(arena, equation_text, solve_var)) {
-            out.insert(out.end(), log_route->begin(), log_route->end());
             return out;
         }
         if(auto log_single = log_single_arg_exact_route(arena, rearr, solve_var)) {
