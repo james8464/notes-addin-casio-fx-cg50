@@ -16056,13 +16056,110 @@ static std::optional<std::vector<std::string>> exponential_inequality_route(Aren
     return parse_side(rhs, lhs, flip_relop(op));
 }
 
+struct SimpleSurdLinear
+{
+    Rational q{0, 1};
+    Rational s{0, 1};
+    Rational rad{1, 1};
+    bool has_surd = false;
+};
+
+static bool normalize_surd_part(Rational &coef, Rational &rad)
+{
+    if(rad.num <= 0 || rad.den <= 0) return false;
+    if(rad.num > 1000000000LL || rad.den > 1000000000LL) return false;
+    long long n = rad.num * rad.den;
+    long long sq = 1;
+    for(long long k = 2; k * k <= n; ++k)
+        while(n % (k * k) == 0) {
+            sq *= k;
+            n /= k * k;
+        }
+    coef = r_mul(coef, Rational{sq, rad.den});
+    coef.normalize();
+    rad = Rational{n, 1};
+    return true;
+}
+
+static bool align_surd(SimpleSurdLinear &dst, SimpleSurdLinear const &src)
+{
+    if(!src.has_surd || is_zero(src.s)) return true;
+    if(!dst.has_surd || is_zero(dst.s)) {
+        dst.rad = src.rad;
+        dst.has_surd = true;
+        return true;
+    }
+    return dst.rad.num == src.rad.num && dst.rad.den == src.rad.den;
+}
+
+static std::optional<SimpleSurdLinear> simple_surd_linear(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Num) return SimpleSurdLinear{x.num, Rational{0, 1}, Rational{1, 1}, false};
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Sqrt) {
+        auto r = as_num(a, exact_eval_simplify(a, x.a));
+        if(!r) return std::nullopt;
+        Rational c{1, 1}, rad = *r;
+        if(!normalize_surd_part(c, rad)) return std::nullopt;
+        if(rad.num == rad.den) return SimpleSurdLinear{c, Rational{0, 1}, Rational{1, 1}, false};
+        return SimpleSurdLinear{Rational{0, 1}, c, rad, true};
+    }
+    if(x.kind == NodeKind::Add) {
+        SimpleSurdLinear out;
+        for(NodeId kid : x.kids) {
+            auto p = simple_surd_linear(a, kid);
+            if(!p || !align_surd(out, *p)) return std::nullopt;
+            out.q = r_add(out.q, p->q);
+            out.s = r_add(out.s, p->s);
+        }
+        if(is_zero(out.s)) out.has_surd = false;
+        return out;
+    }
+    if(x.kind == NodeKind::Mul) {
+        SimpleSurdLinear out{Rational{1, 1}, Rational{0, 1}, Rational{1, 1}, false};
+        for(NodeId kid : x.kids) {
+            auto p = simple_surd_linear(a, kid);
+            if(!p) return std::nullopt;
+            if(!align_surd(out, *p)) return std::nullopt;
+            Rational rad = out.has_surd ? out.rad : p->rad;
+            Rational q = r_add(r_mul(out.q, p->q), r_mul(r_mul(out.s, p->s), rad));
+            Rational s = r_add(r_mul(out.q, p->s), r_mul(out.s, p->q));
+            out = SimpleSurdLinear{q, s, rad, out.has_surd || p->has_surd};
+        }
+        if(is_zero(out.s)) out.has_surd = false;
+        return out;
+    }
+    if(x.kind == NodeKind::Div) {
+        auto u = simple_surd_linear(a, x.a);
+        auto v = simple_surd_linear(a, x.b);
+        if(!u || !v) return std::nullopt;
+        if(!align_surd(*u, *v)) return std::nullopt;
+        Rational rad = u->has_surd ? u->rad : v->rad;
+        Rational den = r_sub(r_mul(v->q, v->q), r_mul(r_mul(v->s, v->s), rad));
+        if(is_zero(den)) return std::nullopt;
+        Rational q = r_div(r_sub(r_mul(u->q, v->q), r_mul(r_mul(u->s, v->s), rad)), den);
+        Rational s = r_div(r_sub(r_mul(u->s, v->q), r_mul(u->q, v->s)), den);
+        return SimpleSurdLinear{q, s, rad, !is_zero(s)};
+    }
+    return std::nullopt;
+}
+
+static std::optional<std::string> simple_surd_linear_text(Arena &a, NodeId n)
+{
+    auto p = simple_surd_linear(a, exact_eval_simplify(a, n));
+    if(!p || !p->has_surd || is_zero(p->s)) return std::nullopt;
+    std::string term = multiply_root_text(p->s, sqrt_rational_surd_text(a, p->rad));
+    if(is_zero(p->q)) return term;
+    std::string q = format_rat_plain(p->q);
+    return q + (term.rfind("-", 0) == 0 ? " - " + term.substr(1) : " + " + term);
+}
+
 static std::optional<std::vector<std::string>> symbolic_linear_inequality_route(Arena &a, std::string expr)
 {
-    std::string key = compact_input_key(expr);
-    if(key.rfind("solve(", 0) == 0 && key.size() > 7 && key.back() == ')')
-        key = key.substr(6, key.size() - 7);
+    std::string key = trim_text(expr);
+    if(auto inner = unwrap_call_text(key, "solve"); !inner.empty()) key = inner;
     auto args = split_top_key(key, ',');
-    if(args.size() < 2 || args[1].empty()) return std::nullopt;
+    if(args.empty()) return std::nullopt;
     std::size_t pos = 0;
     std::string op;
     if(!find_top_rel(args[0], pos, op)) return std::nullopt;
@@ -16071,20 +16168,28 @@ static std::optional<std::vector<std::string>> symbolic_linear_inequality_route(
     NodeId lhs = casio::parse_expr(a, lhs_s);
     NodeId rhs = casio::parse_expr(a, rhs_s);
     NodeId residual = exact_eval_simplify(a, casio::add(a, {lhs, neg_node(a, rhs)}));
-    std::string var = args[1];
+    std::string var = args.size() >= 2 ? args[1] : "";
     std::vector<std::string> syms;
     collect_symbols(a, residual, syms);
-    if(syms.size() == 1 && syms[0] == var) return std::nullopt;
+    if(var.empty()) {
+        if(syms.size() != 1) return std::nullopt;
+        var = syms[0];
+    }
     auto lin = symbolic_linear_parts(a, residual, var);
     if(!lin || contains_symbol(a, lin->m, var) || contains_symbol(a, lin->c, var)) return std::nullopt;
-    auto m = as_num(a, exact_eval_simplify(a, lin->m));
-    if(!m || m->num == 0) return std::nullopt;
+    NodeId m_node = exact_eval_simplify(a, lin->m);
+    auto m = as_num(a, m_node);
+    auto m_eval = m ? std::optional<double>((double)m->num / (double)m->den) : eval_node_env(a, m_node, {});
+    if(!m_eval || !std::isfinite(*m_eval) || std::fabs(*m_eval) < 1e-12) return std::nullopt;
+    if(syms.size() == 1 && syms[0] == var && m) return std::nullopt;
     NodeId rhs_var = exact_eval_simplify(a, casio::div(a, neg_node(a, lin->c), lin->m));
-    std::string final_op = m->num < 0 ? flip_relop(op) : op;
+    std::string final_op = *m_eval < 0 ? flip_relop(op) : op;
+    std::string rhs_text = format_expr(a, rhs_var);
+    if(auto t = simple_surd_linear_text(a, rhs_var); t && t->size() <= rhs_text.size() + 8) rhs_text = *t;
     std::vector<std::string> out;
     out.push_back(format_expr(a, residual) + " " + op + " 0");
     out.push_back(format_expr(a, lin->m) + "*" + var + " " + op + " " + format_expr(a, neg_node(a, lin->c)));
-    out.push_back(var + " " + final_op + " " + format_expr(a, rhs_var));
+    out.push_back(var + " " + final_op + " " + rhs_text);
     if(auto factored = difference_of_squares_factor_text(a, rhs_var))
         out.push_back(var + " " + final_op + " " + *factored);
     return out;
