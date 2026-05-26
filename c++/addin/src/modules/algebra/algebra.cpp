@@ -177,6 +177,7 @@ static std::optional<double> eval_node(Arena &a, NodeId id, std::string const &v
 static std::optional<double> eval_node_env(Arena &a, NodeId id, std::vector<std::pair<std::string, double>> const &env);
 static std::string format_double_compact(double x);
 static std::string format_rat(Arena &a, Rational r);
+static std::string format_rat_plain(Rational r);
 static std::optional<Rational> as_num(Arena &a, NodeId n);
 static Rational r_pow_int(Rational r, int p);
 static std::optional<Rational> rational_power_factor(Rational base, Rational power);
@@ -8643,6 +8644,314 @@ next_root:
     std::sort(roots.begin(), roots.end(), [](Rational a, Rational b) { return r_cmp(a, b) < 0; });
     roots.erase(std::unique(roots.begin(), roots.end(), [](Rational a, Rational b) { return r_cmp(a, b) == 0; }), roots.end());
     return roots;
+}
+
+static bool rational_power_monomial(Arena &a, NodeId n, std::string const &var, Rational &coef, Rational &power)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Num) {
+        coef = r_mul(coef, x.num);
+        return true;
+    }
+    if(x.kind == NodeKind::Sym && x.text == var) {
+        power = r_add(power, Rational{1, 1});
+        return true;
+    }
+    if(x.kind == NodeKind::Fn && x.fkind == FnKind::Sqrt && is_sym_var(a, x.a, var)) {
+        power = r_add(power, Rational{1, 2});
+        return true;
+    }
+    if(x.kind == NodeKind::Pow) {
+        auto e = as_num(a, x.b);
+        if(!e) return false;
+        Node const &b = a.get(x.a);
+        if(b.kind == NodeKind::Sym && b.text == var) {
+            power = r_add(power, *e);
+            return true;
+        }
+        if(b.kind == NodeKind::Fn && b.fkind == FnKind::Sqrt && is_sym_var(a, b.a, var)) {
+            power = r_add(power, r_div(*e, Rational{2, 1}));
+            return true;
+        }
+        if(e->den == 1) {
+            Rational bc{1, 1}, bp{0, 1};
+            if(rational_power_monomial(a, x.a, var, bc, bp)) {
+                int k = (int)e->num;
+                coef = r_mul(coef, r_pow_int(bc, k));
+                power = r_add(power, r_mul(bp, Rational{k, 1}));
+                return true;
+            }
+        }
+        return false;
+    }
+    if(x.kind == NodeKind::Mul) {
+        for(NodeId k : x.kids)
+            if(!rational_power_monomial(a, k, var, coef, power)) return false;
+        return true;
+    }
+    if(x.kind == NodeKind::Div) {
+        Rational cn{1, 1}, pn{0, 1}, cd{1, 1}, pd{0, 1};
+        if(!rational_power_monomial(a, x.a, var, cn, pn)) return false;
+        if(!rational_power_monomial(a, x.b, var, cd, pd) || is_zero(cd)) return false;
+        coef = r_mul(coef, r_div(cn, cd));
+        power = r_add(power, r_sub(pn, pd));
+        return true;
+    }
+    return false;
+}
+
+static std::optional<std::vector<std::pair<Rational, Rational>>> rational_power_sum(Arena &a, NodeId n, std::string const &var)
+{
+    auto add_pair = [](std::vector<std::pair<Rational, Rational>> &out, Rational p, Rational c) {
+        if(is_zero(c)) return;
+        for(auto &q : out) {
+            if(r_cmp(q.first, p) == 0) {
+                q.second = r_add(q.second, c);
+                return;
+            }
+        }
+        out.push_back({p, c});
+    };
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Add) {
+        std::vector<std::pair<Rational, Rational>> out;
+        for(NodeId k : x.kids) {
+            auto sub = rational_power_sum(a, k, var);
+            if(!sub) return std::nullopt;
+            for(auto const &pc : *sub) add_pair(out, pc.first, pc.second);
+        }
+        return out;
+    }
+    if(x.kind == NodeKind::Mul) {
+        std::vector<std::pair<Rational, Rational>> acc{{Rational{0, 1}, Rational{1, 1}}};
+        for(NodeId k : x.kids) {
+            auto sub = rational_power_sum(a, k, var);
+            if(!sub) return std::nullopt;
+            std::vector<std::pair<Rational, Rational>> next;
+            for(auto const &u : acc) for(auto const &v : *sub)
+                add_pair(next, r_add(u.first, v.first), r_mul(u.second, v.second));
+            if(next.size() > 12) return std::nullopt;
+            acc = next;
+        }
+        return acc;
+    }
+    if(x.kind == NodeKind::Div) {
+        auto top = rational_power_sum(a, x.a, var);
+        auto bot = rational_power_sum(a, x.b, var);
+        if(!top || !bot || bot->size() != 1 || is_zero((*bot)[0].second)) return std::nullopt;
+        std::vector<std::pair<Rational, Rational>> out;
+        for(auto const &pc : *top) add_pair(out, r_sub(pc.first, (*bot)[0].first), r_div(pc.second, (*bot)[0].second));
+        return out;
+    }
+    std::vector<std::pair<Rational, Rational>> out;
+    Rational c{1, 1}, p{0, 1};
+    if(!rational_power_monomial(a, n, var, c, p)) return std::nullopt;
+    add_pair(out, p, c);
+    return out;
+}
+
+static std::optional<NodeId> rational_power_sum_node(Arena &a, NodeId n, std::string const &var)
+{
+    auto terms = rational_power_sum(a, n, var);
+    if(!terms) return std::nullopt;
+    std::vector<NodeId> out;
+    for(auto const &pc : *terms) {
+        if(is_zero(pc.second)) continue;
+        NodeId body = is_zero(pc.first) ? one_node(a) :
+            (pc.first.num == pc.first.den ? casio::sym(a, var) : casio::power(a, casio::sym(a, var), a.num(pc.first)));
+        out.push_back(casio::mul(a, {a.num(pc.second), body}));
+    }
+    if(out.empty()) return casio::num(a, 0);
+    return exact_eval_simplify(a, casio::add(a, out));
+}
+
+static std::optional<std::string> rational_power_sum_eval_text(Arena &a, NodeId n, std::string const &var, NodeId xnode)
+{
+    auto xr = as_num(a, xnode);
+    if(!xr || xr->num <= 0) return std::nullopt;
+    auto terms = rational_power_sum(a, n, var);
+    if(!terms) return std::nullopt;
+    Rational constant{0, 1};
+    std::vector<std::pair<std::string, Rational>> roots;
+    auto add_root = [&](std::string const &root, Rational c) {
+        if(is_zero(c)) return;
+        for(auto &r : roots) {
+            if(r.first == root) {
+                r.second = r_add(r.second, c);
+                return;
+            }
+        }
+        roots.push_back({root, c});
+    };
+    auto split_sqrt = [](std::string const &s) -> std::pair<Rational, std::string> {
+        std::size_t p = s.find("*sqrt(");
+        if(p != std::string::npos) {
+            if(auto c = parse_rational_text(s.substr(0, p))) return {*c, s.substr(p + 1)};
+        }
+        if(s.rfind("sqrt(", 0) == 0) return {Rational{1, 1}, s};
+        if(auto c = parse_rational_text(s)) return {*c, ""};
+        return {Rational{1, 1}, s};
+    };
+    auto floor_div2 = [](long long n) {
+        return n >= 0 ? n / 2 : -(((-n) + 1) / 2);
+    };
+    for(auto const &pc : *terms) {
+        Rational c = pc.second;
+        Rational p = pc.first;
+        if(is_zero(c)) continue;
+        if(auto v = rational_power_factor(*xr, p)) {
+            constant = r_add(constant, r_mul(c, *v));
+            continue;
+        }
+        if(p.den == 2) {
+            long long whole = floor_div2(p.num);
+            int rem = (int)(p.num - 2 * whole);
+            Rational coeff = r_mul(c, r_pow_int(*xr, (int)whole));
+            if(rem == 0) constant = r_add(constant, coeff);
+            else {
+                auto sr = split_sqrt(sqrt_rational_surd_text(a, *xr));
+                if(sr.second.empty()) constant = r_add(constant, r_mul(coeff, sr.first));
+                else add_root(sr.second, r_mul(coeff, sr.first));
+            }
+            continue;
+        }
+        return std::nullopt;
+    }
+    std::string out;
+    if(!is_zero(constant)) out = format_rat_plain(constant);
+    for(auto const &r : roots) {
+        if(is_zero(r.second)) continue;
+        out = signed_sum_text(out, multiply_root_text(r.second, r.first));
+    }
+    return out.empty() ? std::optional<std::string>{"0"} : std::optional<std::string>{out};
+}
+
+static std::optional<PolyAny> power_sum_to_u_poly(std::vector<std::pair<Rational, Rational>> const &terms, int &lcm_den, int &shift)
+{
+    lcm_den = 1;
+    for(auto const &pc : terms) {
+        int d = (int)std::llabs(pc.first.den);
+        int g = std::gcd(lcm_den, d);
+        lcm_den = lcm_den / g * d;
+        if(lcm_den > 6) return std::nullopt;
+    }
+    int mn = 0, mx = 0;
+    std::vector<std::pair<int, Rational>> e;
+    for(auto const &pc : terms) {
+        long long k = pc.first.num * (lcm_den / pc.first.den);
+        if(k < -8 || k > 8) return std::nullopt;
+        int ki = (int)k;
+        mn = std::min(mn, ki);
+        mx = std::max(mx, ki);
+        e.push_back({ki, pc.second});
+    }
+    shift = mn < 0 ? -mn : 0;
+    if(mx + shift > 8) return std::nullopt;
+    PolyAny p{std::vector<Rational>(mx + shift + 1, Rational{0, 1}), true};
+    for(auto const &pc : e) p.c[pc.first + shift] = r_add(p.c[pc.first + shift], pc.second);
+    trim_poly_any(p);
+    return p;
+}
+
+static bool stationary_domain_allows(Arena &a, std::string const &domain, std::string const &var, NodeId x)
+{
+    if(domain.empty()) return true;
+    std::string d = compact_input_key(domain);
+    auto xv = eval_node(a, x, var, 0.0);
+    if(!xv) return false;
+    if(d.find(var + ">0") != std::string::npos && !(*xv > 1e-10)) return false;
+    if(d.find(var + ">=0") != std::string::npos && !(*xv >= -1e-10)) return false;
+    if(d.find(var + "!=0") != std::string::npos && std::fabs(*xv) < 1e-10) return false;
+    return true;
+}
+
+static std::vector<NodeId> stationary_roots(Arena &a, NodeId df, std::string const &var, std::string const &domain, std::vector<std::string> &out)
+{
+    auto terms = rational_power_sum(a, df, var);
+    if(!terms) return {};
+    int lcm_den = 1, shift = 0;
+    auto p = power_sum_to_u_poly(*terms, lcm_den, shift);
+    if(!p || !p->ok) return {};
+    std::string uvar = lcm_den == 1 ? var : "u";
+    std::string eq = format_expr(a, poly_any_to_node(a, *p, uvar)) + " = 0";
+    if(lcm_den != 1) out.push_back("Let u = " + var + "^(1/" + std::to_string(lcm_den) + "): " + eq);
+    else out.push_back(eq);
+
+    std::vector<std::string> us;
+    auto add_u = [&](std::string s) {
+        s = trim_text(s);
+        if(s.empty() || s.find("No solution") != std::string::npos || s.find("Infinite") != std::string::npos) return;
+        for(auto const &t : us) if(t == s) return;
+        us.push_back(s);
+    };
+    int deg = (int)p->c.size() - 1;
+    if(deg <= 2) {
+        Poly2 q{deg >= 2 ? p->c[2] : Rational{0, 1}, deg >= 1 ? p->c[1] : Rational{0, 1}, p->c[0], true};
+        for(auto const &line : solve_poly2(a, q, uvar)) add_u(sol_rhs(line));
+    }
+    for(Rational r : rational_roots_any(*p)) add_u(rat_node_text(a, r));
+
+    std::vector<NodeId> roots;
+    for(auto const &ut : us) {
+        try {
+            NodeId u = exact_eval_polish(a, casio::parse_expr(a, ut));
+            auto uv = eval_node(a, u, var, 0.0);
+            if(!uv || !std::isfinite(*uv)) continue;
+            if((lcm_den % 2) == 0 && *uv < -1e-10) continue;
+            NodeId x = lcm_den == 1 ? u : exact_eval_polish(a, casio::power(a, u, casio::num(a, lcm_den)));
+            if(!stationary_domain_allows(a, domain, var, x)) continue;
+            std::string xt = format_expr(a, x);
+            bool seen = false;
+            for(NodeId r : roots) if(format_expr(a, r) == xt) seen = true;
+            if(!seen) roots.push_back(x);
+        } catch(...) {}
+    }
+    return roots;
+}
+
+static std::optional<std::vector<std::string>> stationary_points_route(Arena &a, std::string const &expr)
+{
+    std::string body = unwrap_call_text(expr, "stationary_points");
+    if(body.empty()) return std::nullopt;
+    auto parts = split_csv(body);
+    if(parts.size() < 2) return std::vector<std::string>{"Err: need expr,var."};
+    std::string var = trim_text(parts[1]);
+    if(var.empty()) var = "x";
+    std::string domain = parts.size() >= 3 ? trim_text(parts[2]) : "";
+    NodeId f = casio::simplify(a, casio::parse_expr(a, parts[0]));
+    NodeId df = exact_eval_polish(a, casio::derive::differentiate_node(a, f, var, ""));
+    NodeId d2 = exact_eval_polish(a, casio::derive::differentiate_node(a, df, var, "second"));
+    if(auto clean = rational_power_sum_node(a, df, var)) df = *clean;
+    if(auto clean = rational_power_sum_node(a, d2, var)) d2 = *clean;
+    std::vector<std::string> out{
+        "y = " + format_expr(a, f),
+        "dy/d" + var + " = " + format_expr(a, df),
+    };
+    auto roots = stationary_roots(a, df, var, domain, out);
+    if(roots.empty()) {
+        out.push_back(var + " = []");
+        return out;
+    }
+    out.push_back("d2y/d" + var + "2 = " + format_expr(a, d2));
+    std::vector<std::string> finals;
+    for(NodeId x : roots) {
+        NodeId y = exact_eval_simplify(a, clone_with_substitution(a, f, var, x));
+        NodeId curv = exact_eval_simplify(a, clone_with_substitution(a, d2, var, x));
+        std::string ytxt = rational_power_sum_eval_text(a, f, var, x).value_or(format_expr(a, y));
+        std::string curvtxt = rational_power_sum_eval_text(a, d2, var, x).value_or(format_expr(a, curv));
+        double cv = eval_node(a, curv, var, 0.0).value_or(0.0);
+        std::string nature = cv > 1e-9 ? "min" : (cv < -1e-9 ? "max" : "stationary point");
+        std::string cmp = cv > 1e-9 ? " > 0" : (cv < -1e-9 ? " < 0" : " = 0");
+        out.push_back(var + " = " + format_expr(a, x) + ": y = " + ytxt + ", d2y/d" + var + "2 = " + curvtxt + cmp + " => " + nature);
+        finals.push_back(nature + " (" + var + " = " + format_expr(a, x) + ", y = " + ytxt + ")");
+    }
+    std::string final_line;
+    for(std::size_t i = 0; i < finals.size(); ++i) {
+        if(i) final_line += ", ";
+        final_line += finals[i];
+    }
+    out.push_back(final_line);
+    return out;
 }
 
 static std::optional<std::vector<std::string>> partial_fraction_distinct_linear_any(Arena &a, NodeId parsed, std::string const &var)
@@ -33032,6 +33341,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     try {
         if(auto tl = tangent_normal_line_route(arena, req.expr, false)) return *tl;
         if(auto nl = tangent_normal_line_route(arena, req.expr, true)) return *nl;
+        if(auto sp = stationary_points_route(arena, req.expr)) return *sp;
         if(req.mode == 6) {
             if(auto sys = system_solve_route(arena, req.expr)) return *sys;
         }

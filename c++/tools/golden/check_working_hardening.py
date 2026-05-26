@@ -78,6 +78,18 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "stationary_points(x^3-3*x^2-9*x+3,x)",
+        ["dy/dx = 3*x^2 - 6*x - 9", "min (x = 3, y = -24)", "max (x = -1, y = 8)"],
+        ["ERR:", "Done"],
+    ),
+    (
+        "alg",
+        "stationary_points(1/(3*sqrt(x))*(2/x-3),x,x>0)",
+        ["u = x^(1/2): 1/2*u^2 - 1 = 0", "min (x = 2, y = -1/3*sqrt(2))"],
+        ["ERR:", "Done"],
+    ),
+    (
+        "alg",
         "expand((5*x-3)^8)",
         ["(ax+b)^n with a = 5, b = -3, n = 8", "390625*x^8 - 1875000*x^7", "390625*x^8 -1875000*x^7"],
         ["-87480*x + 510300*x^2", "ERR:"],
