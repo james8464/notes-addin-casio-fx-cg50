@@ -28133,6 +28133,10 @@ static std::optional<std::vector<std::string>> symbolic_linear_solve_route(Arena
         }
     }
     ans = exact_eval_simplify(a, cancel_common_denominator_factor(a, ans));
+    if(has_parameter) {
+        NodeId collected_ans = exact_eval_simplify(a, collect_single_symbol_poly(a, ans));
+        if(!has_symbols(a, collected_ans)) ans = collected_ans;
+    }
     std::string ans_text = format_expr(a, ans);
     std::vector<std::string> ans_work;
     if(contains_fn_kind(a, ans, FnKind::Sqrt)) {
