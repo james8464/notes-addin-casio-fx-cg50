@@ -51,6 +51,7 @@ static std::string sol_rhs(std::string const &line);
 static bool contains_symbol(Arena &a, NodeId n, std::string const &name);
 static bool restricted_interval_bounds(Arena &a, std::string const &domain_text, double &lo, double &hi);
 static std::optional<std::pair<Rational, NodeId>> pi_linear_coeff(Arena &a, NodeId n);
+static bool poly_coeff_nodes(Arena &a, NodeId n, std::string const &var, int max_deg, std::vector<NodeId> &out);
 
 static constexpr int kLaurentPowerMin = -40;
 static constexpr int kLaurentPowerMax = 40;
@@ -9745,6 +9746,135 @@ static std::optional<std::vector<std::string>> telescoping_log_sum_route(
     };
 }
 
+static std::optional<std::vector<std::string>> log_constant_simplify_route(Arena &a, NodeId expr);
+
+static std::string sum_bound_text(Arena &a, NodeId n)
+{
+    std::string s = format_expr(a, n);
+    NodeKind k = a.get(n).kind;
+    return (k == NodeKind::Add || k == NodeKind::Mul || k == NodeKind::Div) ? "(" + s + ")" : s;
+}
+
+static std::optional<NodeId> alternating_linear_pair_term(Arena &a, NodeId term, std::string const &var)
+{
+    std::vector<NodeId> factors;
+    collect_mul_factors(a, term, factors);
+    std::vector<NodeId> rest;
+    bool saw_alt = false;
+    int sign = 1;
+    for(NodeId f : factors) {
+        Node const &x = a.get(f);
+        if(x.kind == NodeKind::Pow && is_negative_one_num(a, x.a)) {
+            auto lin = symbolic_linear_parts(a, x.b, var);
+            auto m = lin ? as_num(a, lin->m) : std::optional<Rational>{};
+            auto c = lin ? as_num(a, exact_eval_simplify(a, lin->c)) : std::optional<Rational>{};
+            if(m && c && m->num == m->den && c->den == 1) {
+                if(saw_alt) return std::nullopt;
+                saw_alt = true;
+                if(std::llabs(c->num) % 2) sign = -1;
+                continue;
+            }
+        }
+        rest.push_back(f);
+    }
+    if(!saw_alt) return std::nullopt;
+    NodeId body = rest.empty() ? one_node(a) : exact_eval_simplify(a, casio::mul(a, rest));
+    std::vector<NodeId> coeffs;
+    if(!poly_coeff_nodes(a, body, var, 1, coeffs)) return std::nullopt;
+    return sign > 0 ? coeffs[1] : casio::neg(a, coeffs[1]);
+}
+
+static std::optional<std::vector<std::string>> alternating_linear_pair_sum_route(
+    Arena &a,
+    NodeId expr,
+    std::string const &var,
+    NodeId lo_n,
+    NodeId hi_n
+)
+{
+    auto lo = as_num(a, exact_eval_simplify(a, lo_n));
+    if(!lo || lo->num != lo->den) return std::nullopt;
+    std::vector<std::string> hi_syms;
+    collect_symbols(a, hi_n, hi_syms);
+    std::sort(hi_syms.begin(), hi_syms.end());
+    hi_syms.erase(std::unique(hi_syms.begin(), hi_syms.end()), hi_syms.end());
+    if(hi_syms.size() != 1 || hi_syms[0] == var) return std::nullopt;
+    std::string bound = hi_syms[0];
+    auto hlin = symbolic_linear_parts(a, hi_n, bound);
+    auto hm = hlin ? as_num(a, hlin->m) : std::optional<Rational>{};
+    auto hc = hlin ? as_num(a, exact_eval_simplify(a, hlin->c)) : std::optional<Rational>{};
+    if(!hm || !hc || hm->num != 2 * hm->den || !is_zero(*hc)) return std::nullopt;
+
+    std::vector<NodeId> terms;
+    add_terms_flat(a, expr, terms);
+    NodeId pair = zero_node(a);
+    for(NodeId t : terms) {
+        auto p = alternating_linear_pair_term(a, t, var);
+        if(!p) return std::nullopt;
+        pair = exact_eval_simplify(a, casio::add(a, {pair, *p}));
+    }
+    NodeId total = collect_single_symbol_poly(a, casio::mul(a, {pair, casio::sym(a, bound)}));
+    std::string hi_txt = sum_bound_text(a, hi_n);
+    std::string sigma = "sum_{" + var + "=" + sum_bound_text(a, lo_n) + "}^" + hi_txt + " (" + format_expr(a, expr) + ")";
+    std::string ptxt = format_expr(a, pair);
+    std::string ans = format_expr(a, total);
+    return std::vector<std::string>{
+        sigma,
+        "= [u_1+u_2] + ... + [u_{" + hi_txt + "-1}+u_{" + hi_txt + "}]",
+        "u_{2*j-1}+u_{2*j} = " + ptxt,
+        "= " + ptxt + "*" + bound,
+        "= " + ans,
+        ans
+    };
+}
+
+static std::optional<std::vector<std::string>> finite_symbolic_coeff_sum_route(
+    Arena &a,
+    NodeId expr,
+    std::string const &var,
+    long long lo,
+    long long hi
+)
+{
+    if(!has_other_symbols(a, expr, var)) return std::nullopt;
+    std::vector<NodeId> coeffs;
+    if(!poly_coeff_nodes(a, expr, var, 3, coeffs)) return std::nullopt;
+    std::vector<Rational> sums(4, Rational{0, 1});
+    for(long long k = lo; k <= hi; ++k) {
+        long long p = 1;
+        for(int d = 0; d <= 3; ++d) {
+            sums[d] = r_add(sums[d], Rational{p, 1});
+            if(d < 3) p *= k;
+        }
+    }
+    NodeId total = zero_node(a);
+    std::string formula;
+    for(int d = 0; d <= 3; ++d) {
+        NodeId c = exact_eval_simplify(a, coeffs[d]);
+        if(is_zero(sums[d]) || casio::same_by_sig(a, c, zero_node(a))) continue;
+        NodeId term = exact_eval_simplify(a, casio::mul(a, {c, a.num(sums[d])}));
+        total = exact_eval_simplify(a, casio::add(a, {total, term}));
+        append_signed_term(formula, format_expr(a, term));
+    }
+    if(formula.empty()) formula = "0";
+    total = collect_single_symbol_poly(a, total);
+    std::string ans = format_expr(a, total);
+    std::vector<std::string> syms;
+    collect_symbols(a, total, syms);
+    std::sort(syms.begin(), syms.end());
+    syms.erase(std::unique(syms.begin(), syms.end()), syms.end());
+    if(syms.size() == 1) {
+        if(auto f = factor_poly_any_route(a, total, syms[0])) ans = f->back();
+    }
+    std::string sigma = "sum_{" + var + "=" + std::to_string(lo) + "}^" + std::to_string(hi) + " (" + format_expr(a, expr) + ")";
+    std::vector<std::string> out{sigma, "= " + formula};
+    std::string expanded = format_expr(a, total);
+    if(expanded != ans) out.push_back("= " + expanded);
+    out.push_back("= " + ans);
+    out.push_back(ans);
+    return out;
+}
+
 static std::optional<std::vector<std::string>> finite_sum_route(Arena &a, std::string const &raw)
 {
     std::string body = unwrap_call_text(raw, "sum");
@@ -9761,21 +9891,77 @@ static std::optional<std::vector<std::string>> finite_sum_route(Arena &a, std::s
     std::string expr_txt = trim_text(parts[0]);
     std::string var = trim_text(parts[1]);
     auto lo = parse_int(parts[2]);
-    if(var.empty() || !lo) return std::nullopt;
+    if(var.empty()) return std::nullopt;
     if(inf_text(parts[3])) {
+        if(!lo) return std::nullopt;
         if(auto geo = infinite_geometric_sum_route(a, expr_txt, var, *lo)) return *geo;
         return infinite_power_series_sum_route(a, expr_txt, var, *lo);
     }
     auto hi = parse_int(parts[3]);
+    if(!lo || !hi) {
+        NodeId expr = casio::parse_expr(a, expr_txt);
+        NodeId lo_n = casio::parse_expr(a, trim_text(parts[2]));
+        NodeId hi_n = casio::parse_expr(a, trim_text(parts[3]));
+        auto lo_exact = as_num(a, exact_eval_simplify(a, lo_n));
+        auto hi_exact = as_num(a, exact_eval_simplify(a, hi_n));
+        if((lo_exact && lo_exact->den != 1) || (hi_exact && hi_exact->den != 1)) return std::nullopt;
+        if(contains_symbol(a, lo_n, var) || contains_symbol(a, hi_n, var)) return std::nullopt;
+        if(auto alt = alternating_linear_pair_sum_route(a, expr, var, lo_n, hi_n)) return *alt;
+        std::vector<NodeId> coeffs;
+        if(!poly_coeff_nodes(a, expr, var, 3, coeffs)) return std::nullopt;
+        NodeId one = one_node(a);
+        auto sq = [&](NodeId x) { return casio::mul(a, {x, x}); };
+        auto prefix = [&](NodeId z, int p) {
+            NodeId zp1 = exact_eval_simplify(a, casio::add(a, {z, one}));
+            if(p == 0) return z;
+            if(p == 1) return exact_eval_simplify(a, casio::div(a, casio::mul(a, {z, zp1}), casio::num(a, 2)));
+            if(p == 2) return exact_eval_simplify(a, casio::div(a, casio::mul(a, {z, zp1, exact_eval_simplify(a, casio::add(a, {casio::mul(a, {casio::num(a, 2), z}), one}))}), casio::num(a, 6)));
+            return exact_eval_simplify(a, sq(casio::div(a, casio::mul(a, {z, zp1}), casio::num(a, 2))));
+        };
+        NodeId before = exact_eval_simplify(a, sub_node(a, lo_n, one));
+        NodeId total = zero_node(a);
+        std::string formula;
+        for(int p = 0; p < (int)coeffs.size(); ++p) {
+            if(casio::same_by_sig(a, coeffs[p], zero_node(a))) continue;
+            NodeId s = p == 0 ? exact_eval_simplify(a, casio::add(a, {hi_n, casio::neg(a, lo_n), one}))
+                              : exact_eval_simplify(a, sub_node(a, prefix(hi_n, p), prefix(before, p)));
+            total = exact_eval_simplify(a, casio::add(a, {total, casio::mul(a, {coeffs[p], s})}));
+            append_signed_term(formula, format_expr(a, exact_eval_simplify(a, casio::mul(a, {coeffs[p], s}))));
+        }
+        if(formula.empty()) formula = "0";
+        std::string sigma = "sum_{" + var + "=" + sum_bound_text(a, lo_n) + "}^" + sum_bound_text(a, hi_n) + " (" + format_expr(a, expr) + ")";
+        total = collect_single_symbol_poly(a, total);
+        std::string ans = format_expr(a, total);
+        std::vector<std::string> syms;
+        collect_symbols(a, total, syms);
+        std::sort(syms.begin(), syms.end());
+        syms.erase(std::unique(syms.begin(), syms.end()), syms.end());
+        if(syms.size() == 1) {
+            if(auto f = factor_poly_any_route(a, total, syms[0])) ans = f->back();
+        }
+        std::vector<std::string> out{sigma, "= " + formula};
+        std::string expanded = format_expr(a, total);
+        if(expanded != ans) out.push_back("= " + expanded);
+        out.push_back("= " + ans);
+        out.push_back(ans);
+        return out;
+    }
     if(!hi || *hi < *lo || *hi - *lo > 2000) return std::nullopt;
 
     NodeId expr = casio::parse_expr(a, expr_txt);
     if(auto tel = telescoping_log_sum_route(a, expr, var, *lo, *hi)) return *tel;
+    NodeId total = casio::num(a, 0);
+    for(long long k = *lo; k <= *hi; ++k) {
+        NodeId sub = exact_eval_simplify(a, clone_with_substitution(a, expr, var, casio::num(a, k)));
+        total = exact_eval_simplify(a, casio::add(a, {total, sub}));
+    }
+    if(auto sym = finite_symbolic_coeff_sum_route(a, expr, var, *lo, *hi)) return *sym;
     std::vector<NodeId> terms;
     add_terms_flat(a, expr, terms);
     PolyAny poly{{Rational{0, 1}}, true};
     struct GeoTerm { Rational coef; NodeId base; };
     std::vector<GeoTerm> geos;
+    bool generic_sum = false;
     for(NodeId term : terms) {
         Rational c{1, 1};
         NodeId base = 0;
@@ -9784,14 +9970,20 @@ static std::optional<std::vector<std::string>> finite_sum_route(Arena &a, std::s
             continue;
         }
         auto p = poly_any_of(a, term, var);
-        if(!p || !p->ok || p->c.size() > 4) return std::nullopt;
+        if(!p || !p->ok || p->c.size() > 4) {
+            generic_sum = true;
+            break;
+        }
         poly = poly_any_add(poly, *p);
     }
 
-    NodeId total = casio::num(a, 0);
-    for(long long k = *lo; k <= *hi; ++k) {
-        NodeId sub = exact_eval_simplify(a, clone_with_substitution(a, expr, var, casio::num(a, k)));
-        total = exact_eval_simplify(a, casio::add(a, {total, sub}));
+    std::string sigma = "sum_{" + var + "=" + std::to_string(*lo) + "}^" + std::to_string(*hi) + " (" + format_expr(a, expr) + ")";
+    std::string ans = format_expr(a, total);
+    if(generic_sum) {
+        if(ans.size() > 180) return std::nullopt;
+        std::string first = format_expr(a, clone_with_substitution(a, expr, var, casio::num(a, *lo)));
+        std::string last = format_expr(a, clone_with_substitution(a, expr, var, casio::num(a, *hi)));
+        return std::vector<std::string>{sigma, "= " + first + " + ... + " + last, "= " + ans, ans};
     }
     std::string formula;
     long long m = *lo, n = *hi, count = n - m + 1;
@@ -9823,8 +10015,6 @@ static std::optional<std::vector<std::string>> finite_sum_route(Arena &a, std::s
         append_signed_term(formula, sum_factor_text(a, g.coef, geom));
     }
     if(formula.empty()) formula = "0";
-    std::string sigma = "sum_{" + var + "=" + std::to_string(m) + "}^" + std::to_string(n) + " (" + format_expr(a, expr) + ")";
-    std::string ans = format_expr(a, total);
     return std::vector<std::string>{sigma, "= " + formula, "= " + ans, ans};
 }
 
@@ -16896,6 +17086,14 @@ static std::optional<std::vector<std::string>> exact_linear2_system_route(Arena 
     NodeId n1 = exact_eval_simplify(a, sub_node(a, casio::mul(a, {rows[0].a0, r1}), casio::mul(a, {rows[1].a0, r0})));
     NodeId v0 = collect_single_symbol_poly(a, casio::div(a, n0, det));
     NodeId v1 = collect_single_symbol_poly(a, casio::div(a, n1, det));
+    auto compact_log_combo = [&](NodeId n) {
+        if(auto route = log_constant_simplify_route(a, n)) {
+            return exact_eval_simplify(a, casio::parse_expr(a, route->back()));
+        }
+        return n;
+    };
+    v0 = compact_log_combo(v0);
+    v1 = compact_log_combo(v1);
     auto ft = [&](NodeId n) { return format_expr(a, collect_single_symbol_poly(a, n)); };
     auto mt = [&](NodeId n) {
         std::string s = ft(n);
@@ -16965,6 +17163,14 @@ static std::optional<std::vector<std::string>> linear2_any_system_route(Arena &a
             NodeId n1 = exact_eval_simplify(a, sub_node(a, casio::mul(a, {rows[i].a0, r1}), casio::mul(a, {rows[j].a0, r0})));
             NodeId v0 = collect_single_symbol_poly(a, exact_eval_simplify(a, casio::div(a, n0, det)));
             NodeId v1 = collect_single_symbol_poly(a, exact_eval_simplify(a, casio::div(a, n1, det)));
+            auto compact_log_combo = [&](NodeId n) {
+                if(auto route = log_constant_simplify_route(a, n)) {
+                    return exact_eval_simplify(a, casio::parse_expr(a, route->back()));
+                }
+                return n;
+            };
+            v0 = compact_log_combo(v0);
+            v1 = compact_log_combo(v1);
             bool ok = true;
             for(std::size_t k = 0; k < residuals.size(); ++k) {
                 if(k == i || k == j) continue;
@@ -28718,8 +28924,18 @@ static std::string log_factor_terms_text(PrimeExps logs)
 
 static std::optional<std::vector<std::string>> log_constant_simplify_route(Arena &a, NodeId expr)
 {
+    Rational outer{1, 1};
+    NodeId core = expr;
+    Node const &top = a.get(expr);
+    if(top.kind == NodeKind::Div) {
+        auto den = as_num(a, top.b);
+        if(den && !is_zero(*den)) {
+            outer = r_div(outer, *den);
+            core = top.a;
+        }
+    }
     std::vector<NodeId> terms;
-    add_terms_flat(a, expr, terms);
+    add_terms_flat(a, core, terms);
     if(terms.empty()) return std::nullopt;
     PrimeExps total;
     std::vector<std::string> rewrites;
@@ -28728,6 +28944,7 @@ static std::optional<std::vector<std::string>> log_constant_simplify_route(Arena
         NodeId body = term;
         bool has_body = true;
         split_coeff_body(a, term, c, body, has_body);
+        c = r_mul(c, outer);
         if(!has_body) return std::nullopt;
         Node const &b = a.get(body);
         if(b.kind != NodeKind::Fn || b.fkind != FnKind::Log) return std::nullopt;
