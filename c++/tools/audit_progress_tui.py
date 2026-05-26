@@ -26,11 +26,22 @@ DOWNLOAD_SUMMARY = REPO / "c++" / "tests" / "reports" / "madasmaths_download_cov
 G3A = REPO / "c++" / "prizm" / "build" / "CasioCAS.g3a"
 PAK = REPO / "calculator_files" / "CASIOCAS.PAK"
 TMP_AUDIT = Path("/tmp/casio_pdf_audit")
+ACCEL_DIR = REPO / "c++" / "tests" / "reports" / "audit_accelerator"
+ACCEL_SUMMARY = ACCEL_DIR / "summary_latest.json"
+ACCEL_TRIAGE = ACCEL_DIR / "triage_host_latest.jsonl"
 DOWNLOAD_ROOTS = (
+    Path("/Users/james/Downloads/MadAsMaths standard topics"),
+    Path("/Users/james/Downloads/MadAsMaths papers"),
     Path("/Users/james/Downloads/MadAsMaths A-level booklets"),
+    Path("/Users/james/Downloads/Edexcel A Level Maths past papers"),
     Path("/Users/james/Downloads/Edexcel A Level Maths support materials"),
 )
 LIMIT_2MIB = 2 * 1024 * 1024
+SUPPORT_TOKENS = (
+    "mark scheme", "marks", "rms", "_ms", "-ms", "solution", "solutions",
+    "worked", "model answer", "answers",
+)
+_STATS_CACHE: tuple[float, AuditStats] | None = None
 
 
 class C:
@@ -66,6 +77,7 @@ class AuditStats:
     git_dirty: int
     last_event: str
     phase: str
+    accel: str
 
 
 def strip_color(s: str) -> str:
@@ -127,16 +139,28 @@ def local_pdfs() -> list[Path]:
     for root in DOWNLOAD_ROOTS:
         if root.exists():
             out.extend(root.rglob("*.pdf"))
-    return sorted(set(out), key=lambda p: str(p).lower())
+    return sorted({p for p in out if not support_pdf(p)}, key=lambda p: str(p).lower())
+
+
+def support_pdf(path: Path) -> bool:
+    low = str(path).lower()
+    return any(tok in low for tok in SUPPORT_TOKENS)
 
 
 def count_download_manifest() -> int:
     rows = read_jsonl(DOWNLOAD_MANIFEST)
     if rows:
-        return len(rows)
+        return sum(1 for row in rows if question_like_manifest_row(row))
     if DOWNLOAD_SUMMARY.exists():
         return sum(1 for ln in DOWNLOAD_SUMMARY.read_text(errors="ignore").splitlines() if ".pdf" in ln.lower())
     return 0
+
+
+def question_like_manifest_row(row: dict) -> bool:
+    text = " ".join(str(row.get(k, "")) for k in ("kind", "label", "name", "pdf", "url")).lower()
+    if any(tok in text for tok in SUPPORT_TOKENS):
+        return False
+    return str(row.get("status", "")).lower() in {"download", "downloaded", ""} and ".pdf" in text
 
 
 def parse_manual_report() -> tuple[int | None, int | None]:
@@ -229,6 +253,7 @@ def collect_stats() -> AuditStats:
         phase = "fix failing manual cases"
     if not pending and bad == 0:
         phase = "all local complete"
+    accel = accelerator_status()
     return AuditStats(
         pdf_count=len(pdfs),
         downloaded_known=known_total,
@@ -248,7 +273,48 @@ def collect_stats() -> AuditStats:
         git_dirty=dirty,
         last_event=latest_tmp_event(),
         phase=phase,
+        accel=accel,
     )
+
+
+def collect_stats_cached(scan_interval: float) -> AuditStats:
+    global _STATS_CACHE
+    now = time.time()
+    if _STATS_CACHE is None or now - _STATS_CACHE[0] >= scan_interval:
+        _STATS_CACHE = (now, collect_stats())
+    return _STATS_CACHE[1]
+
+
+def accelerator_status() -> str:
+    done = bad = total = None
+    if ACCEL_TRIAGE.exists():
+        total = done = bad = 0
+        for line in ACCEL_TRIAGE.read_text(errors="ignore").splitlines():
+            if not line.strip():
+                continue
+            total += 1
+            try:
+                row = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if row.get("ok"):
+                done += 1
+            else:
+                bad += 1
+    if ACCEL_SUMMARY.exists():
+        try:
+            data = json.loads(ACCEL_SUMMARY.read_text(errors="ignore"))
+            inv = data.get("inventory", {})
+            q = inv.get("question_sources")
+            c = inv.get("complete_question_sources")
+            if total is not None:
+                return f"triage host {done}/{total} ok · {bad} bad · question docs {c}/{q}"
+            return f"question docs {c}/{q} · local {inv.get('local_pdfs')} · online {inv.get('online_question_rows')}"
+        except Exception:
+            pass
+    if total is not None:
+        return f"triage host {done}/{total} ok · {bad} bad"
+    return "idle"
 
 
 def bar(done: int, total: int, width: int, enabled: bool) -> str:
@@ -303,6 +369,7 @@ def render(stats: AuditStats, frame: int, width: int, height: int, enabled: bool
         row("current", stats.current, width, enabled),
         row("last event", stats.last_event, width, enabled),
         row("report", f"{report}   git {color(str(stats.git_dirty), dirty_code, enabled)} dirty   {stats.host_commands} host cases", width, enabled),
+        row("accelerator", stats.accel, width, enabled),
         "",
         fit(color("Progress", C.bold, enabled), width),
         fit(f"corpus     {live_bar(stats.complete_sources, stats.downloaded_known or stats.complete_sources, bar_w, frame, enabled)} {stats.complete_sources}/{stats.downloaded_known} done · {corpus_pending} left", width),
@@ -329,7 +396,7 @@ def render(stats: AuditStats, frame: int, width: int, height: int, enabled: bool
     return "\n".join(lines[:height])
 
 
-def run_loop(fps: float, no_color: bool) -> int:
+def run_loop(fps: float, no_color: bool, scan_interval: float) -> int:
     delay = 1.0 / max(1.0, fps)
     use_color = not no_color and sys.stdout.isatty()
     old_tty = termios.tcgetattr(sys.stdin) if sys.stdin.isatty() else None
@@ -340,7 +407,7 @@ def run_loop(fps: float, no_color: bool) -> int:
     frame = 0
     try:
         while True:
-            stats = collect_stats()
+            stats = collect_stats_cached(scan_interval)
             size = shutil.get_terminal_size((100, 34))
             sys.stdout.write("\033[H\033[2J" + render(stats, frame, size.columns, size.lines, use_color))
             sys.stdout.flush()
@@ -361,7 +428,8 @@ def run_loop(fps: float, no_color: bool) -> int:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Live FPS monitor for CasioCAS paper-audit progress.")
-    ap.add_argument("--fps", type=float, default=float(os.environ.get("CASIO_AUDIT_TUI_FPS", "8")))
+    ap.add_argument("--fps", type=float, default=float(os.environ.get("CASIO_AUDIT_TUI_FPS", "4")))
+    ap.add_argument("--scan-interval", type=float, default=float(os.environ.get("CASIO_AUDIT_TUI_SCAN_INTERVAL", "8")))
     ap.add_argument("--once", action="store_true", help="print one non-interactive frame and exit")
     ap.add_argument("--no-color", action="store_true")
     args = ap.parse_args()
@@ -370,7 +438,7 @@ def main() -> int:
         size = shutil.get_terminal_size((100, 34))
         print(render(stats, 0, size.columns, size.lines, not args.no_color))
         return 0
-    return run_loop(args.fps, args.no_color)
+    return run_loop(args.fps, args.no_color, args.scan_interval)
 
 
 if __name__ == "__main__":

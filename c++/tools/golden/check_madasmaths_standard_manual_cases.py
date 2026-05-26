@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import json
 import argparse
+import concurrent.futures as cf
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -64,6 +66,8 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--source", action="append", default=[], help="Only check rows whose source_pdf contains this text.")
     ap.add_argument("--id-prefix", action="append", default=[], help="Only check rows whose id starts with this prefix.")
     ap.add_argument("--last", type=int, default=0, help="Only check the last N JSONL rows after other filters.")
+    ap.add_argument("--workers", type=int, default=int(os.environ.get("CASIO_AUDIT_WORKERS", str(os.cpu_count() or 1))))
+    ap.add_argument("--quiet", action="store_true", help="Only print failures and summary; full details still go to report.")
     return ap.parse_args()
 
 
@@ -78,6 +82,17 @@ def select_cases(cases: list[dict[str, Any]], args: argparse.Namespace) -> list[
     if args.last:
         out = out[-args.last:]
     return out
+
+
+def run_command(task: tuple[int, str, list[str], list[str], list[str]]) -> tuple[int, str, list[str], list[str], str]:
+    case_i, label, args, needles, banned_tokens = task
+    proc = subprocess.run([str(HOST), *args], cwd=REPO, text=True, capture_output=True, timeout=12)
+    out = proc.stdout + proc.stderr
+    missing = [m for m in needles if not markers_present(out, [m])]
+    banned = [m for m in banned_tokens if m in out]
+    if proc.returncode:
+        missing.append(f"returncode={proc.returncode}")
+    return case_i, label, missing, banned, out
 
 
 def main() -> int:
@@ -95,30 +110,46 @@ def main() -> int:
         print("FAIL no cases selected")
         report_path.write_text("\n".join(lines + ["summary: bad=1 total=0"]) + "\n")
         return 1
-    for case in cases:
+    case_status: list[str] = ["pending"] * len(cases)
+    case_lines: list[list[str]] = [[] for _ in cases]
+    tasks: list[tuple[int, str, list[str], list[str], list[str]]] = []
+    for case_i, case in enumerate(cases):
         if removed_case(case):
-            print("SKIP removed", case["id"])
-            lines.append(f"SKIP removed {case['id']} {case['source_pdf']} Q{case['qid']}.{case['item']}")
-            lines.append("")
+            if not args.quiet:
+                print("SKIP removed", case["id"])
+            case_status[case_i] = "skip"
+            case_lines[case_i] = [
+                f"SKIP removed {case['id']} {case['source_pdf']} Q{case['qid']}.{case['item']}",
+                "",
+            ]
             continue
         if case.get("status") == "unsupported-ok":
-            print("OK", case["id"])
-            lines.append(f"OK {case['id']} {case['source_pdf']} Q{case['qid']}.{case['item']}")
-            lines.append("  unsupported-ok: " + str(case.get("notes", "reviewed; no unique host command")))
-            lines.append("")
+            if not args.quiet:
+                print("OK", case["id"])
+            case_status[case_i] = "ok"
+            case_lines[case_i] = [
+                f"OK {case['id']} {case['source_pdf']} Q{case['qid']}.{case['item']}",
+                "  unsupported-ok: " + str(case.get("notes", "reviewed; no unique host command")),
+                "",
+            ]
             continue
-        case_bad = False
-        results: list[tuple[str, list[str], list[str], str]] = []
-        for label, args, needles, banned_tokens in command_specs(case):
-            proc = subprocess.run([str(HOST), *args], cwd=REPO, text=True, capture_output=True, timeout=12)
-            out = proc.stdout + proc.stderr
-            missing = [m for m in needles if not markers_present(out, [m])]
-            banned = [m for m in banned_tokens if m in out]
-            ok = proc.returncode == 0 and not missing and not banned
-            case_bad = case_bad or not ok
-            results.append((label, missing, banned, out))
+        for label, cmd_args, needles, banned_tokens in command_specs(case):
+            tasks.append((case_i, label, cmd_args, needles, banned_tokens))
+
+    results_by_case: list[list[tuple[str, list[str], list[str], str]]] = [[] for _ in cases]
+    with cf.ThreadPoolExecutor(max_workers=max(1, args.workers)) as pool:
+        for case_i, label, missing, banned, out in pool.map(run_command, tasks):
+            results_by_case[case_i].append((label, missing, banned, out))
+
+    for case_i, case in enumerate(cases):
+        if case_status[case_i] != "pending":
+            lines.extend(case_lines[case_i])
+            continue
+        results = results_by_case[case_i]
+        case_bad = any(missing or banned for _label, missing, banned, _out in results)
         status = "FAIL" if case_bad else "OK"
-        print(status, case["id"])
+        if case_bad or not args.quiet:
+            print(status, case["id"])
         lines.append(f"{status} {case['id']} {case['source_pdf']} Q{case['qid']}.{case['item']}")
         lines.append("  " + " ".join(case["args"]))
         for label, missing, banned, out in results:

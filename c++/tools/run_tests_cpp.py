@@ -65,7 +65,7 @@ def main() -> int:
         ("madasmaths_standard_topics_audit", [sys.executable, "c++/tools/golden/check_madasmaths_standard_topics_audit.py"]),
         ("madasmaths_download_coverage", [sys.executable, "c++/tools/golden/check_madasmaths_download_coverage.py"]),
         ("madasmaths_standard_question_corpus", [sys.executable, "c++/tools/golden/check_madasmaths_standard_question_corpus.py"]),
-        ("madasmaths_standard_manual_cases", [sys.executable, "c++/tools/golden/check_madasmaths_standard_manual_cases.py"]),
+        ("madasmaths_standard_manual_cases", [sys.executable, "c++/tools/golden/check_madasmaths_standard_manual_cases.py", "--quiet"]),
         ("online_paper_corpus_inventory", [sys.executable, "c++/tools/golden/check_online_paper_corpus_inventory.py"]),
         ("online_paper_manual_cases", [sys.executable, "c++/tools/golden/check_online_paper_manual_cases.py"]),
         ("edexcel_public_paper_corpus", [sys.executable, "c++/tools/golden/check_edexcel_public_paper_corpus.py"]),

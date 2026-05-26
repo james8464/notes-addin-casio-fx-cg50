@@ -132,6 +132,36 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "simplify(log(a,a^2)-4*log(a,1/a))",
+        ["= log(a,a^2*(1/a)^-4)", "\n6\n"],
+        ["ERR:", "Done"],
+    ),
+    (
+        "alg",
+        "log(2,2^(3*p)*4^q)",
+        ["log(2,2^(3*p)*4^q) = 3*p + 2*q", "\n3*p + 2*q\n"],
+        ["ERR:", "Done"],
+    ),
+    (
+        "alg",
+        "simplify(1+2*log(n,3)+log(n,4))",
+        ["= log(n,36*n)"],
+        ["ERR:", "Done"],
+    ),
+    (
+        "alg",
+        "solve(y=a*b^x,x)",
+        ["y/a = b^(x)", "log10(y/a) = x*log10(b)", "x = log10(y/a)/log10(b)"],
+        ["ERR:", "Constant/non-monotone"],
+    ),
+    (
+        "alg",
+        "solve(3^x*9^y=1/27,y)",
+        ["3^(x + 2*y) = 3^(-3)", "x + 2*y = -3", "2*y = - x - 3", "y = -1/2*x - 3/2"],
+        ["log10(1/27/3^x)", "ERR:"],
+    ),
+    (
+        "alg",
         "solve([a*r^4=12,a*r^5=-8],[a,r])",
         ["r^(1) = -2/3", "r = -2/3", "(a,r) = [(243/4,-2/3)]"],
         ["ERR:", "Done", "(a,r) = []"],
@@ -265,7 +295,7 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     (
         "alg",
         "solve(2^z=sqrt(2)/2^(z+1),z)",
-        ["2*ln(2)*z = -1/2*ln(2)", "z = -1/4", "z = [-1/4]"],
+        ["2^(z) = 2^(- z - 1/2)", "z = - z - 1/2", "2*z = -1/2", "z = -1/4", "z = [-1/4]"],
         ["ERR:", "Done", "ln(2)/(2*ln(2))"],
     ),
     (
