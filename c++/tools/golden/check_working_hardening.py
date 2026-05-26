@@ -486,6 +486,24 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "disccond(3*k*x^2-2*k*x-4*x+3,x,>,k)",
+        ["a != 0 => k != 0", "k < 0 or 0 < k < 1 or k > 4"],
+        ["ERR:", "Done", "Answer:"],
+    ),
+    (
+        "alg",
+        "disccond(p*x^2-5*x+5,x,>=,p)",
+        ["D >= 0", "p <= 5/4"],
+        ["p != 0", "ERR:", "Done", "Answer:"],
+    ),
+    (
+        "alg",
+        "disccond(m*x^2-x+m,x,>=,m)",
+        ["D >= 0", "-1/2 <= m <= 1/2"],
+        ["m != 0", "ERR:", "Done", "Answer:"],
+    ),
+    (
+        "alg",
         "disccond(x^2-4*a*x+2*b+1,x,<,b)",
         ["D < 0", "-8*b < - 16*a^2 + 4", "b > 1/2*(2*a + 1)*(2*a - 1)"],
         ["ERR:", "Done", "Answer:"],

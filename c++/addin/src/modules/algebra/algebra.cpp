@@ -35325,7 +35325,7 @@ static std::optional<std::vector<std::string>> discriminant_route(Arena &a, std:
     out.push_back("D " + op + " 0");
     std::optional<std::string> a_exclusion;
     NodeId a_exclusion_value = 0;
-    if(!pvar.empty() && contains_symbol(a, q->A, pvar)) {
+    if(!pvar.empty() && (op == ">" || op == "=") && contains_symbol(a, q->A, pvar)) {
         auto lin = symbolic_linear_parts(a, q->A, pvar);
         if(lin && !contains_symbol(a, lin->m, pvar) && !contains_symbol(a, lin->c, pvar)) {
             NodeId bad = exact_eval_simplify(a, casio::div(a, neg_node(a, lin->c), lin->m));
@@ -35365,6 +35365,28 @@ static std::optional<std::vector<std::string>> discriminant_route(Arena &a, std:
         return t[0] + " " + t[1] + " " + pvar + " < " + b + " or " +
                b + " < " + pvar + " " + t[3] + " " + t[4];
     };
+    auto split_ray_exclusion = [&](std::string const &line) -> std::optional<std::string> {
+        if(!a_exclusion_value) return std::nullopt;
+        std::istringstream in(line);
+        std::vector<std::string> t;
+        for(std::string x; in >> x;) t.push_back(x);
+        if(t.size() != 7 || t[0] != pvar || t[3] != "or" || t[4] != pvar) return std::nullopt;
+        if(!((t[1] == "<" || t[1] == "<=") && (t[5] == ">" || t[5] == ">="))) return std::nullopt;
+        auto hi = eval_node_env(a, casio::parse_expr(a, t[2]), {});
+        auto lo = eval_node_env(a, casio::parse_expr(a, t[6]), {});
+        auto bad = eval_node_env(a, a_exclusion_value, {});
+        if(!hi || !lo || !bad) return std::nullopt;
+        std::string b = format_expr(a, a_exclusion_value);
+        if(*bad < *hi - 1e-9)
+            return pvar + " < " + b + " or " + b + " < " + pvar + " " + t[1] + " " + t[2] +
+                   " or " + pvar + " " + t[5] + " " + t[6];
+        if(*bad > *lo + 1e-9) {
+            std::string inv = (t[5] == ">=") ? "<=" : "<";
+            return pvar + " " + t[1] + " " + t[2] + " or " + t[6] + " " + inv + " " + pvar +
+                   " < " + b + " or " + b + " < " + pvar;
+        }
+        return std::nullopt;
+    };
     for(auto const &line : solved) {
         if(line.find("D = b^2") != std::string::npos) continue;
         if(line == dtext + " " + op + " 0") continue;
@@ -35373,6 +35395,7 @@ static std::optional<std::vector<std::string>> discriminant_route(Arena &a, std:
             continue;
         }
         if(auto split = split_exclusion(line)) out.push_back(*split);
+        else if(auto split = split_ray_exclusion(line)) out.push_back(*split);
         else out.push_back(line);
     }
     return out;
