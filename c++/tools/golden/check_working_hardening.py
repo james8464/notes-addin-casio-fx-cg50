@@ -102,6 +102,18 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "solve(6*(2^k-1)=1572858,k)",
+        ["2^k = 262144", "k = 18", "k = [18]"],
+        ["ERR:", "Done", "log(2,262144)", "ln(262144)/ln(2)"],
+    ),
+    (
+        "alg",
+        "solve([a*r^4=12,a*r^5=-8],[a,r])",
+        ["r^(1) = -2/3", "r = -2/3", "(a,r) = [(243/4,-2/3)]"],
+        ["ERR:", "Done", "(a,r) = []"],
+    ),
+    (
+        "alg",
         "solve((3*x+1)/(x+1)-3*x/(y-2)+2/(x+1)=0,y)",
         ["LHS - RHS = -3*x/(y - 2) + 3", "y - 2 = x", "y = x + 2"],
         ["ERR:", "Done", "symbolic parameters unsupported"],

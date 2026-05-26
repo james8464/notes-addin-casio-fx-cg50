@@ -18146,7 +18146,17 @@ static bool rational_power_inverse(Rational value, Rational power, Rational &out
 {
     value.normalize();
     power.normalize();
-    if(value.num <= 0 || power.num == 0 || power.den <= 0) return false;
+    if(value.num == 0 || power.num == 0 || power.den <= 0) return false;
+    if(value.num < 0) {
+        if(power.den != 1) return false;
+        long long p = std::llabs(power.num);
+        if(p % 2 == 0) return false;
+        if(power.num < 0) value = r_div(Rational{1, 1}, value);
+        auto root = exact_rational_nth_root(value, static_cast<int>(p));
+        if(!root) return false;
+        out = *root;
+        return true;
+    }
     if(power.num < 0) {
         value = r_div(Rational{1, 1}, value);
         power.num = -power.num;
@@ -32281,7 +32291,7 @@ static std::optional<std::vector<std::string>> affine_related_base_exp_route(
 static std::optional<Rational> rational_ratio_power(Rational base, Rational value)
 {
     if(base.num <= 0 || value.num <= 0) return std::nullopt;
-    for(int k = -12; k <= 12; ++k)
+    for(int k = -64; k <= 64; ++k)
         if(r_cmp(r_pow_int(base, k), value) == 0) return Rational{k, 1};
     return std::nullopt;
 }
