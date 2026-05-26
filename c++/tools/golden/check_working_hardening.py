@@ -126,6 +126,30 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "index_form(((2*x-3)*(x+2))/sqrt(x),x)",
+        ["2*x^(3/2) + sqrt(x) - 6*x^(-1/2)"],
+        ["ERR:", "Done"],
+    ),
+    (
+        "alg",
+        "gradient_points(2*(x-2)^3,x,6,x!=3)",
+        ["6*(x - 2)^2", "x = 1: y = -2", "(1, -2)"],
+        ["ERR:", "Done", "(3, 2)"],
+    ),
+    (
+        "alg",
+        "gradient_points(x^3-3*x^2+2*x+9,x,-1/2,x>=1)",
+        ["dy/dx = -1/2", "sqrt(6)/6 + 1"],
+        ["ERR:", "Done", "-sqrt(6)/6 + 1,"],
+    ),
+    (
+        "alg",
+        "stationary_points(x^2-6*x*cuberoot(x)+2,x,x>=0)",
+        ["max (x = 0, y = 2)", "min (x = 8, y = -30)"],
+        ["ERR:", "Done"],
+    ),
+    (
+        "alg",
         "expand((5*x-3)^8)",
         ["(ax+b)^n with a = 5, b = -3, n = 8", "390625*x^8 - 1875000*x^7", "390625*x^8 -1875000*x^7"],
         ["-87480*x + 510300*x^2", "ERR:"],

@@ -3888,7 +3888,11 @@ static std::optional<Rational> rational_power_factor(Rational base, Rational pow
         if(std::llabs(power.num) > 18) return std::nullopt;
         return r_pow_int(base, static_cast<int>(power.num));
     }
-    if(base.num <= 0 || base.den <= 0 || power.den > 8) return std::nullopt;
+    if(base.num == 0) {
+        if(power.num <= 0) return std::nullopt;
+        return Rational{0, 1};
+    }
+    if(base.num < 0 || base.den <= 0 || power.den > 8) return std::nullopt;
     auto sn = integer_nth_root_i64(base.num, static_cast<int>(power.den));
     auto sd = integer_nth_root_i64(base.den, static_cast<int>(power.den));
     if(!sn || !sd) return std::nullopt;
@@ -8859,15 +8863,41 @@ static bool stationary_domain_allows(Arena &a, std::string const &domain, std::s
     std::string d = compact_input_key(domain);
     auto xv = eval_node(a, x, var, 0.0);
     if(!xv) return false;
-    if(d.find(var + ">0") != std::string::npos && !(*xv > 1e-10)) return false;
-    if(d.find(var + ">=0") != std::string::npos && !(*xv >= -1e-10)) return false;
-    if(d.find(var + "!=0") != std::string::npos && std::fabs(*xv) < 1e-10) return false;
+    auto rhs_value = [&](std::string const &rhs) -> std::optional<double> {
+        try {
+            NodeId n = exact_eval_polish(a, casio::parse_expr(a, rhs));
+            return eval_node(a, n, var, 0.0);
+        } catch(...) {}
+        return std::nullopt;
+    };
+    std::size_t start = 0;
+    while(start <= d.size()) {
+        std::size_t end = d.find(',', start);
+        std::string c = d.substr(start, end == std::string::npos ? std::string::npos : end - start);
+        auto check = [&](std::string const &op) -> std::optional<std::string> {
+            std::string pre = var + op;
+            if(c.rfind(pre, 0) == 0) return c.substr(pre.size());
+            return std::nullopt;
+        };
+        if(auto rhs = check(">=")) { auto v = rhs_value(*rhs); if(v && !(*xv >= *v - 1e-10)) return false; }
+        else if(auto rhs = check("<=")) { auto v = rhs_value(*rhs); if(v && !(*xv <= *v + 1e-10)) return false; }
+        else if(auto rhs = check("!=")) { auto v = rhs_value(*rhs); if(v && std::fabs(*xv - *v) < 1e-10) return false; }
+        else if(auto rhs = check(">")) { auto v = rhs_value(*rhs); if(v && !(*xv > *v + 1e-10)) return false; }
+        else if(auto rhs = check("<")) { auto v = rhs_value(*rhs); if(v && !(*xv < *v - 1e-10)) return false; }
+        if(end == std::string::npos) break;
+        start = end + 1;
+    }
     return true;
 }
 
 static std::vector<NodeId> stationary_roots(Arena &a, NodeId df, std::string const &var, std::string const &domain, std::vector<std::string> &out)
 {
     auto terms = rational_power_sum(a, df, var);
+    if(!terms) {
+        NodeId expanded = exact_eval_simplify(a, expand_square_powers(a, df));
+        terms = rational_power_sum(a, expanded, var);
+        if(terms) df = expanded;
+    }
     if(!terms) return {};
     int lcm_den = 1, shift = 0;
     auto p = power_sum_to_u_poly(*terms, lcm_den, shift);
@@ -8890,6 +8920,19 @@ static std::vector<NodeId> stationary_roots(Arena &a, NodeId df, std::string con
         for(auto const &line : solve_poly2(a, q, uvar)) add_u(sol_rhs(line));
     }
     for(Rational r : rational_roots_any(*p)) add_u(rat_node_text(a, r));
+    std::vector<std::pair<int, Rational>> nz;
+    for(std::size_t i = 0; i < p->c.size(); ++i)
+        if(!is_zero(p->c[i])) nz.push_back({(int)i, p->c[i]});
+    if(nz.size() == 2) {
+        auto lo = nz[0], hi = nz[1];
+        if(lo.first > hi.first) std::swap(lo, hi);
+        int n = hi.first - lo.first;
+        Rational rhs = r_neg(r_div(lo.second, hi.second));
+        if(n > 0 && rhs.num > 0) {
+            if(n == 1) add_u(rat_node_text(a, rhs));
+            else add_u("(" + rat_node_text(a, rhs) + ")^(1/" + std::to_string(n) + ")");
+        }
+    }
 
     std::vector<NodeId> roots;
     for(auto const &ut : us) {
@@ -8954,6 +8997,24 @@ static std::optional<std::vector<std::string>> stationary_points_route(Arena &a,
     return out;
 }
 
+static std::optional<std::vector<std::string>> index_form_route(Arena &a, std::string const &expr)
+{
+    std::string body = unwrap_call_text(expr, "index_form");
+    if(body.empty()) body = unwrap_call_text(expr, "power_sum");
+    if(body.empty()) return std::nullopt;
+    auto parts = split_csv(body);
+    if(parts.empty()) return std::vector<std::string>{"Err: need expr."};
+    std::string var = parts.size() >= 2 ? trim_text(parts[1]) : "x";
+    if(var.empty()) var = "x";
+    NodeId f = casio::simplify(a, casio::parse_expr(a, parts[0]));
+    auto ps = rational_power_sum_node(a, f, var);
+    if(!ps) return std::vector<std::string>{"Err: unsupported index form."};
+    return std::vector<std::string>{
+        format_expr(a, f) + " = " + format_expr(a, *ps),
+        format_expr(a, *ps),
+    };
+}
+
 static std::optional<std::vector<std::string>> gradient_at_route(Arena &a, std::string const &expr)
 {
     std::string body = unwrap_call_text(expr, "gradient_at");
@@ -8985,7 +9046,11 @@ static std::optional<std::vector<std::string>> gradient_points_route(Arena &a, s
     if(parts.size() < 3) return std::vector<std::string>{"Err: need expr,var,m."};
     std::string var = trim_text(parts[1]);
     if(var.empty()) var = "x";
-    std::string domain = parts.size() >= 4 ? trim_text(parts[3]) : "";
+    std::string domain;
+    for(std::size_t i = 3; i < parts.size(); ++i) {
+        if(!domain.empty()) domain += ",";
+        domain += trim_text(parts[i]);
+    }
     NodeId f = casio::simplify(a, casio::parse_expr(a, parts[0]));
     NodeId target = exact_eval_polish(a, casio::parse_expr(a, parts[2]));
     NodeId df = exact_eval_polish(a, casio::derive::differentiate_node(a, f, var, ""));
@@ -33450,6 +33515,7 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         if(auto tl = tangent_normal_line_route(arena, req.expr, false)) return *tl;
         if(auto nl = tangent_normal_line_route(arena, req.expr, true)) return *nl;
         if(auto sp = stationary_points_route(arena, req.expr)) return *sp;
+        if(auto ix = index_form_route(arena, req.expr)) return *ix;
         if(auto ga = gradient_at_route(arena, req.expr)) return *ga;
         if(auto gp = gradient_points_route(arena, req.expr)) return *gp;
         if(auto mono = monotonic_route(arena, req.expr)) return *mono;
