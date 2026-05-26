@@ -35127,6 +35127,257 @@ static std::optional<std::vector<std::string>> system_solve_route(Arena &a, std:
     return std::nullopt;
 }
 
+struct QuadraticDiscriminant
+{
+    NodeId A = 0;
+    NodeId B = 0;
+    NodeId C = 0;
+    NodeId D = 0;
+};
+
+static std::optional<QuadraticDiscriminant> quadratic_discriminant_data(
+    Arena &a, std::string const &expr, std::string const &var)
+{
+    NodeId residual = 0;
+    if(auto eq = casio::parse_equation(a, expr))
+        residual = sub_node(a, eq->lhs, eq->rhs);
+    else
+        residual = casio::parse_expr(a, expr);
+    residual = exact_eval_simplify(a, expand_square_powers(a, casio::simplify(a, residual)));
+
+    std::vector<NodeId> c;
+    if(poly_coeff_nodes(a, residual, var, 4, c)) {
+        for(NodeId &id : c) id = exact_eval_simplify(a, id);
+        if(node_zero(a, c[2]) || !node_zero(a, c[3]) || !node_zero(a, c[4])) c.clear();
+    }
+    if(c.empty()) if(auto s = symbolic_combined_series(a, residual, var, 4)) {
+        if(s->c.size() >= 5 && !node_zero(a, s->c[2]) && node_zero(a, s->c[3]) && node_zero(a, s->c[4]))
+            c = s->c;
+    }
+    if(c.empty()) {
+        auto q = symbolic_quadratic_parts(a, residual, var);
+        if(!q) return std::nullopt;
+        c = {q->c, q->b, q->a2, zero_node(a), zero_node(a)};
+    }
+    NodeId A = exact_eval_simplify(a, c[2]);
+    NodeId B = exact_eval_simplify(a, c[1]);
+    NodeId C = exact_eval_simplify(a, c[0]);
+    if(node_zero(a, A)) return std::nullopt;
+    NodeId D = exact_eval_simplify(a, expand_square_powers(a, casio::add(a, {
+        casio::power(a, B, casio::num(a, 2)),
+        casio::neg(a, casio::mul(a, {casio::num(a, 4), A, C}))
+    })));
+    D = collect_single_symbol_poly(a, D);
+    return QuadraticDiscriminant{A, B, C, D};
+}
+
+static Rational primitive_add_integer_content(Arena &a, NodeId n)
+{
+    std::vector<NodeId> terms;
+    add_terms_flat(a, n, terms);
+    long long g = 0;
+    for(NodeId t : terms) {
+        Rational c;
+        NodeId body = 0;
+        bool has_body = false;
+        split_coeff_body(a, t, c, body, has_body);
+        c.normalize();
+        if(c.den != 1) return Rational{1, 1};
+        long long v = std::llabs(c.num);
+        if(v == 0) continue;
+        g = g == 0 ? v : gcd_abs_ll(g, v);
+    }
+    return g > 1 ? Rational{g, 1} : Rational{1, 1};
+}
+
+static std::optional<std::vector<std::string>> symbolic_quadratic_factor_route(
+    Arena &a, NodeId n, std::string const &var)
+{
+    auto q = quadratic_discriminant_data(a, format_expr(a, n), var);
+    if(!q) return std::nullopt;
+    auto A = as_num(a, q->A);
+    auto D = as_num(a, q->D);
+    Rational sqrtD;
+    if(!A || !D || !square_rat_root(*D, sqrtD)) return std::nullopt;
+
+    NodeId twoA = casio::mul(a, {casio::num(a, 2), q->A});
+    Rational scale = r_div(Rational{1, 1}, r_mul(Rational{4, 1}, *A));
+    std::vector<NodeId> factors;
+    for(Rational s : {sqrtD, r_neg(sqrtD)}) {
+        NodeId factor = exact_eval_simplify(a, casio::add(a, {
+            casio::mul(a, {twoA, casio::sym(a, var)}),
+            q->B,
+            neg_node(a, casio::num(a, s.num, s.den)),
+        }));
+        Rational content = primitive_add_integer_content(a, factor);
+        if(content.num != content.den) {
+            factor = exact_eval_simplify(a, casio::div(a, factor, a.num(content)));
+            scale = r_mul(scale, content);
+        }
+        factors.push_back(factor);
+    }
+    std::vector<NodeId> prod;
+    if(scale.num != scale.den) prod.push_back(casio::num(a, scale.num, scale.den));
+    prod.insert(prod.end(), factors.begin(), factors.end());
+    NodeId factored = prod.size() == 1 ? prod[0] : casio::mul(a, prod);
+    std::string ans = format_expr(a, factored);
+    return std::vector<std::string>{
+        "D = " + format_expr(a, q->D),
+        ans,
+    };
+}
+
+static std::optional<std::vector<std::string>> repeated_root_route(Arena &a, std::string const &expr)
+{
+    std::string body = unwrap_call_text(expr, "repeatedroot");
+    if(body.empty()) body = unwrap_call_text(expr, "repeated_root");
+    if(body.empty()) body = unwrap_call_text(expr, "discroot");
+    if(body.empty()) return std::nullopt;
+    auto parts = split_csv(body);
+    if(parts.size() < 3) return std::vector<std::string>{"Err: need quadratic,var,param."};
+    std::string var = trim_text(parts[1]), pvar = trim_text(parts[2]);
+    auto q = quadratic_discriminant_data(a, trim_text(parts[0]), var);
+    if(!q) return std::vector<std::string>{"Err: need quadratic in " + var + "."};
+
+    std::vector<std::string> out{
+        "a = " + format_expr(a, q->A) + ", b = " + format_expr(a, q->B) + ", c = " + format_expr(a, q->C),
+        "D = b^2 - 4ac",
+        "D = " + format_expr(a, q->D),
+        "D = 0",
+    };
+    auto p = poly_of(a, q->D, pvar);
+    if(!p || !p->ok || (is_zero(p->a2) && is_zero(p->a1))) return out;
+    std::vector<std::string> ps = solve_poly2(a, *p, pvar);
+    std::vector<std::string> roots;
+    for(auto const &line : ps) {
+        if(line.rfind(pvar + " = ", 0) != 0) continue;
+        std::string pv = sol_rhs(line);
+        NodeId val = exact_eval_simplify(a, casio::parse_expr(a, pv));
+        NodeId A = exact_eval_simplify(a, clone_with_substitution(a, q->A, pvar, val));
+        if(node_zero(a, A)) {
+            out.push_back(pvar + " = " + format_expr(a, val) + " rejected, a = 0");
+            continue;
+        }
+        NodeId B = exact_eval_simplify(a, clone_with_substitution(a, q->B, pvar, val));
+        NodeId x0 = exact_eval_simplify(a, casio::div(a, neg_node(a, B), casio::mul(a, {casio::num(a, 2), A})));
+        std::string xr = format_expr(a, x0);
+        out.push_back(pvar + " = " + format_expr(a, val) + " => " + var + " = " + xr);
+        push_unique(roots, var + " = " + xr);
+    }
+    if(!roots.empty()) out.push_back(solution_list_line(var, roots));
+    return out;
+}
+
+static std::optional<std::vector<std::string>> discriminant_route(Arena &a, std::string const &expr)
+{
+    std::string body = unwrap_call_text(expr, "discriminant");
+    if(body.empty()) body = unwrap_call_text(expr, "disc");
+    bool with_cond = false;
+    if(body.empty()) {
+        body = unwrap_call_text(expr, "disccond");
+        with_cond = !body.empty();
+    }
+    if(body.empty()) return std::nullopt;
+    auto parts = split_csv(body);
+    if(parts.empty()) return std::vector<std::string>{"Err: need quadratic."};
+    std::string var = parts.size() >= 2 ? trim_text(parts[1]) : "x";
+    if(var.empty()) var = "x";
+    auto q = quadratic_discriminant_data(a, trim_text(parts[0]), var);
+    if(!q) return std::vector<std::string>{"Err: need quadratic in " + var + "."};
+
+    auto wrap = [](std::string s) {
+        s = trim_text(s);
+        return "(" + s + ")";
+    };
+    std::string A = format_expr(a, q->A), B = format_expr(a, q->B), C = format_expr(a, q->C);
+    std::vector<std::string> out{
+        "a = " + A + ", b = " + B + ", c = " + C,
+        "D = b^2 - 4ac",
+        "D = " + wrap(B) + "^2 - 4*" + wrap(A) + "*" + wrap(C),
+        "D = " + format_expr(a, q->D),
+    };
+    if(!with_cond && parts.size() < 3) {
+        if(auto dr = as_num(a, q->D)) {
+            if(dr->num < 0) out.push_back("D < 0");
+            else if(dr->num == 0) out.push_back("D = 0");
+            else out.push_back("D > 0");
+        }
+        return out;
+    }
+
+    std::string op = parts.size() >= 3 ? trim_text(parts[2]) : "";
+    std::string key = compact_input_key(op);
+    if(key == "distinct" || key == "two" || key == "tworeal") op = ">";
+    else if(key == "repeated" || key == "touch" || key == "tangent") op = "=";
+    else if(key == "real" || key == "intersect") op = ">=";
+    else if(key == "noreal" || key == "noroots" || key == "nointersect") op = "<";
+    else if(key == "notcross" || key == "doesnotcross") op = "<=";
+    if(!(op == "<" || op == "<=" || op == ">" || op == ">=" || op == "="))
+        return std::vector<std::string>{"Err: need discriminant condition."};
+
+    std::string pvar = parts.size() >= 4 ? trim_text(parts[3]) : "";
+    if(pvar.empty()) {
+        std::vector<std::string> syms;
+        collect_symbols(a, q->D, syms);
+        syms.erase(std::remove(syms.begin(), syms.end(), var), syms.end());
+        if(syms.size() == 1) pvar = syms[0];
+    }
+    out.push_back("D " + op + " 0");
+    std::optional<std::string> a_exclusion;
+    NodeId a_exclusion_value = 0;
+    if(!pvar.empty() && contains_symbol(a, q->A, pvar)) {
+        auto lin = symbolic_linear_parts(a, q->A, pvar);
+        if(lin && !contains_symbol(a, lin->m, pvar) && !contains_symbol(a, lin->c, pvar)) {
+            NodeId bad = exact_eval_simplify(a, casio::div(a, neg_node(a, lin->c), lin->m));
+            a_exclusion_value = bad;
+            a_exclusion = pvar + " != " + format_expr(a, bad);
+            out.push_back("a != 0 => " + *a_exclusion);
+        }
+        else out.push_back("a != 0");
+    }
+    if(pvar.empty()) return out;
+
+    std::string dtext = format_expr(a, q->D);
+    std::vector<std::string> solved;
+    if(op == "=") {
+        Request r;
+        r.mode = 6;
+        r.expr = dtext + "=0," + pvar;
+        solved = run(a, r);
+    }
+    else {
+        auto s = rational_inequality_route(a, dtext + op + "0," + pvar);
+        if(s) solved = *s;
+        else if(auto lin = symbolic_linear_inequality_route(a, dtext + op + "0," + pvar)) solved = *lin;
+    }
+    auto split_exclusion = [&](std::string const &line) -> std::optional<std::string> {
+        if(!a_exclusion_value) return std::nullopt;
+        std::istringstream in(line);
+        std::vector<std::string> t;
+        for(std::string x; in >> x;) t.push_back(x);
+        if(t.size() != 5 || t[2] != pvar) return std::nullopt;
+        if(!((t[1] == "<" || t[1] == "<=") && (t[3] == "<" || t[3] == "<="))) return std::nullopt;
+        auto lo = eval_node_env(a, casio::parse_expr(a, t[0]), {});
+        auto hi = eval_node_env(a, casio::parse_expr(a, t[4]), {});
+        auto bad = eval_node_env(a, a_exclusion_value, {});
+        if(!lo || !hi || !bad || *bad <= *lo + 1e-9 || *bad >= *hi - 1e-9) return std::nullopt;
+        std::string b = format_expr(a, a_exclusion_value);
+        return t[0] + " " + t[1] + " " + pvar + " < " + b + " or " +
+               b + " < " + pvar + " " + t[3] + " " + t[4];
+    };
+    for(auto const &line : solved) {
+        if(line.find("D = b^2") != std::string::npos) continue;
+        if(line == dtext + " " + op + " 0") continue;
+        if(a_exclusion && line == "all real " + pvar) {
+            out.push_back(*a_exclusion);
+            continue;
+        }
+        if(auto split = split_exclusion(line)) out.push_back(*split);
+        else out.push_back(line);
+    }
+    return out;
+}
+
 static std::optional<std::vector<std::string>> atan_sum_xy_system_route_key(std::string const &key)
 {
     if((key.find("atan(x)+atan(y)=atan(8)") == std::string::npos &&
@@ -35152,6 +35403,8 @@ std::vector<std::string> run(Arena &arena, Request const &req)
     if(casio::contains_removed_function(req.expr)) return {"Err: unsupported function."};
 
     try {
+        if(auto rr = repeated_root_route(arena, req.expr)) return *rr;
+        if(auto disc = discriminant_route(arena, req.expr)) return *disc;
         if(auto tl = tangent_normal_line_route(arena, req.expr, false)) return *tl;
         if(auto nl = tangent_normal_line_route(arena, req.expr, true)) return *nl;
         if(auto sp = stationary_points_route(arena, req.expr)) return *sp;
@@ -37034,6 +37287,7 @@ algebra_compare_transform_modes:
             if(syms.size() == 1) fvar = syms[0];
             if(auto fa = factor_poly_any_route(arena, n, fvar)) return *fa;
             if(auto fb = factor_bilinear_route(arena, n, syms)) return *fb;
+            if(auto sf = symbolic_quadratic_factor_route(arena, n, fvar)) return *sf;
             auto p = poly_of(arena, n, fvar);
             if(!p || !p->ok) {
                 return {

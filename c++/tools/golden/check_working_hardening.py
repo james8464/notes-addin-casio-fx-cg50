@@ -462,6 +462,48 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "discriminant(x^2-4*x+10,x)",
+        ["D = (-4)^2 - 4*(1)*(10)", "D = -24", "D < 0"],
+        ["ERR:", "Done", "Answer:"],
+    ),
+    (
+        "alg",
+        "disccond(x^2+k*x+16,x,<,k)",
+        ["D = k^2 - 64", "D < 0", "-8 < k < 8"],
+        ["ERR:", "Done", "Answer:"],
+    ),
+    (
+        "alg",
+        "disccond((k+1)*x^2+2*k*x+k-1,x,>,k)",
+        ["a != 0 => k != -1", "D > 0", "k != -1"],
+        ["ERR:", "Done", "Answer:"],
+    ),
+    (
+        "alg",
+        "disccond(p*x^2+4*x*(p+3)+5*p+19,x,>,p)",
+        ["a != 0 => p != 0", "-4 < p < 0 or 0 < p < 9"],
+        ["ERR:", "Done", "Answer:"],
+    ),
+    (
+        "alg",
+        "disccond(x^2-4*a*x+2*b+1,x,<,b)",
+        ["D < 0", "-8*b < - 16*a^2 + 4", "b > 1/2*(2*a + 1)*(2*a - 1)"],
+        ["ERR:", "Done", "Answer:"],
+    ),
+    (
+        "alg",
+        "repeatedroot(x^2+(k-1)*x+k+2,x,k)",
+        ["D = 0", "k = 7 => x = -3", "k = -1 => x = 1", "x = [-3, 1]"],
+        ["ERR:", "Done", "Answer:"],
+    ),
+    (
+        "alg",
+        "factor(2*x^2+(4*k+3)*x+(2*k-1)*(k+2))",
+        ["D = 25", "(2*x + 2*k - 1)*(x + k + 2)"],
+        ["numeric coeffs needed", "ERR:", "Done", "Answer:"],
+    ),
+    (
+        "alg",
         "coeff((1+x/2)^7,x,1)",
         ["Term in x^1", "Coefficient = 7/2"],
         ["Unexpected token", "ERR:"],
