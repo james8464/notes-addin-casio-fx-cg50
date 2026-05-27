@@ -42,3 +42,7 @@ with `check_exact_calculator_input_queue.py`, then batch run with
 `coverage:"complete"` source marker after all visible question, mark-scheme and
 worked-solution pages for a PDF have been manually reviewed; download coverage
 counts those exact-queue complete markers directly.
+
+Solve-output fixtures should not require duplicate decimal echoes after exact
+answer lists. Prefer exact markers such as `x = [1/2, 2]`; keep decimal markers
+only where the route is genuinely numeric or the mark scheme requires rounding.

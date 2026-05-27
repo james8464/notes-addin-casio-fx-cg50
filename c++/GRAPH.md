@@ -99,11 +99,13 @@ Host output quality rules:
 - final answer line should be maths only
 - no `Chk:`, `Answer: int(...)`, `Answer: d/dx(...)`, parser tracebacks, or
   generic calculator-debug text
+- no duplicate decimal echo after an exact solve answer list; emit decimals only
+  for decimal/numeric-only roots where rounding is useful
 - full working only where project scope requires it
 - stats scalar args accept A-level standard-error arithmetic such as
   `sqrt(4^2/10+6^2/15)` without re-adding removed raw stats helpers
-- latest MadAsMaths audit coverage: `331/462` PDFs covered, `6628` legacy
-  manual standard cases, plus `40` exact calculator-input queue rows
+- latest MadAsMaths audit coverage: `332/462` PDFs covered, `6628` legacy
+  manual standard cases, plus `50` exact calculator-input queue rows
 
 ## Working Logic
 
