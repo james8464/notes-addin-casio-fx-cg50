@@ -26,6 +26,15 @@ python3 c++/tools/golden/check_manual_question_triage_notes.py
 
 7. Commit only your appended triage rows and any small docs updates.
 
+## 10 Hour Control Policy
+
+- Work in 4-question or 2-page batches so progress is visible every commit.
+- Use existing KhiCAS/Giac commands for all maths: `solve`, `factor`, `expand`, `simplify`, `diff`, `int`, `subst`, `normalcdf`, `binomial`, etc.
+- Do not write custom maths engines or bespoke solvers.
+- Custom code is only for parsing the question and emitting mark-scheme-style working stages.
+- Treat mark schemes as examples of sufficient working, not exact string targets.
+- If ETA in `python3 c++/tools/audit_progress_tui.py --once` exceeds 10h, split work across more triage agents by disjoint PDF folders.
+
 ## JSONL Schema
 
 One line per question/subpart:

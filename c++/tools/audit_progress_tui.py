@@ -29,6 +29,7 @@ TMP_AUDIT = Path("/tmp/casio_pdf_audit")
 ACCEL_DIR = REPO / "c++" / "tests" / "reports" / "audit_accelerator"
 ACCEL_SUMMARY = ACCEL_DIR / "summary_latest.json"
 ACCEL_TRIAGE = ACCEL_DIR / "triage_host_latest.jsonl"
+HISTORY = REPO / "c++" / "tests" / "reports" / "audit_progress_history.jsonl"
 DOWNLOAD_ROOTS = (
     Path("/Users/james/Downloads/MadAsMaths standard topics"),
     Path("/Users/james/Downloads/MadAsMaths papers"),
@@ -78,6 +79,9 @@ class AuditStats:
     last_event: str
     phase: str
     accel: str
+    rate_sources_per_hour: float
+    eta_hours: float | None
+    deadline: str
 
 
 def strip_color(s: str) -> str:
@@ -124,6 +128,58 @@ def read_jsonl(path: Path) -> list[dict]:
         except json.JSONDecodeError:
             continue
     return rows
+
+
+def progress_history() -> list[dict]:
+    rows = read_jsonl(HISTORY)
+    cutoff = time.time() - 12 * 60 * 60
+    return [r for r in rows if float(r.get("ts", 0) or 0) >= cutoff]
+
+
+def append_progress_history(stats: AuditStats, min_interval: float = 60.0) -> None:
+    rows = progress_history()
+    now = time.time()
+    if rows and now - float(rows[-1].get("ts", 0) or 0) < min_interval:
+        return
+    HISTORY.parent.mkdir(parents=True, exist_ok=True)
+    row = {
+        "ts": round(now, 3),
+        "complete_sources": stats.complete_sources,
+        "downloaded_known": stats.downloaded_known,
+        "complete_local": stats.complete_local,
+        "pdf_count": stats.pdf_count,
+        "manual_rows": stats.manual_rows,
+        "host_commands": stats.host_commands,
+    }
+    with HISTORY.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(row, separators=(",", ":")) + "\n")
+
+
+def speed_eta(complete: int, total: int) -> tuple[float, float | None]:
+    rows = progress_history()
+    if not rows:
+        return 0.0, None
+    now = time.time()
+    first = rows[0]
+    for row in rows:
+        if now - float(row.get("ts", 0) or 0) <= 4 * 60 * 60:
+            first = row
+            break
+    dt = max(0.0, now - float(first.get("ts", now) or now))
+    done_delta = complete - int(first.get("complete_sources", complete) or complete)
+    if dt < 60 or done_delta <= 0:
+        return 0.0, None
+    rate = done_delta / (dt / 3600.0)
+    remaining = max(0, total - complete)
+    return rate, (remaining / rate if rate > 0 else None)
+
+
+def deadline_status(eta_hours: float | None, limit_hours: float) -> str:
+    if eta_hours is None:
+        return "ETA warming up"
+    if eta_hours <= limit_hours:
+        return f"ETA {eta_hours:.1f}h <= {limit_hours:.0f}h target"
+    return f"ETA {eta_hours:.1f}h > {limit_hours:.0f}h target: add agents or narrow batch size"
 
 
 def rel_source(pathish: str) -> str:
@@ -254,6 +310,7 @@ def collect_stats() -> AuditStats:
     if not pending and bad == 0:
         phase = "all local complete"
     accel = accelerator_status()
+    rate, eta = speed_eta(len(complete_rows), known_total)
     return AuditStats(
         pdf_count=len(pdfs),
         downloaded_known=known_total,
@@ -274,6 +331,9 @@ def collect_stats() -> AuditStats:
         last_event=latest_tmp_event(),
         phase=phase,
         accel=accel,
+        rate_sources_per_hour=rate,
+        eta_hours=eta,
+        deadline=deadline_status(eta, 10.0),
     )
 
 
@@ -370,6 +430,7 @@ def render(stats: AuditStats, frame: int, width: int, height: int, enabled: bool
         row("last event", stats.last_event, width, enabled),
         row("report", f"{report}   git {color(str(stats.git_dirty), dirty_code, enabled)} dirty   {stats.host_commands} host cases", width, enabled),
         row("accelerator", stats.accel, width, enabled),
+        row("speed", f"{stats.rate_sources_per_hour:.2f} sources/hour   {stats.deadline}", width, enabled),
         "",
         fit(color("Progress", C.bold, enabled), width),
         fit(f"corpus     {live_bar(stats.complete_sources, stats.downloaded_known or stats.complete_sources, bar_w, frame, enabled)} {stats.complete_sources}/{stats.downloaded_known} done · {corpus_pending} left", width),
@@ -408,6 +469,7 @@ def run_loop(fps: float, no_color: bool, scan_interval: float) -> int:
     try:
         while True:
             stats = collect_stats_cached(scan_interval)
+            append_progress_history(stats)
             size = shutil.get_terminal_size((100, 34))
             sys.stdout.write("\033[H\033[2J" + render(stats, frame, size.columns, size.lines, use_color))
             sys.stdout.flush()
@@ -435,6 +497,7 @@ def main() -> int:
     args = ap.parse_args()
     if args.once:
         stats = collect_stats()
+        append_progress_history(stats, min_interval=0)
         size = shutil.get_terminal_size((100, 34))
         print(render(stats, 0, size.columns, size.lines, not args.no_color))
         return 0
