@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Run exact calculator-input queue rows through the host route."""
+"""Run exact calculator-input queue rows.
+
+Default engine is intentionally unavailable until a production KhiCAS runner exists.
+Use --engine host-provisional only for non-calculator triage.
+"""
 
 from __future__ import annotations
 
@@ -90,9 +94,19 @@ def run_one(spec: dict[str, Any], strict: bool) -> dict[str, Any]:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
+    ap.add_argument(
+        "--engine",
+        choices=("production", "host-provisional"),
+        default="production",
+        help="production must match ./compile/.g3a; host-provisional is not calculator proof.",
+    )
     ap.add_argument("--strict-markers", action="store_true")
     ap.add_argument("--workers", type=int, default=8)
     args = ap.parse_args()
+    if args.engine == "production":
+        print("FAIL production engine runner missing: host casio_host is not the source-built .g3a engine.")
+        print("Use --engine host-provisional only for triage; do not count it as calculator parity.")
+        return 2
     OUT.mkdir(parents=True, exist_ok=True)
     work = specs()
     with cf.ThreadPoolExecutor(max_workers=max(1, args.workers)) as ex:

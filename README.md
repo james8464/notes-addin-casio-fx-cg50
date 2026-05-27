@@ -92,6 +92,7 @@ Build calculator add-ins:
 ```
 
 Transfer files are published under `calculator_files/`, then `./compile` copies that folder to `~/Downloads/calculator_files/`. Copy both `CasioCAS.g3a` and `CASIOCAS.PAK` from that folder to the calculator root. Build artifacts stay under `c++/prizm/build/`.
+After any host/prototype solver change, run `./compile` before trusting calculator parity; `calculator_files/CasioCAS.g3a` must be the source-built KhiCAS add-in, not only a host/native smoke result.
 
 ## Notes
 

@@ -206,13 +206,13 @@ Safe-ish size levers:
 ```mermaid
 graph TD
   Bug["weak working / wrong answer"] --> Repro["host command or TUI case_id"]
-  Repro --> Test["add/extend golden or random-engine test"]
-  Test --> PatchHost["patch addin/src if host issue"]
-  Test --> PatchCalc["mirror in main.cc/catalogen.cpp if device issue"]
+  Repro --> Test["add/extend provisional host test"]
+  Test --> PatchHost["patch addin/src only for host prototype"]
+  Test --> PatchCalc["port same behaviour to main.cc/catalogen.cpp"]
   PatchHost --> Gate["run_tests_cpp.py"]
   PatchCalc --> Compile["./compile + g3a checks"]
-  Gate --> Commit["git commit"]
-  Compile --> Commit
+  Gate --> Proto["host-only proof"]
+  Compile --> Commit["calculator proof + git commit"]
 ```
 
 Never claim calculator behavior from host-only evidence. If the `.g3a` matters,
