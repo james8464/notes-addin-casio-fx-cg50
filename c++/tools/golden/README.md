@@ -36,6 +36,8 @@ python3 c++/tools/golden/check_madasmaths_standard_manual_cases.py
 python3 c++/tools/golden/check_manual_question_triage_notes.py
 ```
 
+`check_madasmaths_standard_question_corpus.py` verifies generated corpus rows and still host-checks manual cases whose PDFs are outside that generated corpus.
+
 External source setup:
 
 ```bash

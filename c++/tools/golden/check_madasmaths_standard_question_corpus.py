@@ -108,6 +108,16 @@ def outside_standard_corpus(case: dict[str, Any]) -> bool:
     return src.startswith("MadAsMaths A-level booklets/")
 
 
+def ledger_source_set(rows: list[dict[str, Any]]) -> set[str]:
+    out: set[str] = set()
+    for row in rows:
+        topic_page = str(row["topic_page"])
+        pdf = str(row["pdf"])
+        out.add(f"{topic_page}/{pdf}")
+        out.add(audit.canonical_source(topic_page, pdf))
+    return out
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--skip-host", action="store_true")
@@ -126,6 +136,7 @@ def main() -> int:
 
     rows = load_jsonl(LEDGER)
     cases = load_jsonl(CASES)
+    ledger_sources = ledger_source_set(rows)
     text = CORPUS.read_text(encoding="utf-8")
     markers = re.findall(r"<!-- madas-row: ([^>]+) -->", text)
     marker_counts = Counter(markers)
@@ -146,6 +157,8 @@ def main() -> int:
         if removed_case(case):
             continue
         if outside_standard_corpus(case):
+            continue
+        if str(case.get("source_pdf", "")) not in ledger_sources:
             continue
         args_list = case.get("args")
         if not args_list:
