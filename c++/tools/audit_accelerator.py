@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Parallel audit accelerator: cache text, dedupe sources, run triage host checks."""
+"""Parallel audit accelerator: cache text, dedupe sources, run provisional host checks."""
 
 from __future__ import annotations
 
@@ -32,6 +32,11 @@ ROOTS = (
     Path("/Users/james/Downloads/MadAsMaths A-level booklets"),
     Path("/Users/james/Downloads/Edexcel A Level Maths past papers"),
     Path("/Users/james/Downloads/Edexcel A Level Maths support materials"),
+    Path("/Volumes/VM/MadAsMaths standard topics"),
+    Path("/Volumes/VM/MadAsMaths papers"),
+    Path("/Volumes/VM/MadAsMaths A-level booklets"),
+    Path("/Volumes/VM/Edexcel A Level Maths past papers"),
+    Path("/Volumes/VM/Edexcel A Level Maths support materials"),
 )
 SUPPORT_TOKENS = (
     "mark scheme", "marks", "rms", "_ms", "-ms", "solution", "solutions",
@@ -69,6 +74,15 @@ def read_jsonl(path: Path) -> list[dict[str, Any]]:
 
 def rel_source(pathish: str) -> str:
     p = pathish.replace("\\", "/")
+    if p.endswith(" conv_png"):
+        p = p[: -len(" conv_png")] + ".pdf"
+    for old, new in (
+        ("MadAsMaths A-level booklets/standard_integration/", "integration/"),
+        ("MadAsMaths A-level booklets/standard_various/", "various/"),
+        ("MadAsMaths A-level booklets/standard_trigonometry/", "trigonometry/"),
+    ):
+        if old in p:
+            return new + p.split(old, 1)[1]
     for marker in (
         "MadAsMaths standard topics/",
         "MadAsMaths papers/",
@@ -226,6 +240,15 @@ def local_pdfs(all_downloads: bool) -> list[Path]:
     return sorted(set(out), key=lambda p: str(p).lower())
 
 
+def local_docs(all_downloads: bool) -> list[Path]:
+    roots = (Path.home() / "Downloads", Path("/Volumes/VM")) if all_downloads else ROOTS
+    out = local_pdfs(all_downloads)
+    for root in roots:
+        if root.exists():
+            out.extend(p for p in root.rglob("* conv_png") if p.is_dir() and any(p.glob("*.png")))
+    return sorted(set(out), key=lambda p: str(p).lower())
+
+
 def question_like_pdf(path: Path) -> bool:
     return not support_name(str(path))
 
@@ -335,12 +358,17 @@ def run_triage_host(workers: int, strict_needles: bool) -> dict[str, int]:
 
 def inventory(all_downloads: bool, workers: int) -> dict[str, Any]:
     pdfs = local_pdfs(all_downloads)
+    docs = local_docs(all_downloads)
     complete = complete_sources()
     online = read_jsonl(ONLINE_MANIFEST)
     online_q = [r for r in online if question_like_manifest(r)]
     local_q = [p for p in pdfs if question_like_pdf(p)]
-    local_done = [p for p in local_q if rel_source(str(p)) in complete]
+    local_doc_q = [p for p in docs if question_like_pdf(p)]
+    local_done = [p for p in local_doc_q if rel_source(str(p)) in complete]
     payload: dict[str, Any] = {
+        "local_docs": len(docs),
+        "local_question_docs": len(local_doc_q),
+        "local_support_docs": len(docs) - len(local_doc_q),
         "local_pdfs": len(pdfs),
         "local_question_pdfs": len(local_q),
         "local_support_pdfs": len(pdfs) - len(local_q),
@@ -348,7 +376,7 @@ def inventory(all_downloads: bool, workers: int) -> dict[str, Any]:
         "complete_local_question_sources": len(local_done),
         "online_manifest_rows": len(online),
         "online_question_rows": len(online_q),
-        "question_sources": max(len(online_q), len(local_q), len(complete)),
+        "question_sources": max(len(online_q), len(local_doc_q), len(complete)),
         "workers": workers,
     }
     return payload
@@ -364,8 +392,9 @@ def write_summary(payload: dict[str, Any]) -> None:
         "",
         f"- workers: {inv.get('workers')}",
         f"- question sources: {inv.get('complete_question_sources')}/{inv.get('question_sources')}",
-        f"- local question PDFs: {inv.get('complete_local_question_sources')}/{inv.get('local_question_pdfs')}",
-        f"- local support PDFs: {inv.get('local_support_pdfs')}",
+        f"- local question docs: {inv.get('complete_local_question_sources')}/{inv.get('local_question_docs')}",
+        f"- local support docs: {inv.get('local_support_docs')}",
+        f"- local PDFs: {inv.get('local_pdfs')}",
         f"- online manifest rows: {inv.get('online_manifest_rows')}",
         f"- online question rows: {inv.get('online_question_rows')}",
     ]
@@ -373,7 +402,7 @@ def write_summary(payload: dict[str, Any]) -> None:
         tc = payload["text_cache"]
         lines.append(f"- text cache: ok {tc.get('ok')}/{tc.get('total')}, cached {tc.get('cached')}, bad {tc.get('bad')}")
     if tri:
-        lines.append(f"- triage host smoke: ok {tri.get('ok', 0)} / {tri.get('total', 0)}, needs-conversion {tri.get('bad', 0)}")
+        lines.append(f"- triage host-provisional smoke: ok {tri.get('ok', 0)} / {tri.get('total', 0)}, needs-conversion {tri.get('bad', 0)}")
     lines.extend(["", f"Reports: `{TRIAGE_REPORT}` `{TRIAGE_FAILS}`"])
     SUMMARY_MD.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
@@ -383,8 +412,8 @@ def main() -> int:
     ap.add_argument("--workers", type=int, default=max(1, os.cpu_count() or 4))
     ap.add_argument("--all-downloads", action="store_true", help="Scan every PDF under ~/Downloads, not only known audit roots.")
     ap.add_argument("--extract-text", action="store_true", help="Parallel pdftotext cache for local question PDFs.")
-    ap.add_argument("--triage-host", action="store_true", help="Run candidate commands from manual triage notes in parallel.")
-    ap.add_argument("--fast", action="store_true", help="Run inventory, text cache, and triage host.")
+    ap.add_argument("--triage-host", action="store_true", help="Run candidate commands from manual triage notes in the provisional host.")
+    ap.add_argument("--fast", action="store_true", help="Run inventory, text cache, and provisional host triage.")
     ap.add_argument("--strict-needles", action="store_true", help="Treat missing expected strings as failures for triage candidate commands.")
     args = ap.parse_args()
 

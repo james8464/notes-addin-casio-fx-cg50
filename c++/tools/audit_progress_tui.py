@@ -36,6 +36,11 @@ DOWNLOAD_ROOTS = (
     Path("/Users/james/Downloads/MadAsMaths A-level booklets"),
     Path("/Users/james/Downloads/Edexcel A Level Maths past papers"),
     Path("/Users/james/Downloads/Edexcel A Level Maths support materials"),
+    Path("/Volumes/VM/MadAsMaths standard topics"),
+    Path("/Volumes/VM/MadAsMaths papers"),
+    Path("/Volumes/VM/MadAsMaths A-level booklets"),
+    Path("/Volumes/VM/Edexcel A Level Maths past papers"),
+    Path("/Volumes/VM/Edexcel A Level Maths support materials"),
 )
 LIMIT_2MIB = 2 * 1024 * 1024
 SUPPORT_TOKENS = (
@@ -184,21 +189,36 @@ def deadline_status(eta_hours: float | None, limit_hours: float) -> str:
 
 def rel_source(pathish: str) -> str:
     p = pathish.replace("\\", "/")
-    for marker in ("MadAsMaths A-level booklets/", "Edexcel A Level Maths support materials/"):
+    if p.endswith(" conv_png"):
+        p = p[: -len(" conv_png")] + ".pdf"
+    for old, new in (
+        ("MadAsMaths A-level booklets/standard_integration/", "integration/"),
+        ("MadAsMaths A-level booklets/standard_various/", "various/"),
+        ("MadAsMaths A-level booklets/standard_trigonometry/", "trigonometry/"),
+    ):
+        if old in p:
+            return new + p.split(old, 1)[1]
+    for marker in (
+        "MadAsMaths papers/",
+        "MadAsMaths A-level booklets/",
+        "Edexcel A Level Maths past papers/",
+        "Edexcel A Level Maths support materials/",
+    ):
         if marker in p:
-            return p.split(marker, 1)[1]
+            return marker + p.split(marker, 1)[1]
     return Path(p).name
 
 
-def local_pdfs() -> list[Path]:
+def local_docs() -> list[Path]:
     out: list[Path] = []
     for root in DOWNLOAD_ROOTS:
         if root.exists():
             out.extend(root.rglob("*.pdf"))
-    return sorted({p for p in out if not support_pdf(p)}, key=lambda p: str(p).lower())
+            out.extend(p for p in root.rglob("* conv_png") if p.is_dir() and any(p.glob("*.png")))
+    return sorted({p for p in out if not support_doc(p)}, key=lambda p: str(p).lower())
 
 
-def support_pdf(path: Path) -> bool:
+def support_doc(path: Path) -> bool:
     low = str(path).lower()
     return any(tok in low for tok in SUPPORT_TOKENS)
 
@@ -276,8 +296,8 @@ def git_dirty_count() -> int:
 
 
 def collect_stats() -> AuditStats:
-    pdfs = local_pdfs()
-    pdf_names = {rel_source(str(p)) for p in pdfs}
+    docs = local_docs()
+    doc_names = {rel_source(str(p)) for p in docs}
     cases = read_jsonl(MANUAL_CASES)
     source_rows = {rel_source(str(r.get("source_pdf", ""))) for r in cases if r.get("source_pdf")}
     complete_rows = {
@@ -291,9 +311,9 @@ def collect_stats() -> AuditStats:
         if r.get("args"):
             host_commands += 1
         host_commands += sum(1 for v in r.get("variants", []) if isinstance(v, dict) and v.get("args"))
-    complete_local = len(pdf_names & complete_rows)
-    pending = sorted(pdf_names - complete_rows)
-    known_total = max(len(pdfs), count_download_manifest(), len(complete_rows), len(source_rows))
+    complete_local = len(doc_names & complete_rows)
+    pending = sorted(doc_names - complete_rows)
+    known_total = max(len(docs), count_download_manifest(), len(complete_rows), len(source_rows))
     current = "none"
     tmp = latest_path([p for p in TMP_AUDIT.rglob("*")] if TMP_AUDIT.exists() else [])
     if tmp:
@@ -312,7 +332,7 @@ def collect_stats() -> AuditStats:
     accel = accelerator_status()
     rate, eta = speed_eta(len(complete_rows), known_total)
     return AuditStats(
-        pdf_count=len(pdfs),
+        pdf_count=len(docs),
         downloaded_known=known_total,
         source_rows=len(source_rows),
         complete_sources=len(complete_rows),
@@ -368,12 +388,12 @@ def accelerator_status() -> str:
             q = inv.get("question_sources")
             c = inv.get("complete_question_sources")
             if total is not None:
-                return f"triage host {done}/{total} ok · {bad} bad · question docs {c}/{q}"
-            return f"question docs {c}/{q} · local {inv.get('local_pdfs')} · online {inv.get('online_question_rows')}"
+                return f"triage host-provisional {done}/{total} ok · {bad} bad · docs {c}/{q}"
+            return f"question docs {c}/{q} · local {inv.get('local_docs', inv.get('local_pdfs'))} · online {inv.get('online_question_rows')}"
         except Exception:
             pass
     if total is not None:
-        return f"triage host {done}/{total} ok · {bad} bad"
+        return f"triage host-provisional {done}/{total} ok · {bad} bad"
     return "idle"
 
 
@@ -428,13 +448,13 @@ def render(stats: AuditStats, frame: int, width: int, height: int, enabled: bool
         fit("─" * width, width),
         row("current", stats.current, width, enabled),
         row("last event", stats.last_event, width, enabled),
-        row("report", f"{report}   git {color(str(stats.git_dirty), dirty_code, enabled)} dirty   {stats.host_commands} host cases", width, enabled),
+        row("report", f"{report}   git {color(str(stats.git_dirty), dirty_code, enabled)} dirty   {stats.host_commands} host-provisional cases", width, enabled),
         row("accelerator", stats.accel, width, enabled),
         row("speed", f"{stats.rate_sources_per_hour:.2f} sources/hour   {stats.deadline}", width, enabled),
         "",
         fit(color("Progress", C.bold, enabled), width),
         fit(f"corpus     {live_bar(stats.complete_sources, stats.downloaded_known or stats.complete_sources, bar_w, frame, enabled)} {stats.complete_sources}/{stats.downloaded_known} done · {corpus_pending} left", width),
-        fit(f"local pdfs {bar(stats.pdf_count, stats.downloaded_known or stats.pdf_count, bar_w, enabled)} {stats.pdf_count}/{stats.downloaded_known} present on disk", width),
+        fit(f"local docs {bar(stats.pdf_count, stats.downloaded_known or stats.pdf_count, bar_w, enabled)} {stats.pdf_count}/{stats.downloaded_known} present on disk", width),
         fit(f"local audit{live_bar(stats.complete_local, stats.pdf_count or stats.complete_local, bar_w, frame, enabled)} {stats.complete_local}/{stats.pdf_count} done · {pending_count} pending", width),
         fit(f"tracked    {bar(stats.tracked_sources, stats.downloaded_known or stats.tracked_sources, bar_w, enabled)} {stats.tracked_sources}/{stats.downloaded_known} sources", width),
         fit(f"manual     {stats.manual_rows} rows · {stats.unsupported_rows} unsupported-ok/context", width),
@@ -443,7 +463,7 @@ def render(stats: AuditStats, frame: int, width: int, height: int, enabled: bool
         fit(size_line("g3a", stats.g3a_size, LIMIT_2MIB, bar_w, enabled), width),
         fit(f"pak        {stats.pak_size:,} B", width),
         "",
-        fit(color("Pending downloaded PDFs", C.bold, enabled), width),
+        fit(color("Pending local docs", C.bold, enabled), width),
     ]
     max_pending = max(0, height - len(lines) - 2)
     shown = stats.pending[:max_pending]

@@ -162,6 +162,26 @@ python3 c++/tools/run_tests_cpp.py
 python3 run_tests.py tui
 ```
 
+## Audit Intake
+
+```mermaid
+graph TD
+  VM["/Volumes/VM PNG folders"] --> TUI["audit_progress_tui.py"]
+  DL["~/Downloads PDFs"] --> TUI
+  VM --> Accel["audit_accelerator.py"]
+  DL --> Accel
+  TUI --> Docs["local docs count"]
+  Accel --> Prov["host-provisional triage"]
+  Prov --> Queue["exact calculator-input queue"]
+  Queue --> ProdGate["production runner required"]
+  ProdGate --> G3A["./compile CasioCAS.g3a"]
+```
+
+Audit labels:
+- `local docs` means PDFs plus rendered `* conv_png` folders with PNG pages.
+- `host-provisional` means fast triage only, not calculator proof.
+- production proof still requires the KhiCAS-source `.g3a` path.
+
 ## Adversarial Random Engine
 
 ```mermaid
