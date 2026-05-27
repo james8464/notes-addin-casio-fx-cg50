@@ -102,8 +102,8 @@ Host output quality rules:
 - full working only where project scope requires it
 - stats scalar args accept A-level standard-error arithmetic such as
   `sqrt(4^2/10+6^2/15)` without re-adding removed raw stats helpers
-- latest MadAsMaths audit coverage: `330/462` PDFs covered, `6628` legacy
-  manual standard cases, plus exact calculator-input queue rows
+- latest MadAsMaths audit coverage: `331/462` PDFs covered, `6628` legacy
+  manual standard cases, plus `40` exact calculator-input queue rows
 
 ## Working Logic
 
@@ -206,7 +206,7 @@ Current policy:
 - tracked ledgers contain compact exact user inputs plus worked-solution lines
 - parallel triage rows are append-only evidence, not executable proof
 - failed third-party links are recorded, but Pearson/MadAs required corpus must be complete
-- latest MadAs coverage: 462 downloaded question PDFs, 328 covered, 134 gaps
+- latest MadAs coverage: 462 downloaded question PDFs, 331 covered, 131 gaps
 
 ## ROM / Storage
 
