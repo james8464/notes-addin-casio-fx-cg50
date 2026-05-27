@@ -102,7 +102,7 @@ Host output quality rules:
 - full working only where project scope requires it
 - stats scalar args accept A-level standard-error arithmetic such as
   `sqrt(4^2/10+6^2/15)` without re-adding removed raw stats helpers
-- latest MadAsMaths audit coverage: `252/462` PDFs covered, `6082` manual
+- latest MadAsMaths audit coverage: `253/462` PDFs covered, `6086` manual
   standard cases
 
 ## Working Logic
