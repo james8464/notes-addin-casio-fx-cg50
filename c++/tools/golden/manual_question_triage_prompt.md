@@ -31,9 +31,10 @@ python3 c++/tools/golden/check_manual_question_triage_notes.py
 - Work in 4-question or 2-page batches so progress is visible every commit.
 - Use existing KhiCAS/Giac commands for all maths: `solve`, `factor`, `expand`, `simplify`, `diff`, `int`, `subst`, `normalcdf`, `binomial`, etc.
 - Do not write custom maths engines, bespoke solvers, or duplicate CAS logic.
-- Custom project code is only for parsing the question, selecting KhiCAS commands, and emitting mark-scheme-style working stages.
+- Every app feature must delegate calculation to existing KhiCAS/Giac code. Custom project code is only for parsing the question, selecting KhiCAS/Giac commands, and emitting mark-scheme-style working stages.
 - Treat mark schemes as examples of sufficient working, not exact string targets.
-- If ETA in `python3 c++/tools/audit_progress_tui.py --once` exceeds 10h, split work across more triage agents by disjoint PDF folders.
+- Check pace with `python3 c++/tools/audit_progress_tui.py --once --no-color` at least every 30 minutes.
+- If ETA exceeds 10h, split work across more triage agents by disjoint PDF folders.
 - No quality-loss shortcut is allowed: only reduce ETA by adding non-overlapping agents, shrinking batches, and converting obvious KhiCAS-backed questions first.
 - Each agent must commit small append-only JSONL batches so progress is measurable by the TUI.
 
