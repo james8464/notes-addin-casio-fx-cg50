@@ -94,7 +94,10 @@ manual mark-scheme coverage.
 `check_edexcel_question_audit_coverage.py` verifies every official Pearson 9MA0
 question paper has tracker rows for all inferred question numbers.
 
-`manual_question_triage_notes.jsonl` is for parallel review agents only: record
-manual page-image question/mark-scheme notes there, validate with
-`check_manual_question_triage_notes.py`, then let the main audit agent convert
-useful rows into executable host checks.
+`manual_question_triage_notes.jsonl` is for broad notes only.
+
+`exact_calculator_input_queue.jsonl` is the fast audit intake queue. Each row
+must store the exact calculator text a user would type, not host flags, plus
+the worked mark-scheme lines needed to judge full-credit working. Validate with
+`check_exact_calculator_input_queue.py`, then batch run with
+`run_exact_calculator_input_queue.py --strict-markers`.

@@ -195,7 +195,7 @@ graph TD
   Downloads --> MP2["check_madasmaths_full_audit.py"]
   Downloads --> Edexcel["check_edexcel_*_downloads.py"]
   Render --> Images["ignored page-image cache"]
-  Triage --> Tests["primary agent converts notes to host checks"]
+  Triage --> Tests["exact calculator input queue + batch runner"]
   Std --> Ledger["ignored ledgers/reports"]
   MP2 --> Ledger
   Edexcel --> Tracker["c++/tools/golden/a_level_audit_tracker.jsonl"]
@@ -203,7 +203,7 @@ graph TD
 
 Current policy:
 - source PDFs/images stay out of git
-- tracked ledgers contain only compact manual verdicts/commands
+- tracked ledgers contain compact exact user inputs plus worked-solution lines
 - parallel triage rows are append-only evidence, not executable proof
 - failed third-party links are recorded, but Pearson/MadAs required corpus must be complete
 - latest MadAs coverage: 462 downloaded question PDFs, 328 covered, 134 gaps
