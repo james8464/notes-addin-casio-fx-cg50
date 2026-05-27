@@ -7961,8 +7961,26 @@ static std::vector<std::string> real_solution_lines(Arena &a, std::vector<std::s
     return out;
 }
 
+static bool solution_rhs_needs_decimal_echo(std::string const &line)
+{
+    std::string rhs = sol_rhs(line);
+    for(char ch : rhs) {
+        if(ch == '.') return true;
+    }
+    return false;
+}
+
 static void append_numeric_3dp(Arena &a, std::vector<std::string> &out, std::string const &var, std::vector<std::string> const &sols)
 {
+    bool needs_decimal = false;
+    for(auto const &s : sols) {
+        if(solution_rhs_needs_decimal_echo(s)) {
+            needs_decimal = true;
+            break;
+        }
+    }
+    if(!needs_decimal) return;
+
     std::vector<double> vals;
     for(auto const &s : sols) {
         auto v = solution_line_value(a, s);
