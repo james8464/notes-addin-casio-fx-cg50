@@ -152,7 +152,7 @@ static char const *valid_methods(std::string const &feature)
 {
     if(feature == "int") return "|auto|direct|reverse_chain|sub|parts|di|trig|pf|div|manip_trig|manip_rational|";
     if(feature == "derive") return "|auto|chain|product|quotient|logdiff|first_principles|implicit|param|second|";
-    if(feature == "trig") return "|auto|general|bounded|cast|identity|rform|square_then_check|sin_cos|pythag|double_angle|compound_angle|small|small_angle|target|manip_trig|rad|radians|deg|degrees|";
+    if(feature == "trig") return "|auto|general|bounded|cast|identity|rform|square_then_check|sin_cos|pythag|double_angle|compound_angle|small|small_angle|target|manip_trig|rad|radians|deg|degrees|cos_double|sin_double|tan_double|cos_half|sin_half|tan_half|";
     if(feature == "alg") return "|auto|linear|factor|quad_formula|complete_square|substitution|clear_denoms|log_exp|numeric|interval|expand|collect|partfrac|pf|canonical|target|equate_coeffs|simultaneous|manip_rational|manip_trig|standard_line|line_standard|minimum|maximum|vertex|";
     if(feature == "stats") return "|auto|binomial|normal|";
     if(feature == "suvat") return "|auto|suvat|energy|moments|projectile|forces|variable_accel|";
@@ -350,8 +350,30 @@ int main(int argc, char **argv)
     }
 
     std::string flag = argv[1];
-    if(flag == "--bool" || flag == "--nand" || flag == "--nor" || flag == "--prove") {
+    if(flag == "--bool" || flag == "--nand" || flag == "--nor") {
         std::cout << "Err: unsupported function\n";
+        return 0;
+    }
+    if(flag == "--prove") {
+        // Prove identity: route to trig mode 1 with lhs\nrhs
+        std::string expr = (argc >= 3) ? argv[2] : "";
+        if(expr.empty()) {
+            std::cout << "ERR: need an equation.\n";
+            return 1;
+        }
+        casio::Arena arena2;
+        auto eq = casio::parse_equation(arena2, expr);
+        if(!eq) {
+            std::cout << "ERR: need LHS=RHS.\n";
+            return 1;
+        }
+        std::string lhs = casio::format_expr(arena2, eq->lhs);
+        std::string rhs = casio::format_expr(arena2, eq->rhs);
+        casio::trig::Request req;
+        req.mode = 1;
+        req.expr = lhs + "\n" + rhs;
+        auto lines = casio::trig::run(arena2, req);
+        print_lines(lines);
         return 0;
     }
     bool is_stdin_program = (flag == "--stdin-program");
@@ -395,6 +417,12 @@ int main(int argc, char **argv)
                 if(eq == std::string::npos) return;
                 std::string k = trim(kv.substr(0, eq));
                 std::string v = trim(kv.substr(eq + 1));
+                // ? or _ means unknown — set as target instead
+                if(v == "?" || v == "_") {
+                    if(k == "s" || k == "u" || k == "v" || k == "a" || k == "t")
+                        targets.push_back(k);
+                    return;
+                }
                 if(k == "s") in.s = v;
                 else if(k == "u") in.u = v;
                 else if(k == "v") in.v = v;
@@ -674,6 +702,96 @@ int main(int argc, char **argv)
                 req.method = inner_method.empty() ? "expand" : inner_method;
                 req.expr = inner;
             }
+            else if(!(inner = unwrap_call(expr, "gcd(")).empty()) {
+                auto parts = split_top_csv(inner);
+                std::vector<long long> vals;
+                for(auto const &p : parts) {
+                    try { vals.push_back(std::stoll(trim(p))); } catch(...) {}
+                }
+                if(vals.size() < 2) { std::cout << "Err: use gcd(a,b,...).\n"; return 0; }
+                long long g = std::llabs(vals[0]);
+                for(size_t i = 1; i < vals.size(); ++i) {
+                    long long a = g, b = std::llabs(vals[i]);
+                    while(b) { long long t = b; b = a % b; a = t; }
+                    g = a;
+                }
+                std::cout << "1. Apply Euclid's algorithm.\n";
+                std::cout << "Answer: gcd = " << g << "\n";
+                return 0;
+            }
+            else if(!(inner = unwrap_call(expr, "lcm(")).empty()) {
+                auto parts = split_top_csv(inner);
+                std::vector<long long> vals;
+                for(auto const &p : parts) {
+                    try { vals.push_back(std::stoll(trim(p))); } catch(...) {}
+                }
+                if(vals.size() < 2) { std::cout << "Err: use lcm(a,b,...).\n"; return 0; }
+                long long l = 1;
+                for(auto v : vals) {
+                    long long a = l, b = std::llabs(v), g;
+                    long long tb = b;
+                    while(tb) { long long t = tb; tb = a % tb; a = t; }
+                    g = a;
+                    l = std::llabs(l * (b / g));
+                }
+                std::cout << "1. Use lcm(a,b)=abs(ab)/gcd(a,b).\n";
+                std::cout << "Answer: lcm = " << l << "\n";
+                return 0;
+            }
+            else if(!(inner = unwrap_call(expr, "isprime(")).empty()) {
+                long long n = 0;
+                try { n = std::stoll(trim(inner)); } catch(...) {}
+                if(n < 2) { std::cout << "Err: use isprime(n), n>=2.\n"; return 0; }
+                bool prime = (n == 2);
+                if(n % 2 != 0) {
+                    prime = true;
+                    for(long long d = 3; d * d <= n; d += 2) {
+                        if(n % d == 0) { prime = false; break; }
+                    }
+                }
+                std::cout << "1. Trial divide up to sqrt(n).\n";
+                std::cout << "Answer: " << (prime ? "prime" : "not prime") << "\n";
+                return 0;
+            }
+            else if(!(inner = unwrap_call(expr, "factors(")).empty()) {
+                long long n = 0;
+                try { n = std::llabs(std::stoll(trim(inner))); } catch(...) {}
+                if(n == 0) { std::cout << "Err: use factors(n), n!=0.\n"; return 0; }
+                std::cout << "1. Prime factorisation by trial division.\nAnswer: ";
+                bool first = true;
+                long long remaining = n;
+                for(long long d = 2; d * d <= remaining; d += (d == 2 ? 1 : 2)) {
+                    long long power = 0;
+                    while(remaining % d == 0) { remaining /= d; ++power; }
+                    if(power > 0) {
+                        if(!first) std::cout << "*";
+                        std::cout << d;
+                        if(power > 1) std::cout << "^" << power;
+                        first = false;
+                    }
+                }
+                if(remaining > 1) {
+                    if(!first) std::cout << "*";
+                    std::cout << remaining;
+                }
+                std::cout << "\n";
+                return 0;
+            }
+            else if(!(inner = unwrap_call(expr, "divisors(")).empty()) {
+                long long n = 0;
+                try { n = std::llabs(std::stoll(trim(inner))); } catch(...) {}
+                if(n == 0 || n > 10000) { std::cout << "Err: use divisors(n), 0<|n|<=10000.\n"; return 0; }
+                std::cout << "1. Test divisors up to n.\nAnswer: ";
+                bool first = true;
+                for(long long d = 1; d <= n; ++d) {
+                    if(n % d != 0) continue;
+                    if(!first) std::cout << ",";
+                    std::cout << d;
+                    first = false;
+                }
+                std::cout << "\n";
+                return 0;
+            }
             else {
                 req.mode = (method == "expand" && expr.find('=') == std::string::npos) ? 3 :
                            (method == "complete_square" && expr.find('=') == std::string::npos) ? 5 :
@@ -696,6 +814,15 @@ int main(int argc, char **argv)
                 if(target.empty() && !inner_target.empty()) target = inner_target;
                 expr = inner;
             }
+            if(!(inner = unwrap_call(expr, "rewrite(")).empty()) {
+                auto parts = split_top_csv(inner);
+                expr = parts.empty() ? inner : trim(parts[0]);
+                if(parts.size() >= 2) {
+                    std::string rw_method = trim(parts[1]);
+                    if(method.empty()) method = rw_method;
+                    else if(target.empty()) target = rw_method;
+                }
+            }
             if(!print_method_header("trig", method, method_u)) return 1;
             casio::trig::Request req;
             req.mode = 0;
@@ -707,7 +834,9 @@ int main(int argc, char **argv)
                 trig_equation = true;
             }
             if(!trig_equation && (method == "rform" || method == "sin_cos" || method == "pythag" ||
-               method == "double_angle" || method == "compound_angle" || method == "manip_trig")) {
+               method == "double_angle" || method == "compound_angle" || method == "manip_trig" ||
+               method == "cos_double" || method == "sin_double" || method == "tan_double" ||
+               method == "cos_half" || method == "sin_half" || method == "tan_half")) {
                 req.mode = 4;
             }
             if(!target.empty()) {
@@ -779,6 +908,96 @@ int main(int argc, char **argv)
             auto lines = casio::stats::run(arena, req);
             print_lines(lines);
             return 0;
+        }
+        // Bare expression intercept for comma-using utility functions
+        {
+            std::string inner;
+            bool handled = false;
+            auto gcd_parts = [&](std::string const &s) {
+                auto p = split_top_csv(s);
+                std::vector<long long> v;
+                for(auto const &x : p) { try { v.push_back(std::stoll(trim(x))); } catch(...) {} }
+                return v;
+            };
+            if(!(inner = unwrap_call(expr, "gcd(")).empty()) {
+                auto vals = gcd_parts(inner);
+                if(vals.size() >= 2) {
+                    long long g = std::llabs(vals[0]);
+                    for(size_t i = 1; i < vals.size(); ++i) {
+                        long long a = g, b = std::llabs(vals[i]);
+                        while(b) { long long t = b; b = a % b; a = t; }
+                        g = a;
+                    }
+                    std::cout << "Answer: " << g << "\n";
+                    handled = true;
+                }
+            }
+            else if(!(inner = unwrap_call(expr, "lcm(")).empty()) {
+                auto vals = gcd_parts(inner);
+                if(vals.size() >= 2) {
+                    long long l = 1;
+                    for(auto v : vals) {
+                        long long a = l, b = std::llabs(v), g;
+                        long long tb = b;
+                        while(tb) { long long t = tb; tb = a % tb; a = t; }
+                        g = a;
+                        l = std::llabs(l * (b / g));
+                    }
+                    std::cout << "Answer: " << l << "\n";
+                    handled = true;
+                }
+            }
+            else if(!(inner = unwrap_call(expr, "isprime(")).empty()) {
+                long long n = 0;
+                try { n = std::stoll(trim(inner)); } catch(...) {}
+                if(n >= 2) {
+                    bool prime = (n == 2) || (n % 2 != 0 && [&](){
+                        for(long long d = 3; d * d <= n; d += 2) if(n % d == 0) return false;
+                        return true;
+                    }());
+                    std::cout << "Answer: " << (prime ? "prime" : "not prime") << "\n";
+                    handled = true;
+                }
+            }
+            else if(!(inner = unwrap_call(expr, "factors(")).empty()) {
+                long long n = 0;
+                try { n = std::llabs(std::stoll(trim(inner))); } catch(...) {}
+                if(n > 0) {
+                    std::cout << "Answer: ";
+                    bool first = true;
+                    long long r = n;
+                    for(long long d = 2; d * d <= r; d += (d == 2 ? 1 : 2)) {
+                        long long p = 0;
+                        while(r % d == 0) { r /= d; ++p; }
+                        if(p > 0) {
+                            if(!first) std::cout << "*";
+                            std::cout << d;
+                            if(p > 1) std::cout << "^" << p;
+                            first = false;
+                        }
+                    }
+                    if(r > 1) { if(!first) std::cout << "*"; std::cout << r; }
+                    std::cout << "\n";
+                    handled = true;
+                }
+            }
+            else if(!(inner = unwrap_call(expr, "divisors(")).empty()) {
+                long long n = 0;
+                try { n = std::llabs(std::stoll(trim(inner))); } catch(...) {}
+                if(n > 0 && n <= 10000) {
+                    std::cout << "Answer: ";
+                    bool first = true;
+                    for(long long d = 1; d <= n; ++d) {
+                        if(n % d != 0) continue;
+                        if(!first) std::cout << ",";
+                        std::cout << d;
+                        first = false;
+                    }
+                    std::cout << "\n";
+                    handled = true;
+                }
+            }
+            if(handled) return 0;
         }
         std::string norm = casio::normalize_text(expr);
         auto root = casio::parse_expr(arena, expr);

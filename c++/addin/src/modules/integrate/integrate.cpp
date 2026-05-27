@@ -19482,6 +19482,42 @@ static std::optional<std::vector<std::string>> definite_cos_one_minus_sin_sub(Ar
     return casio::exam_block("trig substitution definite integration", steps, format_expr_human(a, ans));
 }
 
+static NodeId simplify_inf_terms(Arena &a, NodeId n)
+{
+    Node const &x = a.get(n);
+    if(x.kind == NodeKind::Sym && x.text == "inf") return n;
+    if(x.kind == NodeKind::Pow) {
+        NodeId base = simplify_inf_terms(a, x.a);
+        auto exp = as_num(a, x.b);
+        if(exp && exp->num < 0) {
+            Node const &bn = a.get(base);
+            if(bn.kind == NodeKind::Sym && bn.text == "inf") return a.num(Rational{0, 1});
+        }
+        NodeId exp_node = simplify_inf_terms(a, x.b);
+        if(base == x.a && exp_node == x.b) return n;
+        return casio::simplify(a, casio::power(a, base, exp_node));
+    }
+    if(x.kind == NodeKind::Mul) {
+        std::vector<NodeId> kids;
+        for(NodeId k : x.kids) kids.push_back(simplify_inf_terms(a, k));
+        return casio::simplify(a, casio::mul(a, kids));
+    }
+    if(x.kind == NodeKind::Add) {
+        std::vector<NodeId> kids;
+        for(NodeId k : x.kids) kids.push_back(simplify_inf_terms(a, k));
+        return casio::simplify(a, casio::add(a, kids));
+    }
+    if(x.kind == NodeKind::Div) {
+        NodeId num = simplify_inf_terms(a, x.a);
+        NodeId den = simplify_inf_terms(a, x.b);
+        Node const &dn = a.get(den);
+        if(dn.kind == NodeKind::Sym && dn.text == "inf") return a.num(Rational{0, 1});
+        if(num == x.a && den == x.b) return n;
+        return casio::simplify(a, casio::div(a, num, den));
+    }
+    return n;
+}
+
 static std::optional<std::vector<std::string>> run_definite_integral(Arena &arena, Request const &req)
 {
     std::optional<std::vector<std::string>> args;
@@ -19570,6 +19606,7 @@ static std::optional<std::vector<std::string>> run_definite_integral(Arena &aren
     NodeId f_lo = simplify_known_endpoint_values(arena, substitute_var(arena, primitive, var, lo));
     NodeId ans = simplify_known_endpoint_values(arena, casio::add(arena, {f_hi, casio::neg(arena, f_lo)}));
     ans = reciprocal_sum_over_symbol(arena, ans);
+    ans = simplify_inf_terms(arena, ans);
 
     std::vector<std::string> steps;
     casio::append_exam_prelude_steps(steps, pre);
@@ -20355,6 +20392,10 @@ std::vector<std::string> run(Arena &arena, Request const &req)
         }
     }
     
+    // Don't try to parse multi-arg function calls like defint(...) as bare expressions
+    if(direct.rfind("defint(", 0) == 0 || direct.rfind("integrate(", 0) == 0 || direct.rfind("int(", 0) == 0) {
+        return {"No elementary primitive found"};
+    }
     NodeId parsed = parse_expr(arena, req.expr);
     bool raw_has_neg_power = contains_var_neg_one_power(arena, parsed, req.var);
     auto pre = casio::build_exam_prelude(arena, req.expr, parsed);
