@@ -15,6 +15,7 @@ MANIFEST = REPO / "c++" / "tests" / "reports" / "a_level_source_downloads" / "ma
 STANDARD_LEDGER = REPO / "c++" / "tests" / "reports" / "madasmaths_standard_topics_audit" / "ledger_latest.jsonl"
 FULL_LEDGER = REPO / "c++" / "tests" / "reports" / "madasmaths_full_audit" / "ledger_latest.jsonl"
 MANUAL_CASES = REPO / "c++" / "tools" / "golden" / "madasmaths_standard_manual_cases.jsonl"
+EXACT_QUEUE = REPO / "c++" / "tools" / "golden" / "exact_calculator_input_queue.jsonl"
 REPORT_DIR = REPO / "c++" / "tests" / "reports" / "madasmaths_download_coverage"
 REPORT = REPORT_DIR / "summary_latest.md"
 
@@ -38,6 +39,16 @@ def manual_refs() -> tuple[set[str], set[str]]:
     booklet_refs: set[str] = set()
     for row in load_jsonl(MANUAL_CASES):
         if str(row.get("coverage", "")) == "partial":
+            continue
+        src = str(row.get("source_pdf", ""))
+        if src.startswith(("MadAsMaths papers/", "legacy/")):
+            refs.add(Path(src).name.lower())
+        if src.startswith("MadAsMaths A-level booklets/"):
+            parts = Path(src).parts
+            if len(parts) >= 3:
+                booklet_refs.add(f"{parts[-2].lower()}/{parts[-1].lower()}")
+    for row in load_jsonl(EXACT_QUEUE):
+        if str(row.get("coverage", "")) != "complete":
             continue
         src = str(row.get("source_pdf", ""))
         if src.startswith(("MadAsMaths papers/", "legacy/")):

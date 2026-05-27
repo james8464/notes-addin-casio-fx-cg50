@@ -100,4 +100,7 @@ question paper has tracker rows for all inferred question numbers.
 must store the exact calculator text a user would type, not host flags, plus
 the worked mark-scheme lines needed to judge full-credit working. Validate with
 `check_exact_calculator_input_queue.py`, then batch run with
-`run_exact_calculator_input_queue.py --strict-markers`.
+`run_exact_calculator_input_queue.py --strict-markers`. Add one
+`coverage:"complete"` source marker after all visible question, mark-scheme and
+worked-solution pages for a PDF have been manually reviewed; download coverage
+counts those exact-queue complete markers directly.
