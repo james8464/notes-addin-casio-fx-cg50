@@ -180,34 +180,6 @@ Node key:
 
 Random graph resets each `/random` or `/infinite` session.
 
-## Audit Corpus
-
-```mermaid
-graph TD
-  Madas["MadAs standard + MP1/MP2/SYN"] --> DL1["download_a_level_audit_sources.py"]
-  Pearson["Pearson public 9MA0 QP/MS"] --> DL1
-  Online["PMT/RevisionMaths/Chalkface/MME/etc"] --> DL2["download_online_paper_corpus.py"]
-  DL1 --> Downloads["~/Downloads audit PDFs"]
-  DL2 --> Reports["c++/tests/reports/online_paper_corpus"]
-  Downloads --> Render["render_audit_pdf_pages.py / pdftoppm"]
-  Render --> Triage["manual_question_triage_notes.jsonl"]
-  Downloads --> Std["check_madasmaths_standard_topics_audit.py"]
-  Downloads --> MP2["check_madasmaths_full_audit.py"]
-  Downloads --> Edexcel["check_edexcel_*_downloads.py"]
-  Render --> Images["ignored page-image cache"]
-  Triage --> Tests["exact calculator input queue + batch runner"]
-  Std --> Ledger["ignored ledgers/reports"]
-  MP2 --> Ledger
-  Edexcel --> Tracker["c++/tools/golden/a_level_audit_tracker.jsonl"]
-```
-
-Current policy:
-- source PDFs/images stay out of git
-- tracked ledgers contain compact exact user inputs plus worked-solution lines
-- parallel triage rows are append-only evidence, not executable proof
-- failed third-party links are recorded, but Pearson/MadAs required corpus must be complete
-- latest MadAs coverage: 462 downloaded question PDFs, 331 covered, 131 gaps
-
 ## ROM / Storage
 
 ```mermaid
