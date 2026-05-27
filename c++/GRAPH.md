@@ -100,6 +100,8 @@ Host output quality rules:
 - no `Chk:`, `Answer: int(...)`, `Answer: d/dx(...)`, parser tracebacks, or
   generic calculator-debug text
 - full working only where project scope requires it
+- stats scalar args accept A-level standard-error arithmetic such as
+  `sqrt(4^2/10+6^2/15)` without re-adding removed raw stats helpers
 
 ## Working Logic
 

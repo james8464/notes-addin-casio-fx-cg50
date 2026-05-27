@@ -554,6 +554,14 @@ Req: expr.
 Opt: x.
 Ex F2: normal_diff((2*x+ln(x))^3,x)
 @END
+@normalcdf(mu,sigma,lo,hi)
+F2:normalcdf(175.4,6.8/sqrt(52),177.2,inf)
+normalcdf(mu,sigma,lo,hi)
+Normal probability.
+Req: mu,sigma,lo,hi.
+Opt: sigma may use sqrt/+-*/^ arithmetic.
+Ex F2: normalcdf(0,sqrt(4^2/10+6^2/15),2.6,inf)
+@END
 @numer(x)
 F2:numer(3/4)
 numer(x)

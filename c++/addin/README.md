@@ -93,6 +93,7 @@ python3 c++/tools/check_g3a_size.py c++/prizm/build/CasioCAS.g3a
 
 - The active production path is one visible `.g3a` plus the external `CASIOCAS.PAK` help/template pack.
 - We keep a **host build** of the core engine for fast correctness testing with frozen C++ fixtures.
+- Host stats routes include `binom(...)`, `binomcdf(...)`, and `normalcdf(mu,sigma,lo,hi)`; `normalcdf` accepts A-level standard-error expressions such as `6.8/sqrt(52)` and `sqrt(4^2/10+6^2/15)`.
 - The legacy/fallback device build uses a bounded freestanding solver slice for:
   - one-variable rational polynomial parsing with brackets, powers, implicit multiplication, expansion, and rearranged equations
   - linear/quadratic solving plus small integer-root factor-theorem support for higher polynomials

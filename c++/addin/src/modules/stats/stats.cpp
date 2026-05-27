@@ -1,6 +1,7 @@
 #include "modules/stats/stats.hpp"
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <cstdlib>
 #include <iomanip>
@@ -139,32 +140,133 @@ static std::vector<long double> parse_numbers(std::string const &text)
     return out;
 }
 
+class ScalarParser
+{
+public:
+    explicit ScalarParser(std::string text) : s_(std::move(text)) {}
+
+    std::optional<long double> parse()
+    {
+        pos_ = 0;
+        auto v = expr();
+        skip();
+        if(!v || pos_ != s_.size()) return std::nullopt;
+        return v;
+    }
+
+private:
+    std::string s_;
+    std::size_t pos_ = 0;
+
+    void skip()
+    {
+        while(pos_ < s_.size() && std::isspace((unsigned char)s_[pos_])) pos_++;
+    }
+
+    bool take(char c)
+    {
+        skip();
+        if(pos_ < s_.size() && s_[pos_] == c) {
+            pos_++;
+            return true;
+        }
+        return false;
+    }
+
+    std::optional<long double> expr()
+    {
+        auto lhs = term();
+        if(!lhs) return std::nullopt;
+        for(;;) {
+            if(take('+')) {
+                auto rhs = term();
+                if(!rhs) return std::nullopt;
+                *lhs += *rhs;
+            }
+            else if(take('-')) {
+                auto rhs = term();
+                if(!rhs) return std::nullopt;
+                *lhs -= *rhs;
+            }
+            else return lhs;
+        }
+    }
+
+    std::optional<long double> term()
+    {
+        auto lhs = power();
+        if(!lhs) return std::nullopt;
+        for(;;) {
+            if(take('*')) {
+                auto rhs = power();
+                if(!rhs) return std::nullopt;
+                *lhs *= *rhs;
+            }
+            else if(take('/')) {
+                auto rhs = power();
+                if(!rhs || *rhs == 0.0L) return std::nullopt;
+                *lhs /= *rhs;
+            }
+            else return lhs;
+        }
+    }
+
+    std::optional<long double> power()
+    {
+        auto lhs = unary();
+        if(!lhs) return std::nullopt;
+        if(take('^')) {
+            auto rhs = power();
+            if(!rhs) return std::nullopt;
+            *lhs = std::powl(*lhs, *rhs);
+        }
+        return lhs;
+    }
+
+    std::optional<long double> unary()
+    {
+        if(take('+')) return unary();
+        if(take('-')) {
+            auto v = unary();
+            if(!v) return std::nullopt;
+            return -*v;
+        }
+        return primary();
+    }
+
+    std::optional<long double> primary()
+    {
+        skip();
+        if(take('(')) {
+            auto v = expr();
+            if(!v || !take(')')) return std::nullopt;
+            return v;
+        }
+        std::size_t start = pos_;
+        while(pos_ < s_.size() && std::isalpha((unsigned char)s_[pos_])) pos_++;
+        if(pos_ > start) {
+            std::string name = lower(s_.substr(start, pos_ - start));
+            if(name == "inf") return std::numeric_limits<long double>::infinity();
+            if(name == "sqrt" && take('(')) {
+                auto v = expr();
+                if(!v || *v < 0.0L || !take(')')) return std::nullopt;
+                return std::sqrt((double)*v);
+            }
+            return std::nullopt;
+        }
+        char *end = nullptr;
+        long double v = std::strtold(s_.c_str() + pos_, &end);
+        if(end == s_.c_str() + pos_) return std::nullopt;
+        pos_ = static_cast<std::size_t>(end - s_.c_str());
+        return v;
+    }
+};
+
 static std::optional<long double> parse_scalar(std::string text)
 {
     text = trim(text);
-    while(text.size() >= 2 && text.front() == '(' && text.back() == ')') {
-        text = trim(text.substr(1, text.size() - 2));
-    }
-    std::string lo = lower(text);
-    if(lo == "inf" || lo == "+inf") return std::numeric_limits<long double>::infinity();
-    if(lo == "-inf") return -std::numeric_limits<long double>::infinity();
-    if(starts_with(lo, "sqrt(") && text.back() == ')') {
-        auto v = parse_scalar(text.substr(5, text.size() - 6));
-        if(v && *v >= 0.0L) return std::sqrt((double)*v);
-        return std::nullopt;
-    }
-    auto parts = split_on(text, '/');
-    if(parts.size() == 2) {
-        auto a = parse_scalar(parts[0]);
-        auto b = parse_scalar(parts[1]);
-        if(a && b && *b != 0.0L) return *a / *b;
-        return std::nullopt;
-    }
-    char *end = nullptr;
-    long double v = std::strtold(text.c_str(), &end);
-    while(end && (*end == ' ' || *end == '\t')) end++;
-    if(end && *end == '\0') return v;
-    return std::nullopt;
+    if(text.empty()) return std::nullopt;
+    return ScalarParser(text).parse();
 }
 
 static std::vector<long double> parse_call_numbers(std::string const &text)

@@ -127,7 +127,7 @@ Legend:
 |---|---:|---|---|---|
 | `binom(n,p,r)` / `binomial(n,p,r)` | keep | CasioCAS | yes | Host stats route gives PMF/tail/cdf-style lines; source-built `.g3a` needs parity check. |
 | `binomcdf(n,p,r)` / `binomial_cdf(...)` | keep | CasioCAS/KhiCAS | partial | Host route gives summation/complement lines; source-built `.g3a` has native `binomial_cdf` but no wrapper working yet. |
-| `normalcdf(mu,sigma,lo,hi)` | keep | CasioCAS/KhiCAS | yes | Source-built `.g3a` rewrites to native `normal_cdf` and emits compact standardisation lines. |
+| `normalcdf(mu,sigma,lo,hi)` | keep | CasioCAS/KhiCAS | yes | Source-built `.g3a` rewrites to native `normal_cdf` and emits compact standardisation lines; host accepts A-level standard-error expressions in `sigma`. |
 | `binomial(n,p,k)` native catalogue | keep | KhiCAS/CasioCAS | partial | Native name exists; host Stats module gives stronger working. |
 | `normald`, `mean`, `median`, `stdev`, `correlation`, `covariance`, `linear_regression`, `ztest` | blocked | KhiCAS/CasioCAS old | blocked | Removed/unsupported by user scope. |
 
