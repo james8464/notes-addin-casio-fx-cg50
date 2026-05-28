@@ -495,6 +495,141 @@ I = 1/2*Int(1+cos(2*x)) dx.
 @t192
 Divide: (3*x^2-2*x+2)/x = 3*x - 2 + 2/x.
 @END
+@t193
+v = u + at
+@END
+@t194
+u = v - at
+@END
+@t195
+a = (v-u)/t
+@END
+@t196
+t = (v-u)/a
+@END
+@t197
+u = (s - 1/2at^2)/t
+@END
+@t198
+v = 2s/t - u
+@END
+@t199
+u = 2s/t - v
+@END
+@t200
+a = 2(s-ut)/t^2
+@END
+@t201
+a = 2(vt-s)/t^2
+@END
+@t202
+s = ut + 1/2at^2
+@END
+@t203
+s = vt - 1/2at^2
+@END
+@t204
+s = 1/2(u+v)t
+@END
+@t205
+t = 2s/(u+v)
+@END
+@t206
+t = s/u; a=0
+@END
+@t207
+v^2 = u^2 + 2as
+@END
+@t208
+a = (v^2-u^2)/(2s)
+@END
+@t209
+s = (v^2-u^2)/(2a)
+@END
+@t210
+Quadratic in t
+@END
+@t211
+Binomial PMF: P(X=r)=nCr p^r (1-p)^(n-r)
+@END
+@t212
+Binomial CDF: P(X<=r)=sum_{k=0}^r P(X=k)
+@END
+@t213
+Binomial tail: P(X>=r)=1-P(X<=r-1)
+@END
+@t214
+Normal: Z=(X-mu)/sigma ~ N(0,1)
+@END
+@t215
+Chain rule: dy/dx=dy/du*du/dx
+@END
+@t216
+Product rule: d(uv)/dx=u'v+uv'
+@END
+@t217
+Quotient rule: d(u/v)/dx=(u'v-uv')/v^2
+@END
+@t218
+sin^2+cos^2=1; 1+tan^2=sec^2; 1+cot^2=csc^2
+@END
+@t219
+sin(2x)=2sin(x)cos(x); cos(2x)=cos^2-sin^2
+@END
+@t220
+R-form: a sin x + b cos x = R sin(x+alpha)
+@END
+@t221
+Complete square: a(x+b/2a)^2+c-b^2/4a
+@END
+@t222
+Quadratic formula: x=(-b+/-sqrt(b^2-4ac))/(2a)
+@END
+@t223
+D=Discriminant = b^2-4ac
+@END
+@t224
+Factor: (x-r1)(x-r2)=0
+@END
+@t225
+System: solve simultaneously
+@END
+@t226
+I = Int(cos(ax+b)) dx; u=ax+b
+@END
+@t227
+I = Int(e^(ax+b)) dx; u=ax+b
+@END
+@t228
+I = Int(1/(ax+b)) dx; u=ax+b
+@END
+@t229
+I = Int(sec(ax+b)^2) dx; u=ax+b
+@END
+@t230
+Integration by parts: I=uv-Int(v du)
+@END
+@t231
+Substitution: u=g(x), du=g'(x) dx
+@END
+@t232
+Partial fractions: decompose into simpler terms
+@END
+@t233
+Trig sub: x=a sin(t) or x=a tan(t) or x=a sec(t)
+@END
+@t234
+Improper integral: replace inf bound with limit
+@END
+@t235
+Sign chart: test intervals between critical values
+@END
+@t236
+Domain: denominator !=0; log args>0; sqrt args>=0
+@END
+@t237
+Range from graph/transform
+@END
 @t000
 Valid: all x
 @END

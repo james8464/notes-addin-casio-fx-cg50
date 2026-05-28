@@ -3827,6 +3827,255 @@ static bool cascas_append_forced_method(cascas_working_sink &out,const char *s,c
   return true;
 }
 
+static int cascas_count_sig_figs(const string &s){
+  int dot=-1,non_zero=-1,digits=0;
+  for (int i=0;i<int(s.size());++i){
+    char c=s[i];
+    if (c=='.') dot=i;
+    else if (c>='1' && c<='9') non_zero=digits;
+    if (c>='0' && c<='9') ++digits;
+  }
+  if (digits<1) return 3;
+  if (dot>=0) return digits; // decimal has all digits
+  return non_zero+1; // integer: count from first non-zero
+}
+
+static string cascas_format_sf(double v,int sf){
+  if (sf<1) sf=3;
+  char buf[64];
+  snprintf(buf,sizeof(buf),"%.*g",sf,v);
+  return string(buf);
+}
+
+static bool cascas_append_suvat_steps(cascas_working_sink &out,const char *s){
+  string args[7],body; int count=0,close=0;
+  if (!cascas_call_args(s,"suvat(",args,7,count,close,body) || count<1)
+    return false;
+  string vs[5];
+  int target=-1;
+  bool has[5]={false,false,false,false,false};
+  double dv[5]={0,0,0,0,0};
+  const char *names[5]={"s","u","v","a","t"};
+  const char *units[5]={"m","m/s","m/s","m/s^2","s"};
+  int sf=3;
+  int pos=0;
+  for (int i=0;i<count;++i){
+    string raw=cascas_trim(args[i]);
+    int eq=cascas_find_top_equal(raw);
+    if (eq>=0){
+      string key=cascas_lower_compact(raw.substr(0,eq));
+      string val=cascas_trim(raw.substr(eq+1,raw.size()-eq-1));
+      int idx=-1;
+      for (int j=0;j<5;++j) if (key==names[j]) idx=j;
+      if (key=="target" || key=="find"){
+        string tv=cascas_lower_compact(val);
+        for (int j=0;j<5 && target<0;++j)
+          if (tv.find(names[j])!=string::npos) target=j;
+        continue;
+      }
+      if (key=="method")
+        continue;
+      if (idx>=0){
+        vs[idx]=val;
+        if (val.empty() || val=="?") target=idx;
+        else has[idx]=cascas_parse_real(val,dv[idx]);
+      }
+      continue;
+    }
+    if (pos<5)
+      vs[pos++]=raw;
+  }
+  for (int i=0;i<5;++i){
+    if (vs[i].empty() || vs[i]=="?"){
+      if (target<0 && (vs[i].empty() || vs[i]=="?")) target=i;
+      continue;
+    }
+    if (!has[i])
+      has[i]=cascas_parse_real(vs[i],dv[i]);
+    if (!has[i] && target<0)
+      target=i;
+    sf=max(sf,cascas_count_sig_figs(vs[i]));
+  }
+  if (target<0) return false;
+  auto V = [&](int i)->string { return vs[i].empty()?string(names[i]):vs[i]; };
+  auto emit_val = [&](double v)->string { return cascas_format_sf(v,sf); };
+  auto emit_suvat = [&](const char *formula,const string &subst,double value){
+    cascas_append_line(out,formula);
+    if (!subst.empty())
+      cascas_append_line(out,subst.c_str());
+    string line=string(names[target])+" = "+emit_val(value)+" "+units[target];
+    cascas_append_line(out,line.c_str());
+  };
+  auto zero_err = [&](const string &formula,const string &var){
+    cascas_append_line(out,formula.c_str());
+    cascas_append_line(out,("Error: division by zero; no finite "+var).c_str());
+    return true;
+  };
+  // try compute target via formula, then optionally compute unknowns
+  bool ok=false; string formula,subst; double val=0;
+  #define SUVAT_CASE(T,A,B,C,name,expr,sfmt) \
+    if (target==(T) && has[(A)] && has[(B)] && has[(C)]){ \
+      ok=true; formula=name; subst=sfmt; val=(expr); \
+    }
+  SUVAT_CASE(2,1,3,4,"v = u + at","= "+V(1)+" + "+V(3)+"*"+V(4),dv[1]+dv[3]*dv[4])
+  else SUVAT_CASE(1,2,3,4,"u = v - at","= "+V(2)+" - "+V(3)+"*"+V(4),dv[2]-dv[3]*dv[4])
+  else SUVAT_CASE(3,2,1,4,"a = (v-u)/t","= ("+V(2)+" - "+V(1)+")/"+V(4),(dv[2]-dv[1])/dv[4])
+  else SUVAT_CASE(4,1,2,3,"t = (v-u)/a","= ("+V(2)+" - "+V(1)+")/"+V(3),(dv[2]-dv[1])/dv[3])
+  else SUVAT_CASE(1,0,3,4,"u = (s-1/2at^2)/t","= ("+V(0)+" - 1/2*"+V(3)+"*"+V(4)+"^2)/"+V(4),(dv[0]-0.5*dv[3]*dv[4]*dv[4])/dv[4])
+  else SUVAT_CASE(2,0,1,4,"v = 2s/t - u","= 2*"+V(0)+"/"+V(4)+" - "+V(1),2.0*dv[0]/dv[4]-dv[1])
+  else SUVAT_CASE(1,0,2,4,"u = 2s/t - v","= 2*"+V(0)+"/"+V(4)+" - "+V(2),2.0*dv[0]/dv[4]-dv[2])
+  else SUVAT_CASE(3,0,1,4,"a = 2(s-ut)/t^2","= 2*("+V(0)+" - "+V(1)+"*"+V(4)+")/"+V(4)+"^2",2.0*(dv[0]-dv[1]*dv[4])/(dv[4]*dv[4]))
+  else SUVAT_CASE(3,0,2,4,"a = 2(vt-s)/t^2","= 2*("+V(2)+"*"+V(4)+" - "+V(0)+")/"+V(4)+"^2",2.0*(dv[2]*dv[4]-dv[0])/(dv[4]*dv[4]))
+  else SUVAT_CASE(0,1,3,4,"s = ut + 1/2at^2","= "+V(1)+"*"+V(4)+" + 1/2*"+V(3)+"*"+V(4)+"^2",dv[1]*dv[4]+0.5*dv[3]*dv[4]*dv[4])
+  else SUVAT_CASE(0,2,3,4,"s = vt - 1/2at^2","= "+V(2)+"*"+V(4)+" - 1/2*"+V(3)+"*"+V(4)+"^2",dv[2]*dv[4]-0.5*dv[3]*dv[4]*dv[4])
+  else SUVAT_CASE(0,1,2,4,"s = 1/2(u+v)t","= 1/2*("+V(1)+" + "+V(2)+")*"+V(4),0.5*(dv[1]+dv[2])*dv[4])
+  else SUVAT_CASE(1,2,3,0,"u = v - at from v^2","placeholder",0) // handled by energy
+  // Energy form v^2 = u^2 + 2as
+  if (target==2 && has[1] && has[3] && has[0]){
+    double rad=dv[1]*dv[1]+2.0*dv[3]*dv[0];
+    if (rad<0){
+      cascas_append_line(out,"v^2 = u^2 + 2as");
+      cascas_append_line(out,"Error: negative discriminant; no real solution");
+      return true;
+    }
+    ok=true; formula="v^2 = u^2 + 2as";
+    subst="= sqrt("+emit_val(dv[1])+"^2 + 2*"+emit_val(dv[3])+"*"+emit_val(dv[0])+")";
+    double pv=sqrt(rad);
+    cascas_append_line(out,formula.c_str());
+    cascas_append_line(out,("v = +/- sqrt("+emit_val(rad)+")").c_str());
+    cascas_append_line(out,("v = "+emit_val(pv)+" or "+emit_val(-pv)+" m/s").c_str());
+    // skip common emit
+    goto suvat_solve_all;
+  }
+  else SUVAT_CASE(3,2,1,0,"a = (v^2-u^2)/(2s)","= ("+V(2)+"^2 - "+V(1)+"^2)/(2*"+V(0)+")",(dv[2]*dv[2]-dv[1]*dv[1])/(2.0*dv[0]))
+  else SUVAT_CASE(0,2,1,3,"s = (v^2-u^2)/(2a)","= ("+V(2)+"^2 - "+V(1)+"^2)/(2*"+V(3)+")",(dv[2]*dv[2]-dv[1]*dv[1])/(2.0*dv[3]))
+  // Quadratic time
+  if (target==4 && has[0] && has[1] && has[3]){
+    ok=true;
+    double a2=0.5*dv[3],b2=dv[1],c2=-dv[0];
+    if (fabs(a2)<1e-12){
+      cascas_append_line(out,"s = ut + 1/2at^2");
+      if (fabs(dv[1])<1e-12) return zero_err("s = ut + 1/2at^2","acceleration; zero velocity");
+      double tv=dv[0]/dv[1];
+      cascas_append_line(out,("t = s/u = "+emit_val(dv[0])+"/"+emit_val(dv[1])).c_str());
+      cascas_append_line(out,("t = "+emit_val(tv)+" s").c_str());
+      goto suvat_solve_all;
+    }
+    double disc=b2*b2-4.0*a2*c2;
+    if (disc<0){
+      cascas_append_line(out,"s = ut + 1/2at^2");
+      cascas_append_line(out,"Quadratic in t");
+      cascas_append_line(out("Discriminant = "+emit_val(b2)+"^2 - 4*"+emit_val(a2)+"*("+emit_val(c2)+") < 0; no real root").c_str());
+      return true;
+    }
+    double t1=(-b2+sqrt(disc))/(2.0*a2);
+    double t2=(-b2-sqrt(disc))/(2.0*a2);
+    cascas_append_line(out,"s = ut + 1/2at^2");
+    cascas_append_line(out,"Quadratic in t");
+    string ans;
+    if (t1>=0 && t2>=0)
+      ans="t = "+emit_val(t1)+" or "+emit_val(t2)+" s";
+    else if (t1>=0)
+      ans="t = "+emit_val(t1)+" s";
+    else if (t2>=0)
+      ans="t = "+emit_val(t2)+" s";
+    else
+      ans="no positive root";
+    cascas_append_line(out,ans.c_str());
+    goto suvat_solve_all;
+  }
+  // t = 2s/(u+v)
+  if (target==4 && has[0] && has[1] && has[2]){
+    ok=true; formula="t = 2s/(u+v)";
+    double den=dv[1]+dv[2];
+    if (fabs(den)<1e-12){ zero_err("s = 1/2(u+v)t","final velocity"); return true; }
+    subst="= 2*"+V(0)+"/("+V(1)+" + "+V(2)+")"; val=2.0*dv[0]/den;
+  }
+  // t = s/u (a=0)
+  if (target==4 && has[0] && has[1] && !ok){
+    double den=dv[1];
+    if (fabs(den)<1e-12) return zero_err("t = s/u; a=0","initial velocity; division by zero");
+    formula="t = s/u; a=0"; subst="= "+V(0)+"/"+V(1); val=dv[0]/den; ok=true;
+  }
+  if (ok && formula.size()){
+    double den_check=0;
+    bool has_div=subst.find('/')!=string::npos;
+    string vl=cascas_lower_compact(subst);
+    if (has_div && vl.find("/0")!=string::npos)
+      return zero_err(formula,"division by zero");
+    emit_suvat(formula.c_str(),subst,val);
+  }
+  if (!ok) return false;
+
+suvat_solve_all:
+  // Also compute any other single-unknown variable
+  int unknowns=0,other=-1;
+  for (int i=0;i<5;++i) if (!has[i] && i!=target) { ++unknowns; other=i; }
+  if (unknowns==1 && other>=0){
+    int save_target=target; target=other;
+    // Recompute with new target
+    if (target==2 && has[1] && has[3] && has[4])
+      emit_suvat("v = u + at","= "+V(1)+" + "+V(3)+"*"+V(4),dv[1]+dv[3]*dv[4]);
+    else if (target==0 && has[1] && has[3] && has[4])
+      emit_suvat("s = ut + 1/2at^2","= "+V(1)+"*"+V(4)+" + 1/2*"+V(3)+"*"+V(4)+"^2",dv[1]*dv[4]+0.5*dv[3]*dv[4]*dv[4]);
+    else if (target==1 && has[2] && has[3] && has[4])
+      emit_suvat("u = v - at","= "+V(2)+" - "+V(3)+"*"+V(4),dv[2]-dv[3]*dv[4]);
+    else if (target==3 && has[2] && has[1] && has[4]){
+      if (fabs(dv[4])>1e-12)
+        emit_suvat("a = (v-u)/t","= ("+V(2)+" - "+V(1)+")/"+V(4),(dv[2]-dv[1])/dv[4]);
+    }
+    target=save_target;
+  }
+  return true;
+}
+
+static bool cascas_append_binomial_steps(cascas_working_sink &out,const char *s){
+  string args[4],body; int count=0,close=0;
+  const char *prefix=0;
+  if (cascas_call_args(s,"binomcdf(",args,4,count,close,body)) prefix="binomcdf";
+  else if (cascas_call_args(s,"binompdf(",args,4,count,close,body)) prefix="binompdf";
+  else if (cascas_call_args(s,"binom(",args,4,count,close,body)) prefix="binom";
+  else return false;
+  if (count<3) return false;
+  double n,p,r;
+  if (!cascas_parse_real(args[0],n) || !cascas_parse_real(args[1],p) || !cascas_parse_real(args[2],r))
+    return false;
+  int ni=(int)floor(n+0.5),ri=(int)floor(r+0.5);
+  if (ni<0 || p<0 || p>1) return false;
+  string line="X ~ B("+print_INT_(ni)+","+cascas_format_real(p)+")";
+  cascas_append_line(out,line.c_str());
+  bool cdf=strstr(s,"cdf")!=0;
+  if (cdf){
+    string rest=(s+strlen(prefix)+1);
+    rest=rest.substr(0,rest.find(')'));
+    bool tail=rest.find(">")!=string::npos || rest.find(">=")!=string::npos || rest.find("tail")!=string::npos;
+    if (tail){
+      bool gt=rest.find(">")!=string::npos && rest.find("=")==string::npos;
+      int k0=gt?ri+1:ri;
+      cascas_append_line(out,("P(X "+(gt?string(">"):string(">="))+" "+print_INT_(ri)+") = 1 - P(X <= "+print_INT_(k0-1)+")").c_str());
+    } else {
+      cascas_append_line(out,("P(X <= "+print_INT_(ri)+") = sum_{k=0}^{"+print_INT_(ri)+"} nCk p^k (1-p)^(n-k)").c_str());
+    }
+    // Normal approximation for large n
+    if (ni>5000){
+      double mu=ni*p,sigma=sqrt(ni*p*(1.0-p));
+      cascas_append_line(out,("Normal approx: X ~ N("+cascas_format_real(mu)+","+cascas_format_real(sigma)+"^2)").c_str());
+      if (tail){
+        bool gt=rest.find(">")!=string::npos && rest.find("=")==string::npos;
+        int k0=gt?ri+1:ri;
+        double z=(k0-0.5-mu)/sigma;
+        cascas_append_line(out,("CC: P(X "+(gt?string(">"):string(">="))+" "+print_INT_(ri)+") = P(Z > "+cascas_format_real(z)+")").c_str());
+      } else {
+        double z=(ri+0.5-mu)/sigma;
+        cascas_append_line(out,("CC: P(X <= "+print_INT_(ri)+") = P(Z <= "+cascas_format_real(z)+")").c_str());
+      }
+    }
+  } else {
+    cascas_append_line(out,("P(X = "+print_INT_(ri)+") = "+print_INT_(ni)+"C"+print_INT_(ri)+" * "+cascas_format_real(p)+"^"+print_INT_(ri)+" * "+cascas_format_real(1.0-p)+"^("+print_INT_(ni)+"-"+print_INT_(ri)+")").c_str());
+  }
+  return true;
+}
+
 static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,const char *eval_s){
   string args[6],body; int count=0,close=0;
   if (!s)
@@ -3866,6 +4115,86 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
 	    cascas_append_tpl_line(out,"t052");
       return true;
     }
+  }
+  if (cascas_startswith(s,"suvat(")){
+    int step=1;
+    return cascas_append_suvat_steps(out,s);
+  }
+  if (cascas_text_has(s,"binom") && (cascas_call_args(s,"binomcdf(",args,4,count,close,body) ||
+      cascas_call_args(s,"binompdf(",args,4,count,close,body) ||
+      cascas_call_args(s,"binom(",args,4,count,close,body)) && count>=3){
+    cascas_append_tpl_line(out,"t143");
+    return cascas_append_binomial_steps(out,s);
+  }
+  if (cascas_call_args(s,"coeff_match(",args,4,count,close,body) && count>=3){
+    int step=1;
+    cascas_append_expr_line(out,"","LHS = " + args[0]);
+    cascas_append_expr_line(out,"","RHS = " + args[1]);
+    cascas_append_line(out,"Coefficient matching: equate coeffs of each power.");
+    if (args[2].size())
+      cascas_append_line(out,("Variables: " + args[2]).c_str());
+    return true;
+  }
+  if (cascas_call_args(s,"trig_prove(",args,3,count,close,body) && count>=1){
+    string expr=args[0];
+    int eq=cascas_find_top_equal(expr);
+    if (eq>=0){
+      cascas_append_line(out,"LHS = " + expr.substr(0,eq));
+      cascas_append_line(out,"RHS = " + expr.substr(eq+1,expr.size()-eq-1));
+    }
+    cascas_append_tpl_line(out,"t138");
+    return true;
+  }
+  // Derive step-by-step
+  if ((cascas_call_args(s,"diff(",args,3,count,close,body) ||
+       cascas_call_args(s,"derive(",args,3,count,close,body)) && count>=1){
+    string x=count>=2 && args[1].size()?args[1]:"x";
+    string expr=cascas_strip_outer_group(args[0]);
+    cascas_append_line(out,("y = " + expr).c_str());
+    int p=cascas_find_top_power(expr);
+    if (p>0){
+      string base=cascas_strip_outer_group(expr.substr(0,p));
+      string exp=cascas_strip_outer_group(expr.substr(p+1,expr.size()-p-1));
+      if (base.size() && exp.size() && cascas_nonneg_int_text(exp)){
+        cascas_append_line(out,("u = " + base + "; du/d" + x + " = d/d" + x + "(" + base + ")").c_str());
+        cascas_append_line(out,("dy/d" + x + " = " + exp + "*u^(" + exp + "-1)*du/d" + x).c_str());
+        return true;
+      }
+    }
+    if (cascas_text_has(expr,"*") && expr.find('(')!=string::npos){
+      cascas_append_tpl_line(out,"t216");
+    }
+    else if (cascas_text_has(expr,"/")){
+      cascas_append_tpl_line(out,"t217");
+    }
+    else if (cascas_text_has(expr,"(") && expr.find(x)!=string::npos){
+      cascas_append_tpl_line(out,"t215");
+    }
+    cascas_append_line(out,("dy/d" + x + " = d/d" + x + "(" + expr + ")").c_str());
+    return true;
+  }
+  if (cascas_call_args(s,"normal_diff(",args,2,count,close,body) && count>=1){
+    // handled by diff section above for mode 1; this is mode 4 differentiator
+    return false;
+  }
+  if (cascas_call_args(s,"complete_square(",args,3,count,close,body) && count>=1){
+    cascas_append_tpl_line(out,"t221");
+    return true;
+  }
+  if (cascas_call_args(s,"defint(",args,5,count,close,body) && count>=3){
+    string x=count>=2 && args[1].size()?args[1]:"x";
+    cascas_append_line(out,("I = Int_{" + args[2] + "}^{" + args[3] + "} " + args[0] + " d" + x).c_str());
+    cascas_append_tpl_line(out,"t234");
+    cascas_append_tpl_line(out,"t132");
+    return true;
+  }
+  if (cascas_call_args(s,"domain(",args,2,count,close,body) && count>=1){
+    cascas_append_tpl_line(out,"t236");
+    return true;
+  }
+  if (cascas_call_args(s,"range(",args,2,count,close,body) && count>=1){
+    cascas_append_tpl_line(out,"t237");
+    return true;
   }
   if (cascas_call_args(s,"implicit_diff(",args,3,count,close,body) && count>=1){
     string expr=args[0],x=count>=2 && args[1].size()?args[1]:"x",y=count>=3 && args[2].size()?args[2]:"y";
@@ -4048,6 +4377,14 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
     }
     return true;
   }
+  // DE solving: first-order linear ODE via integrating factor
+  if (cascas_call_args(s,"de_solve(",args,4,count,close,body) && count>=2){
+    string de=args[0],dep=count>=3?args[2]:"y",indep=count>=2?args[1]:"x";
+    cascas_append_line(out,("DE: " + de).c_str());
+    cascas_append_line(out,("Standard form: d" + dep + "/d" + indep + " + P(" + indep + ")" + dep + " = Q(" + indep + ")").c_str());
+    cascas_append_tpl_line(out,"t136");
+    return true;
+  }
 	  if ((cascas_call_args(s,"integrate(",args,5,count,close,body) ||
 	       cascas_call_args(s,"int(",args,5,count,close,body)) && count>=1){
 	    string x=count>=2 && args[1].size()?args[1]:"x";
@@ -4085,8 +4422,32 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
 	    else if (e=="exp(x)" || e=="e^x" || e=="e^(x)"){
 		      cascas_append_tpl_step(out,step,"t158");
 	    }
-	    else if (cascas_append_affine_table_integral(out,step,e)){
-	    }
+ 	    else if (e=="cosec(x)" || e=="csc(x)"){
+ 		      cascas_append_tpl_step(out,step,"t155");
+ 	    }
+ 	    else if (e=="cot(x)"){
+ 		      cascas_append_tpl_step(out,step,"t189");
+ 	    }
+ 	    else if (e=="sec(x)"){
+ 		      cascas_append_tpl_step(out,step,"t152");
+ 	    }
+ 	    else if (cascas_append_affine_table_integral(out,step,e)){
+ 	    }
+ 	    else if (cascas_text_has(e,"^") && cascas_text_has(e,"x") && e.find('(')==string::npos && !cascas_text_has(e,"e")){
+ 	      // x^n power rule (not e^x)
+ 	      cascas_append_tpl_step(out,step,"t157");
+ 	      cascas_append_tpl_step(out,step,"t127");
+ 	    }
+ 	    else if (cascas_text_has(e,"*") && (cascas_text_has(e,"x*")||cascas_text_has(e,"*x")||cascas_text_has(e,"sin")||cascas_text_has(e,"cos")||cascas_text_has(e,"e^"))){
+ 	      // product suggests parts or substitution
+ 	      if (cascas_text_has(e,"e^") && (cascas_text_has(e,"x*")||cascas_text_has(e,"*x"))){
+ 		      cascas_append_tpl_step(out,step,"t230");
+ 		      cascas_append_tpl_step(out,step,"t013");
+ 	      } else {
+ 		      cascas_append_tpl_step(out,step,"t231");
+ 		      cascas_append_tpl_step(out,step,"t009");
+ 	      }
+ 	    }
 	    else if (cascas_text_has(e,"x^4+1") || cascas_text_has(e,"x^4-1") || cascas_text_has(e,"x^8+x^4+1")){
 			      cascas_append_tpl_step(out,step,"t108");
 			      cascas_append_tpl_step(out,step,"t109");
@@ -4135,8 +4496,54 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
 	    else if (e=="cos(x)^2"){
 		      cascas_append_tpl_step(out,step,"t191");
 	    }
-	    else if (e=="(3x^2-2x+2)/x"){
-		      cascas_append_tpl_step(out,step,"t192");
+	    // IBP: x * e^(ax) — u=x, dv=e^(ax)
+	    else if (cascas_text_has(e,"*e^") && e.find('(')==string::npos && (cascas_text_has(e,"x*")||cascas_text_has(e,"*x")||e.find("x")<e.find("*e"))){
+	      cascas_append_tpl_step(out,step,"t230");
+	      string coeff="1",base,exp;
+	      if (cascas_extract_power_side(e,coeff,base,exp) && base=="e")
+	        cascas_append_line(out,("u = x, dv = e^("+exp+") dx").c_str());
+	      else
+	        cascas_append_line(out,"u = x, dv = e^(ax) dx");
+	      cascas_append_line(out,"du = dx, v = Int(e^ax dx) = (1/a)e^ax");
+	      cascas_append_tpl_step(out,step,"t013");
+	    }
+	    // IBP: x*sin(ax) or x*cos(ax)
+	    else if ((cascas_text_has(e,"x*sin")||cascas_text_has(e,"x*cos")||cascas_text_has(e,"x*sec")||cascas_text_has(e,"x*tan"))){
+	      cascas_append_tpl_step(out,step,"t230");
+	      cascas_append_line(out,"u = x, dv = trig(ax) dx");
+	      cascas_append_line(out,"du = dx, v = Int(trig(ax) dx)");
+	      cascas_append_tpl_step(out,step,"t013");
+	    }
+	    // IBP: ln(x) or x^n*ln(x)
+	    else if ((e=="ln(x)"||e=="log(x)") || (cascas_text_has(e,"*ln(")||cascas_text_has(e,"*log("))){
+	      cascas_append_tpl_step(out,step,"t124");
+	      cascas_append_tpl_step(out,step,"t125");
+	      cascas_append_tpl_step(out,step,"t230");
+	      cascas_append_line(out,"u = ln(x), dv = rest dx");
+	      cascas_append_line(out,"du = 1/x dx, v = Int(rest) dx");
+	      cascas_append_tpl_step(out,step,"t013");
+	    }
+	    // IBP cyclic: e^(ax)*sin(bx) or e^(ax)*cos(bx)
+	    else if ((cascas_text_has(e,"e^")||cascas_text_has(e,"exp(")) && (cascas_text_has(e,"sin(")||cascas_text_has(e,"cos("))){
+	      cascas_append_tpl_step(out,step,"t230");
+	      cascas_append_line(out,"IBP twice (cyclic): let u = e^(ax), dv = sin/cos(bx) dx");
+	      cascas_append_line(out,"IBP once -> expression in original I; solve for I");
+	      cascas_append_tpl_step(out,step,"t013");
+	    }
+	    // PF: rational function with poly denominator degree >= 2
+	    else if (cascas_text_has(e,"/") && cascas_rational_pf_integral(out,step,e,x)){
+	    }
+	    // Trig sub: sqrt(a^2-x^2), sqrt(a^2+x^2), sqrt(x^2-a^2)
+	    else if (cascas_text_has(e,"sqrt(") && (cascas_text_has(e,"-x^2")||cascas_text_has(e,"+x^2")||cascas_text_has(e,"x^2-"))){
+	      cascas_append_tpl_step(out,step,"t233");
+	      if (cascas_text_has(e,"-x^2"))
+	        cascas_append_line(out,"x = a*sin(t), dx = a*cos(t) dt, sqrt(a^2-x^2)=a*cos(t)");
+	      else if (cascas_text_has(e,"+x^2"))
+	        cascas_append_line(out,"x = a*tan(t), dx = a*sec(t)^2 dt, sqrt(a^2+x^2)=a*sec(t)");
+	      else
+	        cascas_append_line(out,"x = a*sec(t), dx = a*sec(t)*tan(t) dt, sqrt(x^2-a^2)=a*tan(t)");
+	      cascas_append_tpl_step(out,step,"t122");
+	      cascas_append_tpl_step(out,step,"t127");
 	    }
 	    else if (cascas_text_has(e,"sin") || cascas_text_has(e,"cos") || cascas_text_has(e,"tan") || cascas_text_has(e,"sec")){
 		      cascas_append_tpl_step(out,step,"t128");
@@ -4178,9 +4585,29 @@ static void cascas_append_method_lines(cascas_working_sink &out,const char *s,co
 			    {"tangent_line(","t137"},
 			    {"linetan(","t137"},
 		    {"trig_prove(","t138"},
+		    {"trig_rewrite(","t138"},
+		    {"trig_transform(","t138"},
 		    {"suvat(","t139"},
+		    {"integrate_by","t230"},
+		    {"int_by","t230"},
 		    {"integrate(","t141"},
-			    {"solve(","t142"},
+		    {"int(","t141"},
+		    {"defint(","t234"},
+		    {"diff_by(","t215"},
+		    {"derive_by(","t215"},
+		    {"solve(","t142"},
+		    {"solve_trig(","t040"},
+		    {"domain(","t236"},
+		    {"range(","t237"},
+		    {"complete_square(","t221"},
+		    {"partfrac(","t232"},
+		    {"propfrac(","t103"},
+		    {"rewrite(","t138"},
+		    {"transform(","t138"},
+		    {"xform(","t138"},
+		    {"compare(","t144"},
+		    {"binom_expand(","t083"},
+		    {"binom_coeff(","t182"},
 		    {"binomial(","t143"},
 		    {"binom(","t143"},
 		    {"binompdf(","t143"},

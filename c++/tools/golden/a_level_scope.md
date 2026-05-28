@@ -52,9 +52,9 @@ The rich host modules are testable with `c++/addin/host/build/casio_host`, but t
 | `integrate`, `int`, `defint`, `integrate_by`, `int_by`, `de_solve` | `main.cc` aliases + KhiCAS | both | yes for recognised 9MA0 routes |
 | `trig_prove`, `trig_rewrite`, `trig_transform`, `trigcos`, `trigsin`, `trigtan` | `main.cc` aliases + KhiCAS | both | partial/yes by recognised route |
 | `binomial` | active lexer/native + wrapper working | both | partial/yes |
-| `binomial_cdf` | active lexer/native | KhiCAS | no wrapper working yet |
+| `binomial_cdf` | active lexer/native + wrapper working | both | partial/yes for numeric PMF/CDF/tail setup |
 | `normalcdf` | `main.cc` alias to `normal_cdf` + active lexer entry | CasioCAS wrapper over KhiCAS | yes, compact standardisation |
-| `suvat` | wrapper alias to KhiCAS solve | CasioCAS | yes for recognised forms |
+| `suvat` | wrapper alias to KhiCAS solve + host-spec working | CasioCAS | yes for recognised numeric forms |
 | `gcd/lcm/factorial/isprime` | quick-menu/native utility | KhiCAS | no; obvious utility |
 | core names `sin cos tan sec cosec/csc cot asin acos atan sqrt abs sign log ln log10 exp pi e inf` | parser/formatter support | KhiCAS | as part of routes |
 | removed list: `comb normald mean median stdev correlation covariance linear_regression plot* disque rationalise tabular weierstrass symmetry mean_value volume* area_between param_area* param_volume* ztest spark hyperbolic` | runtime guard + catalogue/lexer policy | removed/blocked | no; compact unsupported |

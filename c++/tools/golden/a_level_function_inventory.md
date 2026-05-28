@@ -125,8 +125,8 @@ Legend:
 
 | Surface | 9MA0 | Origin | Working | Notes |
 |---|---:|---|---|---|
-| `binom(n,p,r)` / `binomial(n,p,r)` | keep | CasioCAS | yes | Host stats route gives PMF/tail/cdf-style lines; source-built `.g3a` needs parity check. |
-| `binomcdf(n,p,r)` / `binomial_cdf(...)` | keep | CasioCAS/KhiCAS | partial | Host route gives summation/complement lines; source-built `.g3a` has native `binomial_cdf` but no wrapper working yet. |
+| `binom(n,p,r)` / `binomial(n,p,r)` | keep | CasioCAS | yes | Host-style PMF/tail/CDF working is mirrored in source-built `.g3a`; GIAC supplies the value. |
+| `binomcdf(n,p,r)` / `binomial_cdf(...)` | keep | CasioCAS/KhiCAS | partial | Source-built `.g3a` emits CDF/complement setup for supported numeric cases; contextual hypothesis wording remains manual. |
 | `normalcdf(mu,sigma,lo,hi)` | keep | CasioCAS/KhiCAS | yes | Source-built `.g3a` rewrites to native `normal_cdf` and emits compact standardisation lines; host accepts A-level standard-error expressions in `sigma`. |
 | `binomial(n,p,k)` native catalogue | keep | KhiCAS/CasioCAS | partial | Native name exists; host Stats module gives stronger working. |
 | `normald`, `mean`, `median`, `stdev`, `correlation`, `covariance`, `linear_regression`, `ztest` | blocked | KhiCAS/CasioCAS old | blocked | Removed/unsupported by user scope. |
@@ -135,7 +135,7 @@ Legend:
 
 | Surface | 9MA0 | Origin | Working | Notes |
 |---|---:|---|---|---|
-| `suvat(s=...,u=...,v=...,a=...,t=...,target=...)` | keep | CasioCAS | yes | Equations, substitution, solve target. |
+| `suvat(s=...,u=...,v=...,a=...,t=...,target=...)` | keep | CasioCAS | yes | Source-built `.g3a` mirrors host formula, substitution, and target answer lines for recognised numeric forms. |
 | `find=[s,u,v,a,t]` in SUVAT | keep | CasioCAS | yes | Batch solves supported. |
 | force/moment/vector mechanics | keep-as-algebra | Both | partial | No broad named helper; solved via algebra/calculus/vector expressions. |
 

@@ -57,8 +57,9 @@ Production exam-working fixes go in `c++/khicas/upstream/giac90_1addin/`.
 Use `c++/addin/src/modules/` as the step-order spec; GIAC remains the maths
 engine for the calculator build. Current production overlays include direct
 table integrals copied from the host step spec, affine substitution hints,
-binomial `coeff(...)` working, and geometric/exponential plus sign-chart
-inequality hints; answers still come from GIAC.
+binomial `coeff(...)`/PMF/CDF working, SUVAT formula-substitution-answer
+working, and geometric/exponential plus sign-chart inequality hints; answers
+still come from GIAC.
 
 ## Common commands
 

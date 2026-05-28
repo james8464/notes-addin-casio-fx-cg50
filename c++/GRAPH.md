@@ -143,6 +143,8 @@ High-value step generators:
   trig identities, definite-integral evaluation, DE separation
 - production direct integral route: `main.cc` classifies table forms, `CASIOCAS.WORK.TPL`
   stores host-spec step text, GIAC supplies the final primitive
+- production stats/mechanics routes: `main.cc` emits host-spec binomial
+  PMF/CDF/tail and SUVAT formula-substitution-answer lines before GIAC answer
 - trig: sin/cos/tan rewrites, R-form, sum/product identities, power reduction,
   bounded/general solution checks
 - domain/range: denominator/radical/log/inverse-trig guards, sampling only as
