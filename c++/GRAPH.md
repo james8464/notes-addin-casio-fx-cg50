@@ -52,6 +52,7 @@ graph TD
   Method --> Insert["insert command shell text"]
 
   Shell["main.cc input"] --> Rewrite["alias/method rewrite"]
+  Rewrite --> Dist["A-level aliases: binom/binomcdf/normalcdf"]
   Rewrite --> Giac["Giac exact engine"]
   Giac --> Ans["answer string"]
   Ans --> Gate["show working? old Python scope only"]

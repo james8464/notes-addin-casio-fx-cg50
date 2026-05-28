@@ -2598,6 +2598,26 @@ static bool cascas_rewrite_normalcdf_call(const char *input,string &out){
   return true;
 }
 
+static bool cascas_rewrite_binomial_dist_call(const char *input,string &out){
+  string args[3],s; int count=0,close=0;
+  if (cascas_call_args(input,"binomcdf(",args,3,count,close,s) && count>=3){
+    out="binomial_cdf(" + args[0] + "," + args[1] + "," + args[2] + ")";
+    out += s.substr(close+1,s.size()-close-1);
+    return true;
+  }
+  if (cascas_call_args(input,"binompdf(",args,3,count,close,s) && count>=3){
+    out="binomial(" + args[0] + "," + args[1] + "," + args[2] + ")";
+    out += s.substr(close+1,s.size()-close-1);
+    return true;
+  }
+  if (cascas_call_args(input,"binom(",args,3,count,close,s) && count>=3){
+    out="binomial(" + args[0] + "," + args[1] + "," + args[2] + ")";
+    out += s.substr(close+1,s.size()-close-1);
+    return true;
+  }
+  return false;
+}
+
 static bool cascas_rewrite_coeff_match_call(const char *input,const char *alias,string &out){
   string args[4],s; int count=0,close=0;
   if (!cascas_call_args(input,alias,args,4,count,close,s) || count<3)
@@ -2715,6 +2735,8 @@ static bool cascas_rewrite_alias(const char *input,string &rewritten){
   if (cascas_rewrite_binom_coeff_call(input,rewritten))
     return true;
   if (cascas_rewrite_normalcdf_call(input,rewritten))
+    return true;
+  if (cascas_rewrite_binomial_dist_call(input,rewritten))
     return true;
   if (cascas_rewrite_fitconst_call(input,rewritten))
     return true;
@@ -3749,7 +3771,11 @@ static void cascas_append_method_lines(cascas_working_sink &out,const char *s,co
 		    {"suvat(","t139"},
 		    {"integrate(","t141"},
 			    {"solve(","t142"},
-		    {"binomial(","t143"}
+		    {"binomial(","t143"},
+		    {"binom(","t143"},
+		    {"binompdf(","t143"},
+		    {"binomcdf(","t143"},
+		    {"binomial_cdf(","t143"}
 	  };
   for (int i=0;i<int(sizeof(rules)/sizeof(rules[0]));++i){
     if (strstr(s,rules[i].key)){
@@ -3885,6 +3911,7 @@ static bool cascas_old_python_scope_working_call(const char *s){
     "domain(","range(","compare(","xform(","transform(","rewrite(",
     "match(","coeff_match(","fitconst(","complete_square(",
     "partfrac(","propfrac(","binom_expand(","binom_coeff(",
+    "binomial(","binom(","binompdf(","binomcdf(","binomial_cdf(",
     "normalcdf(","de_solve(","suvat(","tangent_line(",0
   };
   for (int i=0;calls[i];++i){

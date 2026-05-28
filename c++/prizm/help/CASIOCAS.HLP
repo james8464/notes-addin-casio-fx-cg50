@@ -209,12 +209,12 @@ Opt: none.
 Ex F2: approx(pi)
 @END
 @binomial(n,p,k)
-F2:binomial(10,.5,4)
-binomial(n,p,k)
-Binomial P(X=k). Use cdf/icdf for tails.
+F2:binomcdf(10,.5,4)
+binomial(n,p,k); binom(n,p,k); binomcdf(n,p,k)
+Binomial P(X=k) or P(X<=k).
 Req: n,p,k.
 Opt: method=binomial.
-Ex F2: binomial(10,.5,4)
+Ex F2: binom(10,.5,4)
 @END
 @binom_expand(expr)
 F2:binom_expand((2*x-1)^5)
