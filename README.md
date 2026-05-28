@@ -34,6 +34,8 @@ keep long help text in `c++/prizm/help/`, not inside `.g3a` source strings.
 
 Use `c++/addin/host/build/device_solver_smoke` only for the separate native/fallback add-in route.
 
+`c++/tools/build_khicas_host_runner_docker.sh` builds a separate source-based KhiCAS core runner for audit triage. It does not participate in `.g3a` packaging; calculator behavior still comes from `./compile` and the KhiCAS source tree.
+
 ## Structure
 
 ```text

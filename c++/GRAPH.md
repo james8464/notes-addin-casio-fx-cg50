@@ -11,6 +11,7 @@ graph TD
   Compile --> Docker["Docker: casio-khicas-source"]
   Docker --> Src["c++/khicas/upstream/giac90_1addin"]
   Src --> G3A["c++/prizm/build/CasioCAS.g3a"]
+  Src --> CoreRunner["khicas core runner audit-only"]
   Assets["c++/prizm/assets/*.png"] --> Src
   HelpSrc["c++/prizm/help/CASIOCAS.HLP + CASIOCAS*.TPL"] --> Pack["build_external_pack.py"]
   Pack --> PAK["CASIOCAS.PAK"]
@@ -22,6 +23,9 @@ graph TD
   Legacy["CASIO_PRIZM_MODE=legacy"] --> Prizm["c++/prizm/src + c++/addin/src/device"]
   Ref["CASIO_PRIZM_MODE=khicas-reference"] --> UpG3A["khicas/reference/khicasen.g3a"]
 ```
+
+The core runner is not a `.g3a` build path. Keep calculator packaging on
+`./compile`; parity fixes belong in the KhiCAS source files used by that path.
 
 Patch production calculator behavior in:
 - `c++/khicas/upstream/giac90_1addin/main.cc`
