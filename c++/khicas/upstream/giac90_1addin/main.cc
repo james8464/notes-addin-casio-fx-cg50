@@ -3767,6 +3767,7 @@ static void cascas_append_method_lines(cascas_working_sink &out,const char *s,co
 		    {"fitconst(","t135"},
 		    {"de_solve(","t136"},
 			    {"tangent_line(","t137"},
+			    {"linetan(","t137"},
 		    {"trig_prove(","t138"},
 		    {"suvat(","t139"},
 		    {"integrate(","t141"},
@@ -3912,7 +3913,7 @@ static bool cascas_old_python_scope_working_call(const char *s){
     "match(","coeff_match(","fitconst(","complete_square(",
     "partfrac(","propfrac(","binom_expand(","binom_coeff(",
     "binomial(","binom(","binompdf(","binomcdf(","binomial_cdf(",
-    "normalcdf(","de_solve(","suvat(","tangent_line(",0
+    "normalcdf(","de_solve(","suvat(","tangent_line(","linetan(",0
   };
   for (int i=0;calls[i];++i){
     if (cascas_startswith(s,calls[i]))
