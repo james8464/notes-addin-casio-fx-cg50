@@ -3700,7 +3700,25 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
 	    string int_prefix=cascas_tpl("t107");
 	    cascas_append_expr_line(out,int_prefix.c_str(),args[0] + "] d" + x);
 	    int step=3;
-		    if (cascas_text_has(e,"x^4+1") || cascas_text_has(e,"x^4-1") || cascas_text_has(e,"x^8+x^4+1")){
+		    if (e=="1/x"){
+		      cascas_append_tpl_step(out,step,"t151");
+	    }
+	    else if (e=="sec(x)^2"){
+		      cascas_append_tpl_step(out,step,"t152");
+	    }
+	    else if (e=="sec(x)tan(x)" || e=="tan(x)sec(x)"){
+		      cascas_append_tpl_step(out,step,"t153");
+	    }
+	    else if (e=="tan(x)^2"){
+		      cascas_append_tpl_step(out,step,"t154");
+	    }
+	    else if (e=="cosec(x)^2" || e=="csc(x)^2"){
+		      cascas_append_tpl_step(out,step,"t155");
+	    }
+	    else if (e=="cosec(x)cot(x)" || e=="cot(x)cosec(x)" || e=="csc(x)cot(x)" || e=="cot(x)csc(x)"){
+		      cascas_append_tpl_step(out,step,"t156");
+	    }
+	    else if (cascas_text_has(e,"x^4+1") || cascas_text_has(e,"x^4-1") || cascas_text_has(e,"x^8+x^4+1")){
 			      cascas_append_tpl_step(out,step,"t108");
 			      cascas_append_tpl_step(out,step,"t109");
 		      cascas_append_tpl_step(out,step,"t110");

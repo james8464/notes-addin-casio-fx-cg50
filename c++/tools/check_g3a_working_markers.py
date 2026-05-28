@@ -30,6 +30,12 @@ MARKERS = [
     b"alpha = atan(5/12)",
     b"d/dx(sin(x)) = cos(x)",
     b"d/dx(-cos(x)) = sin(x)",
+    b"d/dx(ln(abs(x))) = 1/x",
+    b"d/dx(tan(x)) = sec(x)^2",
+    b"d/dx(sec(x)) = sec(x)tan(x)",
+    b"tan(x)^2 = sec(x)^2 - 1",
+    b"d/dx(-cot(x)) = cosec(x)^2",
+    b"d/dx(-cosec(x)) = cosec(x)cot(x)",
 ]
 
 FORBIDDEN = [

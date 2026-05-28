@@ -357,6 +357,24 @@ d/dx(sin(x)) = cos(x)
 @t150
 d/dx(-cos(x)) = sin(x)
 @END
+@t151
+d/dx(ln(abs(x))) = 1/x
+@END
+@t152
+d/dx(tan(x)) = sec(x)^2
+@END
+@t153
+d/dx(sec(x)) = sec(x)tan(x)
+@END
+@t154
+tan(x)^2 = sec(x)^2 - 1
+@END
+@t155
+d/dx(-cot(x)) = cosec(x)^2
+@END
+@t156
+d/dx(-cosec(x)) = cosec(x)cot(x)
+@END
 @t000
 Valid: all x
 @END
