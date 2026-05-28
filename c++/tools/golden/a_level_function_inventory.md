@@ -111,7 +111,7 @@ Legend:
 
 | Surface | 9MA0 | Origin | Working | Notes |
 |---|---:|---|---|---|
-| `integrate(f,x[,a,b,method,u])` / `int(...)` | keep | Both | yes | Reverse chain, substitution, parts, partial fractions, trig, definite. |
+| `integrate(f,x[,a,b,method,u])` / `int(...)` | keep | Both | yes | Production `.g3a` uses GIAC for answers and host-module step order/wording for direct table integrals; broader routes cover reverse chain, substitution, parts, PF, trig, definite. |
 | `defint(f,x,a,b)` | typed-hidden | CasioCAS | yes | Definite integral working/evaluation. |
 | `de_solve(equation,[bc])` | keep | CasioCAS | yes | 9MA0 separable/simple first-order model routes. |
 | `desolve(equation,t,y)` | hidden | KhiCAS | no | Native CAS hidden; prefer `de_solve`. |

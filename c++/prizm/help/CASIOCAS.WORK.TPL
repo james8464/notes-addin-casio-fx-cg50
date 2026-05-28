@@ -352,28 +352,35 @@ sub root
 =
 @END
 @t149
+I = Int(cos(x)) dx.
 d/dx(sin(x)) = cos(x)
 @END
 @t150
+I = Int(sin(x)) dx.
 d/dx(-cos(x)) = sin(x)
 @END
 @t151
-d/dx(ln(abs(x))) = 1/x
+Integral 1/x dx = log(abs(x)) + C.
 @END
 @t152
+I = Int(sec(x)^2) dx.
 d/dx(tan(x)) = sec(x)^2
 @END
 @t153
+I = Int(sec(x)tan(x)) dx.
 d/dx(sec(x)) = sec(x)tan(x)
 @END
 @t154
 tan(x)^2 = sec(x)^2 - 1
+I = Int(sec(x)^2 - 1) dx.
 @END
 @t155
-d/dx(-cot(x)) = cosec(x)^2
+I = Int(cosec(x)^2) dx.
+d/dx(cot(x)) = -cosec(x)^2
 @END
 @t156
-d/dx(-cosec(x)) = cosec(x)cot(x)
+I = Int(cosec(x)cot(x)) dx.
+d/dx(cosec(x)) = -cosec(x)cot(x)
 @END
 @t157
 Integrate term by term.
@@ -464,6 +471,29 @@ Critical values: solve equality
 @END
 @t186
 Test intervals / sign chart
+@END
+@t187
+u=log(x); du=1/x dx.
+I=Int(u)du.
+@END
+@t188
+sec(x)^4 = (1+tan(x)^2)sec(x)^2.
+u=tan(x), du=sec(x)^2 dx.
+@END
+@t189
+cot(x)^2 = cosec(x)^2 - 1.
+I = Int(cosec(x)^2 - 1) dx.
+@END
+@t190
+sin(x)^2 = (1-cos(2*x))/2.
+I = 1/2*Int(1-cos(2*x)) dx.
+@END
+@t191
+cos(x)^2 = (1+cos(2*x))/2.
+I = 1/2*Int(1+cos(2*x)) dx.
+@END
+@t192
+Divide: (3*x^2-2*x+2)/x = 3*x - 2 + 2/x.
 @END
 @t000
 Valid: all x

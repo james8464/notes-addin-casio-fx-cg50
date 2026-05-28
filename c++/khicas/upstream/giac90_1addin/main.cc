@@ -4058,14 +4058,23 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
 		    if (e=="1/x"){
 		      cascas_append_tpl_step(out,step,"t151");
 	    }
+	    else if (e=="log(x)/x" || e=="ln(x)/x"){
+		      cascas_append_tpl_step(out,step,"t187");
+	    }
 	    else if (e=="sec(x)^2"){
 		      cascas_append_tpl_step(out,step,"t152");
+	    }
+	    else if (e=="sec(x)^4"){
+		      cascas_append_tpl_step(out,step,"t188");
 	    }
 	    else if (e=="sec(x)tan(x)" || e=="tan(x)sec(x)"){
 		      cascas_append_tpl_step(out,step,"t153");
 	    }
 	    else if (e=="tan(x)^2"){
 		      cascas_append_tpl_step(out,step,"t154");
+	    }
+	    else if (e=="cot(x)^2"){
+		      cascas_append_tpl_step(out,step,"t189");
 	    }
 	    else if (e=="cosec(x)^2" || e=="csc(x)^2"){
 		      cascas_append_tpl_step(out,step,"t155");
@@ -4119,6 +4128,15 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
 	    }
 	    else if (e=="sin(x)"){
 		      cascas_append_tpl_step(out,step,"t150");
+	    }
+	    else if (e=="sin(x)^2"){
+		      cascas_append_tpl_step(out,step,"t190");
+	    }
+	    else if (e=="cos(x)^2"){
+		      cascas_append_tpl_step(out,step,"t191");
+	    }
+	    else if (e=="(3x^2-2x+2)/x"){
+		      cascas_append_tpl_step(out,step,"t192");
 	    }
 	    else if (cascas_text_has(e,"sin") || cascas_text_has(e,"cos") || cascas_text_has(e,"tan") || cascas_text_has(e,"sec")){
 		      cascas_append_tpl_step(out,step,"t128");

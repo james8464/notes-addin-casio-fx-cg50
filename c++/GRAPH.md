@@ -56,7 +56,8 @@ graph TD
   Rewrite --> Giac["Giac exact engine"]
   Giac --> Ans["answer string"]
   Ans --> Gate["show working? old Python scope only"]
-  Gate --> Sink["cascas_working_sink capped lines/chars"]
+  Gate --> Route["route-specific method lines"]
+  Route --> Sink["cascas_working_sink capped lines/chars"]
   Sink --> WorkScreen["fullscreen working"]
   Sink --> History["shell result lines"]
 ```
@@ -110,7 +111,7 @@ Host output quality rules:
 - stats scalar args accept A-level standard-error arithmetic such as
   `sqrt(4^2/10+6^2/15)` without re-adding removed raw stats helpers
 - latest MadAsMaths audit coverage: `332/462` PDFs covered, `6628` legacy
-  manual standard cases, plus `50` exact calculator-input queue rows
+  manual standard cases, plus `108` exact calculator-input queue checks
 
 ## Working Logic
 
@@ -140,6 +141,8 @@ High-value step generators:
   implicit, parametric, second derivative
 - integration: direct, reverse chain, substitution, parts, partial fractions,
   trig identities, definite-integral evaluation, DE separation
+- production direct integral route: `main.cc` classifies table forms, `CASIOCAS.WORK.TPL`
+  stores host-spec step text, GIAC supplies the final primitive
 - trig: sin/cos/tan rewrites, R-form, sum/product identities, power reduction,
   bounded/general solution checks
 - domain/range: denominator/radical/log/inverse-trig guards, sampling only as
