@@ -111,7 +111,7 @@ Host output quality rules:
 - stats scalar args accept A-level standard-error arithmetic such as
   `sqrt(4^2/10+6^2/15)` without re-adding removed raw stats helpers
 - latest MadAsMaths audit coverage: `332/462` PDFs covered, `6628` legacy
-  manual standard cases, plus `119` exact calculator-input queue checks
+  manual standard cases, plus `122` exact calculator-input queue checks
 
 ## Working Logic
 
