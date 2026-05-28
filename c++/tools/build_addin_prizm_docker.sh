@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 IMAGE_TAG="casio-prizmsdk:latest"
 SOURCE_IMAGE_TAG="casio-khicas-source:latest"
-MODE="${CASIO_PRIZM_MODE:-khicas-source}"
+MODE="${CASIO_PRIZM_MODE:-casio-prizm}"
 MAKE_JOBS="${CASIO_MAKE_JOBS:-1}"
 UPSTREAM_G3A="${ROOT_DIR}/c++/khicas/upstream/reference/khicasen.g3a"
 KHICAS_SRC="${ROOT_DIR}/c++/khicas/upstream/giac90_1addin"
@@ -196,6 +196,11 @@ if [ "${MODE}" = "khicas-reference" ] || [ "${MODE}" = "khicas-upstream" ]; then
   shasum -a 256 "${OUT_G3A}"
   echo "Output (packaged): ${OUT_G3A}"
   exit 0
+fi
+
+if [ "${MODE}" = "casio-prizm" ]; then
+  echo ""
+  echo "=== CasioCAS Prizm mode ==="
 fi
 
 ensure_prizm_image

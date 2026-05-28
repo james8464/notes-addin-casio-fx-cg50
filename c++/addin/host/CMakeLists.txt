@@ -36,6 +36,24 @@ target_compile_options(casio_host PRIVATE -Wall -Wextra -Wno-unused-parameter)
 add_executable(device_solver_smoke
   device_solver_smoke.cpp
   ../src/device/device_solver.cpp
+  ../src/core/rational.cpp
+  ../src/core/arena.cpp
+  ../src/core/tokenize.cpp
+  ../src/core/parse.cpp
+  ../src/core/normalize.cpp
+  ../src/core/simplify.cpp
+  ../src/core/format_expr.cpp
+  ../src/core/format_exam.cpp
+  ../src/core/exam_work.cpp
+  ../src/core/sig.cpp
+  ../src/core/same.cpp
+  ../src/core/parse_equation.cpp
+  ../src/modules/suvat/suvat.cpp
+  ../src/modules/stats/stats.cpp
+  ../src/modules/algebra/algebra.cpp
+  ../src/modules/derive/derive.cpp
+  ../src/modules/integrate/integrate.cpp
+  ../src/modules/trig/trig.cpp
 )
 
 target_include_directories(device_solver_smoke PRIVATE

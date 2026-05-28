@@ -12,8 +12,27 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_executable(CasioCAS
   src/main.cpp
   src/device/device_solver.cpp
+  src/device/feature_registry.cpp
   src/ui/text_input_device.cpp
   src/ui/menu.cpp
+  src/core/rational.cpp
+  src/core/arena.cpp
+  src/core/tokenize.cpp
+  src/core/parse.cpp
+  src/core/normalize.cpp
+  src/core/simplify.cpp
+  src/core/format_expr.cpp
+  src/core/format_exam.cpp
+  src/core/exam_work.cpp
+  src/core/sig.cpp
+  src/core/same.cpp
+  src/core/parse_equation.cpp
+  src/modules/suvat/suvat.cpp
+  src/modules/stats/stats.cpp
+  src/modules/algebra/algebra.cpp
+  src/modules/derive/derive.cpp
+  src/modules/integrate/integrate.cpp
+  src/modules/trig/trig.cpp
 )
 
 # gint is the default runtime for fxSDK add-ins; keep it explicit so the intent
