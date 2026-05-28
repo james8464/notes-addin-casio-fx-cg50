@@ -351,6 +351,12 @@ sub root
 @t148
 =
 @END
+@t149
+d/dx(sin(x)) = cos(x)
+@END
+@t150
+d/dx(-cos(x)) = sin(x)
+@END
 @t000
 Valid: all x
 @END

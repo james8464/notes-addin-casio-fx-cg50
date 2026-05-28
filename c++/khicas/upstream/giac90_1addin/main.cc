@@ -3736,6 +3736,12 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
 		      cascas_append_tpl_step(out,step,"t126");
 		      cascas_append_tpl_step(out,step,"t127");
 	    }
+	    else if (e=="cos(x)"){
+		      cascas_append_tpl_step(out,step,"t149");
+	    }
+	    else if (e=="sin(x)"){
+		      cascas_append_tpl_step(out,step,"t150");
+	    }
 	    else if (cascas_text_has(e,"sin") || cascas_text_has(e,"cos") || cascas_text_has(e,"tan") || cascas_text_has(e,"sec")){
 		      cascas_append_tpl_step(out,step,"t128");
 			      cascas_append_tpl_step(out,step,"t129");

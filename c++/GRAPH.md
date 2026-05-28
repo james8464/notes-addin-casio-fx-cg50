@@ -116,6 +116,11 @@ Host output quality rules:
 
 ```mermaid
 graph TD
+  Spec["host modules: step spec"] --> Port["translate route"]
+  Port --> MainCC["giac90_1addin/main.cc"]
+  MainCC --> GiacProd["GIAC maths"]
+  GiacProd --> G3AProd["./compile -> CasioCAS.g3a"]
+
   In["input"] --> Norm["normalise symbols/forms"]
   Norm --> Class["classify feature + method"]
   Class --> Auto["auto route"]

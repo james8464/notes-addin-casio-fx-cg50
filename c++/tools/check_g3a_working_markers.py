@@ -28,6 +28,8 @@ MARKERS = [
     b"[cos(x+h)-cos(x)]/h",
     b"1 + cos(2x) = 2cos(x)^2",
     b"alpha = atan(5/12)",
+    b"d/dx(sin(x)) = cos(x)",
+    b"d/dx(-cos(x)) = sin(x)",
 ]
 
 FORBIDDEN = [
