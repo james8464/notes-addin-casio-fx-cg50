@@ -2423,6 +2423,17 @@ static std::string paren_if_needed(std::string s)
     return s;
 }
 
+static std::string paren_for_substitution(std::string s)
+{
+    s = trim_text(s);
+    if(s.empty()) return s;
+    if(s.front() == '(' && s.back() == ')') return s;
+    if(s[0] == '-' || s.find(" + ") != std::string::npos || s.find(" - ") != std::string::npos ||
+       s.find('*') != std::string::npos || s.find('/') != std::string::npos)
+        return "(" + s + ")";
+    return s;
+}
+
 static std::string vector_text(Arena &a, std::vector<NodeId> const &v)
 {
     std::vector<std::string> parts;
@@ -2805,7 +2816,7 @@ static std::optional<std::string> replace_vector_scalar_calls(Arena &a, std::str
             if(!n) return std::nullopt;
             repl = *n;
         }
-        text.replace(pos, *close - pos + 1, paren_if_needed(format_expr(a, repl)));
+        text.replace(pos, *close - pos + 1, paren_for_substitution(format_expr(a, repl)));
         changed = true;
     }
     return changed ? std::optional<std::string>(text) : std::nullopt;

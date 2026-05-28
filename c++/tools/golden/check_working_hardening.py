@@ -396,6 +396,12 @@ CASES: list[tuple[str, str, list[str], list[str]]] = [
     ),
     (
         "alg",
+        "norm([3,4,5])^2",
+        ["norm([3,4,5])^2 = (5*sqrt(2))^2", "= 50", "\n50\n"],
+        ["ERR:", "unsupported function", "= 10"],
+    ),
+    (
+        "alg",
         "acos(abs(dot([3,-2,1],[-1,1,1]))/(norm([3,-2,1])*norm([-1,1,1])))",
         ["cos(theta) = |-4|/(sqrt(14)*sqrt(3))", "theta = acos(4/(sqrt(14)*sqrt(3)))", "theta ~= 51.887073499"],
         ["ERR:", "unsupported function"],
