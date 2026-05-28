@@ -3983,6 +3983,15 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
       return true;
     if (count>=2 && cascas_append_exponential_inequality(out,expr,args[1]))
       return true;
+    int relpos=0; string relop;
+    if (cascas_find_top_rel(expr,relpos,relop)){
+      string left=expr.substr(0,relpos);
+      string right=expr.substr(relpos+relop.size(),expr.size()-relpos-relop.size());
+      cascas_append_expr_line(out,cascas_tpl("t183").c_str(),"(" + left + ")-(" + right + ") " + relop + " 0");
+      cascas_append_tpl_line(out,cascas_text_has(cascas_lower_compact(expr),"/")?"t184":"t185");
+      cascas_append_tpl_line(out,"t186");
+      return true;
+    }
     string se=cascas_lower_compact(expr);
     int eq=cascas_find_top_equal(expr);
     if (eq>=0)

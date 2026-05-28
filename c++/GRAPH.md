@@ -135,7 +135,7 @@ graph TD
 High-value step generators:
 - algebra: expand, factor, collect, complete square, clear denominators,
   equate coefficients, binomial `coeff(...)`, exponential/log inequalities,
-  partial fractions
+  sign-chart inequalities, partial fractions
 - differentiation: first principles, chain, product, quotient, logdiff,
   implicit, parametric, second derivative
 - integration: direct, reverse chain, substitution, parts, partial fractions,

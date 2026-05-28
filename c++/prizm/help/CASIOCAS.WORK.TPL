@@ -453,6 +453,18 @@ r =
 @t182
 Coefficient = 
 @END
+@t183
+Move all terms left: 
+@END
+@t184
+Critical values: numerator = 0; denominator != 0
+@END
+@t185
+Critical values: solve equality
+@END
+@t186
+Test intervals / sign chart
+@END
 @t000
 Valid: all x
 @END
