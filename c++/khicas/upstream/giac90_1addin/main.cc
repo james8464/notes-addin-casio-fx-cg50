@@ -3884,6 +3884,16 @@ static bool cascas_append_suvat_steps(cascas_working_sink &out,const char *s){
   const char *names[5]={"s","u","v","a","t"};
   const char *units[5]={"m","m/s","m/s","m/s^2","s"};
   int sf=3;
+  // Keyword presets for natural-language input: "dropped","gravity",etc.
+  string preset_lower=cascas_lower_compact(s);
+  if (preset_lower.find("dropped")!=string::npos || preset_lower.find("rest")!=string::npos || preset_lower.find("stationary")!=string::npos)
+    { dv[1]=0; has[1]=true; vs[1]="0"; }
+  if (preset_lower.find("gravity")!=string::npos || preset_lower.find("falls")!=string::npos || preset_lower.find("free fall")!=string::npos || preset_lower.find("projectile")!=string::npos)
+    { dv[3]=-9.8; has[3]=true; vs[3]="-9.8"; }
+  if (preset_lower.find("max height")!=string::npos || preset_lower.find("stops")!=string::npos)
+    { dv[2]=0; has[2]=true; vs[2]="0"; }
+  if (preset_lower.find("returns to ground")!=string::npos || preset_lower.find("back to start")!=string::npos)
+    { dv[0]=0; has[0]=true; vs[0]="0"; }
   int pos=0;
   for (int i=0;i<count;++i){
     string raw=cascas_trim(args[i]);
@@ -3939,19 +3949,42 @@ static bool cascas_append_suvat_steps(cascas_working_sink &out,const char *s){
   };
   // try compute target via formula, then optionally compute unknowns
   bool ok=false; string formula,subst; double val=0;
+  // Helper: check if t=0 edge case for acceleration formulas
+  auto accel_edge = [&](const string &fml,double num,double den)->bool{
+    if (fabs(den)<1e-12){
+      cascas_append_line(out,fml.c_str());
+      if (fabs(num)<1e-12)
+        cascas_append_line(out,"a = any real (0/0)");
+      else
+        cascas_append_line(out,"Error: division by zero; no finite acceleration");
+      return true;
+    }
+    return false;
+  };
   #define SUVAT_CASE(T,A,B,C,name,sfmt,expr) \
     if (target==(T) && has[(A)] && has[(B)] && has[(C)]){ \
       ok=true; formula=name; subst=sfmt; val=(expr); \
     }
   SUVAT_CASE(2,1,3,4,"v = u + at","= "+V(1)+" + "+V(3)+"*"+V(4),dv[1]+dv[3]*dv[4])
   else SUVAT_CASE(1,2,3,4,"u = v - at","= "+V(2)+" - "+V(3)+"*"+V(4),dv[2]-dv[3]*dv[4])
-  else SUVAT_CASE(3,2,1,4,"a = (v-u)/t","= ("+V(2)+" - "+V(1)+")/"+V(4),(dv[2]-dv[1])/dv[4])
+  else if (target==3 && has[2] && has[1] && has[4]){
+    if (accel_edge("a = (v-u)/t",dv[2]-dv[1],dv[4])){ ok=true; goto suvat_solve_all; }
+    ok=true; formula="a = (v-u)/t"; subst="= ("+V(2)+" - "+V(1)+")/"+V(4); val=(dv[2]-dv[1])/dv[4];
+  }
   else SUVAT_CASE(4,1,2,3,"t = (v-u)/a","= ("+V(2)+" - "+V(1)+")/"+V(3),(dv[2]-dv[1])/dv[3])
   else SUVAT_CASE(1,0,3,4,"u = (s-1/2at^2)/t","= ("+V(0)+" - 1/2*"+V(3)+"*"+V(4)+"^2)/"+V(4),(dv[0]-0.5*dv[3]*dv[4]*dv[4])/dv[4])
   else SUVAT_CASE(2,0,1,4,"v = 2s/t - u","= 2*"+V(0)+"/"+V(4)+" - "+V(1),2.0*dv[0]/dv[4]-dv[1])
   else SUVAT_CASE(1,0,2,4,"u = 2s/t - v","= 2*"+V(0)+"/"+V(4)+" - "+V(2),2.0*dv[0]/dv[4]-dv[2])
-  else SUVAT_CASE(3,0,1,4,"a = 2(s-ut)/t^2","= 2*("+V(0)+" - "+V(1)+"*"+V(4)+")/"+V(4)+"^2",2.0*(dv[0]-dv[1]*dv[4])/(dv[4]*dv[4]))
-  else SUVAT_CASE(3,0,2,4,"a = 2(vt-s)/t^2","= 2*("+V(2)+"*"+V(4)+" - "+V(0)+")/"+V(4)+"^2",2.0*(dv[2]*dv[4]-dv[0])/(dv[4]*dv[4]))
+  else if (target==3 && has[0] && has[1] && has[4]){
+    double num=2.0*(dv[0]-dv[1]*dv[4]),den=dv[4]*dv[4];
+    if (accel_edge("a = 2(s-ut)/t^2",num,den)){ ok=true; goto suvat_solve_all; }
+    ok=true; formula="a = 2(s-ut)/t^2"; subst="= 2*("+V(0)+" - "+V(1)+"*"+V(4)+")/"+V(4)+"^2"; val=num/den;
+  }
+  else if (target==3 && has[0] && has[2] && has[4]){
+    double num=2.0*(dv[2]*dv[4]-dv[0]),den=dv[4]*dv[4];
+    if (accel_edge("a = 2(vt-s)/t^2",num,den)){ ok=true; goto suvat_solve_all; }
+    ok=true; formula="a = 2(vt-s)/t^2"; subst="= 2*("+V(2)+"*"+V(4)+" - "+V(0)+")/"+V(4)+"^2"; val=num/den;
+  }
   else SUVAT_CASE(0,1,3,4,"s = ut + 1/2at^2","= "+V(1)+"*"+V(4)+" + 1/2*"+V(3)+"*"+V(4)+"^2",dv[1]*dv[4]+0.5*dv[3]*dv[4]*dv[4])
   else SUVAT_CASE(0,2,3,4,"s = vt - 1/2at^2","= "+V(2)+"*"+V(4)+" - 1/2*"+V(3)+"*"+V(4)+"^2",dv[2]*dv[4]-0.5*dv[3]*dv[4]*dv[4])
   else SUVAT_CASE(0,1,2,4,"s = 1/2(u+v)t","= 1/2*("+V(1)+" + "+V(2)+")*"+V(4),0.5*(dv[1]+dv[2])*dv[4])
@@ -4030,15 +4063,50 @@ static bool cascas_append_suvat_steps(cascas_working_sink &out,const char *s){
       return zero_err(formula,"division by zero");
     emit_suvat(formula.c_str(),subst,val);
   }
-  if (!ok) return false;
+  if (!ok){
+    // Symbolic fallback: show formula even if we can't compute numeric answer
+    const char *fallbacks[][5]={  // target, need1, need2, need3, formula
+      {"v","u","a","t","v = u + at"},
+      {"s","u","a","t","s = ut + 1/2at^2"},
+      {"u","v","a","t","u = v - at"},
+      {"a","v","u","t","a = (v-u)/t"},
+      {"t","v","u","a","t = (v-u)/a"},
+      {"v","u","a","s","v^2 = u^2 + 2as"},
+      {"0","0","0","0",""}
+    };
+    for (int i=0;fallbacks[i][4][0];++i){
+      int need[3]={-1,-1,-1};
+      for (int j=0;j<5;++j){
+        if (names[j]==string(fallbacks[i][0])) target=j;
+        for (int k=0;k<3;++k) if (names[j]==string(fallbacks[i][k+1])) need[k]=j;
+      }
+      if (target>=0 && need[0]>=0 && need[1]>=0 && need[2]>=0){
+        bool all_known=has[need[0]]&&has[need[1]]&&has[need[2]];
+        if (!all_known){
+          cascas_append_line(out,("Insufficient data for numeric solve. Formula: "+string(fallbacks[i][4])).c_str());
+          cascas_append_line(out,("Need "+string(fallbacks[i][1])+", "+string(fallbacks[i][2])+", "+string(fallbacks[i][3])+" to compute "+string(fallbacks[i][0])).c_str());
+          return true;
+        }
+      }
+    }
+    return false;
+  }
 
 suvat_solve_all:
+  // --- All variables summary ---
+  cascas_append_line(out,"--- All variables ---");
+  for (int i=0;i<5;++i){
+    if (has[i])
+      cascas_append_line(out,(string(names[i])+" = "+cascas_format_sf(dv[i],sf)+" "+units[i]).c_str());
+    else
+      cascas_append_line(out,(string(names[i])+" = ?").c_str());
+  }
   // Also compute any other single-unknown variable
   int unknowns=0,other=-1;
   for (int i=0;i<5;++i) if (!has[i] && i!=target) { ++unknowns; other=i; }
   if (unknowns==1 && other>=0){
     int save_target=target; target=other;
-    // Recompute with new target
+    // Try all formulas for the new target
     if (target==2 && has[1] && has[3] && has[4])
       emit_suvat("v = u + at","= "+V(1)+" + "+V(3)+"*"+V(4),dv[1]+dv[3]*dv[4]);
     else if (target==0 && has[1] && has[3] && has[4])
@@ -4048,6 +4116,27 @@ suvat_solve_all:
     else if (target==3 && has[2] && has[1] && has[4]){
       if (fabs(dv[4])>1e-12)
         emit_suvat("a = (v-u)/t","= ("+V(2)+" - "+V(1)+")/"+V(4),(dv[2]-dv[1])/dv[4]);
+    }
+    else if (target==4 && has[0] && has[1] && has[2]){
+      double den=dv[1]+dv[2];
+      if (fabs(den)>1e-12)
+        emit_suvat("t = 2s/(u+v)","= 2*"+V(0)+"/("+V(1)+" + "+V(2)+")",2.0*dv[0]/den);
+    }
+    else if (target==4 && has[0] && has[1] && has[3]){
+      double a2=0.5*dv[3],b2=dv[1],c2=-dv[0],disc=b2*b2-4.0*a2*c2;
+      if (disc>=0 && fabs(a2)>1e-12){
+        double t1=(-b2+sqrt(disc))/(2.0*a2);
+        cascas_append_line(out,"s = ut + 1/2at^2 (quadratic in t)");
+        cascas_append_line(out,("t = "+cascas_format_sf(t1,sf)+" s").c_str());
+      }
+    }
+    else if (target==4 && has[1] && has[3] && has[2]){
+      double den=dv[3];
+      if (fabs(den)>1e-12){
+        double tv=(dv[2]-dv[1])/den;
+        cascas_append_line(out,"v = u + at");
+        cascas_append_line(out,("t = (v-u)/a = "+cascas_format_sf(tv,sf)+" s").c_str());
+      }
     }
     target=save_target;
   }
@@ -4104,25 +4193,33 @@ static bool cascas_append_binomial_steps(cascas_working_sink &out,const char *s)
 // Recursive derive rules: detects expression structure and shows step-by-step
 static bool cascas_append_derive_rules(cascas_working_sink &out,const string &expr_raw,const string &x,int depth=0){
   string e=cascas_strip_outer_group(expr_raw);
-  string inner;
+  if (depth==0 && !e.empty())
+    cascas_append_line(out,("y = " + e).c_str());
+  // Use GIAC to compute the full derivative
+  giac::gen expr_gen(e,contextptr);
+  giac::gen var_gen(x,contextptr);
+  giac::gen full_deriv = giac::eval(giac::symb_derive(expr_gen,var_gen),1,contextptr);
+  string full_deriv_str = full_deriv.print(contextptr);
   // 1. Sum rule: f(x)+g(x)
   int top=cascas_top_char(e,'+');
   if (top>0){
     string left=e.substr(0,top),right=e.substr(top+1);
-    cascas_append_line(out,("y = " + e).c_str());
     cascas_append_line(out,("dy/d" + x + " = d/d" + x + "(" + left + ") + d/d" + x + "(" + right + ")").c_str());
     cascas_append_derive_rules(out,left,x,depth+1);
     cascas_append_derive_rules(out,right,x,depth+1);
+    if (depth==0)
+      cascas_append_line(out,("dy/d" + x + " = " + full_deriv_str).c_str());
     return true;
   }
   // 2. Difference rule: f(x)-g(x)
   top=cascas_top_char(e,'-');
   if (top>0 && top!=0){
     string left=e.substr(0,top),right=e.substr(top+1);
-    cascas_append_line(out,("y = " + e).c_str());
     cascas_append_line(out,("dy/d" + x + " = d/d" + x + "(" + left + ") - d/d" + x + "(" + right + ")").c_str());
     cascas_append_derive_rules(out,left,x,depth+1);
     cascas_append_derive_rules(out,right,x,depth+1);
+    if (depth==0)
+      cascas_append_line(out,("dy/d" + x + " = " + full_deriv_str).c_str());
     return true;
   }
   // 3. Product rule: f(x)*g(x)
@@ -4130,12 +4227,15 @@ static bool cascas_append_derive_rules(cascas_working_sink &out,const string &ex
   if (top>0){
     string u=cascas_strip_outer_group(e.substr(0,top));
     string v=cascas_strip_outer_group(e.substr(top+1));
-    cascas_append_line(out,("y = " + u + " * " + v).c_str());
-    cascas_append_tpl_line(out,"t216");
-    if (depth==0){
-      cascas_append_line(out,("u = " + u + ", v = " + v).c_str());
-      cascas_append_line(out,("u' = d/d" + x + "(" + u + "), v' = d/d" + x + "(" + v + ")").c_str());
-    }
+    cascas_append_line(out,("u = " + u + ", v = " + v).c_str());
+    // Compute u', v' using GIAC
+    giac::gen ug(u,contextptr),vg(v,contextptr);
+    string u_str = giac::eval(giac::symb_derive(ug,var_gen),1,contextptr).print(contextptr);
+    string v_str = giac::eval(giac::symb_derive(vg,var_gen),1,contextptr).print(contextptr);
+    cascas_append_line(out,("u' = " + u_str + ", v' = " + v_str).c_str());
+    cascas_append_line(out,("dy/d" + x + " = u'v + uv' = (" + u_str + ")*(" + v + ") + (" + u + ")*(" + v_str + ")").c_str());
+    if (depth==0)
+      cascas_append_line(out,("dy/d" + x + " = " + full_deriv_str).c_str());
     return true;
   }
   // 4. Quotient rule: f(x)/g(x)
@@ -4143,117 +4243,80 @@ static bool cascas_append_derive_rules(cascas_working_sink &out,const string &ex
   if (top>0){
     string u=cascas_strip_outer_group(e.substr(0,top));
     string v=cascas_strip_outer_group(e.substr(top+1));
-    cascas_append_line(out,("y = " + u + " / " + v).c_str());
-    cascas_append_tpl_line(out,"t217");
-    if (depth==0){
-      cascas_append_line(out,("u = " + u + ", v = " + v).c_str());
-      cascas_append_line(out,("u' = d/d" + x + "(" + u + "), v' = d/d" + x + "(" + v + ")").c_str());
-    }
+    giac::gen ug(u,contextptr),vg(v,contextptr);
+    string u_str = giac::eval(giac::symb_derive(ug,var_gen),1,contextptr).print(contextptr);
+    string v_str = giac::eval(giac::symb_derive(vg,var_gen),1,contextptr).print(contextptr);
+    cascas_append_line(out,("u = " + u + ", v = " + v).c_str());
+    cascas_append_line(out,("u' = " + u_str + ", v' = " + v_str).c_str());
+    cascas_append_line(out,("dy/d" + x + " = (u'v - uv')/v^2 = ((" + u_str + ")*(" + v + ") - (" + u + ")*(" + v_str + "))/(" + v + ")^2").c_str());
+    if (depth==0)
+      cascas_append_line(out,("dy/d" + x + " = " + full_deriv_str).c_str());
     return true;
   }
-  // 5. Power rule: x^n (base is variable, exponent is constant)
+  // 5. Power rule: x^n or u^n
   int p=cascas_find_top_power(e);
   if (p>0){
     string base=cascas_strip_outer_group(e.substr(0,p));
     string exp=cascas_strip_outer_group(e.substr(p+1));
-    // Check if base is the var or contains the var
-    bool base_is_x=(base==x);
-    bool base_contains_x=base.find(x)!=string::npos || base.find('(')!=string::npos;
-    if (base_is_x || base_contains_x){
-      if (depth==0) cascas_append_line(out,("y = " + e).c_str());
-      if (!base_contains_x){
-        cascas_append_line(out,("dy/d" + x + " = " + exp + "*" + x + "^(" + exp + "-1)").c_str());
-      } else if (cascas_nonneg_int_text(exp)){
-        cascas_append_line(out,("u = " + base + ", du/d" + x + " = d/d" + x + "(" + base + ")").c_str());
-        cascas_append_line(out,("dy/d" + x + " = " + exp + "*u^(" + exp + "-1)*du/d" + x).c_str());
+    if (base.find(x)!=string::npos || base.find('(')!=string::npos){
+      if (base==x){
+        cascas_append_line(out,("dy/d" + x + " = " + exp + "*" + x + "^(" + exp + "-1) = " + full_deriv_str).c_str());
       } else {
-        cascas_append_tpl_line(out,"t215");
-        cascas_append_line(out,("dy/d" + x + " = " + exp + "*" + base + "^(" + exp + "-1)*d/d" + x + "(" + base + ")").c_str());
+        cascas_append_line(out,("u = " + base).c_str());
+        string du = giac::eval(giac::symb_derive(giac::gen(base,contextptr),var_gen),1,contextptr).print(contextptr);
+        cascas_append_line(out,("du/d" + x + " = " + du).c_str());
+        cascas_append_line(out,("dy/d" + x + " = " + exp + "*u^(" + exp + "-1)*du/d" + x + " = " + full_deriv_str).c_str());
       }
       return true;
     }
   }
-  // 6. Exponential: e^u
+  // 6. Exponential: e^u and a^u
   string arg;
-  if (cascas_func_arg_text(e,"exp",arg) || (e.find("e^")!=string::npos && e.find('(')==string::npos)){
+  if (cascas_func_arg_text(e,"exp",arg) || e.find("e^")!=string::npos){
     if (cascas_func_arg_text(e,"exp",arg)){
-      cascas_append_line(out,("y = exp(" + arg + ")").c_str());
-      cascas_append_tpl_line(out,"t215");
-      cascas_append_line(out,("dy/d" + x + " = exp(" + arg + ")*d/d" + x + "(" + arg + ")").c_str());
+      cascas_append_line(out,("dy/d" + x + " = exp(" + arg + ") * d/d" + x + "(" + arg + ") = " + full_deriv_str).c_str());
     } else {
-      cascas_append_line(out,("y = " + e).c_str());
-      cascas_append_line(out,("dy/d" + x + " = " + e + "*ln(e)*d/d" + x).c_str());
+      cascas_append_line(out,("dy/d" + x + " = " + full_deriv_str).c_str());
     }
     return true;
-  }
-  // 6b. a^u (a != e)
-  if (e.find("^")!=string::npos && e.find("e")==string::npos){
-    // for power forms like 2^x, 3^(2x)
-    p=cascas_find_top_power(e);
-    if (p>0){
-      string base=cascas_strip_outer_group(e.substr(0,p));
-      string exp=cascas_strip_outer_group(e.substr(p+1));
-      cascas_append_line(out,("y = " + base + "^(" + exp + ")").c_str());
-      cascas_append_line(out,("ln(y) = " + exp + "*ln(" + base + ")").c_str());
-      cascas_append_tpl_line(out,"t023");
-      return true;
-    }
   }
   // 7. Trig derivatives
-  struct { const char *fn; const char *deriv; const char *name; } trig_rules[]={
-    {"sin","cos","sine"},
-    {"cos","-sin","cosine"},
-    {"tan","sec^2","tangent"},
-    {"sec","sec*tan","secant"},
-    {"csc","-csc*cot","cosec"},
-    {"cosec","-cosec*cot","cosec"},
-    {"cot","-csc^2","cotangent"}
+  struct { const char *fn; } trig_fns[]={
+    {"sin"},{"cos"},{"tan"},{"sec"},{"csc"},{"cosec"},{"cot"}
   };
-  for (auto &rule : trig_rules){
-    if (cascas_func_arg_text(e,rule.fn,arg)){
-      if (depth==0) cascas_append_line(out,("y = " + e).c_str());
-      if (arg==x){
-        cascas_append_line(out,("dy/d" + x + " = " + string(rule.deriv) + "(" + x + ")").c_str());
-      } else {
-        cascas_append_tpl_line(out,"t215");
-        cascas_append_line(out,("u = " + arg + ", du/d" + x + " = d/d" + x + "(" + arg + ")").c_str());
-        cascas_append_line(out,("dy/d" + x + " = " + string(rule.deriv) + "(" + arg + ")*du/d" + x).c_str());
-      }
+  for (int i=0;i<7;++i){
+    if (cascas_func_arg_text(e,trig_fns[i].fn,arg)){
+      cascas_append_line(out,("dy/d" + x + "(" + trig_fns[i].fn + "(" + arg + ")) = " + full_deriv_str).c_str());
+      if (arg.find(x)!=string::npos && arg!=x)
+        cascas_append_line(out,("(chain rule: u = " + arg + ")").c_str());
       return true;
     }
   }
-  // 8. Log derivatives
+  // 8. Log derivatives: ln(u) and log(u)
   if (cascas_func_arg_text(e,"ln",arg) || cascas_func_arg_text(e,"log",arg)){
-    if (depth==0) cascas_append_line(out,("y = " + e).c_str());
-    if (arg==x){
+    if (arg==x)
       cascas_append_line(out,("dy/d" + x + " = 1/" + x).c_str());
-    } else {
-      cascas_append_tpl_line(out,"t215");
-      cascas_append_line(out,("u = " + arg + ", du/d" + x + " = d/d" + x + "(" + arg + ")").c_str());
-      cascas_append_line(out,("dy/d" + x + " = (1/" + arg + ")*du/d" + x).c_str());
-    }
+    else
+      cascas_append_line(out,("dy/d" + x + " = (1/" + arg + ")*d/d" + x + "(" + arg + ") = " + full_deriv_str).c_str());
     return true;
   }
-  // 9. Sqrt: sqrt(u) -> u'/(2*sqrt(u))
+  // 9. Sqrt
   if (cascas_func_arg_text(e,"sqrt",arg)){
-    if (depth==0) cascas_append_line(out,("y = " + e).c_str());
-    cascas_append_tpl_line(out,"t215");
-    cascas_append_line(out,("dy/d" + x + " = 1/(2*sqrt(" + arg + "))*d/d" + x + "(" + arg + ")").c_str());
+    cascas_append_line(out,("dy/d" + x + " = 1/(2*sqrt(" + arg + "))*d/d" + x + "(" + arg + ") = " + full_deriv_str).c_str());
     return true;
   }
   // 10. Arc trig
-  struct { const char *fn; const char *deriv; } arc_rules[]={
-    {"asin","1/sqrt(1-u^2)"},
-    {"acos","-1/sqrt(1-u^2)"},
-    {"atan","1/(1+u^2)"}
-  };
-  for (auto &rule : arc_rules){
-    if (cascas_func_arg_text(e,rule.fn,arg)){
-      if (depth==0) cascas_append_line(out,("y = " + e).c_str());
-      cascas_append_tpl_line(out,"t215");
-      cascas_append_line(out,("dy/d" + x + " = (" + string(rule.deriv) + ")*d/d" + x + "(" + arg + ")").c_str());
+  struct { const char *fn; } arc_fns[]={{"asin"},{"acos"},{"atan"}};
+  for (int i=0;i<3;++i){
+    if (cascas_func_arg_text(e,arc_fns[i].fn,arg)){
+      cascas_append_line(out,("dy/d" + x + "(" + arc_fns[i].fn + "(" + arg + ")) = " + full_deriv_str).c_str());
       return true;
     }
+  }
+  // 11. Generic fallback: just show computed result
+  if (e.find(x)!=string::npos && full_deriv_str!="undef"){
+    cascas_append_line(out,("dy/d" + x + " = " + full_deriv_str).c_str());
+    return true;
   }
   return false;
 }
@@ -4358,8 +4421,95 @@ static bool cascas_append_algebra_solve(cascas_working_sink &out,const string &e
     }
   }
   // Simultaneous 2x2: detect solve([eq1,eq2],[x,y])
-  if (lhs.find("[")!=string::npos && lhs.find(",")!=string::npos && rhs.find("[")!=string::npos){
+  if (lhs.find("[")!=string::npos && rhs.find("[")!=string::npos){
     cascas_append_line(out,"System of equations:");
+    // Parse: solve([eq1, eq2],[var1, var2])
+    string sys_body = lhs; // content inside outer solve(...,...)
+    // Find the two brackets
+    size_t b1 = sys_body.find('[');
+    size_t b2 = sys_body.find(']',b1+1);
+    string vars_body;
+    if (b1!=string::npos && b2!=string::npos){
+      string eqs_str = sys_body.substr(b1+1,b2-b1-1);
+      size_t vb1 = sys_body.find('[',b2+1);
+      size_t vb2 = sys_body.find(']',vb1+1);
+      if (vb1!=string::npos && vb2!=string::npos)
+        vars_body = sys_body.substr(vb1+1,vb2-vb1-1);
+      // Parse equations (comma-separated at top level)
+      string eqs[2]; int eq_count=0;
+      int depth=0; size_t start=0;
+      for (size_t i=0;i<=eqs_str.size() && eq_count<2;++i){
+        if (i==eqs_str.size() || (eqs_str[i]==',' && depth==0)){
+          eqs[eq_count++] = cascas_trim(eqs_str.substr(start,i-start));
+          start=i+1;
+        } else if (eqs_str[i]=='('||eqs_str[i]=='[') ++depth;
+        else if (eqs_str[i]==')'||eqs_str[i]==']') --depth;
+      }
+      // Parse variables
+      string vars[2]; int var_count=0;
+      depth=0; start=0;
+      for (size_t i=0;i<=vars_body.size() && var_count<2;++i){
+        if (i==vars_body.size() || (vars_body[i]==',' && depth==0)){
+          vars[var_count++] = cascas_trim(vars_body.substr(start,i-start));
+          start=i+1;
+        } else if (vars_body[i]=='('||vars_body[i]=='[') ++depth;
+        else if (vars_body[i]==')'||vars_body[i]==']') --depth;
+      }
+      if (eq_count==2 && var_count==2){
+        // Parse each equation as LHS = RHS
+        double coeffs[2][3]={{0,0,0},{0,0,0}};
+        bool ok=true;
+        for (int i=0;i<2 && ok;++i){
+          int epos = eqs[i].find('=');
+          if (epos<0){ ok=false; break; }
+          string e_lhs = cascas_strip_outer_group(cascas_trim(eqs[i].substr(0,epos)));
+          string e_rhs = cascas_strip_outer_group(cascas_trim(eqs[i].substr(epos+1)));
+          // Try to extract coefficients: a*var1 + b*var2 = c
+          // Parse term by term
+          string el = cascas_lower_compact(e_lhs);
+          string v1 = cascas_lower_compact(vars[0]);
+          string v2 = cascas_lower_compact(vars[1]);
+          // Find var1 term
+          size_t p1 = el.find(v1);
+          if (p1!=string::npos){
+            string left = el.substr(0,p1);
+            if (left.empty()||left=="+") coeffs[i][0]=1;
+            else if (left=="-") coeffs[i][0]=-1;
+            else if (!cascas_parse_real(left,coeffs[i][0])) ok=false;
+          }
+          // Find var2 term
+          size_t p2 = el.find(v2);
+          if (p2!=string::npos && ok){
+            string left = el.substr(0,p2);
+            if (left.empty()||left=="+") coeffs[i][1]=1;
+            else if (left=="-") coeffs[i][1]=-1;
+            else if (!cascas_parse_real(left,coeffs[i][1])) ok=false;
+          }
+          // RHS
+          if (!cascas_parse_real(e_rhs,coeffs[i][2])) ok=false;
+        }
+        if (ok){
+          double a=coeffs[0][0],b=coeffs[0][1],c=coeffs[0][2];
+          double d=coeffs[1][0],e=coeffs[1][1],f=coeffs[1][2];
+          double det = a*e - b*d;
+          cascas_append_line(out,("Eq1: "+cascas_format_real(a)+vars[0]+" + "+cascas_format_real(b)+vars[1]+" = "+cascas_format_real(c)).c_str());
+          cascas_append_line(out,("Eq2: "+cascas_format_real(d)+vars[0]+" + "+cascas_format_real(e)+vars[1]+" = "+cascas_format_real(f)).c_str());
+          if (fabs(det)>1e-12){
+            double xv = (c*e - b*f)/det;
+            double yv = (a*f - c*d)/det;
+            cascas_append_line(out,("D = "+cascas_format_real(a)+"*"+cascas_format_real(e)+" - "+cascas_format_real(b)+"*"+cascas_format_real(d)+" = "+cascas_format_real(det)).c_str());
+            cascas_append_line(out,("D_"+vars[0]+" = "+cascas_format_real(c)+"*"+cascas_format_real(e)+" - "+cascas_format_real(b)+"*"+cascas_format_real(f)+" = "+cascas_format_real(c*e-b*f)).c_str());
+            cascas_append_line(out,("D_"+vars[1]+" = "+cascas_format_real(a)+"*"+cascas_format_real(f)+" - "+cascas_format_real(c)+"*"+cascas_format_real(d)+" = "+cascas_format_real(a*f-c*d)).c_str());
+            cascas_append_line(out,(vars[0]+" = D_"+vars[0]+"/D = "+cascas_format_real(xv)).c_str());
+            cascas_append_line(out,(vars[1]+" = D_"+vars[1]+"/D = "+cascas_format_real(yv)).c_str());
+          } else {
+            cascas_append_line(out,"D = 0: system may have no unique solution");
+          }
+          return true;
+        }
+      }
+    }
+    // Fallback to template
     cascas_append_tpl_line(out,"t225");
     return true;
   }
@@ -4367,34 +4517,77 @@ static bool cascas_append_algebra_solve(cascas_working_sink &out,const string &e
 }
 
 // Trig equation solving: basic sin/cos/tan eqns, R-form, quadratic trig
+static string cascas_gen_to_pi_string(const giac::gen &g,giac::context *ctx){
+  // Try to convert a GIAC result to a pi-formatted string
+  string s = g.print(ctx);
+  // Replace common patterns
+  size_t p;
+  // Replace sqrt fractions with pi notation
+  if (s.find("pi")!=string::npos)
+    return s;
+  // Try exact evaluation
+  giac::gen exact = giac::eval(g,1,ctx);
+  string es = exact.print(ctx);
+  if (es.find("pi")!=string::npos || es.find("/")!=string::npos)
+    return es;
+  return s;
+}
+
 static bool cascas_append_trig_solve(cascas_working_sink &out,const string &expr,const string &se,const string &bounds){
   int eq=cascas_find_top_equal(expr);
   if (eq<0) return false;
   string lhs=cascas_trim(expr.substr(0,eq));
   string rhs=cascas_trim(expr.substr(eq+1));
-  string sv=cascas_lower_compact(lhs);
-  // Determine if RHS is a constant
-  double k=0; bool has_k=cascas_parse_real(rhs,k);
+  // Use GIAC to compute the actual solutions
+  string solve_expr = "solve(" + expr + ",x)";
+  giac::gen solve_result = giac::eval(giac::gen(solve_expr,contextptr),1,contextptr);
+  string solve_str = solve_result.print(contextptr);
+  // Show original equation
+  cascas_append_line(out,(lhs + " = " + rhs).c_str());
   // Extract var from sin/cos/tan call
   string fn_arg;
-  struct { const char *fn; const char *sol1; const char *sol2; } basic_ops[]={
-    {"sin(","arcsin","pi-asin"},
-    {"cos(","arccos","2pi-acos"},
-    {"tan(","arctan",0}
+  struct { const char *fn; const char *deriv; const char *name; } basic_ops[]={
+    {"sin","arcsin","sine"},
+    {"cos","arccos","cosine"},
+    {"tan","arctan","tangent"}
   };
-  for (auto &op : basic_ops){
-    if (cascas_func_arg_text(lhs,op.fn,fn_arg)){
+  for (int i=0;i<3;++i){
+    if (cascas_func_arg_text(lhs,basic_ops[i].fn,fn_arg)){
+      double k=0; bool has_k=cascas_parse_real(rhs,k);
       if (has_k && fn_arg.find('x')!=string::npos){
-        cascas_append_line(out,(lhs + " = " + rhs).c_str());
+        // Compute reference angle using GIAC
+        string ref_expr = string(basic_ops[i].deriv) + "(" + rhs + ")";
+        giac::gen ref_gen(ref_expr,contextptr);
+        string ref_angle = giac::eval(ref_gen,1,contextptr).print(contextptr);
+        if (ref_angle.empty() || ref_angle.find("arc")==string::npos) ref_angle = rhs;
         cascas_append_line(out,("Let u = " + fn_arg).c_str());
-        cascas_append_line(out,(string(op.fn) + " u = " + rhs).c_str());
-        cascas_append_line(out,("u = " + string(op.sol1) + "(" + rhs + ") + 2n*pi").c_str());
-        if (op.sol2)
-          cascas_append_line(out,("u = pi - " + string(op.sol1) + "(" + rhs + ") + 2n*pi").c_str());
-        else
-          cascas_append_line(out,("u = " + string(op.sol1) + "(" + rhs + ") + n*pi").c_str());
-        if (!fn_arg.empty() && fn_arg.find('x')!=string::npos)
-          cascas_append_line(out,("x = (u - " + fn_arg + ")/coeff").c_str());
+        cascas_append_line(out,(string(basic_ops[i].fn) + "(u) = " + rhs).c_str());
+        cascas_append_line(out,("u = " + ref_angle + " + 2n*pi").c_str());
+        if (i==0) // sin: u = pi - arcsin(k) + 2n*pi
+          cascas_append_line(out,("u = pi - " + ref_angle + " + 2n*pi").c_str());
+        else if (i==1) // cos: u = -arccos(k) + 2n*pi
+          cascas_append_line(out,("u = -" + ref_angle + " + 2n*pi").c_str());
+        else // tan: u = arctan(k) + n*pi
+          cascas_append_line(out,("u = " + ref_angle + " + n*pi").c_str());
+        // Solve for x from u
+        if (fn_arg.find('x')!=string::npos){
+          // Extract coefficient from u=ax+b
+          string coeff_str = fn_arg;
+          size_t star = coeff_str.find("*x");
+          if (star==string::npos) star = coeff_str.find("x");
+          string a_str = (star>0) ? coeff_str.substr(0,star) : "1";
+          string b_str = "";
+          size_t plus = coeff_str.rfind("+");
+          size_t minus = coeff_str.rfind("-");
+          size_t op = (plus>star && plus!=string::npos) ? plus : ((minus>star && minus!=string::npos) ? minus : string::npos);
+          if (op!=string::npos && op>0){
+            a_str = coeff_str.substr(0,op);
+            b_str = coeff_str.substr(op);
+          }
+          if (a_str=="") a_str="1";
+          if (a_str=="-") a_str="-1";
+          cascas_append_line(out,("x = (u - (" + b_str + "))/" + a_str).c_str());
+        }
         if (!bounds.empty()){
           string lo,hi;
           int dot=bounds.find("..");
@@ -4402,21 +4595,75 @@ static bool cascas_append_trig_solve(cascas_working_sink &out,const string &expr
           else { lo="0"; hi="2*pi"; }
           cascas_append_line(out,("Filter x in ["+lo+","+hi+"]").c_str());
         }
+        // Show GIAC computed solutions
+        if (solve_str.find('[')!=string::npos || solve_str.find('{')!=string::npos){
+          cascas_append_line(out,("Solutions: " + solve_str).c_str());
+        }
         return true;
       }
     }
   }
-  // R-form: a sin x + b cos x = c
-  // Detect if both sin and cos appear with same arg, no other trig
+  // R-form: a sin x + b cos x = c — detect and show steps
   if (cascas_text_has(se,"sin(") && cascas_text_has(se,"cos(")){
-    cascas_append_tpl_line(out,"t036");
-    cascas_append_tpl_line(out,"t220");
+    double a=0,b=0;
+    // Extract coefficients: a*sin(x) + b*cos(x) = c
+    string sv = cascas_lower_compact(lhs);
+    size_t sp = sv.find("sin(x)");
+    size_t cp = sv.find("cos(x)");
+    string rv = cascas_lower_compact(rhs);
+    double c=0; cascas_parse_real(rv,c);
+    if (sp!=string::npos){
+      string left = sv.substr(0,sp);
+      if (left.empty()||left=="+") a=1; else if (left=="-") a=-1; else cascas_parse_real(left,a);
+    }
+    if (cp!=string::npos){
+      string left = sv.substr(0,cp);
+      if (left.empty()||left=="+") b=1; else if (left=="-") b=-1; else cascas_parse_real(left,b);
+    }
+    if (fabs(a)>1e-12 || fabs(b)>1e-12){
+      double R = sqrt(a*a+b*b);
+      cascas_append_line(out,("R = sqrt(" + cascas_format_real(a) + "^2 + " + cascas_format_real(b) + "^2) = " + cascas_format_real(R)).c_str());
+      double alpha = atan2(b,a);
+      cascas_append_line(out,("alpha = atan2(" + cascas_format_real(b) + "," + cascas_format_real(a) + ") = " + cascas_format_real(alpha)).c_str());
+      cascas_append_line(out,("=> " + cascas_format_real(R) + " sin(x + " + cascas_format_real(alpha) + ") = " + cascas_format_real(c)).c_str());
+      if (fabs(c)<=R+1e-9){
+        double rhs_angle = asin(c/R);
+        cascas_append_line(out,("sin(x + alpha) = " + cascas_format_real(c/R)).c_str());
+        cascas_append_line(out,("x + alpha = " + cascas_format_real(rhs_angle) + " + 2n*pi").c_str());
+        cascas_append_line(out,("x + alpha = pi - " + cascas_format_real(rhs_angle) + " + 2n*pi").c_str());
+        cascas_append_line(out,("x = " + cascas_format_real(rhs_angle-alpha) + " + 2n*pi").c_str());
+        cascas_append_line(out,("x = " + cascas_format_real(M_PI-rhs_angle-alpha) + " + 2n*pi").c_str());
+      }
+      if (!bounds.empty()){
+        string lo,hi;
+        int dot=bounds.find("..");
+        if (dot>=0){ lo=bounds.substr(0,dot); hi=bounds.substr(dot+2); }
+        else { lo="0"; hi="2*pi"; }
+        cascas_append_line(out,("Filter x in ["+lo+","+hi+"]").c_str());
+      }
+    } else {
+      cascas_append_tpl_line(out,"t036");
+      cascas_append_tpl_line(out,"t220");
+    }
+    // Show GIAC computed solutions
+    if (solve_str.find('[')!=string::npos || solve_str.find('{')!=string::npos){
+      cascas_append_line(out,("Solutions: " + solve_str).c_str());
+    }
     return true;
   }
   // Quadratic trig: sin^2 x or cos^2 x with linear term
   if (cascas_text_has(se,"^2") && (cascas_text_has(se,"sin")||cascas_text_has(se,"cos"))){
+    // Use GIAC to solve, also show substitution approach
     cascas_append_tpl_line(out,"t038");
     cascas_append_tpl_line(out,"t039");
+    if (solve_str.find('[')!=string::npos || solve_str.find('{')!=string::npos){
+      cascas_append_line(out,("Solutions: " + solve_str).c_str());
+    }
+    return true;
+  }
+  // Fallback: show GIAC solution if available
+  if (solve_str.find('[')!=string::npos || solve_str.find('{')!=string::npos){
+    cascas_append_line(out,("Solutions: " + solve_str).c_str());
     return true;
   }
   return false;
