@@ -3718,6 +3718,9 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
 	    else if (e=="cosec(x)cot(x)" || e=="cot(x)cosec(x)" || e=="csc(x)cot(x)" || e=="cot(x)csc(x)"){
 		      cascas_append_tpl_step(out,step,"t156");
 	    }
+	    else if (e=="exp(x)" || e=="e^x" || e=="e^(x)"){
+		      cascas_append_tpl_step(out,step,"t158");
+	    }
 	    else if (cascas_text_has(e,"x^4+1") || cascas_text_has(e,"x^4-1") || cascas_text_has(e,"x^8+x^4+1")){
 			      cascas_append_tpl_step(out,step,"t108");
 			      cascas_append_tpl_step(out,step,"t109");
@@ -3763,6 +3766,13 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
 	    else if (cascas_text_has(e,"sin") || cascas_text_has(e,"cos") || cascas_text_has(e,"tan") || cascas_text_has(e,"sec")){
 		      cascas_append_tpl_step(out,step,"t128");
 			      cascas_append_tpl_step(out,step,"t129");
+	    }
+	    else if (cascas_text_has(e,"x") && e.find('(')==string::npos){
+		      cascas_append_tpl_step(out,step,"t157");
+		      cascas_append_tpl_step(out,step,"t127");
+	    }
+	    else if (!cascas_text_has(e,"x")){
+		      cascas_append_tpl_step(out,step,"t159");
 	    }
 	    else {
 			      cascas_append_tpl_step(out,step,"t130");

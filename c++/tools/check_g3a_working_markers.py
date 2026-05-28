@@ -36,6 +36,9 @@ MARKERS = [
     b"tan(x)^2 = sec(x)^2 - 1",
     b"d/dx(-cot(x)) = cosec(x)^2",
     b"d/dx(-cosec(x)) = cosec(x)cot(x)",
+    b"Integrate term by term.",
+    b"d/dx(e^x) = e^x",
+    b"Int k dx = kx",
 ]
 
 FORBIDDEN = [

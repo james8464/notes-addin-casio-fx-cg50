@@ -375,6 +375,15 @@ d/dx(-cot(x)) = cosec(x)^2
 @t156
 d/dx(-cosec(x)) = cosec(x)cot(x)
 @END
+@t157
+Integrate term by term.
+@END
+@t158
+d/dx(e^x) = e^x
+@END
+@t159
+Int k dx = kx
+@END
 @t000
 Valid: all x
 @END
