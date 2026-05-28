@@ -1,5 +1,988 @@
 #include "device/device_solver.hpp"
+
+#ifndef TARGET_PRIZM
+
 #include "core/scope_guard.hpp"
+#include "modules/algebra/algebra.hpp"
+#include "modules/derive/derive.hpp"
+#include "modules/integrate/integrate.hpp"
+#include "modules/trig/trig.hpp"
+#include "modules/suvat/suvat.hpp"
+#include "modules/stats/stats.hpp"
+#include <cctype>
+#include <cmath>
+#include <cstdio>
+
+namespace casio::device
+{
+namespace
+{
+
+static int abs_int(int v) { return v < 0 ? -v : v; }
+static int gcd_int(int a, int b)
+{
+    a = abs_int(a);
+    b = abs_int(b);
+    while(b != 0) { int r = a % b; a = b; b = r; }
+    return a == 0 ? 1 : a;
+}
+static int lcm_int(int a, int b)
+{
+    a = abs_int(a);
+    b = abs_int(b);
+    if(a == 0 || b == 0) return 0;
+    return (a / gcd_int(a, b)) * b;
+}
+static bool is_square_int(int value, int &root)
+{
+    if(value < 0) return false;
+    root = 0;
+    while(root * root < value) root++;
+    return root * root == value;
+}
+static bool is_prime_int(int n)
+{
+    if(n < 2) return false;
+    if(n == 2) return true;
+    if(n % 2 == 0) return false;
+    for(int d = 3; d * d <= n; d += 2)
+        if(n % d == 0) return false;
+    return true;
+}
+static int comb_int(int n, int r)
+{
+    if(r < 0 || r > n) return 0;
+    if(r > n - r) r = n - r;
+    int out = 1;
+    for(int i = 1; i <= r; i++) out = out * (n - r + i) / i;
+    return out;
+}
+
+struct Fraction {
+    int num = 0;
+    int den = 1;
+};
+static Fraction make_fraction(int num, int den)
+{
+    Fraction f;
+    if(den < 0) { num = -num; den = -den; }
+    int g = gcd_int(num, den);
+    f.num = num / g;
+    f.den = den / g;
+    return f;
+}
+static bool less_fraction(Fraction const &a, Fraction const &b) { return a.num * b.den < b.num * a.den; }
+static bool same_fraction(Fraction const &a, Fraction const &b) { return a.num == b.num && a.den == b.den; }
+static bool is_zero(Fraction const &a) { return a.num == 0; }
+static Fraction frac_abs(Fraction a) { if(a.num < 0) a.num = -a.num; return a; }
+static Fraction frac_neg(Fraction a) { a.num = -a.num; return a; }
+static Fraction frac_add(Fraction a, Fraction b) { return make_fraction(a.num * b.den + b.num * a.den, a.den * b.den); }
+static Fraction frac_sub(Fraction a, Fraction b) { return frac_add(a, frac_neg(b)); }
+static Fraction frac_mul(Fraction a, Fraction b) { return make_fraction(a.num * b.num, a.den * b.den); }
+static bool frac_div(Fraction a, Fraction b, Fraction &out)
+{
+    if(b.num == 0) return false;
+    out = make_fraction(a.num * b.den, a.den * b.num);
+    return true;
+}
+static Fraction frac_pow(Fraction base, int exp)
+{
+    Fraction out = make_fraction(1, 1);
+    for(int i = 0; i < exp; i++) out = frac_mul(out, base);
+    return out;
+}
+
+static int find_char(const char *s, char needle)
+{
+    for(int i = 0; s != nullptr && s[i] != '\0'; i++)
+        if(s[i] == needle) return i;
+    return -1;
+}
+static bool read_int(const char *s, int &i, int end, int &out)
+{
+    if(i >= end || !is_digit(s[i])) return false;
+    int value = 0;
+    while(i < end && is_digit(s[i])) { value = value * 10 + (s[i] - '0'); i++; }
+    out = value;
+    return true;
+}
+static int compact(const char *src, char *dst, int cap)
+{
+    int n = 0;
+    if(cap <= 0) return 0;
+    for(int i = 0; src != nullptr && src[i] != '\0'; i++) {
+        if(is_space(src[i])) continue;
+        if(n + 1 >= cap) break;
+        dst[n++] = lower_ascii(src[i]);
+    }
+    dst[n] = '\0';
+    return n;
+}
+static bool starts_at(const char *s, int pos, const char *pat)
+{
+    if(s == nullptr || pat == nullptr || pos < 0) return false;
+    for(int i = 0; pat[i] != '\0'; i++)
+        if(s[pos + i] != pat[i]) return false;
+    return true;
+}
+static void copy_range(const char *s, int begin, int end, char *out, int cap)
+{
+    int j = 0;
+    if(out == nullptr || cap <= 0) return;
+    for(int i = begin; i < end && j + 1 < cap; i++) out[j++] = s[i];
+    out[j] = '\0';
+}
+static int find_top_level_equals(const char *s)
+{
+    int depth = 0;
+    for(int i = 0; s != nullptr && s[i] != '\0'; i++) {
+        if(s[i] == '(' || s[i] == '[' || s[i] == '{') depth++;
+        else if(s[i] == ')' || s[i] == ']' || s[i] == '}') depth--;
+        else if(s[i] == '=' && depth == 0) return i;
+    }
+    return -1;
+}
+static int find_matching_paren(const char *s, int open, int end)
+{
+    if(open < 0 || open >= end || s[open] != '(') return -1;
+    int depth = 0;
+    for(int i = open; i < end; i++) {
+        if(s[i] == '(') depth++;
+        else if(s[i] == ')') { depth--; if(depth == 0) return i; if(depth < 0) return -1; }
+    }
+    return -1;
+}
+static bool contains_trig_name(const char *input)
+{
+    for(int i = 0; input != nullptr && input[i] != '\0'; i++) {
+        char c = lower_ascii(input[i]);
+        if(c == 's' && lower_ascii(input[i + 1]) == 'i' && lower_ascii(input[i + 2]) == 'n') return true;
+        if(c == 'c' && lower_ascii(input[i + 1]) == 'o' && lower_ascii(input[i + 2]) == 's') return true;
+        if(c == 't' && lower_ascii(input[i + 1]) == 'a' && lower_ascii(input[i + 2]) == 'n') return true;
+    }
+    return false;
+}
+
+static void add_input_line(OutputLines &out, const char *prefix, const char *input)
+{
+    FixedString<96> &line = out.next();
+    line.append(prefix);
+    line.append(input);
+}
+static void add_method_fallback(OutputLines &out, const char *input)
+{
+    add_input_line(out, "", input);
+    out.add("Err: unsupported form.");
+}
+
+static void append_fraction_value(FixedString<96> &line, int num, int den)
+{
+    Fraction f = make_fraction(num, den);
+    if(f.den == 1) line.append_int(f.num);
+    else { line.append_int(f.num); line.append("/"); line.append_int(f.den); }
+}
+static void append_fraction(FixedString<96> &line, Fraction const &f)
+{
+    if(f.den == 1) line.append_int(f.num);
+    else { line.append_int(f.num); line.append("/"); line.append_int(f.den); }
+}
+
+static bool read_signed_int(const char *s, int &i, int end, int &out)
+{
+    int sign = 1;
+    if(i < end && s[i] == '-') { sign = -1; ++i; }
+    int value = 0;
+    if(!read_int(s, i, end, value)) return false;
+    out = sign * value;
+    return true;
+}
+static bool parse_int_vector(const char *s, int &i, int end, int *v, int &n)
+{
+    if(i >= end || s[i++] != '[') return false;
+    n = 0;
+    while(i < end && n < 3) {
+        if(!read_signed_int(s, i, end, v[n++])) return false;
+        if(i < end && s[i] == ',') { ++i; continue; }
+        break;
+    }
+    return n >= 2 && i < end && s[i++] == ']';
+}
+static void append_int_vector(FixedString<96> &line, const int *v, int n)
+{
+    line.append("(");
+    for(int i = 0; i < n; ++i) { if(i) line.append(","); line.append_int(v[i]); }
+    line.append(")");
+}
+static bool solve_vector_shell_call(const char *input, OutputLines &out)
+{
+    char s[128];
+    int len = compact(input, s, (int)sizeof(s));
+    int u[3]{}, v[3]{}, nu = 0, nv = 0;
+    if(starts_with(s, "dot(")) {
+        int i = 4;
+        if(!parse_int_vector(s, i, len, u, nu) || i >= len || s[i++] != ',' ||
+           !parse_int_vector(s, i, len, v, nv) || i >= len || s[i++] != ')' ||
+           i != len || nu != nv) return false;
+        int ans = 0;
+        add_input_line(out, "", input);
+        FixedString<96> &line = out.next();
+        for(int k = 0; k < nu; ++k) {
+            if(k) line.append(" + ");
+            line.append_int(u[k]); line.append("*"); line.append_int(v[k]);
+            ans += u[k] * v[k];
+        }
+        line.append(" = "); line.append_int(ans);
+        FixedString<96> &final = out.next();
+        final.append("Answer: "); final.append_int(ans);
+        return true;
+    }
+    if(starts_with(s, "norm(")) {
+        int i = 5;
+        if(!parse_int_vector(s, i, len, u, nu) || i >= len || s[i++] != ')' || i != len) return false;
+        int sum = 0, root = 0;
+        add_input_line(out, "", input);
+        FixedString<96> &line = out.next();
+        line.append("sqrt(");
+        for(int k = 0; k < nu; ++k) {
+            if(k) line.append(" + ");
+            line.append_int(u[k]); line.append("^2");
+            sum += u[k] * u[k];
+        }
+        line.append(")");
+        if(is_square_int(sum, root)) { line.append(" = "); line.append_int(root); }
+        FixedString<96> &final = out.next();
+        final.append("Answer: ");
+        if(is_square_int(sum, root)) final.append_int(root);
+        else { final.append("sqrt("); final.append_int(sum); final.append(")"); }
+        return true;
+    }
+    if(starts_with(s, "cross(")) {
+        int i = 6;
+        if(!parse_int_vector(s, i, len, u, nu) || i >= len || s[i++] != ',' ||
+           !parse_int_vector(s, i, len, v, nv) || i >= len || s[i++] != ')' ||
+           i != len || nu != 3 || nv != 3) return false;
+        int c[3]{ u[1]*v[2]-u[2]*v[1], u[2]*v[0]-u[0]*v[2], u[0]*v[1]-u[1]*v[0] };
+        add_input_line(out, "", input);
+        FixedString<96> &line = out.next();
+        line.append("cross = "); append_int_vector(line, c, 3);
+        FixedString<96> &final = out.next();
+        final.append("Answer: "); append_int_vector(final, c, 3);
+        return true;
+    }
+    return false;
+}
+
+static bool read_fraction_token(const char *s, int begin, int end, Fraction &out)
+{
+    int i = begin;
+    bool neg = false;
+    if(i < end && s[i] == '-') { neg = true; i++; }
+    int num = 0;
+    if(!read_int(s, i, end, num)) return false;
+    int den = 1;
+    if(i < end && s[i] == '/') { i++; if(!read_int(s, i, end, den) || den == 0) return false; }
+    if(i != end) return false;
+    out = make_fraction(neg ? -num : num, den);
+    return true;
+}
+static bool parse_fraction_args(const char *input, Fraction *args, int expected)
+{
+    char s[160];
+    int n = compact(input, s, (int)sizeof(s));
+    int count = 0, start = 0;
+    for(int i = 0; i <= n; i++) {
+        if(i == n || s[i] == ',') {
+            if(count >= expected) return false;
+            if(!read_fraction_token(s, start, i, args[count])) return false;
+            count++;
+            start = i + 1;
+        }
+    }
+    return count == expected;
+}
+static bool parse_int_args(const char *input, int *args, int expected)
+{
+    Fraction vals[16];
+    if(expected > 16 || !parse_fraction_args(input, vals, expected)) return false;
+    for(int i = 0; i < expected; i++) {
+        if(vals[i].den != 1) return false;
+        args[i] = vals[i].num;
+    }
+    return true;
+}
+static bool parse_fraction_list(const char *input, Fraction *args, int cap, int &count)
+{
+    char s[160];
+    int n = compact(input, s, (int)sizeof(s));
+    count = 0;
+    int start = 0;
+    for(int i = 0; i <= n; i++) {
+        if(i == n || s[i] == ',') {
+            if(count >= cap || i == start) return false;
+            if(!read_fraction_token(s, start, i, args[count])) return false;
+            count++;
+            start = i + 1;
+        }
+    }
+    return count > 0;
+}
+static bool parse_int_list(const char *input, int *args, int cap, int &count)
+{
+    Fraction vals[32];
+    if(cap > 32 || !parse_fraction_list(input, vals, cap, count)) return false;
+    for(int i = 0; i < count; i++) {
+        if(vals[i].den != 1) return false;
+        args[i] = vals[i].num;
+    }
+    return true;
+}
+
+static int find_top_level_char(const char *s, int begin, int end, char needle)
+{
+    int depth = 0;
+    for(int i = begin; i < end; i++) {
+        char c = s[i];
+        if(c == '(' || c == '[' || c == '{') depth++;
+        else if((c == ')' || c == ']' || c == '}') && depth > 0) depth--;
+        else if(c == needle && depth == 0) return i;
+    }
+    return -1;
+}
+static bool read_double_token(const char *s, int begin, int end, double &out)
+{
+    while(begin < end && s[begin] == '+') begin++;
+    while(end > begin && s[end - 1] == '+') end--;
+    if(begin >= end) return false;
+    if(end - begin == 3 && s[begin] == 'i' && s[begin + 1] == 'n' && s[begin + 2] == 'f') { out = 1.0e300; return true; }
+    if(end - begin == 4 && s[begin] == '-' && s[begin + 1] == 'i' && s[begin + 2] == 'n' && s[begin + 3] == 'f') { out = -1.0e300; return true; }
+    if(starts_at(s, begin, "sqrt(") && end > begin + 6 && s[end - 1] == ')') {
+        double v = 0.0;
+        if(!read_double_token(s, begin + 5, end - 1, v) || v < 0.0) return false;
+        out = sqrt(v);
+        return true;
+    }
+    int div = find_top_level_char(s, begin, end, '/');
+    if(div > begin) {
+        double a = 0.0, b = 0.0;
+        if(!read_double_token(s, begin, div, a) || !read_double_token(s, div + 1, end, b) || b == 0.0) return false;
+        out = a / b;
+        return true;
+    }
+    char tmp[40];
+    int n = 0;
+    for(int i = begin; i < end && n + 1 < (int)sizeof(tmp); i++) tmp[n++] = s[i];
+    tmp[n] = '\0';
+    char *tail = nullptr;
+    double v = strtod(tmp, &tail);
+    if(tail == tmp || (tail && *tail != '\0')) return false;
+    out = v;
+    return true;
+}
+static bool parse_double_args(const char *input, double *args, int expected, char shown[][32])
+{
+    char s[192];
+    int n = compact(input, s, (int)sizeof(s));
+    int count = 0, start = 0, depth = 0;
+    for(int i = 0; i <= n; i++) {
+        char c = i < n ? s[i] : ',';
+        if(c == '(' || c == '[' || c == '{') depth++;
+        else if((c == ')' || c == ']' || c == '}') && depth > 0) depth--;
+        if(i == n || (c == ',' && depth == 0)) {
+            if(count >= expected || i == start) return false;
+            if(!read_double_token(s, start, i, args[count])) return false;
+            int k = 0;
+            for(int j = start; j < i && k + 1 < 32; j++) shown[count][k++] = s[j];
+            shown[count][k] = '\0';
+            count++;
+            start = i + 1;
+        }
+    }
+    return count == expected;
+}
+
+static void append_double(FixedString<96> &line, double v)
+{
+    if(v > 9.0e299) { line.append("inf"); return; }
+    if(v < -9.0e299) { line.append("-inf"); return; }
+    if(v > -0.0000000005 && v < 0.0000000005) v = 0.0;
+    char tmp[32];
+    snprintf(tmp, sizeof(tmp), "%.8g", v);
+    line.append(tmp);
+}
+static double normal_cdf_approx(double z)
+{
+    double x = z < 0.0 ? -z : z;
+    double t = 1.0 / (1.0 + 0.2316419 * x);
+    double p = 0.3989422804014327 * exp(-0.5 * x * x) * t *
+        (0.319381530 + t * (-0.356563782 + t * (1.477937 + t * (-1.821255978 + t * 1.330274429))));
+    return z >= 0.0 ? 1.0 - p : p;
+}
+
+// ---- Integer utility functions ----
+
+static bool solve_gcd_call(const char *input, OutputLines &out)
+{
+    int a[32], count = 0;
+    if(!parse_int_list(input, a, 32, count)) { out.add("Use gcd(a,b,...)."); return false; }
+    int g = 0;
+    for(int i = 0; i < count; i++) g = (i == 0) ? abs_int(a[i]) : gcd_int(g, a[i]);
+    out.add("1. Apply Euclid's algorithm.");
+    FixedString<96> &ans = out.next();
+    ans.append("Answer: gcd = "); ans.append_int(g == 0 ? 0 : g);
+    return true;
+}
+static bool solve_lcm_call(const char *input, OutputLines &out)
+{
+    int a[32], count = 0;
+    if(!parse_int_list(input, a, 32, count)) { out.add("Use lcm(a,b,...)."); return false; }
+    int l = 1;
+    for(int i = 0; i < count; i++) l = lcm_int(l, a[i]);
+    out.add("1. Use lcm(a,b)=abs(ab)/gcd(a,b).");
+    FixedString<96> &ans = out.next();
+    ans.append("Answer: lcm = "); ans.append_int(l);
+    return true;
+}
+static bool solve_factorial_call(const char *input, OutputLines &out)
+{
+    int a[1];
+    if(!parse_int_args(input, a, 1) || a[0] < 0 || a[0] > 12) { out.add("Use factorial(n), 0<=n<=12."); return false; }
+    int v = 1;
+    for(int i = 2; i <= a[0]; i++) v *= i;
+    out.add("1. n! = 1*2*...*n.");
+    FixedString<96> &ans = out.next();
+    ans.append("Answer: "); ans.append_int(v);
+    return true;
+}
+static bool solve_isprime_call(const char *input, OutputLines &out)
+{
+    int a[1];
+    if(!parse_int_args(input, a, 1)) { out.add("Use isprime(n)."); return false; }
+    out.add("1. Trial divide up to sqrt(n).");
+    FixedString<96> &ans = out.next();
+    ans.append("Answer: "); ans.append(is_prime_int(a[0]) ? "prime" : "not prime");
+    return true;
+}
+static bool solve_factors_call(const char *input, OutputLines &out)
+{
+    int a[1];
+    if(!parse_int_args(input, a, 1) || a[0] == 0) { out.add("Use factors(n), n!=0."); return false; }
+    int n = abs_int(a[0]);
+    out.add("1. Prime factorisation by trial division.");
+    FixedString<96> &ans = out.next();
+    ans.append("Answer: ");
+    bool first = true;
+    for(int d = 2; d * d <= n; d += (d == 2 ? 1 : 2)) {
+        int power = 0;
+        while(n % d == 0) { n /= d; power++; }
+        if(power > 0) {
+            if(!first) ans.append("*");
+            ans.append_int(d);
+            if(power > 1) { ans.append("^"); ans.append_int(power); }
+            first = false;
+        }
+    }
+    if(n > 1) { if(!first) ans.append("*"); ans.append_int(n); }
+    return true;
+}
+static bool solve_divisors_call(const char *input, OutputLines &out)
+{
+    int a[1];
+    if(!parse_int_args(input, a, 1) || a[0] == 0 || abs_int(a[0]) > 10000) { out.add("Use divisors(n), 0<abs(n)<=10000."); return false; }
+    int n = abs_int(a[0]);
+    out.add("1. Test divisors up to n.");
+    FixedString<96> &ans = out.next();
+    ans.append("Answer: ");
+    bool first = true;
+    for(int d = 1; d <= n; d++) {
+        if(n % d != 0) continue;
+        if(!first) ans.append(",");
+        ans.append_int(d);
+        first = false;
+    }
+    return true;
+}
+
+// ---- Module bridge functions ----
+
+static void append_module_lines(std::vector<std::string> const &lines, OutputLines &out)
+{
+    for(auto &l : lines) out.add(l.c_str());
+}
+
+static bool call_algebra_module(const char *input, int mode, const char *method, OutputLines &out)
+{
+    Arena arena;
+    algebra::Request req;
+    req.mode = mode;
+    if(method) req.method = method;
+    req.expr = input;
+    auto lines = algebra::run(arena, req);
+    append_module_lines(lines, out);
+    return !lines.empty();
+}
+
+// Split comma-separated args (respecting paren depth) into newline-separated for modules
+// that expect multiline input (compare, transform, compose).
+static std::string commas_to_newlines(const char *s)
+{
+    std::string out;
+    int depth = 0;
+    for(int i = 0; s[i] != '\0'; i++) {
+        if(s[i] == '(' || s[i] == '[' || s[i] == '{') depth++;
+        else if(s[i] == ')' || s[i] == ']' || s[i] == '}') depth--;
+        if(s[i] == ',' && depth == 0) out.push_back('\n');
+        else out.push_back(s[i]);
+    }
+    return out;
+}
+
+static bool solve_simplify(const char *input, OutputLines &out)
+{
+    return call_algebra_module(input, 0, "collect", out);
+}
+
+static bool solve_algebra(const char *input, OutputLines &out)
+{
+    return call_algebra_module(input, 0, nullptr, out);
+}
+
+static bool solve_derive(const char *input, OutputLines &out)
+{
+    Arena arena;
+    derive::Request req;
+    req.mode = 1;
+    req.expr = input;
+    auto lines = derive::run(arena, req);
+    for(auto &l : lines) out.add(l.c_str());
+    return !lines.empty();
+}
+
+static bool solve_integrate(const char *input, OutputLines &out)
+{
+    Arena arena;
+    integrate::Request req;
+    req.mode = 1;
+    req.expr = input;
+    auto lines = integrate::run(arena, req);
+    for(auto &l : lines) out.add(l.c_str());
+    return !lines.empty();
+}
+
+static bool solve_trig(const char *input, OutputLines &out)
+{
+    Arena arena;
+    trig::Request req;
+    req.mode = 3;
+    req.expr = input;
+    auto lines = trig::run(arena, req);
+    for(auto &l : lines) out.add(l.c_str());
+    return !lines.empty();
+}
+
+static bool solve_suvat(const char *input, OutputLines &out)
+{
+    Arena arena;
+    suvat::Inputs in;
+    char s[128];
+    int n = compact(input, s, (int)sizeof(s));
+    int start = 0;
+    while(start < n) {
+        int end = start;
+        while(end < n && s[end] != ',') end++;
+        int eq = -1;
+        for(int i = start; i < end; i++) { if(s[i] == '=') { eq = i; break; } }
+        if(eq > start && eq < end - 1) {
+            std::string val;
+            for(int i = eq + 1; i < end; i++) val.push_back(s[i]);
+            if(s[start] == 's') in.s = val;
+            else if(s[start] == 'u') in.u = val;
+            else if(s[start] == 'v') in.v = val;
+            else if(s[start] == 'a') in.a = val;
+            else if(s[start] == 't') in.t = val;
+            else if(starts_at(s, start, "target=")) in.target = val;
+        }
+        else if(starts_at(s, start, "target=")) {
+            std::string val;
+            for(int i = eq + 1; i < end; i++) val.push_back(s[i]);
+            in.target = val;
+        }
+        start = end + 1;
+    }
+    if(in.s == "?" || in.s == "_") { in.s.clear(); if(in.target.empty()) in.target = "s"; }
+    if(in.u == "?" || in.u == "_") { in.u.clear(); if(in.target.empty()) in.target = "u"; }
+    if(in.v == "?" || in.v == "_") { in.v.clear(); if(in.target.empty()) in.target = "v"; }
+    if(in.a == "?" || in.a == "_") { in.a.clear(); if(in.target.empty()) in.target = "a"; }
+    if(in.t == "?" || in.t == "_") { in.t.clear(); if(in.target.empty()) in.target = "t"; }
+    auto lines = suvat::solve_all(arena, in);
+    for(auto &l : lines) out.add(l.c_str());
+    return !lines.empty();
+}
+
+static bool call_stats_module(const char *input, OutputLines &out)
+{
+    Arena arena;
+    stats::Request req;
+    req.mode = 0;
+    req.expr = input;
+    auto lines = stats::run(arena, req);
+    for(auto &l : lines) out.add(l.c_str());
+    return !lines.empty();
+}
+
+// ---- Stats wrappers (prepend function name for module's auto-detect) ----
+
+static bool solve_binom(const char *input, OutputLines &out)
+{
+    std::string full = "binom(";
+    full += input;
+    full += ")";
+    return call_stats_module(full.c_str(), out);
+}
+static bool solve_binom_cdf(const char *input, OutputLines &out)
+{
+    std::string full = "binomcdf(";
+    full += input;
+    full += ")";
+    return call_stats_module(full.c_str(), out);
+}
+static bool solve_normal_cdf(const char *input, OutputLines &out)
+{
+    // Count top-level commas to decide if this is 3-arg or 4-arg
+    int depth = 0, commas = 0;
+    for(int i = 0; input[i] != '\0'; i++) {
+        if(input[i] == '(' || input[i] == '[') depth++;
+        else if(input[i] == ')' || input[i] == ']') depth--;
+        else if(input[i] == ',' && depth == 0) commas++;
+    }
+    std::string full;
+    if(commas == 2) {
+        // 3 args: mu,sigma,value → mu,sigma,value,inf
+        full = "normalcdf(";
+        full += input;
+        full += ",inf)";
+    }
+    else {
+        full = "normalcdf(";
+        full += input;
+        full += ")";
+    }
+    return call_stats_module(full.c_str(), out);
+}
+
+// ---- Dispatch helpers ----
+
+static bool solve_device_placeholder(const char *name, OutputLines &out)
+{
+    FixedString<96> &line = out.next();
+    line.append(name); line.append(": unsupported on CG50 route.");
+    return true;
+}
+
+static bool solve_wrapped_call(const char *input, const char *prefix, Module target, OutputLines &out)
+{
+    int prefix_len = cstr_len(prefix);
+    int len = cstr_len(input);
+    if(len <= prefix_len) { out.add("Add the closing ')' and fill required arguments."); return false; }
+    char inner[128];
+    int n = 0;
+    int end = input[len - 1] == ')' ? len - 1 : len;
+    for(int i = prefix_len; i < end && n + 1 < (int)sizeof(inner); i++) inner[n++] = input[i];
+    inner[n] = '\0';
+    if(target == Module::Simplify) return solve_simplify(inner, out);
+    if(target == Module::Algebra) return solve_algebra(inner, out);
+    if(target == Module::Derive) return solve_derive(inner, out);
+    if(target == Module::Integrate) return solve_integrate(inner, out);
+    if(target == Module::Trig) return solve_trig(inner, out);
+    if(target == Module::Suvat) return solve_suvat(inner, out);
+    out.add("Use a listed command from the catalogue.");
+    return false;
+}
+
+static bool solve_utility_call(const char *input, const char *prefix, int kind, OutputLines &out)
+{
+    int prefix_len = cstr_len(prefix);
+    int len = cstr_len(input);
+    if(len <= prefix_len || input[len - 1] != ')') { out.add("Add the closing ')' and fill required arguments."); return false; }
+    char inner[160];
+    int n = 0;
+    for(int i = prefix_len; i + 1 < len && n + 1 < (int)sizeof(inner); i++) inner[n++] = input[i];
+    inner[n] = '\0';
+    if(kind == 5) return solve_binom(inner, out);
+    if(kind == 7) return solve_binom_cdf(inner, out);
+    if(kind == 8) return solve_gcd_call(inner, out);
+    if(kind == 9) return solve_lcm_call(inner, out);
+    if(kind == 10) return solve_factorial_call(inner, out);
+    if(kind == 12) return solve_isprime_call(inner, out);
+    if(kind == 13) return solve_factors_call(inner, out);
+    if(kind == 14) return solve_divisors_call(inner, out);
+    if(kind == 15) return call_algebra_module(inner, 13, "factor", out);
+    if(kind == 16) return call_algebra_module(inner, 5, "complete_square", out);
+    if(kind == 17) {
+        std::string ml = commas_to_newlines(inner);
+        return call_algebra_module(ml.c_str(), 1, nullptr, out);
+    }
+    if(kind == 18) {
+        std::string ml = commas_to_newlines(inner);
+        return call_algebra_module(ml.c_str(), 2, nullptr, out);
+    }
+    if(kind == 19) {
+        std::string ml = commas_to_newlines(inner);
+        return call_algebra_module(ml.c_str(), 7, nullptr, out);
+    }
+    if(kind == 20) return call_algebra_module(inner, 6, "inverse", out);
+    if(kind == 21) return call_algebra_module(inner, 0, "rewrite", out);
+    if(kind == 22) return call_algebra_module(inner, 10, nullptr, out);
+    if(kind == 23) return solve_normal_cdf(inner, out);
+    if(kind == 25) return solve_device_placeholder("fit constants", out);
+    return false;
+}
+
+} // namespace
+
+bool solve(Module module, const char *input, OutputLines &out)
+{
+    out.clear();
+    if(input == nullptr || input[0] == '\0') { out.add("Enter an expression first."); return false; }
+    if(casio::contains_removed_function(input)) { out.add("Err: unsupported function."); return true; }
+
+    switch(module) {
+        case Module::Shell:
+            if(starts_with(input, "binom(")) return solve_utility_call(input, "binom(", 5, out);
+            if(starts_with(input, "binomcdf(")) return solve_utility_call(input, "binomcdf(", 7, out);
+            if(starts_with(input, "normalcdf(")) return solve_utility_call(input, "normalcdf(", 23, out);
+            if(starts_with(input, "gcd(")) return solve_utility_call(input, "gcd(", 8, out);
+            if(starts_with(input, "lcm(")) return solve_utility_call(input, "lcm(", 9, out);
+            if(starts_with(input, "factorial(")) return solve_utility_call(input, "factorial(", 10, out);
+            if(starts_with(input, "isprime(")) return solve_utility_call(input, "isprime(", 12, out);
+            if(starts_with(input, "factors(")) return solve_utility_call(input, "factors(", 13, out);
+            if(starts_with(input, "divisors(")) return solve_utility_call(input, "divisors(", 14, out);
+            if(starts_with(input, "factor(")) return solve_utility_call(input, "factor(", 15, out);
+            if(starts_with(input, "polynomial(")) return solve_utility_call(input, "polynomial(", 15, out);
+            if(starts_with(input, "poly(")) return solve_utility_call(input, "poly(", 15, out);
+            if(starts_with(input, "complete_square(")) return solve_utility_call(input, "complete_square(", 16, out);
+            if(starts_with(input, "comp_square(")) return solve_utility_call(input, "comp_square(", 16, out);
+            if(starts_with(input, "compsq(")) return solve_utility_call(input, "compsq(", 16, out);
+            if(starts_with(input, "compare(")) return solve_utility_call(input, "compare(", 17, out);
+            if(starts_with(input, "match(")) return solve_utility_call(input, "match(", 17, out);
+            if(starts_with(input, "transform(")) return solve_utility_call(input, "transform(", 18, out);
+            if(starts_with(input, "xform(")) return solve_utility_call(input, "xform(", 18, out);
+            if(starts_with(input, "compose(")) return solve_utility_call(input, "compose(", 19, out);
+            if(starts_with(input, "inverse(")) return solve_utility_call(input, "inverse(", 20, out);
+            if(starts_with(input, "inv(")) return solve_utility_call(input, "inv(", 20, out);
+            if(starts_with(input, "rewrite(")) return solve_utility_call(input, "rewrite(", 21, out);
+            if(starts_with(input, "rw(")) return solve_utility_call(input, "rw(", 21, out);
+            if(starts_with(input, "domain(")) return solve_utility_call(input, "domain(", 22, out);
+            if(starts_with(input, "range(")) return solve_utility_call(input, "range(", 22, out);
+            if(starts_with(input, "domrng(")) return solve_utility_call(input, "domrng(", 22, out);
+            if(starts_with(input, "fitconst(")) return solve_utility_call(input, "fitconst(", 25, out);
+            if(solve_vector_shell_call(input, out)) return true;
+            if(starts_with(input, "simplify(")) return solve_wrapped_call(input, "simplify(", Module::Simplify, out);
+            if(starts_with(input, "expand(")) return solve_wrapped_call(input, "expand(", Module::Simplify, out);
+            if(starts_with(input, "solve(")) return solve_wrapped_call(input, "solve(", Module::Algebra, out);
+            if(starts_with(input, "linear(")) return solve_wrapped_call(input, "linear(", Module::Algebra, out);
+            if(starts_with(input, "quad(")) return solve_wrapped_call(input, "quad(", Module::Algebra, out);
+            if(starts_with(input, "diff(")) return solve_wrapped_call(input, "diff(", Module::Derive, out);
+            if(starts_with(input, "derive(")) return solve_wrapped_call(input, "derive(", Module::Derive, out);
+            if(starts_with(input, "int(")) return solve_wrapped_call(input, "int(", Module::Integrate, out);
+            if(starts_with(input, "integrate(")) return solve_wrapped_call(input, "integrate(", Module::Integrate, out);
+            if(starts_with(input, "trig(")) return solve_wrapped_call(input, "trig(", Module::Trig, out);
+            if(starts_with(input, "solve_trig(")) return solve_wrapped_call(input, "solve_trig(", Module::Trig, out);
+            if(starts_with(input, "suvat(")) return solve_wrapped_call(input, "suvat(", Module::Suvat, out);
+            if(starts_with(input, "sin(") || starts_with(input, "cos(") || starts_with(input, "tan(")) return solve_trig(input, out);
+            if(find_top_level_equals(input) >= 0) return contains_trig_name(input) ? solve_trig(input, out) : solve_algebra(input, out);
+            if(contains_trig_name(input)) return solve_trig(input, out);
+            return solve_simplify(input, out);
+        case Module::Simplify: return solve_simplify(input, out);
+        case Module::Algebra: return solve_algebra(input, out);
+        case Module::Derive: return solve_derive(input, out);
+        case Module::Integrate: return solve_integrate(input, out);
+        case Module::Trig: return solve_trig(input, out);
+        case Module::Suvat: return solve_suvat(input, out);
+        case Module::Stats:
+            if(starts_with(input, "binomcdf(")) return call_stats_module(input, out);
+            if(starts_with(input, "binom(")) return call_stats_module(input, out);
+            if(starts_with(input, "normalcdf(")) return call_stats_module(input, out);
+            return solve_device_placeholder("binom/binomcdf/normalcdf only", out);
+    }
+    out.add("Use a listed command from the catalogue.");
+    return false;
+}
+
+} // namespace casio::device
+
+
+#else  // TARGET_PRIZM
+
+// Ensure C math/stdio functions available in global scope for old code
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+// Prizm libc is minimal — provide our own math/format helpers
+inline double sqrt(double x)
+{
+    if(x <= 0.0) return 0.0;
+    double r = x;
+    for(int i = 0; i < 20; i++) {
+        double n = (r + x / r) * 0.5;
+        if(n == r || n == r * 0.999999999) break;
+        r = n;
+    }
+    return r;
+}
+inline double exp(double x)
+{
+    double r = 1.0, term = 1.0;
+    for(int i = 1; i < 30; i++) { term *= x / i; r += term; if(term < 1e-15) break; }
+    return r;
+}
+// Minimal snprintf for Prizm (%.8g only used in append_double)
+int prizm_snprintf(char *buf, int cap, const char *fmt, double v);
+int prizm_snprintf(char *buf, int cap, const char *fmt, double v)
+{
+    if(v < 0.0) { *buf++ = '-'; v = -v; cap--; }
+    if(v > 9.9999999e99) { strncpy(buf, "inf", (size_t)(cap-1)); buf[cap-1]=0; return 0; }
+    int e = 0;
+    if(v >= 1e8) { while(v >= 10.0) { v /= 10.0; e++; } }
+    else if(v < 1e-4 && v > 0) { while(v < 1.0) { v *= 10.0; e--; } }
+    if(e) v += 5e-9; else v += 5e-9;
+    int intpart = (int)v;
+    double frac = v - intpart;
+    if(e) { intpart += (int)(frac * 10 + 0.5); frac = 0; }
+    char tmp[32]; int n = 0;
+    { int x = intpart; if(x == 0) { tmp[n++] = '0'; } else { char rev[16]; int ri = 0; while(x) { rev[ri++] = '0' + (x % 10); x /= 10; } while(ri) tmp[n++] = rev[--ri]; } }
+    if(frac > 1e-9) {
+        int d = (int)(frac * 1e8 + 0.5);
+        tmp[n++] = '.';
+        for(int m = 10000000, started = 0; m > 0; m /= 10) {
+            int digit = d / m; d %= m;
+            if(digit || started) { tmp[n++] = '0' + digit; started = 1; }
+        }
+    }
+    if(e) {
+        tmp[n++] = 'e';
+        if(e > 0) tmp[n++] = '+'; else { tmp[n++] = '-'; e = -e; }
+        char ebuf[8]; int ei = 0;
+        if(e == 0) ebuf[ei++] = '0';
+        else while(e) { ebuf[ei++] = '0' + (e % 10); e /= 10; }
+        while(ei) tmp[n++] = ebuf[--ei];
+    }
+    tmp[n] = 0;
+    strncpy(buf, tmp, (size_t)(cap - 1));
+    buf[cap - 1] = 0;
+    return 0;
+}
+#define snprintf prizm_snprintf
+
+// Provide removed-function check compatible with Prizm (C strings, no STL)
+namespace casio {
+
+static unsigned hash_step(unsigned h, unsigned char c)
+{
+    return (h ^ c) * 16777619u;
+}
+
+static bool is_removed_function_hash(unsigned h)
+{
+    switch(h) {
+        case 0x0073dacfu: case 0x011ce908u: case 0x018ead2eu: case 0x01975c10u:
+        case 0x02dc2b01u: case 0x04e0311fu: case 0x04fe91d1u: case 0x05f85713u:
+        case 0x06bd505bu: case 0x071515d2u: case 0x07275075u: case 0x08230495u:
+        case 0x08c21d83u: case 0x092855d0u: case 0x0ad0ed6cu: case 0x0c82e56bu:
+        case 0x0dd0b0beu: case 0x0fad7a44u: case 0x10d2583fu: case 0x11420879u:
+        case 0x1413edcdu: case 0x1427b873u: case 0x14cdb897u: case 0x15c2f8ecu:
+        case 0x1642b069u: case 0x1696d742u: case 0x178d4c35u: case 0x17d1d6fcu:
+        case 0x18ba068bu: case 0x198be6b8u: case 0x1b5e2979u: case 0x1b777caeu:
+        case 0x1bbede44u: case 0x1eab292au: case 0x1ebe2c6au: case 0x1f82d9a8u:
+        case 0x22fc8274u: case 0x23b19318u: case 0x23c6e902u: case 0x24fa4703u:
+        case 0x262cfcabu: case 0x26851732u: case 0x2733f84au: case 0x2b8eb358u:
+        case 0x2ba548a6u: case 0x2d5f622cu: case 0x2f271707u: case 0x318b991du:
+        case 0x31bd46a1u: case 0x38185d76u: case 0x39888dd9u: case 0x3a64d347u:
+        case 0x3a7c9fcdu: case 0x3e6f3127u: case 0x3f2f216au: case 0x4038790bu:
+        case 0x41229629u: case 0x41320c2du: case 0x4143b863u: case 0x4172a512u:
+        case 0x4188b5ddu: case 0x440cf8a1u: case 0x44c63840u: case 0x45855c00u:
+        case 0x462f5ba1u: case 0x47060460u: case 0x47a80046u: case 0x4988a709u:
+        case 0x49c43198u: case 0x49f2dba0u: case 0x4a8d76c1u: case 0x4abab91fu:
+        case 0x4caa143cu: case 0x4ceb35d5u: case 0x4db564c2u: case 0x4edf1404u:
+        case 0x4f04d9d2u: case 0x503e3086u: case 0x50b13859u: case 0x51295e73u:
+        case 0x5188bedbu: case 0x519b7f08u: case 0x52807cf8u: case 0x5319fe9eu:
+        case 0x53fd0c42u: case 0x5683a798u: case 0x5824dcf7u: case 0x58547550u:
+        case 0x58bc3fe6u: case 0x59bc4179u: case 0x5bde019bu: case 0x5c07d9ecu:
+        case 0x5c31e95au: case 0x5c95b7aeu: case 0x5d0e6938u: case 0x5d36cd35u:
+        case 0x5d4c2e6au: case 0x5d7168a6u: case 0x5ea077c6u: case 0x614ba208u:
+        case 0x623beeebu: case 0x633cdd81u: case 0x65a9728bu: case 0x66b85f2du:
+        case 0x6a7d2c89u: case 0x6b5871d0u: case 0x6bff7e93u: case 0x6c04a192u:
+        case 0x6cc00459u: case 0x6e72bdcfu: case 0x6eb56479u: case 0x6ef4d9bdu:
+        case 0x6f20f7ddu: case 0x7302743fu: case 0x7390ec3bu: case 0x756f22cbu:
+        case 0x77b208f6u: case 0x7817e298u: case 0x7855062eu: case 0x78978610u:
+        case 0x7917e42bu: case 0x7a0e47bau: case 0x7bc647b9u: case 0x7bcfbd8au:
+        case 0x7d033966u: case 0x7d3ff927u: case 0x7d6fc026u: case 0x7e8a3329u:
+        case 0x808153e1u: case 0x8132f281u: case 0x813d75aeu: case 0x81df5ea5u:
+        case 0x856d7f49u: case 0x880dac7fu: case 0x8a2c68b7u: case 0x8bd5ceabu:
+        case 0x8bfaffcfu: case 0x8d2519cbu: case 0x8e816a60u: case 0x8e9dd543u:
+        case 0x8f605233u: case 0x8f9b7080u: case 0x8fae83d8u: case 0x90d2e37au:
+        case 0x91708e0cu: case 0x93e97b38u: case 0x940b5e09u: case 0x98a2959eu:
+        case 0x991301e0u: case 0x99618446u: case 0x99d9f9f0u: case 0x9c662fa4u:
+        case 0x9c90b906u: case 0x9ce3039bu: case 0x9e888b98u: case 0x9ede2954u:
+        case 0x9f634068u: case 0xa1cf14d3u: case 0xa3325c6fu: case 0xa71467f9u:
+        case 0xa893baa8u: case 0xa9c8feadu: case 0xaa9b9b01u: case 0xac9b9e27u:
+        case 0xacd224d9u: case 0xacda80fbu: case 0xae13f94au: case 0xaea3ddb0u:
+        case 0xaf645378u: case 0xb1c0e744u: case 0xb1e15f65u: case 0xb23e7192u:
+        case 0xb27e96edu: case 0xb3dab835u: case 0xb4423af0u: case 0xb469c380u:
+        case 0xb4e7f8e4u: case 0xb5fc9604u: case 0xb8b5368fu: case 0xb9c6a953u:
+        case 0xba56d76du: case 0xbab19e4au: case 0xbb4555a1u: case 0xbbc6ac79u:
+        case 0xbc3c467au: case 0xc03183c0u: case 0xc1c5c6a2u: case 0xc2eb0145u:
+        case 0xc352e04au: case 0xc3e8e5f7u: case 0xc4c0bedeu: case 0xc7bd6948u:
+        case 0xcada163bu: case 0xcae0a60au: case 0xcb08e2d8u: case 0xcb9ba81du:
+        case 0xcbea440au: case 0xcc30f8fau: case 0xccee2183u: case 0xce2ab760u:
+        case 0xce59cbb3u: case 0xcf9fd8f0u: case 0xd04036f3u: case 0xd2353873u:
+        case 0xd4d5660fu: case 0xd4f0716cu: case 0xd4f67cfdu: case 0xd57925a4u:
+        case 0xd5a84be9u: case 0xd5b7b015u: case 0xd64da1c4u: case 0xd6dfb05du:
+        case 0xd6f47b66u: case 0xd7037e9bu: case 0xd7599ae2u: case 0xd81f50a6u:
+        case 0xd9c30496u: case 0xdd4a6ba7u: case 0xde375a53u: case 0xe0504bdeu:
+        case 0xe2438311u: case 0xe26424d0u: case 0xe272ae1bu: case 0xe44789e8u:
+        case 0xe667368du: case 0xe80fa444u: case 0xe848572au: case 0xea8a4792u:
+        case 0xebd12f63u: case 0xec7aec99u: case 0xedf2c855u: case 0xee43b913u:
+        case 0xee65cbdau: case 0xeea7e9ccu: case 0xf28765e9u: case 0xf2c80d5bu:
+        case 0xf3c7dd11u: case 0xf3fa9284u: case 0xf45c461cu: case 0xf51d8813u:
+        case 0xf752b052u: case 0xf76dddbbu: case 0xf8aaffd3u: case 0xf9950dffu:
+        case 0xfba40b66u: case 0xfcaee333u: case 0xfcafa6eau: case 0xfd455c3bu:
+        case 0xfe42bdf4u: case 0xfeeb57a9u:
+            return true;
+    }
+    return false;
+}
+
+inline bool contains_removed_function(const char *text)
+{
+    // Fold: lowercase, skip spaces/tabs/newlines/asterisks
+    while(*text) {
+        unsigned char c = *text;
+        if(c == ' ' || c == '\t' || c == '\r' || c == '\n' || c == '*') { ++text; continue; }
+        break;
+    }
+    unsigned h = 2166136261u;
+    bool inword = false;
+    for(const char *p = text; *p; ++p) {
+        unsigned char c = *p;
+        char lc = (c >= 'A' && c <= 'Z') ? (c - 'A' + 'a') : c;
+        if((lc >= 'a' && lc <= 'z') || lc == '_') {
+            if(!inword) { h = 2166136261u; inword = true; }
+            h = hash_step(h, lc);
+            continue;
+        }
+        if(inword && lc >= '0' && lc <= '9') {
+            h = hash_step(h, lc);
+            continue;
+        }
+        if(inword && lc == '(' && is_removed_function_hash(h)) return true;
+        inword = false;
+    }
+    return false;
+}
+
+} // namespace casio
 
 namespace casio::device
 {
@@ -2830,3 +3813,6 @@ bool solve(Module module, const char *input, OutputLines &out)
 }
 
 } // namespace casio::device
+
+
+#endif  // TARGET_PRIZM

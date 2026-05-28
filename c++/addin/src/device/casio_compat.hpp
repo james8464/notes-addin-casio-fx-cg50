@@ -19,6 +19,15 @@
 // Minimal C++ type stubs
 namespace std {
 
+// Import C types/functions into std namespace
+using ::size_t;
+using ::tolower;
+using ::isalpha;
+using ::isdigit;
+using ::sqrt;
+using ::exp;
+using ::snprintf;
+
 // string_view - used extensively
 class string_view {
     const char* ptr_ = nullptr;

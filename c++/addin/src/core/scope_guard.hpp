@@ -1,9 +1,12 @@
 #pragma once
 
-#include <algorithm>
+#if defined(TARGET_PRIZM)
+#include "device/casio_compat.hpp"
+#else
 #include <cctype>
 #include <cstdint>
 #include <string>
+#endif
 
 namespace casio
 {
