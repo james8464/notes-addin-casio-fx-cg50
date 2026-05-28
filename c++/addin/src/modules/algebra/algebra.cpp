@@ -21820,7 +21820,7 @@ static std::optional<std::vector<std::string>> power_const_base_solve_route(
         NodeId log_right = exact_eval_simplify(a, rhs_log);
         out.push_back(format_expr(a, log_left) + " = " + format_expr(a, log_right));
         if(!casio::same_by_sig(a, lin->c, zero_node(a))) {
-            NodeId rhs_no_c = exact_eval_simplify(a, top);
+            NodeId rhs_no_c = exact_eval_simplify(a, casio::div(a, top, base_log));
             out.push_back(format_expr(a, casio::mul(a, {lin->m, casio::sym(a, var)})) + " = " + format_expr(a, rhs_no_c));
         }
         out.push_back(var + " = " + format_expr(a, sol));
