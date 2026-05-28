@@ -3712,6 +3712,32 @@ static string cascas_num_or_expr_div(const string &top,const string &bot,double 
   return "(" + top + ")/(" + bot + ")";
 }
 
+// Detect rational function integrands for partial fractions
+static bool cascas_rational_pf_integral(cascas_working_sink &out,int &step,const string &e,const string &x){
+  int sl=e.find('/');
+  if (sl<0) return false;
+  string den=e.substr(sl+1);
+  int pd=0;
+  for (size_t i=0;i<den.size();++i) if (den[i]=='^') ++pd;
+  bool has_poly=false;
+  for (size_t i=0;i<den.size();++i){
+    if ((den[i]>='0'&&den[i]<='9')||den[i]==x[0]) { has_poly=true; break; }
+  }
+  if (!has_poly) return false;
+  // Catch: (x-a)(x-b) or (x^2+...) decompositions
+  if (den.find("^2")!=string::npos || den.find("(")!=string::npos || pd>=1){
+    cascas_append_tpl_step(out,step,"t108");
+    cascas_append_tpl_step(out,step,"t232");
+    if (den.find("(")!=string::npos || den.find("x^2")!=string::npos)
+      cascas_append_tpl_step(out,step,"t109");
+    else if (den.find("x^3")!=string::npos || den.find("x^4")!=string::npos)
+      cascas_append_tpl_step(out,step,"t018");
+    cascas_append_tpl_step(out,step,"t019");
+    return true;
+  }
+  return false;
+}
+
 static bool cascas_append_exponential_inequality(cascas_working_sink &out,const string &expr,const string &var){
   int pos=0; string op;
   if (!cascas_find_top_rel(expr,pos,op))
@@ -3843,7 +3869,7 @@ static int cascas_count_sig_figs(const string &s){
 static string cascas_format_sf(double v,int sf){
   if (sf<1) sf=3;
   char buf[64];
-  snprintf(buf,sizeof(buf),"%.*g",sf,v);
+  sprintf(buf,"%.*g",sf,v);
   return string(buf);
 }
 
@@ -3913,7 +3939,7 @@ static bool cascas_append_suvat_steps(cascas_working_sink &out,const char *s){
   };
   // try compute target via formula, then optionally compute unknowns
   bool ok=false; string formula,subst; double val=0;
-  #define SUVAT_CASE(T,A,B,C,name,expr,sfmt) \
+  #define SUVAT_CASE(T,A,B,C,name,sfmt,expr) \
     if (target==(T) && has[(A)] && has[(B)] && has[(C)]){ \
       ok=true; formula=name; subst=sfmt; val=(expr); \
     }
@@ -3929,7 +3955,6 @@ static bool cascas_append_suvat_steps(cascas_working_sink &out,const char *s){
   else SUVAT_CASE(0,1,3,4,"s = ut + 1/2at^2","= "+V(1)+"*"+V(4)+" + 1/2*"+V(3)+"*"+V(4)+"^2",dv[1]*dv[4]+0.5*dv[3]*dv[4]*dv[4])
   else SUVAT_CASE(0,2,3,4,"s = vt - 1/2at^2","= "+V(2)+"*"+V(4)+" - 1/2*"+V(3)+"*"+V(4)+"^2",dv[2]*dv[4]-0.5*dv[3]*dv[4]*dv[4])
   else SUVAT_CASE(0,1,2,4,"s = 1/2(u+v)t","= 1/2*("+V(1)+" + "+V(2)+")*"+V(4),0.5*(dv[1]+dv[2])*dv[4])
-  else SUVAT_CASE(1,2,3,0,"u = v - at from v^2","placeholder",0) // handled by energy
   // Energy form v^2 = u^2 + 2as
   if (target==2 && has[1] && has[3] && has[0]){
     double rad=dv[1]*dv[1]+2.0*dv[3]*dv[0];
@@ -3965,7 +3990,7 @@ static bool cascas_append_suvat_steps(cascas_working_sink &out,const char *s){
     if (disc<0){
       cascas_append_line(out,"s = ut + 1/2at^2");
       cascas_append_line(out,"Quadratic in t");
-      cascas_append_line(out("Discriminant = "+emit_val(b2)+"^2 - 4*"+emit_val(a2)+"*("+emit_val(c2)+") < 0; no real root").c_str());
+      cascas_append_line(out,("Discriminant = "+emit_val(b2)+"^2 - 4*"+emit_val(a2)+"*("+emit_val(c2)+") < 0; no real root").c_str());
       return true;
     }
     double t1=(-b2+sqrt(disc))/(2.0*a2);
@@ -4076,6 +4101,327 @@ static bool cascas_append_binomial_steps(cascas_working_sink &out,const char *s)
   return true;
 }
 
+// Recursive derive rules: detects expression structure and shows step-by-step
+static bool cascas_append_derive_rules(cascas_working_sink &out,const string &expr_raw,const string &x,int depth=0){
+  string e=cascas_strip_outer_group(expr_raw);
+  string inner;
+  // 1. Sum rule: f(x)+g(x)
+  int top=cascas_top_char(e,'+');
+  if (top>0){
+    string left=e.substr(0,top),right=e.substr(top+1);
+    cascas_append_line(out,("y = " + e).c_str());
+    cascas_append_line(out,("dy/d" + x + " = d/d" + x + "(" + left + ") + d/d" + x + "(" + right + ")").c_str());
+    cascas_append_derive_rules(out,left,x,depth+1);
+    cascas_append_derive_rules(out,right,x,depth+1);
+    return true;
+  }
+  // 2. Difference rule: f(x)-g(x)
+  top=cascas_top_char(e,'-');
+  if (top>0 && top!=0){
+    string left=e.substr(0,top),right=e.substr(top+1);
+    cascas_append_line(out,("y = " + e).c_str());
+    cascas_append_line(out,("dy/d" + x + " = d/d" + x + "(" + left + ") - d/d" + x + "(" + right + ")").c_str());
+    cascas_append_derive_rules(out,left,x,depth+1);
+    cascas_append_derive_rules(out,right,x,depth+1);
+    return true;
+  }
+  // 3. Product rule: f(x)*g(x)
+  top=cascas_top_char(e,'*');
+  if (top>0){
+    string u=cascas_strip_outer_group(e.substr(0,top));
+    string v=cascas_strip_outer_group(e.substr(top+1));
+    cascas_append_line(out,("y = " + u + " * " + v).c_str());
+    cascas_append_tpl_line(out,"t216");
+    if (depth==0){
+      cascas_append_line(out,("u = " + u + ", v = " + v).c_str());
+      cascas_append_line(out,("u' = d/d" + x + "(" + u + "), v' = d/d" + x + "(" + v + ")").c_str());
+    }
+    return true;
+  }
+  // 4. Quotient rule: f(x)/g(x)
+  top=cascas_top_char(e,'/');
+  if (top>0){
+    string u=cascas_strip_outer_group(e.substr(0,top));
+    string v=cascas_strip_outer_group(e.substr(top+1));
+    cascas_append_line(out,("y = " + u + " / " + v).c_str());
+    cascas_append_tpl_line(out,"t217");
+    if (depth==0){
+      cascas_append_line(out,("u = " + u + ", v = " + v).c_str());
+      cascas_append_line(out,("u' = d/d" + x + "(" + u + "), v' = d/d" + x + "(" + v + ")").c_str());
+    }
+    return true;
+  }
+  // 5. Power rule: x^n (base is variable, exponent is constant)
+  int p=cascas_find_top_power(e);
+  if (p>0){
+    string base=cascas_strip_outer_group(e.substr(0,p));
+    string exp=cascas_strip_outer_group(e.substr(p+1));
+    // Check if base is the var or contains the var
+    bool base_is_x=(base==x);
+    bool base_contains_x=base.find(x)!=string::npos || base.find('(')!=string::npos;
+    if (base_is_x || base_contains_x){
+      if (depth==0) cascas_append_line(out,("y = " + e).c_str());
+      if (!base_contains_x){
+        cascas_append_line(out,("dy/d" + x + " = " + exp + "*" + x + "^(" + exp + "-1)").c_str());
+      } else if (cascas_nonneg_int_text(exp)){
+        cascas_append_line(out,("u = " + base + ", du/d" + x + " = d/d" + x + "(" + base + ")").c_str());
+        cascas_append_line(out,("dy/d" + x + " = " + exp + "*u^(" + exp + "-1)*du/d" + x).c_str());
+      } else {
+        cascas_append_tpl_line(out,"t215");
+        cascas_append_line(out,("dy/d" + x + " = " + exp + "*" + base + "^(" + exp + "-1)*d/d" + x + "(" + base + ")").c_str());
+      }
+      return true;
+    }
+  }
+  // 6. Exponential: e^u
+  string arg;
+  if (cascas_func_arg_text(e,"exp",arg) || (e.find("e^")!=string::npos && e.find('(')==string::npos)){
+    if (cascas_func_arg_text(e,"exp",arg)){
+      cascas_append_line(out,("y = exp(" + arg + ")").c_str());
+      cascas_append_tpl_line(out,"t215");
+      cascas_append_line(out,("dy/d" + x + " = exp(" + arg + ")*d/d" + x + "(" + arg + ")").c_str());
+    } else {
+      cascas_append_line(out,("y = " + e).c_str());
+      cascas_append_line(out,("dy/d" + x + " = " + e + "*ln(e)*d/d" + x).c_str());
+    }
+    return true;
+  }
+  // 6b. a^u (a != e)
+  if (e.find("^")!=string::npos && e.find("e")==string::npos){
+    // for power forms like 2^x, 3^(2x)
+    p=cascas_find_top_power(e);
+    if (p>0){
+      string base=cascas_strip_outer_group(e.substr(0,p));
+      string exp=cascas_strip_outer_group(e.substr(p+1));
+      cascas_append_line(out,("y = " + base + "^(" + exp + ")").c_str());
+      cascas_append_line(out,("ln(y) = " + exp + "*ln(" + base + ")").c_str());
+      cascas_append_tpl_line(out,"t023");
+      return true;
+    }
+  }
+  // 7. Trig derivatives
+  struct { const char *fn; const char *deriv; const char *name; } trig_rules[]={
+    {"sin","cos","sine"},
+    {"cos","-sin","cosine"},
+    {"tan","sec^2","tangent"},
+    {"sec","sec*tan","secant"},
+    {"csc","-csc*cot","cosec"},
+    {"cosec","-cosec*cot","cosec"},
+    {"cot","-csc^2","cotangent"}
+  };
+  for (auto &rule : trig_rules){
+    if (cascas_func_arg_text(e,rule.fn,arg)){
+      if (depth==0) cascas_append_line(out,("y = " + e).c_str());
+      if (arg==x){
+        cascas_append_line(out,("dy/d" + x + " = " + string(rule.deriv) + "(" + x + ")").c_str());
+      } else {
+        cascas_append_tpl_line(out,"t215");
+        cascas_append_line(out,("u = " + arg + ", du/d" + x + " = d/d" + x + "(" + arg + ")").c_str());
+        cascas_append_line(out,("dy/d" + x + " = " + string(rule.deriv) + "(" + arg + ")*du/d" + x).c_str());
+      }
+      return true;
+    }
+  }
+  // 8. Log derivatives
+  if (cascas_func_arg_text(e,"ln",arg) || cascas_func_arg_text(e,"log",arg)){
+    if (depth==0) cascas_append_line(out,("y = " + e).c_str());
+    if (arg==x){
+      cascas_append_line(out,("dy/d" + x + " = 1/" + x).c_str());
+    } else {
+      cascas_append_tpl_line(out,"t215");
+      cascas_append_line(out,("u = " + arg + ", du/d" + x + " = d/d" + x + "(" + arg + ")").c_str());
+      cascas_append_line(out,("dy/d" + x + " = (1/" + arg + ")*du/d" + x).c_str());
+    }
+    return true;
+  }
+  // 9. Sqrt: sqrt(u) -> u'/(2*sqrt(u))
+  if (cascas_func_arg_text(e,"sqrt",arg)){
+    if (depth==0) cascas_append_line(out,("y = " + e).c_str());
+    cascas_append_tpl_line(out,"t215");
+    cascas_append_line(out,("dy/d" + x + " = 1/(2*sqrt(" + arg + "))*d/d" + x + "(" + arg + ")").c_str());
+    return true;
+  }
+  // 10. Arc trig
+  struct { const char *fn; const char *deriv; } arc_rules[]={
+    {"asin","1/sqrt(1-u^2)"},
+    {"acos","-1/sqrt(1-u^2)"},
+    {"atan","1/(1+u^2)"}
+  };
+  for (auto &rule : arc_rules){
+    if (cascas_func_arg_text(e,rule.fn,arg)){
+      if (depth==0) cascas_append_line(out,("y = " + e).c_str());
+      cascas_append_tpl_line(out,"t215");
+      cascas_append_line(out,("dy/d" + x + " = (" + string(rule.deriv) + ")*d/d" + x + "(" + arg + ")").c_str());
+      return true;
+    }
+  }
+  return false;
+}
+
+// Parse quadratic ax^2+bx+c from expression string
+static bool cascas_parse_quadratic(const string &f,const string &var,double &a,double &b,double &c){
+  string t=cascas_lower_compact(cascas_strip_outer_group(f));
+  string v=cascas_lower_compact(var);
+  a=0; b=0; c=0;
+  // Look for x^2 term
+  size_t p2=t.find(v+"^2");
+  if (p2==string::npos) return false;
+  // Extract coefficient for x^2
+  string left2=cascas_trim(t.substr(0,p2));
+  if (left2.empty() || left2=="+") a=1;
+  else if (left2=="-") a=-1;
+  else cascas_parse_real(left2,a);
+  // Process remaining after x^2
+  string rest=t.substr(p2+3);
+  // Look for x term
+  size_t px=rest.find(v);
+  if (px!=string::npos){
+    string leftx=rest.substr(0,px);
+    if (leftx.empty() || leftx=="+") { b=1; }
+    else if (leftx=="-") b=-1;
+    else { cascas_parse_real(leftx,b); }
+    // Rest is constant
+    string rc=rest.substr(px+1);
+    if (!rc.empty()) cascas_parse_real(rc,c);
+  } else {
+    // no x term, rest is constant
+    if (!rest.empty() && rest!="=0" && rest!="=0") cascas_parse_real(rest,c);
+  }
+  // Handle "=0" suffix from F(x)=0 form
+  size_t eq=t.find('=');
+  if (eq!=string::npos){
+    string rval=cascas_trim(t.substr(eq+1));
+    double rv=0;
+    if (cascas_parse_real(rval,rv) && fabs(rv)<1e-12){
+      // RHS is 0, fine
+    }
+  }
+  return fabs(a)>1e-12;
+}
+
+// Algebra equation solving: linear, quadratic, polynomial
+static bool cascas_append_algebra_solve(cascas_working_sink &out,const string &expr,const string &se,int eqpos,const string &bounds){
+  // Ensure we have LHS = RHS form
+  if (eqpos<0) return false;
+  string lhs=cascas_strip_outer_group(cascas_trim(expr.substr(0,eqpos)));
+  string rhs=cascas_strip_outer_group(cascas_trim(expr.substr(eqpos+1)));
+  // Move all to left: F(x) = LHS - RHS = 0
+  string f=cascas_strip_outer_group("(" + lhs + ")-(" + rhs + ")");
+  string sf=cascas_lower_compact(f);
+  // Check for single variable (no x+y, x*y patterns)
+  bool multi_var=(sf.find(",x")!=string::npos || sf.find("y")!=string::npos);
+  // Linear: ax+b=0
+  if (!multi_var && !cascas_text_has(sf,"^") && !cascas_text_has(sf,"(")){
+    // simple form: a*x+b=0 or ax+b=0
+    if (sf.find("x")!=string::npos && sf.find("sin")==string::npos && sf.find("cos")==string::npos){
+      cascas_append_line(out,(lhs + " = " + rhs).c_str());
+      cascas_append_line(out,"Rearrange for x:");
+      // Extract coefficient and constant — for simple numeric only
+      double a=0,b=0;
+      if (cascas_parse_linear_exp_text(sf,"x",a,b) && fabs(a)>1e-12){
+        double xv=-b/a;
+        cascas_append_line(out,("a = " + cascas_format_real(a) + ", b = " + cascas_format_real(b)).c_str());
+        cascas_append_line(out,("x = -b/a = " + cascas_format_real(-b) + "/" + cascas_format_real(a) + " = " + cascas_format_real(xv)).c_str());
+        return true;
+      }
+    }
+  }
+  // Quadratic: ax^2+bx+c=0
+  if (!multi_var && cascas_text_has(sf,"^2") && !cascas_text_has(sf,"sin") && !cascas_text_has(sf,"cos")){
+    double a=0,b=0,c=0;
+    if (cascas_parse_quadratic(f,"x",a,b,c)){
+      cascas_append_line(out,("Standard form: " + cascas_format_real(a) + "x^2 + " + cascas_format_real(b) + "x + " + cascas_format_real(c) + " = 0").c_str());
+      cascas_append_tpl_line(out,"t223");
+      double disc=b*b-4*a*c;
+      cascas_append_line(out,("D = " + cascas_format_real(disc)).c_str());
+      // Check if factorable (integer discriminant is perfect square)
+      double s=sqrt(fabs(disc));
+      bool perfect=fabs(s-floor(s+0.5))<1e-9;
+      if (disc>=0 && perfect){
+        cascas_append_tpl_line(out,"t224");
+        double r1=(-b-sqrt(disc))/(2*a);
+        double r2=(-b+sqrt(disc))/(2*a);
+        cascas_append_line(out,("x = " + cascas_format_real(r1) + " or x = " + cascas_format_real(r2)).c_str());
+      } else {
+        cascas_append_tpl_line(out,"t222");
+        if (disc>=0){
+          string r1=cascas_format_real((-b-sqrt(disc))/(2*a));
+          string r2=cascas_format_real((-b+sqrt(disc))/(2*a));
+          cascas_append_line(out,("x = " + r1 + " or x = " + r2).c_str());
+        } else {
+          string real=cascas_format_real(-b/(2*a));
+          string imag=cascas_format_real(sqrt(-disc)/(2*a));
+          cascas_append_line(out,("x = " + real + " +/- " + imag + "i").c_str());
+        }
+      }
+      return true;
+    }
+  }
+  // Simultaneous 2x2: detect solve([eq1,eq2],[x,y])
+  if (lhs.find("[")!=string::npos && lhs.find(",")!=string::npos && rhs.find("[")!=string::npos){
+    cascas_append_line(out,"System of equations:");
+    cascas_append_tpl_line(out,"t225");
+    return true;
+  }
+  return false;
+}
+
+// Trig equation solving: basic sin/cos/tan eqns, R-form, quadratic trig
+static bool cascas_append_trig_solve(cascas_working_sink &out,const string &expr,const string &se,const string &bounds){
+  int eq=cascas_find_top_equal(expr);
+  if (eq<0) return false;
+  string lhs=cascas_trim(expr.substr(0,eq));
+  string rhs=cascas_trim(expr.substr(eq+1));
+  string sv=cascas_lower_compact(lhs);
+  // Determine if RHS is a constant
+  double k=0; bool has_k=cascas_parse_real(rhs,k);
+  // Extract var from sin/cos/tan call
+  string fn_arg;
+  struct { const char *fn; const char *sol1; const char *sol2; } basic_ops[]={
+    {"sin(","arcsin","pi-asin"},
+    {"cos(","arccos","2pi-acos"},
+    {"tan(","arctan",0}
+  };
+  for (auto &op : basic_ops){
+    if (cascas_func_arg_text(lhs,op.fn,fn_arg)){
+      if (has_k && fn_arg.find('x')!=string::npos){
+        cascas_append_line(out,(lhs + " = " + rhs).c_str());
+        cascas_append_line(out,("Let u = " + fn_arg).c_str());
+        cascas_append_line(out,(string(op.fn) + " u = " + rhs).c_str());
+        cascas_append_line(out,("u = " + string(op.sol1) + "(" + rhs + ") + 2n*pi").c_str());
+        if (op.sol2)
+          cascas_append_line(out,("u = pi - " + string(op.sol1) + "(" + rhs + ") + 2n*pi").c_str());
+        else
+          cascas_append_line(out,("u = " + string(op.sol1) + "(" + rhs + ") + n*pi").c_str());
+        if (!fn_arg.empty() && fn_arg.find('x')!=string::npos)
+          cascas_append_line(out,("x = (u - " + fn_arg + ")/coeff").c_str());
+        if (!bounds.empty()){
+          string lo,hi;
+          int dot=bounds.find("..");
+          if (dot>=0){ lo=bounds.substr(0,dot); hi=bounds.substr(dot+2); }
+          else { lo="0"; hi="2*pi"; }
+          cascas_append_line(out,("Filter x in ["+lo+","+hi+"]").c_str());
+        }
+        return true;
+      }
+    }
+  }
+  // R-form: a sin x + b cos x = c
+  // Detect if both sin and cos appear with same arg, no other trig
+  if (cascas_text_has(se,"sin(") && cascas_text_has(se,"cos(")){
+    cascas_append_tpl_line(out,"t036");
+    cascas_append_tpl_line(out,"t220");
+    return true;
+  }
+  // Quadratic trig: sin^2 x or cos^2 x with linear term
+  if (cascas_text_has(se,"^2") && (cascas_text_has(se,"sin")||cascas_text_has(se,"cos"))){
+    cascas_append_tpl_line(out,"t038");
+    cascas_append_tpl_line(out,"t039");
+    return true;
+  }
+  return false;
+}
+
 static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,const char *eval_s){
   string args[6],body; int count=0,close=0;
   if (!s)
@@ -4149,32 +4495,21 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
   if ((cascas_call_args(s,"diff(",args,3,count,close,body) ||
        cascas_call_args(s,"derive(",args,3,count,close,body)) && count>=1){
     string x=count>=2 && args[1].size()?args[1]:"x";
+    if (cascas_append_derive_rules(out,args[0],x)) return true;
+    // fallback
     string expr=cascas_strip_outer_group(args[0]);
     cascas_append_line(out,("y = " + expr).c_str());
-    int p=cascas_find_top_power(expr);
-    if (p>0){
-      string base=cascas_strip_outer_group(expr.substr(0,p));
-      string exp=cascas_strip_outer_group(expr.substr(p+1,expr.size()-p-1));
-      if (base.size() && exp.size() && cascas_nonneg_int_text(exp)){
-        cascas_append_line(out,("u = " + base + "; du/d" + x + " = d/d" + x + "(" + base + ")").c_str());
-        cascas_append_line(out,("dy/d" + x + " = " + exp + "*u^(" + exp + "-1)*du/d" + x).c_str());
-        return true;
-      }
-    }
-    if (cascas_text_has(expr,"*") && expr.find('(')!=string::npos){
+    if (cascas_text_has(expr,"*") && expr.find('(')!=string::npos)
       cascas_append_tpl_line(out,"t216");
-    }
-    else if (cascas_text_has(expr,"/")){
+    else if (cascas_text_has(expr,"/"))
       cascas_append_tpl_line(out,"t217");
-    }
-    else if (cascas_text_has(expr,"(") && expr.find(x)!=string::npos){
+    else if (cascas_text_has(expr,"(") && expr.find(x)!=string::npos)
       cascas_append_tpl_line(out,"t215");
-    }
     cascas_append_line(out,("dy/d" + x + " = d/d" + x + "(" + expr + ")").c_str());
     return true;
   }
   if (cascas_call_args(s,"normal_diff(",args,2,count,close,body) && count>=1){
-    // handled by diff section above for mode 1; this is mode 4 differentiator
+    // mode 4: second derivative; handled by diff section if mode 1
     return false;
   }
   if (cascas_call_args(s,"complete_square(",args,3,count,close,body) && count>=1){
@@ -4226,20 +4561,9 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
   if ((cascas_call_args(s,"normal_diff(",args,2,count,close,body) ||
        cascas_call_args(s,"diff(",args,2,count,close,body)) && count>=1){
     string x=count>=2 && args[1].size()?args[1]:"x";
+    if (cascas_append_derive_rules(out,args[0],x)) return true;
     string expr=cascas_strip_outer_group(args[0]);
     cascas_append_expr_line(out,cascas_tpl("t070").c_str(),expr);
-    int p=cascas_find_top_power(expr);
-    if (p>0){
-      string base=cascas_strip_outer_group(expr.substr(0,p));
-      string exp=cascas_strip_outer_group(expr.substr(p+1,expr.size()-p-1));
-      if (base.size() && exp.size() && cascas_nonneg_int_text(exp)){
-	string line=cascas_tpl("t071") + base + "; du/d" + x + " = d/d" + x + "(" + base + ")";
-	cascas_append_line(out,line.c_str());
-	line=cascas_tpl("t073") + x + " = " + exp + "*u^(" + exp + "-1)*du/d" + x;
-	cascas_append_line(out,line.c_str());
-	return true;
-      }
-    }
     string line=cascas_tpl("t072") + x + " = d/d" + x + "(" + expr + ")";
     cascas_append_line(out,line.c_str());
     return true;
@@ -4334,6 +4658,9 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
       cascas_append_tpl_line(out,"t090");
       return true;
     }
+    // Algebra: linear/quadratic/polynomial equation detection
+    if (cascas_append_algebra_solve(out,expr,se,eq,count>=2?args[1]:""))
+      return true;
     if (cascas_text_has(se,"sqrt(")){
       cascas_append_tpl_line(out,"t091");
 	      cascas_append_tpl_line(out,"t092");
@@ -4360,6 +4687,8 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
     }
     if (cascas_text_has(se,"sin(")||cascas_text_has(se,"cos(")||cascas_text_has(se,"tan(")||
 	cascas_text_has(se,"sec(")||cascas_text_has(se,"cot(")||cascas_text_has(se,"csc(")){
+      if (cascas_append_trig_solve(out,expr,se,count>=2?args[1]:""))
+        return true;
       cascas_append_tpl_line(out,cascas_text_has(se,"^2")?"t038":"t040");
       cascas_append_tpl_line(out,cascas_text_has(se,"^2")?"t039":"t041");
       string b=count>=2?cascas_lower_compact(args[1]):"";
