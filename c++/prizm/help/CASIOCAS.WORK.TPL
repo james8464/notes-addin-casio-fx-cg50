@@ -420,6 +420,39 @@ exp(u)
 @t171
 1/u
 @END
+@t172
+T_r = C(
+@END
+@t173
+,r)*(
+@END
+@t174
+)^(
+@END
+@t175
+)*(
+@END
+@t176
+)^r
+@END
+@t177
+power of 
+@END
+@t178
+ = 
+@END
+@t179
+r = 
+@END
+@t180
+^
+@END
+@t181
+ terms use r = 
+@END
+@t182
+Coefficient = 
+@END
 @t000
 Valid: all x
 @END

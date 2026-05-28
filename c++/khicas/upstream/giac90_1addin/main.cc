@@ -3481,6 +3481,109 @@ static bool cascas_append_affine_table_integral(cascas_working_sink &out,int &st
   return true;
 }
 
+static bool cascas_parse_signed_int_text(const string &s,int &out){
+  string t=cascas_strip_outer_group(s);
+  if (t.empty())
+    return false;
+  const char *p=t.c_str();
+  char *end=0;
+  long v=strtol(p,&end,10);
+  if (!end || *end)
+    return false;
+  out=(int)v;
+  return true;
+}
+
+static bool cascas_split_binom_terms(const string &base,string &left,string &right){
+  int split=cascas_find_base_split(base);
+  if (split<0)
+    return false;
+  left=cascas_strip_outer_group(base.substr(0,split));
+  right=cascas_strip_outer_group(base.substr(split+1,base.size()-split-1));
+  if (base[split]=='-')
+    right="-(" + right + ")";
+  return left.size() && right.size();
+}
+
+static bool cascas_parse_term_power(const string &term,const string &var,int &power){
+  string t=cascas_lower_compact(term);
+  string v=cascas_lower_compact(var);
+  if (v.empty())
+    return false;
+  power=0;
+  bool saw=false;
+  for (size_t p=t.find(v); p!=string::npos; p=t.find(v,p+v.size())){
+    saw=true;
+    int e=1;
+    size_t q=p+v.size();
+    if (q<t.size() && t[q]=='^'){
+      size_t r=q+1;
+      if (r<t.size() && t[r]=='('){
+	size_t end=t.find(')',r+1);
+	if (end==string::npos)
+	  return false;
+	if (!cascas_parse_signed_int_text(t.substr(r+1,end-r-1),e))
+	  return false;
+      }
+      else {
+	size_t end=r;
+	if (end<t.size() && (t[end]=='+' || t[end]=='-'))
+	  ++end;
+	while (end<t.size() && isdigit((unsigned char)t[end]))
+	  ++end;
+	if (!cascas_parse_signed_int_text(t.substr(r,end-r),e))
+	  return false;
+      }
+    }
+    size_t slash=t.rfind('/',p);
+    if (slash!=string::npos){
+      bool denom=true;
+      for (size_t i=slash+1;i<p;++i){
+	if (t[i]=='+' || t[i]=='-'){
+	  denom=false;
+	  break;
+	}
+      }
+      if (denom)
+	e=-e;
+    }
+    power += e;
+  }
+  return saw;
+}
+
+static bool cascas_append_direct_binom_coeff(cascas_working_sink &out,int &step,const char *s){
+  string args[4],body; int count=0,close=0;
+  if (!cascas_call_args(s,"coeff(",args,4,count,close,body) && !cascas_call_args(s,"binom_coeff(",args,4,count,close,body))
+    return false;
+  if (count<3)
+    return false;
+  string expr=cascas_strip_outer_group(args[0]);
+  int p=cascas_find_top_power(expr);
+  if (p<0)
+    return false;
+  int n=0,want=0,p0=0,p1=0;
+  string base=cascas_strip_outer_group(expr.substr(0,p));
+  string exp=cascas_strip_outer_group(expr.substr(p+1,expr.size()-p-1));
+  string left,right,var=cascas_strip_outer_group(args[1]);
+  if (!cascas_parse_signed_int_text(exp,n) || !cascas_parse_signed_int_text(args[2],want))
+    return false;
+  if (!cascas_split_binom_terms(base,left,right))
+    return false;
+  if (!cascas_parse_term_power(left,var,p0) || !cascas_parse_term_power(right,var,p1) || p0==p1)
+    return false;
+  int den=p1-p0;
+  int num=want-p0*n;
+  cascas_append_step(out,step,cascas_tpl("t172") + print_INT_(n) + cascas_tpl("t173") + left + cascas_tpl("t174") + print_INT_(n) + "-r" + cascas_tpl("t175") + right + cascas_tpl("t176"));
+  cascas_append_step(out,step,cascas_tpl("t177") + var + cascas_tpl("t178") + print_INT_(p0) + "(" + print_INT_(n) + "-r)+" + print_INT_(p1) + "r");
+  if (den && num%den==0){
+    int r=num/den;
+    cascas_append_step(out,step,cascas_tpl("t179") + print_INT_(r));
+    cascas_append_step(out,step,var + cascas_tpl("t180") + print_INT_(want) + cascas_tpl("t181") + print_INT_(r));
+  }
+  return true;
+}
+
 static bool cascas_append_forced_method(cascas_working_sink &out,const char *s,const char *eval_s){
   string method,u,target;
   if (!cascas_extract_method(s,method,u,&target) || method.empty() || method=="auto")
@@ -3665,6 +3768,11 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
     cascas_append_line(out,line.c_str());
 		    cascas_append_tpl_line(out,"t086");
     return true;
+  }
+  {
+    int step=1;
+    if (cascas_append_direct_binom_coeff(out,step,s))
+      return true;
   }
   if (cascas_call_args(s,"normalcdf(",args,4,count,close,body) && count>=4){
     string mu=args[0],sd=args[1],lo=args[2],hi=args[3];
@@ -3971,6 +4079,11 @@ static bool cascas_old_python_scope_working_call(const char *s);
 static string cascas_working_text(const char *input,const char *eval_input,const string &answer){
   string shown_answer=answer;
   bool cleaned=cascas_answer_cleanup_allowed(input,eval_input) && cascas_clean_answer_text(shown_answer);
+  if ((input && (cascas_startswith(input,"coeff(") || cascas_startswith(input,"binom_coeff("))) ||
+      (eval_input && (cascas_startswith(eval_input,"coeff(") || cascas_startswith(eval_input,"binom_coeff(")))){
+    if (shown_answer.find(cascas_tpl("t182"))!=0)
+      shown_answer=cascas_tpl("t182") + shown_answer;
+  }
   cascas_working_sink out;
   bool no_echo=(input && cascas_old_python_scope_working_call(input)) ||
     (eval_input && cascas_old_python_scope_working_call(eval_input));

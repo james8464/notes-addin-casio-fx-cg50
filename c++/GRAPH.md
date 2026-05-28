@@ -134,7 +134,7 @@ graph TD
 
 High-value step generators:
 - algebra: expand, factor, collect, complete square, clear denominators,
-  equate coefficients, partial fractions
+  equate coefficients, binomial `coeff(...)`, partial fractions
 - differentiation: first principles, chain, product, quotient, logdiff,
   implicit, parametric, second derivative
 - integration: direct, reverse chain, substitution, parts, partial fractions,
@@ -227,6 +227,7 @@ graph TD
 
 Safe-ish size levers:
 - keep verbose help/examples/templates in `CASIOCAS.PAK` via `CASIOCAS.HLP`/`CASIOCAS*.TPL` sources
+- put new production working text in `CASIOCAS.WORK.TPL`; keep `main.cc` as routing/glue
 - hide/remove non-scope UI surfaces first
 - remove linked legacy objects only one at a time with full gates
 - preserve core Giac paths used by solve/diff/int/trig/stats
