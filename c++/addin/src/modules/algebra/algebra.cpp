@@ -19362,6 +19362,155 @@ static bool log_equation_residual(Arena &a, Equation const &eq, NodeId &residual
     return run(eq.lhs, eq.rhs) || run(eq.rhs, eq.lhs);
 }
 
+static bool expression_text_needs_approx(std::string const &s)
+{
+    return s.find("sqrt(") != std::string::npos || s.find("sin(") != std::string::npos ||
+           s.find("cos(") != std::string::npos || s.find("tan(") != std::string::npos ||
+           s.find("ln(") != std::string::npos || s.find("log(") != std::string::npos ||
+           s.find("pi") != std::string::npos;
+}
+
+static std::optional<double> eval_constant_working_text(std::string const &text)
+{
+    struct Parser {
+        std::string const &s;
+        std::size_t p = 0;
+
+        void ws()
+        {
+            while(p < s.size() && std::isspace(static_cast<unsigned char>(s[p]))) ++p;
+        }
+
+        bool eat(char c)
+        {
+            ws();
+            if(p < s.size() && s[p] == c) {
+                ++p;
+                return true;
+            }
+            return false;
+        }
+
+        bool ident(std::string const &name)
+        {
+            ws();
+            if(s.compare(p, name.size(), name) != 0) return false;
+            std::size_t end = p + name.size();
+            if(end < s.size() && (std::isalnum(static_cast<unsigned char>(s[end])) || s[end] == '_')) return false;
+            p = end;
+            return true;
+        }
+
+        std::optional<double> number()
+        {
+            ws();
+            char *end = nullptr;
+            double v = std::strtod(s.c_str() + p, &end);
+            if(end == s.c_str() + p) return std::nullopt;
+            p = static_cast<std::size_t>(end - s.c_str());
+            return v;
+        }
+
+        std::optional<double> primary()
+        {
+            ws();
+            if(eat('+')) return primary();
+            if(eat('-')) {
+                auto v = primary();
+                if(!v) return std::nullopt;
+                return -*v;
+            }
+            if(eat('(')) {
+                auto v = expr();
+                if(!v || !eat(')')) return std::nullopt;
+                return v;
+            }
+            if(ident("pi")) return M_PI;
+            if(ident("e")) return M_E;
+            std::size_t save = p;
+            for(std::string const &fn : {std::string("sqrt"), std::string("ln"), std::string("log"),
+                                         std::string("sin"), std::string("cos"), std::string("tan")}) {
+                p = save;
+                if(!ident(fn)) continue;
+                if(!eat('(')) return std::nullopt;
+                auto v = expr();
+                if(!v || !eat(')')) return std::nullopt;
+                if(fn == "sqrt") return *v < -1e-12 ? std::optional<double>{} : std::sqrt(std::max(0.0, *v));
+                if(fn == "ln" || fn == "log") return *v <= 0 ? std::optional<double>{} : std::log(*v);
+                if(fn == "sin") return std::sin(*v);
+                if(fn == "cos") return std::cos(*v);
+                if(fn == "tan") return std::tan(*v);
+            }
+            p = save;
+            return number();
+        }
+
+        std::optional<double> power()
+        {
+            auto v = primary();
+            if(!v) return std::nullopt;
+            if(eat('^')) {
+                auto e = power();
+                if(!e) return std::nullopt;
+                return std::pow(*v, *e);
+            }
+            return v;
+        }
+
+        std::optional<double> term()
+        {
+            auto v = power();
+            if(!v) return std::nullopt;
+            for(;;) {
+                if(eat('*')) {
+                    auto r = power();
+                    if(!r) return std::nullopt;
+                    *v *= *r;
+                }
+                else if(eat('/')) {
+                    auto r = power();
+                    if(!r || std::fabs(*r) < 1e-12) return std::nullopt;
+                    *v /= *r;
+                }
+                else break;
+            }
+            return v;
+        }
+
+        std::optional<double> expr()
+        {
+            auto v = term();
+            if(!v) return std::nullopt;
+            for(;;) {
+                if(eat('+')) {
+                    auto r = term();
+                    if(!r) return std::nullopt;
+                    *v += *r;
+                }
+                else if(eat('-')) {
+                    auto r = term();
+                    if(!r) return std::nullopt;
+                    *v -= *r;
+                }
+                else break;
+            }
+            return v;
+        }
+    };
+    Parser p{text};
+    auto v = p.expr();
+    p.ws();
+    if(!v || p.p != text.size() || !std::isfinite(*v)) return std::nullopt;
+    return v;
+}
+
+static std::optional<double> approx_constant_node(Arena &a, NodeId n)
+{
+    if(auto v = eval_node_env(a, n, {})) return v;
+    std::string s = format_expr(a, n);
+    return eval_constant_working_text(s);
+}
+
 static std::optional<std::vector<std::string>> exact_linear2_system_route(Arena &a, std::string const &expr)
 {
     std::vector<std::string> eq_texts, vars;
@@ -19410,6 +19559,11 @@ static std::optional<std::vector<std::string>> exact_linear2_system_route(Arena 
                   mt(rows[1].a0) + "*" + mt(r0) + ")/D = " + format_expr(a, v1));
     out.push_back(vars[0] + " = " + format_expr(a, v0));
     out.push_back(vars[1] + " = " + format_expr(a, v1));
+    auto f0 = format_expr(a, v0), f1 = format_expr(a, v1);
+    auto d0 = approx_constant_node(a, v0);
+    auto d1 = approx_constant_node(a, v1);
+    if(expression_text_needs_approx(f0) && d0) out.push_back(vars[0] + " ~= " + format_double_compact(*d0));
+    if(expression_text_needs_approx(f1) && d1) out.push_back(vars[1] + " ~= " + format_double_compact(*d1));
     out.push_back("(" + vars[0] + "," + vars[1] + ") = [(" + format_expr(a, v0) + "," + format_expr(a, v1) + ")]");
     return out;
 }
@@ -19490,6 +19644,11 @@ static std::optional<std::vector<std::string>> linear2_any_system_route(Arena &a
                           mt(rows[j].a0) + "*" + mt(r0) + ")/D = " + ft(v1));
             out.push_back(vars[0] + " = " + ft(v0));
             out.push_back(vars[1] + " = " + ft(v1));
+            auto f0 = ft(v0), f1 = ft(v1);
+            auto d0 = approx_constant_node(a, v0);
+            auto d1 = approx_constant_node(a, v1);
+            if(expression_text_needs_approx(f0) && d0) out.push_back(vars[0] + " ~= " + format_double_compact(*d0));
+            if(expression_text_needs_approx(f1) && d1) out.push_back(vars[1] + " ~= " + format_double_compact(*d1));
             out.push_back("(" + vars[0] + "," + vars[1] + ") = [(" + ft(v0) + "," + ft(v1) + ")]");
             return out;
         }
