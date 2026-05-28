@@ -384,6 +384,42 @@ d/dx(e^x) = e^x
 @t159
 Int k dx = kx
 @END
+@t160
+u =
+@END
+@t161
+du =
+@END
+@t162
+ dx
+@END
+@t163
+I = Int(
+@END
+@t164
+) du
+@END
+@t165
+I = -Int(
+@END
+@t166
+I = 1/
+@END
+@t167
+*Int(
+@END
+@t168
+sin(u)
+@END
+@t169
+cos(u)
+@END
+@t170
+exp(u)
+@END
+@t171
+1/u
+@END
 @t000
 Valid: all x
 @END

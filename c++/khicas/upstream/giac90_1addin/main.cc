@@ -3423,6 +3423,64 @@ static bool cascas_append_same_base_log_solve(cascas_working_sink &out,const str
   return true;
 }
 
+static bool cascas_extract_compact_call(const string &e,const char *name,string &arg){
+  string p=string(name)+"(";
+  if (e.rfind(p,0)!=0 || e.size()<=p.size()+1 || e[e.size()-1]!=')')
+    return false;
+  arg=e.substr(p.size(),e.size()-p.size()-1);
+  return !arg.empty();
+}
+
+static bool cascas_simple_x_coeff(const string &arg,string &coeff){
+  size_t x=arg.find('x');
+  if (x==string::npos || arg.find('x',x+1)!=string::npos)
+    return false;
+  string left=arg.substr(0,x);
+  if (left.empty() || left=="+")
+    coeff="1";
+  else if (left=="-")
+    coeff="-1";
+  else {
+    for (int i=0;i<int(left.size());++i){
+      char c=left[i];
+      if (!((c>='0' && c<='9') || c=='/'))
+	return false;
+    }
+    coeff=left;
+  }
+  return true;
+}
+
+static string cascas_scaled_u_integral_line(const string &coeff,const string &inner){
+  if (coeff=="1")
+    return cascas_tpl("t163") + inner + cascas_tpl("t164");
+  if (coeff=="-1")
+    return cascas_tpl("t165") + inner + cascas_tpl("t164");
+  return cascas_tpl("t166") + coeff + cascas_tpl("t167") + inner + cascas_tpl("t164");
+}
+
+static bool cascas_append_affine_table_integral(cascas_working_sink &out,int &step,const string &e){
+  string arg,coeff,inner;
+  if (cascas_extract_compact_call(e,"sin",arg))
+    inner=cascas_tpl("t168");
+  else if (cascas_extract_compact_call(e,"cos",arg))
+    inner=cascas_tpl("t169");
+  else if (cascas_extract_compact_call(e,"exp",arg))
+    inner=cascas_tpl("t170");
+  else if (e.rfind("1/(",0)==0 && e.size()>4 && e[e.size()-1]==')'){
+    arg=e.substr(3,e.size()-4);
+    inner=cascas_tpl("t171");
+  }
+  else
+    return false;
+  if (arg=="x" || !cascas_simple_x_coeff(arg,coeff))
+    return false;
+  cascas_append_step(out,step,cascas_tpl("t160") + " " + arg);
+  cascas_append_step(out,step,cascas_tpl("t161") + " " + coeff + cascas_tpl("t162"));
+  cascas_append_step(out,step,cascas_scaled_u_integral_line(coeff,inner));
+  return true;
+}
+
 static bool cascas_append_forced_method(cascas_working_sink &out,const char *s,const char *eval_s){
   string method,u,target;
   if (!cascas_extract_method(s,method,u,&target) || method.empty() || method=="auto")
@@ -3720,6 +3778,8 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
 	    }
 	    else if (e=="exp(x)" || e=="e^x" || e=="e^(x)"){
 		      cascas_append_tpl_step(out,step,"t158");
+	    }
+	    else if (cascas_append_affine_table_integral(out,step,e)){
 	    }
 	    else if (cascas_text_has(e,"x^4+1") || cascas_text_has(e,"x^4-1") || cascas_text_has(e,"x^8+x^4+1")){
 			      cascas_append_tpl_step(out,step,"t108");
