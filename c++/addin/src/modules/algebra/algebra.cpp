@@ -19410,10 +19410,6 @@ static std::optional<std::vector<std::string>> exact_linear2_system_route(Arena 
                   mt(rows[1].a0) + "*" + mt(r0) + ")/D = " + format_expr(a, v1));
     out.push_back(vars[0] + " = " + format_expr(a, v0));
     out.push_back(vars[1] + " = " + format_expr(a, v1));
-    auto d0 = eval_node_env(a, v0, {});
-    auto d1 = eval_node_env(a, v1, {});
-    if(d0 && std::isfinite(*d0)) out.push_back(vars[0] + " ~= " + format_double_compact(*d0));
-    if(d1 && std::isfinite(*d1)) out.push_back(vars[1] + " ~= " + format_double_compact(*d1));
     out.push_back("(" + vars[0] + "," + vars[1] + ") = [(" + format_expr(a, v0) + "," + format_expr(a, v1) + ")]");
     return out;
 }
@@ -19494,10 +19490,6 @@ static std::optional<std::vector<std::string>> linear2_any_system_route(Arena &a
                           mt(rows[j].a0) + "*" + mt(r0) + ")/D = " + ft(v1));
             out.push_back(vars[0] + " = " + ft(v0));
             out.push_back(vars[1] + " = " + ft(v1));
-            auto d0 = eval_node_env(a, v0, {});
-            auto d1 = eval_node_env(a, v1, {});
-            if(d0 && std::isfinite(*d0)) out.push_back(vars[0] + " ~= " + format_double_compact(*d0));
-            if(d1 && std::isfinite(*d1)) out.push_back(vars[1] + " ~= " + format_double_compact(*d1));
             out.push_back("(" + vars[0] + "," + vars[1] + ") = [(" + ft(v0) + "," + ft(v1) + ")]");
             return out;
         }
