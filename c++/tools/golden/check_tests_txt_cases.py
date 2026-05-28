@@ -15,7 +15,7 @@ NEEDLES: dict[str, list[str]] = {
     "8c": ["x = f(y)", "f^-1(x) = (- e^(x) + 4)/2", "Given domain: x<2"],
     "9": ["1/y dy = (- x + 1)/(x + 1) dx", "y = (x + 1)^2*e^(-x)"],
     "H7a": ["F_x", "F_y", "dy/dx = (2 - 2*x*y)/(x^2 - 2*y)"],
-    "M13": ["Multiply by", "1.475", "3.525"],
+    "M13": ["Multiply by", "x = [(- sqrt(105)/5 + 5)/2", "(sqrt(105)/5 + 5)/2]"],
     "U3": ["u = cos(x - pi/3)", "u = -1/2", "x = [pi, 5*pi/3]"],
 }
 

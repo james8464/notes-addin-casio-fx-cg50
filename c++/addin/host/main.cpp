@@ -357,12 +357,23 @@ int main(int argc, char **argv)
     if(flag == "--prove") {
         // Prove identity: route to trig mode 1 with lhs\nrhs
         std::string expr = (argc >= 3) ? argv[2] : "";
+        if(argc >= 4 || expr.find('.') != std::string::npos || expr.find('\'') != std::string::npos) {
+            std::cout << "Err: unsupported function\n";
+            return 0;
+        }
         if(expr.empty()) {
             std::cout << "ERR: need an equation.\n";
             return 1;
         }
         casio::Arena arena2;
-        auto eq = casio::parse_equation(arena2, expr);
+        std::optional<casio::Equation> eq;
+        try {
+            eq = casio::parse_equation(arena2, expr);
+        }
+        catch(...) {
+            std::cout << "Err: unsupported function\n";
+            return 0;
+        }
         if(!eq) {
             std::cout << "ERR: need LHS=RHS.\n";
             return 1;

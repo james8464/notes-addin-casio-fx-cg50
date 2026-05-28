@@ -654,8 +654,8 @@ CASES = [
     (
         "rational quadratic surd denominator parses",
         ["--alg", "solve(1/x-2/3*x=0,x)"],
-        ("x = (0 - sqrt(8/3))/(4/3)", "x = (0 + sqrt(8/3))/(4/3)", "x ~= -1.225, 1.225"),
-        ("x = []",),
+        ("x = (0 - sqrt(8/3))/(4/3)", "x = (0 + sqrt(8/3))/(4/3)", "x = [(0 - sqrt(8/3))/(4/3), (0 + sqrt(8/3))/(4/3)]"),
+        ("x = []", "~="),
     ),
     (
         "numeric scan rejects asymptote",

@@ -8407,7 +8407,11 @@ static bool append_exp_square_route(Arena &a,
         std::string xt = format_expr(a, x);
         raw.push_back(var + " = " + xt);
         auto xv = eval_node(a, x, var, 0.0);
-        if(xv && std::isfinite(*xv)) approx.push_back(var + " = " + format_double_compact(*xv));
+        if(xv && std::isfinite(*xv)) {
+            std::ostringstream oss;
+            oss << var << " ~= " << std::fixed << std::setprecision(3) << *xv;
+            approx.push_back(oss.str());
+        }
     }
     if(raw.empty()) {
         out.push_back(var + " = []");
