@@ -2464,6 +2464,38 @@ static int cascas_find_top_equal(const string &s){
   return -1;
 }
 
+static bool cascas_find_top_rel(const string &s,int &pos,string &op){
+  int depth=0;
+  bool instring=false;
+  for (int i=0;i<int(s.size());++i){
+    char c=s[i];
+    if (c=='"' && (i==0 || s[i-1]!='\\'))
+      instring=!instring;
+    if (instring)
+      continue;
+    if (c=='(' || c=='[' || c=='{')
+      ++depth;
+    else if (c==')' || c==']' || c=='}')
+      --depth;
+    else if (!depth && (c=='<' || c=='>')){
+      pos=i;
+      op=string(1,c);
+      if (i+1<int(s.size()) && s[i+1]=='=')
+	op += "=";
+      return true;
+    }
+  }
+  return false;
+}
+
+static string cascas_flip_rel(const string &op){
+  if (op=="<") return ">";
+  if (op==">") return "<";
+  if (op=="<=") return ">=";
+  if (op==">=") return "<=";
+  return op;
+}
+
 static bool cascas_rewrite_compose_call(const char *input,string &out){
   string args[3],s; int count=0,close=0;
   if (!cascas_call_args(input,"compose(",args,3,count,close,s) || count<2)
@@ -3584,6 +3616,152 @@ static bool cascas_append_direct_binom_coeff(cascas_working_sink &out,int &step,
   return true;
 }
 
+static bool cascas_trim_trailing_star(string &s){
+  s=cascas_trim(s);
+  if (!s.empty() && s[s.size()-1]=='*')
+    s=s.substr(0,s.size()-1);
+  s=cascas_trim(s);
+  return true;
+}
+
+static bool cascas_extract_power_side(const string &side,string &coeff,string &base,string &exp){
+  string t=cascas_trim(side);
+  int p=cascas_find_top_power(t);
+  if (p<=0)
+    return false;
+  exp=cascas_strip_outer_group(t.substr(p+1,t.size()-p-1));
+  string left=cascas_trim(t.substr(0,p));
+  if (left.empty())
+    return false;
+  if (left[left.size()-1]==')'){
+    int depth=0,open=-1;
+    for (int i=int(left.size())-1;i>=0;--i){
+      if (left[i]==')')
+	++depth;
+      else if (left[i]=='('){
+	--depth;
+	if (!depth){
+	  open=i;
+	  break;
+	}
+      }
+    }
+    if (open>=0){
+      base=cascas_strip_outer_group(left.substr(open,left.size()-open));
+      coeff=left.substr(0,open);
+      cascas_trim_trailing_star(coeff);
+      if (coeff.empty())
+	coeff="1";
+      return true;
+    }
+  }
+  int split=-1,depth=0;
+  for (int i=int(left.size())-1;i>=0;--i){
+    if (left[i]==')' || left[i]==']' || left[i]=='}')
+      ++depth;
+    else if (left[i]=='(' || left[i]=='[' || left[i]=='{')
+      --depth;
+    else if (!depth && left[i]=='*'){
+      split=i;
+      break;
+    }
+  }
+  if (split>=0){
+    coeff=cascas_trim(left.substr(0,split));
+    base=cascas_strip_outer_group(left.substr(split+1,left.size()-split-1));
+  }
+  else {
+    coeff="1";
+    base=cascas_strip_outer_group(left);
+  }
+  return base.size();
+}
+
+static bool cascas_parse_linear_exp_text(const string &exp,const string &var,double &a,double &b){
+  string t=cascas_lower_compact(cascas_strip_outer_group(exp));
+  string v=cascas_lower_compact(var);
+  size_t p=t.find(v);
+  if (p==string::npos || t.find(v,p+v.size())!=string::npos)
+    return false;
+  string left=t.substr(0,p),right=t.substr(p+v.size(),t.size()-p-v.size());
+  if (left.empty() || left=="+")
+    a=1.0;
+  else if (left=="-")
+    a=-1.0;
+  else if (!cascas_parse_real(left,a))
+    return false;
+  b=0.0;
+  if (right.size() && !cascas_parse_real(right,b))
+    return false;
+  return fabs(a)>1e-12;
+}
+
+static string cascas_num_or_expr_div(const string &top,const string &bot,double &value,bool &ok){
+  double a=0,b=0;
+  ok=false;
+  if (cascas_parse_real(top,a) && cascas_parse_real(bot,b) && fabs(b)>1e-12){
+    value=a/b;
+    ok=true;
+    double nearest=floor(value+0.5);
+    if (fabs(value-nearest)<1e-10)
+      return print_INT_((int)nearest);
+    return cascas_format_real(value);
+  }
+  if (bot=="1")
+    return top;
+  return "(" + top + ")/(" + bot + ")";
+}
+
+static bool cascas_append_exponential_inequality(cascas_working_sink &out,const string &expr,const string &var){
+  int pos=0; string op;
+  if (!cascas_find_top_rel(expr,pos,op))
+    return false;
+  string lhs=cascas_trim(expr.substr(0,pos));
+  string rhs=cascas_trim(expr.substr(pos+op.size(),expr.size()-pos-op.size()));
+  string coeff,base,exp,rel=op;
+  if (!cascas_extract_power_side(lhs,coeff,base,exp)){
+    if (!cascas_extract_power_side(rhs,coeff,base,exp))
+      return false;
+    string tmp=lhs; lhs=rhs; rhs=tmp;
+    rel=cascas_flip_rel(op);
+  }
+  double target=0.0; bool target_ok=false;
+  string target_txt=cascas_num_or_expr_div(rhs,coeff,target,target_ok);
+  double base_d=0.0,a=0.0,b=0.0;
+  bool numeric=cascas_parse_real(base,base_d) && target_ok && target>0 && base_d>0 && fabs(base_d-1)>1e-12 &&
+    cascas_parse_linear_exp_text(exp,var,a,b);
+  string after_log=rel, final_rel=rel;
+  if (numeric && base_d<1)
+    after_log=cascas_flip_rel(after_log);
+  if (numeric && a<0)
+    final_rel=cascas_flip_rel(after_log);
+  else
+    final_rel=after_log;
+  cascas_append_line(out,(lhs + " " + rel + " " + rhs).c_str());
+  if (coeff!="1")
+    cascas_append_line(out,(base + "^(" + exp + ") " + rel + " " + target_txt).c_str());
+  cascas_append_line(out,(numeric && base_d<1 ? string("ln(")+base+") < 0, reverse inequality" : string("ln(")+base+") > 0").c_str());
+  cascas_append_line(out,("(" + exp + ")*ln(" + base + ") " + after_log + " ln(" + target_txt + ")").c_str());
+  if (numeric){
+    double bound=(log(target)/log(base_d)-b)/a;
+    cascas_append_line(out,(var + " " + final_rel + " " + cascas_format_real(bound)).c_str());
+    string v=cascas_lower_compact(var);
+    if (v=="n"){
+      long k=0;
+      if (final_rel==">")
+	k=(long)floor(bound+1e-9)+1;
+      else if (final_rel==">=")
+	k=(long)ceil(bound-1e-9);
+      else if (final_rel=="<")
+	k=(long)ceil(bound-1e-9)-1;
+      else
+	k=(long)floor(bound+1e-9);
+      cascas_append_line(out,(string("n integer => n ") + (final_rel[0]=='>'?">= ":"<= ") + print_INT_((int)k)).c_str());
+    }
+  }
+  return true;
+}
+
 static bool cascas_append_forced_method(cascas_working_sink &out,const char *s,const char *eval_s){
   string method,u,target;
   if (!cascas_extract_method(s,method,u,&target) || method.empty() || method=="auto")
@@ -3802,6 +3980,8 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
   if (cascas_call_args(s,"solve(",args,4,count,close,body) && count>=1){
     string expr=args[0];
     if (cascas_append_same_base_log_solve(out,expr))
+      return true;
+    if (count>=2 && cascas_append_exponential_inequality(out,expr,args[1]))
       return true;
     string se=cascas_lower_compact(expr);
     int eq=cascas_find_top_equal(expr);
