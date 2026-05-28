@@ -147,7 +147,7 @@ if [ "${MODE}" = "khicas-source" ]; then
   python3 "${ROOT_DIR}/c++/tools/patch_g3a_metadata.py" "${OUT_G3A}" \
     --name "CasioCAS" \
     --internal "CASCAS" \
-    --filename "CasioCAS.g3a"
+    --filename "/CasioCAS.g3a"
   python3 "${ROOT_DIR}/c++/tools/check_g3a_metadata.py" "${OUT_G3A}"
   report_addin_size
   publish_transfer_g3a
@@ -184,7 +184,7 @@ if [ "${MODE}" = "khicas-reference" ] || [ "${MODE}" = "khicas-upstream" ]; then
   python3 "${ROOT_DIR}/c++/tools/patch_g3a_metadata.py" "${OUT_G3A}" \
     --name "CasioCAS" \
     --internal "CASCAS" \
-    --filename "CasioCAS.g3a"
+    --filename "/CasioCAS.g3a"
   python3 "${ROOT_DIR}/c++/tools/check_g3a_metadata.py" "${OUT_G3A}"
   report_addin_size
   publish_transfer_g3a

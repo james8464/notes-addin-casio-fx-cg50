@@ -3455,6 +3455,108 @@ static bool cascas_append_same_base_log_solve(cascas_working_sink &out,const str
   return true;
 }
 
+// Mixed-base exponential solve: a^(fx) = b^(gx) or a^(fx) = k
+static bool cascas_append_mixed_base_exp_solve(cascas_working_sink &out,const string &expr){
+  int eq=cascas_find_top_equal(expr);
+  if (eq<0) return false;
+  string lhs=expr.substr(0,eq),rhs=expr.substr(eq+1);
+  string sl=cascas_lower_compact(lhs),sr=cascas_lower_compact(rhs);
+  // Check both sides for ^x
+  bool le=sl.find("^")!=string::npos,re=sr.find("^")!=string::npos;
+  if (!le && !re) return false;
+  double k=0; bool rhs_is_num=cascas_parse_real(rhs,k);
+  // Power-const-base: a^(mx+c) = k
+  if ((le && !re) || (re && !le) || (le && re && rhs_is_num)){
+    string exp_side=le?sl:sr,const_side=le?sr:sl;
+    double cval=0; bool cnum=cascas_parse_real(const_side,cval);
+    (void)cnum;
+    // Find the power expression
+    size_t hat=exp_side.find('^');
+    string base_str=exp_side.substr(0,hat);
+    string exp_str=exp_side.substr(hat+1);
+    // Extract x coefficient from exponent
+    size_t xp=exp_str.find('x');
+    string coeff_str,const_str;
+    if (xp!=string::npos){
+      coeff_str=exp_str.substr(0,xp);
+      if (coeff_str.empty()||coeff_str=="+") coeff_str="1";
+      else if (coeff_str=="-") coeff_str="-1";
+      string rest=exp_str.substr(xp+1);
+      const_str=rest.empty()?"0":rest;
+    }
+    // Show equation
+    cascas_append_line(out,(lhs+" = "+rhs).c_str());
+    // Use GIAC solve for final answer
+    string gsolve="solve("+expr+",x)";
+    giac::gen sol=giac::eval(giac::gen(gsolve,contextptr),1,contextptr);
+    string sol_str=sol.print(contextptr);
+    // Show log steps
+    if (coeff_str=="1"){
+      cascas_append_line(out,("ln("+base_str+"^x) = ln("+const_side+")").c_str());
+      cascas_append_line(out,("x*ln("+base_str+") = ln("+const_side+")").c_str());
+    } else {
+      cascas_append_line(out,("ln("+exp_side+") = ln("+const_side+")").c_str());
+    }
+    if (coeff_str!="" && coeff_str!="1"){
+      string rhs_log=const_side;
+      if (rhs_is_num && fabs(k)>1e-12)
+        rhs_log = "ln(" + const_side + ")";
+      cascas_append_line(out,(string("( ")+exp_str+")*ln("+base_str+") = "+rhs_log).c_str());
+      if (const_str!="0")
+        cascas_append_line(out,(string("( ")+coeff_str+"x + "+const_str+")*ln("+base_str+") = "+rhs_log).c_str());
+    }
+    // Show GIAC solution
+    if (sol_str.find('[')!=string::npos || sol_str.find('{')!=string::npos)
+      cascas_append_line(out,("x = "+sol_str).c_str());
+    else if (!sol_str.empty() && sol_str!="x")
+      cascas_append_line(out,("x = "+sol_str).c_str());
+    return true;
+  }
+  // Mixed-base: a^(fx) = b^(gx)
+  if (le && re){
+    size_t hat_l=sl.find('^'),hat_r=sr.find('^');
+    string base_l=sl.substr(0,hat_l),base_r=sr.substr(0,hat_r);
+    string exp_l=sl.substr(hat_l+1),exp_r=sr.substr(hat_r+1);
+    // Check if exponents contain x
+    bool le2=exp_l.find('x')!=string::npos,re2=exp_r.find('x')!=string::npos;
+    if (le2 && re2 && base_l!=base_r){
+      // Check for additive constant: a^(fx) = b^(gx) + c
+      double const_val=0; bool has_const=cascas_parse_real(rhs,const_val);
+      (void)const_val;
+      cascas_append_line(out,(lhs+" = "+rhs).c_str());
+      // Show ln both sides
+      cascas_append_line(out,("ln("+lhs+") = ln("+rhs+")").c_str());
+      string log_l=string("(")+exp_l+")*ln("+base_l+")";
+      string log_r=string("(")+exp_r+")*ln("+base_r+")";
+      if (has_const && fabs(const_val)>1e-12)
+        log_r = string("ln(")+rhs+")";
+      cascas_append_line(out,(log_l+" = "+log_r).c_str());
+      if (!has_const){
+        // Pure a^(fx)=b^(gx)
+        string coeff_l,coeff_r;
+        size_t xl=exp_l.find('x'),xr=exp_r.find('x');
+        if (xl!=string::npos) coeff_l=exp_l.substr(0,xl);
+        if (xr!=string::npos) coeff_r=exp_r.substr(0,xr);
+        if (coeff_l.empty()||coeff_l=="+") coeff_l="1";
+        if (coeff_r.empty()||coeff_r=="+") coeff_r="1";
+        string const_l=exp_l.substr(xl+1),const_r=exp_r.substr(xr+1);
+        cascas_append_line(out,(coeff_l+"x*ln("+base_l+") + "+const_l+"*ln("+base_l+") = "+coeff_r+"x*ln("+base_r+") + "+const_r+"*ln("+base_r+")").c_str());
+        cascas_append_line(out,(string("x*(")+coeff_l+"*ln("+base_l+") - "+coeff_r+"*ln("+base_r+")) = "+const_r+"*ln("+base_r+") - "+const_l+"*ln("+base_l+")").c_str());
+      }
+      // GIAC solve for final answer
+      string gsolve="solve("+expr+",x)";
+      giac::gen sol=giac::eval(giac::gen(gsolve,contextptr),1,contextptr);
+      string sol_str=sol.print(contextptr);
+      if (sol_str.find('[')!=string::npos || sol_str.find('{')!=string::npos)
+        cascas_append_line(out,("x = "+sol_str).c_str());
+      else if (!sol_str.empty() && sol_str!="x")
+        cascas_append_line(out,("x = "+sol_str).c_str());
+      return true;
+    }
+  }
+  return false;
+}
+
 static bool cascas_extract_compact_call(const string &e,const char *name,string &arg){
   string p=string(name)+"(";
   if (e.rfind(p,0)!=0 || e.size()<=p.size()+1 || e[e.size()-1]!=')')
@@ -4921,6 +5023,9 @@ static bool cascas_append_specific_lines(cascas_working_sink &out,const char *s,
       return true;
     }
     if (cascas_text_has(se,"log_") || cascas_text_has(se,"log(") || cascas_text_has(se,"ln(") || cascas_text_has(se,"^x")){
+      // Try mixed-base exponential solve first
+      if (cascas_text_has(se,"^x") && cascas_append_mixed_base_exp_solve(out,expr))
+        return true;
       cascas_append_tpl_line(out,"t097");
       if (cascas_text_has(se,"log_") || cascas_text_has(se,"log(") || cascas_text_has(se,"ln(")){
 		cascas_append_tpl_line(out,"t098");

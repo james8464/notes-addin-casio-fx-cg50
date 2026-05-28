@@ -37,8 +37,8 @@ def check_internal_name(name: str) -> str | None:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("g3a", type=Path)
-    ap.add_argument("--name", default="CasioCA")
-    ap.add_argument("--internal", default="@CASIOCA")
+    ap.add_argument("--name", default="CasioCAS")
+    ap.add_argument("--internal", default="@CASCAS")
     ap.add_argument("--filename", default="/CasioCAS.g3a")
     args = ap.parse_args()
 

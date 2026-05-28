@@ -72,7 +72,7 @@ def patch(path: Path, app_name: str, internal_name: str, filename: str) -> None:
     put_fixed(buf, b"Khicas Help", app_name)
     put_fixed(buf, b"Khicasen", app_name)
     put_fixed(buf, b"@KHICASEN", internal)
-    put_fixed(buf, b"khicasen.g3a", filename)
+    put_fixed(buf, b"khicasen.g3a", "CasioCAS.g3a")
     put_fixed(buf, b"\0 Xcas \0", "\0 UK   \0")
 
     cksum = checksum(buf)
@@ -87,7 +87,7 @@ def main() -> int:
     ap.add_argument("g3a", type=Path)
     ap.add_argument("--name", default="CasioCAS")
     ap.add_argument("--internal", default="CASCAS")
-    ap.add_argument("--filename", default="CasioCAS.g3a")
+    ap.add_argument("--filename", default="/CasioCAS.g3a")
     args = ap.parse_args()
     patch(args.g3a, args.name, args.internal, args.filename)
     print(f"patched metadata: {args.g3a}")
