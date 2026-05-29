@@ -14,13 +14,13 @@ If ETA is above 10 hours, report the current rate, remaining sources, and how ma
 ## Triage Lane Prompt
 
 ```text
-Follow /Users/james/Developer/Python/CASIO/c++/tools/golden/manual_question_triage_prompt.md exactly.
+Follow /Users/james/Developer/CASIO/c++/tools/golden/manual_question_triage_prompt.md exactly.
 
 Lane ownership: <PUT ONE DISJOINT PDF FOLDER OR PDF LIST HERE>
 Agent id: <codex-triage-N>
 
 Manually inspect rendered page images and matching mark schemes. Do not use OCR for maths. Append compact rows only to:
-/Users/james/Developer/Python/CASIO/c++/tools/golden/manual_question_triage_notes.jsonl
+/Users/james/Developer/CASIO/c++/tools/golden/manual_question_triage_notes.jsonl
 
 For every testable/partial row, express the maths using existing KhiCAS/Giac commands only: solve, factor, expand, simplify, diff, int, subst, normalcdf, binomial, etc. Do not invent custom maths engines. Custom code should only parse the question and emit mark-scheme-style working stages.
 
@@ -38,7 +38,7 @@ Do not edit executable tests. Do not touch files the main audit agent is editing
 
 ```text
 Implement only from validated rows in:
-/Users/james/Developer/Python/CASIO/c++/tools/golden/manual_question_triage_notes.jsonl
+/Users/james/Developer/CASIO/c++/tools/golden/manual_question_triage_notes.jsonl
 
 For every app feature, delegate all maths to existing KhiCAS/Giac commands. Do not write bespoke solvers. Custom code may classify the question, call KhiCAS/Giac, and format mark-scheme-style working lines.
 
