@@ -1,0 +1,3 @@
+#pragma once
+// Shim for <deque>. casio_compat.hpp aliases std::deque to ustl::list.
+#include <ulist.h>

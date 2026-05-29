@@ -1,11 +1,6 @@
 ## CASIO fx-CG50 CAS port
 
-Two main code areas live here:
-
-- `c++/` - production add-in source, host runner, build scripts, and regression tooling
-- `python.zip` - archived original MicroPython implementation; kept only for historical reference
-
-The C++ side is now the active production path.
+C++ production add-in source, host runner, build scripts, and regression tooling.
 
 Current exam scope is Edexcel A-level Mathematics 9MA0 only. Further Maths-only
 surfaces and raw helper wrappers should stay hidden or return compact
@@ -48,9 +43,6 @@ c++/
 
 calculator_files/
   generated transfer folder: CasioCAS.g3a + CASIOCAS.PAK
-
-python.zip
-  original MicroPython implementation; not needed by C++ test/build commands
 ```
 
 Production exam-working fixes go in `c++/khicas/upstream/giac90_1addin/`.
@@ -108,5 +100,4 @@ After any host/prototype solver change, run `./compile` before trusting calculat
 
 - Generated files, editor state, virtualenvs, reports, and local graph outputs are intentionally not kept in git.
 - External paper PDFs and rendered page images are temporary audit inputs; only manifests, scripts, and manual trackers belong in git.
-- `run_tests.py` is C++-only.
 - Host build outputs belong under `c++/addin/host/build/`.

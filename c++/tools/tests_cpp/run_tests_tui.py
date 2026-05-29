@@ -83,22 +83,10 @@ except ImportError:
 
 _TESTS_DIR = Path(__file__).resolve().parent
 REPO_ROOT = Path(__file__).resolve().parents[3]
-_LEGACY_PY_ROOT = REPO_ROOT / "python"
-_LEGACY_ZIP = REPO_ROOT / "python.zip"
-SRC_ROOT = _LEGACY_PY_ROOT / 'src'
-ROOT = SRC_ROOT / 'Math'
 PY = sys.executable
-if _LEGACY_ZIP.exists():
-    sys.path.insert(0, str(_LEGACY_ZIP) + "/python/src")
-    sys.path.insert(0, str(_LEGACY_ZIP) + "/python/src/Math")
-    sys.path.insert(0, str(_LEGACY_ZIP) + "/python/tests")
-if SRC_ROOT.exists():
-    sys.path.insert(0, str(SRC_ROOT))
-if ROOT.exists():
-    sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(_TESTS_DIR))
 try:
-    from llm_test_prompts import LLM_GENERATION_PROMPTS
+    from _legacy_llm_test_prompts import LLM_GENERATION_PROMPTS
 except Exception:
     LLM_GENERATION_PROMPTS = {}
 

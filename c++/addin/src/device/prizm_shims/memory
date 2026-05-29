@@ -1,0 +1,3 @@
+#pragma once
+// Shim header for <memory>. casio_compat.hpp (force-included) provides
+// std::unique_ptr / std::make_unique.

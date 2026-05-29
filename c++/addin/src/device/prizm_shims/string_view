@@ -1,0 +1,3 @@
+#pragma once
+// Shim header for <string_view>. casio_compat.hpp (force-included) already
+// provides std::string_view.

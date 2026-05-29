@@ -1,0 +1,3 @@
+#pragma once
+// Shim header for <optional>. casio_compat.hpp (force-included) already
+// provides std::optional and std::nullopt.

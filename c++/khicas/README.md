@@ -3,7 +3,7 @@
 Edited upstream source/reference lives in `upstream/`.
 
 - `upstream/giac90_1addin/`: Fourier `giac90_1addin.tgz` source tree for English KhiCAS.
-- `upstream/reference/khicasen.g3a`: verified Fourier binary matching the user-supplied `inspiration:base/khicasen.g3a`.
+- `upstream/reference/khicasen.g3a`: verified Fourier reference binary.
 - `upstream/compile.txt`: upstream compile instructions.
 - `upstream/INSTALL.txt`: upstream license/install notes.
 

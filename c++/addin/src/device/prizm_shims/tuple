@@ -1,0 +1,8 @@
+#pragma once
+// Shim header for <tuple>. Use ustl's utuple.h.
+#include <utuple.h>
+namespace std {
+using ustl::tuple;
+using ustl::make_tuple;
+using ustl::get;
+}

@@ -1,0 +1,4 @@
+#pragma once
+// Shim for <unordered_map>. ustl lacks unordered_map; casio_compat.hpp
+// aliases it to ustl::map (slower but functionally correct).
+#include <umap.h>

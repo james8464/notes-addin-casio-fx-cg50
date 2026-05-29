@@ -1,0 +1,7 @@
+#pragma once
+// Shim header for <set>. Use ustl's uset.h and alias into std.
+#include <uset.h>
+namespace std {
+using ustl::set;
+using ustl::multiset;
+}
