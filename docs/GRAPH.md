@@ -1,6 +1,6 @@
 # CasioCAS Project Graph
 
-Last updated: 2026-05-30 23:31 Europe/London
+Last updated: 2026-05-30 23:40 Europe/London
 
 ## Build
 
@@ -66,6 +66,7 @@ graph TD
   Remove --> Hash["hashed runtime guard"]
   Remove --> Obj["Makefile CAS_OBJS"]
   Remove --> Sec["-ffunction-sections -fdata-sections"]
+  Obj --> QR["qrcodegen.o removed"]
   Remove --> Help["help/functions"]
   Remove --> Tests["removed-feature tests"]
 
@@ -74,6 +75,7 @@ graph TD
   Eval --> Gate2["input returns unsupported"]
   Hash --> Gate2
   Obj --> Size["smaller g3a"]
+  QR --> Size
   Sec --> Size
 ```
 
@@ -115,5 +117,6 @@ graph LR
   Help["help pack"] --> HelpQ["18 function sheets ok"]
   Queue["golden queue"] --> QueueRun["200/200 host ok"]
   Shared["shared working"] --> SharedRun["13/13 host+calculator adapter ok"]
+  Obj["object prune"] --> QR["qrcodegen.o link-safe removed"]
   Bin["binary scan"] --> NoLeak["no removed-term hits"]
 ```

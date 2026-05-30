@@ -30,7 +30,7 @@ LDEMUFLAGS =  -g -static -nostdlib -Tprizmemu.ld -Wl,--gc-sections,--print-memor
 # nm archive.a -f posix | sed -E '/:$/ d; /[^ ]+ [a-zU]/ d; s/^([^ ]+).*$/\1/'
 # sh3eb-elf-size *.o pour avoir les tailles
 # zgen and zglobal were not upgraded to giac 1.7.0
-CAS_OBJS = ysym2poly.o kgausspol.o kthreaded.o zcsturm.o zmaple.o zrpn.o zmoyal.o kmisc.o zpermu.o input_parser.o ksymbolic.o index.o kmodpoly.o kmodfactor.o kezgcd.o yderive.o zsolve.o yintg.o zintgab.o zlin.o zseries.o ksubst.o zvecteur.o kglobal.o zifactor.o yalg_ext.o zgauss.o zti89.o zplot.o zplot3d.o zprog.o yunary.o zusual.o yidentificateur.o kgen.o zrisch.o input_lexer.o first.o zdesolve.o ztex.o zisom.o zquater.o zadd.o qrcodegen.o cutils.o libbf.o # memmgr.o mem.o
+CAS_OBJS = ysym2poly.o kgausspol.o kthreaded.o zcsturm.o zmaple.o zrpn.o zmoyal.o kmisc.o zpermu.o input_parser.o ksymbolic.o index.o kmodpoly.o kmodfactor.o kezgcd.o yderive.o zsolve.o yintg.o zintgab.o zlin.o zseries.o ksubst.o zvecteur.o kglobal.o zifactor.o yalg_ext.o zgauss.o zti89.o zplot.o zplot3d.o zprog.o yunary.o zusual.o yidentificateur.o kgen.o zrisch.o input_lexer.o first.o zdesolve.o ztex.o zisom.o zquater.o zadd.o cutils.o libbf.o # memmgr.o mem.o
 
 # old console: kmisc.cc should be compiled with -DOLD_CONSOLE
 #GUI_OBJS = fileGUI.o inputGUI.o menuGUI.o textGUI.o fileProvider.o graphicsProvider.o stringsProvider.o history.o kdisplay.o dConsole.o dmain.o
