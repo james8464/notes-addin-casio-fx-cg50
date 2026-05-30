@@ -1,6 +1,6 @@
 # CasioCAS Project Graph
 
-Last updated: 2026-05-30 23:40 Europe/London
+Last updated: 2026-05-30 23:51 Europe/London
 
 ## Build
 
@@ -46,8 +46,8 @@ graph TD
   Guard["runtime denylist"] --> Unsupported["Err: unsupported (not A-level scope)"]
   Direct["direct working routes"] --> Implicit["implicit diff example"]
   Direct --> Range["quadratic/rational/abs/sqrt/trig range cases"]
-  Direct --> DiffInt["basic diff/integrate steps"]
-  Direct --> Xform["identity/log/expand proof shell"]
+  Direct --> DiffInt["basic diff/integrate/trig identity steps"]
+  Direct --> Xform["identity/log/half-angle proof shell"]
   Direct --> Log["log(base,x) working"]
   Direct --> Suvat["SUVAT displacement working"]
   Host["old host working engine"] --> Queue["200/200 golden host checks"]
@@ -108,7 +108,7 @@ graph TD
 
 ```mermaid
 graph LR
-  Build["./compile exit 0"] --> Size["1,273,183 bytes"]
+  Build["./compile exit 0"] --> Size["1,274,355 bytes"]
   Build --> Meta["metadata ok"]
   Build --> Border["purple border ok"]
   Source["source gates"] --> Catalog["catalog ok"]
@@ -116,7 +116,7 @@ graph LR
   Source --> Session["session disabled"]
   Help["help pack"] --> HelpQ["18 function sheets ok"]
   Queue["golden queue"] --> QueueRun["200/200 host ok"]
-  Shared["shared working"] --> SharedRun["13/13 host+calculator adapter ok"]
+  Shared["shared working"] --> SharedRun["18/18 host+calculator adapter ok"]
   Obj["object prune"] --> QR["qrcodegen.o link-safe removed"]
   Bin["binary scan"] --> NoLeak["no removed-term hits"]
 ```

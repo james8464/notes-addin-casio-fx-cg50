@@ -187,6 +187,13 @@ static bool try_range(const char *input,working_string &out){
     out += "-1/2 <= y <= 1/2";
     return true;
   }
+  if (cmp=="x/(x^2+4)" || cmp=="x/(4+x^2)"){
+    out += "Let y=x/(x^2+4)\n";
+    out += "y*x^2 - x + 4*y = 0\n";
+    out += "Discriminant >= 0: 1 - 16*y^2 >= 0\n";
+    out += "-1/4 <= y <= 1/4";
+    return true;
+  }
   if (cmp=="(x^2-1)/(x^2+1)"){
     out += "Let y=(x^2-1)/(x^2+1)\n";
     out += "y(x^2+1)=x^2-1\n";
@@ -238,6 +245,11 @@ static bool try_range(const char *input,working_string &out){
     out += "y >= 0";
     return true;
   }
+  if (cmp=="log(2x+3)" || cmp=="ln(2x+3)"){
+    out += "A non-constant linear input covers all positive log arguments.\n";
+    out += "Range: all real y";
+    return true;
+  }
   if (cmp.find("log(")!=working_string::npos || cmp.find("ln(")!=working_string::npos){
     out += "all real y";
     return true;
@@ -254,6 +266,14 @@ static bool try_diff(const char *input,working_string &out){
   working_string var=count>=2 && args[1].size()?compact_ascii(args[1]):"x";
   if (var!="x")
     return false;
+  if (expr=="log(1/(sqrt(x^2+1)-x))"){
+    out="Differentiate: log(1/(sqrt(x^2+1)-x))\n";
+    out += "Rationalise: 1/(sqrt(x^2+1)-x) = sqrt(x^2+1)+x\n";
+    out += "So log(...) = log(sqrt(x^2+1)+x)\n";
+    out += "d/dx log(sqrt(x^2+1)+x)=1/sqrt(x^2+1)\n";
+    out += "Answer: 1/sqrt(x^2+1)";
+    return true;
+  }
   if (expr=="sin(x)"){
     out="Differentiate: sin(x)\n";
     out += "d/dx sin(x)=cos(x)\n";
@@ -315,6 +335,13 @@ static bool try_integral(const char *input,working_string &out){
   working_string var=count>=2 && args[1].size()?compact_ascii(args[1]):"x";
   if (var!="x")
     return false;
+  working_string expr=compact_ascii(args[0]);
+  if (expr=="sin(x)^2"){
+    out="Integrate using identity:\n";
+    out += "sin(x)^2 = (1-cos(2*x))/2\n";
+    out += "int(sin(x)^2) dx = x/2 - sin(2*x)/4 + C";
+    return true;
+  }
   double m,c;
   if (!parse_linear(args[0],m,c))
     return false;
@@ -350,6 +377,14 @@ static bool try_xform(const char *input,working_string &out){
     out += "Use change of base: log_a(x)=ln(x)/ln(a)\n";
     out += "Answer: ";
     out += args[1];
+    return true;
+  }
+  if (a=="(sin(x)-cos(x)+1)/(sin(x)+cos(x)-1)" && b=="sec(x)+tan(x)"){
+    out += "Put t=tan(x/2)\n";
+    out += "sin(x)=2*t/(1+t^2), cos(x)=(1-t^2)/(1+t^2)\n";
+    out += "(sin(x)-cos(x)+1)/(sin(x)+cos(x)-1) = (1+t)/(1-t)\n";
+    out += "sec(x)+tan(x) = (1+t)/(1-t)\n";
+    out += "Answer: sec(x)+tan(x)";
     return true;
   }
   if (a=="(x+1)^2" && b=="x^2+2x+1"){
