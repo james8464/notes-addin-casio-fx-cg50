@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-"""Run exact calculator-input queue rows.
-
-Default engine is intentionally unavailable until a production KhiCAS runner exists.
-Use --engine host-provisional only for non-calculator triage.
-"""
+"""Run exact calculator-input queue rows through the shared host working runner."""
 
 from __future__ import annotations
 
@@ -111,12 +107,11 @@ def main() -> int:
     ap.add_argument("--strict-markers", action="store_true")
     ap.add_argument("--workers", type=int, default=8)
     args = ap.parse_args()
-    if args.engine == "production":
-        print("FAIL production engine runner missing: host casio_host is not the source-built .g3a engine.")
-        print("Use --engine host-provisional only for triage; do not count it as calculator parity.")
-        return 2
     if not HOST.exists():
-        print(f"FAIL host-provisional runner missing: {HOST}")
+        print(f"FAIL runner missing: {HOST}")
+        return 2
+    if not HOST.stat().st_mode & 0o111:
+        print(f"FAIL runner not executable: {HOST}")
         return 2
     OUT.mkdir(parents=True, exist_ok=True)
     work = specs()

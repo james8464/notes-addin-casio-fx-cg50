@@ -80,7 +80,7 @@ void set_xcas_status(){
   status += char('0'+(minute/10));
   status += char('0'+(minute%10));
   status += xthetat?" t ":" x ";
-  status += xcas_python_eval==1?" Python ":(giac::python_compat(contextptr)?(giac::python_compat(contextptr)==2?" XcasPy ^=xor ":" XcasPy ^=** "):" Xcas ");
+  status += xcas_python_eval==1?" CAS ":(giac::python_compat(contextptr)?(giac::python_compat(contextptr)==2?" CAS mode ":" CAS mode "):" Xcas ");
   status += giac::angle_radian(contextptr)?"RAD ":"DEG ";
   if (strlen(session_filename)<=24)
     status += ustl::string(session_filename);
@@ -111,7 +111,7 @@ void menu_setup(){
   smallmenuitems[0].type = MENUITEM_CHECKBOX;
   smallmenuitems[0].text = (char*)"X,Theta,T=t";
   //smallmenuitems[1].type = MENUITEM_CHECKBOX;
-  smallmenuitems[1].text = (char*)"Python/Xcas";
+  smallmenuitems[1].text = (char*)"Mode";
   smallmenuitems[2].type = MENUITEM_CHECKBOX;
   smallmenuitems[2].text = (char*)"Radians";
   smallmenuitems[3].type = MENUITEM_CHECKBOX;
@@ -124,10 +124,10 @@ void menu_setup(){
   // smallmenuitems[2].text = (char*)(isRecording ? "Stop Recording" : "Record Script");
   while(1) {
 #ifdef MICROPY_LIB
-    string heaps((lang?"Tas Python ":"Python heap ")+giac::print_INT_(pythonjs_heap_size/1024)+"K");
+    string heaps((lang?"Tas CAS ":"Program heap ")+giac::print_INT_(pythonjs_heap_size/1024)+"K");
     smallmenuitems[5].text = (char *) heaps.c_str();
 #else
-    smallmenuitems[5].text = (char *) "Python not available";    
+    smallmenuitems[5].text = (char *) "Program mode removed";
 #endif
     string digs("Digits ");
     digs += giac::print_INT_(decimal_digits(contextptr));
@@ -183,13 +183,13 @@ void menu_setup(){
 	int c=select_interpreter();
 	if (c>=0){
 	  if (c==0)
-	    cout << "Xcas interpreter\n";
+	    cout << "CAS mode\n";
 	  if (c==1)
-	    cout << "Xcas interpreter, Python syntax ^=**\n";
+	    cout << "CAS mode, CAS syntax ^=**\n";
 	  if (c==2)
-	    cout << "Xcas interpreter, Python syntax ^=xor\n";
+	    cout << "CAS mode, CAS syntax ^=xor\n";
 	  if (c==3)
-	    cout << "MicroPython interpreter\n";
+	    cout << "Program mode removed\n";
 	  int p=giac::python_compat(contextptr);
 	  if (c==4){
 	    p=-1;
@@ -210,7 +210,7 @@ void menu_setup(){
 		do_confirm((lang==1)?"Effacer les variables Xcas?":"Clear Xcas variables?"))
 	      do_restart();
 	  }
-	  if (old_xcas_python_eval==1 && ((int) python_heap)>1 && do_confirm((lang==1)?"Effacer le tas MicroPython?":"Clear MicroPython heap?"))
+	  if (old_xcas_python_eval==1 && ((int) python_heap)>1 && do_confirm((lang==1)?"Effacer le tas programme?":"Clear program heap?"))
 	    python_free();
 #endif
 #ifdef QUICKKS
@@ -472,11 +472,11 @@ void warn_python(int mode,bool autochange){
     confirm(autochange?(lang?"Source en syntaxe Xcas detecte.":"Xcas syntax source code detected."):(lang?"Syntaxe Xcas.":"Xcas syntax."),"F1/F6: ok");
   if (mode==1)
     if (autochange)
-      confirm(lang?"Source en syntaxe Python. Passage":"Python syntax source detected. Setting",lang?"en Python avec ^=**, F1/F6: ok":"Python mode with ^=**, F1/F6:ok");
+      confirm(lang?"Syntaxe programme retiree":"Program syntax removed",lang?"en CAS avec ^=**, F1/F6: ok":"Use CAS syntax. F1/F6:ok");
     else
-      confirm(lang?"Syntaxe Python avec ^==**, tapez":"Python syntax with ^==**, type",lang?"python_compat(2) pour xor. F1: ok":"python_compat(2) for xor. F1: ok");
+      confirm(lang?"Syntaxe CAS avec ^==**, tapez":"Program syntax removed",lang?"Syntaxe CAS. F1: ok":"Use CAS syntax. F1: ok");
   if (mode==2){
-    confirm(lang?"Syntaxe Python avec ^==xor":"Python syntax with ^==xor",lang?"python_compat(1) pour **. F1: ok":"python_compat(1) for **. F1: ok");
+    confirm(lang?"Syntaxe CAS avec ^==xor":"Program syntax removed",lang?"Syntaxe CAS. F1: ok":"Use CAS syntax. F1: ok");
   }
 }
 
@@ -1862,7 +1862,7 @@ int trialpha(const void *p1,const void * p2){
 	    giac::gen f1f=f1._VECTptr->front();
 	    if (f1f.type==giac::_VECT && f1f._VECTptr->size()>=4){
 	      giac::vecteur f1v=*f1f._VECTptr;
-	      return "plotparam("+_pnt2string(f1v[0],contextptr)+","+f1v[1].print(contextptr)+"="+f1v[2].print(contextptr)+".."+f1v[3].print(contextptr)+")";
+	      return "param_curve("+_pnt2string(f1v[0],contextptr)+","+f1v[1].print(contextptr)+"="+f1v[2].print(contextptr)+".."+f1v[3].print(contextptr)+")";
 	    }
 	  }
 	}
@@ -2540,7 +2540,7 @@ int Console_GetKey(){
       smallmenuitems[8].text = (char*)(lang?"Executer script":"Run script");
       smallmenuitems[9].text = (char*)(lang?"Effacer historique":"Clear history");
       smallmenuitems[10].text = (char*)(lang?"Effacer script":"Clear script");
-      smallmenuitems[11].text = (char*)(lang?"Editer matrice":"Matrix editor");
+      smallmenuitems[11].text = (char*)(lang?"Listes":"Lists");
       smallmenuitems[12].text = (char*)"Parameter";
       smallmenuitems[13].text = (char*)"Config shift-SETUP";
       smallmenuitems[14].text = (char *) (lang?"Raccourcis":"Shortcuts");
@@ -2854,10 +2854,9 @@ int Console_GetKey(){
 }
 
 static unsigned char* original_cfg=0;
-const char conf_standard[] = "F1 algb\nsimplify(\nfactor(\npartfrac(\ntcollect(\ntexpand(\nsum(\noo\nproduct(\nF2 calc\n'\ndiff(\nintegrate(\nlimit(\nseries(\nsolve(\ndesolve(\nrsolve(\nF3 plot\nplot(\nplotseq(\nplotlist(\nplotparam(\nplotpolar(\nplotfield(\nhistogram(\nbarplot(\nF4 menu\nreserved\nF5 A<>a\nreserved\nF6 none\nF7 arit\n!\nirem(\nifactor(\ngcd(\nisprime(\nnextprime(\npowmod(\niegcd(\nF8 real\nexact(\napprox(\nfloor(\nceil(\nround(\nsign(\nmax(\nmin(\nF9 cplx\nabs(\narg(\nre(\nim(\nconj(\ncsolve(\ncfactor(\ncpartfrac(\nF: plot\nplot(\nplotseq(\nplotlist(\nplotparam(\nplotpolar(\nplotfield(\nhistogram(\nbarplot(\nF@ draw\nset_pixel(\ndraw_line(\ndraw_rectangle(\ndraw_polygon(\ndraw_circle(\ndraw_string(\nfilled\nfill_rect(\nFB prog\n:\n;\n&\n|\nchar table\nf(x):=\ndebug(\npython(\nF= lin2\na2q(\nq2a(\ngauss(\ngramschmidt(\njordan(\nlu(\nqr(\ncholesky(\nF< logo\navance \nrecule \ntourne_gauche \ntourne_droite \ncrayon \nrond \nefface;\nrepete( \nF? color\ncolor=\nred\nblue\ngreen\ncyan\nyellow\nmagenta\nfilled\nF; misc\n<\n>\n@\n!\ncomb(\nbinomial(\nrand(\nnormald(\nFA geo\npoint(\nline(\ntriangle(\ncircle(\nplane(\nsphere(\ncube(\ntetrahedron(\nF> lin\nmatrix(\ndet(\nmatpow(\nranm(\ntran(\nrref(\negvl(\negv(\nFC list\nmakelist(\nrange(\nseq(\nsize(\nappend(\nranv(\nsort(\napply(\nFD poly\nproot(\npcoeff(\nquo(\nrem(\ngcd(\negcd(\nresultant(\nGF(\n";
+const char conf_standard[] = "F1 alg\nsimplify(\nfactor(\nexpand(\ncollect(\npartfrac(\nnormal(\nsubst(\nF2 calc\ndiff(\nintegrate(\nlimit(\nseries(\nsum(\nproduct(\ndesolve(\nF3 solve\nsolve(\nrange(\nxform(\nimplicit_diff(\nF4 trig\nsin(\ncos(\ntan(\nsec(\ncsc(\ncot(\ntcollect(\ntexpand(\nF5 logs\nln(\nlog(\nexp(\nF6 poly\ncoeff(\ndegree(\ndiscriminant(\nF7 real\nabs(\napprox(\nfloor(\nceil(\nround(\n";
 
-const char python_conf_standard[] = "F1 arit\ngcd(\nlcm(\niegcd(\npowmod(\nisprime(\nnextprime(\nifactor(\nfrom arit import *\nF2 math\nfloor(\nceil(\nround(\nmin(\nmax(\nabs(\ndef f(x): return \nfrom math import *\nF3 char\nchar table\n:\n;\n_\n<\n>\n%\nimport \nF4 menu\nreserved\nF5 A<>a\nreserved\nF6 none\nF7 arit\ngcd(\nlcm(\niegcd(\npowmod(\nisprime(\nnextprime(\nifactor(\nfrom arit import *\nF8 math\nfloor(\nceil(\nround(\nmin(\nmax(\nabs(\ndef f(x): return \nfrom math import *\nF9 cmath\n.real\n.imag\nphase(\nfrom cmath import *;i=1j\nrandint(\nrandom()\nchoice(\nfrom random import *\nF: plot\naxis(\nplot(\ntext(\narrow(\nscatter(\nboxplot(\nshow()\nfrom matplotl import *\nF; draw\nclear_screen();\ndraw_pixel(\ndraw_line(\ndraw_rectangle(\ndraw_arc(\ndraw_circle(\ndraw_string(\nfrom graphic import *\nF< logo\nforward(\nbackward(\nleft(\nright(\npencolor(\ncircle(\nreset()\nfrom turtle import *\nF= numpy\narray(\nreshape(\narange(\nlinspace(\nsolve(\neig(\ninv(\nfrom numpy import *;i=1j\nF> linalg\nmatrix(\nadd(\nsub(\nmul(\ninv(\nrref(\ntranspose(\nfrom linalg import *\nF? char\nchar table\n:\n;\n_\n<\n>\n%\nimport \nF@ fill\ndraw_filled_rectangle\ndraw_filled_circle(\ndraw_filled_polygon(\ndraw_filled_arc\nfrom graphic import *\nFA color\nred\nblue\nmagenta\ncyan\ngreen\nyellow\nwhite\nblack\nFB prog\nprint(\ninput(\nhex(\nbin(\ngetkey()\nsleep()\nmonotonic()\nfrom ion import *\nFC list\nlist(\nrange(\nlen(\nappend(\nzip(\nsorted(\nmap(\nreversed(\n"; // "F1 misc\n:\n;\nchar table\n#\ntime()\nfrom time import *\n\ncaseval(\"\")\nfrom cas import *\nF2 math\nfloor(\nceil(\nround(\nmin(\nmax(\nabs(\nfrom math import *\ndef f(x): return \nF4 menu\nreserved\nF5 A<>a\nreserved\nF6 none\nF7 arit\npow(\nisprime(\nnextprime(\nifactor(\ngcd(\nlcm(\niegcd(\nfrom arit import *\nF8 math\nfloor(\nceil(\nround(\nmin(\nmax(\nabs(\nfrom math import *\ndef f(x): return \nF9 cmath\n.real\n.imag\nphase(\nfrom cmath import *;i=1j\nabs(\nfrom math import *\nF: plot\nclf()\nplot(\ntext(\narrow(\nscatter(\nbar(\nshow()\nfrom matplotl import *\nF; draw\nclear_screen();\nshow_screen();\nset_pixel(\ndraw_line(\ndraw_rectangle(\n\ndraw_circle(\ndraw_string(\nfrom graphic import *\nFB prog\nprint(\ninput(\n|\n&\nhex(\nbin(\ndebug(\nxcas\nF> numpy\narray(\nreshape(\narange(\nlinspace(\nsolve(\neig(\ninv(\nfrom numpy import *;i=1j\nF< logo\nforward(\nbackward(\nleft(\nright(\npencolor(\ncircle(\nreset()\nfrom turtle import *\nF? color\nred\nblue\ngreen\ncyan\nyellow\nmagenta\nblack\nwhite\nF@ rand\nrandint(\nrandom()\nchoice(\nfrom random import *\nFA misc\n:\n;\nchar table\n#\ntime()\nfrom time import *\n\ncaseval(\"\")\nfrom cas import *\nF= linalg\nmatrix(\nadd(\nsub(\nmul(\ninv(\nrref(\ntranspose(\nfrom linalg import *;i=1j\nFC list\nlist(\nrange(\nlen(\nappend(\nzip(\nsorted(\nmap(\nreversed(\n";
-
+const char python_conf_standard[] = "";
 
 int Console_FMenu(int key){
   const char * s=console_menu(key,xcas_python_eval?(unsigned char*)python_conf_standard:original_cfg,0),*ptr=0;
@@ -2865,7 +2864,7 @@ int Console_FMenu(int key){
     //cout << "console " << unsigned(s) << endl;
     return CONSOLE_NO_EVENT;
   }
-  if (strcmp("matrix(",s)==0 && (ptr=input_matrix(false)) )
+  if (strcmp("_removed_array(",s)==0 && (ptr=input_matrix(false)) )
     s=ptr;
   if (strcmp("makelist(",s)==0 && (ptr=input_matrix(true)) )
     s=ptr;

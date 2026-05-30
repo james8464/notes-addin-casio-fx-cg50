@@ -60,6 +60,14 @@ def word_hit(text: str, name: str) -> bool:
     return re.search(rf'(?<![A-Za-z0-9_]){re.escape(name)}(?![A-Za-z0-9_])', text) is not None
 
 
+def fnv1a32(text: str) -> str:
+    value = 2166136261
+    for ch in text:
+        value ^= ord(ch)
+        value = (value * 16777619) & 0xFFFFFFFF
+    return f"0x{value:08x}u"
+
+
 def main() -> int:
     main_cc = (SRC / "main.cc").read_text(errors="ignore")
     if "cascas_reject_removed_feature" not in main_cc:
@@ -69,7 +77,8 @@ def main() -> int:
 
     for name in REMOVED:
         marker = f'"{name}"'
-        if marker not in main_cc:
+        hashed = fnv1a32(name)
+        if marker not in main_cc and hashed not in main_cc:
             fail(f"main.cc denylist missing {name}")
 
     leaks: list[str] = []

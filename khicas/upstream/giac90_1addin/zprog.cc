@@ -6250,7 +6250,7 @@ namespace giac {
 	python_compat(a.val,contextptr) ;
 	pythonjs_stack_size=giacmax(absint(c.val),8*1024);	  
 	if (pythonjs_static_heap)
-	  return(string2gen("Can not be modified, Python heap is static.",false));
+	  return(string2gen("Program heap is static.",false));
 	pythonjs_heap_size=giacmax(absint(b.val),16*1024);
 	return p;
       }

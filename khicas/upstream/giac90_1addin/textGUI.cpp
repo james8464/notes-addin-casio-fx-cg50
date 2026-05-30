@@ -1053,19 +1053,8 @@ void textarea_help_insert(textArea * text,int exec){
 }
 
 string set_textarea_menu(textArea* text){
-  string le_menu;
-  if (text->gr) { // geometry menu
-    le_menu=lang==1?"F1 points\npoint(\nmidpoint(\ncentre(\nelement(\ninter_unique(\ninter(\nlegende(\ntrace(\nF2 lines\nsegment(\ndroite(\ndemi_droite(\nvecteur(\nparallele(\nperpendiculaire(\ntangent(\ncercle(\ntrace(\nF3 disp\ndisplay=\nfilled\nred\nblue\ngreen\ncyan\nmagenta\nyellow\nF7 triangle\ntriangle(\ntriangle_equilateral(\nmediane(\nmediatrice(\nbissectrice(\nisobarycentre(\nF8 polygon\ncarre(\nrectangle(\nquadrilatere(\nhexagone(\npolygone(\nisopolygone(\nsommets(\nF9 geo3d\nplan(\nsphere(\ncone(\ndemi_cone(\ncylindre(\nplot3d\nF: solids\ntetraedre(\ncube(\noctaedre(\ndodecaedre(\nicosaedre(\nsommets(\nF; geodiff\ntangent(\ncercle_osculateur(\ndeveloppee(\ncourbure(\nfrenet(\nF< mesures\ndistance(\ndistance2(\nrayon(\naire(\nperimetre(\npente(\nangle(\nF= test\nest_aligne(\nest_cocyclique(\nest_coplanaire(\nest_cospherique(\nest_element(\nest_parallele(\nest_perpendiculaire(\nF> analyt\ncoordonnees(\nequation(\nparameq(\nabscisse(\nordonnee(\naffixe(\narg(\nF? cursor\nassume(\nelement(\nF@ transf\nprojection(\nsymetrie(\ntranslation(\nrotation(\nhomothetie(\nsimilitude(\nFA plot\nplotfunc(\nplot(\nplotparam(\nplotpolar(\nplot3d(\nFB conics\ncercle(\nellipse(\nhyperbole(\nparabole(\n":"F1 points\npoint(\nmidpoint(\ncenter(\nelement(\nsingle_inter(\ninter(\nlegende(\ntrace(\nF2 lines\nsegment(\nline(\nhalf_line(\nvector(\nparallel(\nperpendicular(\ntangent(\ncircle(\ntrace(\nF3 disp\ndisplay=\nfilled\nred\nblue\ngreen\ncyan\nmagenta\nyellow\nF7 triangle\ntriangle(\ntriangle_equilateral(\nmedian(\nperpen_bisector(\nbisector(\nisobarycenter(\nF8 polygon\nsquare(\nrectangle(\nquadrilateral(\nhexagon(\npolygon(\nisopolygon(\nvertices(\nF9 geo3d\nplane(\nsphere(\ncone(\nhalf_cone(\ncylinder(\nplot3d\nF: solids\ntetrahedron(\ncube(\noctahedron(\ndodecahedron(\nicosahedron(\nvertices(\nF; geodiff\ntangent(\nosculating_circle(\nevolute(\ncurvature(\nfrenet(\nF< mesures\ndistance(\ndistance2(\nradius(\naire(\nperimetre(\npente(\nangle(\nF= test\nis_collinear(\nis_concyclic(\nis_coplanar(\nis_cospherical(\nis_element(\nis_parallel(\nis_perpendicular(\nF> analyt\ncoordonnees(\nequation(\nparameq(\nabscisse(\nordonnee(\naffixe(\narg(\nF? cursor\nassume(\nelement(\nF@ transf\nprojection(\nreflection(\ntranslation(\nrotation(\nhomothety(\nsimilarity(\nFA plot\nplotfunc(\nplot(\nplotparam(\nplotpolar(\nplot3d(\nFB conics\ncircle(\nellipse(\nhyperbola(\nparabola(\n";
-  } else {
-    if (xcas_python_eval==1){
-      le_menu="F1 test\nif \nelse \n<\n>\n==\n!=\n&&\n||\nF2 struct\nfor \nfor in\nrange(\nwhile \nbreak\ndef\nreturn \nimport \nF3 misc\n:\n;\nchar table\n!\nelif:\n#\nprint(\ninput(\nF4 \nF5 \nF6 \nF7 arit\npow(\nisprime(\nnextprime(\nifactor(\ngcd(\nlcm(\niegcd(\nfrom arit import *\nF8 math\nfloor(\nceil(\nround(\nmin(\nmax(\nabs(\nfrom math import *\ndef f(x): return \nF9 cmath\n.real\n.imag\nphase(\nfrom cmath import *;i=1j\nabs(\n\nF: plot\nclf()\nplot(\ntext(\narrow(\nscatter(\nbar(\nshow()\nfrom matplotl import *\nF; draw\nclear_screen();\nshow_screen();\nset_pixel(\ndraw_line(\ndraw_rectangle(\n\ndraw_circle(\ndraw_string(\nfrom graphic import *\nF< turt\nforward(\nbackward(\nleft(\nright(\npencolor(\ncircle(\nreset()\nfrom turtle import *\nF> numpy\narray(\nreshape(\narange(\nlinspace(\nsolve(\neig(\ninv(\nfrom numpy import *;i=1j\nFB prog\nprint(\ninput(\n|\n&\nhex(\nbin(\ndebug(\nxcas\nFA misc\n:\nchar table\n;\n#\ntime()\nfrom time import *\n\ncaseval(\"\")\nfrom cas import *\nF? color\nred\nblue\ngreen\ncyan\nyellow\nmagenta\nblack\nwhite\nF@ rand\nrandint(\nrandom()\nchoice(\nfrom random import *\nF= linalg\nmatrix(\nadd(\nsub(\nmul(\ninv(\nrref(\ntranspose(\nfrom linalg import *;i=1j\nFC list\nlist(\nrange(\nlen(\nappend(\nzip(\nsorted(\nmap(\nreversed(\n";
-    }
-    else {
-      le_menu=text->python?"F1 test\nif \nelse \n<\n>\n==\n!=\n&&\n||\nF2 loop\nfor \nfor in\nrange(\nwhile \nbreak\ndef\nreturn \ncontinue\nF3 misc\n:\n;\nchar table\n!\n%\n&\nprint(\ninput(\n":"F1 test\nif \nelse \n<\n>\n==\n!=\nand\nor\nF2 loop\nfor \nfor in\nrange(\nwhile \nbreak\nf(x):=\nreturn \nlocal\nF3 misc\n;\n:\n_\n!\n%\n&\nprint(\ninput(\n";
-      le_menu += "F7 arit\n mod \nirem(\nifactor(\ngcd(\nisprime(\nnextprime(\npowmod(\niegcd(\nF8 real\nexact(\napprox(\nfloor(\nceil(\nround(\nsign(\nmax(\nmin(\nF9 cplx\nabs(\narg(\nre(\nim(\nconj(\ncsolve(\ncfactor(\ncpartfrac(\nF: plot\nplot(\nplotseq(\nplotlist(\nplotparam(\nplotpolar(\nplotfield(\nhistogram(\nbarplot(\nF@ \nset_pixel(\ndraw_line(\ndraw_rectangle(\nfill_rect(\ndraw_polygon(\ndraw_circle(\ndraw_string(\nfilled\nFB prog\n;\n:\n\\\n&\n|\nchar table\n?\ndebug(\nF> lin2\na2q(\nq2a(\ngauss(\ngramschmidt(\njordan(\nlu(\nqr(\ncholesky(\nF< logo\navance \nrecule \ntourne_gauche \ntourne_droite \ncrayon \nrond \nefface;\nrepete( \nF? color\nred\nblue\ngreen\ncyan\nyellow\nmagenta\nblack\nwhite\nF; misc\n<\n>\n@\n!\n % \nrand(\nbinomial(\nnormald(\nFA geo\npoint(\nline(\ntriangle(\ncircle(\nplane(\nsphere(\ncube(\ntetrahedron(\nF= lin\nmatrix(\ndet(\nmatpow(\nranm(\ncross(\ncurl(\negvl(\negv(\nFC list\nmakelist(\nrange(\nseq(\nsize(\nappend(\nranv(\nsort(\napply(\nFD poly\nproot(\npcoeff(\nquo(\nrem(\ngcd(\negcd(\nresultant(\nGF(\n";
-    }
-  }
-  return le_menu;
+  (void) text;
+  return "F1 alg\nsimplify(\nfactor(\nexpand(\ncollect(\npartfrac(\nnormal(\nF2 calc\ndiff(\nintegrate(\nlimit(\nseries(\nsum(\nproduct(\nF3 solve\nsolve(\nrange(\nxform(\nimplicit_diff(\nF4 trig\nsin(\ncos(\ntan(\nsec(\ncsc(\ncot(\ntcollect(\ntexpand(\nF5 logs\nln(\nlog(\nexp(\nF6 real\nabs(\napprox(\nfloor(\nceil(\nround(\n";
 }
 
 int doTextArea(textArea* text) {
@@ -1219,7 +1208,7 @@ int doTextArea(textArea* text) {
 	    isdef=(strcmp(adds,"f(x):=")==0 || strcmp(adds,"def")==0),
 	    iswhile=strcmp(adds,"while ")==0,
 	    islist=strcmp(adds,"list ")==0,
-	    ismat=strcmp(adds,"matrix ")==0;
+	    ismat=strcmp(adds,"_removed_array ")==0;
 	  if (islist){
 	    input_matrix(true);
 	    continue;
@@ -1437,7 +1426,7 @@ int doTextArea(textArea* text) {
 	smallmenuitems[5].text = (char*)lang?"Chercher,remplacer":"Search, replace";
 	smallmenuitems[6].text = (char*)lang?"Aller a la ligne":"Goto line";
 	smallmenuitems[7].type = MENUITEM_CHECKBOX;
-	smallmenuitems[7].text = (char*)"Python";
+	smallmenuitems[7].text = (char*)"Prog";
 	smallmenuitems[7].value = text->python;
 	smallmenuitems[8].text = (char*)lang?"Quitter":"Quit";
 	smallmenuitems[9].text = (char *)aide_khicas_string;

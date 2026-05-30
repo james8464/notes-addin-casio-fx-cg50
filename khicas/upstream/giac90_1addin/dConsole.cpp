@@ -75,7 +75,7 @@ void set_xcas_status(){
   status += char('0'+(minute/10));
   status += char('0'+(minute%10));
   status += xthetat?" t ":" x ";
-  status += giac::python_compat(contextptr)?(giac::python_compat(contextptr)==2?" Python ^=xor ":" Python ^=** "):" Xcas ";
+  status += giac::python_compat(contextptr)?(giac::python_compat(contextptr)==2?" CAS ^=xor ":" CAS ^=** "):" Xcas ";
   status += giac::angle_radian(contextptr)?"RAD ":"DEG ";
   status += ustl::string(session_filename);
   strcpy(xcas_status,status.c_str());
@@ -363,11 +363,11 @@ void warn_python(int mode,bool autochange){
     confirm(autochange?(lang?"Source en syntaxe Xcas detecte.":"Xcas syntax source code detected."):(lang?"Syntaxe Xcas.":"Xcas syntax."),"F1/F6: ok");
   if (mode==1)
     if (autochange)
-      confirm(lang?"Source en syntaxe Python. Passage":"Python syntax source detected. Setting",lang?"en Python avec ^=**, F1/F6: ok":"Python mode with ^=**, F1/F6:ok");
+      confirm(lang?"Syntaxe programme retiree":"Program syntax removed",lang?"en CAS avec ^=**, F1/F6: ok":"Use CAS syntax. F1/F6:ok");
     else
-      confirm(lang?"Syntaxe Python avec ^==**, tapez":"Python syntax with ^==**, type",lang?"python_compat(2) pour xor. F1: ok":"python_compat(2) for xor. F1: ok");
+      confirm(lang?"Syntaxe CAS avec ^==**, tapez":"Program syntax removed",lang?"Syntaxe CAS. F1: ok":"Use CAS syntax. F1: ok");
   if (mode==2){
-    confirm(lang?"Syntaxe Python avec ^==xor":"Python syntax with ^==xor",lang?"python_compat(1) pour **. F1: ok":"python_compat(1) for **. F1: ok");
+    confirm(lang?"Syntaxe CAS avec ^==xor":"Program syntax removed",lang?"Syntaxe CAS. F1: ok":"Use CAS syntax. F1: ok");
   }
 }
 
@@ -994,7 +994,7 @@ int dGetLine (char * s,int max, int isRecording, int ml) {
     const char * adds=keytostring(key,keyflag);
     if (adds){
       bool islist=strcmp(adds,"list ")==0,
-	ismat=strcmp(adds,"matrix ")==0;
+	ismat=strcmp(adds,"_removed_array ")==0;
       if (islist)
 	input_matrix(true);
       if (ismat)
@@ -1066,13 +1066,13 @@ int dGetLine (char * s,int max, int isRecording, int ml) {
       smallmenuitems[4].text = (char*)lang?"Nouveau script":"New script";
       smallmenuitems[5].text = (char*)lang?"Editer script":"Edit script";
       smallmenuitems[6].text = (char*)lang?"Executer script":"Run script";
-      smallmenuitems[7].text = (char*)lang?"Editer matrice":"Matrix editor";
+      smallmenuitems[7].text = (char*)lang?"Listes":"Lists";
       smallmenuitems[8].text = (char*)lang?"Effacer":"Clear";
       smallmenuitems[9].text = (char*)lang?"Effacer script":"Clear script";
       smallmenuitems[10].type = MENUITEM_CHECKBOX;
       smallmenuitems[10].text = (char*)"X,Theta,T=t";
       smallmenuitems[11].type = MENUITEM_CHECKBOX;
-      smallmenuitems[11].text = (char*)"Python";
+      smallmenuitems[11].text = (char*)"Prog";
       smallmenuitems[12].type = MENUITEM_CHECKBOX;
       smallmenuitems[12].text = (char*)"Radians";
       smallmenuitems[13].type = MENUITEM_CHECKBOX;

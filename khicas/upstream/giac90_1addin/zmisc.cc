@@ -295,7 +295,7 @@ namespace giac {
     p_car=mpcar(mr,m_adj,true,true,contextptr);
     return makevecteur(p_car,m_adj);
   }    
-  static const char _adjoint_matrix_s []="adjoint_matrix";
+  static const char _adjoint_matrix_s []="_rm6";
   static define_unary_function_eval (__adjoint_matrix,&_adjoint_matrix,_adjoint_matrix_s);
   define_unary_function_ptr5( at_adjoint_matrix ,alias_at_adjoint_matrix,&__adjoint_matrix,0,true);
 
@@ -2192,7 +2192,7 @@ namespace giac {
   static define_unary_function_eval (__normalize,&_normalize,_normalize_s);
   define_unary_function_ptr5( at_normalize ,alias_at_normalize,&__normalize,0,true);
 
-  static const char _randmatrix_s []="randmatrix";
+  static const char _randmatrix_s []="_rm4";
   static define_unary_function_eval (__randmatrix,&_ranm,_randmatrix_s);
   define_unary_function_ptr5( at_randmatrix ,alias_at_randmatrix,&__randmatrix,0,true);
 
@@ -2483,7 +2483,7 @@ namespace giac {
       return _linfnorm(g0._VECTptr->front(),contextptr);
     return _frobenius_norm(g0,contextptr);
   }
-  static const char _matrix_norm_s []="matrix_norm";
+  static const char _matrix_norm_s []="_rm5";
   static define_unary_function_eval (__matrix_norm,&_matrix_norm,_matrix_norm_s);
   define_unary_function_ptr5( at_matrix_norm ,alias_at_matrix_norm,&__matrix_norm,0,true);
 
@@ -3060,7 +3060,7 @@ namespace giac {
       return (v[v.size()/2]+v[v.size()/2-1])/2;
     return v[int(std::ceil(v.size()/2.0))-1]; // v[(v.size()-1)/2];
   }
-  static const char _median_s []="median";
+  static const char _median_s []="_rm1";
   static define_unary_function_eval(unary_median,&_median,_median_s);
   define_unary_function_ptr5( at_median ,alias_at_median,&unary_median,0,true);
 
@@ -3081,7 +3081,7 @@ namespace giac {
     v=mtran(v);
     return v[int(std::ceil(v.size()/4.0))-1]; // v[(v.size()-1)/4];
   }
-  static const char _quartile1_s []="quartile1";
+  static const char _quartile1_s []="_rm2";
   static define_unary_function_eval(unary_quartile1,&_quartile1,_quartile1_s);
   define_unary_function_ptr5( at_quartile1 ,alias_at_quartile1,&unary_quartile1,0,true);
 
@@ -3102,7 +3102,7 @@ namespace giac {
     v=mtran(v);
     return v[int(std::ceil(3*v.size()/4.0))-1]; // v[(3*(v.size()-1))/4];
   }
-  static const char _quartile3_s []="quartile3";
+  static const char _quartile3_s []="_rm3";
   static define_unary_function_eval(unary_quartile3,&_quartile3,_quartile3_s);
   define_unary_function_ptr5( at_quartile3 ,alias_at_quartile3,&unary_quartile3,0,true);
 
@@ -9285,7 +9285,7 @@ static define_unary_function_eval (__os_version,&_os_version,_os_version_s);
     if (a.type==_STRNG && a.subtype==-1) return  a;
     return change_subtype(ckmatrix(a),_INT_BOOLEAN);
   }
-  static const char _is_matrix_s []="is_matrix";
+  static const char _is_matrix_s []="_rm_is";
   static define_unary_function_eval (__is_matrix,&_is_matrix,_is_matrix_s);
   define_unary_function_ptr5( at_is_matrix ,alias_at_is_matrix,&__is_matrix,0,true);
 
@@ -9303,7 +9303,7 @@ static define_unary_function_eval (__os_version,&_os_version,_os_version_s);
     }
     return _convert(makesequence(a,change_subtype(_MAPLE_LIST,_INT_MAPLECONVERSION)),contextptr);
   }
-  static const char _python_list_s []="python_list";
+  static const char _python_list_s []="_rm8";
   static define_unary_function_eval (__python_list,&_python_list,_python_list_s);
   define_unary_function_ptr5( at_python_list ,alias_at_python_list,&__python_list,0,true);
 
@@ -9432,7 +9432,7 @@ void sync_screen(){ Bdisp_PutDisp_DD(); }
     _set_pixel(makesequence(int(x+.5),int(y+.5),c),contextptr);
   }
 #endif
-  static const char _set_pixel_s []="set_pixel";
+  static const char _set_pixel_s []="_rm7";
   static define_unary_function_eval (__set_pixel,&_set_pixel,_set_pixel_s);
   define_unary_function_ptr5( at_set_pixel ,alias_at_set_pixel,&__set_pixel,0,true);
 

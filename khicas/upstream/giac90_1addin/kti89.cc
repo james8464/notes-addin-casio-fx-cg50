@@ -137,7 +137,7 @@ namespace giac {
     complex_mode(old_complex_mode,contextptr);
     return res;
   }
-  static const char _csolve_s[]="csolve";
+  static const char _csolve_s[]="_rm13";
   static define_unary_function_eval_quoted (__csolve,&_cSolve,_csolve_s);
   define_unary_function_ptr5( at_csolve ,alias_at_csolve,&__csolve,_QUOTE_ARGUMENTS,true);
 

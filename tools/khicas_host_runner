@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+BUILD="${ROOT}/tools/working_engine/build"
+BIN="${BUILD}/casio_host"
+
+if [[ ! -x "${BIN}" ]]; then
+  cmake -S "${ROOT}/tools/working_engine/host" -B "${BUILD}" -DCMAKE_BUILD_TYPE=Release >/dev/null
+  cmake --build "${BUILD}" -j 4 >/dev/null
+fi
+
+exec "${BIN}" "$@"

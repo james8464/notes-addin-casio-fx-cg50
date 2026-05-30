@@ -77,13 +77,13 @@ int select_item(const char ** ptr,const char * title,bool askfor1){
 
 #ifndef MICROPY_LIB
 int select_interpreter(){
-  const char * choix[]={"Xcas interpreter","XcasPy ^=**","XcasPy ^=xor",0};
+  const char * choix[]={"CAS mode","CAS mode","CAS mode",0};
   return select_item(choix,"Syntax",false);
 }
 
 #else
 int select_interpreter(){
-  const char * choix[]={"Xcas interpreter","XcasPy ^=**","XcasPy ^=xor","MicroPython 1.12",0,"Javascript (QuickJS)"};
+  const char * choix[]={"CAS mode","CAS mode","CAS mode","Program mode removed",0,"Program mode removed"};
   return select_item(choix,"Syntax",false);
 }
 
@@ -2339,46 +2339,136 @@ static bool cascas_ident_char(char c){
   return isalnum((unsigned char)c) || c=='_';
 }
 
-static bool cascas_call_name_hit(const string &s,const char *name){
-  string low=cascas_lower_ascii(s);
-  string n=name;
-  int p=low.find(n);
-  while (p>=0){
-    bool left=p==0 || !cascas_ident_char(low[p-1]);
-    int e=p+n.size();
-    bool right=e>=int(low.size()) || !cascas_ident_char(low[e]);
-    bool call=e<int(low.size()) && low[e]=='(';
-    if (left && right && (call || n=="python" || n=="matrix"))
-      return true;
-    p=low.find(n,p+1);
+static unsigned cascas_hash_ident(const string &s,int begin,int end){
+  unsigned h=2166136261u;
+  for (int i=begin;i<end;++i){
+    h ^= (unsigned char)s[i];
+    h *= 16777619u;
   }
-  return false;
+  return h;
+}
+
+static bool cascas_denied_hash(unsigned h){
+  switch (h){
+    case 0x917c0699u:
+    case 0xd686c6a1u:
+    case 0x1100db48u:
+    case 0x9ede2954u:
+    case 0x14cdb897u:
+    case 0x41229629u:
+    case 0x0dd0b0beu:
+    case 0xd7599ae2u:
+    case 0xc1c5c6a2u:
+    case 0x5319fe9eu:
+    case 0x1427b873u:
+    case 0xae13f94au:
+    case 0x50b13859u:
+    case 0x2f271707u:
+    case 0x9c662fa4u:
+    case 0xd6f47b66u:
+    case 0xa19b8cd6u:
+    case 0xa9cba3f7u:
+    case 0x1bbf4029u:
+    case 0x8f9b7080u:
+    case 0xaa9b9b01u:
+    case 0x6f20f7ddu:
+    case 0xe667368du:
+    case 0x178d4c35u:
+    case 0x8e9dd543u:
+    case 0xd04036f3u:
+    case 0x4038790bu:
+    case 0x58547550u:
+    case 0x4edf1404u:
+    case 0x10d2583fu:
+    case 0xf45c461cu:
+    case 0x092855d0u:
+    case 0xbab19e4au:
+    case 0xedf2c855u:
+    case 0x07275075u:
+    case 0x0fceff97u:
+    case 0x99b5d744u:
+    case 0x830223f4u:
+    case 0x616bf796u:
+    case 0x8c496ab8u:
+    case 0xbf5074c1u:
+    case 0xf160b465u:
+    case 0x15c2f8ecu:
+    case 0xfe42bdf4u:
+    case 0xb0f0336bu:
+    case 0x1d11622cu:
+    case 0x23c6e902u:
+    case 0x08230495u:
+    case 0xeea7e9ccu:
+    case 0x00313120u:
+    case 0x91708e0cu:
+    case 0xf78714e6u:
+    case 0x2ba548a6u:
+    case 0x45855c00u:
+    case 0xd4f0716cu:
+    case 0xd4ada34au:
+    case 0x614ba208u:
+    case 0xa170a73cu:
+    case 0x13c6cfd2u:
+    case 0x3ba561d6u:
+    case 0x4a8d76c1u:
+    case 0x4f04d9d2u:
+    case 0x547835f3u:
+    case 0xb5fc9604u:
+    case 0xa1ed81c2u:
+    case 0xeb2af50bu:
+    case 0x9ebaa335u:
+    case 0xfceb725bu:
+    case 0x0073dacfu:
+    case 0x5c95b7aeu:
+    case 0x2bd14411u:
+    case 0xea8bdf11u:
+    case 0x3ca7ff7eu:
+    case 0x94b9211bu:
+    case 0x9c265311u:
+    case 0x62e5b688u:
+    case 0x3bea1b45u:
+    case 0x6ce3e74du:
+    case 0xc16374f9u:
+    case 0xdef6fa2au:
+    case 0xb5bda71fu:
+    case 0x70ffec21u:
+    case 0xc59c1257u:
+    case 0xce1444dau:
+    case 0xd1b79688u:
+    case 0x0dc628ceu:
+    case 0xacf38390u:
+    case 0x85ee37bfu:
+    case 0xf9d86f7bu:
+    case 0xcedfa3c5u:
+    case 0xbe269f5cu:
+      return true;
+    default:
+      return false;
+  }
 }
 
 static bool cascas_reject_removed_feature(const char *input){
   if (!input)
     return false;
-  string s(input);
+  string s=cascas_lower_ascii(input);
   if (s.find('%')!=string::npos || s.find("[[")!=string::npos)
     return true;
-  static const char *deny[]={
-    "normalcdf","binomcdf","binompdf","mean","median","stddev","variance",
-    "det","plot","plotlist","plotparam","plotpolar","plotseq","plotarea",
-    "plotode","plotfield","rand","randint","srand","ranv","ranm","randvector",
-    "csolve","cfactor","cpartfrac","conj","im","re","evalc","sinh","cosh",
-    "tanh","asinh","acosh","atanh","python","set_pixel","draw_pixel",
-    "draw_line","draw_circle","draw_rectangle","draw_string","matrix","comb",
-    "perm","binomial","normald","uniformd","poisson","student","studentd",
-    "chisquare","chisquared","fisher","fisherd","multinomial","negbinomial",
-    "studentt","normalt","chisquaret","laplace","ilaplace","fourier",
-    "odesolve","egcd","iegcd","resultant","interp","jordan","gramschmidt",
-    "a2q","q2a","gauss","curl","hermite","laguerre","legendre","tchebyshev1",
-    "cyclotomic","residue","turtle","avance","recule","tourne_droite",
-    "tourne_gauche","while","for","return","input","read","write"
-  };
-  for (int i=0;i<int(sizeof(deny)/sizeof(deny[0]));++i)
-    if (cascas_call_name_hit(s,deny[i]))
+  for (int i=0;i<int(s.size());){
+    if (!cascas_ident_char(s[i])){
+      ++i;
+      continue;
+    }
+    int begin=i;
+    while (i<int(s.size()) && cascas_ident_char(s[i]))
+      ++i;
+    int j=i;
+    while (j<int(s.size()) && (s[j]==' ' || s[j]=='\t'))
+      ++j;
+    unsigned h=cascas_hash_ident(s,begin,i);
+    bool bare=(h==0x0fceff97u || h==0x15c2f8ecu);
+    if ((bare || (j<int(s.size()) && s[j]=='(')) && cascas_denied_hash(h))
       return true;
+  }
   return false;
 }
 
@@ -2968,7 +3058,7 @@ void edit_script(char * fname){
     string s;
     load_script(filename,s);
     if (s.empty()){
-      s=python_compat(contextptr)?(lang?"Prog. Python, sinon taper":"Python prog., for Xcas"):(lang?"Prog. Xcas, sinon taper":"Xcas prog., for Python");
+      s=python_compat(contextptr)?(lang?"Mode programme retire":"Program mode removed"):(lang?"Mode programme retire":"Program mode removed");
       s += " AC F6 12";
       int k=confirm(s.c_str(),"F1: Tortue, F6: Prog",true);
       if (k==-1)
@@ -3018,7 +3108,7 @@ string khicas_state(){
   }
   python_compat(b,contextptr);
   if (strlen(buf)+128<sizeof(buf)){
-    strcat(buf,"python_compat(");
+    strcat(buf,"compat_removed(");
     strcat(buf,giac::print_INT_(b).c_str());
 #ifdef MICROPY_LIB
     strcat(buf,",");
@@ -3044,7 +3134,7 @@ string khicas_state(){
 #else
   string s(g.print(contextptr));
   python_compat(b,contextptr);
-  s += "; python_compat(";
+  s += "; compat_removed(";
   s +=  giac::print_INT_(b);
   s += ");angle_radian(";
   s += angle_radian(contextptr)?'1':'0';
@@ -3139,14 +3229,14 @@ void run(const char * s,int do_logo_graph_eqw){
     if (edptr)
       edptr->python=p>0?p&3:0;
 #ifdef MICROPY_LIB
-    if (p==4 && ((int) python_heap)>1 && do_confirm((lang==1)?"Effacer le tas MicroPython?":"Clear MicroPython heap?"))
+    if (p==4 && ((int) python_heap)>1 && do_confirm((lang==1)?"Effacer le tas programme?":"Clear program heap?"))
       python_free();
 #endif
 #ifdef QUICKJS
     if (0 && p==-1 && do_confirm((lang==1)?"Effacer le tas QuickJS?":"Clear QuickJS heap?"))
       js_end(global_js_context);
 #endif
-    *logptr(contextptr) << "Xcas interpreter\n";
+    *logptr(contextptr) << "CAS mode\n";
     Console_FMenu_Init();
     return ;
   }

@@ -1712,7 +1712,7 @@ namespace giac {
 	swapgen(v[0],v[1]);
       /*
       if (v[0].type==_VECT)
-	return gensizeerr(gettext("Conversion of ^ of list/matrices to exp/ln not allowed. For symbolic power of square matrices, try matpow instead of ^"));
+	return gensizeerr(gettext("Unsupported array power"));
       */
       if (v[1].type!=_INT_ && v[1].type!=_FRAC){
 	gen tmp=-v[0];

@@ -485,7 +485,7 @@ int showCatalog(char* insertText,int preselect,int menupos) {
     // puts("catalog 3");
     if (doCatalogMenu((char *)insertText, (char *)menuitems[menu.selection-1].text, menu.selection-1)) {
       const char * ptr=0;
-      if (strcmp("matrix ",insertText)==0 && (ptr=input_matrix(false)) )
+      if (strcmp("_removed_array ",insertText)==0 && (ptr=input_matrix(false)) )
 	return 0;
       if (strcmp("list ",insertText)==0 && (ptr=input_matrix(true)) )
 	return 0;

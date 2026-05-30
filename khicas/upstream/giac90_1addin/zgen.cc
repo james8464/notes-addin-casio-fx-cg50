@@ -5738,7 +5738,7 @@ namespace giac {
     }
     case _INT___VECT: 
       if (warnpy && a.val>=0 && python_compat(contextptr)){
-	alert(gettext("Python compatibility, integer*list will do vector multiplication, run list*integer to duplicate list"),contextptr);
+	alert(gettext("Alternate syntax removed"),contextptr);
 	warnpy=false;
       }
     case _ZINT__VECT: case _DOUBLE___VECT: case _CPLX__VECT: case _SYMB__VECT: case _IDNT__VECT: case _POLY__VECT: case _EXT__VECT: case _MOD__VECT: case _FRAC__VECT:  {
@@ -6254,7 +6254,7 @@ namespace giac {
 	if ((exponent.type==_DOUBLE_ ))
 	  return matpow(*base._VECTptr,exponent,contextptr);
 	if (exponent.type>=_IDNT)
-	  *logptr(contextptr) << gettext("Use matpow to force computation of a power of matrix via jordanisation") << endl;
+	  *logptr(contextptr) << gettext("Unsupported array power") << endl;
       }
       if (base.type==_DOUBLE_ || 
 	  (base.type==_CPLX 
@@ -6732,7 +6732,7 @@ namespace giac {
       if (a.subtype==_POLY1__VECT)
 	return fraction(gen(vecteur(1,plus_one),_POLY1__VECT),a);
       if (a.subtype==_MATRIX__VECT && !is_squarematrix(a))
-	return gensizeerr(gettext("Inv of non-square matrix"));
+	return gensizeerr(gettext("Unsupported array inverse"));
       return gen(inv__VECT(*a._VECTptr,contextptr),a.subtype);
     case _EXT:
       return inv_EXT(a);
@@ -7113,7 +7113,7 @@ namespace giac {
       if (a.subtype==_POLY1__VECT || b.subtype==_POLY1__VECT)
 	return fraction(a,b).normal();
       if (is_squarematrix(b)){
-	*logptr(contextptr) << gettext("Warning, pointwise division of a by b. For matrix division, please use inv(b)*a or a*inv(b)") << endl;
+	*logptr(contextptr) << gettext("Unsupported array division") << endl;
       }
       if (b._VECTptr->size()==1)
 	return rdiv(a,b._VECTptr->front(),contextptr);
@@ -11848,7 +11848,7 @@ namespace giac {
       case _SET__VECT:
 	return "set";
       case _MATRIX__VECT:
-	return "matrix";
+	return "array2d";
       case _POLY1__VECT:
 	return "polynom";
       case _TRIG:

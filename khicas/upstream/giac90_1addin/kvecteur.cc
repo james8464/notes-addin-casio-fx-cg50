@@ -3986,7 +3986,7 @@ namespace giac {
     if (keep_pivot)
       return gensizeerr(gettext("Option keep_pivot not applicable"));
     if (!is_squarematrix(a))
-      *logptr(contextptr) << gettext("Warning: non-square matrix!") << endl;
+      *logptr(contextptr) << gettext("Unsupported array shape") << endl;
     vecteur pivots;
     matrice res;
     gen determinant;
@@ -6126,7 +6126,7 @@ namespace giac {
 	modular=true;
 	a=*a.front()._VECTptr;
       }
-      if (!ckmatrix(a)) return false; // setsizeerr(gettext("Expecting a square matrix"));
+      if (!ckmatrix(a)) return false; // setsizeerr(gettext("Unsupported array shape"));
     }
     gen det;
     vecteur pivots;

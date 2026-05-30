@@ -16,6 +16,8 @@ khicas/upstream/giac90_1addin/mkhelp
 khicas/upstream/giac90_1addin/*.tmp
 tools/__pycache__/
 tests/__pycache__/
+tests/reports/
+tools/working_engine/build/
 progress/*.jsonl
 progress/*.json
 !progress/.gitkeep

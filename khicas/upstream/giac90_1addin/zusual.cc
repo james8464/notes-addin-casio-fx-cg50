@@ -2499,7 +2499,7 @@ namespace giac {
     return cosh(e,contextptr);
   }
   define_partial_derivative_onearg_genop( D_at_sinh," D_at_sinh",&d_at_sinh);
-  static const char _sinh_s []="sinh";
+  static const char _sinh_s []="_rm14";
 #ifdef GIAC_HAS_STO_38
   static define_unary_function_eval3_index (44,__sinh,&sinh,(size_t)&D_at_sinhunary_function_ptr,_sinh_s);
 #else
@@ -2573,7 +2573,7 @@ namespace giac {
     return symb_cosh(e);
   }
   define_partial_derivative_onearg_genop( D_at_cosh,"D_at_cosh",sinh);
-  static const char _cosh_s []="cosh";
+  static const char _cosh_s []="_rm15";
 #ifdef GIAC_HAS_STO_38
   static define_unary_function_eval3_index (46,__cosh,&cosh,(size_t)&D_at_coshunary_function_ptr,_cosh_s);
 #else
@@ -2651,7 +2651,7 @@ namespace giac {
     return 1-pow(tanh(e,contextptr),2);
   }
   define_partial_derivative_onearg_genop( D_at_tanh," D_at_tanh",&d_tanh);
-  static const char _tanh_s []="tanh";
+  static const char _tanh_s []="_rm16";
 #ifdef GIAC_HAS_STO_38
   static define_unary_function_eval3_index (48,__tanh,&tanh,(size_t)&D_at_tanhunary_function_ptr,_tanh_s);
 #else
@@ -2707,7 +2707,7 @@ namespace giac {
     return inv(recursive_normal(sqrt(pow(args,2)+1,contextptr),contextptr),contextptr);
   }
   define_partial_derivative_onearg_genop( D_at_asinh," D_at_asinh",&d_asinh);
-  static const char _asinh_s []="asinh";
+  static const char _asinh_s []="_rm17";
 #ifdef GIAC_HAS_STO_38
   static define_unary_function_eval3_index (50,__asinh,&asinh,(size_t)&D_at_asinhunary_function_ptr,_asinh_s);
 #else
@@ -2768,7 +2768,7 @@ namespace giac {
     return inv(recursive_normal(sqrt(pow(args,2)-1,contextptr),contextptr),contextptr);
   }
   define_partial_derivative_onearg_genop( D_at_acosh," D_at_acosh",&d_acosh);
-  static const char _acosh_s []="acosh";
+  static const char _acosh_s []="_rm18";
 #ifdef GIAC_HAS_STO_38
   static define_unary_function_eval3_index (52,__acosh,&acosh,(size_t)&D_at_acoshunary_function_ptr,_acosh_s);
 #else
@@ -2829,7 +2829,7 @@ namespace giac {
     return inv(1-pow(args,2),contextptr);
   }
   define_partial_derivative_onearg_genop( D_at_atanh," D_at_atanh",&d_atanh);
-  static const char _atanh_s []="atanh";
+  static const char _atanh_s []="_rm19";
 #ifdef GIAC_HAS_STO_38
   static define_unary_function_eval3_index (54,__atanh,&atanh,(size_t)&D_at_atanhunary_function_ptr,_atanh_s);
 #else
@@ -4820,7 +4820,7 @@ namespace giac {
       return args;
     vecteur & v = *args._VECTptr;
     if (v.size()==3)
-      return _powmod(args,contextptr); // Python 3 compat
+      return _powmod(args,contextptr); // CAS 3 compat
     if (v.size()!=2)
       return gensizeerr(gettext("bad pow ")+args.print(contextptr));
     const gen & a =v.front();
@@ -5379,9 +5379,9 @@ namespace giac {
     if (alert_array_start && contextptr->globalptr->_python_compat_){
       alert_array_start=false;
 #ifdef GIAC_HAS_STO_38
-      alert(gettext("Python compatibility enabled. List index will start at 0, run index:=1 or of:=1 to disable Python compatibility."),contextptr);
+      alert(gettext("Alternate syntax removed"),contextptr);
 #else
-      *logptr(contextptr) << gettext("// Python compatibility enabled. List index will start at 0, run index:=1 or python_compat(0) to disable Python compatibility.") << endl;
+      *logptr(contextptr) << gettext("Alternate syntax removed") << endl;
 #endif
     }
     if (storcl_38){

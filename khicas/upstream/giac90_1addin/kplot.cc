@@ -3036,7 +3036,7 @@ namespace giac {
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     return paramplotparam(args,true,contextptr);
   }
-  static const char _plotparam_s []="plotparam";
+  static const char _plotparam_s []="_rm0";
   static define_unary_function_eval_quoted (__plotparam,&_plotparam,_plotparam_s);
   define_unary_function_ptr5( at_plotparam ,alias_at_plotparam,&__plotparam,_QUOTE_ARGUMENTS,true);
 

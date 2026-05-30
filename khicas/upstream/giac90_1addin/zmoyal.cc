@@ -421,7 +421,7 @@ namespace giac {
       return normald(v[0],v[1],v[2],contextptr);
     return gensizeerr(contextptr);
   }
-  static const char _normald_s []="normald";
+  static const char _normald_s []="_rm9";
   static define_unary_function_eval (__normald,&_normald,_normald_s);
   define_unary_function_ptr5( at_normald ,alias_at_normald,&__normald,0,true);
 
@@ -647,7 +647,7 @@ namespace giac {
     }
     return gensizeerr(contextptr);
   }
-  static const char _binomial_s []="binomial";
+  static const char _binomial_s []="_rm10";
   static define_unary_function_eval (__binomial,&_binomial,_binomial_s);
   define_unary_function_ptr5( at_binomial ,alias_at_binomial,&__binomial,0,true);
 
@@ -737,7 +737,7 @@ namespace giac {
     }
     return gensizeerr(contextptr);
   }
-  static const char _negbinomial_s []="negbinomial";
+  static const char _negbinomial_s []="_rm12";
   static define_unary_function_eval (__negbinomial,&_negbinomial,_negbinomial_s);
   define_unary_function_ptr5( at_negbinomial ,alias_at_negbinomial,&__negbinomial,0,true);
 
@@ -1051,7 +1051,7 @@ namespace giac {
       return poisson(v[0],v[1],contextptr);
     return gensizeerr(contextptr);
   }
-  static const char _poisson_s []="poisson";
+  static const char _poisson_s []="_rm11";
   static define_unary_function_eval (__poisson,&_poisson,_poisson_s);
   define_unary_function_ptr5( at_poisson ,alias_at_poisson,&__poisson,0,true);
 

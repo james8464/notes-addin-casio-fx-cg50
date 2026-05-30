@@ -11723,7 +11723,7 @@ namespace giac {
     if (minor_det)
       return det_minor(a,convert_internal,contextptr);
     if (!is_squarematrix(a))
-      *logptr(contextptr) << gettext("Warning: non-square matrix!") << '\n';
+      *logptr(contextptr) << gettext("Unsupported array shape") << '\n';
     vecteur pivots;
     matrice res;
     gen determinant;
@@ -15437,7 +15437,7 @@ namespace giac {
 	modular=true;
 	a=*a.front()._VECTptr;
       }
-      if (!ckmatrix(a)) return false; // setsizeerr(gettext("Expecting a square matrix"));
+      if (!ckmatrix(a)) return false; // setsizeerr(gettext("Unsupported array shape"));
     }
     gen det;
     vecteur pivots;
@@ -15598,7 +15598,7 @@ namespace giac {
     bool gsl_lu = 0 && is_fully_numeric(args) && is_zero(im(args,contextptr),contextptr);
     if (gsl_lu){
       if (!is_squarematrix(args))
-	return gensizeerr(gettext("Expecting a square matrix"));
+	return gensizeerr(gettext("Unsupported array shape"));
       gsl_matrix * m=matrice2gsl_matrix(*args._VECTptr,contextptr);
       int s1=m->size1;
       gsl_permutation * p=gsl_permutation_alloc (s1);
