@@ -2,10 +2,12 @@
 from __future__ import annotations
 
 import re
+import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "khicas/upstream/giac90_1addin"
+RUNNER = ROOT / "tools/khicas_host_runner"
 
 REMOVED = [
     "normalcdf",
@@ -21,10 +23,21 @@ REMOVED = [
     "plotparam",
     "plotpolar",
     "plotseq",
+    "paramplot",
+    "seqplot",
+    "courbe_parametrique",
+    "graphe_suite",
     "rand",
     "randint",
+    "randperm",
     "ranv",
     "ranm",
+    "permuorder",
+    "concat",
+    "extend",
+    "select",
+    "filter",
+    "remove",
     "csolve",
     "cfactor",
     "cpartfrac",
@@ -47,6 +60,20 @@ REMOVED = [
     "laplace",
     "fourier",
     "odesolve",
+]
+
+BEHAVIOR_SAMPLES = [
+    "plotparam([cos(t),sin(t)],t)",
+    "plotseq(x^2,x=1..5)",
+    "paramplot(cos(t),sin(t),t)",
+    "seqplot(x^2,x=1..5)",
+    "randperm(5)",
+    "permuorder([2,1,3])",
+    "concat([1,2],[3])",
+    "extend([1,2],[3])",
+    "select(x->x>1,[1,2])",
+    "filter(x->x>1,[1,2])",
+    "remove(x->x>1,[1,2])",
 ]
 
 
@@ -101,6 +128,12 @@ def main() -> int:
                 break
     if leaks:
         fail("public leaks " + ", ".join(leaks[:20]))
+
+    for expr in BEHAVIOR_SAMPLES:
+        proc = subprocess.run([str(RUNNER), expr], cwd=ROOT, text=True, capture_output=True)
+        out = (proc.stdout or "") + (proc.stderr or "")
+        if "unsupported" not in out.lower():
+            fail(f"host runner did not reject {expr}: {out[:120]!r}")
 
     print(f"OK removed features hidden/rejected count={len(REMOVED)}")
     return 0

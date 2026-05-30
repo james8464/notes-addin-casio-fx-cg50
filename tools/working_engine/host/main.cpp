@@ -4,6 +4,7 @@
 #include "core/normalize.hpp"
 #include "core/parse.hpp"
 #include "core/parse_equation.hpp"
+#include "core/scope_guard.hpp"
 
 #include "modules/suvat/suvat.hpp"
 #include "modules/integrate/integrate.hpp"
@@ -380,6 +381,10 @@ int main(int argc, char **argv)
     bool is_stats = (flag == "--stats");
 
     std::string expr = (is_stdin_program || is_suvat || is_int || is_alg || is_trig || is_derive || is_stats) ? (argc >= 3 ? argv[2] : "") : argv[1];
+    if(!is_stdin_program && casio::contains_removed_function(expr)) {
+        std::cout << "Err: unsupported (not A-level scope)\n";
+        return 0;
+    }
     std::string shared_working;
     if(!is_stdin_program && cascas::eval_with_working(expr.c_str(), shared_working)) {
         std::cout << shared_working;

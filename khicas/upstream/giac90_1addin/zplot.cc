@@ -8987,8 +8987,12 @@ namespace giac {
     return plotparam(f,vars,attributs,densityplot,xmin,xmax,ymin,ymax,tmin,tmax,tstep,eq,parameq,vparam,contextptr);
   }
   gen _plotparam(const gen & args,const context * contextptr){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#else
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     return paramplotparam(args,true,contextptr);
+#endif
   }
   static const char _plotparam_s []="_rm0";
   static define_unary_function_eval_quoted (__plotparam,&_plotparam,_plotparam_s);
@@ -8999,8 +9003,12 @@ namespace giac {
   define_unary_function_ptr5( at_courbe_parametrique ,alias_at_courbe_parametrique,&__courbe_parametrique,_QUOTE_ARGUMENTS,true);
 
   gen _paramplot(const gen & args,const context * contextptr){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#else
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     return paramplotparam(args,false,contextptr);
+#endif
   }
   static const char _paramplot_s []="paramplot";
   static define_unary_function_eval_quoted (__paramplot,&_paramplot,_paramplot_s);
@@ -12519,6 +12527,9 @@ int find_plotseq_args(const gen & args,gen & expr,gen & x,double & x0d,double & 
 
   // args=[expr,[var=]x0|[x0,xmin,xmax][,niter]]
   gen _plotseq(const gen & args,const context * contextptr){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#else
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     gen expr,var;
     double x0d,xmin,xmax;
@@ -12528,6 +12539,7 @@ int find_plotseq_args(const gen & args,gen & expr,gen & x,double & x0d,double & 
     if (find_plotseq_args(args,expr,var,x0d,xmin,xmax,niter,attributs,contextptr,print)<0)
       return gentypeerr(contextptr);
     return plotseq(expr,var,x0d,xmin,xmax,niter,attributs,contextptr,print);
+#endif
   }
   static const char _plotseq_s []="plotseq";
   static define_unary_function_eval (__plotseq,&_plotseq,_plotseq_s);

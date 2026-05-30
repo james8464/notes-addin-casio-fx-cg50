@@ -19,6 +19,14 @@ inline uint32_t removed_hash_step(uint32_t h, unsigned char c)
 inline bool is_removed_function_hash(uint32_t h)
 {
     switch(h) {
+        case 0x0b11b072u:
+        case 0xbcefb4d8u:
+        case 0xf5cf8c7du:
+        case 0xaa7d7949u:
+        case 0x11c2662du:
+        case 0xdb9215fdu:
+        case 0x8117ae3du:
+        case 0xc7e16877u:
         case 0x0073dacfu:
         case 0x011ce908u:
         case 0x018ead2eu:

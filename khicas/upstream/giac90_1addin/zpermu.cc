@@ -204,6 +204,9 @@ namespace giac {
   }
 
   gen _permuorder(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#else
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     if  (args.type!=_VECT) 
       return gensizeerr(contextptr);
@@ -212,6 +215,7 @@ namespace giac {
     if (!is_permu(v,p,contextptr))
       return gensizeerr(contextptr);
     return (permuorder(p,contextptr));
+#endif
   }
   static const char _permuorder_s[]="permuorder";
   static define_unary_function_eval (__permuorder,&_permuorder,_permuorder_s);
@@ -305,6 +309,9 @@ namespace giac {
 #endif
   }
   gen _randperm(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#else
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     if (args.type==_VECT){
       vecteur & v = *args._VECTptr;
@@ -319,6 +326,7 @@ namespace giac {
     if (!is_integral(n) || n.type!=_INT_ || n.val<=0) 
       return gensizeerr(contextptr);
     return vector_int_2_vecteur(randperm(n.val),contextptr);
+#endif
   }
   static const char _randperm_s[]="randperm";
   static define_unary_function_eval (__randperm,&_randperm,_randperm_s);

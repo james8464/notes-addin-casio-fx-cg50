@@ -3789,8 +3789,12 @@ namespace giac {
       return gen(res,subtype);
   }
   gen _select(const gen & args,const context * contextptr){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#else
     if ( args.type==_STRNG &&  args.subtype==-1) return  args;
     return select_remove(args,1,contextptr);
+#endif
   }
   static const char _select_s []="select";
   static define_unary_function_eval (__select,&_select,_select_s);
@@ -3801,8 +3805,12 @@ namespace giac {
   define_unary_function_ptr5( at_filter ,alias_at_filter,&__filter,0,true);
 
   gen _remove(const gen & args,const context * contextptr){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#else
     if ( args.type==_STRNG &&  args.subtype==-1) return  args;
     return select_remove(args,0,contextptr);
+#endif
   }
   static const char _remove_s []="remove";
   static define_unary_function_eval (__remove,&_remove,_remove_s);
@@ -3849,20 +3857,28 @@ namespace giac {
     return 0;
   }
   gen _concat(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#else
     if ( args.type==_STRNG &&  args.subtype==-1) return  args;
     return concat(args,false,contextptr);
+#endif
   }
-  static const char _concat_s []="concat";
+  static const char _concat_s []="_rm_concat";
   static define_unary_function_eval (__concat,&_concat,_concat_s);
   define_unary_function_ptr5( at_concat ,alias_at_concat,&__concat,0,true);
 
   gen _extend(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#else
     if ( args.type==_STRNG &&  args.subtype==-1) return  args;
     if (args.type!=_VECT || args._VECTptr->size()!=2 || args._VECTptr->front().type!=_VECT || args._VECTptr->back().type!=_VECT)
       return gensizeerr(contextptr);
     return gen(mergevecteur(*args._VECTptr->front()._VECTptr,*args._VECTptr->back()._VECTptr),args._VECTptr->front().subtype);
+#endif
   }
-  static const char _extend_s []="extend";
+  static const char _extend_s []="_rm_extend";
   static define_unary_function_eval (__extend,&_extend,_extend_s);
   define_unary_function_ptr5( at_extend ,alias_at_extend,&__extend,0,true);
 

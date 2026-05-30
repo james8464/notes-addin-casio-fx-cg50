@@ -220,7 +220,7 @@ void os_sync_screen(){
     "endswith",
     "eval",
     "exec",
-    "extend",
+    "_rm_extend",
     "find",
     "format",
     "from_bytes",
@@ -8913,4 +8913,3 @@ bool discard(Graph2d * gr,float3d x,float3d y,float3d z){
 #ifndef NO_NAMESPACE_XCAS
 } // namespace xcas
 #endif // ndef NO_NAMESPACE_XCAS
-
