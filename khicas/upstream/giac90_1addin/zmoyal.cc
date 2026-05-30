@@ -311,6 +311,9 @@ namespace giac {
   }
 
   gen _randNorm(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     if (args.type==_VECT && args._VECTptr->empty())
       return randNorm(contextptr);
@@ -332,11 +335,11 @@ namespace giac {
   static define_unary_function_eval (__randNorm,&_randNorm,_randNorm_s);
   define_unary_function_ptr5( at_randNorm ,alias_at_randNorm,&__randNorm,0,true);
 
-  static const char _randnormald_s []="randnormald";
+  static const char _randnormald_s []="_rs12";
   static define_unary_function_eval (__randnormald,&_randNorm,_randnormald_s);
   define_unary_function_ptr5( at_randnormald ,alias_at_randnormald,&__randnormald,0,true);
 
-  static const char _normalvariate_s []="normalvariate";
+  static const char _normalvariate_s []="_rs13";
   static define_unary_function_eval (__normalvariate,&_randNorm,_normalvariate_s);
   define_unary_function_ptr5( at_normalvariate ,alias_at_normalvariate,&__normalvariate,0,true);
 
@@ -410,6 +413,9 @@ namespace giac {
     return inv(sqrt(2*cst_pi*v,contextptr),contextptr)*exp(-pow(x-m,2)/(2*v),contextptr);
   }
   gen _normald(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if (g.type!=_VECT)
       return normald(0,1,g,contextptr);
@@ -473,6 +479,9 @@ namespace giac {
     return rdiv(erf(ratnormal(plus_sqrt2_2*g,contextptr),contextptr)+plus_one,2,contextptr);
   }
   gen _normal_cdf(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if (g.type!=_VECT)
       return normal_cdf(g,contextptr);
@@ -500,11 +509,11 @@ namespace giac {
     }
     return gensizeerr(contextptr);
   }
-  static const char _normal_cdf_s []="normal_cdf";
+  static const char _normal_cdf_s []="_rs08";
   static define_unary_function_eval (__normal_cdf,&_normal_cdf,_normal_cdf_s);
   define_unary_function_ptr5( at_normal_cdf ,alias_at_normal_cdf,&__normal_cdf,0,true);
 
-  static const char _normald_cdf_s []="normald_cdf";
+  static const char _normald_cdf_s []="_rs10";
   static define_unary_function_eval (__normald_cdf,&_normal_cdf,_normald_cdf_s);
   define_unary_function_ptr5( at_normald_cdf ,alias_at_normald_cdf,&__normald_cdf,0,true);
 
@@ -534,6 +543,9 @@ namespace giac {
     // plus_sqrt2*newton(erf(x)+1-2*g,x,0);
   }
   gen _normal_icdf(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if (g.type!=_VECT)
       return normal_icdf(g,contextptr);
@@ -558,11 +570,11 @@ namespace giac {
       return g1;
     return g2;
   }
-  static const char _normal_icdf_s []="normal_icdf";
+  static const char _normal_icdf_s []="_rs09";
   static define_unary_function_eval (__normal_icdf,&_normal_icdf,_normal_icdf_s);
   define_unary_function_ptr5( at_normal_icdf ,alias_at_normal_icdf,&__normal_icdf,0,true);
 
-  static const char _normald_icdf_s []="normald_icdf";
+  static const char _normald_icdf_s []="_rs11";
   static define_unary_function_eval (__normald_icdf,&_normal_icdf,_normald_icdf_s);
   define_unary_function_ptr5( at_normald_icdf ,alias_at_normald_icdf,&__normald_icdf,0,true);
 
@@ -627,6 +639,9 @@ namespace giac {
     return comb(n,k,contextptr)*pow(p,k,contextptr)*pow(1-p,n-k,contextptr);
   }
   gen _binomial(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if (g.type!=_VECT)
       return gensizeerr(contextptr);
@@ -874,6 +889,9 @@ namespace giac {
     return res;
   }
   gen _binomial_cdf(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if (g.type!=_VECT)
       return gensizeerr(contextptr);
@@ -888,7 +906,7 @@ namespace giac {
       return binomial_cdf(v[0],v[1],v[2],v[3],contextptr);
     return gensizeerr(contextptr);
   }
-  static const char _binomial_cdf_s []="binomial_cdf";
+  static const char _binomial_cdf_s []="_rs14";
   static define_unary_function_eval (__binomial_cdf,&_binomial_cdf,_binomial_cdf_s);
   define_unary_function_ptr5( at_binomial_cdf ,alias_at_binomial_cdf,&__binomial_cdf,0,true);
 
@@ -971,6 +989,9 @@ namespace giac {
     return n;
   }
   gen _binomial_icdf(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if (g.type!=_VECT)
       return gensizeerr(contextptr);
@@ -982,7 +1003,7 @@ namespace giac {
       return binomial_icdf(v[0],v[1],v[3],contextptr)-binomial_icdf(v[0],v[1],v[2],contextptr);
     return gensizeerr(contextptr);
   }
-  static const char _binomial_icdf_s []="binomial_icdf";
+  static const char _binomial_icdf_s []="_rs15";
   static define_unary_function_eval (__binomial_icdf,&_binomial_icdf,_binomial_icdf_s);
   define_unary_function_ptr5( at_binomial_icdf ,alias_at_binomial_icdf,&__binomial_icdf,0,true);
 
@@ -1003,6 +1024,9 @@ namespace giac {
   }
   // randbinomial(n,p) returns k in [0..n] with proba binomial(n,k,p)
   gen _randbinomial(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if (g.type!=_VECT)
       return gensizeerr(contextptr);
@@ -1026,7 +1050,7 @@ namespace giac {
     p=evalf_double(p,1,contextptr);
     return randbinomial(n.val,p._DOUBLE_val,contextptr);
   }
-  static const char _randbinomial_s []="randbinomial";
+  static const char _randbinomial_s []="_rs16";
   static define_unary_function_eval (__randbinomial,&_randbinomial,_randbinomial_s);
   define_unary_function_ptr5( at_randbinomial ,alias_at_randbinomial,&__randbinomial,0,true);
 
@@ -1042,6 +1066,9 @@ namespace giac {
     return exp(-m,contextptr)*pow(m,k,contextptr)/_factorial(k,contextptr);
   }
   gen _poisson(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if (g.type!=_VECT)
       return symbolic(at_poisson,g);
@@ -1114,6 +1141,9 @@ namespace giac {
     //return sum(poisson(n,k,contextptr),k,0,_floor(x,contextptr),contextptr);
   }
   gen _poisson_cdf(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if (g.type!=_VECT)
       return gensizeerr(contextptr);
@@ -1125,7 +1155,7 @@ namespace giac {
       return poisson_cdf(v[0],v[2],contextptr)-poisson_cdf(v[0],v[1]-1,contextptr);
     return gensizeerr(contextptr);
   }
-  static const char _poisson_cdf_s []="poisson_cdf";
+  static const char _poisson_cdf_s []="_rs17";
   static define_unary_function_eval (__poisson_cdf,&_poisson_cdf,_poisson_cdf_s);
   define_unary_function_ptr5( at_poisson_cdf ,alias_at_poisson_cdf,&__poisson_cdf,0,true);
 
@@ -1152,6 +1182,9 @@ namespace giac {
     }
   }
   gen _randpoisson(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     gen G=evalf_double(g,1,contextptr);
     if (G.type!=_DOUBLE_)
@@ -1161,7 +1194,7 @@ namespace giac {
       return gensizeerr(contextptr);
     return randpoisson(lambda,contextptr);
   }
-  static const char _randpoisson_s []="randpoisson";
+  static const char _randpoisson_s []="_rs19";
   static define_unary_function_eval (__randpoisson,&_randpoisson,_randpoisson_s);
   define_unary_function_ptr5( at_randpoisson ,alias_at_randpoisson,&__randpoisson,0,true);
 
@@ -1234,6 +1267,9 @@ namespace giac {
   }
 
   gen _poisson_icdf(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if (g.type!=_VECT)
       return gensizeerr(contextptr);
@@ -1245,7 +1281,7 @@ namespace giac {
       return poisson_icdf(v[0],v[2],contextptr)-poisson_icdf(v[0],v[1],contextptr);
     return gensizeerr(contextptr);
   }
-  static const char _poisson_icdf_s []="poisson_icdf";
+  static const char _poisson_icdf_s []="_rs18";
   static define_unary_function_eval (__poisson_icdf,&_poisson_icdf,_poisson_icdf_s);
   define_unary_function_ptr5( at_poisson_icdf ,alias_at_poisson_icdf,&__poisson_icdf,0,true);
 
@@ -2492,19 +2528,28 @@ namespace giac {
     return gensizeerr(contextptr);
   }
   gen _uniform(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     return uniform(g,true,contextptr);
   }
-  static const char _uniform_s []="uniform";
+  static const char _uniform_s []="_rs02";
   static define_unary_function_eval (__uniform,&_uniform,_uniform_s);
   define_unary_function_ptr5( at_uniform ,alias_at_uniform,&__uniform,0,true);
   gen _uniformd(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     return uniform(g,false,contextptr);
   }
-  static const char _uniformd_s []="uniformd";
+  static const char _uniformd_s []="_rs05";
   static define_unary_function_eval (__uniformd,&_uniformd,_uniformd_s);
   define_unary_function_ptr5( at_uniformd ,alias_at_uniformd,&__uniformd,0,true);
 
   gen _uniform_cdf(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if (g.type!=_VECT)
       return g;
@@ -2516,14 +2561,17 @@ namespace giac {
       return (v[3]-v[2])/(v[1]-v[0]);
     return gensizeerr(contextptr);
   }
-  static const char _uniform_cdf_s []="uniform_cdf";
+  static const char _uniform_cdf_s []="_rs03";
   static define_unary_function_eval (__uniform_cdf,&_uniform_cdf,_uniform_cdf_s);
   define_unary_function_ptr5( at_uniform_cdf ,alias_at_uniform_cdf,&__uniform_cdf,0,true);
-  static const char _uniformd_cdf_s []="uniformd_cdf";
+  static const char _uniformd_cdf_s []="_rs06";
   static define_unary_function_eval (__uniformd_cdf,&_uniform_cdf,_uniformd_cdf_s);
   define_unary_function_ptr5( at_uniformd_cdf ,alias_at_uniformd_cdf,&__uniformd_cdf,0,true);
 
   gen _uniform_icdf(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if (g.type!=_VECT)
       return g;
@@ -2535,10 +2583,10 @@ namespace giac {
       return (v[3]-v[2])*(v[1]-v[0]);
     return gensizeerr(contextptr);
   }
-  static const char _uniform_icdf_s []="uniform_icdf";
+  static const char _uniform_icdf_s []="_rs04";
   static define_unary_function_eval (__uniform_icdf,&_uniform_icdf,_uniform_icdf_s);
   define_unary_function_ptr5( at_uniform_icdf ,alias_at_uniform_icdf,&__uniform_icdf,0,true);
-  static const char _uniformd_icdf_s []="uniformd_icdf";
+  static const char _uniformd_icdf_s []="_rs07";
   static define_unary_function_eval (__uniformd_icdf,&_uniform_icdf,_uniformd_icdf_s);
   define_unary_function_ptr5( at_uniformd_icdf ,alias_at_uniformd_icdf,&__uniformd_icdf,0,true);
 

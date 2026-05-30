@@ -90,6 +90,7 @@ inline bool is_removed_function_hash(uint32_t h)
         case 0x4188b5ddu:
         case 0x440cf8a1u:
         case 0x44c63840u:
+        case 0x46b93feau:
         case 0x45855c00u:
         case 0x462f5ba1u:
         case 0x47060460u:
@@ -129,6 +130,7 @@ inline bool is_removed_function_hash(uint32_t h)
         case 0x614ba208u:
         case 0x623beeebu:
         case 0x633cdd81u:
+        case 0x68365378u:
         case 0x65a9728bu:
         case 0x66b85f2du:
         case 0x6a7d2c89u:
@@ -179,6 +181,7 @@ inline bool is_removed_function_hash(uint32_t h)
         case 0x99618446u:
         case 0x99d9f9f0u:
         case 0x9c662fa4u:
+        case 0xa3ad2dc9u:
         case 0x9c90b906u:
         case 0x9ce3039bu:
         case 0x9e888b98u:
@@ -190,6 +193,7 @@ inline bool is_removed_function_hash(uint32_t h)
         case 0xa893baa8u:
         case 0xa9c8feadu:
         case 0xaa9b9b01u:
+        case 0xab66535cu:
         case 0xac9b9e27u:
         case 0xacd224d9u:
         case 0xacda80fbu:
@@ -207,6 +211,7 @@ inline bool is_removed_function_hash(uint32_t h)
         case 0xb5fc9604u:
         case 0xb8b5368fu:
         case 0xb9c6a953u:
+        case 0xbdeeca89u:
         case 0xba56d76du:
         case 0xbab19e4au:
         case 0xbb4555a1u:
@@ -250,11 +255,13 @@ inline bool is_removed_function_hash(uint32_t h)
         case 0xe2438311u:
         case 0xe26424d0u:
         case 0xe272ae1bu:
+        case 0xe49f78d1u:
         case 0xe44789e8u:
         case 0xe667368du:
         case 0xe80fa444u:
         case 0xe848572au:
         case 0xea8a4792u:
+        case 0xeb40ffd3u:
         case 0xebd12f63u:
         case 0xec7aec99u:
         case 0xedf2c855u:

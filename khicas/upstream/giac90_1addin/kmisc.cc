@@ -4454,6 +4454,9 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
   }
 
   gen _mean(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if (g.type==_VECT && g.subtype==_SEQ__VECT)
       return stddevmean(g,0,contextptr);
@@ -4464,11 +4467,14 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
       v=mean(v,true);
     return v;
   }
-  static const char _mean_s []="mean";
+  static const char _mean_s []="_rs20";
   static define_unary_function_eval (__mean,&_mean,_mean_s);
   define_unary_function_ptr5( at_mean ,alias_at_mean,&__mean,0,true);
 
   gen _stddev(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if (g.type==_VECT && g.subtype==_SEQ__VECT)
       return stddevmean(g,1,contextptr);
@@ -4479,11 +4485,14 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
       v=stddev(v,true,1);
     return v;
   }
-  static const char _stddev_s []="stddev";
+  static const char _stddev_s []="_rs21";
   static define_unary_function_eval (__stddev,&_stddev,_stddev_s);
   define_unary_function_ptr5( at_stddev ,alias_at_stddev,&__stddev,0,true);
 
   gen _stdDev(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if (g.type==_VECT && g.subtype==_SEQ__VECT)
       return stddevmean(g,2,contextptr);
@@ -4494,11 +4503,14 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
       v=stddev(v,true,2);
     return v;
   }
-  static const char _stdDev_s []="stdDev";
+  static const char _stdDev_s []="_rs22";
   static define_unary_function_eval (__stdDev,&_stdDev,_stdDev_s);
   define_unary_function_ptr5( at_stdDev ,alias_at_stdDev,&__stdDev,0,true);  
 
   gen _variance(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if (g.type==_VECT && g.subtype==_SEQ__VECT)
       return stddevmean(g,3,contextptr);
@@ -4509,7 +4521,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
       v=stddev(v,true,3);
     return v;
   }
-  static const char _variance_s []="variance";
+  static const char _variance_s []="_rs23";
 static define_unary_function_eval (__variance,&_variance,_variance_s);
   define_unary_function_ptr5( at_variance ,alias_at_variance,&__variance,0,true);
 
@@ -4565,6 +4577,9 @@ static define_unary_function_eval (__variance,&_variance,_variance_s);
     return v[int(std::ceil(v.size()*d))-1]; // v[(v.size()-1)/4];
   }
   gen _median(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     return quartile123(g,0.5,contextptr);
   }
   static const char _median_s []="_rm1";
@@ -4572,6 +4587,9 @@ static define_unary_function_eval (__variance,&_variance,_variance_s);
   define_unary_function_ptr5( at_median ,alias_at_median,&unary_median,0,true);
 
   gen _quartile1(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     return quartile123(g,0.25,contextptr);
   }
   static const char _quartile1_s []="_rm2";
@@ -4579,6 +4597,9 @@ static define_unary_function_eval (__variance,&_variance,_variance_s);
   define_unary_function_ptr5( at_quartile1 ,alias_at_quartile1,&unary_quartile1,0,true);
 
   gen _quartile3(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     return quartile123(g,0.75,contextptr);
   }
   static const char _quartile3_s []="_rm3";
@@ -4803,6 +4824,9 @@ static define_unary_function_eval (__variance,&_variance,_variance_s);
     return res; // gen(res,_SEQ__VECT);
   }
   gen _histogram(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if (g.type==_SYMB && is_distribution(g)){
       vecteur v(gen2vecteur(g._SYMBptr->feuille));
@@ -4875,7 +4899,7 @@ static define_unary_function_eval (__variance,&_variance,_variance_s);
     }
     return histogram(args,class_minimum,class_size,attributs,contextptr);
   }
-  static const char _histogram_s []="histogram";
+  static const char _histogram_s []="_rs24";
   static define_unary_function_eval (__histogram,&_histogram,_histogram_s);
   define_unary_function_ptr5( at_histogram ,alias_at_histogram,&__histogram,0,true);
 
@@ -5018,6 +5042,9 @@ static define_unary_function_eval (__variance,&_variance,_variance_s);
     }
   }
   gen _covariance(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     int xcol,ycol,freqcol;
     gen gv;
@@ -5025,11 +5052,14 @@ static define_unary_function_eval (__variance,&_variance,_variance_s);
     if (is_undef(gv)) return gv;
     return covariance_correlation(gv,zero,zero,xcol,ycol,freqcol,contextptr)[0];
   }
-  static const char _covariance_s []="covariance";
+  static const char _covariance_s []="_rs25";
   static define_unary_function_eval (__covariance,&_covariance,_covariance_s);
   define_unary_function_ptr5( at_covariance ,alias_at_covariance,&__covariance,0,true);
 
   gen _correlation(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     int xcol,ycol,freqcol;
     gen gv;
@@ -5037,7 +5067,7 @@ static define_unary_function_eval (__variance,&_variance,_variance_s);
     if (is_undef(gv)) return gv;
     return covariance_correlation(gv,zero,zero,xcol,ycol,freqcol,contextptr)[1];
   }
-  static const char _correlation_s []="correlation";
+  static const char _correlation_s []="_rs26";
   static define_unary_function_eval (__correlation,&_correlation,_correlation_s);
   define_unary_function_ptr5( at_correlation ,alias_at_correlation,&__correlation,0,true);
 
@@ -5565,6 +5595,9 @@ static define_unary_function_eval (__exponential_regression,&_exponential_regres
 
 
   gen _camembert(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     vecteur vals,names,attributs,res;
     gen errcode=read_camembert_args(g,vals,names,attributs,contextptr);
@@ -5611,7 +5644,7 @@ static define_unary_function_eval (__exponential_regression,&_exponential_regres
     }
     return res;
   }
-  static const char _camembert_s []="camembert";
+  static const char _camembert_s []="_rs01";
 static define_unary_function_eval (__camembert,&_camembert,_camembert_s);
   define_unary_function_ptr5( at_camembert ,alias_at_camembert,&__camembert,0,true);
 
