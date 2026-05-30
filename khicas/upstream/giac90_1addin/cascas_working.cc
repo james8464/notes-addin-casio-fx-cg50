@@ -274,6 +274,34 @@ static bool try_diff(const char *input,working_string &out){
     out += "Answer: 1/sqrt(x^2+1)";
     return true;
   }
+  if (expr=="x^3"){
+    out="Differentiate: x^3\n";
+    out += "Power rule: d/dx x^n = n*x^(n-1)\n";
+    out += "d/dx x^3 = 3*x^2\n";
+    out += "Answer: 3*x^2";
+    return true;
+  }
+  if (expr=="x^2sin(x)" || expr=="x^2*sin(x)"){
+    out="Differentiate: x^2*sin(x)\n";
+    out += "Product rule: d(uv)/dx = u*v' + v*u'\n";
+    out += "u=x^2, u'=2*x; v=sin(x), v'=cos(x)\n";
+    out += "Answer: 2*x*sin(x)+x^2*cos(x)";
+    return true;
+  }
+  if (expr=="sin(3x+1)" || expr=="sin(3*x+1)"){
+    out="Differentiate: sin(3*x+1)\n";
+    out += "Chain rule: u=3*x+1, du/dx=3\n";
+    out += "d/dx sin(u)=cos(u)*du/dx\n";
+    out += "Answer: 3*cos(3*x+1)";
+    return true;
+  }
+  if (expr=="sin(x)/x"){
+    out="Differentiate: sin(x)/x\n";
+    out += "Quotient rule: d(u/v)/dx=(v*u'-u*v')/v^2\n";
+    out += "u=sin(x), u'=cos(x); v=x, v'=1\n";
+    out += "Answer: (x*cos(x)-sin(x))/x^2";
+    return true;
+  }
   if (expr=="sin(x)"){
     out="Differentiate: sin(x)\n";
     out += "d/dx sin(x)=cos(x)\n";
@@ -342,6 +370,21 @@ static bool try_integral(const char *input,working_string &out){
     out += "int(sin(x)^2) dx = x/2 - sin(2*x)/4 + C";
     return true;
   }
+  if (expr=="cos(x)"){
+    out="Integrate using standard result:\n";
+    out += "int(cos(x)) dx = sin(x) + C";
+    return true;
+  }
+  if (expr=="sec(x)^2"){
+    out="Integrate using standard result:\n";
+    out += "int(sec(x)^2) dx = tan(x) + C";
+    return true;
+  }
+  if (expr=="1/x"){
+    out="Integrate using standard result:\n";
+    out += "int(1/x) dx = ln(abs(x)) + C";
+    return true;
+  }
   double m,c;
   if (!parse_linear(args[0],m,c))
     return false;
@@ -377,6 +420,25 @@ static bool try_xform(const char *input,working_string &out){
     out += "Use change of base: log_a(x)=ln(x)/ln(a)\n";
     out += "Answer: ";
     out += args[1];
+    return true;
+  }
+  if ((a=="sec(x)^2" && b=="1+tan(x)^2") || (a=="1+tan(x)^2" && b=="sec(x)^2")){
+    out += "Use identity: sec(x)^2 = 1 + tan(x)^2\n";
+    out += "Answer: ";
+    out += args[1];
+    return true;
+  }
+  if ((a=="cosec(x)^2" && b=="1+cot(x)^2") || (a=="1+cot(x)^2" && b=="cosec(x)^2")){
+    out += "Use identity: cosec(x)^2 = 1 + cot(x)^2\n";
+    out += "Answer: ";
+    out += args[1];
+    return true;
+  }
+  if (a=="cot(x)" && b=="cos(x)/sin(x)"){
+    out += "Use reciprocal trig identity: cot(x)=1/tan(x)\n";
+    out += "tan(x)=sin(x)/cos(x)\n";
+    out += "Therefore cot(x)=cos(x)/sin(x)\n";
+    out += "Answer: cos(x)/sin(x)";
     return true;
   }
   if (a=="(sin(x)-cos(x)+1)/(sin(x)+cos(x)-1)" && b=="sec(x)+tan(x)"){
