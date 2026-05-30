@@ -5684,6 +5684,9 @@ namespace giac {
 
   // static gen symb_egcd(const gen & a,const gen & b){    return symbolic(at_egcd,makevecteur(a,b));  }
   gen _egcd(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     if ( (args.type!=_VECT) || args._VECTptr->empty() )
       return gensizeerr(contextptr);
@@ -5731,12 +5734,15 @@ namespace giac {
     d=r2e(d,lv,contextptr);
     return makevecteur(u,v,d);
   }
-  static const char _egcd_s []="egcd";
+  static const char _egcd_s []="_rs96";
   static define_unary_function_eval (__egcd,&_egcd,_egcd_s);
   define_unary_function_ptr5( at_egcd ,alias_at_egcd,&__egcd,0,true);
 
   // static gen symb_iegcd(const gen & a,const gen & b){    return symbolic(at_iegcd,makevecteur(a,b));  }
   gen _iegcd(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     if (!check_2d_vecteur(args)) return gensizeerr(contextptr);
     gen a(args._VECTptr->front()),b(args._VECTptr->back()),u,v,d;
@@ -5745,7 +5751,7 @@ namespace giac {
     egcd(a,b,u,v,d);
     return makevecteur(u,v,d);
   }
-  static const char _iegcd_s []="iegcd";
+  static const char _iegcd_s []="_rs97";
   static define_unary_function_eval (__iegcd,&_iegcd,_iegcd_s);
   define_unary_function_ptr5( at_iegcd ,alias_at_iegcd,&__iegcd,0,true);
 

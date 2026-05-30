@@ -1568,6 +1568,9 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
   define_unary_function_ptr5( at_fmod ,alias_at_fmod,&__fmod,0,true);
 
   gen _gramschmidt(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if (g.type!=_VECT)
       return symbolic(at_gramschmidt,g);
@@ -1599,7 +1602,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
     }
     return gensizeerr(contextptr);
   }
-  static const char _gramschmidt_s []="gramschmidt";
+  static const char _gramschmidt_s []="_rs86";
   static define_unary_function_eval (__gramschmidt,&_gramschmidt,_gramschmidt_s);
   define_unary_function_ptr5( at_gramschmidt ,alias_at_gramschmidt,&__gramschmidt,0,true);
 
@@ -6048,16 +6051,22 @@ static define_unary_function_eval (__camembert,&_camembert,_camembert_s);
     //return _of(makesequence(PIXEL,a_),contextptr);
   }
   gen _draw_line(const gen & a_,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     return draw_line_or_rectangle(a_,contextptr,0);
   }
-  static const char _draw_line_s []="draw_line";
+  static const char _draw_line_s []="_rs87";
   static define_unary_function_eval (__draw_line,&_draw_line,_draw_line_s);
   define_unary_function_ptr5( at_draw_line ,alias_at_draw_line,&__draw_line,0,true);
 
   gen _draw_rectangle(const gen & a_,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     return draw_line_or_rectangle(a_,contextptr,1);
   }
-  static const char _draw_rectangle_s []="draw_rectangle";
+  static const char _draw_rectangle_s []="_rs88";
   static define_unary_function_eval (__draw_rectangle,&_draw_rectangle,_draw_rectangle_s);
   define_unary_function_ptr5( at_draw_rectangle ,alias_at_draw_rectangle,&__draw_rectangle,0,true);
 
@@ -6150,16 +6159,22 @@ static define_unary_function_eval (__camembert,&_camembert,_camembert_s);
     //return _of(makesequence(PIXEL,a_),contextptr);
   }
   gen _draw_circle(const gen & a_,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     return _draw_arc(a_,false,contextptr);
   }
-  static const char _draw_circle_s []="draw_circle";
+  static const char _draw_circle_s []="_rs89";
   static define_unary_function_eval (__draw_circle,&_draw_circle,_draw_circle_s);
   define_unary_function_ptr5( at_draw_circle ,alias_at_draw_circle,&__draw_circle,0,true);
 
   gen _draw_arc(const gen & a_,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     return _draw_arc(a_,true,contextptr);
   }
-  static const char _draw_arc_s []="draw_arc";
+  static const char _draw_arc_s []="_rs90";
   static define_unary_function_eval (__draw_arc,&_draw_arc,_draw_arc_s);
   define_unary_function_ptr5( at_draw_arc ,alias_at_draw_arc,&__draw_arc,0,true);
 
@@ -6293,6 +6308,9 @@ static define_unary_function_eval (__camembert,&_camembert,_camembert_s);
   }
   
   gen _draw_polygon(const gen & a,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if (a.type==_STRNG && a.subtype==-1) return  a;
     if (a.type!=_VECT || a._VECTptr->size()<2)
       return gentypeerr(contextptr);
@@ -6314,7 +6332,7 @@ static define_unary_function_eval (__camembert,&_camembert,_camembert_s);
       draw_polygon(v1,attr & 0xffff);
     return 1;
   }
-  static const char _draw_polygon_s []="draw_polygon";
+  static const char _draw_polygon_s []="_rs91";
   static define_unary_function_eval (__draw_polygon,&_draw_polygon,_draw_polygon_s);
   define_unary_function_ptr5( at_draw_polygon ,alias_at_draw_polygon,&__draw_polygon,0,true);
 
@@ -6569,6 +6587,9 @@ static define_unary_function_eval (__convexhull,&_convexhull,_convexhull_s);
   // ploarea(polygone), plotarea(f(x),x=a..b), plotarea(f(x),x=a..b,n,method)
   // method=trapeze,point_milieu,rectangle_gauche,rectangle_droit
   gen _plotarea(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     vecteur v(gen2vecteur(g));
     vecteur attributs(1,COLOR_BLACK);
@@ -6698,7 +6719,7 @@ static define_unary_function_eval (__convexhull,&_convexhull,_convexhull_s);
     }
     return gensizeerr(gettext(""));
   }
-  static const char _plotarea_s []="plotarea";
+  static const char _plotarea_s []="_rs92";
   static define_unary_function_eval (__plotarea,&_plotarea,_plotarea_s);
   define_unary_function_ptr5( at_plotarea ,alias_at_plotarea,&__plotarea,0,true);
 #endif

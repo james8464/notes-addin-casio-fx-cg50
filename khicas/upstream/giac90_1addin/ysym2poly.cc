@@ -4111,11 +4111,14 @@ namespace giac {
   static define_unary_function_eval (__partfrac,&_partfrac,_partfrac_s);
   define_unary_function_ptr5( at_partfrac ,alias_at_partfrac,&__partfrac,0,true);
 
-  static const char _resultant_s []="resultant";
+  static const char _resultant_s []="_rs99";
   symbolic symb_resultant(const gen & args){
     return symbolic(at_resultant,args);
   }
   gen _resultant(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     if (args.type!=_VECT)
       return gentypeerr(contextptr);
@@ -4176,7 +4179,7 @@ namespace giac {
       }
 #endif // FXCG
       // not very efficient...
-      gen g(identificateur("tresultant"));
+      gen g(identificateur("_rs145"));
       v[0]=_poly2symb(makesequence(v[0],g),contextptr);
       v[1]=_poly2symb(makesequence(v[1],g),contextptr);
       v.insert(v.begin()+2,g);
@@ -4615,4 +4618,3 @@ namespace giac {
 #ifndef NO_NAMESPACE_GIAC
 } // namespace giac
 #endif // ndef NO_NAMESPACE_GIAC
-

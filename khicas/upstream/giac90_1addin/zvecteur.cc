@@ -14921,6 +14921,9 @@ namespace giac {
   }
 
   gen _jordan(const gen & a,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( a.type==_STRNG && a.subtype==-1) return  a;
     bool mode=complex_mode(contextptr);
     complex_mode(true,contextptr);
@@ -14928,7 +14931,7 @@ namespace giac {
     complex_mode(mode,contextptr);
     return res;
   }
-  static const char _jordan_s []="jordan";
+  static const char _jordan_s []="_rs106";
   static define_unary_function_eval (__jordan,&_jordan,_jordan_s);
   define_unary_function_ptr5( at_jordan ,alias_at_jordan,&__jordan,0,true);
 

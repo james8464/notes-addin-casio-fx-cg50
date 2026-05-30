@@ -3721,7 +3721,7 @@ namespace giac {
   }
 
   void egcdlgcd(const polynome &p1, const polynome & p2, polynome & u,polynome & v,polynome & d){
-    printf("egcdlgcd ");
+    printf("_rs144 ");
     TegcdTlgcd(p1,p2,u,v,d);
     printf("end\n");
   }

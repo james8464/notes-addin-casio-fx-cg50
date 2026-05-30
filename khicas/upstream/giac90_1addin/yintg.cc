@@ -536,7 +536,7 @@ namespace giac {
       gen Dprime=derive(D,X,contextptr);
 #endif
       int Ddeg=v.size()-1;
-      gen tres("tresultant",contextptr);
+      gen tres("_rs145",contextptr);
       gen R=_resultant(makesequence(N-tres*Dprime,D,X),contextptr);
       gen Rprime=derive(R,tres,contextptr);
       R=_quo(makesequence(R,gcd(R,Rprime,contextptr),tres),contextptr);
@@ -2018,7 +2018,7 @@ namespace giac {
       if ( (it->mult>1) && (intmode & 2)==0){
 	gen fact1=pow(r2e(it->fact,l,contextptr),it->mult,contextptr);
 	gen fact2=it->den/pow(it->fact,it->mult);
-	gprintf(step_ratfrachermite,gettext("Partial fraction %gen -> Hermite reduction -> integrate squarefree part %gen"),makevecteur(inv(r2sym(fact2,l,contextptr),contextptr)*r2e(it->num,l,contextptr)/fact1,r2e(single.num,l,contextptr)/r2e(single.den,l,contextptr)),contextptr);
+	gprintf(step_ratfrachermite,gettext("Partial fraction %gen -> rational reduction -> integrate squarefree part %gen"),makevecteur(inv(r2sym(fact2,l,contextptr),contextptr)*r2e(it->num,l,contextptr)/fact1,r2e(single.num,l,contextptr)/r2e(single.den,l,contextptr)),contextptr);
       }
       // factor(single.den,p_content,vden,false,withsqrt(contextptr),complex_mode(contextptr));
       gen extra_div=1;
@@ -7100,6 +7100,9 @@ namespace giac {
     return v.size()==5;
   }
   gen _fourier_an(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     if (args.type!=_VECT) return gensizeerr(contextptr);
     vecteur v(*args._VECTptr);
@@ -7108,7 +7111,7 @@ namespace giac {
     //gen f=v[0],x=v[1],T=v[2],n=v[3],a=v[4];
     //return fourier_an(f,x,T,n,a,contextptr);
   }
-  static const char _fourier_an_s []="fourier_an";
+  static const char _fourier_an_s []="_rs101";
   static define_unary_function_eval (__fourier_an,&_fourier_an,_fourier_an_s);
   define_unary_function_ptr5( at_fourier_an ,alias_at_fourier_an,&__fourier_an,0,true);
 
@@ -7122,6 +7125,9 @@ namespace giac {
     return has_num_coeff(an)?an:recursive_normal(an,contextptr);
   }
   gen _fourier_bn(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     if (args.type!=_VECT) return gensizeerr(contextptr);
     vecteur v(*args._VECTptr);
@@ -7130,7 +7136,7 @@ namespace giac {
     // gen f=v[0],x=v[1],T=v[2],n=v[3],a=v[4];
     // return fourier_bn(f,x,T,n,a,contextptr);
   } 
-  static const char _fourier_bn_s []="fourier_bn";
+  static const char _fourier_bn_s []="_rs102";
   static define_unary_function_eval (__fourier_bn,&_fourier_bn,_fourier_bn_s);
   define_unary_function_ptr5( at_fourier_bn ,alias_at_fourier_bn,&__fourier_bn,0,true);
   
@@ -7143,6 +7149,9 @@ namespace giac {
     return has_num_coeff(cn)?cn:recursive_normal(cn,contextptr);
   }
   gen _fourier_cn(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     if (args.type!=_VECT) return gensizeerr(contextptr);
     vecteur v(*args._VECTptr);
@@ -7152,7 +7161,7 @@ namespace giac {
     // return fourier_cn(f,x,T,n,a,contextptr);
   } 
 
-  static const char _fourier_cn_s []="fourier_cn";
+  static const char _fourier_cn_s []="_rs103";
   static define_unary_function_eval (__fourier_cn,&_fourier_cn,_fourier_cn_s);
   define_unary_function_ptr5( at_fourier_cn ,alias_at_fourier_cn,&__fourier_cn,0,true);
 
@@ -7204,4 +7213,3 @@ namespace giac {
 #ifndef NO_NAMESPACE_GIAC
 } // namespace giac
 #endif // ndef NO_NAMESPACE_GIAC
-

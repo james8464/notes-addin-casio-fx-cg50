@@ -1321,13 +1321,16 @@ namespace giac {
     return r;
   }
   gen _iabcuv(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     if ( (args.type!=_VECT) || (args._VECTptr->size()!=3) )
       return gensizeerr(contextptr);
     gen a=args[0],b=args[1],c=args[2];
     return iabcuv(a,b,c,contextptr);
   }
-  static const char _iabcuv_s []="iabcuv";
+  static const char _iabcuv_s []="_rs93";
   static define_unary_function_eval (__iabcuv,&_iabcuv,_iabcuv_s);
   define_unary_function_ptr5( at_iabcuv ,alias_at_iabcuv,&__iabcuv,0,true);
 
@@ -1348,6 +1351,9 @@ namespace giac {
     return makevecteur(U,V);
   }
   gen _abcuv(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     if ( (args.type!=_VECT) || (args._VECTptr->size()<3) )
       return gensizeerr(contextptr);
@@ -1356,7 +1362,7 @@ namespace giac {
       return abcuv(v[0],v[1],v[2],v[3],contextptr);
     return abcuv(v[0],v[1],v[2],vx_var,contextptr);
   }
-  static const char _abcuv_s []="abcuv";
+  static const char _abcuv_s []="_rs94";
   static define_unary_function_eval (__abcuv,&_abcuv,_abcuv_s);
   define_unary_function_ptr5( at_abcuv ,alias_at_abcuv,&__abcuv,0,true);
 
@@ -2332,4 +2338,3 @@ namespace giac {
 #ifndef NO_NAMESPACE_GIAC
 } // namespace giac
 #endif // ndef NO_NAMESPACE_GIAC
-

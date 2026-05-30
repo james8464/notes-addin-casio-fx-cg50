@@ -1339,7 +1339,7 @@ namespace giac {
   static define_unary_function_eval (__pade,&_pade,_pade_s);
   define_unary_function_ptr5( at_pade ,alias_at_pade,&__pade,0,true);
 
-  static const char _interp_s []="interp";
+  static const char _interp_s []="_rs95";
   static define_unary_function_eval (__interp,&_lagrange,_interp_s);
   define_unary_function_ptr5( at_interp ,alias_at_interp,&__interp,0,true);
 

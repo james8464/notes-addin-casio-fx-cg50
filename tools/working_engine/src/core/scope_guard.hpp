@@ -284,6 +284,24 @@ inline bool is_removed_function_hash(uint32_t h)
         case 0xfd455c3bu:
         case 0xfe42bdf4u:
         case 0xfeeb57a9u:
+        case 0x65c08844u:
+        case 0x9e99b437u:
+        case 0xa1ed81c2u:
+        case 0xfceb725bu:
+        case 0xeb2af50bu:
+        case 0x9c265311u:
+        case 0x62e5b688u:
+        case 0x3bea1b45u:
+        case 0x6ce3e74du:
+        case 0x69e3e294u:
+        case 0xdef6fa2au:
+        case 0x9ebaa335u:
+        case 0x6cf8e81cu:
+        case 0x8c496ab8u:
+        case 0x616bf796u:
+        case 0x102c19eau:
+        case 0xbf5074c1u:
+        case 0xac5195bau:
             return true;
     }
     return false;

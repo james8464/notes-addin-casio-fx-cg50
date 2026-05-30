@@ -1293,6 +1293,9 @@ namespace giac {
   }
 
   gen _hermite(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     int n;
     gen a,x;
@@ -1306,7 +1309,7 @@ namespace giac {
     }
     return r2e(hermite(n),x,contextptr);
   }
-  static const char _hermite_s[]="hermite";
+  static const char _hermite_s[]="_rs81";
   static define_unary_function_eval (__hermite,&_hermite,_hermite_s);
   define_unary_function_ptr5( at_hermite ,alias_at_hermite,&__hermite,0,true);
 
@@ -1352,6 +1355,9 @@ namespace giac {
   }
 
   gen _laguerre(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     int n;
     gen a,x;
@@ -1374,7 +1380,7 @@ namespace giac {
     return normal(rdiv(p2,factorial(n),contextptr),contextptr);
   }
     
-  static const char _laguerre_s[]="laguerre";
+  static const char _laguerre_s[]="_rs82";
   static define_unary_function_eval (__laguerre,&_laguerre,_laguerre_s);
   define_unary_function_ptr5( at_laguerre ,alias_at_laguerre,&__laguerre,0,true);
 
@@ -1432,6 +1438,9 @@ namespace giac {
 #endif
   }
   gen _tchebyshev1(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     int n;
     gen a,x;
@@ -1443,7 +1452,7 @@ namespace giac {
       return 1;
     return r2e(tchebyshev1(n),x,contextptr);
   }
-  static const char _tchebyshev1_s[]="tchebyshev1";
+  static const char _tchebyshev1_s[]="_rs83";
   static define_unary_function_eval (__tchebyshev1,&_tchebyshev1,_tchebyshev1_s);
   define_unary_function_ptr5( at_tchebyshev1 ,alias_at_tchebyshev1,&__tchebyshev1,0,true);
 
@@ -1459,6 +1468,9 @@ namespace giac {
     return v;
   }
   gen _tchebyshev2(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     if (args.type==_VECT && args._VECTptr->size()==2 && is_integer(args._VECTptr->front()) && args._VECTptr->back().type!=_IDNT)
       return tchebyshev_eval(args._VECTptr->front()+1,args._VECTptr->back(),makevecteur(0,1),contextptr);
@@ -1468,7 +1480,7 @@ namespace giac {
       return gensizeerr(contextptr);
     return r2e(tchebyshev2(n),x,contextptr);
   }
-  static const char _tchebyshev2_s[]="tchebyshev2";
+  static const char _tchebyshev2_s[]="_rs84";
   static define_unary_function_eval (__tchebyshev2,&_tchebyshev2,_tchebyshev2_s);
   define_unary_function_ptr5( at_tchebyshev2 ,alias_at_tchebyshev2,&__tchebyshev2,0,true);
 
@@ -1492,6 +1504,9 @@ namespace giac {
   }
 
   gen _legendre(const gen & args,GIAC_CONTEXT){ 
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     int n;
     gen a,x;
@@ -1500,7 +1515,7 @@ namespace giac {
     vecteur v=multvecteur(inv(factorial(n),contextptr),legendre(n));
     return r2e(v,x,contextptr);
   }
-  static const char _legendre_s[]="legendre";
+  static const char _legendre_s[]="_rs85";
   static define_unary_function_eval (__legendre,&_legendre,_legendre_s);
   define_unary_function_ptr5( at_legendre ,alias_at_legendre,&__legendre,0,true);
 

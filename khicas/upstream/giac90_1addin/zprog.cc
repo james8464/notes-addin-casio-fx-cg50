@@ -6254,6 +6254,9 @@ namespace giac {
   define_unary_function_ptr5( at_maple_mode ,alias_at_maple_mode,&__maple_mode,0,true);
 
   gen _python_compat(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG &&  g.subtype==-1) return  g;
     int p=python_compat(contextptr);
     gen args(g);
@@ -6276,7 +6279,7 @@ namespace giac {
     python_compat(args.val,contextptr) ;
     return p;
   }
-  static const char _python_compat_s []="python_compat";
+  static const char _python_compat_s []="_rs98";
   static define_unary_function_eval (__python_compat,&_python_compat,_python_compat_s);
   define_unary_function_ptr5( at_python_compat ,alias_at_python_compat,&__python_compat,0,true);
 

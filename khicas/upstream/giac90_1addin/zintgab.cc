@@ -309,6 +309,9 @@ namespace giac {
     return genmaxordererr(contextptr);
   }
   gen _residue(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     if (args.type!=_VECT) return gensizeerr(contextptr);
     vecteur v(*args._VECTptr);
@@ -327,7 +330,7 @@ namespace giac {
       return gensizeerr(contextptr);
     return residue(v[0],v[1],v[2],contextptr);
   } 
-  static const char _residue_s []="residue";
+  static const char _residue_s []="_rs100";
   static define_unary_function_eval (__residue,&_residue,_residue_s);
   define_unary_function_ptr5( at_residue ,alias_at_residue,&__residue,0,true);
 
@@ -2064,4 +2067,3 @@ namespace giac {
 #ifndef NO_NAMESPACE_GIAC
 } // namespace giac
 #endif // ndef NO_NAMESPACE_GIAC
-

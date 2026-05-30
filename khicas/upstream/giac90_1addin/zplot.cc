@@ -2457,6 +2457,9 @@ namespace giac {
     return plotfunc(vargs[0],e1,attributs,densityplot,xmin,xmax,ymin,ymax,zmin,zmax,nstep,jstep,showeq,contextptr);
   }
   gen _plotfunc(const gen & args,const context * contextptr){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     int nd;
     if ( (nd=is_distribution(args)) || (args.type==_VECT && !args._VECTptr->empty() && (nd=is_distribution(args._VECTptr->front())) ) ){
@@ -2466,7 +2469,7 @@ namespace giac {
     }
     return funcplotfunc(args,false,contextptr);
   }
-  static const char _plotfunc_s []="plotfunc";
+  static const char _plotfunc_s []="_rs104";
   static define_unary_function_eval_quoted (__plotfunc,&_plotfunc,_plotfunc_s);
   define_unary_function_ptr5( at_plotfunc ,alias_at_plotfunc,&__plotfunc,_QUOTE_ARGUMENTS,true);
 
@@ -13765,10 +13768,13 @@ int find_plotseq_args(const gen & args,gen & expr,gen & x,double & x0d,double & 
   }
 #endif
   gen _plotcontour(const gen & f0,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( f0.type==_STRNG && f0.subtype==-1) return  f0;
     return plotcontour(f0,true,contextptr);
   }
-  static const char _plotcontour_s []="plotcontour";
+  static const char _plotcontour_s []="_rs105";
   static define_unary_function_eval_quoted (__plotcontour,&_plotcontour,_plotcontour_s);
   define_unary_function_ptr5( at_plotcontour ,alias_at_plotcontour,&__plotcontour,_QUOTE_ARGUMENTS,true);
 
