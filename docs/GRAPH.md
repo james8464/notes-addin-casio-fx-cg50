@@ -1,6 +1,6 @@
 # CasioCAS Project Graph
 
-Last updated: 2026-05-30 23:25 Europe/London
+Last updated: 2026-05-30 23:31 Europe/London
 
 ## Build
 
@@ -65,6 +65,7 @@ graph TD
   Remove --> Eval["renamed public at_* registration strings"]
   Remove --> Hash["hashed runtime guard"]
   Remove --> Obj["Makefile CAS_OBJS"]
+  Remove --> Sec["-ffunction-sections -fdata-sections"]
   Remove --> Help["help/functions"]
   Remove --> Tests["removed-feature tests"]
 
@@ -73,6 +74,7 @@ graph TD
   Eval --> Gate2["input returns unsupported"]
   Hash --> Gate2
   Obj --> Size["smaller g3a"]
+  Sec --> Size
 ```
 
 ## Scope
@@ -104,7 +106,7 @@ graph TD
 
 ```mermaid
 graph LR
-  Build["./compile exit 0"] --> Size["1,364,312 bytes"]
+  Build["./compile exit 0"] --> Size["1,273,183 bytes"]
   Build --> Meta["metadata ok"]
   Build --> Border["purple border ok"]
   Source["source gates"] --> Catalog["catalog ok"]
