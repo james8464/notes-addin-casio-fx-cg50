@@ -10,6 +10,7 @@
 #include "modules/algebra/algebra.hpp"
 #include "modules/trig/trig.hpp"
 #include "modules/derive/derive.hpp"
+#include "../../../khicas/upstream/giac90_1addin/cascas_working.h"
 
 #include <iostream>
 #include <sstream>
@@ -379,6 +380,12 @@ int main(int argc, char **argv)
     bool is_stats = (flag == "--stats");
 
     std::string expr = (is_stdin_program || is_suvat || is_int || is_alg || is_trig || is_derive || is_stats) ? (argc >= 3 ? argv[2] : "") : argv[1];
+    std::string shared_working;
+    if(!is_stdin_program && cascas::eval_with_working(expr.c_str(), shared_working)) {
+        std::cout << shared_working;
+        if(shared_working.empty() || shared_working.back() != '\n') std::cout << "\n";
+        return 0;
+    }
     casio::Arena arena;
     // Resource budget: cap node growth (prevents pathological hangs/crashes).
     if(char const *env = std::getenv("CASIO_MAX_NODES")) {

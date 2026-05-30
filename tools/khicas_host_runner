@@ -4,10 +4,25 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD="${ROOT}/tools/working_engine/build"
 BIN="${BUILD}/casio_host"
+LOCK="${BUILD}/.build.lock"
 
-if [[ ! -x "${BIN}" ]]; then
+needs_build() {
+  [[ ! -x "${BIN}" ]] && return 0
+  find "${ROOT}/tools/working_engine/host" "${ROOT}/tools/working_engine/src" "${ROOT}/khicas/upstream/giac90_1addin/cascas_working.cc" "${ROOT}/khicas/upstream/giac90_1addin/cascas_working.h" -type f -newer "${BIN}" -print -quit | grep -q .
+}
+
+if needs_build; then
+  mkdir -p "${BUILD}"
+  while ! mkdir "${LOCK}" 2>/dev/null; do
+    sleep 0.2
+  done
+  trap 'rmdir "${LOCK}" 2>/dev/null || true' EXIT
   cmake -S "${ROOT}/tools/working_engine/host" -B "${BUILD}" -DCMAKE_BUILD_TYPE=Release >/dev/null
-  cmake --build "${BUILD}" -j 4 >/dev/null
+  if needs_build; then
+    cmake --build "${BUILD}" -j 4 >/dev/null
+  fi
+  rmdir "${LOCK}" 2>/dev/null || true
+  trap - EXIT
 fi
 
 exec "${BIN}" "$@"

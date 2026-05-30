@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_executable(casio_host
   main.cpp
+  ../../../khicas/upstream/giac90_1addin/cascas_working.cc
   ../src/modules/suvat/suvat.cpp
   ../src/modules/integrate/integrate.cpp
   ../src/modules/algebra/algebra.cpp
@@ -30,4 +31,5 @@ target_include_directories(casio_host PRIVATE
   ../src
 )
 
+target_compile_definitions(casio_host PRIVATE CASCAS_HOST_STD_STRING=1)
 target_compile_options(casio_host PRIVATE -Wall -Wextra -Wno-unused-parameter)

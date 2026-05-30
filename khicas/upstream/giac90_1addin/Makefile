@@ -35,7 +35,7 @@ CAS_OBJS = ysym2poly.o kgausspol.o kthreaded.o zcsturm.o zmaple.o zrpn.o zmoyal.
 # old console: kmisc.cc should be compiled with -DOLD_CONSOLE
 #GUI_OBJS = fileGUI.o inputGUI.o menuGUI.o textGUI.o fileProvider.o graphicsProvider.o stringsProvider.o history.o kdisplay.o dConsole.o dmain.o
 # new console
-GUI_OBJS = fileGUI.o menuGUI.o textGUI.o fileProvider.o graphicsProvider.o stringsProvider.o zdisplay.o console.o main.o
+GUI_OBJS = fileGUI.o menuGUI.o textGUI.o fileProvider.o graphicsProvider.o stringsProvider.o zdisplay.o console.o cascas_working.o main.o
 
 LIBS = -L. -L/home/parisse/casiolocal/lib -Wl,--start-group -lsupc++ -ltommath  -lustl -lm -lc -lgcc -Wl,--end-group
 #LIBS = -L. -L/home/parisse/casiolocal/lib -Wl,--start-group  -ltommath -lustl -lm -lc -lgcc -Wl,--end-group

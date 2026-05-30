@@ -41,6 +41,7 @@ extern "C" void clear_abort_py(){}
 #include "input_lexer.h"
 #include "input_parser.h"
 #include "main.h"
+#include "cascas_working.h"
 #define GIAC_HISTORY_SIZE 8
 #define GIAC_HISTORY_MAX_TAILLE 32
 
@@ -3217,8 +3218,8 @@ void run(const char * s,int do_logo_graph_eqw){
     Console_Output((const unsigned char*)"Err: unsupported (not A-level scope)");
     return;
   }
-  string direct;
-  if (cascas_try_direct_command(s,direct)){
+  cascas::working_string direct;
+  if (cascas::eval_with_working(s,direct)){
     Console_Output((const unsigned char*)direct.c_str());
     return;
   }
