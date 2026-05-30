@@ -1,6 +1,6 @@
 # CasioCAS Project Graph
 
-Last updated: 2026-05-31 00:41 Europe/London
+Last updated: 2026-05-31 00:47 Europe/London
 
 ## Build
 
@@ -119,7 +119,7 @@ graph TD
 
 ```mermaid
 graph LR
-  Build["./compile exit 0"] --> Size["1,258,819 bytes"]
+  Build["./compile exit 0"] --> Size["1,261,639 bytes"]
   Build --> Meta["metadata ok"]
   Build --> Border["purple border ok"]
   Source["source gates"] --> Catalog["catalog ok"]
@@ -127,7 +127,7 @@ graph LR
   Source --> Session["session disabled"]
   Help["help pack"] --> HelpQ["18 function sheets ok"]
   Queue["golden queue"] --> QueueRun["200/200 host ok"]
-  Shared["shared working"] --> SharedRun["28/28 host+calculator adapter ok"]
+  Shared["shared working"] --> SharedRun["40/40 host+calculator adapter ok"]
   Obj["object prune"] --> QR["qrcodegen.o link-safe removed"]
   Macro["source stubs"] --> Stubbed["plotparam/plotseq/randperm/permuorder/list/stats/special helpers blocked"]
   Static["lexer prune"] --> StaticRun["distribution static names neutralized"]

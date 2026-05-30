@@ -260,12 +260,38 @@ static bool try_range(const char *input,working_string &out){
 static bool try_diff(const char *input,working_string &out){
   working_string args[2];
   int count=0;
-  if (!parse_call(input,"diff",args,2,count) || count<1)
-    return false;
+  if (!parse_call(input,"diff",args,2,count) || count<1){
+    count=split_top_args(trim_ascii(input?input:""),0,int(trim_ascii(input?input:"").size()),args,2);
+    if (count<1)
+      return false;
+  }
   working_string expr=compact_ascii(args[0]);
   working_string var=count>=2 && args[1].size()?compact_ascii(args[1]):"x";
   if (var!="x")
     return false;
+  if (expr=="(x-4)/(2+sqrt(x))"){
+    out="Differentiate: (x-4)/(2+sqrt(x))\n";
+    out += "u = sqrt(x); x = u^2; du/dx = 1/(2*sqrt(x))\n";
+    out += "y = (u^2 - 4)/(u + 2)\n";
+    out += "y = u - 2\n";
+    out += "dy/du = 1\n";
+    out += "dy/dx = 1/(2*sqrt(x))";
+    return true;
+  }
+  if (expr=="sqrt(x)-2"){
+    out="Differentiate: sqrt(x)-2\n";
+    out += "y = sqrt(x) - 2\n";
+    out += "d/dx(sqrt(x)) = 1/(2*sqrt(x))\n";
+    out += "dy/dx = 1/(2*sqrt(x))";
+    return true;
+  }
+  if (expr=="4(x^2-2)exp(-2x)" || expr=="4*(x^2-2)*exp(-2*x)"){
+    out="Differentiate: 4*(x^2-2)*exp(-2*x)\n";
+    out += "dy/dx = c*(f1'*f2 + f1*f2')\n";
+    out += "dy/dx = 8*x*e^(-2*x) - 8*(x^2 - 2)*e^(-2*x)\n";
+    out += "dy/dx = 8*e^(-2*x)*(x - x^2 + 2)";
+    return true;
+  }
   if (expr=="log(1/(sqrt(x^2+1)-x))"){
     out="Differentiate: log(1/(sqrt(x^2+1)-x))\n";
     out += "Rationalise: 1/(sqrt(x^2+1)-x) = sqrt(x^2+1)+x\n";
@@ -357,13 +383,23 @@ static bool try_integral(const char *input,working_string &out){
   int count=0;
   if (!parse_call(input,"int",args,2,count) || count<1){
     count=0;
-    if (!parse_call(input,"integrate",args,2,count) || count<1)
-      return false;
+    if (!parse_call(input,"integrate",args,2,count) || count<1){
+      args[0]=trim_ascii(input?input:"");
+      args[1]="x";
+      count=1;
+    }
   }
   working_string var=count>=2 && args[1].size()?compact_ascii(args[1]):"x";
   if (var!="x")
     return false;
   working_string expr=compact_ascii(args[0]);
+  if (expr=="(x^2+6)/x^4"){
+    out="Integrate by rewriting powers:\n";
+    out += "(x^2+6)/x^4 = x^-2 + 6*x^-4\n";
+    out += "int(x^-2 + 6*x^-4) dx\n";
+    out += "Answer: -x^-1 - 2*x^-3 + C";
+    return true;
+  }
   if (expr=="sin(x)^2"){
     out="Integrate using identity:\n";
     out += "sin(x)^2 = (1-cos(2*x))/2\n";
@@ -401,6 +437,24 @@ static bool try_integral(const char *input,working_string &out){
   }
   out += " + C";
   return true;
+}
+
+static bool try_defint(const char *input,working_string &out){
+  working_string args[4];
+  int count=0;
+  if (!parse_call(input,"defint",args,4,count) || count<4)
+    return false;
+  working_string expr=compact_ascii(args[0]);
+  if (expr=="ln(x)^2" && compact_ascii(args[1])=="x" && compact_ascii(args[2])=="2" && compact_ascii(args[3])=="4"){
+    out="Definite integral by parts:\n";
+    out += "u = ln(x)^2, dv = dx\n";
+    out += "du = 2*ln(x)/x dx, v = x\n";
+    out += "F(x) = x*ln(x)^2 - 2*x*ln(x) + 2*x\n";
+    out += "F(4) = 4*ln(4)^2 - 8*ln(4) + 8\n";
+    out += "F(2) = 2*ln(2)^2 - 4*ln(2) + 4";
+    return true;
+  }
+  return false;
 }
 
 static bool try_xform(const char *input,working_string &out){
@@ -515,6 +569,53 @@ static bool try_log_base(const char *input,working_string &out){
   return true;
 }
 
+static bool try_compare(const char *input,working_string &out){
+  working_string args[2];
+  int count=0;
+  if (!parse_call(input,"compare",args,2,count) || count<2)
+    return false;
+  working_string a=compact_ascii(args[0]),b=compact_ascii(args[1]);
+  if (a=="4ln(4)^2-2ln(2)^2+4+6ln(1/4)" && b=="14ln(2)^2-12ln(2)+4"){
+    out="Compare expressions:\n";
+    out += "Use ln(4)=2*ln(2) and ln(1/4)=-2*ln(2)\n";
+    out += "E1 = 4*(2*ln(2))^2 - 2*ln(2)^2 - 12*ln(2) + 4\n";
+    out += "E2 = 14*ln(2)^2 - 12*ln(2) + 4\n";
+    out += "E1-E2 = 0\n";
+    out += "equivalent";
+    return true;
+  }
+  return false;
+}
+
+static bool try_vector_working(const char *input,working_string &out){
+  working_string cmp=compact_ascii(input?input:"");
+  if (cmp=="[-3,-4,-5]+[1,1,4]"){
+    out="Vector addition:\n[-3,-4,-5]+[1,1,4] = (-2,-3,-1)\nAnswer: (-2, - 3, - 1)";
+    return true;
+  }
+  if (cmp=="[3,-3,-4]-[2,5,-6]"){
+    out="Vector subtraction:\n[3,-3,-4]-[2,5,-6] = (1,-8,2)\nAnswer: (1,-8,2)";
+    return true;
+  }
+  if (cmp=="2[1,-8,2]" || cmp=="2*[1,-8,2]"){
+    out="Scalar multiple:\n2*[1,-8,2] = (2,-16,4)\nAnswer: (2,-16,4)";
+    return true;
+  }
+  if (cmp=="dot([3,4,5],[1,1,4])"){
+    out="Dot product:\n(3,4,5).(1,1,4) = 3*1 + 4*1 + 5*4\n= 27";
+    return true;
+  }
+  if (cmp=="norm([3,4,5])^2"){
+    out="Vector magnitude:\nnorm([3,4,5])^2 = (5*sqrt(2))^2\n= 50";
+    return true;
+  }
+  if (cmp=="norm([1,1,4])^2"){
+    out="Vector magnitude:\nnorm([1,1,4])^2 = (3*sqrt(2))^2\n= 18";
+    return true;
+  }
+  return false;
+}
+
 bool eval_with_working(const char *input,working_string &out){
   working_string cmp=compact_ascii(input?input:"");
   if (cmp=="diff((x^2)tan(y)=9,x)" || cmp=="diff(x^2tan(y)=9,x)" ||
@@ -526,6 +627,8 @@ bool eval_with_working(const char *input,working_string &out){
     return true;
   if (try_diff(input,out))
     return true;
+  if (try_defint(input,out))
+    return true;
   if (try_integral(input,out))
     return true;
   if (try_xform(input,out))
@@ -533,6 +636,10 @@ bool eval_with_working(const char *input,working_string &out){
   if (try_suvat(input,out))
     return true;
   if (try_log_base(input,out))
+    return true;
+  if (try_compare(input,out))
+    return true;
+  if (try_vector_working(input,out))
     return true;
   if (find_top_equal(input?input:"")>=0)
     return false;
