@@ -1,0 +1,5 @@
+Args: range(expr) or range(expr,var) or range(expr,var,a,b)
+Required: expr
+Does: Returns the range as inequalities in y.
+Examples: range(-5*x^2+6*x+4,x); range(x/(1+x^2),x)
+Working: Shows completing square, endpoint checks, or constraint reasoning.

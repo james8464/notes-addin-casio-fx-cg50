@@ -1,0 +1,5 @@
+Args: implicit_diff(equation,x,y)
+Required: equation
+Does: Finds dy/dx for an implicit equation.
+Examples: implicit_diff((x^2)*tan(y)=9,x,y)
+Working: Shows differentiating both sides, collecting dy/dx terms, and substitution.

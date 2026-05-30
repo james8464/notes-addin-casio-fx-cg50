@@ -1,0 +1,5 @@
+Args: cot(x)
+Required: x
+Does: Reciprocal tangent, 1/tan(x), or cos(x)/sin(x).
+Examples: cot(x); integrate(cosec(x)^2,x)
+Working: Preserved in output when the input or target uses cot.

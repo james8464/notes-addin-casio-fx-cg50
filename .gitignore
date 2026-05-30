@@ -12,10 +12,12 @@ calculator_files/*
 build/
 khicas/upstream/giac90_1addin/khicas*
 khicas/upstream/giac90_1addin/emucas*
+khicas/upstream/giac90_1addin/mkhelp
 khicas/upstream/giac90_1addin/*.tmp
 tools/__pycache__/
 tests/__pycache__/
 progress/*.jsonl
 progress/*.json
 !progress/.gitkeep
+!progress/state.jsonl
 .DS_Store

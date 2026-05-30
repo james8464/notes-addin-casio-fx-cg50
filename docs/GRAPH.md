@@ -32,6 +32,19 @@ graph TD
   Work --> Host["host test runner"]
 ```
 
+## Current V1
+
+```mermaid
+graph TD
+  Guard["runtime denylist"] --> Unsupported["Err: unsupported (not A-level scope)"]
+  Direct["direct working routes"] --> Implicit["implicit diff example"]
+  Direct --> Range["quadratic/rational/trig range cases"]
+  Direct --> Xform["xform proof shell"]
+  Session["save/load/session files"] --> Disabled["no-op, in-memory only"]
+  Help["help/functions/*.txt"] --> Pak["CASIOCAS.PAK"]
+  Border["graphicsProvider border"] --> Pink["0xF81F exact checker"]
+```
+
 ## Prune
 
 ```mermaid
@@ -66,6 +79,7 @@ graph TD
   Build --> Meta["check_g3a_metadata"]
   Source["source text"] --> Catalog["check_catalog_scope"]
   Source --> Removed["check_removed_features"]
+  Source --> Session["check_session_disabled"]
   Help["help/functions"] --> HelpQ["check_help_quality"]
   Queue["tests/golden/exact_calculator_input_queue.jsonl"] --> Exact["tests/run_exact_queue.py"]
   UI["g3a bytes"] --> Border["check_calculator_border"]

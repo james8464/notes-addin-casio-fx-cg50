@@ -66,11 +66,9 @@ namespace giac {
     const char * cmd_examples;
   };
 
-  const static_help_t static_help[]={
-#include "static_helpen.h" 
-  };
+  const static_help_t static_help[]={{0,0,0,0,0}};
 
-  const int static_help_size=sizeof(static_help)/sizeof(static_help_t);
+  const int static_help_size=0;
 
   struct static_help_sort {
     static_help_sort() {}

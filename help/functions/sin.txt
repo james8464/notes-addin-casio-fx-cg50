@@ -1,0 +1,5 @@
+Args: sin(x)
+Required: x
+Does: Sine function in the current angle mode.
+Examples: sin(pi/6); solve(sin(x)=1/2,x=0..2*pi)
+Working: Shows standard exact values and identities where routed.

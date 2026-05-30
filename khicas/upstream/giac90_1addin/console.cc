@@ -880,6 +880,7 @@ int run_session(int start=0){
     Console_NewLine(LINE_TYPE_INPUT, 1);
     Console_Disp();
     Bdisp_PutDisp_DD();
+    drawCasioCasBorder();
     // Line[j].type=LINE_TYPE_INPUT;
     run(v[i].c_str(),6); /* show logo and graph but not eqw */
     // j=Last_Line;
@@ -902,6 +903,7 @@ int run_session(int start=0){
     }
     Console_Disp();
     Bdisp_PutDisp_DD();
+    drawCasioCasBorder();
   return 0;
 }
 
@@ -3337,6 +3339,7 @@ void console_disp_status(){
   // status, clock, 
   set_xcas_status();
   Bdisp_PutDisp_DD();
+  drawCasioCasBorder();
 }  
 
 int Console_Disp(){

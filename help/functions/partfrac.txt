@@ -1,0 +1,5 @@
+Args: partfrac(expr,var)
+Required: expr, var
+Does: Splits a rational expression into real partial fractions.
+Examples: partfrac((3*x+5)/(x^2+x-2),x)
+Working: Shows denominator factorisation and coefficient comparison when routed.

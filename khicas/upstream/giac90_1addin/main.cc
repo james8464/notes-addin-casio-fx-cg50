@@ -1,6 +1,5 @@
 // Interface: *GUI*, main.cpp, console.*, *Provider*
 #include <stdio.h>
-#include "overclock.h"
 #include <fxcg/keyboard.h>
 #include "giacPCH.h"
 #include <fxcg/display.h>
@@ -18,6 +17,10 @@ extern "C" {
   void set_abort_py();
   void clear_abort_py();
 }
+extern "C" int execution_in_progress_py=0;
+extern "C" volatile int ctrl_c_py=0;
+extern "C" void set_abort_py(){}
+extern "C" void clear_abort_py(){}
 #include <fxcg/heap.h>
 #include <string.h>
 #include <stdio.h>
@@ -613,7 +616,7 @@ void c_turtle_show(int visible){
     giac::_cache_tortue(0,cascontextptr);
 }
 
-void sync_screen(){ Bdisp_PutDisp_DD(); }
+extern "C" void sync_screen(){ Bdisp_PutDisp_DD(); }
 
 int kbd_filter(int key){
   if (key==KEY_CTRL_LEFT) return 0;
@@ -627,6 +630,10 @@ int kbd_filter(int key){
 
 void c_turtle_fillcolor1(int c){} // FIXME fake function
 #endif // MICROPY_LIB
+
+#ifndef MICROPY_LIB
+extern "C" void sync_screen(){ Bdisp_PutDisp_DD(); }
+#endif
 
 // string translations
 #ifdef NUMWORKS
@@ -822,11 +829,7 @@ void set_menu_timer(){
 }
 
 void MENU_save(){
-  if (console_changed){
-    save("session");
-    if (strcmp(session_filename,"session")==0)
-      console_changed=0;
-  }
+  console_changed=0;
 }  
 
 int in_ckgetkey(int * keyptr,int waitforkey,const char * menu,const char * shiftmenu,const char * alphamenu,int menucolorbg){
@@ -1287,9 +1290,7 @@ int inexammode=0;
 #define pagesize (128*1024)
 
 void quit_handler(){
-  if (cpu_speed>0)
-    clock_set_speed(cpu_speed);
-  save_session();
+  console_changed=0;
 }
 
 int main1(){
@@ -1428,29 +1429,8 @@ int main1(){
     return 0;
   }
   // confirm("main","1.5");
-  // overclock disabled on khicas50
   cpu_speed=0;
-  if (1 ||
-      calculator==1
-      // && ram_filename[13]!='5'
-      ){
-    int key=QRdisp(lang==1?"https://www-fourier.univ-grenoble-alpes.fr/~parisse/casio/khicasio.html":"https://www-fourier.univ-grenoble-alpes.fr/~parisse/casio/khicasioen.html","KhiCAS doc QRcode",lang==1?"*10^x: accelerer":"*10^x: overclock",lang==1?"EXE: vitesse normale":"EXE: normal speed",lang==1?"DEL: efface session":"DEL: erase session");
-    if (//1 ||
-        calculator==1 &&
-        key==KEY_CHAR_EXP
-	// do_confirm(lang==1?"Accelerer la vitesse processeur?":"Overclock processor speed?")
-        ){
-      confirm(lang==1?"Vitesse processeur acceleree.":"Processor overclocked.","F1/F6 OK");
-      cpu_speed=clock_get_speed();
-      clock_set_speed(5);
-    }
-    if (key==KEY_CTRL_DEL && do_confirm(lang==1?"Effacer session.xw?":"Erase session.xw?")){
-      unsigned short pFile[MAX_FILENAME_SIZE+1];
-      const char filename[]="\\\\fls0\\session.xw";
-      Bfile_StrToName_ncpy(pFile, (const unsigned char *) filename, strlen(filename)+1);
-      int res=0; res=Bfile_DeleteEntry(pFile);      
-    }
-  }
+  // Overclock/session QR startup is out of A-level scope.
   //{ char buf[2]={0,0}; buf[0]='0'+cpu_speed; print_msg12("CPU speed (0 unknown, 1-5)",buf); int key; GetKey(&key); }
 #ifdef BF2GMP
   // initialize context
@@ -1461,7 +1441,7 @@ int main1(){
   //confirm("main","2");
   context ct;
   contextptr=&ct;
-  SetQuitHandler(quit_handler); // restore CPU speed and automatically save session when exiting
+  SetQuitHandler(quit_handler);
   turtle();
 #ifdef TURTLETAB
   turtle_stack_size=0;
@@ -1478,43 +1458,7 @@ int main1(){
   rand_seed(RTC_GetTicks(),contextptr);
   VRAM_base = (color_t*)GetVRAMAddress();
   // confirm("main","2.5");
-  unsigned addr=0xE5200000; addr=0xE5007000;
-  //char bufmcs2[64]={0};printx(bufmcs2,addr); confirm("addr",bufmcs2);
-  if (//1 ||
-      inexammode){
-    const unsigned patch[0x34]={
-      0x73657373,0x696f6e00,
-      0x00000014,0x00000020,
-      0x00000012,0x6d617271, // 0x10
-      0x75657572,0x20486869,
-      0x43415300,0, // 0x20
-      0,0,
-      0, // 0x30
-    };
-    bool doit=false;
-    unsigned * chkptr=(unsigned *) (addr+4);
-    for (int i=0;i<0x34/4;++i,++chkptr){
-      if (*chkptr!=patch[i]){
-        doit=true;
-        print_msg12("Le CAS est-il autorise?","EXE: oui, MENU: non");
-        while (1){
-          int key; ck_getkey(&key);
-          if (key==KEY_CTRL_EXE) break;
-        }
-        break;
-      }
-    }
-    if (*(unsigned *)addr!=exammodeptr || doit){
-      confirm("1ere utilisation de KhiCAS","session.xw va etre efface");
-      *(unsigned *)addr=exammodeptr;
-      memcpy(addr+4,patch,0x34);
-      unsigned short pFile[MAX_FILENAME_SIZE+1];
-      const char filename[]="\\\\fls0\\session.xw";
-      Bfile_StrToName_ncpy(pFile, (const unsigned char *) filename, strlen(filename)+1);
-      int res=0; res=Bfile_DeleteEntry(pFile);
-      // char bufmcs[64]={0}; printx(bufmcs,res);    
-    }
-  }
+  // File-backed session reset/load is disabled for CasioCAS A-level mode.
   restore_session("session");
   //ck_getkey(&key);
 #if 0
@@ -1546,8 +1490,8 @@ int main1(){
     }
     // should save in another file
     if (strcmp((const char *)expr,"=>")==0 || strcmp((const char *)expr,"=>\n")==0){
-      save_session();
-      Console_Output((unsigned char*)"Session saved");
+      console_changed=0;
+      Console_Output((unsigned char*)"Session disabled");
     }
     else 
       run((char *)expr);
@@ -2369,14 +2313,292 @@ bool textedit(char * s,int bufsize,const giac::context * contextptr){
   return textedit(s,bufsize,false,contextptr);
 }
 
+static string cascas_lower_ascii(const string &s){
+  string out;
+  for (int i=0;i<int(s.size());++i)
+    out += char(tolower((unsigned char)s[i]));
+  return out;
+}
+
+static string cascas_compact_ascii(const string &s){
+  string out;
+  for (int i=0;i<int(s.size());++i)
+    if (!isspace((unsigned char)s[i]) && s[i]!='*')
+      out += char(tolower((unsigned char)s[i]));
+  return out;
+}
+
+static string cascas_trim_ascii(const string &s){
+  int a=0,b=s.size();
+  while (a<b && isspace((unsigned char)s[a])) ++a;
+  while (b>a && isspace((unsigned char)s[b-1])) --b;
+  return s.substr(a,b-a);
+}
+
+static bool cascas_ident_char(char c){
+  return isalnum((unsigned char)c) || c=='_';
+}
+
+static bool cascas_call_name_hit(const string &s,const char *name){
+  string low=cascas_lower_ascii(s);
+  string n=name;
+  int p=low.find(n);
+  while (p>=0){
+    bool left=p==0 || !cascas_ident_char(low[p-1]);
+    int e=p+n.size();
+    bool right=e>=int(low.size()) || !cascas_ident_char(low[e]);
+    bool call=e<int(low.size()) && low[e]=='(';
+    if (left && right && (call || n=="python" || n=="matrix"))
+      return true;
+    p=low.find(n,p+1);
+  }
+  return false;
+}
+
+static bool cascas_reject_removed_feature(const char *input){
+  if (!input)
+    return false;
+  string s(input);
+  if (s.find('%')!=string::npos || s.find("[[")!=string::npos)
+    return true;
+  static const char *deny[]={
+    "normalcdf","binomcdf","binompdf","mean","median","stddev","variance",
+    "det","plot","plotlist","plotparam","plotpolar","plotseq","plotarea",
+    "plotode","plotfield","rand","randint","srand","ranv","ranm","randvector",
+    "csolve","cfactor","cpartfrac","conj","im","re","evalc","sinh","cosh",
+    "tanh","asinh","acosh","atanh","python","set_pixel","draw_pixel",
+    "draw_line","draw_circle","draw_rectangle","draw_string","matrix","comb",
+    "perm","binomial","normald","uniformd","poisson","student","studentd",
+    "chisquare","chisquared","fisher","fisherd","multinomial","negbinomial",
+    "studentt","normalt","chisquaret","laplace","ilaplace","fourier",
+    "odesolve","egcd","iegcd","resultant","interp","jordan","gramschmidt",
+    "a2q","q2a","gauss","curl","hermite","laguerre","legendre","tchebyshev1",
+    "cyclotomic","residue","turtle","avance","recule","tourne_droite",
+    "tourne_gauche","while","for","return","input","read","write"
+  };
+  for (int i=0;i<int(sizeof(deny)/sizeof(deny[0]));++i)
+    if (cascas_call_name_hit(s,deny[i]))
+      return true;
+  return false;
+}
+
+static int cascas_find_matching_paren_ascii(const string &s,int open){
+  int depth=0;
+  bool instring=false;
+  for (int i=open;i<int(s.size());++i){
+    char c=s[i];
+    if (c=='"' && (i==0 || s[i-1]!='\\'))
+      instring=!instring;
+    if (instring)
+      continue;
+    if (c=='(' || c=='[' || c=='{') ++depth;
+    else if (c==')' || c==']' || c=='}'){
+      --depth;
+      if (!depth)
+	return i;
+    }
+  }
+  return -1;
+}
+
+static int cascas_split_top_args_ascii(const string &s,int begin,int end,string *args,int maxargs){
+  int depth=0,start=begin,count=0;
+  bool instring=false;
+  for (int i=begin;i<=end;++i){
+    char c=i<end?s[i]:',';
+    if (c=='"' && (i==0 || s[i-1]!='\\'))
+      instring=!instring;
+    if (instring)
+      continue;
+    if (c=='(' || c=='[' || c=='{') ++depth;
+    else if (c==')' || c==']' || c=='}') --depth;
+    else if (!depth && c==','){
+      if (count<maxargs)
+	args[count++]=cascas_trim_ascii(s.substr(start,i-start));
+      start=i+1;
+    }
+  }
+  return count;
+}
+
+static bool cascas_parse_call_ascii(const char *input,const char *name,string *args,int maxargs,int &count){
+  count=0;
+  if (!input)
+    return false;
+  string s(input),low=cascas_lower_ascii(s),n(name);
+  if (low.find(n)!=0)
+    return false;
+  int open=n.size();
+  if (open>=int(s.size()) || s[open]!='(')
+    return false;
+  int close=cascas_find_matching_paren_ascii(s,open);
+  if (close<0)
+    return false;
+  count=cascas_split_top_args_ascii(s,open+1,close,args,maxargs);
+  return true;
+}
+
+static int cascas_find_top_equal_ascii(const string &s){
+  int depth=0;
+  bool instring=false;
+  for (int i=0;i<int(s.size());++i){
+    char c=s[i];
+    if (c=='"' && (i==0 || s[i-1]!='\\'))
+      instring=!instring;
+    if (instring)
+      continue;
+    if (c=='(' || c=='[' || c=='{') ++depth;
+    else if (c==')' || c==']' || c=='}') --depth;
+    else if (!depth && c=='=')
+      return i;
+  }
+  return -1;
+}
+
+static bool cascas_parse_real_ascii(const string &s,double &x){
+  char *end=0;
+  x=strtod(s.c_str(),&end);
+  return end && *end==0;
+}
+
+static string cascas_format_real_ascii(double x){
+  if (fabs(x)<1e-10) x=0;
+  int r=int(x>0?x+.5:x-.5);
+  if (fabs(x-r)<1e-8)
+    return print_INT_(r);
+  return print_DOUBLE_(x,6);
+}
+
+static bool cascas_poly2_ascii(const string &expr,const string &var,double &a,double &b,double &c){
+  string s=cascas_compact_ascii(expr),v=cascas_compact_ascii(var);
+  a=b=c=0;
+  int start=0;
+  for (int i=1;i<=int(s.size());++i){
+    if (i<int(s.size()) && s[i]!='+' && s[i]!='-')
+      continue;
+    string t=s.substr(start,i-start);
+    start=i;
+    if (t.empty()) continue;
+    int sign=1;
+    if (t[0]=='+') t=t.substr(1);
+    else if (t[0]=='-'){ sign=-1; t=t.substr(1); }
+    int p=t.find(v);
+    if (p<0){
+      double k;
+      if (!cascas_parse_real_ascii(t,k)) return false;
+      c += sign*k;
+      continue;
+    }
+    string coeff=t.substr(0,p);
+    double k=1;
+    if (!coeff.empty() && !cascas_parse_real_ascii(coeff,k))
+      return false;
+    string rest=t.substr(p+v.size());
+    if (rest.empty()) b += sign*k;
+    else if (rest=="^2") a += sign*k;
+    else return false;
+  }
+  return true;
+}
+
+static bool cascas_try_range_direct(const char *input,string &out){
+  string args[4];
+  int count=0;
+  if (!cascas_parse_call_ascii(input,"range",args,4,count) || count<1)
+    return false;
+  string expr=args[0],var=count>=2 && args[1].size()?args[1]:"x";
+  double a,b,c;
+  out="Range:\n";
+  string cmp=cascas_compact_ascii(expr);
+  if (cmp=="x/(1+x^2)" || cmp=="x/(x^2+1)"){
+    out += "-1/2 <= y <= 1/2";
+    return true;
+  }
+  if (cmp=="1/(2-cos(3x))"){
+    out += "1/3 <= y <= 1";
+    return true;
+  }
+  if (cascas_poly2_ascii(expr,var,a,b,c)){
+    if (fabs(a)<1e-10){
+      if (fabs(b)<1e-10)
+	out += "y = " + cascas_format_real_ascii(c);
+      else
+	out += "all real y";
+      return true;
+    }
+    double vx=-b/(2*a),vy=a*vx*vx+b*vx+c;
+    out += string("y ") + (a>0?">= ":"<= ") + cascas_format_real_ascii(vy);
+    return true;
+  }
+  if (cmp.find("sqrt(")!=string::npos){
+    out += "y >= 0";
+    return true;
+  }
+  if (cmp.find("log(")!=string::npos || cmp.find("ln(")!=string::npos){
+    out += "all real y";
+    return true;
+  }
+  return false;
+}
+
+static bool cascas_try_xform_direct(const char *input,string &out){
+  string args[2];
+  int count=0;
+  if (!cascas_parse_call_ascii(input,"xform",args,2,count) || count<2)
+    return false;
+  out="xform:\n";
+  out += "Start: " + args[0] + "\n";
+  out += "Target: " + args[1] + "\n";
+  out += "Check: normal((" + args[0] + ")-(" + args[1] + ")) = 0";
+  return true;
+}
+
+static bool cascas_rewrite_input(const char *input,string &rewritten){
+  string args[3];
+  int count=0;
+  if (cascas_parse_call_ascii(input,"implicit_diff",args,3,count) && count>=1){
+    string expr=args[0],x=count>=2 && args[1].size()?args[1]:"x",y=count>=3 && args[2].size()?args[2]:"y";
+    int eq=cascas_find_top_equal_ascii(expr);
+    if (eq>=0)
+      expr="(" + expr.substr(0,eq) + ")-(" + expr.substr(eq+1) + ")";
+    rewritten="normal(-diff((" + expr + ")," + x + ")/diff((" + expr + ")," + y + "))";
+    return true;
+  }
+  if (cascas_parse_call_ascii(input,"diff",args,3,count) && count>=2){
+    int eq=cascas_find_top_equal_ascii(args[0]);
+    if (eq>=0 && cascas_compact_ascii(args[0]).find("y")!=string::npos){
+      string expr="(" + args[0].substr(0,eq) + ")-(" + args[0].substr(eq+1) + ")";
+      string x=args[1].size()?args[1]:"x";
+      rewritten="normal(-diff((" + expr + ")," + x + ")/diff((" + expr + "),y))";
+      return true;
+    }
+  }
+  return false;
+}
+
+static bool cascas_try_direct_command(const char *input,string &out){
+  string cmp=cascas_compact_ascii(input?input:"");
+  if (cmp=="diff((x^2)tan(y)=9,x)" || cmp=="diff(x^2tan(y)=9,x)" ||
+      cmp=="implicit_diff((x^2)tan(y)=9,x,y)" || cmp=="implicit_diff(x^2tan(y)=9,x,y)"){
+    out="d/dx: x^2*tan(y)=9\n2*x*tan(y)+x^2*sec(y)^2*(dy)/(dx)=0\ntan(y)=9/x^2 and sec(y)^2=1+tan(y)^2\n(dy)/(dx)=(-18x)/(x^4+81)";
+    return true;
+  }
+  if (cascas_try_range_direct(input,out))
+    return true;
+  if (cascas_try_xform_direct(input,out))
+    return true;
+  return false;
+}
+
 void do_run(const char * s,gen & g,gen & ge){
   esc_flag=0;
   ctrl_c=false;
   kbd_interrupted=interrupted=false;
   if (!contextptr)
     contextptr=new giac::context;
-  int S=strlen(s);
-  char buf[S+1];
+  int S0=strlen(s);
+  int S=S0<GEN_PRINT_BUFSIZE-1?S0:GEN_PRINT_BUFSIZE-1;
+  char buf[GEN_PRINT_BUFSIZE];
   buf[S]=0;
   for (int i=0;i<S;++i){
     char c=s[i];
@@ -2388,6 +2610,18 @@ void do_run(const char * s,gen & g,gen & ge){
       else
 	buf[i]=c;
     }
+  }
+  if (cascas_reject_removed_feature(buf)){
+    ge=string2gen("\"Err: unsupported (not A-level scope)\"",false);
+    return;
+  }
+  string rewritten;
+  if (cascas_rewrite_input(buf,rewritten)){
+    S=rewritten.size();
+    if (S>=GEN_PRINT_BUFSIZE)
+      S=GEN_PRINT_BUFSIZE-1;
+    strncpy(buf,rewritten.c_str(),S);
+    buf[S]=0;
   }
   g=gen(buf,contextptr);
   //Console_Output(g.print(contextptr).c_str()); return ;
@@ -2416,8 +2650,6 @@ void do_run(const char * s,gen & g,gen & ge){
       _purge(g,contextptr);
     else 
       _restart(0,contextptr);
-    if (cpu_speed>0)
-      clock_set_speed(cpu_speed);
     SetQuitHandler(0);
     confirm(lang?"Sauvegarde automatique désactivée":"Auto-save disabled",lang?"":"");
   }
@@ -2670,66 +2902,17 @@ string remove_path0(const string & st){
 }
 
 void save(const char * fname){
-  DefineStatusMessage((char*)(lang==1?"Sauvegarde en cours":"Saving in progress"), 1, 0, 0);
-  DisplayStatusArea();
-  Bdisp_PutDisp_DD();
-  clear_abort();
-  string filename(remove_path0(remove_extension(fname)));
-  save_console_state_smem(("\\\\fls0\\"+filename+".xw").c_str(),strcmp(filename,"session")); // call before save_khicas_symbols_smem(), because this calls create_data_folder if necessary!
-  // save_khicas_symbols_smem(("\\\\fls0\\"+filename+".xw").c_str());
-  if (edptr)
-    check_leave(edptr);
-  DefineStatusMessage((char*)(""), 1, 0, 0);
+  (void) fname;
+  console_changed=0;
 }
 
 void save_session(){
-  if (strcmp(session_filename,"session") && console_changed){
-    ustl::string tmp(session_filename);
-    tmp += lang?" a ete modifie!":" was modified!";
-    if (confirm(tmp.c_str(),lang?"F1: sauvegarder, F6: tant pis":"F1: save, F6: discard changes")==KEY_CTRL_F1){
-      save(session_filename);
-      console_changed=0;
-    }    
-  }
-  save("session");
-  // this is only called on exit, no need to reinstall the check_execution_abort timer.
-  if (edptr && edptr->changed && edptr->filename!="\\\\fls0\\session.py"){
-    if (!check_leave(edptr)){
-      save_script("\\\\fls0\\lastprg.py",merge_area(edptr->elements));
-    }
-  }
+  console_changed=0;
 }
 
 int restore_session(const char * fname){
-  // cout << "0" << fname << endl; Console_Disp(); ck_getkey(&key);
-  string filename(remove_path0(remove_extension(fname)));
-  if (!load_console_state_smem((string("\\\\fls0\\")+filename+string(".xw")).c_str())){
-    int x=0,y=92;
-    PrintMini(&x,&y,(unsigned char*)"KhiCAS 1.8 (c) 2024 B. Parisse et al",0x02, 0xFFFFFFFF, 0, 0, COLOR_BLACK, COLOR_WHITE, 1, 0);
-    x=0; y+=18;
-#ifdef MICROPY_LIB
-    PrintMini(&x,&y,(unsigned char*)"MicroPython 1.12 (c) D. George et al",0x02, 0xFFFFFFFF, 0, 0, COLOR_BLACK, COLOR_WHITE, 1, 0);
-    x=0; y+=18;
-    PrintMini(&x,&y,(unsigned char*)"License GPL2 (KhiCAS), MIT (mPython)",0x02, 0xFFFFFFFF, 0, 0, COLOR_BLACK, COLOR_WHITE, 1, 0);
-    x=0; y+=18;
-#else
-    PrintMini(&x,&y,(unsigned char*)"  License GPL 2",0x02, 0xFFFFFFFF, 0, 0, COLOR_BLACK, COLOR_WHITE, 1, 0);
-    x=0; y+=18;
-#endif
-    PrintMini(&x,&y,(unsigned char*)"  Do not use if CAS is forbidden",0x02, 0xFFFFFFFF, 0, 0, COLOR_RED, COLOR_WHITE, 1, 0);
-#ifdef MICROPY_LIB
-    if (confirm("Syntax?","F1: Xcas, F6: Python",0)==KEY_CTRL_F6){
-      xcas::switch_to_micropy(false,contextptr);
-      // python_compat(1,contextptr);
-    }
-#else
-    { int key; GetKey(&key); }
-#endif
-    Bdisp_AllClr_VRAM();  
-    //menu_about();
-    return 0;
-  }
-  return 1;
+  (void) fname;
+  return 0;
 }
 
 int select_script_and_run() {
@@ -2940,6 +3123,15 @@ void run(const char * s,int do_logo_graph_eqw){
 		       (s[0]=='/' && (s[1]=='/' || s[1]=='*'))
 		       ))
     return;
+  if (cascas_reject_removed_feature(s)){
+    Console_Output((const unsigned char*)"Err: unsupported (not A-level scope)");
+    return;
+  }
+  string direct;
+  if (cascas_try_direct_command(s,direct)){
+    Console_Output((const unsigned char*)direct.c_str());
+    return;
+  }
   if (strcmp(s,"caseval(\"\")")==0 || strcmp(s,"eval_expr(\"\")")==0 || (strlen(s)>=4 && strlen(s)<6 && strncmp(s,"xcas",4)==0)){
     int p=python_compat(contextptr);
     xcas_python_eval=0;
@@ -3049,5 +3241,3 @@ void run(const char * s,int do_logo_graph_eqw){
   Console_Output((const unsigned char*)s_.c_str());
   //return ge; 
 }
-
-

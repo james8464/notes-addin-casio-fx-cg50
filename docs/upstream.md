@@ -18,3 +18,10 @@ Other inspected inputs:
 - `mkg3a.tgz`: `8d1e4344b7b280decee5a369e395d84ef5e7f68a6fbb457e8e4732fc130f6402`.
 
 `khicasio.zip` was not selected because `khicas.tgz` already provided the source tree and the zip download was slow/incomplete during inspection.
+
+Build repair note:
+
+- The imported tree referenced `cutils.c` and `libbf.c` but did not include them.
+- Both files were restored from Bellard QuickJS 2020-11-08 to match `CONFIG_VERSION`.
+- `cutils.c` SHA256 matches upstream `sha.txt`: `82a2cf31e18fb5d080e0ef146886af46a336bd523fb5ad01e4187c687008ebf2`.
+- `libbf.c` was patched only to expose `bf_pow_ui`, matching the bundled `libbf.h`.

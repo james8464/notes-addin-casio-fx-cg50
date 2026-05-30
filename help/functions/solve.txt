@@ -1,0 +1,5 @@
+Args: solve(equation,var)
+Required: equation, var
+Does: Solves supported A-level equations over the real domain.
+Examples: solve(x^2-5*x+6=0,x); solve(log(2,x)=3,x)
+Working: Shows expansion, factorisation, inverse-operation, and checking lines.

@@ -7,6 +7,7 @@
 #include <fxcg/serial.h>
 #include <fxcg/rtc.h>
 #include <fxcg/heap.h>
+extern "C" void DirectDrawRectangle(int x1, int y1, int x2, int y2, unsigned short color);
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -397,6 +398,14 @@ void drawRectangle(int x, int y, int width, int height, unsigned short color){
       VRAM+=384-width;
     }
   }
+}
+
+const unsigned short kCasioCasPink = 0xF81F;
+
+void drawCasioCasBorder(){
+  DirectDrawRectangle(0, 0, 5, 223, kCasioCasPink);
+  DirectDrawRectangle(390, 0, 395, 223, kCasioCasPink);
+  DirectDrawRectangle(0, 217, 395, 223, kCasioCasPink);
 }
 
 //Uses the Bresenham line algorithm

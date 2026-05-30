@@ -1,0 +1,5 @@
+Args: tan(x)
+Required: x
+Does: Tangent function in the current angle mode.
+Examples: tan(pi/4); diff(tan(x),x)
+Working: Shows identity and derivative routes where routed.
