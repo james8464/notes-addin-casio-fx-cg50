@@ -1,4 +1,0 @@
-#pragma once
-// Shim header for <utility>. ustl provides pair/move/forward via upair.h /
-// uutility.h. casio_compat.hpp force-include already aliases them into std.
-#include <upair.h>

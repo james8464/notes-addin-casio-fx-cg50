@@ -1,3 +1,0 @@
-#pragma once
-// Shim header for <iomanip>. The host code includes this but never uses any
-// of its facilities (verified). Empty.

@@ -1,4 +1,0 @@
-#pragma once
-// Shim header for <numeric>. casio_compat.hpp (force-included) already provides
-// std::gcd / std::lcm / ustl::accumulate.
-#include <unumeric.h>
