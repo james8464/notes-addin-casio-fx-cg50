@@ -97,6 +97,7 @@ const catalogFunc completeCat[] = { // A-level scoped catalog only
   {"solve(equation,x)", 0, "Solve equation for x.", "solve(x^2-x-1=0,x)", 0, CAT_CATEGORY_SOLVE},
   {"subst(a,b=c)", 0, "Substitute c for b in a.", "subst(x^2,x=3)", 0, CAT_CATEGORY_ALGEBRA},
   {"sum(f,k,m,M)", 0, "Sum of f for k from m to M.", "sum(k^2,k,1,n)", 0, CAT_CATEGORY_CALCULUS},
+  {"suvat(u,a,t)", "suvat(", "A-level constant acceleration displacement with working.", "suvat(3,2,5)", 0, CAT_CATEGORY_PHYS | (CAT_CATEGORY_CALCULUS << 8)},
   {"tcollect(expr)", 0, "Collect trigonometric terms.", "tcollect(sin(x)+cos(x))", 0, CAT_CATEGORY_TRIG},
   {"texpand(expr)", 0, "Expand trigonometric expressions.", "texpand(sin(3*x))", 0, CAT_CATEGORY_TRIG},
   {"trigcos(expr)", 0, "Rewrite trig using cos where useful.", "trigcos(sin(x)^2)", 0, CAT_CATEGORY_TRIG},

@@ -2546,104 +2546,6 @@ static int cascas_find_top_equal_ascii(const string &s){
   return -1;
 }
 
-static bool cascas_parse_real_ascii(const string &s,double &x){
-  char *end=0;
-  x=strtod(s.c_str(),&end);
-  return end && *end==0;
-}
-
-static string cascas_format_real_ascii(double x){
-  if (fabs(x)<1e-10) x=0;
-  int r=int(x>0?x+.5:x-.5);
-  if (fabs(x-r)<1e-8)
-    return print_INT_(r);
-  return print_DOUBLE_(x,6);
-}
-
-static bool cascas_poly2_ascii(const string &expr,const string &var,double &a,double &b,double &c){
-  string s=cascas_compact_ascii(expr),v=cascas_compact_ascii(var);
-  a=b=c=0;
-  int start=0;
-  for (int i=1;i<=int(s.size());++i){
-    if (i<int(s.size()) && s[i]!='+' && s[i]!='-')
-      continue;
-    string t=s.substr(start,i-start);
-    start=i;
-    if (t.empty()) continue;
-    int sign=1;
-    if (t[0]=='+') t=t.substr(1);
-    else if (t[0]=='-'){ sign=-1; t=t.substr(1); }
-    int p=t.find(v);
-    if (p<0){
-      double k;
-      if (!cascas_parse_real_ascii(t,k)) return false;
-      c += sign*k;
-      continue;
-    }
-    string coeff=t.substr(0,p);
-    double k=1;
-    if (!coeff.empty() && !cascas_parse_real_ascii(coeff,k))
-      return false;
-    string rest=t.substr(p+v.size());
-    if (rest.empty()) b += sign*k;
-    else if (rest=="^2") a += sign*k;
-    else return false;
-  }
-  return true;
-}
-
-static bool cascas_try_range_direct(const char *input,string &out){
-  string args[4];
-  int count=0;
-  if (!cascas_parse_call_ascii(input,"range",args,4,count) || count<1)
-    return false;
-  string expr=args[0],var=count>=2 && args[1].size()?args[1]:"x";
-  double a,b,c;
-  out="Range:\n";
-  string cmp=cascas_compact_ascii(expr);
-  if (cmp=="x/(1+x^2)" || cmp=="x/(x^2+1)"){
-    out += "-1/2 <= y <= 1/2";
-    return true;
-  }
-  if (cmp=="1/(2-cos(3x))"){
-    out += "1/3 <= y <= 1";
-    return true;
-  }
-  if (cascas_poly2_ascii(expr,var,a,b,c)){
-    if (fabs(a)<1e-10){
-      if (fabs(b)<1e-10)
-	out += "y = " + cascas_format_real_ascii(c);
-      else
-	out += "all real y";
-      return true;
-    }
-    double vx=-b/(2*a),vy=a*vx*vx+b*vx+c;
-    out += string("y ") + (a>0?">= ":"<= ") + cascas_format_real_ascii(vy);
-    return true;
-  }
-  if (cmp.find("sqrt(")!=string::npos){
-    out += "y >= 0";
-    return true;
-  }
-  if (cmp.find("log(")!=string::npos || cmp.find("ln(")!=string::npos){
-    out += "all real y";
-    return true;
-  }
-  return false;
-}
-
-static bool cascas_try_xform_direct(const char *input,string &out){
-  string args[2];
-  int count=0;
-  if (!cascas_parse_call_ascii(input,"xform",args,2,count) || count<2)
-    return false;
-  out="xform:\n";
-  out += "Start: " + args[0] + "\n";
-  out += "Target: " + args[1] + "\n";
-  out += "Check: normal((" + args[0] + ")-(" + args[1] + ")) = 0";
-  return true;
-}
-
 static bool cascas_rewrite_input(const char *input,string &rewritten){
   string args[3];
   int count=0;
@@ -2664,20 +2566,6 @@ static bool cascas_rewrite_input(const char *input,string &rewritten){
       return true;
     }
   }
-  return false;
-}
-
-static bool cascas_try_direct_command(const char *input,string &out){
-  string cmp=cascas_compact_ascii(input?input:"");
-  if (cmp=="diff((x^2)tan(y)=9,x)" || cmp=="diff(x^2tan(y)=9,x)" ||
-      cmp=="implicit_diff((x^2)tan(y)=9,x,y)" || cmp=="implicit_diff(x^2tan(y)=9,x,y)"){
-    out="d/dx: x^2*tan(y)=9\n2*x*tan(y)+x^2*sec(y)^2*(dy)/(dx)=0\ntan(y)=9/x^2 and sec(y)^2=1+tan(y)^2\n(dy)/(dx)=(-18x)/(x^4+81)";
-    return true;
-  }
-  if (cascas_try_range_direct(input,out))
-    return true;
-  if (cascas_try_xform_direct(input,out))
-    return true;
   return false;
 }
 

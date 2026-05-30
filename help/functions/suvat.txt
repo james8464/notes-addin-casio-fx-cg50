@@ -1,0 +1,5 @@
+Args: suvat(u,a,t)
+Required: initial velocity u, constant acceleration a, time t.
+Does: Calculates displacement using s = u*t + 1/2*a*t^2.
+Examples: suvat(3,2,5)
+Working: Shows formula selection, substitution, and final displacement.

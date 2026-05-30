@@ -8,9 +8,18 @@ RUNNER = ROOT / "tools" / "khicas_host_runner"
 
 CASES = [
     ("diff((x^2)*tan(y)=9,x)", "(dy)/(dx)=(-18x)/(x^4+81)"),
+    ("diff(sin(x),x)", "Differentiate: sin(x)"),
+    ("int(2*x+3,x)", "Integrate term by term"),
+    ("integrate(2*x+3,x)", "Integrate term by term"),
     ("range(x^2+4*x+7)", "y >= 3"),
+    ("range((x^2-1)/(x^2+1))", "-1 <= y < 1"),
+    ("range(abs(x-3)+2)", "y >= 2"),
+    ("range(sqrt(x-1)+3)", "y >= 3"),
     ("xform((x+1)^2,x^2+2*x+1)", "normal(((x+1)^2)-(x^2+2*x+1)) = 0"),
+    ("xform(sin(x)^2+cos(x)^2,1)", "sin(x)^2+cos(x)^2 = 1"),
+    ("xform(log(2,x),ln(x)/ln(2))", "change of base"),
     ("log(2,8)", "Answer: 3"),
+    ("suvat(3,2,5)", "s = u*t + 1/2*a*t^2"),
 ]
 
 

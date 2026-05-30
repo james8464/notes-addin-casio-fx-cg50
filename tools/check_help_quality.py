@@ -18,6 +18,7 @@ REQUIRED = [
     "xform",
     "implicit_diff",
     "log",
+    "suvat",
     "sin",
     "cos",
     "tan",

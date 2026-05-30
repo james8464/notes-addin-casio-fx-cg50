@@ -1,6 +1,6 @@
 # CasioCAS Project Graph
 
-Last updated: 2026-05-30 23:14 Europe/London
+Last updated: 2026-05-30 23:25 Europe/London
 
 ## Build
 
@@ -27,7 +27,7 @@ graph TD
   Input["main.cc shell input"] --> Guard["A-level guard"]
   Guard --> Hash["hashed removed-feature guard"]
   Hash --> Shared["cascas_working adapter"]
-  Shared --> Rewrite["range/xform/log/implicit diff"]
+  Shared --> Rewrite["range/xform/log/diff/int/SUVAT"]
   Rewrite --> Giac["GIAC core"]
   Giac --> Answer["exact answer"]
   Guard --> CalcWork["calculator working hooks"]
@@ -45,9 +45,11 @@ graph TD
 graph TD
   Guard["runtime denylist"] --> Unsupported["Err: unsupported (not A-level scope)"]
   Direct["direct working routes"] --> Implicit["implicit diff example"]
-  Direct --> Range["quadratic/rational/trig range cases"]
-  Direct --> Xform["xform proof shell"]
+  Direct --> Range["quadratic/rational/abs/sqrt/trig range cases"]
+  Direct --> DiffInt["basic diff/integrate steps"]
+  Direct --> Xform["identity/log/expand proof shell"]
   Direct --> Log["log(base,x) working"]
+  Direct --> Suvat["SUVAT displacement working"]
   Host["old host working engine"] --> Queue["200/200 golden host checks"]
   Session["save/load/session files"] --> Disabled["no-op, in-memory only"]
   Help["help/functions/*.txt"] --> Pak["CASIOCAS.PAK"]
@@ -102,14 +104,14 @@ graph TD
 
 ```mermaid
 graph LR
-  Build["./compile exit 0"] --> Size["1,360,572 bytes"]
+  Build["./compile exit 0"] --> Size["1,364,312 bytes"]
   Build --> Meta["metadata ok"]
   Build --> Border["purple border ok"]
   Source["source gates"] --> Catalog["catalog ok"]
   Source --> Removed["39 removed rejected"]
   Source --> Session["session disabled"]
-  Help["help pack"] --> HelpQ["17 function sheets ok"]
+  Help["help pack"] --> HelpQ["18 function sheets ok"]
   Queue["golden queue"] --> QueueRun["200/200 host ok"]
-  Shared["shared working"] --> SharedRun["4/4 host+calculator adapter ok"]
+  Shared["shared working"] --> SharedRun["13/13 host+calculator adapter ok"]
   Bin["binary scan"] --> NoLeak["no removed-term hits"]
 ```

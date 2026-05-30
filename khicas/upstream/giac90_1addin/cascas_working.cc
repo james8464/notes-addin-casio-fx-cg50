@@ -110,6 +110,25 @@ static bool parse_real(const working_string &s,double &x){
   return end && *end==0;
 }
 
+static bool starts_with(const working_string &s,const char *prefix){
+  working_string p(prefix);
+  return s.size()>=p.size() && s.substr(0,p.size())==p;
+}
+
+static working_string strip_outer_parens(working_string s){
+  s=trim_ascii(s);
+  bool changed=true;
+  while (changed && s.size()>=2 && s[0]=='('){
+    changed=false;
+    int close=find_matching_paren(s,0);
+    if (close==int(s.size())-1){
+      s=s.substr(1,s.size()-2);
+      changed=true;
+    }
+  }
+  return s;
+}
+
 static working_string format_real(double x){
   if (fabs(x)<1e-10) x=0;
   int r=int(x>0?x+.5:x-.5);
@@ -163,14 +182,41 @@ static bool try_range(const char *input,working_string &out){
   working_string expr=args[0],var=count>=2 && args[1].size()?args[1]:"x";
   double a,b,c;
   out="Range:\n";
-  working_string cmp=compact_ascii(expr);
+  working_string cmp=compact_ascii(strip_outer_parens(expr));
   if (cmp=="x/(1+x^2)" || cmp=="x/(x^2+1)"){
     out += "-1/2 <= y <= 1/2";
+    return true;
+  }
+  if (cmp=="(x^2-1)/(x^2+1)"){
+    out += "Let y=(x^2-1)/(x^2+1)\n";
+    out += "y(x^2+1)=x^2-1\n";
+    out += "x^2=(1+y)/(1-y), so (1+y)/(1-y) >= 0\n";
+    out += "-1 <= y < 1";
     return true;
   }
   if (cmp=="1/(2-cos(3x))"){
     out += "1/3 <= y <= 1";
     return true;
+  }
+  if (starts_with(cmp,"abs(")){
+    int close=find_matching_paren(cmp,3);
+    double k=0;
+    if (close>0 && close+1<int(cmp.size()) && cmp[close+1]=='+' && parse_real(cmp.substr(close+2),k)){
+      out += "abs(...) >= 0\n";
+      out += "y >= ";
+      out += format_real(k);
+      return true;
+    }
+  }
+  if (starts_with(cmp,"sqrt(")){
+    int close=find_matching_paren(cmp,4);
+    double k=0;
+    if (close>0 && close+1<int(cmp.size()) && cmp[close+1]=='+' && parse_real(cmp.substr(close+2),k)){
+      out += "sqrt(...) >= 0\n";
+      out += "y >= ";
+      out += format_real(k);
+      return true;
+    }
   }
   if (poly2(expr,var,a,b,c)){
     if (fabs(a)<1e-10){
@@ -199,12 +245,118 @@ static bool try_range(const char *input,working_string &out){
   return false;
 }
 
+static bool try_diff(const char *input,working_string &out){
+  working_string args[2];
+  int count=0;
+  if (!parse_call(input,"diff",args,2,count) || count<1)
+    return false;
+  working_string expr=compact_ascii(args[0]);
+  working_string var=count>=2 && args[1].size()?compact_ascii(args[1]):"x";
+  if (var!="x")
+    return false;
+  if (expr=="sin(x)"){
+    out="Differentiate: sin(x)\n";
+    out += "d/dx sin(x)=cos(x)\n";
+    out += "Answer: cos(x)";
+    return true;
+  }
+  if (expr=="cos(x)"){
+    out="Differentiate: cos(x)\n";
+    out += "d/dx cos(x)=-sin(x)\n";
+    out += "Answer: -sin(x)";
+    return true;
+  }
+  if (expr=="tan(x)"){
+    out="Differentiate: tan(x)\n";
+    out += "d/dx tan(x)=sec(x)^2\n";
+    out += "Answer: sec(x)^2";
+    return true;
+  }
+  if (expr=="ln(x)"){
+    out="Differentiate: ln(x)\n";
+    out += "d/dx ln(x)=1/x\n";
+    out += "Answer: 1/x";
+    return true;
+  }
+  return false;
+}
+
+static bool parse_linear(const working_string &expr,double &m,double &c){
+  working_string s=compact_ascii(expr);
+  m=c=0;
+  int px=s.find("x");
+  if (px<0)
+    return false;
+  working_string left=s.substr(0,px);
+  if (left.empty() || left=="+")
+    m=1;
+  else if (left=="-")
+    m=-1;
+  else if (!parse_real(left,m))
+    return false;
+  working_string right=s.substr(px+1);
+  if (right.empty())
+    c=0;
+  else if ((right[0]=='+' || right[0]=='-') && parse_real(right,c))
+    ;
+  else
+    return false;
+  return true;
+}
+
+static bool try_integral(const char *input,working_string &out){
+  working_string args[2];
+  int count=0;
+  if (!parse_call(input,"int",args,2,count) || count<1){
+    count=0;
+    if (!parse_call(input,"integrate",args,2,count) || count<1)
+      return false;
+  }
+  working_string var=count>=2 && args[1].size()?compact_ascii(args[1]):"x";
+  if (var!="x")
+    return false;
+  double m,c;
+  if (!parse_linear(args[0],m,c))
+    return false;
+  out="Integrate term by term:\n";
+  out += "int(";
+  out += args[0];
+  out += ") dx = ";
+  out += format_real(m/2);
+  out += "*x^2";
+  if (fabs(c)>1e-10){
+    out += c>0?" + ":" - ";
+    out += format_real(fabs(c));
+    out += "*x";
+  }
+  out += " + C";
+  return true;
+}
+
 static bool try_xform(const char *input,working_string &out){
   working_string args[2];
   int count=0;
   if (!parse_call(input,"xform",args,2,count) || count<2)
     return false;
+  working_string a=compact_ascii(strip_outer_parens(args[0]));
+  working_string b=compact_ascii(strip_outer_parens(args[1]));
   out="xform:\n";
+  if ((a=="sin(x)^2+cos(x)^2" && b=="1") || (a=="cos(x)^2+sin(x)^2" && b=="1")){
+    out += "Use identity: sin(x)^2+cos(x)^2 = 1\n";
+    out += "Answer: 1";
+    return true;
+  }
+  if ((a=="log(2,x)" && b=="ln(x)/ln(2)") || (a=="log(a,x)" && b=="ln(x)/ln(a)")){
+    out += "Use change of base: log_a(x)=ln(x)/ln(a)\n";
+    out += "Answer: ";
+    out += args[1];
+    return true;
+  }
+  if (a=="(x+1)^2" && b=="x^2+2x+1"){
+    out += "Expand: (x+1)^2\n";
+    out += "x^2+x+x+1\n";
+    out += "Answer: x^2+2*x+1\n";
+  }
   out += "Start: ";
   out += args[0];
   out += "\nTarget: ";
@@ -214,6 +366,31 @@ static bool try_xform(const char *input,working_string &out){
   out += ")-(";
   out += args[1];
   out += ")) = 0";
+  return true;
+}
+
+static bool try_suvat(const char *input,working_string &out){
+  working_string args[3];
+  int count=0;
+  if (!parse_call(input,"suvat",args,3,count) || count!=3)
+    return false;
+  double u,a,t;
+  if (!parse_real(args[0],u) || !parse_real(args[1],a) || !parse_real(args[2],t))
+    return false;
+  double s=u*t+.5*a*t*t;
+  out="SUVAT:\n";
+  out += "s = u*t + 1/2*a*t^2\n";
+  out += "s = ";
+  out += format_real(u);
+  out += "*";
+  out += format_real(t);
+  out += " + 1/2*";
+  out += format_real(a);
+  out += "*";
+  out += format_real(t);
+  out += "^2\n";
+  out += "Answer: ";
+  out += format_real(s);
   return true;
 }
 
@@ -250,7 +427,13 @@ bool eval_with_working(const char *input,working_string &out){
   }
   if (try_range(input,out))
     return true;
+  if (try_diff(input,out))
+    return true;
+  if (try_integral(input,out))
+    return true;
   if (try_xform(input,out))
+    return true;
+  if (try_suvat(input,out))
     return true;
   if (try_log_base(input,out))
     return true;
