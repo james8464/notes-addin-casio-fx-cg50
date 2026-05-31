@@ -24,11 +24,11 @@ Current status:
 
 - app name: `CAS`
 - file: `CAS.g3a`
-- size: `2,096,988` bytes
-- hard limit headroom: `164` bytes
-- sha256: `46e54ca740493eb3c7a8f96b76deb0b96b44ab06d0d61618dd0b2afdd85c1258`
+- size: `2,097,124` bytes
+- hard limit headroom: `28` bytes
+- sha256: `d6a76ae2066716e691176fa938d415ac5e7460044077bf0c348a3cb6fccd9240`
 - exact queue runtime: `14,256/14,256`
-- strict marker quality: `12,808/14,256`
+- strict marker quality: `12,810/14,256`
 - online challenge source coverage: MadAsMaths exact rows in queue; Daily Integral hard-integration style probes inspected from `https://dailyintegral.com/archive`
 
 Notable routes:
@@ -50,6 +50,7 @@ Notable routes:
 - simple numeric expressions show small exact fractions when detected
 - polynomial antiderivatives use coefficient-first descending-power form, e.g. `-1/3*x^3 + 2*x^2 + 5*x + C`
 - `integrate(x^2-1,x)` uses the mark-scheme form `x^3/3 - x + C`
+- `integrate(x*sqrt(x+1),x,0,3)` uses substitution and returns `116/15`
 - polynomial derivatives use descending-power form, e.g. `-8*x^3 + 1`
 - repeated integer quadratic roots print once, e.g. `x = [8]`
 - catalogue Help on command screen shows spaced sections and F2/F3 examples

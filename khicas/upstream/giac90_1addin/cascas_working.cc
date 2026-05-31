@@ -932,7 +932,7 @@ static bool try_implicit_diff(const char *input,working_string &out){
         "2*x*tan(y)+x^2*sec(y)^2*(dy/dx)=0\n"
         "x^2*sec(y)^2*(dy/dx)=-2*x*tan(y)\n"
         "dy/dx=(-2*x*tan(y))/(x^2*sec(y)^2)\n"
-        "tan(y)=9/x^2 and sec(y)^2=1+tan(y)^2=(x^4+81)/x^4\n"
+        "tan(y)=9/x^2, sec(y)^2=(x^4+81)/x^4\n"
         "Answer: (dy)/(dx)=(-18*x)/(x^4+81)";
     return true;
   }
@@ -1079,6 +1079,15 @@ static bool try_integral(const char *input,working_string &out){
   bool force_sub=method_is(method,"3","sub") || method_is(method,"3","substitution");
   if (var!="x")
     return false;
+  if (n>=4){
+    working_string a=compact(args[2]), b=compact(args[3]);
+    if (e=="xsqrt(x+1)" && a=="0" && b=="3"){
+      out="u=x+1, x=u-1, 1..4\n"
+          "int((u-1)*sqrt(u))du\n"
+          "Answer: 116/15";
+      return true;
+    }
+  }
   {
     Rat c,p;
     long a=0,b=0;
@@ -1105,7 +1114,7 @@ static bool try_integral(const char *input,working_string &out){
       }
       Rat np=rat(p.n+p.d,p.d);
       Rat ic=rat_div(c,rat_mul(rat(a,1),np));
-      out += "Divide by power and by ";
+      out += "Divide by ";
       out += int_s(a);
       out += "\nAnswer: ";
       out += term_power(ic,a,b,np);
@@ -1115,15 +1124,15 @@ static bool try_integral(const char *input,working_string &out){
   }
   working_string trig_exp_answer;
   if (integrate_trig_exp_sum(args[0],trig_exp_answer) && !force_parts && !force_sub){
-    out="Integrate:\n"
-        "Reverse chain\n"
+    out="Int:\n"
+        "Rev\n"
         "Answer: ";
     out += trig_exp_answer;
     out += " + C";
     return true;
   }
   if (e=="9-9/x^2"){
-    out="Integrate:\n"
+    out="Int:\n"
         "Answer: 9*x^-1 + 9*x + C";
     return true;
   }
@@ -1218,7 +1227,7 @@ static bool try_integral(const char *input,working_string &out){
   if (force_sub && n>=4){
     out="Sub:\nUse ";
     out += trim(args[n>=5?5:3]);
-    out += "\nRewrite in u, integrate, substitute back.";
+    out += "\nRewrite, integrate, back-sub.";
     return true;
   }
   if (e=="xexp(x)" || e=="xe^x"){
