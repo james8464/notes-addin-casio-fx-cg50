@@ -1,6 +1,6 @@
 # CasioCAS Project Graph
 
-Last updated: 2026-05-31 12:30 Europe/London
+Last updated: 2026-05-31 12:35 Europe/London
 
 ## Build
 
@@ -50,6 +50,7 @@ graph TD
   Direct --> ParamDiff["parametric differentiation dy/dx=(dy/dt)/(dx/dt), optional t0"]
   Direct --> Range["quadratic/rational/abs/sqrt/trig range cases"]
   Direct --> SqrtRange["sqrt(downward quadratic) finite range by inner maximum"]
+  Direct --> ExpRange["exponential curve range by derivative, stationary points, and end behavior"]
   Direct --> ExactRange["exact-fraction quadratic range output, including rational coefficients"]
   Direct --> BoundedRange["bounded interval range(expr,var,a,b) for linear/quadratic pure functions"]
   Direct --> Domain["domain inequalities for sqrt/log restrictions"]

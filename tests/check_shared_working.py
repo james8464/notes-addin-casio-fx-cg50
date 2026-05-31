@@ -98,6 +98,7 @@ CASES = [
     ("range(sqrt(9-x^2),x)", "0 <= y <= 3"),
     ("range((x+1)/(x^2+1))", "(1-sqrt(2))/2 <= y <= (1+sqrt(2))/2"),
     ("range(1/(x^2+4*x+5))", "0 < y <= 1"),
+    ("range(4*(x^2-2)*exp(-2*x),x)", "Answer: y >= -4*e^2"),
     ("range(x^2-4*x+5,x,0,5)", "Answer: 1 <= y <= 10"),
     ("range(2*x+1,x,-1,3)", "Answer: -1 <= y <= 7"),
     ("domain(sqrt(x-2),x)", "Answer: x >= 2"),

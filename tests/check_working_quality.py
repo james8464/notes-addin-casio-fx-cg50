@@ -220,6 +220,17 @@ QUALITY_CASES = [
         ],
     ),
     (
+        "range(4*(x^2-2)*exp(-2*x),x)",
+        7,
+        [
+            "f'(x) = 8*e^(-2*x)*(x - x^2 + 2)",
+            "x - x^2 + 2 = 0 => x = -1 or x = 2",
+            "f(-1) = -4*e^2",
+            "As x -> -infinity, f(x) -> infinity",
+            "Answer: y >= -4*e^2",
+        ],
+    ),
+    (
         "domain(log(10,4-x),x)",
         4,
         [

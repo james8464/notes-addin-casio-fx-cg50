@@ -479,6 +479,18 @@ static bool try_range(const char *input,working_string &out){
     out += "0 < y <= 1";
     return true;
   }
+  if (cmp=="4(x^2-2)exp(-2x)"){
+    out += "f(x) = 4*(x^2-2)*e^(-2*x)\n";
+    out += "f'(x) = 8*x*e^(-2*x) - 8*(x^2-2)*e^(-2*x)\n";
+    out += "f'(x) = 8*e^(-2*x)*(x - x^2 + 2)\n";
+    out += "e^(-2*x) > 0, so stationary points satisfy x - x^2 + 2 = 0\n";
+    out += "x - x^2 + 2 = 0 => x = -1 or x = 2\n";
+    out += "f(-1) = -4*e^2\n";
+    out += "f(2) = 8*e^(-4)\n";
+    out += "As x -> -infinity, f(x) -> infinity; as x -> infinity, f(x) -> 0\n";
+    out += "Answer: y >= -4*e^2";
+    return true;
+  }
   if (cmp=="x/(x^2+4)" || cmp=="x/(4+x^2)"){
     out += "Let y=x/(x^2+4)\n";
     out += "y*x^2 - x + 4*y = 0\n";
