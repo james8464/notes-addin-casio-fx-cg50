@@ -1,6 +1,6 @@
 # CasioCAS Project Graph
 
-Last updated: 2026-05-31 03:33 Europe/London
+Last updated: 2026-05-31 03:43 Europe/London
 
 ## Build
 
@@ -62,6 +62,7 @@ graph TD
   Direct --> Affine["generic exact affine solve route"]
   Direct --> Arith["generic exact rational arithmetic route"]
   Direct --> NumericEval["generic numeric evaluator for method=numeric"]
+  Direct --> Poly["generic rational polynomial expand/factor/quadratic solve"]
   Suvat --> KeySuvat["key-value u/t roots"]
   Host["old host working engine"] --> Queue["200/200 golden host checks"]
   Golden["exact queue generator"] --> GoldenInc["cascas_golden_cases.inc"]
@@ -148,7 +149,7 @@ graph TD
 
 ```mermaid
 graph LR
-  Build["./compile exit 0"] --> Size["1,331,107 bytes"]
+  Build["./compile exit 0"] --> Size["1,339,159 bytes"]
   Build --> Meta["metadata ok"]
   Build --> Border["purple border ok"]
   Source["source gates"] --> Catalog["catalog ok"]
@@ -157,9 +158,9 @@ graph LR
   Help["help pack"] --> HelpQ["41 function sheets ok"]
   Queue["golden queue"] --> QueueRun["200/200 host ok"]
   Queue --> GoldenRun["200/200 direct calculator-source ok"]
-  Queue --> NoGolden["108/200 without generated golden fallback"]
-  Shared["shared working"] --> SharedRun["114/114 host+calculator adapter ok"]
-  Shared --> CoreRun["111/111 core routes without golden fallback ok"]
+  Queue --> NoGolden["128/200 without generated golden fallback"]
+  Shared["shared working"] --> SharedRun["125/125 host+calculator adapter ok"]
+  Shared --> CoreRun["122/122 core routes without golden fallback ok"]
   Obj["object prune"] --> QR["qrcodegen.o link-safe removed"]
   Macro["source stubs"] --> Stubbed["plot/list/stats/special/ODE/file IO/linalg/transform helpers blocked"]
   Static["lexer prune"] --> StaticRun["distribution/denom/transform static names neutralized"]

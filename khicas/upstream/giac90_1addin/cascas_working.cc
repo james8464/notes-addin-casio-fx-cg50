@@ -585,6 +585,7 @@ static rat norm_rat(long long n,long long d){
 
 static rat add_rat(rat a,rat b){ return norm_rat(a.n*b.d+b.n*a.d,a.d*b.d); }
 static rat sub_rat(rat a,rat b){ return norm_rat(a.n*b.d-b.n*a.d,a.d*b.d); }
+static rat mul_rat(rat a,rat b){ return norm_rat(a.n*b.n,a.d*b.d); }
 static rat div_rat(rat a,rat b){ return norm_rat(a.n*b.d,a.d*b.n); }
 static rat abs_rat(rat a){ if (a.n<0) a.n=-a.n; return a; }
 
@@ -861,6 +862,511 @@ static bool try_arith(const char *input,working_string &out){
   out += expr;
   out += " = ";
   out += fmt_rat(r);
+  return true;
+}
+
+enum { POLY_MAX_DEG = 12 };
+
+struct poly_rat {
+  rat c[POLY_MAX_DEG+1];
+  int deg;
+};
+
+static rat zero_rat(){ return norm_rat(0,1); }
+static rat one_rat(){ return norm_rat(1,1); }
+static bool is_zero_rat(rat r){ return r.n==0; }
+
+static void poly_zero(poly_rat &p){
+  for (int i=0;i<=POLY_MAX_DEG;++i) p.c[i]=zero_rat();
+  p.deg=0;
+}
+
+static void poly_norm(poly_rat &p){
+  int d=POLY_MAX_DEG;
+  while (d>0 && is_zero_rat(p.c[d])) --d;
+  p.deg=d;
+}
+
+static bool poly_add(const poly_rat &a,const poly_rat &b,poly_rat &out){
+  poly_zero(out);
+  for (int i=0;i<=POLY_MAX_DEG;++i)
+    out.c[i]=add_rat(a.c[i],b.c[i]);
+  poly_norm(out);
+  return true;
+}
+
+static bool poly_sub(const poly_rat &a,const poly_rat &b,poly_rat &out){
+  poly_zero(out);
+  for (int i=0;i<=POLY_MAX_DEG;++i)
+    out.c[i]=sub_rat(a.c[i],b.c[i]);
+  poly_norm(out);
+  return true;
+}
+
+static bool poly_mul(const poly_rat &a,const poly_rat &b,poly_rat &out){
+  poly_zero(out);
+  for (int i=0;i<=a.deg;++i){
+    for (int j=0;j<=b.deg;++j){
+      if (i+j>POLY_MAX_DEG) return false;
+      out.c[i+j]=add_rat(out.c[i+j],mul_rat(a.c[i],b.c[j]));
+    }
+  }
+  poly_norm(out);
+  return true;
+}
+
+static bool poly_div_scalar(poly_rat &p,rat q){
+  if (q.n==0) return false;
+  for (int i=0;i<=p.deg;++i)
+    p.c[i]=div_rat(p.c[i],q);
+  poly_norm(p);
+  return true;
+}
+
+static bool poly_pow(poly_rat base,int exp,poly_rat &out){
+  poly_zero(out);
+  out.c[0]=one_rat();
+  while (exp){
+    if (exp&1){
+      poly_rat tmp;
+      if (!poly_mul(out,base,tmp)) return false;
+      out=tmp;
+    }
+    exp >>= 1;
+    if (exp){
+      poly_rat tmp;
+      if (!poly_mul(base,base,tmp)) return false;
+      base=tmp;
+    }
+  }
+  poly_norm(out);
+  return true;
+}
+
+struct poly_parser {
+  working_string s;
+  working_string var;
+  int i;
+};
+
+static bool parse_poly_expr(poly_parser &p,poly_rat &out);
+static bool parse_poly_power(poly_parser &p,poly_rat &out);
+
+static working_string compact_poly(const working_string &s){
+  working_string out;
+  for (int i=0;i<int(s.size());++i)
+    if (!isspace((unsigned char)s[i]))
+      out += char(tolower((unsigned char)s[i]));
+  return out;
+}
+
+static bool detect_poly_var(const working_string &expr,working_string &var){
+  working_string s=compact_poly(expr);
+  for (int i=0;i<int(s.size());++i){
+    if (!isalpha((unsigned char)s[i]))
+      continue;
+    int begin=i;
+    while (i<int(s.size()) && isalpha((unsigned char)s[i])) ++i;
+    working_string name=s.substr(begin,i-begin);
+    if (name=="pi" || name=="e")
+      continue;
+    if (var.empty())
+      var=name;
+    else if (var!=name)
+      return false;
+  }
+  return !var.empty();
+}
+
+static bool parse_poly_number(poly_parser &p,rat &out){
+  int begin=p.i;
+  while (p.i<int(p.s.size()) && (isdigit((unsigned char)p.s[p.i]) || p.s[p.i]=='.'))
+    ++p.i;
+  if (begin==p.i) return false;
+  return parse_decimal_rat(p.s,begin,p.i,out);
+}
+
+static bool parse_poly_primary(poly_parser &p,poly_rat &out){
+  poly_zero(out);
+  if (p.i>=int(p.s.size())) return false;
+  if (p.s[p.i]=='('){
+    ++p.i;
+    if (!parse_poly_expr(p,out)) return false;
+    if (p.i>=int(p.s.size()) || p.s[p.i]!=')') return false;
+    ++p.i;
+    return true;
+  }
+  if (isalpha((unsigned char)p.s[p.i])){
+    int begin=p.i;
+    while (p.i<int(p.s.size()) && isalpha((unsigned char)p.s[p.i])) ++p.i;
+    if (p.s.substr(begin,p.i-begin)!=p.var)
+      return false;
+    out.c[1]=one_rat();
+    out.deg=1;
+    return true;
+  }
+  rat q;
+  if (!parse_poly_number(p,q)) return false;
+  out.c[0]=q;
+  return true;
+}
+
+static bool parse_poly_unary(poly_parser &p,poly_rat &out){
+  if (p.i<int(p.s.size()) && (p.s[p.i]=='+' || p.s[p.i]=='-')){
+    bool neg=p.s[p.i]=='-';
+    ++p.i;
+    if (!parse_poly_unary(p,out)) return false;
+    if (neg)
+      for (int i=0;i<=out.deg;++i) out.c[i].n=-out.c[i].n;
+    return true;
+  }
+  return parse_poly_power(p,out);
+}
+
+static bool parse_poly_power(poly_parser &p,poly_rat &out){
+  if (!parse_poly_primary(p,out)) return false;
+  if (p.i<int(p.s.size()) && p.s[p.i]=='^'){
+    ++p.i;
+    int sign=1,exp=0;
+    if (p.i<int(p.s.size()) && (p.s[p.i]=='+' || p.s[p.i]=='-')){
+      if (p.s[p.i]=='-') sign=-1;
+      ++p.i;
+    }
+    int begin=p.i;
+    while (p.i<int(p.s.size()) && isdigit((unsigned char)p.s[p.i]))
+      exp=10*exp+(p.s[p.i++]-'0');
+    if (begin==p.i || sign<0) return false;
+    return poly_pow(out,exp,out);
+  }
+  return true;
+}
+
+static bool starts_poly_primary(char c){
+  return c=='(' || c=='.' || isdigit((unsigned char)c) || isalpha((unsigned char)c);
+}
+
+static bool parse_poly_term(poly_parser &p,poly_rat &out){
+  if (!parse_poly_unary(p,out)) return false;
+  while (p.i<int(p.s.size())){
+    char op=p.s[p.i];
+    if (op!='*' && op!='/' && !starts_poly_primary(op))
+      break;
+    if (op=='*' || op=='/') ++p.i;
+    else op='*';
+    poly_rat rhs;
+    if (!parse_poly_unary(p,rhs)) return false;
+    if (op=='*'){
+      poly_rat tmp;
+      if (!poly_mul(out,rhs,tmp)) return false;
+      out=tmp;
+    }
+    else {
+      if (rhs.deg!=0) return false;
+      if (!poly_div_scalar(out,rhs.c[0])) return false;
+    }
+  }
+  return true;
+}
+
+static bool parse_poly_expr(poly_parser &p,poly_rat &out){
+  if (!parse_poly_term(p,out)) return false;
+  while (p.i<int(p.s.size()) && (p.s[p.i]=='+' || p.s[p.i]=='-')){
+    char op=p.s[p.i++];
+    poly_rat rhs,tmp;
+    if (!parse_poly_term(p,rhs)) return false;
+    if (op=='+') poly_add(out,rhs,tmp);
+    else poly_sub(out,rhs,tmp);
+    out=tmp;
+  }
+  return true;
+}
+
+static bool parse_poly(const working_string &expr,const working_string &var,poly_rat &out){
+  poly_parser p={compact_poly(expr),compact_poly(var),0};
+  if (p.var.empty()) return false;
+  if (!parse_poly_expr(p,out)) return false;
+  poly_norm(out);
+  return p.i==int(p.s.size());
+}
+
+static working_string fmt_poly_term_abs(rat coeff,int deg,const working_string &var){
+  working_string out;
+  coeff=abs_rat(coeff);
+  if (deg==0)
+    return fmt_rat(coeff);
+  if (!(coeff.n==1 && coeff.d==1)){
+    out += fmt_rat(coeff);
+    out += "*";
+  }
+  out += var;
+  if (deg>1){
+    char buf[16];
+    sprintf(buf,"%d",deg);
+    out += "^";
+    out += buf;
+  }
+  return out;
+}
+
+static working_string fmt_poly(const poly_rat &p,const working_string &var,bool compact_minus){
+  working_string out;
+  bool first=true;
+  for (int i=p.deg;i>=0;--i){
+    rat q=p.c[i];
+    if (is_zero_rat(q)) continue;
+    if (first){
+      if (q.n<0) out += "-";
+      out += fmt_poly_term_abs(q,i,var);
+      first=false;
+    }
+    else {
+      if (q.n<0)
+        out += compact_minus?" -":" - ";
+      else
+        out += " + ";
+      out += fmt_poly_term_abs(q,i,var);
+    }
+  }
+  return first?working_string("0"):out;
+}
+
+static working_string pretty_poly_input(const working_string &expr){
+  working_string s=compact_poly(expr),out;
+  for (int i=0;i<int(s.size());++i){
+    char c=s[i];
+    if ((c=='+' || c=='-') && i>0 && s[i-1]!='(' && s[i-1]!='^'){
+      out += c=='+'?" + ":" - ";
+      continue;
+    }
+    out += c;
+  }
+  return out;
+}
+
+static bool try_poly_expand(const char *input,working_string &out){
+  working_string args[1],var;
+  int count=0;
+  if (!parse_call(input,"expand",args,1,count) || count<1)
+    return false;
+  if (!detect_poly_var(args[0],var))
+    return false;
+  poly_rat p;
+  if (!parse_poly(args[0],var,p))
+    return false;
+  working_string standard=fmt_poly(p,var,false);
+  working_string compact=fmt_poly(p,var,true);
+  out="Expand:\n";
+  out += pretty_poly_input(args[0]);
+  out += "\n= ";
+  out += standard;
+  if (compact!=standard){
+    out += "\n= ";
+    out += compact;
+  }
+  return true;
+}
+
+static rat poly_eval_rat(const poly_rat &p,rat x){
+  rat acc=p.c[p.deg];
+  for (int i=p.deg-1;i>=0;--i)
+    acc=add_rat(mul_rat(acc,x),p.c[i]);
+  return acc;
+}
+
+static bool square_ll(long long n,long long &r){
+  if (n<0) return false;
+  r=(long long)(sqrt((double)n)+0.5);
+  return r*r==n;
+}
+
+static bool sqrt_rat_exact(rat q,rat &out){
+  long long n,d;
+  if (!square_ll(q.n,n) || !square_ll(q.d,d))
+    return false;
+  out=norm_rat(n,d);
+  return true;
+}
+
+static int divisors(long long n,long long *out,int maxout){
+  n=iabsll(n);
+  if (n==0){ out[0]=0; return 1; }
+  int c=0;
+  for (long long i=1;i<=n && c<maxout;++i)
+    if (n%i==0) out[c++]=i;
+  return c;
+}
+
+static bool poly_all_int(const poly_rat &p){
+  for (int i=0;i<=p.deg;++i)
+    if (p.c[i].d!=1)
+      return false;
+  return true;
+}
+
+static int cmp_rat(rat a,rat b){
+  long long lhs=a.n*b.d,rhs=b.n*a.d;
+  return lhs<rhs?-1:(lhs>rhs?1:0);
+}
+
+static bool find_smallest_rational_root(const poly_rat &p,rat &root){
+  if (!poly_all_int(p)) return false;
+  long long ps[128],qs[128];
+  int pc=divisors(p.c[0].n,ps,128);
+  int qc=divisors(p.c[p.deg].n,qs,128);
+  bool found=false;
+  rat best=zero_rat();
+  for (int qi=0;qi<qc;++qi){
+    long long q=qs[qi];
+    if (q==0) continue;
+    for (int pi=0;pi<pc;++pi){
+      long long base=ps[pi];
+      for (int sgn=-1;sgn<=1;sgn+=2){
+        if (base==0 && sgn>0) continue;
+        rat cand=norm_rat(sgn*base,q);
+        if (!is_zero_rat(poly_eval_rat(p,cand)))
+          continue;
+        if (!found || cmp_rat(cand,best)<0){
+          best=cand;
+          found=true;
+        }
+      }
+    }
+  }
+  root=best;
+  return found;
+}
+
+static bool divide_by_monic_root(poly_rat &p,rat root){
+  if (p.deg<1) return false;
+  poly_rat q;
+  poly_zero(q);
+  q.deg=p.deg-1;
+  q.c[q.deg]=p.c[p.deg];
+  for (int k=p.deg-1;k>=1;--k)
+    q.c[k-1]=add_rat(p.c[k],mul_rat(root,q.c[k]));
+  if (!is_zero_rat(add_rat(p.c[0],mul_rat(root,q.c[0]))))
+    return false;
+  p=q;
+  poly_norm(p);
+  return true;
+}
+
+static working_string fmt_linear_factor(rat root,const working_string &var){
+  working_string out="(";
+  if (root.d==1)
+    out += var;
+  else {
+    out += fmt_rat(norm_rat(root.d,1));
+    out += "*";
+    out += var;
+  }
+  if (root.n<0){
+    out += " + ";
+    out += fmt_rat(norm_rat(-root.n,1));
+  }
+  else {
+    out += " - ";
+    out += fmt_rat(norm_rat(root.n,1));
+  }
+  out += ")";
+  return out;
+}
+
+static bool try_poly_factor(const char *input,working_string &out){
+  working_string args[1],var;
+  int count=0;
+  if (!parse_call(input,"factor",args,1,count) || count<1)
+    return false;
+  if (!detect_poly_var(args[0],var))
+    return false;
+  poly_rat p;
+  if (!parse_poly(args[0],var,p) || p.deg<2)
+    return false;
+  working_string factors[POLY_MAX_DEG];
+  int fcount=0;
+  while (p.deg>1){
+    rat root;
+    if (!find_smallest_rational_root(p,root))
+      break;
+    factors[fcount++]=fmt_linear_factor(root,var);
+    if (!divide_by_monic_root(p,root))
+      return false;
+    if (root.d!=1 && !poly_div_scalar(p,norm_rat(root.d,1)))
+      return false;
+  }
+  if (!fcount)
+    return false;
+  working_string result;
+  for (int i=0;i<fcount;++i){
+    if (i) result += "*";
+    result += factors[i];
+  }
+  if (!(p.deg==0 && p.c[0].n==1 && p.c[0].d==1)){
+    if (!result.empty()) result += "*";
+    result += "(";
+    result += fmt_poly(p,var,false);
+    result += ")";
+  }
+  out="Factor:\n";
+  out += args[0];
+  out += "\n= ";
+  out += result;
+  return true;
+}
+
+static bool try_poly_quadratic_solve(const char *input,working_string &out){
+  working_string args[2];
+  int count=0;
+  if (!parse_call(input,"solve",args,2,count) || count<2)
+    return false;
+  working_string var=compact_poly(args[1]);
+  int eq=find_top_equal(args[0]);
+  if (eq<0) return false;
+  poly_rat left,right,p;
+  if (!parse_poly(args[0].substr(0,eq),var,left) ||
+      !parse_poly(args[0].substr(eq+1),var,right))
+    return false;
+  poly_sub(left,right,p);
+  if (p.deg!=2 || is_zero_rat(p.c[2]))
+    return false;
+  rat a=p.c[2],b=p.c[1],c=p.c[0];
+  rat D=sub_rat(mul_rat(b,b),mul_rat(norm_rat(4,1),mul_rat(a,c)));
+  rat sqrtD;
+  if (!sqrt_rat_exact(D,sqrtD))
+    return false;
+  rat den=mul_rat(norm_rat(2,1),a);
+  rat minus_b=b; minus_b.n=-minus_b.n;
+  rat r1=div_rat(add_rat(minus_b,sqrtD),den);
+  rat r2=div_rat(sub_rat(minus_b,sqrtD),den);
+  out="Solve quadratic:\n";
+  out += args[0];
+  out += "\nD = ";
+  out += fmt_rat(D);
+  out += "\n";
+  if (D.n==0){
+    out += "(";
+    out += var;
+    if (r1.n<0){
+      out += " + ";
+      out += fmt_rat(abs_rat(r1));
+    }
+    else {
+      out += " - ";
+      out += fmt_rat(r1);
+    }
+    out += ")^2 = 0\n";
+    out += var;
+    out += " = [";
+    out += fmt_rat(r1);
+    out += "]";
+    return true;
+  }
+  out += var;
+  out += " = [";
+  out += fmt_rat(r1);
+  out += ", ";
+  out += fmt_rat(r2);
+  out += "]";
   return true;
 }
 
@@ -1679,7 +2185,13 @@ bool eval_with_working(const char *input,working_string &out){
     return true;
   if (try_integral(input,out))
     return true;
+  if (try_poly_expand(input,out))
+    return true;
+  if (try_poly_factor(input,out))
+    return true;
   if (try_solve(input,out))
+    return true;
+  if (try_poly_quadratic_solve(input,out))
     return true;
   if (try_xform(input,out))
     return true;
