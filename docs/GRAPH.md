@@ -1,6 +1,6 @@
 # CasioCAS Project Graph
 
-Last updated: 2026-05-31 13:38 Europe/London
+Last updated: 2026-05-31 14:14 Europe/London
 
 ## Build
 
@@ -47,7 +47,7 @@ graph TD
 
 ```mermaid
 graph TD
-  Guard["runtime denylist"] --> Unsupported["Err: unsupported (not A-level scope)"]
+  Guard["runtime denylist"] --> PureFallback["Pure method fallback, no outside-scope user error"]
   Direct["direct working routes"] --> Implicit["implicit diff example"]
   Direct --> ImplicitGeneral["standard implicit differentiation routes for circles and mixed xy quadratics"]
   Direct --> ParamDiff["parametric differentiation dy/dx=(dy/dt)/(dx/dt), optional t0"]
@@ -64,6 +64,9 @@ graph TD
   Direct --> DefInt["definite integral integrate(sin(x),x,0,pi)"]
   Direct --> ExpInt["exponential integral int(exp(k*x),x)"]
   Direct --> TrigInt["formula-booklet tan/cot/sec/cosec integral working"]
+  Direct --> USubInt["generic linear-substitution integrals: (a*x+b)^n, sqrt, reciprocal powers"]
+  Direct --> TermInt["generic term-by-term trig/exp/reciprocal-linear integration"]
+  Direct --> DefIntArchive["archived integration-basics definite integral routes"]
   Direct --> Xform["identity/log/sec/cosec/cot/half-angle proof shell"]
   Direct --> LogPower["xform log power laws for log(base,x^n) and ln(x^n)"]
   Direct --> GenericXform["generic pure xform routes: change-base logs, log powers, sec/cosec/cot rearrangements"]
@@ -99,7 +102,7 @@ graph TD
   Direct --> XformRational["xform rational transform: a/(x+1) to 5*a/(2*x+1)"]
   Direct --> PureOnly["mechanics routes removed from catalog/help/working engine"]
   Direct --> RuntimeGuard["calculator runtime guards: balanced delimiters, no raw integral fallback, numeric literals fall through to KhiCAS"]
-  Direct --> PureFallback["removed-feature fallback gives Pure method steps instead of old outside-scope error"]
+  Direct --> RemovedFallbackPure["removed-feature fallback gives Pure method steps instead of old outside-scope error"]
   Direct --> ErrorMask["stock undef/syntax-style output becomes General Pure method steps"]
   Console --> StableFKeys["A-level mode ignores stale FMENU.py and fixes F-key colour state"]
   Console --> VramClip["VRAM safety: clipped CopySpriteMasked and bounded get_pixel"]

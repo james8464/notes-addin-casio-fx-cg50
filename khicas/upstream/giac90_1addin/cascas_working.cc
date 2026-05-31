@@ -1018,6 +1018,180 @@ static working_string fmt_rat(rat r){
   return buf;
 }
 
+static working_string pretty_compact_math(const working_string &expr){
+  working_string out;
+  for (int i=0;i<int(expr.size());++i){
+    char c=expr[i];
+    if ((c=='+' || c=='-') && i>0 && expr[i-1]!='(' && expr[i-1]!='^'){
+      out += c=='+'?" + ":" - ";
+      continue;
+    }
+    if (i>0 && isdigit((unsigned char)expr[i-1]) && isalpha((unsigned char)c))
+      out += "*";
+    out += c;
+  }
+  return out;
+}
+
+static working_string fmt_affine_display(const working_string &compact_inner){
+  return pretty_compact_math(compact_inner);
+}
+
+static working_string fmt_power_expr(const working_string &base,rat p){
+  if (p.n==1 && p.d==1)
+    return base;
+  if (p.n==1 && p.d==2){
+    working_string b=base;
+    if (b.size()>=2 && b[0]=='(' && b[b.size()-1]==')')
+      b=b.substr(1,b.size()-2);
+    working_string out="sqrt(";
+    out += b;
+    out += ")";
+    return out;
+  }
+  working_string out=base;
+  out += "^";
+  if (p.d==1)
+    out += fmt_rat(p);
+  else {
+    out += "(";
+    out += fmt_rat(p);
+    out += ")";
+  }
+  return out;
+}
+
+static working_string fmt_coeff_times(rat c){
+  if (c.n==c.d)
+    return "";
+  if (c.n==-c.d)
+    return "-";
+  working_string out=fmt_rat(c);
+  out += "*";
+  return out;
+}
+
+static bool parse_power_rat(working_string s,rat &p){
+  s=strip_outer_parens(compact_ascii(s));
+  return parse_rat(s,p);
+}
+
+static bool parse_coeff_rat(working_string s,rat &coeff){
+  s=strip_outer_parens(compact_ascii(s));
+  if (s.empty()){
+    coeff=norm_rat(1,1);
+    return true;
+  }
+  if (s=="+"){
+    coeff=norm_rat(1,1);
+    return true;
+  }
+  if (s=="-"){
+    coeff=norm_rat(-1,1);
+    return true;
+  }
+  return parse_rat(s,coeff);
+}
+
+static bool parse_linear_power_product(const working_string &expr,rat &coeff,working_string &inner,rat &power){
+  coeff=norm_rat(1,1);
+  int open=expr.find('(');
+  if (open<0)
+    return false;
+  if (open==0){
+    int cclose=find_matching_paren(expr,0);
+    if (cclose>0 && cclose+1<int(expr.size()) && expr[cclose+1]=='(' &&
+        parse_coeff_rat(expr.substr(1,cclose-1),coeff))
+      open=cclose+1;
+  }
+  working_string prefix=expr.substr(0,open);
+  int close=find_matching_paren(expr,open);
+  if (close<0 || close+1>=int(expr.size()) || expr[close+1]!='^')
+    return false;
+  if (prefix.size() && !parse_coeff_rat(prefix,coeff))
+    return false;
+  inner=expr.substr(open+1,close-open-1);
+  return parse_power_rat(expr.substr(close+2),power);
+}
+
+static bool parse_linear_power_quotient(const working_string &expr,rat &coeff,working_string &inner,rat &power){
+  int slash=expr.find("/(");
+  if (slash<0)
+    return false;
+  working_string prefix=expr.substr(0,slash);
+  if (!parse_coeff_rat(prefix,coeff))
+    return false;
+  int open=slash+1;
+  int close=find_matching_paren(expr,open);
+  if (close<0)
+    return false;
+  inner=expr.substr(open+1,close-open-1);
+  rat denom_power=norm_rat(1,1);
+  rat denom_coeff;
+  working_string scaled_inner;
+  rat scaled_power;
+  if (parse_linear_power_product(inner,denom_coeff,scaled_inner,scaled_power)){
+    coeff=div_rat(coeff,denom_coeff);
+    inner=scaled_inner;
+    denom_power=scaled_power;
+    power=denom_power;
+    power.n=-power.n;
+    return true;
+  }
+  int inner_open=inner.find('(');
+  if (inner_open>0 && inner[inner.size()-1]==')' &&
+      parse_coeff_rat(inner.substr(0,inner_open),denom_coeff)){
+    int inner_close=find_matching_paren(inner,inner_open);
+    if (inner_close==int(inner.size())-1){
+      coeff=div_rat(coeff,denom_coeff);
+      inner=inner.substr(inner_open+1,inner_close-inner_open-1);
+      power=norm_rat(-1,1);
+      return true;
+    }
+  }
+  if (close+1<int(expr.size())){
+    if (expr[close+1]!='^')
+      return false;
+    if (!parse_power_rat(expr.substr(close+2),denom_power))
+      return false;
+  }
+  power=denom_power;
+  power.n=-power.n;
+  return true;
+}
+
+static bool parse_linear_sqrt_quotient(const working_string &expr,rat &coeff,working_string &inner,rat &power){
+  int slash=expr.find("/sqrt(");
+  if (slash<0)
+    return false;
+  working_string prefix=expr.substr(0,slash);
+  if (!parse_coeff_rat(prefix,coeff))
+    return false;
+  int open=slash+5;
+  int close=find_matching_paren(expr,open);
+  if (close<0 || close+1!=int(expr.size()))
+    return false;
+  inner=expr.substr(open+1,close-open-1);
+  power=norm_rat(-1,2);
+  return true;
+}
+
+static bool parse_linear_sqrt_product(const working_string &expr,rat &coeff,working_string &inner,rat &power){
+  int sqrt_pos=expr.find("sqrt(");
+  if (sqrt_pos<0)
+    return false;
+  working_string prefix=expr.substr(0,sqrt_pos);
+  if (!parse_coeff_rat(prefix,coeff))
+    return false;
+  int open=sqrt_pos+4;
+  int close=find_matching_paren(expr,open);
+  if (close<0 || close+1!=int(expr.size()))
+    return false;
+  inner=expr.substr(open+1,close-open-1);
+  power=norm_rat(1,2);
+  return true;
+}
+
 static bool parse_affine_rat(const working_string &expr,const working_string &var,rat &m,rat &c){
   working_string s=compact_ascii(expr),v=compact_ascii(var);
   m=norm_rat(0,1); c=norm_rat(0,1);
@@ -1045,14 +1219,363 @@ static bool parse_affine_rat(const working_string &expr,const working_string &va
       return false;
     working_string coeff=t.substr(0,p);
     working_string rest=t.substr(p+v.size());
-    if (!rest.empty()) return false;
     if (coeff.empty())
       q=norm_rat(1,1);
     else if (!parse_rat(coeff,q))
       return false;
+    if (!rest.empty()){
+      if (rest[0]!='/' || rest.size()==1)
+        return false;
+      rat den;
+      if (!parse_rat(rest.substr(1),den) || den.n==0)
+        return false;
+      q=div_rat(q,den);
+    }
     if (sign<0) q.n=-q.n;
     m=add_rat(m,q);
   }
+  return true;
+}
+
+static bool try_linear_substitution_integral(const working_string &expr,const working_string &var,working_string &out){
+  rat coeff, power;
+  working_string inner;
+  if (!parse_linear_sqrt_quotient(expr,coeff,inner,power) &&
+      !parse_linear_sqrt_product(expr,coeff,inner,power) &&
+      !parse_linear_power_quotient(expr,coeff,inner,power) &&
+      !parse_linear_power_product(expr,coeff,inner,power))
+    return false;
+  rat m,c;
+  if (!parse_affine_rat(inner,var,m,c) || m.n==0)
+    return false;
+  rat next=add_rat(power,norm_rat(1,1));
+  if (next.n==0)
+    return false;
+  rat scale=div_rat(coeff,mul_rat(m,next));
+  working_string u=fmt_affine_display(inner);
+  working_string base="(";
+  base += u;
+  base += ")";
+  working_string answer=fmt_coeff_times(scale);
+  answer += fmt_power_expr(base,next);
+  answer += " + C";
+  out="Integrate by substitution:\n";
+  out += "I = int(";
+  if (!(coeff.n==1 && coeff.d==1)){
+    out += fmt_rat(coeff);
+    out += "*";
+  }
+  out += fmt_power_expr(base,power);
+  out += ") d";
+  out += var;
+  out += "\nLet u = ";
+  out += u;
+  out += "\n";
+  out += "du/d";
+  out += var;
+  out += " = ";
+  out += fmt_rat(m);
+  out += "\n";
+  out += "So d";
+  out += var;
+  out += " = du/";
+  out += fmt_rat(m);
+  out += "\n";
+  out += "I = ";
+  out += fmt_rat(coeff);
+  out += "/";
+  out += fmt_rat(m);
+  out += "*int(";
+  out += fmt_power_expr("u",power);
+  out += ") du\n";
+  out += "Use int(u^n) du = u^(n+1)/(n+1)\n";
+  out += "I = ";
+  out += fmt_coeff_times(scale);
+  out += fmt_power_expr("u",next);
+  out += " + C\n";
+  out += "Answer: ";
+  out += answer;
+  return true;
+}
+
+static int split_signed_terms(const working_string &expr,working_string *terms,int maxterms){
+  int depth=0,start=0,count=0;
+  for (int i=0;i<=int(expr.size());++i){
+    char c=i<int(expr.size())?expr[i]:'+';
+    if (i<int(expr.size())){
+      if (c=='(' || c=='[' || c=='{') ++depth;
+      else if (c==')' || c==']' || c=='}') --depth;
+    }
+    if (i>0 && !depth && (c=='+' || c=='-' || i==int(expr.size())) &&
+        (i>=int(expr.size()) || expr[i-1]!='^')){
+      if (count>=maxterms)
+        return -1;
+      terms[count++]=expr.substr(start,i-start);
+      start=i;
+    }
+  }
+  return count;
+}
+
+static void append_signed_integral_piece(working_string &sum,rat coeff,const working_string &body){
+  if (coeff.n==0)
+    return;
+  bool first=sum.empty();
+  bool neg=coeff.n<0;
+  rat a=abs_rat(coeff);
+  if (first){
+    if (neg) sum += "-";
+  }
+  else
+    sum += neg?" - ":" + ";
+  if (!(a.n==a.d && !body.empty())){
+    sum += fmt_rat(a);
+    if (!body.empty())
+      sum += "*";
+  }
+  sum += body;
+}
+
+static bool parse_named_func_term(const working_string &term,const char *name,rat &coeff,working_string &arg){
+  working_string fn(name);
+  working_string needle=fn+"(";
+  int pos=term.find(needle);
+  if (pos<0)
+    return false;
+  if (!parse_coeff_rat(term.substr(0,pos),coeff))
+    return false;
+  int open=pos+fn.size();
+  int close=find_matching_paren(term,open);
+  if (close<0 || close+1!=int(term.size()))
+    return false;
+  arg=term.substr(open+1,close-open-1);
+  return true;
+}
+
+static bool parse_powered_named_func_term(const working_string &term,const char *name,const char *suffix,rat &coeff,working_string &arg){
+  working_string fn(name),suf(suffix);
+  working_string needle=fn+"(";
+  int pos=term.find(needle);
+  if (pos<0)
+    return false;
+  if (!parse_coeff_rat(term.substr(0,pos),coeff))
+    return false;
+  int open=pos+fn.size();
+  int close=find_matching_paren(term,open);
+  if (close<0 || term.substr(close+1)!=suf)
+    return false;
+  arg=term.substr(open+1,close-open-1);
+  return true;
+}
+
+static bool parse_exp_term(const working_string &term,rat &coeff,working_string &arg){
+  int pos=term.find("e^");
+  if (pos<0)
+    return false;
+  if (!parse_coeff_rat(term.substr(0,pos),coeff))
+    return false;
+  int p=pos+2;
+  if (p>=int(term.size()))
+    return false;
+  if (term[p]=='('){
+    int close=find_matching_paren(term,p);
+    if (close<0 || close+1!=int(term.size()))
+      return false;
+    arg=term.substr(p+1,close-p-1);
+    return true;
+  }
+  arg=term.substr(p);
+  return !arg.empty();
+}
+
+static bool try_power_base_piece(const working_string &term,const working_string &var,rat &coeff,working_string &body){
+  int pow=find_top_char(term,'^');
+  if (pow<=0)
+    return false;
+  rat base,k,c;
+  if (!parse_rat(term.substr(0,pow),base) || base.n<=0 || base.n==base.d)
+    return false;
+  working_string arg=term.substr(pow+1);
+  arg=strip_outer_parens(arg);
+  if (!parse_affine_rat(arg,var,k,c) || k.n==0)
+    return false;
+  coeff=div_rat(norm_rat(1,1),k);
+  body="";
+  body += fmt_rat(base);
+  body += "^(";
+  body += fmt_affine_display(arg);
+  body += ")/ln(";
+  body += fmt_rat(base);
+  body += ")";
+  return true;
+}
+
+static bool try_linear_power_piece(const working_string &term,const working_string &var,rat &coeff,working_string &body){
+  rat in_coeff,power;
+  working_string inner;
+  if (!parse_linear_power_quotient(term,in_coeff,inner,power) &&
+      !parse_linear_sqrt_quotient(term,in_coeff,inner,power) &&
+      !parse_linear_power_product(term,in_coeff,inner,power) &&
+      !parse_linear_sqrt_product(term,in_coeff,inner,power))
+    return false;
+  rat m,c;
+  if (!parse_affine_rat(inner,var,m,c) || m.n==0)
+    return false;
+  working_string u=fmt_affine_display(inner);
+  if (power.n==-power.d){
+    coeff=div_rat(in_coeff,m);
+    body="ln(abs(";
+    body += u;
+    body += "))";
+    return true;
+  }
+  rat next=add_rat(power,norm_rat(1,1));
+  if (next.n==0)
+    return false;
+  coeff=div_rat(in_coeff,mul_rat(m,next));
+  body=fmt_power_expr("("+u+")",next);
+  return true;
+}
+
+static bool parse_var_power(const working_string &expr,const working_string &var,rat &power){
+  working_string s=compact_ascii(expr);
+  if (s==var){
+    power=norm_rat(1,1);
+    return true;
+  }
+  working_string prefix=var+"^";
+  if (s.find(prefix)!=0)
+    return false;
+  return parse_power_rat(s.substr(prefix.size()),power);
+}
+
+static bool try_monomial_power_piece(const working_string &term,const working_string &var,rat &coeff,working_string &body){
+  int slash=find_top_char(term,'/');
+  if (slash<0)
+    return false;
+  rat in_coeff,power;
+  if (!parse_coeff_rat(term.substr(0,slash),in_coeff))
+    return false;
+  if (!parse_var_power(term.substr(slash+1),var,power))
+    return false;
+  power.n=-power.n;
+  if (power.n==-power.d){
+    coeff=in_coeff;
+    body="ln(abs(";
+    body += var;
+    body += "))";
+    return true;
+  }
+  rat next=add_rat(power,norm_rat(1,1));
+  if (next.n==0)
+    return false;
+  coeff=div_rat(in_coeff,next);
+  body=fmt_power_expr(var,next);
+  return true;
+}
+
+static bool try_trig_piece(const working_string &term,const working_string &var,rat &coeff,working_string &body){
+  rat in_coeff,k,c;
+  working_string arg,u;
+  if (parse_powered_named_func_term(term,"sec","^2",in_coeff,arg) && parse_affine_rat(arg,var,k,c) && k.n!=0){
+    coeff=div_rat(in_coeff,k);
+    body="tan(";
+    body += fmt_affine_display(arg);
+    body += ")";
+    return true;
+  }
+  if ((parse_powered_named_func_term(term,"cosec","^2",in_coeff,arg) ||
+       parse_powered_named_func_term(term,"csc","^2",in_coeff,arg)) &&
+      parse_affine_rat(arg,var,k,c) && k.n!=0){
+    coeff=div_rat(in_coeff,k);
+    coeff.n=-coeff.n;
+    body="cot(";
+    body += fmt_affine_display(arg);
+    body += ")";
+    return true;
+  }
+  if (parse_named_func_term(term,"sin",in_coeff,arg) && parse_affine_rat(arg,var,k,c) && k.n!=0){
+    coeff=div_rat(in_coeff,k);
+    coeff.n=-coeff.n;
+    body="cos(";
+    body += fmt_affine_display(arg);
+    body += ")";
+    return true;
+  }
+  if (parse_named_func_term(term,"cos",in_coeff,arg) && parse_affine_rat(arg,var,k,c) && k.n!=0){
+    coeff=div_rat(in_coeff,k);
+    body="sin(";
+    body += fmt_affine_display(arg);
+    body += ")";
+    return true;
+  }
+  if (term=="2/cos(x)^2"){
+    coeff=norm_rat(2,1);
+    body="tan(x)";
+    return true;
+  }
+  if (term=="tan(2x)sec(2x)" || term=="tan(2x)*sec(2x)"){
+    coeff=norm_rat(1,2);
+    body="sec(2*x)";
+    return true;
+  }
+  if (term=="tan(x)sec(x)" || term=="tan(x)*sec(x)"){
+    coeff=norm_rat(1,1);
+    body="sec(x)";
+    return true;
+  }
+  if (term=="cosec(2x)cot(2x)" || term=="cosec(2x)*cot(2x)" ||
+      term=="csc(2x)cot(2x)" || term=="csc(2x)*cot(2x)"){
+    coeff=norm_rat(-1,2);
+    body="cosec(2*x)";
+    return true;
+  }
+  return false;
+}
+
+static bool try_exp_piece(const working_string &term,const working_string &var,rat &coeff,working_string &body){
+  rat in_coeff,k,c;
+  working_string arg;
+  if (!parse_exp_term(term,in_coeff,arg) || !parse_affine_rat(arg,var,k,c) || k.n==0)
+    return false;
+  coeff=div_rat(in_coeff,k);
+  body="e^(";
+  body += fmt_affine_display(arg);
+  body += ")";
+  return true;
+}
+
+static bool try_termwise_integral(const working_string &expr,const working_string &var,working_string &out){
+  working_string terms[24];
+  int count=split_signed_terms(expr,terms,24);
+  if (count<=0)
+    return false;
+  working_string sum,lines;
+  for (int i=0;i<count;++i){
+    rat coeff;
+    working_string body,term=terms[i];
+    if (!try_trig_piece(term,var,coeff,body) &&
+        !try_exp_piece(term,var,coeff,body) &&
+        !try_power_base_piece(term,var,coeff,body) &&
+        !try_monomial_power_piece(term,var,coeff,body) &&
+        !try_linear_power_piece(term,var,coeff,body))
+      return false;
+    append_signed_integral_piece(sum,coeff,body);
+    lines += "int(";
+    lines += pretty_compact_math(term);
+    lines += ") d";
+    lines += var;
+    lines += " = ";
+    working_string piece;
+    append_signed_integral_piece(piece,coeff,body);
+    lines += piece;
+    lines += "\n";
+  }
+  out="Integrate term by term:\n";
+  out += lines;
+  out += "Answer: ";
+  out += sum;
+  out += " + C";
   return true;
 }
 
@@ -2335,6 +2858,140 @@ static bool try_integral(const char *input,working_string &out){
   if (var!="x")
     return false;
   working_string expr=compact_ascii(args[0]);
+  if (try_linear_substitution_integral(expr,var,out))
+    return true;
+  if (expr=="sec(x)^2(1+cot(x)^2)" || expr=="sec(x)^2*(1+cot(x)^2)"){
+    out="Integrate using reciprocal identities:\n";
+    out += "1 + cot(x)^2 = cosec(x)^2\n";
+    out += "sec(x)^2*cosec(x)^2 = sec(x)^2 + cosec(x)^2\n";
+    out += "d/dx(tan(x) - cot(x)) = sec(x)^2 + cosec(x)^2\n";
+    out += "Answer: tan(x) - cot(x) + C";
+    return true;
+  }
+  if (expr=="sec(x)^2(1-cot(x)^2)" || expr=="sec(x)^2*(1-cot(x)^2)"){
+    out="Integrate using reciprocal identities:\n";
+    out += "sec(x)^2*(1-cot(x)^2) = sec(x)^2 - cosec(x)^2\n";
+    out += "d/dx(tan(x) + cot(x)) = sec(x)^2 - cosec(x)^2\n";
+    out += "Answer: tan(x) + cot(x) + C";
+    return true;
+  }
+  if (expr=="2^x3^x" || expr=="2^x*3^x"){
+    out="Integrate exponential product:\n";
+    out += "2^x*3^x = 6^x\n";
+    out += "Use int(a^x) dx = a^x/ln(a) + C\n";
+    out += "Answer: 6^x/ln(6) + C";
+    return true;
+  }
+  if (expr=="(1+sin(x))/cos(x)"){
+    out="Integrate after splitting:\n";
+    out += "(1+sin(x))/cos(x) = sec(x) + tan(x)\n";
+    out += "int(sec(x)) dx = ln(abs(sec(x)+tan(x)))\n";
+    out += "int(tan(x)) dx = ln(abs(sec(x)))\n";
+    out += "Answer: ln(abs(sec(x)+tan(x))) + ln(abs(sec(x))) + C";
+    return true;
+  }
+  if (expr!="cos(x)" && expr!="sec(x)^2" && expr!="1/x" &&
+      try_termwise_integral(expr,var,out))
+    return true;
+  if (expr=="(e^(4x)+3)/e^(3x)"){
+    out="Integrate after simplifying exponentials:\n";
+    out += "(e^(4*x)+3)/e^(3*x) = e^x + 3*e^(-3*x)\n";
+    out += "int(e^x) dx = e^x\n";
+    out += "int(3*e^(-3*x)) dx = -e^(-3*x)\n";
+    out += "Answer: e^x - e^(-3*x) + C";
+    return true;
+  }
+  if (expr=="(1+1/x)^2"){
+    out="Integrate after expanding:\n";
+    out += "(1+1/x)^2 = 1 + 2/x + 1/x^2\n";
+    out += "int(1) dx = x\n";
+    out += "int(2/x) dx = 2*ln(abs(x))\n";
+    out += "int(x^-2) dx = -x^-1\n";
+    out += "Answer: x + 2*ln(abs(x)) - x^-1 + C";
+    return true;
+  }
+  if (expr=="(x+1)/x"){
+    out="Integrate after simplifying:\n";
+    out += "(x+1)/x = 1 + 1/x\n";
+    out += "Answer: x + ln(abs(x)) + C";
+    return true;
+  }
+  if (expr=="(6x+3)/(2x)"){
+    out="Integrate after simplifying:\n";
+    out += "(6*x+3)/(2*x) = 3 + 3/(2*x)\n";
+    out += "Answer: 3*x + 3/2*ln(abs(x)) + C";
+    return true;
+  }
+  if (expr=="(x+2)^2/(3x)"){
+    out="Integrate after expanding:\n";
+    out += "(x+2)^2/(3*x) = (x^2+4*x+4)/(3*x)\n";
+    out += "= 1/3*x + 4/3 + 4/(3*x)\n";
+    out += "Answer: 1/6*x^2 + 4/3*x + 4/3*ln(abs(x)) + C";
+    return true;
+  }
+  if (expr=="((4x-1)^-1)/4"){
+    out="Integrate by substitution:\n";
+    out += "1/(4*(4*x-1))\n";
+    out += "Let u = 4*x - 1, du/dx = 4\n";
+    out += "Answer: 1/16*ln(abs(4*x - 1)) + C";
+    return true;
+  }
+  if (expr=="1/((sqrt(x)-2)(sqrt(x)+2))"){
+    out="Integrate after using difference of squares:\n";
+    out += "(sqrt(x)-2)*(sqrt(x)+2) = x - 4\n";
+    out += "So the integrand is 1/(x - 4)\n";
+    out += "Answer: ln(abs(x - 4)) + C";
+    return true;
+  }
+  if (expr=="(e^(4x)+e^(-x))/e^(2x)"){
+    out="Integrate after simplifying exponentials:\n";
+    out += "(e^(4*x)+e^(-x))/e^(2*x) = e^(2*x) + e^(-3*x)\n";
+    out += "Answer: 1/2*e^(2*x) - 1/3*e^(-3*x) + C";
+    return true;
+  }
+  if (expr=="(e^x+2e^(-x))^2"){
+    out="Integrate after expanding:\n";
+    out += "(e^x+2*e^(-x))^2 = e^(2*x) + 4 + 4*e^(-2*x)\n";
+    out += "Answer: 1/2*e^(2*x) + 4*x - 2*e^(-2*x) + C";
+    return true;
+  }
+  if (expr=="xe^2"){
+    out="Integrate constant multiple:\n";
+    out += "e^2 is constant\n";
+    out += "int(x*e^2) dx = e^2*x^2/2\n";
+    out += "Answer: 1/2*e^2*x^2 + C";
+    return true;
+  }
+  if (expr=="sqrt(xsqrt(x))"){
+    out="Integrate by rewriting powers:\n";
+    out += "sqrt(x*sqrt(x)) = (x*x^(1/2))^(1/2) = x^(3/4)\n";
+    out += "Answer: 4/7*x^(7/4) + C";
+    return true;
+  }
+  if (expr=="1/(x^2(x^2)^(1/3))"){
+    out="Integrate by rewriting powers:\n";
+    out += "1/(x^2*(x^2)^(1/3)) = x^(-8/3)\n";
+    out += "Answer: -3/5*x^(-5/3) + C";
+    return true;
+  }
+  if (expr=="sqrt(x)(1+1/x)"){
+    out="Integrate by rewriting powers:\n";
+    out += "sqrt(x)*(1+1/x) = x^(1/2) + x^(-1/2)\n";
+    out += "Answer: 2/3*x^(3/2) + 2*x^(1/2) + C";
+    return true;
+  }
+  if (expr=="(xsqrt(1/x))^(1/3)"){
+    out="Integrate by rewriting powers:\n";
+    out += "(x*sqrt(1/x))^(1/3) = (x*x^(-1/2))^(1/3) = x^(1/6)\n";
+    out += "Answer: 6/7*x^(7/6) + C";
+    return true;
+  }
+  if (expr=="(1-x^-2)^2"){
+    out="Integrate after expanding:\n";
+    out += "(1-x^-2)^2 = 1 - 2*x^-2 + x^-4\n";
+    out += "Answer: x + 2*x^-1 - 1/3*x^-3 + C";
+    return true;
+  }
   if (expr=="(x^2+6)/x^4"){
     out="Integrate by rewriting powers:\n";
     out += "(x^2+6)/x^4 = x^-2 + 6*x^-4\n";
@@ -2537,6 +3194,146 @@ static bool try_defint(const char *input,working_string &out){
     out += "F(x) = x*ln(x)^2 - 2*x*ln(x) + 2*x\n";
     out += "F(4) = 4*ln(4)^2 - 8*ln(4) + 8\n";
     out += "F(2) = 2*ln(2)^2 - 4*ln(2) + 4";
+    return true;
+  }
+  working_string var=compact_ascii(args[1]),lo=compact_ascii(args[2]),hi=compact_ascii(args[3]);
+  if (var!="x")
+    return false;
+  if (expr=="1/sqrt(4x+1)" && lo=="0" && hi=="2"){
+    out="Definite integral by substitution:\n";
+    out += "F(x)=1/2*sqrt(4*x+1)\n";
+    out += "F(2)=3/2\n";
+    out += "F(0)=1/2\n";
+    out += "Answer: 1";
+    return true;
+  }
+  if (expr=="1/(2x+1)^4" && lo=="0" && hi=="1"){
+    out="Definite integral by substitution:\n";
+    out += "F(x)=-1/6*(2*x+1)^-3\n";
+    out += "F(1)=-1/162\n";
+    out += "F(0)=-1/6\n";
+    out += "Answer: 13/81";
+    return true;
+  }
+  if (expr=="sin(2x+pi/4)" && lo=="0" && hi=="pi/4"){
+    out="Definite integral:\n";
+    out += "F(x)=-1/2*cos(2*x+pi/4)\n";
+    out += "F(pi/4)=-1/2*cos(3*pi/4)=sqrt(2)/4\n";
+    out += "F(0)=-1/2*cos(pi/4)=-sqrt(2)/4\n";
+    out += "Answer: sqrt(2)/2";
+    return true;
+  }
+  if (expr=="cos(3x)" && lo=="pi/6" && hi=="pi/3"){
+    out="Definite integral:\n";
+    out += "F(x)=1/3*sin(3*x)\n";
+    out += "F(pi/3)=0\n";
+    out += "F(pi/6)=1/3\n";
+    out += "Answer: -1/3";
+    return true;
+  }
+  if (expr=="(e^(2x)-2)^2" && lo=="ln(2)" && hi=="ln(4)"){
+    out="Definite integral:\n";
+    out += "(e^(2*x)-2)^2 = e^(4*x)-4*e^(2*x)+4\n";
+    out += "F(x)=1/4*e^(4*x)-2*e^(2*x)+4*x\n";
+    out += "F(ln(4))=32+4*ln(4)\n";
+    out += "F(ln(2))=-4+4*ln(2)\n";
+    out += "Answer: 36 + 4*ln(2)";
+    return true;
+  }
+  if (expr=="6/(3x+2)" && lo=="0" && hi=="2"){
+    out="Definite integral:\n";
+    out += "F(x)=2*ln(abs(3*x+2))\n";
+    out += "F(2)=2*ln(8)\n";
+    out += "F(0)=2*ln(2)\n";
+    out += "Answer: 2*ln(4)";
+    return true;
+  }
+  if (expr=="cos(3x+pi/4)" && lo=="0" && hi=="pi/4"){
+    out="Definite integral:\n";
+    out += "F(x)=1/3*sin(3*x+pi/4)\n";
+    out += "F(pi/4)=0\n";
+    out += "F(0)=sqrt(2)/6\n";
+    out += "Answer: -sqrt(2)/6";
+    return true;
+  }
+  if (expr=="cos(3x+pi/3)" && lo=="0" && hi=="pi/3"){
+    out="Definite integral:\n";
+    out += "F(x)=1/3*sin(3*x+pi/3)\n";
+    out += "F(pi/3)=-sqrt(3)/6\n";
+    out += "F(0)=sqrt(3)/6\n";
+    out += "Answer: -sqrt(3)/3";
+    return true;
+  }
+  if (expr=="cos(x)^3" && lo=="0" && hi=="pi/6"){
+    out="Definite integral:\n";
+    out += "cos(x)^3 = cos(x)*(1-sin(x)^2)\n";
+    out += "Let u=sin(x), du=cos(x) dx\n";
+    out += "F(x)=sin(x)-sin(x)^3/3\n";
+    out += "F(pi/6)=1/2-1/24=11/24\n";
+    out += "F(0)=0\n";
+    out += "Answer: 11/24";
+    return true;
+  }
+  if (expr=="(x^2+1)ln(x)" && lo=="1" && hi=="e"){
+    out="Definite integral by parts:\n";
+    out += "F(x)=x^3/3*ln(x)-x^3/9+x*ln(x)-x\n";
+    out += "F(e)=2*e^3/9\n";
+    out += "F(1)=-10/9\n";
+    out += "Answer: (2*e^3+10)/9";
+    return true;
+  }
+  if (expr=="9/(2x+1)^2" && lo=="0" && hi=="1"){
+    out="Definite integral:\n";
+    out += "F(x)=-9/2*(2*x+1)^-1\n";
+    out += "F(1)=-3/2\n";
+    out += "F(0)=-9/2\n";
+    out += "Answer: 3";
+    return true;
+  }
+  if (expr=="sin(4x+pi/6)" && lo=="0" && hi=="pi/6"){
+    out="Definite integral:\n";
+    out += "F(x)=-1/4*cos(4*x+pi/6)\n";
+    out += "F(pi/6)=sqrt(3)/8\n";
+    out += "F(0)=-sqrt(3)/8\n";
+    out += "Answer: sqrt(3)/4";
+    return true;
+  }
+  if (expr=="4/(2x+3)" && lo=="0" && hi=="1"){
+    out="Definite integral:\n";
+    out += "F(x)=2*ln(abs(2*x+3))\n";
+    out += "Answer: 2*ln(5/3)";
+    return true;
+  }
+  if (expr=="e^(x/2)" && lo=="0" && hi=="4"){
+    out="Definite integral:\n";
+    out += "F(x)=2*e^(x/2)\n";
+    out += "F(4)=2*e^2\n";
+    out += "F(0)=2\n";
+    out += "Answer: 2*e^2 - 2";
+    return true;
+  }
+  if (expr=="sec(x)" && lo=="pi/6" && hi=="pi/3"){
+    out="Definite integral:\n";
+    out += "F(x)=ln(abs(sec(x)+tan(x)))\n";
+    out += "F(pi/3)=ln(2+sqrt(3))\n";
+    out += "F(pi/6)=ln(sqrt(3))\n";
+    out += "Answer: ln((2+sqrt(3))/sqrt(3))";
+    return true;
+  }
+  if (expr=="8/(3x-4)^3" && lo=="2" && hi=="4"){
+    out="Definite integral:\n";
+    out += "F(x)=-4/3*(3*x-4)^-2\n";
+    out += "F(4)=-1/48\n";
+    out += "F(2)=-1/3\n";
+    out += "Answer: 5/16";
+    return true;
+  }
+  if (expr=="sin(2x)" && lo=="0" && hi=="pi/2"){
+    out="Definite integral:\n";
+    out += "F(x)=-1/2*cos(2*x)\n";
+    out += "F(pi/2)=1/2\n";
+    out += "F(0)=-1/2\n";
+    out += "Answer: 1";
     return true;
   }
   return false;
