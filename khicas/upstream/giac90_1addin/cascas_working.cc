@@ -1143,6 +1143,75 @@ static working_string pretty_poly_input(const working_string &expr){
   return out;
 }
 
+static rat poly_eval_rat(const poly_rat &p,rat x);
+
+static working_string fmt_shift_square(const working_string &var,rat root){
+  working_string out="(";
+  out += var;
+  if (root.n<0){
+    out += " + ";
+    out += fmt_rat(abs_rat(root));
+  }
+  else {
+    out += " - ";
+    out += fmt_rat(root);
+  }
+  out += ")^2";
+  return out;
+}
+
+static bool try_complete_square_poly(const char *input,working_string &out){
+  working_string args[1],var;
+  int count=0;
+  if (!parse_call(input,"complete_square",args,1,count) || count<1)
+    return false;
+  if (!detect_poly_var(args[0],var))
+    return false;
+  poly_rat p;
+  if (!parse_poly(args[0],var,p) || p.deg!=2 || !(p.c[2].n==1 && p.c[2].d==1))
+    return false;
+  rat h=div_rat(norm_rat(-p.c[1].n,p.c[1].d),norm_rat(2,1));
+  rat k=poly_eval_rat(p,h);
+  out="Complete the square:\n";
+  out += pretty_poly_input(args[0]);
+  out += "\n= ";
+  out += fmt_shift_square(var,h);
+  if (k.n<0){
+    out += " - ";
+    out += fmt_rat(abs_rat(k));
+  }
+  else {
+    out += " + ";
+    out += fmt_rat(k);
+  }
+  out += "\n";
+  out += var;
+  out += " = ";
+  out += fmt_rat(h);
+  out += ", min y = ";
+  out += fmt_rat(k);
+  return true;
+}
+
+static bool try_evalat_poly(const char *input,working_string &out){
+  working_string args[3];
+  int count=0;
+  if (!parse_call(input,"evalat",args,3,count) || count<3)
+    return false;
+  working_string var=compact_poly(args[1]);
+  poly_rat p;
+  rat x;
+  if (!parse_poly(args[0],var,p) || !eval_arith_rat(args[2],x))
+    return false;
+  rat y=poly_eval_rat(p,x);
+  out="Evaluate:\n";
+  out += "f(";
+  out += fmt_rat(x);
+  out += ") = ";
+  out += fmt_rat(y);
+  return true;
+}
+
 static bool try_poly_expand(const char *input,working_string &out){
   working_string args[1],var;
   int count=0;
@@ -2192,6 +2261,10 @@ bool eval_with_working(const char *input,working_string &out){
   if (try_solve(input,out))
     return true;
   if (try_poly_quadratic_solve(input,out))
+    return true;
+  if (try_complete_square_poly(input,out))
+    return true;
+  if (try_evalat_poly(input,out))
     return true;
   if (try_xform(input,out))
     return true;
