@@ -20,6 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 STATE = ROOT / "progress" / "state.jsonl"
 GRAPH = ROOT / "docs" / "GRAPH.md"
 G3A = ROOT / "calculator_files" / "CAS.g3a"
+BUILD_G3A = ROOT / "build" / "CAS.g3a"
 QUEUE_FILE = ROOT / "tests" / "golden" / "exact_calculator_input_queue.jsonl"
 QUEUE_LIVE = ROOT / "progress" / "exact_queue_latest.json"
 QUEUE_REPORT = ROOT / "tests" / "reports" / "exact_calculator_input_queue" / "latest.jsonl"
@@ -35,6 +36,8 @@ class C:
     red = "\033[31m"
     green = "\033[32m"
     yellow = "\033[33m"
+    blue = "\033[34m"
+    magenta = "\033[35m"
     cyan = "\033[36m"
 
 
@@ -48,17 +51,23 @@ class Stat:
     branch: str
     commit: str
     tag: str
+    upstream: str
     dirty: int
     g3a: int
+    build_g3a: int
     g3a_age: str
+    build_age: str
     g3a_hash: str
+    artifact_note: str
     graph_age: str
     report_age: str
     queue_rows: int
     queue_inputs: int
     checkpoint: str
     failures: list[str]
+    fail_clusters: list[tuple[str, int]]
     ratios: list[tuple[str, int, int]]
+    ratio_trend: str
     dirty_files: list[str]
     events: list[str]
 
@@ -134,6 +143,19 @@ def dirty_files(limit: int = 5) -> list[str]:
     return files
 
 
+def upstream_status() -> str:
+    out = run(["git", "rev-list", "--left-right", "--count", "@{u}...HEAD"])
+    if out == "n/a":
+        return "no upstream"
+    parts = out.split()
+    if len(parts) != 2:
+        return "n/a"
+    behind, ahead = parts
+    if behind == "0" and ahead == "0":
+        return "synced"
+    return f"behind {behind} / ahead {ahead}"
+
+
 def graph_age() -> str:
     if not GRAPH.exists():
         return "missing"
@@ -201,6 +223,39 @@ def failure_samples(limit: int = 3) -> list[str]:
     return samples
 
 
+def failure_clusters(limit: int = 5) -> list[tuple[str, int]]:
+    if not QUEUE_FAILS.exists():
+        return []
+    counts: dict[str, int] = {}
+    for line in QUEUE_FAILS.read_text(errors="ignore").splitlines():
+        if " input " not in line:
+            continue
+        m = re.search(r":\s+([a-z_]+)\s+", line)
+        if not m:
+            continue
+        key = m.group(1)
+        counts[key] = counts.get(key, 0) + 1
+    return sorted(counts.items(), key=lambda item: (-item[1], item[0]))[:limit]
+
+
+def ratio_history(label: str = "queue-run", limit: int = 18) -> str:
+    vals: list[float] = []
+    if STATE.exists():
+        for line in STATE.read_text(errors="ignore").splitlines()[-250:]:
+            try:
+                row = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            for found, done, total in ratios_from(str(row.get("tests", ""))):
+                if found == label and total:
+                    vals.append(done / total)
+    if not vals:
+        return "n/a"
+    vals = vals[-limit:]
+    marks = ".:-=+*#%@"
+    return "".join(marks[min(len(marks) - 1, int(v * (len(marks) - 1)))] for v in vals)
+
+
 def ratios_from(text: str) -> list[tuple[str, int, int]]:
     out: list[tuple[str, int, int]] = []
     for label in ("help-examples", "working-quality", "shared-working", "queue-run", "removed"):
@@ -240,6 +295,17 @@ def queue_progress() -> dict[str, int | str]:
     return {"phase": "exact_queue", "done": total, "total": total, "ok": ok, "bad": bad, "active": "latest report"}
 
 
+def artifact_note(g3a_size: int, build_size: int) -> str:
+    if g3a_size:
+        return "transfer ready"
+    if build_size:
+        headroom = LIMIT - build_size
+        if headroom < 0:
+            return f"last build over hard limit by {-headroom:,} B"
+        return "build exists, transfer missing"
+    return "no artifact"
+
+
 def collect() -> Stat:
     s = latest_state()
     checkpoint = latest_checkpoint()
@@ -264,17 +330,23 @@ def collect() -> Stat:
         branch=run(["git", "branch", "--show-current"]),
         commit=run(["git", "rev-parse", "--short", "HEAD"]),
         tag=run(["git", "describe", "--tags", "--exact-match", "HEAD"]),
+        upstream=upstream_status(),
         dirty=dirty_count(),
         g3a=file_size(G3A),
+        build_g3a=file_size(BUILD_G3A),
         g3a_age=age_s(G3A),
+        build_age=age_s(BUILD_G3A),
         g3a_hash=short_hash(G3A),
+        artifact_note=artifact_note(file_size(G3A), file_size(BUILD_G3A)),
         graph_age=graph_age(),
         report_age=age_s(QUEUE_REPORT),
         queue_rows=rows,
         queue_inputs=inputs,
         checkpoint=str(checkpoint.get("last_event", "n/a")),
         failures=failure_samples(),
+        fail_clusters=failure_clusters(),
         ratios=ratios,
+        ratio_trend=ratio_history(),
         dirty_files=dirty_files(),
         events=recent_events(),
     )
@@ -297,6 +369,14 @@ def bar(done: int, total: int, width: int, frame: int, enabled: bool) -> str:
     return color(body, code, enabled) + f" {frac * 100:5.1f}%"
 
 
+def sweep(width: int, frame: int, enabled: bool) -> str:
+    width = max(12, width)
+    cells = ["."] * width
+    for off in range(3):
+        cells[(frame + off) % width] = "#"
+    return color("".join(cells), C.magenta, enabled)
+
+
 def trim(text: str, width: int) -> str:
     raw = re.sub(r"\033\[[0-9;]*m", "", text)
     if len(raw) <= width:
@@ -315,6 +395,14 @@ def size_row(label: str, size: int, frame: int, width: int, enabled: bool) -> st
         f"{color(status, code, enabled)} hard {headroom:,} B target {target_delta:,} B",
         120,
     )
+
+
+def size_hint(st: Stat, frame: int, width: int, enabled: bool) -> list[str]:
+    rows = [size_row("CAS.g3a", st.g3a, frame, width, enabled)]
+    if not st.g3a and st.build_g3a:
+        rows.append(size_row("build/CAS.g3a", st.build_g3a, frame, width, enabled))
+    rows.append(f"note {st.artifact_note}")
+    return rows
 
 
 def rate(done: int, total: int) -> str:
@@ -360,13 +448,15 @@ def render_compact(st: Stat, frame: int, width: int, enabled: bool) -> str:
         ),
         trim("=" * width, width),
         kv("repo", f"{st.branch} @ {st.commit}  graph {st.graph_age}", width, enabled),
+        kv("sync", st.upstream, width, enabled),
         kv("phase", st.phase, width, enabled),
         kv("event", st.last, width, enabled),
-        size_row("CAS.g3a", st.g3a, frame, bar_w, enabled),
+        *[trim(r, width) for r in size_hint(st, frame, bar_w, enabled)],
         kv("artifact", f"age {st.g3a_age}  sha256 {st.g3a_hash}  headroom {headroom:,} B", width, enabled),
         kv("queue", f"{st.queue_rows:,} rows / {st.queue_inputs:,} inputs", width, enabled),
         kv("latest", f"{st.queue}  report age {st.report_age}", width, enabled),
         trim(color("progress", C.bold, enabled), width),
+        trim(f"trend          {st.ratio_trend}  {sweep(18, frame, enabled)}", width),
     ]
     for label, done, total in st.ratios[:4]:
         lines.append(trim(f"{label:<14} {bar(done, total, bar_w, frame, enabled)} {done}/{total}", width))
@@ -374,6 +464,8 @@ def render_compact(st: Stat, frame: int, width: int, enabled: bool) -> str:
         lines.append(trim("no ratio data yet", width))
     lines.append(kv("dirty files", "; ".join(st.dirty_files) if st.dirty_files else "clean", width, enabled))
     quality = f"unsupported {st.unsupported}"
+    if st.fail_clusters:
+        quality += "  clusters " + ", ".join(f"{k}:{v}" for k, v in st.fail_clusters[:3])
     if st.failures:
         quality += "  first gap " + st.failures[0]
     else:
@@ -413,7 +505,7 @@ def render(st: Stat, frame: int, width: int, height: int, enabled: bool) -> str:
     lines += panel(
         "repo",
         [
-            f"branch {st.branch} @ {st.commit}  tag {tag}",
+            f"branch {st.branch} @ {st.commit}  tag {tag}  {st.upstream}",
             f"phase  {st.phase}",
             f"event  {st.last}",
             f"graph  {st.graph_age}  checkpoint {st.checkpoint}",
@@ -425,8 +517,9 @@ def render(st: Stat, frame: int, width: int, height: int, enabled: bool) -> str:
     lines += panel(
         "artifact",
         [
-            size_row("CAS.g3a", st.g3a, frame, bar_w, enabled),
+            *size_hint(st, frame, bar_w, enabled),
             f"age {st.g3a_age}  sha256 {st.g3a_hash}",
+            f"last build age {st.build_age}",
             f"hard headroom {headroom:,} B  target delta {TARGET - st.g3a:,} B",
         ],
         width,
@@ -444,6 +537,7 @@ def render(st: Stat, frame: int, width: int, height: int, enabled: bool) -> str:
     )
     lines.append("")
     lines += panel("progress", [], width, enabled)[:1]
+    lines.append(trim(f"trend          {st.ratio_trend}  {sweep(24, frame, enabled)}", width))
     if st.ratios:
         for label, done, total in st.ratios:
             lines.append(trim(f"{label:<14} {bar(done, total, bar_w, frame, enabled)} {done}/{total} {rate(done,total)}", width))
@@ -453,7 +547,8 @@ def render(st: Stat, frame: int, width: int, height: int, enabled: bool) -> str:
     lines.append("")
     lines += panel("dirty files", st.dirty_files or ["clean"], width, enabled)
     lines.append("")
-    gap_rows = [f"unsupported {st.unsupported}", "strict gaps:"]
+    cluster = ", ".join(f"{k}:{v}" for k, v in st.fail_clusters) if st.fail_clusters else "none"
+    gap_rows = [f"unsupported {st.unsupported}", f"clusters {cluster}", "strict gaps:"]
     if st.failures:
         for sample in st.failures:
             gap_rows.append(" - " + sample)

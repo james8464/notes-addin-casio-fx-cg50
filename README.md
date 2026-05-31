@@ -26,9 +26,9 @@ Current status:
 - file: `CAS.g3a`
 - size: `2,097,120` bytes
 - hard limit headroom: `32` bytes
-- sha256: `ec34b7933eccb0a36e6ed72d6853ce075accd2a1dab6508d715199b9fa8d8ce5`
-- exact queue runtime: `14,154/14,154`
-- strict marker quality: `12,793/14,154`
+- sha256: `f49da226fc639e1dd8cb41c5498bc4cf63d8b5287fc46ed6418f35969c5d6fe0`
+- exact queue runtime: `14,256/14,256`
+- strict marker quality: `12,795/14,256`
 - online challenge source coverage: MadAsMaths exact rows in queue; Daily Integral hard-integration style probes inspected from `https://dailyintegral.com/archive`
 
 Notable routes:
@@ -52,7 +52,7 @@ Notable routes:
 - polynomial derivatives use descending-power form, e.g. `-8*x^3 + 1`
 - repeated integer quadratic roots print once, e.g. `x = [8]`
 - catalogue Help on command screen shows spaced sections and F2/F3 examples
-- `tools/audit_progress_tui.py` shows animated repo, artifact, queue, quality, dirty-file, recent-event, and run-command panels
+- `/Users/james/Developer/CASIO/tools/audit_progress_tui.py` shows animated repo sync, artifact, queue, quality-cluster, dirty-file, recent-event, and run-command panels
 
 Active tools:
 

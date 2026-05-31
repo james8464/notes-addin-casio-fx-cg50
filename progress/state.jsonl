@@ -387,3 +387,38 @@
 {"phase":"queue","last_event":"exact queue 14154/14154","queue":"14154/14154 done, 14154 ok, 0 bad","tests":"queue-run 14154/14154"}
 {"phase":"queue","last_event":"exact queue 14154/14154","queue":"14154/14154 done, 14154 ok, 0 bad","tests":"queue-run 14154/14154"}
 {"phase":"queue","last_event":"added substitution queue rows through latest stable batch","commit":"pending","graph":"docs/GRAPH.md 2026-05-31 23:42 BST","g3a_size":2097120,"headroom":32,"sha256":"ec34b7933eccb0a36e6ed72d6853ce075accd2a1dab6508d715199b9fa8d8ce5","tests":"size,metadata,border,catalog,help,help-examples,queue-schema 9483 rows/14154 inputs,queue-run 14154/14154,working-quality 12793/14154","queue":"14154/14154 runtime; 12793/14154 strict markers","unsupported":0,"eta":"queue expanded with substitution rows; next code work still needs binary pruning first"}
+{"phase":"queue","last_event":"exact queue 0/14174","queue":"0/14174 done, 0 ok, 0 bad","tests":"queue-run 0/14174"}
+{"phase":"queue","last_event":"exact queue 14174/14174","queue":"14174/14174 done, 12793 ok, 1381 bad","tests":"queue-run 12793/14174"}
+{"phase":"queue","last_event":"exact queue 14174/14174","queue":"14174/14174 done, 12793 ok, 1381 bad","tests":"queue-run 12793/14174"}
+{"phase":"queue","last_event":"exact queue 0/14194","queue":"0/14194 done, 0 ok, 0 bad","tests":"queue-run 0/14194"}
+{"phase":"queue","last_event":"exact queue 14194/14194","queue":"14194/14194 done, 12791 ok, 1403 bad","tests":"queue-run 12791/14194"}
+{"phase":"queue","last_event":"exact queue 14194/14194","queue":"14194/14194 done, 12791 ok, 1403 bad","tests":"queue-run 12791/14194"}
+{"phase":"queue","last_event":"exact queue 0/14194","queue":"0/14194 done, 0 ok, 0 bad","tests":"queue-run 0/14194"}
+{"phase":"queue","last_event":"exact queue 14194/14194","queue":"14194/14194 done, 12625 ok, 1569 bad","tests":"queue-run 12625/14194"}
+{"phase":"queue","last_event":"exact queue 14194/14194","queue":"14194/14194 done, 12625 ok, 1569 bad","tests":"queue-run 12625/14194"}
+{"phase":"queue","last_event":"exact queue 0/14210","queue":"0/14210 done, 0 ok, 0 bad","tests":"queue-run 0/14210"}
+{"phase":"queue","last_event":"exact queue 14210/14210","queue":"14210/14210 done, 12805 ok, 1405 bad","tests":"queue-run 12805/14210"}
+{"phase":"queue","last_event":"exact queue 14210/14210","queue":"14210/14210 done, 12805 ok, 1405 bad","tests":"queue-run 12805/14210"}
+{"phase":"queue","last_event":"exact queue 0/14222","queue":"0/14222 done, 0 ok, 0 bad","tests":"queue-run 0/14222"}
+{"phase":"queue","last_event":"exact queue 14222/14222","queue":"14222/14222 done, 14222 ok, 0 bad","tests":"queue-run 14222/14222"}
+{"phase":"queue","last_event":"exact queue 14222/14222","queue":"14222/14222 done, 14222 ok, 0 bad","tests":"queue-run 14222/14222"}
+{"phase":"queue","last_event":"exact queue 0/14222","queue":"0/14222 done, 0 ok, 0 bad","tests":"queue-run 0/14222"}
+{"phase":"queue","last_event":"exact queue 14222/14222","queue":"14222/14222 done, 12793 ok, 1429 bad","tests":"queue-run 12793/14222"}
+{"phase":"queue","last_event":"exact queue 14222/14222","queue":"14222/14222 done, 12793 ok, 1429 bad","tests":"queue-run 12793/14222"}
+{"phase":"queue","last_event":"exact queue 0/14242","queue":"0/14242 done, 0 ok, 0 bad","tests":"queue-run 0/14242"}
+{"phase":"queue","last_event":"exact queue 14242/14242","queue":"14242/14242 done, 14242 ok, 0 bad","tests":"queue-run 14242/14242"}
+{"phase":"queue","last_event":"exact queue 14242/14242","queue":"14242/14242 done, 14242 ok, 0 bad","tests":"queue-run 14242/14242"}
+{"phase":"queue","last_event":"exact queue 0/14242","queue":"0/14242 done, 0 ok, 0 bad","tests":"queue-run 0/14242"}
+{"phase":"queue","last_event":"exact queue 14242/14242","queue":"14242/14242 done, 12795 ok, 1447 bad","tests":"queue-run 12795/14242"}
+{"phase":"audit","last_event":"ready to commit polished audit TUI and project cleanup","commit":"pending","graph":"docs/GRAPH.md 2026-06-01 00:02 BST","g3a_size":2097120,"headroom":32,"sha256":"f49da226fc639e1dd8cb41c5498bc4cf63d8b5287fc46ed6418f35969c5d6fe0","tests":"size,metadata,border,catalog,help,help-examples,queue-schema 9493 rows/14242 inputs,queue-run 14242/14242,strict-markers 12795/14242","queue":"14242/14242 runtime; 12795/14242 strict markers","unsupported":0,"eta":"next: implement remaining strict clusters algebra/integrate/derive"}
+{"phase":"audit","last_event":"polished live TUI, cleaned ignored build byproducts, rebuilt CAS.g3a","commit":"pending","graph":"docs/GRAPH.md 2026-06-01 00:02 BST","g3a_size":2097120,"headroom":32,"sha256":"f49da226fc639e1dd8cb41c5498bc4cf63d8b5287fc46ed6418f35969c5d6fe0","tests":"size,metadata,border,catalog,help,help-examples,queue-schema 9493 rows/14242 inputs,queue-run 14242/14242,strict-markers 12795/14242","queue":"14242/14242 runtime; 12795/14242 strict markers","unsupported":0,"eta":"next: work remaining strict clusters algebra/integrate/derive"}
+{"phase":"queue","last_event":"exact queue 14242/14242","queue":"14242/14242 done, 12795 ok, 1447 bad","tests":"queue-run 12795/14242"}
+{"phase":"audit","last_event":"ready to commit polished audit TUI and project cleanup","commit":"pending","graph":"docs/GRAPH.md 2026-06-01 00:02 BST","g3a_size":2097120,"headroom":32,"sha256":"f49da226fc639e1dd8cb41c5498bc4cf63d8b5287fc46ed6418f35969c5d6fe0","tests":"size,metadata,border,catalog,help,help-examples,queue-schema 9493 rows/14242 inputs,queue-run 14242/14242,strict-markers 12795/14242","queue":"14242/14242 runtime; 12795/14242 strict markers","unsupported":0,"eta":"next: implement remaining strict clusters algebra/integrate/derive"}
+{"phase":"queue","last_event":"exact queue 0/14256","queue":"0/14256 done, 0 ok, 0 bad","tests":"queue-run 0/14256"}
+{"phase":"queue","last_event":"exact queue 14256/14256","queue":"14256/14256 done, 14256 ok, 0 bad","tests":"queue-run 14256/14256"}
+{"phase":"queue","last_event":"exact queue 14256/14256","queue":"14256/14256 done, 14256 ok, 0 bad","tests":"queue-run 14256/14256"}
+{"phase":"queue","last_event":"exact queue 0/14256","queue":"0/14256 done, 0 ok, 0 bad","tests":"queue-run 0/14256"}
+{"phase":"queue","last_event":"exact queue 14256/14256","queue":"14256/14256 done, 12795 ok, 1461 bad","tests":"queue-run 12795/14256"}
+{"phase":"audit","last_event":"ready to commit polished audit TUI and project cleanup","commit":"pending","graph":"docs/GRAPH.md 2026-06-01 00:02 BST","g3a_size":2097120,"headroom":32,"sha256":"f49da226fc639e1dd8cb41c5498bc4cf63d8b5287fc46ed6418f35969c5d6fe0","tests":"size,metadata,border,catalog,help,help-examples,queue-schema 9495 rows/14256 inputs,queue-run 14256/14256,strict-markers 12795/14256","queue":"14256/14256 runtime; 12795/14256 strict markers","unsupported":0,"eta":"next: implement remaining strict clusters integrate/algebra/derive"}
+{"phase":"queue","last_event":"exact queue 14256/14256","queue":"14256/14256 done, 12795 ok, 1461 bad","tests":"queue-run 12795/14256"}
+{"phase":"audit","last_event":"ready to commit polished audit TUI and project cleanup","commit":"pending","graph":"docs/GRAPH.md 2026-06-01 00:02 BST","g3a_size":2097120,"headroom":32,"sha256":"f49da226fc639e1dd8cb41c5498bc4cf63d8b5287fc46ed6418f35969c5d6fe0","tests":"size,metadata,border,catalog,help,help-examples,queue-schema 9495 rows/14256 inputs,queue-run 14256/14256,strict-markers 12795/14256","queue":"14256/14256 runtime; 12795/14256 strict markers","unsupported":0,"eta":"next: implement remaining strict clusters integrate/algebra/derive"}

@@ -1,6 +1,6 @@
 # Project Graph
 
-Last updated: 2026-05-31 23:42 BST
+Last updated: 2026-06-01 00:02 BST
 
 ## Build
 
@@ -63,8 +63,9 @@ graph TD
   Runner --> Report["tests/reports/.../latest.jsonl"]
   Live --> TUI["tools/audit_progress_tui.py"]
   Report --> TUI
-  Runner --> Runtime["14,154/14,154 runtime-safe"]
-  Runner --> Strict["12,793/14,154 strict marker pass"]
+  TUI --> Panels["animated panels: sync, artifact, queue bars, strict clusters, dirty files"]
+  Runner --> Runtime["14,256/14,256 runtime-safe"]
+  Runner --> Strict["12,795/14,256 strict marker pass"]
   Strict --> Remaining["remaining: symbolic parameter area proofs, algebra presentation, binomial/partfrac, exact-form geometry/vector clusters"]
 ```
 
