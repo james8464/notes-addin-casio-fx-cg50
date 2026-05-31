@@ -26,9 +26,9 @@ Current status:
 - file: `CAS.g3a`
 - size: `2,095,616` bytes
 - hard limit headroom: `1,536` bytes
-- sha256: `f26c5414acadbfa7233c14edf9fd7b429c34d03203122c012218044259d7294b`
+- sha256: `f0bff7bf6949bc9e8c12316e06346b902ee958ec532e0f75b7244cf51ed4688d`
 - exact queue runtime: `13,572/13,572`
-- strict marker quality: `12,624/13,572`
+- strict marker quality: `12,638/13,572`
 - online challenge source coverage: MadAsMaths exact rows in queue; Daily Integral challenge format inspected from `https://dailyintegral.com/play/hard`
 
 Notable routes:

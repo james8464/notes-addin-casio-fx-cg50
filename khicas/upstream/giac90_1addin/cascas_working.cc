@@ -1525,7 +1525,7 @@ static bool try_numeric_expr(const char *input,working_string &out){
   out += double_s(v);
   working_string exact;
   if (rational_approx(v,exact))
-    out += "\nExact: "+exact;
+    out += "\nExact = "+exact;
   return true;
 }
 
