@@ -26,7 +26,6 @@ namespace giac {
   class gen;
   extern const unary_function_ptr * const  at_entry;
   extern const unary_function_ptr * const  at_ans;
-  gen _list2exp(const gen & g,GIAC_CONTEXT);
   gen _seq(const gen & g,GIAC_CONTEXT);
   gen _logb(const gen & g,GIAC_CONTEXT);
   gen _getType(const gen & g,GIAC_CONTEXT);
@@ -152,7 +151,7 @@ namespace giac {
   extern const unary_function_ptr * const  at_InputStr;
   extern const unary_function_ptr * const  at_Prompt;
   extern const unary_function_ptr * const  at_rowswap;
-  extern const unary_function_ptr * const  at_get_key;
+  extern const unary_function_ptr * const  at_getKey;
   extern const unary_function_ptr * const  at_numer;
   extern const unary_function_ptr * const  at_ClrIO;
   extern const unary_function_ptr * const  at_Output;

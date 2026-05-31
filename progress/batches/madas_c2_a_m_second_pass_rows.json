@@ -1,0 +1,215 @@
+{
+  "replace": [
+    {
+      "id": "madas_iygb_c2_k_q1_exact_inputs",
+      "row": {
+        "id": "madas_iygb_c2_k_q1_exact_inputs",
+        "source_pdf": "MadAsMaths papers/c2_k.pdf",
+        "question": "q1",
+        "part": "a-b",
+        "verdict": "partial",
+        "review_basis": "second-pass VM solution PNG review: c2_k solutions p1 Q1b y-intercept fix",
+        "inputs": [
+          {
+            "module": "algebra",
+            "input": "method=numeric,(-7+1)/2",
+            "mark_scheme_working": ["centre x-coordinate is -3"],
+            "expected_output_markers": ["-3"]
+          },
+          {
+            "module": "algebra",
+            "input": "method=numeric,(4-2)/2",
+            "mark_scheme_working": ["centre y-coordinate is 1", "C=(-3,1)"],
+            "expected_output_markers": ["1"]
+          },
+          {
+            "module": "algebra",
+            "input": "method=numeric,sqrt(16+9)",
+            "mark_scheme_working": ["radius 5"],
+            "expected_output_markers": ["5"]
+          },
+          {
+            "module": "algebra",
+            "input": "solve((y-1)^2=16,y)",
+            "mark_scheme_working": [
+              "set x=0 in (x+3)^2+(y-1)^2=25",
+              "(y-1)^2=16",
+              "a=5 or a=-3"
+            ],
+            "expected_output_markers": ["y = [5, -3]"]
+          }
+        ],
+        "expected_final": ["C=(-3,1)", "r=5", "a=5,-3"],
+        "unsupported_reason": "circle equation setup is manual"
+      }
+    }
+  ],
+  "append": [
+    {
+      "id": "madas_iygb_c2_b_q8_sp2_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c2_b.pdf",
+      "question": "q8",
+      "part": "all",
+      "verdict": "partial",
+      "review_basis": "second-pass VM solution PNG review: c2_b solutions p4 Q8 A2 integral",
+      "inputs": [
+        {
+          "module": "algebra",
+          "input": "81/2-72+27-(1/2-8/3+3)",
+          "mark_scheme_working": [
+            "definite integral from 1 to 3 of 2x^3-8x^2+6x",
+            "A2 below axis has magnitude 16/3"
+          ],
+          "expected_output_markers": ["-16/3"]
+        }
+      ],
+      "expected_final": ["|A2|=16/3", "total area=37/6"],
+      "unsupported_reason": "integral limits and shaded-region decomposition remain manual"
+    },
+    {
+      "id": "madas_iygb_c2_k_q2_sp2_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c2_k.pdf",
+      "question": "q2",
+      "part": "all",
+      "verdict": "partial",
+      "review_basis": "second-pass VM solution PNG review: c2_k solutions p1 Q2 (-5,0) max",
+      "inputs": [
+        {
+          "module": "algebra",
+          "input": "method=numeric,-5+10-5",
+          "mark_scheme_working": ["when x=-5, y=0", "stationary point (-5,0)"],
+          "expected_output_markers": ["0"]
+        },
+        {
+          "module": "algebra",
+          "input": "method=numeric,-50/125",
+          "mark_scheme_working": [
+            "f''(x)=50/x^3",
+            "f''(-5)=-2/5<0",
+            "(-5,0) is a local maximum"
+          ],
+          "expected_output_markers": ["-0.4"]
+        }
+      ],
+      "expected_final": ["(5,20) min", "(-5,0) max"],
+      "unsupported_reason": "derivative setup is manual"
+    },
+    {
+      "id": "madas_iygb_c2_m_q2_sp2_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c2_m.pdf",
+      "question": "q2",
+      "part": "a-b",
+      "verdict": "partial",
+      "review_basis": "second-pass VM solution PNG review: c2_m solutions p1 Q2 centre",
+      "inputs": [
+        {
+          "module": "algebra",
+          "input": "complete_square(x^2-8*x)",
+          "mark_scheme_working": ["x^2-8x=(x-4)^2-16", "centre x-coordinate is 4"],
+          "expected_output_markers": ["(x - 4)^2 - 16", "x = 4"]
+        },
+        {
+          "module": "algebra",
+          "input": "complete_square(y^2+6*y)",
+          "mark_scheme_working": ["y^2+6y=(y+3)^2-9", "centre y-coordinate is -3"],
+          "expected_output_markers": ["(y + 3)^2 - 9", "y = -3"]
+        },
+        {
+          "module": "algebra",
+          "input": "16+9",
+          "mark_scheme_working": ["(x-4)^2+(y+3)^2=25", "radius is 5"],
+          "expected_output_markers": ["25"]
+        }
+      ],
+      "expected_final": ["centre (4,-3)", "r=5"],
+      "unsupported_reason": "diameter reasoning in part c is manual"
+    },
+    {
+      "id": "madas_iygb_c2_m_q4_sp2_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c2_m.pdf",
+      "question": "q4",
+      "part": "all",
+      "verdict": "partial",
+      "review_basis": "second-pass VM solution PNG review: c2_m solutions p2 Q4 inflection",
+      "inputs": [
+        {
+          "module": "algebra",
+          "input": "diff(x^3-6*x^2+12*x-5,x)",
+          "mark_scheme_working": ["dy/dx=3x^2-12x+12", "set dy/dx=0"],
+          "expected_output_markers": ["3*x^2 - 12*x + 12"]
+        },
+        {
+          "module": "algebra",
+          "input": "diff(3*x^2-12*x+12,x)",
+          "mark_scheme_working": ["d2y/dx2=6x-12", "d2y/dx2=0 at x=2"],
+          "expected_output_markers": ["6*x - 12"]
+        },
+        {
+          "module": "algebra",
+          "input": "diff(6*x-12,x)",
+          "mark_scheme_working": ["d3y/dx3=6", "non-zero so point of inflection"],
+          "expected_output_markers": ["6"]
+        }
+      ],
+      "expected_final": ["(2,3) stationary point of inflection"],
+      "unsupported_reason": "inflection classification wording is manual"
+    },
+    {
+      "id": "madas_iygb_c2_b_q4_sp2_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c2_b.pdf",
+      "question": "q4",
+      "part": "b",
+      "verdict": "partial",
+      "review_basis": "second-pass VM solution PNG review: c2_b solutions p2 Q4b sector-triangle",
+      "inputs": [
+        {
+          "module": "algebra",
+          "input": "method=numeric,0.5*36*1.45945531245",
+          "mark_scheme_working": [
+            "sector area=1/2*6^2*theta",
+            "theta=1.46 rad from part a"
+          ],
+          "expected_output_markers": ["26.2701956241"]
+        },
+        {
+          "module": "algebra",
+          "input": "method=numeric,0.5*36*sin(1.45945531245)",
+          "mark_scheme_working": ["triangle area=1/2*6*6*sin(theta)", "triangle area=17.89"],
+          "expected_output_markers": ["17.88854382"]
+        },
+        {
+          "module": "algebra",
+          "input": "method=numeric,26.2701956241-17.88854382",
+          "mark_scheme_working": ["segment area=sector minus triangle", "area=8.38 cm^2"],
+          "expected_output_markers": ["8.3816518041"]
+        }
+      ],
+      "expected_final": ["segment area=8.38"],
+      "unsupported_reason": "cosine-rule setup in part a is manual"
+    },
+    {
+      "id": "madas_iygb_c2_a_q7_sp2_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c2_a.pdf",
+      "question": "q7",
+      "part": "d",
+      "verdict": "partial",
+      "review_basis": "second-pass VM solution PNG review: c2_a solutions p3 Q7d arc length",
+      "inputs": [
+        {
+          "module": "algebra",
+          "input": "4*1.2",
+          "mark_scheme_working": ["arc DE has length r*theta=4(1.2)=4.8"],
+          "expected_output_markers": ["24/5"]
+        }
+      ],
+      "expected_final": ["arc DE=4.8", "perimeter R=18.9 cm"],
+      "unsupported_reason": "perimeter assembly from diagram lengths is manual"
+    }
+  ],
+  "coverage_notes": {
+    "MadAsMaths papers/c2_a.pdf": {"rows_added": 1, "text": "second-pass worker_03: Q7d arc length"},
+    "MadAsMaths papers/c2_b.pdf": {"rows_added": 2, "text": "second-pass worker_03: Q4b sector, Q8 A2 integral"},
+    "MadAsMaths papers/c2_k.pdf": {"rows_added": 1, "text": "second-pass worker_03: Q2 max point; Q1b fix"},
+    "MadAsMaths papers/c2_m.pdf": {"rows_added": 2, "text": "second-pass worker_03: Q2 centre, Q4 inflection diffs"}
+  }
+}

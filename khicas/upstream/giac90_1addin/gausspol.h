@@ -30,7 +30,7 @@ namespace giac {
 
 #ifdef USE_GMP_REPLACEMENTS
 #undef HAVE_GMPXX_H
-  //#undef HAVE_LIBMPFR
+#undef HAVE_LIBMPFR
 #endif
 
 

@@ -23,7 +23,6 @@
 #include <vector>
 #include "main.h"
 #include "console.h"
-int khicas_addins_menu(GIAC_CONTEXT);
 
 textArea * edptr=0;
 typedef scrollbar TScrollbar;
@@ -32,27 +31,6 @@ typedef scrollbar TScrollbar;
 int check_parse(const ustl::vector<textElement> & v,int python){
   if (v.empty())
     return 0;
-  char status[256];
-  for (int i=0;i<sizeof(status);++i)
-    status[i]=0;
-  int shift=0;
-#ifdef MICROPY_LIB
-  if (xcas_python_eval==1){
-    freezeturtle=false;
-    string s=merge_area(vector<textElement>(v.begin(),v.end()));
-    micropy_ck_eval(s.c_str());
-    if (parser_errorline>0){
-      //--parser_errorline; // ?? something strange 
-      sprintf(status,(lang==1)?"Erreur ligne %i":"Error line %i",parser_errorline);	
-    }
-    else {
-      process_freeze();
-      sprintf(status,"%s",(lang==1)?"Syntaxe correcte":"Parse OK");
-    }
-    DefineStatusMessage(status,1,0,0);
-    return parser_errorline;
-  }
-#endif
   ustl::string s=merge_area(v);
   giac::python_compat(python,contextptr);
   if (python) s="@@"+s; // force Python translation
@@ -106,12 +84,11 @@ int check_parse(const ustl::vector<textElement> & v,int python){
   }
   else {
     giac::set_abort();
-    giac::gen gs(g);
     g=eval(g,1,contextptr);
     giac::clear_abort();
     ctrl_c=false;
     giac::kbd_interrupted=interrupted=false;
-    check_do_graph(g,gs,7,0); // define the function
+    check_do_graph(g); // define the function
     DefineStatusMessage((char *)(lang?"Syntaxe correcte":"Parse OK"),1,0,0);
   }
   DisplayStatusArea();    
@@ -122,21 +99,6 @@ void fix_newlines(textArea * edptr){
   edptr->elements[0].newLine=0;
   for (size_t i=1;i<edptr->elements.size();++i)
     edptr->elements[i].newLine=1;
-  for (size_t i=0;i<edptr->elements.size();++i){
-    string S=edptr->elements[i].s;
-    const int cut=160;
-    if (S.size()>cut){
-      // string too long, cut it
-      int j;
-      for (j=(4*cut)/5;j>=(2*cut)/5;--j){
-	if (!giac::isalphan(S[j]))
-	  break;
-      }
-      textElement elem; elem.newLine=1; elem.s=S.substr(j,S.size()-j);
-      edptr->elements[i].s=S.substr(0,j);
-      edptr->elements.insert(edptr->elements.begin()+i+1,elem);
-    }
-  }
 }
 
 int end_do_then(const ustl::string & s){
@@ -171,47 +133,6 @@ int end_do_then(const ustl::string & s){
       return -1;
   }
   return 0;
-}
-
-void textArea::set_string_value(int n,const string & s){    
-  if (n==-1 || n>=elements.size()){
-    textElement t; t.s=s;
-    if (!elements.empty())
-      t.newLine=1;
-    elements.push_back(t);
-  }
-  else {
-    elements[n].s=s;
-    if (n)
-      elements[n].newLine=1;
-  }
-  changed=true;
-}
-
-int textArea::add_entry(int n){
-  textElement t; 
-  if (n==-1 || n>=elements.size()){
-    if (elements.empty())
-      elements.push_back(t);
-    else {
-      t.newLine=1;
-      if (!elements.back().s.empty())
-	elements.push_back(t);
-    }
-    n=elements.size()-1;
-  }
-  else {
-    if (n) t.newLine=1;
-    int s=elements.size();
-    vector<textElement> w(s+1);
-    for (int i=0;i<n;++i)
-      w[i]=elements[i];
-    w[n]=t;
-    for (int i=n;i<s;++i)
-      w[i+1]=elements[i];
-    w.swap(elements);
-  }
-  return n;
 }
 
 void add(textArea *edptr,const ustl::string & s){
@@ -439,7 +360,7 @@ bool chk_replace(textArea * text,const ustl::string & search,const ustl::string 
 }
 
 int check_leave(textArea * text){
-  if (!text->gr &&text->editable && text->filename.size()){
+  if (text->editable && text->filename.size()){
     if (text->changed){
       // save or cancel?
       ustl::string tmp=text->filename;
@@ -663,7 +584,7 @@ ustl::string get_selection(textArea * text,bool erase){
 }
 
 void change_mode(textArea * text,int flag){
-  if (xcas_python_eval==0 && bool(text->python)!=bool(flag)){
+  if (bool(text->python)!=bool(flag)){
     text->python=flag;
     python_compat(text->python,contextptr);
     show_status(text,"","");
@@ -678,25 +599,20 @@ void display(textArea * text,int & isFirstDraw,int & totalTextY,int & scroll,int
   bool editable=text->editable;
   int showtitle = !editable && (text->title != NULL);
   ustl::vector<textElement> & v=text->elements;
-  if (v.empty()) v.push_back(textElement());
   //drawRectangle(text->x, text->y+24, text->width, LCD_HEIGHT_PX-24, COLOR_WHITE);
   // insure cursor is visible
   if (editable && !isFirstDraw){
-    int linesbefore=0,dspace=0;
+    int linesbefore=0;
     for (int cur=0;cur<text->line;++cur){
       linesbefore += v[cur].nlines;
-      dspace += v[cur].lineSpacing*v[cur].nlines;
     }
-    int Z= text->lineHeight*linesbefore+dspace; // linesbefore*19
-    // line begin Y is at scroll+linesbefore*19, must be positive
-    if (Z+scroll<0)
-      scroll = -Z;
+    // line begin Y is at scroll+linesbefore*17, must be positive
+    if (linesbefore*19+scroll<0)
+      scroll = -19*linesbefore;
     linesbefore += v[text->line].nlines;
-    dspace += v[text->line].lineSpacing*(v[text->line].nlines-1);
-    Z=text->lineHeight*linesbefore+dspace;
-    // after line Y is at scroll+linesbefore*19
-    if (Z+scroll>154)
-      scroll = 154-Z; // 154-19*linesbefore;
+    // after line Y is at scroll+linesbefore*17
+    if (linesbefore*19+scroll>154)
+      scroll = 154-19*linesbefore;
   }
   textY = scroll+(showtitle ? 24 : 0)+text->y; // 24 pixels for title (or not)
   int deltax=0;
@@ -751,11 +667,8 @@ void display(textArea * text,int & isFirstDraw,int & totalTextY,int & scroll,int
       drawRectangle(text->x, text->y+24, text->width, LCD_HEIGHT_PX-24, COLOR_WHITE);
     }
     int textX=text->x;
-    if(v[cur].newLine) {
-      if (v[cur].lineSpacing>4) // avoid large skip
-	v[cur].lineSpacing=4;
-      textY=textY+text->lineHeight+v[cur].lineSpacing;
-    }
+    if(v[cur].newLine) 
+      textY=textY+text->lineHeight+v[cur].lineSpacing; 
     if (editable){
       char line_s[16];
       sprint_int(line_s,cur+1);
@@ -979,6 +892,11 @@ void display(textArea * text,int & isFirstDraw,int & totalTextY,int & scroll,int
     clearLine(1,1);
     drawScreenTitle((char*)text->title);
   }
+  //if (editable)
+  if (editable){
+    PrintMini(0,58," tests | loops | misc | cmds | A<>a |File ",4);
+    //draw_menu(1);
+  }
   int scrollableHeight = LCD_HEIGHT_PX-24*(showtitle ? 2 : 1)-text->y;
   //draw a scrollbar:
   if(text->scrollbar) {
@@ -1052,11 +970,6 @@ void textarea_help_insert(textArea * text,int exec){
   }
 }
 
-string set_textarea_menu(textArea* text){
-  (void) text;
-  return "F1 alg\nsimplify(\nfactor(\nexpand(\ncollect(\npartfrac(\nnormal(\nF2 calc\ndiff(\nintegrate(\nlimit(\nseries(\nsum(\nproduct(\nF3 solve\nsolve(\nrange(\nxform(\nimplicit_diff(\nF4 trig\nsin(\ncos(\ntan(\nsec(\ncsc(\ncot(\ntcollect(\ntexpand(\nF5 logs\nln(\nlog(\nexp(\nF6 real\nabs(\napprox(\nfloor(\nceil(\nround(\n";
-}
-
 int doTextArea(textArea* text) {
   int scroll = 0;
   int isFirstDraw = 1;
@@ -1070,69 +983,30 @@ int doTextArea(textArea* text) {
   if (text->line>=v.size())
     text->line=0;
   display(text,isFirstDraw,totalTextY,scroll,textY);
-  string le_menu=set_textarea_menu(text);
-  update_fmenu((const unsigned char *)le_menu.c_str());
-  string menu,shiftmenu,alphamenu; int menucolorbg=12345;
   while(1) {
     if (text->line>=v.size())
       text->line=0;
-    if (xcas_python_eval==1){
-      text->python=4;
-      python_compat(4,contextptr);
-    }
-    display(text,isFirstDraw,totalTextY,scroll,textY);    
-    if (text->type == TEXTAREATYPE_INSTANT_RETURN) return 0;
+    display(text,isFirstDraw,totalTextY,scroll,textY);
+    if(text->type == TEXTAREATYPE_INSTANT_RETURN) return 0;
     int keyflag = GetSetupSetting( (unsigned int)0x14);
-    //confirm((giac::print_INT_(keyflag)).c_str(),"");
     int key;
-    if (editable){
-      get_current_console_menu(menu,shiftmenu,alphamenu,menucolorbg,text->gr?5:1);
-      casiostatus((const char *)1,0,0,0); // reset bandeau cache
-      in_ckgetkey(&key,1,menu.c_str(),shiftmenu.c_str(),alphamenu.c_str(),menucolorbg);
-      if (key==KEY_CTRL_SHIFT || key==KEY_CTRL_ALPHA)
-	in_ckgetkey(&key,1,menu.c_str(),shiftmenu.c_str(),alphamenu.c_str(),menucolorbg);
-	
-    }
-    else
-      ck_getkey(&key);
-    //confirm((giac::print_INT_(text->clipline)+","+giac::print_INT_(key)).c_str(),le_menu.c_str());
+    ck_getkey(&key);
     if (key == KEY_CTRL_SETUP) {
       menu_setup();
-      le_menu=set_textarea_menu(text);
-      continue; 
-    }
-    if (key==KEY_CTRL_SD){
-      khicas_addins_menu(contextptr);
-      le_menu=set_textarea_menu(text);
       continue;
     }
-    if (key!=KEY_CTRL_PRGM && key!=KEY_CHAR_FRAC && key!=KEY_CTRL_MIXEDFRAC)
+    if (key!=KEY_CTRL_PRGM && key!=KEY_CHAR_FRAC)
       translate_fkey(key);    
-    //confirm((giac::print_INT_(key)).c_str(),"");
     //char keylog[32];sprint_int(keylog,key); puts(keylog);
     show_status(text,search,replace);
     int & clipline=text->clipline;
     int & clippos=text->clippos;
     int & textline=text->line;
     int & textpos=text->pos;
-    if (!editable && key>=KEY_CTRL_F1 && key<=KEY_CTRL_F4)
+    if (!editable && key>=KEY_CTRL_F1 && key<=KEY_CTRL_F3)
       return key;
     if (editable){
-      if (key==KEY_CTRL_CAPTURE){
-	if (text->changed)
-	  save_script(text->filename.c_str(),merge_area(text->elements));
-	text->changed=false;
-	continue;
-      }
-      if (key==KEY_CTRL_QUIT){
-	displaylogo();
-	continue;
-      }
-      if (key==65535){ // ALPHA EXIT
-	xcas::displaygraph(-1,0,contextptr); // redisplay graph
-	continue;
-      }
-      if (key==KEY_CTRL_MIXEDFRAC){ 
+      if (key==KEY_CTRL_F10){ // mixedfrac key translated
 	textarea_help_insert(text,key);
 	continue;
       }
@@ -1151,10 +1025,10 @@ int doTextArea(textArea* text) {
 	textpos -= diff;
 	continue;
       }
-      /* if (key==KEY_CTRL_VARS){
+      if (key==KEY_CTRL_VARS){
 	displaylogo();
 	continue;
-	} */
+      }
       if (key==KEY_CHAR_ANS){
 	int err=check_parse(v,text->python);
 	if (err) // move cursor to the error line
@@ -1164,7 +1038,7 @@ int doTextArea(textArea* text) {
       if (key==KEY_CTRL_CLIP) {
 #if 1
 	if (clipline>=0){
-	  copy_clipboard(get_selection(text,false),true,true);
+	  copy_clipboard(get_selection(text,false),true);
 	  clipline=-1;
 	}
 	else {
@@ -1173,7 +1047,7 @@ int doTextArea(textArea* text) {
 	  clippos=textpos;
 	}
 #else
-	copy_clipboard(v[textline].s,false,true);
+	copy_clipboard(v[textline].s,false);
 	DefineStatusMessage((char*)"Line copied to clipboard", 1, 0, 0);
 	DisplayStatusArea();
 #endif
@@ -1186,9 +1060,11 @@ int doTextArea(textArea* text) {
       if (clipline<0){
 	const char * adds;
 	if ( (key>=KEY_CTRL_F1 && key<=KEY_CTRL_F3) ||
-	     (key >= KEY_CTRL_F7 && key <= KEY_CTRL_F20)
+	     (key >= KEY_CTRL_F7 && key <= KEY_CTRL_F14)
 	     ){
-	  const char * ptr=console_menu(key,(unsigned char*)(le_menu.c_str()),text->gr?5:2);
+	  string le_menu=text->python?"F1 test\nif \nelse \n<\n>\n==\n!=\n&&\n||\nF2 loop\nfor \nfor in\nrange(\nwhile \nbreak\ndef\nreturn \n#\nF3 misc\n:\n;\n_\n!\n%\n&\nprint(\ninput(\n":"F1 test\nif \nelse \n<\n>\n==\n!=\nand\nor\nF2 loop\nfor \nfor in\nrange(\nwhile \nbreak\nf(x):=\nreturn \nlocal\nF3 misc\n;\n:\n_\n!\n%\n&\nprint(\ninput(\n";
+	  le_menu += "F7 arit\n mod \nirem(\nifactor(\ngcd(\nisprime(\nnextprime(\npowmod(\niegcd(\nF8 lin\nmatrix(\ndet(\nmatpow(\nranm(\ncross(\ncurl(\negvl(\negv(\nF9 list\nmakelist(\nrange(\nseq(\nsize(\nappend(\nranv(\nsort(\napply(\nF: plot\nplot(\nplotseq(\nplotlist(\nplotparam(\nplotpolar(\nplotfield(\nhistogram(\nbarplot(\nF; real\nexact(\napprox(\nfloor(\nceil(\nround(\nsign(\nmax(\nmin(\nF< prog\n;\n:\n\\\n&\n?\n!\ndebug(\npython(\nF= cplx\nabs(\narg(\nre(\nim(\nconj(\ncsolve(\ncfactor(\ncpartfrac(\nF> misc\n<\n>\n_\n!\n % \nrand(\nbinomial(\nnormald(";
+	  const char * ptr=console_menu(key,(unsigned char*)(le_menu.c_str()),2);
 	  if (!ptr){
 	    show_status(text,search,replace);
 	    continue;
@@ -1208,7 +1084,7 @@ int doTextArea(textArea* text) {
 	    isdef=(strcmp(adds,"f(x):=")==0 || strcmp(adds,"def")==0),
 	    iswhile=strcmp(adds,"while ")==0,
 	    islist=strcmp(adds,"list ")==0,
-	    ismat=strcmp(adds,"_removed_array ")==0;
+	    ismat=strcmp(adds,"matrix ")==0;
 	  if (islist){
 	    input_matrix(true);
 	    continue;
@@ -1240,7 +1116,7 @@ int doTextArea(textArea* text) {
 	    if (isforin)
 	      adds=lang?(isex?"pour j in [1,4,9,16] faire\nprint(j)\nfpour;":"pour  in  faire\n\nfpour;"):(isex?"for j in [1,4,9,16] do\nprint(j);od;":"for  in  do\n\nod;");
 	    if (iswhile)
-	      adds=lang?(isex?"unsupported removed loop example":"tantque  faire\n\nftantque;"):(isex?"unsupported removed loop example":"while  do\n\nod;");
+	      adds=lang?(isex?"a,b:=25,15;\ntantque b!=0 faire\na,b:=b,irem(a,b);\nftantque;a;":"tantque  faire\n\nftantque;"):(isex?"a,b:=25,15;\nwhile b!=0 do\na,b:=b,irem(a,b);\nod;a;":"while  do\n\nod;");
 	    if (isdef)
 	      adds=lang?(isex?"fonction f(x)\nlocal j;\nj:=x*x;\nreturn j;\nffonction:;\n":"fonction f(x)\nlocal j;\n\nreturn ;\nffonction:;"):(isex?"function f(x)\nlocal j;\nj:=x*x;\nreturn j;\nffunction:;\n":"function f(x)\n  local j;\n\n return ;\nffunction:;");
 	  }
@@ -1255,7 +1131,7 @@ int doTextArea(textArea* text) {
     switch(key){
     case KEY_CTRL_DEL:
       if (clipline>=0){
-	copy_clipboard(get_selection(text,true),true,false);
+	copy_clipboard(get_selection(text,true),true);
 	// erase selection
 	clipline=-1;
       }
@@ -1292,8 +1168,7 @@ int doTextArea(textArea* text) {
       }
       break;
     case KEY_CTRL_EXE:
-      SetSetupSetting( (unsigned int)0x14, 0);	
-      if(text->gr || text->allowEXE || !text->editable) return TEXTAREA_RETURN_EXE;
+      if(text->allowEXE) return TEXTAREA_RETURN_EXE;
       if (search.size()){
 	for (;;){
 	  if (!move_to_word(text,search,replace,isFirstDraw,totalTextY,scroll,textY))
@@ -1303,7 +1178,6 @@ int doTextArea(textArea* text) {
 	continue;
       }
       else {
-	if (!text->OKparse) return TEXTAREA_RETURN_EXE;
 	int err=check_parse(v,text->python);
 	if (err) // move cursor to the error line
 	  textline=err-1;
@@ -1426,7 +1300,7 @@ int doTextArea(textArea* text) {
 	smallmenuitems[5].text = (char*)lang?"Chercher,remplacer":"Search, replace";
 	smallmenuitems[6].text = (char*)lang?"Aller a la ligne":"Goto line";
 	smallmenuitems[7].type = MENUITEM_CHECKBOX;
-	smallmenuitems[7].text = (char*)"Prog";
+	smallmenuitems[7].text = (char*)"Python";
 	smallmenuitems[7].value = text->python;
 	smallmenuitems[8].text = (char*)lang?"Quitter":"Quit";
 	smallmenuitems[9].text = (char *)aide_khicas_string;
@@ -1455,17 +1329,13 @@ int doTextArea(textArea* text) {
 	      sres=2;
 	    }
 	  }
-          if (sres==2) {
-            if (text->gr)
-              confirm(lang==1?"Tapez EXE puis sauvegardez":"Type EXE then save",lang==1?"depuis le menu F6 item 11":"from F6 menu item 11");
-            else {
-              save_script(text->filename.c_str(),merge_area(v));
-              text->changed=false;
-              char status[256];
-              sprintf(status,lang?"%s sauvegarde":"%s saved",text->filename.c_str()+7);
-              DefineStatusMessage(status, 1, 0, 0);
-              DisplayStatusArea();
-            }
+          if(sres == 2) {
+	    save_script(text->filename.c_str(),merge_area(v));
+	    text->changed=false;
+	    char status[256];
+	    sprintf(status,lang?"%s sauvegarde":"%s saved",text->filename.c_str()+7);
+	    DefineStatusMessage(status, 1, 0, 0);
+	    DisplayStatusArea();    	    
 	  }
 	  if (sres==4){
 	    char filename[MAX_FILENAME_SIZE+1];
@@ -1482,7 +1352,7 @@ int doTextArea(textArea* text) {
 	    }
 	    CLIP_Store(s.c_str(),s.size()+1);
 #endif
-	    copy_clipboard(s,false,true);
+	    copy_clipboard(s);
 	    set_undo(text);
 	    v.resize(1);
 	    v[0].s="";
@@ -1537,11 +1407,7 @@ int doTextArea(textArea* text) {
 	continue;
       return TEXTAREA_RETURN_EXIT;
     case KEY_CTRL_INS:
-      if (editable){
-	key=chartab();
-	if (key<0)
-	  break;
-      }
+      break;
     default:
       if (clipline<0 && key>=32 && key<128 && editable){
 	char buf[2]={char(key),0};
@@ -1559,7 +1425,7 @@ int doTextArea(textArea* text) {
 	    show_status(text,search,replace);
 	  }
 	  else {
-	    copy_clipboard(v[textline].s+'\n',false,true);
+	    copy_clipboard(v[textline].s+'\n');
 	    if (v.size()==1)
 	      v[0].s="";
 	    else {
@@ -1579,11 +1445,11 @@ int doTextArea(textArea* text) {
 void reload_edptr(const char * filename,textArea *edptr){
   if (edptr){
     ustl::string s(merge_area(edptr->elements));
-    copy_clipboard(s,false,true);
+    copy_clipboard(s);
     s="\n";
     edptr->elements.clear();
     edptr->clipline=-1;
-    edptr->filename="\\\\fls0\\"+remove_path0(giac::remove_extension(filename))+".py";
+    edptr->filename="\\\\fls0\\"+remove_path(giac::remove_extension(filename))+".py";
     load_script((char *)edptr->filename.c_str(),s);
     if (s.empty())
       s="\n";

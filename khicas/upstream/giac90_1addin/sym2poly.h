@@ -87,7 +87,6 @@ namespace giac {
 
   gen _resultant(const gen & args,GIAC_CONTEXT);
   extern const unary_function_ptr * const  at_resultant ;
-  extern const unary_function_ptr * const  at_discriminant ;
   symbolic symb_resultant(const gen & args);
   
   // reading arguments from the command line

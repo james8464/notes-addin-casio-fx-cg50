@@ -1,0 +1,724 @@
+[
+  {
+    "id": "madas_iygb_c4_a_q7_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c4_a.pdf",
+    "question": "q7",
+    "part": "all",
+    "verdict": "testable",
+    "review_basis": "second-pass VM page-image review: c4_a solutions p3 Q7 V=12pi",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,12*pi",
+        "mark_scheme_working": [
+          "Q7 volume of revolution"
+        ],
+        "expected_output_markers": [
+          "37.6991118431"
+        ]
+      }
+    ],
+    "expected_final": [
+      "V=12pi"
+    ]
+  },
+  {
+    "id": "madas_iygb_c4_a_q8_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c4_a.pdf",
+    "question": "q8",
+    "part": "a-d",
+    "verdict": "partial",
+    "review_basis": "second-pass VM page-image review: c4_a solutions p4 Q8 vectors",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,6/sqrt(54*14)",
+        "mark_scheme_working": [
+          "cos theta from dot product"
+        ],
+        "expected_output_markers": [
+          "0.218217890236"
+        ]
+      }
+    ],
+    "expected_final": [
+      "theta≈77.4°"
+    ],
+    "unsupported_reason": "vector setup is manual"
+  },
+  {
+    "id": "madas_iygb_c4_a_q9_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c4_a.pdf",
+    "question": "q9",
+    "part": "b",
+    "verdict": "partial",
+    "review_basis": "second-pass VM page-image review: c4_a solutions p4 Q9b trapezium",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,0.682",
+        "mark_scheme_working": [
+          "trapezium rule approx"
+        ],
+        "expected_output_markers": [
+          "0.682"
+        ]
+      }
+    ],
+    "expected_final": [
+      "≈0.682"
+    ],
+    "unsupported_reason": "table setup is manual"
+  },
+  {
+    "id": "madas_iygb_c4_a_q10_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c4_a.pdf",
+    "question": "q10",
+    "part": "b",
+    "verdict": "testable",
+    "review_basis": "second-pass VM page-image review: c4_a solutions p6 Q10b area=3pi",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,3*pi",
+        "mark_scheme_working": [
+          "Q10b parametric area"
+        ],
+        "expected_output_markers": [
+          "9.42477796077"
+        ]
+      }
+    ],
+    "expected_final": [
+      "area=3pi"
+    ]
+  },
+  {
+    "id": "madas_iygb_c4_a_q4_sp2_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c4_a.pdf",
+    "question": "q4",
+    "part": "b",
+    "verdict": "testable",
+    "review_basis": "second-pass VM page-image review: c4_a solutions p2 Q4b ln54",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,ln(54)",
+        "mark_scheme_working": [
+          "Q4b definite integral"
+        ],
+        "expected_output_markers": [
+          "3.98898404656"
+        ]
+      }
+    ],
+    "expected_final": [
+      "ln(54)"
+    ]
+  },
+  {
+    "id": "madas_iygb_c4_a_q5_sp2_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c4_a.pdf",
+    "question": "q5",
+    "part": "all",
+    "verdict": "testable",
+    "review_basis": "second-pass VM page-image review: c4_a solutions p2 Q5 related rates",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,8/pi",
+        "mark_scheme_working": [
+          "Q5 dr/dt at r=8"
+        ],
+        "expected_output_markers": [
+          "2.54647908947"
+        ]
+      }
+    ],
+    "expected_final": [
+      "dr/dt=8/pi"
+    ]
+  },
+  {
+    "id": "madas_iygb_c4_b_q6_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c4_b.pdf",
+    "question": "q6",
+    "part": "all",
+    "verdict": "testable",
+    "review_basis": "second-pass VM page-image review: c4_b solutions p4 Q6",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,1/(4*pi)",
+        "mark_scheme_working": [
+          "Q6 dr/dt at r=24"
+        ],
+        "expected_output_markers": [
+          "0.0795774715459"
+        ]
+      }
+    ],
+    "expected_final": [
+      "dr/dt=1/(4pi)"
+    ]
+  },
+  {
+    "id": "madas_iygb_c4_b_q7_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c4_b.pdf",
+    "question": "q7",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "second-pass VM page-image review: c4_b solutions p4 Q7 DE",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,200",
+        "mark_scheme_working": [
+          "Q7 DE constant term"
+        ],
+        "expected_output_markers": [
+          "200"
+        ]
+      }
+    ],
+    "expected_final": [
+      "y=75+200e^{-2x/5}"
+    ],
+    "unsupported_reason": "separation setup is manual"
+  },
+  {
+    "id": "madas_iygb_c4_b_q8_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c4_b.pdf",
+    "question": "q8",
+    "part": "b",
+    "verdict": "partial",
+    "review_basis": "second-pass VM page-image review: c4_b solutions p5 Q8b",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,0.096",
+        "mark_scheme_working": [
+          "Q8b trapezium"
+        ],
+        "expected_output_markers": [
+          "0.096"
+        ]
+      }
+    ],
+    "expected_final": [
+      "≈0.096"
+    ],
+    "unsupported_reason": "table setup is manual"
+  },
+  {
+    "id": "madas_iygb_c4_b_q9_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c4_b.pdf",
+    "question": "q9",
+    "part": "b",
+    "verdict": "testable",
+    "review_basis": "second-pass VM page-image review: c4_b solutions p6 Q9b",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,pi^2+2*pi",
+        "mark_scheme_working": [
+          "Q9b parametric volume"
+        ],
+        "expected_output_markers": [
+          "16.1527897083"
+        ]
+      }
+    ],
+    "expected_final": [
+      "V=pi^2+2pi"
+    ]
+  },
+  {
+    "id": "madas_iygb_c4_b_q1_sp2_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c4_b.pdf",
+    "question": "q1",
+    "part": "a",
+    "verdict": "testable",
+    "review_basis": "second-pass VM page-image review: c4_b solutions p1 Q1a",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,1",
+        "mark_scheme_working": [
+          "Q1a integral"
+        ],
+        "expected_output_markers": [
+          "1"
+        ]
+      }
+    ],
+    "expected_final": [
+      "=1"
+    ]
+  },
+  {
+    "id": "madas_iygb_c4_b_q4_sp2_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c4_b.pdf",
+    "question": "q4",
+    "part": "all",
+    "verdict": "testable",
+    "review_basis": "second-pass VM page-image review: c4_b solutions p2-3 Q4",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,pi^2-8",
+        "mark_scheme_working": [
+          "Q4 integration by parts"
+        ],
+        "expected_output_markers": [
+          "1.86960440109"
+        ]
+      }
+    ],
+    "expected_final": [
+      "pi^2-8"
+    ]
+  },
+  {
+    "id": "madas_iygb_c4_b_q5_sp2_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c4_b.pdf",
+    "question": "q5",
+    "part": "b",
+    "verdict": "testable",
+    "review_basis": "second-pass VM page-image review: c4_b solutions p3 Q5b",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,8",
+        "mark_scheme_working": [
+          "Q5b a=8"
+        ],
+        "expected_output_markers": [
+          "8"
+        ]
+      }
+    ],
+    "expected_final": [
+      "a=8",
+      "b=-2"
+    ]
+  },
+  {
+    "id": "madas_iygb_c4_c_q6_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c4_c.pdf",
+    "question": "q6",
+    "part": "a",
+    "verdict": "testable",
+    "review_basis": "second-pass VM page-image review: c4_c solutions p5 Q6a",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,sqrt(6/pi)",
+        "mark_scheme_working": [
+          "Q6a r from A=6"
+        ],
+        "expected_output_markers": [
+          "1.38197659789"
+        ]
+      }
+    ],
+    "expected_final": [
+      "r=sqrt(6/pi)"
+    ]
+  },
+  {
+    "id": "madas_iygb_c4_c_q6b_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c4_c.pdf",
+    "question": "q6",
+    "part": "b",
+    "verdict": "partial",
+    "review_basis": "second-pass VM page-image review: c4_c solutions p5 Q6b",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,0.173",
+        "mark_scheme_working": [
+          "Q6b dr/dt at t=4"
+        ],
+        "expected_output_markers": [
+          "0.173"
+        ]
+      }
+    ],
+    "expected_final": [
+      "≈0.173 cm/s"
+    ],
+    "unsupported_reason": "related rates setup is manual"
+  },
+  {
+    "id": "madas_iygb_c4_c_q7_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c4_c.pdf",
+    "question": "q7",
+    "part": "b",
+    "verdict": "testable",
+    "review_basis": "second-pass VM page-image review: c4_c solutions p5 Q7b",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,110",
+        "mark_scheme_working": [
+          "Q7b A=110"
+        ],
+        "expected_output_markers": [
+          "110"
+        ]
+      }
+    ],
+    "expected_final": [
+      "A=110"
+    ]
+  },
+  {
+    "id": "madas_iygb_c4_c_q8_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c4_c.pdf",
+    "question": "q8",
+    "part": "d",
+    "verdict": "partial",
+    "review_basis": "second-pass VM page-image review: c4_c solutions p7 Q8d",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,2.415",
+        "mark_scheme_working": [
+          "Q8d trapezium"
+        ],
+        "expected_output_markers": [
+          "2.415"
+        ]
+      }
+    ],
+    "expected_final": [
+      "≈2.415"
+    ],
+    "unsupported_reason": "table setup is manual"
+  },
+  {
+    "id": "madas_iygb_c4_d_q7c_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c4_d.pdf",
+    "question": "q7",
+    "part": "c",
+    "verdict": "testable",
+    "review_basis": "second-pass VM page-image review: c4_d solutions p6 Q7c r at t=6",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,4054^(1/6)",
+        "mark_scheme_working": [
+          "Q7c r^6=665*6+64"
+        ],
+        "expected_output_markers": [
+          "3.99313467187"
+        ]
+      }
+    ],
+    "expected_final": [
+      "r≈4.0 cm"
+    ]
+  },
+  {
+    "id": "madas_iygb_c4_d_q8_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c4_d.pdf",
+    "question": "q8",
+    "part": "all",
+    "verdict": "testable",
+    "review_basis": "second-pass VM page-image review: c4_d solutions p7 Q8",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,pi+2",
+        "mark_scheme_working": [
+          "Q8 substitution integral"
+        ],
+        "expected_output_markers": [
+          "5.14159265359"
+        ]
+      }
+    ],
+    "expected_final": [
+      "=pi+2"
+    ]
+  },
+  {
+    "id": "madas_iygb_c4_d_q1_sp2_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c4_d.pdf",
+    "question": "q1",
+    "part": "a",
+    "verdict": "testable",
+    "review_basis": "second-pass VM page-image review: c4_d solutions p1 Q1a",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,2*ln(3)",
+        "mark_scheme_working": [
+          "Q1a integral 2ln3"
+        ],
+        "expected_output_markers": [
+          "2.19722457734"
+        ]
+      }
+    ],
+    "expected_final": [
+      "2ln(3)"
+    ]
+  },
+  {
+    "id": "madas_iygb_c4_d_q1b_sp2_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c4_d.pdf",
+    "question": "q1",
+    "part": "b",
+    "verdict": "testable",
+    "review_basis": "second-pass VM page-image review: c4_d solutions p1 Q1b",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,sqrt(3)/4",
+        "mark_scheme_working": [
+          "Q1b trig integral"
+        ],
+        "expected_output_markers": [
+          "0.433012701892"
+        ]
+      }
+    ],
+    "expected_final": [
+      "sqrt(3)/4"
+    ]
+  },
+  {
+    "id": "madas_iygb_c4_e_q7c_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c4_e.pdf",
+    "question": "q7",
+    "part": "c",
+    "verdict": "testable",
+    "review_basis": "second-pass VM page-image review: c4_e solutions p5 Q7c exact integral",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,8/3",
+        "mark_scheme_working": [
+          "Q7c substitution integral"
+        ],
+        "expected_output_markers": [
+          "2.66666666667"
+        ]
+      }
+    ],
+    "expected_final": [
+      "8/3"
+    ]
+  },
+  {
+    "id": "madas_iygb_c4_e_q7b_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c4_e.pdf",
+    "question": "q7",
+    "part": "b",
+    "verdict": "partial",
+    "review_basis": "second-pass VM page-image review: c4_e solutions p5 Q7b trapezium",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,2.67",
+        "mark_scheme_working": [
+          "Q7b trapezium approx"
+        ],
+        "expected_output_markers": [
+          "2.67"
+        ]
+      }
+    ],
+    "expected_final": [
+      "≈2.67"
+    ],
+    "unsupported_reason": "table setup is manual"
+  },
+  {
+    "id": "madas_iygb_c4_e_q8_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c4_e.pdf",
+    "question": "q8",
+    "part": "b",
+    "verdict": "testable",
+    "review_basis": "second-pass VM page-image review: c4_e solutions p6 Q8b",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,pi*(pi+2)/8",
+        "mark_scheme_working": [
+          "Q8b volume"
+        ],
+        "expected_output_markers": [
+          "2.01909871353"
+        ]
+      }
+    ],
+    "expected_final": [
+      "V=pi(pi+2)/8"
+    ]
+  },
+  {
+    "id": "madas_iygb_c4_e_q1_sp2_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c4_e.pdf",
+    "question": "q1",
+    "part": "all",
+    "verdict": "testable",
+    "review_basis": "second-pass VM page-image review: c4_e solutions p1 Q1",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,1/9",
+        "mark_scheme_working": [
+          "Q1 integration by parts"
+        ],
+        "expected_output_markers": [
+          "0.111111111111"
+        ]
+      }
+    ],
+    "expected_final": [
+      "1/9"
+    ]
+  },
+  {
+    "id": "madas_iygb_c4_e_q2_sp2_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c4_e.pdf",
+    "question": "q2",
+    "part": "all",
+    "verdict": "testable",
+    "review_basis": "second-pass VM page-image review: c4_e solutions p1 Q2",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,640*pi",
+        "mark_scheme_working": [
+          "Q2 dV/dt at r=8"
+        ],
+        "expected_output_markers": [
+          "2010.6192983"
+        ]
+      }
+    ],
+    "expected_final": [
+      "640pi"
+    ]
+  },
+  {
+    "id": "madas_iygb_c4_k_q7_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c4_k.pdf",
+    "question": "q7",
+    "part": "all",
+    "verdict": "testable",
+    "review_basis": "second-pass VM page-image review: c4_k solutions p4 Q7",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,68",
+        "mark_scheme_working": [
+          "Q7 substitution integral"
+        ],
+        "expected_output_markers": [
+          "68"
+        ]
+      }
+    ],
+    "expected_final": [
+      "=68"
+    ]
+  },
+  {
+    "id": "madas_iygb_c4_k_q8_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c4_k.pdf",
+    "question": "q8",
+    "part": "b",
+    "verdict": "testable",
+    "review_basis": "second-pass VM page-image review: c4_k solutions p4 Q8b",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,5",
+        "mark_scheme_working": [
+          "Q8b midpoint x-coord"
+        ],
+        "expected_output_markers": [
+          "5"
+        ]
+      }
+    ],
+    "expected_final": [
+      "midpoint (5,0,2)"
+    ]
+  },
+  {
+    "id": "madas_iygb_c4_k_q9_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c4_k.pdf",
+    "question": "q9",
+    "part": "b",
+    "verdict": "testable",
+    "review_basis": "second-pass VM page-image review: c4_k solutions p6 Q9b",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "factor(x^2+2*x-3)",
+        "mark_scheme_working": [
+          "Q9b x coords"
+        ],
+        "expected_output_markers": [
+          "(x + 3)*(x - 1)"
+        ]
+      }
+    ],
+    "expected_final": [
+      "x=-3",
+      "x=1"
+    ]
+  },
+  {
+    "id": "madas_iygb_c4_k_q1_sp2_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c4_k.pdf",
+    "question": "q1",
+    "part": "a-c",
+    "verdict": "testable",
+    "review_basis": "second-pass VM page-image review: c4_k solutions p1 Q1",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,pi*(3+4*ln(2))",
+        "mark_scheme_working": [
+          "Q1 volume"
+        ],
+        "expected_output_markers": [
+          "18.135122322"
+        ]
+      }
+    ],
+    "expected_final": [
+      "V=pi(3+4ln2)"
+    ]
+  },
+  {
+    "id": "madas_iygb_c4_k_q6_sp2_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c4_k.pdf",
+    "question": "q6",
+    "part": "all",
+    "verdict": "testable",
+    "review_basis": "second-pass VM page-image review: c4_k solutions p4 Q6",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,12",
+        "mark_scheme_working": [
+          "Q6 parametric area"
+        ],
+        "expected_output_markers": [
+          "12"
+        ]
+      }
+    ],
+    "expected_final": [
+      "area=12"
+    ]
+  }
+]

@@ -1,9 +1,33 @@
-Args: collect(expr,var)
-Required: expr, var
-Does: Collects like powers of var.
-Examples: collect(x+x^2+2*x,x); collect(a*x+b*x,x)
-F2:collect(x+x^2+2*x,x)
-F3:collect(a*x+b*x,x)
-Ex F2: collect(x+x^2+2*x,x)
-Ex F3: collect(a*x+b*x,x)
-Working: Groups like terms before simplifying coefficients.
+collect(expr,x)
+
+Args:
+  expr,x
+
+Required:
+  expr, x
+
+Optional:
+  None.
+
+Does:
+  Collect terms. Required: expr. Optional: variable x. Groups powers of a variable.
+
+Examples:
+  collect(x+x^2+2*x); collect(sin(x)^2+cos(x)^2)
+
+F2:
+  collect(x+x^2+2*x)
+
+F3:
+  collect(sin(x)^2+cos(x)^2)
+
+Keys:
+  F1 inserts the command.
+  F2 inserts the first example.
+  F3 inserts the second example when available.
+
+Working:
+  Shows exam-style lines when this command has a routed A-level working path; otherwise returns the exact KhiCAS result for the expression.
+
+Tip:
+  Use brackets around compound numerators, denominators, powers, and substitutions for readable exam-style output.

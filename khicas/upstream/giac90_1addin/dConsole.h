@@ -51,7 +51,7 @@ void dPuts(const char *);
 #define putchar         dConsolePutChar
 #define gets            dGetLine
 
-void save_console_state_smem(const char * filename,bool dispqr);
+void save_console_state_smem(const char * filename);
 bool load_console_state_smem(const char * filename);
 int get_set_session_setting(int value);
 

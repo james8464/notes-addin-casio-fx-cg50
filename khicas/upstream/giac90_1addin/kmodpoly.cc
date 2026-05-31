@@ -85,7 +85,7 @@ namespace giac {
   }
 
   gen invenv(const gen & g,environment * env){
-    if (g.type==_USER) return g._USERptr->inv();
+    // if (g.type==_USER) return g._USERptr->inv();
     return invmod(g,env->modulo);
   }
 
@@ -2782,22 +2782,6 @@ namespace giac {
     return convertfromdouble(A,a,m);
   }
 
-  void euclide_gcd(const modpoly &p,const modpoly & q,environment * env,modpoly &a){
-    a=p;
-    modpoly b(q);
-    modpoly quo,rem;
-    while (!b.empty()){
-      gen s=b.front();
-      mulmodpoly(b,invenv(s,env),env,b);
-      DivRem(a,b,env,quo,rem);
-      // COUT << "a:" << a << "b:" << b << "q:" << quo << "r:" << rem << '\n';
-      swap(a,b); // newa=b,  
-      swap(b,rem); // newb=rem
-    }
-    if (!a.empty())
-      mulmodpoly(a,invenv(a.front(),env),env,a);
-  }
-
   bool gcdmodpoly(const modpoly &p,const modpoly & q,environment * env,modpoly &a){
     if (!env){
 #ifndef NO_STDEXCEPT
@@ -3016,234 +3000,6 @@ namespace giac {
       res = (res*alpha+it->val)%modulo;
     }
     return smod(res,modulo);
-  }
-
-  static modpoly taylordiff(const modpoly & p,const gen & x){
-    int d=int(p.size());
-    modpoly res(p),P(p);
-    for (int i=1;i<=d;++i){
-      res[d-i]=horner(P,x);
-      P=derivative(P)/gen(i);
-    }
-    return res;
-  }
-  
-  void modpoly2mpzpoly(const modpoly & p,mpz_t * & res){
-    const_iterateur it=p.begin(),itend=p.end();
-    res=new mpz_t[itend-it];
-    for (int i=0;it!=itend;++i,++it){
-      if (it->type==_INT_)
-	mpz_init_set_si(res[i],it->val);
-      else
-	mpz_init_set(res[i],*it->_ZINTptr);
-    }
-  }
-
-  void taylorshift1n(mpz_t * tab,int size){
-    for (int i=1;i<size;++i){
-      // tab[j]=tab[j-1]+tab[j] for j from 1 to size-i
-      for (int j=1;j<=size-i;++j){
-	mpz_add(tab[j],tab[j],tab[j-1]);
-      }
-    }
-  }
-
-  void mpzpoly2modpolynodel(mpz_t * p,modpoly & res){
-    iterateur it=res.begin(),itend=res.end();
-    for (int i=0;it!=itend;++i,++it){
-      *it=*(p+i);
-    }
-  }
-
-  int binary_content(const modpoly & v){
-#if 1 // def USE_GMP_REPLACEMENTS
-    return 0;
-#else
-    int res=-1;
-    for (int i=0;res && i<v.size();++i){
-      if (is_zero(v[i]))
-	continue;
-      if (v[i].type==_INT_)
-	return 0;
-      if (v[i].type!=_ZINT)
-	return -1;
-      int cur=mpz_scan1(*v[i]._ZINTptr,0);
-      if (res==-1 || cur<res)
-	res=cur;
-    }
-    return res;
-#endif
-  }
-
-  void mul_2exp(modpoly & v,int b){
-    if (b<=0) return;
-    for (int i=0;i<v.size();++i){
-      if (v[i].type==_INT_)
-	v[i].uncoerce();
-      mpz_mul_2exp(*v[i]._ZINTptr,*v[i]._ZINTptr,b);
-    }
-  }
-
-  void div_2exp(modpoly & v,int b){
-    if (b<=0) return;
-    for (int i=0;i<v.size();++i){
-      if (v[i].type==_INT_)
-	v[i].uncoerce();
-      mpz_tdiv_q_2exp(*v[i]._ZINTptr,*v[i]._ZINTptr,b); // change for HP mpz_fdiv_q_2exp
-    }
-  }
-
-  void taylorshift1(mpz_t * tab,int size,matrice * Pascal){
-    int etages=0,s=size;
-    while (s>=20*FFTMUL_SIZE){
-      ++etages;
-      s=(s+1)/2;
-    }
-    // size<=2^etages*s
-    if (//0 && 
-	etages){
-      // slice tab in at most 2^etages blocks of size s
-      // tab=[tab_k,..,tab_0]
-      // shift them [stab_k,...,stab_0]
-      // now compute (x+1)^(s*k)*stab_k+...+stab_0 
-      // compute (x+1)^s, then 
-      // (x+1)^s*stab_1+stab_0, (x+1)^s*stab_3+stab_2, ...
-      // compute (x+1)^(2s) square of (x+1)^s, then
-      // (x+1)^(2s)*((x+1)^s*stab_3+stab_2) + (x+1)^s*stab_1+stab_0
-      // etc.
-      int n=(size+s-1)/s; // super-degree
-      matrice m(n),nextm((n+1)/2); 
-      mpz_t * cur=tab+size;
-      if (debug_infolevel) 
-	CERR << CLOCK()*1e-6 << " init begin\n";
-      for (int i=0;i<n;++i){
-	cur -= s;
-	if (cur<tab){
-	  taylorshift1n(tab,s-(tab-cur));
-	  m[i]=vecteur(s-(tab-cur));
-	  mpzpoly2modpolynodel(tab,*m[i]._VECTptr);
-	}
-	else {
-	  taylorshift1n(cur,s);
-	  m[i]=vecteur(s);
-	  mpzpoly2modpolynodel(cur,*m[i]._VECTptr);
-	}
-      }
-      for (int i=0;i<nextm.size();++i){
-	nextm[i]=vecteur(0);
-      }
-      if (debug_infolevel) 
-	CERR << CLOCK()*1e-6 << " pascal " << s << '\n';
-      vecteur x1s,tmp;
-      gen * Pptr=Pascal && (Pascal->size()>=etages) ? &Pascal->front() : 0;
-      if (Pptr){
-	if (Pptr->type==_VECT && Pptr->_VECTptr->size()==s+1){
-	  x1s=*Pptr->_VECTptr;
-	  ++Pptr;
-	}
-	else {
-	  Pascal->clear();
-	  Pptr=0;
-	}
-      }
-      if (x1s.empty()) {
-	x1s=pascal_nth_line(s);
-	if (Pascal){
-	  Pascal->reserve(etages);
-	  Pascal->push_back(x1s);
-	}
-      }
-      if (debug_infolevel) 
-	CERR << CLOCK()*1e-6 << " pascal end " << s << '\n';
-      for (;etages>0;--etages){
-	for (int i=0;i<n;i+=2){
-	  if (i<n-1){
-	    int b=binary_content(*m[i+1]._VECTptr);
-	    if (debug_infolevel) 
-	      CERR << CLOCK()*1e-6 << " * binary " << b << '\n';
-	    div_2exp(*m[i+1]._VECTptr,b);
-	    if (0 && x1s.size()<8*FFTMUL_SIZE)
-	      mulmodpoly_kara_naive(x1s,*m[i+1]._VECTptr,0,*nextm[i/2]._VECTptr,INT_KARAMUL_SIZE);	    
-	    else
-	      mulmodpoly(x1s,*m[i+1]._VECTptr,0,*nextm[i/2]._VECTptr);
-	    mul_2exp(*nextm[i/2]._VECTptr,b);
-	    if (debug_infolevel) 
-	      CERR << CLOCK()*1e-6 << " * end\n";
-	    addmodpoly(*nextm[i/2]._VECTptr,*m[i]._VECTptr,0,*nextm[i/2]._VECTptr);
-	  }
-	  else
-	    m[i]._VECTptr->swap(*nextm[i/2]._VECTptr);
-	}
-	if (etages>1){
-	  if (Pptr){
-	    x1s=*Pptr->_VECTptr;
-	    ++Pptr;
-	  }
-	  else {
-	    mulmodpoly(x1s,x1s,0,tmp);	
-	    x1s.swap(tmp);
-	    if (Pascal)
-	      Pascal->push_back(x1s);
-	  }
-	}
-	if (debug_infolevel) 
-	  CERR << CLOCK()*1e-6 << " pascal^2 end\n";
-	n=(n+1)/2;
-	m.swap(nextm);
-      }
-      // transfert nextm[0] in tab
-      const vecteur & v =*m[0]._VECTptr;
-      for (int i=0;i<size;++i){
-	if (v[i].type==_INT_)
-	  mpz_set_si(tab[i],v[i].val);
-	else
-	  mpz_set(tab[i],*v[i]._ZINTptr);
-      }
-    }
-    else
-      taylorshift1n(tab,size);
-  }
-
-  void mpzpoly2modpoly(mpz_t * p,modpoly & res){
-    iterateur it=res.begin(),itend=res.end();
-    for (int i=0;it!=itend;++i,++it){
-      *it=*(p+i);
-      mpz_clear(p[i]);
-    }
-    delete [] p;
-  }
-
-  bool isintpoly(const modpoly & p){
-    const_iterateur it=p.begin(),itend=p.end();
-    for (;it!=itend;++it){
-      if (!is_integer(*it))
-	return false;
-    }
-    return true;
-  }
-
-  // shift polynomial
-  modpoly taylor(const modpoly & p,const gen & x,environment * env,matrice * P){
-    if (p.empty())
-      return p;
-    if ( (!env || !env->moduloon || !is_zero(env->coeff)) && x.type==_FRAC) // use derivatives of p
-      return taylordiff(p,x);
-    modpoly res,a,b;
-    a=p;
-    if (x==1 && a.size()>5 && isintpoly(a)){
-      mpz_t * tab;
-      modpoly2mpzpoly(a,tab);
-      taylorshift1(tab,int(a.size()),P);
-      mpzpoly2modpoly(tab,a);
-      return a;
-    }
-    int d=int(p.size());
-    for (int i=0;i<d;++i){
-      res.push_back(horner(a,x,env,b));
-      a.swap(b); // a=b;
-    }
-    reverse(res.begin(),res.end());
-    return res;
   }
 
   // eval p at xn=alpha modulo
@@ -4146,25 +3902,8 @@ namespace giac {
   }
 
   // p1*u+p2*v=d
-  void egcd(const modpoly &p1, const modpoly & p2, environment * env,modpoly & u,modpoly & v,modpoly & d,bool deterministic){
-#if 1
-    if (!p1.empty() && !p2.empty() &&
-	(!env || !env->moduloon)){
-      bool p1mod=p1.front().type==_MOD,p2mod=p1.front().type==_MOD;
-      if (p1mod || p2mod){
-	environment e;
-	e.modulo=*((p1mod?p1:p2).front()._MODptr+1);
-	e.moduloon=true;
-	egcd(unmod(p1,e.modulo),unmod(p2,e.modulo),&e,u,v,d);
-	modularize(u,e.modulo);
-	modularize(v,e.modulo);
-	modularize(d,e.modulo);
-	return;
-      }
-    }
-#endif
+  void egcd(const modpoly &p1, const modpoly & p2, environment * env,modpoly & u,modpoly & v,modpoly & d){
     if ( (!env || !env->moduloon || !is_zero(env->coeff))){
-      gen p1g,p2g;
       int dim=giacmax(inner_POLYdim(p1),inner_POLYdim(p2));
       polynome pp1(dim),pp2(dim),pu(dim),pv(dim),pd(dim);
       gen den1(1),den2(1);
@@ -4174,6 +3913,7 @@ namespace giac {
       poly12polynome(p2,1,pp2,dim);
       lcmdeno(pp2,den2);
       if (!is_one(pp2)) pp2=den2*pp2;
+      gen p1g,p2g;
       int p1t=coefftype(pp1,p1g);
       int p2t=coefftype(pp2,p2g);
       if (p1t==0 && p2t==0 
@@ -4214,8 +3954,8 @@ namespace giac {
 	      int p2t=coefftype(P2n,p2g);
 	      polynome P12g=gcd(P1n,P2n);
 	      if (p1t==0 && p2t==0 && P12g.lexsorted_degree()==0){
-		//CERR << P1n % pp1 << '\n';
-		//CERR << P2n % pp2 << '\n';
+		//CERR << P1n % pp1 << endl;
+		//CERR << P2n % pp2 << endl;
 		P1=P1n/pp1;
 		P2=P2n/pp2;
 		// solve sylvester matrix * []=d
@@ -4238,7 +3978,7 @@ namespace giac {
 		  u=den1*u;		
 		if (!is_one(den2))
 		  v=den2*v;
-		//CERR << (operator_times(u,p1,0)+operator_times(v,p2,0))/D << '\n';
+		//CERR << (operator_times(u,p1,0)+operator_times(v,p2,0))/D << endl;
 		return;
 	      }
 	    }
@@ -4276,7 +4016,7 @@ namespace giac {
 		  u=den1*u;		
 		if (!is_one(den2))
 		  v=den2*v;
-		//CERR << (operator_times(u,p1,0)+operator_times(v,p2,0))/D << '\n';
+		//CERR << (operator_times(u,p1,0)+operator_times(v,p2,0))/D << endl;
 		return;
 	      }
 	    }
@@ -4346,16 +4086,16 @@ namespace giac {
     mulmodpoly(b,s,env,d); // d=b*s;
     if (swapped){
       mulmodpoly(ub,s,env,v);
-      // COUT << ub << "*" << s << "=" << v << '\n';
-      // COUT << "swapped" << d << "-" << v << "*" << p2 << "/" << p1 << '\n';
+      // COUT << ub << "*" << s << "=" << v << endl;
+      // COUT << "swapped" << d << "-" << v << "*" << p2 << "/" << p1 << endl;
       u=operator_div(operator_minus(d,operator_times(v,p2,env),env),p1,env);
     }
     else {
       mulmodpoly(ub,s,env,u);
-      // COUT << d << "-" << u << "*" << p1 << "/" << p2 << '\n';
+      // COUT << d << "-" << u << "*" << p1 << "/" << p2 << endl;
       v=operator_div(operator_minus(d,operator_times(u,p1,env),env),p2,env);
     }
-    // COUT << "Verif " << p1 << "*" << u << "+" << p2 << "*" << v << "=" << p1*u+p2*v << " " << d << '\n';
+    // COUT << "Verif " << p1 << "*" << u << "+" << p2 << "*" << v << "=" << p1*u+p2*v << " " << d << endl;
   }
 
   // Solve a=b*x modulo the polynomial n 
@@ -5347,7 +5087,7 @@ namespace giac {
     }
     gen x;
     if (s==2)
-      x=vx_var;
+      x=vx_var();
     else 
       x=v.back();
     if (!is_zero(derive(q,x,contextptr))) 
@@ -5442,6 +5182,27 @@ namespace giac {
     return res;
   }
 
+  static modpoly taylordiff(const modpoly & p,const gen & x){
+    int d=int(p.size());
+    modpoly res(p),P(p);
+    for (int i=1;i<=d;++i){
+      res[d-i]=horner(P,x);
+      P=derivative(P)/gen(i);
+    }
+    return res;
+  }
+  
+  void modpoly2mpzpoly(const modpoly & p,mpz_t * & res){
+    const_iterateur it=p.begin(),itend=p.end();
+    res=new mpz_t[itend-it];
+    for (int i=0;it!=itend;++i,++it){
+      if (it->type==_INT_)
+	mpz_init_set_si(res[i],it->val);
+      else
+	mpz_init_set(res[i],*it->_ZINTptr);
+    }
+  }
+
   void taylorshift1(mpz_t * tab,int size){
     for (int i=1;i<size;++i){
       // tab[j]=tab[j-1]+tab[j] for j from 1 to size-i
@@ -5449,6 +5210,24 @@ namespace giac {
 	mpz_add(tab[j],tab[j],tab[j-1]);
       }
     }
+  }
+
+  void mpzpoly2modpoly(mpz_t * p,modpoly & res){
+    iterateur it=res.begin(),itend=res.end();
+    for (int i=0;it!=itend;++i,++it){
+      *it=*(p+i);
+      mpz_clear(p[i]);
+    }
+    delete [] p;
+  }
+
+  bool isintpoly(const modpoly & p){
+    const_iterateur it=p.begin(),itend=p.end();
+    for (;it!=itend;++it){
+      if (!is_integer(*it))
+	return false;
+    }
+    return true;
   }
 
   // shift polynomial
@@ -6264,172 +6043,6 @@ namespace giac {
       ++it;
       res.push_back(*itn);
       ++itn;
-    }
-  }
-
-  static void fft2( complex<double> *A, int n, complex<double> *W, complex<double> *T ) {  
-    if ( n==1 ) return;
-    // if p is fixed, the code is about 2* faster
-    if (n==4){
-      complex<double> w1=W[1];
-      complex<double> f0=A[0],f1=A[1],f2=A[2],f3=A[3],f01=(f1-f3)*w1;
-      A[0]=(f0+f1+f2+f3);
-      A[1]=(f0-f2+f01);
-      A[2]=(f0-f1+f2-f3);
-      A[3]=(f0-f2-f01);
-      return;
-    }
-    if (n==2){
-      complex<double> f0=A[0],f1=A[1];
-      A[0]=(f0+f1);
-      A[1]=(f0-f1);
-      return;
-    }
-    int i,n2;
-    n2 = n/2;
-    // Step 1 : arithmetic
-    complex<double> * Tn2=T+n2,*An2=A+n2;
-    for( i=0; i<n2; ++i ) {
-      complex<double> Ai,An2i;
-      Ai=A[i];
-      An2i=An2[i];
-      T[i] = Ai+An2i; // addmod(Ai,An2i,p);
-      Tn2[i] = (Ai-An2i)*W[i]; // submod(Ai,An2i,p); mulmod(t,W[i],p); 
-      i++;
-      Ai=A[i];
-      An2i=An2[i];
-      T[i] = Ai+An2i; // addmod(Ai,An2i,p);
-      Tn2[i] = (Ai-An2i)*W[i]; // submod(Ai,An2i,p); mulmod(t,W[i],p); 
-    }
-    // Step 2 : recursive calls
-    fft2( T,    n2, W+n2, A    );
-    fft2( Tn2, n2, W+n2, A+n2 );
-    // Step 3 : permute
-    for( i=0; i<n2; ++i ) {
-      A[  2*i] = T[i];
-      A[2*i+1] = Tn2[i]; 
-      ++i;
-      A[  2*i] = T[i];
-      A[2*i+1] = Tn2[i]; 
-    }
-    return;
-  }  
-
-  void fft2( complex<double> * A, int n, double theta){
-#ifndef FXCG
-    if (debug_infolevel>2)
-      CERR << CLOCK()*1e-6 << " begin fft2 C " << n << " memory " << memory_usage()*1e-6 << "M" << '\n';
-#endif
-    vector< complex<double> > W,T(n);
-    W.reserve(n); 
-    double thetak(theta);
-    for (int N=n/2;N;N/=2,thetak*=2){
-      complex<double> ww(1);
-      complex<double> wk(std::cos(thetak),std::sin(thetak));
-      for (int i=0;i<N;ww=ww*wk,++i){
-	if (i%64==0)
-	  ww=complex<double>(std::cos(i*thetak),std::sin(i*thetak));
-	W.push_back(ww);
-      }
-    }
-    fft2(A,n,&W.front(),&T.front());
-#ifndef FXCG
-    if (debug_infolevel>2)
-      CERR << CLOCK()*1e-6 << " end fft C " << n << " memory " << memory_usage()*1e-6 << "M" << '\n';
-#endif
-  }
-
-  void fft(std::complex<double> * f,int n,const std::complex<double> * w,int m,complex< double> * t){
-    if (n==1)
-      return ;
-    int step=m/n;
-    int k=0;
-    if (n%2){
-      for (k=3;k*k<=n;k++){
-	if (!(n%k))
-	  break;
-      }
-    }
-    else
-      k=2;
-    if (k*k>n){ 
-      // prime size, slow discrete Fourier transform
-      complex<double> *fj,*fend_=f+n-3,*fend=f+n;
-      complex<double> * res=t;
-      for (int i=0;i<n;++i){
-	complex<double> tmp (0,0);
-	int pos=0,istep=i*step;
-	for (fj=f;fj<fend_;fj+=3){
-	  tmp +=  fj[0]*w[pos];
-	  pos += istep-m; pos += (unsigned(pos)>>31)*m;// pos = (pos+istep)%m;
-	  tmp +=  fj[1]*w[pos];
-	  pos += istep-m; pos += (unsigned(pos)>>31)*m;// pos = (pos+istep)%m;
-	  tmp +=  fj[2]*w[pos];
-	  pos += istep-m; pos += (unsigned(pos)>>31)*m;// pos = (pos+istep)%m;
-	}
-	for (;fj<fend;++fj){
-	  tmp +=  (*fj)*w[pos];
-	  pos += istep-m; pos += (unsigned(pos)>>31)*m;// pos = (pos+istep)%m;
-	}
-	*res=tmp;
-	++res;
-      }
-      for (fj=f,res=t;fj<fend;++fj,++res){
-	*fj=*res;
-      }
-      return;
-    }
-    if (k!=2){
-      // assumes n is divisible by k, nk=n/k
-      // P(X)=P_k(X)*[X^nk]^(k-1)+...+P_1(X) degree(P_k)<nk
-      // P(w^(kj+l))= Q_l ( (w^k)^j )
-      // with Q_l=P_1^(w^l)+w^(nk)*P_2^(w^l)+...
-      unsigned long n2=n/k;
-      for (int j=0;j<k;j++){
-	// find Q[j]
-	complex<double> * Qj=t+n2*j;
-	for (unsigned i=0;i<n2;i++){
-	  complex<double> tmp(0,0);
-	  int pos=0,jn2step=j*n2*step;
-	  const complex<double> * fi=&f[i], *fiend=fi+k*n2;
-	  for (;fi<fiend;fi+=n2){
-	    tmp += (*fi)*w[pos];
-	    pos += jn2step-m; pos += (unsigned(pos)>>31)*m;
-	  }
-	  Qj[i]=tmp*w[j*step*i];
-	}
-      }
-      for (int j=0;j<k;++j){
-	fft(t+n2*j,n2,w,m,f+n2*j);
-      }
-      // build fft
-      for (unsigned i=0;i<n2;++i){
-	for (int j=0;j<k;++j,++f)
-	  *f=t[n2*j+i];
-      }
-      return;
-    }
-    // Compute r0=sum_[j<n/2] (f_j+f_(j+n/2))*x^j
-    // and r1=sum_[j<n/2] (f_j-f_(j+n/2))*omega^[step*j]*x^j
-    unsigned long n2=n/2;
-    complex<double> * r0=t, *r1=t+n2;
-    complex<double> * it=f,*itn=f+n2,*itend=itn;
-    const complex<double> *itk=w;
-    for (;it!=itend;++itn,itk+=step,++it,++r0,++r1){
-      *r0=*it+*itn;
-      *r1=(*it-*itn)*(*itk);
-    }
-    // Recursive call
-    complex<double> * r0f=f,*r1f=f+n2;
-    fft(t,n2,w,m,r0f);
-    fft(t+n2,n2,w,m,r1f);
-    // Return a mix of r0/r1
-    it=t; itend=t+n2; itn=t+n2;
-    for (;it!=itend;){
-      *f=*it;
-      ++it; ++f;
-      *f=*itn;
-      ++itn; ++f;
     }
   }
 

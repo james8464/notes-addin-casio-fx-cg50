@@ -1,10 +1,8 @@
 // -*- mode:C++ ; compile-command: "g++ -I.. -I../include -DHAVE_CONFIG_H -DIN_GIAC -DGIAC_GENERIC_CONSTANTS -fno-strict-aliasing -g -c gen.cc -Wall" -*-
 #include "giacPCH.h"
 #ifdef KMALLOC
-// const size_t stackptr=0xffffffff,stack_mask=0x1ffff;
-const size_t stackptr=0x78000,stack_mask=0x7ffff;
+const size_t stackptr=0xffffffff,stack_mask=0x1ffff;
 #else
-// os heap 0x881E0000 to 0x881FFFFF. 
 const size_t stackptr=0x18000,stack_mask=0x1ffff;
 #endif
 
@@ -92,11 +90,7 @@ extern "C" uint32_t mainThreadStack[];
 
 #ifdef USE_GMP_REPLACEMENTS
 #undef HAVE_GMPXX_H
-//#undef HAVE_LIBMPFR
-#endif
-
-#ifdef FXCG
-#include <fxcg/serial.h>
+#undef HAVE_LIBMPFR
 #endif
 
 #ifndef NO_NAMESPACE_GIAC
@@ -107,8 +101,10 @@ namespace giac {
  define GINT_MALLOC in Makefile and in ../libfxcg/libc/stdlib.c 
  rebuild kgen.cc and main.cc
 */
-#define ALLOCSMALL
-  
+#if 1 // ndef GINT_MALLOC
+  #define ALLOCSMALL
+#endif
+
 #ifdef ALLOCSMALL
 
   // 32 bytes structure: 4096/32=128 slots of memory
@@ -116,12 +112,14 @@ namespace giac {
     int i1,i2,i3,i4,i5,i6,i7,i8;
   };
   
-  struct twelve_int {
-    int i1,i2,i3,i4,i5,i6,i7,i8,i9,i10,i11,i12;
+  struct eleven_int {
+    int i1,i2,i3,i4,i5,i6,i7,i8,i9,i10,i11;
   };
   
   struct six_int {
-    int i1,i2,i3,i4,i5,i6;
+    int i1,i2,i3,i4,i5,i6
+      ,i7,i8
+      ;
   };
   
   struct four_int {
@@ -129,29 +127,36 @@ namespace giac {
   };
 
   // ALLOCA  constants must be multiples of 2*32
-  const int ALLOC16=64*32; // symbolic, 
-  const int ALLOC24=32*32; // complex, identificateur, mpz_t
-  // #define ALLOC32 28*32
-  // vecteur/fraction == 20
-  #define ALLOC48 16*32
+#if 0 // def FXCG
+  const int ALLOC24=10*32;
+  const int ALLOC32=8*32;
+  const int ALLOC16=8*32;
+  static unsigned int freeslot24[ALLOC24/32]={
+    0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
+    0xffffffff, 0xffffffff,
+    0xffffffff, 0xffffffff,
+    0xffffffff, 0xffffffff, 
+  };
   static unsigned int freeslot16[ALLOC16/32]={
     0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
-    0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
-    0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
-    0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
-    0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
-    0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
-    0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
-    0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
-    0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
-    0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
-    0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
-    0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
-    0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
-    0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
-    0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
-    0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
+    0xffffffff, 0xffffffff,
+    0xffffffff, 0xffffffff,
+    //0xffffffff, 0xffffffff
   };
+  static unsigned int freeslot32[ALLOC32/32]={
+    0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
+    0xffffffff, 0xffffffff,
+    0xffffffff, 0xffffffff,
+    //0xffffffff, 0xffffffff
+  };
+  static four_int * tab16=(four_int *) 0xe5200000;
+  static six_int * tab24=(six_int *) 0xe5007000;
+  static eight_int * tab32=(eight_int *) 0xe5017000;
+#else
+  const int ALLOC24=32*32;
+  const int ALLOC32=28*32;
+  const int ALLOC16=32*32;
+#define ALLOC44 16*32
   static unsigned int freeslot24[ALLOC24/32]={
     0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
     0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
@@ -162,20 +167,16 @@ namespace giac {
     0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
     0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
   };
-#ifdef ALLOC48
-  static unsigned int freeslot48[ALLOC48/32]={
+  static unsigned int freeslot16[ALLOC16/32]={
     0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
     0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
     0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
     0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
-    //0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
-    //0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
-    //0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
-    //0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
+    0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
+    0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
+    0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
+    0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
   };
-  static twelve_int tab48[ALLOC48];
-#endif
-#ifdef ALLOC32
   static unsigned int freeslot32[ALLOC32/32]={
     0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
     0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
@@ -186,10 +187,22 @@ namespace giac {
     0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
     //0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
   };
+  static unsigned int freeslot44[ALLOC44/32]={
+    0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
+    0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
+    0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
+    0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
+    //0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
+    //0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
+    //0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
+    //0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
+  };
+  static eleven_int tab44[ALLOC44];
   static eight_int tab32[ALLOC32];
-#endif
   static six_int tab24[ALLOC24];
   static four_int tab16[ALLOC16];
+#endif
+
   
   unsigned freeslotpos(unsigned n){
     unsigned r=1;
@@ -249,7 +262,6 @@ namespace giac {
 	return (void *) (tab16+i*32+pos);
       }
     }
-#ifdef ALLOC32
     if (size==32){ 
       for (i=0;i<ALLOC32/32;){
 	if (!(freeslot32[i] || freeslot32[i+1])){
@@ -267,23 +279,22 @@ namespace giac {
 	return (void *) (tab32+i*32+pos);
       }
     }
-#endif
-#ifdef ALLOC48
-    if (size==48){ 
-      for (i=0;i<ALLOC48/32;){
-	if (!(freeslot48[i] || freeslot48[i+1])){
+#ifdef ALLOC44
+    if (size==44){ 
+      for (i=0;i<ALLOC44/32;){
+	if (!(freeslot44[i] || freeslot44[i+1])){
 	  i+=2;
 	  continue;
 	}
-	if (freeslot48[i]){
-	  pos=freeslotpos(freeslot48[i]);
-	  freeslot48[i] &= ~(1<<pos);
-	  return (void *) (tab48+i*32+pos);
+	if (freeslot44[i]){
+	  pos=freeslotpos(freeslot44[i]);
+	  freeslot44[i] &= ~(1<<pos);
+	  return (void *) (tab44+i*32+pos);
 	}
 	++i;
-	pos=freeslotpos(freeslot48[i]);
-	freeslot48[i] &= ~(1<<pos);
-	return (void *) (tab48+i*32+pos);
+	pos=freeslotpos(freeslot44[i]);
+	freeslot44[i] &= ~(1<<pos);
+	return (void *) (tab44+i*32+pos);
       }
     }
 #endif
@@ -311,24 +322,22 @@ namespace giac {
       freeslot16[pos/32] |= (1 << (pos%32)); 
       return;
     }
-#ifdef ALLOC48
-    if ( ((size_t)obj>=(size_t) &tab48[0] ) &&
-	 ((size_t)obj<(size_t) &tab48[ALLOC48] ) ){
+#ifdef ALLOC44
+    if ( ((size_t)obj>=(size_t) &tab44[0] ) &&
+	 ((size_t)obj<(size_t) &tab44[ALLOC44] ) ){
       * (unsigned *) obj= 0;
-      int pos= ((size_t)obj -((size_t) &tab48[0]))/sizeof(twelve_int);
-      freeslot48[pos/32] |= (1 << (pos%32)); 
+      int pos= ((size_t)obj -((size_t) &tab44[0]))/sizeof(eleven_int);
+      freeslot44[pos/32] |= (1 << (pos%32)); 
       return;
     }
 #endif
-#ifdef ALLOC32
     if ( ((size_t)obj>=(size_t) &tab32[0]) &&
 	 ((size_t)obj<(size_t) &tab32[ALLOC32]) ){
       int pos= ((size_t)obj -((size_t) &tab32[0]))/sizeof(eight_int);
-      freeslot32[pos/32] |= (1 << (pos%32));
-      return;
+      freeslot32[pos/32] |= (1 << (pos%32)); 
     }
-#endif
-    free(obj);
+    else
+      free(obj);
   }
   unsigned hamdist(unsigned val){
     size_t res=0;
@@ -347,16 +356,12 @@ namespace giac {
     for (int i=0;i<ALLOC24/32;++i){
       res += 24*hamdist(freeslot24[i]);
     }
-#ifdef ALLOC32
     for (int i=0;i<ALLOC32/32;++i){
       res += 32*hamdist(freeslot32[i]);
     }
-#endif
-#ifdef ALLOC48
-    for (int i=0;i<ALLOC48/32;++i){
-      res += 48*hamdist(freeslot48[i]);
+    for (int i=0;i<ALLOC44/32;++i){
+      res += 44*hamdist(freeslot44[i]);
     }
-#endif
     return res;
   }
 #else // ALLOCSMALL
@@ -367,8 +372,6 @@ namespace giac {
 
 #if defined(SMARTPTR64) || !defined(ALLOCSMALL)
   inline void deletecomplex(ref_complex * ptr){
-    ptr->re=0;
-    ptr->im=0;
     delete ptr ;
   }
 #else
@@ -381,7 +384,6 @@ namespace giac {
 
 #if defined(SMARTPTR64) || !defined(ALLOCSMALL)
   inline void deletesymbolic(ref_symbolic * ptr){
-    ptr->s.feuille=0;    
     delete ptr ;
   }
 #else
@@ -393,7 +395,6 @@ namespace giac {
 
 #if defined(SMARTPTR64) || !defined(IMMEDIATE_VECTOR) || !defined(ALLOCSMALL)
   void delete_ref_vecteur(ref_vecteur * ptr){
-    ptr->v.clear();
     delete ptr ;
   }
 #else
@@ -1074,7 +1075,7 @@ namespace giac {
     subtype=(signed char)s;
     if ( _VECTptr->size()>1 &&
 	 ( (((size_t) _VECTptr) &stack_mask) > stackptr ||
-	   (((size_t) _VECTptr->begin()) &stack_mask) > stackptr )
+	   (((size_t) _VECTptr->begin()) &stack_mask) > stackptr )	   
 	 )
       ctrl_c=interrupted=true;
   }
@@ -1153,7 +1154,7 @@ namespace giac {
     subtype = 0;
   }
 
-#ifdef ALLOC48
+#ifdef ALLOC44
   ref_eqwdata * new_ref_eqwdata(const eqwdata & e){
     ref_eqwdata * ptr=(ref_eqwdata *) allocfast(sizeof(ref_eqwdata));
     ptr->ref_count=1;
@@ -1176,7 +1177,7 @@ namespace giac {
 #ifdef SMARTPTR64
       * ((ulonglong * ) this) = ulonglong(new ref_eqwdata(g)) << 16;
 #else
-#ifdef ALLOC48
+#ifdef ALLOC44
     __EQWptr = new_ref_eqwdata(g);
 #else
     __EQWptr = new ref_eqwdata(g);
@@ -1468,10 +1469,6 @@ namespace giac {
   gen::gen(double d){ 
     opaque_double_copy(&d,this); type=_DOUBLE_; 
   };
-  gen::gen(const giac_float & f){
-    double d(f);
-    opaque_double_copy(&d,this); type=_DOUBLE_; 
-  }
 #endif
 
   gen::gen(double a,double b){
@@ -1532,29 +1529,6 @@ namespace giac {
 	  type=_ZINT;
 	  subtype=0;
 	  break; 
-	case _REAL: 
-	  subtype=0;
-#ifdef SMARTPTR64
-#ifndef NO_RTTI
-	  if (real_interval * ptr=dynamic_cast<real_interval *>(a._REALptr)){
-	    * ((ulonglong * ) this) = ulonglong(new ref_real_interval(*ptr)) << 16;
-	    subtype=1;
-	  }
-	  else
-#endif
-	    * ((ulonglong * ) this) = ulonglong(new ref_real_object(*a._REALptr)) << 16;
-#else
-#ifndef NO_RTTI
-	  if (real_interval * ptr=dynamic_cast<real_interval *>(a._REALptr)){
-	    __REALptr=(ref_real_object *) new ref_real_interval(*ptr);
-	    subtype=1;
-	  }
-	  else
-#endif
-	    __REALptr=new ref_real_object(a.__REALptr->r); 
-#endif
-	  type=_REAL;
-	  break; 
 	default: 
 	  type=0;
 	  *this=gentypeerr(gettext("complex constructor"));
@@ -1571,7 +1545,6 @@ namespace giac {
       subtype= (a.type==_DOUBLE_) + (b.type==_DOUBLE_)*2;
     }
   }
-
   gen::gen(const complex<double> & c) {
 #ifdef SMARTPTR64
       * ((ulonglong * ) this) = ulonglong(new ref_complex(c)) << 16;
@@ -1759,9 +1732,6 @@ namespace giac {
     case _ZINT: 
       delete __ZINTptr;
       break; 
-    case _REAL: 
-      delete __REALptr;
-      break; 
     case _CPLX: 
       deletecomplex(__CPLXptr); // delete __CPLXptr;
       break; 
@@ -1780,16 +1750,13 @@ namespace giac {
     case _EXT: 
       delete __EXTptr;
       break;
-    case _MOD:
-      *_MODptr=*(_MODptr+1)=0;
+    case _MOD: 
       delete __MODptr;
       break;
     case _POLY:
-      _POLYptr->coord.clear();
       delete __POLYptr;
       break;
     case _FRAC:
-      _FRACptr->num=_FRACptr->den=0;
       delete __FRACptr;
       break;
     case _SPOL1:
@@ -1807,7 +1774,7 @@ namespace giac {
       delete __MAPptr;
       break;
     case _EQW:
-#ifdef ALLOC48
+#ifdef ALLOC44
       __EQWptr->e.g=0;
       deletefast(__EQWptr);
 #else
@@ -1837,10 +1804,7 @@ namespace giac {
       switch (type_save) {
       case _ZINT: 
 	delete ptr_save;
-	break;
-      case _REAL:
-	delete (ref_real_object*) ptr_save;
-	break;
+	break; 
       case _CPLX: 
 	deletecomplex((ref_complex *) ptr_save);
 	break; 
@@ -1883,7 +1847,7 @@ namespace giac {
 	delete (ref_gen_map *) ptr_save;
 	break;
       case _EQW:
-#ifdef ALLOC48
+#ifdef ALLOC44
 	((ref_eqwdata *) ptr_save)->e.g=0;
 	deletefast(ptr_save);
 #else
@@ -2245,7 +2209,7 @@ namespace giac {
     return true;
   }
 
-#if 1
+#if 0
   static bool in_eval_user(const gen & g,gen & evaled,int level,GIAC_CONTEXT){
     evaled=g._USERptr->eval(level,contextptr);
     return true;
@@ -2293,9 +2257,6 @@ namespace giac {
       bool lexact=is_integer(l),uexact=is_integer(u);
       gen ul=u-l;
       if (is_exactly_zero(ul)){
-	if (u.type==_REAL)
-	  ul=int(mpfr_get_prec(u._REALptr->inf));
-	else
 	  ul=int(3.2*decimal_digits(contextptr));
       }
       else {
@@ -2313,10 +2274,6 @@ namespace giac {
       else {
 	l=evalf(l,level,contextptr); u=evalf(u,level,contextptr);
       }
-      if (l.type==_DOUBLE_ && u.type==_REAL)
-	u=evalf_double(u,1,contextptr);
-      if (u.type==_DOUBLE_ && l.type==_REAL)
-	l=evalf_double(l,1,contextptr);
       if (l.type==_DOUBLE_){
 	// adjust mantissa of l down and mantissa of u up
 	double epsilon=7e-15; // 2^(-47)
@@ -2356,11 +2313,6 @@ namespace giac {
       }
     }
 #endif
-    if (g.subtype==_SPREAD__VECT){
-      makespreadsheetmatrice(*g._VECTptr,contextptr);
-      spread_eval(*g._VECTptr,contextptr);
-      return false;
-    }
     if (g.subtype==_TABLE__VECT){
       eval_VECT(g,evaled,g.subtype,level,contextptr);
       evaled=_table(evaled,contextptr);
@@ -2380,7 +2332,6 @@ namespace giac {
     return eval_VECT(g,evaled,g.subtype,level,contextptr);
   }
 
-
   bool gen::in_eval(int level,gen & evaled,const context * contextptr) const{
 #ifdef TIMEOUT
     control_c();
@@ -2394,7 +2345,7 @@ namespace giac {
     if (!level)
       return false;
     switch (type) {
-    case _INT_: case _DOUBLE_: case _ZINT: case _REAL: case _CPLX: case _POLY: case _FRAC: case _SPOL1: case _EXT: case _STRNG: case _MAP: case _EQW: case _GROB: case _POINTER_:
+    case _INT_: case _DOUBLE_: case _ZINT: case _CPLX: case _POLY: case _FRAC: case _SPOL1: case _EXT: case _STRNG: case _MAP: case _EQW: case _GROB: case _POINTER_:
       return false;
     case _IDNT:
       return in_eval_idnt(*this,evaled,level,contextptr);
@@ -2475,8 +2426,7 @@ namespace giac {
 	  evaled=sptr->eval(level,contextptr);
 	return true;
       }
-    case _USER:
-      return in_eval_user(*this,evaled,level,contextptr);
+      //case _USER: return in_eval_user(*this,evaled,level,contextptr);
     case _MOD:
       return in_eval_mod(*this,evaled,level,contextptr);
     case _FUNC:
@@ -2623,11 +2573,7 @@ namespace giac {
 	mpfr_set_default_prec(nbits);
       mpfr_t euler_gamma;
       mpfr_init(euler_gamma);
-#ifdef BF2GMP_H
-      mpfr_set_str(euler_gamma,"0.5772156649015328606065120900824024310421593359399235988057672348848677267776646709369470632917467495146314472498070824809605040144865428362241739976449235362535003337429373377376739427925952582470949160087352039481656708532331517766115286211995015079847937450857057400299213547861466940296043254215190587755352",nbits,MPFR_RNDN);
-#else
       mpfr_const_euler(euler_gamma,MPFR_RNDN);
-#endif
 #ifdef HAVE_LIBPTHREAD
       if (!locked)
 	pthread_mutex_unlock(&mpfr_mutex);
@@ -2660,7 +2606,7 @@ namespace giac {
 
   bool has_evalf(const gen & g,gen & res,int level,GIAC_CONTEXT){
     switch (g.type){
-    case _DOUBLE_: case _REAL:
+    case _DOUBLE_: 
       res=g;
       return true;
     case _INT_: case _ZINT: case _CPLX:
@@ -2673,7 +2619,7 @@ namespace giac {
 	res=g._SYMBptr->sommet(res,contextptr); 
 	if (res.type==_INT_ || res.type==_ZINT)
 	  res=evalf(res,1,contextptr);
-	return res.type==_DOUBLE_ || res.type==_CPLX || res.type==_REAL;
+	return res.type==_DOUBLE_ || res.type==_CPLX ;
       }
       else
 	return false;
@@ -2720,16 +2666,12 @@ namespace giac {
     if (!level)
       return false;
     switch (type) {
-    case _DOUBLE_: case _STRNG: case _MAP: case _EQW: case _GROB: case _POINTER_: case _REAL:
+    case _DOUBLE_: case _STRNG: case _MAP: case _EQW: case _GROB: case _POINTER_:
       return false;
     case _INT_:
       //*logptr(contextptr) << "in_evalf 1 " << *this << endl;
       if (subtype)
 	return false;
-      if (decimal_digits(contextptr)>14){
-	evaled=real_object(*this,digits2bits(decimal_digits(contextptr)));
-	return true;
-      }
       evaled=gen(double(val));
       // *logptr(contextptr) << "in_evalf 2 " << evaled << endl;
       return true;
@@ -2737,17 +2679,13 @@ namespace giac {
 #if 0 // def BCD
       evaled=giac_float(_ZINTptr);
 #else
-      if (decimal_digits(contextptr)>14)
-	evaled=real_object(*this,digits2bits(decimal_digits(contextptr)));
-      else
-	evaled=mpz_get_d(*_ZINTptr);
+      evaled=mpz_get_d(*_ZINTptr);
 #endif
       return true;
     case _CPLX: 
       evaled=gen(_CPLXptr->evalf(level,contextptr),(_CPLXptr+1)->evalf(level,contextptr));
       return true;
-    case _USER:
-      evaled=_USERptr->evalf(level,contextptr); return true;
+      // case _USER: evaled=_USERptr->evalf(level,contextptr); return true;
     case _IDNT:
       if (strcmp(_IDNTptr->id_name,string_pi)==0){
 	evaled=m_pi(contextptr);
@@ -2787,7 +2725,7 @@ namespace giac {
     case _FRAC:
 #ifdef HAVE_LIBMPFR
       if (decimal_digits(contextptr)>14)
-	evaled=_FRACptr->num.evalf(level,contextptr)*inv(_FRACptr->den.evalf(level,contextptr),contextptr);
+	evaled=rdiv(_FRACptr->num.evalf(level,contextptr),_FRACptr->den.evalf(level,contextptr),contextptr);
       else 
 #endif
 	{
@@ -2822,41 +2760,11 @@ namespace giac {
   }
 
   gen real2int(const gen & g,GIAC_CONTEXT){
-    if (g.type==_REAL){
-      if (is_strictly_positive(-g,contextptr))
-	return -real2int(-g,contextptr);
-      if (is_zero(g))
-	return 0;
-#ifdef BF2GMP_H
-      ref_mpz_t * m=new ref_mpz_t;
-      mpz_init(m->z);
-      mpz_set(m->z,g._REALptr->inf);
-      bf_rint(&m->z,BF_RNDD);
-      return gen(m);
-#else
-#ifdef HAVE_LIBMPFR
-      ref_mpz_t * m=new ref_mpz_t;
-      int n=int(mpfr_get_z_exp(m->z,g._REALptr->inf));
-      gen res(m->z);
-      if (n>=0)
-	return res*pow(plus_two,gen(n),contextptr);
-      return _iquo(makesequence(res,pow(plus_two,gen(-n),contextptr)),contextptr);
-#else
-      return g;
-#endif // MPFR
-#endif // BF2GMP_H
-    }
-    if (g.type!=_VECT)
-      return g;
-    return apply(g,real2int,contextptr);
+    return g;
   }
 
   gen real2double(const gen & g){
-    if (g.type==_REAL)
-      return g._REALptr->evalf_double();
-    if (g.type!=_VECT)
-      return g;
-    return apply(g,real2double);
+    return g;
   }
 
   gen gen::evalf_double(int level,const context * contextptr) const{
@@ -2880,7 +2788,7 @@ namespace giac {
       return double(g0.val);
     if (g0.type==_DOUBLE_)
       return g0;
-    if (g0.type==_FRAC || g0.type==_ZINT || g0.type==_REAL)
+    if (g0.type==_FRAC || g0.type==_ZINT)
       return evalf_double(g0,1,contextptr);
     if (storcl_38 && level && g0.type==_IDNT){
       if (!strcmp(g0._IDNTptr->id_name,"pi"))
@@ -3020,7 +2928,7 @@ namespace giac {
   /* Checking */
   bool gen::is_real(GIAC_CONTEXT) const {
     switch (type) {
-    case _INT_: case _DOUBLE_: case _ZINT: case _REAL:
+    case _INT_: case _DOUBLE_: case _ZINT: 
       return true; 
     case _CPLX: 
       return (is_zero(*(_CPLXptr+1),contextptr));
@@ -3035,7 +2943,7 @@ namespace giac {
 
   bool gen::is_approx() const {
     switch(type){
-    case _DOUBLE_: case _REAL:
+    case _DOUBLE_: 
       return true;
     case _CPLX:
       return subtype==3 || (_CPLXptr->is_approx() && (_CPLXptr+1)->is_approx());
@@ -3078,7 +2986,7 @@ namespace giac {
   
   bool gen::is_constant() const {
     switch (type ) {
-    case _INT_: case _DOUBLE_: case _ZINT: case _CPLX: case _REAL:
+    case _INT_: case _DOUBLE_: case _ZINT: case _CPLX:
       return true;
     case _VECT:
       return _VECT_is_constant(*this->_VECTptr);
@@ -3092,7 +3000,7 @@ namespace giac {
   }
 
   bool is_atomic(const gen & e){
-    return e.type<_POLY ||  e.type==_USER;
+    return e.type<_POLY;// || e.type==_USER;
   }
 
   static gen giac_conj(const gen & g,GIAC_CONTEXT){
@@ -3172,7 +3080,7 @@ namespace giac {
 
   gen gen::conj(GIAC_CONTEXT) const {
     switch (type ) {
-    case _INT_: case _DOUBLE_: case _ZINT: case _STRNG: case _REAL:
+    case _INT_: case _DOUBLE_: case _ZINT: case _STRNG:
       return *this;
     case _CPLX:
       return adjust_complex_display(gen(*_CPLXptr,-(*(_CPLXptr+1))),*this);
@@ -3180,7 +3088,7 @@ namespace giac {
       return gen(_VECTconj(*_VECTptr,contextptr),subtype);
     case _MAP:
       return apply(*this,giac_conj,contextptr);
-    case _USER: return _USERptr->conj(contextptr);
+      //case _USER: return _USERptr->conj(contextptr);
     case _IDNT: 
       if (is_assumed_real(*this,contextptr))
 	return *this;
@@ -3437,8 +3345,8 @@ namespace giac {
 	int nrealposroot=1;
 	if (lidnt(tmp[1]).empty()){
 	  vecteur w=*tmp[1]._VECTptr;
-	  gen pol(symb_horner(w,vx_var));
-	  nrealposroot=sturmab(pol,vx_var,0,plus_inf,contextptr);
+	  gen pol(symb_horner(w,vx_var()));
+	  nrealposroot=sturmab(pol,vx_var(),0,plus_inf,contextptr);
 	  if (nrealposroot==0 && is_zero(im(tmp[1],contextptr))){
 	    // complex, perhaps the conjugate is in the same nf
 	    gen P;
@@ -3613,7 +3521,7 @@ namespace giac {
   // compute simultaneously real and imaginary part
   void reim(const gen & g,gen & r,gen & i,GIAC_CONTEXT){
     switch (g.type ) {
-    case _INT_: case _DOUBLE_: case _ZINT: case _STRNG: case _REAL:
+    case _INT_: case _DOUBLE_: case _ZINT: case _STRNG:
       r=g;
       i=0;
       break;
@@ -3649,7 +3557,7 @@ namespace giac {
 	}
       }
       break;
-    case _USER:r=g._USERptr->re(contextptr); i=g._USERptr->im(contextptr); break;
+      // case _USER:r=g._USERptr->re(contextptr); i=g._USERptr->im(contextptr); break;
     case _FRAC:
       r=frac_reim(g._FRACptr->num,g._FRACptr->den,true,contextptr);
       i=frac_reim(g._FRACptr->num,g._FRACptr->den,false,contextptr);
@@ -3766,7 +3674,7 @@ namespace giac {
 
   gen gen::re(GIAC_CONTEXT) const {
     switch (type ) {
-    case _INT_: case _DOUBLE_: case _ZINT: case _STRNG: case _REAL:
+    case _INT_: case _DOUBLE_: case _ZINT: case _STRNG:
       return *this;
     case _CPLX:
       return *_CPLXptr;
@@ -3785,7 +3693,7 @@ namespace giac {
 	return symb_re(*_SYMBptr,contextptr);
       else
 	return (symbolic_re(*this));
-    case _USER: return _USERptr->re(contextptr);
+      //case _USER: return _USERptr->re(contextptr);
     case _FRAC:
       return frac_reim(_FRACptr->num,_FRACptr->den,true,contextptr);
     case _MOD:
@@ -3876,7 +3784,7 @@ namespace giac {
 
   gen gen::im(GIAC_CONTEXT) const {
     switch (type) {
-    case _INT_: case _DOUBLE_: case _ZINT: case _STRNG: case _REAL:
+    case _INT_: case _DOUBLE_: case _ZINT: case _STRNG:
       return 0;
     case _CPLX:
       return *(_CPLXptr+1);
@@ -3897,7 +3805,7 @@ namespace giac {
 	return symb_im(*_SYMBptr,contextptr); 
       else
 	return (symbolic_im(*this));
-    case _USER: return _USERptr->im(contextptr);
+      //case _USER: return _USERptr->im(contextptr);
     case _FRAC:
       return frac_reim(_FRACptr->num,_FRACptr->den,false,contextptr);
     case _MOD:
@@ -4026,8 +3934,6 @@ namespace giac {
 	return(-a);
       else
 	return(a);
-    case _REAL:
-      return a._REALptr->abs();
     case _CPLX:
 #ifdef GIAC_HAS_STO_38
       {
@@ -4059,7 +3965,7 @@ namespace giac {
       if (is_equal(a))
 	return apply_to_equal(a,abs,contextptr);
       return symb_abs(*a._SYMBptr,contextptr);
-    case _USER: return a._USERptr->abs(contextptr);
+      //case _USER: return a._USERptr->abs(contextptr);
     case _FRAC:
       if (is_integer(a._FRACptr->num) && is_integer(a._FRACptr->den))
 	return fraction(abs(a._FRACptr->num,contextptr),abs(a._FRACptr->den,contextptr));
@@ -4087,7 +3993,7 @@ namespace giac {
       return linfnorm(a._FRACptr->num)/linfnorm(a._FRACptr->den);
     case _VECT:
       return _VECTabs(*a._VECTptr,contextptr);
-    case _USER: return a._USERptr->abs(contextptr);
+      //case _USER: return a._USERptr->abs(contextptr);
     case _IDNT: case _SYMB:
       return (symb_abs(a));
     default:
@@ -4098,7 +4004,7 @@ namespace giac {
 
   // workaround for intervals
   static bool is_zero_or_contains(const gen & g,GIAC_CONTEXT){
-#if 1//def NO_RTTI
+#ifdef NO_RTTI
     return is_zero(g,contextptr);
 #else
     if (is_zero(g,contextptr))
@@ -4138,7 +4044,7 @@ namespace giac {
 
   gen arg(const gen & a,GIAC_CONTEXT){ 
     if (a.type==_CPLX && a._CPLXptr->type==_DOUBLE_ && (a._CPLXptr+1)->type==_DOUBLE_)
-      return std::atan2((a._CPLXptr+1)->_DOUBLE_val,a._CPLXptr->_DOUBLE_val);
+      return atan2((a._CPLXptr+1)->_DOUBLE_val,a._CPLXptr->_DOUBLE_val);
     if (!angle_radian(contextptr)){
       //grad
       int mode = get_mode_set_radian(contextptr); //get current mode
@@ -4179,13 +4085,11 @@ namespace giac {
     if (is_equal(a))
       return apply_to_equal(a,arg,contextptr);
     switch (a.type ) {
-    case _INT_: case _ZINT: case _REAL:
+    case _INT_: case _ZINT: case _DOUBLE_: 
       if (is_positive(a,contextptr))
 	return 0;
       else
 	return cst_pi;
-    case _DOUBLE_: 
-      return a._DOUBLE_val>=0?0.0:M_PI;
     case _CPLX:
       return arg_CPLX(a,contextptr);
     case _VECT:
@@ -4195,7 +4099,7 @@ namespace giac {
       // if ( is_zero(im(a,contextptr),contextptr) || (evalf(a,eval_level(contextptr),contextptr).type==_CPLX) )
 	return arg_CPLX(a,contextptr);
 	// return new symbolic(at_arg,a);
-    case _USER:return a._USERptr->arg(contextptr);
+	//case _USER:return a._USERptr->arg(contextptr);
     case _FRAC:
       return arg(a._FRACptr->num*conj(a._FRACptr->den,contextptr),contextptr);
     default:
@@ -4206,7 +4110,7 @@ namespace giac {
 
   gen gen::squarenorm(GIAC_CONTEXT) const {
     switch (type ) {
-    case _INT_: case _DOUBLE_: case _ZINT: case _REAL:
+    case _INT_: case _DOUBLE_: case _ZINT: 
       return (*this) * (*this);
     case _CPLX:
       return ( (*_CPLXptr)*(*_CPLXptr)+(*(_CPLXptr+1)*(*(_CPLXptr+1))) );   
@@ -4309,11 +4213,9 @@ namespace giac {
       if (*(a._MODptr+1)==b) // avoid e.g. 7 % 5 % 5
 	return a;
     }
-    if (a.type==_USER)return a;
+    //if (a.type==_USER)return a;
     if (is_exactly_zero(b)) 
       return a;
-    if (a.type==_DOUBLE_ || a.type==_REAL || a.type==_FLOAT_)
-      return gensizeerr(context0);
     gen res=makemodquoted(0,0);
     if ( (b.type==_INT_) || (b.type==_ZINT) )
       *res._MODptr=smod(a,b);
@@ -4547,19 +4449,15 @@ namespace giac {
       return a+ck_evalf_double(b,contextptr);
     case _DOUBLE___ZINT:
       return a._DOUBLE_val+mpz_get_d(*b._ZINTptr);
-    case _DOUBLE___REAL:
-      return a._DOUBLE_val+real2double(*b._REALptr);
-    case _REAL__DOUBLE_:
-      return b._DOUBLE_val+real2double(*a._REALptr);
     case _ZINT__DOUBLE_:
       return b._DOUBLE_val+mpz_get_d(*a._ZINTptr);
     case _CPLX__INT_: 
       if (b.val==0) return a;
-    case _CPLX__ZINT: case _CPLX__DOUBLE_: case _CPLX__REAL:
+    case _CPLX__ZINT: case _CPLX__DOUBLE_: 
       return gen(*a._CPLXptr+b,*(a._CPLXptr+1));
     case _INT___CPLX: 
       if (a.val==0) return b;
-    case _ZINT__CPLX: case _DOUBLE___CPLX: case _REAL__CPLX:
+    case _ZINT__CPLX: case _DOUBLE___CPLX: 
       return gen(a+*b._CPLXptr,*(b._CPLXptr+1));
     case _CPLX__CPLX: {
       gen * aptr=a._CPLXptr, *bptr=b._CPLXptr;
@@ -4585,9 +4483,9 @@ namespace giac {
       if (is_undef(a)) return a;
       if (is_undef(b)) return b;
       return string2gen((*a._STRNGptr)+(*b._STRNGptr),false);
-    case _POLY__INT_: case _POLY__ZINT: case _POLY__DOUBLE_:  case _POLY__CPLX: case _POLY__MOD: case _POLY__USER: case _POLY__REAL: 
+    case _POLY__INT_: case _POLY__ZINT: case _POLY__DOUBLE_:  case _POLY__CPLX: case _POLY__MOD: 
       return addpoly(*a._POLYptr,b);
-    case _INT___POLY: case _ZINT__POLY: case _DOUBLE___POLY: case _CPLX__POLY: case _MOD__POLY:  case _USER__POLY: case _REAL__POLY: 
+    case _INT___POLY: case _ZINT__POLY: case _DOUBLE___POLY: case _CPLX__POLY: case _MOD__POLY: 
       return addpoly(*b._POLYptr,a);
     case _MOD__MOD:
 #ifdef SMARTPTR64
@@ -4595,8 +4493,6 @@ namespace giac {
 #else
       return modadd(a.__MODptr,b.__MODptr);
 #endif
-    case _REAL__REAL:
-      return (*a._REALptr)+(*b._REALptr);
     case _IDNT__IDNT:
       if (a==unsigned_inf && b==unsigned_inf)
 	return undef;
@@ -4624,13 +4520,8 @@ namespace giac {
 	return spadd(*a._SPOL1ptr,gen2spol1(b),contextptr);
       if (b.type==_SPOL1)
 	return spadd(gen2spol1(a),*b._SPOL1ptr,contextptr);
-      if (a.type==_USER)return (*a._USERptr)+b;
-      if (b.type==_USER)return (*b._USERptr)+a;
-      if (a.type==_REAL)
-	return a._REALptr->addition(b,contextptr);
-      if (b.type==_REAL){
-	return b._REALptr->addition(a,contextptr);
-      }
+      //if (a.type==_USER)return (*a._USERptr)+b;
+      //if (b.type==_USER)return (*b._USERptr)+a;
     }
     return sym_add(a,b,contextptr);
   }
@@ -4672,35 +4563,7 @@ namespace giac {
     return Tfraction<gen> (num,den);
   }
   
-  static gen symbolic_plot_makevecteur(const unary_function_ptr & u,const gen & e,bool project,GIAC_CONTEXT){
-    if ( (u!=at_pnt) || (e.type!=_VECT) || (e.subtype!=_PNT__VECT) )
-      return symbolic(u,e);
-    // e is a curve or a pnt
-    vecteur w(*e._VECTptr);
-    if ( (w.size()!=2) && (w.size()!=3))
-      return symbolic(u,e);
-    gen a0(w[0]);
-    gen a1(w[1]);
-    if ( a1.type==_VECT && a1._VECTptr->size()==3 )
-      return symbolic(u,gen(makenewvecteur(a0,a1,a1._VECTptr->back()),_PNT__VECT));
-    if ( a1.type==_VECT && a1._VECTptr->size()==2 ){
-      if (project){
-	// we must project a0
-	gen param=a1._VECTptr->back(); // v= [ pnt() t ]
-	if (param.type==_VECT){
-	  vecteur v=*param._VECTptr;
-	  v[1]=projection(v[0],a0,contextptr); 
-	  if (is_undef(v[1]))
-	    return v[1];
-	  a0=remove_at_pnt(parameter2point(v,contextptr)); // same
-	  a1=makenewvecteur(a1._VECTptr->front(),v);
-	}
-      }
-      else
-	a1=a1._VECTptr->front();
-    }
-    return symbolic(u,gen(makenewvecteur(a0,a1),_PNT__VECT));
-  }
+
 
   gen sym_add(const gen & a,const gen & b,GIAC_CONTEXT){
 #ifdef TIMEOUT
@@ -4713,40 +4576,6 @@ namespace giac {
     bool adeuxpoints=a.is_symb_of_sommet(at_deuxpoints);
     if ( (a.is_symb_of_sommet(at_interval) || adeuxpoints)&& a._SYMBptr->feuille.type==_VECT && a._SYMBptr->feuille._VECTptr->size()==2)
       return symbolic(a._SYMBptr->sommet,makesequence(a._SYMBptr->feuille._VECTptr->front()+b,a._SYMBptr->feuille._VECTptr->back()+b)); // removed +(adeuxpoints?minus_one:zero) otherwise slicing like v[1:4] does not work
-    if (a.is_symb_of_sommet(at_unit)){
-      if (is_zero(b))
-	return a;
-      if (equalposcomp(lidnt(b),cst_pi)!=0)
-	return sym_add(a,evalf(b,1,contextptr),contextptr);
-      if (b.is_symb_of_sommet(at_unit)){
-	vecteur & va=*a._SYMBptr->feuille._VECTptr;
-	vecteur & vb=*b._SYMBptr->feuille._VECTptr;
-	if (va[1]==vb[1])
-	  return new_ref_symbolic(symbolic(at_unit,makenewvecteur(operator_plus(va[0],vb[0],contextptr),va[1])));
-	gen g=mksa_reduce(vb[1]/va[1],contextptr);
-	gen tmp=chk_not_unit(g);
-	if (is_undef(tmp)) return tmp;
-	return new_ref_symbolic(symbolic(at_unit,makenewvecteur(operator_plus(va[0],operator_times(g,vb[0],contextptr),contextptr),va[1])));
-      }
-      if (lidnt(b).empty()){
-	gen g=mksa_reduce(a,contextptr);
-	gen tmp=chk_not_unit(g);
-	if (is_undef(tmp)) return tmp;
-	return g+b;
-      }
-    }
-    if (b.is_symb_of_sommet(at_unit)){
-      if (is_zero(a))
-	return b;
-      if (equalposcomp(lidnt(a),cst_pi)!=0)
-	return sym_add(evalf(a,1,contextptr),b,contextptr);
-      if (lidnt(a).empty()){
-	gen g=mksa_reduce(b,contextptr);
-	gen tmp=chk_not_unit(g);
-	if (is_undef(tmp)) return tmp;
-	return a+g;
-      }
-    }
     if (a.is_approx()){
       gen b1;
       if (has_evalf(b,b1,1,contextptr) && (b.type!=b1.type || b!=b1)){
@@ -4759,17 +4588,6 @@ namespace giac {
 	  else
 #endif	  
 	    b2=accurate_evalf(b,mpfr_get_prec(a._REALptr->inf));
-	  if (b2.is_approx())
-	    return a+b2;
-	}
-	if (a.type==_CPLX && a._CPLXptr->type==_REAL){
-	  gen b2;
-#if defined HAVE_LIBMPFI && !defined NO_RTTI
-	  if (real_interval * ptr=dynamic_cast<real_interval *>(a._CPLXptr->_REALptr))
-	    b2=convert_interval(b,mpfi_get_prec(ptr->infsup),contextptr);
-	  else
-#endif	  
-	    b2=accurate_evalf(b,mpfr_get_prec(a._CPLXptr->_REALptr->inf));
 	  if (b2.is_approx())
 	    return a+b2;
 	}
@@ -4792,45 +4610,9 @@ namespace giac {
 	  if (a2.is_approx())
 	    return a2+b;
 	}
-	if (b.type==_CPLX && b._CPLXptr->type==_REAL){
-	  gen a2;
-#if defined HAVE_LIBMPFI && !defined NO_RTTI
-	  if (real_interval * ptr=dynamic_cast<real_interval *>(b._CPLXptr->_REALptr))
-	    a2=convert_interval(a,mpfi_get_prec(ptr->infsup),contextptr);
-	  else
-#endif	  
-	    a2=accurate_evalf(a,mpfr_get_prec(b._CPLXptr->_REALptr->inf));
-	  if (a2.is_approx())
-	    return a2+b;
-	}
 #endif
 	return a1+b;
       }
-    }
-    if ( (a.type==_SYMB) && equalposcomp(plot_sommets,a._SYMBptr->sommet) ){
-      if ( (b.type==_SYMB) && equalposcomp(plot_sommets,b._SYMBptr->sommet) )
-	return a._SYMBptr->feuille._VECTptr->front()+b._SYMBptr->feuille._VECTptr->front();
-      else {
-	if (b.type==_VECT)
-	  return translation(b,a,contextptr);
-	gen a_(a);
-	if (a.is_symb_of_sommet(at_curve) && a._SYMBptr->feuille.type==_VECT && a._SYMBptr->feuille._VECTptr->size()==2 && a._SYMBptr->feuille._VECTptr->front().type==_VECT){
-	  // adjust param and cartesian eq
-	  vecteur v=*a._SYMBptr->feuille._VECTptr->front()._VECTptr;
-	  if (v.size()==7)
-	    v[6] += b;
-	  if (v.size()>=6){
-	    v[5]=subst(v[5],makevecteur(x__IDNT_e,y__IDNT_e),makevecteur(x__IDNT_e-re(b,contextptr),y__IDNT_e-im(b,contextptr)),false,contextptr);
-	    a_=symbolic(at_curve,gen(makevecteur(gen(v,a._SYMBptr->feuille._VECTptr->front().subtype),a._SYMBptr->feuille._VECTptr->back()),a._SYMBptr->feuille.subtype));
-	  }
-	}
-	return symbolic_plot_makevecteur( a_._SYMBptr->sommet,a_._SYMBptr->feuille+b,true,contextptr);
-      }
-    }
-    if ( (b.type==_SYMB) && equalposcomp(plot_sommets,b._SYMBptr->sommet) ){
-      if (a.type==_VECT)
-	return translation(a,b,contextptr);
-      return symbolic_plot_makevecteur(b._SYMBptr->sommet,b._SYMBptr->feuille+a,true,contextptr);
     }
     gen var1,var2,res1,res2;
     if (is_algebraic_program(a,var1,res1)){
@@ -4840,16 +4622,16 @@ namespace giac {
 	  var2=var1;
 	}
 	if (var1==var2)
-	  return symbolic(at_program,gen(makevecteur(var1,0,operator_plus(res1,res2,contextptr)),_SEQ__VECT));
+	  return symb_prog3(var1,0,operator_plus(res1,res2,contextptr));
       }
       if (!is_constant_wrt(b,var1,contextptr))
-	*logptr(contextptr) << "Warning function+constant with constant dependent of mute variable" << '\n';
-      return symbolic(at_program,gen(makevecteur(var1,0,operator_plus(res1,b,contextptr)),_SEQ__VECT));
+	*logptr(contextptr) << "Warning function+constant with constant dependant of mute variable" << endl;
+      return symb_prog3(var1,0,operator_plus(res1,b,contextptr));
     }
     if (is_algebraic_program(b,var2,res2)){
       if (!is_constant_wrt(a,var2,contextptr))
-	*logptr(contextptr) << "Warning constant+function with constant dependent of mute variable" << '\n';
-      return symbolic(at_program,gen(makevecteur(var2,0,operator_plus(a,res2,contextptr)),_SEQ__VECT));
+	*logptr(contextptr) << "Warning constant+function with constant dependant of mute variable" << endl;
+      return symb_prog3(var2,0,operator_plus(a,res2,contextptr));
     }
     if (a.type==_VECT){
       if (is_zero(b,contextptr))
@@ -4941,10 +4723,6 @@ namespace giac {
     if (a.type==_FRAC){
       if ( (b.type!=_SYMB) && (b.type!=_IDNT) )
 	return (*a._FRACptr)+b;
-      if (b.is_symb_of_sommet(at_neg))
-	return a-b._SYMBptr->feuille;
-      if (b.is_symb_of_sommet(at_inv) && is_cinteger(b._SYMBptr->feuille))
-	return (*a._FRACptr)+fraction(1,b._SYMBptr->feuille);
       if (b.is_symb_of_sommet(at_prod) && b._SYMBptr->feuille.type==_VECT){
 	const vecteur & bf=*b._SYMBptr->feuille._VECTptr;
 	if (bf.size()==2 && is_integer(bf[0]) && bf[1].is_symb_of_sommet(at_inv) && is_cinteger(bf[1]._SYMBptr->feuille))
@@ -4955,10 +4733,6 @@ namespace giac {
     if (b.type==_FRAC){
       if ( (a.type!=_SYMB) && (a.type!=_IDNT) )
 	return a+(*b._FRACptr);
-      if (a.is_symb_of_sommet(at_neg))
-	return b-a._SYMBptr->feuille;
-      if (a.is_symb_of_sommet(at_inv) && is_cinteger(a._SYMBptr->feuille))
-	return fraction(1,a._SYMBptr->feuille)+(*b._FRACptr);
       if (a.is_symb_of_sommet(at_prod) && a._SYMBptr->feuille.type==_VECT){
 	const vecteur & af=*a._SYMBptr->feuille._VECTptr;
 	if (af.size()==2 && is_integer(af[0]) && af[1].is_symb_of_sommet(at_inv) && is_cinteger(af[1]._SYMBptr->feuille))
@@ -4993,13 +4767,13 @@ namespace giac {
 	if (ia==4) // <> + <>
 	  return undef;
 	vecteur & vb=*b._SYMBptr->feuille._VECTptr;
-	return new_ref_symbolic(symbolic(b._SYMBptr->sommet,makesequence(va.front()+vb.front(),va.back()+vb.back())));
+	return (symbolic(b._SYMBptr->sommet,makesequence(va.front()+vb.front(),va.back()+vb.back())));
       }
       if (ia==1 || !ib) // = + 
-	return new_ref_symbolic(symbolic(a._SYMBptr->sommet,makesequence(va.front()+b,va.back()+b)));
+	return (symbolic(a._SYMBptr->sommet,makesequence(va.front()+b,va.back()+b)));
       if ( (ia==5 && ib==6) || (ia==6 && ib==5)){
 	vecteur & vb=*b._SYMBptr->feuille._VECTptr;
-	return new_ref_symbolic(symbolic(at_superieur_strict,makesequence(va.front()+vb.front(),va.back()+vb.back())));
+	return symb_superieur_strict(va.front()+vb.front(),va.back()+vb.back());
       }
     }
     if (ib)
@@ -5012,10 +4786,10 @@ namespace giac {
 	  gen & g=b._SYMBptr->feuille;
 	  if (g.type==_VECT && g._VECTptr->size()==2){
 	    vecteur & w=*g._VECTptr;
-	    return new_ref_symbolic(symbolic(at_interval,gen(makenewvecteur(w[0]+v[0],w[1]+v[1]),_SEQ__VECT)));
+	    return symb_interval(w[0]+v[0],w[1]+v[1]);//(symbolic(at_interval,gen(makenewvecteur(w[0]+v[0],w[1]+v[1]),_SEQ__VECT)));
 	  }
 	}
-	return new_ref_symbolic(symbolic(at_interval,gen(makenewvecteur(b+v[0],b+v[1]),_SEQ__VECT)));
+	return symb_interval(b+v[0],b+v[1]);//(symbolic(at_interval,gen(makenewvecteur(b+v[0],b+v[1]),_SEQ__VECT)));
       }
     }
     if (b.is_symb_of_sommet(at_interval))
@@ -5025,22 +4799,22 @@ namespace giac {
     if ((a.type==_SYMB) && (b.type==_SYMB)){
       if (a._SYMBptr->sommet==at_plus) {
 	if (b._SYMBptr->sommet==at_plus)
-	  return new_ref_symbolic(symbolic(at_plus,gen(mergevecteur(*(a._SYMBptr->feuille._VECTptr),*(b._SYMBptr->feuille._VECTptr)),_SEQ__VECT)));
+	  return symb_plus(mergevecteur(*(a._SYMBptr->feuille._VECTptr),*(b._SYMBptr->feuille._VECTptr)));
 	else
-	  return new_ref_symbolic(symbolic(*a._SYMBptr,b));
+	  return (symbolic(*a._SYMBptr,b));
       }
       else { 
 	if (b._SYMBptr->sommet==at_plus)
-	  return new_ref_symbolic(symbolic(*(b._SYMBptr),a));
+	  return (symbolic(*(b._SYMBptr),a));
 	else
-	  return new_ref_symbolic(symbolic(at_plus,makesequence(a,b)));
+	  return (do_symb_plus(a,b));
       }
     }
     if (b.type==_SYMB){
       if (b._SYMBptr->sommet==at_plus)
-	return new_ref_symbolic(symbolic(a,b._SYMBptr->sommet,b._SYMBptr->feuille)); 
+	return (symbolic(a,b._SYMBptr->sommet,b._SYMBptr->feuille)); 
       else
-	return new_ref_symbolic(symbolic(at_plus,makesequence(a,b)));
+	return (do_symb_plus(a,b));
     }
     if (a.type==_SYMB){
       if ( a._SYMBptr->sommet==at_plus && a._SYMBptr->feuille.type==_VECT && a._SYMBptr->feuille._VECTptr->size()>1 && 
@@ -5052,23 +4826,22 @@ namespace giac {
 	if (v.size()==1)
 	  return v.front();
 	else
-	  return new_ref_symbolic(symbolic(at_plus,gen(v,a._SYMBptr->feuille.subtype)));
+	  return (symb_plus(gen(v,a._SYMBptr->feuille.subtype)));
       }
       if (a._SYMBptr->sommet==at_plus)
-	return new_ref_symbolic(symbolic(*a._SYMBptr,b));
+	return (symbolic(*a._SYMBptr,b));
       else
-	return new_ref_symbolic(symbolic(at_plus,makesequence(a,b)));
+	return (do_symb_plus(a,b));
     }
     if ( (a.type==_IDNT) || (b.type==_IDNT))
-      return new_ref_symbolic(symbolic(at_plus,makesequence(a,b)));
+      return (do_symb_plus(a,b));
     if (a.type==_MOD)
       return a+makemod(b,*(a._MODptr+1));
     if (b.type==_MOD)
       return makemod(a,*(b._MODptr+1))+b;
-    return new_ref_symbolic(symbolic(at_plus,makesequence(a,b)));
+    return (do_symb_plus(a,b));
     // settypeerr(gettext("sym_add"));
   }
-
 
   static gen subpoly(const gen & th, const gen & other){
     if ((th.type!=_POLY) || (other.type!=_POLY)){
@@ -5261,13 +5034,9 @@ namespace giac {
       return mpz_get_d(*a._ZINTptr)-b._DOUBLE_val;
     case _DOUBLE___ZINT:
       return a._DOUBLE_val-mpz_get_d(*b._ZINTptr);
-    case _DOUBLE___REAL:
-      return a._DOUBLE_val-real2double(*b._REALptr);
-    case _REAL__DOUBLE_:
-      return real2double(*a._REALptr)-b._DOUBLE_val;
-    case _CPLX__INT_: case _CPLX__ZINT: case _CPLX__DOUBLE_:  case _CPLX__REAL:
+    case _CPLX__INT_: case _CPLX__ZINT: case _CPLX__DOUBLE_: 
       return gen(*a._CPLXptr-b,*(a._CPLXptr+1));
-    case _INT___CPLX: case _ZINT__CPLX: case _DOUBLE___CPLX: case _REAL__CPLX:
+    case _INT___CPLX: case _ZINT__CPLX: case _DOUBLE___CPLX: 
       return gen(a-*b._CPLXptr,-*(b._CPLXptr+1));
     case _CPLX__CPLX:
       return adjust_complex_display(gen(*a._CPLXptr - *b._CPLXptr, *(a._CPLXptr+1) - *(b._CPLXptr+1)),a,b);
@@ -5279,9 +5048,9 @@ namespace giac {
       return spsub(*a._SPOL1ptr,*b._SPOL1ptr,contextptr);
     case _EXT__EXT:
       return ext_sub(a,b,contextptr);
-    case _POLY__INT_: case _POLY__ZINT: case _POLY__DOUBLE_: case _POLY__CPLX: case _POLY__MOD: case _POLY__REAL: case _POLY__USER: 
+    case _POLY__INT_: case _POLY__ZINT: case _POLY__DOUBLE_: case _POLY__CPLX: case _POLY__MOD: 
       return subpoly(*a._POLYptr,b);
-    case _INT___POLY: case _ZINT__POLY: case _DOUBLE___POLY: case _CPLX__POLY: case _MOD__POLY:case _USER__POLY: case _REAL__POLY: 
+    case _INT___POLY: case _ZINT__POLY: case _DOUBLE___POLY: case _CPLX__POLY: case _MOD__POLY:
       return subpoly(a,*b._POLYptr);        
     case _MOD__MOD:
 #ifdef SMARTPTR64
@@ -5289,8 +5058,6 @@ namespace giac {
 #else
       return modsub(a.__MODptr,b.__MODptr);
 #endif
-    case _REAL__REAL:
-      return (*a._REALptr)-(*b._REALptr);
     default:
       if (is_undef(a))
 	return a;
@@ -5300,12 +5067,8 @@ namespace giac {
 	return spsub(*a._SPOL1ptr,gen2spol1(b),contextptr);
       if (b.type==_SPOL1)
 	return spsub(gen2spol1(a),*b._SPOL1ptr,contextptr);
-      if (a.type==_USER)return (*a._USERptr)-b;
-      if (b.type==_USER)return (-b)+a;
-      if (a.type==_REAL)
-	return a._REALptr->substract(b,contextptr);
-      if (b.type==_REAL)
-	return operator_plus(-(*b._REALptr),a,contextptr);
+      //if (a.type==_USER)return (*a._USERptr)-b;
+      //if (b.type==_USER)return (-b)+a;
       if (a.type==_STRNG)
 	return a;
       return sym_sub(a,b,contextptr);
@@ -5334,8 +5097,6 @@ namespace giac {
       interrupted = true; ctrl_c=false;
       return gensizeerr(gettext("Stopped by user interruption.")); 
     }    
-    if (a.is_symb_of_sommet(at_unit) || b.is_symb_of_sommet(at_unit))
-      return a+(-b);
     if ( a.is_approx()){
       gen b1;
       if (has_evalf(b,b1,1,contextptr) && (b.type!=b1.type || b!=b1)){
@@ -5362,26 +5123,6 @@ namespace giac {
 	return a1-b;
       }
     }
-    if ( (a.type==_SYMB) && equalposcomp(plot_sommets,a._SYMBptr->sommet) ){
-      if ( (b.type==_SYMB) && equalposcomp(plot_sommets,b._SYMBptr->sommet) )
-	return a._SYMBptr->feuille._VECTptr->front()-b._SYMBptr->feuille._VECTptr->front();
-      else {
-	gen a_(a);
-	if (a.is_symb_of_sommet(at_curve) && a._SYMBptr->feuille.type==_VECT && a._SYMBptr->feuille._VECTptr->size()==2 && a._SYMBptr->feuille._VECTptr->front().type==_VECT){
-	  // adjust param and cartesian eq
-	  vecteur v=*a._SYMBptr->feuille._VECTptr->front()._VECTptr;
-	  if (v.size()==7)
-	    v[6] -= b;
-	  if (v.size()>=6){
-	    v[5]=subst(v[5],makevecteur(x__IDNT_e,y__IDNT_e),makevecteur(x__IDNT_e+re(b,contextptr),y__IDNT_e+im(b,contextptr)),false,contextptr);
-	    a_=symbolic(at_curve,gen(makevecteur(gen(v,a._SYMBptr->feuille._VECTptr->front().subtype),a._SYMBptr->feuille._VECTptr->back()),a._SYMBptr->feuille.subtype));
-	  }
-	}
-	return symbolic_plot_makevecteur(a_._SYMBptr->sommet,a_._SYMBptr->feuille-b,true,contextptr);
-      }
-    }
-    if ( (b.type==_SYMB) && equalposcomp(plot_sommets,b._SYMBptr->sommet) )
-      return sym_add(-b,a,contextptr);
     gen var1,var2,res1,res2;
     if (is_algebraic_program(a,var1,res1) && is_algebraic_program(b,var2,res2)){
       if (var1!=var2 && is_constant_wrt(res2,var1,contextptr)){
@@ -5389,7 +5130,7 @@ namespace giac {
 	var2=var1;
       }
       if (var1==var2)
-	return symbolic(at_program,gen(makevecteur(var1,0,operator_minus(res1,res2,contextptr)),_SEQ__VECT));
+	return symb_prog3(var1,0,operator_minus(res1,res2,contextptr));
     }
     if (a.type==_VECT)
       return sym_add(a,-b,contextptr);
@@ -5413,19 +5154,11 @@ namespace giac {
     if (a.type==_FRAC){
       if ( (b.type!=_SYMB) && (b.type!=_IDNT) )
         return (*a._FRACptr)-b;
-      if (b.is_symb_of_sommet(at_neg))
-	return a+b._SYMBptr->feuille;
-      if (b.is_symb_of_sommet(at_inv) && is_cinteger(b._SYMBptr->feuille))
-	return (*a._FRACptr)-fraction(1,b._SYMBptr->feuille);
       return sym_sub(_FRAC2_SYMB(a),b,contextptr);
     }
     if (b.type==_FRAC){
       if ( (a.type!=_SYMB) && (a.type!=_IDNT) )
         return a-(*b._FRACptr);
-      if (a.is_symb_of_sommet(at_neg))
-	return -(a._SYMBptr->feuille+b);
-      if (a.is_symb_of_sommet(at_inv) && is_cinteger(a._SYMBptr->feuille))
-	return fraction(1,a._SYMBptr->feuille)-(*b._FRACptr);
       return sym_sub(a,_FRAC2_SYMB(b),contextptr);
     }
     if (a.type==_EXT){
@@ -5453,14 +5186,14 @@ namespace giac {
       vecteur & va=*a._SYMBptr->feuille._VECTptr;
       if (b.type==_SYMB && b._SYMBptr->sommet==at_equal){
 	vecteur & vb=*b._SYMBptr->feuille._VECTptr;
-	return new_ref_symbolic(symbolic(at_equal,makesequence(va.front()-vb.front(),va.back()-vb.back())));
+	return (symbolic(at_equal,makesequence(va.front()-vb.front(),va.back()-vb.back())));
       }
       else
-	return new_ref_symbolic(symbolic(at_equal,makesequence(va.front()-b,va.back()-b)));
+	return (symbolic(at_equal,makesequence(va.front()-b,va.back()-b)));
     }
     if (b.type==_SYMB && b._SYMBptr->sommet==at_equal){
       vecteur & vb=*b._SYMBptr->feuille._VECTptr;
-      return new_ref_symbolic(symbolic(at_equal,makesequence(a-vb.front(),a-vb.back())));
+      return (symbolic(at_equal,makesequence(a-vb.front(),a-vb.back())));
     }
     */
     if (is_inequality(a) || is_inequality(b))
@@ -5468,38 +5201,39 @@ namespace giac {
     if ((a.type==_SYMB) && (b.type==_SYMB)){
       if (a._SYMBptr->sommet==at_plus) {
 	if (b._SYMBptr->sommet==at_plus)
-	  return new_ref_symbolic(symbolic(at_plus,gen(mergevecteur(*(a._SYMBptr->feuille._VECTptr),negvecteur(*(b._SYMBptr->feuille._VECTptr))),_SEQ__VECT)));
+	  return symb_plus(mergevecteur(*(a._SYMBptr->feuille._VECTptr),negvecteur(*(b._SYMBptr->feuille._VECTptr))));
 	else
-	  return new_ref_symbolic(symbolic(*a._SYMBptr,-b));
+	  return (symbolic(*a._SYMBptr,-b));
       }
       else { 
 	if (b._SYMBptr->sommet==at_plus)
-	  return new_ref_symbolic(symbolic(*(-b)._SYMBptr,a));
+	  return (symbolic(*(-b)._SYMBptr,a));
 	else
-	  return new_ref_symbolic(symbolic(at_plus,makesequence(a,-b)));
+	  return (do_symb_plus(a,-b));
       }
     }
     if (b.type==_SYMB){
       if (b._SYMBptr->sommet==at_plus)
-	return new_ref_symbolic(symbolic(*(-b)._SYMBptr,a));
+	return (symbolic(*(-b)._SYMBptr,a));
       else
-	return new_ref_symbolic(symbolic(at_plus,makesequence(a,-b)));
+	return (do_symb_plus(a,-b));
     }
     if (a.type==_SYMB){
       if (a._SYMBptr->sommet==at_plus)
-	return new_ref_symbolic(symbolic(*a._SYMBptr,-b));
+	return (symbolic(*a._SYMBptr,-b));
       else
-	return new_ref_symbolic(symbolic(at_plus,makesequence(a,-b)));
+	return (do_symb_plus(a,-b));
     }
     if ((a.type==_IDNT) || (b.type==_IDNT))
-      return new_ref_symbolic(symbolic(at_plus,makesequence(a,-b)));
+      return (do_symb_plus(a,-b));
     if (a.type==_MOD)
       return a-makemod(b,*(a._MODptr+1));
     if (b.type==_MOD)
       return makemod(a,*(b._MODptr+1))-b;
-    return new_ref_symbolic(symbolic(at_plus,makesequence(a,-b)));
+    return (do_symb_plus(a,-b));
     // settypeerr(gettext("sym_sub"));
   }
+
   static vecteur negfirst(const vecteur & v){
     vecteur w(v);
     if (!w.empty())
@@ -5518,8 +5252,6 @@ namespace giac {
       return(e);
     case _DOUBLE_:
       return -(a._DOUBLE_val);
-    case _REAL:
-      return -*a._REALptr;
     case _CPLX: {
       const gen * aptr=a._CPLXptr;
       if (a.subtype==3)
@@ -5537,17 +5269,10 @@ namespace giac {
 	return plus_inf;
       if (a._SYMBptr->sommet==at_neg)
 	return a._SYMBptr->feuille;
-      if (a._SYMBptr->sommet==at_unit){
-	// if (equalposcomp(lidnt(a),cst_pi)!=0) return -evalf(b,1,context0);
-	return new_ref_symbolic(symbolic(at_unit,makenewvecteur(-a._SYMBptr->feuille._VECTptr->front(),a._SYMBptr->feuille._VECTptr->back())));
-      }
       if (a._SYMBptr->sommet==at_plus)
 	return (symb_plus(negvecteur(*a._SYMBptr->feuille._VECTptr)));
       if (a._SYMBptr->sommet==at_interval && a._SYMBptr->feuille.type==_VECT && a._SYMBptr->feuille._VECTptr->size()==2){
 	return symb_interval(-a._SYMBptr->feuille._VECTptr->back(),-a._SYMBptr->feuille._VECTptr->front()); // (symbolic(at_interval,gen(makenewvecteur(-a._SYMBptr->feuille._VECTptr->back(),-a._SYMBptr->feuille._VECTptr->front()),_SEQ__VECT)));
-      }
-      if (equalposcomp(plot_sommets,a._SYMBptr->sommet)){
-	return symbolic_plot_makevecteur(a._SYMBptr->sommet,-a._SYMBptr->feuille,false,context0);
       }
       if (a.is_symb_of_sommet(at_program)){
 	gen a1,b;
@@ -5569,7 +5294,7 @@ namespace giac {
       return -(*a._POLYptr);
     case _EXT:
       return algebraic_EXTension(-(*a._EXTptr),*(a._EXTptr+1));
-      case _USER:return -(*a._USERptr);
+      //case _USER:return -(*a._USERptr);
     case _MOD:
       return makemod(-*a._MODptr,*(a._MODptr+1));
     case _FRAC:
@@ -5842,7 +5567,7 @@ namespace giac {
       // (ax+i*ay)*(bx+i*by)=ax*bx-ay*by+i*(ax*by+ay*bx)
       // imaginary part is also (ax+ay)*(bx+by)-ax*bx-ay*by, Karatsuba trick
       mpz_t axbx,ayby,r;
-#if defined USE_GMP_REPLACEMENTS || defined BF2GMP_H
+#ifdef USE_GMP_REPLACEMENTS
       mpz_init(axbx); mpz_init(ayby); mpz_init(r);
 #else
       int n1=mpz_size(ax)+mpz_size(bx),n2=mpz_size(ay)+mpz_size(by);
@@ -5898,7 +5623,7 @@ namespace giac {
 
   static gen operator_times(const gen & a,const gen & b,unsigned t,GIAC_CONTEXT){
     static bool warnpy=true;
-    // COUT << a << "*" << b << '\n';
+    // COUT << a << "*" << b << endl;
     // if (!( (++control_c_counter) & control_c_counter_mask))
 #ifdef TIMEOUT
     control_c();
@@ -5915,9 +5640,7 @@ namespace giac {
       return e;
     case _DOUBLE___DOUBLE_:
       return a._DOUBLE_val*b._DOUBLE_val;
-    case _FLOAT___FLOAT_:
-      return a._FLOAT_val*b._FLOAT_val;
-    case _INT___ZINT: 
+    case _INT___ZINT:
       if (a.val==1) return b;
       e=new ref_mpz_t(GIAC_MPZ_INIT_SIZE); // (mpz_size(*b._ZINTptr)*mp_bits_per_limb);
       if (a.val<0){
@@ -5941,17 +5664,9 @@ namespace giac {
       return a.val*b._DOUBLE_val;
     case _DOUBLE___INT_:
       return a._DOUBLE_val*b.val;
-    case _INT___FLOAT_:
-      return giac_float(a.val)*b._FLOAT_val;
-    case _FLOAT___INT_:
-      return a._FLOAT_val*giac_float(b.val);
-    case _DOUBLE___FLOAT_:
-      return giac_float(a._DOUBLE_val)*b._FLOAT_val;
-    case _FLOAT___DOUBLE_:
-      return a._FLOAT_val*giac_float(b._DOUBLE_val);
-    case _FLOAT___FRAC: case _DOUBLE___FRAC:
+    case _DOUBLE___FRAC:
       return double_times_frac(a,*b._FRACptr,contextptr);
-    case _FRAC__FLOAT_: case _FRAC__DOUBLE_:
+    case _FRAC__DOUBLE_:
       return double_times_frac(b,*a._FRACptr,contextptr);
     case _INT___FRAC: case _ZINT__FRAC:
       return a*(*b._FRACptr);
@@ -5959,19 +5674,15 @@ namespace giac {
       return (*a._FRACptr)*b;
     case _DOUBLE___ZINT:
       return a._DOUBLE_val*mpz_get_d(*b._ZINTptr);
-    case _DOUBLE___REAL:
-      return a._DOUBLE_val*real2double(*b._REALptr);
-    case _REAL__DOUBLE_:
-      return b._DOUBLE_val*real2double(*a._REALptr);
     case _ZINT__DOUBLE_:
       return mpz_get_d(*a._ZINTptr)*b._DOUBLE_val;
     case _CPLX__INT_: 
       if (b.val==1) return a;
-    case _CPLX__ZINT: case _CPLX__DOUBLE_: case _CPLX__FLOAT_: case _CPLX__REAL:
+    case _CPLX__ZINT: case _CPLX__DOUBLE_: 
       return gen(*a._CPLXptr*b,*(a._CPLXptr+1)*b);
     case _INT___CPLX: 
       return a.val==1?b:gen(a*(*b._CPLXptr),a*(*(b._CPLXptr+1)));
-    case _ZINT__CPLX: case _DOUBLE___CPLX: case _FLOAT___CPLX: case _REAL__CPLX:
+    case _ZINT__CPLX: case _DOUBLE___CPLX: 
       return is_one(a)?b:gen(a*(*b._CPLXptr),a*(*(b._CPLXptr+1)));
     case _CPLX__CPLX:
       return adjust_complex_display(mult_cplx(a,b,contextptr),a,b);
@@ -5991,8 +5702,8 @@ namespace giac {
       return string2gen(res,false);
     }
 #endif
-    case _VECT__INT_:
-      if (b.val>=0 && python_compat(contextptr)==2){
+    case _VECT__INT_: 
+      if (b.val>=0 && python_compat(contextptr)){
 	vecteur res;
 	res.reserve(a._VECTptr->size()*b.val);
 	const_iterateur it,itend=a._VECTptr->end();
@@ -6003,7 +5714,7 @@ namespace giac {
 	}
 	return gen(res,a.subtype);
       }
-    case _VECT__ZINT: case _VECT__DOUBLE_: case _VECT__FLOAT_: case _VECT__CPLX: case _VECT__SYMB: case _VECT__IDNT: case _VECT__POLY: case _VECT__EXT: case _VECT__MOD: case _VECT__FRAC: case _VECT__REAL: {
+    case _VECT__ZINT: case _VECT__DOUBLE_: case _VECT__CPLX: case _VECT__SYMB: case _VECT__IDNT: case _VECT__POLY: case _VECT__EXT: case _VECT__MOD: case _VECT__FRAC:  {
       gen A(a),B(b);
       if (A.is_approx() && !is_fully_numeric(B))
 	B=evalf(b,1,contextptr);
@@ -6013,16 +5724,6 @@ namespace giac {
 	  if (A.type!=_VECT)
 	    A=a;
 	}
-      }
-      // matrix * point -> point
-      if (B.is_symb_of_sommet(at_pnt)){
-	gen tmp=complex2vecteur(remove_at_pnt(B),contextptr);
-	if (ckmatrix(A)){
-	  tmp=multmatvecteur(*A._VECTptr,*tmp._VECTptr);
-	  return _point(tmp,contextptr);	
-	}
-	if (A._VECTptr->size()==tmp._VECTptr->size())
-	  return dotvecteur(*A._VECTptr,*tmp._VECTptr);
       }
       if (A.subtype==_VECTOR__VECT && A._VECTptr->size()==2)
 	return vector2vecteur(*A._VECTptr)*B;
@@ -6036,13 +5737,11 @@ namespace giac {
       return multgen_poly(B,*A._VECTptr,A.subtype); // gen(multvecteur(b,*a._VECTptr),a.subtype);
     }
     case _INT___VECT: 
-      if (a.val>=0 && python_compat(contextptr)==2)
-	return operator_times(b,a,contextptr);
       if (warnpy && a.val>=0 && python_compat(contextptr)){
-	alert(gettext("Alternate syntax removed"),contextptr);
+	alert(gettext("Python compatibility, integer*list will do vector multiplication, run list*integer to duplicate list"),contextptr);
 	warnpy=false;
       }
-    case _ZINT__VECT: case _DOUBLE___VECT: case _FLOAT___VECT: case _CPLX__VECT: case _SYMB__VECT: case _IDNT__VECT: case _POLY__VECT: case _EXT__VECT: case _MOD__VECT: case _FRAC__VECT: case _REAL__VECT: {
+    case _ZINT__VECT: case _DOUBLE___VECT: case _CPLX__VECT: case _SYMB__VECT: case _IDNT__VECT: case _POLY__VECT: case _EXT__VECT: case _MOD__VECT: case _FRAC__VECT:  {
       gen A(a),B(b);
       if (A.is_approx() && !is_fully_numeric(B)){
 	B=evalf(b,1,contextptr);
@@ -6053,13 +5752,6 @@ namespace giac {
 	if (B.is_approx() && !is_fully_numeric(A)){
 	  A=evalf(a,1,contextptr);
 	}
-      }
-      if (A.is_symb_of_sommet(at_pnt)){
-	gen tmp=complex2vecteur(remove_at_pnt(A),contextptr);
-	if (ckmatrix(B))
-	  return _point(multvecteurmat(*tmp._VECTptr,*B._VECTptr),contextptr);
-	if (tmp._VECTptr->size()==B._VECTptr->size())
-	  return dotvecteur(*tmp._VECTptr,*B._VECTptr,contextptr);
       }
       if (B.subtype==_VECTOR__VECT && B._VECTptr->size()==2)
 	return A*vector2vecteur(*B._VECTptr);
@@ -6144,11 +5836,13 @@ namespace giac {
 	return res;
       }
       { gen res=ckmultmatvecteur(*A._VECTptr,*B._VECTptr,contextptr);
+#if 0
 	if ( (calc_mode(contextptr)==1 || abs_calc_mode(contextptr)==38) && res.type==_VECT){
 	  res.subtype=B.subtype;
 	  if (res.subtype==0)
 	    res.subtype=A.subtype;
 	}
+#endif
 	return res;
       }
     }
@@ -6162,13 +5856,13 @@ namespace giac {
       return spmul(*a._SPOL1ptr,*b._SPOL1ptr,contextptr);
     case _EXT__EXT:
       return ext_mul(a,b,contextptr);
-    case _POLY__INT_: case _POLY__ZINT: case _POLY__DOUBLE_: case _POLY__FLOAT_: case _POLY__CPLX: case _POLY__USER: case _POLY__REAL:
+    case _POLY__INT_: case _POLY__ZINT: case _POLY__DOUBLE_:  case _POLY__CPLX: 
       if (is_one(b))
 	return a;
       return (*a._POLYptr) * b;
     case _POLY__MOD:
       return (*a._POLYptr) * b;
-    case _INT___POLY: case _ZINT__POLY: case _DOUBLE___POLY: case _FLOAT___POLY: case _CPLX__POLY: case _USER__POLY: case _REAL__POLY:
+    case _INT___POLY: case _ZINT__POLY: case _DOUBLE___POLY: case _CPLX__POLY: 
       if (is_one(a))
 	return b;
       return a * (*b._POLYptr);        
@@ -6184,44 +5878,23 @@ namespace giac {
       return makemod(*a._MODptr*b,*(a._MODptr+1));
     case _INT___MOD: case _ZINT__MOD:
       return makemod(*b._MODptr*a,*(b._MODptr+1));
-    case _REAL__REAL:
-      return (*a._REALptr)*(*b._REALptr);
     default:
       if (is_undef(a))
 	return a;
       if (is_undef(b))
 	return b;
-      if (a.type==_FLOAT_){
-	gen b1;
-	if (has_evalf(b,b1,1,contextptr)&& (b.type!=b1.type || b!=b1))
-	  return a*b1;
-	return operator_times(evalf_double(a,1,contextptr),b,contextptr);
-      }
-      if (b.type==_FLOAT_){
-	gen a1;
-	if (has_evalf(a,a1,1,contextptr)&& (a.type!=a1.type || a!=a1))
-	  return a1*b;
-	return operator_times(a,evalf_double(b,1,contextptr),contextptr);
-      }
       if (a.type==_SPOL1)
 	return spmul(*a._SPOL1ptr,gen2spol1(b),contextptr);
       if (b.type==_SPOL1)
 	return spmul(gen2spol1(a),*b._SPOL1ptr,contextptr);
-      if (a.type==_USER)
-	return (*a._USERptr)*b;
-      if (b.type==_USER)
-	return (*b._USERptr)*a;      
-      if (a.type==_REAL)
-	return a._REALptr->multiply(b,contextptr);
-      if (b.type==_REAL)
-	return b._REALptr->multiply(a,contextptr);
+      //if (a.type==_USER)return (*a._USERptr)*b;
+      //if (b.type==_USER)return (*b._USERptr)*a;      
       if (a.type==_STRNG || b.type==_STRNG)
 	return gensizeerr(contextptr);
       return sym_mult(a,b,contextptr);
     }
     return undef;
   }
-
 
   gen operator_times(const gen & a,const gen & b,GIAC_CONTEXT){
     register unsigned t=(a.type<< _DECALAGE) | b.type;
@@ -6380,12 +6053,12 @@ namespace giac {
     {
       gen a,b;
       if (is_algebraic_program(base,a,b))
-	return symbolic(at_program,gen(makevecteur(a,0,pow(b,exponent,contextptr)),_SEQ__VECT));
+	return symb_prog3(a,0,pow(b,exponent,contextptr));
       if (is_algebraic_program(exponent,a,b))
-	return symbolic(at_program,gen(makevecteur(a,0,pow(base,b,contextptr)),_SEQ__VECT));
+	return symb_prog3(a,0,pow(base,b,contextptr));
     }
     if (base.type==_VECT && base.subtype!=_POLY1__VECT && !is_squarematrix(base)){
-      *logptr(contextptr) << gettext("Warning, ^ is ambiguous on non square matrices. Use .^ to apply ^ element by element.") << '\n';
+      *logptr(contextptr) << gettext("Warning, ^ is ambiguous on non square matrices. Use .^ to apply ^ element by element.") << endl;
       if (exponent.type==_VECT)
 	return apply(base,exponent,contextptr,giac_pow);
       if (base.subtype!=_LIST__VECT && (exponent.type==_INT_ && exponent.val %2==0) )
@@ -6395,7 +6068,7 @@ namespace giac {
     if (exponent.type==_VECT)
       return apply2nd(base,exponent,contextptr,&giac_pow);
     if (exponent.type==_FRAC){
-      if (base.type<_POLY || base.type==_FLOAT_){
+      if (base.type<_POLY ){
 	if (exponent==plus_one_half)
 	  return sqrt(base,contextptr);
 	if (exponent==minus_one_half)
@@ -6416,7 +6089,7 @@ namespace giac {
 	  }
 	}
       }
-      return pow(base,new_ref_symbolic(symbolic(at_prod,makesequence(exponent._FRACptr->num,symb_inv(exponent._FRACptr->den)))),contextptr);
+      return pow(base,(symb_prod2(exponent._FRACptr->num,symb_inv(exponent._FRACptr->den))),contextptr);
     }
     if (is_inf(base)){ 
       if (is_zero(exponent,contextptr))
@@ -6446,24 +6119,7 @@ namespace giac {
     }
     if (base.type==_SYMB){ 
       unary_function_ptr & u =base._SYMBptr->sommet;
-      if (u==at_unit){
-	vecteur & v=*base._SYMBptr->feuille._VECTptr;
-	gen v1=v[1];
-	vecteur w;
-	if (v1.is_symb_of_sommet(at_prod))
-	  w=gen2vecteur(v1._SYMBptr->feuille);
-	else
-	  w.push_back(v1);
-	for (unsigned i=0;i<w.size();++i){
-	  gen & v1=w[i];
-	  if (v1.is_symb_of_sommet(at_pow))
-	    v1=pow(v1._SYMBptr->feuille[0],v1._SYMBptr->feuille[1]*exponent,contextptr);
-	  else
-	    v1=pow(v1,exponent,contextptr);
-	}
-	if (w.size()==1) v1=w.front(); else v1=symbolic(at_prod,gen(w,_SEQ__VECT));
-	return new_ref_symbolic(symbolic(at_unit,makenewvecteur(pow(v[0],exponent,contextptr),v1)));
-      }
+
       if (u==at_abs && exponent.type==_INT_ && !complex_mode(contextptr) && !has_i(base)){ 
 	int n=exponent.val,m;
 	if (n<0 && n%2)
@@ -6475,9 +6131,6 @@ namespace giac {
 	  return base*basep;
 	else
 	  return basep;
-      }
-      if (u==at_pnt && exponent.type==_INT_ && exponent.val%2==0){
-	return pow(abs_norm2(remove_at_pnt(base),contextptr),exponent.val/2,contextptr);
       }
       if (u==at_sign && exponent.type==_INT_ && !complex_mode(contextptr) && !has_i(base)){ 
 	int n=exponent.val;
@@ -6511,20 +6164,19 @@ namespace giac {
       }
       if (u==at_equal || u==at_equal2){
 	vecteur & vb=*base._SYMBptr->feuille._VECTptr;
-	return new_ref_symbolic(symbolic(base._SYMBptr->sommet,makesequence(pow(vb.front(),exponent,contextptr),pow(vb.back(),exponent,contextptr))));
+	return (symbolic(base._SYMBptr->sommet,makesequence(pow(vb.front(),exponent,contextptr),pow(vb.back(),exponent,contextptr))));
       }
       if (exponent.type==_INT_){
 	if (exponent.val==0)
 	  return 1;
 	if (exponent.val==1)
 	  return base;
-	return new_ref_symbolic(symbolic(at_pow,gen(makevecteur(base,exponent),_SEQ__VECT)));
+	return symb_pow(base,exponent);
       }
     }
-    if (abs_calc_mode(contextptr)==38 && !complex_mode(contextptr) && is_exactly_zero(base) && is_exactly_zero(exponent)) // was is_zero(,.contextptr) changed so that MINREAL^0 is not undef but 1
-      return undef;
+    // if (abs_calc_mode(contextptr)==38 && !complex_mode(contextptr) && is_exactly_zero(base) && is_exactly_zero(exponent)) return undef; // was is_zero(,.contextptr) changed so that MINREAL^0 is not undef but 1
     switch ( (base.type<< _DECALAGE) | exponent.type ) {
-    case _INT___INT_: case _ZINT__INT_: case _REAL__INT_: case _CPLX__INT_: case _IDNT__INT_: 
+    case _INT___INT_: case _ZINT__INT_: case _CPLX__INT_: case _IDNT__INT_: 
       return pow(base,exponent.val);
     case _DOUBLE___DOUBLE_:
       if (exponent._DOUBLE_val==int(std::floor(exponent._DOUBLE_val+.25)))
@@ -6539,20 +6191,6 @@ namespace giac {
 	return exp(exponent*log(base,contextptr),contextptr);
     case _FRAC__DOUBLE_:
       return exp(exponent*log(base,contextptr),contextptr);      
-    case _FLOAT___FLOAT_:
-      if (exponent._FLOAT_val==get_int(exponent._FLOAT_val))
-	return pow(base,get_int(exponent._FLOAT_val));
-      if (is_strictly_positive(-base,contextptr))
-	return exp(exponent*ln(base,contextptr),contextptr);
-      return fpow(base._FLOAT_val,exponent._FLOAT_val);
-    case _INT___FLOAT_:
-      if (exponent._FLOAT_val==get_int(exponent._FLOAT_val))
-	return pow(base,get_int(exponent._FLOAT_val));
-      if (is_strictly_positive(-base,contextptr))
-	return exp(exponent*ln(base,contextptr),contextptr);
-      return fpow(giac_float(base.val),exponent._FLOAT_val);
-    case _FLOAT___INT_:
-      return fpow(base._FLOAT_val,giac_float(exponent.val));
     case _DOUBLE___INT_:
       if (base._DOUBLE_val>=0)
 #ifdef _SOFTMATH_H
@@ -6593,7 +6231,7 @@ namespace giac {
 	return pow(base,exponent.val);
     case _FRAC__INT_:
       return pow(*base._FRACptr,exponent.val);
-    case _EXT__INT_: case _MOD__INT_: case _VECT__INT_: case _USER__INT_:
+    case _EXT__INT_: case _MOD__INT_: case _VECT__INT_: 
       return pow(base,exponent.val);
     case _MOD__ZINT:
       return makemod(powmod(*base._MODptr,exponent,*(base._MODptr+1)),*(base._MODptr+1));
@@ -6613,16 +6251,16 @@ namespace giac {
 	  return e1._SYMBptr->feuille;
       }
       if (is_squarematrix(base)){ 
-	if ((exponent.type==_REAL || exponent.type==_DOUBLE_ || exponent.type==_FLOAT_))
+	if ((exponent.type==_DOUBLE_ ))
 	  return matpow(*base._VECTptr,exponent,contextptr);
 	if (exponent.type>=_IDNT)
-	  *logptr(contextptr) << gettext("Unsupported array power") << '\n';
+	  *logptr(contextptr) << gettext("Use matpow to force computation of a power of matrix via jordanisation") << endl;
       }
-      if (base.type==_REAL || base.type==_DOUBLE_ || 
+      if (base.type==_DOUBLE_ || 
 	  (base.type==_CPLX 
 	   // && base.subtype==3
 	   ) 
-	  || base.type==_FLOAT_ || ( (base.type<_POLY || base.type==_FLOAT_) && (exponent.type==_REAL || exponent.type==_DOUBLE_ || exponent.type==_FLOAT_)))
+	  ||  ( (base.type<_POLY || base.type==_FLOAT_) && (exponent.type==_DOUBLE_ )))
 	return exp(exponent*log(base,contextptr),contextptr);
       /* 
 	 if (base.is_symb_of_sommet(at_neg))
@@ -6681,14 +6319,12 @@ namespace giac {
 	  else
 	    subexponent_num = subexponent_num * (*it);
 	}
-	if (superexponent.type!=_INT_ 
-	    || (!lidnt(exponent).empty() && absint(superexponent.val)>MAX_COMMON_ALG_EXT_ORDER_SIZE)
-	    )
-	  return new_ref_symbolic(symbolic(at_pow,gen(makenewvecteur(base,exponent),_SEQ__VECT)));
-	if (subexponent_deno.type!=_INT_ || (absint(subexponent_deno.val)>MAX_ALG_EXT_ORDER_SIZE && !lidnt(base).empty())){
+	if (superexponent.type!=_INT_)
+	  return symb_pow(base,exponent);
+	if (subexponent_deno.type!=_INT_){
 	  if (is_one(superexponent))
-	    return new_ref_symbolic(symbolic(at_pow,gen(makenewvecteur(base,_FRAC2_SYMB(subexponent_num,subexponent_deno)),_SEQ__VECT)));
-	  return new_ref_symbolic(symbolic(at_pow,gen(makenewvecteur(new_ref_symbolic(symbolic(at_pow,gen(makenewvecteur(base,_FRAC2_SYMB(subexponent_num,subexponent_deno)),_SEQ__VECT))),superexponent),_SEQ__VECT)));
+	    return symb_pow(base,_FRAC2_SYMB(subexponent_num,subexponent_deno));
+	  return symb_pow(symb_pow(base,_FRAC2_SYMB(subexponent_num,subexponent_deno)),superexponent);
 	}
 	int q=superexponent.val / subexponent_deno.val;
 	int r=superexponent.val % subexponent_deno.val;
@@ -6696,24 +6332,24 @@ namespace giac {
 	if (r){
 	  if (complex_mode(contextptr) && fastsign(base,contextptr)==-1){ // is_strictly_positive(-base,contextptr)){
 	    gen base1=-base;
-	    res=exp((cst_i*cst_pi*subexponent_num)/subexponent_deno,contextptr);
-	    res=new_ref_symbolic(symbolic(at_pow,gen(makenewvecteur(pow(base1,subexponent_num,contextptr),inv(subexponent_deno,contextptr)),_SEQ__VECT)))*res;
+	    res=exp((cst_ipi()*subexponent_num)/subexponent_deno,contextptr);
+	    res=symb_pow(pow(base1,subexponent_num,contextptr),inv(subexponent_deno,contextptr))*res;
 	  }
 	  else
-	    res=new_ref_symbolic(symbolic(at_pow,gen(makenewvecteur(pow(base,subexponent_num,contextptr),inv(subexponent_deno,contextptr)),_SEQ__VECT)));
+	    res=symb_pow(pow(base,subexponent_num,contextptr),inv(subexponent_deno,contextptr));
 	  if (r!=1)
-	    res=new_ref_symbolic(symbolic(at_pow,gen(makenewvecteur(res,r),_SEQ__VECT)));
+	    res=symb_pow(res,r);
 	}
 	if (!q)
 	  return res;
 	if (q==1){
 	  if (is_one(subexponent_num))
 	    return res*base;
-	  return res*new_ref_symbolic(symbolic(at_pow,gen(makenewvecteur(base,subexponent_num),_SEQ__VECT)));
+	  return res*symb_pow(base,subexponent_num);
 	}
 	if (q==-1)
 	  return res*inv(pow(base,subexponent_num,contextptr),contextptr);
-	return res*new_ref_symbolic(symbolic(at_pow,gen(makenewvecteur(pow(base,subexponent_num,contextptr),q),_SEQ__VECT)));
+	return res*symb_pow(pow(base,subexponent_num,contextptr),q);
       }
       gen var1,var2,res1,res2;
       if (is_algebraic_program(base,var1,res1) && is_algebraic_program(exponent,var2,res2)){
@@ -6722,14 +6358,13 @@ namespace giac {
 	  var2=var1;
 	}
 	if (var1==var2)
-	  return symbolic(at_program,gen(makevecteur(var1,0,pow(res1,res2,contextptr)),_SEQ__VECT));
+	  return symb_prog3(var1,0,pow(res1,res2,contextptr));
       }
       if (exponent.type==_ZINT){
-	if (base.type==_USER)
-	  return pow_iterative(base,exponent,contextptr);
+	//if (base.type==_USER)return pow_iterative(base,exponent,contextptr);
 	return exp(exponent*log(base,contextptr),contextptr);
       }
-      return new_ref_symbolic(symbolic(at_pow,gen(makenewvecteur(base,exponent),_SEQ__VECT)));
+      return symb_pow(base,exponent);
     }  
   }
 
@@ -6748,41 +6383,16 @@ namespace giac {
     if (is_inequality(a) && !is_equal(a)){
       int bs=fastsign(b,contextptr);
       if (bs==-1)
-	return new_ref_symbolic(symbolic(a._SYMBptr->sommet,makesequence(a._SYMBptr->feuille._VECTptr->back()*b,a._SYMBptr->feuille._VECTptr->front()*b)));
+	return (symbolic(a._SYMBptr->sommet,makesequence(a._SYMBptr->feuille._VECTptr->back()*b,a._SYMBptr->feuille._VECTptr->front()*b)));
       if (bs==1)
-	return new_ref_symbolic(symbolic(a._SYMBptr->sommet,makesequence(a._SYMBptr->feuille._VECTptr->front()*b,a._SYMBptr->feuille._VECTptr->back()*b)));
+	return (symbolic(a._SYMBptr->sommet,makesequence(a._SYMBptr->feuille._VECTptr->front()*b,a._SYMBptr->feuille._VECTptr->back()*b)));
     }
     if (is_inequality(b) && !is_equal(b)){
       int bs=fastsign(a,contextptr);
       if (bs==-1)
-	return new_ref_symbolic(symbolic(b._SYMBptr->sommet,makesequence(a*b._SYMBptr->feuille._VECTptr->back(),a*b._SYMBptr->feuille._VECTptr->front())));
+	return (symbolic(b._SYMBptr->sommet,makesequence(a*b._SYMBptr->feuille._VECTptr->back(),a*b._SYMBptr->feuille._VECTptr->front())));
       if (bs==1)
-	return new_ref_symbolic(symbolic(b._SYMBptr->sommet,makesequence(a*b._SYMBptr->feuille._VECTptr->front(),a*b._SYMBptr->feuille._VECTptr->back())));
-    }
-    if (a.is_symb_of_sommet(at_unit)){
-      if (equalposcomp(lidnt(b),cst_pi)!=0)
-	return sym_mult(a,evalf(b,1,contextptr),contextptr);
-      vecteur & va=*a._SYMBptr->feuille._VECTptr;
-      if (b.is_symb_of_sommet(at_unit)){
-	vecteur & v=*b._SYMBptr->feuille._VECTptr;
-	gen res=va[1]*v[1];
-	res=ratnormal(res,contextptr);
-	if (is_one(res))
-	  return va[0]*v[0];
-	return new_ref_symbolic(symbolic(at_unit,makenewvecteur(operator_times(va[0],v[0],contextptr),res)));
-      }
-      else {
-	if (lidnt(b).empty())
-	  return new_ref_symbolic(symbolic(at_unit,makenewvecteur(operator_times(va[0],b,contextptr),va[1])));
-      }
-    }
-    if (b.is_symb_of_sommet(at_unit)){ 
-      if (equalposcomp(lidnt(a),cst_pi)!=0)
-	return sym_mult(evalf(a,1,contextptr),b,contextptr);
-      if (lidnt(a).empty()){
-	vecteur & v=*b._SYMBptr->feuille._VECTptr;
-	return new_ref_symbolic(symbolic(at_unit,makenewvecteur(operator_times(a,v[0],contextptr),v[1])));
-      }
+	return (symbolic(b._SYMBptr->sommet,makesequence(a*b._SYMBptr->feuille._VECTptr->front(),a*b._SYMBptr->feuille._VECTptr->back())));
     }
     gen var1,var2,res1,res2;
     if (is_algebraic_program(a,var1,res1)){
@@ -6792,16 +6402,16 @@ namespace giac {
 	  var2=var1;
 	}
 	if (var1==var2)
-	  return symbolic(at_program,gen(makevecteur(var1,0,operator_times(res1,res2,contextptr)),_SEQ__VECT));
+	  return symb_prog3(var1,0,operator_times(res1,res2,contextptr));
       }
       if (!is_constant_wrt(b,var1,contextptr))
-	*logptr(contextptr) << "Warning function*constant with constant dependent of mute variable" << '\n';
-      return symbolic(at_program,gen(makevecteur(var1,0,operator_times(res1,b,contextptr)),_SEQ__VECT));
+	*logptr(contextptr) << "Warning function*constant with constant dependant of mute variable" << endl;
+      return symb_prog3(var1,0,operator_times(res1,b,contextptr));
     }
     if (is_algebraic_program(b,var2,res2)){
       if (!is_constant_wrt(a,var2,contextptr))
-	*logptr(contextptr) << "Warning constant*function with constant dependent of mute variable" << '\n';
-      return symbolic(at_program,gen(makevecteur(var2,0,operator_times(a,res2,contextptr)),_SEQ__VECT));
+	*logptr(contextptr) << "Warning constant*function with constant dependant of mute variable" << endl;
+      return symb_prog3(var2,0,operator_times(a,res2,contextptr));
     }
     if (is_inf(a)){
       if (is_exactly_zero(normal(b,contextptr)))
@@ -6827,13 +6437,9 @@ namespace giac {
       return a;
     if (a.type==_DOUBLE_ && a._DOUBLE_val==0 )
       return a;
-    if (a.type==_FLOAT_ && is_zero(a._FLOAT_val) )
-      return a;
     if (b.type==_INT_ && b.val==0)
       return b;
     if (b.type==_DOUBLE_ && b._DOUBLE_val==0 )
-      return b;
-    if (b.type==_FLOAT_ && is_zero(b._FLOAT_val) )
       return b;
     if ( a.is_approx()){
       gen b1;
@@ -6899,67 +6505,7 @@ namespace giac {
       return b;
     if (is_one(b) && ((b.type!=_MOD) || (a.type==_MOD) ))
       return a;
-    if ((a.type==_SYMB) && equalposcomp(plot_sommets,a._SYMBptr->sommet)){
-      gen tmp=remove_at_pnt(a);
-      if (tmp.type==_VECT && tmp.subtype==_VECTOR__VECT){
-	if (b.type==_SYMB && equalposcomp(plot_sommets,b._SYMBptr->sommet)){
-	  gen tmpb=remove_at_pnt(b);
-	  return dotvecteur(vector2vecteur(*tmp._VECTptr),vector2vecteur(*tmpb._VECTptr));
-	}
-	return _vector(vector2vecteur(*tmp._VECTptr)*b,contextptr);
-      }
-      if ((b.type==_SYMB) && equalposcomp(plot_sommets,b._SYMBptr->sommet)){
-	gen tmpb=complex2vecteur(remove_at_pnt(b),contextptr);
-	tmp=complex2vecteur(tmp,contextptr);
-	if (tmpb._VECTptr->size()==tmp._VECTptr->size())
-	  return dotvecteur(*tmp._VECTptr,*tmpb._VECTptr,contextptr);
-	return gensizeerr(gettext("Unable to multiply two objects"));
-      }
-      return symbolic_plot_makevecteur(a._SYMBptr->sommet,a._SYMBptr->feuille*b,false,contextptr);
-    }
-    if ((b.type==_SYMB) && equalposcomp(plot_sommets,b._SYMBptr->sommet)){
-      gen tmp=remove_at_pnt(b);
-      if (tmp.type==_VECT && tmp.subtype==_VECTOR__VECT)
-	return _vector(a*vector2vecteur(*tmp._VECTptr),contextptr);
-      gen b_(b);
-      if (b_.is_symb_of_sommet(at_curve) && b_._SYMBptr->feuille.type==_VECT && b_._SYMBptr->feuille._VECTptr->size()==2 && b_._SYMBptr->feuille._VECTptr->front().type==_VECT){
-	  // adjust param and cartesian eq
-	vecteur v=*b_._SYMBptr->feuille._VECTptr->front()._VECTptr;
-	if (v.size()==7)
-	  v[6] =v[6]*a;
-	if (v.size()>=6){
-	  gen ax,ay;
-	  reim(inv(a,contextptr),ax,ay,contextptr);
-	  v[5]=subst(v[5],makevecteur(x__IDNT_e,y__IDNT_e),makevecteur(ax*x__IDNT_e-ay*y__IDNT_e,ax*y__IDNT_e+ay*x__IDNT_e),false,contextptr);
-	  b_=symbolic(at_curve,gen(makevecteur(gen(v,b_._SYMBptr->feuille._VECTptr->front().subtype),b_._SYMBptr->feuille._VECTptr->back()),b_._SYMBptr->feuille.subtype));
-	}
-      }
-      return symbolic_plot_makevecteur(b_._SYMBptr->sommet,b_._SYMBptr->feuille*a,false,contextptr);
-    }
-    if (a.is_symb_of_sommet(at_neg)){
-      if (b.is_symb_of_sommet(at_neg))
-	return operator_times(a._SYMBptr->feuille,b._SYMBptr->feuille,contextptr);
-      return -operator_times(a._SYMBptr->feuille,b,contextptr);
-    }
-    if (b.is_symb_of_sommet(at_neg))
-      return -operator_times(a,b._SYMBptr->feuille,contextptr);
-    if (a.type==_POLY && b.is_symb_of_sommet(at_inv) && b._SYMBptr->feuille.type==_POLY){
-      polynome & A=*a._POLYptr;
-      polynome & B=*b._SYMBptr->feuille._POLYptr;
-      polynome Q ,R;
-      if (A.TDivRem(B,Q,R) && R.coord.empty())
-	return Q;
-    }
-    if (b.type==_POLY && a.is_symb_of_sommet(at_inv) && a._SYMBptr->feuille.type==_POLY){
-      polynome & A=*b._POLYptr;
-      polynome & B=*a._SYMBptr->feuille._POLYptr;
-      polynome Q ,R;
-      if (A.TDivRem(B,Q,R) && R.coord.empty())
-	return Q;
-    }
     if (a.type==_FRAC){
-      if (b.is_symb_of_sommet(at_inv) && is_cinteger(b._SYMBptr->feuille))
-	return (*a._FRACptr)*fraction(1,b._SYMBptr->feuille);
       if ( (b.type!=_SYMB) && (b.type!=_IDNT) ) {
 	if (b.type==_EXT)
 	  return fraction(a._FRACptr->num*b,a._FRACptr->den).normal();
@@ -6968,8 +6514,6 @@ namespace giac {
       return sym_mult(_FRAC2_SYMB(a),b,contextptr);
     }
     if (b.type==_FRAC){
-      if (a.is_symb_of_sommet(at_inv) && is_cinteger(a._SYMBptr->feuille))
-	return fraction(1,a._SYMBptr->feuille)*(*b._FRACptr);
       if ( (a.type!=_SYMB) && (a.type!=_IDNT) ){
 	if (a.type==_EXT)
 	  return fraction(a*b._FRACptr->num,b._FRACptr->den).normal();
@@ -6977,29 +6521,32 @@ namespace giac {
       }
       return sym_mult(a,_FRAC2_SYMB(b),contextptr);
     }
-    if (is_cinteger(a) && b.is_symb_of_sommet(at_inv) && is_cinteger(b._SYMBptr->feuille))
-      return a/b._SYMBptr->feuille;
-    if (is_cinteger(b) && a.is_symb_of_sommet(at_inv) && is_cinteger(a._SYMBptr->feuille))
-      return b/a._SYMBptr->feuille;
+    if (a.is_symb_of_sommet(at_neg)){
+      if (b.is_symb_of_sommet(at_neg))
+	return operator_times(a._SYMBptr->feuille,b._SYMBptr->feuille,contextptr);
+      return -operator_times(a._SYMBptr->feuille,b,contextptr);
+    }
+    if (b.is_symb_of_sommet(at_neg))
+      return -operator_times(a,b._SYMBptr->feuille,contextptr);
     if (a.type<=_CPLX && b.is_symb_of_sommet(at_inv)&& b._SYMBptr->feuille.type<=_CPLX)
       return fraction(a,b._SYMBptr->feuille).normal();
     if (b.type<=_CPLX && a.is_symb_of_sommet(at_inv)&& a._SYMBptr->feuille.type<=_CPLX)
       return fraction(b,a._SYMBptr->feuille).normal();
-    if ((a.type<=_REAL || a.type==_FLOAT_) && is_strictly_positive(-a,contextptr))
+    if ((a.type<=_REAL ) && is_strictly_positive(-a,contextptr))
       return -sym_mult(-a,b,contextptr);
-    if ((b.type<=_REAL || b.type==_FLOAT_) && is_strictly_positive(-b,contextptr))
+    if ((b.type<=_REAL) && is_strictly_positive(-b,contextptr))
       return -sym_mult(a,-b,contextptr);
     if (a.type==_EXT){
-      if (a.is_constant() && (b.type==_POLY))
-	return a*(*b._POLYptr);
-      else
-	return algebraic_EXTension(b*(*a._EXTptr),*(a._EXTptr+1));
+        if (a.is_constant() && (b.type==_POLY))
+            return a*(*b._POLYptr);
+        else
+	  return algebraic_EXTension(b*(*a._EXTptr),*(a._EXTptr+1));
     }
     if (b.type==_EXT){
-      if (b.is_constant() && (a.type==_POLY))
-	return (*a._POLYptr)*b;
-      else
-	return algebraic_EXTension(a*(*b._EXTptr),*(b._EXTptr+1));
+        if (b.is_constant() && (a.type==_POLY))
+            return (*a._POLYptr)*b;
+        else
+            return algebraic_EXTension(a*(*b._EXTptr),*(b._EXTptr+1));
     }
     if ( (a.type==_INT_) && (a.val<0) && (a.val!=1<<31)){
       if (b.is_symb_of_sommet(at_inv) && (b._SYMBptr->feuille.type<_POLY || b._SYMBptr->feuille.is_symb_of_sommet(at_neg)))
@@ -7017,51 +6564,50 @@ namespace giac {
       vecteur & va=*a._SYMBptr->feuille._VECTptr;
       if (is_equal(b)){
 	vecteur & vb=*b._SYMBptr->feuille._VECTptr;
-	return new_ref_symbolic(symbolic(a._SYMBptr->sommet,gen(makenewvecteur(va.front()*vb.front(),va.back()*vb.back()),_SEQ__VECT)));
+	return (symbolic(a._SYMBptr->sommet,gen(makenewvecteur(va.front()*vb.front(),va.back()*vb.back()),_SEQ__VECT)));
       }
       else
-	return new_ref_symbolic(symbolic(a._SYMBptr->sommet,gen(makenewvecteur(va.front()*b,va.back()*b),_SEQ__VECT)));
+	return (symbolic(a._SYMBptr->sommet,gen(makenewvecteur(va.front()*b,va.back()*b),_SEQ__VECT)));
     }
     if (is_equal(b)){
       vecteur & vb=*b._SYMBptr->feuille._VECTptr;
-      return new_ref_symbolic(symbolic(b._SYMBptr->sommet,gen(makenewvecteur(a*vb.front(),a*vb.back()),_SEQ__VECT)));
+      return (symbolic(b._SYMBptr->sommet,gen(makenewvecteur(a*vb.front(),a*vb.back()),_SEQ__VECT)));
     }
     if ((a.type==_SYMB)&& (b.type==_SYMB)){
       if ((a._SYMBptr->sommet==at_prod) && (b._SYMBptr->sommet==at_prod))
-	return new_ref_symbolic(symbolic(at_prod,gen(mergevecteur(*(a._SYMBptr->feuille._VECTptr),*(b._SYMBptr->feuille._VECTptr)),_SEQ__VECT)));
+	return symb_prod(mergevecteur(*(a._SYMBptr->feuille._VECTptr),*(b._SYMBptr->feuille._VECTptr)));
       else {
 	if (a._SYMBptr->sommet==at_prod)
-	  return new_ref_symbolic(symbolic(*a._SYMBptr,b));
+	  return (symbolic(*a._SYMBptr,b));
 	else {
 	  if (b._SYMBptr->sommet==at_prod)
-	    return new_ref_symbolic(symbolic(a,b._SYMBptr->sommet,b._SYMBptr->feuille));
+	    return (symbolic(a,b._SYMBptr->sommet,b._SYMBptr->feuille));
 	  else
-	    return new_ref_symbolic(symbolic(at_prod,gen(makenewvecteur(a,b),_SEQ__VECT)));
+	    return symb_prod2(a,b);
 	}
       }
     }
     if (b.type==_SYMB){
       if (b._SYMBptr->sommet==at_prod)
-	return new_ref_symbolic(symbolic(a,b._SYMBptr->sommet,b._SYMBptr->feuille));
+	return (symbolic(a,b._SYMBptr->sommet,b._SYMBptr->feuille));
       else
-	return new_ref_symbolic(symbolic(at_prod,gen(makenewvecteur(a,b),_SEQ__VECT)));
+	return symb_prod2(a,b);
     }
     if (a.type==_SYMB){
       if (a._SYMBptr->sommet==at_prod)
-	return new_ref_symbolic(symbolic(*a._SYMBptr,b));
-      else 
-	return new_ref_symbolic(symbolic(at_prod,gen(b.type==_INT_?makenewvecteur(b,a):makenewvecteur(a,b),_SEQ__VECT)));
+	return (symbolic(*a._SYMBptr,b));
+      else
+	return b.type==_INT_?symb_prod2(b,a):symb_prod2(a,b);
     }
     if ((a.type==_IDNT) || (b.type==_IDNT))
-      return new_ref_symbolic(symbolic(at_prod,gen(makenewvecteur(a,b),_SEQ__VECT)));
+      return symb_prod2(a,b);
     if (a.type==_MOD)
       return a*makemod(b,*(a._MODptr+1));
     if (b.type==_MOD)
       return b*makemod(a,*(b._MODptr+1));
-    return new_ref_symbolic(symbolic(at_prod,gen(makenewvecteur(a,b),_SEQ__VECT)));
+    return symb_prod2(a,b);
     // settypeerr(gettext("sym_mult"));
   }
-
 
   static vecteur inv__VECT(const vecteur & v,GIAC_CONTEXT){
     vecteur w;
@@ -7135,8 +6681,6 @@ namespace giac {
 	return a;
       else
 	return fraction(1,a);
-    case _REAL:
-      return a._REALptr->inv();
     case _DOUBLE_:
       return 1/a._DOUBLE_val;
     case _CPLX:
@@ -7144,7 +6688,7 @@ namespace giac {
 	if (is_one(abs(*(a._CPLXptr+1),contextptr)))
 	  return -a;
       }
-      if ( a._CPLXptr->type==_DOUBLE_ || a._CPLXptr->type==_FLOAT_ ||a._CPLXptr->type==_REAL || (a._CPLXptr+1)->type==_DOUBLE_ || (a._CPLXptr+1)->type==_FLOAT_ || (a._CPLXptr+1)->type==_REAL ){
+      if ( a._CPLXptr->type==_DOUBLE_ || (a._CPLXptr+1)->type==_DOUBLE_  ){
 	gen a2=no_context_evalf(a.squarenorm(contextptr));
 	if (is_inf(a2)){
 	  gen theta=arg(a,contextptr);
@@ -7164,19 +6708,13 @@ namespace giac {
     case _SYMB:
       if ((a==plus_inf) || (a==minus_inf))
 	return 0;
+      if (a._SYMBptr->sommet==at_inv)
+	return a._SYMBptr->feuille;
       {
-	vecteur v=alg_lvar(a); // change for limit(1/(1+sqrt(2)*cos(x))*sin(x-3*pi/4),x=3*pi/4); maybe we should only do evalf test and return undef
+	vecteur v=alg_lvar(a);
 	if (v.size()==1 && v.front().type==_VECT && v.front()._VECTptr->empty() && is_zero(evalf(a,1,contextptr)) && is_exactly_zero(recursive_normal(a,contextptr)))
 	return unsigned_inf;
       }
-      if (a.is_symb_of_sommet(at_unit)){
-	if (equalposcomp(lidnt(a),cst_pi)!=0)
-	  return inv(evalf(a,1,contextptr),contextptr);
-	return new_ref_symbolic(symbolic(at_unit,makenewvecteur(inv(a._SYMBptr->feuille._VECTptr->front(),contextptr),inv_distrib(a._SYMBptr->feuille._VECTptr->back(),contextptr))));
-      }
-      // if (equalposcomp(plot_sommets,a._SYMBptr->sommet)) return symbolic_plot_makevecteur( a._SYMBptr->sommet,inv(a._SYMBptr->feuille,contextptr),false,contextptr); // FIXME
-      if (a._SYMBptr->sommet==at_inv)
-	return a._SYMBptr->feuille;
       if (a._SYMBptr->sommet==at_NTHROOT && a._SYMBptr->feuille.type==_VECT && a._SYMBptr->feuille._VECTptr->size()==2){
 	return symbolic(at_NTHROOT,makesequence(-a._SYMBptr->feuille._VECTptr->front(),a._SYMBptr->feuille._VECTptr->back()));
       }
@@ -7184,9 +6722,9 @@ namespace giac {
 	return -inv(a._SYMBptr->feuille,contextptr);      
       else {
 	if (a._SYMBptr->sommet==at_prod)
-	  return new_ref_symbolic(symbolic(at_prod,gen(inv__VECT(*(a._SYMBptr->feuille._VECTptr),contextptr),a._SYMBptr->feuille.subtype)));
+	  return (symb_prod(gen(inv__VECT(*(a._SYMBptr->feuille._VECTptr),contextptr),a._SYMBptr->feuille.subtype)));
 	else
-	  return new_ref_symbolic(symbolic(at_inv,a));
+	  return symb_inv(a); // (symbolic(at_inv,a));
       }
     case _VECT:
       if (a.subtype==_PNT__VECT)
@@ -7194,13 +6732,13 @@ namespace giac {
       if (a.subtype==_POLY1__VECT)
 	return fraction(gen(vecteur(1,plus_one),_POLY1__VECT),a);
       if (a.subtype==_MATRIX__VECT && !is_squarematrix(a))
-	return gensizeerr(gettext("Unsupported array inverse"));
+	return gensizeerr(gettext("Inv of non-square matrix"));
       return gen(inv__VECT(*a._VECTptr,contextptr),a.subtype);
     case _EXT:
       return inv_EXT(a);
     case _SPOL1:
       return spdiv(gen2spol1(1),*a._SPOL1ptr,contextptr);
-    case _USER:return a._USERptr->inv();
+      //case _USER:return a._USERptr->inv();
     case _MOD:
       return modinv(a);
     case _FRAC:
@@ -7283,13 +6821,11 @@ namespace giac {
 	  return gen(res,_POLY1__VECT);
       }
       /* no break, _VECT handled by next case */
-    case _CPLX: case _REAL:  case _EXT: case _MOD: case _USER:
+    case _CPLX: case _EXT: case _MOD: 
       // gauss integer power
       if (!exponent){
 	if (ckmatrix(base))
 	  return midn(int(base._VECTptr->size()));
-	if (base.type==_USER)
-	  return base*inv(base,context0);
 	return 1;
       }
       inpow(base,exponent,res);
@@ -7472,7 +7008,7 @@ namespace giac {
     if (p.coord.empty())
       return zero;
     gen coefft; int pt=coefftype(p,coefft);
-    if (pt==_MOD || pt==_USER){
+    if (pt==_MOD ){
       polynome res(p);
       mulpoly(res,coefft/(e*coefft),res);
       return res;
@@ -7520,7 +7056,7 @@ namespace giac {
       interrupted = true; ctrl_c=false;
       return gensizeerr(gettext("Stopped by user interruption.")); 
     }
-    if (b.type==_MOD || a.type==_MOD)
+    if (b.type==_MOD)
       return a*inv(b,contextptr);
     switch ( (a.type<< _DECALAGE) | b.type ) {
     case _INT___INT_: case _ZINT__INT_: case _ZINT__ZINT:
@@ -7538,24 +7074,8 @@ namespace giac {
       else
 	return rdivsimp(a,b);
     case _CPLX__INT_: case _CPLX__ZINT:
-      if ( (a._CPLXptr->type==_DOUBLE_ || a._CPLXptr->type==_FLOAT_) || ((a._CPLXptr+1)->type==_DOUBLE_ || (a._CPLXptr+1)->type==_FLOAT_) )
+      if ( (a._CPLXptr->type==_DOUBLE_ ) || ((a._CPLXptr+1)->type==_DOUBLE_ ) )
 	return rdiv(no_context_evalf(a),no_context_evalf(b),contextptr);
-      if (a._CPLXptr->type==_REAL){
-	if ((a._CPLXptr+1)->type==_REAL)
-	  return rdiv(*a._CPLXptr,b,contextptr)+cst_i*rdiv(*(a._CPLXptr+1),b,contextptr);
-#ifdef HAVE_LIBMPFR
-	return rdiv(*a._CPLXptr,b,contextptr)+cst_i*rdiv(real_object(*(a._CPLXptr+1),mpfr_get_prec(a._CPLXptr->_REALptr->inf)),b,contextptr);
-#else
-	return rdiv(*a._CPLXptr,b,contextptr)+cst_i*rdiv(real_object(*(a._CPLXptr+1)),b,contextptr);
-#endif
-      }
-      if ((a._CPLXptr+1)->type==_REAL){
-#ifdef HAVE_LIBMPFR
-	return rdiv(real_object(*a._CPLXptr,mpfr_get_prec((a._CPLXptr+1)->_REALptr->inf)),b,contextptr)+cst_i*rdiv(*(a._CPLXptr+1),b,contextptr);
-#else
-	return rdiv(real_object(*a._CPLXptr),b)+cst_i*rdiv(*(a._CPLXptr+1),b,contextptr);
-#endif
-      }
       if (is_exactly_zero(b))
 	return unsigned_inf;
       if (is_exactly_zero(a%b))
@@ -7563,10 +7083,8 @@ namespace giac {
       else
 	return rdivsimp(a,b);
     case _CPLX__CPLX: 
-      if (a.subtype==3 || b.subtype==3)
-	return a*inv(b,contextptr);
       return adjust_complex_display(rdiv(a*conj(b,contextptr),b.squarenorm(contextptr),contextptr),a,b);
-    case _DOUBLE___CPLX: case _FLOAT___CPLX: case _INT___CPLX: case _ZINT__CPLX: case _REAL__CPLX:
+    case _DOUBLE___CPLX: case _INT___CPLX: case _ZINT__CPLX: 
       if (is_one(a))
 	return inv(b,contextptr);
       return rdiv(a*conj(b,contextptr),b.squarenorm(contextptr),contextptr);
@@ -7576,30 +7094,14 @@ namespace giac {
       return a._DOUBLE_val/b.val;
     case _INT___DOUBLE_:
       return a.val/b._DOUBLE_val;
-    case _FLOAT___FLOAT_:
-      return a._FLOAT_val/b._FLOAT_val;
-    case _FLOAT___INT_:
-      return a._FLOAT_val/giac_float(b.val);
-    case _INT___FLOAT_:
-      return giac_float(a.val)/b._FLOAT_val;
-#ifdef BCD
-    case _FLOAT___ZINT:
-      return a._FLOAT_val/giac_float(b._ZINTptr);
-    case _ZINT__FLOAT_:
-      return giac_float(a._ZINTptr)/b._FLOAT_val;
-#endif
-    case _FLOAT___DOUBLE_:
-      return a._FLOAT_val/giac_float(b._DOUBLE_val);
-    case _DOUBLE___FLOAT_:
-      return giac_float(a._DOUBLE_val)/b._FLOAT_val;
     case _ZINT__DOUBLE_:
       return mpz_get_d(*a._ZINTptr)/b._DOUBLE_val;
-    case _CPLX__DOUBLE_: case _CPLX__REAL:
+    case _CPLX__DOUBLE_: 
       return gen(rdiv(*a._CPLXptr,b,contextptr),rdiv(*(a._CPLXptr+1),b,contextptr));
     case _DOUBLE___ZINT:
       return a._DOUBLE_val/mpz_get_d(*b._ZINTptr);
       // _CPLX__DOUBLE_, _DOUBLE___CPLX, _CPLX__CPLX, _ZINT__CPLX, _INT___CPLX
-    case _VECT__INT_: case _VECT__ZINT: case _VECT__DOUBLE_: case _VECT__FLOAT_: case _VECT__CPLX: case _VECT__FRAC:
+    case _VECT__INT_: case _VECT__ZINT: case _VECT__DOUBLE_: case _VECT__CPLX: case _VECT__FRAC:
     case _VECT__SYMB: case _VECT__IDNT: case _VECT__POLY: case _VECT__EXT:
       if (a.subtype==_VECTOR__VECT)
 	return a*inv(b,contextptr);
@@ -7608,11 +7110,7 @@ namespace giac {
       if (a.subtype==_POLY1__VECT || b.subtype==_POLY1__VECT)
 	return fraction(a,b).normal();
       if (is_squarematrix(b)){
-	if (abs_calc_mode(contextptr)==38){
-	  *logptr(contextptr) << gettext("Unsupported array division") << '\n';
-	  return inv(b,contextptr)*a;
-	}
-	*logptr(contextptr) << gettext("Unsupported array division") << '\n';
+	*logptr(contextptr) << gettext("Warning, pointwise division of a by b. For matrix division, please use inv(b)*a or a*inv(b)") << endl;
       }
       if (b._VECTptr->size()==1)
 	return rdiv(a,b._VECTptr->front(),contextptr);
@@ -7628,9 +7126,9 @@ namespace giac {
       return (*a._FRACptr)/(*b._FRACptr);
     case _SPOL1__SPOL1:
       return spdiv(*a._SPOL1ptr,*b._SPOL1ptr,contextptr);
-    case _POLY__DOUBLE_: case _POLY__FLOAT_: case _POLY__REAL:
+    case _POLY__DOUBLE_:  
       return (*a._POLYptr)/b;
-    case _POLY__INT_: 
+    case _POLY__INT_:
       if (b.val==1) return a;
     case _POLY__ZINT: case _POLY__CPLX:
       return divpoly(*a._POLYptr,b);
@@ -7643,13 +7141,15 @@ namespace giac {
       }
       // if (is_one(a)) return fraction(b._FRACptr->den,b._FRACptr->num);
       return (b._FRACptr->den*a)/b._FRACptr->num;
-    case _INT___VECT: case _ZINT__VECT: case _CPLX__VECT: case _DOUBLE___VECT: case _FLOAT___VECT: case _SYMB__VECT:
+    case _INT___VECT: case _ZINT__VECT: case _CPLX__VECT: case _DOUBLE___VECT:  case _SYMB__VECT:
       if (b.subtype==_LIST__VECT)
 	return apply2nd(a,b,contextptr,rdiv);
       if (ckmatrix(b))
 	return a*inv(b,contextptr);
+#if 0
       if (calc_mode(contextptr)==1 && b.subtype!=_POLY1__VECT)
 	return apply2nd(a,b,contextptr,rdiv);
+#endif
       return fraction(a,b);
     default:
 #ifdef TIMEOUT
@@ -7674,30 +7174,24 @@ namespace giac {
 	      var2=var1;
 	    }
 	    if (var1==var2)
-	      return symbolic(at_program,gen(makevecteur(var1,0,rdiv(res1,res2,contextptr)),_SEQ__VECT));
+	      return symb_prog3(var1,0,rdiv(res1,res2,contextptr));
 	  }
 	  if (!is_constant_wrt(b,var1,contextptr))
-	    *logptr(contextptr) << "Warning function/constant with constant dependent of mute variable" << '\n';
-	  return symbolic(at_program,gen(makevecteur(var1,0,rdiv(res1,b,contextptr)),_SEQ__VECT));
+	    *logptr(contextptr) << "Warning function/constant with constant dependant of mute variable" << endl;
+	  return symb_prog3(var1,0,rdiv(res1,b,contextptr));
 	}
 	if (is_algebraic_program(b,var2,res2)){
 	  if (!is_constant_wrt(a,var2,contextptr))
-	    *logptr(contextptr) << "Warning constant/function with constant dependent of mute variable" << '\n';
-	  return symbolic(at_program,gen(makevecteur(var2,0,rdiv(a,res2,contextptr)),_SEQ__VECT));	
+	    *logptr(contextptr) << "Warning constant/function with constant dependant of mute variable" << endl;
+	  return symb_prog3(var2,0,rdiv(a,res2,contextptr));	
 	}
       }
-      if (a.type==_FLOAT_)
-	return rdiv(evalf_double(a,1,contextptr),b,contextptr);
-      if (b.type==_FLOAT_)
-	return rdiv(a,evalf_double(b,1,contextptr),contextptr);      
-      if (a.is_symb_of_sommet(at_unit) || b.is_symb_of_sommet(at_unit))
-	return operator_times(a,inv(b,contextptr),contextptr);
       if (is_one(b))
 	return chkmod(a,b);
       if (is_minus_one(b))
 	return chkmod(-a,b);
       if (is_exactly_zero(a)){
-	if (!is_exactly_zero(b))
+	if (!is_exactly_zero(normal(b,contextptr)))
 	  return a;
 	else
 	  return undef;
@@ -7717,7 +7211,7 @@ namespace giac {
 	else
 	  return zero;
       }
-      if (a==b && a.type!=_REAL && b.type!=_REAL)
+      if (a==b)
 	return chkmod(plus_one,a);
       if (a.is_approx()){
 	gen b1;
@@ -7755,18 +7249,12 @@ namespace giac {
 	  return rdiv(a1,b,contextptr);
 	}
       }
-      if (a.type==_REAL)
-	return (*a._REALptr)*inv(b,contextptr);
-      if (b.type==_REAL)
-	return a*b._REALptr->inv();
       if (a.type==_SPOL1)
 	return spdiv(*a._SPOL1ptr,gen2spol1(b),contextptr);
       if (b.type==_SPOL1)
 	return spdiv(gen2spol1(a),*b._SPOL1ptr,contextptr);      
-      if (a.type==_USER && b.type!=_USER)
-	return (*a._USERptr)/b;
-      if (a.type==_USER || b.type==_USER) 
-	return a*inv(b,contextptr);
+      //if (a.type==_USER && b.type!=_USER)return (*a._USERptr)/b;
+      //if (a.type==_USER || b.type==_USER) return a*inv(b,contextptr);
       if (a.type==_FRAC){
 	if ( (b.type!=_SYMB) && (b.type!=_IDNT) )
 	  return (*a._FRACptr)/b;
@@ -7776,21 +7264,21 @@ namespace giac {
 	if ( a.type!=_SYMB && a.type!=_IDNT && !(a.type==_VECT && a.subtype==_POLY1__VECT) ) // POLY1__VECT check added feb 2017 for poly hermite normal form
 	  return a/(*b._FRACptr);
 	//return rdiv(a,_FRAC2_SYMB(b),contextptr);
-	// return symbolic(at_prod,makesequence(a,b._FRACptr->den,symbolic(at_inv,b._FRACptr->num)));
+	// return symb_prod(makesequence(a,b._FRACptr->den,symbolic(at_inv,b._FRACptr->num)));
 	return (b._FRACptr->den*a)/b._FRACptr->num;
       }
       if (is_equal(a)){
 	vecteur & va=*a._SYMBptr->feuille._VECTptr;
 	if (is_equal(b)){
 	  vecteur & vb=*b._SYMBptr->feuille._VECTptr;
-	  return new_ref_symbolic(symbolic(a._SYMBptr->sommet,makesequence(rdiv(va.front(),vb.front(),contextptr),rdiv(va.back(),vb.back(),contextptr))));
+	  return (symbolic(a._SYMBptr->sommet,makesequence(rdiv(va.front(),vb.front(),contextptr),rdiv(va.back(),vb.back(),contextptr))));
 	}
 	else
-	  return new_ref_symbolic(symbolic(a._SYMBptr->sommet,makesequence(rdiv(va.front(),b,contextptr),rdiv(va.back(),b,contextptr))));
+	  return (symbolic(a._SYMBptr->sommet,makesequence(rdiv(va.front(),b,contextptr),rdiv(va.back(),b,contextptr))));
       }
       if (is_equal(b)){
 	vecteur & vb=*b._SYMBptr->feuille._VECTptr;
-	return new_ref_symbolic(symbolic(b._SYMBptr->sommet,makesequence(rdiv(a,vb.front(),contextptr),rdiv(a,vb.back(),contextptr))));
+	return (symbolic(b._SYMBptr->sommet,makesequence(rdiv(a,vb.front(),contextptr),rdiv(a,vb.back(),contextptr))));
       }
       /* commented since * is not always commutative
       if (a.is_symb_of_sommet(at_prod) && a._SYMBptr->feuille.type==_VECT){
@@ -7801,13 +7289,13 @@ namespace giac {
 	  if (v.size()==1)
 	    return v.front();
 	  else
-	    return new_ref_symbolic(symbolic(at_prod,v));
+	    return (symb_prod(v));
 	}
       }
       */
       if (b.is_symb_of_sommet(at_neg))
 	return -rdiv(a,b._SYMBptr->feuille,contextptr);
-      if ((b.type<=_REAL || b.type==_FLOAT_) && is_strictly_positive(-b,context0))
+      if ((b.type<=_REAL ) && is_strictly_positive(-b,context0))
 	return -rdiv(a,-b,contextptr);
       if ( (a.type==_SYMB) || (a.type==_IDNT) || (a.type==_FUNC) || (b.type==_SYMB) || (b.type==_IDNT) || (b.type==_FUNC) ){
 	if (is_one(a)) return symb_inv(b);
@@ -7817,7 +7305,7 @@ namespace giac {
 	  vptr->v.reserve(a._SYMBptr->feuille._VECTptr->size()+1);
 	  vptr->v=*a._SYMBptr->feuille._VECTptr;
 	  vptr->v.push_back(symb_inv(b));
-	  return symbolic(at_prod,gen(vptr,_SEQ__VECT));
+	  return symb_prod(vptr);
 	}
 	return operator_times(a,symb_inv(b),contextptr);
       }
@@ -7826,7 +7314,6 @@ namespace giac {
       return fraction(a,b).normal();
     }
   }
-
 
   /* Tests */
   // 0 if unknown, 1 if >0, -1 if <0
@@ -7849,10 +7336,6 @@ namespace giac {
 	return -1;
     case _ZINT: 
       return signint(mpz_cmp_si(*a._ZINTptr,0));
-    case _REAL:
-      if (a._REALptr->maybe_zero())
-	return 0;
-      return a._REALptr->is_positive(); // this is the sign
     case _FRAC:
       return fastsign(a._FRACptr->num,contextptr)*fastsign(a._FRACptr->den,contextptr);
     case _CPLX:
@@ -7965,8 +7448,6 @@ namespace giac {
       return a.val>=0;
     case _CPLX:
       return is_zero(*(a._CPLXptr+1)) && is_positive(*a._CPLXptr,contextptr);
-    case _REAL:
-      return (a._REALptr->is_positive()>0) || a._REALptr->is_zero();
     case _ZINT:
       if (mpz_sgn(*a._ZINTptr)==-1)
 	return false;
@@ -7999,10 +7480,9 @@ namespace giac {
 
   bool is_strictly_positive(const gen & a,GIAC_CONTEXT){
     if (a.type==_REAL){
-      if (a._REALptr->maybe_zero())
 	return false;
     } else {
-      if (is_exactly_zero(a))
+      if (is_zero(a,contextptr))
 	return false;
     }
     return is_positive(a,contextptr);
@@ -8063,11 +7543,6 @@ namespace giac {
   gen min(const gen & a, const gen & b,GIAC_CONTEXT){
     if (a.type==_DOUBLE_ && b.type==_DOUBLE_)
       return a._DOUBLE_val<b._DOUBLE_val?a._DOUBLE_val:b._DOUBLE_val;
-    if (a.type==_REAL && b.type==_REAL){
-      gen s=sign(a-b,contextptr);
-      if (s==1) return b;
-      if (s==-1) return a;
-    }
     if (a==b)
       return a;
     if (is_inf(a)){
@@ -8104,11 +7579,6 @@ namespace giac {
       return a.val<b.val?b.val:a.val;
     if (a.type==_DOUBLE_ && b.type==_DOUBLE_)
       return a._DOUBLE_val<b._DOUBLE_val?b._DOUBLE_val:a._DOUBLE_val;
-    if (a.type==_REAL && b.type==_REAL){
-      gen s=sign(a-b,contextptr);
-      if (s==1) return a;
-      if (s==-1) return b;
-    }
     if (a==b)
       return a;
     if (is_inf(a)){
@@ -8234,7 +7704,7 @@ namespace giac {
       return double(a.val)==b._DOUBLE_val;
     case _DOUBLE___INT_:
       return a._DOUBLE_val==double(b.val);
-    case _REAL__INT_: case _INT___REAL: case _REAL__ZINT: case _ZINT__REAL: case _REAL__FRAC: case _FRAC__REAL: case _DOUBLE___FRAC: case _FRAC__DOUBLE_: case _FRAC__FLOAT_: case _FLOAT___FRAC:
+    case _DOUBLE___FRAC: case _FRAC__DOUBLE_: 
       return is_exactly_zero(a-b);
     case _ZINT__INT_:
       return (mpz_cmp_si(*a._ZINTptr,b.val)==0);
@@ -8297,18 +7767,15 @@ namespace giac {
 	return true;
       if (a.type<=_REAL && b.type<=_REAL)
 	return is_zero(a-b,contextptr);
-      if ( (a.type==_FLOAT_ || a.type==_DOUBLE_ || a.type==_REAL) && (b.type<=_REAL || b.type==_FRAC || b.type==_FLOAT_))
+      if ( (a.type==_DOUBLE_ ) && (b.type<=_REAL || b.type==_FRAC ))
 	return is_zero(a-evalf(b,1,contextptr));
-      if ( (b.type==_FLOAT_ || b.type==_DOUBLE_ || b.type==_REAL) && (a.type<=_REAL || a.type==_FRAC || a.type==_FLOAT_))
+      if ( (b.type==_DOUBLE_ ) && (a.type<=_REAL || a.type==_FRAC ))
 	return is_zero(evalf(a,1,contextptr)-b);
-      if (a.type==_USER)
-	return *a._USERptr==b;
-      if (b.type==_USER)
-	return *b._USERptr==a;
+      //if (a.type==_USER)return *a._USERptr==b;
+      //if (b.type==_USER)return *b._USERptr==a;
       if (a.type==_INT_ && a.subtype==_INT_TYPE && b.type==_FUNC){
 	if (a==_STRNG && b==at_string) return true;
 	if (a==_VECT && b==at_vector) return true;
-	if (a==_FLOAT_ && b==at_float) return true;
 	if (a==_DOUBLE_ && b==at_real) return true;
 	if (a==_CPLX && b==at_complex) return true;
 	if ( (a==_INT_||a==_ZINT) && b==at_int) return true;
@@ -8431,18 +7898,6 @@ namespace giac {
       if (a._DOUBLE_val<-eps)      
 	return -1.0;
       return 0.0;
-    case _REAL:
-      {
-	if (a._REALptr->is_zero())
-	  return 0;
-	if (a._REALptr->maybe_zero())
-	  return undef;
-	int res=a._REALptr->is_positive();
-	if (res)
-	  return res;
-	return undef;
-      }
-      return -1;
     case _CPLX:
       return a/abs(a,contextptr);
     case _FRAC:
@@ -8492,10 +7947,8 @@ namespace giac {
     }
     if (a.type==_STRNG && b.type==_STRNG)
       return *a._STRNGptr>=*b._STRNGptr;
-    if (a.type==_USER)
-      return (*a._USERptr>b);
-    if (b.type==_USER)
-      return (*b._USERptr<=a);
+    //if (a.type==_USER)return (*a._USERptr>b);
+    //if (b.type==_USER)return (*b._USERptr<=a);
     if (a.is_symb_of_sommet(at_superieur_strict) || a.is_symb_of_sommet(at_superieur_egal) || a.is_symb_of_sommet(at_inferieur_strict) || a.is_symb_of_sommet(at_inferieur_egal) )
       return false;
     if (b.is_symb_of_sommet(at_superieur_strict) || b.is_symb_of_sommet(at_superieur_egal) || b.is_symb_of_sommet(at_inferieur_strict) || b.is_symb_of_sommet(at_inferieur_egal) )
@@ -8511,19 +7964,15 @@ namespace giac {
       if (approx.type==_DOUBLE_ ){
 #ifdef HAVE_LIBMPFR
 	// FIXME?? try to avoid rounding error with more digits
-	if (fabs(approx._DOUBLE_val)<1e-5 && (a-b).type!=_FRAC){
+	if (fabs(approx._DOUBLE_val)<1e-8 && (a-b).type!=_FRAC){
 	  gen tmp=accurate_evalf(eval(a-b,1,contextptr),1000);
-	  tmp=evalf_double(tmp,1,contextptr);
+	  tmp=evalf_double(approx,1,contextptr);
 	  if (tmp.type==_DOUBLE_)
 	    approx=tmp;
 	}
 #endif	
 	return (approx._DOUBLE_val>0);
       }
-      if (approx.type==_REAL)
-	return is_strictly_positive(approx,contextptr);
-      if (approx.type==_FLOAT_ )
-	return (approx._FLOAT_val>0);
     }
     gen g=sign(a-b,contextptr); 
     if (is_one(g))
@@ -8576,7 +8025,7 @@ namespace giac {
   }
 
   gen superieur_egal(const gen & a,const gen & b,GIAC_CONTEXT){
-#if 1
+#if 0
     if ( (a.type==_REAL && b.type<=_REAL) ||
 	 (b.type==_REAL && a.type<=_REAL) ){
       if (is_positive(a-b,contextptr))
@@ -8667,8 +8116,6 @@ namespace giac {
       return !a.val; 
     case _ZINT: 
       return (!mpz_sgn(*a._ZINTptr));
-    case _REAL:
-      return fabs(evalf_double(a,1,contextptr)._DOUBLE_val)<=epsilon(contextptr);// return a._REALptr->is_zero();
     case _CPLX:
       return (is_zero(*a._CPLXptr,contextptr) && is_zero(*(a._CPLXptr+1),contextptr));
     case _DOUBLE_:
@@ -8681,10 +8128,7 @@ namespace giac {
       return is_zero(a._FRACptr->num,contextptr);
     case _MOD:
       return is_zero(*a._MODptr,contextptr);
-    case _USER:return a._USERptr->is_zero();
-    case _SYMB:
-      if (a._SYMBptr->sommet==at_unit)
-	return is_zero(a._SYMBptr->feuille[0]);
+      //case _USER:return a._USERptr->is_zero();
     default: 
       return false;
     }
@@ -8696,8 +8140,6 @@ namespace giac {
       return !a.val; 
     case _ZINT: 
       return (!mpz_sgn(*a._ZINTptr));
-    case _REAL:
-      return a._REALptr->is_zero();
     case _CPLX:
       return (is_exactly_zero(*a._CPLXptr) && is_exactly_zero(*(a._CPLXptr+1)));
     case _DOUBLE_:
@@ -8708,7 +8150,7 @@ namespace giac {
       return is_exactly_zero(a._FRACptr->num);
     case _MOD:
       return is_exactly_zero(*a._MODptr);
-    case _USER:return a._USERptr->is_zero();
+      //case _USER:return a._USERptr->is_zero();
     default: 
       return false;
     }
@@ -8720,8 +8162,6 @@ namespace giac {
       return a.val==1; 
     case _ZINT: 
       return mpz_cmp_si(*a._ZINTptr,1)==0;
-    case _REAL:
-      return is_exactly_zero(a-1);
     case _CPLX:
       return is_one(*a._CPLXptr) && is_zero(*(a._CPLXptr+1));
     case _DOUBLE_:
@@ -8734,7 +8174,7 @@ namespace giac {
       return a._FRACptr->num == a._FRACptr->den;
     case _MOD:
       return is_one(*a._MODptr);
-     case _USER:return a._USERptr->is_one();
+      //case _USER:return a._USERptr->is_one();
     default: 
       return false;
     }
@@ -8750,8 +8190,6 @@ namespace giac {
       return (is_minus_one(*a._CPLXptr) && is_zero(*(a._CPLXptr+1),context0));
     case _DOUBLE_:
       return a._DOUBLE_val==-1;
-    case _REAL:
-      return is_exactly_zero(a+1);
     case _VECT:
       return a._VECTptr->size()==1 && is_minus_one(a._VECTptr->front());
     case _POLY:
@@ -8765,7 +8203,7 @@ namespace giac {
 	return is_minus_one(*a._MODptr);
     case _SYMB:
       return a._SYMBptr->sommet==at_neg && is_one(a._SYMBptr->feuille);
-      case _USER:return a._USERptr->is_minus_one();
+      //case _USER:return a._USERptr->is_minus_one();
     default: 
       return false;
     }
@@ -8773,7 +8211,7 @@ namespace giac {
 
   bool is_sq_minus_one(const gen & a){
     switch (a.type ) {
-    case _CPLX: case _MOD: case _USER:
+    case _CPLX: case _MOD: 
       return is_minus_one(a*a);
     case _VECT:
       return a._VECTptr->size()==1 && is_sq_minus_one(a._VECTptr->front());
@@ -8861,7 +8299,7 @@ namespace giac {
     }
     if (type==_IDNT)
       return (symbolic(at_at,gen(makenewvecteur(*this,i),_SEQ__VECT)));
-    if (type==_USER)return (*_USERptr)[i];
+    //if (type==_USER)return (*_USERptr)[i];
     if (type==_MAP){
       gen_map::const_iterator it=_MAPptr->find(i),itend=_MAPptr->end();
       if (it!=itend)
@@ -8887,11 +8325,6 @@ namespace giac {
     }
     if (i.type==_DOUBLE_)
       return (*this)[(int) i._DOUBLE_val];
-    if (i.type==_REAL){
-      double id=i.evalf_double(1,contextptr)._DOUBLE_val;
-      if (int(id)==id)
-	return (*this)[int(id)];
-    }
     if (i.type==_SYMB){
       bool ideuxpoints=i._SYMBptr->sommet==at_deuxpoints;
       if (i._SYMBptr->sommet==at_interval || ideuxpoints) {
@@ -9152,11 +8585,11 @@ namespace giac {
 	return _SYMBptr->sommet(f(i,contextptr),contextptr);
       vecteur lid(lidnt(*this));
       if (lid.size()==1 && !has_algebraic_program(*this)){
-	if (lid.front()==vx_var || lid.front()==t__IDNT_e)
+	if (lid.front()==vx_var())
 	// suspect something like P:=x^3+1 then P(2)
-	  *logptr(contextptr) << "Warning, evaluating univariate expression of x(value) like if expression was a function.\nUse subst(" << *this << "," << lid.front() << "," << i << ")" << endl;
+	  *logptr(contextptr) << "Warning, evaluating univariate expression of x(value) like if expression was a function.\nYou should write subst(" << *this << "," << lid.front() << "," << i << ")" << endl;
 	else
-	  return gensizeerr("Expression used like a function "+this->print(contextptr)+"\nUse subst("+this->print(contextptr)+","+lid.front().print(contextptr)+","+i.print(contextptr)+")");
+	  return gensizeerr("Expression used like a function "+this->print(contextptr)+"\nYou should write subst("+this->print(contextptr)+","+lid.front().print(contextptr)+","+i.print(contextptr)+")");
 	return subst(*this,lid.front(),i,false,contextptr);
       }
       vecteur res(*f._VECTptr);
@@ -9184,7 +8617,7 @@ namespace giac {
     }
     if (type<_IDNT )
       return *this;
-    if (type==_USER)return (*_USERptr)(i,contextptr);
+    //if (type==_USER)return (*_USERptr)(i,contextptr);
     if (type==_STRNG){
       gen ii(i);
       if (!is_integral(ii))
@@ -9268,7 +8701,7 @@ namespace giac {
       return absint(val)<absint(other.val);
     case _ZINT:
       return is_greater(abs(other,context0),abs(*this,context0),context0);
-    case _DOUBLE_: case _REAL:
+    case _DOUBLE_: 
       return is_greater(abs(*this,context0),abs(other,context0),context0);
     case _CPLX: 
       {
@@ -9878,11 +9311,8 @@ namespace giac {
   }
 
   int absint(int a){
-    if (a<0){
-      if (a==-2147483648)
-        return 2147483647; // better than returning -2147483648
+    if (a<0)
       return -a;
-    }
     else
       return a;
   }
@@ -10151,7 +9581,7 @@ namespace giac {
       return a;
     if ( (a.type==_MOD) && (b.type==_MOD) && (a._MODptr->type<=_CPLX) && (b._MODptr->type<= _CPLX) )
       return chkmod(plus_one,a);
-    if (a.type==_MOD || b.type==_MOD || a.type==_DOUBLE_ || a.type==_FLOAT_ || a.type==_REAL || b.type==_DOUBLE_ || b.type==_FLOAT_ || b.type==_REAL )
+    if (a.type==_MOD || b.type==_MOD || a.type==_DOUBLE_  || b.type==_DOUBLE_ )
       return plus_one;
     if ( (a.type==_POLY) && (b.type==_POLY) )
       return polygcd(*a._POLYptr,*b._POLYptr);
@@ -10369,7 +9799,7 @@ namespace giac {
       else
 	return is_positive(a,contextptr)?a:-a;
     case _ZINT__ZINT: 
-#if !defined USE_GMP_REPLACEMENTS && !defined BF2GMP_H
+#ifndef USE_GMP_REPLACEMENTS
       {
 	int test=mpz_cmp(*a._ZINTptr,*b._ZINTptr);
 	if (test==0 || (test>0 && mpz_divisible_p(*a._ZINTptr,*b._ZINTptr)))
@@ -10387,7 +9817,8 @@ namespace giac {
       return _CPLXgcd(a,b);
     case _POLY__POLY:
       return polygcd(*a._POLYptr,*b._POLYptr);
-      //case _VECT__VECT: return gen(gcd(*a._VECTptr,*b._VECTptr,0,ntl_on(contextptr) && a._VECTptr->size()>=NTL_MODGCD && b._VECTptr->size()>=NTL_MODGCD),_POLY1__VECT);
+    case _VECT__VECT:
+      return gen(gcd(*a._VECTptr,*b._VECTptr,0),_POLY1__VECT);
     case _FRAC__FRAC:
       return fraction(gcd(a._FRACptr->num,b._FRACptr->num,contextptr),lcm(a._FRACptr->den,b._FRACptr->den));
     default:
@@ -10395,10 +9826,8 @@ namespace giac {
 	return fraction(gcd(a._FRACptr->num,b,contextptr),a._FRACptr->den);
       if (b.type==_FRAC)
 	return fraction(gcd(b._FRACptr->num,a,contextptr),b._FRACptr->den);
-      if (a.type==_USER)
-	return a._USERptr->gcd(b);
-      if (b.type==_USER)
-	return b._USERptr->gcd(a);
+      //if (a.type==_USER)return a._USERptr->gcd(b);
+      //if (b.type==_USER)return b._USERptr->gcd(a);
       {
 	gen aa(a),bb(b);
 	if (is_integral(aa) && is_integral(bb))
@@ -10407,7 +9836,6 @@ namespace giac {
       return symgcd(a,b,contextptr);
     }
   }
-
 
   gen lcm(const gen & a,const gen & b){
     return normal(rdiv(a,gcd(a,b,context0),context0),context0)*b; // ok
@@ -10756,7 +10184,7 @@ namespace giac {
   }
 
   gen invmod(const gen & a,const gen & modulo){
-    if (a.type==_USER)return a._USERptr->inv();
+    //if (a.type==_USER)return a._USERptr->inv();
     if (a.type==_MOD){
       if (*(a._MODptr+1)!=modulo)
 	return gensizeerr("Incompatible modulo "+a.print(context0)+","+modulo.print(context0));
@@ -10832,7 +10260,7 @@ namespace giac {
     return true;
   }
 
-  bool alloc_fracmod(const gen & a_orig,const gen & modulo,gen & res,mpz_t & d,mpz_t & d1,mpz_t & absd1,mpz_t &u,mpz_t & u1,mpz_t & ur,mpz_t & q,mpz_t & r,mpz_t &sqrtm,mpz_t & tmp){  
+  static bool alloc_fracmod(const gen & a_orig,const gen & modulo,gen & res,mpz_t & d,mpz_t & d1,mpz_t & absd1,mpz_t &u,mpz_t & u1,mpz_t & ur,mpz_t & q,mpz_t & r,mpz_t &sqrtm,mpz_t & tmp){  
     // write a as p/q with |p| and |q|<sqrt(modulo/2)
     if (a_orig.type==_VECT){
       const_iterateur it=a_orig._VECTptr->begin(),itend=a_orig._VECTptr->end();
@@ -11048,52 +10476,24 @@ namespace giac {
     return res;
   }
 
-  bool miller_rabin(const gen & a,const gen & p){
-    gen p1=p-1,q,s(p1),r;
-    int t=0;
-    // p-1=2^t*s
-    for (;;++t){
-      gen Q;
-      r=irem(s,2,Q);
-      if (r!=0)
-	break;
-      s=Q;
-    }
-    gen A(powmod(a,s,p));
-    if (A==1 || A==p1) return true;
-    for (int i=0;i<t;++i){
-      A=irem(A*A,p,q);
-      if (A==p1) return true;
-    }
-    return false;
-  }
-
   int is_probab_prime_p(const gen & a){
     if ( (a.type!=_INT_) && (a.type!=_ZINT)){
 #ifndef NO_STDEXCEPT
       settypeerr(gettext("is_probab_prime_p"));
 #endif
-      return 0;
+      return false;
     }
     if (a.type==_INT_ && a.val<2)
-      return 0;
+      return false;
     if (a.type==_INT_ && a.val<(1<<20)){
       for (int i=0;;++i){
 	int p=giac_primes[i];
 	if (p*p>a.val)
-	  return 2;
+	  return true;
 	if (a.val%p==0)
-	  return 0;
+	  return false;
       }
     }
-#ifdef BF2GMP_H
-    for (int i=0;i<TEST_PROBAB_PRIME;++i){
-      int A=giac_rand(context0);
-      if (!miller_rabin(A,a))
-	return 0;
-    }
-    return 1;
-#else // BF2GMP
     ref_mpz_t *aptr;
     if (a.type!=_INT_)
 #ifdef SMARTPTR64
@@ -11109,9 +10509,7 @@ namespace giac {
     if (a.type==_INT_)
       delete aptr;
     return res;
-#endif // BF2GMP
   }
-
 
   gen nextprime(const gen & a){
     if ( (a.type!=_INT_) && (a.type!=_ZINT))
@@ -11226,7 +10624,7 @@ namespace giac {
 
   bool has_denominator(const gen & n){
     switch (n.type ) {
-    case _INT_: case _ZINT: case _CPLX: case _DOUBLE_: case _IDNT: case _EXT: case _POLY: case _MOD:  case _VECT: case _USER: case _REAL:
+    case _INT_: case _ZINT: case _CPLX: case _DOUBLE_: case _IDNT: case _EXT: case _POLY: case _MOD:  case _VECT:
       return false;
     case _SYMB: case _FRAC:
       return true;
@@ -11371,20 +10769,31 @@ namespace giac {
       }
       if (l>digits+delta)
 	digits=l-delta;
-#ifdef BF2GMP
+#if !defined GIAC_HAS_STO_38 && !defined FXCG
       if (digits>14){
+#ifdef HAVE_LIBMPFR
 	int nbits=digits2bits(digits);
+#ifdef HAVE_LIBPTHREAD
+	int locked=pthread_mutex_trylock(&mpfr_mutex);
+	if (!locked)
+	  mpfr_set_default_prec(nbits);
+	// mpf_set_default_prec (decimal_digits);
+	real_object r;
+	int res=mpfr_set_str(r.inf,s,10,MPFR_RNDN);
+	if (!locked)
+	  pthread_mutex_unlock(&mpfr_mutex);
+#else
 	real_object r;
 	mpfr_set_default_prec(nbits);
-	int b=bf_global_prec;
-	// bf_global_prec=(nbits+31)/32*32;
 	int res=mpfr_set_str(r.inf,s,10,MPFR_RNDN);
-	// char buf[128]; sprintf(buf,"%i %i %i",bf_global_prec,digits,res); printmsg12("chartab2gen",buf);
-	//bf_global_prec=b;
-	//mp_exp_t expo; char * ptr=bf_ftoa(&expo, &r.inf, 10, bf_global_prec,MPFR_RNDN); char buf[128]; sprintf(buf,"chartab2gen %i",bf_global_prec); printmsg12(buf,ptr); free(ptr);
+#endif // HAVE_LIBPTHREAD
+#else // LIBMPFR
+	real_object r;
+	int res=mpf_set_str(r.inf,s,10);
+#endif // LIBMPFR
 	gen rg(r);
 	// rg.dbgprint();
-	//if (!res)
+	if (!res)
 	  return rg;
       } // end if (digits>14)
 #endif // GIAC_HAS_STO_38
@@ -11519,7 +10928,6 @@ namespace giac {
 	s=news;
       }
       s=python2xcas(s,contextptr);
-      //cout << "-> " << s << '\n';
       if (s.empty()){
 	parsed_gen(undef,contextptr);
 	return 1;
@@ -11935,50 +11343,6 @@ namespace giac {
     return s+")";
   }
 
-  std::string printmpf_t(const mpf_t & inf,GIAC_CONTEXT){
-#if !defined USE_GMP_REPLACEMENTS && !defined BF2GMP_H
-#ifdef VISUALC
-    char * ptr=new char[decimal_digits(contextptr)+30];
-#else
-    char ptr[decimal_digits(contextptr)+30];
-#endif
-    bool negatif=mpf_sgn(inf)<0;
-    mp_exp_t expo;
-    if (negatif){
-      mpf_t inf2;
-      mpf_init(inf2);
-      mpf_neg(inf2,inf);
-      mpf_get_str(ptr,&expo,10,decimal_digits(contextptr),inf2);
-      mpf_clear(inf2);
-    }
-    else
-      mpf_get_str(ptr,&expo,10,decimal_digits(contextptr),inf);
-    std::string res(ptr),reste(res.substr(1,res.size()-1));
-#ifdef VISUALC
-    delete [] ptr;
-#endif
-    res=res[0]+("."+reste);
-    if (expo!=1)
-      res += "e"+print_INT_(expo-1);
-    if (negatif)
-      return "-"+res;
-    else
-      return res;
-#else // USE_GMP_REPLACEMENTS
-#if defined NSPIRE || defined FXCG || defined KHICAS
-    return "mpf_t not implemented";
-#else
-    std::ostringstream out;
-#ifdef LONGFLOAT_DOUBLE
-    out << std::setprecision(decimal_digits(contextptr)) << inf;
-#else
-    out << std::setprecision(decimal_digits(contextptr)) << *inf;
-#endif
-    return out.str();
-#endif // NSPIRE
-#endif // USE_GMP_REPLACEMENTS
-  }
-
   string print_ZINT(const mpz_t & a){
     /*
     char * s =mpz_get_str (NULL, 10,a) ;
@@ -12191,7 +11555,7 @@ namespace giac {
       s="logo[";
       break;
     case _ASSUME__VECT:
-      s = "hyp[";
+      s = "assume[";
       break;
     case _FOLDER__VECT:
       s = "folder[";
@@ -12322,8 +11686,6 @@ namespace giac {
 	return "integer";
       case _DOUBLE_:
 	return "double";
-      case _REAL:
-	return "long_double";
       case _ZINT:
 	return "integer";
       case _CPLX:
@@ -12430,13 +11792,13 @@ namespace giac {
       case _JACOBI_DECOMP:
 	return "jacobi_decomp";
       case _MINOR_DET:
-	return "_rmh59";
+	return "minor_det";
       case _HESSENBERG_PCAR:
 	return "hessenberg_pcar";
       case _RATIONAL_DET:
-	return "_rmh60";
+	return "rational_det";
       case _KEEP_PIVOT:
-	return "_rmh58";
+	return "keep_pivot";
       case _FADEEV:
 	return "fadeev";
       case _BAREISS:
@@ -12483,7 +11845,7 @@ namespace giac {
       case _SET__VECT:
 	return "set";
       case _MATRIX__VECT:
-	return "array2d";
+	return "matrix";
       case _POLY1__VECT:
 	return "polynom";
       case _TRIG:
@@ -12580,8 +11942,6 @@ namespace giac {
       }
     case _DOUBLE_:
       return print_DOUBLE_(_DOUBLE_val,contextptr);
-    case _REAL:
-      return _REALptr->print(contextptr);
     case _ZINT:
       // if (abs_calc_mode(contextptr)==38 && is_strictly_positive(-*this,contextptr)) return "−"+(-*this).print(contextptr);
       switch (integer_format(contextptr)){
@@ -12671,7 +12031,7 @@ namespace giac {
       s += "%%}";
       return s;
     }
-     case _USER:return _USERptr->print(contextptr);
+      //case _USER:return _USERptr->print(contextptr);
     case _MOD:
 #ifdef GIAC_HAS_STO_38
       if ( (_MODptr->type==_SYMB && _MODptr->_SYMBptr->sommet!=at_pow) || (_MODptr->type==_VECT && _MODptr->subtype==_SEQ__VECT) )
@@ -12723,17 +12083,8 @@ namespace giac {
     return "print error";
   }
 
-#ifdef FXCG
-  const char * gen::dbgprint() const { 
-    if (Serial_IsOpen() != 1) {
-      unsigned char mode[6] = {0, 5, 0, 0, 0, 0};
-      Serial_Open(mode);
-    }
-    string S=this->print(context0);      
-    Serial_Write((unsigned char *)S.c_str(), S.size());
-    return "";
-    // Serial_Close(1);
-  }  
+#ifdef ConnectivityKit
+  const char * gen::dbgprint() const { return "Done";}
 #else
 #if defined(VISUALC) && !defined(MS_SMART)
   const char * gen::dbgprint() const { ATLTRACE2("%s\r\n", this->print(0).c_str()); return "Done";}
@@ -12870,1567 +12221,39 @@ namespace giac {
   //environment * env=new environment;
 
 
-  bool islogo(const gen & g){
-    if (g.type!=_VECT || g._VECTptr->empty()) return false;
-    if (g.subtype==_LOGO__VECT) return true;
-    const vecteur & v=*g._VECTptr;
-    if (islogo(v.back()))
-      return true;
-    for (size_t i=0;i<v.size();++i){
-      if (v[i].type==_VECT && v[i].subtype==_LOGO__VECT)
-	return true;
-    }
-    return false;
-  }
-#ifdef KHICAS
-  extern logo_turtle * turtleptr;
-  gen _efface_logo(const gen & g,GIAC_CONTEXT);
-#endif
-      
-  // Real object and real interval functions
-
-  real_object & real_object::operator = (const real_object & g) { 
-#ifdef HAVE_LIBMPFR
-    mpfr_clear(inf);
-    mpfr_init2(inf,mpfr_get_prec(g.inf));
-    mpfr_set(inf,g.inf,MPFR_RNDN);
-#else
-    mpf_clear(inf);
-    mpf_init_set(inf,g.inf);
-#endif
-    return *this;
-  }
-
-#ifdef HAVE_LIBMPFI
-  real_interval::real_interval(const mpfi_t & interv) { 
-    int nbits=mpfi_get_prec(interv);
-    mpfr_set_prec(inf,nbits);
-    mpfi_get_fr(inf,interv);
-    mpfi_init2(infsup,nbits);
-    mpfi_set(infsup,interv);
-  }
-#endif
-
-  real_object & real_interval::operator = (const real_interval & g) { 
-#ifdef HAVE_LIBMPFR
-    mpfr_clear(inf);
-#else
-    mpf_clear(inf);
-#endif
-#ifdef HAVE_LIBMPFI
-    mpfi_clear(infsup); 
-#else
-#ifdef HAVE_LIBMPFR
-    mpfr_clear(sup);
-#else
-    mpf_clear(sup);
-#endif
-#endif
-#ifdef HAVE_LIBMPFR
-    mpfr_init2(inf,mpfr_get_prec(g.inf));
-    mpfr_set(inf,g.inf,MPFR_RNDN);
-#else
-    mpf_init_set(inf,g.inf);
-#endif
-#ifdef HAVE_LIBMPFI
-    mpfi_init2(infsup,mpfi_get_prec(g.infsup));
-    mpfi_set(infsup,g.infsup);
-#else
-#ifdef HAVE_LIBMPFR
-    mpfr_init2(sup,mpfr_get_prec(g.sup));
-    mpfr_set(sup,g.sup,MPFR_RNDN);
-#else
-    mpf_init_set(sup,g.sup);
-#endif
-#endif
-    return *this;
-  }
-
-  real_object & real_interval::operator = (const real_object & g) { 
-#ifdef NO_RTTI
-    const real_interval * ptr=0;
-#else
-    const real_interval * ptr=dynamic_cast<const real_interval *> (&g);
-#endif
-    if (ptr)
-      return *this=*ptr;
-#ifdef HAVE_LIBMPFR
-    mpfr_clear(inf);
-#ifdef HAVE_LIBMPFI
-    mpfi_clear(infsup); 
-#else
-    mpfr_clear(sup); 
-#endif
-    mpfr_init2(inf,mpfr_get_prec(g.inf));
-    mpfr_set(inf,g.inf,MPFR_RNDN);
-#ifdef HAVE_LIBMPFI
-    mpfi_init2(infsup,mpfr_get_prec(g.inf));
-    mpfi_set_fr(infsup,g.inf);
-#else
-    mpfr_init2(sup,mpfr_get_prec(g.inf));
-    mpfr_set(sup,g.inf,MPFR_RNDN);
-#endif
-#else // HAVE_LIBMPFR
-    mpf_clear(inf);
-#ifdef HAVE_LIBMPFI
-    mpfi_clear(infsup); 
-#else
-    mpf_clear(sup); 
-#endif
-    mpf_init_set(inf,g.inf);
-#ifdef HAVE_LIBMPFI
-    mpfi_init_set_fr(infsup,g.inf);
-#else
-    mpf_init_set(sup,g.inf);
-#endif
-#endif // HAVE_LIBMPFR
-    return *this;
-  }
-
-  real_object::real_object() { 
-#ifdef HAVE_LIBMPFR
-    mpfr_init(inf); 
-#else
-    mpf_init(inf); 
-#endif
-  }
-
-  real_object::real_object(const real_object & g){ 
-#ifdef HAVE_LIBMPFR
-    mpfr_init2(inf,mpfr_get_prec(g.inf));
-    mpfr_set(inf,g.inf,MPFR_RNDN);
-#else
-    mpf_init_set(inf,g.inf);
-#endif
-  }
-
-  real_object::real_object(double d) { 
-#ifdef HAVE_LIBMPFR
-    mpfr_init_set_d(inf,d,MPFR_RNDN); 
-#else
-    mpf_init_set_d(inf,d); 
-#endif
-  }
-
-#ifdef HAVE_LIBMPFR
-  real_object::real_object(const mpfr_t & d) { 
-    mpfr_init2(inf,mpfr_get_prec(d));
-    mpfr_set(inf,d,MPFR_RNDN);
-  }
-#endif
-
-  real_object::real_object(const mpf_t & d) { 
-#ifdef HAVE_LIBMPFR
-    mpfr_init(inf);
-    mpfr_set_f(inf,d,MPFR_RNDN);
-#else
-    mpf_init_set(inf,d); 
-#endif
-  }
-
-  real_object::real_object(const gen & g){
-    switch (g.type){
-    case _INT_:
-#ifdef HAVE_LIBMPFR
-      mpfr_init_set_si(inf,g.val,MPFR_RNDN);
-#else
-      mpf_init_set_si(inf,g.val);
-#endif
-      return;
-    case _DOUBLE_:
-#ifdef HAVE_LIBMPFR
-      mpfr_init_set_d(inf,g._DOUBLE_val,MPFR_RNDN);
-#else
-      mpf_init_set_d(inf,g._DOUBLE_val);
-#endif
-      return;
-    case _ZINT:
-#ifdef HAVE_LIBMPFR
-      mpfr_init(inf);
-      mpfr_set_z(inf,*g._ZINTptr,MPFR_RNDN);
-#else
-      mpf_init(inf);
-      mpf_set_z(inf,*g._ZINTptr);
-#endif
-      return;
-    case _REAL:
-#ifdef HAVE_LIBMPFR
-      mpfr_init2(inf,mpfr_get_prec(g._REALptr->inf));
-      mpfr_set(inf,g._REALptr->inf,MPFR_RNDN);
-#else
-      mpf_init_set(inf,g._REALptr->inf);
-#endif
-      return;
-    }
-    if (g.type==_FRAC){
-      gen tmp=real_object(g._FRACptr->num)/real_object(g._FRACptr->den);
-      if (tmp.type==_REAL){
-#ifdef HAVE_LIBMPFR
-	mpfr_init2(inf,mpfr_get_prec(tmp._REALptr->inf));
-	mpfr_set(inf,tmp._REALptr->inf,MPFR_RNDN);
-#else
-	mpf_init_set(inf,tmp._REALptr->inf);
-#endif
-	return;
-      }
-    }
-#ifndef NO_STDEXCEPT
-    setsizeerr(gettext("Unable to convert to real ")+g.print(context0));
-#endif
-    return;
-  }
-
-  real_object::real_object(const gen & g,unsigned int precision){
-    switch (g.type){
-    case _INT_:
-#ifdef HAVE_LIBMPFR
-      mpfr_init2(inf,precision);
-      mpfr_set_si(inf,g.val,MPFR_RNDN);
-#else
-      mpf_init_set_si(inf,g.val);
-#endif
-      return;
-    case _DOUBLE_:
-#ifdef HAVE_LIBMPFR
-      mpfr_init2(inf,precision);
-      mpfr_set_d(inf,g._DOUBLE_val,MPFR_RNDN);
-#else
-      mpf_init_set_d(inf,g._DOUBLE_val);
-#endif
-      return;
-    case _ZINT:
-#ifdef HAVE_LIBMPFR
-      mpfr_init2(inf,precision);
-      mpfr_set_z(inf,*g._ZINTptr,MPFR_RNDN);
-#else
-      mpf_init(inf);
-      mpf_set_z(inf,*g._ZINTptr);
-#endif
-      return;
-    case _REAL:
-#ifdef HAVE_LIBMPFR
-      mpfr_init2(inf,precision);
-      mpfr_set(inf,g._REALptr->inf,MPFR_RNDN);
-#else
-      mpf_init_set(inf,g._REALptr->inf);
-#endif
-      return;
-    }
-    if (g.type==_FRAC){
-      gen tmp=real_object(g._FRACptr->num,precision)/real_object(g._FRACptr->den,precision);
-      if (tmp.type==_REAL){
-#ifdef HAVE_LIBMPFR
-	mpfr_init2(inf,mpfr_get_prec(tmp._REALptr->inf));
-	mpfr_set(inf,tmp._REALptr->inf,MPFR_RNDN);
-#else
-	mpf_init_set(inf,tmp._REALptr->inf);
-#endif
-	return;
-      }
-    }
-    int save_decimal_digits=decimal_digits(context0);
-    set_decimal_digits(giacmax(20,std::ceil(precision*
-					    0.30102999566398119
-					    //M_LN2/M_LN10
-					    )),context0);
-    gen tmp=re(evalf(g,1,context0),context0);
-    set_decimal_digits(save_decimal_digits,context0);
-    if (tmp.type!=_REAL){
-#ifndef NO_STDEXCEPT
-      setsizeerr(gettext("Unable to convert to real ")+g.print(context0));
-#endif
-      return;
-    }
-#ifdef HAVE_LIBMPFR
-    mpfr_init2(inf,precision);
-    mpfr_set(inf,tmp._REALptr->inf,MPFR_RNDN);
-#else
-    mpf_init_set(inf,tmp._REALptr->inf);
-#endif
-  }
-
-  gen::gen(const real_object & g){
-#ifdef SMARTPTR64
-      * ((ulonglong * ) this) = ulonglong(new ref_real_object) << 16;
-#else
-    __REALptr = new ref_real_object;
-#endif
-    type = _REAL;
-    subtype=0;
-#ifdef HAVE_LIBMPFR
-    mpfr_set_prec(_REALptr->inf,mpfr_get_prec(g.inf));
-    mpfr_set(_REALptr->inf,g.inf,MPFR_RNDN);
-#else
-    mpf_set(_REALptr->inf,g.inf);
-#endif
-#ifdef KHICAS
-    if ((size_t) _REALptr > stackptr)
-      ctrl_c=interrupted=true;
-#endif
-  }
-
-  gen::gen(const real_interval & g){
-#ifdef SMARTPTR64
-      * ((ulonglong * ) this) = ulonglong(new ref_real_interval) << 16;
-#else
-      __REALptr = (ref_real_object *) new ref_real_interval;
-#endif
-#ifdef KHICAS
-    if ((size_t) _REALptr > stackptr)
-      ctrl_c=interrupted=true;
-#endif
-    type = _REAL;
-    subtype=0;
-#ifdef NO_RTTI
-    real_interval * ptr=0;
-#else
-    real_interval * ptr=dynamic_cast<real_interval *>(_REALptr);
-#endif
-#ifdef HAVE_LIBMPFR
-    mpfr_set_prec(ptr->inf,mpfr_get_prec(g.inf));
-    mpfr_set(ptr->inf,g.inf,MPFR_RNDN);
-#else
-    mpf_set(ptr->inf,g.inf);
-#endif
-#ifdef HAVE_LIBMPFI
-    int nbits=mpfi_get_prec(g.infsup);
-    mpfi_set_prec(ptr->infsup,nbits);
-    mpfi_set(ptr->infsup,g.infsup);
-#else
-#ifdef HAVE_LIBMPFR
-    mpfr_set(ptr->sup,g.sup,MPFR_RNDN);
-#else
-    mpf_set(ptr->sup,g.sup);
-#endif
-#endif
-  }
-
-  double real_object::evalf_double() const{
-#ifdef HAVE_LIBMPFR
-    return mpfr_get_d(inf,MPFR_RNDN);
-#else
-    return mpf_get_d(inf);
-#endif
-  }
-
-  gen real_object::addition (const gen & g,GIAC_CONTEXT) const{
-    switch (g.type){
-    case _REAL:
-      return *this+*g._REALptr;
-    case _CPLX:
-      return gen(this->addition(*g._CPLXptr,contextptr),*(g._CPLXptr+1));
-    case _FRAC:
-      if (!is_integer(g._FRACptr->num) || !is_integer(g._FRACptr->den))
-	return sym_add(*this,g,contextptr);	
-    case _INT_: case _DOUBLE_: case _ZINT: 
-#ifdef HAVE_LIBMPFR
-      return *this+real_object(g,mpfr_get_prec(inf));      
-#else
-      return *this+real_object(g);
-#endif
-    default:
-      return sym_add(*this,g,contextptr);
-    }
-    return gensizeerr(gettext("real_object + gen")+this->print(contextptr)+","+g.print(contextptr));
-  }
-  
-  gen real_interval::addition (const gen & g,GIAC_CONTEXT) const{
-    switch (g.type){
-    case _REAL:
-      return *this+*g._REALptr;
-    case _CPLX:
-      return gen(this->addition(*g._CPLXptr,contextptr),*(g._CPLXptr+1));
-    case _FRAC:
-      if (!is_integer(g._FRACptr->num) || !is_integer(g._FRACptr->den))
-	return sym_add(*this,g,contextptr);	
-    case _INT_: case _DOUBLE_: case _ZINT: 
-#ifdef HAVE_LIBMPFR
-      return *this+real_object(g,mpfr_get_prec(inf));      
-#else
-      return *this+real_object(g);
-#endif
-    default:
-      return sym_add(*this,g,contextptr);
-    }
-    return gensizeerr(gettext("real_object + gen")+this->print(contextptr)+","+g.print(contextptr));
-  }
-  
-  gen real_object::operator + (const gen & g) const{
-    return addition(g,context0);
-  }
-  
-  static real_interval add(const real_interval & i,const real_interval & g){
-    real_interval res(i);
-#ifdef HAVE_LIBMPFR
-    mpfr_add(res.inf,i.inf,g.inf,MPFR_RNDD);
-#ifdef HAVE_LIBMPFI
-    mpfi_add(res.infsup,i.infsup,g.infsup);
-#else
-    mpfr_add(res.sup,i.sup,g.sup,MPFR_RNDU);
-#endif
-#else // HAVE_LIBMPFR
-    mpf_add(res.inf,i.inf,g.inf);
-#ifdef HAVE_LIBMPFI
-    mpfi_add(res.infsup,i.infsup,g.infsup);
-#else
-    mpf_add(res.sup,i.sup,g.sup);
-#endif
-#endif // HAVE_LIBMPFR
-    return res;
-  }
-
-  real_interval real_interval::operator + (const real_interval & g) const{
-    return add(*this,g);
-  }
-
-  static real_interval add(const real_interval & i,const real_object & g){
-#ifdef NO_RTTI
-    const real_interval * ptr=0;
-#else
-    const real_interval * ptr=dynamic_cast<const real_interval *>(&g);
-#endif
-    if (ptr)
-      return add(i,*ptr);
-    real_interval res(i);
-#ifdef HAVE_LIBMPFR
-    mpfr_add(res.inf,i.inf,g.inf,MPFR_RNDD);
-#ifdef HAVE_LIBMPFI
-    mpfi_add_fr(res.infsup,i.infsup,g.inf);
-#else
-    mpfr_add(res.sup,i.sup,g.inf,MPFR_RNDU);
-#endif
-#else // HAVE_LIBMPFR
-    mpf_add(res.inf,i.inf,g.inf);
-#ifdef HAVE_LIBMPFI
-    mpfi_add_fr(res.infsup,i.infsup,g.inf);
-#else
-    mpf_add(res.sup,i.sup,g.inf);
-#endif
-#endif // HAVE_LIBMPFR
-    return res;
-  }
-
-  gen real_interval::operator + (const real_object & g) const{
-    return add(*this,g);
-  }
-
-  gen real_object::operator + (const real_object & g) const{
-#ifdef NO_RTTI
-    const real_interval * ptr=0;
-#else
-    const real_interval * ptr=dynamic_cast<const real_interval *>(&g);
-#endif
-    if (ptr)
-      return add(*ptr,*this);
-#ifdef HAVE_LIBMPFR
-    mpfr_t sum;
-    //char buf[32]; sprintf(buf,"%i",bf_global_prec); printmsg12("bf_prec",buf);
-    mpfr_init2(sum,giacmin(mpfr_get_prec(this->inf),mpfr_get_prec(g.inf)));
-    mpfr_add(sum,this->inf,g.inf,MPFR_RNDN);
-    real_object res(sum);
-    mpfr_clear(sum);
-#else
-    mpf_t sum;
-    mpf_init(sum);
-    mpf_add(sum,this->inf,g.inf);
-#ifdef LONGFLOAT_DOUBLE
-    real_object res; res.inf=sum;
-#else
-    real_object res(sum);
-#endif
-    mpf_clear(sum);
-#endif
-    return res;
-  }
-
-  gen real_object::subtract (const gen & g,GIAC_CONTEXT) const{
-    return substract(g,contextptr); 
-  }
-  gen real_object::substract (const gen & g,GIAC_CONTEXT) const{
-    switch (g.type){
-    case _REAL:
-      return *this-*g._REALptr;
-    case _FRAC:
-      if (!is_integer(g._FRACptr->num) || !is_integer(g._FRACptr->den))
-	return sym_sub(*this,g,contextptr);	
-    case _INT_: case _DOUBLE_: case _ZINT: 
-#ifdef HAVE_LIBMPFR
-      return *this - real_object(g,mpfr_get_prec(inf));      
-#else
-      return *this - real_object(g);
-#endif
-    default:
-      return sym_sub(*this,g,contextptr);
-    }
-    return gensizeerr(gettext("real_object + gen")+this->print(contextptr)+","+g.print(contextptr));
-  }
-  gen real_interval::subtract (const gen & g,GIAC_CONTEXT) const{
-    return substract(g,contextptr);
-  }
-  gen real_interval::substract (const gen & g,GIAC_CONTEXT) const{
-    switch (g.type){
-    case _REAL:
-      return *this-*g._REALptr;
-    case _FRAC:
-      if (!is_integer(g._FRACptr->num) || !is_integer(g._FRACptr->den))
-	return sym_sub(*this,g,contextptr);	
-    case _INT_: case _DOUBLE_: case _ZINT: 
-#ifdef HAVE_LIBMPFR
-      return *this - real_object(g,mpfr_get_prec(inf));      
-#else
-      return *this - real_object(g);
-#endif
-    default:
-      return sym_sub(*this,g,contextptr);
-    }
-    return gensizeerr(gettext("real_object + gen")+this->print(contextptr)+","+g.print(contextptr));
-  }
-  
-  gen real_object::operator - (const gen & g) const{
-    return substract(g,context0);
-  }
-  
-  static real_interval sub(const real_interval & i,const real_interval & g){
-    real_interval res(i);
-#ifdef HAVE_LIBMPFI
-    mpfi_sub(res.infsup,i.infsup,g.infsup);
-    mpfr_sub(res.inf,i.inf,g.inf,MPFR_RNDD);
-#else
-#ifdef HAVE_LIBMPFR
-    mpfr_sub(res.inf,i.sup,g.inf,MPFR_RNDD);
-    mpfr_sub(res.sup,i.inf,g.sup,MPFR_RNDU);    
-#else
-    mpf_sub(res.inf,i.sup,g.inf);
-    mpf_sub(res.sup,i.inf,g.sup);    
-#endif
-#endif
-    return res;
-  }
-
-  real_interval real_interval::operator - (const real_interval & g) const{
-    return sub(*this,g);
-  }
-
-  static real_interval sub(const real_interval & i,const real_object & g){
-#ifdef NO_RTTI
-    const real_interval * ptr=0;
-#else
-    const real_interval * ptr=dynamic_cast<const real_interval *>(&g);
-#endif
-    if (ptr)
-      return sub(i,*ptr);
-    real_interval res(i);
-#ifdef HAVE_LIBMPFI
-    mpfi_sub_fr(res.infsup,i.infsup,g.inf);
-    mpfr_sub(res.inf,i.inf,g.inf,MPFR_RNDD);
-#else
-#ifdef HAVE_LIBMPFR
-    mpfr_sub(res.inf,i.sup,g.inf,MPFR_RNDD);
-    mpfr_sub(res.sup,i.inf,g.inf,MPFR_RNDU);    
-#else
-    mpf_sub(res.inf,i.sup,g.inf);
-    mpf_sub(res.sup,i.inf,g.inf);    
-#endif
-#endif
-    return res;
-  }
-
-  gen real_interval::operator - (const real_object & g) const{
-    return sub(*this,g);
-  }
-
-  gen real_object::operator - (const real_object & g) const{
-#ifdef NO_RTTI
-    const real_interval * ptr=0;
-#else
-    const real_interval * ptr=dynamic_cast<const real_interval *>(&g);
-#endif
-    if (ptr)
-      return -(*ptr)+(*this);
-#ifdef HAVE_LIBMPFR
-    mpfr_t sum;
-    mpfr_init2(sum,giacmin(mpfr_get_prec(this->inf),mpfr_get_prec(g.inf)));
-    mpfr_sub(sum,this->inf,g.inf,MPFR_RNDN);
-    real_object res(sum);
-    mpfr_clear(sum);
-#else
-    mpf_t sum;
-    mpf_init(sum);
-    mpf_sub(sum,this->inf,g.inf);
-#ifdef LONGFLOAT_DOUBLE
-    real_object res; res.inf=sum;
-#else
-    real_object res(sum);
-#endif
-    mpf_clear(sum);
-#endif
-    return res;
-  }
-
-  gen real_object::operator -() const {
-#ifdef NO_RTTI
-    const real_interval * ptr=0;
-#else
-    const real_interval * ptr=dynamic_cast<const real_interval *>(this);
-#endif
-    if (ptr)
-      return -*ptr;
-    real_object res(*this);
-#ifdef HAVE_LIBMPFR
-    mpfr_neg(res.inf,res.inf,MPFR_RNDN);
-#else
-    mpf_neg(res.inf,res.inf);
-#endif
-    return res;
-  }
-    
-  gen real_object::inv() const {
-    real_object res(*this);
-#ifdef HAVE_LIBMPFR
-    mpfr_ui_div(res.inf,1,res.inf,MPFR_RNDN);
-#else
-    mpf_ui_div(res.inf,1,res.inf);
-#endif
-    return res;
-  }
-    
-  gen real_object::sqrt() const {
-#if defined LONGFLOAT_DOUBLE && !defined HAVE_LIBMPFR
-    real_object res; res.inf=std::sqrt(inf); return res;
-#else
-    real_object res(*this);
-#ifdef HAVE_LIBMPFR
-    mpfr_sqrt(res.inf,res.inf,MPFR_RNDN);
-#else
-    mpf_sqrt(res.inf,res.inf);
-#endif
-    return res;
-#endif
-  }
-    
-  gen real_object::abs() const {
-#ifdef HAVE_LIBMPFR
-    if (mpfr_sgn(inf)>=0)
-#else
-    if (mpf_sgn(inf)>=0)
-#endif
-      return *this;
-    return -(*this);
-  }
-
-  static void compile_with_mpfr(){  
-    setsizeerr(gettext("Compile with MPFR or USE_GMP_REPLACEMENTS if you want transcendental long float support"));  
-  }
-
-  gen real_object::exp() const {
-    real_object res(*this);
-#ifdef HAVE_LIBTOMMATH
-#ifdef LONGFLOAT_DOUBLE
-    res.inf=std::exp(res.inf);
-#else
-    res.inf = exp(res.inf);
-#endif
-#else
-#ifdef HAVE_LIBMPFR
-    mpfr_exp(res.inf,res.inf,MPFR_RNDN);
-#else
-    compile_with_mpfr();
-#endif
-#endif // HAVE_LIBTOMMATH
-    return res;
-  }
-
-  gen real_object::log() const {
-    real_object res(*this);
-#ifdef HAVE_LIBTOMMATH
-#ifdef LONGFLOAT_DOUBLE
-    res.inf=std::log(res.inf);
-#else
-    *res.inf = ::log(*res.inf);
-#endif
-#else
-#ifdef HAVE_LIBMPFR
-    mpfr_log(res.inf,res.inf,MPFR_RNDN);
-#else
-    compile_with_mpfr();
-#endif
-#endif
-    return res;
-  }
-
-  gen real_object::sin() const {
-    real_object res(*this);
-#ifdef HAVE_LIBTOMMATH
-#ifdef LONGFLOAT_DOUBLE
-    res.inf=std::sin(res.inf);
-#else
-    *res.inf = ::sin(*res.inf);
-#endif
-#else
-#ifdef HAVE_LIBMPFR
-    mpfr_sin(res.inf,res.inf,MPFR_RNDN);
-#else
-    compile_with_mpfr();
-#endif
-#endif
-    return res;
-  }
-
-  gen real_object::cos() const {
-    real_object res(*this);
-#ifdef HAVE_LIBTOMMATH
-#ifdef LONGFLOAT_DOUBLE
-    res.inf=std::cos(res.inf);
-#else
-    *res.inf = ::cos(*res.inf);
-#endif
-#else
-#ifdef HAVE_LIBMPFR
-    mpfr_cos(res.inf,res.inf,MPFR_RNDN);
-#else
-    compile_with_mpfr();
-#endif
-#endif
-    return res;
-  }
-
-  gen real_object::tan() const {
-    real_object res(*this);
-#ifdef HAVE_LIBTOMMATH
-#ifdef LONGFLOAT_DOUBLE
-    res.inf=std::tan(res.inf);
-#else
-    *res.inf = ::tan(*res.inf);
-#endif
-#else
-#ifdef HAVE_LIBMPFR
-    mpfr_tan(res.inf,res.inf,MPFR_RNDN);
-#else
-    compile_with_mpfr();
-#endif
-#endif
-    return res;
-  }
-
-  gen real_object::sinh() const {
-    real_object res(*this);
-#ifdef HAVE_LIBTOMMATH
-#ifdef LONGFLOAT_DOUBLE
-    res.inf=std::sinh(res.inf);
-#else
-    *res.inf = ::sinh(*res.inf);
-#endif
-#else
-#ifdef HAVE_LIBMPFR
-    mpfr_sinh(res.inf,res.inf,MPFR_RNDN);
-#else
-    compile_with_mpfr();
-#endif
-#endif
-    return res;
-  }
-
-  gen real_object::cosh() const {
-    real_object res(*this);
-#ifdef HAVE_LIBTOMMATH
-#ifdef LONGFLOAT_DOUBLE
-    res.inf=std::cosh(res.inf);
-#else
-    *res.inf = ::cosh(*res.inf);
-#endif
-#else
-#ifdef HAVE_LIBMPFR
-    mpfr_cosh(res.inf,res.inf,MPFR_RNDN);
-#else
-    compile_with_mpfr();
-#endif
-#endif
-    return res;
-  }
-
-  gen real_object::tanh() const {
-    real_object res(*this);
-#ifdef HAVE_LIBTOMMATH
-#ifdef LONGFLOAT_DOUBLE
-    res.inf=std::tanh(res.inf);
-#else
-    *res.inf = ::tanh(*res.inf);
-#endif
-#else
-#ifdef HAVE_LIBMPFR
-    mpfr_tanh(res.inf,res.inf,MPFR_RNDN);
-#else
-    compile_with_mpfr();
-#endif
-#endif
-    return res;
-  }
-
-  gen real_object::asin() const {
-    real_object res(*this);
-#ifdef HAVE_LIBTOMMATH
-#ifdef LONGFLOAT_DOUBLE
-    res.inf=std::asin(res.inf);
-#else
-    *res.inf = ::asin(*res.inf);
-#endif
-#else
-#ifdef HAVE_LIBMPFR
-    mpfr_asin(res.inf,res.inf,MPFR_RNDN);
-#else
-    compile_with_mpfr();
-#endif
-#endif
-    return res;
-  }
-
-  gen real_object::acos() const {
-    real_object res(*this);
-#ifdef HAVE_LIBTOMMATH
-#ifdef LONGFLOAT_DOUBLE
-    res.inf=std::acos(res.inf);
-#else
-    *res.inf = ::acos(*res.inf);
-#endif
-#else
-#ifdef HAVE_LIBMPFR
-    mpfr_acos(res.inf,res.inf,MPFR_RNDN);
-#else
-    compile_with_mpfr();
-#endif
-#endif
-    return res;
-  }
-
-  gen real_object::atan() const {
-    real_object res(*this);
-#ifdef HAVE_LIBTOMMATH
-#ifdef LONGFLOAT_DOUBLE
-    res.inf=std::atan(res.inf);
-#else
-    *res.inf = ::atan(*res.inf);
-#endif
-#else
-#ifdef HAVE_LIBMPFR
-    mpfr_atan(res.inf,res.inf,MPFR_RNDN);
-#else
-    compile_with_mpfr();
-#endif
-#endif
-    return res;
-  }
-
-  gen real_object::asinh() const {
-    real_object res(*this);
-#ifdef HAVE_LIBTOMMATH
-#ifdef LONGFLOAT_DOUBLE
-    res.inf= std::log(res.inf+std::sqrt(res.inf*res.inf+1));
-#else
-    *res.inf = ::asinh(*res.inf);
-#endif
-#else
-#if defined HAVE_LIBMPFR && !defined BF2GMP_H
-    mpfr_asinh(res.inf,res.inf,MPFR_RNDN);
-#else
-    compile_with_mpfr();
-#endif
-#endif
-    return res;
-  }
-
-  gen real_object::acosh() const {
-    real_object res(*this);
-#ifdef HAVE_LIBTOMMATH
-#ifdef LONGFLOAT_DOUBLE
-    res.inf=std::log(res.inf+std::sqrt(res.inf+1)*std::sqrt(res.inf-1));
-#else
-    *res.inf = ::acosh(*res.inf);
-#endif
-#else
-#if defined HAVE_LIBMPFR && !defined BF2GMP_H
-    mpfr_acosh(res.inf,res.inf,MPFR_RNDN);
-#else
-    compile_with_mpfr();
-#endif
-#endif
-    return res;
-  }
-
-  gen real_object::atanh() const {
-    real_object res(*this);
-#ifdef HAVE_LIBTOMMATH
-#ifdef LONGFLOAT_DOUBLE
-    res.inf=std::log((1+res.inf)/(1-res.inf))/2;
-#else
-    *res.inf = ::atanh(*res.inf);
-#endif
-#else
-#if defined HAVE_LIBMPFR && !defined BF2GMP_H
-    mpfr_atanh(res.inf,res.inf,MPFR_RNDN);
-#else
-    compile_with_mpfr();
-#endif
-#endif
-    return res;
-  }
-
-  gen real_interval::operator -() const {
-    real_interval res(*this);
-#ifdef HAVE_LIBMPFR
-    mpfr_neg(res.inf,res.inf,MPFR_RNDU);
-#ifdef HAVE_LIBMPFI
-    mpfi_neg(res.infsup,res.infsup);
-#else
-    mpfr_neg(res.sup,res.sup,MPFR_RNDD);
-    mpfr_swap(res.inf,res.sup);
-#endif
-#else // MPFR
-    mpf_neg(res.inf,res.inf);
-#ifdef HAVE_LIBMPFI
-    mpfi_neg(res.infsup,res.infsup);
-#else
-    mpf_neg(res.sup,res.sup);
-#ifdef mpf_swap
-    mpf_swap(res.inf,res.sup);
-#endif
-#endif
-#endif // MPFR
-    return res;
-  }
-
-  gen real_interval::inv() const {
-    real_interval res(*this);
-#ifdef HAVE_LIBMPFI
-    mpfi_ui_div(res.infsup,1,res.infsup);
-    mpfr_ui_div(res.inf,1,res.inf,MPFR_RNDD);
-#else
-    // FIXME check sign
-#ifndef NO_STDEXCEPT
-    setsizeerr(gettext("real_interval inv"));
-#endif
-    /* mpf_neg(res.inf,res.inf);
-       mpf_neg(res.sup,res.sup);
-       mpf_swap(res.inf,res.sup); */
-#endif
-    return res;
-  }
-
-  gen real_interval::sqrt() const {
-    real_interval res(*this);
-#ifdef HAVE_LIBMPFI
-    mpfi_sqrt(res.infsup,res.infsup);
-    mpfr_sqrt(res.inf,res.inf,MPFR_RNDD);
-    return res;
-#else
-    return gensizeerr(gettext("real_interval sqrt"));
-#endif
-  }
-
-  gen real_interval::abs() const {
-    real_interval res(*this);
-#ifdef HAVE_LIBMPFI
-    mpfi_abs(res.infsup,res.infsup);
-    mpfr_abs(res.inf,res.inf,MPFR_RNDD);
-    return res;
-#else
-    return gensizeerr(gettext("real_interval abs"));
-#endif
-  }
-
-  gen real_interval::exp() const {
-    real_interval res(*this);
-#ifdef HAVE_LIBMPFI
-    mpfi_exp(res.infsup,res.infsup);
-    mpfr_exp(res.inf,res.inf,MPFR_RNDD);
-    return res;
-#else
-    return gensizeerr(gettext("real_interval sqrt"));
-#endif
-  }
-
-  gen real_interval::log() const {
-    real_interval res(*this);
-#ifdef HAVE_LIBMPFI
-    mpfi_log(res.infsup,res.infsup);
-    mpfr_log(res.inf,res.inf,MPFR_RNDD);
-    return res;
-#else
-    return gensizeerr(gettext("real_interval sqrt"));
-#endif
-  }
-
-  gen real_interval::sin() const {
-    real_interval res(*this);
-#ifdef HAVE_LIBMPFI
-    mpfi_sin(res.infsup,res.infsup);
-    mpfr_sin(res.inf,res.inf,MPFR_RNDD);
-    return res;
-#else
-    return gensizeerr(gettext("real_interval sqrt"));
-#endif
-  }
-
-  gen real_interval::cos() const {
-    real_interval res(*this);
-#ifdef HAVE_LIBMPFI
-    mpfi_cos(res.infsup,res.infsup);
-    mpfr_cos(res.inf,res.inf,MPFR_RNDD);
-    return res;
-#else
-    return gensizeerr(gettext("real_interval sqrt"));
-#endif
-  }
-
-  gen real_interval::tan() const {
-    real_interval res(*this);
-#ifdef HAVE_LIBMPFI
-    mpfi_tan(res.infsup,res.infsup);
-    mpfr_tan(res.inf,res.inf,MPFR_RNDD);
-    return res;
-#else
-    return gensizeerr(gettext("real_interval sqrt"));
-#endif
-  }
-
-  gen real_interval::sinh() const {
-    real_interval res(*this);
-#ifdef HAVE_LIBMPFI
-    mpfi_sinh(res.infsup,res.infsup);
-    mpfr_sinh(res.inf,res.inf,MPFR_RNDD);
-    return res;
-#else
-    return gensizeerr(gettext("real_interval sqrt"));
-#endif
-  }
-
-  gen real_interval::cosh() const {
-    real_interval res(*this);
-#ifdef HAVE_LIBMPFI
-    mpfi_cosh(res.infsup,res.infsup);
-    mpfr_cosh(res.inf,res.inf,MPFR_RNDD);
-    return res;
-#else
-    return gensizeerr(gettext("real_interval sqrt"));
-#endif
-  }
-
-  gen real_interval::tanh() const {
-    real_interval res(*this);
-#ifdef HAVE_LIBMPFI
-    mpfi_tanh(res.infsup,res.infsup);
-    mpfr_tanh(res.inf,res.inf,MPFR_RNDD);
-    return res;
-#else
-    return gensizeerr(gettext("real_interval sqrt"));
-#endif
-  }
-
-  gen real_interval::asin() const {
-    real_interval res(*this);
-#ifdef HAVE_LIBMPFI
-    mpfi_asin(res.infsup,res.infsup);
-    mpfr_asin(res.inf,res.inf,MPFR_RNDD);
-    return res;
-#else
-    return gensizeerr(gettext("real_interval sqrt"));
-#endif
-  }
-
-  gen real_interval::acos() const {
-    real_interval res(*this);
-#ifdef HAVE_LIBMPFI
-    mpfi_acos(res.infsup,res.infsup);
-    mpfr_acos(res.inf,res.inf,MPFR_RNDD);
-    return res;
-#else
-    return gensizeerr(gettext("real_interval sqrt"));
-#endif
-  }
-
-  gen real_interval::atan() const {
-    real_interval res(*this);
-#ifdef HAVE_LIBMPFI
-    mpfi_atan(res.infsup,res.infsup);
-    mpfr_atan(res.inf,res.inf,MPFR_RNDD);
-    return res;
-#else
-    return gensizeerr(gettext("real_interval sqrt"));
-#endif
-  }
-
-  gen real_interval::asinh() const {
-    real_interval res(*this);
-#ifdef HAVE_LIBMPFI
-    mpfi_asinh(res.infsup,res.infsup);
-    mpfr_asinh(res.inf,res.inf,MPFR_RNDD);
-    return res;
-#else
-    return gensizeerr(gettext("real_interval sqrt"));
-#endif
-  }
-
-  gen real_interval::acosh() const {
-    real_interval res(*this);
-#ifdef HAVE_LIBMPFI
-    mpfi_acosh(res.infsup,res.infsup);
-    mpfr_acosh(res.inf,res.inf,MPFR_RNDD);
-    return res;
-#else
-    return gensizeerr(gettext("real_interval sqrt"));
-#endif
-  }
-
-  gen real_interval::atanh() const {
-    real_interval res(*this);
-#ifdef HAVE_LIBMPFI
-    mpfi_atanh(res.infsup,res.infsup);
-    mpfr_atanh(res.inf,res.inf,MPFR_RNDD);
-    return res;
-#else
-    return gensizeerr(gettext("real_interval sqrt"));
-#endif
-  }
-
-  gen real_object::multiply (const gen & g,GIAC_CONTEXT) const{
-    switch (g.type){
-    case _REAL:
-      return *this * *g._REALptr;
-    case _CPLX:
-      return gen(this->multiply(*g._CPLXptr,contextptr),this->multiply(*(g._CPLXptr+1),contextptr));
-    case _FRAC:
-      if (!is_integer(g._FRACptr->num) || !is_integer(g._FRACptr->den))
-	return sym_mult(*this,g,contextptr);	
-    case _INT_: case _DOUBLE_: case _ZINT: 
-#ifdef HAVE_LIBMPFR
-      return *this * real_object(g,mpfr_get_prec(inf));      
-#else
-      return *this * real_object(g);
-#endif
-    default:
-      return sym_mult(*this,g,contextptr);
-    }
-  }
-  
-  gen real_interval::multiply (const gen & g,GIAC_CONTEXT) const{
-    switch (g.type){
-    case _REAL:
-      return *this * *g._REALptr;
-    case _CPLX:
-      return gen(this->multiply(*g._CPLXptr,contextptr),this->multiply(*(g._CPLXptr+1),contextptr));
-    case _FRAC:
-      if (!is_integer(g._FRACptr->num) || !is_integer(g._FRACptr->den))
-	return sym_mult(*this,g,contextptr);	
-    case _INT_: case _DOUBLE_: case _ZINT: 
-#ifdef HAVE_LIBMPFR
-      return *this * real_object(g,mpfr_get_prec(inf));      
-#else
-      return *this * real_object(g);
-#endif
-    default:
-      return sym_mult(*this,g,contextptr);
-    }
-  }
-  
-  gen real_object::operator * (const gen & g) const{
-    return multiply(g,context0);
-  }
-  
-  gen real_object::operator / (const gen & g) const{
-    return *this * g.inverse(context0);
-  }
-  
-  gen real_object::divide (const gen & g,GIAC_CONTEXT) const{
-    return multiply(g.inverse(contextptr),contextptr);
-  }
-  
-  gen real_interval::divide (const gen & g,GIAC_CONTEXT) const{
-    return multiply(g.inverse(contextptr),contextptr);
-  }
-  
-  gen real_object::operator / (const real_object & g) const{
-    return *this * g.inv();
-  }
-  
-  static real_interval mul(const real_interval & i,const real_interval & g){
-    real_interval res(i);
-#ifdef HAVE_LIBMPFR
-    mpfr_mul(res.inf,i.inf,g.inf,MPFR_RNDN);
-#else
-    mpf_mul(res.inf,i.inf,g.inf);
-#endif
-#ifdef HAVE_LIBMPFI
-    mpfi_mul(res.infsup,i.infsup,g.infsup);
-#else
-    // FIXME: should check signs for interval arithmetic!!
-#ifndef NO_STDEXCEPT
-    setsizeerr(gettext("real_interval mul"));
-#endif
-    // mpf_mul(res.sup,i.sup,g.sup); 
-#endif
-    return res;
-  }
-
-  real_interval real_interval::operator * (const real_interval & g) const{
-    return mul(*this,g);
-  }
-
-  static real_interval mul(const real_interval & i,const real_object & g){
-#ifdef NO_RTTI
-    const real_interval * ptr=0;
-#else
-    const real_interval * ptr=dynamic_cast<const real_interval *>(&g);
-#endif
-    if (ptr)
-      return mul(i,*ptr);
-    real_interval res(i);
-#ifdef HAVE_LIBMPFR
-    mpfr_mul(res.inf,i.inf,g.inf,MPFR_RNDN);
-#else
-    mpf_mul(res.inf,i.inf,g.inf);
-#endif
-#ifdef HAVE_LIBMPFI
-    mpfi_mul_fr(res.infsup,i.infsup,g.inf);
-#else
-    // FIXME: should check signs for interval arithmetic!!
-#ifndef NO_STDEXCEPT
-    setsizeerr(gettext("real_interval mul 2"));
-#endif
-    // mpf_mul(res.sup,i.sup,g.inf);    
-#endif
-    return res;
-  }
-
-  gen real_interval::operator * (const real_object & g) const{
-    return mul(*this,g);
-  }
-
-  gen real_object::operator * (const real_object & g) const{
-#ifdef NO_RTTI
-    const real_interval * ptr=0;
-#else
-    const real_interval * ptr=dynamic_cast<const real_interval *>(&g);
-#endif
-    if (ptr)
-      return mul(*ptr,*this);
-#ifdef HAVE_LIBMPFR
-    mpfr_t sum;
-    mpfr_init2(sum,giacmin(mpfr_get_prec(this->inf),mpfr_get_prec(g.inf)));
-    mpfr_mul(sum,this->inf,g.inf,MPFR_RNDN);
-    real_object res(sum);
-    mpfr_clear(sum);
-#else
-    mpf_t sum;
-    mpf_init(sum);
-    mpf_mul(sum,this->inf,g.inf);
-#ifdef LONGFLOAT_DOUBLE
-    real_object res; res.inf=sum;
-#else
-    real_object res(sum);
-#endif
-    mpf_clear(sum);
-#endif
-    return res;
-  }
-
-  int real_object::is_positive() const{
-#ifdef HAVE_LIBMPFR
-    return mpfr_sgn(inf);
-#else
-    return mpf_sgn(inf);
-#endif
-  }
-
-  int real_interval::is_positive() const{
-#ifdef HAVE_LIBMPFI
-    if (mpfi_is_zero(infsup)>0)
-      return 0;
-    if (mpfi_is_pos(infsup))
-      return 1;
-    if (mpfi_is_nonpos(infsup))
-      return -1;
-    return 0;
-#else
-#ifdef HAVE_LIBMPFR
-    return mpfr_sgn(inf);
-#else
-    return mpf_sgn(inf);
-#endif
-#endif
-  }
-
-  string print_binary(const real_object & r){
-#ifdef HAVE_LIBMPFR
-    mp_exp_t expo;
-    int dd=mpfr_get_prec(r.inf);
-#ifdef VISUALC
-    char * ptr=new char[dd+2];
-#else
-    char ptr[dd+2];
-#endif
-    if (!mpfr_get_str(ptr,&expo,2,dd,r.inf,MPFR_RNDN) || !(*ptr))
-      return "MPFR print binary error "+r.print(context0);
-    string res;
-    if (ptr[0]=='-')
-      res="-0000."+string(ptr+1);
-    else
-      res="0000."+string(ptr);
-#ifdef VISUALC
-    delete [] ptr;
-#endif // VISUALC
-    return res+"E"+print_INT_(expo);
-#else // MPFR
-    return "Error no MPFR printing "+r.print(context0);
-#endif
-  }
-
-  gen read_binary(const string & s,unsigned int precision){
-#ifdef HAVE_LIBMPFR
-    real_object r;
-    mpfr_set_prec(r.inf,precision);
-#ifndef HAVE_MPFR_SET_STR_RAW
-    // MPFR 2.2
-    mpfr_strtofr (r.inf, (char *)s.c_str(), 0, 2, MPFR_RNDN); 
-#else
-    // FOR MPFR 2.0 use instead 
-    mpfr_set_str_raw(r.inf,(char *)s.c_str());
-#endif // GNUWINCE
-    return r;
-    return gensizeerr(gettext("MPFR error reading binary ")+s);
-#else // HAVE_LIBMPFR
-    return gensizeerr(gettext("Error no MPFR reading ")+s);
-#endif // HAVE_LIBMPFR
-    return undef;
-  }
-
-  std::string real_object::print(GIAC_CONTEXT) const{ 
-#ifdef HAVE_LIBMPFR
-    if (mpfr_nan_p(inf))
-      return "undef";
-    bool negatif=mpfr_sgn(inf)<0;
-    if (mpfr_inf_p(inf))
-      return negatif?"-infinity":"+infinity";
-    mp_exp_t expo;
-    int dd=mpfr_get_prec(inf);
-    dd=bits2digits(dd);
-    dd--;
-    char ptr[dd+16];
-    if (negatif){
-      mpfr_t inf2;
-      mpfr_init2(inf2,mpfr_get_prec(inf));
-      mpfr_neg(inf2,inf,MPFR_RNDN);
-      mpfr_get_str(ptr,&expo,10,dd,inf2,MPFR_RNDN);
-      mpfr_clear(inf2);
-    }
-    else
-      mpfr_get_str(ptr,&expo,10,dd,inf,MPFR_RNDN); 
-    std::string res(ptr);
-    //if (expo!=0){ res += 'e'; res += print_INT_(expo); }
-#ifndef BF2GMP_H
-    if (expo){
-      if (expo==1){
-	string reste(res.substr(1,res.size()-1));
-	res=res[0]+("."+reste);
-      }
-      else {
-	res = "0."+res;
-	res += calc_mode(contextptr)==1?'E':'e';
-	res += print_INT_(expo);
-      }
-    }
-    else
-      res="0."+res;
-#endif
-#ifdef VISUALC
-    delete [] ptr;
-#endif
-    if (negatif)
-      return "-"+res;
-    else
-      return res;
-#else
-    return printmpf_t(inf,contextptr);
-#endif
-  }
-
-  bool real_object::is_zero() const{
-#ifdef HAVE_LIBMPFR
-    return !mpfr_sgn(inf);
-#else
-    return mpf_sgn(inf)==0;
-#endif
-  }
-
-  bool real_object::maybe_zero() const{
-#ifdef HAVE_LIBMPFR
-    return !mpfr_sgn(inf);
-#else
-    return mpf_sgn(inf)==0;
-#endif
-  }
-
-  bool real_interval::is_zero() const {
-#ifdef HAVE_LIBMPFI
-    return mpfi_is_zero(infsup);
-#else
-    return real_object::is_zero();
-#endif
-  }
-
-  bool real_interval::maybe_zero() const{
-#ifdef HAVE_LIBMPFI
-    return mpfi_has_zero(infsup);
-#else
-    return real_object::maybe_zero();
-#endif
-  }
-
-  bool real_object::is_inf() const{
-#ifdef HAVE_LIBMPFR
-    return !mpfr_inf_p(inf);
-#else
-#ifndef NO_STDEXCEPT
-    setsizeerr();
-#endif
-    return false;
-#endif
-  }
-
-  bool real_interval::is_inf() const{
-#ifdef HAVE_LIBMPFI
-    return !mpfi_inf_p(infsup);
-#else
-    return real_object::is_inf();
-#endif
-  }
-
-  bool real_object::is_nan() const{
-#ifdef HAVE_LIBMPFR
-    return !mpfr_nan_p(inf);
-#else
-#ifndef NO_STDEXCEPT
-    setsizeerr();
-#endif
-    return false;
-#endif
-  }
-
-  bool real_interval::is_nan() const{
-#ifdef HAVE_LIBMPFI
-    return !mpfi_nan_p(infsup);
-#else
-    return real_object::is_nan();
-#endif
-  }
-
-  gen iprotecteval(const gen & g,int level,GIAC_CONTEXT){
-#ifdef FXCG
-    set_abort();
-    // cout << g << '\n';
-    gen res=protecteval(g,level,contextptr);
-    // cout << res << '\n';
-    clear_abort();
-    return res;
-#else
-    return protecteval(g,level,contextptr);
-#endif
-  }
-
+#if 0
   const char * caseval(const char *s){
-    //printf("%s\n",s);
-    ctrl_c=interrupted=false;
     static string * sptr=0;
     if (!sptr) sptr=new string;
     string & S=*sptr;
     static context * contextptr=0;
     if (!contextptr) contextptr=new context;
     context & C=*contextptr;
-    if (!strcmp(s,"caseval contextptr"))
-      return (const char *) contextptr;
-    // history_plot(contextptr).clear(); // must be commented otherwise matplotl fails
-    if (!strcmp(s,"warn off")){
-      warn_symb_program_sto=false;
-      return "warn off";
-    }
-    if (!strcmp(s,"warn on")){
-      warn_symb_program_sto=true;
-      return "warn on";
-    }
-#ifdef KHICAS
-    if (!turtleptr){
-      turtle();
-      _efface_logo(vecteur(0),contextptr);
-    }
-    if (!strcmp(s,"*")){
-#ifdef NSPIRE_NEWLIB
-      if (nspirelua==1){
-	nspirelua=2;
-	*logptr(contextptr) << (lang?"menu menu: quitte le shell\n":"menu menu : leave the shell\n");
-	while (1){
-	  xcas::Console_Disp(1,contextptr);
-	  const char * expr =xcas::Console_GetLine(contextptr);
-	  if (!expr || expr[0]==4 || strcmp(expr,"exit")==0)
-	    break;
-	  giac::freeze=true;
-	  xcas::run(expr,7,contextptr);
-	  xcas::Console_NewLine(xcas::LINE_TYPE_OUTPUT,1);
+#ifdef TIMEOUT
+    if (strlen(s)>8){
+      string args(s);
+      if (args.substr(0,8)=="timeout "){
+	string t=args.substr(8,args.size()-8);
+	double f=atof(t.c_str());
+	if (f>=0 && f<24*60){
+	  caseval_maxtime=f;
+	  S="Max eval time set to "+gen(f).print();
+	  return S.c_str();
 	}
-	nspirelua=1;
       }
-      return "Done";
-#else
-      int res=xcas::console_main(contextptr);
-      S=printint(res);
-      return S.c_str();
-#endif
-    }
-    if (!strcmp(s,"+"))
-      s="+\"temp\"";
-    if (!strncmp(s,"+\"",2)){
-      char filename[256];
-      strcpy(filename,s+2);
-      filename[strlen(filename)-1]=0;
-#ifdef NSPIRE_NEWLIB
-      strcat(filename,".py.tns");
-#else
-      strcat(filename,".py");
-#endif
-      char buf[4096]="def f(x):\n  return x*x\n";
-      if (file_exists(filename)){
-	const char * ch=read_file(filename);
-	S=ch;
-	if (S.size()>sizeof(buf))
-	  S=S.substr(0,sizeof(buf)-1);
-	strcpy(buf,S.c_str());
+      if (args.substr(0,8)=="ckevery "){
+	string t=args.substr(8,args.size()-8);
+	int f=atoi(t.c_str());
+	if (f>0 && f<1e6){
+	  caseval_mod=f;
+	  S="Check every "+gen(f).print();
+	  return S.c_str();
+	}
       }
-      xcas::textedit(buf,sizeof(buf),true,contextptr,filename);
-      s=buf;
-      //S=buf;
-      //return S.c_str();      
     }
-    if (!strcmp(s,"toolbox menu")){
-      char buf[1024]="";
-      showCatalog(buf,0,0,&C);
-      drawRectangle(0,0,320,222,_WHITE);
-      S=buf;
-      return S.c_str();
-    }
-    if (!strcmp(s,"var menu")){
-      gen g=select_var(contextptr);
-      drawRectangle(0,0,320,222,_WHITE);
-      S=g.type==_STRNG?*g._STRNGptr:g.print(contextptr);
-      if (!strcmp(S.c_str(),"undef"))
-	S="";
-      return S.c_str();
-    }
-    if (!strcmp(s,".")){
-      xcas::displaylogo();
-      S=turtle_state(contextptr).print(&C);
-      return S.c_str();
-    }
-    if (!strcmp(s,"..")){
-      _efface_logo(vecteur(0),contextptr);
-      return "turtle cleared";
-    }
+    ctrl_c=false;
+    interrupted=false;
+    caseval_begin=time(0);    
 #endif
 #ifdef HAVE_LIBPTHREAD
     gen g;
@@ -14442,7 +12265,7 @@ namespace giac {
     if (cres){
       g=gen(s,&C);
       g=equaltosto(g,&C);
-      g=iprotecteval(g,1,&C);
+      g=protecteval(g,1,&C);
     }
     else {
       // void * ptr;
@@ -14490,7 +12313,7 @@ namespace giac {
     g=equaltosto(g,&C);
     if (g.type==_VECT && !g._VECTptr->empty() && g._VECTptr->front().is_symb_of_sommet(at_set_language)){
       vecteur v=*g._VECTptr;
-      iprotecteval(v.front(),1,&C);
+      protecteval(v.front(),1,&C);
       v.erase(v.begin());
       if (g.subtype==_SEQ__VECT && v.size()==1)
 	g=v.front();
@@ -14500,23 +12323,19 @@ namespace giac {
     gen gp=g;
     if (gp.is_symb_of_sommet(at_add_autosimplify))
       gp=gp._SYMBptr->feuille;
-#ifdef FXCG
-    bool push=false;
-#else
-    bool push=!gp.is_symb_of_sommet(at_mathml) && !gp.is_symb_of_sommet(at_set_language);
-#endif
+    bool push=!gp.is_symb_of_sommet(at_set_language);
     //bool push=!g.is_symb_of_sommet(at_mathml);
     if (push){
       history_in(&C).push_back(g);
-      // COUT << "hin " << g << '\n';
+      // COUT << "hin " << g << endl;
     }
-    g=iprotecteval(g,1,&C);
+    g=protecteval(g,1,&C);
     if (push){
       history_out(&C).push_back(g);
-      // COUT << "hout " << g << '\n';
+      // COUT << "hout " << g << endl;
     }
 #endif
-#if defined(EMCC) || defined(EMCC2)
+#ifdef EMCC
     // compile with -s LEGACY_GL_EMULATION=1
     gen last=g;
     while (last.type==_VECT && last.subtype!=_LOGO__VECT && !last._VECTptr->empty()){
@@ -14530,125 +12349,38 @@ namespace giac {
       S="gr2d(logo("+last.print(&C)+"))";
       return S.c_str();
     }
-    if (calc_mode(&C)!=1 && (last.is_symb_of_sommet(at_pnt) || last.is_symb_of_sommet(at_pixon))){
-#if !defined(GIAC_GGB) && (defined(EMCC) || defined EMCC2)
-      if (is3d(last)){
-	int worker=0;
-	worker=EM_ASM_INT_V({
-	    if (typeof(UI.disable3d) !== 'undefined' && UI.disable3d)
-	      return UI.disable3d;
-	    if (Module.worker) return 1; else return 0;
-	});
-	if (worker==-1) return "gl3d_not_supported";
-	if (worker) return "gl3d_not_supported_if_workers_are_enabled";
-	//giac_renderer(last.print(&C).c_str());
-	int n=giac_gen_renderer(g,&C);
-	S="gl3d "+print_INT_(n);
-	return S.c_str();
-      }
-#endif // GIAC_GGB
-      last=remove_at_pnt(last);
-      if (last.is_symb_of_sommet(at_pixon)){
-	S="gr2d(pixon(";
-	pixon_print(g,S,&C);
-	S+="))";
-	return S.c_str();
-      }
-      return svg2doutput(g,S,&C);
-    }
 #endif // EMCC
     if (calc_mode(&C)==1 && !lop(g,at_rootof).empty())
       g=evalf(g,1,&C);
-    if (has_undef_stringerr(g,S)){
+    if (has_undef_stringerr(g,S))
       S="GIAC_ERROR: "+S;
-    }
     else {
-      gen last=g;
-      while (last.type==_VECT && last.subtype!=_LOGO__VECT && !last._VECTptr->empty()){
-	gen tmp=last._VECTptr->back();
-	if (tmp.is_symb_of_sommet(at_equal))
-	  last=vecteur(last._VECTptr->begin(),last._VECTptr->end()-1);
-	else
-	  last=tmp;
-      }
-#ifdef KHICAS // replace ],[ by ][
-      if (last.is_symb_of_sommet(at_pnt)){
-	if (os_shell || nspirelua)
-	  xcas::displaygraph(g,&C);
-	S="Graphic_object";
-      }
-      else {
-	if (os_shell){
-	  if (islogo(g))
-	    xcas::displaylogo();
-	  else {
-	    if ( (g.type==_SYMB || (warn_symb_program_sto && g.type==_VECT)) && taille(g,256)<=256)
-	      g=xcas::eqw(g,true,&C);
-	  }
-	}
-	if (taille(g,100)>=100)
-	  S="Large_object";
-	else
-	  S=g.print(&C);
-      }
-      if (!os_shell){
-	string S_;
-	S_ += S[0];
-	for (size_t i=1;i+1<S.size();++i){
-	  if (S[i-1]==']' && S[i]==',' && S[i+1]=='[')
-	    ;
-	  else
-	    S_ += S[i];
-	}
-	if (S.size()>1)
-	  S_ +=S[S.size()-1];
-	S=S_;
-	if (S.size()>=3 && S[0]=='[' && S[1]!='[' && S[S.size()-1]==']')
-	  S='['+S+']'; // vector/list not allowed in Numworks calc app
-      }
-#else
-      if (calc_mode(contextptr)!=1 && last.is_symb_of_sommet(at_pnt))
-	S="Graphic_object";
-      else if (islogo(g))
-	S="Logo_turtle";
-      else
-	S=g.print(&C);
-#if !defined GIAC_GGB 
-#if defined EMCC || defined EMCC2
-	double add_evalf=EM_ASM_DOUBLE_V({
-	    if (typeof(UI.add_evalf)!="undefined")
-	      return UI.add_evalf*1.0;
-	    return 1.0;
-	  }),
-	  js_bigint=EM_ASM_DOUBLE_V({
-	      if (typeof(UI.js_bigint)!="undefined")
-	      return UI.js_bigint*1.0;
-	    return 0.0;
-	  });
-#else
-	double add_evalf=false,js_bigint=false;
-#endif
+      S=g.print(&C);
+#ifndef GIAC_GGB
       if (g.type==_FRAC || g.type==_ZINT){
-	if (add_evalf){
-	  S += "=";	  
-	  S += evalf_double(g,1,&C).print(&C);
-	}
+	S += "=";	  
+	S += evalf_double(g,1,&C).print(&C);
       }
-      if (js_bigint && is_integer(g))
-	S += "n";
-      if (add_evalf && g.type==_SYMB){
+      if (g.type==_SYMB){
 	g=evalf_double(g,1,&C);
 	if (g.type<=_CPLX){
 	  S += "=";
 	  S += g.print(&C);
 	}
       }
-#endif // !defined GIAC_GGB
-#endif // NUWMORKS
+#endif
     }
     return S.c_str();
   }
+  #endif
 
+#ifdef EMCC_BIND
+  EMSCRIPTEN_BINDINGS(cas){
+    emscripten::function("caseval",&caseval,emscripten::allow_raw_pointers());
+  }
+#endif
+  
 #ifndef NO_NAMESPACE_GIAC
 } // namespace giac
 #endif // ndef NO_NAMESPACE_GIAC
+

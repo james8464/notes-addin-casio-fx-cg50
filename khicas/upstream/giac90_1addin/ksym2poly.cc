@@ -127,7 +127,7 @@ namespace giac {
 
   void lvar(const gen & e, vecteur & l) {
     switch (e.type){
-    case _INT_: case _DOUBLE_: case _ZINT: case _CPLX: case _POLY: case _EXT: case _USER:
+    case _INT_: case _DOUBLE_: case _ZINT: case _CPLX: case _POLY: case _EXT:  
       return;
     case _IDNT:
       if (strcmp(e._IDNTptr->id_name,string_undef))
@@ -1391,7 +1391,7 @@ namespace giac {
       return true;
     case _MOD:
       return sym2rmod(e._MODptr,iext,l,lv,lvnum,lvden,l_size,num,den,contextptr);
-      case _USER: num=e; den=plus_one; return true;
+      // case _USER: num=e; den=plus_one; return true;
     default: 
 #ifndef NO_STDEXCEPT
       settypeerr(gettext("Unable to handle type [sym2poly.cc]")+e.print(contextptr));
@@ -2929,8 +2929,6 @@ namespace giac {
     if (g.type==_FUNC)
       return 1;
     if (g.type==_VECT){
-      if (g.subtype==_PNT__VECT)
-	return 0;
       const_iterateur it=g._VECTptr->begin(),itend=g._VECTptr->end();
       for (;it!=itend;++it){
 	if (it->type==_STRNG)
@@ -3625,8 +3623,8 @@ namespace giac {
     alg_lvar(e,l);
     if (!l.empty() && l.front().type==_VECT && l.front()._VECTptr->empty())
       return e_;
-    if (l.size()==1 && contains(l.front(),vx_var)){ // x first
-      l=vecteur(1,vecteur(1,vx_var));
+    if (l.size()==1 && contains(l.front(),vx_var())){ // x first
+      l=vecteur(1,vecteur(1,vx_var()));
       alg_lvar(e,l);
     }
     return partfrac(e,l,with_sqrt,contextptr);
@@ -3670,7 +3668,7 @@ namespace giac {
   gen _e2r(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     if (args.type!=_VECT)
-      return _e2r(makesequence(args,vx_var),contextptr);
+      return _e2r(makesequence(args,vx_var()),contextptr);
     vecteur & v=*args._VECTptr;
     int s=int(v.size());
     if (s<2)
@@ -3693,11 +3691,11 @@ namespace giac {
   gen _r2e(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     if (args.type!=_VECT || args.subtype!=_SEQ__VECT)
-      return _r2e(makesequence(args,vx_var),contextptr);
+      return _r2e(makesequence(args,vx_var()),contextptr);
     vecteur & v=*args._VECTptr;
     int s=int(v.size());
     if (s<2)
-      return _r2e(makesequence(args,vx_var),contextptr);
+      return _r2e(makesequence(args,vx_var()),contextptr);
     gen res=v[0];
     for (int i=1;i<s;++i){
       if (v[i].type==_VECT)
@@ -3730,7 +3728,6 @@ namespace giac {
   //symbolic symb_factor(const gen & args){    return symbolic(at_factor,args);  }
   gen _factor(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
-    args.dbgprint();
     if (is_integer(args))
       *logptr(contextptr) << "Run ifactor(" << args << ") for integer factorization." << endl;
     if (is_equal(args))
@@ -3807,7 +3804,7 @@ namespace giac {
     if (s==2){
       if (v[0].type==_POLY && v[1].type==_POLY)
 	return resultant(*v[0]._POLYptr,*v[1]._POLYptr);
-      v.push_back(vx_var);
+      v.push_back(vx_var());
     }
     if (has_num_coeff(v))
       return _det(_sylvester(args,contextptr),contextptr); 
@@ -3818,7 +3815,7 @@ namespace giac {
 	CERR << CLOCK()*1e-6 << " interp resultant begin " << endl;
       gen p=v[0];
       gen q=v[1];
-      gen x=vx_var;
+      gen x=vx_var();
       if (s>3)
 	x=v[2];
       gen dbg; // dbg=_resultant(makesequence(p,q,x),contextptr);
@@ -3891,7 +3888,7 @@ namespace giac {
 	    gen coeff;
 	    if (!interpolable_resultant(pp,d,coeff,true,contextptr) || !interpolable_resultant(qp,d,coeff,true,contextptr))
 	      return gensizeerr(gettext("Not enough elements in field to interpolate. Try in a field extension"));
-	    if (coeff.type==_USER) j=0;
+	    //if (coeff.type==_USER) j=0;
 	    int dim=pp.dim;
 	    vecteur vp,vq,vp0,vq0;
 	    polynome2poly1(pp,1,vp);

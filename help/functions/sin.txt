@@ -1,9 +1,30 @@
-Args: sin(x)
-Required: x
-Does: Sine function in the current angle mode.
-Examples: sin(pi/6); solve(sin(x)=1/2,x=0..2*pi)
-F2:sin(pi/6)
-F3:solve(sin(x)=1/2,x=0..2*pi)
-Ex F2: sin(pi/6)
-Ex F3: solve(sin(x)=1/2,x=0..2*pi)
-Working: Shows standard exact values and identities where routed.
+sin(x)
+
+Args:
+  x
+
+Required:
+  x
+
+Optional:
+  None.
+
+Does:
+  Sine. Required: angle x in current angle mode.
+
+Examples:
+  sin(pi/6)
+
+F2:
+  sin(pi/6)
+
+Keys:
+  F1 inserts the command.
+  F2 inserts the first example.
+  F3 inserts the second example when available.
+
+Working:
+  Shows exam-style lines when this command has a routed A-level working path; otherwise returns the exact KhiCAS result for the expression.
+
+Tip:
+  Use brackets around compound numerators, denominators, powers, and substitutions for readable exam-style output.

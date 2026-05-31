@@ -14,13 +14,13 @@
 #define PACKAGE_NAME "giac"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "giac 1.8.0"
+#define PACKAGE_STRING "giac 1.4.9"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "giac"
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "1.8.0"
+#define PACKAGE_VERSION "1.4.9"
 
 /* The size of `int', as computed by sizeof. */
 #define SIZEOF_INT 4
@@ -45,13 +45,9 @@
 #ifndef HAVE_UNISTD_H
 #define HAVE_UNISTD_H
 #endif
-#define HAVE_NO_SYS_TIMES_H
-#define USE_GMP_REPLACEMENTS
-#if 0
+#define HAVE_NO_SYS_TIMES_H 
 #define HAVE_LIBTOMMATH
-#else
-#define BF2GMP
-#endif
+#define USE_GMP_REPLACEMENTS
 #ifndef HAVE_CONFIG_H
 #define HAVE_CONFIG_H
 #endif
@@ -65,5 +61,5 @@
 #define HAVE_SSTREAM
 #define USTL
 #define std ustl
-//#define NO_RTTI
+#define NO_RTTI
 //#define CURSOR

@@ -603,14 +603,14 @@ namespace giac {
     rot[2]=derive(v1[1],v2[0],contextptr)-derive(v1[0],v2[1],contextptr);
     return rot;
   }
-  static const char _curl_s[]="_rs185";
+  static const char _curl_s[]="curl";
   static define_unary_function_eval_quoted (__curl,&_curl,_curl_s);
   define_unary_function_ptr5( at_curl ,alias_at_curl,&__curl,_QUOTE_ARGUMENTS,true);
 
   bool find_n_x(const gen & args,int & n,gen & x,gen & a){
     if (args.type==_INT_){
       n=args.val;
-      x=vx_var;
+      x=vx_var();
       a=a__IDNT_e;
       return true;
     }
@@ -618,7 +618,7 @@ namespace giac {
       n=int(args._DOUBLE_val);
       if (n!=args._DOUBLE_val)
 	return false;
-      x=vx_var;
+      x=vx_var();
       a=a__IDNT_e;
       return true;
     }
@@ -949,7 +949,7 @@ namespace giac {
     int n=int(v2.size());
     if (n!=2) return gensizeerr(contextptr);
     vecteur fa;
-    fa=factors(g1,vx_var,contextptr);
+    fa=factors(g1,vx_var(),contextptr);
     int l=int(fa.size());
     gen ax=1;
     gen ay=1;

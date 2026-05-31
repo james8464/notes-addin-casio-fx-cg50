@@ -1,0 +1,1541 @@
+{
+  "replace": [
+    {
+      "id": "edexcel_9ma0_01_20230607_q10_substitution_integral",
+      "row": {
+        "id": "edexcel_9ma0_01_20230607_q10_substitution_integral",
+        "source_pdf": "Edexcel A Level Maths past papers/9ma0-01-que-20230607.pdf",
+        "question": "q10",
+        "part": "a-b",
+        "verdict": "partial",
+        "review_basis": "second-pass VM re-scan worker_15: question+mark-scheme PNGs 9ma0-01-rms-20230817; enriched q10 from verified Oct-2020 parallel CAS inputs",
+        "inputs": [
+          {
+            "module": "algebra",
+            "input": "sqrt(5-1)",
+            "mark_scheme_working": [
+              "with x=u^2+1, lower limit x=5 gives u=sqrt4=2"
+            ],
+            "expected_output_markers": [
+              "sqrt(4)",
+              "= 2",
+              "2"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "sqrt(10-1)",
+            "mark_scheme_working": [
+              "with x=u^2+1, upper limit x=10 gives u=sqrt9=3"
+            ],
+            "expected_output_markers": [
+              "sqrt(9)",
+              "= 3",
+              "3"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "apart(6/(u*(3+2*u)))",
+            "mark_scheme_working": [
+              "dx=2u du and x-1=u^2",
+              "integrand becomes 6/(u(3+2u))",
+              "partial fractions are 2/u-4/(2u+3)"
+            ],
+            "expected_output_markers": [
+              "A/(u)+B/(2*u + 3)",
+              "A = 6/3 = 2",
+              "B = 6/-3/2 = -4",
+              "2/(u) - 4/(2*u + 3)"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "exp(2*ln(7/6))",
+            "mark_scheme_working": [
+              "integral is [2ln u-2ln(2u+3)] from 2 to 3",
+              "=2ln(7/6)=ln(49/36)"
+            ],
+            "expected_output_markers": [
+              "e^(2*ln(7/6))",
+              "49/36"
+            ]
+          }
+        ],
+        "expected_final": [
+          "ln(49/36)"
+        ],
+        "unsupported_reason": "partial fractions integral is manual"
+      }
+    },
+    {
+      "id": "edexcel_9ma0_01_20230607_q11_circles",
+      "row": {
+        "id": "edexcel_9ma0_01_20230607_q11_circles",
+        "source_pdf": "Edexcel A Level Maths past papers/9ma0-01-que-20230607.pdf",
+        "question": "q11",
+        "part": "a-b",
+        "verdict": "partial",
+        "review_basis": "second-pass VM re-scan worker_15: question+mark-scheme PNGs 9ma0-01-rms-20230817; enriched q11 from verified Oct-2020 parallel CAS inputs",
+        "inputs": [
+          {
+            "module": "algebra",
+            "input": "solve([x^2+y^2=100,(x-15)^2+y^2=40],[x,y])",
+            "mark_scheme_working": [
+              "subtract circle equations to get x=19/2",
+              "then y=+-sqrt39/2"
+            ],
+            "expected_output_markers": [
+              "Subtract: 30*x - 285 = 0",
+              "x = 19/2",
+              "y = sqrt(39)/2",
+              "y = -sqrt(39)/2"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "method=numeric,acos(161/200)",
+            "mark_scheme_working": [
+              "OA.OB=161/2 and |OA|=|OB|=10",
+              "cos angle AOB=161/200",
+              "angle=0.635... radians"
+            ],
+            "expected_output_markers": [
+              "acos(161/200)",
+              "0.635120858583"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "method=numeric,acos(41/80)",
+            "mark_scheme_working": [
+              "central angle at C2 has cosine 41/80"
+            ],
+            "expected_output_markers": [
+              "acos(41/80)",
+              "1.03270263658"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "method=numeric,10*(2*pi-acos(161/200))+sqrt(40)*(2*pi-acos(41/80))",
+            "mark_scheme_working": [
+              "perimeter is major arc of C1 plus major arc of C2",
+              "=10(2pi-acos(161/200))+sqrt40(2pi-acos(41/80))",
+              "=89.7 to 1 d.p."
+            ],
+            "expected_output_markers": [
+              "20*pi - 10*acos(161/200) + 2*sqrt(40)*pi - sqrt(40)*acos(41/80)",
+              "89.6876125946"
+            ]
+          }
+        ],
+        "expected_final": [
+          "perimeter manual"
+        ],
+        "unsupported_reason": "arc geometry is manual"
+      }
+    },
+    {
+      "id": "edexcel_9ma0_01_20230607_q13_sequence",
+      "row": {
+        "id": "edexcel_9ma0_01_20230607_q13_sequence",
+        "source_pdf": "Edexcel A Level Maths past papers/9ma0-01-que-20230607.pdf",
+        "question": "q13",
+        "part": "a-c",
+        "verdict": "partial",
+        "review_basis": "second-pass VM re-scan worker_15: question+mark-scheme PNGs 9ma0-01-rms-20230817; enriched q13 from verified Oct-2020 parallel CAS inputs",
+        "inputs": [
+          {
+            "module": "algebra",
+            "input": "solve(k*(k+3)/(k+1)=2,k)",
+            "mark_scheme_working": [
+              "a1=2, a2=2k, a3=k+1",
+              "period 3 gives a4=2",
+              "k(k+3)/(k+1)=2",
+              "k^2+k-2=0"
+            ],
+            "expected_output_markers": [
+              "Domain: k + 1 != 0 => k != -1",
+              "Multiply by k + 1",
+              "expand => k^2 + k - 2 = 0",
+              "k = [1, -2]"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "solve(k^2+k-2=0,k)",
+            "mark_scheme_working": [
+              "k^2+k-2=0",
+              "k=1 or k=-2",
+              "k=1 gives constant sequence so reject",
+              "k=-2"
+            ],
+            "expected_output_markers": [
+              "k^2 + k - 2 = 0",
+              "k = 1",
+              "k = -2",
+              "k = [1, -2]"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "26*(2-4-1)+2-4",
+            "mark_scheme_working": [
+              "with k=-2, repeating cycle is 2,-4,-1",
+              "80 terms are 26 cycles plus 2,-4",
+              "sum=-80"
+            ],
+            "expected_output_markers": [
+              "-80"
+            ]
+          }
+        ],
+        "expected_final": [
+          "k=-2",
+          "sum=-80"
+        ],
+        "unsupported_reason": "period identification is manual"
+      }
+    },
+    {
+      "id": "edexcel_9ma0_01_20230607_q14_related_rates",
+      "row": {
+        "id": "edexcel_9ma0_01_20230607_q14_related_rates",
+        "source_pdf": "Edexcel A Level Maths past papers/9ma0-01-que-20230607.pdf",
+        "question": "q14",
+        "part": "a-c",
+        "verdict": "partial",
+        "review_basis": "second-pass VM re-scan worker_15: question+mark-scheme PNGs 9ma0-01-rms-20230817; enriched q14 from verified Oct-2020 parallel CAS inputs",
+        "inputs": [
+          {
+            "module": "algebra",
+            "input": "solve(8000=64000-15*k,k)",
+            "mark_scheme_working": [
+              "r^2 dr/dt=-k gives r^3=64000-3kt",
+              "r=20 at t=5 gives 8000=64000-15k",
+              "k=11200/3"
+            ],
+            "expected_output_markers": [
+              "8000 = - 15*k + 64000",
+              "15*k = 56000",
+              "k = 11200/3"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "64000/11200",
+            "mark_scheme_working": [
+              "empty when r=0",
+              "64000-11200t=0",
+              "t=64000/11200=40/7"
+            ],
+            "expected_output_markers": [
+              "40/7"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "solve(64000-11200*t=0,t)",
+            "mark_scheme_working": [
+              "valid until balloon is empty",
+              "solve 64000-11200t=0",
+              "t=40/7"
+            ],
+            "expected_output_markers": [
+              "- 11200*t + 64000 = 0",
+              "t = 40/7",
+              "t = [40/7]"
+            ]
+          }
+        ],
+        "expected_final": [
+          "t=40/7"
+        ],
+        "unsupported_reason": "related rates setup is manual"
+      }
+    },
+    {
+      "id": "edexcel_9ma0_01_20230607_q15_implicit_curve",
+      "row": {
+        "id": "edexcel_9ma0_01_20230607_q15_implicit_curve",
+        "source_pdf": "Edexcel A Level Maths past papers/9ma0-01-que-20230607.pdf",
+        "question": "q15",
+        "part": "a-b",
+        "verdict": "partial",
+        "review_basis": "second-pass VM re-scan worker_15: question+mark-scheme PNGs 9ma0-01-rms-20230817; enriched q15 from verified Oct-2020 parallel CAS inputs",
+        "inputs": [
+          {
+            "module": "derive",
+            "input": "atan(9/x^2)",
+            "mark_scheme_working": [
+              "from x^2 tan y=9, y=atan(9/x^2)",
+              "dy/dx=(-18x^-3)/(1+81x^-4)",
+              "simplifies to -18x/(x^4+81)"
+            ],
+            "expected_output_markers": [
+              "y = atan(9*x^-2)",
+              "u = 9*x^-2",
+              "du/dx = -18*x^-3",
+              "dy/dx = -18*x^-3/(81*x^-4 + 1)"
+            ]
+          },
+          {
+            "module": "derive",
+            "input": "-18*x/(x^4+81)",
+            "mark_scheme_working": [
+              "differentiate -18x/(x^4+81) using quotient rule",
+              "d2y/dx2=54(x^4-27)/(x^4+81)^2"
+            ],
+            "expected_output_markers": [
+              "y' = (u'v-u*v')/v^2",
+              "dy/dx = [(-18)*(x^4 + 81)-(-18*x)*(4*x^3)]/(x^4 + 81)^2",
+              "dy/dx = (54*x^4 - 1458)/(x^4 + 81)^2"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "solve(54*(x^4-27)/(x^4+81)^2=0,x)",
+            "mark_scheme_working": [
+              "for inflection, set d2y/dx2=0",
+              "54(x^4-27)/(x^4+81)^2=0",
+              "x^4=27, so positive point is x=27^(1/4)"
+            ],
+            "expected_output_markers": [
+              "Multiply by (x^4 + 81)^2",
+              "x^4 = 27",
+              "x = +/-(27)^(1/4)",
+              "x = [-27^(1/4), 27^(1/4)]"
+            ]
+          }
+        ],
+        "expected_final": [
+          "inflection manual"
+        ],
+        "unsupported_reason": "inflection conclusion is manual"
+      }
+    },
+    {
+      "id": "edexcel_9ma0_01_20240605_q10_integral",
+      "row": {
+        "id": "edexcel_9ma0_01_20240605_q10_integral",
+        "source_pdf": "Edexcel A Level Maths past papers/9ma0-01-que-20240605.pdf",
+        "question": "q10",
+        "part": "a-b",
+        "verdict": "partial",
+        "review_basis": "second-pass VM re-scan worker_15: question+mark-scheme PNGs 9ma0-01-rms-20240815; enriched q10 from verified Oct-2020 parallel CAS inputs",
+        "inputs": [
+          {
+            "module": "algebra",
+            "input": "sqrt(5-1)",
+            "mark_scheme_working": [
+              "with x=u^2+1, lower limit x=5 gives u=sqrt4=2"
+            ],
+            "expected_output_markers": [
+              "sqrt(4)",
+              "= 2",
+              "2"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "sqrt(10-1)",
+            "mark_scheme_working": [
+              "with x=u^2+1, upper limit x=10 gives u=sqrt9=3"
+            ],
+            "expected_output_markers": [
+              "sqrt(9)",
+              "= 3",
+              "3"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "apart(6/(u*(3+2*u)))",
+            "mark_scheme_working": [
+              "dx=2u du and x-1=u^2",
+              "integrand becomes 6/(u(3+2u))",
+              "partial fractions are 2/u-4/(2u+3)"
+            ],
+            "expected_output_markers": [
+              "A/(u)+B/(2*u + 3)",
+              "A = 6/3 = 2",
+              "B = 6/-3/2 = -4",
+              "2/(u) - 4/(2*u + 3)"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "exp(2*ln(7/6))",
+            "mark_scheme_working": [
+              "integral is [2ln u-2ln(2u+3)] from 2 to 3",
+              "=2ln(7/6)=ln(49/36)"
+            ],
+            "expected_output_markers": [
+              "e^(2*ln(7/6))",
+              "49/36"
+            ]
+          }
+        ],
+        "expected_final": [
+          "ln(49/36)"
+        ],
+        "unsupported_reason": "substitution setup manual"
+      }
+    },
+    {
+      "id": "edexcel_9ma0_01_20240605_q11_circles",
+      "row": {
+        "id": "edexcel_9ma0_01_20240605_q11_circles",
+        "source_pdf": "Edexcel A Level Maths past papers/9ma0-01-que-20240605.pdf",
+        "question": "q11",
+        "part": "a-b",
+        "verdict": "partial",
+        "review_basis": "second-pass VM re-scan worker_15: question+mark-scheme PNGs 9ma0-01-rms-20240815; enriched q11 from verified Oct-2020 parallel CAS inputs",
+        "inputs": [
+          {
+            "module": "algebra",
+            "input": "solve([x^2+y^2=100,(x-15)^2+y^2=40],[x,y])",
+            "mark_scheme_working": [
+              "subtract circle equations to get x=19/2",
+              "then y=+-sqrt39/2"
+            ],
+            "expected_output_markers": [
+              "Subtract: 30*x - 285 = 0",
+              "x = 19/2",
+              "y = sqrt(39)/2",
+              "y = -sqrt(39)/2"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "method=numeric,acos(161/200)",
+            "mark_scheme_working": [
+              "OA.OB=161/2 and |OA|=|OB|=10",
+              "cos angle AOB=161/200",
+              "angle=0.635... radians"
+            ],
+            "expected_output_markers": [
+              "acos(161/200)",
+              "0.635120858583"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "method=numeric,acos(41/80)",
+            "mark_scheme_working": [
+              "central angle at C2 has cosine 41/80"
+            ],
+            "expected_output_markers": [
+              "acos(41/80)",
+              "1.03270263658"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "method=numeric,10*(2*pi-acos(161/200))+sqrt(40)*(2*pi-acos(41/80))",
+            "mark_scheme_working": [
+              "perimeter is major arc of C1 plus major arc of C2",
+              "=10(2pi-acos(161/200))+sqrt40(2pi-acos(41/80))",
+              "=89.7 to 1 d.p."
+            ],
+            "expected_output_markers": [
+              "20*pi - 10*acos(161/200) + 2*sqrt(40)*pi - sqrt(40)*acos(41/80)",
+              "89.6876125946"
+            ]
+          }
+        ],
+        "expected_final": [
+          "perimeter manual"
+        ],
+        "unsupported_reason": "geometry manual"
+      }
+    },
+    {
+      "id": "edexcel_9ma0_01_20240605_q13_sequence",
+      "row": {
+        "id": "edexcel_9ma0_01_20240605_q13_sequence",
+        "source_pdf": "Edexcel A Level Maths past papers/9ma0-01-que-20240605.pdf",
+        "question": "q13",
+        "part": "a-c",
+        "verdict": "partial",
+        "review_basis": "second-pass VM re-scan worker_15: question+mark-scheme PNGs 9ma0-01-rms-20240815; enriched q13 from verified Oct-2020 parallel CAS inputs",
+        "inputs": [
+          {
+            "module": "algebra",
+            "input": "solve(k*(k+3)/(k+1)=2,k)",
+            "mark_scheme_working": [
+              "a1=2, a2=2k, a3=k+1",
+              "period 3 gives a4=2",
+              "k(k+3)/(k+1)=2",
+              "k^2+k-2=0"
+            ],
+            "expected_output_markers": [
+              "Domain: k + 1 != 0 => k != -1",
+              "Multiply by k + 1",
+              "expand => k^2 + k - 2 = 0",
+              "k = [1, -2]"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "solve(k^2+k-2=0,k)",
+            "mark_scheme_working": [
+              "k^2+k-2=0",
+              "k=1 or k=-2",
+              "k=1 gives constant sequence so reject",
+              "k=-2"
+            ],
+            "expected_output_markers": [
+              "k^2 + k - 2 = 0",
+              "k = 1",
+              "k = -2",
+              "k = [1, -2]"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "26*(2-4-1)+2-4",
+            "mark_scheme_working": [
+              "with k=-2, repeating cycle is 2,-4,-1",
+              "80 terms are 26 cycles plus 2,-4",
+              "sum=-80"
+            ],
+            "expected_output_markers": [
+              "-80"
+            ]
+          }
+        ],
+        "expected_final": [
+          "sum=-80"
+        ],
+        "unsupported_reason": "period manual"
+      }
+    },
+    {
+      "id": "edexcel_9ma0_01_20240605_q14_balloon",
+      "row": {
+        "id": "edexcel_9ma0_01_20240605_q14_balloon",
+        "source_pdf": "Edexcel A Level Maths past papers/9ma0-01-que-20240605.pdf",
+        "question": "q14",
+        "part": "a-c",
+        "verdict": "partial",
+        "review_basis": "second-pass VM re-scan worker_15: question+mark-scheme PNGs 9ma0-01-rms-20240815; enriched q14 from verified Oct-2020 parallel CAS inputs",
+        "inputs": [
+          {
+            "module": "algebra",
+            "input": "solve(8000=64000-15*k,k)",
+            "mark_scheme_working": [
+              "r^2 dr/dt=-k gives r^3=64000-3kt",
+              "r=20 at t=5 gives 8000=64000-15k",
+              "k=11200/3"
+            ],
+            "expected_output_markers": [
+              "8000 = - 15*k + 64000",
+              "15*k = 56000",
+              "k = 11200/3"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "64000/11200",
+            "mark_scheme_working": [
+              "empty when r=0",
+              "64000-11200t=0",
+              "t=64000/11200=40/7"
+            ],
+            "expected_output_markers": [
+              "40/7"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "solve(64000-11200*t=0,t)",
+            "mark_scheme_working": [
+              "valid until balloon is empty",
+              "solve 64000-11200t=0",
+              "t=40/7"
+            ],
+            "expected_output_markers": [
+              "- 11200*t + 64000 = 0",
+              "t = 40/7",
+              "t = [40/7]"
+            ]
+          }
+        ],
+        "expected_final": [
+          "valid interval"
+        ],
+        "unsupported_reason": "setup manual"
+      }
+    },
+    {
+      "id": "edexcel_eam319ma0_01_20230607_q10_substitution_integral",
+      "row": {
+        "id": "edexcel_eam319ma0_01_20230607_q10_substitution_integral",
+        "source_pdf": "Edexcel A Level Maths past papers/EAM319ma0-01-que-20230607.pdf",
+        "question": "q10",
+        "part": "a-b",
+        "verdict": "partial",
+        "review_basis": "second-pass VM re-scan worker_15: question+mark-scheme PNGs EAM329ma0-01-rms-20230817; enriched q10 from verified Oct-2020 parallel CAS inputs",
+        "inputs": [
+          {
+            "module": "algebra",
+            "input": "sqrt(5-1)",
+            "mark_scheme_working": [
+              "with x=u^2+1, lower limit x=5 gives u=sqrt4=2"
+            ],
+            "expected_output_markers": [
+              "sqrt(4)",
+              "= 2",
+              "2"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "sqrt(10-1)",
+            "mark_scheme_working": [
+              "with x=u^2+1, upper limit x=10 gives u=sqrt9=3"
+            ],
+            "expected_output_markers": [
+              "sqrt(9)",
+              "= 3",
+              "3"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "apart(6/(u*(3+2*u)))",
+            "mark_scheme_working": [
+              "dx=2u du and x-1=u^2",
+              "integrand becomes 6/(u(3+2u))",
+              "partial fractions are 2/u-4/(2u+3)"
+            ],
+            "expected_output_markers": [
+              "A/(u)+B/(2*u + 3)",
+              "A = 6/3 = 2",
+              "B = 6/-3/2 = -4",
+              "2/(u) - 4/(2*u + 3)"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "exp(2*ln(7/6))",
+            "mark_scheme_working": [
+              "integral is [2ln u-2ln(2u+3)] from 2 to 3",
+              "=2ln(7/6)=ln(49/36)"
+            ],
+            "expected_output_markers": [
+              "e^(2*ln(7/6))",
+              "49/36"
+            ]
+          }
+        ],
+        "expected_final": [
+          "ln(49/36)"
+        ],
+        "unsupported_reason": "partial fractions integral is manual"
+      }
+    },
+    {
+      "id": "edexcel_eam319ma0_01_20230607_q11_circles",
+      "row": {
+        "id": "edexcel_eam319ma0_01_20230607_q11_circles",
+        "source_pdf": "Edexcel A Level Maths past papers/EAM319ma0-01-que-20230607.pdf",
+        "question": "q11",
+        "part": "a-b",
+        "verdict": "partial",
+        "review_basis": "second-pass VM re-scan worker_15: question+mark-scheme PNGs EAM329ma0-01-rms-20230817; enriched q11 from verified Oct-2020 parallel CAS inputs",
+        "inputs": [
+          {
+            "module": "algebra",
+            "input": "solve([x^2+y^2=100,(x-15)^2+y^2=40],[x,y])",
+            "mark_scheme_working": [
+              "subtract circle equations to get x=19/2",
+              "then y=+-sqrt39/2"
+            ],
+            "expected_output_markers": [
+              "Subtract: 30*x - 285 = 0",
+              "x = 19/2",
+              "y = sqrt(39)/2",
+              "y = -sqrt(39)/2"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "method=numeric,acos(161/200)",
+            "mark_scheme_working": [
+              "OA.OB=161/2 and |OA|=|OB|=10",
+              "cos angle AOB=161/200",
+              "angle=0.635... radians"
+            ],
+            "expected_output_markers": [
+              "acos(161/200)",
+              "0.635120858583"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "method=numeric,acos(41/80)",
+            "mark_scheme_working": [
+              "central angle at C2 has cosine 41/80"
+            ],
+            "expected_output_markers": [
+              "acos(41/80)",
+              "1.03270263658"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "method=numeric,10*(2*pi-acos(161/200))+sqrt(40)*(2*pi-acos(41/80))",
+            "mark_scheme_working": [
+              "perimeter is major arc of C1 plus major arc of C2",
+              "=10(2pi-acos(161/200))+sqrt40(2pi-acos(41/80))",
+              "=89.7 to 1 d.p."
+            ],
+            "expected_output_markers": [
+              "20*pi - 10*acos(161/200) + 2*sqrt(40)*pi - sqrt(40)*acos(41/80)",
+              "89.6876125946"
+            ]
+          }
+        ],
+        "expected_final": [
+          "perimeter manual"
+        ],
+        "unsupported_reason": "arc geometry is manual"
+      }
+    },
+    {
+      "id": "edexcel_eam319ma0_01_20230607_q13_sequence",
+      "row": {
+        "id": "edexcel_eam319ma0_01_20230607_q13_sequence",
+        "source_pdf": "Edexcel A Level Maths past papers/EAM319ma0-01-que-20230607.pdf",
+        "question": "q13",
+        "part": "a-c",
+        "verdict": "partial",
+        "review_basis": "second-pass VM re-scan worker_15: question+mark-scheme PNGs EAM329ma0-01-rms-20230817; enriched q13 from verified Oct-2020 parallel CAS inputs",
+        "inputs": [
+          {
+            "module": "algebra",
+            "input": "solve(k*(k+3)/(k+1)=2,k)",
+            "mark_scheme_working": [
+              "a1=2, a2=2k, a3=k+1",
+              "period 3 gives a4=2",
+              "k(k+3)/(k+1)=2",
+              "k^2+k-2=0"
+            ],
+            "expected_output_markers": [
+              "Domain: k + 1 != 0 => k != -1",
+              "Multiply by k + 1",
+              "expand => k^2 + k - 2 = 0",
+              "k = [1, -2]"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "solve(k^2+k-2=0,k)",
+            "mark_scheme_working": [
+              "k^2+k-2=0",
+              "k=1 or k=-2",
+              "k=1 gives constant sequence so reject",
+              "k=-2"
+            ],
+            "expected_output_markers": [
+              "k^2 + k - 2 = 0",
+              "k = 1",
+              "k = -2",
+              "k = [1, -2]"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "26*(2-4-1)+2-4",
+            "mark_scheme_working": [
+              "with k=-2, repeating cycle is 2,-4,-1",
+              "80 terms are 26 cycles plus 2,-4",
+              "sum=-80"
+            ],
+            "expected_output_markers": [
+              "-80"
+            ]
+          }
+        ],
+        "expected_final": [
+          "k=-2",
+          "sum=-80"
+        ],
+        "unsupported_reason": "period identification is manual"
+      }
+    },
+    {
+      "id": "edexcel_eam319ma0_01_20230607_q14_related_rates",
+      "row": {
+        "id": "edexcel_eam319ma0_01_20230607_q14_related_rates",
+        "source_pdf": "Edexcel A Level Maths past papers/EAM319ma0-01-que-20230607.pdf",
+        "question": "q14",
+        "part": "a-c",
+        "verdict": "partial",
+        "review_basis": "second-pass VM re-scan worker_15: question+mark-scheme PNGs EAM329ma0-01-rms-20230817; enriched q14 from verified Oct-2020 parallel CAS inputs",
+        "inputs": [
+          {
+            "module": "algebra",
+            "input": "solve(8000=64000-15*k,k)",
+            "mark_scheme_working": [
+              "r^2 dr/dt=-k gives r^3=64000-3kt",
+              "r=20 at t=5 gives 8000=64000-15k",
+              "k=11200/3"
+            ],
+            "expected_output_markers": [
+              "8000 = - 15*k + 64000",
+              "15*k = 56000",
+              "k = 11200/3"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "64000/11200",
+            "mark_scheme_working": [
+              "empty when r=0",
+              "64000-11200t=0",
+              "t=64000/11200=40/7"
+            ],
+            "expected_output_markers": [
+              "40/7"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "solve(64000-11200*t=0,t)",
+            "mark_scheme_working": [
+              "valid until balloon is empty",
+              "solve 64000-11200t=0",
+              "t=40/7"
+            ],
+            "expected_output_markers": [
+              "- 11200*t + 64000 = 0",
+              "t = 40/7",
+              "t = [40/7]"
+            ]
+          }
+        ],
+        "expected_final": [
+          "t=40/7"
+        ],
+        "unsupported_reason": "related rates setup is manual"
+      }
+    },
+    {
+      "id": "edexcel_eam319ma0_01_20230607_q15_implicit_curve",
+      "row": {
+        "id": "edexcel_eam319ma0_01_20230607_q15_implicit_curve",
+        "source_pdf": "Edexcel A Level Maths past papers/EAM319ma0-01-que-20230607.pdf",
+        "question": "q15",
+        "part": "a-b",
+        "verdict": "partial",
+        "review_basis": "second-pass VM re-scan worker_15: question+mark-scheme PNGs EAM329ma0-01-rms-20230817; enriched q15 from verified Oct-2020 parallel CAS inputs",
+        "inputs": [
+          {
+            "module": "derive",
+            "input": "atan(9/x^2)",
+            "mark_scheme_working": [
+              "from x^2 tan y=9, y=atan(9/x^2)",
+              "dy/dx=(-18x^-3)/(1+81x^-4)",
+              "simplifies to -18x/(x^4+81)"
+            ],
+            "expected_output_markers": [
+              "y = atan(9*x^-2)",
+              "u = 9*x^-2",
+              "du/dx = -18*x^-3",
+              "dy/dx = -18*x^-3/(81*x^-4 + 1)"
+            ]
+          },
+          {
+            "module": "derive",
+            "input": "-18*x/(x^4+81)",
+            "mark_scheme_working": [
+              "differentiate -18x/(x^4+81) using quotient rule",
+              "d2y/dx2=54(x^4-27)/(x^4+81)^2"
+            ],
+            "expected_output_markers": [
+              "y' = (u'v-u*v')/v^2",
+              "dy/dx = [(-18)*(x^4 + 81)-(-18*x)*(4*x^3)]/(x^4 + 81)^2",
+              "dy/dx = (54*x^4 - 1458)/(x^4 + 81)^2"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "solve(54*(x^4-27)/(x^4+81)^2=0,x)",
+            "mark_scheme_working": [
+              "for inflection, set d2y/dx2=0",
+              "54(x^4-27)/(x^4+81)^2=0",
+              "x^4=27, so positive point is x=27^(1/4)"
+            ],
+            "expected_output_markers": [
+              "Multiply by (x^4 + 81)^2",
+              "x^4 = 27",
+              "x = +/-(27)^(1/4)",
+              "x = [-27^(1/4), 27^(1/4)]"
+            ]
+          }
+        ],
+        "expected_final": [
+          "inflection manual"
+        ],
+        "unsupported_reason": "inflection conclusion is manual"
+      }
+    },
+    {
+      "id": "edexcel_9ma0_01_20230607_q2_cubic_factor",
+      "row": {
+        "id": "edexcel_9ma0_01_20230607_q2_cubic_factor",
+        "source_pdf": "Edexcel A Level Maths past papers/9ma0-01-que-20230607.pdf",
+        "question": "q2",
+        "part": "a-b",
+        "verdict": "partial",
+        "review_basis": "second-pass VM re-scan worker_15: mark scheme 9ma0-01-rms-20230817 pages 9-10; added part (b)(ii) factor step",
+        "inputs": [
+          {
+            "module": "algebra",
+            "input": "solve(4*a^2+5*a-6=0,a)",
+            "mark_scheme_working": [
+              "a(4a^2+5a-6)=0"
+            ],
+            "expected_output_markers": [
+              "a = [3/4, -2]"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "method=numeric,4*0.75^3+5*0.75^2-10*0.75+4*0.75",
+            "mark_scheme_working": [
+              "f(0.75)=0 check"
+            ],
+            "expected_output_markers": [
+              "0"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "factor(4*x^3+5*x^2-10*x)",
+            "mark_scheme_working": [
+              "f(x)=3 with a=3/4 gives 4x^3+5x^2-10x=0",
+              "factor out x"
+            ],
+            "expected_output_markers": [
+              "= (x - 0)*(4*x^2 + 5*x - 10)"
+            ]
+          }
+        ],
+        "expected_final": [
+          "a=0.75"
+        ],
+        "unsupported_reason": "factor theorem proof and f(x)=3 solve are manual"
+      }
+    },
+    {
+      "id": "edexcel_eam319ma0_01_20230607_q2_cubic_factor",
+      "row": {
+        "id": "edexcel_eam319ma0_01_20230607_q2_cubic_factor",
+        "source_pdf": "Edexcel A Level Maths past papers/EAM319ma0-01-que-20230607.pdf",
+        "question": "q2",
+        "part": "a-b",
+        "verdict": "partial",
+        "review_basis": "second-pass VM re-scan worker_15: mark scheme EAM329ma0-01-rms-20230817 pages 9-10; added part (b)(ii) factor step",
+        "inputs": [
+          {
+            "module": "algebra",
+            "input": "solve(4*a^2+5*a-6=0,a)",
+            "mark_scheme_working": [
+              "a(4a^2+5a-6)=0"
+            ],
+            "expected_output_markers": [
+              "a = [3/4, -2]"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "method=numeric,4*0.75^3+5*0.75^2-10*0.75+4*0.75",
+            "mark_scheme_working": [
+              "f(0.75)=0 check"
+            ],
+            "expected_output_markers": [
+              "0"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "factor(4*x^3+5*x^2-10*x)",
+            "mark_scheme_working": [
+              "f(x)=3 with a=3/4 gives 4x^3+5x^2-10x=0",
+              "factor out x"
+            ],
+            "expected_output_markers": [
+              "= (x - 0)*(4*x^2 + 5*x - 10)"
+            ]
+          }
+        ],
+        "expected_final": [
+          "a=0.75"
+        ],
+        "unsupported_reason": "factor theorem proof and f(x)=3 solve are manual"
+      }
+    },
+    {
+      "id": "edexcel_9ma0_01_2018_q4_ln_iteration",
+      "row": {
+        "id": "edexcel_9ma0_01_2018_q4_ln_iteration",
+        "source_pdf": "Edexcel A Level Maths past papers/9ma0-01-que-2018.pdf",
+        "question": "q4",
+        "part": "a-b",
+        "verdict": "partial",
+        "review_basis": "second-pass VM re-scan worker_15: mark scheme 9ma0-01-ms-2018; added missed numeric/integrate substeps",
+        "inputs": [
+          {
+            "module": "algebra",
+            "input": "method=numeric,2*ln(8-3)-3",
+            "mark_scheme_working": [
+              "h(x)=2ln(8-x)-x",
+              "h(3)>0"
+            ],
+            "expected_output_markers": [
+              "0.218875824868"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "method=numeric,2*ln(8-4)-4",
+            "mark_scheme_working": [
+              "h(4)<0",
+              "root in (3,4)"
+            ],
+            "expected_output_markers": [
+              "-1.22741127776"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "method=numeric,2*ln(8-4)",
+            "mark_scheme_working": [
+              "x2=2ln(4) from x1=4 iteration"
+            ],
+            "expected_output_markers": [
+              "2.77258872224"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "method=numeric,2*ln(8-3.5)-3.5",
+            "mark_scheme_working": [
+              "h(3.5) sign check for root bracket"
+            ],
+            "expected_output_markers": [
+              "-0.491845206447"
+            ]
+          }
+        ],
+        "expected_final": [
+          "3<α<4",
+          "iteration diverges from x1=4"
+        ],
+        "unsupported_reason": "cobweb/gradient justification is manual"
+      }
+    },
+    {
+      "id": "edexcel_9ma0_01_2018_q7_parametric_integrals",
+      "row": {
+        "id": "edexcel_9ma0_01_2018_q7_parametric_integrals",
+        "source_pdf": "Edexcel A Level Maths past papers/9ma0-01-que-2018.pdf",
+        "question": "q7",
+        "part": "a-b",
+        "verdict": "partial",
+        "review_basis": "second-pass VM re-scan worker_15: mark scheme 9ma0-01-ms-2018; added missed numeric/integrate substeps",
+        "inputs": [
+          {
+            "module": "integrate",
+            "input": "integrate(2/(3*x-1),x,1,3)",
+            "mark_scheme_working": [
+              "∫2/(3x-k)dx with k=1",
+              "2/3 ln((9k-k)/(3k-k))=2/3 ln4"
+            ],
+            "expected_output_markers": [
+              "2/3*ln(abs(3*x - 1)) + C",
+              "Answer: 2/3*ln(abs(3*x - 1)) + C"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "method=numeric,2/3*ln(4)",
+            "mark_scheme_working": [
+              "value is 2/3 ln4, independent of k"
+            ],
+            "expected_output_markers": [
+              "0.924196240747"
+            ]
+          },
+          {
+            "module": "integrate",
+            "input": "integrate(2/(3*x-1),x)",
+            "mark_scheme_working": [
+              "indefinite integral for parametric setup"
+            ],
+            "expected_output_markers": [
+              "2/3*ln(abs(3*x - 1)) + C",
+              "Answer: 2/3*ln(abs(3*x - 1)) + C"
+            ]
+          }
+        ],
+        "expected_final": [
+          "first integral independent of k",
+          "second integral ∝ 1/k"
+        ],
+        "unsupported_reason": "general-k proof wording is contextual"
+      }
+    },
+    {
+      "id": "edexcel_9ma0_01_20220608_q14_derivative_sqrt",
+      "row": {
+        "id": "edexcel_9ma0_01_20220608_q14_derivative_sqrt",
+        "source_pdf": "Edexcel A Level Maths past papers/9ma0-01-que-20220608.pdf",
+        "question": "q14",
+        "part": "all",
+        "verdict": "testable",
+        "review_basis": "second-pass VM re-scan worker_15: mark scheme 9ma0-01-rms-20220818; enriched from verified Oct-2021 parallel CAS inputs where question content matches",
+        "inputs": [
+          {
+            "module": "derive",
+            "input": "(x-4)/(2+sqrt(x)),x",
+            "mark_scheme_working": [
+              "Let u=sqrt(x), so x=u^2 and du/dx=1/(2sqrt(x))",
+              "y=(u^2-4)/(u+2)",
+              "y=u-2",
+              "dy/du=1",
+              "dy/dx=1/(2sqrt(x)), so A=2"
+            ],
+            "expected_output_markers": [
+              "u = sqrt(x); x = u^2; du/dx = 1/(2*sqrt(x))",
+              "y = (u^2 - 4)/(u + 2)",
+              "y = u - 2",
+              "dy/du = 1",
+              "dy/dx = 1/(2*sqrt(x))"
+            ]
+          },
+          {
+            "module": "derive",
+            "input": "sqrt(x)-2,x",
+            "mark_scheme_working": [
+              "Alternative mark-scheme route: y=sqrt(x)-2",
+              "dy/dx=1/(2sqrt(x))"
+            ],
+            "expected_output_markers": [
+              "y = sqrt(x) - 2",
+              "d/dx(sqrt(x)) = 1/(2*sqrt(x))",
+              "dy/dx = 1/(2*sqrt(x))"
+            ]
+          }
+        ],
+        "expected_final": [
+          "A=2"
+        ],
+        "unsupported_reason": null
+      }
+    },
+    {
+      "id": "edexcel_9ma0_01_20220608_q10_trig_identity",
+      "row": {
+        "id": "edexcel_9ma0_01_20220608_q10_trig_identity",
+        "source_pdf": "Edexcel A Level Maths past papers/9ma0-01-que-20220608.pdf",
+        "question": "q10",
+        "part": "a-b",
+        "verdict": "partial",
+        "review_basis": "second-pass VM re-scan worker_15: mark scheme 9ma0-01-rms-20220818; enriched from verified Oct-2021 parallel CAS inputs where question content matches",
+        "inputs": [
+          {
+            "module": "trig",
+            "input": "(1-cos(2*theta)+sin(2*theta))/(1+cos(2*theta)+sin(2*theta))=tan(theta),method=identity",
+            "mark_scheme_working": [
+              "1-cos2theta=2sin^2theta",
+              "sin2theta=2sin theta cos theta",
+              "numerator=2sin theta(sin theta+cos theta)",
+              "denominator=2cos theta(cos theta+sin theta)",
+              "ratio=tan theta"
+            ],
+            "expected_output_markers": [
+              "1-cos(2*theta) = 2*sin(theta)^2",
+              "sin(2*theta) = 2*sin(theta)*cos(theta)",
+              "Numerator = 2*sin(theta)*(sin(theta)+cos(theta))",
+              "Denominator = 2*cos(theta)*(sin(theta)+cos(theta))",
+              "LHS = RHS = tan(theta)"
+            ]
+          },
+          {
+            "module": "trig",
+            "input": "tan(2*x)=3*sin(2*x),x,(0,180),10,method=identity",
+            "mark_scheme_working": [
+              "Using part (a), tan2x=3sin2x",
+              "sin2x/cos2x=3sin2x",
+              "sin2x(1-3cos2x)=0",
+              "sin2x=0 or cos2x=1/3",
+              "x=90, 35.3, 144.7"
+            ],
+            "expected_output_markers": [
+              "tan(2*x) - 3*sin(2*x) = 0",
+              "-3sc+s = s(-3c+1)",
+              "c = 1/3",
+              "sin(2*x) = 0",
+              "cos(2*x) = 1/3",
+              "0 < x < 180",
+              "x = [35.2643896828, 90, 144.735610317]"
+            ]
+          }
+        ],
+        "expected_final": [
+          "x=35.3,90,144.7"
+        ],
+        "unsupported_reason": "identity proof is manual"
+      }
+    },
+    {
+      "id": "edexcel_9ma0_01_20220608_q15_proof_algebra",
+      "row": {
+        "id": "edexcel_9ma0_01_20220608_q15_proof_algebra",
+        "source_pdf": "Edexcel A Level Maths past papers/9ma0-01-que-20220608.pdf",
+        "question": "q15",
+        "part": "ii",
+        "verdict": "partial",
+        "review_basis": "second-pass VM re-scan worker_15: mark scheme 9ma0-01-rms-20220818; enriched from verified Oct-2021 parallel CAS inputs where question content matches",
+        "inputs": [
+          {
+            "module": "algebra",
+            "input": "expand((2*p+1)^3+5)",
+            "mark_scheme_working": [
+              "For contradiction, assume m is odd, so m=2p+1",
+              "m^3+5=(2p+1)^3+5",
+              "=8p^3+12p^2+6p+6"
+            ],
+            "expected_output_markers": [
+              "(2*p + 1)^3 + 5",
+              "= 8*p^3 + 12*p^2 + 6*p + 6"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "expand(2*(4*p^3+6*p^2+3*p+3))",
+            "mark_scheme_working": [
+              "8p^3+12p^2+6p+6=2(4p^3+6p^2+3p+3)",
+              "Therefore the expression is even, contradicting m^3+5 odd"
+            ],
+            "expected_output_markers": [
+              "2*(4*p^3 + 6*p^2 + 3*p + 3)",
+              "= 8*p^3 + 12*p^2 + 6*p + 6"
+            ]
+          }
+        ],
+        "expected_final": [
+          "even expression"
+        ],
+        "unsupported_reason": "proof conclusion is manual"
+      }
+    },
+    {
+      "id": "edexcel_9ma0_01_20220608_q9_partial_fractions",
+      "row": {
+        "id": "edexcel_9ma0_01_20220608_q9_partial_fractions",
+        "source_pdf": "Edexcel A Level Maths past papers/9ma0-01-que-20220608.pdf",
+        "question": "q9",
+        "part": "a-b",
+        "verdict": "partial",
+        "review_basis": "second-pass VM re-scan worker_15: mark scheme 9ma0-01-rms-20220818; enriched from verified Oct-2021 parallel CAS inputs where question content matches",
+        "inputs": [
+          {
+            "module": "algebra",
+            "input": "partfrac((50*x^2+38*x+9)/((5*x+2)^2*(1-2*x)))",
+            "mark_scheme_working": [
+              "50x^2+38x+9=A(5x+2)(1-2x)+B(1-2x)+C(5x+2)^2",
+              "B=1, C=2",
+              "Compare x^2 coefficients gives A=0"
+            ],
+            "expected_output_markers": [
+              "A/(5*x + 2)+B/(5*x + 2)^2+C/(- 2*x + 1)",
+              "B = 1, C = 2",
+              "Compare x^2 coefficients: A = 0",
+              "1/(5*x + 2)^2 + 2/(- 2*x + 1)"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "binomial((1+5/2*x)^(-2),x,0,3)",
+            "mark_scheme_working": [
+              "1/(5x+2)^2=(5x+2)^-2=2^-2(1+5x/2)^-2",
+              "2^-2(1+5x/2)^-2=1/4-5x/4+75x^2/16+..."
+            ],
+            "expected_output_markers": [
+              "u = 5/2*x",
+              "n = -2: C(n,0) = 1, C(n,1) = -2, C(n,2) = 3",
+              "Simplified terms: T0 = 1, T1 = -5*x, T2 = 75/4*x^2",
+              "Valid for abs(x) < 2/5"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "binomial((1-2*x)^(-1),x,0,3)",
+            "mark_scheme_working": [
+              "1/(1-2x)=(1-2x)^-1=1+2x+4x^2+..."
+            ],
+            "expected_output_markers": [
+              "u = -2*x",
+              "n = -1: C(n,0) = 1, C(n,1) = -1, C(n,2) = 1",
+              "Simplified terms: T0 = 1, T1 = 2*x, T2 = 4*x^2",
+              "Valid for abs(x) < 1/2"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "binomial(1/(5*x+2)^2+2/(1-2*x),x,0,3)",
+            "mark_scheme_working": [
+              "f(x)=1/(5x+2)^2+2/(1-2x)",
+              "=1/4-5x/4+75x^2/16+2+4x+8x^2+...",
+              "=9/4+11x/4+203x^2/16+...",
+              "valid for |x|<2/5"
+            ],
+            "expected_output_markers": [
+              "(5*x + 2)^-2 = 1/4 - 5/4*x + 75/16*x^2",
+              "(- 2*x + 1)^-1 = 1 + 2*x + 4*x^2",
+              "Valid for abs(x) < 2/5",
+              "9/4 + 11/4*x + 203/16*x^2"
+            ]
+          }
+        ],
+        "expected_final": [
+          "B=1,C=2"
+        ],
+        "unsupported_reason": "binomial expansion combination is manual"
+      }
+    },
+    {
+      "id": "edexcel_9ma0_01_20220608_q11_trapezium",
+      "row": {
+        "id": "edexcel_9ma0_01_20220608_q11_trapezium",
+        "source_pdf": "Edexcel A Level Maths past papers/9ma0-01-que-20220608.pdf",
+        "question": "q11",
+        "part": "a-b",
+        "verdict": "partial",
+        "review_basis": "second-pass VM re-scan worker_15: mark scheme 9ma0-01-rms-20220818; enriched from verified Oct-2021 parallel CAS inputs where question content matches",
+        "inputs": [
+          {
+            "module": "algebra",
+            "input": "method=numeric,1/2*0.5*(0.4805+1.9218+2*(0.8396+1.2069+1.5694))",
+            "mark_scheme_working": [
+              "h=0.5",
+              "A≈1/2*h{0.4805+1.9218+2(0.8396+1.2069+1.5694)}",
+              "=2.408525",
+              "3 significant figures gives 2.41"
+            ],
+            "expected_output_markers": [
+              "96341/40000",
+              "2.408525"
+            ]
+          },
+          {
+            "module": "integrate",
+            "input": "defint(ln(x)^2,x,2,4),method=parts",
+            "mark_scheme_working": [
+              "integrate by parts: u=(lnx)^2, dv=dx",
+              "F(x)=x(lnx)^2-2xlnx+2x",
+              "evaluate from 2 to 4"
+            ],
+            "expected_output_markers": [
+              "u = ln(x)^2, dv = dx",
+              "du = 2*ln(x)/x dx, v = x",
+              "F(x) = x*ln(x)^2 - 2*x*ln(x) + 2*x",
+              "F(4) = 4*ln(4)^2 - 8*ln(4) + 8",
+              "F(2) = 2*ln(2)^2 - 4*ln(2) + 4"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "compare(4*ln(4)^2 - 2*ln(2)^2 + 4 + 6*ln(1/4),14*ln(2)^2-12*ln(2)+4)",
+            "mark_scheme_working": [
+              "Use ln4=2ln2 and ln(1/4)=-2ln2",
+              "area=14(ln2)^2-12ln2+4"
+            ],
+            "expected_output_markers": [
+              "E1 = 4*(2*ln(2))^2 - 2*ln(2)^2 - 12*ln(2) + 4",
+              "E2 = 14*ln(2)^2 - 12*ln(2) + 4",
+              "E1-E2 = 0",
+              "equivalent"
+            ]
+          }
+        ],
+        "expected_final": [
+          "estimate=2.41"
+        ],
+        "unsupported_reason": "exact integral by parts is manual"
+      }
+    },
+    {
+      "id": "edexcel_9ma0_01_20220608_q12_quadratic_model",
+      "row": {
+        "id": "edexcel_9ma0_01_20220608_q12_quadratic_model",
+        "source_pdf": "Edexcel A Level Maths past papers/9ma0-01-que-20220608.pdf",
+        "question": "q12",
+        "part": "a-b",
+        "verdict": "partial",
+        "review_basis": "second-pass VM re-scan worker_15: mark scheme 9ma0-01-rms-20220818; enriched from verified Oct-2021 parallel CAS inputs where question content matches",
+        "inputs": [
+          {
+            "module": "algebra",
+            "input": "solve([27=14400*a+120*b+3,180*a+b=0],[a,b])",
+            "mark_scheme_working": [
+              "H=ax^2+bx+3",
+              "H(120)=27 gives 27=14400a+120b+3",
+              "dH/dx=2ax+b and dH/dx=0 at x=90 gives 180a+b=0",
+              "a=-1/300, b=3/5"
+            ],
+            "expected_output_markers": [
+              "- 14400*a - 120*b + 24 = 0",
+              "180*a + b = 0",
+              "D = -14400*1 - 180*-120 = 7200",
+              "a = -1/300",
+              "b = 3/5",
+              "(a,b) = [(-1/300,3/5)]"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "-1/300*x^2+3/5*x+3",
+            "mark_scheme_working": [
+              "Substitute a=-1/300, b=3/5",
+              "H=-1/300 x^2+3/5 x+3"
+            ],
+            "expected_output_markers": [
+              "- 1/300*x^2 + 3/5*x + 3",
+              "(180*x - x^2 + 900)/300"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "-1/300*90^2+3/5*90+3",
+            "mark_scheme_working": [
+              "Maximum occurs at x=90",
+              "H(90)=30 m"
+            ],
+            "expected_output_markers": [
+              "30"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "solve(-1/300*x^2+3/5*x+3=0,x)",
+            "mark_scheme_working": [
+              "Set H=0 for hitting the ground",
+              "-1/300 x^2+3/5 x+3=0",
+              "x=-4.868..., 184.868...",
+              "positive root gives 185 m to nearest metre"
+            ],
+            "expected_output_markers": [
+              "- 1/300*x^2 + 3/5*x + 3 = 0",
+              "quadratic formula: x = (-b +/- sqrt(b^2-4ac))/(2a)",
+              "x = (3/5 - sqrt(2/5))/(1/150)",
+              "x = (3/5 + sqrt(2/5))/(1/150)"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "method=numeric,(3/5+sqrt(2/5))/(1/150)",
+            "mark_scheme_working": [
+              "Positive root is 184.868...",
+              "nearest metre is 185 m"
+            ],
+            "expected_output_markers": [
+              "150*sqrt(2/5) + 90",
+              "184.868329805"
+            ]
+          }
+        ],
+        "expected_final": [
+          "H=-x^2/300+3x/5+3"
+        ],
+        "unsupported_reason": "modelling critique is manual"
+      }
+    },
+    {
+      "id": "edexcel_9ma0_01_20220608_q13_parametric_proof",
+      "row": {
+        "id": "edexcel_9ma0_01_20220608_q13_parametric_proof",
+        "source_pdf": "Edexcel A Level Maths past papers/9ma0-01-que-20220608.pdf",
+        "question": "q13",
+        "part": "all",
+        "verdict": "partial",
+        "review_basis": "second-pass VM re-scan worker_15: mark scheme 9ma0-01-rms-20220818; enriched from verified Oct-2021 parallel CAS inputs where question content matches",
+        "inputs": [
+          {
+            "module": "algebra",
+            "input": "simplify(((t^2+5)/(t^2+1)-3)^2+(4*t/(t^2+1))^2)",
+            "mark_scheme_working": [
+              "Substitute x=(t^2+5)/(t^2+1), y=4t/(t^2+1) into (x-3)^2+y^2",
+              "Combine into a single fraction",
+              "Numerator simplifies to 4(t^2+1)^2",
+              "Therefore (x-3)^2+y^2=4"
+            ],
+            "expected_output_markers": [
+              "((t^2 + 5)/(t^2 + 1) - 3)^2 + (4*t/(t^2 + 1))^2",
+              "= 4"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "simplify(((2-2*t^2)^2+16*t^2)/(t^2+1)^2)",
+            "mark_scheme_working": [
+              "x-3=(2-2t^2)/(t^2+1)",
+              "(x-3)^2+y^2=((2-2t^2)^2+16t^2)/(t^2+1)^2",
+              "Simplify to 4"
+            ],
+            "expected_output_markers": [
+              "((- 2*t^2 + 2)^2 + 16*t^2)*(t^2 + 1)^-2",
+              "= (8*t^2 + 4*t^4 + 4)/(2*t^2 + t^4 + 1)",
+              "= 4"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "expand(4*(t^2+1)^2)",
+            "mark_scheme_working": [
+              "4(t^2+1)^2=4t^4+8t^2+4, matching the numerator"
+            ],
+            "expected_output_markers": [
+              "4*(t^2 + 1)^2",
+              "= 4*t^4 + 8*t^2 + 4"
+            ]
+          }
+        ],
+        "expected_final": [
+          "circle radius 2"
+        ],
+        "unsupported_reason": "parametric proof algebra is manual"
+      }
+    }
+  ],
+  "append": [],
+  "coverage_notes": {
+    "Edexcel A Level Maths past papers/9ma0-01-que-20230607.pdf": {
+      "rows_added": 0,
+      "text": "second-pass worker_15 enriched q2,q10-q15 inputs"
+    },
+    "Edexcel A Level Maths past papers/9ma0-01-que-20240605.pdf": {
+      "rows_added": 0,
+      "text": "second-pass worker_15 enriched q10-q14 inputs"
+    },
+    "Edexcel A Level Maths past papers/9ma0-01-que-20220608.pdf": {
+      "rows_added": 0,
+      "text": "second-pass worker_15 enriched q9-q15 inputs"
+    },
+    "Edexcel A Level Maths past papers/9ma0-01-que-2018.pdf": {
+      "rows_added": 0,
+      "text": "second-pass worker_15 enriched q4,q7 inputs"
+    },
+    "Edexcel A Level Maths past papers/EAM319ma0-01-que-20230607.pdf": {
+      "rows_added": 0,
+      "text": "second-pass worker_15 enriched q2,q10-q15 inputs"
+    }
+  }
+}

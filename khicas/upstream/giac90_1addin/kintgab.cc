@@ -268,7 +268,7 @@ namespace giac {
     vecteur v(gen2vecteur(args));
     int s=int(v.size());
     if (s==1){
-      v.push_back(vx_var);
+      v.push_back(vx_var());
       ++s;
     }
     if (s<2)

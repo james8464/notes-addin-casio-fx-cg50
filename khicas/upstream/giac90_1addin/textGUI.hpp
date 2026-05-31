@@ -16,7 +16,7 @@
 #include <string>
 #include <vector>
 
-void copy_clipboard(const std::string & s,bool status,bool clip_pasted); // in dConsole.cpp
+void copy_clipboard(const std::string & s,bool status=false); // in dConsole.cpp
 
 bool isalphanum(char c);
 void chk_restart();
@@ -33,17 +33,9 @@ typedef struct
 } textElement;
 
 int check_parse(const ustl::vector<textElement> & v,int python);
-int print_color(int print_x,int print_y,const char *s,int color,bool invert,bool minimini,GIAC_CONTEXT);
 
 #define TEXTAREATYPE_NORMAL 0
 #define TEXTAREATYPE_INSTANT_RETURN 1
-#ifndef NO_NAMESPACE_XCAS
-namespace xcas {
-#endif // ndef NO_NAMESPACE_XCAS
-class Graph2d;
-#ifndef NO_NAMESPACE_XCAS
-} // namespace xcas
-#endif // ndef NO_NAMESPACE_XCAS
 typedef struct
 {
   int x=0;
@@ -59,16 +51,11 @@ typedef struct
   ustl::string filename;
   int scrollbar=1;
   bool allowEXE=0; //whether to allow EXE to exit the screen
-  bool OKparse=1; // EXE parse allowed
   bool allowF1=0; //whether to allow F1 to exit the screen
   bool editable=false;
   bool changed=false;
-  // bool minimini=false; // global font setting, not implemented yet
   int python=0;
   int type=TEXTAREATYPE_NORMAL;
-  xcas::Graph2d * gr=0;
-  void set_string_value(int n,const std::string & s); // set n-th entry value
-  int add_entry(int pos); // return line position
 } textArea;
 
 #define TEXTAREA_RETURN_EXIT 0

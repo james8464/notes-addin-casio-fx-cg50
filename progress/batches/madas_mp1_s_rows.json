@@ -301,13 +301,103 @@
     "unsupported_reason": "optimisation setup is manual"
   },
   {
+    "id": "madas_iygb_mp1_s_q11_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp1_s.pdf",
+    "question": "q11",
+    "part": "all",
+    "verdict": "skip",
+    "review_basis": "second-pass VM re-scan worker_10: solution PNGs mp1_n–mp1_z",
+    "inputs": [],
+    "expected_final": [
+      "odd square is 8T+1 for triangular T"
+    ],
+    "unsupported_reason": "triangular-number proof only"
+  },
+  {
+    "id": "madas_iygb_mp1_s_q12_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp1_s.pdf",
+    "question": "q12",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "second-pass VM re-scan worker_10: solution PNGs mp1_n–mp1_z",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,(2-log(3))/(1-log(2))",
+        "mark_scheme_working": [
+          "x=(2-ln3)/(1-ln2)"
+        ],
+        "expected_output_markers": [
+          "2.17874692166"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,(log(3)-2)/(1-log(2))",
+        "mark_scheme_working": [
+          "x=-(2-ln3)/(1-ln2)"
+        ],
+        "expected_output_markers": [
+          "-2.17874692166"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,e^2/3",
+        "mark_scheme_working": [
+          "A=e^2/3 branch"
+        ],
+        "expected_output_markers": [
+          "2.46301869964"
+        ]
+      }
+    ],
+    "expected_final": [
+      "x=±(2-ln3)/(1-ln2)"
+    ],
+    "unsupported_reason": "A=e^x/2^x substitution is manual"
+  },
+  {
+    "id": "madas_iygb_mp1_s_q13_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp1_s.pdf",
+    "question": "q13",
+    "part": "all",
+    "verdict": "testable",
+    "review_basis": "second-pass VM re-scan worker_10: solution PNGs mp1_n–mp1_z",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,9-9*(3/2)+3*(9/4)",
+        "mark_scheme_working": [
+          "area at t=3/2 is 9/4"
+        ],
+        "expected_output_markers": [
+          "2.25"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,3*(3/2)^2-9*(3/2)+9",
+        "mark_scheme_working": [
+          "f(3/2)=9/4 minimum"
+        ],
+        "expected_output_markers": [
+          "2.25"
+        ]
+      }
+    ],
+    "expected_final": [
+      "minimum area=9/4 at t=3/2"
+    ]
+  },
+  {
     "id": "madas_iygb_mp1_s_complete_source_marker",
     "source_pdf": "MadAsMaths papers/mp1_s.pdf",
     "coverage": "complete",
     "question": "all_questions",
     "part": "source-complete",
     "verdict": "skip",
-    "review_basis": "manual page-image review: all 7 question pages and 16 worked-solution pages (10 questions)",
+    "review_basis": "second-pass VM re-scan worker_10: solution PNGs mp1_n–mp1_z; all 7 question pages and 22 worked-solution pages (13 questions)",
     "unsupported_reason": "source complete marker; executable exact calculator inputs are recorded in mp1_s rows above, while diagram/proof/branch judgements are manual notes"
   }
 ]

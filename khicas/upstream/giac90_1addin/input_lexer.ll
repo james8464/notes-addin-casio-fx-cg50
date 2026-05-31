@@ -1,5 +1,4 @@
  /* -*- mode: C++; compile-command: "flex input_lexer.ll && make input_lexer.o " -*- */
-/* Works with flex 2.6.1 but not with flex 2.5.4 */
 /* Note: for the nspire port, after flex, move from #ifdef HAVE_CONFIG_H 
    to #include "first.h" before #include<stdio.h> 
    and map "log" to log10 instead of ln
@@ -207,7 +206,6 @@ AN	[0-9a-zA-Z_~ ?\200-\355\357-\376]
 "#--"[^*]*"--#"         index_status(yyextra)=0; /* (*yylval) = string2gen('"'+string(yytext).substr(3,string(yytext).size()-6)+'"'); return T_COMMENT; */
 
 "?"                     if (index_status(yyextra)) return T_INTERROGATION; if (calc_mode(yyextra)==1){ *yylval=undef; return T_SYMBOL;}  return T_HELP;
-"_"                     opened_quote(yyextra) |= 2; return T_UNIT;
 "'"                     if (opened_quote(yyextra) & 1) { opened_quote(yyextra) &= 0x7ffffffe; return T_QUOTE; } if (index_status(yyextra) && !in_rpn(yyextra) && xcas_mode(yyextra)!= 1) return T_PRIME; opened_quote(yyextra) |= 1; return T_QUOTE;
 ";"			index_status(yyextra)=0; (*yylval)=0; return T_SEMI;
   /* commented otherwise for(;;) will not work ";;"			index_status(yyextra)=0; if (xcas_mode(yyextra)==3) return TI_SEMI; (*yylval)=0; return T_SEMI; */

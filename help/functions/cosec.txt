@@ -1,9 +1,33 @@
-Args: cosec(x)
-Required: x
-Does: Reciprocal sine, 1/sin(x).
-Examples: cosec(x)^2; diff(cosec(x),x)
-F2:cosec(x)^2
-F3:diff(cosec(x),x)
-Ex F2: cosec(x)^2
-Ex F3: diff(cosec(x),x)
-Working: Preserved in output when the input or target uses cosec.
+cosec(x)
+
+Args:
+  x
+
+Required:
+  angle x
+
+Optional:
+  None.
+
+Does:
+  A-level reciprocal sine notation. Internally equivalent to 1/sin(x); output may preserve cosec where exam-friendly.
+
+Examples:
+  xform(1+cot(x)^2,cosec(x)^2); diff(cosec(x),x)
+
+F2:
+  xform(1+cot(x)^2,cosec(x)^2)
+
+F3:
+  diff(cosec(x),x)
+
+Keys:
+  F1 inserts the command.
+  F2 inserts the first example.
+  F3 inserts the second example when available.
+
+Working:
+  Uses cosec(x)^2 = 1 + cot(x)^2 and reciprocal identities where routed.
+
+Tip:
+  Use brackets around compound numerators, denominators, powers, and substitutions for readable exam-style output.

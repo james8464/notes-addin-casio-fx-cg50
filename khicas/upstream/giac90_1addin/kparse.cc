@@ -160,8 +160,40 @@
   }
 
   static void python_import(string & cur,int cs,int posturtle,int poscmath,int posmath,int posnumpy,int posmatplotlib,GIAC_CONTEXT){
-    (void) cur; (void) cs; (void) posturtle; (void) poscmath; (void) posmath; (void) posnumpy; (void) posmatplotlib; (void) contextptr;
-    return;
+    if (posmatplotlib>=0 && posmatplotlib<cs){
+      cur += "np:=numpy:;xlim(a,b):=gl_x=a..b:;ylim(a,b):=gl_y=a..b:;scatter:=scatterplot:;bar:=bar_plot:;text:=legend:;";
+      posnumpy=posmatplotlib;
+    }
+    if (posnumpy>=0 && posnumpy<cs){
+      static bool alertnum=true;
+      // add python numpy shortcuts
+      cur += "mat:=matrix:;arange:=range:;resize:=redim:;shape:=dim:;conjugate:=conj:;full:=matrix:;eye:=identity:;ones(n,c):=matrix(n,c,1):; astype:=convert:;float64:=float:;asarray:=array:;astype:=convert:;reshape(m,n,c):=matrix(n,c,flatten(m));";
+      if (alertnum){
+	alertnum=false;
+	alert("mat:=matrix;arange:=range;resize:=redim;shape:=dim;conjugate:=conj;full:=matrix;eye:=idn;ones(n,c):=matrix(n,c,1);reshape(m,n,c):=matrix(n,c,flatten(m));",contextptr);
+      }
+      return;
+    }
+    if (poscmath>=0 && poscmath<cs){
+      // add python cmath shortcuts
+      static bool alertcmath=true;      
+      if (alertcmath){
+	alertcmath=false;
+	alert(gettext("Assigning phase, j, J and rect."),contextptr);
+      }
+      cur += "phase:=arg:;j:=i:;J:=i:;rect(r,theta):=r*exp(i*theta):;";
+      posmath=poscmath;
+    }
+    if (posmath>=0 && posmath<cs){
+      // add python math shortcuts
+      static bool alertmath=true;      
+      if (alertmath){
+	alertmath=false;
+	alert(gettext("Assigning log2, gamma, fabs, modf, radians and degrees."),contextptr);
+      }
+      cur += "log2(x):=logb(x,2):;gamma:=Gamma:;fabs:=abs:;function modf(x) local y; y:=floor(x); return x-y,y; ffunction:;radians(x):=x/180*pi:;degrees(x):=x/pi*180";
+      // todo copysign, isinf, isnan, isfinite, frexp, ldexp
+    }
   }
 
 
@@ -217,7 +249,7 @@
   }
 
 
-  // detect CAS like syntax:
+  // detect Python like syntax: 
   // remove """ """ docstrings and ''' ''' comments
   // cut string in lines, remove comments at the end (search for #)
   // warning don't take care of # inside strings
@@ -233,9 +265,6 @@
   // elif ...: -> elif ... then [nothing in stack]
   // try: ... except: ...
   std::string python2xcas(const std::string & s_orig,GIAC_CONTEXT){
-#ifdef CASCAS_ALEVEL_ONLY
-    return s_orig;
-#else
     if (xcas_mode(contextptr)>0 && abs_calc_mode(contextptr)!=38)
       return s_orig;
     // quick check for python-like syntax: search line ending with :
@@ -301,7 +330,7 @@
       }
       first=s_orig.find(':',first);
       if (first<0 || first>=sss)
-	return s_orig; // not CAS like
+	return s_orig; // not Python like
       pos=s_orig.find("lambda");
       if (pos>=0 && pos<sss)
 	break;
@@ -418,7 +447,7 @@
 	    ch=='\'' && pos<cur.size()-2 && cur[pos+1]!='\\' && (pos==0 || (cur[pos-1]!='\\' && cur[pos-1]!='\''))){ // workaround for '' string delimiters
 	  static bool alertstring=true;
 	  if (alertstring){
-	    alert("Alternate syntax removed",contextptr);
+	    alert("Python compatibility, please use \"...\" for strings",contextptr);
 	    alertstring=false;
 	  }
 	  int p=pos,q=pos+1,beg; // skip spaces
@@ -487,13 +516,13 @@
 	  if (posi<0 || posi>=int(cur.size()))
 	    posi = cur.find(" import*");
 	  if (posi>pos+5 && posi<int(cur.size())){
-	    int posturtle=cur.find("_rmh68");
+	    int posturtle=cur.find("turtle");
 	    int poscmath=cur.find("cmath");
 	    int posmath=cur.find("math");
-	    int posnumpy=cur.find("numpyx");
-	    int posmatplotlib=cur.find("_rmh69");
+	    int posnumpy=cur.find("numpy");
+	    int posmatplotlib=cur.find("matplotlib");
 	    if (posmatplotlib<0 || posmatplotlib>=cur.size())
-	      posmatplotlib=cur.find("pylabx");
+	      posmatplotlib=cur.find("pylab");
 	    int cs=int(cur.size());
 	    cur=cur.substr(0,pos);
 	    python_import(cur,cs,posturtle,poscmath,posmath,posnumpy,posmatplotlib,contextptr);
@@ -504,13 +533,13 @@
 	chkfrom=false;
 	// import * as ** -> **:=*
 	if (ch=='i' && pos+7<int(cur.size()) && cur.substr(pos,7)=="import "){
-	  int posturtle=cur.find("_rmh68");
+	  int posturtle=cur.find("turtle");
 	  int poscmath=cur.find("cmath");
 	  int posmath=cur.find("math");
-	  int posnumpy=cur.find("numpyx");
-	  int posmatplotlib=cur.find("_rmh69");
+	  int posnumpy=cur.find("numpy");
+	  int posmatplotlib=cur.find("matplotlib");
 	  if (posmatplotlib<0 || posmatplotlib>=cur.size())
-	    posmatplotlib=cur.find("pylabx");
+	    posmatplotlib=cur.find("pylab");
 	  int cs=int(cur.size());
 	  int posi=cur.find(" as ");
 	  int posp=cur.find('.');
@@ -555,7 +584,7 @@
 	}
       }
       if (instring){
-	*logptr(contextptr) << "Warning: multi-line strings can not be converted from CAS like syntax"<<endl;
+	*logptr(contextptr) << "Warning: multi-line strings can not be converted from Python like syntax"<<endl;
 	return s_orig;
       }
       // detect : at end of line
@@ -905,7 +934,6 @@
     }
     res.clear(); cur.clear();
     return string(s.begin(),s.end());
-#endif
   }
   
   /* END PYTHON */

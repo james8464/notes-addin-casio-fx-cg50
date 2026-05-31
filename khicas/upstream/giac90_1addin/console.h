@@ -5,11 +5,10 @@
 
 #ifndef CONSOLE_H
 #define CONSOLE_H
-//#define INPUTBUFLEN 500
-extern "C" int printmsg12(const char * msg1,const char * msg2);
+#define INPUTBUFLEN 500
 //command history numbers:
-#define HISTORYN 41
-#define HISTORYHEAP_N HISTORYN+4
+#define N 41
+#define HISTORYHEAP_N N+4
 // extra F keys
 
 //#include "giacPCH.h"
@@ -17,20 +16,14 @@ extern "C" int printmsg12(const char * msg1,const char * msg2);
 #include <string.h>
 
 ustl::string help_insert(const char * cmdline,int & back,bool warn);
-int QRdisp(const char * text,const char *msg1="  Flash this to",const char * msg2="  clone session",const char * msg3="  on smartphone",const char * msg4=0);
 
 #define MAX_FILENAME_SIZE 270
 #define DATAFOLDER "\\\\fls0\\@KHICAS"
 //#define CONSOLESTATEFILE (char*)DATAFOLDER"\\khicas.erd"
-void save_console_state_smem(const char * filename,bool dispqr);
+void save_console_state_smem(const char * filename);
 bool load_console_state_smem(const char * filename);
 int inputline(const char * msg1,const char * msg2,ustl::string & s,bool numeric,int ypos=65);
 bool inputdouble(const char * msg1,double & d);
-inline bool inputdouble(const char * msg1,double & d,const giac::context *){ return inputdouble(msg1,d);}
-bool inputdouble(const char * msg1,double & d,int ypos,const giac::context *);
-bool inputdouble(const char * msg1,double & d,int ypos);
-void console_disp_status();
-const char * inputparam(char curname,int symbolic);
 
 struct DISPBOX {
   int     left;
@@ -46,7 +39,7 @@ enum CONSOLE_SCREEN_SPEC{
   LINE_DISP_MAX = 7,
   COL_DISP_MAX = 21,//21
 #else
-  LINE_MAX = 64,
+  LINE_MAX = 48,
   LINE_DISP_MAX = 9,
   COL_DISP_MAX = 32,//21
 #endif
@@ -118,19 +111,14 @@ int Console_Output(const unsigned char *str);
 void Console_Clear_EditLine();
 int Console_NewLine(int pre_line_type, int pre_line_readonly);
 int Console_Backspace(void);
-int chartab();
 int Console_GetKey(void);
 int Console_Init(void);
 int Console_Disp(void);
 int Console_FMenu(int key);
-extern char menu_f1[16],menu_f2[16],menu_f3[16],menu_f4[16],menu_f5[16],menu_f6[16];
-// bottom menu (bandeau)
-void get_current_console_menu(string & menu,string & shiftmenu,string & alphamenu,int &menucolorbg,int app);
-// vertical fast menus
+extern char menu_f1[8],menu_f2[8],menu_f3[8],menu_f4[8],menu_f5[8],menu_f6[8];
 const char * console_menu(int key,unsigned char* cfg,int active_app);
 const char * console_menu(int key,int active_app);
 void Console_FMenu_Init(void);
-void update_fmenu(const unsigned char * cfg);
 const char * Console_Draw_FMenu(int key, struct FMenu* menu,unsigned char * cfg_,int active_app);
 char *Console_Make_Entry(const unsigned char* str);
 unsigned char *Console_GetLine(void);
@@ -155,9 +143,7 @@ int handle_f5();
 int get_filename(char * filename,const char * extension);
 
 int print_msg12(const char * msg1,const char * msg2,int textY=40);
-void insert(string & s,int pos,const char * add);
 bool do_confirm(const char * s);
-int confirm4(const char * msg1,const char * msg2,bool acexit,int textY);
 int confirm(const char * msg1,const char * msg2,bool acexit=false);
 bool confirm_overwrite();
 void invalid_varname();

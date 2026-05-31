@@ -124,7 +124,7 @@ namespace giac {
     vecteur res;
     if (galoisconj_cached(v,res))
       return res;
-    gen g=symb_horner(v,vx_var);
+    gen g=symb_horner(v,vx_var());
     if (int(v.size())>MAX_COMMON_ALG_EXT_ORDER_SIZE) return res;
     // factor v over rootof(v) if degree is small
     g=_factors(makesequence(g,rootof(g,contextptr)),contextptr);
@@ -132,7 +132,7 @@ namespace giac {
     vecteur w=*g._VECTptr;
     for (int i=0;i<int(w.size())-1;i+=2){
       gen a,b;
-      if (is_linear_wrt(w[i],vx_var,a,b,contextptr) && !is_zero(a)){
+      if (is_linear_wrt(w[i],vx_var(),a,b,contextptr) && !is_zero(a)){
 	res.push_back(-b/a);
       }
     }
@@ -917,7 +917,7 @@ namespace giac {
 	if (vb==vb0)
 	  *logptr(contextptr) << gettext("The choice was done assuming ") << params << "=" << vb << endl;       
 	else 
-	  *logptr(contextptr) << gettext("Non regular value ") << vb0 << gettext(" was discarded by ") << params << "=" << vb << endl;
+	  *logptr(contextptr) << gettext("Non regular value ") << vb0 << gettext(" was discarded and replaced randomly by ") << params << "=" << vb << endl;	
 	racines=proot(gen2vecteur(evalf(polynome2poly1(pb),1,contextptr)));
       }
       else
@@ -1348,7 +1348,7 @@ namespace giac {
       return gensizeerr(contextptr);
     vecteur v(*g_orig._VECTptr);
     int s=int(v.size());
-    gen P(v[0]),x(vx_var),a,b;
+    gen P(v[0]),x(vx_var()),a,b;
     if (s==3){ a=v[1]; b=v[2]; } 
     else { 
       x=v[1]; a=v[2]; b=v[3]; 
@@ -1474,7 +1474,7 @@ namespace giac {
     gen expr,var;
     vecteur v(gen2vecteur(g));
     if (v.size()==1)
-      v.push_back(vx_var);
+      v.push_back(vx_var());
     if (v.size()!=2)
       return gensizeerr(contextptr);
     expr=v[0];
@@ -1751,8 +1751,6 @@ namespace giac {
     vecteur a;
     if (!find_range(v0,a,contextptr))
       return -2;
-    if (a.empty())
-      a=vecteur(1,gen(makevecteur(minus_inf,plus_inf),_LINE__VECT));    
     int previous_sign=2,current_sign=0;
 #ifndef NO_STDEXCEPT
     try {

@@ -89,7 +89,7 @@ int dGetLine (char * s,int max, int isRecording=0, int ml=0);
 #include "giacintl.h"
 #ifdef USE_GMP_REPLACEMENTS
 #undef HAVE_GMPXX_H
-//#undef HAVE_LIBMPFR
+#undef HAVE_LIBMPFR
 #endif
 
 #ifdef HAVE_UNISTD_H
@@ -380,13 +380,13 @@ namespace giac {
   }
 
   // args -> vector
-  // add vx_var if args is not a seq
+  // add vx_var() if args is not a seq
   // evaluate v[1], if it's not an idnt or a vector of idnt keep v[1]
   // evaluate v with v[1] quoted
   vecteur plotpreprocess(const gen & args,GIAC_CONTEXT){
     vecteur v;
     if (args.type==_FUNC)
-      return makevecteur(args(vx_var,contextptr),vx_var);
+      return makevecteur(args(vx_var(),contextptr),vx_var());
     gen var,res;
     if (args.type!=_VECT && is_algebraic_program(args,var,res))
       return makevecteur(args,symb_interval(gnuplot_xmin,gnuplot_xmax));
@@ -397,13 +397,13 @@ namespace giac {
 	return makevecteur(args,symb_interval(a,b));
     }
     if ((args.type!=_VECT) || (args.subtype!=_SEQ__VECT) )
-      v=makevecteur(args,vx_var);
+      v=makevecteur(args,vx_var());
     else {
       v=*args._VECTptr;
       if (v.empty())
 	return vecteur(1,gensizeerr(contextptr));
       if (v.size()==1)
-	v.push_back(vx_var);
+	v.push_back(vx_var());
     }
     // find quoted variables from v[1]
     vecteur quoted;
@@ -895,15 +895,10 @@ namespace giac {
       sort(v.begin(),v.end());
       m=v[s/10];
       M=v[9*s/10];
-      bool b=(M-m)<0.01*(v[s-1]-v[0]);
-      if (fullview || 1.75*(M-m)>(v[s-1]-v[0]) || b){
-	if (b)
-	  zoom(m,M,3);
-	else {
-	  M=v[s-1];
-	  m=v[0];
-	  zoom(m,M,1.1);
-	}
+      if (fullview || 2*(M-m)>(v[s-1]-v[0]) || (M-m)<0.01*(v[s-1]-v[0])){
+	M=v[s-1];
+	m=v[0];
+	zoom(m,M,1.1);
       }
       else
 	zoom(m,M,1/0.8);
@@ -1874,7 +1869,7 @@ namespace giac {
 	x0=w[1];
       }
       else {
-	x=vx_var;
+	x=vx_var();
 	x0=v[1];
       }
     }
@@ -2773,7 +2768,7 @@ namespace giac {
     if (g.type==_VECT && g.subtype!=_SEQ__VECT)
       return plotpoints(v,attributs,contextptr);
     double xmin=gnuplot_xmin,xmax=gnuplot_xmax,ymin=gnuplot_ymin,ymax=gnuplot_ymax,zmin=gnuplot_zmin,zmax=gnuplot_zmax;
-    gen xvar(vx_var),yvar(y__IDNT_e);
+    gen xvar(vx_var()),yvar(y__IDNT_e);
     int nstep=gnuplot_pixels_per_eval;
     bool showeq=false;
     // bool clrplot=true;
@@ -3036,7 +3031,7 @@ namespace giac {
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     return paramplotparam(args,true,contextptr);
   }
-  static const char _plotparam_s []="_rm0";
+  static const char _plotparam_s []="plotparam";
   static define_unary_function_eval_quoted (__plotparam,&_plotparam,_plotparam_s);
   define_unary_function_ptr5( at_plotparam ,alias_at_plotparam,&__plotparam,_QUOTE_ARGUMENTS,true);
 
@@ -3067,7 +3062,7 @@ namespace giac {
     int s=read_attributs(v,attributs,contextptr);
     if (s<2 || s>3)
       return gensizeerr(contextptr);
-    gen f(v[0]),x(vx_var),x0(0);
+    gen f(v[0]),x(vx_var()),x0(0);
     if (s==3){
       x=v[1];
       x0=v[2];
@@ -3101,7 +3096,7 @@ namespace giac {
     }
     return put_attributs(_droite(makesequence(M0,M0+direction),contextptr),attributs,contextptr);
   }
-  static const char _LineTan_s[]="_rm_linetan";
+  static const char _LineTan_s[]="linetan";
   static define_unary_function_eval (__LineTan,&_LineTan,_LineTan_s);
   define_unary_function_ptr5( at_LineTan ,alias_at_LineTan,&__LineTan,0,T_RETURN);
 
@@ -3226,7 +3221,7 @@ namespace giac {
     // v.erase(v.begin()+s,v.end());
     return put_attributs(plotode(v,contextptr),attributs,contextptr);
   }
-  static const char _plotode_s []="_rm_plotode";
+  static const char _plotode_s []="plotode";
   static define_unary_function_eval (__plotode,&_plotode,_plotode_s);
   define_unary_function_ptr5( at_plotode ,alias_at_plotode,&__plotode,0,true);
 
@@ -3385,7 +3380,7 @@ namespace giac {
     }
     return plotfield(xp,yp,x,y,xmin,xmax,xstep/scaling,ymin,ymax,ystep/scaling,scaling,attributs,normalize,contextptr);
   }
-  static const char _plotfield_s []="_rm_plotfield";
+  static const char _plotfield_s []="plotfield";
   static define_unary_function_eval (__plotfield,&_plotfield,_plotfield_s);
   define_unary_function_ptr5( at_plotfield ,alias_at_plotfield,&__plotfield,0,true);
 

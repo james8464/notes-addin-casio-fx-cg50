@@ -1,9 +1,33 @@
-Args: limit(expr,var=value)
-Required: expr, var=value
-Does: Finds the limit of expr as var tends to value.
-Examples: limit(sin(x)/x,x=0); limit((x^2-1)/(x-1),x=1)
-F2:limit(sin(x)/x,x=0)
-F3:limit((x^2-1)/(x-1),x=1)
-Ex F2: limit(sin(x)/x,x=0)
-Ex F3: limit((x^2-1)/(x-1),x=1)
-Working: Uses simplification, cancellation, or standard A-level limits where routed.
+limit(f,x=a)
+
+Args:
+  f,x=a
+
+Required:
+  f, x=a
+
+Optional:
+  None.
+
+Does:
+  Limit. Required: expression f and point x=a. Optional: side 1 or -1.
+
+Examples:
+  limit(sin(x)/x,x=0); limit(1/x,x=0,1)
+
+F2:
+  limit(sin(x)/x,x=0)
+
+F3:
+  limit(1/x,x=0,1)
+
+Keys:
+  F1 inserts the command.
+  F2 inserts the first example.
+  F3 inserts the second example when available.
+
+Working:
+  Shows exam-style lines when this command has a routed A-level working path; otherwise returns the exact KhiCAS result for the expression.
+
+Tip:
+  Use brackets around compound numerators, denominators, powers, and substitutions for readable exam-style output.

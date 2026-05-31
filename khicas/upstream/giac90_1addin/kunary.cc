@@ -625,7 +625,31 @@ namespace giac {
 #endif
   
   string texprintsommetasoperator(const gen & feuille,const char * sommetstr_orig,GIAC_CONTEXT){
-    return feuille.print(contextptr);
+    if (feuille.type!=_VECT)
+      return feuille.print(contextptr);
+    string sommetstr(sommetstr_orig);
+    vecteur::const_iterator itb=feuille._VECTptr->begin(),itend=feuille._VECTptr->end();
+    if (itb==itend)
+      return "";
+    string s;
+    if (itb->type==_FRAC)
+      s="("+gen2tex(*itb,contextptr)+")";
+    else {
+      if ( sommetstr=="=" || itb->type==_IDNT || (itb->type<=_CPLX && is_positive(*itb,contextptr)) )
+	s=gen2tex(*itb,contextptr);
+      else
+	s="("+gen2tex(*itb,contextptr)+")";
+    }
+    ++itb;
+    for (;;){
+      if (itb==itend)
+	return s;
+      if ( itb->type==_SYMB || itb->type==_FRAC || itb->type==_CPLX || (itb->type==_VECT && itb->subtype==_SEQ__VECT) )
+	s += sommetstr + '('+gen2tex(*itb,contextptr)+")";
+      else
+	s += sommetstr + gen2tex(*itb,contextptr);
+      ++itb;
+    }
   }
 
 #ifdef NO_UNARY_FUNCTION_COMPOSE

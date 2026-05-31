@@ -349,7 +349,7 @@ namespace giac {
       return normald(v[0],v[1],v[2],contextptr);
     return gensizeerr(contextptr);
   }
-  static const char _normald_s []="_rm9";
+  static const char _normald_s []="normald";
   static define_unary_function_eval (__normald,&_normald,_normald_s);
   define_unary_function_ptr5( at_normald ,alias_at_normald,&__normald,0,true);
 
@@ -528,7 +528,7 @@ namespace giac {
     }
     return gensizeerr(contextptr);
   }
-  static const char _binomial_s []="_rm10";
+  static const char _binomial_s []="binomial";
   static define_unary_function_eval (__binomial,&_binomial,_binomial_s);
   define_unary_function_ptr5( at_binomial ,alias_at_binomial,&__binomial,0,true);
 
@@ -561,7 +561,7 @@ namespace giac {
     }
     return gensizeerr(contextptr);
   }
-  static const char _multinomial_s []="_rm15";
+  static const char _multinomial_s []="multinomial";
   static define_unary_function_eval (__multinomial,&_multinomial,_multinomial_s);
   define_unary_function_ptr5( at_multinomial ,alias_at_multinomial,&__multinomial,0,true);
 
@@ -618,7 +618,7 @@ namespace giac {
     }
     return gensizeerr(contextptr);
   }
-  static const char _negbinomial_s []="_rm12";
+  static const char _negbinomial_s []="negbinomial";
   static define_unary_function_eval (__negbinomial,&_negbinomial,_negbinomial_s);
   define_unary_function_ptr5( at_negbinomial ,alias_at_negbinomial,&__negbinomial,0,true);
 
@@ -931,7 +931,7 @@ namespace giac {
       return poisson(v[0],v[1],contextptr);
     return gensizeerr(contextptr);
   }
-  static const char _poisson_s []="_rm11";
+  static const char _poisson_s []="poisson";
   static define_unary_function_eval (__poisson,&_poisson,_poisson_s);
   define_unary_function_ptr5( at_poisson ,alias_at_poisson,&__poisson,0,true);
 
@@ -2371,88 +2371,6 @@ namespace giac {
     return (*icdf_static)[n-1];
   }
 
-  // 0: not, 1: 1/2*asin, 2: 1/2*acos, 3: 1/2* atan
-  int is_half_atrig(const gen & x, gen & arg){
-    if (x.type!=_SYMB || x._SYMBptr->sommet!=at_prod || x._SYMBptr->feuille.type!=_VECT)
-      return 0;
-    const vecteur & v=*x._SYMBptr->feuille._VECTptr;
-    if (v.size()!=2)
-      return 0;
-    arg=0;
-    if (2*v.front()==1)
-      arg=v.back();
-    if (2*v.back()==1)
-      arg=v.front();
-    if (arg.type!=_SYMB)
-      return 0;
-    const unary_function_ptr & u=arg._SYMBptr->sommet;
-    arg=arg._SYMBptr->feuille;
-    if (u==at_asin)
-      return 1;
-    if (u==at_acos)
-      return 2;
-    if (u==at_atan)
-      return 3;
-    return 0;
-  }
-
-
-#if defined(VISUALC) || defined(BESTA_OS)
-  const double M_E=2.7182818284590452;
-#endif
-
-  complex<double> LambertW(complex<double> z,int n){
-    // n!=0 is not implemented yet
-    if (z==0) return z;
-    complex<double> w; 
-    // initial guess
-    w=2.0*(M_E*z+1.0);
-    if (std::abs(w)<0.1 && (n==0 || ( n==1 && z.imag()<0) || (n==-1 && z.imag()>0))){
-      // near -1/e, set p=sqrt(2(ez+1)), -1+p-1/3*p^2+11/72*p^3+...
-      w=std::sqrt(w);
-      if (n==0) w=-1.0+w*(1.0+w*(-1./3.+w*11./72.));
-      if (n==1 || n==-1) w=-1.0+w*(-1.0+w*(-1./3.-w*11./72.));
-    }
-    else {
-      if (z.imag()==0 && z.real()<1 && w.real()>0 && (n==0 || n==-1)){
-	w=1;
-	if (n==-1 && z.real()<0){
-	  double lnw=std::log(-z.real());
-	  double lnlnw=std::log(-lnw);
-	  w=lnw-lnlnw-lnlnw/lnw;
-	}
-      }
-      else {
-	// almost everywhere Log(z)-ln(Log(z))
-	w=std::log(z)+2.0*n*complex<double>(0,M_PI);
-	if (std::abs(z)>=3)
-	  w=w-std::log(w);
-      }
-    }
-    if (n==0 && std::abs(z - .5)<=.5) 
-      w = (0.35173371 * (0.1237166 + 7.061302897 * z)) / (2. + 0.827184 * (1. + 2. * z));// (1,1) Pade approximant for W(z,0)
-    if (n==-1 && std::abs(z - .5)<=.5) 
-      w = -((complex<double>(2.2591588985 ,4.22096) * (complex<double>(-14.073271 ,-33.767687754) * z - complex<double>(12.7127,-19.071643) * (1. + 2.*z))) / (2. - complex<double>(17.23103,-10.629721) * (1. + 2.*z)));// (1,1) Pade
-    if (z.imag()==0 && w.imag()==0){
-      double Z=z.real(),W=w.real();
-      while (1){
-	// wnext=w-(w*exp(w)-z)/(exp(w)*(w+1)-(w+2)*(w*exp(w)-z)/(2*w+2))
-	double expw(std::exp(W)),wexpwz(W*expw-Z),w1(W+1.0);
-	double wnext(W-wexpwz/(w1*expw-(W+2.0)*wexpwz/w1/2.0));
-	if (abs(wnext-W)<1e-13*fabs(W))
-	  return wnext;
-	W=wnext;
-      }
-    }
-    while (1){
-      // wnext=w-(w*exp(w)-z)/(exp(w)*(w+1)-(w+2)*(w*exp(w)-z)/(2*w+2))
-      complex<double> expw(std::exp(w)),wexpwz(w*expw-z),w1(w+1.0);
-      complex<double> wnext(w-wexpwz/(w1*expw-(w+2.0)*wexpwz/w1/2.0));
-      if (abs(wnext-w)<1e-13*(1.0+std::abs(w)))
-	return wnext;
-      w=wnext;
-    }
-  }
 
 #ifndef NO_NAMESPACE_GIAC
 } // namespace giac

@@ -1,0 +1,5 @@
+#define std ustl
+#include <vector>
+#include <string>
+void print_vector(comst ustd::vector<int> & v);
+

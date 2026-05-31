@@ -1,9 +1,33 @@
-Args: integrate(expr,var) or integrate(expr,var,a,b)
-Required: expr, var
-Does: Finds an antiderivative, or a definite integral when limits are supplied.
-Examples: integrate(3*x^2,x); integrate(sin(x),x,0,pi); integrate(sec(2*x),x)
-F2:integrate(3*x^2,x)
-F3:integrate(sin(x),x,0,pi)
-Ex F2: integrate(3*x^2,x)
-Ex F3: integrate(sin(x),x,0,pi)
-Working: Shows substitution, parts, formula-booklet trig integrals, and limit-substitution lines where routed.
+integrate(expr,var,[a,b],[method],[u=...])
+
+Args:
+  expr, var, [a,b], [method], [u=...]
+
+Required:
+  expr, var
+
+Optional:
+  bounds a,b; method code; substitution u=...
+
+Does:
+  Finds antiderivatives or definite integrals. Method code guides the shown exam route: 1 auto, 2 by parts, 3 substitution, 4 partial fractions, 5 trig/formula.
+
+Examples:
+  integrate((ln(x))^2,x,2); integrate((ln(x))^2/x,x,3,u=ln(x))
+
+F2:
+  integrate((ln(x))^2,x,2)
+
+F3:
+  integrate((ln(x))^2/x,x,3,u=ln(x))
+
+Keys:
+  F1 inserts the command.
+  F2 inserts the first example.
+  F3 inserts the second example when available.
+
+Working:
+  Shows term-by-term integration, reverse chain rule, repeated integration by parts, substitution with user u, trig formulae, partial fractions, and limit substitution where routed.
+
+Tip:
+  Use brackets around compound numerators, denominators, powers, and substitutions for readable exam-style output.

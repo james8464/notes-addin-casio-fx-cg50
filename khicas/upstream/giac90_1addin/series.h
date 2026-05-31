@@ -32,7 +32,6 @@
 #ifndef NO_NAMESPACE_GIAC
 namespace giac {
 #endif // ndef NO_NAMESPACE_GIAC
-  void vreverse(iterateur a,iterateur aend);
   
   bool is_analytic(const gen & g);
   bool taylor(const gen & f_x,const gen & x,const gen & lim_point,int ordre,vecteur & v,GIAC_CONTEXT);

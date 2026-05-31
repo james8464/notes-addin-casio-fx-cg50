@@ -1537,7 +1537,7 @@ giac::gen run(char * s){
       s_="Object too large";
     else {
       if (ge.is_symb_of_sommet(at_pnt) || (ge.type==_VECT && !ge._VECTptr->empty() && ge._VECTptr->back().is_symb_of_sommet(at_pnt)))
-	s_="Object.";
+	s_="Graphic object.";
       else
 	s_=ge.print(contextptr);
     }

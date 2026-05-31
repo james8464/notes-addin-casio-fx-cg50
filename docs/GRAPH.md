@@ -1,265 +1,62 @@
-# CasioCAS Project Graph
+# Project Graph
 
-Last updated: 2026-05-31 15:27 Europe/London
+Last updated: 2026-05-31 18:28 BST
 
 ## Build
 
 ```mermaid
 graph TD
-  Root["repo"] --> Compile["./compile"]
-  Compile --> Docker["tools/docker/Dockerfile.khicas-source"]
+  Compile["./compile"] --> Build["tools/build_g3a.sh"]
+  Build --> Docker["casio-khicas-source Docker image"]
   Docker --> Src["khicas/upstream/giac90_1addin"]
-  Src --> Make["make khicas50.g3a khicas50.ac2"]
-  Make --> G3A["build/CasioCAS.g3a"]
-  Make --> AC2["build/khicas50.ac2"]
-  G3A --> Meta["patch/check metadata"]
-  G3A --> Size["check <= 2 MiB"]
-  AC2 --> RamSize["check <= 2 MiB"]
-  Help["help/functions/*"] --> Pack["tools/build_pack.py"]
-  Pack --> PAK["build/CASIOCAS.PAK"]
-  Meta --> Transfer["calculator_files/"]
-  Size --> Transfer
-  RamSize --> Transfer
-  PAK --> Transfer
+  Src --> Make["Makefile CAS.g3a target"]
+  Make --> Bin["khicasen.bin, upstream KhiCAS base"]
+  Bin --> G3A["calculator_files/CAS.g3a"]
+  G3A --> Meta["CAS / @CAS / CAS.g3a"]
+  G3A --> Size["2,090,516 bytes; 6,636 byte headroom"]
 ```
 
-## Source
+## Runtime
 
 ```mermaid
 graph TD
-  Input["main.cc shell input"] --> Guard["A-level guard"]
-  Guard --> Hash["hashed removed-feature guard"]
-  Hash --> Shared["cascas_working adapter"]
-  Shared --> Rewrite["range/xform/log/diff/int pure maths"]
-  Shared --> DirectQueue["direct no-fallback exam queue routes"]
-  Rewrite --> Giac["GIAC core"]
-  DirectQueue --> CalcWork
-  Giac --> Answer["exact answer"]
-  Guard --> CalcWork["calculator working hooks"]
-  HostIn["tests/run_exact_queue.py"] --> HostWrap["tools/khicas_host_runner"]
-  HostWrap --> HostGuard["host removed-feature guard"]
-  HostWrap --> Shared
-  Answer --> CalcWork
-  CalcWork --> Console["calculator output"]
+  Input["console input"] --> Guard["cascas::eval_with_working"]
+  Guard --> Work["known Pure working route"]
+  Work --> Steps["exam lines"]
+  Steps --> Console["Console_NewLine output"]
+  Guard --> Fallback["unknown/plain input"]
+  Fallback --> KhiCAS["original KhiCAS parser/evaluator"]
+  KhiCAS --> Console
 ```
 
-## Current V1
+## Working Routes
 
 ```mermaid
 graph TD
-  Guard["runtime denylist"] --> PureFallback["Pure method fallback, no outside-scope user error"]
-  Direct["direct working routes"] --> Implicit["implicit diff example"]
-  Direct --> ImplicitGeneral["standard implicit differentiation routes for circles and mixed xy quadratics"]
-  Direct --> ParamDiff["parametric differentiation dy/dx=(dy/dt)/(dx/dt), optional t0"]
-  Direct --> Range["quadratic/rational/abs/sqrt/trig range cases"]
-  Direct --> SqrtRange["sqrt(downward quadratic) finite range by inner maximum"]
-  Direct --> ExpRange["exponential curve range by derivative, stationary points, and end behavior"]
-  Direct --> ExactRange["exact-fraction quadratic range output, including rational coefficients"]
-  Direct --> BoundedRange["bounded interval range(expr,var,a,b) for linear/quadratic pure functions"]
-  Direct --> Domain["domain inequalities for sqrt/log restrictions"]
-  Direct --> RationalDomain["rational denominator exclusions as inequalities, generic x^2-a perfect-square cases"]
-  Direct --> CompoundDomain["combined sqrt/log domain constraints"]
-  Direct --> DiffInt["power/product/chain/quotient diff + trig/log integrals"]
-  Direct --> IntMethods["integration by parts and substitution pure working routes"]
-  Direct --> DefInt["definite integral integrate(sin(x),x,0,pi)"]
-  Direct --> ExpInt["exponential integral int(exp(k*x),x)"]
-  Direct --> TrigInt["formula-booklet tan/cot/sec/cosec integral working"]
-  Direct --> USubInt["generic linear-substitution integrals: (a*x+b)^n, sqrt, reciprocal powers"]
-  Direct --> TermInt["generic term-by-term trig/exp/reciprocal-linear integration"]
-  Direct --> DefIntArchive["archived integration-basics definite integral routes"]
-  Direct --> ReverseChain["reverse-chain integration: generic polynomial u' f(u) plus trig/log/exponential archive routes; 82/82 archived cases no fallback"]
-  Direct --> LinearRationalInt["linear-over-linear algebraic division integrals; archived special manipulation 10/10 no fallback"]
-  Direct --> ByParts["by-parts routes for polynomial*e^(kx), polynomial*sin/cos(kx), x^n ln(kx), sec/log-square/definite table cases; archived by-parts 81/81 no fallback"]
-  Direct --> Xform["identity/log/sec/cosec/cot/half-angle proof shell"]
-  Direct --> LogPower["xform log power laws for log(base,x^n) and ln(x^n)"]
-  Direct --> GenericXform["generic pure xform routes: change-base logs, log powers, sec/cosec/cot rearrangements"]
-  Direct --> PureExtras["additional pure routes: log-quadratic domain/solve, trig limit, scaled complete-square, discriminant, x^2-1 partfrac, GP binomial"]
-  Direct --> XformConst["xform R-form constant matching"]
-  Direct --> XformCoeff["xform quadratic coefficient matching by expansion and comparison"]
-  Direct --> XformComplete["xform complete-square target matching from polynomial helpers"]
-  Direct --> Log["log(base,x) working"]
-  Direct --> LogSolve["solve(log(base,x)=n,x) via x=base^n"]
-  Direct --> Limit["A-level limit routes: sin(x)/x and removable factor cancellation"]
-  Direct --> PartFrac["linear-factor partial fractions with coefficient comparison"]
-  Direct --> MoreWork["tan/sec/cosec diff, golden solve routes, reciprocal ranges"]
-  Direct --> FilteredSolve["quadratic roots with integer/positive/reject filters"]
-  Direct --> Numeric["numeric estimates, rounding, time conversion, root brackets"]
-  Direct --> ExamSolve["log/inequality/trig/circle exact solve routes"]
-  Direct --> GeoSolve["circle/tangent/region algebra solve routes"]
-  Direct --> Periodic["periodic trig and sequence solve routes"]
-  Direct --> BinomSeries["4-arg binomial series route"]
-  Direct --> SmallAngle["formula-booklet small-angle series sin/cos/tan(theta)"]
-  Direct --> Affine["generic exact affine solve route"]
-  Direct --> Arith["generic exact rational arithmetic route"]
-  Direct --> NumericEval["generic numeric evaluator for method=numeric"]
-  Direct --> Poly["generic rational polynomial expand/factor/quadratic solve"]
-  Direct --> EvalAt["generic complete_square/evalat polynomial routes"]
-  Direct --> PolyCalc["explicit polynomial diff/int routes"]
-  Direct --> Targeted["symbolic linear rearrange + 2^linear solve routes"]
-  Direct --> RationalSurd["targeted rational/surd differentiation solve routes"]
-  Direct --> ExamExact["direct exam queue routes: sequences, geometry, trig identity, partial fractions, binomial, exponential models"]
-  Direct --> SepDE["separable-DE exponential model solve(dn/dt=k*n,n,t)"]
-  Direct --> Quality["pure-maths working-quality depth gate across calculus, domains, definite/exponential/trig integrals, reverse-chain/by-parts integration, range intervals, limits, log solve/xform, xform constants, separable DE, binomial, small-angle series, partfrac"]
-  Direct --> HelpExamples["same-source direct routes for every help-sheet example"]
-  Direct --> HelpFKeys["catalog/help F2/F3 examples use exact # insertion"]
-  Direct --> XformRational["xform rational transform: a/(x+1) to 5*a/(2*x+1)"]
-  Direct --> PureOnly["mechanics routes removed from catalog/help/working engine"]
-  Direct --> RuntimeGuard["calculator runtime guards: balanced delimiters, no raw integral fallback, numeric literals fall through to KhiCAS, no per-table temporary compact strings in try_integral"]
-  Direct --> ExactAffineInt["exact affine integral route: integrate(9x) returns before fragile double/format fallback"]
-  Direct --> RemovedFallbackPure["removed-feature fallback gives Pure method steps instead of old outside-scope error"]
-  Direct --> ErrorMask["stock undef/syntax-style output becomes General Pure method steps"]
-  Console --> StableFKeys["A-level mode ignores stale FMENU.py and uses black calculator F-key strip"]
-  Console --> VramClip["VRAM safety: clipped CopySpriteMasked and bounded get_pixel"]
-  Host["thin same-source host wrapper"] --> Queue["499/499 exact queue host checks"]
-  Host --> DeletedHost["old host-only working_engine/src deleted"]
-  QueueTests["exact queue file"] --> SameSource["499/499 direct no-fallback calculator-source coverage"]
-  RemovedFallback["generated golden fallback source removed"] --> SameSource
-  Session["save/load/session files"] --> Disabled["no-op, in-memory only"]
-  Help["help/functions/*.txt"] --> Pak["CASIOCAS.PAK"]
-  Border["graphicsProvider border"] --> Pink["0xF81F exact checker"]
-  Package["calculator_files"] --> Sidecar["khicas50.ac2 required; upstream loader expects this name"]
-  RiskAudit["docs/runtime_risk_audit.md"] --> Package
+  Work["working engine"] --> Diff["diff: ln, polynomials, implicit, trig basics"]
+  Work --> Int["integrate: term, reverse-chain, by-parts, substitution, trig, rational"]
+  Work --> Solve["solve: linear, quadratic, rational, dy/dx separable, selected inequalities"]
+  Work --> Alg["algebra: factor/expand high-frequency exam forms"]
+  Work --> Num["method=numeric with safe scientific formatting"]
+  Work --> Xform["xform trig/log identities"]
 ```
 
-## Prune
+## UI
 
 ```mermaid
 graph TD
-  Remove["removed surfaces"] --> Cat["catalogen/catalogfr"]
-  Remove --> Lex["static lexer/parser names"]
-  Remove --> Eval["renamed public at_* registration strings"]
-  Remove --> Hash["hashed runtime guard"]
-  Remove --> Obj["Makefile CAS_OBJS"]
-  Remove --> Macro["CASCAS_ALEVEL_ONLY"]
-  Remove --> Sec["-ffunction-sections -fdata-sections"]
-  Obj --> QR["qrcodegen.o removed"]
-  Macro --> Stubs["plot/permutation/list/stats/special source stubs"]
-  Macro --> RuntimeStubs["random/sample, ODE/field plot, turtle/drawing bodies stubbed"]
-  Macro --> DrawPaperStubs["zplot paper/draw wrappers compiled to A-level error stubs"]
-  Macro --> GeometryStubs["public zplot geometry/3D wrappers compiled to A-level error stubs"]
-  Macro --> PlotInternals["plot/locus/implicit/conic/quadric internals compiled to A-level stubs"]
-  Macro --> ConicReduce["conic/quadric reduction internals compile-excluded"]
-  Macro --> GraphUi["graph display/geo/logo UI entrypoints reduced to no-op stubs"]
-  Macro --> TurtleStubs["TURTLETAB table capped to one entry in A-level build"]
-  Macro --> Plot3DStubs["3D solids/plot runtime stubbed in zplot3d"]
-  Macro --> DistDispatch["generic cdf/icdf/mgf/distribution dispatch stubbed"]
-  Macro --> MoyalStats["zmoyal beta/binomial/poisson/student/chi-square/fisher internals stubbed to A-level errors"]
-  Macro --> RandDist["randvector distribution sampling compiled out"]
-  Macro --> MatrixSpectral["matrix/spectral wrappers and Jordan-only internals stubbed/compile-excluded: det/rank/rref/kernel/eigen/svd/jordan/JordanBlock/ranm/trace/transpose/cholesky"]
-  Macro --> More["desolve/fft/file IO/charpoly/pcar/pivot/keep_pivot/det options/assume blocked"]
-  Macro --> XformPrune["halftan/exp2trig/trig2exp/evalc/q2a/a2q blocked"]
-  Macro --> PythonConv["python2xcas converter body compiled out in A-level mode"]
-  Macro --> ProgramStubs["program/control-flow/input runtime bodies compiled to A-level stubs"]
-  Remove --> Menu["console catalog/menu/message leaks"]
-  Remove --> SessionMenu["save/load/session/script/about/shortcuts menu strings"]
-  Remove --> PlotMsg["plot working/menu message strings hidden"]
-  Remove --> PublicStr["program/Xcas/turtle/matplot/random/graphic public strings hidden"]
-  Remove --> PyImport["python/numpy/pylab/matplotlib/turtle literals hidden"]
-  Lex --> Static["static lexer distro aliases neutralized"]
-  Lex --> MultiHide["multinomial lexer strings hidden"]
-  Lex --> Hide["concat/extend lexer strings hidden"]
-  Macro --> Dist["normal/poisson/uniform/exponential/student/fisher/chi-square/etc public stats blocked"]
-  Macro --> BinomGuard["2-arg binomial coefficient blocked; 4-arg series allowed"]
-  Cat --> StatsCat["stats catalog entries removed"]
-  Remove --> Help["help/functions"]
-  Remove --> Tests["removed-feature tests"]
-
-  Cat --> Gate["absent from catalog"]
-  Lex --> Gate
-  Eval --> Gate2["input returns unsupported"]
-  Hash --> Gate2
-  Stubs --> Gate2
-  RuntimeStubs --> Gate2
-  DrawPaperStubs --> Gate2
-  GeometryStubs --> Gate2
-  GraphUi --> Gate2
-  TurtleStubs --> Gate2
-  Plot3DStubs --> Gate2
-  DistDispatch --> Gate2
-  MoyalStats --> Gate2
-  RandDist --> Gate2
-  MatrixSpectral --> Gate2
-  More --> Gate2
-  XformPrune --> Gate2
-  PythonConv --> Gate2
-  ProgramStubs --> Gate2
-  Menu --> Gate
-  SessionMenu --> Gate
-  PlotMsg --> Gate
-  PublicStr --> Gate
-  PyImport --> Gate
-  Dist --> Gate2
-  BinomGuard --> Gate2
-  Hide --> Gate
-  Static --> Gate
-  MultiHide --> Gate
-  StatsCat --> Gate
-  Obj --> Size["smaller g3a"]
-  QR --> Size
-  Sec --> Size
+  Console["main dashboard"] --> FMenu["F1 algb / F2 calc mini menus"]
+  Console --> Border["pink border: 6px left/right, 7px bottom"]
+  Console --> Status["status bar without clock"]
+  Catalog["Pure-only catalogue"] --> Help["Help on command"]
+  Help --> Examples["F2/F3 example insertion"]
 ```
 
-## Scope
+## Queue Status
 
 ```mermaid
 graph TD
-  Scope["A-level Pure only"] --> Pure["algebra trig logs diff int vectors numerical"]
-  Scope --> Out["mechanics stats/prob matrices complex plots programming random crypto"]
-```
-
-## Tests
-
-```mermaid
-graph TD
-  Build["./compile"] --> Size["check_g3a_size CasioCAS.g3a"]
-  Build --> RamSize["check_g3a_size khicas50.ac2"]
-  Build --> Meta["check_g3a_metadata"]
-  Source["source text"] --> Catalog["check_catalog_scope"]
-  Source --> Removed["check_removed_features"]
-  Source --> Session["check_session_disabled"]
-  Help["help/functions"] --> HelpQ["check_help_quality"]
-  Help --> HelpExamples["tests/check_help_examples.py"]
-  Queue["tests/golden/exact_calculator_input_queue.jsonl"] --> Exact["tests/run_exact_queue.py"]
-  Shared["tests/check_shared_working.py"] --> SharedGate["same adapter smoke"]
-  Shared --> WorkingQuality["tests/check_working_quality.py"]
-  Shared --> CoreNoGolden["tests/check_shared_core_without_golden.py"]
-  Queue --> GoldenCoverage["tests/check_golden_shared_coverage.py"]
-  Queue --> NoGoldenAudit["tests/audit_no_golden_queue_coverage.py"]
-  UI["g3a bytes"] --> Border["check_calculator_border"]
-  Bin["strings CasioCAS.g3a + khicas50.ac2"] --> Leak["removed-term leak scan"]
-  Graphify["graphify update . --no-cluster"] --> GraphJSON["graphify-out/graph.json"]
-```
-
-## Latest Gates
-
-```mermaid
-graph LR
-  Build["./compile exit 0"] --> Size["g3a 1,345,447 bytes"]
-  Build --> AC2["khicas50.ac2 1,336,030 bytes"]
-  Build --> Rom["rom 1,316,771 bytes"]
-  Build --> Ram["ram 331,088 bytes"]
-  Build --> R8C2["r8c2 1,336,030 bytes"]
-  Build --> Meta["metadata ok"]
-  Build --> Border["purple border ok"]
-  Build --> NoRuntimeFallback["generated golden fallback disabled"]
-  Build --> NoRuntimeSource["generated golden fallback source removed"]
-  Source["source gates"] --> Catalog["catalog ok, required 11"]
-  Source --> Removed["343 removed rejected"]
-  Source --> Session["session disabled"]
-  Help["help pack"] --> HelpQ["40 function sheets ok, PAK 41 records / 13,260 bytes"]
-  Help --> HelpEx["89/89 help examples run through same-source working engine"]
-  Queue["golden queue"] --> QueueRun["499/499 host ok"]
-  Queue --> GoldenRun["499/499 direct calculator-source ok"]
-  Queue --> NoGolden["499/499 without generated golden fallback"]
-  Shared["shared working"] --> SharedRun["250/250 thin host+calculator adapter ok"]
-  Shared --> WorkQ["38/38 working-quality depth cases ok"]
-  Shared --> CoreRun["250/250 core routes without golden fallback ok"]
-  Shared --> NoHostSrc["old host-only source deleted"]
-  Obj["object prune"] --> QR["qrcodegen.o link-safe removed"]
-  Macro["source stubs"] --> Stubbed["plot/list/stats/special/ODE/file IO/linalg/transform helpers blocked"]
-  Macro --> RuntimeStubbed["random/sample + ODE/field plot + turtle/drawing + graph display/logo UI + zplot paper/draw + geometry/3D wrappers + plot/locus/implicit/conic/quadric internals + 3D plot/solid + distribution dispatch + zmoyal stats/beta internals + matrix/spectral/JordanBlock + python converter + program/control-flow/input public bodies stubbed/blocked"]
-  Static["lexer/help prune"] --> StaticRun["distribution/denom/transform/multinomial/matrix/about/shortcuts/session/crypto/complex/JordanBlock/keep_pivot/det-option/trace/plot-step/program/control-flow/Xcas/turtle/matplot/random/graphic names neutralized"]
-  Static --> PromptRun["mod/sign/euler/ascii/geometry/3D solids/ode plot/laplace prompt names blocked"]
-  Bin["binary scan"] --> NoLeak["no removed-term/plot-step/session/menu hits in g3a or ac2"]
-  Graphify["graphify update . --no-cluster"] --> GraphStats["10,433 nodes / 1,355,311 edges"]
+  Queue["exact_calculator_input_queue.jsonl"] --> Runtime["13,116/13,116 runtime-safe"]
+  Queue --> Strict["10,842/13,116 strict marker pass"]
+  Strict --> Remaining["remaining: broad algebra/numeric/trig presentation gaps"]
 ```

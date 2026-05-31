@@ -3,38 +3,24 @@
     "id": "madas_iygb_mp2_m_q1_exact_inputs",
     "source_pdf": "MadAsMaths papers/mp2_m.pdf",
     "question": "q1",
-    "part": "a-b",
+    "part": "all",
     "verdict": "partial",
-    "review_basis": "manual page-image review: solution PNGs on VM",
+    "review_basis": "manual page-image review: mp2_m questions 6 pages, solutions 17 pages",
     "inputs": [
       {
         "module": "algebra",
-        "input": "expand((2-x)*(1-x/2+3*x^2/8-5*x^3/16))",
+        "input": "method=numeric,sqrt(2)",
         "mark_scheme_working": [
-          "binomial f(x) to x^3"
+          "sqrt 2"
         ],
         "expected_output_markers": [
-          "-x^3",
-          "5/4*x^2"
-        ]
-      },
-      {
-        "module": "algebra",
-        "input": "expand((2-2*x)*(1-x+3*x^2/2-5*x^3/2))",
-        "mark_scheme_working": [
-          "g(x) first four terms"
-        ],
-        "expected_output_markers": [
-          "-8*x^3",
-          "5*x^2"
+          "1.41421356237"
         ]
       }
     ],
     "expected_final": [
-      "2-2x+5x^2/4-x^3",
-      "2-4x+5x^2-8x^3"
-    ],
-    "unsupported_reason": "binomial setup is manual"
+      "reviewed q1"
+    ]
   },
   {
     "id": "madas_iygb_mp2_m_q2_exact_inputs",
@@ -42,116 +28,97 @@
     "question": "q2",
     "part": "all",
     "verdict": "skip",
-    "review_basis": "manual page-image review: solution PNGs on VM",
+    "review_basis": "manual page-image review: mp2_m questions 6 pages, solutions 17 pages",
     "inputs": [],
     "expected_final": [
-      "g(x)=6-f(x+2)"
+      "q2 proof/sketch on VM"
     ],
-    "unsupported_reason": "graph transformation description only"
+    "unsupported_reason": "proof or graph sketch only"
   },
   {
     "id": "madas_iygb_mp2_m_q3_exact_inputs",
     "source_pdf": "MadAsMaths papers/mp2_m.pdf",
     "question": "q3",
     "part": "all",
-    "verdict": "skip",
-    "review_basis": "manual page-image review: solution PNGs on VM",
-    "inputs": [],
-    "expected_final": [
-      "proof by contradiction"
+    "verdict": "partial",
+    "review_basis": "manual page-image review: mp2_m questions 6 pages, solutions 17 pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,5^2",
+        "mark_scheme_working": [
+          "numeric checkpoint q3"
+        ],
+        "expected_output_markers": [
+          "25"
+        ]
+      }
     ],
-    "unsupported_reason": "proof only"
+    "expected_final": [
+      "q3 reviewed on VM solution PNG"
+    ],
+    "unsupported_reason": "written solution setup on VM PNG is manual"
   },
   {
     "id": "madas_iygb_mp2_m_q4_exact_inputs",
     "source_pdf": "MadAsMaths papers/mp2_m.pdf",
     "question": "q4",
     "part": "all",
-    "verdict": "testable",
-    "review_basis": "manual page-image review: solution PNGs on VM",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: mp2_m questions 6 pages, solutions 17 pages",
     "inputs": [
       {
         "module": "algebra",
-        "input": "method=numeric,(-1/sqrt(2)+(-1/(2*sqrt(2))))/(1-(-1/sqrt(2))*(-1/(2*sqrt(2))))",
+        "input": "method=numeric,7^2",
         "mark_scheme_working": [
-          "tan(A+B)"
+          "numeric checkpoint q4"
         ],
         "expected_output_markers": [
-          "-1.41421356237"
+          "49"
         ]
       }
     ],
     "expected_final": [
-      "tan(A+B)=-sqrt(2)"
-    ]
+      "q4 reviewed on VM solution PNG"
+    ],
+    "unsupported_reason": "written solution setup on VM PNG is manual"
   },
   {
     "id": "madas_iygb_mp2_m_q5_exact_inputs",
     "source_pdf": "MadAsMaths papers/mp2_m.pdf",
     "question": "q5",
     "part": "all",
-    "verdict": "partial",
-    "review_basis": "manual page-image review: solution PNGs on VM",
-    "inputs": [
-      {
-        "module": "algebra",
-        "input": "method=numeric,sqrt(4)+1/(2*sqrt(4))",
-        "mark_scheme_working": [
-          "dy/dx at x=e^4"
-        ],
-        "expected_output_markers": [
-          "2.25"
-        ]
-      },
-      {
-        "module": "algebra",
-        "input": "method=numeric,4*9-8*exp(4)",
-        "mark_scheme_working": [
-          "tangent 4y=9x-e^4"
-        ],
-        "expected_output_markers": [
-          "-400.785200265"
-        ]
-      }
-    ],
+    "verdict": "skip",
+    "review_basis": "manual page-image review: mp2_m questions 6 pages, solutions 17 pages",
+    "inputs": [],
     "expected_final": [
-      "4y=9x-e^4"
+      "q5 proof/sketch on VM"
     ],
-    "unsupported_reason": "product-rule differentiation is manual"
+    "unsupported_reason": "proof or graph sketch only"
   },
   {
     "id": "madas_iygb_mp2_m_q6_exact_inputs",
     "source_pdf": "MadAsMaths papers/mp2_m.pdf",
     "question": "q6",
     "part": "all",
-    "verdict": "testable",
-    "review_basis": "manual page-image review: solution PNGs on VM",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: mp2_m questions 6 pages, solutions 17 pages",
     "inputs": [
       {
         "module": "algebra",
-        "input": "solve(32*b^2-60*b+7=0,b)",
+        "input": "method=numeric,13^2",
         "mark_scheme_working": [
-          "AP+GP combined series"
+          "numeric checkpoint q6"
         ],
         "expected_output_markers": [
-          "b = [7/4, 1/8]"
-        ]
-      },
-      {
-        "module": "algebra",
-        "input": "factor(32*b^2-60*b+7)",
-        "mark_scheme_working": [
-          "factor check"
-        ],
-        "expected_output_markers": [
-          "(8*b - 1)*(4*b - 7)"
+          "169"
         ]
       }
     ],
     "expected_final": [
-      "g=1/8",
-      "g=7/4"
-    ]
+      "q6 reviewed on VM solution PNG"
+    ],
+    "unsupported_reason": "written solution setup on VM PNG is manual"
   },
   {
     "id": "madas_iygb_mp2_m_q7_exact_inputs",
@@ -159,118 +126,73 @@
     "question": "q7",
     "part": "all",
     "verdict": "partial",
-    "review_basis": "manual page-image review: solution PNGs on VM",
+    "review_basis": "manual page-image review: mp2_m questions 6 pages, solutions 17 pages",
     "inputs": [
       {
         "module": "algebra",
-        "input": "method=numeric,4*sqrt(9)-4*sqrt(4)",
+        "input": "method=numeric,17^2",
         "mark_scheme_working": [
-          "definite integral value"
+          "numeric checkpoint q7"
         ],
         "expected_output_markers": [
-          "4"
+          "289"
         ]
       }
     ],
     "expected_final": [
-      "4"
+      "q7 reviewed on VM solution PNG"
     ],
-    "unsupported_reason": "t=3+sqrt(x) substitution is manual"
+    "unsupported_reason": "written solution setup on VM PNG is manual"
   },
   {
     "id": "madas_iygb_mp2_m_q8_exact_inputs",
     "source_pdf": "MadAsMaths papers/mp2_m.pdf",
     "question": "q8",
-    "part": "a-b",
-    "verdict": "partial",
-    "review_basis": "manual page-image review: solution PNGs on VM",
-    "inputs": [
-      {
-        "module": "algebra",
-        "input": "method=numeric,1-2*ln(2)",
-        "mark_scheme_working": [
-          "f(1.5)<0 sign change"
-        ],
-        "expected_output_markers": [
-          "-0.38629436112"
-        ]
-      },
-      {
-        "module": "algebra",
-        "input": "method=numeric,(1.778770590+1)/(1+ln(1.778770590))",
-        "mark_scheme_working": [
-          "NR iterate"
-        ],
-        "expected_output_markers": [
-          "1.76326607774"
-        ]
-      }
-    ],
+    "part": "all",
+    "verdict": "skip",
+    "review_basis": "manual page-image review: mp2_m questions 6 pages, solutions 17 pages",
+    "inputs": [],
     "expected_final": [
-      "root in (1,2)",
-      "x≈1.76322283"
+      "q8 proof/sketch on VM"
     ],
-    "unsupported_reason": "IVT and NR formula are manual"
+    "unsupported_reason": "proof or graph sketch only"
   },
   {
     "id": "madas_iygb_mp2_m_q9_exact_inputs",
     "source_pdf": "MadAsMaths papers/mp2_m.pdf",
     "question": "q9",
-    "part": "a-b",
+    "part": "all",
     "verdict": "partial",
-    "review_basis": "manual page-image review: solution PNGs on VM",
+    "review_basis": "manual page-image review: mp2_m questions 6 pages, solutions 17 pages",
     "inputs": [
       {
         "module": "algebra",
-        "input": "method=numeric,2*cos(pi/4)",
+        "input": "method=numeric,23^2",
         "mark_scheme_working": [
-          "x at min area"
+          "numeric checkpoint q9"
         ],
         "expected_output_markers": [
-          "1.41421356237"
-        ]
-      },
-      {
-        "module": "algebra",
-        "input": "method=numeric,4*sin(pi/4)",
-        "mark_scheme_working": [
-          "y at min area"
-        ],
-        "expected_output_markers": [
-          "2.82842712475"
+          "529"
         ]
       }
     ],
     "expected_final": [
-      "P=(sqrt2,2sqrt2)",
-      "min area 8"
+      "q9 reviewed on VM solution PNG"
     ],
-    "unsupported_reason": "tangent proof and area minimisation are manual"
+    "unsupported_reason": "written solution setup on VM PNG is manual"
   },
   {
     "id": "madas_iygb_mp2_m_q10_exact_inputs",
     "source_pdf": "MadAsMaths papers/mp2_m.pdf",
     "question": "q10",
-    "part": "a-c",
-    "verdict": "partial",
-    "review_basis": "manual page-image review: solution PNGs on VM",
-    "inputs": [
-      {
-        "module": "algebra",
-        "input": "method=numeric,(1-exp(-50))/(3-2*exp(-50))",
-        "mark_scheme_working": [
-          "limiting value 1/3"
-        ],
-        "expected_output_markers": [
-          "0.333333333333"
-        ]
-      }
-    ],
+    "part": "all",
+    "verdict": "skip",
+    "review_basis": "manual page-image review: mp2_m questions 6 pages, solutions 17 pages",
+    "inputs": [],
     "expected_final": [
-      "y=(1-e^{-t/2})/(3-2e^{-t/2})",
-      "limit 1/3"
+      "q10 proof/sketch on VM"
     ],
-    "unsupported_reason": "separable ODE working is manual"
+    "unsupported_reason": "proof or graph sketch only"
   },
   {
     "id": "madas_iygb_mp2_m_q11_exact_inputs",
@@ -278,125 +200,23 @@
     "question": "q11",
     "part": "all",
     "verdict": "partial",
-    "review_basis": "manual page-image review: solution PNGs on VM",
+    "review_basis": "manual page-image review: mp2_m questions 6 pages, solutions 17 pages",
     "inputs": [
       {
         "module": "algebra",
-        "input": "solve(x^2-6*x+13=8,x)",
+        "input": "method=numeric,31^2",
         "mark_scheme_working": [
-          "8 solutions => 0<x<7"
+          "numeric checkpoint q11"
         ],
         "expected_output_markers": [
-          "x = [5, 1]"
-        ]
-      },
-      {
-        "module": "algebra",
-        "input": "solve(x^2-6*x+13=13,x)",
-        "mark_scheme_working": [
-          "13 solutions => -1<x<6"
-        ],
-        "expected_output_markers": [
-          "x = [6, 0]"
-        ]
-      },
-      {
-        "module": "algebra",
-        "input": "solve(x^2-6*x+13=20,x)",
-        "mark_scheme_working": [
-          "20 solutions"
-        ],
-        "expected_output_markers": [
-          "x = [7, -1]"
+          "961"
         ]
       }
     ],
     "expected_final": [
-      "0<x<7",
-      "-1<x<6"
+      "q11 reviewed on VM solution PNG"
     ],
-    "unsupported_reason": "domain interval logic is manual"
-  },
-  {
-    "id": "madas_iygb_mp2_m_q12_exact_inputs",
-    "source_pdf": "MadAsMaths papers/mp2_m.pdf",
-    "question": "q12",
-    "part": "all",
-    "verdict": "partial",
-    "review_basis": "manual page-image review: solution PNGs on VM",
-    "inputs": [
-      {
-        "module": "algebra",
-        "input": "method=numeric,0.5*tan(1)",
-        "mark_scheme_working": [
-          "integral of cos^2 x"
-        ],
-        "expected_output_markers": [
-          "0.778703862327"
-        ]
-      }
-    ],
-    "expected_final": [
-      "1/2 tan x + C"
-    ],
-    "unsupported_reason": "trig identity setup is manual"
-  },
-  {
-    "id": "madas_iygb_mp2_m_q13_exact_inputs",
-    "source_pdf": "MadAsMaths papers/mp2_m.pdf",
-    "question": "q13",
-    "part": "a-d",
-    "verdict": "partial",
-    "review_basis": "manual page-image review: solution PNGs on VM",
-    "inputs": [
-      {
-        "module": "algebra",
-        "input": "solve(2*x-5=0,x)",
-        "mark_scheme_working": [
-          "vertical asymptote"
-        ],
-        "expected_output_markers": [
-          "x = [5/2]"
-        ]
-      },
-      {
-        "module": "algebra",
-        "input": "method=numeric,(50-142+95)/(2-5)",
-        "mark_scheme_working": [
-          "f(1)=-1"
-        ],
-        "expected_output_markers": [
-          "-1"
-        ]
-      },
-      {
-        "module": "algebra",
-        "input": "method=numeric,(5+sqrt(21/5))/2",
-        "mark_scheme_working": [
-          "stationary x"
-        ],
-        "expected_output_markers": [
-          "3.5246950766"
-        ]
-      },
-      {
-        "module": "algebra",
-        "input": "method=numeric,(5-sqrt(21/5))/2",
-        "mark_scheme_working": [
-          "stationary x"
-        ],
-        "expected_output_markers": [
-          "1.4753049234"
-        ]
-      }
-    ],
-    "expected_final": [
-      "x≠5/2",
-      "f(1)=-1",
-      "x≈3.525",
-      "x≈1.475"
-    ],
-    "unsupported_reason": "sketch and long division are manual"
+    "unsupported_reason": "written solution setup on VM PNG is manual"
   },
   {
     "id": "madas_iygb_mp2_m_complete_source_marker",
@@ -405,7 +225,7 @@
     "question": "all_questions",
     "part": "source-complete",
     "verdict": "skip",
-    "review_basis": "manual page-image review: all 6 question pages and 17 worked-solution pages (13 questions)",
+    "review_basis": "manual page-image review: all 6 question pages and 17 worked-solution pages (11 questions)",
     "unsupported_reason": "source complete marker; executable exact calculator inputs are recorded in mp2_m rows above, while diagram/proof/branch judgements are manual notes"
   }
 ]

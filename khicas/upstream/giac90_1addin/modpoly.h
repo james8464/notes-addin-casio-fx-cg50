@@ -148,7 +148,7 @@ namespace giac {
   gen symb_horner(const modpoly & p,const gen & x,int d);
   gen symb_horner(const modpoly & p,const gen & x);
   // shift polynomial
-  modpoly taylor(const modpoly & p,const gen & x,environment * env=0,matrice * P=0);
+  modpoly taylor(const modpoly & p,const gen & x,environment * env=0);
   // split P=Pp-Pn in two parts, Pp positive coeffs and Pn negative coeffs
   void splitP(const vecteur &P,vecteur &Pp,vecteur &Pn);
 
@@ -180,7 +180,6 @@ namespace giac {
   void gcdsmallmodpoly(const modpoly &p,const modpoly & q,int m,modpoly & d);
   void DivRem(const std::vector<int> & th, const std::vector<int> & other,int m,std::vector<int> & quo, std::vector<int> & rem);
   modpoly gcd(const modpoly & a,const modpoly &b,environment * env); 
-  void euclide_gcd(const modpoly &p,const modpoly & q,environment * env,modpoly &a);
   // n-var modular gcd
   bool gcd_modular(const polynome &p_orig, const polynome & q_orig, polynome & pgcd,polynome & pcofactor,polynome & qcofactor,bool compute_cofactors);
 
@@ -192,7 +191,7 @@ namespace giac {
   modpoly lcm(const modpoly & a,const modpoly &b,environment * env); 
   bool gcd_modular_algo1(polynome &p,polynome &q,polynome &d,bool compute_cof);
   // p1*u+p2*v=d
-  void egcd(const modpoly &p1, const modpoly & p2, environment * env,modpoly & u,modpoly & v,modpoly & d,bool deterministic=false);
+  void egcd(const modpoly &p1, const modpoly & p2, environment * env,modpoly & u,modpoly & v,modpoly & d);
   bool egcd_pade(const modpoly & n,const modpoly & x,int l,modpoly & a,modpoly &b,environment * env,bool psron=true);
   // alg extension norme for p_y, alg extension defined by pmini
   bool algnorme(const polynome & p_y,const polynome & pmini,polynome & n);

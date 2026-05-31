@@ -599,7 +599,6 @@ namespace giac {
       const index_m & pow_b = b->index;
       // a and b are non-empty, compare powers
       if (pow_a!=pow_b){
-	// cout << "index " << pow_a.iref() << " " << pow_b.iref() << '\n';
 	if (is_strictly_greater(pow_a, pow_b)) {
 	  // a has lesser power, get coefficient from a
 	  new_coord.push_back(*a);

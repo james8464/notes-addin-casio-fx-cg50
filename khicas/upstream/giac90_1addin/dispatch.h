@@ -195,7 +195,6 @@ namespace giac {
     _EXT__VECT = _EXT*_DISPATCHBASE+_VECT,
     _EXT__MAP = _EXT*_DISPATCHBASE+_MAP,
     _EXT__INT_=  _EXT*_DISPATCHBASE+_INT_,
-    _EXT__ZINT =  _EXT*_DISPATCHBASE+_ZINT,
     _EXT__POLY=  _EXT*_DISPATCHBASE+_POLY,
     _STRNG__STRNG = _STRNG*_DISPATCHBASE+_STRNG,
     _STRNG__INT_=  _STRNG*_DISPATCHBASE+_INT_,
@@ -261,7 +260,6 @@ namespace giac {
     _TUPLE__VECT=29,
     _TABLE__VECT=30,
     _GRAPH__VECT =31,
-    _PRG__VECT=32,
   } ;
 
   enum symb_subtypes {
@@ -471,8 +469,7 @@ namespace giac {
     _CONTEXT_POINTER=3,
     _THREAD_POINTER=4,
     _VARFUNCDEF_POINTER=5,
-    _APPLET_POINTER=6,
-    _BUFFER_POINTER=7,
+    _APPLET_POINTER=6
   };
 
   enum color_values {

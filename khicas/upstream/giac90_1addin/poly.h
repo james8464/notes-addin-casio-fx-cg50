@@ -201,7 +201,6 @@ namespace giac {
     tensor<T> t;
     Tref_tensor<T>(const tensor<T> & P): ref_count(1),t(P) {}
     Tref_tensor<T>(int dim): ref_count(1),t(dim) {}
-    ~Tref_tensor<T>() {t.coord.clear();}
   };
 
   // convert p to monomial represented by unsigned integers
@@ -1179,7 +1178,6 @@ namespace giac {
 
   template <class T>
   bool tensor<T>::TDivRem (const tensor<T> & other, tensor<T> & quo, tensor<T> & rem, bool allowrational ) const {  
-    //printf("K");
     int asize=int((*this).coord.size());
     if (!asize){
       quo=*this;
@@ -1296,7 +1294,7 @@ namespace giac {
       ishift.front()=i-n;
       const tensor<T> & rem0 = Tfirstcoeff(rem).shift(ishift);
       quo.append(rem0);
-#if defined GIAC_VECTOR || defined NSPIRE //|| defined FXCG
+#if defined GIAC_VECTOR || defined NSPIRE
       rem.coord = rem.coord*b0.coord; 
       tensor<T> tmp(rem0.dim);
       tmp.coord=rem0.coord*other.coord;
@@ -1892,7 +1890,6 @@ namespace giac {
       // b0pow=Tpow(b0,ddeg+1);
       // (a*b0pow).TDivRem1(b,q,r,true); // division works always
       a.TPseudoDivRem(b,q,r,b0pow);
-      // cout << "dr " << a << " " << b << " " << q << " " << r << "\n";
       // if r is 0 then b is the gcd and ub the coeff
       if (r.coord.empty())
 	break;
@@ -1924,7 +1921,6 @@ namespace giac {
     }
     else {
       // first multiply b and ub by p1_max_deg^# before doing division
-      // cout << b << " - (" << ub << ") * (" << pp2 << ")\n"; 
       q=b-ub*pp1;
       tensor<T> b0(Tfirstcoeff(pp2));
       int m=q.lexsorted_degree();
@@ -1933,7 +1929,6 @@ namespace giac {
       b=b*b0pow;
       ub=ub*b0pow;
       q=q*b0pow;
-      //cout << q << " " << pp2 << '\n'; return;
       q.TDivRem1(pp2,ua,r,true);
       ua=ua*cp1;
       ub=ub*cp2;

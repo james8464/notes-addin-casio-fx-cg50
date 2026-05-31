@@ -1,9 +1,33 @@
-Args: trigcos(expr)
-Required: expr
-Does: Rewrites supported trig expressions using cos where useful.
-Examples: trigcos(sin(x)^2); trigcos(tan(x)^2)
-F2:trigcos(sin(x)^2)
-F3:trigcos(tan(x)^2)
-Ex F2: trigcos(sin(x)^2)
-Ex F3: trigcos(tan(x)^2)
-Working: Uses sin^2(x)+cos^2(x)=1 and reciprocal identities.
+trigcos(expr)
+
+Args:
+  expr
+
+Required:
+  expr
+
+Optional:
+  None.
+
+Does:
+  Rewrites trig expressions using cosine where useful.
+
+Examples:
+  trigcos(sin(x)^2); trigcos(tan(x))
+
+F2:
+  trigcos(sin(x)^2)
+
+F3:
+  trigcos(tan(x))
+
+Keys:
+  F1 inserts the command.
+  F2 inserts the first example.
+  F3 inserts the second example when available.
+
+Working:
+  Usually final-answer only unless used inside a longer routed solution.
+
+Tip:
+  Use brackets around compound numerators, denominators, powers, and substitutions for readable exam-style output.

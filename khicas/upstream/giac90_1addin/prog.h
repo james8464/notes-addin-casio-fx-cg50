@@ -26,13 +26,10 @@
 #ifndef NO_NAMESPACE_GIAC
 namespace giac {
 #endif // ndef NO_NAMESPACE_GIAC
-  typedef const char * cstcharptr;
-  extern int (*micropy_ptr) (cstcharptr);
-  extern char * (*quickjs_ptr) (cstcharptr);
   extern bool user_screen; 
   extern int user_screen_io_x,user_screen_io_y,user_screen_fontsize;
   extern const int rand_max2; // replace RAND_MAX if giac_rand(contextptr) is used
-  extern bool warn_equal_in_prog,warn_symb_program_sto;
+  extern bool warn_equal_in_prog;
 
   struct user_function;
   struct module_info {
@@ -73,15 +70,13 @@ namespace giac {
   // Return the names of variables that are not local in g
   // and the equality that are not used (warning = instead of := )
   std::string check_local_assign(const gen & g,GIAC_CONTEXT);
-  gen symb_prog3(const gen &a,const gen &b,const gen &c);
   symbolic symb_program_sto(const gen & a,const gen & b,const gen & c,const gen & d,bool embedd=false,GIAC_CONTEXT=context0);
   symbolic symb_program(const gen & a,const gen & b,const gen & c,GIAC_CONTEXT);
   symbolic symb_program(const gen & args);
+  gen symb_prog3(const gen & a,const gen &b,const gen &c);
   gen quote_program(const gen & args,GIAC_CONTEXT);
   gen _program(const gen & args,const gen & name,GIAC_CONTEXT);
   extern const unary_function_ptr * const  at_program ;
-  // parser helper
-  gen symb_test_equal(const gen & a,const gen & op,const gen & b);
   void adjust_sst_at(const gen & name,GIAC_CONTEXT); //used in symbolic.cc by nr_eval
   void program_leave(const gen & save_debug_info,bool save_sst_mode,debug_struct * dbgptr);
 
@@ -304,9 +299,6 @@ namespace giac {
   gen _all_trig_solutions(const gen & args,GIAC_CONTEXT);
   extern const unary_function_ptr * const  at_all_trig_solutions;
 
-  gen _increasing_power(const gen & args,GIAC_CONTEXT);
-  extern const unary_function_ptr * const  at_increasing_power;
-
   gen _ntl_on(const gen & args,GIAC_CONTEXT);
   extern const unary_function_ptr * const  at_ntl_on;
 
@@ -395,16 +387,9 @@ namespace giac {
   gen quote_read(const gen & args,GIAC_CONTEXT); // read in a file and return non evaled
   gen _read(const gen & args,GIAC_CONTEXT); // read in a file and return evaled
   extern const unary_function_ptr * const  at_read;
-  extern const unary_function_ptr * const  at_read16;
-  extern const unary_function_ptr * const  at_read32;
-  extern const unary_function_ptr * const  at_read_nand;
-  gen _write32(const gen & args,GIAC_CONTEXT);
-  extern const unary_function_ptr * const  at_write32;
-  extern const unary_function_ptr * const  at_addr;
 
   gen _write(const gen & args,GIAC_CONTEXT);
   extern const unary_function_ptr * const  at_write;
-  extern const unary_function_ptr * const  at_write16;
 
   gen _save_history(const gen & args,GIAC_CONTEXT);
   extern const unary_function_ptr * const  at_save_history;
@@ -503,8 +488,8 @@ namespace giac {
   extern const unary_function_ptr * const  at_part;
 
   gen _Pause(const gen & args,GIAC_CONTEXT);
-  extern const unary_function_ptr * const  at_Pause;
   extern const unary_function_ptr * const  at_sleep;
+  extern const unary_function_ptr * const  at_monotonic;
 
   gen _Row(const gen & args,GIAC_CONTEXT);
   extern const unary_function_ptr * const  at_Row;
@@ -580,7 +565,7 @@ namespace giac {
   extern const unary_function_ptr * const  at_widget_size;
 
   gen current_sheet(const gen & g,GIAC_CONTEXT);
-#if !defined RTOS_THREADX && !defined NSPIRE && !defined FXCG && !defined KHICAS
+#if !defined RTOS_THREADX && !defined NSPIRE && !defined FXCG
   extern unary_function_eval __current_sheet;
 #endif
   extern const unary_function_ptr * const  at_current_sheet;
@@ -638,7 +623,6 @@ namespace giac {
   vecteur mksa_convert(const gen & g,GIAC_CONTEXT);
   gen _ufactor(const gen & g,GIAC_CONTEXT);
   gen _usimplify(const gen & g,GIAC_CONTEXT);
-  extern const unary_function_ptr * const  at_regrouper;  
 
   extern const mksa_unit __m_unit;
   extern const mksa_unit __kg_unit;
@@ -785,7 +769,7 @@ namespace giac {
   extern const mksa_unit __tepgC_unit;
   extern const mksa_unit __tepcC_unit;
   extern const mksa_unit __HFCC_unit;
-#if 0 //def NO_PHYSICAL_CONSTANTS
+#ifdef NO_PHYSICAL_CONSTANTS
 #define _m_unit mksa_register("_m",&__m_unit)
 #define _kg_unit mksa_register("_kg",&__kg_unit)
 #define _s_unit mksa_register("_s",&__s_unit)
@@ -816,165 +800,163 @@ namespace giac {
 #define _molK_unit mksa_register("_molK",&__molK_unit)
 #define _L_unit mksa_register("_L",&__L_unit)
 #else
-  extern const gen & _m_unit;
-  extern const gen & _kg_unit;
-  extern const gen & _s_unit;
-  extern const gen & _A_unit;
-  extern const gen & _K_unit;
-  extern const gen & _mol_unit;
-  extern const gen & _cd_unit;
-  extern const gen & _E_unit;
-#ifndef STATIC_BUILTIN_LEXER_FUNCTIONS
+  extern gen _m_unit;
+  extern gen _kg_unit;
+  extern gen _s_unit;
+  extern gen _A_unit;
+  extern gen _K_unit;
+  extern gen _mol_unit;
+  extern gen _cd_unit;
+  extern gen _E_unit;
   // other metric units in m,kg,s,A
-  extern const gen & _Bq_unit;
-  extern const gen & _C_unit;
-  extern const gen & _F_unit;
-  extern const gen & _Gy_unit;
-  extern const gen & _H_unit;
-  extern const gen & _Hz_unit;
-  extern const gen & _J_unit;
-  extern const gen & _mho_unit;
-  extern const gen & _N_unit;
-  extern const gen & _Ohm_unit;
-  extern const gen & _Pa_unit;
-  extern const gen & _r_unit;
-  extern const gen & _S_unit;
-  extern const gen & _st_unit;
-  extern const gen & _Sv_unit;
-  extern const gen & _T_unit;
-  extern const gen & _V_unit;
-  extern const gen & _W_unit;
-  extern const gen & _Wb_unit;
-  extern const gen & _l_unit;
-  extern const gen & _molK_unit;
+  extern gen _Bq_unit;
+  extern gen _C_unit;
+  extern gen _F_unit;
+  extern gen _Gy_unit;
+  extern gen _H_unit;
+  extern gen _Hz_unit;
+  extern gen _J_unit;
+  extern gen _mho_unit;
+  extern gen _N_unit;
+  extern gen _Ohm_unit;
+  extern gen _Pa_unit;
+  extern gen _r_unit;
+  extern gen _S_unit;
+  extern gen _st_unit;
+  extern gen _Sv_unit;
+  extern gen _T_unit;
+  extern gen _V_unit;
+  extern gen _W_unit;
+  extern gen _Wb_unit;
+  extern gen _l_unit;
+  extern gen _molK_unit;
   // useful non metric units
-  extern const gen & _a_unit;
-  extern const gen & _acre_unit;
-  extern const gen & _arcmin_unit;
-  extern const gen & _arcs_unit;
-  extern const gen & _atm_unit;
-  extern const gen & _au_unit;
-  extern const gen & _angstrom_unit;
-  extern const gen & _b_unit;
-  extern const gen & _bar_unit;
-  extern const gen & _bbl_unit;
-  extern const gen & _Btu_unit;
-  extern const gen & _cal_unit;
-  extern const gen & _chain_unit;
-  extern const gen & _Curie_unit;
-  extern const gen & _ct_unit;
-  // extern const gen & _Â°_unit;
-  extern const gen & _d_unit;
-  extern const gen & _dB_unit;
-  extern const gen & _dyn_unit;
-  extern const gen & _erg_unit;
-  extern const gen & _eV_unit;
-  // extern const gen & _Â°F_unit;
-  extern const gen & _fath_unit;
-  extern const gen & _fbm_unit;
-  // extern const gen & _fc_unit;
-  extern const gen & _Fdy_unit;
-  extern const gen & _fermi_unit;
-  extern const gen & _flam_unit;
-  extern const gen & _ft_unit;
-  extern const gen & _ftUS_unit;
-  extern const gen & _g_unit;
-  extern const gen & _gal_unit;
-  extern const gen & _galC_unit;
-  extern const gen & _galUK_unit;
-  extern const gen & _gf_unit;
-  extern const gen & _gmol_unit;
-  extern const gen & _grad_unit;
-  extern const gen & _grain_unit;
-  extern const gen & _ha_unit;
-  extern const gen & _h_unit;
-  extern const gen & _hp_unit;
-  extern const gen & _in_unit;
-  extern const gen & _inHg_unit;
-  extern const gen & _inH2O_unit;
-  extern const gen & _FF_unit;
-  extern const gen & _kip_unit;
-  extern const gen & _knot_unit;
-  extern const gen & _kph_unit;
-  extern const gen & _lam_unit;
-  extern const gen & _lb_unit;
-  extern const gen & _lbf_unit;
-  extern const gen & _lbmol_unit;
-  extern const gen & _lbt_unit;
-  extern const gen & _lyr_unit;
-  extern const gen & _mi_unit;
-  extern const gen & _mil_unit;
-  extern const gen & _min_unit;
-  extern const gen & _miUS_unit;
-  extern const gen & _mmHg_unit;
-  extern const gen & _mph_unit;
-  extern const gen & _nmi_unit;
-  extern const gen & _oz_unit;
-  extern const gen & _ozfl_unit;
-  extern const gen & _ozt_unit;
-  extern const gen & _ozUK_unit;
-  extern const gen & _P_unit;
-  extern const gen & _pc_unit;
-  extern const gen & _pdl_unit;
-  extern const gen & _pk_unit;
-  extern const gen & _psi_unit;
-  extern const gen & _pt_unit;
-  extern const gen & _qt_unit;
-  extern const gen & _R_unit;
-  extern const gen & _rad_unit;
-  extern const gen & _rd_unit;
-  extern const gen & _rem_unit;
-  extern const gen & _rpm_unit;
-  extern const gen & _sb_unit;
-  extern const gen & _slug_unit;
-  extern const gen & _St_unit;
-  extern const gen & _t_unit;
-  extern const gen & _tbsp_unit;
-  extern const gen & _therm_unit;
-  extern const gen & _ton_unit;
-  extern const gen & _tonUK_unit;
-  extern const gen & _torr_unit;
-  extern const gen & _u_unit;
-  extern const gen & _yd_unit;
-  extern const gen & _yr_unit;
+  extern gen _a_unit;
+  extern gen _acre_unit;
+  extern gen _arcmin_unit;
+  extern gen _arcs_unit;
+  extern gen _atm_unit;
+  extern gen _au_unit;
+  extern gen _angstrom_unit;
+  extern gen _b_unit;
+  extern gen _bar_unit;
+  extern gen _bbl_unit;
+  extern gen _Btu_unit;
+  extern gen _cal_unit;
+  extern gen _chain_unit;
+  extern gen _Curie_unit;
+  extern gen _ct_unit;
+  // extern gen _°_unit;
+  extern gen _d_unit;
+  extern gen _dB_unit;
+  extern gen _dyn_unit;
+  extern gen _erg_unit;
+  extern gen _eV_unit;
+  // extern gen _°F_unit;
+  extern gen _fath_unit;
+  extern gen _fbm_unit;
+  // extern gen _fc_unit;
+  extern gen _Fdy_unit;
+  extern gen _fermi_unit;
+  extern gen _flam_unit;
+  extern gen _ft_unit;
+  extern gen _ftUS_unit;
+  extern gen _g_unit;
+  extern gen _gal_unit;
+  extern gen _galC_unit;
+  extern gen _galUK_unit;
+  extern gen _gf_unit;
+  extern gen _gmol_unit;
+  extern gen _grad_unit;
+  extern gen _grain_unit;
+  extern gen _ha_unit;
+  extern gen _h_unit;
+  extern gen _hp_unit;
+  extern gen _in_unit;
+  extern gen _inHg_unit;
+  extern gen _inH2O_unit;
+  extern gen _FF_unit;
+  extern gen _kip_unit;
+  extern gen _knot_unit;
+  extern gen _kph_unit;
+  extern gen _lam_unit;
+  extern gen _lb_unit;
+  extern gen _lbf_unit;
+  extern gen _lbmol_unit;
+  extern gen _lbt_unit;
+  extern gen _lyr_unit;
+  extern gen _mi_unit;
+  extern gen _mil_unit;
+  extern gen _min_unit;
+  extern gen _miUS_unit;
+  extern gen _mmHg_unit;
+  extern gen _mph_unit;
+  extern gen _nmi_unit;
+  extern gen _oz_unit;
+  extern gen _ozfl_unit;
+  extern gen _ozt_unit;
+  extern gen _ozUK_unit;
+  extern gen _P_unit;
+  extern gen _pc_unit;
+  extern gen _pdl_unit;
+  extern gen _pk_unit;
+  extern gen _psi_unit;
+  extern gen _pt_unit;
+  extern gen _qt_unit;
+  extern gen _R_unit;
+  extern gen _rad_unit;
+  extern gen _rd_unit;
+  extern gen _rem_unit;
+  extern gen _rpm_unit;
+  extern gen _sb_unit;
+  extern gen _slug_unit;
+  extern gen _St_unit;
+  extern gen _t_unit;
+  extern gen _tbsp_unit;
+  extern gen _therm_unit;
+  extern gen _ton_unit;
+  extern gen _tonUK_unit;
+  extern gen _torr_unit;
+  extern gen _u_unit;
+  extern gen _yd_unit;
+  extern gen _yr_unit;
   // Physical constants, defined in input_parser anyway
-  extern const gen & cst_hbar;
-  extern const gen & cst_clightspeed;
-  extern const gen & cst_ga;
-  extern const gen & cst_IO;
-  extern const gen & cst_epsilonox;
-  extern const gen & cst_epsilonsi;
-  extern const gen & cst_qepsilon0;
-  extern const gen & cst_epsilon0q;
-  extern const gen & cst_kq;
-  extern const gen & cst_c3;
-  extern const gen & cst_lambdac;
-  extern const gen & cst_f0;
-  extern const gen & cst_lambda0;
-  extern const gen & cst_muN;
-  extern const gen & cst_muB;
-  extern const gen & cst_a0;
-  extern const gen & cst_Rinfinity;
-  extern const gen & cst_Faraday;
-  extern const gen & cst_phi;
-  extern const gen & cst_alpha;
-  extern const gen & cst_mpme;
-  extern const gen & cst_mp;
-  extern const gen & cst_qme;
-  extern const gen & cst_me;
-  extern const gen & cst_qe;
-  extern const gen & cst_hPlanck;
-  extern const gen & cst_G;
-  extern const gen & cst_mu0;
-  extern const gen & cst_epsilon0;
-  extern const gen & cst_sigma;
-  extern const gen & cst_StdP;
-  extern const gen & cst_StdT;
-  extern const gen & cst_Rydberg;
-  extern const gen & cst_Vm;
-  extern const gen & cst_kBoltzmann;
-  extern const gen & cst_NA;
-#endif // STATIC_BUILTIN_LEXER_FUNCTIONS
+  extern gen cst_hbar;
+  extern gen cst_clightspeed;
+  extern gen cst_ga;
+  extern gen cst_IO;
+  extern gen cst_epsilonox;
+  extern gen cst_epsilonsi;
+  extern gen cst_qepsilon0;
+  extern gen cst_epsilon0q;
+  extern gen cst_kq;
+  extern gen cst_c3;
+  extern gen cst_lambdac;
+  extern gen cst_f0;
+  extern gen cst_lambda0;
+  extern gen cst_muN;
+  extern gen cst_muB;
+  extern gen cst_a0;
+  extern gen cst_Rinfinity;
+  extern gen cst_Faraday;
+  extern gen cst_phi;
+  extern gen cst_alpha;
+  extern gen cst_mpme;
+  extern gen cst_mp;
+  extern gen cst_qme;
+  extern gen cst_me;
+  extern gen cst_qe;
+  extern gen cst_hPlanck;
+  extern gen cst_G;
+  extern gen cst_mu0;
+  extern gen cst_epsilon0;
+  extern gen cst_sigma;
+  extern gen cst_StdP;
+  extern gen cst_StdT;
+  extern gen cst_Rydberg;
+  extern gen cst_Vm;
+  extern gen cst_kBoltzmann;
+  extern gen cst_NA;
 #endif // NO_PHYSICAL_CONSTANTS
 #ifndef FXCG
   const unary_function_ptr * binary_op_tab();
@@ -1027,7 +1009,6 @@ namespace giac {
   gen _struct_dot(const gen & g,GIAC_CONTEXT);
   // replace := by = in builtin commands (for Python compatible mode)
   gen denest_sto(const gen & g);
-  gen os_nary_workaround(const gen & g); // replace [[a,b,...]] by a,b,...
 
   extern const unary_function_ptr * const  at_index ;
   gen _index(const gen & args,GIAC_CONTEXT);

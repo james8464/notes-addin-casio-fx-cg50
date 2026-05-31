@@ -137,7 +137,7 @@ namespace giac {
     complex_mode(old_complex_mode,contextptr);
     return res;
   }
-  static const char _csolve_s[]="_rm13";
+  static const char _csolve_s[]="csolve";
   static define_unary_function_eval_quoted (__csolve,&_cSolve,_csolve_s);
   define_unary_function_ptr5( at_csolve ,alias_at_csolve,&__csolve,_QUOTE_ARGUMENTS,true);
 
@@ -202,7 +202,7 @@ namespace giac {
   gen _getDenom(const gen & g,GIAC_CONTEXT){
     return apply(g,getDenom,contextptr);
   }
-  static const char _getDenom_s[]="_rs186";
+  static const char _getDenom_s[]="getDenom";
   static define_unary_function_eval (__getDenom,&_getDenom,_getDenom_s);
   define_unary_function_ptr5( at_getDenom ,alias_at_getDenom,&__getDenom,0,true);
 
@@ -214,7 +214,7 @@ namespace giac {
   gen _denom(const gen & g,GIAC_CONTEXT){
     return apply(g,denom,contextptr);
   }
-  static const char _denom_s[]="_rs187";
+  static const char _denom_s[]="denom";
   static define_unary_function_eval (__denom,&_denom,_denom_s);
   define_unary_function_ptr5( at_denom ,alias_at_denom,&__denom,0,true);
 
@@ -238,7 +238,7 @@ namespace giac {
   gen _numer(const gen & g,GIAC_CONTEXT){
     return apply(g,numer,contextptr);
   }
-  static const char _numer_s[]="_rs188";
+  static const char _numer_s[]="numer";
   static define_unary_function_eval (__numer,&_numer,_numer_s);
   define_unary_function_ptr5( at_numer ,alias_at_numer,&__numer,0,true);
 
@@ -250,7 +250,7 @@ namespace giac {
     vecteur & v(*g._VECTptr);
     return _reorder(makesequence(v.front(),vecteur(v.begin()+1,v.end())),contextptr);
   }
-  static const char _comDenom_s[]="_rs189";
+  static const char _comDenom_s[]="comDenom";
   static define_unary_function_eval (__comDenom,&_comDenom,_comDenom_s);
   define_unary_function_ptr5( at_comDenom ,alias_at_comDenom,&__comDenom,0,true);
 
@@ -275,7 +275,7 @@ namespace giac {
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     vecteur v(gen2vecteur(g));
     int vs=int(v.size()),deg=10;
-    gen x=vx_var;
+    gen x=vx_var();
     gen f=0;
     if (vs>=3 && v[2].type==_INT_ && v[1].type==_INT_ && v[0].type==_VECT){
       // randpoly(variables,total_degree,nterms,[law])
@@ -427,7 +427,7 @@ namespace giac {
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     vecteur v(gen2vecteur(g));
     if (v.size()==1)
-      v.push_back(vx_var);
+      v.push_back(vx_var());
     gen w(fminmax(v,4,contextptr));
     if (is_undef(w)) return w;
     return solvepostprocess(w,v[1],contextptr);
@@ -440,7 +440,7 @@ namespace giac {
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     vecteur v(gen2vecteur(g));
     if (v.size()==1)
-      v.push_back(vx_var);
+      v.push_back(vx_var());
     gen w(fminmax(v,5,contextptr));
     if (is_undef(w)) return w;
     return solvepostprocess(w,v[1],contextptr);
@@ -464,7 +464,7 @@ namespace giac {
       return res;
     }
     if (v.size()<2)
-      v.push_back(vx_var);
+      v.push_back(vx_var());
     if (v.size()<3)
       v.push_back(5);
     else is_integral(v[2]);

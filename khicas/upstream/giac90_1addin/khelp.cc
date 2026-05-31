@@ -62,7 +62,7 @@ namespace giac {
     const char * cmd_name;
     const char * cmd_howto[HELP_LANGUAGES];
     const char * cmd_syntax;
-    const char * cmd_related; 
+    const char * cmd_related;
     const char * cmd_examples;
   };
 
@@ -107,7 +107,6 @@ namespace giac {
       lang=2;
     string s=unlocalize(cmd_name);
     int l=int(s.size());
-    // cout << "static " << l << " " << cmd_name << '\n';
     if ( (l>2) && (s[0]=='\'') && (s[l-1]=='\'') )
       s=s.substr(1,l-2);
     static_help_t h={s.c_str(),{0,0,0,0,0},0,0,0};
@@ -125,7 +124,6 @@ namespace giac {
       examples=p.first->cmd_examples;
       if (!examples)
 	examples=nullstring;
-      // cout << "howto " << howto << " " << examples << '\n';
       return true;
     }
     return false;

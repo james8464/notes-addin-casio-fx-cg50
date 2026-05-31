@@ -42,7 +42,7 @@ using namespace std;
 
 #ifdef USE_GMP_REPLACEMENTS
 #undef HAVE_GMPXX_H
-//#undef HAVE_LIBMPFR
+#undef HAVE_LIBMPFR
 #endif
 
 #ifdef HAVE_GMPXX_H
@@ -1524,7 +1524,7 @@ namespace giac {
       qp0=firstcoeff(Q).trunc1();
       polynome2poly1(qp0,1,vq0);
       int j=-d/2;
-      if (coeffP.type==_USER)  j=0;
+      // if (coeffP.type==_USER)  j=0;
       for (int i=0;i<=d;++i,++j){
 	if (!debug_infolevel){
 	  double cclock=CLOCK()*1e-6;
@@ -2650,7 +2650,7 @@ namespace giac {
   void modularize(polynome & d,const gen & m){
     vector< monomial<gen> >::iterator it=d.coord.begin(),itend=d.coord.end();
     for (;it!=itend;++it){
-      if (it->value.type!=_USER)
+      //if (it->value.type!=_USER)
 	it->value=makemod(it->value,m);
     }
   }
@@ -2816,8 +2816,6 @@ namespace giac {
 	continue;
       t=tmp;
       coefft=it->value;
-      if (t==_USER)
-	return t;
       if (t==_MOD)
 	return t;
       if (t==_EXT)
@@ -2876,14 +2874,6 @@ namespace giac {
 	modularize(q_simp,m);
       }
       modularize(d,m);
-      return true;
-    }
-    if (pt==_USER){
-      coefft._USERptr->polygcd(p_simp,q_simp,d);
-      if (compute_cofactors){
-	p_simp=p_simp/d;
-	q_simp=q_simp/d;
-      }
       return true;
     }
     // does not work for collect(( -az^2-3*az*cos(kt)^2+az-cos(kt)^2)*sqrt(2*cos(kt)^2+az^2+2*az*cos(kt)^2-1)*ax*ksx*sin(kt)+(az^2*cos(kt)^2+az*cos(kt)^2+az+2*cos(kt)^2-1)*sqrt(2*cos(kt)^2+az^2+2*az*cos(kt)^2-1)*ax*ktx*sin(kt)+(az^2+3*az*cos(kt)^2-az+cos(kt)^2)*sqrt(2*cos(kt)^2+az^2+2*az*cos(kt)^2-1)*ay*ksy*sin(kt)+(az^2+3*az*cos(kt)^2-az+cos(kt)^2)*sqrt(2*cos(kt)^2+az^2+2*az*cos(kt)^2-1)*ay*kty*sin(kt))
@@ -3721,9 +3711,7 @@ namespace giac {
   }
 
   void egcdlgcd(const polynome &p1, const polynome & p2, polynome & u,polynome & v,polynome & d){
-    printf("_rs144 ");
     TegcdTlgcd(p1,p2,u,v,d);
-    printf("end\n");
   }
 
   void egcd(const polynome &p1, const polynome & p2, polynome & u,polynome & v,polynome & d){
@@ -4187,7 +4175,6 @@ namespace giac {
     factorization_compress(res);
     return res;
   }
-
 
   // p is primitive wrt the main var
   bool mod_factor(const polynome & p_orig,polynome & p_content,int n,factorization & f){
@@ -5366,53 +5353,7 @@ namespace giac {
   }
 #endif
 
-  int is_homogeneous(const polynome & p){
-    std::vector< monomial<gen> >::const_iterator it=p.coord.begin(),itend=p.coord.end();
-    if (p.dim<2 || it==itend) 
-      return 0;
-    int d=sum_degree(it->index);
-    for (++it;it!=itend;++it){
-      if (sum_degree(it->index)!=d)
-	return 0;
-    }
-    return d;
-  }
-
-  bool homogeneize(polynome & p,int dhom){
-    ++p.dim;
-    std::vector< monomial<gen> >::iterator it=p.coord.begin(),itend=p.coord.end();
-    for (;it!=itend;++it){
-      int d=sum_degree(it->index);
-      if (d>dhom)
-	return false;
-      index_t i(it->index.begin(),it->index.end());
-      i.push_back(dhom-d);
-      it->index=i;
-    }
-    return true;
-  }
-
   static bool do_factor(const polynome &p,polynome & p_content,factorization & f,bool isprimitive,bool with_sqrt,bool complexmode,const gen & divide_an_by,gen & extra_div){
-    // check for homogeneous polynomial -> 1 var less
-    if (int dhom=is_homogeneous(p)){
-      polynome phom(p);
-      // remove last degree
-      std::vector< monomial<gen> >::iterator it=phom.coord.begin(),itend=phom.coord.end();
-      for (;it!=itend;++it){
-	it->index=index_t(it->index.begin(),it->index.end()-1);
-      }
-      phom.dim--;
-      bool res=do_factor(phom,p_content,f,false,with_sqrt,complexmode,divide_an_by,extra_div);
-      // rehomogeneize f
-      factorization::iterator f_it=f.begin(),f_itend=f.end();
-      for (;f_it!=f_itend;++f_it){
-	int d=f_it->fact.total_degree();
-	homogeneize(f_it->fact,d);
-	dhom -= d*f_it->mult;
-      }
-      homogeneize(p_content,dhom);
-      return res;
-    }
     f.clear();
     if (p.coord.empty()){
       p_content=p;
@@ -5471,14 +5412,10 @@ namespace giac {
 		      (ckalg_it->value.type==_CPLX && (ckalg_it->value._CPLXptr->type==_DOUBLE_ || (ckalg_it->value._CPLXptr+1)->type==_DOUBLE_))
 		      ) ){
 	// FIXME Prime terminal output
-	// CERR << "Factorization of multivariate polynomial with approx. coeffs not implemented. Please try with exact coefficients" << '\n';
+	// CERR << "Factorization of multivariate polynomial with approx. coeffs not implemented. Please try with exact coefficients" << endl;
 #if 1 // otherwise integrate(cos(x/2)**2/(x+sin(x)),x); failure
 	return false;
 #endif
-      }
-      if (ckalg_it->value.type==_USER){
-	ckalg_it->value._USERptr->polyfactor(p_primit,f);
-	return true;
       }
       if (ckalg_it->value.type==_EXT){
 	// Try Hensel lift for multivariate factorization if extension of degree>=3

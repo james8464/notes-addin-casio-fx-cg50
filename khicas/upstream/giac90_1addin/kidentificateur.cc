@@ -60,6 +60,14 @@ namespace giac {
     bool s_dynalloc;
   };
 
+  struct alias_identificateur {
+    int * ref_count;
+    gen * value;
+    const char * id_name;
+    vecteur * localvalue;
+    short int * quoted;
+  };
+
 #ifdef DOUBLEVAL // #ifdef GIAC_GENERIC_CONSTANTS
   const char string_euler_gamma[]="euler_gamma";
   identificateur _IDNT_euler_gamma(string_euler_gamma,(double) .577215664901533);
@@ -291,6 +299,7 @@ namespace giac {
 //  const gen & z__IDNT_e = * (gen *) & alias_z38;
 
 #else // 38 mode
+  
   static const alias_identificateur alias_identificateur_a38={0,0,"a",0,0};
   const identificateur & a__IDNT=* (const identificateur *) &alias_identificateur_a38;
   const alias_ref_identificateur ref_a38={-1,0,0,"a",0,0};
@@ -435,11 +444,6 @@ namespace giac {
   const define_alias_gen(alias_x38,_IDNT,0,&ref_x38);
 //  const gen & x__IDNT_e = * (gen *) & alias_x38;
 
-  static const alias_identificateur alias_identificateur_xx38={0,0,"x",0,0};
-  const identificateur & xx__IDNT=* (const identificateur *) &alias_identificateur_xx38;
-  const alias_ref_identificateur ref_xx38={-1,0,0,"x",0,0};
-  const define_alias_gen(alias_xx38,_IDNT,0,&ref_xx38);
-//  const gen & x__IDNT_e = * (gen *) & alias_xx38;
 
   static const alias_identificateur alias_identificateur_y38={0,0,"y",0,0};
   const identificateur & y__IDNT=* (const identificateur *) &alias_identificateur_y38;
@@ -481,7 +485,7 @@ namespace giac {
 
 #if defined NSPIRE || defined FXCG
   //gen & vx_var = * (gen *) & alias_vx38;
-  gen & get_vx_var(){
+  gen & vx_var(){
     static gen * ptr=0;
     if (!ptr){
       ptr=new gen(identificateur("x"));
@@ -652,13 +656,6 @@ namespace giac {
     if (strchr(s,' ')){
       ref_count=0;
       string S(s);
-#if defined GIAC_HAS_STO_38 || defined NSPIRE || defined FXCG
-      for (unsigned i=0;i<S.size();++i){
-	if (S[i]==' '){
-	  S[i]='_';
-	}
-      }
-#endif
       *this=identificateur(S);
       return;
     }
@@ -810,7 +807,7 @@ namespace giac {
 #ifndef NO_STDEXCEPT
     }
     catch (std::runtime_error & e){
-      cerr << e.what() << '\n';
+      cerr << e.what() << endl;
       // eval_level(level,contextptr);
     }
 #endif
@@ -839,7 +836,7 @@ namespace giac {
 #ifndef NO_STDEXCEPT
     }
     catch (std::runtime_error & e){
-      cerr << e.what() << '\n';
+      cerr << e.what() << endl;
       // eval_level(level,contextptr);
     }
 #endif
@@ -990,16 +987,15 @@ namespace giac {
 #endif
 
   gen identificateur::eval(int level,const gen & orig,const context * contextptr) {
-    if (!ref_count && !contextptr)
+    if (!ref_count)
       return orig;
     gen evaled;
-    // cerr << "idnt::eval " << *this << " " << level << '\n';
+    // cerr << "idnt::eval " << *this << " " << level << endl;
     if (level<=0){
       if (level==0) 
 	return orig;
       // If 38 is there, let it look at the current state and decide if it needs to evaluate the name or if it needs to let the CAS do it
       // This will depend on the order of priorities and the status of the requested variable (local/global...)
-      if (storcl_38 && abs_calc_mode(contextptr)==38 && storcl_38(evaled,NULL,id_name,undef,false,contextptr,NULL,false)) return evaled;
       if (contextptr){
 	sym_tab::const_iterator it=contextptr->tabptr->find(id_name),itend=contextptr->tabptr->end();
 	if (it!=itend)
@@ -1062,7 +1058,7 @@ namespace giac {
   void printsymtab(sym_tab * ptr){
     sym_tab::const_iterator it=ptr->begin(),itend=ptr->end();
     for (;it!=itend;++it)
-      CERR << it->first << ":" << it->second << '\n';
+      CERR << it->first << ":" << it->second << endl;
   }
 
   bool identificateur::in_eval(int level,const gen & orig,gen & evaled,const context * contextptr, bool No38Lookup) {
@@ -1131,7 +1127,7 @@ namespace giac {
 	evaled.subtype=_GLOBAL__EVAL;
       return true;
     }
-#if !defined NSPIRE && !defined FXCG && !defined GIAC_HAS_STO_38
+#if !defined NSPIRE && !defined FXCG
     // set current value
     ifstream inf((name()+string(cas_suffixe)).c_str());
     evaled=read1arg_from_stream(inf,contextptr);

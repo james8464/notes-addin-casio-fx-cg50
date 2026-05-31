@@ -1,0 +1,446 @@
+{
+  "updates": [
+    {
+      "id": "madas_iygb_c1_a_q8_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_a.pdf",
+      "question": "q8",
+      "part": "a-d",
+      "verdict": "partial",
+      "review_basis": "vm second-pass worker 01: c1_a questions 6 pages, marks 5 pages, solutions 5 pages",
+      "inputs": [
+        {"module": "algebra", "input": "method=numeric,(1-3)/(3-(-1))", "mark_scheme_working": ["grad AB=-1/2"], "expected_output_markers": ["-0.5"]},
+        {"module": "algebra", "input": "method=numeric,(5-1)/(5-3)", "mark_scheme_working": ["grad BC=2", "AB⊥BC"], "expected_output_markers": ["2"]},
+        {"module": "algebra", "input": "method=numeric,(-1+3)/2", "mark_scheme_working": ["midpoint M of AB is (1,2)"], "expected_output_markers": ["1"]},
+        {"module": "algebra", "input": "method=numeric,(3+1)/2", "mark_scheme_working": ["y-coordinate of M is 2"], "expected_output_markers": ["2"]},
+        {"module": "algebra", "input": "method=numeric,(3+5)/2", "mark_scheme_working": ["P midpoint of BC is (4,3)"], "expected_output_markers": ["4"]}
+      ],
+      "expected_final": ["AB⊥BC", "y=2x-5", "3y=x+5", "P(4,3)"],
+      "unsupported_reason": "line equations and similar-triangle argument are manual"
+    },
+    {
+      "id": "madas_iygb_c1_a_q9_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_a.pdf",
+      "question": "q9",
+      "part": "a-c",
+      "verdict": "partial",
+      "review_basis": "vm second-pass worker 01: c1_a questions 6 pages, marks 5 pages, solutions 5 pages",
+      "inputs": [
+        {"module": "algebra", "input": "solve(2*k-4=k+7,k)", "mark_scheme_working": ["u3-u2=u2-u1 gives k=11"], "expected_output_markers": ["k = [11]"]},
+        {"module": "algebra", "input": "method=numeric,9+40*18", "mark_scheme_working": ["a=9,d=18", "u41=729"], "expected_output_markers": ["729"]},
+        {"module": "algebra", "input": "method=numeric,9*5^2", "mark_scheme_working": ["Sn=9n² gives 225 when n=5"], "expected_output_markers": ["225"]}
+      ],
+      "expected_final": ["k=11", "u41=729", "Sn=9n^2"],
+      "unsupported_reason": "proof that Sn is a square is manual"
+    },
+    {
+      "id": "madas_iygb_c1_a_q10_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_a.pdf",
+      "question": "q10",
+      "part": "a-c",
+      "verdict": "partial",
+      "review_basis": "vm second-pass worker 01: c1_a questions 6 pages, marks 5 pages, solutions 5 pages",
+      "inputs": [
+        {"module": "algebra", "input": "method=numeric,(-8-1)/1", "mark_scheme_working": ["f'(-1)=-9", "tangent y=-9x-9"], "expected_output_markers": ["-9"]},
+        {"module": "algebra", "input": "4*(-1)^2+1/(-1)-3", "mark_scheme_working": ["f(-1)=0 confirms P(-1,0)", "C=-3"], "expected_output_markers": ["= 0"]},
+        {"module": "algebra", "input": "method=numeric,4*(1/2)^2+1/(1/2)-3", "mark_scheme_working": ["Q at x=1/2 on x-axis"], "expected_output_markers": ["0"]},
+        {"module": "algebra", "input": "factor(4*x^3-3*x+1)", "mark_scheme_working": ["(x+1)(2x-1)²=0 gives Q at x=1/2"], "expected_output_markers": ["(x + 1)*(2*x - 1)*(2*x - 1)"]}
+      ],
+      "expected_final": ["y=-9x-9", "f(x)=4x^2+1/x-3", "Q(1/2,0)"],
+      "unsupported_reason": "differentiation and integration steps are manual"
+    },
+    {
+      "id": "madas_iygb_c1_b_q9_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_b.pdf",
+      "question": "q9",
+      "part": "a-c",
+      "verdict": "partial",
+      "review_basis": "vm second-pass worker 01: c1_b questions 6 pages, solutions 6 pages",
+      "inputs": [
+        {"module": "algebra", "input": "method=numeric,5-18/(4+0)", "mark_scheme_working": ["a3=1/2"], "expected_output_markers": ["0.5"]},
+        {"module": "algebra", "input": "method=numeric,5-18/(4+1/2)", "mark_scheme_working": ["a4=1"], "expected_output_markers": ["1"]},
+        {"module": "algebra", "input": "method=numeric,5-18/5", "mark_scheme_working": ["a5=7/5"], "expected_output_markers": ["1.4"]},
+        {"module": "algebra", "input": "method=numeric,-2/5+0+1/2+1+7/5", "mark_scheme_working": ["sum=5/2"], "expected_output_markers": ["2.5"]}
+      ],
+      "expected_final": ["a1=-2/5", "sum=5/2"],
+      "unsupported_reason": "recurrence backward step manual"
+    },
+    {
+      "id": "madas_iygb_c1_b_q10_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_b.pdf",
+      "question": "q10",
+      "part": "a-c",
+      "verdict": "partial",
+      "review_basis": "vm second-pass worker 01: c1_b questions 6 pages, solutions 6 pages",
+      "inputs": [
+        {"module": "algebra", "input": "method=numeric,sqrt(3)", "mark_scheme_working": ["x²=3 roots ±√3"], "expected_output_markers": ["1.73205080757"]},
+        {"module": "algebra", "input": "solve(x^2-1=0,x)", "mark_scheme_working": ["x⁴-3x²+2=0 gives x=±1,±√2"], "expected_output_markers": ["x = [1, -1]"]},
+        {"module": "algebra", "input": "factor(x^4-3*x^2+2)", "mark_scheme_working": ["x⁴-3x²+2=(x²-1)(x²-2)"], "expected_output_markers": ["(x + 1)*(x - 1)*(x^2 - 2)"]}
+      ],
+      "expected_final": ["x=±1,±√2"],
+      "unsupported_reason": "graph sketches manual"
+    },
+    {
+      "id": "madas_iygb_c1_b_q11_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_b.pdf",
+      "question": "q11",
+      "part": "a-c",
+      "verdict": "partial",
+      "review_basis": "vm second-pass worker 01: c1_b questions 6 pages, solutions 6 pages",
+      "inputs": [
+        {"module": "algebra", "input": "diff(2*x^2-x+3,x)", "mark_scheme_working": ["dy/dx=4x-1", "normal grad 1 at P(0,3)"], "expected_output_markers": ["4*x - 1"]},
+        {"module": "algebra", "input": "method=numeric,4*0-1", "mark_scheme_working": ["tangent grad at P is -1"], "expected_output_markers": ["-1"]},
+        {"module": "algebra", "input": "method=numeric,4*1-1", "mark_scheme_working": ["tangent grad at Q(1,4) is 3"], "expected_output_markers": ["3"]},
+        {"module": "algebra", "input": "solve(2*x^2-2*x=0,x)", "mark_scheme_working": ["Q(1,4) from intersection"], "expected_output_markers": ["x = [1, 0]"]},
+        {"module": "algebra", "input": "method=numeric,0.5*2*1", "mark_scheme_working": ["area triangle PQR=1"], "expected_output_markers": ["1"]}
+      ],
+      "expected_final": ["normal y=x+3", "Q(1,4)", "area=1"],
+      "unsupported_reason": "normal/tangent setup manual"
+    },
+    {
+      "id": "madas_iygb_c1_c_q5_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_c.pdf",
+      "question": "q5",
+      "part": "a-d",
+      "verdict": "partial",
+      "review_basis": "vm second-pass worker 01: c1_c questions 8 pages, solutions 6 pages",
+      "inputs": [
+        {"module": "algebra", "input": "solve(9*x^2+18*x-7=0,x)", "mark_scheme_working": ["roots 1/3 and -7/3"], "expected_output_markers": ["x = [1/3, -7/3]"]},
+        {"module": "algebra", "input": "factor(9*x^2+18*x-7)", "mark_scheme_working": ["(3x-1)(3x+7)=0"], "expected_output_markers": ["(3*x + 7)*(3*x - 1)"]},
+        {"module": "algebra", "input": "method=numeric,-16", "mark_scheme_working": ["minimum value -16 at x=-1"], "expected_output_markers": ["-16"]}
+      ],
+      "expected_final": ["x=1/3,-7/3", "9(x+1)²-16", "min=-16"],
+      "unsupported_reason": "sketch manual"
+    },
+    {
+      "id": "madas_iygb_c1_c_q8_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_c.pdf",
+      "question": "q8",
+      "part": "a-d",
+      "verdict": "partial",
+      "review_basis": "vm second-pass worker 01: c1_c questions 8 pages, solutions 6 pages",
+      "inputs": [
+        {"module": "algebra", "input": "solve(11*d=-440,d)", "mark_scheme_working": ["15360=6(3000+11d)"], "expected_output_markers": ["d = [-40]"]},
+        {"module": "algebra", "input": "solve(n^2-76*n+1300=0,n)", "mark_scheme_working": ["n=26 or 50"], "expected_output_markers": ["n = [50, 26]"]},
+        {"module": "algebra", "input": "factor(n^2-76*n+1300)", "mark_scheme_working": ["n(76-n)=1300 gives n=26,50"], "expected_output_markers": ["(n - 26)*(n - 50)"]},
+        {"module": "algebra", "input": "method=numeric,1500+25*(-40)", "mark_scheme_working": ["u26=500"], "expected_output_markers": ["500"]}
+      ],
+      "expected_final": ["d=-40", "Tn=20n(76-n)", "n=26"],
+      "unsupported_reason": "Tn derivation manual"
+    },
+    {
+      "id": "madas_iygb_c1_c_q9_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_c.pdf",
+      "question": "q9",
+      "part": "a-b",
+      "verdict": "partial",
+      "review_basis": "vm second-pass worker 01: c1_c questions 8 pages, solutions 6 pages",
+      "inputs": [
+        {"module": "algebra", "input": "diff(x^3-10*x+2,x)", "mark_scheme_working": ["dy/dx=3x²-10"], "expected_output_markers": ["3*x^2 - 10"]},
+        {"module": "algebra", "input": "method=numeric,3*4-10", "mark_scheme_working": ["grad at x=2 is 2"], "expected_output_markers": ["2"]},
+        {"module": "algebra", "input": "solve(2*x-14=0,x)", "mark_scheme_working": ["tangent meets x-axis at x=7"], "expected_output_markers": ["x = [7]"]},
+        {"module": "algebra", "input": "method=numeric,0.5*7*9", "mark_scheme_working": ["area=31.5"], "expected_output_markers": ["31.5"]}
+      ],
+      "expected_final": ["tangent y=2x-14", "area=63/2"],
+      "unsupported_reason": "normal/intercepts manual"
+    },
+    {
+      "id": "madas_iygb_c1_d_q1_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_d.pdf",
+      "question": "q1",
+      "part": "all",
+      "verdict": "partial",
+      "review_basis": "vm second-pass worker 01: c1_d questions 7 pages, solutions 5 pages",
+      "inputs": [
+        {"module": "algebra", "input": "method=numeric,7*5*sqrt(12)", "mark_scheme_working": ["7√2×5√6=35√12=70√3"], "expected_output_markers": ["121.24355653"]},
+        {"module": "algebra", "input": "method=numeric,70*sqrt(3)", "mark_scheme_working": ["final answer 70√3"], "expected_output_markers": ["121.24355653"]}
+      ],
+      "expected_final": ["70√3"],
+      "unsupported_reason": "surd simplification steps manual"
+    },
+    {
+      "id": "madas_iygb_c1_d_q2_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_d.pdf",
+      "question": "q2",
+      "part": "all",
+      "verdict": "partial",
+      "review_basis": "vm second-pass worker 01: c1_d questions 7 pages, solutions 5 pages",
+      "inputs": [
+        {"module": "algebra", "input": "method=numeric,(36^(1/2)+16^(1/4))^(-2/3)", "mark_scheme_working": ["(6+2)^(-2/3)=8^(-2/3)=1/4"], "expected_output_markers": ["0.25"]},
+        {"module": "algebra", "input": "method=numeric,1/4", "mark_scheme_working": ["final answer 1/4"], "expected_output_markers": ["0.25"]}
+      ],
+      "expected_final": ["1/4"],
+      "unsupported_reason": "index laws manual"
+    },
+    {
+      "id": "madas_iygb_c1_i_q4_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_i.pdf",
+      "question": "q4",
+      "part": "all",
+      "verdict": "testable",
+      "review_basis": "vm second-pass worker 01: c1_i questions 7 pages, solutions 6 pages",
+      "inputs": [
+        {"module": "algebra", "input": "method=numeric,3*sqrt(2)", "mark_scheme_working": ["z√8-6=2z/√2 gives z=3√2"], "expected_output_markers": ["4.24264068712"]}
+      ],
+      "expected_final": ["z=3√2"]
+    },
+    {
+      "id": "madas_iygb_c1_i_q5_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_i.pdf",
+      "question": "q5",
+      "part": "all",
+      "verdict": "partial",
+      "review_basis": "vm second-pass worker 01: c1_i questions 7 pages, solutions 6 pages",
+      "inputs": [
+        {"module": "algebra", "input": "method=numeric,(-2-(-14))/(3-(-1))", "mark_scheme_working": ["grad L=3"], "expected_output_markers": ["3"]},
+        {"module": "algebra", "input": "method=numeric,3*(-100)-11", "mark_scheme_working": ["line gives y=-311 at x=-100"], "expected_output_markers": ["-311"]}
+      ],
+      "expected_final": ["y=3x-11", "C below L"],
+      "unsupported_reason": "line derivation and position argument manual"
+    },
+    {
+      "id": "madas_iygb_c1_i_q6_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_i.pdf",
+      "question": "q6",
+      "part": "all",
+      "verdict": "partial",
+      "review_basis": "vm second-pass worker 01: c1_i questions 7 pages, solutions 6 pages",
+      "inputs": [
+        {"module": "algebra", "input": "method=numeric,4*sqrt(4)-25/16*16", "mark_scheme_working": ["f(4)=7"], "expected_output_markers": ["7"]},
+        {"module": "algebra", "input": "method=numeric,6*sqrt(4)-25/8*4", "mark_scheme_working": ["f'(4)=-1/2"], "expected_output_markers": ["-0.5"]}
+      ],
+      "expected_final": ["tangent at (4,7)", "x+2y=18"],
+      "unsupported_reason": "differentiation setup manual"
+    },
+    {
+      "id": "madas_iygb_c1_i_q7_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_i.pdf",
+      "question": "q7",
+      "part": "all",
+      "verdict": "partial",
+      "review_basis": "vm second-pass worker 01: c1_i questions 7 pages, solutions 6 pages",
+      "inputs": [
+        {"module": "algebra", "input": "solve(5*n=305,n)", "mark_scheme_working": ["97+3n>402-2n gives n>61"], "expected_output_markers": ["n = [61]"]}
+      ],
+      "expected_final": ["n=62"],
+      "unsupported_reason": "choosing smallest integer n>61 is manual"
+    },
+    {
+      "id": "madas_iygb_c1_i_q8_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_i.pdf",
+      "question": "q8",
+      "part": "a-b",
+      "verdict": "partial",
+      "review_basis": "vm second-pass worker 01: c1_i questions 7 pages, solutions 6 pages",
+      "inputs": [
+        {"module": "algebra", "input": "method=numeric,4*4+20", "mark_scheme_working": ["discriminant 4m²+20≥20>0"], "expected_output_markers": ["36"]}
+      ],
+      "expected_final": ["always two distinct roots", "x=m±√(m²+5)"],
+      "unsupported_reason": "completing square form manual"
+    },
+    {
+      "id": "madas_iygb_c1_i_q9_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_i.pdf",
+      "question": "q9",
+      "part": "a-b",
+      "verdict": "partial",
+      "review_basis": "vm second-pass worker 01: c1_i questions 7 pages, solutions 6 pages",
+      "inputs": [
+        {"module": "algebra", "input": "method=numeric,13+6*1", "mark_scheme_working": ["u3=19"], "expected_output_markers": ["19"]},
+        {"module": "algebra", "input": "method=numeric,19+6*13", "mark_scheme_working": ["u4=97"], "expected_output_markers": ["97"]},
+        {"module": "algebra", "input": "method=numeric,3^5+(-2)^5", "mark_scheme_working": ["u5=211=3⁵+(-2)⁵"], "expected_output_markers": ["211"]}
+      ],
+      "expected_final": ["u_n=3^n+(-2)^n"],
+      "unsupported_reason": "pattern proof manual"
+    },
+    {
+      "id": "madas_iygb_c1_i_q10_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_i.pdf",
+      "question": "q10",
+      "part": "all",
+      "verdict": "partial",
+      "review_basis": "vm second-pass worker 01: c1_i questions 7 pages, solutions 6 pages",
+      "inputs": [
+        {"module": "algebra", "input": "solve(x^2+14*x-480=0,x)", "mark_scheme_working": ["x²+14x-480=0 gives CV 16,-30"], "expected_output_markers": ["x = [16, -30]"]},
+        {"module": "algebra", "input": "factor(x^2+14*x-480)", "mark_scheme_working": ["(x-16)(x+30)≤0"], "expected_output_markers": ["(x + 30)*(x - 16)"]}
+      ],
+      "expected_final": ["0<x≤16"],
+      "unsupported_reason": "physical length constraint manual"
+    },
+    {
+      "id": "madas_iygb_c1_j_q5_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_j.pdf",
+      "question": "q5",
+      "part": "all",
+      "verdict": "partial",
+      "review_basis": "vm second-pass worker 01: c1_j questions 7 pages, solutions 6 pages",
+      "inputs": [
+        {"module": "algebra", "input": "factor(x^2-2*x-8)", "mark_scheme_working": ["(x+2)(x-4)≥0"], "expected_output_markers": ["(x + 2)*(x - 4)"]}
+      ],
+      "expected_final": ["y=½x³-x²-8x+16"],
+      "unsupported_reason": "cubic from roots and sketch manual"
+    },
+    {
+      "id": "madas_iygb_c1_j_q6_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_j.pdf",
+      "question": "q6",
+      "part": "a",
+      "verdict": "partial",
+      "review_basis": "vm second-pass worker 01: c1_j questions 7 pages, solutions 6 pages",
+      "inputs": [
+        {"module": "algebra", "input": "method=numeric,(6+2)/12", "mark_scheme_working": ["grad PQ=2/3"], "expected_output_markers": ["0.666666666667"]}
+      ],
+      "expected_final": ["3x+2y=30"],
+      "unsupported_reason": "perpendicular line setup manual"
+    },
+    {
+      "id": "madas_iygb_c1_k_q4_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_k.pdf",
+      "question": "q4",
+      "part": "a-b",
+      "verdict": "partial",
+      "review_basis": "vm second-pass worker 01: c1_k questions 5 pages, solutions 6 pages",
+      "inputs": [
+        {"module": "algebra", "input": "method=numeric,1/8", "mark_scheme_working": ["max 1/f when f min=8"], "expected_output_markers": ["0.125"]}
+      ],
+      "expected_final": ["(x+2)²+8", "max 1/f=1/8"],
+      "unsupported_reason": "completing square manual"
+    },
+    {
+      "id": "madas_iygb_c1_k_q5_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_k.pdf",
+      "question": "q5",
+      "part": "a-b",
+      "verdict": "partial",
+      "review_basis": "vm second-pass worker 01: c1_k questions 5 pages, solutions 6 pages",
+      "inputs": [
+        {"module": "algebra", "input": "factor(3*x^2-11*x+6)", "mark_scheme_working": ["3x²-11x+6>0"], "expected_output_markers": ["(3*x - 2)*(x - 3)"]}
+      ],
+      "expected_final": ["x<-7/4", "x<2/3 or x>3"],
+      "unsupported_reason": "inequality sketch manual"
+    },
+    {
+      "id": "madas_iygb_c1_k_q6_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_k.pdf",
+      "question": "q6",
+      "part": "all",
+      "verdict": "testable",
+      "review_basis": "vm second-pass worker 01: c1_k questions 5 pages, solutions 6 pages",
+      "inputs": [
+        {"module": "algebra", "input": "method=numeric,10*(13+70)", "mark_scheme_working": ["S20=830"], "expected_output_markers": ["830"]}
+      ],
+      "expected_final": ["S20=830"]
+    },
+    {
+      "id": "madas_iygb_c1_l_q4_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_l.pdf",
+      "question": "q4",
+      "part": "all",
+      "verdict": "testable",
+      "review_basis": "vm second-pass worker 01: c1_l questions 6 pages, solutions 7 pages",
+      "inputs": [
+        {"module": "algebra", "input": "method=numeric,25*3", "mark_scheme_working": ["S50=75"], "expected_output_markers": ["75"]}
+      ],
+      "expected_final": ["S50=75"]
+    },
+    {
+      "id": "madas_iygb_c1_l_q5_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_l.pdf",
+      "question": "q5",
+      "part": "a-b",
+      "verdict": "partial",
+      "review_basis": "vm second-pass worker 01: c1_l questions 6 pages, solutions 7 pages",
+      "inputs": [
+        {"module": "algebra", "input": "method=numeric,25-80", "mark_scheme_working": ["discriminant -55<0"], "expected_output_markers": ["-55"]},
+        {"module": "algebra", "input": "method=numeric,3*(6-3)", "mark_scheme_working": ["max at x=3 gives y=9"], "expected_output_markers": ["9"]}
+      ],
+      "expected_final": ["no intersections", "max (3,9)"],
+      "unsupported_reason": "sketch manual"
+    },
+    {
+      "id": "madas_iygb_c1_m_q5_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_m.pdf",
+      "question": "q5",
+      "part": "a-b",
+      "verdict": "testable",
+      "review_basis": "vm second-pass worker 01: c1_m questions 6 pages, solutions 7 pages",
+      "inputs": [
+        {"module": "algebra", "input": "solve(x^2-6*x-16=0,x)", "mark_scheme_working": ["x²-6x-16=0"], "expected_output_markers": ["x = [8, -2]"]},
+        {"module": "algebra", "input": "factor(x^2-6*x-16)", "mark_scheme_working": ["(x+2)(x-8)=0"], "expected_output_markers": ["(x + 2)*(x - 8)"]},
+        {"module": "algebra", "input": "method=numeric,(13-(-3))/(8-0)", "mark_scheme_working": ["grad AQ=2"], "expected_output_markers": ["2"]},
+        {"module": "algebra", "input": "method=numeric,(-2-(-3))/(-2-0)", "mark_scheme_working": ["grad AP=-1/2"], "expected_output_markers": ["-0.5"]}
+      ],
+      "expected_final": ["P(-2,-2)", "Q(8,13)", "AP⊥AQ"]
+    },
+    {
+      "id": "madas_iygb_c1_m_q6_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_m.pdf",
+      "question": "q6",
+      "part": "all",
+      "verdict": "partial",
+      "review_basis": "vm second-pass worker 01: c1_m questions 6 pages, solutions 7 pages",
+      "inputs": [
+        {"module": "algebra", "input": "factor(x^2-6*x-40)", "mark_scheme_working": ["x(x-6)>40 gives (x+4)(x-10)>0"], "expected_output_markers": ["(x + 4)*(x - 10)"]}
+      ],
+      "expected_final": ["x>10"],
+      "unsupported_reason": "length constraint manual"
+    },
+    {
+      "id": "madas_iygb_c1_m_q7_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_m.pdf",
+      "question": "q7",
+      "part": "a-c",
+      "verdict": "testable",
+      "review_basis": "vm second-pass worker 01: c1_m questions 6 pages, solutions 7 pages",
+      "inputs": [
+        {"module": "algebra", "input": "method=numeric,300+11*5", "mark_scheme_working": ["u12=355"], "expected_output_markers": ["355"]},
+        {"module": "algebra", "input": "method=numeric,24*835", "mark_scheme_working": ["S48=20040"], "expected_output_markers": ["20040"]},
+        {"module": "algebra", "input": "method=numeric,(20040/24-705)/2", "mark_scheme_working": ["a=65"], "expected_output_markers": ["65"]}
+      ],
+      "expected_final": ["u12=355", "S48=20040", "a=65"]
+    },
+    {
+      "id": "madas_iygb_c1_f_q7_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_f.pdf",
+      "question": "q7",
+      "part": "c",
+      "verdict": "partial",
+      "review_basis": "vm second-pass worker 01: c1_f questions 6 pages, solutions 5 pages",
+      "inputs": [
+        {"module": "algebra", "input": "method=numeric,0.5*9*(6+27/2)", "mark_scheme_working": ["area PQR=351/4"], "expected_output_markers": ["87.75"]},
+        {"module": "algebra", "input": "solve(0=3*x+18,x)", "mark_scheme_working": ["Q at (-6,0)"], "expected_output_markers": ["x = [-6]"]}
+      ],
+      "expected_final": ["area=87.75"],
+      "unsupported_reason": "intercepts setup manual"
+    }
+  ],
+  "appends": [
+    {
+      "id": "madas_iygb_c1_i_q11_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_i.pdf",
+      "question": "q11",
+      "part": "a-b",
+      "verdict": "partial",
+      "review_basis": "vm second-pass worker 01: c1_i questions 7 pages, solutions 6 pages",
+      "inputs": [
+        {"module": "algebra", "input": "integrate(3*x^2-12*x+9,x)", "mark_scheme_working": ["∫(3x²-12x+9)dx"], "expected_output_markers": ["x^3 - 6*x^2 + 9*x + C"]},
+        {"module": "algebra", "input": "method=numeric,1-6+9-4", "mark_scheme_working": ["C=-4 from (1,0)"], "expected_output_markers": ["0"]},
+        {"module": "algebra", "input": "factor(x^3-6*x^2+9*x-4)", "mark_scheme_working": ["y=(x-1)²(x-4)"], "expected_output_markers": ["(x - 1)*(x - 1)*(x - 4)"]}
+      ],
+      "expected_final": ["y=x³-6x²+9x-4", "touching at (1,0)"],
+      "unsupported_reason": "factorisation interpretation manual"
+    },
+    {
+      "id": "madas_iygb_c1_i_q12_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_i.pdf",
+      "question": "q12",
+      "part": "all",
+      "verdict": "partial",
+      "review_basis": "vm second-pass worker 01: c1_i questions 7 pages, solutions 6 pages",
+      "inputs": [
+        {"module": "algebra", "input": "method=numeric,6+3/2", "mark_scheme_working": ["|DP|=6+3/2=7.5"], "expected_output_markers": ["7.5"]}
+      ],
+      "expected_final": ["P(0,-3/2)", "|DP|=7.5"],
+      "unsupported_reason": "coordinate setup manual"
+    }
+  ]
+}

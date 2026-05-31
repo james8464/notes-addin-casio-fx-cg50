@@ -1,10 +1,33 @@
-Args: solve(equation,var[,independent_var])
-Required: equation, var
-Optional: independent_var for simple separable differential equations
-Does: Solves supported A-level equations over the real domain.
-Examples: solve(x^2-5*x+6=0,x); solve(log(2,x)=3,x); solve(dn/dt=k*n,n,t)
-F2:solve(x^2-5*x+6=0,x)
-F3:solve(log(2,x)=3,x)
-Ex F2: solve(x^2-5*x+6=0,x)
-Ex F3: solve(log(2,x)=3,x)
-Working: Shows expansion, factorisation, inverse-operation, separable-DE, and checking lines.
+solve(equation,var)
+
+Args:
+  equation/expression, var
+
+Required:
+  equation or expression, variable
+
+Optional:
+  None.
+
+Does:
+  Solves exact equations. Simple dy/dx separable differential equations are routed to A-level working before falling back to KhiCAS.
+
+Examples:
+  solve(x^2-5*x+6=0,x); solve((dy)/(dx)=y,y)
+
+F2:
+  solve(x^2-5*x+6=0,x)
+
+F3:
+  solve((dy)/(dx)=y,y)
+
+Keys:
+  F1 inserts the command.
+  F2 inserts the first example.
+  F3 inserts the second example when available.
+
+Working:
+  Collects terms, factorises, uses quadratic/rational/log/trig routes, and separates variables for supported first-order differential equations.
+
+Tip:
+  Use brackets around compound numerators, denominators, powers, and substitutions for readable exam-style output.

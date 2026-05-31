@@ -75,7 +75,7 @@ inline Bidon operator << (Bidon,const char *){return Bidon();}
 #define COUT Bidon(0) //std::cout
 #define CERR Bidon(0) //std::cout
 typedef unsigned pid_t;
-//double lgamma(double);
+double lgamma(double);
 #else // FXCG
 
 #ifdef NSPIRE
@@ -343,22 +343,11 @@ typedef int ref_count_t;
 #ifdef USE_GMP_REPLACEMENTS
 //#define GIAC_TYPE_ON_8BITS
 #undef HAVE_GMPXX_H
-#ifdef BF2GMP
-#include "bf2gmp.h"
-#else
-#include "gmp_replacements.h"
 #undef HAVE_LIBMPFR
-#endif
-#else // USE_GMP_REPLACEMENTS
-#include <cstddef>
-#ifdef BF2GMP
-#include "bf2gmp.h"
-//#undef HAVE_LIBMPFR // to be replaced by defined later
-#undef HAVE_LIBMPFI // to be replaced by defined later
-#undef HAVE_GMPXX_H
+#include "gmp_replacements.h"
 #else
+#include <cstddef>
 #include "gmp.h"
-#endif // BF2GMP
 #endif // USE_GMP_REPLACEMENTS
 
 #ifndef FXCG
@@ -518,14 +507,14 @@ inline int fsign (float f1){return f1==0?0:(f1>0?1:-1);}
 float fsqrt (float f1);
 void print_float(const giac_float & f,char * ch);
 inline float fpow(float f1,float f2){ 
-#ifdef BF2GMP // def NSPIRE
+#ifdef NSPIRE
   return pow(f1,f2); 
 #else
   return std::pow(f1,f2); 
 #endif
 }
 inline float ffloor(float f1){ 
-#ifdef BF2GMP // def NSPIRE
+#ifdef NSPIRE
   return floor(f1); 
 #else
   return std::floor(f1); 
@@ -541,8 +530,8 @@ inline float fgamma(float f1){ return f1; }
 inline float fgamma(float f1){ return gammaf(f1); } // or tgammaf(f1) on some versions of emscripten
 #endif
 #endif
-#ifdef BF2GMP
-inline float atan2f(float f1,float f2,int rad){ if (rad) return atan2(f1,f2); else return atan2(f1,f2)*180/3.14159265358979323846;}
+#ifdef FXCG
+inline float atan2f(float f1,float f2,int rad){ if (rad) return std::atan2(f1,f2); else return std::atan2(f1,f2)*180/3.14159265358979323846;}
 #else
 inline float atan2f(float f1,float f2,int rad){ if (rad) return std::atan2(f1,f2); else return std::atan2(f1,f2)*180/M_PI;}
 #endif
@@ -554,35 +543,4 @@ inline float atan2f(float f1,float f2,int rad){ if (rad) return std::atan2(f1,f2
 #undef B0 //this conflicts with a define
 #undef bcopy //this conflicts with a define
 #endif
-
-#ifdef BF2GMP
-namespace ustl {
-  inline double abs(double d){ return ::fabs(d); }
-  inline double tan(double d){ return ::tan(d); }
-  inline double atan(double d){ return ::atan(d); }
-  inline double asin(double d){ return ::asin(d); }
-  inline double sin(double d){ return ::sin(d); }
-  inline double acos(double d){ return ::acos(d); }
-  inline double cos(double d){ return ::cos(d); }
-  inline double tanh(double d){ return ::tanh(d); }
-  inline double atanh(double d){ return ::atanh(d); }
-  inline double asinh(double d){ return ::asinh(d); }
-  inline double sinh(double d){ return ::sinh(d); }
-  inline double acosh(double d){ return ::acosh(d); }
-  inline double cosh(double d){ return ::cosh(d); }
-  inline double log(double d){ return ::log(d); }
-  inline double log10(double d){ return ::log10(d); }
-  inline double exp(double d){ return ::exp(d); }
-  inline double sqrt(double d){ return ::sqrt(d); }
-  inline double floor(double d){ return ::floor(d); }
-  inline double ceil(double d){ return ::ceil(d); }
-  inline double pow(double d1,double d2){ return ::pow(d1,d2); }
-  inline double atan2(double d1,double d2){ return ::atan2(d1,d2); }
-}
-#else
-namespace std {
-  inline double abs(double d){ return d<0?-d:d; }
-}
-#endif
-
 #endif // _GIAC_FIRST_H_

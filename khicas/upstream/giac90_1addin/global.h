@@ -101,9 +101,6 @@ inline double giac_log(double d){
 #include "tinymt32.h"
 #endif
 
-extern "C" size_t bf_global_prec;
-extern bool freezeturtle;
-
 #ifndef NO_NAMESPACE_GIAC
 namespace giac {
 #endif // ndef NO_NAMESPACE_GIAC
@@ -278,13 +275,7 @@ Boolean isLegalUTF8Sequence(const UTF8 *source, const UTF8 *sourceEnd);
   void ctrl_c_signal_handler(int signum);
   extern double powlog2float;
   extern int MPZ_MAXLOG2;
-  extern unsigned max_pairs_by_iteration; 
-  extern unsigned simult_primes,simult_primes2,simult_primes_seuil2,simult_primes3,simult_primes_seuil3; 
-  // see global.cc for explanations
-  extern double gbasis_reinject_ratio;
-  extern double gbasis_reinject_speed_ratio;
-  extern int gbasis_logz_age_sort,gbasis_stop,rur_do_gbasis,rur_do_certify,rur_certify_maxthreads;
-  extern bool rur_error_ifnot0dimensional; // error code or compute gbasis
+
 #ifdef WITH_MYOSTREAM
   // replacement for std::cerr
   extern my_ostream my_cerr;
@@ -297,7 +288,7 @@ Boolean isLegalUTF8Sequence(const UTF8 *source, const UTF8 *sourceEnd);
   // void control_c();
   // note that ctrl_c=false was removed, should be done before calling eval
 #if defined (NSPIRE) || defined(FXCG)
-  extern "C" void control_c();
+  void control_c();
 #elif defined FIR
 #define control_c()
 #else
@@ -499,9 +490,6 @@ throw(std::runtime_error("Stopped by user interruption.")); \
     int _i_sqrt_minus1_;
   };
   std::string gen2string(const gen & g);
-
-  extern int turtle_stack_size;
-
   struct logo_turtle {
     double x,y;
     double theta; // theta is given in degrees or radians dep. on angle_mode
@@ -514,10 +502,7 @@ throw(std::runtime_error("Stopped by user interruption.")); \
     // bit 0-8=radius, bit9-17 angle1, bit 18-26 angle2, bit 27=1 filled  or 0 
     // <0 fill a polygon from previous turtle positions
     int s;//std::string s;
-    logo_turtle(): x(100),y(100),theta(0),visible(true),mark(true),direct(true),color(0),turtle_length(1),radius(0) {}
-    inline bool equal_except_nomark(const logo_turtle &t) const {
-      return x==t.x && y==t.y && turtle_length==t.turtle_length && s==t.s && radius==t.radius;
-    }
+    logo_turtle(): x(100),y(100),theta(0),visible(true),mark(true),direct(true),color(0),turtle_length(10),radius(0) {}
   };
 
   // a structure that should contain all global variables
@@ -549,8 +534,6 @@ throw(std::runtime_error("Stopped by user interruption.")); \
     bool _variables_are_files_;
     bool _local_eval_;
     bool _withsqrt_;
-    bool _show_point_; // show 3-d point 
-    bool _io_graph_; // show 2-d point in io
     bool _all_trig_sol_;
     bool _ntl_on_;
     bool _lexer_close_parenthesis_;
@@ -560,16 +543,11 @@ throw(std::runtime_error("Stopped by user interruption.")); \
     bool _atan_tan_no_floor_;
     bool _keep_acosh_asinh_;
     bool _keep_algext_;
-    bool _auto_assume_;
-    bool _parse_e_;
-    bool _convert_rootof_;
-    int _show_axes_; // show 3-d point 
     int _python_compat_;
     int _angle_mode_;
     int _bounded_function_no_;
     int _series_flags_; // 1= full simplify, 2=1 for truncation, bit3=atan does not rewrite sin/cos to tan, bit4=no back conversion, bit5=write<<1,1>> with series_variable_name, bit 6=write O() instead of order_size, bit7= 1 diff in subst does not variable substitution
     int _step_infolevel_; 
-    int _default_color_;
     double _epsilon_;
     double _proba_epsilon_; // if not 0, probabilistic algo may be used
     // the proba should be less than proba_epsilon for giac to return an answer
@@ -648,7 +626,6 @@ throw(std::runtime_error("Stopped by user interruption.")); \
 
   context * clone_context(const context *);
   void init_context(context * ptr);
-  void clear_context(context * ptr);
 
   extern const context * context0;
   std::vector<context *> & context_list();
@@ -739,15 +716,6 @@ throw(std::runtime_error("Stopped by user interruption.")); \
   bool & keep_algext(GIAC_CONTEXT);
   void keep_algext(bool b,GIAC_CONTEXT);
 
-  bool & auto_assume(GIAC_CONTEXT);
-  void auto_assume(bool b,GIAC_CONTEXT);
-
-  bool & parse_e(GIAC_CONTEXT);
-  void parse_e(bool b,GIAC_CONTEXT);
-
-  bool & convert_rootof(GIAC_CONTEXT);
-  void convert_rootof(bool b,GIAC_CONTEXT);
-
   bool & do_lnabs(GIAC_CONTEXT);
   void do_lnabs(bool b,GIAC_CONTEXT);
 
@@ -796,7 +764,7 @@ throw(std::runtime_error("Stopped by user interruption.")); \
   std::string lastprog_name(const std::string & b,GIAC_CONTEXT);
 
   logo_turtle & turtle();
-  std::vector<logo_turtle> & turtle_stack();
+  std::vector<logo_turtle> & turtle_stack(GIAC_CONTEXT);
 
   int & angle_mode(GIAC_CONTEXT);
   int get_mode_set_radian(GIAC_CONTEXT);

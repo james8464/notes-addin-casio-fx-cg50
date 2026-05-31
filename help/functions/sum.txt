@@ -1,9 +1,30 @@
-Args: sum(expr,var,start,end)
-Required: expr, var, start, end
-Does: Returns the sum of expr as var runs from start to end.
-Examples: sum(k,k,1,n); sum(k^2,k,1,5)
-F2:sum(k,k,1,n)
-F3:sum(k^2,k,1,5)
-Ex F2: sum(k,k,1,n)
-Ex F3: sum(k^2,k,1,5)
-Working: Uses sequence or finite-sum formulae where routed.
+sum(f,k,m,n)
+
+Args:
+  f,k,m,n
+
+Required:
+  f, k, m, n
+
+Optional:
+  None.
+
+Does:
+  Summation. Required: term f, index k, lower m, upper n.
+
+Examples:
+  sum(k^2,k,1,n)
+
+F2:
+  sum(k^2,k,1,n)
+
+Keys:
+  F1 inserts the command.
+  F2 inserts the first example.
+  F3 inserts the second example when available.
+
+Working:
+  Shows exam-style lines when this command has a routed A-level working path; otherwise returns the exact KhiCAS result for the expression.
+
+Tip:
+  Use brackets around compound numerators, denominators, powers, and substitutions for readable exam-style output.

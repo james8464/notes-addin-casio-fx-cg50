@@ -1,0 +1,30 @@
+gcd(a,b)
+
+Args:
+  a,b
+
+Required:
+  a, b
+
+Optional:
+  None.
+
+Does:
+  Greatest common divisor. Required: two integers or polynomials. Kept mainly for polynomial simplification.
+
+Examples:
+  gcd(x^2-1,x^3-1)
+
+F2:
+  gcd(x^2-1,x^3-1)
+
+Keys:
+  F1 inserts the command.
+  F2 inserts the first example.
+  F3 inserts the second example when available.
+
+Working:
+  Shows exam-style lines when this command has a routed A-level working path; otherwise returns the exact KhiCAS result for the expression.
+
+Tip:
+  Use brackets around compound numerators, denominators, powers, and substitutions for readable exam-style output.

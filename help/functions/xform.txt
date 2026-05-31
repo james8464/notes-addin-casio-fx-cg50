@@ -1,9 +1,33 @@
-Args: xform(expr,target)
-Required: expr, target
-Does: Transforms or proves equivalence from expr to target using supported A-level moves.
-Examples: xform(x^2+2*x+1,(x+1)^2); xform(log(2,x^2),2*log(2,x)); xform(a/(x+1),5*a/(2*x+1)); xform(x^2-4*x+5,(x-2)^2+1)
-F2:xform(x^2+2*x+1,(x+1)^2)
-F3:xform(log(2,x^2),2*log(2,x))
-Ex F2: xform(x^2+2*x+1,(x+1)^2)
-Ex F3: xform(log(2,x^2),2*log(2,x))
-Working: Shows identities, expansion/factorisation, log laws, and coefficient matching.
+xform(expr,target)
+
+Args:
+  expr, target
+
+Required:
+  start expression, target expression/form
+
+Optional:
+  None.
+
+Does:
+  Transforms one expression into a target form using supported algebra, trig, log, factorisation, expansion, and coefficient-matching steps.
+
+Examples:
+  xform(1+tan(x)^2,sec(x)^2); xform(log(a,x),ln(x)/ln(a))
+
+F2:
+  xform(1+tan(x)^2,sec(x)^2)
+
+F3:
+  xform(log(a,x),ln(x)/ln(a))
+
+Keys:
+  F1 inserts the command.
+  F2 inserts the first example.
+  F3 inserts the second example when available.
+
+Working:
+  Tries identities, simplify/expand/factor/collect, log laws, trig identities, and constants matching before falling back.
+
+Tip:
+  Use brackets around compound numerators, denominators, powers, and substitutions for readable exam-style output.

@@ -1,9 +1,30 @@
-Args: ln(x)
-Required: x
-Does: Returns the natural logarithm of x.
-Examples: ln(exp(3)); ln(x^2)
-F2:ln(exp(3))
-F3:ln(x^2)
-Ex F2: ln(exp(3))
-Ex F3: ln(x^2)
-Working: Uses ln laws and domain condition x>0 when solving or transforming.
+ln(x)
+
+Args:
+  x
+
+Required:
+  x
+
+Optional:
+  None.
+
+Does:
+  Natural logarithm. Required: x>0.
+
+Examples:
+  ln(e^2)
+
+F2:
+  ln(e^2)
+
+Keys:
+  F1 inserts the command.
+  F2 inserts the first example.
+  F3 inserts the second example when available.
+
+Working:
+  Shows exam-style lines when this command has a routed A-level working path; otherwise returns the exact KhiCAS result for the expression.
+
+Tip:
+  Use brackets around compound numerators, denominators, powers, and substitutions for readable exam-style output.

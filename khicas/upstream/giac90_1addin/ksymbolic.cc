@@ -949,8 +949,6 @@ namespace giac {
 
 
   unsigned taille(const gen & g,unsigned max){
-    if (g.type==_ZINT)
-      return 1+mpz_sizeinbase(*g._ZINTptr,16)/4;
     if (g.type<=_IDNT)
       return 1;
     if (g.type==_FRAC)
@@ -958,8 +956,6 @@ namespace giac {
     if (g.type==_SYMB){
       return 1+taille(g._SYMBptr->feuille,max);
     }
-    if (g.type==_STRNG)
-      return g._STRNGptr->size()/4+1;
     if (g.type==_VECT){
       unsigned res=0;
       const_iterateur it=g._VECTptr->begin(),itend=g._VECTptr->end();
@@ -1026,19 +1022,6 @@ namespace giac {
     vector<int> v(9);
     tailles(g,v);
     return v[8];
-  }
-  
-  vecteur tailles(const gen & g){
-    vector<int> v(9); // atomic, idnt, frac, vector, symb, string, other, all
-    tailles(g,v);
-    vecteur w;
-    vector_int2vecteur(v,w);
-    return makevecteur(makevecteur(string2gen("atom",false),string2gen("cplx",false),
-				   string2gen("idnt",false),string2gen("frac",false),
-				   string2gen("vector",false),string2gen("symb",false),
-				   string2gen("strng",false),string2gen("other",false),
-				   string2gen("total",false))
-		       ,w);
   }
   
   int print_max_depth=100;

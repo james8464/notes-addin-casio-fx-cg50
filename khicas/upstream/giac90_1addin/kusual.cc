@@ -68,7 +68,7 @@ using namespace std;
 //#endif
 #ifdef USE_GMP_REPLACEMENTS
 #undef HAVE_GMPXX_H
-//#undef HAVE_LIBMPFR
+#undef HAVE_LIBMPFR
 #undef HAVE_LIBPARI
 #endif
 #ifdef HAVE_UNISTD_H
@@ -2498,7 +2498,7 @@ namespace giac {
     return cosh(e,contextptr);
   }
   define_partial_derivative_onearg_genop( D_at_sinh," D_at_sinh",&d_at_sinh);
-  static const char _sinh_s []="_rm14";
+  static const char _sinh_s []="sinh";
 #ifdef GIAC_HAS_STO_38
   static define_unary_function_eval3_index (44,__sinh,&sinh,(size_t)&D_at_sinhunary_function_ptr,_sinh_s);
 #else
@@ -2572,7 +2572,7 @@ namespace giac {
     return symb_cosh(e);
   }
   define_partial_derivative_onearg_genop( D_at_cosh,"D_at_cosh",sinh);
-  static const char _cosh_s []="_rm15";
+  static const char _cosh_s []="cosh";
 #ifdef GIAC_HAS_STO_38
   static define_unary_function_eval3_index (46,__cosh,&cosh,(size_t)&D_at_coshunary_function_ptr,_cosh_s);
 #else
@@ -2650,7 +2650,7 @@ namespace giac {
     return 1-pow(tanh(e,contextptr),2);
   }
   define_partial_derivative_onearg_genop( D_at_tanh," D_at_tanh",&d_tanh);
-  static const char _tanh_s []="_rm16";
+  static const char _tanh_s []="tanh";
 #ifdef GIAC_HAS_STO_38
   static define_unary_function_eval3_index (48,__tanh,&tanh,(size_t)&D_at_tanhunary_function_ptr,_tanh_s);
 #else
@@ -2706,7 +2706,7 @@ namespace giac {
     return inv(recursive_normal(sqrt(pow(args,2)+1,contextptr),contextptr),contextptr);
   }
   define_partial_derivative_onearg_genop( D_at_asinh," D_at_asinh",&d_asinh);
-  static const char _asinh_s []="_rm17";
+  static const char _asinh_s []="asinh";
 #ifdef GIAC_HAS_STO_38
   static define_unary_function_eval3_index (50,__asinh,&asinh,(size_t)&D_at_asinhunary_function_ptr,_asinh_s);
 #else
@@ -2767,7 +2767,7 @@ namespace giac {
     return inv(recursive_normal(sqrt(pow(args,2)-1,contextptr),contextptr),contextptr);
   }
   define_partial_derivative_onearg_genop( D_at_acosh," D_at_acosh",&d_acosh);
-  static const char _acosh_s []="_rm18";
+  static const char _acosh_s []="acosh";
 #ifdef GIAC_HAS_STO_38
   static define_unary_function_eval3_index (52,__acosh,&acosh,(size_t)&D_at_acoshunary_function_ptr,_acosh_s);
 #else
@@ -2828,7 +2828,7 @@ namespace giac {
     return inv(1-pow(args,2),contextptr);
   }
   define_partial_derivative_onearg_genop( D_at_atanh," D_at_atanh",&d_atanh);
-  static const char _atanh_s []="_rm19";
+  static const char _atanh_s []="atanh";
 #ifdef GIAC_HAS_STO_38
   static define_unary_function_eval3_index (54,__atanh,&atanh,(size_t)&D_at_atanhunary_function_ptr,_atanh_s);
 #else
@@ -4817,7 +4817,7 @@ namespace giac {
       return args;
     vecteur & v = *args._VECTptr;
     if (v.size()==3)
-      return _powmod(args,contextptr); // CAS 3 compat
+      return _powmod(args,contextptr); // Python 3 compat
     if (v.size()!=2)
       return gensizeerr(gettext("bad pow ")+args.print(contextptr));
     const gen & a =v.front();
@@ -4959,7 +4959,7 @@ namespace giac {
       return powmod(v.front(),v[1],m);
     // powmod(a_x%m,n,p_x) or powmod(a_x,n,m,p_x,x)
     // a^n mod p,m or m,p or a^n mod p,m,x or m,p,x wrt var x
-    gen var(vx_var),p;
+    gen var(vx_var()),p;
     bool modafter=false;
     p=unmod(m);
     m=findmod(m);
@@ -5378,9 +5378,9 @@ namespace giac {
     if (alert_array_start && contextptr->globalptr->_python_compat_){
       alert_array_start=false;
 #ifdef GIAC_HAS_STO_38
-      alert(gettext("Alternate syntax removed"),contextptr);
+      alert(gettext("Python compatibility enabled. List index will start at 0, run index:=1 or of:=1 to disable Python compatibility."),contextptr);
 #else
-      *logptr(contextptr) << gettext("Alternate syntax removed") << endl;
+      *logptr(contextptr) << gettext("// Python compatibility enabled. List index will start at 0, run index:=1 or python_compat(0) to disable Python compatibility.") << endl;
 #endif
     }
     if (storcl_38){
@@ -5696,7 +5696,7 @@ namespace giac {
     if (a.size()==3)
       lv=vecteur(1,vecteur(1,a[2]));
     else
-      lv=vecteur(1,vecteur(1,vx_var));
+      lv=vecteur(1,vecteur(1,vx_var()));
     alg_lvar(args,lv);
     gen aa=e2r(a[0],lv,contextptr),aan,aad,bb=e2r(a[1],lv,contextptr),bbn,bbd;
     fxnd(aa,aan,aad);
@@ -6128,7 +6128,7 @@ namespace giac {
       return gensizeerr(contextptr); // symbolic(at_iquorem,args);
     return iquorem(args._VECTptr->front(),args._VECTptr->back());
   }
-  static const char _iquorem_s []="_rs190";
+  static const char _iquorem_s []="iquorem";
   static define_unary_function_eval (__iquorem,&_iquorem,_iquorem_s);
   define_unary_function_ptr5( at_iquorem ,alias_at_iquorem,&__iquorem,0,true);
 
@@ -6187,7 +6187,7 @@ namespace giac {
     if (a.size()>=3 && a[2].type!=_INT_)
       lv=vecteur(1,unmodunprod(a[2]));
     else
-      lv=vecteur(1,vx_var);
+      lv=vecteur(1,vx_var());
     lvar(args,lv);
     gen aa=e2r(a[0],lv,contextptr),aan,aad,bb=e2r(a[1],lv,contextptr),bbn,bbd;
     fxnd(aa,aan,aad);
@@ -6841,7 +6841,7 @@ namespace giac {
       res._VECTptr->front()=_irem(makesequence(res._VECTptr->front()+res._VECTptr->back(),res._VECTptr->back()),contextptr);
     return res;
   }
-  static const char _ichinrem_s []="_rs191";
+  static const char _ichinrem_s []="ichinrem";
   static define_unary_function_eval (__ichinrem,&_ichinrem,_ichinrem_s);
   define_unary_function_ptr5( at_ichinrem ,alias_at_ichinrem,&__ichinrem,0,true);
   
@@ -6880,7 +6880,7 @@ namespace giac {
       if (args._VECTptr->size()==3)
 	lv=vecteur(1,(*args._VECTptr)[2]);
       else
-	lv=vecteur(1,vx_var);
+	lv=vecteur(1,vx_var());
       lvar(args,lv);
       vecteur lvprime(lv.begin()+1,lv.end());
       gen aa=e2r(a,lv,contextptr),bb=e2r(b,lv,contextptr),aan,aad,bbn,bbd;
@@ -8215,9 +8215,9 @@ namespace giac {
     if (cot_cache.size()>n)
       return cot_cache[n];
     if (cot_cache.empty())
-      cot_cache.push_back(_cot(cst_pi*vx_var,contextptr));
+      cot_cache.push_back(_cot(cst_pi*vx_var(),contextptr));
     while (cot_cache.size()<=n)
-      cot_cache.push_back(ratnormal(derive(cot_cache.back(),vx_var,contextptr),contextptr));
+      cot_cache.push_back(ratnormal(derive(cot_cache.back(),vx_var(),contextptr),contextptr));
     return cot_cache[n];
   }
   double bernoulli_tab[]={1.000000000000000,-0.50000000000000000,0.1666666666666667,0.0000000000000000,-0.3333333333333333e-1,0.0000000000000000,0.2380952380952381e-1,0.0000000000000000,-0.3333333333333333e-1,0.0000000000000000,0.7575757575757576e-1,0.0000000000000000,-0.2531135531135531,0.0000000000000000,1.166666666666667,0.0000000000000000,-7.092156862745098,0.0000000000000000,0.5497117794486216e2,0.0000000000000000,-0.5291242424242424e3,0.0000000000000000,0.6192123188405797e4,0.0000000000000000,-0.8658025311355311e5,0.0000000000000000,0.1425517166666667e7,0.0000000000000000,-0.2729823106781609e8,0.0000000000000000,0.6015808739006424e9};
@@ -8236,7 +8236,7 @@ namespace giac {
 	  return unsigned_inf;
 	gen res=evalf_Psi(1-d,n,contextptr);
 	gen tmp=cot_psi_cache(n,contextptr);
-	tmp=subst(tmp,vx_var,d,false,contextptr);
+	tmp=subst(tmp,vx_var(),d,false,contextptr);
 	if (n%2)
 	  res=-M_PI*tmp-res;
 	else
@@ -8268,7 +8268,7 @@ namespace giac {
       if (d<=0){
 	gen res=evalf_Psi(1-x,n,contextptr);
 	gen tmp=cot_psi_cache(n,contextptr);
-	tmp=subst(tmp,vx_var,c,false,contextptr);
+	tmp=subst(tmp,vx_var(),c,false,contextptr);
 	if (n%2)
 	  res=-M_PI*tmp-res;
 	else
@@ -9177,7 +9177,7 @@ namespace giac {
   const define_alias_gen(alias_deg2rad_g,_DOUBLE_, (*(ulonglong *)&deg2rad_d) >> 8,(*(ulonglong *)&deg2rad_d)>>16);
   const gen & deg2rad_g = *(const gen*) & alias_deg2rad_g;
   //grad
-  const define_alias_gen(alias_rad2grad_g,_DOUBLE_, (*(ulonglong *)&rad2grad_d) >> 8,(*(ulonglong *)&rad2grad_d)>>16); 
+  const define_alias_gen(alias_rad2grad_g,_DOUBLE_, (*(ulonglong *)&rad2grad_d) >> 8,(*(ulonglong *)&rad2grad_d)>>16);
   const gen & rad2grad_g = *(const gen*) & alias_rad2grad_g;
   const define_alias_gen(alias_grad2rad_g, _DOUBLE_, (*(ulonglong *)&grad2rad_d) >> 8, (*(ulonglong *)&grad2rad_d) >> 16);
   const gen & grad2rad_g = *(const gen*)& alias_grad2rad_g;

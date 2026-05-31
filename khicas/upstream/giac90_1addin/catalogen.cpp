@@ -21,7 +21,6 @@ extern "C" {
 
 #include "history.h"
 #include "dConsole.h"
-#include "main.h"
   //#include "memmgr.h"
 #include "catalogGUI.hpp"
 #include "fileGUI.hpp"
@@ -51,13 +50,8 @@ extern "C" {
 #define CAT_CATEGORY_LIST 15
 #define CAT_CATEGORY_MATRIX 16
 #define CAT_CATEGORY_PROG 17
-#define CAT_CATEGORY_SOFUS 18
-#define CAT_CATEGORY_PHYS 19
-#define CAT_CATEGORY_UNIT 20
-#define CAT_CATEGORY_2D 21
-#define CAT_CATEGORY_3D 22
-#define CAT_CATEGORY_LOGO 23 // should be the last one
-#define XCAS_ONLY 0x80000000
+#define CAT_CATEGORY_SOFUS 18 
+#define CAT_CATEGORY_LOGO 19 // should be the last one
 
 using namespace giac;
 extern giac::context * contextptr;
@@ -67,48 +61,51 @@ void reset_alpha(){
 }
 
 int lang=0;
-const char ram_filename[]="\\\\fls0\\khicas50.8c2";
-const catalogFunc completeCat[] = { // A-level scoped catalog only
-  {"abs(x)", 0, "Absolute value.", "#abs(-3)", "#abs(x-2)", CAT_CATEGORY_REAL},
-  {"approx(x)", 0, "Decimal approximation.", "#approx(pi)", "#approx(sqrt(2))", CAT_CATEGORY_REAL},
-  {"ceil(x)", 0, "Smallest integer not less than x.", "#ceil(1.2)", "#ceil(-1.2)", CAT_CATEGORY_REAL},
-  {"coeff(p,x,n)", 0, "Coefficient of x^n in polynomial p.", "#coeff((x+1)^3,x,2)", "#coeff(expand((1+2*x)^5),x,3)", CAT_CATEGORY_POLYNOMIAL},
-  {"collect(expr,x)", 0, "Collect powers of x.", "#collect(x+x^2,x)", "#collect(a*x+b*x,x)", CAT_CATEGORY_ALGEBRA},
-  {"cos(x)", 0, "Cosine; angles use radians.", "#cos(pi/3)", "#simplify(1-sin(x)^2)", CAT_CATEGORY_TRIG | (CAT_CATEGORY_REAL << 8)},
-  {"cosec(x)", 0, "Reciprocal sine, 1/sin(x).", "#cosec(x)^2", "#diff(cosec(x),x)", CAT_CATEGORY_TRIG},
-  {"cot(x)", 0, "Reciprocal tangent, cos(x)/sin(x).", "#cot(x)", "#integrate(cosec(x)^2,x)", CAT_CATEGORY_TRIG},
-  {"degree(p,x)", 0, "Degree of polynomial p in x.", "#degree(x^4-1,x)", "#degree(3*x^2*y,x)", CAT_CATEGORY_POLYNOMIAL},
-  {"diff(f,var,[n])", 0, "Derivative of f with respect to var.", "#diff(sin(x),x)", "#diff(x^3,x,2)", CAT_CATEGORY_CALCULUS},
-  {"discriminant(p,x)", 0, "Discriminant of polynomial p.", "#discriminant(x^2+x+1,x)", "#discriminant(a*x^2+b*x+c,x)", CAT_CATEGORY_POLYNOMIAL},
-  {"domain(expr,x)", 0, "Domain of expression as inequalities.", "#domain(sqrt(x-2),x)", "#domain(log(10,4-x),x)", CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_CALCULUS << 8)},
-  {"exp(x)", 0, "Exponential e^x.", "#exp(2*x)", "#exp(ln(5))", CAT_CATEGORY_REAL},
-  {"expand(expr)", 0, "Expand expression.", "#expand((x+1)^3)", "#expand((2*x-1)*(x+4))", CAT_CATEGORY_ALGEBRA},
-  {"factor(p[,x])", 0, "Factor polynomial p.", "#factor(x^2-1)", "#factor(x^3-8)", CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_POLYNOMIAL << 8)},
-  {"floor(x)", 0, "Greatest integer not greater than x.", "#floor(1.8)", "#floor(-1.2)", CAT_CATEGORY_REAL},
-  {"implicit_diff(eq,[x,y])", "implicit_diff(", "Implicit differentiation with A-level working lines.", "#implicit_diff((x^2)*tan(y)=9,x,y)", 0, CAT_CATEGORY_CALCULUS},
-  {"integrate(f,x,[a,b])", 0, "Antiderivative or definite integral.", "#integrate(x*sin(x),x)", "#integrate(x^2,x,0,1)", CAT_CATEGORY_CALCULUS},
-  {"limit(f,x=a)", 0, "Limit of f as x tends to a.", "#limit(sin(x)/x,x=0)", "#limit((x^2-1)/(x-1),x=1)", CAT_CATEGORY_CALCULUS},
-  {"ln(x)", 0, "Natural logarithm.", "#ln(exp(3))", "#ln(x^2)", CAT_CATEGORY_REAL},
-  {"log(base,x)", "log(", "Logarithm; log(base,x) uses any base.", "#log(2,8)", "#log(10,100)", CAT_CATEGORY_REAL | (CAT_CATEGORY_SOLVE << 8)},
-  {"normal(expr)", 0, "Put rational expression over one denominator.", "#normal(1/(x+1)+1/(x-1))", "#normal((x^2-1)/(x-1))", CAT_CATEGORY_ALGEBRA},
-  {"partfrac(p,x)", 0, "Partial fractions.", "#partfrac((2*x+3)/(x^2-1),x)", 0, CAT_CATEGORY_ALGEBRA},
-  {"product(f,k,m,M)", 0, "Product of f for k from m to M.", "#product(k,k,1,n)", "#product(2,k,1,n)", CAT_CATEGORY_CALCULUS},
-  {"range(expr,[x,a,b])", "range(", "Range of expression as inequalities.", "#range(x^2,[x,-2,3])", "#range(4*(x^2-2)*exp(-2*x),x)", CAT_CATEGORY_CALCULUS | (CAT_CATEGORY_ALGEBRA << 8)},
-  {"round(x)", 0, "Nearest integer.", "#round(3.6)", "#round(184.868)", CAT_CATEGORY_REAL},
-  {"sec(x)", 0, "Reciprocal cosine, 1/cos(x).", "#sec(x)^2", "#integrate(sec(x)^2,x)", CAT_CATEGORY_TRIG},
-  {"series(f,x=a,n)", 0, "Taylor expansion to order n.", "#series(sin(x),x=0,5)", "#series(exp(x),x=0,4)", CAT_CATEGORY_CALCULUS},
-  {"simplify(expr)", 0, "Simplify expression.", "#simplify(sin(x)^2+cos(x)^2)", "#simplify(log(2,8*x)-3)", CAT_CATEGORY_ALGEBRA},
-  {"sin(x)", 0, "Sine; angles use radians.", "#sin(pi/6)", "#solve(sin(x)=1/2,x=0..2*pi)", CAT_CATEGORY_TRIG | (CAT_CATEGORY_REAL << 8)},
-  {"solve(equation,x)", 0, "Solve equation for x.", "#solve(x^2-x-1=0,x)", "#solve(log(2,x)=3,x)", CAT_CATEGORY_SOLVE},
-  {"subst(a,b=c)", 0, "Substitute c for b in a.", "#subst(x^2,x=3)", "#subst(a*x+b,x=2)", CAT_CATEGORY_ALGEBRA},
-  {"sum(f,k,m,M)", 0, "Sum of f for k from m to M.", "#sum(k^2,k,1,n)", "#sum(k^2,k,1,5)", CAT_CATEGORY_CALCULUS},
-  {"tan(x)", 0, "Tangent, sin(x)/cos(x).", "#tan(pi/4)", "#diff(tan(x),x)", CAT_CATEGORY_TRIG | (CAT_CATEGORY_REAL << 8)},
-  {"tcollect(expr)", 0, "Collect trigonometric terms.", "#tcollect(sin(x)+cos(x))", "#tcollect(sin(x)^2+cos(x)^2)", CAT_CATEGORY_TRIG},
-  {"texpand(expr)", 0, "Expand trigonometric expressions.", "#texpand(sin(3*x))", "#texpand(cos(x+y))", CAT_CATEGORY_TRIG},
-  {"trigcos(expr)", 0, "Rewrite trig using cos where useful.", "#trigcos(sin(x)^2)", "#trigcos(tan(x)^2)", CAT_CATEGORY_TRIG},
-  {"trigsin(expr)", 0, "Rewrite trig using sin where useful.", "#trigsin(cos(x)^2)", "#trigsin(tan(x))", CAT_CATEGORY_TRIG},
-  {"trigtan(expr)", 0, "Rewrite trig using tan where useful.", "#trigtan(cos(x)^2)", "#trigtan(sec(x)^2)", CAT_CATEGORY_TRIG},
-  {"xform(expr,target)", "xform(", "Transform expr into target with A-level working lines.", "#xform(x^2+2*x+1,(x+1)^2)", "#xform(a/(x+1),5*a/(2*x+1))", CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_TRIG << 8)},
+const catalogFunc completeCat[] = { // list of all functions (including some not in any category)
+  {"abs(x)", 0, "Absolute value. Required: x. Returns distance from 0; useful for modulus inequalities and domains.", "-3", "x-2", CAT_CATEGORY_REAL | (CAT_CATEGORY_ALGEBRA<<8)},
+  {"acos(x)", 0, "Inverse cosine. Required: x in [-1,1]. Returns an angle in the current angle mode.", "1/2", 0, CAT_CATEGORY_TRIG},
+  {"approx(x)", 0, "Decimal approximation. Required: x. Use after exact working when a decimal answer is requested.", "sqrt(2)", "pi", CAT_CATEGORY_REAL},
+  {"asin(x)", 0, "Inverse sine. Required: x in [-1,1]. Returns an angle in the current angle mode.", "1/2", 0, CAT_CATEGORY_TRIG},
+  {"atan(x)", 0, "Inverse tangent. Required: x. Returns an angle in the current angle mode.", "1", 0, CAT_CATEGORY_TRIG},
+  {"ceil(x)", 0, "Ceiling. Required: x. Returns the smallest integer greater than or equal to x.", "1.2", 0, CAT_CATEGORY_REAL},
+  {"ceiling(x)", 0, "Ceiling. Required: x. Same as ceil(x).", "1.2", 0, CAT_CATEGORY_REAL},
+  {"coeff(p,x,n)", 0, "Coefficient extraction. Required: expression p, variable x, power n. Returns the coefficient of x^n.", "3*x^2+2*x+1,x,2", 0, CAT_CATEGORY_POLYNOMIAL},
+  {"collect(expr,x)", 0, "Collect terms. Required: expr. Optional: variable x. Groups powers of a variable.", "x+x^2+2*x", "sin(x)^2+cos(x)^2", CAT_CATEGORY_ALGEBRA},
+  {"cos(x)", 0, "Cosine. Required: angle x in current angle mode.", "pi/3", 0, CAT_CATEGORY_TRIG},
+  {"cot(x)", 0, "Cotangent. Required: angle x. Uses cot(x)=1/tan(x).", "x", 0, CAT_CATEGORY_TRIG},
+  {"degree(p,x)", 0, "Polynomial degree. Required: polynomial p. Optional: variable x.", "x^4-1,x", 0, CAT_CATEGORY_POLYNOMIAL},
+  {"diff(f,var,[n])", 0, "Differentiate an expression, equation, or parametric form. Required: expression/equation and variable. Shows product, chain, implicit, trig, log, and rearrangement lines where routed.", "x^3,x", "(x^2)*tan(y)=9,x", CAT_CATEGORY_CALCULUS},
+  {"exact(x)", 0, "Exact form. Required: x. Converts suitable decimals to exact fractions or radicals.", "1.25", 0, CAT_CATEGORY_REAL},
+  {"expand(expr)", 0, "Expand brackets and powers. Required: expr.", "(x+1)^3", "sin(2*x)", CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_TRIG<<8)},
+  {"factor(p,[x])", 0, "Factorise. Required: expression p. Optional: variable x or extension. Use for polynomial factorisation.", "x^2-5*x+6", "x^3-1", CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_POLYNOMIAL<<8)},
+  {"floor(x)", 0, "Floor. Required: x. Returns the greatest integer less than or equal to x.", "1.8", 0, CAT_CATEGORY_REAL},
+  {"fsolve(equation,x=a..b)", 0, "Numerical solve. Required: equation and interval x=a..b. Use when exact solve is not expected.", "cos(x)=x,x=0..1", 0, CAT_CATEGORY_SOLVE},
+  {"gcd(a,b)", 0, "Greatest common divisor. Required: two integers or polynomials. Kept mainly for polynomial simplification.", "x^2-1,x^3-1", 0, CAT_CATEGORY_POLYNOMIAL},
+  {"integrate(f,x,[a,b])", 0, "Integrate with exam working. Required: expression and variable. Optional: bounds a,b; method 1 auto, 2 by parts, 3 substitution, 4 partial fractions, 5 trig/formula; u=... for substitution.", "(ln(x))^2,x,2", "(ln(x))^2/x,x,3,u=ln(x)", CAT_CATEGORY_CALCULUS},
+  {"implicit_diff(eq,[x,y])", "diff(", "Implicit differentiation. Required: equation. Optional: independent and dependent variables. Use diff(equation,x) for calculator input.", "(x^2)*tan(y)=9,x", 0, CAT_CATEGORY_CALCULUS},
+  {"lcm(a,b)", 0, "Least common multiple. Required: two integers or polynomials. Useful for algebraic denominators.", "x^2-1,x^3-1", 0, CAT_CATEGORY_POLYNOMIAL},
+  {"limit(f,x=a)", 0, "Limit. Required: expression f and point x=a. Optional: side 1 or -1.", "sin(x)/x,x=0", "1/x,x=0,1", CAT_CATEGORY_CALCULUS},
+  {"ln(x)", 0, "Natural logarithm. Required: x>0.", "e^2", 0, CAT_CATEGORY_CALCULUS | (CAT_CATEGORY_REAL<<8)},
+  {"log(base,x)", "log(", "Logarithm to any base. Required: base>0, base!=1, x>0. Shows change of base ln(x)/ln(base), log laws, and domain checks where routed.", "2,x", "3,81", CAT_CATEGORY_CALCULUS | (CAT_CATEGORY_REAL<<8)},
+  {"partfrac(p,x)", 0, "Partial fractions. Required: rational expression p. Optional: variable x.", "1/(x^2-1),x", 0, CAT_CATEGORY_ALGEBRA},
+  {"pcoeff(roots)", 0, "Polynomial from roots. Required: list of roots.", "[1,2,3]", 0, CAT_CATEGORY_POLYNOMIAL},
+  {"product(f,k,m,n)", 0, "Product notation. Required: term f, index k, lower m, upper n.", "k,k,1,n", 0, CAT_CATEGORY_CALCULUS},
+  {"proot(p)", 0, "Polynomial roots. Required: polynomial p. Gives numerical roots when exact roots are not simple.", "x^3-2*x+1", 0, CAT_CATEGORY_POLYNOMIAL | (CAT_CATEGORY_SOLVE<<8)},
+  {"range(expr,[x,a,b])", "range(", "Range of a function. Required: expression. Optional: variable and interval endpoints. Finds restrictions, turning points, endpoints, and asymptotes for supported A-level forms.", "x^2", "1/x", CAT_CATEGORY_ALGEBRA},
+  {"round(x)", 0, "Round to nearest integer. Required: x.", "1.6", 0, CAT_CATEGORY_REAL},
+  {"sec(x)", 0, "Secant. Required: angle x. Uses sec(x)=1/cos(x).", "x", 0, CAT_CATEGORY_TRIG},
+  {"series(f,x=a,n)", 0, "Taylor/binomial series. Required: f, expansion point x=a, order n.", "sin(x),x=0,5", "(1+x)^(-1),x=0,4", CAT_CATEGORY_CALCULUS},
+  {"simplify(expr)", 0, "Simplify. Required: expr. Applies algebraic and trig simplification.", "sin(x)^2+cos(x)^2", "sqrt(x^2)", CAT_CATEGORY_ALGEBRA},
+  {"sin(x)", 0, "Sine. Required: angle x in current angle mode.", "pi/6", 0, CAT_CATEGORY_TRIG},
+  {"solve(equation,x)", 0, "Exact solve. Required: equation/expression and variable. Routes linear, quadratic, rational, log/trig, and simple separable dy/dx equations before KhiCAS fallback.", "x^2-5*x+6=0,x", "(dy)/(dx)=y,y", CAT_CATEGORY_SOLVE},
+  {"sqrt(x)", 0, "Square root. Required: x>=0 for real answers.", "9", "x^2", CAT_CATEGORY_REAL | (CAT_CATEGORY_ALGEBRA<<8)},
+  {"subst(expr,x=a)", 0, "Substitution. Required: expression and replacement x=a.", "x^2+1,x=3", 0, CAT_CATEGORY_ALGEBRA},
+  {"sum(f,k,m,n)", 0, "Summation. Required: term f, index k, lower m, upper n.", "k^2,k,1,n", 0, CAT_CATEGORY_CALCULUS},
+  {"tan(x)", 0, "Tangent. Required: angle x in current angle mode.", "pi/4", 0, CAT_CATEGORY_TRIG},
+  {"taylor(f,x=a,n)", 0, "Taylor expansion. Required: expression f, point x=a, order n.", "sin(x),x=0,5", 0, CAT_CATEGORY_CALCULUS},
+  {"tcollect(expr)", 0, "Collect trigonometric terms. Required: expr.", "sin(x)+cos(x)", 0, CAT_CATEGORY_TRIG},
+  {"texpand(expr)", 0, "Expand trig/log/exponential forms. Required: expr.", "sin(2*x)", "ln(x*y)", CAT_CATEGORY_TRIG | (CAT_CATEGORY_ALGEBRA<<8)},
+  {"xform(expr,target)", "xform(", "Transform one expression into another. Required: start expression and target form. Shows supported algebra/trig/log steps.", "1+tan(x)^2,sec(x)^2", "log(a,x),ln(x)/ln(a)", CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_TRIG<<8)},
 };
 
 const char chk_restart_string1[]="Keep variables?";
@@ -116,8 +113,8 @@ const char chk_restart_string2[]="F1: keep,   F6: erase";
 const char aide_khicas_string[]="Khicas Help";
 const char main_string1[]="Clear variables?";
 const char main_string2[]="F1: cancel,  F6: confirm";
-const char shortcuts_string[]="";
-const char apropos_string[]="";
+const char shortcuts_string[]="A-level Pure build: use catalog for commands.";
+const char apropos_string[]="KhiCASen A-level Pure build.";
 
 int CAT_COMPLETE_COUNT=sizeof(completeCat)/sizeof(catalogFunc);
 
@@ -135,32 +132,17 @@ ustl::string insert_string(int index){
 }
 
 int showCatalog(char* insertText,int preselect,int menupos) {
+  //int ret;
   // returns 0 on failure (user exit) and 1 on success (user chose a option)
-  MenuItem menuitems[CAT_CATEGORY_LOGO+1];
-    menuitems[CAT_CATEGORY_ALL].text = (char*)((lang==1)?"Tout":"All");
-    menuitems[CAT_CATEGORY_ALGEBRA].text = (char*)((lang==1)?"Algebre":"Algebra");
-    menuitems[CAT_CATEGORY_LINALG].text = (char*)"Removed";
-    menuitems[CAT_CATEGORY_CALCULUS].text = (char*)((lang==1)?"Analyse":"Calculus");
-    menuitems[CAT_CATEGORY_ARIT].text = (char*)"Arithmetic";
-    menuitems[CAT_CATEGORY_COMPLEXNUM].text = (char*)"Removed";
-    menuitems[CAT_CATEGORY_PLOT].text = (char*)"Removed";
-    menuitems[CAT_CATEGORY_POLYNOMIAL].text = (char*)((lang==1)?"Polynomes":"Polynomials");
-    menuitems[CAT_CATEGORY_PROBA].text = (char*)"Removed";
-    menuitems[CAT_CATEGORY_PROGCMD].text = (char*)"Removed";
-    menuitems[CAT_CATEGORY_REAL].text = (char*)((lang==1)?"Reels (x,theta,t)":"Reals");
-    menuitems[CAT_CATEGORY_SOLVE].text = (char*)((lang==1)?"Resoudre (log)":"Solve (log)");
-    menuitems[CAT_CATEGORY_STATS].text = (char*)"Removed";
-    menuitems[CAT_CATEGORY_TRIG].text = (char*)((lang==1)?"Trigonometrie (sin)":"Trigonometry (sin)");
-    menuitems[CAT_CATEGORY_OPTIONS].text = (char*)"Options (cos)";
-    menuitems[CAT_CATEGORY_LIST].text = (char*)((lang==1)?"Listes (tan)":"Lists (tan)");
-    menuitems[CAT_CATEGORY_MATRIX].text = (char*)"Removed";
-    menuitems[CAT_CATEGORY_PROG].text = (char*)"Removed";
-    menuitems[CAT_CATEGORY_SOFUS].text = (char*)((lang==1)?"Modifier variables (()":"Change variables (()");
-    menuitems[CAT_CATEGORY_PHYS].text = (char*)((lang==1)?"Constantes physique ())":"Physics constants ())");
-    menuitems[CAT_CATEGORY_UNIT].text = (char*)((lang==1)?"Unites physiques (,)":"Units (,)");
-    menuitems[CAT_CATEGORY_2D].text = (char*)((lang==1)?"Geometrie (->)":"Geometry (->)");
-    menuitems[CAT_CATEGORY_3D].text = (char*)((lang==1)?"3D (*)":"3D (*)");
-    menuitems[CAT_CATEGORY_LOGO].text = (char*)"Removed";
+  const int categories[]={CAT_CATEGORY_ALL,CAT_CATEGORY_ALGEBRA,CAT_CATEGORY_CALCULUS,CAT_CATEGORY_POLYNOMIAL,CAT_CATEGORY_REAL,CAT_CATEGORY_SOLVE,CAT_CATEGORY_TRIG};
+  MenuItem menuitems[sizeof(categories)/sizeof(categories[0])];
+  menuitems[0].text = (char*)"All";
+  menuitems[1].text = (char*)"Algebra";
+  menuitems[2].text = (char*)"Calculus";
+  menuitems[3].text = (char*)"Polynomials";
+  menuitems[4].text = (char*)"Reals";
+  menuitems[5].text = (char*)"Solve";
+  menuitems[6].text = (char*)"Trigonometry";
   
   Menu menu;
   menu.items=menuitems;
@@ -175,15 +157,19 @@ int showCatalog(char* insertText,int preselect,int menupos) {
       if (menupos>0)
 	menu.selection=menupos;
       int sres = doMenu(&menu);
-    Bdisp_PutDisp_DD();
-    drawCasioCasBorder();
       if (sres != MENU_RETURN_SELECTION)
 	return 0;
     }
     // puts("catalog 3");
-    if(doCatalogMenu(insertText,(char *) menuitems[menu.selection-1].text, menu.selection-1)) {
+    int category=preselect;
+    if (!category)
+      category=categories[menu.selection-1];
+    if (category!=CAT_CATEGORY_ALL && category!=CAT_CATEGORY_ALGEBRA && category!=CAT_CATEGORY_CALCULUS && category!=CAT_CATEGORY_POLYNOMIAL && category!=CAT_CATEGORY_REAL && category!=CAT_CATEGORY_SOLVE && category!=CAT_CATEGORY_TRIG)
+      category=CAT_CATEGORY_ALL;
+    char *submenu_title=preselect?(char*)"Function Catalog":menuitems[menu.selection-1].text;
+    if(doCatalogMenu(insertText, submenu_title, category)) {
       const char * ptr=0;
-      if (strcmp("_removed_array ",insertText)==0 && (ptr=input_matrix(false)) )
+      if (strcmp("matrix ",insertText)==0 && (ptr=input_matrix(false)) )
 	return 0;
       if (strcmp("list ",insertText)==0 && (ptr=input_matrix(true)) )
 	return 0;
@@ -204,77 +190,31 @@ int find_category(const char *cmdname){
   return -1;
 }
 
-  string remove_accents(const string & s){
-    string r;
-    for (int i=0;i<s.size();++i){
-      unsigned char ch=s[i];
-      if (ch==195 && i<s.size()-1){
-	++i;
-	switch ((unsigned char)s[i]){
-	case 160: case 161: case 162:
-	  r+='a';
-	  continue;
-	case 168: case 169: case 170:
-	  r+='e';
-	  continue;
-	case 172: case 173: case 174:
-	  r+='i';
-	  continue;
-	case 178: case 179: case 180:
-	  r += 'o';
-	  continue;
-	case 185: case 186: case 187:
-	  r+='u';
-	  continue;
-	}
-	r += '?';
-	continue;
-      }
-      r+=(char)ch;
-    }
-    return r;
-  }
-
-string extract_example(const string & s,int n){
-  int l=s.size(),j=0;
-  string res;
-  for (int i=0;i<l;++i){
-    if (s[i]==';'){
-      if (j==n)
-	break;
-      ++j;
-      continue;
-    }
-    if (j==n)
-      res+=s[i];
-  }
-  return res;
-}
-
-ustl::string longhelp(const char * s);
-int QRdisp(const char * text,const char *msg1,const char * msg2,const char * msg3,const char * msg4);
-
+// 0 on exit, 1 on success
 int doCatalogMenu(char* insertText, char* title, int category,const char * cmdname) {
   int allcmds=builtin_lexer_functions_end()-builtin_lexer_functions_begin();
   int allopts=lexer_tab_int_values_end-lexer_tab_int_values_begin;
   bool isall=category==CAT_CATEGORY_ALL;
   bool isopt=category==CAT_CATEGORY_OPTIONS;
-  int nitems = isall? allcmds:(isopt?allopts:CAT_COMPLETE_COUNT);
+  int nitems = isall? CAT_COMPLETE_COUNT:(isopt?allopts:CAT_COMPLETE_COUNT);
   MenuItem* menuitems = (MenuItem*)alloca(sizeof(MenuItem)*nitems);
   int cur = 0,curmi = 0,i=0,menusel=-1,cmdl=cmdname?strlen(cmdname):0;
   gen g;
   while(cur<nitems) {
-    MenuItem & curmenuitem= menuitems[curmi];
-    curmenuitem.type = MENUITEM_NORMAL;
-    curmenuitem.color = TEXT_COLOR_BLACK;    
-    if (isall || isopt) {
+    menuitems[curmi].type = MENUITEM_NORMAL;
+    menuitems[curmi].color = TEXT_COLOR_BLACK;    
+    if (isall) {
+      menuitems[curmi].isfolder = cur;
+      menuitems[curmi].text = completeCat[cur].name;
+      ++curmi;
+    }
+    else if (isopt) {
       const char * text=isall?(builtin_lexer_functions_begin()+curmi)->first:(lexer_tab_int_values_begin+curmi)->keyword;
       if (menusel<0 && cmdname && !strncmp(cmdname,text,cmdl))
 	menusel=curmi;
-      curmenuitem.text = text;
-      curmenuitem.isfolder = allcmds; // assumes allcmds>allopts
-      curmenuitem.token=isall?((builtin_lexer_functions_begin()+curmi)->second.subtype+256):((lexer_tab_int_values_begin+curmi)->subtype+(lexer_tab_int_values_begin+curmi)->return_value*256);
-      // curmenuitem.token=isall?find_or_make_symbol(text,g,0,false,contextptr):((lexer_tab_int_values_begin+curmi)->subtype+(lexer_tab_int_values_begin+curmi)->return_value*256);
+      menuitems[curmi].text = text;
+      menuitems[curmi].isfolder = allcmds; // assumes allcmds>allopts
+      menuitems[curmi].token=isall?find_or_make_symbol(text,g,0,false,contextptr):((lexer_tab_int_values_begin+curmi)->subtype+(lexer_tab_int_values_begin+curmi)->return_value*256);
       for (;i<CAT_COMPLETE_COUNT;++i){
 	const char * catname=completeCat[i].name;
 	int tmp=strcmp(catname,text);
@@ -285,7 +225,7 @@ int doCatalogMenu(char* insertText, char* title, int category,const char * cmdna
 	      break;
 	  }
 	  if (j==st && (!isalphanum(catname[j]))){
-	    curmenuitem.isfolder = i;
+	    menuitems[curmi].isfolder = i;
 	    ++i;
 	  }
 	  break;
@@ -296,21 +236,18 @@ int doCatalogMenu(char* insertText, char* title, int category,const char * cmdna
     }
     else {
       int cat=completeCat[cur].category;
-      if ( (xcas_python_eval==0 || cat>0) &&
-	   ((cat & 0xff) == category ||
-	    (cat & 0xff00) == (category<<8) ||
-	    (cat & 0xff0000) == (category <<16)
-	    )
+      if ( (cat & 0xff) == category ||
+	   (cat & 0xff00) == (category<<8) ||
+	   (cat & 0xff0000) == (category <<16)
 	   ){
-	curmenuitem.isfolder = cur; // little hack: store index of the command in the full list in the isfolder property (unused by the menu system in this case)
-	curmenuitem.text = completeCat[cur].name;
+	menuitems[curmi].isfolder = cur; // little hack: store index of the command in the full list in the isfolder property (unused by the menu system in this case)
+	menuitems[curmi].text = completeCat[cur].name;
 	curmi++;
       }
     }
     cur++;
   }
-  if (curmi==0)
-    return 0;
+  
   Menu menu;
   if (menusel>=0)
     menu.selection=menusel+1;
@@ -325,118 +262,89 @@ int doCatalogMenu(char* insertText, char* title, int category,const char * cmdna
   menu.type = MENUTYPE_FKEYS;
   menu.height = 7;
   while(1) {
+    drawFkeyLabels(0x03FC, 0x03fc, 0, 0, 0, 0x03FD);
     int fkeyw=LCD_WIDTH_PX/6;
-    drawRectangle(0,LCD_HEIGHT_PX-23, fkeyw, 23, TEXT_COLOR_BLACK);
-    Bdisp_MMPrint(0,LCD_HEIGHT_PX-STATUS_AREA_PX-19,"  INPUT",0,0xffffffff,0,0,COLOR_WHITE,COLOR_BLACK,1,0);
     drawRectangle(fkeyw,LCD_HEIGHT_PX-23, fkeyw, 23, TEXT_COLOR_BLACK);
     Bdisp_MMPrint(fkeyw,LCD_HEIGHT_PX-STATUS_AREA_PX-19," EXAMPL1",0,0xffffffff,0,0,COLOR_WHITE,COLOR_BLACK,1,0);
     drawRectangle(2*fkeyw,LCD_HEIGHT_PX-23, fkeyw, 23, TEXT_COLOR_BLACK);
     Bdisp_MMPrint(2*fkeyw,LCD_HEIGHT_PX-STATUS_AREA_PX-19," EXAMPL2",0,0xffffffff,0,0,COLOR_WHITE,COLOR_BLACK,1,0);
-    drawRectangle(3*fkeyw,LCD_HEIGHT_PX-23, fkeyw, 23, TEXT_COLOR_BLACK);
-    drawRectangle(4*fkeyw,LCD_HEIGHT_PX-23, fkeyw, 23, TEXT_COLOR_BLACK);
-    Bdisp_MMPrint(4*fkeyw,LCD_HEIGHT_PX-STATUS_AREA_PX-19,"  HELP",0,0xffffffff,0,0,COLOR_WHITE,COLOR_BLACK,1,0);
-    drawRectangle(5*fkeyw,LCD_HEIGHT_PX-23, fkeyw, 23, TEXT_COLOR_BLACK);
-    Bdisp_MMPrint(5*fkeyw,LCD_HEIGHT_PX-STATUS_AREA_PX-19,"        ",0,0xffffffff,0,0,COLOR_WHITE,COLOR_BLACK,1,0);
+    Bdisp_PutDisp_DD();
+    drawCasioCasBorder();
     int sres = doMenu(&menu);
     if(sres == MENU_RETURN_EXIT){
       reset_alpha();
-      return sres;
+      return 0;
     }
     int index=menuitems[menu.selection-1].isfolder;
-    const char *fcmdname=menuitems[menu.selection-1].text,* fhowto=0,*fsyntax=0,*fexamples=0,*frelated=0;
-    bool stathelp=has_static_help(fcmdname,lang,fhowto,fsyntax,fexamples,frelated);
-    if (sres==KEY_CTRL_F6 && fcmdname)
-      continue;
-    if (sres == KEY_CTRL_F5) {
+    if(sres == KEY_CTRL_F6) {
       char * example=index<allcmds?completeCat[index].example:0;
       char * example2=index<allcmds?completeCat[index].example2:0;
       textArea text;
+      text.title = (char*)"Help on command";
       text.editable=false;
       text.clipline=-1;
-      text.title = (char*)"Help on command";
       text.allowF1=true;
-      text.python=python_compat(contextptr);
       ustl::vector<textElement> & elem=text.elements;
-      elem = ustl::vector<textElement> (example2?4:3);
+      elem = ustl::vector<textElement> (example2?5:4);
       elem[0].s = index<allcmds?completeCat[index].name:menuitems[menu.selection-1].text;
       elem[0].color = COLOR_BLUE;
       elem[1].newLine = 1;
-      elem[1].lineSpacing = 3;
+      elem[1].lineSpacing = 4;
       ustl::string autoexample;
-      if (index<allcmds)
-	elem[1].s = completeCat[index].desc;
+      if (index<allcmds) {
+	elem[1].s = "Use:\n";
+	elem[1].s += completeCat[index].desc;
+	elem[1].s += "\n\nArgs:\nRequired values are shown before [optional] values in the command line above.";
+      }
       else {
-	int token=menuitems[menu.selection-1].token;
 	elem[1].s="Sorry, no help available...";
-	// *logptr(contextptr) << token << endl;
-	if (stathelp){
-	  elem[1].s=remove_accents(fhowto);
-	  //cout << fexamples << '\n';
-	  example=(char *)fexamples;
+	int token=menuitems[menu.selection-1].token;
+	if (isopt){
+	  if (token==_INT_PLOT+T_NUMBER*256){
+	    autoexample="display="+elem[0].s;
+	    elem[1].s="Graphic option: "+autoexample;
+	  }
+	  if (token==_INT_COLOR+T_NUMBER*256){
+	    autoexample="display="+elem[0].s;
+	    elem[1].s="Color: "+autoexample;
+	  }
+	  if (token==_INT_SOLVER+T_NUMBER*256){
+	    autoexample=elem[0].s;
+	    elem[1].s="fsolve option: " + autoexample;
+	  }
+	  if (token==_INT_TYPE+T_TYPE_ID*256){
+	    autoexample=elem[0].s;
+	    elem[1].s="Object type: " + autoexample;
+	  }
 	}
-	else {
-	  if (isopt){
-	    if (token==_INT_PLOT+T_NUMBER*256){
-	      autoexample="display="+elem[0].s;
-	      elem[1].s ="display option: "+ autoexample;
-	    }
-	    if (token==_INT_COLOR+T_NUMBER*256){
-	      autoexample="display="+elem[0].s;
-	      elem[1].s="color option: "+ autoexample;
-	    }
-	    if (token==_INT_SOLVER+T_NUMBER*256){
-	      autoexample=elem[0].s;
-	      elem[1].s="fsolve option: " + autoexample;
-	    }
-	    if (token==_INT_TYPE+T_TYPE_ID*256){
-	      autoexample=elem[0].s;
-	      elem[1].s="Object type: " + autoexample;
-	    }
-	  }
-	  if (isall){
-	    if (token==T_UNARY_OP || token==T_UNARY_OP_38)
-	      elem[1].s=elem[0].s+"(args)";
-	  }
+	if (isall){
+	  if (token==T_UNARY_OP || token==T_UNARY_OP_38)
+	    elem[1].s=elem[0].s+"(args)";
 	}
       }
-      ustl::string ex("Ex. (F2): "),ex2("Ex. (F3): ");
-      elem[2].newLine = 1;
-      elem[2].lineSpacing = 3;
+      ustl::string ex("F2 example:\n");
       if (example){
+	elem[2].newLine = 1;
+	elem[2].lineSpacing = 4;
 	if (example[0]=='#')
 	  ex += example+1;
 	else {
-	  if (index<allcmds){
-	    ex += insert_string(index);
-	    ex += example;
-	    ex += ")";
-	  }
-	  else {
-	    string allex(example);
-	    ex += extract_example(allex,0); 
-	    string tmp=extract_example(allex,1);
-	    if (tmp.size()>1){
-	      elem.push_back(elem[2]);
-	      //cout << tmp << '\n' ;
-	      elem[3].newLine = 1;
-	      elem[3].lineSpacing = 3;
-	      elem[3].s=ex2+tmp;
-	    }
-	  }
+	  ex += insert_string(index);
+	  ex += example;
+	  ex += ")";
 	}
 	elem[2].s = ex;
 	if (example2){
+	  string ex2="F3 example:\n";
 	  if (example2[0]=='#')
 	    ex2 += example2+1;
 	  else {
-	    if (index<allcmds){
-	      ex2 += insert_string(index);
-	      ex2 += example2;
-	      ex2 += ")";
-	    }
+	    ex2 += insert_string(index);
+	    ex2 += example2;
+	    ex2 += ")";
 	  }
 	  elem[3].newLine = 1;
-	  elem[3].lineSpacing = 3;
+	  elem[3].lineSpacing = 4;
 	  elem[3].s=ex2;
 	}
       }
@@ -446,10 +354,31 @@ int doCatalogMenu(char* insertText, char* title, int category,const char * cmdna
 	else
 	  elem.pop_back();
       }
+      elem.back().newLine = 1;
+      elem.back().lineSpacing = 4;
+      elem.back().s = "Keys:\nF1 inserts command\nF2/F3 insert examples\nEXIT returns";
       sres=doTextArea(&text);
     }
     if (sres == KEY_CTRL_F2 || sres==KEY_CTRL_F3) {
       reset_alpha();
+      if (index<allcmds && completeCat[index].example){
+	ustl::string s(insert_string(index));
+	char * example=0;
+	if (sres==KEY_CTRL_F2)
+	  example=completeCat[index].example;
+	else
+	  example=completeCat[index].example2;
+	if (example){
+	  if (example[0]=='#')
+	    s=example+1;
+	  else {
+	    s += example;
+	    s += ")";
+	  }
+	}
+	strcpy(insertText, s.c_str());
+	return 1;
+      }
       if (isopt){
 	int token=menuitems[menu.selection-1].token;
 	if (token==_INT_PLOT+T_NUMBER*256 || token==_INT_COLOR+T_NUMBER*256)
@@ -457,31 +386,6 @@ int doCatalogMenu(char* insertText, char* title, int category,const char * cmdna
 	else
 	  *insertText=0;
 	strcat(insertText,menuitems[menu.selection-1].text);
-	return 1;
-      }
-      ustl::string s;
-      char * example=0;
-      string ex;
-      if (stathelp){
-	ex=extract_example(fexamples,sres==KEY_CTRL_F2?0:1);
-	example=(char *)ex.c_str();
-      }
-      if (index<allcmds && completeCat[index].example){
-	s=insert_string(index);
-	if (sres==KEY_CTRL_F2)
-	  example=completeCat[index].example;
-	else
-	  example=completeCat[index].example2;
-      }
-      if (example){
-	if (example[0]=='#')
-	  s=example+1;
-	else {
-	  s += example;
-	  if (!stathelp)
-	    s += ")";
-	}
-	strcpy(insertText, s.c_str());
 	return 1;
       }
       sres=KEY_CTRL_F1;

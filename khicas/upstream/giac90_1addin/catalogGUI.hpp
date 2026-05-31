@@ -16,7 +16,6 @@
 #include <math.h>
 
 extern int lang; // 0 english, 1 francais
-extern const char ram_filename[];
 
 typedef struct {
   char* name;

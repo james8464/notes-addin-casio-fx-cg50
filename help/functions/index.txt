@@ -1,7 +1,15 @@
-CasioCAS A-level Pure help pack.
+CAS Pure help pack.
 
-Catalog help uses:
-F1: insert function
-F2: insert first example
-F3: insert second example when available
-F5: open help sheet
+The calculator Help on command screen is built from these source sheets and catalogue entries.
+
+Keys:
+  F1 inserts the command.
+  F2 inserts the first example.
+  F3 inserts the second example when available.
+
+Methods:
+  integrate(...,1) auto
+  integrate(...,2) by parts
+  integrate(...,3,u=...) substitution
+  integrate(...,4) partial fractions
+  integrate(...,5) trig/formula

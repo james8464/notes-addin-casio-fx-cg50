@@ -392,7 +392,7 @@ namespace giac {
     // multi derivative and multi-indice derivatives
     if (s.sommet==at_derive){
       if (s.feuille.type!=_VECT)
-	return symb_derive(s.feuille,vx_var,2); // symbolic(at_derive,gen(makevecteur(s.feuille,vx_var,2),_SEQ__VECT));
+	return symb_derive(s.feuille,vx_var(),2); // symbolic(at_derive,gen(makevecteur(s.feuille,vx_var(),2),_SEQ__VECT));
       if (s.feuille._VECTptr->size()==2){ // derive(f,x)
 	gen othervar=(*s.feuille._VECTptr)[1];
 	if (othervar.type!=_IDNT) return gensizeerr(gettext("derive.cc/derive_SYMB"));
@@ -601,12 +601,12 @@ namespace giac {
     if (args.type==_VECT)
       v=plotpreprocess(gen(*args._VECTptr,_SEQ__VECT),contextptr);
     else {
-      if (args==vx_var){ // special handling for x(t):=t^2; x'
+      if (args==vx_var()){ // special handling for x(t):=t^2; x'
 	gen tmp=eval(args,1,contextptr);
-	if (tmp!=vx_var)
+	if (tmp!=vx_var())
 	  return _derive(tmp,contextptr);
       }
-      v=plotpreprocess(makesequence(args,vx_var),contextptr);
+      v=plotpreprocess(makesequence(args,vx_var()),contextptr);
     }
     if (v.size()>1 && v[1].is_symb_of_sommet(at_unquote))
       v[1]=eval(v[1],1,contextptr);
@@ -864,12 +864,12 @@ namespace giac {
   gen _domain(const gen & args,GIAC_CONTEXT){
     if (is_undef(args)) return args;
     if (args.type!=_VECT || args.subtype!=_SEQ__VECT)
-      return domain(args,vx_var,0,contextptr);
+      return domain(args,vx_var(),0,contextptr);
     vecteur v=*args._VECTptr;
     if (v.size()<2)
       return gensizeerr(contextptr);
     if (is_integral(v[1]))
-      v.insert(v.begin()+1,vx_var);
+      v.insert(v.begin()+1,vx_var());
     if (v.size()==2)
       v.push_back(0);
     if (v[2].type!=_INT_)

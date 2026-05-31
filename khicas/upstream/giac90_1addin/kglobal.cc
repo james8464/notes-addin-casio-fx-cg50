@@ -19,7 +19,6 @@
  *  along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 using namespace std;
 #ifdef HAVE_SSTREAM
 #include <sstream>
@@ -98,24 +97,11 @@ extern "C" int firvsprintf(char*,const char*, va_list);
 extern "C" int KeyPressed( void );
 extern int esc_flag;
 extern "C" {
-size_t bf_global_prec=96; // global precision for BF
-void * bf_ctx_ptr=0;
-int ctrl_c_interrupted(int exception){
-  if (!ctrl_c && !interrupted)
-    return 0;
-  ctrl_c=interrupted=0;
-#ifndef NO_STD_EXCEPT
-  if (exception)
-    giac::setsizeerr("Interrupted");
-#endif
-  return 1;
-}
 #include <fxcg/keyboard.h>
 #include <fxcg_syscalls.h>
 #include <SYSTEM_syscalls.h>
 }
 #endif
-bool freezeturtle=false;
 
 int my_sprintf(char * s, const char * format, ...){
     int z;
@@ -171,10 +157,9 @@ namespace giac {
       HourGlass();
       short unsigned int key = PRGM_GetKey_();
       if(key == KEY_PRGM_ACON){
-	if (!ctrl_c)
-	  cout << "ACON pressed\n";
+	puts("ACON");
 	esc_flag = 1;
-	ctrl_c=kbd_interrupted=interrupted=true;
+	kbd_interrupted=true;
       }
     }
   }
@@ -326,20 +311,6 @@ extern "C" void Sleep(unsigned int miliSecond);
       return _max_sum_add_;
   }
 
-  static int _default_color_=FL_BLACK;
-  int & default_color(GIAC_CONTEXT){
-    if (contextptr && contextptr->globalptr )
-      return contextptr->globalptr->_default_color_;
-    else
-      return _default_color_;
-  }
-  void default_color(int c,GIAC_CONTEXT){
-    if (contextptr && contextptr->globalptr)
-      contextptr->globalptr->_default_color_=c;
-    else
-      _default_color_=c;
-  }
-
   static void * _evaled_table_=0;
   void * & evaled_table(GIAC_CONTEXT){
     if (contextptr && contextptr->globalptr )
@@ -478,7 +449,7 @@ extern "C" void Sleep(unsigned int miliSecond);
       _scientific_format_=b;
   }
 
-  static int _decimal_digits_=9; 
+  static int _decimal_digits_=12; 
 
   int & decimal_digits(GIAC_CONTEXT){
     if (contextptr && contextptr->globalptr )
@@ -775,51 +746,6 @@ extern "C" void Sleep(unsigned int miliSecond);
       _keep_algext_=b;
   }
 
-  static bool _auto_assume_=false; 
-  bool & auto_assume(GIAC_CONTEXT){
-    if (contextptr && contextptr->globalptr )
-      return contextptr->globalptr->_auto_assume_;
-    else
-      return _auto_assume_;
-  }
-
-  void auto_assume(bool b,GIAC_CONTEXT){
-    if (contextptr && contextptr->globalptr )
-      contextptr->globalptr->_auto_assume_=b;
-    else
-      _auto_assume_=b;
-  }
-
-  static bool _parse_e_=false; 
-  bool & parse_e(GIAC_CONTEXT){
-    if (contextptr && contextptr->globalptr )
-      return contextptr->globalptr->_parse_e_;
-    else
-      return _parse_e_;
-  }
-
-  void parse_e(bool b,GIAC_CONTEXT){
-    if (contextptr && contextptr->globalptr )
-      contextptr->globalptr->_parse_e_=b;
-    else
-      _parse_e_=b;
-  }
-
-  static bool _convert_rootof_=true; 
-  bool & convert_rootof(GIAC_CONTEXT){
-    if (contextptr && contextptr->globalptr )
-      return contextptr->globalptr->_convert_rootof_;
-    else
-      return _convert_rootof_;
-  }
-
-  void convert_rootof(bool b,GIAC_CONTEXT){
-    if (contextptr && contextptr->globalptr )
-      contextptr->globalptr->_convert_rootof_=b;
-    else
-      _convert_rootof_=b;
-  }
-
   static bool _lexer_close_parenthesis_=true; 
   bool & lexer_close_parenthesis(GIAC_CONTEXT){
     if (contextptr && contextptr->globalptr )
@@ -928,12 +854,8 @@ extern "C" void Sleep(unsigned int miliSecond);
     return *ans;
   }
   vecteur & history_plot(GIAC_CONTEXT){
-    if (contextptr){
-      vecteur * hist=contextptr->history_plot_ptr;
-      if (hist->size()>=256)
-        hist->erase(hist->begin(),hist->end()-128);
-      return *hist;
-    }
+    if (contextptr)
+      return *contextptr->history_plot_ptr;
     else
       return _history_plot_();
   }
@@ -1448,52 +1370,6 @@ extern "C" void Sleep(unsigned int miliSecond);
       _pl()._initialisation_done_=b;
   }
 
-  static bool _io_graph_=false; 
-  // DO NOT SET TO true WITH non-zero contexts or fix symadd when points are added
-  bool & io_graph(GIAC_CONTEXT){
-    if (contextptr && contextptr->globalptr )
-      return contextptr->globalptr->_io_graph_;
-    else
-      return _io_graph_;
-  }
-
-  void io_graph(bool b,GIAC_CONTEXT){
-    if (contextptr && contextptr->globalptr )
-      contextptr->globalptr->_io_graph_=b;
-    else
-      _io_graph_=b;
-  }
-
-  static bool _show_point_=true;
-  bool & show_point(GIAC_CONTEXT){
-    if (contextptr && contextptr->globalptr )
-      return contextptr->globalptr->_show_point_;
-    else
-      return _show_point_;
-  }
-
-  void show_point(bool b,GIAC_CONTEXT){
-    if (contextptr && contextptr->globalptr )
-      contextptr->globalptr->_show_point_=b;
-    else
-      _show_point_=b;
-  }
-
-  static int _show_axes_=1;
-  int & show_axes(GIAC_CONTEXT){
-    if (contextptr && contextptr->globalptr )
-      return contextptr->globalptr->_show_axes_;
-    else
-      return _show_axes_;
-  }
-
-  void show_axes(int b,GIAC_CONTEXT){
-    if (contextptr && contextptr->globalptr )
-      contextptr->globalptr->_show_axes_=b;
-    else
-      _show_axes_=b;
-  }
-
   static int _calc_mode_=0; 
   int & calc_mode(GIAC_CONTEXT){
     if (contextptr && contextptr->globalptr )
@@ -1520,42 +1396,6 @@ extern "C" void Sleep(unsigned int miliSecond);
       return (!contextptr->globalptr->_python_compat_ && (contextptr->globalptr->_xcas_mode_ || hp38))?1:0;
     }
     return (!_python_compat_ && (_xcas_mode_ || absint(_calc_mode_)==38))?1:0;
-  }
-
-  static std::string & _autoname_(){
-    static string * ans = 0;
-    if (!ans){
-#ifdef GIAC_HAS_STO_38
-      ans= new string("GA");
-#else
-      ans = new string("A");
-#endif
-    }
-    return *ans;
-  }
-  std::string autoname(GIAC_CONTEXT){
-    std::string res;
-    if (contextptr && contextptr->globalptr )
-      res=contextptr->globalptr->_autoname_;
-    else
-      res=_autoname_();
-    for (;;){
-      gen tmp(res,contextptr);
-      if (tmp.type==_IDNT){
-	gen tmp1=eval(tmp,1,contextptr);
-	if (tmp==tmp1)
-	  break;
-      }
-      autoname_plus_plus(res);
-    }
-    return res;
-  }
-  std::string autoname(const std::string & s,GIAC_CONTEXT){
-    if (contextptr && contextptr->globalptr )
-      contextptr->globalptr->_autoname_=s;
-    else
-      _autoname_()=s;
-    return s;
   }
 
 
@@ -1748,21 +1588,6 @@ extern "C" void Sleep(unsigned int miliSecond);
 #else
   int threads=sysconf (_SC_NPROCESSORS_ONLN);
 #endif
-  unsigned max_pairs_by_iteration=32768; 
-  // gbasis max number of pairs by F4 iteration
-  // setting to 2000 accelerates cyclic9mod but cyclic9 would be slower
-  // 32768 is enough for cyclic10mod without truncation and not too large for yang1
-  unsigned simult_primes=16,simult_primes2=16,simult_primes3=16,simult_primes_seuil2=-1,simult_primes_seuil3=-1; 
-  // gbasis modular algorithm on Q: simultaneous primes (more primes means more parallel threads but also more memory required)
-  double gbasis_reinject_ratio=0.2;
-  // gbasis modular algo on Q: if new basis element exceed this ratio, new elements are reinjected in the ideal generators for the remaining computations
-  double gbasis_reinject_speed_ratio=1/6.;
-  // gbasis modular algo on Q: new basis elements are reinjected if the 2nd run with learning CPU speed / 1st run without learning CPU speed is >=
-  int gbasis_logz_age_sort=0,gbasis_stop=0;
-  // rur_do_gbasis==-1 no gbasis Q recon for rur, ==0 always gbasis Q recon, >0 size limit in monomials of the gbasis for gbasis Q recon
-  // rur_do_certify==-1 do not certify, ==0 full certify, >0 certify equation if total degree is <= rur_do_certify. Beware of the 1 shift with the user command.
-  int rur_do_gbasis=-1,rur_do_certify=0,rur_certify_maxthreads=6;
-  bool rur_error_ifnot0dimensional=false;
   unsigned short int GIAC_PADIC=50;
   const char cas_suffixe[]=".cas";
 #if defined RTOS_THREADX || defined BESTA_OS
@@ -1939,22 +1764,6 @@ extern "C" void Sleep(unsigned int miliSecond);
     return false;
   }
 
-  vecteur remove_multiples(vecteur & ww){
-    vecteur w;
-    if (!ww.empty()){
-      islesscomplexthanf_sort(ww.begin(),ww.end());
-      gen prec=ww[0];
-      for (unsigned i=1;i<ww.size();++i){
-	if (ww[i]==prec)
-	  continue;
-	w.push_back(prec);
-	prec=ww[i];
-      }
-      w.push_back(prec);
-    }
-    return w;
-  }
-
   int equalposcomp(const vector<int> v,int i){
     vector<int>::const_iterator it=v.begin(),itend=v.end();
     for (;it!=itend;++it)
@@ -2066,34 +1875,6 @@ extern "C" void Sleep(unsigned int miliSecond);
     return ptr;
   }
 
-  void clear_context(context * ptr){
-    if (!ptr)
-      return;
-    ptr->parent=0;
-    if (ptr->history_in_ptr)
-      delete ptr->history_in_ptr;
-    if (ptr->history_out_ptr)
-      delete ptr->history_out_ptr;
-    if (ptr->history_plot_ptr)
-      delete ptr->history_plot_ptr;
-    if (ptr->quoted_global_vars)
-      delete ptr->quoted_global_vars;
-    if (ptr->rootofs)
-      delete ptr->rootofs;
-    if (ptr->globalptr)
-      delete ptr->globalptr;
-    if (ptr->tabptr)
-      delete ptr->tabptr;
-    ptr->tabptr=new sym_tab; 
-    ptr->globalcontextptr=ptr; ptr->previous=0; ptr->globalptr=new global; 
-    ptr->quoted_global_vars=new vecteur;
-    ptr->rootofs=new vecteur;
-    ptr->history_in_ptr=new vecteur;
-    ptr->history_out_ptr=new vecteur;
-    ptr->history_plot_ptr=new vecteur;
-    //init_context(ptr);
-  }
-
   void init_context(context * ptr){
     if (!ptr){
       CERR << "init_context on null context" << endl;
@@ -2118,9 +1899,6 @@ extern "C" void Sleep(unsigned int miliSecond);
      ptr->globalptr->_atan_tan_no_floor_=_atan_tan_no_floor_;
      ptr->globalptr->_keep_acosh_asinh_=_keep_acosh_asinh_;
      ptr->globalptr->_keep_algext_=_keep_algext_;
-     ptr->globalptr->_auto_assume_=_auto_assume_;
-     ptr->globalptr->_parse_e_=_parse_e_;
-     ptr->globalptr->_convert_rootof_=_convert_rootof_;
      ptr->globalptr->_python_compat_=_python_compat_;
      ptr->globalptr->_complex_variables_=_complex_variables_;
      ptr->globalptr->_increasing_power_=_increasing_power_;
@@ -2135,13 +1913,9 @@ extern "C" void Sleep(unsigned int miliSecond);
      ptr->globalptr->_series_flags_=_series_flags_; // bit1= full simplify, bit2=1 for truncation
      ptr->globalptr->_step_infolevel_=_step_infolevel_; // bit1= full simplify, bit2=1 for truncation
      ptr->globalptr->_local_eval_=_local_eval_;
-     ptr->globalptr->_default_color_=_default_color_;
      ptr->globalptr->_epsilon_=_epsilon_<=0?1e-12:_epsilon_;
      ptr->globalptr->_proba_epsilon_=_proba_epsilon_;
      ptr->globalptr->_withsqrt_=_withsqrt_;
-     ptr->globalptr->_show_point_=_show_point_; // show 3-d point 
-     ptr->globalptr->_io_graph_=_io_graph_; // show 3-d point 
-     ptr->globalptr->_show_axes_=_show_axes_;
      ptr->globalptr->_spread_Row_=_spread_Row_;
      ptr->globalptr->_spread_Col_=_spread_Col_;
      ptr->globalptr->_printcell_current_row_=_printcell_current_row_;
@@ -2321,20 +2095,17 @@ extern "C" void Sleep(unsigned int miliSecond);
 
 
   global::global() : _xcas_mode_(0), 
-		     _calc_mode_(0),_decimal_digits_(9),_minchar_for_quote_as_string_(1),
+		     _calc_mode_(0),_decimal_digits_(12),_minchar_for_quote_as_string_(1),
 		     _scientific_format_(0), _integer_format_(0), _latex_format_(0), 
 #ifdef BCD
 		     _bcd_decpoint_('.'|('E'<<16)|(' '<<24)),_bcd_mantissa_(12+(15<<8)), _bcd_flags_(0),_bcd_printdouble_(false),
 #endif
 		     _expand_re_im_(true), _do_lnabs_(true), _eval_abs_(true),_eval_equaltosto_(true),_integer_mode_(true),_complex_mode_(false), _escape_real_(true),_complex_variables_(false), _increasing_power_(false), _approx_mode_(false), _variables_are_files_(false), _local_eval_(true), 
 		     _withsqrt_(true), 
-		     _show_point_(true),  
-		     _io_graph_(false),  
-		     _show_axes_(true),  
 		     _all_trig_sol_(false),
 #ifdef WITH_MYOSTREAM
 		     _ntl_on_(true),
-		     _lexer_close_parenthesis_(true),_rpn_mode_(false),_try_parse_i_(true),_specialtexprint_double_(false),_atan_tan_no_floor_(false),_keep_acosh_asinh_(false),_keep_algext_(false),_auto_assume_(false),_parse_e_(false),_convert_rootof_(false),_python_compat_(false),_angle_mode_(0), _bounded_function_no_(0), _series_flags_(0x3),_step_infolevel_(0), _default_color_(FL_BLACK), _epsilon_(1e-12), _proba_epsilon_(1e-15),  _spread_Row_ (-1), _spread_Col_ (-1),_logptr_(&my_CERR),_prog_eval_level_val(1), _eval_level(DEFAULT_EVAL_LEVEL), _rand_seed(123457),_last_evaled_function_name_(0),_currently_scanned_(""),_last_evaled_argptr_(0),_max_sum_sqrt_(3),
+		     _lexer_close_parenthesis_(true),_rpn_mode_(false),_try_parse_i_(true),_specialtexprint_double_(false),_atan_tan_no_floor_(false),_keep_acosh_asinh_(false),_keep_algext_(false),_python_compat_(false),_angle_mode_(0), _bounded_function_no_(0), _series_flags_(0x3),_step_infolevel_(0), _epsilon_(1e-12), _proba_epsilon_(1e-15),  _spread_Row_ (-1), _spread_Col_ (-1),_logptr_(&my_CERR),_prog_eval_level_val(1), _eval_level(DEFAULT_EVAL_LEVEL), _rand_seed(123457),_last_evaled_function_name_(0),_currently_scanned_(""),_last_evaled_argptr_(0),_max_sum_sqrt_(3),
 #ifdef GIAC_HAS_STO_38 // Prime sum(x^2,x,0,100000) crash on hardware	
 		     _max_sum_add_(10000),
 #else
@@ -2343,7 +2114,7 @@ extern "C" void Sleep(unsigned int miliSecond);
 		     _total_time_(0),_evaled_table_(0),_extra_ptr_(0),_series_variable_name_('h'),_series_default_order_(5),
 #else
 		     _ntl_on_(true),
-		     _lexer_close_parenthesis_(true),_rpn_mode_(false),_try_parse_i_(true),_specialtexprint_double_(false),_atan_tan_no_floor_(false),_keep_acosh_asinh_(false),_keep_algext_(false),_auto_assume_(false),_parse_e_(false),_convert_rootof_(false),_python_compat_(false),_angle_mode_(0), _bounded_function_no_(0), _series_flags_(0x3),_step_infolevel_(0), _default_color_(FL_BLACK), _epsilon_(1e-12), _proba_epsilon_(1e-15),  _spread_Row_ (-1), _spread_Col_ (-1), 
+		     _lexer_close_parenthesis_(true),_rpn_mode_(false),_try_parse_i_(true),_specialtexprint_double_(false),_atan_tan_no_floor_(false),_keep_acosh_asinh_(false),_keep_algext_(false),_python_compat_(false),_angle_mode_(0), _bounded_function_no_(0), _series_flags_(0x3),_step_infolevel_(0), _epsilon_(1e-12), _proba_epsilon_(1e-15),  _spread_Row_ (-1), _spread_Col_ (-1), 
 #ifdef EMCC
 		     _logptr_(&COUT), 
 #else
@@ -2412,22 +2183,15 @@ extern "C" void Sleep(unsigned int miliSecond);
      _atan_tan_no_floor_=g._atan_tan_no_floor_;
      _keep_acosh_asinh_=g._keep_acosh_asinh_;
      _keep_algext_=g._keep_algext_;
-     _auto_assume_=g._auto_assume_;
-     _parse_e_=g._parse_e_;
-     _convert_rootof_=g._convert_rootof_;
      _python_compat_=g._python_compat_;
      _variables_are_files_=g._variables_are_files_;
      _bounded_function_no_=g._bounded_function_no_;
      _series_flags_=g._series_flags_; // bit1= full simplify, bit2=1 for truncation, bit3=?, bit4=1 do not convert back SPOL1 to symbolic expression
      _step_infolevel_=g._step_infolevel_; // bit1= full simplify, bit2=1 for truncation
-     _default_color_=g._default_color_;
      _local_eval_=g._local_eval_;
      _epsilon_=g._epsilon_;
      _proba_epsilon_=g._proba_epsilon_;
      _withsqrt_=g._withsqrt_;
-     _show_point_=g._show_point_; // show 3-d point 
-     _io_graph_=g._io_graph_; // show 3-d point 
-     _show_axes_=g._show_axes_;
      _spread_Row_=g._spread_Row_;
      _spread_Col_=g._spread_Col_;
      _printcell_current_row_=g._printcell_current_row_;
@@ -2505,14 +2269,14 @@ extern "C" void Sleep(unsigned int miliSecond);
     "diff",
     "domain",
     "element",
-    "_rs179",
+    "evalc",
     "expand",
     "expexpand",
     "factor",
     "ifactor",
     "lncollect",
     "lnexpand",
-    "_rs184",
+    "mult_c_conjugate",
     "mult_conjugate",
     "nodisp",
     "normal",
@@ -2526,10 +2290,10 @@ extern "C" void Sleep(unsigned int miliSecond);
     "reorder",
     "series",
     "simplify",
-    "_rm_tabvar",
+    "tabvar",
     "taylor",
     "texpand",
-    "_rmh61",
+    "trace",
     "trigexpand",
     0
   };
@@ -2622,13 +2386,8 @@ extern "C" void Sleep(unsigned int miliSecond);
     *logptr(contextptr) << char(2) << endl; // start mixed text/mathml
 #endif
     for (unsigned i=0;i<v.size();++i){
-      int p=pos;
-      for (;p<=format.size()-4;++p){
-	if (strncmp(format.c_str()+p,"%gen",4)==0)
-	  break;
-      }
-      // int p=int(format.find("%gen",pos));
-      if (p<0 || p>int(format.size()-4))
+      int p=int(format.find("%gen",pos));
+      if (p<0 || p>=int(format.size()))
 	break;
       newlinestobr(s,format.substr(pos,p-pos));
 #ifdef EMCC
@@ -2836,7 +2595,7 @@ extern "C" void Sleep(unsigned int miliSecond);
       int pos1=res.find(pattern);
       if (pos1<0 || pos1+3>=int(res.size()))
 	break;
-      int pos2=res.find(pattern,pos1+3); // FIXME USTL?
+      int pos2=res.find(pattern,pos1+3);
       if (pos2<0 || pos2+3>=int(res.size()))
 	break;
       if (rep){
@@ -2979,8 +2738,54 @@ extern "C" void Sleep(unsigned int miliSecond);
   }
 
   static void python_import(string & cur,int cs,int posturtle,int poscmath,int posmath,int posnumpy,int posmatplotlib,GIAC_CONTEXT){
-    (void) cur; (void) cs; (void) posturtle; (void) poscmath; (void) posmath; (void) posnumpy; (void) posmatplotlib; (void) contextptr;
-    return;
+    if (posmatplotlib>=0 && posmatplotlib<cs){
+      cur += "np:=numpy:;xlim(a,b):=gl_x=a..b:;ylim(a,b):=gl_y=a..b:;scatter:=scatterplot:;bar:=bar_plot:;text:=legend:;xlabel:=gl_x_axis_name:;ylabel:=gl_y_axis_name:;arrow:=vector:;boxplot:=moustache:;";
+      posnumpy=posmatplotlib;
+    }
+    if (posnumpy>=0 && posnumpy<cs){
+      static bool alertnum=true;
+      // add python numpy shortcuts
+      cur += "mat:=matrix:;arange:=range:;resize:=redim:;shape:=dim:;conjugate:=conj:;full:=matrix:;eye:=identity:;ones(n,c):=matrix(n,c,1):; astype:=convert:;float64:=float:;asarray:=array:;astype:=convert:;reshape(m,n,c):=matrix(n,c,flatten(m));";
+      if (alertnum){
+	alertnum=false;
+	alert("mat:=matrix;arange:=range;resize:=redim;shape:=dim;conjugate:=conj;full:=matrix;eye:=idn;ones(n,c):=matrix(n,c,1);reshape(m,n,c):=matrix(n,c,flatten(m));",contextptr);
+      }
+      return;
+    }
+    if (posturtle>=0 && posturtle<cs){
+      // add python turtle shortcuts
+      static bool alertturtle=true;
+#ifdef KHICAS
+      cur += "fd:=forward:;bk:=backward:; rt:=right:; lt:=left:; pos:=position:; seth:=heading:;setheading:=heading:; ";
+#else
+      cur += "pu:=penup:;up:=penup:; pd:=pendown:;down:=pendown:; fd:=forward:;bk:=backward:; rt:=right:; lt:=left:; pos:=position:; seth:=heading:;setheading:=heading:; reset:=efface:;";
+#endif
+      if (alertturtle){
+	alertturtle=false;
+	alert("pu:=penup;up:=penup; pd:=pendown;down:=pendown; fd:=forward;bk:=backward; rt:=right; lt:=left; pos:=position; seth:=heading;setheading:=heading; reset:=efface",contextptr);
+      }
+      return;
+    }
+    if (poscmath>=0 && poscmath<cs){
+      // add python cmath shortcuts
+      static bool alertcmath=true;      
+      if (alertcmath){
+	alertcmath=false;
+	alert(gettext("Assigning phase, j, J and rect."),contextptr);
+      }
+      cur += "phase:=arg:;j:=i:;J:=i:;rect(r,theta):=r*exp(i*theta):;";
+      posmath=poscmath;
+    }
+    if (posmath>=0 && posmath<cs){
+      // add python math shortcuts
+      static bool alertmath=true;      
+      if (alertmath){
+	alertmath=false;
+	alert(gettext("Assigning log2, gamma, fabs, modf, radians and degrees."),contextptr);
+      }
+      cur += "log2(x):=logb(x,2):;gamma:=Gamma:;fabs:=abs:;function modf(x) local y; y:=floor(x); return x-y,y; ffunction:;radians(x):=x/180*pi:;degrees(x):=x/pi*180";
+      // todo copysign, isinf, isnan, isfinite, frexp, ldexp
+    }
   }
 
 
@@ -3036,7 +2841,7 @@ extern "C" void Sleep(unsigned int miliSecond);
   }
 
 
-  // detect CAS like syntax:
+  // detect Python like syntax: 
   // remove """ """ docstrings and ''' ''' comments
   // cut string in lines, remove comments at the end (search for #)
   // warning don't take care of # inside strings
@@ -3052,9 +2857,6 @@ extern "C" void Sleep(unsigned int miliSecond);
   // elif ...: -> elif ... then [nothing in stack]
   // try: ... except: ...
   std::string python2xcas(const std::string & s_orig,GIAC_CONTEXT){
-#ifdef CASCAS_ALEVEL_ONLY
-    return s_orig;
-#else
     if (xcas_mode(contextptr)>0 && abs_calc_mode(contextptr)!=38)
       return s_orig;
     // quick check for python-like syntax: search line ending with :
@@ -3067,11 +2869,11 @@ extern "C" void Sleep(unsigned int miliSecond);
       return s_orig;
     first=s_orig.find('\n');
     if (first<0 || first>=sss){
-      first=s_orig.find('\''); // derivative or CAS string delimiter?
+      first=s_orig.find('\''); // derivative or Python string delimiter?
       if (first>=0 && first<sss){
 	if (first==sss-1 || s_orig[first+1]=='\'') // '' is a second derivative
 	  return s_orig;
-	first=s_orig.find('\'',first+1); // FIXME USTL?
+	first=s_orig.find('\'',first+1);
 	if (first<0 || first>=sss)
 	  return s_orig;
       }
@@ -3129,9 +2931,9 @@ extern "C" void Sleep(unsigned int miliSecond);
       }
       pos=s_orig.find('#',0);
       if (pos<0 || pos>=sss){
-	first=s_orig.find(':',first); // FIXME USTL?
+	first=s_orig.find(':',first);
 	if (first<0 || first>=sss){
-	  return s_orig; // not CAS like
+	  return s_orig; // not Python like
 	}
       }
       pos=s_orig.find("lambda");
@@ -3155,7 +2957,6 @@ extern "C" void Sleep(unsigned int miliSecond);
       if (first==endl) 
 	break;
     }
-    //cout << "python-like\n";
     // probably Python-like
     string res;
     res.reserve(1.2*s_orig.size());
@@ -3177,8 +2978,7 @@ extern "C" void Sleep(unsigned int miliSecond);
       int pos=-1;
       bool cherche=true;
       for (;cherche;){
-	pos=res.find('\n',pos+1); // FIXME USTL?
-	// cout << "newline " << pos << '\n';
+	pos=res.find('\n',pos+1);
 	if (pos<0 || pos>=int(res.size()))
 	  break;
 	cherche=false;
@@ -3256,7 +3056,7 @@ extern "C" void Sleep(unsigned int miliSecond);
 	    ch=='\'' && pos<cur.size()-2 && cur[pos+1]!='\\' && (pos==0 || (cur[pos-1]!='\\' && cur[pos-1]!='\''))){ // workaround for '' string delimiters
 	  static bool alertstring=true;
 	  if (alertstring){
-	    alert("// CAS compatibility, please use \"...\" for strings",contextptr);
+	    alert("// Python compatibility, please use \"...\" for strings",contextptr);
 	    alertstring=false;
 	  }
 	  int p=pos,q=pos+1,beg; // skip spaces
@@ -3325,13 +3125,13 @@ extern "C" void Sleep(unsigned int miliSecond);
 	  if (posi<0 || posi>=int(cur.size()))
 	    posi = cur.find(" import*");
 	  if (posi>pos+5 && posi<int(cur.size())){
-	    int posturtle=cur.find("_rmh68");
+	    int posturtle=cur.find("turtle");
 	    int poscmath=cur.find("cmath");
 	    int posmath=cur.find("math");
-	    int posnumpy=cur.find("numpyx");
-	    int posmatplotlib=cur.find("_rmh69");
+	    int posnumpy=cur.find("numpy");
+	    int posmatplotlib=cur.find("matplotlib");
 	    if (posmatplotlib<0 || posmatplotlib>=cur.size())
-	      posmatplotlib=cur.find("pylabx");
+	      posmatplotlib=cur.find("pylab");
 	    int cs=int(cur.size());
 	    cur=cur.substr(0,pos);
 	    python_import(cur,cs,posturtle,poscmath,posmath,posnumpy,posmatplotlib,contextptr);
@@ -3365,13 +3165,13 @@ extern "C" void Sleep(unsigned int miliSecond);
 	chkfrom=false;
 	// import * as ** -> **:=*
 	if (ch=='i' && pos+7<int(cur.size()) && cur.substr(pos,7)=="import "){
-	  int posturtle=cur.find("_rmh68");
+	  int posturtle=cur.find("turtle");
 	  int poscmath=cur.find("cmath");
 	  int posmath=cur.find("math");
-	  int posnumpy=cur.find("numpyx");
-	  int posmatplotlib=cur.find("_rmh69");
+	  int posnumpy=cur.find("numpy");
+	  int posmatplotlib=cur.find("matplotlib");
 	  if (posmatplotlib<0 || posmatplotlib>=cur.size())
-	    posmatplotlib=cur.find("pylabx");
+	    posmatplotlib=cur.find("pylab");
 	  int cs=int(cur.size());
 	  int posi=cur.find(" as ");
 	  int posp=cur.find('.');
@@ -3416,7 +3216,7 @@ extern "C" void Sleep(unsigned int miliSecond);
 	}
       }
       if (instring){
-	*logptr(contextptr) << "Warning: multi-line strings can not be converted from CAS like syntax"<<'\n';
+	*logptr(contextptr) << "Warning: multi-line strings can not be converted from Python like syntax"<<'\n';
 	return s_orig;
       }
       // detect : at end of line
@@ -3776,7 +3576,6 @@ extern "C" void Sleep(unsigned int miliSecond);
     res.clear(); cur.clear();
     // CERR << s << endl;
     return string(s.begin(),s.end());
-#endif
   }
   /* END PYTHON */
 

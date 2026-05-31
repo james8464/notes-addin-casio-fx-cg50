@@ -149,7 +149,7 @@ namespace giac {
     if (!read_reduction_options(a_orig,a,convert_internal,algorithm,minor_det,keep_pivot,last_col))
       return inv(a_orig,contextptr);
     if (keep_pivot)
-      return gensizeerr(gettext("Option not applicable"));
+      return gensizeerr(gettext("Option keep_pivot not applicable"));
     if (minor_det){ // not really minors, use Leverrier algorithm
       vecteur b;
       vecteur p(mpcar(a,b,true,contextptr));
@@ -650,7 +650,7 @@ namespace giac {
       return cst_i*i;
     return symb_plus(gen(makesequence(r,cst_i*i)));
   }
-  static const char _evalc_s []="_rs179";
+  static const char _evalc_s []="evalc";
   static define_unary_function_eval (__evalc,&_evalc,_evalc_s);
   define_unary_function_ptr5( at_evalc ,alias_at_evalc,&__evalc,0,true);
 
@@ -867,7 +867,7 @@ namespace giac {
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     vecteur v;
     if (g.type!=_VECT)
-      return _companion(makesequence(g,vx_var),contextptr); // gentypeerr();
+      return _companion(makesequence(g,vx_var()),contextptr); // gentypeerr();
     if (g.subtype==_SEQ__VECT && g._VECTptr->size()==2){
       gen P=g._VECTptr->front();
       gen x=g._VECTptr->back();
@@ -1398,7 +1398,7 @@ namespace giac {
   // var is a vector of dim the number of terms in the recurrence
   gen _seqsolve(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
-    gen f,x=vx_var,uzero=zero,n;
+    gen f,x=vx_var(),uzero=zero,n;
     int dim=1,udim=1;
     if (args.type==_VECT){
       vecteur & v=*args._VECTptr;

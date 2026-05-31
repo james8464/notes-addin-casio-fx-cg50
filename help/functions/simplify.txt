@@ -1,9 +1,33 @@
-Args: simplify(expr)
-Required: expr
-Does: Simplifies algebraic, logarithmic, and trigonometric expressions in A-level scope.
-Examples: simplify(sin(x)^2+cos(x)^2); simplify(log(2,8*x)-3)
-F2:simplify(sin(x)^2+cos(x)^2)
-F3:simplify(log(2,8*x)-3)
-Ex F2: simplify(sin(x)^2+cos(x)^2)
-Ex F3: simplify(log(2,8*x)-3)
-Working: Usually answer-only unless used by xform or a proof route.
+simplify(expr)
+
+Args:
+  expr
+
+Required:
+  expr
+
+Optional:
+  None.
+
+Does:
+  Simplify. Required: expr. Applies algebraic and trig simplification.
+
+Examples:
+  simplify(sin(x)^2+cos(x)^2); simplify(sqrt(x^2))
+
+F2:
+  simplify(sin(x)^2+cos(x)^2)
+
+F3:
+  simplify(sqrt(x^2))
+
+Keys:
+  F1 inserts the command.
+  F2 inserts the first example.
+  F3 inserts the second example when available.
+
+Working:
+  Shows exam-style lines when this command has a routed A-level working path; otherwise returns the exact KhiCAS result for the expression.
+
+Tip:
+  Use brackets around compound numerators, denominators, powers, and substitutions for readable exam-style output.

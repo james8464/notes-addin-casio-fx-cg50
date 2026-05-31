@@ -1,20 +1,37 @@
-# CasioCAS A-Level KhiCAS Rebuild
+# CAS fx-CG50 Pure Build
 
-Fresh source import of KhiCAS for Casio fx-CG50, narrowed to Edexcel A-level Pure.
+Artifact:
+
+- `/Users/james/Developer/CASIO/calculator_files/CAS.g3a`
+- no `.ac2`
+- no external `.pak`
+
+Build:
 
 ```bash
 ./compile
-python3 tools/check_g3a_size.py calculator_files/CasioCAS.g3a
-python3 tools/check_g3a_size.py calculator_files/khicas50.ac2
+python3 tools/check_g3a_metadata.py calculator_files/CAS.g3a --name CAS --internal @CAS --filename CAS.g3a
+python3 tools/check_g3a_size.py calculator_files/CAS.g3a
 python3 tools/check_catalog_scope.py
-python3 tools/check_removed_features.py
-python3 tests/run_exact_queue.py
+python3 tools/check_calculator_border.py calculator_files/CAS.g3a
+python3 tests/run_exact_queue.py --engine production --workers 8
+python3 tests/run_exact_queue.py --engine production --workers 8 --strict-markers
 ```
 
-Output:
+Current status:
 
-- `calculator_files/CasioCAS.g3a`
-- `calculator_files/khicas50.ac2`
-- `calculator_files/CASIOCAS.PAK`
+- app name: `CAS`
+- file: `CAS.g3a`
+- size: `2,090,516` bytes
+- hard limit headroom: `6,636` bytes
+- sha256: `eecc593fbeb305f86656d4c45118c9680fcea02594e43fd3eabf8885a089c31c`
+- exact queue runtime: `13,116/13,116`
+- strict marker quality: `10,842/13,116`
 
-Copy all three files to calculator storage root. `khicas50.ac2` is required by upstream KhiCAS RAM-part loader.
+Notable routes:
+
+- `integrate((ln(x))^2,x,2)` repeated integration by parts
+- `integrate((ln(x))^2/x,x,3,u=ln(x))` substitution
+- `solve((dy)/(dx)=y,y)` separable differential equation
+- common derivative, factor, expand, rational, log, numeric, and reverse-chain working routes
+- catalogue Help on command screen shows spaced sections and F2/F3 examples

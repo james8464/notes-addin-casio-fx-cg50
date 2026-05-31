@@ -1,9 +1,33 @@
-Args: domain(expr) or domain(expr,var)
-Required: expr
-Does: Returns the allowed real input values as inequalities.
-Examples: domain(sqrt(x-2),x); domain(log(10,4-x),x); domain(1/(x^2-1),x); domain(1/(x^2-9),x); domain(sqrt(4-x)+ln(x-1),x)
-F2:domain(sqrt(x-2),x)
-F3:domain(log(10,4-x),x)
-Ex F2: domain(sqrt(x-2),x)
-Ex F3: domain(log(10,4-x),x)
-Working: Shows denominator, square-root, and logarithm constraints.
+domain(expr,[var])
+
+Args:
+  expr, [var]
+
+Required:
+  expr
+
+Optional:
+  variable
+
+Does:
+  Finds allowed real input values as inequalities.
+
+Examples:
+  domain(sqrt(x-2),x); domain(log(10,4-x),x)
+
+F2:
+  domain(sqrt(x-2),x)
+
+F3:
+  domain(log(10,4-x),x)
+
+Keys:
+  F1 inserts the command.
+  F2 inserts the first example.
+  F3 inserts the second example when available.
+
+Working:
+  Combines denominator not-zero, square-root non-negative, and logarithm positive constraints.
+
+Tip:
+  Use brackets around compound numerators, denominators, powers, and substitutions for readable exam-style output.

@@ -2,27 +2,52 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-BUILD="${ROOT}/tools/working_engine/build"
-BIN="${BUILD}/casio_host"
-LOCK="${BUILD}/.build.lock"
+BIN="${TMPDIR:-/tmp}/khicas_host_runner_cascas"
+SRC="${TMPDIR:-/tmp}/khicas_host_runner_cascas.cpp"
+WORKING="${ROOT}/khicas/upstream/giac90_1addin/cascas_working.cc"
+HEADER="${ROOT}/khicas/upstream/giac90_1addin/cascas_working.h"
 
-needs_build() {
-  [[ ! -x "${BIN}" ]] && return 0
-  find "${ROOT}/tools/working_engine/host" "${ROOT}/khicas/upstream/giac90_1addin/cascas_working.cc" "${ROOT}/khicas/upstream/giac90_1addin/cascas_working.h" -type f -newer "${BIN}" -print -quit | grep -q .
+if [ ! -x "${BIN}" ] || [ "${WORKING}" -nt "${BIN}" ] || [ "${HEADER}" -nt "${BIN}" ]; then
+  cat > "${SRC}" <<'CPP'
+#include <iostream>
+#include <string>
+#include "cascas_working.h"
+
+static bool starts(const std::string &s,const char *p){
+  return s.rfind(p,0)==0;
 }
 
-if needs_build; then
-  mkdir -p "${BUILD}"
-  while ! mkdir "${LOCK}" 2>/dev/null; do
-    sleep 0.2
-  done
-  trap 'rmdir "${LOCK}" 2>/dev/null || true' EXIT
-  cmake -S "${ROOT}/tools/working_engine/host" -B "${BUILD}" -DCMAKE_BUILD_TYPE=Release >/dev/null
-  if needs_build; then
-    cmake --build "${BUILD}" -j 4 >/dev/null
-  fi
-  rmdir "${LOCK}" 2>/dev/null || true
-  trap - EXIT
+int main(int argc,char **argv){
+  std::string mode="--alg", input;
+  for (int i=1;i<argc;++i){
+    std::string a=argv[i];
+    if (starts(a,"--"))
+      mode=a;
+    else {
+      if (!input.empty()) input += " ";
+      input += a;
+    }
+  }
+  if (input.empty())
+    return 0;
+  std::string routed=input;
+  if (mode=="--derive" && !starts(input,"diff(") && !starts(input,"derive("))
+    routed="diff("+input+")";
+  if (mode=="--int" && !starts(input,"integrate(") && !starts(input,"int(") && !starts(input,"defint("))
+    routed="integrate("+input+")";
+  cascas::working_string out;
+  if (cascas::eval_with_working(routed.c_str(),out)){
+    std::cout << out << "\n";
+    return 0;
+  }
+  std::cout << "General A-level route:\n";
+  std::cout << "Input: " << input << "\n";
+  std::cout << "Use exact KhiCAS simplification, then write each algebraic or calculus step clearly.\n";
+  std::cout << "Answer: run the expression in KhiCAS if no dedicated working route is available.\n";
+  return 0;
+}
+CPP
+  g++ -std=c++11 -DCASCAS_HOST_STD_STRING -iquote "${ROOT}/khicas/upstream/giac90_1addin" "${SRC}" "${WORKING}" -o "${BIN}"
 fi
 
 exec "${BIN}" "$@"

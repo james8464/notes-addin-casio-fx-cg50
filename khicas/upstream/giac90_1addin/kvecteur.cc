@@ -596,25 +596,6 @@ namespace giac {
     return v;
   }
 
-  // extract submatrix
-  matrice matrice_extract(const matrice & m,int insert_row,int insert_col,int nrows,int ncols){
-    if ( (!nrows) || (!ncols))
-      return vecteur(1,vecteur(1,gensizeerr(gettext("matrice_extract"))));
-    int mr,mc;
-    mdims(m,mr,mc);
-    if (mr>insert_row+nrows)
-      mr=insert_row+nrows;
-    if (mc>insert_col+ncols)
-      mc=insert_col+ncols;
-    matrice res;
-    res.reserve(nrows);
-    for (int i=insert_row;i<mr;++i){
-      const_iterateur it=m[i]._VECTptr->begin();
-      res.push_back(vecteur(it+insert_col,it+mc));
-    }
-    return res;
-  }
-
   gen makesuite(const gen & a){
     if ( (a.type==_VECT) && (a.subtype==_SEQ__VECT) )
       return a;
@@ -985,11 +966,11 @@ namespace giac {
 #if 0
       vecteur res;
       if (int(v.size())<PROOT_FACTOR_MAXDEG){
-	gen g=symb_horner(v,vx_var);
-	vecteur vv=factors(g,vx_var,context0);
+	gen g=symb_horner(v,vx_var());
+	vecteur vv=factors(g,vx_var(),context0);
 	for (unsigned i=0;i<vv.size()-1;i+=2){
 	  gen vi=vv[i];
-	  vi=_e2r(makevecteur(vi,vx_var),context0);
+	  vi=_e2r(makevecteur(vi,vx_var()),context0);
 	  if (vi.type==_VECT && vv[i+1].type==_INT_){
 #if 1 // ndef HAVE_LIBPARI
 	    gen norme=linfnorm(vi,context0);
@@ -1938,7 +1919,7 @@ namespace giac {
       return symbolic(at_trace,a); // gendimerr(contextptr); required to keep trace for geometry
     return mtrace(*a._VECTptr);
   }
-  static const char _trace_s []="_rmh61";
+  static const char _trace_s []="trace";
   static define_unary_function_eval (__trace,&ckmtrace,_trace_s);
   define_unary_function_ptr5( at_trace ,alias_at_trace,&__trace,0,true);
 
@@ -3314,7 +3295,7 @@ namespace giac {
       return res;
     return ratnormal(res,contextptr);
   }
-  static const char _rref_s []="_rm18";
+  static const char _rref_s []="rref";
   static define_unary_function_eval (__rref,&_rref,_rref_s);
   define_unary_function_ptr5( at_rref ,alias_at_rref,&__rref,0,true);
 
@@ -3984,9 +3965,9 @@ namespace giac {
     if (!read_reduction_options(a_orig,a,convert_internal,algorithm,minor_det,keep_pivot,last_col))
       return gensizeerr(contextptr);
     if (keep_pivot)
-      return gensizeerr(gettext("Option not applicable"));
+      return gensizeerr(gettext("Option keep_pivot not applicable"));
     if (!is_squarematrix(a))
-      *logptr(contextptr) << gettext("Unsupported array shape") << endl;
+      *logptr(contextptr) << gettext("Warning: non-square matrix!") << endl;
     vecteur pivots;
     matrice res;
     gen determinant;
@@ -5075,7 +5056,7 @@ namespace giac {
       if (v.back()==at_pmin && probabilistic_pmin(m,Bv,false,contextptr))
 	return s==2?Bv:symb_horner(Bv,v[1]); 
       if (v.back()==at_lagrange || v.back()==at_interp)
-	return pcar_interp(m,s==2?vx_var:v[1],contextptr);
+	return pcar_interp(m,s==2?vx_var():v[1],contextptr);
       b=v[1];
       M=m;
     }
@@ -5113,7 +5094,7 @@ namespace giac {
       }
     }
     if (is_fraction_matrice(M)){
-      gen res=pcar_interp(M,is_undef(b)?vx_var:b,contextptr);
+      gen res=pcar_interp(M,is_undef(b)?vx_var():b,contextptr);
       return is_undef(b)?_e2r(res,contextptr):res;
     }
     vecteur res;
@@ -5376,7 +5357,7 @@ namespace giac {
 #endif
       }
       else
-	*logptr(contextptr) << "Warning! Automatic extension not implemented. You can try to diagonalize the matrix * a non trivial element of GF(" << modulo << ",lcm of degrees of factor(" << symb_horner(p_car,vx_var) << "))" <<  endl;
+	*logptr(contextptr) << "Warning! Automatic extension not implemented. You can try to diagonalize the matrix * a non trivial element of GF(" << modulo << ",lcm of degrees of factor(" << symb_horner(p_car,vx_var()) << "))" <<  endl;
     }
 #ifndef NO_RTTI
     if (has_gf_coeff(p_car,modulo,fieldpmin)){
@@ -5969,7 +5950,7 @@ namespace giac {
       return gensizeerr(contextptr);
     return v;    
   }
-  static const char _image_s []="_rm19";
+  static const char _image_s []="image";
   static define_unary_function_eval (__image,&_image,_image_s);
   define_unary_function_ptr5( at_image ,alias_at_image,&__image,0,true);
 
@@ -6126,7 +6107,7 @@ namespace giac {
 	modular=true;
 	a=*a.front()._VECTptr;
       }
-      if (!ckmatrix(a)) return false; // setsizeerr(gettext("Unsupported array shape"));
+      if (!ckmatrix(a)) return false; // setsizeerr(gettext("Expecting a square matrix"));
     }
     gen det;
     vecteur pivots;
@@ -6265,7 +6246,7 @@ namespace giac {
     matrice res=mrref(*args._VECTptr,contextptr);
     return gen(thrownulllines(res),_SET__VECT);
   }
-  static const char _basis_s []="_rm20";
+  static const char _basis_s []="basis";
   static define_unary_function_eval (__basis,&_basis,_basis_s);
   define_unary_function_ptr5( at_basis ,alias_at_basis,&__basis,0,true);
 
@@ -6302,7 +6283,7 @@ namespace giac {
     if (args.type!=_VECT || args._VECTptr->size()<2)
       return gensizeerr(contextptr);
     vecteur & v = *args._VECTptr;
-    gen x(vx_var);
+    gen x(vx_var());
     if (v.size()>2)
       x=v[2];
     gen p1(_e2r(makesequence(v[0],x),contextptr));

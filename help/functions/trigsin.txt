@@ -1,9 +1,33 @@
-Args: trigsin(expr)
-Required: expr
-Does: Rewrites supported trig expressions using sin where useful.
-Examples: trigsin(cos(x)^2); trigsin(tan(x))
-F2:trigsin(cos(x)^2)
-F3:trigsin(tan(x))
-Ex F2: trigsin(cos(x)^2)
-Ex F3: trigsin(tan(x))
-Working: Uses sin^2(x)+cos^2(x)=1 and quotient identities.
+trigsin(expr)
+
+Args:
+  expr
+
+Required:
+  expr
+
+Optional:
+  None.
+
+Does:
+  Rewrites trig expressions using sine where useful.
+
+Examples:
+  trigsin(cos(x)^2); trigsin(tan(x))
+
+F2:
+  trigsin(cos(x)^2)
+
+F3:
+  trigsin(tan(x))
+
+Keys:
+  F1 inserts the command.
+  F2 inserts the first example.
+  F3 inserts the second example when available.
+
+Working:
+  Usually final-answer only unless used inside a longer routed solution.
+
+Tip:
+  Use brackets around compound numerators, denominators, powers, and substitutions for readable exam-style output.

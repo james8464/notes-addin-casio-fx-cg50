@@ -128,14 +128,13 @@ extern int giac_yydebug;
     T_PIPE = 338,
     TI_HASH = 339,
     T_INTERROGATION = 340,
-    T_UNIT = 341,
-    T_SQ = 342,
-    T_IFERR = 343,
-    T_UNARY_OP_38 = 344,
-    T_FUNCTION = 345,
-    T_LOGO = 346,
-    T_BIDON = 347,
-    T_IMPMULT = 348
+    T_SQ = 341,
+    T_IFERR = 342,
+    T_UNARY_OP_38 = 343,
+    T_FUNCTION = 344,
+    T_LOGO = 345,
+    T_BIDON = 346,
+    T_IMPMULT = 347
   };
 #endif
 /* Tokens.  */
@@ -222,14 +221,13 @@ extern int giac_yydebug;
 #define T_PIPE 338
 #define TI_HASH 339
 #define T_INTERROGATION 340
-#define T_UNIT 341
-#define T_SQ 342
-#define T_IFERR 343
-#define T_UNARY_OP_38 344
-#define T_FUNCTION 345
-#define T_LOGO 346
-#define T_BIDON 347
-#define T_IMPMULT 348
+#define T_SQ 341
+#define T_IFERR 342
+#define T_UNARY_OP_38 343
+#define T_FUNCTION 344
+#define T_LOGO 345
+#define T_BIDON 346
+#define T_IMPMULT 347
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED

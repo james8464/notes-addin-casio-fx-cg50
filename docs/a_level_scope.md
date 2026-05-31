@@ -34,4 +34,4 @@ Decision: support Edexcel A-level Pure only. Mechanics, statistics, and probabil
 
 ## Formula Pack
 
-Formula and help text belongs in `CASIOCAS.PAK`, not embedded `.g3a` source strings.
+Current crash-fix baseline is pristine upstream `khicasen.g3a`; external formula/help packs are not part of this calculator file.

@@ -1452,7 +1452,6 @@ extern const unary_function_ptr * const  at_tlin;
 extern const unary_function_ptr * const  at_total_degree;
 extern const unary_function_ptr * const  at_tourne_droite;
 extern const unary_function_ptr * const  at_tourne_gauche;
-extern const unary_function_ptr * const  at_towards;
 extern const unary_function_ptr * const  at_tpsolve;
 extern const unary_function_ptr * const  at_trace;
 extern const unary_function_ptr * const  at_tran;

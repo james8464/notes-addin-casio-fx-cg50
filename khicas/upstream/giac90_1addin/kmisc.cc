@@ -51,9 +51,6 @@ extern "C" {
 }
 int inputline(const char * msg1,const char * msg2,ustl::string & s,bool numeric,int ypos); // dConsole.cpp
 extern int line_start;
-namespace xcas {
-  int displaygraph(const giac::gen & ge,const giac::gen & gs,GIAC_CONTEXT);
-}
 
 #ifndef NO_NAMESPACE_GIAC
 namespace giac {
@@ -112,9 +109,6 @@ namespace giac {
   }
 
   gen _listplot(const gen & g,GIAC_CONTEXT){
-#ifdef CASCAS_ALEVEL_ONLY
-    return gensizeerr(contextptr);
-#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     vecteur attributs(1,COLOR_BLACK);
     vecteur res=listplot(g,attributs,contextptr);
@@ -125,7 +119,7 @@ namespace giac {
     else
       return symb_pnt(gen(res,_GROUP__VECT),attributs[0],contextptr);
   }
-  static const char _plotlist_s []="_rs192";
+  static const char _plotlist_s []="plotlist";
   static define_unary_function_eval (__plotlist,&_listplot,_plotlist_s);
   define_unary_function_ptr5( at_plotlist ,alias_at_plotlist,&__plotlist,0,true);
   // [[x1 y1] [x2 y2] ...]
@@ -215,24 +209,18 @@ namespace giac {
     return gen(vres,_SEQ__VECT);
   }
   gen _scatterplot(const gen & g,GIAC_CONTEXT){
-#ifdef CASCAS_ALEVEL_ONLY
-    return gensizeerr(contextptr);
-#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     return scatterplot(g,2,contextptr);
   }
-  static const char _scatterplot_s []="_rs193";
+  static const char _scatterplot_s []="scatterplot";
   static define_unary_function_eval (__scatterplot,&_scatterplot,_scatterplot_s);
   define_unary_function_ptr5( at_scatterplot ,alias_at_scatterplot,&__scatterplot,0,true);
 
   gen _polygonplot(const gen & g,GIAC_CONTEXT){
-#ifdef CASCAS_ALEVEL_ONLY
-    return gensizeerr(contextptr);
-#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     return scatterplot(g,1,contextptr);
   }
-  static const char _polygonplot_s []="_rs194";
+  static const char _polygonplot_s []="polygonplot";
   static define_unary_function_eval (__polygonplot,&_polygonplot,_polygonplot_s);
   define_unary_function_ptr5( at_polygonplot ,alias_at_polygonplot,&__polygonplot,0,true);
 
@@ -241,13 +229,10 @@ namespace giac {
   define_unary_function_ptr5( at_ligne_polygonale ,alias_at_ligne_polygonale,&__ligne_polygonale,0,true);
 
   gen _polygonscatterplot(const gen & g,GIAC_CONTEXT){
-#ifdef CASCAS_ALEVEL_ONLY
-    return gensizeerr(contextptr);
-#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     return scatterplot(g,3,contextptr);
   }
-  static const char _polygonscatterplot_s []="_rs195";
+  static const char _polygonscatterplot_s []="polygonscatterplot";
   static define_unary_function_eval (__polygonscatterplot,&_polygonscatterplot,_polygonscatterplot_s);
   define_unary_function_ptr5( at_polygonscatterplot ,alias_at_polygonscatterplot,&__polygonscatterplot,0,true);
 
@@ -293,7 +278,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
     a=v[1];
     b=v[2];
     if (s==3)
-      x=vx_var;
+      x=vx_var();
     else 
       x=v[3];
     if (x.type!=_IDNT)
@@ -385,7 +370,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
     int s=int(v.size());
     if (s<2)
       return gentoofewargs("");
-    gen v0(v[0]),v1(v[1]),x=vx_var;
+    gen v0(v[0]),v1(v[1]),x=vx_var();
     if (ckmatrix(v0) && v0._VECTptr->size()==2){
       x=v1;
       v1=v0._VECTptr->back();
@@ -475,7 +460,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
     p_car=mpcar(mr,m_adj,true,true,contextptr);
     return makevecteur(p_car,m_adj);
   }    
-  static const char _adjoint_matrix_s []="_rm6";
+  static const char _adjoint_matrix_s []="adjoint_matrix";
   static define_unary_function_eval (__adjoint_matrix,&_adjoint_matrix,_adjoint_matrix_s);
   define_unary_function_ptr5( at_adjoint_matrix ,alias_at_adjoint_matrix,&__adjoint_matrix,0,true);
 
@@ -501,9 +486,6 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
   define_unary_function_ptr5( at_equal2list ,alias_at_equal2list,&__equal2list,0,true);
 
   gen _rank(const gen & args,GIAC_CONTEXT){
-#ifdef CASCAS_ALEVEL_ONLY
-    return gensizeerr(contextptr);
-#else
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     if (args.type!=_VECT)
       return gentypeerr(contextptr); // return symbolic(at_adjoint_matrix,args);
@@ -517,7 +499,6 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
 	break;
     }
     return r;
-#endif
   }    
   static const char _rank_s []="rank";
   static define_unary_function_eval (__rank,&_rank,_rank_s);
@@ -586,7 +567,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
     if ( (args.type!=_VECT) || (args._VECTptr->size()<2) )
       return symbolic(at_ibpu,args);
     vecteur & w=*args._VECTptr;
-    gen X(vx_var),x(vx_var),a,b;
+    gen X(vx_var()),x(vx_var()),a,b;
     bool bound=false;
     if (w.size()>=3)
       x=X=w[2];
@@ -774,16 +755,6 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
   static define_unary_function_eval (__clear,&_clear,_clear_s);
   define_unary_function_ptr5( at_clear ,alias_at_clear,&__clear,_QUOTE_ARGUMENTS,true);
 
-  gen _show(const gen & args,GIAC_CONTEXT){
-    gen g=history_plot(contextptr);
-    xcas::displaygraph(g,0,contextptr);
-    freeze=false;
-    return 1;
-  }
-  static const char _show_s []="show";
-  static define_unary_function_eval (__show,&_show,_show_s);
-  define_unary_function_ptr5( at_show ,alias_at_show,&__show,0,true);
-
   gen _insert(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     if (args.type!=_VECT)
@@ -857,7 +828,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     gen p,x;
     if (args.type!=_VECT){
-      x=vx_var;
+      x=vx_var();
       p=args;
     }
     else {
@@ -928,7 +899,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
       if (calc_mode(contextptr)==1)
 	x=ggb_var(p);
       else
-	x=vx_var;
+	x=vx_var();
     }
     else {
       vecteur & v=*args._VECTptr;
@@ -1005,7 +976,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
     gen x,p,order;
     int s=2;
     if (args.type!=_VECT){
-      x=vx_var;
+      x=vx_var();
       p=args;
     }
     else {
@@ -1054,7 +1025,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     gen x,p;
     if (args.type!=_VECT){
-      x=vx_var;
+      x=vx_var();
       p=args;
     }
     else {
@@ -1146,7 +1117,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     gen e(args);
     int n,s=1;
-    vecteur w(1,vx_var);
+    vecteur w(1,vx_var());
     gen gn(5);
     if (args.type==_VECT){
       vecteur & v=*args._VECTptr;
@@ -1236,7 +1207,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
       // return symbolic(at_program,makevecteur(v[1],0,_taux_accroissement(gen(makevecteur(b,a[0],v[1],v[2]),_SEQ__VECT),contextptr)));
     }
     if (v.size()<4)
-      v.insert(v.begin()+1,vx_var);
+      v.insert(v.begin()+1,vx_var());
     if (v[1].type!=_IDNT)
       return gentypeerr(contextptr);
     return (subst(v.front(),v[1],v[3],false,contextptr)-subst(v.front(),v[1],v[2],false,contextptr))/(v[3]-v[2]);
@@ -1254,7 +1225,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
     vecteur & v=*args._VECTptr;
     if ( (v.size()!=2) || (v.front().type!=_VECT) ){
       p=v;
-      x=vx_var;
+      x=vx_var();
     }
     else {
       p=*v.front()._VECTptr;
@@ -1295,7 +1266,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     gen p,x;
     if (args.type!=_VECT){
-      x=vx_var;
+      x=vx_var();
       p=args;
     }
     else {
@@ -1352,7 +1323,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
     if (v[2].type!=_INT_)
       return gensizeerr(contextptr);
     if (s==3)
-      x=vx_var;
+      x=vx_var();
     else 
       x=v.back();
     vecteur lv(1,x);
@@ -1418,7 +1389,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
     if (p.type==_VECT)
       return taylor(*p._VECTptr,q,0);
     if (s==2)
-      x=vx_var;
+      x=vx_var();
     else 
       x=v.back();
     if (is_integral(x)){
@@ -1584,9 +1555,6 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
   define_unary_function_ptr5( at_fmod ,alias_at_fmod,&__fmod,0,true);
 
   gen _gramschmidt(const gen & g,GIAC_CONTEXT){
-#ifdef CASCAS_ALEVEL_ONLY
-    return gensizeerr(contextptr);
-#else
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if (g.type!=_VECT)
       return symbolic(at_gramschmidt,g);
@@ -1617,9 +1585,8 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
       return lv;
     }
     return gensizeerr(contextptr);
-#endif
   }
-  static const char _gramschmidt_s []="_rs86";
+  static const char _gramschmidt_s []="gramschmidt";
   static define_unary_function_eval (__gramschmidt,&_gramschmidt,_gramschmidt_s);
   define_unary_function_ptr5( at_gramschmidt ,alias_at_gramschmidt,&__gramschmidt,0,true);
 
@@ -1700,7 +1667,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
 	return w;
       }
       aplatir(mpow,v);
-      v.push_back(pow(vx_var,i));
+      v.push_back(pow(vx_var(),i));
       res.push_back(v);
       mpow=mmult(mpow,m);
     }
@@ -1717,7 +1684,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
     }
     if (it==itend)
       return gensizeerr(contextptr);
-    gen t= _e2r(makesequence(it->_VECTptr->back(),vx_var),contextptr);
+    gen t= _e2r(makesequence(it->_VECTptr->back(),vx_var()),contextptr);
     if (t.type==_VECT)
       return gen(t/lgcd(*t._VECTptr),_POLY1__VECT);
     else
@@ -1830,22 +1797,6 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
   define_unary_function_ptr5( at_pmin ,alias_at_pmin,&__pmin,0,true);
 
   // a faire: vpotential, signtab
-  // a faire: signtab
-  bool is_potential(const vecteur & fv,const vecteur & xv,gen & res,GIAC_CONTEXT){
-    int s=int(fv.size());
-    if (s!=xv.size())
-      return false;
-    for (int i=0;i<s;++i){
-      for (int j=i+1;j<s;++j){
-	if (!is_zero(simplify(derive(fv[i],xv[j],contextptr)-derive(fv[j],xv[i],contextptr),contextptr)))
-	  return false;
-      }
-    }
-    for (int i=0;i<s;++i){
-      res=res+integrate_gen(simplify(fv[i]-derive(res,xv[i],contextptr),contextptr),xv[i],contextptr);
-    }
-    return true;
-  }
   gen _potential(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if ( (g.type!=_VECT) || (g._VECTptr->size()!=2) )
@@ -1859,14 +1810,21 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
       return gensizeerr(contextptr);
     vecteur & fv=*f._VECTptr;
     vecteur & xv=*x._VECTptr;
-    if (fv.size()!=xv.size())
+    int s=int(fv.size());
+    if (unsigned(s)!=xv.size())
       return gendimerr(contextptr);
+    for (int i=0;i<s;++i){
+      for (int j=i+1;j<s;++j){
+	if (!is_zero(simplify(derive(fv[i],xv[j],contextptr)-derive(fv[j],xv[i],contextptr),contextptr)))
+	  return gensizeerr(gettext("Not a potential"));
+      }
+    }
     gen res;
-    if (is_potential(fv,xv,res,contextptr))
-      return res;
-    return gensizeerr(gettext("Not a potential"));
+    for (int i=0;i<s;++i){
+      res=res+integrate_gen(simplify(fv[i]-derive(res,xv[i],contextptr),contextptr),xv[i],contextptr);
+    }
+    return res;
   }
-
   static const char _potential_s []="potential";
   static define_unary_function_eval_quoted (__potential,&_potential,_potential_s);
   define_unary_function_ptr5( at_potential ,alias_at_potential,&__potential,_QUOTE_ARGUMENTS,true);
@@ -1907,7 +1865,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
   gen _poly2symb(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if (g.type==_VECT && g.subtype!=_SEQ__VECT)
-      return _r2e(makesequence(g,vx_var),contextptr);      
+      return _r2e(makesequence(g,vx_var()),contextptr);      
     return _r2e(g,contextptr);
   }
   static const char _poly2symb_s []="poly2symb";
@@ -1926,7 +1884,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     return _sincos(g,contextptr);
   }
-  static const char _exp2trig_s []="_rs180";
+  static const char _exp2trig_s []="exp2trig";
   static define_unary_function_eval (__exp2trig,&_exp2trig,_exp2trig_s);
   define_unary_function_ptr5( at_exp2trig ,alias_at_exp2trig,&__exp2trig,0,true);
 
@@ -1989,7 +1947,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
   static define_unary_function_eval (__normalize,&_normalize,_normalize_s);
   define_unary_function_ptr5( at_normalize ,alias_at_normalize,&__normalize,0,true);
 
-  static const char _randmatrix_s []="_rm4";
+  static const char _randmatrix_s []="randmatrix";
   static define_unary_function_eval (__randmatrix,&_ranm,_randmatrix_s);
   define_unary_function_ptr5( at_randmatrix ,alias_at_randmatrix,&__randmatrix,0,true);
 
@@ -2037,9 +1995,6 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
   define_unary_function_ptr5( at_hold ,alias_at_hold,&__hold,_QUOTE_ARGUMENTS,true);
 
   gen _eigenvals(const gen & g,GIAC_CONTEXT){
-#ifdef CASCAS_ALEVEL_ONLY
-    return gensizeerr(contextptr);
-#else
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if (!is_squarematrix(g))
       return gendimerr(contextptr);
@@ -2051,27 +2006,22 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
       *logptr(contextptr) << gettext("Low accuracy") << endl;
     complex_mode(b,contextptr);
     return gen(d,_SEQ__VECT);
-#endif
   }
   static const char _eigenvals_s []="eigenvals";
   static define_unary_function_eval (__eigenvals,&_eigenvals,_eigenvals_s);
   define_unary_function_ptr5( at_eigenvals ,alias_at_eigenvals,&__eigenvals,0,true);
 
-  static const char _giackernel_s []="_rm17";
+  static const char _giackernel_s []="kernel";
   static define_unary_function_eval (__giackernel,&_ker,_giackernel_s);
   define_unary_function_ptr5( at_kernel ,alias_at_kernel,&__giackernel,0,true);
 
   gen _eigenvects(const gen & g,GIAC_CONTEXT){
-#ifdef CASCAS_ALEVEL_ONLY
-    return gensizeerr(contextptr);
-#else
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     bool b=complex_mode(contextptr);
     complex_mode(true,contextptr);
     gen res=_egv(g,contextptr);
     complex_mode(b,contextptr);
     return res;
-#endif
   }
   static const char _eigenvects_s []="eigenvects";
   static define_unary_function_eval (__eigenvects,&_eigenvects,_eigenvects_s);
@@ -2081,7 +2031,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
   static define_unary_function_eval (__eigenvalues,&_eigenvals,_eigenvalues_s);
   define_unary_function_ptr5( at_eigenvalues ,alias_at_eigenvalues,&__eigenvalues,0,true);
 
-  static const char _charpoly_s []="_rs159";
+  static const char _charpoly_s []="charpoly";
   static define_unary_function_eval (__charpoly,&_pcar,_charpoly_s);
   define_unary_function_ptr5( at_charpoly ,alias_at_charpoly,&__charpoly,0,true);
 
@@ -2210,7 +2160,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
       return _linfnorm(g0._VECTptr->front(),contextptr);
     return _frobenius_norm(g0,contextptr);
   }
-  static const char _matrix_norm_s []="_rm5";
+  static const char _matrix_norm_s []="matrix_norm";
   static define_unary_function_eval (__matrix_norm,&_matrix_norm,_matrix_norm_s);
   define_unary_function_ptr5( at_matrix_norm ,alias_at_matrix_norm,&__matrix_norm,0,true);
 
@@ -2466,7 +2416,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
       if (calc_mode(contextptr)==1)
 	v=makevecteur(g,ggb_var(g));
       else
-	v=makevecteur(g,vx_var);
+	v=makevecteur(g,vx_var());
     }
     else
       v=gen2vecteur(g);
@@ -2546,7 +2496,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
     }
     if (s!=1 && s!=2)
       return gensizeerr(contextptr);
-    gen x(vx_var);
+    gen x(vx_var());
     if (calc_mode(contextptr)==1)
       x=ggb_var(v[0]);
     if (s==2)
@@ -2617,12 +2567,6 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
 
   gen _coeff(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
-    if (g.type==_USER){
-#ifndef NO_RTTI
-      if (galois_field * gptr=dynamic_cast<galois_field *>(g._USERptr))
-	return gptr->a;
-#endif
-    }
     if (g.type==_VECT && !g._VECTptr->empty() && 
 	(g._VECTptr->back().type==_INT_ || g._VECTptr->back().type==_DOUBLE_ || g._VECTptr->back().type==_FRAC)){
       vecteur v=*g._VECTptr;
@@ -2803,17 +2747,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
   static define_unary_function_eval (__subtype,&_subtype,_subtype_s);
   define_unary_function_ptr5( at_subtype ,alias_at_subtype,&__subtype,0,true);
 
-  vecteur lvarxwithinvsqrt(const gen &e,const gen & x,GIAC_CONTEXT){
-    gen ee=subst(e,invpowtan_tab,invpowtan2_tab,false,contextptr);
-    ee=remove_nop(ee,x,contextptr);
-    vecteur w(lvar(ee)),v;
-    for (int i=0;i<w.size();++i){
-      if (!is_constant_wrt(w[i],x,contextptr))
-	v.push_back(w[i]);
-    }
-    return v; // to remove nop do a return *(eval(v)._VECTptr);
-  }
-  
+
   gen _is_polynomial(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     vecteur v;
@@ -2826,7 +2760,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
     if (v.size()==1)
       v.push_back(ggb_var(args));
     gen tmp=apply(v,equal2diff);
-    vecteur lv=lvarxwithinvsqrt(tmp,v[1],contextptr);
+    vecteur lv=lvarxwithinv(tmp,v[1],contextptr);
     gen res=lv.size()<2?1:0;
     res.subtype=_INT_BOOLEAN;
     return res;
@@ -3073,7 +3007,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
   int step_param_(const gen & f,const gen & g,const gen & t,gen & tmin,gen&tmax,vecteur & poi,vecteur & tvi,bool printtvi,bool exactlegende,GIAC_CONTEXT,bool do_inflex){
     if (t.type!=_IDNT)
       return 0;
-    gprintf(gettext("_rmh65"),makevecteur(f,g,t),1,contextptr);
+    gprintf(gettext("====================\nParametric plot (%gen,%gen), variable %gen"),makevecteur(f,g,t),1,contextptr);
     gen periodef,periodeg,periode;
     if (is_periodic(f,t,periodef,contextptr) && is_periodic(g,t,periodeg,contextptr)){
       periode=gcd(periodef,periodeg,contextptr);
@@ -3132,14 +3066,10 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
     int cm=calc_mode(contextptr);
     calc_mode(-38,contextptr); // avoid rootof
     gen cx=recursive_normal(solve(f1,t,periode==0?2:0,contextptr),contextptr);
-    gprintf(gettext("x'=0 at %gen"),gen2vecteur(cx),1,contextptr);    
     gen cy=recursive_normal(solve(g1,t,periode==0?2:0,contextptr),contextptr);
-    gprintf(gettext("y'=0 at %gen"),gen2vecteur(cy),1,contextptr);    
     gen cc=vecteur(0);
-    if (do_inflex){
+    if (do_inflex)
       cc=recursive_normal(solve(conv,t,periode==0?2:0,contextptr),contextptr);
-      gprintf(gettext("Inflexion at %gen"),gen2vecteur(cc),1,contextptr);    
-    }      
     calc_mode(cm,contextptr); // avoid rootof
     if (t!=tval)
       sto(tval,t,contextptr);
@@ -3167,26 +3097,18 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
       return 0;
     }
     it=c.begin();itend=c.end();
-    //*logptr(contextptr) << "Domain " << df << gettext(", POI ") << c << endl;
     for (;it!=itend;++it){
-      // *logptr(contextptr) << gettext("Checking t=") << *it << endl;      
       if (!lop(*it,at_rootof).empty())
 	*it=re(evalf(*it,1,contextptr),contextptr);
       *it=recursive_normal(*it,contextptr);
-      //*logptr(contextptr) << gettext("t=") << *it << endl;      
       if (in_domain(df,t,*it,contextptr) && is_greater(*it,tmin,contextptr) && is_greater(tmax,*it,contextptr)){
 	crit.push_back(*it);
-	gen fx=try_limit_undef(f,xid,*it,0,contextptr); 
-        // *logptr(contextptr) << gettext("fx=") << fx << endl;      
-	fx=recursive_ratnormal(fx,contextptr); // recursive_normal(fx,contextptr);
-        // *logptr(contextptr) << gettext("fx=") << fx << endl;      
+	gen fx=try_limit_undef(f,xid,*it,0,contextptr);
+	fx=recursive_normal(fx,contextptr);
 	gen gx=try_limit_undef(g,xid,*it,0,contextptr);
-        // *logptr(contextptr) << gettext("gx=") << gx << endl;      
-	gx=recursive_ratnormal(gx,contextptr); // recursive_normal(gx,contextptr);
-        // *logptr(contextptr) << gettext("gx=") << gx << endl;      
+	gx=recursive_normal(gx,contextptr);
 	gen ax,ay;
 	bool singp=equalposcomp(*cx._VECTptr,*it) && equalposcomp(*cy._VECTptr,*it);
-        //*logptr(contextptr) << gettext("t=") << *it << ", M=[" << fx << "," << gx << "]" << endl;
 	if (singp){
 	  // singular point, find tangent (and kind?)
 	  /* ax=try_limit_undef(f2,xid,*it,0,contextptr);
@@ -3235,16 +3157,14 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
 	else {
 	  ax=try_limit_undef(f1,xid,*it,0,contextptr);
 	  ay=try_limit_undef(g1,xid,*it,0,contextptr);
-	  ax=recursive_ratnormal(ax,contextptr);//recursive_normal(ax,contextptr);
-	  ay=recursive_ratnormal(ay,contextptr);//recursive_normal(ay,contextptr);
-          //*logptr(contextptr) << "v=[" << ax << "," << ay << "]" << endl;
+	  ax=recursive_normal(ax,contextptr);
+	  ay=recursive_normal(ay,contextptr);
 	}
+	gen n=sqrt(ax*evalf(ax,1,contextptr)+ay*ay,contextptr);
 	if (!is_undef(fx) && !is_inf(fx) && !is_undef(gx) && !is_inf(gx)){
 	  gen pnt=_point(makesequence(fx,gx,write_legende(makevecteur(fx,gx),exactlegende,contextptr),symb_equal(at_couleur,equalposcomp(infl,*it)?_RED:_MAGENTA)),contextptr);
-          // *logptr(contextptr) << (singp?"singular ":"regular ") << pnt << endl;
 	  poi.push_back(pnt);	
 	  if (singp){
-            gen n=sqrt(ax*evalf(ax,1,contextptr)+ay*evalf(ay,1,contextptr),contextptr);
 	    vecteur ve=makevecteur(_point(makesequence(fx,gx),contextptr),makevecteur(ax/n,ay/n),symb_equal(at_couleur,_BLUE));
 	    ve.push_back(write_legende(makevecteur(ax,ay),exactlegende,contextptr));
 	    gen vv=_vector(gen(ve,_SEQ__VECT),contextptr);
@@ -3282,7 +3202,6 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
       }
     }
     // asymptotes
-    // *logptr(contextptr) << gettext("Searching asymptotes") << endl;
     gen xmin(plus_inf),xmax(minus_inf),ymin(plus_inf),ymax(minus_inf);
     it=sing.begin();itend=sing.end();
     for (;it!=itend;++it){
@@ -3293,10 +3212,10 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
 	  tmax=*it;	
       }
       gen fx=try_limit_undef(f,xid,*it,0,contextptr);
-      fx=recursive_ratnormal(fx,contextptr);
+      fx=recursive_normal(fx,contextptr);
       if (!is_inf(fx) && !lidnt(evalf(fx,1,contextptr)).empty()) continue;
       gen fy=try_limit_undef(g,xid,*it,0,contextptr);
-      fy=recursive_ratnormal(fy,contextptr);
+      fy=recursive_normal(fy,contextptr);
       if (!is_inf(fy) && !lidnt(evalf(fy,1,contextptr)).empty()) continue;
       if (is_inf(fx)){
 	if (!is_inf(fy)){
@@ -3309,7 +3228,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
 	  continue;
 	}
 	gen a=try_limit_undef(g/f,xid,*it,0,contextptr);
-	a=recursive_ratnormal(a,contextptr);
+	a=recursive_normal(a,contextptr);
 	if (is_undef(a)) continue;
 	if (is_inf(a)){
 	  gprintf(gettext("Vertical parabolic asymptote at %gen"),vecteur(1,*it),1,contextptr);
@@ -3322,7 +3241,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
 	  continue;
 	}
 	gen b=try_limit_undef(g-a*f,xid,*it,0,contextptr);
-	b=recursive_ratnormal(b,contextptr);
+	b=recursive_normal(b,contextptr);
 	if (is_undef(b)) continue;
 	if (is_inf(b)){
 	  gprintf(gettext("Parabolic asymptote direction at %gen: %gen"),makevecteur(*it,symb_equal(y__IDNT_e,a*x__IDNT_e)),1,contextptr);
@@ -3360,7 +3279,6 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
 	tvx.push_back(ep[i]);
     }
     comprim(tvx);
-    //*logptr(contextptr) << gettext("Sorting t values ") << tvx << endl;
     gen tmp=_sort(tvx,contextptr);
     if (tmp.type!=_VECT){
       purgenoassume(t,contextptr);
@@ -3477,13 +3395,13 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
       }
       if (i<tvs-1 && equalposcomp(sing,nextt)){
 	x=try_limit_undef(f,xid,nextt,-1,contextptr);
-	x=recursive_ratnormal(x,contextptr);
+	x=recursive_normal(x,contextptr);
 	if (!has_inf_or_undef(x) && is_greater(xmin,x,contextptr))
 	  xmin=x;
 	if (!has_inf_or_undef(x) && is_greater(x,xmax,contextptr))
 	  xmax=x;
 	y=try_limit_undef(g,xid,nextt,-1,contextptr);
-	y=recursive_ratnormal(y,contextptr);
+	y=recursive_normal(y,contextptr);
 	if (!has_inf_or_undef(y) && is_greater(ymin,y,contextptr))
 	  ymin=y;
 	if (!has_inf_or_undef(y) && is_greater(y,ymax,contextptr))
@@ -3495,13 +3413,13 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
 	tvidg.push_back(nothing);
 	tviconv.push_back(nothing);
 	gen x=try_limit_undef(f,xid,nextt,1,contextptr);
-	x=recursive_ratnormal(x,contextptr);
+	x=recursive_normal(x,contextptr);
 	if (!has_inf_or_undef(x) && is_greater(xmin,x,contextptr))
 	  xmin=x;
 	if (!has_inf_or_undef(x) && is_greater(x,xmax,contextptr))
 	  xmax=x;
 	y=try_limit_undef(g,xid,nextt,1,contextptr);
-	y=recursive_ratnormal(y,contextptr);
+	y=recursive_normal(y,contextptr);
 	if (!has_inf_or_undef(y) && is_greater(ymin,y,contextptr))
 	  ymin=y;
 	if (!has_inf_or_undef(y) && is_greater(y,ymax,contextptr))
@@ -3515,13 +3433,13 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
       }
       else {
 	gen x=try_limit_undef(f,xid,nextt,-1,contextptr);
-	x=recursive_ratnormal(x,contextptr);
+	x=recursive_normal(x,contextptr);
 	if (!has_inf_or_undef(x) && is_greater(xmin,x,contextptr))
 	  xmin=x;
 	if (!has_inf_or_undef(x) && is_greater(x,xmax,contextptr))
 	  xmax=x;
 	y=try_limit_undef(g,xid,nextt,-1,contextptr);
-	y=recursive_ratnormal(y,contextptr);
+	y=recursive_normal(y,contextptr);
 	if (!has_inf_or_undef(y) && is_greater(ymin,y,contextptr))
 	  ymin=y;
 	if (!has_inf_or_undef(y) && is_greater(y,ymax,contextptr))
@@ -3530,15 +3448,15 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
 	tvif.push_back(x);
 	tvig.push_back(y);
 	y=try_limit_undef(f1,xid,nextt,-1,contextptr);
-	y=recursive_ratnormal(y,contextptr);
+	y=recursive_normal(y,contextptr);
 	tvidf.push_back(crunch_rootof(y,contextptr));
 	y=try_limit_undef(g1,xid,nextt,-1,contextptr);
-	y=recursive_ratnormal(y,contextptr);
+	y=recursive_normal(y,contextptr);
 	tvidg.push_back(crunch_rootof(y,contextptr));
 	if (equalposcomp(infl,nextt)) y=0;
 	else {
 	  y=try_limit_undef(conv,xid,nextt,-1,contextptr);
-	  y=recursive_ratnormal(y,contextptr);
+	  y=recursive_normal(y,contextptr);
 	}
 	tviconv.push_back(crunch_rootof(y,contextptr));
       }
@@ -3599,7 +3517,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
   int step_param(const gen & f,const gen & g,const gen & t,gen & tmin,gen&tmax,vecteur & poi,vecteur & tvi,bool printtvi,bool exactlegende,GIAC_CONTEXT,bool do_inflex){
     bool c=complex_mode(contextptr); int st=step_infolevel(contextptr),s=0;
     if (t==x__IDNT_e || t==y__IDNT_e)
-      *logptr(contextptr) << gettext("Unsupported feature") << endl;
+      *logptr(contextptr) << gettext("Warning, using x or y as variable in parametric plot may lead to confusion!") << endl;
     step_infolevel(0,contextptr);
 #ifdef NO_STDEXCEPT
     s=step_param_(f,g,t,tmin,tmax,poi,tvi,printtvi,exactlegende,contextptr,do_inflex);
@@ -3645,11 +3563,10 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
   // pass -inf and inf by default.
   // poi will contain point of interest: asymptotes and extremas
   // xmin and xmax will be set to values containing all points in poi
-  int step_func_(const gen & f,const gen & x,gen & xmin,gen&xmax,vecteur & poi,vecteur & tvi,gen& periode,vecteur & asym,vecteur & parab,vecteur & crit,vecteur & infl,bool printtvi,bool exactlegende,GIAC_CONTEXT,int do_inflex_tabsign){
+  int step_func_(const gen & f,const gen & x,gen & xmin,gen&xmax,vecteur & poi,vecteur & tvi,gen& periode,vecteur & asym,vecteur & parab,vecteur & crit,vecteur & infl,bool printtvi,bool exactlegende,GIAC_CONTEXT,bool do_inflex){
     if (x.type!=_IDNT)
       return 0;
-    if (do_inflex_tabsign!=2) 
-      gprintf(gettext("_rmh64"),makevecteur(f,x),1,contextptr);
+    gprintf(gettext("====================\nFunction plot %gen, variable %gen"),makevecteur(f,x),1,contextptr);
     if (is_periodic(f,x,periode,contextptr)){
       gprintf(gettext("Periodic function T=%gen"),vecteur(1,periode),1,contextptr);
       if (is_greater(xmax-xmin,periode,contextptr)){
@@ -3663,8 +3580,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
 	gprintf(gettext("Even function %gen. Reflection Oy"),vecteur(1,f),1,contextptr);
       else
 	gprintf(gettext("Odd function %gen. Center O"),vecteur(1,f),1,contextptr);
-      if ((do_inflex_tabsign & 1)==1)
-        xmin=0;
+      xmin=0;
     }
     gen xmin0=ratnormal(xmin,contextptr),xmax0=ratnormal(xmax,contextptr);
     vecteur lv=lidnt(evalf(f,1,contextptr));
@@ -3696,13 +3612,13 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
     // Extremas
     int st=step_infolevel(contextptr);
     step_infolevel(0,contextptr);
-    gen f1=do_inflex_tabsign==2?f:_factor(derive(f,x,contextptr),contextptr);
+    gen f1=_factor(derive(f,x,contextptr),contextptr);
     gen f2=derive(f1,x,contextptr);
 #if 1
     int cm=calc_mode(contextptr);
     calc_mode(-38,contextptr); // avoid rootof
     gen c1=solve(f1,x,periode==0?2:0,contextptr);
-    gen c2=(!(do_inflex_tabsign & 1) || is_zero(f2))?gen(vecteur(0)):solve(_numer(f2,contextptr),x,periode==0?2:0,contextptr),c(c1);
+    gen c2=(!do_inflex || is_zero(f2))?gen(vecteur(0)):solve(_numer(f2,contextptr),x,periode==0?2:0,contextptr),c(c1);
     //gen c2=gen(vecteur(0)),c(c1);
     calc_mode(cm,contextptr);
     step_infolevel(st,contextptr);
@@ -3735,14 +3651,12 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
     }
     it=c._VECTptr->begin();itend=c._VECTptr->end();
     for (;it!=itend;++it){
-      if (ctrl_c || interrupted)
-	return 0;
       if (!lop(*it,at_rootof).empty())
 	*it=re(evalf(*it,1,contextptr),contextptr);
       if (in_domain(df,x,*it,contextptr) && is_greater(*it,xmin,contextptr) && is_greater(xmax,*it,contextptr)){
 	crit.push_back(*it);
 	gen fx=try_limit_undef(f,xid,*it,0,contextptr);
-	fx=recursive_ratnormal(fx,contextptr);
+	fx=recursive_normal(fx,contextptr);
 	if (!is_undef(fx) && !is_inf(fx)){
 	  if (1 || exactlegende)
 	    poi.push_back(_point(makesequence(*it,fx,write_legende(makevecteur(*it,fx),exactlegende,contextptr),symb_equal(at_couleur,equalposcomp(infl,*it)?_GREEN:_MAGENTA)),contextptr));
@@ -3767,8 +3681,6 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
     }
     it=crit.begin();itend=crit.end();
     for (;it!=itend;++it){
-      if (ctrl_c || interrupted)
-	return 0;
       if (!has_inf_or_undef(*it)){ 
 	if (is_greater(xmin,*it,contextptr))
 	  xmin=*it;
@@ -3777,9 +3689,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
       }
     }
     it=sing.begin();itend=sing.end();
-    for (;do_inflex_tabsign!=2 && it!=itend;++it){
-      if (ctrl_c || interrupted)
-	return 0;
+    for (;it!=itend;++it){
       gen equ;
       if (!has_inf_or_undef(*it)){ // vertical
 	if (is_greater(xmin,*it,contextptr))
@@ -3787,7 +3697,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
 	if (is_greater(*it,xmax,contextptr))
 	  xmax=*it;
 	gen l=try_limit_undef(f,xid,*it,1,contextptr);
-	l=recursive_ratnormal(l,contextptr);
+	l=recursive_normal(l,contextptr);
 	if (is_inf(l)){
 	  equ=symb_equal(x__IDNT_e,*it);
 	  asym.push_back(makevecteur(*it,equ));
@@ -3801,7 +3711,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
 	continue;
       }
       gen l=try_limit_undef(f,xid,*it,0,contextptr);
-      l=recursive_ratnormal(l,contextptr);
+      l=recursive_normal(l,contextptr);
       if (is_undef(l)) continue;
       if (!is_inf(l)){
 	if (!lidnt(evalf(l,1,contextptr)).empty()) continue;
@@ -3816,7 +3726,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
 	continue;
       }
       gen a=try_limit_undef(f/x,xid,*it,0,contextptr);
-      a=recursive_ratnormal(a,contextptr);
+      a=recursive_normal(a,contextptr);
       if (is_undef(a)) continue;
       if (is_inf(a)){
 	parab.push_back(makevecteur(*it,a));
@@ -3831,7 +3741,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
 	continue;
       }
       gen b=try_limit_undef(f-a*x,xid,*it,0,contextptr);
-      b=recursive_ratnormal(b,contextptr);
+      b=recursive_normal(b,contextptr);
       if (is_undef(b)) continue;
       // avoid bounded_function
       if (is_inf(b)){
@@ -3906,14 +3816,12 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
     gen yof=y__IDNT_e; // symb_of(y__IDNT_e,x); // 
     vecteur tvif=makevecteur(symb_equal(yof,f),y);
     gen nothing=string2gen(" ",false);
-    vecteur tvidf=makevecteur(do_inflex_tabsign==2?f1:symb_equal(symbolic(at_derive,yof),f1),try_limit_undef(f1,xid,nextx,1,contextptr));
+    vecteur tvidf=makevecteur(symb_equal(symb_derive(yof),f1),try_limit_undef(f1,xid,nextx,1,contextptr));
     vecteur tvidf2;
-    if ((do_inflex_tabsign & 1))
+    if (do_inflex)
       tvidf2=makevecteur(string2gen("y''",false),try_limit_undef(f2,xid,nextx,1,contextptr));
     int tvs=int(tvx.size());
     for (int i=1;i<tvs;++i){
-      if (ctrl_c || interrupted)
-	return 0;
       gen curx=nextx,dfx,df2;
       nextx=tvx[i];
       if (!lop(nextx,at_rootof).empty())
@@ -3921,17 +3829,17 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
       tvix.push_back(nothing);
       if (is_inf(nextx) && is_inf(curx)){
 	dfx=try_limit_undef(f1,xid,0,0,contextptr);
-	if ((do_inflex_tabsign & 1)) df2=try_limit_undef(f2,xid,0,0,contextptr);
+	if (do_inflex) df2=try_limit_undef(f2,xid,0,0,contextptr);
       }
       else {
 	if (curx==minus_inf){
 	  dfx=try_limit_undef(f1,xid,nextx-1,0,contextptr);
-	  if ((do_inflex_tabsign & 1)) df2=try_limit_undef(f2,xid,nextx-1,0,contextptr);
+	  if (do_inflex) df2=try_limit_undef(f2,xid,nextx-1,0,contextptr);
 	}
 	else {
 	  if (nextx==plus_inf){
 	    dfx=try_limit_undef(f1,xid,curx+1,0,contextptr);
-	    if ((do_inflex_tabsign & 1)) df2=try_limit_undef(f2,xid,curx+1,0,contextptr);
+	    if (do_inflex) df2=try_limit_undef(f2,xid,curx+1,0,contextptr);
 	  }
 	  else {
 	    gen m=(curx+nextx)/2;
@@ -3945,7 +3853,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
 	    }
 	    if (in_domain(df,x,m,contextptr)){
 	      dfx=try_limit_undef(f1,xid,m,0,contextptr);
-	      if ((do_inflex_tabsign & 1)) df2=try_limit_undef(f2,xid,m,0,contextptr);
+	      if (do_inflex) df2=try_limit_undef(f2,xid,m,0,contextptr);
 	    }
 	    else dfx=df2=undef;
 	  }
@@ -3979,7 +3887,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
 	  tvidf.push_back(string2gen("-",false));
 	}
       }
-      if ((do_inflex_tabsign & 1)){
+      if (do_inflex){
 	if (is_undef(df2))
 	  tvidf2.push_back(string2gen("X",false));
 	else {
@@ -3993,7 +3901,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
       }
       if (i<tvs-1 && equalposcomp(sing,nextx)){
 	y=try_limit_undef(f,xid,nextx,-1,contextptr);
-	y=recursive_ratnormal(y,contextptr);
+	y=recursive_normal(y,contextptr);
 	if (!has_inf_or_undef(y) && is_greater(ymin,y,contextptr))
 	  ymin=y;
 	if (!has_inf_or_undef(y) && is_greater(y,ymax,contextptr))
@@ -4001,9 +3909,9 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
 	tvix.push_back(nextx);
 	tvif.push_back(crunch_rootof(y,contextptr));
 	tvidf.push_back(string2gen("||",false));
-	if ((do_inflex_tabsign & 1)) tvidf2.push_back(string2gen("||",false));
+	if (do_inflex) tvidf2.push_back(string2gen("||",false));
 	y=try_limit_undef(f,xid,nextx,1,contextptr);
-	y=recursive_ratnormal(y,contextptr);
+	y=recursive_normal(y,contextptr);
 	if (!has_inf_or_undef(y) && is_greater(ymin,y,contextptr))
 	  ymin=y;
 	if (!has_inf_or_undef(y) && is_greater(y,ymax,contextptr))
@@ -4011,13 +3919,13 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
 	tvix.push_back(nextx);
 	tvif.push_back(crunch_rootof(y,contextptr));
 	tvidf.push_back(string2gen("||",false));
-	if ((do_inflex_tabsign & 1)) tvidf2.push_back(string2gen("||",false));
+	if (do_inflex) tvidf2.push_back(string2gen("||",false));
       }
       else {
 	y=try_limit_undef(f,xid,nextx,-1,contextptr); 
-	if (0 && !is_inf(nextx) && !is_zero(recursive_ratnormal(y-try_limit_undef(f,xid,nextx,1,contextptr),contextptr))) // should not happen
+	if (0 && !is_inf(nextx) && !is_zero(recursive_normal(y-try_limit_undef(f,xid,nextx,1,contextptr),contextptr))) // should not happen
 	  y=undef;
-	y=recursive_ratnormal(y,contextptr);
+	y=recursive_normal(y,contextptr);
 	if (!has_inf_or_undef(y) && is_greater(ymin,y,contextptr))
 	  ymin=y;
 	if (!has_inf_or_undef(y) && is_greater(y,ymax,contextptr))
@@ -4026,20 +3934,20 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
 	tvif.push_back(crunch_rootof(y,contextptr));
 	y=try_limit_undef(f1,xid,nextx,-1,contextptr); 
 	// additional check for same bidirectional limit
-        gen ysecond;
-        if (!is_inf(nextx) && !is_zero(recursive_ratnormal(y-(ysecond=try_limit_undef(f1,xid,nextx,1,contextptr)),contextptr)))
-          y=makevecteur(y,ysecond);
-        y=recursive_ratnormal(y,contextptr);
-        tvidf.push_back(crunch_rootof(y,contextptr));
-        if ((do_inflex_tabsign & 1)){
-          y=try_limit_undef(f2,xid,nextx,0,contextptr);
-          y=recursive_ratnormal(y,contextptr);
-          tvidf2.push_back(crunch_rootof(y,contextptr));
-        }
+	gen ysecond;
+	if (!is_inf(nextx) && !is_zero(recursive_normal(y-(ysecond=try_limit_undef(f1,xid,nextx,1,contextptr)),contextptr)))
+	  y=makevecteur(y,ysecond);
+	y=recursive_normal(y,contextptr);
+	tvidf.push_back(crunch_rootof(y,contextptr));
+	if (do_inflex){
+	  y=try_limit_undef(f2,xid,nextx,0,contextptr);
+	  y=recursive_normal(y,contextptr);
+	  tvidf2.push_back(crunch_rootof(y,contextptr));
+	}
       }
     }
-    tvi=do_inflex_tabsign==2?makevecteur(tvix,tvidf):makevecteur(tvix,tvidf,tvif);
-    if ((do_inflex_tabsign & 1)) tvi.push_back(tvidf2);
+    tvi=makevecteur(tvix,tvidf,tvif);
+    if (do_inflex) tvi.push_back(tvidf2);
     // suppress double entries
     vecteur tvit(mtran(tvi));
     for (size_t i=1;i<tvit.size();++i){
@@ -4075,11 +3983,11 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
     return 1 + (periode!=0);
   }
 
-  int step_func(const gen & f,const gen & x,gen & xmin,gen&xmax,vecteur & poi,vecteur & tvi,gen & periode,vecteur & asym,vecteur & parab,vecteur & crit,vecteur & inflex,bool printtvi,bool exactlegende,GIAC_CONTEXT,int do_inflex_tabsign){
+  int step_func(const gen & f,const gen & x,gen & xmin,gen&xmax,vecteur & poi,vecteur & tvi,gen & periode,vecteur & asym,vecteur & parab,vecteur & crit,vecteur & inflex,bool printtvi,bool exactlegende,GIAC_CONTEXT,bool do_inflex){
     bool c=complex_mode(contextptr); int st=step_infolevel(contextptr),s=0;
     step_infolevel(0,contextptr);
 #ifdef NO_STDEXCEPT
-    s=step_func_(f,x,xmin,xmax,poi,tvi,periode,asym,parab,crit,inflex,printtvi,exactlegende,contextptr,do_inflex_tabsign);
+    s=step_func_(f,x,xmin,xmax,poi,tvi,periode,asym,parab,crit,inflex,printtvi,exactlegende,contextptr,do_inflex);
 #else
     try {
       s=step_func_(f,x,xmin,xmax,poi,tvi,periode,asym,parab,crit,inflex,printtvi,exactlegende,contextptr,do_inflex);
@@ -4102,15 +4010,8 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
 #else
     int plot=0;
 #endif
-    bool return_tabvar=false,return_equation=false,return_coordonnees=false;
-    int do_inflex_tabsign=1;
-    // bool do_inflex=false;
+    bool return_tabvar=false,return_equation=false,return_coordonnees=false,do_inflex=false;
     for (int i=0;i<s;++i){
-      if (v[i]==at_sign){
-	v.erase(v.begin()+i);
-	do_inflex_tabsign=2;
-	--s; --i; continue;
-      }
       if (v[i]==at_tabvar){
 	return_tabvar=true;
 	v.erase(v.begin()+i);
@@ -4121,18 +4022,11 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
 	v.erase(v.begin()+i);
 	--s; --i; continue;
       }
-      if (v[i]==at_derive){
-	do_inflex_tabsign=0;
-	v.erase(v.begin()+i);
-	--s; --i; continue;
-      }
       if (v[i].is_symb_of_sommet(at_equal)){
 	gen & f=v[i]._SYMBptr->feuille;
 	if (f.type==_VECT && f._VECTptr->size()==2 && f._VECTptr->front()==at_derive){
 	  if (f._VECTptr->back()==2)
-	    do_inflex_tabsign=1;
-	  else
-	    do_inflex_tabsign=0;
+	    do_inflex=true;
 	  v.erase(v.begin()+i);
 	  --s; --i; continue;
 	}
@@ -4183,10 +4077,10 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
     bool param=f.type==_VECT && f._VECTptr->size()==2;
     int periodic=0;
     if (param)
-      periodic=step_param(f._VECTptr->front(),f._VECTptr->back(),x,xmin,xmax,poi,tvi,false,exactlegende,contextptr,do_inflex_tabsign==1);
+      periodic=step_param(f._VECTptr->front(),f._VECTptr->back(),x,xmin,xmax,poi,tvi,false,exactlegende,contextptr,do_inflex);
     else {
       gen periode; vecteur asym,parab,crit,inflex;
-      periodic=step_func(f,x,xmin,xmax,poi,tvi,periode,asym,parab,crit,inflex,false,exactlegende,contextptr,do_inflex_tabsign);
+      periodic=step_func(f,x,xmin,xmax,poi,tvi,periode,asym,parab,crit,inflex,false,exactlegende,contextptr,do_inflex);
     }
     // round floats in tvi
     for (int i=0;i<int(tvi.size());++i){
@@ -4235,19 +4129,9 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
     }
     return tvi;
   }
-  static const char _tabvar_s []="_rm_tabvar";
+  static const char _tabvar_s []="tabvar";
   static define_unary_function_eval (__tabvar,&_tabvar,_tabvar_s);
   define_unary_function_ptr5( at_tabvar ,alias_at_tabvar,&__tabvar,0,true);
-
-  gen _tabsign(const gen & g,GIAC_CONTEXT){
-    if ( g.type==_STRNG && g.subtype==-1) return  g;
-    vecteur v(gen2vecteur(g));
-    v.push_back(at_sign);
-    return _tabvar(gen(v,_SEQ__VECT),contextptr);
-  }
-  static const char _tabsign_s []="tabsign";
-  static define_unary_function_eval (__tabsign,&_tabsign,_tabsign_s);
-  define_unary_function_ptr5( at_tabsign ,alias_at_tabsign,&__tabsign,0,true);
 
   gen _printf(const gen & args,GIAC_CONTEXT){
     if (args.type!=_VECT || args.subtype!=_SEQ__VECT){
@@ -4482,9 +4366,6 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
   }
 
   gen _mean(const gen & g,GIAC_CONTEXT){
-#ifdef CASCAS_ALEVEL_ONLY
-    return gensizeerr(contextptr);
-#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if (g.type==_VECT && g.subtype==_SEQ__VECT)
       return stddevmean(g,0,contextptr);
@@ -4495,14 +4376,11 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
       v=mean(v,true);
     return v;
   }
-  static const char _mean_s []="_rs20";
+  static const char _mean_s []="mean";
   static define_unary_function_eval (__mean,&_mean,_mean_s);
   define_unary_function_ptr5( at_mean ,alias_at_mean,&__mean,0,true);
 
   gen _stddev(const gen & g,GIAC_CONTEXT){
-#ifdef CASCAS_ALEVEL_ONLY
-    return gensizeerr(contextptr);
-#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if (g.type==_VECT && g.subtype==_SEQ__VECT)
       return stddevmean(g,1,contextptr);
@@ -4513,14 +4391,11 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
       v=stddev(v,true,1);
     return v;
   }
-  static const char _stddev_s []="_rs21";
+  static const char _stddev_s []="stddev";
   static define_unary_function_eval (__stddev,&_stddev,_stddev_s);
   define_unary_function_ptr5( at_stddev ,alias_at_stddev,&__stddev,0,true);
 
   gen _stdDev(const gen & g,GIAC_CONTEXT){
-#ifdef CASCAS_ALEVEL_ONLY
-    return gensizeerr(contextptr);
-#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if (g.type==_VECT && g.subtype==_SEQ__VECT)
       return stddevmean(g,2,contextptr);
@@ -4531,14 +4406,11 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
       v=stddev(v,true,2);
     return v;
   }
-  static const char _stdDev_s []="_rs22";
+  static const char _stdDev_s []="stdDev";
   static define_unary_function_eval (__stdDev,&_stdDev,_stdDev_s);
   define_unary_function_ptr5( at_stdDev ,alias_at_stdDev,&__stdDev,0,true);  
 
   gen _variance(const gen & g,GIAC_CONTEXT){
-#ifdef CASCAS_ALEVEL_ONLY
-    return gensizeerr(contextptr);
-#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if (g.type==_VECT && g.subtype==_SEQ__VECT)
       return stddevmean(g,3,contextptr);
@@ -4549,7 +4421,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
       v=stddev(v,true,3);
     return v;
   }
-  static const char _variance_s []="_rs23";
+  static const char _variance_s []="variance";
 static define_unary_function_eval (__variance,&_variance,_variance_s);
   define_unary_function_ptr5( at_variance ,alias_at_variance,&__variance,0,true);
 
@@ -4605,32 +4477,23 @@ static define_unary_function_eval (__variance,&_variance,_variance_s);
     return v[int(std::ceil(v.size()*d))-1]; // v[(v.size()-1)/4];
   }
   gen _median(const gen & g,GIAC_CONTEXT){
-#ifdef CASCAS_ALEVEL_ONLY
-    return gensizeerr(contextptr);
-#endif
     return quartile123(g,0.5,contextptr);
   }
-  static const char _median_s []="_rm1";
+  static const char _median_s []="median";
   static define_unary_function_eval(unary_median,&_median,_median_s);
   define_unary_function_ptr5( at_median ,alias_at_median,&unary_median,0,true);
 
   gen _quartile1(const gen & g,GIAC_CONTEXT){
-#ifdef CASCAS_ALEVEL_ONLY
-    return gensizeerr(contextptr);
-#endif
     return quartile123(g,0.25,contextptr);
   }
-  static const char _quartile1_s []="_rm2";
+  static const char _quartile1_s []="quartile1";
   static define_unary_function_eval(unary_quartile1,&_quartile1,_quartile1_s);
   define_unary_function_ptr5( at_quartile1 ,alias_at_quartile1,&unary_quartile1,0,true);
 
   gen _quartile3(const gen & g,GIAC_CONTEXT){
-#ifdef CASCAS_ALEVEL_ONLY
-    return gensizeerr(contextptr);
-#endif
     return quartile123(g,0.75,contextptr);
   }
-  static const char _quartile3_s []="_rm3";
+  static const char _quartile3_s []="quartile3";
   static define_unary_function_eval(unary_quartile3,&_quartile3,_quartile3_s);
   define_unary_function_ptr5( at_quartile3 ,alias_at_quartile3,&unary_quartile3,0,true);
 
@@ -4660,69 +4523,6 @@ static define_unary_function_eval (__variance,&_variance,_variance_s);
     if (!s)
       return vector<double>(0);
     return w1;
-  }
-
-  matrice effectifs(const vecteur & data,double class_minimum,double class_size,GIAC_CONTEXT){
-    if (data.empty())
-      return data;
-    if (class_size<=0){
-      *logptr(contextptr) << gettext("Invalid class size (replaced by 1) ") << class_size << '\n';
-      class_size=1;
-    }
-    vector<double>  w1;
-    if (ckmatrix(data)){
-      if (!data.empty() && data.front()._VECTptr->size()>1){
-	matrice tmp=data;
-	gen_sort_f(tmp.begin(),tmp.end(),first_ascend_sort);
-	tmp=mtran(tmp);
-	vecteur tmpval=*evalf_double(tmp[0],1,contextptr)._VECTptr;
-	vecteur tmpeff=*tmp[1]._VECTptr;
-	if (tmpval.front().type!=_DOUBLE_ || tmpval.back().type!=_DOUBLE_)
-	  return vecteur(1,undef);
-	double kbegin=std::floor((tmpval.front()._DOUBLE_val-class_minimum)/class_size);
-	double kend=std::floor((tmpval.back()._DOUBLE_val-class_minimum)/class_size);
-	int s=int(tmpval.size()),i=0;
-	vecteur res;
-	for (;kbegin<=kend;++kbegin){
-	  // count in this class
-	  double min_class=kbegin*class_size+class_minimum;
-	  double max_class=min_class+class_size;
-	  gen effectif;
-	  for (;i<s;effectif=effectif+tmpeff[i],++i){
-	    if (tmpval[i].type!=_DOUBLE_)
-	      return vecteur(1,undef);
-	    if (tmpval[i]._DOUBLE_val>=max_class)
-	      break;
-	  }
-	  res.push_back(makevecteur(symbolic(at_interval,makesequence(min_class,max_class)),effectif));
-	}
-	return res;
-      }
-      w1=prepare_effectifs(*mtran(data)[0]._VECTptr,contextptr);
-    }
-    else
-      w1=prepare_effectifs(data,contextptr);
-    if (w1.empty())
-      return vecteur(1,undef);
-    // class_min + k*class_size <= mini hence k
-    double kbegin=std::floor((w1.front()-class_minimum)/class_size);
-    double kend=std::floor((w1.back()-class_minimum)/class_size);
-    if (kend-kbegin>LIST_SIZE_LIMIT)
-      return vecteur(1,gendimerr("Too many classes"));
-    vector<double>::const_iterator it=w1.begin(),itend=w1.end();
-    vecteur res;
-    for (;kbegin<=kend;++kbegin){
-      // count in this class
-      double min_class=kbegin*class_size+class_minimum;
-      double max_class=min_class+class_size;
-      int effectif=0;
-      for (;it!=itend;++it,++effectif){
-	if (*it>=max_class)
-	  break;
-      }
-      res.push_back(makevecteur(symbolic(at_interval,makesequence(min_class,max_class)),effectif));
-    }
-    return res;
   }
 
   static vecteur centres2intervalles(const vecteur & centres,double class_min,bool with_class_min,GIAC_CONTEXT){
@@ -4852,9 +4652,6 @@ static define_unary_function_eval (__variance,&_variance,_variance_s);
     return res; // gen(res,_SEQ__VECT);
   }
   gen _histogram(const gen & g,GIAC_CONTEXT){
-#ifdef CASCAS_ALEVEL_ONLY
-    return gensizeerr(contextptr);
-#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if (g.type==_SYMB && is_distribution(g)){
       vecteur v(gen2vecteur(g._SYMBptr->feuille));
@@ -4927,7 +4724,7 @@ static define_unary_function_eval (__variance,&_variance,_variance_s);
     }
     return histogram(args,class_minimum,class_size,attributs,contextptr);
   }
-  static const char _histogram_s []="_rs24";
+  static const char _histogram_s []="histogram";
   static define_unary_function_eval (__histogram,&_histogram,_histogram_s);
   define_unary_function_ptr5( at_histogram ,alias_at_histogram,&__histogram,0,true);
 
@@ -5070,9 +4867,6 @@ static define_unary_function_eval (__variance,&_variance,_variance_s);
     }
   }
   gen _covariance(const gen & g,GIAC_CONTEXT){
-#ifdef CASCAS_ALEVEL_ONLY
-    return gensizeerr(contextptr);
-#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     int xcol,ycol,freqcol;
     gen gv;
@@ -5080,14 +4874,11 @@ static define_unary_function_eval (__variance,&_variance,_variance_s);
     if (is_undef(gv)) return gv;
     return covariance_correlation(gv,zero,zero,xcol,ycol,freqcol,contextptr)[0];
   }
-  static const char _covariance_s []="_rs25";
+  static const char _covariance_s []="covariance";
   static define_unary_function_eval (__covariance,&_covariance,_covariance_s);
   define_unary_function_ptr5( at_covariance ,alias_at_covariance,&__covariance,0,true);
 
   gen _correlation(const gen & g,GIAC_CONTEXT){
-#ifdef CASCAS_ALEVEL_ONLY
-    return gensizeerr(contextptr);
-#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     int xcol,ycol,freqcol;
     gen gv;
@@ -5095,7 +4886,7 @@ static define_unary_function_eval (__variance,&_variance,_variance_s);
     if (is_undef(gv)) return gv;
     return covariance_correlation(gv,zero,zero,xcol,ycol,freqcol,contextptr)[1];
   }
-  static const char _correlation_s []="_rs26";
+  static const char _correlation_s []="correlation";
   static define_unary_function_eval (__correlation,&_correlation,_correlation_s);
   define_unary_function_ptr5( at_correlation ,alias_at_correlation,&__correlation,0,true);
 
@@ -5348,7 +5139,7 @@ static define_unary_function_eval (__exponential_regression,&_exponential_regres
 	s += R2s;
       attributs.push_back(string2gen(s,false));
     }
-    return put_attributs(_plotfunc(makesequence(evalf(exp(b,contextptr),1,contextptr)*exp(a*vx_var,contextptr),symb_equal(vx_var,symb_interval(xmin,xmax))),contextptr),attributs,contextptr);
+    return put_attributs(_plotfunc(makesequence(evalf(exp(b,contextptr),1,contextptr)*exp(a*vx_var(),contextptr),symb_equal(vx_var(),symb_interval(xmin,xmax))),contextptr),attributs,contextptr);
   }
   static const char _exponential_regression_plot_s []="exponential_regression_plot";
   static define_unary_function_eval (__exponential_regression_plot,&_exponential_regression_plot,_exponential_regression_plot_s);
@@ -5376,7 +5167,7 @@ static define_unary_function_eval (__exponential_regression,&_exponential_regres
 	s += R2s;
       attributs.push_back(string2gen(s,false));
     }
-    return put_attributs(_plotfunc(makesequence(a*ln(vx_var,contextptr)+b,symb_equal(vx_var,symb_interval(xmin,xmax))),contextptr),attributs,contextptr);
+    return put_attributs(_plotfunc(makesequence(a*ln(vx_var(),contextptr)+b,symb_equal(vx_var(),symb_interval(xmin,xmax))),contextptr),attributs,contextptr);
   }
   static const char _logarithmic_regression_plot_s []="logarithmic_regression_plot";
   static define_unary_function_eval (__logarithmic_regression_plot,&_logarithmic_regression_plot,_logarithmic_regression_plot_s);
@@ -5404,7 +5195,7 @@ static define_unary_function_eval (__exponential_regression,&_exponential_regres
 	s += R2s;
       attributs.push_back(string2gen(s,false));
     }
-    return put_attributs(_plotfunc(makesequence(exp(b,contextptr)*pow(vx_var,a,contextptr),symb_equal(vx_var,symb_interval(xmin,xmax))),contextptr),attributs,contextptr);
+    return put_attributs(_plotfunc(makesequence(exp(b,contextptr)*pow(vx_var(),a,contextptr),symb_equal(vx_var(),symb_interval(xmin,xmax))),contextptr),attributs,contextptr);
   }
   static const char _power_regression_plot_s []="power_regression_plot";
   static define_unary_function_eval (__power_regression_plot,&_power_regression_plot,_power_regression_plot_s);
@@ -5487,8 +5278,8 @@ static define_unary_function_eval (__exponential_regression,&_exponential_regres
     gen res=polynomial_regression(G,xmin,xmax,contextptr);
     if (is_undef(res)) return res;
     xmax += (xmax-xmin); 
-    res=horner(res,vx_var);
-    return put_attributs(_plotfunc(makesequence(res,symb_equal(vx_var,symb_interval(xmin,xmax))),contextptr),attributs,contextptr);
+    res=horner(res,vx_var());
+    return put_attributs(_plotfunc(makesequence(res,symb_equal(vx_var(),symb_interval(xmin,xmax))),contextptr),attributs,contextptr);
   }
   static const char _polynomial_regression_plot_s []="polynomial_regression_plot";
   static define_unary_function_eval (__polynomial_regression_plot,&_polynomial_regression_plot,_polynomial_regression_plot_s);
@@ -5613,19 +5404,16 @@ static define_unary_function_eval (__exponential_regression,&_exponential_regres
     }
     return res;
   }
-  static const char _diagramme_batons_s []="_rs196";
+  static const char _diagramme_batons_s []="bar_plot";
   static define_unary_function_eval (__diagramme_batons,&_diagramme_batons,_diagramme_batons_s);
   define_unary_function_ptr5( at_diagramme_batons ,alias_at_diagramme_batons,&__diagramme_batons,0,true);
 
-  static const char _diagrammebatons_s []="_rs197";
+  static const char _diagrammebatons_s []="barplot";
   static define_unary_function_eval (__diagrammebatons,&_diagramme_batons,_diagrammebatons_s);
   define_unary_function_ptr5( at_diagrammebatons ,alias_at_diagrammebatons,&__diagrammebatons,0,true);
 
 
   gen _camembert(const gen & g,GIAC_CONTEXT){
-#ifdef CASCAS_ALEVEL_ONLY
-    return gensizeerr(contextptr);
-#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     vecteur vals,names,attributs,res;
     gen errcode=read_camembert_args(g,vals,names,attributs,contextptr);
@@ -5672,7 +5460,7 @@ static define_unary_function_eval (__exponential_regression,&_exponential_regres
     }
     return res;
   }
-  static const char _camembert_s []="_rs01";
+  static const char _camembert_s []="camembert";
 static define_unary_function_eval (__camembert,&_camembert,_camembert_s);
   define_unary_function_ptr5( at_camembert ,alias_at_camembert,&__camembert,0,true);
 
@@ -5680,7 +5468,7 @@ static define_unary_function_eval (__camembert,&_camembert,_camembert_s);
     if (a.type==_STRNG && a.subtype==-1) return  a;
     return change_subtype(ckmatrix(a),_INT_BOOLEAN);
   }
-  static const char _is_matrix_s []="_rm_is";
+  static const char _is_matrix_s []="is_matrix";
   static define_unary_function_eval (__is_matrix,&_is_matrix,_is_matrix_s);
   define_unary_function_ptr5( at_is_matrix ,alias_at_is_matrix,&__is_matrix,0,true);
 
@@ -5698,7 +5486,7 @@ static define_unary_function_eval (__camembert,&_camembert,_camembert_s);
     }
     return _convert(makesequence(a,change_subtype(_MAPLE_LIST,_INT_MAPLECONVERSION)),contextptr);
   }
-  static const char _python_list_s []="_rm8";
+  static const char _python_list_s []="python_list";
   static define_unary_function_eval (__python_list,&_python_list,_python_list_s);
   define_unary_function_ptr5( at_python_list ,alias_at_python_list,&__python_list,0,true);
 
@@ -5763,7 +5551,7 @@ static define_unary_function_eval (__camembert,&_camembert,_camembert_s);
 
   // arc of ellipse, for y/x in [t1,t2] and in quadrant 1, 2, 3, 4
   // y must be replaced by -y 
-  void draw_arc(int xc,int yc,int rx,int ry,int color,double t1, double t2,bool q1,bool q2,bool q3,bool q4){
+  void draw_arc(int xc,int yc,int rx,int ry,int color,double t1, double t2,bool q1,bool q2,bool q3,bool q4,GIAC_CONTEXT){
     int x=0,y=rx,delta=0;
     double ryx=double(ry)/rx;
     // *logptr(contextptr) << "t1,t2:" << t1 << "," << t2 << ",q1234" << q1 << "," << q2 << "," << q3 << "," << q4 << endl;
@@ -5794,9 +5582,9 @@ static define_unary_function_eval (__camembert,&_camembert,_camembert_s);
     }
   }
   
-  void draw_arc(int xc,int yc,int rx,int ry,int color,double theta1, double theta2){
+  void draw_arc(int xc,int yc,int rx,int ry,int color,double theta1, double theta2,GIAC_CONTEXT){
     if (theta2-theta1>=2*M_PI){
-      draw_arc(xc,yc,rx,ry,color,-1e307,1e307,true,true,true,true);
+      draw_arc(xc,yc,rx,ry,color,-1e307,1e307,true,true,true,true,contextptr);
       return;
     }
     // at most one vertical in [theta1,theta2]
@@ -5806,38 +5594,38 @@ static define_unary_function_eval (__camembert,&_camembert,_camembert_s);
     // n%2==0 -pi/2<theta1<pi/2, n%2==1 pi/2<theta1<3*pi/2
     double theta=(n+.5)*M_PI;
     // if theta1 is almost pi/2 mod pi, t1 might be wrong because of rounding
-    if (fabs(theta1-(theta-M_PI))<1e-6 && t1>0) 
+    if (std::fabs(theta1-(theta-M_PI))<1e-6 && t1>0) 
 	t1=-1e307;
     //*logptr(contextptr) << "thetas:" << theta1 << "," << theta << "," << theta2 << ", n " << n << ", t:" << t1 << "," << t2 << endl;
     if (theta2>theta){
       if (theta2>=theta+M_PI){
 	if (n%2==0){ // -pi/2<theta1<pi/2<3*pi/2<theta2
-	  draw_arc(xc,yc,rx,ry,color,t1,1e307,true,false,false,false);
-	  draw_arc(xc,yc,rx,ry,color,-1e307,1e307,false,true,true,false);	  
-	  draw_arc(xc,yc,rx,ry,color,-1e307,t2,false,false,false,true);
+	  draw_arc(xc,yc,rx,ry,color,t1,1e307,true,false,false,false,contextptr);
+	  draw_arc(xc,yc,rx,ry,color,-1e307,1e307,false,true,true,false,contextptr);	  
+	  draw_arc(xc,yc,rx,ry,color,-1e307,t2,false,false,false,true,contextptr);
 	}
 	else { // -3*pi/2<theta1<-pi/2<pi/2<theta2
-	  draw_arc(xc,yc,rx,ry,color,t1,1e307,false,false,true,false);
-	  draw_arc(xc,yc,rx,ry,color,-1e307,1e307,true,false,false,true);
-	  draw_arc(xc,yc,rx,ry,color,-1e307,t2,false,true,false,false);
+	  draw_arc(xc,yc,rx,ry,color,t1,1e307,false,false,true,false,contextptr);
+	  draw_arc(xc,yc,rx,ry,color,-1e307,1e307,true,false,false,true,contextptr);
+	  draw_arc(xc,yc,rx,ry,color,-1e307,t2,false,true,false,false,contextptr);
 	}
 	return;
       }
       if (n%2==0){ // -pi/2<theta1<pi/2<theta2<3*pi/2
-	draw_arc(xc,yc,rx,ry,color,t1,1e307,true,false,false,false);
-	draw_arc(xc,yc,rx,ry,color,-1e307,t2,false,true,false,false);
+	draw_arc(xc,yc,rx,ry,color,t1,1e307,true,false,false,false,contextptr);
+	draw_arc(xc,yc,rx,ry,color,-1e307,t2,false,true,false,false,contextptr);
       }
       else { // -3*pi/2<theta1<-pi/2<theta2<pi/2
-	draw_arc(xc,yc,rx,ry,color,t1,1e307,false,false,true,false);
-	draw_arc(xc,yc,rx,ry,color,-1e307,t2,false,false,false,true);
+	draw_arc(xc,yc,rx,ry,color,t1,1e307,false,false,true,false,contextptr);
+	draw_arc(xc,yc,rx,ry,color,-1e307,t2,false,false,false,true,contextptr);
       }
       return;
     }
     if (n%2==0) { // -pi/2<theta1<theta2<pi/2
-      draw_arc(xc,yc,rx,ry,color,t1,t2,true,false,false,true);	
+      draw_arc(xc,yc,rx,ry,color,t1,t2,true,false,false,true,contextptr);	
     }
     else { // pi/2<theta1<theta2<3*pi/2
-      draw_arc(xc,yc,rx,ry,color,t1,t2,false,true,true,false);	
+      draw_arc(xc,yc,rx,ry,color,t1,t2,false,true,true,false,contextptr);	
     }
   }
   
@@ -5897,47 +5685,18 @@ static define_unary_function_eval (__camembert,&_camembert,_camembert_s);
   
   //Uses the Bresenham line algorithm 
   void draw_line(int x1, int y1, int x2, int y2, int color) {
-    if ( (absint(x1) & 0x7ffff000) || x1==-2147483648 ||
-	 (absint(x2) & 0x7ffff000) || x2==-2147483648 ||
-	 (absint(y1) & 0x7ffff000) || y1==-2147483648 ||
-	 (absint(y2) & 0x7ffff000) || y2==-2147483648
-	 )
-      return;
     int w =(color & 0x00070000) >> 16;
     ++w;
-    int type_line =(color & 0x01c00000) >> 22,mask=0xffff; // 3 bits
-    switch (type_line){
-    case 1:
-      mask=0xff00;
-      break;
-    case 2:
-      mask=0xf0f0;
-      break;
-    case 3:
-      mask=0xcccc;
-      break;
-    case 4:
-      mask=0xaaaa;
-      break;
-    case 5:
-      mask=0xfff0;
-      break;
-    case 6:
-      mask=0xf000;
-      break;
-    case 7:
-      mask=0xc0c0;
-      break;
-    }
-
-    color &=  0xffff ;
+    color &= 0xffff;
+    if ( (x1<0 && x2<0) || (x1>=LCD_WIDTH_PX && x2>=LCD_WIDTH_PX) || (y1<clip_ymin && y2<clip_ymin) || (y1>=LCD_HEIGHT_PX && y2>=LCD_HEIGHT_PX))
+      return;
     signed char ix; 
     signed char iy; 
-  
+    
     // if x1 == x2 or y1 == y2, then it does not matter what we set here 
     int delta_x = (x2 > x1?(ix = 1, x2 - x1):(ix = -1, x1 - x2)) << 1; 
     int delta_y = (y2 > y1?(iy = 1, y2 - y1):(iy = -1, y1 - y2)) << 1; 
-    int count=0;
+    
     set_pixel(x1, y1, color);  
     if (delta_x >= delta_y) { 
       int error = delta_y - (delta_x >> 1);        // error may go below zero 
@@ -5950,12 +5709,13 @@ static define_unary_function_eval (__camembert,&_camembert,_camembert_s);
 	}                              // else do nothing 
 	x1 += ix; 
 	error += delta_y;
+#if 1
 	int y__=y1+(w+1)/2;
-	++count;
-	if (mask & (1 << (count%16)) )
-	  for (int y_=y1-w/2;y_<y__;++y_){
-	    set_pixel(x1, y_, color);
-	  }
+	for (int y_=y1-w/2;y_<y__;++y_)
+	  set_pixel(x1, y_, color);
+#else
+	set_pixel(x1, y1, color);
+#endif
       } 
     } else { 
       int error = delta_x - (delta_y >> 1);      // error may go below zero 
@@ -5968,26 +5728,15 @@ static define_unary_function_eval (__camembert,&_camembert,_camembert_s);
 	}                              // else do nothing 
 	y1 += iy; 
 	error += delta_x;
+#if 1
 	int x__=x1+(w+1)/2;
-	++count;
-	if (mask & (1 << (count%16)) )
-	  for (int x_=x1-w/2;x_<x__;++x_){
-	    set_pixel(x_, y1, color);
-	  }
+	for (int x_=x1-w/2;x_<x__;++x_)
+	  set_pixel(x_, y1, color);
+#else
+	set_pixel(x1, y1, color);
+#endif
       } 
     }
-  }
-
-
-  int rgb565to888(int c){
-    c &= 0xffff;
-    int r=(c>>11)&0x1f,g=(c>>5)&0x3f,b=c&0x1f;
-    return (r<<19)|(g<<10)|(b<<3);
-  }
-
-  int rgb888to565(int c){
-    int r=(c>>16)&0xff,g=(c>>8)&0xff,b=c&0xff;
-    return (((r*32)/256)<<11) | (((g*64)/256)<<5) | (b*32/256);
   }
 
   gen remove_at_display(const gen &g){
@@ -6030,7 +5779,7 @@ static define_unary_function_eval (__camembert,&_camembert,_camembert_s);
     //static gen PIXEL(identificateur("PIXON_P"));
     //return _of(makesequence(PIXEL,a_),contextptr);
   }
-  static const char _set_pixel_s []="_rm7";
+  static const char _set_pixel_s []="set_pixel";
   static define_unary_function_eval (__set_pixel,&_set_pixel,_set_pixel_s);
   define_unary_function_ptr5( at_set_pixel ,alias_at_set_pixel,&__set_pixel,0,true);
   
@@ -6076,22 +5825,16 @@ static define_unary_function_eval (__camembert,&_camembert,_camembert_s);
     //return _of(makesequence(PIXEL,a_),contextptr);
   }
   gen _draw_line(const gen & a_,GIAC_CONTEXT){
-#ifdef CASCAS_ALEVEL_ONLY
-    return gensizeerr(contextptr);
-#endif
     return draw_line_or_rectangle(a_,contextptr,0);
   }
-  static const char _draw_line_s []="_rs87";
+  static const char _draw_line_s []="draw_line";
   static define_unary_function_eval (__draw_line,&_draw_line,_draw_line_s);
   define_unary_function_ptr5( at_draw_line ,alias_at_draw_line,&__draw_line,0,true);
 
   gen _draw_rectangle(const gen & a_,GIAC_CONTEXT){
-#ifdef CASCAS_ALEVEL_ONLY
-    return gensizeerr(contextptr);
-#endif
     return draw_line_or_rectangle(a_,contextptr,1);
   }
-  static const char _draw_rectangle_s []="_rs88";
+  static const char _draw_rectangle_s []="draw_rectangle";
   static define_unary_function_eval (__draw_rectangle,&_draw_rectangle,_draw_rectangle_s);
   define_unary_function_ptr5( at_draw_rectangle ,alias_at_draw_rectangle,&__draw_rectangle,0,true);
 
@@ -6167,7 +5910,7 @@ static define_unary_function_eval (__camembert,&_camembert,_camembert_s);
 	  gen theta1=evalf_double(v[4],1,contextptr);
 	  gen theta2=evalf_double(v[5],1,contextptr);
 	  if (attr & 0x40000000)
-	    draw_filled_arc(x0.val,y0.val,r.val,ry.val,attr & 0xffff,int(theta1._DOUBLE_val*180/M_PI+.5),int(theta2._DOUBLE_val*180/M_PI+.5),0,384,0,218);
+	    draw_filled_arc(x0.val,y0.val,r.val,ry.val,attr & 0xffff,int(theta1._DOUBLE_val*180/M_PI+.5),int(theta2._DOUBLE_val*180/M_PI+.5));
 	  draw_arc(x0.val,y0.val,r.val,ry.val,attr & 0xffff,theta1._DOUBLE_val,theta2._DOUBLE_val,contextptr);
 	}
 	else {
@@ -6184,22 +5927,16 @@ static define_unary_function_eval (__camembert,&_camembert,_camembert_s);
     //return _of(makesequence(PIXEL,a_),contextptr);
   }
   gen _draw_circle(const gen & a_,GIAC_CONTEXT){
-#ifdef CASCAS_ALEVEL_ONLY
-    return gensizeerr(contextptr);
-#endif
     return _draw_arc(a_,false,contextptr);
   }
-  static const char _draw_circle_s []="_rs89";
+  static const char _draw_circle_s []="draw_circle";
   static define_unary_function_eval (__draw_circle,&_draw_circle,_draw_circle_s);
   define_unary_function_ptr5( at_draw_circle ,alias_at_draw_circle,&__draw_circle,0,true);
 
   gen _draw_arc(const gen & a_,GIAC_CONTEXT){
-#ifdef CASCAS_ALEVEL_ONLY
-    return gensizeerr(contextptr);
-#endif
     return _draw_arc(a_,true,contextptr);
   }
-  static const char _draw_arc_s []="_rs90";
+  static const char _draw_arc_s []="draw_arc";
   static define_unary_function_eval (__draw_arc,&_draw_arc,_draw_arc_s);
   define_unary_function_ptr5( at_draw_arc ,alias_at_draw_arc,&__draw_arc,0,true);
 
@@ -6322,7 +6059,6 @@ static define_unary_function_eval (__camembert,&_camembert,_camembert_s);
   }
 
   void draw_polygon(vector< vector<int> > & v1,int color){
-    if (v1.empty()) return;
     if (v1.back()!=v1.front())
       v1.push_back(v1.front());
     int n=v1.size()-1;
@@ -6333,9 +6069,6 @@ static define_unary_function_eval (__camembert,&_camembert,_camembert_s);
   }
   
   gen _draw_polygon(const gen & a,GIAC_CONTEXT){
-#ifdef CASCAS_ALEVEL_ONLY
-    return gensizeerr(contextptr);
-#endif
     if (a.type==_STRNG && a.subtype==-1) return  a;
     if (a.type!=_VECT || a._VECTptr->size()<2)
       return gentypeerr(contextptr);
@@ -6357,7 +6090,7 @@ static define_unary_function_eval (__camembert,&_camembert,_camembert_s);
       draw_polygon(v1,attr & 0xffff);
     return 1;
   }
-  static const char _draw_polygon_s []="_rs91";
+  static const char _draw_polygon_s []="draw_polygon";
   static define_unary_function_eval (__draw_polygon,&_draw_polygon,_draw_polygon_s);
   define_unary_function_ptr5( at_draw_polygon ,alias_at_draw_polygon,&__draw_polygon,0,true);
 
@@ -6377,38 +6110,25 @@ static define_unary_function_eval (__camembert,&_camembert,_camembert_s);
     if (a.type!=_VECT)
       return gensizeerr(contextptr);
     vecteur v(*a._VECTptr);
-    if (v.size()<3 || v.size()>5)
+    if (v.size()!=3 && v.size()!=4)
       return gendimerr(contextptr);
-    if (v[2].type==_STRNG){
-      gen g=v[2];
-      v[2]=v[1];
-      v[1]=v[0];
-      v[0]=g;
-    }
     if (v[0].type!=_STRNG || !is_integral(v[1]) || !is_integral(v[2]))
       return gensizeerr(contextptr);
-    gen s=v[0];
-    int x=v[1].val,y=v[2].val,c=_BLACK,bg=_WHITE;
-    if (v.size()>=4){
-      if (!is_integral(v[3]))
-	return gensizeerr(contextptr);
-      c=v[3].val;
-      if (v.size()==5){
-	if (!is_integral(v[4]))
-	  return gensizeerr(contextptr);
-	bg=v[4].val;
-      }
-    }
     if (!freeze){
       Bdisp_AllClr_VRAM();
       freeze=true;
     }
-#if 0
+    int x=v[1].val,y=v[2].val,c=TEXT_COLOR_BLACK;
+    if (v.size()==4){
+      if (!is_integral(v[3]))
+	return gensizeerr(contextptr);
+      c=v[3].val;
+    }
+#if 1
     y-=24;
-    PrintMiniMini((int*)&x, (int*)&y, (unsigned char *)s._STRNGptr->c_str(), 0, c, 0);
+    PrintMiniMini((int*)&x, (int*)&y, v[0]._STRNGptr->c_str(), 0, c, 0);
 #else
-    y-=24;
-    PrintMini(&x, &y, (unsigned char *)s._STRNGptr->c_str(), 0, 0xFFFFFFFF, 0, 0, c,bg, 1, 0);
+    mPrintXY(v[1].val/16,v[2].val/16,v[0]._STRNGptr->c_str(),TEXT_MODE_TRANSPARENT_BACKGROUND,TEXT_COLOR_BLACK);
 #endif
     return 1;
   }
@@ -6517,104 +6237,10 @@ static define_unary_function_eval (__camembert,&_camembert,_camembert_s);
   static define_unary_function_eval (__bitnot,&_bitnot,_bitnot_s);
   define_unary_function_ptr5( at_bitnot ,alias_at_bitnot,&__bitnot,0,true);
 
-  // Graham scan convex hull
- static bool graham_sort_function(const gen & a,const gen & b){
-   if (a.type!=_VECT || b.type!=_VECT || a._VECTptr->size()!=3 || b._VECTptr->size()!=3){
-#ifdef NO_STDEXCEPT
-     return false; 
-#else
-     setsizeerr(gettext("graham_sort_function"));
-#endif
-   }
-   vecteur & v=*a._VECTptr;
-   vecteur & w=*b._VECTptr;
-   return is_strictly_greater(w[1],v[1],context0) || (v[1]==w[1] && is_strictly_greater(w[2],v[2],context0)) ;
- }
-
-  gen cross_prod(const gen & a,const gen & b,const gen & c,GIAC_CONTEXT){
-    gen ab=b-a,ac=c-a;
-    gen A(re(ab,contextptr)),B(im(ab,contextptr)),C(re(ac,contextptr)),D(im(ac,contextptr));
-    return A*D-B*C;
-  }
-
-  gen _convexhull(const gen & g,GIAC_CONTEXT){
-    if ( g.type==_STRNG && g.subtype==-1) return  g;
-    if (g.type!=_VECT)
-      return gensizeerr(contextptr); 
-    vecteur l0(*_affixe(g,contextptr)._VECTptr),l;
-    int s=int(l0.size());
-    for (int i=0;i<s;++i){
-      if (l0[i].type==_VECT)
-	l=mergevecteur(l,*l0[i]._VECTptr);
-      else
-	l.push_back(l0[i]);
-    }
-    s=int(l.size());
-    if (s<=3){
-#if 0
-      if (abs_calc_mode(contextptr)==38)
-	return _polygone(l,contextptr);
-#endif
-      return l;
-    }
-    gen zmin=l[0],zcur;
-    gen ymin=im(zmin,contextptr),ycur,xmin=re(zmin,contextptr),xcur;
-    for (int j=1;j<s;++j){
-      zcur=l[j]; ycur=im(zcur,contextptr); xcur=re(zcur,contextptr);
-      if ( is_strictly_greater(ymin,ycur,contextptr) ||
-	   (ycur==ymin && is_strictly_greater(xmin,xcur,contextptr)) ){
-	zmin=zcur; ymin=ycur; xmin=xcur;
-      }
-    }
-    vecteur ls;
-    for (int j=0;j<s;++j){
-      zcur=l[j];
-      if (zcur!=zmin){
-	ls.push_back(makevecteur(zcur,arg(zcur-zmin,contextptr),(zcur-zmin)*conj(zcur-zmin,contextptr)));
-      }
-    }
-    gen_sort_f(ls.begin(),ls.end(),graham_sort_function);
-    vecteur res(makevecteur(zmin,ls[0][0]));
-    int ress=2;
-    gen o;
-    for (int j=1;j<s-1;++j){
-      zcur=ls[j][0];
-      o=cross_prod(res[ress-2],res[ress-1],zcur,contextptr);
-      if (is_zero(o))
-	res[ress-1]=zcur;
-      else {
-	if (is_strictly_positive(o,contextptr)){
-	  res.push_back(zcur);
-	  ress++;
-	}
-	else {
-	  while (!is_positive(o,contextptr) && ress>2){
-	    res.pop_back();
-	    ress--;
-	    o=cross_prod(res[ress-2],res[ress-1],zcur,contextptr);
-	  }
-	  res.push_back(zcur);
-	  ress++;
-	}
-      }
-    }
-#if 0
-    if (abs_calc_mode(contextptr)==38)
-      return _polygone(res,contextptr);
-#endif
-    return gen(res,g.subtype);
-  }
-  static const char _convexhull_s []="convexhull";
-static define_unary_function_eval (__convexhull,&_convexhull,_convexhull_s);
-  define_unary_function_ptr5( at_convexhull ,alias_at_convexhull,&__convexhull,0,true);
-
 #ifdef RELEASE
   // ploarea(polygone), plotarea(f(x),x=a..b), plotarea(f(x),x=a..b,n,method)
   // method=trapeze,point_milieu,rectangle_gauche,rectangle_droit
   gen _plotarea(const gen & g,GIAC_CONTEXT){
-#ifdef CASCAS_ALEVEL_ONLY
-    return gensizeerr(contextptr);
-#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     vecteur v(gen2vecteur(g));
     vecteur attributs(1,COLOR_BLACK);
@@ -6626,30 +6252,8 @@ static define_unary_function_eval (__convexhull,&_convexhull,_convexhull_s);
     if (attributs[0].type==_INT_)
       attributs[0].val= attributs[0].val | _FILL_POLYGON;
     v[0]=remove_at_pnt(v[0]);
-    if (v[0].is_symb_of_sommet(at_curve)){
-      attributs.resize(2);
-      vecteur w=gen2vecteur(v[0][2]);
-      int s=w.size();
-      if (s){
-        // add projection of end vertices on the Ox axis
-        gen x,y;
-        reim(w[s-1],x,y,contextptr);
-        w.push_back(x);
-        reim(w[0],x,y,contextptr);
-        w.push_back(x);
-        v[0]=gen(w,_GROUP__VECT);
-      }
-    }
-    if (v[0].type==_VECT){
-      gen a=abs(_aire(v[0],contextptr),contextptr);
-      int nd=decimal_digits(contextptr);
-      decimal_digits(3,contextptr);
-      attributs[1]=string2gen(a.print(contextptr),false);
-      decimal_digits(nd,contextptr);
-      return makesequence(pnt_attrib(v[0],attributs,contextptr),_legende(makesequence(makevecteur(30,30),attributs[1]),contextptr));
-    }
     if (s>=2 && v[0].type!=_VECT){
-      gen tmp(v[1]),a,b,x(vx_var);
+      gen tmp(v[1]),a,b,x(vx_var());
       if (is_equal(tmp) && tmp._SYMBptr->feuille.type==_VECT && tmp._SYMBptr->feuille._VECTptr->size()==2){
 	x=tmp._SYMBptr->feuille[0];
 	tmp=tmp._SYMBptr->feuille[1];
@@ -6744,7 +6348,7 @@ static define_unary_function_eval (__convexhull,&_convexhull,_convexhull_s);
     }
     return gensizeerr(gettext(""));
   }
-  static const char _plotarea_s []="_rs92";
+  static const char _plotarea_s []="plotarea";
   static define_unary_function_eval (__plotarea,&_plotarea,_plotarea_s);
   define_unary_function_ptr5( at_plotarea ,alias_at_plotarea,&__plotarea,0,true);
 #endif

@@ -133,7 +133,7 @@ namespace giac {
       return qxa(args._VECTptr->front(),*args._VECTptr->back()._VECTptr,contextptr);
     return symb_q2a(args);
   }
-  static const char _q2a_s []="_rs177";
+  static const char _q2a_s []="q2a";
   static define_unary_function_eval (__q2a,&_q2a,_q2a_s);
   define_unary_function_ptr5( at_q2a ,alias_at_q2a,&__q2a,0,true);
 
@@ -337,7 +337,7 @@ namespace giac {
       return axq(*v.front()._VECTptr,*v.back()._VECTptr,contextptr);
     return gensizeerr(contextptr);
   }
-  static const char _a2q_s []="_rs178";
+  static const char _a2q_s []="a2q";
   static define_unary_function_eval (__a2q,&_a2q,_a2q_s);
   define_unary_function_ptr5( at_a2q ,alias_at_a2q,&__a2q,0,true);
 
@@ -346,3 +346,4 @@ namespace giac {
 #ifndef NO_NAMESPACE_GIAC
 } // namespace giac
 #endif // ndef NO_NAMESPACE_GIAC
+

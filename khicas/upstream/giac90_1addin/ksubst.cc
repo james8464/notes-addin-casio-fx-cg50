@@ -1,5 +1,4 @@
 // -*- mode:C++ ; compile-command: "g++-3.4 -I.. -DHAVE_CONFIG_H -DIN_GIAC -g -c subst.cc" -*-
-int confirm(const char * msg1,const char * msg2,bool acexit=false);
 #include "giacPCH.h"
 
 /*
@@ -981,7 +980,7 @@ namespace giac {
       return apply_to_equal(args,_halftan,contextptr);
     return halftan(args,contextptr);
   }
-  static const char _halftan_s []="_rs181";
+  static const char _halftan_s []="halftan";
   static define_unary_function_eval (__halftan,&_halftan,_halftan_s);
   define_unary_function_ptr5( at_halftan ,alias_at_halftan,&__halftan,0,true);
 
@@ -1089,7 +1088,7 @@ namespace giac {
       return apply_to_equal(args,_trig2exp,contextptr);
     return trig2exp(args,contextptr);
   }
-  static const char _trig2exp_s []="_rs182";
+  static const char _trig2exp_s []="trig2exp";
   static define_unary_function_eval (__trig2exp,&_trig2exp,_trig2exp_s);
   define_unary_function_ptr5( at_trig2exp ,alias_at_trig2exp,&__trig2exp,0,true);
 
@@ -1106,7 +1105,7 @@ namespace giac {
       return apply_to_equal(args,_halftan_hyp2exp,contextptr);
     return halftan_hyp2exp(args,contextptr);
   }
-  static const char _halftan_hyp2exp_s []="_rs183";
+  static const char _halftan_hyp2exp_s []="halftan_hyp2exp";
   static define_unary_function_eval (__halftan_hyp2exp,&_halftan_hyp2exp,_halftan_hyp2exp_s);
   define_unary_function_ptr5( at_halftan_hyp2exp ,alias_at_halftan_hyp2exp,&__halftan_hyp2exp,0,true);
 
@@ -1712,7 +1711,7 @@ namespace giac {
 	swapgen(v[0],v[1]);
       /*
       if (v[0].type==_VECT)
-	return gensizeerr(gettext("Unsupported array power"));
+	return gensizeerr(gettext("Conversion of ^ of list/matrices to exp/ln not allowed. For symbolic power of square matrices, try matpow instead of ^"));
       */
       if (v[1].type!=_INT_ && v[1].type!=_FRAC){
 	gen tmp=-v[0];
@@ -2288,22 +2287,6 @@ namespace giac {
     return g;
   }
 
-  gen lvar_ratnormal(const gen & e,GIAC_CONTEXT){
-    vecteur v=lvar(e);
-    vecteur w(v);
-    for (int j=0;j<v.size();++j){
-      if (w[j].type!=_SYMB) continue;
-      if (w[j]._SYMBptr->feuille.type==_SYMB)
-	w[j]=symbolic(w[j]._SYMBptr->sommet,expand(recursive_normal(w[j]._SYMBptr->feuille,contextptr),contextptr));
-      else
-	w[j]=recursive_ratnormal(w[j],contextptr);
-    }
-    if (v==w)
-      return e;
-    gen res=subst(e,v,w,false,contextptr);
-    return res;
-  }
-
   gen simplify(const gen & e_orig,GIAC_CONTEXT){
     if (e_orig.type<=_POLY || is_inf(e_orig) || has_num_coeff(e_orig))
       return e_orig;
@@ -2659,7 +2642,7 @@ namespace giac {
     if (is_equal(args))
       return apply_to_equal(args,_trigcos,contextptr);
     gen g=ratnormal(_tan2sincos(args,contextptr),contextptr);
-    return recursive_ratnormal(trigcos(g,contextptr),contextptr);
+    return normal(trigcos(g,contextptr),contextptr);
   }
   static const char _trigcos_s []="trigcos";
   static define_unary_function_eval (__trigcos,&_trigcos,_trigcos_s);
@@ -2676,10 +2659,7 @@ namespace giac {
     if (is_equal(args))
       return apply_to_equal(args,_trigsin,contextptr);
     gen g=ratnormal(_tan2sincos(args,contextptr),contextptr);
-    g=trigsin(g,contextptr);
-    g=recursive_ratnormal(g,contextptr);//normal(g,contextptr); // recursive_ratnormal(g,contextptr); // should be normal
-    // confirm("trigsin",g.print().c_str());
-    return g;
+    return normal(trigsin(g,contextptr),contextptr);
   }
   static const char _trigsin_s []="trigsin";
   static define_unary_function_eval (__trigsin,&_trigsin,_trigsin_s);
@@ -2697,7 +2677,7 @@ namespace giac {
     if (is_equal(args))
       return apply_to_equal(args,_trigtan,contextptr);
     gen g=ratnormal(_sin2costan(args,contextptr),contextptr);
-    return recursive_ratnormal(trigtan(g,contextptr),contextptr);
+    return normal(trigtan(g,contextptr),contextptr);
   }
   static const char _trigtan_s []="trigtan";
   static define_unary_function_eval (__trigtan,&_trigtan,_trigtan_s);
@@ -3028,7 +3008,7 @@ namespace giac {
     return pow(x,n1)*symb_horner(nv,x,ns-1)/symb_horner(dv,x,ds-1);
   }
   gen factor_xn(const gen & args,GIAC_CONTEXT){
-    return factor_xn(args,vx_var,contextptr);
+    return factor_xn(args,vx_var(),contextptr);
   }
   gen _factor_xn(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
@@ -3074,126 +3054,6 @@ namespace giac {
   static const char _limite_s []="limite";
   static define_unary_function_eval (__limite,&_limit,_limite_s);
   define_unary_function_ptr5( at_limite ,alias_at_limite,&__limite,0,true);
-
-  static gen symb_inv_mult_conjugate(const gen & e,GIAC_CONTEXT){
-    // find fractional powers in e and multiply by conjugate expression
-    // this should speedup normal because inv_EXT is slow 
-    // with common extensions
-    vecteur l(lvarfracpow(e));
-    if (l.empty())
-      return symb_inv(e);
-    int pos=3,prevpos=0,prevtaille(taille(l[0],RAND_MAX)),curtaille;
-    for (pos=3;pos<l.size();pos+=3){
-      curtaille=taille(l[pos],RAND_MAX);
-      if (curtaille>prevtaille){
-	prevpos=pos;
-	curtaille=prevtaille;
-      }
-    }
-    gen varbase(l[prevpos]),varexpo(l[prevpos+1]);
-    int deg=0;
-    if (varexpo.type!=_INT_ || (deg=varexpo.val)<2)
-      return symb_inv(e);
-    l=vecteur(1,l[prevpos+2]);
-    lvar(e,l);
-    lvar(varbase,l);
-    gen tmp=e2r(e,l,contextptr),num(1),den(tmp),tmpvar=e2r(varbase,l,contextptr);
-    if (tmpvar.type>_POLY) 
-      return symb_inv(e);
-    if (tmp.type==_FRAC){
-      num=tmp._FRACptr->den;
-      den=tmp._FRACptr->num;
-    }
-    if (den.type!=_POLY)
-      return symb_inv(e);
-    const polynome & pden=*den._POLYptr;
-    // now find min poly of var and invert pden
-    polynome pmin(pden.dim),pu(pden.dim),pv(pden.dim),pd(pden.dim);
-    pmin.coord.push_back(monomial<gen>(1,deg,1,pden.dim));
-    if (tmpvar.type==_POLY) 
-      pmin = pmin-*tmpvar._POLYptr;
-    else
-      pmin.coord.push_back(monomial<gen>(-tmpvar,0.1,pden.dim));
-    egcd(pden,pmin,pu,pv,pd);
-    // 1/pden=pu/pd
-    num=r2e(pu,l,contextptr)*r2e(num,l,contextptr);
-    den=ratnormal(r2e(pd,l,contextptr),contextptr);
-    if (is_exactly_zero(den))
-      return symb_inv(e);
-    den=symb_inv_mult_conjugate(den,contextptr);
-    if (is_exactly_zero(den))
-      return symb_inv(e);
-    return num*den;
-  }
-
-  static gen do_invfracpow(const gen & e,GIAC_CONTEXT){
-    if (e.type!=_SYMB)
-      return symb_inv(e);
-    const unary_function_ptr & u=e._SYMBptr->sommet;
-    if (u==at_prod){
-      // distribute inv on arguments
-      gen f=e._SYMBptr->feuille;
-      if (f.type==_VECT){
-	vecteur v(*f._VECTptr),v1,v2;
-	for (int i=0;i<v.size();++i){
-	  gen g=do_invfracpow(v[i],contextptr);
-	  if (g.is_symb_of_sommet(at_inv))
-	    v2.push_back(g._SYMBptr->feuille);
-	  else
-	    v1.push_back(g);
-	}
-	if (v1.empty())
-	  return symb_inv(e);
-	gen g1(symbolic(at_prod,gen(v1,_SEQ__VECT)));
-	if (v1.size()==1)
-	  g1=v1.front();
-	if (v2.empty())
-	  return g1;
-	gen g2(symbolic(at_prod,gen(v2,_SEQ__VECT)));
-	if (v2.size()==1)
-	  g2=v2.front();
-	return g1*symb_inv_mult_conjugate(g2,contextptr);
-      }
-    }
-    if (u==at_neg){
-      gen f=do_invfracpow(e._SYMBptr->feuille,contextptr);
-      if (f.is_symb_of_sommet(at_inv))
-	return symb_inv(-f._SYMBptr->feuille);
-      return -f;
-    }
-    if (u!=at_pow)
-      return symb_inv_mult_conjugate(e,contextptr);
-    gen f=e._SYMBptr->feuille;
-    if (f.type!=_VECT || f._VECTptr->size()!=2)
-      return symb_inv(e);
-    gen base=f._VECTptr->front(),expo=f._VECTptr->back();
-    if (expo.type==_INT_ ){ 
-      if (!base.is_symb_of_sommet(at_pow) || base._SYMBptr->feuille[1].type!=_FRAC)
-	return symb_inv(e);
-      expo=expo*base._SYMBptr->feuille[1];
-      base=base._SYMBptr->feuille[0];
-    }
-    if (expo.type!=_FRAC)  
-      return symb_inv(e);
-    expo=-expo;
-    // inv(pow(base,original_exponent))=pow(base,expo)
-    if (is_positive(expo,contextptr))
-      return pow(base,expo,contextptr);
-    gen expo1=_floor(expo,contextptr); // expo1 is an integer <0
-    expo=expo-expo1; // expo>0
-    return pow(base,expo,contextptr)*inv(pow(base,-expo1,contextptr),contextptr);
-  }
-  gen do_same_nop(const gen &g,GIAC_CONTEXT){
-    return symbolic(at_same,g);
-  }
-  gen invfracpow(const gen & e,GIAC_CONTEXT){
-    //if (e.is_symb_of_sommet(at_same)) return symbolic(at_same,makesequence(invfracpow(e._SYMBptr->feuille[0],contextptr),invfracpow(e._SYMBptr->feuille[1],contextptr)));
-    vector< gen_op_context > invfracpow_v(1,do_invfracpow);
-    invfracpow_v.push_back(do_same_nop);
-    vector<const unary_function_ptr *> inv_v(1,at_inv);
-    inv_v.push_back(at_same);
-    return subst(e,inv_v,invfracpow_v,false,contextptr);
-  }
 
   static void find_conjugates(const gen & g,vecteur & v_in,vecteur & v_out){
     v_in.clear();
@@ -3286,7 +3146,7 @@ namespace giac {
     }
     return n/d;
   }
-  static const char _mult_c_conjugate_s []="_rs184";
+  static const char _mult_c_conjugate_s []="mult_c_conjugate";
   static define_unary_function_eval_quoted (__mult_c_conjugate,&_mult_c_conjugate,_mult_c_conjugate_s);
   define_unary_function_ptr5( at_mult_c_conjugate ,alias_at_mult_c_conjugate,&__mult_c_conjugate,_QUOTE_ARGUMENTS,true);
 

@@ -27,14 +27,6 @@
 namespace giac {
 #endif // ndef NO_NAMESPACE_GIAC
 
-  struct alias_identificateur {
-    int * ref_count;
-    gen * value;
-    const char * id_name;
-    vecteur * localvalue;
-    short int * quoted;
-  };
-
   extern int protection_level; // for local vars
 
   const int MAXLENSIZE = 1000000; // max size of a line in files
@@ -173,8 +165,7 @@ namespace giac {
   extern const identificateur & laplace_var;
 
   extern const gen & CST__IDNT_e;
-  gen & get_vx_var();
-#define vx_var get_vx_var()
+  gen & vx_var(); 
   // commented otherwise can not make assign/assumptions on vx_var
   // if must uncomment, check extern gen vx_var declaration after endif
 #else

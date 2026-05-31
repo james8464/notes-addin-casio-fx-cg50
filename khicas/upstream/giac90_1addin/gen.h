@@ -42,12 +42,12 @@
 // #include <gmp.h>
 #ifdef USE_GMP_REPLACEMENTS
 #undef HAVE_GMPXX_H
-//#undef HAVE_LIBMPFR
+#undef HAVE_LIBMPFR
 #endif
 #ifdef HAVE_GMPXX_H
 #include <gmpxx.h>
 #endif
-#if defined HAVE_LIBMPFR && !defined BF2GMP
+#ifdef HAVE_LIBMPFR
 #include <mpfr.h>
 // #include <mpf2mpfr.h>
 #endif
@@ -77,7 +77,7 @@ namespace giac {
 
 #ifdef USE_GMP_REPLACEMENTS
 #undef HAVE_GMPXX_H
-  //#undef HAVE_LIBMPFR
+#undef HAVE_LIBMPFR
 #endif
 
   void my_mpz_gcd(mpz_t &z,const mpz_t & A,const mpz_t & B);
@@ -165,7 +165,7 @@ namespace giac {
   struct ref_complex;
   struct ref_algext;
   struct ref_modulo;
-  // Object rendering metadata
+  // Graphic object
   struct grob {
     void (* grob_draw)(void);
     int (* grob_handle) (int);
@@ -262,7 +262,6 @@ namespace giac {
     virtual gen divide (const gen & g,GIAC_CONTEXT) const;
     gen operator / (const gen & g) const;
     virtual gen substract (const gen & g,GIAC_CONTEXT) const;
-    gen subtract(const gen & g,GIAC_CONTEXT) const;
     virtual gen operator / (const real_object & g) const;
     gen operator - (const gen & g) const;
     virtual gen operator - (const real_object & g) const;
@@ -369,7 +368,6 @@ namespace giac {
     virtual real_interval operator * (const real_interval & g) const;
     virtual gen divide (const gen & g,GIAC_CONTEXT) const;
     virtual gen substract (const gen & g,GIAC_CONTEXT) const;
-    gen subtract(const gen & g,GIAC_CONTEXT) const;
     virtual gen operator - (const real_object & g) const;
     virtual real_interval operator - (const real_interval & g) const ;
     virtual gen operator -() const;
@@ -561,7 +559,7 @@ namespace giac {
     volatile ref_count_t & ref_count() const;
     gen(){ *(ulonglong *) this=0;}
     gen(int i);
-    
+
     gen(void *ptr,short int subt): type(_POINTER_),subtype(char(subt)) {
 #ifdef COMPILE_FOR_STABILITY
       control_c();
@@ -627,7 +625,7 @@ namespace giac {
     gen (const gen_map & m);
     gen (const eqwdata & );
     gen (const grob & );
-#if defined HAVE_GMPXX_H && !defined BF2GMP_H
+#ifdef HAVE_GMPXX_H
     gen (const mpz_class &);
 #endif
     gen (const my_mpz &);
@@ -777,7 +775,6 @@ namespace giac {
     ref_vecteur(unsigned s,const gen & g):ref_count(1),v(s,g) {}
     ref_vecteur(const_iterateur it,const_iterateur itend):ref_count(1),v(it,itend) {}
     ref_vecteur(const vecteur & w):ref_count(1),v(w) {}
-    ~ref_vecteur(){v.clear();}
   };
 
 
@@ -822,20 +819,17 @@ namespace giac {
     ref_complex(const std::complex<double> & c):ref_count(1),display(0),re(real(c)),im(imag(c)) {}
     ref_complex(const gen & R,const gen & I):ref_count(1),display(0),re(R),im(I) {}
     ref_complex(const gen & R,const gen & I,int display_mode):ref_count(1),display(display_mode),re(R),im(I) {}
-    ~ref_complex() {re=im=0; }
   };
   struct ref_modulo {
     volatile ref_count_t ref_count;
     gen n,modulo;
     ref_modulo():ref_count(1) {}
     ref_modulo(const gen &N,const gen &M):ref_count(1),n(N),modulo(M) {}
-    ~ref_modulo() {n=modulo=0;} 
   };
   struct ref_algext {
     volatile ref_count_t ref_count;
     gen P,Pmin,additional;
     ref_algext():ref_count(1) {}
-    ~ref_algext(){P=Pmin=additional=0;}
   };
 
   bool poly_is_real(const polynome & p);
@@ -1000,7 +994,6 @@ namespace giac {
   void egcd(const gen &a,const gen &b, gen & u,gen &v,gen &d );
   gen ichinrem(const gen & a,const gen &b,const gen & amod, const gen & bmod);
   gen invmod(const gen & A,const gen & modulo);
-  bool alloc_fracmod(const gen & a_orig,const gen & modulo,gen & res,mpz_t & d,mpz_t & d1,mpz_t & absd1,mpz_t &u,mpz_t & u1,mpz_t & ur,mpz_t & q,mpz_t & r,mpz_t &sqrtm,mpz_t & tmp);
   gen fracmod(const gen & a_orig,const gen & modulo); // -> p/q=a mod modulo
   bool fracmod(const gen & a_orig,const gen & modulo,gen & res);
   bool in_fracmod(const gen &m,const gen & a,mpz_t & d,mpz_t & d1,mpz_t & absd1,mpz_t &u,mpz_t & u1,mpz_t & ur,mpz_t & q,mpz_t & r,mpz_t &sqrtm,mpz_t & tmp,gen & num,gen & den);
@@ -1238,11 +1231,10 @@ namespace giac {
     }
   };
 
-  struct ref_sparse_poly1 {
+    struct ref_sparse_poly1 {
     volatile ref_count_t ref_count;
     sparse_poly1 s;
     ref_sparse_poly1(const sparse_poly1 & S):ref_count(1),s(S) {}
-    ~ref_sparse_poly1() {s.clear();}
   };
   
 
@@ -1356,7 +1348,6 @@ namespace giac {
   struct symbolic {
     unary_function_ptr sommet; 
     gen feuille;
-    ~symbolic(){ feuille=0; }
     symbolic(const unary_function_ptr & o,const gen & e): sommet(o),feuille(e){};
     symbolic(const unary_function_ptr & o,const gen & e1,const gen &e2): sommet(o), feuille(makevecteur(e1,e2)) {};
     symbolic(const unary_function_ptr & o,const gen & e1,const gen &e2,const gen & e3): sommet(o), feuille(makevecteur(e1,e2,e3)) {};

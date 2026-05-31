@@ -1,0 +1,844 @@
+{
+  "replace": [
+    {
+      "id": "madas_iygb_c1_v_q3_exact_inputs",
+      "row": {
+        "id": "madas_iygb_c1_v_q3_exact_inputs",
+        "source_pdf": "MadAsMaths papers/c1_v.pdf",
+        "question": "q3",
+        "part": "a-b",
+        "verdict": "testable",
+        "review_basis": "second-pass page-image review: c1 questions/marks/solutions PNGs on VM",
+        "inputs": [
+          {
+            "module": "algebra",
+            "input": "method=numeric,(sqrt(6)+3*sqrt(2))/(sqrt(6)+sqrt(2))",
+            "mark_scheme_working": [
+              "(√6+3√2)/(√6+√2)=√3"
+            ],
+            "expected_output_markers": [
+              "1.73205080757"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "method=numeric,8*(1/4)^(1/2)-(1/4)^(-1)",
+            "mark_scheme_working": [
+              "8w^(1/2)-w^(-1)=0 at w=1/4"
+            ],
+            "expected_output_markers": [
+              "0"
+            ]
+          }
+        ],
+        "expected_final": [
+          "√3",
+          "w=1/4"
+        ]
+      }
+    },
+    {
+      "id": "madas_iygb_c1_v_q4_exact_inputs",
+      "row": {
+        "id": "madas_iygb_c1_v_q4_exact_inputs",
+        "source_pdf": "MadAsMaths papers/c1_v.pdf",
+        "question": "q4",
+        "part": "a-e",
+        "verdict": "partial",
+        "review_basis": "second-pass page-image review: c1 questions/marks/solutions PNGs on VM",
+        "inputs": [
+          {
+            "module": "algebra",
+            "input": "method=numeric,5*(3-3)^2+5",
+            "mark_scheme_working": [
+              "min f(x)=5 at x=3"
+            ],
+            "expected_output_markers": [
+              "5"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "expand((x-5)^2+(2*x-5)^2)",
+            "mark_scheme_working": [
+              "|AB|²=5x²-30x+50"
+            ],
+            "expected_output_markers": [
+              "5*x^2 - 30*x + 50",
+              "5*x^2 -30*x + 50"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "method=numeric,sqrt(5)",
+            "mark_scheme_working": [
+              "shortest |AB|=√5"
+            ],
+            "expected_output_markers": [
+              "2.2360679775"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "method=numeric,3*2+1",
+            "mark_scheme_working": [
+              "B(3,7) at minimum"
+            ],
+            "expected_output_markers": [
+              "7"
+            ]
+          }
+        ],
+        "expected_final": [
+          "5(x-3)²+5",
+          "min=5",
+          "B(3,7)"
+        ],
+        "unsupported_reason": "completing square form manual"
+      }
+    },
+    {
+      "id": "madas_iygb_c1_v_q5_exact_inputs",
+      "row": {
+        "id": "madas_iygb_c1_v_q5_exact_inputs",
+        "source_pdf": "MadAsMaths papers/c1_v.pdf",
+        "question": "q5",
+        "part": "a-b",
+        "verdict": "testable",
+        "review_basis": "second-pass page-image review: c1 questions/marks/solutions PNGs on VM",
+        "inputs": [
+          {
+            "module": "algebra",
+            "input": "method=numeric,5+2*1",
+            "mark_scheme_working": [
+              "y3=7"
+            ],
+            "expected_output_markers": [
+              "7"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "method=numeric,7+2*5",
+            "mark_scheme_working": [
+              "y4=17"
+            ],
+            "expected_output_markers": [
+              "17"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "method=numeric,17+2*7",
+            "mark_scheme_working": [
+              "y5=31"
+            ],
+            "expected_output_markers": [
+              "31"
+            ]
+          },
+          {
+            "module": "algebra",
+            "input": "method=numeric,31+2*17",
+            "mark_scheme_working": [
+              "y6=65"
+            ],
+            "expected_output_markers": [
+              "65"
+            ]
+          }
+        ],
+        "expected_final": [
+          "y3=7,y4=17,y5=31,y6=65",
+          "y_n=2^n+(-1)^n"
+        ]
+      }
+    }
+  ],
+  "append": [
+    {
+      "id": "madas_iygb_c1_v_q6_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_v.pdf",
+      "question": "q6",
+      "part": "b",
+      "verdict": "testable",
+      "review_basis": "second-pass page-image review: c1 questions/marks/solutions PNGs on VM",
+      "inputs": [
+        {
+          "module": "algebra",
+          "input": "method=numeric,sqrt(8*2^3-15)+15",
+          "mark_scheme_working": [
+            "g(3)=f(2)+15=22"
+          ],
+          "expected_output_markers": [
+            "22"
+          ]
+        }
+      ],
+      "expected_final": [
+        "g(3)=22"
+      ],
+      "unsupported_reason": "transformation description in (a) is manual"
+    },
+    {
+      "id": "madas_iygb_c1_v_q7_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_v.pdf",
+      "question": "q7",
+      "part": "all",
+      "verdict": "partial",
+      "review_basis": "second-pass page-image review: c1 questions/marks/solutions PNGs on VM",
+      "inputs": [
+        {
+          "module": "algebra",
+          "input": "method=numeric,16-4",
+          "mark_scheme_working": [
+            "discriminant 16a²-4(2b+1)<0 simplifies"
+          ],
+          "expected_output_markers": [
+            "12"
+          ]
+        }
+      ],
+      "expected_final": [
+        "b>½(2a-1)(2a+1)"
+      ],
+      "unsupported_reason": "inequality proof from Δ<0 is manual"
+    },
+    {
+      "id": "madas_iygb_c1_v_q8_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_v.pdf",
+      "question": "q8",
+      "part": "all",
+      "verdict": "partial",
+      "review_basis": "second-pass page-image review: c1 questions/marks/solutions PNGs on VM",
+      "inputs": [
+        {
+          "module": "algebra",
+          "input": "solve(x^2=4,x)",
+          "mark_scheme_working": [
+            "4x⁴-15x²-4=0 gives x=±2"
+          ],
+          "expected_output_markers": [
+            "x = [2, -2]"
+          ]
+        },
+        {
+          "module": "algebra",
+          "input": "method=numeric,(2*16-2+6)/(6*2)",
+          "mark_scheme_working": [
+            "P(2,3) on curve"
+          ],
+          "expected_output_markers": [
+            "3"
+          ]
+        },
+        {
+          "module": "algebra",
+          "input": "method=numeric,(2*16+2+6)/(6*(-2))",
+          "mark_scheme_working": [
+            "P(-2,-10/3) on curve"
+          ],
+          "expected_output_markers": [
+            "-3.33333333333"
+          ]
+        }
+      ],
+      "expected_final": [
+        "L2: 4y=15x-18",
+        "L3: 12y=45x+50"
+      ],
+      "unsupported_reason": "tangent line equations manual"
+    },
+    {
+      "id": "madas_iygb_c1_v_q9_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_v.pdf",
+      "question": "q9",
+      "part": "all",
+      "verdict": "testable",
+      "review_basis": "second-pass page-image review: c1 questions/marks/solutions PNGs on VM",
+      "inputs": [
+        {
+          "module": "algebra",
+          "input": "method=numeric,4",
+          "mark_scheme_working": [
+            "b=4 from AP system"
+          ],
+          "expected_output_markers": [
+            "4"
+          ]
+        },
+        {
+          "module": "algebra",
+          "input": "method=numeric,-1",
+          "mark_scheme_working": [
+            "c=-1"
+          ],
+          "expected_output_markers": [
+            "-1"
+          ]
+        },
+        {
+          "module": "algebra",
+          "input": "method=numeric,15*(4+29*3)",
+          "mark_scheme_working": [
+            "S30=1365"
+          ],
+          "expected_output_markers": [
+            "1365"
+          ]
+        }
+      ],
+      "expected_final": [
+        "b=4,c=-1",
+        "S30=1365"
+      ]
+    },
+    {
+      "id": "madas_iygb_c1_w_q6_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_w.pdf",
+      "question": "q6",
+      "part": "all",
+      "verdict": "testable",
+      "review_basis": "second-pass page-image review: c1 questions/marks/solutions PNGs on VM",
+      "inputs": [
+        {
+          "module": "algebra",
+          "input": "method=numeric,2*4-5",
+          "mark_scheme_working": [
+            "t2=3 gives 2a+b=3"
+          ],
+          "expected_output_markers": [
+            "3"
+          ]
+        },
+        {
+          "module": "algebra",
+          "input": "method=numeric,4*3-5",
+          "mark_scheme_working": [
+            "t3=7"
+          ],
+          "expected_output_markers": [
+            "7"
+          ]
+        },
+        {
+          "module": "algebra",
+          "input": "method=numeric,2+3+7",
+          "mark_scheme_working": [
+            "sum t1..t3=12"
+          ],
+          "expected_output_markers": [
+            "12"
+          ]
+        }
+      ],
+      "expected_final": [
+        "a=4,b=-5"
+      ]
+    },
+    {
+      "id": "madas_iygb_c1_w_q7_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_w.pdf",
+      "question": "q7",
+      "part": "a-b",
+      "verdict": "partial",
+      "review_basis": "second-pass page-image review: c1 questions/marks/solutions PNGs on VM",
+      "inputs": [
+        {
+          "module": "algebra",
+          "input": "method=numeric,12-28/3",
+          "mark_scheme_working": [
+            "a=8/3"
+          ],
+          "expected_output_markers": [
+            "2.66666666667"
+          ]
+        },
+        {
+          "module": "algebra",
+          "input": "method=numeric,35/15",
+          "mark_scheme_working": [
+            "Q x=7/3"
+          ],
+          "expected_output_markers": [
+            "2.33333333333"
+          ]
+        }
+      ],
+      "expected_final": [
+        "a=8/3",
+        "Q(7/3,0)"
+      ],
+      "unsupported_reason": "tangent/normal setup manual"
+    },
+    {
+      "id": "madas_iygb_c1_w_q8_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_w.pdf",
+      "question": "q8",
+      "part": "a-b",
+      "verdict": "testable",
+      "review_basis": "second-pass page-image review: c1 questions/marks/solutions PNGs on VM",
+      "inputs": [
+        {
+          "module": "algebra",
+          "input": "method=numeric,10+11*2",
+          "mark_scheme_working": [
+            "u12=32"
+          ],
+          "expected_output_markers": [
+            "32"
+          ]
+        },
+        {
+          "module": "algebra",
+          "input": "method=numeric,6*42+125",
+          "mark_scheme_working": [
+            "total after 12 weeks=377"
+          ],
+          "expected_output_markers": [
+            "377"
+          ]
+        },
+        {
+          "module": "algebra",
+          "input": "method=numeric,19*25",
+          "mark_scheme_working": [
+            "n=19 weeks to reach 600"
+          ],
+          "expected_output_markers": [
+            "475"
+          ]
+        }
+      ],
+      "expected_final": [
+        "u12=32",
+        "377 members",
+        "N=19"
+      ]
+    },
+    {
+      "id": "madas_iygb_c1_w_q9_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_w.pdf",
+      "question": "q9",
+      "part": "all",
+      "verdict": "partial",
+      "review_basis": "second-pass page-image review: c1 questions/marks/solutions PNGs on VM",
+      "inputs": [
+        {
+          "module": "algebra",
+          "input": "method=numeric,6-27/8",
+          "mark_scheme_working": [
+            "arch height at x=3 is 21/8 m"
+          ],
+          "expected_output_markers": [
+            "2.625"
+          ]
+        },
+        {
+          "module": "algebra",
+          "input": "method=numeric,21/8",
+          "mark_scheme_working": [
+            "21/8>2 so load passes"
+          ],
+          "expected_output_markers": [
+            "2.625"
+          ]
+        }
+      ],
+      "expected_final": [
+        "y=6-(3/8)x²",
+        "passes"
+      ],
+      "unsupported_reason": "parabola model setup manual"
+    },
+    {
+      "id": "madas_iygb_c1_x_q6_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_x.pdf",
+      "question": "q6",
+      "part": "a-b",
+      "verdict": "partial",
+      "review_basis": "second-pass page-image review: c1 questions/marks/solutions PNGs on VM",
+      "inputs": [
+        {
+          "module": "algebra",
+          "input": "method=numeric,(1+2)^2",
+          "mark_scheme_working": [
+            "P on y=(1+√x)² at x=4 gives y=9"
+          ],
+          "expected_output_markers": [
+            "9"
+          ]
+        }
+      ],
+      "expected_final": [
+        "P(4,9)"
+      ],
+      "unsupported_reason": "differentiation and tangent setup manual"
+    },
+    {
+      "id": "madas_iygb_c1_x_q7_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_x.pdf",
+      "question": "q7",
+      "part": "a-c",
+      "verdict": "testable",
+      "review_basis": "second-pass page-image review: c1 questions/marks/solutions PNGs on VM",
+      "inputs": [
+        {
+          "module": "algebra",
+          "input": "method=numeric,76-88*0.5",
+          "mark_scheme_working": [
+            "a=32 from C4=a+bC3"
+          ],
+          "expected_output_markers": [
+            "32"
+          ]
+        },
+        {
+          "module": "algebra",
+          "input": "method=numeric,32/(1-0.5)",
+          "mark_scheme_working": [
+            "limit L=64"
+          ],
+          "expected_output_markers": [
+            "64"
+          ]
+        }
+      ],
+      "expected_final": [
+        "a=32,b=1/2",
+        "L=64"
+      ],
+      "unsupported_reason": "backward iteration for C0 is manual"
+    },
+    {
+      "id": "madas_iygb_c1_x_q8_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_x.pdf",
+      "question": "q8",
+      "part": "all",
+      "verdict": "skip",
+      "review_basis": "second-pass page-image review: c1 questions/marks/solutions PNGs on VM",
+      "inputs": [],
+      "expected_final": [
+        "tangent through origin without calculus"
+      ],
+      "unsupported_reason": "calculus forbidden in question"
+    },
+    {
+      "id": "madas_iygb_c1_x_q9_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_x.pdf",
+      "question": "q9",
+      "part": "all",
+      "verdict": "partial",
+      "review_basis": "second-pass page-image review: c1 questions/marks/solutions PNGs on VM",
+      "inputs": [
+        {
+          "module": "algebra",
+          "input": "factor(2*x^2-15*x+18)",
+          "mark_scheme_working": [
+            "2√3(x²+1)=7x rearranges to quadratic"
+          ],
+          "expected_output_markers": [
+            "(2*x - 3)*(x - 6)"
+          ]
+        }
+      ],
+      "expected_final": [
+        "x=3/2,6 in form k√3"
+      ],
+      "unsupported_reason": "surds form manual"
+    },
+    {
+      "id": "madas_iygb_c1_x_q10_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_x.pdf",
+      "question": "q10",
+      "part": "all",
+      "verdict": "partial",
+      "review_basis": "second-pass page-image review: c1 questions/marks/solutions PNGs on VM",
+      "inputs": [
+        {
+          "module": "algebra",
+          "input": "method=numeric,2*(2*3-1)^2-7*(2*3-1)+1",
+          "mark_scheme_working": [
+            "reverse transform check at x=3"
+          ],
+          "expected_output_markers": [
+            "16"
+          ]
+        }
+      ],
+      "expected_final": [
+        "f(x)=2x²-7x+1"
+      ],
+      "unsupported_reason": "transformation derivation manual"
+    },
+    {
+      "id": "madas_iygb_c1_y_q6_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_y.pdf",
+      "question": "q6",
+      "part": "all",
+      "verdict": "skip",
+      "review_basis": "second-pass page-image review: c1 questions/marks/solutions PNGs on VM",
+      "inputs": [],
+      "expected_final": [
+        "q6 on VM"
+      ],
+      "unsupported_reason": "proof or sketch only"
+    },
+    {
+      "id": "madas_iygb_c1_y_q7_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_y.pdf",
+      "question": "q7",
+      "part": "a-b",
+      "verdict": "partial",
+      "review_basis": "second-pass page-image review: c1 questions/marks/solutions PNGs on VM",
+      "inputs": [
+        {
+          "module": "algebra",
+          "input": "method=numeric,2*(2)^2-4/2",
+          "mark_scheme_working": [
+            "P is x-intercept x=2"
+          ],
+          "expected_output_markers": [
+            "6"
+          ]
+        }
+      ],
+      "expected_final": [
+        "P(2,0)",
+        "normal L"
+      ],
+      "unsupported_reason": "normal equation and proof manual"
+    },
+    {
+      "id": "madas_iygb_c1_y_q8_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_y.pdf",
+      "question": "q8",
+      "part": "b",
+      "verdict": "testable",
+      "review_basis": "second-pass page-image review: c1 questions/marks/solutions PNGs on VM",
+      "inputs": [
+        {
+          "module": "algebra",
+          "input": "method=numeric,(550+1100)*51/2",
+          "mark_scheme_working": [
+            "sum multiples of 11 from 549 to 1101"
+          ],
+          "expected_output_markers": [
+            "42075"
+          ]
+        }
+      ],
+      "expected_final": [
+        "S=42075"
+      ],
+      "unsupported_reason": "part (a) proof manual"
+    },
+    {
+      "id": "madas_iygb_c1_y_q9_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_y.pdf",
+      "question": "q9",
+      "part": "a-b",
+      "verdict": "partial",
+      "review_basis": "second-pass page-image review: c1 questions/marks/solutions PNGs on VM",
+      "inputs": [
+        {
+          "module": "algebra",
+          "input": "method=numeric,6",
+          "mark_scheme_working": [
+            "A=6 from recurrence"
+          ],
+          "expected_output_markers": [
+            "6"
+          ]
+        }
+      ],
+      "expected_final": [
+        "A=6,B=-13",
+        "Σu_r=-16"
+      ],
+      "unsupported_reason": "recurrence setup and sum proof manual"
+    },
+    {
+      "id": "madas_iygb_c1_y_q10_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_y.pdf",
+      "question": "q10",
+      "part": "all",
+      "verdict": "skip",
+      "review_basis": "second-pass page-image review: c1 questions/marks/solutions PNGs on VM",
+      "inputs": [],
+      "expected_final": [
+        "minimum point proof without calculus"
+      ],
+      "unsupported_reason": "non-CAS proof required"
+    },
+    {
+      "id": "madas_iygb_c1_z_q6_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_z.pdf",
+      "question": "q6",
+      "part": "all",
+      "verdict": "skip",
+      "review_basis": "second-pass page-image review: c1 questions/marks/solutions PNGs on VM",
+      "inputs": [],
+      "expected_final": [
+        "q6 on VM"
+      ],
+      "unsupported_reason": "proof or sketch only"
+    },
+    {
+      "id": "madas_iygb_c1_z_q7_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_z.pdf",
+      "question": "q7",
+      "part": "all",
+      "verdict": "testable",
+      "review_basis": "second-pass page-image review: c1 questions/marks/solutions PNGs on VM",
+      "inputs": [
+        {
+          "module": "algebra",
+          "input": "method=numeric,2^1+4*1",
+          "mark_scheme_working": [
+            "u1=6 so D=6"
+          ],
+          "expected_output_markers": [
+            "6"
+          ]
+        },
+        {
+          "module": "algebra",
+          "input": "method=numeric,2*6-4*1+4",
+          "mark_scheme_working": [
+            "u2=2u1-4n+4 at n=1 gives 12"
+          ],
+          "expected_output_markers": [
+            "12"
+          ]
+        }
+      ],
+      "expected_final": [
+        "u_{n+1}=2u_n-4n+4"
+      ],
+      "unsupported_reason": "recurrence derivation manual"
+    },
+    {
+      "id": "madas_iygb_c1_z_q8_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_z.pdf",
+      "question": "q8",
+      "part": "all",
+      "verdict": "testable",
+      "review_basis": "second-pass page-image review: c1 questions/marks/solutions PNGs on VM",
+      "inputs": [
+        {
+          "module": "algebra",
+          "input": "method=numeric,(4-1)^2",
+          "mark_scheme_working": [
+            "V=9 at t=1 gives p-q=±3"
+          ],
+          "expected_output_markers": [
+            "9"
+          ]
+        },
+        {
+          "module": "algebra",
+          "input": "method=numeric,-2*1*(4-1)",
+          "mark_scheme_working": [
+            "dV/dt=-6 at t=1"
+          ],
+          "expected_output_markers": [
+            "-6"
+          ]
+        }
+      ],
+      "expected_final": [
+        "p=4,q=1"
+      ]
+    },
+    {
+      "id": "madas_iygb_c1_z_q9_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_z.pdf",
+      "question": "q9",
+      "part": "all",
+      "verdict": "partial",
+      "review_basis": "second-pass page-image review: c1 questions/marks/solutions PNGs on VM",
+      "inputs": [
+        {
+          "module": "algebra",
+          "input": "method=numeric,25+1250/2",
+          "mark_scheme_working": [
+            "sum AP t+2t+...+50 with t=2"
+          ],
+          "expected_output_markers": [
+            "650"
+          ]
+        }
+      ],
+      "expected_final": [
+        "25+1250/t"
+      ],
+      "unsupported_reason": "algebraic proof manual"
+    },
+    {
+      "id": "madas_iygb_c1_z_q10_exact_inputs",
+      "source_pdf": "MadAsMaths papers/c1_z.pdf",
+      "question": "q10",
+      "part": "all",
+      "verdict": "testable",
+      "review_basis": "second-pass page-image review: c1 questions/marks/solutions PNGs on VM",
+      "inputs": [
+        {
+          "module": "algebra",
+          "input": "method=numeric,4-1/4*(3-4)^2",
+          "mark_scheme_working": [
+            "height at x=3 is 3.75 m"
+          ],
+          "expected_output_markers": [
+            "3.75"
+          ]
+        },
+        {
+          "module": "algebra",
+          "input": "method=numeric,4-1/4*(4+sqrt(6)-4)^2",
+          "mark_scheme_working": [
+            "height at x=4+√6 is 2.5 m"
+          ],
+          "expected_output_markers": [
+            "2.5"
+          ]
+        },
+        {
+          "module": "algebra",
+          "input": "method=numeric,2*sqrt(6)",
+          "mark_scheme_working": [
+            "width=2√6 m"
+          ],
+          "expected_output_markers": [
+            "4.89897948557"
+          ]
+        }
+      ],
+      "expected_final": [
+        "width=2√6"
+      ]
+    }
+  ],
+  "coverage_notes": {
+    "MadAsMaths papers/c1_v.pdf": {
+      "rows_added": 4,
+      "text": "second-pass: fixed 3 rows, appended q6+ (4 new rows)"
+    },
+    "MadAsMaths papers/c1_w.pdf": {
+      "rows_added": 4,
+      "text": "second-pass: fixed 0 rows, appended q6+ (4 new rows)"
+    },
+    "MadAsMaths papers/c1_x.pdf": {
+      "rows_added": 5,
+      "text": "second-pass: fixed 0 rows, appended q6+ (5 new rows)"
+    },
+    "MadAsMaths papers/c1_y.pdf": {
+      "rows_added": 5,
+      "text": "second-pass: fixed 0 rows, appended q6+ (5 new rows)"
+    },
+    "MadAsMaths papers/c1_z.pdf": {
+      "rows_added": 5,
+      "text": "second-pass: fixed 0 rows, appended q6+ (5 new rows)"
+    }
+  }
+}

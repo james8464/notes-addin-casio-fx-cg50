@@ -25,7 +25,6 @@
 namespace giac {
 #endif // ndef NO_NAMESPACE_GIAC
 
-  gen lvar_ratnormal(const gen & e,GIAC_CONTEXT);
   gen cossinexp2rootof(const gen & e,GIAC_CONTEXT);
   gen checkanglemode(GIAC_CONTEXT);
 
@@ -241,7 +240,7 @@ namespace giac {
   gen acos2ln(const gen & g_orig,GIAC_CONTEXT);
   gen atan2ln(const gen & g_orig,GIAC_CONTEXT);
   gen _atrig2ln(const gen & args,GIAC_CONTEXT);
-  gen invfracpow(const gen & e,GIAC_CONTEXT);
+
 #ifndef NO_NAMESPACE_GIAC
 } // namespace giac
 #endif // ndef NO_NAMESPACE_GIAC

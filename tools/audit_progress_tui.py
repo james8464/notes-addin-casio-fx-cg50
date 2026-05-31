@@ -18,9 +18,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 STATE = ROOT / "progress" / "state.jsonl"
 GRAPH = ROOT / "docs" / "GRAPH.md"
-G3A = ROOT / "calculator_files" / "CasioCAS.g3a"
-AC2 = ROOT / "calculator_files" / "khicas50.ac2"
-PAK = ROOT / "calculator_files" / "CASIOCAS.PAK"
+G3A = ROOT / "calculator_files" / "khicasen.g3a"
 LIMIT = 2 * 1024 * 1024
 
 
@@ -45,8 +43,6 @@ class Stat:
     commit: str
     dirty: int
     g3a: int
-    ac2: int
-    pak: int
     graph_age: str
     ratios: list[tuple[str, int, int]]
 
@@ -118,8 +114,6 @@ def collect() -> Stat:
         commit=run(["git", "rev-parse", "--short", "HEAD"]),
         dirty=dirty_count(),
         g3a=file_size(G3A),
-        ac2=file_size(AC2),
-        pak=file_size(PAK),
         graph_age=graph_age(),
         ratios=ratios_from(tests),
     )
@@ -167,7 +161,7 @@ def render(st: Stat, frame: int, width: int, height: int, enabled: bool) -> str:
     spin = "|/-\\"[frame % 4]
     dirty_color = C.green if st.dirty == 0 else C.yellow
     lines = [
-        trim(f"{color('CasioCAS audit', C.bold + C.cyan, enabled)} {spin} {time.strftime('%H:%M:%S')} fps live", width),
+        trim(f"{color('KhiCASen audit', C.bold + C.cyan, enabled)} {spin} {time.strftime('%H:%M:%S')} fps live", width),
         trim("-" * width, width),
         trim(f"branch {st.branch}  commit {st.commit}  dirty {color(str(st.dirty), dirty_color, enabled)}  graph {st.graph_age}", width),
         trim(f"phase  {st.phase}", width),
@@ -176,9 +170,7 @@ def render(st: Stat, frame: int, width: int, height: int, enabled: bool) -> str:
         trim(f"tests  {st.tests}", width),
         "",
         trim(color("artifacts", C.bold, enabled), width),
-        size_row("CasioCAS.g3a", st.g3a, frame, bar_w, enabled),
-        size_row("khicas50.ac2", st.ac2, frame, bar_w, enabled),
-        trim(f"CASIOCAS.PAK    {st.pak:,} B", width),
+        size_row("khicasen.g3a", st.g3a, frame, bar_w, enabled),
         "",
         trim(color("checks", C.bold, enabled), width),
     ]

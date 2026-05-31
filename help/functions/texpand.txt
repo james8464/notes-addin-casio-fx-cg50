@@ -1,9 +1,33 @@
-Args: texpand(expr)
-Required: expr
-Does: Expands supported trigonometric expressions.
-Examples: texpand(sin(2*x)); texpand(cos(x+y))
-F2:texpand(sin(2*x))
-F3:texpand(cos(x+y))
-Ex F2: texpand(sin(2*x))
-Ex F3: texpand(cos(x+y))
-Working: Uses double-angle and compound-angle identities where routed.
+texpand(expr)
+
+Args:
+  expr
+
+Required:
+  expr
+
+Optional:
+  None.
+
+Does:
+  Expand trig/log/exponential forms. Required: expr.
+
+Examples:
+  texpand(sin(2*x)); texpand(ln(x*y))
+
+F2:
+  texpand(sin(2*x))
+
+F3:
+  texpand(ln(x*y))
+
+Keys:
+  F1 inserts the command.
+  F2 inserts the first example.
+  F3 inserts the second example when available.
+
+Working:
+  Shows exam-style lines when this command has a routed A-level working path; otherwise returns the exact KhiCAS result for the expression.
+
+Tip:
+  Use brackets around compound numerators, denominators, powers, and substitutions for readable exam-style output.

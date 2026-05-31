@@ -1,55 +1,83 @@
 # Runtime Risk Audit
 
+Observed calculator crash:
+
+- `System ERROR`
+- `ADDRESS(W) TARGET=00000001`
+- `PC=00000000`
+
+Decision:
+
 ```mermaid
 graph TD
-  U["upstream KhiCAS fx-CG50"] --> B["Docker source build"]
-  B --> G["CasioCAS.g3a metadata patch"]
-  B --> A["khicas50.ac2 RAM part"]
-  B --> P["CASIOCAS.PAK help pack"]
-  G --> C["calculator startup"]
-  A --> C
-  P --> H["external help"]
+  Broken["custom CasioCAS split build"] --> Crash["runtime crash risk"]
+  Stable["upstream khicasen source/build"] --> G3A["single khicasen.g3a"]
+  G3A --> Test["manual calculator test"]
 ```
 
-## Change Groups Since Upstream
+## Removed From Calculator Binary
 
-- Repo reset: old files archived in Git, fresh upstream source imported.
-- Build: Docker toolchain, `./compile`, metadata patch, size checks, `calculator_files/` transfer outputs.
-- Packaging: renamed visible add-in to `CasioCAS.g3a`; upstream RAM part remains `khicas50.ac2`.
-- Scope: `CASCAS_ALEVEL_ONLY` removes/stubs non-pure features: stats/probability, matrices, plotting, geometry, turtle/pixels, complex-only, crypto, programming/Python/scripts, sessions, about/shortcuts, mechanics.
-- Catalog/help: reduced command list to pure maths, external `CASIOCAS.PAK`, one help sheet per function, F2/F3 example insertion.
-- UI: restored purple border.
-- Working: added same-source `cascas_working` layer, host runner uses same source, golden queue checks same source.
-- Feature polish: exact/domain/range/log/trig/xform/implicit/parametric/integration working routes.
-- Tests/tools: restored old golden queue; added host shared-core checks and scope/removed-feature gates.
-
-## Risk Findings
-
-- **Fixed critical:** upstream fx-CG50 complete version requires `khicas50.g3a` + `khicas50.ac2`; current package copied only `.g3a` and `.PAK`. Startup then failed with `Fatal: unable to load ram part khicas50.ac2 err=2`.
-- **Fixed critical:** calculator screenshot showed `TLB ERROR ... PC=0040723C`. Local map places that PC inside `cascas::try_integral`, so calculator builds no longer treat arbitrary raw input or incomplete `int(`/`integrate(` text as integral working.
-- **Fixed high:** plain numeric literals such as `99999` were caught by the host/calculator arithmetic working route. Numeric literals now return `false` from `cascas_working`, so calculator execution falls through to the original KhiCAS evaluator.
-- **Fixed high:** catalog F2/F3 examples were stored as full commands without upstream `#` exact-insert marker, causing nested inserts such as `abs(abs(-3))`.
-- **Fixed medium:** A-level build could still read a stale `\\fls0\\FMENU.py` created by older KhiCAS and inherit old labels/colours. The rebuild now uses compiled menu config only and fixes F-key background colour in A-level mode.
-- **Fixed medium:** file-icon sprite drawing wrote directly to VRAM without clipping. `CopySpriteMasked` now clips to LCD bounds and `get_pixel` returns `0` for out-of-bounds reads.
-- **Fixed medium:** removed-feature commands no longer print the old `Err: unsupported (not A-level scope)` message to users. They show a short Pure-method fallback with next commands to try.
-- **Fixed medium:** upstream `undef`/syntax-style output is masked with a general Pure-method fallback, so invalid pure attempts get next-step guidance instead of a raw error string.
-- **Medium:** metadata rename changes visible/internal add-in name; low risk if sidecar keeps upstream filename because `ram_filename` is hardcoded as `\\fls0\khicas50.8c2`.
-- **Medium:** hard pruning can break hidden dependencies; mitigated by compile, removed-feature scans, and host working tests.
-- **Medium:** external help pack can be missing; calculator should still run, but help detail will be unavailable.
-- **Low:** purple border touches display refresh paths; covered by border checker and manual UI risk remains on real hardware.
-- **Low:** same-source working routes are pattern-heavy; unsupported/generic fallback checks reduce drift but do not prove every pure expression.
-
-## Transfer Rule
-
-Copy all generated files from `calculator_files/` to calculator storage root:
-
-- `CasioCAS.g3a`
+- `khicas50.g3a`
 - `khicas50.ac2`
+- `CasioCAS.g3a` metadata rewrite
 - `CASIOCAS.PAK`
+- external catalog/help rewrites
+- purple border patch
+- removed-feature guards
+- host-only bridge hooks
+- custom F-key colour edits and stale `FMENU.cfg` loading
+- session/script disabling patches
+- parser/evaluator prune patches
 
-Do not rename `khicas50.ac2`.
+## Kept
 
-## Platform Notes
+- upstream `giac90_1addin.tgz` source
+- upstream `Makefile`
+- upstream `prizm.ld`
+- upstream `khicasen.g3a` target
+- upstream metadata: `Khicasen`, `@KHICASEN`, `khicasen.g3a`
+- upstream icons: `khicasio.png`, `khicasio1.png`
+- upstream UI behaviour, except stale `FMENU.cfg` is ignored so old bad labels cannot persist
 
-- WikiPrizm documents TLB ERROR as an unmapped virtual-memory access in add-in code, so fixes focus on pointer/VRAM bounds and removing risky pre-parser fallbacks.
-- WikiPrizm recommends `GetVRAMAddress()` over hard-coded VRAM addresses for CG50 portability; this build keeps the syscall path and clips new sprite writes before touching VRAM.
+## Reintroduced With Guard
+
+- `cascas_working.o` is linked into the monolithic `khicasen.g3a`.
+- It is called once from the main input loop.
+- It returns `false` for numeric literals, bad delimiters, and unknown input.
+- Unknown input falls through to original KhiCAS unchanged.
+- Working text is split through `Console_NewLine`; no embedded newline is passed to `Console_Output`.
+- `FMENU.cfg` on flash is ignored; built-in labels are `algb/calc/trig/menu/A<>a/solve`.
+- Current direct routes: `integrate(9x)`, simple diff/int/range/log/xform, and the implicit diff example.
+- About/shortcuts text was shortened to reclaim ROM; no control-flow change.
+- The visible catalogue is Pure-only; unsupported command support is hidden, not hard-pruned.
+- `xform` and `log(base,x)` are visible in the catalogue and manually syntax-coloured.
+- Pink border is drawn through `drawCasioCasBorder()` after screen flush: 6 px sides, 7 px bottom, no top.
+- Top status bar no longer includes the clock.
+
+## Risk List
+
+| Difference | Previous Project | KhiCASen Baseline | Risk |
+| --- | --- | --- | --- |
+| Source archive | `khicas.tgz` split build | `giac90_1addin.tgz` | wrong base |
+| Add-in file | `CasioCAS.g3a` | `khicasen.g3a` | metadata/session mismatch |
+| Sidecar | `khicas50.ac2` required | none required | missing/wrong RAM part |
+| Metadata | patched to `CasioCAS/@CASCAS` | upstream `Khicasen/@KHICASEN` | loader/UI mismatch |
+| Build target | `khicas50.g3a khicas50.ac2` | `khicasen.g3a` | wrong linker/object path |
+| External pack | `CASIOCAS.PAK` | none | file lookup drift |
+| Working engine | broad custom `cascas_*` | small guarded hook | medium |
+| Function keys | custom colours/examples | upstream | UI register/state drift |
+| Border | old custom draw patches | direct `drawCasioCasBorder()` only | low/medium |
+| Feature pruning | many stubs/guards | catalogue/menu hide only | low |
+
+## Verification
+
+- `./compile` succeeds.
+- `calculator_files/` contains only `khicasen.g3a`.
+- Metadata check passes: `Khicasen`, `@KHICASEN`, `khicasen.g3a`.
+- Size is `2,075,004` bytes, under fx-CG add-in hard limit.
+- Catalogue scope check passes.
+- Border source check passes.
+- Exact queue runtime pass: `13,116/13,116`.
+- Strict marker pass: `319/13,116`; remaining failures are missing dedicated working routes, not runtime crashes.
+
+Manual calculator test needed because this machine cannot emulate fx-CG50 hardware faults reliably.

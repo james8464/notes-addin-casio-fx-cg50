@@ -1,0 +1,42 @@
+[
+  {
+    "id": "madas_iygb_syn_s_q22_exact_inputs",
+    "source_pdf": "MadAsMaths papers/syn_s.pdf",
+    "question": "q22",
+    "part": "all",
+    "verdict": "skip",
+    "review_basis": "second-pass VM re-scan: syn_s q22 vector intersection ratio AP:PN=6:5; solutions page syn_s_solutions_24.png",
+    "inputs": [],
+    "expected_final": ["|AP| : |PN| = 6 : 5"],
+    "unsupported_reason": "vector coefficient matching and diagram setup are manual"
+  },
+  {
+    "id": "madas_iygb_syn_s_q23_exact_inputs",
+    "source_pdf": "MadAsMaths papers/syn_s.pdf",
+    "question": "q23",
+    "part": "a-b",
+    "verdict": "skip",
+    "review_basis": "second-pass VM re-scan: syn_s q23 Sophie Germain factorization; solutions page syn_s_solutions_25.png",
+    "inputs": [],
+    "expected_final": ["(A^2-2AB+2B^2)(A^2+2AB+2B^2)", "(x^2-4x+8)(x^2+4x+8)"],
+    "unsupported_reason": "completing-the-square factorization steps are manual"
+  },
+  {
+    "id": "madas_iygb_syn_t_q21_exact_inputs",
+    "source_pdf": "MadAsMaths papers/syn_t.pdf",
+    "question": "q21",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "second-pass VM re-scan: syn_t q21 tangent parallel to 6x+y=17; solutions pages syn_t_solutions_24-25.png",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,5",
+        "mark_scheme_working": ["k=5 after equating gradient and y=2 conditions"],
+        "expected_output_markers": ["5"]
+      }
+    ],
+    "expected_final": ["k=5"],
+    "unsupported_reason": "implicit differentiation setup and simultaneous x elimination are manual"
+  }
+]

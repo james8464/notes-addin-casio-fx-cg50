@@ -1,9 +1,33 @@
-Args: range(expr) or range(expr,var) or range(expr,var,a,b)
-Required: expr
-Does: Returns the range as inequalities in y.
-Examples: range(-5*x^2+6*x+4,x); range(x/(1+x^2),x); range(sqrt(9-x^2),x); range(4*(x^2-2)*exp(-2*x),x)
-F2:range(-5*x^2+6*x+4,x)
-F3:range(x/(1+x^2),x)
-Ex F2: range(-5*x^2+6*x+4,x)
-Ex F3: range(x/(1+x^2),x)
-Working: Shows completing square, endpoint checks, or constraint reasoning.
+range(expr,[var,a,b])
+
+Args:
+  expr, [var,a,b]
+
+Required:
+  expr
+
+Optional:
+  variable and interval endpoints
+
+Does:
+  Returns the real range as inequalities where possible, including algebraic forms instead of only sampled values.
+
+Examples:
+  range(x^2); range(1/x)
+
+F2:
+  range(x^2)
+
+F3:
+  range(1/x)
+
+Keys:
+  F1 inserts the command.
+  F2 inserts the first example.
+  F3 inserts the second example when available.
+
+Working:
+  Finds restrictions, endpoints, turning points, asymptotes, and inequality form where routed.
+
+Tip:
+  Use brackets around compound numerators, denominators, powers, and substitutions for readable exam-style output.

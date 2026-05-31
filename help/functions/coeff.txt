@@ -1,9 +1,30 @@
-Args: coeff(poly,var,n)
-Required: poly, var, n
-Does: Returns the coefficient of var^n in a polynomial or expansion.
-Examples: coeff((x+1)^3,x,2); coeff(expand((1+2*x)^5),x,3)
-F2:coeff((x+1)^3,x,2)
-F3:coeff(expand((1+2*x)^5),x,3)
-Ex F2: coeff((x+1)^3,x,2)
-Ex F3: coeff(expand((1+2*x)^5),x,3)
-Working: Shows term selection or expansion-term reasoning when routed.
+coeff(p,x,n)
+
+Args:
+  p,x,n
+
+Required:
+  p, x, n
+
+Optional:
+  None.
+
+Does:
+  Coefficient extraction. Required: expression p, variable x, power n. Returns the coefficient of x^n.
+
+Examples:
+  coeff(3*x^2+2*x+1,x,2)
+
+F2:
+  coeff(3*x^2+2*x+1,x,2)
+
+Keys:
+  F1 inserts the command.
+  F2 inserts the first example.
+  F3 inserts the second example when available.
+
+Working:
+  Shows exam-style lines when this command has a routed A-level working path; otherwise returns the exact KhiCAS result for the expression.
+
+Tip:
+  Use brackets around compound numerators, denominators, powers, and substitutions for readable exam-style output.

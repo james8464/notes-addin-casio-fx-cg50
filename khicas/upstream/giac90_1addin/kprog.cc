@@ -71,7 +71,7 @@ void ck_getkey(int * keyptr);
 #endif // HAVE_LIBDL
 #ifdef USE_GMP_REPLACEMENTS
 #undef HAVE_GMPXX_H
-//#undef HAVE_LIBMPFR
+#undef HAVE_LIBMPFR
 #undef HAVE_LIBPARI
 #endif
 
@@ -1085,10 +1085,9 @@ namespace giac {
     if (warn){
       *logptr(contextptr) << gettext("// Parsing ") << d << endl;
       lastprog_name(d.print(contextptr),contextptr);
-      if (contains(a,vx_var) && c.type==_SYMB && (!lop(c,at_derive).empty() || !lop(c,at_integrate).empty() || !lop(c,at_int).empty()))
-        c=eval(c,1,contextptr);
-      // if (c.is_symb_of_sommet(at_derive)) *logptr(contextptr) << gettext("Warning, defining a derivative function should be done with function_diff or unapply: ") << c << endl;
-      if (c.type==_SYMB && c._SYMBptr->sommet!=at_local && c._SYMBptr->sommet!=at_bloc && c._SYMBptr->sommet!=at_when && c._SYMBptr->sommet!=at_for && c._SYMBptr->sommet!=at_ifte){
+      if (c.is_symb_of_sommet(at_derive))
+	*logptr(contextptr) << gettext("Warning, defining a derivative function should be done with function_diff or unapply: ") << c << endl;
+       if (c.type==_SYMB && c._SYMBptr->sommet!=at_local && c._SYMBptr->sommet!=at_bloc && c._SYMBptr->sommet!=at_when && c._SYMBptr->sommet!=at_for && c._SYMBptr->sommet!=at_ifte){
 	 vecteur lofc=lop(c,at_of);
 	 vecteur lofc_no_d;
 	 vecteur av=gen2vecteur(a);
@@ -3699,16 +3698,6 @@ namespace giac {
   static define_unary_function_eval (__sample,&_sample,_sample_s);
   define_unary_function_ptr5( at_sample ,alias_at_sample,&__sample,0,true);
 
-  gen check_secure(){
-    if (secure_run
-#ifdef KHICAS
-	|| exam_mode || nspire_exam_mode
-#endif
-	)
-      return gensizeerr(gettext("Running in secure mode"));
-    return 0;
-  }
-
   gen _srand(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG &&  args.subtype==-1) return  args;
     if (args.type==_INT_){
@@ -6101,13 +6090,13 @@ namespace giac {
 	    }
 	  }
 	  if (rev)
-	    vreverse(res.begin(),res.end());
+	    reverse(res.begin(),res.end());
 	  return gen(res,subtype);
 	}
 	sort(w.begin(),w.end());
 	vector_int2vecteur(w,v);
 	if (rev)
-	  vreverse(v.begin(),v.end());
+	  reverse(v.begin(),v.end());
 	return gen(v,subtype);
       }
       vector<giac_double> V;
@@ -6115,7 +6104,7 @@ namespace giac {
 	sort(V.begin(),V.end());
 	v=vector_giac_double_2_vecteur(V);
 	if (rev)
-	  vreverse(v.begin(),v.end());
+	  reverse(v.begin(),v.end());
 	return gen(v,subtype);
       }
     }
@@ -6124,7 +6113,7 @@ namespace giac {
     qsort(v.begin(),v.size(),sizeof(gen),qs_comp);
     // sort(v.begin(),v.end(),gen_sort(f,contextptr));
     if (rev)
-      vreverse(v.begin(),v.end());
+      reverse(v.begin(),v.end());
     return gen(v,subtype);
   }
   static const char _sort_s []="sort";
@@ -6835,7 +6824,7 @@ namespace giac {
     vecteur v=*args._VECTptr,w;
     int s=int(v.size());
     if (s<2)
-      w=vecteur(1,vx_var);
+      w=vecteur(1,vx_var());
     else {
       if (s==2 && v[1].type==_VECT)
 	w=*v[1]._VECTptr;
@@ -6877,9 +6866,6 @@ namespace giac {
   define_unary_function_ptr5( at_makesuite ,alias_at_makesuite,&__makesuite,0,true);
 
   gen _matrix(const gen & g,const context * contextptr){
-#ifdef CASCAS_ALEVEL_ONLY
-    return gensizeerr(contextptr);
-#else
     if ( g.type==_STRNG &&  g.subtype==-1) return  g;
     if (g.type!=_VECT)
       return gentypeerr(contextptr);
@@ -6979,7 +6965,6 @@ namespace giac {
       res[i-decal]=tmp;
     }
     return gen(res,_MATRIX__VECT);
-#endif
   }
   static const char _matrix_s []="matrix";
   static define_unary_function_eval (__matrix,&_matrix,_matrix_s);
@@ -7737,7 +7722,7 @@ namespace giac {
 	  }
 	}
       }
-      if (tmp.type==_IDNT && (strcmp(tmp._IDNTptr->id_name,"numpyx")==0 || strcmp(tmp._IDNTptr->id_name,"pylabx")==0 || strcmp(tmp._IDNTptr->id_name,"_rmh69")==0)){
+      if (tmp.type==_IDNT && (strcmp(tmp._IDNTptr->id_name,"numpy")==0 || strcmp(tmp._IDNTptr->id_name,"pylab")==0 || strcmp(tmp._IDNTptr->id_name,"matplotlib")==0)){
 	if (b.type==_SYMB){
 	  gen w1=eval(w[1],1,contextptr);
 	  if (w1==at_float || w1==at_real)
@@ -7909,6 +7894,35 @@ namespace giac {
   static const char _giac_bool_s []="bool";
   static define_unary_function_eval (__giac_bool,&_giac_bool,_giac_bool_s);
   define_unary_function_ptr5( at_giac_bool ,alias_at_giac_bool,&__giac_bool,0,true);
+
+  gen _giac_bin(const gen & a,GIAC_CONTEXT){
+    if (a.type==_STRNG && a.subtype==-1) return  a;
+    gen a_(a);
+    if (!is_integral(a_) || a_.type==_ZINT)
+      return gentypeerr(contextptr);
+    int i=a_.val;
+    string s;
+    while (i){
+      s = char('0'+(i%2))+s;
+      i /= 2;
+    }
+    return string2gen("0b"+s,false);
+  }
+  static const char _giac_bin_s []="bin";
+  static define_unary_function_eval (__giac_bin,&_giac_bin,_giac_bin_s);
+  define_unary_function_ptr5( at_giac_bin ,alias_at_giac_bin,&__giac_bin,0,true);
+
+  gen _giac_hex(const gen & a,GIAC_CONTEXT){
+    if (a.type==_STRNG && a.subtype==-1) return  a;
+    gen a_(a);
+    if (!is_integral(a_))
+      return gentypeerr(contextptr);
+    string s=a_.type==_INT_?hexa_print_INT_(a_.val):hexa_print_ZINT(*a._ZINTptr);
+    return string2gen(s,false);
+  }
+  static const char _giac_hex_s []="hex";
+  static define_unary_function_eval (__giac_hex,&_giac_hex,_giac_hex_s);
+  define_unary_function_ptr5( at_giac_hex ,alias_at_giac_hex,&__giac_hex,0,true);
 
   gen _heapify(const gen & args,GIAC_CONTEXT){
     if (args.type!=_VECT)
