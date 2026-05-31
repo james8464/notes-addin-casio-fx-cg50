@@ -2998,6 +2998,39 @@ static bool try_xform(const char *input,working_string &out){
   working_string a=compact_ascii(strip_outer_parens(args[0]));
   working_string b=compact_ascii(strip_outer_parens(args[1]));
   out="xform:\n";
+  working_string poly_var;
+  poly_rat xp;
+  if (detect_poly_var(args[0],poly_var) && parse_poly(args[0],poly_var,xp) && xp.deg==2 && !is_zero_rat(xp.c[2])){
+    rat h=div_rat(norm_rat(-xp.c[1].n,xp.c[1].d),mul_rat(norm_rat(2,1),xp.c[2]));
+    rat k=poly_eval_rat(xp,h);
+    working_string square;
+    if (!(xp.c[2].n==1 && xp.c[2].d==1)){
+      if (xp.c[2].n==-1 && xp.c[2].d==1)
+        square += "-";
+      else {
+        square += fmt_rat(xp.c[2]);
+        square += "*";
+      }
+    }
+    square += fmt_shift_square(poly_var,h);
+    if (k.n<0){
+      square += " - ";
+      square += fmt_rat(abs_rat(k));
+    }
+    else {
+      square += " + ";
+      square += fmt_rat(k);
+    }
+    if (compact_ascii(square)==b){
+      out += "Complete the square:\n";
+      out += pretty_poly_input(args[0]);
+      out += "\n= ";
+      out += square;
+      out += "\nAnswer: ";
+      out += square;
+      return true;
+    }
+  }
   working_string log_args[2];
   int log_count=0;
   if (parse_call(args[0].c_str(),"log",log_args,2,log_count) && log_count==2){

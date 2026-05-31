@@ -261,6 +261,16 @@ QUALITY_CASES = [
         ],
     ),
     (
+        "xform(3*x^2+12*x+25,3*(x+2)^2+13)",
+        4,
+        [
+            "Complete the square:",
+            "3*x^2 + 12*x + 25",
+            "3*(x + 2)^2 + 13",
+            "Answer: 3*(x + 2)^2 + 13",
+        ],
+    ),
+    (
         "xform((sin(x)-cos(x)+1)/(sin(x)+cos(x)-1),sec(x)+tan(x))",
         6,
         [

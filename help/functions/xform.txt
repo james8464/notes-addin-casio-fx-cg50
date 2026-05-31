@@ -1,5 +1,5 @@
 Args: xform(expr,target)
 Required: expr, target
 Does: Transforms or proves equivalence from expr to target using supported A-level moves.
-Examples: xform(x^2+2*x+1,(x+1)^2); xform(log(2,x^2),2*log(2,x))
+Examples: xform(x^2+2*x+1,(x+1)^2); xform(log(2,x^2),2*log(2,x)); xform(x^2-4*x+5,(x-2)^2+1)
 Working: Shows identities, expansion/factorisation, log laws, and coefficient matching.
