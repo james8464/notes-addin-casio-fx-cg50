@@ -130,6 +130,17 @@ QUALITY_CASES = [
         ],
     ),
     (
+        "range(x^2-4*x+5,x,0,5)",
+        6,
+        [
+            "Interval: 0 <= x <= 5",
+            "f(0) = 5",
+            "f(5) = 10",
+            "vertex x = 2 is inside the interval",
+            "Answer: 1 <= y <= 10",
+        ],
+    ),
+    (
         "xform(log(2,x),ln(x)/ln(2))",
         5,
         [

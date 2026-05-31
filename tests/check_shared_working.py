@@ -83,6 +83,8 @@ CASES = [
     ("range(sqrt(x-1)+3)", "y >= 3"),
     ("range((x+1)/(x^2+1))", "(1-sqrt(2))/2 <= y <= (1+sqrt(2))/2"),
     ("range(1/(x^2+4*x+5))", "0 < y <= 1"),
+    ("range(x^2-4*x+5,x,0,5)", "Answer: 1 <= y <= 10"),
+    ("range(2*x+1,x,-1,3)", "Answer: -1 <= y <= 7"),
     ("diff(log(1/(sqrt(x^2+1)-x)),x)", "Rationalise: 1/(sqrt(x^2+1)-x) = sqrt(x^2+1)+x"),
     ("xform((x+1)^2,x^2+2*x+1)", "normal(((x+1)^2)-(x^2+2*x+1)) = 0"),
     ("xform((sin(x)-cos(x)+1)/(sin(x)+cos(x)-1),sec(x)+tan(x))", "t=tan(x/2)"),

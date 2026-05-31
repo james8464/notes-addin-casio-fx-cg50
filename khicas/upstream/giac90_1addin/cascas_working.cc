@@ -340,6 +340,66 @@ static bool poly2(const working_string &expr,const working_string &var,double &a
   return true;
 }
 
+static bool try_bounded_poly2_range(const working_string &expr,const working_string &var,
+                                    const working_string &lo_arg,const working_string &hi_arg,
+                                    working_string &out){
+  double qa,qb,qc,lo,hi;
+  if (!poly2(expr,var,qa,qb,qc) ||
+      !parse_real(compact_ascii(lo_arg),lo) ||
+      !parse_real(compact_ascii(hi_arg),hi))
+    return false;
+  if (hi<lo){
+    double tmp=lo; lo=hi; hi=tmp;
+  }
+  double flo=qa*lo*lo+qb*lo+qc;
+  double fhi=qa*hi*hi+qb*hi+qc;
+  double mn=flo<fhi?flo:fhi;
+  double mx=flo>fhi?flo:fhi;
+  working_string v=compact_ascii(var);
+  out += "Interval: ";
+  out += format_real(lo);
+  out += " <= ";
+  out += v;
+  out += " <= ";
+  out += format_real(hi);
+  out += "\n";
+  out += "f(";
+  out += format_real(lo);
+  out += ") = ";
+  out += format_real(flo);
+  out += "\n";
+  out += "f(";
+  out += format_real(hi);
+  out += ") = ";
+  out += format_real(fhi);
+  out += "\n";
+  if (fabs(qa)>1e-10){
+    double vx=-qb/(2*qa);
+    if (vx>=lo-1e-10 && vx<=hi+1e-10){
+      double fv=qa*vx*vx+qb*vx+qc;
+      out += "vertex x = ";
+      out += format_real(vx);
+      out += " is inside the interval\n";
+      out += "f(";
+      out += format_real(vx);
+      out += ") = ";
+      out += format_real(fv);
+      out += "\n";
+      if (fv<mn) mn=fv;
+      if (fv>mx) mx=fv;
+    }
+    else
+      out += "vertex is outside the interval, so endpoints give the extrema\n";
+  }
+  else
+    out += "Linear function, so endpoints give the extrema\n";
+  out += "Answer: ";
+  out += format_real(mn);
+  out += " <= y <= ";
+  out += format_real(mx);
+  return true;
+}
+
 static bool try_range(const char *input,working_string &out){
   working_string args[4];
   int count=0;
@@ -349,6 +409,8 @@ static bool try_range(const char *input,working_string &out){
   double a,b,c;
   out="Range:\n";
   working_string cmp=compact_ascii(strip_outer_parens(expr));
+  if (count>=4 && try_bounded_poly2_range(expr,var,args[2],args[3],out))
+    return true;
   if (cmp=="x/(1+x^2)" || cmp=="x/(x^2+1)"){
     out += "-1/2 <= y <= 1/2";
     return true;
