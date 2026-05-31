@@ -3089,6 +3089,10 @@ namespace giac {
   }
 
   gen _droite(const gen & args0,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    if (args0.type==_STRNG && args0.subtype==-1) return args0;
+    return gensizeerr(contextptr);
+#else
     if (is_undef(args0)) return args0;
     if (args0.type==_SYMB || args0.type==_IDNT){
       // eval args with x/y or X/Y quoted
@@ -3122,13 +3126,17 @@ namespace giac {
     if (v1.type==_VECT && v0.is_symb_of_sommet(at_pnt))
       return _parallele(args,contextptr);
     return _droite_segment(gen(makevecteur(v0,v1),_SEQ__VECT),_LINE__VECT,attributs,contextptr);
+#endif
   }
-  static const char _droite_s []="line";
+  static const char _droite_s []="_rsg0";
   static define_unary_function_eval_quoted (__droite,&_droite,_droite_s);
   define_unary_function_ptr5( at_droite ,alias_at_droite,&__droite,_QUOTE_ARGUMENTS,true);
 
   gen _demi_droite(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#else
     if (args.type==_INT_)
       return mkrand2d3d(args.val,2,_demi_droite,contextptr);
     if (args.type!=_VECT)
@@ -3148,8 +3156,9 @@ namespace giac {
       return gen(w,_GROUP__VECT);
     }
     return _droite_segment(seg,_HALFLINE__VECT,attributs,contextptr);
+#endif
   }
-  static const char _demi_droite_s []="half_line";
+  static const char _demi_droite_s []="_rsgf";
   static define_unary_function_eval (__demi_droite,&_demi_droite,_demi_droite_s);
   define_unary_function_ptr5( at_demi_droite ,alias_at_demi_droite,&__demi_droite,0,true);
 
@@ -3205,6 +3214,9 @@ namespace giac {
 
   gen _segment(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#else
     if (args.type==_INT_)
       return mkrand2d3d(args.val,2,_segment,contextptr);
     if (args.type!=_VECT)
@@ -3243,8 +3255,9 @@ namespace giac {
       // return _droite_segment(gen(makevecteur(v[0]+cst_i*v[1],v[2]+cst_i*v[3]),_SEQ__VECT),_GROUP__VECT);
     }
     return _droite_segment(seg,_GROUP__VECT,attributs,contextptr);
+#endif
   }
-  static const char _segment_s []="segment";
+  static const char _segment_s []="_rsg1";
   static define_unary_function_eval_index (28,__segment,&_segment,_segment_s);
   define_unary_function_ptr5( at_segment ,alias_at_segment,&__segment,0,true);
 
@@ -3737,6 +3750,9 @@ namespace giac {
 
   gen _point(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#else
     if ( (args.type==_SYMB) && (args._SYMBptr->sommet==at_pnt))
       return args;
     vecteur attributs(1,default_color(contextptr) | _QUADRANT3);
@@ -3782,8 +3798,9 @@ namespace giac {
       return pnt_attrib(gen(v,_POINT__VECT),attributs,contextptr);
     }
     return pnt_attrib(args,attributs,contextptr);
+#endif
   }
-  static const char _point_s []="point";
+  static const char _point_s []="_rsg2";
   static define_unary_function_eval_index (26,__point,&_point,_point_s);
   define_unary_function_ptr5( at_point ,alias_at_point,&__point,0,true);
 
@@ -3812,17 +3829,25 @@ namespace giac {
   }
   gen _point3d(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#else
     return point2d3d(args,true,contextptr);
+#endif
   }
-  static const char _point3d_s []="point3d";
+  static const char _point3d_s []="_rsgm";
   static define_unary_function_eval_quoted (__point3d,&_point3d,_point3d_s);
   define_unary_function_ptr5( at_point3d ,alias_at_point3d,&__point3d,_QUOTE_ARGUMENTS,true);
 
   gen _point2d(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#else
     return point2d3d(args,false,contextptr);
+#endif
   }
-  static const char _point2d_s []="point2d";
+  static const char _point2d_s []="_rsgl";
   static define_unary_function_eval_quoted (__point2d,&_point2d,_point2d_s);
   define_unary_function_ptr5( at_point2d ,alias_at_point2d,&__point2d,_QUOTE_ARGUMENTS,true);
 
@@ -4048,13 +4073,17 @@ namespace giac {
 
   gen _point_polaire(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#else
     if (args.type!=_VECT || args._VECTptr->size()!=2)
       return gensizeerr(contextptr);
     gen a=args._VECTptr->front();
     gen b=args._VECTptr->back();
     return _point(a*exp(cst_i*b,contextptr),contextptr);
+#endif
   }
-  static const char _point_polaire_s []="polar_point";
+  static const char _point_polaire_s []="_rsgn";
   static define_unary_function_eval (__point_polaire,&_point_polaire,_point_polaire_s);
   define_unary_function_ptr5( at_point_polaire ,alias_at_point_polaire,&__point_polaire,0,true);
 
@@ -4067,6 +4096,10 @@ namespace giac {
 
   // point + rayon or line
   gen _cercle(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    if (args.type==_STRNG && args.subtype==-1) return args;
+    return gensizeerr(contextptr);
+#else
     if (is_undef(args)) return args;
     // inert form (since cercle return itself with a pnt__vect arg)
     if (args.type==_VECT && args.subtype==_PNT__VECT) return symbolic(at_cercle,args); 
@@ -4197,8 +4230,9 @@ namespace giac {
     if (s>3+narg)
       w.push_back(eval(symb_sto(_point(ga2,contextptr),v[narg+3]),contextptr));
     return  gen(w,_GROUP__VECT);
+#endif
   }
-  static const char _cercle_s []="circle";
+  static const char _cercle_s []="_rsg3";
   static define_unary_function_eval_quoted (__cercle,&_cercle,_cercle_s);
   define_unary_function_ptr5( at_cercle ,alias_at_cercle,&__cercle,_QUOTE_ARGUMENTS,true);
 
@@ -13822,23 +13856,30 @@ int find_plotseq_args(const gen & args,gen & expr,gen & x,double & x0d,double & 
 
   gen _plotinequation(const gen & f0,GIAC_CONTEXT){
     if ( f0.type==_STRNG && f0.subtype==-1) return  f0;
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#else
     if (f0.type==_SYMB){
       if (is_inequation(f0) || f0.is_symb_of_sommet(at_and) || f0.is_symb_of_sommet(at_ou))
 	return _plot(f0,contextptr);
       return _plot(symbolic(at_superieur_egal,makesequence(f0,0)),contextptr);
     }
     return _plot(f0,contextptr);
+#endif
   }
-  static const char _plotinequation_s []="plotinequation";
+  static const char _plotinequation_s []="_rsgk";
   static define_unary_function_eval_quoted (__plotinequation,&_plotinequation,_plotinequation_s);
   define_unary_function_ptr5( at_plotinequation ,alias_at_plotinequation,&__plotinequation,_QUOTE_ARGUMENTS,true);
 
-  static const char _inequationplot_s []="inequationplot";
+  static const char _inequationplot_s []="_rsgg";
   static define_unary_function_eval_quoted (__inequationplot,&_plotinequation,_inequationplot_s);
   define_unary_function_ptr5( at_inequationplot ,alias_at_inequationplot,&__inequationplot,_QUOTE_ARGUMENTS,true);
 
   gen _inter_droite(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#else
     if (args.type!=_VECT)
       return gentypeerr(contextptr);
     vecteur attributs(1,default_color(contextptr));
@@ -13889,20 +13930,25 @@ int find_plotseq_args(const gen & args,gen & expr,gen & x,double & x0d,double & 
       return res;
     }
     return undef;
+#endif
   }    
-  static const char _inter_droite_s []="line_inter";
+  static const char _inter_droite_s []="_rsgh";
   static define_unary_function_eval (__inter_droite,&_inter_droite,_inter_droite_s);
   define_unary_function_ptr5( at_inter_droite ,alias_at_inter_droite,&__inter_droite,0,true);
 
-  static const char _inter_unique_s []="single_inter";
+  static const char _inter_unique_s []="_rsgo";
   static define_unary_function_eval (__inter_unique,&_inter_droite,_inter_unique_s);
   define_unary_function_ptr5( at_inter_unique ,alias_at_inter_unique,&__inter_unique,0,true);
 
   gen _bitmap(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#else
     return symb_pnt(symbolic(at_bitmap,args),0,contextptr);
+#endif
   }
-  static const char _bitmap_s []="bitmap";
+  static const char _bitmap_s []="_rsg4";
   static define_unary_function_eval (__bitmap,&_bitmap,_bitmap_s);
   define_unary_function_ptr5( at_bitmap ,alias_at_bitmap,&__bitmap,0,true);
 
@@ -16384,22 +16430,30 @@ int find_plotseq_args(const gen & args,gen & expr,gen & x,double & x0d,double & 
   // args=normal,point
   gen _hyperplan(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#else
     if (args.type!=_VECT || args._VECTptr->size()!=2)
       return gensizeerr(contextptr);
     return symbolic(at_hyperplan,args);
+#endif
   }
-  static const char _hyperplan_s []="hyperplan";
+  static const char _hyperplan_s []="_rsgp";
   static define_unary_function_eval (__hyperplan,&_hyperplan,_hyperplan_s);
   define_unary_function_ptr5( at_hyperplan ,alias_at_hyperplan,&__hyperplan,0,true);
 
   // args=center,radius
   gen _hypersphere(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#else
     if (args.type!=_VECT || args._VECTptr->size()<2)
       return gensizeerr(contextptr);
     return symbolic(at_hypersphere,args);
+#endif
   }
-  static const char _hypersphere_s []="hypersphere";
+  static const char _hypersphere_s []="_rsgq";
   static define_unary_function_eval (__hypersphere,&_hypersphere,_hypersphere_s);
   define_unary_function_ptr5( at_hypersphere ,alias_at_hypersphere,&__hypersphere,0,true);
 
@@ -16413,9 +16467,13 @@ int find_plotseq_args(const gen & args,gen & expr,gen & x,double & x0d,double & 
   // variables
   gen _hypersurface(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#else
     return symbolic(at_hypersurface,args);
+#endif
   }
-  static const char _hypersurface_s []="hypersurface";
+  static const char _hypersurface_s []="_rsgr";
   static define_unary_function_eval (__hypersurface,&_hypersurface,_hypersurface_s);
   define_unary_function_ptr5( at_hypersurface ,alias_at_hypersurface,&__hypersurface,0,true);
 
@@ -16438,9 +16496,13 @@ int find_plotseq_args(const gen & args,gen & expr,gen & x,double & x0d,double & 
 
   gen _animation(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#else
     return symbolic(at_animation,args);
+#endif
   }
-  static const char _animation_s []="animation";
+  static const char _animation_s []="_rsga";
   static define_unary_function_eval (__animation,&_animation,_animation_s);
   define_unary_function_ptr5( at_animation ,alias_at_animation,&__animation,0,true);
 
@@ -16590,6 +16652,9 @@ int find_plotseq_args(const gen & args,gen & expr,gen & x,double & x0d,double & 
   // 3-d frame
   gen _frame_3d(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#else
     vecteur v=makevecteur(_point(makevecteur(0,0,0),contextptr),_point(makevecteur(1,0,0),contextptr));
     vecteur res(1,_demi_droite(gen(v,_SEQ__VECT),contextptr));
     v.push_back(symb_equal(at_display,131073));
@@ -16606,14 +16671,18 @@ int find_plotseq_args(const gen & args,gen & expr,gen & x,double & x0d,double & 
     v.push_back(symb_equal(at_legende,string2gen("z",false)));
     res.push_back(_vector(gen(v,_SEQ__VECT),contextptr));
     return gen(res,_SEQ__VECT);
+#endif
   }
-  static const char _frame_3d_s []="frame_3d";
+  static const char _frame_3d_s []="_rsgd";
   static define_unary_function_eval (__frame_3d,&_frame_3d,_frame_3d_s);
   define_unary_function_ptr5( at_frame_3d ,alias_at_frame_3d,&__frame_3d,0,true);
 
   // moved from plot3d.cc for implicittex_plot_sommets_alias
   gen _plot3d(const gen & g,const context * contextptr){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#else
     if (g.type!=_VECT){
       vecteur v(lidnt(eval(g,1,contextptr)));
       if (v.size()==2)
@@ -16664,12 +16733,13 @@ int find_plotseq_args(const gen & args,gen & expr,gen & x,double & x0d,double & 
 	return plotfunc(v[0],makevecteur(v[1],v[2]),attributs,false,xmin,xmax,ymin,ymax,gnuplot_zmin,gnuplot_zmax,gnuplot_pixels_per_eval,0,false,contextptr);
       }
     }
+#endif
   }
-  static const char _plot3d_s []="plot3d";
+  static const char _plot3d_s []="_rsgj";
   static define_unary_function_eval (__plot3d,&_plot3d,_plot3d_s);
   define_unary_function_ptr5( at_plot3d ,alias_at_plot3d,&__plot3d,0,true);
 
-  static const char _graphe3d_s []="graphe3d";
+  static const char _graphe3d_s []="_rsge";
   static define_unary_function_eval (__graphe3d,&_plot3d,_graphe3d_s);
   define_unary_function_ptr5( at_graphe3d ,alias_at_graphe3d,&__graphe3d,0,true);
 
@@ -16738,13 +16808,22 @@ int find_plotseq_args(const gen & args,gen & expr,gen & x,double & x0d,double & 
   define_unary_function_ptr5( at_inter ,alias_at_inter,&__inter,0,true);
 
   gen _Bezier(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    if (args.type==_STRNG && args.subtype==-1) return args;
+    return gensizeerr(contextptr);
+#else
     return symbolic(at_Bezier,args);
+#endif
   }
-  static const char _Bezier_s []="Bezier";
+  static const char _Bezier_s []="_rsg5";
   static define_unary_function_eval (__Bezier,&_Bezier,_Bezier_s);
   define_unary_function_ptr5( at_Bezier ,alias_at_Bezier,&__Bezier,0,true);
 
   gen _bezier(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    if (args.type==_STRNG && args.subtype==-1) return args;
+    return gensizeerr(contextptr);
+#else
     if (is_undef(args)) return args;
     vecteur v(gen2vecteur(args));
     if (v.empty())
@@ -16769,8 +16848,9 @@ int find_plotseq_args(const gen & args,gen & expr,gen & x,double & x0d,double & 
       return plotparam(peq,t__IDNT_e,attributs,false,-1e300,1e300,-1e300,1e300,0,1,0.01,undef,peq,contextptr);
     }
     return pnt_attrib(symbolic(at_Bezier,gen(v,_GROUP__VECT)),attributs,contextptr);
+#endif
   }
-  static const char _bezier_s []="bezier";
+  static const char _bezier_s []="_rsgb";
   static define_unary_function_eval (__bezier,&_bezier,_bezier_s);
   define_unary_function_ptr5( at_bezier ,alias_at_bezier,&__bezier,0,true);
 

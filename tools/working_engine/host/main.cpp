@@ -104,8 +104,11 @@ static bool removed_feature(std::string const &expr)
         "listplot","polygonplot","polygonscatterplot","halftan","halftan_hyp2exp",
         "exp2trig","trig2exp","evalc","mult_c_conjugate","q2a","a2q","turtle",
         "denom","numer","comdenom","getdenom","curl","ichinrem","iquorem","conj",
-        "re","im","plotarea","plotfunc","plotcontour","point","line","segment",
-        "circle","linetan","tabvar","draw_arc","draw_circle","draw_line",
+        "re","im","plotarea","plotfunc","plotcontour","point","point2d","point3d",
+        "polar_point","line","half_line","line_inter","single_inter","segment",
+        "circle","bitmap","bezier","animation","hyperplan","hypersphere",
+        "hypersurface","frame_3d","plot3d","graphe3d","plotinequation",
+        "inequationplot","envelope","locus","linetan","tabvar","draw_arc","draw_circle","draw_line",
         "draw_polygon","draw_rectangle","python_compat","exponentiald","betad",
         "cauchyd","gammad","geometric","weibulld"
     };

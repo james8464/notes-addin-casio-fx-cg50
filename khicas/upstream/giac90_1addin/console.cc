@@ -1912,7 +1912,11 @@ int trialpha(const void *p1,const void * p2){
 	      s=gettext("line")+string("(");
 	      break;
 	    case giac::_HALFLINE__VECT:
+#ifdef CASCAS_ALEVEL_ONLY
+	      s="path(";
+#else
 	      s=gettext("half_line")+string("(");
+#endif
 	      break;
 	    case giac::_GROUP__VECT:
 	      s=gettext("segment")+string("(");
