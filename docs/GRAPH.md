@@ -1,6 +1,6 @@
 # CasioCAS Project Graph
 
-Last updated: 2026-05-31 08:37 Europe/London
+Last updated: 2026-05-31 08:45 Europe/London
 
 ## Build
 
@@ -105,6 +105,7 @@ graph TD
   Macro --> MatrixSpectral["matrix/spectral wrappers and Jordan-only internals stubbed/compile-excluded: det/rank/rref/kernel/eigen/svd/jordan/JordanBlock/ranm/trace/transpose/cholesky"]
   Macro --> More["desolve/fft/file IO/charpoly/pcar/pivot/keep_pivot/det options/assume blocked"]
   Macro --> XformPrune["halftan/exp2trig/trig2exp/evalc/q2a/a2q blocked"]
+  Macro --> PythonConv["python2xcas converter body compiled out in A-level mode"]
   Remove --> Menu["console catalog/menu/message leaks"]
   Remove --> SessionMenu["save/load/session/script/about/shortcuts menu strings"]
   Remove --> PlotMsg["plot working/menu message strings hidden"]
@@ -135,6 +136,7 @@ graph TD
   MatrixSpectral --> Gate2
   More --> Gate2
   XformPrune --> Gate2
+  PythonConv --> Gate2
   Menu --> Gate
   SessionMenu --> Gate
   PlotMsg --> Gate
@@ -184,8 +186,8 @@ graph TD
 
 ```mermaid
 graph LR
-  Build["./compile exit 0"] --> Size["1,293,491 bytes"]
-  Build --> Ram["ram 331,096 bytes"]
+  Build["./compile exit 0"] --> Size["1,280,135 bytes"]
+  Build --> Ram["ram 331,092 bytes"]
   Build --> R8C2["r8c2 1,355,790 bytes"]
   Build --> Meta["metadata ok"]
   Build --> Border["purple border ok"]
@@ -204,7 +206,7 @@ graph LR
   Shared --> NoHostSrc["old host-only source deleted"]
   Obj["object prune"] --> QR["qrcodegen.o link-safe removed"]
   Macro["source stubs"] --> Stubbed["plot/list/stats/special/ODE/file IO/linalg/transform helpers blocked"]
-  Macro --> RuntimeStubbed["random/sample + ODE/field plot + turtle/drawing + graph display/logo UI + zplot paper/draw + geometry/3D wrappers + plot/locus/implicit/conic/quadric internals + 3D plot/solid + distribution dispatch + matrix/spectral/JordanBlock public bodies stubbed/blocked"]
+  Macro --> RuntimeStubbed["random/sample + ODE/field plot + turtle/drawing + graph display/logo UI + zplot paper/draw + geometry/3D wrappers + plot/locus/implicit/conic/quadric internals + 3D plot/solid + distribution dispatch + matrix/spectral/JordanBlock + python converter public bodies stubbed/blocked"]
   Static["lexer/help prune"] --> StaticRun["distribution/denom/transform/multinomial/matrix/about/shortcuts/session/crypto/complex/JordanBlock/keep_pivot/det-option/trace/plot-step/program/Xcas/turtle/matplot/random/graphic names neutralized"]
   Static --> PromptRun["mod/sign/euler/ascii/geometry/3D solids/ode plot/laplace prompt names blocked"]
   Bin["binary scan"] --> NoLeak["no removed-term/plot-step/session/menu hits"]

@@ -233,6 +233,9 @@
   // elif ...: -> elif ... then [nothing in stack]
   // try: ... except: ...
   std::string python2xcas(const std::string & s_orig,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return s_orig;
+#else
     if (xcas_mode(contextptr)>0 && abs_calc_mode(contextptr)!=38)
       return s_orig;
     // quick check for python-like syntax: search line ending with :
@@ -902,6 +905,7 @@
     }
     res.clear(); cur.clear();
     return string(s.begin(),s.end());
+#endif
   }
   
   /* END PYTHON */
