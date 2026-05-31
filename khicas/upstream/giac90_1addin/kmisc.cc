@@ -2056,7 +2056,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
   static define_unary_function_eval (__eigenvalues,&_eigenvals,_eigenvalues_s);
   define_unary_function_ptr5( at_eigenvalues ,alias_at_eigenvalues,&__eigenvalues,0,true);
 
-  static const char _charpoly_s []="charpoly";
+  static const char _charpoly_s []="_rs159";
   static define_unary_function_eval (__charpoly,&_pcar,_charpoly_s);
   define_unary_function_ptr5( at_charpoly ,alias_at_charpoly,&__charpoly,0,true);
 

@@ -1,6 +1,6 @@
 # CasioCAS Project Graph
 
-Last updated: 2026-05-31 00:47 Europe/London
+Last updated: 2026-05-31 01:08 Europe/London
 
 ## Build
 
@@ -69,6 +69,8 @@ graph TD
   Remove --> Sec["-ffunction-sections -fdata-sections"]
   Obj --> QR["qrcodegen.o removed"]
   Macro --> Stubs["plot/permutation/list/stats/special source stubs"]
+  Macro --> More["desolve/fft/file IO/charpoly/pcar/pivot/assume blocked"]
+  Remove --> Menu["console catalog/menu/message leaks"]
   Lex --> Static["static lexer distro aliases neutralized"]
   Lex --> Hide["concat/extend lexer strings hidden"]
   Macro --> Dist["normal/binomial/poisson/uniform public stats blocked"]
@@ -81,6 +83,8 @@ graph TD
   Eval --> Gate2["input returns unsupported"]
   Hash --> Gate2
   Stubs --> Gate2
+  More --> Gate2
+  Menu --> Gate
   Dist --> Gate2
   Hide --> Gate
   Static --> Gate
@@ -119,17 +123,17 @@ graph TD
 
 ```mermaid
 graph LR
-  Build["./compile exit 0"] --> Size["1,261,639 bytes"]
+  Build["./compile exit 0"] --> Size["1,256,419 bytes"]
   Build --> Meta["metadata ok"]
   Build --> Border["purple border ok"]
   Source["source gates"] --> Catalog["catalog ok"]
-  Source --> Removed["120 removed rejected"]
+  Source --> Removed["130 removed rejected"]
   Source --> Session["session disabled"]
   Help["help pack"] --> HelpQ["18 function sheets ok"]
   Queue["golden queue"] --> QueueRun["200/200 host ok"]
   Shared["shared working"] --> SharedRun["40/40 host+calculator adapter ok"]
   Obj["object prune"] --> QR["qrcodegen.o link-safe removed"]
-  Macro["source stubs"] --> Stubbed["plotparam/plotseq/randperm/permuorder/list/stats/special helpers blocked"]
+  Macro["source stubs"] --> Stubbed["plotparam/plotseq/randperm/permuorder/list/stats/special/ODE/file IO/linalg helpers blocked"]
   Static["lexer prune"] --> StaticRun["distribution static names neutralized"]
   Bin["binary scan"] --> NoLeak["no removed-term hits"]
 ```

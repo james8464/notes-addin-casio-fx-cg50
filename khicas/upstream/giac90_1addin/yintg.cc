@@ -4623,7 +4623,7 @@ namespace giac {
   gen _integrate(const gen & args_,GIAC_CONTEXT){
     gen args(exactify_pow(args_));
     if (complex_variables(contextptr))
-      *logptr(contextptr) << gettext("Warning, complex variables is set, this can lead to fairly complex answers. It is recommended to switch off complex variables in the settings or by complex_variables:=0; and declare individual variables to be complex by e.g. assume(a,complex).") << '\n';
+      *logptr(contextptr) << gettext("Warning, complex variables is set, this can lead to fairly complex answers. It is recommended to switch off complex variables in the settings or by complex_variables:=0.") << '\n';
     vecteur ass;
     if (auto_assume(contextptr)){
       if (args.type==_VECT && args._VECTptr->size()>=2)
@@ -6264,7 +6264,7 @@ namespace giac {
 
   void fourier_assume(const gen &n,GIAC_CONTEXT){
     if (n.type==_IDNT && eval(n,1,contextptr)==n){
-      *logptr(contextptr) << "Running assume(" << n << ",integer)" << '\n';
+      *logptr(contextptr) << "Running integer constraint for " << n << '\n';
       sto(gen(makevecteur(change_subtype(2,1)),_ASSUME__VECT),n,contextptr);
     }
   }

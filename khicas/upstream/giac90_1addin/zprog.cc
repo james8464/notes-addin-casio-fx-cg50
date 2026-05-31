@@ -7719,13 +7719,13 @@ namespace giac {
   define_unary_function_ptr( at_deuxpoints ,alias_at_deuxpoints ,&__deuxpoints);
 
 #if defined FXCG || defined GIAC_HAS_STO_38
-  gen _read(const gen & args,GIAC_CONTEXT){ return 0;}   
-  gen _write(const gen & args,GIAC_CONTEXT){ return 0;}    
-  static const char _read_s []="read";
+  gen _read(const gen & args,GIAC_CONTEXT){ return gensizeerr(contextptr);}
+  gen _write(const gen & args,GIAC_CONTEXT){ return gensizeerr(contextptr);}
+  static const char _read_s []="_rs155";
   static define_unary_function_eval (__read,&_read,_read_s);
   define_unary_function_ptr5( at_read ,alias_at_read ,&__read,0,T_RETURN);
 
-  static const char _write_s []="write";
+  static const char _write_s []="_rs156";
   static define_unary_function_eval_quoted (__write,&_write,_write_s);
   define_unary_function_ptr5( at_write ,alias_at_write,&__write,_QUOTE_ARGUMENTS,true);
 
@@ -7937,6 +7937,9 @@ namespace giac {
 #endif // KHICAS
   }
   gen _read(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if (inexammode) return undef;
 #ifdef KHICAS
     if (exam_mode || nspire_exam_mode)
@@ -7965,7 +7968,7 @@ namespace giac {
       return symbolic(at_read,args);
     return eval(quote_read(args,contextptr),eval_level(contextptr),contextptr);
   }
-  static const char _read_s []="read";
+  static const char _read_s []="_rs157";
   static define_unary_function_eval (__read,&_read,_read_s);
   define_unary_function_ptr5( at_read ,alias_at_read ,&__read,0,T_RETURN);
 
@@ -8049,6 +8052,9 @@ namespace giac {
 
 
   gen _write(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( args.type==_STRNG &&  args.subtype==-1) return  args;
 #ifdef KHICAS
     return _ecris(args,contextptr);
@@ -8116,7 +8122,7 @@ namespace giac {
     }
     return plus_one;
   }
-  static const char _write_s []="write";
+  static const char _write_s []="_rs158";
   static define_unary_function_eval_quoted (__write,&_write,_write_s);
   define_unary_function_ptr5( at_write ,alias_at_write,&__write,_QUOTE_ARGUMENTS,true);
 

@@ -1555,6 +1555,9 @@ namespace giac {
   }
   // "unary" version
   gen _desolve(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     //if (has_num_coeff(args)) return evalf(_desolve(exact(args,contextptr),contextptr),1,contextptr);
     int ordre;
@@ -1611,7 +1614,7 @@ namespace giac {
       return gensizeerr(contextptr);
     return ggbputinlist(desolve( v[0],v[1],v[2],ordre,parameters,contextptr),contextptr);    
   }
-  static const char _desolve_s []="desolve";
+  static const char _desolve_s []="_rs150";
   static define_unary_function_eval_quoted (__desolve,&_desolve,_desolve_s);
   define_unary_function_ptr5( at_desolve ,alias_at_desolve,&__desolve,1,true);
 

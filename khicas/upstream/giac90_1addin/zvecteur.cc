@@ -13822,6 +13822,9 @@ namespace giac {
   }
 
   gen _pcar(const gen & a,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( a.type==_STRNG && a.subtype==-1) return  a;
     vecteur Bv;
     matrice M;
@@ -13898,7 +13901,7 @@ namespace giac {
       return res;
     return symb_horner(res,b);
   }
-  static const char _pcar_s []="pcar";
+  static const char _pcar_s []="_rs160";
   static define_unary_function_eval (__pcar,&_pcar,_pcar_s);
   define_unary_function_ptr5( at_pcar ,alias_at_pcar,&__pcar,0,true);
 

@@ -302,6 +302,16 @@ inline bool is_removed_function_hash(uint32_t h)
         case 0x102c19eau:
         case 0xbf5074c1u:
         case 0xac5195bau:
+        case 0xd51ec1fdu:
+        case 0xc109695bu:
+        case 0xad7f573cu:
+        case 0xcedfa3c5u:
+        case 0xbe269f5cu:
+        case 0x6e12076fu:
+        case 0xa8aef257u:
+        case 0x78fda3ffu:
+        case 0xfbf05517u:
+        case 0xd46fb0cfu:
             return true;
     }
     return false;

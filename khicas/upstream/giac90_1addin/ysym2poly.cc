@@ -2697,7 +2697,7 @@ namespace giac {
       swapgen(a,b);
     res=sqrt(a,contextptr)+cs*sqrt(b,contextptr);
     if (!is_greater(a,b,contextptr))
-      *logptr(contextptr) << "Warning, assuming " << a-b << " is positive. Hint: run assume to make assumptions on a variable\n";
+      *logptr(contextptr) << "Warning, using " << a-b << " as positive. Add explicit domain constraints if needed.\n";
     return true;
   }
 

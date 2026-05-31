@@ -8590,9 +8590,9 @@ namespace giac {
       if (lid.size()==1 && !has_algebraic_program(*this)){
 	if (lid.front()==vx_var)
 	// suspect something like P:=x^3+1 then P(2)
-	  *logptr(contextptr) << "Warning, evaluating univariate expression of x(value) like if expression was a function.\nYou should write subst(" << *this << "," << lid.front() << "," << i << ")" << endl;
+	  *logptr(contextptr) << "Warning, evaluating univariate expression of x(value) like if expression was a function.\nUse subst(" << *this << "," << lid.front() << "," << i << ")" << endl;
 	else
-	  return gensizeerr("Expression used like a function "+this->print(contextptr)+"\nYou should write subst("+this->print(contextptr)+","+lid.front().print(contextptr)+","+i.print(contextptr)+")");
+	  return gensizeerr("Expression used like a function "+this->print(contextptr)+"\nUse subst("+this->print(contextptr)+","+lid.front().print(contextptr)+","+i.print(contextptr)+")");
 	return subst(*this,lid.front(),i,false,contextptr);
       }
       vecteur res(*f._VECTptr);
@@ -11558,7 +11558,7 @@ namespace giac {
       s="logo[";
       break;
     case _ASSUME__VECT:
-      s = "assume[";
+      s = "hyp[";
       break;
     case _FOLDER__VECT:
       s = "folder[";
@@ -12572,4 +12572,3 @@ namespace giac {
 #ifndef NO_NAMESPACE_GIAC
 } // namespace giac
 #endif // ndef NO_NAMESPACE_GIAC
-

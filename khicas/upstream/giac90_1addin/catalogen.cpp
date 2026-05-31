@@ -75,7 +75,6 @@ const catalogFunc completeCat[] = { // A-level scoped catalog only
   {"coeff(p,x,n)", 0, "Coefficient of x^n in polynomial p.", "coeff((x+1)^3,x,2)", 0, CAT_CATEGORY_POLYNOMIAL},
   {"collect(expr,x)", 0, "Collect powers of x.", "collect(x+x^2,x)", 0, CAT_CATEGORY_ALGEBRA},
   {"degree(p,x)", 0, "Degree of polynomial p in x.", "degree(x^4-1,x)", 0, CAT_CATEGORY_POLYNOMIAL},
-  {"desolve(equation,t,y)", 0, "A-level differential equation solve.", "desolve(y'=x*y,t,y)", 0, CAT_CATEGORY_SOLVE | (CAT_CATEGORY_CALCULUS << 8)},
   {"diff(f,var,[n])", 0, "Derivative of f with respect to var.", "diff(sin(x),x)", "diff(x^3,x,2)", CAT_CATEGORY_CALCULUS},
   {"discriminant(p,x)", 0, "Discriminant of polynomial p.", "discriminant(x^2+x+1,x)", 0, CAT_CATEGORY_POLYNOMIAL},
   {"exp(x)", 0, "Exponential e^x.", "exp(2*x)", 0, CAT_CATEGORY_REAL},

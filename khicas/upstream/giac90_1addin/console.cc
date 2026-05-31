@@ -914,7 +914,7 @@ bool load_console_state_smem(const char * filename){
   int hf = Bfile_OpenFile_OS(pFile, READ); // Get handle
   // cout << hf << endl << "f:" << filename << endl; Console_Disp();
   if (hf < 0){
-    print_msg12("unable to read","-2");
+    print_msg12("unable to load","-2");
     //cout << "unable to read -2\n";
     return false; // nothing to load
   }
@@ -922,7 +922,7 @@ bool load_console_state_smem(const char * filename){
   // read variables and modes
   int L=0;
   if (Bfile_ReadFile_OS(hf,&L,sizeof(L),-1)!=sizeof(L) || L==0){
-    print_msg12("unable to read","-1");
+    print_msg12("unable to load","-1");
     Bfile_CloseFile_OS(hf);
     return false;
   }  
@@ -930,7 +930,7 @@ bool load_console_state_smem(const char * filename){
   BUF[1]=BUF[0]='/'; // avoid trying python compat.
   BUF[2]='\n';
   if (Bfile_ReadFile_OS(hf,BUF+3,L,-1)!=L){
-    print_msg12("unable to read","0");
+    print_msg12("unable to load","0");
     Bfile_CloseFile_OS(hf);
     return false;
   }
@@ -946,7 +946,7 @@ bool load_console_state_smem(const char * filename){
   dconsole_mode=1;
   // read script
   if (Bfile_ReadFile_OS(hf,&L,sizeof(L),-1)!=sizeof(L)){
-    print_msg12("unable to read","1");
+    print_msg12("unable to load","1");
     Bfile_CloseFile_OS(hf);
     return false;
   }
@@ -954,7 +954,7 @@ bool load_console_state_smem(const char * filename){
     char bufscript[L+1];
     if (Bfile_ReadFile_OS(hf,bufscript,L,-1)!=L){
       Bfile_CloseFile_OS(hf);
-      print_msg12("unable to read","2");
+      print_msg12("unable to load","2");
       return false;
     }
     bufscript[L]=0;
@@ -2007,11 +2007,10 @@ giac::gen select_var(){
 #endif
   vs[i]="purge(~"+giac::print_INT_(total)+')';
   smallmenuitems[i].text=(char *)vs[i].c_str();
-  smallmenuitems[i+1].text=(char *)"assume(";
-  smallmenuitems[i+2].text=(char *)"restart ";
-  smallmenuitems[i+3].text=(char *)"VARS()";
+  smallmenuitems[i+1].text=(char *)"restart ";
+  smallmenuitems[i+2].text=(char *)"VARS()";
   Menu smallmenu;
-  smallmenu.numitems=v.size()+4; 
+  smallmenu.numitems=v.size()+3;
   smallmenu.items=smallmenuitems;
   smallmenu.height=8;
   smallmenu.scrollbar=1;
@@ -2028,10 +2027,8 @@ giac::gen select_var(){
   if (smallmenu.selection==1+v.size())
     return giac::string2gen("purge(",false);
   if (smallmenu.selection==2+v.size())
-    return giac::string2gen("assume(",false);
-  if (smallmenu.selection==3+v.size())
     return giac::string2gen("restart",false);
-  if (smallmenu.selection==4+v.size())
+  if (smallmenu.selection==3+v.size())
     return giac::string2gen("VARS()",false);
   return v[smallmenu.selection-1];
 }
@@ -2379,20 +2376,7 @@ const char * inputparam(char curname,int symbolic){
       break;
     } // end for (;;)
     if (doit && pmin<pmax && pstep>0){
-      if (symbolic){
-	s="assume(";
-	s += (menu_name+5);
-	s += "=[";
-	s += (menu_xcur+4);
-	s += ',';
-	s += (menu_xmin+4);
-	s += ',';
-	s += (menu_xmax+4);
-	s += ',';
-	s += (menu_xstep+5);
-	s += "])";
-      }
-      else {
+      {
 	s=(menu_name+5);
 	s += ":=element(";
 	s += (menu_xmin+4);
@@ -2456,6 +2440,9 @@ int Console_GetKey(){
 	      //printf("assume2\n"); int key; ck_getkey(&key);
 	      if (v[0].type==giac::_IDNT && v[1].type==giac::_DOUBLE_ && v[2].type==giac::_DOUBLE_ && v[3].type==giac::_DOUBLE_ && v[4].type==giac::_DOUBLE_){
 		//printf("assume3\n"); int key; ck_getkey(&key);
+#ifdef CASCAS_ALEVEL_ONLY
+		return CONSOLE_NO_EVENT;
+#else
 		ustl::string s("assume(");
 		s += v[0]._IDNTptr->id_name;
 		s += "=[";
@@ -2472,6 +2459,7 @@ int Console_GetKey(){
 		s += giac::print_DOUBLE_(v[4]._DOUBLE_val,3);
 		s += "])";
 		return Console_Eval(s.c_str());
+#endif
 	      }
 	    }
 	  }
@@ -2854,7 +2842,7 @@ int Console_GetKey(){
 }
 
 static unsigned char* original_cfg=0;
-const char conf_standard[] = "F1 alg\nsimplify(\nfactor(\nexpand(\ncollect(\npartfrac(\nnormal(\nsubst(\nF2 calc\ndiff(\nintegrate(\nlimit(\nseries(\nsum(\nproduct(\ndesolve(\nF3 solve\nsolve(\nrange(\nxform(\nimplicit_diff(\nF4 trig\nsin(\ncos(\ntan(\nsec(\ncsc(\ncot(\ntcollect(\ntexpand(\nF5 logs\nln(\nlog(\nexp(\nF6 poly\ncoeff(\ndegree(\ndiscriminant(\nF7 real\nabs(\napprox(\nfloor(\nceil(\nround(\n";
+const char conf_standard[] = "F1 alg\nsimplify(\nfactor(\nexpand(\ncollect(\npartfrac(\nnormal(\nsubst(\nF2 calc\ndiff(\nintegrate(\nlimit(\nseries(\nsum(\nproduct(\nF3 solve\nsolve(\nrange(\nxform(\nimplicit_diff(\nF4 trig\nsin(\ncos(\ntan(\nsec(\ncsc(\ncot(\ntcollect(\ntexpand(\nF5 logs\nln(\nlog(\nexp(\nF6 poly\ncoeff(\ndegree(\ndiscriminant(\nF7 real\nabs(\napprox(\nfloor(\nceil(\nround(\n";
 
 const char python_conf_standard[] = "";
 

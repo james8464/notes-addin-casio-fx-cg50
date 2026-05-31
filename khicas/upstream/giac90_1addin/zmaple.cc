@@ -542,6 +542,9 @@ namespace giac {
   define_unary_function_ptr5( at_cat ,alias_at_cat,&__cat,0,true);
 
   gen _pivot(const gen & a_orig,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( a_orig.type==_STRNG && a_orig.subtype==-1) return  a_orig;
     vecteur v(gen2vecteur(a_orig));
     int s=int(v.size());
@@ -580,7 +583,7 @@ namespace giac {
     }
     return m;
   }
-  static const char _pivot_s []="pivot";
+  static const char _pivot_s []="_rs151";
   static define_unary_function_eval (__pivot,&_pivot,_pivot_s);
   define_unary_function_ptr5( at_pivot ,alias_at_pivot,&__pivot,0,true);
 
@@ -1200,7 +1203,7 @@ namespace giac {
   static define_unary_function_eval (__delcols,&_delcols,_delcols_s);
   define_unary_function_ptr5( at_delcols ,alias_at_delcols,&__delcols,0,true);
 
-  static const char _gaussjord_s []="gaussjord";
+  static const char _gaussjord_s []="_rs152";
   static define_unary_function_eval (__gaussjord,&_rref,_gaussjord_s);
   define_unary_function_ptr5( at_gaussjord ,alias_at_gaussjord,&__gaussjord,0,true);
 
@@ -1619,18 +1622,24 @@ namespace giac {
   }
 
   gen _fft(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     return fft(g,1,contextptr);
   }
-  static const char _fft_s []="fft";
+  static const char _fft_s []="_rs153";
   static define_unary_function_eval (__fft,&_fft,_fft_s);
   define_unary_function_ptr5( at_fft ,alias_at_fft,&__fft,0,true);
 
   gen _ifft(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     return fft(g,0,contextptr);
   }
-  static const char _ifft_s []="ifft";
+  static const char _ifft_s []="_rs154";
   static define_unary_function_eval (__ifft,&_ifft,_ifft_s);
   define_unary_function_ptr5( at_ifft ,alias_at_ifft,&__ifft,0,true);
 

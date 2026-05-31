@@ -4476,6 +4476,9 @@ namespace giac {
       purgenoassume(a,contextptr);
   }
   gen giac_assume(const gen & a,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( (a.type==_VECT) && (a._VECTptr->size()==2) ){
       gen a1(a._VECTptr->front()),a2(a._VECTptr->back());
       if (a2.type==_INT_){
@@ -4516,7 +4519,7 @@ namespace giac {
     purge_assume(a_,contextptr);
     return assumesymbolic(a_,0,contextptr);
   }
-  static const char giac_assume_s []="assume";
+  static const char giac_assume_s []="_rs161";
   static define_unary_function_eval_quoted (giac__assume,&giac_assume,giac_assume_s);
   define_unary_function_ptr5( at_assume ,alias_at_assume,&giac__assume,_QUOTE_ARGUMENTS,true);
 
