@@ -1,6 +1,6 @@
 # Project Graph
 
-Last updated: 2026-05-31 20:44 BST
+Last updated: 2026-05-31 20:53 BST
 
 ## Build
 
@@ -33,7 +33,7 @@ graph TD
 
 ```mermaid
 graph TD
-  Work["working engine"] --> Diff["diff: affine chain powers, ln, implicit, trig basics"]
+  Work["working engine"] --> Diff["diff: guarded affine chain powers, ln, implicit, trig basics"]
   Work --> Int["integrate: affine reverse-chain powers, trig/exp sums, by-parts, substitution"]
   Work --> Solve["solve: guarded linear, integer-root quadratics, rational, dy/dx separable"]
   Work --> Alg["algebra: quadratic factor, targeted expand, high-frequency exam forms"]

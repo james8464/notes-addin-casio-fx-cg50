@@ -150,6 +150,8 @@ static bool parse_affine(const working_string &src,long &a,long &b){
       int x=t.find('x');
       char *end=0;
       if (x>=0){
+        if (x!=int(t.size())-1)
+          return false;
         working_string cs=t.substr(0,x);
         long cf=1;
         if (!cs.empty())
