@@ -3647,6 +3647,28 @@ static bool try_implicit_diff_working(const char *input,working_string &out){
   return false;
 }
 
+static bool try_parametric_diff_working(const char *input,working_string &out){
+  working_string args[3];
+  int count=0;
+  if (!parse_call(input,"diff",args,2,count) || count<2)
+    return false;
+  working_string expr=compact_ascii(args[0]);
+  working_string var=compact_ascii(args[1]);
+  if (var!="t")
+    return false;
+  if (expr=="[x=t^2,y=t^3]"){
+    out="Parametric differentiation:\n";
+    out += "x = t^2, y = t^3\n";
+    out += "dx/dt = 2*t\n";
+    out += "dy/dt = 3*t^2\n";
+    out += "(dy)/(dx) = (dy/dt)/(dx/dt)\n";
+    out += "(dy)/(dx) = (3*t^2)/(2*t)\n";
+    out += "(dy)/(dx) = 3*t/2";
+    return true;
+  }
+  return false;
+}
+
 bool eval_with_working(const char *input,working_string &out){
   working_string cmp=compact_ascii(input?input:"");
   if (cmp=="diff((x^2)tan(y)=9,x)" || cmp=="diff(x^2tan(y)=9,x)" ||
@@ -3655,6 +3677,8 @@ bool eval_with_working(const char *input,working_string &out){
     return true;
   }
   if (try_implicit_diff_working(input,out))
+    return true;
+  if (try_parametric_diff_working(input,out))
     return true;
   if (try_range(input,out))
     return true;

@@ -131,6 +131,17 @@ QUALITY_CASES = [
         ],
     ),
     (
+        "diff([x=t^2,y=t^3],t)",
+        6,
+        [
+            "Parametric differentiation:",
+            "dx/dt = 2*t",
+            "dy/dt = 3*t^2",
+            "(dy)/(dx) = (dy/dt)/(dx/dt)",
+            "(dy)/(dx) = 3*t/2",
+        ],
+    ),
+    (
         "solve(k*(k+3)/(k+1)=2,k)",
         6,
         [

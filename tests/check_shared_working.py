@@ -21,6 +21,7 @@ CASES = [
     ("diff(tan(3*x),x)", "dy/dx = 3*sec(3*x)^2"),
     ("diff(sec(x),x)", "d/dx sec(x)=sec(x)*tan(x)"),
     ("diff(cosec(x),x)", "d/dx cosec(x)=-cosec(x)*cot(x)"),
+    ("diff([x=t^2,y=t^3],t)", "(dy)/(dx) = 3*t/2"),
     ("1/2*x^2+16*sqrt(2)/x", "dy/dx = x - 16*sqrt(2)*x^-2"),
     ("x-16*sqrt(2)*x^-2", "dy/dx = 32*sqrt(2)*x^-3 + 1"),
     ("(x^2+4)/(4*x)", "dy/dx = - x^-2 + 1/4"),
