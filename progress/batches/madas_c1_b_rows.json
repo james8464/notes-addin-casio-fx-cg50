@@ -1,0 +1,383 @@
+[
+  {
+    "id": "madas_iygb_c1_b_q1_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c1_b.pdf",
+    "question": "q1",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: c1_b questions 6 pages, solutions 5 pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "integrate(2*x^2+8*x^3,x)",
+        "mark_scheme_working": [
+          "∫(2x²-6/x³+8x³)dx",
+          "2/3 x³+2x⁴+C plus 3/x² term manual"
+        ],
+        "expected_output_markers": [
+          "2*x^4 + 2/3*x^3 + C"
+        ]
+      }
+    ],
+    "expected_final": [
+      "2/3 x³+3/x²+2x⁴+C"
+    ],
+    "unsupported_reason": "-6/x³ integration is manual"
+  },
+  {
+    "id": "madas_iygb_c1_b_q2_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c1_b.pdf",
+    "question": "q2",
+    "part": "a-b",
+    "verdict": "testable",
+    "review_basis": "manual page-image review: c1_b questions 6 pages, solutions 5 pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,16-8*sqrt(5)+5",
+        "mark_scheme_working": [
+          "(4-√5)²=21-8√5"
+        ],
+        "expected_output_markers": [
+          "3.11145618"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,5*sqrt(3)-2*sqrt(3)",
+        "mark_scheme_working": [
+          "3√3"
+        ],
+        "expected_output_markers": [
+          "5.19615242271"
+        ]
+      }
+    ],
+    "expected_final": [
+      "21-8√5",
+      "3√3"
+    ]
+  },
+  {
+    "id": "madas_iygb_c1_b_q3_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c1_b.pdf",
+    "question": "q3",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: c1_b questions 6 pages, solutions 5 pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,4*5",
+        "mark_scheme_working": [
+          "compare x²: B=5",
+          "A=20",
+          "C=-27"
+        ],
+        "expected_output_markers": [
+          "20"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "solve(20+C=-7,C)",
+        "mark_scheme_working": [
+          "4B+C=-7 gives C=-27"
+        ],
+        "expected_output_markers": [
+          "C = [-27]"
+        ]
+      }
+    ],
+    "expected_final": [
+      "A=20,B=5,C=-27"
+    ],
+    "unsupported_reason": "comparing coefficients is manual"
+  },
+  {
+    "id": "madas_iygb_c1_b_q4_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c1_b.pdf",
+    "question": "q4",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: c1_b questions 6 pages, solutions 5 pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "solve(m^2-6*m-7=0,m)",
+        "mark_scheme_working": [
+          "b²-4ac>0 gives (m+1)(m-7)>0"
+        ],
+        "expected_output_markers": [
+          "m = [7, -1]"
+        ]
+      }
+    ],
+    "expected_final": [
+      "m<-1 or m>7"
+    ],
+    "unsupported_reason": "inequality sketch is manual"
+  },
+  {
+    "id": "madas_iygb_c1_b_q5_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c1_b.pdf",
+    "question": "q5",
+    "part": "a-c",
+    "verdict": "skip",
+    "review_basis": "manual page-image review: c1_b questions 6 pages, solutions 5 pages",
+    "inputs": [],
+    "expected_final": [
+      "graph transformations"
+    ],
+    "unsupported_reason": "sketch only"
+  },
+  {
+    "id": "madas_iygb_c1_b_q6_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c1_b.pdf",
+    "question": "q6",
+    "part": "all",
+    "verdict": "testable",
+    "review_basis": "manual page-image review: c1_b questions 6 pages, solutions 5 pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "solve(12*y=42,y)",
+        "mark_scheme_working": [
+          "y=7/2"
+        ],
+        "expected_output_markers": [
+          "y = [7/2]"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,3-2*(7/2)",
+        "mark_scheme_working": [
+          "x=-4"
+        ],
+        "expected_output_markers": [
+          "-4"
+        ]
+      }
+    ],
+    "expected_final": [
+      "(-4,7/2)"
+    ]
+  },
+  {
+    "id": "madas_iygb_c1_b_q7_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c1_b.pdf",
+    "question": "q7",
+    "part": "a-b",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: c1_b questions 6 pages, solutions 5 pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,-2/3",
+        "mark_scheme_working": [
+          "perpendicular grad l2=-2/3"
+        ],
+        "expected_output_markers": [
+          "-0.666666666667"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,0.5*0.5*(1/3)",
+        "mark_scheme_working": [
+          "triangle area 1/12"
+        ],
+        "expected_output_markers": [
+          "0.0833333333333"
+        ]
+      }
+    ],
+    "expected_final": [
+      "2x+3y=5",
+      "area=1/12"
+    ],
+    "unsupported_reason": "line equations manual"
+  },
+  {
+    "id": "madas_iygb_c1_b_q8_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c1_b.pdf",
+    "question": "q8",
+    "part": "all",
+    "verdict": "testable",
+    "review_basis": "manual page-image review: c1_b questions 6 pages, solutions 5 pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "solve(15=21+15*d,d)",
+        "mark_scheme_working": [
+          "d=-2/5"
+        ],
+        "expected_output_markers": [
+          "d = [-2/5]"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,21+10*(-2/5)",
+        "mark_scheme_working": [
+          "u11=17"
+        ],
+        "expected_output_markers": [
+          "17"
+        ]
+      }
+    ],
+    "expected_final": [
+      "a=21",
+      "d=-2/5",
+      "u11=17"
+    ]
+  },
+  {
+    "id": "madas_iygb_c1_b_q9_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c1_b.pdf",
+    "question": "q9",
+    "part": "a-c",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: c1_b questions 6 pages, solutions 5 pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,5-18/(4+0)",
+        "mark_scheme_working": [
+          "a3=1/2"
+        ],
+        "expected_output_markers": [
+          "0.5"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,5-18/(4+1/2)",
+        "mark_scheme_working": [
+          "a4=1"
+        ],
+        "expected_output_markers": [
+          "1"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,-2/5+0+1/2+1+7/5",
+        "mark_scheme_working": [
+          "sum=5/2"
+        ],
+        "expected_output_markers": [
+          "2.5"
+        ]
+      }
+    ],
+    "expected_final": [
+      "a1=-2/5",
+      "sum=5/2"
+    ],
+    "unsupported_reason": "recurrence backward step manual"
+  },
+  {
+    "id": "madas_iygb_c1_b_q10_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c1_b.pdf",
+    "question": "q10",
+    "part": "a-c",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: c1_b questions 6 pages, solutions 5 pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,sqrt(3)",
+        "mark_scheme_working": [
+          "x²=3 roots ±√3"
+        ],
+        "expected_output_markers": [
+          "1.73205080757"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "solve(x^2-1=0,x)",
+        "mark_scheme_working": [
+          "x⁴-3x²+2=0 gives x=±1,±√2"
+        ],
+        "expected_output_markers": [
+          "x = [1, -1]"
+        ]
+      }
+    ],
+    "expected_final": [
+      "x=±1,±√2"
+    ],
+    "unsupported_reason": "graph sketches manual"
+  },
+  {
+    "id": "madas_iygb_c1_b_q11_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c1_b.pdf",
+    "question": "q11",
+    "part": "a-c",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: c1_b questions 6 pages, solutions 5 pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "diff(2*x^2-x+3,x)",
+        "mark_scheme_working": [
+          "dy/dx=4x-1",
+          "normal grad 1 at P(0,3)"
+        ],
+        "expected_output_markers": [
+          "4*x - 1"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,4*1-1",
+        "mark_scheme_working": [
+          "tangent grad at Q(1,4) is 3"
+        ],
+        "expected_output_markers": [
+          "3"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "solve(2*x^2-2*x=0,x)",
+        "mark_scheme_working": [
+          "Q(1,4) from intersection"
+        ],
+        "expected_output_markers": [
+          "x = [1, 0]"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,0.5*2*1",
+        "mark_scheme_working": [
+          "area triangle PQR=1"
+        ],
+        "expected_output_markers": [
+          "1"
+        ]
+      }
+    ],
+    "expected_final": [
+      "normal y=x+3",
+      "Q(1,4)",
+      "area=1"
+    ],
+    "unsupported_reason": "normal/tangent setup manual"
+  },
+  {
+    "id": "madas_iygb_c1_b_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/c1_b.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual page-image review: c1_b questions 6 pages, solutions 6 pages",
+    "unsupported_reason": "source complete marker; executable exact calculator inputs are recorded in c1_b rows above, while diagram/proof/branch judgements are manual notes"
+  }
+]
