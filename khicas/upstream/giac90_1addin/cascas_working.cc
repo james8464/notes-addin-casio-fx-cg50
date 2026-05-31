@@ -475,10 +475,8 @@ static working_string integral_monomial(long coef,long pow){
     return p;
   if (coef==-den)
     return "-"+p;
-  if (coef==1)
-    return p+"/"+int_s(den);
-  if (coef==-1)
-    return "-"+p+"/"+int_s(den);
+  if (coef==1 || coef==-1)
+    return frac_s(coef,den)+"*"+p;
   return frac_s(coef,den)+"*"+p;
 }
 

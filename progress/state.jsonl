@@ -193,5 +193,16 @@
 {"phase":"queue","last_event":"exact queue 13592/13592","queue":"13592/13592 done, 13592 ok, 0 bad","tests":"queue-run 13592/13592"}
 {"phase":"queue","last_event":"exact queue 0/13592","queue":"0/13592 done, 0 ok, 0 bad","tests":"queue-run 0/13592"}
 {"phase":"queue","last_event":"exact queue 13592/13592","queue":"13592/13592 done, 12658 ok, 934 bad","tests":"queue-run 12658/13592"}
+{"phase":"release candidate","last_event":"coefficient-first polynomial antiderivative formatting; queue expanded and rerun clean","commit":"pending","graph":"docs/GRAPH.md 2026-05-31 21:29 BST","g3a_size":2096532,"headroom":620,"tests":"compile,size,metadata,border,catalog,help,help-examples,queue-schema 9405 rows/13606 inputs,queue-run 13606/13606,working-quality 12668/13606","queue":"13606/13606 runtime; 12668/13606 strict markers","unsupported":0,"eta":"continue strict-marker quality expansion; no runtime blockers known"}
 {"phase":"queue","last_event":"exact queue 13592/13592","queue":"13592/13592 done, 12658 ok, 934 bad","tests":"queue-run 12658/13592"}
 {"phase":"release candidate","last_event":"queue expanded to 13,592 inputs and rerun clean; strict marker quality refreshed","commit":"pending","graph":"docs/GRAPH.md 2026-05-31 21:16 BST","g3a_size":2096596,"headroom":556,"tests":"compile,size,metadata,border,catalog,help,help-examples,queue-schema 9401 rows/13592 inputs,queue-run 13592/13592,working-quality 12658/13592","queue":"13592/13592 runtime; 12658/13592 strict markers","unsupported":0,"eta":"remaining work is strict-marker quality expansion; no runtime blockers known"}
+{"phase":"queue","last_event":"exact queue 0/13592","queue":"0/13592 done, 0 ok, 0 bad","tests":"queue-run 0/13592"}
+{"phase":"queue","last_event":"exact queue 13592/13592","queue":"13592/13592 done, 12660 ok, 932 bad","tests":"queue-run 12660/13592"}
+{"phase":"queue","last_event":"exact queue 13592/13592","queue":"13592/13592 done, 12660 ok, 932 bad","tests":"queue-run 12660/13592"}
+{"phase":"queue","last_event":"exact queue 0/13606","queue":"0/13606 done, 0 ok, 0 bad","tests":"queue-run 0/13606"}
+{"phase":"queue","last_event":"exact queue 13606/13606","queue":"13606/13606 done, 13606 ok, 0 bad","tests":"queue-run 13606/13606"}
+{"phase":"queue","last_event":"exact queue 13606/13606","queue":"13606/13606 done, 13606 ok, 0 bad","tests":"queue-run 13606/13606"}
+{"phase":"queue","last_event":"exact queue 0/13606","queue":"0/13606 done, 0 ok, 0 bad","tests":"queue-run 0/13606"}
+{"phase":"queue","last_event":"exact queue 13606/13606","queue":"13606/13606 done, 12668 ok, 938 bad","tests":"queue-run 12668/13606"}
+{"phase":"queue","last_event":"exact queue 13606/13606","queue":"13606/13606 done, 12668 ok, 938 bad","tests":"queue-run 12668/13606"}
+{"phase":"release candidate","last_event":"coefficient-first polynomial antiderivative formatting; queue expanded and rerun clean","commit":"pending","graph":"docs/GRAPH.md 2026-05-31 21:29 BST","g3a_size":2096532,"headroom":620,"tests":"compile,size,metadata,border,catalog,help,help-examples,queue-schema 9405 rows/13606 inputs,queue-run 13606/13606,working-quality 12668/13606","queue":"13606/13606 runtime; 12668/13606 strict markers","unsupported":0,"eta":"continue strict-marker quality expansion; no runtime blockers known"}
