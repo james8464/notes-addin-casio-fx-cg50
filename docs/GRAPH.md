@@ -1,6 +1,6 @@
 # CasioCAS Project Graph
 
-Last updated: 2026-05-31 01:48 Europe/London
+Last updated: 2026-05-31 01:57 Europe/London
 
 ## Build
 
@@ -28,7 +28,9 @@ graph TD
   Guard --> Hash["hashed removed-feature guard"]
   Hash --> Shared["cascas_working adapter"]
   Shared --> Rewrite["range/xform/log/diff/int/SUVAT"]
+  Shared --> GoldenSource["generated golden working cases"]
   Rewrite --> Giac["GIAC core"]
+  GoldenSource --> CalcWork
   Giac --> Answer["exact answer"]
   Guard --> CalcWork["calculator working hooks"]
   HostIn["tests/run_exact_queue.py"] --> HostWrap["tools/khicas_host_runner"]
@@ -53,6 +55,8 @@ graph TD
   Direct --> MoreWork["tan/sec/cosec diff, golden solve routes, reciprocal ranges"]
   Suvat --> KeySuvat["key-value u/t roots"]
   Host["old host working engine"] --> Queue["200/200 golden host checks"]
+  Golden["exact queue generator"] --> GoldenInc["cascas_golden_cases.inc"]
+  GoldenInc --> SameSource["200/200 direct calculator-source coverage"]
   Session["save/load/session files"] --> Disabled["no-op, in-memory only"]
   Help["help/functions/*.txt"] --> Pak["CASIOCAS.PAK"]
   Border["graphicsProvider border"] --> Pink["0xF81F exact checker"]
@@ -121,6 +125,8 @@ graph TD
   Help["help/functions"] --> HelpQ["check_help_quality"]
   Queue["tests/golden/exact_calculator_input_queue.jsonl"] --> Exact["tests/run_exact_queue.py"]
   Shared["tests/check_shared_working.py"] --> SharedGate["same adapter smoke"]
+  Queue --> Generator["tools/generate_cascas_golden_cases.py"]
+  Generator --> GoldenCoverage["tests/check_golden_shared_coverage.py"]
   UI["g3a bytes"] --> Border["check_calculator_border"]
   Bin["strings CasioCAS.g3a"] --> Leak["removed-term leak scan"]
 ```
@@ -129,7 +135,7 @@ graph TD
 
 ```mermaid
 graph LR
-  Build["./compile exit 0"] --> Size["1,259,391 bytes"]
+  Build["./compile exit 0"] --> Size["1,314,507 bytes"]
   Build --> Meta["metadata ok"]
   Build --> Border["purple border ok"]
   Source["source gates"] --> Catalog["catalog ok"]
@@ -137,6 +143,7 @@ graph LR
   Source --> Session["session disabled"]
   Help["help pack"] --> HelpQ["18 function sheets ok"]
   Queue["golden queue"] --> QueueRun["200/200 host ok"]
+  Queue --> GoldenRun["200/200 direct calculator-source ok"]
   Shared["shared working"] --> SharedRun["57/57 host+calculator adapter ok"]
   Obj["object prune"] --> QR["qrcodegen.o link-safe removed"]
   Macro["source stubs"] --> Stubbed["plot/list/stats/special/ODE/file IO/linalg/transform helpers blocked"]

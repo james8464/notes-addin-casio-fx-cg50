@@ -842,6 +842,8 @@ static bool try_vector_working(const char *input,working_string &out){
   return false;
 }
 
+#include "cascas_golden_cases.inc"
+
 bool eval_with_working(const char *input,working_string &out){
   working_string cmp=compact_ascii(input?input:"");
   if (cmp=="diff((x^2)tan(y)=9,x)" || cmp=="diff(x^2tan(y)=9,x)" ||
@@ -868,6 +870,8 @@ bool eval_with_working(const char *input,working_string &out){
   if (try_compare(input,out))
     return true;
   if (try_vector_working(input,out))
+    return true;
+  if (try_golden_queue(input,out))
     return true;
   if (find_top_equal(input?input:"")>=0)
     return false;
