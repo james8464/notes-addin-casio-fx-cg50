@@ -1,6 +1,6 @@
 # CasioCAS Project Graph
 
-Last updated: 2026-05-31 06:23 Europe/London
+Last updated: 2026-05-31 06:28 Europe/London
 
 ## Build
 
@@ -169,7 +169,7 @@ graph TD
 
 ```mermaid
 graph LR
-  Build["./compile exit 0"] --> Size["1,300,655 bytes"]
+  Build["./compile exit 0"] --> Size["1,300,667 bytes"]
   Build --> Ram["ram 333,236 bytes"]
   Build --> R8C2["r8c2 1,683,406 bytes"]
   Build --> Meta["metadata ok"]
@@ -190,7 +190,7 @@ graph LR
   Obj["object prune"] --> QR["qrcodegen.o link-safe removed"]
   Macro["source stubs"] --> Stubbed["plot/list/stats/special/ODE/file IO/linalg/transform helpers blocked"]
   Macro --> RuntimeStubbed["random/sample + ODE/field plot + turtle/drawing + 3D plot/solid + distribution dispatch + matrix/spectral public bodies stubbed"]
-  Static["lexer prune"] --> StaticRun["distribution/denom/transform/multinomial/matrix static names neutralized"]
+  Static["lexer/help prune"] --> StaticRun["distribution/denom/transform/multinomial/matrix static help/index names neutralized"]
   Static --> PromptRun["mod/sign/euler/ascii/geometry/3D solids/ode plot/laplace prompt names blocked"]
   Bin["binary scan"] --> NoLeak["no removed-term hits"]
 ```

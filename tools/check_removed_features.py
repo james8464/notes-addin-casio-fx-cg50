@@ -561,6 +561,35 @@ BINARY_ABSENT = [
     "rref",
 ]
 
+STATIC_ENTRY_ABSENT = [
+    "matrix",
+    "det",
+    "det_minor",
+    "rank",
+    "rref",
+    "ref",
+    "gaussjord",
+    "pivot",
+    "charpoly",
+    "pcar",
+    "pcar_hessenberg",
+    "gramschmidt",
+    "jordan",
+    "rat_jordan",
+    "ranm",
+    "ker",
+    "kernel",
+    "image",
+    "basis",
+    "svd",
+    "egv",
+    "egvl",
+    "eigenvals",
+    "eigenvects",
+    "eigenvalues",
+    "eigenvectors",
+]
+
 
 def fail(msg: str) -> None:
     raise SystemExit(f"FAIL removed-features: {msg}")
@@ -613,6 +642,20 @@ def main() -> int:
                 break
     if leaks:
         fail("public leaks " + ", ".join(leaks[:20]))
+
+    static_leaks: list[str] = []
+    static_files = list(SRC.glob("static_help*.h")) + [
+        SRC / "helpfr.cc",
+        SRC / "static_lexer.h",
+        SRC / "static_lexer_full.h",
+    ]
+    for p in static_files:
+        text = p.read_text(errors="ignore")
+        for name in STATIC_ENTRY_ABSENT:
+            if re.search(rf'\{{\s*"{re.escape(name)}"\s*,', text):
+                static_leaks.append(f"{p.name}:{name}")
+    if static_leaks:
+        fail("static entry leaks " + ", ".join(static_leaks[:20]))
 
     for expr in BEHAVIOR_SAMPLES:
         proc = subprocess.run([str(RUNNER), expr], cwd=ROOT, text=True, capture_output=True)
