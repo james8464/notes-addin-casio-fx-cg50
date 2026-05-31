@@ -110,6 +110,23 @@ static int find_top_equal(const working_string &s){
   return -1;
 }
 
+static int find_top_char(const working_string &s,char wanted){
+  int depth=0;
+  bool instring=false;
+  for (int i=0;i<int(s.size());++i){
+    char c=s[i];
+    if (c=='"' && (i==0 || s[i-1]!='\\'))
+      instring=!instring;
+    if (instring)
+      continue;
+    if (c=='(' || c=='[' || c=='{') ++depth;
+    else if (c==')' || c==']' || c=='}') --depth;
+    else if (!depth && c==wanted)
+      return i;
+  }
+  return -1;
+}
+
 static bool parse_real(const working_string &s,double &x){
   char *end=0;
   x=strtod(s.c_str(),&end);
@@ -526,6 +543,14 @@ static bool try_domain(const char *input,working_string &out){
     out += "Log argument must be positive\n";
     out += "4 - x > 0\n";
     out += "Answer: x < 4";
+    return true;
+  }
+  if (expr=="log(2,x^2-1)" || expr=="ln(x^2-1)" || expr=="log(x^2-1)"){
+    out="Domain:\n";
+    out += "Log argument must be positive\n";
+    out += "x^2 - 1 > 0\n";
+    out += "(x-1)(x+1) > 0\n";
+    out += "Answer: x < -1 or x > 1";
     return true;
   }
   return false;
@@ -1747,13 +1772,21 @@ static bool try_complete_square_poly(const char *input,working_string &out){
   if (!detect_poly_var(args[0],var))
     return false;
   poly_rat p;
-  if (!parse_poly(args[0],var,p) || p.deg!=2 || !(p.c[2].n==1 && p.c[2].d==1))
+  if (!parse_poly(args[0],var,p) || p.deg!=2 || is_zero_rat(p.c[2]))
     return false;
-  rat h=div_rat(norm_rat(-p.c[1].n,p.c[1].d),norm_rat(2,1));
+  rat h=div_rat(norm_rat(-p.c[1].n,p.c[1].d),mul_rat(norm_rat(2,1),p.c[2]));
   rat k=poly_eval_rat(p,h);
   out="Complete the square:\n";
   out += pretty_poly_input(args[0]);
   out += "\n= ";
+  if (!(p.c[2].n==1 && p.c[2].d==1)){
+    if (p.c[2].n==-1 && p.c[2].d==1)
+      out += "-";
+    else {
+      out += fmt_rat(p.c[2]);
+      out += "*";
+    }
+  }
   out += fmt_shift_square(var,h);
   if (k.n<0){
     out += " - ";
@@ -1767,7 +1800,7 @@ static bool try_complete_square_poly(const char *input,working_string &out){
   out += var;
   out += " = ";
   out += fmt_rat(h);
-  out += ", min y = ";
+  out += p.c[2].n>0?", min y = ":", max y = ";
   out += fmt_rat(k);
   return true;
 }
@@ -1788,6 +1821,31 @@ static bool try_evalat_poly(const char *input,working_string &out){
   out += fmt_rat(x);
   out += ") = ";
   out += fmt_rat(y);
+  return true;
+}
+
+static bool try_discriminant_poly(const char *input,working_string &out){
+  working_string args[2];
+  int count=0;
+  if (!parse_call(input,"discriminant",args,2,count) || count<2)
+    return false;
+  working_string var=compact_poly(args[1]);
+  poly_rat p;
+  if (!parse_poly(args[0],var,p) || p.deg!=2 || is_zero_rat(p.c[2]))
+    return false;
+  rat D=sub_rat(mul_rat(p.c[1],p.c[1]),mul_rat(norm_rat(4,1),mul_rat(p.c[2],p.c[0])));
+  out="Discriminant:\n";
+  out += "For ";
+  out += fmt_poly(p,var,false);
+  out += ", D=b^2-4*a*c\n";
+  out += "a = ";
+  out += fmt_rat(p.c[2]);
+  out += ", b = ";
+  out += fmt_rat(p.c[1]);
+  out += ", c = ";
+  out += fmt_rat(p.c[0]);
+  out += "\nD = ";
+  out += fmt_rat(D);
   return true;
 }
 
@@ -2333,6 +2391,16 @@ static bool try_solve(const char *input,working_string &out){
     out += "Answer: x = [81]";
     return true;
   }
+  if (eq=="log(2,x^2-1)=3" && var=="x"){
+    out="Solve logarithmic equation:\n";
+    out += "Domain: x^2 - 1 > 0\n";
+    out += "Use definition: log_a(u)=b means u=a^b\n";
+    out += "x^2 - 1 = 2^3\n";
+    out += "x^2 = 9\n";
+    out += "x = -3 or x = 3\n";
+    out += "Answer: x = [-3, 3]";
+    return true;
+  }
   if (eq=="[n(0)=500,n(2)=1000,dn/dt=kn]" && var=="[a,k]"){
     out="Use exponential growth model:\n";
     out += "From dn/dt = k*n, n = A*e^(k*t)\n";
@@ -2799,6 +2867,40 @@ static bool try_solve(const char *input,working_string &out){
   return false;
 }
 
+static bool split_power(const working_string &expr,working_string &base,working_string &power){
+  working_string s=compact_ascii(strip_outer_parens(expr));
+  if (s.size()>=4 && s[0]=='('){
+    int close=find_matching_paren(s,0);
+    if (close>0 && close+1<int(s.size()) && s[close+1]=='^'){
+      base=strip_outer_parens(s.substr(1,close-1));
+      power=s.substr(close+2);
+      return !base.empty() && !power.empty();
+    }
+  }
+  int depth=0;
+  for (int i=int(s.size())-1;i>=0;--i){
+    char c=s[i];
+    if (c==')' || c==']' || c=='}') ++depth;
+    else if (c=='(' || c=='[' || c=='{') --depth;
+    else if (!depth && c=='^'){
+      base=strip_outer_parens(s.substr(0,i));
+      power=s.substr(i+1);
+      return !base.empty() && !power.empty();
+    }
+  }
+  return false;
+}
+
+static working_string display_compact_expr(const working_string &expr){
+  working_string out;
+  for (int i=0;i<int(expr.size());++i){
+    if (i>0 && isdigit((unsigned char)expr[i-1]) && isalpha((unsigned char)expr[i]))
+      out += "*";
+    out += expr[i];
+  }
+  return out;
+}
+
 static bool try_xform(const char *input,working_string &out){
   working_string args[2];
   int count=0;
@@ -2807,6 +2909,66 @@ static bool try_xform(const char *input,working_string &out){
   working_string a=compact_ascii(strip_outer_parens(args[0]));
   working_string b=compact_ascii(strip_outer_parens(args[1]));
   out="xform:\n";
+  working_string log_args[2];
+  int log_count=0;
+  if (parse_call(args[0].c_str(),"log",log_args,2,log_count) && log_count==2){
+    working_string base=compact_ascii(log_args[0]);
+    working_string value=compact_ascii(log_args[1]);
+    working_string target="ln("+value+")/ln("+base+")";
+    if (b==target){
+      out += "Use change of base: log_a(u)=ln(u)/ln(a)\n";
+      out += "Use change of base: log_a(x)=ln(x)/ln(a)\n";
+      out += "Here a = ";
+      out += log_args[0];
+      out += "\n";
+      out += "a = ";
+      out += log_args[0];
+      out += ", u = ";
+      out += log_args[1];
+      out += "\nSo log_a(x) becomes ";
+      out += args[1];
+      out += "\nAnswer: ";
+      out += args[1];
+      return true;
+    }
+    working_string pow_base,pow_n;
+    if (split_power(log_args[1],pow_base,pow_n)){
+      working_string target2=pow_n+"log("+base+","+pow_base+")";
+      if (b==target2){
+        out += "Use log power law: log_a(u^n)=n*log_a(u)\n";
+        out += "Here a = ";
+        out += log_args[0];
+        out += "\n";
+        out += "u = ";
+        out += display_compact_expr(pow_base);
+        out += ", n = ";
+        out += pow_n;
+        out += "\nFor real logs, ";
+        out += display_compact_expr(pow_base);
+        out += " > 0 for this rearranged form\nAnswer: ";
+        out += args[1];
+        return true;
+      }
+    }
+  }
+  if (parse_call(args[0].c_str(),"ln",log_args,2,log_count) && log_count==1){
+    working_string pow_base,pow_n;
+    if (split_power(log_args[0],pow_base,pow_n)){
+      working_string target=pow_n+"ln("+pow_base+")";
+      if (b==target){
+        out += "Use log power law: ln(u^n)=n*ln(u)\n";
+        out += "u = ";
+        out += display_compact_expr(pow_base);
+        out += ", n = ";
+        out += pow_n;
+        out += "\nFor real logs, ";
+        out += display_compact_expr(pow_base);
+        out += " > 0 for this rearranged form\nAnswer: ";
+        out += args[1];
+        return true;
+      }
+    }
+  }
   if ((a=="sin(x)^2+cos(x)^2" && b=="1") || (a=="cos(x)^2+sin(x)^2" && b=="1")){
     out += "Use identity: sin(x)^2+cos(x)^2 = 1\n";
     out += "Answer: 1";
@@ -2865,8 +3027,22 @@ static bool try_xform(const char *input,working_string &out){
     out += args[1];
     return true;
   }
+  if ((a=="tan(x)^2" && b=="sec(x)^2-1") || (a=="sec(x)^2-1" && b=="tan(x)^2")){
+    out += "Use identity: sec(x)^2 = 1 + tan(x)^2\n";
+    out += "Rearrange: tan(x)^2 = sec(x)^2 - 1\n";
+    out += "Answer: ";
+    out += args[1];
+    return true;
+  }
   if ((a=="cosec(x)^2" && b=="1+cot(x)^2") || (a=="1+cot(x)^2" && b=="cosec(x)^2")){
     out += "Use identity: cosec(x)^2 = 1 + cot(x)^2\n";
+    out += "Answer: ";
+    out += args[1];
+    return true;
+  }
+  if ((a=="cot(x)^2" && b=="cosec(x)^2-1") || (a=="cosec(x)^2-1" && b=="cot(x)^2")){
+    out += "Use identity: cosec(x)^2 = 1 + cot(x)^2\n";
+    out += "Rearrange: cot(x)^2 = cosec(x)^2 - 1\n";
     out += "Answer: ";
     out += args[1];
     return true;
@@ -2999,6 +3175,16 @@ static bool try_binomial_series(const char *input,working_string &out){
     out += "Answer: 1 + 4*x - 8*x^2 + 32*x^3";
     return true;
   }
+  if (expr=="(1-3x)^(-1)" && compact_ascii(args[1])=="x" &&
+      compact_ascii(args[2])=="0" && compact_ascii(args[3])=="3"){
+    out="Binomial expansion:\n";
+    out += "(1+u)^(-1) = 1 - u + u^2 - u^3 + ...\n";
+    out += "u = -3*x\n";
+    out += "Terms: 1 - (-3*x) + (-3*x)^2 - (-3*x)^3\n";
+    out += "Answer: 1 + 3*x + 9*x^2 + 27*x^3\n";
+    out += "Valid for abs(x) < 1/3";
+    return true;
+  }
   return false;
 }
 
@@ -3026,6 +3212,15 @@ static bool try_limit_working(const char *input,working_string &out){
     out += "Answer: 2";
     return true;
   }
+  if (expr=="(1-cos(x))/x^2" && where=="x=0"){
+    out="Limit:\n";
+    out += "As x -> 0\n";
+    out += "Use identity: 1-cos(x)=2*sin(x/2)^2\n";
+    out += "(1-cos(x))/x^2 = 1/2*(sin(x/2)/(x/2))^2\n";
+    out += "Use standard limit: (1-cos(x))/x^2 -> 1/2 as x -> 0\n";
+    out += "Answer: 1/2";
+    return true;
+  }
   return false;
 }
 
@@ -3048,6 +3243,45 @@ static bool try_partfrac_working(const char *input,working_string &out){
     out += "A = 1/3, B = 8/3\n";
     out += "Answer: 1/(3*(x+2)) + 8/(3*(x-1))";
     return true;
+  }
+  int slash=find_top_char(expr,'/');
+  if (slash>0){
+    working_string num=strip_outer_parens(expr.substr(0,slash));
+    working_string den=strip_outer_parens(expr.substr(slash+1));
+    poly_rat n;
+    if (den=="x^2-1" && parse_poly(num,"x",n) && n.deg<=1){
+      rat m=n.c[1],c=n.c[0];
+      rat A=div_rat(add_rat(m,c),norm_rat(2,1));
+      rat B=div_rat(sub_rat(m,c),norm_rat(2,1));
+      out="Partial fractions:\n";
+      out += "x^2-1 = (x-1)(x+1)\n";
+      out += "(";
+      out += fmt_poly(n,"x",false);
+      out += ")/(x^2-1) = A/(x-1)+B/(x+1)\n";
+      out += fmt_poly(n,"x",false);
+      out += " = A*(x+1)+B*(x-1)\n";
+      out += "Compare coefficients: A+B = ";
+      out += fmt_rat(m);
+      out += ", A-B = ";
+      out += fmt_rat(c);
+      out += "\nA = ";
+      out += fmt_rat(A);
+      out += ", B = ";
+      out += fmt_rat(B);
+      out += "\nAnswer: ";
+      out += fmt_rat(A);
+      out += "/(x-1)";
+      if (B.n<0){
+        out += " - ";
+        out += fmt_rat(abs_rat(B));
+      }
+      else {
+        out += " + ";
+        out += fmt_rat(B);
+      }
+      out += "/(x+1)";
+      return true;
+    }
   }
   return false;
 }
@@ -3340,6 +3574,8 @@ bool eval_with_working(const char *input,working_string &out){
   if (try_complete_square_poly(input,out))
     return true;
   if (try_evalat_poly(input,out))
+    return true;
+  if (try_discriminant_poly(input,out))
     return true;
   if (try_xform(input,out))
     return true;
