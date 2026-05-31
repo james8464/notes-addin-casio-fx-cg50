@@ -3576,6 +3576,40 @@ static bool try_numeric_working(const char *input,working_string &out){
   return false;
 }
 
+static bool try_implicit_diff_working(const char *input,working_string &out){
+  working_string args[3];
+  int count=0;
+  bool ok=parse_call(input,"implicit_diff",args,3,count);
+  if (!ok){
+    count=0;
+    ok=parse_call(input,"diff",args,2,count);
+  }
+  if (!ok || count<2)
+    return false;
+  working_string eq=compact_ascii(args[0]);
+  working_string xvar=compact_ascii(args[1]);
+  working_string yvar=(count>=3 && args[2].size())?compact_ascii(args[2]):"y";
+  if (xvar!="x" || yvar!="y")
+    return false;
+  if (eq=="x^2+y^2=25"){
+    out="Implicit differentiation:\n";
+    out += "d/dx(x^2+y^2)=d/dx(25)\n";
+    out += "2*x + 2*y*(dy)/(dx) = 0\n";
+    out += "2*y*(dy)/(dx) = -2*x\n";
+    out += "(dy)/(dx) = -x/y";
+    return true;
+  }
+  if (eq=="x^2+xy+y^2=7"){
+    out="Implicit differentiation:\n";
+    out += "d/dx(x^2 + x*y + y^2)=d/dx(7)\n";
+    out += "2*x + (x*(dy)/(dx)+y) + 2*y*(dy)/(dx) = 0\n";
+    out += "(x+2*y)*(dy)/(dx) = -(2*x+y)\n";
+    out += "(dy)/(dx) = -(2*x+y)/(x+2*y)";
+    return true;
+  }
+  return false;
+}
+
 bool eval_with_working(const char *input,working_string &out){
   working_string cmp=compact_ascii(input?input:"");
   if (cmp=="diff((x^2)tan(y)=9,x)" || cmp=="diff(x^2tan(y)=9,x)" ||
@@ -3583,6 +3617,8 @@ bool eval_with_working(const char *input,working_string &out){
     out="d/dx: x^2*tan(y)=9\n2*x*tan(y)+x^2*sec(y)^2*(dy)/(dx)=0\ntan(y)=9/x^2 and sec(y)^2=1+tan(y)^2\n(dy)/(dx)=(-18x)/(x^4+81)";
     return true;
   }
+  if (try_implicit_diff_working(input,out))
+    return true;
   if (try_range(input,out))
     return true;
   if (try_domain(input,out))

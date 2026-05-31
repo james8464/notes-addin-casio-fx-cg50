@@ -8,6 +8,8 @@ RUNNER = ROOT / "tools" / "khicas_host_runner"
 
 CASES = [
     ("diff((x^2)*tan(y)=9,x)", "(dy)/(dx)=(-18x)/(x^4+81)"),
+    ("implicit_diff(x^2+y^2=25,x,y)", "(dy)/(dx) = -x/y"),
+    ("implicit_diff(x^2+x*y+y^2=7,x,y)", "(dy)/(dx) = -(2*x+y)/(x+2*y)"),
     ("diff(sin(x),x)", "Differentiate: sin(x)"),
     ("diff(x^3,x)", "Power rule: d/dx x^n = n*x^(n-1)"),
     ("diff(x^2*sin(x),x)", "Product rule: d(uv)/dx = u*v' + v*u'"),
