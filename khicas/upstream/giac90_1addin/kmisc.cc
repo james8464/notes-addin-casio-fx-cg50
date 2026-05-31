@@ -501,6 +501,9 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
   define_unary_function_ptr5( at_equal2list ,alias_at_equal2list,&__equal2list,0,true);
 
   gen _rank(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     if (args.type!=_VECT)
       return gentypeerr(contextptr); // return symbolic(at_adjoint_matrix,args);
@@ -2032,6 +2035,9 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
   define_unary_function_ptr5( at_hold ,alias_at_hold,&__hold,_QUOTE_ARGUMENTS,true);
 
   gen _eigenvals(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if (!is_squarematrix(g))
       return gendimerr(contextptr);
@@ -2048,11 +2054,14 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
   static define_unary_function_eval (__eigenvals,&_eigenvals,_eigenvals_s);
   define_unary_function_ptr5( at_eigenvals ,alias_at_eigenvals,&__eigenvals,0,true);
 
-  static const char _giackernel_s []="kernel";
+  static const char _giackernel_s []="_rm17";
   static define_unary_function_eval (__giackernel,&_ker,_giackernel_s);
   define_unary_function_ptr5( at_kernel ,alias_at_kernel,&__giackernel,0,true);
 
   gen _eigenvects(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     bool b=complex_mode(contextptr);
     complex_mode(true,contextptr);

@@ -8691,6 +8691,9 @@ namespace giac {
   define_unary_function_ptr5( at_makesuite ,alias_at_makesuite,&__makesuite,0,true);
 
   gen _matrix(const gen & g,const context * contextptr){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG &&  g.subtype==-1) return  g;
     if (g.type==_INT_) return _makemat(g,contextptr);
     if (g.type!=_VECT)

@@ -265,6 +265,24 @@ REMOVED = [
     "srand",
     "randpoly",
     "randPoly",
+    "egv",
+    "egvl",
+    "eigenvals",
+    "eigenvalues",
+    "eigenvects",
+    "eigenvectors",
+    "svd",
+    "ker",
+    "kernel",
+    "rank",
+    "rat_jordan",
+    "rat_jordan_block",
+    "pcar_hessenberg",
+    "det_minor",
+    "basis",
+    "image",
+    "rref",
+    "ref",
 ]
 
 BEHAVIOR_SAMPLES = [
@@ -465,6 +483,24 @@ BEHAVIOR_SAMPLES = [
     "hasard(3)",
     "srand(1)",
     "randpoly(3)",
+    "egv([[1,0],[0,2]])",
+    "egvl([[1,0],[0,2]])",
+    "eigenvals([[1,0],[0,2]])",
+    "eigenvalues([[1,0],[0,2]])",
+    "eigenvects([[1,0],[0,2]])",
+    "eigenvectors([[1,0],[0,2]])",
+    "svd([[1,2],[3,4]])",
+    "ker([[1,2],[2,4]])",
+    "kernel([[1,2],[2,4]])",
+    "rank([[1,2],[2,4]])",
+    "rat_jordan([[0,1],[-2,3]])",
+    "rat_jordan_block(x^2-3*x+2,x,2)",
+    "pcar_hessenberg([[1,2],[3,4]])",
+    "det_minor([[1,2],[3,4]])",
+    "basis([[1,2],[2,4]])",
+    "image([[1,2],[2,4]])",
+    "rref([[1,2],[2,4]])",
+    "ref([[1,2],[2,4]])",
 ]
 
 BINARY_ABSENT = [
@@ -519,6 +555,10 @@ BINARY_ABSENT = [
     "volume",
     "multinomial",
     "randmultinomial",
+    "basis",
+    "image",
+    "kernel",
+    "rref",
 ]
 
 

@@ -3314,7 +3314,7 @@ namespace giac {
       return res;
     return ratnormal(res,contextptr);
   }
-  static const char _rref_s []="rref";
+  static const char _rref_s []="_rm18";
   static define_unary_function_eval (__rref,&_rref,_rref_s);
   define_unary_function_ptr5( at_rref ,alias_at_rref,&__rref,0,true);
 
@@ -5969,7 +5969,7 @@ namespace giac {
       return gensizeerr(contextptr);
     return v;    
   }
-  static const char _image_s []="image";
+  static const char _image_s []="_rm19";
   static define_unary_function_eval (__image,&_image,_image_s);
   define_unary_function_ptr5( at_image ,alias_at_image,&__image,0,true);
 
@@ -6265,7 +6265,7 @@ namespace giac {
     matrice res=mrref(*args._VECTptr,contextptr);
     return gen(thrownulllines(res),_SET__VECT);
   }
-  static const char _basis_s []="basis";
+  static const char _basis_s []="_rm20";
   static define_unary_function_eval (__basis,&_basis,_basis_s);
   define_unary_function_ptr5( at_basis ,alias_at_basis,&__basis,0,true);
 
