@@ -163,6 +163,16 @@ QUALITY_CASES = [
         ],
     ),
     (
+        "series(cos(theta),theta=0,3)",
+        5,
+        [
+            "Small-angle approximation:",
+            "theta must be in radians and close to 0",
+            "cos(theta) = 1 - theta^2/2 + ...",
+            "Answer: 1 - theta^2/2",
+        ],
+    ),
+    (
         "binomial((1+8*x)^(1/2),x,0,3)",
         5,
         [

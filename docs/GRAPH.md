@@ -1,6 +1,6 @@
 # CasioCAS Project Graph
 
-Last updated: 2026-05-31 10:35 Europe/London
+Last updated: 2026-05-31 10:41 Europe/London
 
 ## Build
 
@@ -59,6 +59,7 @@ graph TD
   Direct --> GeoSolve["circle/tangent/region algebra solve routes"]
   Direct --> Periodic["periodic trig and sequence solve routes"]
   Direct --> BinomSeries["4-arg binomial series route"]
+  Direct --> SmallAngle["formula-booklet small-angle series sin/cos/tan(theta)"]
   Direct --> Affine["generic exact affine solve route"]
   Direct --> Arith["generic exact rational arithmetic route"]
   Direct --> NumericEval["generic numeric evaluator for method=numeric"]
@@ -69,7 +70,7 @@ graph TD
   Direct --> RationalSurd["targeted rational/surd differentiation solve routes"]
   Direct --> ExamExact["direct exam queue routes: sequences, geometry, trig identity, partial fractions, binomial, exponential models"]
   Direct --> SepDE["separable-DE exponential model solve(dn/dt=k*n,n,t)"]
-  Direct --> Quality["pure-maths working-quality depth gate across calculus, trig integrals, range, solve, xform constants, separable DE, binomial, partfrac"]
+  Direct --> Quality["pure-maths working-quality depth gate across calculus, trig integrals, range, solve, xform constants, separable DE, binomial, small-angle series, partfrac"]
   Direct --> PureOnly["mechanics routes removed from catalog/help/working engine"]
   Host["thin same-source host wrapper"] --> Queue["201/201 exact queue host checks"]
   Host --> DeletedHost["old host-only working_engine/src deleted"]
@@ -191,8 +192,8 @@ graph TD
 
 ```mermaid
 graph LR
-  Build["./compile exit 0"] --> Size["1,281,263 bytes"]
-  Build --> Rom["rom 1,252,587 bytes"]
+  Build["./compile exit 0"] --> Size["1,282,019 bytes"]
+  Build --> Rom["rom 1,253,343 bytes"]
   Build --> Ram["ram 331,088 bytes"]
   Build --> R8C2["r8c2 1,336,146 bytes"]
   Build --> Meta["metadata ok"]
@@ -202,13 +203,13 @@ graph LR
   Source["source gates"] --> Catalog["catalog ok, required 11"]
   Source --> Removed["343 removed rejected"]
   Source --> Session["session disabled"]
-  Help["help pack"] --> HelpQ["40 function sheets ok, PAK 41 records / 9,232 bytes"]
+  Help["help pack"] --> HelpQ["40 function sheets ok, PAK 41 records / 9,268 bytes"]
   Queue["golden queue"] --> QueueRun["201/201 host ok"]
   Queue --> GoldenRun["201/201 direct calculator-source ok"]
   Queue --> NoGolden["201/201 without generated golden fallback"]
-  Shared["shared working"] --> SharedRun["201/201 thin host+calculator adapter ok"]
-  Shared --> WorkQ["18/18 working-quality depth cases ok"]
-  Shared --> CoreRun["201/201 core routes without golden fallback ok"]
+  Shared["shared working"] --> SharedRun["204/204 thin host+calculator adapter ok"]
+  Shared --> WorkQ["19/19 working-quality depth cases ok"]
+  Shared --> CoreRun["204/204 core routes without golden fallback ok"]
   Shared --> NoHostSrc["old host-only source deleted"]
   Obj["object prune"] --> QR["qrcodegen.o link-safe removed"]
   Macro["source stubs"] --> Stubbed["plot/list/stats/special/ODE/file IO/linalg/transform helpers blocked"]
@@ -216,5 +217,5 @@ graph LR
   Static["lexer/help prune"] --> StaticRun["distribution/denom/transform/multinomial/matrix/about/shortcuts/session/crypto/complex/JordanBlock/keep_pivot/det-option/trace/plot-step/program/control-flow/Xcas/turtle/matplot/random/graphic names neutralized"]
   Static --> PromptRun["mod/sign/euler/ascii/geometry/3D solids/ode plot/laplace prompt names blocked"]
   Bin["binary scan"] --> NoLeak["no removed-term/plot-step/session/menu hits"]
-  Graphify["graphify update . --no-cluster"] --> GraphStats["10,301 nodes / 1,291,754 edges"]
+  Graphify["graphify update . --no-cluster"] --> GraphStats["10,302 nodes / 1,350,413 edges"]
 ```

@@ -2854,6 +2854,43 @@ static bool try_binomial_series(const char *input,working_string &out){
   return false;
 }
 
+static bool try_small_angle_series(const char *input,working_string &out){
+  working_string args[4];
+  int count=0;
+  if (!parse_call(input,"series",args,4,count) || count<3)
+    return false;
+  working_string expr=compact_ascii(args[0]);
+  working_string var0=compact_ascii(args[1]);
+  working_string order=compact_ascii(args[2]);
+  if (count>=4){
+    var0=compact_ascii(args[1])+"="+compact_ascii(args[2]);
+    order=compact_ascii(args[3]);
+  }
+  if (var0!="theta=0" || order!="3")
+    return false;
+  out="Small-angle approximation:\n";
+  out += "theta must be in radians and close to 0\n";
+  if (expr=="sin(theta)"){
+    out += "sin(theta) = theta - theta^3/6 + ...\n";
+    out += "So sin(theta) ~= theta\n";
+    out += "Answer: theta";
+    return true;
+  }
+  if (expr=="cos(theta)"){
+    out += "cos(theta) = 1 - theta^2/2 + ...\n";
+    out += "So cos(theta) ~= 1 - theta^2/2\n";
+    out += "Answer: 1 - theta^2/2";
+    return true;
+  }
+  if (expr=="tan(theta)"){
+    out += "tan(theta) = theta + theta^3/3 + ...\n";
+    out += "So tan(theta) ~= theta\n";
+    out += "Answer: theta";
+    return true;
+  }
+  return false;
+}
+
 static bool try_compare(const char *input,working_string &out){
   working_string args[2];
   int count=0;
@@ -3056,6 +3093,8 @@ bool eval_with_working(const char *input,working_string &out){
   if (try_rform(input,out))
     return true;
   if (try_coeff_working(input,out))
+    return true;
+  if (try_small_angle_series(input,out))
     return true;
   if (try_binomial_series(input,out))
     return true;
