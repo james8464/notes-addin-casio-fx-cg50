@@ -5,35 +5,27 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 HELP = ROOT / "help/functions"
+CATALOG = ROOT / "khicas/upstream/giac90_1addin/catalogen.cpp"
 
-REQUIRED = [
-    "diff",
-    "integrate",
-    "solve",
-    "factor",
-    "partfrac",
-    "simplify",
-    "range",
-    "domain",
-    "xform",
-    "implicit_diff",
-    "log",
-    "suvat",
-    "sin",
-    "cos",
-    "tan",
-    "sec",
-    "cosec",
-    "cot",
-]
+EXTRA_REQUIRED = {"domain", "sin", "cos", "tan", "sec", "cosec", "cot"}
 
 FIELDS = ["Args:", "Required:", "Does:", "Examples:"]
 
 
 def main() -> int:
+    catalog = CATALOG.read_text(errors="ignore")
+    block = catalog.split("const catalogFunc completeCat[]", 1)[1].split("\n};", 1)[0]
+    required = set(EXTRA_REQUIRED)
+    for line in block.splitlines():
+        line = line.strip()
+        if not line.startswith('{"'):
+            continue
+        name = line.split('"', 2)[1].split("(", 1)[0].split("[", 1)[0]
+        if name:
+            required.add(name)
     missing: list[str] = []
     weak: list[str] = []
-    for name in REQUIRED:
+    for name in sorted(required):
         p = HELP / f"{name}.txt"
         if not p.exists():
             missing.append(name)
@@ -46,7 +38,7 @@ def main() -> int:
         raise SystemExit("FAIL help: missing " + ", ".join(missing))
     if weak:
         raise SystemExit("FAIL help: weak " + ", ".join(weak))
-    print(f"OK help quality functions={len(REQUIRED)}")
+    print(f"OK help quality functions={len(required)}")
     return 0
 
 

@@ -1,0 +1,5 @@
+Args: texpand(expr)
+Required: expr
+Does: Expands supported trigonometric expressions.
+Examples: texpand(sin(2*x)); texpand(cos(x+y))
+Working: Uses double-angle and compound-angle identities where routed.

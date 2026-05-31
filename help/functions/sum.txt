@@ -1,0 +1,5 @@
+Args: sum(expr,var,start,end)
+Required: expr, var, start, end
+Does: Returns the sum of expr as var runs from start to end.
+Examples: sum(k,k,1,n); sum(k^2,k,1,5)
+Working: Uses sequence or finite-sum formulae where routed.

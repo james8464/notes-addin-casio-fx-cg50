@@ -1,0 +1,5 @@
+Args: trigcos(expr)
+Required: expr
+Does: Rewrites supported trig expressions using cos where useful.
+Examples: trigcos(sin(x)^2); trigcos(tan(x)^2)
+Working: Uses sin^2(x)+cos^2(x)=1 and reciprocal identities.

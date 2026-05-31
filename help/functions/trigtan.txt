@@ -1,0 +1,5 @@
+Args: trigtan(expr)
+Required: expr
+Does: Rewrites supported trig expressions using tan where useful.
+Examples: trigtan(sin(x)/cos(x)); trigtan(sec(x)^2)
+Working: Uses tan(x)=sin(x)/cos(x), sec^2(x)=1+tan^2(x), and related identities.

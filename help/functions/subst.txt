@@ -1,0 +1,5 @@
+Args: subst(expr,var=value)
+Required: expr, var=value
+Does: Substitutes value for var in expr.
+Examples: subst(x^2,x=3); subst(a*x+b,x=2)
+Working: Shows substitution before arithmetic when routed.

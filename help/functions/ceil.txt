@@ -1,0 +1,5 @@
+Args: ceil(x)
+Required: x
+Does: Returns the smallest integer greater than or equal to x.
+Examples: ceil(2.1); ceil(-1.2)
+Working: Usually final-answer only; useful after inequality bounds.

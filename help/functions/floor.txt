@@ -1,0 +1,5 @@
+Args: floor(x)
+Required: x
+Does: Returns the greatest integer less than or equal to x.
+Examples: floor(2.9); floor(-1.2)
+Working: Usually final-answer only; useful after inequality bounds.

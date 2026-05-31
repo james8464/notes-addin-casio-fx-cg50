@@ -1,0 +1,5 @@
+Args: round(x)
+Required: x
+Does: Rounds x to the nearest integer.
+Examples: round(3.6); round(184.868)
+Working: Usually final-answer only; used after exact or decimal working.

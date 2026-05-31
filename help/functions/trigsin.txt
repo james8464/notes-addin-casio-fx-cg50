@@ -1,0 +1,5 @@
+Args: trigsin(expr)
+Required: expr
+Does: Rewrites supported trig expressions using sin where useful.
+Examples: trigsin(cos(x)^2); trigsin(tan(x))
+Working: Uses sin^2(x)+cos^2(x)=1 and quotient identities.

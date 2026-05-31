@@ -1,0 +1,5 @@
+Args: discriminant(poly,var)
+Required: poly, var
+Does: Returns the discriminant of a polynomial in var.
+Examples: discriminant(x^2+x+1,x); discriminant(a*x^2+b*x+c,x)
+Working: For quadratics, uses b^2-4ac and interprets real roots when routed.

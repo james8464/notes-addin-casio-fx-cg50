@@ -1,6 +1,6 @@
 # CasioCAS Project Graph
 
-Last updated: 2026-05-31 02:03 Europe/London
+Last updated: 2026-05-31 02:09 Europe/London
 
 ## Build
 
@@ -142,7 +142,7 @@ graph LR
   Source["source gates"] --> Catalog["catalog ok"]
   Source --> Removed["158 removed rejected"]
   Source --> Session["session disabled"]
-  Help["help pack"] --> HelpQ["18 function sheets ok"]
+  Help["help pack"] --> HelpQ["41 function sheets ok"]
   Queue["golden queue"] --> QueueRun["200/200 host ok"]
   Queue --> GoldenRun["200/200 direct calculator-source ok"]
   Shared["shared working"] --> SharedRun["63/63 host+calculator adapter ok"]

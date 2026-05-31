@@ -1,0 +1,5 @@
+Args: degree(poly,var)
+Required: poly, var
+Does: Returns the highest power of var in poly.
+Examples: degree(x^4-1,x); degree(3*x^2*y,x)
+Working: Usually final-answer only; supports polynomial classification.

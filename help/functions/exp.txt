@@ -1,0 +1,5 @@
+Args: exp(x)
+Required: x
+Does: Returns e^x.
+Examples: exp(2*x); exp(ln(5))
+Working: Uses exponential laws and inverse log laws when solving or transforming.

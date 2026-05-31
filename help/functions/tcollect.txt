@@ -1,0 +1,5 @@
+Args: tcollect(expr)
+Required: expr
+Does: Collects trigonometric terms into a simpler supported form.
+Examples: tcollect(sin(x)*cos(x)); tcollect(sin(x)^2+cos(x)^2)
+Working: Uses A-level trig identities where routed.

@@ -1,0 +1,5 @@
+Args: collect(expr,var)
+Required: expr, var
+Does: Collects like powers of var.
+Examples: collect(x+x^2+2*x,x); collect(a*x+b*x,x)
+Working: Groups like terms before simplifying coefficients.
