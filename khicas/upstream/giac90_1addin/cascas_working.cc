@@ -3146,6 +3146,295 @@ static bool try_reverse_chain_integral(const working_string &expr,const working_
   return false;
 }
 
+static bool try_linear_rational_integral(const working_string &expr,const working_string &var,working_string &out){
+  int slash=find_top_char(expr,'/');
+  if (slash<=0)
+    return false;
+  working_string num=strip_outer_parens(expr.substr(0,slash));
+  working_string den=strip_outer_parens(expr.substr(slash+1));
+  rat nm,nc,dm,dc;
+  if (!parse_affine_rat(num,var,nm,nc) || !parse_affine_rat(den,var,dm,dc))
+    return false;
+  if (nm.n==0 || dm.n==0)
+    return false;
+  rat quotient=div_rat(nm,dm);
+  rat remainder=sub_rat(nc,mul_rat(quotient,dc));
+  if (remainder.n==0)
+    return false;
+  rat logcoeff=div_rat(remainder,dm);
+  working_string den_display=fmt_affine_display(den);
+  working_string answer;
+  append_signed_integral_piece(answer,quotient,var);
+  working_string logbody="ln(abs(";
+  logbody += den_display;
+  logbody += "))";
+  append_signed_integral_piece(answer,logcoeff,logbody);
+  answer += " + C";
+  out="Integrate by algebraic division:\n";
+  out += pretty_compact_math(num);
+  out += " = ";
+  out += fmt_rat(quotient);
+  out += "*(";
+  out += den_display;
+  out += ")";
+  if (remainder.n<0)
+    out += " - ";
+  else
+    out += " + ";
+  out += fmt_rat(abs_rat(remainder));
+  out += "\n";
+  out += pretty_compact_math(expr);
+  out += " = ";
+  out += fmt_rat(quotient);
+  if (remainder.n<0)
+    out += " - ";
+  else
+    out += " + ";
+  out += fmt_rat(abs_rat(remainder));
+  out += "/(";
+  out += den_display;
+  out += ")\n";
+  out += "int(1/(";
+  out += den_display;
+  out += ")) d";
+  out += var;
+  out += " = ";
+  if (!(dm.n==dm.d)){
+    out += fmt_coeff_times(div_rat(norm_rat(1,1),dm));
+  }
+  out += "ln(abs(";
+  out += den_display;
+  out += "))\n";
+  out += "Answer: ";
+  out += answer;
+  return true;
+}
+
+static bool poly_is_zero_all(const poly_rat &p){
+  for (int i=0;i<=p.deg;++i)
+    if (!is_zero_rat(p.c[i]))
+      return false;
+  return true;
+}
+
+static working_string poly_factor_body(const poly_rat &p,const working_string &var){
+  if (p.deg==0 && p.c[0].n==p.c[0].d)
+    return "";
+  if (p.deg==1 && p.c[1].n==p.c[1].d && is_zero_rat(p.c[0])){
+    working_string out=var;
+    out += "*";
+    return out;
+  }
+  working_string out="(";
+  out += fmt_poly(p,var,false);
+  out += ")*";
+  return out;
+}
+
+static void append_poly_trig_term(working_string &sum,rat coeff,const poly_rat &p,
+                                  const working_string &var,const char *fn,const working_string &arg){
+  if (coeff.n==0 || poly_is_zero_all(p))
+    return;
+  working_string body=poly_factor_body(p,var);
+  body += fn;
+  body += "(";
+  body += fmt_affine_display(arg);
+  body += ")";
+  append_signed_integral_piece(sum,coeff,body);
+}
+
+static void append_trig_poly_integral(working_string &sum,const poly_rat &p,const working_string &var,
+                                      const working_string &arg,rat k,bool sin_target,rat scale){
+  if (poly_is_zero_all(p))
+    return;
+  poly_rat d;
+  poly_derivative(p,d);
+  if (sin_target){
+    rat c=div_rat(scale,k);
+    c.n=-c.n;
+    append_poly_trig_term(sum,c,p,var,"cos",arg);
+    append_trig_poly_integral(sum,d,var,arg,k,false,div_rat(scale,k));
+  }
+  else {
+    append_poly_trig_term(sum,div_rat(scale,k),p,var,"sin",arg);
+    rat next=div_rat(scale,k);
+    next.n=-next.n;
+    append_trig_poly_integral(sum,d,var,arg,k,true,next);
+  }
+}
+
+static bool parse_poly_times_named(const working_string &expr,const working_string &var,
+                                   const char *name,poly_rat &p,working_string &arg){
+  working_string fn(name),needle=fn+"(";
+  int pos=expr.find(needle);
+  if (pos<=0)
+    return false;
+  int open=pos+fn.size();
+  int close=find_matching_paren(expr,open);
+  if (close<0 || close+1!=int(expr.size()))
+    return false;
+  if (!parse_poly(expr.substr(0,pos),var,p) || p.deg==0)
+    return false;
+  arg=expr.substr(open+1,close-open-1);
+  return true;
+}
+
+static bool parse_power_log_factor(const working_string &prefix,const working_string &var,rat &coeff,rat &power){
+  if (parse_coeff_rat(prefix,coeff)){
+    power=norm_rat(0,1);
+    return true;
+  }
+  int ipow=0;
+  if (!parse_monomial_factor(prefix,var,coeff,ipow))
+    return false;
+  power=norm_rat(ipow,1);
+  return true;
+}
+
+static bool parse_ln_arg_at_end(const working_string &s,working_string &prefix,working_string &arg){
+  int pos=s.find("ln(");
+  if (pos<0)
+    return false;
+  int open=pos+2;
+  int close=find_matching_paren(s,open);
+  if (close<0 || close+1!=int(s.size()))
+    return false;
+  prefix=s.substr(0,pos);
+  arg=s.substr(open+1,close-open-1);
+  return true;
+}
+
+static bool try_log_by_parts_integral(const working_string &expr,const working_string &var,working_string &out){
+  rat coeff,power;
+  working_string prefix,arg;
+  if (parse_ln_arg_at_end(expr,prefix,arg)){
+    if (!parse_power_log_factor(prefix,var,coeff,power))
+      return false;
+  }
+  else {
+    int slash=find_top_char(expr,'/');
+    if (slash<=0)
+      return false;
+    working_string num=strip_outer_parens(expr.substr(0,slash));
+    working_string den=strip_outer_parens(expr.substr(slash+1));
+    if (!parse_ln_arg_at_end(num,prefix,arg) || !prefix.empty())
+      return false;
+    rat denpow;
+    if (!parse_var_power(den,var,denpow))
+      return false;
+    coeff=norm_rat(1,1);
+    power=denpow;
+    power.n=-power.n;
+  }
+  rat m,c;
+  if (!parse_affine_rat(arg,var,m,c) || m.n==0 || c.n!=0)
+    return false;
+  rat next=add_rat(power,norm_rat(1,1));
+  working_string answer;
+  working_string logarg=fmt_affine_display(arg);
+  if (next.n==0){
+    working_string body="ln(";
+    body += logarg;
+    body += ")^2";
+    append_signed_integral_piece(answer,div_rat(coeff,norm_rat(2,1)),body);
+  }
+  else {
+    working_string xp=fmt_power_expr(var,next);
+    working_string body=xp;
+    body += "*ln(";
+    body += logarg;
+    body += ")";
+    append_signed_integral_piece(answer,div_rat(coeff,next),body);
+    rat denom=mul_rat(next,next);
+    rat second=div_rat(coeff,denom);
+    second.n=-second.n;
+    append_signed_integral_piece(answer,second,xp);
+  }
+  answer += " + C";
+  out="Use integration by parts:\n";
+  out += "Let u = ln(";
+  out += logarg;
+  out += ") and integrate the power of ";
+  out += var;
+  out += ".\n";
+  out += "Answer: ";
+  out += answer;
+  return true;
+}
+
+static bool try_by_parts_integral(const working_string &expr,const working_string &var,working_string &out){
+  if (try_log_by_parts_integral(expr,var,out))
+    return true;
+  poly_rat p;
+  working_string arg;
+  rat k,c;
+  if (parse_poly_times_named(expr,var,"sin",p,arg) && parse_affine_rat(arg,var,k,c) && k.n!=0){
+    working_string answer;
+    append_trig_poly_integral(answer,p,var,arg,k,true,norm_rat(1,1));
+    if (answer.empty())
+      return false;
+    out="Use integration by parts:\n";
+    out += "Take the polynomial factor as u and reduce its degree each step.\n";
+    out += "Answer: ";
+    out += answer;
+    out += " + C";
+    return true;
+  }
+  if (parse_poly_times_named(expr,var,"cos",p,arg) && parse_affine_rat(arg,var,k,c) && k.n!=0){
+    working_string answer;
+    append_trig_poly_integral(answer,p,var,arg,k,false,norm_rat(1,1));
+    if (answer.empty())
+      return false;
+    out="Use integration by parts:\n";
+    out += "Take the polynomial factor as u and reduce its degree each step.\n";
+    out += "Answer: ";
+    out += answer;
+    out += " + C";
+    return true;
+  }
+  int epos=expr.find("e^");
+  if (epos<=0)
+    return false;
+  if (!parse_poly(expr.substr(0,epos),var,p) || p.deg==0)
+    return false;
+  int apos=epos+2;
+  if (apos<int(expr.size()) && expr[apos]=='('){
+    int close=find_matching_paren(expr,apos);
+    if (close<0 || close+1!=int(expr.size()))
+      return false;
+    arg=expr.substr(apos+1,close-apos-1);
+  }
+  else
+    arg=expr.substr(apos);
+  if (!parse_affine_rat(arg,var,k,c) || k.n==0)
+    return false;
+  poly_rat q;
+  poly_zero(q);
+  q.deg=p.deg;
+  for (int i=p.deg;i>=0;--i){
+    rat rhs=p.c[i];
+    if (i+1<=POLY_MAX_DEG)
+      rhs=sub_rat(rhs,mul_rat(norm_rat(i+1,1),q.c[i+1]));
+    q.c[i]=div_rat(rhs,k);
+  }
+  poly_norm(q);
+  out="Use integration by parts:\n";
+  out += "For e^(k*x), find Q so d/d";
+  out += var;
+  out += "[e^(";
+  out += fmt_affine_display(arg);
+  out += ")*Q] equals the integrand.\n";
+  out += "Q = ";
+  out += fmt_poly(q,var,false);
+  out += "\n";
+  out += "Answer: e^(";
+  out += fmt_affine_display(arg);
+  out += ")*(";
+  out += fmt_poly(q,var,false);
+  out += ") + C";
+  return true;
+}
+
 static bool parse_trig_kx(const working_string &expr,const char *name,const char *suffix,working_string &k,working_string &arg){
   working_string fn(name),suf(suffix);
   working_string prefix=fn+"(";
@@ -3207,6 +3496,10 @@ static bool try_integral(const char *input,working_string &out){
   if (try_linear_substitution_integral(expr,var,out))
     return true;
   if (expr!="1/x" && try_reverse_chain_integral(expr,var,out))
+    return true;
+  if (try_linear_rational_integral(expr,var,out))
+    return true;
+  if (try_by_parts_integral(expr,var,out))
     return true;
   if (expr=="sec(x)^2(1+cot(x)^2)" || expr=="sec(x)^2*(1+cot(x)^2)"){
     out="Integrate using reciprocal identities:\n";

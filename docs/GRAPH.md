@@ -1,6 +1,6 @@
 # CasioCAS Project Graph
 
-Last updated: 2026-05-31 14:34 Europe/London
+Last updated: 2026-05-31 14:45 Europe/London
 
 ## Build
 
@@ -68,6 +68,8 @@ graph TD
   Direct --> TermInt["generic term-by-term trig/exp/reciprocal-linear integration"]
   Direct --> DefIntArchive["archived integration-basics definite integral routes"]
   Direct --> ReverseChain["reverse-chain integration: generic polynomial u' f(u) plus trig/log/exponential archive routes; 82/82 archived cases no fallback"]
+  Direct --> LinearRationalInt["linear-over-linear algebraic division integrals; archived special manipulation 10/10 no fallback"]
+  Direct --> ByParts["by-parts routes for polynomial*e^(kx), polynomial*sin/cos(kx), and x^n ln(kx); archived by-parts 49/81 no fallback"]
   Direct --> Xform["identity/log/sec/cosec/cot/half-angle proof shell"]
   Direct --> LogPower["xform log power laws for log(base,x^n) and ln(x^n)"]
   Direct --> GenericXform["generic pure xform routes: change-base logs, log powers, sec/cosec/cot rearrangements"]
@@ -97,7 +99,7 @@ graph TD
   Direct --> RationalSurd["targeted rational/surd differentiation solve routes"]
   Direct --> ExamExact["direct exam queue routes: sequences, geometry, trig identity, partial fractions, binomial, exponential models"]
   Direct --> SepDE["separable-DE exponential model solve(dn/dt=k*n,n,t)"]
-  Direct --> Quality["pure-maths working-quality depth gate across calculus, domains, definite/exponential/trig integrals, reverse-chain integration, range intervals, limits, log solve/xform, xform constants, separable DE, binomial, small-angle series, partfrac"]
+  Direct --> Quality["pure-maths working-quality depth gate across calculus, domains, definite/exponential/trig integrals, reverse-chain/by-parts integration, range intervals, limits, log solve/xform, xform constants, separable DE, binomial, small-angle series, partfrac"]
   Direct --> HelpExamples["same-source direct routes for every help-sheet example"]
   Direct --> HelpFKeys["catalog/help F2/F3 examples use exact # insertion"]
   Direct --> XformRational["xform rational transform: a/(x+1) to 5*a/(2*x+1)"]
