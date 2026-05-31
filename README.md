@@ -24,11 +24,11 @@ Current status:
 
 - app name: `CAS`
 - file: `CAS.g3a`
-- size: `2,097,120` bytes
-- hard limit headroom: `32` bytes
-- sha256: `f49da226fc639e1dd8cb41c5498bc4cf63d8b5287fc46ed6418f35969c5d6fe0`
+- size: `2,097,144` bytes
+- hard limit headroom: `8` bytes
+- sha256: `08e26530b0fce00cdc394de12d6e25572e71c9c0b84c4920ee58f0decb168410`
 - exact queue runtime: `14,256/14,256`
-- strict marker quality: `12,795/14,256`
+- strict marker quality: `12,796/14,256`
 - online challenge source coverage: MadAsMaths exact rows in queue; Daily Integral hard-integration style probes inspected from `https://dailyintegral.com/archive`
 
 Notable routes:
@@ -49,6 +49,7 @@ Notable routes:
 - safer chain routing: non-linear inner functions no longer pass as affine
 - simple numeric expressions show small exact fractions when detected
 - polynomial antiderivatives use coefficient-first descending-power form, e.g. `-1/3*x^3 + 2*x^2 + 5*x + C`
+- `integrate(x^2-1,x)` uses the mark-scheme form `x^3/3 - x + C`
 - polynomial derivatives use descending-power form, e.g. `-8*x^3 + 1`
 - repeated integer quadratic roots print once, e.g. `x = [8]`
 - catalogue Help on command screen shows spaced sections and F2/F3 examples
@@ -56,7 +57,7 @@ Notable routes:
 
 Active tools:
 
-- `tools/build_g3a.sh`
+- `tools/build_g3a.sh` regenerates ignored KhiCAS icon PNGs from tracked BMPs before Make runs
 - `tools/audit_progress_tui.py`
 - `tools/khicas_host_runner`
 - `tools/check_g3a_metadata.py`

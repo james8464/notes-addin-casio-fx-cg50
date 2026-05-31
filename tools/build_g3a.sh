@@ -27,12 +27,31 @@ clean_source_outputs() {
     -delete
 }
 
+prepare_icons() {
+  python3 - "${SRC_DIR}" <<'PY'
+from pathlib import Path
+import shutil
+import sys
+
+root = Path(sys.argv[1])
+try:
+    from PIL import Image
+
+    Image.open(root / "unselected.bmp").save(root / "khicasio.png")
+    Image.open(root / "selected.bmp").save(root / "khicasio1.png")
+except Exception:
+    shutil.copyfile(root / "logo.png", root / "khicasio.png")
+    shutil.copyfile(root / "logo.png", root / "khicasio1.png")
+PY
+}
+
 mkdir -p "${OUT_DIR}" "${TRANSFER_DIR}"
 rm -rf "${OUT_DIR:?}"/* "${TRANSFER_DIR:?}"/*
 touch "${TRANSFER_DIR}/.gitkeep"
 
 ensure_image
 clean_source_outputs
+prepare_icons
 
 docker run --rm \
   --platform linux/amd64 \
@@ -57,6 +76,7 @@ python3 "${ROOT_DIR}/tools/check_g3a_size.py" "${OUT_DIR}/${TARGET}"
 
 cp "${OUT_DIR}/${TARGET}" "${TRANSFER_DIR}/${TARGET}"
 clean_source_outputs
+rm -f "${SRC_DIR}/khicasio.png" "${SRC_DIR}/khicasio1.png"
 
 ls -lh "${TRANSFER_DIR}/${TARGET}"
 shasum -a 256 "${TRANSFER_DIR}/${TARGET}"

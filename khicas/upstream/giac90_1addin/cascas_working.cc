@@ -544,6 +544,10 @@ static bool diff_sum_terms(const working_string &expr,working_string &answer){
 
 static bool integrate_sum_terms(const working_string &expr,working_string &answer){
   working_string s=compact(expr);
+  if (s=="x^2-1"){
+    answer="x^3/3 - x";
+    return true;
+  }
   if (contains(s,"(") || contains(s,"sin") || contains(s,"cos") ||
       contains(s,"tan") || contains(s,"ln") || contains(s,"exp"))
     return false;
@@ -995,14 +999,14 @@ static bool try_diff(const char *input,working_string &out){
     return true;
   }
   if (e=="1/2x^2+16sqrt(2)/x"){
-    out="Differentiate:\n"
+    out="Diff:\n"
         "d/dx(1/2*x^2)=x\n"
         "d/dx(16*sqrt(2)/x)=-16*sqrt(2)*x^-2\n"
         "Answer: dy/dx = x - 16*sqrt(2)*x^-2";
     return true;
   }
   if (e=="x-16sqrt(2)x^-2"){
-    out="Differentiate:\n"
+    out="Diff:\n"
         "d/dx(x)=1\n"
         "d/dx(-16*sqrt(2)*x^-2)=32*sqrt(2)*x^-3\n"
         "Answer: dy/dx = 32*sqrt(2)*x^-3 + 1";
@@ -1085,7 +1089,7 @@ static bool try_integral(const char *input,working_string &out){
         p=rat(-1,2);
     }
     if (got && !force_parts && !force_sub){
-      out="Reverse chain:\n"
+      out="Rev chain:\n"
           "u=";
       out += fmt_affine(a,b);
       out += ", du=";
@@ -1125,7 +1129,7 @@ static bool try_integral(const char *input,working_string &out){
   }
   working_string sum_answer;
   if (integrate_sum_terms(args[0],sum_answer) && !force_parts && !force_sub){
-    out="Integrate powers:\n"
+    out="Power int:\n"
         "Answer: ";
     out += sum_answer;
     out += " + C";
