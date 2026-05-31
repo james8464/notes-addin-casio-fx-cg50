@@ -1,0 +1,285 @@
+[
+  {
+    "id": "madas_iygb_c2_i_q1_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c2_i.pdf",
+    "question": "q1",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: c2_i questions page 2, marks page 1, solutions page 1",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,108-36-4+12",
+        "mark_scheme_working": ["antiderivative 4x^(3/2)-12x^(1/2)", "definite integral from 1 to 9 equals 80"],
+        "expected_output_markers": ["80"]
+      }
+    ],
+    "expected_final": ["80"],
+    "unsupported_reason": "integration antiderivative setup is manual"
+  },
+  {
+    "id": "madas_iygb_c2_i_q2_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c2_i.pdf",
+    "question": "q2",
+    "part": "a-c",
+    "verdict": "testable",
+    "review_basis": "manual page-image review: c2_i questions page 2, marks page 1, solutions page 1",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "2*(-2)^3-7*(-2)^2-5*(-2)+4",
+        "mark_scheme_working": ["f(-2)=-30"],
+        "expected_output_markers": ["-30"]
+      },
+      {
+        "module": "algebra",
+        "input": "2*4^3-7*4^2-5*4+4",
+        "mark_scheme_working": ["f(4)=0 so (x-4) is a factor"],
+        "expected_output_markers": ["0"]
+      },
+      {
+        "module": "algebra",
+        "input": "factor(2*x^3-7*x^2-5*x+4)",
+        "mark_scheme_working": ["f(x)=(x-4)(2x-1)(x+1)"],
+        "expected_output_markers": ["(x + 1)*(2*x - 1)*(x - 4)"]
+      }
+    ],
+    "expected_final": ["remainder=-30", "f(x)=(x-4)(2x-1)(x+1)"]
+  },
+  {
+    "id": "madas_iygb_c2_i_q3_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c2_i.pdf",
+    "question": "q3",
+    "part": "a-b",
+    "verdict": "testable",
+    "review_basis": "manual page-image review: c2_i questions page 2, marks page 1, solutions page 2",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,15/90",
+        "mark_scheme_working": ["r=u2/u1=15/90=1/6"],
+        "expected_output_markers": ["0.166666666667"]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,90/(1-1/6)",
+        "mark_scheme_working": ["S_inf=90/(5/6)=108"],
+        "expected_output_markers": ["108"]
+      }
+    ],
+    "expected_final": ["r=1/6", "S_inf=108"]
+  },
+  {
+    "id": "madas_iygb_c2_i_q4_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c2_i.pdf",
+    "question": "q4",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: c2_i questions page 2, marks page 2, solutions page 2",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "solve(3*x^2-10*x+3=0,x)",
+        "mark_scheme_working": ["f'(x)=3x^2-10x+3", "critical values x=1/3 and x=3"],
+        "expected_output_markers": ["x = [3, 1/3]"]
+      }
+    ],
+    "expected_final": ["1/3<x<3"],
+    "unsupported_reason": "decreasing interval from quadratic sketch is manual"
+  },
+  {
+    "id": "madas_iygb_c2_i_q5_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c2_i.pdf",
+    "question": "q5",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: c2_i questions page 3, marks page 2, solutions page 2",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "solve(3*c^2+7*c+2=0,c)",
+        "mark_scheme_working": ["3cos^2(3x)+7cos(3x)+2=0", "cos(3x)=-1/3"],
+        "expected_output_markers": ["c = [-1/3, -2]"]
+      }
+    ],
+    "expected_final": ["x=36.5°,83.5°,156.5°"],
+    "unsupported_reason": "degree-mode branch selection for 3x is manual"
+  },
+  {
+    "id": "madas_iygb_c2_i_q6_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c2_i.pdf",
+    "question": "q6",
+    "part": "a-b",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: c2_i questions page 3, marks page 3, solutions page 3",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,pi-2*atan(2.2/0.9)",
+        "mark_scheme_working": ["theta=arctan(2.2/0.9)", "angle BOC=pi-2theta≈0.7766 rad"],
+        "expected_output_markers": ["0.776637436345"]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,sqrt(5.65)",
+        "mark_scheme_working": ["radius sqrt(2.2^2+0.9^2)=sqrt(5.65)"],
+        "expected_output_markers": ["2.3769728648"]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,2.2*2+1.8+sqrt(5.65)*(pi-2*atan(2.2/0.9))",
+        "mark_scheme_working": ["perimeter AB+AD+DC+arc≈8.05 m"],
+        "expected_output_markers": ["8.046"]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,0.5*5.65*(pi-2*atan(2.2/0.9))+2*0.5*0.9*2.2",
+        "mark_scheme_working": ["sector plus two triangles area≈4.17 m^2"],
+        "expected_output_markers": ["4.174"]
+      }
+    ],
+    "expected_final": ["angle≈0.7766 rad", "perimeter≈8.05 m", "area≈4.17 m^2"],
+    "unsupported_reason": "door diagram geometry setup is manual"
+  },
+  {
+    "id": "madas_iygb_c2_i_q7_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c2_i.pdf",
+    "question": "q7",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: c2_i questions page 4, marks page 3, solutions page 4",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,459/10-27",
+        "mark_scheme_working": ["curve area 459/10 minus triangle 27", "shaded area 189/10=18.9"],
+        "expected_output_markers": ["18.9"]
+      }
+    ],
+    "expected_final": ["area=18.9"],
+    "unsupported_reason": "definite integral and trapezium subtraction are manual"
+  },
+  {
+    "id": "madas_iygb_c2_i_q8_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c2_i.pdf",
+    "question": "q8",
+    "part": "all",
+    "verdict": "testable",
+    "review_basis": "manual page-image review: c2_i questions page 4, marks page 4, solutions page 4",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "solve(0.5*n*(n-1)=120,n)",
+        "mark_scheme_working": ["n(n-1)/2=120", "n=16"],
+        "expected_output_markers": ["n = [16, -15]"]
+      },
+      {
+        "module": "algebra",
+        "input": "solve(16*k=40,k)",
+        "mark_scheme_working": ["nk=40 gives k=5/2"],
+        "expected_output_markers": ["k = [5/2]"]
+      }
+    ],
+    "expected_final": ["n=16", "k=5/2"]
+  },
+  {
+    "id": "madas_iygb_c2_i_q9_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c2_i.pdf",
+    "question": "q9",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: c2_i questions page 4, marks page 4, solutions page 5",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "solve(x^2-16*x+64=0,x)",
+        "mark_scheme_working": ["x^2/(x-4)=16 gives (x-8)^2=0", "x=8"],
+        "expected_output_markers": ["x = [8]"]
+      }
+    ],
+    "expected_final": ["x=8"],
+    "unsupported_reason": "log change-of-base steps are manual"
+  },
+  {
+    "id": "madas_iygb_c2_i_q10_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c2_i.pdf",
+    "question": "q10",
+    "part": "a-b",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: c2_i questions page 5, marks page 5, solutions page 6",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,(1+7)/2",
+        "mark_scheme_working": ["centre x-coordinate is 4"],
+        "expected_output_markers": ["4"]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,(1+3)/2",
+        "mark_scheme_working": ["centre y-coordinate is 2", "C1 centre (4,2)"],
+        "expected_output_markers": ["2"]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,sqrt(9+1)",
+        "mark_scheme_working": ["circumradius |PC|=sqrt(10)"],
+        "expected_output_markers": ["3.16227766017"]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,sqrt(20)/2",
+        "mark_scheme_working": ["inradius is half diagonal |SR|/2=sqrt(5)"],
+        "expected_output_markers": ["2.2360679775"]
+      }
+    ],
+    "expected_final": ["C1 centre (4,2) radius sqrt(10)", "C2 (x-4)^2+(y-2)^2=5"],
+    "unsupported_reason": "square geometry and circle equation assembly are manual"
+  },
+  {
+    "id": "madas_iygb_c2_i_q11_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c2_i.pdf",
+    "question": "q11",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: c2_i questions page 5, marks page 5, solutions pages 6-7",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "solve(-a=3,a)",
+        "mark_scheme_working": ["a-b=6 and 2a-b=3 give a=-3"],
+        "expected_output_markers": ["a = [-3]"]
+      },
+      {
+        "module": "algebra",
+        "input": "solve(-3-b=6,b)",
+        "mark_scheme_working": ["b=-9"],
+        "expected_output_markers": ["b = [-9]"]
+      },
+      {
+        "module": "algebra",
+        "input": "solve(3*x^2-6*x-9=0,x)",
+        "mark_scheme_working": ["dy/dx=3x^2-6x-9=0", "x=-1 and x=3"],
+        "expected_output_markers": ["x = [3, -1]"]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,27-27-27-10",
+        "mark_scheme_working": ["y at x=3 is -37", "Q=(3,-37)"],
+        "expected_output_markers": ["-37"]
+      }
+    ],
+    "expected_final": ["Q=(3,-37) local minimum"],
+    "unsupported_reason": "second-derivative nature proof is manual"
+  },
+  {
+    "id": "madas_iygb_c2_i_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/c2_i.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual page-image review: all 5 question pages, 5 mark pages and 7 worked-solution pages",
+    "unsupported_reason": "source complete marker; executable exact calculator inputs are recorded in c2_i rows above, while diagram/proof/branch judgements are manual notes"
+  }
+]

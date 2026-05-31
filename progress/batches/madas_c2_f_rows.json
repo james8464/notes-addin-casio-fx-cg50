@@ -1,0 +1,280 @@
+[
+  {
+    "id": "madas_iygb_c2_f_q1_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c2_f.pdf",
+    "question": "q1",
+    "part": "a-c",
+    "verdict": "testable",
+    "review_basis": "manual page-image review: c2_f questions page 2, marks page 1, solutions page 1",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "3^3-2*3^2+3*(-5)+6",
+        "mark_scheme_working": ["f(3)=27-18-15+6=0", "therefore k=-5"],
+        "expected_output_markers": ["0"]
+      },
+      {
+        "module": "algebra",
+        "input": "factor(x^3-2*x^2-5*x+6)",
+        "mark_scheme_working": ["divide by (x-3) to get x^2+x-2", "f(x)=(x-3)(x-1)(x+2)"],
+        "expected_output_markers": ["(x + 2)*(x - 1)*(x - 3)"]
+      },
+      {
+        "module": "algebra",
+        "input": "(-3-3)*(-3-1)*(-3+2)",
+        "mark_scheme_working": ["f(-3)=(-6)(-4)(-1)=-24"],
+        "expected_output_markers": ["-24"]
+      }
+    ],
+    "expected_final": ["k=-5", "f(x)=(x-3)(x-1)(x+2)", "remainder=-24"]
+  },
+  {
+    "id": "madas_iygb_c2_f_q2_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c2_f.pdf",
+    "question": "q2",
+    "part": "a-b",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: c2_f questions page 2, marks page 1, solutions page 1",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,0.5*(1/2+8/3+2*(2/3+1+8/5))",
+        "mark_scheme_working": ["h=1 with ordinates at x=0,1,2,3,4", "trapezium rule gives about 4.85 to 3 sf"],
+        "expected_output_markers": ["4.85"]
+      }
+    ],
+    "expected_final": ["integral≈4.85", "use more strips"],
+    "unsupported_reason": "strip layout and part (b) qualitative answer are manual"
+  },
+  {
+    "id": "madas_iygb_c2_f_q3_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c2_f.pdf",
+    "question": "q3",
+    "part": "a-b",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: c2_f questions page 2, marks page 2, solutions page 2",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "expand((1-2*x)^10)",
+        "mark_scheme_working": ["first four terms are 1-20x+180x^2-960x^3"],
+        "expected_output_markers": ["-960*x^3", "-20*x", "180*x^2"]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,1-20*0.01+180*0.01^2-960*0.01^3",
+        "mark_scheme_working": ["1-2x=0.98 gives x=0.01", "0.98^10≈0.817 to 3 dp"],
+        "expected_output_markers": ["0.81704"]
+      }
+    ],
+    "expected_final": ["1-20x+180x^2-960x^3", "0.98^10≈0.817"],
+    "unsupported_reason": "choosing x=0.01 from 1-2x=0.98 is contextual"
+  },
+  {
+    "id": "madas_iygb_c2_f_q4_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c2_f.pdf",
+    "question": "q4",
+    "part": "a-b",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: c2_f questions page 3, marks page 2, solutions page 2",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,22000*1.05^29",
+        "mark_scheme_working": ["u30=22000(1.05)^29", "2030 salary≈£90555"],
+        "expected_output_markers": ["90554.9830984"]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,22000*(1-1.05^30)/(1-1.05)",
+        "mark_scheme_working": ["S30=22000(1-1.05^30)/(1-1.05)", "total earnings≈£1461655"],
+        "expected_output_markers": ["1461654.64507"]
+      }
+    ],
+    "expected_final": ["2030 salary≈£90555", "total≈£1461655"],
+    "unsupported_reason": "currency rounding and GP year indexing are manual"
+  },
+  {
+    "id": "madas_iygb_c2_f_q5_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c2_f.pdf",
+    "question": "q5",
+    "part": "a-c",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: c2_f questions page 3, marks page 3, solutions page 3",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,(-7+1)/2",
+        "mark_scheme_working": ["centre x-coordinate is (-7+1)/2=-3"],
+        "expected_output_markers": ["-3"]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,(4-2)/2",
+        "mark_scheme_working": ["centre y-coordinate is (4-2)/2=1", "C=(-3,1)"],
+        "expected_output_markers": ["1"]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,sqrt((-3-1)^2+(1+2)^2)",
+        "mark_scheme_working": ["radius is |BC|=5", "circle (x+3)^2+(y-1)^2=25"],
+        "expected_output_markers": ["5"]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,-3/4*(-4/3)",
+        "mark_scheme_working": ["tangent gradient is -3/4", "CD gradient is 4/3"],
+        "expected_output_markers": ["1"]
+      }
+    ],
+    "expected_final": ["(x+3)^2+(y-1)^2=25", "3y=4x+15", "D=(0,5)"],
+    "unsupported_reason": "circle equation form and D coordinates from simultaneous lines are manual"
+  },
+  {
+    "id": "madas_iygb_c2_f_q6_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c2_f.pdf",
+    "question": "q6",
+    "part": "all",
+    "verdict": "testable",
+    "review_basis": "manual page-image review: c2_f questions page 3, marks page 3, solutions page 4",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "solve(x^2-9*x+18=0,x)",
+        "mark_scheme_working": ["x^2/(x-2)=9 gives x^2-9x+18=0", "(x-3)(x-6)=0", "x=3 or x=6"],
+        "expected_output_markers": ["x = [6, 3]"]
+      }
+    ],
+    "expected_final": ["x=3, 6"]
+  },
+  {
+    "id": "madas_iygb_c2_f_q7_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c2_f.pdf",
+    "question": "q7",
+    "part": "a-c",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: c2_f questions page 4, marks page 4, solutions pages 4-5",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,(9^2-6^2-5^2)/(-2*6*5)",
+        "mark_scheme_working": ["cosine rule on triangle BCD", "81=36+25-60cosθ", "cosθ=-1/3"],
+        "expected_output_markers": ["-0.333333333333"]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,sqrt(8/9)",
+        "mark_scheme_working": ["sinθ=sqrt(8/9)=2sqrt(2)/3"],
+        "expected_output_markers": ["0.942809041582"]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,6*2*sqrt(2)/24",
+        "mark_scheme_working": ["alternate angles give ABD=θ", "sinφ/6=sinθ/24", "sinφ=sqrt(2)/6"],
+        "expected_output_markers": ["0.707106781187"]
+      }
+    ],
+    "expected_final": ["cosθ=-1/3", "sinθ=2sqrt(2)/3", "sinφ=sqrt(2)/6"],
+    "unsupported_reason": "cosine-rule setup and alternate-angle geometry are manual"
+  },
+  {
+    "id": "madas_iygb_c2_f_q8_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c2_f.pdf",
+    "question": "q8",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: c2_f questions page 5, marks page 4, solutions page 5",
+    "inputs": [
+      {
+        "module": "integrate",
+        "input": "x^2-8*x+18",
+        "mark_scheme_working": ["area under curve from x=3 to x=6 is 9"],
+        "expected_output_markers": ["x^3/3 - 4*x^2 + 18*x + C"]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,(3+6)/2*3",
+        "mark_scheme_working": ["trapezium between (3,3) and (6,6) has area 27/2"],
+        "expected_output_markers": ["13.5"]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,27/2-9",
+        "mark_scheme_working": ["shaded area is trapezium minus curve area", "9/2"],
+        "expected_output_markers": ["4.5"]
+      }
+    ],
+    "expected_final": ["area=9/2"],
+    "unsupported_reason": "definite integral evaluation and diagram setup are manual"
+  },
+  {
+    "id": "madas_iygb_c2_f_q9_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c2_f.pdf",
+    "question": "q9",
+    "part": "a-d",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: c2_f questions page 6, marks page 5, solutions page 6",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,sqrt(36)",
+        "mark_scheme_working": ["dP/dx=2-72/x^2=0 gives x^2=36", "x=6"],
+        "expected_output_markers": ["6"]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,2*6+72/6",
+        "mark_scheme_working": ["Pmin=2(6)+72/6=24"],
+        "expected_output_markers": ["24"]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,144/6^3",
+        "mark_scheme_working": ["d2P/dx2=144/x^3=2/3>0 so minimum"],
+        "expected_output_markers": ["0.666666666667"]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,72/36",
+        "mark_scheme_working": ["θ=72/x^2=2 radians at minimum"],
+        "expected_output_markers": ["2"]
+      }
+    ],
+    "expected_final": ["P=2x+72/x", "x=6", "Pmin=24", "θ=2"],
+    "unsupported_reason": "perimeter derivation and differentiation steps are manual"
+  },
+  {
+    "id": "madas_iygb_c2_f_q10_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c2_f.pdf",
+    "question": "q10",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: c2_f questions page 6, marks page 6, solutions page 7",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,arccos(3/4)",
+        "mark_scheme_working": ["4cos^2θ+cosθ-3=0 gives cosθ=3/4 or -1", "θ≈0.72 rad"],
+        "expected_output_markers": ["0.722734247813"]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,2*pi-arccos(3/4)",
+        "mark_scheme_working": ["second branch gives θ≈5.56 rad"],
+        "expected_output_markers": ["5.56045105947"]
+      }
+    ],
+    "expected_final": ["θ≈0.72, 5.56, π"],
+    "unsupported_reason": "trig equation reduction and range filtering are manual"
+  },
+  {
+    "id": "madas_iygb_c2_f_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/c2_f.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual page-image review: all 6 question pages, 6 mark pages and 7 solution pages",
+    "unsupported_reason": "source complete marker; executable exact calculator inputs are recorded in c2_f rows above, while diagram/proof/branch judgements are manual notes"
+  }
+]

@@ -1,0 +1,268 @@
+[
+  {
+    "id": "madas_iygb_c2_h_q1_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c2_h.pdf",
+    "question": "q1",
+    "part": "a-b",
+    "verdict": "testable",
+    "review_basis": "manual page-image review: c2_h questions page 2, marks page 1, solutions page 1",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "expand((1+3*x)^8)",
+        "mark_scheme_working": ["(1+3x)^8 first four terms 1+24x+252x^2+1512x^3"],
+        "expected_output_markers": ["24*x", "252*x^2", "1512*x^3"]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,28*729",
+        "mark_scheme_working": ["x^6 term is C(8,6)(3x)^6=28*729x^6", "coefficient 20412"],
+        "expected_output_markers": ["20412"]
+      }
+    ],
+    "expected_final": ["1+24x+252x^2+1512x^3", "coefficient=20412"]
+  },
+  {
+    "id": "madas_iygb_c2_h_q2_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c2_h.pdf",
+    "question": "q2",
+    "part": "a-b",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: c2_h questions page 2, marks page 1, solutions page 1",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,1/3",
+        "mark_scheme_working": ["r=2a and S_inf=a/(1-r)=1", "a=1/3"],
+        "expected_output_markers": ["0.333333333333"]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,(1/3)*(2/3)^4",
+        "mark_scheme_working": ["u5=ar^4=(1/3)(2/3)^4=16/243"],
+        "expected_output_markers": ["0.0658436213992"]
+      }
+    ],
+    "expected_final": ["a=1/3", "u5=16/243"],
+    "unsupported_reason": "r=2a setup and exact fraction form are manual"
+  },
+  {
+    "id": "madas_iygb_c2_h_q3_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c2_h.pdf",
+    "question": "q3",
+    "part": "a-b",
+    "verdict": "testable",
+    "review_basis": "manual page-image review: c2_h questions page 2, marks page 2, solutions pages 1-2",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "solve(2*p=-4,p)",
+        "mark_scheme_working": ["f(1)=0 and f(-1)=8 give p+q=-7 and p-q=3", "p=-2"],
+        "expected_output_markers": ["p = [-2]"]
+      },
+      {
+        "module": "algebra",
+        "input": "solve(-2+q=-7,q)",
+        "mark_scheme_working": ["q=-5"],
+        "expected_output_markers": ["q = [-5]"]
+      },
+      {
+        "module": "algebra",
+        "input": "factor(x^3-2*x^2-5*x+6)",
+        "mark_scheme_working": ["f(x)=(x-1)(x+2)(x-3)", "x=1,-2,3"],
+        "expected_output_markers": ["(x + 2)*(x - 1)*(x - 3)"]
+      }
+    ],
+    "expected_final": ["p=-2", "q=-5", "x=1,-2,3"]
+  },
+  {
+    "id": "madas_iygb_c2_h_q4_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c2_h.pdf",
+    "question": "q4",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: c2_h questions page 3, marks page 2, solutions page 2",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,2.5*(2*(2.12+2.94+3.03+2.77+1.91))",
+        "mark_scheme_working": ["trapezium rule with h=5 and seven ordinates", "area≈63.85 m^2"],
+        "expected_output_markers": ["63.85"]
+      }
+    ],
+    "expected_final": ["area≈63.85 m^2"],
+    "unsupported_reason": "diagram ordinate layout is manual"
+  },
+  {
+    "id": "madas_iygb_c2_h_q5_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c2_h.pdf",
+    "question": "q5",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: c2_h questions page 3, marks page 2, solutions page 2",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,atan(5/2)*180/pi",
+        "mark_scheme_working": ["2sinθ=5cosθ gives tanθ=5/2", "θ≈68.2° and 248.2°"],
+        "expected_output_markers": ["68.1985905106"]
+      }
+    ],
+    "expected_final": ["θ=68.2°, 248.2°"],
+    "unsupported_reason": "degree-mode branch selection is manual"
+  },
+  {
+    "id": "madas_iygb_c2_h_q6_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c2_h.pdf",
+    "question": "q6",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: c2_h questions page 3, marks page 3, solutions page 3",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "solve(x^2-3*x-10=0,x)",
+        "mark_scheme_working": ["x(x-3)=10 gives x^2-3x-10=0", "(x-5)(x+2)=0", "x=5"],
+        "expected_output_markers": ["x = [5, -2]"]
+      }
+    ],
+    "expected_final": ["x=5"],
+    "unsupported_reason": "rejecting x=-2 uses log domain condition"
+  },
+  {
+    "id": "madas_iygb_c2_h_q7_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c2_h.pdf",
+    "question": "q7",
+    "part": "a-c",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: c2_h questions page 4, marks page 3, solutions page 3",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,(5-6)/(12-1)",
+        "mark_scheme_working": ["gradient PQ=(5-6)/(12-1)=-1/11"],
+        "expected_output_markers": ["-0.0909090909091"]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,sqrt(25+36)",
+        "mark_scheme_working": ["centre R(6,0) from perpendicular bisector", "radius |PR|=sqrt(61)"],
+        "expected_output_markers": ["7.81024967591"]
+      }
+    ],
+    "expected_final": ["grad=-1/11", "R=(6,0)", "(x-6)^2+y^2=61"],
+    "unsupported_reason": "perpendicular-bisector proof and circle assembly are manual"
+  },
+  {
+    "id": "madas_iygb_c2_h_q8_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c2_h.pdf",
+    "question": "q8",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: c2_h questions page 5, marks page 4, solutions page 4",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,sqrt(7)",
+        "mark_scheme_working": ["cosine rule gives 49=7x^2", "x=sqrt(7)"],
+        "expected_output_markers": ["2.64575131106"]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,sqrt(21)/14",
+        "mark_scheme_working": ["sine rule gives sinθ=sqrt(21)/14"],
+        "expected_output_markers": ["0.327326835354"]
+      }
+    ],
+    "expected_final": ["sinθ=sqrt(21)/14"],
+    "unsupported_reason": "cosine-rule and sine-rule setup from diagram are manual"
+  },
+  {
+    "id": "madas_iygb_c2_h_q9_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c2_h.pdf",
+    "question": "q9",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: c2_h questions page 6, marks page 4, solutions pages 4-5",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,8+16-13",
+        "mark_scheme_working": ["y at x=1 is 11", "A=(1,11)"],
+        "expected_output_markers": ["11"]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,16+1-13",
+        "mark_scheme_working": ["y at x=4 is 4", "B=(4,4)"],
+        "expected_output_markers": ["4"]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,45/2-31/3",
+        "mark_scheme_working": ["trapezium area 45/2 minus curve area 31/3", "shaded area 73/6"],
+        "expected_output_markers": ["12.1666666667"]
+      }
+    ],
+    "expected_final": ["area=73/6"],
+    "unsupported_reason": "definite integral working and trapezium setup are manual"
+  },
+  {
+    "id": "madas_iygb_c2_h_q10_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c2_h.pdf",
+    "question": "q10",
+    "part": "c-d",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: c2_h questions page 7, marks page 5, solutions pages 5-6",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,60/(10-sqrt(3))",
+        "mark_scheme_working": ["dA/dx=0 gives x=60/(10-sqrt(3))≈7.26"],
+        "expected_output_markers": ["7.25693864386"]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,1/4*(sqrt(3)-10)*(60/(10-sqrt(3)))^2+30*(60/(10-sqrt(3)))",
+        "mark_scheme_working": ["maximum area≈109 to 3 sf"],
+        "expected_output_markers": ["108.854079658"]
+      }
+    ],
+    "expected_final": ["x≈7.26", "Amax≈109"],
+    "unsupported_reason": "area derivation and second-derivative justification are manual"
+  },
+  {
+    "id": "madas_iygb_c2_h_q11_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c2_h.pdf",
+    "question": "q11",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: c2_h questions page 8, marks page 6, solutions page 6",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,pi/3",
+        "mark_scheme_working": ["x-intercepts every pi/3 give n=3", "phi=pi/3"],
+        "expected_output_markers": ["1.0471975512"]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,3",
+        "mark_scheme_working": ["n=3 from period analysis"],
+        "expected_output_markers": ["3"]
+      }
+    ],
+    "expected_final": ["n=3", "phi=pi/3"],
+    "unsupported_reason": "graph transformation reasoning is manual"
+  },
+  {
+    "id": "madas_iygb_c2_h_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/c2_h.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual page-image review: all 8 question pages, 6 mark pages and 6 worked-solution pages",
+    "unsupported_reason": "source complete marker; executable exact calculator inputs are recorded in c2_h rows above, while diagram/proof/branch judgements are manual notes"
+  }
+]

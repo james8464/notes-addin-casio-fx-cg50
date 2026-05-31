@@ -1,0 +1,12 @@
+[
+  {
+    "id": "madas_iygb_c2_v_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/c2_v.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual page-image review: all 6 question pages, 4 mark pages and 6 worked-solution pages",
+    "unsupported_reason": "source complete marker; executable exact calculator inputs are recorded in c2_v rows above, while diagram, proof, branch, rounding and model judgements are manual notes"
+  }
+]

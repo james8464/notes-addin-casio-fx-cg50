@@ -1,0 +1,782 @@
+[
+  {
+    "id": "madas_mms_a_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/mms_a.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: mms_a is MMS series on VM",
+    "unsupported_reason": "mechanics out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_mms_b_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/mms_b.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: mms_b is MMS series on VM",
+    "unsupported_reason": "mechanics out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_mms_c_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/mms_c.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: mms_c is MMS series on VM",
+    "unsupported_reason": "mechanics out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_mms_d_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/mms_d.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: mms_d is MMS series on VM",
+    "unsupported_reason": "mechanics out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_mms_e_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/mms_e.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: mms_e is MMS series on VM",
+    "unsupported_reason": "mechanics out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_mms_f_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/mms_f.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: mms_f is MMS series on VM",
+    "unsupported_reason": "mechanics out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_mms_g_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/mms_g.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: mms_g is MMS series on VM",
+    "unsupported_reason": "mechanics out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_mms_h_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/mms_h.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: mms_h is MMS series on VM",
+    "unsupported_reason": "mechanics out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_mms_i_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/mms_i.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: mms_i is MMS series on VM",
+    "unsupported_reason": "mechanics out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_mms_j_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/mms_j.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: mms_j is MMS series on VM",
+    "unsupported_reason": "mechanics out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_mms_k_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/mms_k.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: mms_k is MMS series on VM",
+    "unsupported_reason": "mechanics out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_mms_l_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/mms_l.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: mms_l is MMS series on VM",
+    "unsupported_reason": "mechanics out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_mms_m_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/mms_m.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: mms_m is MMS series on VM",
+    "unsupported_reason": "mechanics out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_mms_n_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/mms_n.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: mms_n is MMS series on VM",
+    "unsupported_reason": "mechanics out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_mms_o_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/mms_o.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: mms_o is MMS series on VM",
+    "unsupported_reason": "mechanics out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_mms_p_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/mms_p.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: mms_p is MMS series on VM",
+    "unsupported_reason": "mechanics out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_mms_q_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/mms_q.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: mms_q is MMS series on VM",
+    "unsupported_reason": "mechanics out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_mms_r_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/mms_r.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: mms_r is MMS series on VM",
+    "unsupported_reason": "mechanics out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_mms_s_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/mms_s.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: mms_s is MMS series on VM",
+    "unsupported_reason": "mechanics out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_mms_t_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/mms_t.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: mms_t is MMS series on VM",
+    "unsupported_reason": "mechanics out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_mms_u_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/mms_u.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: mms_u is MMS series on VM",
+    "unsupported_reason": "mechanics out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_mms_v_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/mms_v.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: mms_v is MMS series on VM",
+    "unsupported_reason": "mechanics out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_mms_w_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/mms_w.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: mms_w is MMS series on VM",
+    "unsupported_reason": "mechanics out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_mms_x_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/mms_x.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: mms_x is MMS series on VM",
+    "unsupported_reason": "mechanics out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_mms_y_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/mms_y.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: mms_y is MMS series on VM",
+    "unsupported_reason": "mechanics out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_mms_z_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/mms_z.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: mms_z is MMS series on VM",
+    "unsupported_reason": "mechanics out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_sp_a_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/sp_a.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: sp_a is SP series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_sp_b_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/sp_b.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: sp_b is SP series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_sp_c_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/sp_c.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: sp_c is SP series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_sp_d_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/sp_d.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: sp_d is SP series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_sp_e_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/sp_e.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: sp_e is SP series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_sp_f_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/sp_f.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: sp_f is SP series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_sp_g_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/sp_g.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: sp_g is SP series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_sp_h_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/sp_h.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: sp_h is SP series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_sp_i_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/sp_i.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: sp_i is SP series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_sp_j_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/sp_j.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: sp_j is SP series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_sp_k_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/sp_k.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: sp_k is SP series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_sp_l_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/sp_l.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: sp_l is SP series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_sp_m_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/sp_m.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: sp_m is SP series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_sp_n_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/sp_n.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: sp_n is SP series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_sp_o_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/sp_o.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: sp_o is SP series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_sp_p_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/sp_p.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: sp_p is SP series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_sp_q_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/sp_q.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: sp_q is SP series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_sp_r_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/sp_r.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: sp_r is SP series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_sp_s_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/sp_s.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: sp_s is SP series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_sp_t_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/sp_t.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: sp_t is SP series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_sp_u_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/sp_u.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: sp_u is SP series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_sp_v_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/sp_v.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: sp_v is SP series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_sp_w_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/sp_w.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: sp_w is SP series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_sp_x_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/sp_x.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: sp_x is SP series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_sp_y_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/sp_y.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: sp_y is SP series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_sp_z_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/sp_z.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: sp_z is SP series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_spx_a_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/spx_a.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: spx_a is SPX series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_spx_b_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/spx_b.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: spx_b is SPX series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_spx_c_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/spx_c.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: spx_c is SPX series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_spx_d_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/spx_d.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: spx_d is SPX series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_spx_e_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/spx_e.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: spx_e is SPX series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_spx_f_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/spx_f.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: spx_f is SPX series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_spx_g_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/spx_g.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: spx_g is SPX series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_spx_h_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/spx_h.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: spx_h is SPX series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_spx_i_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/spx_i.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: spx_i is SPX series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_spx_j_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/spx_j.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: spx_j is SPX series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_spx_k_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/spx_k.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: spx_k is SPX series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_spx_l_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/spx_l.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: spx_l is SPX series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_spx_m_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/spx_m.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: spx_m is SPX series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_spx_n_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/spx_n.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: spx_n is SPX series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_spx_o_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/spx_o.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: spx_o is SPX series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_spx_p_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/spx_p.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: spx_p is SPX series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_spx_q_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/spx_q.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: spx_q is SPX series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_spx_r_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/spx_r.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: spx_r is SPX series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_spx_s_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/spx_s.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: spx_s is SPX series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_spx_t_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/spx_t.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: spx_t is SPX series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_spx_u_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/spx_u.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: spx_u is SPX series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_spx_v_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/spx_v.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: spx_v is SPX series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_spx_w_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/spx_w.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: spx_w is SPX series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_spx_x_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/spx_x.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: spx_x is SPX series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_spx_y_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/spx_y.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: spx_y is SPX series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "madas_spx_z_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/spx_z.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: spx_z is SPX series on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  }
+]
