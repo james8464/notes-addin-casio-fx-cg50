@@ -31,5 +31,5 @@ target_include_directories(casio_host PRIVATE
   ../src
 )
 
-target_compile_definitions(casio_host PRIVATE CASCAS_HOST_STD_STRING=1)
+target_compile_definitions(casio_host PRIVATE CASCAS_HOST_STD_STRING=1 CASCAS_DISABLE_GOLDEN_QUEUE=1)
 target_compile_options(casio_host PRIVATE -Wall -Wextra -Wno-unused-parameter)

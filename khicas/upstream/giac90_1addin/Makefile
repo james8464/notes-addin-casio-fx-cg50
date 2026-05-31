@@ -15,7 +15,7 @@ FP = -m4a-nofpu # -ffast-math # -m4a-nofpu #
 FLTO = # -flto # does not work for 2 addins
 # if comiling without bignum, change to tommath in config.h and link with libtommath
 #if compiling with bignum, link to cutils.o and libbf.o
-FULL = -DCONFIG_BIGNUM -DCONFIG_VERSION=\"2020-11-08\" -DCASCAS_ALEVEL_ONLY
+FULL = -DCONFIG_BIGNUM -DCONFIG_VERSION=\"2020-11-08\" -DCASCAS_ALEVEL_ONLY -DCASCAS_DISABLE_GOLDEN_QUEUE
 CXXFLAGS1 = -Wno-narrowing -Wno-write-strings -O3 -mb $(FP)  -mhitachi -std=c++11 -fpermissive $(FLTO) -fno-use-cxa-atexit -fno-threadsafe-statics -fno-strict-aliasing -fno-exceptions -ffunction-sections -fdata-sections -DHAVE_CONFIG_H -DTIMEOUT -DRELEASE  -I. -I/home/parisse/casiolocal/include/ustl -DFILEICON -DKMALLOC  -DGINT_MALLOC -DTURTLETAB $(FULL)  # -fno-rtti  #  -DNO_TEMPLATE_MULTGCD -DGIAC_GENERIC_CONSTANTS -fno-zero-initialized-in-bss -ffast-math
 
 CXXFLAGS = -Wno-narrowing -Wno-write-strings -g -Os -mb $(FP) -mhitachi -std=c++11 -fpermissive $(FLTO) -fno-use-cxa-atexit -fno-threadsafe-statics -fno-strict-aliasing -fno-exceptions -ffunction-sections -fdata-sections -DHAVE_CONFIG_H -DTIMEOUT -DRELEASE  -I. -I/home/parisse/casiolocal/include/ustl -DFILEICON   -DTURTLETAB  -DGINT_MALLOC -DKMALLOC $(FULL) # -fno-rtti  #  -DNO_TEMPLATE_MULTGCD -DGIAC_GENERIC_CONSTANTS -fno-zero-initialized-in-bss -ffast-math

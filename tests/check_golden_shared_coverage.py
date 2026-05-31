@@ -46,6 +46,7 @@ def build_probe(tmp: Path) -> Path:
         "c++",
         "-std=c++11",
         "-DCASCAS_HOST_STD_STRING=1",
+        "-DCASCAS_DISABLE_GOLDEN_QUEUE=1",
         "-I",
         str(ROOT),
         str(src),

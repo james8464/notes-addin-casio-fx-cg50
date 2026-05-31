@@ -1,6 +1,6 @@
 # CasioCAS Project Graph
 
-Last updated: 2026-05-31 04:21 Europe/London
+Last updated: 2026-05-31 04:27 Europe/London
 
 ## Build
 
@@ -28,9 +28,9 @@ graph TD
   Guard --> Hash["hashed removed-feature guard"]
   Hash --> Shared["cascas_working adapter"]
   Shared --> Rewrite["range/xform/log/diff/int/SUVAT"]
-  Shared --> GoldenSource["generated golden working cases"]
+  Shared --> DirectQueue["direct no-fallback exam queue routes"]
   Rewrite --> Giac["GIAC core"]
-  GoldenSource --> CalcWork
+  DirectQueue --> CalcWork
   Giac --> Answer["exact answer"]
   Guard --> CalcWork["calculator working hooks"]
   HostIn["tests/run_exact_queue.py"] --> HostWrap["tools/khicas_host_runner"]
@@ -70,8 +70,8 @@ graph TD
   Direct --> ExamExact["direct exam queue routes: sequences, geometry, trig identity, partial fractions, binomial, exponential models"]
   Suvat --> KeySuvat["key-value u/t roots"]
   Host["old host working engine"] --> Queue["200/200 golden host checks"]
-  Golden["exact queue generator"] --> GoldenInc["cascas_golden_cases.inc"]
-  GoldenInc --> SameSource["200/200 direct calculator-source coverage"]
+  QueueTests["exact queue file"] --> SameSource["200/200 direct no-fallback calculator-source coverage"]
+  GoldenInc["cascas_golden_cases.inc"] --> DisabledFallback["compile-time disabled in host and g3a"]
   Session["save/load/session files"] --> Disabled["no-op, in-memory only"]
   Help["help/functions/*.txt"] --> Pak["CASIOCAS.PAK"]
   Border["graphicsProvider border"] --> Pink["0xF81F exact checker"]
@@ -154,9 +154,10 @@ graph TD
 
 ```mermaid
 graph LR
-  Build["./compile exit 0"] --> Size["1,354,907 bytes"]
+  Build["./compile exit 0"] --> Size["1,302,875 bytes"]
   Build --> Meta["metadata ok"]
   Build --> Border["purple border ok"]
+  Build --> NoRuntimeFallback["generated golden fallback disabled"]
   Source["source gates"] --> Catalog["catalog ok"]
   Source --> Removed["176 removed rejected"]
   Source --> Session["session disabled"]

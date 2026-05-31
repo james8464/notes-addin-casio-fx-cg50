@@ -113,6 +113,11 @@ def main() -> int:
     if not HOST.stat().st_mode & 0o111:
         print(f"FAIL runner not executable: {HOST}")
         return 2
+    warm = subprocess.run([str(HOST), "--alg", "1"], cwd=REPO, text=True, capture_output=True, timeout=60)
+    if warm.returncode != 0:
+        print(f"FAIL runner warmup rc={warm.returncode}")
+        print((warm.stdout + warm.stderr)[:1000])
+        return 2
     OUT.mkdir(parents=True, exist_ok=True)
     work = specs()
     with cf.ThreadPoolExecutor(max_workers=max(1, args.workers)) as ex:
