@@ -8693,7 +8693,7 @@ namespace giac {
   gen _matrix(const gen & g,const context * contextptr){
 #ifdef CASCAS_ALEVEL_ONLY
     return gensizeerr(contextptr);
-#endif
+#else
     if ( g.type==_STRNG &&  g.subtype==-1) return  g;
     if (g.type==_INT_) return _makemat(g,contextptr);
     if (g.type!=_VECT)
@@ -8794,6 +8794,7 @@ namespace giac {
       res[i-decal]=tmp;
     }
     return gen(res,_MATRIX__VECT);
+#endif
   }
   static const char _matrix_s []="matrix";
   static define_unary_function_eval (__matrix,&_matrix,_matrix_s);

@@ -503,7 +503,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
   gen _rank(const gen & args,GIAC_CONTEXT){
 #ifdef CASCAS_ALEVEL_ONLY
     return gensizeerr(contextptr);
-#endif
+#else
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     if (args.type!=_VECT)
       return gentypeerr(contextptr); // return symbolic(at_adjoint_matrix,args);
@@ -517,6 +517,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
 	break;
     }
     return r;
+#endif
   }    
   static const char _rank_s []="rank";
   static define_unary_function_eval (__rank,&_rank,_rank_s);
@@ -1585,7 +1586,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
   gen _gramschmidt(const gen & g,GIAC_CONTEXT){
 #ifdef CASCAS_ALEVEL_ONLY
     return gensizeerr(contextptr);
-#endif
+#else
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if (g.type!=_VECT)
       return symbolic(at_gramschmidt,g);
@@ -1616,6 +1617,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
       return lv;
     }
     return gensizeerr(contextptr);
+#endif
   }
   static const char _gramschmidt_s []="_rs86";
   static define_unary_function_eval (__gramschmidt,&_gramschmidt,_gramschmidt_s);
@@ -2037,7 +2039,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
   gen _eigenvals(const gen & g,GIAC_CONTEXT){
 #ifdef CASCAS_ALEVEL_ONLY
     return gensizeerr(contextptr);
-#endif
+#else
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if (!is_squarematrix(g))
       return gendimerr(contextptr);
@@ -2049,6 +2051,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
       *logptr(contextptr) << gettext("Low accuracy") << endl;
     complex_mode(b,contextptr);
     return gen(d,_SEQ__VECT);
+#endif
   }
   static const char _eigenvals_s []="eigenvals";
   static define_unary_function_eval (__eigenvals,&_eigenvals,_eigenvals_s);
@@ -2061,13 +2064,14 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
   gen _eigenvects(const gen & g,GIAC_CONTEXT){
 #ifdef CASCAS_ALEVEL_ONLY
     return gensizeerr(contextptr);
-#endif
+#else
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     bool b=complex_mode(contextptr);
     complex_mode(true,contextptr);
     gen res=_egv(g,contextptr);
     complex_mode(b,contextptr);
     return res;
+#endif
   }
   static const char _eigenvects_s []="eigenvects";
   static define_unary_function_eval (__eigenvects,&_eigenvects,_eigenvects_s);

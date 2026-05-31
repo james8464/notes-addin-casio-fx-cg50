@@ -10679,7 +10679,7 @@ namespace giac {
   gen _rref(const gen & a_orig,GIAC_CONTEXT) {
 #ifdef CASCAS_ALEVEL_ONLY
     return gensizeerr(contextptr);
-#endif
+#else
     if ( a_orig.type==_STRNG && a_orig.subtype==-1) return  a_orig;
     matrice a;
     bool convert_internal,minor_det,keep_pivot;
@@ -10704,6 +10704,7 @@ namespace giac {
     if (res.front().type==_VECT && res.front()._VECTptr->front().type==_MOD)
       return res;
     return ratnormal(res,contextptr);
+#endif
   }
   static const char _rref_s []="_rm18";
   static define_unary_function_eval (__rref,&_rref,_rref_s);
@@ -11298,7 +11299,7 @@ namespace giac {
   gen _ranm(const gen & e,GIAC_CONTEXT){
 #ifdef CASCAS_ALEVEL_ONLY
     return gensizeerr(contextptr);
-#endif
+#else
     if ( e.type==_STRNG && e.subtype==-1) return  e;
     int n=0,m=0;
     switch (e.type){
@@ -11371,6 +11372,7 @@ namespace giac {
       return gensizeerr(contextptr);
     }
     return undef;
+#endif
   }
   static const char _ranm_s []="ranm";
   static define_unary_function_eval (__ranm,&_ranm,_ranm_s);
@@ -11693,7 +11695,7 @@ namespace giac {
   gen _det_minor(const gen & a,GIAC_CONTEXT){
 #ifdef CASCAS_ALEVEL_ONLY
     return gensizeerr(contextptr);
-#endif
+#else
     if ( a.type==_STRNG && a.subtype==-1) return  a;
     if (!is_squarematrix(a)){
       if (a.type==_VECT && a._VECTptr->size()==2 && is_squarematrix(a._VECTptr->front())){
@@ -11703,6 +11705,7 @@ namespace giac {
       return symbolic(at_det_minor,a);
     }
     return det_minor(*a._VECTptr,true,contextptr);
+#endif
   }
   static const char _det_minor_s []="det_minor";
   static define_unary_function_eval (__det_minor,(const gen_op_context)_det_minor,_det_minor_s);
@@ -11725,7 +11728,7 @@ namespace giac {
   gen _det(const gen & a_orig,GIAC_CONTEXT){
 #ifdef CASCAS_ALEVEL_ONLY
     return gensizeerr(contextptr);
-#endif
+#else
     if ( a_orig.type==_STRNG && a_orig.subtype==-1) return  a_orig;
     matrice a;
     bool convert_internal,minor_det,keep_pivot;
@@ -11747,6 +11750,7 @@ namespace giac {
 	       contextptr))
       return gendimerr(contextptr);
     return determinant;
+#endif
   }
   static const char _det_s []="det";
   static define_unary_function_eval (__det,&_det,_det_s);
@@ -13740,7 +13744,7 @@ namespace giac {
   gen _pcar_hessenberg(const gen & g,GIAC_CONTEXT){
 #ifdef CASCAS_ALEVEL_ONLY
     return gensizeerr(contextptr);
-#endif
+#else
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if (!is_squarematrix(g)){
       if (g.type==_VECT && g._VECTptr->size()==2){
@@ -13752,6 +13756,7 @@ namespace giac {
     }
     matrice m(*g._VECTptr);
     return mpcar_hessenberg(m,0,contextptr);
+#endif
   }
   static const char _pcar_hessenberg_s []="pcar_hessenberg";
   static define_unary_function_eval (__pcar_hessenberg,&_pcar_hessenberg,_pcar_hessenberg_s);
@@ -14033,7 +14038,7 @@ namespace giac {
   gen _rat_jordan_block(const gen &args,GIAC_CONTEXT){
 #ifdef CASCAS_ALEVEL_ONLY
     return gensizeerr(contextptr);
-#endif
+#else
     if (args.type==_STRNG && args.subtype==-1) return args;
     if (args.type==_VECT && args._VECTptr->size()==3){
       vecteur & v=*args._VECTptr;
@@ -14044,6 +14049,7 @@ namespace giac {
       }
     }
     return gensizeerr(contextptr);
+#endif
   }
   static const char _rat_jordan_block_s []="rat_jordan_block";
   static define_unary_function_eval (__rat_jordan_block,&_rat_jordan_block,_rat_jordan_block_s);
@@ -14879,7 +14885,7 @@ namespace giac {
   gen _egv(const gen & a,GIAC_CONTEXT){
 #ifdef CASCAS_ALEVEL_ONLY
     return gensizeerr(contextptr);
-#endif
+#else
     if ( a.type==_STRNG && a.subtype==-1) return  a;
     if (!is_squarematrix(a)){
       if (a.type==_VECT)
@@ -14887,6 +14893,7 @@ namespace giac {
       return symb_egv(a);
     }
     return megv(*a._VECTptr,contextptr);
+#endif
   }
   static const char _egv_s []="egv";
   static define_unary_function_eval (__egv,&_egv,_egv_s);
@@ -14909,11 +14916,12 @@ namespace giac {
   gen _egvl(const gen & a,GIAC_CONTEXT){
 #ifdef CASCAS_ALEVEL_ONLY
     return gensizeerr(contextptr);
-#endif
+#else
     if ( a.type==_STRNG && a.subtype==-1) return  a;
     if (!is_squarematrix(a))
       return gendimerr(contextptr);
     return megvl(*a._VECTptr,contextptr);
+#endif
   }
   static const char _egvl_s []="egvl";
   static define_unary_function_eval (__egvl,&_egvl,_egvl_s);
@@ -14952,13 +14960,14 @@ namespace giac {
   gen _jordan(const gen & a,GIAC_CONTEXT){
 #ifdef CASCAS_ALEVEL_ONLY
     return gensizeerr(contextptr);
-#endif
+#else
     if ( a.type==_STRNG && a.subtype==-1) return  a;
     bool mode=complex_mode(contextptr);
     complex_mode(true,contextptr);
     gen res=jordan(a,false,contextptr);
     complex_mode(mode,contextptr);
     return res;
+#endif
   }
   static const char _jordan_s []="_rs106";
   static define_unary_function_eval (__jordan,&_jordan,_jordan_s);
@@ -14967,9 +14976,10 @@ namespace giac {
   gen _rat_jordan(const gen & a,GIAC_CONTEXT){
 #ifdef CASCAS_ALEVEL_ONLY
     return gensizeerr(contextptr);
-#endif
+#else
     if ( a.type==_STRNG && a.subtype==-1) return  a;
     return jordan(a,true,contextptr);
+#endif
   }
   static const char _rat_jordan_s []="rat_jordan";
   static define_unary_function_eval (__rat_jordan,&_rat_jordan,_rat_jordan_s);
@@ -15162,7 +15172,7 @@ namespace giac {
   gen _ker(const gen & a,GIAC_CONTEXT){
 #ifdef CASCAS_ALEVEL_ONLY
     return gensizeerr(contextptr);
-#endif
+#else
     if ( a.type==_STRNG && a.subtype==-1) return  a;
     if (!ckmatrix(a))
       return symb_ker(a);
@@ -15170,6 +15180,7 @@ namespace giac {
     if (!mker(*a._VECTptr,v,contextptr))
       return vecteur(1,gendimerr(contextptr));
     return v;    
+#endif
   }
   static const char _ker_s []="ker";
   static define_unary_function_eval (__ker,&_ker,_ker_s);
@@ -15204,7 +15215,7 @@ namespace giac {
   gen _image(const gen & a,GIAC_CONTEXT){
 #ifdef CASCAS_ALEVEL_ONLY
     return gensizeerr(contextptr);
-#endif
+#else
     if ( a.type==_STRNG && a.subtype==-1) return  a;
     if (!ckmatrix(a))
       return symb_image(a);
@@ -15212,6 +15223,7 @@ namespace giac {
     if (!mimage(*a._VECTptr,v,contextptr))
       return gensizeerr(contextptr);
     return v;    
+#endif
   }
   static const char _image_s []="_rm19";
   static define_unary_function_eval (__image,&_image,_image_s);
@@ -15882,12 +15894,13 @@ namespace giac {
   gen _basis(const gen &args,GIAC_CONTEXT){
 #ifdef CASCAS_ALEVEL_ONLY
     return gensizeerr(contextptr);
-#endif
+#else
     if (args.type==_STRNG && args.subtype==-1) return args;
     if (!ckmatrix(args))
       return symbolic(at_basis,args);
     matrice res=mrref(*args._VECTptr,contextptr);
     return gen(thrownulllines(res),_SET__VECT);
+#endif
   }
   static const char _basis_s []="_rm20";
   static define_unary_function_eval (__basis,&_basis,_basis_s);
@@ -15997,7 +16010,7 @@ namespace giac {
   gen _svd(const gen &args_orig,GIAC_CONTEXT){
 #ifdef CASCAS_ALEVEL_ONLY
     return gensizeerr(contextptr);
-#endif
+#else
     if (args_orig.type==_STRNG && args_orig.subtype==-1) return args_orig;
     gen args;
     int method=0; // use -1 to check built-in svd, -2 for svl (singular values only) 
@@ -16265,6 +16278,7 @@ namespace giac {
     if (transposed)
       return gen(makevecteur(p,svl,u),_SEQ__VECT); 
     return gen(makevecteur(u,svl,p),_SEQ__VECT); 
+#endif
   }
   static const char _svd_s []="svd";
   static define_unary_function_eval (__svd,&_svd,_svd_s);

@@ -1,6 +1,6 @@
 # CasioCAS Project Graph
 
-Last updated: 2026-05-31 06:16 Europe/London
+Last updated: 2026-05-31 06:23 Europe/London
 
 ## Build
 
@@ -96,7 +96,7 @@ graph TD
   Macro --> Plot3DStubs["3D solids/plot runtime stubbed in zplot3d"]
   Macro --> DistDispatch["generic cdf/icdf/mgf/distribution dispatch stubbed"]
   Macro --> RandDist["randvector distribution sampling compiled out"]
-  Macro --> MatrixSpectral["matrix/spectral wrappers stubbed: det/rank/rref/kernel/eigen/svd/jordan/ranm"]
+  Macro --> MatrixSpectral["matrix/spectral wrappers stubbed and compile-excluded: det/rank/rref/kernel/eigen/svd/jordan/ranm"]
   Macro --> More["desolve/fft/file IO/charpoly/pcar/pivot/assume blocked"]
   Macro --> XformPrune["halftan/exp2trig/trig2exp/evalc/q2a/a2q blocked"]
   Remove --> Menu["console catalog/menu/message leaks"]
