@@ -1,6 +1,6 @@
 # CasioCAS Project Graph
 
-Last updated: 2026-05-31 02:44 Europe/London
+Last updated: 2026-05-31 02:57 Europe/London
 
 ## Build
 
@@ -144,11 +144,11 @@ graph TD
 
 ```mermaid
 graph LR
-  Build["./compile exit 0"] --> Size["1,324,171 bytes"]
+  Build["./compile exit 0"] --> Size["1,324,319 bytes"]
   Build --> Meta["metadata ok"]
   Build --> Border["purple border ok"]
   Source["source gates"] --> Catalog["catalog ok"]
-  Source --> Removed["158 removed rejected"]
+  Source --> Removed["176 removed rejected"]
   Source --> Session["session disabled"]
   Help["help pack"] --> HelpQ["41 function sheets ok"]
   Queue["golden queue"] --> QueueRun["200/200 host ok"]
@@ -158,5 +158,6 @@ graph LR
   Obj["object prune"] --> QR["qrcodegen.o link-safe removed"]
   Macro["source stubs"] --> Stubbed["plot/list/stats/special/ODE/file IO/linalg/transform helpers blocked"]
   Static["lexer prune"] --> StaticRun["distribution/denom/transform static names neutralized"]
+  Static --> PromptRun["mod/sign/euler/ascii/geometry/ode plot/laplace prompt names blocked"]
   Bin["binary scan"] --> NoLeak["no removed-term hits"]
 ```

@@ -2526,7 +2526,7 @@ extern "C" void Sleep(unsigned int miliSecond);
     "reorder",
     "series",
     "simplify",
-    "tabvar",
+    "_rm_tabvar",
     "taylor",
     "texpand",
     "trace",

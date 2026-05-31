@@ -42,6 +42,7 @@ inline bool is_removed_function_hash(uint32_t h)
         case 0x08c21d83u:
         case 0x092855d0u:
         case 0x0ad0ed6cu:
+        case 0x0cbc8ba4u:
         case 0x0c82e56bu:
         case 0x0dd0b0beu:
         case 0x0fad7a44u:
@@ -54,7 +55,9 @@ inline bool is_removed_function_hash(uint32_t h)
         case 0x1642b069u:
         case 0x1696d742u:
         case 0x178d4c35u:
+        case 0x17db1627u:
         case 0x17d1d6fcu:
+        case 0x18ae6c91u:
         case 0x18ba068bu:
         case 0x198be6b8u:
         case 0x1b5e2979u:
@@ -67,12 +70,15 @@ inline bool is_removed_function_hash(uint32_t h)
         case 0x22fc8274u:
         case 0x23b19318u:
         case 0x23c6e902u:
+        case 0x2272d6aau:
         case 0x24fa4703u:
         case 0x262cfcabu:
         case 0x26851732u:
         case 0x2733f84au:
         case 0x2b8eb358u:
         case 0x2ba548a6u:
+        case 0x28217089u:
+        case 0x28a080d8u:
         case 0x2d5f622cu:
         case 0x2f271707u:
         case 0x318b991du:
@@ -106,6 +112,7 @@ inline bool is_removed_function_hash(uint32_t h)
         case 0x4db564c2u:
         case 0x4edf1404u:
         case 0x4f04d9d2u:
+        case 0x46574072u:
         case 0x503e3086u:
         case 0x50b13859u:
         case 0x51295e73u:
@@ -143,6 +150,8 @@ inline bool is_removed_function_hash(uint32_t h)
         case 0x6eb56479u:
         case 0x6ef4d9bdu:
         case 0x6f20f7ddu:
+        case 0x6fc16fdeu:
+        case 0x70c17171u:
         case 0x7302743fu:
         case 0x7390ec3bu:
         case 0x756f22cbu:
@@ -178,6 +187,11 @@ inline bool is_removed_function_hash(uint32_t h)
         case 0x93e97b38u:
         case 0x940b5e09u:
         case 0x98a2959eu:
+        case 0xa84c031du:
+        case 0xceaa3082u:
+        case 0xdb6d3576u:
+        case 0xdf9e7283u:
+        case 0xf3c342e6u:
         case 0x991301e0u:
         case 0x99618446u:
         case 0x99d9f9f0u:
@@ -339,6 +353,25 @@ inline bool is_removed_function_hash(uint32_t h)
 
 inline bool contains_removed_function(std::string const &text)
 {
+    std::string lowered;
+    lowered.reserve(text.size());
+    for(char c : text) lowered.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
+    for(std::size_t i = 0; i < lowered.size();) {
+        unsigned char c = static_cast<unsigned char>(lowered[i]);
+        if(!(std::isalpha(c) || c == '_')) {
+            ++i;
+            continue;
+        }
+        std::size_t begin = i++;
+        while(i < lowered.size()) {
+            unsigned char d = static_cast<unsigned char>(lowered[i]);
+            if(!(std::isalpha(d) || std::isdigit(d) || d == '_')) break;
+            ++i;
+        }
+        std::string token = lowered.substr(begin, i - begin);
+        if(token == "mod" || token == "gl_x" || token == "gl_y") return true;
+    }
+
     std::string folded;
     folded.reserve(text.size());
     for(char c : text) {
@@ -380,6 +413,8 @@ inline bool contains_removed_function(std::string const &text)
             h = removed_hash_step(h, c);
             continue;
         }
+        bool bare_removed = inword && (h == 0xdf9e7283u || h == 0x70c17171u || h == 0x6fc16fdeu);
+        if(bare_removed) return true;
         if(inword && c == '(' && is_removed_function_hash(h)) {
             if(h == 0x1d11622cu && allowed_binomial_series(pos)) {
                 inword = false;

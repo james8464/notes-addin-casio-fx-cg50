@@ -2,4 +2,4 @@ Args: abs(x)
 Required: x
 Does: Returns the absolute value or modulus of a real expression.
 Examples: abs(-3); abs(x-2)
-Working: Uses abs(u) >= 0 and piecewise sign reasoning when needed.
+Working: Uses abs(u) >= 0 and piecewise positive/negative cases when needed.

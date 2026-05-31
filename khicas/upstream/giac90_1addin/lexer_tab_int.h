@@ -83,8 +83,8 @@
       {"func"                ,0, _FUNC, _INT_TYPE, T_TYPE_ID},
       {"function",0,0,0,T_PROC},
       {"gauss15"         ,1, _GAUSS15, _INT_SOLVER,T_NUMBER},
-      {"gl_x"       ,1,_GL_X , _INT_PLOT ,T_NUMBER},
-      {"gl_y"       ,1,_GL_Y , _INT_PLOT ,T_NUMBER},
+      {"_rm_gl_x"   ,1,_GL_X , _INT_PLOT ,T_NUMBER},
+      {"_rm_gl_y"   ,1,_GL_Y , _INT_PLOT ,T_NUMBER},
       {"global",0,1,0,T_LOCAL},
       {"golub_reinsch_decomp"         ,1, _GOLUB_REINSCH_DECOMP, _INT_SOLVER,T_NUMBER},
       {"golub_reinsch_mod_decomp"         ,1, _GOLUB_REINSCH_MOD_DECOMP, _INT_SOLVER,T_NUMBER},
@@ -191,4 +191,3 @@
       {"yellow"         ,1, _YELLOW, _INT_COLOR ,T_NUMBER},
       {"ystep"         ,1, _YSTEP , _INT_PLOT ,T_NUMBER},
       {"zstep"         ,1, _ZSTEP , _INT_PLOT ,T_NUMBER}
-

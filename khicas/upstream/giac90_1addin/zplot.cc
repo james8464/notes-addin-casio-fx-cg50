@@ -11395,11 +11395,11 @@ namespace giac {
     // v.erase(v.begin()+s,v.end());
     return put_attributs(plotode(v,contextptr),attributs,contextptr);
   }
-  static const char _plotode_s []="plotode";
+  static const char _plotode_s []="_rm_plotode";
   static define_unary_function_eval (__plotode,&_plotode,_plotode_s);
   define_unary_function_ptr5( at_plotode ,alias_at_plotode,&__plotode,0,true);
 
-  static const char _odeplot_s []="odeplot";
+  static const char _odeplot_s []="_rm_odeplot";
   static define_unary_function_eval (__odeplot,&_plotode,_odeplot_s);
   define_unary_function_ptr5( at_odeplot ,alias_at_odeplot,&__odeplot,0,true);
 
@@ -11585,11 +11585,11 @@ namespace giac {
     }
     return plotfield(xp,yp,x,y,xmin,xmax,xstep/scaling,ymin,ymax,ystep/scaling,scaling,attributs,normalize,contextptr);
   }
-  static const char _plotfield_s []="plotfield";
+  static const char _plotfield_s []="_rm_plotfield";
   static define_unary_function_eval (__plotfield,&_plotfield,_plotfield_s);
   define_unary_function_ptr5( at_plotfield ,alias_at_plotfield,&__plotfield,0,true);
 
-  static const char _fieldplot_s []="fieldplot";
+  static const char _fieldplot_s []="_rm_fieldplot";
   static define_unary_function_eval (__fieldplot,&_plotfield,_fieldplot_s);
   define_unary_function_ptr5( at_fieldplot ,alias_at_fieldplot,&__fieldplot,0,true);
 

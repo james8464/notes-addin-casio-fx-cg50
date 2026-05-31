@@ -2538,6 +2538,21 @@ static bool cascas_denied_hash(unsigned h){
     case 0x11a3508au:
     case 0x6371dcb0u:
     case 0xd20a0c9du:
+    case 0xdf9e7283u:
+    case 0x28a080d8u:
+    case 0xdb6d3576u:
+    case 0x0cbc8ba4u:
+    case 0x46574072u:
+    case 0x2272d6aau:
+    case 0xa84c031du:
+    case 0x18ae6c91u:
+    case 0x17db1627u:
+    case 0xf3c342e6u:
+    case 0x28217089u:
+    case 0xceaa3082u:
+    case 0x318b991du:
+    case 0x70c17171u:
+    case 0x6fc16fdeu:
       return true;
     default:
       return false;
@@ -2583,7 +2598,8 @@ static bool cascas_reject_removed_feature(const char *input){
     while (j<int(s.size()) && (s[j]==' ' || s[j]=='\t'))
       ++j;
     unsigned h=cascas_hash_ident(s,begin,i);
-    bool bare=(h==0x0fceff97u || h==0x15c2f8ecu);
+    bool bare=(h==0x0fceff97u || h==0x15c2f8ecu ||
+	       h==0xdf9e7283u || h==0x70c17171u || h==0x6fc16fdeu);
     if ((bare || (j<int(s.size()) && s[j]=='(')) && cascas_denied_hash(h)){
       if (h==0x1d11622cu && j<int(s.size()) && s[j]=='(' &&
 	  cascas_allowed_binomial_series_call(s,j))

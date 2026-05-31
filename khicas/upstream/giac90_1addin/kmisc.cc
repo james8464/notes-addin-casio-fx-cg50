@@ -4222,7 +4222,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
     }
     return tvi;
   }
-  static const char _tabvar_s []="tabvar";
+  static const char _tabvar_s []="_rm_tabvar";
   static define_unary_function_eval (__tabvar,&_tabvar,_tabvar_s);
   define_unary_function_ptr5( at_tabvar ,alias_at_tabvar,&__tabvar,0,true);
 

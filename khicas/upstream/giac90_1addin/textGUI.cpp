@@ -1240,7 +1240,7 @@ int doTextArea(textArea* text) {
 	    if (isforin)
 	      adds=lang?(isex?"pour j in [1,4,9,16] faire\nprint(j)\nfpour;":"pour  in  faire\n\nfpour;"):(isex?"for j in [1,4,9,16] do\nprint(j);od;":"for  in  do\n\nod;");
 	    if (iswhile)
-	      adds=lang?(isex?"a,b:=25,15;\ntantque b!=0 faire\na,b:=b,irem(a,b);\nftantque;a;":"tantque  faire\n\nftantque;"):(isex?"a,b:=25,15;\nwhile b!=0 do\na,b:=b,irem(a,b);\nod;a;":"while  do\n\nod;");
+	      adds=lang?(isex?"unsupported removed loop example":"tantque  faire\n\nftantque;"):(isex?"unsupported removed loop example":"while  do\n\nod;");
 	    if (isdef)
 	      adds=lang?(isex?"fonction f(x)\nlocal j;\nj:=x*x;\nreturn j;\nffonction:;\n":"fonction f(x)\nlocal j;\n\nreturn ;\nffonction:;"):(isex?"function f(x)\nlocal j;\nj:=x*x;\nreturn j;\nffunction:;\n":"function f(x)\n  local j;\n\n return ;\nffunction:;");
 	  }

@@ -372,11 +372,11 @@ namespace giac {
       return gensizeerr(contextptr);
     return ilaplace( v[0],v[1],v[2],contextptr);
   }
-  static const char _ilaplace_s []="ilaplace";
+  static const char _ilaplace_s []="_rm_ilaplace";
   static define_unary_function_eval (__ilaplace,&_ilaplace,_ilaplace_s);
   define_unary_function_ptr5( at_ilaplace ,alias_at_ilaplace,&__ilaplace,0,true);
 
-  static const char _invlaplace_s []="invlaplace";
+  static const char _invlaplace_s []="_rm_invlaplace";
   static define_unary_function_eval (__invlaplace,&_ilaplace,_invlaplace_s);
   define_unary_function_ptr5( at_invlaplace ,alias_at_invlaplace,&__invlaplace,0,true);
 
