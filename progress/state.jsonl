@@ -170,3 +170,28 @@
 {"phase":"queue","last_event":"exact queue 0/13572","queue":"0/13572 done, 0 ok, 0 bad","tests":"queue-run 0/13572"}
 {"phase":"queue","last_event":"exact queue 13572/13572","queue":"13572/13572 done, 12638 ok, 934 bad","tests":"queue-run 12638/13572"}
 {"phase":"queue","last_event":"exact queue 13572/13572","queue":"13572/13572 done, 12638 ok, 934 bad","tests":"queue-run 12638/13572"}
+{"phase":"queue","last_event":"exact queue 0/13572","queue":"0/13572 done, 0 ok, 0 bad","tests":"queue-run 0/13572"}
+{"phase":"queue","last_event":"exact queue 13572/13572","queue":"13572/13572 done, 12646 ok, 926 bad","tests":"queue-run 12646/13572"}
+{"phase":"release candidate","last_event":"added single-variable derivative plus three Daily Integral-style hard integration working routes; rebuilt CAS.g3a","commit":"pending","graph":"docs/GRAPH.md 2026-05-31 21:16 BST","g3a_size":2096596,"headroom":556,"tests":"compile,size,metadata,border,catalog,help,help-examples,queue-run 13572/13572,working-quality 12646/13572","queue":"13572/13572 runtime; 12646/13572 strict markers","unsupported":0,"eta":"remaining work is strict-marker quality expansion; no runtime blockers known"}
+{"phase":"release candidate","last_event":"queue expanded to 13,592 inputs and rerun clean; strict marker quality refreshed","commit":"pending","graph":"docs/GRAPH.md 2026-05-31 21:16 BST","g3a_size":2096596,"headroom":556,"tests":"compile,size,metadata,border,catalog,help,help-examples,queue-schema 9401 rows/13592 inputs,queue-run 13592/13592,working-quality 12658/13592","queue":"13592/13592 runtime; 12658/13592 strict markers","unsupported":0,"eta":"remaining work is strict-marker quality expansion; no runtime blockers known"}
+{"phase":"queue","last_event":"exact queue 13572/13572","queue":"13572/13572 done, 12646 ok, 926 bad","tests":"queue-run 12646/13572"}
+{"phase":"queue","last_event":"exact queue 0/13572","queue":"0/13572 done, 0 ok, 0 bad","tests":"queue-run 0/13572"}
+{"phase":"queue","last_event":"exact queue 13572/13572","queue":"13572/13572 done, 13572 ok, 0 bad","tests":"queue-run 13572/13572"}
+{"phase":"queue","last_event":"exact queue 13572/13572","queue":"13572/13572 done, 13572 ok, 0 bad","tests":"queue-run 13572/13572"}
+{"phase":"queue","last_event":"exact queue 0/13572","queue":"0/13572 done, 0 ok, 0 bad","tests":"queue-run 0/13572"}
+{"phase":"queue","last_event":"exact queue 13572/13572","queue":"13572/13572 done, 12646 ok, 926 bad","tests":"queue-run 12646/13572"}
+{"phase":"queue","last_event":"exact queue 13572/13572","queue":"13572/13572 done, 12646 ok, 926 bad","tests":"queue-run 12646/13572"}
+{"phase":"queue","last_event":"exact queue 0/13572","queue":"0/13572 done, 0 ok, 0 bad","tests":"queue-run 0/13572"}
+{"phase":"queue","last_event":"exact queue 13572/13572","queue":"13572/13572 done, 13572 ok, 0 bad","tests":"queue-run 13572/13572"}
+{"phase":"queue","last_event":"exact queue 13572/13572","queue":"13572/13572 done, 13572 ok, 0 bad","tests":"queue-run 13572/13572"}
+{"phase":"queue","last_event":"exact queue 0/13572","queue":"0/13572 done, 0 ok, 0 bad","tests":"queue-run 0/13572"}
+{"phase":"queue","last_event":"exact queue 13572/13572","queue":"13572/13572 done, 12646 ok, 926 bad","tests":"queue-run 12646/13572"}
+{"phase":"queue","last_event":"exact queue 13572/13572","queue":"13572/13572 done, 12646 ok, 926 bad","tests":"queue-run 12646/13572"}
+{"phase":"release candidate","last_event":"added single-variable derivative plus three Daily Integral-style hard integration working routes; rebuilt CAS.g3a","commit":"pending","graph":"docs/GRAPH.md 2026-05-31 21:16 BST","g3a_size":2096596,"headroom":556,"tests":"compile,size,metadata,border,catalog,help,help-examples,queue-run 13572/13572,working-quality 12646/13572","queue":"13572/13572 runtime; 12646/13572 strict markers","unsupported":0,"eta":"remaining work is strict-marker quality expansion; no runtime blockers known"}
+{"phase":"queue","last_event":"exact queue 0/13592","queue":"0/13592 done, 0 ok, 0 bad","tests":"queue-run 0/13592"}
+{"phase":"queue","last_event":"exact queue 13592/13592","queue":"13592/13592 done, 13592 ok, 0 bad","tests":"queue-run 13592/13592"}
+{"phase":"queue","last_event":"exact queue 13592/13592","queue":"13592/13592 done, 13592 ok, 0 bad","tests":"queue-run 13592/13592"}
+{"phase":"queue","last_event":"exact queue 0/13592","queue":"0/13592 done, 0 ok, 0 bad","tests":"queue-run 0/13592"}
+{"phase":"queue","last_event":"exact queue 13592/13592","queue":"13592/13592 done, 12658 ok, 934 bad","tests":"queue-run 12658/13592"}
+{"phase":"queue","last_event":"exact queue 13592/13592","queue":"13592/13592 done, 12658 ok, 934 bad","tests":"queue-run 12658/13592"}
+{"phase":"release candidate","last_event":"queue expanded to 13,592 inputs and rerun clean; strict marker quality refreshed","commit":"pending","graph":"docs/GRAPH.md 2026-05-31 21:16 BST","g3a_size":2096596,"headroom":556,"tests":"compile,size,metadata,border,catalog,help,help-examples,queue-schema 9401 rows/13592 inputs,queue-run 13592/13592,working-quality 12658/13592","queue":"13592/13592 runtime; 12658/13592 strict markers","unsupported":0,"eta":"remaining work is strict-marker quality expansion; no runtime blockers known"}

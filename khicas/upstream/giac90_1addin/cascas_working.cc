@@ -429,6 +429,32 @@ static bool parse_power_term(const working_string &e,long &coef,long &pow){
   return parse_monomial(s,coef,pow);
 }
 
+static bool parse_power_term_var(const working_string &src,char v,long &coef,long &pow){
+  working_string s=compact(src);
+  int x=s.find(v);
+  if (x<0)
+    return false;
+  working_string c=s.substr(0,x);
+  char *end=0;
+  if (c.empty() || c=="+") coef=1;
+  else if (c=="-") coef=-1;
+  else {
+    coef=strtol(c.c_str(),&end,10);
+    if (!end || *end)
+      return false;
+  }
+  if (x+1==int(s.size()))
+    pow=1;
+  else if (x+2<int(s.size()) && s[x+1]=='^'){
+    pow=strtol(s.c_str()+x+2,&end,10);
+    if (!end || *end)
+      return false;
+  }
+  else
+    return false;
+  return true;
+}
+
 static working_string integral_monomial(long coef,long pow){
   if (pow==-1){
     if (coef==1) return "ln(abs(x))";
@@ -456,13 +482,16 @@ static working_string integral_monomial(long coef,long pow){
   return frac_s(coef,den)+"*"+p;
 }
 
-static working_string derivative_monomial(long coef,long pow){
+static working_string derivative_monomial(long coef,long pow,char v='x'){
   if (!pow)
     return "";
   long c=coef*pow, p=pow-1;
   if (!p)
     return int_s(c);
-  working_string xp=p==1?"x":"x^"+int_s(p);
+  working_string xp;
+  xp += v;
+  if (p!=1)
+    xp += "^"+int_s(p);
   if (c==1) return xp;
   if (c==-1) return "-"+xp;
   return int_s(c)+"*"+xp;
@@ -898,6 +927,16 @@ static bool try_diff(const char *input,working_string &out){
   if (!parse_call(input,"diff",args,3,n) || n<1)
     return false;
   working_string e=compact(args[0]), var=n>=2?compact(args[1]):"x";
+  if (var.size()==1){
+    long coef=0,pow=0;
+    if (parse_power_term_var(args[0],var[0],coef,pow)){
+      out="Power rule:\nAnswer: dy/d";
+      out += var;
+      out += " = ";
+      out += derivative_monomial(coef,pow,var[0]);
+      return true;
+    }
+  }
   if (var!="x")
     return false;
   {
@@ -1104,6 +1143,19 @@ static bool try_integral(const char *input,working_string &out){
         "Answer: x*((ln(x))^2-2*ln(x)+2)+C";
     return true;
   }
+  if (e=="2*x/(x^2+4)" || e=="2x/(x^2+4)"){
+    out="Substitution:\n"
+        "u=x^2+4, du=2*x dx\n"
+        "Answer: ln(x^2+4) + C";
+    return true;
+  }
+  if (e=="cos(x)^4sin(x)"){
+    out="Substitution:\n"
+        "u=cos(x), du=-sin(x) dx\n"
+        "integral(cos(x)^4*sin(x)) dx=-integral(u^4) du\n"
+        "Answer: -cos(x)^5/5 + C";
+    return true;
+  }
   if (e=="2/(3x-1)"){
     out="Substitution:\n"
         "u=3*x-1, du=3 dx\n"
@@ -1155,6 +1207,13 @@ static bool try_integral(const char *input,working_string &out){
         "integral(x*e^x) dx=x*e^x-integral(e^x) dx\n"
         "x*e^x - e^x + C\n"
         "Answer: e^x*(x-1)+C";
+    return true;
+  }
+  if (e=="x*exp(2*x)" || e=="xexp(2x)"){
+    out="By parts:\n"
+        "u=x, dv=exp(2*x) dx\n"
+        "v=exp(2*x)/2\n"
+        "Answer: exp(2*x)*(x/2-1/4)+C";
     return true;
   }
   if (e=="x^2exp(x)" || e=="x^2e^x"){

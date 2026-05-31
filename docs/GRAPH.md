@@ -1,6 +1,6 @@
 # Project Graph
 
-Last updated: 2026-05-31 20:53 BST
+Last updated: 2026-05-31 21:20 BST
 
 ## Build
 
@@ -13,7 +13,7 @@ graph TD
   Make --> Bin["khicasen.bin, upstream KhiCAS base"]
   Bin --> G3A["calculator_files/CAS.g3a"]
   G3A --> Meta["CAS / @CAS / CAS.g3a"]
-  G3A --> Size["2,095,616 bytes; 1,536 byte headroom"]
+  G3A --> Size["2,096,596 bytes; 556 byte headroom"]
 ```
 
 ## Runtime
@@ -33,8 +33,8 @@ graph TD
 
 ```mermaid
 graph TD
-  Work["working engine"] --> Diff["diff: guarded affine chain powers, ln, implicit, trig basics"]
-  Work --> Int["integrate: affine reverse-chain powers, trig/exp sums, by-parts, substitution"]
+  Work["working engine"] --> Diff["diff: guarded affine chain powers, single-var powers, ln, implicit, trig basics"]
+  Work --> Int["integrate: affine reverse-chain powers, trig/exp sums, by-parts, substitution, hard probe routes"]
   Work --> Solve["solve: guarded linear, integer-root quadratics, rational, dy/dx separable"]
   Work --> Alg["algebra: quadratic factor, targeted expand, high-frequency exam forms"]
   Work --> Num["numeric routes: decimal plus exact small-fraction line"]
@@ -62,7 +62,7 @@ graph TD
   Runner --> Report["tests/reports/.../latest.jsonl"]
   Live --> TUI["tools/audit_progress_tui.py"]
   Report --> TUI
-  Runner --> Runtime["13,572/13,572 runtime-safe"]
-  Runner --> Strict["12,638/13,572 strict marker pass"]
+  Runner --> Runtime["13,592/13,592 runtime-safe"]
+  Runner --> Strict["12,658/13,592 strict marker pass"]
   Strict --> Remaining["remaining: algebra presentation, binomial/partfrac, exact-form geometry/vector clusters"]
 ```
