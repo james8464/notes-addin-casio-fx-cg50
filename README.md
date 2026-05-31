@@ -24,11 +24,11 @@ Current status:
 
 - app name: `CAS`
 - file: `CAS.g3a`
-- size: `2,096,756` bytes
-- hard limit headroom: `396` bytes
-- sha256: `6b78db6563b25a360de0f32d82da4c54d224d13ee29bb3af88cf5c48b6acaa0a`
+- size: `2,096,896` bytes
+- hard limit headroom: `256` bytes
+- sha256: `8eb3c2aacd5a7e67bd9be04b641940d5e3efccaad4ca0f785ca9c514bd2a8655`
 - exact queue runtime: `13,618/13,618`
-- strict marker quality: `12,681/13,618`
+- strict marker quality: `12,688/13,618`
 - online challenge source coverage: MadAsMaths exact rows in queue; Daily Integral hard-integration style probes inspected from `https://dailyintegral.com/archive`
 
 Notable routes:
@@ -47,5 +47,6 @@ Notable routes:
 - simple numeric expressions show small exact fractions when detected
 - polynomial antiderivatives use coefficient-first descending-power form, e.g. `-1/3*x^3 + 2*x^2 + 5*x + C`
 - polynomial derivatives use descending-power form, e.g. `-8*x^3 + 1`
+- repeated integer quadratic roots print once, e.g. `x = [8]`
 - catalogue Help on command screen shows spaced sections and F2/F3 examples
 - `tools/audit_progress_tui.py` shows queue done/right progress bars during full runs

@@ -1378,7 +1378,10 @@ static bool try_solve(const char *input,working_string &out){
       working_string fac;
       if (factor_quad_int(a,b,c,v,fac))
         out += fac+" = 0\n";
-      out += "Answer: "+rawvar+" = ["+int_s(r1)+", "+int_s(r2)+"]";
+      if (r1==r2)
+        out += "Answer: "+rawvar+" = ["+int_s(r1)+"]";
+      else
+        out += "Answer: "+rawvar+" = ["+int_s(r1)+", "+int_s(r2)+"]";
       return true;
     }
   }
