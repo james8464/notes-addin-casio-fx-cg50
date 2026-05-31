@@ -1,0 +1,5 @@
+Args: resolve(F,theta)
+Required: force F, angle theta in degrees from the horizontal.
+Does: Resolves a force into horizontal and vertical components.
+Examples: resolve(10,30)
+Working: Shows component formulae, substitution, and both component values.

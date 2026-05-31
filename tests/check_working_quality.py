@@ -214,6 +214,25 @@ QUALITY_CASES = [
             "Answer: 6 N m",
         ],
     ),
+    (
+        "resolve(10,30)",
+        6,
+        [
+            "Horizontal component = F*cos(theta)",
+            "Vertical component = F*sin(theta)",
+            "theta = 30 degrees",
+            "Answer: [8.66025,5] N",
+        ],
+    ),
+    (
+        "friction(0.4,20)",
+        4,
+        [
+            "Limiting friction: F <= mu*R",
+            "F_max = 0.4*20",
+            "Answer: F <= 8 N",
+        ],
+    ),
 ]
 
 

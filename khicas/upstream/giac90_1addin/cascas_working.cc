@@ -2949,6 +2949,97 @@ static bool try_moment(const char *input,working_string &out){
   return true;
 }
 
+static bool try_resolve_force(const char *input,working_string &out){
+  working_string args[4];
+  int count=0;
+  if (!parse_call(input,"resolve",args,4,count) || count<2)
+    return false;
+  double f=0,theta=0;
+  bool hf=false,ht=false;
+  if (count==2 && int(args[0].find('='))<0 && int(args[1].find('='))<0){
+    hf=parse_real(args[0],f);
+    ht=parse_real(args[1],theta);
+  }
+  else {
+    for (int i=0;i<count;++i){
+      int eq=args[i].find('=');
+      if (eq<0) continue;
+      working_string k=compact_ascii(args[i].substr(0,eq));
+      working_string val=trim_ascii(args[i].substr(eq+1));
+      double x;
+      if (!parse_real(val,x)) continue;
+      if (k=="f" || k=="force"){ f=x; hf=true; }
+      else if (k=="theta" || k=="angle"){ theta=x; ht=true; }
+    }
+  }
+  if (!hf || !ht)
+    return false;
+  double rad=theta*0.017453292519943295;
+  double fx=f*cos(rad);
+  double fy=f*sin(rad);
+  out="Resolve force:\n";
+  out += "Horizontal component = F*cos(theta)\n";
+  out += "Vertical component = F*sin(theta)\n";
+  out += "theta = ";
+  out += format_real(theta);
+  out += " degrees\nF_x = ";
+  out += format_real(f);
+  out += "*cos(";
+  out += format_real(theta);
+  out += ") = ";
+  out += format_real(fx);
+  out += "\nF_y = ";
+  out += format_real(f);
+  out += "*sin(";
+  out += format_real(theta);
+  out += ") = ";
+  out += format_real(fy);
+  out += "\nAnswer: [";
+  out += format_real(fx);
+  out += ",";
+  out += format_real(fy);
+  out += "] N";
+  return true;
+}
+
+static bool try_friction(const char *input,working_string &out){
+  working_string args[4];
+  int count=0;
+  if (!parse_call(input,"friction",args,4,count) || count<2)
+    return false;
+  double mu=0,r=0;
+  bool hm=false,hr=false;
+  if (count==2 && int(args[0].find('='))<0 && int(args[1].find('='))<0){
+    hm=parse_real(args[0],mu);
+    hr=parse_real(args[1],r);
+  }
+  else {
+    for (int i=0;i<count;++i){
+      int eq=args[i].find('=');
+      if (eq<0) continue;
+      working_string k=compact_ascii(args[i].substr(0,eq));
+      working_string val=trim_ascii(args[i].substr(eq+1));
+      double x;
+      if (!parse_real(val,x)) continue;
+      if (k=="mu" || k=="coefficient"){ mu=x; hm=true; }
+      else if (k=="r" || k=="reaction" || k=="normal"){ r=x; hr=true; }
+    }
+  }
+  if (!hm || !hr)
+    return false;
+  double ans=mu*r;
+  out="Friction:\n";
+  out += "Limiting friction: F <= mu*R\n";
+  out += "F_max = ";
+  out += format_real(mu);
+  out += "*";
+  out += format_real(r);
+  out += "\nAnswer: F <= ";
+  out += format_real(ans);
+  out += " N";
+  return true;
+}
+
 static bool try_log_base(const char *input,working_string &out){
   working_string args[2];
   int count=0;
@@ -3229,6 +3320,10 @@ bool eval_with_working(const char *input,working_string &out){
   if (try_force(input,out))
     return true;
   if (try_moment(input,out))
+    return true;
+  if (try_resolve_force(input,out))
+    return true;
+  if (try_friction(input,out))
     return true;
   if (try_log_base(input,out))
     return true;

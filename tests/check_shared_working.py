@@ -215,6 +215,10 @@ CASES = [
     ("force(m=12,a=-3)", "Answer: -36 N"),
     ("moment(12,0.5)", "M = 12*0.5"),
     ("moment(force=8,distance=1.25)", "Answer: 10 N m"),
+    ("resolve(10,30)", "Answer: [8.66025,5] N"),
+    ("resolve(force=13,angle=22.6)", "Horizontal component = F*cos(theta)"),
+    ("friction(0.4,20)", "F_max = 0.4*20"),
+    ("friction(mu=0.25,R=48)", "Answer: F <= 12 N"),
 ]
 
 ARGV_CASES = [

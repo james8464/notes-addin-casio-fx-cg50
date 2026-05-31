@@ -1,0 +1,5 @@
+Args: friction(mu,R)
+Required: coefficient of friction mu, normal reaction R.
+Does: Calculates limiting friction using F <= mu*R.
+Examples: friction(0.4,20)
+Working: Shows formula selection, substitution, and the limiting friction inequality.
