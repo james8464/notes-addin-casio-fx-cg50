@@ -2739,16 +2739,13 @@ extern "C" void Sleep(unsigned int miliSecond);
 
   static void python_import(string & cur,int cs,int posturtle,int poscmath,int posmath,int posnumpy,int posmatplotlib,GIAC_CONTEXT){
     if (posmatplotlib>=0 && posmatplotlib<cs){
-      cur += "np:=numpy:;xlim(a,b):=gl_x=a..b:;ylim(a,b):=gl_y=a..b:;scatter:=scatterplot:;bar:=bar_plot:;text:=legend:;xlabel:=gl_x_axis_name:;ylabel:=gl_y_axis_name:;arrow:=vector:;boxplot:=moustache:;";
       posnumpy=posmatplotlib;
     }
     if (posnumpy>=0 && posnumpy<cs){
       static bool alertnum=true;
-      // add python numpy shortcuts
-      cur += "mat:=matrix:;arange:=range:;resize:=redim:;shape:=dim:;conjugate:=conj:;full:=matrix:;eye:=identity:;ones(n,c):=matrix(n,c,1):; astype:=convert:;float64:=float:;asarray:=array:;astype:=convert:;reshape(m,n,c):=matrix(n,c,flatten(m));";
       if (alertnum){
 	alertnum=false;
-	alert("mat:=matrix;arange:=range;resize:=redim;shape:=dim;conjugate:=conj;full:=matrix;eye:=idn;ones(n,c):=matrix(n,c,1);reshape(m,n,c):=matrix(n,c,flatten(m));",contextptr);
+	alert("Python shortcuts disabled",contextptr);
       }
       return;
     }
@@ -2756,13 +2753,11 @@ extern "C" void Sleep(unsigned int miliSecond);
       // add python turtle shortcuts
       static bool alertturtle=true;
 #ifdef KHICAS
-      cur += "fd:=forward:;bk:=backward:; rt:=right:; lt:=left:; pos:=position:; seth:=heading:;setheading:=heading:; ";
 #else
-      cur += "pu:=penup:;up:=penup:; pd:=pendown:;down:=pendown:; fd:=forward:;bk:=backward:; rt:=right:; lt:=left:; pos:=position:; seth:=heading:;setheading:=heading:; reset:=efface:;";
 #endif
       if (alertturtle){
 	alertturtle=false;
-	alert("pu:=penup;up:=penup; pd:=pendown;down:=pendown; fd:=forward;bk:=backward; rt:=right; lt:=left; pos:=position; seth:=heading;setheading:=heading; reset:=efface",contextptr);
+	alert("Turtle disabled",contextptr);
       }
       return;
     }

@@ -5378,9 +5378,9 @@ namespace giac {
     if (alert_array_start && contextptr->globalptr->_python_compat_){
       alert_array_start=false;
 #ifdef GIAC_HAS_STO_38
-      alert(gettext("Python compatibility enabled. List index will start at 0, run index:=1 or of:=1 to disable Python compatibility."),contextptr);
+      alert(gettext("Python compatibility disabled"),contextptr);
 #else
-      *logptr(contextptr) << gettext("// Python compatibility enabled. List index will start at 0, run index:=1 or python_compat(0) to disable Python compatibility.") << endl;
+      *logptr(contextptr) << gettext("// Python compatibility disabled") << endl;
 #endif
     }
     if (storcl_38){
@@ -7277,7 +7277,7 @@ namespace giac {
   }
   gen _version(const gen & a,GIAC_CONTEXT){
     if ( a.type==_STRNG && a.subtype==-1) return  a;
-    return string2gen(gettext("Powered by Giac 1.4.9, B. Parisse and R. De Graeve, Institut Fourier, Universite Grenoble I, France"),false);
+    return string2gen(gettext("CAS"),false);
   }
   static const char _version_s []="version";
   static define_unary_function_eval (__version,&_version,_version_s);

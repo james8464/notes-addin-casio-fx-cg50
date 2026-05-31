@@ -451,7 +451,19 @@ static working_string integral_monomial(long coef,long pow){
     return p+"/"+int_s(den);
   if (coef==-1)
     return "-"+p+"/"+int_s(den);
-  return "("+frac_s(coef,den)+")*"+p;
+  return frac_s(coef,den)+"*"+p;
+}
+
+static working_string derivative_monomial(long coef,long pow){
+  if (!pow)
+    return "";
+  long c=coef*pow, p=pow-1;
+  if (!p)
+    return int_s(c);
+  working_string xp=p==1?"x":"x^"+int_s(p);
+  if (c==1) return xp;
+  if (c==-1) return "-"+xp;
+  return int_s(c)+"*"+xp;
 }
 
 static working_string join_sum(working_string a,const working_string &b){
@@ -460,6 +472,34 @@ static working_string join_sum(working_string a,const working_string &b){
   if (!b.empty() && b[0]=='-')
     return a+" - "+b.substr(1,b.size()-1);
   return a+" + "+b;
+}
+
+static bool diff_sum_terms(const working_string &expr,working_string &answer){
+  working_string s=compact(expr);
+  if (contains(s,"(") || contains(s,"sin") || contains(s,"cos") ||
+      contains(s,"tan") || contains(s,"ln") || contains(s,"exp"))
+    return false;
+  answer="";
+  int start=0,sign=1,terms=0;
+  for (int i=0;i<=int(s.size());++i){
+    char c=i<int(s.size())?s[i]:'+';
+    if ((c=='+' || c=='-') && i>start){
+      long coef=0,pow=0;
+      if (!parse_power_term(s.substr(start,i-start),coef,pow))
+        return false;
+      working_string part=derivative_monomial(sign*coef,pow);
+      if (!part.empty())
+        answer=join_sum(answer,part);
+      ++terms;
+      sign=(c=='-')?-1:1;
+      start=i+1;
+    }
+    else if ((c=='+' || c=='-') && i==start){
+      sign=(c=='-')?-1:1;
+      start=i+1;
+    }
+  }
+  return terms>1 && !answer.empty();
 }
 
 static bool integrate_sum_terms(const working_string &expr,working_string &answer){
@@ -701,6 +741,24 @@ static working_string double_s(double v){
   return working_string(buf);
 }
 
+static working_string spaced_pm(const working_string &s){
+  working_string r;
+  int depth=0;
+  for (int i=0;i<int(s.size());++i){
+    char c=s[i];
+    if (c=='(' || c=='[' || c=='{') ++depth;
+    if (!depth && (c=='+' || c=='-') && i>0 && s[i-1]!='e' && s[i-1]!='E'){
+      r += " ";
+      r += c;
+      r += " ";
+    }
+    else
+      r += c;
+    if (c==')' || c==']' || c=='}') --depth;
+  }
+  return r;
+}
+
 static int match_paren(const working_string &s,int open){
   int depth=0;
   bool str=false;
@@ -819,6 +877,14 @@ static bool try_diff(const char *input,working_string &out){
   working_string e=compact(args[0]), var=n>=2?compact(args[1]):"x";
   if (var!="x")
     return false;
+  {
+    working_string sum_answer;
+    if (diff_sum_terms(args[0],sum_answer)){
+      out="Differentiate powers of x:\nAnswer: dy/dx = ";
+      out += sum_answer;
+      return true;
+    }
+  }
   {
     Rat c,p;
     long a=0,b=0;
@@ -1149,7 +1215,8 @@ static bool try_solve(const char *input,working_string &out){
     return false;
   working_string eq=nospace_lower(args[0]);
   working_string ceq=compact(args[0]);
-  working_string var=n>=2?compact(args[1]):"x";
+  working_string rawvar=n>=2?trim(args[1]):"x";
+  working_string var=compact(rawvar);
   if ((ceq=="dn/dt=kn" || ceq=="dn/dt=k*n") && var=="n"){
     out="DE:\n"
         "(1/n)dn=k dt\nln(abs(n))=k*t+C\n"
@@ -1180,7 +1247,7 @@ static bool try_solve(const char *input,working_string &out){
   }
   if (ceq=="tan(x)=1/2" && var=="x"){
     out="Trig solve:\n"
-        "tan(x)=1/2\n"
+        "tan(x) = 1/2\n"
         "x = atan(1/2) + n*pi\n"
         "Answer: x = 0.463647609001 + n*pi";
     return true;
@@ -1207,7 +1274,7 @@ static bool try_solve(const char *input,working_string &out){
       working_string fac;
       if (factor_quad_int(a,b,c,v,fac))
         out += fac+" = 0\n";
-      out += "Answer: "+var+" = ["+int_s(r1)+", "+int_s(r2)+"]";
+      out += "Answer: "+rawvar+" = ["+int_s(r1)+", "+int_s(r2)+"]";
       return true;
     }
   }
@@ -1249,9 +1316,9 @@ static bool try_solve(const char *input,working_string &out){
       out="Solve quadratic:\nFactor common ";
       out += var;
       out += ": ";
-      out += var+"*("+int_s(qa)+"*"+var+"-"+int_s(la)+")=0\n";
-      out += var+" = 0 or "+var+" = "+frac_s(la,qa)+"\n";
-      out += "Answer: "+var+" = [0, "+frac_s(la,qa)+"]";
+      out += rawvar+"*("+int_s(qa)+"*"+rawvar+"-"+int_s(la)+")=0\n";
+      out += rawvar+" = 0 or "+rawvar+" = "+frac_s(la,qa)+"\n";
+      out += "Answer: "+rawvar+" = [0, "+frac_s(la,qa)+"]";
       return true;
       }
     }
@@ -1274,6 +1341,10 @@ static bool try_solve(const char *input,working_string &out){
         working_string t=s.substr(start,i-start);
         int p=t.find(v);
         if (p>=0){
+          if (p!=int(t.size())-1){
+            ok=false;
+            return;
+          }
           working_string cs=t.substr(0,p);
           if (!cs.empty() && cs[cs.size()-1]=='*')
             cs=cs.substr(0,cs.size()-1);
@@ -1307,11 +1378,11 @@ static bool try_solve(const char *input,working_string &out){
   if (ok1 && ok2 && a1!=a2){
     long a=a1-a2,b=b2-b1;
     out="Linear solve:\nCollect ";
-    out += var;
+    out += rawvar;
     out += " terms\n";
-    out += int_s(a)+"*"+var+"="+int_s(b)+"\n";
-    out += var+"="+frac_s(b,a)+"\n";
-    out += "Answer: "+var+" = ["+frac_s(b,a)+"]";
+    out += int_s(a)+"*"+rawvar+" = "+int_s(b)+"\n";
+    out += rawvar+" = "+frac_s(b,a)+"\n";
+    out += "Answer: "+rawvar+" = ["+frac_s(b,a)+"]";
     return true;
   }
   if (contains(eq,"^2") && contains(eq,"*") && contains(eq,var.c_str())){
@@ -1396,7 +1467,9 @@ static bool try_numeric(const char *input,working_string &out){
   np.skip();
   if (!np.ok || *np.p)
     return false;
-  out="Answer: ";
+  out="Exact: ";
+  out += spaced_pm(trim(expr));
+  out += "\nAnswer: ";
   out += double_s(v);
   if (fabs(v)<1e12){
     char buf[96];
@@ -1413,6 +1486,22 @@ static bool try_numeric(const char *input,working_string &out){
     out += "\nRounded: ";
     out += buf;
   }
+  return true;
+}
+
+static bool try_numeric_expr(const char *input,working_string &out){
+  working_string s=trim(input?input:"");
+  if (contains(s,"="))
+    return false;
+  NumParser np;
+  np.p=s.c_str();
+  np.ok=true;
+  double v=np.expr();
+  np.skip();
+  if (!np.ok || *np.p)
+    return false;
+  out="Answer: ";
+  out += double_s(v);
   return true;
 }
 
@@ -1496,6 +1585,8 @@ bool eval_with_working(const char *input,working_string &out){
   if (try_algebra(input,out))
     return true;
   if (try_numeric(input,out))
+    return true;
+  if (try_numeric_expr(input,out))
     return true;
   if (try_solve(input,out))
     return true;
