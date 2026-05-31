@@ -1,6 +1,6 @@
 # Project Graph
 
-Last updated: 2026-05-31 22:20 BST
+Last updated: 2026-05-31 22:43 BST
 
 ## Build
 
@@ -13,7 +13,7 @@ graph TD
   Make --> Bin["khicasen.bin, upstream KhiCAS base"]
   Bin --> G3A["calculator_files/CAS.g3a"]
   G3A --> Meta["CAS / @CAS / CAS.g3a"]
-  G3A --> Size["2,096,780 bytes; 372 byte headroom"]
+  G3A --> Size["2,096,796 bytes; 356 byte headroom"]
 ```
 
 ## Runtime
@@ -63,8 +63,8 @@ graph TD
   Runner --> Report["tests/reports/.../latest.jsonl"]
   Live --> TUI["tools/audit_progress_tui.py"]
   Report --> TUI
-  Runner --> Runtime["13,728/13,728 runtime-safe"]
-  Runner --> Strict["12,748/13,728 strict marker pass"]
+  Runner --> Runtime["13,868/13,868 runtime-safe"]
+  Runner --> Strict["12,788/13,868 strict marker pass"]
   Strict --> Remaining["remaining: symbolic parameter area proofs, algebra presentation, binomial/partfrac, exact-form geometry/vector clusters"]
 ```
 
@@ -74,6 +74,6 @@ graph TD
 graph TD
   Canon["canonical queue"] --> Golden["tests/golden/exact_calculator_input_queue.jsonl"]
   Tooling["active tooling"] --> Build["build/check/audit/host runner"]
-  Old["old one-off VM batch generators"] --> Pruned["removed from tools/ and progress/batches"]
+  Old["old VM worker notes, batch JSONs, append helper, retired checks, CMake host wrapper"] --> Pruned["removed from tracked project"]
   Reports["ignored generated outputs"] --> Recreate["build/, graphify-out/, tests/reports/ recreated only when needed"]
 ```

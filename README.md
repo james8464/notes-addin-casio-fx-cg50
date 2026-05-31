@@ -24,11 +24,11 @@ Current status:
 
 - app name: `CAS`
 - file: `CAS.g3a`
-- size: `2,096,780` bytes
-- hard limit headroom: `372` bytes
-- sha256: `55cd62c8496052f55a8f430a570e689eb102baef4ab9f9272cfd71aded4dba32`
-- exact queue runtime: `13,728/13,728`
-- strict marker quality: `12,748/13,728`
+- size: `2,096,796` bytes
+- hard limit headroom: `356` bytes
+- sha256: `afaab694179fd28bceac92490b153b3648291d43a2189c04fb65db9dc95bff0f`
+- exact queue runtime: `13,868/13,868`
+- strict marker quality: `12,788/13,868`
 - online challenge source coverage: MadAsMaths exact rows in queue; Daily Integral hard-integration style probes inspected from `https://dailyintegral.com/archive`
 
 Notable routes:
@@ -50,14 +50,17 @@ Notable routes:
 - polynomial derivatives use descending-power form, e.g. `-8*x^3 + 1`
 - repeated integer quadratic roots print once, e.g. `x = [8]`
 - catalogue Help on command screen shows spaced sections and F2/F3 examples
-- `tools/audit_progress_tui.py` shows animated artifact, queue, strict-gap, hash, and checkpoint panels
+- `tools/audit_progress_tui.py` shows animated repo, artifact, queue, quality, dirty-file, recent-event, and run-command panels
 
 Active tools:
 
 - `tools/build_g3a.sh`
 - `tools/audit_progress_tui.py`
 - `tools/khicas_host_runner`
-- `tools/check_*.py`
-- `tools/append_queue_rows.py`
+- `tools/check_g3a_metadata.py`
+- `tools/check_g3a_size.py`
+- `tools/check_calculator_border.py`
+- `tools/check_catalog_scope.py`
+- `tools/check_help_quality.py`
 
-Historical batch-generator scripts and batch JSONs were pruned. The canonical test source is now `tests/golden/exact_calculator_input_queue.jsonl`.
+Historical worker notes, batch JSONs, stale append helpers, retired checks, and the old CMake host wrapper were pruned. The canonical test source is now `tests/golden/exact_calculator_input_queue.jsonl`.

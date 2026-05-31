@@ -50,6 +50,7 @@ class Stat:
     tag: str
     dirty: int
     g3a: int
+    g3a_age: str
     g3a_hash: str
     graph_age: str
     report_age: str
@@ -58,6 +59,8 @@ class Stat:
     checkpoint: str
     failures: list[str]
     ratios: list[tuple[str, int, int]]
+    dirty_files: list[str]
+    events: list[str]
 
 
 def color(text: str, code: str, enabled: bool) -> str:
@@ -66,7 +69,7 @@ def color(text: str, code: str, enabled: bool) -> str:
 
 def run(args: list[str]) -> str:
     try:
-        return subprocess.check_output(args, cwd=ROOT, text=True, stderr=subprocess.DEVNULL, timeout=2).strip()
+        return subprocess.check_output(args, cwd=ROOT, text=True, stderr=subprocess.DEVNULL, timeout=2).rstrip()
     except Exception:
         return "n/a"
 
@@ -118,6 +121,19 @@ def dirty_count() -> int:
     return len([ln for ln in out.splitlines() if ln.strip()])
 
 
+def dirty_files(limit: int = 5) -> list[str]:
+    out = run(["git", "status", "--short"])
+    if out == "n/a" or not out:
+        return []
+    files: list[str] = []
+    for line in out.splitlines():
+        if line.strip():
+            files.append(line[:2] + " " + line[3:])
+            if len(files) >= limit:
+                break
+    return files
+
+
 def graph_age() -> str:
     if not GRAPH.exists():
         return "missing"
@@ -138,6 +154,22 @@ def age_s(path: Path) -> str:
     if age < 3600:
         return f"{age // 60}m"
     return f"{age // 3600}h"
+
+
+def recent_events(limit: int = 4) -> list[str]:
+    if not STATE.exists():
+        return []
+    rows: list[str] = []
+    for line in STATE.read_text(errors="ignore").splitlines()[-80:]:
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        phase = str(row.get("phase", "n/a"))
+        event = str(row.get("last_event", row.get("queue", "n/a")))
+        if event and event != "n/a":
+            rows.append(f"{phase}: {event}")
+    return rows[-limit:]
 
 
 def queue_counts() -> tuple[int, int]:
@@ -234,6 +266,7 @@ def collect() -> Stat:
         tag=run(["git", "describe", "--tags", "--exact-match", "HEAD"]),
         dirty=dirty_count(),
         g3a=file_size(G3A),
+        g3a_age=age_s(G3A),
         g3a_hash=short_hash(G3A),
         graph_age=graph_age(),
         report_age=age_s(QUEUE_REPORT),
@@ -242,6 +275,8 @@ def collect() -> Stat:
         checkpoint=str(checkpoint.get("last_event", "n/a")),
         failures=failure_samples(),
         ratios=ratios,
+        dirty_files=dirty_files(),
+        events=recent_events(),
     )
 
 
@@ -282,62 +317,165 @@ def size_row(label: str, size: int, frame: int, width: int, enabled: bool) -> st
     )
 
 
+def rate(done: int, total: int) -> str:
+    return "n/a" if total <= 0 else f"{done / total * 100:.2f}%"
+
+
+def badge(text: str, code: str, enabled: bool) -> str:
+    return color(f"[{text}]", code, enabled)
+
+
 def kv(key: str, val: str, width: int, enabled: bool) -> str:
     return trim(f"{color(key, C.dim, enabled):<18} {val}", width)
 
 
-def render(st: Stat, frame: int, width: int, height: int, enabled: bool) -> str:
+def panel(title: str, rows: list[str], width: int, enabled: bool) -> list[str]:
+    inner = max(20, width - 4)
+    head = f"+-- {title} "
+    top = trim(head + "-" * max(0, width - len(head) - 1) + "+", width)
+    out = [color(top, C.dim, enabled)]
+    for row in rows:
+        raw = trim(row, inner)
+        out.append(color("| ", C.dim, enabled) + raw + color(" |", C.dim, enabled))
+    out.append(color("+" + "-" * (width - 2) + "+", C.dim, enabled))
+    return out
+
+
+def render_compact(st: Stat, frame: int, width: int, enabled: bool) -> str:
     width = max(78, width)
-    bar_w = max(18, min(44, width - 54))
+    bar_w = max(18, min(34, width - 48))
     spin = "|/-\\"[frame % 4]
-    pulse = "." * (frame % 4)
-    dirty_color = C.green if st.dirty == 0 else C.yellow
-    tag = st.tag if st.tag != "n/a" else "untagged"
+    pulse = ("...." + ("#" * (frame % 5))).ljust(9, ".")[:9]
+    headroom = LIMIT - st.g3a
+    status = "OK" if st.g3a and headroom >= 0 else "OVER" if st.g3a else "MISSING"
+    status_code = C.green if status == "OK" else C.red
+    dirty_code = C.green if st.dirty == 0 else C.yellow
     lines = [
         trim("=" * width, width),
-        trim(f"{color('CAS LIVE AUDIT', C.bold + C.cyan, enabled)} {spin} {time.strftime('%H:%M:%S')} live{pulse}", width),
+        trim(
+            f"{color('CAS LIVE AUDIT', C.bold + C.cyan, enabled)} {spin} "
+            f"{time.strftime('%H:%M:%S')} scan {pulse} "
+            f"{badge(status, status_code, enabled)} {badge('dirty ' + str(st.dirty), dirty_code, enabled)}",
+            width,
+        ),
         trim("=" * width, width),
-        kv("branch", f"{st.branch} @ {st.commit}  tag {tag}  dirty {color(str(st.dirty), dirty_color, enabled)}", width, enabled),
+        kv("repo", f"{st.branch} @ {st.commit}  graph {st.graph_age}", width, enabled),
         kv("phase", st.phase, width, enabled),
-        kv("last event", st.last, width, enabled),
-        kv("checkpoint", st.checkpoint, width, enabled),
-        kv("graph", st.graph_age, width, enabled),
-        "",
-        trim(color("artifact", C.bold, enabled), width),
+        kv("event", st.last, width, enabled),
         size_row("CAS.g3a", st.g3a, frame, bar_w, enabled),
-        kv("sha256", st.g3a_hash, width, enabled),
-        "",
-        trim(color("queue", C.bold, enabled), width),
-        kv("golden file", f"{st.queue_rows:,} rows / {st.queue_inputs:,} inputs", width, enabled),
-        kv("latest run", f"{st.queue}  report age {st.report_age}", width, enabled),
-        "",
-        trim(color("progress bars", C.bold, enabled), width),
+        kv("artifact", f"age {st.g3a_age}  sha256 {st.g3a_hash}  headroom {headroom:,} B", width, enabled),
+        kv("queue", f"{st.queue_rows:,} rows / {st.queue_inputs:,} inputs", width, enabled),
+        kv("latest", f"{st.queue}  report age {st.report_age}", width, enabled),
+        trim(color("progress", C.bold, enabled), width),
     ]
-    if st.ratios:
-        for label, done, total in st.ratios:
-            lines.append(trim(f"{label:<14} {bar(done, total, bar_w, frame, enabled)} {done}/{total}", width))
-    else:
+    for label, done, total in st.ratios[:4]:
+        lines.append(trim(f"{label:<14} {bar(done, total, bar_w, frame, enabled)} {done}/{total}", width))
+    if not st.ratios:
         lines.append(trim("no ratio data yet", width))
-    lines.extend(
-        [
-            "",
-            kv("unsupported", st.unsupported, width, enabled),
-            trim(color("strict gaps", C.bold, enabled), width),
-        ]
-    )
+    lines.append(kv("dirty files", "; ".join(st.dirty_files) if st.dirty_files else "clean", width, enabled))
+    quality = f"unsupported {st.unsupported}"
     if st.failures:
-        for sample in st.failures:
-            lines.append(trim(" - " + sample, width))
+        quality += "  first gap " + st.failures[0]
     else:
-        lines.append(trim(" - none reported", width))
+        quality += "  strict gaps none reported"
+    lines.append(kv("quality", quality, width, enabled))
+    if st.events:
+        lines.append(kv("recent", st.events[-1], width, enabled))
     lines.extend(
         [
-            "",
-            trim(color("run", C.bold, enabled), width),
-            trim(f"python3 {ROOT / 'tools' / 'audit_progress_tui.py'} --fps 12", width),
+            trim("-" * width, width),
+            trim(f"run: python3 {ROOT / 'tools' / 'audit_progress_tui.py'} --fps 12", width),
             trim("q/ctrl-c quit  --once one frame  --fps N animation rate", width),
         ]
     )
+    return "\n".join(lines)
+
+
+def render(st: Stat, frame: int, width: int, height: int, enabled: bool) -> str:
+    if height <= 32:
+        return render_compact(st, frame, width, enabled)
+    width = max(78, width)
+    bar_w = max(18, min(44, width - 54))
+    spin = "|/-\\"[frame % 4]
+    pulse = ("...." + ("#" * (frame % 5))).ljust(9, ".")[:9]
+    dirty_color = C.green if st.dirty == 0 else C.yellow
+    tag = st.tag if st.tag != "n/a" else "untagged"
+    headroom = LIMIT - st.g3a
+    artifact_status = "OK" if st.g3a and headroom >= 0 else "OVER" if st.g3a else "MISSING"
+    artifact_code = C.green if artifact_status == "OK" else C.red
+    header = (
+        f"{color('CAS LIVE AUDIT', C.bold + C.cyan, enabled)} {spin} "
+        f"{time.strftime('%H:%M:%S')} scan {pulse} "
+        f"{badge(artifact_status, artifact_code, enabled)} "
+        f"{badge('dirty ' + str(st.dirty), dirty_color, enabled)}"
+    )
+    lines = [trim("=" * width, width), trim(header, width), trim("=" * width, width)]
+    lines += panel(
+        "repo",
+        [
+            f"branch {st.branch} @ {st.commit}  tag {tag}",
+            f"phase  {st.phase}",
+            f"event  {st.last}",
+            f"graph  {st.graph_age}  checkpoint {st.checkpoint}",
+        ],
+        width,
+        enabled,
+    )
+    lines.append("")
+    lines += panel(
+        "artifact",
+        [
+            size_row("CAS.g3a", st.g3a, frame, bar_w, enabled),
+            f"age {st.g3a_age}  sha256 {st.g3a_hash}",
+            f"hard headroom {headroom:,} B  target delta {TARGET - st.g3a:,} B",
+        ],
+        width,
+        enabled,
+    )
+    lines.append("")
+    lines += panel(
+        "queue",
+        [
+            f"golden {st.queue_rows:,} rows / {st.queue_inputs:,} inputs",
+            f"latest {st.queue}  report age {st.report_age}",
+        ],
+        width,
+        enabled,
+    )
+    lines.append("")
+    lines += panel("progress", [], width, enabled)[:1]
+    if st.ratios:
+        for label, done, total in st.ratios:
+            lines.append(trim(f"{label:<14} {bar(done, total, bar_w, frame, enabled)} {done}/{total} {rate(done,total)}", width))
+    else:
+        lines.append(trim("no ratio data yet", width))
+    lines.append(color("+" + "-" * (width - 2) + "+", C.dim, enabled))
+    lines.append("")
+    lines += panel("dirty files", st.dirty_files or ["clean"], width, enabled)
+    lines.append("")
+    gap_rows = [f"unsupported {st.unsupported}", "strict gaps:"]
+    if st.failures:
+        for sample in st.failures:
+            gap_rows.append(" - " + sample)
+    else:
+        gap_rows.append(" - none reported")
+    lines += panel("quality", gap_rows, width, enabled)
+    lines.append("")
+    lines += panel("recent", st.events or ["no state events yet"], width, enabled)
+    lines.append("")
+    run_panel = panel(
+        "run",
+        [
+            f"python3 {ROOT / 'tools' / 'audit_progress_tui.py'} --fps 12",
+            "q/ctrl-c quit  --once one frame  --fps N animation rate",
+        ],
+        width,
+        enabled,
+    )
+    lines += run_panel
+    if len(lines) > height:
+        keep = max(0, height - len(run_panel) - 1)
+        lines = lines[:keep] + [""] + run_panel
     return "\n".join(lines[:height])
 
 

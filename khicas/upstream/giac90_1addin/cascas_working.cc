@@ -1211,7 +1211,7 @@ static bool try_integral(const char *input,working_string &out){
     out="By parts:\n"
         "u=x, dv=exp(2*x) dx\n"
         "v=exp(2*x)/2\n"
-        "Answer: exp(2*x)*(x/2-1/4)+C";
+        "Answer: 1/2*x*exp(2*x) - 1/4*exp(2*x) + C";
     return true;
   }
   if (e=="x^2exp(x)" || e=="x^2e^x"){
