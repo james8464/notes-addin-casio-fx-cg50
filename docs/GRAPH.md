@@ -1,6 +1,6 @@
 # CasioCAS Project Graph
 
-Last updated: 2026-05-31 04:42 Europe/London
+Last updated: 2026-05-31 04:58 Europe/London
 
 ## Build
 
@@ -67,6 +67,7 @@ graph TD
   Direct --> Targeted["symbolic linear rearrange + 2^linear solve routes"]
   Direct --> RationalSurd["targeted rational/surd differentiation solve routes"]
   Direct --> ExamExact["direct exam queue routes: sequences, geometry, trig identity, partial fractions, binomial, exponential models"]
+  Direct --> Quality["working-quality depth gate for terse integral/range routes"]
   Suvat --> KeySuvat["key-value u/t roots"]
   Host["thin same-source host wrapper"] --> Queue["200/200 exact queue host checks"]
   Host --> DeletedHost["old host-only working_engine/src deleted"]
@@ -142,6 +143,7 @@ graph TD
   Help["help/functions"] --> HelpQ["check_help_quality"]
   Queue["tests/golden/exact_calculator_input_queue.jsonl"] --> Exact["tests/run_exact_queue.py"]
   Shared["tests/check_shared_working.py"] --> SharedGate["same adapter smoke"]
+  Shared --> WorkingQuality["tests/check_working_quality.py"]
   Shared --> CoreNoGolden["tests/check_shared_core_without_golden.py"]
   Queue --> GoldenCoverage["tests/check_golden_shared_coverage.py"]
   Queue --> NoGoldenAudit["tests/audit_no_golden_queue_coverage.py"]
@@ -153,7 +155,7 @@ graph TD
 
 ```mermaid
 graph LR
-  Build["./compile exit 0"] --> Size["1,302,875 bytes"]
+  Build["./compile exit 0"] --> Size["1,304,087 bytes"]
   Build --> Meta["metadata ok"]
   Build --> Border["purple border ok"]
   Build --> NoRuntimeFallback["generated golden fallback disabled"]
@@ -166,6 +168,7 @@ graph LR
   Queue --> GoldenRun["200/200 direct calculator-source ok"]
   Queue --> NoGolden["200/200 without generated golden fallback"]
   Shared["shared working"] --> SharedRun["200/200 thin host+calculator adapter ok"]
+  Shared --> WorkQ["6/6 working-quality depth cases ok"]
   Shared --> CoreRun["197/197 core routes without golden fallback ok"]
   Shared --> NoHostSrc["old host-only source deleted"]
   Obj["object prune"] --> QR["qrcodegen.o link-safe removed"]

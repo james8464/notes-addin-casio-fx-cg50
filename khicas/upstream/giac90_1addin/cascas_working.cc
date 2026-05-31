@@ -142,6 +142,32 @@ static working_string format_real(double x){
   return buf;
 }
 
+static working_string format_quadratic_term(double coeff){
+  if (fabs(coeff-1)<1e-10)
+    return "x^2";
+  if (fabs(coeff+1)<1e-10)
+    return "-x^2";
+  working_string out=format_real(coeff);
+  out += "*x^2";
+  return out;
+}
+
+static working_string linear_integral_answer(double m,double c){
+  working_string ans=format_quadratic_term(m/2);
+  if (fabs(c)>1e-10){
+    ans += c>0?" + ":" - ";
+    double ac=fabs(c);
+    if (fabs(ac-1)<1e-10)
+      ans += "x";
+    else {
+      ans += format_real(ac);
+      ans += "*x";
+    }
+  }
+  ans += " + C";
+  return ans;
+}
+
 static working_string format_real_precise(double x){
   if (fabs(x)<1e-12) x=0;
   int r=int(x>0?x+.5:x-.5);
@@ -383,7 +409,14 @@ static bool try_range(const char *input,working_string &out){
       return true;
     }
     double vx=-b/(2*a),vy=a*vx*vx+b*vx+c;
-    out += "y ";
+    out += "For y = ax^2 + bx + c, vertex at x = -b/(2a)\n";
+    out += "x = ";
+    out += format_real(vx);
+    out += "\n";
+    out += a>0?"minimum y = ":"maximum y = ";
+    out += format_real(vy);
+    out += "\n";
+    out += "Answer: y ";
     out += a>0?">= ":"<= ";
     out += format_real(vy);
     return true;
@@ -1953,34 +1986,45 @@ static bool try_integral(const char *input,working_string &out){
   }
   if (expr=="cos(x)"){
     out="Integrate using standard result:\n";
-    out += "int(cos(x)) dx = sin(x) + C";
+    out += "Use formula: int(cos(x)) dx = sin(x) + C\n";
+    out += "Check: d/dx sin(x)=cos(x)\n";
+    out += "Answer: sin(x) + C";
     return true;
   }
   if (expr=="sec(x)^2"){
     out="Integrate using standard result:\n";
-    out += "int(sec(x)^2) dx = tan(x) + C";
+    out += "Use formula: int(sec(x)^2) dx = tan(x) + C\n";
+    out += "Check: d/dx tan(x)=sec(x)^2\n";
+    out += "Answer: tan(x) + C";
     return true;
   }
   if (expr=="1/x"){
     out="Integrate using standard result:\n";
-    out += "int(1/x) dx = ln(abs(x)) + C";
+    out += "Domain: x != 0\n";
+    out += "Use formula: int(1/x) dx = ln(abs(x)) + C\n";
+    out += "Check: d/dx ln(abs(x))=1/x\n";
+    out += "Answer: ln(abs(x)) + C";
     return true;
   }
   double m,c;
   if (!parse_linear(args[0],m,c))
     return false;
+  working_string ans=linear_integral_answer(m,c);
   out="Integrate term by term:\n";
-  out += "int(";
-  out += args[0];
-  out += ") dx = ";
-  out += format_real(m/2);
-  out += "*x^2";
+  out += "int(" + args[0] + ") dx = int(";
+  out += format_real(m);
+  out += "*x) dx";
   if (fabs(c)>1e-10){
-    out += c>0?" + ":" - ";
+    out += c>0?" + int(":" - int(";
     out += format_real(fabs(c));
-    out += "*x";
+    out += ") dx";
   }
-  out += " + C";
+  out += "\n";
+  out += "Use int(a*x) dx = a*x^2/2 and int(k) dx = k*x\n";
+  out += "= ";
+  out += ans;
+  out += "\nAnswer: ";
+  out += ans;
   return true;
 }
 
