@@ -418,7 +418,7 @@ namespace giac {
   gen _getDenom(const gen & g,GIAC_CONTEXT){
     return apply(g,getDenom,contextptr);
   }
-  static const char _getDenom_s[]="getDenom";
+  static const char _getDenom_s[]="_rs186";
   static define_unary_function_eval (__getDenom,&_getDenom,_getDenom_s);
   define_unary_function_ptr5( at_getDenom ,alias_at_getDenom,&__getDenom,0,true);
 
@@ -430,7 +430,7 @@ namespace giac {
   gen _denom(const gen & g,GIAC_CONTEXT){
     return apply(g,denom,contextptr);
   }
-  static const char _denom_s[]="denom";
+  static const char _denom_s[]="_rs187";
   static define_unary_function_eval (__denom,&_denom,_denom_s);
   define_unary_function_ptr5( at_denom ,alias_at_denom,&__denom,0,true);
 
@@ -454,7 +454,7 @@ namespace giac {
   gen _numer(const gen & g,GIAC_CONTEXT){
     return apply(g,numer,contextptr);
   }
-  static const char _numer_s[]="numer";
+  static const char _numer_s[]="_rs188";
   static define_unary_function_eval (__numer,&_numer,_numer_s);
   define_unary_function_ptr5( at_numer ,alias_at_numer,&__numer,0,true);
 
@@ -480,7 +480,7 @@ namespace giac {
     vecteur & v(*g._VECTptr);
     return _reorder(makesequence(v.front(),vecteur(v.begin()+1,v.end())),contextptr);
   }
-  static const char _comDenom_s[]="comDenom";
+  static const char _comDenom_s[]="_rs189";
   static define_unary_function_eval (__comDenom,&_comDenom,_comDenom_s);
   define_unary_function_ptr5( at_comDenom ,alias_at_comDenom,&__comDenom,0,true);
 

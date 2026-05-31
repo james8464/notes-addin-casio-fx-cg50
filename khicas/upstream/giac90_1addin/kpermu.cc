@@ -603,7 +603,7 @@ namespace giac {
     rot[2]=derive(v1[1],v2[0],contextptr)-derive(v1[0],v2[1],contextptr);
     return rot;
   }
-  static const char _curl_s[]="curl";
+  static const char _curl_s[]="_rs185";
   static define_unary_function_eval_quoted (__curl,&_curl,_curl_s);
   define_unary_function_ptr5( at_curl ,alias_at_curl,&__curl,_QUOTE_ARGUMENTS,true);
 

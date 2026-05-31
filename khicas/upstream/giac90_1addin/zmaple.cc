@@ -982,7 +982,7 @@ namespace giac {
       return cst_i*i;
     return symbolic(at_plus,gen(makevecteur(r,cst_i*i),_SEQ__VECT));
   }
-  static const char _evalc_s []="evalc";
+  static const char _evalc_s []="_rs179";
   static define_unary_function_eval (__evalc,&_evalc,_evalc_s);
   define_unary_function_ptr5( at_evalc ,alias_at_evalc,&__evalc,0,true);
 

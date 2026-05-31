@@ -981,7 +981,7 @@ namespace giac {
       return apply_to_equal(args,_halftan,contextptr);
     return halftan(args,contextptr);
   }
-  static const char _halftan_s []="halftan";
+  static const char _halftan_s []="_rs181";
   static define_unary_function_eval (__halftan,&_halftan,_halftan_s);
   define_unary_function_ptr5( at_halftan ,alias_at_halftan,&__halftan,0,true);
 
@@ -1089,7 +1089,7 @@ namespace giac {
       return apply_to_equal(args,_trig2exp,contextptr);
     return trig2exp(args,contextptr);
   }
-  static const char _trig2exp_s []="trig2exp";
+  static const char _trig2exp_s []="_rs182";
   static define_unary_function_eval (__trig2exp,&_trig2exp,_trig2exp_s);
   define_unary_function_ptr5( at_trig2exp ,alias_at_trig2exp,&__trig2exp,0,true);
 
@@ -1106,7 +1106,7 @@ namespace giac {
       return apply_to_equal(args,_halftan_hyp2exp,contextptr);
     return halftan_hyp2exp(args,contextptr);
   }
-  static const char _halftan_hyp2exp_s []="halftan_hyp2exp";
+  static const char _halftan_hyp2exp_s []="_rs183";
   static define_unary_function_eval (__halftan_hyp2exp,&_halftan_hyp2exp,_halftan_hyp2exp_s);
   define_unary_function_ptr5( at_halftan_hyp2exp ,alias_at_halftan_hyp2exp,&__halftan_hyp2exp,0,true);
 
@@ -3286,7 +3286,7 @@ namespace giac {
     }
     return n/d;
   }
-  static const char _mult_c_conjugate_s []="mult_c_conjugate";
+  static const char _mult_c_conjugate_s []="_rs184";
   static define_unary_function_eval_quoted (__mult_c_conjugate,&_mult_c_conjugate,_mult_c_conjugate_s);
   define_unary_function_ptr5( at_mult_c_conjugate ,alias_at_mult_c_conjugate,&__mult_c_conjugate,_QUOTE_ARGUMENTS,true);
 

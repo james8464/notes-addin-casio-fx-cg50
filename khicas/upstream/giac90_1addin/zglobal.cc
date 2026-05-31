@@ -2473,14 +2473,14 @@ extern "C" void Sleep(unsigned int miliSecond);
     "diff",
     "domain",
     "element",
-    "evalc",
+    "_rs179",
     "expand",
     "expexpand",
     "factor",
     "ifactor",
     "lncollect",
     "lnexpand",
-    "mult_c_conjugate",
+    "_rs184",
     "mult_conjugate",
     "nodisp",
     "normal",
@@ -3290,13 +3290,13 @@ extern "C" void Sleep(unsigned int miliSecond);
 	  if (posi<0 || posi>=int(cur.size()))
 	    posi = cur.find(" import*");
 	  if (posi>pos+5 && posi<int(cur.size())){
-	    int posturtle=cur.find("turtle");
+	    int posturtle=cur.find("turtlex");
 	    int poscmath=cur.find("cmath");
 	    int posmath=cur.find("math");
-	    int posnumpy=cur.find("numpy");
-	    int posmatplotlib=cur.find("matplotlib");
+	    int posnumpy=cur.find("numpyx");
+	    int posmatplotlib=cur.find("matplotx");
 	    if (posmatplotlib<0 || posmatplotlib>=cur.size())
-	      posmatplotlib=cur.find("pylab");
+	      posmatplotlib=cur.find("pylabx");
 	    int cs=int(cur.size());
 	    cur=cur.substr(0,pos);
 	    python_import(cur,cs,posturtle,poscmath,posmath,posnumpy,posmatplotlib,contextptr);
@@ -3330,13 +3330,13 @@ extern "C" void Sleep(unsigned int miliSecond);
 	chkfrom=false;
 	// import * as ** -> **:=*
 	if (ch=='i' && pos+7<int(cur.size()) && cur.substr(pos,7)=="import "){
-	  int posturtle=cur.find("turtle");
+	  int posturtle=cur.find("turtlex");
 	  int poscmath=cur.find("cmath");
 	  int posmath=cur.find("math");
-	  int posnumpy=cur.find("numpy");
-	  int posmatplotlib=cur.find("matplotlib");
+	  int posnumpy=cur.find("numpyx");
+	  int posmatplotlib=cur.find("matplotx");
 	  if (posmatplotlib<0 || posmatplotlib>=cur.size())
-	    posmatplotlib=cur.find("pylab");
+	    posmatplotlib=cur.find("pylabx");
 	  int cs=int(cur.size());
 	  int posi=cur.find(" as ");
 	  int posp=cur.find('.');

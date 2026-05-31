@@ -2129,7 +2129,7 @@ namespace giac {
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     return _sincos(g,contextptr);
   }
-  static const char _exp2trig_s []="exp2trig";
+  static const char _exp2trig_s []="_rs180";
   static define_unary_function_eval (__exp2trig,&_exp2trig,_exp2trig_s);
   define_unary_function_ptr5( at_exp2trig ,alias_at_exp2trig,&__exp2trig,0,true);
 

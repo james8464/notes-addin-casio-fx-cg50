@@ -6138,7 +6138,7 @@ namespace giac {
       return gensizeerr(contextptr); // symbolic(at_iquorem,args);
     return iquorem(args._VECTptr->front(),args._VECTptr->back());
   }
-  static const char _iquorem_s []="iquorem";
+  static const char _iquorem_s []="_rs190";
   static define_unary_function_eval (__iquorem,&_iquorem,_iquorem_s);
   define_unary_function_ptr5( at_iquorem ,alias_at_iquorem,&__iquorem,0,true);
 
@@ -6858,7 +6858,7 @@ namespace giac {
       res._VECTptr->front()=_irem(makesequence(res._VECTptr->front()+res._VECTptr->back(),res._VECTptr->back()),contextptr);
     return res;
   }
-  static const char _ichinrem_s []="ichinrem";
+  static const char _ichinrem_s []="_rs191";
   static define_unary_function_eval (__ichinrem,&_ichinrem,_ichinrem_s);
   define_unary_function_ptr5( at_ichinrem ,alias_at_ichinrem,&__ichinrem,0,true);
   

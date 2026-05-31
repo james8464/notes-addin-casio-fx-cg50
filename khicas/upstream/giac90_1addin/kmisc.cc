@@ -112,6 +112,9 @@ namespace giac {
   }
 
   gen _listplot(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     vecteur attributs(1,COLOR_BLACK);
     vecteur res=listplot(g,attributs,contextptr);
@@ -122,7 +125,7 @@ namespace giac {
     else
       return symb_pnt(gen(res,_GROUP__VECT),attributs[0],contextptr);
   }
-  static const char _plotlist_s []="plotlist";
+  static const char _plotlist_s []="_rs192";
   static define_unary_function_eval (__plotlist,&_listplot,_plotlist_s);
   define_unary_function_ptr5( at_plotlist ,alias_at_plotlist,&__plotlist,0,true);
   // [[x1 y1] [x2 y2] ...]
@@ -212,18 +215,24 @@ namespace giac {
     return gen(vres,_SEQ__VECT);
   }
   gen _scatterplot(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     return scatterplot(g,2,contextptr);
   }
-  static const char _scatterplot_s []="scatterplot";
+  static const char _scatterplot_s []="_rs193";
   static define_unary_function_eval (__scatterplot,&_scatterplot,_scatterplot_s);
   define_unary_function_ptr5( at_scatterplot ,alias_at_scatterplot,&__scatterplot,0,true);
 
   gen _polygonplot(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     return scatterplot(g,1,contextptr);
   }
-  static const char _polygonplot_s []="polygonplot";
+  static const char _polygonplot_s []="_rs194";
   static define_unary_function_eval (__polygonplot,&_polygonplot,_polygonplot_s);
   define_unary_function_ptr5( at_polygonplot ,alias_at_polygonplot,&__polygonplot,0,true);
 
@@ -232,10 +241,13 @@ namespace giac {
   define_unary_function_ptr5( at_ligne_polygonale ,alias_at_ligne_polygonale,&__ligne_polygonale,0,true);
 
   gen _polygonscatterplot(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     return scatterplot(g,3,contextptr);
   }
-  static const char _polygonscatterplot_s []="polygonscatterplot";
+  static const char _polygonscatterplot_s []="_rs195";
   static define_unary_function_eval (__polygonscatterplot,&_polygonscatterplot,_polygonscatterplot_s);
   define_unary_function_ptr5( at_polygonscatterplot ,alias_at_polygonscatterplot,&__polygonscatterplot,0,true);
 
@@ -1909,7 +1921,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     return _sincos(g,contextptr);
   }
-  static const char _exp2trig_s []="exp2trig";
+  static const char _exp2trig_s []="_rs180";
   static define_unary_function_eval (__exp2trig,&_exp2trig,_exp2trig_s);
   define_unary_function_ptr5( at_exp2trig ,alias_at_exp2trig,&__exp2trig,0,true);
 
@@ -5588,11 +5600,11 @@ static define_unary_function_eval (__exponential_regression,&_exponential_regres
     }
     return res;
   }
-  static const char _diagramme_batons_s []="bar_plot";
+  static const char _diagramme_batons_s []="_rs196";
   static define_unary_function_eval (__diagramme_batons,&_diagramme_batons,_diagramme_batons_s);
   define_unary_function_ptr5( at_diagramme_batons ,alias_at_diagramme_batons,&__diagramme_batons,0,true);
 
-  static const char _diagrammebatons_s []="barplot";
+  static const char _diagrammebatons_s []="_rs197";
   static define_unary_function_eval (__diagrammebatons,&_diagramme_batons,_diagrammebatons_s);
   define_unary_function_ptr5( at_diagrammebatons ,alias_at_diagrammebatons,&__diagrammebatons,0,true);
 

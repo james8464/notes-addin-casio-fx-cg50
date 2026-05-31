@@ -7733,7 +7733,7 @@ namespace giac {
 	  }
 	}
       }
-      if (tmp.type==_IDNT && (strcmp(tmp._IDNTptr->id_name,"numpy")==0 || strcmp(tmp._IDNTptr->id_name,"pylab")==0 || strcmp(tmp._IDNTptr->id_name,"matplotlib")==0)){
+      if (tmp.type==_IDNT && (strcmp(tmp._IDNTptr->id_name,"numpyx")==0 || strcmp(tmp._IDNTptr->id_name,"pylabx")==0 || strcmp(tmp._IDNTptr->id_name,"matplotx")==0)){
 	if (b.type==_SYMB){
 	  gen w1=eval(w[1],1,contextptr);
 	  if (w1==at_float || w1==at_real)

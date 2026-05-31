@@ -1,6 +1,6 @@
 # CasioCAS Project Graph
 
-Last updated: 2026-05-31 01:27 Europe/London
+Last updated: 2026-05-31 01:48 Europe/London
 
 ## Build
 
@@ -72,7 +72,9 @@ graph TD
   Obj --> QR["qrcodegen.o removed"]
   Macro --> Stubs["plot/permutation/list/stats/special source stubs"]
   Macro --> More["desolve/fft/file IO/charpoly/pcar/pivot/assume blocked"]
+  Macro --> XformPrune["halftan/exp2trig/trig2exp/evalc/q2a/a2q blocked"]
   Remove --> Menu["console catalog/menu/message leaks"]
+  Remove --> PyImport["python/numpy/pylab/matplotlib/turtle literals hidden"]
   Lex --> Static["static lexer distro aliases neutralized"]
   Lex --> Hide["concat/extend lexer strings hidden"]
   Macro --> Dist["normal/binomial/poisson/uniform public stats blocked"]
@@ -86,7 +88,9 @@ graph TD
   Hash --> Gate2
   Stubs --> Gate2
   More --> Gate2
+  XformPrune --> Gate2
   Menu --> Gate
+  PyImport --> Gate
   Dist --> Gate2
   Hide --> Gate
   Static --> Gate
@@ -125,17 +129,17 @@ graph TD
 
 ```mermaid
 graph LR
-  Build["./compile exit 0"] --> Size["1,262,155 bytes"]
+  Build["./compile exit 0"] --> Size["1,259,391 bytes"]
   Build --> Meta["metadata ok"]
   Build --> Border["purple border ok"]
   Source["source gates"] --> Catalog["catalog ok"]
-  Source --> Removed["130 removed rejected"]
+  Source --> Removed["158 removed rejected"]
   Source --> Session["session disabled"]
   Help["help pack"] --> HelpQ["18 function sheets ok"]
   Queue["golden queue"] --> QueueRun["200/200 host ok"]
   Shared["shared working"] --> SharedRun["57/57 host+calculator adapter ok"]
   Obj["object prune"] --> QR["qrcodegen.o link-safe removed"]
-  Macro["source stubs"] --> Stubbed["plotparam/plotseq/randperm/permuorder/list/stats/special/ODE/file IO/linalg helpers blocked"]
-  Static["lexer prune"] --> StaticRun["distribution static names neutralized"]
+  Macro["source stubs"] --> Stubbed["plot/list/stats/special/ODE/file IO/linalg/transform helpers blocked"]
+  Static["lexer prune"] --> StaticRun["distribution/denom/transform static names neutralized"]
   Bin["binary scan"] --> NoLeak["no removed-term hits"]
 ```
