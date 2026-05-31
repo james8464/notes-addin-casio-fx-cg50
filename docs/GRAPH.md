@@ -1,6 +1,6 @@
 # Project Graph
 
-Last updated: 2026-05-31 18:28 BST
+Last updated: 2026-05-31 18:57 BST
 
 ## Build
 
@@ -13,7 +13,7 @@ graph TD
   Make --> Bin["khicasen.bin, upstream KhiCAS base"]
   Bin --> G3A["calculator_files/CAS.g3a"]
   G3A --> Meta["CAS / @CAS / CAS.g3a"]
-  G3A --> Size["2,090,516 bytes; 6,636 byte headroom"]
+  G3A --> Size["2,097,152 bytes; 0 byte headroom"]
 ```
 
 ## Runtime
@@ -33,10 +33,10 @@ graph TD
 
 ```mermaid
 graph TD
-  Work["working engine"] --> Diff["diff: ln, polynomials, implicit, trig basics"]
-  Work --> Int["integrate: term, reverse-chain, by-parts, substitution, trig, rational"]
-  Work --> Solve["solve: linear, quadratic, rational, dy/dx separable, selected inequalities"]
-  Work --> Alg["algebra: factor/expand high-frequency exam forms"]
+  Work["working engine"] --> Diff["diff: affine chain powers, ln, implicit, trig basics"]
+  Work --> Int["integrate: affine reverse-chain powers, trig/exp sums, by-parts, substitution"]
+  Work --> Solve["solve: linear, integer-root quadratics, rational, dy/dx separable"]
+  Work --> Alg["algebra: quadratic factor, targeted expand, high-frequency exam forms"]
   Work --> Num["method=numeric with safe scientific formatting"]
   Work --> Xform["xform trig/log identities"]
 ```
@@ -56,7 +56,7 @@ graph TD
 
 ```mermaid
 graph TD
-  Queue["exact_calculator_input_queue.jsonl"] --> Runtime["13,159/13,159 runtime-safe"]
-  Queue --> Strict["10,843/13,159 strict marker pass"]
-  Strict --> Remaining["remaining: broad algebra/numeric/trig presentation gaps"]
+  Queue["exact_calculator_input_queue.jsonl"] --> Runtime["13,422/13,422 runtime-safe"]
+  Queue --> Strict["12,364/13,422 strict marker pass"]
+  Strict --> Remaining["remaining: algebra presentation, binomial/partfrac, by-parts clusters"]
 ```

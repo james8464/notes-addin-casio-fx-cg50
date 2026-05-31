@@ -22,16 +22,17 @@ Current status:
 
 - app name: `CAS`
 - file: `CAS.g3a`
-- size: `2,090,516` bytes
-- hard limit headroom: `6,636` bytes
-- sha256: `eecc593fbeb305f86656d4c45118c9680fcea02594e43fd3eabf8885a089c31c`
-- exact queue runtime: `13,159/13,159`
-- strict marker quality: `10,843/13,159`
+- size: `2,097,152` bytes
+- hard limit headroom: `0` bytes
+- sha256: `df621846ddc3e53fe784554dc1bb2ef566d9908c95d8ac4d41ea7cd8689cb404`
+- exact queue runtime: `13,422/13,422`
+- strict marker quality: `12,364/13,422`
 
 Notable routes:
 
 - `integrate((ln(x))^2,x,2)` repeated integration by parts
 - `integrate((ln(x))^2/x,x,3,u=ln(x))` substitution
 - `solve((dy)/(dx)=y,y)` separable differential equation
-- common derivative, factor, expand, rational, log, numeric, and reverse-chain working routes
+- generic affine chain/reverse-chain power routes
+- trig/exp term integration, quadratic solve/factor/expand, log/numeric routes
 - catalogue Help on command screen shows spaced sections and F2/F3 examples
