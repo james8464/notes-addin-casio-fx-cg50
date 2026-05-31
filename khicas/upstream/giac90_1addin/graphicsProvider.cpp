@@ -338,19 +338,37 @@ void drawSegvaultLogo(int x, int y) {
 
 #ifdef FILEICON
 void CopySpriteMasked(unsigned short* data, int x, int y, int width, int height, unsigned short maskcolor) {
-  unsigned short* VRAM = GetVRAMAddress();//(unsigned short*)VRAM_base; 
-  VRAM += (LCD_WIDTH_PX*y + x); 
+  if (!data || width<=0 || height<=0)
+    return;
+  int src_width=width;
+  if (x>=LCD_WIDTH_PX || y>=LCD_HEIGHT_PX || x+width<=0 || y+height<=0)
+    return;
+  if (x<0){
+    int skip=-x;
+    data+=skip;
+    width-=skip;
+    x=0;
+  }
+  if (y<0){
+    int skip=-y;
+    data+=skip*src_width;
+    height-=skip;
+    y=0;
+  }
+  if (x+width>LCD_WIDTH_PX)
+    width=LCD_WIDTH_PX-x;
+  if (y+height>LCD_HEIGHT_PX)
+    height=LCD_HEIGHT_PX-y;
+  if (width<=0 || height<=0)
+    return;
+  unsigned short* VRAM = (unsigned short*)GetVRAMAddress();//(unsigned short*)VRAM_base;
+  VRAM += (LCD_WIDTH_PX*y + x);
   while(height--) {
-    int i=width;
-    while(i--){
-      if(*data!=maskcolor) {
-        *(VRAM++) = *(data++);
-      } else {
-        ++VRAM;
-        ++data;
-      }
-    }
-    VRAM += (LCD_WIDTH_PX-width);
+    for (int i=0;i<width;++i)
+      if(data[i]!=maskcolor)
+        VRAM[i]=data[i];
+    data += src_width;
+    VRAM += LCD_WIDTH_PX;
   }
 }
 #endif
@@ -358,13 +376,14 @@ void CopySpriteMasked(unsigned short* data, int x, int y, int width, int height,
 //draws a point of color color at (x0, y0) 
 void plot(int x0, int y0,unsigned short color) {
   if (x0<0 || x0>=LCD_WIDTH_PX || y0<0 || y0>=LCD_HEIGHT_PX) return;
-  unsigned short* VRAM = GetVRAMAddress();//(unsigned short*)VRAM_base;
+  unsigned short* VRAM = (unsigned short*)GetVRAMAddress();//(unsigned short*)VRAM_base;
   VRAM += (y0*LCD_WIDTH_PX + x0);
   *VRAM=color;
 }
 
 unsigned short get_pixel(int x0,int y0){
-  unsigned short* VRAM = GetVRAMAddress();//(unsigned short*)VRAM_base;
+  if (x0<0 || x0>=LCD_WIDTH_PX || y0<0 || y0>=LCD_HEIGHT_PX) return 0;
+  unsigned short* VRAM = (unsigned short*)GetVRAMAddress();//(unsigned short*)VRAM_base;
   VRAM += (y0*LCD_WIDTH_PX + x0);
   return *VRAM;
 }
@@ -381,7 +400,7 @@ void drawRectangle(int x, int y, int width, int height, unsigned short color){
   if (y+height>LCD_HEIGHT_PX)
     height=LCD_HEIGHT_PX-y;
   if (width<=0 || height<=0) return;
-  unsigned short*VRAM = GetVRAMAddress();
+  unsigned short*VRAM = (unsigned short*)GetVRAMAddress();
   VRAM+=(y*384)+x;
   if (width==1){
     while(height--){

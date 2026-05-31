@@ -1,6 +1,6 @@
 # CasioCAS Project Graph
 
-Last updated: 2026-05-31 13:27 Europe/London
+Last updated: 2026-05-31 13:38 Europe/London
 
 ## Build
 
@@ -99,7 +99,10 @@ graph TD
   Direct --> XformRational["xform rational transform: a/(x+1) to 5*a/(2*x+1)"]
   Direct --> PureOnly["mechanics routes removed from catalog/help/working engine"]
   Direct --> RuntimeGuard["calculator runtime guards: balanced delimiters, no raw integral fallback, numeric literals fall through to KhiCAS"]
+  Direct --> PureFallback["removed-feature fallback gives Pure method steps instead of old outside-scope error"]
+  Direct --> ErrorMask["stock undef/syntax-style output becomes General Pure method steps"]
   Console --> StableFKeys["A-level mode ignores stale FMENU.py and fixes F-key colour state"]
+  Console --> VramClip["VRAM safety: clipped CopySpriteMasked and bounded get_pixel"]
   Host["thin same-source host wrapper"] --> Queue["236/236 exact queue host checks"]
   Host --> DeletedHost["old host-only working_engine/src deleted"]
   QueueTests["exact queue file"] --> SameSource["236/236 direct no-fallback calculator-source coverage"]

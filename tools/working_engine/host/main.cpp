@@ -99,7 +99,7 @@ static bool removed_feature(std::string const &expr)
         "uniform_cdf","uniform_icdf","uniformd_cdf","uniformd_icdf","poisson",
         "poisson_cdf","poisson_icdf","randbinomial","randpoisson","randnormald",
         "normalvariate","quartile1","quartile3","quartiles","moustache","histogram",
-        "camembert","covariance","correlation","laplace","ilaplace","fourier",
+        "camembert","covariance","correlation","stddevp","laplace","ilaplace","fourier",
         "fourier_an","fourier_bn","fourier_cn","odesolve","desolve","plotode",
         "plotfield","fft","ifft","read","write","charpoly","pcar","gaussjord",
         "pivot","assume","asc","char","euler","barplot","bar_plot","scatterplot",
@@ -111,21 +111,76 @@ static bool removed_feature(std::string const &expr)
         "circle","bitmap","bezier","animation","hyperplan","hypersphere",
         "hypersurface","frame_3d","plot3d","graphe3d","plotinequation",
         "inequationplot","envelope","locus","linetan","tabvar","draw_arc","draw_circle","draw_line",
-        "draw_polygon","draw_rectangle","python_compat","exponentiald","betad",
-        "cauchyd","gammad","geometric","weibulld","suvat","projectile",
-        "pulley","incline","force","weight","moment","resolve","friction"
+        "draw_polygon","draw_rectangle","python_compat","complex","jordanblock",
+        "trace","transpose","cholesky","about","cone","cube","cylinder",
+        "dodecahedron","icosahedron","octahedron","plane","sphere","tetrahedron",
+        "volume","program","bloc","ifte","for","while","local","return",
+        "try_catch","throw","break","continue","inputform","choosebox","output",
+        "input","dialog","pause","sleep","execute","exponentiald","exponential",
+        "exponential_cdf","exponential_icdf","betad","cauchyd","cauchy",
+        "cauchy_cdf","cauchy_icdf","gammad","geometric","weibulld","weibull",
+        "weibull_cdf","weibull_icdf","student","student_cdf","student_icdf",
+        "chisquare","chisquare_cdf","chisquare_icdf","fisher","fisher_cdf",
+        "fisher_icdf","snedecor","snedecor_cdf","snedecor_icdf","uniform",
+        "cdf","plotcdf","kolmogorovd","kolmogorovt","wilcoxons","wilcoxonp",
+        "wilcoxont","chisquaret","normalt","studentt","multinomial",
+        "randmultinomial","randchisquare","randstudent","randfisher","randexp",
+        "randgammad","randbetad","randweibulld","randgeometric","randvector",
+        "randmatrix","random","random_variable","randvar","hasard","srand",
+        "randpoly","egv","egvl","eigenvals","eigenvalues","eigenvects",
+        "eigenvectors","svd","ker","kernel","rank","rat_jordan",
+        "rat_jordan_block","pcar_hessenberg","det_minor","basis","image",
+        "rref","ref","suvat","projectile","pulley","incline","force","weight",
+        "moment","resolve","friction"
     };
     for(char const *name : calls) {
         if(has_call(s, name)) return true;
     }
 
     static char const *const words[] = {
-        "mod","gl_x","gl_y"
+        "mod","gl_x","gl_y","crypto","keep_pivot","minor_det","rational_det"
     };
     for(char const *name : words) {
         if(has_word(s, name)) return true;
     }
     return false;
+}
+
+static bool numeric_literal(std::string const &expr)
+{
+    std::string s = trim(expr);
+    if(s.empty()) return false;
+    bool digit = false;
+    bool dot = false;
+    std::size_t i = (s[0] == '-' || s[0] == '+') ? 1 : 0;
+    if(i >= s.size()) return false;
+    for(; i < s.size(); ++i) {
+        unsigned char c = static_cast<unsigned char>(s[i]);
+        if(std::isdigit(c)) {
+            digit = true;
+            continue;
+        }
+        if(s[i] == '.' && !dot) {
+            dot = true;
+            continue;
+        }
+        return false;
+    }
+    return digit;
+}
+
+static char const *pure_method_fallback(bool removed)
+{
+    return removed
+        ? "Pure method fallback:\n"
+          "Unsupported built-in removed from this Pure build.\n"
+          "1. Rewrite the question using algebra, trig, logs or calculus.\n"
+          "2. Try solve, diff, integrate, range, domain, xform, expand or factor.\n"
+          "3. For stats, matrices, plotting, scripts or mechanics, use the calculator app for that topic.\n"
+        : "General Pure method:\n"
+          "1. Identify the target: simplify, solve, differentiate, integrate, prove, range or domain.\n"
+          "2. Rewrite with standard A-level identities and restrictions first.\n"
+          "3. Then use solve, diff, integrate, range, domain, xform, expand or factor on the clean sub-step.\n";
 }
 
 static std::string stdin_text()
@@ -145,11 +200,11 @@ int main(int argc, char **argv)
     std::string flag = argv[1];
     if(flag == "--stdin-program") {
         (void)stdin_text();
-        std::cout << "Err: unsupported (not A-level scope)\n";
+        std::cout << pure_method_fallback(true);
         return 0;
     }
     if(flag == "--stats" || flag == "--bool" || flag == "--nand" || flag == "--nor") {
-        std::cout << "Err: unsupported (not A-level scope)\n";
+        std::cout << pure_method_fallback(true);
         return 0;
     }
 
@@ -157,7 +212,11 @@ int main(int argc, char **argv)
     std::string expr = flagged ? (argc >= 3 ? argv[2] : "") : flag;
 
     if(removed_feature(expr)) {
-        std::cout << "Err: unsupported (not A-level scope)\n";
+        std::cout << pure_method_fallback(true);
+        return 0;
+    }
+    if(numeric_literal(expr)) {
+        std::cout << trim(expr) << "\n";
         return 0;
     }
 
@@ -168,6 +227,6 @@ int main(int argc, char **argv)
         return 0;
     }
 
-    std::cout << "Err: unsupported (not A-level scope)\n";
+    std::cout << pure_method_fallback(false);
     return 0;
 }

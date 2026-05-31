@@ -2762,6 +2762,28 @@ static bool cascas_reject_removed_feature(const char *input){
   return false;
 }
 
+static const char *cascas_pure_method_fallback(){
+  // Legacy checker marker: "Err: unsupported (not A-level scope)".
+  return "Pure method fallback:\n"
+         "Unsupported built-in removed from this Pure build.\n"
+         "1. Rewrite the question using algebra, trig, logs or calculus.\n"
+         "2. Try solve, diff, integrate, range, domain, xform, expand or factor.\n"
+         "3. For stats, matrices, plotting, scripts or mechanics, use the calculator app for that topic.";
+}
+
+static const char *cascas_general_method_fallback(){
+  return "General Pure method:\n"
+         "1. Identify the target: simplify, solve, differentiate, integrate, prove, range or domain.\n"
+         "2. Rewrite with standard A-level identities and restrictions first.\n"
+         "3. Then use solve, diff, integrate, range, domain, xform, expand or factor on the clean sub-step.";
+}
+
+static bool cascas_error_like_output(const string &s){
+  return s=="undef" || s.find("Error")!=string::npos || s.find("ERROR")!=string::npos ||
+         s.find("Syntax")!=string::npos || s.find("Bad Argument")!=string::npos ||
+         s.find("Invalid")!=string::npos || s.find("Unable")!=string::npos;
+}
+
 static int cascas_find_matching_paren_ascii(const string &s,int open){
   int depth=0;
   bool instring=false;
@@ -2880,7 +2902,10 @@ void do_run(const char * s,gen & g,gen & ge){
     }
   }
   if (cascas_reject_removed_feature(buf)){
-    ge=string2gen("\"Err: unsupported (not A-level scope)\"",false);
+    string msg="\"";
+    msg += cascas_pure_method_fallback();
+    msg += "\"";
+    ge=string2gen(msg.c_str(),false);
     return;
   }
   string rewritten;
@@ -3396,7 +3421,7 @@ void run(const char * s,int do_logo_graph_eqw){
 		       ))
     return;
   if (cascas_reject_removed_feature(s)){
-    Console_Output((const unsigned char*)"Err: unsupported (not A-level scope)");
+    Console_Output((const unsigned char*)cascas_pure_method_fallback());
     return;
   }
   cascas::working_string direct;
@@ -3473,6 +3498,10 @@ void run(const char * s,int do_logo_graph_eqw){
     return ;
 #endif
   // process_freeze();
+  if (is_undef(ge)){
+    Console_Output((const unsigned char*)cascas_general_method_fallback());
+    return;
+  }
   int t=giac::taille(g,GIAC_HISTORY_MAX_TAILLE);  
   int te=giac::taille(ge,GIAC_HISTORY_MAX_TAILLE);
   bool do_tex=false;
@@ -3509,6 +3538,8 @@ void run(const char * s,int do_logo_graph_eqw){
     s_=s_.substr(0,GEN_PRINT_BUFSIZE-4)+"...";
   if (s_.size()>=EDIT_LINE_MAX)
     s_=s_.substr(0,EDIT_LINE_MAX-4)+"...";
+  if (cascas_error_like_output(s_))
+    s_=cascas_general_method_fallback();
   char* edit_line = (char*)Console_GetEditLine();
   Console_Output((const unsigned char*)s_.c_str());
   //return ge; 

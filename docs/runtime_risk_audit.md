@@ -30,6 +30,9 @@ graph TD
 - **Fixed high:** plain numeric literals such as `99999` were caught by the host/calculator arithmetic working route. Numeric literals now return `false` from `cascas_working`, so calculator execution falls through to the original KhiCAS evaluator.
 - **Fixed high:** catalog F2/F3 examples were stored as full commands without upstream `#` exact-insert marker, causing nested inserts such as `abs(abs(-3))`.
 - **Fixed medium:** A-level build could still read a stale `\\fls0\\FMENU.py` created by older KhiCAS and inherit old labels/colours. The rebuild now uses compiled menu config only and fixes F-key background colour in A-level mode.
+- **Fixed medium:** file-icon sprite drawing wrote directly to VRAM without clipping. `CopySpriteMasked` now clips to LCD bounds and `get_pixel` returns `0` for out-of-bounds reads.
+- **Fixed medium:** removed-feature commands no longer print the old `Err: unsupported (not A-level scope)` message to users. They show a short Pure-method fallback with next commands to try.
+- **Fixed medium:** upstream `undef`/syntax-style output is masked with a general Pure-method fallback, so invalid pure attempts get next-step guidance instead of a raw error string.
 - **Medium:** metadata rename changes visible/internal add-in name; low risk if sidecar keeps upstream filename because `ram_filename` is hardcoded as `\\fls0\khicas50.8c2`.
 - **Medium:** hard pruning can break hidden dependencies; mitigated by compile, removed-feature scans, and host working tests.
 - **Medium:** external help pack can be missing; calculator should still run, but help detail will be unavailable.
@@ -45,3 +48,8 @@ Copy all generated files from `calculator_files/` to calculator storage root:
 - `CASIOCAS.PAK`
 
 Do not rename `khicas50.ac2`.
+
+## Platform Notes
+
+- WikiPrizm documents TLB ERROR as an unmapped virtual-memory access in add-in code, so fixes focus on pointer/VRAM bounds and removing risky pre-parser fallbacks.
+- WikiPrizm recommends `GetVRAMAddress()` over hard-coded VRAM addresses for CG50 portability; this build keeps the syscall path and clips new sprite writes before touching VRAM.

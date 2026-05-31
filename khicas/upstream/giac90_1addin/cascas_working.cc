@@ -3921,9 +3921,12 @@ static bool try_parametric_diff_working(const char *input,working_string &out){
 }
 
 bool eval_with_working(const char *input,working_string &out){
-  working_string cmp=compact_ascii(input?input:"");
-  if (!delimiters_balanced(input?input:""))
+  working_string raw(input?input:"");
+  if (raw.size()>768)
     return false;
+  if (!delimiters_balanced(raw))
+    return false;
+  working_string cmp=compact_ascii(raw);
   if (cmp=="diff((x^2)tan(y)=9,x)" || cmp=="diff(x^2tan(y)=9,x)" ||
       cmp=="implicit_diff((x^2)tan(y)=9,x,y)" || cmp=="implicit_diff(x^2tan(y)=9,x,y)"){
     out="d/dx: x^2*tan(y)=9\n2*x*tan(y)+x^2*sec(y)^2*(dy)/(dx)=0\ntan(y)=9/x^2 and sec(y)^2=1+tan(y)^2\n(dy)/(dx)=(-18x)/(x^4+81)";
