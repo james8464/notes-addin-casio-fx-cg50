@@ -1,6 +1,6 @@
 # CasioCAS Project Graph
 
-Last updated: 2026-05-31 02:09 Europe/London
+Last updated: 2026-05-31 02:12 Europe/London
 
 ## Build
 
@@ -126,6 +126,7 @@ graph TD
   Help["help/functions"] --> HelpQ["check_help_quality"]
   Queue["tests/golden/exact_calculator_input_queue.jsonl"] --> Exact["tests/run_exact_queue.py"]
   Shared["tests/check_shared_working.py"] --> SharedGate["same adapter smoke"]
+  Shared --> CoreNoGolden["tests/check_shared_core_without_golden.py"]
   Queue --> Generator["tools/generate_cascas_golden_cases.py"]
   Generator --> GoldenCoverage["tests/check_golden_shared_coverage.py"]
   UI["g3a bytes"] --> Border["check_calculator_border"]
@@ -146,6 +147,7 @@ graph LR
   Queue["golden queue"] --> QueueRun["200/200 host ok"]
   Queue --> GoldenRun["200/200 direct calculator-source ok"]
   Shared["shared working"] --> SharedRun["63/63 host+calculator adapter ok"]
+  Shared --> CoreRun["60/60 core routes without golden fallback ok"]
   Obj["object prune"] --> QR["qrcodegen.o link-safe removed"]
   Macro["source stubs"] --> Stubbed["plot/list/stats/special/ODE/file IO/linalg/transform helpers blocked"]
   Static["lexer prune"] --> StaticRun["distribution/denom/transform static names neutralized"]
