@@ -1,6 +1,6 @@
 # CasioCAS Project Graph
 
-Last updated: 2026-05-31 12:24 Europe/London
+Last updated: 2026-05-31 12:30 Europe/London
 
 ## Build
 
@@ -53,7 +53,7 @@ graph TD
   Direct --> ExactRange["exact-fraction quadratic range output, including rational coefficients"]
   Direct --> BoundedRange["bounded interval range(expr,var,a,b) for linear/quadratic pure functions"]
   Direct --> Domain["domain inequalities for sqrt/log restrictions"]
-  Direct --> RationalDomain["rational denominator exclusions as inequalities, including x^2-a cases"]
+  Direct --> RationalDomain["rational denominator exclusions as inequalities, generic x^2-a perfect-square cases"]
   Direct --> CompoundDomain["combined sqrt/log domain constraints"]
   Direct --> DiffInt["power/product/chain/quotient diff + trig/log integrals"]
   Direct --> IntMethods["integration by parts and substitution pure working routes"]

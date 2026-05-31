@@ -1,5 +1,5 @@
 Args: domain(expr) or domain(expr,var)
 Required: expr
 Does: Returns the allowed real input values as inequalities.
-Examples: domain(sqrt(x-2),x); domain(log(10,4-x),x); domain(1/(x^2-1),x); domain(1/(x^2-4),x); domain(sqrt(4-x)+ln(x-1),x)
+Examples: domain(sqrt(x-2),x); domain(log(10,4-x),x); domain(1/(x^2-1),x); domain(1/(x^2-9),x); domain(sqrt(4-x)+ln(x-1),x)
 Working: Shows denominator, square-root, and logarithm constraints.

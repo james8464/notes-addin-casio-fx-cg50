@@ -585,6 +585,35 @@ static bool try_range(const char *input,working_string &out){
   return false;
 }
 
+static working_string format_ll_local(long long v){
+  char buf[64];
+  CASCAS_SNPRINTF(buf,sizeof(buf),"%lld",v);
+  return buf;
+}
+
+static bool parse_recip_x2_minus_square(const working_string &expr,long long &root,long long &square){
+  working_string prefix("1/(x^2-");
+  if (!starts_with(expr,prefix.c_str()) || expr.size()<=prefix.size()+1 || expr[expr.size()-1]!=')')
+    return false;
+  working_string nstr=expr.substr(prefix.size(),expr.size()-prefix.size()-1);
+  long long n=0;
+  for (int i=0;i<int(nstr.size());++i){
+    if (!isdigit((unsigned char)nstr[i]))
+      return false;
+    n=n*10+(nstr[i]-'0');
+  }
+  if (n<=0)
+    return false;
+  for (long long r=1;r*r<=n;++r){
+    if (r*r==n){
+      root=r;
+      square=n;
+      return true;
+    }
+  }
+  return false;
+}
+
 static bool try_domain(const char *input,working_string &out){
   working_string args[2];
   int count=0;
@@ -616,20 +645,23 @@ static bool try_domain(const char *input,working_string &out){
     out += "Answer: x < -1 or x > 1";
     return true;
   }
-  if (expr=="1/(x^2-1)"){
+  long long root=0,square=0;
+  if (parse_recip_x2_minus_square(expr,root,square)){
+    working_string r=format_ll_local(root),s=format_ll_local(square);
     out="Domain:\n";
     out += "Denominator must be non-zero\n";
-    out += "x^2 - 1 != 0\n";
-    out += "(x-1)(x+1) != 0\n";
-    out += "Answer: x != -1 and x != 1";
-    return true;
-  }
-  if (expr=="1/(x^2-4)"){
-    out="Domain:\n";
-    out += "Denominator must be non-zero\n";
-    out += "x^2 - 4 != 0\n";
-    out += "(x-2)(x+2) != 0\n";
-    out += "Answer: x != -2 and x != 2";
+    out += "x^2 - ";
+    out += s;
+    out += " != 0\n";
+    out += "(x-";
+    out += r;
+    out += ")(x+";
+    out += r;
+    out += ") != 0\n";
+    out += "Answer: x != -";
+    out += r;
+    out += " and x != ";
+    out += r;
     return true;
   }
   if (expr=="sqrt(4-x)+ln(x-1)" || expr=="sqrt(4-x)+log(x-1)"){
