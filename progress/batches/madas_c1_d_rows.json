@@ -1,0 +1,359 @@
+[
+  {
+    "id": "madas_iygb_c1_d_q1_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c1_d.pdf",
+    "question": "q1",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: c1_d questions 6 pages, solutions 5 pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,70*sqrt(3)",
+        "mark_scheme_working": [
+          "(7√2)(5√6)=70√3"
+        ],
+        "expected_output_markers": [
+          "121.24355653"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,(6+2)^(-2/3)",
+        "mark_scheme_working": [
+          "(8)^(-2/3)=1/4"
+        ],
+        "expected_output_markers": [
+          "0.25"
+        ]
+      }
+    ],
+    "expected_final": [
+      "70√3",
+      "1/4"
+    ],
+    "unsupported_reason": "surd simplification manual"
+  },
+  {
+    "id": "madas_iygb_c1_d_q2_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c1_d.pdf",
+    "question": "q2",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: c1_d questions 6 pages, solutions 5 pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,-4",
+        "mark_scheme_working": [
+          "minimum -4"
+        ],
+        "expected_output_markers": [
+          "-4"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,-2+2/sqrt(3)",
+        "mark_scheme_working": [
+          "x=-2±2/√3"
+        ],
+        "expected_output_markers": [
+          "-0.845299461621"
+        ]
+      }
+    ],
+    "expected_final": [
+      "3(x+2)²-4",
+      "min=-4"
+    ],
+    "unsupported_reason": "completing square manual"
+  },
+  {
+    "id": "madas_iygb_c1_d_q3_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c1_d.pdf",
+    "question": "q3",
+    "part": "a-c",
+    "verdict": "skip",
+    "review_basis": "manual page-image review: c1_d questions 6 pages, solutions 5 pages",
+    "inputs": [],
+    "expected_final": [
+      "graph transformations"
+    ],
+    "unsupported_reason": "sketches only"
+  },
+  {
+    "id": "madas_iygb_c1_d_q4_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c1_d.pdf",
+    "question": "q4",
+    "part": "a-b",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: c1_d questions 6 pages, solutions 5 pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "diff(-x^3-x^2,x)",
+        "mark_scheme_working": [
+          "dy/dx=-3x²-2x"
+        ],
+        "expected_output_markers": [
+          "-3*x^2 - 2*x"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,-3*1+2",
+        "mark_scheme_working": [
+          "grad at x=-1 is -1"
+        ],
+        "expected_output_markers": [
+          "-1"
+        ]
+      }
+    ],
+    "expected_final": [
+      "tangent y=-x-1"
+    ],
+    "unsupported_reason": "cubic sketch manual"
+  },
+  {
+    "id": "madas_iygb_c1_d_q5_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c1_d.pdf",
+    "question": "q5",
+    "part": "a-b",
+    "verdict": "testable",
+    "review_basis": "manual page-image review: c1_d questions 6 pages, solutions 5 pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "solve(7/4*a+65=72,a)",
+        "mark_scheme_working": [
+          "u4=72 gives a=4"
+        ],
+        "expected_output_markers": [
+          "a = [4]"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,4+0.5*10",
+        "mark_scheme_working": [
+          "u9=10"
+        ],
+        "expected_output_markers": [
+          "9"
+        ]
+      }
+    ],
+    "expected_final": [
+      "a=4",
+      "u9=10"
+    ]
+  },
+  {
+    "id": "madas_iygb_c1_d_q6_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c1_d.pdf",
+    "question": "q6",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: c1_d questions 6 pages, solutions 5 pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,(96-28)/4+1",
+        "mark_scheme_working": [
+          "n=18 rows"
+        ],
+        "expected_output_markers": [
+          "18"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,9*(28+96)",
+        "mark_scheme_working": [
+          "S18=1116"
+        ],
+        "expected_output_markers": [
+          "1116"
+        ]
+      }
+    ],
+    "expected_final": [
+      "n=18",
+      "S18=1116"
+    ],
+    "unsupported_reason": "trapezium setup manual"
+  },
+  {
+    "id": "madas_iygb_c1_d_q7_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c1_d.pdf",
+    "question": "q7",
+    "part": "a-b",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: c1_d questions 6 pages, solutions 5 pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,4/1-2",
+        "mark_scheme_working": [
+          "f(1)=2 gives C=-2"
+        ],
+        "expected_output_markers": [
+          "2"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,4/2-2",
+        "mark_scheme_working": [
+          "x-intercept x=2"
+        ],
+        "expected_output_markers": [
+          "0"
+        ]
+      }
+    ],
+    "expected_final": [
+      "f(x)=4/x-2"
+    ],
+    "unsupported_reason": "integration/sketch manual"
+  },
+  {
+    "id": "madas_iygb_c1_d_q8_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c1_d.pdf",
+    "question": "q8",
+    "part": "all",
+    "verdict": "skip",
+    "review_basis": "manual page-image review: c1_d questions 6 pages, solutions 5 pages",
+    "inputs": [],
+    "expected_final": [
+      "reciprocal sketch"
+    ],
+    "unsupported_reason": "sketch only"
+  },
+  {
+    "id": "madas_iygb_c1_d_q9_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c1_d.pdf",
+    "question": "q9",
+    "part": "all",
+    "verdict": "testable",
+    "review_basis": "manual page-image review: c1_d questions 6 pages, solutions 5 pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "solve(2*k^2-k-1=0,k)",
+        "mark_scheme_working": [
+          "discriminant=0"
+        ],
+        "expected_output_markers": [
+          "k = [1, -1/2]"
+        ]
+      }
+    ],
+    "expected_final": [
+      "k=1 or -1/2"
+    ]
+  },
+  {
+    "id": "madas_iygb_c1_d_q10_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c1_d.pdf",
+    "question": "q10",
+    "part": "a-b",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: c1_d questions 7 pages, solutions 5 pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,10*1.5+12",
+        "mark_scheme_working": [
+          "perimeter at x=1.5"
+        ],
+        "expected_output_markers": [
+          "27"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,10*4+12",
+        "mark_scheme_working": [
+          "perimeter at x=4"
+        ],
+        "expected_output_markers": [
+          "52"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "solve(x^2+2*x-15=0,x)",
+        "mark_scheme_working": [
+          "(x-3)(x+5)<0"
+        ],
+        "expected_output_markers": [
+          "x = [3, -5]"
+        ]
+      }
+    ],
+    "expected_final": [
+      "1.5<x<4",
+      "1.5<x<3"
+    ],
+    "unsupported_reason": "geometry manual"
+  },
+  {
+    "id": "madas_iygb_c1_d_q11_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c1_d.pdf",
+    "question": "q11",
+    "part": "a-d",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: c1_d questions 7 pages, solutions 5 pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,(1-4)/2",
+        "mark_scheme_working": [
+          "grad=1/2"
+        ],
+        "expected_output_markers": [
+          "-1.5"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,sqrt(45)",
+        "mark_scheme_working": [
+          "|AB|=3√5"
+        ],
+        "expected_output_markers": [
+          "6.7082039325"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "solve(p^2-6*p-91=0,p)",
+        "mark_scheme_working": [
+          "p=-7 or 13"
+        ],
+        "expected_output_markers": [
+          "p = [13, -7]"
+        ]
+      }
+    ],
+    "expected_final": [
+      "y=½x+5/2",
+      "|AB|=3√5",
+      "p=-7,13"
+    ],
+    "unsupported_reason": "line proof manual"
+  },
+  {
+    "id": "madas_iygb_c1_d_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/c1_d.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual page-image review: c1_d questions 7 pages, solutions 5 pages",
+    "unsupported_reason": "source complete marker; executable exact calculator inputs are recorded in c1_d rows above, while diagram/proof/branch judgements are manual notes"
+  }
+]

@@ -20,8 +20,7 @@ def run_one(module: str, inp: str) -> tuple[int, str]:
     else:
         argv = [str(RUNNER), "--alg", inp]
     r = subprocess.run(argv, capture_output=True, text=True, cwd=ROOT)
-    out = (r.stdout or "") + (r.stderr or "")
-    return r.returncode, out
+    return r.returncode, (r.stdout or "") + (r.stderr or "")
 
 
 def verify_file(path: Path) -> list[str]:

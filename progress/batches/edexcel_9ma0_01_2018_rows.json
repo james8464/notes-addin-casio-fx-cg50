@@ -1,0 +1,500 @@
+[
+  {
+    "id": "edexcel_9ma0_01_2018_q1_small_angle_approx",
+    "source_pdf": "Edexcel A Level Maths past papers/9ma0-01-que-2018.pdf",
+    "question": "q1",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: question pages; mark scheme 9ma0-01-ms-2018 page 7",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,(8*0.01^2)/(6*0.01^2)",
+        "mark_scheme_working": [
+          "cos(4θ)≈1-(4θ)^2/2 so 1-cos(4θ)≈8θ^2",
+          "sin(3θ)≈3θ",
+          "ratio=8θ^2/(6θ^2)=4/3"
+        ],
+        "expected_output_markers": [
+          "1.33333333333"
+        ]
+      }
+    ],
+    "expected_final": [
+      "4/3"
+    ],
+    "unsupported_reason": "small-angle approximation setup is contextual"
+  },
+  {
+    "id": "edexcel_9ma0_01_2018_q2_sqrt_curve_stationary",
+    "source_pdf": "Edexcel A Level Maths past papers/9ma0-01-que-2018.pdf",
+    "question": "q2",
+    "part": "a-c",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: question pages; mark scheme 9ma0-01-ms-2018 page 8",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "diff(u^4-2*u^2-24*u,u)",
+        "mark_scheme_working": [
+          "u=sqrt(x)",
+          "y=u^4-2u^2-24u",
+          "dy/du=4u^3-4u-24"
+        ],
+        "expected_output_markers": [
+          "dy/du = 4*u^3 - 4*u - 24"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "evalat(4*u^3-4*u-24,u,2)",
+        "mark_scheme_working": [
+          "x=4 gives u=2",
+          "dy/dx=0 at stationary point"
+        ],
+        "expected_output_markers": [
+          "f(2) = 0"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,2+6*4^(-3/2)",
+        "mark_scheme_working": [
+          "d2y/dx2=2+6x^(-3/2)",
+          "at x=4 gives 2.75>0"
+        ],
+        "expected_output_markers": [
+          "2.75"
+        ]
+      }
+    ],
+    "expected_final": [
+      "stationary point at x=4 is a minimum"
+    ],
+    "unsupported_reason": "sqrt substitution wording and minimum conclusion are contextual"
+  },
+  {
+    "id": "edexcel_9ma0_01_2018_q3_sector_radius",
+    "source_pdf": "Edexcel A Level Maths past papers/9ma0-01-que-2018.pdf",
+    "question": "q3",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: question pages; mark scheme 9ma0-01-ms-2018 page 9",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,sqrt(33)",
+        "mark_scheme_working": [
+          "A=11=1/2 r^2 θ",
+          "2r+rθ=4rθ gives θ=2/3",
+          "r=sqrt(33)"
+        ],
+        "expected_output_markers": [
+          "5.74456264654"
+        ]
+      }
+    ],
+    "expected_final": [
+      "r=sqrt(33)"
+    ],
+    "unsupported_reason": "sector diagram and perimeter relation are manual"
+  },
+  {
+    "id": "edexcel_9ma0_01_2018_q4_ln_iteration",
+    "source_pdf": "Edexcel A Level Maths past papers/9ma0-01-que-2018.pdf",
+    "question": "q4",
+    "part": "a-b",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: question pages; mark scheme 9ma0-01-ms-2018 pages 10-11",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,2*ln(8-3)-3",
+        "mark_scheme_working": [
+          "h(x)=2ln(8-x)-x",
+          "h(3)>0"
+        ],
+        "expected_output_markers": [
+          "0.218875824868"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,2*ln(8-4)-4",
+        "mark_scheme_working": [
+          "h(4)<0",
+          "root in (3,4)"
+        ],
+        "expected_output_markers": [
+          "-1.22741127776"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,2*ln(8-4)",
+        "mark_scheme_working": [
+          "x2=2ln(4) from x1=4 iteration"
+        ],
+        "expected_output_markers": [
+          "2.77258872224"
+        ]
+      }
+    ],
+    "expected_final": [
+      "3<α<4",
+      "iteration diverges from x1=4"
+    ],
+    "unsupported_reason": "cobweb/gradient justification is manual"
+  },
+  {
+    "id": "edexcel_9ma0_01_2018_q5_trig_quotient_derivative",
+    "source_pdf": "Edexcel A Level Maths past papers/9ma0-01-que-2018.pdf",
+    "question": "q5",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: question pages; mark scheme 9ma0-01-ms-2018 page 12",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,3/(2+2)",
+        "mark_scheme_working": [
+          "at θ=π/4, y=3/4"
+        ],
+        "expected_output_markers": [
+          "0.75"
+        ]
+      }
+    ],
+    "expected_final": [
+      "A=3/2"
+    ],
+    "unsupported_reason": "quotient-rule proof to A/(1+sin2θ) is manual"
+  },
+  {
+    "id": "edexcel_9ma0_01_2018_q6_circle_tangent",
+    "source_pdf": "Edexcel A Level Maths past papers/9ma0-01-que-2018.pdf",
+    "question": "q6",
+    "part": "a-c",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: question pages; mark scheme 9ma0-01-ms-2018 pages 13-14",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,10/sqrt(5)",
+        "mark_scheme_working": [
+          "radius is distance from (7,5) to y=2x+1",
+          "r=10/sqrt(5)"
+        ],
+        "expected_output_markers": [
+          "4.472135955"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,(7-5)^2+(5-5)^2",
+        "mark_scheme_working": [
+          "r^2=20"
+        ],
+        "expected_output_markers": [
+          "4"
+        ]
+      }
+    ],
+    "expected_final": [
+      "centre (7,5)",
+      "r=2sqrt(5)",
+      "k=1"
+    ],
+    "unsupported_reason": "perpendicular gradient and tangent line reasoning are manual"
+  },
+  {
+    "id": "edexcel_9ma0_01_2018_q7_parametric_integrals",
+    "source_pdf": "Edexcel A Level Maths past papers/9ma0-01-que-2018.pdf",
+    "question": "q7",
+    "part": "a-b",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: question pages; mark scheme 9ma0-01-ms-2018 pages 16-17",
+    "inputs": [
+      {
+        "module": "integrate",
+        "input": "integrate(2/(3*x-1),x,1,3)",
+        "mark_scheme_working": [
+          "∫2/(3x-k)dx with k=1",
+          "2/3 ln((9k-k)/(3k-k))=2/3 ln4"
+        ],
+        "expected_output_markers": [
+          "2/3*ln(abs(3*x - 1)) + C",
+          "Answer: 2/3*ln(abs(3*x - 1)) + C"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,2/3*ln(4)",
+        "mark_scheme_working": [
+          "value is 2/3 ln4, independent of k"
+        ],
+        "expected_output_markers": [
+          "0.924196240747"
+        ]
+      }
+    ],
+    "expected_final": [
+      "first integral independent of k",
+      "second integral ∝ 1/k"
+    ],
+    "unsupported_reason": "general-k proof wording is contextual"
+  },
+  {
+    "id": "edexcel_9ma0_01_2018_q8_harbour_depth",
+    "source_pdf": "Edexcel A Level Maths past papers/9ma0-01-que-2018.pdf",
+    "question": "q8",
+    "part": "a-b",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: question pages; mark scheme 9ma0-01-ms-2018 pages 20-21",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,5+2*sin(30*6.5)",
+        "mark_scheme_working": [
+          "t=6.5 at entry",
+          "D=5+2sin(30t)°"
+        ],
+        "expected_output_markers": [
+          "5.43890933599"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,5+2*sin(90)",
+        "mark_scheme_working": [
+          "max depth is 7 m"
+        ],
+        "expected_output_markers": [
+          "6.7879933272"
+        ]
+      }
+    ],
+    "expected_final": [
+      "depth at entry≈5.44 m",
+      "earliest leave time manual"
+    ],
+    "unsupported_reason": "time conversion and interval filtering are contextual"
+  },
+  {
+    "id": "edexcel_9ma0_01_2018_q9_implicit_ellipse",
+    "source_pdf": "Edexcel A Level Maths past papers/9ma0-01-que-2018.pdf",
+    "question": "q9",
+    "part": "a-b",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: question pages; mark scheme 9ma0-01-ms-2018 pages 22-23",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,sqrt(50/3)",
+        "mark_scheme_working": [
+          "furthest west has vertical tangent: 3y-x=0",
+          "x^2+3x^2=50",
+          "|x|=5sqrt(2)"
+        ],
+        "expected_output_markers": [
+          "4.08248290464"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,-5*sqrt(2)",
+        "mark_scheme_working": [
+          "x-coordinate of P is negative"
+        ],
+        "expected_output_markers": [
+          "-7.07106781187"
+        ]
+      }
+    ],
+    "expected_final": [
+      "P=(-5sqrt(2), sqrt(2))"
+    ],
+    "unsupported_reason": "implicit differentiation proof and part (c) explanation are manual"
+  },
+  {
+    "id": "edexcel_9ma0_01_2018_q10_separable_de",
+    "source_pdf": "Edexcel A Level Maths past papers/9ma0-01-que-2018.pdf",
+    "question": "q10",
+    "part": "a-c",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: question pages; mark scheme 9ma0-01-ms-2018 pages 26-27",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "solve(dn/dt=k*n,n,t)",
+        "mark_scheme_working": [
+          "separable DE dH/dt=H cos(0.25t)/40",
+          "H=Ae^(0.1sin(0.25t))"
+        ],
+        "expected_output_markers": [
+          "Separate variables:",
+          "ln(abs(n)) = k*t + C",
+          "n = A*e^(k*t)"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,5*exp(0.1)",
+        "mark_scheme_working": [
+          "max height when sin(0.25t)=1",
+          "5e^0.1"
+        ],
+        "expected_output_markers": [
+          "5.52585459038"
+        ]
+      }
+    ],
+    "expected_final": [
+      "H=5e^(0.1sin(0.25t))",
+      "max height=5e^0.1",
+      "T=4π for second maximum"
+    ],
+    "unsupported_reason": "initial condition substitution and second-maximum reasoning are contextual"
+  },
+  {
+    "id": "edexcel_9ma0_01_2018_q11_binomial_sqrt6",
+    "source_pdf": "Edexcel A Level Maths past papers/9ma0-01-que-2018.pdf",
+    "question": "q11",
+    "part": "a-c",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: question pages; mark scheme 9ma0-01-ms-2018 pages 30-31",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,sqrt((1+4/11)/(1-1/11))",
+        "mark_scheme_working": [
+          "x=1/11 gives sqrt((1+4x)/(1-x))=sqrt(3/2)"
+        ],
+        "expected_output_markers": [
+          "1.22474487139"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,1+5/2*(1/11)-5/8*(1/11)^2",
+        "mark_scheme_working": [
+          "approximation value with x=1/11"
+        ],
+        "expected_output_markers": [
+          "1.22210743802"
+        ]
+      }
+    ],
+    "expected_final": [
+      "sqrt(6)≈(3/2)*approx"
+    ],
+    "unsupported_reason": "validity interval and part (b) explanation are contextual"
+  },
+  {
+    "id": "edexcel_9ma0_01_2018_q12_exponential_car",
+    "source_pdf": "Edexcel A Level Maths past papers/9ma0-01-que-2018.pdf",
+    "question": "q12",
+    "part": "a-c",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: question pages; mark scheme 9ma0-01-ms-2018 pages 34-35",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,(25/16)^(1/7)",
+        "mark_scheme_working": [
+          "32000p^4=50000p^11 gives p^7=25/16"
+        ],
+        "expected_output_markers": [
+          "1.06583155827"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,32000*(16/25)^(4/7)",
+        "mark_scheme_working": [
+          "A=32000p^4≈24800"
+        ],
+        "expected_output_markers": [
+          "24796.8021997"
+        ]
+      }
+    ],
+    "expected_final": [
+      "p≈1.0658",
+      "A≈24800",
+      "year exceeds 100000 manual"
+    ],
+    "unsupported_reason": "model interpretation and year selection are contextual"
+  },
+  {
+    "id": "edexcel_9ma0_01_2018_q13_substitution_integral",
+    "source_pdf": "Edexcel A Level Maths past papers/9ma0-01-que-2018.pdf",
+    "question": "q13",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: question pages; mark scheme 9ma0-01-ms-2018 pages 38-39",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,32/15*(2+sqrt(2))",
+        "mark_scheme_working": [
+          "u-substitution gives 32/15(2+sqrt(2))"
+        ],
+        "expected_output_markers": [
+          "7.28365559973"
+        ]
+      }
+    ],
+    "expected_final": [
+      "32/15(2+sqrt(2))"
+    ],
+    "unsupported_reason": "u-substitution setup is manual"
+  },
+  {
+    "id": "edexcel_9ma0_01_2018_q14_parametric_parabola",
+    "source_pdf": "Edexcel A Level Maths past papers/9ma0-01-que-2018.pdf",
+    "question": "q14",
+    "part": "a-c",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: question pages; mark scheme 9ma0-01-ms-2018 pages 42-43",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,6-(5-3)^2",
+        "mark_scheme_working": [
+          "at t=pi/2, x=5, y=2",
+          "check y=6-(x-3)^2"
+        ],
+        "expected_output_markers": [
+          "2"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,6-(3-3)^2",
+        "mark_scheme_working": [
+          "at t=0, x=3, y=6",
+          "check y=6-(x-3)^2"
+        ],
+        "expected_output_markers": [
+          "6"
+        ]
+      }
+    ],
+    "expected_final": [
+      "y=6-(x-3)^2",
+      "k in (2,6)"
+    ],
+    "unsupported_reason": "sketch, domain explanation and k-range reasoning are manual"
+  },
+  {
+    "id": "edexcel_9ma0_01_2018_complete_source_marker",
+    "source_pdf": "Edexcel A Level Maths past papers/9ma0-01-que-2018.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual page-image review: question pages; mark scheme 9ma0-01-ms-2018; all 44 question pages and mark-scheme pages 7-27",
+    "unsupported_reason": "source complete marker; executable exact calculator inputs are recorded in Q1-Q14 rows above, while proof wording, diagram setup, validity intervals and rounding judgements are contextual"
+  }
+]

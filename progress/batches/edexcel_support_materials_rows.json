@@ -1,0 +1,52 @@
+[
+  {
+    "id": "edexcel_a_level_mathematics_sample_assessment_materials_exemplification_complete_source_marker",
+    "source_pdf": "Edexcel A Level Maths support materials/A_level_Mathematics_Sample_Assessment_Materials_Exemplification.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: Edexcel support materials exemplification on VM",
+    "unsupported_reason": "support material reference; not a single question paper"
+  },
+  {
+    "id": "edexcel_sample_assessment_materials_model_answers_mechanics_complete_source_marker",
+    "source_pdf": "Edexcel A Level Maths support materials/Sample_Assessment_Materials_Model_Answers_Mechanics.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: Edexcel SAM model answers mechanics on VM",
+    "unsupported_reason": "mechanics out of A-level Pure CAS scope"
+  },
+  {
+    "id": "edexcel_sample_assessment_materials_model_answers_pure_complete_source_marker",
+    "source_pdf": "Edexcel A Level Maths support materials/Sample_Assessment_Materials_Model_Answers_Pure.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: Edexcel SAM model answers pure on VM",
+    "unsupported_reason": "support material reference; SAM pure model answers not queued as past-paper rows"
+  },
+  {
+    "id": "edexcel_sample_assessment_materials_model_answers_statistics_complete_source_marker",
+    "source_pdf": "Edexcel A Level Maths support materials/Sample_Assessment_Materials_Model_Answers_Statistics.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: Edexcel SAM model answers statistics on VM",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  },
+  {
+    "id": "edexcel_a_level_l3_mathematics_sams_complete_source_marker",
+    "source_pdf": "Edexcel A Level Maths support materials/a-level-l3-mathematics-sams.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: Edexcel a-level-l3-mathematics-sams on VM",
+    "unsupported_reason": "support material reference; full SAM document spans multiple papers"
+  }
+]

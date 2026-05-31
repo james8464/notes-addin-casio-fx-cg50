@@ -1,0 +1,469 @@
+[
+  {
+    "id": "madas_iygb_mp1_r_q1_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp1_r.pdf",
+    "question": "q1",
+    "part": "all",
+    "verdict": "testable",
+    "review_basis": "manual page-image review: mp1_r questions 7 pages, solutions 16 pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,(1+2)^6",
+        "mark_scheme_working": [
+          "(x+2/x)^6 at x=1 gives 729"
+        ],
+        "expected_output_markers": [
+          "729"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,12",
+        "mark_scheme_working": [
+          "x^4 coefficient is 12"
+        ],
+        "expected_output_markers": [
+          "12"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,160",
+        "mark_scheme_working": [
+          "constant term is 160"
+        ],
+        "expected_output_markers": [
+          "160"
+        ]
+      }
+    ],
+    "expected_final": [
+      "x^6+12x^4+60x^2+160+240/x^2+192/x^4+64/x^6"
+    ]
+  },
+  {
+    "id": "madas_iygb_mp1_r_q2_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp1_r.pdf",
+    "question": "q2",
+    "part": "a-b",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: mp1_r questions 7 pages, solutions 16 pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "solve(x^2-5*x+4=0,x)",
+        "mark_scheme_working": [
+          "line y=5 meets curve at x=1 and 4"
+        ],
+        "expected_output_markers": [
+          "x = [4, 1]"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,15-21/2",
+        "mark_scheme_working": [
+          "area=15-21/2=9/2"
+        ],
+        "expected_output_markers": [
+          "4.5"
+        ]
+      }
+    ],
+    "expected_final": [
+      "A(1,5), B(4,5)",
+      "area=9/2"
+    ],
+    "unsupported_reason": "integral setup is manual"
+  },
+  {
+    "id": "madas_iygb_mp1_r_q3_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp1_r.pdf",
+    "question": "q3",
+    "part": "a-c",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: mp1_r questions 7 pages, solutions 16 pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "solve(a-6=0,a)",
+        "mark_scheme_working": [
+          "A(-2,-2) gives a=6"
+        ],
+        "expected_output_markers": [
+          "a = [0 + 6]"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "solve(x^2-x-6=0,x)",
+        "mark_scheme_working": [
+          "intersection x=-2 or 3, B(3,3)"
+        ],
+        "expected_output_markers": [
+          "x = [3, -2]"
+        ]
+      }
+    ],
+    "expected_final": [
+      "translation up 1",
+      "a=6",
+      "B(3,3)"
+    ],
+    "unsupported_reason": "graph sketch is manual"
+  },
+  {
+    "id": "madas_iygb_mp1_r_q4_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp1_r.pdf",
+    "question": "q4",
+    "part": "all",
+    "verdict": "skip",
+    "review_basis": "manual page-image review: mp1_r questions 7 pages, solutions 16 pages",
+    "inputs": [],
+    "expected_final": [
+      "m^2-n^2≠102 proof by exhaustion"
+    ],
+    "unsupported_reason": "parity proof only"
+  },
+  {
+    "id": "madas_iygb_mp1_r_q5_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp1_r.pdf",
+    "question": "q5",
+    "part": "a-d",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: mp1_r questions 7 pages, solutions 16 pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,sqrt(18)",
+        "mark_scheme_working": [
+          "centre (2,1) radius sqrt(18)"
+        ],
+        "expected_output_markers": [
+          "4.24264068712"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,asin(3/sqrt(18))",
+        "mark_scheme_working": [
+          "sin theta=3/sqrt(18)=1/sqrt(2)"
+        ],
+        "expected_output_markers": [
+          "0.785398163397"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "solve(k^2-6*k-27=0,k)",
+        "mark_scheme_working": [
+          "tangent repeated roots k=9,-3"
+        ],
+        "expected_output_markers": [
+          "k = [9, -3]"
+        ]
+      }
+    ],
+    "expected_final": [
+      "centre (2,1)",
+      "ACB=90°",
+      "k=9,-3"
+    ],
+    "unsupported_reason": "completing square and diagram are manual"
+  },
+  {
+    "id": "madas_iygb_mp1_r_q6_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp1_r.pdf",
+    "question": "q6",
+    "part": "a-b",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: mp1_r questions 7 pages, solutions 16 pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "expand(x^3*(x+2))",
+        "mark_scheme_working": [
+          "y=x^3(x+2)=x^4+2x^3"
+        ],
+        "expected_output_markers": [
+          "x^4 + 2*x^3"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "factor(2*x^3+3*x^2)",
+        "mark_scheme_working": [
+          "stationary points x=0,-3/2"
+        ],
+        "expected_output_markers": [
+          "2*x + 3"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,(-3/2)^3*(-3/2+2)",
+        "mark_scheme_working": [
+          "minimum y=-27/16"
+        ],
+        "expected_output_markers": [
+          "-1.6875"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "factor(2*x^3+3*x^2-5)",
+        "mark_scheme_working": [
+          "gradient=10 gives x=1 only"
+        ],
+        "expected_output_markers": [
+          "(x - 1)*(2*x^2 + 5*x + 5)"
+        ]
+      }
+    ],
+    "expected_final": [
+      "min (-3/2,-27/16)",
+      "P(1,3)"
+    ],
+    "unsupported_reason": "sketch is manual"
+  },
+  {
+    "id": "madas_iygb_mp1_r_q7_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp1_r.pdf",
+    "question": "q7",
+    "part": "a-b",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: mp1_r questions 7 pages, solutions 16 pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,60/sqrt(3)",
+        "mark_scheme_working": [
+          "AG=20√3"
+        ],
+        "expected_output_markers": [
+          "34.6410161514"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,15+20*sqrt(3)",
+        "mark_scheme_working": [
+          "CD=15+20√3"
+        ],
+        "expected_output_markers": [
+          "49.6410161514"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,atan(4)",
+        "mark_scheme_working": [
+          "psi=arctan(4)"
+        ],
+        "expected_output_markers": [
+          "1.32581766367"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,120-atan(4)*180/pi",
+        "mark_scheme_working": [
+          "theta=120-psi in degrees"
+        ],
+        "expected_output_markers": [
+          "44.0362434679"
+        ]
+      }
+    ],
+    "expected_final": [
+      "AG=20√3",
+      "CB≈81.6",
+      "theta≈44°"
+    ],
+    "unsupported_reason": "geometry setup is manual"
+  },
+  {
+    "id": "madas_iygb_mp1_r_q8_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp1_r.pdf",
+    "question": "q8",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: mp1_r questions 7 pages, solutions 16 pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "solve(x^2=64,x)",
+        "mark_scheme_working": [
+          "x^2 y=4 gives x=8 when y=1/16"
+        ],
+        "expected_output_markers": [
+          "x = [8, -8]"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,64*(1/16)",
+        "mark_scheme_working": [
+          "8^2*(1/16)=4"
+        ],
+        "expected_output_markers": [
+          "4"
+        ]
+      }
+    ],
+    "expected_final": [
+      "x=8",
+      "y=1/16"
+    ],
+    "unsupported_reason": "log manipulation is manual"
+  },
+  {
+    "id": "madas_iygb_mp1_r_q9_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp1_r.pdf",
+    "question": "q9",
+    "part": "a-c",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: mp1_r questions 7 pages, solutions 16 pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,5*4/4",
+        "mark_scheme_working": [
+          "OB=(5/4)OP gives (5,5/4)"
+        ],
+        "expected_output_markers": [
+          "5"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,27/5",
+        "mark_scheme_working": [
+          "OQ x-coordinate 27/5=5.4"
+        ],
+        "expected_output_markers": [
+          "5.4"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,-49/20",
+        "mark_scheme_working": [
+          "OQ y-coordinate -49/20=-2.45"
+        ],
+        "expected_output_markers": [
+          "-2.45"
+        ]
+      }
+    ],
+    "expected_final": [
+      "Q(5.4,-2.45)",
+      "P,Q,R collinear ratio 1:3"
+    ],
+    "unsupported_reason": "vector setup is manual"
+  },
+  {
+    "id": "madas_iygb_mp1_r_q10_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp1_r.pdf",
+    "question": "q10",
+    "part": "a-e",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: mp1_r questions 7 pages, solutions 16 pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,(6-10)/(9-(-3))",
+        "mark_scheme_working": [
+          "grad AB=-1/3"
+        ],
+        "expected_output_markers": [
+          "-0.333333333333"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,3",
+        "mark_scheme_working": [
+          "perpendicular grad 3, tan theta=3"
+        ],
+        "expected_output_markers": [
+          "3"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "solve(3*x-21=0,x)",
+        "mark_scheme_working": [
+          "L1 x-intercept x=7"
+        ],
+        "expected_output_markers": [
+          "x = [7]"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,4*sqrt(10)*2*sqrt(10)",
+        "mark_scheme_working": [
+          "area=4√10×2√10=80"
+        ],
+        "expected_output_markers": [
+          "80"
+        ]
+      }
+    ],
+    "expected_final": [
+      "y=3x-21",
+      "tan theta=3",
+      "x+3y=7",
+      "D(-5,4)",
+      "area=80"
+    ],
+    "unsupported_reason": "line equations are manual"
+  },
+  {
+    "id": "madas_iygb_mp1_r_q11_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp1_r.pdf",
+    "question": "q11",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: mp1_r questions 7 pages, solutions 16 pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,5-4*(-1)+(-1)^2",
+        "mark_scheme_working": [
+          "max at sin270=-1 gives y=10"
+        ],
+        "expected_output_markers": [
+          "10"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,(1-2)^2+1",
+        "mark_scheme_working": [
+          "min at sin90=1 gives y=2"
+        ],
+        "expected_output_markers": [
+          "2"
+        ]
+      }
+    ],
+    "expected_final": [
+      "A(90°,2)",
+      "B(270°,10)"
+    ],
+    "unsupported_reason": "sin range selection is manual"
+  },
+  {
+    "id": "madas_iygb_mp1_r_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/mp1_r.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual page-image review: all 7 question pages and 16 worked-solution pages (11 questions)",
+    "unsupported_reason": "source complete marker; executable exact calculator inputs are recorded in mp1_r rows above, while diagram/proof/branch judgements are manual notes"
+  }
+]
