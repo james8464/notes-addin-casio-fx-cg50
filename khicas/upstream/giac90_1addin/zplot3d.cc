@@ -75,6 +75,118 @@ using namespace std;
 namespace giac {
 #endif // ndef NO_NAMESPACE_GIAC
 
+#ifdef CASCAS_ALEVEL_ONLY
+  gen do_point3d(const gen & g){
+    return g;
+  }
+
+  vecteur rand_3d(){
+    return makevecteur(0,0,0);
+  }
+
+  vecteur hyperplan_normal(const gen &){
+    return vecteur(0);
+  }
+
+  bool hyperplan_normal_point(const gen &,vecteur &,vecteur &){
+    return false;
+  }
+
+  gen remove_pnt_vect(const gen & g){
+    return remove_at_pnt(g);
+  }
+
+  bool is3d(const gen &){
+    return false;
+  }
+
+  bool perpendiculaire_commune(const gen &,const gen &,gen &,gen &,vecteur &,GIAC_CONTEXT){
+    return false;
+  }
+
+  gen similitude3d(const vecteur &,const gen &,const gen &,const gen &,int,GIAC_CONTEXT){
+    return gensizeerr(contextptr);
+  }
+
+  gen hypersphere_equation(const gen &,const vecteur &){
+    return undef;
+  }
+
+  vecteur interpolyedre(const vecteur &,const gen &,GIAC_CONTEXT){ return vecteur(0); }
+  vecteur interdroitehyperplan(const gen &,const gen &,GIAC_CONTEXT){ return vecteur(0); }
+  vecteur interhyperplan(const gen &,const gen &,GIAC_CONTEXT){ return vecteur(0); }
+  vecteur interhypersurfacecurve(const gen &,const gen &,GIAC_CONTEXT){ return vecteur(0); }
+  vecteur inter2hypersurface(const gen &,const gen &,GIAC_CONTEXT){ return vecteur(0); }
+  vecteur interplansphere(const gen &,const gen &,GIAC_CONTEXT){ return vecteur(0); }
+
+  vecteur remove_face(const vecteur & face,const vecteur &,GIAC_CONTEXT){
+    return face;
+  }
+
+  gen hyperplan2hypersurface(const gen & g){ return g; }
+  gen hypersphere2hypersurface(const gen & g){ return g; }
+  vecteur hypersphere_parameq(const gen &,const vecteur &){ return vecteur(0); }
+  gen hypersurface_equation(const gen &,const vecteur &,GIAC_CONTEXT){ return gensizeerr(contextptr); }
+  bool normal3d(const gen &,vecteur &,vecteur &){ return false; }
+
+  gen plotparam3d(const gen &,const vecteur &,double,double,double,double,double,double,double,double,double,double,bool,bool,const vecteur &,double,double,const gen &,const vecteur &,GIAC_CONTEXT){
+    return gensizeerr(contextptr);
+  }
+
+  gen plotimplicit(const gen&,const gen&,const gen &,const gen &,double,double,double,double,double,double,int,int,int,double,const vecteur &,bool,bool,const context * contextptr){
+    return gensizeerr(contextptr);
+  }
+
+  bool est_cospherique(const gen &,const gen &,const gen &,const gen &,const gen &,GIAC_CONTEXT){
+    return false;
+  }
+
+#define CASCAS_3D_STUB(symbol,token) \
+  gen _##symbol(const gen & args,GIAC_CONTEXT){ \
+    if (args.type==_STRNG && args.subtype==-1) return args; \
+    return gensizeerr(contextptr); \
+  } \
+  static const char _##symbol##_s []=token; \
+  static define_unary_function_eval (__##symbol,&_##symbol,_##symbol##_s); \
+  define_unary_function_ptr5( at_##symbol ,alias_at_##symbol,&__##symbol,0,true);
+
+  CASCAS_3D_STUB(plan,"_rs3d01")
+  CASCAS_3D_STUB(sphere,"_rs3d02")
+  CASCAS_3D_STUB(cone,"_rs3d03")
+  CASCAS_3D_STUB(demi_cone,"_rs3d04")
+  CASCAS_3D_STUB(cylindre,"_rs3d05")
+  CASCAS_3D_STUB(perpendiculaire_commune,"_rs3d06")
+  CASCAS_3D_STUB(polyedre,"_rs3d07")
+  CASCAS_3D_STUB(prisme,"_rs3d08")
+  CASCAS_3D_STUB(parallelepipede,"_rs3d09")
+  CASCAS_3D_STUB(pyramide,"_rs3d10")
+
+  static const char _tetraedre_s []="_rs3d11";
+  static define_unary_function_eval (__tetraedre,&_pyramide,_tetraedre_s);
+  define_unary_function_ptr5( at_tetraedre ,alias_at_tetraedre,&__tetraedre,0,true);
+
+  CASCAS_3D_STUB(tetraedre_centre,"_rs3d12")
+  CASCAS_3D_STUB(cube,"_rs3d13")
+  CASCAS_3D_STUB(cube_centre,"_rs3d14")
+  CASCAS_3D_STUB(octaedre,"_rs3d15")
+  CASCAS_3D_STUB(icosaedre,"_rs3d16")
+  CASCAS_3D_STUB(dodecaedre,"_rs3d17")
+  CASCAS_3D_STUB(aretes,"_rs3d18")
+  CASCAS_3D_STUB(volume,"_rs3d19")
+  CASCAS_3D_STUB(quadrique,"_rs3d20")
+  CASCAS_3D_STUB(est_cospherique,"_rs3d21")
+
+  gen convert3d(const gen & g,GIAC_CONTEXT){
+    if (g.type==_STRNG && g.subtype==-1) return g;
+    return g;
+  }
+  static const char _convert3d_s []="_rs3d22";
+  static define_unary_function_eval (__convert3d,&convert3d,_convert3d_s);
+  define_unary_function_ptr5( at_convert3d ,alias_at_convert3d,&__convert3d,0,true);
+
+#undef CASCAS_3D_STUB
+#else
+
   gen do_point3d(const gen & g){
     gen tmp(g);
     if (tmp.type==_VECT)
@@ -2459,6 +2571,7 @@ namespace giac {
   static define_unary_function_eval (__convert3d,&convert3d,_convert3d_s);
   define_unary_function_ptr5( at_convert3d ,alias_at_convert3d,&__convert3d,0,true);
 
+#endif // CASCAS_ALEVEL_ONLY
 
 #ifndef NO_NAMESPACE_GIAC
 } // namespace giac

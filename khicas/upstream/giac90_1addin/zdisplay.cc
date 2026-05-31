@@ -7837,27 +7837,43 @@ bool discard(Graph2d * gr,float3d x,float3d y,float3d z){
 		   lang==1?"cercle":"circle",
 		   lang==1?"circonscrit":"circumcircle",
 		   lang==1?"inscrit":"incircle",
-		   lang==1?"ellipse":"ellipse",
-		   lang==1?"hyperbole":"hyperbola",
-		   lang==1?"parabole":"parabola",
-		   lang==1?"sphere":"sphere",
-		   0};
+			   lang==1?"ellipse":"ellipse",
+			   lang==1?"hyperbole":"hyperbola",
+			   lang==1?"parabole":"parabola",
+#ifndef CASCAS_ALEVEL_ONLY
+			   lang==1?"sphere":"sphere",
+#endif
+			   0};
 	  const int s=sizeof(tab)/sizeof(char *);
 	  int choix=select_item(tab,"Conic",true);
 	  if (choix<0 || choix>s)
 	    continue;
-	  gen ftmp[]={at_segment,at_segment,at_segment,at_segment,at_segment,at_segment,at_segment};
-	  gen ffinal[]={at_cercle,at_circonscrit,at_inscrit,at_ellipse,at_hyperbole,at_parabole,at_sphere};
-	  int mode[]={3,3,2,2,3,3,2};
-	  const char * help[]={
-			       "Center,Point",
-			       "Point1,Point2,Point3",
-			       "Point1,Point2,Point3",
-			       "Focus1,Focus2,Point_on_ellipse",
-			       "Focus1,Focus2,Point_on_hyperbola",
-			       "Focus,Point_or_line",
-			       "Center,Point",
-	  };
+		  gen ftmp[]={at_segment,at_segment,at_segment,at_segment,at_segment,at_segment
+#ifndef CASCAS_ALEVEL_ONLY
+		    ,at_segment
+#endif
+		  };
+		  gen ffinal[]={at_cercle,at_circonscrit,at_inscrit,at_ellipse,at_hyperbole,at_parabole
+#ifndef CASCAS_ALEVEL_ONLY
+		    ,at_sphere
+#endif
+		  };
+		  int mode[]={3,3,2,2,3,3
+#ifndef CASCAS_ALEVEL_ONLY
+		    ,2
+#endif
+		  };
+		  const char * help[]={
+				       "Center,Point",
+				       "Point1,Point2,Point3",
+				       "Point1,Point2,Point3",
+				       "Focus1,Focus2,Point_on_ellipse",
+				       "Focus1,Focus2,Point_on_hyperbola",
+				       "Focus,Point_or_line",
+#ifndef CASCAS_ALEVEL_ONLY
+				       "Center,Point",
+#endif
+		  };
 	  set_mode(ftmp[choix],ffinal[choix],mode[choix],help[choix]);
 	  continue;
 	}
