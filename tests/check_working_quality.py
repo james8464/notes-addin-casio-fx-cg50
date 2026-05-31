@@ -73,6 +73,16 @@ QUALITY_CASES = [
         ],
     ),
     (
+        "integrate(sin(x),x,0,pi)",
+        5,
+        [
+            "Antiderivative of sin(x) is -cos(x)",
+            "F(pi) = -cos(pi) = 1",
+            "F(0) = -cos(0) = -1",
+            "Answer: 2",
+        ],
+    ),
+    (
         "int(1/x,x)",
         4,
         [
@@ -120,6 +130,15 @@ QUALITY_CASES = [
         ],
     ),
     (
+        "solve(log(2,x)=3,x)",
+        5,
+        [
+            "Use definition: log_a(x)=b means x=a^b",
+            "x = 2^3",
+            "Answer: x = [8]",
+        ],
+    ),
+    (
         "solve(dn/dt=k*n,n,t)",
         8,
         [
@@ -148,6 +167,15 @@ QUALITY_CASES = [
             "f(5) = 10",
             "vertex x = 2 is inside the interval",
             "Answer: 1 <= y <= 10",
+        ],
+    ),
+    (
+        "domain(log(10,4-x),x)",
+        4,
+        [
+            "Log argument must be positive",
+            "4 - x > 0",
+            "Answer: x < 4",
         ],
     ),
     (

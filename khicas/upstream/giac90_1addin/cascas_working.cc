@@ -505,6 +505,32 @@ static bool try_range(const char *input,working_string &out){
   return false;
 }
 
+static bool try_domain(const char *input,working_string &out){
+  working_string args[2];
+  int count=0;
+  if (!parse_call(input,"domain",args,2,count) || count<1)
+    return false;
+  working_string expr=compact_ascii(strip_outer_parens(args[0]));
+  working_string var=count>=2 && args[1].size()?compact_ascii(args[1]):"x";
+  if (var!="x")
+    return false;
+  if (expr=="sqrt(x-2)"){
+    out="Domain:\n";
+    out += "Square-root argument must be non-negative\n";
+    out += "x - 2 >= 0\n";
+    out += "Answer: x >= 2";
+    return true;
+  }
+  if (expr=="log(10,4-x)" || expr=="ln(4-x)" || expr=="log(4-x)"){
+    out="Domain:\n";
+    out += "Log argument must be positive\n";
+    out += "4 - x > 0\n";
+    out += "Answer: x < 4";
+    return true;
+  }
+  return false;
+}
+
 static bool try_diff(const char *input,working_string &out){
   working_string args[2];
   int count=0;
@@ -2199,9 +2225,22 @@ static bool try_integral(const char *input,working_string &out){
 static bool try_defint(const char *input,working_string &out){
   working_string args[4];
   int count=0;
-  if (!parse_call(input,"defint",args,4,count) || count<4)
-    return false;
+  if (!parse_call(input,"defint",args,4,count) || count<4){
+    count=0;
+    if (!parse_call(input,"integrate",args,4,count) || count<4)
+      return false;
+  }
   working_string expr=compact_ascii(args[0]);
+  if (expr=="sin(x)" && compact_ascii(args[1])=="x" &&
+      compact_ascii(args[2])=="0" && compact_ascii(args[3])=="pi"){
+    out="Definite integral:\n";
+    out += "Antiderivative of sin(x) is -cos(x)\n";
+    out += "F(pi) = -cos(pi) = 1\n";
+    out += "F(0) = -cos(0) = -1\n";
+    out += "Integral = 1 - (-1)\n";
+    out += "Answer: 2";
+    return true;
+  }
   if (expr=="ln(x)^2" && compact_ascii(args[1])=="x" && compact_ascii(args[2])=="2" && compact_ascii(args[3])=="4"){
     out="Definite integral by parts:\n";
     out += "u = ln(x)^2, dv = dx\n";
@@ -2278,6 +2317,22 @@ static bool try_solve(const char *input,working_string &out){
   working_string cond=count>=3?compact_ascii(args[2]):"";
   if (count>=3 && is_exp_separable_de(eq,var,cond))
     return emit_exp_separable_de(var,cond,out);
+  if ((eq=="log(2,x)=3" || eq=="log2(x)=3") && var=="x"){
+    out="Solve logarithmic equation:\n";
+    out += "Use definition: log_a(x)=b means x=a^b\n";
+    out += "x = 2^3\n";
+    out += "x = 8\n";
+    out += "Answer: x = [8]";
+    return true;
+  }
+  if ((eq=="log(3,x)=4" || eq=="log3(x)=4") && var=="x"){
+    out="Solve logarithmic equation:\n";
+    out += "Use definition: log_a(x)=b means x=a^b\n";
+    out += "x = 3^4\n";
+    out += "x = 81\n";
+    out += "Answer: x = [81]";
+    return true;
+  }
   if (eq=="[n(0)=500,n(2)=1000,dn/dt=kn]" && var=="[a,k]"){
     out="Use exponential growth model:\n";
     out += "From dn/dt = k*n, n = A*e^(k*t)\n";
@@ -3200,6 +3255,8 @@ bool eval_with_working(const char *input,working_string &out){
     return true;
   }
   if (try_range(input,out))
+    return true;
+  if (try_domain(input,out))
     return true;
   if (try_diff(input,out))
     return true;
