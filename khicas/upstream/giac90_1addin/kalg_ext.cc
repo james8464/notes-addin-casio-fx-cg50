@@ -917,7 +917,7 @@ namespace giac {
 	if (vb==vb0)
 	  *logptr(contextptr) << gettext("The choice was done assuming ") << params << "=" << vb << endl;       
 	else 
-	  *logptr(contextptr) << gettext("Non regular value ") << vb0 << gettext(" was discarded and replaced randomly by ") << params << "=" << vb << endl;	
+	  *logptr(contextptr) << gettext("Non regular value ") << vb0 << gettext(" was discarded by ") << params << "=" << vb << endl;
 	racines=proot(gen2vecteur(evalf(polynome2poly1(pb),1,contextptr)));
       }
       else

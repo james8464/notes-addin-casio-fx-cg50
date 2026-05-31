@@ -1938,7 +1938,7 @@ namespace giac {
       return symbolic(at_trace,a); // gendimerr(contextptr); required to keep trace for geometry
     return mtrace(*a._VECTptr);
   }
-  static const char _trace_s []="trace";
+  static const char _trace_s []="_rmh61";
   static define_unary_function_eval (__trace,&ckmtrace,_trace_s);
   define_unary_function_ptr5( at_trace ,alias_at_trace,&__trace,0,true);
 

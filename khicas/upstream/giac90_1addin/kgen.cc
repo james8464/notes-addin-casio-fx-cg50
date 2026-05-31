@@ -6913,7 +6913,7 @@ namespace giac {
 	tmp=complex2vecteur(tmp,contextptr);
 	if (tmpb._VECTptr->size()==tmp._VECTptr->size())
 	  return dotvecteur(*tmp._VECTptr,*tmpb._VECTptr,contextptr);
-	return gensizeerr(gettext("Unable to multiply two graphic objects"));
+	return gensizeerr(gettext("Unable to multiply two objects"));
       }
       return symbolic_plot_makevecteur(a._SYMBptr->sommet,a._SYMBptr->feuille*b,false,contextptr);
     }

@@ -3599,7 +3599,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
   int step_param(const gen & f,const gen & g,const gen & t,gen & tmin,gen&tmax,vecteur & poi,vecteur & tvi,bool printtvi,bool exactlegende,GIAC_CONTEXT,bool do_inflex){
     bool c=complex_mode(contextptr); int st=step_infolevel(contextptr),s=0;
     if (t==x__IDNT_e || t==y__IDNT_e)
-      *logptr(contextptr) << gettext("Unsupported plot feature") << endl;
+      *logptr(contextptr) << gettext("Unsupported feature") << endl;
     step_infolevel(0,contextptr);
 #ifdef NO_STDEXCEPT
     s=step_param_(f,g,t,tmin,tmax,poi,tvi,printtvi,exactlegende,contextptr,do_inflex);

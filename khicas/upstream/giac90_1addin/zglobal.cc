@@ -2497,7 +2497,7 @@ extern "C" void Sleep(unsigned int miliSecond);
     "tabvar",
     "taylor",
     "texpand",
-    "trace",
+    "_rmh61",
     "trigexpand",
     0
   };
@@ -3290,11 +3290,11 @@ extern "C" void Sleep(unsigned int miliSecond);
 	  if (posi<0 || posi>=int(cur.size()))
 	    posi = cur.find(" import*");
 	  if (posi>pos+5 && posi<int(cur.size())){
-	    int posturtle=cur.find("turtlex");
+	    int posturtle=cur.find("_rmh68");
 	    int poscmath=cur.find("cmath");
 	    int posmath=cur.find("math");
 	    int posnumpy=cur.find("numpyx");
-	    int posmatplotlib=cur.find("matplotx");
+	    int posmatplotlib=cur.find("_rmh69");
 	    if (posmatplotlib<0 || posmatplotlib>=cur.size())
 	      posmatplotlib=cur.find("pylabx");
 	    int cs=int(cur.size());
@@ -3330,11 +3330,11 @@ extern "C" void Sleep(unsigned int miliSecond);
 	chkfrom=false;
 	// import * as ** -> **:=*
 	if (ch=='i' && pos+7<int(cur.size()) && cur.substr(pos,7)=="import "){
-	  int posturtle=cur.find("turtlex");
+	  int posturtle=cur.find("_rmh68");
 	  int poscmath=cur.find("cmath");
 	  int posmath=cur.find("math");
 	  int posnumpy=cur.find("numpyx");
-	  int posmatplotlib=cur.find("matplotx");
+	  int posmatplotlib=cur.find("_rmh69");
 	  if (posmatplotlib<0 || posmatplotlib>=cur.size())
 	    posmatplotlib=cur.find("pylabx");
 	  int cs=int(cur.size());

@@ -360,7 +360,7 @@ void invalid_varname(){
 
 void warn_python(int mode,bool autochange){
   if (mode==0)
-    confirm(autochange?(lang?"Source en syntaxe Xcas detecte.":"Xcas syntax source code detected."):(lang?"Syntaxe Xcas.":"Xcas syntax."),"F1/F6: ok");
+    confirm(autochange?(lang?"Saisie CAS detectee.":"CAS input detected."):(lang?"Syntaxe CAS.":"CAS syntax."),"F1/F6: ok");
   if (mode==1)
     if (autochange)
       confirm(lang?"Syntaxe programme retiree":"Program syntax removed",lang?"en CAS avec ^=**, F1/F6: ok":"Use CAS syntax. F1/F6:ok");

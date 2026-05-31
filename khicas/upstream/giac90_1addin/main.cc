@@ -84,7 +84,7 @@ int select_interpreter(){
 
 #else
 int select_interpreter(){
-  const char * choix[]={"CAS mode","CAS mode","CAS mode","Program mode removed",0,"Program mode removed"};
+  const char * choix[]={"CAS mode","CAS mode","CAS mode","CAS mode",0,"CAS mode"};
   return select_item(choix,"Syntax",false);
 }
 
@@ -3180,7 +3180,7 @@ void edit_script(char * fname){
     string s;
     load_script(filename,s);
     if (s.empty()){
-      s=python_compat(contextptr)?(lang?"Mode programme retire":"Program mode removed"):(lang?"Mode programme retire":"Program mode removed");
+      s=python_compat(contextptr)?(lang?"Mode CAS":"CAS mode"):(lang?"Mode CAS":"CAS mode");
       s += " AC F6 12";
       int k=confirm(s.c_str(),"F1: Tortue, F6: Prog",true);
       if (k==-1)
@@ -3436,7 +3436,7 @@ void run(const char * s,int do_logo_graph_eqw){
       s_="Object too large";
     else {
       if (ge.is_symb_of_sommet(giac::at_pnt) || (ge.type==giac::_VECT && !ge._VECTptr->empty() && ge._VECTptr->back().is_symb_of_sommet(giac::at_pnt)))
-	s_="Graphic object";
+	s_="Object";
       else {
 	//do_tex=ge.type==giac::_SYMB && has_op(ge,*giac::at_inv);
 	// tex support has been disabled!

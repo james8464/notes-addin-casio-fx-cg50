@@ -127,7 +127,7 @@ void menu_setup(){
     string heaps((lang?"Tas CAS ":"Program heap ")+giac::print_INT_(pythonjs_heap_size/1024)+"K");
     smallmenuitems[5].text = (char *) heaps.c_str();
 #else
-    smallmenuitems[5].text = (char *) "Program mode removed";
+    smallmenuitems[5].text = (char *) "CAS mode";
 #endif
     string digs("Digits ");
     digs += giac::print_INT_(decimal_digits(contextptr));
@@ -189,7 +189,7 @@ void menu_setup(){
 	  if (c==2)
 	    cout << "CAS mode, CAS syntax ^=xor\n";
 	  if (c==3)
-	    cout << "Program mode removed\n";
+	    cout << "CAS mode\n";
 	  int p=giac::python_compat(contextptr);
 	  if (c==4){
 	    p=-1;
@@ -469,7 +469,7 @@ void invalid_varname(){
 
 void warn_python(int mode,bool autochange){
   if (mode==0)
-    confirm(autochange?(lang?"Source en syntaxe Xcas detecte.":"Xcas syntax source code detected."):(lang?"Syntaxe Xcas.":"Xcas syntax."),"F1/F6: ok");
+    confirm(autochange?(lang?"Saisie CAS detectee.":"CAS input detected."):(lang?"Syntaxe CAS.":"CAS syntax."),"F1/F6: ok");
   if (mode==1)
     if (autochange)
       confirm(lang?"Syntaxe programme retiree":"Program syntax removed",lang?"en CAS avec ^=**, F1/F6: ok":"Use CAS syntax. F1/F6:ok");
@@ -2469,7 +2469,7 @@ int Console_GetKey(){
     if ( key == KEY_CHAR_FRAC ||
         ( (key==KEY_CTRL_RIGHT || key==KEY_CTRL_LEFT) && Current_Line<Last_Line) ){
       int l=Current_Line;
-      bool graph=strcmp((const char *)Line[l].str,"Graphic object")==0;
+      bool graph=strcmp((const char *)Line[l].str,"Object")==0;
       if (graph && l>0) --l;
       char buf[max(GEN_PRINT_BUFSIZE,strlen((const char *)Line[l].str+1))];
       strcpy(buf,(const char *)Line[l].str);
@@ -3287,7 +3287,7 @@ void get_current_console_menu(string & menu,string & shiftmenu,string & alphamen
   if (app==5){
     menu=" point | lines | disp | cmds | A<>a | file ";
     shiftmenu="triangl|polyg|geo3d|solids|gdiff|measur";
-    alphamenu="tests|analyt|cursor|transf|plots|conic";
+    alphamenu="solve|calc|range|xform|logs|trig";
     menucolorbg=COLOR_CYAN;
     return;
   }

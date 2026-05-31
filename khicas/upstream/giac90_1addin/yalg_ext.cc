@@ -1010,7 +1010,7 @@ namespace giac {
 	if (vb==vb0)
 	  *logptr(contextptr) << gettext("The choice was done assuming ") << params << "=" << vb << '\n';       
 	else 
-	  *logptr(contextptr) << gettext("Non regular value ") << vb0 << gettext(" was discarded and replaced randomly by ") << params << "=" << vb << '\n';
+	  *logptr(contextptr) << gettext("Non regular value ") << vb0 << gettext(" was discarded by ") << params << "=" << vb << '\n';
 	// checking for embedded polynomial coefficients
 	vector< monomial<gen> >::const_iterator it=pb.coord.begin(),itend=pb.coord.end();
 	for (;0 && it!=itend;++it){ // disabled, computations would be too complex

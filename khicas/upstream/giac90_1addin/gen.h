@@ -165,7 +165,7 @@ namespace giac {
   struct ref_complex;
   struct ref_algext;
   struct ref_modulo;
-  // Graphic object
+  // Object rendering metadata
   struct grob {
     void (* grob_draw)(void);
     int (* grob_handle) (int);
