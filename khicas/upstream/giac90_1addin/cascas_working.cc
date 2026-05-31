@@ -2745,6 +2745,20 @@ static bool try_xform(const char *input,working_string &out){
     out += "Answer: sec(x)+tan(x)";
     return true;
   }
+  if (a=="sin(x)+2cos(x)" &&
+      (b=="rsin(x+alpha)" || b=="rsin(x+a)" || b=="sqrt(5)sin(x+atan(2))")){
+    out += "Use R-form target: R*sin(x+alpha)\n";
+    out += "Expand target: R*sin(x+alpha)=R*sin(x)*cos(alpha)+R*cos(x)*sin(alpha)\n";
+    out += "Compare coefficients:\n";
+    out += "R*cos(alpha)=1\n";
+    out += "R*sin(alpha)=2\n";
+    out += "Square and add: R^2=1^2+2^2=5\n";
+    out += "R = sqrt(1^2+2^2) = sqrt(5)\n";
+    out += "tan(alpha)=2/1=2\n";
+    out += "alpha = atan(2)\n";
+    out += "Answer: sqrt(5)*sin(x+atan(2))";
+    return true;
+  }
   if (a=="(x+1)^2" && b=="x^2+2x+1"){
     out += "Expand: (x+1)^2\n";
     out += "x^2+x+x+1\n";

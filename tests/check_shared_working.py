@@ -92,6 +92,7 @@ CASES = [
     ("xform(cosec(x)^2,1+cot(x)^2)", "cosec(x)^2 = 1 + cot(x)^2"),
     ("xform(cot(x),cos(x)/sin(x))", "cot(x)=cos(x)/sin(x)"),
     ("xform(2*sin(x)*cos(x),sin(2*x))", "sin(2*x)=2*sin(x)*cos(x)"),
+    ("xform(sin(x)+2*cos(x),R*sin(x+alpha))", "R = sqrt(1^2+2^2) = sqrt(5)"),
     ("sin(x)+2*cos(x),method=rform", "sqrt(5)*sin(x+atan(2))"),
     ("coeff((9/(2*x)-2*x^2/3)^13,x,11)", "Coefficient = 92664"),
     ("binomial((1+8*x)^(1/2),x,0,3)", "1 + 4*x - 8*x^2 + 32*x^3"),

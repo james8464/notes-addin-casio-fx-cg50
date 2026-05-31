@@ -150,6 +150,19 @@ QUALITY_CASES = [
         ],
     ),
     (
+        "xform(sin(x)+2*cos(x),R*sin(x+alpha))",
+        7,
+        [
+            "Expand target: R*sin(x+alpha)=R*sin(x)*cos(alpha)+R*cos(x)*sin(alpha)",
+            "Compare coefficients:",
+            "R*cos(alpha)=1",
+            "R*sin(alpha)=2",
+            "R = sqrt(1^2+2^2) = sqrt(5)",
+            "alpha = atan(2)",
+            "Answer: sqrt(5)*sin(x+atan(2))",
+        ],
+    ),
+    (
         "binomial((1+8*x)^(1/2),x,0,3)",
         5,
         [
