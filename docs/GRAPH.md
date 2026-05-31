@@ -1,6 +1,6 @@
 # Project Graph
 
-Last updated: 2026-05-31 21:50 BST
+Last updated: 2026-05-31 21:53 BST
 
 ## Build
 
@@ -62,7 +62,7 @@ graph TD
   Runner --> Report["tests/reports/.../latest.jsonl"]
   Live --> TUI["tools/audit_progress_tui.py"]
   Report --> TUI
-  Runner --> Runtime["13,618/13,618 runtime-safe"]
-  Runner --> Strict["12,688/13,618 strict marker pass"]
+  Runner --> Runtime["13,648/13,648 runtime-safe"]
+  Runner --> Strict["12,706/13,648 strict marker pass"]
   Strict --> Remaining["remaining: algebra presentation, binomial/partfrac, exact-form geometry/vector clusters"]
 ```

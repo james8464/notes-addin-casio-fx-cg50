@@ -27,8 +27,8 @@ Current status:
 - size: `2,096,896` bytes
 - hard limit headroom: `256` bytes
 - sha256: `8eb3c2aacd5a7e67bd9be04b641940d5e3efccaad4ca0f785ca9c514bd2a8655`
-- exact queue runtime: `13,618/13,618`
-- strict marker quality: `12,688/13,618`
+- exact queue runtime: `13,648/13,648`
+- strict marker quality: `12,706/13,648`
 - online challenge source coverage: MadAsMaths exact rows in queue; Daily Integral hard-integration style probes inspected from `https://dailyintegral.com/archive`
 
 Notable routes:
