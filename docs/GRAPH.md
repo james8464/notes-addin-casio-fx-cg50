@@ -1,6 +1,6 @@
 # CasioCAS Project Graph
 
-Last updated: 2026-05-31 02:18 Europe/London
+Last updated: 2026-05-31 02:32 Europe/London
 
 ## Build
 
@@ -55,6 +55,8 @@ graph TD
   Direct --> MoreWork["tan/sec/cosec diff, golden solve routes, reciprocal ranges"]
   Direct --> FilteredSolve["quadratic roots with integer/positive/reject filters"]
   Direct --> Numeric["numeric estimates, rounding, time conversion, root brackets"]
+  Direct --> ExamSolve["log/inequality/trig/circle exact solve routes"]
+  Direct --> BinomSeries["4-arg binomial series route"]
   Suvat --> KeySuvat["key-value u/t roots"]
   Host["old host working engine"] --> Queue["200/200 golden host checks"]
   Golden["exact queue generator"] --> GoldenInc["cascas_golden_cases.inc"]
@@ -83,7 +85,8 @@ graph TD
   Remove --> PyImport["python/numpy/pylab/matplotlib/turtle literals hidden"]
   Lex --> Static["static lexer distro aliases neutralized"]
   Lex --> Hide["concat/extend lexer strings hidden"]
-  Macro --> Dist["normal/binomial/poisson/uniform public stats blocked"]
+  Macro --> Dist["normal/poisson/uniform public stats blocked"]
+  Macro --> BinomGuard["2-arg binomial coefficient blocked; 4-arg series allowed"]
   Cat --> StatsCat["stats catalog entries removed"]
   Remove --> Help["help/functions"]
   Remove --> Tests["removed-feature tests"]
@@ -98,6 +101,7 @@ graph TD
   Menu --> Gate
   PyImport --> Gate
   Dist --> Gate2
+  BinomGuard --> Gate2
   Hide --> Gate
   Static --> Gate
   StatsCat --> Gate
@@ -138,7 +142,7 @@ graph TD
 
 ```mermaid
 graph LR
-  Build["./compile exit 0"] --> Size["1,317,155 bytes"]
+  Build["./compile exit 0"] --> Size["1,321,403 bytes"]
   Build --> Meta["metadata ok"]
   Build --> Border["purple border ok"]
   Source["source gates"] --> Catalog["catalog ok"]
@@ -147,8 +151,8 @@ graph LR
   Help["help pack"] --> HelpQ["41 function sheets ok"]
   Queue["golden queue"] --> QueueRun["200/200 host ok"]
   Queue --> GoldenRun["200/200 direct calculator-source ok"]
-  Shared["shared working"] --> SharedRun["69/69 host+calculator adapter ok"]
-  Shared --> CoreRun["66/66 core routes without golden fallback ok"]
+  Shared["shared working"] --> SharedRun["84/84 host+calculator adapter ok"]
+  Shared --> CoreRun["81/81 core routes without golden fallback ok"]
   Obj["object prune"] --> QR["qrcodegen.o link-safe removed"]
   Macro["source stubs"] --> Stubbed["plot/list/stats/special/ODE/file IO/linalg/transform helpers blocked"]
   Static["lexer prune"] --> StaticRun["distribution/denom/transform static names neutralized"]

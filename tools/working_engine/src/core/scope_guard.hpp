@@ -60,6 +60,7 @@ inline bool is_removed_function_hash(uint32_t h)
         case 0x1b5e2979u:
         case 0x1b777caeu:
         case 0x1bbede44u:
+        case 0x1d11622cu:
         case 0x1eab292au:
         case 0x1ebe2c6au:
         case 0x1f82d9a8u:
@@ -344,9 +345,28 @@ inline bool contains_removed_function(std::string const &text)
         if(c == ' ' || c == '\t' || c == '\r' || c == '\n' || c == '*') continue;
         folded.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
     }
+    auto allowed_binomial_series = [&folded](std::size_t open) {
+        int depth = 0;
+        int commas = 0;
+        for(std::size_t i = open + 1; i < folded.size(); ++i) {
+            char c = folded[i];
+            if(c == '(' || c == '[' || c == '{') {
+                ++depth;
+                continue;
+            }
+            if(c == ')' || c == ']' || c == '}') {
+                if(depth == 0) return commas == 3;
+                --depth;
+                continue;
+            }
+            if(depth == 0 && c == ',') ++commas;
+        }
+        return false;
+    };
     uint32_t h = 2166136261u;
     bool inword = false;
-    for(char raw : folded) {
+    for(std::size_t pos = 0; pos < folded.size(); ++pos) {
+        char raw = folded[pos];
         unsigned char c = static_cast<unsigned char>(raw);
         if(std::isalpha(c) || c == '_') {
             if(!inword) {
@@ -360,7 +380,13 @@ inline bool contains_removed_function(std::string const &text)
             h = removed_hash_step(h, c);
             continue;
         }
-        if(inword && c == '(' && is_removed_function_hash(h)) return true;
+        if(inword && c == '(' && is_removed_function_hash(h)) {
+            if(h == 0x1d11622cu && allowed_binomial_series(pos)) {
+                inword = false;
+                continue;
+            }
+            return true;
+        }
         inword = false;
     }
     return false;

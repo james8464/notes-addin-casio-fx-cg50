@@ -2544,6 +2544,27 @@ static bool cascas_denied_hash(unsigned h){
   }
 }
 
+static int cascas_find_matching_paren_ascii(const string &s,int open);
+
+static bool cascas_allowed_binomial_series_call(const string &s,int open){
+  int close=cascas_find_matching_paren_ascii(s,open);
+  if (close<0)
+    return false;
+  int depth=0,commas=0;
+  bool instring=false;
+  for (int i=open+1;i<close;++i){
+    char c=s[i];
+    if (c=='"' && (i==0 || s[i-1]!='\\'))
+      instring=!instring;
+    if (instring)
+      continue;
+    if (c=='(' || c=='[' || c=='{') ++depth;
+    else if (c==')' || c==']' || c=='}') --depth;
+    else if (!depth && c==',') ++commas;
+  }
+  return commas==3;
+}
+
 static bool cascas_reject_removed_feature(const char *input){
   if (!input)
     return false;
@@ -2563,8 +2584,12 @@ static bool cascas_reject_removed_feature(const char *input){
       ++j;
     unsigned h=cascas_hash_ident(s,begin,i);
     bool bare=(h==0x0fceff97u || h==0x15c2f8ecu);
-    if ((bare || (j<int(s.size()) && s[j]=='(')) && cascas_denied_hash(h))
+    if ((bare || (j<int(s.size()) && s[j]=='(')) && cascas_denied_hash(h)){
+      if (h==0x1d11622cu && j<int(s.size()) && s[j]=='(' &&
+	  cascas_allowed_binomial_series_call(s,j))
+	continue;
       return true;
+    }
   }
   return false;
 }

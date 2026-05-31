@@ -184,6 +184,7 @@ BEHAVIOR_SAMPLES = [
     "remove(x->x>1,[1,2])",
     "normal_cdf(0,1,0)",
     "normal_icdf(0,1,0.5)",
+    "binomial(10,3)",
     "binomial_cdf(10,0.5,3)",
     "binomial_icdf(10,0.5,0.8)",
     "poisson_cdf(4,2)",

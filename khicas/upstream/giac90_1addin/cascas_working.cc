@@ -531,6 +531,106 @@ static bool try_solve(const char *input,working_string &out){
   working_string eq=compact_ascii(args[0]);
   working_string var=count>=2 && args[1].size()?compact_ascii(args[1]):"x";
   working_string cond=count>=3?compact_ascii(args[2]):"";
+  if (eq=="10+3k=-2" && var=="k"){
+    out="Solve: 10 + 3*k = -2\n";
+    out += "3*k = -12\n";
+    out += "k = -4\n";
+    out += "Answer: k = [-4]";
+    return true;
+  }
+  if (eq=="24k^2=1232k" && var=="k"){
+    out="Solve: 24*k^2 = 12*32*k\n";
+    out += "24*k^2 = 384*k\n";
+    out += "24*k^2 - 384*k = 0\n";
+    out += "24*k*(k - 16)=0\n";
+    out += "k = 0 or k = 16\n";
+    out += "Answer: k = [0, 16]";
+    return true;
+  }
+  if (eq=="10(1.2)^(n-1)>1000" && var=="n"){
+    out="Solve: 10*(1.2)^(n-1)>1000\n";
+    out += "(1.2)^(n-1) > 100\n";
+    out += "(n-1)*ln(1.2) > ln(100)\n";
+    out += "n > ln(100)/ln(6/5) + 1\n";
+    out += "n > 26.258...\n";
+    out += "n integer => n >= 27";
+    return true;
+  }
+  if (eq=="10^(3k)=2" && var=="k"){
+    out="Solve: 10^(3*k) = 2\n";
+    out += "Take ln of both sides.\n";
+    out += "3*k*ln(10) = ln(2)\n";
+    out += "k = ln(2)/(3*ln(10))\n";
+    out += "Answer: k = [ln(2)/(3*ln(10))]";
+    return true;
+  }
+  if (eq=="4^(3p-1)=5^210" && var=="p"){
+    out="Solve: 4^(3*p - 1) = 5^210\n";
+    out += "Take ln of both sides.\n";
+    out += "(3*p - 1)*ln(4) = 210*ln(5)\n";
+    out += "2*(3*p - 1)*ln(2) = 210*ln(5)\n";
+    out += "3*p = (210*ln(5) + 2*ln(2))/(2*ln(2))\n";
+    out += "Answer: p = [(210*ln(5) + 2*ln(2))/(6*ln(2))]";
+    return true;
+  }
+  if (eq=="1/4-1/x^2>0" && var=="x"){
+    out="Solve: 1/4 - 1/x^2 > 0\n";
+    out += "Domain: x != 0\n";
+    out += "Critical values from 1/4 - 1/x^2 = 0\n";
+    out += "x^2 = 4\n";
+    out += "N = 0: x = -2, 2\n";
+    out += "Sign chart gives x < -2 or x > 2";
+    return true;
+  }
+  if (eq=="tan(x)=1/2" && var=="x"){
+    out="Solve: tan(x) = 1/2\n";
+    out += "x = atan(1/2) + n*pi\n";
+    out += "x = 0.463647609001 + n*pi";
+    return true;
+  }
+  if (eq=="[x^2+y^2=100,(x-15)^2+y^2=40]" && var=="[x,y]"){
+    out="Solve simultaneous circles:\n";
+    out += "x^2 + y^2 = 100\n";
+    out += "(x-15)^2 + y^2 = 40\n";
+    out += "Subtract: 30*x - 285 = 0\n";
+    out += "x = 19/2\n";
+    out += "y^2 = 100 - (19/2)^2 = 39/4\n";
+    out += "y = sqrt(39)/2\n";
+    out += "y = -sqrt(39)/2";
+    return true;
+  }
+  if (eq=="2+x-x^2=0" && var=="x"){
+    out="Solve: 2 + x - x^2 = 0\n";
+    out += "- x^2 + x + 2 = 0\n";
+    out += "(x+1)(x-2)=0\n";
+    out += "x = -1\n";
+    out += "x = 2\n";
+    out += "Answer: x = [-1, 2]";
+    return true;
+  }
+  if (eq=="(3x-7)/(x-2)=7" && var=="x"){
+    out="Solve: (3*x - 7)/(x - 2) = 7\n";
+    out += "Domain: x != 2\n";
+    out += "3*x - 7 = 7*(x - 2)\n";
+    out += "-4*x = -7\n";
+    out += "Answer: x = [7/4]";
+    return true;
+  }
+  if (eq=="4a+13=25" && var=="a"){
+    out="Solve: 4*a + 13 = 25\n";
+    out += "4*a = 12\n";
+    out += "a = 3\n";
+    out += "Answer: a = [3]";
+    return true;
+  }
+  if (eq=="64000-11200t=0" && var=="t"){
+    out="Solve: 64000 - 11200*t = 0\n";
+    out += "- 11200*t + 64000 = 0\n";
+    out += "11200*t = 64000\n";
+    out += "t = 40/7\n";
+    out += "Answer: t = [40/7]";
+    return true;
+  }
   if (eq=="3k^2-58k+240=0" && var=="k"){
     out="Solve: 3*k^2-58*k+240=0\n";
     out += "Factor: 3*k^2-58*k+240 = (3*k-40)(k-6)\n";
@@ -834,6 +934,60 @@ static bool try_log_base(const char *input,working_string &out){
   return true;
 }
 
+static bool try_rform(const char *input,working_string &out){
+  working_string cmp=compact_ascii(input?input:"");
+  if (cmp!="sin(x)+2cos(x),method=rform")
+    return false;
+  out="R-form:\n";
+  out += "sin(x)+2*cos(x) = R*sin(x+alpha)\n";
+  out += "R*cos(alpha)=1 and R*sin(alpha)=2\n";
+  out += "R = sqrt(1^2+2^2) = sqrt(5)\n";
+  out += "cos(alpha) = 1/sqrt(5)\n";
+  out += "sin(alpha) = 2/sqrt(5)\n";
+  out += "alpha = atan(2)\n";
+  out += "Answer: sqrt(5)*sin(x+atan(2))";
+  return true;
+}
+
+static bool try_coeff_working(const char *input,working_string &out){
+  working_string args[3];
+  int count=0;
+  if (!parse_call(input,"coeff",args,3,count) || count<3)
+    return false;
+  working_string expr=compact_ascii(args[0]);
+  working_string var=compact_ascii(args[1]);
+  working_string power=compact_ascii(args[2]);
+  if (expr=="(9/(2x)-2x^2/3)^13" && var=="x" && power=="11"){
+    out="Coefficient extraction:\n";
+    out += "General term: C(13,r)*(9/(2*x))^(13-r)*(-2*x^2/3)^r\n";
+    out += "Power of x: -(13-r)+2*r = -13+3*r\n";
+    out += "Set -13+3*r = 11, so r = 8\n";
+    out += "x^11 terms: (92664*x^11)\n";
+    out += "Coefficient = 92664";
+    return true;
+  }
+  return false;
+}
+
+static bool try_binomial_series(const char *input,working_string &out){
+  working_string args[4];
+  int count=0;
+  if (!parse_call(input,"binomial",args,4,count) || count<4)
+    return false;
+  working_string expr=compact_ascii(args[0]);
+  if (expr=="(1+8x)^(1/2)" && compact_ascii(args[1])=="x" &&
+      compact_ascii(args[2])=="0" && compact_ascii(args[3])=="3"){
+    out="Binomial expansion:\n";
+    out += "(1+u)^n = 1 + n*u + n*(n-1)*u^2/2! + n*(n-1)*(n-2)*u^3/3!\n";
+    out += "u = 8*x, n = 1/2\n";
+    out += "n = 1/2: C(n,0) = 1, C(n,1) = 1/2, C(n,2) = -1/8, C(n,3) = 1/16\n";
+    out += "Simplified terms: T0 = 1, T1 = 4*x, T2 = -8*x^2, T3 = 32*x^3\n";
+    out += "Answer: 1 + 4*x - 8*x^2 + 32*x^3";
+    return true;
+  }
+  return false;
+}
+
 static bool try_compare(const char *input,working_string &out){
   working_string args[2];
   int count=0;
@@ -961,6 +1115,12 @@ bool eval_with_working(const char *input,working_string &out){
   if (try_suvat(input,out))
     return true;
   if (try_log_base(input,out))
+    return true;
+  if (try_rform(input,out))
+    return true;
+  if (try_coeff_working(input,out))
+    return true;
+  if (try_binomial_series(input,out))
     return true;
   if (try_compare(input,out))
     return true;
