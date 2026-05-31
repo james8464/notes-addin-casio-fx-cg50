@@ -710,7 +710,7 @@ namespace giac {
     }
     return gensizeerr(contextptr);
   }
-  static const char _multinomial_s []="multinomial";
+  static const char _multinomial_s []="_rm15";
   static define_unary_function_eval (__multinomial,&_multinomial,_multinomial_s);
   define_unary_function_ptr5( at_multinomial ,alias_at_multinomial,&__multinomial,0,true);
 

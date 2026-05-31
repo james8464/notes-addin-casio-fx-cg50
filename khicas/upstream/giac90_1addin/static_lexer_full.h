@@ -740,7 +740,7 @@
 {"mul",0,0,9,13},
 {"mult_conjugate",0,0,9,13},
 {"multcrement",0| 1,0,9,13},
-{"multinomial",0,0,9,13},
+{"_rm15",0,0,9,13},
 {"multiplier_conjugue",0,0,9,13},
 {"multiply",0,0,9,13},
 {"mupad2maple",0| 1,0,9,13},

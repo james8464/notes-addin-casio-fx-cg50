@@ -435,7 +435,7 @@
 {"montre_tortue",0,0,90,13},
 {"mult_conjugate",0,0,9,13},
 {"multcrement",0| 1,0,9,13},
-{"multinomial",0,0,9,13},
+{"_rm15",0,0,9,13},
 {"multiply",0,0,9,13},
 {"ncols",0,0,9,13},
 {"newton",0,0,9,13},

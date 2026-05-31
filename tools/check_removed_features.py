@@ -517,6 +517,8 @@ BINARY_ABSENT = [
     "sphere",
     "tetrahedron",
     "volume",
+    "multinomial",
+    "randmultinomial",
 ]
 
 

@@ -1,6 +1,6 @@
 # CasioCAS Project Graph
 
-Last updated: 2026-05-31 05:58 Europe/London
+Last updated: 2026-05-31 06:03 Europe/London
 
 ## Build
 
@@ -101,6 +101,7 @@ graph TD
   Remove --> Menu["console catalog/menu/message leaks"]
   Remove --> PyImport["python/numpy/pylab/matplotlib/turtle literals hidden"]
   Lex --> Static["static lexer distro aliases neutralized"]
+  Lex --> MultiHide["multinomial lexer strings hidden"]
   Lex --> Hide["concat/extend lexer strings hidden"]
   Macro --> Dist["normal/poisson/uniform/exponential/student/fisher/chi-square/etc public stats blocked"]
   Macro --> BinomGuard["2-arg binomial coefficient blocked; 4-arg series allowed"]
@@ -126,6 +127,7 @@ graph TD
   BinomGuard --> Gate2
   Hide --> Gate
   Static --> Gate
+  MultiHide --> Gate
   StatsCat --> Gate
   Obj --> Size["smaller g3a"]
   QR --> Size
@@ -165,9 +167,9 @@ graph TD
 
 ```mermaid
 graph LR
-  Build["./compile exit 0"] --> Size["1,300,323 bytes"]
+  Build["./compile exit 0"] --> Size["1,300,319 bytes"]
   Build --> Ram["ram 333,236 bytes"]
-  Build --> R8C2["r8c2 1,703,846 bytes"]
+  Build --> R8C2["r8c2 1,703,842 bytes"]
   Build --> Meta["metadata ok"]
   Build --> Border["purple border ok"]
   Build --> NoRuntimeFallback["generated golden fallback disabled"]
@@ -186,7 +188,7 @@ graph LR
   Obj["object prune"] --> QR["qrcodegen.o link-safe removed"]
   Macro["source stubs"] --> Stubbed["plot/list/stats/special/ODE/file IO/linalg/transform helpers blocked"]
   Macro --> RuntimeStubbed["random/sample + ODE/field plot + turtle/drawing + 3D plot/solid + distribution dispatch bodies stubbed"]
-  Static["lexer prune"] --> StaticRun["distribution/denom/transform static names neutralized"]
+  Static["lexer prune"] --> StaticRun["distribution/denom/transform/multinomial static names neutralized"]
   Static --> PromptRun["mod/sign/euler/ascii/geometry/3D solids/ode plot/laplace prompt names blocked"]
   Bin["binary scan"] --> NoLeak["no removed-term hits"]
 ```
