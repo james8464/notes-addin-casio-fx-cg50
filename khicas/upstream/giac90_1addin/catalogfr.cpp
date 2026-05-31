@@ -343,8 +343,8 @@ const char chk_restart_string2[]="F1: conserver,   F6: effacer";
 const char aide_khicas_string[]="Aide Khicas";
 const char main_string1[]="Effacer variables?";
 const char main_string2[]="F1: annul,  F6: confirmer";
-const char shortcuts_string[]="Pour mettre a l'heure l'horloge, tapez hh,mm=>, par exemple 12,35=>,\n\nRaccourcis clavier (shell et editeur)\nF1-F3: selon legendes\nF4: catalogue\nF5: blocage en minuscule ou bascule minuscule/majuscule\nF6: menu fichier, configuration\nshift-PRGM: structures et caracteres pour programmer\nshift-division: graphiques reperes\nshift F1: entiers\nshift-F2: reels\nshift-3: complexes\nshift-F4: graphes reperes\nshift-F5: graphes pixels\nOPTN: options\nS<>D et shift-S<>D: tortue\nshift-Lst: listes\nshift-Mtr et -3: matrices\nVARS: liste des variables (shell) ou dessin tortue (editeur)\nshift-FORMAT: purge\n=>var: stocker dans var\n=>+: partfrac\n=>*: factor\n=>sin/cos/tan\n=>=>: solve\n\n*** Shell: ***\ncurseur bas: completion/aide, F3: editeur 2-d, graphique ou texte selon objet\nalpha-F3: editeur texte\nshift-SETUP: configuration\n=>: Sauver session courante\n+ ou - pour modifier un parametre\n\n*** Editeur d'expressions ***\npave directionnel: deplace la selection dans l'arborescence de l'expression\nshift-droit/gauche echange selection avec argument a droite ou a gauche\nALPHA-droit/gauche dans une somme ou un produit: augmente la selection avec argument droit ou gauche\nF3: Editer selection, shift-F3: taille police + grande, ALPHA-F3: taille - grande\nF4: catalogue commandes\nF5: minuscule/majuscule\nF6: Evaluer la selection, shift-F6: valeur approchee, ALPHA-F6: commande regroup\nDEL: supprime l'operateur racine de la selection\n\n*** Editeur de scripts ***\ntouche fraction (G): indentation, shift-fraction: completion/aide, shift-CLIP: marque le debut de la selection, deplacer le curseur vers la fin puis DEL pour effacer ou shift-CLIP pour copier sans effacer. shift-PASTE pour coller.\nF6-6 recherche seule: entrer un mot puis EXE puis EXIT. Taper EXE pour l'occurence suivante, AC pour annuler.\nF6-6 remplacer: entrer un mot puis EXE puis le remplacement et EXE. Taper EXE ou EXIT pour remplacer ou non et passer a l'occurence suivante, AC pour annuler\nshift-Ans: tester syntaxe\n\n*** Graphes: ***\n+ - zoom\n(-): zoomout selon y\n*: autoscale\n/: orthonormalisation\nOPTN: axes on/off";
-const char apropos_string[]="Khicas 1.7.0, (c) 2022 B. Parisse et al. www-fourier.univ-grenoble-alpes.fr/~parisse.\nLicense GPL version 2.\nInterface adaptee d'Eigenmath pour Casio 90 et 35, G. Maia, http://gbl08ma.com, Mike Smith, Nemhardy, LePhenixNoir\nRemerciements a LePhenixNoir, planet-casio et tiplanet";
+const char shortcuts_string[]="";
+const char apropos_string[]="";
 
 int CAT_COMPLETE_COUNT=sizeof(completeCat)/sizeof(catalogFunc);
 
@@ -368,7 +368,7 @@ int showCatalog(char* insertText,int preselect,int menupos) {
     menuitems[CAT_CATEGORY_ALGEBRA].text = (char*)((lang==1)?"Algebre":"Algebra");
     menuitems[CAT_CATEGORY_LINALG].text = (char*)((lang==1)?"Alg. (bi)lineaire":"Linear algebra");
     menuitems[CAT_CATEGORY_CALCULUS].text = (char*)((lang==1)?"Analyse":"Calculus");
-    menuitems[CAT_CATEGORY_ARIT].text = (char*)"Arithmetic, crypto";
+    menuitems[CAT_CATEGORY_ARIT].text = (char*)"Arithmetic";
     menuitems[CAT_CATEGORY_COMPLEXNUM].text = (char*)"Complexes";
     menuitems[CAT_CATEGORY_PLOT].text = (char*)((lang==1)?"Courbes":"Curves");
     menuitems[CAT_CATEGORY_POLYNOMIAL].text = (char*)((lang==1)?"Polynomes":"Polynomials");

@@ -1,6 +1,6 @@
 # CasioCAS Project Graph
 
-Last updated: 2026-05-31 07:03 Europe/London
+Last updated: 2026-05-31 07:08 Europe/London
 
 ## Build
 
@@ -169,7 +169,7 @@ graph TD
 
 ```mermaid
 graph LR
-  Build["./compile exit 0"] --> Size["1,300,843 bytes"]
+  Build["./compile exit 0"] --> Size["1,300,851 bytes"]
   Build --> Ram["ram 333,236 bytes"]
   Build --> R8C2["r8c2 1,679,034 bytes"]
   Build --> Meta["metadata ok"]
@@ -177,7 +177,7 @@ graph LR
   Build --> NoRuntimeFallback["generated golden fallback disabled"]
   Build --> NoRuntimeSource["generated golden fallback source removed"]
   Source["source gates"] --> Catalog["catalog ok"]
-  Source --> Removed["282 removed rejected"]
+  Source --> Removed["283 removed rejected"]
   Source --> Session["session disabled"]
   Help["help pack"] --> HelpQ["41 function sheets ok"]
   Queue["golden queue"] --> QueueRun["200/200 host ok"]
@@ -190,7 +190,7 @@ graph LR
   Obj["object prune"] --> QR["qrcodegen.o link-safe removed"]
   Macro["source stubs"] --> Stubbed["plot/list/stats/special/ODE/file IO/linalg/transform helpers blocked"]
   Macro --> RuntimeStubbed["random/sample + ODE/field plot + turtle/drawing + 3D plot/solid + distribution dispatch + matrix/spectral/JordanBlock public bodies stubbed/blocked"]
-  Static["lexer/help prune"] --> StaticRun["distribution/denom/transform/multinomial/matrix/about/complex/JordanBlock/keep_pivot/det-option/trace static help/index names neutralized"]
+  Static["lexer/help prune"] --> StaticRun["distribution/denom/transform/multinomial/matrix/about/shortcuts/crypto/complex/JordanBlock/keep_pivot/det-option/trace static help/index names neutralized"]
   Static --> PromptRun["mod/sign/euler/ascii/geometry/3D solids/ode plot/laplace prompt names blocked"]
   Bin["binary scan"] --> NoLeak["no removed-term hits"]
 ```

@@ -135,7 +135,7 @@ int showCatalog(char* insertText,int preselect,int menupos) {
     menuitems[CAT_CATEGORY_ALGEBRA].text = (char*)((lang==1)?"Algebre":"Algebra");
     menuitems[CAT_CATEGORY_LINALG].text = (char*)"Removed";
     menuitems[CAT_CATEGORY_CALCULUS].text = (char*)((lang==1)?"Analyse":"Calculus");
-    menuitems[CAT_CATEGORY_ARIT].text = (char*)"Arithmetic, crypto";
+    menuitems[CAT_CATEGORY_ARIT].text = (char*)"Arithmetic";
     menuitems[CAT_CATEGORY_COMPLEXNUM].text = (char*)"Removed";
     menuitems[CAT_CATEGORY_PLOT].text = (char*)"Removed";
     menuitems[CAT_CATEGORY_POLYNOMIAL].text = (char*)((lang==1)?"Polynomes":"Polynomials");
