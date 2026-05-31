@@ -1,6 +1,6 @@
 # CasioCAS Project Graph
 
-Last updated: 2026-05-31 04:27 Europe/London
+Last updated: 2026-05-31 04:34 Europe/London
 
 ## Build
 
@@ -71,7 +71,7 @@ graph TD
   Suvat --> KeySuvat["key-value u/t roots"]
   Host["old host working engine"] --> Queue["200/200 golden host checks"]
   QueueTests["exact queue file"] --> SameSource["200/200 direct no-fallback calculator-source coverage"]
-  GoldenInc["cascas_golden_cases.inc"] --> DisabledFallback["compile-time disabled in host and g3a"]
+  RemovedFallback["generated golden fallback source removed"] --> SameSource
   Session["save/load/session files"] --> Disabled["no-op, in-memory only"]
   Help["help/functions/*.txt"] --> Pak["CASIOCAS.PAK"]
   Border["graphicsProvider border"] --> Pink["0xF81F exact checker"]
@@ -143,8 +143,7 @@ graph TD
   Queue["tests/golden/exact_calculator_input_queue.jsonl"] --> Exact["tests/run_exact_queue.py"]
   Shared["tests/check_shared_working.py"] --> SharedGate["same adapter smoke"]
   Shared --> CoreNoGolden["tests/check_shared_core_without_golden.py"]
-  Queue --> Generator["tools/generate_cascas_golden_cases.py"]
-  Generator --> GoldenCoverage["tests/check_golden_shared_coverage.py"]
+  Queue --> GoldenCoverage["tests/check_golden_shared_coverage.py"]
   Queue --> NoGoldenAudit["tests/audit_no_golden_queue_coverage.py"]
   UI["g3a bytes"] --> Border["check_calculator_border"]
   Bin["strings CasioCAS.g3a"] --> Leak["removed-term leak scan"]
@@ -158,6 +157,7 @@ graph LR
   Build --> Meta["metadata ok"]
   Build --> Border["purple border ok"]
   Build --> NoRuntimeFallback["generated golden fallback disabled"]
+  Build --> NoRuntimeSource["generated golden fallback source removed"]
   Source["source gates"] --> Catalog["catalog ok"]
   Source --> Removed["176 removed rejected"]
   Source --> Session["session disabled"]

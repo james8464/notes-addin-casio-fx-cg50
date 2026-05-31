@@ -2908,10 +2908,6 @@ static bool try_numeric_working(const char *input,working_string &out){
   return false;
 }
 
-#ifndef CASCAS_DISABLE_GOLDEN_QUEUE
-#include "cascas_golden_cases.inc"
-#endif
-
 bool eval_with_working(const char *input,working_string &out){
   working_string cmp=compact_ascii(input?input:"");
   if (cmp=="diff((x^2)tan(y)=9,x)" || cmp=="diff(x^2tan(y)=9,x)" ||
@@ -2965,10 +2961,6 @@ bool eval_with_working(const char *input,working_string &out){
     return true;
   if (try_arith(input,out))
     return true;
-#ifndef CASCAS_DISABLE_GOLDEN_QUEUE
-  if (try_golden_queue(input,out))
-    return true;
-#endif
   if (find_top_equal(input?input:"")>=0)
     return false;
   return false;
