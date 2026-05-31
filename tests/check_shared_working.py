@@ -211,6 +211,10 @@ CASES = [
     ("suvat(u=8,a=-2,s=15,target=v)", "v = sqrt(4) or -sqrt(4)"),
     ("suvat(u=4,v=16,t=3,target=a)", "a = (16 - 4)/3"),
     ("suvat(u=4,v=16,t=3,target=s)", "s = (4 + 16)*3/2"),
+    ("force(5,2)", "F = 5*2"),
+    ("force(m=12,a=-3)", "Answer: -36 N"),
+    ("moment(12,0.5)", "M = 12*0.5"),
+    ("moment(force=8,distance=1.25)", "Answer: 10 N m"),
 ]
 
 ARGV_CASES = [

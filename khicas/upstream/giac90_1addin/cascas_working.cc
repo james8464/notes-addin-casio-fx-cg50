@@ -2873,6 +2873,82 @@ static bool try_suvat(const char *input,working_string &out){
   return false;
 }
 
+static bool try_force(const char *input,working_string &out){
+  working_string args[4];
+  int count=0;
+  if (!parse_call(input,"force",args,4,count) || count<2)
+    return false;
+  double m=0,a=0;
+  bool hm=false,ha=false;
+  if (count==2 && int(args[0].find('='))<0 && int(args[1].find('='))<0){
+    hm=parse_real(args[0],m);
+    ha=parse_real(args[1],a);
+  }
+  else {
+    for (int i=0;i<count;++i){
+      int eq=args[i].find('=');
+      if (eq<0) continue;
+      working_string k=compact_ascii(args[i].substr(0,eq));
+      working_string val=trim_ascii(args[i].substr(eq+1));
+      double d;
+      if (!parse_real(val,d)) continue;
+      if (k=="m" || k=="mass"){ m=d; hm=true; }
+      else if (k=="a" || k=="acceleration"){ a=d; ha=true; }
+    }
+  }
+  if (!hm || !ha)
+    return false;
+  double ans=m*a;
+  out="Force:\n";
+  out += "Use Newton's second law: F = m*a\n";
+  out += "F = ";
+  out += format_real(m);
+  out += "*";
+  out += format_real(a);
+  out += "\nAnswer: ";
+  out += format_real(ans);
+  out += " N";
+  return true;
+}
+
+static bool try_moment(const char *input,working_string &out){
+  working_string args[4];
+  int count=0;
+  if (!parse_call(input,"moment",args,4,count) || count<2)
+    return false;
+  double f=0,d=0;
+  bool hf=false,hd=false;
+  if (count==2 && int(args[0].find('='))<0 && int(args[1].find('='))<0){
+    hf=parse_real(args[0],f);
+    hd=parse_real(args[1],d);
+  }
+  else {
+    for (int i=0;i<count;++i){
+      int eq=args[i].find('=');
+      if (eq<0) continue;
+      working_string k=compact_ascii(args[i].substr(0,eq));
+      working_string val=trim_ascii(args[i].substr(eq+1));
+      double x;
+      if (!parse_real(val,x)) continue;
+      if (k=="f" || k=="force"){ f=x; hf=true; }
+      else if (k=="d" || k=="distance"){ d=x; hd=true; }
+    }
+  }
+  if (!hf || !hd)
+    return false;
+  double ans=f*d;
+  out="Moment:\n";
+  out += "Moment = force*perpendicular distance\n";
+  out += "M = ";
+  out += format_real(f);
+  out += "*";
+  out += format_real(d);
+  out += "\nAnswer: ";
+  out += format_real(ans);
+  out += " N m";
+  return true;
+}
+
 static bool try_log_base(const char *input,working_string &out){
   working_string args[2];
   int count=0;
@@ -3149,6 +3225,10 @@ bool eval_with_working(const char *input,working_string &out){
   if (try_xform(input,out))
     return true;
   if (try_suvat(input,out))
+    return true;
+  if (try_force(input,out))
+    return true;
+  if (try_moment(input,out))
     return true;
   if (try_log_base(input,out))
     return true;

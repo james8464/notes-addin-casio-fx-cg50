@@ -196,6 +196,24 @@ QUALITY_CASES = [
             "Answer: 30",
         ],
     ),
+    (
+        "force(5,2)",
+        4,
+        [
+            "Use Newton's second law: F = m*a",
+            "F = 5*2",
+            "Answer: 10 N",
+        ],
+    ),
+    (
+        "moment(12,0.5)",
+        4,
+        [
+            "Moment = force*perpendicular distance",
+            "M = 12*0.5",
+            "Answer: 6 N m",
+        ],
+    ),
 ]
 
 
