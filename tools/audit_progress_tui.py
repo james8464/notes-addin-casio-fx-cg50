@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -19,9 +20,12 @@ ROOT = Path(__file__).resolve().parents[1]
 STATE = ROOT / "progress" / "state.jsonl"
 GRAPH = ROOT / "docs" / "GRAPH.md"
 G3A = ROOT / "calculator_files" / "CAS.g3a"
+QUEUE_FILE = ROOT / "tests" / "golden" / "exact_calculator_input_queue.jsonl"
 QUEUE_LIVE = ROOT / "progress" / "exact_queue_latest.json"
 QUEUE_REPORT = ROOT / "tests" / "reports" / "exact_calculator_input_queue" / "latest.jsonl"
+QUEUE_FAILS = ROOT / "tests" / "reports" / "exact_calculator_input_queue" / "failures_latest.txt"
 LIMIT = 2 * 1024 * 1024
+TARGET = 2_000_000
 
 
 class C:
@@ -43,9 +47,16 @@ class Stat:
     unsupported: str
     branch: str
     commit: str
+    tag: str
     dirty: int
     g3a: int
+    g3a_hash: str
     graph_age: str
+    report_age: str
+    queue_rows: int
+    queue_inputs: int
+    checkpoint: str
+    failures: list[str]
     ratios: list[tuple[str, int, int]]
 
 
@@ -72,8 +83,32 @@ def latest_state() -> dict:
     return last
 
 
+def latest_checkpoint() -> dict:
+    last: dict = {}
+    if not STATE.exists():
+        return last
+    for line in STATE.read_text(errors="ignore").splitlines():
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if "g3a_size" in row or row.get("phase") == "release candidate":
+            last = row
+    return last
+
+
 def file_size(path: Path) -> int:
     return path.stat().st_size if path.exists() else 0
+
+
+def short_hash(path: Path) -> str:
+    if not path.exists():
+        return "missing"
+    h = hashlib.sha256()
+    with path.open("rb") as f:
+        for chunk in iter(lambda: f.read(65536), b""):
+            h.update(chunk)
+    return h.hexdigest()[:12]
 
 
 def dirty_count() -> int:
@@ -92,6 +127,46 @@ def graph_age() -> str:
     if age < 3600:
         return f"{age // 60}m ago"
     return f"{age // 3600}h ago"
+
+
+def age_s(path: Path) -> str:
+    if not path.exists():
+        return "missing"
+    age = max(0, int(time.time() - path.stat().st_mtime))
+    if age < 60:
+        return f"{age}s"
+    if age < 3600:
+        return f"{age // 60}m"
+    return f"{age // 3600}h"
+
+
+def queue_counts() -> tuple[int, int]:
+    rows = inputs = 0
+    if not QUEUE_FILE.exists():
+        return rows, inputs
+    for line in QUEUE_FILE.read_text(errors="ignore").splitlines():
+        if not line.strip():
+            continue
+        rows += 1
+        try:
+            data = json.loads(line)
+            inputs += len(data.get("inputs") or [])
+        except json.JSONDecodeError:
+            pass
+    return rows, inputs
+
+
+def failure_samples(limit: int = 3) -> list[str]:
+    if not QUEUE_FAILS.exists():
+        return []
+    samples: list[str] = []
+    for line in QUEUE_FAILS.read_text(errors="ignore").splitlines():
+        if " input " not in line or ":" not in line:
+            continue
+        samples.append(line.strip())
+        if len(samples) >= limit:
+            break
+    return samples
 
 
 def ratios_from(text: str) -> list[tuple[str, int, int]]:
@@ -135,6 +210,7 @@ def queue_progress() -> dict[str, int | str]:
 
 def collect() -> Stat:
     s = latest_state()
+    checkpoint = latest_checkpoint()
     tests = str(s.get("tests", "n/a"))
     queue = str(s.get("queue", "n/a"))
     ratios = ratios_from(tests)
@@ -146,17 +222,25 @@ def collect() -> Stat:
         bad = int(q.get("bad", 0))
         queue = f"{done}/{total} done, {ok} ok, {bad} bad"
         ratios = [("queue-done", done, total), ("queue-right", ok, total), *ratios]
+    rows, inputs = queue_counts()
     return Stat(
         phase=str(s.get("phase", "n/a")),
         last=str(s.get("last_event", "n/a")),
-        tests=tests,
+        tests=tests if tests != "n/a" else str(checkpoint.get("tests", "n/a")),
         queue=queue,
-        unsupported=str(s.get("unsupported", "n/a")),
+        unsupported=str(s.get("unsupported", checkpoint.get("unsupported", "n/a"))),
         branch=run(["git", "branch", "--show-current"]),
         commit=run(["git", "rev-parse", "--short", "HEAD"]),
+        tag=run(["git", "describe", "--tags", "--exact-match", "HEAD"]),
         dirty=dirty_count(),
         g3a=file_size(G3A),
+        g3a_hash=short_hash(G3A),
         graph_age=graph_age(),
+        report_age=age_s(QUEUE_REPORT),
+        queue_rows=rows,
+        queue_inputs=inputs,
+        checkpoint=str(checkpoint.get("last_event", "n/a")),
+        failures=failure_samples(),
         ratios=ratios,
     )
 
@@ -190,31 +274,44 @@ def size_row(label: str, size: int, frame: int, width: int, enabled: bool) -> st
     headroom = LIMIT - size
     status = "OK" if size and headroom >= 0 else "MISSING" if not size else "OVER"
     code = C.green if status == "OK" else C.red
+    target_delta = TARGET - size
     return trim(
         f"{label:<14} {bar(size, LIMIT, width, frame, enabled)} {mib:.3f} MiB "
-        f"{color(status, code, enabled)} headroom {headroom:,} B",
+        f"{color(status, code, enabled)} hard {headroom:,} B target {target_delta:,} B",
         120,
     )
+
+
+def kv(key: str, val: str, width: int, enabled: bool) -> str:
+    return trim(f"{color(key, C.dim, enabled):<18} {val}", width)
 
 
 def render(st: Stat, frame: int, width: int, height: int, enabled: bool) -> str:
     width = max(78, width)
     bar_w = max(18, min(44, width - 54))
     spin = "|/-\\"[frame % 4]
+    pulse = "." * (frame % 4)
     dirty_color = C.green if st.dirty == 0 else C.yellow
+    tag = st.tag if st.tag != "n/a" else "untagged"
     lines = [
-        trim(f"{color('CAS audit', C.bold + C.cyan, enabled)} {spin} {time.strftime('%H:%M:%S')} fps live", width),
-        trim("-" * width, width),
-        trim(f"branch {st.branch}  commit {st.commit}  dirty {color(str(st.dirty), dirty_color, enabled)}  graph {st.graph_age}", width),
-        trim(f"phase  {st.phase}", width),
-        trim(f"last   {st.last}", width),
-        trim(f"queue  {st.queue}", width),
-        trim(f"tests  {st.tests}", width),
+        trim("=" * width, width),
+        trim(f"{color('CAS LIVE AUDIT', C.bold + C.cyan, enabled)} {spin} {time.strftime('%H:%M:%S')} live{pulse}", width),
+        trim("=" * width, width),
+        kv("branch", f"{st.branch} @ {st.commit}  tag {tag}  dirty {color(str(st.dirty), dirty_color, enabled)}", width, enabled),
+        kv("phase", st.phase, width, enabled),
+        kv("last event", st.last, width, enabled),
+        kv("checkpoint", st.checkpoint, width, enabled),
+        kv("graph", st.graph_age, width, enabled),
         "",
-        trim(color("artifacts", C.bold, enabled), width),
+        trim(color("artifact", C.bold, enabled), width),
         size_row("CAS.g3a", st.g3a, frame, bar_w, enabled),
+        kv("sha256", st.g3a_hash, width, enabled),
         "",
-        trim(color("checks", C.bold, enabled), width),
+        trim(color("queue", C.bold, enabled), width),
+        kv("golden file", f"{st.queue_rows:,} rows / {st.queue_inputs:,} inputs", width, enabled),
+        kv("latest run", f"{st.queue}  report age {st.report_age}", width, enabled),
+        "",
+        trim(color("progress bars", C.bold, enabled), width),
     ]
     if st.ratios:
         for label, done, total in st.ratios:
@@ -224,7 +321,20 @@ def render(st: Stat, frame: int, width: int, height: int, enabled: bool) -> str:
     lines.extend(
         [
             "",
-            trim(f"unsupported     {st.unsupported}", width),
+            kv("unsupported", st.unsupported, width, enabled),
+            trim(color("strict gaps", C.bold, enabled), width),
+        ]
+    )
+    if st.failures:
+        for sample in st.failures:
+            lines.append(trim(" - " + sample, width))
+    else:
+        lines.append(trim(" - none reported", width))
+    lines.extend(
+        [
+            "",
+            trim(color("run", C.bold, enabled), width),
+            trim(f"python3 {ROOT / 'tools' / 'audit_progress_tui.py'} --fps 12", width),
             trim("q/ctrl-c quit  --once one frame  --fps N animation rate", width),
         ]
     )

@@ -17,18 +17,18 @@ python3 tools/check_calculator_border.py calculator_files/CAS.g3a
 python3 tests/check_help_examples.py
 python3 tests/run_exact_queue.py --engine production --workers 8
 python3 tests/run_exact_queue.py --engine production --workers 8 --strict-markers
-python3 tools/audit_progress_tui.py --fps 8
+python3 tools/audit_progress_tui.py --fps 12
 ```
 
 Current status:
 
 - app name: `CAS`
 - file: `CAS.g3a`
-- size: `2,096,860` bytes
-- hard limit headroom: `292` bytes
-- sha256: `be85e5ac229de39e39bbdefaf8b7100468a3e9612979790f3e528ba1fc9e03ee`
+- size: `2,096,780` bytes
+- hard limit headroom: `372` bytes
+- sha256: `55cd62c8496052f55a8f430a570e689eb102baef4ab9f9272cfd71aded4dba32`
 - exact queue runtime: `13,728/13,728`
-- strict marker quality: `12,744/13,728`
+- strict marker quality: `12,748/13,728`
 - online challenge source coverage: MadAsMaths exact rows in queue; Daily Integral hard-integration style probes inspected from `https://dailyintegral.com/archive`
 
 Notable routes:
@@ -39,6 +39,7 @@ Notable routes:
 - `integrate(cos(x)^4*sin(x))` substitution
 - `integrate(x*exp(2*x))` integration by parts
 - `diff(r^2,r)` single-variable power rule
+- `diff((ln(x))^2)` and `diff(x*exp(-2*x))` compact exam routes
 - `solve((dy)/(dx)=y,y)` separable differential equation
 - generic affine chain/reverse-chain power routes
 - trig/exp term integration, shifted trig identity, damped-sine by-parts route, quadratic solve/factor/expand, log/numeric routes
@@ -49,4 +50,14 @@ Notable routes:
 - polynomial derivatives use descending-power form, e.g. `-8*x^3 + 1`
 - repeated integer quadratic roots print once, e.g. `x = [8]`
 - catalogue Help on command screen shows spaced sections and F2/F3 examples
-- `tools/audit_progress_tui.py` shows queue done/right progress bars during full runs
+- `tools/audit_progress_tui.py` shows animated artifact, queue, strict-gap, hash, and checkpoint panels
+
+Active tools:
+
+- `tools/build_g3a.sh`
+- `tools/audit_progress_tui.py`
+- `tools/khicas_host_runner`
+- `tools/check_*.py`
+- `tools/append_queue_rows.py`
+
+Historical batch-generator scripts and batch JSONs were pruned. The canonical test source is now `tests/golden/exact_calculator_input_queue.jsonl`.

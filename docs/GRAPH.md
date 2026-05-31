@@ -1,6 +1,6 @@
 # Project Graph
 
-Last updated: 2026-05-31 22:08 BST
+Last updated: 2026-05-31 22:20 BST
 
 ## Build
 
@@ -13,7 +13,7 @@ graph TD
   Make --> Bin["khicasen.bin, upstream KhiCAS base"]
   Bin --> G3A["calculator_files/CAS.g3a"]
   G3A --> Meta["CAS / @CAS / CAS.g3a"]
-  G3A --> Size["2,096,860 bytes; 292 byte headroom"]
+  G3A --> Size["2,096,780 bytes; 372 byte headroom"]
 ```
 
 ## Runtime
@@ -33,7 +33,7 @@ graph TD
 
 ```mermaid
 graph TD
-  Work["working engine"] --> Diff["diff: guarded affine chain powers, single-var powers, ln, implicit, trig basics"]
+  Work["working engine"] --> Diff["diff: guarded affine chain powers, ln^2 chain, x*exp(-2x) product, implicit, trig basics"]
   Work --> Int["integrate: affine reverse-chain powers, trig/exp sums, damped-sine by-parts, substitution, hard probe routes"]
   Work --> Solve["solve: guarded linear, integer-root quadratics, rational, dy/dx separable"]
   Work --> Alg["algebra: quadratic factor, targeted expand, high-frequency exam forms"]
@@ -64,6 +64,16 @@ graph TD
   Live --> TUI["tools/audit_progress_tui.py"]
   Report --> TUI
   Runner --> Runtime["13,728/13,728 runtime-safe"]
-  Runner --> Strict["12,744/13,728 strict marker pass"]
+  Runner --> Strict["12,748/13,728 strict marker pass"]
   Strict --> Remaining["remaining: symbolic parameter area proofs, algebra presentation, binomial/partfrac, exact-form geometry/vector clusters"]
+```
+
+## Project Shape
+
+```mermaid
+graph TD
+  Canon["canonical queue"] --> Golden["tests/golden/exact_calculator_input_queue.jsonl"]
+  Tooling["active tooling"] --> Build["build/check/audit/host runner"]
+  Old["old one-off VM batch generators"] --> Pruned["removed from tools/ and progress/batches"]
+  Reports["ignored generated outputs"] --> Recreate["build/, graphify-out/, tests/reports/ recreated only when needed"]
 ```

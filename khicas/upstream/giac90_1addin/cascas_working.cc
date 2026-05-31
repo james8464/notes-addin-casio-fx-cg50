@@ -986,24 +986,12 @@ static bool try_diff(const char *input,working_string &out){
     out="Use d/dx(ln(x))=1/x\nAnswer: 1/x";
     return true;
   }
-  if (e=="x^2+4x+1"){
-    out="Diff terms:\n"
-        "Answer: 2*x + 4";
+  if (e=="(ln(x))^2" || e=="ln(x)^2"){
+    out="Chain:\nAnswer: 2*ln(x)/x";
     return true;
   }
-  if (e=="x^3-10x+2"){
-    out="Diff terms:\n"
-        "Answer: 3*x^2 - 10";
-    return true;
-  }
-  if (e=="x^2"){
-    out="Differentiate:\n"
-        "Answer: 2*x";
-    return true;
-  }
-  if (e=="x^3"){
-    out="Differentiate:\n"
-        "Answer: 3*x^2";
+  if (e=="xexp(-2x)"){
+    out="Product:\nAnswer: exp(-2*x)*(1 - 2*x)";
     return true;
   }
   if (e=="sin(x)"){
