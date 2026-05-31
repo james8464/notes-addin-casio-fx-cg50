@@ -1,3 +1,7 @@
 CasioCAS A-level Pure help pack.
 
-Use F6 on supported commands for syntax and examples.
+Catalog help uses:
+F1: insert function
+F2: insert first example
+F3: insert second example when available
+F5: open help sheet

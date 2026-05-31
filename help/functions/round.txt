@@ -2,4 +2,8 @@ Args: round(x)
 Required: x
 Does: Rounds x to the nearest integer.
 Examples: round(3.6); round(184.868)
+F2:round(3.6)
+F3:round(184.868)
+Ex F2: round(3.6)
+Ex F3: round(184.868)
 Working: Usually final-answer only; used after exact or decimal working.

@@ -2,4 +2,8 @@ Args: sin(x)
 Required: x
 Does: Sine function in the current angle mode.
 Examples: sin(pi/6); solve(sin(x)=1/2,x=0..2*pi)
+F2:sin(pi/6)
+F3:solve(sin(x)=1/2,x=0..2*pi)
+Ex F2: sin(pi/6)
+Ex F3: solve(sin(x)=1/2,x=0..2*pi)
 Working: Shows standard exact values and identities where routed.

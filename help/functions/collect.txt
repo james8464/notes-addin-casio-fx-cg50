@@ -2,4 +2,8 @@ Args: collect(expr,var)
 Required: expr, var
 Does: Collects like powers of var.
 Examples: collect(x+x^2+2*x,x); collect(a*x+b*x,x)
+F2:collect(x+x^2+2*x,x)
+F3:collect(a*x+b*x,x)
+Ex F2: collect(x+x^2+2*x,x)
+Ex F3: collect(a*x+b*x,x)
 Working: Groups like terms before simplifying coefficients.

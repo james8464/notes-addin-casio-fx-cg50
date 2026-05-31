@@ -2,4 +2,8 @@ Args: integrate(expr,var) or integrate(expr,var,a,b)
 Required: expr, var
 Does: Finds an antiderivative, or a definite integral when limits are supplied.
 Examples: integrate(3*x^2,x); integrate(sin(x),x,0,pi); integrate(sec(2*x),x)
+F2:integrate(3*x^2,x)
+F3:integrate(sin(x),x,0,pi)
+Ex F2: integrate(3*x^2,x)
+Ex F3: integrate(sin(x),x,0,pi)
 Working: Shows substitution, parts, formula-booklet trig integrals, and limit-substitution lines where routed.

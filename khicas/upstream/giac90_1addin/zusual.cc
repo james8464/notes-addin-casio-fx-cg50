@@ -2498,7 +2498,11 @@ namespace giac {
   static gen d_at_sinh(const gen & e,GIAC_CONTEXT){
     return cosh(e,contextptr);
   }
+#ifdef CASCAS_ALEVEL_ONLY
+  define_partial_derivative_onearg_genop( D_at_sinh,"_rmd14",&d_at_sinh);
+#else
   define_partial_derivative_onearg_genop( D_at_sinh," D_at_sinh",&d_at_sinh);
+#endif
   static const char _sinh_s []="_rm14";
 #ifdef GIAC_HAS_STO_38
   static define_unary_function_eval3_index (44,__sinh,&sinh,(size_t)&D_at_sinhunary_function_ptr,_sinh_s);
@@ -2572,7 +2576,11 @@ namespace giac {
     }
     return symb_cosh(e);
   }
+#ifdef CASCAS_ALEVEL_ONLY
+  define_partial_derivative_onearg_genop( D_at_cosh,"_rmd15",sinh);
+#else
   define_partial_derivative_onearg_genop( D_at_cosh,"D_at_cosh",sinh);
+#endif
   static const char _cosh_s []="_rm15";
 #ifdef GIAC_HAS_STO_38
   static define_unary_function_eval3_index (46,__cosh,&cosh,(size_t)&D_at_coshunary_function_ptr,_cosh_s);
@@ -2650,7 +2658,11 @@ namespace giac {
   static gen d_tanh(const gen & e,GIAC_CONTEXT){
     return 1-pow(tanh(e,contextptr),2);
   }
+#ifdef CASCAS_ALEVEL_ONLY
+  define_partial_derivative_onearg_genop( D_at_tanh,"_rmd16",&d_tanh);
+#else
   define_partial_derivative_onearg_genop( D_at_tanh," D_at_tanh",&d_tanh);
+#endif
   static const char _tanh_s []="_rm16";
 #ifdef GIAC_HAS_STO_38
   static define_unary_function_eval3_index (48,__tanh,&tanh,(size_t)&D_at_tanhunary_function_ptr,_tanh_s);
@@ -2706,7 +2718,11 @@ namespace giac {
   static gen d_asinh(const gen & args,GIAC_CONTEXT){
     return inv(recursive_normal(sqrt(pow(args,2)+1,contextptr),contextptr),contextptr);
   }
+#ifdef CASCAS_ALEVEL_ONLY
+  define_partial_derivative_onearg_genop( D_at_asinh,"_rmd17",&d_asinh);
+#else
   define_partial_derivative_onearg_genop( D_at_asinh," D_at_asinh",&d_asinh);
+#endif
   static const char _asinh_s []="_rm17";
 #ifdef GIAC_HAS_STO_38
   static define_unary_function_eval3_index (50,__asinh,&asinh,(size_t)&D_at_asinhunary_function_ptr,_asinh_s);
@@ -7292,11 +7308,11 @@ namespace giac {
 
 
   string version(){
-    return string("giac ")+GIAC_VERSION+string(", (c) B. Parisse and R. De Graeve, Institut Fourier, Universite de Grenoble I");
+    return string("CasioCAS Pure ")+GIAC_VERSION;
   }
   gen _version(const gen & a,GIAC_CONTEXT){
     if ( a.type==_STRNG && a.subtype==-1) return  a;
-    return string2gen(gettext("Powered by Giac 1.x, B. Parisse and R. De Graeve, Institut Fourier, Universite Grenoble I, France"),false);
+    return string2gen(gettext("CasioCAS Pure"),false);
   }
   static const char _version_s []="version";
   static define_unary_function_eval (__version,&_version,_version_s);

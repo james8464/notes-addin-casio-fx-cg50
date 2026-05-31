@@ -2,4 +2,8 @@ Args: series(expr,var=value,order)
 Required: expr, var=value, order
 Does: Returns a Taylor expansion to the requested order.
 Examples: series(sin(x),x=0,5); series(exp(x),x=0,4)
+F2:series(sin(x),x=0,5)
+F3:series(exp(x),x=0,4)
+Ex F2: series(sin(x),x=0,5)
+Ex F3: series(exp(x),x=0,4)
 Working: Uses standard A-level expansion terms where routed.

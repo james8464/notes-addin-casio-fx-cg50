@@ -3246,6 +3246,16 @@ static bool try_xform(const char *input,working_string &out){
     out += "Answer: cos(x)/sin(x)";
     return true;
   }
+  if (a=="a/(x+1)" && b=="5a/(2x+1)"){
+    out += "Let f(x)=a/(x+1)\n";
+    out += "Replace x by 2*x:\n";
+    out += "f(2*x)=a/(2*x+1)\n";
+    out += "Then multiply by 5:\n";
+    out += "5*f(2*x)=5*a/(2*x+1)\n";
+    out += "Horizontal scale factor 1/2; vertical scale factor 5\n";
+    out += "Answer: 5*a/(2*x+1)";
+    return true;
+  }
   if (a=="(sin(x)-cos(x)+1)/(sin(x)+cos(x)-1)" && b=="sec(x)+tan(x)"){
     out += "Put t=tan(x/2)\n";
     out += "sin(x)=2*t/(1+t^2), cos(x)=(1-t^2)/(1+t^2)\n";

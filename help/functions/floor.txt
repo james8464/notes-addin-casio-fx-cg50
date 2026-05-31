@@ -2,4 +2,8 @@ Args: floor(x)
 Required: x
 Does: Returns the greatest integer less than or equal to x.
 Examples: floor(2.9); floor(-1.2)
+F2:floor(2.9)
+F3:floor(-1.2)
+Ex F2: floor(2.9)
+Ex F3: floor(-1.2)
 Working: Usually final-answer only; useful after inequality bounds.

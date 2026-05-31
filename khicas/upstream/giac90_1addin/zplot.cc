@@ -11293,7 +11293,7 @@ namespace giac {
   gen _couleur(const gen & a,GIAC_CONTEXT){
     if (is_undef(a)) return a;
     if (a.type==_STRNG){
-      *logptr(contextptr) << gettext("Use pencolor for the turtle") << '\n';
+      *logptr(contextptr) << gettext("Use pencolor") << '\n';
       return _couleur(gen(*a._STRNGptr,contextptr),contextptr);
     }
     if (a.type==_INT_){
@@ -16461,7 +16461,11 @@ int find_plotseq_args(const gen & args,gen & expr,gen & x,double & x0d,double & 
     return sol;
   }
     
+#ifdef CASCAS_ALEVEL_ONLY
+  static const char _enveloppe_s []="_rsenv";
+#else
   static const char _enveloppe_s []="envelope";
+#endif
   static define_unary_function_eval (__enveloppe,&_enveloppe,_enveloppe_s);
   define_unary_function_ptr5( at_enveloppe ,alias_at_enveloppe,&__enveloppe,0,true);
 

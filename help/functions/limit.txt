@@ -2,4 +2,8 @@ Args: limit(expr,var=value)
 Required: expr, var=value
 Does: Finds the limit of expr as var tends to value.
 Examples: limit(sin(x)/x,x=0); limit((x^2-1)/(x-1),x=1)
+F2:limit(sin(x)/x,x=0)
+F3:limit((x^2-1)/(x-1),x=1)
+Ex F2: limit(sin(x)/x,x=0)
+Ex F3: limit((x^2-1)/(x-1),x=1)
 Working: Uses simplification, cancellation, or standard A-level limits where routed.

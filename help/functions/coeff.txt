@@ -2,4 +2,8 @@ Args: coeff(poly,var,n)
 Required: poly, var, n
 Does: Returns the coefficient of var^n in a polynomial or expansion.
 Examples: coeff((x+1)^3,x,2); coeff(expand((1+2*x)^5),x,3)
+F2:coeff((x+1)^3,x,2)
+F3:coeff(expand((1+2*x)^5),x,3)
+Ex F2: coeff((x+1)^3,x,2)
+Ex F3: coeff(expand((1+2*x)^5),x,3)
 Working: Shows term selection or expansion-term reasoning when routed.

@@ -2,4 +2,8 @@ Args: sec(x)
 Required: x
 Does: Reciprocal cosine, 1/cos(x).
 Examples: sec(x)^2; integrate(sec(x)^2,x)
+F2:sec(x)^2
+F3:integrate(sec(x)^2,x)
+Ex F2: sec(x)^2
+Ex F3: integrate(sec(x)^2,x)
 Working: Preserved in output when the input or target uses sec.

@@ -1,6 +1,6 @@
 # CasioCAS Project Graph
 
-Last updated: 2026-05-31 12:35 Europe/London
+Last updated: 2026-05-31 13:09 Europe/London
 
 ## Build
 
@@ -9,14 +9,17 @@ graph TD
   Root["repo"] --> Compile["./compile"]
   Compile --> Docker["tools/docker/Dockerfile.khicas-source"]
   Docker --> Src["khicas/upstream/giac90_1addin"]
-  Src --> Make["make khicas50.g3a"]
+  Src --> Make["make khicas50.g3a khicas50.ac2"]
   Make --> G3A["build/CasioCAS.g3a"]
+  Make --> AC2["build/khicas50.ac2"]
   G3A --> Meta["patch/check metadata"]
   G3A --> Size["check <= 2 MiB"]
+  AC2 --> RamSize["check <= 2 MiB"]
   Help["help/functions/*"] --> Pack["tools/build_pack.py"]
   Pack --> PAK["build/CASIOCAS.PAK"]
   Meta --> Transfer["calculator_files/"]
   Size --> Transfer
+  RamSize --> Transfer
   PAK --> Transfer
 ```
 
@@ -92,14 +95,18 @@ graph TD
   Direct --> SepDE["separable-DE exponential model solve(dn/dt=k*n,n,t)"]
   Direct --> Quality["pure-maths working-quality depth gate across calculus, domains, definite/exponential/trig integrals, range intervals, limits, log solve/xform, xform constants, separable DE, binomial, small-angle series, partfrac"]
   Direct --> HelpExamples["same-source direct routes for every help-sheet example"]
+  Direct --> HelpFKeys["catalog/help F2/F3 examples use exact # insertion"]
+  Direct --> XformRational["xform rational transform: a/(x+1) to 5*a/(2*x+1)"]
   Direct --> PureOnly["mechanics routes removed from catalog/help/working engine"]
-  Host["thin same-source host wrapper"] --> Queue["201/201 exact queue host checks"]
+  Host["thin same-source host wrapper"] --> Queue["236/236 exact queue host checks"]
   Host --> DeletedHost["old host-only working_engine/src deleted"]
-  QueueTests["exact queue file"] --> SameSource["201/201 direct no-fallback calculator-source coverage"]
+  QueueTests["exact queue file"] --> SameSource["236/236 direct no-fallback calculator-source coverage"]
   RemovedFallback["generated golden fallback source removed"] --> SameSource
   Session["save/load/session files"] --> Disabled["no-op, in-memory only"]
   Help["help/functions/*.txt"] --> Pak["CASIOCAS.PAK"]
   Border["graphicsProvider border"] --> Pink["0xF81F exact checker"]
+  Package["calculator_files"] --> Sidecar["khicas50.ac2 required; upstream loader expects this name"]
+  RiskAudit["docs/runtime_risk_audit.md"] --> Package
 ```
 
 ## Prune
@@ -192,7 +199,8 @@ graph TD
 
 ```mermaid
 graph TD
-  Build["./compile"] --> Size["check_g3a_size"]
+  Build["./compile"] --> Size["check_g3a_size CasioCAS.g3a"]
+  Build --> RamSize["check_g3a_size khicas50.ac2"]
   Build --> Meta["check_g3a_metadata"]
   Source["source text"] --> Catalog["check_catalog_scope"]
   Source --> Removed["check_removed_features"]
@@ -206,7 +214,7 @@ graph TD
   Queue --> GoldenCoverage["tests/check_golden_shared_coverage.py"]
   Queue --> NoGoldenAudit["tests/audit_no_golden_queue_coverage.py"]
   UI["g3a bytes"] --> Border["check_calculator_border"]
-  Bin["strings CasioCAS.g3a"] --> Leak["removed-term leak scan"]
+  Bin["strings CasioCAS.g3a + khicas50.ac2"] --> Leak["removed-term leak scan"]
   Graphify["graphify update . --no-cluster"] --> GraphJSON["graphify-out/graph.json"]
 ```
 
@@ -214,10 +222,11 @@ graph TD
 
 ```mermaid
 graph LR
-  Build["./compile exit 0"] --> Size["1,303,055 bytes"]
-  Build --> Rom["rom 1,274,379 bytes"]
+  Build["./compile exit 0"] --> Size["g3a 1,305,895 bytes"]
+  Build --> AC2["khicas50.ac2 1,336,030 bytes"]
+  Build --> Rom["rom 1,277,219 bytes"]
   Build --> Ram["ram 331,088 bytes"]
-  Build --> R8C2["r8c2 1,336,146 bytes"]
+  Build --> R8C2["r8c2 1,336,030 bytes"]
   Build --> Meta["metadata ok"]
   Build --> Border["purple border ok"]
   Build --> NoRuntimeFallback["generated golden fallback disabled"]
@@ -225,20 +234,20 @@ graph LR
   Source["source gates"] --> Catalog["catalog ok, required 11"]
   Source --> Removed["343 removed rejected"]
   Source --> Session["session disabled"]
-  Help["help pack"] --> HelpQ["40 function sheets ok, PAK 41 records / 9,514 bytes"]
-  Help --> HelpEx["86/86 help examples run through same-source working engine"]
-  Queue["golden queue"] --> QueueRun["201/201 host ok"]
-  Queue --> GoldenRun["201/201 direct calculator-source ok"]
-  Queue --> NoGolden["201/201 without generated golden fallback"]
-  Shared["shared working"] --> SharedRun["247/247 thin host+calculator adapter ok"]
-  Shared --> WorkQ["35/35 working-quality depth cases ok"]
-  Shared --> CoreRun["247/247 core routes without golden fallback ok"]
+  Help["help pack"] --> HelpQ["40 function sheets ok, PAK 41 records / 13,260 bytes"]
+  Help --> HelpEx["89/89 help examples run through same-source working engine"]
+  Queue["golden queue"] --> QueueRun["236/236 host ok"]
+  Queue --> GoldenRun["236/236 direct calculator-source ok"]
+  Queue --> NoGolden["236/236 without generated golden fallback"]
+  Shared["shared working"] --> SharedRun["250/250 thin host+calculator adapter ok"]
+  Shared --> WorkQ["38/38 working-quality depth cases ok"]
+  Shared --> CoreRun["250/250 core routes without golden fallback ok"]
   Shared --> NoHostSrc["old host-only source deleted"]
   Obj["object prune"] --> QR["qrcodegen.o link-safe removed"]
   Macro["source stubs"] --> Stubbed["plot/list/stats/special/ODE/file IO/linalg/transform helpers blocked"]
   Macro --> RuntimeStubbed["random/sample + ODE/field plot + turtle/drawing + graph display/logo UI + zplot paper/draw + geometry/3D wrappers + plot/locus/implicit/conic/quadric internals + 3D plot/solid + distribution dispatch + zmoyal stats/beta internals + matrix/spectral/JordanBlock + python converter + program/control-flow/input public bodies stubbed/blocked"]
   Static["lexer/help prune"] --> StaticRun["distribution/denom/transform/multinomial/matrix/about/shortcuts/session/crypto/complex/JordanBlock/keep_pivot/det-option/trace/plot-step/program/control-flow/Xcas/turtle/matplot/random/graphic names neutralized"]
   Static --> PromptRun["mod/sign/euler/ascii/geometry/3D solids/ode plot/laplace prompt names blocked"]
-  Bin["binary scan"] --> NoLeak["no removed-term/plot-step/session/menu hits"]
-  Graphify["graphify update . --no-cluster"] --> GraphStats["10,310 nodes / 647,344 edges"]
+  Bin["binary scan"] --> NoLeak["no removed-term/plot-step/session/menu hits in g3a or ac2"]
+  Graphify["graphify update . --no-cluster"] --> GraphStats["10,333 nodes / 882,512 edges"]
 ```

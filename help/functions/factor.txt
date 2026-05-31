@@ -2,4 +2,8 @@ Args: factor(expr)
 Required: expr
 Does: Factorises an algebraic expression.
 Examples: factor(x^2-5*x+6); factor(x^3-8)
+F2:factor(x^2-5*x+6)
+F3:factor(x^3-8)
+Ex F2: factor(x^2-5*x+6)
+Ex F3: factor(x^3-8)
 Working: Usually answer-only unless part of a longer solution.

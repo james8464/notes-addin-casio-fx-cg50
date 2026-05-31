@@ -3,4 +3,8 @@ Required: equation, var
 Optional: independent_var for simple separable differential equations
 Does: Solves supported A-level equations over the real domain.
 Examples: solve(x^2-5*x+6=0,x); solve(log(2,x)=3,x); solve(dn/dt=k*n,n,t)
+F2:solve(x^2-5*x+6=0,x)
+F3:solve(log(2,x)=3,x)
+Ex F2: solve(x^2-5*x+6=0,x)
+Ex F3: solve(log(2,x)=3,x)
 Working: Shows expansion, factorisation, inverse-operation, separable-DE, and checking lines.

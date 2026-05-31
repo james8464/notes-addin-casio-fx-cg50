@@ -2,4 +2,8 @@ Args: cos(x)
 Required: x
 Does: Cosine function in the current angle mode.
 Examples: cos(pi/3); simplify(1-sin(x)^2)
+F2:cos(pi/3)
+F3:simplify(1-sin(x)^2)
+Ex F2: cos(pi/3)
+Ex F3: simplify(1-sin(x)^2)
 Working: Shows standard exact values and identities where routed.

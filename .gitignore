@@ -24,3 +24,4 @@ progress/*.json
 !progress/.gitkeep
 !progress/state.jsonl
 .DS_Store
+.idea/

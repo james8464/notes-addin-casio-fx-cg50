@@ -2,4 +2,8 @@ Args: ln(x)
 Required: x
 Does: Returns the natural logarithm of x.
 Examples: ln(exp(3)); ln(x^2)
+F2:ln(exp(3))
+F3:ln(x^2)
+Ex F2: ln(exp(3))
+Ex F3: ln(x^2)
 Working: Uses ln laws and domain condition x>0 when solving or transforming.

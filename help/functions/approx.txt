@@ -2,4 +2,8 @@ Args: approx(x)
 Required: x
 Does: Returns a decimal approximation of an exact value.
 Examples: approx(pi); approx(sqrt(2))
+F2:approx(pi)
+F3:approx(sqrt(2))
+Ex F2: approx(pi)
+Ex F3: approx(sqrt(2))
 Working: Usually final-answer only; exact working should be done before approximation.

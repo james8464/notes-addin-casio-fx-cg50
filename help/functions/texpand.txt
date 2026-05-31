@@ -2,4 +2,8 @@ Args: texpand(expr)
 Required: expr
 Does: Expands supported trigonometric expressions.
 Examples: texpand(sin(2*x)); texpand(cos(x+y))
+F2:texpand(sin(2*x))
+F3:texpand(cos(x+y))
+Ex F2: texpand(sin(2*x))
+Ex F3: texpand(cos(x+y))
 Working: Uses double-angle and compound-angle identities where routed.

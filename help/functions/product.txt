@@ -2,4 +2,8 @@ Args: product(expr,var,start,end)
 Required: expr, var, start, end
 Does: Returns the product of expr as var runs from start to end.
 Examples: product(k,k,1,4); product(2,k,1,n)
+F2:product(k,k,1,4)
+F3:product(2,k,1,n)
+Ex F2: product(k,k,1,4)
+Ex F3: product(2,k,1,n)
 Working: Usually final-answer only; expands finite products when small.
