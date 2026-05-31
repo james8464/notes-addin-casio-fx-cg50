@@ -18,7 +18,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 STATE = ROOT / "progress" / "state.jsonl"
 GRAPH = ROOT / "docs" / "GRAPH.md"
-G3A = ROOT / "calculator_files" / "khicasen.g3a"
+G3A = ROOT / "calculator_files" / "CAS.g3a"
+QUEUE_LIVE = ROOT / "progress" / "exact_queue_latest.json"
+QUEUE_REPORT = ROOT / "tests" / "reports" / "exact_calculator_input_queue" / "latest.jsonl"
 LIMIT = 2 * 1024 * 1024
 
 
@@ -101,21 +103,61 @@ def ratios_from(text: str) -> list[tuple[str, int, int]]:
     return out
 
 
+def queue_progress() -> dict[str, int | str]:
+    if QUEUE_LIVE.exists() and (
+        not QUEUE_REPORT.exists() or QUEUE_LIVE.stat().st_mtime >= QUEUE_REPORT.stat().st_mtime
+    ):
+        try:
+            data = json.loads(QUEUE_LIVE.read_text(errors="ignore"))
+            if int(data.get("total", 0)) > 0:
+                return data
+        except (json.JSONDecodeError, TypeError, ValueError):
+            pass
+    if not QUEUE_REPORT.exists():
+        return {}
+    total = ok = bad = 0
+    for line in QUEUE_REPORT.read_text(errors="ignore").splitlines():
+        if not line.strip():
+            continue
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        total += 1
+        if row.get("ok"):
+            ok += 1
+        else:
+            bad += 1
+    if total <= 0:
+        return {}
+    return {"phase": "exact_queue", "done": total, "total": total, "ok": ok, "bad": bad, "active": "latest report"}
+
+
 def collect() -> Stat:
     s = latest_state()
     tests = str(s.get("tests", "n/a"))
+    queue = str(s.get("queue", "n/a"))
+    ratios = ratios_from(tests)
+    q = queue_progress()
+    if q:
+        done = int(q.get("done", 0))
+        total = int(q.get("total", 0))
+        ok = int(q.get("ok", 0))
+        bad = int(q.get("bad", 0))
+        queue = f"{done}/{total} done, {ok} ok, {bad} bad"
+        ratios = [("queue-done", done, total), ("queue-right", ok, total), *ratios]
     return Stat(
         phase=str(s.get("phase", "n/a")),
         last=str(s.get("last_event", "n/a")),
         tests=tests,
-        queue=str(s.get("queue", "n/a")),
+        queue=queue,
         unsupported=str(s.get("unsupported", "n/a")),
         branch=run(["git", "branch", "--show-current"]),
         commit=run(["git", "rev-parse", "--short", "HEAD"]),
         dirty=dirty_count(),
         g3a=file_size(G3A),
         graph_age=graph_age(),
-        ratios=ratios_from(tests),
+        ratios=ratios,
     )
 
 
@@ -161,7 +203,7 @@ def render(st: Stat, frame: int, width: int, height: int, enabled: bool) -> str:
     spin = "|/-\\"[frame % 4]
     dirty_color = C.green if st.dirty == 0 else C.yellow
     lines = [
-        trim(f"{color('KhiCASen audit', C.bold + C.cyan, enabled)} {spin} {time.strftime('%H:%M:%S')} fps live", width),
+        trim(f"{color('CAS audit', C.bold + C.cyan, enabled)} {spin} {time.strftime('%H:%M:%S')} fps live", width),
         trim("-" * width, width),
         trim(f"branch {st.branch}  commit {st.commit}  dirty {color(str(st.dirty), dirty_color, enabled)}  graph {st.graph_age}", width),
         trim(f"phase  {st.phase}", width),
@@ -170,7 +212,7 @@ def render(st: Stat, frame: int, width: int, height: int, enabled: bool) -> str:
         trim(f"tests  {st.tests}", width),
         "",
         trim(color("artifacts", C.bold, enabled), width),
-        size_row("khicasen.g3a", st.g3a, frame, bar_w, enabled),
+        size_row("CAS.g3a", st.g3a, frame, bar_w, enabled),
         "",
         trim(color("checks", C.bold, enabled), width),
     ]

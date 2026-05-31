@@ -18,6 +18,9 @@ HOST = REPO / "tools" / "khicas_host_runner"
 OUT = REPO / "tests" / "reports" / "exact_calculator_input_queue"
 REPORT = OUT / "latest.jsonl"
 FAILS = OUT / "failures_latest.txt"
+PROGRESS = REPO / "progress"
+LIVE = PROGRESS / "exact_queue_latest.json"
+STATE = PROGRESS / "state.jsonl"
 
 
 def read_rows() -> list[dict[str, Any]]:
@@ -47,6 +50,31 @@ def specs() -> list[dict[str, Any]]:
                 "working": item.get("mark_scheme_working", []),
             })
     return out
+
+
+def write_progress(done: int, total: int, ok: int, bad: int, active: str = "") -> None:
+    PROGRESS.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "phase": "exact_queue",
+        "done": done,
+        "total": total,
+        "ok": ok,
+        "bad": bad,
+        "active": active,
+        "updated": round(time.time(), 3),
+    }
+    tmp = LIVE.with_suffix(".tmp")
+    tmp.write_text(json.dumps(payload, separators=(",", ":")) + "\n")
+    tmp.replace(LIVE)
+    if done not in (0, total):
+        return
+    with STATE.open("a") as f:
+        f.write(json.dumps({
+            "phase": "queue",
+            "last_event": f"exact queue {done}/{total}",
+            "queue": f"{done}/{total} done, {ok} ok, {bad} bad",
+            "tests": f"queue-run {ok}/{total}",
+        }, separators=(",", ":")) + "\n")
 
 
 def run_one(spec: dict[str, Any], strict: bool) -> dict[str, Any]:
@@ -118,10 +146,29 @@ def main() -> int:
         return 2
     OUT.mkdir(parents=True, exist_ok=True)
     work = specs()
+    total = len(work)
+    write_progress(0, total, 0, 0, "start")
+    results: list[dict[str, Any]] = []
+    done = ok = bad_count = 0
+    last_write = 0.0
     with cf.ThreadPoolExecutor(max_workers=max(1, args.workers)) as ex:
-        results = list(ex.map(lambda s: run_one(s, args.strict_markers), work))
+        futs = {ex.submit(run_one, {**s, "_order": i}, args.strict_markers): s for i, s in enumerate(work)}
+        for fut in cf.as_completed(futs):
+            r = fut.result()
+            results.append(r)
+            done += 1
+            if r["ok"]:
+                ok += 1
+            else:
+                bad_count += 1
+            now = time.time()
+            if done == total or not r["ok"] or now - last_write >= 0.25:
+                write_progress(done, total, ok, bad_count, str(r.get("id", ""))[:80])
+                last_write = now
+    results.sort(key=lambda r: int(r.pop("_order", 0)))
     REPORT.write_text("".join(json.dumps(r, separators=(",", ":")) + "\n" for r in results))
     bad = [r for r in results if not r["ok"]]
+    write_progress(len(results), len(results), len(results) - len(bad), len(bad), "complete")
     FAILS.write_text("\n\n".join(
         f"{r['id']} {r['question']} input {r['input_index']}: {r['module']} {r['input']}\n"
         f"missing={r['missing']} banned={r['banned']} rc={r['returncode']}\n"

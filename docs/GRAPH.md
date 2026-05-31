@@ -1,6 +1,6 @@
 # Project Graph
 
-Last updated: 2026-05-31 18:57 BST
+Last updated: 2026-05-31 19:37 BST
 
 ## Build
 
@@ -13,7 +13,7 @@ graph TD
   Make --> Bin["khicasen.bin, upstream KhiCAS base"]
   Bin --> G3A["calculator_files/CAS.g3a"]
   G3A --> Meta["CAS / @CAS / CAS.g3a"]
-  G3A --> Size["2,097,152 bytes; 0 byte headroom"]
+  G3A --> Size["2,097,140 bytes; 12 byte headroom"]
 ```
 
 ## Runtime
@@ -56,7 +56,13 @@ graph TD
 
 ```mermaid
 graph TD
-  Queue["exact_calculator_input_queue.jsonl"] --> Runtime["13,422/13,422 runtime-safe"]
-  Queue --> Strict["12,364/13,422 strict marker pass"]
+  Online["MadAsMaths + Daily Integral challenge style"] --> Queue["exact_calculator_input_queue.jsonl"]
+  Queue --> Runner["tests/run_exact_queue.py"]
+  Runner --> Live["progress/exact_queue_latest.json"]
+  Runner --> Report["tests/reports/.../latest.jsonl"]
+  Live --> TUI["tools/audit_progress_tui.py"]
+  Report --> TUI
+  Runner --> Runtime["13,558/13,558 runtime-safe"]
+  Runner --> Strict["12,418/13,558 strict marker pass"]
   Strict --> Remaining["remaining: algebra presentation, binomial/partfrac, by-parts clusters"]
 ```

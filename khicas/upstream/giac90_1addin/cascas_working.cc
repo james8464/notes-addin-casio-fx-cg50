@@ -961,7 +961,7 @@ static bool try_integral(const char *input,working_string &out){
   working_string trig_exp_answer;
   if (integrate_trig_exp_sum(args[0],trig_exp_answer) && !force_parts && !force_sub){
     out="Integrate:\n"
-        "Use reverse chain rules\n"
+        "Reverse chain\n"
         "Answer: ";
     out += trig_exp_answer;
     out += " + C";
