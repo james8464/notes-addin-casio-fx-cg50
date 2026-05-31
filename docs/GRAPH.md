@@ -1,6 +1,6 @@
 # CasioCAS Project Graph
 
-Last updated: 2026-05-31 07:47 Europe/London
+Last updated: 2026-05-31 07:57 Europe/London
 
 ## Build
 
@@ -93,6 +93,7 @@ graph TD
   Obj --> QR["qrcodegen.o removed"]
   Macro --> Stubs["plot/permutation/list/stats/special source stubs"]
   Macro --> RuntimeStubs["random/sample, ODE/field plot, turtle/drawing bodies stubbed"]
+  Macro --> DrawPaperStubs["zplot paper/draw wrappers compiled to A-level error stubs"]
   Macro --> TurtleStubs["TURTLETAB table capped to one entry in A-level build"]
   Macro --> Plot3DStubs["3D solids/plot runtime stubbed in zplot3d"]
   Macro --> DistDispatch["generic cdf/icdf/mgf/distribution dispatch stubbed"]
@@ -120,6 +121,7 @@ graph TD
   Hash --> Gate2
   Stubs --> Gate2
   RuntimeStubs --> Gate2
+  DrawPaperStubs --> Gate2
   TurtleStubs --> Gate2
   Plot3DStubs --> Gate2
   DistDispatch --> Gate2
@@ -196,7 +198,7 @@ graph LR
   Shared --> NoHostSrc["old host-only source deleted"]
   Obj["object prune"] --> QR["qrcodegen.o link-safe removed"]
   Macro["source stubs"] --> Stubbed["plot/list/stats/special/ODE/file IO/linalg/transform helpers blocked"]
-  Macro --> RuntimeStubbed["random/sample + ODE/field plot + turtle/drawing + 3D plot/solid + distribution dispatch + matrix/spectral/JordanBlock public bodies stubbed/blocked"]
+  Macro --> RuntimeStubbed["random/sample + ODE/field plot + turtle/drawing + zplot paper/draw + 3D plot/solid + distribution dispatch + matrix/spectral/JordanBlock public bodies stubbed/blocked"]
   Static["lexer/help prune"] --> StaticRun["distribution/denom/transform/multinomial/matrix/about/shortcuts/session/crypto/complex/JordanBlock/keep_pivot/det-option/trace/plot-step/program/Xcas/turtle/matplot/random/graphic names neutralized"]
   Static --> PromptRun["mod/sign/euler/ascii/geometry/3D solids/ode plot/laplace prompt names blocked"]
   Bin["binary scan"] --> NoLeak["no removed-term/plot-step/session/menu hits"]

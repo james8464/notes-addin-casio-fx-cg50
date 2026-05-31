@@ -14020,6 +14020,40 @@ int find_plotseq_args(const gen & args,gen & expr,gen & x,double & x0d,double & 
     static define_unary_function_eval (__papier_quadrille,&_papier_quadrille,_papier_quadrille_s);
     define_unary_function_ptr5( at_papier_quadrille ,alias_at_papier_quadrille,&__papier_quadrille,0,true);
   */
+#ifdef CASCAS_ALEVEL_ONLY
+#define CASCAS_PLOT_STUB(symbol,text,flags) \
+  gen _##symbol(const gen & g,GIAC_CONTEXT){ \
+    if (g.type==_STRNG && g.subtype==-1) return g; \
+    return gensizeerr(contextptr); \
+  } \
+  static const char _##symbol##_s []=text; \
+  static define_unary_function_eval2 (__##symbol,&_##symbol,_##symbol##_s,&printastifunction); \
+  define_unary_function_ptr5( at_##symbol ,alias_at_##symbol,&__##symbol,0,flags);
+
+#define CASCAS_PLOT_STUB_EVAL(symbol,text,flags) \
+  gen _##symbol(const gen & g,GIAC_CONTEXT){ \
+    if (g.type==_STRNG && g.subtype==-1) return g; \
+    return gensizeerr(contextptr); \
+  } \
+  static const char _##symbol##_s []=text; \
+  static define_unary_function_eval (__##symbol,&_##symbol,_##symbol##_s); \
+  define_unary_function_ptr5( at_##symbol ,alias_at_##symbol,&__##symbol,0,flags);
+
+  void papier_lignes(vecteur &,double,double,double,double,double,double,double,double,const vecteur &,GIAC_CONTEXT){}
+  CASCAS_PLOT_STUB_EVAL(dot_paper,"_rsdp",true)
+  CASCAS_PLOT_STUB_EVAL(grid_paper,"_rsgp",true)
+  CASCAS_PLOT_STUB_EVAL(triangle_paper,"_rstp",true)
+  CASCAS_PLOT_STUB_EVAL(line_paper,"_rslp",true)
+  CASCAS_PLOT_STUB(plot_style,"_rsps",true)
+  CASCAS_PLOT_STUB(DrawInv,"_rsdi",T_RETURN)
+  CASCAS_PLOT_STUB(Graph,"_rsg",T_RETURN)
+  CASCAS_PLOT_STUB(DrawFunc,"_rsdf",T_RETURN)
+  CASCAS_PLOT_STUB(DrawPol,"_rsdpo",T_RETURN)
+  CASCAS_PLOT_STUB(DrawParm,"_rsdpa",T_RETURN)
+  CASCAS_PLOT_STUB(DrwCtour,"_rsdc",T_RETURN)
+#undef CASCAS_PLOT_STUB
+#undef CASCAS_PLOT_STUB_EVAL
+#else
   // code slice written by R. De Graeve (2010)
   void papier_lignes(vecteur & res,double xmin,double xmax,double ymin,double ymax,double angle,double deltax,double deltay,double pente,const vecteur & attributs,GIAC_CONTEXT){
     res.push_back(pnt_attrib(gen(makevecteur(xmin+ymin*cst_i,xmin+ymax*cst_i),_GROUP__VECT),attributs,contextptr)); 
@@ -14276,6 +14310,7 @@ int find_plotseq_args(const gen & args,gen & expr,gen & x,double & x0d,double & 
   static const char _DrwCtour_s []="DrwCtour";
   static define_unary_function_eval2 (__DrwCtour,&_plotcontour,_DrwCtour_s,&printastifunction);
   define_unary_function_ptr5( at_DrwCtour ,alias_at_DrwCtour,&__DrwCtour,0,T_RETURN);
+#endif
 
   // should be print_string?
   std::string gen2string(const gen & g){
