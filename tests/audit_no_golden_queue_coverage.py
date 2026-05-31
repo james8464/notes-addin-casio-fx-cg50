@@ -40,7 +40,7 @@ def build_probe(tmp: Path) -> Path:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--min-ok", type=int, default=137)
+    ap.add_argument("--min-ok", type=int, default=200)
     ap.add_argument("--show-failures", type=int, default=0)
     args = ap.parse_args()
     bad: list[str] = []

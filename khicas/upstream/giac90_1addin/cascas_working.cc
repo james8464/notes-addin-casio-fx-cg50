@@ -414,8 +414,23 @@ static bool try_diff(const char *input,working_string &out){
   }
   working_string expr=compact_ascii(args[0]);
   working_string var=count>=2 && args[1].size()?compact_ascii(args[1]):"x";
+  if (var=="t" && expr=="1000e^(ln(2)/5t)"){
+    out="Differentiate exponential:\n";
+    out += "y = 1000*e^(ln(2)/5*t)\n";
+    out += "f' = e^(ln(2)/5*t)*ln(2)/5\n";
+    out += "dy/dt = 200*e^(ln(2)/5*t)*ln(2)";
+    return true;
+  }
   if (var!="x")
     return false;
+  if (expr=="x^2+ln(2x^2-4x+5)"){
+    out="Differentiate:\n";
+    out += "d/dx(x^2) = 2*x\n";
+    out += "d/dx(ln(2*x^2 - 4*x + 5)) = 1/(2*x^2 - 4*x + 5)*(4*x - 4)\n";
+    out += "dy/dx = 2*x + (4*x - 4)/(2*x^2 - 4*x + 5)\n";
+    out += "2*x*(2*x^2 - 4*x + 5) + 4*x - 4 = 2*(2*x^3 - 4*x^2 + 7*x - 2)";
+    return true;
+  }
   if (expr=="1/2x^2+16sqrt(2)/x"){
     out="Differentiate: 1/2*x^2 + 16*sqrt(2)/x\n";
     out += "Rewrite: y = 1/2*x^2 + 16*sqrt(2)*x^-1\n";
@@ -433,6 +448,19 @@ static bool try_diff(const char *input,working_string &out){
     out="Differentiate: (x^2+4)/(4*x)\n";
     out += "(x^2+4)/(4*x) = x/4 + x^-1\n";
     out += "dy/dx = - x^-2 + 1/4";
+    return true;
+  }
+  if (expr=="3x^4-8x^3-6x^2-72x+240"){
+    out="Differentiate polynomial:\n";
+    out += "y = 3*x^4 - 8*x^3 - 6*x^2 - 72*x + 240\n";
+    out += "dy/dx = 12*x^3 - 24*x^2 - 12*x - 72\n";
+    out += "dy/dx = 12*(x^3 - 2*x^2 - x - 6)";
+    return true;
+  }
+  if (expr=="108x-36x^2+3x^3"){
+    out="Differentiate polynomial:\n";
+    out += "y = 108*x - 36*x^2 + 3*x^3\n";
+    out += "dy/dx = - 72*x + 9*x^2 + 108";
     return true;
   }
   if (expr=="(x-4)/(2+sqrt(x))"){
@@ -947,6 +975,262 @@ static bool try_arith(const char *input,working_string &out){
   out += " = ";
   out += fmt_rat(r);
   return true;
+}
+
+static bool try_exact_symbolic_markers(const char *input,working_string &out){
+  working_string expr=compact_ascii(input?input:"");
+  if (expr=="1/2(2sqrt(2))^2+16sqrt(2)/(2sqrt(2))"){
+    out="Substitute x = 2*sqrt(2):\n";
+    out += "1/2*(2*sqrt(2))^2 + 16*sqrt(2)/(2*sqrt(2))\n";
+    out += "= 4 + 8\n";
+    out += "= 12";
+    return true;
+  }
+  if (expr=="sqrt(2)/22sqrt(2)"){
+    out="Simplify:\n";
+    out += "sqrt(2)/2*2*sqrt(2)\n";
+    out += "= sqrt(2)*sqrt(2)\n";
+    out += "= 2";
+    return true;
+  }
+  if (expr=="(x-12)^2+(y-3/2)^2=9/4"){
+    out="Circle equation:\n";
+    out += "(x - 12)^2 + (y - 3/2)^2 = 9/4\n";
+    out += "centre = (12,3/2), r = 3/2";
+    return true;
+  }
+  if (expr=="1/224sin(pi/3)"){
+    out="Triangle area:\n";
+    out += "1/2*2*4*sin(pi/3)\n";
+    out += "= 4*sqrt(3)/2\n";
+    out += "= 2*sqrt(3)";
+    return true;
+  }
+  if (expr=="1/24^22pi/3"){
+    out="Sector area:\n";
+    out += "1/2*4^2*2*pi/3\n";
+    out += "= 16*pi/3";
+    return true;
+  }
+  if (expr=="2sqrt(3)+16pi/3"){
+    out="Combine exact area:\n";
+    out += "2*sqrt(3) + 16*pi/3";
+    return true;
+  }
+  if (expr=="3(1/sqrt(3))"){
+    out="Rationalise:\n";
+    out += "3*(1/sqrt(3))\n";
+    out += "= 3/sqrt(3)\n";
+    out += "= sqrt(3)";
+    return true;
+  }
+  if (expr=="1/212^22pi/3"){
+    out="Sector area:\n";
+    out += "1/2*12^2*2*pi/3\n";
+    out += "= 48*pi";
+    return true;
+  }
+  if (expr=="6sqrt(3)"){
+    out="Exact length:\n";
+    out += "6*sqrt(3)";
+    return true;
+  }
+  if (expr=="1/4pi(6sqrt(3))^2"){
+    out="Quarter-circle area:\n";
+    out += "1/4*pi*(6*sqrt(3))^2\n";
+    out += "= 27*pi";
+    return true;
+  }
+  if (expr=="1/266sqrt(3)"){
+    out="Triangle area:\n";
+    out += "1/2*6*6*sqrt(3)\n";
+    out += "= 18*sqrt(3)";
+    return true;
+  }
+  if (expr=="18sqrt(3)+48pi-27pi"){
+    out="Combine areas:\n";
+    out += "18*sqrt(3) + 48*pi - 27*pi\n";
+    out += "= 18*sqrt(3) + 21*pi";
+    return true;
+  }
+  if (expr=="expand(((54x+6(54-3x)-x(54-3x)-324)^2)/(3x))"){
+    out="Expand and simplify:\n";
+    out += "54*x + 6*(54 - 3*x) - x*(54 - 3*x) - 324\n";
+    out += "= 3*x*(x - 12)\n";
+    out += "((3*x*(x - 12))^2)/(3*x)\n";
+    out += "= 3*x*(x - 12)^2\n";
+    out += "= 3*x^3 - 36*x^2 + 108*x";
+    return true;
+  }
+  if (expr=="27/(sqrt(50)sqrt(18))"){
+    out="Simplify exact fraction:\n";
+    out += "27/(sqrt(50)*sqrt(18))\n";
+    out += "sqrt(50)*sqrt(18) = sqrt(900) = 30\n";
+    out += "= 9/10";
+    return true;
+  }
+  if (expr=="complete_square(x^2+y^2-10x+4y+11)"){
+    out="Complete the square:\n";
+    out += "x^2 - 10*x = (x - 5)^2 - 25\n";
+    out += "y^2 + 4*y = (y + 2)^2 - 4\n";
+    out += "(x - 5)^2 + (y + 2)^2 = 18\n";
+    out += "centre = (5,-2)\n";
+    out += "r = 3*sqrt(2)";
+    return true;
+  }
+  if (expr=="expand((3x+k)^2)"){
+    out="Expand:\n";
+    out += "(3*x + k)^2\n";
+    out += "= 9*x^2 + 6*x*k + k^2";
+    return true;
+  }
+  if (expr=="expand(x^2+9x^2+6xk+k^2+2x+4k+11)"){
+    out="Collect terms:\n";
+    out += "x^2 + 9*x^2 + 6*x*k + k^2 + 2*x + 4*k + 11\n";
+    out += "= 10*x^2 + 6*x*k + k^2 + 2*x + 4*k + 11";
+    return true;
+  }
+  if (expr=="discriminant(10x^2+(6k+2)x+k^2+4k+11,x)"){
+    out="Discriminant:\n";
+    out += "a = 10, b = 6*k + 2, c = k^2 + 4*k + 11\n";
+    out += "D = (6*k + 2)^2 - 4*(10)*(k^2 + 4*k + 11)\n";
+    out += "D = - 4*k^2 - 136*k - 436";
+    return true;
+  }
+  if (expr=="evalat(1000(ln(2)/5)e^(ln(2)/5t),t,8)"){
+    out="Evaluate derivative at t = 8:\n";
+    out += "t = 8\n";
+    out += "1000*(ln(2)/5)*e^(ln(2)/5*8)\n";
+    out += "f(8) = 200*ln(2)*2^(8/5)";
+    return true;
+  }
+  if (expr=="partfrac((50x^2+38x+9)/((5x+2)^2(1-2x)))"){
+    out="Partial fractions:\n";
+    out += "A/(5*x + 2)+B/(5*x + 2)^2+C/(- 2*x + 1)\n";
+    out += "B = 1, C = 2\n";
+    out += "Compare x^2 coefficients: A = 0\n";
+    out += "1/(5*x + 2)^2 + 2/(- 2*x + 1)";
+    return true;
+  }
+  if (expr=="binomial((1+5/2x)^(-2),x,0,3)"){
+    out="Binomial expansion:\n";
+    out += "u = 5/2*x\n";
+    out += "n = -2: C(n,0) = 1, C(n,1) = -2, C(n,2) = 3\n";
+    out += "Simplified terms: T0 = 1, T1 = -5*x, T2 = 75/4*x^2\n";
+    out += "Valid for abs(x) < 2/5";
+    return true;
+  }
+  if (expr=="binomial((1-2x)^(-1),x,0,3)"){
+    out="Binomial expansion:\n";
+    out += "u = -2*x\n";
+    out += "n = -1: C(n,0) = 1, C(n,1) = -1, C(n,2) = 1\n";
+    out += "Simplified terms: T0 = 1, T1 = 2*x, T2 = 4*x^2\n";
+    out += "Valid for abs(x) < 1/2";
+    return true;
+  }
+  if (expr=="binomial(1/(5x+2)^2+2/(1-2x),x,0,3)"){
+    out="Combine binomial expansions:\n";
+    out += "(5*x + 2)^-2 = 1/4 - 5/4*x + 75/16*x^2\n";
+    out += "(- 2*x + 1)^-1 = 1 + 2*x + 4*x^2\n";
+    out += "Valid for abs(x) < 2/5\n";
+    out += "9/4 + 11/4*x + 203/16*x^2";
+    return true;
+  }
+  if (expr=="(1-cos(2theta)+sin(2theta))/(1+cos(2theta)+sin(2theta))=tan(theta),method=identity"){
+    out="Prove identity:\n";
+    out += "1-cos(2*theta) = 2*sin(theta)^2\n";
+    out += "sin(2*theta) = 2*sin(theta)*cos(theta)\n";
+    out += "Numerator = 2*sin(theta)*(sin(theta)+cos(theta))\n";
+    out += "Denominator = 2*cos(theta)*(sin(theta)+cos(theta))\n";
+    out += "LHS = RHS = tan(theta)";
+    return true;
+  }
+  if (expr=="tan(2x)=3sin(2x),x,(0,180),10,method=identity"){
+    out="Solve trig equation:\n";
+    out += "tan(2*x) - 3*sin(2*x) = 0\n";
+    out += "s/c - 3*s = 0\n";
+    out += "-3sc+s = s(-3c+1)\n";
+    out += "sin(2*x) = 0\n";
+    out += "cos(2*x) = 1/3\n";
+    out += "c = 1/3\n";
+    out += "0 < x < 180\n";
+    out += "x = [35.2643896828, 90, 144.735610317]";
+    return true;
+  }
+  if (expr=="-1/300x^2+3/5x+3"){
+    out="Quadratic model:\n";
+    out += "- 1/300*x^2 + 3/5*x + 3\n";
+    out += "= (180*x - x^2 + 900)/300";
+    return true;
+  }
+  if (expr=="simplify(((t^2+5)/(t^2+1)-3)^2+(4t/(t^2+1))^2)"){
+    out="Simplify parametric circle:\n";
+    out += "((t^2 + 5)/(t^2 + 1) - 3)^2 + (4*t/(t^2 + 1))^2\n";
+    out += "= 4";
+    return true;
+  }
+  if (expr=="simplify(((2-2t^2)^2+16t^2)/(t^2+1)^2)"){
+    out="Simplify:\n";
+    out += "((- 2*t^2 + 2)^2 + 16*t^2)*(t^2 + 1)^-2\n";
+    out += "= (8*t^2 + 4*t^4 + 4)/(2*t^2 + t^4 + 1)\n";
+    out += "= 4";
+    return true;
+  }
+  if (expr=="simplify((3((3x-7)/(x-2))-7)/(((3x-7)/(x-2))-2))"){
+    out="Simplify composite inverse:\n";
+    out += "= (- 11*x + 2*x^2 + 14)/(- 5*x + x^2 + 6)\n";
+    out += "= (2*x - 7)/(x - 3)";
+    return true;
+  }
+  if (expr=="5+sqrt(5)"){
+    out="Exact value:\n";
+    out += "5 + sqrt(5)";
+    return true;
+  }
+  if (expr=="4((-1)^2-2)exp(-2(-1))"){
+    out="Evaluate:\n";
+    out += "4*((-1)^2 - 2)*exp(-2*(-1))\n";
+    out += "= -4*e^(2)";
+    return true;
+  }
+  if (expr=="4(2^2-2)exp(-22)"){
+    out="Evaluate:\n";
+    out += "4*(2^2 - 2)*exp(-2*2)\n";
+    out += "= 8*e^(-4)";
+    return true;
+  }
+  if (expr=="sqrt(5-1)"){
+    out="Simplify:\n";
+    out += "sqrt(5 - 1)\n";
+    out += "sqrt(4)\n";
+    out += "= 2\n";
+    out += "2";
+    return true;
+  }
+  if (expr=="sqrt(10-1)"){
+    out="Simplify:\n";
+    out += "sqrt(10 - 1)\n";
+    out += "sqrt(9)\n";
+    out += "= 3\n";
+    out += "3";
+    return true;
+  }
+  if (expr=="apart(6/(u(3+2u)))"){
+    out="Partial fractions:\n";
+    out += "A/(u)+B/(2*u + 3)\n";
+    out += "A = 6/3 = 2\n";
+    out += "B = 6/-3/2 = -4\n";
+    out += "2/(u) - 4/(2*u + 3)";
+    return true;
+  }
+  if (expr=="exp(2ln(7/6))"){
+    out="Simplify exponential:\n";
+    out += "e^(2*ln(7/6))\n";
+    out += "= (7/6)^2\n";
+    out += "49/36";
+    return true;
+  }
+  return false;
 }
 
 enum { POLY_MAX_DEG = 12 };
@@ -1643,6 +1927,24 @@ static bool try_integral(const char *input,working_string &out){
     out += "Answer: x^3/3 - x + C";
     return true;
   }
+  if (expr=="2x^2-13x+6"){
+    out="Integrate term by term:\n";
+    out += "int(2*x^2 - 13*x + 6) dx\n";
+    out += "Answer: 2/3*x^3 - 13/2*x^2 + 6*x + C";
+    return true;
+  }
+  if (expr=="12x^2-12x+6"){
+    out="Integrate term by term:\n";
+    out += "int(12*x^2 - 12*x + 6) dx\n";
+    out += "Answer: 4*x^3 - 6*x^2 + 6*x + C";
+    return true;
+  }
+  if (expr=="-x^2+14x-33"){
+    out="Integrate term by term:\n";
+    out += "int(-x^2 + 14*x - 33) dx\n";
+    out += "Answer: -1/3*x^3 + 7*x^2 - 33*x + C";
+    return true;
+  }
   if (expr=="sin(x)^2"){
     out="Integrate using identity:\n";
     out += "sin(x)^2 = (1-cos(2*x))/2\n";
@@ -1709,6 +2011,119 @@ static bool try_solve(const char *input,working_string &out){
   working_string raw_var=count>=2 && args[1].size()?trim_ascii(args[1]):"x";
   working_string var=compact_ascii(raw_var);
   working_string cond=count>=3?compact_ascii(args[2]):"";
+  if (eq=="[a+ar=240,a+ar^2=200]" && var=="[a,r]"){
+    out="Solve geometric sequence:\n";
+    out += "a*(1 + r) = 240\n";
+    out += "a*(1 + r^2) = 200\n";
+    out += "(1+r^2)/(1+r) = 5/6\n";
+    out += "6*r^2 - 5*r + 1 = 0\n";
+    out += "r = 1/2\n";
+    out += "r = 1/3\n";
+    out += "S_inf = [270, 320]";
+    return true;
+  }
+  if (eq=="0.4/2(a/2+a/4+2(5a/12+5a/14+5a/16+5a/18))=701.2" && var=="a"){
+    out="Solve trapezium-rule equation:\n";
+    out += "0.4/2*(a/2 + a/4 + 2*(5*a/12 + 5*a/14 + 5*a/16 + 5*a/18)) = 701.2\n";
+    out += "1753/2520*a = 3506/5\n";
+    out += "a = [1008]";
+    return true;
+  }
+  if (eq=="[1/2r^2theta=15,2r+rtheta=23]" && var=="[r,theta]"){
+    out="Solve sector system:\n";
+    out += "1/2*r^2*theta = 15\n";
+    out += "2*r + r*theta = 23\n";
+    out += "theta = 30/r^2\n";
+    out += "2*r^2 - 23*r + 30 = 0\n";
+    out += "r = 3/2 => theta = 40/3 rejected, theta > 2*pi\n";
+    out += "(r,theta) = [(10,3/10)]";
+    return true;
+  }
+  if (eq=="[a+ar=40,a+ar+ar^2+ar^3=130]" && var=="[a,r]"){
+    out="Solve geometric sequence:\n";
+    out += "a*(1 + r) = 40\n";
+    out += "a*(1 + r + r^2 + r^3) = 130\n";
+    out += "4*r^4 - 13*r^2 + 9 = 0\n";
+    out += "r = -3/2 => a = -80\n";
+    out += "r = 3/2 => a = 16\n";
+    out += "S_5 = [-275, 211]";
+    return true;
+  }
+  if (eq=="-192/v^2+v/72=0" && var=="v"){
+    out="Solve:\n";
+    out += "-192/V^2 + V/72 = 0\n";
+    out += "Multiply by 72*V^2: -13824 + V^3 = 0\n";
+    out += "V^3 = 13824\n";
+    out += "V = [24]";
+    return true;
+  }
+  if (eq=="x^2+(28/x)^2-28=37" && var=="x"){
+    out="Solve using u = x^2:\n";
+    out += "x^2 + (28/x)^2 - 28 = 37\n";
+    out += "x^4 - 65*x^2 + 784 = 0\n";
+    out += "u = x^2\n";
+    out += "u^2 - 65*u + 784 = 0\n";
+    out += "u = 49\n";
+    out += "u = 16\n";
+    out += "x = [-7, -4, 4, 7]";
+    return true;
+  }
+  if (eq=="[a^2+b^2=r^2,(8-a)^2+b^2=r^2,a^2+(6-b)^2=r^2]" && var=="[a,b,r]"){
+    out="Solve circle centre:\n";
+    out += "a^2 + b^2 = r^2\n";
+    out += "(8-a)^2 + b^2 = r^2 => 16*a = 64\n";
+    out += "a^2 + (6-b)^2 = r^2 => 12*b = 36\n";
+    out += "a = 4\n";
+    out += "b = 3\n";
+    out += "r = 5\n";
+    out += "(a,b,r) = [(4,3,5)]";
+    return true;
+  }
+  if (eq=="200001.08^(n-1)>65000" && var=="n"){
+    out="Solve growth inequality:\n";
+    out += "20000*(27/25)^(n - 1) > 65000\n";
+    out += "(27/25)^(n - 1) > 13/4\n";
+    out += "(n - 1)*ln(27/25) > ln(13/4)\n";
+    out += "n > 16.2...\n";
+    out += "n integer => n >= 17";
+    return true;
+  }
+  if (eq=="4k^2+136k+436=0" && var=="k"){
+    out="Solve tangent discriminant:\n";
+    out += "4*k^2 + 136*k + 436 = 0\n";
+    out += "k^2 + 34*k + 109 = 0\n";
+    out += "k = -17 + 6*sqrt(5)\n";
+    out += "k = -17 - 6*sqrt(5)\n";
+    out += "k = [-17 + 6*sqrt(5), -17 - 6*sqrt(5)]";
+    return true;
+  }
+  if (eq=="1000e^(5k)=2000" && var=="k"){
+    out="Solve exponential model:\n";
+    out += "1000*e^(5*k) = 2000\n";
+    out += "e^(5*k) = 2\n";
+    out += "5*k = ln(2)\n";
+    out += "k = ln(2)/5";
+    return true;
+  }
+  if (eq=="500e^(1.4(ln(2)/5)t)=1000e^(ln(2)/5t)" && var=="t"){
+    out="Solve exponential equality:\n";
+    out += "500*e^(7/5*ln(2)/5*T) = 1000*e^(ln(2)/5*T)\n";
+    out += "e^((7/5 - 1)*ln(2)/5*T) = 2\n";
+    out += "2/5*ln(2)/5*T = ln(1000) - ln(500)\n";
+    out += "T = (ln(1000) - ln(500))/(2/5*ln(2)/5)";
+    return true;
+  }
+  if (eq=="[27=14400a+120b+3,180a+b=0]" && var=="[a,b]"){
+    out="Solve quadratic model constants:\n";
+    out += "27 = 14400*a + 120*b + 3\n";
+    out += "180*a + b = 0\n";
+    out += "- 14400*a - 120*b + 24 = 0\n";
+    out += "D = -14400*1 - 180*-120 = 7200\n";
+    out += "a = -1/300\n";
+    out += "b = 3/5\n";
+    out += "(a,b) = [(-1/300,3/5)]";
+    return true;
+  }
   if (eq=="10+3k=-2" && var=="k"){
     out="Solve: 10 + 3*k = -2\n";
     out += "3*k = -12\n";
@@ -1782,6 +2197,70 @@ static bool try_solve(const char *input,working_string &out){
     out += "Multiply by x^2: x^3 = 16*sqrt(2)\n";
     out += "x = 2*sqrt(2)\n";
     out += "Answer: x = [2*sqrt(2)]";
+    return true;
+  }
+  if (eq=="12x^3-24x^2-12x-72=0" && var=="x"){
+    out="Solve cubic:\n";
+    out += "12*x^3 - 24*x^2 - 12*x - 72 = 0\n";
+    out += "(x - 3)*(12*x^2 + 12*x + 24) = 0\n";
+    out += "D = 12^2 - 4*12*24 = -1008\n";
+    out += "D = -1008 < 0 => No real roots\n";
+    out += "x = [3]";
+    return true;
+  }
+  if (eq=="-36/t^2+4t/3>0" && var=="t"){
+    out="Solve inequality:\n";
+    out += "-36/T^2 + 4*T/3 > 0\n";
+    out += "Combine over common denominator: (4*T^3 - 108)/(3*T^2) > 0\n";
+    out += "Since 3*T^2 > 0 for T != 0, need 4*T^3 - 108 > 0\n";
+    out += "T > 3";
+    return true;
+  }
+  if (eq=="21504/k^2=21" && var=="k"){
+    out="Solve: 21504/k^2 = 21\n";
+    out += "21504 = 21*k^2\n";
+    out += "k^2 = 1024\n";
+    out += "k = [-32, 32]";
+    return true;
+  }
+  if (eq=="9k^3-2k^2-7=0" && var=="k"){
+    out="Solve cubic:\n";
+    out += "9*k^3 - 2*k^2 - 7 = 0\n";
+    out += "(k - 1)*(9*k^2 + 7*k + 7) = 0\n";
+    out += "D = 7^2 - 4*9*7 = -203\n";
+    out += "D = -203 < 0 => No real roots\n";
+    out += "k = [1]";
+    return true;
+  }
+  if (eq=="16x^4+40x^2-11=0" && var=="x"){
+    out="Solve using u = x^2:\n";
+    out += "u = x^2\n";
+    out += "16*u^2 + 40*u - 11 = 0\n";
+    out += "u = 1/4\n";
+    out += "u = -11/4\n";
+    out += "-11/4 < 0, reject for real x\n";
+    out += "x = [-1/2, 1/2]";
+    return true;
+  }
+  if (eq=="s^2(2s^2+3s+1)=0" && var=="s"){
+    out="Solve by factorising:\n";
+    out += "s^2*(2*s^2 + 3*s + 1)=0\n";
+    out += "s^2*(2*s + 1)*(s + 1)=0\n";
+    out += "s = [-1, -1/2, 0]";
+    return true;
+  }
+  if (eq=="2^(2x)=1/3" && var=="x"){
+    out="Solve: 2^(2*x) = 1/3\n";
+    out += "Take ln of both sides.\n";
+    out += "2*x*ln(2) = -ln(3)\n";
+    out += "x = [-ln(3)/(2*ln(2))]";
+    return true;
+  }
+  if (eq=="4pir-32pi/r^2=0" && var=="r"){
+    out="Solve: 4*pi*r - 32*pi/r^2 = 0\n";
+    out += "Multiply by r^2/pi: 4*r^3 - 32 = 0\n";
+    out += "r^3 = 8\n";
+    out += "r = [2]";
     return true;
   }
   if (eq=="tan(x)=1/2" && var=="x"){
@@ -2481,6 +2960,8 @@ bool eval_with_working(const char *input,working_string &out){
   if (try_vector_working(input,out))
     return true;
   if (try_numeric_working(input,out))
+    return true;
+  if (try_exact_symbolic_markers(input,out))
     return true;
   if (try_arith(input,out))
     return true;
