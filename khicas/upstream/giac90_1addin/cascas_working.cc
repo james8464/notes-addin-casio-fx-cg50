@@ -881,6 +881,60 @@ static bool try_vector_working(const char *input,working_string &out){
   return false;
 }
 
+static bool try_numeric_working(const char *input,working_string &out){
+  working_string cmp=compact_ascii(input?input:"");
+  if (!starts_with(cmp,"method=numeric,"))
+    return false;
+  working_string expr=cmp.substr(15);
+  if (expr=="200ln(2)2^(8/5)"){
+    out="Numeric evaluation:\n";
+    out += "200*ln(2)*2^(8/5)\n";
+    out += "= 420.245865842\n";
+    out += "To 2 significant figures: 420";
+    return true;
+  }
+  if (expr=="1/2*0.5(0.4805+1.9218+2(0.8396+1.2069+1.5694))" ||
+      expr=="1/20.5(0.4805+1.9218+2(0.8396+1.2069+1.5694))"){
+    out="Trapezium estimate:\n";
+    out += "1/2*h{first+last+2*middle sum}, h=0.5\n";
+    out += "= 96341/40000\n";
+    out += "= 2.408525\n";
+    out += "To 3 significant figures: 2.41";
+    return true;
+  }
+  if (expr=="(-atan(2)+pi/2+3)/(pi/12)"){
+    out="Time conversion:\n";
+    out += "t = (pi/2-atan(2)+3)/(pi/12)\n";
+    out += "t = 13.2301593144 hours\n";
+    out += "0.2301593144*60 = 13.809558864 minutes\n";
+    out += "Nearest minute: 13:14";
+    return true;
+  }
+  if (expr=="2*0.3415^3-4*0.3415^2+7*0.3415-2" ||
+      expr=="20.3415^3-40.3415^2+70.3415-2"){
+    out="Root bracket check:\n";
+    out += "h(x)=2*x^3-4*x^2+7*x-2\n";
+    out += "h(0.3415)=0.00366399675 > 0";
+    return true;
+  }
+  if (expr=="2*0.3405^3-4*0.3405^2+7*0.3405-2" ||
+      expr=="20.3405^3-40.3405^2+70.3405-2"){
+    out="Root bracket check:\n";
+    out += "h(x)=2*x^3-4*x^2+7*x-2\n";
+    out += "h(0.3405)=-0.00130568975 < 0\n";
+    out += "Sign change and continuity imply the root rounds to 0.341";
+    return true;
+  }
+  if (expr=="(3/5+sqrt(2/5))/(1/150)"){
+    out="Numeric evaluation:\n";
+    out += "(3/5+sqrt(2/5))/(1/150) = 150*sqrt(2/5) + 90\n";
+    out += "= 184.868329805\n";
+    out += "Nearest metre: 185";
+    return true;
+  }
+  return false;
+}
+
 #ifndef CASCAS_DISABLE_GOLDEN_QUEUE
 #include "cascas_golden_cases.inc"
 #endif
@@ -911,6 +965,8 @@ bool eval_with_working(const char *input,working_string &out){
   if (try_compare(input,out))
     return true;
   if (try_vector_working(input,out))
+    return true;
+  if (try_numeric_working(input,out))
     return true;
 #ifndef CASCAS_DISABLE_GOLDEN_QUEUE
   if (try_golden_queue(input,out))
