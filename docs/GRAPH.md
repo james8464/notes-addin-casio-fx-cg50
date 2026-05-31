@@ -1,6 +1,6 @@
 # CasioCAS Project Graph
 
-Last updated: 2026-05-31 05:08 Europe/London
+Last updated: 2026-05-31 05:16 Europe/London
 
 ## Build
 
@@ -91,7 +91,8 @@ graph TD
   Remove --> Sec["-ffunction-sections -fdata-sections"]
   Obj --> QR["qrcodegen.o removed"]
   Macro --> Stubs["plot/permutation/list/stats/special source stubs"]
-  Macro --> RuntimeStubs["random/sample and ODE/field plot bodies stubbed"]
+  Macro --> RuntimeStubs["random/sample, ODE/field plot, turtle/drawing bodies stubbed"]
+  Macro --> TurtleStubs["TURTLETAB table capped to one entry in A-level build"]
   Macro --> More["desolve/fft/file IO/charpoly/pcar/pivot/assume blocked"]
   Macro --> XformPrune["halftan/exp2trig/trig2exp/evalc/q2a/a2q blocked"]
   Remove --> Menu["console catalog/menu/message leaks"]
@@ -110,6 +111,7 @@ graph TD
   Hash --> Gate2
   Stubs --> Gate2
   RuntimeStubs --> Gate2
+  TurtleStubs --> Gate2
   More --> Gate2
   XformPrune --> Gate2
   Menu --> Gate
@@ -157,8 +159,9 @@ graph TD
 
 ```mermaid
 graph LR
-  Build["./compile exit 0"] --> Size["1,299,163 bytes"]
-  Build --> R8C2["r8c2 1,819,006 bytes"]
+  Build["./compile exit 0"] --> Size["1,299,155 bytes"]
+  Build --> Ram["ram 333,236 bytes"]
+  Build --> R8C2["r8c2 1,810,474 bytes"]
   Build --> Meta["metadata ok"]
   Build --> Border["purple border ok"]
   Build --> NoRuntimeFallback["generated golden fallback disabled"]
@@ -176,7 +179,7 @@ graph LR
   Shared --> NoHostSrc["old host-only source deleted"]
   Obj["object prune"] --> QR["qrcodegen.o link-safe removed"]
   Macro["source stubs"] --> Stubbed["plot/list/stats/special/ODE/file IO/linalg/transform helpers blocked"]
-  Macro --> RuntimeStubbed["random/sample + ODE/field plot bodies stubbed"]
+  Macro --> RuntimeStubbed["random/sample + ODE/field plot + turtle/drawing bodies stubbed"]
   Static["lexer prune"] --> StaticRun["distribution/denom/transform static names neutralized"]
   Static --> PromptRun["mod/sign/euler/ascii/geometry/ode plot/laplace prompt names blocked"]
   Bin["binary scan"] --> NoLeak["no removed-term hits"]

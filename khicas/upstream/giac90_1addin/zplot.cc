@@ -14293,6 +14293,184 @@ int find_plotseq_args(const gen & args,gen & expr,gen & x,double & x0d,double & 
     return * turtleptr;
   }
   
+#ifdef CASCAS_ALEVEL_ONLY
+#ifdef TURTLETAB
+  const int MAX_LOGO=1;
+  logo_turtle tablogo[MAX_LOGO];
+  int turtle_stack_size=0;
+  int turtle_stack_push_back(const logo_turtle & l){
+    tablogo[0]=l;
+    turtle_stack_size=1;
+    return turtle_stack_size;
+  }
+#else
+  std::vector<logo_turtle> & turtle_stack(){
+    static std::vector<logo_turtle> * ans = 0;
+    if (!ans)
+      ans=new std::vector<logo_turtle>(1,turtle());
+    return *ans;
+  }
+#endif
+
+  vector<string> * ecrisptr=0;
+  vector<string> & ecristab(){
+    if (!ecrisptr)
+      ecrisptr=new vector<string>;
+    return * ecrisptr;
+  }
+
+  static int turtle_status(const logo_turtle & t){
+    int status=(t.color << 11) | ((t.turtle_length & 0xff) << 3);
+    if (t.direct) status += 4;
+    if (t.visible) status += 2;
+    if (t.mark) status += 1;
+    return status;
+  }
+
+  logo_turtle vecteur2turtle(const vecteur & v){
+    if (v.size()>=5 && v[0].type==_DOUBLE_ && v[1].type==_DOUBLE_ && v[2].type==_DOUBLE_ && v[3].type==_INT_ && v[4].type==_INT_){
+      logo_turtle t;
+      t.x=v[0]._DOUBLE_val;
+      t.y=v[1]._DOUBLE_val;
+      t.theta=v[2]._DOUBLE_val;
+      int i=v[3].val;
+      t.mark=(i%2)!=0; i=i >> 1;
+      t.visible=(i%2)!=0; i=i >> 1;
+      t.direct=(i%2)!=0; i=i >> 1;
+      t.turtle_length=i & 0xff; i=i >> 8;
+      t.color=i;
+      t.radius=v[4].val;
+      t.s=(v.size()>5 && v[5].type==_INT_)?v[5].val:-1;
+      return t;
+    }
+    return logo_turtle();
+  }
+
+  bool set_turtle_state(const vecteur & v,GIAC_CONTEXT){
+    if (v.empty())
+      return false;
+    turtle()=vecteur2turtle(v);
+#ifdef TURTLETAB
+    turtle_stack_push_back(turtle());
+#else
+    turtle_stack().front()=turtle();
+#endif
+    return true;
+  }
+
+  gen turtle2gen(const logo_turtle & t){
+    return gen(makevecteur(t.x,t.y,double(t.theta),turtle_status(t),t.radius,t.s),_LOGO__VECT);
+  }
+
+  gen turtle_state(GIAC_CONTEXT){
+    return turtle2gen(turtle());
+  }
+
+  vecteur turtlevect2vecteur(const std::vector<logo_turtle> & v){
+    vecteur res;
+    res.reserve(v.size());
+    for (unsigned i=0;i<v.size();++i)
+      res.push_back(turtle2gen(v[i]));
+    return res;
+  }
+
+  std::vector<logo_turtle> vecteur2turtlevect(const vecteur & v){
+    std::vector<logo_turtle> res;
+    res.reserve(v.size());
+    for (unsigned i=0;i<v.size();++i){
+      if (v[i].type==_VECT)
+	res.push_back(vecteur2turtle(*v[i]._VECTptr));
+    }
+    if (res.empty())
+      res.push_back(turtle());
+    return res;
+  }
+
+#define CASCAS_LOGO_STUB(symbol) \
+  gen _##symbol(const gen & g,GIAC_CONTEXT){ \
+    if (g.type==_STRNG && g.subtype==-1) return g; \
+    return gensizeerr(contextptr); \
+  }
+
+#define CASCAS_LOGO_REG2(symbol,text,flags) \
+  static const char _##symbol##_s []=text; \
+  static define_unary_function_eval2 (__##symbol,&_##symbol,_##symbol##_s,&printastifunction); \
+  define_unary_function_ptr5( at_##symbol ,alias_at_##symbol,&__##symbol,0,flags);
+
+#define CASCAS_LOGO_REG_ALIAS(symbol,target,text,flags) \
+  static const char _##symbol##_s []=text; \
+  static define_unary_function_eval (__##symbol,&_##target,_##symbol##_s); \
+  define_unary_function_ptr5( at_##symbol ,alias_at_##symbol,&__##symbol,0,flags);
+
+  CASCAS_LOGO_STUB(avance)
+  CASCAS_LOGO_REG2(avance,"avance",T_LOGO)
+  CASCAS_LOGO_STUB(recule)
+  CASCAS_LOGO_REG2(recule,"recule",T_LOGO)
+  CASCAS_LOGO_STUB(towards)
+  CASCAS_LOGO_REG2(towards,"towards",T_LOGO)
+  CASCAS_LOGO_REG_ALIAS(backward,recule,"backward",true)
+  CASCAS_LOGO_STUB(position)
+  CASCAS_LOGO_REG2(position,"position",T_LOGO)
+  CASCAS_LOGO_STUB(cap)
+  CASCAS_LOGO_REG2(cap,"cap",T_LOGO)
+  CASCAS_LOGO_REG_ALIAS(heading,cap,"heading",true)
+  CASCAS_LOGO_STUB(tourne_droite)
+  CASCAS_LOGO_REG2(tourne_droite,"tourne_droite",T_LOGO)
+  CASCAS_LOGO_STUB(tourne_gauche)
+  CASCAS_LOGO_REG2(tourne_gauche,"tourne_gauche",T_LOGO)
+  CASCAS_LOGO_STUB(leve_crayon)
+  CASCAS_LOGO_REG2(leve_crayon,"leve_crayon",T_LOGO)
+  CASCAS_LOGO_STUB(baisse_crayon)
+  CASCAS_LOGO_REG2(baisse_crayon,"baisse_crayon",T_LOGO)
+  CASCAS_LOGO_REG_ALIAS(pendown,baisse_crayon,"pendown",T_LOGO)
+  CASCAS_LOGO_STUB(ecris)
+  CASCAS_LOGO_REG2(ecris,"ecris",T_LOGO)
+  CASCAS_LOGO_STUB(signe)
+  CASCAS_LOGO_REG2(signe,"signe",T_LOGO)
+  CASCAS_LOGO_STUB(saute)
+  CASCAS_LOGO_REG2(saute,"saute",T_LOGO)
+  CASCAS_LOGO_STUB(pas_de_cote)
+  CASCAS_LOGO_REG2(pas_de_cote,"pas_de_cote",T_LOGO)
+  CASCAS_LOGO_STUB(cache_tortue)
+  CASCAS_LOGO_REG2(cache_tortue,"cache_tortue",T_LOGO)
+  CASCAS_LOGO_REG_ALIAS(hideturtle,cache_tortue,"hideturtle",true)
+  CASCAS_LOGO_STUB(montre_tortue)
+  CASCAS_LOGO_REG2(montre_tortue,"montre_tortue",T_LOGO)
+  CASCAS_LOGO_REG_ALIAS(showturtle,montre_tortue,"showturtle",true)
+
+  gen _repete(const gen & g,GIAC_CONTEXT){
+    if (g.type==_STRNG && g.subtype==-1) return g;
+    return gensizeerr(contextptr);
+  }
+  static const char _repete_s []="repete";
+  static define_unary_function_eval_quoted (__repete,&_repete,_repete_s);
+  define_unary_function_ptr5( at_repete ,alias_at_repete,&__repete,_QUOTE_ARGUMENTS,T_RETURN);
+
+  CASCAS_LOGO_STUB(crayon)
+  CASCAS_LOGO_REG2(crayon,"crayon",T_LOGO)
+  CASCAS_LOGO_STUB(efface_logo)
+  CASCAS_LOGO_REG2(efface_logo,"efface",T_LOGO)
+  CASCAS_LOGO_STUB(vers)
+  CASCAS_LOGO_REG2(vers,"vers",T_LOGO)
+  CASCAS_LOGO_STUB(rond)
+  CASCAS_LOGO_REG2(rond,"rond",T_LOGO)
+  CASCAS_LOGO_STUB(disque)
+  CASCAS_LOGO_REG2(disque,"disque",T_LOGO)
+  CASCAS_LOGO_STUB(disque_centre)
+  CASCAS_LOGO_REG2(disque_centre,"disque_centre",T_LOGO)
+  CASCAS_LOGO_STUB(polygone_rempli)
+  CASCAS_LOGO_REG2(polygone_rempli,"polygone_rempli",T_LOGO)
+  CASCAS_LOGO_STUB(rectangle_plein)
+  CASCAS_LOGO_REG2(rectangle_plein,"rectangle_plein",T_LOGO)
+  CASCAS_LOGO_STUB(triangle_plein)
+  CASCAS_LOGO_REG2(triangle_plein,"triangle_plein",T_LOGO)
+  CASCAS_LOGO_STUB(dessine_tortue)
+  CASCAS_LOGO_REG2(dessine_tortue,"dessine_tortue",T_LOGO)
+
+#undef CASCAS_LOGO_STUB
+#undef CASCAS_LOGO_REG2
+#undef CASCAS_LOGO_REG_ALIAS
+#else
 #if 1 //TURTLE
 #ifdef TURTLETAB
   const int MAX_LOGO=2048;//128; // 1024
@@ -15082,6 +15260,7 @@ int find_plotseq_args(const gen & args,gen & expr,gen & x,double & x0d,double & 
   define_unary_function_ptr5( at_dessine_tortue ,alias_at_dessine_tortue,&__dessine_tortue,0,T_LOGO);
 
 #endif
+#endif // CASCAS_ALEVEL_ONLY
 
   /* A FAIRE:
      traduction latex
