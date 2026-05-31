@@ -741,6 +741,27 @@ static working_string double_s(double v){
   return working_string(buf);
 }
 
+static bool rational_approx(double v,working_string &out){
+  if (fabs(v)>1000000)
+    return false;
+  for (long d=1;d<=240;++d){
+    long n=long(v*d+(v>=0?0.5:-0.5));
+    if (fabs(v-double(n)/double(d))<1e-10){
+      long a=labs(n),b=d;
+      while (b){
+        long r=a%b; a=b; b=r;
+      }
+      n/=a; d/=a;
+      if (d==1)
+        out=int_s(n);
+      else
+        out=int_s(n)+"/"+int_s(d);
+      return true;
+    }
+  }
+  return false;
+}
+
 static working_string spaced_pm(const working_string &s){
   working_string r;
   int depth=0;
@@ -1502,6 +1523,9 @@ static bool try_numeric_expr(const char *input,working_string &out){
     return false;
   out="Answer: ";
   out += double_s(v);
+  working_string exact;
+  if (rational_approx(v,exact))
+    out += "\nExact: "+exact;
   return true;
 }
 

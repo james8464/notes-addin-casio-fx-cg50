@@ -24,11 +24,11 @@ Current status:
 
 - app name: `CAS`
 - file: `CAS.g3a`
-- size: `2,095,100` bytes
-- hard limit headroom: `2,052` bytes
-- sha256: `e68efcb50f7cbfe394af644f4f5372c83fa5702e53417aad51b326dbf6b03e02`
+- size: `2,095,616` bytes
+- hard limit headroom: `1,536` bytes
+- sha256: `f26c5414acadbfa7233c14edf9fd7b429c34d03203122c012218044259d7294b`
 - exact queue runtime: `13,572/13,572`
-- strict marker quality: `12,601/13,572`
+- strict marker quality: `12,624/13,572`
 - online challenge source coverage: MadAsMaths exact rows in queue; Daily Integral challenge format inspected from `https://dailyintegral.com/play/hard`
 
 Notable routes:
@@ -39,5 +39,6 @@ Notable routes:
 - generic affine chain/reverse-chain power routes
 - trig/exp term integration, quadratic solve/factor/expand, log/numeric routes
 - safer solve routing: powered terms no longer fall through the linear solver
+- simple numeric expressions show small exact fractions when detected
 - catalogue Help on command screen shows spaced sections and F2/F3 examples
 - `tools/audit_progress_tui.py` shows queue done/right progress bars during full runs

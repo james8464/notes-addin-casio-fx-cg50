@@ -4,8 +4,14 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BIN="${TMPDIR:-/tmp}/khicas_host_runner_cascas"
 SRC="${TMPDIR:-/tmp}/khicas_host_runner_cascas.cpp"
+LOCK="${BIN}.lock"
 WORKING="${ROOT}/khicas/upstream/giac90_1addin/cascas_working.cc"
 HEADER="${ROOT}/khicas/upstream/giac90_1addin/cascas_working.h"
+
+if [ ! -x "${BIN}" ] || [ "${WORKING}" -nt "${BIN}" ] || [ "${HEADER}" -nt "${BIN}" ]; then
+  while ! mkdir "${LOCK}" 2>/dev/null; do sleep 0.05; done
+  trap 'rmdir "${LOCK}" 2>/dev/null || true' EXIT
+fi
 
 if [ ! -x "${BIN}" ] || [ "${WORKING}" -nt "${BIN}" ] || [ "${HEADER}" -nt "${BIN}" ]; then
   cat > "${SRC}" <<'CPP'
@@ -49,5 +55,7 @@ int main(int argc,char **argv){
 CPP
   g++ -std=c++11 -DCASCAS_HOST_STD_STRING -iquote "${ROOT}/khicas/upstream/giac90_1addin" "${SRC}" "${WORKING}" -o "${BIN}"
 fi
+rmdir "${LOCK}" 2>/dev/null || true
+trap - EXIT
 
 exec "${BIN}" "$@"
