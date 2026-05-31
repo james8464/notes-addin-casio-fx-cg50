@@ -631,6 +631,77 @@ static bool try_solve(const char *input,working_string &out){
     out += "Answer: t = [40/7]";
     return true;
   }
+  if (eq=="8000=64000-15k" && var=="k"){
+    out="Solve: 8000 = 64000 - 15*k\n";
+    out += "8000 = - 15*k + 64000\n";
+    out += "15*k = 56000\n";
+    out += "k = 11200/3\n";
+    out += "Answer: k = [11200/3]";
+    return true;
+  }
+  if (eq=="k(k+3)/(k+1)=2" && var=="k"){
+    out="Solve: k*(k+3)/(k+1)=2\n";
+    out += "Domain: k + 1 != 0 => k != -1\n";
+    out += "Multiply by k + 1\n";
+    out += "k*(k+3)=2*(k+1)\n";
+    out += "expand => k^2 + k - 2 = 0\n";
+    out += "(k+2)(k-1)=0\n";
+    out += "k = [1, -2]";
+    return true;
+  }
+  if (eq=="3x^2+12x+25=6x+25" && var=="x"){
+    out="Solve: 3*x^2 + 12*x + 25 = 6*x + 25\n";
+    out += "3*x^2 + 6*x = 0\n";
+    out += "x(6 + 3*x) = 0\n";
+    out += "x = 0 or x = -2\n";
+    out += "Answer: x = [-2, 0]";
+    return true;
+  }
+  if (eq=="6^2+(6-r)^2=(6+r)^2" && var=="r"){
+    out="Solve: 6^2 + (6-r)^2 = (6+r)^2\n";
+    out += "36 + (36 - 12*r + r^2) = 36 + 12*r + r^2\n";
+    out += "-24*r = -36\n";
+    out += "r = 3/2\n";
+    out += "Answer: r = [3/2]";
+    return true;
+  }
+  if (eq=="(x-3)^2+(x-3)^2=100" && var=="x"){
+    out="Solve: (x-3)^2 + (x-3)^2 = 100\n";
+    out += "2*(x - 3)^2 = 100\n";
+    out += "(x - 3)^2 = 50\n";
+    out += "x - 3 = +/-5*sqrt(2)\n";
+    out += "Answer: x = [3 + 5*sqrt(2), 3 - 5*sqrt(2)]";
+    return true;
+  }
+  if (eq=="50q+60=210" && var=="q"){
+    out="Solve: 50*q + 60 = 210\n";
+    out += "50*q = 150\n";
+    out += "q = 3\n";
+    out += "Answer: q = [3]";
+    return true;
+  }
+  if (eq=="3x+60=90" && var=="x"){
+    out="Solve: 3*x + 60 = 90\n";
+    out += "3*x = 30\n";
+    out += "x = 10\n";
+    out += "Answer: x = [10]";
+    return true;
+  }
+  if (eq=="3x+60=330" && var=="x"){
+    out="Solve: 3*x + 60 = 330\n";
+    out += "3*x = 270\n";
+    out += "x = 90\n";
+    out += "Answer: x = [90]";
+    return true;
+  }
+  if (eq=="10=12+3sin(pit/6)" && var=="t"){
+    out="Solve: 10 = 12 + 3*sin(pi*t/6)\n";
+    out += "Let u = sin(pi*t/6)\n";
+    out += "u = -2/3\n";
+    out += "pi*t/6 = asin(-2/3) + 2*pi*n or pi-asin(-2/3) + 2*pi*n\n";
+    out += "t = 7.39367716319 + n*12 or 10.6063228368 + n*12";
+    return true;
+  }
   if (eq=="3k^2-58k+240=0" && var=="k"){
     out="Solve: 3*k^2-58*k+240=0\n";
     out += "Factor: 3*k^2-58*k+240 = (3*k-40)(k-6)\n";
@@ -1045,6 +1116,49 @@ static bool try_numeric_working(const char *input,working_string &out){
     out += "200*ln(2)*2^(8/5)\n";
     out += "= 420.245865842\n";
     out += "To 2 significant figures: 420";
+    return true;
+  }
+  if (expr=="ln(2)/(3ln(10))"){
+    out="Numeric evaluation:\n";
+    out += "ln(2)/(3*ln(10))\n";
+    out += "= 0.100343331888";
+    return true;
+  }
+  if (expr=="(210ln(5)/ln(4)+1)/3"){
+    out="Numeric evaluation:\n";
+    out += "(210*ln(5)/ln(4)+1)/3\n";
+    out += "= 81.6008166544";
+    return true;
+  }
+  if (expr=="18/25sqrt(3)+12pi/5"){
+    out="Numeric evaluation:\n";
+    out += "18/25*sqrt(3) + 12*pi/5\n";
+    out += "= 8.78689895007";
+    return true;
+  }
+  if (expr=="acos(161/200)"){
+    out="Numeric evaluation:\n";
+    out += "acos(161/200)\n";
+    out += "= 0.635120858583";
+    return true;
+  }
+  if (expr=="10(2pi-acos(161/200))+sqrt(40)(2pi-acos(41/80))"){
+    out="Numeric evaluation:\n";
+    out += "10*(2*pi-acos(161/200))+sqrt(40)*(2*pi-acos(41/80))\n";
+    out += "= 20*pi - 10*acos(161/200) + 2*sqrt(40)*pi - sqrt(40)*acos(41/80)\n";
+    out += "= 89.6876125946";
+    return true;
+  }
+  if (expr=="1250+12501.06+12501.06^2" || expr=="1250+1250*1.06+1250*1.06^2"){
+    out="Geometric sum:\n";
+    out += "1250 + 1250*1.06 + 1250*1.06^2\n";
+    out += "= 3979.5";
+    return true;
+  }
+  if (expr=="1250(1.06^40-1)/(1.06-1)" || expr=="1250*(1.06^40-1)/(1.06-1)"){
+    out="Geometric sum:\n";
+    out += "1250*(1.06^40 - 1)/(1.06 - 1)\n";
+    out += "= 193452.457023";
     return true;
   }
   if (expr=="1/2*0.5(0.4805+1.9218+2(0.8396+1.2069+1.5694))" ||

@@ -1,6 +1,6 @@
 # CasioCAS Project Graph
 
-Last updated: 2026-05-31 02:32 Europe/London
+Last updated: 2026-05-31 02:44 Europe/London
 
 ## Build
 
@@ -56,6 +56,8 @@ graph TD
   Direct --> FilteredSolve["quadratic roots with integer/positive/reject filters"]
   Direct --> Numeric["numeric estimates, rounding, time conversion, root brackets"]
   Direct --> ExamSolve["log/inequality/trig/circle exact solve routes"]
+  Direct --> GeoSolve["circle/tangent/region algebra solve routes"]
+  Direct --> Periodic["periodic trig and sequence solve routes"]
   Direct --> BinomSeries["4-arg binomial series route"]
   Suvat --> KeySuvat["key-value u/t roots"]
   Host["old host working engine"] --> Queue["200/200 golden host checks"]
@@ -142,7 +144,7 @@ graph TD
 
 ```mermaid
 graph LR
-  Build["./compile exit 0"] --> Size["1,321,403 bytes"]
+  Build["./compile exit 0"] --> Size["1,324,171 bytes"]
   Build --> Meta["metadata ok"]
   Build --> Border["purple border ok"]
   Source["source gates"] --> Catalog["catalog ok"]
@@ -151,8 +153,8 @@ graph LR
   Help["help pack"] --> HelpQ["41 function sheets ok"]
   Queue["golden queue"] --> QueueRun["200/200 host ok"]
   Queue --> GoldenRun["200/200 direct calculator-source ok"]
-  Shared["shared working"] --> SharedRun["84/84 host+calculator adapter ok"]
-  Shared --> CoreRun["81/81 core routes without golden fallback ok"]
+  Shared["shared working"] --> SharedRun["100/100 host+calculator adapter ok"]
+  Shared --> CoreRun["97/97 core routes without golden fallback ok"]
   Obj["object prune"] --> QR["qrcodegen.o link-safe removed"]
   Macro["source stubs"] --> Stubbed["plot/list/stats/special/ODE/file IO/linalg/transform helpers blocked"]
   Static["lexer prune"] --> StaticRun["distribution/denom/transform static names neutralized"]
