@@ -56,7 +56,7 @@ graph TD
 
 ```mermaid
 graph TD
-  Queue["exact_calculator_input_queue.jsonl"] --> Runtime["13,116/13,116 runtime-safe"]
-  Queue --> Strict["10,842/13,116 strict marker pass"]
+  Queue["exact_calculator_input_queue.jsonl"] --> Runtime["13,159/13,159 runtime-safe"]
+  Queue --> Strict["10,843/13,159 strict marker pass"]
   Strict --> Remaining["remaining: broad algebra/numeric/trig presentation gaps"]
 ```

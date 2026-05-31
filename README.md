@@ -25,8 +25,8 @@ Current status:
 - size: `2,090,516` bytes
 - hard limit headroom: `6,636` bytes
 - sha256: `eecc593fbeb305f86656d4c45118c9680fcea02594e43fd3eabf8885a089c31c`
-- exact queue runtime: `13,116/13,116`
-- strict marker quality: `10,842/13,116`
+- exact queue runtime: `13,159/13,159`
+- strict marker quality: `10,843/13,159`
 
 Notable routes:
 
