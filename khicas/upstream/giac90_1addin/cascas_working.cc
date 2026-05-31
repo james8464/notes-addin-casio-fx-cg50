@@ -536,7 +536,7 @@ static bool integrate_sum_terms(const working_string &expr,working_string &answe
   if (contains(s,"(") || contains(s,"sin") || contains(s,"cos") ||
       contains(s,"tan") || contains(s,"ln") || contains(s,"exp"))
     return false;
-  answer="";
+  long coefs[16],pows[16];
   int start=0,sign=1,terms=0;
   for (int i=0;i<=int(s.size());++i){
     char c=i<int(s.size())?s[i]:'+';
@@ -544,7 +544,10 @@ static bool integrate_sum_terms(const working_string &expr,working_string &answe
       long coef=0,pow=0;
       if (!parse_power_term(s.substr(start,i-start),coef,pow))
         return false;
-      answer=join_sum(answer,integral_monomial(sign*coef,pow));
+      if (terms>=16)
+        return false;
+      coefs[terms]=sign*coef;
+      pows[terms]=pow;
       ++terms;
       sign=(c=='-')?-1:1;
       start=i+1;
@@ -554,6 +557,15 @@ static bool integrate_sum_terms(const working_string &expr,working_string &answe
       start=i+1;
     }
   }
+  for (int i=0;i<terms;++i)
+    for (int j=i+1;j<terms;++j)
+      if (pows[j]>pows[i]){
+        long t=pows[i]; pows[i]=pows[j]; pows[j]=t;
+        t=coefs[i]; coefs[i]=coefs[j]; coefs[j]=t;
+      }
+  answer="";
+  for (int i=0;i<terms;++i)
+    answer=join_sum(answer,integral_monomial(coefs[i],pows[i]));
   return terms>1;
 }
 

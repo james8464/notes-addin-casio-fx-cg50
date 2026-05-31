@@ -1,6 +1,6 @@
 # Project Graph
 
-Last updated: 2026-05-31 21:29 BST
+Last updated: 2026-05-31 21:35 BST
 
 ## Build
 
@@ -13,7 +13,7 @@ graph TD
   Make --> Bin["khicasen.bin, upstream KhiCAS base"]
   Bin --> G3A["calculator_files/CAS.g3a"]
   G3A --> Meta["CAS / @CAS / CAS.g3a"]
-  G3A --> Size["2,096,532 bytes; 620 byte headroom"]
+  G3A --> Size["2,096,596 bytes; 556 byte headroom"]
 ```
 
 ## Runtime
@@ -63,6 +63,6 @@ graph TD
   Live --> TUI["tools/audit_progress_tui.py"]
   Report --> TUI
   Runner --> Runtime["13,606/13,606 runtime-safe"]
-  Runner --> Strict["12,668/13,606 strict marker pass"]
+  Runner --> Strict["12,673/13,606 strict marker pass"]
   Strict --> Remaining["remaining: algebra presentation, binomial/partfrac, exact-form geometry/vector clusters"]
 ```

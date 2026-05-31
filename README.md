@@ -24,11 +24,11 @@ Current status:
 
 - app name: `CAS`
 - file: `CAS.g3a`
-- size: `2,096,532` bytes
-- hard limit headroom: `620` bytes
-- sha256: `27336579acb7c693cd6a34996e0755a29cf68fff185696dcabf7d26047e76e71`
+- size: `2,096,596` bytes
+- hard limit headroom: `556` bytes
+- sha256: `52638bbbadaa108d67928cb05be9bd8d1474286075fd9b2135418d0a374685e1`
 - exact queue runtime: `13,606/13,606`
-- strict marker quality: `12,668/13,606`
+- strict marker quality: `12,673/13,606`
 - online challenge source coverage: MadAsMaths exact rows in queue; Daily Integral hard-integration style probes inspected from `https://dailyintegral.com/archive`
 
 Notable routes:
@@ -45,6 +45,6 @@ Notable routes:
 - safer solve routing: powered terms no longer fall through the linear solver
 - safer chain routing: non-linear inner functions no longer pass as affine
 - simple numeric expressions show small exact fractions when detected
-- polynomial antiderivatives use coefficient-first fraction form, e.g. `1/3*x^3`
+- polynomial antiderivatives use coefficient-first descending-power form, e.g. `-1/3*x^3 + 2*x^2 + 5*x + C`
 - catalogue Help on command screen shows spaced sections and F2/F3 examples
 - `tools/audit_progress_tui.py` shows queue done/right progress bars during full runs
