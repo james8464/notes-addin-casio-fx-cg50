@@ -3984,7 +3984,7 @@ namespace giac {
     if (!read_reduction_options(a_orig,a,convert_internal,algorithm,minor_det,keep_pivot,last_col))
       return gensizeerr(contextptr);
     if (keep_pivot)
-      return gensizeerr(gettext("Option keep_pivot not applicable"));
+      return gensizeerr(gettext("Option not applicable"));
     if (!is_squarematrix(a))
       *logptr(contextptr) << gettext("Unsupported array shape") << endl;
     vecteur pivots;

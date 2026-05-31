@@ -11736,7 +11736,7 @@ namespace giac {
     if (!read_reduction_options(a_orig,a,convert_internal,algorithm,minor_det,keep_pivot,last_col))
       return gensizeerr(contextptr);
     if (keep_pivot)
-      return gensizeerr(gettext("Option keep_pivot not applicable"));
+      return gensizeerr(gettext("Option not applicable"));
     if (minor_det)
       return det_minor(a,convert_internal,contextptr);
     if (!is_squarematrix(a))

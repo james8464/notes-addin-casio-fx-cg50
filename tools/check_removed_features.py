@@ -125,6 +125,7 @@ REMOVED = [
     "pcar",
     "gaussjord",
     "pivot",
+    "keep_pivot",
     "assume",
     "asc",
     "char",
@@ -375,6 +376,7 @@ BEHAVIOR_SAMPLES = [
     "pcar([[1,2],[3,4]])",
     "gaussjord([[1,2],[3,4]])",
     "pivot([[1,2],[3,4]],1,1)",
+    "keep_pivot",
     "assume(x>0)",
     "asc(\"A\")",
     "char(65)",
@@ -565,6 +567,7 @@ BINARY_ABSENT = [
     "image",
     "kernel",
     "rref",
+    "keep_pivot",
 ]
 
 STATIC_ENTRY_ABSENT = [
@@ -576,6 +579,7 @@ STATIC_ENTRY_ABSENT = [
     "ref",
     "gaussjord",
     "pivot",
+    "keep_pivot",
     "charpoly",
     "pcar",
     "pcar_hessenberg",

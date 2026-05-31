@@ -299,7 +299,7 @@ namespace giac {
     if (!read_reduction_options(a_orig,a,convert_internal,algorithm,minor_det,keep_pivot,last_col))
       return inv(a_orig,contextptr);
     if (keep_pivot)
-      return gensizeerr(gettext("Option keep_pivot not applicable"));
+      return gensizeerr(gettext("Option not applicable"));
     if (minor_det){ // not really minors, use Leverrier algorithm
       vecteur b;
       vecteur p(mpcar(a,b,true,contextptr));
@@ -544,7 +544,7 @@ namespace giac {
   gen _pivot(const gen & a_orig,GIAC_CONTEXT){
 #ifdef CASCAS_ALEVEL_ONLY
     return gensizeerr(contextptr);
-#endif
+#else
     if ( a_orig.type==_STRNG && a_orig.subtype==-1) return  a_orig;
     vecteur v(gen2vecteur(a_orig));
     int s=int(v.size());
@@ -582,6 +582,7 @@ namespace giac {
 	linear_combination(p,*m[l1]._VECTptr,-m[l1][c],*m[l]._VECTptr,plus_one,1,*m[l1]._VECTptr,epsilon(contextptr));
     }
     return m;
+#endif
   }
   static const char _pivot_s []="_rs151";
   static define_unary_function_eval (__pivot,&_pivot,_pivot_s);

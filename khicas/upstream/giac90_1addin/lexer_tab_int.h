@@ -101,7 +101,7 @@
       {"jacobi_decomp"         ,1, _JACOBI_DECOMP, _INT_SOLVER,T_NUMBER},
       {"jaune"         ,1, _YELLOW, _INT_COLOR ,T_NUMBER},
       {"jusque",0,1,0,T_TO},
-      {"keep_pivot"         ,1, _KEEP_PIVOT, _INT_SOLVER,T_NUMBER},
+      {"_rmh58"         ,1, _KEEP_PIVOT, _INT_SOLVER,T_NUMBER},
       {"left_rectangle"         ,1, _RECTANGLE_GAUCHE, _INT_SOLVER,T_NUMBER},
       {"line_width_2"         ,1, _LINE_WIDTH_2 , _INT_COLOR ,T_NUMBER},
       {"line_width_3"         ,1, _LINE_WIDTH_3 , _INT_COLOR ,T_NUMBER},

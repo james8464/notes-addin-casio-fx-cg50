@@ -12436,7 +12436,7 @@ namespace giac {
       case _RATIONAL_DET:
 	return "rational_det";
       case _KEEP_PIVOT:
-	return "keep_pivot";
+	return "_rmh58";
       case _FADEEV:
 	return "fadeev";
       case _BAREISS:

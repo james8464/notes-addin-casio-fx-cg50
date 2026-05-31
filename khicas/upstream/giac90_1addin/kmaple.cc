@@ -149,7 +149,7 @@ namespace giac {
     if (!read_reduction_options(a_orig,a,convert_internal,algorithm,minor_det,keep_pivot,last_col))
       return inv(a_orig,contextptr);
     if (keep_pivot)
-      return gensizeerr(gettext("Option keep_pivot not applicable"));
+      return gensizeerr(gettext("Option not applicable"));
     if (minor_det){ // not really minors, use Leverrier algorithm
       vecteur b;
       vecteur p(mpcar(a,b,true,contextptr));
