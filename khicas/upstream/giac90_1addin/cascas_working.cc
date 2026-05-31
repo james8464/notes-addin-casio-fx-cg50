@@ -503,12 +503,21 @@ static working_string join_sum(working_string a,const working_string &b){
   return a+" + "+b;
 }
 
+static void sort_terms(long *coefs,long *pows,int terms){
+  for (int i=0;i<terms;++i)
+    for (int j=i+1;j<terms;++j)
+      if (pows[j]>pows[i]){
+        long t=pows[i]; pows[i]=pows[j]; pows[j]=t;
+        t=coefs[i]; coefs[i]=coefs[j]; coefs[j]=t;
+      }
+}
+
 static bool diff_sum_terms(const working_string &expr,working_string &answer){
   working_string s=compact(expr);
   if (contains(s,"(") || contains(s,"sin") || contains(s,"cos") ||
       contains(s,"tan") || contains(s,"ln") || contains(s,"exp"))
     return false;
-  answer="";
+  long coefs[16],pows[16];
   int start=0,sign=1,terms=0;
   for (int i=0;i<=int(s.size());++i){
     char c=i<int(s.size())?s[i]:'+';
@@ -516,9 +525,10 @@ static bool diff_sum_terms(const working_string &expr,working_string &answer){
       long coef=0,pow=0;
       if (!parse_power_term(s.substr(start,i-start),coef,pow))
         return false;
-      working_string part=derivative_monomial(sign*coef,pow);
-      if (!part.empty())
-        answer=join_sum(answer,part);
+      if (terms>=16)
+        return false;
+      coefs[terms]=sign*coef;
+      pows[terms]=pow;
       ++terms;
       sign=(c=='-')?-1:1;
       start=i+1;
@@ -527,6 +537,13 @@ static bool diff_sum_terms(const working_string &expr,working_string &answer){
       sign=(c=='-')?-1:1;
       start=i+1;
     }
+  }
+  sort_terms(coefs,pows,terms);
+  answer="";
+  for (int i=0;i<terms;++i){
+    working_string part=derivative_monomial(coefs[i],pows[i]);
+    if (!part.empty())
+      answer=join_sum(answer,part);
   }
   return terms>1 && !answer.empty();
 }
@@ -557,12 +574,7 @@ static bool integrate_sum_terms(const working_string &expr,working_string &answe
       start=i+1;
     }
   }
-  for (int i=0;i<terms;++i)
-    for (int j=i+1;j<terms;++j)
-      if (pows[j]>pows[i]){
-        long t=pows[i]; pows[i]=pows[j]; pows[j]=t;
-        t=coefs[i]; coefs[i]=coefs[j]; coefs[j]=t;
-      }
+  sort_terms(coefs,pows,terms);
   answer="";
   for (int i=0;i<terms;++i)
     answer=join_sum(answer,integral_monomial(coefs[i],pows[i]));
