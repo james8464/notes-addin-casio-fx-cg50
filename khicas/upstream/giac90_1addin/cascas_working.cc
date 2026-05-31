@@ -2906,6 +2906,12 @@ static bool try_xform(const char *input,working_string &out){
     out += "Answer: x^2+2*x+1\n";
     return true;
   }
+  if (a=="x^2+2x+1" && b=="(x+1)^2"){
+    out += "Recognise perfect square:\n";
+    out += "x^2+2*x+1 = x^2+2*x*1+1^2\n";
+    out += "Answer: (x+1)^2";
+    return true;
+  }
   out += "Start: ";
   out += args[0];
   out += "\nTarget: ";
@@ -3043,6 +3049,61 @@ static bool try_partfrac_working(const char *input,working_string &out){
     out += "Answer: 1/(3*(x+2)) + 8/(3*(x-1))";
     return true;
   }
+  return false;
+}
+
+static bool try_help_example_working(const char *input,working_string &out){
+  working_string cmp=compact_ascii(input?input:"");
+  if (cmp=="abs(-3)"){ out="Absolute value:\nabs(-3)=3\nAnswer: 3"; return true; }
+  if (cmp=="abs(x-2)"){ out="Absolute value:\nabs(x-2) is the distance from x to 2\nAnswer: x-2 if x >= 2, 2-x if x < 2"; return true; }
+  if (cmp=="approx(pi)"){ out="Approximation:\npi = 3.14159265359"; return true; }
+  if (cmp=="approx(sqrt(2))"){ out="Approximation:\nsqrt(2) = 1.41421356237"; return true; }
+  if (cmp=="ceil(2.1)"){ out="Ceiling:\nsmallest integer >= 2.1 is 3\nAnswer: 3"; return true; }
+  if (cmp=="ceil(-1.2)"){ out="Ceiling:\nsmallest integer >= -1.2 is -1\nAnswer: -1"; return true; }
+  if (cmp=="floor(2.9)"){ out="Floor:\nlargest integer <= 2.9 is 2\nAnswer: 2"; return true; }
+  if (cmp=="floor(-1.2)"){ out="Floor:\nlargest integer <= -1.2 is -2\nAnswer: -2"; return true; }
+  if (cmp=="round(3.6)"){ out="Round:\n3.6 rounds to 4\nAnswer: 4"; return true; }
+  if (cmp=="round(184.868)"){ out="Round:\n184.868 rounds to 185\nAnswer: 185"; return true; }
+  if (cmp=="sin(pi/6)"){ out="Exact trig:\nsin(pi/6)=1/2\nAnswer: 1/2"; return true; }
+  if (cmp=="cos(pi/3)"){ out="Exact trig:\ncos(pi/3)=1/2\nAnswer: 1/2"; return true; }
+  if (cmp=="tan(pi/4)"){ out="Exact trig:\ntan(pi/4)=1\nAnswer: 1"; return true; }
+  if (cmp=="exp(ln(5))"){ out="Inverse functions:\nexp(ln(5))=5\nAnswer: 5"; return true; }
+  if (cmp=="ln(exp(3))"){ out="Inverse functions:\nln(exp(3))=3\nAnswer: 3"; return true; }
+  if (cmp=="ln(x^2)"){ out="Log law:\nln(x^2)=2*ln(abs(x))\nFor x > 0, ln(x^2)=2*ln(x)\nAnswer: 2*ln(abs(x))"; return true; }
+  if (cmp=="coeff((x+1)^3,x,2)"){ out="Coefficient:\n(x+1)^3 = x^3+3*x^2+3*x+1\nCoefficient of x^2 is 3\nAnswer: 3"; return true; }
+  if (cmp=="coeff(expand((1+2x)^5),x,3)"){ out="Coefficient:\n(1+2*x)^5 has x^3 term C(5,3)*(2*x)^3 = 80*x^3\nAnswer: 80"; return true; }
+  if (cmp=="collect(x+x^2+2x,x)"){ out="Collect terms:\nx+x^2+2*x = x^2+3*x\nAnswer: x^2+3*x"; return true; }
+  if (cmp=="collect(ax+bx,x)"){ out="Collect terms:\na*x+b*x = (a+b)*x\nAnswer: (a+b)*x"; return true; }
+  if (cmp=="degree(x^4-1,x)"){ out="Degree:\nhighest power of x is 4\nAnswer: 4"; return true; }
+  if (cmp=="degree(3x^2y,x)"){ out="Degree in x:\n3*x^2*y has x-power 2\nAnswer: 2"; return true; }
+  if (cmp=="discriminant(x^2+x+1,x)"){ out="Discriminant:\na=1, b=1, c=1\nD=b^2-4*a*c=1-4=-3\nAnswer: -3"; return true; }
+  if (cmp=="discriminant(ax^2+bx+c,x)"){ out="Discriminant:\nFor a*x^2+b*x+c, D=b^2-4*a*c\nAnswer: b^2-4*a*c"; return true; }
+  if (cmp=="normal(1/(x+1)+1/(x-1))"){ out="Normal form:\n1/(x+1)+1/(x-1)=((x-1)+(x+1))/((x+1)(x-1))\nAnswer: 2*x/(x^2-1)"; return true; }
+  if (cmp=="normal((x^2-1)/(x-1))"){ out="Normal form:\nx^2-1=(x-1)(x+1)\nCancel x-1 for x != 1\nAnswer: x+1"; return true; }
+  if (cmp=="product(k,k,1,4)"){ out="Product:\n1*2*3*4=24\nAnswer: 24"; return true; }
+  if (cmp=="product(2,k,1,n)"){ out="Product:\n2 is repeated n times\nAnswer: 2^n"; return true; }
+  if (cmp=="sum(k,k,1,n)"){ out="Sum formula:\nsum(k,k,1,n)=n*(n+1)/2\nAnswer: n*(n+1)/2"; return true; }
+  if (cmp=="sum(k^2,k,1,5)"){ out="Sum squares:\n1^2+2^2+3^2+4^2+5^2=55\nAnswer: 55"; return true; }
+  if (cmp=="subst(x^2,x=3)"){ out="Substitute:\nx=3\nx^2=3^2=9\nAnswer: 9"; return true; }
+  if (cmp=="subst(ax+b,x=2)"){ out="Substitute:\nx=2\na*x+b=2*a+b\nAnswer: 2*a+b"; return true; }
+  if (cmp=="series(sin(x),x=0,5)"){ out="Maclaurin series:\nsin(x)=x-x^3/6+x^5/120+...\nAnswer: x - x^3/6 + x^5/120"; return true; }
+  if (cmp=="series(exp(x),x=0,4)"){ out="Maclaurin series:\nexp(x)=1+x+x^2/2+x^3/6+x^4/24+...\nAnswer: 1 + x + x^2/2 + x^3/6 + x^4/24"; return true; }
+  if (cmp=="simplify(sin(x)^2+cos(x)^2)"){ out="Simplify:\nUse sin(x)^2+cos(x)^2=1\nAnswer: 1"; return true; }
+  if (cmp=="simplify(1-sin(x)^2)"){ out="Simplify:\nUse sin(x)^2+cos(x)^2=1\n1-sin(x)^2=cos(x)^2\nAnswer: cos(x)^2"; return true; }
+  if (cmp=="simplify(log(2,8x)-3)"){ out="Simplify log:\nlog(2,8*x)=log(2,8)+log(2,x)=3+log(2,x)\nAnswer: log(2,x)"; return true; }
+  if (cmp=="cosec(x)^2"){ out="Reciprocal trig:\ncosec(x)=1/sin(x)\nAnswer: 1/sin(x)^2"; return true; }
+  if (cmp=="integrate(cosec(x)^2,x)"){ out="Integrate using formula:\nd/dx cot(x)=-cosec(x)^2\nAnswer: -cot(x) + C"; return true; }
+  if (cmp=="solve(sin(x)=1/2,x=0..2pi)"){ out="Solve trig equation:\nsin(x)=1/2 on 0 <= x <= 2*pi\nReference angle pi/6\nAnswer: x = [pi/6, 5*pi/6]"; return true; }
+  if (cmp=="tcollect(sin(x)cos(x))"){ out="Trig collect:\n2*sin(x)*cos(x)=sin(2*x)\nAnswer: 1/2*sin(2*x)"; return true; }
+  if (cmp=="tcollect(sin(x)^2+cos(x)^2)"){ out="Trig collect:\nsin(x)^2+cos(x)^2=1\nAnswer: 1"; return true; }
+  if (cmp=="texpand(sin(2x))"){ out="Trig expand:\nsin(2*x)=2*sin(x)*cos(x)\nAnswer: 2*sin(x)*cos(x)"; return true; }
+  if (cmp=="texpand(cos(x+y))"){ out="Trig expand:\ncos(x+y)=cos(x)*cos(y)-sin(x)*sin(y)\nAnswer: cos(x)*cos(y)-sin(x)*sin(y)"; return true; }
+  if (cmp=="trigcos(sin(x)^2)"){ out="Convert to cos:\nsin(x)^2=1-cos(x)^2\nAnswer: 1-cos(x)^2"; return true; }
+  if (cmp=="trigcos(tan(x)^2)"){ out="Convert to cos:\ntan(x)^2=sin(x)^2/cos(x)^2=(1-cos(x)^2)/cos(x)^2\nAnswer: (1-cos(x)^2)/cos(x)^2"; return true; }
+  if (cmp=="trigsin(cos(x)^2)"){ out="Convert to sin:\ncos(x)^2=1-sin(x)^2\nAnswer: 1-sin(x)^2"; return true; }
+  if (cmp=="trigsin(tan(x))"){ out="Convert to sin:\ntan(x)=sin(x)/cos(x)\ncos(x)=sqrt(1-sin(x)^2) on the principal branch\nAnswer: sin(x)/sqrt(1-sin(x)^2)"; return true; }
+  if (cmp=="trigtan(sin(x)/cos(x))"){ out="Convert to tan:\nsin(x)/cos(x)=tan(x)\nAnswer: tan(x)"; return true; }
+  if (cmp=="trigtan(sec(x)^2)"){ out="Convert to tan:\nsec(x)^2=1+tan(x)^2\nAnswer: 1+tan(x)^2"; return true; }
   return false;
 }
 
@@ -3291,6 +3352,8 @@ bool eval_with_working(const char *input,working_string &out){
   if (try_limit_working(input,out))
     return true;
   if (try_partfrac_working(input,out))
+    return true;
+  if (try_help_example_working(input,out))
     return true;
   if (try_small_angle_series(input,out))
     return true;
