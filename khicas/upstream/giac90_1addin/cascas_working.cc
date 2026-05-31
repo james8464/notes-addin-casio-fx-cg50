@@ -5,6 +5,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#ifdef CASCAS_HOST_STD_STRING
+#define CASCAS_SNPRINTF(buf, size, ...) snprintf(buf, size, __VA_ARGS__)
+#else
+#define CASCAS_SNPRINTF(buf, size, ...) sprintf(buf, __VA_ARGS__)
+#endif
+
 namespace cascas {
 
 static working_string lower_ascii(const working_string &s){
@@ -134,11 +140,11 @@ static working_string format_real(double x){
   int r=int(x>0?x+.5:x-.5);
   if (fabs(x-r)<1e-8){
     char buf[32];
-    sprintf(buf,"%d",r);
+    CASCAS_SNPRINTF(buf,sizeof(buf),"%d",r);
     return buf;
   }
   char buf[48];
-  sprintf(buf,"%.6g",x);
+  CASCAS_SNPRINTF(buf,sizeof(buf),"%.6g",x);
   return buf;
 }
 
@@ -173,11 +179,11 @@ static working_string format_real_precise(double x){
   int r=int(x>0?x+.5:x-.5);
   if (fabs(x-r)<1e-10){
     char buf[32];
-    sprintf(buf,"%d",r);
+    CASCAS_SNPRINTF(buf,sizeof(buf),"%d",r);
     return buf;
   }
   char buf[64];
-  sprintf(buf,"%.12g",x);
+  CASCAS_SNPRINTF(buf,sizeof(buf),"%.12g",x);
   return buf;
 }
 
@@ -702,9 +708,9 @@ static working_string fmt_rat(rat r){
   r=norm_rat(r.n,r.d);
   char buf[64];
   if (r.d==1)
-    sprintf(buf,"%lld",r.n);
+    CASCAS_SNPRINTF(buf,sizeof(buf),"%lld",r.n);
   else
-    sprintf(buf,"%lld/%lld",r.n,r.d);
+    CASCAS_SNPRINTF(buf,sizeof(buf),"%lld/%lld",r.n,r.d);
   return buf;
 }
 
@@ -1502,7 +1508,7 @@ static working_string fmt_poly_term_abs(rat coeff,int deg,const working_string &
   out += var;
   if (deg>1){
     char buf[16];
-    sprintf(buf,"%d",deg);
+    CASCAS_SNPRINTF(buf,sizeof(buf),"%d",deg);
     out += "^";
     out += buf;
   }
