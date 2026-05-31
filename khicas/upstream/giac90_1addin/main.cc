@@ -2863,17 +2863,41 @@ static bool cascas_rewrite_input(const char *input,string &rewritten){
   if (cascas_parse_call_ascii(input,"implicit_diff",args,3,count) && count>=1){
     string expr=args[0],x=count>=2 && args[1].size()?args[1]:"x",y=count>=3 && args[2].size()?args[2]:"y";
     int eq=cascas_find_top_equal_ascii(expr);
-    if (eq>=0)
-      expr="(" + expr.substr(0,eq) + ")-(" + expr.substr(eq+1) + ")";
-    rewritten="normal(-diff((" + expr + ")," + x + ")/diff((" + expr + ")," + y + "))";
+    if (eq>=0){
+      string tmp("(");
+      tmp += expr.substr(0,eq);
+      tmp += ")-(";
+      tmp += expr.substr(eq+1);
+      tmp += ")";
+      expr=tmp;
+    }
+    rewritten="normal(-diff((";
+    rewritten += expr;
+    rewritten += "),";
+    rewritten += x;
+    rewritten += ")/diff((";
+    rewritten += expr;
+    rewritten += "),";
+    rewritten += y;
+    rewritten += "))";
     return true;
   }
   if (cascas_parse_call_ascii(input,"diff",args,3,count) && count>=2){
     int eq=cascas_find_top_equal_ascii(args[0]);
     if (eq>=0 && cascas_compact_ascii(args[0]).find("y")!=string::npos){
-      string expr="(" + args[0].substr(0,eq) + ")-(" + args[0].substr(eq+1) + ")";
+      string expr("(");
+      expr += args[0].substr(0,eq);
+      expr += ")-(";
+      expr += args[0].substr(eq+1);
+      expr += ")";
       string x=args[1].size()?args[1]:"x";
-      rewritten="normal(-diff((" + expr + ")," + x + ")/diff((" + expr + "),y))";
+      rewritten="normal(-diff((";
+      rewritten += expr;
+      rewritten += "),";
+      rewritten += x;
+      rewritten += ")/diff((";
+      rewritten += expr;
+      rewritten += "),y))";
       return true;
     }
   }

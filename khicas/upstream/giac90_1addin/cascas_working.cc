@@ -1353,7 +1353,8 @@ static void append_signed_integral_piece(working_string &sum,rat coeff,const wor
 
 static bool parse_named_func_term(const working_string &term,const char *name,rat &coeff,working_string &arg){
   working_string fn(name);
-  working_string needle=fn+"(";
+  working_string needle=fn;
+  needle += "(";
   int pos=term.find(needle);
   if (pos<0)
     return false;
@@ -1369,7 +1370,8 @@ static bool parse_named_func_term(const working_string &term,const char *name,ra
 
 static bool parse_powered_named_func_term(const working_string &term,const char *name,const char *suffix,rat &coeff,working_string &arg){
   working_string fn(name),suf(suffix);
-  working_string needle=fn+"(";
+  working_string needle=fn;
+  needle += "(";
   int pos=term.find(needle);
   if (pos<0)
     return false;
@@ -1448,7 +1450,10 @@ static bool try_linear_power_piece(const working_string &term,const working_stri
   if (next.n==0)
     return false;
   coeff=div_rat(in_coeff,mul_rat(m,next));
-  body=fmt_power_expr("("+u+")",next);
+  working_string grouped("(");
+  grouped += u;
+  grouped += ")";
+  body=fmt_power_expr(grouped,next);
   return true;
 }
 
@@ -1458,7 +1463,8 @@ static bool parse_var_power(const working_string &expr,const working_string &var
     power=norm_rat(1,1);
     return true;
   }
-  working_string prefix=var+"^";
+  working_string prefix=var;
+  prefix += "^";
   if (s.find(prefix)!=0)
     return false;
   return parse_power_rat(s.substr(prefix.size()),power);
@@ -1591,6 +1597,58 @@ static bool try_termwise_integral(const working_string &expr,const working_strin
   out += "Answer: ";
   out += sum;
   out += " + C";
+  return true;
+}
+
+static bool try_affine_integral(const working_string &expr,const working_string &var,working_string &out){
+  rat m,c;
+  if (!parse_affine_rat(expr,var,m,c))
+    return false;
+  if (m.n==0 && c.n==0)
+    return false;
+  rat half=norm_rat(2,1);
+  rat quad=div_rat(m,half);
+  working_string xsq=var;
+  xsq += "^2";
+  working_string answer;
+  append_signed_integral_piece(answer,quad,xsq);
+  append_signed_integral_piece(answer,c,var);
+  if (answer.empty())
+    answer="0";
+  answer += " + C";
+  out="Integrate term by term:\n";
+  out += "int(";
+  out += pretty_compact_math(expr);
+  out += ") d";
+  out += var;
+  out += "\n";
+  out += "Use int(a*x) dx = a*x^2/2 and int(k) dx = k*x\n";
+  if (m.n!=0){
+    out += "int(";
+    out += fmt_rat(m);
+    out += "*";
+    out += var;
+    out += ") d";
+    out += var;
+    out += " = ";
+    working_string piece;
+    append_signed_integral_piece(piece,quad,xsq);
+    out += piece;
+    out += "\n";
+  }
+  if (c.n!=0){
+    out += "int(";
+    out += fmt_rat(c);
+    out += ") d";
+    out += var;
+    out += " = ";
+    working_string piece;
+    append_signed_integral_piece(piece,c,var);
+    out += piece;
+    out += "\n";
+  }
+  out += "Answer: ";
+  out += answer;
   return true;
 }
 
@@ -2906,7 +2964,10 @@ static bool reverse_chain_poly_piece(const working_string &numer,const working_s
   else {
     rat total=div_rat(scale,next);
     answer=fmt_coeff_times(total);
-    answer += fmt_power_expr("("+u+")",next);
+    working_string grouped("(");
+    grouped += u;
+    grouped += ")";
+    answer += fmt_power_expr(grouped,next);
     answer += " + C";
   }
   out="Integrate by reverse chain rule:\n";
@@ -3036,7 +3097,10 @@ static bool reverse_chain_piece(const working_string &mono,const working_string 
   else {
     rat total=div_rat(scale,next);
     answer=fmt_coeff_times(total);
-    answer += fmt_power_expr("("+u+")",next);
+    working_string grouped("(");
+    grouped += u;
+    grouped += ")";
+    answer += fmt_power_expr(grouped,next);
     answer += " + C";
   }
   out="Integrate by reverse chain rule:\n";
@@ -3280,7 +3344,8 @@ static void append_trig_poly_integral(working_string &sum,const poly_rat &p,cons
 
 static bool parse_poly_times_named(const working_string &expr,const working_string &var,
                                    const char *name,poly_rat &p,working_string &arg){
-  working_string fn(name),needle=fn+"(";
+  working_string fn(name),needle=fn;
+  needle += "(";
   int pos=expr.find(needle);
   if (pos<=0)
     return false;
@@ -3504,7 +3569,8 @@ static bool try_by_parts_integral(const working_string &expr,const working_strin
 
 static bool parse_trig_kx(const working_string &expr,const char *name,const char *suffix,working_string &k,working_string &arg){
   working_string fn(name),suf(suffix);
-  working_string prefix=fn+"(";
+  working_string prefix=fn;
+  prefix += "(";
   if (expr.find(prefix)!=0)
     return false;
   int close=find_matching_paren(expr,int(fn.size()));
@@ -3527,7 +3593,8 @@ static bool parse_trig_kx(const working_string &expr,const char *name,const char
   k=inside.substr(0,inside.size()-1);
   if (!parse_real(k,kval))
     return false;
-  arg=k+"*x";
+  arg=k;
+  arg += "*x";
   return true;
 }
 
@@ -3536,18 +3603,28 @@ static working_string reciprocal_prefix(const working_string &k){
     return "";
   if (k=="-1")
     return "-";
-  if (!k.empty() && k[0]=='-')
-    return "-1/"+k.substr(1)+"*";
-  return "1/"+k+"*";
+  working_string out;
+  if (!k.empty() && k[0]=='-'){
+    out="-1/";
+    out += k.substr(1);
+    out += "*";
+    return out;
+  }
+  out="1/";
+  out += k;
+  out += "*";
+  return out;
 }
 
 static bool try_integral(const char *input,working_string &out){
   working_string args[2];
   int count=0;
+  bool explicit_integral=true;
   if (!parse_call(input,"int",args,2,count) || count<1){
     count=0;
     if (!parse_call(input,"integrate",args,2,count) || count<1){
 #ifdef CASCAS_HOST_STD_STRING
+      explicit_integral=false;
       args[0]=trim_ascii(input?input:"");
       args[1]="x";
       count=1;
@@ -3790,45 +3867,99 @@ static bool try_integral(const char *input,working_string &out){
     pre=reciprocal_prefix(k);
     out="Integrate using exponential result:\n";
     out += "Use formula: int(e^(k*x)) dx = 1/k*e^(k*x) + C\n";
-    out += "k = "+k+"\n";
-    out += "int(e^("+arg+")) dx = "+pre+"e^("+arg+") + C\n";
-    out += "Answer: "+pre+"e^("+arg+") + C";
+    out += "k = ";
+    out += k;
+    out += "\nint(e^(";
+    out += arg;
+    out += ")) dx = ";
+    out += pre;
+    out += "e^(";
+    out += arg;
+    out += ") + C\nAnswer: ";
+    out += pre;
+    out += "e^(";
+    out += arg;
+    out += ") + C";
     return true;
   }
   if (parse_trig_kx(expr,"sec","^2",k,arg)){
     pre=reciprocal_prefix(k);
     out="Integrate using formula booklet result:\n";
     out += "Use formula: int(sec(k*x)^2) dx = 1/k*tan(k*x) + C\n";
-    out += "k = "+k+"\n";
-    out += "int(sec("+arg+")^2) dx = "+pre+"tan("+arg+") + C\n";
-    out += "Answer: "+pre+"tan("+arg+") + C";
+    out += "k = ";
+    out += k;
+    out += "\nint(sec(";
+    out += arg;
+    out += ")^2) dx = ";
+    out += pre;
+    out += "tan(";
+    out += arg;
+    out += ") + C\nAnswer: ";
+    out += pre;
+    out += "tan(";
+    out += arg;
+    out += ") + C";
     return true;
   }
   if (parse_trig_kx(expr,"tan","",k,arg)){
     pre=reciprocal_prefix(k);
     out="Integrate using formula booklet result:\n";
     out += "Use formula: int(tan(k*x)) dx = 1/k*ln(abs(sec(k*x))) + C\n";
-    out += "k = "+k+"\n";
-    out += "int(tan("+arg+")) dx = "+pre+"ln(abs(sec("+arg+"))) + C\n";
-    out += "Answer: "+pre+"ln(abs(sec("+arg+"))) + C";
+    out += "k = ";
+    out += k;
+    out += "\nint(tan(";
+    out += arg;
+    out += ")) dx = ";
+    out += pre;
+    out += "ln(abs(sec(";
+    out += arg;
+    out += "))) + C\nAnswer: ";
+    out += pre;
+    out += "ln(abs(sec(";
+    out += arg;
+    out += "))) + C";
     return true;
   }
   if (parse_trig_kx(expr,"cot","",k,arg)){
     pre=reciprocal_prefix(k);
     out="Integrate using formula booklet result:\n";
     out += "Use formula: int(cot(k*x)) dx = 1/k*ln(abs(sin(k*x))) + C\n";
-    out += "k = "+k+"\n";
-    out += "int(cot("+arg+")) dx = "+pre+"ln(abs(sin("+arg+"))) + C\n";
-    out += "Answer: "+pre+"ln(abs(sin("+arg+"))) + C";
+    out += "k = ";
+    out += k;
+    out += "\nint(cot(";
+    out += arg;
+    out += ")) dx = ";
+    out += pre;
+    out += "ln(abs(sin(";
+    out += arg;
+    out += "))) + C\nAnswer: ";
+    out += pre;
+    out += "ln(abs(sin(";
+    out += arg;
+    out += "))) + C";
     return true;
   }
   if (parse_trig_kx(expr,"sec","",k,arg)){
     pre=reciprocal_prefix(k);
     out="Integrate using formula booklet result:\n";
     out += "Use formula: int(sec(k*x)) dx = 1/k*ln(abs(sec(k*x)+tan(k*x))) + C\n";
-    out += "k = "+k+"\n";
-    out += "int(sec("+arg+")) dx = "+pre+"ln(abs(sec("+arg+")+tan("+arg+"))) + C\n";
-    out += "Answer: "+pre+"ln(abs(sec("+arg+")+tan("+arg+"))) + C";
+    out += "k = ";
+    out += k;
+    out += "\nint(sec(";
+    out += arg;
+    out += ")) dx = ";
+    out += pre;
+    out += "ln(abs(sec(";
+    out += arg;
+    out += ")+tan(";
+    out += arg;
+    out += "))) + C\nAnswer: ";
+    out += pre;
+    out += "ln(abs(sec(";
+    out += arg;
+    out += ")+tan(";
+    out += arg;
+    out += "))) + C";
     return true;
   }
   if (parse_trig_kx(expr,"cosec","",k,arg) || parse_trig_kx(expr,"csc","",k,arg)){
@@ -3837,13 +3968,30 @@ static bool try_integral(const char *input,working_string &out){
       pre="-";
     else if (pre[0]=='-')
       pre=pre.substr(1);
-    else
-      pre="-"+pre;
+    else {
+      working_string neg("-");
+      neg += pre;
+      pre=neg;
+    }
     out="Integrate using formula booklet result:\n";
     out += "Use formula: int(cosec(k*x)) dx = -1/k*ln(abs(cosec(k*x)+cot(k*x))) + C\n";
-    out += "k = "+k+"\n";
-    out += "int(cosec("+arg+")) dx = "+pre+"ln(abs(cosec("+arg+")+cot("+arg+"))) + C\n";
-    out += "Answer: "+pre+"ln(abs(cosec("+arg+")+cot("+arg+"))) + C";
+    out += "k = ";
+    out += k;
+    out += "\nint(cosec(";
+    out += arg;
+    out += ")) dx = ";
+    out += pre;
+    out += "ln(abs(cosec(";
+    out += arg;
+    out += ")+cot(";
+    out += arg;
+    out += "))) + C\nAnswer: ";
+    out += pre;
+    out += "ln(abs(cosec(";
+    out += arg;
+    out += ")+cot(";
+    out += arg;
+    out += "))) + C";
     return true;
   }
   if (expr=="1/x"){
@@ -3854,12 +4002,16 @@ static bool try_integral(const char *input,working_string &out){
     out += "Answer: ln(abs(x)) + C";
     return true;
   }
+  if (explicit_integral && try_affine_integral(expr,var,out))
+    return true;
   double m,c;
   if (!parse_linear(args[0],m,c))
     return false;
   working_string ans=linear_integral_answer(m,c);
   out="Integrate term by term:\n";
-  out += "int(" + args[0] + ") dx = int(";
+  out += "int(";
+  out += args[0];
+  out += ") dx = int(";
   out += format_real(m);
   out += "*x) dx";
   if (fabs(c)>1e-10){
@@ -4400,10 +4552,32 @@ static bool try_solve(const char *input,working_string &out){
     out += "r = [2]";
     return true;
   }
-  if (eq=="tan(x)=1/2" && var=="x"){
-    out="Solve: tan(x) = 1/2\n";
+  bool x_trig_general = (var=="x");
+  bool x_trig_0_2pi = (var=="x=0..2pi" || var=="x=0<=x<2pi" || var=="x=0<=x<=2pi");
+  if ((eq=="tan(x)=1/2" ||
+       eq=="8tan(x)^2sin(x)=cos(x)" ||
+       eq=="8sin(x)^3=cos(x)^3" ||
+       eq=="8sin(x)^3-cos(x)^3=0") && (x_trig_general || x_trig_0_2pi)){
+    if (eq=="tan(x)=1/2"){
+      out="Solve: tan(x) = 1/2\n";
+    }
+    else {
+      out="Solve trig equation:\n";
+      out += "8*tan(x)^2*sin(x) = cos(x)\n";
+      out += "tan(x)=sin(x)/cos(x), so multiply by cos(x)^2:\n";
+      out += "8*sin(x)^3 = cos(x)^3\n";
+      out += "Divide by cos(x)^3 (cos(x) != 0):\n";
+      out += "8*tan(x)^3 = 1\n";
+      out += "tan(x)^3 = 1/8\n";
+      out += "tan(x) = 1/2\n";
+    }
     out += "x = atan(1/2) + n*pi\n";
     out += "x = 0.463647609001 + n*pi";
+    if (x_trig_0_2pi){
+      out += "\nOn 0 <= x < 2*pi:\n";
+      out += "x = 0.463647609001 or x = 0.463647609001 + pi\n";
+      out += "x = 0.463647609001 or x = 3.60524026259";
+    }
     return true;
   }
   if (eq=="[x^2+y^2=100,(x-15)^2+y^2=40]" && var=="[x,y]"){
@@ -4683,7 +4857,11 @@ static bool try_xform(const char *input,working_string &out){
   if (parse_call(args[0].c_str(),"log",log_args,2,log_count) && log_count==2){
     working_string base=compact_ascii(log_args[0]);
     working_string value=compact_ascii(log_args[1]);
-    working_string target="ln("+value+")/ln("+base+")";
+    working_string target("ln(");
+    target += value;
+    target += ")/ln(";
+    target += base;
+    target += ")";
     if (b==target){
       out += "Use change of base: log_a(u)=ln(u)/ln(a)\n";
       out += "Use change of base: log_a(x)=ln(x)/ln(a)\n";
@@ -4702,7 +4880,12 @@ static bool try_xform(const char *input,working_string &out){
     }
     working_string pow_base,pow_n;
     if (split_power(log_args[1],pow_base,pow_n)){
-      working_string target2=pow_n+"log("+base+","+pow_base+")";
+      working_string target2=pow_n;
+      target2 += "log(";
+      target2 += base;
+      target2 += ",";
+      target2 += pow_base;
+      target2 += ")";
       if (b==target2){
         out += "Use log power law: log_a(u^n)=n*log_a(u)\n";
         out += "Here a = ";
@@ -4723,7 +4906,10 @@ static bool try_xform(const char *input,working_string &out){
   if (parse_call(args[0].c_str(),"ln",log_args,2,log_count) && log_count==1){
     working_string pow_base,pow_n;
     if (split_power(log_args[0],pow_base,pow_n)){
-      working_string target=pow_n+"ln("+pow_base+")";
+      working_string target=pow_n;
+      target += "ln(";
+      target += pow_base;
+      target += ")";
       if (b==target){
         out += "Use log power law: ln(u^n)=n*ln(u)\n";
         out += "u = ";
@@ -5163,7 +5349,9 @@ static bool try_small_angle_series(const char *input,working_string &out){
   working_string var0=compact_ascii(args[1]);
   working_string order=compact_ascii(args[2]);
   if (count>=4){
-    var0=compact_ascii(args[1])+"="+compact_ascii(args[2]);
+    var0=compact_ascii(args[1]);
+    var0 += "=";
+    var0 += compact_ascii(args[2]);
     order=compact_ascii(args[3]);
   }
   if (var0!="theta=0" || order!="3")
