@@ -200,6 +200,15 @@ QUALITY_CASES = [
         ],
     ),
     (
+        "range(sqrt(9-x^2),x)",
+        4,
+        [
+            "Square-root output is non-negative",
+            "Inside root has maximum 9 at x = 0",
+            "0 <= y <= 3",
+        ],
+    ),
+    (
         "range(x^2-4*x+5,x,0,5)",
         6,
         [

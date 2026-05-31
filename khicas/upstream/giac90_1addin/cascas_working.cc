@@ -509,6 +509,35 @@ static bool try_range(const char *input,working_string &out){
   }
   if (starts_with(cmp,"sqrt(")){
     int close=find_matching_paren(cmp,4);
+    if (close==int(cmp.size())-1){
+      double qa,qb,qc;
+      working_string inner=cmp.substr(5,close-5);
+      if (poly2(inner,var,qa,qb,qc) && qa<0){
+        double vx=-qb/(2*qa);
+        double mx=qa*vx*vx+qb*vx+qc;
+        if (mx>=-1e-10){
+          if (mx<0) mx=0;
+          double root=sqrt(mx),rounded=floor(root+0.5);
+          working_string upper;
+          if (fabs(root-rounded)<1e-9)
+            upper=format_real_fraction(rounded);
+          else {
+            upper="sqrt(";
+            upper += format_real_fraction(mx);
+            upper += ")";
+          }
+          out += "Square-root output is non-negative\n";
+          out += "Inside root has maximum ";
+          out += format_real_fraction(mx);
+          out += " at x = ";
+          out += format_real_fraction(vx);
+          out += "\n";
+          out += "0 <= y <= ";
+          out += upper;
+          return true;
+        }
+      }
+    }
     double k=0;
     if (close>0 && close+1<int(cmp.size()) && cmp[close+1]=='+' && parse_real(cmp.substr(close+2),k)){
       out += "sqrt(...) >= 0\n";
