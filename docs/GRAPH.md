@@ -1,6 +1,6 @@
 # CasioCAS Project Graph
 
-Last updated: 2026-05-31 01:08 Europe/London
+Last updated: 2026-05-31 01:27 Europe/London
 
 ## Build
 
@@ -50,6 +50,8 @@ graph TD
   Direct --> Xform["identity/log/sec/cosec/cot/half-angle proof shell"]
   Direct --> Log["log(base,x) working"]
   Direct --> Suvat["SUVAT displacement working"]
+  Direct --> MoreWork["tan/sec/cosec diff, golden solve routes, reciprocal ranges"]
+  Suvat --> KeySuvat["key-value u/t roots"]
   Host["old host working engine"] --> Queue["200/200 golden host checks"]
   Session["save/load/session files"] --> Disabled["no-op, in-memory only"]
   Help["help/functions/*.txt"] --> Pak["CASIOCAS.PAK"]
@@ -123,7 +125,7 @@ graph TD
 
 ```mermaid
 graph LR
-  Build["./compile exit 0"] --> Size["1,256,419 bytes"]
+  Build["./compile exit 0"] --> Size["1,262,155 bytes"]
   Build --> Meta["metadata ok"]
   Build --> Border["purple border ok"]
   Source["source gates"] --> Catalog["catalog ok"]
@@ -131,7 +133,7 @@ graph LR
   Source --> Session["session disabled"]
   Help["help pack"] --> HelpQ["18 function sheets ok"]
   Queue["golden queue"] --> QueueRun["200/200 host ok"]
-  Shared["shared working"] --> SharedRun["40/40 host+calculator adapter ok"]
+  Shared["shared working"] --> SharedRun["57/57 host+calculator adapter ok"]
   Obj["object prune"] --> QR["qrcodegen.o link-safe removed"]
   Macro["source stubs"] --> Stubbed["plotparam/plotseq/randperm/permuorder/list/stats/special/ODE/file IO/linalg helpers blocked"]
   Static["lexer prune"] --> StaticRun["distribution static names neutralized"]

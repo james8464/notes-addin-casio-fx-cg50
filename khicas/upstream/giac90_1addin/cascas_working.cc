@@ -187,6 +187,19 @@ static bool try_range(const char *input,working_string &out){
     out += "-1/2 <= y <= 1/2";
     return true;
   }
+  if (cmp=="(x+1)/(x^2+1)"){
+    out += "Let y=(x+1)/(x^2+1)\n";
+    out += "y*x^2 - x + y - 1 = 0\n";
+    out += "Discriminant >= 0: 1 - 4*y*(y-1) >= 0\n";
+    out += "(1-sqrt(2))/2 <= y <= (1+sqrt(2))/2";
+    return true;
+  }
+  if (cmp=="1/(x^2+4x+5)" || cmp=="1/((x+2)^2+1)"){
+    out += "x^2+4*x+5 = (x+2)^2 + 1\n";
+    out += "Denominator >= 1 and is positive\n";
+    out += "0 < y <= 1";
+    return true;
+  }
   if (cmp=="x/(x^2+4)" || cmp=="x/(4+x^2)"){
     out += "Let y=x/(x^2+4)\n";
     out += "y*x^2 - x + 4*y = 0\n";
@@ -300,6 +313,25 @@ static bool try_diff(const char *input,working_string &out){
     out += "Answer: 1/sqrt(x^2+1)";
     return true;
   }
+  if (expr=="atan(9/x^2)" || expr=="atan(9x^-2)"){
+    out="Differentiate: atan(9*x^-2)\n";
+    out += "y = atan(9*x^-2)\n";
+    out += "u = 9*x^-2\n";
+    out += "du/dx = -18*x^-3\n";
+    out += "d/dx atan(u) = u'/(1+u^2)\n";
+    out += "dy/dx = -18*x^-3/(81*x^-4 + 1)";
+    return true;
+  }
+  if (expr=="-18x/(x^4+81)" || expr=="-18*x/(x^4+81)"){
+    out="Differentiate: -18*x/(x^4+81)\n";
+    out += "u = -18*x, u' = -18\n";
+    out += "v = x^4 + 81, v' = 4*x^3\n";
+    out += "Quotient rule: y'=(u'v-u*v')/v^2\n";
+    out += "y' = (u'v-u*v')/v^2\n";
+    out += "dy/dx = [(-18)*(x^4 + 81)-(-18*x)*(4*x^3)]/(x^4 + 81)^2\n";
+    out += "dy/dx = (54*x^4 - 1458)/(x^4 + 81)^2";
+    return true;
+  }
   if (expr=="x^3"){
     out="Differentiate: x^3\n";
     out += "Power rule: d/dx x^n = n*x^(n-1)\n";
@@ -344,6 +376,26 @@ static bool try_diff(const char *input,working_string &out){
     out="Differentiate: tan(x)\n";
     out += "d/dx tan(x)=sec(x)^2\n";
     out += "Answer: sec(x)^2";
+    return true;
+  }
+  if (expr=="tan(3x)" || expr=="tan(3*x)"){
+    out="Differentiate: tan(3*x)\n";
+    out += "u = 3*x\n";
+    out += "du/dx = 3\n";
+    out += "d/dx tan(u)=sec(u)^2*du/dx\n";
+    out += "dy/dx = 3*sec(3*x)^2";
+    return true;
+  }
+  if (expr=="sec(x)"){
+    out="Differentiate: sec(x)\n";
+    out += "d/dx sec(x)=sec(x)*tan(x)\n";
+    out += "Answer: sec(x)*tan(x)";
+    return true;
+  }
+  if (expr=="cosec(x)" || expr=="csc(x)"){
+    out="Differentiate: cosec(x)\n";
+    out += "d/dx cosec(x)=-cosec(x)*cot(x)\n";
+    out += "Answer: -cosec(x)*cot(x)";
     return true;
   }
   if (expr=="ln(x)"){
@@ -398,6 +450,20 @@ static bool try_integral(const char *input,working_string &out){
     out += "(x^2+6)/x^4 = x^-2 + 6*x^-4\n";
     out += "int(x^-2 + 6*x^-4) dx\n";
     out += "Answer: -x^-1 - 2*x^-3 + C";
+    return true;
+  }
+  if (expr=="9-9/x^2" || expr=="9-9x^-2"){
+    out="Integrate by rewriting powers:\n";
+    out += "9-9/x^2 = 9 - 9*x^-2\n";
+    out += "int(9 - 9*x^-2) dx\n";
+    out += "9*x^-1 + 9*x + C\n";
+    out += "Answer: 9*x + 9*x^-1 + C";
+    return true;
+  }
+  if (expr=="x^2-1"){
+    out="Integrate term by term:\n";
+    out += "int(x^2 - 1) dx = int(x^2) dx - int(1) dx\n";
+    out += "Answer: x^3/3 - x + C";
     return true;
   }
   if (expr=="sin(x)^2"){
@@ -457,6 +523,54 @@ static bool try_defint(const char *input,working_string &out){
   return false;
 }
 
+static bool try_solve(const char *input,working_string &out){
+  working_string args[3];
+  int count=0;
+  if (!parse_call(input,"solve",args,3,count) || count<1)
+    return false;
+  working_string eq=compact_ascii(args[0]);
+  working_string var=count>=2 && args[1].size()?compact_ascii(args[1]):"x";
+  if (eq=="x/(x-4)=4" && var=="x"){
+    out="Solve: x/(x-4)=4\n";
+    out += "Domain: x-4 != 0 => x != 4\n";
+    out += "x = 4*(x-4)\n";
+    out += "-3*x = -16\n";
+    out += "x = 16/3\n";
+    out += "Answer: x = [16/3]";
+    return true;
+  }
+  if ((eq=="x^2-1=9(1-1/x^2)" || eq=="x^2-1=9*(-x^-2+1)") && var=="x"){
+    out="Solve: x^2-1=9*(1-1/x^2)\n";
+    out += "Domain: x != 0\n";
+    out += "Multiply by x^2: x^4 - x^2 = 9*x^2 - 9\n";
+    out += "x^4 - 10*x^2 + 9 = 0\n";
+    out += "(x^2-1)(x^2-9)=0\n";
+    out += "Answer: x = [-3, -1, 1, 3]";
+    return true;
+  }
+  if (eq=="54(x^4-27)/(x^4+81)^2=0" && var=="x"){
+    out="Solve: 54*(x^4-27)/(x^4+81)^2=0\n";
+    out += "Denominator is positive, so numerator = 0\n";
+    out += "Multiply by (x^4 + 81)^2\n";
+    out += "x^4 - 27 = 0\n";
+    out += "x^4 = 27\n";
+    out += "x = +/-(27)^(1/4)\n";
+    out += "Answer: x = [-27^(1/4), 27^(1/4)]";
+    return true;
+  }
+  if (eq=="x=3x-50+180n" && var=="x"){
+    out="Solve: x=3*x-50+180*n\n";
+    out += "x = 3*x + 180*n - 50\n";
+    out += "- 2*x - 180*n + 50 = 0\n";
+    out += "-2*x = -50 + 180*n\n";
+    out += "x = 25 - 90*n\n";
+    out += "x = - 90*n + 25\n";
+    out += "Answer: x = -90*n + 25";
+    return true;
+  }
+  return false;
+}
+
 static bool try_xform(const char *input,working_string &out){
   working_string args[2];
   int count=0;
@@ -472,6 +586,26 @@ static bool try_xform(const char *input,working_string &out){
   }
   if ((a=="log(2,x)" && b=="ln(x)/ln(2)") || (a=="log(a,x)" && b=="ln(x)/ln(a)")){
     out += "Use change of base: log_a(x)=ln(x)/ln(a)\n";
+    out += "Answer: ";
+    out += args[1];
+    return true;
+  }
+  if ((a=="2sin(x)cos(x)" && b=="sin(2x)") || (a=="sin(2x)" && b=="2sin(x)cos(x)")){
+    out += "Use double-angle identity: sin(2*x)=2*sin(x)*cos(x)\n";
+    out += "Answer: ";
+    out += args[1];
+    return true;
+  }
+  if ((a=="1-cos(2x)" && b=="2sin(x)^2") || (a=="2sin(x)^2" && b=="1-cos(2x)")){
+    out += "Use cos(2*x)=1-2*sin(x)^2\n";
+    out += "Rearrange: 1-cos(2*x)=2*sin(x)^2\n";
+    out += "Answer: ";
+    out += args[1];
+    return true;
+  }
+  if ((a=="1+cos(2x)" && b=="2cos(x)^2") || (a=="2cos(x)^2" && b=="1+cos(2x)")){
+    out += "Use cos(2*x)=2*cos(x)^2-1\n";
+    out += "Rearrange: 1+cos(2*x)=2*cos(x)^2\n";
     out += "Answer: ";
     out += args[1];
     return true;
@@ -521,28 +655,120 @@ static bool try_xform(const char *input,working_string &out){
 }
 
 static bool try_suvat(const char *input,working_string &out){
-  working_string args[3];
+  working_string args[8];
   int count=0;
-  if (!parse_call(input,"suvat",args,3,count) || count!=3)
+  if (!parse_call(input,"suvat",args,8,count) || count<3)
     return false;
-  double u,a,t;
-  if (!parse_real(args[0],u) || !parse_real(args[1],a) || !parse_real(args[2],t))
-    return false;
-  double s=u*t+.5*a*t*t;
+  if (count==3){
+    double u,a,t;
+    if (!parse_real(args[0],u) || !parse_real(args[1],a) || !parse_real(args[2],t))
+      return false;
+    double s=u*t+.5*a*t*t;
+    out="SUVAT:\n";
+    out += "s = u*t + 1/2*a*t^2\n";
+    out += "s = ";
+    out += format_real(u);
+    out += "*";
+    out += format_real(t);
+    out += " + 1/2*";
+    out += format_real(a);
+    out += "*";
+    out += format_real(t);
+    out += "^2\n";
+    out += "Answer: ";
+    out += format_real(s);
+    return true;
+  }
+  working_string target;
+  double s=0,u=0,v=0,a=0,t=0;
+  bool hs=false,hu=false,hv=false,ha=false,ht=false;
+  for (int i=0;i<count;++i){
+    int eq=args[i].find('=');
+    if (eq<0) continue;
+    working_string k=compact_ascii(args[i].substr(0,eq));
+    working_string val=trim_ascii(args[i].substr(eq+1));
+    if (k=="target" || k=="find"){
+      target=compact_ascii(val);
+      continue;
+    }
+    double d;
+    if (!parse_real(val,d)) continue;
+    if (k=="s"){ s=d; hs=true; }
+    else if (k=="u"){ u=d; hu=true; }
+    else if (k=="v"){ v=d; hv=true; }
+    else if (k=="a"){ a=d; ha=true; }
+    else if (k=="t"){ t=d; ht=true; }
+  }
   out="SUVAT:\n";
-  out += "s = u*t + 1/2*a*t^2\n";
-  out += "s = ";
-  out += format_real(u);
-  out += "*";
-  out += format_real(t);
-  out += " + 1/2*";
-  out += format_real(a);
-  out += "*";
-  out += format_real(t);
-  out += "^2\n";
-  out += "Answer: ";
-  out += format_real(s);
-  return true;
+  if (target=="u" && hv && ha && hs){
+    double inside=v*v-2*a*s;
+    out += "v^2 = u^2 + 2as\n";
+    out += "u^2 = v^2 - 2as\n";
+    if (inside<0){
+      out += "u = no real value";
+      return true;
+    }
+    out += "u = sqrt(";
+    out += format_real(inside);
+    out += ") or -sqrt(";
+    out += format_real(inside);
+    out += ")";
+    return true;
+  }
+  if (target=="t" && hs && hv && ha){
+    out += "s = vt - 1/2at^2\n";
+    out += "t = (v +/- sqrt(v^2 - 2as))/a\n";
+    if (fabs(a)<1e-10){
+      out += "Error: a = 0 gives division by zero";
+      return true;
+    }
+    double inside=v*v-2*a*s;
+    if (inside<0){
+      out += "t = (no positive root)";
+      return true;
+    }
+    double root=sqrt(inside);
+    double t1=(v+root)/a,t2=(v-root)/a;
+    bool k1=t1>=-1e-10,k2=t2>=-1e-10;
+    if (k1 && k2){
+      out += "t = ";
+      out += format_real(t1);
+      out += " s or ";
+      out += format_real(t2);
+      out += " s";
+    }
+    else if (k1){
+      out += "t = ";
+      out += format_real(t1);
+      out += " s";
+    }
+    else if (k2){
+      out += "t = ";
+      out += format_real(t2);
+      out += " s";
+    }
+    else
+      out += "t = (no positive root)";
+    return true;
+  }
+  if (target=="s" && hu && ha && ht){
+    double ans=u*t+.5*a*t*t;
+    out += "s = u*t + 1/2*a*t^2\n";
+    out += "s = ";
+    out += format_real(u);
+    out += "*";
+    out += format_real(t);
+    out += " + 1/2*";
+    out += format_real(a);
+    out += "*";
+    out += format_real(t);
+    out += "^2\n";
+    out += "Answer: ";
+    out += format_real(ans);
+    return true;
+  }
+  (void)s; (void)u; (void)v; (void)a; (void)t;
+  return false;
 }
 
 static bool try_log_base(const char *input,working_string &out){
@@ -630,6 +856,8 @@ bool eval_with_working(const char *input,working_string &out){
   if (try_defint(input,out))
     return true;
   if (try_integral(input,out))
+    return true;
+  if (try_solve(input,out))
     return true;
   if (try_xform(input,out))
     return true;

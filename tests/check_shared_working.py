@@ -16,20 +16,30 @@ CASES = [
     ("diff((x-4)/(2+sqrt(x)),x)", "u = sqrt(x); x = u^2; du/dx = 1/(2*sqrt(x))"),
     ("diff(sqrt(x)-2,x)", "d/dx(sqrt(x)) = 1/(2*sqrt(x))"),
     ("diff(4*(x^2-2)*exp(-2*x),x)", "dy/dx = 8*e^(-2*x)*(x - x^2 + 2)"),
+    ("diff(tan(3*x),x)", "dy/dx = 3*sec(3*x)^2"),
+    ("diff(sec(x),x)", "d/dx sec(x)=sec(x)*tan(x)"),
+    ("diff(cosec(x),x)", "d/dx cosec(x)=-cosec(x)*cot(x)"),
     ("int(2*x+3,x)", "Integrate term by term"),
     ("int(sin(x)^2,x)", "sin(x)^2 = (1-cos(2*x))/2"),
     ("int(cos(x),x)", "int(cos(x)) dx = sin(x) + C"),
     ("int(sec(x)^2,x)", "int(sec(x)^2) dx = tan(x) + C"),
     ("int(1/x,x)", "int(1/x) dx = ln(abs(x)) + C"),
     ("int((x^2+6)/x^4,x)", "(x^2+6)/x^4 = x^-2 + 6*x^-4"),
+    ("int(9-9/x^2,x)", "Answer: 9*x + 9*x^-1 + C"),
+    ("int(x^2-1,x)", "Answer: x^3/3 - x + C"),
     ("defint(ln(x)^2,x,2,4),method=parts", "F(4) = 4*ln(4)^2 - 8*ln(4) + 8"),
     ("integrate(2*x+3,x)", "Integrate term by term"),
+    ("solve(x/(x-4)=4,x)", "Answer: x = [16/3]"),
+    ("solve(x^2-1=9*(1-1/x^2),x)", "Answer: x = [-3, -1, 1, 3]"),
+    ("solve(54*(x^4-27)/(x^4+81)^2=0,x)", "Answer: x = [-27^(1/4), 27^(1/4)]"),
     ("range(x^2+4*x+7)", "y >= 3"),
     ("range(x/(x^2+4),x)", "1 - 16*y^2 >= 0"),
     ("range(log(2*x+3),x)", "non-constant linear input covers all positive log arguments"),
     ("range((x^2-1)/(x^2+1))", "-1 <= y < 1"),
     ("range(abs(x-3)+2)", "y >= 2"),
     ("range(sqrt(x-1)+3)", "y >= 3"),
+    ("range((x+1)/(x^2+1))", "(1-sqrt(2))/2 <= y <= (1+sqrt(2))/2"),
+    ("range(1/(x^2+4*x+5))", "0 < y <= 1"),
     ("diff(log(1/(sqrt(x^2+1)-x)),x)", "Rationalise: 1/(sqrt(x^2+1)-x) = sqrt(x^2+1)+x"),
     ("xform((x+1)^2,x^2+2*x+1)", "normal(((x+1)^2)-(x^2+2*x+1)) = 0"),
     ("xform((sin(x)-cos(x)+1)/(sin(x)+cos(x)-1),sec(x)+tan(x))", "t=tan(x/2)"),
@@ -38,6 +48,7 @@ CASES = [
     ("xform(sec(x)^2,1+tan(x)^2)", "sec(x)^2 = 1 + tan(x)^2"),
     ("xform(cosec(x)^2,1+cot(x)^2)", "cosec(x)^2 = 1 + cot(x)^2"),
     ("xform(cot(x),cos(x)/sin(x))", "cot(x)=cos(x)/sin(x)"),
+    ("xform(2*sin(x)*cos(x),sin(2*x))", "sin(2*x)=2*sin(x)*cos(x)"),
     ("log(2,8)", "Answer: 3"),
     ("compare(4*ln(4)^2 - 2*ln(2)^2 + 4 + 6*ln(1/4),14*ln(2)^2-12*ln(2)+4)", "E1-E2 = 0"),
     ("[-3,-4,-5]+[1,1,4]", "[-3,-4,-5]+[1,1,4] = (-2,-3,-1)"),
@@ -47,6 +58,15 @@ CASES = [
     ("norm([3,4,5])^2", "norm([3,4,5])^2 = (5*sqrt(2))^2"),
     ("norm([1,1,4])^2", "norm([1,1,4])^2 = (3*sqrt(2))^2"),
     ("suvat(3,2,5)", "s = u*t + 1/2*a*t^2"),
+    ("suvat(v=20,a=2,s=48,target=u)", "u = sqrt(208) or -sqrt(208)"),
+    ("suvat(s=25,v=0,a=-10,target=t)", "t = 2.23607 s"),
+    ("suvat(s=45,v=20,a=5,target=t)", "t = (no positive root)"),
+]
+
+ARGV_CASES = [
+    ([str(RUNNER), "--suvat", "v=20,a=2,s=48,target=u"], "u = sqrt(208) or -sqrt(208)"),
+    ([str(RUNNER), "--suvat", "s=25,v=0,a=-10,target=t"], "t = 2.24 s"),
+    ([str(RUNNER), "--suvat", "s=45,v=20,a=5,target=t"], "t = (no positive root)"),
 ]
 
 
@@ -57,11 +77,16 @@ def main() -> int:
         out = (proc.stdout or "") + (proc.stderr or "")
         if proc.returncode != 0 or marker not in out:
             bad.append((expr, marker, proc.returncode, out[:500]))
+    for argv, marker in ARGV_CASES:
+        proc = subprocess.run(argv, cwd=ROOT, text=True, capture_output=True)
+        out = (proc.stdout or "") + (proc.stderr or "")
+        if proc.returncode != 0 or marker not in out:
+            bad.append((" ".join(argv), marker, proc.returncode, out[:500]))
     if bad:
         for expr, marker, code, out in bad:
             print(f"FAIL {expr!r} code={code} missing={marker!r}\n{out}")
         return 1
-    print(f"OK shared working cases={len(CASES)}")
+    print(f"OK shared working cases={len(CASES) + len(ARGV_CASES)}")
     return 0
 
 

@@ -135,6 +135,24 @@ static bool is_zero_value(Arena &arena, NodeId node)
     return node_to_double(arena, node, v) && std::fabs(v) < 1e-9;
 }
 
+static int input_sig_figs(Inputs const &in)
+{
+    int sf = 3;
+    for(auto const &txt : {in.s, in.u, in.v, in.a, in.t}) {
+        std::string t = txt;
+        if(is_blank(t) || t == ",") continue;
+        bool numeric = true;
+        for(char c : t) {
+            if(!(std::isdigit((unsigned char)c) || c == '.' || c == '-' || c == '+')) {
+                numeric = false;
+                break;
+            }
+        }
+        if(numeric) sf = std::max(sf, count_sig_figs(t));
+    }
+    return sf;
+}
+
 } // namespace
 
 Inputs normalize_inputs(Inputs in)
@@ -247,17 +265,7 @@ std::vector<std::string> solve(Arena &arena, Inputs const &raw)
         out.push_back(in.target + " = " + show(res));
         double dv = 0;
         if(node_to_double(arena, res, dv)) {
-            // sig figs: max of numeric input sig figs, default 3
-            int sf = 3;
-            for(auto const &txt : {in.s, in.u, in.v, in.a, in.t}) {
-                std::string t = txt;
-                if(is_blank(t) || t == ",") continue;
-                bool numeric = true;
-                for(char c : t) {
-                    if(!(std::isdigit((unsigned char)c) || c == '.' || c == '-' || c == '+')) { numeric = false; break; }
-                }
-                if(numeric) sf = std::max(sf, count_sig_figs(t));
-            }
+            int sf = input_sig_figs(in);
             std::string dec = format_decimal(dv, sf);
             if(!dec.empty() && dec != show(res)) out.push_back(in.target + " = " + dec + (unit.empty() ? "" : (" " + unit)));
         }
@@ -453,6 +461,14 @@ std::vector<std::string> solve(Arena &arena, Inputs const &raw)
         append_value(res);
         return out;
     }
+    if(in.target == "u" && has_v && has_a && has_s) {
+        NodeId inside = add(arena, {power(arena, v, num(arena, 2)), neg(arena, mul(arena, {num(arena, 2), a, s}))});
+        NodeId root = power(arena, inside, num(arena, 1, 2));
+        out.push_back("v^2 = u^2 + 2as");
+        out.push_back("u^2 = v^2 - 2as");
+        out.push_back("u = " + show(root) + " or " + show(neg(arena, root)));
+        return out;
+    }
 
     // Quadratic time from s = ut + 1/2at^2 (minimal version)
     if(in.target == "t" && has_s && has_u && has_a) {
@@ -485,6 +501,43 @@ std::vector<std::string> solve(Arena &arena, Inputs const &raw)
                 if(!dec.empty()) return dec + (unit.empty() ? "" : (" " + unit));
             }
             return show(root);
+        };
+        bool keep1 = is_nonnegative(arena, t1);
+        bool keep2 = is_nonnegative(arena, t2);
+        if(keep1 && keep2) out.push_back("t = " + root_text(t1) + " or " + root_text(t2));
+        else if(keep1) out.push_back("t = " + root_text(t1));
+        else if(keep2) out.push_back("t = " + root_text(t2));
+        else out.push_back("t = (no positive root)");
+        return out;
+    }
+    if(in.target == "t" && has_s && has_v && has_a) {
+        if(is_zero_value(arena, a)) {
+            if(is_zero_value(arena, v)) {
+                out.push_back("s = vt");
+                out.push_back("Error: division by zero; no unique time");
+                return out;
+            }
+            NodeId res = simplify(arena, div(arena, s, v));
+            out.push_back("a = 0, so s = vt");
+            out.push_back("t = s/v");
+            out.push_back("= " + show(s) + "/(" + show(v) + ")");
+            append_value(res);
+            return out;
+        }
+        NodeId inside = add(arena, {power(arena, v, num(arena, 2)), neg(arena, mul(arena, {num(arena, 2), a, s}))});
+        NodeId root = power(arena, inside, num(arena, 1, 2));
+        NodeId t1 = simplify(arena, div(arena, add(arena, {v, root}), a));
+        NodeId t2 = simplify(arena, div(arena, add(arena, {v, neg(arena, root)}), a));
+        out.push_back("s = vt - 1/2at^2");
+        out.push_back("Quadratic in t");
+        out.push_back("t = (v ± sqrt(v^2 - 2as))/a");
+        auto root_text = [&](NodeId root_node) {
+            double dv = 0;
+            if(node_to_double(arena, root_node, dv)) {
+                std::string dec = format_decimal(dv, input_sig_figs(in));
+                if(!dec.empty()) return dec + (unit.empty() ? "" : (" " + unit));
+            }
+            return show(root_node);
         };
         bool keep1 = is_nonnegative(arena, t1);
         bool keep2 = is_nonnegative(arena, t2);
