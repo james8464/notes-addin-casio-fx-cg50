@@ -3916,6 +3916,9 @@ bool discard(Graph2d * gr,float3d x,float3d y,float3d z){
 
   // return true if there is a syntax error and user asked to correct
   bool geoparse(textArea *text,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return false;
+#else
     Graph2d * geoptr=text->gr;
     if (!geoptr)
       return false;
@@ -3956,9 +3959,13 @@ bool discard(Graph2d * gr,float3d x,float3d y,float3d z){
       }
     } // loop on lines
     return false;
+#endif
   }
 
   int geoloop(Graph2d * geoptr){
+#ifdef CASCAS_ALEVEL_ONLY
+    return -1;
+#else
     if (!geoptr || !geoptr->hp) return -1;
     const context * contextptr=geoptr->contextptr;
     textArea * text=geoptr->hp;
@@ -3991,18 +3998,27 @@ bool discard(Graph2d * gr,float3d x,float3d y,float3d z){
 	  break;
       } // end edition loop
     } // end plot/symb view infinite loop
+#endif
   }
 
   void cleargeo(){
+#ifdef CASCAS_ALEVEL_ONLY
+    geoptr=0;
+    return;
+#else
     if (!geoptr)
       return;
     if (geoptr->hp)
       delete geoptr->hp;
     delete geoptr;
     geoptr=0;
+#endif
   }
 
   int newgeo(GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return -1;
+#else
     if (!geoptr){
       geoptr=new Graph2d(0,contextptr);
       geoptr->window_xmin=-5;
@@ -4028,6 +4044,7 @@ bool discard(Graph2d * gr,float3d x,float3d y,float3d z){
     text->gr=geoptr;
     geoptr->set_mode(0,0,255,""); // start in frame mode
     return 0;
+#endif
   }
 
   Graph2d::Graph2d(const giac::gen & g_,const giac::context * cptr):window_xmin(gnuplot_xmin),window_xmax(gnuplot_xmax),window_ymin(gnuplot_ymin),window_ymax(gnuplot_ymax),window_zmin(gnuplot_zmin),window_zmax(gnuplot_zmax),g(g_),display_mode(0x45),show_axes(1),show_edges(1),show_names(1),labelsize(16),precision(2),contextptr(cptr),hp(0),npixels(5),couleur(0),nparams(0) {
@@ -5906,6 +5923,9 @@ bool discard(Graph2d * gr,float3d x,float3d y,float3d z){
   bool global_show_axes=true;
   
   int displaygraph(const giac::gen & ge,const gen & gs,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return -1;
+#else
     static gen displayge= ge;
     if (ge!=-1)
       displayge=ge;
@@ -5958,6 +5978,7 @@ bool discard(Graph2d * gr,float3d x,float3d y,float3d z){
       }
     }
     return gr.ui();
+#endif
   }
 
   int displaygraph(const giac::gen & ge,const gen & gs){

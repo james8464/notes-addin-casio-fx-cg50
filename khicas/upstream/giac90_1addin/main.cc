@@ -2904,6 +2904,9 @@ void do_run(const char * s,gen & g,gen & ge){
 }
 
 void displaylogo(){
+#ifdef CASCAS_ALEVEL_ONLY
+  return;
+#else
 #ifdef TURTLETAB
   xcas::Turtle t={tablogo,0,0,1,1};
 #else
@@ -2935,6 +2938,7 @@ void displaylogo(){
     if (key==KEY_CHAR_PLUS) { t.turtlezoom *= 2;}
     if (key==KEY_CHAR_MINUS){ t.turtlezoom /= 2;  }
   }  
+#endif
 }
 
 bool stringtodouble(const string & s1,double & d){

@@ -1116,6 +1116,9 @@ int khicas_addins_menu(GIAC_CONTEXT){
 }
 
 int geoapp(GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+  return -1;
+#else
   int res=newgeo(contextptr);
   if (res<0) return res;
   // load a figure?
@@ -1173,6 +1176,7 @@ int geoapp(GIAC_CONTEXT){
     }
   }
   return geoloop(geoptr);
+#endif
 }
 
 /* *******************
@@ -2484,5 +2488,4 @@ giac::gen sheet(GIAC_CONTEXT){
     
   }
 }
-
 
