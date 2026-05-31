@@ -1,0 +1,47 @@
+[
+  {
+    "id": "madas_booklet_basic_various_surds_student_version_q1_exact_inputs",
+    "source_pdf": "MadAsMaths A-level booklets/basic_various/surds_student_version.pdf",
+    "question": "q1",
+    "part": "a-e",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: surds_student_version pages 2-17",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,3*sqrt(5)",
+        "mark_scheme_working": [
+          "sqrt(45)"
+        ],
+        "expected_output_markers": [
+          "6.7082039325"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,4*sqrt(3)",
+        "mark_scheme_working": [
+          "sqrt(48)"
+        ],
+        "expected_output_markers": [
+          "6.92820323028"
+        ]
+      }
+    ],
+    "expected_final": [
+      "3sqrt(5)",
+      "4sqrt(3)"
+    ],
+    "unsupported_reason": "student version; symbolic surd combine not in host"
+  },
+  {
+    "id": "madas_booklet_basic_various_surds_student_version_complete_source_marker",
+    "source_pdf": "MadAsMaths A-level booklets/basic_various/surds_student_version.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual page-image review: surds_student_version pages 2-17",
+    "unsupported_reason": "source complete marker; executable exact calculator inputs are recorded in madas_booklet_basic_various_surds_student_version rows above, while diagram, proof wording and rounding judgements are manual notes"
+  }
+]

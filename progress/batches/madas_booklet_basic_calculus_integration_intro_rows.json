@@ -1,0 +1,37 @@
+[
+  {
+    "id": "madas_booklet_basic_calculus_integration_intro_q1_exact_inputs",
+    "source_pdf": "MadAsMaths A-level booklets/basic_calculus/integration_intro.pdf",
+    "question": "q1",
+    "part": "a",
+    "verdict": "testable",
+    "review_basis": "manual page-image review: integration_intro page 3",
+    "inputs": [
+      {
+        "module": "integrate",
+        "input": "2*sqrt(x)-1/x^2",
+        "mark_scheme_working": [
+          "int 2x^(1/2)",
+          "int -x^-2"
+        ],
+        "expected_output_markers": [
+          "4/3*(x)^(3/2)",
+          "x^-1"
+        ]
+      }
+    ],
+    "expected_final": [
+      "4/3*x^(3/2)+1/x+C"
+    ]
+  },
+  {
+    "id": "madas_booklet_basic_calculus_integration_intro_complete_source_marker",
+    "source_pdf": "MadAsMaths A-level booklets/basic_calculus/integration_intro.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual page-image review: integration_intro page 3",
+    "unsupported_reason": "source complete marker; executable exact calculator inputs are recorded in madas_booklet_basic_calculus_integration_intro rows above, while diagram, proof wording and rounding judgements are manual notes"
+  }
+]

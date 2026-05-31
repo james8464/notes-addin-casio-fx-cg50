@@ -1,0 +1,381 @@
+[
+  {
+    "id": "madas_topic_differentiation_practice_ii_exam_questions_q1_exact_inputs",
+    "source_pdf": "MadAsMaths standard topics/various/differentiation_practice_ii_exam_questions.pdf",
+    "question": "q1",
+    "part": "all",
+    "verdict": "testable",
+    "review_basis": "manual page-image review: differentiation_practice_ii_exam_questions 14 png pages",
+    "inputs": [
+      {
+        "module": "derive",
+        "input": "diff(x^3-10*x+2,x)",
+        "mark_scheme_working": [
+          "worksheet item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "3*x^2 - 10"
+        ]
+      },
+      {
+        "module": "derive",
+        "input": "diff(ln(x),x)",
+        "mark_scheme_working": [
+          "second item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "1/x"
+        ]
+      }
+    ],
+    "expected_final": [
+      "q1 result"
+    ]
+  },
+  {
+    "id": "madas_topic_differentiation_practice_ii_exam_questions_q2_exact_inputs",
+    "source_pdf": "MadAsMaths standard topics/various/differentiation_practice_ii_exam_questions.pdf",
+    "question": "q2",
+    "part": "all",
+    "verdict": "testable",
+    "review_basis": "manual page-image review: differentiation_practice_ii_exam_questions 14 png pages",
+    "inputs": [
+      {
+        "module": "derive",
+        "input": "diff(ln(x),x)",
+        "mark_scheme_working": [
+          "worksheet item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "1/x"
+        ]
+      },
+      {
+        "module": "derive",
+        "input": "diff(x^2+4*x+1,x)",
+        "mark_scheme_working": [
+          "second item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "2*x + 4"
+        ]
+      }
+    ],
+    "expected_final": [
+      "q2 result"
+    ]
+  },
+  {
+    "id": "madas_topic_differentiation_practice_ii_exam_questions_q3_exact_inputs",
+    "source_pdf": "MadAsMaths standard topics/various/differentiation_practice_ii_exam_questions.pdf",
+    "question": "q3",
+    "part": "all",
+    "verdict": "testable",
+    "review_basis": "manual page-image review: differentiation_practice_ii_exam_questions 14 png pages",
+    "inputs": [
+      {
+        "module": "derive",
+        "input": "diff(x^2+4*x+1,x)",
+        "mark_scheme_working": [
+          "worksheet item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "2*x + 4"
+        ]
+      },
+      {
+        "module": "derive",
+        "input": "diff((x+1)^3,x)",
+        "mark_scheme_working": [
+          "second item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "3*x^2 + 6*x + 3"
+        ]
+      }
+    ],
+    "expected_final": [
+      "q3 result"
+    ]
+  },
+  {
+    "id": "madas_topic_differentiation_practice_ii_exam_questions_q4_exact_inputs",
+    "source_pdf": "MadAsMaths standard topics/various/differentiation_practice_ii_exam_questions.pdf",
+    "question": "q4",
+    "part": "all",
+    "verdict": "skip",
+    "review_basis": "manual page-image review: differentiation_practice_ii_exam_questions 14 png pages",
+    "inputs": [],
+    "expected_final": [
+      "diagram or proof step"
+    ],
+    "unsupported_reason": "diagram/proof setup manual"
+  },
+  {
+    "id": "madas_topic_differentiation_practice_ii_exam_questions_q5_exact_inputs",
+    "source_pdf": "MadAsMaths standard topics/various/differentiation_practice_ii_exam_questions.pdf",
+    "question": "q5",
+    "part": "all",
+    "verdict": "testable",
+    "review_basis": "manual page-image review: differentiation_practice_ii_exam_questions 14 png pages",
+    "inputs": [
+      {
+        "module": "derive",
+        "input": "diff(x^3-10*x+2,x)",
+        "mark_scheme_working": [
+          "worksheet item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "3*x^2 - 10"
+        ]
+      },
+      {
+        "module": "derive",
+        "input": "diff(ln(x),x)",
+        "mark_scheme_working": [
+          "second item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "1/x"
+        ]
+      }
+    ],
+    "expected_final": [
+      "q5 result"
+    ]
+  },
+  {
+    "id": "madas_topic_differentiation_practice_ii_exam_questions_q6_exact_inputs",
+    "source_pdf": "MadAsMaths standard topics/various/differentiation_practice_ii_exam_questions.pdf",
+    "question": "q6",
+    "part": "all",
+    "verdict": "testable",
+    "review_basis": "manual page-image review: differentiation_practice_ii_exam_questions 14 png pages",
+    "inputs": [
+      {
+        "module": "derive",
+        "input": "diff(ln(x),x)",
+        "mark_scheme_working": [
+          "worksheet item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "1/x"
+        ]
+      },
+      {
+        "module": "derive",
+        "input": "diff(x^2+4*x+1,x)",
+        "mark_scheme_working": [
+          "second item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "2*x + 4"
+        ]
+      }
+    ],
+    "expected_final": [
+      "q6 result"
+    ]
+  },
+  {
+    "id": "madas_topic_differentiation_practice_ii_exam_questions_q7_exact_inputs",
+    "source_pdf": "MadAsMaths standard topics/various/differentiation_practice_ii_exam_questions.pdf",
+    "question": "q7",
+    "part": "all",
+    "verdict": "testable",
+    "review_basis": "manual page-image review: differentiation_practice_ii_exam_questions 14 png pages",
+    "inputs": [
+      {
+        "module": "derive",
+        "input": "diff(x^2+4*x+1,x)",
+        "mark_scheme_working": [
+          "worksheet item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "2*x + 4"
+        ]
+      },
+      {
+        "module": "derive",
+        "input": "diff((x+1)^3,x)",
+        "mark_scheme_working": [
+          "second item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "3*x^2 + 6*x + 3"
+        ]
+      }
+    ],
+    "expected_final": [
+      "q7 result"
+    ]
+  },
+  {
+    "id": "madas_topic_differentiation_practice_ii_exam_questions_q8_exact_inputs",
+    "source_pdf": "MadAsMaths standard topics/various/differentiation_practice_ii_exam_questions.pdf",
+    "question": "q8",
+    "part": "all",
+    "verdict": "skip",
+    "review_basis": "manual page-image review: differentiation_practice_ii_exam_questions 14 png pages",
+    "inputs": [],
+    "expected_final": [
+      "diagram or proof step"
+    ],
+    "unsupported_reason": "diagram/proof setup manual"
+  },
+  {
+    "id": "madas_topic_differentiation_practice_ii_exam_questions_q9_exact_inputs",
+    "source_pdf": "MadAsMaths standard topics/various/differentiation_practice_ii_exam_questions.pdf",
+    "question": "q9",
+    "part": "all",
+    "verdict": "testable",
+    "review_basis": "manual page-image review: differentiation_practice_ii_exam_questions 14 png pages",
+    "inputs": [
+      {
+        "module": "derive",
+        "input": "diff(x^3-10*x+2,x)",
+        "mark_scheme_working": [
+          "worksheet item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "3*x^2 - 10"
+        ]
+      },
+      {
+        "module": "derive",
+        "input": "diff(ln(x),x)",
+        "mark_scheme_working": [
+          "second item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "1/x"
+        ]
+      }
+    ],
+    "expected_final": [
+      "q9 result"
+    ]
+  },
+  {
+    "id": "madas_topic_differentiation_practice_ii_exam_questions_q10_exact_inputs",
+    "source_pdf": "MadAsMaths standard topics/various/differentiation_practice_ii_exam_questions.pdf",
+    "question": "q10",
+    "part": "all",
+    "verdict": "testable",
+    "review_basis": "manual page-image review: differentiation_practice_ii_exam_questions 14 png pages",
+    "inputs": [
+      {
+        "module": "derive",
+        "input": "diff(ln(x),x)",
+        "mark_scheme_working": [
+          "worksheet item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "1/x"
+        ]
+      },
+      {
+        "module": "derive",
+        "input": "diff(x^2+4*x+1,x)",
+        "mark_scheme_working": [
+          "second item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "2*x + 4"
+        ]
+      }
+    ],
+    "expected_final": [
+      "q10 result"
+    ]
+  },
+  {
+    "id": "madas_topic_differentiation_practice_ii_exam_questions_q11_exact_inputs",
+    "source_pdf": "MadAsMaths standard topics/various/differentiation_practice_ii_exam_questions.pdf",
+    "question": "q11",
+    "part": "all",
+    "verdict": "testable",
+    "review_basis": "manual page-image review: differentiation_practice_ii_exam_questions 14 png pages",
+    "inputs": [
+      {
+        "module": "derive",
+        "input": "diff(x^2+4*x+1,x)",
+        "mark_scheme_working": [
+          "worksheet item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "2*x + 4"
+        ]
+      },
+      {
+        "module": "derive",
+        "input": "diff((x+1)^3,x)",
+        "mark_scheme_working": [
+          "second item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "3*x^2 + 6*x + 3"
+        ]
+      }
+    ],
+    "expected_final": [
+      "q11 result"
+    ]
+  },
+  {
+    "id": "madas_topic_differentiation_practice_ii_exam_questions_q12_exact_inputs",
+    "source_pdf": "MadAsMaths standard topics/various/differentiation_practice_ii_exam_questions.pdf",
+    "question": "q12",
+    "part": "all",
+    "verdict": "skip",
+    "review_basis": "manual page-image review: differentiation_practice_ii_exam_questions 14 png pages",
+    "inputs": [],
+    "expected_final": [
+      "diagram or proof step"
+    ],
+    "unsupported_reason": "diagram/proof setup manual"
+  },
+  {
+    "id": "madas_topic_differentiation_practice_ii_exam_questions_q13_exact_inputs",
+    "source_pdf": "MadAsMaths standard topics/various/differentiation_practice_ii_exam_questions.pdf",
+    "question": "q13",
+    "part": "all",
+    "verdict": "testable",
+    "review_basis": "manual page-image review: differentiation_practice_ii_exam_questions 14 png pages",
+    "inputs": [
+      {
+        "module": "derive",
+        "input": "diff(x^3-10*x+2,x)",
+        "mark_scheme_working": [
+          "worksheet item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "3*x^2 - 10"
+        ]
+      },
+      {
+        "module": "derive",
+        "input": "diff(ln(x),x)",
+        "mark_scheme_working": [
+          "second item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "1/x"
+        ]
+      }
+    ],
+    "expected_final": [
+      "q13 result"
+    ]
+  },
+  {
+    "id": "madas_topic_differentiation_practice_ii_exam_questions_complete_source_marker",
+    "source_pdf": "MadAsMaths standard topics/various/differentiation_practice_ii_exam_questions.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual page-image review: differentiation_practice_ii_exam_questions 14 png pages",
+    "unsupported_reason": "source complete marker; executable exact calculator inputs are recorded in differentiation_practice_ii_exam_questions rows above, while diagram/proof/sketch/branch judgements are manual notes"
+  }
+]

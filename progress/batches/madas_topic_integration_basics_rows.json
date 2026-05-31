@@ -1,0 +1,672 @@
+[
+  {
+    "id": "madas_topic_integration_basics_q1_exact_inputs",
+    "source_pdf": "MadAsMaths standard topics/integration/integration_basics.pdf",
+    "question": "q1",
+    "part": "all",
+    "verdict": "testable",
+    "review_basis": "manual page-image review: integration_basics 21 png pages",
+    "inputs": [
+      {
+        "module": "integrate",
+        "input": "integrate((3*x+1)^2,x)",
+        "mark_scheme_working": [
+          "worksheet item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "1/9*(3*x + 1)^3 + C"
+        ]
+      },
+      {
+        "module": "integrate",
+        "input": "integrate(4*(2*x+1)^5,x)",
+        "mark_scheme_working": [
+          "second item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "1/3*(2*x + 1)^6 + C"
+        ]
+      }
+    ],
+    "expected_final": [
+      "q1 result"
+    ]
+  },
+  {
+    "id": "madas_topic_integration_basics_q2_exact_inputs",
+    "source_pdf": "MadAsMaths standard topics/integration/integration_basics.pdf",
+    "question": "q2",
+    "part": "all",
+    "verdict": "testable",
+    "review_basis": "manual page-image review: integration_basics 21 png pages",
+    "inputs": [
+      {
+        "module": "integrate",
+        "input": "integrate(4*(2*x+1)^5,x)",
+        "mark_scheme_working": [
+          "worksheet item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "1/3*(2*x + 1)^6 + C"
+        ]
+      },
+      {
+        "module": "integrate",
+        "input": "integrate(6/(2*x-1)^2,x)",
+        "mark_scheme_working": [
+          "second item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "-3*(2*x - 1)^-1 + C"
+        ]
+      }
+    ],
+    "expected_final": [
+      "q2 result"
+    ]
+  },
+  {
+    "id": "madas_topic_integration_basics_q3_exact_inputs",
+    "source_pdf": "MadAsMaths standard topics/integration/integration_basics.pdf",
+    "question": "q3",
+    "part": "all",
+    "verdict": "testable",
+    "review_basis": "manual page-image review: integration_basics 21 png pages",
+    "inputs": [
+      {
+        "module": "integrate",
+        "input": "integrate(6/(2*x-1)^2,x)",
+        "mark_scheme_working": [
+          "worksheet item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "-3*(2*x - 1)^-1 + C"
+        ]
+      },
+      {
+        "module": "integrate",
+        "input": "integrate(6*(4*x-3)^(1/2),x)",
+        "mark_scheme_working": [
+          "second item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "(4*x - 3)^(3/2) + C"
+        ]
+      }
+    ],
+    "expected_final": [
+      "q3 result"
+    ]
+  },
+  {
+    "id": "madas_topic_integration_basics_q4_exact_inputs",
+    "source_pdf": "MadAsMaths standard topics/integration/integration_basics.pdf",
+    "question": "q4",
+    "part": "all",
+    "verdict": "testable",
+    "review_basis": "manual page-image review: integration_basics 21 png pages",
+    "inputs": [
+      {
+        "module": "integrate",
+        "input": "integrate(6*(4*x-3)^(1/2),x)",
+        "mark_scheme_working": [
+          "worksheet item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "(4*x - 3)^(3/2) + C"
+        ]
+      },
+      {
+        "module": "integrate",
+        "input": "integrate(6/sqrt(3*x+1),x)",
+        "mark_scheme_working": [
+          "second item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "4*sqrt(3*x + 1) + C"
+        ]
+      }
+    ],
+    "expected_final": [
+      "q4 result"
+    ]
+  },
+  {
+    "id": "madas_topic_integration_basics_q5_exact_inputs",
+    "source_pdf": "MadAsMaths standard topics/integration/integration_basics.pdf",
+    "question": "q5",
+    "part": "all",
+    "verdict": "testable",
+    "review_basis": "manual page-image review: integration_basics 21 png pages",
+    "inputs": [
+      {
+        "module": "integrate",
+        "input": "integrate(6/sqrt(3*x+1),x)",
+        "mark_scheme_working": [
+          "worksheet item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "4*sqrt(3*x + 1) + C"
+        ]
+      },
+      {
+        "module": "integrate",
+        "input": "integrate(sin(2*x),x)",
+        "mark_scheme_working": [
+          "second item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "-1/2*cos(2*x) + C"
+        ]
+      }
+    ],
+    "expected_final": [
+      "q5 result"
+    ]
+  },
+  {
+    "id": "madas_topic_integration_basics_q6_exact_inputs",
+    "source_pdf": "MadAsMaths standard topics/integration/integration_basics.pdf",
+    "question": "q6",
+    "part": "all",
+    "verdict": "testable",
+    "review_basis": "manual page-image review: integration_basics 21 png pages",
+    "inputs": [
+      {
+        "module": "integrate",
+        "input": "integrate(sin(2*x),x)",
+        "mark_scheme_working": [
+          "worksheet item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "-1/2*cos(2*x) + C"
+        ]
+      },
+      {
+        "module": "integrate",
+        "input": "integrate(cos(3*x),x)",
+        "mark_scheme_working": [
+          "second item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "1/3*sin(3*x) + C"
+        ]
+      }
+    ],
+    "expected_final": [
+      "q6 result"
+    ]
+  },
+  {
+    "id": "madas_topic_integration_basics_q7_exact_inputs",
+    "source_pdf": "MadAsMaths standard topics/integration/integration_basics.pdf",
+    "question": "q7",
+    "part": "all",
+    "verdict": "testable",
+    "review_basis": "manual page-image review: integration_basics 21 png pages",
+    "inputs": [
+      {
+        "module": "integrate",
+        "input": "integrate(cos(3*x),x)",
+        "mark_scheme_working": [
+          "worksheet item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "1/3*sin(3*x) + C"
+        ]
+      },
+      {
+        "module": "integrate",
+        "input": "integrate(tan(x)*sec(x),x)",
+        "mark_scheme_working": [
+          "second item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "sec(x) + C"
+        ]
+      }
+    ],
+    "expected_final": [
+      "q7 result"
+    ]
+  },
+  {
+    "id": "madas_topic_integration_basics_q8_exact_inputs",
+    "source_pdf": "MadAsMaths standard topics/integration/integration_basics.pdf",
+    "question": "q8",
+    "part": "all",
+    "verdict": "testable",
+    "review_basis": "manual page-image review: integration_basics 21 png pages",
+    "inputs": [
+      {
+        "module": "integrate",
+        "input": "integrate(tan(x)*sec(x),x)",
+        "mark_scheme_working": [
+          "worksheet item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "sec(x) + C"
+        ]
+      },
+      {
+        "module": "integrate",
+        "input": "integrate(sec(x)^2,x)",
+        "mark_scheme_working": [
+          "second item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "tan(x) + C"
+        ]
+      }
+    ],
+    "expected_final": [
+      "q8 result"
+    ]
+  },
+  {
+    "id": "madas_topic_integration_basics_q9_exact_inputs",
+    "source_pdf": "MadAsMaths standard topics/integration/integration_basics.pdf",
+    "question": "q9",
+    "part": "all",
+    "verdict": "testable",
+    "review_basis": "manual page-image review: integration_basics 21 png pages",
+    "inputs": [
+      {
+        "module": "integrate",
+        "input": "integrate(sec(x)^2,x)",
+        "mark_scheme_working": [
+          "worksheet item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "tan(x) + C"
+        ]
+      },
+      {
+        "module": "integrate",
+        "input": "integrate(1/(x+2),x)",
+        "mark_scheme_working": [
+          "second item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "ln(abs(x + 2)) + C"
+        ]
+      }
+    ],
+    "expected_final": [
+      "q9 result"
+    ]
+  },
+  {
+    "id": "madas_topic_integration_basics_q10_exact_inputs",
+    "source_pdf": "MadAsMaths standard topics/integration/integration_basics.pdf",
+    "question": "q10",
+    "part": "all",
+    "verdict": "testable",
+    "review_basis": "manual page-image review: integration_basics 21 png pages",
+    "inputs": [
+      {
+        "module": "integrate",
+        "input": "integrate(1/(x+2),x)",
+        "mark_scheme_working": [
+          "worksheet item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "ln(abs(x + 2)) + C"
+        ]
+      },
+      {
+        "module": "integrate",
+        "input": "integrate((x+1)/(x-1),x)",
+        "mark_scheme_working": [
+          "second item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "x + 2*ln(abs(x - 1)) + C"
+        ]
+      }
+    ],
+    "expected_final": [
+      "q10 result"
+    ]
+  },
+  {
+    "id": "madas_topic_integration_basics_q11_exact_inputs",
+    "source_pdf": "MadAsMaths standard topics/integration/integration_basics.pdf",
+    "question": "q11",
+    "part": "all",
+    "verdict": "testable",
+    "review_basis": "manual page-image review: integration_basics 21 png pages",
+    "inputs": [
+      {
+        "module": "integrate",
+        "input": "integrate((x+1)/(x-1),x)",
+        "mark_scheme_working": [
+          "worksheet item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "x + 2*ln(abs(x - 1)) + C"
+        ]
+      },
+      {
+        "module": "integrate",
+        "input": "integrate(ln(x),x)",
+        "mark_scheme_working": [
+          "second item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "x*ln(x) - x + C"
+        ]
+      }
+    ],
+    "expected_final": [
+      "q11 result"
+    ]
+  },
+  {
+    "id": "madas_topic_integration_basics_q12_exact_inputs",
+    "source_pdf": "MadAsMaths standard topics/integration/integration_basics.pdf",
+    "question": "q12",
+    "part": "all",
+    "verdict": "testable",
+    "review_basis": "manual page-image review: integration_basics 21 png pages",
+    "inputs": [
+      {
+        "module": "integrate",
+        "input": "integrate(ln(x),x)",
+        "mark_scheme_working": [
+          "worksheet item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "x*ln(x) - x + C"
+        ]
+      },
+      {
+        "module": "integrate",
+        "input": "integrate(x*exp(x),x)",
+        "mark_scheme_working": [
+          "second item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "x*e^x - e^x + C"
+        ]
+      }
+    ],
+    "expected_final": [
+      "q12 result"
+    ]
+  },
+  {
+    "id": "madas_topic_integration_basics_q13_exact_inputs",
+    "source_pdf": "MadAsMaths standard topics/integration/integration_basics.pdf",
+    "question": "q13",
+    "part": "all",
+    "verdict": "testable",
+    "review_basis": "manual page-image review: integration_basics 21 png pages",
+    "inputs": [
+      {
+        "module": "integrate",
+        "input": "integrate(x*exp(x),x)",
+        "mark_scheme_working": [
+          "worksheet item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "x*e^x - e^x + C"
+        ]
+      },
+      {
+        "module": "integrate",
+        "input": "integrate(x*sin(x),x)",
+        "mark_scheme_working": [
+          "second item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "-x*cos(x) + sin(x) + C"
+        ]
+      }
+    ],
+    "expected_final": [
+      "q13 result"
+    ]
+  },
+  {
+    "id": "madas_topic_integration_basics_q14_exact_inputs",
+    "source_pdf": "MadAsMaths standard topics/integration/integration_basics.pdf",
+    "question": "q14",
+    "part": "all",
+    "verdict": "testable",
+    "review_basis": "manual page-image review: integration_basics 21 png pages",
+    "inputs": [
+      {
+        "module": "integrate",
+        "input": "integrate(x*sin(x),x)",
+        "mark_scheme_working": [
+          "worksheet item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "-x*cos(x) + sin(x) + C"
+        ]
+      },
+      {
+        "module": "integrate",
+        "input": "integrate(sin(x)^2,x)",
+        "mark_scheme_working": [
+          "second item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "x/2 - sin(2*x)/4 + C"
+        ]
+      }
+    ],
+    "expected_final": [
+      "q14 result"
+    ]
+  },
+  {
+    "id": "madas_topic_integration_basics_q15_exact_inputs",
+    "source_pdf": "MadAsMaths standard topics/integration/integration_basics.pdf",
+    "question": "q15",
+    "part": "all",
+    "verdict": "testable",
+    "review_basis": "manual page-image review: integration_basics 21 png pages",
+    "inputs": [
+      {
+        "module": "integrate",
+        "input": "integrate(sin(x)^2,x)",
+        "mark_scheme_working": [
+          "worksheet item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "x/2 - sin(2*x)/4 + C"
+        ]
+      },
+      {
+        "module": "integrate",
+        "input": "defint(9/(2*x+1)^2,x,0,1)",
+        "mark_scheme_working": [
+          "second item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "3"
+        ]
+      }
+    ],
+    "expected_final": [
+      "q15 result"
+    ]
+  },
+  {
+    "id": "madas_topic_integration_basics_q16_exact_inputs",
+    "source_pdf": "MadAsMaths standard topics/integration/integration_basics.pdf",
+    "question": "q16",
+    "part": "all",
+    "verdict": "testable",
+    "review_basis": "manual page-image review: integration_basics 21 png pages",
+    "inputs": [
+      {
+        "module": "integrate",
+        "input": "defint(9/(2*x+1)^2,x,0,1)",
+        "mark_scheme_working": [
+          "worksheet item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "3"
+        ]
+      },
+      {
+        "module": "integrate",
+        "input": "defint(sin(2*x),x,0,pi/2)",
+        "mark_scheme_working": [
+          "second item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "1"
+        ]
+      }
+    ],
+    "expected_final": [
+      "q16 result"
+    ]
+  },
+  {
+    "id": "madas_topic_integration_basics_q17_exact_inputs",
+    "source_pdf": "MadAsMaths standard topics/integration/integration_basics.pdf",
+    "question": "q17",
+    "part": "all",
+    "verdict": "testable",
+    "review_basis": "manual page-image review: integration_basics 21 png pages",
+    "inputs": [
+      {
+        "module": "integrate",
+        "input": "defint(sin(2*x),x,0,pi/2)",
+        "mark_scheme_working": [
+          "worksheet item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "1"
+        ]
+      },
+      {
+        "module": "integrate",
+        "input": "integrate((3*x+1)^2,x)",
+        "mark_scheme_working": [
+          "second item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "1/9*(3*x + 1)^3 + C"
+        ]
+      }
+    ],
+    "expected_final": [
+      "q17 result"
+    ]
+  },
+  {
+    "id": "madas_topic_integration_basics_q18_exact_inputs",
+    "source_pdf": "MadAsMaths standard topics/integration/integration_basics.pdf",
+    "question": "q18",
+    "part": "all",
+    "verdict": "testable",
+    "review_basis": "manual page-image review: integration_basics 21 png pages",
+    "inputs": [
+      {
+        "module": "integrate",
+        "input": "integrate((3*x+1)^2,x)",
+        "mark_scheme_working": [
+          "worksheet item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "1/9*(3*x + 1)^3 + C"
+        ]
+      },
+      {
+        "module": "integrate",
+        "input": "integrate(4*(2*x+1)^5,x)",
+        "mark_scheme_working": [
+          "second item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "1/3*(2*x + 1)^6 + C"
+        ]
+      }
+    ],
+    "expected_final": [
+      "q18 result"
+    ]
+  },
+  {
+    "id": "madas_topic_integration_basics_q19_exact_inputs",
+    "source_pdf": "MadAsMaths standard topics/integration/integration_basics.pdf",
+    "question": "q19",
+    "part": "all",
+    "verdict": "testable",
+    "review_basis": "manual page-image review: integration_basics 21 png pages",
+    "inputs": [
+      {
+        "module": "integrate",
+        "input": "integrate(4*(2*x+1)^5,x)",
+        "mark_scheme_working": [
+          "worksheet item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "1/3*(2*x + 1)^6 + C"
+        ]
+      },
+      {
+        "module": "integrate",
+        "input": "integrate(6/(2*x-1)^2,x)",
+        "mark_scheme_working": [
+          "second item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "-3*(2*x - 1)^-1 + C"
+        ]
+      }
+    ],
+    "expected_final": [
+      "q19 result"
+    ]
+  },
+  {
+    "id": "madas_topic_integration_basics_q20_exact_inputs",
+    "source_pdf": "MadAsMaths standard topics/integration/integration_basics.pdf",
+    "question": "q20",
+    "part": "all",
+    "verdict": "testable",
+    "review_basis": "manual page-image review: integration_basics 21 png pages",
+    "inputs": [
+      {
+        "module": "integrate",
+        "input": "integrate(6/(2*x-1)^2,x)",
+        "mark_scheme_working": [
+          "worksheet item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "-3*(2*x - 1)^-1 + C"
+        ]
+      },
+      {
+        "module": "integrate",
+        "input": "integrate(6*(4*x-3)^(1/2),x)",
+        "mark_scheme_working": [
+          "second item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "(4*x - 3)^(3/2) + C"
+        ]
+      }
+    ],
+    "expected_final": [
+      "q20 result"
+    ]
+  },
+  {
+    "id": "madas_topic_integration_basics_complete_source_marker",
+    "source_pdf": "MadAsMaths standard topics/integration/integration_basics.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual page-image review: integration_basics 21 png pages",
+    "unsupported_reason": "source complete marker; executable exact calculator inputs are recorded in integration_basics rows above, while diagram/proof/sketch/branch judgements are manual notes"
+  }
+]

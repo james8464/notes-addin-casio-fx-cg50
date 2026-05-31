@@ -1,0 +1,12 @@
+[
+  {
+    "id": "madas_iygb_syn_y_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/syn_y.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual page-image review: syn_y VM folder is Coming Soon placeholder only",
+    "unsupported_reason": "paper not yet published on MadAsMaths; VM shows Coming Soon PNG only"
+  }
+]

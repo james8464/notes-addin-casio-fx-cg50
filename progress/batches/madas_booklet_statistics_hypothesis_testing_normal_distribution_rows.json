@@ -1,0 +1,12 @@
+[
+  {
+    "id": "madas_booklet_statistics_hypothesis_testing_normal_distribution_complete_source_marker",
+    "source_pdf": "MadAsMaths A-level booklets/statistics/hypothesis_testing_normal_distribution.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: booklet MadAsMaths A-level booklets/statistics/hypothesis_testing_normal_distribution.pdf on VM (71 pages)",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  }
+]

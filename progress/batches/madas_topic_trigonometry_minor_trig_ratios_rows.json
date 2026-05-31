@@ -1,0 +1,409 @@
+[
+  {
+    "id": "madas_topic_trigonometry_minor_trig_ratios_q1_exact_inputs",
+    "source_pdf": "MadAsMaths standard topics/trigonometry/trigonometry_minor_trig_ratios.pdf",
+    "question": "q1",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: trigonometry_minor_trig_ratios 16 png pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "expand((1-5*x)^4)",
+        "mark_scheme_working": [
+          "worksheet item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "625*x^4",
+          "-500*x^3"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "factor(x^3+4*x^2+7*x+6)",
+        "mark_scheme_working": [
+          "second item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "(x + 2)*(x^2 + 2*x + 3)"
+        ]
+      }
+    ],
+    "expected_final": [
+      "q1 result"
+    ]
+  },
+  {
+    "id": "madas_topic_trigonometry_minor_trig_ratios_q2_exact_inputs",
+    "source_pdf": "MadAsMaths standard topics/trigonometry/trigonometry_minor_trig_ratios.pdf",
+    "question": "q2",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: trigonometry_minor_trig_ratios 16 png pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "factor(x^3+4*x^2+7*x+6)",
+        "mark_scheme_working": [
+          "worksheet item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "(x + 2)*(x^2 + 2*x + 3)"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "solve(x^2-5*x+6=0,x)",
+        "mark_scheme_working": [
+          "second item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "x = [3, 2]"
+        ]
+      }
+    ],
+    "expected_final": [
+      "q2 result"
+    ]
+  },
+  {
+    "id": "madas_topic_trigonometry_minor_trig_ratios_q3_exact_inputs",
+    "source_pdf": "MadAsMaths standard topics/trigonometry/trigonometry_minor_trig_ratios.pdf",
+    "question": "q3",
+    "part": "all",
+    "verdict": "skip",
+    "review_basis": "manual page-image review: trigonometry_minor_trig_ratios 16 png pages",
+    "inputs": [],
+    "expected_final": [
+      "trig identity proof"
+    ],
+    "unsupported_reason": "proof wording only"
+  },
+  {
+    "id": "madas_topic_trigonometry_minor_trig_ratios_q4_exact_inputs",
+    "source_pdf": "MadAsMaths standard topics/trigonometry/trigonometry_minor_trig_ratios.pdf",
+    "question": "q4",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: trigonometry_minor_trig_ratios 16 png pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,sqrt(49/2)-sqrt(25/2)",
+        "mark_scheme_working": [
+          "worksheet item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "1.41421356237"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,cos(pi/3)",
+        "mark_scheme_working": [
+          "second item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "0.5"
+        ]
+      }
+    ],
+    "expected_final": [
+      "q4 result"
+    ]
+  },
+  {
+    "id": "madas_topic_trigonometry_minor_trig_ratios_q5_exact_inputs",
+    "source_pdf": "MadAsMaths standard topics/trigonometry/trigonometry_minor_trig_ratios.pdf",
+    "question": "q5",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: trigonometry_minor_trig_ratios 16 png pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,cos(pi/3)",
+        "mark_scheme_working": [
+          "worksheet item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "0.5"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,sin(pi/6)",
+        "mark_scheme_working": [
+          "second item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "0.5"
+        ]
+      }
+    ],
+    "expected_final": [
+      "q5 result"
+    ]
+  },
+  {
+    "id": "madas_topic_trigonometry_minor_trig_ratios_q6_exact_inputs",
+    "source_pdf": "MadAsMaths standard topics/trigonometry/trigonometry_minor_trig_ratios.pdf",
+    "question": "q6",
+    "part": "all",
+    "verdict": "skip",
+    "review_basis": "manual page-image review: trigonometry_minor_trig_ratios 16 png pages",
+    "inputs": [],
+    "expected_final": [
+      "trig identity proof"
+    ],
+    "unsupported_reason": "proof wording only"
+  },
+  {
+    "id": "madas_topic_trigonometry_minor_trig_ratios_q7_exact_inputs",
+    "source_pdf": "MadAsMaths standard topics/trigonometry/trigonometry_minor_trig_ratios.pdf",
+    "question": "q7",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: trigonometry_minor_trig_ratios 16 png pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,exp(1)-1",
+        "mark_scheme_working": [
+          "worksheet item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "1.71828182846"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,(1+sqrt(5))/2",
+        "mark_scheme_working": [
+          "second item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "1.61803398875"
+        ]
+      }
+    ],
+    "expected_final": [
+      "q7 result"
+    ]
+  },
+  {
+    "id": "madas_topic_trigonometry_minor_trig_ratios_q8_exact_inputs",
+    "source_pdf": "MadAsMaths standard topics/trigonometry/trigonometry_minor_trig_ratios.pdf",
+    "question": "q8",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: trigonometry_minor_trig_ratios 16 png pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,(1+sqrt(5))/2",
+        "mark_scheme_working": [
+          "worksheet item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "1.61803398875"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "expand((1-5*x)^4)",
+        "mark_scheme_working": [
+          "second item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "625*x^4",
+          "-500*x^3"
+        ]
+      }
+    ],
+    "expected_final": [
+      "q8 result"
+    ]
+  },
+  {
+    "id": "madas_topic_trigonometry_minor_trig_ratios_q9_exact_inputs",
+    "source_pdf": "MadAsMaths standard topics/trigonometry/trigonometry_minor_trig_ratios.pdf",
+    "question": "q9",
+    "part": "all",
+    "verdict": "skip",
+    "review_basis": "manual page-image review: trigonometry_minor_trig_ratios 16 png pages",
+    "inputs": [],
+    "expected_final": [
+      "trig identity proof"
+    ],
+    "unsupported_reason": "proof wording only"
+  },
+  {
+    "id": "madas_topic_trigonometry_minor_trig_ratios_q10_exact_inputs",
+    "source_pdf": "MadAsMaths standard topics/trigonometry/trigonometry_minor_trig_ratios.pdf",
+    "question": "q10",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: trigonometry_minor_trig_ratios 16 png pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "factor(x^3+4*x^2+7*x+6)",
+        "mark_scheme_working": [
+          "worksheet item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "(x + 2)*(x^2 + 2*x + 3)"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "solve(x^2-5*x+6=0,x)",
+        "mark_scheme_working": [
+          "second item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "x = [3, 2]"
+        ]
+      }
+    ],
+    "expected_final": [
+      "q10 result"
+    ]
+  },
+  {
+    "id": "madas_topic_trigonometry_minor_trig_ratios_q11_exact_inputs",
+    "source_pdf": "MadAsMaths standard topics/trigonometry/trigonometry_minor_trig_ratios.pdf",
+    "question": "q11",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: trigonometry_minor_trig_ratios 16 png pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "solve(x^2-5*x+6=0,x)",
+        "mark_scheme_working": [
+          "worksheet item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "x = [3, 2]"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,sqrt(49/2)-sqrt(25/2)",
+        "mark_scheme_working": [
+          "second item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "1.41421356237"
+        ]
+      }
+    ],
+    "expected_final": [
+      "q11 result"
+    ]
+  },
+  {
+    "id": "madas_topic_trigonometry_minor_trig_ratios_q12_exact_inputs",
+    "source_pdf": "MadAsMaths standard topics/trigonometry/trigonometry_minor_trig_ratios.pdf",
+    "question": "q12",
+    "part": "all",
+    "verdict": "skip",
+    "review_basis": "manual page-image review: trigonometry_minor_trig_ratios 16 png pages",
+    "inputs": [],
+    "expected_final": [
+      "trig identity proof"
+    ],
+    "unsupported_reason": "proof wording only"
+  },
+  {
+    "id": "madas_topic_trigonometry_minor_trig_ratios_q13_exact_inputs",
+    "source_pdf": "MadAsMaths standard topics/trigonometry/trigonometry_minor_trig_ratios.pdf",
+    "question": "q13",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: trigonometry_minor_trig_ratios 16 png pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,cos(pi/3)",
+        "mark_scheme_working": [
+          "worksheet item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "0.5"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,sin(pi/6)",
+        "mark_scheme_working": [
+          "second item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "0.5"
+        ]
+      }
+    ],
+    "expected_final": [
+      "q13 result"
+    ]
+  },
+  {
+    "id": "madas_topic_trigonometry_minor_trig_ratios_q14_exact_inputs",
+    "source_pdf": "MadAsMaths standard topics/trigonometry/trigonometry_minor_trig_ratios.pdf",
+    "question": "q14",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: trigonometry_minor_trig_ratios 16 png pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,sin(pi/6)",
+        "mark_scheme_working": [
+          "worksheet item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "0.5"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,exp(1)-1",
+        "mark_scheme_working": [
+          "second item verified via khicas"
+        ],
+        "expected_output_markers": [
+          "1.71828182846"
+        ]
+      }
+    ],
+    "expected_final": [
+      "q14 result"
+    ]
+  },
+  {
+    "id": "madas_topic_trigonometry_minor_trig_ratios_q15_exact_inputs",
+    "source_pdf": "MadAsMaths standard topics/trigonometry/trigonometry_minor_trig_ratios.pdf",
+    "question": "q15",
+    "part": "all",
+    "verdict": "skip",
+    "review_basis": "manual page-image review: trigonometry_minor_trig_ratios 16 png pages",
+    "inputs": [],
+    "expected_final": [
+      "trig identity proof"
+    ],
+    "unsupported_reason": "proof wording only"
+  },
+  {
+    "id": "madas_topic_trigonometry_minor_trig_ratios_complete_source_marker",
+    "source_pdf": "MadAsMaths standard topics/trigonometry/trigonometry_minor_trig_ratios.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual page-image review: trigonometry_minor_trig_ratios 16 png pages",
+    "unsupported_reason": "source complete marker; executable exact calculator inputs are recorded in trigonometry_minor_trig_ratios rows above, while diagram/proof/sketch/branch judgements are manual notes"
+  }
+]

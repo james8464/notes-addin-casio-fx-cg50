@@ -1,0 +1,418 @@
+[
+  {
+    "id": "madas_iygb_mp2_d_q1_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp2_d.pdf",
+    "question": "q1",
+    "part": "a-c",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: mp2_d questions pages 2-7, solutions pages 1-14, solutions page 1",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,2*(1-1/8*1/3-1/64*(1/3)^2)",
+        "mark_scheme_working": [
+          "g(x)=2(1-3x/8)^(1/3)",
+          "x=1/3 gives cube root of 7"
+        ],
+        "expected_output_markers": [
+          "1.91319444444"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,551/288",
+        "mark_scheme_working": [
+          "7^(1/3)\u2248551/288"
+        ],
+        "expected_output_markers": [
+          "1.91319444444"
+        ]
+      }
+    ],
+    "expected_final": [
+      "f(x)=1-x/3-x^2/9",
+      "g(x)=2-x/4-x^2/32",
+      "\u221b7\u2248551/288"
+    ],
+    "unsupported_reason": "binomial expansion setup is manual"
+  },
+  {
+    "id": "madas_iygb_mp2_d_q2_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp2_d.pdf",
+    "question": "q2",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: mp2_d questions pages 2-7, solutions pages 1-14, solutions page 2",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,-6",
+        "mark_scheme_working": [
+          "small-angle approx gives -9x^2/(3x^2/2)=-6"
+        ],
+        "expected_output_markers": [
+          "-6"
+        ]
+      }
+    ],
+    "expected_final": [
+      "-6"
+    ],
+    "unsupported_reason": "small-angle approximation setup is manual"
+  },
+  {
+    "id": "madas_iygb_mp2_d_q3_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp2_d.pdf",
+    "question": "q3",
+    "part": "all",
+    "verdict": "testable",
+    "review_basis": "manual page-image review: mp2_d questions pages 2-7, solutions pages 1-14, solutions page 3",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,12/2*(9+31)",
+        "mark_scheme_working": [
+          "AP sum 12 terms is 240"
+        ],
+        "expected_output_markers": [
+          "240"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,2*(1-2^12)/(1-2)",
+        "mark_scheme_working": [
+          "GP sum 12 terms is 8190"
+        ],
+        "expected_output_markers": [
+          "8190"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,240+8190",
+        "mark_scheme_working": [
+          "total sum is 8430"
+        ],
+        "expected_output_markers": [
+          "8430"
+        ]
+      }
+    ],
+    "expected_final": [
+      "8430"
+    ]
+  },
+  {
+    "id": "madas_iygb_mp2_d_q4_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp2_d.pdf",
+    "question": "q4",
+    "part": "a-b",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: mp2_d questions pages 2-7, solutions pages 1-14, solutions page 4",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,2*(-0.1514-0.3615+2*(-0.2389-0.2913-0.3302))",
+        "mark_scheme_working": [
+          "trapezium rule gives \u2248-4.467"
+        ],
+        "expected_output_markers": [
+          "-4.467"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,2*(4.467+16*ln(2))",
+        "mark_scheme_working": [
+          "\u222bln(4+\u221ax)dx\u224831.1"
+        ],
+        "expected_output_markers": [
+          "31.1"
+        ]
+      }
+    ],
+    "expected_final": [
+      "trapezium\u2248-4.467",
+      "\u222bln(4+\u221ax)dx\u224831.1"
+    ],
+    "unsupported_reason": "log-integral manipulation is manual"
+  },
+  {
+    "id": "madas_iygb_mp2_d_q5_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp2_d.pdf",
+    "question": "q5",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: mp2_d questions pages 2-7, solutions pages 1-14, solutions page 5",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,6-1",
+        "mark_scheme_working": [
+          "OB=(6,-4,1)-(1,-1,3)=(5,-3,-2)"
+        ],
+        "expected_output_markers": [
+          "5"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,sqrt(22.5)/sqrt(10)",
+        "mark_scheme_working": [
+          "|AM|=(3/2)\u221a10 so k=3/2"
+        ],
+        "expected_output_markers": [
+          "1.5"
+        ]
+      }
+    ],
+    "expected_final": [
+      "B(5,-3,-2)",
+      "k=3/2"
+    ],
+    "unsupported_reason": "diagram geometry setup is manual"
+  },
+  {
+    "id": "madas_iygb_mp2_d_q6_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp2_d.pdf",
+    "question": "q6",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: mp2_d questions pages 2-7, solutions pages 1-14, solutions page 6",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,(2*-1+3)^2-4",
+        "mark_scheme_working": [
+          "g(f(x)) at x=-1 is -3"
+        ],
+        "expected_output_markers": [
+          "-3"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,(2*4+3)^2-4",
+        "mark_scheme_working": [
+          "g(f(x)) at x=4 is 117"
+        ],
+        "expected_output_markers": [
+          "117"
+        ]
+      }
+    ],
+    "expected_final": [
+      "domain -1\u2264x\u22644",
+      "range -3\u2264g(f(x))\u2264117"
+    ],
+    "unsupported_reason": "composite domain/range graph reasoning is manual"
+  },
+  {
+    "id": "madas_iygb_mp2_d_q7_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp2_d.pdf",
+    "question": "q7",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: mp2_d questions pages 2-7, solutions pages 1-14, solutions page 7",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,(1-2*(12/13)^2)/(2*12/13*(-5/13))",
+        "mark_scheme_working": [
+          "cot2x=119/120"
+        ],
+        "expected_output_markers": [
+          "0.991666666667"
+        ]
+      }
+    ],
+    "expected_final": [
+      "cot2x=119/120"
+    ],
+    "unsupported_reason": "obtuse-angle cosine sign and identity setup are manual"
+  },
+  {
+    "id": "madas_iygb_mp2_d_q8_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp2_d.pdf",
+    "question": "q8",
+    "part": "a-c",
+    "verdict": "testable",
+    "review_basis": "manual page-image review: mp2_d questions pages 2-7, solutions pages 1-14, solutions page 8",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,48/3",
+        "mark_scheme_working": [
+          "48=3r^4 gives r=2"
+        ],
+        "expected_output_markers": [
+          "16"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,2*3*(2^10-1)/(2-1)",
+        "mark_scheme_working": [
+          "doubled GP sum n=10 is 6138"
+        ],
+        "expected_output_markers": [
+          "6138"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,3145725*pi",
+        "mark_scheme_working": [
+          "total circle area is 3145725\u03c0"
+        ],
+        "expected_output_markers": [
+          "9882586"
+        ]
+      }
+    ],
+    "expected_final": [
+      "r=2",
+      "L=6138",
+      "area=3145725\u03c0"
+    ]
+  },
+  {
+    "id": "madas_iygb_mp2_d_q9_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp2_d.pdf",
+    "question": "q9",
+    "part": "a-b",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: mp2_d questions pages 2-7, solutions pages 1-14, solutions page 9",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,cos(pi/4)^2/(2*tan(pi/4)+1)",
+        "mark_scheme_working": [
+          "dy/dx at y=\u03c0/4 is 1/6"
+        ],
+        "expected_output_markers": [
+          "0.166666666667"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,sec(pi/4)^2+tan(pi/4)",
+        "mark_scheme_working": [
+          "x=3 at y=\u03c0/4"
+        ],
+        "expected_output_markers": [
+          "3"
+        ]
+      }
+    ],
+    "expected_final": [
+      "dy/dx=cos\u00b2y/(2tany+1)",
+      "normal 4y+24x=\u03c0+72"
+    ],
+    "unsupported_reason": "inverse-rule differentiation proof is manual"
+  },
+  {
+    "id": "madas_iygb_mp2_d_q10_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp2_d.pdf",
+    "question": "q10",
+    "part": "a-b",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: mp2_d questions pages 2-7, solutions pages 1-14, solutions pages 10-11",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,1/200",
+        "mark_scheme_working": [
+          "t=0,V=10 gives C=1/200"
+        ],
+        "expected_output_markers": [
+          "0.005"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,3/100",
+        "mark_scheme_working": [
+          "t=1,V=5 gives A=3/100"
+        ],
+        "expected_output_markers": [
+          "0.03"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,16",
+        "mark_scheme_working": [
+          "V=2.5 gives t=5"
+        ],
+        "expected_output_markers": [
+          "16"
+        ]
+      }
+    ],
+    "expected_final": [
+      "1/V\u00b2=At+1/100",
+      "t=5 when V=2.5"
+    ],
+    "unsupported_reason": "separation of variables setup is manual"
+  },
+  {
+    "id": "madas_iygb_mp2_d_q11_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp2_d.pdf",
+    "question": "q11",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: mp2_d questions pages 2-7, solutions pages 1-14, solutions page 12",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,ln(27/4)",
+        "mark_scheme_working": [
+          "substitution and parts give ln(27/4)"
+        ],
+        "expected_output_markers": [
+          "1.90954250488"
+        ]
+      }
+    ],
+    "expected_final": [
+      "ln(27/4)"
+    ],
+    "unsupported_reason": "substitution and integration-by-parts setup is manual"
+  },
+  {
+    "id": "madas_iygb_mp2_d_q12_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp2_d.pdf",
+    "question": "q12",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: mp2_d questions pages 2-7, solutions pages 1-14, solutions pages 13-14",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,10-3*pi",
+        "mark_scheme_working": [
+          "parametric area evaluates to 10-3\u03c0"
+        ],
+        "expected_output_markers": [
+          "0.575222039231"
+        ]
+      }
+    ],
+    "expected_final": [
+      "area=10-3\u03c0"
+    ],
+    "unsupported_reason": "parametric integral setup and diagram are manual"
+  },
+  {
+    "id": "madas_iygb_mp2_d_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/mp2_d.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual page-image review: all 6 question pages and 14 worked-solution pages",
+    "unsupported_reason": "source complete marker; executable exact calculator inputs are recorded in mp2_d rows above, while proof, diagram, transformation and branch judgements are manual notes"
+  }
+]

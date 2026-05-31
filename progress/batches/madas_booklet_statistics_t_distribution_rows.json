@@ -1,0 +1,12 @@
+[
+  {
+    "id": "madas_booklet_statistics_t_distribution_complete_source_marker",
+    "source_pdf": "MadAsMaths A-level booklets/statistics/t_distribution.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: booklet MadAsMaths A-level booklets/statistics/t_distribution.pdf on VM (28 pages)",
+    "unsupported_reason": "statistics/probability out of A-level Pure CAS scope"
+  }
+]

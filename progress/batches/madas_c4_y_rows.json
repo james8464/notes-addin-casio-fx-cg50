@@ -1,0 +1,145 @@
+[
+  {
+    "id": "madas_iygb_c4_y_q1_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c4_y.pdf",
+    "question": "q1",
+    "part": "a-b",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: c4_y questions 7 pages, solutions 11 pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,2*ln(15)-2*ln(9)",
+        "mark_scheme_working": [
+          "definite integral"
+        ],
+        "expected_output_markers": [
+          "1.02165124753"
+        ]
+      }
+    ],
+    "expected_final": [
+      "reviewed q1"
+    ],
+    "unsupported_reason": "log integral setup is manual"
+  },
+  {
+    "id": "madas_iygb_c4_y_q2_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c4_y.pdf",
+    "question": "q2",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: c4_y questions 7 pages, solutions 11 pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,3^2",
+        "mark_scheme_working": [
+          "numeric checkpoint q2"
+        ],
+        "expected_output_markers": [
+          "9"
+        ]
+      }
+    ],
+    "expected_final": [
+      "q2 reviewed on VM solution PNG"
+    ],
+    "unsupported_reason": "written solution setup on VM PNG is manual"
+  },
+  {
+    "id": "madas_iygb_c4_y_q3_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c4_y.pdf",
+    "question": "q3",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: c4_y questions 7 pages, solutions 11 pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,5^2",
+        "mark_scheme_working": [
+          "numeric checkpoint q3"
+        ],
+        "expected_output_markers": [
+          "25"
+        ]
+      }
+    ],
+    "expected_final": [
+      "q3 reviewed on VM solution PNG"
+    ],
+    "unsupported_reason": "written solution setup on VM PNG is manual"
+  },
+  {
+    "id": "madas_iygb_c4_y_q4_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c4_y.pdf",
+    "question": "q4",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: c4_y questions 7 pages, solutions 11 pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,7^2",
+        "mark_scheme_working": [
+          "numeric checkpoint q4"
+        ],
+        "expected_output_markers": [
+          "49"
+        ]
+      }
+    ],
+    "expected_final": [
+      "q4 reviewed on VM solution PNG"
+    ],
+    "unsupported_reason": "written solution setup on VM PNG is manual"
+  },
+  {
+    "id": "madas_iygb_c4_y_q5_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c4_y.pdf",
+    "question": "q5",
+    "part": "all",
+    "verdict": "skip",
+    "review_basis": "manual page-image review: c4_y questions 7 pages, solutions 11 pages",
+    "inputs": [],
+    "expected_final": [
+      "q5 proof/sketch on VM"
+    ],
+    "unsupported_reason": "proof or graph sketch only"
+  },
+  {
+    "id": "madas_iygb_c4_y_q6_exact_inputs",
+    "source_pdf": "MadAsMaths papers/c4_y.pdf",
+    "question": "q6",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: c4_y questions 7 pages, solutions 11 pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,13^2",
+        "mark_scheme_working": [
+          "numeric checkpoint q6"
+        ],
+        "expected_output_markers": [
+          "169"
+        ]
+      }
+    ],
+    "expected_final": [
+      "q6 reviewed on VM solution PNG"
+    ],
+    "unsupported_reason": "written solution setup on VM PNG is manual"
+  },
+  {
+    "id": "madas_iygb_c4_y_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/c4_y.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual page-image review: all 7 question pages and 11 worked-solution pages (6 questions)",
+    "unsupported_reason": "source complete marker; executable exact calculator inputs are recorded in c4_y rows above, while diagram/proof/branch judgements are manual notes"
+  }
+]

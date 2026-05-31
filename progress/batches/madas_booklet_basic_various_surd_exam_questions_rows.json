@@ -1,0 +1,47 @@
+[
+  {
+    "id": "madas_booklet_basic_various_surd_exam_questions_q1_exact_inputs",
+    "source_pdf": "MadAsMaths A-level booklets/basic_various/surd_exam_questions.pdf",
+    "question": "q1",
+    "part": "a-b",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: surd_exam_questions page 2",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,2*sqrt(6)",
+        "mark_scheme_working": [
+          "sqrt(150)-sqrt(54)=2sqrt(6)"
+        ],
+        "expected_output_markers": [
+          "4.89897948557"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,3*sqrt(7)",
+        "mark_scheme_working": [
+          "21/sqrt(7)=3sqrt(7)"
+        ],
+        "expected_output_markers": [
+          "7.93725393319"
+        ]
+      }
+    ],
+    "expected_final": [
+      "2sqrt(6)",
+      "3sqrt(7)"
+    ],
+    "unsupported_reason": "rationalising steps are manual"
+  },
+  {
+    "id": "madas_booklet_basic_various_surd_exam_questions_complete_source_marker",
+    "source_pdf": "MadAsMaths A-level booklets/basic_various/surd_exam_questions.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual page-image review: surd_exam_questions page 2",
+    "unsupported_reason": "source complete marker; executable exact calculator inputs are recorded in madas_booklet_basic_various_surd_exam_questions rows above, while diagram, proof wording and rounding judgements are manual notes"
+  }
+]

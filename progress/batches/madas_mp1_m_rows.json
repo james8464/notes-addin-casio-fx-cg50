@@ -1,0 +1,539 @@
+[
+  {
+    "id": "madas_iygb_mp1_m_q1_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp1_m.pdf",
+    "question": "q1",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: mp1_m questions 8 pages, solutions 18 pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,9-(-5/3)",
+        "mark_scheme_working": [
+          "∫_{-1}^{3}(3-x)(x+1)dx=32/3"
+        ],
+        "expected_output_markers": [
+          "10.6666666667"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,32/3",
+        "mark_scheme_working": [
+          "exact shaded area 32/3"
+        ],
+        "expected_output_markers": [
+          "10.6666666667"
+        ]
+      }
+    ],
+    "expected_final": [
+      "area=32/3"
+    ],
+    "unsupported_reason": "integral setup from diagram is manual"
+  },
+  {
+    "id": "madas_iygb_mp1_m_q2_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp1_m.pdf",
+    "question": "q2",
+    "part": "a-b",
+    "verdict": "skip",
+    "review_basis": "manual page-image review: mp1_m questions 8 pages, solutions 18 pages",
+    "inputs": [],
+    "expected_final": [
+      "translation +3 in x",
+      "vertical stretch scale 1/8"
+    ],
+    "unsupported_reason": "geometric transformation descriptions only"
+  },
+  {
+    "id": "madas_iygb_mp1_m_q3_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp1_m.pdf",
+    "question": "q3",
+    "part": "all",
+    "verdict": "testable",
+    "review_basis": "manual page-image review: mp1_m questions 8 pages, solutions 18 pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "126*16*243",
+        "mark_scheme_working": [
+          "coefficient of x^5 in (2+3x)^9 is 489888"
+        ],
+        "expected_output_markers": [
+          "489888"
+        ]
+      }
+    ],
+    "expected_final": [
+      "489888"
+    ]
+  },
+  {
+    "id": "madas_iygb_mp1_m_q4_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp1_m.pdf",
+    "question": "q4",
+    "part": "a-b",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: mp1_m questions 8 pages, solutions 18 pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,(2+(-2))/2",
+        "mark_scheme_working": [
+          "centre C(0,7) midpoint of AB"
+        ],
+        "expected_output_markers": [
+          "0"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,sqrt((0-2)^2+(7-5)^2)",
+        "mark_scheme_working": [
+          "radius √8"
+        ],
+        "expected_output_markers": [
+          "2.82842712475"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,sqrt(5)",
+        "mark_scheme_working": [
+          "|PC|=√5 < √8 so P inside"
+        ],
+        "expected_output_markers": [
+          "2.2360679775"
+        ]
+      }
+    ],
+    "expected_final": [
+      "x^2+(y-7)^2=8",
+      "P inside"
+    ],
+    "unsupported_reason": "circle equation form is manual"
+  },
+  {
+    "id": "madas_iygb_mp1_m_q5_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp1_m.pdf",
+    "question": "q5",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: mp1_m questions 8 pages, solutions 18 pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,acos(0.891)*180/pi",
+        "mark_scheme_working": [
+          "arccos(0.891)≈27°"
+        ],
+        "expected_output_markers": [
+          "27.0008233723"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,(27+35)/2",
+        "mark_scheme_working": [
+          "y=31° from first branch"
+        ],
+        "expected_output_markers": [
+          "31"
+        ]
+      }
+    ],
+    "expected_final": [
+      "y=4°,31°,184°,211°"
+    ],
+    "unsupported_reason": "degree range selection is manual"
+  },
+  {
+    "id": "madas_iygb_mp1_m_q6_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp1_m.pdf",
+    "question": "q6",
+    "part": "all",
+    "verdict": "testable",
+    "review_basis": "manual page-image review: mp1_m questions 8 pages, solutions 18 pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "factor(y^2-12*y+27)",
+        "mark_scheme_working": [
+          "substitution y=x^2-x-3 gives y=9 or 3"
+        ],
+        "expected_output_markers": [
+          "(y - 3)*(y - 9)"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "factor(x^2-x-12)",
+        "mark_scheme_working": [
+          "x^2-x-12=0 gives x=4,-3"
+        ],
+        "expected_output_markers": [
+          "(x + 3)*(x - 4)"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "factor(x^2-x-6)",
+        "mark_scheme_working": [
+          "x^2-x-6=0 gives x=3,-2"
+        ],
+        "expected_output_markers": [
+          "(x + 2)*(x - 3)"
+        ]
+      }
+    ],
+    "expected_final": [
+      "x=-3,-2,3,4"
+    ]
+  },
+  {
+    "id": "madas_iygb_mp1_m_q7_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp1_m.pdf",
+    "question": "q7",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: mp1_m questions 8 pages, solutions 18 pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "diff(x^2-3*x+7,x)",
+        "mark_scheme_working": [
+          "formal limit proof gives f'(x)=2x-3"
+        ],
+        "expected_output_markers": [
+          "x^2 - 3*x + 7",
+          "2*x - 3"
+        ]
+      }
+    ],
+    "expected_final": [
+      "f'(x)=2x-3"
+    ],
+    "unsupported_reason": "formal limit proof is manual"
+  },
+  {
+    "id": "madas_iygb_mp1_m_q8_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp1_m.pdf",
+    "question": "q8",
+    "part": "a-d",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: mp1_m questions 8 pages, solutions 18 pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,(1.43-0.99)/5",
+        "mark_scheme_working": [
+          "gradient log10 y vs x is 0.088"
+        ],
+        "expected_output_markers": [
+          "0.088"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,10^0.99",
+        "mark_scheme_working": [
+          "a≈9.8 from intercept"
+        ],
+        "expected_output_markers": [
+          "9.77237220956"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,9.8*1.2^2.5",
+        "mark_scheme_working": [
+          "y≈15 when x=2.5"
+        ],
+        "expected_output_markers": [
+          "15.458921463"
+        ]
+      }
+    ],
+    "expected_final": [
+      "y≈9.8×1.2^x",
+      "y≈15 at x=2.5"
+    ],
+    "unsupported_reason": "log graph plotting is manual"
+  },
+  {
+    "id": "madas_iygb_mp1_m_q9_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp1_m.pdf",
+    "question": "q9",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: mp1_m questions 8 pages, solutions 18 pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "2*1+2*1-1^2-1^2",
+        "mark_scheme_working": [
+          "substitution gives (x-1)^2+(y-1)^2=0"
+        ],
+        "expected_output_markers": [
+          "2"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "1^2+1^2",
+        "mark_scheme_working": [
+          "z=x^2+y^2=2 at (1,1)"
+        ],
+        "expected_output_markers": [
+          "2"
+        ]
+      }
+    ],
+    "expected_final": [
+      "(1,1,2)"
+    ],
+    "unsupported_reason": "completing square setup is manual"
+  },
+  {
+    "id": "madas_iygb_mp1_m_q10_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp1_m.pdf",
+    "question": "q10",
+    "part": "a-b",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: mp1_m questions 8 pages, solutions 18 pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "22+50",
+        "mark_scheme_working": [
+          "T=72°C at t=0"
+        ],
+        "expected_output_markers": [
+          "72"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,8*ln(25/9)",
+        "mark_scheme_working": [
+          "t≈8 min when T=40"
+        ],
+        "expected_output_markers": [
+          "8.17320998026"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "22+50*(2/5)",
+        "mark_scheme_working": [
+          "T=42°C when dT/dt=-2.5"
+        ],
+        "expected_output_markers": [
+          "42"
+        ]
+      }
+    ],
+    "expected_final": [
+      "T(0)=72°C",
+      "t≈8 min",
+      "T=42°C"
+    ],
+    "unsupported_reason": "model setup and differentiation are manual"
+  },
+  {
+    "id": "madas_iygb_mp1_m_q11_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp1_m.pdf",
+    "question": "q11",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: mp1_m questions 8 pages, solutions 18 pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "factor(m^2-12*m+32)",
+        "mark_scheme_working": [
+          "m^2-12m+32>0 from discriminant"
+        ],
+        "expected_output_markers": [
+          "(m - 4)*(m - 8)"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "solve(m^2-12*m+32=0,m)",
+        "mark_scheme_working": [
+          "critical values m=4,8"
+        ],
+        "expected_output_markers": [
+          "16",
+          "[8, 4]"
+        ]
+      }
+    ],
+    "expected_final": [
+      "m<4 or m>8"
+    ],
+    "unsupported_reason": "inequality interval is manual"
+  },
+  {
+    "id": "madas_iygb_mp1_m_q12_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp1_m.pdf",
+    "question": "q12",
+    "part": "a-b",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: mp1_m questions 8 pages, solutions 18 pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,sqrt((8/3)^2+3^2)",
+        "mark_scheme_working": [
+          "|AD|≈4.01"
+        ],
+        "expected_output_markers": [
+          "4.0138648596"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,(2/3)*12",
+        "mark_scheme_working": [
+          "BD=(2/3)i-4j from ratio 1:2"
+        ],
+        "expected_output_markers": [
+          "8"
+        ]
+      }
+    ],
+    "expected_final": [
+      "|AD|≈4"
+    ],
+    "unsupported_reason": "vector ratio setup is manual"
+  },
+  {
+    "id": "madas_iygb_mp1_m_q13_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp1_m.pdf",
+    "question": "q13",
+    "part": "a-c",
+    "verdict": "skip",
+    "review_basis": "manual page-image review: mp1_m questions 8 pages, solutions 18 pages",
+    "inputs": [],
+    "expected_final": [
+      "2 intersections",
+      "region -1<x<4 with inequalities"
+    ],
+    "unsupported_reason": "sketch and inequality region only"
+  },
+  {
+    "id": "madas_iygb_mp1_m_q14_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp1_m.pdf",
+    "question": "q14",
+    "part": "a-c",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: mp1_m questions 8 pages, solutions 18 pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,(0-30)/(15-0)",
+        "mark_scheme_working": [
+          "l1 gradient -2",
+          "y=30-2x"
+        ],
+        "expected_output_markers": [
+          "-2"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "factor(k^2-30*k+125)",
+        "mark_scheme_working": [
+          "k^2-30k+125=0 gives k=5,25"
+        ],
+        "expected_output_markers": [
+          "(k - 5)*(k - 25)"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,75+25",
+        "mark_scheme_working": [
+          "area OQPA=100 when k=5"
+        ],
+        "expected_output_markers": [
+          "100"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,195+25",
+        "mark_scheme_working": [
+          "area OQPA=220 when k=25"
+        ],
+        "expected_output_markers": [
+          "220"
+        ]
+      }
+    ],
+    "expected_final": [
+      "k=5,25",
+      "areas 100 and 220"
+    ],
+    "unsupported_reason": "geometry setup is manual"
+  },
+  {
+    "id": "madas_iygb_mp1_m_q15_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp1_m.pdf",
+    "question": "q15",
+    "part": "a-d",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: mp1_m questions 8 pages, solutions 18 pages",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "diff(5*x^4,x)",
+        "mark_scheme_working": [
+          "dy/dx=20x^3-320x^(3/2)"
+        ],
+        "expected_output_markers": [
+          "20*x^3"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,16^(2/3)",
+        "mark_scheme_working": [
+          "x=2^(8/3) from x^(3/2)=16"
+        ],
+        "expected_output_markers": [
+          "6.34960420787"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,120*4-240*4^(-1/2)",
+        "mark_scheme_working": [
+          "d3y/dx3 at x=4 is 360"
+        ],
+        "expected_output_markers": [
+          "360"
+        ]
+      }
+    ],
+    "expected_final": [
+      "x=2^(8/3)",
+      "d3y/dx3=360 at x=4"
+    ],
+    "unsupported_reason": "indicial simplification and inflection proof are manual"
+  },
+  {
+    "id": "madas_iygb_mp1_m_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/mp1_m.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual page-image review: all 8 question pages and 18 worked-solution pages",
+    "unsupported_reason": "source complete marker; executable exact calculator inputs are recorded in mp1_m rows above, while diagram/proof/branch judgements are manual notes"
+  }
+]

@@ -1,0 +1,12 @@
+[
+  {
+    "id": "madas_booklet_mechanics_m4_m6_rotational_motion_complete_source_marker",
+    "source_pdf": "MadAsMaths A-level booklets/mechanics/m4_m6_rotational_motion.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual inventory: booklet MadAsMaths A-level booklets/mechanics/m4_m6_rotational_motion.pdf on VM (64 pages)",
+    "unsupported_reason": "mechanics out of A-level Pure CAS scope"
+  }
+]

@@ -1,0 +1,349 @@
+[
+  {
+    "id": "madas_iygb_mp2_k_q1_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp2_k.pdf",
+    "question": "q1",
+    "part": "a-b",
+    "verdict": "testable",
+    "review_basis": "manual page-image review: solution PNGs on VM",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,0.5*6^2*1.25",
+        "mark_scheme_working": [
+          "area=22.5 cm^2"
+        ],
+        "expected_output_markers": [
+          "22.5"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,6+6+7.5",
+        "mark_scheme_working": [
+          "perimeter=19.5 cm"
+        ],
+        "expected_output_markers": [
+          "19.5"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "solve(2*r^2-21*r+45=0,r)",
+        "mark_scheme_working": [
+          "equal area larger perimeter"
+        ],
+        "expected_output_markers": [
+          "r = [15/2, 3]"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,45/9",
+        "mark_scheme_working": [
+          "theta=5 for r=3"
+        ],
+        "expected_output_markers": [
+          "5"
+        ]
+      }
+    ],
+    "expected_final": [
+      "area=22.5",
+      "perimeter=19.5",
+      "(r,theta)=(3,5) or (15/2,0.8)"
+    ]
+  },
+  {
+    "id": "madas_iygb_mp2_k_q2_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp2_k.pdf",
+    "question": "q2",
+    "part": "a-c",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: solution PNGs on VM",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,0.2/2*(0+0.8687+2*(0.0395+0.1516+0.3188+0.5146+0.7081))",
+        "mark_scheme_working": [
+          "trapezium for sin^2"
+        ],
+        "expected_output_markers": [
+          "0.43339"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,1.2-2*0.433",
+        "mark_scheme_working": [
+          "cos2x estimate"
+        ],
+        "expected_output_markers": [
+          "0.334"
+        ]
+      }
+    ],
+    "expected_final": [
+      "sin^2 integral≈0.433",
+      "cos2x≈0.334",
+      "cos^4-sin^4≈0.334"
+    ],
+    "unsupported_reason": "table values and identity steps are manual"
+  },
+  {
+    "id": "madas_iygb_mp2_k_q3_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp2_k.pdf",
+    "question": "q3",
+    "part": "all",
+    "verdict": "testable",
+    "review_basis": "manual page-image review: solution PNGs on VM",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,22/2",
+        "mark_scheme_working": [
+          "i-component of OC"
+        ],
+        "expected_output_markers": [
+          "11"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,42/2",
+        "mark_scheme_working": [
+          "j-component of OC"
+        ],
+        "expected_output_markers": [
+          "21"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,18/2",
+        "mark_scheme_working": [
+          "k-component of OC"
+        ],
+        "expected_output_markers": [
+          "9"
+        ]
+      }
+    ],
+    "expected_final": [
+      "C=(11,21,9)"
+    ]
+  },
+  {
+    "id": "madas_iygb_mp2_k_q4_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp2_k.pdf",
+    "question": "q4",
+    "part": "a-c",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: solution PNGs on VM",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "solve(x^2-44*x+420=0,x)",
+        "mark_scheme_working": [
+          "fg(x)=g(2x-22) with x>24"
+        ],
+        "expected_output_markers": [
+          "x = [30, 14]"
+        ]
+      }
+    ],
+    "expected_final": [
+      "domain x>24",
+      "x=30"
+    ],
+    "unsupported_reason": "range/domain sketches are manual"
+  },
+  {
+    "id": "madas_iygb_mp2_k_q5_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp2_k.pdf",
+    "question": "q5",
+    "part": "a-b",
+    "verdict": "skip",
+    "review_basis": "manual page-image review: solution PNGs on VM",
+    "inputs": [],
+    "expected_final": [
+      "cos P-cos Q identity",
+      "d/dx cos x=-sin x proof"
+    ],
+    "unsupported_reason": "identity and first-principles proof only"
+  },
+  {
+    "id": "madas_iygb_mp2_k_q6_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp2_k.pdf",
+    "question": "q6",
+    "part": "a-b",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: solution PNGs on VM",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,1/4",
+        "mark_scheme_working": [
+          "a=1/4 from coefficient equations"
+        ],
+        "expected_output_markers": [
+          "0.25"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,-1/8",
+        "mark_scheme_working": [
+          "b=-1/8"
+        ],
+        "expected_output_markers": [
+          "-0.125"
+        ]
+      }
+    ],
+    "expected_final": [
+      "a=1/4",
+      "b=-1/8"
+    ],
+    "unsupported_reason": "binomial expansion setup is manual"
+  },
+  {
+    "id": "madas_iygb_mp2_k_q7_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp2_k.pdf",
+    "question": "q7",
+    "part": "a-b",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: solution PNGs on VM",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,pi/2",
+        "mark_scheme_working": [
+          "arcsin x+arccos x=pi/2"
+        ],
+        "expected_output_markers": [
+          "1.57079632679"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,1+sin(pi/5)",
+        "mark_scheme_working": [
+          "x=1+sin(pi/5)"
+        ],
+        "expected_output_markers": [
+          "1.58778525229"
+        ]
+      }
+    ],
+    "expected_final": [
+      "arcsin+arccos=pi/2",
+      "x=1+sin(pi/5)"
+    ],
+    "unsupported_reason": "arccos manipulation in (a) is manual"
+  },
+  {
+    "id": "madas_iygb_mp2_k_q8_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp2_k.pdf",
+    "question": "q8",
+    "part": "all",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: solution PNGs on VM",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,5+ln(3/8)",
+        "mark_scheme_working": [
+          "definite integral exact"
+        ],
+        "expected_output_markers": [
+          "4.01917074699"
+        ]
+      }
+    ],
+    "expected_final": [
+      "5+ln(3/8)"
+    ],
+    "unsupported_reason": "partial fraction decomposition is manual"
+  },
+  {
+    "id": "madas_iygb_mp2_k_q9_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp2_k.pdf",
+    "question": "q9",
+    "part": "all",
+    "verdict": "testable",
+    "review_basis": "manual page-image review: solution PNGs on VM",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "solve(n^2-71*n+1240=0,n)",
+        "mark_scheme_working": [
+          "AP loan n months"
+        ],
+        "expected_output_markers": [
+          "n = [40, 31]"
+        ]
+      },
+      {
+        "module": "algebra",
+        "input": "method=numeric,350+30*(-10)",
+        "mark_scheme_working": [
+          "u_31=50 valid"
+        ],
+        "expected_output_markers": [
+          "50"
+        ]
+      }
+    ],
+    "expected_final": [
+      "n=31"
+    ]
+  },
+  {
+    "id": "madas_iygb_mp2_k_q10_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp2_k.pdf",
+    "question": "q10",
+    "part": "a-b",
+    "verdict": "partial",
+    "review_basis": "manual page-image review: solution PNGs on VM",
+    "inputs": [
+      {
+        "module": "algebra",
+        "input": "method=numeric,3645/76",
+        "mark_scheme_working": [
+          "t when V=512"
+        ],
+        "expected_output_markers": [
+          "47.9605263158"
+        ]
+      }
+    ],
+    "expected_final": [
+      "t≈48"
+    ],
+    "unsupported_reason": "dV/dt show-that in (a) is manual"
+  },
+  {
+    "id": "madas_iygb_mp2_k_q11_exact_inputs",
+    "source_pdf": "MadAsMaths papers/mp2_k.pdf",
+    "question": "q11",
+    "part": "all",
+    "verdict": "skip",
+    "review_basis": "manual page-image review: solution PNGs on VM",
+    "inputs": [],
+    "expected_final": [
+      "third derivative identity proof"
+    ],
+    "unsupported_reason": "multi-step differentiation proof only"
+  },
+  {
+    "id": "madas_iygb_mp2_k_complete_source_marker",
+    "source_pdf": "MadAsMaths papers/mp2_k.pdf",
+    "coverage": "complete",
+    "question": "all_questions",
+    "part": "source-complete",
+    "verdict": "skip",
+    "review_basis": "manual page-image review: all 7 question pages and 17 worked-solution pages (11 questions)",
+    "unsupported_reason": "source complete marker; executable exact calculator inputs are recorded in mp2_k rows above, while diagram/proof/branch judgements are manual notes"
+  }
+]
