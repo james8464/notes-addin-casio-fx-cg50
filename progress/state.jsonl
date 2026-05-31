@@ -377,3 +377,13 @@
 {"phase":"queue","last_event":"exact queue 14094/14094","queue":"14094/14094 done, 12793 ok, 1301 bad","tests":"queue-run 12793/14094"}
 {"phase":"queue","last_event":"exact queue 14094/14094","queue":"14094/14094 done, 12793 ok, 1301 bad","tests":"queue-run 12793/14094"}
 {"phase":"queue","last_event":"added substitution q1/q2 queue rows","commit":"pending","graph":"docs/GRAPH.md 2026-05-31 23:34 BST","g3a_size":2097120,"headroom":32,"sha256":"ec34b7933eccb0a36e6ed72d6853ce075accd2a1dab6508d715199b9fa8d8ce5","tests":"size,metadata,border,catalog,help,help-examples,queue-schema 9477 rows/14094 inputs,queue-run 14094/14094,working-quality 12793/14094","queue":"14094/14094 runtime; 12793/14094 strict markers","unsupported":0,"eta":"queue expanded with substitution rows; next code work still needs binary pruning first"}
+{"phase":"queue","last_event":"exact queue 0/14134","queue":"0/14134 done, 0 ok, 0 bad","tests":"queue-run 0/14134"}
+{"phase":"queue","last_event":"exact queue 14134/14134","queue":"14134/14134 done, 14134 ok, 0 bad","tests":"queue-run 14134/14134"}
+{"phase":"queue","last_event":"exact queue 14134/14134","queue":"14134/14134 done, 14134 ok, 0 bad","tests":"queue-run 14134/14134"}
+{"phase":"queue","last_event":"exact queue 0/14154","queue":"0/14154 done, 0 ok, 0 bad","tests":"queue-run 0/14154"}
+{"phase":"queue","last_event":"exact queue 14154/14154","queue":"14154/14154 done, 12793 ok, 1361 bad","tests":"queue-run 12793/14154"}
+{"phase":"queue","last_event":"exact queue 14154/14154","queue":"14154/14154 done, 12793 ok, 1361 bad","tests":"queue-run 12793/14154"}
+{"phase":"queue","last_event":"exact queue 0/14154","queue":"0/14154 done, 0 ok, 0 bad","tests":"queue-run 0/14154"}
+{"phase":"queue","last_event":"exact queue 14154/14154","queue":"14154/14154 done, 14154 ok, 0 bad","tests":"queue-run 14154/14154"}
+{"phase":"queue","last_event":"exact queue 14154/14154","queue":"14154/14154 done, 14154 ok, 0 bad","tests":"queue-run 14154/14154"}
+{"phase":"queue","last_event":"added substitution queue rows through latest stable batch","commit":"pending","graph":"docs/GRAPH.md 2026-05-31 23:42 BST","g3a_size":2097120,"headroom":32,"sha256":"ec34b7933eccb0a36e6ed72d6853ce075accd2a1dab6508d715199b9fa8d8ce5","tests":"size,metadata,border,catalog,help,help-examples,queue-schema 9483 rows/14154 inputs,queue-run 14154/14154,working-quality 12793/14154","queue":"14154/14154 runtime; 12793/14154 strict markers","unsupported":0,"eta":"queue expanded with substitution rows; next code work still needs binary pruning first"}
