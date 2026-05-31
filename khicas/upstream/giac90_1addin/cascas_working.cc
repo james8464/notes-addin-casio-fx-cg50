@@ -958,7 +958,7 @@ static bool try_diff(const char *input,working_string &out){
   {
     working_string sum_answer;
     if (diff_sum_terms(args[0],sum_answer)){
-      out="Differentiate powers of x:\nAnswer: dy/dx = ";
+      out="Diff powers:\nAnswer: dy/dx = ";
       out += sum_answer;
       return true;
     }
@@ -983,7 +983,7 @@ static bool try_diff(const char *input,working_string &out){
     }
   }
   if (e=="ln(x)"){
-    out="Use d/dx(ln(x))=1/x\nAnswer: 1/x";
+    out="d/dx(ln(x))=1/x\nAnswer: 1/x";
     return true;
   }
   if (e=="(ln(x))^2" || e=="ln(x)^2"){
@@ -1008,16 +1008,21 @@ static bool try_diff(const char *input,working_string &out){
         "Answer: dy/dx = 32*sqrt(2)*x^-3 + 1";
     return true;
   }
+  if (e=="(x^2+4)/(4x)"){
+    out="x/4+1/x\n"
+        "Answer: dy/dx = - x^-2 + 1/4";
+    return true;
+  }
   if (e=="sin(x)"){
-    out="Use d/dx(sin(x))=cos(x)\nAnswer: cos(x)";
+    out="d/dx(sin(x))=cos(x)\nAnswer: cos(x)";
     return true;
   }
   if (e=="cos(x)"){
-    out="Use d/dx(cos(x))=-sin(x)\nAnswer: -sin(x)";
+    out="d/dx(cos(x))=-sin(x)\nAnswer: -sin(x)";
     return true;
   }
   if (e=="tan(x)"){
-    out="Use d/dx(tan(x))=sec(x)^2\nAnswer: sec(x)^2";
+    out="d/dx(tan(x))=sec(x)^2\nAnswer: sec(x)^2";
     return true;
   }
   return false;
@@ -1120,7 +1125,7 @@ static bool try_integral(const char *input,working_string &out){
   }
   working_string sum_answer;
   if (integrate_sum_terms(args[0],sum_answer) && !force_parts && !force_sub){
-    out="Integrate powers of x term by term:\n"
+    out="Integrate powers:\n"
         "Answer: ";
     out += sum_answer;
     out += " + C";
@@ -1128,7 +1133,7 @@ static bool try_integral(const char *input,working_string &out){
   }
   long coef=0,pow=0;
   if (parse_power_term(args[0],coef,pow) && pow!=-1 && !force_parts && !force_sub){
-    out="Power rule:\nintegral(";
+    out="Power rule:\nint(";
     out += trim(args[0]);
     out += ") dx=";
     out += integral_monomial(coef,pow);
@@ -1261,7 +1266,7 @@ static bool try_integral(const char *input,working_string &out){
     return true;
   }
   if (e=="sec(x)^2"){
-    out="Use integral(sec(x)^2) dx=tan(x)+C\nAnswer: tan(x) + C";
+    out="integral(sec(x)^2) dx=tan(x)+C\nAnswer: tan(x) + C";
     return true;
   }
   if (e=="sin(x)^2"){

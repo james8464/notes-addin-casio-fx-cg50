@@ -330,3 +330,36 @@
 {"phase":"queue","last_event":"exact queue 13932/13932","queue":"13932/13932 done, 12792 ok, 1140 bad","tests":"queue-run 12792/13932"}
 {"phase":"queue","last_event":"exact queue 13932/13932","queue":"13932/13932 done, 12792 ok, 1140 bad","tests":"queue-run 12792/13932"}
 {"phase":"working-lines","last_event":"added exact optimisation derivative working routes and refreshed reverse-chain queues","commit":"pending","graph":"docs/GRAPH.md 2026-05-31 23:07 BST","g3a_size":2097080,"headroom":72,"sha256":"ba4e574743bfc8ed3d48e501fc649ade5500e8d7f6123c05f19dd3d932129958","tests":"compile,size,metadata,border,catalog,help,help-examples,queue-schema 9459 rows/13932 inputs,queue-run 13932/13932,working-quality 12792/13932","queue":"13932/13932 runtime; 12792/13932 strict markers","unsupported":0,"eta":"binary headroom is now 72 B; next enhancement should first prune or compress strings"}
+{"phase":"queue","last_event":"exact queue 0/13952","queue":"0/13952 done, 0 ok, 0 bad","tests":"queue-run 0/13952"}
+{"phase":"queue","last_event":"exact queue 13952/13952","queue":"13952/13952 done, 13952 ok, 0 bad","tests":"queue-run 13952/13952"}
+{"phase":"queue","last_event":"exact queue 13952/13952","queue":"13952/13952 done, 13952 ok, 0 bad","tests":"queue-run 13952/13952"}
+{"phase":"queue","last_event":"exact queue 0/13952","queue":"0/13952 done, 0 ok, 0 bad","tests":"queue-run 0/13952"}
+{"phase":"queue","last_event":"exact queue 13952/13952","queue":"13952/13952 done, 12793 ok, 1159 bad","tests":"queue-run 12793/13952"}
+{"phase":"queue","last_event":"exact queue 13952/13952","queue":"13952/13952 done, 12793 ok, 1159 bad","tests":"queue-run 12793/13952"}
+{"phase":"working-lines","last_event":"added quotient-simplify derivative route and kept package under hard limit","commit":"pending","graph":"docs/GRAPH.md 2026-05-31 23:18 BST","g3a_size":2097120,"headroom":32,"sha256":"ec34b7933eccb0a36e6ed72d6853ce075accd2a1dab6508d715199b9fa8d8ce5","tests":"compile,size,metadata,border,catalog,help,help-examples,queue-schema 9461 rows/13952 inputs,queue-run 13952/13952,working-quality 12793/13952","queue":"13952/13952 runtime; 12793/13952 strict markers","unsupported":0,"eta":"binary headroom is 32 B; future route work needs more pruning first"}
+{"phase":"queue","last_event":"exact queue 0/13972","queue":"0/13972 done, 0 ok, 0 bad","tests":"queue-run 0/13972"}
+{"phase":"queue","last_event":"exact queue 13972/13972","queue":"13972/13972 done, 13972 ok, 0 bad","tests":"queue-run 13972/13972"}
+{"phase":"queue","last_event":"exact queue 13972/13972","queue":"13972/13972 done, 13972 ok, 0 bad","tests":"queue-run 13972/13972"}
+{"phase":"queue","last_event":"exact queue 0/13992","queue":"0/13992 done, 0 ok, 0 bad","tests":"queue-run 0/13992"}
+{"phase":"queue","last_event":"exact queue 13992/13992","queue":"13992/13992 done, 12793 ok, 1199 bad","tests":"queue-run 12793/13992"}
+{"phase":"queue","last_event":"exact queue 13992/13992","queue":"13992/13992 done, 12793 ok, 1199 bad","tests":"queue-run 12793/13992"}
+{"phase":"queue","last_event":"exact queue 0/13992","queue":"0/13992 done, 0 ok, 0 bad","tests":"queue-run 0/13992"}
+{"phase":"queue","last_event":"exact queue 13992/13992","queue":"13992/13992 done, 13992 ok, 0 bad","tests":"queue-run 13992/13992"}
+{"phase":"queue","last_event":"exact queue 13992/13992","queue":"13992/13992 done, 13992 ok, 0 bad","tests":"queue-run 13992/13992"}
+{"phase":"queue","last_event":"exact queue 0/14012","queue":"0/14012 done, 0 ok, 0 bad","tests":"queue-run 0/14012"}
+{"phase":"queue","last_event":"exact queue 14012/14012","queue":"14012/14012 done, 12793 ok, 1219 bad","tests":"queue-run 12793/14012"}
+{"phase":"queue","last_event":"exact queue 14012/14012","queue":"14012/14012 done, 12793 ok, 1219 bad","tests":"queue-run 12793/14012"}
+{"phase":"queue","last_event":"exact queue 0/14012","queue":"0/14012 done, 0 ok, 0 bad","tests":"queue-run 0/14012"}
+{"phase":"queue","last_event":"exact queue 14012/14012","queue":"14012/14012 done, 14012 ok, 0 bad","tests":"queue-run 14012/14012"}
+{"phase":"queue","last_event":"exact queue 14012/14012","queue":"14012/14012 done, 14012 ok, 0 bad","tests":"queue-run 14012/14012"}
+{"phase":"queue","last_event":"exact queue 0/14012","queue":"0/14012 done, 0 ok, 0 bad","tests":"queue-run 0/14012"}
+{"phase":"queue","last_event":"exact queue 14012/14012","queue":"14012/14012 done, 12793 ok, 1219 bad","tests":"queue-run 12793/14012"}
+{"phase":"queue","last_event":"exact queue 14012/14012","queue":"14012/14012 done, 12793 ok, 1219 bad","tests":"queue-run 12793/14012"}
+{"phase":"working-lines","last_event":"added quotient-simplify derivative route and refreshed reverse-chain queue through q6","commit":"pending","graph":"docs/GRAPH.md 2026-05-31 23:24 BST","g3a_size":2097120,"headroom":32,"sha256":"ec34b7933eccb0a36e6ed72d6853ce075accd2a1dab6508d715199b9fa8d8ce5","tests":"compile,size,metadata,border,catalog,help,help-examples,queue-schema 9467 rows/14012 inputs,queue-run 14012/14012,working-quality 12793/14012","queue":"14012/14012 runtime; 12793/14012 strict markers","unsupported":0,"eta":"binary headroom is 32 B; future route work needs more pruning first"}
+{"phase":"queue","last_event":"exact queue 0/14054","queue":"0/14054 done, 0 ok, 0 bad","tests":"queue-run 0/14054"}
+{"phase":"queue","last_event":"exact queue 14054/14054","queue":"14054/14054 done, 14054 ok, 0 bad","tests":"queue-run 14054/14054"}
+{"phase":"queue","last_event":"exact queue 14054/14054","queue":"14054/14054 done, 14054 ok, 0 bad","tests":"queue-run 14054/14054"}
+{"phase":"queue","last_event":"exact queue 0/14054","queue":"0/14054 done, 0 ok, 0 bad","tests":"queue-run 0/14054"}
+{"phase":"queue","last_event":"exact queue 14054/14054","queue":"14054/14054 done, 12793 ok, 1261 bad","tests":"queue-run 12793/14054"}
+{"phase":"queue","last_event":"exact queue 14054/14054","queue":"14054/14054 done, 12793 ok, 1261 bad","tests":"queue-run 12793/14054"}
+{"phase":"working-lines","last_event":"added quotient-simplify derivative route and refreshed reverse-chain queue through q9","commit":"pending","graph":"docs/GRAPH.md 2026-05-31 23:27 BST","g3a_size":2097120,"headroom":32,"sha256":"ec34b7933eccb0a36e6ed72d6853ce075accd2a1dab6508d715199b9fa8d8ce5","tests":"compile,size,metadata,border,catalog,help,help-examples,queue-schema 9473 rows/14054 inputs,queue-run 14054/14054,working-quality 12793/14054","queue":"14054/14054 runtime; 12793/14054 strict markers","unsupported":0,"eta":"binary headroom is 32 B; future route work needs more pruning first"}
