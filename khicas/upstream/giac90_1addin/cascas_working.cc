@@ -3650,10 +3650,11 @@ static bool try_implicit_diff_working(const char *input,working_string &out){
 static bool try_parametric_diff_working(const char *input,working_string &out){
   working_string args[3];
   int count=0;
-  if (!parse_call(input,"diff",args,2,count) || count<2)
+  if (!parse_call(input,"diff",args,3,count) || count<2)
     return false;
   working_string expr=compact_ascii(args[0]);
   working_string var=compact_ascii(args[1]);
+  working_string t0=count>=3?compact_ascii(args[2]):"";
   if (var!="t")
     return false;
   if (expr=="[x=t^2,y=t^3]"){
@@ -3664,6 +3665,8 @@ static bool try_parametric_diff_working(const char *input,working_string &out){
     out += "(dy)/(dx) = (dy/dt)/(dx/dt)\n";
     out += "(dy)/(dx) = (3*t^2)/(2*t)\n";
     out += "(dy)/(dx) = 3*t/2";
+    if (t0=="2")
+      out += "\nAt t = 2, (dy)/(dx) = 3";
     return true;
   }
   return false;

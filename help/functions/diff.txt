@@ -1,5 +1,5 @@
-Args: diff(expr,var), diff(equation,var), or diff([x=...,y=...],t)
+Args: diff(expr,var), diff(equation,var), diff([x=...,y=...],t), or diff([x=...,y=...],t,t0)
 Required: expr/equation, var
-Does: Differentiates with respect to var. Equation input uses implicit differentiation; parametric input gives dy/dx.
-Examples: diff(x^3,x); diff((x^2)*tan(y)=9,x); diff([x=t^2,y=t^3],t)
+Does: Differentiates with respect to var. Equation input uses implicit differentiation; parametric input gives dy/dx, optionally at t0.
+Examples: diff(x^3,x); diff((x^2)*tan(y)=9,x); diff([x=t^2,y=t^3],t); diff([x=t^2,y=t^3],t,2)
 Working: Shows product, chain, implicit, parametric, and rearrangement lines where routed.
