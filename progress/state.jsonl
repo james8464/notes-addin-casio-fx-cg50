@@ -446,3 +446,16 @@
 {"phase":"queue","last_event":"exact queue 14256/14256","queue":"14256/14256 done, 12796 ok, 1460 bad","tests":"queue-run 12796/14256"}
 {"phase":"queue","last_event":"exact queue 14256/14256","queue":"14256/14256 done, 12796 ok, 1460 bad","tests":"queue-run 12796/14256"}
 {"phase":"working","last_event":"added exam-form antiderivative for x^2-1 and made icon generation reproducible","commit":"pending","graph":"docs/GRAPH.md 2026-06-01 00:23 BST","g3a_size":2097144,"headroom":8,"sha256":"08e26530b0fce00cdc394de12d6e25572e71c9c0b84c4920ee58f0decb168410","tests":"compile,size,metadata,border,catalog,help,help-examples,queue-schema 9495 rows/14256 inputs,queue-run 14256/14256,strict-markers 12796/14256","queue":"14256/14256 runtime; 12796/14256 strict markers","unsupported":0,"eta":"next: binary size must be pruned before more C++ routes"}
+{"phase":"queue","last_event":"exact queue 0/14256","queue":"0/14256 done, 0 ok, 0 bad","tests":"queue-run 0/14256"}
+{"phase":"queue","last_event":"exact queue 14256/14256","queue":"14256/14256 done, 12796 ok, 1460 bad","tests":"queue-run 12796/14256"}
+{"phase":"queue","last_event":"exact queue 14256/14256","queue":"14256/14256 done, 12796 ok, 1460 bad","tests":"queue-run 12796/14256"}
+{"phase":"queue","last_event":"exact queue 0/14256","queue":"0/14256 done, 0 ok, 0 bad","tests":"queue-run 0/14256"}
+{"phase":"queue","last_event":"exact queue 14256/14256","queue":"14256/14256 done, 12808 ok, 1448 bad","tests":"queue-run 12808/14256"}
+{"phase":"queue","last_event":"exact queue 14256/14256","queue":"14256/14256 done, 12808 ok, 1448 bad","tests":"queue-run 12808/14256"}
+{"phase":"queue","last_event":"exact queue 0/14256","queue":"0/14256 done, 0 ok, 0 bad","tests":"queue-run 0/14256"}
+{"phase":"queue","last_event":"exact queue 14256/14256","queue":"14256/14256 done, 14256 ok, 0 bad","tests":"queue-run 14256/14256"}
+{"phase":"queue","last_event":"exact queue 14256/14256","queue":"14256/14256 done, 14256 ok, 0 bad","tests":"queue-run 14256/14256"}
+{"phase":"queue","last_event":"exact queue 0/14256","queue":"0/14256 done, 0 ok, 0 bad","tests":"queue-run 0/14256"}
+{"phase":"queue","last_event":"exact queue 14256/14256","queue":"14256/14256 done, 12808 ok, 1448 bad","tests":"queue-run 12808/14256"}
+{"phase":"queue","last_event":"exact queue 14256/14256","queue":"14256/14256 done, 12808 ok, 1448 bad","tests":"queue-run 12808/14256"}
+{"phase":"working","last_event":"trimmed working headings for headroom and added rounded-angle numeric marker","commit":"pending","graph":"docs/GRAPH.md 2026-06-01 00:36 BST","g3a_size":2096988,"headroom":164,"sha256":"46e54ca740493eb3c7a8f96b76deb0b96b44ab06d0d61618dd0b2afdd85c1258","tests":"compile,size,metadata,border,catalog,help,help-examples,queue-schema 9495 rows/14256 inputs,queue-run 14256/14256,strict-markers 12808/14256","queue":"14256/14256 runtime; 12808/14256 strict markers","unsupported":0,"eta":"next: continue remaining strict clusters with byte budget guard"}
