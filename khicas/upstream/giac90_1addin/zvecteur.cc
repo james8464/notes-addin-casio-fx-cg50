@@ -14004,6 +14004,7 @@ namespace giac {
     return res;
   }
 
+#ifndef CASCAS_ALEVEL_ONLY
   // [almost] rational jordan block
   matrice rat_jordan_block(const vecteur & v,int n,bool pseudo){
     if (n<1)
@@ -14034,6 +14035,7 @@ namespace giac {
     std_matrix_gen2matrice_destroy(M,res);
     return res;
   }
+#endif
 
   gen _rat_jordan_block(const gen &args,GIAC_CONTEXT){
 #ifdef CASCAS_ALEVEL_ONLY
@@ -14051,10 +14053,11 @@ namespace giac {
     return gensizeerr(contextptr);
 #endif
   }
-  static const char _rat_jordan_block_s []="rat_jordan_block";
+  static const char _rat_jordan_block_s []="_rmh56";
   static define_unary_function_eval (__rat_jordan_block,&_rat_jordan_block,_rat_jordan_block_s);
   define_unary_function_ptr5( at_rat_jordan_block ,alias_at_rat_jordan_block,&__rat_jordan_block,0,true);
 
+#ifndef CASCAS_ALEVEL_ONLY
   matrice pseudo_rat_to_rat(const vecteur & v,int n){
     if (n<1)
       return vecteur(1,gendimerr(gettext("pseudo_rat_ro_rat")));
@@ -14090,6 +14093,7 @@ namespace giac {
     }
     return res;
   }
+#endif
 
   // input trn(p)*d*p=original matrix, d upper triangular
   // output p*d*inv(p)=original matrix, d diagonal
@@ -14611,6 +14615,7 @@ namespace giac {
 	return false;
       gen x;
       vecteur cur_m_adj(m_adj),cur_lv(lv),new_m_adj,char_m;
+#ifndef CASCAS_ALEVEL_ONLY
       if (s>=3 && rational_jordan_form){
 	int mult=f_it->mult;
 	int qdeg=s-1;
@@ -14698,6 +14703,7 @@ namespace giac {
 	}
 	continue;
       } // end if s>=3 and rational_jordan_form
+#endif
       if (s>=3){ // recompute cur_m_adj using new extensions
 	cur_m_adj=*r2sym(m_adj,lv,contextptr)._VECTptr;
 	identificateur tmpx(" x");

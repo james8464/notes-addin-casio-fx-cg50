@@ -119,7 +119,7 @@
 {"InputStr","Instruktion in einem Programm, mit der man einen String eingeben kann und in var speichern kann.","","InputStr(\"nom?\",N)","input"},
 {"Int","Gibt die Stammfunktion oder die Berechnung des Integrals zurück (Grenzen a und b) ohne Evaluation.","","Int(sin(x));Int(sin(t),t);Int(sin(x),x,0,pi)","int"},
 {"Inverse","Gibt das reziproke oder die Matrixinverse zurück, ohne Evaluation.","","Inverse(9/5);Inverse([[1,2],[3,4]])","inv"},
-{"JordanBlock","Gibt eine n*n Matrix zurück, die a auf der Diagonalen, 1 darüber und 0 sonst hat. ","","JordanBlock(7,3)","jordan"},
+{"_rmh57","Gibt eine n*n Matrix zurück, die a auf der Diagonalen, 1 darüber und 0 sonst hat. ","","JordanBlock(7,3)","jordan"},
 {"LN","","Expr or Opt","ln(1);ln(e); convert(cos(x),ln)","exp,convert,trig2exp,log10"},
 {"LQ","Für eine numerische Matrix A, wird eine untere Dreiecksmatrix L, eine orthogonale Matrix Q und eine Permutationsmatrix P wiedergegeben, sodass P*A=L*Q ist. ","","LQ([[1,2],[3,4]]);LQ([[6,12,18],[5,14,31],[3,8,18]]);LQ([[4,0,0],[8,-4,3]])","lu,QR"},
 {"LSQ","Gibt den Vektor (bzw. die Matrix) X zurück, die die euklidische Norm (bzw. die Frobeniusnorm) von A*X-B minimiert. Dies korrespondiert dem linearem Gleichungssystems A*X=B, wenn B ein Vektor (bzw. eine Matrix) ist. ","","LSQ([[1,2],[3,4]],[5,11]);LSQ([[1,2],[3,4]],[[5,-1],[11,-1]])","lu,QR"},

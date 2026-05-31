@@ -64,7 +64,7 @@ const charptrint helpfr[]={
   {"InputStr",835},
   {"Int",308},
   {"Inverse",468},
-  {"JordanBlock",565},
+  {"_rmh57",565},
   {"LIST",840},
   {"LQ",662},
   {"LSQ",700},

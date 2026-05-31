@@ -119,7 +119,7 @@
 {"InputStr","Instruction in a program so that you can input a string and store it in var.","","InputStr(\"nom?\",N)","input"},
 {"Int","Returns the primitive or the calculus of the integrate (bounds a and b) without evaluation.","","Int(sin(x));Int(sin(t),t);Int(sin(x),x,0,pi)","int"},
 {"Inverse","Returns the reciprocal or the matrix inverse without evaluation.","","Inverse(9/5);Inverse([[1,2],[3,4]])","inv"},
-{"JordanBlock","Returns a matrix n*n with a on the diagonal ,1 above and 0 everywhere else.","","JordanBlock(7,3)","jordan"},
+{"_rmh57","Returns a matrix n*n with a on the diagonal ,1 above and 0 everywhere else.","","JordanBlock(7,3)","jordan"},
 {"LN","Natural logarithm or Option of the convert or convertir command (id trig2exp).","Expr or Opt","ln(1);ln(e); convert(cos(x),ln)","exp,convert,trig2exp,log10"},
 {"LQ","For a numerical matrix A, returns L a lower matrix, Q an orthogonal matrix and P a permutation matrix such that P*A=L*Q.","","LQ([[1,2],[3,4]]);LQ([[6,12,18],[5,14,31],[3,8,18]]);LQ([[4,0,0],[8,-4,3]])","lu,QR"},
 {"LSQ","Returns the vector (resp matrix) X which is the minimum of the euclidean (resp Frobenius) norm of A*X-B corresponding to the linear system A*X=B when B is a vector (resp matrix).","","LSQ([[1,2],[3,4]],[5,11]);LSQ([[1,2],[3,4]],[[5,-1],[11,-1]])","lu,QR"},

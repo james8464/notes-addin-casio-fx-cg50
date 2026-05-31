@@ -119,7 +119,7 @@
 {"InputStr","Instrucción en un programa que permite introducir una cadena de caracteres y guardarla en var.","","InputStr(\"nom?\",N)","input"},
 {"Int","Devuelve la primitiva o la integral (entre a y b) sin evaluar.","","Int(sin(x));Int(sin(t),t);Int(sin(x),x,0,pi)","int"},
 {"Inverse","Devuelve la inversa de una matriz o de una expresión sin evaluarla.","","Inverse(9/5);Inverse([[1,2],[3,4]])","inv"},
-{"JordanBlock","Devuelve una matriz n*n con a en la diagonal, 1 en la parte triangular superior y 0 en el resto.","","JordanBlock(7,3)","jordan"},
+{"_rmh57","Devuelve una matriz n*n con a en la diagonal, 1 en la parte triangular superior y 0 en el resto.","","JordanBlock(7,3)","jordan"},
 {"LN","Logaritmo neperiano o Opción del comando convert o convertir (id trig2exp).","Expr or Opt","ln(1);ln(e); convert(cos(x),ln)","exp,convert,trig2exp,log10"},
 {"LQ","Para una matriz numércia A, devuelve L una matriz triangular inferior, Q una ortogonal y P una matriz de permutación tal que P*A=L*Q.","","LQ([[1,2],[3,4]]);LQ([[6,12,18],[5,14,31],[3,8,18]]);LQ([[4,0,0],[8,-4,3]])","lu,QR"},
 {"LSQ","","","LSQ([[1,2],[3,4]],[5,11]);LSQ([[1,2],[3,4]],[[5,-1],[11,-1]])","lu,QR"},

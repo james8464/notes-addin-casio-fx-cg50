@@ -119,7 +119,7 @@
 {"InputStr","Instruction dans un programme permettant l'entrée d'une chaîne de caractères qui sera stockée dans var.","","InputStr(\"nom?\",N)","input"},
 {"Int","Renvoie la primitive ou l'intégrale (bornes a et b) sans l'évaluer.","","Int(sin(x));Int(sin(t),t);Int(sin(x),x,0,pi)","int"},
 {"Inverse","Renvoie l'inverse d'une expression ou d'une matrice sans l'évaluer.","","Inverse(9/5);Inverse([[1,2],[3,4]])","inv"},
-{"JordanBlock","Renvoie une matrice n*n avec a sur la diagonale, 1 au-dessus et 0 ailleurs.","","JordanBlock(7,3)","jordan"},
+{"_rmh57","Renvoie une matrice n*n avec a sur la diagonale, 1 au-dessus et 0 ailleurs.","","JordanBlock(7,3)","jordan"},
 {"LN","Logarithme népérien ou Option de la commande convert ou convertir (id trig2exp).","Expr or Opt","ln(1);ln(e); convert(cos(x),ln)","exp,convert,trig2exp,log10"},
 {"LQ","Pour A une matrice numérique, renvoie L une matrice triangulaire inférieure, Q une matrice orthogonale et P une matrice de permutation vérifiant P*A=L*Q.","","LQ([[1,2],[3,4]]);LQ([[6,12,18],[5,14,31],[3,8,18]]);LQ([[4,0,0],[8,-4,3]])","lu,QR"},
 {"LSQ","Renvoie le vecteur (resp la matrice) X qui minimise la norme euclidienne (resp de Frobenius) de A*X-B correspondant au(x) système(s) linéaire(s) A*X=B lorsque B est un vecteur (resp une matrice).","","LSQ([[1,2],[3,4]],[5,11]);LSQ([[1,2],[3,4]],[[5,-1],[11,-1]])","lu,QR"},

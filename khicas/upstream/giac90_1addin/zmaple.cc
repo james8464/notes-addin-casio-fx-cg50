@@ -1208,6 +1208,9 @@ namespace giac {
   define_unary_function_ptr5( at_gaussjord ,alias_at_gaussjord,&__gaussjord,0,true);
 
   gen _JordanBlock(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#else
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     int s;
     if (g.type!=_VECT || g._VECTptr->size()!=2 || g._VECTptr->back().type!=_INT_ )
@@ -1232,8 +1235,9 @@ namespace giac {
       m.push_back(v);
     }
     return m;
+#endif
   }
-  static const char _JordanBlock_s []="JordanBlock";
+  static const char _JordanBlock_s []="_rmh57";
   static define_unary_function_eval (__JordanBlock,&_JordanBlock,_JordanBlock_s);
   define_unary_function_ptr5( at_JordanBlock ,alias_at_JordanBlock,&__JordanBlock,0,true);
 
