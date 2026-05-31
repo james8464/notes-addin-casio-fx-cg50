@@ -239,6 +239,16 @@ QUALITY_CASES = [
         ],
     ),
     (
+        "domain(sqrt(4-x)+ln(x-1),x)",
+        6,
+        [
+            "4 - x >= 0 => x <= 4",
+            "x - 1 > 0 => x > 1",
+            "Combine constraints",
+            "Answer: 1 < x <= 4",
+        ],
+    ),
+    (
         "limit((x^2-1)/(x-1),x=1)",
         6,
         [

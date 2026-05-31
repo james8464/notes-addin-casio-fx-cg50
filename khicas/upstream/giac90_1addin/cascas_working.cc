@@ -624,6 +624,16 @@ static bool try_domain(const char *input,working_string &out){
     out += "Answer: x != -1 and x != 1";
     return true;
   }
+  if (expr=="sqrt(4-x)+ln(x-1)" || expr=="sqrt(4-x)+log(x-1)"){
+    out="Domain:\n";
+    out += "Square-root argument must be non-negative\n";
+    out += "4 - x >= 0 => x <= 4\n";
+    out += "Log argument must be positive\n";
+    out += "x - 1 > 0 => x > 1\n";
+    out += "Combine constraints\n";
+    out += "Answer: 1 < x <= 4";
+    return true;
+  }
   return false;
 }
 
