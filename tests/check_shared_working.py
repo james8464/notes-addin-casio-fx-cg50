@@ -81,6 +81,8 @@ CASES = [
     ("solve(2*x+1=5*x-8,x)", "Answer: x = [3]"),
     ("solve(10=12+3*sin(pi*t/6),t)", "t = 7.39367716319 + n*12 or 10.6063228368 + n*12"),
     ("range(x^2+4*x+7)", "y >= 3"),
+    ("range(-5*x^2+6*x+4,x)", "Answer: y <= 29/5"),
+    ("range(1/2*x^2-3*x+1,x)", "Answer: y >= -7/2"),
     ("range(x/(x^2+4),x)", "1 - 16*y^2 >= 0"),
     ("range(log(2*x+3),x)", "non-constant linear input covers all positive log arguments"),
     ("range((x^2-1)/(x^2+1))", "-1 <= y < 1"),

@@ -165,6 +165,40 @@ static working_string format_real(double x){
   return buf;
 }
 
+static working_string format_real_fraction(double x){
+  if (fabs(x)<1e-10) x=0;
+  int r=int(x>0?x+.5:x-.5);
+  if (fabs(x-r)<1e-9)
+    return format_real(x);
+  for (int d=2;d<=500;++d){
+    int n=int(x*d+(x>=0?.5:-.5));
+    if (fabs(x-double(n)/double(d))<1e-9){
+      int a=n<0?-n:n,b=d;
+      while (b){
+        int t=a%b; a=b; b=t;
+      }
+      if (a>1){ n/=a; d/=a; }
+      char buf[48];
+      CASCAS_SNPRINTF(buf,sizeof(buf),"%d/%d",n,d);
+      return buf;
+    }
+  }
+  return format_real(x);
+}
+
+static bool parse_real_fraction(const working_string &s,double &x){
+  if (parse_real(s,x))
+    return true;
+  int slash=find_top_char(s,'/');
+  if (slash<=0)
+    return false;
+  double a,b;
+  if (!parse_real(s.substr(0,slash),a) || !parse_real(s.substr(slash+1),b) || b==0)
+    return false;
+  x=a/b;
+  return true;
+}
+
 static working_string format_quadratic_term(double coeff){
   if (fabs(coeff-1)<1e-10)
     return "x^2";
@@ -341,13 +375,13 @@ static bool poly2(const working_string &expr,const working_string &var,double &a
     int p=t.find(v);
     if (p<0){
       double k;
-      if (!parse_real(t,k)) return false;
+      if (!parse_real_fraction(t,k)) return false;
       c += sign*k;
       continue;
     }
     working_string coeff=t.substr(0,p);
     double k=1;
-    if (!coeff.empty() && !parse_real(coeff,k))
+    if (!coeff.empty() && !parse_real_fraction(coeff,k))
       return false;
     working_string rest=t.substr(p+v.size());
     if (rest.empty()) b += sign*k;
@@ -496,14 +530,14 @@ static bool try_range(const char *input,working_string &out){
     double vx=-b/(2*a),vy=a*vx*vx+b*vx+c;
     out += "For y = ax^2 + bx + c, vertex at x = -b/(2a)\n";
     out += "x = ";
-    out += format_real(vx);
+    out += format_real_fraction(vx);
     out += "\n";
     out += a>0?"minimum y = ":"maximum y = ";
-    out += format_real(vy);
+    out += format_real_fraction(vy);
     out += "\n";
     out += "Answer: y ";
     out += a>0?">= ":"<= ";
-    out += format_real(vy);
+    out += format_real_fraction(vy);
     return true;
   }
   if (cmp.find("sqrt(")!=working_string::npos){

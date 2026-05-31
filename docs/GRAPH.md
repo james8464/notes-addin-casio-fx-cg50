@@ -1,6 +1,6 @@
 # CasioCAS Project Graph
 
-Last updated: 2026-05-31 11:27 Europe/London
+Last updated: 2026-05-31 11:32 Europe/London
 
 ## Build
 
@@ -47,6 +47,7 @@ graph TD
   Guard["runtime denylist"] --> Unsupported["Err: unsupported (not A-level scope)"]
   Direct["direct working routes"] --> Implicit["implicit diff example"]
   Direct --> Range["quadratic/rational/abs/sqrt/trig range cases"]
+  Direct --> ExactRange["exact-fraction quadratic range output, including rational coefficients"]
   Direct --> BoundedRange["bounded interval range(expr,var,a,b) for linear/quadratic pure functions"]
   Direct --> Domain["domain inequalities for sqrt/log restrictions"]
   Direct --> DiffInt["power/product/chain/quotient diff + trig/log integrals"]
@@ -204,8 +205,8 @@ graph TD
 
 ```mermaid
 graph LR
-  Build["./compile exit 0"] --> Size["1,297,999 bytes"]
-  Build --> Rom["rom 1,269,323 bytes"]
+  Build["./compile exit 0"] --> Size["1,298,759 bytes"]
+  Build --> Rom["rom 1,270,083 bytes"]
   Build --> Ram["ram 331,088 bytes"]
   Build --> R8C2["r8c2 1,336,146 bytes"]
   Build --> Meta["metadata ok"]
@@ -220,9 +221,9 @@ graph LR
   Queue["golden queue"] --> QueueRun["201/201 host ok"]
   Queue --> GoldenRun["201/201 direct calculator-source ok"]
   Queue --> NoGolden["201/201 without generated golden fallback"]
-  Shared["shared working"] --> SharedRun["233/233 thin host+calculator adapter ok"]
+  Shared["shared working"] --> SharedRun["235/235 thin host+calculator adapter ok"]
   Shared --> WorkQ["27/27 working-quality depth cases ok"]
-  Shared --> CoreRun["233/233 core routes without golden fallback ok"]
+  Shared --> CoreRun["235/235 core routes without golden fallback ok"]
   Shared --> NoHostSrc["old host-only source deleted"]
   Obj["object prune"] --> QR["qrcodegen.o link-safe removed"]
   Macro["source stubs"] --> Stubbed["plot/list/stats/special/ODE/file IO/linalg/transform helpers blocked"]
@@ -230,5 +231,5 @@ graph LR
   Static["lexer/help prune"] --> StaticRun["distribution/denom/transform/multinomial/matrix/about/shortcuts/session/crypto/complex/JordanBlock/keep_pivot/det-option/trace/plot-step/program/control-flow/Xcas/turtle/matplot/random/graphic names neutralized"]
   Static --> PromptRun["mod/sign/euler/ascii/geometry/3D solids/ode plot/laplace prompt names blocked"]
   Bin["binary scan"] --> NoLeak["no removed-term/plot-step/session/menu hits"]
-  Graphify["graphify update . --no-cluster"] --> GraphStats["10,306 nodes / 59,786 edges"]
+  Graphify["graphify update . --no-cluster"] --> GraphStats["10,308 nodes / 118,531 edges"]
 ```
