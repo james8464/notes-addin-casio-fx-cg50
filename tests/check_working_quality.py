@@ -43,6 +43,26 @@ QUALITY_CASES = [
         ],
     ),
     (
+        "int(tan(3*x),x)",
+        5,
+        [
+            "Use formula: int(tan(k*x)) dx = 1/k*ln(abs(sec(k*x))) + C",
+            "k = 3",
+            "int(tan(3*x)) dx = 1/3*ln(abs(sec(3*x))) + C",
+            "Answer: 1/3*ln(abs(sec(3*x))) + C",
+        ],
+    ),
+    (
+        "int(cosec(2*x),x)",
+        5,
+        [
+            "Use formula: int(cosec(k*x)) dx = -1/k*ln(abs(cosec(k*x)+cot(k*x))) + C",
+            "k = 2",
+            "int(cosec(2*x)) dx = -1/2*ln(abs(cosec(2*x)+cot(2*x))) + C",
+            "Answer: -1/2*ln(abs(cosec(2*x)+cot(2*x))) + C",
+        ],
+    ),
+    (
         "int(1/x,x)",
         4,
         [

@@ -1930,6 +1930,45 @@ static bool try_poly_quadratic_solve(const char *input,working_string &out){
   return true;
 }
 
+static bool parse_trig_kx(const working_string &expr,const char *name,const char *suffix,working_string &k,working_string &arg){
+  working_string fn(name),suf(suffix);
+  working_string prefix=fn+"(";
+  if (expr.find(prefix)!=0)
+    return false;
+  int close=find_matching_paren(expr,int(fn.size()));
+  if (close<0 || expr.substr(close+1)!=suf)
+    return false;
+  working_string inside=expr.substr(fn.size()+1,close-fn.size()-1);
+  double kval;
+  if (inside=="x"){
+    k="1";
+    arg="x";
+    return true;
+  }
+  if (inside=="-x"){
+    k="-1";
+    arg="-x";
+    return true;
+  }
+  if (inside.size()<2 || inside[inside.size()-1]!='x')
+    return false;
+  k=inside.substr(0,inside.size()-1);
+  if (!parse_real(k,kval))
+    return false;
+  arg=k+"*x";
+  return true;
+}
+
+static working_string reciprocal_prefix(const working_string &k){
+  if (k=="1")
+    return "";
+  if (k=="-1")
+    return "-";
+  if (!k.empty() && k[0]=='-')
+    return "-1/"+k.substr(1)+"*";
+  return "1/"+k+"*";
+}
+
 static bool try_integral(const char *input,working_string &out){
   working_string args[2];
   int count=0;
@@ -2002,6 +2041,58 @@ static bool try_integral(const char *input,working_string &out){
     out += "Use formula: int(sec(x)^2) dx = tan(x) + C\n";
     out += "Check: d/dx tan(x)=sec(x)^2\n";
     out += "Answer: tan(x) + C";
+    return true;
+  }
+  working_string k,arg,pre;
+  if (parse_trig_kx(expr,"sec","^2",k,arg)){
+    pre=reciprocal_prefix(k);
+    out="Integrate using formula booklet result:\n";
+    out += "Use formula: int(sec(k*x)^2) dx = 1/k*tan(k*x) + C\n";
+    out += "k = "+k+"\n";
+    out += "int(sec("+arg+")^2) dx = "+pre+"tan("+arg+") + C\n";
+    out += "Answer: "+pre+"tan("+arg+") + C";
+    return true;
+  }
+  if (parse_trig_kx(expr,"tan","",k,arg)){
+    pre=reciprocal_prefix(k);
+    out="Integrate using formula booklet result:\n";
+    out += "Use formula: int(tan(k*x)) dx = 1/k*ln(abs(sec(k*x))) + C\n";
+    out += "k = "+k+"\n";
+    out += "int(tan("+arg+")) dx = "+pre+"ln(abs(sec("+arg+"))) + C\n";
+    out += "Answer: "+pre+"ln(abs(sec("+arg+"))) + C";
+    return true;
+  }
+  if (parse_trig_kx(expr,"cot","",k,arg)){
+    pre=reciprocal_prefix(k);
+    out="Integrate using formula booklet result:\n";
+    out += "Use formula: int(cot(k*x)) dx = 1/k*ln(abs(sin(k*x))) + C\n";
+    out += "k = "+k+"\n";
+    out += "int(cot("+arg+")) dx = "+pre+"ln(abs(sin("+arg+"))) + C\n";
+    out += "Answer: "+pre+"ln(abs(sin("+arg+"))) + C";
+    return true;
+  }
+  if (parse_trig_kx(expr,"sec","",k,arg)){
+    pre=reciprocal_prefix(k);
+    out="Integrate using formula booklet result:\n";
+    out += "Use formula: int(sec(k*x)) dx = 1/k*ln(abs(sec(k*x)+tan(k*x))) + C\n";
+    out += "k = "+k+"\n";
+    out += "int(sec("+arg+")) dx = "+pre+"ln(abs(sec("+arg+")+tan("+arg+"))) + C\n";
+    out += "Answer: "+pre+"ln(abs(sec("+arg+")+tan("+arg+"))) + C";
+    return true;
+  }
+  if (parse_trig_kx(expr,"cosec","",k,arg) || parse_trig_kx(expr,"csc","",k,arg)){
+    pre=reciprocal_prefix(k);
+    if (pre.empty())
+      pre="-";
+    else if (pre[0]=='-')
+      pre=pre.substr(1);
+    else
+      pre="-"+pre;
+    out="Integrate using formula booklet result:\n";
+    out += "Use formula: int(cosec(k*x)) dx = -1/k*ln(abs(cosec(k*x)+cot(k*x))) + C\n";
+    out += "k = "+k+"\n";
+    out += "int(cosec("+arg+")) dx = "+pre+"ln(abs(cosec("+arg+")+cot("+arg+"))) + C\n";
+    out += "Answer: "+pre+"ln(abs(cosec("+arg+")+cot("+arg+"))) + C";
     return true;
   }
   if (expr=="1/x"){
