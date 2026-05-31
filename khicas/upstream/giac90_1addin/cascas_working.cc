@@ -1143,6 +1143,90 @@ static working_string pretty_poly_input(const working_string &expr){
   return out;
 }
 
+static void poly_derivative(const poly_rat &p,poly_rat &out){
+  poly_zero(out);
+  for (int i=1;i<=p.deg;++i)
+    out.c[i-1]=mul_rat(p.c[i],norm_rat(i,1));
+  poly_norm(out);
+}
+
+static bool poly_integral(const poly_rat &p,poly_rat &out){
+  if (p.deg>=POLY_MAX_DEG)
+    return false;
+  poly_zero(out);
+  for (int i=0;i<=p.deg;++i)
+    out.c[i+1]=div_rat(p.c[i],norm_rat(i+1,1));
+  poly_norm(out);
+  return true;
+}
+
+static bool try_poly_diff_explicit(const char *input,working_string &out){
+  working_string args[2];
+  int count=0;
+  bool ok=parse_call(input,"diff",args,2,count);
+  if (!ok){
+    count=0;
+    ok=parse_call(input,"derive",args,2,count);
+  }
+  if (!ok || count<1)
+    return false;
+  working_string var=count>=2 && args[1].size()?compact_poly(args[1]):working_string();
+  if (var.empty() && !detect_poly_var(args[0],var))
+    return false;
+  poly_rat p,d;
+  if (!parse_poly(args[0],var,p))
+    return false;
+  poly_derivative(p,d);
+  out="Differentiate polynomial:\n";
+  out += "y = ";
+  out += fmt_poly(p,var,false);
+  out += "\nUse d/d";
+  out += var;
+  out += "(a*";
+  out += var;
+  out += "^n)=n*a*";
+  out += var;
+  out += "^(n-1)\n";
+  out += "dy/d";
+  out += var;
+  out += " = ";
+  out += fmt_poly(d,var,false);
+  out += "\nAnswer: ";
+  out += fmt_poly(d,var,false);
+  return true;
+}
+
+static bool try_poly_integral_explicit(const char *input,working_string &out){
+  working_string args[2];
+  int count=0;
+  bool ok=parse_call(input,"int",args,2,count);
+  if (!ok){
+    count=0;
+    ok=parse_call(input,"integrate",args,2,count);
+  }
+  if (!ok || count<1)
+    return false;
+  working_string var=count>=2 && args[1].size()?compact_poly(args[1]):working_string();
+  if (var.empty() && !detect_poly_var(args[0],var))
+    return false;
+  poly_rat p,anti;
+  if (!parse_poly(args[0],var,p) || !poly_integral(p,anti))
+    return false;
+  out="Integrate polynomial:\n";
+  out += fmt_poly(p,var,false);
+  out += "\nUse int(a*";
+  out += var;
+  out += "^n) d";
+  out += var;
+  out += " = a*";
+  out += var;
+  out += "^(n+1)/(n+1)\n";
+  out += "Answer: ";
+  out += fmt_poly(anti,var,false);
+  out += " + C";
+  return true;
+}
+
 static rat poly_eval_rat(const poly_rat &p,rat x);
 
 static working_string fmt_shift_square(const working_string &var,rat root){
@@ -2250,9 +2334,13 @@ bool eval_with_working(const char *input,working_string &out){
     return true;
   if (try_diff(input,out))
     return true;
+  if (try_poly_diff_explicit(input,out))
+    return true;
   if (try_defint(input,out))
     return true;
   if (try_integral(input,out))
+    return true;
+  if (try_poly_integral_explicit(input,out))
     return true;
   if (try_poly_expand(input,out))
     return true;
