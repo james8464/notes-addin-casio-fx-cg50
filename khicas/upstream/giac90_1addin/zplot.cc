@@ -11271,6 +11271,43 @@ namespace giac {
   // OR [x,y]'=f(t,x,y) t0 x0 y0 in current plot range
   // args = dy/dx, [x, y], [x0, y0]
   // OR [dx/dt, dy/dt], [t, x, y], [t0, x0, y0]
+#ifdef CASCAS_ALEVEL_ONLY
+  gen _plotode(const gen & args,GIAC_CONTEXT){
+    return gensizeerr(contextptr);
+  }
+  static const char _plotode_s []="_rm_plotode";
+  static define_unary_function_eval (__plotode,&_plotode,_plotode_s);
+  define_unary_function_ptr5( at_plotode ,alias_at_plotode,&__plotode,0,true);
+
+  static const char _odeplot_s []="_rm_odeplot";
+  static define_unary_function_eval (__odeplot,&_plotode,_odeplot_s);
+  define_unary_function_ptr5( at_odeplot ,alias_at_odeplot,&__odeplot,0,true);
+
+  gen plotfield(const gen & xp,const gen & yp,const gen & x,const gen & y,double xmin,double xmax,double xstep,double ymin,double ymax,double ystep,double scaling,vecteur & attributs,bool normalize,const context * contextptr){
+    return gensizeerr(contextptr);
+  }
+  gen _plotfield(const gen & args,const context * contextptr){
+    return gensizeerr(contextptr);
+  }
+  static const char _plotfield_s []="_rm_plotfield";
+  static define_unary_function_eval (__plotfield,&_plotfield,_plotfield_s);
+  define_unary_function_ptr5( at_plotfield ,alias_at_plotfield,&__plotfield,0,true);
+
+  static const char _fieldplot_s []="_rm_fieldplot";
+  static define_unary_function_eval (__fieldplot,&_plotfield,_fieldplot_s);
+  define_unary_function_ptr5( at_fieldplot ,alias_at_fieldplot,&__fieldplot,0,true);
+
+  gen _interactive_plotode(const gen & args,GIAC_CONTEXT){
+    return gensizeerr(contextptr);
+  }
+  static const char _interactive_plotode_s []="interactive_plotode";
+  static define_unary_function_eval (__interactive_plotode,&_interactive_plotode,_interactive_plotode_s);
+  define_unary_function_ptr5( at_interactive_plotode ,alias_at_interactive_plotode,&__interactive_plotode,0,true);
+
+  static const char _interactive_odeplot_s []="interactive_odeplot";
+  static define_unary_function_eval (__interactive_odeplot,&_interactive_plotode,_interactive_odeplot_s);
+  define_unary_function_ptr5( at_interactive_odeplot ,alias_at_interactive_odeplot,&__interactive_odeplot,0,true);
+#else
   static gen plotode(const vecteur & w,GIAC_CONTEXT){
     vecteur v(w);
     bool curve=true;
@@ -11659,6 +11696,7 @@ namespace giac {
   static const char _interactive_odeplot_s []="interactive_odeplot";
   static define_unary_function_eval (__interactive_odeplot,&_interactive_plotode,_interactive_odeplot_s);
   define_unary_function_ptr5( at_interactive_odeplot ,alias_at_interactive_odeplot,&__interactive_odeplot,0,true);
+#endif
 
 #if !defined NSPIRE && !defined FXCG //&& !defined EMCC
   static vecteur unarchive_VECT(istream & is,GIAC_CONTEXT){

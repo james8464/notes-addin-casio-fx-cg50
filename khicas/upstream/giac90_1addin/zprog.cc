@@ -3959,6 +3959,78 @@ namespace giac {
   static define_unary_function_eval2_index (123,__case,&_case,_case_s,&printascase);
   define_unary_function_ptr5( at_case ,alias_at_case,&__case,_QUOTE_ARGUMENTS,0);
 
+#ifdef CASCAS_ALEVEL_ONLY
+  gen rand_interval(const vecteur & v,bool entier,GIAC_CONTEXT){
+    if (v.empty())
+      return zero;
+    return v.front();
+  }
+  void shuffle(vector<int> & temp,GIAC_CONTEXT){}
+  vector<int> rand_k_n(int k,int n,bool sorted,GIAC_CONTEXT){
+    vector<int> res;
+    for (int i=0;i<k && i<n;++i)
+      res.push_back(i);
+    return res;
+  }
+  vector<int> randperm(const int & n,GIAC_CONTEXT){
+    vector<int> temp(n);
+    for (int k=0;k<n;k++)
+      temp[k]=k;
+    return temp;
+  }
+  gen _rand(const gen & args,GIAC_CONTEXT){
+    return gensizeerr(contextptr);
+  }
+  static const char _rand_s []="rand";
+  static define_unary_function_eval (__rand,&_rand,_rand_s);
+  define_unary_function_ptr5( at_rand ,alias_at_rand,&__rand,0,true);
+
+  static const char _random_s []="random";
+  static define_unary_function_eval (__random,&_rand,_random_s);
+  define_unary_function_ptr5( at_random ,alias_at_random,&__random,0,true);
+
+  gen _randint(const gen & args,GIAC_CONTEXT){
+    return gensizeerr(contextptr);
+  }
+  static const char _randint_s []="randint";
+  static define_unary_function_eval (__randint,&_randint,_randint_s);
+  define_unary_function_ptr5( at_randint ,alias_at_randint,&__randint,0,true);
+
+  gen _randrange(const gen & args,GIAC_CONTEXT){
+    return gensizeerr(contextptr);
+  }
+  static const char _randrange_s []="randrange";
+  static define_unary_function_eval (__randrange,&_randrange,_randrange_s);
+  define_unary_function_ptr5( at_randrange ,alias_at_randrange,&__randrange,0,true);
+
+  gen _choice(const gen & args,GIAC_CONTEXT){
+    return gensizeerr(contextptr);
+  }
+  static const char _choice_s []="choice";
+  static define_unary_function_eval (__choice,&_choice,_choice_s);
+  define_unary_function_ptr5( at_choice ,alias_at_choice,&__choice,0,true);
+
+  gen _shuffle(const gen & a,GIAC_CONTEXT){
+    return gensizeerr(contextptr);
+  }
+  static const char _shuffle_s []="shuffle";
+  static define_unary_function_eval (__shuffle,&_shuffle,_shuffle_s);
+  define_unary_function_ptr5( at_shuffle ,alias_at_shuffle,&__shuffle,0,true);
+
+  gen _sample(const gen & args,GIAC_CONTEXT){
+    return gensizeerr(contextptr);
+  }
+  static const char _sample_s []="sample";
+  static define_unary_function_eval (__sample,&_sample,_sample_s);
+  define_unary_function_ptr5( at_sample ,alias_at_sample,&__sample,0,true);
+
+  gen _srand(const gen & args,GIAC_CONTEXT){
+    return args;
+  }
+  static const char _srand_s []="srand";
+  static define_unary_function_eval (__srand,&_srand,_srand_s);
+  define_unary_function_ptr5( at_srand ,alias_at_srand ,&__srand,0,T_RETURN);
+#else
   static gen symb_rand(const gen & args){
     return symbolic(at_rand,args);
   }
@@ -4390,6 +4462,7 @@ namespace giac {
   static const char _srand_s []="srand";
   static define_unary_function_eval (__srand,&_srand,_srand_s);
   define_unary_function_ptr5( at_srand ,alias_at_srand ,&__srand,0,T_RETURN);
+#endif
 
   static gen symb_char(const gen & args){
     return symbolic(at_char,args);
