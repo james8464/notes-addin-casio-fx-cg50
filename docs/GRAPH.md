@@ -1,6 +1,6 @@
 # CasioCAS Project Graph
 
-Last updated: 2026-05-31 09:30 Europe/London
+Last updated: 2026-05-31 09:48 Europe/London
 
 ## Build
 
@@ -51,7 +51,7 @@ graph TD
   Direct --> Xform["identity/log/sec/cosec/cot/half-angle proof shell"]
   Direct --> Log["log(base,x) working"]
   Direct --> Suvat["SUVAT displacement/velocity/acceleration working"]
-  Direct --> ForceMoment["force/moment/resolve/friction mechanics working"]
+  Direct --> ForceMoment["force/moment/weight/resolve/friction mechanics working"]
   Direct --> MoreWork["tan/sec/cosec diff, golden solve routes, reciprocal ranges"]
   Direct --> FilteredSolve["quadratic roots with integer/positive/reject filters"]
   Direct --> Numeric["numeric estimates, rounding, time conversion, root brackets"]
@@ -69,7 +69,7 @@ graph TD
   Direct --> RationalSurd["targeted rational/surd differentiation solve routes"]
   Direct --> ExamExact["direct exam queue routes: sequences, geometry, trig identity, partial fractions, binomial, exponential models"]
   Direct --> SepDE["separable-DE exponential model solve(dn/dt=k*n,n,t)"]
-  Direct --> Quality["24-case working-quality depth gate across calculus, range, solve, xform, separable DE, binomial, partfrac, SUVAT, mechanics"]
+  Direct --> Quality["25-case working-quality depth gate across calculus, range, solve, xform, separable DE, binomial, partfrac, SUVAT, mechanics"]
   Suvat --> KeySuvat["key-value u/t roots"]
   Suvat --> MoreSuvat["v, a, and average-velocity s routes"]
   Host["thin same-source host wrapper"] --> Queue["201/201 exact queue host checks"]
@@ -192,23 +192,24 @@ graph TD
 
 ```mermaid
 graph LR
-  Build["./compile exit 0"] --> Size["1,284,963 bytes"]
+  Build["./compile exit 0"] --> Size["1,286,027 bytes"]
+  Build --> Rom["rom 1,257,351 bytes"]
   Build --> Ram["ram 331,088 bytes"]
   Build --> R8C2["r8c2 1,336,146 bytes"]
   Build --> Meta["metadata ok"]
   Build --> Border["purple border ok"]
   Build --> NoRuntimeFallback["generated golden fallback disabled"]
   Build --> NoRuntimeSource["generated golden fallback source removed"]
-  Source["source gates"] --> Catalog["catalog ok"]
+  Source["source gates"] --> Catalog["catalog ok, required 13"]
   Source --> Removed["334 removed rejected"]
   Source --> Session["session disabled"]
-  Help["help pack"] --> HelpQ["45 function sheets ok"]
+  Help["help pack"] --> HelpQ["46 function sheets ok, PAK 47 records / 10,718 bytes"]
   Queue["golden queue"] --> QueueRun["201/201 host ok"]
   Queue --> GoldenRun["201/201 direct calculator-source ok"]
   Queue --> NoGolden["201/201 without generated golden fallback"]
-  Shared["shared working"] --> SharedRun["217/217 thin host+calculator adapter ok"]
-  Shared --> WorkQ["24/24 working-quality depth cases ok"]
-  Shared --> CoreRun["212/212 core routes without golden fallback ok"]
+  Shared["shared working"] --> SharedRun["219/219 thin host+calculator adapter ok"]
+  Shared --> WorkQ["25/25 working-quality depth cases ok"]
+  Shared --> CoreRun["214/214 core routes without golden fallback ok"]
   Shared --> NoHostSrc["old host-only source deleted"]
   Obj["object prune"] --> QR["qrcodegen.o link-safe removed"]
   Macro["source stubs"] --> Stubbed["plot/list/stats/special/ODE/file IO/linalg/transform helpers blocked"]

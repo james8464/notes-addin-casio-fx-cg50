@@ -206,6 +206,16 @@ QUALITY_CASES = [
         ],
     ),
     (
+        "weight(5)",
+        5,
+        [
+            "Use W = m*g",
+            "Take g = 9.8 m/s^2",
+            "W = 5*9.8",
+            "Answer: 49 N",
+        ],
+    ),
+    (
         "moment(12,0.5)",
         4,
         [

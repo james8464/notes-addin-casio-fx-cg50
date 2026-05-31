@@ -19,6 +19,7 @@ REQUIRED = [
     "xform(expr,target)",
     "implicit_diff(eq,[x,y])",
     "suvat(u,a,t)",
+    "weight(m[,g])",
 ]
 
 REMOVED_CATEGORIES = [

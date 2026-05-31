@@ -213,6 +213,8 @@ CASES = [
     ("suvat(u=4,v=16,t=3,target=s)", "s = (4 + 16)*3/2"),
     ("force(5,2)", "F = 5*2"),
     ("force(m=12,a=-3)", "Answer: -36 N"),
+    ("weight(5)", "W = 5*9.8"),
+    ("weight(m=12,g=9.81)", "Answer: 117.72 N"),
     ("moment(12,0.5)", "M = 12*0.5"),
     ("moment(force=8,distance=1.25)", "Answer: 10 N m"),
     ("resolve(10,30)", "Answer: [8.66025,5] N"),

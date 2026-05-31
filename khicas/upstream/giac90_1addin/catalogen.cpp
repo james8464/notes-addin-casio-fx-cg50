@@ -106,6 +106,7 @@ const catalogFunc completeCat[] = { // A-level scoped catalog only
   {"trigcos(expr)", 0, "Rewrite trig using cos where useful.", "trigcos(sin(x)^2)", 0, CAT_CATEGORY_TRIG},
   {"trigsin(expr)", 0, "Rewrite trig using sin where useful.", "trigsin(cos(x)^2)", 0, CAT_CATEGORY_TRIG},
   {"trigtan(expr)", 0, "Rewrite trig using tan where useful.", "trigtan(cos(x)^2)", 0, CAT_CATEGORY_TRIG},
+  {"weight(m[,g])", "weight(", "A-level weight force W=mg with working.", "weight(5)", "weight(12,9.81)", CAT_CATEGORY_PHYS | (CAT_CATEGORY_CALCULUS << 8)},
   {"xform(expr,target)", "xform(", "Transform expr into target with A-level working lines.", "x^2+2*x+1,(x+1)^2", "log(2,x^2),2*log(2,x)", CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_TRIG << 8)},
 };
 

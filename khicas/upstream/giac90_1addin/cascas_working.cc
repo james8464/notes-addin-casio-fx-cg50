@@ -2911,6 +2911,47 @@ static bool try_force(const char *input,working_string &out){
   return true;
 }
 
+static bool try_weight(const char *input,working_string &out){
+  working_string args[4];
+  int count=0;
+  if (!parse_call(input,"weight",args,4,count) || count<1)
+    return false;
+  double m=0,g=9.8;
+  bool hm=false,hg=count==1;
+  if (count<=2 && int(args[0].find('='))<0 && (count==1 || int(args[1].find('='))<0)){
+    hm=parse_real(args[0],m);
+    if (count==2)
+      hg=parse_real(args[1],g);
+  }
+  else {
+    for (int i=0;i<count;++i){
+      int eq=args[i].find('=');
+      if (eq<0) continue;
+      working_string k=compact_ascii(args[i].substr(0,eq));
+      working_string val=trim_ascii(args[i].substr(eq+1));
+      double d;
+      if (!parse_real(val,d)) continue;
+      if (k=="m" || k=="mass"){ m=d; hm=true; }
+      else if (k=="g" || k=="gravity"){ g=d; hg=true; }
+    }
+  }
+  if (!hm || !hg)
+    return false;
+  double ans=m*g;
+  out="Weight:\n";
+  out += "Use W = m*g\n";
+  out += "Take g = ";
+  out += format_real(g);
+  out += " m/s^2\nW = ";
+  out += format_real(m);
+  out += "*";
+  out += format_real(g);
+  out += "\nAnswer: ";
+  out += format_real(ans);
+  out += " N";
+  return true;
+}
+
 static bool try_moment(const char *input,working_string &out){
   working_string args[4];
   int count=0;
@@ -3318,6 +3359,8 @@ bool eval_with_working(const char *input,working_string &out){
   if (try_suvat(input,out))
     return true;
   if (try_force(input,out))
+    return true;
+  if (try_weight(input,out))
     return true;
   if (try_moment(input,out))
     return true;
