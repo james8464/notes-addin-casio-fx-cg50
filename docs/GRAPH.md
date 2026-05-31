@@ -1,6 +1,6 @@
 # CasioCAS Project Graph
 
-Last updated: 2026-05-31 08:56 Europe/London
+Last updated: 2026-05-31 09:02 Europe/London
 
 ## Build
 
@@ -50,7 +50,7 @@ graph TD
   Direct --> DiffInt["power/product/chain/quotient diff + trig/log integrals"]
   Direct --> Xform["identity/log/sec/cosec/cot/half-angle proof shell"]
   Direct --> Log["log(base,x) working"]
-  Direct --> Suvat["SUVAT displacement working"]
+  Direct --> Suvat["SUVAT displacement/velocity/acceleration working"]
   Direct --> MoreWork["tan/sec/cosec diff, golden solve routes, reciprocal ranges"]
   Direct --> FilteredSolve["quadratic roots with integer/positive/reject filters"]
   Direct --> Numeric["numeric estimates, rounding, time conversion, root brackets"]
@@ -68,8 +68,9 @@ graph TD
   Direct --> RationalSurd["targeted rational/surd differentiation solve routes"]
   Direct --> ExamExact["direct exam queue routes: sequences, geometry, trig identity, partial fractions, binomial, exponential models"]
   Direct --> SepDE["separable-DE exponential model solve(dn/dt=k*n,n,t)"]
-  Direct --> Quality["17-case working-quality depth gate across calculus, range, solve, xform, separable DE, binomial, partfrac, SUVAT"]
+  Direct --> Quality["20-case working-quality depth gate across calculus, range, solve, xform, separable DE, binomial, partfrac, SUVAT"]
   Suvat --> KeySuvat["key-value u/t roots"]
+  Suvat --> MoreSuvat["v, a, and average-velocity s routes"]
   Host["thin same-source host wrapper"] --> Queue["201/201 exact queue host checks"]
   Host --> DeletedHost["old host-only working_engine/src deleted"]
   QueueTests["exact queue file"] --> SameSource["201/201 direct no-fallback calculator-source coverage"]
@@ -188,7 +189,7 @@ graph TD
 
 ```mermaid
 graph LR
-  Build["./compile exit 0"] --> Size["1,280,007 bytes"]
+  Build["./compile exit 0"] --> Size["1,281,215 bytes"]
   Build --> Ram["ram 331,088 bytes"]
   Build --> R8C2["r8c2 1,340,198 bytes"]
   Build --> Meta["metadata ok"]
@@ -202,9 +203,9 @@ graph LR
   Queue["golden queue"] --> QueueRun["201/201 host ok"]
   Queue --> GoldenRun["201/201 direct calculator-source ok"]
   Queue --> NoGolden["201/201 without generated golden fallback"]
-  Shared["shared working"] --> SharedRun["203/203 thin host+calculator adapter ok"]
-  Shared --> WorkQ["17/17 working-quality depth cases ok"]
-  Shared --> CoreRun["200/200 core routes without golden fallback ok"]
+  Shared["shared working"] --> SharedRun["209/209 thin host+calculator adapter ok"]
+  Shared --> WorkQ["20/20 working-quality depth cases ok"]
+  Shared --> CoreRun["204/204 core routes without golden fallback ok"]
   Shared --> NoHostSrc["old host-only source deleted"]
   Obj["object prune"] --> QR["qrcodegen.o link-safe removed"]
   Macro["source stubs"] --> Stubbed["plot/list/stats/special/ODE/file IO/linalg/transform helpers blocked"]

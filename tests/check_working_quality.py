@@ -168,6 +168,34 @@ QUALITY_CASES = [
             "t = (no positive root)",
         ],
     ),
+    (
+        "suvat(u=5,a=3,t=4,target=v)",
+        4,
+        [
+            "v = u + at",
+            "v = 5 + 3*4",
+            "Answer: 17",
+        ],
+    ),
+    (
+        "suvat(u=4,v=16,t=3,target=a)",
+        5,
+        [
+            "v = u + at",
+            "a = (v-u)/t",
+            "a = (16 - 4)/3",
+            "Answer: 4",
+        ],
+    ),
+    (
+        "suvat(u=4,v=16,t=3,target=s)",
+        4,
+        [
+            "s = (u+v)t/2",
+            "s = (4 + 16)*3/2",
+            "Answer: 30",
+        ],
+    ),
 ]
 
 

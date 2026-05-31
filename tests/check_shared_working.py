@@ -207,12 +207,18 @@ CASES = [
     ("suvat(v=20,a=2,s=48,target=u)", "u = sqrt(208) or -sqrt(208)"),
     ("suvat(s=25,v=0,a=-10,target=t)", "t = 2.23607 s"),
     ("suvat(s=45,v=20,a=5,target=t)", "t = (no positive root)"),
+    ("suvat(u=5,a=3,t=4,target=v)", "v = 5 + 3*4"),
+    ("suvat(u=8,a=-2,s=15,target=v)", "v = sqrt(4) or -sqrt(4)"),
+    ("suvat(u=4,v=16,t=3,target=a)", "a = (16 - 4)/3"),
+    ("suvat(u=4,v=16,t=3,target=s)", "s = (4 + 16)*3/2"),
 ]
 
 ARGV_CASES = [
     ([str(RUNNER), "--suvat", "v=20,a=2,s=48,target=u"], "u = sqrt(208) or -sqrt(208)"),
     ([str(RUNNER), "--suvat", "s=25,v=0,a=-10,target=t"], "t = 2.24 s"),
     ([str(RUNNER), "--suvat", "s=45,v=20,a=5,target=t"], "t = (no positive root)"),
+    ([str(RUNNER), "--suvat", "u=5,a=3,t=4,target=v"], "Answer: 17"),
+    ([str(RUNNER), "--suvat", "u=4,v=16,t=3,target=a"], "Answer: 4"),
 ]
 
 

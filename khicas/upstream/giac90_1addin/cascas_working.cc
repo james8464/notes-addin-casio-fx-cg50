@@ -2786,6 +2786,73 @@ static bool try_suvat(const char *input,working_string &out){
       out += "t = (no positive root)";
     return true;
   }
+  if (target=="v" && hu && ha && ht){
+    double ans=u+a*t;
+    out += "v = u + at\n";
+    out += "v = ";
+    out += format_real(u);
+    out += " + ";
+    out += format_real(a);
+    out += "*";
+    out += format_real(t);
+    out += "\nAnswer: ";
+    out += format_real(ans);
+    return true;
+  }
+  if (target=="v" && hu && ha && hs){
+    double inside=u*u+2*a*s;
+    out += "v^2 = u^2 + 2as\n";
+    out += "v^2 = ";
+    out += format_real(u);
+    out += "^2 + 2*";
+    out += format_real(a);
+    out += "*";
+    out += format_real(s);
+    out += " = ";
+    out += format_real(inside);
+    out += "\n";
+    if (inside<0){
+      out += "v = no real value";
+      return true;
+    }
+    out += "v = sqrt(";
+    out += format_real(inside);
+    out += ") or -sqrt(";
+    out += format_real(inside);
+    out += ")";
+    return true;
+  }
+  if (target=="a" && hu && hv && ht){
+    if (fabs(t)<1e-10){
+      out += "Error: t = 0 gives division by zero";
+      return true;
+    }
+    double ans=(v-u)/t;
+    out += "v = u + at\n";
+    out += "a = (v-u)/t\n";
+    out += "a = (";
+    out += format_real(v);
+    out += " - ";
+    out += format_real(u);
+    out += ")/";
+    out += format_real(t);
+    out += "\nAnswer: ";
+    out += format_real(ans);
+    return true;
+  }
+  if (target=="s" && hu && hv && ht){
+    double ans=(u+v)*t/2;
+    out += "s = (u+v)t/2\n";
+    out += "s = (";
+    out += format_real(u);
+    out += " + ";
+    out += format_real(v);
+    out += ")*";
+    out += format_real(t);
+    out += "/2\nAnswer: ";
+    out += format_real(ans);
+    return true;
+  }
   if (target=="s" && hu && ha && ht){
     double ans=u*t+.5*a*t*t;
     out += "s = u*t + 1/2*a*t^2\n";
