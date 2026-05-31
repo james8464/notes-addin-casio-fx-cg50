@@ -2223,6 +2223,32 @@ static bool try_integral(const char *input,working_string &out){
     out += "Answer: tan(x) + C";
     return true;
   }
+  if (expr=="xexp(x)"){
+    out="Integrate by parts:\n";
+    out += "Use integration by parts: int(u*v') dx = u*v - int(v*u') dx\n";
+    out += "Let u=x, v'=e^x\n";
+    out += "Then u'=1 and v=e^x\n";
+    out += "int(x*e^x) dx = x*e^x - int(e^x) dx\n";
+    out += "Answer: x*e^x - e^x + C";
+    return true;
+  }
+  if (expr=="xcos(x)"){
+    out="Integrate by parts:\n";
+    out += "Use integration by parts: int(u*v') dx = u*v - int(v*u') dx\n";
+    out += "Let u=x, v'=cos(x)\n";
+    out += "Then u'=1 and v=sin(x)\n";
+    out += "int(x*cos(x)) dx = x*sin(x) - int(sin(x)) dx\n";
+    out += "Answer: x*sin(x) + cos(x) + C";
+    return true;
+  }
+  if (expr=="2xcos(x^2)"){
+    out="Integrate by substitution:\n";
+    out += "Substitute u = x^2\n";
+    out += "du/dx = 2*x, so du = 2*x dx\n";
+    out += "int(2*x*cos(x^2)) dx = int(cos(u)) du\n";
+    out += "Answer: sin(x^2) + C";
+    return true;
+  }
   working_string k,arg,pre;
   if (parse_trig_kx(expr,"exp","",k,arg)){
     pre=reciprocal_prefix(k);

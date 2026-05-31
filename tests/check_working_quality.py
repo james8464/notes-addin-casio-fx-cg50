@@ -73,6 +73,26 @@ QUALITY_CASES = [
         ],
     ),
     (
+        "integrate(x*exp(x),x)",
+        6,
+        [
+            "Use integration by parts",
+            "Let u=x, v'=e^x",
+            "int(x*e^x) dx = x*e^x - int(e^x) dx",
+            "Answer: x*e^x - e^x + C",
+        ],
+    ),
+    (
+        "integrate(2*x*cos(x^2),x)",
+        5,
+        [
+            "Substitute u = x^2",
+            "du/dx = 2*x",
+            "int(2*x*cos(x^2)) dx = int(cos(u)) du",
+            "Answer: sin(x^2) + C",
+        ],
+    ),
+    (
         "integrate(sin(x),x,0,pi)",
         5,
         [
