@@ -1,6 +1,6 @@
 # CasioCAS Project Graph
 
-Last updated: 2026-05-31 04:34 Europe/London
+Last updated: 2026-05-31 04:42 Europe/London
 
 ## Build
 
@@ -34,11 +34,10 @@ graph TD
   Giac --> Answer["exact answer"]
   Guard --> CalcWork["calculator working hooks"]
   HostIn["tests/run_exact_queue.py"] --> HostWrap["tools/khicas_host_runner"]
+  HostWrap --> HostGuard["host removed-feature guard"]
   HostWrap --> Shared
-  HostWrap --> HostWork["old host fallback"]
   Answer --> CalcWork
   CalcWork --> Console["calculator output"]
-  HostWork --> Exact["golden exact queue"]
 ```
 
 ## Current V1
@@ -69,7 +68,8 @@ graph TD
   Direct --> RationalSurd["targeted rational/surd differentiation solve routes"]
   Direct --> ExamExact["direct exam queue routes: sequences, geometry, trig identity, partial fractions, binomial, exponential models"]
   Suvat --> KeySuvat["key-value u/t roots"]
-  Host["old host working engine"] --> Queue["200/200 golden host checks"]
+  Host["thin same-source host wrapper"] --> Queue["200/200 exact queue host checks"]
+  Host --> DeletedHost["old host-only working_engine/src deleted"]
   QueueTests["exact queue file"] --> SameSource["200/200 direct no-fallback calculator-source coverage"]
   RemovedFallback["generated golden fallback source removed"] --> SameSource
   Session["save/load/session files"] --> Disabled["no-op, in-memory only"]
@@ -165,8 +165,9 @@ graph LR
   Queue["golden queue"] --> QueueRun["200/200 host ok"]
   Queue --> GoldenRun["200/200 direct calculator-source ok"]
   Queue --> NoGolden["200/200 without generated golden fallback"]
-  Shared["shared working"] --> SharedRun["200/200 host+calculator adapter ok"]
+  Shared["shared working"] --> SharedRun["200/200 thin host+calculator adapter ok"]
   Shared --> CoreRun["197/197 core routes without golden fallback ok"]
+  Shared --> NoHostSrc["old host-only source deleted"]
   Obj["object prune"] --> QR["qrcodegen.o link-safe removed"]
   Macro["source stubs"] --> Stubbed["plot/list/stats/special/ODE/file IO/linalg/transform helpers blocked"]
   Static["lexer prune"] --> StaticRun["distribution/denom/transform static names neutralized"]

@@ -8,7 +8,7 @@ LOCK="${BUILD}/.build.lock"
 
 needs_build() {
   [[ ! -x "${BIN}" ]] && return 0
-  find "${ROOT}/tools/working_engine/host" "${ROOT}/tools/working_engine/src" "${ROOT}/khicas/upstream/giac90_1addin/cascas_working.cc" "${ROOT}/khicas/upstream/giac90_1addin/cascas_working.h" -type f -newer "${BIN}" -print -quit | grep -q .
+  find "${ROOT}/tools/working_engine/host" "${ROOT}/khicas/upstream/giac90_1addin/cascas_working.cc" "${ROOT}/khicas/upstream/giac90_1addin/cascas_working.h" -type f -newer "${BIN}" -print -quit | grep -q .
 }
 
 if needs_build; then
