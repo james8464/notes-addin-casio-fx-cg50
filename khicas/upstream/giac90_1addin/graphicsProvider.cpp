@@ -5,7 +5,9 @@
 #include <fxcg/misc.h>
 #include <fxcg/app.h>
 #include <fxcg/serial.h>
+extern "C" {
 #include <fxcg/rtc.h>
+}
 #include <fxcg/heap.h>
 #include <string.h>
 #include <stdio.h>
@@ -398,6 +400,14 @@ void drawCasioCasBorder(){
   DirectDrawRectangle(0, 0, 5, 223, kCasioCasPink);
   DirectDrawRectangle(390, 0, 395, 223, kCasioCasPink);
   DirectDrawRectangle(0, 217, 395, 223, kCasioCasPink);
+}
+
+void drawRecordingIndicator(){
+  int x=368, y=3;
+  int on=(RTC_GetTicks()&64)==0;
+  DirectDrawRectangle(366,2,378,18,on?COLOR_BLUE:COLOR_WHITE);
+  if (on)
+    PrintMini(&x,&y,(char *)"R",0,0xffffffff,0,0,COLOR_WHITE,COLOR_BLUE,1,0);
 }
 
 //Uses the Bresenham line algorithm 

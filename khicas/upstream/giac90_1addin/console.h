@@ -15,6 +15,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define KEY_CTRL_F1F6 30119
+
 ustl::string help_insert(const char * cmdline,int & back,bool warn);
 
 #define MAX_FILENAME_SIZE 270
@@ -116,6 +118,7 @@ int Console_Init(void);
 int Console_Disp(void);
 int Console_FMenu(int key);
 extern char menu_f1[8],menu_f2[8],menu_f3[8],menu_f4[8],menu_f5[8],menu_f6[8];
+extern int cas_alt_fkeys;
 const char * console_menu(int key,unsigned char* cfg,int active_app);
 const char * console_menu(int key,int active_app);
 void Console_FMenu_Init(void);

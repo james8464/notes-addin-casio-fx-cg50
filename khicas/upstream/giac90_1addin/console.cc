@@ -57,11 +57,12 @@ int dconsole_mode=1; // 0 disables dConsole commands
 #define Current_Col (Line[Cursor.y + Start_Line].start_col + Cursor.x)
 
 char xcas_status[64];
+int cas_alt_fkeys=0;
 
 void set_xcas_status(){
   ustl::string status;
   status += xthetat?"t ":"x ";
-  status += giac::python_compat(contextptr)?(giac::python_compat(contextptr)==2?" Python ^=xor ":" Python ^=** "):" Xcas ";
+  status += giac::python_compat(contextptr)?(giac::python_compat(contextptr)==2?" Py xor ":" Py ** "):" CAS ";
   status += giac::angle_radian(contextptr)?"RAD ":"DEG ";
   if (strlen(session_filename)<=24)
     status += ustl::string(session_filename);
@@ -78,11 +79,12 @@ void set_xcas_status(){
   strcpy(xcas_status,status.c_str());
   DefineStatusMessage(xcas_status, 1, 0, 0);
   DisplayStatusArea();
+  drawRecordingIndicator();
 }
 
 void menu_setup(){
   Menu smallmenu;
-  smallmenu.numitems=7;
+  smallmenu.numitems=5;
   MenuItem smallmenuitems[smallmenu.numitems];
   smallmenu.items=smallmenuitems;
   smallmenu.height=8;
@@ -97,9 +99,7 @@ void menu_setup(){
   smallmenuitems[2].text = (char*)"Radians";
   smallmenuitems[3].type = MENUITEM_CHECKBOX;
   smallmenuitems[3].text = (char*)"Sqrt";
-  smallmenuitems[4].text = (char *) (lang?"Raccourcis":"Shortcuts");
-  smallmenuitems[5].text = (char*) (lang?"A propos":"About");
-  smallmenuitems[6].text = (char*) "Quit";
+  smallmenuitems[4].text = (char*) "Quit";
   // smallmenuitems[2].text = (char*)(isRecording ? "Stop Recording" : "Record Script");
   while(1) {
     smallmenuitems[0].value = xthetat;
@@ -110,7 +110,7 @@ void menu_setup(){
     if (sres==MENU_RETURN_EXIT)
       break;
     if (sres == MENU_RETURN_SELECTION) {
-      if (smallmenu.selection == 7)
+      if (smallmenu.selection == 5)
 	break;
       if (smallmenu.selection == 1){
 	xthetat=1-xthetat;
@@ -132,15 +132,6 @@ void menu_setup(){
 	giac::withsqrt(!giac::withsqrt(contextptr),contextptr);
 	continue;
       }
-      if(smallmenu.selection >= 5) {
-	textArea text;
-	text.editable=false;
-	text.clipline=-1;
-	text.title = smallmenuitems[smallmenu.selection-1].text;
-	add(&text,smallmenu.selection==5?shortcuts_string:apropos_string);
-	doTextArea(&text);
-	continue;
-      } 
     }	
   }      
 }
@@ -1877,6 +1868,11 @@ int Console_GetKey(){
   for (;;){
     int keyflag = GetSetupSetting(0x14);
     ck_getkey(&key);
+    if (key==KEY_CTRL_F1F6){
+      cas_alt_fkeys=!cas_alt_fkeys;
+      Console_Disp();
+      continue;
+    }
     bool alph=oldalphastate;//keyflag==4||keyflag==0x84||keyflag==8||keyflag==0x88;
     // if (key==30006) OS_InnerWait_ms(1000); // key='6';
     translate_fkey(key);
@@ -1967,7 +1963,7 @@ int Console_GetKey(){
     if (key==KEY_CTRL_F6){
 #if 1
       Menu smallmenu;
-      smallmenu.numitems=15;
+      smallmenu.numitems=13;
       MenuItem smallmenuitems[smallmenu.numitems];
       
       smallmenu.items=smallmenuitems;
@@ -1988,8 +1984,6 @@ int Console_GetKey(){
       smallmenuitems[10].text = (char*)(lang?"Editer matrice":"Matrix editor");
       smallmenuitems[11].text = (char*)"Parameter";
       smallmenuitems[12].text = (char*)"Config shift-SETUP";
-      smallmenuitems[13].text = (char *) (lang?"Raccourcis":"Shortcuts");
-      smallmenuitems[14].text = (char*) (lang?"A propos":"About");
       // smallmenuitems[2].text = (char*)(isRecording ? "Stop Recording" : "Record Script");
       while(1) {
         int sres = doMenu(&smallmenu);
@@ -2175,15 +2169,6 @@ int Console_GetKey(){
 	    menu_setup();
 	    continue;
 	  }
-	  if(smallmenu.selection >= 14) {
-	    textArea text;
-	    text.editable=false;
-	    text.clipline=-1;
-	    text.title = smallmenuitems[smallmenu.selection-1].text;
-	    add(&text,smallmenu.selection==14?shortcuts_string:apropos_string);
-	    doTextArea(&text);
-	    continue;
-          } 
         }
         break;
       } // end while(1)
@@ -2980,17 +2965,20 @@ int Console_Disp()
   } // end loop on all lines
 
 
-  string menu(" ");
-  menu += string(menu_f1);
-  while (menu.size()<6)
-    menu += " ";
-  menu += "| ";
-  menu += string(menu_f2);
-  while (menu.size()<13)
-    menu += " ";
-  menu += lang?"| voir | cmds | A<>a | Fich.":"| view | cmds | A<>a | File ";
-  //drawRectangle(0,174,LCD_WIDTH_PX,24,COLOR_BLACK);
-  PrintMini(0,58,menu.c_str(),4);
+  if (cas_alt_fkeys)
+    PrintMini(0,58," JUMP |DELETE|MAT/VCT| MATH |       |       ",4);
+  else {
+    string menu(" ");
+    menu += string(menu_f1);
+    while (menu.size()<6)
+      menu += " ";
+    menu += "| ";
+    menu += string(menu_f2);
+    while (menu.size()<13)
+      menu += " ";
+    menu += lang?"| voir | cmds | A<>a | Fich.":"| view | cmds | A<>a | File ";
+    PrintMini(0,58,menu.c_str(),4);
+  }
 
   // status, clock, 
   set_xcas_status();

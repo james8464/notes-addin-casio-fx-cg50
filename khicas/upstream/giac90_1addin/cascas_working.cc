@@ -797,7 +797,7 @@ static bool try_implicit_diff(const char *input,working_string &out){
   if (v!="x")
     return false;
   if (e=="(x^2)tan(y)=9" || e=="x^2tan(y)=9"){
-    out="Implicit differentiation:\n"
+    out="Implicit diff:\n"
         "x^2*tan(y)=9\n"
         "2*x*tan(y)+x^2*sec(y)^2*(dy/dx)=0\n"
         "x^2*sec(y)^2*(dy/dx)=-2*x*tan(y)\n"
@@ -843,12 +843,12 @@ static bool try_diff(const char *input,working_string &out){
     return true;
   }
   if (e=="x^2+4x+1"){
-    out="Differentiate term by term:\n"
+    out="Diff terms:\n"
         "Answer: 2*x + 4";
     return true;
   }
   if (e=="x^3-10x+2"){
-    out="Differentiate term by term:\n"
+    out="Diff terms:\n"
         "Answer: 3*x^2 - 10";
     return true;
   }
@@ -901,7 +901,7 @@ static bool try_integral(const char *input,working_string &out){
       if (dv=="x" && de=="sin(2x)" && da=="0" && db=="pi/2"){
         out="Definite integral:\n"
             "integral(sin(2*x)) dx=-1/2*cos(2*x)\n"
-            "Evaluate from 0 to pi/2:\n"
+            "Evaluate 0 to pi/2:\n"
             "[-1/2*cos(2*x)]_0^(pi/2)=1\n"
             "Answer: 1";
         return true;
@@ -909,8 +909,8 @@ static bool try_integral(const char *input,working_string &out){
       if (dv=="x" && de=="9/(2x+1)^2" && da=="0" && db=="1"){
         out="Definite integral:\n"
             "Write 9/(2*x+1)^2 as 9*(2*x+1)^-2\n"
-            "Antiderivative is -9/(2*(2*x+1))\n"
-            "Evaluate from 0 to 1: -9/6 - (-9/2)=3\n"
+            "Antiderivative: -9/(2*(2*x+1))\n"
+            "Evaluate 0 to 1: -9/6 - (-9/2)=3\n"
             "Answer: 3";
         return true;
       }
@@ -960,15 +960,15 @@ static bool try_integral(const char *input,working_string &out){
   }
   working_string trig_exp_answer;
   if (integrate_trig_exp_sum(args[0],trig_exp_answer) && !force_parts && !force_sub){
-    out="Integrate term by term:\n"
-        "Use sin/cos/exp reverse chain rules\n"
+    out="Integrate:\n"
+        "Use reverse chain rules\n"
         "Answer: ";
     out += trig_exp_answer;
     out += " + C";
     return true;
   }
   if (e=="9-9/x^2"){
-    out="Integrate term by term:\n"
+    out="Integrate:\n"
         "Answer: 9*x^-1 + 9*x + C";
     return true;
   }
@@ -992,7 +992,7 @@ static bool try_integral(const char *input,working_string &out){
     return true;
   }
   if (e=="9x"){
-    out="Integrate term by term:\n"
+    out="Integrate:\n"
         "9*(x^2/2)+C\n"
         "Answer: (9*x^2)/2 + C";
     return true;
@@ -1060,7 +1060,7 @@ static bool try_integral(const char *input,working_string &out){
     return true;
   }
   if (e=="xexp(x)" || e=="xe^x"){
-    out="Integrate by parts:\n"
+    out="By parts:\n"
         "Let u=x, dv=e^x dx\n"
         "du=dx, v=e^x\n"
         "integral(x*e^x) dx=x*e^x-integral(e^x) dx\n"
@@ -1069,7 +1069,7 @@ static bool try_integral(const char *input,working_string &out){
     return true;
   }
   if (e=="x^2exp(x)" || e=="x^2e^x"){
-    out="Use repeated integration by parts:\n"
+    out="Repeated by parts:\n"
         "I=integral(x^2*e^x) dx\n"
         "I=x^2*e^x-2*integral(x*e^x) dx\n"
         "integral(x*e^x) dx=e^x*(x-1)\n"
@@ -1077,21 +1077,21 @@ static bool try_integral(const char *input,working_string &out){
     return true;
   }
   if (e=="xsin(x)"){
-    out="Integrate by parts:\n"
+    out="By parts:\n"
         "Let u=x, dv=sin(x) dx\n"
         "du=dx, v=-cos(x)\n"
         "Answer: -x*cos(x) + sin(x) + C";
     return true;
   }
   if (e=="xcos(x)"){
-    out="Integrate by parts:\n"
+    out="By parts:\n"
         "Let u=x, dv=cos(x) dx\n"
         "du=dx, v=sin(x)\n"
         "Answer: x*sin(x)+cos(x)+C";
     return true;
   }
   if (contains(e,"dy/dx") || contains(e,"(dy)/(dx)")){
-    out="Differential equation:\nSeparate variables, integrate both sides.";
+    out="DE:\nSeparate variables, integrate both sides.";
     return true;
   }
   if (e=="x^2"){
@@ -1151,13 +1151,13 @@ static bool try_solve(const char *input,working_string &out){
   working_string ceq=compact(args[0]);
   working_string var=n>=2?compact(args[1]):"x";
   if ((ceq=="dn/dt=kn" || ceq=="dn/dt=k*n") && var=="n"){
-    out="Differential equation:\n"
+    out="DE:\n"
         "(1/n)dn=k dt\nln(abs(n))=k*t+C\n"
         "Answer: n = A*e^(k*t)";
     return true;
   }
   if (contains(eq,"dy/dx") || contains(eq,"(dy)/(dx)")){
-    out="Differential equation:\n";
+    out="DE:\n";
     if (contains(eq,"=y") && !contains(eq,"*")){
       out += "(1/y)dy=dx\nln(abs(y))=x+C\n"
              "Answer: y=A*e^x";
