@@ -7701,7 +7701,7 @@ static define_unary_function_eval (__os_version,&_os_version,_os_version_s);
   int step_param_(const gen & f,const gen & g,const gen & t,gen & tmin,gen&tmax,vecteur & poi,vecteur & tvi,bool printtvi,bool exactlegende,GIAC_CONTEXT){
     if (t.type!=_IDNT)
       return 0;
-    gprintf(gettext("====================\nParametric plot (%gen,%gen), variable %gen"),makevecteur(f,g,t),1,contextptr);
+    gprintf(gettext("_rmh65"),makevecteur(f,g,t),1,contextptr);
     gen periodef,periodeg,periode;
     if (is_periodic(f,t,periodef,contextptr) && is_periodic(g,t,periodeg,contextptr)){
       periode=gcd(periodef,periodeg,contextptr);
@@ -8259,7 +8259,7 @@ static define_unary_function_eval (__os_version,&_os_version,_os_version_s);
   int step_param(const gen & f,const gen & g,const gen & t,gen & tmin,gen&tmax,vecteur & poi,vecteur & tvi,bool printtvi,bool exactlegende,GIAC_CONTEXT){
     bool c=complex_mode(contextptr); int st=step_infolevel(contextptr),s=0;
     if (t==x__IDNT_e || t==y__IDNT_e)
-      *logptr(contextptr) << gettext("Warning, using x or y as variable in parametric plot may lead to confusion!") << '\n';
+      *logptr(contextptr) << gettext("Unsupported plot feature") << '\n';
     step_infolevel(0,contextptr);
 #ifdef NO_STDEXCEPT
     s=step_param_(f,g,t,tmin,tmax,poi,tvi,printtvi,exactlegende,contextptr);
@@ -8302,7 +8302,7 @@ static define_unary_function_eval (__os_version,&_os_version,_os_version_s);
     if (x.type!=_IDNT)
       return 0;
     if (do_inflex_tabsign!=2) 
-      gprintf(gettext("====================\nFunction plot %gen, variable %gen"),makevecteur(f,x),1,contextptr);
+      gprintf(gettext("_rmh64"),makevecteur(f,x),1,contextptr);
     if (is_periodic(f,x,periode,contextptr)){
       gprintf(gettext("Periodic function T=%gen"),vecteur(1,periode),1,contextptr);
       if (is_strictly_greater(xmax-xmin,periode,contextptr)){

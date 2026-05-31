@@ -7488,7 +7488,7 @@ void Graph2d::tracemode_set(int operation){
 	if (choix==9){ // Curves
 	  const char *
 	    tab[]={
-		   lang==1?"Fonction plot(sin(x))":"Function plot(sin(x))",
+		   lang==1?"_rmh64":"_rmh64",
 		   lang==1?"Param. plotparam([x^2,x^3])":"Param. plotparam([x^2,x^3])",
 		   lang==1?"Polaire plotpolar(x)":"Polar plotpolar(x)",
 		   lang==1?"Implicit plot(x^2+y^4=6)":"Implicit plot(x^2+y^4=6)",
