@@ -317,7 +317,7 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
   {"texpand(expr)", 0, "Developpe les fonctions trigonometriques, exp et ln.","sin(3x)", "ln(x*y)", CAT_CATEGORY_TRIG},
   {"time(cmd)", 0, "Temps pour effectuer une commande ou mise a l'heure de horloge","int(1/(x^4+1),x)","8,0", CAT_CATEGORY_PROG},
   {"tlin(expr)", 0, "Linearisation trigonometrique de l'expression.","sin(x)^3", 0, CAT_CATEGORY_TRIG},
-  {"trace(A)", 0, "Trace de la matrice A.", "[[1,2],[3,4]]", 0, CAT_CATEGORY_MATRIX},
+  {"_rmh61(A)", 0, "Trace de la matrice A.", "[[1,2],[3,4]]", 0, CAT_CATEGORY_MATRIX},
   {"tran(A)", 0, "Transposee de la matrice A. Pour la transconjuguee utiliser trn(A) ou A^*.", "[[1,2],[3,4]]", 0, CAT_CATEGORY_MATRIX|  (CAT_CATEGORY_LINALG<<8)},
     {"translation(vect,obj)", 0, "Translation par vect de obj", "[1,2],cercle(0,1)", 0, CAT_CATEGORY_2D },
     {"triangle(A,B,C)", 0, "Triangle donne par 3 sommets", "1+i,1-i,-1", "A,B,C", CAT_CATEGORY_2D},
