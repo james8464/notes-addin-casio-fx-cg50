@@ -58,6 +58,8 @@ CASES = [
     ("solve(50*q+60=210,q)", "Answer: q = [3]"),
     ("solve(3*x+60=90,x)", "Answer: x = [10]"),
     ("solve(3*x+60=330,x)", "Answer: x = [90]"),
+    ("solve(7*z-2=19,z)", "Answer: z = [3]"),
+    ("solve(2*x+1=5*x-8,x)", "Answer: x = [3]"),
     ("solve(10=12+3*sin(pi*t/6),t)", "t = 7.39367716319 + n*12 or 10.6063228368 + n*12"),
     ("range(x^2+4*x+7)", "y >= 3"),
     ("range(x/(x^2+4),x)", "1 - 16*y^2 >= 0"),

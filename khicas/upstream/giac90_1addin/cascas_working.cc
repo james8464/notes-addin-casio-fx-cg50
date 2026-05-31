@@ -430,6 +430,159 @@ static bool parse_linear(const working_string &expr,double &m,double &c){
   return true;
 }
 
+struct rat {
+  long long n,d;
+};
+
+static long long iabsll(long long x){ return x<0?-x:x; }
+
+static long long igcdll(long long a,long long b){
+  a=iabsll(a); b=iabsll(b);
+  while (b){ long long t=a%b; a=b; b=t; }
+  return a?a:1;
+}
+
+static rat norm_rat(long long n,long long d){
+  if (d<0){ n=-n; d=-d; }
+  long long g=igcdll(n,d);
+  rat r={n/g,d/g};
+  return r;
+}
+
+static rat add_rat(rat a,rat b){ return norm_rat(a.n*b.d+b.n*a.d,a.d*b.d); }
+static rat sub_rat(rat a,rat b){ return norm_rat(a.n*b.d-b.n*a.d,a.d*b.d); }
+static rat div_rat(rat a,rat b){ return norm_rat(a.n*b.d,a.d*b.n); }
+static rat abs_rat(rat a){ if (a.n<0) a.n=-a.n; return a; }
+
+static bool parse_int64(const working_string &s,long long &v){
+  if (s.empty()) return false;
+  int i=0,sgn=1;
+  if (s[i]=='+') ++i;
+  else if (s[i]=='-'){ sgn=-1; ++i; }
+  if (i>=int(s.size())) return false;
+  long long out=0;
+  for (;i<int(s.size());++i){
+    if (!isdigit((unsigned char)s[i])) return false;
+    out=out*10+(s[i]-'0');
+  }
+  v=sgn*out;
+  return true;
+}
+
+static bool parse_rat(const working_string &s,rat &r){
+  working_string t=compact_ascii(s);
+  int slash=t.find('/');
+  long long n,d=1;
+  if (slash>=0){
+    if (!parse_int64(t.substr(0,slash),n) || !parse_int64(t.substr(slash+1),d) || d==0)
+      return false;
+  }
+  else if (!parse_int64(t,n))
+    return false;
+  r=norm_rat(n,d);
+  return true;
+}
+
+static working_string fmt_rat(rat r){
+  r=norm_rat(r.n,r.d);
+  char buf[64];
+  if (r.d==1)
+    sprintf(buf,"%lld",r.n);
+  else
+    sprintf(buf,"%lld/%lld",r.n,r.d);
+  return buf;
+}
+
+static bool parse_affine_rat(const working_string &expr,const working_string &var,rat &m,rat &c){
+  working_string s=compact_ascii(expr),v=compact_ascii(var);
+  m=norm_rat(0,1); c=norm_rat(0,1);
+  if (s.find('(')!=working_string::npos || s.find(')')!=working_string::npos)
+    return false;
+  int start=0;
+  for (int i=1;i<=int(s.size());++i){
+    if (i<int(s.size()) && s[i]!='+' && s[i]!='-')
+      continue;
+    working_string t=s.substr(start,i-start);
+    start=i;
+    if (t.empty()) continue;
+    int sign=1;
+    if (t[0]=='+') t=t.substr(1);
+    else if (t[0]=='-'){ sign=-1; t=t.substr(1); }
+    int p=t.find(v);
+    rat q;
+    if (p<0){
+      if (!parse_rat(t,q)) return false;
+      if (sign<0) q.n=-q.n;
+      c=add_rat(c,q);
+      continue;
+    }
+    if (t.find(v,p+v.size())!=working_string::npos)
+      return false;
+    working_string coeff=t.substr(0,p);
+    working_string rest=t.substr(p+v.size());
+    if (!rest.empty()) return false;
+    if (coeff.empty())
+      q=norm_rat(1,1);
+    else if (!parse_rat(coeff,q))
+      return false;
+    if (sign<0) q.n=-q.n;
+    m=add_rat(m,q);
+  }
+  return true;
+}
+
+static void append_linear_zero(working_string &out,rat m,rat c,const working_string &var){
+  out += fmt_rat(abs_rat(m));
+  out += "*";
+  out += var;
+  if (c.n<0)
+    out += " - ";
+  else
+    out += " + ";
+  out += fmt_rat(abs_rat(c));
+  out += " = 0";
+}
+
+static bool try_affine_solve(const working_string &eq,const working_string &display_eq,const working_string &var,const working_string &display_var,working_string &out){
+  int pos=find_top_equal(eq);
+  if (pos<0 || var.empty())
+    return false;
+  rat ml,cl,mr,cr;
+  if (!parse_affine_rat(eq.substr(0,pos),var,ml,cl) ||
+      !parse_affine_rat(eq.substr(pos+1),var,mr,cr))
+    return false;
+  rat m=sub_rat(ml,mr);
+  if (m.n==0)
+    return false;
+  rat rhs=sub_rat(cr,cl);
+  rat zero_c=sub_rat(cl,cr);
+  rat ans=div_rat(rhs,m);
+  out="Solve: ";
+  out += display_eq.empty()?eq:display_eq;
+  out += "\n";
+  if (m.n<0)
+    out += "- ";
+  append_linear_zero(out,m,zero_c,display_var);
+  out += "\nCollect ";
+  out += display_var;
+  out += " terms: ";
+  out += fmt_rat(m);
+  out += "*";
+  out += display_var;
+  out += " = ";
+  out += fmt_rat(rhs);
+  out += "\n";
+  out += display_var;
+  out += " = ";
+  out += fmt_rat(ans);
+  out += "\nAnswer: ";
+  out += display_var;
+  out += " = [";
+  out += fmt_rat(ans);
+  out += "]";
+  return true;
+}
+
 static bool try_integral(const char *input,working_string &out){
   working_string args[2];
   int count=0;
@@ -529,7 +682,8 @@ static bool try_solve(const char *input,working_string &out){
   if (!parse_call(input,"solve",args,3,count) || count<1)
     return false;
   working_string eq=compact_ascii(args[0]);
-  working_string var=count>=2 && args[1].size()?compact_ascii(args[1]):"x";
+  working_string raw_var=count>=2 && args[1].size()?trim_ascii(args[1]):"x";
+  working_string var=compact_ascii(raw_var);
   working_string cond=count>=3?compact_ascii(args[2]):"";
   if (eq=="10+3k=-2" && var=="k"){
     out="Solve: 10 + 3*k = -2\n";
@@ -778,6 +932,8 @@ static bool try_solve(const char *input,working_string &out){
     out += "Answer: x = -90*n + 25";
     return true;
   }
+  if (cond.empty() && try_affine_solve(eq,args[0],var,raw_var,out))
+    return true;
   return false;
 }
 

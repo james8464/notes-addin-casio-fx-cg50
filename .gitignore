@@ -10,6 +10,7 @@ dump*
 calculator_files/*
 !calculator_files/.gitkeep
 build/
+graphify-out/
 khicas/upstream/giac90_1addin/khicas*
 khicas/upstream/giac90_1addin/emucas*
 khicas/upstream/giac90_1addin/mkhelp
