@@ -583,6 +583,153 @@ static bool try_affine_solve(const working_string &eq,const working_string &disp
   return true;
 }
 
+static working_string compact_arith(const working_string &s){
+  working_string out;
+  for (int i=0;i<int(s.size());++i)
+    if (!isspace((unsigned char)s[i]))
+      out += char(tolower((unsigned char)s[i]));
+  return out;
+}
+
+static bool parse_decimal_rat(const working_string &s,int begin,int end,rat &r){
+  long long whole=0,frac=0,scale=1;
+  bool any=false,seen_dot=false;
+  for (int i=begin;i<end;++i){
+    char c=s[i];
+    if (c=='.'){
+      if (seen_dot) return false;
+      seen_dot=true;
+      continue;
+    }
+    if (!isdigit((unsigned char)c)) return false;
+    any=true;
+    if (seen_dot){
+      frac=frac*10+(c-'0');
+      scale*=10;
+    }
+    else
+      whole=whole*10+(c-'0');
+  }
+  if (!any) return false;
+  r=norm_rat(whole*scale+frac,scale);
+  return true;
+}
+
+static bool pow_rat_int(rat base,long long exp,rat &out){
+  bool neg=exp<0;
+  if (neg) exp=-exp;
+  rat acc=norm_rat(1,1);
+  while (exp){
+    if (exp&1) acc=norm_rat(acc.n*base.n,acc.d*base.d);
+    exp >>= 1;
+    if (exp) base=norm_rat(base.n*base.n,base.d*base.d);
+  }
+  if (neg){
+    if (acc.n==0) return false;
+    acc=norm_rat(acc.d,acc.n);
+  }
+  out=acc;
+  return true;
+}
+
+struct arith_parser {
+  working_string s;
+  int i;
+};
+
+static bool parse_arith_expr(arith_parser &p,rat &out);
+
+static bool parse_arith_primary(arith_parser &p,rat &out){
+  if (p.i>=int(p.s.size())) return false;
+  if (p.s[p.i]=='('){
+    ++p.i;
+    if (!parse_arith_expr(p,out)) return false;
+    if (p.i>=int(p.s.size()) || p.s[p.i]!=')') return false;
+    ++p.i;
+    return true;
+  }
+  int begin=p.i;
+  while (p.i<int(p.s.size()) && (isdigit((unsigned char)p.s[p.i]) || p.s[p.i]=='.'))
+    ++p.i;
+  if (begin==p.i) return false;
+  return parse_decimal_rat(p.s,begin,p.i,out);
+}
+
+static bool parse_arith_unary(arith_parser &p,rat &out){
+  if (p.i<int(p.s.size()) && (p.s[p.i]=='+' || p.s[p.i]=='-')){
+    bool neg=p.s[p.i]=='-';
+    ++p.i;
+    if (!parse_arith_unary(p,out)) return false;
+    if (neg) out.n=-out.n;
+    return true;
+  }
+  return parse_arith_primary(p,out);
+}
+
+static bool parse_arith_power(arith_parser &p,rat &out){
+  if (!parse_arith_unary(p,out)) return false;
+  if (p.i<int(p.s.size()) && p.s[p.i]=='^'){
+    ++p.i;
+    rat exp;
+    if (!parse_arith_unary(p,exp) || exp.d!=1) return false;
+    if (!pow_rat_int(out,exp.n,out)) return false;
+  }
+  return true;
+}
+
+static bool parse_arith_term(arith_parser &p,rat &out){
+  if (!parse_arith_power(p,out)) return false;
+  while (p.i<int(p.s.size()) && (p.s[p.i]=='*' || p.s[p.i]=='/')){
+    char op=p.s[p.i++];
+    rat rhs;
+    if (!parse_arith_power(p,rhs)) return false;
+    if (op=='*')
+      out=norm_rat(out.n*rhs.n,out.d*rhs.d);
+    else {
+      if (rhs.n==0) return false;
+      out=norm_rat(out.n*rhs.d,out.d*rhs.n);
+    }
+  }
+  return true;
+}
+
+static bool parse_arith_expr(arith_parser &p,rat &out){
+  if (!parse_arith_term(p,out)) return false;
+  while (p.i<int(p.s.size()) && (p.s[p.i]=='+' || p.s[p.i]=='-')){
+    char op=p.s[p.i++];
+    rat rhs;
+    if (!parse_arith_term(p,rhs)) return false;
+    out=op=='+'?add_rat(out,rhs):sub_rat(out,rhs);
+  }
+  return true;
+}
+
+static bool eval_arith_rat(const working_string &expr,rat &out){
+  working_string s=compact_arith(expr);
+  if (s.empty()) return false;
+  for (int i=0;i<int(s.size());++i){
+    char c=s[i];
+    if (!(isdigit((unsigned char)c) || c=='.' || c=='+' || c=='-' ||
+	  c=='*' || c=='/' || c=='^' || c=='(' || c==')'))
+      return false;
+  }
+  arith_parser p={s,0};
+  if (!parse_arith_expr(p,out)) return false;
+  return p.i==int(s.size());
+}
+
+static bool try_arith(const char *input,working_string &out){
+  rat r;
+  working_string expr=trim_ascii(input?input:"");
+  if (!eval_arith_rat(expr,r))
+    return false;
+  out="Arithmetic:\n";
+  out += expr;
+  out += " = ";
+  out += fmt_rat(r);
+  return true;
+}
+
 static bool try_integral(const char *input,working_string &out){
   working_string args[2];
   int count=0;
@@ -1397,6 +1544,8 @@ bool eval_with_working(const char *input,working_string &out){
   if (try_vector_working(input,out))
     return true;
   if (try_numeric_working(input,out))
+    return true;
+  if (try_arith(input,out))
     return true;
 #ifndef CASCAS_DISABLE_GOLDEN_QUEUE
   if (try_golden_queue(input,out))

@@ -1,6 +1,6 @@
 # CasioCAS Project Graph
 
-Last updated: 2026-05-31 03:13 Europe/London
+Last updated: 2026-05-31 03:23 Europe/London
 
 ## Build
 
@@ -60,6 +60,7 @@ graph TD
   Direct --> Periodic["periodic trig and sequence solve routes"]
   Direct --> BinomSeries["4-arg binomial series route"]
   Direct --> Affine["generic exact affine solve route"]
+  Direct --> Arith["generic exact rational arithmetic route"]
   Suvat --> KeySuvat["key-value u/t roots"]
   Host["old host working engine"] --> Queue["200/200 golden host checks"]
   Golden["exact queue generator"] --> GoldenInc["cascas_golden_cases.inc"]
@@ -137,6 +138,7 @@ graph TD
   Shared --> CoreNoGolden["tests/check_shared_core_without_golden.py"]
   Queue --> Generator["tools/generate_cascas_golden_cases.py"]
   Generator --> GoldenCoverage["tests/check_golden_shared_coverage.py"]
+  Queue --> NoGoldenAudit["tests/audit_no_golden_queue_coverage.py"]
   UI["g3a bytes"] --> Border["check_calculator_border"]
   Bin["strings CasioCAS.g3a"] --> Leak["removed-term leak scan"]
 ```
@@ -145,7 +147,7 @@ graph TD
 
 ```mermaid
 graph LR
-  Build["./compile exit 0"] --> Size["1,327,071 bytes"]
+  Build["./compile exit 0"] --> Size["1,328,895 bytes"]
   Build --> Meta["metadata ok"]
   Build --> Border["purple border ok"]
   Source["source gates"] --> Catalog["catalog ok"]
@@ -154,8 +156,9 @@ graph LR
   Help["help pack"] --> HelpQ["41 function sheets ok"]
   Queue["golden queue"] --> QueueRun["200/200 host ok"]
   Queue --> GoldenRun["200/200 direct calculator-source ok"]
-  Shared["shared working"] --> SharedRun["102/102 host+calculator adapter ok"]
-  Shared --> CoreRun["99/99 core routes without golden fallback ok"]
+  Queue --> NoGolden["97/200 without generated golden fallback"]
+  Shared["shared working"] --> SharedRun["106/106 host+calculator adapter ok"]
+  Shared --> CoreRun["103/103 core routes without golden fallback ok"]
   Obj["object prune"] --> QR["qrcodegen.o link-safe removed"]
   Macro["source stubs"] --> Stubbed["plot/list/stats/special/ODE/file IO/linalg/transform helpers blocked"]
   Static["lexer prune"] --> StaticRun["distribution/denom/transform static names neutralized"]
