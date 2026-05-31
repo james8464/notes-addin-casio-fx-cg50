@@ -10929,9 +10929,10 @@ namespace giac {
 	return;
       }
       for (int i=0;i<n;++i)
-	res.push_back(rand_interval(*f._SYMBptr->feuille._VECTptr,false,contextptr));
+      res.push_back(rand_interval(*f._SYMBptr->feuille._VECTptr,false,contextptr));
       return;
     }
+#ifndef CASCAS_ALEVEL_ONLY
     if (f==at_uniform || f==at_uniformd){
       for (int i=0;i<n;++i)
 	res.push_back(giac_rand(contextptr)/(rand_max2+1.0));
@@ -11217,6 +11218,7 @@ namespace giac {
       }
       return;     
     }
+#endif
     if (f.is_symb_of_sommet(at_program)){
       for (int i=0;i<n;++i)
 	res.push_back(f(vecteur(0),contextptr));

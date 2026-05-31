@@ -356,6 +356,9 @@ namespace giac {
     return res;
   }
   gen _randchisquare(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     gen g(args);
     if (!is_integral(g) || g.type!=_INT_ || g.val<=0 || g.val>1000)
@@ -374,6 +377,9 @@ namespace giac {
     return randNorm(contextptr)/std::sqrt(randchisquare(k,contextptr)/k);
   }
   gen _randstudent(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     gen g(args);
     if (!is_integral(g) || g.type!=_INT_ || g.val<=0 || g.val>1000)
@@ -391,6 +397,9 @@ namespace giac {
     return randchisquare(k1,contextptr)/k1/(randchisquare(k2,contextptr)/k2);
   }
   gen _randfisher(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     if (args.type!=_VECT || args._VECTptr->size()!=2)
       return gensizeerr(contextptr);
@@ -443,6 +452,9 @@ namespace giac {
     return -std::log(1-u);
   }
   gen _randexp(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     return gen(exp_rand(contextptr))/args;
   }
@@ -671,6 +683,9 @@ namespace giac {
   define_unary_function_ptr5( at_BINOMIAL ,alias_at_BINOMIAL,&__BINOMIAL,0,true);
 
   gen _multinomial(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if (g.type!=_VECT)
       return gensizeerr(contextptr);
@@ -700,6 +715,9 @@ namespace giac {
   define_unary_function_ptr5( at_multinomial ,alias_at_multinomial,&__multinomial,0,true);
 
   gen _randmultinomial(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     if (args.type!=_VECT || args._VECTptr->empty())
       return gensizeerr(contextptr);
@@ -733,6 +751,9 @@ namespace giac {
   define_unary_function_ptr5( at_randmultinomial ,alias_at_randmultinomial,&__randmultinomial,0,true);
 
   gen _negbinomial(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if (g.type!=_VECT)
       return gensizeerr(contextptr);
@@ -757,6 +778,9 @@ namespace giac {
   define_unary_function_ptr5( at_negbinomial ,alias_at_negbinomial,&__negbinomial,0,true);
 
   gen _negbinomial_cdf(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if (g.type!=_VECT)
       return gensizeerr(contextptr);
@@ -777,6 +801,9 @@ namespace giac {
   define_unary_function_ptr5( at_negbinomial_cdf ,alias_at_negbinomial_cdf,&__negbinomial_cdf,0,true);
 
   gen _negbinomial_icdf(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if (g.type!=_VECT)
       return gensizeerr(contextptr);
@@ -1294,6 +1321,9 @@ namespace giac {
     return Gamma(rdiv(n+1,2,contextptr),contextptr)/Gamma(rdiv(n,2,contextptr),contextptr)/sqrt(n*cst_pi,contextptr)*pow((1+pow(x,2)/n),-rdiv(n+1,2,contextptr),contextptr);
   }
   gen _student(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if (g.type!=_VECT){
       if (abs_calc_mode(contextptr)==38)
@@ -1428,6 +1458,9 @@ namespace giac {
     }
   }
   gen _UTPT(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     if (args.type!=_VECT)
       return gensizeerr(contextptr);
@@ -1464,6 +1497,9 @@ namespace giac {
     return UTPT(dof,X1,contextptr)-UTPT(dof,X2,contextptr);
   }
   gen _student_cdf(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if (g.type!=_VECT)
       return gensizeerr(contextptr);
@@ -1505,6 +1541,9 @@ namespace giac {
     return x0;
   }
   gen _student_icdf(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if (g.type!=_VECT)
       return gensizeerr(contextptr);
@@ -1544,6 +1583,9 @@ namespace giac {
     return rdiv(pow(x,n2-1,contextptr)*exp(-x/2,contextptr),Gamma(n2,contextptr)*pow(2,n2,contextptr),contextptr);
   }
   gen _chisquare(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if (g.type!=_VECT){
       if (abs_calc_mode(contextptr)==38)
@@ -1624,6 +1666,9 @@ namespace giac {
       return res;
   }
   gen _UTPC(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     if (args.type!=_VECT)
       return gensizeerr(contextptr);
@@ -1641,6 +1686,9 @@ namespace giac {
     return UTPC(dof,x1,contextptr)-UTPC(dof,x2,contextptr);
   }
   gen _chisquare_cdf(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if (g.type!=_VECT)
       return gensizeerr(contextptr);
@@ -1691,6 +1739,9 @@ namespace giac {
     return newton(1-UTPC(m,x,contextptr)-t,x,x0,NEWTON_DEFAULT_ITERATION,1e-5,1e-12,true,1,0,1,0,.5,contextptr);   
   }
   gen _chisquare_icdf(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if (g.type!=_VECT)
       return gensizeerr(contextptr);
@@ -1727,6 +1778,9 @@ namespace giac {
     return pow(a/b,a/2,contextptr)/Beta(a/2,b/2,contextptr) * pow(x,a/2-1,contextptr) * pow(1+a/b*x,-(a+b)/2,contextptr);
   }
   gen _snedecor(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if (g.type!=_VECT)
       return gensizeerr(contextptr);
@@ -1819,6 +1873,9 @@ namespace giac {
     }
   }
   gen _UTPF(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     if (args.type!=_VECT)
       return gensizeerr(contextptr);
@@ -1848,6 +1905,9 @@ namespace giac {
     return 1-UTPF(ndof,ddof,x,contextptr);
   }
   gen _snedecor_cdf(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if (g.type!=_VECT)
       return gensizeerr(contextptr);
@@ -1904,6 +1964,9 @@ namespace giac {
     return newton(1-UTPF(num,den,x,contextptr)-t,x,x0,NEWTON_DEFAULT_ITERATION,1e-5,1e-12,true,0,1.79769313486e+308,1,0,.5,contextptr);   
   }
   gen _snedecor_icdf(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if (g.type!=_VECT)
       return gensizeerr(contextptr);
@@ -2800,6 +2863,9 @@ namespace giac {
   }
 
   gen _kolmogorovd(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if (g.type==_VECT)
       return apply(g,_kolmogorovd,contextptr);
@@ -2843,10 +2909,16 @@ namespace giac {
   define_unary_function_ptr5( at_kolmogorov_cdf ,alias_at_kolmogorov_cdf,&__kolmogorov_cdf,0,true);
   */
   bool is_discrete_distribution(int nd){
+#ifdef CASCAS_ALEVEL_ONLY
+    return false;
+#endif
     return nd==2 || nd==3 || nd==4 || nd==12;
   }
 
   gen _kolmogorovt(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if (g.type!=_VECT || g._VECTptr->size()<2)
       return gensizeerr(contextptr);
@@ -3011,6 +3083,9 @@ namespace giac {
   }
 
   gen _wilcoxons(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if (args.type!=_VECT || args._VECTptr->size()!=2)
       return gensizeerr(contextptr);
     gen x=args._VECTptr->front(),m=args._VECTptr->back();
@@ -3054,6 +3129,9 @@ namespace giac {
     return q;
   }
   gen _wilcoxonp(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     gen n(args);
     if (n.type==_VECT && n._VECTptr->size()==2){
       gen M(n._VECTptr->front()),N(n._VECTptr->back());
@@ -3075,6 +3153,9 @@ namespace giac {
   // test 2-sided) si W est dans l'intervalle symetrique de borne inferieure
   // le plus grand k tel que wilcoxonp[0]+...+wilcoxonp[k-1]<alpha/2
   gen _wilcoxont(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if (g.type!=_VECT || g._VECTptr->size()<2 || g._VECTptr->size()>4)
       return gensizeerr(contextptr);
@@ -3256,6 +3337,9 @@ namespace giac {
   // or a list of double values (adequation to density only)
   // or a matrix of classes/data (like obtained by classes)
   gen _chisquaret(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if (g.type!=_VECT || g._VECTptr->size()<2)
       return gensizeerr(contextptr);
@@ -3737,6 +3821,9 @@ namespace giac {
     return (ok?1:0);
   }
   gen _normalt(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     return zttest(g,true,contextptr);
   }
   static const char _normalt_s []="normalt";
@@ -3744,6 +3831,9 @@ namespace giac {
   define_unary_function_ptr5( at_normalt ,alias_at_normalt,&__normalt,0,true);
 
   gen _studentt(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     return zttest(g,false,contextptr);
   }
   static const char _studentt_s []="studentt";
@@ -3755,6 +3845,9 @@ namespace giac {
   // 6 fisher, 7 cauchy, 8 weibull, 9 betad, 10 gammad, 11 chisquare
   // 12 geometric, 13 uniformd, 14 exponentiald
   int is_distribution(const gen & args){
+#ifdef CASCAS_ALEVEL_ONLY
+    return 0;
+#endif
     if (args.type==_SYMB && args._SYMBptr->sommet!=at_exp){
       int res=is_distribution(args._SYMBptr->sommet) ;
       if (!res)
@@ -3798,6 +3891,9 @@ namespace giac {
   }
 
   gen distribution(int nd){
+#ifdef CASCAS_ALEVEL_ONLY
+    return undef;
+#endif
     static vecteur * d_static=0;
     if (!d_static)
       d_static=new vecteur(makevecteur(at_normald,at_binomial,at_negbinomial,at_poisson,at_studentd,at_fisherd,at_cauchyd,at_weibulld,at_betad,at_gammad,at_chisquared,at_geometric,at_uniformd,at_exponentiald));
@@ -3807,6 +3903,9 @@ namespace giac {
   }
 
   int distrib_nargs(int nd){
+#ifdef CASCAS_ALEVEL_ONLY
+    return 0;
+#endif
     switch (nd){
     case 4: case 5: case 11: case 12: case 14:
       return 1;
@@ -3820,6 +3919,9 @@ namespace giac {
   }
 
   gen _mgf(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if (g.type==_SYMB){
       vecteur v(gen2vecteur(g._SYMBptr->feuille));
@@ -3859,6 +3961,9 @@ namespace giac {
   define_unary_function_ptr5( at_mgf ,alias_at_mgf,&__mgf,0,true);
 
   gen icdf(int n){
+#ifdef CASCAS_ALEVEL_ONLY
+    return undef;
+#endif
     static vecteur * icdf_static=0;
     if (!icdf_static)
       icdf_static=new vecteur(makevecteur(at_normald_icdf,at_binomial_icdf,undef,at_poisson_icdf,at_studentd_icdf,at_fisherd_icdf,at_cauchyd_icdf,at_weibulld_icdf,at_betad_icdf,at_gammad_icdf,at_chisquared_icdf,at_geometric_icdf,at_uniformd_icdf,at_exponentiald_icdf));
@@ -3868,6 +3973,9 @@ namespace giac {
   }
 
   gen cdf(int n){
+#ifdef CASCAS_ALEVEL_ONLY
+    return undef;
+#endif
     static vecteur * cdf_static=0;
     if (!cdf_static)
       cdf_static=new vecteur(makevecteur(at_normald_cdf,at_binomial_cdf,undef,at_poisson_cdf,at_studentd_cdf,at_fisherd_cdf,at_cauchyd_cdf,at_weibulld_cdf,at_betad_cdf,at_gammad_cdf,at_chisquared_cdf,at_geometric_cdf,at_uniformd_cdf,at_exponentiald_cdf));
@@ -3879,6 +3987,11 @@ namespace giac {
   // set a and b to the boundaries of the support of distrib number nd
   // truncate infinities to 100 if truncate is true
   bool distrib_support(int nd,gen & a,gen &b,bool truncate){
+#ifdef CASCAS_ALEVEL_ONLY
+    a=undef;
+    b=undef;
+    return false;
+#endif
     a=truncate?gnuplot_xmin:minus_inf;
     b=truncate?gnuplot_xmax:plus_inf;
     if (nd==2 || nd==3 || nd==4 || nd==9 || nd==10 || nd==11 || nd==14)
@@ -3895,6 +4008,9 @@ namespace giac {
   }
 
   gen _cdf(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     int nd;
     if (g.type!=_VECT || g._VECTptr->empty())
@@ -4018,6 +4134,9 @@ namespace giac {
   define_unary_function_ptr5( at_cdf ,alias_at_cdf,&__cdf,0,true);
 
   gen _plotcdf(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     vecteur v(makevecteur(g,at_plot));
     if (g.type==_VECT && g.subtype==_SEQ__VECT){
@@ -4035,6 +4154,9 @@ namespace giac {
   define_unary_function_ptr5( at_cdfplot ,alias_at_cdfplot,&__cdfplot,0,true);
 
   gen _icdf(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     int nd;
     if (g.type!=_VECT || g._VECTptr->empty())

@@ -2563,6 +2563,64 @@ static bool cascas_denied_hash(unsigned h){
     case 0xfccd1337u:
     case 0x2ee0698fu:
     case 0xcccb0055u:
+    case 0xf3a20824u:
+    case 0x9e888b98u:
+    case 0xd4cbbf07u:
+    case 0x51295e73u:
+    case 0x64f89bc6u:
+    case 0x503e3086u:
+    case 0x372f4f55u:
+    case 0xd5b7b015u:
+    case 0x0fad7a44u:
+    case 0x198be6b8u:
+    case 0xdd4a6ba7u:
+    case 0xee43b913u:
+    case 0xbda420c0u:
+    case 0x2d5f622cu:
+    case 0x626e3204u:
+    case 0xaf645378u:
+    case 0x46e55a67u:
+    case 0xf8aaffd3u:
+    case 0x1e21273au:
+    case 0xb9edf782u:
+    case 0x67960d89u:
+    case 0xf28765e9u:
+    case 0x1642b069u:
+    case 0xb4423af0u:
+    case 0x05804268u:
+    case 0x0e684b5cu:
+    case 0xe35093bfu:
+    case 0xde375a53u:
+    case 0xe67c786cu:
+    case 0xe02a462fu:
+    case 0x940b5e09u:
+    case 0xebd12f63u:
+    case 0xd1b1e431u:
+    case 0x9450ab6au:
+    case 0xa450c49au:
+    case 0x65cc8d1bu:
+    case 0x66cc8eaeu:
+    case 0x6acc94fau:
+    case 0x262cfcabu:
+    case 0xccee2183u:
+    case 0x81df5ea5u:
+    case 0xcc8d8dedu:
+    case 0x8bd5ceabu:
+    case 0x7d3ff927u:
+    case 0x6eb56479u:
+    case 0x7e8a3329u:
+    case 0x5e7f5371u:
+    case 0xe89516b0u:
+    case 0xe83e3398u:
+    case 0x18ba068bu:
+    case 0x05f85713u:
+    case 0x4810513cu:
+    case 0x144f0c62u:
+    case 0x8dffe37bu:
+    case 0x66bb20b3u:
+    case 0x9a0f9c08u:
+    case 0x5683a798u:
+    case 0xd6b186b8u:
       return true;
     default:
       return false;

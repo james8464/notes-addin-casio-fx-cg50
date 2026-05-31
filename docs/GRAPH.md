@@ -1,6 +1,6 @@
 # CasioCAS Project Graph
 
-Last updated: 2026-05-31 05:43 Europe/London
+Last updated: 2026-05-31 05:58 Europe/London
 
 ## Build
 
@@ -94,13 +94,15 @@ graph TD
   Macro --> RuntimeStubs["random/sample, ODE/field plot, turtle/drawing bodies stubbed"]
   Macro --> TurtleStubs["TURTLETAB table capped to one entry in A-level build"]
   Macro --> Plot3DStubs["3D solids/plot runtime stubbed in zplot3d"]
+  Macro --> DistDispatch["generic cdf/icdf/mgf/distribution dispatch stubbed"]
+  Macro --> RandDist["randvector distribution sampling compiled out"]
   Macro --> More["desolve/fft/file IO/charpoly/pcar/pivot/assume blocked"]
   Macro --> XformPrune["halftan/exp2trig/trig2exp/evalc/q2a/a2q blocked"]
   Remove --> Menu["console catalog/menu/message leaks"]
   Remove --> PyImport["python/numpy/pylab/matplotlib/turtle literals hidden"]
   Lex --> Static["static lexer distro aliases neutralized"]
   Lex --> Hide["concat/extend lexer strings hidden"]
-  Macro --> Dist["normal/poisson/uniform public stats blocked"]
+  Macro --> Dist["normal/poisson/uniform/exponential/student/fisher/chi-square/etc public stats blocked"]
   Macro --> BinomGuard["2-arg binomial coefficient blocked; 4-arg series allowed"]
   Cat --> StatsCat["stats catalog entries removed"]
   Remove --> Help["help/functions"]
@@ -114,6 +116,8 @@ graph TD
   RuntimeStubs --> Gate2
   TurtleStubs --> Gate2
   Plot3DStubs --> Gate2
+  DistDispatch --> Gate2
+  RandDist --> Gate2
   More --> Gate2
   XformPrune --> Gate2
   Menu --> Gate
@@ -161,15 +165,15 @@ graph TD
 
 ```mermaid
 graph LR
-  Build["./compile exit 0"] --> Size["1,299,267 bytes"]
+  Build["./compile exit 0"] --> Size["1,300,323 bytes"]
   Build --> Ram["ram 333,236 bytes"]
-  Build --> R8C2["r8c2 1,735,902 bytes"]
+  Build --> R8C2["r8c2 1,703,846 bytes"]
   Build --> Meta["metadata ok"]
   Build --> Border["purple border ok"]
   Build --> NoRuntimeFallback["generated golden fallback disabled"]
   Build --> NoRuntimeSource["generated golden fallback source removed"]
   Source["source gates"] --> Catalog["catalog ok"]
-  Source --> Removed["185 removed rejected"]
+  Source --> Removed["255 removed rejected"]
   Source --> Session["session disabled"]
   Help["help pack"] --> HelpQ["41 function sheets ok"]
   Queue["golden queue"] --> QueueRun["200/200 host ok"]
@@ -181,7 +185,7 @@ graph LR
   Shared --> NoHostSrc["old host-only source deleted"]
   Obj["object prune"] --> QR["qrcodegen.o link-safe removed"]
   Macro["source stubs"] --> Stubbed["plot/list/stats/special/ODE/file IO/linalg/transform helpers blocked"]
-  Macro --> RuntimeStubbed["random/sample + ODE/field plot + turtle/drawing + 3D plot/solid bodies stubbed"]
+  Macro --> RuntimeStubbed["random/sample + ODE/field plot + turtle/drawing + 3D plot/solid + distribution dispatch bodies stubbed"]
   Static["lexer prune"] --> StaticRun["distribution/denom/transform static names neutralized"]
   Static --> PromptRun["mod/sign/euler/ascii/geometry/3D solids/ode plot/laplace prompt names blocked"]
   Bin["binary scan"] --> NoLeak["no removed-term hits"]
