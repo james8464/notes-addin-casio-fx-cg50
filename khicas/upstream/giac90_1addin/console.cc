@@ -101,7 +101,11 @@ void set_xcas_status(){
 
 void menu_setup(){
   Menu smallmenu;
+#ifdef CASCAS_ALEVEL_ONLY
+  smallmenu.numitems=8;
+#else
   smallmenu.numitems=10;
+#endif
   MenuItem smallmenuitems[smallmenu.numitems];
   smallmenu.items=smallmenuitems;
   smallmenu.height=8;
@@ -118,9 +122,13 @@ void menu_setup(){
   smallmenuitems[3].text = (char*)"Sqrt";
   smallmenuitems[6].type = MENUITEM_CHECKBOX;
   smallmenuitems[6].text = (char*)"Step/step";
+#ifdef CASCAS_ALEVEL_ONLY
+  smallmenuitems[7].text = (char*) "Quit";
+#else
   smallmenuitems[7].text = (char *) (lang?"Raccourcis":"Shortcuts");
   smallmenuitems[8].text = (char*) (lang?"A propos":"About");
   smallmenuitems[9].text = (char*) "Quit";
+#endif
   // smallmenuitems[2].text = (char*)(isRecording ? "Stop Recording" : "Record Script");
   while(1) {
 #ifdef MICROPY_LIB
@@ -235,6 +243,10 @@ void menu_setup(){
 	giac::step_infolevel(!giac::step_infolevel(contextptr),contextptr);
 	continue;
       }
+#ifdef CASCAS_ALEVEL_ONLY
+      if (smallmenu.selection==8)
+	break;
+#else
       if (smallmenu.selection>=8) {
 	textArea text;
 	text.editable=false;
@@ -244,6 +256,7 @@ void menu_setup(){
 	doTextArea(&text);
 	continue;
       } 
+#endif
     }	
   }      
 }
@@ -468,6 +481,12 @@ void invalid_varname(){
 }
 
 void warn_python(int mode,bool autochange){
+#ifdef CASCAS_ALEVEL_ONLY
+  if (mode==0)
+    confirm(autochange?(lang?"Saisie CAS detectee.":"CAS input detected."):(lang?"Syntaxe CAS.":"CAS syntax."),"F1/F6: ok");
+  else
+    confirm(lang?"CAS seulement":"CAS syntax only",lang?"Syntaxe CAS. F1: ok":"Use CAS syntax. F1: ok");
+#else
   if (mode==0)
     confirm(autochange?(lang?"Saisie CAS detectee.":"CAS input detected."):(lang?"Syntaxe CAS.":"CAS syntax."),"F1/F6: ok");
   if (mode==1)
@@ -478,6 +497,7 @@ void warn_python(int mode,bool autochange){
   if (mode==2){
     confirm(lang?"Syntaxe CAS avec ^==xor":"Program syntax removed",lang?"Syntaxe CAS. F1: ok":"Use CAS syntax. F1: ok");
   }
+#endif
 }
 
   const char * input_matrix(const giac::gen &g,giac::gen & ge,GIAC_CONTEXT){
@@ -780,12 +800,14 @@ void save_console_state_smem(const char * filename,bool dispqr){
   char consolebuf[consolesize+4];
   char * consoleptr=consolebuf;
   int pos=1;
+#ifndef CASCAS_ALEVEL_ONLY
   //string qrs=lang?"http://www-fourier.univ-grenoble-alpes.fr/~parisse/xcasfr.html#":"http://www-fourier.univ-grenoble-alpes.fr/~parisse/xcasen.html#";//"https://xcas.univ-grenoble-alpes.fr/xcasjs/#";
   string qrs="https://www-fourier.univ-grenoble-alpes.fr/~parisse/kcasfr.html#";
   if (dispqr){
     qrs += xcas_python_eval==1?"micropy=":"cas=";
     qrs += "0,0,"+replace_html5(script)+'&';
   }
+#endif
   for (int i=start_row;i<=Last_Line;++i){
     console_line & cur=Line[i];
     unsigned short l=strlen((const char *)cur.str);
@@ -800,9 +822,11 @@ void save_console_state_smem(const char * filename,bool dispqr){
       int ypos=(pos/2)*400;
       ++pos;
       if (dispqr){
+#ifndef CASCAS_ALEVEL_ONLY
         string spos=giac::print_INT_(xpos)+","+giac::print_INT_(ypos)+",";
         qrs += xcas_python_eval==1?"micropy=":"cas=";
         qrs += spos+qrsadd+'&';
+#endif
       }
     }
     c=true; // cur.readonly;
@@ -845,8 +869,10 @@ void save_console_state_smem(const char * filename,bool dispqr){
   Bfile_WriteFile_OS(hFile, BUF, sizeof(BUF));
 #endif
   Bfile_CloseFile_OS(hFile);
+#ifndef CASCAS_ALEVEL_ONLY
   if (dispqr)
     QRdisp(qrs.c_str());
+#endif
 }
 
 
@@ -2507,6 +2533,63 @@ int Console_GetKey(){
       return Console_Input((const unsigned char*)buf);
     }
     if (key==KEY_CTRL_F6){
+#ifdef CASCAS_ALEVEL_ONLY
+      Menu smallmenu;
+      smallmenu.numitems=6;
+      MenuItem smallmenuitems[smallmenu.numitems];
+      smallmenu.items=smallmenuitems;
+      smallmenu.height=8;
+      smallmenu.scrollbar=1;
+      smallmenu.scrollout=1;
+      smallmenuitems[0].text = (char *)"Applications";
+      smallmenuitems[1].text = (char *)"Clear history";
+      smallmenuitems[2].text = (char *)"Vectors/List";
+      smallmenuitems[3].text = (char *)"Parameter";
+      smallmenuitems[4].text = (char *)"Config";
+      smallmenuitems[5].text = (char *)"Quit";
+      while(1) {
+        int sres = doMenu(&smallmenu);
+        if(sres == MENU_RETURN_SELECTION) {
+	  if (smallmenu.selection==1){
+	    int res=khicas_addins_menu(contextptr);
+	    if (res==KEY_CTRL_MENU)
+	      return res;
+	    Console_Disp();
+	    break;
+	  }
+	  if(smallmenu.selection == 2) {
+	    chk_restart();
+	    Console_Init();
+	    Console_Clear_EditLine();
+	    break;
+          }
+          if (smallmenu.selection==3){
+	    drawRectangle(0, 0, LCD_WIDTH_PX, LCD_HEIGHT_PX-8, COLOR_WHITE);
+	    const char * ptr=input_matrix(false);
+	    if (ptr)
+	      return Console_Input((const unsigned char *)ptr);
+	    break;
+	  }
+	  if (smallmenu.selection == 4){
+	    static char curname='a';
+	    string s=inputparam(curname,1);
+	    if (!s.empty()){
+	      ++curname;
+	      return Console_Input((const unsigned char *)s.c_str());
+	    }
+	    continue;
+	  }
+	  if (smallmenu.selection == 5){
+	    menu_setup();
+	    continue;
+	  }
+	  break;
+        }
+        break;
+      }
+      Console_Disp();
+      return CONSOLE_SUCCEEDED;
+#else
 #if 1
       Menu smallmenu;
       smallmenu.numitems=18;
@@ -2703,6 +2786,7 @@ int Console_GetKey(){
 	edit_script(filename);
       //edit_script(0);
       return CONSOLE_SUCCEEDED;
+#endif
 #endif
     }
     if ( (key >= KEY_CTRL_F1 && key <= KEY_CTRL_F6) 

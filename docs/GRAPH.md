@@ -1,6 +1,6 @@
 # CasioCAS Project Graph
 
-Last updated: 2026-05-31 07:27 Europe/London
+Last updated: 2026-05-31 07:47 Europe/London
 
 ## Build
 
@@ -67,11 +67,12 @@ graph TD
   Direct --> Targeted["symbolic linear rearrange + 2^linear solve routes"]
   Direct --> RationalSurd["targeted rational/surd differentiation solve routes"]
   Direct --> ExamExact["direct exam queue routes: sequences, geometry, trig identity, partial fractions, binomial, exponential models"]
-  Direct --> Quality["16-case working-quality depth gate across calculus, range, solve, xform, binomial, partfrac, SUVAT"]
+  Direct --> SepDE["separable-DE exponential model solve(dn/dt=k*n,n,t)"]
+  Direct --> Quality["17-case working-quality depth gate across calculus, range, solve, xform, separable DE, binomial, partfrac, SUVAT"]
   Suvat --> KeySuvat["key-value u/t roots"]
-  Host["thin same-source host wrapper"] --> Queue["200/200 exact queue host checks"]
+  Host["thin same-source host wrapper"] --> Queue["201/201 exact queue host checks"]
   Host --> DeletedHost["old host-only working_engine/src deleted"]
-  QueueTests["exact queue file"] --> SameSource["200/200 direct no-fallback calculator-source coverage"]
+  QueueTests["exact queue file"] --> SameSource["201/201 direct no-fallback calculator-source coverage"]
   RemovedFallback["generated golden fallback source removed"] --> SameSource
   Session["save/load/session files"] --> Disabled["no-op, in-memory only"]
   Help["help/functions/*.txt"] --> Pak["CASIOCAS.PAK"]
@@ -100,6 +101,7 @@ graph TD
   Macro --> More["desolve/fft/file IO/charpoly/pcar/pivot/keep_pivot/det options/assume blocked"]
   Macro --> XformPrune["halftan/exp2trig/trig2exp/evalc/q2a/a2q blocked"]
   Remove --> Menu["console catalog/menu/message leaks"]
+  Remove --> SessionMenu["save/load/session/script/about/shortcuts menu strings"]
   Remove --> PlotMsg["plot working/menu message strings hidden"]
   Remove --> PublicStr["program/Xcas/turtle/matplot/random/graphic public strings hidden"]
   Remove --> PyImport["python/numpy/pylab/matplotlib/turtle literals hidden"]
@@ -126,6 +128,7 @@ graph TD
   More --> Gate2
   XformPrune --> Gate2
   Menu --> Gate
+  SessionMenu --> Gate
   PlotMsg --> Gate
   PublicStr --> Gate
   PyImport --> Gate
@@ -173,7 +176,7 @@ graph TD
 
 ```mermaid
 graph LR
-  Build["./compile exit 0"] --> Size["1,300,531 bytes"]
+  Build["./compile exit 0"] --> Size["1,297,399 bytes"]
   Build --> Ram["ram 333,236 bytes"]
   Build --> R8C2["r8c2 1,678,982 bytes"]
   Build --> Meta["metadata ok"]
@@ -184,17 +187,17 @@ graph LR
   Source --> Removed["283 removed rejected"]
   Source --> Session["session disabled"]
   Help["help pack"] --> HelpQ["41 function sheets ok"]
-  Queue["golden queue"] --> QueueRun["200/200 host ok"]
-  Queue --> GoldenRun["200/200 direct calculator-source ok"]
-  Queue --> NoGolden["200/200 without generated golden fallback"]
-  Shared["shared working"] --> SharedRun["200/200 thin host+calculator adapter ok"]
-  Shared --> WorkQ["16/16 working-quality depth cases ok"]
-  Shared --> CoreRun["197/197 core routes without golden fallback ok"]
+  Queue["golden queue"] --> QueueRun["201/201 host ok"]
+  Queue --> GoldenRun["201/201 direct calculator-source ok"]
+  Queue --> NoGolden["201/201 without generated golden fallback"]
+  Shared["shared working"] --> SharedRun["203/203 thin host+calculator adapter ok"]
+  Shared --> WorkQ["17/17 working-quality depth cases ok"]
+  Shared --> CoreRun["200/200 core routes without golden fallback ok"]
   Shared --> NoHostSrc["old host-only source deleted"]
   Obj["object prune"] --> QR["qrcodegen.o link-safe removed"]
   Macro["source stubs"] --> Stubbed["plot/list/stats/special/ODE/file IO/linalg/transform helpers blocked"]
   Macro --> RuntimeStubbed["random/sample + ODE/field plot + turtle/drawing + 3D plot/solid + distribution dispatch + matrix/spectral/JordanBlock public bodies stubbed/blocked"]
-  Static["lexer/help prune"] --> StaticRun["distribution/denom/transform/multinomial/matrix/about/shortcuts/crypto/complex/JordanBlock/keep_pivot/det-option/trace/plot-step/program/Xcas/turtle/matplot/random/graphic names neutralized"]
+  Static["lexer/help prune"] --> StaticRun["distribution/denom/transform/multinomial/matrix/about/shortcuts/session/crypto/complex/JordanBlock/keep_pivot/det-option/trace/plot-step/program/Xcas/turtle/matplot/random/graphic names neutralized"]
   Static --> PromptRun["mod/sign/euler/ascii/geometry/3D solids/ode plot/laplace prompt names blocked"]
-  Bin["binary scan"] --> NoLeak["no removed-term/plot-step hits"]
+  Bin["binary scan"] --> NoLeak["no removed-term/plot-step/session/menu hits"]
 ```

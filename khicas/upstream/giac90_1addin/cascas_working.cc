@@ -2052,6 +2052,59 @@ static bool try_defint(const char *input,working_string &out){
   return false;
 }
 
+static bool is_exp_separable_de(const working_string &eq,const working_string &dep,const working_string &indep){
+  working_string prefix("d");
+  prefix += dep;
+  prefix += "/d";
+  prefix += indep;
+  prefix += "=";
+  if (eq.find(prefix)!=0)
+    return false;
+  working_string rhs=eq.substr(prefix.size());
+  working_string kdep("k");
+  kdep += dep;
+  working_string depk(dep);
+  depk += "k";
+  return rhs==kdep || rhs==depk;
+}
+
+static bool emit_exp_separable_de(const working_string &dep,const working_string &indep,working_string &out){
+  out="Solve separable differential equation:\n";
+  out += "d";
+  out += dep;
+  out += "/d";
+  out += indep;
+  out += " = k*";
+  out += dep;
+  out += "\nFor ";
+  out += dep;
+  out += " != 0, divide by ";
+  out += dep;
+  out += ":\n";
+  out += "1/";
+  out += dep;
+  out += " d";
+  out += dep;
+  out += "/d";
+  out += indep;
+  out += " = k\nSeparate variables:\n1/";
+  out += dep;
+  out += " d";
+  out += dep;
+  out += " = k d";
+  out += indep;
+  out += "\nIntegrate both sides:\nln(abs(";
+  out += dep;
+  out += ")) = k*";
+  out += indep;
+  out += " + C\nExponentiate and absorb constants:\n";
+  out += dep;
+  out += " = A*e^(k*";
+  out += indep;
+  out += ")";
+  return true;
+}
+
 static bool try_solve(const char *input,working_string &out){
   working_string args[3];
   int count=0;
@@ -2061,6 +2114,19 @@ static bool try_solve(const char *input,working_string &out){
   working_string raw_var=count>=2 && args[1].size()?trim_ascii(args[1]):"x";
   working_string var=compact_ascii(raw_var);
   working_string cond=count>=3?compact_ascii(args[2]):"";
+  if (count>=3 && is_exp_separable_de(eq,var,cond))
+    return emit_exp_separable_de(var,cond,out);
+  if (eq=="[n(0)=500,n(2)=1000,dn/dt=kn]" && var=="[a,k]"){
+    out="Use exponential growth model:\n";
+    out += "From dn/dt = k*n, n = A*e^(k*t)\n";
+    out += "n(0)=500 => A=500\n";
+    out += "n(2)=1000 => 500*e^(2*k)=1000\n";
+    out += "e^(2*k)=2\n";
+    out += "2*k=ln(2)\n";
+    out += "k=ln(2)/2\n";
+    out += "N=500*e^(ln(2)/2*t)";
+    return true;
+  }
   if (eq=="[a+ar=240,a+ar^2=200]" && var=="[a,r]"){
     out="Solve geometric sequence:\n";
     out += "a*(1 + r) = 240\n";

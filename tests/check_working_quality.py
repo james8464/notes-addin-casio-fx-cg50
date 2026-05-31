@@ -90,6 +90,16 @@ QUALITY_CASES = [
         ],
     ),
     (
+        "solve(dn/dt=k*n,n,t)",
+        8,
+        [
+            "Separate variables:",
+            "1/n dn = k dt",
+            "ln(abs(n)) = k*t + C",
+            "n = A*e^(k*t)",
+        ],
+    ),
+    (
         "range(x/(x^2+4),x)",
         5,
         [

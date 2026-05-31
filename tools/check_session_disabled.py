@@ -27,7 +27,7 @@ def main() -> int:
     leaks = [item for item in danger if item in blocks]
     if leaks:
         raise SystemExit("FAIL session: file-backed call in session path " + ", ".join(leaks))
-    if "Session disabled" not in text:
+    if 'Console_Output((unsigned char*)"Disabled")' not in text:
         raise SystemExit("FAIL session: save command does not report disabled")
     print("OK session disabled")
     return 0

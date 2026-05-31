@@ -1492,7 +1492,7 @@ int main1(){
     // should save in another file
     if (strcmp((const char *)expr,"=>")==0 || strcmp((const char *)expr,"=>\n")==0){
       console_changed=0;
-      Console_Output((unsigned char*)"Session disabled");
+      Console_Output((unsigned char*)"Disabled");
     }
     else 
       run((char *)expr);

@@ -140,7 +140,7 @@ int showCatalog(char* insertText,int preselect,int menupos) {
     menuitems[CAT_CATEGORY_PLOT].text = (char*)"Removed";
     menuitems[CAT_CATEGORY_POLYNOMIAL].text = (char*)((lang==1)?"Polynomes":"Polynomials");
     menuitems[CAT_CATEGORY_PROBA].text = (char*)"Removed";
-    menuitems[CAT_CATEGORY_PROGCMD].text = (char*)((lang==1)?"Programmes cmds (0)":"Program cmds (0)");
+    menuitems[CAT_CATEGORY_PROGCMD].text = (char*)"Removed";
     menuitems[CAT_CATEGORY_REAL].text = (char*)((lang==1)?"Reels (x,theta,t)":"Reals");
     menuitems[CAT_CATEGORY_SOLVE].text = (char*)((lang==1)?"Resoudre (log)":"Solve (log)");
     menuitems[CAT_CATEGORY_STATS].text = (char*)"Removed";
