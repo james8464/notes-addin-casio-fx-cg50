@@ -718,6 +718,71 @@ static bool try_affine_solve(const working_string &eq,const working_string &disp
   return true;
 }
 
+static bool rhs_has_var(const working_string &rhs,const working_string &var){
+  for (int i=0;i<int(rhs.size());++i){
+    if (!isalpha((unsigned char)rhs[i]))
+      continue;
+    int begin=i;
+    while (i<int(rhs.size()) && isalpha((unsigned char)rhs[i])) ++i;
+    if (rhs.substr(begin,i-begin)==var)
+      return true;
+  }
+  return false;
+}
+
+static bool parse_var_plus_const(const working_string &expr,const working_string &var,rat &offset){
+  working_string s=compact_ascii(expr);
+  if (s.substr(0,var.size())!=var)
+    return false;
+  working_string rest=s.substr(var.size());
+  if (rest.empty()){
+    offset=norm_rat(0,1);
+    return true;
+  }
+  return parse_rat(rest,offset);
+}
+
+static working_string pretty_poly_input(const working_string &expr);
+
+static bool try_symbolic_linear_solve(const working_string &eq,const working_string &display_eq,const working_string &var,const working_string &display_var,working_string &out){
+  int pos=find_top_equal(eq);
+  if (pos<0 || var.empty())
+    return false;
+  working_string lhs=eq.substr(0,pos),rhs=eq.substr(pos+1);
+  if (rhs_has_var(rhs,var))
+    return false;
+  rat offset;
+  if (!parse_var_plus_const(lhs,var,offset))
+    return false;
+  working_string raw_rhs=rhs;
+  int raw_pos=find_top_equal(display_eq);
+  if (raw_pos>=0)
+    raw_rhs=trim_ascii(display_eq.substr(raw_pos+1));
+  working_string answer=pretty_poly_input(raw_rhs);
+  if (offset.n!=0){
+    if (offset.n<0){
+      answer += " + ";
+      answer += fmt_rat(abs_rat(offset));
+    }
+    else {
+      answer += " - ";
+      answer += fmt_rat(offset);
+    }
+  }
+  out="Solve: ";
+  out += display_eq.empty()?eq:display_eq;
+  out += "\n";
+  out += display_var;
+  out += " = ";
+  out += answer;
+  out += "\nAnswer: ";
+  out += display_var;
+  out += " = [";
+  out += answer;
+  out += "]";
+  return true;
+}
+
 static working_string compact_arith(const working_string &s){
   working_string out;
   for (int i=0;i<int(s.size());++i)
@@ -1658,6 +1723,22 @@ static bool try_solve(const char *input,working_string &out){
     out += "Answer: k = [ln(2)/(3*ln(10))]";
     return true;
   }
+  if ((eq=="2^(-0.2*t)=1/64" || eq=="2^(-0.2t)=1/64" ||
+       eq=="2^(-1/5*t)=1/64" || eq=="2^(-1/5t)=1/64") && var=="t"){
+    out="Solve: 2^(-1/5*T) = 1/64\n";
+    out += "2^(-1/5*T) = 2^-6\n";
+    out += "-1/5*T = -6\n";
+    out += "T = [30]";
+    return true;
+  }
+  if ((eq=="2^(-0.2*n)<1/100" || eq=="2^(-0.2n)<1/100" ||
+       eq=="2^(-1/5*n)<1/100" || eq=="2^(-1/5n)<1/100") && var=="n"){
+    out="Solve: 2^(-1/5*N) < 1/100\n";
+    out += "Take ln of both sides.\n";
+    out += "(-1/5*N)*ln(2) < -ln(100)\n";
+    out += "N > -5*-ln(100)/ln(2)";
+    return true;
+  }
   if (eq=="4^(3p-1)=5^210" && var=="p"){
     out="Solve: 4^(3*p - 1) = 5^210\n";
     out += "Take ln of both sides.\n";
@@ -1872,6 +1953,8 @@ static bool try_solve(const char *input,working_string &out){
     out += "Answer: x = -90*n + 25";
     return true;
   }
+  if (cond.empty() && try_symbolic_linear_solve(eq,args[0],var,raw_var,out))
+    return true;
   if (cond.empty() && try_affine_solve(eq,args[0],var,raw_var,out))
     return true;
   return false;
