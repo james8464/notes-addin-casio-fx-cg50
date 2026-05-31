@@ -1,6 +1,6 @@
 # CasioCAS Project Graph
 
-Last updated: 2026-05-31 09:20 Europe/London
+Last updated: 2026-05-31 09:30 Europe/London
 
 ## Build
 
@@ -103,6 +103,7 @@ graph TD
   Macro --> TurtleStubs["TURTLETAB table capped to one entry in A-level build"]
   Macro --> Plot3DStubs["3D solids/plot runtime stubbed in zplot3d"]
   Macro --> DistDispatch["generic cdf/icdf/mgf/distribution dispatch stubbed"]
+  Macro --> MoyalStats["zmoyal beta/binomial/poisson/student/chi-square/fisher internals stubbed to A-level errors"]
   Macro --> RandDist["randvector distribution sampling compiled out"]
   Macro --> MatrixSpectral["matrix/spectral wrappers and Jordan-only internals stubbed/compile-excluded: det/rank/rref/kernel/eigen/svd/jordan/JordanBlock/ranm/trace/transpose/cholesky"]
   Macro --> More["desolve/fft/file IO/charpoly/pcar/pivot/keep_pivot/det options/assume blocked"]
@@ -135,6 +136,7 @@ graph TD
   TurtleStubs --> Gate2
   Plot3DStubs --> Gate2
   DistDispatch --> Gate2
+  MoyalStats --> Gate2
   RandDist --> Gate2
   MatrixSpectral --> Gate2
   More --> Gate2
@@ -192,7 +194,7 @@ graph TD
 graph LR
   Build["./compile exit 0"] --> Size["1,284,963 bytes"]
   Build --> Ram["ram 331,088 bytes"]
-  Build --> R8C2["r8c2 1,340,198 bytes"]
+  Build --> R8C2["r8c2 1,336,146 bytes"]
   Build --> Meta["metadata ok"]
   Build --> Border["purple border ok"]
   Build --> NoRuntimeFallback["generated golden fallback disabled"]
@@ -210,7 +212,7 @@ graph LR
   Shared --> NoHostSrc["old host-only source deleted"]
   Obj["object prune"] --> QR["qrcodegen.o link-safe removed"]
   Macro["source stubs"] --> Stubbed["plot/list/stats/special/ODE/file IO/linalg/transform helpers blocked"]
-  Macro --> RuntimeStubbed["random/sample + ODE/field plot + turtle/drawing + graph display/logo UI + zplot paper/draw + geometry/3D wrappers + plot/locus/implicit/conic/quadric internals + 3D plot/solid + distribution dispatch + matrix/spectral/JordanBlock + python converter + program/control-flow/input public bodies stubbed/blocked"]
+  Macro --> RuntimeStubbed["random/sample + ODE/field plot + turtle/drawing + graph display/logo UI + zplot paper/draw + geometry/3D wrappers + plot/locus/implicit/conic/quadric internals + 3D plot/solid + distribution dispatch + zmoyal stats/beta internals + matrix/spectral/JordanBlock + python converter + program/control-flow/input public bodies stubbed/blocked"]
   Static["lexer/help prune"] --> StaticRun["distribution/denom/transform/multinomial/matrix/about/shortcuts/session/crypto/complex/JordanBlock/keep_pivot/det-option/trace/plot-step/program/control-flow/Xcas/turtle/matplot/random/graphic names neutralized"]
   Static --> PromptRun["mod/sign/euler/ascii/geometry/3D solids/ode plot/laplace prompt names blocked"]
   Bin["binary scan"] --> NoLeak["no removed-term/plot-step/session/menu hits"]

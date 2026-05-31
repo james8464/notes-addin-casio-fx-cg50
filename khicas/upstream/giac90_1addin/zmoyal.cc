@@ -38,6 +38,9 @@ namespace giac {
 #endif // ndef NO_NAMESPACE_GIAC
 
   gen incomplete_beta(double a,double b,double p,bool regularize){ // regularize=true by default
+#ifdef CASCAS_ALEVEL_ONLY
+    return undef;
+#endif
     // I_p(a,b)=1/B(a,b)*int(t^(a-1)*(1-t)^(b-1),t=0..p)
     // =p^a*(1-p)^(b-1)/B(a,b)*continued fraction expansion
     // 1/(1+e2/(1+e3/(1+...)))
@@ -108,6 +111,9 @@ namespace giac {
     }
   }
   gen Beta(const gen & a,const gen& b,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if (a.type==_DOUBLE_ || b.type==_DOUBLE_ ||
 	a.type==_FLOAT_ || b.type==_FLOAT_ ||
 	a.type==_CPLX || b.type==_CPLX ){
@@ -132,6 +138,9 @@ namespace giac {
     return Gamma(a,contextptr)*Gamma(b,contextptr)/Gamma(a+b,contextptr);
   }
   gen _Beta(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     if (args.type!=_VECT)
       return symbolic(at_Beta,args);
@@ -606,6 +615,9 @@ namespace giac {
   }
 
   gen binomial(const gen & N,const gen & K,const gen & P,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     gen n(N),k(K),p(P);
     is_integral(n); is_integral(k); is_integral(p);
     if (p.type==_VECT)
@@ -842,6 +854,9 @@ namespace giac {
   define_unary_function_ptr5( at_negbinomial_icdf ,alias_at_negbinomial_icdf,&__negbinomial_icdf,0,true);
 
   gen binomial_cdf(const gen & n,const gen &p,const gen & x0,const gen & x,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     gen fx=_floor(x,contextptr),fx0=_ceil(x0,contextptr);
     if (fx.type==_FLOAT_)
       fx=get_int(fx._FLOAT_val);
@@ -938,6 +953,9 @@ namespace giac {
   define_unary_function_ptr5( at_binomial_cdf ,alias_at_binomial_cdf,&__binomial_cdf,0,true);
 
   gen binomial_icdf(const gen & n0,const gen &p0,const gen & x_orig,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     gen x=evalf_double(x_orig,1,contextptr);
     gen p=evalf_double(p0,1,contextptr);
     gen n=_floor(n0,contextptr);
@@ -1035,6 +1053,9 @@ namespace giac {
   define_unary_function_ptr5( at_binomial_icdf ,alias_at_binomial_icdf,&__binomial_icdf,0,true);
 
   gen randbinomial(int n,double P,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if (P<=0)
       return 0;
     if (P>=1)
@@ -1082,6 +1103,9 @@ namespace giac {
   define_unary_function_ptr5( at_randbinomial ,alias_at_randbinomial,&__randbinomial,0,true);
 
   gen poisson(const gen & m,const gen & k,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if (k.type==_VECT)
       return apply2nd(m,k,contextptr,poisson);
     gen M=evalf_double(m,1,contextptr);
@@ -1116,6 +1140,9 @@ namespace giac {
   // exp(-lambda)*sum(lambda^k/k!,k=0..x)
   // or 1-exp(-lambda)*sum(lambda^k/k!,k=x+1..inf)
   double poisson_cdf(double lambda,double x){
+#ifdef CASCAS_ALEVEL_ONLY
+    return 0.0;
+#endif
     long_double N=lambda;
     long_double res=0,prod=1;
     int fx=int(std::floor(x));
@@ -1149,6 +1176,9 @@ namespace giac {
 #endif
   }
   gen poisson_cdf(const gen & lambda_,const gen & x,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     gen fx=_floor(x,contextptr);
     gen lambda=evalf_double(lambda_,1,contextptr);
     if (fx.type==_INT_ && fx.val>=0 && lambda.type==_DOUBLE_)
@@ -1188,6 +1218,9 @@ namespace giac {
 
   // randpoisson(lambda) returns k>0 with proba poisson(lambda,k)
   gen randpoisson(double lambda,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if (lambda>700)
       return poisson_icdf(lambda,double(giac_rand(contextptr))/rand_max2,contextptr);
     int k=0;
@@ -1226,6 +1259,9 @@ namespace giac {
   define_unary_function_ptr5( at_randpoisson ,alias_at_randpoisson,&__randpoisson,0,true);
 
   gen poisson_icdf(double m,double t,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if (t==0)
       return zero;
     if (t==1)
@@ -1284,6 +1320,9 @@ namespace giac {
 #endif
   }
   gen poisson_icdf(const gen & m_orig,const gen & t_orig,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     gen t=evalf_double(t_orig,1,contextptr);
     gen m=evalf_double(m_orig,1,contextptr);
     if (t.type!=_DOUBLE_ || t._DOUBLE_val<0 || t._DOUBLE_val>1)
@@ -1313,6 +1352,9 @@ namespace giac {
   define_unary_function_ptr5( at_poisson_icdf ,alias_at_poisson_icdf,&__poisson_icdf,0,true);
 
   gen student(const gen & n0,const gen & x,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if (x.type==_VECT)
       return apply2nd(n0,x,contextptr,student);
     gen n(n0);
@@ -1408,6 +1450,9 @@ namespace giac {
     }
   }
   gen UTPT(const gen & n_orig,const gen & x0,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     gen n=n_orig;
     if (!is_integral(n))
       return gensizeerr(contextptr);
@@ -1487,6 +1532,9 @@ namespace giac {
 
   // dof=degree of freedom
   gen student_cdf(const gen & dof0,const gen & x1,const gen & x2,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     gen X2=evalf_double(x2,1,contextptr);
     gen X1=evalf_double(x1,1,contextptr);
     gen dof(dof0);
@@ -1520,6 +1568,9 @@ namespace giac {
   define_unary_function_ptr5( at_studentd_cdf ,alias_at_studentd_cdf,&__studentd_cdf,0,true);
 
   gen student_icdf(const gen & m0,const gen & t_orig,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     gen t=evalf_double(t_orig,1,contextptr);
     gen m(m0);
     if (!is_integral(m) || m.val<1 || t.type!=_DOUBLE_ || t._DOUBLE_val<0 || t._DOUBLE_val>1)
@@ -1577,6 +1628,9 @@ namespace giac {
   define_unary_function_ptr5( at_studentd_icdf ,alias_at_studentd_icdf,&__studentd_icdf,0,true);
 
   gen chisquare(const gen & n,const gen & x,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if (x.type==_VECT)
       return apply2nd(n,x,contextptr,chisquare);
     gen n2=n/2;
@@ -1623,6 +1677,9 @@ namespace giac {
   static const partial_derivative_multiargs D_UTPC(&d_UTPC);
   */
   gen UTPC(const gen & n_orig,const gen & x0,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     gen dof=n_orig;
     if (x0==plus_inf)
       return 0;
@@ -1683,6 +1740,9 @@ namespace giac {
   define_unary_function_ptr5( at_UTPC ,alias_at_UTPC,&__UTPC,0,true);
 
   gen chisquare_cdf(const gen & dof,const gen & x1,const gen & x2,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     return UTPC(dof,x1,contextptr)-UTPC(dof,x2,contextptr);
   }
   gen _chisquare_cdf(const gen & g,GIAC_CONTEXT){
@@ -1724,6 +1784,9 @@ namespace giac {
   }
 
   gen chisquare_icdf(const gen & m0,const gen & t_orig,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     gen t=evalf_double(t_orig,1,contextptr);
     gen m(m0);
     if (!is_integral(m) || t.type!=_DOUBLE_ || t._DOUBLE_val<0 || t._DOUBLE_val>1)
@@ -1771,6 +1834,9 @@ namespace giac {
   define_unary_function_ptr5( at_chisquared_icdf ,alias_at_chisquared_icdf,&__chisquared_icdf,0,true);
 
   gen snedecor(const gen & a,const gen & b,const gen & x,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     if (x.type==_VECT)
       return apply3rd(a,b,x,contextptr,snedecor);
     if (is_positive(-x,contextptr))
@@ -1828,6 +1894,9 @@ namespace giac {
   static const partial_derivative_multiargs D_UTPF(&d_UTPF);
   */
   gen UTPF(const gen & num,const gen & den,const gen & x0,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     gen gndf=num,gddf=den,gx=evalf_double(x0,1,contextptr);
     if (!is_integral(gndf) || !is_integral(gddf) || gx.type!=_DOUBLE_)
       return symbolic(at_UTPF,gen(makevecteur(num,den,x0),_SEQ__VECT)); // gensizeerr(contextptr);
@@ -1890,6 +1959,9 @@ namespace giac {
   define_unary_function_ptr5( at_UTPF ,alias_at_UTPF,&__UTPF,0,true);
 
   gen snedecor_cdf(const gen & ndof,const gen & ddof,const gen & x,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     gen gndf(ndof),gddf(ddof),gx(x);
     if (!is_integral(gndf) || !is_integral(gddf))
       return gentypeerr(contextptr);
@@ -1949,6 +2021,9 @@ namespace giac {
   }
 
   gen snedecor_icdf(const gen & num0,const gen & den0,const gen & t_orig,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#endif
     gen t=evalf_double(t_orig,1,contextptr);
     gen num(num0),den(den0);
     if (!is_integral(num) || !is_integral(den) || num.val<0 || den.val<0 || t.type!=_DOUBLE_ || t._DOUBLE_val<0 || t._DOUBLE_val>1)
