@@ -312,3 +312,21 @@
 {"phase":"queue","last_event":"exact queue 13888/13888","queue":"13888/13888 done, 12789 ok, 1099 bad","tests":"queue-run 12789/13888"}
 {"phase":"queue","last_event":"exact queue 13888/13888","queue":"13888/13888 done, 12789 ok, 1099 bad","tests":"queue-run 12789/13888"}
 {"phase":"cleanup+tui","last_event":"refreshed queue report after latest integration special-manipulation rows","commit":"pending","graph":"docs/GRAPH.md 2026-05-31 22:43 BST","g3a_size":2096796,"headroom":356,"sha256":"afaab694179fd28bceac92490b153b3648291d43a2189c04fb65db9dc95bff0f","tests":"queue-schema 9455 rows/13888 inputs,queue-run 13888/13888,working-quality 12789/13888","queue":"13888/13888 runtime; 12789/13888 strict markers","unsupported":0,"eta":"preserve binary headroom; latest gaps are special-manipulation antiderivative formatting"}
+{"phase":"queue","last_event":"exact queue 0/13912","queue":"0/13912 done, 0 ok, 0 bad","tests":"queue-run 0/13912"}
+{"phase":"queue","last_event":"exact queue 13912/13912","queue":"13912/13912 done, 13912 ok, 0 bad","tests":"queue-run 13912/13912"}
+{"phase":"queue","last_event":"exact queue 13912/13912","queue":"13912/13912 done, 13912 ok, 0 bad","tests":"queue-run 13912/13912"}
+{"phase":"queue","last_event":"exact queue 0/13912","queue":"0/13912 done, 0 ok, 0 bad","tests":"queue-run 0/13912"}
+{"phase":"queue","last_event":"exact queue 13912/13912","queue":"13912/13912 done, 12792 ok, 1120 bad","tests":"queue-run 12792/13912"}
+{"phase":"queue","last_event":"exact queue 13912/13912","queue":"13912/13912 done, 12792 ok, 1120 bad","tests":"queue-run 12792/13912"}
+{"phase":"working-lines","last_event":"added exact optimisation derivative working routes and refreshed reverse-chain queue","commit":"pending","graph":"docs/GRAPH.md 2026-05-31 23:03 BST","g3a_size":2097080,"headroom":72,"sha256":"ba4e574743bfc8ed3d48e501fc649ade5500e8d7f6123c05f19dd3d932129958","tests":"compile,size,metadata,border,catalog,help,help-examples,queue-schema 9457 rows/13912 inputs,queue-run 13912/13912,working-quality 12792/13912","queue":"13912/13912 runtime; 12792/13912 strict markers","unsupported":0,"eta":"binary headroom is now 72 B; next enhancement should first prune or compress strings"}
+{"phase":"queue","last_event":"exact queue 0/13932","queue":"0/13932 done, 0 ok, 0 bad","tests":"queue-run 0/13932"}
+{"phase":"queue","last_event":"exact queue 0/13932","queue":"0/13932 done, 0 ok, 0 bad","tests":"queue-run 0/13932"}
+{"phase":"queue","last_event":"exact queue 13932/13932","queue":"13932/13932 done, 12792 ok, 1140 bad","tests":"queue-run 12792/13932"}
+{"phase":"queue","last_event":"exact queue 13932/13932","queue":"13932/13932 done, 12792 ok, 1140 bad","tests":"queue-run 12792/13932"}
+{"phase":"queue","last_event":"exact queue 0/13932","queue":"0/13932 done, 0 ok, 0 bad","tests":"queue-run 0/13932"}
+{"phase":"queue","last_event":"exact queue 13932/13932","queue":"13932/13932 done, 13932 ok, 0 bad","tests":"queue-run 13932/13932"}
+{"phase":"queue","last_event":"exact queue 13932/13932","queue":"13932/13932 done, 13932 ok, 0 bad","tests":"queue-run 13932/13932"}
+{"phase":"queue","last_event":"exact queue 0/13932","queue":"0/13932 done, 0 ok, 0 bad","tests":"queue-run 0/13932"}
+{"phase":"queue","last_event":"exact queue 13932/13932","queue":"13932/13932 done, 12792 ok, 1140 bad","tests":"queue-run 12792/13932"}
+{"phase":"queue","last_event":"exact queue 13932/13932","queue":"13932/13932 done, 12792 ok, 1140 bad","tests":"queue-run 12792/13932"}
+{"phase":"working-lines","last_event":"added exact optimisation derivative working routes and refreshed reverse-chain queues","commit":"pending","graph":"docs/GRAPH.md 2026-05-31 23:07 BST","g3a_size":2097080,"headroom":72,"sha256":"ba4e574743bfc8ed3d48e501fc649ade5500e8d7f6123c05f19dd3d932129958","tests":"compile,size,metadata,border,catalog,help,help-examples,queue-schema 9459 rows/13932 inputs,queue-run 13932/13932,working-quality 12792/13932","queue":"13932/13932 runtime; 12792/13932 strict markers","unsupported":0,"eta":"binary headroom is now 72 B; next enhancement should first prune or compress strings"}

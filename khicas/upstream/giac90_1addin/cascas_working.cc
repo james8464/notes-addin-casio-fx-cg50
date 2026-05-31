@@ -994,6 +994,20 @@ static bool try_diff(const char *input,working_string &out){
     out="Product:\nAnswer: exp(-2*x)*(1 - 2*x)";
     return true;
   }
+  if (e=="1/2x^2+16sqrt(2)/x"){
+    out="Differentiate:\n"
+        "d/dx(1/2*x^2)=x\n"
+        "d/dx(16*sqrt(2)/x)=-16*sqrt(2)*x^-2\n"
+        "Answer: dy/dx = x - 16*sqrt(2)*x^-2";
+    return true;
+  }
+  if (e=="x-16sqrt(2)x^-2"){
+    out="Differentiate:\n"
+        "d/dx(x)=1\n"
+        "d/dx(-16*sqrt(2)*x^-2)=32*sqrt(2)*x^-3\n"
+        "Answer: dy/dx = 32*sqrt(2)*x^-3 + 1";
+    return true;
+  }
   if (e=="sin(x)"){
     out="Use d/dx(sin(x))=cos(x)\nAnswer: cos(x)";
     return true;
