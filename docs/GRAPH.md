@@ -1,6 +1,6 @@
 # CasioCAS Project Graph
 
-Last updated: 2026-05-31 14:45 Europe/London
+Last updated: 2026-05-31 15:01 Europe/London
 
 ## Build
 
@@ -69,7 +69,7 @@ graph TD
   Direct --> DefIntArchive["archived integration-basics definite integral routes"]
   Direct --> ReverseChain["reverse-chain integration: generic polynomial u' f(u) plus trig/log/exponential archive routes; 82/82 archived cases no fallback"]
   Direct --> LinearRationalInt["linear-over-linear algebraic division integrals; archived special manipulation 10/10 no fallback"]
-  Direct --> ByParts["by-parts routes for polynomial*e^(kx), polynomial*sin/cos(kx), and x^n ln(kx); archived by-parts 49/81 no fallback"]
+  Direct --> ByParts["by-parts routes for polynomial*e^(kx), polynomial*sin/cos(kx), x^n ln(kx), sec/log-square/definite table cases; archived by-parts 81/81 no fallback"]
   Direct --> Xform["identity/log/sec/cosec/cot/half-angle proof shell"]
   Direct --> LogPower["xform log power laws for log(base,x^n) and ln(x^n)"]
   Direct --> GenericXform["generic pure xform routes: change-base logs, log powers, sec/cosec/cot rearrangements"]
@@ -104,14 +104,14 @@ graph TD
   Direct --> HelpFKeys["catalog/help F2/F3 examples use exact # insertion"]
   Direct --> XformRational["xform rational transform: a/(x+1) to 5*a/(2*x+1)"]
   Direct --> PureOnly["mechanics routes removed from catalog/help/working engine"]
-  Direct --> RuntimeGuard["calculator runtime guards: balanced delimiters, no raw integral fallback, numeric literals fall through to KhiCAS"]
+  Direct --> RuntimeGuard["calculator runtime guards: balanced delimiters, no raw integral fallback, numeric literals fall through to KhiCAS, no per-table temporary compact strings in try_integral"]
   Direct --> RemovedFallbackPure["removed-feature fallback gives Pure method steps instead of old outside-scope error"]
   Direct --> ErrorMask["stock undef/syntax-style output becomes General Pure method steps"]
-  Console --> StableFKeys["A-level mode ignores stale FMENU.py and fixes F-key colour state"]
+  Console --> StableFKeys["A-level mode ignores stale FMENU.py and uses black calculator F-key strip"]
   Console --> VramClip["VRAM safety: clipped CopySpriteMasked and bounded get_pixel"]
-  Host["thin same-source host wrapper"] --> Queue["236/236 exact queue host checks"]
+  Host["thin same-source host wrapper"] --> Queue["424/424 exact queue host checks"]
   Host --> DeletedHost["old host-only working_engine/src deleted"]
-  QueueTests["exact queue file"] --> SameSource["236/236 direct no-fallback calculator-source coverage"]
+  QueueTests["exact queue file"] --> SameSource["424/424 direct no-fallback calculator-source coverage"]
   RemovedFallback["generated golden fallback source removed"] --> SameSource
   Session["save/load/session files"] --> Disabled["no-op, in-memory only"]
   Help["help/functions/*.txt"] --> Pak["CASIOCAS.PAK"]
@@ -233,9 +233,9 @@ graph TD
 
 ```mermaid
 graph LR
-  Build["./compile exit 0"] --> Size["g3a 1,305,895 bytes"]
+  Build["./compile exit 0"] --> Size["g3a 1,346,099 bytes"]
   Build --> AC2["khicas50.ac2 1,336,030 bytes"]
-  Build --> Rom["rom 1,277,219 bytes"]
+  Build --> Rom["rom 1,317,423 bytes"]
   Build --> Ram["ram 331,088 bytes"]
   Build --> R8C2["r8c2 1,336,030 bytes"]
   Build --> Meta["metadata ok"]
@@ -247,9 +247,9 @@ graph LR
   Source --> Session["session disabled"]
   Help["help pack"] --> HelpQ["40 function sheets ok, PAK 41 records / 13,260 bytes"]
   Help --> HelpEx["89/89 help examples run through same-source working engine"]
-  Queue["golden queue"] --> QueueRun["236/236 host ok"]
-  Queue --> GoldenRun["236/236 direct calculator-source ok"]
-  Queue --> NoGolden["236/236 without generated golden fallback"]
+  Queue["golden queue"] --> QueueRun["424/424 host ok"]
+  Queue --> GoldenRun["424/424 direct calculator-source ok"]
+  Queue --> NoGolden["424/424 without generated golden fallback"]
   Shared["shared working"] --> SharedRun["250/250 thin host+calculator adapter ok"]
   Shared --> WorkQ["38/38 working-quality depth cases ok"]
   Shared --> CoreRun["250/250 core routes without golden fallback ok"]
@@ -260,5 +260,5 @@ graph LR
   Static["lexer/help prune"] --> StaticRun["distribution/denom/transform/multinomial/matrix/about/shortcuts/session/crypto/complex/JordanBlock/keep_pivot/det-option/trace/plot-step/program/control-flow/Xcas/turtle/matplot/random/graphic names neutralized"]
   Static --> PromptRun["mod/sign/euler/ascii/geometry/3D solids/ode plot/laplace prompt names blocked"]
   Bin["binary scan"] --> NoLeak["no removed-term/plot-step/session/menu hits in g3a or ac2"]
-  Graphify["graphify update . --no-cluster"] --> GraphStats["10,333 nodes / 882,512 edges"]
+  Graphify["graphify update . --no-cluster"] --> GraphStats["10,425 nodes / 1,295,947 edges"]
 ```

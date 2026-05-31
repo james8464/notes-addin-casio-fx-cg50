@@ -3407,7 +3407,7 @@ void get_current_console_menu(string & menu,string & shiftmenu,string & alphamen
     python_color=65512;
   }
 #ifdef CASCAS_ALEVEL_ONLY
-  menucolorbg=app==1?64543:65055;
+  menucolorbg=app==0?COLOR_BLACK:(xcas_python_eval==-1?js_color:(xcas_python_eval==1?python_color:xcas_color));
 #else
   menucolorbg=xcas_python_eval==-1?js_color:(xcas_python_eval==1?python_color:xcas_color);
 #endif
@@ -3418,7 +3418,7 @@ void console_disp_status(){
   string menu(" "),shiftmenu=menu,alphamenu; int menucolorbg=12345;
   get_current_console_menu(menu,shiftmenu,alphamenu,menucolorbg,0);
   int px=0*3,py=58*3;
-  PrintMini(&px,&py,(unsigned char *)menu.c_str(),0,0xFFFFFFFF,0,0,COLOR_BLACK,menucolorbg, 1, 0);
+  PrintMini(&px,&py,(unsigned char *)menu.c_str(),0,0xFFFFFFFF,0,0,menucolorbg==COLOR_BLACK?COLOR_WHITE:COLOR_BLACK,menucolorbg, 1, 0);
   // status, clock, 
   set_xcas_status();
   Bdisp_PutDisp_DD();

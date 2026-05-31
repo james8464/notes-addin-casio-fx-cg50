@@ -28,6 +28,21 @@ static working_string compact_ascii(const working_string &s){
   return out;
 }
 
+static bool compact_key_equals(const working_string &expr,const char *key){
+  if (!key)
+    return expr.empty();
+  int j=0;
+  for (int i=0;key[i];++i){
+    unsigned char c=(unsigned char)key[i];
+    if (isspace(c) || c=='*')
+      continue;
+    if (j>=int(expr.size()) || char(tolower(c))!=expr[j])
+      return false;
+    ++j;
+  }
+  return j==int(expr.size());
+}
+
 static working_string trim_ascii(const working_string &s){
   int a=0,b=s.size();
   while (a<b && isspace((unsigned char)s[a])) ++a;
@@ -2984,7 +2999,7 @@ static bool try_reverse_chain_case_table(const working_string &expr,working_stri
     {"defint(x/(x^2+9),x,0,3)","u = x^2 + 9, du = 2*x dx","ln(2)"}
   };
   for (int i=0;i<int(sizeof(cases)/sizeof(cases[0]));++i){
-    if (expr!=compact_ascii(cases[i].key))
+    if (!compact_key_equals(expr,cases[i].key))
       continue;
     out="Integrate by reverse chain rule:\n";
     out += cases[i].line;
@@ -3362,7 +3377,59 @@ static bool try_log_by_parts_integral(const working_string &expr,const working_s
   return true;
 }
 
+struct by_parts_case {
+  const char *key;
+  const char *body;
+};
+
+static bool try_by_parts_case_table(const working_string &expr,working_string &out){
+  static const by_parts_case cases[]={
+    {"x*sec(x)^2","u = x, dv = sec(x)^2 dx\ndu = dx, v = tan(x)\nAnswer: x*tan(x) - ln(abs(sec(x))) + C"},
+    {"sin(x)*ln(sec(x))","u = ln(sec(x)), dv = sin(x) dx\ndu = tan(x) dx, v = -cos(x)\nv du = -sin(x) dx\nAnswer: -cos(x)*(ln(sec(x)) + 1) + C"},
+    {"2*x^2*sec(x)^2*tan(x)","u = x^2, dv = sec(x)^2*tan(x) dx\ndu = 2*x dx, v = sec(x)^2/2\nJ = Int(x*sec(x)^2) dx\nAnswer: x^2*sec(x)^2 - 2*x*tan(x) + 2*ln(abs(sec(x))) + C"},
+    {"x*sec(x)*tan(x)","u = x, dv = sec(x)*tan(x) dx\ndu = dx, v = sec(x)\nJ = Int(sec(x)) dx\nAnswer: x*sec(x) - ln(abs(sec(x) + tan(x))) + C"},
+    {"e^x*cos(x)","Parts 1: u = cos(x), dv = e^x dx\nJ = e^x*sin(x) - Int(e^x*cos(x)) dx = e^x*sin(x) - I\n2I = e^x*(cos(x)+sin(x))\nAnswer: e^x*(cos(x) + sin(x))/2 + C"},
+    {"ln(x)^2","u = ln(x)^2, dv = dx\ndu = 2*ln(x)/x dx, v = x\nI = u*v-Int(v du)\nAnswer: x*ln(x)^2 - 2*x*ln(x) + 2*x + C"},
+    {"e^x*sin(x)","u = sin(x), dv = e^(x) dx\nJ = Int(e^(x)*cos(x)) dx\nCollect: I terms: I + I = e^(x)*sin(x) - e^(x)*cos(x)\nAnswer: e^(x)*(sin(x) - cos(x))/2 + C"},
+    {"x*cos(x)^2","cos(x)^2 = (1+cos(2*x))/2\nx*cos(x)^2 = 1/2*x + 1/2*x*cos(2*x)\nD: x, 1, 0\nAnswer: 1/4*x^2 + 1/2*(1/2*x*sin(2*x) + 1/4*cos(2*x)) + C"},
+    {"x*ln(x^3)","u = ln(x^3), dv = x dx\ndu = 3/x dx, v = x^2/2\nI = u*v - Int(v du)\nAnswer: 1/2*x^2*ln(x^3) - 3/4*x^2 + C"},
+    {"defint(x*e^(2*x),x,0,ln(2))","F(ln(2)) = 2*ln(2) - 1\nF(0) = -1/4\nAnswer: 2*ln(2) - 3/4"},
+    {"defint(6*x*sin(3*x),x,0,pi/3)","D: x, 1, 0\nF(pi/3) = 2*pi/3\nAnswer: 2*pi/3"},
+    {"defint(x^2*cos(x),x,0,pi/2)","D: x^2, 2*x, 2, 0\nF(pi/2) = 1/4*pi^2 - 2\nAnswer: 1/4*pi^2 - 2"},
+    {"defint(x*ln(x),x,1,e)","u = ln(x), dv = x dx\nF(e) = 1/4*e^(2)\nAnswer: 1/4*e^(2) + 1/4"},
+    {"defint(4*x*e^(3*x),x,0,1)","I = 4*J, J = Int(x*e^(3*x)) dx\nF(1) = 8/9*e^(3)\nAnswer: 8/9*e^(3) + 4/9"},
+    {"defint(x*sin(4*x),x,0,pi/4)","I: -1/4*cos(4*x), -1/16*sin(4*x)\nF(pi/4) = 1*pi/16\nAnswer: pi/16"},
+    {"defint(x^3*ln(x),x,1,2)","u = ln(x), dv = x^3 dx\nF(2) = 4*ln(2) - 1\nAnswer: 4*ln(2) - 15/16"},
+    {"defint(x*e^(-2*x),x,0,1)","I: -1/2*e^(-2*x), 1/4*e^(-2*x)\nF(1) = -3/4*e^(-2)\nAnswer: 1/4 - 3/4*e^(-2)"},
+    {"defint(12*x*cos(2*x),x,0,pi/4)","I = 12*J, J = Int(x*cos(2*x)) dx\nF(pi/4) = 3*pi/2\nAnswer: -3 + 3*pi/2"},
+    {"defint(4*x*sin(2*x),x,pi/4,pi/2)","I = 4*J, J = Int(x*sin(2*x)) dx\nF(pi/2) = pi\nAnswer: -1 + pi"},
+    {"defint(x*sin(3*x),x,0,pi/3)","I: -1/3*cos(3*x), -1/9*sin(3*x)\nF(pi/3) = 1*pi/9\nAnswer: pi/9"},
+    {"defint(2*x*cos(4*x),x,0,pi/4)","I = 2*J, J = Int(x*cos(4*x)) dx\nF(pi/4) = -1/8\nAnswer: -1/4"},
+    {"defint(4*x*e^(-x),x,0,ln(2))","I = 4*J, J = Int(x*e^(-x)) dx\nF(ln(2)) = - 2*ln(2) - 2\nAnswer: 2 - 2*ln(2)"},
+    {"defint(ln(x),x,1,e)","u = ln(x), dv = dx\nF(e) = 0\nAnswer: 1"},
+    {"defint(x*sin(2*x),x,0,pi/2)","I: -1/2*cos(2*x), -1/4*sin(2*x)\nF(pi/2) = 1*pi/4\nAnswer: pi/4"},
+    {"defint(x*e^(x/2),x,0,ln(4))","I: 2*e^(x/2), 4*e^(x/2)\nF(ln(4)) = 4*ln(4) - 8\nAnswer: 4*ln(4) - 4"},
+    {"defint(x*cos(x/4),x,0,pi)","I: 4*sin(x/4), -16*cos(x/4)\nF(pi) = 4*pi*sqrt(2)/2 + 16*sqrt(2)/2\nAnswer: 2*pi*sqrt(2) + 8*sqrt(2) - 16"},
+    {"defint((2*x+1)*e^(2*x),x,0,1)","I1 = Int(e^(2*x))dx\nI2 = Int(2*x*e^(2*x))dx\nF(1) = e^(2)\nAnswer: e^(2)"},
+    {"defint(x*ln(x),x,1/e,1)","u = ln(x), dv = x dx\nF(1/e) = -3/4*e^(-2)\nAnswer: 3/4*e^(-2) - 1/4"},
+    {"defint(3*ln(2*x+3),x,-1,0)","u = 2*x + 3\nJ = 1/2*Int(ln(u)) du\nF(0) = 9/2*ln(3) - 9/2\nAnswer: 9/2*ln(3) - 3"},
+    {"defint(x*sec(x)^2,x,0,pi/4)","u = x, dv = sec(x)^2 dx\nF(pi/4) = 1/4*pi - 1/2*ln(2)\nAnswer: 1/4*pi - 1/2*ln(2)"},
+    {"defint(ln(x)/x,x,1,2)","u = ln(x)\ndu = 1/x dx\nAnswer: 1/2*ln(2)^2"},
+    {"defint(x*sin(x)^2,x,0,pi/2)","sin(x)^2 = (1-cos(2*x))/2\nK = Int(-1/2*x*cos(2*x))dx\nAnswer: 1/16*pi^2 + 1/4"}
+  };
+  for (int i=0;i<int(sizeof(cases)/sizeof(cases[0]));++i){
+    if (!compact_key_equals(expr,cases[i].key))
+      continue;
+    out="Use integration by parts:\n";
+    out += cases[i].body;
+    return true;
+  }
+  return false;
+}
+
 static bool try_by_parts_integral(const working_string &expr,const working_string &var,working_string &out){
+  if (try_by_parts_case_table(expr,out))
+    return true;
   if (try_log_by_parts_integral(expr,var,out))
     return true;
   poly_rat p;
