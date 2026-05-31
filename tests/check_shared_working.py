@@ -121,6 +121,7 @@ CASES = [
     ("xform(2*sin(x)*cos(x),sin(2*x))", "sin(2*x)=2*sin(x)*cos(x)"),
     ("xform(1-cos(2*x),2*sin(x)^2)", "Rearrange: 1-cos(2*x)=2*sin(x)^2"),
     ("xform(1+cos(2*x),2*cos(x)^2)", "Rearrange: 1+cos(2*x)=2*cos(x)^2"),
+    ("xform(a*x^2+b*x+c,3*(x+2)^2+13)", "Answer: a = 3, b = 12, c = 25"),
     ("xform(sin(x)+2*cos(x),R*sin(x+alpha))", "R = sqrt(1^2+2^2) = sqrt(5)"),
     ("series(sin(theta),theta=0,3)", "sin(theta) = theta - theta^3/6 + ..."),
     ("series(cos(theta),theta=0,3)", "cos(theta) = 1 - theta^2/2 + ..."),

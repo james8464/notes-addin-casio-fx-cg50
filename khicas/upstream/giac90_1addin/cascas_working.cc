@@ -3136,6 +3136,17 @@ static bool try_xform(const char *input,working_string &out){
     out += "Answer: sqrt(5)*sin(x+atan(2))";
     return true;
   }
+  if (a=="ax^2+bx+c" && b=="3(x+2)^2+13"){
+    out += "Expand target:\n";
+    out += "3*(x+2)^2 + 13 = 3*(x^2+4*x+4)+13\n";
+    out += "= 3*x^2 + 12*x + 25\n";
+    out += "Compare coefficients with a*x^2+b*x+c:\n";
+    out += "a = 3\n";
+    out += "b = 12\n";
+    out += "c = 25\n";
+    out += "Answer: a = 3, b = 12, c = 25";
+    return true;
+  }
   if (a=="(x+1)^2" && b=="x^2+2x+1"){
     out += "Expand: (x+1)^2\n";
     out += "x^2+x+x+1\n";
