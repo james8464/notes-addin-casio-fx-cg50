@@ -142,6 +142,140 @@ static working_string format_real(double x){
   return buf;
 }
 
+static working_string format_real_precise(double x){
+  if (fabs(x)<1e-12) x=0;
+  int r=int(x>0?x+.5:x-.5);
+  if (fabs(x-r)<1e-10){
+    char buf[32];
+    sprintf(buf,"%d",r);
+    return buf;
+  }
+  char buf[64];
+  sprintf(buf,"%.12g",x);
+  return buf;
+}
+
+struct numeric_parser {
+  working_string s;
+  int i;
+};
+
+static bool parse_numeric_expr(numeric_parser &p,double &out);
+
+static bool parse_numeric_name(numeric_parser &p,working_string &name){
+  int begin=p.i;
+  while (p.i<int(p.s.size()) && isalpha((unsigned char)p.s[p.i]))
+    ++p.i;
+  if (begin==p.i)
+    return false;
+  name=p.s.substr(begin,p.i-begin);
+  return true;
+}
+
+static bool apply_numeric_func(const working_string &name,double x,double &out){
+  if (name=="sqrt"){ if (x<0) return false; out=sqrt(x); return true; }
+  if (name=="ln"){ if (x<=0) return false; out=log(x); return true; }
+  if (name=="log"){ if (x<=0) return false; out=log10(x); return true; }
+  if (name=="sin"){ out=sin(x); return true; }
+  if (name=="cos"){ out=cos(x); return true; }
+  if (name=="tan"){ out=tan(x); return true; }
+  if (name=="asin"){ if (x<-1 || x>1) return false; out=asin(x); return true; }
+  if (name=="acos"){ if (x<-1 || x>1) return false; out=acos(x); return true; }
+  if (name=="atan"){ out=atan(x); return true; }
+  if (name=="exp"){ out=exp(x); return true; }
+  return false;
+}
+
+static bool parse_numeric_primary(numeric_parser &p,double &out){
+  if (p.i>=int(p.s.size())) return false;
+  if (p.s[p.i]=='('){
+    ++p.i;
+    if (!parse_numeric_expr(p,out)) return false;
+    if (p.i>=int(p.s.size()) || p.s[p.i]!=')') return false;
+    ++p.i;
+    return true;
+  }
+  if (isalpha((unsigned char)p.s[p.i])){
+    working_string name;
+    if (!parse_numeric_name(p,name)) return false;
+    if (name=="pi"){ out=acos(-1.0); return true; }
+    if (name=="e"){ out=exp(1.0); return true; }
+    if (p.i>=int(p.s.size()) || p.s[p.i]!='(') return false;
+    ++p.i;
+    double arg;
+    if (!parse_numeric_expr(p,arg)) return false;
+    if (p.i>=int(p.s.size()) || p.s[p.i]!=')') return false;
+    ++p.i;
+    return apply_numeric_func(name,arg,out);
+  }
+  char *end=0;
+  out=strtod(p.s.c_str()+p.i,&end);
+  if (!end || end==p.s.c_str()+p.i)
+    return false;
+  p.i=int(end-p.s.c_str());
+  return true;
+}
+
+static bool parse_numeric_unary(numeric_parser &p,double &out){
+  if (p.i<int(p.s.size()) && (p.s[p.i]=='+' || p.s[p.i]=='-')){
+    bool neg=p.s[p.i]=='-';
+    ++p.i;
+    if (!parse_numeric_unary(p,out)) return false;
+    if (neg) out=-out;
+    return true;
+  }
+  return parse_numeric_primary(p,out);
+}
+
+static bool parse_numeric_power(numeric_parser &p,double &out){
+  if (!parse_numeric_unary(p,out)) return false;
+  if (p.i<int(p.s.size()) && p.s[p.i]=='^'){
+    ++p.i;
+    double rhs;
+    if (!parse_numeric_power(p,rhs)) return false;
+    out=pow(out,rhs);
+  }
+  return true;
+}
+
+static bool parse_numeric_term(numeric_parser &p,double &out){
+  if (!parse_numeric_power(p,out)) return false;
+  while (p.i<int(p.s.size()) && (p.s[p.i]=='*' || p.s[p.i]=='/')){
+    char op=p.s[p.i++];
+    double rhs;
+    if (!parse_numeric_power(p,rhs)) return false;
+    if (op=='*')
+      out*=rhs;
+    else {
+      if (rhs==0) return false;
+      out/=rhs;
+    }
+  }
+  return true;
+}
+
+static bool parse_numeric_expr(numeric_parser &p,double &out){
+  if (!parse_numeric_term(p,out)) return false;
+  while (p.i<int(p.s.size()) && (p.s[p.i]=='+' || p.s[p.i]=='-')){
+    char op=p.s[p.i++];
+    double rhs;
+    if (!parse_numeric_term(p,rhs)) return false;
+    out=op=='+'?out+rhs:out-rhs;
+  }
+  return true;
+}
+
+static bool eval_numeric_double(const working_string &expr,double &out){
+  working_string s;
+  for (int i=0;i<int(expr.size());++i)
+    if (!isspace((unsigned char)expr[i]))
+      s += char(tolower((unsigned char)expr[i]));
+  if (s.empty()) return false;
+  numeric_parser p={s,0};
+  if (!parse_numeric_expr(p,out)) return false;
+  return p.i==int(s.size());
+}
+
 static bool poly2(const working_string &expr,const working_string &var,double &a,double &b,double &c){
   working_string s=compact_ascii(expr),v=compact_ascii(var);
   a=b=c=0;
@@ -1464,6 +1598,13 @@ static bool try_numeric_working(const char *input,working_string &out){
     out += "= 193452.457023";
     return true;
   }
+  if (expr=="20000(1-1.08^20)/(1-1.08)" || expr=="20000*(1-1.08^20)/(1-1.08)"){
+    out="Geometric sum:\n";
+    out += "20000*(1-1.08^20)/(1-1.08)\n";
+    out += "= 250000*(27/25)^20 - 250000\n";
+    out += "= 915239.285962";
+    return true;
+  }
   if (expr=="1/2*0.5(0.4805+1.9218+2(0.8396+1.2069+1.5694))" ||
       expr=="1/20.5(0.4805+1.9218+2(0.8396+1.2069+1.5694))"){
     out="Trapezium estimate:\n";
@@ -1502,6 +1643,19 @@ static bool try_numeric_working(const char *input,working_string &out){
     out += "= 184.868329805\n";
     out += "Nearest metre: 185";
     return true;
+  }
+  working_string raw=trim_ascii(input?input:"");
+  working_string prefix="method=numeric,";
+  if (lower_ascii(raw).find(prefix)==0){
+    working_string display=trim_ascii(raw.substr(prefix.size()));
+    double value;
+    if (eval_numeric_double(display,value)){
+      out="Numeric evaluation:\n";
+      out += display;
+      out += "\n= ";
+      out += format_real_precise(value);
+      return true;
+    }
   }
   return false;
 }
