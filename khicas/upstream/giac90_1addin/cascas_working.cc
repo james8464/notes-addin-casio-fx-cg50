@@ -2525,6 +2525,12 @@ static bool try_xform(const char *input,working_string &out){
   }
   if ((a=="log(2,x)" && b=="ln(x)/ln(2)") || (a=="log(a,x)" && b=="ln(x)/ln(a)")){
     out += "Use change of base: log_a(x)=ln(x)/ln(a)\n";
+    out += "Here a = ";
+    out += (a=="log(2,x)")?"2":"a";
+    out += "\n";
+    out += "So log_a(x) becomes ";
+    out += args[1];
+    out += "\n";
     out += "Answer: ";
     out += args[1];
     return true;
@@ -2643,6 +2649,15 @@ static bool try_suvat(const char *input,working_string &out){
     double inside=v*v-2*a*s;
     out += "v^2 = u^2 + 2as\n";
     out += "u^2 = v^2 - 2as\n";
+    out += "u^2 = ";
+    out += format_real(v);
+    out += "^2 - 2*";
+    out += format_real(a);
+    out += "*";
+    out += format_real(s);
+    out += " = ";
+    out += format_real(inside);
+    out += "\n";
     if (inside<0){
       out += "u = no real value";
       return true;
@@ -2662,6 +2677,15 @@ static bool try_suvat(const char *input,working_string &out){
       return true;
     }
     double inside=v*v-2*a*s;
+    out += "v^2 - 2as = ";
+    out += format_real(v);
+    out += "^2 - 2*";
+    out += format_real(a);
+    out += "*";
+    out += format_real(s);
+    out += " = ";
+    out += format_real(inside);
+    out += "\n";
     if (inside<0){
       out += "t = (no positive root)";
       return true;

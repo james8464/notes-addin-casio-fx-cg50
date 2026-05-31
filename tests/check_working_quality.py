@@ -61,6 +61,103 @@ QUALITY_CASES = [
             "Answer: y >= 3",
         ],
     ),
+    (
+        "diff((x^2)*tan(y)=9,x)",
+        4,
+        [
+            "2*x*tan(y)+x^2*sec(y)^2*(dy)/(dx)=0",
+            "tan(y)=9/x^2 and sec(y)^2=1+tan(y)^2",
+            "(dy)/(dx)=(-18x)/(x^4+81)",
+        ],
+    ),
+    (
+        "solve(k*(k+3)/(k+1)=2,k)",
+        6,
+        [
+            "Domain: k + 1 != 0 => k != -1",
+            "Multiply by k + 1",
+            "(k+2)(k-1)=0",
+            "k = [1, -2]",
+        ],
+    ),
+    (
+        "solve(10^(3*k)=2,k)",
+        5,
+        [
+            "Take ln of both sides.",
+            "3*k*ln(10) = ln(2)",
+            "Answer: k = [ln(2)/(3*ln(10))]",
+        ],
+    ),
+    (
+        "range(x/(x^2+4),x)",
+        5,
+        [
+            "Let y=x/(x^2+4)",
+            "y*x^2 - x + 4*y = 0",
+            "Discriminant >= 0: 1 - 16*y^2 >= 0",
+            "-1/4 <= y <= 1/4",
+        ],
+    ),
+    (
+        "xform(log(2,x),ln(x)/ln(2))",
+        5,
+        [
+            "Use change of base: log_a(x)=ln(x)/ln(a)",
+            "Here a = 2",
+            "So log_a(x) becomes ln(x)/ln(2)",
+            "Answer: ln(x)/ln(2)",
+        ],
+    ),
+    (
+        "xform((sin(x)-cos(x)+1)/(sin(x)+cos(x)-1),sec(x)+tan(x))",
+        6,
+        [
+            "Put t=tan(x/2)",
+            "sin(x)=2*t/(1+t^2), cos(x)=(1-t^2)/(1+t^2)",
+            "(sin(x)-cos(x)+1)/(sin(x)+cos(x)-1) = (1+t)/(1-t)",
+            "sec(x)+tan(x) = (1+t)/(1-t)",
+        ],
+    ),
+    (
+        "binomial((1+8*x)^(1/2),x,0,3)",
+        5,
+        [
+            "(1+u)^n = 1 + n*u + n*(n-1)*u^2/2! + n*(n-1)*(n-2)*u^3/3!",
+            "u = 8*x, n = 1/2",
+            "Simplified terms: T0 = 1, T1 = 4*x, T2 = -8*x^2, T3 = 32*x^3",
+            "Answer: 1 + 4*x - 8*x^2 + 32*x^3",
+        ],
+    ),
+    (
+        "partfrac((50*x^2+38*x+9)/((5*x+2)^2*(1-2*x)))",
+        5,
+        [
+            "A/(5*x + 2)+B/(5*x + 2)^2+C/(- 2*x + 1)",
+            "B = 1, C = 2",
+            "Compare x^2 coefficients: A = 0",
+            "1/(5*x + 2)^2 + 2/(- 2*x + 1)",
+        ],
+    ),
+    (
+        "suvat(v=20,a=2,s=48,target=u)",
+        5,
+        [
+            "v^2 = u^2 + 2as",
+            "u^2 = 20^2 - 2*2*48 = 208",
+            "u = sqrt(208) or -sqrt(208)",
+        ],
+    ),
+    (
+        "suvat(s=45,v=20,a=5,target=t)",
+        5,
+        [
+            "s = vt - 1/2at^2",
+            "t = (v +/- sqrt(v^2 - 2as))/a",
+            "v^2 - 2as = 20^2 - 2*5*45 = -50",
+            "t = (no positive root)",
+        ],
+    ),
 ]
 
 

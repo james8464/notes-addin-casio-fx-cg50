@@ -1,6 +1,6 @@
 # CasioCAS Project Graph
 
-Last updated: 2026-05-31 05:16 Europe/London
+Last updated: 2026-05-31 05:22 Europe/London
 
 ## Build
 
@@ -67,7 +67,7 @@ graph TD
   Direct --> Targeted["symbolic linear rearrange + 2^linear solve routes"]
   Direct --> RationalSurd["targeted rational/surd differentiation solve routes"]
   Direct --> ExamExact["direct exam queue routes: sequences, geometry, trig identity, partial fractions, binomial, exponential models"]
-  Direct --> Quality["working-quality depth gate for terse integral/range routes"]
+  Direct --> Quality["16-case working-quality depth gate across calculus, range, solve, xform, binomial, partfrac, SUVAT"]
   Suvat --> KeySuvat["key-value u/t roots"]
   Host["thin same-source host wrapper"] --> Queue["200/200 exact queue host checks"]
   Host --> DeletedHost["old host-only working_engine/src deleted"]
@@ -159,7 +159,7 @@ graph TD
 
 ```mermaid
 graph LR
-  Build["./compile exit 0"] --> Size["1,299,155 bytes"]
+  Build["./compile exit 0"] --> Size["1,299,551 bytes"]
   Build --> Ram["ram 333,236 bytes"]
   Build --> R8C2["r8c2 1,810,474 bytes"]
   Build --> Meta["metadata ok"]
@@ -174,7 +174,7 @@ graph LR
   Queue --> GoldenRun["200/200 direct calculator-source ok"]
   Queue --> NoGolden["200/200 without generated golden fallback"]
   Shared["shared working"] --> SharedRun["200/200 thin host+calculator adapter ok"]
-  Shared --> WorkQ["6/6 working-quality depth cases ok"]
+  Shared --> WorkQ["16/16 working-quality depth cases ok"]
   Shared --> CoreRun["197/197 core routes without golden fallback ok"]
   Shared --> NoHostSrc["old host-only source deleted"]
   Obj["object prune"] --> QR["qrcodegen.o link-safe removed"]
