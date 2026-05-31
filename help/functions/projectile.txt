@@ -1,0 +1,5 @@
+Args: projectile(u,theta,t[,g])
+Required: u = initial speed, theta = launch angle in degrees, t = time. Optional: g = gravitational acceleration, default 9.8.
+Does: Resolves projectile motion into horizontal and vertical components, then calculates position and velocity at time t.
+Examples: projectile(20,30,2); projectile(u=15,theta=40,t=1.5,g=9.81)
+Working: Shows u_x/u_y resolution, horizontal displacement, vertical displacement, and velocity components.

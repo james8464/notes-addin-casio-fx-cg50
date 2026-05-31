@@ -2873,6 +2873,95 @@ static bool try_suvat(const char *input,working_string &out){
   return false;
 }
 
+static bool try_projectile(const char *input,working_string &out){
+  working_string args[6];
+  int count=0;
+  if (!parse_call(input,"projectile",args,6,count) || count<3)
+    return false;
+  double u=0,theta=0,t=0,g=9.8;
+  bool hu=false,htheta=false,ht=false,hg=count==3;
+  if ((count==3 || count==4) && int(args[0].find('='))<0 && int(args[1].find('='))<0 && int(args[2].find('='))<0){
+    hu=parse_real(args[0],u);
+    htheta=parse_real(args[1],theta);
+    ht=parse_real(args[2],t);
+    if (count==4)
+      hg=parse_real(args[3],g);
+  }
+  else {
+    for (int i=0;i<count;++i){
+      int eq=args[i].find('=');
+      if (eq<0) continue;
+      working_string k=compact_ascii(args[i].substr(0,eq));
+      working_string val=trim_ascii(args[i].substr(eq+1));
+      double d;
+      if (!parse_real(val,d)) continue;
+      if (k=="u" || k=="speed"){ u=d; hu=true; }
+      else if (k=="theta" || k=="angle"){ theta=d; htheta=true; }
+      else if (k=="t" || k=="time"){ t=d; ht=true; }
+      else if (k=="g" || k=="gravity"){ g=d; hg=true; }
+    }
+  }
+  if (!hu || !htheta || !ht || !hg)
+    return false;
+  double rad=theta*0.017453292519943295;
+  double ux=u*cos(rad),uy=u*sin(rad);
+  double x=ux*t;
+  double y=uy*t-.5*g*t*t;
+  double vx=ux,vy=uy-g*t;
+  out="Projectile:\n";
+  out += "Resolve initial velocity\n";
+  out += "u_x = u*cos(theta), u_y = u*sin(theta)\n";
+  out += "u_x = ";
+  out += format_real(u);
+  out += "*cos(";
+  out += format_real(theta);
+  out += ") = ";
+  out += format_real(ux);
+  out += "\nu_y = ";
+  out += format_real(u);
+  out += "*sin(";
+  out += format_real(theta);
+  out += ") = ";
+  out += format_real(uy);
+  out += "\nHorizontal: x = u_x*t = ";
+  out += format_real(ux);
+  out += "*";
+  out += format_real(t);
+  out += " = ";
+  out += format_real(x);
+  out += "\nVertical: y = u_y*t - 1/2*g*t^2\n";
+  out += "y = ";
+  out += format_real(uy);
+  out += "*";
+  out += format_real(t);
+  out += " - 1/2*";
+  out += format_real(g);
+  out += "*";
+  out += format_real(t);
+  out += "^2 = ";
+  out += format_real(y);
+  out += "\nv_x = ";
+  out += format_real(vx);
+  out += "\nv_y = u_y - g*t = ";
+  out += format_real(uy);
+  out += " - ";
+  out += format_real(g);
+  out += "*";
+  out += format_real(t);
+  out += " = ";
+  out += format_real(vy);
+  out += "\nAnswer: [x=";
+  out += format_real(x);
+  out += ",y=";
+  out += format_real(y);
+  out += ",vx=";
+  out += format_real(vx);
+  out += ",vy=";
+  out += format_real(vy);
+  out += "]";
+  return true;
+}
+
 static bool try_force(const char *input,working_string &out){
   working_string args[4];
   int count=0;
@@ -3357,6 +3446,8 @@ bool eval_with_working(const char *input,working_string &out){
   if (try_xform(input,out))
     return true;
   if (try_suvat(input,out))
+    return true;
+  if (try_projectile(input,out))
     return true;
   if (try_force(input,out))
     return true;

@@ -211,6 +211,8 @@ CASES = [
     ("suvat(u=8,a=-2,s=15,target=v)", "v = sqrt(4) or -sqrt(4)"),
     ("suvat(u=4,v=16,t=3,target=a)", "a = (16 - 4)/3"),
     ("suvat(u=4,v=16,t=3,target=s)", "s = (4 + 16)*3/2"),
+    ("projectile(20,30,2)", "Answer: [x=34.641,y=0.4,vx=17.3205,vy=-9.6]"),
+    ("projectile(u=15,theta=40,t=1.5,g=9.81)", "Vertical: y = u_y*t - 1/2*g*t^2"),
     ("force(5,2)", "F = 5*2"),
     ("force(m=12,a=-3)", "Answer: -36 N"),
     ("weight(5)", "W = 5*9.8"),

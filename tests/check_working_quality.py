@@ -197,6 +197,19 @@ QUALITY_CASES = [
         ],
     ),
     (
+        "projectile(20,30,2)",
+        7,
+        [
+            "Resolve initial velocity",
+            "u_x = 20*cos(30) = 17.3205",
+            "u_y = 20*sin(30) = 10",
+            "Horizontal: x = u_x*t = 17.3205*2 = 34.641",
+            "Vertical: y = u_y*t - 1/2*g*t^2",
+            "v_y = u_y - g*t = 10 - 9.8*2 = -9.6",
+            "Answer: [x=34.641,y=0.4,vx=17.3205,vy=-9.6]",
+        ],
+    ),
+    (
         "force(5,2)",
         4,
         [

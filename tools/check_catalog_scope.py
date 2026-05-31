@@ -19,6 +19,7 @@ REQUIRED = [
     "xform(expr,target)",
     "implicit_diff(eq,[x,y])",
     "suvat(u,a,t)",
+    "projectile(u,theta,t[,g])",
     "weight(m[,g])",
 ]
 
