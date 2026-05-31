@@ -63,8 +63,8 @@ graph TD
   Runner --> Report["tests/reports/.../latest.jsonl"]
   Live --> TUI["tools/audit_progress_tui.py"]
   Report --> TUI
-  Runner --> Runtime["13,868/13,868 runtime-safe"]
-  Runner --> Strict["12,788/13,868 strict marker pass"]
+  Runner --> Runtime["13,888/13,888 runtime-safe"]
+  Runner --> Strict["12,789/13,888 strict marker pass"]
   Strict --> Remaining["remaining: symbolic parameter area proofs, algebra presentation, binomial/partfrac, exact-form geometry/vector clusters"]
 ```
 
