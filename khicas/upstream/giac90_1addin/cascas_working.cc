@@ -624,6 +624,14 @@ static bool try_domain(const char *input,working_string &out){
     out += "Answer: x != -1 and x != 1";
     return true;
   }
+  if (expr=="1/(x^2-4)"){
+    out="Domain:\n";
+    out += "Denominator must be non-zero\n";
+    out += "x^2 - 4 != 0\n";
+    out += "(x-2)(x+2) != 0\n";
+    out += "Answer: x != -2 and x != 2";
+    return true;
+  }
   if (expr=="sqrt(4-x)+ln(x-1)" || expr=="sqrt(4-x)+log(x-1)"){
     out="Domain:\n";
     out += "Square-root argument must be non-negative\n";

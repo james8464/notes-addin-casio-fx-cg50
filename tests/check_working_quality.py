@@ -239,6 +239,16 @@ QUALITY_CASES = [
         ],
     ),
     (
+        "domain(1/(x^2-4),x)",
+        5,
+        [
+            "Denominator must be non-zero",
+            "x^2 - 4 != 0",
+            "(x-2)(x+2) != 0",
+            "Answer: x != -2 and x != 2",
+        ],
+    ),
+    (
         "domain(sqrt(4-x)+ln(x-1),x)",
         6,
         [
