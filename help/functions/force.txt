@@ -1,5 +1,0 @@
-Args: force(m,a)
-Required: mass m, acceleration a.
-Does: Calculates net force using Newton's second law F = m*a.
-Examples: force(5,2)
-Working: Shows formula selection, substitution, and force in newtons.

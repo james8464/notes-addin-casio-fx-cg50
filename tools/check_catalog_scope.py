@@ -18,10 +18,6 @@ REQUIRED = [
     "range(expr,[x,a,b])",
     "xform(expr,target)",
     "implicit_diff(eq,[x,y])",
-    "suvat(u,a,t)",
-    "projectile(u,theta,t[,g])",
-    "pulley(m1,m2[,g])",
-    "weight(m[,g])",
 ]
 
 REMOVED_CATEGORIES = [

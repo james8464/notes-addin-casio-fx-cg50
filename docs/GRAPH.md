@@ -1,6 +1,6 @@
 # CasioCAS Project Graph
 
-Last updated: 2026-05-31 09:59 Europe/London
+Last updated: 2026-05-31 10:22 Europe/London
 
 ## Build
 
@@ -27,7 +27,7 @@ graph TD
   Input["main.cc shell input"] --> Guard["A-level guard"]
   Guard --> Hash["hashed removed-feature guard"]
   Hash --> Shared["cascas_working adapter"]
-  Shared --> Rewrite["range/xform/log/diff/int/SUVAT"]
+  Shared --> Rewrite["range/xform/log/diff/int pure maths"]
   Shared --> DirectQueue["direct no-fallback exam queue routes"]
   Rewrite --> Giac["GIAC core"]
   DirectQueue --> CalcWork
@@ -50,10 +50,6 @@ graph TD
   Direct --> DiffInt["power/product/chain/quotient diff + trig/log integrals"]
   Direct --> Xform["identity/log/sec/cosec/cot/half-angle proof shell"]
   Direct --> Log["log(base,x) working"]
-  Direct --> Suvat["SUVAT displacement/velocity/acceleration working"]
-  Direct --> Projectile["projectile components/position/velocity working"]
-  Direct --> Pulley["connected-particle pulley acceleration/tension working"]
-  Direct --> ForceMoment["force/moment/weight/resolve/friction mechanics working"]
   Direct --> MoreWork["tan/sec/cosec diff, golden solve routes, reciprocal ranges"]
   Direct --> FilteredSolve["quadratic roots with integer/positive/reject filters"]
   Direct --> Numeric["numeric estimates, rounding, time conversion, root brackets"]
@@ -71,9 +67,8 @@ graph TD
   Direct --> RationalSurd["targeted rational/surd differentiation solve routes"]
   Direct --> ExamExact["direct exam queue routes: sequences, geometry, trig identity, partial fractions, binomial, exponential models"]
   Direct --> SepDE["separable-DE exponential model solve(dn/dt=k*n,n,t)"]
-  Direct --> Quality["27-case working-quality depth gate across calculus, range, solve, xform, separable DE, binomial, partfrac, SUVAT, mechanics"]
-  Suvat --> KeySuvat["key-value u/t roots"]
-  Suvat --> MoreSuvat["v, a, and average-velocity s routes"]
+  Direct --> Quality["pure-maths working-quality depth gate across calculus, range, solve, xform, separable DE, binomial, partfrac"]
+  Direct --> PureOnly["mechanics routes removed from catalog/help/working engine"]
   Host["thin same-source host wrapper"] --> Queue["201/201 exact queue host checks"]
   Host --> DeletedHost["old host-only working_engine/src deleted"]
   QueueTests["exact queue file"] --> SameSource["201/201 direct no-fallback calculator-source coverage"]
@@ -165,9 +160,8 @@ graph TD
 
 ```mermaid
 graph TD
-  Scope["A-level Pure + Mechanics"] --> Pure["algebra trig logs diff int vectors numerical"]
-  Scope --> Mech["SUVAT forces moments"]
-  Scope --> Out["stats/prob matrices complex plots programming random crypto"]
+  Scope["A-level Pure only"] --> Pure["algebra trig logs diff int vectors numerical"]
+  Scope --> Out["mechanics stats/prob matrices complex plots programming random crypto"]
 ```
 
 ## Tests
@@ -188,30 +182,31 @@ graph TD
   Queue --> NoGoldenAudit["tests/audit_no_golden_queue_coverage.py"]
   UI["g3a bytes"] --> Border["check_calculator_border"]
   Bin["strings CasioCAS.g3a"] --> Leak["removed-term leak scan"]
+  Graphify["graphify update . --no-cluster"] --> GraphJSON["graphify-out/graph.json"]
 ```
 
 ## Latest Gates
 
 ```mermaid
 graph LR
-  Build["./compile exit 0"] --> Size["1,290,155 bytes"]
-  Build --> Rom["rom 1,261,479 bytes"]
+  Build["./compile exit 0"] --> Size["1,277,303 bytes"]
+  Build --> Rom["rom 1,248,627 bytes"]
   Build --> Ram["ram 331,088 bytes"]
   Build --> R8C2["r8c2 1,336,146 bytes"]
   Build --> Meta["metadata ok"]
   Build --> Border["purple border ok"]
   Build --> NoRuntimeFallback["generated golden fallback disabled"]
   Build --> NoRuntimeSource["generated golden fallback source removed"]
-  Source["source gates"] --> Catalog["catalog ok, required 15"]
-  Source --> Removed["334 removed rejected"]
+  Source["source gates"] --> Catalog["catalog ok, required 11"]
+  Source --> Removed["343 removed rejected"]
   Source --> Session["session disabled"]
-  Help["help pack"] --> HelpQ["48 function sheets ok, PAK 49 records / 11,591 bytes"]
+  Help["help pack"] --> HelpQ["40 function sheets ok, PAK 41 records / 9,232 bytes"]
   Queue["golden queue"] --> QueueRun["201/201 host ok"]
   Queue --> GoldenRun["201/201 direct calculator-source ok"]
   Queue --> NoGolden["201/201 without generated golden fallback"]
-  Shared["shared working"] --> SharedRun["223/223 thin host+calculator adapter ok"]
-  Shared --> WorkQ["27/27 working-quality depth cases ok"]
-  Shared --> CoreRun["218/218 core routes without golden fallback ok"]
+  Shared["shared working"] --> SharedRun["196/196 thin host+calculator adapter ok"]
+  Shared --> WorkQ["15/15 working-quality depth cases ok"]
+  Shared --> CoreRun["196/196 core routes without golden fallback ok"]
   Shared --> NoHostSrc["old host-only source deleted"]
   Obj["object prune"] --> QR["qrcodegen.o link-safe removed"]
   Macro["source stubs"] --> Stubbed["plot/list/stats/special/ODE/file IO/linalg/transform helpers blocked"]
@@ -219,4 +214,5 @@ graph LR
   Static["lexer/help prune"] --> StaticRun["distribution/denom/transform/multinomial/matrix/about/shortcuts/session/crypto/complex/JordanBlock/keep_pivot/det-option/trace/plot-step/program/control-flow/Xcas/turtle/matplot/random/graphic names neutralized"]
   Static --> PromptRun["mod/sign/euler/ascii/geometry/3D solids/ode plot/laplace prompt names blocked"]
   Bin["binary scan"] --> NoLeak["no removed-term/plot-step/session/menu hits"]
+  Graphify["graphify update . --no-cluster"] --> GraphStats["10,299 nodes / 1,174,446 edges"]
 ```

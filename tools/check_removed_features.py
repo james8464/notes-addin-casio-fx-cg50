@@ -344,6 +344,15 @@ REMOVED = [
     "image",
     "rref",
     "ref",
+    "suvat",
+    "projectile",
+    "pulley",
+    "incline",
+    "force",
+    "weight",
+    "moment",
+    "resolve",
+    "friction",
 ]
 
 BEHAVIOR_SAMPLES = [
@@ -625,6 +634,15 @@ BEHAVIOR_SAMPLES = [
     "image([[1,2],[2,4]])",
     "rref([[1,2],[2,4]])",
     "ref([[1,2],[2,4]])",
+    "suvat(u=3,a=2,t=4)",
+    "projectile(20,30,2)",
+    "pulley(4,2)",
+    "incline(5,30)",
+    "force(2,3)",
+    "weight(4)",
+    "moment(10,2)",
+    "resolve(10,30)",
+    "friction(0.2,40)",
 ]
 
 BINARY_ABSENT = [

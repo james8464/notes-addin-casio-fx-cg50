@@ -203,37 +203,9 @@ CASES = [
     ("dot([3,4,5],[1,1,4])", "(3,4,5).(1,1,4) = 3*1 + 4*1 + 5*4"),
     ("norm([3,4,5])^2", "norm([3,4,5])^2 = (5*sqrt(2))^2"),
     ("norm([1,1,4])^2", "norm([1,1,4])^2 = (3*sqrt(2))^2"),
-    ("suvat(3,2,5)", "s = u*t + 1/2*a*t^2"),
-    ("suvat(v=20,a=2,s=48,target=u)", "u = sqrt(208) or -sqrt(208)"),
-    ("suvat(s=25,v=0,a=-10,target=t)", "t = 2.23607 s"),
-    ("suvat(s=45,v=20,a=5,target=t)", "t = (no positive root)"),
-    ("suvat(u=5,a=3,t=4,target=v)", "v = 5 + 3*4"),
-    ("suvat(u=8,a=-2,s=15,target=v)", "v = sqrt(4) or -sqrt(4)"),
-    ("suvat(u=4,v=16,t=3,target=a)", "a = (16 - 4)/3"),
-    ("suvat(u=4,v=16,t=3,target=s)", "s = (4 + 16)*3/2"),
-    ("projectile(20,30,2)", "Answer: [x=34.641,y=0.4,vx=17.3205,vy=-9.6]"),
-    ("projectile(u=15,theta=40,t=1.5,g=9.81)", "Vertical: y = u_y*t - 1/2*g*t^2"),
-    ("pulley(4,6)", "Answer: [a=1.96,T=47.04]"),
-    ("pulley(m1=5,m2=9,g=9.81)", "T = m1*(g + a) = 5*(9.81 + 2.80286) = 63.0643"),
-    ("force(5,2)", "F = 5*2"),
-    ("force(m=12,a=-3)", "Answer: -36 N"),
-    ("weight(5)", "W = 5*9.8"),
-    ("weight(m=12,g=9.81)", "Answer: 117.72 N"),
-    ("moment(12,0.5)", "M = 12*0.5"),
-    ("moment(force=8,distance=1.25)", "Answer: 10 N m"),
-    ("resolve(10,30)", "Answer: [8.66025,5] N"),
-    ("resolve(force=13,angle=22.6)", "Horizontal component = F*cos(theta)"),
-    ("friction(0.4,20)", "F_max = 0.4*20"),
-    ("friction(mu=0.25,R=48)", "Answer: F <= 12 N"),
 ]
 
-ARGV_CASES = [
-    ([str(RUNNER), "--suvat", "v=20,a=2,s=48,target=u"], "u = sqrt(208) or -sqrt(208)"),
-    ([str(RUNNER), "--suvat", "s=25,v=0,a=-10,target=t"], "t = 2.24 s"),
-    ([str(RUNNER), "--suvat", "s=45,v=20,a=5,target=t"], "t = (no positive root)"),
-    ([str(RUNNER), "--suvat", "u=5,a=3,t=4,target=v"], "Answer: 17"),
-    ([str(RUNNER), "--suvat", "u=4,v=16,t=3,target=a"], "Answer: 4"),
-]
+ARGV_CASES = []
 
 
 def main() -> int:

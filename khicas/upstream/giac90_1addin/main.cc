@@ -2351,6 +2351,15 @@ static unsigned cascas_hash_ident(const string &s,int begin,int end){
 
 static bool cascas_denied_hash(unsigned h){
   switch (h){
+    case 0x18585f14u:
+    case 0x0f477e9au:
+    case 0x0e5f3468u:
+    case 0xeb64d5d5u:
+    case 0x79a98884u:
+    case 0x50a09eb9u:
+    case 0x0c5bcd9du:
+    case 0xaef31c63u:
+    case 0xa51be2bbu:
     case 0x0b11b072u:
     case 0x3d8466cbu:
     case 0x64bcb23du:

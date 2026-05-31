@@ -1,5 +1,0 @@
-Args: pulley(m1,m2[,g])
-Required: m1 = first hanging mass, m2 = second hanging mass. Optional: g = gravitational acceleration, default 9.8.
-Does: Solves a two-particle smooth-pulley system, taking m2 downward and m1 upward as positive.
-Examples: pulley(4,6); pulley(m1=5,m2=9,g=9.81)
-Working: Shows the system equation, acceleration, tension equation, and final acceleration/tension pair.

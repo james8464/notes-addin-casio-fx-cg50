@@ -1,5 +1,0 @@
-Args: weight(m[,g])
-Required: m = mass in kg. Optional: g = gravitational acceleration, default 9.8.
-Does: Calculates weight force using W = m*g.
-Examples: weight(5); weight(12,9.81); weight(m=7,g=9.8)
-Working: Shows W = m*g, the chosen g value, substitution, and final force.

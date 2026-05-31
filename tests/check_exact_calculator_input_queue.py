@@ -12,7 +12,7 @@ REPO = Path(__file__).resolve().parents[1]
 QUEUE = REPO / "tests" / "golden" / "exact_calculator_input_queue.jsonl"
 REQUIRED = ("id", "source_pdf", "question", "review_basis", "verdict")
 VERDICTS = {"testable", "partial", "skip"}
-MODULES = {"shell", "simplify", "algebra", "derive", "integrate", "trig", "suvat"}
+MODULES = {"shell", "simplify", "algebra", "derive", "integrate", "trig"}
 
 
 def fail(msg: str) -> int:

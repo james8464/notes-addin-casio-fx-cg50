@@ -70,8 +70,6 @@ def run_one(spec: dict[str, Any], strict: bool) -> dict[str, Any]:
             "seconds": 0,
             "output": ["stats/probability out of scope"],
         }
-    elif module == "suvat" or low.startswith("suvat("):
-        argv = [str(HOST), "--suvat", text]
     else:
         argv = [str(HOST), "--alg", text]
     proc = subprocess.run(

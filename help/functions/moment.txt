@@ -1,5 +1,0 @@
-Args: moment(F,d)
-Required: force F, perpendicular distance d from the turning axis.
-Does: Calculates moment using M = F*d.
-Examples: moment(12,0.5)
-Working: Shows formula selection, substitution, and moment in N m.

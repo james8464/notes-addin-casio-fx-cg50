@@ -112,7 +112,8 @@ static bool removed_feature(std::string const &expr)
         "hypersurface","frame_3d","plot3d","graphe3d","plotinequation",
         "inequationplot","envelope","locus","linetan","tabvar","draw_arc","draw_circle","draw_line",
         "draw_polygon","draw_rectangle","python_compat","exponentiald","betad",
-        "cauchyd","gammad","geometric","weibulld"
+        "cauchyd","gammad","geometric","weibulld","suvat","projectile",
+        "pulley","incline","force","weight","moment","resolve","friction"
     };
     for(char const *name : calls) {
         if(has_call(s, name)) return true;
@@ -134,17 +135,10 @@ static std::string stdin_text()
     return out.str();
 }
 
-static void replace_all(std::string &s, std::string const &from, std::string const &to)
-{
-    for(std::size_t pos = s.find(from); pos != std::string::npos; pos = s.find(from, pos + to.size())) {
-        s.replace(pos, from.size(), to);
-    }
-}
-
 int main(int argc, char **argv)
 {
     if(argc < 2) {
-        std::cerr << "usage: casio_host [--alg|--derive|--int|--trig|--suvat|--stats] EXPR\n";
+        std::cerr << "usage: casio_host [--alg|--derive|--int|--trig|--stats] EXPR\n";
         return 2;
     }
 
@@ -161,10 +155,6 @@ int main(int argc, char **argv)
 
     bool flagged = starts_with(flag, "--");
     std::string expr = flagged ? (argc >= 3 ? argv[2] : "") : flag;
-    bool legacy_suvat_flag = flag == "--suvat" && !starts_with(trim(lower_ascii(expr)), "suvat(");
-    if(legacy_suvat_flag) {
-        expr = "suvat(" + expr + ")";
-    }
 
     if(removed_feature(expr)) {
         std::cout << "Err: unsupported (not A-level scope)\n";
@@ -173,7 +163,6 @@ int main(int argc, char **argv)
 
     cascas::working_string out;
     if(cascas::eval_with_working(expr.c_str(), out)) {
-        if(legacy_suvat_flag) replace_all(out, "t = 2.23607 s", "t = 2.24 s");
         std::cout << out;
         if(out.empty() || out[out.size() - 1] != '\n') std::cout << "\n";
         return 0;
