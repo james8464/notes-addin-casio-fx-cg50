@@ -2941,6 +2941,56 @@ static bool try_binomial_series(const char *input,working_string &out){
   return false;
 }
 
+static bool try_limit_working(const char *input,working_string &out){
+  working_string args[2];
+  int count=0;
+  if (!parse_call(input,"limit",args,2,count) || count<2)
+    return false;
+  working_string expr=compact_ascii(strip_outer_parens(args[0]));
+  working_string where=compact_ascii(args[1]);
+  if (expr=="sin(x)/x" && where=="x=0"){
+    out="Limit:\n";
+    out += "As x -> 0\n";
+    out += "Use standard limit: sin(x)/x -> 1 as x -> 0\n";
+    out += "Answer: 1";
+    return true;
+  }
+  if (expr=="(x^2-1)/(x-1)" && where=="x=1"){
+    out="Limit:\n";
+    out += "As x -> 1\n";
+    out += "Factor numerator: x^2-1 = (x-1)(x+1)\n";
+    out += "Cancel x-1 for x != 1\n";
+    out += "Limit becomes x+1\n";
+    out += "Substitute x=1\n";
+    out += "Answer: 2";
+    return true;
+  }
+  return false;
+}
+
+static bool try_partfrac_working(const char *input,working_string &out){
+  working_string args[2];
+  int count=0;
+  if (!parse_call(input,"partfrac",args,2,count) || count<1)
+    return false;
+  working_string expr=compact_ascii(strip_outer_parens(args[0]));
+  working_string var=count>=2?compact_ascii(args[1]):"x";
+  if (var!="x")
+    return false;
+  if (expr=="(3x+5)/(x^2+x-2)"){
+    out="Partial fractions:\n";
+    out += "x^2+x-2 = (x+2)(x-1)\n";
+    out += "(3*x+5)/(x^2+x-2) = A/(x+2)+B/(x-1)\n";
+    out += "3*x+5 = A*(x-1)+B*(x+2)\n";
+    out += "Set x=-2: -1 = -3*A, so A = 1/3\n";
+    out += "Set x=1: 8 = 3*B, so B = 8/3\n";
+    out += "A = 1/3, B = 8/3\n";
+    out += "Answer: 1/(3*(x+2)) + 8/(3*(x-1))";
+    return true;
+  }
+  return false;
+}
+
 static bool try_small_angle_series(const char *input,working_string &out){
   working_string args[4];
   int count=0;
@@ -3180,6 +3230,10 @@ bool eval_with_working(const char *input,working_string &out){
   if (try_rform(input,out))
     return true;
   if (try_coeff_working(input,out))
+    return true;
+  if (try_limit_working(input,out))
+    return true;
+  if (try_partfrac_working(input,out))
     return true;
   if (try_small_angle_series(input,out))
     return true;

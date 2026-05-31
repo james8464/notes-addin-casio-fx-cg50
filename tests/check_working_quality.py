@@ -151,6 +151,17 @@ QUALITY_CASES = [
         ],
     ),
     (
+        "limit((x^2-1)/(x-1),x=1)",
+        6,
+        [
+            "Factor numerator: x^2-1 = (x-1)(x+1)",
+            "Cancel x-1",
+            "Limit becomes x+1",
+            "Substitute x=1",
+            "Answer: 2",
+        ],
+    ),
+    (
         "xform(log(2,x),ln(x)/ln(2))",
         5,
         [
@@ -222,6 +233,17 @@ QUALITY_CASES = [
             "B = 1, C = 2",
             "Compare x^2 coefficients: A = 0",
             "1/(5*x + 2)^2 + 2/(- 2*x + 1)",
+        ],
+    ),
+    (
+        "partfrac((3*x+5)/(x^2+x-2),x)",
+        6,
+        [
+            "x^2+x-2 = (x+2)(x-1)",
+            "A/(x+2)+B/(x-1)",
+            "3*x+5 = A*(x-1)+B*(x+2)",
+            "A = 1/3, B = 8/3",
+            "Answer: 1/(3*(x+2)) + 8/(3*(x-1))",
         ],
     ),
 ]
