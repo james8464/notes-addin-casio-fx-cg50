@@ -1531,6 +1531,9 @@ namespace giac {
 
   gen _program(const gen & args,const gen & name,const context * contextptr){
     if ( args.type==_STRNG &&  args.subtype==-1) return  args;
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#else
     if (args.type!=_VECT)
       return args.eval(prog_eval_level(contextptr),contextptr);
     // set breakpoints
@@ -1695,6 +1698,7 @@ namespace giac {
     if (calc_save) 
       calc_mode(38,contextptr);
     return res;
+#endif
   }
   static const char _program_s []="program";
   static define_unary_function_eval4_index (147,__program,&quote_program,_program_s,&printasprogram,&texprintasprogram);
@@ -1759,6 +1763,9 @@ namespace giac {
   }
   gen _bloc(const gen & prog,GIAC_CONTEXT){
     if ( prog.type==_STRNG &&  prog.subtype==-1) return  prog;
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#else
     gen res,label;
     bool findlabel=false;
     debug_struct * dbgptr=debug_ptr(contextptr);
@@ -1818,6 +1825,7 @@ namespace giac {
       }
     }
     return res;
+#endif
   }
   static const char _bloc_s []="bloc";
   static define_unary_function_eval2_index (145,__bloc,&_bloc,_bloc_s,&printasbloc);
@@ -2496,6 +2504,9 @@ namespace giac {
   }
   gen _for(const gen & args,const context * contextptr){
     if ( args.type==_STRNG &&  args.subtype==-1) return  args;
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#else
     // for elem in list: for(elem,list), inert form
     if (args.type!=_VECT || args._VECTptr->size()==2)
       return symb_for(args);
@@ -2808,6 +2819,7 @@ namespace giac {
     if (res!=at_break && forelse!=0)
       forelse.in_eval(eval_lev,res,contextptr);
     return res==at_break?string2gen("breaked",false):res;
+#endif
   }
 
   static const char _for_s []="for";
@@ -3171,6 +3183,9 @@ namespace giac {
 
   gen _local(const gen & args,const context * contextptr) {
     if ( args.type==_STRNG &&  args.subtype==-1) return  args;
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#else
     if (args.type!=_VECT)
       return symb_local(args,contextptr);
     int s=int(args._VECTptr->size());
@@ -3280,6 +3295,7 @@ namespace giac {
     else
       return gensizeerr(contextptr);
     return res;
+#endif
   }
 
   static const char _local_s []="local";
@@ -3348,6 +3364,9 @@ namespace giac {
   }
   gen _try_catch(const gen & args,const context * contextptr){
     if ( args.type==_STRNG &&  args.subtype==-1) return  args;
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#else
     if (args.type!=_VECT)
       return symb_try_catch(args);
     int args_size=int(args._VECTptr->size());
@@ -3433,6 +3452,7 @@ namespace giac {
     increment_instruction(args._VECTptr->front(),contextptr);
     increment_instruction(args._VECTptr->back(),contextptr);
     return res;
+#endif
   }
   static const char _try_catch_s []="try_catch";
   static define_unary_function_eval2_index (177,__try_catch,&_try_catch,_try_catch_s,&printastry_catch);
@@ -4837,7 +4857,11 @@ namespace giac {
   // static gen symb_throw(const gen & args){  return symbolic(at_throw,args);  }
   gen _throw(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG &&  args.subtype==-1) return  args;
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#else
     return gensizeerr(args.print(contextptr));
+#endif
   }
   static const char _throw_s []="throw";
   static define_unary_function_eval (__throw,&_throw,_throw_s);
@@ -8810,7 +8834,11 @@ namespace giac {
   }
   gen _break(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG &&  args.subtype==-1) return  args;
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#else
     return symbolic(at_break,0);
+#endif
   }
   static const char _break_s []="break";
   static define_unary_function_eval2_index (104,__break,&_break,_break_s,&printasbreak);
@@ -8826,7 +8854,11 @@ namespace giac {
   }
   gen _continue(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG &&  args.subtype==-1) return  args;
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#else
     return symbolic(at_continue,0);
+#endif
   }
   static const char _continue_s []="continue";
   static define_unary_function_eval2_index (106,__continue,&_continue,_continue_s,&printascontinue);
@@ -9020,6 +9052,10 @@ namespace giac {
   }
   // user input sent back to the parent process
   gen _inputform(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    if ( args.type==_STRNG &&  args.subtype==-1) return  args;
+    return gensizeerr(contextptr);
+#else
     if (interactive_op_tab && interactive_op_tab[1])
       return interactive_op_tab[1](args,contextptr);
     if ( args.type==_STRNG &&  args.subtype==-1) return  args;
@@ -9055,6 +9091,7 @@ namespace giac {
     // post analysis
     return inputform_post_analysis(v,res,contextptr);
 #endif
+#endif
   }
   static const char _inputform_s []="inputform";
 #if defined RTOS_THREADX || defined NSPIRE
@@ -9082,6 +9119,9 @@ namespace giac {
 
   gen _input(const gen & args,bool textinput,GIAC_CONTEXT){
     if ( args.type==_STRNG &&  args.subtype==-1) return  args;
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#else
     vecteur v(gen2vecteur(args));
     gen res(args);
     if (python_compat(contextptr)){
@@ -9121,6 +9161,7 @@ namespace giac {
     if (is_zero(res))
       return gensizeerr(contextptr);
     return res;
+#endif
   }
 
   string printastifunction(const gen & feuille,const char * sommetstr,GIAC_CONTEXT){
@@ -9174,7 +9215,11 @@ namespace giac {
 
   gen _Dialog(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG &&  args.subtype==-1) return  args;
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#else
     return __inputform.op(args,contextptr);
+#endif
   }
   static const char _Dialog_s []="Dialog";
   static define_unary_function_eval2_index (89,__Dialog,&_Dialog,_Dialog_s,&printasdialog);
@@ -9342,6 +9387,9 @@ namespace giac {
 
   gen _Pause(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG &&  g.subtype==-1) return  g;
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#else
     gen g1=g;
     if (g1.type==_INT_ && g1.val<0)
       wait_1ms(-g1.val);
@@ -9353,6 +9401,7 @@ namespace giac {
     else
       __interactive.op(symbolic(at_Pause,g),contextptr);
     return 0;
+#endif
   }
   static const char _Pause_s []="Pause";
   static define_unary_function_eval2 (__Pause,&_Pause,_Pause_s,&printastifunction);

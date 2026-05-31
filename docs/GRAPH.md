@@ -1,6 +1,6 @@
 # CasioCAS Project Graph
 
-Last updated: 2026-05-31 08:45 Europe/London
+Last updated: 2026-05-31 08:56 Europe/London
 
 ## Build
 
@@ -106,6 +106,7 @@ graph TD
   Macro --> More["desolve/fft/file IO/charpoly/pcar/pivot/keep_pivot/det options/assume blocked"]
   Macro --> XformPrune["halftan/exp2trig/trig2exp/evalc/q2a/a2q blocked"]
   Macro --> PythonConv["python2xcas converter body compiled out in A-level mode"]
+  Macro --> ProgramStubs["program/control-flow/input runtime bodies compiled to A-level stubs"]
   Remove --> Menu["console catalog/menu/message leaks"]
   Remove --> SessionMenu["save/load/session/script/about/shortcuts menu strings"]
   Remove --> PlotMsg["plot working/menu message strings hidden"]
@@ -137,6 +138,7 @@ graph TD
   More --> Gate2
   XformPrune --> Gate2
   PythonConv --> Gate2
+  ProgramStubs --> Gate2
   Menu --> Gate
   SessionMenu --> Gate
   PlotMsg --> Gate
@@ -186,15 +188,15 @@ graph TD
 
 ```mermaid
 graph LR
-  Build["./compile exit 0"] --> Size["1,280,135 bytes"]
-  Build --> Ram["ram 331,092 bytes"]
-  Build --> R8C2["r8c2 1,355,790 bytes"]
+  Build["./compile exit 0"] --> Size["1,280,007 bytes"]
+  Build --> Ram["ram 331,088 bytes"]
+  Build --> R8C2["r8c2 1,340,198 bytes"]
   Build --> Meta["metadata ok"]
   Build --> Border["purple border ok"]
   Build --> NoRuntimeFallback["generated golden fallback disabled"]
   Build --> NoRuntimeSource["generated golden fallback source removed"]
   Source["source gates"] --> Catalog["catalog ok"]
-  Source --> Removed["315 removed rejected"]
+  Source --> Removed["334 removed rejected"]
   Source --> Session["session disabled"]
   Help["help pack"] --> HelpQ["41 function sheets ok"]
   Queue["golden queue"] --> QueueRun["201/201 host ok"]
@@ -206,8 +208,8 @@ graph LR
   Shared --> NoHostSrc["old host-only source deleted"]
   Obj["object prune"] --> QR["qrcodegen.o link-safe removed"]
   Macro["source stubs"] --> Stubbed["plot/list/stats/special/ODE/file IO/linalg/transform helpers blocked"]
-  Macro --> RuntimeStubbed["random/sample + ODE/field plot + turtle/drawing + graph display/logo UI + zplot paper/draw + geometry/3D wrappers + plot/locus/implicit/conic/quadric internals + 3D plot/solid + distribution dispatch + matrix/spectral/JordanBlock + python converter public bodies stubbed/blocked"]
-  Static["lexer/help prune"] --> StaticRun["distribution/denom/transform/multinomial/matrix/about/shortcuts/session/crypto/complex/JordanBlock/keep_pivot/det-option/trace/plot-step/program/Xcas/turtle/matplot/random/graphic names neutralized"]
+  Macro --> RuntimeStubbed["random/sample + ODE/field plot + turtle/drawing + graph display/logo UI + zplot paper/draw + geometry/3D wrappers + plot/locus/implicit/conic/quadric internals + 3D plot/solid + distribution dispatch + matrix/spectral/JordanBlock + python converter + program/control-flow/input public bodies stubbed/blocked"]
+  Static["lexer/help prune"] --> StaticRun["distribution/denom/transform/multinomial/matrix/about/shortcuts/session/crypto/complex/JordanBlock/keep_pivot/det-option/trace/plot-step/program/control-flow/Xcas/turtle/matplot/random/graphic names neutralized"]
   Static --> PromptRun["mod/sign/euler/ascii/geometry/3D solids/ode plot/laplace prompt names blocked"]
   Bin["binary scan"] --> NoLeak["no removed-term/plot-step/session/menu hits"]
 ```

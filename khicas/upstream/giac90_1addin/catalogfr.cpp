@@ -242,7 +242,6 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
   {"ifactor(n)", 0, "Factorisation d'un entier (pas trop grand!). Raccourci n=>*", "1234", 0, CAT_CATEGORY_ARIT},
     {"inscrit(A,B,C)", 0, "Cercle inscrit", "-1,2+i,3", 0, CAT_CATEGORY_PROGCMD | (CAT_CATEGORY_2D << 8) | XCAS_ONLY},
   {"inf", "inf", "Plus l'infini. Utiliser -inf pour moins l'infini ou infinity pour l'infini complexe. Raccourci shift INS.", "-inf", "infinity", CAT_CATEGORY_CALCULUS},
-  {"input()", "input()", "Lire une chaine au clavier", "\"Valeur ?\"", 0, CAT_CATEGORY_PROG},
   {"integrate(f,x,[,a,b])", 0, "Primitive de f par rapport a la variable x, par ex. integrate(x*sin(x),x). Pour calculer une integrale definie, entrer les arguments optionnels a et b, par ex. integrate(x*sin(x),x,0,pi). Pour une integrale curviligne, integrate([champ_x,champ_y],[x,y],courbe,tmin,tmax), par ex. aire ellipse G:=plotparam([2*cos(t),sin(t)],t):; integrate([0,x],[x,y],G,0,2*pi). Raccourci SHIFT F3.", "x*sin(x),x", "cos(x)/(1+x^4),x,0,inf", CAT_CATEGORY_CALCULUS},
     {"inter(A,B)", 0, "Liste des intersections. Utiliser single_inter si l'intersection est unique.", "line(y=x),circle(0,1)", 0, CAT_CATEGORY_3D | (CAT_CATEGORY_2D << 8) | XCAS_ONLY},
     {"inter_unique(A,B)", 0, "Premiere intersection. Utiliser inter pour une liste d'intersections.", "line(y=x),line(x+y=3)", 0, CAT_CATEGORY_3D | (CAT_CATEGORY_2D << 8) | XCAS_ONLY},
