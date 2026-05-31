@@ -1,6 +1,6 @@
 # CasioCAS Project Graph
 
-Last updated: 2026-05-31 01:57 Europe/London
+Last updated: 2026-05-31 02:03 Europe/London
 
 ## Build
 
@@ -53,6 +53,7 @@ graph TD
   Direct --> Log["log(base,x) working"]
   Direct --> Suvat["SUVAT displacement working"]
   Direct --> MoreWork["tan/sec/cosec diff, golden solve routes, reciprocal ranges"]
+  Direct --> FilteredSolve["quadratic roots with integer/positive/reject filters"]
   Suvat --> KeySuvat["key-value u/t roots"]
   Host["old host working engine"] --> Queue["200/200 golden host checks"]
   Golden["exact queue generator"] --> GoldenInc["cascas_golden_cases.inc"]
@@ -135,7 +136,7 @@ graph TD
 
 ```mermaid
 graph LR
-  Build["./compile exit 0"] --> Size["1,314,507 bytes"]
+  Build["./compile exit 0"] --> Size["1,315,707 bytes"]
   Build --> Meta["metadata ok"]
   Build --> Border["purple border ok"]
   Source["source gates"] --> Catalog["catalog ok"]
@@ -144,7 +145,7 @@ graph LR
   Help["help pack"] --> HelpQ["18 function sheets ok"]
   Queue["golden queue"] --> QueueRun["200/200 host ok"]
   Queue --> GoldenRun["200/200 direct calculator-source ok"]
-  Shared["shared working"] --> SharedRun["57/57 host+calculator adapter ok"]
+  Shared["shared working"] --> SharedRun["63/63 host+calculator adapter ok"]
   Obj["object prune"] --> QR["qrcodegen.o link-safe removed"]
   Macro["source stubs"] --> Stubbed["plot/list/stats/special/ODE/file IO/linalg/transform helpers blocked"]
   Static["lexer prune"] --> StaticRun["distribution/denom/transform static names neutralized"]

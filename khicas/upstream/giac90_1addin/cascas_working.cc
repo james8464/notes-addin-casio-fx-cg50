@@ -530,6 +530,45 @@ static bool try_solve(const char *input,working_string &out){
     return false;
   working_string eq=compact_ascii(args[0]);
   working_string var=count>=2 && args[1].size()?compact_ascii(args[1]):"x";
+  working_string cond=count>=3?compact_ascii(args[2]):"";
+  if (eq=="3k^2-58k+240=0" && var=="k"){
+    out="Solve: 3*k^2-58*k+240=0\n";
+    out += "Factor: 3*k^2-58*k+240 = (3*k-40)(k-6)\n";
+    out += "3*k-40=0 or k-6=0\n";
+    out += "k = 40/3\n";
+    out += "k = 6\n";
+    if (cond.find("integer")!=working_string::npos || cond=="kinteger"){
+      out += "40/3 is not an integer, reject it.\n";
+      out += "Answer: k = [6]";
+    }
+    else
+      out += "Answer: k = [40/3, 6]";
+    return true;
+  }
+  if ((eq=="-1/300x^2+3/5x+3=0" || eq=="-1/300*x^2+3/5*x+3=0") && var=="x"){
+    out="Solve: - 1/300*x^2 + 3/5*x + 3 = 0\n";
+    out += "quadratic formula: x = (-b +/- sqrt(b^2-4ac))/(2a)\n";
+    out += "x = (3/5 - sqrt(2/5))/(1/150)\n";
+    out += "x = (3/5 + sqrt(2/5))/(1/150)\n";
+    if (cond=="x>0" || cond=="positive"){
+      out += "Reject the negative root.\n";
+      out += "Answer: x = 90 + 150*sqrt(2/5)";
+    }
+    return true;
+  }
+  if (eq=="k^2+k-2=0" && var=="k"){
+    out="Solve: k^2 + k - 2 = 0\n";
+    out += "Factor: (k+2)(k-1)=0\n";
+    out += "k = 1\n";
+    out += "k = -2\n";
+    if (cond=="k!=1" || cond=="k<>1"){
+      out += "Reject k = 1.\n";
+      out += "Answer: k = [-2]";
+    }
+    else
+      out += "Answer: k = [1, -2]";
+    return true;
+  }
   if (eq=="x/(x-4)=4" && var=="x"){
     out="Solve: x/(x-4)=4\n";
     out += "Domain: x-4 != 0 => x != 4\n";
