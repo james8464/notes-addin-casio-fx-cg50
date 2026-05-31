@@ -63,6 +63,16 @@ QUALITY_CASES = [
         ],
     ),
     (
+        "integrate(exp(3*x),x)",
+        5,
+        [
+            "Use formula: int(e^(k*x)) dx = 1/k*e^(k*x) + C",
+            "k = 3",
+            "int(e^(3*x)) dx = 1/3*e^(3*x) + C",
+            "Answer: 1/3*e^(3*x) + C",
+        ],
+    ),
+    (
         "int(1/x,x)",
         4,
         [
@@ -148,6 +158,17 @@ QUALITY_CASES = [
             "Here a = 2",
             "So log_a(x) becomes ln(x)/ln(2)",
             "Answer: ln(x)/ln(2)",
+        ],
+    ),
+    (
+        "xform(log(2,x^2),2*log(2,x))",
+        5,
+        [
+            "Use log power law: log_a(u^n)=n*log_a(u)",
+            "Here a = 2",
+            "u = x, n = 2",
+            "x > 0",
+            "Answer: 2*log(2,x)",
         ],
     ),
     (

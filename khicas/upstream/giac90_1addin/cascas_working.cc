@@ -2106,6 +2106,15 @@ static bool try_integral(const char *input,working_string &out){
     return true;
   }
   working_string k,arg,pre;
+  if (parse_trig_kx(expr,"exp","",k,arg)){
+    pre=reciprocal_prefix(k);
+    out="Integrate using exponential result:\n";
+    out += "Use formula: int(e^(k*x)) dx = 1/k*e^(k*x) + C\n";
+    out += "k = "+k+"\n";
+    out += "int(e^("+arg+")) dx = "+pre+"e^("+arg+") + C\n";
+    out += "Answer: "+pre+"e^("+arg+") + C";
+    return true;
+  }
   if (parse_trig_kx(expr,"sec","^2",k,arg)){
     pre=reciprocal_prefix(k);
     out="Integrate using formula booklet result:\n";
@@ -2760,6 +2769,21 @@ static bool try_xform(const char *input,working_string &out){
     out += args[1];
     return true;
   }
+  if (a=="log(2,x^2)" && b=="2log(2,x)"){
+    out += "Use log power law: log_a(u^n)=n*log_a(u)\n";
+    out += "Here a = 2\n";
+    out += "u = x, n = 2\n";
+    out += "For real logs, x > 0 for this rearranged form\n";
+    out += "Answer: 2*log(2,x)";
+    return true;
+  }
+  if (a=="ln(x^3)" && b=="3ln(x)"){
+    out += "Use log power law: ln(u^n)=n*ln(u)\n";
+    out += "Here u = x, n = 3\n";
+    out += "For real logs, x > 0 for this rearranged form\n";
+    out += "Answer: 3*ln(x)";
+    return true;
+  }
   if ((a=="2sin(x)cos(x)" && b=="sin(2x)") || (a=="sin(2x)" && b=="2sin(x)cos(x)")){
     out += "Use double-angle identity: sin(2*x)=2*sin(x)*cos(x)\n";
     out += "Answer: ";
@@ -2825,6 +2849,7 @@ static bool try_xform(const char *input,working_string &out){
     out += "Expand: (x+1)^2\n";
     out += "x^2+x+x+1\n";
     out += "Answer: x^2+2*x+1\n";
+    return true;
   }
   out += "Start: ";
   out += args[0];
