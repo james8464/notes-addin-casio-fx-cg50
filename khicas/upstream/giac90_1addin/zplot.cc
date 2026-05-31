@@ -1438,6 +1438,9 @@ namespace giac {
   }
 
   gen plotfunc(const gen & f_,const gen & vars,const vecteur & attributs,int densityplot,double function_xmin,double function_xmax,double function_ymin,double function_ymax,double function_zmin, double function_zmax,int nstep,int jstep,bool showeq,const context * contextptr){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#else
     vecteur L=andor2list(f_,contextptr);
     if (densityplot==0 && are_inequations(L)){
       vecteur res;
@@ -1959,6 +1962,7 @@ namespace giac {
     //return gnuplot_fileno-1;
 #endif
     return r;
+#endif
   }
 
   // Note gnuplot 3.7.2 seems to have a bug
@@ -2329,6 +2333,9 @@ namespace giac {
   }
 
   gen funcplotfunc(const gen & args,int densityplot,const context * contextptr){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#else
     double xmin=gnuplot_xmin,xmax=gnuplot_xmax,ymin=gnuplot_ymin,ymax=gnuplot_ymax,zmin=gnuplot_zmin,zmax=gnuplot_zmax;
     bool showeq=false;
     if (densityplot)
@@ -2455,6 +2462,7 @@ namespace giac {
     vecteur attributs(1,attribut);
     read_option(vargs,xmin,xmax,ymin,ymax,attributs,nstep,jstep,contextptr);
     return plotfunc(vargs[0],e1,attributs,densityplot,xmin,xmax,ymin,ymax,zmin,zmax,nstep,jstep,showeq,contextptr);
+#endif
   }
   gen _plotfunc(const gen & args,const context * contextptr){
 #ifdef CASCAS_ALEVEL_ONLY
@@ -2474,30 +2482,45 @@ namespace giac {
   define_unary_function_ptr5( at_plotfunc ,alias_at_plotfunc,&__plotfunc,_QUOTE_ARGUMENTS,true);
 
   gen _funcplot(const gen & args,const context * contextptr){
+#ifdef CASCAS_ALEVEL_ONLY
+    if ( args.type==_STRNG && args.subtype==-1) return args;
+    return gensizeerr(contextptr);
+#else
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     return funcplotfunc(args,0,contextptr);
+#endif
   }
-  static const char _funcplot_s []="funcplot"; // Same as plotfunc but with tex print
+  static const char _funcplot_s []="_rpi0"; // Same as plotfunc but with tex print
   static define_unary_function_eval_quoted (__funcplot,&_funcplot,_funcplot_s);
   define_unary_function_ptr5( at_funcplot ,alias_at_funcplot,&__funcplot,_QUOTE_ARGUMENTS,true);
 
   gen _plotdensity(const gen & args,const context * contextptr){
+#ifdef CASCAS_ALEVEL_ONLY
+    if ( args.type==_STRNG && args.subtype==-1) return args;
+    return gensizeerr(contextptr);
+#else
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     return funcplotfunc(args,1,contextptr);
+#endif
   }
-  static const char _plotdensity_s []="plotdensity"; 
+  static const char _plotdensity_s []="_rpi1";
   static define_unary_function_eval_quoted (__plotdensity,&_plotdensity,_plotdensity_s);
   define_unary_function_ptr5( at_plotdensity ,alias_at_plotdensity,&__plotdensity,_QUOTE_ARGUMENTS,true);
 
   gen _plotmatrix(const gen & args,const context * contextptr){
+#ifdef CASCAS_ALEVEL_ONLY
+    if ( args.type==_STRNG && args.subtype==-1) return args;
+    return gensizeerr(contextptr);
+#else
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     return funcplotfunc(args,1,contextptr);
+#endif
   }
-  static const char _plotmatrix_s []="plotmatrix"; 
+  static const char _plotmatrix_s []="_rpi2";
   static define_unary_function_eval_quoted (__plotmatrix,&_plotmatrix,_plotmatrix_s);
   define_unary_function_ptr5( at_plotmatrix ,alias_at_plotmatrix,&__plotmatrix,_QUOTE_ARGUMENTS,true);
 
-  static const char _densityplot_s []="densityplot"; 
+  static const char _densityplot_s []="_rpi3";
   static define_unary_function_eval_quoted (__densityplot,&_plotdensity,_densityplot_s);
   define_unary_function_ptr5( at_densityplot ,alias_at_densityplot,&__densityplot,_QUOTE_ARGUMENTS,true);
 
@@ -7201,6 +7224,10 @@ namespace giac {
   }
 
   gen _lieu(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    if ( args.type==_STRNG && args.subtype==-1) return args;
+    return gensizeerr(contextptr);
+#else
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     if ( rpn_mode(contextptr) || args.type!=_VECT  )
       return symbolic(at_lieu,args);
@@ -7504,8 +7531,9 @@ namespace giac {
       throw(std::runtime_error(e.what()));
     }
 #endif
+#endif
   }
-  static const char _lieu_s []="locus";
+  static const char _lieu_s []="_rsgi";
   static define_unary_function_eval_quoted (__lieu,&_lieu,_lieu_s);
   define_unary_function_ptr5( at_lieu ,alias_at_lieu,&__lieu,_QUOTE_ARGUMENTS,true);
 
@@ -8739,6 +8767,9 @@ namespace giac {
   define_unary_function_ptr5( at_curve ,alias_at_curve,&__curve,0,true);
 
   gen plotparam(const gen & f,const gen & vars,const vecteur & attributs,int densityplot,double function_xmin,double function_xmax,double function_ymin,double function_ymax,double function_tmin, double function_tmax,double function_tstep,const gen & equation,const gen & parameq,const gen & vparam,const context * contextptr){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#else
     if (function_tstep<=0 || (function_tmax-function_tmin)/function_tstep>max_nstep || function_tmax==function_tmin)
       return gensizeerr(gettext("Plotparam: unable to discretize: tmin, tmax, tstep=")+print_DOUBLE_(function_tmin,12)+","+print_DOUBLE_(function_tmax,12)+","+print_DOUBLE_(function_tstep,12)+gettext("\nTry a larger value for tstep"));
     gen fC(f);
@@ -8841,6 +8872,7 @@ namespace giac {
       return res.front();
     // gen e(res,_SEQ__VECT);
     return res; // e;
+#endif
   }
 
   gen plotparam(const gen & f,const gen & vars,const vecteur & attributs,int densityplot,double function_xmin,double function_xmax,double function_ymin,double function_ymax,double function_tmin, double function_tmax,double function_tstep,const gen & equation,const gen & parameq,const context * contextptr){
@@ -8848,6 +8880,9 @@ namespace giac {
   }
 
   gen paramplotparam(const gen & args,int densityplot,const context * contextptr){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#else
     // args= [x(t)+i*y(t),t] should add a t interval
     bool f_autoscale=autoscale;
     if (args.type!=_VECT || args.subtype!=_SEQ__VECT){
@@ -9022,6 +9057,7 @@ namespace giac {
     if (!readrange(vars,tmin,tmax,vars,tmin,tmax,contextptr))
       return gensizeerr(gettext("2nd arg must be a free variable"));
     return plotparam(f,vars,attributs,densityplot,xmin,xmax,ymin,ymax,tmin,tmax,tstep,eq,parameq,vparam,contextptr);
+#endif
   }
   gen _plotparam(const gen & args,const context * contextptr){
 #ifdef CASCAS_ALEVEL_ONLY
@@ -9035,7 +9071,7 @@ namespace giac {
   static define_unary_function_eval_quoted (__plotparam,&_plotparam,_plotparam_s);
   define_unary_function_ptr5( at_plotparam ,alias_at_plotparam,&__plotparam,_QUOTE_ARGUMENTS,true);
 
-  static const char _courbe_parametrique_s []="courbe_parametrique";
+  static const char _courbe_parametrique_s []="_rpi4";
   static define_unary_function_eval_quoted (__courbe_parametrique,&_plotparam,_courbe_parametrique_s);
   define_unary_function_ptr5( at_courbe_parametrique ,alias_at_courbe_parametrique,&__courbe_parametrique,_QUOTE_ARGUMENTS,true);
 
@@ -9047,7 +9083,7 @@ namespace giac {
     return paramplotparam(args,false,contextptr);
 #endif
   }
-  static const char _paramplot_s []="paramplot";
+  static const char _paramplot_s []="_rpi5";
   static define_unary_function_eval_quoted (__paramplot,&_paramplot,_paramplot_s);
   define_unary_function_ptr5( at_paramplot ,alias_at_paramplot,&__paramplot,_QUOTE_ARGUMENTS,true);
 
@@ -9064,6 +9100,10 @@ namespace giac {
     // should change symb_pnt so that attribut is more generic than color
   }
   gen _plot(const gen & g,const context * contextptr){
+#ifdef CASCAS_ALEVEL_ONLY
+    if ( g.type==_STRNG && g.subtype==-1) return g;
+    return gensizeerr(contextptr);
+#else
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     gen var,res;
     if (g.type!=_VECT && !is_distribution(g) && !is_algebraic_program(g,var,res) )
@@ -9240,16 +9280,21 @@ namespace giac {
     if (v0cst && v0.type==_VECT && !v0._VECTptr->empty() && v0._VECTptr->front().type==_VECT)
       return plotpoints(*v0._VECTptr,attributs,contextptr);
     return plotfunc(v[0],xvar,attributs,false,xmin,xmax,ymin,ymax,zmin,zmax,nstep,jstep,showeq,contextptr);
+#endif
   }
-  static const char _plot_s []="plot"; // FIXME use maple arguments
+  static const char _plot_s []="_rpi6"; // FIXME use maple arguments
   static define_unary_function_eval_quoted (__plot,&_plot,_plot_s);
   define_unary_function_ptr5( at_plot ,alias_at_plot,&__plot,_QUOTE_ARGUMENTS,true);
 
-  static const char _graphe_s []="graphe";
+  static const char _graphe_s []="_rpi7";
   static define_unary_function_eval_quoted (__graphe,&_plot,_graphe_s);
   define_unary_function_ptr5( at_graphe ,alias_at_graphe,&__graphe,_QUOTE_ARGUMENTS,true);
 
   gen _plotpolar(const gen & args,const context * contextptr){
+#ifdef CASCAS_ALEVEL_ONLY
+    if ( args.type==_STRNG && args.subtype==-1) return args;
+    return gensizeerr(contextptr);
+#else
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     // args= [rho(theta),theta] should add a theta interval
     vecteur vargs(plotpreprocess(args,contextptr));
@@ -9264,16 +9309,17 @@ namespace giac {
     // vargs.front()=symbolic(at_re,rho)*exp(cst_i*degtorad(theta,contextptr),contextptr);
     vargs.front()=makevecteur(rho*cos(angletorad(theta,contextptr),contextptr),rho*sin(angletorad(theta,contextptr),contextptr));
     return _plotparam(gen(vargs,_SEQ__VECT),contextptr);
+#endif
   }
-  static const char _plotpolar_s []="plotpolar";
+  static const char _plotpolar_s []="_rpi8";
   static define_unary_function_eval_quoted (__plotpolar,&_plotpolar,_plotpolar_s);
   define_unary_function_ptr5( at_plotpolar ,alias_at_plotpolar,&__plotpolar,_QUOTE_ARGUMENTS,true);
 
-  static const char _polarplot_s []="polarplot";
+  static const char _polarplot_s []="_rpi9";
   static define_unary_function_eval_quoted (__polarplot,&_plotpolar,_polarplot_s);
   define_unary_function_ptr5( at_polarplot ,alias_at_polarplot,&__polarplot,_QUOTE_ARGUMENTS,true);
 
-  static const char _courbe_polaire_s []="courbe_polaire";
+  static const char _courbe_polaire_s []="_rpia";
   static define_unary_function_eval_quoted (__courbe_polaire,&_plotpolar,_courbe_polaire_s);
   define_unary_function_ptr5( at_courbe_polaire ,alias_at_courbe_polaire,&__courbe_polaire,_QUOTE_ARGUMENTS,true);
 
@@ -10823,6 +10869,10 @@ namespace giac {
   }
 
   gen _conique(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    if ( args.type==_STRNG && args.subtype==-1) return args;
+    return gensizeerr(contextptr);
+#else
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     if (args.type!=_VECT)
       return _plotimplicit(args,contextptr);
@@ -10866,8 +10916,9 @@ namespace giac {
 	return gensizeerr(gettext("Bug in conique, equation ")+eq.print(contextptr));	
     }
     return gendimerr(contextptr);
+#endif
   }
-  static const char _conique_s []="conic";
+  static const char _conique_s []="_rpib";
   static define_unary_function_eval (__conique,&_conique,_conique_s);
   define_unary_function_ptr5( at_conique ,alias_at_conique,&__conique,0,true);
 
@@ -13320,6 +13371,9 @@ int find_plotseq_args(const gen & args,gen & expr,gen & x,double & x0d,double & 
   }
 
   gen plotimplicit(const gen& f_orig,const gen&x,const gen & y,double xmin,double xmax,double ymin,double ymax,int nxstep,int nystep,double eps,const vecteur & attributs,bool unfactored,bool cklinear,const context * contextptr,int ckgeo2d){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#else
     if ( (x.type!=_IDNT) || (y.type!=_IDNT) )
       return gensizeerr(gettext("Variables must be free"));
     gen a,b,c,d;
@@ -13354,9 +13408,14 @@ int find_plotseq_args(const gen & args,gen & expr,gen & x,double & x0d,double & 
     if (cplx)
       complex_mode(true,contextptr);
     return res;
+#endif
   }
 
   gen _plotimplicit(const gen & args,const context * contextptr){
+#ifdef CASCAS_ALEVEL_ONLY
+    if ( args.type==_STRNG && args.subtype==-1) return args;
+    return gensizeerr(contextptr);
+#else
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     if (args.type!=_VECT)
       return plotimplicit(remove_equal(args),vx_var,y__IDNT_e,gnuplot_xmin,gnuplot_xmax,gnuplot_ymin,gnuplot_ymax,20*gnuplot_pixels_per_eval,0,epsilon(contextptr),vecteur(1,default_color(contextptr)),false,true,contextptr,3);
@@ -13396,12 +13455,13 @@ int find_plotseq_args(const gen & args,gen & expr,gen & x,double & x0d,double & 
       return plotimplicit(remove_equal(v[0]),x,y,z,xmin,xmax,ymin,ymax,zmin,zmax,nstep,jstep,kstep,epsilon(contextptr),attributs,unfactored,cklinear,contextptr);
     else
       return plotimplicit(remove_equal(v[0]),x,y,xmin,xmax,ymin,ymax,nstep,jstep,epsilon(contextptr),attributs,unfactored,cklinear,contextptr,3);
+#endif
   }
-  static const char _plotimplicit_s []="plotimplicit";
+  static const char _plotimplicit_s []="_rpic";
   static define_unary_function_eval (__plotimplicit,&_plotimplicit,_plotimplicit_s);
   define_unary_function_ptr5( at_plotimplicit ,alias_at_plotimplicit,&__plotimplicit,0,true);
 
-  static const char _implicitplot_s []="implicitplot";
+  static const char _implicitplot_s []="_rpid";
   static define_unary_function_eval (__implicitplot,&_plotimplicit,_implicitplot_s);
   define_unary_function_ptr5( at_implicitplot ,alias_at_implicitplot,&__implicitplot,0,true);
 

@@ -285,7 +285,7 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
   {"purge(x)", 0, "Purge le contenu de la variable x. Raccourci SHIFT-FORMAT", 0, 0, CAT_CATEGORY_PROGCMD | (CAT_CATEGORY_SOFUS<<8)},
     {"pyramid(A,B,C)", 0, "Tetraedre d'arete AB avec une face dans le plan ABC", "[0,0,0],[3,0,0],[0,1,0]", "[0,0,0],[3,0,0],[0,3,0],[0,0,4]", CAT_CATEGORY_3D},
   {"qr(A)", 0, "Factorisation A=Q*R avec Q orthogonale et R triangulaire superieure", "[[1,2],[3,4]]", 0, CAT_CATEGORY_MATRIX},
-    {"quadric(equation)", 0, "Quadrique donnee par une equation (ou 9 points)", "x^2-y^2+z^2", "x^2+x*y+y^2+z^2-3", CAT_CATEGORY_3D},
+    {"_rpig(equation)", 0, "Quadrique donnee par une equation (ou 9 points)", "x^2-y^2+z^2", "x^2+x*y+y^2+z^2-3", CAT_CATEGORY_3D},
   {"quo(p,q,x)", 0, "Quotient de division euclidienne polynomiale en x.", 0, 0, CAT_CATEGORY_POLYNOMIAL},
   {"quote(x)", 0, "Renvoie l'expression x non evaluee.", 0, 0, CAT_CATEGORY_ALGEBRA},
   {"ratnormal(x)", 0, "Ecrit sous forme d'une fraction irreductible.", "(x+1)/(x^2-1)^2", 0, CAT_CATEGORY_ALGEBRA},

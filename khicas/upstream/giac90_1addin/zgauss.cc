@@ -409,6 +409,10 @@ namespace giac {
   }
 
   int conique_reduite(const gen & equation_conique,const gen & pointsurconique,const vecteur & nom_des_variables,gen & x0, gen & y0, vecteur & V0, vecteur &V1, gen & propre,gen & equation_reduite, vecteur & param_curves,gen & ratparam,bool numeric,GIAC_CONTEXT,gen *aptr,gen * bptr){
+#ifdef CASCAS_ALEVEL_ONLY
+    ratparam=undef;
+    return 0;
+#else
     ratparam=conique_ratparam(equation_conique,pointsurconique,contextptr);
     gen q(remove_equal(equation_conique));
     vecteur x(nom_des_variables);
@@ -709,9 +713,10 @@ namespace giac {
       }
     }
     return restype;
+#endif
   }  
 
-#ifdef RTOS_THREADX
+#if defined(RTOS_THREADX) || defined(CASCAS_ALEVEL_ONLY)
   bool quadrique_reduite(const gen & q,const gen & M,const vecteur & vxyz,gen & x,gen & y,gen & z,vecteur & u,vecteur & v,vecteur & w,vecteur & propre,gen & equation_reduite,vecteur & param_surface,vecteur & centre,bool numeric,GIAC_CONTEXT){
     return false;
   }
@@ -1046,6 +1051,9 @@ namespace giac {
 #endif // RTOS_THREADX
 
   gen conique_quadrique_reduite(const gen & args,GIAC_CONTEXT,bool conique){
+#ifdef CASCAS_ALEVEL_ONLY
+    return gensizeerr(contextptr);
+#else
     vecteur v(gen2vecteur(args));
     int s=int(v.size());
     if (!s || s>4)
@@ -1071,20 +1079,31 @@ namespace giac {
       }
     }
     return gentypeerr(contextptr);
+#endif
   }
   gen _conique_reduite(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    if ( args.type==_STRNG && args.subtype==-1) return args;
+    return gensizeerr(contextptr);
+#else
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     return conique_quadrique_reduite(args,contextptr,true);
+#endif
   }
-  static const char _conique_reduite_s []="reduced_conic";
+  static const char _conique_reduite_s []="_rpif";
   static define_unary_function_eval (__conique_reduite,&_conique_reduite,_conique_reduite_s);
   define_unary_function_ptr5( at_conique_reduite ,alias_at_conique_reduite,&__conique_reduite,0,true);
 
   gen _quadrique_reduite(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    if ( args.type==_STRNG && args.subtype==-1) return args;
+    return gensizeerr(contextptr);
+#else
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     return conique_quadrique_reduite(args,contextptr,false);
+#endif
   }
-  static const char _quadrique_reduite_s []="reduced_quadric";
+  static const char _quadrique_reduite_s []="_rpig";
   static define_unary_function_eval (__quadrique_reduite,&_quadrique_reduite,_quadrique_reduite_s);
   define_unary_function_ptr5( at_quadrique_reduite ,alias_at_quadrique_reduite,&__quadrique_reduite,0,true);
 

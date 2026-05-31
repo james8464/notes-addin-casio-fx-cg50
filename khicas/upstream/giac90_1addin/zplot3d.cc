@@ -2378,6 +2378,10 @@ namespace giac {
   }
 
   gen _quadrique(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_ALEVEL_ONLY
+    if ( args.type==_STRNG && args.subtype==-1) return args;
+    return gensizeerr(contextptr);
+#else
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     if (args.type!=_VECT)
       return _quadrique(gen(vecteur(1,args),_SEQ__VECT),contextptr);
@@ -2439,8 +2443,9 @@ namespace giac {
 	return gensizeerr(gettext("Bug in quadrique, equation ")+eq.print(contextptr));	
     }
     return gendimerr(contextptr);
+#endif
   }
-  static const char _quadrique_s []="quadric";
+  static const char _quadrique_s []="_rpie";
   static define_unary_function_eval (__quadrique,&_quadrique,_quadrique_s);
   define_unary_function_ptr5( at_quadrique ,alias_at_quadrique,&__quadrique,0,true);
 

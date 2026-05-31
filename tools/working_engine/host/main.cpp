@@ -86,7 +86,9 @@ static bool removed_feature(std::string const &expr)
     static char const *const calls[] = {
         "normalcdf","binomcdf","binompdf","mean","median","stddev","variance","det",
         "plot","plotlist","plotparam","plotpolar","plotseq","paramplot","seqplot",
-        "courbe_parametrique","graphe_suite","rand","randint","randperm","ranv","ranm",
+        "funcplot","plotdensity","plotmatrix","densityplot","graphe","polarplot",
+        "courbe_polaire","plotimplicit","implicitplot","conic","quadric",
+        "reduced_conic","reduced_quadric","courbe_parametrique","graphe_suite","rand","randint","randperm","ranv","ranm",
         "irem","smod","permuorder","concat","extend","select","filter","remove",
         "csolve","cfactor","cpartfrac","abcuv","iabcuv","egcd","iegcd","interp",
         "jordan","gramschmidt","hermite","laguerre","legendre","tchebyshev1",
