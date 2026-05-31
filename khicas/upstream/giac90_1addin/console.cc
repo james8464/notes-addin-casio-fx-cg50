@@ -3146,6 +3146,9 @@ int Console_Init()
 void Console_FMenu_Init()
 {
   if (!original_cfg){
+#ifdef CASCAS_ALEVEL_ONLY
+    original_cfg = (unsigned char *)conf_standard;
+#else
     ustl::string cfg_s;
     // Does the file exists ?
     if (load_script((char*)"\\\\fls0\\FMENU.py",cfg_s)){
@@ -3157,6 +3160,7 @@ void Console_FMenu_Init()
       save_script((const char *)"\\\\fls0\\FMENU.py",conf_standard);
       original_cfg = (unsigned char *)conf_standard;
     }
+#endif
   }
 
   unsigned char* cfg=original_cfg;
@@ -3402,7 +3406,11 @@ void get_current_console_menu(string & menu,string & shiftmenu,string & alphamen
     xcas_color=python_compat(contextptr)==0?64543:34335;
     python_color=65512;
   }
-  menucolorbg=xcas_python_eval==-1?js_color:(xcas_python_eval==1?python_color:xcas_color);  
+#ifdef CASCAS_ALEVEL_ONLY
+  menucolorbg=app==1?64543:65055;
+#else
+  menucolorbg=xcas_python_eval==-1?js_color:(xcas_python_eval==1?python_color:xcas_color);
+#endif
 }
 
 void console_disp_status(){

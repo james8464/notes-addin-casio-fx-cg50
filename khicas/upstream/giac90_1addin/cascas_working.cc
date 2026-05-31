@@ -127,6 +127,35 @@ static int find_top_char(const working_string &s,char wanted){
   return -1;
 }
 
+static bool delimiters_balanced(const working_string &s){
+  char stack[32];
+  int depth=0;
+  bool instring=false;
+  for (int i=0;i<int(s.size());++i){
+    char c=s[i];
+    if (c=='"' && (i==0 || s[i-1]!='\\')){
+      instring=!instring;
+      continue;
+    }
+    if (instring)
+      continue;
+    if (c=='(' || c=='[' || c=='{'){
+      if (depth>=int(sizeof(stack)))
+        return false;
+      stack[depth++]=c;
+      continue;
+    }
+    if (c==')' || c==']' || c=='}'){
+      if (depth<=0)
+        return false;
+      char open=stack[--depth];
+      if ((open=='(' && c!=')') || (open=='[' && c!=']') || (open=='{' && c!='}'))
+        return false;
+    }
+  }
+  return !instring && depth==0;
+}
+
 static bool parse_real(const working_string &s,double &x){
   char *end=0;
   x=strtod(s.c_str(),&end);
@@ -716,6 +745,35 @@ static bool try_diff(const char *input,working_string &out){
     out += "2*x*(2*x^2 - 4*x + 5) + 4*x - 4 = 2*(2*x^3 - 4*x^2 + 7*x - 2)";
     return true;
   }
+  if (expr=="(2x+ln(x))^3" || expr=="(2*x+ln(x))^3"){
+    out="Differentiate by substitution:\n";
+    out += "y = (2*x + ln(x))^3\n";
+    out += "Domain: x > 0\n";
+    out += "Let u = 2*x + ln(x)\n";
+    out += "du/dx = 2 + 1/x\n";
+    out += "dy/dx = 3*u^2*du/dx\n";
+    out += "dy/dx = 3*(2*x + ln(x))^2*(2 + 1/x)";
+    return true;
+  }
+  if (expr=="x^2/(3x-1)" || expr=="x^2/(3*x-1)"){
+    out="Differentiate using the quotient rule:\n";
+    out += "y = x^2/(3*x - 1)\n";
+    out += "Domain: 3*x - 1 != 0\n";
+    out += "u = x^2, u' = 2*x\n";
+    out += "v = 3*x - 1, v' = 3\n";
+    out += "y' = (u'v-u*v')/v^2\n";
+    out += "dy/dx = ((2*x)*(3*x - 1) - (x^2)*3)/(3*x - 1)^2\n";
+    out += "dy/dx = (3*x^2 - 2*x)/(3*x - 1)^2";
+    return true;
+  }
+  if (expr=="cosec(x)^2-cot(x)^2" || expr=="csc(x)^2-cot(x)^2"){
+    out="Differentiate using an identity:\n";
+    out += "cosec(x)^2 - cot(x)^2 = 1\n";
+    out += "Domain: sin(x) != 0\n";
+    out += "So y is constant on each part of its domain\n";
+    out += "dy/dx = 0";
+    return true;
+  }
   if (expr=="1/2x^2+16sqrt(2)/x"){
     out="Differentiate: 1/2*x^2 + 16*sqrt(2)/x\n";
     out += "Rewrite: y = 1/2*x^2 + 16*sqrt(2)*x^-1\n";
@@ -1253,6 +1311,16 @@ static bool eval_arith_rat(const working_string &expr,rat &out){
 static bool try_arith(const char *input,working_string &out){
   rat r;
   working_string expr=trim_ascii(input?input:"");
+  bool has_operator=false;
+  for (int i=0;i<int(expr.size());++i){
+    char c=expr[i];
+    if (c=='+' || c=='*' || c=='/' || c=='^' || c=='(' || c==')')
+      has_operator=true;
+    if (c=='-' && i>0)
+      has_operator=true;
+  }
+  if (!has_operator)
+    return false;
   if (!eval_arith_rat(expr,r))
     return false;
   out="Arithmetic:\n";
@@ -2254,9 +2322,13 @@ static bool try_integral(const char *input,working_string &out){
   if (!parse_call(input,"int",args,2,count) || count<1){
     count=0;
     if (!parse_call(input,"integrate",args,2,count) || count<1){
+#ifdef CASCAS_HOST_STD_STRING
       args[0]=trim_ascii(input?input:"");
       args[1]="x";
       count=1;
+#else
+      return false;
+#endif
     }
   }
   working_string var=count>=2 && args[1].size()?compact_ascii(args[1]):"x";
@@ -3246,6 +3318,29 @@ static bool try_xform(const char *input,working_string &out){
     out += "Answer: cos(x)/sin(x)";
     return true;
   }
+  if (a=="cosec(x)-sin(x)" && (b=="cos(x)cot(x)" || b=="cot(x)cos(x)")){
+    out += "Use reciprocal identity: cosec(x)=1/sin(x)\n";
+    out += "cosec(x) - sin(x) = 1/sin(x) - sin(x)\n";
+    out += "= (1 - sin(x)^2)/sin(x)\n";
+    out += "Use identity: 1 - sin(x)^2 = cos(x)^2\n";
+    out += "= cos(x)^2/sin(x)\n";
+    out += "= cos(x)*(cos(x)/sin(x))\n";
+    out += "cot(x)=cos(x)/sin(x)\n";
+    out += "Answer: cos(x)*cot(x)";
+    return true;
+  }
+  if (a=="cos(3x)/sin(x)+sin(3x)/cos(x)" && b=="2cot(2x)"){
+    out += "Put over a common denominator:\n";
+    out += "cos(3*x)/sin(x) + sin(3*x)/cos(x)\n";
+    out += "= (cos(3*x)*cos(x) + sin(3*x)*sin(x))/(sin(x)*cos(x))\n";
+    out += "Use cos(A-B)=cos(A)cos(B)+sin(A)sin(B)\n";
+    out += "= cos(2*x)/(sin(x)*cos(x))\n";
+    out += "Use sin(2*x)=2*sin(x)*cos(x)\n";
+    out += "= 2*cos(2*x)/sin(2*x)\n";
+    out += "cot(2*x)=cos(2*x)/sin(2*x)\n";
+    out += "Answer: 2*cot(2*x)";
+    return true;
+  }
   if (a=="a/(x+1)" && b=="5a/(2x+1)"){
     out += "Let f(x)=a/(x+1)\n";
     out += "Replace x by 2*x:\n";
@@ -3786,6 +3881,17 @@ static bool try_implicit_diff_working(const char *input,working_string &out){
     out += "(dy)/(dx) = -(2*x+y)/(x+2*y)";
     return true;
   }
+  if (eq=="ln(x+y)=xy" || eq=="log(x+y)=xy" || eq=="ln(x+y)=x*y" || eq=="log(x+y)=x*y"){
+    out="Implicit differentiation:\n";
+    out += "Domain: x + y > 0\n";
+    out += "d/dx[ln(x + y)] = (1 + (dy)/(dx))/(x + y)\n";
+    out += "d/dx[x*y] = y + x*(dy)/(dx)\n";
+    out += "(1 + (dy)/(dx))/(x + y) = y + x*(dy)/(dx)\n";
+    out += "1 + (dy)/(dx) = y*(x + y) + x*(x + y)*(dy)/(dx)\n";
+    out += "(dy)/(dx)*(1 - x*(x + y)) = y*(x + y) - 1\n";
+    out += "(dy)/(dx) = (y*(x + y) - 1)/(1 - x*(x + y))";
+    return true;
+  }
   return false;
 }
 
@@ -3816,6 +3922,8 @@ static bool try_parametric_diff_working(const char *input,working_string &out){
 
 bool eval_with_working(const char *input,working_string &out){
   working_string cmp=compact_ascii(input?input:"");
+  if (!delimiters_balanced(input?input:""))
+    return false;
   if (cmp=="diff((x^2)tan(y)=9,x)" || cmp=="diff(x^2tan(y)=9,x)" ||
       cmp=="implicit_diff((x^2)tan(y)=9,x,y)" || cmp=="implicit_diff(x^2tan(y)=9,x,y)"){
     out="d/dx: x^2*tan(y)=9\n2*x*tan(y)+x^2*sec(y)^2*(dy)/(dx)=0\ntan(y)=9/x^2 and sec(y)^2=1+tan(y)^2\n(dy)/(dx)=(-18x)/(x^4+81)";

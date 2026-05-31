@@ -26,7 +26,10 @@ graph TD
 ## Risk Findings
 
 - **Fixed critical:** upstream fx-CG50 complete version requires `khicas50.g3a` + `khicas50.ac2`; current package copied only `.g3a` and `.PAK`. Startup then failed with `Fatal: unable to load ram part khicas50.ac2 err=2`.
+- **Fixed critical:** calculator screenshot showed `TLB ERROR ... PC=0040723C`. Local map places that PC inside `cascas::try_integral`, so calculator builds no longer treat arbitrary raw input or incomplete `int(`/`integrate(` text as integral working.
+- **Fixed high:** plain numeric literals such as `99999` were caught by the host/calculator arithmetic working route. Numeric literals now return `false` from `cascas_working`, so calculator execution falls through to the original KhiCAS evaluator.
 - **Fixed high:** catalog F2/F3 examples were stored as full commands without upstream `#` exact-insert marker, causing nested inserts such as `abs(abs(-3))`.
+- **Fixed medium:** A-level build could still read a stale `\\fls0\\FMENU.py` created by older KhiCAS and inherit old labels/colours. The rebuild now uses compiled menu config only and fixes F-key background colour in A-level mode.
 - **Medium:** metadata rename changes visible/internal add-in name; low risk if sidecar keeps upstream filename because `ram_filename` is hardcoded as `\\fls0\khicas50.8c2`.
 - **Medium:** hard pruning can break hidden dependencies; mitigated by compile, removed-feature scans, and host working tests.
 - **Medium:** external help pack can be missing; calculator should still run, but help detail will be unavailable.

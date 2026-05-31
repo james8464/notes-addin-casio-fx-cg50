@@ -1,6 +1,6 @@
 # CasioCAS Project Graph
 
-Last updated: 2026-05-31 13:09 Europe/London
+Last updated: 2026-05-31 13:27 Europe/London
 
 ## Build
 
@@ -98,6 +98,8 @@ graph TD
   Direct --> HelpFKeys["catalog/help F2/F3 examples use exact # insertion"]
   Direct --> XformRational["xform rational transform: a/(x+1) to 5*a/(2*x+1)"]
   Direct --> PureOnly["mechanics routes removed from catalog/help/working engine"]
+  Direct --> RuntimeGuard["calculator runtime guards: balanced delimiters, no raw integral fallback, numeric literals fall through to KhiCAS"]
+  Console --> StableFKeys["A-level mode ignores stale FMENU.py and fixes F-key colour state"]
   Host["thin same-source host wrapper"] --> Queue["236/236 exact queue host checks"]
   Host --> DeletedHost["old host-only working_engine/src deleted"]
   QueueTests["exact queue file"] --> SameSource["236/236 direct no-fallback calculator-source coverage"]
