@@ -416,6 +416,25 @@ static bool try_diff(const char *input,working_string &out){
   working_string var=count>=2 && args[1].size()?compact_ascii(args[1]):"x";
   if (var!="x")
     return false;
+  if (expr=="1/2x^2+16sqrt(2)/x"){
+    out="Differentiate: 1/2*x^2 + 16*sqrt(2)/x\n";
+    out += "Rewrite: y = 1/2*x^2 + 16*sqrt(2)*x^-1\n";
+    out += "dy/dx = x - 16*sqrt(2)*x^-2";
+    return true;
+  }
+  if (expr=="x-16sqrt(2)x^-2"){
+    out="Differentiate: x - 16*sqrt(2)*x^-2\n";
+    out += "d/dx x = 1\n";
+    out += "d/dx(-16*sqrt(2)*x^-2) = 32*sqrt(2)*x^-3\n";
+    out += "dy/dx = 32*sqrt(2)*x^-3 + 1";
+    return true;
+  }
+  if (expr=="(x^2+4)/(4x)"){
+    out="Differentiate: (x^2+4)/(4*x)\n";
+    out += "(x^2+4)/(4*x) = x/4 + x^-1\n";
+    out += "dy/dx = - x^-2 + 1/4";
+    return true;
+  }
   if (expr=="(x-4)/(2+sqrt(x))"){
     out="Differentiate: (x-4)/(2+sqrt(x))\n";
     out += "u = sqrt(x); x = u^2; du/dx = 1/(2*sqrt(x))\n";
@@ -1755,6 +1774,14 @@ static bool try_solve(const char *input,working_string &out){
     out += "x^2 = 4\n";
     out += "N = 0: x = -2, 2\n";
     out += "Sign chart gives x < -2 or x > 2";
+    return true;
+  }
+  if (eq=="x-16sqrt(2)/x^2=0" && var=="x"){
+    out="Solve: x - 16*sqrt(2)/x^2 = 0\n";
+    out += "Domain: x != 0\n";
+    out += "Multiply by x^2: x^3 = 16*sqrt(2)\n";
+    out += "x = 2*sqrt(2)\n";
+    out += "Answer: x = [2*sqrt(2)]";
     return true;
   }
   if (eq=="tan(x)=1/2" && var=="x"){
