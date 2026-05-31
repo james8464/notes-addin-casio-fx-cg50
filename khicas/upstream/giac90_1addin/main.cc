@@ -2643,6 +2643,8 @@ static bool cascas_denied_hash(unsigned h){
     case 0x8a2c68b7u:
     case 0x3508aee0u:
     case 0x1832aa87u:
+    case 0x47f5473cu:
+    case 0x4ed10951u:
       return true;
     default:
       return false;

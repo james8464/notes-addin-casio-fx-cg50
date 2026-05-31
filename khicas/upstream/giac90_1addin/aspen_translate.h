@@ -869,7 +869,7 @@ const char4 aspen_giac_translations [] = {
 {"mergematrice",0,"mergematrice","mergematrice","mergematrice","mergematrice","mergematrice","mergematrice","mergematrice"},
 {"midpoint",0,"中点","milieu","midpoint","punto medio","middelpunt","ponto medio","中点"},
 {"milieu",0,"中间","milieu","milieu","medio","midden","meio","環境"},
-{"minor_det option applies only to det",0,"minor_det 选项仅适用于行列式","Option minor_det s'applique seulement pour det","Option minor_det gilt nur für Determinante","la opción minor_det solo se aplica a det","Optie minor_det is alleen van toepassing op det","Opção minor_det aplica-se apenas a det","minor_detオプションはdetのみに適用されます"},
+{"Option applies only to det",0,"选项仅适用于行列式","Option s'applique seulement pour det","Option gilt nur für Determinante","la opción solo se aplica a det","Optie is alleen van toepassing op det","Opção aplica-se apenas a det","オプションはdetのみに適用されます"},
 {"mmultck",0,"mmultck","mmultck","mmultck","mmultck","mmultck","mmultck","mmultck"},
 {"modpoly.cc/DivRem",0,"modpoly.cc/DivRem",0,"modpoly.cc/DivRem","modpoly.cc/DivRem","modpoly.cc/DivRem","modpoly.cc/DivRem","modpoly.cc/DivRem"},
 {"modpoly.cc/ininttype2ZZ",0,"modpoly.cc/ininttype2ZZ",0,"modpoly.cc/ininttype2ZZ","modpoly.cc/ininttype2ZZ","modpoly.cc/ininttype2ZZ","modpoly.cc/ininttype2ZZ","modpoly.cc/ininttype2ZZ"},

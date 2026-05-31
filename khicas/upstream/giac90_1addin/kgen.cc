@@ -12430,11 +12430,11 @@ namespace giac {
       case _JACOBI_DECOMP:
 	return "jacobi_decomp";
       case _MINOR_DET:
-	return "minor_det";
+	return "_rmh59";
       case _HESSENBERG_PCAR:
 	return "hessenberg_pcar";
       case _RATIONAL_DET:
-	return "rational_det";
+	return "_rmh60";
       case _KEEP_PIVOT:
 	return "_rmh58";
       case _FADEEV:

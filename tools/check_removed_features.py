@@ -126,6 +126,8 @@ REMOVED = [
     "gaussjord",
     "pivot",
     "keep_pivot",
+    "minor_det",
+    "rational_det",
     "assume",
     "asc",
     "char",
@@ -377,6 +379,8 @@ BEHAVIOR_SAMPLES = [
     "gaussjord([[1,2],[3,4]])",
     "pivot([[1,2],[3,4]],1,1)",
     "keep_pivot",
+    "minor_det",
+    "rational_det",
     "assume(x>0)",
     "asc(\"A\")",
     "char(65)",
@@ -568,6 +572,8 @@ BINARY_ABSENT = [
     "kernel",
     "rref",
     "keep_pivot",
+    "minor_det",
+    "rational_det",
 ]
 
 STATIC_ENTRY_ABSENT = [
