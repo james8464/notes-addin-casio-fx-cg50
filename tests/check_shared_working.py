@@ -103,6 +103,7 @@ CASES = [
     ("domain(sqrt(x-2),x)", "Answer: x >= 2"),
     ("domain(log(10,4-x),x)", "Answer: x < 4"),
     ("domain(log(2,x^2-1),x)", "Answer: x < -1 or x > 1"),
+    ("domain(1/(x^2-1),x)", "Answer: x != -1 and x != 1"),
     ("diff(log(1/(sqrt(x^2+1)-x)),x)", "Rationalise: 1/(sqrt(x^2+1)-x) = sqrt(x^2+1)+x"),
     ("limit(sin(x)/x,x=0)", "Use standard limit: sin(x)/x -> 1 as x -> 0"),
     ("limit((x^2-1)/(x-1),x=1)", "Cancel x-1"),

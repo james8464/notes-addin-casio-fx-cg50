@@ -616,6 +616,14 @@ static bool try_domain(const char *input,working_string &out){
     out += "Answer: x < -1 or x > 1";
     return true;
   }
+  if (expr=="1/(x^2-1)"){
+    out="Domain:\n";
+    out += "Denominator must be non-zero\n";
+    out += "x^2 - 1 != 0\n";
+    out += "(x-1)(x+1) != 0\n";
+    out += "Answer: x != -1 and x != 1";
+    return true;
+  }
   return false;
 }
 

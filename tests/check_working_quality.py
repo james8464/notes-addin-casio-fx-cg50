@@ -229,6 +229,16 @@ QUALITY_CASES = [
         ],
     ),
     (
+        "domain(1/(x^2-1),x)",
+        5,
+        [
+            "Denominator must be non-zero",
+            "x^2 - 1 != 0",
+            "(x-1)(x+1) != 0",
+            "Answer: x != -1 and x != 1",
+        ],
+    ),
+    (
         "limit((x^2-1)/(x-1),x=1)",
         6,
         [
