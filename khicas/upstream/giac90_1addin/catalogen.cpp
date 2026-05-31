@@ -93,6 +93,7 @@ const catalogFunc completeCat[] = { // A-level scoped catalog only
   {"partfrac(p,x)", 0, "Partial fractions.", "partfrac((2*x+3)/(x^2-1),x)", 0, CAT_CATEGORY_ALGEBRA},
   {"product(f,k,m,M)", 0, "Product of f for k from m to M.", "product(k,k,1,n)", 0, CAT_CATEGORY_CALCULUS},
   {"projectile(u,theta,t[,g])", "projectile(", "A-level projectile components, position, and velocity with working.", "projectile(20,30,2)", 0, CAT_CATEGORY_PHYS | (CAT_CATEGORY_TRIG << 8)},
+  {"pulley(m1,m2[,g])", "pulley(", "A-level connected particles on a smooth pulley with working.", "pulley(4,6)", 0, CAT_CATEGORY_PHYS | (CAT_CATEGORY_SOLVE << 8)},
   {"range(expr,[x,a,b])", "range(", "Range of expression as inequalities.", "range(x^2,[x,-2,3])", 0, CAT_CATEGORY_CALCULUS | (CAT_CATEGORY_ALGEBRA << 8)},
   {"resolve(F,theta)", "resolve(", "Resolve a force into horizontal and vertical components.", "resolve(10,30)", 0, CAT_CATEGORY_PHYS | (CAT_CATEGORY_TRIG << 8)},
   {"round(x)", 0, "Nearest integer.", "round(3.6)", 0, CAT_CATEGORY_REAL},

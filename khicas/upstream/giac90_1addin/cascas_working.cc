@@ -2962,6 +2962,70 @@ static bool try_projectile(const char *input,working_string &out){
   return true;
 }
 
+static bool try_pulley(const char *input,working_string &out){
+  working_string args[5];
+  int count=0;
+  if (!parse_call(input,"pulley",args,5,count) || count<2)
+    return false;
+  double m1=0,m2=0,g=9.8;
+  bool h1=false,h2=false,hg=count==2;
+  if ((count==2 || count==3) && int(args[0].find('='))<0 && int(args[1].find('='))<0){
+    h1=parse_real(args[0],m1);
+    h2=parse_real(args[1],m2);
+    if (count==3)
+      hg=parse_real(args[2],g);
+  }
+  else {
+    for (int i=0;i<count;++i){
+      int eq=args[i].find('=');
+      if (eq<0) continue;
+      working_string k=compact_ascii(args[i].substr(0,eq));
+      working_string val=trim_ascii(args[i].substr(eq+1));
+      double d;
+      if (!parse_real(val,d)) continue;
+      if (k=="m1" || k=="a"){ m1=d; h1=true; }
+      else if (k=="m2" || k=="b"){ m2=d; h2=true; }
+      else if (k=="g" || k=="gravity"){ g=d; hg=true; }
+    }
+  }
+  if (!h1 || !h2 || !hg || fabs(m1+m2)<1e-10)
+    return false;
+  double a=(m2-m1)*g/(m1+m2);
+  double tension=m1*(g+a);
+  out="Connected particles:\n";
+  out += "Assume smooth pulley and light inextensible string\n";
+  out += "Take positive direction as m2 down and m1 up\n";
+  out += "Driving force = (m2 - m1)*g\n";
+  out += "a = (m2 - m1)*g/(m1 + m2)\n";
+  out += "a = (";
+  out += format_real(m2);
+  out += " - ";
+  out += format_real(m1);
+  out += ")*";
+  out += format_real(g);
+  out += "/(";
+  out += format_real(m1);
+  out += " + ";
+  out += format_real(m2);
+  out += ") = ";
+  out += format_real(a);
+  out += "\nFor m1: T - m1*g = m1*a\n";
+  out += "T = m1*(g + a) = ";
+  out += format_real(m1);
+  out += "*(";
+  out += format_real(g);
+  out += " + ";
+  out += format_real(a);
+  out += ") = ";
+  out += format_real(tension);
+  out += "\nAnswer: [a=";
+  out += format_real(a);
+  out += ",T=";
+  out += format_real(tension);
+  out += "]";
+  return true;
+}
+
 static bool try_force(const char *input,working_string &out){
   working_string args[4];
   int count=0;
@@ -3448,6 +3512,8 @@ bool eval_with_working(const char *input,working_string &out){
   if (try_suvat(input,out))
     return true;
   if (try_projectile(input,out))
+    return true;
+  if (try_pulley(input,out))
     return true;
   if (try_force(input,out))
     return true;

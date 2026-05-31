@@ -210,6 +210,18 @@ QUALITY_CASES = [
         ],
     ),
     (
+        "pulley(4,6)",
+        6,
+        [
+            "Assume smooth pulley and light inextensible string",
+            "Take positive direction as m2 down and m1 up",
+            "a = (m2 - m1)*g/(m1 + m2)",
+            "a = (6 - 4)*9.8/(4 + 6) = 1.96",
+            "T = m1*(g + a) = 4*(9.8 + 1.96) = 47.04",
+            "Answer: [a=1.96,T=47.04]",
+        ],
+    ),
+    (
         "force(5,2)",
         4,
         [

@@ -20,6 +20,7 @@ REQUIRED = [
     "implicit_diff(eq,[x,y])",
     "suvat(u,a,t)",
     "projectile(u,theta,t[,g])",
+    "pulley(m1,m2[,g])",
     "weight(m[,g])",
 ]
 
