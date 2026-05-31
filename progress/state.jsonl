@@ -247,3 +247,23 @@
 {"phase":"queue expansion","last_event":"queue extended to 13,648 inputs and rerun clean; strict marker count refreshed","commit":"pending","graph":"docs/GRAPH.md 2026-05-31 21:53 BST","g3a_size":2096896,"headroom":256,"tests":"queue-schema 9415 rows/13648 inputs,queue-run 13648/13648,working-quality 12706/13648","queue":"13648/13648 runtime; 12706/13648 strict markers","unsupported":0,"eta":"next work should prioritize freeing binary space before adding larger logic"}
 {"phase":"queue","last_event":"exact queue 13648/13648","queue":"13648/13648 done, 12706 ok, 942 bad","tests":"queue-run 12706/13648"}
 {"phase":"queue expansion","last_event":"queue extended to 13,648 inputs and rerun clean; strict marker count refreshed","commit":"pending","graph":"docs/GRAPH.md 2026-05-31 21:53 BST","g3a_size":2096896,"headroom":256,"tests":"queue-schema 9415 rows/13648 inputs,queue-run 13648/13648,working-quality 12706/13648","queue":"13648/13648 runtime; 12706/13648 strict markers","unsupported":0,"eta":"next work should prioritize freeing binary space before adding larger logic"}
+{"phase":"queue","last_event":"exact queue 0/13692","queue":"0/13692 done, 0 ok, 0 bad","tests":"queue-run 0/13692"}
+{"phase":"queue","last_event":"exact queue 13692/13692","queue":"13692/13692 done, 13692 ok, 0 bad","tests":"queue-run 13692/13692"}
+{"phase":"queue","last_event":"exact queue 13692/13692","queue":"13692/13692 done, 13692 ok, 0 bad","tests":"queue-run 13692/13692"}
+{"phase":"queue","last_event":"exact queue 0/13708","queue":"0/13708 done, 0 ok, 0 bad","tests":"queue-run 0/13708"}
+{"phase":"queue","last_event":"exact queue 13708/13708","queue":"13708/13708 done, 12738 ok, 970 bad","tests":"queue-run 12738/13708"}
+{"phase":"release candidate","last_event":"added small pure routes for cos-zero solve, pi-shift trig and damped-sine integration; queue extended to 13,708 inputs","commit":"pending","graph":"docs/GRAPH.md 2026-05-31 22:02 BST","g3a_size":2096860,"headroom":292,"tests":"compile,size,metadata,border,catalog,help,help-examples,queue-schema 9431 rows/13708 inputs,queue-run 13708/13708,working-quality 12738/13708","queue":"13708/13708 runtime; 12738/13708 strict markers","unsupported":0,"eta":"next work should prioritize binary headroom before adding symbolic parameter area routes"}
+{"phase":"queue","last_event":"exact queue 13708/13708","queue":"13708/13708 done, 12738 ok, 970 bad","tests":"queue-run 12738/13708"}
+{"phase":"queue","last_event":"exact queue 0/13708","queue":"0/13708 done, 0 ok, 0 bad","tests":"queue-run 0/13708"}
+{"phase":"queue","last_event":"exact queue 13708/13708","queue":"13708/13708 done, 13708 ok, 0 bad","tests":"queue-run 13708/13708"}
+{"phase":"queue","last_event":"exact queue 13708/13708","queue":"13708/13708 done, 13708 ok, 0 bad","tests":"queue-run 13708/13708"}
+{"phase":"queue","last_event":"exact queue 0/13708","queue":"0/13708 done, 0 ok, 0 bad","tests":"queue-run 0/13708"}
+{"phase":"queue","last_event":"exact queue 13708/13708","queue":"13708/13708 done, 12738 ok, 970 bad","tests":"queue-run 12738/13708"}
+{"phase":"queue","last_event":"exact queue 13708/13708","queue":"13708/13708 done, 12738 ok, 970 bad","tests":"queue-run 12738/13708"}
+{"phase":"queue","last_event":"exact queue 0/13728","queue":"0/13728 done, 0 ok, 0 bad","tests":"queue-run 0/13728"}
+{"phase":"queue","last_event":"exact queue 13728/13728","queue":"13728/13728 done, 13728 ok, 0 bad","tests":"queue-run 13728/13728"}
+{"phase":"queue","last_event":"exact queue 13728/13728","queue":"13728/13728 done, 13728 ok, 0 bad","tests":"queue-run 13728/13728"}
+{"phase":"queue","last_event":"exact queue 0/13728","queue":"0/13728 done, 0 ok, 0 bad","tests":"queue-run 0/13728"}
+{"phase":"queue","last_event":"exact queue 13728/13728","queue":"13728/13728 done, 12744 ok, 984 bad","tests":"queue-run 12744/13728"}
+{"phase":"release candidate","last_event":"finalized stable queue checkpoint at 13,728 inputs; runtime clean, strict quality bar refreshed","commit":"pending","graph":"docs/GRAPH.md 2026-05-31 22:08 BST","g3a_size":2096860,"headroom":292,"tests":"compile,size,metadata,border,catalog,help,help-examples,queue-schema 9437 rows/13728 inputs,queue-run 13728/13728,working-quality 12744/13728","queue":"13728/13728 runtime; 12744/13728 strict markers","unsupported":0,"eta":"next work should prioritize binary headroom before adding symbolic parameter area routes"}
+{"phase":"queue","last_event":"exact queue 13728/13728","queue":"13728/13728 done, 12744 ok, 984 bad","tests":"queue-run 12744/13728"}

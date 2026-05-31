@@ -471,12 +471,6 @@ static working_string integral_monomial(long coef,long pow){
     if (q==-1) return "-"+p;
     return int_s(q)+"*"+p;
   }
-  if (coef==den)
-    return p;
-  if (coef==-den)
-    return "-"+p;
-  if (coef==1 || coef==-1)
-    return frac_s(coef,den)+"*"+p;
   return frac_s(coef,den)+"*"+p;
 }
 
@@ -1141,12 +1135,6 @@ static bool try_integral(const char *input,working_string &out){
     out += " + C";
     return true;
   }
-  if (e=="9x"){
-    out="Integrate:\n"
-        "9*(x^2/2)+C\n"
-        "Answer: (9*x^2)/2 + C";
-    return true;
-  }
   if (e=="1/x" || e=="1/(x)"){
     out="Use integral(1/x) dx=ln(abs(x))+C\n"
         "Answer: ln(abs(x)) + C";
@@ -1260,21 +1248,14 @@ static bool try_integral(const char *input,working_string &out){
         "Answer: x*sin(x)+cos(x)+C";
     return true;
   }
+  if (e=="exp(-x/10)sin(x)"){
+    out="By parts twice:\n"
+        "I=integral(exp(-x/10)*sin(x)) dx\n"
+        "Answer: -10*exp(-x/10)*(sin(x)+10*cos(x))/101 + C";
+    return true;
+  }
   if (contains(e,"dy/dx") || contains(e,"(dy)/(dx)")){
     out="DE:\nSeparate variables, integrate both sides.";
-    return true;
-  }
-  if (e=="x^2"){
-    out="Power rule:\n"
-        "Answer: x^3/3 + C";
-    return true;
-  }
-  if (e=="sin(x)"){
-    out="Use integral(sin(x)) dx=-cos(x)+C\nAnswer: -cos(x) + C";
-    return true;
-  }
-  if (e=="cos(x)"){
-    out="Use integral(cos(x)) dx=sin(x)+C\nAnswer: sin(x) + C";
     return true;
   }
   if (e=="sec(x)^2"){
@@ -1354,6 +1335,12 @@ static bool try_solve(const char *input,working_string &out){
         "tan(x) = 1/2\n"
         "x = atan(1/2) + n*pi\n"
         "Answer: x = 0.463647609001 + n*pi";
+    return true;
+  }
+  if (ceq=="cos(x)=0" && var=="x"){
+    out="Trig solve:\n"
+        "cos(x)=0\n"
+        "Answer: x = pi/2 + n*pi";
     return true;
   }
   int op=eq.find('=');
@@ -1675,6 +1662,12 @@ static bool try_trig_route(const char *input,working_string &out){
         "sin(x)+2*cos(x)=R*sin(x+a)\n"
         "R*cos(a)=1 and R*sin(a)=2, so R=sqrt(5), a=atan(2)\n"
         "Answer: sqrt(5)*sin(x+atan(2))";
+    return true;
+  }
+  if (s=="sin(x+pi)"){
+    out="Trig shift:\n"
+        "sin(x+pi)=-sin(x)\n"
+        "Answer: -sin(x)";
     return true;
   }
   return false;

@@ -24,11 +24,11 @@ Current status:
 
 - app name: `CAS`
 - file: `CAS.g3a`
-- size: `2,096,896` bytes
-- hard limit headroom: `256` bytes
-- sha256: `8eb3c2aacd5a7e67bd9be04b641940d5e3efccaad4ca0f785ca9c514bd2a8655`
-- exact queue runtime: `13,648/13,648`
-- strict marker quality: `12,706/13,648`
+- size: `2,096,860` bytes
+- hard limit headroom: `292` bytes
+- sha256: `be85e5ac229de39e39bbdefaf8b7100468a3e9612979790f3e528ba1fc9e03ee`
+- exact queue runtime: `13,728/13,728`
+- strict marker quality: `12,744/13,728`
 - online challenge source coverage: MadAsMaths exact rows in queue; Daily Integral hard-integration style probes inspected from `https://dailyintegral.com/archive`
 
 Notable routes:
@@ -41,7 +41,7 @@ Notable routes:
 - `diff(r^2,r)` single-variable power rule
 - `solve((dy)/(dx)=y,y)` separable differential equation
 - generic affine chain/reverse-chain power routes
-- trig/exp term integration, quadratic solve/factor/expand, log/numeric routes
+- trig/exp term integration, shifted trig identity, damped-sine by-parts route, quadratic solve/factor/expand, log/numeric routes
 - safer solve routing: powered terms no longer fall through the linear solver
 - safer chain routing: non-linear inner functions no longer pass as affine
 - simple numeric expressions show small exact fractions when detected
