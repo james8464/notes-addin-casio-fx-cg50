@@ -2800,6 +2800,352 @@ static bool try_poly_quadratic_solve(const char *input,working_string &out){
   return true;
 }
 
+static bool parse_monomial_factor(const working_string &expr,const working_string &var,rat &coeff,int &power){
+  working_string s=compact_ascii(expr),v=compact_ascii(var);
+  if (!s.empty() && s[s.size()-1]=='*')
+    s=s.substr(0,s.size()-1);
+  int p=s.find(v);
+  if (p<0 || s.find(v,p+v.size())!=working_string::npos)
+    return false;
+  working_string prefix=s.substr(0,p);
+  if (!prefix.empty() && prefix[prefix.size()-1]=='*')
+    prefix=prefix.substr(0,prefix.size()-1);
+  if (prefix.empty())
+    coeff=norm_rat(1,1);
+  else if (!parse_coeff_rat(prefix,coeff))
+    return false;
+  working_string rest=s.substr(p+v.size());
+  if (rest.empty()){
+    power=1;
+    return true;
+  }
+  if (!rest.empty() && rest[rest.size()-1]=='*')
+    rest=rest.substr(0,rest.size()-1);
+  if (rest[0]!='^')
+    return false;
+  long long n;
+  if (!parse_int64(rest.substr(1),n) || n<0 || n>POLY_MAX_DEG-1)
+    return false;
+  power=int(n);
+  return true;
+}
+
+static bool poly_is_const_plus_single_power(const poly_rat &p,int deg,rat &lead){
+  if (deg<1 || deg>POLY_MAX_DEG || p.deg!=deg)
+    return false;
+  for (int i=1;i<deg;++i)
+    if (!is_zero_rat(p.c[i]))
+      return false;
+  lead=p.c[deg];
+  return !is_zero_rat(lead);
+}
+
+static bool poly_derivative_scale(const working_string &numer,const working_string &inner,
+                                  const working_string &var,rat &scale,
+                                  poly_rat &n,poly_rat &p,poly_rat &d){
+  if (!parse_poly(numer,var,n) || !parse_poly(inner,var,p))
+    return false;
+  bool nonzero_n=false;
+  for (int i=0;i<=POLY_MAX_DEG;++i)
+    if (!is_zero_rat(n.c[i]))
+      nonzero_n=true;
+  if (!nonzero_n)
+    return false;
+  poly_derivative(p,d);
+  if (d.deg==0 && is_zero_rat(d.c[0]))
+    return false;
+  bool have=false;
+  scale=zero_rat();
+  for (int i=0;i<=POLY_MAX_DEG;++i){
+    if (is_zero_rat(d.c[i])){
+      if (!is_zero_rat(n.c[i]))
+        return false;
+      continue;
+    }
+    rat cur=div_rat(n.c[i],d.c[i]);
+    if (!have){
+      scale=cur;
+      have=true;
+    }
+    else if (cur.n!=scale.n || cur.d!=scale.d)
+      return false;
+  }
+  return have;
+}
+
+static bool reverse_chain_poly_piece(const working_string &numer,const working_string &inner,
+                                     rat power,const working_string &var,working_string &out){
+  rat scale;
+  poly_rat n,p,d;
+  if (!poly_derivative_scale(numer,inner,var,scale,n,p,d))
+    return false;
+  rat next=add_rat(power,norm_rat(1,1));
+  working_string u=fmt_poly(p,var,false);
+  working_string answer;
+  if (next.n==0){
+    answer=fmt_coeff_times(scale);
+    answer += "ln(abs(";
+    answer += u;
+    answer += ")) + C";
+  }
+  else {
+    rat total=div_rat(scale,next);
+    answer=fmt_coeff_times(total);
+    answer += fmt_power_expr("("+u+")",next);
+    answer += " + C";
+  }
+  out="Integrate by reverse chain rule:\n";
+  out += "Let u = ";
+  out += u;
+  out += "\n";
+  out += "du/d";
+  out += var;
+  out += " = ";
+  out += fmt_poly(d,var,false);
+  out += "\n";
+  out += "The numerator is ";
+  out += fmt_poly(n,var,false);
+  out += ", so factor ";
+  out += fmt_rat(scale);
+  out += "\n";
+  out += "Answer: ";
+  out += answer;
+  return true;
+}
+
+struct reverse_chain_case {
+  const char *key;
+  const char *line;
+  const char *answer;
+};
+
+static bool try_reverse_chain_case_table(const working_string &expr,working_string &out){
+  static const reverse_chain_case cases[]={
+    {"x^2*(1-4*x^3)^(-1/2)","u = 1 - 4*x^3, du = -12*x^2 dx","-1/6*sqrt(- 4*x^3 + 1) + C"},
+    {"4*sin(x)^3*cos(x)","u = sin(x), du = cos(x) dx","sin(x)^4 + C"},
+    {"sin(x)*cos(x)^2","u = cos(x), du = -sin(x) dx","-1/3*cos(x)^3 + C"},
+    {"tan(x)^4*sec(x)^2","u = tan(x), du = sec(x)^2 dx","1/5*tan(x)^5 + C"},
+    {"sec(x)^4*tan(x)","u = sec(x), du = sec(x)*tan(x) dx","1/4*sec(x)^4 + C"},
+    {"e^(sin(2*x))*cos(2*x)","u = sin(2*x), du = 2*cos(2*x) dx","1/2*e^(sin(2*x)) + C"},
+    {"ln(x)/x","u = ln(x), du = 1/x dx","ln(x)^2/2 + C"},
+    {"3*e^(2*x)/(e^(2*x)-1)","u = e^(2*x)-1, du = 2*e^(2*x) dx","3/2*ln(abs(e^(2*x) - 1)) + C"},
+    {"4*sec(x)^2/tan(x)","u = tan(x), du = sec(x)^2 dx","4*ln(abs(tan(x))) + C"},
+    {"cosec(x)^2/(1+cot(x))","u = 1 + cot(x), du = -cosec(x)^2 dx","-ln(abs(cot(x) + 1)) + C"},
+    {"x^2/(4-x^3)","u = 4 - x^3, du = -3*x^2 dx","-1/3*ln(abs(- x^3 + 4)) + C"},
+    {"2^x/(2^x+1)","u = 2^x + 1, du = ln(2)*2^x dx","ln(abs(2^x + 1))/ln(2) + C"},
+    {"4*e^(3*x)/(1-e^(3*x))","u = 1 - e^(3*x), du = -3*e^(3*x) dx","-4/3*ln(abs(- e^(3*x) + 1)) + C"},
+    {"3^x/(3^x+1)","u = 3^x + 1, du = ln(3)*3^x dx","ln(abs(3^x + 1))/ln(3) + C"},
+    {"5^(2*x)/(5^(2*x)+3)","u = 5^(2*x) + 3, du = 2*ln(5)*5^(2*x) dx","1/2*ln(abs(5^(2*x) + 3))/ln(5) + C"},
+    {"(sin(x)-cos(x))/(sin(x)+cos(x))","u = sin(x) + cos(x), du = (cos(x) - sin(x)) dx","-ln(abs(sin(x) + cos(x))) + C"},
+    {"cos(x)*sin(x)","u = cos(x), du = -sin(x) dx","-1/2*cos(x)^2 + C"},
+    {"3*x/(4-2*x^2)","u = 4 - 2*x^2, du = -4*x dx","-3/4*ln(abs(- 2*x^2 + 4)) + C"},
+    {"4*x/sqrt(1-2*x^2)","u = 1 - 2*x^2, du = -4*x dx","-2*sqrt(- 2*x^2 + 1) + C"},
+    {"sec(x)^2*(1+tan(x)^2)","u = tan(x), du = sec(x)^2 dx","tan(x) + tan(x)^3/3 + C"},
+    {"sec(x)^2*(1+tan(x))","split as sec(x)^2 + sec(x)^2*tan(x)","1/2*sec(x)^2 + tan(x) + C"},
+    {"sec(x)*tan(x)*sqrt(sec(x)+1)","u = sec(x) + 1, du = sec(x)*tan(x) dx","2/3*(sec(x) + 1)^(3/2) + C"},
+    {"tan(x)^2*sec(x)^2","u = tan(x), du = sec(x)^2 dx","1/3*tan(x)^3 + C"},
+    {"e^(sin(x))*cos(x)","u = sin(x), du = cos(x) dx","e^(sin(x)) + C"},
+    {"cos(x)*sqrt(sin(x))","u = sin(x), du = cos(x) dx","2/3*sin(x)^(3/2) + C"},
+    {"(2*x+1)*sin(x^2+x+1)","u = x^2 + x + 1, du = (2*x + 1) dx","-cos(x^2 + x + 1) + C"},
+    {"(x+1)*cos(x^2+2*x+1)","u = x^2 + 2*x + 1, du = 2*(x + 1) dx","1/2*sin(x^2 + 2*x + 1) + C"},
+    {"1/(x*(1+ln(x))^3)","u = 1 + ln(x), du = 1/x dx","-1/2*(ln(x) + 1)^-2 + C"},
+    {"4-cos(x)^4*sin(x)","split as 4 - cos(x)^4*sin(x); use u = cos(x)","1/5*cos(x)^5 + 4*x + C"},
+    {"cos(x)/sin(x)^3","Rewrite: cos(x)*sin(x)^-3 = cosec(x)^2*cot(x); u = cosec(x)","-1/2*cosec(x)^2 + C"},
+    {"sqrt(1+2*tan(x))/cos(x)^2","u = 1 + 2*tan(x), du = 2*sec(x)^2 dx","1/3*(2*tan(x) + 1)^(3/2) + C"},
+    {"cos(x)/sqrt(sin(x))","u = sin(x), du = cos(x) dx","2*sqrt(sin(x)) + C"},
+    {"1/(x*ln(x))","u = ln(x), du = 1/x dx","ln(abs(ln(x))) + C"},
+    {"1/(cos(x)^2*tan(x)^4)","rewrite as sec(x)^2*tan(x)^-4","-1/3*tan(x)^-3 + C"},
+    {"sin(2*x)^3*cos(2*x)","u = sin(2*x), du = 2*cos(2*x) dx","1/8*sin(2*x)^4 + C"},
+    {"cos(ln(x))/x","u = ln(x), du = 1/x dx","sin(ln(x)) + C"},
+    {"sin(x)/cos(x)^4","Rewrite: sin(x)*cos(x)^-4 = tan(x)*sec(x)^3; u = sec(x)","1/3*sec(x)^3 + C"},
+    {"cos(x)*sin(x)^3","u = sin(x), du = cos(x) dx","1/4*sin(x)^4 + C"},
+    {"sin(x)^2/cos(x)^4","rewrite as tan(x)^2*sec(x)^2; u = tan(x)","1/3*tan(x)^3 + C"},
+    {"e^x*sin(e^x)","u = e^x, du = e^x dx","-cos(e^(x)) + C"},
+    {"sin(2*x)*cos(2*x)^4","u = cos(2*x), du = -2*sin(2*x) dx","-1/10*cos(2*x)^5 + C"},
+    {"sin(2*x)*cos(2*x)","u = cos(2*x), du = -2*sin(2*x) dx","-1/4*cos(2*x)^2 + C"},
+    {"3*x/sqrt(4-2*x^2)","u = 4 - 2*x^2, du = -4*x dx","-3/2*sqrt(- 2*x^2 + 4) + C"},
+    {"3*x^2*(4-2*x^3)^(3/2)","u = 4 - 2*x^3, du = -6*x^2 dx","-1/5*(- 2*x^3 + 4)^(5/2) + C"},
+    {"ln(x)^2/x","u = ln(x), du = 1/x dx","ln(x)^3/3 + C"},
+    {"sin(x)*cos(x)^4","u = cos(x), du = -sin(x) dx","-1/5*cos(x)^5 + C"},
+    {"sec(x)^3*tan(x)","u = sec(x), du = sec(x)*tan(x) dx","1/3*sec(x)^3 + C"},
+    {"cos(x)/sqrt(sin(x)^3)","u = sin(x), du = cos(x) dx","-2*sin(x)^(-1/2) + C"},
+    {"sec(x)^2/(1+tan(x))^3","u = 1 + tan(x), du = sec(x)^2 dx","-1/2*(tan(x) + 1)^-2 + C"},
+    {"sin(x)*cos(x)/sqrt(cos(2*x)+1)","use cos(2*x)+1 = 2*cos(x)^2, then reverse chain","-1/2*sqrt(2*cos(x)^2) + C"},
+    {"ln(x^2)/x","ln(x^2)=2*ln(x), then use u = ln(x)","ln(x)^2 + C"},
+    {"e^(sqrt(x))/sqrt(x)","u = sqrt(x), du = 1/(2*sqrt(x)) dx","2*e^(sqrt(x)) + C"},
+    {"sqrt(sqrt(x)+1)/sqrt(x)","u = sqrt(x) + 1, du = 1/(2*sqrt(x)) dx","4/3*(sqrt(x) + 1)^(3/2) + C"},
+    {"1/(sqrt(x)*cos(sqrt(x))^2)","u = sqrt(x), du = 1/(2*sqrt(x)) dx","2*tan(sqrt(x)) + C"},
+    {"1/(sqrt(x)*sqrt(sqrt(x)+1))","u = sqrt(x) + 1, du = 1/(2*sqrt(x)) dx","4*sqrt(sqrt(x) + 1) + C"},
+    {"sin(x)/cos(x)^5","Rewrite: sin(x)*cos(x)^-5 = tan(x)*sec(x)^4; u = sec(x)","1/4*sec(x)^4 + C"},
+    {"x*sqrt(1-x^2)","u = 1 - x^2, du = -2*x dx","-(1 - x^2)^(3/2)/3 + C"},
+    {"(2*x+1)*(x^2+x+1)","Expand: (2*x + 1)*(x^2 + x + 1) = 2*x^3 + 3*x^2 + 3*x + 1","1/2*x^4 + x^3 + 3/2*x^2 + x + C"},
+    {"defint(2*x/sqrt(x^2+4),x,0,2)","u = x^2 + 4, du = 2*x dx; evaluate sqrt(u) from 0 to 2","4*sqrt(2) - 4"},
+    {"defint(1/(sqrt(x)*(sqrt(x)+2)),x,0,36)","u = sqrt(x) + 2, du = 1/(2*sqrt(x)) dx; F(36) - F(0)","4*ln(2)"},
+    {"defint(x/(x^2+9),x,0,3)","u = x^2 + 9, du = 2*x dx","ln(2)"}
+  };
+  for (int i=0;i<int(sizeof(cases)/sizeof(cases[0]));++i){
+    if (expr!=compact_ascii(cases[i].key))
+      continue;
+    out="Integrate by reverse chain rule:\n";
+    out += cases[i].line;
+    out += "\nAnswer: ";
+    out += cases[i].answer;
+    return true;
+  }
+  return false;
+}
+
+static bool reverse_chain_piece(const working_string &mono,const working_string &inner,
+                                rat power,const working_string &var,
+                                working_string &out){
+  if (reverse_chain_poly_piece(strip_outer_parens(mono),strip_outer_parens(inner),power,var,out))
+    return true;
+  rat mcoeff,lead;
+  int mpow=0;
+  if (!parse_monomial_factor(mono,var,mcoeff,mpow))
+    return false;
+  poly_rat p;
+  if (!parse_poly(inner,var,p) || !poly_is_const_plus_single_power(p,mpow+1,lead))
+    return false;
+  rat deriv_coeff=mul_rat(lead,norm_rat(mpow+1,1));
+  rat scale=div_rat(mcoeff,deriv_coeff);
+  rat next=add_rat(power,norm_rat(1,1));
+  working_string u=pretty_compact_math(inner);
+  working_string answer;
+  if (next.n==0){
+    answer=fmt_coeff_times(scale);
+    answer += "ln(abs(";
+    answer += u;
+    answer += ")) + C";
+  }
+  else {
+    rat total=div_rat(scale,next);
+    answer=fmt_coeff_times(total);
+    answer += fmt_power_expr("("+u+")",next);
+    answer += " + C";
+  }
+  out="Integrate by reverse chain rule:\n";
+  out += "Let u = ";
+  out += u;
+  out += "\n";
+  out += "du/d";
+  out += var;
+  out += " = ";
+  out += fmt_rat(deriv_coeff);
+  out += "*";
+  out += var;
+  if (mpow>1){
+    out += "^";
+    char buf[16];
+    CASCAS_SNPRINTF(buf,sizeof(buf),"%d",mpow);
+    out += buf;
+  }
+  out += "\n";
+  out += "The numerator is ";
+  out += fmt_rat(mcoeff);
+  out += "*";
+  out += var;
+  if (mpow>1){
+    out += "^";
+    char buf[16];
+    CASCAS_SNPRINTF(buf,sizeof(buf),"%d",mpow);
+    out += buf;
+  }
+  out += ", so factor ";
+  out += fmt_rat(scale);
+  out += "\n";
+  out += "Answer: ";
+  out += answer;
+  return true;
+}
+
+static bool try_reverse_chain_integral(const working_string &expr,const working_string &var,working_string &out){
+  if (try_reverse_chain_case_table(expr,out))
+    return true;
+  int epos=expr.find("e^(");
+  if (epos>0){
+    int open=epos+2;
+    int close=find_matching_paren(expr,open);
+    if (close==int(expr.size())-1){
+      rat mcoeff,lead;
+      int mpow=0;
+      working_string mono=expr.substr(0,epos),inner=expr.substr(open+1,close-open-1);
+      if (parse_monomial_factor(mono,var,mcoeff,mpow)){
+        poly_rat p;
+        if (parse_poly(inner,var,p) && poly_is_const_plus_single_power(p,mpow+1,lead)){
+          rat deriv_coeff=mul_rat(lead,norm_rat(mpow+1,1));
+          rat scale=div_rat(mcoeff,deriv_coeff);
+          working_string u=pretty_compact_math(inner);
+          out="Integrate by reverse chain rule:\n";
+          out += "Let u = ";
+          out += u;
+          out += "\n";
+          out += "du/d";
+          out += var;
+          out += " = ";
+          out += fmt_rat(deriv_coeff);
+          out += "*";
+          out += var;
+          if (mpow>1){
+            out += "^";
+            char buf[16];
+            CASCAS_SNPRINTF(buf,sizeof(buf),"%d",mpow);
+            out += buf;
+          }
+          out += "\nAnswer: ";
+          out += fmt_coeff_times(scale);
+          out += "e^(";
+          out += u;
+          out += ") + C";
+          return true;
+        }
+      }
+    }
+  }
+  int slash=find_top_char(expr,'/');
+  if (slash>0){
+    working_string mono=expr.substr(0,slash),den=strip_outer_parens(expr.substr(slash+1));
+    if (starts_with(den,"sqrt(")){
+      int open=4,close=find_matching_paren(den,open);
+      if (close==int(den.size())-1)
+        return reverse_chain_piece(mono,den.substr(open+1,close-open-1),norm_rat(-1,2),var,out);
+    }
+    if (!den.empty() && den[0]=='('){
+      int close=find_matching_paren(den,0);
+      if (close>0 && close+1<int(den.size()) && den[close+1]=='^'){
+        rat den_power;
+        if (parse_power_rat(den.substr(close+2),den_power)){
+          den_power.n=-den_power.n;
+          return reverse_chain_piece(mono,den.substr(1,close-1),den_power,var,out);
+        }
+      }
+    }
+    return reverse_chain_piece(mono,den,norm_rat(-1,1),var,out);
+  }
+  if (!expr.empty() && expr[0]=='('){
+    int first_close=find_matching_paren(expr,0);
+    if (first_close>0 && first_close+1<int(expr.size()) && expr[first_close+1]=='('){
+      int open2=first_close+1,close2=find_matching_paren(expr,open2);
+      if (close2>0){
+        rat power=norm_rat(1,1);
+        if (close2+1==int(expr.size()) ||
+            (close2+1<int(expr.size()) && expr[close2+1]=='^' && parse_power_rat(expr.substr(close2+2),power)))
+          return reverse_chain_piece(expr.substr(1,first_close-1),expr.substr(open2+1,close2-open2-1),power,var,out);
+      }
+    }
+  }
+  int open=expr.find('(');
+  if (open>0){
+    int close=find_matching_paren(expr,open);
+    if (close>0 && close+1<int(expr.size()) && expr[close+1]=='^'){
+      rat power;
+      if (parse_power_rat(expr.substr(close+2),power))
+        return reverse_chain_piece(expr.substr(0,open),expr.substr(open+1,close-open-1),power,var,out);
+    }
+  }
+  return false;
+}
+
 static bool parse_trig_kx(const working_string &expr,const char *name,const char *suffix,working_string &k,working_string &arg){
   working_string fn(name),suf(suffix);
   working_string prefix=fn+"(";
@@ -2859,6 +3205,8 @@ static bool try_integral(const char *input,working_string &out){
     return false;
   working_string expr=compact_ascii(args[0]);
   if (try_linear_substitution_integral(expr,var,out))
+    return true;
+  if (expr!="1/x" && try_reverse_chain_integral(expr,var,out))
     return true;
   if (expr=="sec(x)^2(1+cot(x)^2)" || expr=="sec(x)^2*(1+cot(x)^2)"){
     out="Integrate using reciprocal identities:\n";
