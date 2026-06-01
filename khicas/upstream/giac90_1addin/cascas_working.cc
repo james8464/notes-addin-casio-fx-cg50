@@ -540,6 +540,39 @@ static working_string quotient_after_cancel(const working_string &num,const work
   return "("+n+")/("+d+")";
 }
 
+static bool common_linear_factor(const working_string &nf,const working_string &df,working_string &common,Rat &scale){
+  long na,nb,da,db;
+  if (!parse_affine(unbracket_factor(nf),na,nb) || !parse_affine(unbracket_factor(df),da,db))
+    return false;
+  long ng=gcd_long(na,nb), dg=gcd_long(da,db);
+  if (na<0) ng=-ng;
+  if (da<0) dg=-dg;
+  long npa=na/ng, npb=nb/ng, dpa=da/dg, dpb=db/dg;
+  if (npa!=dpa || npb!=dpb)
+    return false;
+  common=factor_lin(npa,npb,'x');
+  scale=rat(ng,dg);
+  return true;
+}
+
+static working_string scaled_factor(Rat q,const working_string &f){
+  working_string u=unbracket_factor(f);
+  if (q.n==1 && q.d==1) return u;
+  if (q.n==-1 && q.d==1) return "-("+u+")";
+  long a,b;
+  if (parse_affine(u,a,b) && (a*q.n)%q.d==0 && (b*q.n)%q.d==0)
+    return fmt_affine(a*q.n/q.d,b*q.n/q.d);
+  return rat_s(q)+"*("+u+")";
+}
+
+static working_string quotient_after_scaled_cancel(Rat q,const working_string &num,const working_string &den){
+  if (den=="1")
+    return scaled_factor(q,num);
+  working_string n=scaled_factor(q,num), d=unbracket_factor(den);
+  if (n=="1") return "1/("+d+")";
+  return "("+n+")/("+d+")";
+}
+
 static char first_var(const working_string &src){
   working_string s=compact(src);
   for (int i=0;i<int(s.size());++i)
@@ -2118,7 +2151,9 @@ static bool try_simplify(const char *input,working_string &out){
   int nc=factor_terms(nfac,nt), dc=factor_terms(dfac,dt);
   for (int i=0;i<nc;++i){
     for (int j=0;j<dc;++j){
-      if (nt[i]==dt[j]){
+      working_string common=nt[i];
+      Rat scale=rat(1,1);
+      if (nt[i]==dt[j] || common_linear_factor(nt[i],dt[j],common,scale)){
         working_string nr=nc==1?"1":nt[1-i], dr=dc==1?"1":dt[1-j];
         out="Factorise numerator and denominator:\n";
         out += nshow+" = ";
@@ -2126,8 +2161,8 @@ static bool try_simplify(const char *input,working_string &out){
         out += "\n";
         out += dshow+" = ";
         out += dc==2?order_common_first(dt[0],dt[1],dt[j]):dfac;
-        out += "\nCancel common factor "+nt[i]+"\nAnswer: ";
-        out += quotient_after_cancel(nr,dr);
+        out += "\nCancel common factor "+common+"\nAnswer: ";
+        out += (scale.n==1 && scale.d==1)?quotient_after_cancel(nr,dr):quotient_after_scaled_cancel(scale,nr,dr);
         return true;
       }
     }

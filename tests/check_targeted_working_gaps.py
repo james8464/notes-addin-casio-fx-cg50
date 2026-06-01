@@ -18,6 +18,8 @@ CASES = [
     ("integrate((6*x-5)*exp(3*x^2-5*x),x)", ["Sub u=3x^2 - 5x", "du=(6*x - 5) dx", "Answer: exp(3x^2 - 5x) + C"]),
     ("simplify((x^2+3*x+2)/(x+1))", ["Factorise numerator and denominator:", "x^2 + 3*x + 2 = (x + 1)*(x + 2)", "Cancel common factor (x + 1)", "Answer: x + 2"]),
     ("simplify((x^2-4)/(x^2-2*x))", ["x^2 - 4 = (x - 2)*(x + 2)", "x^2 - 2*x = (x - 2)*(x)", "Cancel common factor (x - 2)", "Answer: (x + 2)/(x)"]),
+    ("simplify((2*x^2+6*x+4)/(2*x+2))", ["Cancel common factor (x + 1)", "Answer: x + 2"]),
+    ("simplify((x^2-1)/(1-x))", ["Cancel common factor (x - 1)", "Answer: -(x + 1)"]),
 ]
 
 

@@ -1,6 +1,6 @@
 # Project Graph
 
-Last updated: 2026-06-01 10:44 BST
+Last updated: 2026-06-01 10:50 BST
 
 ## Build
 
@@ -15,7 +15,7 @@ graph TD
   Make --> Bin["khicasen.bin, upstream KhiCAS base"]
   Bin --> G3A["calculator_files/CAS.g3a"]
   G3A --> Meta["CAS / @CAS / CAS.g3a"]
-  G3A --> Size["2,099,608 bytes; under 2.2MB cap; sha 9366b9f4"]
+  G3A --> Size["2,100,744 bytes; under 2.2MB cap; sha 56d21366"]
 ```
 
 ## Runtime
