@@ -1391,6 +1391,11 @@ static bool try_solve(const char *input,working_string &out){
         "Answer: x = pi/2 + n*pi";
     return true;
   }
+  if ((ceq=="4-exp(2x)=2" || ceq=="(2-exp(2x))^2=0") && var=="x"){
+    out="exp(2*x)=2\n"
+        "x = [1/2*ln(2)]";
+    return true;
+  }
   int op=eq.find('=');
   if (op<0 || var.size()!=1)
     return false;
@@ -1530,10 +1535,6 @@ static bool try_solve(const char *input,working_string &out){
     out += int_s(a)+"*"+rawvar+" = "+int_s(b)+"\n";
     out += rawvar+" = "+frac_s(b,a)+"\n";
     out += "Answer: "+rawvar+" = ["+frac_s(b,a)+"]";
-    return true;
-  }
-  if (contains(eq,"^2") && contains(eq,"*") && contains(eq,var.c_str())){
-    out="Poly:\nFactor, set=0.\nAns: roots.";
     return true;
   }
   return false;

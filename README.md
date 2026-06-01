@@ -24,11 +24,11 @@ Current status:
 
 - app name: `CAS`
 - file: `CAS.g3a`
-- size: `2,097,136` bytes
-- hard limit headroom: `16` bytes
-- sha256: `659edf84faa4530f469ee21882f67243531a0cb3a03eac208ac3b146452bcb40`
+- size: `2,097,148` bytes
+- hard limit headroom: `4` bytes
+- sha256: `bd403d006c2b699c84dc245ca35f6be93e8b469232dc107a5970fe35dbc918de`
 - exact queue runtime: `14,256/14,256`
-- strict marker quality: `12,962/14,256`
+- strict marker quality: `12,966/14,256`
 - online challenge source coverage: MadAsMaths exact rows in queue; Daily Integral hard-integration style probes inspected from `https://dailyintegral.com/archive`
 
 Notable routes:
@@ -44,9 +44,11 @@ Notable routes:
 - quotient-simplify derivative route for `(x^2+4)/(4*x)`
 - `solve((dy)/(dx)=y,y)` separable differential equation
 - `solve(dn/dt=k*n,n,t)` now shows the separation step and spaced logarithm line
+- `solve(4-exp(2*x)=2,x)` and `solve((2-exp(2*x))^2=0,x)` show the logarithm step result `x = [1/2*ln(2)]`
 - generic affine chain/reverse-chain power routes
 - trig/exp term integration, shifted trig identity, damped-sine by-parts route, quadratic solve/factor/expand, log/numeric routes
 - safer solve routing: powered terms no longer fall through the linear solver
+- low-quality generic `Poly: Factor, set=0` fallback was removed so unknown polynomial solves can fall through to original KhiCAS instead
 - safer chain routing: non-linear inner functions no longer pass as affine
 - simple numeric expressions show small exact fractions when detected
 - numeric routes emit equation-style `=` lines, 12-significant-digit rounded markers, and substitution-limit square-root steps such as `sqrt(5-1) -> sqrt(4)`
