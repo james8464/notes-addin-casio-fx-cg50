@@ -666,6 +666,21 @@ static working_string func_affine_term_s(Rat c,const char *fn,long a,long b){
   return out;
 }
 
+static working_string x_func_arg_term_s(Rat c,const char *fn,const working_string &arg){
+  if (!c.n) return "";
+  working_string out;
+  Rat q=c;
+  if (q.n<0){ out="-"; q.n=-q.n; }
+  if (!(q.n==1 && q.d==1))
+    out += rat_s(q)+"*";
+  out += "x*";
+  out += fn;
+  out += "(";
+  out += arg;
+  out += ")";
+  return out;
+}
+
 static bool integrate_one_trig_exp(const working_string &term,Rat sign,working_string &part){
   const char *fn=0;
   int fp=-1;
@@ -711,6 +726,43 @@ static bool integrate_one_trig_exp(const working_string &term,Rat sign,working_s
     return true;
   }
   part=func_term_s(rat_div(c,k),"exp",k);
+  return true;
+}
+
+static bool integrate_x_trig_parts(const working_string &expr,working_string &answer){
+  working_string s=compact(expr);
+  int p=s.find("xsin(");
+  bool is_sin=true;
+  if (p<0){
+    p=s.find("xcos(");
+    is_sin=false;
+  }
+  if (p<0) return false;
+  Rat c;
+  working_string pre=s.substr(0,p);
+  if (pre.empty()) c=rat(1,1);
+  else if (pre=="-") c=rat(-1,1);
+  else if (!parse_rat(pre,c)) return false;
+  int open=s.find("(",p);
+  int close=match_paren(s,open);
+  if (close!=int(s.size())-1) return false;
+  working_string arg=s.substr(open+1,close-open-1);
+  Rat k;
+  if (parse_x_coeff(arg,k) && k.n){
+    Rat k2=rat_mul(k,k);
+    if (is_sin)
+      answer=join_sum(x_func_arg_term_s(rat_div(rat(-c.n,c.d),k),"cos",xarg_s(k)),func_term_s(rat_div(c,k2),"sin",k));
+    else
+      answer=join_sum(x_func_arg_term_s(rat_div(c,k),"sin",xarg_s(k)),func_term_s(rat_div(c,k2),"cos",k));
+    return true;
+  }
+  long a=0,b=0;
+  if (!parse_affine(arg,a,b) || !a) return false;
+  Rat ak=rat(a,1), ak2=rat_mul(ak,ak);
+  if (is_sin)
+    answer=join_sum(x_func_arg_term_s(rat_div(rat(-c.n,c.d),ak),"cos",fmt_affine(a,b)),func_affine_term_s(rat_div(c,ak2),"sin",a,b));
+  else
+    answer=join_sum(x_func_arg_term_s(rat_div(c,ak),"sin",fmt_affine(a,b)),func_affine_term_s(rat_div(c,ak2),"cos",a,b));
   return true;
 }
 
@@ -1371,6 +1423,12 @@ static bool try_integral(const char *input,working_string &out){
     out=""
         "u=x,v=sin(x)\n"
         "Answer: x*sin(x)+cos(x)+C";
+    return true;
+  }
+  if (integrate_x_trig_parts(args[0],sum_answer) && !force_parts && !force_sub){
+    out="Answer: ";
+    out += sum_answer;
+    out += " + C";
     return true;
   }
   if (e=="exp(-x/10)sin(x)"){

@@ -1062,8 +1062,8 @@ int doTextArea(textArea* text) {
 	if ( (key>=KEY_CTRL_F1 && key<=KEY_CTRL_F3) ||
 	     (key >= KEY_CTRL_F7 && key <= KEY_CTRL_F14)
 	     ){
-	  string le_menu=text->python?"F1 test\nif \nelse \n<\n>\n==\n!=\n&&\n||\nF2 loop\nfor \nfor in\nrange(\nwhile \nbreak\ndef\nreturn \n#\nF3 misc\n:\n;\n_\n!\n%\n&\nprint(\ninput(\n":"F1 test\nif \nelse \n<\n>\n==\n!=\nand\nor\nF2 loop\nfor \nfor in\nrange(\nwhile \nbreak\nf(x):=\nreturn \nlocal\nF3 misc\n;\n:\n_\n!\n%\n&\nprint(\ninput(\n";
-	  le_menu += "F7 arit\n mod \nirem(\nifactor(\ngcd(\nisprime(\nnextprime(\npowmod(\niegcd(\nF8 lin\nmatrix(\ndet(\nmatpow(\nranm(\ncross(\ncurl(\negvl(\negv(\nF9 list\nmakelist(\nrange(\nseq(\nsize(\nappend(\nranv(\nsort(\napply(\nF: plot\nplot(\nplotseq(\nplotlist(\nplotparam(\nplotpolar(\nplotfield(\nhistogram(\nbarplot(\nF; real\nexact(\napprox(\nfloor(\nceil(\nround(\nsign(\nmax(\nmin(\nF< prog\n;\n:\n\\\n&\n?\n!\ndebug(\npython(\nF= cplx\nabs(\narg(\nre(\nim(\nconj(\ncsolve(\ncfactor(\ncpartfrac(\nF> misc\n<\n>\n_\n!\n % \nrand(\nbinomial(\nnormald(";
+	  string le_menu="F1 alg\nsolve(\nfactor(\nexpand(\nsubst(\nF2 calc\ndiff(\nintegrate(\nlimit(\nsum(\nF3 misc\n;\n:\n_\n!\n";
+	  le_menu += "F7 alg\npartfrac(\nrange(\nxform(\nF8 trig\nsin(\ncos(\ntan(\nsec(\nF9 log\nln(\nlog(\nexp(\nF: vec\nnorm(\ndot(\nF; real\nexact(\napprox(\nfloor(\nceil(\nround(\nF< sym\n<\n>\n=\nF= help\nhelp(\nF> misc\npi\ninf\nsqrt(";
 	  const char * ptr=console_menu(key,(unsigned char*)(le_menu.c_str()),2);
 	  if (!ptr){
 	    show_status(text,search,replace);

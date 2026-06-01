@@ -5811,7 +5811,7 @@ namespace giac {
 	  }
 	}
 	else
-	  *logptr(contextptr) << "Rational univariate representation is not certified, set proba_epsilon:=0 to certify" << endl;
+	  *logptr(contextptr) << "RUR uncertified" << endl;
 	int deg=_degree(makesequence(Gv[2],var.front()),contextptr).val;
 	if (evalf_after & 1){
 	  gen pol=Gv[2],tmp;

@@ -24,11 +24,11 @@ Current status:
 
 - app name: `CAS`
 - file: `CAS.g3a`
-- size: `2,096,476` bytes
-- hard limit headroom: `676` bytes
-- sha256: `d3e6707a5d7c568df78ed96f731a8c00c737ce045aa142098463b107e792423c`
+- size: `2,096,992` bytes
+- hard limit headroom: `160` bytes
+- sha256: `902d4f50aff0400c811b48f4f0adecd846f7ccbcc527e21db44a41d7c36b7dfa`
 - exact queue runtime: `14,256/14,256`
-- strict marker quality: `13,073/14,256`
+- strict marker quality: `13,097/14,256`
 - online challenge source coverage: MadAsMaths exact rows in queue; Daily Integral hard-integration style probes inspected from `https://dailyintegral.com/archive`
 
 Notable routes:
@@ -47,6 +47,7 @@ Notable routes:
 - `integrate(3*x*cos(2*x))` compact integration by parts
 - `integrate(-2*x*sin(5*x))` compact integration by parts
 - `integrate(x*sin(4*x))` compact integration by parts
+- generic `integrate(c*x*sin(a*x+b),x)` and `integrate(c*x*cos(a*x+b),x)` by-parts routes, including `x*sin(6*x)`, `x*cos(x/2)`, and `x*sin(2*x-1)`
 - `diff(r^2,r)` single-variable power rule
 - `diff(arctan(x))` compact inverse trig derivative route
 - `diff(108*x-36*x^2+3*x^3)` preserves the queue mark-scheme order `- 72*x + 9*x^2 + 108`
@@ -82,7 +83,7 @@ Notable routes:
 - distinct integer quadratic roots show explicit root lines before list answer, e.g. `k = 1 or k = -2`
 - negative-leading integer quadratics now print roots in the exam-friendly order expected by the queue, e.g. `x = [3, 11]`
 - catalogue Help on command screen shows spaced sections and F2/F3 examples
-- `/Users/james/Developer/CASIO/tools/audit_progress_tui.py` shows animated status badges, side-by-side panels on wide terminals, phase lanes, health score, repo sync, last commit, change counts, state age, artifact headroom, live queue rate/ETA, pass/fail bars, strict-marker ratios, animated scan/meter lines, cleanup byte totals, project hygiene, transfer path, quality clusters with first gap samples, test checkpoint rows, release blockers, risk, ignored workspace, active-tool counts, next action, recent events, and run-command panels
+- `/Users/james/Developer/CASIO/tools/audit_progress_tui.py` shows animated status badges, side-by-side panels on wide terminals, phase lanes, health score, repo sync, last commit, change counts, state age, artifact headroom, live queue rate/ETA, pass/fail bars, strict-marker ratios, strict-gap bar maps, freshness rows, animated scan/meter lines, cleanup byte totals, cleanup command, project hygiene, transfer path, quality clusters with first gap samples, test checkpoint rows, release blockers, risk, ignored workspace, active-tool counts, next action, recent events, and run-command panels
 
 Active tools:
 

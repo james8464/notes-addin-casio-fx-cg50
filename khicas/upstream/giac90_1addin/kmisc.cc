@@ -3151,7 +3151,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
 	    }
 	    ordre *= 2;
 	  }
-	  gprintf(gettext("Singular point %gen, point %gen direction %gen kind (%gen,%gen)\nTaylor expansions %gen"),makevecteur(symb_equal(t__IDNT_e,*it),makevecteur(fx,gx),makevecteur(ax,ay),o1,o2,makevecteur(vx,vy)),1,contextptr);
+	  gprintf(gettext("Singular %gen %gen %gen (%gen,%gen)\nTaylor %gen"),makevecteur(symb_equal(t__IDNT_e,*it),makevecteur(fx,gx),makevecteur(ax,ay),o1,o2,makevecteur(vx,vy)),1,contextptr);
 	  gprintf(" \n",vecteur(0),1,contextptr);
 	}
 	else {
@@ -4339,7 +4339,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
     if (withstddev){
       m2 -= apply(s,apply(m,m,prod),prod);
       if (s.type!=_VECT && is_greater(1,s,contextptr) && withstddev==2)
-	*logptr(contextptr) << "stddevp called with N<=1, perhaps you are misusing this command with frequencies" << endl;
+	*logptr(contextptr) << "stddevp N<=1" << endl;
       m2=apply(m2,s-(withstddev==2),contextptr,rdiv);
       if (withstddev==3)
 	return m2;

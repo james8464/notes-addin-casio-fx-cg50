@@ -470,6 +470,27 @@ def cleanup_rows(limit: int = 5) -> list[str]:
     return rows[:limit] or ["no cleanup candidates"]
 
 
+def cleanup_command_rows() -> list[str]:
+    return [
+        f"python3 {AUDIT_PATH} --cleanup",
+        "removes build/, source objects, __pycache__, .pyc, .DS_Store",
+        "keeps calculator_files/CAS.g3a and test reports",
+    ]
+
+
+def perform_cleanup() -> tuple[int, int]:
+    paths = cleanup_targets()
+    count, total = stat_paths(paths)
+    for path in paths:
+        if not path.exists():
+            continue
+        if path.is_dir():
+            shutil.rmtree(path)
+        else:
+            path.unlink()
+    return count, total
+
+
 def ratio_history(label: str = "queue-run", limit: int = 18) -> str:
     vals: list[float] = []
     if STATE.exists():
@@ -742,6 +763,30 @@ def queue_health(st: Stat, frame: int, width: int, enabled: bool) -> list[str]:
     return rows
 
 
+def cluster_bars(st: Stat, width: int, frame: int, enabled: bool) -> list[str]:
+    if not st.fail_clusters:
+        return ["strict gap map none"]
+    max_count = max(count for _, count in st.fail_clusters) or 1
+    bar_w = max(12, min(28, width - 18))
+    rows = ["strict gap map"]
+    for name, count in st.fail_clusters[:5]:
+        fill = max(1, int(bar_w * count / max_count))
+        cells = ["#"] * fill + ["-"] * max(0, bar_w - fill)
+        if fill < bar_w:
+            cells[(fill + frame) % bar_w] = ">"
+        rows.append(f"{name:<10} {color(''.join(cells), C.yellow, enabled)} {count}")
+    return rows
+
+
+def freshness_rows(st: Stat) -> list[str]:
+    return [
+        f"artifact {st.g3a_age}  build {st.build_age}",
+        f"graph {st.graph_age}  state {st.state_age} ({st.state_rows} rows)",
+        f"queue report {st.report_age}  live {st.queue_live_age}",
+        f"last event {st.last}",
+    ]
+
+
 def rate(done: int, total: int) -> str:
     return "n/a" if total <= 0 else f"{done / total * 100:.2f}%"
 
@@ -1012,11 +1057,15 @@ def render_compact(st: Stat, frame: int, width: int, enabled: bool) -> str:
         lines.append(kv("ignored", "; ".join(ignored), width, enabled))
     lines.append(kv("hygiene", f"ignored {st.ignored_items} files/{human_size(st.ignored_bytes)}  cleanup {st.cleanup_items} files/{human_size(st.cleanup_bytes)}", width, enabled))
     lines.append(kv("cleanup", "; ".join(cleanup_rows(3)), width, enabled))
+    lines.append(kv("clean cmd", cleanup_command_rows()[0], width, enabled))
     lines.append(kv("audit path", str(AUDIT_PATH), width, enabled))
     lines.append(kv("active", f"tools {st.tool_count}  test scripts {st.test_count}  dead tools 0", width, enabled))
     quality = f"unsupported {st.unsupported}"
     quality += "  " + "; ".join(failure_cluster_rows(st, 3)[:2])
     lines.append(kv("quality", quality, width, enabled))
+    for row in cluster_bars(st, bar_w + 14, frame, enabled)[:4]:
+        lines.append(kv("gap map", row, width, enabled))
+    lines.append(kv("freshness", "  ".join(freshness_rows(st)[:2]), width, enabled))
     if st.events:
         lines.append(kv("recent", st.events[-1], width, enabled))
     lines.extend(
@@ -1129,9 +1178,12 @@ def render(st: Stat, frame: int, width: int, height: int, enabled: bool) -> str:
         lines.append("")
         lines += panel("risk", risk, width, enabled)
     lines += panel("project hygiene", hygiene_rows(st, enabled), width, enabled)
+    lines += panel("cleanup command", cleanup_command_rows(), width, enabled)
+    lines += panel("freshness", freshness_rows(st), width, enabled)
     lines += panel("tests", test_rows(st), width, enabled)
     lines += panel("release", readiness_rows(st), width, enabled)
     gap_rows = [f"unsupported {st.unsupported}", *failure_cluster_rows(st)]
+    gap_rows.extend(cluster_bars(st, bar_w + 14, frame, enabled))
     lines += panel("quality", gap_rows, width, enabled)
     ignored = ignored_rows()
     if ignored:
@@ -1199,10 +1251,15 @@ def live(fps: float, scan_interval: float, no_color: bool) -> int:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--once", action="store_true")
+    ap.add_argument("--cleanup", action="store_true", help="remove generated cleanup candidates")
     ap.add_argument("--fps", type=float, default=float(os.environ.get("CASIO_AUDIT_TUI_FPS", "8")))
     ap.add_argument("--scan-interval", type=float, default=float(os.environ.get("CASIO_AUDIT_TUI_SCAN_INTERVAL", "4")))
     ap.add_argument("--no-color", action="store_true")
     args = ap.parse_args()
+    if args.cleanup:
+        count, total = perform_cleanup()
+        print(f"removed {count} generated file(s), reclaimed {human_size(total)}")
+        return 0
     if args.once:
         size = shutil.get_terminal_size((110, 28))
         print(render(collect(), 0, size.columns, size.lines, not args.no_color))

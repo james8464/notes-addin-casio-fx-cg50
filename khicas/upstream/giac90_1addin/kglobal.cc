@@ -2778,7 +2778,7 @@ extern "C" void Sleep(unsigned int miliSecond);
 	alertmath=false;
 	alert(gettext("Assigning log2, gamma, fabs, modf, radians and degrees."),contextptr);
       }
-      cur += "log2(x):=logb(x,2):;gamma:=Gamma:;fabs:=abs:;function modf(x) local y; y:=floor(x); return x-y,y; ffunction:;radians(x):=x/180*pi:;degrees(x):=x/pi*180";
+      cur += "log2(x):=logb(x,2):;";
       // todo copysign, isinf, isnan, isfinite, frexp, ldexp
     }
   }
