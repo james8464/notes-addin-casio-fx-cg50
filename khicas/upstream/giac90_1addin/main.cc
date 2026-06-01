@@ -1741,7 +1741,7 @@ string remove_path(const string & st){
 void save(const char * fname){
   clear_abort();
   string filename(remove_path(remove_extension(fname)));
-  save_console_state_smem(("\\\\fls0\\"+filename+".xw").c_str()); // call before save_khicas_symbols_smem(), because this calls create_data_folder if necessary!
+  save_console_state_smem(("\\\\fls0\\"+filename+".xw").c_str(),false); // call before save_khicas_symbols_smem(), because this calls create_data_folder if necessary!
   // save_khicas_symbols_smem(("\\\\fls0\\"+filename+".xw").c_str());
   if (edptr)
     check_leave(edptr);
