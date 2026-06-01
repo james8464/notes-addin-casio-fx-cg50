@@ -470,7 +470,7 @@ namespace giac {
 	  break;
 	}
 	if (is_inf(l) || n.type!=_IDNT || n.print(contextptr).substr(0,2)!="n_" || !is_linear_wrt(expr,n,a,b,contextptr)){
-	  *logptr(contextptr) << gettext("Warning: unable to find ") <<n << gettext(" integer solutions for ") << expr << ">=" << l << gettext(" and <=") << m << gettext(", answer may be wrong.\nIf you are computing an integral with exact boundaries, replace by approx. boundaries") << endl;
+	  *logptr(contextptr) << gettext("Warning: integer root range") << endl;
 	  if (v.size()!=1) v=vecteur(1,undef);
 	  return;
 	}
@@ -3254,7 +3254,7 @@ namespace giac {
       if (1
 	  //abs_calc_mode(contextptr)==38
 	  ){
-	*logptr(contextptr) << gettext("Solving by bisection. Try fsolve(equation,x=guess) or x=a..b.") << endl;
+	*logptr(contextptr) << gettext("Bisection; try fsolve(x=guess) or x=a..b.") << endl;
 	gen eq=subst(v[0],v[1],tan(v[1],contextptr),false,contextptr);
   //grad
 	vecteur v_=makevecteur(eq,symb_equal(v[1],angle_radian(contextptr)?symb_interval(-1.57,1.57):(angle_degree(contextptr)?symb_interval(-89.97,89.97):symb_interval(-99.97,99.97))));
@@ -3262,13 +3262,13 @@ namespace giac {
 	if (is_undef(res))
 	  return res;
 	if (res.type==_VECT && res._VECTptr->empty()){
-	  *logptr(contextptr) << gettext("No solution found by bisection. Trying iterative method starting at 0") << endl;
+	  *logptr(contextptr) << gettext("No bisection root; trying 0") << endl;
 	  v_=makevecteur(v[0],v[1],0);
 	  return in_fsolve(v_,contextptr);
 	}
 	return tan(res,contextptr);
       }
-      *logptr(contextptr) << gettext("Solving with initial guess 0. Try fsolve(equation,x=guess) for iterative solver or fsolve(equation,x=xmin..xmax) for bisection.") << endl;
+      *logptr(contextptr) << gettext("Trying guess 0; use fsolve(x=guess) or x=xmin..xmax.") << endl;
     }
     gen gguess;
     if (v[1].type==_VECT && !v[1]._VECTptr->empty() && is_equal(v[1]._VECTptr->front())){

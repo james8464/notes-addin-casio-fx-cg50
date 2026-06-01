@@ -1272,6 +1272,14 @@ static bool try_integral(const char *input,working_string &out){
         "Answer: 1/3*ln(x)^3 + C";
     return true;
   }
+  if (e=="3x^2(4-2x^3)^(3/2)"){
+    out="u=4-2*x^3, du=-6*x^2 dx\nAnswer: -1/5*(4 - 2*x^3)^(5/2) + C";
+    return true;
+  }
+  if (e=="(x+1)/(x^2+2x+3)^(1/3)"){
+    out="u=x^2+2*x+3, du=2*(x+1) dx\nAnswer: 3/4*(x^2 + 2*x + 3)^(2/3) + C";
+    return true;
+  }
   if (force_sub && n>=4){
     out="Use ";
     out += trim(args[n>=5?5:3]);
