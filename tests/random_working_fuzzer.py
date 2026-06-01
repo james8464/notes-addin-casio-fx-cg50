@@ -62,6 +62,7 @@ TEMPLATES = {
     ],
     "xform": [
         "xform(2*sin(x-60)=cos(x-30),tan(x)=3*sqrt(3))",
+        "xform(2*sin(x-60)-cos(x-30)=0,tan(x)=3*sqrt(3))",
         "xform(1+tan(x)^2,sec(x)^2)",
         "xform(1+cot(x)^2,cosec(x)^2)",
         "xform(sin(x)^2+cos(x)^2,1)",

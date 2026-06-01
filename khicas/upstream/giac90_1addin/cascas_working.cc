@@ -86,7 +86,7 @@ static working_string canonical_expr(const working_string &src){
         working_string inner=canonical_expr(s.substr(i+1,close-i-1));
         if (i>0 && isalpha((unsigned char)s[i-1]))
           out += "("+inner+")";
-        else if (!has_top_add_sub_div(inner))
+        else if (!has_top_add_sub_div(inner) && !(close+1<int(s.size()) && s[close+1]=='^'))
           out += inner;
         else
           out += "("+inner+")";
@@ -112,6 +112,18 @@ static working_string nospace_lower(const working_string &s){
 static bool contains(const working_string &s,const char *needle){
   int p=s.find(needle);
   return p>=0;
+}
+
+static bool contains_var_symbol(const working_string &s,char v){
+  for (int i=0;i<int(s.size());++i){
+    if (s[i]!=v)
+      continue;
+    bool left=i>0 && isalpha((unsigned char)s[i-1]);
+    bool right=i+1<int(s.size()) && isalpha((unsigned char)s[i+1]);
+    if (!left && !right)
+      return true;
+  }
+  return false;
 }
 
 static int match_paren(const working_string &s,int open);
@@ -944,6 +956,19 @@ static bool needs_parens_for_mul(const working_string &s);
 static bool parse_x_power_factor(const working_string &src,Rat &coef,Rat &pow){
   working_string s=compact(strip_outer_parens(src));
   coef=rat(1,1); pow=rat(0,1);
+  if (!s.empty() && s[0]=='('){
+    int close=match_paren(s,0);
+    if (close>0 && close+1<int(s.size()) && s[close+1]=='^'){
+      Rat inner_c,inner_p,outer_p;
+      if (parse_x_power_factor(s.substr(1,close-1),inner_c,inner_p) &&
+          inner_c.n==inner_c.d &&
+          parse_rat(s.substr(close+2,s.size()-close-2),outer_p)){
+        coef=rat(1,1);
+        pow=rat_mul(inner_p,outer_p);
+        return true;
+      }
+    }
+  }
   int sq=s.find("sqrt(x)");
   if (sq>=0 && sq+7==int(s.size())){
     if (sq && !parse_coef_prefix(s.substr(0,sq),coef))
@@ -1019,6 +1044,27 @@ static bool integrate_power_linear_product(const working_string &expr,working_st
   if (c2.n)
     out=join_sum(out,integral_rat_power_term(c2,p2));
   out += " + C";
+  return true;
+}
+
+static bool integrate_x_power_product(const working_string &expr,working_string &out){
+  working_string factors[6];
+  int n=split_top_product(expr,factors,6);
+  if (n<2)
+    return false;
+  Rat coef=rat(1,1),pow=rat(0,1),c,p;
+  for (int i=0;i<n;++i){
+    if (!parse_x_power_factor(factors[i],c,p))
+      return false;
+    coef=rat_mul(coef,c);
+    pow=rat_add(pow,p);
+  }
+  if (pow.n==-pow.d)
+    return false;
+  out="Combine powers of x:\n";
+  out += trim(expr)+" = "+rat_power_term_s(coef,pow)+"\n";
+  out += "Use int(a*x^n) dx=a*x^(n+1)/(n+1)\n";
+  out += integral_rat_power_term(coef,pow)+" + C";
   return true;
 }
 
@@ -2449,7 +2495,7 @@ static bool unary_chain_derivative(const working_string &src,char v,working_stri
 static bool diff_simple_expr(const working_string &src,char v,working_string &deriv,working_string &shown){
   working_string s=strip_outer_parens(nospace_lower(src));
   shown=fmt_expr_for_working(s,v);
-  if (s.find(v)==working_string::npos){
+  if (!contains_var_symbol(s,v)){
     NumParser np;
     np.p=s.c_str();
     np.ok=true;
@@ -2834,7 +2880,7 @@ static bool try_diff(const char *input,working_string &out){
   }
   if (var!="x")
     return false;
-  if (e.find(var)==working_string::npos){
+  if (var.size()==1 && !contains_var_symbol(e,var[0])){
     NumParser np;
     np.p=e.c_str();
     np.ok=true;
@@ -3188,7 +3234,7 @@ static bool try_integral(const char *input,working_string &out){
   bool force_sub=method_is(method,"3","sub") || method_is(method,"3","substitution");
   if (var!="x")
     return false;
-  if (e.find('x')==working_string::npos){
+  if (!contains_var_symbol(e,'x')){
     NumParser np;
     np.p=e.c_str();
     np.ok=true;
@@ -3349,6 +3395,8 @@ static bool try_integral(const char *input,working_string &out){
     }
   }
   if (integrate_power_linear_product(e,out) && !force_parts && !force_sub)
+    return true;
+  if (integrate_x_power_product(e,out) && !force_parts && !force_sub)
     return true;
   if (integrate_reverse_chain_power_fraction(e,out) && !force_parts && !force_sub)
     return true;
@@ -3659,7 +3707,7 @@ static bool try_solve(const char *input,working_string &out){
   if (op<0 || var.size()!=1)
     return false;
   char v=var[0];
-  if (ceq.find(v)==working_string::npos){
+  if (!contains_var_symbol(ceq,v)){
     working_string left0=ceq.substr(0,op), right0=ceq.substr(op+1,ceq.size()-op-1);
     NumParser np1,np2;
     np1.p=left0.c_str(); np1.ok=true;
@@ -4023,7 +4071,7 @@ static bool try_simplify(const char *input,working_string &out){
   if (!parse_call(input,"simplify",args,2,n) || n<1)
     return false;
   working_string e=canonical_expr(args[0]);
-  if (e.find('x')==working_string::npos){
+  if (!contains_var_symbol(e,'x')){
     NumParser np;
     np.p=e.c_str();
     np.ok=true;
@@ -4048,7 +4096,12 @@ static bool try_simplify(const char *input,working_string &out){
   {
     char v=first_var(e);
     Rat a,b;
+    Rat xc,xp;
     long coef=0,pow=0;
+    if (parse_x_power_factor(e,xc,xp)){
+      out=rat_power_term_s(xc,xp);
+      return true;
+    }
     if (parse_power_term_var(e,v,coef,pow)){
       out=rat_power_term_s(rat(coef,1),rat(pow,1));
       return true;
@@ -4229,7 +4282,7 @@ static bool try_range(const char *input,working_string &out){
       }
     }
   }
-  if (e.find('x')==working_string::npos){
+  if (!contains_var_symbol(e,'x')){
     NumParser np;
     np.p=e.c_str();
     np.ok=true;
@@ -4485,14 +4538,43 @@ static bool parse_shifted_trig_term(const working_string &src,Rad3 &scoef,Rad3 &
   return true;
 }
 
+static bool parse_shifted_trig_sum(const working_string &src,Rad3 &scoef,Rad3 &ccoef,working_string &shown){
+  working_string terms[4],tshow;
+  int signs[4];
+  scoef=rad3(rat(0,1),rat(0,1));
+  ccoef=rad3(rat(0,1),rat(0,1));
+  shown=trim(src);
+  int n=split_top_sum_terms(src,terms,signs,4);
+  if (n<2){
+    Rad3 s,c;
+    if (!parse_shifted_trig_term(src,s,c,tshow))
+      return false;
+    scoef=s; ccoef=c; shown=tshow;
+    return true;
+  }
+  for (int i=0;i<n;++i){
+    Rad3 s,c;
+    if (!parse_shifted_trig_term(terms[i],s,c,tshow))
+      return false;
+    if (signs[i]<0){ s=rad3_neg(s); c=rad3_neg(c); }
+    scoef=rad3_add(scoef,s);
+    ccoef=rad3_add(ccoef,c);
+  }
+  return true;
+}
+
 static bool try_xform_shifted_trig_equation(const working_string &source,const working_string &target,working_string &out){
   int eq=source.find('=');
   if (eq<0)
     return false;
   Rad3 ls,lc,rs,rc,coef_s,coef_c,tanv;
   working_string lshow,rshow;
-  if (!parse_shifted_trig_term(source.substr(0,eq),ls,lc,lshow) ||
-      !parse_shifted_trig_term(source.substr(eq+1,source.size()-eq-1),rs,rc,rshow))
+  working_string left=source.substr(0,eq), right=source.substr(eq+1,source.size()-eq-1);
+  if (!parse_shifted_trig_sum(left,ls,lc,lshow))
+    return false;
+  if (right=="0")
+    rs=rad3(rat(0,1),rat(0,1)), rc=rad3(rat(0,1),rat(0,1)), rshow="0";
+  else if (!parse_shifted_trig_sum(right,rs,rc,rshow))
     return false;
   coef_s=rad3_sub(ls,rs);
   coef_c=rad3_sub(lc,rc);
