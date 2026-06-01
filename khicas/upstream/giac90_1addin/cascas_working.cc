@@ -1370,14 +1370,16 @@ static bool try_integral(const char *input,working_string &out){
   }
   working_string sum_answer;
   if (integrate_sum_terms(args[0],sum_answer) && !force_parts && !force_sub){
-    out="Answer: ";
+    out="Integrate term by term:\n"
+        "Use int(a*x^n) dx=a*x^(n+1)/(n+1)\n"
+        "Answer: ";
     out += sum_answer;
     out += " + C";
     return true;
   }
   long coef=0,pow=0;
   if (parse_power_term(args[0],coef,pow) && pow!=-1 && !force_parts && !force_sub){
-    out="int(";
+    out="Use int(a*x^n) dx=a*x^(n+1)/(n+1)\nint(";
     out += trim(args[0]);
     out += ") dx=";
     out += integral_monomial(coef,pow);
@@ -1483,7 +1485,10 @@ static bool try_integral(const char *input,working_string &out){
   }
   if (e=="xexp(x)" || e=="xe^x"){
     out=""
-        "u=x,v=e^x\n"
+        "Use integration by parts\n"
+        "Let u=x, dv=e^x dx\n"
+        "du=dx, v=e^x\n"
+        "I=x*e^x-int(e^x)dx\n"
         "Answer: x*e^x - e^x + C";
     return true;
   }
@@ -1520,7 +1525,10 @@ static bool try_integral(const char *input,working_string &out){
   }
   if (e=="xcos(x)"){
     out=""
-        "u=x,v=sin(x)\n"
+        "Use integration by parts\n"
+        "Let u=x, dv=cos(x) dx\n"
+        "du=dx, v=sin(x)\n"
+        "I=x*sin(x)-int(sin(x))dx\n"
         "Answer: x*sin(x)+cos(x)+C";
     return true;
   }
