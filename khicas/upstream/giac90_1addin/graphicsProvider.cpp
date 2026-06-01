@@ -403,11 +403,13 @@ void drawCasioCasBorder(){
 }
 
 void drawRecordingIndicator(){
-  int x=381, y=2;
   int on=((RTC_GetTicks()/64)&1)==0;
-  DirectDrawRectangle(378,1,389,15,on?COLOR_BLUE:COLOR_WHITE);
-  if (on)
-    PrintMini(&x,&y,(char *)"R",0,0xffffffff,0,0,COLOR_WHITE,COLOR_BLUE,1,0);
+  int bx=LCD_WIDTH_PX-18, by=3;
+  drawRectangle(bx,by,13,16,on?COLOR_BLUE:COLOR_WHITE);
+  if (on){
+    int x=bx+3, y=by+1;
+    PrintMini(&x,&y,(unsigned char *)"R",0,0xffffffff,0,0,COLOR_WHITE,COLOR_BLUE,1,0);
+  }
 }
 
 //Uses the Bresenham line algorithm 

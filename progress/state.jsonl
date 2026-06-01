@@ -594,3 +594,16 @@
 {"phase":"queue","last_event":"exact queue 0/14666","queue":"0/14666 done, 0 ok, 0 bad","tests":"queue-run 0/14666"}
 {"phase":"queue","last_event":"exact queue 14666/14666","queue":"14666/14666 done, 14666 ok, 0 bad","tests":"queue-run 14666/14666"}
 {"phase":"queue","last_event":"exact queue 14666/14666","queue":"14666/14666 done, 14666 ok, 0 bad","tests":"queue-run 14666/14666"}
+{"phase":"queue","last_event":"exact queue 0/14666","queue":"0/14666 done, 0 ok, 0 bad","tests":"queue-run 0/14666"}
+{"phase":"queue","last_event":"exact queue 14666/14666","queue":"14666/14666 done, 13329 ok, 1337 bad","tests":"queue-run 13329/14666"}
+{"phase":"queue","last_event":"exact queue 14666/14666","queue":"14666/14666 done, 13329 ok, 1337 bad","tests":"queue-run 13329/14666"}
+{"phase":"queue","last_event":"exact queue 0/14672","queue":"0/14672 done, 0 ok, 0 bad","tests":"queue-run 0/14672"}
+{"phase":"queue","last_event":"exact queue 14672/14672","queue":"14672/14672 done, 14672 ok, 0 bad","tests":"queue-run 14672/14672"}
+{"phase":"queue","last_event":"exact queue 14672/14672","queue":"14672/14672 done, 14672 ok, 0 bad","tests":"queue-run 14672/14672"}
+{"phase":"queue","last_event":"exact queue 0/14680","queue":"0/14680 done, 0 ok, 0 bad","tests":"queue-run 0/14680"}
+{"phase":"queue","last_event":"exact queue 14680/14680","queue":"14680/14680 done, 14680 ok, 0 bad","tests":"queue-run 14680/14680"}
+{"phase":"queue","last_event":"exact queue 14680/14680","queue":"14680/14680 done, 14680 ok, 0 bad","tests":"queue-run 14680/14680"}
+{"phase":"queue","last_event":"exact queue 0/14680","queue":"0/14680 done, 0 ok, 0 bad","tests":"queue-run 0/14680"}
+{"phase":"queue","last_event":"exact queue 14680/14680","queue":"14680/14680 done, 13331 ok, 1349 bad","tests":"queue-run 13331/14680"}
+{"phase":"queue","last_event":"exact queue 14680/14680","queue":"14680/14680 done, 13331 ok, 1349 bad","tests":"queue-run 13331/14680"}
+{"phase":"ui","last_event":"restored original-style F6 File menu and moved blinking R into status VRAM path","commit":"pending","graph":"docs/GRAPH.md 2026-06-01 12:27 BST","g3a_size":2091340,"headroom":5812,"sha256":"5635a4d94cc74bbcd90a99d04f832b222633135cb4b65780a4d5250b18a8fe74","tests":"compile ok,size ok,metadata ok,border ok,catalog ok,help ok,targeted-working ok,queue-run 14680/14680,strict-markers 13331/14680 exit1 expected","queue":"14680/14680 runtime; 13331/14680 strict markers","unsupported":0,"eta":"manual calculator check: F6 menu and status R blink"}

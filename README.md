@@ -25,12 +25,12 @@ Current status:
 
 - app name: `CAS`
 - file: `CAS.g3a`
-- size: `2,091,580` bytes
-- hard limit headroom: `5,572` bytes under `2,097,152`
-- sha256: `d58662f889351d63e2122f6a113b3f72f6dc1eba01bd8fc43c21f727fb50118c`
+- size: `2,091,340` bytes
+- hard limit headroom: `5,812` bytes under `2,097,152`
+- sha256: `5635a4d94cc74bbcd90a99d04f832b222633135cb4b65780a4d5250b18a8fe74`
 - help pack: `CAS.PAK`, `31,667` bytes, sha256 `c94294278bdfe3255577241bf57865f63596b8aac7a73ab6039b2ddbf15e2eab`
-- exact queue runtime: `14,666/14,666`
-- strict marker quality: `13,329/14,666`
+- exact queue runtime: `14,680/14,680`
+- strict marker quality: `13,331/14,680`
 - online challenge source coverage: MadAsMaths exact rows in queue; Daily Integral hard-integration style probes inspected from `https://dailyintegral.com/archive`
 
 Notable routes:
