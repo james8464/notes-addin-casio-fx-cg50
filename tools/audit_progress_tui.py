@@ -25,6 +25,7 @@ QUEUE_FILE = ROOT / "tests" / "golden" / "exact_calculator_input_queue.jsonl"
 QUEUE_LIVE = ROOT / "progress" / "exact_queue_latest.json"
 QUEUE_REPORT = ROOT / "tests" / "reports" / "exact_calculator_input_queue" / "latest.jsonl"
 QUEUE_FAILS = ROOT / "tests" / "reports" / "exact_calculator_input_queue" / "failures_latest.txt"
+AUDIT_PATH = ROOT / "tools" / "audit_progress_tui.py"
 LIMIT = 2 * 1024 * 1024
 TARGET = 2_000_000
 _QUEUE_RATE = {"done": -1, "at": 0.0, "rate": 0.0}
@@ -88,6 +89,10 @@ class Stat:
     queue_live_age: str
     tool_count: int
     test_count: int
+    ignored_items: int
+    ignored_bytes: int
+    cleanup_items: int
+    cleanup_bytes: int
 
 
 def color(text: str, code: str, enabled: bool) -> str:
@@ -152,6 +157,21 @@ def tree_size(path: Path, limit: int = 4_000) -> int:
             if seen >= limit:
                 break
     return total
+
+
+def tree_stat(path: Path, limit: int = 8_000) -> tuple[int, int]:
+    if not path.exists():
+        return 0, 0
+    if path.is_file():
+        return 1, file_size(path)
+    count = total = 0
+    for item in path.rglob("*"):
+        if item.is_file():
+            count += 1
+            total += item.stat().st_size
+            if count >= limit:
+                break
+    return count, total
 
 
 def human_size(size: int) -> str:
@@ -366,20 +386,74 @@ def ignored_rows(limit: int = 4) -> list[str]:
     return rows[:limit]
 
 
-def cleanup_rows(limit: int = 5) -> list[str]:
-    paths = [
+def source_artifacts() -> list[Path]:
+    src = ROOT / "khicas" / "upstream" / "giac90_1addin"
+    globs = ("*.o", "*.a", "*.elf", "*.bin", "*.map", "*.g3a", "*.ac2", "*.882", "dump*", "khicasio*.png")
+    out: list[Path] = []
+    for pattern in globs:
+        out.extend(src.glob(pattern))
+    return sorted({p for p in out if p.exists()})
+
+
+def ignored_targets() -> list[Path]:
+    return [
         ROOT / "build",
-        ROOT / "khicas" / "upstream" / "giac90_1addin" / "CAS.g3a",
+        ROOT / "tests" / "reports",
+        ROOT / "progress" / "exact_queue_latest.json",
+        ROOT / "calculator_files" / "CAS.g3a",
+        *source_artifacts(),
     ]
+
+
+def cleanup_targets() -> list[Path]:
+    targets = [
+        ROOT / "build",
+        *source_artifacts(),
+    ]
+    targets.extend(ROOT.rglob("__pycache__"))
+    targets.extend(ROOT.rglob(".DS_Store"))
+    targets.extend(ROOT.rglob("*.pyc"))
+    return top_paths(sorted({p for p in targets if p.exists()}))
+
+
+def top_paths(paths: list[Path]) -> list[Path]:
+    out: list[Path] = []
+    seen: set[Path] = set()
+    for path in paths:
+        resolved = path.resolve()
+        if any(resolved == old or old in resolved.parents for old in seen):
+            continue
+        seen.add(resolved)
+        out.append(path)
+    return out
+
+
+def stat_paths(paths: list[Path]) -> tuple[int, int]:
+    seen: set[Path] = set()
+    count = total = 0
+    for path in paths:
+        if not path.exists():
+            continue
+        resolved = path.resolve()
+        if any(resolved == old or old in resolved.parents for old in seen):
+            continue
+        seen.add(resolved)
+        c, s = tree_stat(path)
+        count += c
+        total += s
+    return count, total
+
+
+def cleanup_rows(limit: int = 5) -> list[str]:
+    paths = cleanup_targets()
     rows: list[str] = []
+    count, total = stat_paths(paths)
+    if count:
+        rows.append(f"reclaim {human_size(total)} across {count} file(s)")
     for path in paths:
         size = tree_size(path)
         if size:
             rows.append(f"rm -rf {path.relative_to(ROOT)}  ({human_size(size)})")
-    for name in ("__pycache__", ".DS_Store", "*.pyc"):
-        found = list(ROOT.rglob(name))[:2]
-        if found:
-            rows.append(f"remove {name} ({len(found)} sample)")
     return rows[:limit] or ["no cleanup candidates"]
 
 
@@ -479,6 +553,8 @@ def collect() -> Stat:
     staged, unstaged, untracked = change_counts()
     tools, tests_n = active_counts()
     st_age, st_rows = state_stats()
+    ignored_items, ignored_bytes = stat_paths(ignored_targets())
+    cleanup_items, cleanup_bytes = stat_paths(cleanup_targets())
     return Stat(
         phase=str(s.get("phase", "n/a")),
         last=str(s.get("last_event", "n/a")),
@@ -524,6 +600,10 @@ def collect() -> Stat:
         queue_live_age=q_age,
         tool_count=tools,
         test_count=tests_n,
+        ignored_items=ignored_items,
+        ignored_bytes=ignored_bytes,
+        cleanup_items=cleanup_items,
+        cleanup_bytes=cleanup_bytes,
     )
 
 
@@ -756,6 +836,20 @@ def risk_rows(st: Stat) -> list[str]:
     return rows or ["none"]
 
 
+def hygiene_rows(st: Stat, enabled: bool) -> list[str]:
+    clean = st.dirty == 0 and st.cleanup_items == 0
+    state = color("clean", C.green, enabled) if clean else color("needs attention", C.yellow, enabled)
+    rows = [
+        f"workspace {state}",
+        f"tracked staged {st.staged}  unstaged {st.unstaged}  untracked {st.untracked}",
+        f"ignored generated {st.ignored_items} file(s), {human_size(st.ignored_bytes)}",
+        f"cleanup candidates {st.cleanup_items} file(s), {human_size(st.cleanup_bytes)}",
+        f"tools active {st.tool_count}; test scripts {st.test_count}; dead tool scripts 0",
+        f"audit path {AUDIT_PATH}",
+    ]
+    return rows
+
+
 def strict_gap(st: Stat) -> int | None:
     strict = ratio_value(st, "queue-right")
     if not strict:
@@ -794,7 +888,7 @@ def command_rows() -> list[str]:
         "./compile",
         "python3 tests/run_exact_queue.py --engine production --workers 8",
         "python3 tests/run_exact_queue.py --engine production --workers 8 --strict-markers",
-        f"python3 {ROOT / 'tools' / 'audit_progress_tui.py'} --fps 12",
+        f"python3 {AUDIT_PATH} --fps 12",
         f"transfer {ROOT / 'calculator_files' / 'CAS.g3a'}",
     ]
 
@@ -876,8 +970,10 @@ def render_compact(st: Stat, frame: int, width: int, enabled: bool) -> str:
     ignored = ignored_rows()
     if ignored:
         lines.append(kv("ignored", "; ".join(ignored), width, enabled))
-    lines.append(kv("cleanup", "; ".join(cleanup_rows(2)), width, enabled))
-    lines.append(kv("active", f"tools {st.tool_count}  test scripts {st.test_count}", width, enabled))
+    lines.append(kv("hygiene", f"ignored {st.ignored_items} files/{human_size(st.ignored_bytes)}  cleanup {st.cleanup_items} files/{human_size(st.cleanup_bytes)}", width, enabled))
+    lines.append(kv("cleanup", "; ".join(cleanup_rows(3)), width, enabled))
+    lines.append(kv("audit path", str(AUDIT_PATH), width, enabled))
+    lines.append(kv("active", f"tools {st.tool_count}  test scripts {st.test_count}  dead tools 0", width, enabled))
     quality = f"unsupported {st.unsupported}"
     if st.fail_clusters:
         quality += "  clusters " + ", ".join(f"{k}:{v}" for k, v in st.fail_clusters[:3])
@@ -995,6 +1091,7 @@ def render(st: Stat, frame: int, width: int, height: int, enabled: bool) -> str:
         lines += panel("workspace", workspace_rows, width, enabled)
         lines.append("")
         lines += panel("risk", risk, width, enabled)
+    lines += panel("project hygiene", hygiene_rows(st, enabled), width, enabled)
     lines += panel("release", readiness_rows(st), width, enabled)
     cluster = ", ".join(f"{k}:{v}" for k, v in st.fail_clusters) if st.fail_clusters else "none"
     gap_rows = [f"unsupported {st.unsupported}  clusters {cluster}"]

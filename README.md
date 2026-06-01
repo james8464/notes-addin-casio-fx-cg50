@@ -24,11 +24,11 @@ Current status:
 
 - app name: `CAS`
 - file: `CAS.g3a`
-- size: `2,097,100` bytes
-- hard limit headroom: `52` bytes
-- sha256: `58ad2b352d14e0ef975d10cbccc73020713a7ad51e2861f209c07e718de87fff`
+- size: `2,097,108` bytes
+- hard limit headroom: `44` bytes
+- sha256: `f275da8b28ab40d6edd74d17bfc119eec4def640486c8ff9ac0b42543f496cb4`
 - exact queue runtime: `14,256/14,256`
-- strict marker quality: `13,010/14,256`
+- strict marker quality: `13,012/14,256`
 - online challenge source coverage: MadAsMaths exact rows in queue; Daily Integral hard-integration style probes inspected from `https://dailyintegral.com/archive`
 
 Notable routes:
@@ -44,6 +44,7 @@ Notable routes:
 - `integrate(x*exp(2*x))` integration by parts
 - `integrate(x*sin(4*x))` compact integration by parts
 - `diff(r^2,r)` single-variable power rule
+- `diff(arctan(x))` compact inverse trig derivative route
 - `diff((ln(x))^2)`, `diff(x*exp(-2*x))`, and `diff(4*(x^2-2)*exp(-2*x))` compact exam routes
 - optimisation derivative routes for `1/2*x^2+16*sqrt(2)/x` and `x-16*sqrt(2)*x^-2`
 - quotient-simplify derivative route for `(x^2+4)/(4*x)`
@@ -70,7 +71,7 @@ Notable routes:
 - distinct integer quadratic roots show explicit root lines before list answer, e.g. `k = 1 or k = -2`
 - negative-leading integer quadratics now print roots in the exam-friendly order expected by the queue, e.g. `x = [3, 11]`
 - catalogue Help on command screen shows spaced sections and F2/F3 examples
-- `/Users/james/Developer/CASIO/tools/audit_progress_tui.py` shows animated status badges, side-by-side panels on wide terminals, phase lanes, health score, repo sync, last commit, change counts, state age, artifact headroom, live queue rate/ETA, pass/fail bars, animated scan lines, cleanup candidates, transfer path, quality clusters, release blockers, risk, ignored workspace, active-tool counts, next action, recent events, and run-command panels
+- `/Users/james/Developer/CASIO/tools/audit_progress_tui.py` shows animated status badges, side-by-side panels on wide terminals, phase lanes, health score, repo sync, last commit, change counts, state age, artifact headroom, live queue rate/ETA, pass/fail bars, animated scan lines, cleanup byte totals, project hygiene, transfer path, quality clusters, release blockers, risk, ignored workspace, active-tool counts, next action, recent events, and run-command panels
 
 Active tools:
 

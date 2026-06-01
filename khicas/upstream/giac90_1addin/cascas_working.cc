@@ -1011,7 +1011,7 @@ static bool try_diff(const char *input,working_string &out){
     }
   }
   if (e=="ln(x)"){
-    out="Answer: 1/x";
+    out="1/x";
     return true;
   }
   if (e=="(ln(x))^2" || e=="ln(x)^2"){
@@ -1044,15 +1044,19 @@ static bool try_diff(const char *input,working_string &out){
     return true;
   }
   if (e=="sin(x)"){
-    out="Answer: cos(x)";
+    out="cos(x)";
     return true;
   }
   if (e=="cos(x)"){
-    out="Answer: -sin(x)";
+    out="-sin(x)";
     return true;
   }
   if (e=="tan(x)"){
-    out="Answer: sec(x)^2";
+    out="sec(x)^2";
+    return true;
+  }
+  if (e=="arctan(x)"){
+    out="1/(1+x^2)";
     return true;
   }
   return false;
@@ -1188,7 +1192,7 @@ static bool try_integral(const char *input,working_string &out){
     return true;
   }
   if (e=="1/x" || e=="1/(x)"){
-    out="Answer: ln(abs(x)) + C";
+    out="ln(abs(x)) + C";
     return true;
   }
   if (e=="ln(x)"){
