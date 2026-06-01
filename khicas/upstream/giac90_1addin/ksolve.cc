@@ -1197,7 +1197,7 @@ namespace giac {
     if (singuf.type!=_VECT || veq_not_singuf.type!=_VECT || !is_numericv(*singuf._VECTptr) || !is_numericv(*veq_not_singuf._VECTptr)){
       if (eids.size()>eid.size())
 	return vecteur(1,gensizeerr(gettext("Unable to find numeric values solving equation")));
-      *logptr(contextptr) << gettext("Warning: parametric inequation, roots: ") << veq_not_singu << endl;
+      *logptr(contextptr) << gettext("Warning: param roots: ") << veq_not_singu << endl;
     }
     veq=mergevecteur(veq_not_singu,singu);
     vecteur range,excluded_not_singu(find_excluded(x,contextptr));

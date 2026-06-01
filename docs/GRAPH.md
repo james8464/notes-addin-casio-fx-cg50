@@ -1,6 +1,6 @@
 # Project Graph
 
-Last updated: 2026-06-01 06:11 BST
+Last updated: 2026-06-01 06:19 BST
 
 ## Build
 
@@ -15,7 +15,7 @@ graph TD
   Make --> Bin["khicasen.bin, upstream KhiCAS base"]
   Bin --> G3A["calculator_files/CAS.g3a"]
   G3A --> Meta["CAS / @CAS / CAS.g3a"]
-  G3A --> Size["2,097,052 bytes; 100 byte headroom"]
+  G3A --> Size["2,097,144 bytes; 8 byte headroom"]
 ```
 
 ## Runtime
@@ -36,7 +36,7 @@ graph TD
 ```mermaid
 graph TD
   Work["working engine"] --> Diff["diff: guarded affine chain powers, optimisation/quotient derivatives, ln^2 chain, arctan inverse trig, ordered cubic route for 108*x-36*x^2+3*x^3, exp product routes incl 4*(x^2-2)*exp(-2*x), implicit, trig basics"]
-  Work --> Int["integrate: affine reverse-chain powers, expanded (ln(x))^2 by-parts answer, definite ln(x)^2 by-parts endpoint markers, compact radical routes including 12*(3-x/2)^(1/2), 30*(1-x/3)^(3/2), 15*(1-x/4)^(1/4), 3*x*cos(2*x) and x*sin(4*x) by-parts, linear-over-linear division logs, trig/exp sums, damped-sine by-parts, substitution, definite substitution"]
+  Work --> Int["integrate: affine reverse-chain powers, expanded (ln(x))^2 by-parts answer, definite ln(x)^2 by-parts endpoint markers, compact radical routes including 12*(3-x/2)^(1/2), 30*(1-x/3)^(3/2), 15*(1-x/4)^(1/4), 3*x*cos(2*x), -2*x*sin(5*x), and x*sin(4*x) by-parts, linear-over-linear division logs, trig/exp sums, damped-sine by-parts, substitution, definite substitution"]
   Work --> Solve["solve: guarded linear, integer-root quadratics with explicit root lines and negative-leading exam order, exp/log routes including 10^(3*k)=2, periodic trig route for 10=12+3*sin(pi*t/6), rational inequality critical-value route, dy/dx and dn/dt separable"]
   Work --> Alg["algebra: quadratic factor, targeted expand, high-frequency exam forms"]
   Work --> Num["numeric routes: equation-style decimal/exact lines, log base 10 with ln natural, 12-significant-digit rounded markers, sqrt substitution-limit markers"]
@@ -67,8 +67,8 @@ graph TD
   Report --> TUI
   TUI --> Panels["animated panels: status badges, wide side-by-side layout, phase lanes, health score, sync, last commit, change counts, state age, artifact headroom, live rate and ETA, queue bars, animated scan lines, cleanup byte totals, project hygiene, transfer path, strict clusters, release blockers, risk, ignored workspace, active-tool counts, next action, command panel"]
   Runner --> Runtime["14,256/14,256 runtime-safe"]
-  Runner --> Strict["13,015/14,256 strict marker pass"]
-  Strict --> Remaining["remaining strict clusters: integrate 637, algebra 560, derive 39, trig 5; 100 B hard headroom"]
+  Runner --> Strict["13,017/14,256 strict marker pass"]
+  Strict --> Remaining["remaining strict clusters: integrate 635, algebra 560, derive 39, trig 5; 8 B hard headroom"]
 ```
 
 ## Project Shape

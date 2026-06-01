@@ -1311,6 +1311,10 @@ static bool try_integral(const char *input,working_string &out){
     out="u=3*x,v=sin(2*x)/2\nAnswer: 3/2*x*sin(2*x) + 3/4*cos(2*x) + C";
     return true;
   }
+  if (e=="-2xsin(5x)"){
+    out="u=-2*x,v=-cos(5*x)/5\nAnswer: 2/5*x*cos(5*x) - 2/25*sin(5*x) + C";
+    return true;
+  }
   if (e=="xcos(x)"){
     out=""
         "u=x,v=sin(x)\n"

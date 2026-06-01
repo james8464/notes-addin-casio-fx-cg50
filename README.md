@@ -24,11 +24,11 @@ Current status:
 
 - app name: `CAS`
 - file: `CAS.g3a`
-- size: `2,097,052` bytes
-- hard limit headroom: `100` bytes
-- sha256: `482b6f9a973265a138bd2f43ee3286501599b649a50ec6a5b7b50dd92588f55c`
+- size: `2,097,144` bytes
+- hard limit headroom: `8` bytes
+- sha256: `8f7e4cd4714928dd4d360bbaaa16ada65486c112e0dcc9b242b61611d8b10e67`
 - exact queue runtime: `14,256/14,256`
-- strict marker quality: `13,015/14,256`
+- strict marker quality: `13,017/14,256`
 - online challenge source coverage: MadAsMaths exact rows in queue; Daily Integral hard-integration style probes inspected from `https://dailyintegral.com/archive`
 
 Notable routes:
@@ -43,6 +43,7 @@ Notable routes:
 - `integrate(cos(x)^4*sin(x))` substitution
 - `integrate(x*exp(2*x))` integration by parts
 - `integrate(3*x*cos(2*x))` compact integration by parts
+- `integrate(-2*x*sin(5*x))` compact integration by parts
 - `integrate(x*sin(4*x))` compact integration by parts
 - `diff(r^2,r)` single-variable power rule
 - `diff(arctan(x))` compact inverse trig derivative route
