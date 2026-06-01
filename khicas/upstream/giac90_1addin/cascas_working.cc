@@ -499,6 +499,23 @@ static bool split_top_fraction(const working_string &src,working_string &num,wor
 
 static bool factor_expr_simple(const working_string &src,char v,working_string &shown,working_string &fac){
   working_string e=strip_outer_parens(src);
+  if (e.size()>4 && e[0]=='('){
+    int close=match_paren(e,0);
+    if (close>0 && close+2<int(e.size()) && e[close+1]=='^'){
+      char *end=0;
+      long p=strtol(e.substr(close+2,e.size()-close-2).c_str(),&end,10);
+      long a=0,b=0;
+      if (end && !*end && p>1 && p<=4 && parse_affine(e.substr(1,close-1),a,b)){
+        shown=factor_lin(a,b,v)+"^"+int_s(p);
+        fac="";
+        for (long i=0;i<p;++i){
+          if (i) fac += "*";
+          fac += factor_lin(a,b,v);
+        }
+        return true;
+      }
+    }
+  }
   long a=0,b=0,c=0;
   if (parse_quad_expr(e,v,a,b,c)){
     if (a && factor_quad_int(a,b,c,v,fac)){
@@ -514,15 +531,20 @@ static bool factor_expr_simple(const working_string &src,char v,working_string &
   return false;
 }
 
-static int factor_terms(const working_string &fac,working_string t[2]){
-  int close=fac.size()>0 && fac[0]=='('?match_paren(fac,0):-1;
-  if (close>0 && close+2<int(fac.size()) && fac[close+1]=='*'){
-    t[0]=fac.substr(0,close+1);
-    t[1]=fac.substr(close+2,fac.size()-close-2);
-    return 2;
+static int factor_terms(const working_string &fac,working_string *t,int maxterms){
+  int n=0,start=0;
+  while (start<int(fac.size()) && n<maxterms){
+    if (fac[start]!='(') break;
+    int close=match_paren(fac,start);
+    if (close<0) break;
+    t[n++]=fac.substr(start,close-start+1);
+    start=close+1;
+    if (start==int(fac.size())) return n;
+    if (fac[start]!='*') break;
+    ++start;
   }
-  t[0]=fac;
-  return 1;
+  if (!n && maxterms>0){ t[0]=fac; return 1; }
+  return start==int(fac.size())?n:0;
 }
 
 static working_string unbracket_factor(const working_string &s){
@@ -571,6 +593,37 @@ static working_string quotient_after_scaled_cancel(Rat q,const working_string &n
   working_string n=scaled_factor(q,num), d=unbracket_factor(den);
   if (n=="1") return "1/("+d+")";
   return "("+n+")/("+d+")";
+}
+
+static working_string factor_product(working_string *t,bool *used,int n){
+  working_string out;
+  for (int i=0;i<n;++i){
+    if (used[i]) continue;
+    if (!out.empty()) out += "*";
+    out += t[i];
+  }
+  return out.empty()?"1":out;
+}
+
+static working_string join_cancelled(working_string *t,int n){
+  working_string out;
+  for (int i=0;i<n;++i){
+    if (i) out += ", ";
+    out += t[i];
+  }
+  return out;
+}
+
+static working_string display_factors(working_string *t,bool *used,int n){
+  working_string out;
+  for (int pass=0;pass<2;++pass){
+    for (int i=0;i<n;++i){
+      if ((pass==0)!=used[i]) continue;
+      if (!out.empty()) out += "*";
+      out += t[i];
+    }
+  }
+  return out;
 }
 
 static char first_var(const working_string &src){
@@ -2147,25 +2200,34 @@ static bool try_simplify(const char *input,working_string &out){
   char v=first_var(e);
   if (!factor_expr_simple(num,v,nshow,nfac) || !factor_expr_simple(den,v,dshow,dfac))
     return false;
-  working_string nt[2],dt[2];
-  int nc=factor_terms(nfac,nt), dc=factor_terms(dfac,dt);
+  working_string nt[6],dt[6],ct[6];
+  bool nu[6]={0,0,0,0,0,0},du[6]={0,0,0,0,0,0};
+  int nc=factor_terms(nfac,nt,6), dc=factor_terms(dfac,dt,6), cc=0;
+  Rat scale=rat(1,1);
   for (int i=0;i<nc;++i){
     for (int j=0;j<dc;++j){
+      if (nu[i] || du[j])
+        continue;
       working_string common=nt[i];
-      Rat scale=rat(1,1);
-      if (nt[i]==dt[j] || common_linear_factor(nt[i],dt[j],common,scale)){
-        working_string nr=nc==1?"1":nt[1-i], dr=dc==1?"1":dt[1-j];
-        out="Factorise numerator and denominator:\n";
-        out += nshow+" = ";
-        out += nc==2?order_common_first(nt[0],nt[1],nt[i]):nfac;
-        out += "\n";
-        out += dshow+" = ";
-        out += dc==2?order_common_first(dt[0],dt[1],dt[j]):dfac;
-        out += "\nCancel common factor "+common+"\nAnswer: ";
-        out += (scale.n==1 && scale.d==1)?quotient_after_cancel(nr,dr):quotient_after_scaled_cancel(scale,nr,dr);
-        return true;
+      Rat s=rat(1,1);
+      if (nt[i]==dt[j] || common_linear_factor(nt[i],dt[j],common,s)){
+        nu[i]=du[j]=true;
+        ct[cc++]=common;
+        scale=rat_mul(scale,s);
+        break;
       }
     }
+  }
+  if (cc){
+    working_string nr=factor_product(nt,nu,nc), dr=factor_product(dt,du,dc);
+    out="Factorise numerator and denominator:\n";
+    out += nshow+" = "+display_factors(nt,nu,nc)+"\n";
+    out += dshow+" = "+display_factors(dt,du,dc)+"\n";
+    out += "Cancel common factor ";
+    out += join_cancelled(ct,cc);
+    out += "\nAnswer: ";
+    out += (scale.n==1 && scale.d==1)?quotient_after_cancel(nr,dr):quotient_after_scaled_cancel(scale,nr,dr);
+    return true;
   }
   return false;
 }

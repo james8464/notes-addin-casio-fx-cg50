@@ -7,6 +7,7 @@ SRC_DIR="${ROOT_DIR}/khicas/upstream/giac90_1addin"
 OUT_DIR="${ROOT_DIR}/build"
 TRANSFER_DIR="${ROOT_DIR}/calculator_files"
 TARGET="${CASIO_KHICAS_TARGET:-CAS.g3a}"
+PACK_TARGET="${CASIO_HELP_PACK_TARGET:-${TARGET%.*}.PAK}"
 MAKE_JOBS="${CASIO_MAKE_JOBS:-1}"
 
 ensure_image() {
@@ -37,8 +38,9 @@ root = Path(sys.argv[1])
 try:
     from PIL import Image
 
-    Image.open(root / "unselected.bmp").save(root / "khicasio.png")
-    Image.open(root / "selected.bmp").save(root / "khicasio1.png")
+    for src, dst in (("unselected.bmp", "khicasio.png"), ("selected.bmp", "khicasio1.png")):
+        icon = Image.open(root / src).convert("RGB")
+        icon.save(root / dst, optimize=True, compress_level=9)
 except Exception:
     shutil.copyfile(root / "logo.png", root / "khicasio.png")
     shutil.copyfile(root / "logo.png", root / "khicasio1.png")
@@ -73,10 +75,14 @@ python3 "${ROOT_DIR}/tools/check_g3a_metadata.py" "${OUT_DIR}/${TARGET}" \
   --internal @CAS \
   --filename "${TARGET}"
 python3 "${ROOT_DIR}/tools/check_g3a_size.py" "${OUT_DIR}/${TARGET}"
+python3 "${ROOT_DIR}/tools/build_help_pack.py" \
+  "${ROOT_DIR}/help/functions" \
+  "${OUT_DIR}/${PACK_TARGET}"
 
 cp "${OUT_DIR}/${TARGET}" "${TRANSFER_DIR}/${TARGET}"
+cp "${OUT_DIR}/${PACK_TARGET}" "${TRANSFER_DIR}/${PACK_TARGET}"
 clean_source_outputs
 rm -f "${SRC_DIR}/khicasio.png" "${SRC_DIR}/khicasio1.png"
 
-ls -lh "${TRANSFER_DIR}/${TARGET}"
-shasum -a 256 "${TRANSFER_DIR}/${TARGET}"
+ls -lh "${TRANSFER_DIR}/${TARGET}" "${TRANSFER_DIR}/${PACK_TARGET}"
+shasum -a 256 "${TRANSFER_DIR}/${TARGET}" "${TRANSFER_DIR}/${PACK_TARGET}"

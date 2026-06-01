@@ -20,6 +20,8 @@ CASES = [
     ("simplify((x^2-4)/(x^2-2*x))", ["x^2 - 4 = (x - 2)*(x + 2)", "x^2 - 2*x = (x - 2)*(x)", "Cancel common factor (x - 2)", "Answer: (x + 2)/(x)"]),
     ("simplify((2*x^2+6*x+4)/(2*x+2))", ["Cancel common factor (x + 1)", "Answer: x + 2"]),
     ("simplify((x^2-1)/(1-x))", ["Cancel common factor (x - 1)", "Answer: -(x + 1)"]),
+    ("simplify((x^2+2*x+1)/(x+1)^2)", ["(x + 1)*(x + 1)", "Cancel common factor (x + 1)", "Answer: 1"]),
+    ("simplify((x^2-1)/(x+1)^2)", ["x^2 - 1 = (x + 1)*(x - 1)", "Cancel common factor (x + 1)", "Answer: (x - 1)/(x + 1)"]),
 ]
 
 

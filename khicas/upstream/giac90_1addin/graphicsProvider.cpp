@@ -403,9 +403,9 @@ void drawCasioCasBorder(){
 }
 
 void drawRecordingIndicator(){
-  int x=368, y=3;
+  int x=381, y=2;
   int on=((RTC_GetTicks()/64)&1)==0;
-  DirectDrawRectangle(366,2,378,18,on?COLOR_BLUE:COLOR_WHITE);
+  DirectDrawRectangle(378,1,389,15,on?COLOR_BLUE:COLOR_WHITE);
   if (on)
     PrintMini(&x,&y,(char *)"R",0,0xffffffff,0,0,COLOR_WHITE,COLOR_BLUE,1,0);
 }

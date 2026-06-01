@@ -5,8 +5,8 @@ import os
 import sys
 from pathlib import Path
 
-HARD_PACKAGE_LIMIT = int(os.environ.get("CASIO_G3A_HARD_LIMIT", "2200000"))
-TARGET_SIZE = 2_000_000
+HARD_PACKAGE_LIMIT = int(os.environ.get("CASIO_G3A_HARD_LIMIT", "2097152"))
+TARGET_SIZE = int(os.environ.get("CASIO_G3A_TARGET_SIZE", str(HARD_PACKAGE_LIMIT)))
 
 
 def main() -> int:

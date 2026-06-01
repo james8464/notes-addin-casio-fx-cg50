@@ -1,6 +1,6 @@
 # Project Graph
 
-Last updated: 2026-06-01 10:50 BST
+Last updated: 2026-06-01 11:48 BST
 
 ## Build
 
@@ -14,8 +14,10 @@ graph TD
   Src --> Make["Makefile CAS.g3a target"]
   Make --> Bin["khicasen.bin, upstream KhiCAS base"]
   Bin --> G3A["calculator_files/CAS.g3a"]
+  Build --> Help["help/functions/*.txt"]
+  Help --> PAK["calculator_files/CAS.PAK: 31,667 bytes; sha c9429427"]
   G3A --> Meta["CAS / @CAS / CAS.g3a"]
-  G3A --> Size["2,100,744 bytes; under 2.2MB cap; sha 56d21366"]
+  G3A --> Size["2,087,416 bytes; under 2,097,152 cap; sha 9e9f13b6"]
 ```
 
 ## Runtime
@@ -51,7 +53,8 @@ graph TD
 ```mermaid
 graph TD
   Console["main dashboard"] --> FMenu["F1 algb / F2 calc mini menus"]
-  Console --> F6["F6 compact File menu: Config + Alt key labels toggle"]
+  Console --> F6["F6 original no-title File menu style: Clear history / Config / Alt labels"]
+  Console --> Rec["blinking blue R drawn during status refresh"]
   Console --> Border["pink border: 6px left/right, 7px bottom"]
   Console --> Status["status bar without clock"]
   Catalog["Pure-only catalogue"] --> Help["Help on command"]

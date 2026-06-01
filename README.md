@@ -3,8 +3,9 @@
 Artifact:
 
 - `/Users/james/Developer/CASIO/calculator_files/CAS.g3a`
+- `/Users/james/Developer/CASIO/calculator_files/CAS.PAK`
 - no `.ac2`
-- no external `.pak`
+- copy both files in `calculator_files/` to the calculator
 
 Build:
 
@@ -24,11 +25,12 @@ Current status:
 
 - app name: `CAS`
 - file: `CAS.g3a`
-- size: `2,093,928` bytes
-- hard limit headroom: `3,224` bytes
-- sha256: `9830d566a6d83e9e64d09c1b911d07cf1e0407620412fc542b4cf5b8759502cf`
-- exact queue runtime: `14,308/14,308`
-- strict marker quality: `13,236/14,308`
+- size: `2,087,416` bytes
+- hard limit headroom: `9,736` bytes under `2,097,152`
+- sha256: `9e9f13b6ff250b3db55368a2753c56a711639cf2f333ddaf40a917b79a0b9c30`
+- help pack: `CAS.PAK`, `31,667` bytes, sha256 `c94294278bdfe3255577241bf57865f63596b8aac7a73ab6039b2ddbf15e2eab`
+- exact queue runtime: `14,642/14,642`
+- strict marker quality: `13,276/14,626`
 - online challenge source coverage: MadAsMaths exact rows in queue; Daily Integral hard-integration style probes inspected from `https://dailyintegral.com/archive`
 
 Notable routes:
