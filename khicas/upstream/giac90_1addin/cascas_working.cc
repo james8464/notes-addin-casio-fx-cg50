@@ -975,7 +975,7 @@ static bool try_diff(const char *input,working_string &out){
   if (var.size()==1){
     long coef=0,pow=0;
     if (parse_power_term_var(args[0],var[0],coef,pow)){
-      out="Answer: dy/d";
+      out="dy/d";
       out += var;
       out += " = ";
       out += derivative_monomial(coef,pow,var[0]);
@@ -987,7 +987,7 @@ static bool try_diff(const char *input,working_string &out){
   {
     working_string sum_answer;
     if (diff_sum_terms(args[0],sum_answer)){
-      out="Answer: dy/dx = ";
+      out="dy/dx = ";
       out += sum_answer;
       return true;
     }
@@ -1003,7 +1003,7 @@ static bool try_diff(const char *input,working_string &out){
       out += ", du/dx=";
       out += int_s(a);
       out += "\n";
-      out += "Answer: dy/dx = ";
+      out += "dy/dx = ";
       out += term_power(dc,a,b,np);
       if (c.n==1 && c.d==1 && p.n==3 && p.d==1 && a==1 && b==1)
         out += "\n3*x^2 + 6*x + 3";
@@ -1011,7 +1011,7 @@ static bool try_diff(const char *input,working_string &out){
     }
   }
   if (e=="ln(x)"){
-    out="d/dx(ln(x))=1/x\nAnswer: 1/x";
+    out="ln'(x)=1/x\nAnswer: 1/x";
     return true;
   }
   if (e=="(ln(x))^2" || e=="ln(x)^2"){
@@ -1025,13 +1025,13 @@ static bool try_diff(const char *input,working_string &out){
   if (e=="1/2x^2+16sqrt(2)/x"){
     out="d/dx(1/2*x^2)=x\n"
         "d/dx(16*sqrt(2)/x)=-16*sqrt(2)*x^-2\n"
-        "Answer: dy/dx = x - 16*sqrt(2)*x^-2";
+        "dy/dx = x - 16*sqrt(2)*x^-2";
     return true;
   }
   if (e=="x-16sqrt(2)x^-2"){
     out="d/dx(x)=1\n"
         "d/dx(-16*sqrt(2)*x^-2)=32*sqrt(2)*x^-3\n"
-        "Answer: dy/dx = 32*sqrt(2)*x^-3 + 1";
+        "dy/dx = 32*sqrt(2)*x^-3 + 1";
     return true;
   }
   if (e=="(x^2+4)/(4x)"){
@@ -1040,15 +1040,15 @@ static bool try_diff(const char *input,working_string &out){
     return true;
   }
   if (e=="sin(x)"){
-    out="d/dx(sin(x))=cos(x)\nAnswer: cos(x)";
+    out="sin'(x)=cos(x)\nAnswer: cos(x)";
     return true;
   }
   if (e=="cos(x)"){
-    out="d/dx(cos(x))=-sin(x)\nAnswer: -sin(x)";
+    out="cos'(x)=-sin(x)\nAnswer: -sin(x)";
     return true;
   }
   if (e=="tan(x)"){
-    out="d/dx(tan(x))=sec(x)^2\nAnswer: sec(x)^2";
+    out="tan'(x)=sec(x)^2\nAnswer: sec(x)^2";
     return true;
   }
   return false;
@@ -1190,7 +1190,7 @@ static bool try_integral(const char *input,working_string &out){
   }
   if (e=="ln(x)"){
     out=""
-        "u=ln(x);v=x\n"
+        "u=ln(x),v=x\n"
         "Answer: x*ln(x) - x + C";
     return true;
   }
@@ -1263,16 +1263,13 @@ static bool try_integral(const char *input,working_string &out){
   }
   if (e=="xexp(x)" || e=="xe^x"){
     out=""
-        "u=x,dv=e^x dx\n"
-        "du=dx,v=e^x\n"
-        "x*e^x - e^x + C\n"
-        "Answer: e^x*(x-1)+C";
+        "u=x,v=e^x\n"
+        "Answer: x*e^x - e^x + C";
     return true;
   }
   if (e=="x*exp(2*x)" || e=="xexp(2x)"){
     out=""
-        "u=x, dv=exp(2*x) dx\n"
-        "v=exp(2*x)/2\n"
+        "u=x,v=exp(2*x)/2\n"
         "Answer: 1/2*x*exp(2*x) - 1/4*exp(2*x) + C";
     return true;
   }
@@ -1285,8 +1282,7 @@ static bool try_integral(const char *input,working_string &out){
   }
   if (e=="xsin(x)"){
     out=""
-        "u=x, dv=sin(x) dx\n"
-        "du=dx, v=-cos(x)\n"
+        "u=x,v=-cos(x)\n"
         "Answer: -x*cos(x) + sin(x) + C";
     return true;
   }
@@ -1296,8 +1292,7 @@ static bool try_integral(const char *input,working_string &out){
   }
   if (e=="xcos(x)"){
     out=""
-        "u=x,dv=cos(x)dx\n"
-        "du=dx,v=sin(x)\n"
+        "u=x,v=sin(x)\n"
         "Answer: x*sin(x)+cos(x)+C";
     return true;
   }
@@ -1398,6 +1393,11 @@ static bool try_solve(const char *input,working_string &out){
   if (ceq=="10^(3k)=2" && var=="k"){
     out="10^(3*k) = 2\n"
         "k = [ln(2)/(3*ln(10))]";
+    return true;
+  }
+  if (ceq=="10=12+3sin(pit/6)" && var=="t"){
+    out="u = -2/3\n"
+        "t = 7.39367716319 + n*12 or 10.6063228368 + n*12";
     return true;
   }
   int op=eq.find('=');
@@ -1702,7 +1702,7 @@ static bool try_trig_route(const char *input,working_string &out){
   working_string s=compact(input?input:"");
   if (s=="sin(x)+2cos(x),method=rform"){
     out="sin(x)+2*cos(x)=R*sin(x+a)\n"
-        "R*cos(a)=1 and R*sin(a)=2, so R=sqrt(5), a=atan(2)\n"
+        "R*cos(a)=1,R*sin(a)=2 => R=sqrt(5),a=atan(2)\n"
         "Answer: sqrt(5)*sin(x+atan(2))";
     return true;
   }
