@@ -53,6 +53,12 @@ static void draw_battery() {
   fill_rect(15, 9, 5, 2, kLightBlue);
 }
 
+static void draw_r_indicator(bool visible) {
+  fill_rect(339, 1, 21, 22, visible ? kBlue : kWhite);
+  rect_outline(339, 1, 21, 22, kGray);
+  PrintXY(343, 4, (char *)"R", 0, visible ? kWhite : kBlue);
+}
+
 static void soft_label(int x, int width, const char *label) {
   fill_rect(x, 193, width, 16, kGray);
   rect_outline(x, 193, width, 16, kGray);
@@ -73,6 +79,7 @@ static void draw_static_screen() {
   status_box(126, "Norm1");
   status_box(205, "d/c");
   status_box(251, "Real");
+  draw_r_indicator(true);
 
   rect_outline(13, 31, 14, 17, kBlack);
   fill_rect(13, 31, 2, 17, kGray);
@@ -102,9 +109,13 @@ int main() {
   Bdisp_EnableColor(1);
   draw_static_screen();
   Bdisp_PutDisp_DD();
+  bool r_visible = true;
 
   for (;;) {
     int key = key_wait_250ms();
+    r_visible = !r_visible;
+    draw_r_indicator(r_visible);
+    Bdisp_PutDisp_DD();
     if (key == KEY_CTRL_EXIT || key == KEY_CTRL_AC || key == KEY_CTRL_MENU) return 0;
   }
 }
