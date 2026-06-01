@@ -582,6 +582,25 @@ def rate(done: int, total: int) -> str:
     return "n/a" if total <= 0 else f"{done / total * 100:.2f}%"
 
 
+def health_score(st: Stat) -> tuple[int, str]:
+    score = 0
+    headroom = LIMIT - st.g3a
+    if st.g3a and headroom >= 0:
+        score += 25
+    if st.upstream == "synced":
+        score += 15
+    if st.dirty == 0:
+        score += 15
+    q = ratio_value(st, "queue-done")
+    if q and q[1]:
+        score += int(20 * pct(q[0], q[1]))
+    strict = ratio_value(st, "queue-right")
+    if strict and strict[1]:
+        score += int(25 * pct(strict[0], strict[1]))
+    label = "ship" if score >= 95 else "good" if score >= 80 else "work" if score >= 60 else "risk"
+    return score, label
+
+
 def badge(text: str, code: str, enabled: bool) -> str:
     return color(f"[{text}]", code, enabled)
 
@@ -591,6 +610,46 @@ def ratio_value(st: Stat, label: str) -> tuple[int, int] | None:
         if found == label:
             return done, total
     return None
+
+
+def phase_lanes(st: Stat, frame: int, enabled: bool) -> str:
+    q = ratio_value(st, "queue-done")
+    strict = ratio_value(st, "queue-right")
+    stages = [
+        ("BUILD", bool(st.g3a)),
+        ("SIZE", bool(st.g3a and LIMIT - st.g3a >= 0)),
+        ("QUEUE", bool(q and q[0] == q[1])),
+        ("STRICT", bool(strict and strict[0] == strict[1])),
+        ("COMMIT", st.dirty == 0),
+        ("SYNC", st.upstream == "synced"),
+    ]
+    active = next((i for i, (_, ok) in enumerate(stages) if not ok), len(stages) - 1)
+    rows: list[str] = []
+    pulse = "*" if frame % 2 else "+"
+    for i, (name, ok) in enumerate(stages):
+        if ok:
+            rows.append(color(f"[{name}]", C.green, enabled))
+        elif i == active:
+            rows.append(color(f"[{pulse}{name}{pulse}]", C.yellow, enabled))
+        else:
+            rows.append(color(f"[{name}]", C.dim, enabled))
+    return " -> ".join(rows)
+
+
+def topline_metrics(st: Stat, enabled: bool) -> str:
+    headroom = LIMIT - st.g3a
+    strict = ratio_value(st, "queue-right")
+    gap = "n/a" if not strict else f"{strict[1] - strict[0]:,}"
+    score, label = health_score(st)
+    score_code = C.green if score >= 90 else C.yellow if score >= 70 else C.red
+    return "  ".join(
+        [
+            f"score {color(str(score) + '/100 ' + label, score_code, enabled)}",
+            f"headroom {headroom:,} B",
+            f"strict gaps {gap}",
+            f"sha {st.g3a_hash}",
+        ]
+    )
 
 
 def status_strip(st: Stat, enabled: bool) -> str:
@@ -681,6 +740,8 @@ def render_compact(st: Stat, frame: int, width: int, enabled: bool) -> str:
         kv("repo", f"{st.branch} @ {st.commit}  graph {st.graph_age}", width, enabled),
         kv("commit", ticker(st.subject, max(12, width - 20), frame), width, enabled),
         kv("status", status_strip(st, enabled), width, enabled),
+        kv("lane", phase_lanes(st, frame, enabled), width, enabled),
+        kv("metrics", topline_metrics(st, enabled), width, enabled),
         kv("sync", st.upstream, width, enabled),
         kv("phase", st.phase, width, enabled),
         kv("event", ticker(st.last, max(12, width - 20), frame), width, enabled),
@@ -761,6 +822,8 @@ def render(st: Stat, frame: int, width: int, height: int, enabled: bool) -> str:
         "status",
         [
             status_strip(st, enabled),
+            phase_lanes(st, frame, enabled),
+            topline_metrics(st, enabled),
             f"changes staged {st.staged}  unstaged {st.unstaged}  untracked {st.untracked}",
             f"active tooling {st.tool_count} files  test scripts {st.test_count}",
         ],

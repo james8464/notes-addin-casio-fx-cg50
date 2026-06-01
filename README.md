@@ -24,11 +24,11 @@ Current status:
 
 - app name: `CAS`
 - file: `CAS.g3a`
-- size: `2,097,084` bytes
-- hard limit headroom: `68` bytes
-- sha256: `5051d20241817e810e369ef4dabc94e5e64db6db4445c47c0be8420f4bed4342`
+- size: `2,097,152` bytes
+- hard limit headroom: `0` bytes
+- sha256: `c95b59e40b599ce2f8fe22eec9b8f4a7d612b25dde9d993a0d3db96cd5722312`
 - exact queue runtime: `14,256/14,256`
-- strict marker quality: `12,998/14,256`
+- strict marker quality: `13,000/14,256`
 - online challenge source coverage: MadAsMaths exact rows in queue; Daily Integral hard-integration style probes inspected from `https://dailyintegral.com/archive`
 
 Notable routes:
@@ -40,6 +40,7 @@ Notable routes:
 - `integrate(2*x/(x^2+4))` substitution
 - `integrate(cos(x)^4*sin(x))` substitution
 - `integrate(x*exp(2*x))` integration by parts
+- `integrate(x*sin(4*x))` compact integration by parts
 - `diff(r^2,r)` single-variable power rule
 - `diff((ln(x))^2)` and `diff(x*exp(-2*x))` compact exam routes
 - optimisation derivative routes for `1/2*x^2+16*sqrt(2)/x` and `x-16*sqrt(2)*x^-2`
@@ -64,7 +65,7 @@ Notable routes:
 - distinct integer quadratic roots show explicit root lines before list answer, e.g. `k = 1 or k = -2`
 - negative-leading integer quadratics now print roots in the exam-friendly order expected by the queue, e.g. `x = [3, 11]`
 - catalogue Help on command screen shows spaced sections and F2/F3 examples
-- `/Users/james/Developer/CASIO/tools/audit_progress_tui.py` shows animated status badges, repo sync, last commit, change counts, artifact headroom, live queue rate/ETA, pass/fail bars, quality clusters, risk, ignored workspace, active-tool counts, next action, recent events, and run-command panels
+- `/Users/james/Developer/CASIO/tools/audit_progress_tui.py` shows animated status badges, phase lanes, health score, repo sync, last commit, change counts, artifact headroom, live queue rate/ETA, pass/fail bars, quality clusters, risk, ignored workspace, active-tool counts, next action, recent events, and run-command panels
 
 Active tools:
 

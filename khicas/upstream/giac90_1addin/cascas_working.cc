@@ -1291,6 +1291,10 @@ static bool try_integral(const char *input,working_string &out){
         "Answer: -x*cos(x) + sin(x) + C";
     return true;
   }
+  if (e=="xsin(4x)"){
+    out="u=x, v=-cos(4*x)/4\nAnswer: -1/4*x*cos(4*x) + 1/16*sin(4*x) + C";
+    return true;
+  }
   if (e=="xcos(x)"){
     out=""
         "Let u=x, dv=cos(x) dx\n"
@@ -1674,21 +1678,18 @@ static bool try_xform(const char *input,working_string &out){
   working_string a=compact(args[0]), b=compact(args[1]);
   if ((a=="1+tan(x)^2" && b=="sec(x)^2") ||
       (a=="sec(x)^2" && b=="1+tan(x)^2")){
-    out="xform:\n"
-        "Id: sec(x)^2 = 1 + tan(x)^2\n"
+    out="sec(x)^2 = 1 + tan(x)^2\n"
         "Answer: sec(x)^2";
     return true;
   }
   if ((a=="1+cot(x)^2" && b=="cosec(x)^2") ||
       (a=="cosec(x)^2" && b=="1+cot(x)^2")){
-    out="xform:\n"
-        "Id: cosec(x)^2 = 1 + cot(x)^2\n"
+    out="cosec(x)^2 = 1 + cot(x)^2\n"
         "Answer: cosec(x)^2";
     return true;
   }
   if (a=="log(a,x)" || a=="ln(x)/ln(a)"){
-    out="xform:\n"
-        "Base: log_a(x)=ln(x)/ln(a)\n"
+    out="log_a(x)=ln(x)/ln(a)\n"
         "Answer: ln(x)/ln(a)";
     return true;
   }
