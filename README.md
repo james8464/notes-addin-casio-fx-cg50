@@ -24,11 +24,11 @@ Current status:
 
 - app name: `CAS`
 - file: `CAS.g3a`
-- size: `2,097,144` bytes
-- hard limit headroom: `8` bytes
-- sha256: `68bbfa91bb87bbaf685469c5dff81623bb431e53e1ffdd210d5cf2b95e3350fe`
+- size: `2,096,828` bytes
+- hard limit headroom: `324` bytes
+- sha256: `d0263c98c5089e671d753156298f7d9e9b672fd78c643416c99ba9472427d93e`
 - exact queue runtime: `14,256/14,256`
-- strict marker quality: `13,115/14,256`
+- strict marker quality: `13,123/14,256`
 - online challenge source coverage: MadAsMaths exact rows in queue; Daily Integral hard-integration style probes inspected from `https://dailyintegral.com/archive`
 
 Notable routes:
@@ -64,6 +64,7 @@ Notable routes:
 - linear solve routes keep exam-order equation lines for `solve(8000=64000-15*k,k)` and `solve(64000-11200*t=0,t)`
 - `exp(2*ln(7/6))` now shows the exponential marker before decimal and exact fraction output
 - vector subtraction route for `[3,-3,-4]-[2,5,-6]` now shows `(1,-8,2)`
+- binomial series routes now show coefficient and simplified term lines for `(1+8*x)^(1/2)`, `(1+5/2*x)^(-2)`, and `(1-2*x)^(-1)`
 - by-parts route for `x^2*cos(x/3)` and partial fractions route for `apart(6/(u*(3+2*u)))`
 - rational solve route for `solve(k*(k+3)/(k+1)=2,k)` shows domain and multiply-through steps
 - generic affine chain/reverse-chain power routes
@@ -84,11 +85,12 @@ Notable routes:
 - distinct integer quadratic roots show explicit root lines before list answer, e.g. `k = 1 or k = -2`
 - negative-leading integer quadratics now print roots in the exam-friendly order expected by the queue, e.g. `x = [3, 11]`
 - catalogue Help on command screen shows spaced sections and F2/F3 examples
-- `/Users/james/Developer/CASIO/tools/audit_progress_tui.py` shows animated status badges, side-by-side panels on wide terminals, phase lanes, health score, repo sync, last commit, change counts, state age, artifact headroom, live queue rate/ETA, pass/fail bars, strict-marker ratios, strict-gap bar maps, freshness rows, animated scan/meter lines, cleanup byte totals, cleanup command, project hygiene, transfer path, quality clusters with first gap samples, test checkpoint rows, release blockers, risk, ignored workspace, active-tool counts, next action, recent events, and run-command panels
+- `/Users/james/Developer/CASIO/tools/audit_progress_tui.py` shows animated status badges, side-by-side panels on wide terminals, phase lanes, health score, gate board, repo sync, last commit, change counts, state age, artifact headroom, live queue rate/ETA, pass/fail bars, strict-marker ratios, strict-gap bar maps, freshness rows, animated scan/meter lines, cleanup byte totals, cleanup command, project hygiene, tooling inventory, transfer path, quality clusters with first gap samples, test checkpoint rows, release blockers, risk, ignored workspace, active-tool counts, next action, recent events, and run-command panels
 
 Active tools:
 
 - `tools/build_g3a.sh` regenerates ignored KhiCAS icon PNGs from tracked BMPs before Make runs
+- `tools/docker/Dockerfile.khicas-source`
 - `tools/audit_progress_tui.py`
 - `tools/khicas_host_runner`
 - `tools/check_g3a_metadata.py`

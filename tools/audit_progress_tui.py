@@ -821,6 +821,69 @@ def ratio_value(st: Stat, label: str) -> tuple[int, int] | None:
     return None
 
 
+def test_items(st: Stat, limit: int = 12) -> list[tuple[str, str, str]]:
+    if not st.tests or st.tests == "n/a":
+        return []
+    rows: list[tuple[str, str, str]] = []
+    for raw in [part.strip() for part in st.tests.split(",") if part.strip()]:
+        status = "WARN"
+        detail = ""
+        if "failing" in raw or " fail" in raw:
+            status = "FAIL"
+        elif raw.endswith(" ok") or " ok" in raw or "exit1 expected" in raw:
+            status = "OK"
+        m = re.search(r"(\d+)/(\d+)", raw)
+        if m:
+            done, total = int(m.group(1)), int(m.group(2))
+            detail = f"{done}/{total}"
+            if done == total:
+                status = "OK"
+            elif "strict-markers" in raw or ("queue-run" in raw and st.queue_bad > 0):
+                status = "WARN"
+            elif done < total:
+                status = "FAIL"
+        name = raw
+        for suffix in (" ok", " exit1 expected"):
+            name = name.replace(suffix, "")
+        name = re.sub(r"\s+\d+/\d+.*", "", name).strip()
+        if name == "queue-run" and st.queue_bad > 0:
+            name = "strict-markers"
+        rows.append((name, status, detail))
+        if len(rows) >= limit:
+            break
+    return rows
+
+
+def gate_mark(status: str, frame: int, enabled: bool) -> str:
+    if status == "OK":
+        return color("[OK]", C.green, enabled)
+    if status == "FAIL":
+        return color("[!!]", C.red, enabled)
+    pulse = ">>" if frame % 2 else "--"
+    return color(f"[{pulse}]", C.yellow, enabled)
+
+
+def gate_rows(st: Stat, frame: int, enabled: bool) -> list[str]:
+    rows: list[tuple[str, str, str]] = []
+    headroom = LIMIT - st.g3a
+    rows.append(("artifact", "OK" if st.g3a and headroom >= 0 else "FAIL", f"headroom {headroom:,} B"))
+    rows.append(("git sync", "OK" if st.upstream == "synced" else "WARN", st.upstream))
+    rows.append(("workspace", "OK" if st.dirty == 0 else "WARN", f"{st.dirty} dirty"))
+    rows.append(("graph", "OK" if st.graph_age != "missing" else "FAIL", st.graph_age))
+    q = ratio_value(st, "queue-done")
+    if q:
+        rows.append(("queue", "OK" if q[0] == q[1] else "WARN", f"{q[0]}/{q[1]}"))
+    strict = ratio_value(st, "queue-right")
+    if strict:
+        rows.append(("strict", "OK" if strict[0] == strict[1] else "WARN", f"{strict[0]}/{strict[1]}"))
+    rows.extend(test_items(st, 8))
+    out: list[str] = []
+    for name, status, detail in rows[:12]:
+        tail = f" {detail}" if detail else ""
+        out.append(f"{gate_mark(status, frame, enabled)} {name}{tail}")
+    return out or ["no gates yet"]
+
+
 def phase_lanes(st: Stat, frame: int, enabled: bool) -> str:
     q = ratio_value(st, "queue-done")
     strict = ratio_value(st, "queue-right")
@@ -920,10 +983,20 @@ def hygiene_rows(st: Stat, enabled: bool) -> list[str]:
         f"tracked staged {st.staged}  unstaged {st.unstaged}  untracked {st.untracked}",
         f"ignored generated {st.ignored_items} file(s), {human_size(st.ignored_bytes)}",
         f"cleanup candidates {st.cleanup_items} file(s), {human_size(st.cleanup_bytes)}",
-        f"tools active {st.tool_count}; test scripts {st.test_count}; dead tool scripts 0",
+        f"tracked tools {st.tool_count}; test scripts {st.test_count}; delete candidates 0",
         f"audit path {AUDIT_PATH}",
     ]
     return rows
+
+
+def tool_rows(st: Stat) -> list[str]:
+    return [
+        f"audit {AUDIT_PATH}",
+        "build ./compile -> tools/build_g3a.sh -> tools/docker/Dockerfile.khicas-source",
+        "host tools/khicas_host_runner",
+        "checks size, metadata, border, catalog, help",
+        f"tracked tool files {st.tool_count}; reviewed delete candidates 0",
+    ]
 
 
 def test_rows(st: Stat) -> list[str]:
@@ -1029,6 +1102,7 @@ def render_compact(st: Stat, frame: int, width: int, enabled: bool) -> str:
         kv("lane", phase_lanes(st, frame, enabled), width, enabled),
         kv("metrics", topline_metrics(st, enabled), width, enabled),
         kv("scanner", meter(max(12, min(28, width - 22)), frame, enabled), width, enabled),
+        kv("gates", "  ".join(gate_rows(st, frame, enabled)[:3]), width, enabled),
         kv("sync", st.upstream, width, enabled),
         kv("state", f"{st.state_rows} events  age {st.state_age}", width, enabled),
         kv("phase", st.phase, width, enabled),
@@ -1046,6 +1120,8 @@ def render_compact(st: Stat, frame: int, width: int, enabled: bool) -> str:
         lines.append(trim(f"{label:<14} {bar(done, total, bar_w, frame, enabled)} {done}/{total}", width))
     if not st.ratios:
         lines.append(trim("no ratio data yet", width))
+    for row in gate_rows(st, frame, enabled)[3:8]:
+        lines.append(kv("gate", row, width, enabled))
     lines.append(kv("changes", f"staged {st.staged}  unstaged {st.unstaged}  untracked {st.untracked}", width, enabled))
     lines.append(kv("dirty files", "; ".join(st.dirty_files) if st.dirty_files else "clean", width, enabled))
     lines.append(kv("risk", "; ".join(risk_rows(st)[:3]), width, enabled))
@@ -1059,7 +1135,7 @@ def render_compact(st: Stat, frame: int, width: int, enabled: bool) -> str:
     lines.append(kv("cleanup", "; ".join(cleanup_rows(3)), width, enabled))
     lines.append(kv("clean cmd", cleanup_command_rows()[0], width, enabled))
     lines.append(kv("audit path", str(AUDIT_PATH), width, enabled))
-    lines.append(kv("active", f"tools {st.tool_count}  test scripts {st.test_count}  dead tools 0", width, enabled))
+    lines.append(kv("active", f"tools {st.tool_count}  test scripts {st.test_count}  delete candidates 0", width, enabled))
     quality = f"unsupported {st.unsupported}"
     quality += "  " + "; ".join(failure_cluster_rows(st, 3)[:2])
     lines.append(kv("quality", quality, width, enabled))
@@ -1178,9 +1254,11 @@ def render(st: Stat, frame: int, width: int, height: int, enabled: bool) -> str:
         lines.append("")
         lines += panel("risk", risk, width, enabled)
     lines += panel("project hygiene", hygiene_rows(st, enabled), width, enabled)
+    lines += panel("tooling", tool_rows(st), width, enabled)
     lines += panel("cleanup command", cleanup_command_rows(), width, enabled)
     lines += panel("freshness", freshness_rows(st), width, enabled)
     lines += panel("tests", test_rows(st), width, enabled)
+    lines += panel("gates", gate_rows(st, frame, enabled), width, enabled)
     lines += panel("release", readiness_rows(st), width, enabled)
     gap_rows = [f"unsupported {st.unsupported}", *failure_cluster_rows(st)]
     gap_rows.extend(cluster_bars(st, bar_w + 14, frame, enabled))
