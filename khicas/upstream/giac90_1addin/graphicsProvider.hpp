@@ -7,6 +7,7 @@
 #include <fxcg/misc.h>
 #include <fxcg/app.h>
 #include <fxcg/serial.h>
+#include <fxcg/rtc.h>
 #include <fxcg/heap.h>
 #include <string.h>
 #include <stdio.h>
@@ -18,7 +19,6 @@ int PrintMiniFix(int x, int y, const unsigned char*Msg, const int flags, const s
 void plot(int x0, int y0,unsigned short color);
 unsigned short get_pixel(int x0,int y0);
 void drawRectangle(int x, int y, int width, int height, unsigned short color);
-void drawCasioCasBorder();
 void drawLine(int x1, int y1, int x2, int y2, int color);
 //void VRAMReplaceColorInRect(int x, int y, int width, int height, color_t color_old, color_t color_new);
 //void CopySprite(const void* datar, int x, int y, int width, int height);

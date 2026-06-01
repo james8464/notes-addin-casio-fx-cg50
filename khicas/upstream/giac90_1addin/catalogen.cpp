@@ -247,7 +247,6 @@ int doCatalogMenu(char* insertText, char* title, int category,const char * cmdna
     drawRectangle(2*fkeyw,LCD_HEIGHT_PX-23, fkeyw, 23, TEXT_COLOR_BLACK);
     Bdisp_MMPrint(2*fkeyw,LCD_HEIGHT_PX-STATUS_AREA_PX-19," EXAMPL2",0,0xffffffff,0,0,COLOR_WHITE,COLOR_BLACK,1,0);
     Bdisp_PutDisp_DD();
-    drawCasioCasBorder();
     int sres = doMenu(&menu);
     if(sres == MENU_RETURN_EXIT){
       reset_alpha();

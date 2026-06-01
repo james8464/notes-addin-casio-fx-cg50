@@ -78,11 +78,6 @@ int os_draw_string(int x,int y,int c,int bg,const char * s,bool fake=false){
 }
 
 int in_ckgetkey(int * keyptr,int waitforkey,const char * menu,const char * shiftmenu,const char * alphamenu,int menucolorbg){
-  if (waitforkey && menu){
-    int px=0,py=58*3;
-    PrintMini(&px,&py,(unsigned char *)menu,0,0xFFFFFFFF,0,0,COLOR_BLACK,menucolorbg,1,0);
-    Bdisp_PutDisp_DD();
-  }
   return ck_getkey(keyptr);
 }
 
@@ -3346,7 +3341,7 @@ void get_current_console_menu(string & menu,string & shiftmenu,string & alphamen
     menu += lang?"| cmds | A<>a | Fich.  ":" | cmds  | A<>a | File   ";
   }
   //drawRectangle(0,174,LCD_WIDTH_PX,24,COLOR_BLACK);
-  int xcas_color=python_compat(contextptr)==0?65055:COLOR_CYAN,python_color=65520,js_color=63048;
+  int xcas_color=COLOR_BLACK,python_color=65520,js_color=63048;
   if (app==1){
     xcas_color=python_compat(contextptr)==0?64543:34335;
     python_color=65512;
@@ -3359,11 +3354,9 @@ void console_disp_status(){
   string menu(" "),shiftmenu=menu,alphamenu; int menucolorbg=12345;
   get_current_console_menu(menu,shiftmenu,alphamenu,menucolorbg,0);
   int px=0*3,py=58*3;
-  PrintMini(&px,&py,(unsigned char *)menu.c_str(),0,0xFFFFFFFF,0,0,COLOR_BLACK,menucolorbg, 1, 0);
+  PrintMini(&px,&py,(unsigned char *)menu.c_str(),0,0xFFFFFFFF,0,0,menucolorbg==COLOR_BLACK?COLOR_WHITE:COLOR_BLACK,menucolorbg, 1, 0);
   // status, clock, 
   set_xcas_status();
-  Bdisp_PutDisp_DD();
-  drawCasioCasBorder();
   Bdisp_PutDisp_DD();
 }  
 

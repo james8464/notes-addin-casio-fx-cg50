@@ -5,9 +5,7 @@
 #include <fxcg/misc.h>
 #include <fxcg/app.h>
 #include <fxcg/serial.h>
-extern "C" {
 #include <fxcg/rtc.h>
-}
 #include <fxcg/heap.h>
 #include <string.h>
 #include <stdio.h>
@@ -15,8 +13,6 @@ extern "C" {
 #include <math.h>
 
 #include "graphicsProvider.hpp"
-
-extern "C" void DirectDrawRectangle(int x1, int y1, int x2, int y2, int color);
 
 color_t* VRAM_base;
 
@@ -373,7 +369,7 @@ unsigned short get_pixel(int x0,int y0){
 }
 
 void drawRectangle(int x, int y, int width, int height, unsigned short color){
-  if (x>=LCD_WIDTH_PX || y>=LCD_HEIGHT_PX)
+  if (width<0 || height<0 || x>=LCD_WIDTH_PX || y>=LCD_HEIGHT_PX)
     return;
   if (x<0){ width+=x; x=0; }
   if (y<0){ height+=y; y=0; }
@@ -386,31 +382,60 @@ void drawRectangle(int x, int y, int width, int height, unsigned short color){
   if (width<=0 || height<=0) return;
   unsigned short*VRAM = GetVRAMAddress();
   VRAM+=(y*384)+x;
-  while(height--){
-    int i=width;
-    while(i--){
-      *VRAM++ = color;
+  if (width==1){
+    while(height--){
+      *VRAM = color;
+      VRAM+=384;
     }
-    VRAM+=384-width;
+  }
+  else {
+    while(height--){
+      int i=width;
+      while(i--){
+	*VRAM++ = color;
+      }
+      VRAM+=384-width;
+    }
   }
 }
 
-void drawCasioCasBorder(){
-  const unsigned short kCasioCasPink = 0xF81F;
-  DirectDrawRectangle(0, 0, 5, 223, kCasioCasPink);
-  DirectDrawRectangle(390, 0, 395, 223, kCasioCasPink);
-  DirectDrawRectangle(0, 217, 395, 223, kCasioCasPink);
-}
+//Uses the Bresenham line algorithm
+void drawLine(int x1, int y1, int x2, int y2, int color) {
+  int w =(color & 0x00070000) >> 16;
+  ++w;
+  int type_line =(color & 0x01c00000) >> 22,mask=0xffff; // 3 bits
+  switch (type_line){
+  case 1:
+    mask=0xff00;
+    break;
+  case 2:
+    mask=0xf0f0;
+    break;
+  case 3:
+    mask=0xcccc;
+    break;
+  case 4:
+    mask=0xaaaa;
+    break;
+  case 5:
+    mask=0xfff0;
+    break;
+  case 6:
+    mask=0xf000;
+    break;
+  case 7:
+    mask=0xc0c0;
+    break;
+  }
 
-//Uses the Bresenham line algorithm 
-void drawLine(int x1, int y1, int x2, int y2, int color) { 
+  color &=  0xffff ;
   signed char ix; 
   signed char iy; 
   
   // if x1 == x2 or y1 == y2, then it does not matter what we set here 
   int delta_x = (x2 > x1?(ix = 1, x2 - x1):(ix = -1, x1 - x2)) << 1; 
   int delta_y = (y2 > y1?(iy = 1, y2 - y1):(iy = -1, y1 - y2)) << 1; 
-  
+  int count=0;
   plot(x1, y1, color);  
   if (delta_x >= delta_y) { 
     int error = delta_y - (delta_x >> 1);        // error may go below zero 
@@ -422,8 +447,13 @@ void drawLine(int x1, int y1, int x2, int y2, int color) {
 	}                           // else do nothing 
       }                              // else do nothing 
       x1 += ix; 
-      error += delta_y; 
-      plot(x1, y1, color); 
+      error += delta_y;
+      int y__=y1+(w+1)/2;
+      ++count;
+      if (mask & (1 << (count%16)) )
+	for (int y_=y1-w/2;y_<y__;++y_){
+	  plot(x1, y_, color);
+	}
     } 
   } else { 
     int error = delta_x - (delta_y >> 1);      // error may go below zero 
@@ -435,11 +465,18 @@ void drawLine(int x1, int y1, int x2, int y2, int color) {
 	}                           // else do nothing 
       }                              // else do nothing 
       y1 += iy; 
-      error += delta_x;  
-      plot(x1, y1, color); 
+      error += delta_x;
+      int x__=x1+(w+1)/2;
+      ++count;
+      if (mask & (1 << (count%16)) )
+	for (int x_=x1-w/2;x_<x__;++x_){
+	  plot(x_, y1, color);
+	}
     } 
-  } 
+  }
 }
+
+
 
 void printCentered(char* text, int y, int FGC, int BGC) {
   int len = strlen(text);
