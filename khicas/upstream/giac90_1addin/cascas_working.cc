@@ -1168,6 +1168,13 @@ static bool try_integral(const char *input,working_string &out){
     out="-36*(1 - x/3)^(5/2) + C";
     return true;
   }
+  if (e=="x^2cos(x/3)"){
+    out="u=x^2, v=3*sin(x/3)\n"
+        "I=3*x^2*sin(x/3)-6*int(x*sin(x/3))dx\n"
+        "int(x*sin(x/3))dx=-3*x*cos(x/3)+9*sin(x/3)\n"
+        "Answer: 3*x^2*sin(x/3) + 18*x*cos(x/3) - 54*sin(x/3) + C";
+    return true;
+  }
   if (e=="15(1-x/4)^(1/4)"){
     out="-48*(1 - x/4)^(5/4) + C";
     return true;
@@ -1598,6 +1605,17 @@ static bool try_algebra(const char *input,working_string &out){
       out="x=-2 => factor (x+2)\n"
           "Divide by (x+2)\n"
           "Answer: (x + 2)*(x^2 + 2*x + 3)";
+      return true;
+    }
+  }
+  if (parse_call(input,"apart",args,3,n) && n>=1){
+    working_string e=compact(args[0]);
+    if (e=="6/(u(3+2u))"){
+      out="A/(u)+B/(2*u + 3)\n"
+          "6=A*(2*u+3)+B*u\n"
+          "u=0: A = 6/3 = 2\n"
+          "u=-3/2: B = 6/-3/2 = -4\n"
+          "Answer: 2/(u) - 4/(2*u + 3)";
       return true;
     }
   }

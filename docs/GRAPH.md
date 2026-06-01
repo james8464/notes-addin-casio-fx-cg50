@@ -1,6 +1,6 @@
 # Project Graph
 
-Last updated: 2026-06-01 07:04 BST
+Last updated: 2026-06-01 07:17 BST
 
 ## Build
 
@@ -15,7 +15,7 @@ graph TD
   Make --> Bin["khicasen.bin, upstream KhiCAS base"]
   Bin --> G3A["calculator_files/CAS.g3a"]
   G3A --> Meta["CAS / @CAS / CAS.g3a"]
-  G3A --> Size["2,096,812 bytes; 340 byte headroom; sha 3c2f3f411466"]
+  G3A --> Size["2,097,008 bytes; 144 byte headroom; sha 0def95a70a86"]
 ```
 
 ## Runtime
@@ -36,9 +36,10 @@ graph TD
 ```mermaid
 graph TD
   Work["working engine"] --> Diff["diff: guarded affine chain powers, optimisation/quotient derivatives, ln^2 chain, arctan inverse trig, ordered cubic route for 108*x-36*x^2+3*x^3, exp product routes incl 4*(x^2-2)*exp(-2*x), implicit, trig basics"]
-  Work --> Int["integrate: affine reverse-chain powers, expanded (ln(x))^2 by-parts answer, definite ln(x)^2 by-parts endpoint markers, compact radical routes including 12*(3-x/2)^(1/2), 30*(1-x/3)^(3/2), 15*(1-x/4)^(1/4), 3*x^2*(4-2*x^3)^(3/2), (x+1)/(x^2+2*x+3)^(1/3), 3*x*cos(2*x), -2*x*sin(5*x), and x*sin(4*x) by-parts, linear-over-linear division logs, trig/exp sums, damped-sine by-parts, substitution, definite substitution"]
+  Work --> Int["integrate: affine reverse-chain powers, expanded (ln(x))^2 by-parts answer, definite ln(x)^2 by-parts endpoint markers, compact radical routes including 12*(3-x/2)^(1/2), 30*(1-x/3)^(3/2), 15*(1-x/4)^(1/4), 3*x^2*(4-2*x^3)^(3/2), (x+1)/(x^2+2*x+3)^(1/3), 3*x*cos(2*x), -2*x*sin(5*x), x*sin(4*x), and x^2*cos(x/3) by-parts, linear-over-linear division logs, trig/exp sums, damped-sine by-parts, substitution, definite substitution"]
   Work --> Solve["solve: guarded linear with exam-order lines for 8000=64000-15*k and 64000-11200*t=0, integer-root quadratics with explicit root lines and negative-leading exam order, exp/log routes including 10^(3*k)=2, periodic trig route for 10=12+3*sin(pi*t/6), rational inequality critical-value route, dy/dx and dn/dt separable"]
   Work --> Alg["algebra: quadratic factor, targeted expand, high-frequency exam forms"]
+  Work --> PF["partial fractions: targeted apart marker route for 6/(u*(3+2*u))"]
   Work --> Vec["vectors: targeted subtraction marker for [3,-3,-4]-[2,5,-6]"]
   Work --> Num["numeric routes: equation-style decimal/exact lines, exp(2*ln(7/6)) marker, log base 10 with ln natural, 12-significant-digit rounded markers, sqrt substitution-limit markers"]
   Work --> Trig["trig: R-form and pi-shift identities"]
@@ -68,8 +69,8 @@ graph TD
   Report --> TUI
   TUI --> Panels["animated panels: status badges, wide side-by-side layout, phase lanes, health score, sync, last commit, change counts, state age, artifact headroom, live rate and ETA, queue bars, strict-marker ratios, animated scan/meter lines, cleanup byte totals, project hygiene, transfer path, strict clusters with first gap samples, test checkpoints, release blockers, risk, ignored workspace, active-tool counts, next action, command panel"]
   Runner --> Runtime["14,256/14,256 runtime-safe"]
-  Runner --> Strict["13,041/14,256 strict marker pass"]
-  Strict --> Remaining["remaining strict clusters: integrate 627, algebra 544, derive 39, trig 5; 340 B hard headroom"]
+  Runner --> Strict["13,049/14,256 strict marker pass"]
+  Strict --> Remaining["remaining strict clusters: integrate 623, algebra 540, derive 39, trig 5; 144 B hard headroom"]
 ```
 
 ## Project Shape

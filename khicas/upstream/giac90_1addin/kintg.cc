@@ -3069,7 +3069,7 @@ namespace giac {
   // "unary" version
   gen _integrate(const gen & args,GIAC_CONTEXT){
     if (complex_variables(contextptr))
-      *logptr(contextptr) << gettext("! complex variables is set, this can lead to fairly complex answers.\nIt is recommended to switch off complex variables in the settings or by complex_variables:=0;\n and declare individual variables to be complex by e.g. assume(a,complex).") << endl;
+      *logptr(contextptr) << gettext("Complex variables may give complex answers.") << endl;
 #ifdef LOGINT
     *logptr(contextptr) << gettext("integrate begin") << endl;
 #endif
@@ -5568,4 +5568,3 @@ namespace giac {
 #ifndef NO_NAMESPACE_GIAC
 } // namespace giac
 #endif // ndef NO_NAMESPACE_GIAC
-
