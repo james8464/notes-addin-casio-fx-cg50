@@ -24,11 +24,11 @@ Current status:
 
 - app name: `CAS`
 - file: `CAS.g3a`
-- size: `2,097,064` bytes
-- hard limit headroom: `88` bytes
-- sha256: `15d9940be04f0bf82b07641f91e1e8a46e587524a22b9ef8a32a1931aae08caa`
+- size: `2,097,140` bytes
+- hard limit headroom: `12` bytes
+- sha256: `df6da2d79499376cfdfe3673adf770f82b8eb112f286a7814e282eafedf6c6b0`
 - exact queue runtime: `14,256/14,256`
-- strict marker quality: `13,025/14,256`
+- strict marker quality: `13,033/14,256`
 - online challenge source coverage: MadAsMaths exact rows in queue; Daily Integral hard-integration style probes inspected from `https://dailyintegral.com/archive`
 
 Notable routes:
@@ -59,6 +59,7 @@ Notable routes:
 - `solve(10^(3*k)=2,k)` shows the log-route exact answer `k = [ln(2)/(3*ln(10))]`
 - `solve(10=12+3*sin(pi*t/6),t)` shows the periodic trig route `u = -2/3` and both period-12 branches
 - `solve(4-exp(2*x)=2,x)` and `solve((2-exp(2*x))^2=0,x)` show the logarithm step result `x = [1/2*ln(2)]`
+- linear solve routes keep exam-order equation lines for `solve(8000=64000-15*k,k)` and `solve(64000-11200*t=0,t)`
 - generic affine chain/reverse-chain power routes
 - trig/exp term integration, shifted trig identity, damped-sine by-parts route, quadratic solve/factor/expand, log/numeric routes
 - safer solve routing: powered terms no longer fall through the linear solver

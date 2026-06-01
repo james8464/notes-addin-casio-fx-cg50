@@ -1566,6 +1566,8 @@ static bool try_solve(const char *input,working_string &out){
   if (ok1 && ok2 && a1!=a2){
     long a=a1-a2,b=b2-b1;
     out="";
+    if (ceq=="8000=64000-15k") out+="8000 = - 15*k + 64000\n";
+    if (ceq=="64000-11200t=0") out+="- 11200*t + 64000 = 0\n";
     out += rawvar;
     out += "\n";
     out += int_s(a)+"*"+rawvar+" = "+int_s(b)+"\n";

@@ -470,7 +470,7 @@ namespace giac {
 	  break;
 	}
 	if (is_inf(l) || n.type!=_IDNT || n.print(contextptr).substr(0,2)!="n_" || !is_linear_wrt(expr,n,a,b,contextptr)){
-	  *logptr(contextptr) << gettext("Warning: integer root range") << endl;
+	  *logptr(contextptr) << gettext("Int root range") << endl;
 	  if (v.size()!=1) v=vecteur(1,undef);
 	  return;
 	}
@@ -3254,7 +3254,7 @@ namespace giac {
       if (1
 	  //abs_calc_mode(contextptr)==38
 	  ){
-	*logptr(contextptr) << gettext("Bisection; try fsolve(x=guess) or x=a..b.") << endl;
+	*logptr(contextptr) << gettext("Bisection") << endl;
 	gen eq=subst(v[0],v[1],tan(v[1],contextptr),false,contextptr);
   //grad
 	vecteur v_=makevecteur(eq,symb_equal(v[1],angle_radian(contextptr)?symb_interval(-1.57,1.57):(angle_degree(contextptr)?symb_interval(-89.97,89.97):symb_interval(-99.97,99.97))));
@@ -3268,7 +3268,7 @@ namespace giac {
 	}
 	return tan(res,contextptr);
       }
-      *logptr(contextptr) << gettext("Trying guess 0; use fsolve(x=guess) or x=xmin..xmax.") << endl;
+      *logptr(contextptr) << gettext("Try 0") << endl;
     }
     gen gguess;
     if (v[1].type==_VECT && !v[1]._VECTptr->empty() && is_equal(v[1]._VECTptr->front())){
@@ -5544,7 +5544,7 @@ namespace giac {
     }
 #if 0
     if (s>int(eq_orig.size())){
-      *logptr(contextptr) << gettext("Warning: solving by reducing number of unknowns to number of equations: ") << var_orig << " -> " << vecteur(it,it+eq_orig.size()) << endl;
+      *logptr(contextptr) << gettext("Warning: reducing unknowns: ") << var_orig << " -> " << vecteur(it,it+eq_orig.size()) << endl;
       vecteur remvars=vecteur(it+eq_orig.size(),itend);
       vecteur res=gsolve(eq_orig,vecteur(it,it+eq_orig.size()),complexmode,evalf_after,contextptr);
       for (unsigned i=0;i<res.size();++i){
@@ -6938,7 +6938,7 @@ namespace giac {
     if (solu._VECTptr->empty())
       return args._VECTptr->back();
     if (solu._VECTptr->size()>1)
-      *logptr(contextptr) << gettext("Warning: algsubs selected one branch. Consider running G:=gbasis(") << gen2vecteur(eq) << ","<< ids << ");greduce("<<args._VECTptr->back()<<",G," << ids << ");" << endl;
+      *logptr(contextptr) << gettext("Warning: algsubs branch; gbasis(") << gen2vecteur(eq) << ","<< ids << ");greduce("<<args._VECTptr->back()<<",G," << ids << ");" << endl;
     return normal(solu[0][0],contextptr);
   }
   static const char _algsubs_s []="algsubs";
