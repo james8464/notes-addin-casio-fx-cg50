@@ -580,7 +580,7 @@ namespace giac {
   }
 
   void maxordererr(GIAC_CONTEXT){
-    throw(std::runtime_error(last_evaled_function(contextptr)+gettext("Max order (")+gen(max_series_expansion_order).print(contextptr)+gettext(") exceeded")));
+    throw(std::runtime_error(last_evaled_function(contextptr)+gettext("Order (")+gen(max_series_expansion_order).print(contextptr)+gettext(") max")));
   }
 
   void setstabilityerr(GIAC_CONTEXT){
@@ -680,7 +680,7 @@ namespace giac {
   }
 
   gen genmaxordererr(GIAC_CONTEXT){
-    return undeferr(last_evaled_function(contextptr)+gettext("Max order (")+gen(max_series_expansion_order).print(contextptr)+gettext(") exceeded"));
+    return undeferr(last_evaled_function(contextptr)+gettext("Order (")+gen(max_series_expansion_order).print(contextptr)+gettext(") max"));
   }
 
   gen genstabilityerr(GIAC_CONTEXT){

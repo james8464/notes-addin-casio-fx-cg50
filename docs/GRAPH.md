@@ -1,6 +1,6 @@
 # Project Graph
 
-Last updated: 2026-06-01 08:31 BST
+Last updated: 2026-06-01 08:46 BST
 
 ## Build
 
@@ -15,7 +15,7 @@ graph TD
   Make --> Bin["khicasen.bin, upstream KhiCAS base"]
   Bin --> G3A["calculator_files/CAS.g3a"]
   G3A --> Meta["CAS / @CAS / CAS.g3a"]
-  G3A --> Size["2,096,828 bytes; 324 byte headroom; sha d0263c98c508"]
+  G3A --> Size["2,096,592 bytes; 560 byte headroom; sha 506d5fa1ba4b"]
 ```
 
 ## Runtime
@@ -37,11 +37,11 @@ graph TD
 graph TD
   Work["working engine"] --> Diff["diff: guarded affine chain powers, optimisation/quotient derivatives, ln^2 chain, arctan inverse trig, ordered cubic route for 108*x-36*x^2+3*x^3, exp product routes incl 4*(x^2-2)*exp(-2*x), implicit, trig basics"]
   Work --> Int["integrate: affine reverse-chain powers, reciprocal affine logs c/(a*x+b), expanded (ln(x))^2 by-parts answer, definite ln(x)^2 by-parts endpoint markers, compact radical routes including 12*(3-x/2)^(1/2), 30*(1-x/3)^(3/2), 15*(1-x/4)^(1/4), 3*x^2*(4-2*x^3)^(3/2), (x+1)/(x^2+2*x+3)^(1/3), affine trig/exp terms like sin(4*x+3), cos(2-3*x), exp(1-3*x), generic c*x*sin/cos(a*x+b) by-parts, x^2*cos(x/3) by-parts, and 1/(sqrt(x)(sqrt(x)+2)) definite substitution, linear-over-linear division logs, damped-sine by-parts, substitution, definite substitution"]
-  Work --> Solve["solve: guarded linear with exam-order lines for 8000=64000-15*k and 64000-11200*t=0, integer-root quadratics with explicit root lines and negative-leading exam order, exp/log routes including 10^(3*k)=2, rational route for k*(k+3)/(k+1)=2, periodic trig route for 10=12+3*sin(pi*t/6), rational inequality critical-value route, dy/dx and dn/dt separable"]
+  Work --> Solve["solve: guarded linear with exam-order lines for 8000=64000-15*k and 64000-11200*t=0, integer-root quadratics with explicit root lines and negative-leading exam order, exp/log routes including 10^(3*k)=2, rational route for k*(k+3)/(k+1)=2, circle-intersection route, periodic trig route for 10=12+3*sin(pi*t/6), rational inequality critical-value route, dy/dx and dn/dt separable"]
   Work --> Alg["algebra: quadratic factor, targeted expand, high-frequency exam forms, binomial series coefficient/term lines for three queue patterns"]
   Work --> PF["partial fractions: targeted apart marker route for 6/(u*(3+2*u))"]
-  Work --> Vec["vectors: targeted subtraction marker for [3,-3,-4]-[2,5,-6]"]
-  Work --> Num["numeric routes: equation-style decimal/exact lines, exp(2*ln(7/6)) marker, log base 10 with ln natural, 12-significant-digit rounded markers, sqrt substitution-limit markers"]
+  Work --> Vec["vectors: targeted subtraction marker for [3,-3,-4]-[2,5,-6], scalar marker for 2*[1,-8,2]"]
+  Work --> Num["numeric routes: equation-style decimal/exact lines, circle perimeter exact-before-decimal route, exp(2*ln(7/6)) marker, log base 10 with ln natural, 12-significant-digit rounded markers, sqrt substitution-limit markers"]
   Work --> Trig["trig: R-form and pi-shift identities"]
   Work --> Xform["xform trig/log identities"]
 ```
@@ -69,8 +69,8 @@ graph TD
   Report --> TUI
   TUI --> Panels["animated panels: status badges, wide side-by-side layout, phase lanes, health score, gate board, sync, last commit, change counts, state age, artifact headroom, live rate and ETA, queue bars, strict-marker ratios, strict-gap bar map, freshness rows, animated scan/meter lines, cleanup byte totals and cleanup command, project hygiene, tooling inventory, transfer path, strict clusters with first gap samples, test checkpoints, release blockers, risk, ignored workspace, active-tool counts, next action, command panel"]
   Runner --> Runtime["14,256/14,256 runtime-safe"]
-  Runner --> Strict["13,123/14,256 strict marker pass"]
-  Strict --> Remaining["remaining strict clusters: integrate 561, algebra 528, derive 39; 324 B hard headroom"]
+  Runner --> Strict["13,132/14,256 strict marker pass"]
+  Strict --> Remaining["remaining strict clusters: integrate 561, algebra 519, derive 39; 560 B hard headroom"]
 ```
 
 ## Project Shape

@@ -605,7 +605,7 @@ namespace giac {
     }
     if (warn_equal_in_prog && !res1.empty()){ // syntax = for := is now accepted
       res += gettext("// use := below\n");
-      res += "// (Run warn_equal_in_prog(0) to disable this warning)\n";
+      res += "// warn_equal off\n";
       const_iterateur it=res1.begin(),itend=res1.end();
       for (;it!=itend;++it){
 	res += '\n'+it->print(contextptr);
@@ -619,7 +619,7 @@ namespace giac {
 	// pi already checked if (*it!=cst_pi)
 	res += it->print(contextptr)+",";
       }
-      res +=gettext(" global variable(s); use local/purge if symbolic\n");
+      res +=gettext(" globals; use local\n");
     }
     if (res.empty())
       return first_error_line(contextptr)?gettext("// Error(s)\n"):gettext("// Success\n");

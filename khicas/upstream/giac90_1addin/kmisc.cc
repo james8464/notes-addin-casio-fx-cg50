@@ -3007,7 +3007,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
   int step_param_(const gen & f,const gen & g,const gen & t,gen & tmin,gen&tmax,vecteur & poi,vecteur & tvi,bool printtvi,bool exactlegende,GIAC_CONTEXT,bool do_inflex){
     if (t.type!=_IDNT)
       return 0;
-    gprintf(gettext("====================\nParametric plot (%gen,%gen), variable %gen"),makevecteur(f,g,t),1,contextptr);
+    gprintf(gettext("Param plot %gen,%gen,%gen"),makevecteur(f,g,t),1,contextptr);
     gen periodef,periodeg,periode;
     if (is_periodic(f,t,periodef,contextptr) && is_periodic(g,t,periodeg,contextptr)){
       periode=gcd(periodef,periodeg,contextptr);
@@ -3022,11 +3022,11 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
 	if (eog==1)
 	  gprintf(gettext("Even functions."),vecteur(0),1,contextptr);
 	else
-	  gprintf(gettext("Even function %gen, odd function %gen. Reflection Ox"),makevecteur(f,g),1,contextptr);
+	  gprintf(gettext("Even/odd reflect Ox"),makevecteur(f,g),1,contextptr);
       }
       else {
 	if (eog==1)
-	  gprintf(gettext("Odd function %gen, even function %gen. Reflection Oy"),makevecteur(f,g),1,contextptr);
+	  gprintf(gettext("Odd/even reflect Oy"),makevecteur(f,g),1,contextptr);
 	else
 	  gprintf(gettext("Odd functions. Center O"),vecteur(0),1,contextptr);
       }
@@ -3566,7 +3566,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
   int step_func_(const gen & f,const gen & x,gen & xmin,gen&xmax,vecteur & poi,vecteur & tvi,gen& periode,vecteur & asym,vecteur & parab,vecteur & crit,vecteur & infl,bool printtvi,bool exactlegende,GIAC_CONTEXT,bool do_inflex){
     if (x.type!=_IDNT)
       return 0;
-    gprintf(gettext("====================\nFunction plot %gen, variable %gen"),makevecteur(f,x),1,contextptr);
+    gprintf(gettext("Func plot %gen,%gen"),makevecteur(f,x),1,contextptr);
     if (is_periodic(f,x,periode,contextptr)){
       gprintf(gettext("Periodic function T=%gen"),vecteur(1,periode),1,contextptr);
       if (is_greater(xmax-xmin,periode,contextptr)){

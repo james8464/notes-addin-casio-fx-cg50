@@ -2988,7 +2988,7 @@ namespace giac {
     if (tmp.type!=_DOUBLE_ && tmp.type!=_CPLX)
       return exactvalue;
     if (0 && debug_infolevel)
-      *logptr(contextptr) << gettext("Checking exact integral numerically")<<endl;
+      *logptr(contextptr) << gettext("Check int")<<endl;
     gen tmp2;
     if (!tegral(f,x,a,b,1e-6,(1<<10),tmp2,true,contextptr))
       return exactvalue;
@@ -3069,7 +3069,7 @@ namespace giac {
   // "unary" version
   gen _integrate(const gen & args,GIAC_CONTEXT){
     if (complex_variables(contextptr))
-      *logptr(contextptr) << gettext("Complex variables may give complex answers.") << endl;
+      *logptr(contextptr) << gettext("Complex vars") << endl;
 #ifdef LOGINT
     *logptr(contextptr) << gettext("integrate begin") << endl;
 #endif
@@ -3372,7 +3372,7 @@ namespace giac {
 	  }
 	  gen a,b,l;
 	  if (unable || !is_linear_wrt(cond,x,a,b,contextptr)){
-	    *logptr(contextptr) << gettext("Piecewise int needs linear condition") << endl;
+	    *logptr(contextptr) << gettext("Need linear cond") << endl;
 	    if (!tegral(v0orig,x,aorig,borig,1e-12,(1<<10),res,true,contextptr))
 	      return undef;
 	    return res;
@@ -3517,7 +3517,7 @@ namespace giac {
     vecteur sp;
     sp=lidnt(evalf(makevecteur(primitive,borne_inf,borne_sup),1,contextptr));
     if (sp.size()>1){
-      *logptr(contextptr) << gettext("Unchecked answer; confirm with preval(")+primitive.print(contextptr)+","+borne_inf.print(contextptr)+","+borne_sup.print(contextptr)+")" << endl ;
+      *logptr(contextptr) << gettext("Check preval(")+primitive.print(contextptr)+","+borne_inf.print(contextptr)+","+borne_sup.print(contextptr)+")" << endl ;
       sp.clear();
     }
     else {
@@ -3536,7 +3536,7 @@ namespace giac {
       else
 	sp=protect_find_singularities(primitive,*x._IDNTptr,0,contextptr);
       if (is_undef(sp)){
-	*logptr(contextptr) << gettext("Unable to find singular points of antiderivative") << endl ;
+	*logptr(contextptr) << gettext("No singular points") << endl ;
 	if (!tegral(v0orig,x,aorig,borig,1e-12,(1<<10),res,true,contextptr))
 	  return undef;
 	return res;
@@ -4601,7 +4601,7 @@ namespace giac {
       return seqprod(gen(v,_SEQ__VECT),2,contextptr);
     if (s==4) {
       if (v[1]==cst_i)
-	return gensizeerr(gettext("i=sqrt(-1), please use a valid identifier name"));
+	return gensizeerr(gettext("Bad identifier"));
       gen af=evalf_double(v[2],1,contextptr),bf=evalf_double(v[3],1,contextptr);
       if (v[1].type==_IDNT && (is_inf(af) || af.type==_DOUBLE_) && (is_inf(bf) || bf.type==_DOUBLE_)){
 	vecteur w;

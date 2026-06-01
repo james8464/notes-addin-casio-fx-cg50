@@ -1080,7 +1080,7 @@ namespace giac {
     // If first.exponent!=0 and direction==0 we can not find
     // first.exponent^e consistently around 0
     if (!direction && !is_integer(e) && !is_zero(first.exponent) ){
-      *logptr(contextptr) << gettext("Warning: vanishing non integral power expansion") << endl;
+      *logptr(contextptr) << gettext("Warn power series") << endl;
       /*
       res.clear();
       first.coeff=pow(first.coeff,e,contextptr);
@@ -1775,7 +1775,7 @@ namespace giac {
 	  if (!series__SPOL1(remains,x,lim_point,ordre,direction,p,contextptr))
 	    return false;
 	  if (p.empty()){
-	    invalidserieserr(gettext("Can not expand remainder of integrand"));
+	    invalidserieserr(gettext("Bad remainder"));
 	    return false;
 	  }
 	  p=sparse_poly1(p.begin(),p.begin()+1);
@@ -2309,7 +2309,7 @@ namespace giac {
 	      continue;
 	  }
 	  if (!convert_to_euler_mac_laurin(v[i],x,tmp,contextptr))
-	    return gensizeerr(gettext("Unable to convert sum to Euler Mac-Laurin ")+v[i].print(contextptr));
+	    return gensizeerr(gettext("No Euler-Mac ")+v[i].print(contextptr));
 	  v1.push_back(v[i]);
 	  v2.push_back(tmp);
 	}
@@ -2463,7 +2463,7 @@ namespace giac {
       if ((*f._VECTptr)[1]==x)
 	return gensizeerr(gettext("same integration/limit variable"));
       if (!is_zero(derive(f._VECTptr->front(),x,contextptr)))
-	return gensizeerr(gettext("Integral in limit not implemented yet"));
+	return gensizeerr(gettext("No int in limit"));
     }
     if (e0.type==_VECT){
       const_iterateur it=e0._VECTptr->begin(),itend=e0._VECTptr->end();
@@ -2610,7 +2610,7 @@ namespace giac {
 	  return g2;
 	if (g1==g2 || is_zero(ratnormal(g1-g2,contextptr)))
 	  return g1;
-	return gensizeerr("Unidirectional limits are distinct "+g2.print(contextptr)+","+g1.print(contextptr));
+	return gensizeerr("Limits differ "+g2.print(contextptr)+","+g1.print(contextptr));
       }
       // supposed to be analytic, try first series expansion
       sparse_poly1 p;
@@ -2633,7 +2633,7 @@ namespace giac {
 	  return g2;
 	if (is_zero(ratnormal(g1-g2,contextptr)))
 	  return g1;
-	return gensizeerr("Unidirectional limits are distincts "+g2.print(contextptr)+","+g1.print(contextptr));
+	return gensizeerr("Limits differ "+g2.print(contextptr)+","+g1.print(contextptr));
       }
       if (p.empty() || ck_is_strictly_positive(p.front().exponent,contextptr) ){
 	if (check_bounded(p.front().coeff,contextptr)==-1)
@@ -2798,7 +2798,7 @@ namespace giac {
       }
       gen l=in_limit(temp._SYMBptr->feuille,x,plus_inf,0,contextptr);
       if (is_undef(l) || (l==unsigned_inf && temp._SYMBptr->sommet!=at_cos && temp._SYMBptr->sommet!=at_sin && temp._SYMBptr->sommet!=at_erfs)){
-	*logptr(contextptr) << gettext("Undef/Unsigned Inf encountered in limit") << endl;
+	*logptr(contextptr) << gettext("Undef in limit") << endl;
 	return false;
       }
       if (!is_inf(l)){
@@ -3354,7 +3354,7 @@ namespace giac {
     if (args.type==_VECT && args._VECTptr->size()==2 && args._VECTptr->front().type==_STRNG && args._VECTptr->back().type==_INT_){
       int n=args._VECTptr->back().val;
       if (n<=0 || n>1024)
-	return gensizeerr("Default series order must be >0 and <=1024");
+	return gensizeerr("Bad series order");
       series_default_order(n,contextptr);
       return _series(args._VECTptr->front(),contextptr);
     }
@@ -3519,7 +3519,7 @@ namespace giac {
       gen f0=f._VECTptr->front();
       gen x =f[1];
       if (x.type!=_IDNT){
-	*logptr(contextptr) << gettext("Unable to convert to euler mac laurin");
+	*logptr(contextptr) << gettext("No Euler Mac");
 	return false;
       }
       gen f0prime=derive(f0,x,contextptr), f03=derive(f0prime,x,contextptr);

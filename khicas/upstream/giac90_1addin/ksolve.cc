@@ -1163,7 +1163,7 @@ namespace giac {
   static vecteur solve_inequation(const gen & e0,const identificateur & x,int direction,GIAC_CONTEXT){
     gen e=e0;
     if (has_num_coeff(e0)){
-      *logptr(contextptr) << gettext("Unable to solve inequations with approx coeffs ") << endl;
+      *logptr(contextptr) << gettext("Approx inequation failed") << endl;
       e=exact(e0,contextptr);
     }    
     gen a1=e._SYMBptr->feuille[0];
@@ -1174,9 +1174,9 @@ namespace giac {
     else
       e=a1-a2;
     if (is_inequation(e))
-      return vecteur(1,gensizeerr(gettext("Inequation inside inequation not implemented ")+e.print()));
+      return vecteur(1,gensizeerr(gettext("Bad nested inequation ")+e.print()));
     if (is_zero(ratnormal(derive(e,x,contextptr),contextptr),contextptr))
-      *logptr(contextptr) <<gettext("Inequation is constant with respect to ")+string(x.print(contextptr)) << endl;
+      *logptr(contextptr) <<gettext("Constant inequation in ")+string(x.print(contextptr)) << endl;
     vecteur veq_not_singu,veq,singu;
     singu=find_singularities(e,x,2,contextptr);
     veq_not_singu=solve(e,x,2,contextptr);
@@ -1909,7 +1909,7 @@ namespace giac {
       }
       else {
 	if (0 && debug_infolevel)
-	  *logptr(contextptr) << gettext("Warning, solutions were not checked!") << endl;
+	  *logptr(contextptr) << gettext("Solutions unchecked") << endl;
 	res=fullres;
       }
       purgenoassume(assumedvars,contextptr);
@@ -2123,7 +2123,7 @@ namespace giac {
     vecteur v=lvarx(expr,x);
     v=lop(v,at_of);
     if (!v.empty())
-      return vecteur(1,gensizeerr("Invalid function "+v.front().print(contextptr)+" perhaps a missing * for multiplication"));
+      return vecteur(1,gensizeerr("Bad function "+v.front().print(contextptr)+" missing *"));
     clean(expr,x,contextptr);
     vecteur res= solve_cleaned(expr,e,x,isolate_mode,contextptr);
     return res;
@@ -2391,7 +2391,7 @@ namespace giac {
       arg1=w;
     }
     if (arg1.type!=_VECT && !is_equal(arg1) && !is_inequation(arg1))
-      *logptr(contextptr) << gettext("Warning, argument is not an equation, solving ") << arg1 << "=0" << endl;
+      *logptr(contextptr) << gettext("Solving ") << arg1 << "=0" << endl;
     else {
 #if 1 // ATESTER
       if (arg1.type==_VECT && arg1._VECTptr->size()==2 && v[1].type==_VECT && v[1]._VECTptr->size()==2){

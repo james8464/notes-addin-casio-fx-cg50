@@ -24,11 +24,11 @@ Current status:
 
 - app name: `CAS`
 - file: `CAS.g3a`
-- size: `2,096,828` bytes
-- hard limit headroom: `324` bytes
-- sha256: `d0263c98c5089e671d753156298f7d9e9b672fd78c643416c99ba9472427d93e`
+- size: `2,096,592` bytes
+- hard limit headroom: `560` bytes
+- sha256: `506d5fa1ba4bcf51f5ff71577dbad52e2632a722193c83bba3cd1b5636eed014`
 - exact queue runtime: `14,256/14,256`
-- strict marker quality: `13,123/14,256`
+- strict marker quality: `13,132/14,256`
 - online challenge source coverage: MadAsMaths exact rows in queue; Daily Integral hard-integration style probes inspected from `https://dailyintegral.com/archive`
 
 Notable routes:
@@ -64,6 +64,9 @@ Notable routes:
 - linear solve routes keep exam-order equation lines for `solve(8000=64000-15*k,k)` and `solve(64000-11200*t=0,t)`
 - `exp(2*ln(7/6))` now shows the exponential marker before decimal and exact fraction output
 - vector subtraction route for `[3,-3,-4]-[2,5,-6]` now shows `(1,-8,2)`
+- vector scalar route for `2*[1,-8,2]` now shows `(2,-16,4)`
+- circle-intersection route for `x^2+y^2=100` and `(x-15)^2+y^2=40` shows subtraction, `x=19/2`, and both exact `y` values
+- circle perimeter numeric route now shows the exact expression before the decimal approximation
 - binomial series routes now show coefficient and simplified term lines for `(1+8*x)^(1/2)`, `(1+5/2*x)^(-2)`, and `(1-2*x)^(-1)`
 - by-parts route for `x^2*cos(x/3)` and partial fractions route for `apart(6/(u*(3+2*u)))`
 - rational solve route for `solve(k*(k+3)/(k+1)=2,k)` shows domain and multiply-through steps

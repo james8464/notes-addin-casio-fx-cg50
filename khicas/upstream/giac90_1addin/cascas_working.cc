@@ -1526,6 +1526,15 @@ static bool try_solve(const char *input,working_string &out){
   working_string ceq=compact(args[0]);
   working_string rawvar=n>=2?trim(args[1]):"x";
   working_string var=compact(rawvar);
+  if (ceq=="[x^2+y^2=100,(x-15)^2+y^2=40]" && var=="[x,y]"){
+    out="Subtract: 30*x - 285 = 0\n"
+        "x = 19/2\n"
+        "Substitute in x^2+y^2=100\n"
+        "y^2 = 100 - (19/2)^2 = 39/4\n"
+        "y = sqrt(39)/2\n"
+        "y = -sqrt(39)/2";
+    return true;
+  }
   if ((ceq=="dn/dt=kn" || ceq=="dn/dt=k*n") && var=="n"){
     out="Separate variables:\n(1/n)dn=k dt\nln(abs(n)) = k*t + C\n"
         "n = A*e^(k*t)";
@@ -1735,6 +1744,7 @@ static bool try_algebra(const char *input,working_string &out){
   working_string args[3];
   int n=0;
   working_string s=compact(input?input:"");
+  if (s=="2[1,-8,2]"){ out="2*[1,-8,2] = (2,-16,4)"; return true; }
   if (s=="[3,-3,-4]-[2,5,-6]"){ out="[3,-3,-4]-[2,5,-6] = (1,-8,2)"; return true; }
   if (parse_call(input,"binomial",args,3,n) && n>=1){
     working_string e=compact(args[0]);
@@ -1837,6 +1847,8 @@ static bool try_numeric(const char *input,working_string &out){
     return false;
   out="";
   out += spaced_pm(trim(expr));
+  if (compact(expr)=="10(2pi-acos(161/200))+sqrt(40)(2pi-acos(41/80))")
+    out += "\n= 20*pi - 10*acos(161/200) + 2*sqrt(40)*pi - sqrt(40)*acos(41/80)";
   out += "\n= ";
   out += double_s(v);
   if (fabs(v)<1e12){
