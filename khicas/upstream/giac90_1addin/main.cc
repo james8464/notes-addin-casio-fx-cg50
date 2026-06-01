@@ -107,6 +107,7 @@ const unsigned short translated_keys[] =
 };
 
 static volatile int menutimer=0;
+static volatile int recordtimer=0;
 static int cas_key_down(int k){
   volatile const unsigned short *r=(volatile const unsigned short *)0xA44B0000;
   int row=k%10, col=k/10-1;
@@ -143,6 +144,17 @@ void set_menu_timer(){
   }
 }
 
+void draw_recording_tick(){
+  drawRecordingIndicator();
+}
+
+void set_recording_timer(){
+  if (recordtimer) return;
+  recordtimer = Timer_Install(0,draw_recording_tick,500);
+  if (recordtimer > 0)
+    Timer_Start(recordtimer);
+}
+
 int ck_getkey(int * keyptr){
   bool is_emulator = *(volatile uint32_t *)0xff000044 == 0x00000000;
   int keyflag=GetSetupSetting( (unsigned int)0x14);
@@ -169,13 +181,14 @@ int ck_getkey(int * keyptr){
   if (keyflag & 1)
     shiftstate=true;
   static int f1f6_latch=0;
+  set_recording_timer();
   while (1){
     if (!cas_f1f6_down())
       f1f6_latch=0;
     casiostatus();
     DisplayStatusArea();
-    drawRecordingIndicator();
     Bdisp_PutDisp_DD ();
+    drawRecordingIndicator();
     SetSetupSetting(0x14,0); // disable OFF
     int ret=GetKeyWait_OS(&col,&row, 2 /* KEYWAIT_HALTON_TIMERON*/, timeout_delay /*timeout_period*/, 1 /* 0: handle menu key*/, &keycode) ;
     if (!shiftstate && (col==4 && row==9)){

@@ -83,6 +83,18 @@ QUALITY_CASES = [
         ],
     ),
     (
+        "integrate((ln(x))^2)",
+        10,
+        [
+            "Let u = ln(x)^2, dv = dx",
+            "du = 2*ln(x)/x dx, v = x",
+            "Let u = ln(x), dv = dx",
+            "J = x*ln(x) - int(1) dx",
+            "General: x*ln(abs(x))^2 - 2*x*ln(abs(x)) + 2*x + C",
+            "Answer: x*ln(x)^2 - 2*x*ln(x) + 2*x + C",
+        ],
+    ),
+    (
         "integrate(2*x*cos(x^2),x)",
         5,
         [

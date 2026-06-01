@@ -1398,8 +1398,18 @@ static bool try_integral(const char *input,working_string &out){
   }
   if (e=="(ln(x))^2" || e=="ln(x)^2"){
     out=""
-        "I=x*ln(x)^2-2*int(ln(x))dx\n"
-        "int ln(x)dx=x*ln(x)-x\n"
+        "Integration by parts:\n"
+        "I = int(ln(x)^2) dx\n"
+        "Let u = ln(x)^2, dv = dx\n"
+        "du = 2*ln(x)/x dx, v = x\n"
+        "I = x*ln(x)^2 - 2*int(ln(x)) dx\n"
+        "For J = int(ln(x)) dx:\n"
+        "Let u = ln(x), dv = dx\n"
+        "du = 1/x dx, v = x\n"
+        "J = x*ln(x) - int(1) dx\n"
+        "J = x*ln(x) - x\n"
+        "I = x*ln(x)^2 - 2*(x*ln(x) - x)\n"
+        "General: x*ln(abs(x))^2 - 2*x*ln(abs(x)) + 2*x + C\n"
         "Answer: x*ln(x)^2 - 2*x*ln(x) + 2*x + C";
     return true;
   }

@@ -79,7 +79,6 @@ void set_xcas_status(){
   strcpy(xcas_status,status.c_str());
   DefineStatusMessage(xcas_status, 1, 0, 0);
   DisplayStatusArea();
-  drawRecordingIndicator();
 }
 
 void menu_setup(){
@@ -1961,6 +1960,18 @@ int Console_GetKey(){
       return Console_Input((const unsigned char*)buf);
     }
     if (key==KEY_CTRL_F6){
+      Menu smallmenu;
+      smallmenu.numitems=1;
+      MenuItem smallmenuitems[smallmenu.numitems];
+      smallmenu.items=smallmenuitems;
+      smallmenu.height=1;
+      smallmenu.scrollbar=0;
+      smallmenu.scrollout=1;
+      smallmenuitems[0].text = (char *)(cas_alt_fkeys ? "Normal keys" : "Alt labels");
+      if (doMenu(&smallmenu)==MENU_RETURN_SELECTION)
+	cas_alt_fkeys=!cas_alt_fkeys;
+      Console_Disp();
+      continue;
 #if 0
       Menu smallmenu;
       smallmenu.numitems=13;
@@ -2972,7 +2983,7 @@ int Console_Disp()
     menu += string(menu_f2);
     while (menu.size()<13)
       menu += " ";
-    menu += lang?"| voir | cmds | A<>a |      ":"| view | cmds | A<>a |      ";
+    menu += lang?"| voir | cmds | A<>a | Fich ":"| view | cmds | A<>a | File ";
     PrintMini(0,58,menu.c_str(),4);
   }
 
@@ -2980,6 +2991,7 @@ int Console_Disp()
   set_xcas_status();
   Bdisp_PutDisp_DD();
   drawCasioCasBorder();
+  drawRecordingIndicator();
   return CONSOLE_SUCCEEDED;
 }
 
