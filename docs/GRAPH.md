@@ -1,6 +1,6 @@
 # Project Graph
 
-Last updated: 2026-06-01 11:48 BST
+Last updated: 2026-06-01 12:04 BST
 
 ## Build
 
@@ -17,7 +17,7 @@ graph TD
   Build --> Help["help/functions/*.txt"]
   Help --> PAK["calculator_files/CAS.PAK: 31,667 bytes; sha c9429427"]
   G3A --> Meta["CAS / @CAS / CAS.g3a"]
-  G3A --> Size["2,087,416 bytes; under 2,097,152 cap; sha 9e9f13b6"]
+  G3A --> Size["2,091,580 bytes; under 2,097,152 cap; sha d58662f8"]
 ```
 
 ## Runtime
@@ -38,7 +38,7 @@ graph TD
 ```mermaid
 graph TD
   Work["working engine"] --> Diff["diff: guarded affine chain powers, optimisation/quotient derivatives, ln^2 chain, arctan inverse trig, ordered cubic route for 108*x-36*x^2+3*x^3, exp product routes incl 4*(x^2-2)*exp(-2*x), implicit, trig basics"]
-  Work --> Int["integrate: affine reverse-chain powers, full-derivative quadratic substitution like (2*x+1)*cos(x^2+x), reciprocal affine logs c/(a*x+b), sums of reciprocal affine terms, expanded (ln(x))^2 by-parts answer, definite ln(x)^2 by-parts endpoint markers, compact radical routes including 12*(3-x/2)^(1/2), 30*(1-x/3)^(3/2), 15*(1-x/4)^(1/4), 3*x^2*(4-2*x^3)^(3/2), (x+1)/(x^2+2*x+3)^(1/3), affine trig/exp terms like sin(4*x+3), cos(2-3*x), exp(1-3*x), generic c*x*sin/cos(a*x+b) by-parts, x^2*cos(x/3) by-parts, and 1/(sqrt(x)(sqrt(x)+2)) definite substitution, linear-over-linear division logs, damped-sine by-parts, substitution, definite substitution"]
+  Work --> Int["integrate: affine reverse-chain powers with reciprocal exam form for negative powers, polynomial-over-x^n rewrite, trig identity products/squares/sec-cot forms, full-derivative quadratic substitution like (2*x+1)*cos(x^2+x), reciprocal affine logs c/(a*x+b), sums of reciprocal affine terms, expanded (ln(x))^2 by-parts answer, definite ln(x)^2 by-parts endpoint markers, compact radical routes including 12*(3-x/2)^(1/2), 30*(1-x/3)^(3/2), 15*(1-x/4)^(1/4), 3*x^2*(4-2*x^3)^(3/2), (x+1)/(x^2+2*x+3)^(1/3), affine trig/exp terms like sin(4*x+3), cos(2-3*x), exp(1-3*x), generic c*x*sin/cos(a*x+b) by-parts, x^2*cos(x/3) by-parts, and 1/(sqrt(x)(sqrt(x)+2)) definite substitution, linear-over-linear division logs, damped-sine by-parts, substitution, definite substitution"]
   Work --> Solve["solve: guarded linear with exam-order lines for 8000=64000-15*k and 64000-11200*t=0, integer/rational-root quadratics with explicit root lines, product-coefficient preservation, common-factor exam order, exp/log routes including 10^(3*k)=2, rational route for k*(k+3)/(k+1)=2, circle-intersection route, periodic trig route for 10=12+3*sin(pi*t/6), rational inequality critical-value route, dy/dx and dn/dt separable"]
   Work --> Alg["algebra: variable-aware quadratic factor, simplify rational cancel-after-factor, targeted expand, high-frequency exam forms, binomial series coefficient/term lines for three queue patterns"]
   Work --> PF["partial fractions: targeted apart marker route for 6/(u*(3+2*u))"]

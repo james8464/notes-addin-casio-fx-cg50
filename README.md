@@ -25,12 +25,12 @@ Current status:
 
 - app name: `CAS`
 - file: `CAS.g3a`
-- size: `2,087,416` bytes
-- hard limit headroom: `9,736` bytes under `2,097,152`
-- sha256: `9e9f13b6ff250b3db55368a2753c56a711639cf2f333ddaf40a917b79a0b9c30`
+- size: `2,091,580` bytes
+- hard limit headroom: `5,572` bytes under `2,097,152`
+- sha256: `d58662f889351d63e2122f6a113b3f72f6dc1eba01bd8fc43c21f727fb50118c`
 - help pack: `CAS.PAK`, `31,667` bytes, sha256 `c94294278bdfe3255577241bf57865f63596b8aac7a73ab6039b2ddbf15e2eab`
-- exact queue runtime: `14,642/14,642`
-- strict marker quality: `13,276/14,626`
+- exact queue runtime: `14,658/14,658`
+- strict marker quality: `13,323/14,658`
 - online challenge source coverage: MadAsMaths exact rows in queue; Daily Integral hard-integration style probes inspected from `https://dailyintegral.com/archive`
 
 Notable routes:
@@ -39,6 +39,9 @@ Notable routes:
 - `integrate((ln(x))^2,x)` returns the expanded mark-scheme form `x*ln(x)^2 - 2*x*ln(x) + 2*x + C`
 - `defint(ln(x)^2,x,2,4),method=parts` shows by-parts setup, antiderivative, and endpoint substitution markers
 - `integrate(12*(3-x/2)^(1/2),x)` compact reverse-chain radical route
+- affine negative-power integrals now show reciprocal exam form before the compact power answer
+- polynomial-over-`x^n` integrals rewrite first, e.g. `(x^2+6)/x^4 -> x^-2 + 6*x^-4`
+- trig identity integrals now cover `sin/cos` products, `1/cos(x)^2`, `1+tan(x)^2`, affine trig squares, and `sec/cot` identity forms
 - `integrate(30*(1-x/3)^(3/2),x)` and `15*(1-x/4)^(1/4)` compact reverse-chain radical routes
 - `integrate((ln(x))^2/x,x,3,u=ln(x))` substitution
 - `integrate(3*x^2*(4-2*x^3)^(3/2),x)` reverse-chain substitution

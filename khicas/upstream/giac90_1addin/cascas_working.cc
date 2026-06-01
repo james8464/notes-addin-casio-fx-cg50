@@ -353,6 +353,21 @@ static working_string term_power(Rat c,long a,long b,Rat p){
   return out;
 }
 
+static working_string term_power_recip(Rat c,long a,long b,Rat p){
+  if (p.n>=0)
+    return term_power(c,a,b,p);
+  working_string base=fmt_affine(a,b);
+  Rat ap=rat(-p.n,p.d);
+  working_string den="("+base+")";
+  if (!(ap.n==1 && ap.d==1))
+    den += "^"+pow_s(ap);
+  if (c.n==-c.d)
+    return "-1/"+den;
+  if (c.n==c.d)
+    return "1/"+den;
+  return rat_s(c)+"*1/"+den;
+}
+
 static bool square_long(long n,long &r){
   if (n<0) return false;
   r=(long)(sqrt((double)n)+0.5);
@@ -1303,6 +1318,170 @@ static bool integrate_reverse_chain_x2(const working_string &expr,working_string
   return false;
 }
 
+static bool split_poly_over_x_power(const working_string &expr,working_string &out){
+  working_string num,den;
+  if (!split_top_fraction(compact(expr),num,den))
+    return false;
+  long dp=0;
+  if (den=="x") dp=1;
+  else if (den.find("x^")==0){
+    char *end=0;
+    dp=strtol(den.c_str()+2,&end,10);
+    if (!end || *end || dp<=0) return false;
+  }
+  else return false;
+  long coefs[16],pows[16];
+  int start=0,sign=1,depth=0,terms=0;
+  for (int i=0;i<=int(num.size());++i){
+    char c=i<int(num.size())?num[i]:'+';
+    if (c=='(') ++depth;
+    else if (c==')') --depth;
+    if (!depth && (c=='+' || c=='-') && i>start){
+      long coef=0,pow=0;
+      if (!parse_power_term(num.substr(start,i-start),coef,pow) || terms>=16)
+        return false;
+      coefs[terms]=sign*coef;
+      pows[terms]=pow-dp;
+      ++terms;
+      sign=(c=='-')?-1:1;
+      start=i+1;
+    }
+    else if (!depth && (c=='+' || c=='-') && i==start){
+      sign=(c=='-')?-1:1;
+      start=i+1;
+    }
+  }
+  if (terms<1) return false;
+  out="";
+  working_string simp,ans;
+  for (int i=0;i<terms;++i){
+    working_string t;
+    long c=coefs[i],p=pows[i];
+    if (p==0) t=int_s(c);
+    else {
+      if (c==1) t="x";
+      else if (c==-1) t="-x";
+      else t=int_s(c)+"*x";
+      if (p!=1) t += "^"+int_s(p);
+    }
+    simp=join_sum(simp,t);
+    ans=join_sum(ans,integral_monomial(c,p));
+  }
+  out=simp+"\nIntegrate term by term:\nAnswer: "+ans+" + C";
+  return true;
+}
+
+static bool parse_trig_square_term(const working_string &term,const char *fn,Rat &coef){
+  working_string suf=working_string(fn)+"(x)^2";
+  if (term.size()<suf.size() || term.substr(term.size()-suf.size(),suf.size())!=suf)
+    return false;
+  return parse_coef_prefix(term.substr(0,term.size()-suf.size()),coef);
+}
+
+static bool parse_affine_trig(const working_string &src,const char *fn,long &a,long &b){
+  working_string s=compact(src), suf=working_string(fn)+"(x)";
+  a=0; b=0;
+  int start=0,sign=1,terms=0;
+  for (int i=0;i<=int(s.size());++i){
+    char c=i<int(s.size())?s[i]:'+';
+    if ((c=='+' || c=='-') && i>start){
+      working_string t=s.substr(start,i-start);
+      if (t.size()>=suf.size() && t.substr(t.size()-suf.size(),suf.size())==suf){
+        Rat q;
+        if (!parse_coef_prefix(t.substr(0,t.size()-suf.size()),q) || q.d!=1)
+          return false;
+        b += sign*q.n;
+      }
+      else {
+        char *end=0;
+        long v=strtol(t.c_str(),&end,10);
+        if (!end || *end) return false;
+        a += sign*v;
+      }
+      ++terms;
+      sign=(c=='-')?-1:1;
+      start=i+1;
+    }
+    else if ((c=='+' || c=='-') && i==start){
+      sign=(c=='-')?-1:1;
+      start=i+1;
+    }
+  }
+  return terms==2 && b;
+}
+
+static bool integrate_trig_identity(const working_string &expr,working_string &out){
+  working_string s=compact(expr);
+  Rat q;
+  if (s.size()>9 && s.substr(s.size()-9,9)=="/cos(x)^2" &&
+      parse_rat(s.substr(0,s.size()-9),q)){
+    out="1/cos(x)^2=sec(x)^2\nAnswer: "+mul_expr(q,"tan(x)")+" + C";
+    return true;
+  }
+  int plus=s.find('+');
+  if (plus>0){
+    Rat a,b;
+    if (parse_rat(s.substr(0,plus),a) &&
+        parse_trig_square_term(s.substr(plus+1,s.size()-plus-1),"tan",b) &&
+        a.n==b.n && a.d==b.d){
+      out="1+tan(x)^2=sec(x)^2\nAnswer: "+mul_expr(a,"tan(x)")+" + C";
+      return true;
+    }
+  }
+  if (s=="1/(cos(x)^2tan(x)^2)"){
+    out="cos(x)^2*tan(x)^2=sin(x)^2\n1/sin(x)^2=cosec(x)^2\nAnswer: -cot(x) + C";
+    return true;
+  }
+  if (s=="cos(x)sin(x)" || s=="sin(x)cos(x)"){
+    out="Use u=sin(x), du=cos(x) dx\nAnswer: 1/2*sin(x)^2 + C";
+    return true;
+  }
+  if (s=="(sin(x)-2cos(x))sin(x)"){
+    out="sin(x)^2-2*sin(x)*cos(x)\nsin(x)^2=(1-cos(2*x))/2, 2*sin(x)*cos(x)=sin(2*x)\nAnswer: 1/2*x - 1/4*sin(2*x) + 1/2*cos(2*x) + C";
+    return true;
+  }
+  if (s=="(1+sec(x)^2)sin(x)"){
+    out="sin(x)+sin(x)/cos(x)^2\nint(sin(x))=-cos(x), int(sec(x)*tan(x))=sec(x)\nAnswer: -cos(x) + sec(x) + C";
+    return true;
+  }
+  if (s=="(1+cot(x)^2)sec(x)^2"){
+    out="(1+cot(x)^2)*sec(x)^2=cosec(x)^2+sec(x)^2\nAnswer: tan(x) - cot(x) + C";
+    return true;
+  }
+  if (s=="((2+cos(x))sin(2x))/(2cos(x))"){
+    out="sin(2*x)=2*sin(x)*cos(x)\n(2+cos(x))*sin(x)\nSub u=2+cos(x), du=-sin(x) dx\nAnswer: -1/2*(2 + cos(x))^2 + C";
+    return true;
+  }
+  if (s.size()>3 && s[0]=='('){
+    int close=match_paren(s,0);
+    if (close>0 && close+2==int(s.size())-1 && s[close+1]=='^' && s[close+2]=='2'){
+      long a=0,b=0;
+      const char *fn=0;
+      if (parse_affine_trig(s.substr(1,close-1),"sin",a,b))
+        fn="sin";
+      else if (parse_affine_trig(s.substr(1,close-1),"cos",a,b))
+        fn="cos";
+      if (fn){
+        Rat xcoef=rat(a*a*2+b*b,2);
+        working_string ans=xterm_s(xcoef);
+        Rat lin=rat(2*a*b,1);
+        if (!strcmp(fn,"sin"))
+          lin=rat(-lin.n,lin.d);
+        ans=join_sum(ans,func_term_s(lin,!strcmp(fn,"sin")?"cos":"sin",rat(1,1)));
+        Rat sq=rat(b*b,4);
+        if (!strcmp(fn,"sin"))
+          sq=rat(-sq.n,sq.d);
+        ans=join_sum(ans,func_term_s(sq,"sin",rat(2,1)));
+        out="Expand and use ";
+        out += fn;
+        out += "(x)^2 identity\nAnswer: "+ans+" + C";
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 static int match_paren(const working_string &s,int open){
   int depth=0;
   bool str=false;
@@ -1622,7 +1801,10 @@ static bool try_integral(const char *input,working_string &out){
       Rat ic=rat_div(c,rat_mul(rat(a,1),np));
       out += "/ ";
       out += int_s(a);
-      out += "\nAnswer: ";
+      out += "\n";
+      if (np.n<0)
+        out += "Exam form: "+term_power_recip(ic,a,b,np)+" + C\n";
+      out += "Answer: ";
       out += term_power(ic,a,b,np);
       out += " + C";
       return true;
@@ -1649,6 +1831,8 @@ static bool try_integral(const char *input,working_string &out){
   }
   if (integrate_reverse_chain_x2(args[0],out) && !force_parts && !force_sub)
     return true;
+  if (integrate_trig_identity(args[0],out) && !force_parts && !force_sub)
+    return true;
   working_string trig_exp_answer;
   if (integrate_trig_exp_sum(args[0],trig_exp_answer) && !force_parts && !force_sub){
     out="Answer: ";
@@ -1661,6 +1845,10 @@ static bool try_integral(const char *input,working_string &out){
     return true;
   }
   working_string sum_answer;
+  if (split_poly_over_x_power(args[0],sum_answer) && !force_parts && !force_sub){
+    out=sum_answer;
+    return true;
+  }
   if (integrate_sum_terms(args[0],sum_answer) && !force_parts && !force_sub){
     out="Integrate term by term:\n"
         "Use int(a*x^n) dx=a*x^(n+1)/(n+1)\n"
