@@ -79,6 +79,7 @@ void set_xcas_status(){
   strcpy(xcas_status,status.c_str());
   DefineStatusMessage(xcas_status, 1, 0, 0);
   DisplayStatusArea();
+  drawRecordingIndicator();
 }
 
 void menu_setup(){
@@ -1961,17 +1962,23 @@ int Console_GetKey(){
     }
     if (key==KEY_CTRL_F6){
       Menu smallmenu;
-      smallmenu.numitems=1;
+      smallmenu.numitems=2;
       MenuItem smallmenuitems[smallmenu.numitems];
       smallmenu.items=smallmenuitems;
-      smallmenu.height=1;
+      smallmenu.height=8;
       smallmenu.scrollbar=0;
       smallmenu.scrollout=1;
-      smallmenuitems[0].text = (char *)(cas_alt_fkeys ? "Normal keys" : "Alt labels");
-      if (doMenu(&smallmenu)==MENU_RETURN_SELECTION)
-	cas_alt_fkeys=!cas_alt_fkeys;
+      smallmenu.title = (char*)"File";
+      smallmenuitems[0].text = (char*)"Config";
+      smallmenuitems[1].text = (char*)(cas_alt_fkeys ? "Normal" : "Alt keys");
+      if (doMenu(&smallmenu)==MENU_RETURN_SELECTION){
+	if (smallmenu.selection==1)
+	  menu_setup();
+	if (smallmenu.selection==2)
+	  cas_alt_fkeys=!cas_alt_fkeys;
+      }
       Console_Disp();
-      continue;
+      return CONSOLE_SUCCEEDED;
 #if 0
       Menu smallmenu;
       smallmenu.numitems=13;
@@ -2186,8 +2193,6 @@ int Console_GetKey(){
       Console_Disp();
       return CONSOLE_SUCCEEDED;
 #endif
-      Console_Disp();
-      continue;
 #if 0
       char filename[MAX_FILENAME_SIZE+1];
       //drawRectangle(0, 24, LCD_WIDTH_PX, LCD_HEIGHT_PX-24, COLOR_WHITE);
@@ -2991,7 +2996,6 @@ int Console_Disp()
   set_xcas_status();
   Bdisp_PutDisp_DD();
   drawCasioCasBorder();
-  drawRecordingIndicator();
   return CONSOLE_SUCCEEDED;
 }
 

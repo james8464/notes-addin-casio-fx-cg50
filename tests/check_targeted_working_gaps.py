@@ -11,6 +11,9 @@ CASES = [
     ("integrate(x*exp(x),x)", ["Use integration by parts", "Let u=x, dv=e^x dx", "du=dx, v=e^x"]),
     ("integrate(x*cos(x),x)", ["Use integration by parts", "Let u=x, dv=cos(x) dx", "du=dx, v=sin(x)"]),
     ("integrate((ln(x))^2)", ["Let u = ln(x)^2, dv = dx", "Let u = ln(x), dv = dx"]),
+    ("integrate(2*x*cos(x^2),x)", ["Sub u=x^2", "du=2*x dx", "Answer: sin(x^2) + C"]),
+    ("integrate(2*x*sin(x^2),x)", ["Sub u=x^2", "Answer: -cos(x^2) + C"]),
+    ("integrate(x*(3+x^2)^4,x)", ["Sub u=3 + x^2", "scale 1/2", "Answer: 1/10*(3 + x^2)^5 + C"]),
 ]
 
 

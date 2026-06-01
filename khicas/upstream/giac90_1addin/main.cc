@@ -145,7 +145,10 @@ void set_menu_timer(){
 }
 
 void draw_recording_tick(){
+  casiostatus();
+  DisplayStatusArea();
   drawRecordingIndicator();
+  Bdisp_PutDisp_DD();
 }
 
 void set_recording_timer(){
@@ -187,8 +190,8 @@ int ck_getkey(int * keyptr){
       f1f6_latch=0;
     casiostatus();
     DisplayStatusArea();
-    Bdisp_PutDisp_DD ();
     drawRecordingIndicator();
+    Bdisp_PutDisp_DD ();
     SetSetupSetting(0x14,0); // disable OFF
     int ret=GetKeyWait_OS(&col,&row, 2 /* KEYWAIT_HALTON_TIMERON*/, timeout_delay /*timeout_period*/, 1 /* 0: handle menu key*/, &keycode) ;
     if (!shiftstate && (col==4 && row==9)){

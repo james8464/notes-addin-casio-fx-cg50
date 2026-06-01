@@ -91,6 +91,16 @@ static working_string rat_s(Rat r){
   return frac_s(r.n,r.d);
 }
 
+static working_string mul_expr(Rat q,const working_string &e){
+  working_string out;
+  Rat a=q;
+  if (a.n<0){ out="-"; a.n=-a.n; }
+  if (!(a.n==1 && a.d==1))
+    out += rat_s(a)+"*";
+  out += e;
+  return out;
+}
+
 static bool parse_rat(const working_string &src,Rat &r){
   working_string s=compact(src);
   if (s.empty())
@@ -157,6 +167,43 @@ static bool parse_affine(const working_string &src,long &a,long &b){
         if (!cs.empty())
           cf=strtol(cs.c_str(),&end,10);
         if (!cs.empty() && (!end || *end)) return false;
+        a += sign*cf;
+      }
+      else {
+        long v=strtol(t.c_str(),&end,10);
+        if (!end || *end) return false;
+        b += sign*v;
+      }
+      ++terms;
+      sign=(c=='-')?-1:1;
+      start=i+1;
+    }
+    else if ((c=='+' || c=='-') && i==start){
+      sign=(c=='-')?-1:1;
+      start=i+1;
+    }
+  }
+  return terms && a;
+}
+
+static bool parse_quad_x2(const working_string &src,long &a,long &b){
+  working_string s=compact(src);
+  a=0; b=0;
+  int start=0,sign=1,terms=0;
+  for (int i=0;i<=int(s.size());++i){
+    char c=i<int(s.size())?s[i]:'+';
+    if ((c=='+' || c=='-') && i>start){
+      working_string t=s.substr(start,i-start);
+      int x2=t.find("x^2");
+      char *end=0;
+      if (x2>=0){
+        if (x2+3!=int(t.size())) return false;
+        working_string cs=t.substr(0,x2);
+        long cf=1;
+        if (!cs.empty()){
+          cf=strtol(cs.c_str(),&end,10);
+          if (!end || *end) return false;
+        }
         a += sign*cf;
       }
       else {
@@ -1013,6 +1060,68 @@ static working_string spaced_pm(const working_string &s){
   return r;
 }
 
+static bool parse_coef_prefix(const working_string &pre,Rat &c){
+  if (pre.empty())
+    c=rat(1,1);
+  else if (pre=="-")
+    c=rat(-1,1);
+  else
+    return parse_rat(pre,c);
+  return true;
+}
+
+static bool integrate_reverse_chain_x2(const working_string &expr,working_string &out){
+  working_string s=compact(expr);
+  int x=s.find('x');
+  if (x<0) return false;
+  Rat c;
+  if (!parse_coef_prefix(s.substr(0,x),c)) return false;
+  int p=x+1;
+  const char *fns[]={"sin(","cos(","exp(",0};
+  for (int i=0;fns[i];++i){
+    int fl=strlen(fns[i]);
+    if (s.substr(p,fl)!=fns[i]) continue;
+    int open=p+fl-1, close=match_paren(s,open);
+    if (close!=int(s.size())-1) return false;
+    working_string u=s.substr(open+1,close-open-1);
+    long a=0,b=0;
+    if (!parse_quad_x2(u,a,b)) return false;
+    Rat q=rat_div(c,rat(2*a,1));
+    working_string up=spaced_pm(u), base;
+    if (!strcmp(fns[i],"sin(")){ q=rat(-q.n,q.d); base="cos("+up+")"; }
+    else if (!strcmp(fns[i],"cos(")) base="sin("+up+")";
+    else base="exp("+up+")";
+    out="Sub u="+up+"\n";
+    out += "du="+int_s(2*a)+"*x dx\n";
+    if (!(q.n==1 && q.d==1))
+      out += "scale "+rat_s(q)+"\n";
+    out += "Answer: "+mul_expr(q,base)+" + C";
+    return true;
+  }
+  if (p<int(s.size()) && s[p]=='('){
+    int close=match_paren(s,p);
+    if (close<0 || close+1>=int(s.size()) || s[close+1]!='^') return false;
+    working_string u=s.substr(p+1,close-p-1);
+    long a=0,b=0;
+    Rat pow;
+    if (!parse_quad_x2(u,a,b) || !parse_rat(s.substr(close+2,s.size()-close-2),pow))
+      return false;
+    Rat np=rat(pow.n+pow.d,pow.d);
+    if (!np.n) return false;
+    Rat sc=rat_div(c,rat(2*a,1));
+    Rat q=rat_div(sc,np);
+    working_string up=spaced_pm(u);
+    working_string base="("+up+")^"+pow_s(np);
+    out="Sub u="+up+"\n";
+    out += "du="+int_s(2*a)+"*x dx\n";
+    if (!(sc.n==1 && sc.d==1))
+      out += "scale "+rat_s(sc)+"\n";
+    out += "Answer: "+mul_expr(q,base)+" + C";
+    return true;
+  }
+  return false;
+}
+
 static int match_paren(const working_string &s,int open){
   int depth=0;
   bool str=false;
@@ -1357,6 +1466,8 @@ static bool try_integral(const char *input,working_string &out){
     out="-48*(1 - x/4)^(5/4) + C";
     return true;
   }
+  if (integrate_reverse_chain_x2(args[0],out) && !force_parts && !force_sub)
+    return true;
   working_string trig_exp_answer;
   if (integrate_trig_exp_sum(args[0],trig_exp_answer) && !force_parts && !force_sub){
     out="Answer: ";
