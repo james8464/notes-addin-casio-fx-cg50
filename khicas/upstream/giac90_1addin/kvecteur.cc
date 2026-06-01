@@ -5357,7 +5357,7 @@ namespace giac {
 #endif
       }
       else
-	*logptr(contextptr) << "Warning! Automatic extension not implemented. You can try to diagonalize the matrix * a non trivial element of GF(" << modulo << ",lcm of degrees of factor(" << symb_horner(p_car,vx_var()) << "))" <<  endl;
+	*logptr(contextptr) << "Auto extension not implemented GF(" << modulo << ",lcm of degrees of factor(" << symb_horner(p_car,vx_var()) << "))" <<  endl;
     }
 #ifndef NO_RTTI
     if (has_gf_coeff(p_car,modulo,fieldpmin)){
@@ -5675,7 +5675,7 @@ namespace giac {
     bool b=complex_mode(contextptr);
     complex_mode(true,contextptr);
     if (!egv(e,m,d,contextptr,false,false,false))
-      *logptr(contextptr) << gettext("Low accuracy or not diagonalizable at some eigenvalue. Try jordan if the matrix is exact.") << endl;
+      *logptr(contextptr) << gettext("Low accuracy/not diagonalizable") << endl;
     complex_mode(b,contextptr);
     return m;
   }

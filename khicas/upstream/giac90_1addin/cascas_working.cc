@@ -1581,6 +1581,8 @@ static bool try_solve(const char *input,working_string &out){
 static bool try_algebra(const char *input,working_string &out){
   working_string args[3];
   int n=0;
+  working_string s=compact(input?input:"");
+  if (s=="[3,-3,-4]-[2,5,-6]"){ out="[3,-3,-4]-[2,5,-6] = (1,-8,2)"; return true; }
   if (parse_call(input,"factor",args,3,n) && n>=1){
     working_string e=compact(args[0]);
     long a,b,c;

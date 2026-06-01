@@ -1196,7 +1196,7 @@ namespace giac {
     gen singuf=evalf(singu,1,contextptr), veq_not_singuf=evalf(veq_not_singu,1,contextptr);
     if (singuf.type!=_VECT || veq_not_singuf.type!=_VECT || !is_numericv(*singuf._VECTptr) || !is_numericv(*veq_not_singuf._VECTptr)){
       if (eids.size()>eid.size())
-	return vecteur(1,gensizeerr(gettext("Unable to find numeric values solving equation")));
+	return vecteur(1,gensizeerr(gettext("No numeric values")));
       *logptr(contextptr) << gettext("Param: ") << veq_not_singu << endl;
     }
     veq=mergevecteur(veq_not_singu,singu);
@@ -1651,7 +1651,7 @@ namespace giac {
 	int s1=int(lvarx(tmp,x).size());
 	if (s1<s){
 	  // Note: we are checking solutions numerically later
-	  *logptr(contextptr) << gettext("Solving ") << x << gettext(" equation ") << tmp << "=0" << endl;
+	  *logptr(contextptr) << gettext("Solving ") << x << gettext(" eq ") << tmp << "=0" << endl;
 	  expr=tmp;
 	  s=s1;
 	}
@@ -3370,7 +3370,7 @@ namespace giac {
       int iszero=0;
       vecteur res= bisection_solver(v0,v[1],gguess[0],gguess[1],iszero,contextptr);
       if (!res.empty() && iszero!=1)
-	*logptr(contextptr) << (iszero==-1?gettext("Undefined"):gettext("Sign rev")) << endl;
+	*logptr(contextptr) << (iszero==-1?gettext("Undef"):gettext("Sign rev")) << endl;
       return res;
     }
 #endif
@@ -5544,7 +5544,7 @@ namespace giac {
     }
 #if 0
     if (s>int(eq_orig.size())){
-      *logptr(contextptr) << gettext("Warning: reducing unknowns: ") << var_orig << " -> " << vecteur(it,it+eq_orig.size()) << endl;
+      *logptr(contextptr) << gettext("Reducing unknowns: ") << var_orig << " -> " << vecteur(it,it+eq_orig.size()) << endl;
       vecteur remvars=vecteur(it+eq_orig.size(),itend);
       vecteur res=gsolve(eq_orig,vecteur(it,it+eq_orig.size()),complexmode,evalf_after,contextptr);
       for (unsigned i=0;i<res.size();++i){
@@ -6938,7 +6938,7 @@ namespace giac {
     if (solu._VECTptr->empty())
       return args._VECTptr->back();
     if (solu._VECTptr->size()>1)
-      *logptr(contextptr) << gettext("Algsubs; gbasis(") << gen2vecteur(eq) << ","<< ids << ");greduce("<<args._VECTptr->back()<<",G," << ids << ");" << endl;
+      *logptr(contextptr) << gettext("Algsubs(") << gen2vecteur(eq) << ","<< ids << ");greduce("<<args._VECTptr->back()<<",G," << ids << ");" << endl;
     return normal(solu[0][0],contextptr);
   }
   static const char _algsubs_s []="algsubs";

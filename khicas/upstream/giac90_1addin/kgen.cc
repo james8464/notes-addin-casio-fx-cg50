@@ -5738,7 +5738,7 @@ namespace giac {
     }
     case _INT___VECT: 
       if (warnpy && a.val>=0 && python_compat(contextptr)){
-	alert(gettext("Python compatibility, integer*list will do vector multiplication, run list*integer to duplicate list"),contextptr);
+	alert(gettext("Python: integer*list vector multiplication"),contextptr);
 	warnpy=false;
       }
     case _ZINT__VECT: case _DOUBLE___VECT: case _CPLX__VECT: case _SYMB__VECT: case _IDNT__VECT: case _POLY__VECT: case _EXT__VECT: case _MOD__VECT: case _FRAC__VECT:  {
@@ -6058,7 +6058,7 @@ namespace giac {
 	return symb_prog3(a,0,pow(base,b,contextptr));
     }
     if (base.type==_VECT && base.subtype!=_POLY1__VECT && !is_squarematrix(base)){
-      *logptr(contextptr) << gettext("Warning, ^ is ambiguous on non square matrices. Use .^ to apply ^ element by element.") << endl;
+      *logptr(contextptr) << gettext("Ambiguous matrix power") << endl;
       if (exponent.type==_VECT)
 	return apply(base,exponent,contextptr,giac_pow);
       if (base.subtype!=_LIST__VECT && (exponent.type==_INT_ && exponent.val %2==0) )
@@ -7110,7 +7110,7 @@ namespace giac {
       if (a.subtype==_POLY1__VECT || b.subtype==_POLY1__VECT)
 	return fraction(a,b).normal();
       if (is_squarematrix(b)){
-	*logptr(contextptr) << gettext("Warning, pointwise division of a by b. For matrix division, please use inv(b)*a or a*inv(b)") << endl;
+	*logptr(contextptr) << gettext("Pointwise division") << endl;
       }
       if (b._VECTptr->size()==1)
 	return rdiv(a,b._VECTptr->front(),contextptr);
@@ -10970,7 +10970,7 @@ namespace giac {
 	      if (args.type!=_VECT || args._VECTptr->empty())
 		continue;
 	      if (contains(args._VECTptr->front(),i__IDNT_e)){
-		*logptr(contextptr) << gettext("Warning, i is usually sqrt(-1), I'm using a symbolic variable instead but you should check your input") << endl;
+		*logptr(contextptr) << gettext("i treated as symbolic") << endl;
 		return res;
 	      }
 	    }
@@ -10981,7 +10981,7 @@ namespace giac {
 	      if (args.type!=_VECT || args._VECTptr->empty())
 		continue;
 	      if (contains(args._VECTptr->front(),i__IDNT_e)){
-		*logptr(contextptr) << gettext("Warning, i is usually sqrt(-1), I'm using a symbolic variable instead but you should check your input") << endl;
+		*logptr(contextptr) << gettext("i treated as symbolic") << endl;
 		return res;
 	      }
 	    }
@@ -10989,7 +10989,7 @@ namespace giac {
 	    vs=int(v.size());
 	    for (i=0;i<vs;i++){
 	      if (v[i]._SYMBptr->feuille[1]==i__IDNT_e){
-		*logptr(contextptr) << gettext("Warning, i is usually sqrt(-1), I'm using a symbolic variable instead but you should check your input") << endl;
+		*logptr(contextptr) << gettext("i treated as symbolic") << endl;
 		break;
 	      }
 	    }
