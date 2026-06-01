@@ -1196,7 +1196,7 @@ namespace giac {
     gen singuf=evalf(singu,1,contextptr), veq_not_singuf=evalf(veq_not_singu,1,contextptr);
     if (singuf.type!=_VECT || veq_not_singuf.type!=_VECT || !is_numericv(*singuf._VECTptr) || !is_numericv(*veq_not_singuf._VECTptr)){
       if (eids.size()>eid.size())
-	return vecteur(1,gensizeerr(gettext("Unable to find numeric values solving equation. For trigonometric equations this may be solved using assumptions, e.g. assume(x>-pi && x<pi)")));
+	return vecteur(1,gensizeerr(gettext("Unable to find numeric values solving equation")));
       *logptr(contextptr) << gettext("Warning! Solving parametric inequation requires assumption on parameters otherwise solutions may be missed. The solutions of the equation are ") << veq_not_singu << endl;
     }
     veq=mergevecteur(veq_not_singu,singu);
@@ -3254,7 +3254,7 @@ namespace giac {
       if (1
 	  //abs_calc_mode(contextptr)==38
 	  ){
-	*logptr(contextptr) << gettext("Solving by bisection with change of variable x=tan(t) and t=-1.57..1.57. Try fsolve(equation,x=guess) for iterative solver or fsolve(equation,x=xmin..xmax) for bisection.") << endl;
+	*logptr(contextptr) << gettext("Solving by bisection. Try fsolve(equation,x=guess) or x=a..b.") << endl;
 	gen eq=subst(v[0],v[1],tan(v[1],contextptr),false,contextptr);
   //grad
 	vecteur v_=makevecteur(eq,symb_equal(v[1],angle_radian(contextptr)?symb_interval(-1.57,1.57):(angle_degree(contextptr)?symb_interval(-89.97,89.97):symb_interval(-99.97,99.97))));

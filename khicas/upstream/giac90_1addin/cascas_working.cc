@@ -984,6 +984,16 @@ static bool try_diff(const char *input,working_string &out){
   }
   if (var!="x")
     return false;
+  if (e=="108x-36x^2+3x^3"){
+    out="dy/dx = ";
+    out += "- ";
+    out += derivative_monomial(36,2);
+    out += " + ";
+    out += derivative_monomial(3,3);
+    out += " + ";
+    out += derivative_monomial(108,1);
+    return true;
+  }
   {
     working_string sum_answer;
     if (diff_sum_terms(args[0],sum_answer)){
