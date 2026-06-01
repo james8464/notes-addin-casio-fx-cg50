@@ -26,9 +26,9 @@ Current status:
 - file: `CAS.g3a`
 - size: `2,097,140` bytes
 - hard limit headroom: `12` bytes
-- sha256: `df6da2d79499376cfdfe3673adf770f82b8eb112f286a7814e282eafedf6c6b0`
+- sha256: `2390345c0b8d0a26d2d3d28957612830ebbb44a4dc84e44daae04a988a5575c6`
 - exact queue runtime: `14,256/14,256`
-- strict marker quality: `13,033/14,256`
+- strict marker quality: `13,037/14,256`
 - online challenge source coverage: MadAsMaths exact rows in queue; Daily Integral hard-integration style probes inspected from `https://dailyintegral.com/archive`
 
 Notable routes:
@@ -60,6 +60,7 @@ Notable routes:
 - `solve(10=12+3*sin(pi*t/6),t)` shows the periodic trig route `u = -2/3` and both period-12 branches
 - `solve(4-exp(2*x)=2,x)` and `solve((2-exp(2*x))^2=0,x)` show the logarithm step result `x = [1/2*ln(2)]`
 - linear solve routes keep exam-order equation lines for `solve(8000=64000-15*k,k)` and `solve(64000-11200*t=0,t)`
+- `exp(2*ln(7/6))` now shows the exponential marker before decimal and exact fraction output
 - generic affine chain/reverse-chain power routes
 - trig/exp term integration, shifted trig identity, damped-sine by-parts route, quadratic solve/factor/expand, log/numeric routes
 - safer solve routing: powered terms no longer fall through the linear solver
@@ -77,7 +78,7 @@ Notable routes:
 - distinct integer quadratic roots show explicit root lines before list answer, e.g. `k = 1 or k = -2`
 - negative-leading integer quadratics now print roots in the exam-friendly order expected by the queue, e.g. `x = [3, 11]`
 - catalogue Help on command screen shows spaced sections and F2/F3 examples
-- `/Users/james/Developer/CASIO/tools/audit_progress_tui.py` shows animated status badges, side-by-side panels on wide terminals, phase lanes, health score, repo sync, last commit, change counts, state age, artifact headroom, live queue rate/ETA, pass/fail bars, animated scan lines, cleanup byte totals, project hygiene, transfer path, quality clusters, release blockers, risk, ignored workspace, active-tool counts, next action, recent events, and run-command panels
+- `/Users/james/Developer/CASIO/tools/audit_progress_tui.py` shows animated status badges, side-by-side panels on wide terminals, phase lanes, health score, repo sync, last commit, change counts, state age, artifact headroom, live queue rate/ETA, pass/fail bars, strict-marker ratios, animated scan/meter lines, cleanup byte totals, project hygiene, transfer path, quality clusters with first gap samples, test checkpoint rows, release blockers, risk, ignored workspace, active-tool counts, next action, recent events, and run-command panels
 
 Active tools:
 

@@ -371,6 +371,19 @@ def failure_clusters(limit: int = 5) -> list[tuple[str, int]]:
     return sorted(counts.items(), key=lambda item: (-item[1], item[0]))[:limit]
 
 
+def failure_cluster_rows(st: Stat, limit: int = 5) -> list[str]:
+    rows: list[str] = []
+    if st.fail_clusters:
+        rows.append("clusters " + "  ".join(f"{k}:{v}" for k, v in st.fail_clusters[:limit]))
+    else:
+        rows.append("clusters none")
+    if st.failures:
+        rows.extend("gap " + item for item in st.failures[:2])
+    else:
+        rows.append("strict gaps none reported")
+    return rows
+
+
 def ignored_rows(limit: int = 4) -> list[str]:
     paths = [
         ROOT / "build",
@@ -477,7 +490,16 @@ def ratio_history(label: str = "queue-run", limit: int = 18) -> str:
 
 def ratios_from(text: str) -> list[tuple[str, int, int]]:
     out: list[tuple[str, int, int]] = []
-    for label in ("help-examples", "working-quality", "shared-working", "queue-run", "removed"):
+    labels = (
+        "help-examples",
+        "working-quality",
+        "shared-working",
+        "queue-schema",
+        "queue-run",
+        "strict-markers",
+        "removed",
+    )
+    for label in labels:
         m = re.search(rf"{re.escape(label)}\s+(\d+)/(\d+)", text)
         if m:
             out.append((label, int(m.group(1)), int(m.group(2))))
@@ -649,6 +671,14 @@ def sweep(width: int, frame: int, enabled: bool) -> str:
     return color("".join(cells), C.magenta, enabled)
 
 
+def meter(width: int, frame: int, enabled: bool) -> str:
+    cells = [" "] * max(12, width)
+    pos = frame % len(cells)
+    for off, char in ((0, "#"), (1, "="), (2, "-")):
+        cells[(pos + off) % len(cells)] = char
+    return color("[" + "".join(cells) + "]", C.blue, enabled)
+
+
 def wave(width: int, frame: int, enabled: bool) -> str:
     marks = "-=+#"
     cells = [marks[(i + frame) % len(marks)] for i in range(max(12, width))]
@@ -692,6 +722,7 @@ def size_hint(st: Stat, frame: int, width: int, enabled: bool) -> list[str]:
     if not st.g3a and st.build_g3a:
         rows.append(size_row("build/CAS.g3a", st.build_g3a, frame, width, enabled))
     rows.append(f"note {st.artifact_note}")
+    rows.append(f"path {G3A}")
     return rows
 
 
@@ -850,6 +881,13 @@ def hygiene_rows(st: Stat, enabled: bool) -> list[str]:
     return rows
 
 
+def test_rows(st: Stat) -> list[str]:
+    if not st.tests or st.tests == "n/a":
+        return ["no test checkpoint yet"]
+    parts = [part.strip() for part in st.tests.split(",") if part.strip()]
+    return parts[:8] or [st.tests]
+
+
 def strict_gap(st: Stat) -> int | None:
     strict = ratio_value(st, "queue-right")
     if not strict:
@@ -885,10 +923,10 @@ def readiness_rows(st: Stat) -> list[str]:
 
 def command_rows() -> list[str]:
     return [
+        f"python3 {AUDIT_PATH} --fps 12",
         "./compile",
         "python3 tests/run_exact_queue.py --engine production --workers 8",
         "python3 tests/run_exact_queue.py --engine production --workers 8 --strict-markers",
-        f"python3 {AUDIT_PATH} --fps 12",
         f"transfer {ROOT / 'calculator_files' / 'CAS.g3a'}",
     ]
 
@@ -942,8 +980,10 @@ def render_compact(st: Stat, frame: int, width: int, enabled: bool) -> str:
         kv("repo", f"{st.branch} @ {st.commit}  graph {st.graph_age}", width, enabled),
         kv("commit", ticker(st.subject, max(12, width - 20), frame), width, enabled),
         kv("status", status_strip(st, enabled), width, enabled),
+        kv("run path", str(AUDIT_PATH), width, enabled),
         kv("lane", phase_lanes(st, frame, enabled), width, enabled),
         kv("metrics", topline_metrics(st, enabled), width, enabled),
+        kv("scanner", meter(max(12, min(28, width - 22)), frame, enabled), width, enabled),
         kv("sync", st.upstream, width, enabled),
         kv("state", f"{st.state_rows} events  age {st.state_age}", width, enabled),
         kv("phase", st.phase, width, enabled),
@@ -975,19 +1015,14 @@ def render_compact(st: Stat, frame: int, width: int, enabled: bool) -> str:
     lines.append(kv("audit path", str(AUDIT_PATH), width, enabled))
     lines.append(kv("active", f"tools {st.tool_count}  test scripts {st.test_count}  dead tools 0", width, enabled))
     quality = f"unsupported {st.unsupported}"
-    if st.fail_clusters:
-        quality += "  clusters " + ", ".join(f"{k}:{v}" for k, v in st.fail_clusters[:3])
-    if st.failures:
-        quality += "  first gap " + st.failures[0]
-    else:
-        quality += "  strict gaps none reported"
+    quality += "  " + "; ".join(failure_cluster_rows(st, 3)[:2])
     lines.append(kv("quality", quality, width, enabled))
     if st.events:
         lines.append(kv("recent", st.events[-1], width, enabled))
     lines.extend(
         [
             trim("-" * width, width),
-            trim("run: " + "  |  ".join(command_rows()[-3:]), width),
+            trim("run: " + "  |  ".join(command_rows()[:3]), width),
             trim("q/ctrl-c quit  --once one frame  --fps N animation rate  --scan-interval N refresh rate", width),
         ]
     )
@@ -1020,6 +1055,7 @@ def render(st: Stat, frame: int, width: int, height: int, enabled: bool) -> str:
         f"event  {st.last}",
         f"graph  {st.graph_age}  state {st.state_rows} rows / age {st.state_age}",
         f"checkpoint {st.checkpoint}",
+        f"audit {AUDIT_PATH}",
     ]
     status_rows = [
         status_strip(st, enabled),
@@ -1027,6 +1063,7 @@ def render(st: Stat, frame: int, width: int, height: int, enabled: bool) -> str:
         topline_metrics(st, enabled),
         f"changes staged {st.staged}  unstaged {st.unstaged}  untracked {st.untracked}",
         f"active tooling {st.tool_count} files  test scripts {st.test_count}",
+        f"scanner {meter(24, frame, enabled)}",
     ]
     if width >= 112:
         left_w = (width - 2) // 2
@@ -1092,13 +1129,9 @@ def render(st: Stat, frame: int, width: int, height: int, enabled: bool) -> str:
         lines.append("")
         lines += panel("risk", risk, width, enabled)
     lines += panel("project hygiene", hygiene_rows(st, enabled), width, enabled)
+    lines += panel("tests", test_rows(st), width, enabled)
     lines += panel("release", readiness_rows(st), width, enabled)
-    cluster = ", ".join(f"{k}:{v}" for k, v in st.fail_clusters) if st.fail_clusters else "none"
-    gap_rows = [f"unsupported {st.unsupported}  clusters {cluster}"]
-    if st.failures:
-        gap_rows.append("first gap " + st.failures[0])
-    else:
-        gap_rows.append("strict gaps none reported")
+    gap_rows = [f"unsupported {st.unsupported}", *failure_cluster_rows(st)]
     lines += panel("quality", gap_rows, width, enabled)
     ignored = ignored_rows()
     if ignored:

@@ -1,6 +1,6 @@
 # Project Graph
 
-Last updated: 2026-06-01 06:40 BST
+Last updated: 2026-06-01 06:50 BST
 
 ## Build
 
@@ -15,7 +15,7 @@ graph TD
   Make --> Bin["khicasen.bin, upstream KhiCAS base"]
   Bin --> G3A["calculator_files/CAS.g3a"]
   G3A --> Meta["CAS / @CAS / CAS.g3a"]
-  G3A --> Size["2,097,140 bytes; 12 byte headroom"]
+  G3A --> Size["2,097,140 bytes; 12 byte headroom; sha 2390345c0b8d"]
 ```
 
 ## Runtime
@@ -39,7 +39,7 @@ graph TD
   Work --> Int["integrate: affine reverse-chain powers, expanded (ln(x))^2 by-parts answer, definite ln(x)^2 by-parts endpoint markers, compact radical routes including 12*(3-x/2)^(1/2), 30*(1-x/3)^(3/2), 15*(1-x/4)^(1/4), 3*x^2*(4-2*x^3)^(3/2), (x+1)/(x^2+2*x+3)^(1/3), 3*x*cos(2*x), -2*x*sin(5*x), and x*sin(4*x) by-parts, linear-over-linear division logs, trig/exp sums, damped-sine by-parts, substitution, definite substitution"]
   Work --> Solve["solve: guarded linear with exam-order lines for 8000=64000-15*k and 64000-11200*t=0, integer-root quadratics with explicit root lines and negative-leading exam order, exp/log routes including 10^(3*k)=2, periodic trig route for 10=12+3*sin(pi*t/6), rational inequality critical-value route, dy/dx and dn/dt separable"]
   Work --> Alg["algebra: quadratic factor, targeted expand, high-frequency exam forms"]
-  Work --> Num["numeric routes: equation-style decimal/exact lines, log base 10 with ln natural, 12-significant-digit rounded markers, sqrt substitution-limit markers"]
+  Work --> Num["numeric routes: equation-style decimal/exact lines, exp(2*ln(7/6)) marker, log base 10 with ln natural, 12-significant-digit rounded markers, sqrt substitution-limit markers"]
   Work --> Trig["trig: R-form and pi-shift identities"]
   Work --> Xform["xform trig/log identities"]
 ```
@@ -65,10 +65,10 @@ graph TD
   Runner --> Report["tests/reports/.../latest.jsonl"]
   Live --> TUI["tools/audit_progress_tui.py"]
   Report --> TUI
-  TUI --> Panels["animated panels: status badges, wide side-by-side layout, phase lanes, health score, sync, last commit, change counts, state age, artifact headroom, live rate and ETA, queue bars, animated scan lines, cleanup byte totals, project hygiene, transfer path, strict clusters, release blockers, risk, ignored workspace, active-tool counts, next action, command panel"]
+  TUI --> Panels["animated panels: status badges, wide side-by-side layout, phase lanes, health score, sync, last commit, change counts, state age, artifact headroom, live rate and ETA, queue bars, strict-marker ratios, animated scan/meter lines, cleanup byte totals, project hygiene, transfer path, strict clusters with first gap samples, test checkpoints, release blockers, risk, ignored workspace, active-tool counts, next action, command panel"]
   Runner --> Runtime["14,256/14,256 runtime-safe"]
-  Runner --> Strict["13,033/14,256 strict marker pass"]
-  Strict --> Remaining["remaining strict clusters: integrate 627, algebra 552, derive 39; 12 B hard headroom"]
+  Runner --> Strict["13,037/14,256 strict marker pass"]
+  Strict --> Remaining["remaining strict clusters: integrate 627, algebra 548, derive 39; 12 B hard headroom"]
 ```
 
 ## Project Shape

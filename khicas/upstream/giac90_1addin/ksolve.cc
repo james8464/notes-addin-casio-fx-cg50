@@ -1197,7 +1197,7 @@ namespace giac {
     if (singuf.type!=_VECT || veq_not_singuf.type!=_VECT || !is_numericv(*singuf._VECTptr) || !is_numericv(*veq_not_singuf._VECTptr)){
       if (eids.size()>eid.size())
 	return vecteur(1,gensizeerr(gettext("Unable to find numeric values solving equation")));
-      *logptr(contextptr) << gettext("Warning: param roots: ") << veq_not_singu << endl;
+      *logptr(contextptr) << gettext("Param: ") << veq_not_singu << endl;
     }
     veq=mergevecteur(veq_not_singu,singu);
     vecteur range,excluded_not_singu(find_excluded(x,contextptr));
@@ -1651,7 +1651,7 @@ namespace giac {
 	int s1=int(lvarx(tmp,x).size());
 	if (s1<s){
 	  // Note: we are checking solutions numerically later
-	  *logptr(contextptr) << gettext("Warning: solving in ") << x << gettext(" equation ") << tmp << "=0" << endl;
+	  *logptr(contextptr) << gettext("Solving ") << x << gettext(" equation ") << tmp << "=0" << endl;
 	  expr=tmp;
 	  s=s1;
 	}
@@ -3370,7 +3370,7 @@ namespace giac {
       int iszero=0;
       vecteur res= bisection_solver(v0,v[1],gguess[0],gguess[1],iszero,contextptr);
       if (!res.empty() && iszero!=1)
-	*logptr(contextptr) << (iszero==-1?gettext("Warning: undefined"):gettext("Warning: sign reversal")) << endl;
+	*logptr(contextptr) << (iszero==-1?gettext("Undefined"):gettext("Sign rev")) << endl;
       return res;
     }
 #endif
@@ -6938,7 +6938,7 @@ namespace giac {
     if (solu._VECTptr->empty())
       return args._VECTptr->back();
     if (solu._VECTptr->size()>1)
-      *logptr(contextptr) << gettext("Warning: algsubs branch; gbasis(") << gen2vecteur(eq) << ","<< ids << ");greduce("<<args._VECTptr->back()<<",G," << ids << ");" << endl;
+      *logptr(contextptr) << gettext("Algsubs; gbasis(") << gen2vecteur(eq) << ","<< ids << ");greduce("<<args._VECTptr->back()<<",G," << ids << ");" << endl;
     return normal(solu[0][0],contextptr);
   }
   static const char _algsubs_s []="algsubs";
