@@ -645,3 +645,27 @@
 {"phase":"queue","last_event":"exact queue 0/14912","queue":"0/14912 done, 0 ok, 0 bad","tests":"queue-run 0/14912"}
 {"phase":"queue","last_event":"exact queue 14912/14912","queue":"14912/14912 done, 14912 ok, 0 bad","tests":"queue-run 14912/14912"}
 {"phase":"queue","last_event":"exact queue 14912/14912","queue":"14912/14912 done, 14912 ok, 0 bad","tests":"queue-run 14912/14912"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 1 bad","queue":"fuzz 0 cases","tests":"random-fuzz complete"}
+{"phase":"queue","last_event":"exact queue 0/15042","queue":"0/15042 done, 0 ok, 0 bad","tests":"queue-run 0/15042"}
+{"phase":"queue","last_event":"exact queue 15042/15042","queue":"15042/15042 done, 15042 ok, 0 bad","tests":"queue-run 15042/15042"}
+{"phase":"queue","last_event":"exact queue 15042/15042","queue":"15042/15042 done, 15042 ok, 0 bad","tests":"queue-run 15042/15042"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 1 done, 1 bad","queue":"fuzz 1 cases","tests":"random-fuzz complete"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 2 done, 1 bad","queue":"fuzz 2 cases","tests":"random-fuzz complete"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 45 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 85 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 152 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 200 done, 175 bad","queue":"fuzz 200 cases","tests":"random-fuzz complete"}
+{"phase":"queue","last_event":"exact queue 0/15070","queue":"0/15070 done, 0 ok, 0 bad","tests":"queue-run 0/15070"}
+{"phase":"queue","last_event":"exact queue 15070/15070","queue":"15070/15070 done, 15070 ok, 0 bad","tests":"queue-run 15070/15070"}
+{"phase":"queue","last_event":"exact queue 15070/15070","queue":"15070/15070 done, 15070 ok, 0 bad","tests":"queue-run 15070/15070"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 5 done, 3 bad","queue":"fuzz 5 cases","tests":"random-fuzz complete"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz complete"}
+{"phase":"queue","last_event":"exact queue 0/15074","queue":"0/15074 done, 0 ok, 0 bad","tests":"queue-run 0/15074"}
+{"phase":"queue","last_event":"exact queue 15074/15074","queue":"15074/15074 done, 15074 ok, 0 bad","tests":"queue-run 15074/15074"}
+{"phase":"queue","last_event":"exact queue 15074/15074","queue":"15074/15074 done, 15074 ok, 0 bad","tests":"queue-run 15074/15074"}

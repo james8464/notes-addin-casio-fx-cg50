@@ -88,6 +88,11 @@ static Rat rat_add(Rat a,Rat b){ return rat(a.n*b.d+b.n*a.d,a.d*b.d); }
 static Rat rat_sub(Rat a,Rat b){ return rat(a.n*b.d-b.n*a.d,a.d*b.d); }
 static Rat rat_mul(Rat a,Rat b){ return rat(a.n*b.n,a.d*b.d); }
 static Rat rat_div(Rat a,Rat b){ return rat(a.n*b.d,a.d*b.n); }
+static int rat_cmp(Rat a,Rat b){
+  long long l=(long long)a.n*b.d;
+  long long r=(long long)b.n*a.d;
+  return l<r?-1:(l>r?1:0);
+}
 
 static working_string rat_s(Rat r){
   return frac_s(r.n,r.d);
@@ -3052,6 +3057,69 @@ static bool try_range(const char *input,working_string &out){
   if (!parse_call(input,"range",args,4,n) || n<1)
     return false;
   working_string e=compact(args[0]);
+  if (e.find('x')==working_string::npos){
+    NumParser np;
+    np.p=e.c_str();
+    np.ok=true;
+    double v=np.expr();
+    np.skip();
+    if (np.ok && !*np.p){
+      working_string exact;
+      out="Range:\nExpression is constant\nAnswer: y = ";
+      out += rational_approx(v,exact)?exact:double_s(v);
+      return true;
+    }
+  }
+  long a=0,b=0,c=0;
+  if (parse_quad_expr(e,'x',a,b,c)){
+    if (!a && !b){
+      out="Range:\nExpression is constant\nAnswer: y = "+int_s(c);
+      return true;
+    }
+    if (!a){
+      out="Range:\nlinear non-constant expression takes all real values\nAnswer: all real y";
+      return true;
+    }
+    Rat xv=rat(-b,2*a);
+    Rat yv=rat_sub(rat(c,1),rat(b*b,4*a));
+    if (n>=4){
+      Rat lo,hi;
+      if (parse_rat(args[2],lo) && parse_rat(args[3],hi)){
+        if (rat_cmp(hi,lo)<0){ Rat t=lo; lo=hi; hi=t; }
+        Rat flo=rat_add(rat_add(rat_mul(rat(a,1),rat_mul(lo,lo)),rat_mul(rat(b,1),lo)),rat(c,1));
+        Rat fhi=rat_add(rat_add(rat_mul(rat(a,1),rat_mul(hi,hi)),rat_mul(rat(b,1),hi)),rat(c,1));
+        Rat ymin=rat_cmp(flo,fhi)<=0?flo:fhi;
+        Rat ymax=rat_cmp(flo,fhi)>=0?flo:fhi;
+        bool vin=rat_cmp(lo,xv)<=0 && rat_cmp(xv,hi)<=0;
+        if (vin){
+          if (rat_cmp(yv,ymin)<0) ymin=yv;
+          if (rat_cmp(yv,ymax)>0) ymax=yv;
+        }
+        out="Range:\nInterval: "+rat_s(lo)+" <= x <= "+rat_s(hi)+"\n";
+        out += "f("+rat_s(lo)+") = "+rat_s(flo)+"\n";
+        out += "f("+rat_s(hi)+") = "+rat_s(fhi)+"\n";
+        if (vin){
+          out += "vertex x = "+rat_s(xv)+" is inside the interval\n";
+          out += "f("+rat_s(xv)+") = "+rat_s(yv)+"\n";
+        }
+        else
+          out += "vertex x = "+rat_s(xv)+" is outside the interval\n";
+        out += "Answer: "+rat_s(ymin)+" <= y <= "+rat_s(ymax);
+        return true;
+      }
+    }
+    out="Range:\nFor f(x) = "+spaced_pm(e)+"\n";
+    out += "vertex x = "+rat_s(xv)+"\n";
+    if (a>0){
+      out += "minimum y = "+rat_s(yv)+"\n";
+      out += "Answer: y >= "+rat_s(yv);
+    }
+    else {
+      out += "maximum y = "+rat_s(yv)+"\n";
+      out += "Answer: y <= "+rat_s(yv);
+    }
+    return true;
+  }
   if (e=="x^2"){
     out="Answer: y >= 0";
     return true;
