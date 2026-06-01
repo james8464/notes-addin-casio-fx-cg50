@@ -1616,6 +1616,83 @@ static bool split_poly_over_x_power(const working_string &expr,working_string &o
   return true;
 }
 
+static working_string quad_rat_s(Rat a,Rat b,Rat c){
+  working_string out;
+  if (a.n) out=join_sum(out,rat_power_term_s(a,rat(2,1)));
+  if (b.n) out=join_sum(out,rat_power_term_s(b,rat(1,1)));
+  if (c.n) out=join_sum(out,rat_s(c));
+  return out.empty()?"0":out;
+}
+
+static bool add_quad_piece(const working_string &src,char v,Rat s,Rat &A,Rat &B,Rat &C){
+  working_string t=strip_outer_parens(nospace_lower(src));
+  Rat c,p;
+  int open=t.find('(');
+  if (open>=0){
+    int close=match_paren(t,open);
+    if (close>open && close+3==int(t.size()) && t[close+1]=='^' && t[close+2]=='2'){
+      Rat k=rat(1,1),la,lb;
+      if ((open==0 || parse_rat(t.substr(0,open),k)) &&
+          parse_affine_general(t.substr(open+1,close-open-1),v,la,lb)){
+        k=rat_mul(k,s);
+        A=rat_add(A,rat_mul(k,rat_mul(la,la)));
+        B=rat_add(B,rat_mul(k,rat_mul(rat(2,1),rat_mul(la,lb))));
+        C=rat_add(C,rat_mul(k,rat_mul(lb,lb)));
+        return true;
+      }
+    }
+  }
+  if (parse_x_power_factor(t,c,p) && p.d==1 && p.n>=0 && p.n<=2){
+    c=rat_mul(c,s);
+    if (p.n==2) A=rat_add(A,c);
+    else if (p.n==1) B=rat_add(B,c);
+    else C=rat_add(C,c);
+    return true;
+  }
+  Rat la,lb;
+  if (parse_affine_general(t,v,la,lb)){
+    B=rat_add(B,rat_mul(s,la));
+    C=rat_add(C,rat_mul(s,lb));
+    return true;
+  }
+  if (parse_rat(t,c)){
+    C=rat_add(C,rat_mul(s,c));
+    return true;
+  }
+  return false;
+}
+
+static bool integrate_quad_sum(const working_string &expr,working_string &out){
+  working_string s=nospace_lower(expr);
+  Rat A=rat(0,1),B=rat(0,1),C=rat(0,1);
+  int start=0,depth=0,terms=0,sign=1;
+  for (int i=0;i<=int(s.size());++i){
+    char ch=i<int(s.size())?s[i]:'+';
+    if (ch=='(') ++depth;
+    else if (ch==')') --depth;
+    if (!depth && (ch=='+' || ch=='-') && i>start && s[i-1]!='^'){
+      if (!add_quad_piece(s.substr(start,i-start),'x',rat(sign,1),A,B,C))
+        return false;
+      ++terms;
+      sign=(ch=='-')?-1:1;
+      start=i+1;
+    }
+    else if (!depth && (ch=='+' || ch=='-') && i==start){
+      sign=(ch=='-')?-1:1;
+      start=i+1;
+    }
+  }
+  if (terms<2 || !A.n)
+    return false;
+  working_string ans;
+  ans=join_sum(ans,rat_power_term_s(rat_div(A,rat(3,1)),rat(3,1)));
+  if (B.n) ans=join_sum(ans,rat_power_term_s(rat_div(B,rat(2,1)),rat(2,1)));
+  if (C.n) ans=join_sum(ans,rat_power_term_s(C,rat(1,1)));
+  out="Expand:\n"+quad_rat_s(A,B,C)+"\n"
+      "Integrate term by term:\nAnswer: "+ans+" + C";
+  return true;
+}
+
 static bool parse_trig_square_term(const working_string &term,const char *fn,Rat &coef){
   working_string suf=working_string(fn)+"(x)^2";
   if (term.size()<suf.size() || term.substr(term.size()-suf.size(),suf.size())!=suf)
@@ -2749,6 +2826,24 @@ static bool try_integral(const char *input,working_string &out){
     out=sum_answer;
     return true;
   }
+  if (integrate_quad_sum(compact(args[0]),out) && !force_parts && !force_sub)
+    return true;
+  {
+    Rat a,b;
+    working_string raw=compact(args[0]);
+    if (!force_parts && !force_sub && (has_top_add_sub_div(e) || has_top_add_sub_div(raw)) &&
+        (parse_affine_general(e,'x',a,b) || parse_affine_general(raw,'x',a,b))){
+      working_string ans=rat_power_term_s(rat_div(a,rat(2,1)),rat(2,1));
+      if (b.n)
+        ans=join_sum(ans,rat_power_term_s(b,rat(1,1)));
+      out="Collect like terms:\n";
+      out += fmt_linear_rat(a,b,'x')+"\n";
+      out += "Integrate term by term:\n";
+      out += "Use int(a*x^n)\n";
+      out += "Answer: "+ans+" + C";
+      return true;
+    }
+  }
   if (integrate_power_linear_product(e,out) && !force_parts && !force_sub)
     return true;
   if (integrate_sum_terms(e,sum_answer) && !force_parts && !force_sub){
@@ -3605,6 +3700,34 @@ static bool try_xform(const char *input,working_string &out){
     out="log_a(x)=ln(x)/ln(a)\n"
         "Answer: ln(x)/ln(a)";
     return true;
+  }
+  if (a=="sin(x)^2+cos(x)^2" && b=="1"){
+    out="sin(x)^2+cos(x)^2=1\nAnswer: 1";
+    return true;
+  }
+  if ((a=="tan(x)^2" && b=="sec(x)^2-1") || (a=="sec(x)^2-1" && b=="tan(x)^2")){
+    out="sec(x)^2=1+tan(x)^2\nAnswer: tan(x)^2=sec(x)^2-1";
+    return true;
+  }
+  if ((a=="cot(x)^2" && b=="cosec(x)^2-1") || (a=="cosec(x)^2-1" && b=="cot(x)^2")){
+    out="cosec(x)^2=1+cot(x)^2\nAnswer: cot(x)^2=cosec(x)^2-1";
+    return true;
+  }
+  if ((a=="2sin(x)cos(x)" && b=="sin(2x)") || (a=="sin(2x)" && b=="2sin(x)cos(x)")){
+    out="sin(2*x)=2*sin(x)*cos(x)\nAnswer: sin(2*x)";
+    return true;
+  }
+  {
+    Rat c,p;
+    long aa=0,bb=0;
+    if (split_affine_power(a,c,aa,bb,p) && p.n==2 && p.d==1){
+      working_string show=quad_rat_s(rat_mul(c,rat(aa*aa,1)),rat_mul(c,rat(2*aa*bb,1)),rat_mul(c,rat(bb*bb,1)));
+      if (compact(show)==b){
+        out="Expand:\n";
+        out += a+" = "+show+"\nAnswer: "+show;
+        return true;
+      }
+    }
   }
   if (a.find("log(")==0 && a[a.size()-1]==')'){
     working_string largs[2];
