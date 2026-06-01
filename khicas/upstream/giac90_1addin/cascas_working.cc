@@ -1876,6 +1876,106 @@ static working_string coeff_over_base(Rat q,const working_string &base){
   return out;
 }
 
+static bool diff_simple_expr(const working_string &src,char v,working_string &deriv,working_string &shown);
+
+static bool parse_unary_arg(const working_string &s,const char *fn,working_string &arg){
+  int fl=strlen(fn);
+  if (int(s.size())<=fl+1 || s.substr(0,fl)!=fn || s[fl]!='(')
+    return false;
+  int close=match_paren(s,fl);
+  if (close!=int(s.size())-1)
+    return false;
+  arg=s.substr(fl+1,close-fl-1);
+  return true;
+}
+
+static bool needs_parens_for_mul(const working_string &s){
+  int depth=0;
+  for (int i=0;i<int(s.size());++i){
+    char c=s[i];
+    if (c=='(' || c=='[' || c=='{') ++depth;
+    if (c==')' || c==']' || c=='}') --depth;
+    if (!depth && i>0 && (c=='+' || c=='-') && s[i-1]!='e' && s[i-1]!='E')
+      return true;
+  }
+  return false;
+}
+
+static working_string mul_chain_factor(const working_string &d,const working_string &f){
+  if (d=="0") return "0";
+  if (d=="1") return f;
+  if (d=="-1") return "-"+f;
+  Rat q;
+  if (parse_rat(d,q))
+    return mul_expr(q,f);
+  return (needs_parens_for_mul(d)?"("+d+")":d)+"*"+f;
+}
+
+static working_string neg_mul_chain_factor(const working_string &d,const working_string &f){
+  if (d=="0") return "0";
+  if (d=="1") return "-"+f;
+  if (d=="-1") return f;
+  Rat q;
+  if (parse_rat(d,q)){
+    q.n=-q.n;
+    return mul_expr(q,f);
+  }
+  return "-"+(needs_parens_for_mul(d)?"("+d+")":d)+"*"+f;
+}
+
+static bool diff_affine_power_expr(const working_string &src,char v,working_string &deriv,working_string &shown){
+  Rat a,b,p;
+  if (!split_affine_power_rat(src,v,a,b,p))
+    return false;
+  working_string base=fmt_linear_rat(a,b,v);
+  shown="("+base+")^"+rat_s(p);
+  Rat q=rat_mul(p,a);
+  Rat np=rat_sub(p,rat(1,1));
+  if (!q.n)
+    deriv="0";
+  else if (!np.n)
+    deriv=rat_s(q);
+  else {
+    working_string pow="("+base+")";
+    if (!rat_is_one(np))
+      pow += "^"+rat_s(np);
+    deriv=mul_expr(q,pow);
+  }
+  return true;
+}
+
+static bool unary_chain_derivative(const working_string &src,char v,working_string &deriv,working_string &shown,working_string *inner_shown=0,working_string *inner_deriv=0,const char **fn_used=0){
+  working_string s=strip_outer_parens(nospace_lower(src));
+  const char *fns[]={"sin","cos","tan","exp","ln","sqrt",0};
+  for (int i=0;fns[i];++i){
+    working_string arg;
+    if (!parse_unary_arg(s,fns[i],arg))
+      continue;
+    working_string du,u;
+    if (!diff_simple_expr(arg,v,du,u))
+      return false;
+    working_string fn(fns[i]);
+    shown=fn+"("+u+")";
+    if (inner_shown) *inner_shown=u;
+    if (inner_deriv) *inner_deriv=du;
+    if (fn_used) *fn_used=fns[i];
+    if (fn=="sin")
+      deriv=mul_chain_factor(du,"cos("+u+")");
+    else if (fn=="cos")
+      deriv=neg_mul_chain_factor(du,"sin("+u+")");
+    else if (fn=="tan")
+      deriv=mul_chain_factor(du,"sec("+u+")^2");
+    else if (fn=="exp")
+      deriv=mul_chain_factor(du,"exp("+u+")");
+    else if (fn=="ln")
+      deriv=du=="1"?"1/("+u+")":(needs_parens_for_mul(du)?"("+du+")":du)+"/("+u+")";
+    else
+      deriv=du=="1"?"1/(2*sqrt("+u+"))":(needs_parens_for_mul(du)?"("+du+")":du)+"/(2*sqrt("+u+"))";
+    return true;
+  }
+  return false;
+}
+
 static bool diff_simple_expr(const working_string &src,char v,working_string &deriv,working_string &shown){
   working_string s=strip_outer_parens(nospace_lower(src));
   shown=fmt_expr_for_working(s,v);
@@ -1891,6 +1991,10 @@ static bool diff_simple_expr(const working_string &src,char v,working_string &de
     return true;
   }
   if (diff_sum_terms(s,deriv))
+    return true;
+  if (diff_affine_power_expr(s,v,deriv,shown))
+    return true;
+  if (unary_chain_derivative(s,v,deriv,shown))
     return true;
   if (s.find("ln(")==0 && s[s.size()-1]==')'){
     working_string arg=s.substr(3,s.size()-4);
@@ -1915,7 +2019,21 @@ static working_string mul_deriv_factor(const working_string &d,const working_str
     return "("+f+")/"+d.substr(2,d.size()-2);
   if (contains(d,"/"))
     return "("+f+")*"+d;
-  return d+"*"+f;
+  return (needs_parens_for_mul(d)?"("+d+")":d)+"*"+f;
+}
+
+static working_string mul_factor_derivative(const working_string &f,const working_string &d){
+  if (d=="0") return "0";
+  if (d=="1") return f;
+  if (d=="-1") return "-"+f;
+  if (!d.empty() && d[0]=='-')
+    return "-"+(needs_parens_for_mul(f)?"("+f+")":f)+"*"+d.substr(1,d.size()-1);
+  Rat q;
+  if (parse_rat(d,q))
+    return mul_expr(q,f);
+  if (d.find("1/(")==0)
+    return "("+f+")/"+d.substr(2,d.size()-2);
+  return (needs_parens_for_mul(f)?"("+f+")":f)+"*"+d;
 }
 
 static bool try_diff_product_rule(const working_string &expr,char v,const working_string &rawvar,working_string &out){
@@ -1930,7 +2048,9 @@ static bool try_diff_product_rule(const working_string &expr,char v,const workin
   out += "du/d"+rawvar+" = "+du+"\n";
   out += "dv/d"+rawvar+" = "+dv+"\n";
   out += "d(uv)/d"+rawvar+" = u'v + uv'\n";
-  out += "Answer: "+mul_deriv_factor(du,vv)+" + "+mul_deriv_factor(dv,u);
+  working_string second=mul_factor_derivative(u,dv);
+  out += "Answer: "+mul_deriv_factor(du,vv);
+  out += (!second.empty() && second[0]=='-') ? " - "+second.substr(1,second.size()-1) : " + "+second;
   return true;
 }
 
@@ -1951,6 +2071,19 @@ static bool try_diff_quotient_rule(const working_string &expr,char v,const worki
   else
     out += "("+u+")*("+dv+")";
   out += ")/("+vv+")^2";
+  return true;
+}
+
+static bool try_diff_chain_rule(const working_string &expr,char v,const working_string &rawvar,working_string &out){
+  working_string deriv,shown,u,du;
+  const char *fn=0;
+  if (!unary_chain_derivative(expr,v,deriv,shown,&u,&du,&fn))
+    return false;
+  out="Chain rule:\n";
+  out += "Let u = "+u+"\n";
+  out += "du/d"+rawvar+" = "+du+"\n";
+  out += "d/d"+rawvar+" "+working_string(fn)+"(u) uses the derivative of "+working_string(fn)+"\n";
+  out += "Answer: "+deriv;
   return true;
 }
 
@@ -2020,6 +2153,8 @@ static bool try_diff(const char *input,working_string &out){
     return false;
   if (var.size()==1){
     if (try_diff_log_power_chain(args[0],var[0],var,out))
+      return true;
+    if (try_diff_chain_rule(args[0],var[0],var,out))
       return true;
     if (try_diff_product_rule(args[0],var[0],var,out))
       return true;

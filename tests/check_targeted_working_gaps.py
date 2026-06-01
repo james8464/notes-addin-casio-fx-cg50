@@ -28,6 +28,11 @@ CASES = [
     ("diff((2*x+1)*ln(3*x-2),x)", ["Product rule:", "u = 2*x + 1", "v = ln(3*x - 2)", "du/dx = 2", "dv/dx = 3/(3*x - 2)", "Answer: 2*ln(3*x - 2) + (2*x + 1)*3/(3*x - 2)"]),
     ("diff((x^2+1)/(x-1),x)", ["Quotient rule:", "u = x^2 + 1", "v = x - 1", "du/dx = 2*x", "dv/dx = 1", "Answer: ((2*x)*(x - 1) - (x^2 + 1))/(x - 1)^2"]),
     ("diff(ln((x+1)^2),x)", ["Chain rule:", "d/dx ln((x + 1)^2)", "inner derivative = 2*(x + 1)", "Answer: 2/(x + 1)"]),
+    ("diff(sin((x+1)^2),x)", ["Chain rule:", "Let u = (x + 1)^2", "du/dx = 2*(x + 1)", "Answer: 2*(x + 1)*cos((x + 1)^2)"]),
+    ("diff(cos(3*x^2-2*x),x)", ["Chain rule:", "Let u = 3*x^2 - 2*x", "du/dx = 6*x - 2", "Answer: -(6*x - 2)*sin(3*x^2 - 2*x)"]),
+    ("diff(exp((2*x-1)^3),x)", ["Chain rule:", "Let u = (2*x - 1)^3", "du/dx = 6*(2*x - 1)^2", "Answer: 6*(2*x - 1)^2*exp((2*x - 1)^3)"]),
+    ("diff((x^2+1)*sin(3*x-2),x)", ["Product rule:", "u = x^2 + 1", "v = sin(3*x - 2)", "du/dx = 2*x", "dv/dx = 3*cos(3*x - 2)", "Answer: 2*x*sin(3*x - 2) + (x^2 + 1)*3*cos(3*x - 2)"]),
+    ("diff((x^2-1)*cos((x+1)^2),x)", ["Product rule:", "u = x^2 - 1", "v = cos((x + 1)^2)", "dv/dx = -2*(x + 1)*sin((x + 1)^2)", "Answer: 2*x*cos((x + 1)^2) - (x^2 - 1)*2*(x + 1)*sin((x + 1)^2)"]),
 ]
 
 
