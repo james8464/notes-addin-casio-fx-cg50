@@ -1351,8 +1351,8 @@ static bool try_solve(const char *input,working_string &out){
   working_string rawvar=n>=2?trim(args[1]):"x";
   working_string var=compact(rawvar);
   if ((ceq=="dn/dt=kn" || ceq=="dn/dt=k*n") && var=="n"){
-    out="DE:\n"
-        "(1/n)dn=k dt\nln(abs(n))=k*t+C\n"
+    out="Separate variables:\n"
+        "(1/n)dn=k dt\nln(abs(n)) = k*t + C\n"
         "Answer: n = A*e^(k*t)";
     return true;
   }

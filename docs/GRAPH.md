@@ -1,6 +1,6 @@
 # Project Graph
 
-Last updated: 2026-06-01 02:04 BST
+Last updated: 2026-06-01 02:14 BST
 
 ## Build
 
@@ -15,7 +15,7 @@ graph TD
   Make --> Bin["khicasen.bin, upstream KhiCAS base"]
   Bin --> G3A["calculator_files/CAS.g3a"]
   G3A --> Meta["CAS / @CAS / CAS.g3a"]
-  G3A --> Size["2,097,128 bytes; 24 byte headroom"]
+  G3A --> Size["2,097,148 bytes; 4 byte headroom"]
 ```
 
 ## Runtime
@@ -37,7 +37,7 @@ graph TD
 graph TD
   Work["working engine"] --> Diff["diff: guarded affine chain powers, optimisation/quotient derivatives, ln^2 chain, x*exp(-2x) product, implicit, trig basics"]
   Work --> Int["integrate: affine reverse-chain powers, linear-over-linear division logs, trig/exp sums, damped-sine by-parts, substitution, definite substitution, exam-form x^2-1 antiderivative"]
-  Work --> Solve["solve: guarded linear, integer-root quadratics with explicit root lines, rational, dy/dx separable"]
+  Work --> Solve["solve: guarded linear, integer-root quadratics with explicit root lines, rational, dy/dx and dn/dt separable"]
   Work --> Alg["algebra: quadratic factor, targeted expand, high-frequency exam forms"]
   Work --> Num["numeric routes: equation-style decimal/exact lines, 12-significant-digit rounded markers, sqrt substitution-limit markers"]
   Work --> Trig["trig: R-form and pi-shift identities"]
@@ -67,7 +67,7 @@ graph TD
   Report --> TUI
   TUI --> Panels["animated panels: sync, artifact, live rate and ETA, queue bars, strict clusters, risk, ignored workspace, dirty files, next action"]
   Runner --> Runtime["14,256/14,256 runtime-safe"]
-  Runner --> Strict["12,950/14,256 strict marker pass"]
+  Runner --> Strict["12,952/14,256 strict marker pass"]
   Strict --> Remaining["remaining: symbolic parameter area proofs, algebra presentation, binomial/partfrac, exact-form geometry/vector clusters"]
 ```
 
