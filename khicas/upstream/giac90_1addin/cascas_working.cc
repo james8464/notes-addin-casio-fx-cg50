@@ -1752,6 +1752,157 @@ static bool parse_linear_rat_var(const working_string &src,char v,Rat &a,Rat &b)
   return terms>0 && a.n;
 }
 
+struct Lin {
+  Rat a,b;
+};
+
+static Lin lin(Rat a,Rat b){
+  Lin r={a,b};
+  return r;
+}
+
+static bool lin_is_const(const Lin &x){
+  return !x.a.n;
+}
+
+static bool rat_pow_small(Rat base,long p,Rat &out){
+  if (p<-8 || p>8)
+    return false;
+  if (!p){
+    out=rat(1,1);
+    return true;
+  }
+  if (p<0){
+    if (!base.n)
+      return false;
+    Rat tmp;
+    if (!rat_pow_small(base,-p,tmp))
+      return false;
+    out=rat(tmp.d,tmp.n);
+    return true;
+  }
+  out=rat(1,1);
+  for (long i=0;i<p;++i)
+    out=rat_mul(out,base);
+  return true;
+}
+
+struct AffineParser {
+  working_string s;
+  const char *p;
+  char v;
+  bool ok;
+
+  void skip(){ while (*p && isspace((unsigned char)*p)) ++p; }
+  bool starts_primary(){
+    skip();
+    return *p=='(' || *p=='.' || isdigit((unsigned char)*p) || *p==v;
+  }
+  Lin expr(){
+    Lin x=term();
+    skip();
+    while (*p=='+' || *p=='-'){
+      char op=*p++;
+      Lin y=term();
+      x.a=op=='+'?rat_add(x.a,y.a):rat_sub(x.a,y.a);
+      x.b=op=='+'?rat_add(x.b,y.b):rat_sub(x.b,y.b);
+      skip();
+    }
+    return x;
+  }
+  Lin term(){
+    Lin x=power();
+    skip();
+    while (*p=='*' || *p=='/' || starts_primary()){
+      char op='*';
+      if (*p=='*' || *p=='/')
+        op=*p++;
+      Lin y=power();
+      if (op=='/'){
+        if (!lin_is_const(y) || !y.b.n){ ok=false; return x; }
+        x.a=rat_div(x.a,y.b);
+        x.b=rat_div(x.b,y.b);
+      }
+      else {
+        if (x.a.n && y.a.n){ ok=false; return x; }
+        Rat na=rat_add(rat_mul(x.a,y.b),rat_mul(y.a,x.b));
+        Rat nb=rat_mul(x.b,y.b);
+        x=lin(na,nb);
+      }
+      skip();
+    }
+    return x;
+  }
+  Lin power(){
+    Lin x=unary();
+    skip();
+    if (*p=='^'){
+      ++p;
+      Lin e=unary();
+      if (!lin_is_const(e) || e.b.d!=1){ ok=false; return x; }
+      if (e.b.n==1)
+        return x;
+      if (!e.b.n)
+        return lin(rat(0,1),rat(1,1));
+      if (!lin_is_const(x)){ ok=false; return x; }
+      Rat r;
+      if (!rat_pow_small(x.b,e.b.n,r)){ ok=false; return x; }
+      return lin(rat(0,1),r);
+    }
+    return x;
+  }
+  Lin unary(){
+    skip();
+    if (*p=='+'){ ++p; return unary(); }
+    if (*p=='-'){
+      ++p;
+      Lin x=unary();
+      x.a.n=-x.a.n; x.b.n=-x.b.n;
+      return x;
+    }
+    return primary();
+  }
+  Lin primary(){
+    skip();
+    if (*p=='('){
+      ++p;
+      Lin x=expr();
+      skip();
+      if (*p==')') ++p; else ok=false;
+      return x;
+    }
+    if (*p==v){
+      ++p;
+      return lin(rat(1,1),rat(0,1));
+    }
+    if (isdigit((unsigned char)*p) || *p=='.'){
+      const char *start=p;
+      while (isdigit((unsigned char)*p) || *p=='.')
+        ++p;
+      Rat r;
+      if (!parse_rat(working_string(start,p-start),r))
+        ok=false;
+      return lin(rat(0,1),r);
+    }
+    ok=false;
+    return lin(rat(0,1),rat(0,1));
+  }
+};
+
+static bool parse_affine_general(const working_string &src,char v,Rat &a,Rat &b){
+  AffineParser ap;
+  ap.s=nospace_lower(src);
+  ap.p=ap.s.c_str();
+  ap.v=v;
+  ap.ok=true;
+  Lin r=ap.expr();
+  ap.skip();
+  if (!ap.ok || *ap.p || !r.a.n)
+    return false;
+  a=r.a; b=r.b;
+  return true;
+}
+
 static int split_top_product(const working_string &src,working_string *factors,int maxf){
   working_string s=strip_outer_parens(nospace_lower(src));
   int n=0,start=0,depth=0;
@@ -2031,6 +2182,11 @@ static bool diff_simple_expr(const working_string &src,char v,working_string &de
     deriv=rat_s(a);
     return true;
   }
+  if (parse_affine_general(s,v,a,b)){
+    shown=fmt_linear_rat(a,b,v);
+    deriv=rat_s(a);
+    return true;
+  }
   long coef=0,pow=0;
   if (parse_power_term_var(s,v,coef,pow)){
     deriv=derivative_monomial(coef,pow,v);
@@ -2209,6 +2365,15 @@ static bool try_diff(const char *input,working_string &out){
       return true;
     }
   }
+  {
+    Rat a,b;
+    if (var.size()==1 && parse_affine_general(e,var[0],a,b)){
+      out="Collect like terms:\n";
+      out += fmt_linear_rat(a,b,var[0])+"\n";
+      out += "dy/d"+var+" = "+rat_s(a);
+      return true;
+    }
+  }
   if (var.size()==1){
     if (try_diff_log_power_chain(args[0],var[0],var,out))
       return true;
@@ -2353,6 +2518,24 @@ static bool try_integral(const char *input,working_string &out){
   bool force_sub=method_is(method,"3","sub") || method_is(method,"3","substitution");
   if (var!="x")
     return false;
+  if (e.find('x')==working_string::npos){
+    NumParser np;
+    np.p=e.c_str();
+    np.ok=true;
+    double val=np.expr();
+    np.skip();
+    if (np.ok && !*np.p && isfinite(val)){
+      working_string exact, coef=rational_approx(val,exact)?exact:double_s(val);
+      out="Constant multiple rule:\n";
+      out += "Expression has no x, so int(a) dx = a*x + C\n";
+      out += "Answer: ";
+      if (coef=="0") out += "C";
+      else if (coef=="1") out += "x + C";
+      else if (coef=="-1") out += "-x + C";
+      else out += coef+"*x + C";
+      return true;
+    }
+  }
   {
     Rat rc;
     long ra=0,rb=0;
@@ -2614,6 +2797,27 @@ static bool try_integral(const char *input,working_string &out){
         "int(1/2)dx-int(cos(2*x)/2)dx\n"
         "Answer: x/2 - sin(2*x)/4 + C";
     return true;
+  }
+  if (force_parts || force_sub){
+    working_string late_sum_answer;
+    if (integrate_sum_terms(e,late_sum_answer)){
+      out="Requested method is not needed for this form.\n"
+          "Integrate term by term:\n"
+          "Use int(a*x^n) dx=a*x^(n+1)/(n+1)\n"
+          "Answer: ";
+      out += late_sum_answer;
+      out += " + C";
+      return true;
+    }
+    long late_coef=0,late_pow=0;
+    if (parse_power_term(e,late_coef,late_pow) && late_pow!=-1){
+      out="Requested method is not needed for this form.\n"
+          "Use int(a*x^n) dx=a*x^(n+1)/(n+1)\n"
+          "Answer: ";
+      out += integral_monomial(late_coef,late_pow);
+      out += " + C";
+      return true;
+    }
   }
   return false;
 }
@@ -2910,6 +3114,21 @@ static bool try_solve(const char *input,working_string &out){
     out += "Answer: "+rawvar+" = ["+frac_s(b,a)+"]";
     return true;
   }
+  {
+    Rat ga1,gb1,ga2,gb2;
+    if (parse_affine_general(left,v,ga1,gb1) && parse_affine_general(right,v,ga2,gb2)){
+      Rat a=rat_sub(ga1,ga2);
+      Rat b=rat_sub(gb2,gb1);
+      if (a.n){
+        out="Collect like terms:\n";
+        out += fmt_linear_rat(ga1,gb1,v)+" = "+fmt_linear_rat(ga2,gb2,v)+"\n";
+        out += rat_s(a)+"*"+rawvar+" = "+rat_s(b)+"\n";
+        out += rawvar+" = "+rat_s(rat_div(b,a))+"\n";
+        out += "Answer: "+rawvar+" = ["+rat_s(rat_div(b,a))+"]";
+        return true;
+      }
+    }
+  }
   return false;
 }
 
@@ -3022,6 +3241,15 @@ static bool try_simplify(const char *input,working_string &out){
       working_string exact;
       out="Answer: ";
       out += rational_approx(val,exact)?exact:double_s(val);
+      return true;
+    }
+  }
+  {
+    Rat a,b;
+    char v=first_var(e);
+    if (parse_affine_general(e,v,a,b)){
+      out="Collect like terms:\n";
+      out += "Answer: "+fmt_linear_rat(a,b,v);
       return true;
     }
   }
@@ -3186,6 +3414,42 @@ static bool try_range(const char *input,working_string &out){
     }
     return true;
   }
+  {
+    long coef=0,pow=0;
+    if (parse_power_term_var(e,'x',coef,pow) && pow>0){
+      out="Range:\nPower function.\n";
+      if (pow%2==0){
+        out += "x^"+int_s(pow)+" >= 0 for all real x\n";
+        out += coef>0?"Answer: y >= 0":"Answer: y <= 0";
+      }
+      else
+        out += "Odd power takes all real values\nAnswer: all real y";
+      return true;
+    }
+  }
+  {
+    working_string s=strip_outer_parens(e);
+    const char *fn=0;
+    if (s.find("sin(")==0) fn="sin";
+    else if (s.find("cos(")==0) fn="cos";
+    if (fn){
+      int open=strlen(fn), close=match_paren(s,open);
+      if (close>open && close+1<int(s.size()) && s[close+1]=='^'){
+        char *end=0;
+        long p=strtol(s.c_str()+close+2,&end,10);
+        if (end && !*end && p>0){
+          out="Range:\n";
+          out += fn;
+          out += "(x) is between -1 and 1\n";
+          if (p%2==0)
+            out += "Even power makes the output non-negative\nAnswer: 0 <= y <= 1";
+          else
+            out += "Odd power preserves the sign\nAnswer: -1 <= y <= 1";
+          return true;
+        }
+      }
+    }
+  }
   if (e=="x^2"){
     out="Answer: y >= 0";
     return true;
@@ -3223,6 +3487,32 @@ static bool try_xform(const char *input,working_string &out){
     out="log_a(x)=ln(x)/ln(a)\n"
         "Answer: ln(x)/ln(a)";
     return true;
+  }
+  if (a.find("log(")==0 && a[a.size()-1]==')'){
+    working_string largs[2];
+    int ln=split_args(a,4,a.size()-1,largs,2);
+    if (ln==2){
+      working_string base=compact(largs[0]), arg=compact(largs[1]);
+      working_string changed="ln("+arg+")/ln("+base+")";
+      if (b==changed){
+        out="Use change of base:\n";
+        out += "log_"+base+"("+arg+") = ln("+arg+")/ln("+base+")\n";
+        out += "Answer: "+changed;
+        return true;
+      }
+      int pow=arg.find('^');
+      if (pow>0){
+        working_string root=arg.substr(0,pow), exp=arg.substr(pow+1,arg.size()-pow-1);
+        working_string target=exp+"log("+base+","+root+")";
+        if (b==target){
+          out="Use log power law:\n";
+          out += "log_a(u^n)=n*log_a(u)\n";
+          out += "Here a = "+base+", u = "+root+", n = "+exp+"\n";
+          out += "Answer: "+exp+"*log("+base+","+root+")";
+          return true;
+        }
+      }
+    }
   }
   return false;
 }
