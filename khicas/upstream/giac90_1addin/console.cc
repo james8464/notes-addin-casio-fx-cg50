@@ -43,10 +43,9 @@ int xthetat=0,xcas_python_eval=0;
 
 //const console_line data_line={0,0,0,-1,0};
 console_line * Line=0;//[LINE_MAX];//={data_line};
-const int maxfmenusize=16;
-char menu_f1[maxfmenusize]={0},menu_f2[maxfmenusize]={0},menu_f3[maxfmenusize]={0},menu_f4[maxfmenusize]={0},menu_f5[maxfmenusize]={0},menu_f6[maxfmenusize]={0},menu_f7[maxfmenusize]={0},menu_f8[maxfmenusize]={0},menu_f9[maxfmenusize]={0},menu_f10[maxfmenusize]={0},menu_f11[maxfmenusize]={0},menu_f12[maxfmenusize]={0},menu_f13[maxfmenusize]={0},menu_f14[maxfmenusize]={0},menu_f15[maxfmenusize]={0},menu_f16[maxfmenusize]={0},menu_f17[maxfmenusize]={0},menu_f18[maxfmenusize]={0};
+char menu_f1[8]={0},menu_f2[8]={0},menu_f3[8]={0},menu_f4[8]={0},menu_f5[8]={0},menu_f6[8]={0};
 char session_filename[MAX_FILENAME_SIZE+1]="session";
-char * FMenu_entries_name[]={menu_f1,menu_f2,menu_f3,menu_f4,menu_f5,menu_f6,menu_f7,menu_f8,menu_f9,menu_f10,menu_f11,menu_f12,menu_f13,menu_f14,menu_f15,menu_f16,menu_f17,menu_f18};
+char * FMenu_entries_name[6]={menu_f1,menu_f2,menu_f3,menu_f4,menu_f5,menu_f6};
 location Cursor;
 unsigned char *Edit_Line=0;
 int Start_Line, Last_Line,editline_cursor;
@@ -1955,36 +1954,6 @@ int Console_GetKey(){
       return Console_Input((const unsigned char*)buf);
     }
     if (key==KEY_CTRL_F6){
-#if 0
-      Menu smallmenu;
-      smallmenu.numitems=2;
-      MenuItem smallmenuitems[smallmenu.numitems];
-      smallmenu.items=smallmenuitems;
-      smallmenu.height=8;
-      smallmenu.scrollbar=1;
-      smallmenu.scrollout=1;
-      smallmenuitems[0].text = (char*)(lang?"Effacer historique":"Clear history");
-      smallmenuitems[1].text = (char*)"Config shift-SETUP";
-      while (1){
-	int sres=doMenu(&smallmenu);
-	if (sres==MENU_RETURN_SELECTION){
-	  if (smallmenu.selection==1){
-	    chk_restart();
-	    Console_Init();
-	    Console_Clear_EditLine();
-	    break;
-	  }
-	  if (smallmenu.selection==2){
-	    menu_setup();
-	    continue;
-	  }
-	}
-	break;
-      }
-      Console_Disp();
-      return CONSOLE_SUCCEEDED;
-#endif
-#if 1
       Menu smallmenu;
       smallmenu.numitems=13;
       MenuItem smallmenuitems[smallmenu.numitems];
@@ -2197,18 +2166,9 @@ int Console_GetKey(){
       } // end while(1)
       Console_Disp();
       return CONSOLE_SUCCEEDED;
-#endif
-#if 0
-      char filename[MAX_FILENAME_SIZE+1];
-      //drawRectangle(0, 24, LCD_WIDTH_PX, LCD_HEIGHT_PX-24, COLOR_WHITE);
-      if (get_filename(filename))
-	edit_script(filename);
-      //edit_script(0);
-      return CONSOLE_SUCCEEDED;
-#endif
     }
     if ( (key >= KEY_CTRL_F1 && key <= KEY_CTRL_F6)
-	 || (key >= KEY_CTRL_F7 && key <= KEY_CTRL_F20)
+	 || (key >= KEY_CTRL_F7 && key <= KEY_CTRL_F14)
 	 ){
       return Console_FMenu(key);
     }
@@ -2347,7 +2307,7 @@ const char * console_menu(int key,int active_app){
 
 const char * console_menu(int key,unsigned char* cfg_,int active_app){
   unsigned char * cfg=cfg_;
-  if (key>=KEY_CTRL_F7 && key<=KEY_CTRL_F20)
+  if (key>=KEY_CTRL_F7 && key<=KEY_CTRL_F14)
     key-=9900;
   int i, matched = 0;
   const char * ret=0;
@@ -2552,27 +2512,24 @@ const char conf_standard[] =
   "F5 A<>a\n"
   "F6 File\n";
 
-void update_fmenu(const unsigned char * cfg){
+void Console_FMenu_Init()
+{
   int i, number=0;
-  unsigned char temp[64] = {'\0'};
-  while (*cfg){
-    for (i=0 ; i+1<sizeof(temp)/sizeof(char) && (*cfg && *cfg!='\r' && *cfg!='\n'); i++,cfg++)
+  unsigned char temp[20] = {'\0'};
+  original_cfg=(unsigned char *)conf_standard;
+  unsigned char* cfg=original_cfg;
+  while(*cfg) {
+    for(i=0; i+1<(int)sizeof(temp) && *cfg && *cfg!='\r' && *cfg!='\n'; i++, cfg++)
       temp[i] = *cfg;
     temp[i]=0;
-    if(temp[0] == 'F' && temp[1]>='1' && temp[1]<=('0'+18)) {
+    if(temp[0] == 'F' && temp[1]>='1' && temp[1]<='6') {
       number = temp[1]-'0' - 1;
-      if(temp[3] && number>=0 && number<(int)(sizeof(FMenu_entries_name)/sizeof(FMenu_entries_name[0])))
-	strncpy(FMenu_entries_name[number], (char*)temp+3,maxfmenusize);
+      if(temp[3] && number<6)
+	strcpy(FMenu_entries_name[number], (char*)temp+3);
     }
     memset(temp, '\0', sizeof(temp));
     cfg++;
   }
-}
-
-void Console_FMenu_Init()
-{
-  original_cfg=(unsigned char *)conf_standard;
-  update_fmenu(original_cfg);
 }
 
 /*
@@ -2604,7 +2561,7 @@ void PrintRev(const unsigned char * s,int color=TEXT_COLOR_BLACK){
   Print_OS((unsigned char *)s,TEXT_MODE_INVERT,0);
 #else
   print(print_x,print_y,(const char *)s,color,true/* revert*/,false,false);
-#endif  
+#endif
 }
 
   int print_color(int print_x,int print_y,const char *s,int color,bool invert,bool minimini,GIAC_CONTEXT){
@@ -2702,108 +2659,6 @@ void Print(const unsigned char * s,int color,bool colorsyntax){
     else
       print_color((const char *)s,color,false,false,giac::context0);
 #endif
-}
-
-string adjust(const char * s,int L=7){
-  if (!s)
-    s="";
-  int l=strlen(s);
-  string res(s);
-  if (l>L)
-    res=res.substr(0,L);
-  else {
-    for (int i=0;i<L-l;++i)
-      res += ' ';
-  }
-  return res;
-}
-
-// app=0 console, 1 editor, 2 eqw, 3 spreadsheet
-void get_current_console_menu(string & menu,string & shiftmenu,string & alphamenu,int &menucolorbg,int app){
-  shiftmenu = adjust(menu_f7);
-  shiftmenu += "|";
-  shiftmenu += adjust(menu_f8);
-  shiftmenu += "|";
-  shiftmenu += app==2?"zoom ":adjust(menu_f9,6);
-  shiftmenu += "|";
-  shiftmenu += adjust(menu_f10,6);
-  shiftmenu += "|";
-  shiftmenu += adjust(menu_f11);
-  shiftmenu += "|";
-  shiftmenu += app==2?"evalf ":(app==3?" prog ":adjust(menu_f12));
-  alphamenu = adjust(menu_f13);
-  alphamenu += "|";
-  alphamenu += adjust(menu_f14);
-  alphamenu += "|";
-  alphamenu += app==2?"zoom ":adjust(menu_f15,6);
-  alphamenu += "|";
-  alphamenu += adjust(menu_f16,6);
-  alphamenu += "|";
-  alphamenu += adjust(menu_f17);
-  alphamenu += "|";
-  alphamenu += app==2?"evalf ":adjust(menu_f18);
-  if (app==3){
-    menu=(lang?" outil | stat | edit | cmds | A<>a | menu":" tools | stat | edit | cmds | A<>a | menu");
-    menucolorbg=COLOR_ORANGE;
-    return;
-  }
-  if (app==2){
-    menu += menu_f1;
-    while (menu.size()<6)
-      menu += " ";
-    menu += " | ";
-    menu += string(menu_f2);
-    while (menu.size()<13)
-      menu += " ";
-    menu += " | edit+-| cmds | A<>a | eval";
-    menucolorbg=34800;
-    return;
-  }
-  if (app==5){
-    menu=" point | lines | disp | cmds | A<>a | file ";
-    shiftmenu="triangl|polyg|geo3d|solids|gdiff|measur";
-    alphamenu="tests|analyt|cursor|transf|plots|conic";
-    menucolorbg=COLOR_CYAN;
-    return;
-  }
-  if (app==1){
-    menu=lang==1?" tests | struct | misc | cmds | A<>a |Fich. ":" tests | loops | misc | cmds | A<>a |File ";
-  }
-  else {
-    menu += string(menu_f1);
-    while (menu.size()<6)
-      menu += " ";
-    menu += "| ";
-    menu += string(menu_f2);
-    while (menu.size()<13)
-      menu += " ";
-    menu += "| ";
-    menu += string(menu_f3);
-    while (menu.size()<20)
-      menu += " ";
-    menu += lang?"| cmds | A<>a | Fich.  ":" | cmds  | A<>a | File   ";
-  }
-  int xcas_color=python_compat(contextptr)==0?65055:COLOR_CYAN,python_color=65520,js_color=63048;
-  if (app==1){
-    xcas_color=python_compat(contextptr)==0?64543:34335;
-    python_color=65512;
-  }
-  menucolorbg=xcas_python_eval==-1?js_color:(xcas_python_eval==1?python_color:xcas_color);
-}
-
-void console_disp_status(){
-  Console_FMenu_Init();
-  string menu(" ");
-  menu += string(menu_f1);
-  while (menu.size()<6)
-    menu += " ";
-  menu += "| ";
-  menu += string(menu_f2);
-  while (menu.size()<13)
-    menu += " ";
-  menu += lang?"| voir | cmds | A<>a | Fich.":"| view | cmds | A<>a | File ";
-  PrintMini(0,58,menu.c_str(),4);
-  set_xcas_status();
 }
 
 int Console_Disp()
@@ -3008,7 +2863,17 @@ int Console_Disp()
     } // end non cursor line
   } // end loop on all lines
 
-  console_disp_status();
+  string menu(" ");
+  menu += string(menu_f1);
+  while (menu.size()<6)
+    menu += " ";
+  menu += "| ";
+  menu += string(menu_f2);
+  while (menu.size()<13)
+    menu += " ";
+  menu += lang?"| voir | cmds | A<>a | Fich ":"| view | cmds | A<>a | File ";
+  PrintMini(0,58,menu.c_str(),4);
+  set_xcas_status();
   Bdisp_PutDisp_DD();
   drawCasioCasBorder();
   Bdisp_PutDisp_DD();

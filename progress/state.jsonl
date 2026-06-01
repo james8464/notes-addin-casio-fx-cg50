@@ -669,3 +669,9 @@
 {"phase":"queue","last_event":"exact queue 0/15074","queue":"0/15074 done, 0 ok, 0 bad","tests":"queue-run 0/15074"}
 {"phase":"queue","last_event":"exact queue 15074/15074","queue":"15074/15074 done, 15074 ok, 0 bad","tests":"queue-run 15074/15074"}
 {"phase":"queue","last_event":"exact queue 15074/15074","queue":"15074/15074 done, 15074 ok, 0 bad","tests":"queue-run 15074/15074"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 70 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 80 done, 74 bad","queue":"fuzz 80 cases","tests":"random-fuzz complete"}
+{"phase":"queue","last_event":"exact queue 0/15094","queue":"0/15094 done, 0 ok, 0 bad","tests":"queue-run 0/15094"}
+{"phase":"queue","last_event":"exact queue 15094/15094","queue":"15094/15094 done, 15094 ok, 0 bad","tests":"queue-run 15094/15094"}
+{"phase":"queue","last_event":"exact queue 15094/15094","queue":"15094/15094 done, 15094 ok, 0 bad","tests":"queue-run 15094/15094"}
