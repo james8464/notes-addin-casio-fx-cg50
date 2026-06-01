@@ -2130,50 +2130,22 @@ static bool try_zero_product_solve(const working_string &eqraw,const working_str
   int n=split_top_product(product,factors,2);
   if (n!=2)
     return false;
-  int li=0;
   working_string arg;
-  Rat la,lb,a,b;
-  if (!ln_arg_linear(factors[0],v,arg,la,lb)){
-    li=1;
-    if (!ln_arg_linear(factors[1],v,arg,la,lb))
-      return false;
-  }
-  int oi=1-li;
-  if (!parse_linear_rat_var(factors[oi],v,a,b))
+  Rat la,lb;
+  int li=ln_arg_linear(factors[0],v,arg,la,lb)?0:(ln_arg_linear(factors[1],v,arg,la,lb)?1:-1);
+  if (li<0)
     return false;
-  Rat sol[2];
-  sol[0]=rat_div(rat(-b.n,b.d),a);
-  sol[1]=rat_div(rat_sub(rat(1,1),lb),la);
-  if (sol[1].n*sol[0].d<sol[0].n*sol[1].d){
-    Rat t=sol[0]; sol[0]=sol[1]; sol[1]=t;
-  }
+  Rat a,b;
+  if (!parse_affine_general(factors[1-li],v,a,b))
+    return false;
+  Rat r0=rat_div(rat(-b.n,b.d),a),r1=rat_div(rat_sub(rat(1,1),lb),la);
+  if (r1.n*r0.d<r0.n*r1.d){ Rat t=r0; r0=r1; r1=t; }
   out="Solve by zero-product rule:\n";
-  out += spaced_pm(product)+" = 0\n";
-  out += "So ";
-  for (int i=0;i<2;++i){
-    if (i) out += " or ";
-    out += spaced_pm(factors[i])+" = 0";
-  }
-  out += "\n";
-  out += rat_s(b);
-  out += a.n<0?" - ":" + ";
-  Rat aa=rat(a.n<0?-a.n:a.n,a.d);
-  if (!(aa.n==aa.d))
-    out += rat_s(aa)+"*";
-  out += v;
-  out += " = 0\n";
-  out += rawvar+" = "+rat_s(rat_div(rat(-b.n,b.d),a));
-  out += "\nln("+spaced_pm(arg)+") = 0\n";
-  out += spaced_pm(arg)+" = e^0 = 1\n";
-  out += rawvar+" = "+rat_s(rat_div(rat_sub(rat(1,1),lb),la));
-  out += "\nDomain: "+spaced_pm(arg)+" > 0\n";
-  out += "Keep solutions satisfying the domain.\n";
-  out += "Answer: "+rawvar+" = [";
-  for (int i=0;i<2;++i){
-    if (i) out += ", ";
-    out += rat_s(sol[i]);
-  }
-  out += "]";
+  out += fmt_linear_rat(a,b,v)+" = 0 or ln("+spaced_pm(arg)+") = 0\n";
+  out += rawvar+"="+rat_s(rat_div(rat(-b.n,b.d),a))+"\n";
+  out += spaced_pm(arg)+"=1 => "+rawvar+"="+rat_s(rat_div(rat_sub(rat(1,1),lb),la))+"\n";
+  out += "Domain: "+spaced_pm(arg)+" > 0\n";
+  out += "Answer: "+rawvar+" = ["+rat_s(r0)+", "+rat_s(r1)+"]";
   return true;
 }
 
@@ -2469,7 +2441,7 @@ static bool try_diff_chain_rule(const working_string &expr,char v,const working_
   out="Chain rule:\n";
   out += "Let u = "+u+"\n";
   out += "du/d"+rawvar+" = "+du+"\n";
-  out += "d/d"+rawvar+" "+working_string(fn)+"(u) uses the derivative of "+working_string(fn)+"\n";
+  out += "Use d/d"+rawvar+" "+working_string(fn)+"(u)\n";
   out += "Answer: "+deriv;
   return true;
 }
@@ -3151,7 +3123,7 @@ static bool try_solve(const char *input,working_string &out){
     working_string largs[2];
     int ln=split_args(left,4,left.size()-1,largs,2);
     if (ln==2){
-      out="Use log definition:\nlog_"+trim(largs[0])+"("+trim(largs[1])+") = "+right+"\n";
+      out="Log definition:\nlog_"+trim(largs[0])+"("+trim(largs[1])+") = "+right+"\n";
       out += trim(largs[1])+" = "+trim(largs[0])+"^"+right+"\n";
       out += "Then solve the resulting equation in "+rawvar+".";
       working_string sub,call="solve("+trim(largs[1])+"="+trim(largs[0])+"^"+right+","+rawvar+")";
@@ -3584,7 +3556,7 @@ static bool try_range(const char *input,working_string &out){
       return true;
     }
     if (!a){
-      out="Range:\nlinear non-constant expression takes all real values\nAnswer: all real y";
+      out="Range:\nlinear expression takes all real values\nAnswer: all real y";
       return true;
     }
     Rat xv=rat(-b,2*a);
@@ -3655,7 +3627,7 @@ static bool try_range(const char *input,working_string &out){
           out += fn;
           out += "(x) is between -1 and 1\n";
           if (p%2==0)
-            out += "Even power makes the output non-negative\nAnswer: 0 <= y <= 1";
+            out += "Even power is non-negative\nAnswer: 0 <= y <= 1";
           else
             out += "Odd power preserves the sign\nAnswer: -1 <= y <= 1";
           return true;
@@ -3805,8 +3777,11 @@ bool eval_with_working(const char *input,working_string &out){
 }
 
 bool fallback_working(const char *input,working_string &out){
-  out.clear();
-  return false;
+  working_string s=trim(input?input:"");
+  if (s.empty() || !balanced(s) || numeric_literal(s))
+    return false;
+  out="Route: simplify; use identities, then rules. Exact:";
+  return true;
 }
 
 }
