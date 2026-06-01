@@ -3211,7 +3211,7 @@ extern "C" void Sleep(unsigned int miliSecond);
 	}
       }
       if (instring){
-	*logptr(contextptr) << "Warning: multi-line strings can not be converted from Python like syntax"<<'\n';
+	*logptr(contextptr) << "Multiline strings unsupported"<<'\n';
 	return s_orig;
       }
       // detect : at end of line

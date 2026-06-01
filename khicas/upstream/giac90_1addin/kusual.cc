@@ -2886,7 +2886,7 @@ namespace giac {
       gen expo=arg._SPOL1ptr->front().exponent;
       char sv=series_variable_name(contextptr);
       if (expo!=1)
-	*logptr(contextptr) << "order_size argument should always be the series variable name. This means that O("<<sv<<"^"<<expo << ") should be written "<< sv << "^" << expo <<"*order_size("<< sv << ")" << endl;
+	*logptr(contextptr) << "Use "<< sv << "^" << expo <<"*order_size("<< sv << ")" << endl;
       return sparse_poly1(1,monome(undef,0));
     }
     return symb_order_size(arg);
@@ -5810,7 +5810,7 @@ namespace giac {
 	if (same_warning){
 	  string s=autosimplify(contextptr);
 	  if (unlocalize(s)!="'simplify'"){
-	    *logptr(contextptr) << gettext("Warning, the test a==b is performed by checking\nthat the internal representation of ") << s << gettext("(a-b) is not 0.\nTherefore a==b may return false even if a and b are mathematically equal,\nif they have different internal representations.\nYou can explicitly call a simplification function like simplify(a-b)==0 to avoid this.") << endl;
+	*logptr(contextptr) << gettext("Warning: a==b checks representation; use simplify(a-b)==0 if needed.") << endl;
 	    same_warning=false;
 	  }
 	}
@@ -7273,7 +7273,7 @@ namespace giac {
 
 
   string version(){
-    return string("giac ")+GIAC_VERSION+string(", (c) B. Parisse and R. De Graeve, Institut Fourier, Universite de Grenoble I");
+    return string("CAS ")+GIAC_VERSION;
   }
   gen _version(const gen & a,GIAC_CONTEXT){
     if ( a.type==_STRNG && a.subtype==-1) return  a;
@@ -8400,7 +8400,7 @@ namespace giac {
     static bool warnmod=true;
     if (f.type==_MOD){
       if (warnmod){
-	*logptr(contextptr) << "// Warning: a % b returns the class of a in Z/bZ. Use irem(a,b) for remainder" << endl;
+	*logptr(contextptr) << "// % is modular class; use irem for remainder" << endl;
 	warnmod=false;
       }
       f=*f._MODptr;
@@ -8411,7 +8411,7 @@ namespace giac {
     }
     if (b.type==_MOD){
       if (warnmod){
-	*logptr(contextptr) << "// Warning: a % b returns the class of a in Z/bZ. Use irem(a,b) for remainder" << endl;
+	*logptr(contextptr) << "// % is modular class; use irem for remainder" << endl;
 	warnmod=false;
       }
       b=*b._MODptr;

@@ -242,6 +242,40 @@ static bool split_affine_sqrt_div(const working_string &expr,Rat &coef,long &a,l
   return close==int(s.size())-1 && parse_affine(s.substr(open+1,close-open-1),a,b);
 }
 
+static bool split_recip_affine(const working_string &expr,Rat &coef,long &a,long &b){
+  working_string s=compact(expr);
+  int slash=s.find('/');
+  if (slash<=0)
+    return false;
+  if (!parse_rat(s.substr(0,slash),coef))
+    return false;
+  working_string den=s.substr(slash+1,s.size()-slash-1);
+  if (!den.empty() && den[0]=='(' && match_paren(den,0)==int(den.size())-1)
+    den=den.substr(1,den.size()-2);
+  int open=den.find('(');
+  if (open>0 && match_paren(den,open)==int(den.size())-1){
+    Rat m;
+    if (!parse_rat(den.substr(0,open),m))
+      return false;
+    coef=rat_div(coef,m);
+    den=den.substr(open+1,den.size()-open-2);
+  }
+  return parse_affine(den,a,b);
+}
+
+static working_string log_affine_int_s(Rat k,long a,long b){
+  working_string out;
+  k=rat_div(k,rat(a,1));
+  if (k.n==-k.d)
+    out="-";
+  else if (!(k.n==k.d))
+    out += rat_s(k)+"*";
+  out += "ln(abs(";
+  out += b?fmt_affine(a,b):"x";
+  out += "))";
+  return out;
+}
+
 static working_string term_power(Rat c,long a,long b,Rat p){
   working_string base=fmt_affine(a,b);
   working_string out;
@@ -1199,6 +1233,16 @@ static bool try_integral(const char *input,working_string &out){
   bool force_sub=method_is(method,"3","sub") || method_is(method,"3","substitution");
   if (var!="x")
     return false;
+  {
+    Rat rc;
+    long ra=0,rb=0;
+    if (split_recip_affine(e,rc,ra,rb) && !force_parts && !force_sub){
+      out="Answer: ";
+      out += log_affine_int_s(rc,ra,rb);
+      out += " + C";
+      return true;
+    }
+  }
   if (n>=4){
     working_string a=compact(args[2]), b=compact(args[3]);
     if (e=="1/(sqrt(x)(sqrt(x)+2))" && a=="0" && b=="36"){

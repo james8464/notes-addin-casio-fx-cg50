@@ -24,11 +24,11 @@ Current status:
 
 - app name: `CAS`
 - file: `CAS.g3a`
-- size: `2,096,992` bytes
-- hard limit headroom: `160` bytes
-- sha256: `902d4f50aff0400c811b48f4f0adecd846f7ccbcc527e21db44a41d7c36b7dfa`
+- size: `2,097,144` bytes
+- hard limit headroom: `8` bytes
+- sha256: `68bbfa91bb87bbaf685469c5dff81623bb431e53e1ffdd210d5cf2b95e3350fe`
 - exact queue runtime: `14,256/14,256`
-- strict marker quality: `13,097/14,256`
+- strict marker quality: `13,115/14,256`
 - online challenge source coverage: MadAsMaths exact rows in queue; Daily Integral hard-integration style probes inspected from `https://dailyintegral.com/archive`
 
 Notable routes:
@@ -48,6 +48,7 @@ Notable routes:
 - `integrate(-2*x*sin(5*x))` compact integration by parts
 - `integrate(x*sin(4*x))` compact integration by parts
 - generic `integrate(c*x*sin(a*x+b),x)` and `integrate(c*x*cos(a*x+b),x)` by-parts routes, including `x*sin(6*x)`, `x*cos(x/2)`, and `x*sin(2*x-1)`
+- reciprocal affine integration route for `c/(a*x+b)` and `c/(m*(a*x+b))`, including `3/(2*x-1)`, `1/(4*x)`, `4/(3*(2*x+1))`, and `1/(4*(4*x-1))`
 - `diff(r^2,r)` single-variable power rule
 - `diff(arctan(x))` compact inverse trig derivative route
 - `diff(108*x-36*x^2+3*x^3)` preserves the queue mark-scheme order `- 72*x + 9*x^2 + 108`
