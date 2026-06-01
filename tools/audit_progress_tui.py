@@ -27,6 +27,7 @@ QUEUE_REPORT = ROOT / "tests" / "reports" / "exact_calculator_input_queue" / "la
 QUEUE_FAILS = ROOT / "tests" / "reports" / "exact_calculator_input_queue" / "failures_latest.txt"
 LIMIT = 2 * 1024 * 1024
 TARGET = 2_000_000
+_QUEUE_RATE = {"done": -1, "at": 0.0, "rate": 0.0}
 
 
 class C:
@@ -70,6 +71,15 @@ class Stat:
     ratio_trend: str
     dirty_files: list[str]
     events: list[str]
+    next_action: str
+    queue_active: str
+    queue_done: int
+    queue_total: int
+    queue_ok: int
+    queue_bad: int
+    queue_rate: str
+    queue_eta: str
+    queue_live_age: str
 
 
 def color(text: str, code: str, enabled: bool) -> str:
@@ -200,6 +210,46 @@ def age_s(path: Path) -> str:
     if age < 3600:
         return f"{age // 60}m"
     return f"{age // 3600}h"
+
+
+def age_from_ts(ts: float) -> str:
+    if ts <= 0:
+        return "n/a"
+    age = max(0, int(time.time() - ts))
+    if age < 60:
+        return f"{age}s"
+    if age < 3600:
+        return f"{age // 60}m"
+    return f"{age // 3600}h"
+
+
+def duration_s(seconds: float) -> str:
+    if seconds <= 0:
+        return "n/a"
+    seconds = int(seconds)
+    if seconds < 60:
+        return f"{seconds}s"
+    if seconds < 3600:
+        return f"{seconds // 60}m {seconds % 60}s"
+    return f"{seconds // 3600}h {(seconds % 3600) // 60}m"
+
+
+def queue_rate(done: int, total: int, updated: float) -> tuple[str, str]:
+    global _QUEUE_RATE
+    if total <= 0 or done >= total or updated <= 0:
+        _QUEUE_RATE = {"done": done, "at": updated, "rate": 0.0}
+        return ("idle", "n/a")
+    prev_done = int(_QUEUE_RATE["done"])
+    prev_at = float(_QUEUE_RATE["at"])
+    if prev_done >= 0 and done > prev_done and updated > prev_at:
+        rate = (done - prev_done) / max(0.001, updated - prev_at)
+        _QUEUE_RATE = {"done": done, "at": updated, "rate": rate}
+    elif prev_done < 0 or done < prev_done:
+        _QUEUE_RATE = {"done": done, "at": updated, "rate": 0.0}
+    rate = float(_QUEUE_RATE["rate"])
+    if rate <= 0:
+        return ("warming", "n/a")
+    return (f"{rate:.1f}/s", duration_s((total - done) / rate))
 
 
 def recent_events(limit: int = 4) -> list[str]:
@@ -352,13 +402,23 @@ def collect() -> Stat:
     queue = str(s.get("queue", "n/a"))
     ratios = ratios_from(tests)
     q = queue_progress()
+    q_done = q_total = q_ok = q_bad = 0
+    q_active = "n/a"
+    q_updated = 0.0
+    q_rate = "idle"
+    q_eta = "n/a"
+    q_age = "n/a"
     if q:
-        done = int(q.get("done", 0))
-        total = int(q.get("total", 0))
-        ok = int(q.get("ok", 0))
-        bad = int(q.get("bad", 0))
-        queue = f"{done}/{total} done, {ok} ok, {bad} bad"
-        ratios = [("queue-done", done, total), ("queue-right", ok, total), *ratios]
+        q_done = int(q.get("done", 0))
+        q_total = int(q.get("total", 0))
+        q_ok = int(q.get("ok", 0))
+        q_bad = int(q.get("bad", 0))
+        q_active = str(q.get("active", "n/a"))
+        q_updated = float(q.get("updated", 0) or 0)
+        q_age = age_from_ts(q_updated) if q_updated else age_s(QUEUE_REPORT)
+        q_rate, q_eta = queue_rate(q_done, q_total, q_updated)
+        queue = f"{q_done}/{q_total} done, {q_ok} ok, {q_bad} bad"
+        ratios = [("queue-done", q_done, q_total), ("queue-right", q_ok, q_total), *ratios]
     rows, inputs = queue_counts()
     return Stat(
         phase=str(s.get("phase", "n/a")),
@@ -388,6 +448,15 @@ def collect() -> Stat:
         ratio_trend=ratio_history(),
         dirty_files=dirty_files(),
         events=recent_events(),
+        next_action=str(s.get("eta", checkpoint.get("eta", "n/a"))),
+        queue_active=q_active,
+        queue_done=q_done,
+        queue_total=q_total,
+        queue_ok=q_ok,
+        queue_bad=q_bad,
+        queue_rate=q_rate,
+        queue_eta=q_eta,
+        queue_live_age=q_age,
     )
 
 
@@ -444,6 +513,21 @@ def size_hint(st: Stat, frame: int, width: int, enabled: bool) -> list[str]:
     return rows
 
 
+def queue_health(st: Stat, frame: int, width: int, enabled: bool) -> list[str]:
+    if st.queue_total <= 0:
+        return ["no queue report yet"]
+    active = st.queue_done < st.queue_total and st.queue_rate not in ("idle", "n/a")
+    state = "running" if active else "complete" if st.queue_done == st.queue_total else "stale"
+    state_code = C.cyan if active else C.green if state == "complete" else C.yellow
+    rows = [
+        f"{badge(state, state_code, enabled)} active {st.queue_active}",
+        f"age {st.queue_live_age}  rate {st.queue_rate}  eta {st.queue_eta}",
+        f"pass {st.queue_ok:,}/{st.queue_total:,}  fail {st.queue_bad:,}",
+        f"scan {sweep(max(12, width // 3), frame, enabled)}",
+    ]
+    return rows
+
+
 def rate(done: int, total: int) -> str:
     return "n/a" if total <= 0 else f"{done / total * 100:.2f}%"
 
@@ -469,6 +553,8 @@ def risk_rows(st: Stat) -> list[str]:
         rows.append("no exact queue report")
     if st.graph_age == "missing":
         rows.append("graph missing")
+    if st.next_action not in ("", "n/a"):
+        rows.append(st.next_action)
     return rows or ["none"]
 
 
@@ -514,6 +600,7 @@ def render_compact(st: Stat, frame: int, width: int, enabled: bool) -> str:
         kv("artifact", f"age {st.g3a_age}  sha256 {st.g3a_hash}  headroom {headroom:,} B", width, enabled),
         kv("queue", f"{st.queue_rows:,} rows / {st.queue_inputs:,} inputs", width, enabled),
         kv("latest", f"{st.queue}  report age {st.report_age}", width, enabled),
+        kv("live", f"{st.queue_active}  age {st.queue_live_age}  rate {st.queue_rate}  eta {st.queue_eta}", width, enabled),
         trim(color("progress", C.bold, enabled), width),
         trim(f"trend          {st.ratio_trend}  {sweep(18, frame, enabled)}", width),
     ]
@@ -523,6 +610,8 @@ def render_compact(st: Stat, frame: int, width: int, enabled: bool) -> str:
         lines.append(trim("no ratio data yet", width))
     lines.append(kv("dirty files", "; ".join(st.dirty_files) if st.dirty_files else "clean", width, enabled))
     lines.append(kv("risk", "; ".join(risk_rows(st)[:3]), width, enabled))
+    if st.next_action not in ("", "n/a"):
+        lines.append(kv("next", st.next_action, width, enabled))
     ignored = ignored_rows()
     if ignored:
         lines.append(kv("ignored", "; ".join(ignored), width, enabled))
@@ -594,6 +683,7 @@ def render(st: Stat, frame: int, width: int, height: int, enabled: bool) -> str:
         [
             f"golden {st.queue_rows:,} rows / {st.queue_inputs:,} inputs",
             f"latest {st.queue}  report age {st.report_age}",
+            *queue_health(st, frame, bar_w, enabled),
         ],
         width,
         enabled,

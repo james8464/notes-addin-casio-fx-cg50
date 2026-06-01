@@ -21,7 +21,6 @@ tests/reports/
 tools/working_engine/build/
 progress/*.jsonl
 progress/*.json
-!progress/.gitkeep
 !progress/state.jsonl
 .DS_Store
 .idea/

@@ -26,7 +26,7 @@ Current status:
 - file: `CAS.g3a`
 - size: `2,097,128` bytes
 - hard limit headroom: `24` bytes
-- sha256: `d9b287afe48db89363fffe0a0742cf6667113871d5a0dfaf62177b26313f3f88`
+- sha256: `fffc78be0925aad0e8f7984c128174a49dec82ba7ffe70199d514a0a4859668a`
 - exact queue runtime: `14,256/14,256`
 - strict marker quality: `12,902/14,256`
 - online challenge source coverage: MadAsMaths exact rows in queue; Daily Integral hard-integration style probes inspected from `https://dailyintegral.com/archive`
@@ -57,7 +57,7 @@ Notable routes:
 - repeated integer quadratic roots print once, e.g. `x = [8]`
 - distinct integer quadratic roots show explicit root lines before list answer, e.g. `k = 1 or k = -2`
 - catalogue Help on command screen shows spaced sections and F2/F3 examples
-- `/Users/james/Developer/CASIO/tools/audit_progress_tui.py` shows animated repo sync, artifact, queue, quality-cluster, risk, ignored-workspace, dirty-file, recent-event, and run-command panels
+- `/Users/james/Developer/CASIO/tools/audit_progress_tui.py` shows animated repo sync, artifact, live queue rate/ETA, pass/fail bars, quality clusters, risk, ignored workspace, dirty files, next action, recent events, and run-command panels
 
 Active tools:
 
@@ -71,3 +71,4 @@ Active tools:
 - `tools/check_help_quality.py`
 
 Historical worker notes, batch JSONs, stale append helpers, retired checks, and the old CMake host wrapper were pruned. The canonical test source is now `tests/golden/exact_calculator_input_queue.jsonl`.
+Empty `.gitkeep` placeholders were removed from non-empty tracked folders. Active `tools/` scripts are all still referenced by build, tests, or audit docs.

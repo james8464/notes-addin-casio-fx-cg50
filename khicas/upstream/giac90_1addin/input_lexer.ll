@@ -2,7 +2,7 @@
 /* Note: for the nspire port, after flex, move from #ifdef HAVE_CONFIG_H 
    to #include "first.h" before #include<stdio.h> 
    and map "log" to log10 instead of ln
-   // casio: copy lexer.h.bak to lexer.h
+   // casio: keep lexer.h checked in for calculator builds
   // replace isatty( fileno(...) by isatty(0 in input_lexer.cc, replace getc( yyin ) by fgetc(yyin)
 */
 /** @file input_lexer.ll

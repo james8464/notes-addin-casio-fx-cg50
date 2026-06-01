@@ -1,6 +1,6 @@
 # Project Graph
 
-Last updated: 2026-06-01 01:43 BST
+Last updated: 2026-06-01 01:51 BST
 
 ## Build
 
@@ -65,7 +65,7 @@ graph TD
   Runner --> Report["tests/reports/.../latest.jsonl"]
   Live --> TUI["tools/audit_progress_tui.py"]
   Report --> TUI
-  TUI --> Panels["animated panels: sync, artifact, queue bars, strict clusters, risk, ignored workspace, dirty files"]
+  TUI --> Panels["animated panels: sync, artifact, live rate and ETA, queue bars, strict clusters, risk, ignored workspace, dirty files, next action"]
   Runner --> Runtime["14,256/14,256 runtime-safe"]
   Runner --> Strict["12,902/14,256 strict marker pass"]
   Strict --> Remaining["remaining: symbolic parameter area proofs, algebra presentation, binomial/partfrac, exact-form geometry/vector clusters"]
@@ -77,6 +77,6 @@ graph TD
 graph TD
   Canon["canonical queue"] --> Golden["tests/golden/exact_calculator_input_queue.jsonl"]
   Tooling["active tooling"] --> Build["build/check/audit/host runner"]
-  Old["old VM worker notes, batch JSONs, append helper, retired checks, CMake host wrapper"] --> Pruned["removed from tracked project"]
+  Old["old VM worker notes, batch JSONs, append helper, retired checks, CMake host wrapper, duplicate keepers, lexer backup"] --> Pruned["removed from tracked project"]
   Reports["ignored generated outputs"] --> Recreate["build/, graphify-out/, tests/reports/ recreated only when needed"]
 ```

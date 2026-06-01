@@ -1002,7 +1002,7 @@ static yyconst flex_int16_t yy_chk[1422] =
 /* Note: for the nspire port, after flex, move from #ifdef HAVE_CONFIG_H 
    to #include "first.h" before #include<stdio.h> 
    and map "log" to log10 instead of ln
-   // casio: copy lexer.h.bak to lexer.h
+   // casio: keep lexer.h checked in for calculator builds
   // replace isatty( fileno(...) by isatty(0 in input_lexer.cc, replace getc( yyin ) by fgetc(yyin)
 */
 /** @file input_lexer.ll
@@ -4391,4 +4391,3 @@ void giac_yyfree (void * ptr , yyscan_t yyscanner)
   } // namespace giac
 #endif // ndef NO_NAMESPACE_GIAC
   
-
