@@ -298,6 +298,8 @@ static bool square_long(long n,long &r){
   return r*r==n;
 }
 
+static long eval_int_product(const working_string &s,bool &ok);
+
 static working_string poly2_s(long a,long b,long c,char v){
   working_string out;
   if (a){
@@ -321,7 +323,7 @@ static working_string poly2_s(long a,long b,long c,char v){
 }
 
 static bool parse_quad_expr(const working_string &src,char v,long &a,long &b,long &c){
-  working_string s=compact(src);
+  working_string s=nospace_lower(src);
   a=0; b=0; c=0;
   int start=0,sign=1,terms=0;
   for (int i=0;i<=int(s.size());++i){
@@ -329,12 +331,16 @@ static bool parse_quad_expr(const working_string &src,char v,long &a,long &b,lon
     if ((ch=='+' || ch=='-') && i>start){
       working_string t=s.substr(start,i-start);
       int p=t.find(v);
-      char *end=0;
       if (p>=0){
         working_string cs=t.substr(0,p);
         long cf=1;
-        if (!cs.empty()) cf=strtol(cs.c_str(),&end,10);
-        if (!cs.empty() && (!end || *end)) return false;
+        if (!cs.empty() && cs[cs.size()-1]=='*')
+          cs=cs.substr(0,cs.size()-1);
+        if (!cs.empty()){
+          bool ok=false;
+          cf=eval_int_product(cs,ok);
+          if (!ok) return false;
+        }
         if (p+2<int(t.size()) && t[p+1]=='^' && t[p+2]=='2')
           a += sign*cf;
         else if (p+1==int(t.size()))
@@ -342,8 +348,9 @@ static bool parse_quad_expr(const working_string &src,char v,long &a,long &b,lon
         else return false;
       }
       else {
-        long val=strtol(t.c_str(),&end,10);
-        if (!end || *end) return false;
+        bool ok=false;
+        long val=eval_int_product(t,ok);
+        if (!ok) return false;
         c += sign*val;
       }
       ++terms;
@@ -358,7 +365,7 @@ static bool parse_quad_expr(const working_string &src,char v,long &a,long &b,lon
   return terms>0;
 }
 
-static bool solve_quad_int(const working_string &left,const working_string &right,char v,long &r1,long &r2,long &a,long &b,long &c){
+static bool solve_quad_int(const working_string &left,const working_string &right,char v,Rat &r1,Rat &r2,long &a,long &b,long &c){
   long a1,b1,c1,a2,b2,c2,sd;
   if (!parse_quad_expr(left,v,a1,b1,c1) || !parse_quad_expr(right,v,a2,b2,c2))
     return false;
@@ -371,9 +378,7 @@ static bool solve_quad_int(const working_string &left,const working_string &righ
   long n2=a>0?-b-sd:-b+sd;
   long den=2*a;
   if (den<0){ den=-den; n1=-n1; n2=-n2; }
-  if (n1%den || n2%den)
-    return false;
-  r1=n1/den; r2=n2/den;
+  r1=rat(n1,den); r2=rat(n2,den);
   return true;
 }
 
@@ -389,9 +394,9 @@ static working_string factor_lin(long p,long q,char v){
 }
 
 static bool factor_quad_int(long a,long b,long c,char v,working_string &ans){
-  for (long p=-12;p<=12;++p) if (p && a%p==0){
+  for (long p=-100;p<=100;++p) if (p && a%p==0){
     long r=a/p;
-    for (long q=-24;q<=24;++q) if (q){
+    for (long q=-512;q<=512;++q) if (q){
       if (c%q) continue;
       long s=c/q;
       if (p*s+r*q==b){
@@ -406,6 +411,14 @@ static bool factor_quad_int(long a,long b,long c,char v,working_string &ans){
     }
   }
   return false;
+}
+
+static char first_var(const working_string &src){
+  working_string s=compact(src);
+  for (int i=0;i<int(s.size());++i)
+    if (isalpha((unsigned char)s[i]))
+      return s[i];
+  return 'x';
 }
 
 static bool method_is(const working_string &s,const char *num,const char *name){
@@ -1611,8 +1624,35 @@ static bool try_solve(const char *input,working_string &out){
         "Answer: x = [1/2 - 1]";
     return true;
   }
+  auto coeff_before_var=[&](working_string t,int p,bool &ok)->long{
+    working_string cs=t.substr(0,p);
+    if (!cs.empty() && cs[cs.size()-1]=='*')
+      cs=cs.substr(0,cs.size()-1);
+    if (cs.empty()) return 1;
+    if (cs=="-") return -1;
+    return eval_int_product(cs,ok);
+  };
+  int lq=left.find(vs+"^2"), rq=right.find(vs+"^2");
+  if (lq>=0 || rq>=0){
+    working_string qside=lq>=0?left:right, lside=lq>=0?right:left;
+    int qp=qside.find(vs+"^2"), lp=lside.find(v);
+    bool okq=true,okl=true;
+    if (qp>=0 && lp>=0){
+      long qa=coeff_before_var(qside,qp,okq), la=coeff_before_var(lside,lp,okl);
+      if (okq && okl && qa){
+        out="Common ";
+        out += var;
+        out += ": ";
+        out += rawvar+"*("+int_s(qa)+"*"+rawvar+"-"+int_s(la)+")=0\n";
+        out += rawvar+" = 0 or "+rawvar+" = "+frac_s(la,qa)+"\n";
+        out += "Answer: "+rawvar+" = [0, "+frac_s(la,qa)+"]";
+        return true;
+      }
+    }
+  }
   {
-    long r1,r2,a,b,c;
+    Rat r1,r2;
+    long a,b,c;
     if (solve_quad_int(left,right,v,r1,r2,a,b,c)){
       out="";
       out += poly2_s(a,b,c,v);
@@ -1620,14 +1660,14 @@ static bool try_solve(const char *input,working_string &out){
       working_string fac;
       if (factor_quad_int(a,b,c,v,fac))
         out += fac+" = 0\n";
-      if (r1==r2)
-        out += "Answer: "+rawvar+" = ["+int_s(r1)+"]";
+      if (r1.n==r2.n && r1.d==r2.d)
+        out += "Answer: "+rawvar+" = ["+rat_s(r1)+"]";
       else {
-        if (a<0 && r1>r2){
-          long t=r1; r1=r2; r2=t;
+        if (a<0 && r1.n*r2.d>r2.n*r1.d){
+          Rat t=r1; r1=r2; r2=t;
         }
-        out += rawvar+" = "+int_s(r1)+" or "+rawvar+" = "+int_s(r2)+"\n";
-        out += "Answer: "+rawvar+" = ["+int_s(r1)+", "+int_s(r2)+"]";
+        out += rawvar+" = "+rat_s(r1)+" or "+rawvar+" = "+rat_s(r2)+"\n";
+        out += "Answer: "+rawvar+" = ["+rat_s(r1)+", "+rat_s(r2)+"]";
       }
       return true;
     }
@@ -1647,32 +1687,6 @@ static bool try_solve(const char *input,working_string &out){
   if (ceq=="y-16/3=4/3(x-4)" && var=="y"){
     out="Answer: y = 4/3*(x - 4) + 16/3";
     return true;
-  }
-  auto coeff_before_var=[&](working_string t,int p,bool &ok)->long{
-    working_string cs=t.substr(0,p);
-    if (!cs.empty() && cs[cs.size()-1]=='*')
-      cs=cs.substr(0,cs.size()-1);
-    if (cs.empty()) return 1;
-    if (cs=="-") return -1;
-    return eval_int_product(cs,ok);
-  };
-  int lq=left.find(vs+"^2"), rq=right.find(vs+"^2");
-  if (lq>=0 || rq>=0){
-    working_string qside=lq>=0?left:right, lside=lq>=0?right:left;
-    int qp=qside.find(vs+"^2"), lp=lside.find(v);
-    bool okq=true,okl=true;
-    if (qp>=0 && lp>=0){
-      long qa=coeff_before_var(qside,qp,okq), la=coeff_before_var(lside,lp,okl);
-      if (okq && okl && qa){
-      out="Common ";
-      out += var;
-      out += ": ";
-      out += rawvar+"*("+int_s(qa)+"*"+rawvar+"-"+int_s(la)+")=0\n";
-      out += rawvar+" = 0 or "+rawvar+" = "+frac_s(la,qa)+"\n";
-      out += "Answer: "+rawvar+" = [0, "+frac_s(la,qa)+"]";
-      return true;
-      }
-    }
   }
   if (left==var+"/("+var+"-4)" && right=="4"){
     out="x=4*(x-4)\n"
@@ -1772,11 +1786,12 @@ static bool try_algebra(const char *input,working_string &out){
   }
   if (parse_call(input,"factor",args,3,n) && n>=1){
     working_string e=compact(args[0]);
+    char fv=first_var(e);
     long a,b,c;
     working_string fac;
-    if (parse_quad_expr(e,'x',a,b,c) && factor_quad_int(a,b,c,'x',fac)){
+    if (parse_quad_expr(e,fv,a,b,c) && factor_quad_int(a,b,c,fv,fac)){
       out="";
-      out += poly2_s(a,b,c,'x');
+      out += poly2_s(a,b,c,fv);
       out += "\nAnswer: ";
       out += fac;
       return true;

@@ -24,11 +24,11 @@ Current status:
 
 - app name: `CAS`
 - file: `CAS.g3a`
-- size: `2,096,592` bytes
-- hard limit headroom: `560` bytes
-- sha256: `506d5fa1ba4bcf51f5ff71577dbad52e2632a722193c83bba3cd1b5636eed014`
+- size: `2,096,756` bytes
+- hard limit headroom: `396` bytes
+- sha256: `77ed8757cf1bd864c35d6e86fe61d6108dbf7c73954d668c63700bfb1354ba8b`
 - exact queue runtime: `14,256/14,256`
-- strict marker quality: `13,132/14,256`
+- strict marker quality: `13,232/14,256`
 - online challenge source coverage: MadAsMaths exact rows in queue; Daily Integral hard-integration style probes inspected from `https://dailyintegral.com/archive`
 
 Notable routes:
@@ -85,7 +85,9 @@ Notable routes:
 - linear-over-linear integrals such as `integrate((4*x+3)/(2*x-1),x)` use algebraic division and return `2*x + 5/2*ln(abs(2*x - 1)) + C`
 - polynomial derivatives use descending-power form, e.g. `-8*x^3 + 1`
 - repeated integer quadratic roots print once, e.g. `x = [8]`
-- distinct integer quadratic roots show explicit root lines before list answer, e.g. `k = 1 or k = -2`
+- distinct integer/rational quadratic roots show explicit root lines before list answer, e.g. `k = 40/3 or k = 6`
+- quadratic parsing preserves product coefficients such as `12*32*k`, so common-factor solves keep exam-order lines like `k = 0 or k = 16`
+- quadratic factor routes now infer variables beyond `x`, e.g. `factor(5*w^2+w-4)` gives `(w + 1)*(5*w - 4)`
 - negative-leading integer quadratics now print roots in the exam-friendly order expected by the queue, e.g. `x = [3, 11]`
 - catalogue Help on command screen shows spaced sections and F2/F3 examples
 - `/Users/james/Developer/CASIO/tools/audit_progress_tui.py` shows animated status badges, side-by-side panels on wide terminals, phase lanes, health score, gate board, repo sync, last commit, change counts, state age, artifact headroom, live queue rate/ETA, pass/fail bars, strict-marker ratios, strict-gap bar maps, freshness rows, animated scan/meter lines, cleanup byte totals, cleanup command, project hygiene, tooling inventory, transfer path, quality clusters with first gap samples, test checkpoint rows, release blockers, risk, ignored workspace, active-tool counts, next action, recent events, and run-command panels
