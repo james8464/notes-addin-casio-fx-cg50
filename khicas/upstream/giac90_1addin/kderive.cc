@@ -270,7 +270,7 @@ namespace giac {
       if (vs>=3 && s.sommet==at_Beta){
 	gen v0=v[0],v1=v[1],v2=v[2]; 
 	if (!is_zero(derive(v0,i,contextptr)) || !is_zero(derive(v1,i,contextptr)) )
-	  return gensizeerr("diff of incomplete beta with respect to non constant 1st or 2nd arg not implemented");
+	  return gensizeerr("diff beta arg unsupported");
 	// diff/v2 of int_0^v2 t^(v0-1)*(1-t)^(v1-1) dt
 	gen tmp=pow(v2,v0-1,contextptr)*pow(1-v2,v1-1,contextptr)*derive(v2,i,contextptr);
 	if (vs==4){
@@ -289,7 +289,7 @@ namespace giac {
 	if (!is_zero(derive(v1,i,contextptr)) || !is_zero(derive(v2,i,contextptr)) || ! is_zero(derive(v3,i,contextptr)) )
 	  return gensizeerr(gettext("diff sum bounds"));
 	if (is_inf(v2) || is_inf(v3))
-	  *logptr(contextptr) << gettext("Warning, assuming derivative commutes with infinite sum") << endl;
+	  *logptr(contextptr) << gettext("Assume d/dx commutes with infinite sum") << endl;
 	return _sum(makesequence(derive(v0,i,contextptr),v1,v2,v3),contextptr);
       }
       if ( (vs==2 || (vs==3 && is_zero(v[2]))) && (s.sommet==at_upper_incomplete_gamma || s.sommet==at_lower_incomplete_gamma || s.sommet==at_Gamma)){
@@ -799,7 +799,7 @@ namespace giac {
 	continue;
       if (u==at_floor || u==at_ceil || u==at_round || u==at_abs || u==at_sign || u==at_max || u==at_min)
 	continue;
-      *logptr(contextptr) << g << gettext(" function not supported, doing like if it was defined") << endl;
+      *logptr(contextptr) << g << gettext(" unsupported, using definition") << endl;
     }
   }
   gen domain(const gen & f,const gen & x,int mode,GIAC_CONTEXT){

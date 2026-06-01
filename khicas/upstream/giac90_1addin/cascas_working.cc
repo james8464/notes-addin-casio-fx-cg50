@@ -652,6 +652,20 @@ static working_string func_term_s(Rat c,const char *fn,Rat k){
   return out;
 }
 
+static working_string func_affine_term_s(Rat c,const char *fn,long a,long b){
+  if (!c.n) return "";
+  working_string out;
+  Rat q=c;
+  if (q.n<0){ out="-"; q.n=-q.n; }
+  if (!(q.n==1 && q.d==1))
+    out += rat_s(q)+"*";
+  out += fn;
+  out += "(";
+  out += fmt_affine(a,b);
+  out += ")";
+  return out;
+}
+
 static bool integrate_one_trig_exp(const working_string &term,Rat sign,working_string &part){
   const char *fn=0;
   int fp=-1;
@@ -671,8 +685,23 @@ static bool integrate_one_trig_exp(const working_string &term,Rat sign,working_s
   int close=match_paren(term,open);
   if (close!=int(term.size())-1) return false;
   Rat k;
-  if (!parse_x_coeff(term.substr(open+1,close-open-1),k) || !k.n)
-    return false;
+  working_string arg=term.substr(open+1,close-open-1);
+  if (!parse_x_coeff(arg,k) || !k.n){
+    long a=0,b=0;
+    if (!parse_affine(arg,a,b) || !a)
+      return false;
+    Rat ak=rat(a,1);
+    if (!strcmp(fn,"sin(")){
+      part=func_affine_term_s(rat_div(rat(-c.n,c.d),ak),"cos",a,b);
+      return true;
+    }
+    if (!strcmp(fn,"cos(")){
+      part=func_affine_term_s(rat_div(c,ak),"sin",a,b);
+      return true;
+    }
+    part=func_affine_term_s(rat_div(c,ak),"exp",a,b);
+    return true;
+  }
   if (!strcmp(fn,"sin(")){
     part=func_term_s(rat_div(rat(-c.n,c.d),k),"cos",k);
     return true;

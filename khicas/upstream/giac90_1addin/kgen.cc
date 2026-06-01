@@ -4424,7 +4424,7 @@ namespace giac {
 	return gen(addvecteur(*a._VECTptr,*b._VECTptr),0);
       if (warnextend && a.subtype==0 && b.subtype==0 && python_compat(contextptr)){
 	warnextend=false;
-	alert(gettext("Warning + is vector addition, run list1.extend(list2) for list concatenation"),contextptr);
+	alert(gettext("+ is vector add; use extend for lists"),contextptr);
       }
       return gen(addvecteur(*a._VECTptr,*b._VECTptr),a.subtype?a.subtype:b.subtype);
     case _INT___ZINT: 
@@ -6254,7 +6254,7 @@ namespace giac {
 	if ((exponent.type==_DOUBLE_ ))
 	  return matpow(*base._VECTptr,exponent,contextptr);
 	if (exponent.type>=_IDNT)
-	  *logptr(contextptr) << gettext("Use matpow to force computation of a power of matrix via jordanisation") << endl;
+	  *logptr(contextptr) << gettext("Use matpow for matrix power") << endl;
       }
       if (base.type==_DOUBLE_ || 
 	  (base.type==_CPLX 
@@ -7885,7 +7885,7 @@ namespace giac {
       return undef;
     double eps=epsilon(contextptr);
     if (eps>1e-6)
-      *logptr(contextptr) << gettext("Warning, sign might return 0 incorrectly because the value of eps is too large ") << eps << endl;
+      *logptr(contextptr) << gettext("sign eps warning ") << eps << endl;
     switch (a.type){
     case _INT_: case _ZINT: 
       if (is_positive(a,contextptr))
@@ -8587,7 +8587,7 @@ namespace giac {
       if (lid.size()==1 && !has_algebraic_program(*this)){
 	if (lid.front()==vx_var())
 	// suspect something like P:=x^3+1 then P(2)
-	  *logptr(contextptr) << "Warning, evaluating univariate expression of x(value) like if expression was a function.\nYou should write subst(" << *this << "," << lid.front() << "," << i << ")" << endl;
+	  *logptr(contextptr) << "Use subst(" << *this << "," << lid.front() << "," << i << ")" << endl;
 	else
 	  return gensizeerr("Expression used like a function "+this->print(contextptr)+"\nYou should write subst("+this->print(contextptr)+","+lid.front().print(contextptr)+","+i.print(contextptr)+")");
 	return subst(*this,lid.front(),i,false,contextptr);
@@ -9679,7 +9679,7 @@ namespace giac {
     if ((n.type==_POLY) && (d.type==_POLY)){
       polynome np(*n._POLYptr),dp(*d._POLYptr);
       if (np.dim && dp.dim && np.dim!=dp.dim)
-	return gensizeerr(gettext("simplify: Polynomials do not have the same dimension"));
+	return gensizeerr(gettext("poly dimension mismatch"));
       polynome g(np.dim);
       g=simplify(np,dp);
       n=np;
@@ -10344,7 +10344,7 @@ namespace giac {
       return a_orig;
     gen res;
     if (!fracmod(a_orig,modulo,res))
-      return gensizeerr(gettext("Reconstructed denominator is not prime with modulo"));
+	return gensizeerr(gettext("bad modular denominator"));
     return res;
   }
 
@@ -12383,4 +12383,3 @@ namespace giac {
 #ifndef NO_NAMESPACE_GIAC
 } // namespace giac
 #endif // ndef NO_NAMESPACE_GIAC
-

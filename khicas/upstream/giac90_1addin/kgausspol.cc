@@ -4117,7 +4117,7 @@ namespace giac {
 	    continue;
 	}
 #ifndef NO_STDEXCEPT
-	setsizeerr(gettext("Multivariate finite field factorzation expects a unitary polynomial regular at 0. Try to translate with respect to one variable"));
+	setsizeerr(gettext("Finite-field factor needs regular unitary poly"));
 #endif
 	return false;
       }

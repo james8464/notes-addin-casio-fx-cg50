@@ -24,11 +24,11 @@ Current status:
 
 - app name: `CAS`
 - file: `CAS.g3a`
-- size: `2,096,932` bytes
-- hard limit headroom: `220` bytes
-- sha256: `40c5ba377c34f345f56dd296e7e38b4b4121c3c55279f302598d911188b3d537`
+- size: `2,096,476` bytes
+- hard limit headroom: `676` bytes
+- sha256: `d3e6707a5d7c568df78ed96f731a8c00c737ce045aa142098463b107e792423c`
 - exact queue runtime: `14,256/14,256`
-- strict marker quality: `13,057/14,256`
+- strict marker quality: `13,073/14,256`
 - online challenge source coverage: MadAsMaths exact rows in queue; Daily Integral hard-integration style probes inspected from `https://dailyintegral.com/archive`
 
 Notable routes:
@@ -65,7 +65,7 @@ Notable routes:
 - by-parts route for `x^2*cos(x/3)` and partial fractions route for `apart(6/(u*(3+2*u)))`
 - rational solve route for `solve(k*(k+3)/(k+1)=2,k)` shows domain and multiply-through steps
 - generic affine chain/reverse-chain power routes
-- trig/exp term integration, shifted trig identity, damped-sine by-parts route, quadratic solve/factor/expand, log/numeric routes
+- trig/exp affine term integration such as `sin(4*x+3)`, `cos(2-3*x)`, and `exp(1-3*x)`, shifted trig identity, damped-sine by-parts route, quadratic solve/factor/expand, log/numeric routes
 - safer solve routing: powered terms no longer fall through the linear solver
 - low-quality generic `Poly: Factor, set=0` fallback was removed so unknown polynomial solves can fall through to original KhiCAS instead
 - safer chain routing: non-linear inner functions no longer pass as affine

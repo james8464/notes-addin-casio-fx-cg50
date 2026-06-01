@@ -2135,7 +2135,7 @@ namespace giac {
       l3.push_back(tmpi);
       l4.push_back(*it);
     }      
-    *logptr(contextptr) << gettext("! Integration of abs or sign assumes constant sign by intervals:\nCheck ") << l1 << endl;
+    *logptr(contextptr) << gettext("Check abs/sign intervals ") << l1 << endl;
     e=complex_subst(e,l1,l2,contextptr);
     res=integrate_id_rem(e,gen_x,remains_to_integrate,contextptr,intmode);
     gen resadd;
@@ -2281,7 +2281,7 @@ namespace giac {
     subst1=mergevecteur(l1surd,l1NTHROOT);
     subst2=mergevecteur(l2surd,l2NTHROOT);
     if (!subst1.empty())
-      *logptr(contextptr) << gettext("Temporary replacing surd/NTHROOT by fractional powers") << endl;
+      *logptr(contextptr) << gettext("surd -> fractional powers") << endl;
   }
 
   bool is_elementary(const vecteur & v,const gen & x){
@@ -2323,7 +2323,7 @@ namespace giac {
     vecteur lpiece(lop(e,at_piecewise));
     if (!lpiece.empty()) lpiece=lvarx(lpiece,gen_x);
     if (!lpiece.empty()){
-      *logptr(contextptr) << gettext("! piecewise indefinite integration does not return a continuous antiderivative") << endl;
+      *logptr(contextptr) << gettext("piecewise antiderivative may jump") << endl;
       gen piece=lpiece.front();
       if (piece.is_symb_of_sommet(at_piecewise))
 	return integrate_piecewise(e,piece,gen_x,remains_to_integrate,contextptr,intmode);
@@ -2411,9 +2411,9 @@ namespace giac {
     if (u==at_sum && f.type==_VECT && f._VECTptr->size()==4){
       vecteur & fv=*f._VECTptr;
       if (!is_zero(derive(fv[1],gen_x,contextptr)))
-	return gensizeerr("Mute variable of sum depends on integration variable");
+	return gensizeerr("sum index depends on int var");
       if (!is_zero(derive(fv[2],gen_x,contextptr)) || !is_zero(derive(fv[3],gen_x,contextptr)) )
-	return gensizeerr("Boundaries of sum depends on integration variables");
+	return gensizeerr("sum bounds depend on int var");
       if (is_inf(fv[2])||is_inf(fv[3]))
 	*logptr(contextptr) << "! assuming integration and sum commutes" << endl;
       gen res=integrate_id_rem(fv[0],gen_x,remains_to_integrate,contextptr,intmode);
@@ -2988,7 +2988,7 @@ namespace giac {
     if (tmp.type!=_DOUBLE_ && tmp.type!=_CPLX)
       return exactvalue;
     if (0 && debug_infolevel)
-      *logptr(contextptr) << gettext("Checking exact value of integral with numeric approximation")<<endl;
+      *logptr(contextptr) << gettext("Checking exact integral numerically")<<endl;
     gen tmp2;
     if (!tegral(f,x,a,b,1e-6,(1<<10),tmp2,true,contextptr))
       return exactvalue;
@@ -2998,7 +2998,7 @@ namespace giac {
 	 abs(tmp-tmp2,contextptr)._DOUBLE_val<=1e-3*abs(tmp2,contextptr)._DOUBLE_val
 	 )
       return simplifier(exactvalue,contextptr);
-    *logptr(contextptr) << gettext("Error while checking exact value with approximate value, returning both!") << endl;
+    *logptr(contextptr) << gettext("Exact/numeric check failed") << endl;
     return makevecteur(exactvalue,tmp2);
   }
 
@@ -3289,13 +3289,13 @@ namespace giac {
       if (!lfloor.empty()){
 	gen a,b,l,cond=lfloor.front()._SYMBptr->feuille,tmp;
 	if (lvarx(cond,x).size()>1 || !is_linear_wrt(cond,x,a,b,contextptr) ){
-	  *logptr(contextptr) << gettext("Floor definite integration: can only handle linear < or > condition") << endl;
+	  *logptr(contextptr) << gettext("Floor int needs linear condition") << endl;
 	  if (!tegral(v0orig,x,aorig,borig,1e-12,(1<<10),res,true,contextptr))
 	    return undef;
 	  return res;
 	}
 	if (is_inf(borne_inf) || is_inf(borne_sup)){
-	  *logptr(contextptr) << gettext("Floor definite integration: unable to handle infinite boundaries") << endl;
+	  *logptr(contextptr) << gettext("Floor int infinite bounds") << endl;
 	}
 	else {
 	  // find integers of the form a*x+b in [borne_inf,borne_sup]
@@ -3372,7 +3372,7 @@ namespace giac {
 	  }
 	  gen a,b,l;
 	  if (unable || !is_linear_wrt(cond,x,a,b,contextptr)){
-	    *logptr(contextptr) << gettext("Piecewise definite integration: can only handle linear < or > condition") << endl;
+	    *logptr(contextptr) << gettext("Piecewise int needs linear condition") << endl;
 	    if (!tegral(v0orig,x,aorig,borig,1e-12,(1<<10),res,true,contextptr))
 	      return undef;
 	    return res;
@@ -3517,7 +3517,7 @@ namespace giac {
     vecteur sp;
     sp=lidnt(evalf(makevecteur(primitive,borne_inf,borne_sup),1,contextptr));
     if (sp.size()>1){
-      *logptr(contextptr) << gettext("No checks were made for answer. Confirm with\n  preval(")+primitive.print(contextptr)+","+borne_inf.print(contextptr)+","+borne_sup.print(contextptr)+")" << endl ;
+      *logptr(contextptr) << gettext("Unchecked answer; confirm with preval(")+primitive.print(contextptr)+","+borne_inf.print(contextptr)+","+borne_sup.print(contextptr)+")" << endl ;
       sp.clear();
     }
     else {
@@ -3547,7 +3547,7 @@ namespace giac {
     int sps=int(sp.size());
     for (int i=0;i<sps;i++){
       if (sp[i].type==_DOUBLE_ || sp[i].type==_REAL || has_op(sp[i],*at_rootof)){
-	*logptr(contextptr) << gettext("Unable to handle approx. or algebraic extension singular point\n")+sp[i].print(contextptr)+gettext(" of antiderivative");
+	*logptr(contextptr) << gettext("Singular point ")+sp[i].print(contextptr);
 	if (!tegral(v0orig,x,aorig,borig,1e-12,(1<<10),res,true,contextptr))
 	  return undef;
 	return res;
