@@ -10,7 +10,7 @@ OBJCOPY = sh3eb-elf-objcopy
 RM	= /bin/rm
 
 # if -DGINT_MALLOC, define GINT_MALLOC in stdlib.c (or Makefile there) and rm kgen.o main.o
-CXXFLAGS = -Os -mb -m4a-nofpu  -mhitachi -std=c++11 -fpermissive -flto -fno-use-cxa-atexit -fno-strict-aliasing -fno-rtti -fno-exceptions -ffunction-sections -fdata-sections -DHAVE_CONFIG_H -DTIMEOUT -DRELEASE -DCASCAS_DISABLE_PYTHON_TRANSLATE  -I. -I/home/parisse/casiolocal/include/ustl -DKMALLOC  -DGINT_MALLOC #  #  -DNO_TEMPLATE_MULTGCD -DGIAC_GENERIC_CONSTANTS -fno-zero-initialized-in-bss -ffast-math
+CXXFLAGS = -Os -mb -m4a-nofpu  -mhitachi -std=c++11 -fpermissive -flto -fno-use-cxa-atexit -fno-strict-aliasing -fno-rtti -fno-exceptions -ffunction-sections -fdata-sections -DHAVE_CONFIG_H -DTIMEOUT -DRELEASE -DCASCAS_DISABLE_PYTHON_TRANSLATE -DCASCAS_DISABLE_PLOT_RUNTIME  -I. -I/home/parisse/casiolocal/include/ustl -DKMALLOC  -DGINT_MALLOC #  #  -DNO_TEMPLATE_MULTGCD -DGIAC_GENERIC_CONSTANTS -fno-zero-initialized-in-bss -ffast-math
 
 
 LDFLAGS = -g -static -nostdlib -Tprizm.ld -Wl,--gc-sections,--print-memory-usage
