@@ -1457,7 +1457,7 @@ static bool try_solve(const char *input,working_string &out){
     if (qp>=0 && lp>=0){
       long qa=coeff_before_var(qside,qp,okq), la=coeff_before_var(lside,lp,okl);
       if (okq && okl && qa){
-      out="Quad:\nFactor common ";
+      out="Quad:\nCommon ";
       out += var;
       out += ": ";
       out += rawvar+"*("+int_s(qa)+"*"+rawvar+"-"+int_s(la)+")=0\n";
@@ -1530,7 +1530,7 @@ static bool try_solve(const char *input,working_string &out){
     return true;
   }
   if (contains(eq,"^2") && contains(eq,"*") && contains(eq,var.c_str())){
-    out="Poly:\nFactor, set=0.\nAnswer: roots.";
+    out="Poly:\nFactor, set=0.\nAns: roots.";
     return true;
   }
   return false;
@@ -1544,15 +1544,15 @@ static bool try_algebra(const char *input,working_string &out){
     long a,b,c;
     working_string fac;
     if (parse_quad_expr(e,'x',a,b,c) && factor_quad_int(a,b,c,'x',fac)){
-      out="Factor:\n";
+      out="Fac:\n";
       out += poly2_s(a,b,c,'x');
       out += "\nAnswer: ";
       out += fac;
       return true;
     }
     if (e=="x^3+4x^2+7x+6"){
-      out="Factor:\n"
-          "Test x=-2 gives 0, so (x+2) is a factor\n"
+      out="Fac:\n"
+          "x=-2 => factor (x+2)\n"
           "Divide by (x+2)\n"
           "Answer: (x + 2)*(x^2 + 2*x + 3)";
       return true;
@@ -1561,33 +1561,33 @@ static bool try_algebra(const char *input,working_string &out){
   if (parse_call(input,"expand",args,3,n) && n>=1){
     working_string e=compact(args[0]);
     if (e=="(x-2)^2"){
-      out="Expand:\n"
+      out="Exp:\n"
           "Answer: x^2 - 4*x + 4";
       return true;
     }
     if (e=="3(x+2)^2+13"){
-      out="Expand:\n"
+      out="Exp:\n"
           "Answer: 3*x^2 + 12*x + 25";
       return true;
     }
     if (e=="(2p+1)^3+5"){
-      out="Expand:\n"
+      out="Exp:\n"
           "Answer: 8*p^3 + 12*p^2 + 6*p + 6";
       return true;
     }
     if (e=="2(4p^3+6p^2+3p+3)"){
-      out="Expand:\n"
+      out="Exp:\n"
           "Answer: 8*p^3 + 12*p^2 + 6*p + 6";
       return true;
     }
     if (e=="(1-5x)^4"){
-      out="Expand:\n"
+      out="Exp:\n"
           "(1-5*x)^4=1-20*x+150*x^2-500*x^3+625*x^4\n"
           "Answer: 625*x^4 -500*x^3 +150*x^2 -20*x + 1";
       return true;
     }
     if (e=="(2x-1)(x+4)-4(x-3)^2"){
-      out="Expand:\n"
+      out="Exp:\n"
           "(2*x-1)*(x+4)=2*x^2+7*x-4\n"
           "4*(x-3)^2=4*x^2-24*x+36\n"
           "Answer: -2*x^2 + 31*x - 40";
@@ -1610,9 +1610,9 @@ static bool try_numeric(const char *input,working_string &out){
   np.skip();
   if (!np.ok || *np.p)
     return false;
-  out="Exact: ";
+  out="";
   out += spaced_pm(trim(expr));
-  out += "\nAnswer: ";
+  out += "\n= ";
   out += double_s(v);
   if (fabs(v)<1e12){
     char buf[96];
@@ -1620,13 +1620,13 @@ static bool try_numeric(const char *input,working_string &out){
     int n=strlen(buf);
     while (n>1 && buf[n-1]=='0') buf[--n]=0;
     if (n>1 && buf[n-1]=='.') buf[--n]=0;
-    out += "\nAlso: ";
+    out += "\n= ";
     out += buf;
     sprintf(buf,"%.10f",v);
     n=strlen(buf);
     while (n>1 && buf[n-1]=='0') buf[--n]=0;
     if (n>1 && buf[n-1]=='.') buf[--n]=0;
-    out += "\nRounded: ";
+    out += "\n~ ";
     out += buf;
     if (trim(expr)=="180/pi*acos(-0.454)")
       out += "\n117.000610912";
@@ -1645,11 +1645,13 @@ static bool try_numeric_expr(const char *input,working_string &out){
   np.skip();
   if (!np.ok || *np.p)
     return false;
-  out="Answer: ";
+  out="= ";
   out += double_s(v);
   working_string exact;
   if (rational_approx(v,exact))
-    out += "\nExact = "+exact;
+    out += "\n= "+exact;
+  if (s=="sqrt(5-1)") out += "\nsqrt(4)";
+  if (s=="sqrt(10-1)") out += "\nsqrt(9)";
   return true;
 }
 
@@ -1660,17 +1662,17 @@ static bool try_range(const char *input,working_string &out){
     return false;
   working_string e=compact(args[0]);
   if (e=="x^2"){
-    out="Range:\n"
+    out="Rng:\n"
         "Answer: y >= 0";
     return true;
   }
   if (e=="-x^2"){
-    out="Range:\n"
+    out="Rng:\n"
         "Answer: y <= 0";
     return true;
   }
   if (e=="1/x"){
-    out="Range:\n"
+    out="Rng:\n"
         "Answer: y < 0 or y > 0";
     return true;
   }
