@@ -882,6 +882,113 @@ static working_string integral_monomial(long coef,long pow){
   return frac_s(coef,den)+"*"+p;
 }
 
+static working_string power_var_s(Rat p){
+  if (!p.n) return "1";
+  if (p.n==p.d) return "x";
+  return "x^"+pow_s(p);
+}
+
+static working_string rat_power_term_s(Rat c,Rat p){
+  if (!c.n) return "0";
+  if (!p.n) return rat_s(c);
+  working_string xp=power_var_s(p);
+  if (c.n==c.d) return xp;
+  if (c.n==-c.d) return "-"+xp;
+  return rat_s(c)+"*"+xp;
+}
+
+static working_string integral_rat_power_term(Rat c,Rat p){
+  if (p.n==-p.d){
+    if (c.n==c.d) return "ln(abs(x))";
+    if (c.n==-c.d) return "-ln(abs(x))";
+    return rat_s(c)+"*ln(abs(x))";
+  }
+  Rat np=rat_add(p,rat(1,1));
+  return rat_power_term_s(rat_div(c,np),np);
+}
+
+static bool parse_coef_prefix(const working_string &pre,Rat &c);
+static bool parse_affine_general(const working_string &src,char v,Rat &a,Rat &b);
+static int split_top_product(const working_string &src,working_string *factors,int maxf);
+static working_string fmt_linear_rat(Rat a,Rat b,char v);
+static working_string join_sum(working_string a,const working_string &b);
+
+static bool parse_x_power_factor(const working_string &src,Rat &coef,Rat &pow){
+  working_string s=compact(strip_outer_parens(src));
+  coef=rat(1,1); pow=rat(0,1);
+  int sq=s.find("sqrt(x)");
+  if (sq>=0 && sq+7==int(s.size())){
+    if (sq && !parse_coef_prefix(s.substr(0,sq),coef))
+      return false;
+    pow=rat(1,2);
+    return true;
+  }
+  int x=s.find('x');
+  if (x<0) return false;
+  if (x && !parse_coef_prefix(s.substr(0,x),coef))
+    return false;
+  if (x+1==int(s.size())){
+    pow=rat(1,1);
+    return true;
+  }
+  if (s[x+1]!='^') return false;
+  working_string e=s.substr(x+2,s.size()-x-2);
+  if (e.size()>1 && e[0]=='(' && match_paren(e,0)==int(e.size())-1)
+    e=e.substr(1,e.size()-2);
+  return parse_rat(e,pow);
+}
+
+static bool integrate_power_linear_product(const working_string &expr,working_string &out){
+  working_string s=strip_outer_parens(nospace_lower(expr)),num,den;
+  Rat scale=rat(1,1);
+  if (split_top_fraction(s,num,den)){
+    Rat d;
+    if (!parse_rat(den,d) || !d.n)
+      return false;
+    scale=rat_div(scale,d);
+    s=num;
+  }
+  working_string f[2];
+  Rat xc,xp,a,b;
+  bool got=false;
+  if (split_top_product(s,f,2)==2){
+    got=(parse_x_power_factor(f[0],xc,xp) && parse_affine_general(f[1],'x',a,b)) ||
+        (parse_x_power_factor(f[1],xc,xp) && parse_affine_general(f[0],'x',a,b));
+  }
+  if (!got){
+    for (int i=0;i<int(s.size()) && !got;++i){
+      if (s[i]!='(' || (i && s[i-1]=='^')) continue;
+      int close=match_paren(s,i);
+      if (close<0) continue;
+      working_string mid=s.substr(i+1,close-i-1);
+      if (!parse_affine_general(mid,'x',a,b)) continue;
+      working_string rest=s.substr(0,i)+s.substr(close+1,s.size()-close-1);
+      if (!rest.empty() && rest[0]=='*') rest=rest.substr(1,rest.size()-1);
+      if (!rest.empty() && rest[rest.size()-1]=='*') rest=rest.substr(0,rest.size()-1);
+      got=parse_x_power_factor(rest,xc,xp);
+    }
+  }
+  if (!got)
+    return false;
+  xc=rat_mul(xc,scale);
+  Rat c1=rat_mul(xc,a), p1=rat_add(xp,rat(1,1));
+  Rat c2=rat_mul(xc,b), p2=xp;
+  working_string expanded=rat_power_term_s(c1,p1);
+  if (c2.n)
+    expanded=join_sum(expanded,rat_power_term_s(c2,p2));
+  out="Expand into powers of x:\n";
+  out += power_var_s(xp)+"*("+fmt_linear_rat(a,b,'x')+")";
+  if (!(scale.n==scale.d))
+    out += " scaled by "+rat_s(scale);
+  out += " = "+expanded+"\n";
+  out += "Use int(a*x^n) dx=a*x^(n+1)/(n+1)\n";
+  out += "Answer: "+integral_rat_power_term(c1,p1);
+  if (c2.n)
+    out=join_sum(out,integral_rat_power_term(c2,p2));
+  out += " + C";
+  return true;
+}
+
 static working_string derivative_monomial(long coef,long pow,char v='x'){
   if (!pow)
     return "";
@@ -2642,6 +2749,8 @@ static bool try_integral(const char *input,working_string &out){
     out=sum_answer;
     return true;
   }
+  if (integrate_power_linear_product(e,out) && !force_parts && !force_sub)
+    return true;
   if (integrate_sum_terms(e,sum_answer) && !force_parts && !force_sub){
     out="Integrate term by term:\n"
         "Use int(a*x^n) dx=a*x^(n+1)/(n+1)\n"
@@ -2660,6 +2769,15 @@ static bool try_integral(const char *input,working_string &out){
     out += integral_monomial(coef,pow);
     out += " + C";
     return true;
+  }
+  {
+    Rat rcoef,rpow;
+    if (parse_x_power_factor(e,rcoef,rpow) && rpow.n!=-rpow.d && !force_parts && !force_sub){
+      out="Use int(a*x^n) dx=a*x^(n+1)/(n+1)\n";
+      out += "n = "+rat_s(rpow)+", a = "+rat_s(rcoef)+"\n";
+      out += "Answer: "+integral_rat_power_term(rcoef,rpow)+" + C";
+      return true;
+    }
   }
   if (e=="1/x" || e=="1/(x)"){
     out="ln(abs(x)) + C";
