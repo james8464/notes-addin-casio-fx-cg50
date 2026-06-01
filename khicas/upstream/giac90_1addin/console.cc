@@ -2546,6 +2546,7 @@ const char conf_standard[] =
   "F2 calc\n"
   "diff(\n"
   "integrate(\n"
+  "solve(\n"
   "limit(\n"
   "sum(\n"
   "product(\n"

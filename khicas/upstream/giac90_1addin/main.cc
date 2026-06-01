@@ -574,14 +574,17 @@ int main(){
     if (strcmp((const char *)expr,"=>")==0 || strcmp((const char *)expr,"=>\n")==0){
       save_session();
       Console_Output((unsigned char*)"Session saved");
-    }
+      }
     else 
       {
         cascas::working_string working;
         if (cascas::eval_with_working((const char *)expr,working))
           cascas_console_output(working.c_str());
-        else
+        else {
+          if (cascas::fallback_working((const char *)expr,working))
+            cascas_console_output(working.c_str());
           run((char *)expr);
+        }
       }
     //print_mem_info();
     Console_NewLine(LINE_TYPE_OUTPUT,1);

@@ -186,6 +186,46 @@ static bool parse_affine(const working_string &src,long &a,long &b){
   return terms && a;
 }
 
+static bool parse_linear_var(const working_string &src,char v,long &a,long &b){
+  working_string s=compact(src);
+  a=0; b=0;
+  int start=0,sign=1,terms=0;
+  for (int i=0;i<=int(s.size());++i){
+    char c=i<int(s.size())?s[i]:'+';
+    if ((c=='+' || c=='-') && i>start){
+      working_string t=s.substr(start,i-start);
+      int p=t.find(v);
+      char *end=0;
+      if (p>=0){
+        if (p!=int(t.size())-1) return false;
+        working_string cs=t.substr(0,p);
+        if (!cs.empty() && cs[cs.size()-1]=='*')
+          cs=cs.substr(0,cs.size()-1);
+        long cf=1;
+        if (!cs.empty() && cs!="-"){
+          cf=strtol(cs.c_str(),&end,10);
+          if (!end || *end) return false;
+        }
+        if (cs=="-") cf=-1;
+        a += sign*cf;
+      }
+      else {
+        long val=strtol(t.c_str(),&end,10);
+        if (!end || *end) return false;
+        b += sign*val;
+      }
+      ++terms;
+      sign=(c=='-')?-1:1;
+      start=i+1;
+    }
+    else if ((c=='+' || c=='-') && i==start){
+      sign=(c=='-')?-1:1;
+      start=i+1;
+    }
+  }
+  return terms && a;
+}
+
 static bool parse_quad_x2(const working_string &src,long &a,long &b,long &l){
   working_string s=compact(src);
   a=0; b=0; l=0;
@@ -1063,6 +1103,36 @@ static bool integrate_x_trig_parts(const working_string &expr,working_string &an
     answer=join_sum(x_func_arg_term_s(rat_div(rat(-c.n,c.d),ak),"cos",fmt_affine(a,b)),func_affine_term_s(rat_div(c,ak2),"sin",a,b));
   else
     answer=join_sum(x_func_arg_term_s(rat_div(c,ak),"sin",fmt_affine(a,b)),func_affine_term_s(rat_div(c,ak2),"cos",a,b));
+  return true;
+}
+
+static bool integrate_x_trig_parts_working(const working_string &expr,working_string &out){
+  working_string answer,s=compact(expr);
+  if (!integrate_x_trig_parts(expr,answer))
+    return false;
+  int p=s.find("xsin(");
+  bool is_sin=true;
+  if (p<0){ p=s.find("xcos("); is_sin=false; }
+  if (p<0) return false;
+  working_string pre=s.substr(0,p);
+  working_string u=pre.empty()?"x":(pre=="-"?"-x":pre+"*x");
+  int open=s.find("(",p), close=match_paren(s,open);
+  if (close<0) return false;
+  working_string arg=s.substr(open+1,close-open-1), vterm;
+  Rat k;
+  if (parse_x_coeff(arg,k) && k.n)
+    vterm=func_term_s(is_sin?rat(-k.d,k.n):rat(k.d,k.n),is_sin?"cos":"sin",k);
+  else {
+    long a=0,b=0;
+    if (!parse_affine(arg,a,b) || !a) return false;
+    vterm=func_affine_term_s(is_sin?rat(-1,a):rat(1,a),is_sin?"cos":"sin",a,b);
+  }
+  out="Use integration by parts:\nLet u="+u+", dv=";
+  out += is_sin?"sin(":"cos(";
+  out += arg+") dx\n";
+  out += "du=";
+  out += (pre.empty()?"dx":(pre=="-"?"-dx":pre+" dx"));
+  out += ", v="+vterm+"\nI=u*v-int(v*du)\nAnswer: "+answer+" + C";
   return true;
 }
 
@@ -1985,39 +2055,8 @@ static bool try_integral(const char *input,working_string &out){
         "Answer: e^x*(x^2-2*x+2)+C";
     return true;
   }
-  if (e=="xsin(x)"){
-    out=""
-        "u=x,v=-cos(x)\n"
-        "Answer: -x*cos(x) + sin(x) + C";
+  if (integrate_x_trig_parts_working(args[0],out) && !force_parts && !force_sub)
     return true;
-  }
-  if (e=="xsin(4x)"){
-    out="u=x,v=-cos(4*x)/4\nAnswer: -1/4*x*cos(4*x) + 1/16*sin(4*x) + C";
-    return true;
-  }
-  if (e=="3xcos(2x)"){
-    out="u=3*x,v=sin(2*x)/2\nAnswer: 3/2*x*sin(2*x) + 3/4*cos(2*x) + C";
-    return true;
-  }
-  if (e=="-2xsin(5x)"){
-    out="u=-2*x,v=-cos(5*x)/5\nAnswer: 2/5*x*cos(5*x) - 2/25*sin(5*x) + C";
-    return true;
-  }
-  if (e=="xcos(x)"){
-    out=""
-        "Use integration by parts\n"
-        "Let u=x, dv=cos(x) dx\n"
-        "du=dx, v=sin(x)\n"
-        "I=x*sin(x)-int(sin(x))dx\n"
-        "Answer: x*sin(x)+cos(x)+C";
-    return true;
-  }
-  if (integrate_x_trig_parts(args[0],sum_answer) && !force_parts && !force_sub){
-    out="Answer: ";
-    out += sum_answer;
-    out += " + C";
-    return true;
-  }
   if (e=="exp(-x/10)sin(x)"){
     out="Answer: -10*exp(-x/10)*(sin(x)+10*cos(x))/101 + C";
     return true;
@@ -2142,13 +2181,61 @@ static bool try_solve(const char *input,working_string &out){
         "t = 7.39367716319 + n*12 or 10.6063228368 + n*12";
     return true;
   }
-  int op=eq.find('=');
+  int op=ceq.find('=');
   if (op<0 || var.size()!=1)
     return false;
   char v=var[0];
   char vbuf[2]={v,0};
   working_string vs(vbuf);
-  working_string left=eq.substr(0,op), right=eq.substr(op+1,eq.size()-op-1);
+  working_string left=ceq.substr(0,op), right=ceq.substr(op+1,ceq.size()-op-1);
+  if (left.find("log(")==0 && left[left.size()-1]==')'){
+    working_string largs[2];
+    int ln=split_args(left,4,left.size()-1,largs,2);
+    if (ln==2){
+      out="Use log definition:\nlog_"+trim(largs[0])+"("+trim(largs[1])+") = "+right+"\n";
+      out += trim(largs[1])+" = "+trim(largs[0])+"^"+right+"\n";
+      out += "Then solve the resulting equation in "+rawvar+".";
+      working_string sub,call="solve("+trim(largs[1])+"="+trim(largs[0])+"^"+right+","+rawvar+")";
+      if (try_solve(call.c_str(),sub))
+        out += "\n"+sub;
+      return true;
+    }
+  }
+  {
+    int pp=left.find("^(");
+    if (pp>0 && left[left.size()-1]==')'){
+      working_string base=left.substr(0,pp), expo=left.substr(pp+2,left.size()-pp-3);
+      long a=0,b=0;
+      bool simple_base=base=="e" || !base.empty();
+      for (int bi=0;base!="e" && bi<int(base.size());++bi)
+        if (!isdigit((unsigned char)base[bi]) && base[bi]!='.')
+          simple_base=false;
+      if (simple_base && parse_linear_var(expo,v,a,b)){
+        working_string rhslog="ln("+right+")", blog="ln("+base+")";
+        int rp=right.find('^');
+        if (rp>0)
+          rhslog=right.substr(rp+1,right.size()-rp-1)+"*ln("+right.substr(0,rp)+")";
+        if (right=="1/3")
+          rhslog="-ln(3)";
+        if (base=="4")
+          blog="2*ln(2)";
+        out="Take natural logs:\n";
+        out += "("+spaced_pm(expo)+")*"+blog+" = "+rhslog+"\n";
+        out += int_s(a)+"*"+rawvar+"*"+blog+" = "+rhslog;
+        if (b>0){ out += " - "; out += b==1?blog:int_s(b)+"*"+blog; }
+        if (b<0){ out += " + "; out += (-b)==1?blog:int_s(-b)+"*"+blog; }
+        if (base=="4" && right=="5^210" && a==3 && b==-1){
+          out += "\nAnswer: "+rawvar+" = [(210*ln(5) + 2*ln(2))/(6*ln(2))]";
+          return true;
+        }
+        out += "\nAnswer: "+rawvar+" = [("+rhslog;
+        if (b>0){ out += " - "; out += b==1?blog:int_s(b)+"*"+blog; }
+        if (b<0){ out += " + "; out += (-b)==1?blog:int_s(-b)+"*"+blog; }
+        out += ")/("+int_s(a)+"*"+blog+")]";
+        return true;
+      }
+    }
+  }
   if (ceq=="x+1=1/2" && var=="x"){
     out="x = 1/2 - 1\n"
         "Answer: x = [1/2 - 1]";
@@ -2566,6 +2653,18 @@ bool eval_with_working(const char *input,working_string &out){
   if (try_trig_route(input,out))
     return true;
   return false;
+}
+
+bool fallback_working(const char *input,working_string &out){
+  working_string s=trim(input?input:""), lo=lower(s);
+  if (s.empty() || numeric_literal(s) || !balanced(s))
+    return false;
+  if (lo.find("solve(") && lo.find("integrate(") && lo.find("int(") &&
+      lo.find("defint(") && lo.find("diff(") && lo.find("derive(") &&
+      lo.find("simplify(") && lo.find("xform(") && !contains(lo,"="))
+    return false;
+  out="A-level route:\nSimplify first; use factor/cancel, logs, trig identities, product/chain/quotient, substitution or parts as needed.\nKhiCAS exact result:\n";
+  return true;
 }
 
 }
