@@ -43,9 +43,10 @@ int xthetat=0,xcas_python_eval=0;
 
 //const console_line data_line={0,0,0,-1,0};
 console_line * Line=0;//[LINE_MAX];//={data_line};
-char menu_f1[8]={0},menu_f2[8]={0},menu_f3[8]={0},menu_f4[8]={0},menu_f5[8]={0},menu_f6[8];
+const int maxfmenusize=8;
+char menu_f1[8]={0},menu_f2[8]={0},menu_f3[8]={0},menu_f4[8]={0},menu_f5[8]={0},menu_f6[8]={0};
 char session_filename[MAX_FILENAME_SIZE+1]="session";
-char * FMenu_entries_name[6]={menu_f1,menu_f2,menu_f3,menu_f4,menu_f5,menu_f6};
+char * FMenu_entries_name[]={menu_f1,menu_f2,menu_f3,menu_f4,menu_f5,menu_f6};
 location Cursor;
 unsigned char *Edit_Line=0;
 int Start_Line, Last_Line,editline_cursor;
@@ -57,7 +58,6 @@ int dconsole_mode=1; // 0 disables dConsole commands
 #define Current_Col (Line[Cursor.y + Start_Line].start_col + Cursor.x)
 
 char xcas_status[64];
-int cas_alt_fkeys=0;
 
 void set_xcas_status(){
   ustl::string status;
@@ -79,7 +79,6 @@ void set_xcas_status(){
   strcpy(xcas_status,status.c_str());
   DefineStatusMessage(xcas_status, 1, 0, 0);
   DisplayStatusArea();
-  drawRecordingIndicator();
 }
 
 void menu_setup(){
@@ -1957,7 +1956,7 @@ int Console_GetKey(){
     }
     if (key==KEY_CTRL_F6){
       Menu smallmenu;
-      smallmenu.numitems=3;
+      smallmenu.numitems=2;
       MenuItem smallmenuitems[smallmenu.numitems];
       smallmenu.items=smallmenuitems;
       smallmenu.height=8;
@@ -1965,7 +1964,6 @@ int Console_GetKey(){
       smallmenu.scrollout=1;
       smallmenuitems[0].text = (char*)(lang?"Effacer historique":"Clear history");
       smallmenuitems[1].text = (char*)"Config shift-SETUP";
-      smallmenuitems[2].text = (char*)(cas_alt_fkeys ? "Normal keys" : "Alt labels");
       while (1){
 	int sres=doMenu(&smallmenu);
 	if (sres==MENU_RETURN_SELECTION){
@@ -1979,16 +1977,11 @@ int Console_GetKey(){
 	    menu_setup();
 	    continue;
 	  }
-	  if (smallmenu.selection==3){
-	    cas_alt_fkeys=!cas_alt_fkeys;
-	    Console_FMenu_Init();
-	    break;
-	  }
 	}
 	break;
       }
       Console_Disp();
-      continue;
+      return CONSOLE_SUCCEEDED;
 #if 0
       Menu smallmenu;
       smallmenu.numitems=13;
@@ -2352,7 +2345,7 @@ const char * console_menu(int key,int active_app){
 
 const char * console_menu(int key,unsigned char* cfg_,int active_app){
   unsigned char * cfg=cfg_;
-  if (key>=KEY_CTRL_F7 && key<=KEY_CTRL_F16)
+  if (key>=KEY_CTRL_F7 && key<=KEY_CTRL_F20)
     key-=9900;
   int i, matched = 0;
   const char * ret=0;
@@ -2552,25 +2545,10 @@ const char conf_standard[] =
   "product(\n"
   "series(\n"
   "log(\n"
-  "F3 trig\n"
-  "sin(\n"
-  "cos(\n"
-  "tan(\n"
-  "asin(\n"
-  "acos(\n"
-  "atan(\n"
-  "sec(\n"
-  "cot(\n"
-  "F4 menu\n"
-  "sqrt(\n"
-  "ln(\n"
-  "abs(\n"
-  "exact(\n"
-  "approx(\n"
-  "floor(\n"
-  "ceil(\n"
-  "round(\n"
-  "F5 A<>a\n";
+  "F3 view\n"
+  "F4 cmds\n"
+  "F5 A<>a\n"
+  "F6 File\n";
 
 // Loads the FMenus' data into memory, from a cfg file
 #if 0
@@ -2636,7 +2614,7 @@ void Console_FMenu_Init()
 
   while(*cfg) {
     //Get each line
-    for(i=0; i<20, *cfg && *cfg!='\r' && *cfg!='\n'; i++, cfg++) {
+    for(i=0; i+1<sizeof(temp)/sizeof(char) && *cfg && *cfg!='\r' && *cfg!='\n'; i++, cfg++) {
       temp[i] = *cfg;
     }
     temp[i]=0;
@@ -2644,12 +2622,12 @@ void Console_FMenu_Init()
     if(temp[0] == 'F' && temp[1]>='1' && temp[1]<='6') {
       number = temp[1]-'0' - 1;
       if(temp[3]) {
-	strcpy(FMenu_entries_name[number], (char*)temp+3);
+	strncpy(FMenu_entries_name[number], (char*)temp+3,maxfmenusize);
 	//FMenu_entries[number].name[4] = '\0';
       }
     }
 
-    memset(temp, '\0', 20);
+    memset(temp, '\0', sizeof(temp));
     cfg++;
   }
   //free(original_cfg);
@@ -2987,23 +2965,16 @@ int Console_Disp()
     } // end non cursor line
   } // end loop on all lines
 
-
-  if (cas_alt_fkeys)
-    PrintMini(0,58," JUMP |DELETE|MAT/VCT| MATH |       |       ",4);
-  else {
-    string menu(" ");
-    menu += string(menu_f1);
-    while (menu.size()<6)
-      menu += " ";
-    menu += "| ";
-    menu += string(menu_f2);
-    while (menu.size()<13)
-      menu += " ";
-    menu += lang?"| voir | cmds | A<>a | Fich ":"| view | cmds | A<>a | File ";
-    PrintMini(0,58,menu.c_str(),4);
-  }
-
-  // status, clock, 
+  string menu(" ");
+  menu += string(menu_f1);
+  while (menu.size()<6)
+    menu += " ";
+  menu += "| ";
+  menu += string(menu_f2);
+  while (menu.size()<13)
+    menu += " ";
+  menu += lang?"| voir | cmds | A<>a | Fich ":"| view | cmds | A<>a | File ";
+  PrintMini(0,58,menu.c_str(),4);
   set_xcas_status();
   Bdisp_PutDisp_DD();
   drawCasioCasBorder();

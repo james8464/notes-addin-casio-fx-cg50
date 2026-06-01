@@ -402,14 +402,6 @@ void drawCasioCasBorder(){
   DirectDrawRectangle(0, 217, 395, 223, kCasioCasPink);
 }
 
-void drawRecordingIndicator(){
-  int x=381, y=2;
-  int on=((RTC_GetTicks()/64)&1)==0;
-  DirectDrawRectangle(378,1,389,15,on?COLOR_BLUE:COLOR_WHITE);
-  if (on)
-    PrintMini(&x,&y,(unsigned char *)"R",0,0xffffffff,0,0,COLOR_WHITE,COLOR_BLUE,1,0);
-}
-
 //Uses the Bresenham line algorithm 
 void drawLine(int x1, int y1, int x2, int y2, int color) { 
   signed char ix; 

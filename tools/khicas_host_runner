@@ -46,10 +46,11 @@ int main(int argc,char **argv){
     std::cout << out << "\n";
     return 0;
   }
-  std::cout << "General A-level route:\n";
-  std::cout << "Input: " << input << "\n";
-  std::cout << "Use exact KhiCAS simplification, then write each algebraic or calculus step clearly.\n";
-  std::cout << "Answer: run the expression in KhiCAS if no dedicated working route is available.\n";
+  if (cascas::fallback_working(routed.c_str(),out)){
+    std::cout << out << "\n";
+    return 0;
+  }
+  std::cout << input << "\n";
   return 0;
 }
 CPP

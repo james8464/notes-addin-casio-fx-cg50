@@ -45,11 +45,13 @@ int doMenu(Menu* menu, MenuItemIcon* icontable) { // returns code telling what u
     // Clear the area of the screen we are going to draw on
     if(0 == menu->pBaRtR) drawRectangle(18*(menu->startX-1), 24*(menu->miniMiniTitle ? itemsStartY:menu->startY), 18*menu->width+((menu->scrollbar && menu->scrollout)?6:0), 24*menu->height-(menu->miniMiniTitle ? 24:0), COLOR_WHITE);
     if (menu->numitems>0) {
-      for(int curitem=0; curitem < menu->numitems; curitem++) {
+      for (int curitem=0; curitem < menu->numitems; curitem++) {
         // print the menu item only when appropriate
-        if(menu->scroll < curitem+1 && menu->scroll > curitem-itemsHeight) {
+        if (menu->scroll < curitem+1 && menu->scroll > curitem-itemsHeight) {
           char menuitem[70] = "";
-          if(menu->numitems>=100 || menu->type == MENUTYPE_MULTISELECT) strcpy(menuitem, "  "); //allow for the folder and selection icons on MULTISELECT menus (e.g. file browser)
+          if (menu->numitems>=100 || menu->type == MENUTYPE_MULTISELECT) strcpy(menuitem, "  "); //allow for the folder and selection icons on MULTISELECT menus (e.g. file browser)
+	  else if (menu->type==MENUTYPE_NO_NUMBER)
+	    strcpy(menuitem,"");
 	  else {
 	    int cur=curitem+1;
 	    if (menu->numitems<10){
@@ -233,7 +235,7 @@ int doMenu(Menu* menu, MenuItemIcon* icontable) { // returns code telling what u
             menu->numselitems = menu->numselitems+1;
 	    }
 	    return key; //return on F1 too so that parent subroutines have a chance to e.g. redraw fkeys*/
-      } else if (menu->type == MENUTYPE_FKEYS) {
+      } else if (menu->type == MENUTYPE_FKEYS || menu->type==MENUTYPE_NO_NUMBER) {
 	return key;
       }
       break;
@@ -242,7 +244,7 @@ int doMenu(Menu* menu, MenuItemIcon* icontable) { // returns code telling what u
     case KEY_CTRL_F4:
     case KEY_CTRL_F5:
     case KEY_CTRL_F6:
-      if (menu->type == MENUTYPE_FKEYS || menu->type==MENUTYPE_MULTISELECT) return key; // MULTISELECT also returns on Fkeys
+      if (menu->type == MENUTYPE_FKEYS || menu->type==MENUTYPE_MULTISELECT || menu->type==MENUTYPE_NO_NUMBER) return key; // MULTISELECT also returns on Fkeys
       break;
     case KEY_CTRL_PASTE:
       if (menu->type==MENUTYPE_MULTISELECT) return key; // MULTISELECT also returns on paste
@@ -276,6 +278,8 @@ int doMenu(Menu* menu, MenuItemIcon* icontable) { // returns code telling what u
 	DisplayStatusArea();
 	break;
       }
+    case KEY_CHAR_ANS:
+      return KEY_CHAR_ANS;
     case KEY_CTRL_EXIT: 
       return MENU_RETURN_EXIT;
       break;
@@ -288,12 +292,16 @@ int doMenu(Menu* menu, MenuItemIcon* icontable) { // returns code telling what u
     case KEY_CHAR_7:
     case KEY_CHAR_8:
     case KEY_CHAR_9:
+      if (menu->type==MENUTYPE_NO_NUMBER)
+	return key;
       if(menu->numitems>=(key-0x30)) {
 	menu->selection = (key-0x30);
 	if (menu->type != MENUTYPE_FKEYS) return MENU_RETURN_SELECTION;
       }
       break;
     case KEY_CHAR_0:
+      if (menu->type==MENUTYPE_NO_NUMBER)
+	return key;
       if(menu->numitems>=10) {
 	menu->selection = 10;
 	if (menu->type != MENUTYPE_FKEYS)  return MENU_RETURN_SELECTION;
@@ -331,7 +339,7 @@ int doMenu(Menu* menu, MenuItemIcon* icontable) { // returns code telling what u
 	if (menu->type != MENUTYPE_FKEYS)  return MENU_RETURN_SELECTION;
       }
       break;
-    case KEY_CTRL_FD:
+    case KEY_CTRL_SD:
       if(menu->numitems>=18) {
 	menu->selection = 18;
 	if (menu->type != MENUTYPE_FKEYS)  return MENU_RETURN_SELECTION;
@@ -353,6 +361,18 @@ int doMenu(Menu* menu, MenuItemIcon* icontable) { // returns code telling what u
     case KEY_CHAR_STORE:
       if(menu->numitems>=22) {
 	menu->selection = 22;
+	if (menu->type != MENUTYPE_FKEYS)  return MENU_RETURN_SELECTION;
+      }
+      break;
+    case KEY_CHAR_MULT:
+      if(menu->numitems>=23) {
+	menu->selection = 23;
+	if (menu->type != MENUTYPE_FKEYS)  return MENU_RETURN_SELECTION;
+      }
+      break;
+    case KEY_CHAR_DIV:
+      if(menu->numitems>=24) {
+	menu->selection = 24;
 	if (menu->type != MENUTYPE_FKEYS)  return MENU_RETURN_SELECTION;
       }
       break;

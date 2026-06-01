@@ -22,6 +22,8 @@ CASES = [
     ("simplify((x^2-1)/(1-x))", ["Cancel common factor (x - 1)", "Answer: -(x + 1)"]),
     ("simplify((x^2+2*x+1)/(x+1)^2)", ["(x + 1)*(x + 1)", "Cancel common factor (x + 1)", "Answer: 1"]),
     ("simplify((x^2-1)/(x+1)^2)", ["x^2 - 1 = (x + 1)*(x - 1)", "Cancel common factor (x + 1)", "Answer: (x - 1)/(x + 1)"]),
+    ("solve(0=(10-0.4x)*ln(x+1),x)", ["Solve by zero-product rule:", "10 - 2/5*x = 0", "ln(x + 1) = 0", "Domain: x + 1 > 0", "Answer: x = [0, 25]"]),
+    ("solve((3-0.5*x)*ln(2*x-1)=0,x)", ["Solve by zero-product rule:", "3 - 1/2*x = 0", "ln(2*x - 1) = 0", "Domain: 2*x - 1 > 0", "Answer: x = [1, 6]"]),
 ]
 
 

@@ -61,51 +61,40 @@ void reset_alpha(){
 }
 
 int lang=0;
+const char compact_help_desc[]="Full sheet in CAS.PAK.";
+#define H (char*)compact_help_desc
 const catalogFunc completeCat[] = { // list of all functions (including some not in any category)
-  {"abs(x)", 0, "Modulus. Arg x. Used for inequalities/domain work.", "-3", "x-2", CAT_CATEGORY_REAL | (CAT_CATEGORY_ALGEBRA<<8)},
-  {"acos(x)", 0, "Inverse cos. Arg x in [-1,1].", "1/2", 0, CAT_CATEGORY_TRIG},
-  {"approx(x)", 0, "Decimal form. Arg x.", "sqrt(2)", "pi", CAT_CATEGORY_REAL},
-  {"asin(x)", 0, "Inverse sin. Arg x in [-1,1].", "1/2", 0, CAT_CATEGORY_TRIG},
-  {"atan(x)", 0, "Inverse tan. Arg x.", "1", 0, CAT_CATEGORY_TRIG},
-  {"ceil(x)", 0, "Smallest integer >= x.", "1.2", 0, CAT_CATEGORY_REAL},
-  {"ceiling(x)", 0, "Smallest integer >= x.", "1.2", 0, CAT_CATEGORY_REAL},
-  {"coeff(p,x,n)", 0, "Coefficient of x^n in p.", "3*x^2+2*x+1,x,2", 0, CAT_CATEGORY_POLYNOMIAL},
-  {"collect(expr,x)", 0, "Group terms by powers of x.", "x+x^2+2*x", "sin(x)^2+cos(x)^2", CAT_CATEGORY_ALGEBRA},
-  {"cos(x)", 0, "Cosine.", "pi/3", 0, CAT_CATEGORY_TRIG},
-  {"cot(x)", 0, "Cotangent: cot(x)=1/tan(x).", "x", 0, CAT_CATEGORY_TRIG},
-  {"degree(p,x)", 0, "Polynomial degree.", "x^4-1,x", 0, CAT_CATEGORY_POLYNOMIAL},
-  {"diff(f,var,[n])", 0, "Differentiate. Supports equations and exam working routes.", "x^3,x", "(x^2)*tan(y)=9,x", CAT_CATEGORY_CALCULUS},
-  {"exact(x)", 0, "Exact fraction/radical form.", "1.25", 0, CAT_CATEGORY_REAL},
-  {"expand(expr)", 0, "Expand brackets/powers.", "(x+1)^3", "sin(2*x)", CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_TRIG<<8)},
-  {"factor(p,[x])", 0, "Factorise polynomial/expression.", "x^2-5*x+6", "x^3-1", CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_POLYNOMIAL<<8)},
-  {"floor(x)", 0, "Greatest integer <= x.", "1.8", 0, CAT_CATEGORY_REAL},
-  {"fsolve(equation,x=a..b)", 0, "Numerical solve on interval.", "cos(x)=x,x=0..1", 0, CAT_CATEGORY_SOLVE},
-  {"gcd(a,b)", 0, "Greatest common divisor.", "x^2-1,x^3-1", 0, CAT_CATEGORY_POLYNOMIAL},
-  {"integrate(f,x,[a,b])", 0, "Integrate. Method: 1 auto, 2 parts, 3 substitution, 4 partial fractions, 5 trig.", "(ln(x))^2,x,2", "(ln(x))^2/x,x,3,u=ln(x)", CAT_CATEGORY_CALCULUS},
-  {"implicit_diff(eq,[x,y])", "diff(", "Implicit differentiation. Use diff(equation,x).", "(x^2)*tan(y)=9,x", 0, CAT_CATEGORY_CALCULUS},
-  {"lcm(a,b)", 0, "Least common multiple.", "x^2-1,x^3-1", 0, CAT_CATEGORY_POLYNOMIAL},
-  {"limit(f,x=a)", 0, "Limit at x=a. Optional side.", "sin(x)/x,x=0", "1/x,x=0,1", CAT_CATEGORY_CALCULUS},
-  {"ln(x)", 0, "Natural log. x>0.", "e^2", 0, CAT_CATEGORY_CALCULUS | (CAT_CATEGORY_REAL<<8)},
-  {"log(base,x)", "log(", "Log to any base. Uses ln(x)/ln(base).", "2,x", "3,81", CAT_CATEGORY_CALCULUS | (CAT_CATEGORY_REAL<<8)},
-  {"partfrac(p,x)", 0, "Partial fractions.", "1/(x^2-1),x", 0, CAT_CATEGORY_ALGEBRA},
-  {"pcoeff(roots)", 0, "Polynomial from roots.", "[1,2,3]", 0, CAT_CATEGORY_POLYNOMIAL},
-  {"product(f,k,m,n)", 0, "Product notation.", "k,k,1,n", 0, CAT_CATEGORY_CALCULUS},
-  {"proot(p)", 0, "Numerical polynomial roots.", "x^3-2*x+1", 0, CAT_CATEGORY_POLYNOMIAL | (CAT_CATEGORY_SOLVE<<8)},
-  {"range(expr,[x,a,b])", "range(", "Range of a function; checks restrictions/endpoints.", "x^2", "1/x", CAT_CATEGORY_ALGEBRA},
-  {"round(x)", 0, "Round to nearest integer.", "1.6", 0, CAT_CATEGORY_REAL},
-  {"sec(x)", 0, "Secant: sec(x)=1/cos(x).", "x", 0, CAT_CATEGORY_TRIG},
-  {"series(f,x=a,n)", 0, "Taylor/binomial series.", "sin(x),x=0,5", "(1+x)^(-1),x=0,4", CAT_CATEGORY_CALCULUS},
-  {"simplify(expr)", 0, "Simplify algebra/trig.", "sin(x)^2+cos(x)^2", "sqrt(x^2)", CAT_CATEGORY_ALGEBRA},
-  {"sin(x)", 0, "Sine.", "pi/6", 0, CAT_CATEGORY_TRIG},
-  {"solve(equation,x)", 0, "Exact solve with exam routes before CAS fallback.", "x^2-5*x+6=0,x", "(dy)/(dx)=y,y", CAT_CATEGORY_SOLVE},
-  {"sqrt(x)", 0, "Square root; real x>=0.", "9", "x^2", CAT_CATEGORY_REAL | (CAT_CATEGORY_ALGEBRA<<8)},
-  {"subst(expr,x=a)", 0, "Substitute x=a into expr.", "x^2+1,x=3", 0, CAT_CATEGORY_ALGEBRA},
-  {"sum(f,k,m,n)", 0, "Summation notation.", "k^2,k,1,n", 0, CAT_CATEGORY_CALCULUS},
-  {"tan(x)", 0, "Tangent.", "pi/4", 0, CAT_CATEGORY_TRIG},
-  {"taylor(f,x=a,n)", 0, "Taylor expansion.", "sin(x),x=0,5", 0, CAT_CATEGORY_CALCULUS},
-  {"tcollect(expr)", 0, "Collect trig terms.", "sin(x)+cos(x)", 0, CAT_CATEGORY_TRIG},
-  {"texpand(expr)", 0, "Expand trig/log/exp forms.", "sin(2*x)", "ln(x*y)", CAT_CATEGORY_TRIG | (CAT_CATEGORY_ALGEBRA<<8)},
-  {"xform(expr,target)", "xform(", "Transform expr into target using supported identities.", "1+tan(x)^2,sec(x)^2", "log(a,x),ln(x)/ln(a)", CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_TRIG<<8)},
+  {"abs(x)", 0, H, "-3", "x-2", CAT_CATEGORY_REAL | (CAT_CATEGORY_ALGEBRA<<8)},
+  {"acos(x)", 0, H, "1/2", 0, CAT_CATEGORY_TRIG},
+  {"asin(x)", 0, H, "1/2", 0, CAT_CATEGORY_TRIG},
+  {"atan(x)", 0, H, "1", 0, CAT_CATEGORY_TRIG},
+  {"collect(expr,x)", 0, H, "x+x^2+2*x", "sin(x)^2+cos(x)^2", CAT_CATEGORY_ALGEBRA},
+  {"cos(x)", 0, H, "pi/3", 0, CAT_CATEGORY_TRIG},
+  {"cot(x)", 0, H, "x", 0, CAT_CATEGORY_TRIG},
+  {"diff(f,var,[n])", 0, H, "x^3,x", "(x^2)*tan(y)=9,x", CAT_CATEGORY_CALCULUS},
+  {"expand(expr)", 0, H, "(x+1)^3", "sin(2*x)", CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_TRIG<<8)},
+  {"factor(p,[x])", 0, H, "x^2-5*x+6", "x^3-1", CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_POLYNOMIAL<<8)},
+  {"integrate(f,x,[a,b])", 0, H, "(ln(x))^2,x,2", "(ln(x))^2/x,x,3,u=ln(x)", CAT_CATEGORY_CALCULUS},
+  {"implicit_diff(eq,[x,y])", "diff(", H, "(x^2)*tan(y)=9,x", 0, CAT_CATEGORY_CALCULUS},
+  {"limit(f,x=a)", 0, H, "sin(x)/x,x=0", "1/x,x=0,1", CAT_CATEGORY_CALCULUS},
+  {"ln(x)", 0, H, "e^2", 0, CAT_CATEGORY_CALCULUS | (CAT_CATEGORY_REAL<<8)},
+  {"log(base,x)", "log(", H, "2,x", "3,81", CAT_CATEGORY_CALCULUS | (CAT_CATEGORY_REAL<<8)},
+  {"partfrac(p,x)", 0, H, "1/(x^2-1),x", 0, CAT_CATEGORY_ALGEBRA},
+  {"product(f,k,m,n)", 0, H, "k,k,1,n", 0, CAT_CATEGORY_CALCULUS},
+  {"range(expr,[x,a,b])", "range(", H, "x^2", "1/x", CAT_CATEGORY_ALGEBRA},
+  {"sec(x)", 0, H, "x", 0, CAT_CATEGORY_TRIG},
+  {"series(f,x=a,n)", 0, H, "sin(x),x=0,5", "(1+x)^(-1),x=0,4", CAT_CATEGORY_CALCULUS},
+  {"simplify(expr)", 0, H, "sin(x)^2+cos(x)^2", "sqrt(x^2)", CAT_CATEGORY_ALGEBRA},
+  {"sin(x)", 0, H, "pi/6", 0, CAT_CATEGORY_TRIG},
+  {"solve(equation,x)", 0, H, "x^2-5*x+6=0,x", "(dy)/(dx)=y,y", CAT_CATEGORY_SOLVE},
+  {"sqrt(x)", 0, H, "9", "x^2", CAT_CATEGORY_REAL | (CAT_CATEGORY_ALGEBRA<<8)},
+  {"subst(expr,x=a)", 0, H, "x^2+1,x=3", 0, CAT_CATEGORY_ALGEBRA},
+  {"sum(f,k,m,n)", 0, H, "k^2,k,1,n", 0, CAT_CATEGORY_CALCULUS},
+  {"tan(x)", 0, H, "pi/4", 0, CAT_CATEGORY_TRIG},
+  {"taylor(f,x=a,n)", 0, H, "sin(x),x=0,5", 0, CAT_CATEGORY_CALCULUS},
+  {"tcollect(expr)", 0, H, "sin(x)+cos(x)", 0, CAT_CATEGORY_TRIG},
+  {"texpand(expr)", 0, H, "sin(2*x)", "ln(x*y)", CAT_CATEGORY_TRIG | (CAT_CATEGORY_ALGEBRA<<8)},
+  {"xform(expr,target)", "xform(", H, "1+tan(x)^2,sec(x)^2", "log(a,x),ln(x)/ln(a)", CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_TRIG<<8)},
 };
 
 const char chk_restart_string1[]="Keep variables?";
@@ -113,8 +102,8 @@ const char chk_restart_string2[]="F1: keep,   F6: erase";
 const char aide_khicas_string[]="Khicas Help";
 const char main_string1[]="Clear variables?";
 const char main_string2[]="F1: cancel,  F6: confirm";
-const char shortcuts_string[]="A-level Pure build: use catalog for commands.";
-const char apropos_string[]="KhiCASen A-level Pure build.";
+const char shortcuts_string[]="Use catalog.";
+const char apropos_string[]="CAS Pure.";
 
 int CAT_COMPLETE_COUNT=sizeof(completeCat)/sizeof(catalogFunc);
 

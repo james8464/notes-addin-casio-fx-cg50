@@ -84,6 +84,8 @@ static Rat rat(long n,long d){
   return r;
 }
 
+static Rat rat_add(Rat a,Rat b){ return rat(a.n*b.d+b.n*a.d,a.d*b.d); }
+static Rat rat_sub(Rat a,Rat b){ return rat(a.n*b.d-b.n*a.d,a.d*b.d); }
 static Rat rat_mul(Rat a,Rat b){ return rat(a.n*b.n,a.d*b.d); }
 static Rat rat_div(Rat a,Rat b){ return rat(a.n*b.d,a.d*b.n); }
 
@@ -110,11 +112,30 @@ static bool parse_rat(const working_string &src,Rat &r){
   int slash=s.find('/');
   char *end=0;
   if (slash>=0){
-    long n=strtol(s.substr(0,slash).c_str(),&end,10);
-    if (!end || *end) return false;
-    long d=strtol(s.substr(slash+1,s.size()-slash-1).c_str(),&end,10);
-    if (!end || *end || !d) return false;
-    r=rat(n,d);
+    Rat n,d;
+    if (!parse_rat(s.substr(0,slash),n) || !parse_rat(s.substr(slash+1,s.size()-slash-1),d) || !d.n)
+      return false;
+    r=rat_div(n,d);
+    return true;
+  }
+  int dot=s.find('.');
+  if (dot>=0){
+    int sign=1;
+    if (s[0]=='+' || s[0]=='-'){
+      if (s[0]=='-') sign=-1;
+      s=s.substr(1,s.size()-1);
+      --dot;
+    }
+    if (dot<=0 || dot>=int(s.size())-1)
+      return false;
+    long n=0,d=1;
+    for (int i=0;i<int(s.size());++i){
+      if (i==dot) continue;
+      if (!isdigit((unsigned char)s[i])) return false;
+      n=10*n+(s[i]-'0');
+      if (i>dot) d*=10;
+    }
+    r=rat(sign*n,d);
     return true;
   }
   long n=strtol(s.c_str(),&end,10);
@@ -1639,6 +1660,141 @@ static bool parse_call(const char *input,const char *name,working_string *args,i
   return true;
 }
 
+static bool parse_linear_rat_var(const working_string &src,char v,Rat &a,Rat &b){
+  working_string s=strip_outer_parens(nospace_lower(src));
+  a=rat(0,1); b=rat(0,1);
+  int start=0,sign=1,terms=0,depth=0;
+  for (int i=0;i<=int(s.size());++i){
+    char c=i<int(s.size())?s[i]:'+';
+    if (c=='(') ++depth;
+    if (c==')') --depth;
+    if (!depth && (c=='+' || c=='-') && i>start){
+      working_string t=s.substr(start,i-start);
+      int p=t.find(v);
+      Rat val;
+      if (p>=0){
+        if (p!=int(t.size())-1)
+          return false;
+        working_string cs=t.substr(0,p);
+        if (!cs.empty() && cs[cs.size()-1]=='*')
+          cs=cs.substr(0,cs.size()-1);
+        if (cs.empty())
+          val=rat(1,1);
+        else if (cs=="-")
+          val=rat(-1,1);
+        else if (!parse_rat(cs,val))
+          return false;
+        if (sign<0) val.n=-val.n;
+        a=rat_add(a,val);
+      }
+      else {
+        if (!parse_rat(t,val))
+          return false;
+        if (sign<0) val.n=-val.n;
+        b=rat_add(b,val);
+      }
+      ++terms;
+      sign=(c=='-')?-1:1;
+      start=i+1;
+    }
+    else if (!depth && (c=='+' || c=='-') && i==start){
+      sign=(c=='-')?-1:1;
+      start=i+1;
+    }
+  }
+  return terms>0 && a.n;
+}
+
+static int split_top_product(const working_string &src,working_string *factors,int maxf){
+  working_string s=strip_outer_parens(nospace_lower(src));
+  int n=0,start=0,depth=0;
+  for (int i=0;i<=int(s.size());++i){
+    char c=i<int(s.size())?s[i]:'*';
+    if (c=='(') ++depth;
+    if (c==')') --depth;
+    if (!depth && c=='*'){
+      if (n>=maxf)
+        return 0;
+      factors[n++]=strip_outer_parens(s.substr(start,i-start));
+      start=i+1;
+    }
+  }
+  return n;
+}
+
+static bool ln_arg_linear(const working_string &factor,char v,working_string &arg,Rat &a,Rat &b){
+  working_string f=strip_outer_parens(nospace_lower(factor));
+  if (f.find("ln(")!=0 || f[f.size()-1]!=')')
+    return false;
+  arg=f.substr(3,f.size()-4);
+  return parse_linear_rat_var(arg,v,a,b);
+}
+
+static bool try_zero_product_solve(const working_string &eqraw,const working_string &rawvar,char v,working_string &out){
+  working_string eq=nospace_lower(eqraw);
+  int op=eq.find('=');
+  if (op<0)
+    return false;
+  working_string left=strip_outer_parens(eq.substr(0,op));
+  working_string right=strip_outer_parens(eq.substr(op+1,eq.size()-op-1));
+  working_string product;
+  if (left=="0")
+    product=right;
+  else if (right=="0")
+    product=left;
+  else
+    return false;
+  working_string factors[2];
+  int n=split_top_product(product,factors,2);
+  if (n!=2)
+    return false;
+  int li=0;
+  working_string arg;
+  Rat la,lb,a,b;
+  if (!ln_arg_linear(factors[0],v,arg,la,lb)){
+    li=1;
+    if (!ln_arg_linear(factors[1],v,arg,la,lb))
+      return false;
+  }
+  int oi=1-li;
+  if (!parse_linear_rat_var(factors[oi],v,a,b))
+    return false;
+  Rat sol[2];
+  sol[0]=rat_div(rat(-b.n,b.d),a);
+  sol[1]=rat_div(rat_sub(rat(1,1),lb),la);
+  if (sol[1].n*sol[0].d<sol[0].n*sol[1].d){
+    Rat t=sol[0]; sol[0]=sol[1]; sol[1]=t;
+  }
+  out="Solve by zero-product rule:\n";
+  out += spaced_pm(product)+" = 0\n";
+  out += "So ";
+  for (int i=0;i<2;++i){
+    if (i) out += " or ";
+    out += spaced_pm(factors[i])+" = 0";
+  }
+  out += "\n";
+  out += rat_s(b);
+  out += a.n<0?" - ":" + ";
+  Rat aa=rat(a.n<0?-a.n:a.n,a.d);
+  if (!(aa.n==aa.d))
+    out += rat_s(aa)+"*";
+  out += v;
+  out += " = 0\n";
+  out += rawvar+" = "+rat_s(rat_div(rat(-b.n,b.d),a));
+  out += "\nln("+spaced_pm(arg)+") = 0\n";
+  out += spaced_pm(arg)+" = e^0 = 1\n";
+  out += rawvar+" = "+rat_s(rat_div(rat_sub(rat(1,1),lb),la));
+  out += "\nDomain: "+spaced_pm(arg)+" > 0\n";
+  out += "Keep solutions satisfying the domain.\n";
+  out += "Answer: "+rawvar+" = [";
+  for (int i=0;i<2;++i){
+    if (i) out += ", ";
+    out += rat_s(sol[i]);
+  }
+  out += "]";
+  return true;
+}
+
 static bool try_implicit_diff(const char *input,working_string &out){
   working_string args[3];
   int n=0;
@@ -2185,6 +2341,8 @@ static bool try_solve(const char *input,working_string &out){
   if (op<0 || var.size()!=1)
     return false;
   char v=var[0];
+  if (try_zero_product_solve(args[0],rawvar,v,out))
+    return true;
   char vbuf[2]={v,0};
   working_string vs(vbuf);
   working_string left=ceq.substr(0,op), right=ceq.substr(op+1,ceq.size()-op-1);
@@ -2656,15 +2814,8 @@ bool eval_with_working(const char *input,working_string &out){
 }
 
 bool fallback_working(const char *input,working_string &out){
-  working_string s=trim(input?input:""), lo=lower(s);
-  if (s.empty() || numeric_literal(s) || !balanced(s))
-    return false;
-  if (lo.find("solve(") && lo.find("integrate(") && lo.find("int(") &&
-      lo.find("defint(") && lo.find("diff(") && lo.find("derive(") &&
-      lo.find("simplify(") && lo.find("xform(") && !contains(lo,"="))
-    return false;
-  out="A-level route:\nSimplify first; use factor/cancel, logs, trig identities, product/chain/quotient, substitution or parts as needed.\nKhiCAS exact result:\n";
-  return true;
+  out.clear();
+  return false;
 }
 
 }
