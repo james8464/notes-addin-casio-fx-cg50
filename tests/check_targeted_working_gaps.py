@@ -43,6 +43,8 @@ CASES = [
     ("diff((x)+(3),x)", ["dy/dx = 1"]),
     ("diff(6,x)", ["dy/dx = 0"]),
     ("simplify(((8)))", ["Answer: 8"]),
+    ("xform(-7,expand(-7))", ["Answer: -7"]),
+    ("xform(x,factor(x))", ["Answer: x"]),
 ]
 
 

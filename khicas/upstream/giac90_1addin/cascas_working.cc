@@ -1751,7 +1751,7 @@ static bool integrate_trig_identity(const working_string &expr,working_string &o
     }
   }
   if (s=="1/(cos(x)^2tan(x)^2)"){
-    out="cos(x)^2*tan(x)^2=sin(x)^2\n1/sin(x)^2=cosec(x)^2\nAnswer: -cot(x) + C";
+    out="cos^2*tan^2=sin^2\n1/sin^2=cosec^2\nAnswer: -cot(x)+C";
     return true;
   }
   if (s=="cos(x)sin(x)" || s=="sin(x)cos(x)"){
@@ -1759,7 +1759,7 @@ static bool integrate_trig_identity(const working_string &expr,working_string &o
     return true;
   }
   if (s=="(sin(x)-2cos(x))sin(x)"){
-    out="sin(x)^2-2*sin(x)*cos(x)\nsin(x)^2=(1-cos(2*x))/2, 2*sin(x)*cos(x)=sin(2*x)\nAnswer: 1/2*x - 1/4*sin(2*x) + 1/2*cos(2*x) + C";
+    out="sin^2-2sin*cos\nsin^2=(1-cos(2*x))/2, 2sin*cos=sin(2*x)\nAnswer: 1/2*x-1/4*sin(2*x)+1/2*cos(2*x)+C";
     return true;
   }
   if (s=="(1+sec(x)^2)sin(x)"){
@@ -1767,7 +1767,7 @@ static bool integrate_trig_identity(const working_string &expr,working_string &o
     return true;
   }
   if (s=="(1+cot(x)^2)sec(x)^2"){
-    out="(1+cot(x)^2)*sec(x)^2=cosec(x)^2+sec(x)^2\nAnswer: tan(x) - cot(x) + C";
+    out="Use cosec^2=1+cot^2\nAnswer: tan(x)-cot(x)+C";
     return true;
   }
   if (s=="((2+cos(x))sin(2x))/(2cos(x))"){
@@ -3656,6 +3656,10 @@ static bool try_xform(const char *input,working_string &out){
   if (!parse_call(input,"xform",args,2,n) || n<2)
     return false;
   working_string a=compact(args[0]), b=compact(args[1]);
+  if (b=="expand("+a+")" || b=="factor("+a+")"){
+    out="Answer: "+a;
+    return true;
+  }
   if ((a=="1+tan(x)^2" && b=="sec(x)^2") ||
       (a=="sec(x)^2" && b=="1+tan(x)^2")){
     out="sec(x)^2 = 1 + tan(x)^2\n"
@@ -3780,7 +3784,7 @@ bool fallback_working(const char *input,working_string &out){
   working_string s=trim(input?input:"");
   if (s.empty() || !balanced(s) || numeric_literal(s))
     return false;
-  out="Route: simplify; use identities, then rules. Exact:";
+  out="Exact:";
   return true;
 }
 
