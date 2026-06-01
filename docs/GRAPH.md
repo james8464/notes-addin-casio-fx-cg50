@@ -1,6 +1,6 @@
 # Project Graph
 
-Last updated: 2026-06-01 03:39 BST
+Last updated: 2026-06-01 03:49 BST
 
 ## Build
 
@@ -36,7 +36,7 @@ graph TD
 ```mermaid
 graph TD
   Work["working engine"] --> Diff["diff: guarded affine chain powers, optimisation/quotient derivatives, ln^2 chain, x*exp(-2x) product, implicit, trig basics"]
-  Work --> Int["integrate: affine reverse-chain powers, compact radical routes including 12*(3-x/2)^(1/2), 30*(1-x/3)^(3/2), 15*(1-x/4)^(1/4), x*sin(4*x) by-parts, linear-over-linear division logs, trig/exp sums, damped-sine by-parts, substitution, definite substitution"]
+  Work --> Int["integrate: affine reverse-chain powers, expanded (ln(x))^2 by-parts answer, compact radical routes including 12*(3-x/2)^(1/2), 30*(1-x/3)^(3/2), 15*(1-x/4)^(1/4), x*sin(4*x) by-parts, linear-over-linear division logs, trig/exp sums, damped-sine by-parts, substitution, definite substitution"]
   Work --> Solve["solve: guarded linear, integer-root quadratics with explicit root lines and negative-leading exam order, exp(2x)=2, rational, dy/dx and dn/dt separable"]
   Work --> Alg["algebra: quadratic factor, targeted expand, high-frequency exam forms"]
   Work --> Num["numeric routes: equation-style decimal/exact lines, log base 10 with ln natural, 12-significant-digit rounded markers, sqrt substitution-limit markers"]
@@ -67,7 +67,7 @@ graph TD
   Report --> TUI
   TUI --> Panels["animated panels: status badges, phase lanes, health score, sync, last commit, change counts, artifact headroom, live rate and ETA, queue bars, strict clusters, risk, ignored workspace, active-tool counts, next action"]
   Runner --> Runtime["14,256/14,256 runtime-safe"]
-  Runner --> Strict["13,000/14,256 strict marker pass"]
+  Runner --> Strict["13,002/14,256 strict marker pass"]
   Strict --> Remaining["remaining: free byte budget before broad route families, symbolic parameter area proofs, algebra presentation, binomial/partfrac, exact-form geometry/vector clusters"]
 ```
 

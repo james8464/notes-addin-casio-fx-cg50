@@ -1064,7 +1064,7 @@ static bool try_integral(const char *input,working_string &out){
     working_string lo=lower(trim(input?input:""));
     if (lo.find("defint(")==0 && contains(lo,"ln(x)^2") && contains(lo,"method=parts")){
       out=""
-          "u=ln(x)^2, v=x\n"
+          "u=ln(x)^2;v=x\n"
           "I=x*ln(x)^2-2*int(ln(x))dx\n"
           "int(ln(x))dx=x*ln(x)-x\n"
           "F(x)=x*(ln(x)^2-2*ln(x)+2)";
@@ -1189,15 +1189,15 @@ static bool try_integral(const char *input,working_string &out){
   }
   if (e=="ln(x)"){
     out=""
-        "u=ln(x), v=x\n"
+        "u=ln(x);v=x\n"
         "Answer: x*ln(x) - x + C";
     return true;
   }
   if (e=="(ln(x))^2" || e=="ln(x)^2"){
     out=""
-        "I=x*(ln(x))^2-2*int(ln(x))dx\n"
-        "int(ln(x))dx=x*ln(x)-x\n"
-        "Answer: x*((ln(x))^2-2*ln(x)+2)+C";
+        "I=x*ln(x)^2-2*int(ln(x))dx\n"
+        "int ln(x)dx=x*ln(x)-x\n"
+        "Answer: x*ln(x)^2 - 2*x*ln(x) + 2*x + C";
     return true;
   }
   if (e=="2*x/(x^2+4)" || e=="2x/(x^2+4)"){
@@ -1257,7 +1257,7 @@ static bool try_integral(const char *input,working_string &out){
   if (force_sub && n>=4){
     out="Use ";
     out += trim(args[n>=5?5:3]);
-    out += "\nBack-sub.";
+    out += "\nBacksub";
     return true;
   }
   if (e=="xexp(x)" || e=="xe^x"){
@@ -1292,7 +1292,7 @@ static bool try_integral(const char *input,working_string &out){
     return true;
   }
   if (e=="xsin(4x)"){
-    out="u=x, v=-cos(4*x)/4\nAnswer: -1/4*x*cos(4*x) + 1/16*sin(4*x) + C";
+    out="u=x,v=-cos(4*x)/4\nAnswer: -1/4*x*cos(4*x) + 1/16*sin(4*x) + C";
     return true;
   }
   if (e=="xcos(x)"){
