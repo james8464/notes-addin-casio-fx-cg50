@@ -701,3 +701,678 @@
 {"phase":"queue","last_event":"exact queue 0/15074","queue":"0/15074 done, 0 ok, 0 bad","tests":"queue-run 0/15074"}
 {"phase":"queue","last_event":"exact queue 15074/15074","queue":"15074/15074 done, 15074 ok, 0 bad","tests":"queue-run 15074/15074"}
 {"phase":"queue","last_event":"exact queue 15074/15074","queue":"15074/15074 done, 15074 ok, 0 bad","tests":"queue-run 15074/15074"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 14 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 29 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 80 done, 51 bad","queue":"fuzz 80 cases","tests":"random-fuzz complete"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 16 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 70 bad","queue":"fuzz 100 cases","tests":"random-fuzz complete"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 17 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 31 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 45 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 120 done, 76 bad","queue":"fuzz 120 cases","tests":"random-fuzz complete"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 15 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 29 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 43 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 120 done, 73 bad","queue":"fuzz 120 cases","tests":"random-fuzz complete"}
+{"phase":"queue","last_event":"exact queue 0/15216","queue":"0/15216 done, 0 ok, 0 bad","tests":"queue-run 0/15216"}
+{"phase":"queue","last_event":"exact queue 15216/15216","queue":"15216/15216 done, 15216 ok, 0 bad","tests":"queue-run 15216/15216"}
+{"phase":"queue","last_event":"exact queue 15216/15216","queue":"15216/15216 done, 15216 ok, 0 bad","tests":"queue-run 15216/15216"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 15 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 120 done, 69 bad","queue":"fuzz 120 cases","tests":"random-fuzz complete"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 32 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 120 done, 72 bad","queue":"fuzz 120 cases","tests":"random-fuzz complete"}
+{"phase":"queue","last_event":"exact queue 0/15258","queue":"0/15258 done, 0 ok, 0 bad","tests":"queue-run 0/15258"}
+{"phase":"queue","last_event":"exact queue 15258/15258","queue":"15258/15258 done, 15258 ok, 0 bad","tests":"queue-run 15258/15258"}
+{"phase":"queue","last_event":"exact queue 15258/15258","queue":"15258/15258 done, 15258 ok, 0 bad","tests":"queue-run 15258/15258"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 4 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 8 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 12 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 15 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 120 done, 20 bad","queue":"fuzz 120 cases","tests":"random-fuzz complete"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 0 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 0 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 0 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 0 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 0 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 0 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 160 done, 0 bad","queue":"fuzz 160 cases","tests":"random-fuzz complete"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 5 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 8 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 12 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 14 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 18 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 21 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 160 done, 21 bad","queue":"fuzz 160 cases","tests":"random-fuzz complete"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 0 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 0 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 0 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 0 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 0 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 0 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 0 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 180 done, 0 bad","queue":"fuzz 180 cases","tests":"random-fuzz complete"}
+{"phase":"queue","last_event":"exact queue 0/15284","queue":"0/15284 done, 0 ok, 0 bad","tests":"queue-run 0/15284"}
+{"phase":"queue","last_event":"exact queue 15284/15284","queue":"15284/15284 done, 15284 ok, 0 bad","tests":"queue-run 15284/15284"}
+{"phase":"queue","last_event":"exact queue 15284/15284","queue":"15284/15284 done, 15284 ok, 0 bad","tests":"queue-run 15284/15284"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 0 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 1 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 5 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 0 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 13 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 0 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 0 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 20 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 24 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 0 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 27 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 0 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 36 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 0 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 180 done, 0 bad","queue":"fuzz 180 cases","tests":"random-fuzz complete"}
+{"phase":"fuzz","last_event":"random fuzz 200 done, 41 bad","queue":"fuzz 200 cases","tests":"random-fuzz 200 done"}
+{"phase":"fuzz","last_event":"random fuzz 220 done, 44 bad","queue":"fuzz 220 cases","tests":"random-fuzz complete"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 0 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 0 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 0 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 0 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 0 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 0 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 0 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 180 done, 0 bad","queue":"fuzz 180 cases","tests":"random-fuzz complete"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 4 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 8 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 11 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 20 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 23 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 25 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 200 done, 29 bad","queue":"fuzz 200 cases","tests":"random-fuzz 200 done"}
+{"phase":"fuzz","last_event":"random fuzz 220 done, 32 bad","queue":"fuzz 220 cases","tests":"random-fuzz complete"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 0 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 5 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 0 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 10 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 15 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 0 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 0 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 20 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 0 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 23 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 0 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 28 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 0 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 32 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 180 done, 0 bad","queue":"fuzz 180 cases","tests":"random-fuzz complete"}
+{"phase":"fuzz","last_event":"random fuzz 200 done, 38 bad","queue":"fuzz 200 cases","tests":"random-fuzz 200 done"}
+{"phase":"fuzz","last_event":"random fuzz 220 done, 43 bad","queue":"fuzz 220 cases","tests":"random-fuzz complete"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"queue","last_event":"exact queue 0/15416","queue":"0/15416 done, 0 ok, 0 bad","tests":"queue-run 0/15416"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 0 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 0 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 0 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 0 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 0 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 0 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 0 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 200 done, 0 bad","queue":"fuzz 200 cases","tests":"random-fuzz 200 done"}
+{"phase":"fuzz","last_event":"random fuzz 220 done, 0 bad","queue":"fuzz 220 cases","tests":"random-fuzz complete"}
+{"phase":"queue","last_event":"exact queue 15416/15416","queue":"15416/15416 done, 15416 ok, 0 bad","tests":"queue-run 15416/15416"}
+{"phase":"queue","last_event":"exact queue 15416/15416","queue":"15416/15416 done, 15416 ok, 0 bad","tests":"queue-run 15416/15416"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"queue","last_event":"exact queue 0/15576","queue":"0/15576 done, 0 ok, 0 bad","tests":"queue-run 0/15576"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 0 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 0 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 0 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 0 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 0 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 0 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 0 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 200 done, 0 bad","queue":"fuzz 200 cases","tests":"random-fuzz 200 done"}
+{"phase":"fuzz","last_event":"random fuzz 220 done, 0 bad","queue":"fuzz 220 cases","tests":"random-fuzz complete"}
+{"phase":"queue","last_event":"exact queue 15576/15576","queue":"15576/15576 done, 15576 ok, 0 bad","tests":"queue-run 15576/15576"}
+{"phase":"queue","last_event":"exact queue 15576/15576","queue":"15576/15576 done, 15576 ok, 0 bad","tests":"queue-run 15576/15576"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 11 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 17 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 24 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 30 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 225 done, 45 bad","queue":"fuzz 225 cases","tests":"random-fuzz 225 done"}
+{"phase":"fuzz","last_event":"random fuzz 250 done, 53 bad","queue":"fuzz 250 cases","tests":"random-fuzz 250 done"}
+{"phase":"fuzz","last_event":"random fuzz 275 done, 56 bad","queue":"fuzz 275 cases","tests":"random-fuzz 275 done"}
+{"phase":"fuzz","last_event":"random fuzz 300 done, 59 bad","queue":"fuzz 300 cases","tests":"random-fuzz 300 done"}
+{"phase":"fuzz","last_event":"random fuzz 350 done, 66 bad","queue":"fuzz 350 cases","tests":"random-fuzz 350 done"}
+{"phase":"fuzz","last_event":"random fuzz 375 done, 71 bad","queue":"fuzz 375 cases","tests":"random-fuzz 375 done"}
+{"phase":"fuzz","last_event":"random fuzz 400 done, 76 bad","queue":"fuzz 400 cases","tests":"random-fuzz 400 done"}
+{"phase":"fuzz","last_event":"random fuzz 400 done, 76 bad","queue":"fuzz 400 cases","tests":"random-fuzz complete"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 2 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 0 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 0 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 0 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 7 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 0 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 0 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 13 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 0 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 0 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 21 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 200 done, 0 bad","queue":"fuzz 200 cases","tests":"random-fuzz 200 done"}
+{"phase":"fuzz","last_event":"random fuzz 200 done, 24 bad","queue":"fuzz 200 cases","tests":"random-fuzz 200 done"}
+{"phase":"fuzz","last_event":"random fuzz 225 done, 0 bad","queue":"fuzz 225 cases","tests":"random-fuzz 225 done"}
+{"phase":"fuzz","last_event":"random fuzz 225 done, 27 bad","queue":"fuzz 225 cases","tests":"random-fuzz 225 done"}
+{"phase":"fuzz","last_event":"random fuzz 240 done, 31 bad","queue":"fuzz 240 cases","tests":"random-fuzz complete"}
+{"phase":"fuzz","last_event":"random fuzz 250 done, 0 bad","queue":"fuzz 250 cases","tests":"random-fuzz 250 done"}
+{"phase":"fuzz","last_event":"random fuzz 260 done, 0 bad","queue":"fuzz 260 cases","tests":"random-fuzz complete"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"queue","last_event":"exact queue 0/15740","queue":"0/15740 done, 0 ok, 0 bad","tests":"queue-run 0/15740"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 0 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 0 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 0 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 0 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 0 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 0 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 0 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 200 done, 0 bad","queue":"fuzz 200 cases","tests":"random-fuzz 200 done"}
+{"phase":"fuzz","last_event":"random fuzz 225 done, 0 bad","queue":"fuzz 225 cases","tests":"random-fuzz 225 done"}
+{"phase":"fuzz","last_event":"random fuzz 250 done, 0 bad","queue":"fuzz 250 cases","tests":"random-fuzz 250 done"}
+{"phase":"fuzz","last_event":"random fuzz 275 done, 0 bad","queue":"fuzz 275 cases","tests":"random-fuzz 275 done"}
+{"phase":"fuzz","last_event":"random fuzz 300 done, 0 bad","queue":"fuzz 300 cases","tests":"random-fuzz 300 done"}
+{"phase":"fuzz","last_event":"random fuzz 300 done, 0 bad","queue":"fuzz 300 cases","tests":"random-fuzz complete"}
+{"phase":"queue","last_event":"exact queue 15740/15740","queue":"15740/15740 done, 15740 ok, 0 bad","tests":"queue-run 15740/15740"}
+{"phase":"queue","last_event":"exact queue 15740/15740","queue":"15740/15740 done, 15740 ok, 0 bad","tests":"queue-run 15740/15740"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 0 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 1 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 0 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 0 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 3 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 0 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 3 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 0 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 7 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 0 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 10 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 0 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 14 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 200 done, 0 bad","queue":"fuzz 200 cases","tests":"random-fuzz 200 done"}
+{"phase":"fuzz","last_event":"random fuzz 200 done, 18 bad","queue":"fuzz 200 cases","tests":"random-fuzz 200 done"}
+{"phase":"fuzz","last_event":"random fuzz 225 done, 0 bad","queue":"fuzz 225 cases","tests":"random-fuzz 225 done"}
+{"phase":"fuzz","last_event":"random fuzz 225 done, 18 bad","queue":"fuzz 225 cases","tests":"random-fuzz 225 done"}
+{"phase":"fuzz","last_event":"random fuzz 250 done, 0 bad","queue":"fuzz 250 cases","tests":"random-fuzz 250 done"}
+{"phase":"fuzz","last_event":"random fuzz 250 done, 18 bad","queue":"fuzz 250 cases","tests":"random-fuzz 250 done"}
+{"phase":"fuzz","last_event":"random fuzz 275 done, 0 bad","queue":"fuzz 275 cases","tests":"random-fuzz 275 done"}
+{"phase":"fuzz","last_event":"random fuzz 275 done, 19 bad","queue":"fuzz 275 cases","tests":"random-fuzz 275 done"}
+{"phase":"fuzz","last_event":"random fuzz 300 done, 0 bad","queue":"fuzz 300 cases","tests":"random-fuzz 300 done"}
+{"phase":"fuzz","last_event":"random fuzz 300 done, 21 bad","queue":"fuzz 300 cases","tests":"random-fuzz 300 done"}
+{"phase":"fuzz","last_event":"random fuzz 325 done, 0 bad","queue":"fuzz 325 cases","tests":"random-fuzz 325 done"}
+{"phase":"fuzz","last_event":"random fuzz 325 done, 21 bad","queue":"fuzz 325 cases","tests":"random-fuzz 325 done"}
+{"phase":"fuzz","last_event":"random fuzz 350 done, 0 bad","queue":"fuzz 350 cases","tests":"random-fuzz 350 done"}
+{"phase":"fuzz","last_event":"random fuzz 350 done, 24 bad","queue":"fuzz 350 cases","tests":"random-fuzz 350 done"}
+{"phase":"fuzz","last_event":"random fuzz 375 done, 0 bad","queue":"fuzz 375 cases","tests":"random-fuzz 375 done"}
+{"phase":"fuzz","last_event":"random fuzz 375 done, 26 bad","queue":"fuzz 375 cases","tests":"random-fuzz 375 done"}
+{"phase":"fuzz","last_event":"random fuzz 400 done, 0 bad","queue":"fuzz 400 cases","tests":"random-fuzz 400 done"}
+{"phase":"fuzz","last_event":"random fuzz 400 done, 31 bad","queue":"fuzz 400 cases","tests":"random-fuzz 400 done"}
+{"phase":"fuzz","last_event":"random fuzz 425 done, 0 bad","queue":"fuzz 425 cases","tests":"random-fuzz 425 done"}
+{"phase":"fuzz","last_event":"random fuzz 425 done, 32 bad","queue":"fuzz 425 cases","tests":"random-fuzz 425 done"}
+{"phase":"fuzz","last_event":"random fuzz 450 done, 0 bad","queue":"fuzz 450 cases","tests":"random-fuzz 450 done"}
+{"phase":"fuzz","last_event":"random fuzz 450 done, 33 bad","queue":"fuzz 450 cases","tests":"random-fuzz 450 done"}
+{"phase":"fuzz","last_event":"random fuzz 475 done, 0 bad","queue":"fuzz 475 cases","tests":"random-fuzz 475 done"}
+{"phase":"fuzz","last_event":"random fuzz 475 done, 36 bad","queue":"fuzz 475 cases","tests":"random-fuzz 475 done"}
+{"phase":"fuzz","last_event":"random fuzz 500 done, 0 bad","queue":"fuzz 500 cases","tests":"random-fuzz 500 done"}
+{"phase":"fuzz","last_event":"random fuzz 500 done, 0 bad","queue":"fuzz 500 cases","tests":"random-fuzz complete"}
+{"phase":"fuzz","last_event":"random fuzz 500 done, 37 bad","queue":"fuzz 500 cases","tests":"random-fuzz 500 done"}
+{"phase":"fuzz","last_event":"random fuzz 525 done, 38 bad","queue":"fuzz 525 cases","tests":"random-fuzz 525 done"}
+{"phase":"fuzz","last_event":"random fuzz 550 done, 41 bad","queue":"fuzz 550 cases","tests":"random-fuzz 550 done"}
+{"phase":"fuzz","last_event":"random fuzz 575 done, 42 bad","queue":"fuzz 575 cases","tests":"random-fuzz 575 done"}
+{"phase":"fuzz","last_event":"random fuzz 600 done, 42 bad","queue":"fuzz 600 cases","tests":"random-fuzz 600 done"}
+{"phase":"fuzz","last_event":"random fuzz 600 done, 42 bad","queue":"fuzz 600 cases","tests":"random-fuzz complete"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 0 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 0 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 1 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 0 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 1 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 0 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 0 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 1 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 1 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 0 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 0 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 2 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 5 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 0 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 200 done, 0 bad","queue":"fuzz 200 cases","tests":"random-fuzz 200 done"}
+{"phase":"fuzz","last_event":"random fuzz 200 done, 5 bad","queue":"fuzz 200 cases","tests":"random-fuzz 200 done"}
+{"phase":"fuzz","last_event":"random fuzz 225 done, 0 bad","queue":"fuzz 225 cases","tests":"random-fuzz 225 done"}
+{"phase":"fuzz","last_event":"random fuzz 225 done, 5 bad","queue":"fuzz 225 cases","tests":"random-fuzz 225 done"}
+{"phase":"fuzz","last_event":"random fuzz 250 done, 5 bad","queue":"fuzz 250 cases","tests":"random-fuzz 250 done"}
+{"phase":"fuzz","last_event":"random fuzz 250 done, 0 bad","queue":"fuzz 250 cases","tests":"random-fuzz 250 done"}
+{"phase":"fuzz","last_event":"random fuzz 275 done, 5 bad","queue":"fuzz 275 cases","tests":"random-fuzz 275 done"}
+{"phase":"fuzz","last_event":"random fuzz 275 done, 0 bad","queue":"fuzz 275 cases","tests":"random-fuzz 275 done"}
+{"phase":"fuzz","last_event":"random fuzz 300 done, 5 bad","queue":"fuzz 300 cases","tests":"random-fuzz 300 done"}
+{"phase":"fuzz","last_event":"random fuzz 300 done, 0 bad","queue":"fuzz 300 cases","tests":"random-fuzz 300 done"}
+{"phase":"fuzz","last_event":"random fuzz 325 done, 5 bad","queue":"fuzz 325 cases","tests":"random-fuzz 325 done"}
+{"phase":"fuzz","last_event":"random fuzz 325 done, 0 bad","queue":"fuzz 325 cases","tests":"random-fuzz 325 done"}
+{"phase":"fuzz","last_event":"random fuzz 350 done, 5 bad","queue":"fuzz 350 cases","tests":"random-fuzz 350 done"}
+{"phase":"fuzz","last_event":"random fuzz 350 done, 0 bad","queue":"fuzz 350 cases","tests":"random-fuzz 350 done"}
+{"phase":"fuzz","last_event":"random fuzz 375 done, 0 bad","queue":"fuzz 375 cases","tests":"random-fuzz 375 done"}
+{"phase":"fuzz","last_event":"random fuzz 375 done, 5 bad","queue":"fuzz 375 cases","tests":"random-fuzz 375 done"}
+{"phase":"fuzz","last_event":"random fuzz 400 done, 0 bad","queue":"fuzz 400 cases","tests":"random-fuzz 400 done"}
+{"phase":"fuzz","last_event":"random fuzz 400 done, 5 bad","queue":"fuzz 400 cases","tests":"random-fuzz 400 done"}
+{"phase":"fuzz","last_event":"random fuzz 425 done, 0 bad","queue":"fuzz 425 cases","tests":"random-fuzz 425 done"}
+{"phase":"fuzz","last_event":"random fuzz 425 done, 5 bad","queue":"fuzz 425 cases","tests":"random-fuzz 425 done"}
+{"phase":"fuzz","last_event":"random fuzz 450 done, 6 bad","queue":"fuzz 450 cases","tests":"random-fuzz 450 done"}
+{"phase":"fuzz","last_event":"random fuzz 450 done, 0 bad","queue":"fuzz 450 cases","tests":"random-fuzz 450 done"}
+{"phase":"fuzz","last_event":"random fuzz 475 done, 7 bad","queue":"fuzz 475 cases","tests":"random-fuzz 475 done"}
+{"phase":"fuzz","last_event":"random fuzz 475 done, 0 bad","queue":"fuzz 475 cases","tests":"random-fuzz 475 done"}
+{"phase":"fuzz","last_event":"random fuzz 500 done, 0 bad","queue":"fuzz 500 cases","tests":"random-fuzz 500 done"}
+{"phase":"fuzz","last_event":"random fuzz 500 done, 7 bad","queue":"fuzz 500 cases","tests":"random-fuzz 500 done"}
+{"phase":"fuzz","last_event":"random fuzz 500 done, 0 bad","queue":"fuzz 500 cases","tests":"random-fuzz complete"}
+{"phase":"fuzz","last_event":"random fuzz 525 done, 7 bad","queue":"fuzz 525 cases","tests":"random-fuzz 525 done"}
+{"phase":"fuzz","last_event":"random fuzz 550 done, 7 bad","queue":"fuzz 550 cases","tests":"random-fuzz 550 done"}
+{"phase":"fuzz","last_event":"random fuzz 575 done, 7 bad","queue":"fuzz 575 cases","tests":"random-fuzz 575 done"}
+{"phase":"fuzz","last_event":"random fuzz 600 done, 7 bad","queue":"fuzz 600 cases","tests":"random-fuzz 600 done"}
+{"phase":"fuzz","last_event":"random fuzz 600 done, 7 bad","queue":"fuzz 600 cases","tests":"random-fuzz complete"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 0 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 0 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 1 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 0 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 1 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 0 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 1 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 0 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 1 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 0 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 2 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 0 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 2 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 0 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 200 done, 2 bad","queue":"fuzz 200 cases","tests":"random-fuzz 200 done"}
+{"phase":"fuzz","last_event":"random fuzz 200 done, 0 bad","queue":"fuzz 200 cases","tests":"random-fuzz 200 done"}
+{"phase":"fuzz","last_event":"random fuzz 225 done, 2 bad","queue":"fuzz 225 cases","tests":"random-fuzz 225 done"}
+{"phase":"fuzz","last_event":"random fuzz 225 done, 0 bad","queue":"fuzz 225 cases","tests":"random-fuzz 225 done"}
+{"phase":"fuzz","last_event":"random fuzz 250 done, 2 bad","queue":"fuzz 250 cases","tests":"random-fuzz 250 done"}
+{"phase":"fuzz","last_event":"random fuzz 250 done, 0 bad","queue":"fuzz 250 cases","tests":"random-fuzz 250 done"}
+{"phase":"fuzz","last_event":"random fuzz 275 done, 2 bad","queue":"fuzz 275 cases","tests":"random-fuzz 275 done"}
+{"phase":"fuzz","last_event":"random fuzz 275 done, 0 bad","queue":"fuzz 275 cases","tests":"random-fuzz 275 done"}
+{"phase":"fuzz","last_event":"random fuzz 300 done, 2 bad","queue":"fuzz 300 cases","tests":"random-fuzz 300 done"}
+{"phase":"fuzz","last_event":"random fuzz 300 done, 0 bad","queue":"fuzz 300 cases","tests":"random-fuzz 300 done"}
+{"phase":"fuzz","last_event":"random fuzz 325 done, 2 bad","queue":"fuzz 325 cases","tests":"random-fuzz 325 done"}
+{"phase":"fuzz","last_event":"random fuzz 325 done, 0 bad","queue":"fuzz 325 cases","tests":"random-fuzz 325 done"}
+{"phase":"fuzz","last_event":"random fuzz 350 done, 2 bad","queue":"fuzz 350 cases","tests":"random-fuzz 350 done"}
+{"phase":"fuzz","last_event":"random fuzz 350 done, 0 bad","queue":"fuzz 350 cases","tests":"random-fuzz 350 done"}
+{"phase":"fuzz","last_event":"random fuzz 375 done, 2 bad","queue":"fuzz 375 cases","tests":"random-fuzz 375 done"}
+{"phase":"fuzz","last_event":"random fuzz 375 done, 0 bad","queue":"fuzz 375 cases","tests":"random-fuzz 375 done"}
+{"phase":"fuzz","last_event":"random fuzz 400 done, 2 bad","queue":"fuzz 400 cases","tests":"random-fuzz 400 done"}
+{"phase":"fuzz","last_event":"random fuzz 400 done, 0 bad","queue":"fuzz 400 cases","tests":"random-fuzz 400 done"}
+{"phase":"fuzz","last_event":"random fuzz 425 done, 2 bad","queue":"fuzz 425 cases","tests":"random-fuzz 425 done"}
+{"phase":"fuzz","last_event":"random fuzz 425 done, 0 bad","queue":"fuzz 425 cases","tests":"random-fuzz 425 done"}
+{"phase":"fuzz","last_event":"random fuzz 450 done, 2 bad","queue":"fuzz 450 cases","tests":"random-fuzz 450 done"}
+{"phase":"fuzz","last_event":"random fuzz 450 done, 0 bad","queue":"fuzz 450 cases","tests":"random-fuzz 450 done"}
+{"phase":"fuzz","last_event":"random fuzz 475 done, 2 bad","queue":"fuzz 475 cases","tests":"random-fuzz 475 done"}
+{"phase":"fuzz","last_event":"random fuzz 475 done, 0 bad","queue":"fuzz 475 cases","tests":"random-fuzz 475 done"}
+{"phase":"fuzz","last_event":"random fuzz 500 done, 2 bad","queue":"fuzz 500 cases","tests":"random-fuzz 500 done"}
+{"phase":"fuzz","last_event":"random fuzz 500 done, 0 bad","queue":"fuzz 500 cases","tests":"random-fuzz 500 done"}
+{"phase":"fuzz","last_event":"random fuzz 500 done, 0 bad","queue":"fuzz 500 cases","tests":"random-fuzz complete"}
+{"phase":"fuzz","last_event":"random fuzz 525 done, 2 bad","queue":"fuzz 525 cases","tests":"random-fuzz 525 done"}
+{"phase":"fuzz","last_event":"random fuzz 550 done, 2 bad","queue":"fuzz 550 cases","tests":"random-fuzz 550 done"}
+{"phase":"fuzz","last_event":"random fuzz 575 done, 2 bad","queue":"fuzz 575 cases","tests":"random-fuzz 575 done"}
+{"phase":"fuzz","last_event":"random fuzz 600 done, 2 bad","queue":"fuzz 600 cases","tests":"random-fuzz 600 done"}
+{"phase":"fuzz","last_event":"random fuzz 600 done, 2 bad","queue":"fuzz 600 cases","tests":"random-fuzz complete"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 0 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 0 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 0 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 0 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 0 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 0 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 0 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 0 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 0 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 0 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 0 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 0 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 0 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 0 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 200 done, 0 bad","queue":"fuzz 200 cases","tests":"random-fuzz 200 done"}
+{"phase":"fuzz","last_event":"random fuzz 200 done, 0 bad","queue":"fuzz 200 cases","tests":"random-fuzz 200 done"}
+{"phase":"fuzz","last_event":"random fuzz 225 done, 0 bad","queue":"fuzz 225 cases","tests":"random-fuzz 225 done"}
+{"phase":"fuzz","last_event":"random fuzz 225 done, 0 bad","queue":"fuzz 225 cases","tests":"random-fuzz 225 done"}
+{"phase":"fuzz","last_event":"random fuzz 250 done, 0 bad","queue":"fuzz 250 cases","tests":"random-fuzz 250 done"}
+{"phase":"fuzz","last_event":"random fuzz 250 done, 0 bad","queue":"fuzz 250 cases","tests":"random-fuzz 250 done"}
+{"phase":"fuzz","last_event":"random fuzz 275 done, 0 bad","queue":"fuzz 275 cases","tests":"random-fuzz 275 done"}
+{"phase":"fuzz","last_event":"random fuzz 275 done, 0 bad","queue":"fuzz 275 cases","tests":"random-fuzz 275 done"}
+{"phase":"fuzz","last_event":"random fuzz 300 done, 0 bad","queue":"fuzz 300 cases","tests":"random-fuzz 300 done"}
+{"phase":"fuzz","last_event":"random fuzz 300 done, 0 bad","queue":"fuzz 300 cases","tests":"random-fuzz 300 done"}
+{"phase":"fuzz","last_event":"random fuzz 325 done, 0 bad","queue":"fuzz 325 cases","tests":"random-fuzz 325 done"}
+{"phase":"fuzz","last_event":"random fuzz 325 done, 0 bad","queue":"fuzz 325 cases","tests":"random-fuzz 325 done"}
+{"phase":"fuzz","last_event":"random fuzz 350 done, 0 bad","queue":"fuzz 350 cases","tests":"random-fuzz 350 done"}
+{"phase":"fuzz","last_event":"random fuzz 350 done, 0 bad","queue":"fuzz 350 cases","tests":"random-fuzz 350 done"}
+{"phase":"fuzz","last_event":"random fuzz 375 done, 0 bad","queue":"fuzz 375 cases","tests":"random-fuzz 375 done"}
+{"phase":"fuzz","last_event":"random fuzz 375 done, 0 bad","queue":"fuzz 375 cases","tests":"random-fuzz 375 done"}
+{"phase":"fuzz","last_event":"random fuzz 400 done, 0 bad","queue":"fuzz 400 cases","tests":"random-fuzz 400 done"}
+{"phase":"fuzz","last_event":"random fuzz 400 done, 0 bad","queue":"fuzz 400 cases","tests":"random-fuzz 400 done"}
+{"phase":"fuzz","last_event":"random fuzz 425 done, 0 bad","queue":"fuzz 425 cases","tests":"random-fuzz 425 done"}
+{"phase":"fuzz","last_event":"random fuzz 425 done, 0 bad","queue":"fuzz 425 cases","tests":"random-fuzz 425 done"}
+{"phase":"fuzz","last_event":"random fuzz 450 done, 0 bad","queue":"fuzz 450 cases","tests":"random-fuzz 450 done"}
+{"phase":"fuzz","last_event":"random fuzz 450 done, 0 bad","queue":"fuzz 450 cases","tests":"random-fuzz 450 done"}
+{"phase":"fuzz","last_event":"random fuzz 475 done, 0 bad","queue":"fuzz 475 cases","tests":"random-fuzz 475 done"}
+{"phase":"fuzz","last_event":"random fuzz 475 done, 0 bad","queue":"fuzz 475 cases","tests":"random-fuzz 475 done"}
+{"phase":"fuzz","last_event":"random fuzz 500 done, 0 bad","queue":"fuzz 500 cases","tests":"random-fuzz 500 done"}
+{"phase":"fuzz","last_event":"random fuzz 500 done, 0 bad","queue":"fuzz 500 cases","tests":"random-fuzz 500 done"}
+{"phase":"fuzz","last_event":"random fuzz 525 done, 0 bad","queue":"fuzz 525 cases","tests":"random-fuzz 525 done"}
+{"phase":"fuzz","last_event":"random fuzz 525 done, 0 bad","queue":"fuzz 525 cases","tests":"random-fuzz 525 done"}
+{"phase":"fuzz","last_event":"random fuzz 550 done, 0 bad","queue":"fuzz 550 cases","tests":"random-fuzz 550 done"}
+{"phase":"fuzz","last_event":"random fuzz 550 done, 0 bad","queue":"fuzz 550 cases","tests":"random-fuzz 550 done"}
+{"phase":"fuzz","last_event":"random fuzz 575 done, 0 bad","queue":"fuzz 575 cases","tests":"random-fuzz 575 done"}
+{"phase":"fuzz","last_event":"random fuzz 575 done, 0 bad","queue":"fuzz 575 cases","tests":"random-fuzz 575 done"}
+{"phase":"fuzz","last_event":"random fuzz 600 done, 0 bad","queue":"fuzz 600 cases","tests":"random-fuzz 600 done"}
+{"phase":"fuzz","last_event":"random fuzz 600 done, 0 bad","queue":"fuzz 600 cases","tests":"random-fuzz 600 done"}
+{"phase":"fuzz","last_event":"random fuzz 625 done, 0 bad","queue":"fuzz 625 cases","tests":"random-fuzz 625 done"}
+{"phase":"fuzz","last_event":"random fuzz 625 done, 0 bad","queue":"fuzz 625 cases","tests":"random-fuzz 625 done"}
+{"phase":"fuzz","last_event":"random fuzz 650 done, 0 bad","queue":"fuzz 650 cases","tests":"random-fuzz 650 done"}
+{"phase":"fuzz","last_event":"random fuzz 650 done, 0 bad","queue":"fuzz 650 cases","tests":"random-fuzz 650 done"}
+{"phase":"fuzz","last_event":"random fuzz 675 done, 0 bad","queue":"fuzz 675 cases","tests":"random-fuzz 675 done"}
+{"phase":"fuzz","last_event":"random fuzz 675 done, 0 bad","queue":"fuzz 675 cases","tests":"random-fuzz 675 done"}
+{"phase":"fuzz","last_event":"random fuzz 700 done, 0 bad","queue":"fuzz 700 cases","tests":"random-fuzz 700 done"}
+{"phase":"fuzz","last_event":"random fuzz 700 done, 0 bad","queue":"fuzz 700 cases","tests":"random-fuzz 700 done"}
+{"phase":"fuzz","last_event":"random fuzz 725 done, 0 bad","queue":"fuzz 725 cases","tests":"random-fuzz 725 done"}
+{"phase":"fuzz","last_event":"random fuzz 725 done, 0 bad","queue":"fuzz 725 cases","tests":"random-fuzz 725 done"}
+{"phase":"fuzz","last_event":"random fuzz 750 done, 0 bad","queue":"fuzz 750 cases","tests":"random-fuzz 750 done"}
+{"phase":"fuzz","last_event":"random fuzz 750 done, 0 bad","queue":"fuzz 750 cases","tests":"random-fuzz 750 done"}
+{"phase":"fuzz","last_event":"random fuzz 775 done, 0 bad","queue":"fuzz 775 cases","tests":"random-fuzz 775 done"}
+{"phase":"fuzz","last_event":"random fuzz 775 done, 0 bad","queue":"fuzz 775 cases","tests":"random-fuzz 775 done"}
+{"phase":"fuzz","last_event":"random fuzz 800 done, 0 bad","queue":"fuzz 800 cases","tests":"random-fuzz 800 done"}
+{"phase":"fuzz","last_event":"random fuzz 800 done, 0 bad","queue":"fuzz 800 cases","tests":"random-fuzz complete"}
+{"phase":"fuzz","last_event":"random fuzz 800 done, 0 bad","queue":"fuzz 800 cases","tests":"random-fuzz 800 done"}
+{"phase":"fuzz","last_event":"random fuzz 800 done, 0 bad","queue":"fuzz 800 cases","tests":"random-fuzz complete"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 0 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 0 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 0 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 0 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 0 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 0 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 0 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 0 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 0 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 0 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 0 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 0 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 0 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 0 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 0 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 0 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 0 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 0 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 0 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 0 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 0 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 200 done, 0 bad","queue":"fuzz 200 cases","tests":"random-fuzz 200 done"}
+{"phase":"fuzz","last_event":"random fuzz 200 done, 0 bad","queue":"fuzz 200 cases","tests":"random-fuzz 200 done"}
+{"phase":"fuzz","last_event":"random fuzz 200 done, 0 bad","queue":"fuzz 200 cases","tests":"random-fuzz 200 done"}
+{"phase":"fuzz","last_event":"random fuzz 225 done, 0 bad","queue":"fuzz 225 cases","tests":"random-fuzz 225 done"}
+{"phase":"fuzz","last_event":"random fuzz 225 done, 0 bad","queue":"fuzz 225 cases","tests":"random-fuzz 225 done"}
+{"phase":"fuzz","last_event":"random fuzz 225 done, 0 bad","queue":"fuzz 225 cases","tests":"random-fuzz 225 done"}
+{"phase":"fuzz","last_event":"random fuzz 250 done, 0 bad","queue":"fuzz 250 cases","tests":"random-fuzz 250 done"}
+{"phase":"fuzz","last_event":"random fuzz 250 done, 0 bad","queue":"fuzz 250 cases","tests":"random-fuzz 250 done"}
+{"phase":"fuzz","last_event":"random fuzz 250 done, 0 bad","queue":"fuzz 250 cases","tests":"random-fuzz 250 done"}
+{"phase":"fuzz","last_event":"random fuzz 275 done, 0 bad","queue":"fuzz 275 cases","tests":"random-fuzz 275 done"}
+{"phase":"fuzz","last_event":"random fuzz 275 done, 0 bad","queue":"fuzz 275 cases","tests":"random-fuzz 275 done"}
+{"phase":"fuzz","last_event":"random fuzz 275 done, 0 bad","queue":"fuzz 275 cases","tests":"random-fuzz 275 done"}
+{"phase":"fuzz","last_event":"random fuzz 300 done, 0 bad","queue":"fuzz 300 cases","tests":"random-fuzz 300 done"}
+{"phase":"fuzz","last_event":"random fuzz 300 done, 0 bad","queue":"fuzz 300 cases","tests":"random-fuzz 300 done"}
+{"phase":"fuzz","last_event":"random fuzz 300 done, 0 bad","queue":"fuzz 300 cases","tests":"random-fuzz complete"}
+{"phase":"fuzz","last_event":"random fuzz 300 done, 0 bad","queue":"fuzz 300 cases","tests":"random-fuzz 300 done"}
+{"phase":"fuzz","last_event":"random fuzz 325 done, 0 bad","queue":"fuzz 325 cases","tests":"random-fuzz 325 done"}
+{"phase":"fuzz","last_event":"random fuzz 325 done, 0 bad","queue":"fuzz 325 cases","tests":"random-fuzz 325 done"}
+{"phase":"fuzz","last_event":"random fuzz 350 done, 0 bad","queue":"fuzz 350 cases","tests":"random-fuzz 350 done"}
+{"phase":"fuzz","last_event":"random fuzz 350 done, 0 bad","queue":"fuzz 350 cases","tests":"random-fuzz 350 done"}
+{"phase":"fuzz","last_event":"random fuzz 350 done, 0 bad","queue":"fuzz 350 cases","tests":"random-fuzz complete"}
+{"phase":"fuzz","last_event":"random fuzz 375 done, 0 bad","queue":"fuzz 375 cases","tests":"random-fuzz 375 done"}
+{"phase":"fuzz","last_event":"random fuzz 400 done, 0 bad","queue":"fuzz 400 cases","tests":"random-fuzz 400 done"}
+{"phase":"fuzz","last_event":"random fuzz 425 done, 0 bad","queue":"fuzz 425 cases","tests":"random-fuzz 425 done"}
+{"phase":"fuzz","last_event":"random fuzz 450 done, 0 bad","queue":"fuzz 450 cases","tests":"random-fuzz 450 done"}
+{"phase":"fuzz","last_event":"random fuzz 475 done, 0 bad","queue":"fuzz 475 cases","tests":"random-fuzz 475 done"}
+{"phase":"fuzz","last_event":"random fuzz 500 done, 0 bad","queue":"fuzz 500 cases","tests":"random-fuzz 500 done"}
+{"phase":"fuzz","last_event":"random fuzz 525 done, 0 bad","queue":"fuzz 525 cases","tests":"random-fuzz 525 done"}
+{"phase":"fuzz","last_event":"random fuzz 550 done, 0 bad","queue":"fuzz 550 cases","tests":"random-fuzz 550 done"}
+{"phase":"fuzz","last_event":"random fuzz 575 done, 0 bad","queue":"fuzz 575 cases","tests":"random-fuzz 575 done"}
+{"phase":"fuzz","last_event":"random fuzz 600 done, 0 bad","queue":"fuzz 600 cases","tests":"random-fuzz 600 done"}
+{"phase":"fuzz","last_event":"random fuzz 625 done, 0 bad","queue":"fuzz 625 cases","tests":"random-fuzz 625 done"}
+{"phase":"fuzz","last_event":"random fuzz 650 done, 0 bad","queue":"fuzz 650 cases","tests":"random-fuzz 650 done"}
+{"phase":"fuzz","last_event":"random fuzz 675 done, 0 bad","queue":"fuzz 675 cases","tests":"random-fuzz 675 done"}
+{"phase":"fuzz","last_event":"random fuzz 700 done, 0 bad","queue":"fuzz 700 cases","tests":"random-fuzz 700 done"}
+{"phase":"fuzz","last_event":"random fuzz 725 done, 0 bad","queue":"fuzz 725 cases","tests":"random-fuzz 725 done"}
+{"phase":"fuzz","last_event":"random fuzz 750 done, 0 bad","queue":"fuzz 750 cases","tests":"random-fuzz 750 done"}
+{"phase":"fuzz","last_event":"random fuzz 775 done, 0 bad","queue":"fuzz 775 cases","tests":"random-fuzz 775 done"}
+{"phase":"fuzz","last_event":"random fuzz 800 done, 0 bad","queue":"fuzz 800 cases","tests":"random-fuzz 800 done"}
+{"phase":"fuzz","last_event":"random fuzz 825 done, 0 bad","queue":"fuzz 825 cases","tests":"random-fuzz 825 done"}
+{"phase":"fuzz","last_event":"random fuzz 850 done, 0 bad","queue":"fuzz 850 cases","tests":"random-fuzz 850 done"}
+{"phase":"fuzz","last_event":"random fuzz 875 done, 0 bad","queue":"fuzz 875 cases","tests":"random-fuzz 875 done"}
+{"phase":"fuzz","last_event":"random fuzz 900 done, 0 bad","queue":"fuzz 900 cases","tests":"random-fuzz 900 done"}
+{"phase":"fuzz","last_event":"random fuzz 925 done, 0 bad","queue":"fuzz 925 cases","tests":"random-fuzz 925 done"}
+{"phase":"fuzz","last_event":"random fuzz 950 done, 0 bad","queue":"fuzz 950 cases","tests":"random-fuzz 950 done"}
+{"phase":"fuzz","last_event":"random fuzz 975 done, 0 bad","queue":"fuzz 975 cases","tests":"random-fuzz 975 done"}
+{"phase":"fuzz","last_event":"random fuzz 1000 done, 0 bad","queue":"fuzz 1000 cases","tests":"random-fuzz 1000 done"}
+{"phase":"fuzz","last_event":"random fuzz 1000 done, 0 bad","queue":"fuzz 1000 cases","tests":"random-fuzz complete"}
+{"phase":"queue","last_event":"exact queue 0/15926","queue":"0/15926 done, 0 ok, 0 bad","tests":"queue-run 0/15926"}
+{"phase":"queue","last_event":"exact queue 15926/15926","queue":"15926/15926 done, 15926 ok, 0 bad","tests":"queue-run 15926/15926"}
+{"phase":"queue","last_event":"exact queue 15926/15926","queue":"15926/15926 done, 15926 ok, 0 bad","tests":"queue-run 15926/15926"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 0 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 0 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 0 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 0 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 0 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 0 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 0 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 200 done, 0 bad","queue":"fuzz 200 cases","tests":"random-fuzz 200 done"}
+{"phase":"fuzz","last_event":"random fuzz 225 done, 0 bad","queue":"fuzz 225 cases","tests":"random-fuzz 225 done"}
+{"phase":"fuzz","last_event":"random fuzz 250 done, 0 bad","queue":"fuzz 250 cases","tests":"random-fuzz 250 done"}
+{"phase":"fuzz","last_event":"random fuzz 275 done, 0 bad","queue":"fuzz 275 cases","tests":"random-fuzz 275 done"}
+{"phase":"fuzz","last_event":"random fuzz 300 done, 0 bad","queue":"fuzz 300 cases","tests":"random-fuzz 300 done"}
+{"phase":"fuzz","last_event":"random fuzz 300 done, 0 bad","queue":"fuzz 300 cases","tests":"random-fuzz complete"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 0 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 0 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 0 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 0 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 0 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 0 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 0 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 200 done, 0 bad","queue":"fuzz 200 cases","tests":"random-fuzz 200 done"}
+{"phase":"fuzz","last_event":"random fuzz 225 done, 0 bad","queue":"fuzz 225 cases","tests":"random-fuzz 225 done"}
+{"phase":"fuzz","last_event":"random fuzz 250 done, 0 bad","queue":"fuzz 250 cases","tests":"random-fuzz 250 done"}
+{"phase":"fuzz","last_event":"random fuzz 275 done, 0 bad","queue":"fuzz 275 cases","tests":"random-fuzz 275 done"}
+{"phase":"fuzz","last_event":"random fuzz 300 done, 0 bad","queue":"fuzz 300 cases","tests":"random-fuzz 300 done"}
+{"phase":"fuzz","last_event":"random fuzz 300 done, 0 bad","queue":"fuzz 300 cases","tests":"random-fuzz complete"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 0 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 0 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 0 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 0 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 0 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 0 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 0 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 200 done, 0 bad","queue":"fuzz 200 cases","tests":"random-fuzz 200 done"}
+{"phase":"fuzz","last_event":"random fuzz 225 done, 0 bad","queue":"fuzz 225 cases","tests":"random-fuzz 225 done"}
+{"phase":"fuzz","last_event":"random fuzz 250 done, 0 bad","queue":"fuzz 250 cases","tests":"random-fuzz 250 done"}
+{"phase":"fuzz","last_event":"random fuzz 275 done, 0 bad","queue":"fuzz 275 cases","tests":"random-fuzz 275 done"}
+{"phase":"fuzz","last_event":"random fuzz 300 done, 0 bad","queue":"fuzz 300 cases","tests":"random-fuzz 300 done"}
+{"phase":"fuzz","last_event":"random fuzz 300 done, 0 bad","queue":"fuzz 300 cases","tests":"random-fuzz complete"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"queue","last_event":"exact queue 0/16050","queue":"0/16050 done, 0 ok, 0 bad","tests":"queue-run 0/16050"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 0 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 0 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 0 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 0 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 0 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 0 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 0 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 200 done, 0 bad","queue":"fuzz 200 cases","tests":"random-fuzz 200 done"}
+{"phase":"fuzz","last_event":"random fuzz 225 done, 0 bad","queue":"fuzz 225 cases","tests":"random-fuzz 225 done"}
+{"phase":"fuzz","last_event":"random fuzz 250 done, 0 bad","queue":"fuzz 250 cases","tests":"random-fuzz 250 done"}
+{"phase":"fuzz","last_event":"random fuzz 275 done, 0 bad","queue":"fuzz 275 cases","tests":"random-fuzz 275 done"}
+{"phase":"fuzz","last_event":"random fuzz 300 done, 0 bad","queue":"fuzz 300 cases","tests":"random-fuzz 300 done"}
+{"phase":"fuzz","last_event":"random fuzz 325 done, 0 bad","queue":"fuzz 325 cases","tests":"random-fuzz 325 done"}
+{"phase":"fuzz","last_event":"random fuzz 350 done, 0 bad","queue":"fuzz 350 cases","tests":"random-fuzz 350 done"}
+{"phase":"fuzz","last_event":"random fuzz 375 done, 0 bad","queue":"fuzz 375 cases","tests":"random-fuzz 375 done"}
+{"phase":"fuzz","last_event":"random fuzz 400 done, 0 bad","queue":"fuzz 400 cases","tests":"random-fuzz 400 done"}
+{"phase":"fuzz","last_event":"random fuzz 425 done, 0 bad","queue":"fuzz 425 cases","tests":"random-fuzz 425 done"}
+{"phase":"fuzz","last_event":"random fuzz 450 done, 0 bad","queue":"fuzz 450 cases","tests":"random-fuzz 450 done"}
+{"phase":"fuzz","last_event":"random fuzz 475 done, 0 bad","queue":"fuzz 475 cases","tests":"random-fuzz 475 done"}
+{"phase":"fuzz","last_event":"random fuzz 500 done, 0 bad","queue":"fuzz 500 cases","tests":"random-fuzz 500 done"}
+{"phase":"fuzz","last_event":"random fuzz 500 done, 0 bad","queue":"fuzz 500 cases","tests":"random-fuzz complete"}
+{"phase":"queue","last_event":"exact queue 16050/16050","queue":"16050/16050 done, 16050 ok, 0 bad","tests":"queue-run 16050/16050"}
+{"phase":"queue","last_event":"exact queue 16050/16050","queue":"16050/16050 done, 16050 ok, 0 bad","tests":"queue-run 16050/16050"}
+{"phase":"queue","last_event":"exact queue 0/16059","queue":"0/16059 done, 0 ok, 0 bad","tests":"queue-run 0/16059"}
+{"phase":"queue","last_event":"exact queue 16059/16059","queue":"16059/16059 done, 16059 ok, 0 bad","tests":"queue-run 16059/16059"}
+{"phase":"queue","last_event":"exact queue 16059/16059","queue":"16059/16059 done, 16059 ok, 0 bad","tests":"queue-run 16059/16059"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"queue","last_event":"exact queue 0/16059","queue":"0/16059 done, 0 ok, 0 bad","tests":"queue-run 0/16059"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 0 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 0 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 0 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 0 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 0 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 0 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 0 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 0 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 0 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 0 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 0 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 0 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 0 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 0 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 200 done, 0 bad","queue":"fuzz 200 cases","tests":"random-fuzz 200 done"}
+{"phase":"fuzz","last_event":"random fuzz 200 done, 0 bad","queue":"fuzz 200 cases","tests":"random-fuzz 200 done"}
+{"phase":"fuzz","last_event":"random fuzz 225 done, 0 bad","queue":"fuzz 225 cases","tests":"random-fuzz 225 done"}
+{"phase":"fuzz","last_event":"random fuzz 225 done, 0 bad","queue":"fuzz 225 cases","tests":"random-fuzz 225 done"}
+{"phase":"fuzz","last_event":"random fuzz 250 done, 0 bad","queue":"fuzz 250 cases","tests":"random-fuzz 250 done"}
+{"phase":"fuzz","last_event":"random fuzz 250 done, 0 bad","queue":"fuzz 250 cases","tests":"random-fuzz 250 done"}
+{"phase":"fuzz","last_event":"random fuzz 275 done, 0 bad","queue":"fuzz 275 cases","tests":"random-fuzz 275 done"}
+{"phase":"fuzz","last_event":"random fuzz 275 done, 0 bad","queue":"fuzz 275 cases","tests":"random-fuzz 275 done"}
+{"phase":"fuzz","last_event":"random fuzz 300 done, 0 bad","queue":"fuzz 300 cases","tests":"random-fuzz 300 done"}
+{"phase":"fuzz","last_event":"random fuzz 300 done, 0 bad","queue":"fuzz 300 cases","tests":"random-fuzz 300 done"}
+{"phase":"fuzz","last_event":"random fuzz 325 done, 0 bad","queue":"fuzz 325 cases","tests":"random-fuzz 325 done"}
+{"phase":"fuzz","last_event":"random fuzz 325 done, 0 bad","queue":"fuzz 325 cases","tests":"random-fuzz 325 done"}
+{"phase":"fuzz","last_event":"random fuzz 350 done, 0 bad","queue":"fuzz 350 cases","tests":"random-fuzz 350 done"}
+{"phase":"fuzz","last_event":"random fuzz 350 done, 0 bad","queue":"fuzz 350 cases","tests":"random-fuzz 350 done"}
+{"phase":"fuzz","last_event":"random fuzz 375 done, 0 bad","queue":"fuzz 375 cases","tests":"random-fuzz 375 done"}
+{"phase":"fuzz","last_event":"random fuzz 375 done, 0 bad","queue":"fuzz 375 cases","tests":"random-fuzz 375 done"}
+{"phase":"fuzz","last_event":"random fuzz 400 done, 0 bad","queue":"fuzz 400 cases","tests":"random-fuzz 400 done"}
+{"phase":"fuzz","last_event":"random fuzz 400 done, 0 bad","queue":"fuzz 400 cases","tests":"random-fuzz 400 done"}
+{"phase":"fuzz","last_event":"random fuzz 425 done, 0 bad","queue":"fuzz 425 cases","tests":"random-fuzz 425 done"}
+{"phase":"fuzz","last_event":"random fuzz 425 done, 0 bad","queue":"fuzz 425 cases","tests":"random-fuzz 425 done"}
+{"phase":"fuzz","last_event":"random fuzz 450 done, 0 bad","queue":"fuzz 450 cases","tests":"random-fuzz 450 done"}
+{"phase":"fuzz","last_event":"random fuzz 450 done, 0 bad","queue":"fuzz 450 cases","tests":"random-fuzz 450 done"}
+{"phase":"fuzz","last_event":"random fuzz 475 done, 0 bad","queue":"fuzz 475 cases","tests":"random-fuzz 475 done"}
+{"phase":"fuzz","last_event":"random fuzz 475 done, 0 bad","queue":"fuzz 475 cases","tests":"random-fuzz 475 done"}
+{"phase":"fuzz","last_event":"random fuzz 500 done, 0 bad","queue":"fuzz 500 cases","tests":"random-fuzz 500 done"}
+{"phase":"fuzz","last_event":"random fuzz 500 done, 0 bad","queue":"fuzz 500 cases","tests":"random-fuzz 500 done"}
+{"phase":"fuzz","last_event":"random fuzz 525 done, 0 bad","queue":"fuzz 525 cases","tests":"random-fuzz 525 done"}
+{"phase":"fuzz","last_event":"random fuzz 525 done, 0 bad","queue":"fuzz 525 cases","tests":"random-fuzz 525 done"}
+{"phase":"fuzz","last_event":"random fuzz 550 done, 0 bad","queue":"fuzz 550 cases","tests":"random-fuzz 550 done"}
+{"phase":"fuzz","last_event":"random fuzz 550 done, 0 bad","queue":"fuzz 550 cases","tests":"random-fuzz 550 done"}
+{"phase":"fuzz","last_event":"random fuzz 575 done, 0 bad","queue":"fuzz 575 cases","tests":"random-fuzz 575 done"}
+{"phase":"fuzz","last_event":"random fuzz 575 done, 0 bad","queue":"fuzz 575 cases","tests":"random-fuzz 575 done"}
+{"phase":"fuzz","last_event":"random fuzz 600 done, 0 bad","queue":"fuzz 600 cases","tests":"random-fuzz 600 done"}
+{"phase":"fuzz","last_event":"random fuzz 600 done, 0 bad","queue":"fuzz 600 cases","tests":"random-fuzz 600 done"}
+{"phase":"fuzz","last_event":"random fuzz 625 done, 0 bad","queue":"fuzz 625 cases","tests":"random-fuzz 625 done"}
+{"phase":"fuzz","last_event":"random fuzz 625 done, 0 bad","queue":"fuzz 625 cases","tests":"random-fuzz 625 done"}
+{"phase":"fuzz","last_event":"random fuzz 650 done, 0 bad","queue":"fuzz 650 cases","tests":"random-fuzz 650 done"}
+{"phase":"fuzz","last_event":"random fuzz 650 done, 0 bad","queue":"fuzz 650 cases","tests":"random-fuzz 650 done"}
+{"phase":"fuzz","last_event":"random fuzz 675 done, 0 bad","queue":"fuzz 675 cases","tests":"random-fuzz 675 done"}
+{"phase":"fuzz","last_event":"random fuzz 675 done, 0 bad","queue":"fuzz 675 cases","tests":"random-fuzz 675 done"}
+{"phase":"fuzz","last_event":"random fuzz 700 done, 0 bad","queue":"fuzz 700 cases","tests":"random-fuzz 700 done"}
+{"phase":"fuzz","last_event":"random fuzz 700 done, 0 bad","queue":"fuzz 700 cases","tests":"random-fuzz 700 done"}
+{"phase":"fuzz","last_event":"random fuzz 725 done, 0 bad","queue":"fuzz 725 cases","tests":"random-fuzz 725 done"}
+{"phase":"fuzz","last_event":"random fuzz 725 done, 0 bad","queue":"fuzz 725 cases","tests":"random-fuzz 725 done"}
+{"phase":"fuzz","last_event":"random fuzz 750 done, 0 bad","queue":"fuzz 750 cases","tests":"random-fuzz 750 done"}
+{"phase":"fuzz","last_event":"random fuzz 750 done, 0 bad","queue":"fuzz 750 cases","tests":"random-fuzz 750 done"}
+{"phase":"fuzz","last_event":"random fuzz 775 done, 0 bad","queue":"fuzz 775 cases","tests":"random-fuzz 775 done"}
+{"phase":"fuzz","last_event":"random fuzz 775 done, 0 bad","queue":"fuzz 775 cases","tests":"random-fuzz 775 done"}
+{"phase":"fuzz","last_event":"random fuzz 800 done, 0 bad","queue":"fuzz 800 cases","tests":"random-fuzz 800 done"}
+{"phase":"fuzz","last_event":"random fuzz 800 done, 0 bad","queue":"fuzz 800 cases","tests":"random-fuzz complete"}
+{"phase":"fuzz","last_event":"random fuzz 800 done, 0 bad","queue":"fuzz 800 cases","tests":"random-fuzz 800 done"}
+{"phase":"fuzz","last_event":"random fuzz 825 done, 0 bad","queue":"fuzz 825 cases","tests":"random-fuzz 825 done"}
+{"phase":"fuzz","last_event":"random fuzz 850 done, 0 bad","queue":"fuzz 850 cases","tests":"random-fuzz 850 done"}
+{"phase":"fuzz","last_event":"random fuzz 875 done, 0 bad","queue":"fuzz 875 cases","tests":"random-fuzz 875 done"}
+{"phase":"fuzz","last_event":"random fuzz 900 done, 0 bad","queue":"fuzz 900 cases","tests":"random-fuzz 900 done"}
+{"phase":"fuzz","last_event":"random fuzz 925 done, 0 bad","queue":"fuzz 925 cases","tests":"random-fuzz 925 done"}
+{"phase":"fuzz","last_event":"random fuzz 950 done, 0 bad","queue":"fuzz 950 cases","tests":"random-fuzz 950 done"}
+{"phase":"fuzz","last_event":"random fuzz 975 done, 0 bad","queue":"fuzz 975 cases","tests":"random-fuzz 975 done"}
+{"phase":"fuzz","last_event":"random fuzz 1000 done, 0 bad","queue":"fuzz 1000 cases","tests":"random-fuzz 1000 done"}
+{"phase":"fuzz","last_event":"random fuzz 1000 done, 0 bad","queue":"fuzz 1000 cases","tests":"random-fuzz complete"}
+{"phase":"queue","last_event":"exact queue 16059/16059","queue":"16059/16059 done, 16059 ok, 0 bad","tests":"queue-run 16059/16059"}
+{"phase":"queue","last_event":"exact queue 16059/16059","queue":"16059/16059 done, 16059 ok, 0 bad","tests":"queue-run 16059/16059"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 0 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 0 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 0 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 0 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 0 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 0 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 0 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 200 done, 0 bad","queue":"fuzz 200 cases","tests":"random-fuzz 200 done"}
+{"phase":"fuzz","last_event":"random fuzz 225 done, 0 bad","queue":"fuzz 225 cases","tests":"random-fuzz 225 done"}
+{"phase":"fuzz","last_event":"random fuzz 250 done, 0 bad","queue":"fuzz 250 cases","tests":"random-fuzz 250 done"}
+{"phase":"fuzz","last_event":"random fuzz 275 done, 0 bad","queue":"fuzz 275 cases","tests":"random-fuzz 275 done"}
+{"phase":"fuzz","last_event":"random fuzz 300 done, 0 bad","queue":"fuzz 300 cases","tests":"random-fuzz 300 done"}
+{"phase":"fuzz","last_event":"random fuzz 325 done, 0 bad","queue":"fuzz 325 cases","tests":"random-fuzz 325 done"}
+{"phase":"fuzz","last_event":"random fuzz 350 done, 0 bad","queue":"fuzz 350 cases","tests":"random-fuzz 350 done"}
+{"phase":"fuzz","last_event":"random fuzz 375 done, 0 bad","queue":"fuzz 375 cases","tests":"random-fuzz 375 done"}
+{"phase":"fuzz","last_event":"random fuzz 400 done, 0 bad","queue":"fuzz 400 cases","tests":"random-fuzz 400 done"}
+{"phase":"fuzz","last_event":"random fuzz 425 done, 0 bad","queue":"fuzz 425 cases","tests":"random-fuzz 425 done"}
+{"phase":"fuzz","last_event":"random fuzz 450 done, 0 bad","queue":"fuzz 450 cases","tests":"random-fuzz 450 done"}
+{"phase":"fuzz","last_event":"random fuzz 475 done, 0 bad","queue":"fuzz 475 cases","tests":"random-fuzz 475 done"}
+{"phase":"fuzz","last_event":"random fuzz 500 done, 0 bad","queue":"fuzz 500 cases","tests":"random-fuzz 500 done"}
+{"phase":"fuzz","last_event":"random fuzz 500 done, 0 bad","queue":"fuzz 500 cases","tests":"random-fuzz complete"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 0 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 0 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 0 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 0 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 0 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 0 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 0 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 200 done, 0 bad","queue":"fuzz 200 cases","tests":"random-fuzz 200 done"}
+{"phase":"fuzz","last_event":"random fuzz 225 done, 0 bad","queue":"fuzz 225 cases","tests":"random-fuzz 225 done"}
+{"phase":"fuzz","last_event":"random fuzz 250 done, 0 bad","queue":"fuzz 250 cases","tests":"random-fuzz 250 done"}
+{"phase":"fuzz","last_event":"random fuzz 275 done, 0 bad","queue":"fuzz 275 cases","tests":"random-fuzz 275 done"}
+{"phase":"fuzz","last_event":"random fuzz 300 done, 0 bad","queue":"fuzz 300 cases","tests":"random-fuzz 300 done"}
+{"phase":"fuzz","last_event":"random fuzz 325 done, 0 bad","queue":"fuzz 325 cases","tests":"random-fuzz 325 done"}
+{"phase":"fuzz","last_event":"random fuzz 350 done, 0 bad","queue":"fuzz 350 cases","tests":"random-fuzz 350 done"}
+{"phase":"fuzz","last_event":"random fuzz 375 done, 0 bad","queue":"fuzz 375 cases","tests":"random-fuzz 375 done"}
+{"phase":"fuzz","last_event":"random fuzz 400 done, 0 bad","queue":"fuzz 400 cases","tests":"random-fuzz 400 done"}
+{"phase":"fuzz","last_event":"random fuzz 425 done, 0 bad","queue":"fuzz 425 cases","tests":"random-fuzz 425 done"}
+{"phase":"fuzz","last_event":"random fuzz 450 done, 0 bad","queue":"fuzz 450 cases","tests":"random-fuzz 450 done"}
+{"phase":"fuzz","last_event":"random fuzz 475 done, 0 bad","queue":"fuzz 475 cases","tests":"random-fuzz 475 done"}
+{"phase":"fuzz","last_event":"random fuzz 500 done, 0 bad","queue":"fuzz 500 cases","tests":"random-fuzz 500 done"}
+{"phase":"fuzz","last_event":"random fuzz 500 done, 0 bad","queue":"fuzz 500 cases","tests":"random-fuzz complete"}

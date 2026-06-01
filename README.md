@@ -4,17 +4,21 @@ Artifact:
 
 - `/Users/james/Developer/CASIO/calculator_files/CAS.g3a`
 - `/Users/james/Developer/CASIO/calculator_files/CAS.PAK`
+- `/Users/james/Developer/CASIO/calculator_files/RUNMAT.g3a`
 - no `.ac2`
-- copy both files in `calculator_files/` to the calculator
+- copy generated files in `calculator_files/` to the calculator
 
 Build:
 
 ```bash
 ./compile
 python3 tools/check_g3a_metadata.py calculator_files/CAS.g3a --name CAS --internal @CAS --filename CAS.g3a
+python3 tools/check_g3a_metadata.py calculator_files/RUNMAT.g3a --name RunMat --internal @RUNMAT --filename RUNMAT.g3a
 python3 tools/check_g3a_size.py calculator_files/CAS.g3a
+python3 tools/check_g3a_size.py calculator_files/RUNMAT.g3a
 python3 tools/check_catalog_scope.py
 python3 tools/check_calculator_border.py calculator_files/CAS.g3a
+python3 tools/check_runmat_mock.py
 python3 tests/check_help_examples.py
 python3 tests/run_exact_queue.py --engine production --workers 8
 python3 tests/run_exact_queue.py --engine production --workers 8 --strict-markers
@@ -25,6 +29,7 @@ Current status:
 
 - app name: `CAS`
 - file: `CAS.g3a`
+- companion visual mock: `RUNMAT.g3a`
 - size: `2,069,740` bytes
 - hard limit headroom: `27,412` bytes under `2,097,152`
 - sha256: `854f7558e2ec6adb814984e8cb08ca87d105c01bb6699933e8f813308591d259`
@@ -109,6 +114,7 @@ Active tools:
 - `tools/check_g3a_metadata.py`
 - `tools/check_g3a_size.py`
 - `tools/check_calculator_border.py`
+- `tools/check_runmat_mock.py`
 - `tools/check_catalog_scope.py`
 - `tools/check_help_quality.py`
 - `tests/check_targeted_working_gaps.py`

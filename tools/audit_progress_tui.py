@@ -26,6 +26,8 @@ QUEUE_LIVE = ROOT / "progress" / "exact_queue_latest.json"
 QUEUE_REPORT = ROOT / "tests" / "reports" / "exact_calculator_input_queue" / "latest.jsonl"
 QUEUE_FAILS = ROOT / "tests" / "reports" / "exact_calculator_input_queue" / "failures_latest.txt"
 AUDIT_PATH = ROOT / "tools" / "audit_progress_tui.py"
+VM_ROOT = Path("/Volumes/VM")
+VM_COVERAGE = ROOT / "progress" / "vm_coverage.json"
 LIMIT = 2 * 1024 * 1024
 TARGET = 2_000_000
 _QUEUE_RATE = {"done": -1, "at": 0.0, "rate": 0.0}
@@ -93,6 +95,10 @@ class Stat:
     ignored_bytes: int
     cleanup_items: int
     cleanup_bytes: int
+    docs_done: int
+    docs_total: int
+    docs_pending: int
+    docs_label: str
 
 
 def color(text: str, code: str, enabled: bool) -> str:
@@ -341,6 +347,76 @@ def queue_counts() -> tuple[int, int]:
         except json.JSONDecodeError:
             pass
     return rows, inputs
+
+
+def queue_sources() -> set[str]:
+    sources: set[str] = set()
+    if not QUEUE_FILE.exists():
+        return sources
+    for line in QUEUE_FILE.read_text(errors="ignore").splitlines():
+        if not line.strip():
+            continue
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        src = row.get("source_pdf")
+        if isinstance(src, str) and src:
+            sources.add(src)
+    return sources
+
+
+def vm_doc_sources() -> list[str]:
+    if not VM_ROOT.is_dir():
+        return []
+    out: set[str] = set()
+    for folder in sorted(VM_ROOT.rglob("* conv_png")):
+        if not folder.is_dir():
+            continue
+        rel = folder.relative_to(VM_ROOT)
+        stem = folder.name.replace(" conv_png", "")
+        out.add(f"{rel.parent}/{stem}.pdf".replace("\\", "/"))
+    return sorted(out)
+
+
+def coverage_complete_sources() -> set[str]:
+    if not VM_COVERAGE.exists():
+        return set()
+    try:
+        data = json.loads(VM_COVERAGE.read_text(errors="ignore"))
+    except json.JSONDecodeError:
+        return set()
+    return {src for src, meta in data.items() if isinstance(meta, dict) and meta.get("status") == "complete"}
+
+
+def complete_marker_sources() -> set[str]:
+    sources: set[str] = set()
+    if not QUEUE_FILE.exists():
+        return sources
+    for line in QUEUE_FILE.read_text(errors="ignore").splitlines():
+        if not line.strip():
+            continue
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        src = row.get("source_pdf")
+        if not isinstance(src, str) or not src:
+            continue
+        if "complete_source_marker" in str(row.get("id", "")):
+            sources.add(src)
+        elif row.get("verdict") == "skip" and row.get("coverage") == "complete":
+            sources.add(src)
+    return sources
+
+
+def doc_progress() -> tuple[int, int, int, str]:
+    docs = set(vm_doc_sources())
+    if not docs:
+        return 0, 0, 0, "VM missing"
+    done = docs & (queue_sources() | coverage_complete_sources() | complete_marker_sources())
+    pending = len(docs) - len(done)
+    return len(done), len(docs), pending, str(VM_ROOT)
 
 
 def failure_samples(limit: int = 3) -> list[str]:
@@ -598,6 +674,7 @@ def collect() -> Stat:
     st_age, st_rows = state_stats()
     ignored_items, ignored_bytes = stat_paths(ignored_targets())
     cleanup_items, cleanup_bytes = stat_paths(cleanup_targets())
+    docs_done, docs_total, docs_pending, docs_label = doc_progress()
     return Stat(
         phase=str(s.get("phase", "n/a")),
         last=str(s.get("last_event", "n/a")),
@@ -647,6 +724,10 @@ def collect() -> Stat:
         ignored_bytes=ignored_bytes,
         cleanup_items=cleanup_items,
         cleanup_bytes=cleanup_bytes,
+        docs_done=docs_done,
+        docs_total=docs_total,
+        docs_pending=docs_pending,
+        docs_label=docs_label,
     )
 
 
@@ -761,6 +842,16 @@ def queue_health(st: Stat, frame: int, width: int, enabled: bool) -> list[str]:
         f"scan {wave(max(18, width), frame, enabled)}",
     ]
     return rows
+
+
+def doc_scan_rows(st: Stat, frame: int, width: int, enabled: bool) -> list[str]:
+    if st.docs_total <= 0:
+        return [f"docs {st.docs_label}"]
+    return [
+        f"docs {st.docs_done:,}/{st.docs_total:,} done  pending {st.docs_pending:,}",
+        bar(st.docs_done, st.docs_total, max(18, width), frame, enabled),
+        f"root {st.docs_label}",
+    ]
 
 
 def cluster_bars(st: Stat, width: int, frame: int, enabled: bool) -> list[str]:
@@ -1112,6 +1203,7 @@ def render_compact(st: Stat, frame: int, width: int, enabled: bool) -> str:
         kv("queue", f"{st.queue_rows:,} rows / {st.queue_inputs:,} inputs", width, enabled),
         kv("latest", f"{st.queue}  report age {st.report_age}", width, enabled),
         kv("live", f"{st.queue_active}  age {st.queue_live_age}  rate {st.queue_rate}  eta {st.queue_eta}", width, enabled),
+        kv("vm docs", f"{bar(st.docs_done, st.docs_total, bar_w, frame, enabled)} {st.docs_done}/{st.docs_total} pending {st.docs_pending}", width, enabled),
         kv("accuracy", split_bar(st.queue_ok, st.queue_bad, st.queue_total, bar_w, frame, enabled), width, enabled),
         trim(color("progress", C.bold, enabled), width),
         trim(f"trend          {st.ratio_trend}  {wave(18, frame, enabled)}", width),
@@ -1214,6 +1306,7 @@ def render(st: Stat, frame: int, width: int, height: int, enabled: bool) -> str:
         f"latest {st.queue}  report age {st.report_age}",
         *queue_health(st, frame, bar_w, enabled),
     ]
+    doc_rows_ui = doc_scan_rows(st, frame, bar_w, enabled)
     if width >= 112:
         left_w = (width - 2) // 2
         right_w = width - 2 - left_w
@@ -1222,10 +1315,17 @@ def render(st: Stat, frame: int, width: int, height: int, enabled: bool) -> str:
             panel("queue", queue_rows_ui, right_w, enabled),
             width,
         )
+        lines += columns(
+            panel("vm docs", doc_rows_ui, left_w, enabled),
+            panel("progress", [f"trend {st.ratio_trend}", sweep(24, frame, enabled)], right_w, enabled),
+            width,
+        )
     else:
         lines += panel("artifact", artifact_rows, width, enabled)
         lines.append("")
         lines += panel("queue", queue_rows_ui, width, enabled)
+        lines.append("")
+        lines += panel("vm docs", doc_rows_ui, width, enabled)
     lines.append("")
     lines += panel("progress", [], width, enabled)[:1]
     lines.append(trim(f"trend          {st.ratio_trend}  {sweep(24, frame, enabled)}", width))

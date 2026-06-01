@@ -7,14 +7,20 @@ SRC_DIR="${ROOT_DIR}/khicas/upstream/giac90_1addin"
 OUT_DIR="${ROOT_DIR}/build"
 TRANSFER_DIR="${ROOT_DIR}/calculator_files"
 TARGET="${CASIO_KHICAS_TARGET:-CAS.g3a}"
+RUNMAT_TARGET="${CASIO_RUNMAT_TARGET:-RUNMAT.g3a}"
 PACK_TARGET="${CASIO_HELP_PACK_TARGET:-${TARGET%.*}.PAK}"
 MAKE_JOBS="${CASIO_MAKE_JOBS:-1}"
+IMAGE_VERSION="runmat-v2"
+DOCKER_BUILD_SCRIPT="${OUT_DIR}/docker_build_g3a.sh"
 
 ensure_image() {
-  if ! docker image inspect "${IMAGE_TAG}" >/dev/null 2>&1; then
+  local current_version=""
+  current_version="$(docker image inspect -f '{{ index .Config.Labels "casio.khicas.image-version" }}' "${IMAGE_TAG}" 2>/dev/null || true)"
+  if [ "${current_version}" != "${IMAGE_VERSION}" ]; then
     docker build \
       --platform linux/amd64 \
       -f "${ROOT_DIR}/tools/docker/Dockerfile.khicas-source" \
+      --label "casio.khicas.image-version=${IMAGE_VERSION}" \
       -t "${IMAGE_TAG}" \
       "${ROOT_DIR}"
   fi
@@ -39,7 +45,7 @@ try:
     from PIL import Image
 
     for src, dst in (("unselected.bmp", "khicasio.png"), ("selected.bmp", "khicasio1.png")):
-        icon = Image.open(root / src).convert("RGB")
+        icon = Image.open(root / src).convert("P", palette=Image.ADAPTIVE, colors=8).convert("RGB")
         icon.save(root / dst, optimize=True, compress_level=9)
 except Exception:
     shutil.copyfile(root / "logo.png", root / "khicasio.png")
@@ -54,20 +60,50 @@ touch "${TRANSFER_DIR}/.gitkeep"
 ensure_image
 clean_source_outputs
 prepare_icons
+cp "${ROOT_DIR}/tools/runmat_mock.cc" "${SRC_DIR}/runmat_mock.cc"
+
+cat > "${DOCKER_BUILD_SCRIPT}" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+
+: "${CASIO_KHICAS_TARGET:=CAS.g3a}"
+: "${CASIO_RUNMAT_TARGET:=RUNMAT.g3a}"
+: "${CASIO_MAKE_JOBS:=1}"
+
+mkdir -p /shared/tmp ~/.wine/drive_c
+rm -rf /tmp/giac90_1addin
+cp -a /work/khicas/upstream/giac90_1addin /tmp/giac90_1addin
+cd /tmp/giac90_1addin
+
+make clean
+rm -f "${CASIO_KHICAS_TARGET}" "${CASIO_RUNMAT_TARGET}"
+make -j"${CASIO_MAKE_JOBS}" "${CASIO_KHICAS_TARGET}" "${CASIO_RUNMAT_TARGET}"
+
+cp "${CASIO_KHICAS_TARGET}" /work/khicas/upstream/giac90_1addin/
+cp "${CASIO_RUNMAT_TARGET}" /work/khicas/upstream/giac90_1addin/
+cp khicasen.bin khicasen.elf khicasen.map /work/khicas/upstream/giac90_1addin/
+cp runmat_mock.bin runmat_mock.elf runmat_mock.map /work/khicas/upstream/giac90_1addin/
+SH
 
 docker run --rm \
   --platform linux/amd64 \
   -e CASIO_MAKE_JOBS="${MAKE_JOBS}" \
   -e CASIO_KHICAS_TARGET="${TARGET}" \
+  -e CASIO_RUNMAT_TARGET="${RUNMAT_TARGET}" \
   -v "${ROOT_DIR}:/work" \
   -w /work/khicas/upstream/giac90_1addin \
   "${IMAGE_TAG}" \
-  bash -lc 'set -euo pipefail; mkdir -p /shared/tmp ~/.wine/drive_c; make clean; rm -f "${CASIO_KHICAS_TARGET}"; make -j"${CASIO_MAKE_JOBS}" "${CASIO_KHICAS_TARGET}"'
+  bash /work/build/docker_build_g3a.sh
 
 cp "${SRC_DIR}/${TARGET}" "${OUT_DIR}/${TARGET}"
+cp "${SRC_DIR}/${RUNMAT_TARGET}" "${OUT_DIR}/${RUNMAT_TARGET}"
 for ext in bin elf map; do
   src="${SRC_DIR}/khicasen.${ext}"
   [ ! -f "${src}" ] || cp "${src}" "${OUT_DIR}/khicasen.${ext}"
+done
+for ext in bin elf map; do
+  src="${SRC_DIR}/runmat_mock.${ext}"
+  [ ! -f "${src}" ] || cp "${src}" "${OUT_DIR}/runmat_mock.${ext}"
 done
 
 python3 "${ROOT_DIR}/tools/check_g3a_metadata.py" "${OUT_DIR}/${TARGET}" \
@@ -75,14 +111,20 @@ python3 "${ROOT_DIR}/tools/check_g3a_metadata.py" "${OUT_DIR}/${TARGET}" \
   --internal @CAS \
   --filename "${TARGET}"
 python3 "${ROOT_DIR}/tools/check_g3a_size.py" "${OUT_DIR}/${TARGET}"
+python3 "${ROOT_DIR}/tools/check_g3a_metadata.py" "${OUT_DIR}/${RUNMAT_TARGET}" \
+  --name RunMat \
+  --internal @RUNMAT \
+  --filename "${RUNMAT_TARGET}"
+python3 "${ROOT_DIR}/tools/check_g3a_size.py" "${OUT_DIR}/${RUNMAT_TARGET}"
 python3 "${ROOT_DIR}/tools/build_help_pack.py" \
   "${ROOT_DIR}/help/functions" \
   "${OUT_DIR}/${PACK_TARGET}"
 
 cp "${OUT_DIR}/${TARGET}" "${TRANSFER_DIR}/${TARGET}"
+cp "${OUT_DIR}/${RUNMAT_TARGET}" "${TRANSFER_DIR}/${RUNMAT_TARGET}"
 cp "${OUT_DIR}/${PACK_TARGET}" "${TRANSFER_DIR}/${PACK_TARGET}"
 clean_source_outputs
 rm -f "${SRC_DIR}/khicasio.png" "${SRC_DIR}/khicasio1.png"
 
-ls -lh "${TRANSFER_DIR}/${TARGET}" "${TRANSFER_DIR}/${PACK_TARGET}"
-shasum -a 256 "${TRANSFER_DIR}/${TARGET}" "${TRANSFER_DIR}/${PACK_TARGET}"
+ls -lh "${TRANSFER_DIR}/${TARGET}" "${TRANSFER_DIR}/${RUNMAT_TARGET}" "${TRANSFER_DIR}/${PACK_TARGET}"
+shasum -a 256 "${TRANSFER_DIR}/${TARGET}" "${TRANSFER_DIR}/${RUNMAT_TARGET}" "${TRANSFER_DIR}/${PACK_TARGET}"

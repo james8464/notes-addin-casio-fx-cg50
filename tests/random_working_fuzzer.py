@@ -39,6 +39,7 @@ TEMPLATES = {
         "integrate(x^2+sin(2*x)+exp(3*x),x)",
         "integrate(exp(ln(x)),x,3)",
         "integrate(tan(x),x)",
+        "integrate(((x)^2)((4)^2))",
     ],
     "simplify": [
         "simplify((x^2+3*x+2)/(x+1))",
@@ -129,21 +130,161 @@ def equation(rng: random.Random, depth: int) -> str:
     return f"{expr(rng, depth)}={expr(rng, depth)}"
 
 
-def command_input(rng: random.Random, depth: int, template_rate: float) -> tuple[str, str]:
-    cmd = rng.choice(COMMANDS)
+def nz(rng: random.Random, lo: int = -7, hi: int = 7) -> int:
+    n = 0
+    while n == 0:
+        n = rng.randrange(lo, hi + 1)
+    return n
+
+
+def lin(rng: random.Random) -> str:
+    a = nz(rng, -6, 6)
+    b = rng.randrange(-9, 10)
+    if b == 0:
+        return f"{a}*x"
+    return f"{a}*x{'+' if b > 0 else ''}{b}"
+
+
+def quad_from_roots(rng: random.Random) -> tuple[str, int, int]:
+    r1, r2 = rng.randrange(-6, 7), rng.randrange(-6, 7)
+    b = -(r1 + r2)
+    c = r1 * r2
+    parts = ["x^2"]
+    if b:
+        parts.append(f"{b:+d}*x")
+    if c:
+        parts.append(f"{c:+d}")
+    return "".join(parts), r1, r2
+
+
+def rand_diff(rng: random.Random) -> str:
+    case = rng.randrange(6)
+    if case == 0:
+        return f"diff(({lin(rng)})^2,x)"
+    if case == 1:
+        return f"diff(sin(({lin(rng)})^2),x)"
+    if case == 2:
+        return f"diff(({lin(rng)})*ln({lin(rng)}),x)"
+    if case == 3:
+        return f"diff((x^2+{rng.randrange(1,8)})/(x{rng.choice(['-','+'])}{rng.randrange(1,6)}),x)"
+    if case == 4:
+        return f"diff((x+{rng.randrange(1,6)})(x-{rng.randrange(1,6)})ln(x),x)"
+    return f"diff(({lin(rng)})+sin({lin(rng)}),x)"
+
+
+def rand_integrate(rng: random.Random) -> str:
+    case = rng.randrange(7)
+    if case == 0:
+        a, p = nz(rng, -8, 8), rng.randrange(1, 6)
+        return f"integrate({a}*x^{p}+{rng.randrange(-9,10)},x)"
+    if case == 1:
+        k = nz(rng, 1, 6)
+        return f"integrate(sin({k}*x),x)"
+    if case == 2:
+        k = nz(rng, 1, 6)
+        return f"integrate(exp({k}*x),x)"
+    if case == 3:
+        p = rng.randrange(1, 5)
+        return f"integrate(x^{p}*ln(x),x)"
+    if case == 4:
+        a, b, p = nz(rng, 1, 5), rng.randrange(-5, 6), rng.randrange(2, 5)
+        return f"integrate({a}*x*({b}+x^2)^{p},x)"
+    if case == 5:
+        c = rng.randrange(2, 8)
+        return f"integrate(((x)^2)(({c})^2))"
+    return f"integrate(({lin(rng)})+cos({nz(rng,1,6)}*x),x)"
+
+
+def rand_solve(rng: random.Random) -> str:
+    case = rng.randrange(5)
+    if case == 0:
+        a, b, r = nz(rng, -7, 7), rng.randrange(-9, 10), rng.randrange(-9, 10)
+        return f"solve({a}*x+{b}={r},x)"
+    if case == 1:
+        q, r1, r2 = quad_from_roots(rng)
+        return f"solve({q}=0,x)"
+    if case == 2:
+        n = rng.randrange(2, 10)
+        return f"solve({n}=(x)^2,x)"
+    if case == 3:
+        a, b = nz(rng, 1, 6), rng.randrange(-4, 5)
+        return f"solve(({a}*x+{b})*ln(x+1)=0,x)"
+    return f"solve(tan(x)={rng.randrange(1,6)}/{rng.randrange(2,7)},x)"
+
+
+def rand_range(rng: random.Random) -> str:
+    case = rng.randrange(5)
+    if case == 0:
+        return f"range({lin(rng)})"
+    if case == 1:
+        q, _, _ = quad_from_roots(rng)
+        return f"range({q})"
+    if case == 2:
+        return f"range((x)^{rng.choice([3,5])})"
+    if case == 3:
+        a, b, c = nz(rng, 1, 5), nz(rng, 1, 5), rng.randrange(-8, 9)
+        return f"range({a}*sin({b}*x{c:+d}){rng.randrange(-8,9):+d})"
+    return rng.choice(["range(exp(x))", "range(ln(x))", "range(sqrt(x))"])
+
+
+def rand_simplify(rng: random.Random) -> str:
+    case = rng.randrange(4)
+    if case == 0:
+        a = rng.randrange(1, 7)
+        return f"simplify((x^2+{2*a}*x+{a*a})/(x+{a})^2)"
+    if case == 1:
+        a = rng.randrange(1, 7)
+        return f"simplify((x^2-{a*a})/(x-{a}))"
+    if case == 2:
+        return f"simplify(((x)^{rng.randrange(2,6)}))"
+    return f"simplify({expr(rng, 3)})"
+
+
+def rand_xform(rng: random.Random) -> str:
+    case = rng.randrange(8)
+    if case == 0:
+        terms = ["1", "tan(x)^2"]
+        rng.shuffle(terms)
+        return f"xform({terms[0]}+{terms[1]},sec(x)^2)"
+    if case == 1:
+        terms = ["sin(x)^2", "cos(x)^2"]
+        rng.shuffle(terms)
+        return f"xform({terms[0]}+{terms[1]},1)"
+    if case == 2:
+        terms = ["1", "cot(x)^2"]
+        rng.shuffle(terms)
+        return f"xform({terms[0]}+{terms[1]},cosec(x)^2)"
+    if case == 3:
+        n = rng.randrange(2, 7)
+        return f"xform(ln(x^{n}),{n}*ln(x))"
+    if case == 4:
+        base, n = rng.randrange(2, 8), rng.randrange(2, 6)
+        return f"xform(log({base},x^{n}),{n}*log({base},x))"
+    if case == 5:
+        a = rng.randrange(1, 6)
+        return f"xform((x+{a})^2,x^2+{2*a}*x+{a*a})"
+    if case == 6:
+        a = rng.randrange(1, 6)
+        return f"xform(x^2+{2*a}*x+{a*a},(x+{a})^2)"
+    return rng.choice(TEMPLATES["xform"])
+
+
+def command_input(rng: random.Random, depth: int, template_rate: float, commands: list[str] | None = None) -> tuple[str, str]:
+    cmd = rng.choice(commands or COMMANDS)
     if rng.random() < template_rate and cmd in TEMPLATES:
         return cmd, rng.choice(TEMPLATES[cmd])
     if cmd == "diff":
-        return cmd, f"diff({expr(rng, depth)},{rng.choice(['x', ' x ', 'x '])})"
+        return cmd, rand_diff(rng)
     if cmd == "integrate":
-        method = "" if rng.random() < 0.75 else f",x,{rng.choice(['1', '2', '3'])}"
-        return cmd, f"integrate({expr(rng, depth)}{method})"
+        return cmd, rand_integrate(rng)
     if cmd == "simplify":
-        return cmd, f"simplify({expr(rng, depth)})"
+        return cmd, rand_simplify(rng)
     if cmd == "solve":
-        return cmd, f"solve({equation(rng, depth)},x)"
+        return cmd, rand_solve(rng)
     if cmd == "range":
-        return cmd, f"range({expr(rng, depth)})"
+        return cmd, rand_range(rng)
+    if cmd == "xform":
+        return cmd, rand_xform(rng)
     if cmd in TEMPLATES:
         return cmd, rng.choice(TEMPLATES[cmd])
     start = expr(rng, depth)
@@ -156,10 +297,10 @@ def noisy_input(rng: random.Random) -> tuple[str, str]:
     return "noise", "".join(rng.choice(WEIRD_CHARS) for _ in range(n)).strip()
 
 
-def make_case(rng: random.Random, depth: int, noise_rate: float, template_rate: float) -> tuple[str, str]:
+def make_case(rng: random.Random, depth: int, noise_rate: float, template_rate: float, commands: list[str] | None = None) -> tuple[str, str]:
     if rng.random() < noise_rate:
         return noisy_input(rng)
-    return command_input(rng, depth, template_rate)
+    return command_input(rng, depth, template_rate, commands)
 
 
 def classify(kind: str, src: str, out: str, code: int, elapsed: float, timeout: bool) -> str:
@@ -223,13 +364,15 @@ def main() -> int:
     ap.add_argument("--depth", type=int, default=4)
     ap.add_argument("--timeout", type=float, default=4.0)
     ap.add_argument("--noise-rate", type=float, default=0.08)
-    ap.add_argument("--template-rate", type=float, default=0.45)
+    ap.add_argument("--template-rate", type=float, default=0.10)
+    ap.add_argument("--only", default="", help="comma-separated command names to generate")
     ap.add_argument("--stop-on-fail", action="store_true")
     ap.add_argument("--strict", action="store_true", help="count weak fallback as failure")
     ap.add_argument("--jsonl", type=Path, default=ROOT / "tests" / "reports" / "random_fuzz_latest.jsonl")
     args = ap.parse_args()
 
     rng = random.Random(args.seed)
+    only = [x.strip() for x in args.only.split(",") if x.strip()] or None
     args.jsonl.parent.mkdir(parents=True, exist_ok=True)
     done = bad = 0
     append_progress(0, 0, "random-fuzz running")
@@ -241,7 +384,7 @@ def main() -> int:
     with args.jsonl.open("w", encoding="utf-8") as report:
         try:
             while args.forever or done < args.count:
-                kind, src = make_case(rng, args.depth, args.noise_rate, args.template_rate)
+                kind, src = make_case(rng, args.depth, args.noise_rate, args.template_rate, only)
                 code, out, elapsed, timeout = run_case(src, args.timeout)
                 verdict = classify(kind, src, out, code, elapsed, timeout)
                 fail = verdict not in {"ok", "slow"} and (args.strict or verdict != "weak-fallback")
