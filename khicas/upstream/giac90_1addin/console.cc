@@ -1859,8 +1859,6 @@ int Console_Eval(const char * buf){
     return true;
   }
 
-void get_current_console_menu(string & menu,string & shiftmenu,string & alphamenu,int &menucolorbg,int app);
-
 int Console_GetKey(){
   int key;
   unsigned int i, move_line, move_col;
@@ -1868,14 +1866,10 @@ int Console_GetKey(){
   unsigned char *tmp;
   for (;;){
     int keyflag = GetSetupSetting(0x14);
-    if (xcas_python_eval==1)
-      python_compat(4,contextptr);
-    string menu,shiftmenu,alphamenu; int menucolorbg=12345;
-    get_current_console_menu(menu,shiftmenu,alphamenu,menucolorbg,0);
-    in_ckgetkey(&key,1,menu.c_str(),shiftmenu.c_str(),alphamenu.c_str(),menucolorbg);
+    ck_getkey(&key);
     bool alph=oldalphastate;//keyflag==4||keyflag==0x84||keyflag==8||keyflag==0x88;
     // if (key==30006) OS_InnerWait_ms(1000); // key='6';
-    if (key!=KEY_CHAR_FRAC) translate_fkey(key);
+    translate_fkey(key);
     if (key==KEY_CTRL_F5){
       handle_f5();
       Console_Disp();
@@ -1961,6 +1955,7 @@ int Console_GetKey(){
       return Console_Input((const unsigned char*)buf);
     }
     if (key==KEY_CTRL_F6){
+#if 0
       Menu smallmenu;
       smallmenu.numitems=2;
       MenuItem smallmenuitems[smallmenu.numitems];
@@ -1988,7 +1983,8 @@ int Console_GetKey(){
       }
       Console_Disp();
       return CONSOLE_SUCCEEDED;
-#if 0
+#endif
+#if 1
       Menu smallmenu;
       smallmenu.numitems=13;
       MenuItem smallmenuitems[smallmenu.numitems];
@@ -2797,10 +2793,16 @@ void get_current_console_menu(string & menu,string & shiftmenu,string & alphamen
 
 void console_disp_status(){
   Console_FMenu_Init();
-  string menu(" "),shiftmenu=menu,alphamenu; int menucolorbg=12345;
-  get_current_console_menu(menu,shiftmenu,alphamenu,menucolorbg,0);
-  int px=0*3,py=58*3;
-  PrintMini(&px,&py,(unsigned char *)menu.c_str(),0,0xFFFFFFFF,0,0,COLOR_BLACK,menucolorbg,1,0);
+  string menu(" ");
+  menu += string(menu_f1);
+  while (menu.size()<6)
+    menu += " ";
+  menu += "| ";
+  menu += string(menu_f2);
+  while (menu.size()<13)
+    menu += " ";
+  menu += lang?"| voir | cmds | A<>a | Fich.":"| view | cmds | A<>a | File ";
+  PrintMini(0,58,menu.c_str(),4);
   set_xcas_status();
 }
 

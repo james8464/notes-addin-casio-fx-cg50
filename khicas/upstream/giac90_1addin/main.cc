@@ -41,52 +41,25 @@ using namespace giac;
 bool shiftstate=false,alphastate=false,alphalock=false,alphamaj=true,oldalphastate=false,oldshiftstate=false;
 short int timeout_delay=300;
 
-void casiostatus(const char * menu,const char * shiftmenu,const char * alphamenu,int color){
-  static const char * prev=0;
-  bool is_emulator = *(volatile uint32_t *)0xff000044 == 0x00000000;
-  bool setstatus=!is_emulator;
-  if ((unsigned)menu==1){
-    menu=0;
-    setstatus=false;
-  }
-  if (!menu)
-    prev=menu;
-  if (setstatus){
-    int casioset=0;
-    if (shiftstate)
-      casioset=(1);
-    else if (alphastate){
-      if (alphalock){
-	if (alphamaj)
-	  casioset=(0x84);
-	else
-	  casioset=(0x88);
-      }
-      else {
-	if (alphamaj)
-	  casioset=(0x4);
-	else
-	  casioset=(0x8);
-      }
-    }
-    SetSetupSetting(0x14,casioset);
-  }
-  if (menu && shiftmenu && alphamenu){
-    int px=0*3,py=58*3;
-    const char * cur=0;
-    if (shiftstate)
-      cur=shiftmenu;
-    else {
-      if (alphastate && !alphalock)
-	cur=alphamenu;
+void casiostatus(){
+  int casioset=0;
+  if (shiftstate)
+    casioset=(1);
+  else if (alphastate){
+    if (alphalock){
+      if (alphamaj)
+	casioset=(0x84);
       else
-	cur=menu;
+	casioset=(0x88);
     }
-    if (cur!=prev){
-      prev=cur;
-      PrintMini(&px,&py,(unsigned char *)cur,0,0xFFFFFFFF,0,0,COLOR_BLACK,color,1,0);
+    else {
+      if (alphamaj)
+	casioset=(0x4);
+      else
+	casioset=(0x8);
     }
   }
+  SetSetupSetting(0x14,casioset);
 }
 
 const unsigned short translated_keys[] =
@@ -134,7 +107,6 @@ const unsigned short translated_keys[] =
 };
 
 static volatile int menutimer=0;
-
 void clear_menu_timer(){
   if (menutimer > 0) {
     // menu row 9 col 4
@@ -162,19 +134,10 @@ void set_menu_timer(){
   }
 }
 
-void MENU_save(){
-  if (console_changed){
-    save("session");
-    if (strcmp(session_filename,"session")==0)
-      console_changed=0;
-  }
-}
-
-int in_ckgetkey(int * keyptr,int waitforkey,const char * menu,const char * shiftmenu,const char * alphamenu,int menucolorbg){
+int ck_getkey(int * keyptr){
   bool is_emulator = *(volatile uint32_t *)0xff000044 == 0x00000000;
   int keyflag=GetSetupSetting( (unsigned int)0x14);
   if (is_emulator){
-    alphalock= keyflag &0x80;
     if ( (keyflag&4) | (keyflag &8))
       alphastate=oldalphastate=true;
     else
@@ -183,13 +146,9 @@ int in_ckgetkey(int * keyptr,int waitforkey,const char * menu,const char * shift
       shiftstate=oldshiftstate=true;
     else
       shiftstate=oldshiftstate=false;
-    casiostatus(0,0,0,0);
-    casiostatus(menu,shiftmenu,alphamenu,menucolorbg);
     GetKey(keyptr);
     if (*keyptr>=KEY_CTRL_F1 && *keyptr<=KEY_CTRL_F6 && (keyflag & 1))
       *keyptr += 9906;
-    if (*keyptr>=KEY_CTRL_F1 && *keyptr<=KEY_CTRL_F6 && (alphastate && !alphalock))
-      *keyptr += 9912;
     return 1;
   }
   int col, row;
@@ -205,24 +164,18 @@ int in_ckgetkey(int * keyptr,int waitforkey,const char * menu,const char * shift
   if (keyflag & 1)
     shiftstate=true;
   while (1){
-    if (waitforkey){
-      casiostatus(menu,shiftmenu,alphamenu,menucolorbg);
-      DisplayStatusArea();
-      Bdisp_PutDisp_DD();
-    }
+    casiostatus();
+    DisplayStatusArea();
+    Bdisp_PutDisp_DD ();
     SetSetupSetting(0x14,0); // disable OFF
-    int ret=GetKeyWait_OS(&col,&row, waitforkey?2:1, timeout_delay /*timeout_period*/, 1 /* 0: handle menu key*/, &keycode) ;
-    if (ret==0)
-      return -1;
+    int ret=GetKeyWait_OS(&col,&row, 2 /* KEYWAIT_HALTON_TIMERON*/, timeout_delay /*timeout_period*/, 1 /* 0: handle menu key*/, &keycode) ;
     if (!shiftstate && (col==4 && row==9)){
-      MENU_save();
       set_menu_timer();
       GetKey(keyptr);
       //*keyptr=KEY_SHUTDOWN;
       return 1;      
     }
     if (ret==2 /* timeout */ ){
-      MENU_save();
       //printf("timeout shutdown \n");
 #if 1
       set_menu_timer();
@@ -295,13 +248,16 @@ int in_ckgetkey(int * keyptr,int waitforkey,const char * menu,const char * shift
       shiftstate=false;
       // print_msg12("Type MENU SHIFT ON to shutdown","Taper MENU SHIFT ON pour eteindre");
       if (lang)
-	print_msg12("Retour menu home. Pour eteindre","tapez a nouveau SHIFT AC/ON");
+	print_msg12("Pour eteindre, tapez les touches","MENU SHIFT ON");
       else
-	print_msg12("Back to home menu. To shutdown","type again SHIFT AC/ON");
+	print_msg12("To shutdown, type the keys","MENU SHIFT ON");
+      continue;
       Bdisp_PutDisp_DD ();
       OS_InnerWait_ms(1000);
-      set_menu_timer();
-      GetKey(keyptr);
+      //set_menu_timer();
+      //GetKey(keyptr);
+      casiostatus();
+      *keyptr=KEY_SHUTDOWN;
       return 1;
     }
     // col and row translation to keycode
@@ -315,14 +271,6 @@ int in_ckgetkey(int * keyptr,int waitforkey,const char * menu,const char * shift
       if (shiftstate)
 	code += 9*6;
     *keyptr=translated_keys[code];
-    if (alphalock && *keyptr==KEY_CTRL_UNDO)
-      *keyptr=KEY_CTRL_DEL;
-    if (alphastate && !alphalock){
-      if (*keyptr==KEY_CTRL_EXIT)
-	*keyptr=65535;
-      if (*keyptr>=KEY_CTRL_F1 && *keyptr<=KEY_CTRL_F6)
-	*keyptr += KEY_CTRL_F13-KEY_CTRL_F1;
-    }
 #if 0
     char buf[512];
     sprintf(buf,"code %i key %i ",code,*keyptr);
@@ -333,17 +281,10 @@ int in_ckgetkey(int * keyptr,int waitforkey,const char * menu,const char * shift
     oldalphastate=alphastate;
     if (!alphalock)
       alphastate=false;
-    casiostatus(menu,shiftmenu,alphamenu,menucolorbg);
+    casiostatus();
     return 1;
   }
 }
-
-int ck_getkey(int * keyptr){
-  if (xcas_python_eval==1)
-    python_compat(4,contextptr);
-  return in_ckgetkey(keyptr,1,0,0,0,12345);
-}
-
 
 // check integrity of RAM and reload it if required
 unsigned ram2Msize=0;
