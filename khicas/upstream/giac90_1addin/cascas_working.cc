@@ -1622,7 +1622,7 @@ static bool try_numeric(const char *input,working_string &out){
     if (n>1 && buf[n-1]=='.') buf[--n]=0;
     out += "\n= ";
     out += buf;
-    sprintf(buf,"%.10f",v);
+    sprintf(buf,"%.12g",v);
     n=strlen(buf);
     while (n>1 && buf[n-1]=='0') buf[--n]=0;
     if (n>1 && buf[n-1]=='.') buf[--n]=0;

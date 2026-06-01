@@ -1,6 +1,6 @@
 # Project Graph
 
-Last updated: 2026-06-01 01:51 BST
+Last updated: 2026-06-01 02:04 BST
 
 ## Build
 
@@ -39,7 +39,7 @@ graph TD
   Work --> Int["integrate: affine reverse-chain powers, linear-over-linear division logs, trig/exp sums, damped-sine by-parts, substitution, definite substitution, exam-form x^2-1 antiderivative"]
   Work --> Solve["solve: guarded linear, integer-root quadratics with explicit root lines, rational, dy/dx separable"]
   Work --> Alg["algebra: quadratic factor, targeted expand, high-frequency exam forms"]
-  Work --> Num["numeric routes: equation-style decimal/exact lines plus sqrt substitution-limit markers"]
+  Work --> Num["numeric routes: equation-style decimal/exact lines, 12-significant-digit rounded markers, sqrt substitution-limit markers"]
   Work --> Trig["trig: R-form and pi-shift identities"]
   Work --> Xform["xform trig/log identities"]
 ```
@@ -67,7 +67,7 @@ graph TD
   Report --> TUI
   TUI --> Panels["animated panels: sync, artifact, live rate and ETA, queue bars, strict clusters, risk, ignored workspace, dirty files, next action"]
   Runner --> Runtime["14,256/14,256 runtime-safe"]
-  Runner --> Strict["12,902/14,256 strict marker pass"]
+  Runner --> Strict["12,950/14,256 strict marker pass"]
   Strict --> Remaining["remaining: symbolic parameter area proofs, algebra presentation, binomial/partfrac, exact-form geometry/vector clusters"]
 ```
 

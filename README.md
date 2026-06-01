@@ -26,9 +26,9 @@ Current status:
 - file: `CAS.g3a`
 - size: `2,097,128` bytes
 - hard limit headroom: `24` bytes
-- sha256: `fffc78be0925aad0e8f7984c128174a49dec82ba7ffe70199d514a0a4859668a`
+- sha256: `c3364e7359f026a589ebc4c4dc84eadc129a6c80ea9d20fd11e82f27ef2cb4da`
 - exact queue runtime: `14,256/14,256`
-- strict marker quality: `12,902/14,256`
+- strict marker quality: `12,950/14,256`
 - online challenge source coverage: MadAsMaths exact rows in queue; Daily Integral hard-integration style probes inspected from `https://dailyintegral.com/archive`
 
 Notable routes:
@@ -48,7 +48,7 @@ Notable routes:
 - safer solve routing: powered terms no longer fall through the linear solver
 - safer chain routing: non-linear inner functions no longer pass as affine
 - simple numeric expressions show small exact fractions when detected
-- numeric routes now emit equation-style `=` lines for exam markers and substitution-limit square-root steps such as `sqrt(5-1) -> sqrt(4)`
+- numeric routes emit equation-style `=` lines, 12-significant-digit rounded markers, and substitution-limit square-root steps such as `sqrt(5-1) -> sqrt(4)`
 - polynomial antiderivatives use coefficient-first descending-power form, e.g. `-1/3*x^3 + 2*x^2 + 5*x + C`
 - `integrate(x^2-1,x)` uses the mark-scheme form `x^3/3 - x + C`
 - `integrate(x*sqrt(x+1),x,0,3)` uses substitution and returns `116/15`
