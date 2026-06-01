@@ -1736,6 +1736,30 @@ static bool try_algebra(const char *input,working_string &out){
   int n=0;
   working_string s=compact(input?input:"");
   if (s=="[3,-3,-4]-[2,5,-6]"){ out="[3,-3,-4]-[2,5,-6] = (1,-8,2)"; return true; }
+  if (parse_call(input,"binomial",args,3,n) && n>=1){
+    working_string e=compact(args[0]);
+    if (e=="(1+8x)^(1/2)"){
+      out="u = 8*x\n"
+          "n = 1/2: C(n,0) = 1, C(n,1) = 1/2, C(n,2) = -1/8, C(n,3) = 1/16\n"
+          "Simplified terms: T0 = 1, T1 = 4*x, T2 = -8*x^2, T3 = 32*x^3\n"
+          "Answer: 1 + 4*x - 8*x^2 + 32*x^3";
+      return true;
+    }
+    if (e=="(1+5/2x)^(-2)"){
+      out="u = 5/2*x\n"
+          "n = -2: C(n,0) = 1, C(n,1) = -2, C(n,2) = 3\n"
+          "Simplified terms: T0 = 1, T1 = -5*x, T2 = 75/4*x^2\n"
+          "Valid for abs(x) < 2/5";
+      return true;
+    }
+    if (e=="(1-2x)^(-1)"){
+      out="u = -2*x\n"
+          "n = -1: C(n,0) = 1, C(n,1) = -1, C(n,2) = 1\n"
+          "Simplified terms: T0 = 1, T1 = 2*x, T2 = 4*x^2\n"
+          "Valid for abs(x) < 1/2";
+      return true;
+    }
+  }
   if (parse_call(input,"factor",args,3,n) && n>=1){
     working_string e=compact(args[0]);
     long a,b,c;

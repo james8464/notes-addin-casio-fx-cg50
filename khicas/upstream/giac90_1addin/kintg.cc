@@ -2305,7 +2305,7 @@ namespace giac {
     // Additional check: atan/asin in degree/grad
     if (angle_mode(contextptr)){
       if (has_op(e,*at_asin)|| has_op(e,*at_atan) || has_op(e,*at_acos))
-	return undeferr("Inverse trigonometric functions are supported in radian mode only.");
+	return undeferr("Use radian mode.");
     }
     // Step -3: replace when by piecewise
     e=when2piecewise(e,contextptr);
@@ -3767,14 +3767,14 @@ namespace giac {
       if (A==C || B==C){
 	// can not subdivise anymore
 	if (is_greater(1e-4,ERR/I30ABS,contextptr)){
-	  *logptr(contextptr) << "Low accuracy, error estimate " << ERR/I30ABS << "\nError might be underestimated if initial boundary was +/-infinity" << endl;
+	  *logptr(contextptr) << "Low accuracy " << ERR/I30ABS << endl;
 	  return true;
 	}
 	return false; 
       }
       if (!tegral_util(f,x,A,C,i30,i30abs,err,contextptr)){
 	if (is_greater(1e-4,ERR/I30ABS,contextptr)){
-	  *logptr(contextptr) << "Low accuracy, error estimate " << ERR/I30ABS << "\nError might be underestimated if initial boundary was +/-infinity" << endl;
+	  *logptr(contextptr) << "Low accuracy " << ERR/I30ABS << endl;
 	  return true;
 	}
 	return false;
@@ -3782,7 +3782,7 @@ namespace giac {
       v[maxerrpos]=makevecteur(A,C,i30,i30abs,err);
       if (!tegral_util(f,x,C,B,i30,i30abs,err,contextptr)){
 	if (is_greater(1e-4,ERR/I30ABS,contextptr)){
-	  *logptr(contextptr) << "Low accuracy, error estimate " << ERR/I30ABS << "\nError might be underestimated if initial boundary was +/-infinity" << endl;
+	  *logptr(contextptr) << "Low accuracy " << ERR/I30ABS << endl;
 	  return true;
 	}
 	return false;

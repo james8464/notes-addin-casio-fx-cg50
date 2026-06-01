@@ -1212,7 +1212,7 @@ namespace giac {
 	gen inters=_intersect(makesequence(vars,newa),contextptr);
 	if (inters.type==_VECT && !inters._VECTptr->empty()){
 	  inters.subtype=_SEQ__VECT;
-	  *logptr(contextptr) << gettext("Warning: Local variables shadow function arguments ") << inters << endl;
+	  *logptr(contextptr) << gettext("Local vars shadow args ") << inters << endl;
 	}
       }
     }
@@ -2035,7 +2035,7 @@ namespace giac {
       return false;
     }
     if (g.type>_POLY){
-      g=gensizeerr(gettext("Unable to eval test in loop : ")+g.print());
+      g=gensizeerr(gettext("Loop test failed: ")+g.print());
       return false; // this will stop the loop in caller
     }
     return false;
@@ -5447,7 +5447,7 @@ namespace giac {
       return xcas_mode(contextptr);
     xcas_mode(contextptr)=args.val & 0xff;
     python_compat(args.val>=256,contextptr);
-    return string2gen(gettext("Warning: some commands like subs might change arguments order"),false);
+    return string2gen(gettext("Subs may reorder args"),false);
   }
   static const char _xcas_mode_s []="xcas_mode";
   static define_unary_function_eval (__xcas_mode,&_xcas_mode,_xcas_mode_s);
@@ -7613,7 +7613,7 @@ namespace giac {
       ok=true;
     }
     if (!ok)
-      return gensizeerr(gettext("Unable to handle when condition ")+v[0].print(contextptr));
+      return gensizeerr(gettext("Bad when ")+v[0].print(contextptr));
     return symbolic(at_sign,v[0])*(v[1]-v[2])/2+(v[1]+v[2])/2;
   }
   const gen_op_context when2sign_tab[]={whentosign,0};

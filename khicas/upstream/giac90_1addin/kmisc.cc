@@ -3075,7 +3075,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
       sto(tval,t,contextptr);
     step_infolevel(st,contextptr);
     if (cx.type!=_VECT || cy.type!=_VECT){
-      *logptr(contextptr) << gettext("Unable to find critical points") << endl;
+      *logptr(contextptr) << gettext("No critical points") << endl;
       purgenoassume(t,contextptr);
       return 0;
     }
@@ -3085,14 +3085,14 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
       c=mergevecteur(c,infl);
     }
     else
-      *logptr(contextptr) << gettext("Unable to find inflection points") << endl;
+      *logptr(contextptr) << gettext("No inflection points") << endl;
     for (int i=0;i<int(infl.size());++i)
       infl[i]=ratnormal(infl[i],contextptr);
     for (int i=0;i<int(c.size());++i)
       c[i]=ratnormal(c[i],contextptr);
     comprim(c);
     if (!lidnt(evalf(c,1,contextptr)).empty()){
-      *logptr(contextptr) << gettext("Infinite number of critical points. Try with optional argument ") << t << "=tmin..tmax" << endl;
+      *logptr(contextptr) << gettext("Many critical points, use ") << t << "=tmin..tmax" << endl;
       purgenoassume(t,contextptr);
       return 0;
     }
@@ -3625,7 +3625,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
     if (x!=xval)
       sto(xval,x,contextptr);
     if (c1.type!=_VECT){
-      *logptr(contextptr) << gettext("Unable to find critical points") << endl;
+      *logptr(contextptr) << gettext("No critical points") << endl;
       return 0;
     }
     if (c2.type==_VECT){
@@ -3639,13 +3639,13 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
     gen c=critical(makesequence(f,x),false,contextptr);
     step_infolevel(st,contextptr);
     if (c.type!=_VECT){
-      *logptr(contextptr) << gettext("Unable to find critical points") << endl;
+      *logptr(contextptr) << gettext("No critical points") << endl;
       purgenoassume(x,contextptr);
       return 0;
     }
 #endif
     if (!lidnt(evalf(c,1,contextptr)).empty()){
-      *logptr(contextptr) << gettext("Infinite number of critical points. Try with optional argument ") << x << "=xmin..xmax" << endl;
+      *logptr(contextptr) << gettext("Many critical points, use ") << x << "=xmin..xmax" << endl;
       purgenoassume(x,contextptr);
       return 0;
     }

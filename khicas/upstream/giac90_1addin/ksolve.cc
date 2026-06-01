@@ -857,7 +857,7 @@ namespace giac {
       int n=is_cyclotomic(w,epsilon(contextptr));
       if (!n){
 	if (0 && debug_infolevel) // abs_calc_mode(contextptr)!=38)
-	  *logptr(contextptr) << gettext("Warning! Algebraic extension not implemented yet for poly ") << r2sym(w,lv,contextptr) << endl;
+	  *logptr(contextptr) << gettext("Alg ext not implemented for ") << r2sym(w,lv,contextptr) << endl;
 	gen w_orig;
 	w=*evalf((w_orig=r2sym(w,lv,contextptr)),1,contextptr)._VECTptr;
 	if (has_num_coeff(w)){ // FIXME: test is always true...
@@ -5475,7 +5475,7 @@ namespace giac {
     }
     vectpoly res(v);
     if (!giac_gbasis(res,order,env,modular,rur,contextptr,eliminate_flag))
-      gensizeerr(gettext("Unable to compute gbasis with giac, perhaps dimension is too large"));
+      gensizeerr(gettext("gbasis failed"));
     return res;
   }
 
@@ -6529,7 +6529,7 @@ namespace giac {
     vecteur eq_in(*e2r(v[1],l,contextptr)._VECTptr);
     vectpoly eqp;
     if (!vecteur2vector_polynome(eq_in,l,eqp))
-      return gensizeerr("Bad second argument, expecting a Groebner basis");
+      return gensizeerr("Bad arg 2");
     change_monomial_order(eqp,order);
     reverse(eqp.begin(),eqp.end());
 #if !defined CAS38_DISABLED && !defined FXCG
@@ -6546,7 +6546,7 @@ namespace giac {
     }
     vectpoly red_in,red_out;
     if (!vecteur2vector_polynome(red_in_,l,red_in))
-      return gensizeerr("Bad first argument, expecting polynomial or list of polynomials");
+      return gensizeerr("Bad arg 1");
     change_monomial_order(red_in,order);
     order_t order_={static_cast<short>(order.val),0};
     environment env;
@@ -6665,7 +6665,7 @@ namespace giac {
     if (returngb==3 && eqs.size()<=l.size()+3){
       bool ok=es>=1;
       if (ok){
-	*logptr(contextptr) << "Eliminating with resultant. Original equations may reduce further."<<endl;
+	*logptr(contextptr) << "Using resultant."<<endl;
 	vector<int> vtdeg;
 	// Choose lowest degree pivot 
 	int curdeg=_total_degree(makesequence(eqs.front(),l),contextptr).val;
@@ -6932,7 +6932,7 @@ namespace giac {
     }
     gen solu=_solve(makesequence(sol,vecteur(1,idnt)),contextptr);
     if (equalposcomp(lidnt_with_at(solu),idnt))
-      return gensizeerr(gettext("Error solving equations. Check that your variables are purged"));
+      return gensizeerr(gettext("Solve failed"));
     if (solu.type!=_VECT)
       return gensizeerr(contextptr);
     if (solu._VECTptr->empty())

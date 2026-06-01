@@ -580,7 +580,7 @@ namespace giac {
   }
 
   void maxordererr(GIAC_CONTEXT){
-    throw(std::runtime_error(last_evaled_function(contextptr)+gettext("Max order (")+gen(max_series_expansion_order).print(contextptr)+gettext(") exceeded or non unidirectional series")));
+    throw(std::runtime_error(last_evaled_function(contextptr)+gettext("Max order (")+gen(max_series_expansion_order).print(contextptr)+gettext(") exceeded")));
   }
 
   void setstabilityerr(GIAC_CONTEXT){
@@ -680,11 +680,11 @@ namespace giac {
   }
 
   gen genmaxordererr(GIAC_CONTEXT){
-    return undeferr(last_evaled_function(contextptr)+gettext("Error: Max order (")+gen(max_series_expansion_order).print(contextptr)+gettext(") exceeded or non unidirectional series"));
+    return undeferr(last_evaled_function(contextptr)+gettext("Max order (")+gen(max_series_expansion_order).print(contextptr)+gettext(") exceeded"));
   }
 
   gen genstabilityerr(GIAC_CONTEXT){
-    return undeferr(last_evaled_function(contextptr)+gettext("Error: calculation size limit exceeded"));
+    return undeferr(last_evaled_function(contextptr)+gettext("Size limit"));
   }
 
   // void parseerror(){
@@ -4625,12 +4625,12 @@ namespace giac {
 	  return symb_prog3(var1,0,operator_plus(res1,res2,contextptr));
       }
       if (!is_constant_wrt(b,var1,contextptr))
-	*logptr(contextptr) << "Warning function+constant with constant dependant of mute variable" << endl;
+	*logptr(contextptr) << "Warn f+c dep mute" << endl;
       return symb_prog3(var1,0,operator_plus(res1,b,contextptr));
     }
     if (is_algebraic_program(b,var2,res2)){
       if (!is_constant_wrt(a,var2,contextptr))
-	*logptr(contextptr) << "Warning constant+function with constant dependant of mute variable" << endl;
+	*logptr(contextptr) << "Warn c+f dep mute" << endl;
       return symb_prog3(var2,0,operator_plus(a,res2,contextptr));
     }
     if (a.type==_VECT){
@@ -6405,12 +6405,12 @@ namespace giac {
 	  return symb_prog3(var1,0,operator_times(res1,res2,contextptr));
       }
       if (!is_constant_wrt(b,var1,contextptr))
-	*logptr(contextptr) << "Warning function*constant with constant dependant of mute variable" << endl;
+	*logptr(contextptr) << "Warn f*c dep mute" << endl;
       return symb_prog3(var1,0,operator_times(res1,b,contextptr));
     }
     if (is_algebraic_program(b,var2,res2)){
       if (!is_constant_wrt(a,var2,contextptr))
-	*logptr(contextptr) << "Warning constant*function with constant dependant of mute variable" << endl;
+	*logptr(contextptr) << "Warn c*f dep mute" << endl;
       return symb_prog3(var2,0,operator_times(a,res2,contextptr));
     }
     if (is_inf(a)){
@@ -7177,12 +7177,12 @@ namespace giac {
 	      return symb_prog3(var1,0,rdiv(res1,res2,contextptr));
 	  }
 	  if (!is_constant_wrt(b,var1,contextptr))
-	    *logptr(contextptr) << "Warning function/constant with constant dependant of mute variable" << endl;
+	    *logptr(contextptr) << "Warn f/c dep mute" << endl;
 	  return symb_prog3(var1,0,rdiv(res1,b,contextptr));
 	}
 	if (is_algebraic_program(b,var2,res2)){
 	  if (!is_constant_wrt(a,var2,contextptr))
-	    *logptr(contextptr) << "Warning constant/function with constant dependant of mute variable" << endl;
+	    *logptr(contextptr) << "Warn c/f dep mute" << endl;
 	  return symb_prog3(var2,0,rdiv(a,res2,contextptr));	
 	}
       }
@@ -8601,7 +8601,7 @@ namespace giac {
 	*it=(*it)(i,contextptr);
       }
       if (warn)
-	*logptr(contextptr) << gettext("Warning, evaluating (") << *this << ")(" << i << ") as a function not as a product" << endl;
+	*logptr(contextptr) << gettext("Eval (") << *this << ")(" << i << ") as function" << endl;
       return _SYMBptr->sommet(res,contextptr);
     }
     if (type==_FUNC){
