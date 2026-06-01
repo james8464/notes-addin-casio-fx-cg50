@@ -25,12 +25,12 @@ Current status:
 
 - app name: `CAS`
 - file: `CAS.g3a`
-- size: `2,091,340` bytes
-- hard limit headroom: `5,812` bytes under `2,097,152`
-- sha256: `5635a4d94cc74bbcd90a99d04f832b222633135cb4b65780a4d5250b18a8fe74`
+- size: `2,091,580` bytes
+- hard limit headroom: `5,572` bytes under `2,097,152`
+- sha256: `c72220433a55881619b6e726ec35e2e8867374148c239938ae25e2e1be41a70e`
 - help pack: `CAS.PAK`, `31,667` bytes, sha256 `c94294278bdfe3255577241bf57865f63596b8aac7a73ab6039b2ddbf15e2eab`
-- exact queue runtime: `14,680/14,680`
-- strict marker quality: `13,331/14,680`
+- exact queue runtime: `14,714/14,714`
+- strict marker quality: `13,331/14,708`
 - online challenge source coverage: MadAsMaths exact rows in queue; Daily Integral hard-integration style probes inspected from `https://dailyintegral.com/archive`
 
 Notable routes:
@@ -96,7 +96,8 @@ Notable routes:
 - quadratic factor routes now infer variables beyond `x`, e.g. `factor(5*w^2+w-4)` gives `(w + 1)*(5*w - 4)`
 - negative-leading integer quadratics now print roots in the exam-friendly order expected by the queue, e.g. `x = [3, 11]`
 - catalogue Help on command screen shows spaced sections and F2/F3 examples
-- F6 file/session/script/matrix menu is hidden and disabled on the dashboard; its unused shortcut strings are no longer compiled into the add-in
+- F6 uses the upstream full-screen `doMenu` pattern, pruned to `Clear history`, `Config shift-SETUP`, and `Alt labels`
+- the blinking blue `R` is drawn through the status refresh path with direct screen coordinates
 - `/Users/james/Developer/CASIO/tools/audit_progress_tui.py` shows animated status badges, side-by-side panels on wide terminals, phase lanes, health score, gate board, repo sync, last commit, change counts, state age, artifact headroom, live queue rate/ETA, pass/fail bars, strict-marker ratios, strict-gap bar maps, freshness rows, animated scan/meter lines, cleanup byte totals, cleanup command, project hygiene, tooling inventory, transfer path, quality clusters with first gap samples, test checkpoint rows, release blockers, risk, ignored workspace, active-tool counts, next action, recent events, and run-command panels
 
 Active tools:

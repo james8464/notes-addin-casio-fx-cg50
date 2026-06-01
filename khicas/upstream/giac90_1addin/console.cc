@@ -1957,23 +1957,38 @@ int Console_GetKey(){
     }
     if (key==KEY_CTRL_F6){
       Menu smallmenu;
-      smallmenu.numitems=2;
+      smallmenu.numitems=3;
       MenuItem smallmenuitems[smallmenu.numitems];
       smallmenu.items=smallmenuitems;
       smallmenu.height=8;
-      smallmenu.scrollbar=0;
+      smallmenu.scrollbar=1;
       smallmenu.scrollout=1;
-      smallmenu.title = (char*)"File";
-      smallmenuitems[0].text = (char*)"Config";
-      smallmenuitems[1].text = (char*)(cas_alt_fkeys ? "Normal" : "Alt keys");
-      if (doMenu(&smallmenu)==MENU_RETURN_SELECTION){
-	if (smallmenu.selection==1)
-	  menu_setup();
-	if (smallmenu.selection==2)
-	  cas_alt_fkeys=!cas_alt_fkeys;
+      smallmenuitems[0].text = (char*)(lang?"Effacer historique":"Clear history");
+      smallmenuitems[1].text = (char*)"Config shift-SETUP";
+      smallmenuitems[2].text = (char*)(cas_alt_fkeys ? "Normal keys" : "Alt labels");
+      while (1){
+	int sres=doMenu(&smallmenu);
+	if (sres==MENU_RETURN_SELECTION){
+	  if (smallmenu.selection==1){
+	    chk_restart();
+	    Console_Init();
+	    Console_Clear_EditLine();
+	    break;
+	  }
+	  if (smallmenu.selection==2){
+	    menu_setup();
+	    continue;
+	  }
+	  if (smallmenu.selection==3){
+	    cas_alt_fkeys=!cas_alt_fkeys;
+	    Console_FMenu_Init();
+	    break;
+	  }
+	}
+	break;
       }
       Console_Disp();
-      return CONSOLE_SUCCEEDED;
+      continue;
 #if 0
       Menu smallmenu;
       smallmenu.numitems=13;

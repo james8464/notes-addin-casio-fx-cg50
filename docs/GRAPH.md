@@ -1,6 +1,6 @@
 # Project Graph
 
-Last updated: 2026-06-01 12:27 BST
+Last updated: 2026-06-01 12:40 BST
 
 ## Build
 
@@ -17,7 +17,7 @@ graph TD
   Build --> Help["help/functions/*.txt"]
   Help --> PAK["calculator_files/CAS.PAK: 31,667 bytes; sha c9429427"]
   G3A --> Meta["CAS / @CAS / CAS.g3a"]
-  G3A --> Size["2,091,340 bytes; under 2,097,152 cap; sha 5635a4d9"]
+  G3A --> Size["2,091,580 bytes; under 2,097,152 cap; sha c7222043"]
 ```
 
 ## Runtime
@@ -72,9 +72,9 @@ graph TD
   Live --> TUI["tools/audit_progress_tui.py"]
   Report --> TUI
   TUI --> Panels["animated panels: status badges, wide side-by-side layout, phase lanes, health score, gate board, sync, last commit, change counts, state age, artifact headroom, live rate and ETA, queue bars, strict-marker ratios, strict-gap bar map, freshness rows, animated scan/meter lines, cleanup byte totals and cleanup command, project hygiene, tooling inventory, transfer path, strict clusters with first gap samples, test checkpoints, release blockers, risk, ignored workspace, active-tool counts, next action, command panel"]
-  Runner --> Runtime["14,680/14,680 runtime-safe"]
-  Runner --> Strict["13,331/14,680 strict marker pass"]
-  Strict --> Remaining["remaining strict gaps: 1,349; integrate remains largest cluster; 5,812 B hard headroom"]
+  Runner --> Runtime["14,714/14,714 runtime-safe"]
+  Runner --> Strict["13,331/14,708 strict marker pass"]
+  Strict --> Remaining["remaining strict gaps: 1,377; integrate remains largest cluster; 5,572 B hard headroom"]
 ```
 
 ## Project Shape
