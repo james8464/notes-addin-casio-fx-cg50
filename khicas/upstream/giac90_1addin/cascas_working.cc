@@ -788,7 +788,8 @@ struct NumParser {
       skip();
       if (*p==')') ++p; else ok=false;
       if (!strcmp(id,"sqrt")) return sqrt(a);
-      if (!strcmp(id,"ln") || !strcmp(id,"log")) return log(a);
+      if (!strcmp(id,"ln")) return log(a);
+      if (!strcmp(id,"log")) return log(a)*0.4342944819032518;
       if (!strcmp(id,"exp")) return exp(a);
       if (!strcmp(id,"sin")) return sin(a);
       if (!strcmp(id,"cos")) return cos(a);
@@ -1066,7 +1067,7 @@ static bool try_integral(const char *input,working_string &out){
   if (!ok){
     working_string lo=lower(trim(input?input:""));
     if (lo.find("defint(")==0 && contains(lo,"ln(x)^2") && contains(lo,"method=parts")){
-      out="Parts:\n"
+      out=""
           "u=ln(x)^2, v=x\n"
           "I=x*ln(x)^2-2*int(ln(x))dx\n"
           "int(ln(x))dx=x*ln(x)-x\n"
@@ -1186,40 +1187,40 @@ static bool try_integral(const char *input,working_string &out){
     return true;
   }
   if (e=="ln(x)"){
-    out="Parts:\n"
+    out=""
         "u=ln(x), v=x\n"
         "Answer: x*ln(x) - x + C";
     return true;
   }
   if (e=="(ln(x))^2" || e=="ln(x)^2"){
-    out="Parts:\n"
+    out=""
         "I=x*(ln(x))^2-2*int(ln(x))dx\n"
         "int(ln(x))dx=x*ln(x)-x\n"
         "Answer: x*((ln(x))^2-2*ln(x)+2)+C";
     return true;
   }
   if (e=="2*x/(x^2+4)" || e=="2x/(x^2+4)"){
-    out="Sub:\n"
+    out=""
         "u=x^2+4, du=2*x dx\n"
         "Answer: ln(x^2+4) + C";
     return true;
   }
   if (e=="cos(x)^4sin(x)"){
-    out="Sub:\n"
+    out=""
         "u=cos(x), du=-sin(x) dx\n"
         "-int(u^4)du\n"
         "Answer: -cos(x)^5/5 + C";
     return true;
   }
   if (e=="2/(3x-1)"){
-    out="Sub:\n"
+    out=""
         "u=3*x-1, du=3 dx\n"
         "(2/3)*int(1/u)du\n"
         "Answer: 2/3*ln(abs(3*x - 1)) + C";
     return true;
   }
   if (e=="1/(x+2)"){
-    out="Sub:\n"
+    out=""
         "u=x+2, du=dx\n"
         "int(1/u)du\n"
         "Answer: ln(abs(x + 2)) + C";
@@ -1240,26 +1241,26 @@ static bool try_integral(const char *input,working_string &out){
     return true;
   }
   if (e=="xln(x)"){
-    out="Parts:\n"
+    out=""
         "u=ln(x), v=x^2/2\n"
         "Answer: (x^2*ln(x))/2-x^2/4 + C";
     return true;
   }
   if (e=="(ln(x))^2/x" || e=="ln(x)^2/x"){
-    out="Sub:\n"
+    out=""
         "u=ln(x), du=(1/x) dx\n"
         "int(u^2)du\n"
         "Answer: (ln(x))^3/3 + C";
     return true;
   }
   if (force_sub && n>=4){
-    out="Sub:\nUse ";
+    out="Use ";
     out += trim(args[n>=5?5:3]);
     out += "\nBack-sub.";
     return true;
   }
   if (e=="xexp(x)" || e=="xe^x"){
-    out="Parts:\n"
+    out=""
         "u=x, dv=e^x dx\n"
         "du=dx, v=e^x\n"
         "I=x*e^x-int(e^x)dx\n"
@@ -1268,14 +1269,14 @@ static bool try_integral(const char *input,working_string &out){
     return true;
   }
   if (e=="x*exp(2*x)" || e=="xexp(2x)"){
-    out="Parts:\n"
+    out=""
         "u=x, dv=exp(2*x) dx\n"
         "v=exp(2*x)/2\n"
         "Answer: 1/2*x*exp(2*x) - 1/4*exp(2*x) + C";
     return true;
   }
   if (e=="x^2exp(x)" || e=="x^2e^x"){
-    out="Parts:\n"
+    out=""
         "I=int(x^2*e^x)dx\n"
         "I=x^2*e^x-2*int(x*e^x)dx\n"
         "int(x*e^x)dx=e^x*(x-1)\n"
@@ -1283,21 +1284,21 @@ static bool try_integral(const char *input,working_string &out){
     return true;
   }
   if (e=="xsin(x)"){
-    out="Parts:\n"
+    out=""
         "u=x, dv=sin(x) dx\n"
         "du=dx, v=-cos(x)\n"
         "Answer: -x*cos(x) + sin(x) + C";
     return true;
   }
   if (e=="xcos(x)"){
-    out="Parts:\n"
+    out=""
         "Let u=x, dv=cos(x) dx\n"
         "du=dx, v=sin(x)\n"
         "Answer: x*sin(x)+cos(x)+C";
     return true;
   }
   if (e=="exp(-x/10)sin(x)"){
-    out="Parts:\n"
+    out=""
         "I=int(exp(-x/10)*sin(x))dx\n"
         "Answer: -10*exp(-x/10)*(sin(x)+10*cos(x))/101 + C";
     return true;

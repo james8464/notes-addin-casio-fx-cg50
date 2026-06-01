@@ -24,11 +24,11 @@ Current status:
 
 - app name: `CAS`
 - file: `CAS.g3a`
-- size: `2,097,148` bytes
-- hard limit headroom: `4` bytes
-- sha256: `bd403d006c2b699c84dc245ca35f6be93e8b469232dc107a5970fe35dbc918de`
+- size: `2,097,112` bytes
+- hard limit headroom: `40` bytes
+- sha256: `79dabc12025d259d9a5ee9d4a847d846f50cccdcec60e4181a5ae0bf9811ffe3`
 - exact queue runtime: `14,256/14,256`
-- strict marker quality: `12,966/14,256`
+- strict marker quality: `12,994/14,256`
 - online challenge source coverage: MadAsMaths exact rows in queue; Daily Integral hard-integration style probes inspected from `https://dailyintegral.com/archive`
 
 Notable routes:
@@ -50,6 +50,7 @@ Notable routes:
 - safer solve routing: powered terms no longer fall through the linear solver
 - low-quality generic `Poly: Factor, set=0` fallback was removed so unknown polynomial solves can fall through to original KhiCAS instead
 - safer chain routing: non-linear inner functions no longer pass as affine
+- numeric `log(x)` now follows A-level/Casio base-10 convention while `ln(x)` remains natural log
 - simple numeric expressions show small exact fractions when detected
 - numeric routes emit equation-style `=` lines, 12-significant-digit rounded markers, and substitution-limit square-root steps such as `sqrt(5-1) -> sqrt(4)`
 - polynomial antiderivatives use coefficient-first descending-power form, e.g. `-1/3*x^3 + 2*x^2 + 5*x + C`
@@ -61,7 +62,7 @@ Notable routes:
 - distinct integer quadratic roots show explicit root lines before list answer, e.g. `k = 1 or k = -2`
 - negative-leading integer quadratics now print roots in the exam-friendly order expected by the queue, e.g. `x = [3, 11]`
 - catalogue Help on command screen shows spaced sections and F2/F3 examples
-- `/Users/james/Developer/CASIO/tools/audit_progress_tui.py` shows animated repo sync, artifact, live queue rate/ETA, pass/fail bars, quality clusters, risk, ignored workspace, dirty files, next action, recent events, and run-command panels
+- `/Users/james/Developer/CASIO/tools/audit_progress_tui.py` shows animated status badges, repo sync, last commit, change counts, artifact headroom, live queue rate/ETA, pass/fail bars, quality clusters, risk, ignored workspace, active-tool counts, next action, recent events, and run-command panels
 
 Active tools:
 
@@ -76,3 +77,4 @@ Active tools:
 
 Historical worker notes, batch JSONs, stale append helpers, retired checks, and the old CMake host wrapper were pruned. The canonical test source is now `tests/golden/exact_calculator_input_queue.jsonl`.
 Empty `.gitkeep` placeholders were removed from non-empty tracked folders. Active `tools/` scripts are all still referenced by build, tests, or audit docs.
+Generated caches are ignored and were removed from the working tree; transfer/report artifacts are kept ignored because they are used for calculator transfer and live audit status.

@@ -51,9 +51,13 @@ class Stat:
     unsupported: str
     branch: str
     commit: str
+    subject: str
     tag: str
     upstream: str
     dirty: int
+    staged: int
+    unstaged: int
+    untracked: int
     g3a: int
     build_g3a: int
     g3a_age: str
@@ -80,6 +84,8 @@ class Stat:
     queue_rate: str
     queue_eta: str
     queue_live_age: str
+    tool_count: int
+    test_count: int
 
 
 def color(text: str, code: str, enabled: bool) -> str:
@@ -164,6 +170,24 @@ def dirty_count() -> int:
     return len([ln for ln in out.splitlines() if ln.strip()])
 
 
+def change_counts() -> tuple[int, int, int]:
+    out = run(["git", "status", "--short"])
+    if out == "n/a" or not out:
+        return 0, 0, 0
+    staged = unstaged = untracked = 0
+    for line in out.splitlines():
+        if not line.strip():
+            continue
+        if line.startswith("??"):
+            untracked += 1
+            continue
+        if len(line) >= 2 and line[0] != " ":
+            staged += 1
+        if len(line) >= 2 and line[1] != " ":
+            unstaged += 1
+    return staged, unstaged, untracked
+
+
 def dirty_files(limit: int = 5) -> list[str]:
     out = run(["git", "status", "--short"])
     if out == "n/a" or not out:
@@ -175,6 +199,12 @@ def dirty_files(limit: int = 5) -> list[str]:
             if len(files) >= limit:
                 break
     return files
+
+
+def active_counts() -> tuple[int, int]:
+    tools = [p for p in (ROOT / "tools").rglob("*") if p.is_file() and "__pycache__" not in p.parts]
+    tests = [p for p in (ROOT / "tests").rglob("*.py") if p.is_file() and "__pycache__" not in p.parts]
+    return len(tools), len(tests)
 
 
 def upstream_status() -> str:
@@ -420,6 +450,8 @@ def collect() -> Stat:
         queue = f"{q_done}/{q_total} done, {q_ok} ok, {q_bad} bad"
         ratios = [("queue-done", q_done, q_total), ("queue-right", q_ok, q_total), *ratios]
     rows, inputs = queue_counts()
+    staged, unstaged, untracked = change_counts()
+    tools, tests_n = active_counts()
     return Stat(
         phase=str(s.get("phase", "n/a")),
         last=str(s.get("last_event", "n/a")),
@@ -428,9 +460,13 @@ def collect() -> Stat:
         unsupported=str(s.get("unsupported", checkpoint.get("unsupported", "n/a"))),
         branch=run(["git", "branch", "--show-current"]),
         commit=run(["git", "rev-parse", "--short", "HEAD"]),
+        subject=run(["git", "log", "-1", "--pretty=%s"]),
         tag=run(["git", "describe", "--tags", "--exact-match", "HEAD"]),
         upstream=upstream_status(),
         dirty=dirty_count(),
+        staged=staged,
+        unstaged=unstaged,
+        untracked=untracked,
         g3a=file_size(G3A),
         build_g3a=file_size(BUILD_G3A),
         g3a_age=age_s(G3A),
@@ -457,6 +493,8 @@ def collect() -> Stat:
         queue_rate=q_rate,
         queue_eta=q_eta,
         queue_live_age=q_age,
+        tool_count=tools,
+        test_count=tests_n,
     )
 
 
@@ -483,6 +521,18 @@ def sweep(width: int, frame: int, enabled: bool) -> str:
     for off in range(3):
         cells[(frame + off) % width] = "#"
     return color("".join(cells), C.magenta, enabled)
+
+
+def ticker(text: str, width: int, frame: int) -> str:
+    if width <= 0:
+        return ""
+    clean = re.sub(r"\s+", " ", text).strip()
+    if len(clean) <= width:
+        return clean + " " * (width - len(clean))
+    loop = clean + "   "
+    start = frame % len(loop)
+    doubled = loop + loop
+    return doubled[start : start + width]
 
 
 def trim(text: str, width: int) -> str:
@@ -534,6 +584,42 @@ def rate(done: int, total: int) -> str:
 
 def badge(text: str, code: str, enabled: bool) -> str:
     return color(f"[{text}]", code, enabled)
+
+
+def ratio_value(st: Stat, label: str) -> tuple[int, int] | None:
+    for found, done, total in st.ratios:
+        if found == label:
+            return done, total
+    return None
+
+
+def status_strip(st: Stat, enabled: bool) -> str:
+    headroom = LIMIT - st.g3a
+    artifact = "artifact OK" if st.g3a and headroom >= 0 else "artifact MISS" if not st.g3a else "artifact OVER"
+    artifact_code = C.green if st.g3a and headroom >= 0 else C.red
+    sync_code = C.green if st.upstream == "synced" else C.yellow
+    dirty_code = C.green if st.dirty == 0 else C.yellow
+    strict = ratio_value(st, "queue-right")
+    if strict:
+        done, total = strict
+        gap = total - done
+        strict_text = f"strict {done}/{total}"
+        strict_code = C.green if gap == 0 else C.yellow
+    else:
+        strict_text = "strict n/a"
+        strict_code = C.yellow
+    q = ratio_value(st, "queue-done")
+    queue_text = "queue n/a" if not q else f"queue {q[0]}/{q[1]}"
+    queue_code = C.green if q and q[0] == q[1] else C.cyan
+    return " ".join(
+        [
+            badge(artifact, artifact_code, enabled),
+            badge(st.upstream, sync_code, enabled),
+            badge(queue_text, queue_code, enabled),
+            badge(strict_text, strict_code, enabled),
+            badge(f"dirty {st.dirty}", dirty_code, enabled),
+        ]
+    )
 
 
 def risk_rows(st: Stat) -> list[str]:
@@ -593,9 +679,11 @@ def render_compact(st: Stat, frame: int, width: int, enabled: bool) -> str:
         ),
         trim("=" * width, width),
         kv("repo", f"{st.branch} @ {st.commit}  graph {st.graph_age}", width, enabled),
+        kv("commit", ticker(st.subject, max(12, width - 20), frame), width, enabled),
+        kv("status", status_strip(st, enabled), width, enabled),
         kv("sync", st.upstream, width, enabled),
         kv("phase", st.phase, width, enabled),
-        kv("event", st.last, width, enabled),
+        kv("event", ticker(st.last, max(12, width - 20), frame), width, enabled),
         *[trim(r, width) for r in size_hint(st, frame, bar_w, enabled)],
         kv("artifact", f"age {st.g3a_age}  sha256 {st.g3a_hash}  headroom {headroom:,} B", width, enabled),
         kv("queue", f"{st.queue_rows:,} rows / {st.queue_inputs:,} inputs", width, enabled),
@@ -608,6 +696,7 @@ def render_compact(st: Stat, frame: int, width: int, enabled: bool) -> str:
         lines.append(trim(f"{label:<14} {bar(done, total, bar_w, frame, enabled)} {done}/{total}", width))
     if not st.ratios:
         lines.append(trim("no ratio data yet", width))
+    lines.append(kv("changes", f"staged {st.staged}  unstaged {st.unstaged}  untracked {st.untracked}", width, enabled))
     lines.append(kv("dirty files", "; ".join(st.dirty_files) if st.dirty_files else "clean", width, enabled))
     lines.append(kv("risk", "; ".join(risk_rows(st)[:3]), width, enabled))
     if st.next_action not in ("", "n/a"):
@@ -615,6 +704,7 @@ def render_compact(st: Stat, frame: int, width: int, enabled: bool) -> str:
     ignored = ignored_rows()
     if ignored:
         lines.append(kv("ignored", "; ".join(ignored), width, enabled))
+    lines.append(kv("active", f"tools {st.tool_count}  test scripts {st.test_count}", width, enabled))
     quality = f"unsupported {st.unsupported}"
     if st.fail_clusters:
         quality += "  clusters " + ", ".join(f"{k}:{v}" for k, v in st.fail_clusters[:3])
@@ -629,7 +719,7 @@ def render_compact(st: Stat, frame: int, width: int, enabled: bool) -> str:
         [
             trim("-" * width, width),
             trim(f"run: python3 {ROOT / 'tools' / 'audit_progress_tui.py'} --fps 12", width),
-            trim("q/ctrl-c quit  --once one frame  --fps N animation rate", width),
+            trim("q/ctrl-c quit  --once one frame  --fps N animation rate  --scan-interval N refresh rate", width),
         ]
     )
     return "\n".join(lines)
@@ -658,9 +748,21 @@ def render(st: Stat, frame: int, width: int, height: int, enabled: bool) -> str:
         "repo",
         [
             f"branch {st.branch} @ {st.commit}  tag {tag}  {st.upstream}",
+            f"last   {st.subject}",
             f"phase  {st.phase}",
             f"event  {st.last}",
             f"graph  {st.graph_age}  checkpoint {st.checkpoint}",
+        ],
+        width,
+        enabled,
+    )
+    lines.append("")
+    lines += panel(
+        "status",
+        [
+            status_strip(st, enabled),
+            f"changes staged {st.staged}  unstaged {st.unstaged}  untracked {st.untracked}",
+            f"active tooling {st.tool_count} files  test scripts {st.test_count}",
         ],
         width,
         enabled,
@@ -698,7 +800,11 @@ def render(st: Stat, frame: int, width: int, height: int, enabled: bool) -> str:
         lines.append(trim("no ratio data yet", width))
     lines.append(color("+" + "-" * (width - 2) + "+", C.dim, enabled))
     lines.append("")
-    lines += panel("dirty files", st.dirty_files or ["clean"], width, enabled)
+    workspace_rows = [
+        f"changes staged {st.staged}  unstaged {st.unstaged}  untracked {st.untracked}",
+        *(st.dirty_files or ["clean"]),
+    ]
+    lines += panel("workspace", workspace_rows, width, enabled)
     lines.append("")
     lines += panel("risk", risk_rows(st), width, enabled)
     ignored = ignored_rows()
@@ -721,6 +827,8 @@ def render(st: Stat, frame: int, width: int, height: int, enabled: bool) -> str:
         "run",
         [
             f"python3 {ROOT / 'tools' / 'audit_progress_tui.py'} --fps 12",
+            "./compile",
+            "python3 tests/run_exact_queue.py --engine production --workers 8 --strict-markers",
             "q/ctrl-c quit  --once one frame  --fps N animation rate",
         ],
         width,

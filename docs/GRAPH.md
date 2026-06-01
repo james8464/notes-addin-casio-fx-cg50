@@ -1,6 +1,6 @@
 # Project Graph
 
-Last updated: 2026-06-01 02:50 BST
+Last updated: 2026-06-01 03:05 BST
 
 ## Build
 
@@ -15,7 +15,7 @@ graph TD
   Make --> Bin["khicasen.bin, upstream KhiCAS base"]
   Bin --> G3A["calculator_files/CAS.g3a"]
   G3A --> Meta["CAS / @CAS / CAS.g3a"]
-  G3A --> Size["2,097,148 bytes; 4 byte headroom"]
+  G3A --> Size["2,097,112 bytes; 40 byte headroom"]
 ```
 
 ## Runtime
@@ -39,7 +39,7 @@ graph TD
   Work --> Int["integrate: affine reverse-chain powers, linear-over-linear division logs, trig/exp sums, damped-sine by-parts, substitution, definite substitution, exam-form x^2-1 antiderivative"]
   Work --> Solve["solve: guarded linear, integer-root quadratics with explicit root lines and negative-leading exam order, exp(2x)=2, rational, dy/dx and dn/dt separable"]
   Work --> Alg["algebra: quadratic factor, targeted expand, high-frequency exam forms"]
-  Work --> Num["numeric routes: equation-style decimal/exact lines, 12-significant-digit rounded markers, sqrt substitution-limit markers"]
+  Work --> Num["numeric routes: equation-style decimal/exact lines, log base 10 with ln natural, 12-significant-digit rounded markers, sqrt substitution-limit markers"]
   Work --> Trig["trig: R-form and pi-shift identities"]
   Work --> Xform["xform trig/log identities"]
 ```
@@ -65,9 +65,9 @@ graph TD
   Runner --> Report["tests/reports/.../latest.jsonl"]
   Live --> TUI["tools/audit_progress_tui.py"]
   Report --> TUI
-  TUI --> Panels["animated panels: sync, artifact, live rate and ETA, queue bars, strict clusters, risk, ignored workspace, dirty files, next action"]
+  TUI --> Panels["animated panels: status badges, sync, last commit, change counts, artifact headroom, live rate and ETA, queue bars, strict clusters, risk, ignored workspace, active-tool counts, next action"]
   Runner --> Runtime["14,256/14,256 runtime-safe"]
-  Runner --> Strict["12,966/14,256 strict marker pass"]
+  Runner --> Strict["12,994/14,256 strict marker pass"]
   Strict --> Remaining["remaining: symbolic parameter area proofs, algebra presentation, binomial/partfrac, exact-form geometry/vector clusters"]
 ```
 
@@ -76,7 +76,7 @@ graph TD
 ```mermaid
 graph TD
   Canon["canonical queue"] --> Golden["tests/golden/exact_calculator_input_queue.jsonl"]
-  Tooling["active tooling"] --> Build["build/check/audit/host runner"]
+  Tooling["active tooling"] --> Build["build/check/audit/host runner; no dead tools kept"]
   Old["old VM worker notes, batch JSONs, append helper, retired checks, CMake host wrapper, duplicate keepers, lexer backup"] --> Pruned["removed from tracked project"]
   Reports["ignored generated outputs"] --> Recreate["build/, graphify-out/, tests/reports/ recreated only when needed"]
 ```
