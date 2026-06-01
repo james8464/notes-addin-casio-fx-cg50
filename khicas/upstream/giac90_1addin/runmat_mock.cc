@@ -59,12 +59,6 @@ static void soft_label(int x, int width, const char *label) {
   PrintXY(x + 4, 194, (char *)label, 0, kWhite);
 }
 
-static void draw_r_indicator(bool visible) {
-  fill_rect(339, 1, 21, 22, visible ? kBlue : kWhite);
-  rect_outline(339, 1, 21, 22, kGray);
-  PrintXY(343, 4, (char *)"R", 0, visible ? kWhite : kBlue);
-}
-
 static void draw_static_screen() {
   fill_rect(0, 0, LCD_WIDTH_PX, LCD_HEIGHT_PX, kWhite);
   fill_rect(0, 0, 7, LCD_HEIGHT_PX, kPink);
@@ -79,7 +73,6 @@ static void draw_static_screen() {
   status_box(126, "Norm1");
   status_box(205, "d/c");
   status_box(251, "Real");
-  draw_r_indicator(true);
 
   rect_outline(13, 31, 14, 17, kBlack);
   fill_rect(13, 31, 2, 17, kGray);
@@ -110,16 +103,8 @@ int main() {
   draw_static_screen();
   Bdisp_PutDisp_DD();
 
-  bool r_visible = true;
-  int blink_ticks = 0;
   for (;;) {
     int key = key_wait_250ms();
     if (key == KEY_CTRL_EXIT || key == KEY_CTRL_AC || key == KEY_CTRL_MENU) return 0;
-    if (++blink_ticks >= 2) {
-      blink_ticks = 0;
-      r_visible = !r_visible;
-      draw_r_indicator(r_visible);
-      Bdisp_PutDisp_DD();
-    }
   }
 }
