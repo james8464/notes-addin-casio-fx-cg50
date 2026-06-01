@@ -116,7 +116,7 @@ int Console_GetKey(void);
 int Console_Init(void);
 int Console_Disp(void);
 int Console_FMenu(int key);
-extern char menu_f1[8],menu_f2[8],menu_f3[8],menu_f4[8],menu_f5[8],menu_f6[8];
+extern char menu_f1[],menu_f2[],menu_f3[],menu_f4[],menu_f5[],menu_f6[],menu_f7[],menu_f8[],menu_f9[],menu_f10[],menu_f11[],menu_f12[],menu_f13[],menu_f14[],menu_f15[],menu_f16[],menu_f17[],menu_f18[];
 const char * console_menu(int key,unsigned char* cfg,int active_app);
 const char * console_menu(int key,int active_app);
 void Console_FMenu_Init(void);

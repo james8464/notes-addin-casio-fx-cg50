@@ -2,7 +2,10 @@
 #define MAIN_H
 #include "giacPCH.h"
 #include "kdisplay.h"
+extern int xcas_python_eval;
 extern "C" bool oldalphastate,oldshiftstate; // status before last ck_getkey
+extern "C" void casiostatus(const char * menu,const char * shiftmenu,const char * alphamenu,int color);
+extern "C" int in_ckgetkey(int * keyptr,int waitforkey,const char * menu,const char * shiftmenu,const char * alphamenu,int menucolorbg);
 extern "C" int ck_getkey(int * keyptr);
 int get_free_memory();
 extern giac::context * contextptr; 

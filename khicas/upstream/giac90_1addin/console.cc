@@ -43,10 +43,10 @@ int xthetat=0,xcas_python_eval=0;
 
 //const console_line data_line={0,0,0,-1,0};
 console_line * Line=0;//[LINE_MAX];//={data_line};
-const int maxfmenusize=8;
-char menu_f1[8]={0},menu_f2[8]={0},menu_f3[8]={0},menu_f4[8]={0},menu_f5[8]={0},menu_f6[8]={0};
+const int maxfmenusize=16;
+char menu_f1[maxfmenusize]={0},menu_f2[maxfmenusize]={0},menu_f3[maxfmenusize]={0},menu_f4[maxfmenusize]={0},menu_f5[maxfmenusize]={0},menu_f6[maxfmenusize]={0},menu_f7[maxfmenusize]={0},menu_f8[maxfmenusize]={0},menu_f9[maxfmenusize]={0},menu_f10[maxfmenusize]={0},menu_f11[maxfmenusize]={0},menu_f12[maxfmenusize]={0},menu_f13[maxfmenusize]={0},menu_f14[maxfmenusize]={0},menu_f15[maxfmenusize]={0},menu_f16[maxfmenusize]={0},menu_f17[maxfmenusize]={0},menu_f18[maxfmenusize]={0};
 char session_filename[MAX_FILENAME_SIZE+1]="session";
-char * FMenu_entries_name[]={menu_f1,menu_f2,menu_f3,menu_f4,menu_f5,menu_f6};
+char * FMenu_entries_name[]={menu_f1,menu_f2,menu_f3,menu_f4,menu_f5,menu_f6,menu_f7,menu_f8,menu_f9,menu_f10,menu_f11,menu_f12,menu_f13,menu_f14,menu_f15,menu_f16,menu_f17,menu_f18};
 location Cursor;
 unsigned char *Edit_Line=0;
 int Start_Line, Last_Line,editline_cursor;
@@ -1859,6 +1859,8 @@ int Console_Eval(const char * buf){
     return true;
   }
 
+void get_current_console_menu(string & menu,string & shiftmenu,string & alphamenu,int &menucolorbg,int app);
+
 int Console_GetKey(){
   int key;
   unsigned int i, move_line, move_col;
@@ -1866,10 +1868,14 @@ int Console_GetKey(){
   unsigned char *tmp;
   for (;;){
     int keyflag = GetSetupSetting(0x14);
-    ck_getkey(&key);
+    if (xcas_python_eval==1)
+      python_compat(4,contextptr);
+    string menu,shiftmenu,alphamenu; int menucolorbg=12345;
+    get_current_console_menu(menu,shiftmenu,alphamenu,menucolorbg,0);
+    in_ckgetkey(&key,1,menu.c_str(),shiftmenu.c_str(),alphamenu.c_str(),menucolorbg);
     bool alph=oldalphastate;//keyflag==4||keyflag==0x84||keyflag==8||keyflag==0x88;
     // if (key==30006) OS_InnerWait_ms(1000); // key='6';
-    translate_fkey(key);
+    if (key!=KEY_CHAR_FRAC) translate_fkey(key);
     if (key==KEY_CTRL_F5){
       handle_f5();
       Console_Disp();
@@ -1915,7 +1921,7 @@ int Console_GetKey(){
 	}
       }
     }
-    if (key == KEY_CTRL_F3 || ( (key==KEY_CTRL_RIGHT || key==KEY_CTRL_LEFT) && Current_Line<Last_Line) ){
+    if (key == KEY_CHAR_FRAC || ( (key==KEY_CTRL_RIGHT || key==KEY_CTRL_LEFT) && Current_Line<Last_Line) ){
       int l=Current_Line;
       bool graph=strcmp((const char *)Line[l].str,"Graphic object")==0;
       if (graph && l>0) --l;
@@ -2205,8 +2211,8 @@ int Console_GetKey(){
       return CONSOLE_SUCCEEDED;
 #endif
     }
-    if ( (key >= KEY_CTRL_F1 && key <= KEY_CTRL_F6) 
-	 || (key >= KEY_CTRL_F7 && key <= KEY_CTRL_F14) 
+    if ( (key >= KEY_CTRL_F1 && key <= KEY_CTRL_F6)
+	 || (key >= KEY_CTRL_F7 && key <= KEY_CTRL_F20)
 	 ){
       return Console_FMenu(key);
     }
@@ -2550,89 +2556,28 @@ const char conf_standard[] =
   "F5 A<>a\n"
   "F6 File\n";
 
-// Loads the FMenus' data into memory, from a cfg file
-#if 0
-char* fmenu_cfg=0;
-  // Loads the FMenus' data into memory, from a cfg file
-  void Console_FMenu_Init()
-  {
-    char temp[32] = {'\0'};
-#if 0
-    if (!fmenu_cfg){
-      fmenu_cfg = (char *)conf_standard;
-      std::string cfg_s;
-      // Does the file exists ?
-      if (load_script((char*)"FMENU.cfg",cfg_s)){
-	char * ptr=new char[cfg_s.size()+1];
-	strcpy(ptr,cfg_s.c_str());
-	fmenu_cfg=(char *)ptr;
-      }
-      if(!fmenu_cfg) {
-	save_script((const char *)"FMENU.cfg",conf_standard);
-	fmenu_cfg = (char *)conf_standard;
-      }
-    }
-#else
-    if (0
-	// && xcas_python_eval==1
-	){
-      //fmenu_cfg=(char *)python_conf_standard;
-    }
-    else {
-      fmenu_cfg=(char *)conf_standard;
-    }
-#endif
-    const char *cfg=fmenu_cfg;
-    while(*cfg) {
-      //Get each line
-      int i;
-      for(i=0; i<20 && *cfg && *cfg!='\r' && *cfg!='\n'; i++, cfg++) {
-	temp[i] = *cfg;
-      }
-      temp[i]=0;
-      //If starting by 'F', adjust the number and eventually set the name of the menu
-      if(temp[0] == 'F' && temp[1]>='1' && temp[1]<='6') {
-	int number = temp[1]-'0' - 1;
-	if(temp[3] && number<6) {
-	  strcpy(FMenu_entries_name[number], (char*)temp+3);
-	  //FMenu_entries[number].name[4] = '\0';
-	}
-      }
-
-      memset(temp, '\0', 20);
-      cfg++;
-    }
-    //free(fmenu_cfg);
-  }
-#else
-void Console_FMenu_Init()
-{
+void update_fmenu(const unsigned char * cfg){
   int i, number=0;
-  unsigned char temp[20] = {'\0'};
-  original_cfg=(unsigned char *)conf_standard;
-  unsigned char* cfg=original_cfg;
-
-  while(*cfg) {
-    //Get each line
-    for(i=0; i+1<sizeof(temp)/sizeof(char) && *cfg && *cfg!='\r' && *cfg!='\n'; i++, cfg++) {
+  unsigned char temp[64] = {'\0'};
+  while (*cfg){
+    for (i=0 ; i+1<sizeof(temp)/sizeof(char) && (*cfg && *cfg!='\r' && *cfg!='\n'); i++,cfg++)
       temp[i] = *cfg;
-    }
     temp[i]=0;
-    //If starting by 'F', adjust the number and eventually set the name of the menu
-    if(temp[0] == 'F' && temp[1]>='1' && temp[1]<='6') {
+    if(temp[0] == 'F' && temp[1]>='1' && temp[1]<=('0'+18)) {
       number = temp[1]-'0' - 1;
-      if(temp[3]) {
+      if(temp[3] && number>=0 && number<(int)(sizeof(FMenu_entries_name)/sizeof(FMenu_entries_name[0])))
 	strncpy(FMenu_entries_name[number], (char*)temp+3,maxfmenusize);
-	//FMenu_entries[number].name[4] = '\0';
-      }
     }
-
     memset(temp, '\0', sizeof(temp));
     cfg++;
   }
-  //free(original_cfg);
 }
-#endif
+
+void Console_FMenu_Init()
+{
+  original_cfg=(unsigned char *)conf_standard;
+  update_fmenu(original_cfg);
+}
 
 /*
   ÒÔÏÂº¯ÊýÓÃÓÚÏÔÊ¾ËùÓÐÐÐ¡£
@@ -2761,6 +2706,102 @@ void Print(const unsigned char * s,int color,bool colorsyntax){
     else
       print_color((const char *)s,color,false,false,giac::context0);
 #endif
+}
+
+string adjust(const char * s,int L=7){
+  if (!s)
+    s="";
+  int l=strlen(s);
+  string res(s);
+  if (l>L)
+    res=res.substr(0,L);
+  else {
+    for (int i=0;i<L-l;++i)
+      res += ' ';
+  }
+  return res;
+}
+
+// app=0 console, 1 editor, 2 eqw, 3 spreadsheet
+void get_current_console_menu(string & menu,string & shiftmenu,string & alphamenu,int &menucolorbg,int app){
+  shiftmenu = adjust(menu_f7);
+  shiftmenu += "|";
+  shiftmenu += adjust(menu_f8);
+  shiftmenu += "|";
+  shiftmenu += app==2?"zoom ":adjust(menu_f9,6);
+  shiftmenu += "|";
+  shiftmenu += adjust(menu_f10,6);
+  shiftmenu += "|";
+  shiftmenu += adjust(menu_f11);
+  shiftmenu += "|";
+  shiftmenu += app==2?"evalf ":(app==3?" prog ":adjust(menu_f12));
+  alphamenu = adjust(menu_f13);
+  alphamenu += "|";
+  alphamenu += adjust(menu_f14);
+  alphamenu += "|";
+  alphamenu += app==2?"zoom ":adjust(menu_f15,6);
+  alphamenu += "|";
+  alphamenu += adjust(menu_f16,6);
+  alphamenu += "|";
+  alphamenu += adjust(menu_f17);
+  alphamenu += "|";
+  alphamenu += app==2?"evalf ":adjust(menu_f18);
+  if (app==3){
+    menu=(lang?" outil | stat | edit | cmds | A<>a | menu":" tools | stat | edit | cmds | A<>a | menu");
+    menucolorbg=COLOR_ORANGE;
+    return;
+  }
+  if (app==2){
+    menu += menu_f1;
+    while (menu.size()<6)
+      menu += " ";
+    menu += " | ";
+    menu += string(menu_f2);
+    while (menu.size()<13)
+      menu += " ";
+    menu += " | edit+-| cmds | A<>a | eval";
+    menucolorbg=34800;
+    return;
+  }
+  if (app==5){
+    menu=" point | lines | disp | cmds | A<>a | file ";
+    shiftmenu="triangl|polyg|geo3d|solids|gdiff|measur";
+    alphamenu="tests|analyt|cursor|transf|plots|conic";
+    menucolorbg=COLOR_CYAN;
+    return;
+  }
+  if (app==1){
+    menu=lang==1?" tests | struct | misc | cmds | A<>a |Fich. ":" tests | loops | misc | cmds | A<>a |File ";
+  }
+  else {
+    menu += string(menu_f1);
+    while (menu.size()<6)
+      menu += " ";
+    menu += "| ";
+    menu += string(menu_f2);
+    while (menu.size()<13)
+      menu += " ";
+    menu += "| ";
+    menu += string(menu_f3);
+    while (menu.size()<20)
+      menu += " ";
+    menu += lang?"| cmds | A<>a | Fich.  ":" | cmds  | A<>a | File   ";
+  }
+  int xcas_color=python_compat(contextptr)==0?65055:COLOR_CYAN,python_color=65520,js_color=63048;
+  if (app==1){
+    xcas_color=python_compat(contextptr)==0?64543:34335;
+    python_color=65512;
+  }
+  menucolorbg=xcas_python_eval==-1?js_color:(xcas_python_eval==1?python_color:xcas_color);
+}
+
+void console_disp_status(){
+  Console_FMenu_Init();
+  string menu(" "),shiftmenu=menu,alphamenu; int menucolorbg=12345;
+  get_current_console_menu(menu,shiftmenu,alphamenu,menucolorbg,0);
+  int px=0*3,py=58*3;
+  PrintMini(&px,&py,(unsigned char *)menu.c_str(),0,0xFFFFFFFF,0,0,COLOR_BLACK,menucolorbg,1,0);
+  set_xcas_status();
 }
 
 int Console_Disp()
@@ -2965,19 +3006,10 @@ int Console_Disp()
     } // end non cursor line
   } // end loop on all lines
 
-  string menu(" ");
-  menu += string(menu_f1);
-  while (menu.size()<6)
-    menu += " ";
-  menu += "| ";
-  menu += string(menu_f2);
-  while (menu.size()<13)
-    menu += " ";
-  menu += lang?"| voir | cmds | A<>a | Fich ":"| view | cmds | A<>a | File ";
-  PrintMini(0,58,menu.c_str(),4);
-  set_xcas_status();
+  console_disp_status();
   Bdisp_PutDisp_DD();
   drawCasioCasBorder();
+  Bdisp_PutDisp_DD();
   return CONSOLE_SUCCEEDED;
 }
 
