@@ -8,6 +8,8 @@
 
 namespace cascas {
 
+static int match_paren(const working_string &s,int open);
+
 static working_string trim(const working_string &s){
   int a=0,b=s.size();
   while (a<b && isspace((unsigned char)s[a])) ++a;
@@ -30,6 +32,46 @@ static working_string compact(const working_string &s){
       r += char(tolower((unsigned char)c));
   }
   return r;
+}
+
+static bool has_top_add_sub_div(const working_string &s){
+  int depth=0;
+  for (int i=0;i<int(s.size());++i){
+    char c=s[i];
+    if (c=='(' || c=='[' || c=='{') ++depth;
+    else if (c==')' || c==']' || c=='}') --depth;
+    else if (!depth && c=='/')
+      return true;
+    else if (!depth && (c=='+' || c=='-') && i>0 && s[i-1]!='^' && s[i-1]!='e' && s[i-1]!='E')
+      return true;
+  }
+  return false;
+}
+
+static working_string canonical_expr(const working_string &src){
+  working_string s=compact(src), out;
+  while (s.size()>1 && s[0]=='(' && match_paren(s,0)==int(s.size())-1)
+    s=s.substr(1,s.size()-2);
+  for (int i=0;i<int(s.size());++i){
+    if (s[i]=='('){
+      int close=match_paren(s,i);
+      if (close>i){
+        working_string inner=canonical_expr(s.substr(i+1,close-i-1));
+        if (i>0 && isalpha((unsigned char)s[i-1]))
+          out += "("+inner+")";
+        else if (!has_top_add_sub_div(inner))
+          out += inner;
+        else
+          out += "("+inner+")";
+        i=close;
+        continue;
+      }
+    }
+    out += s[i];
+  }
+  while (out.size()>1 && out[0]=='(' && match_paren(out,0)==int(out.size())-1)
+    out=out.substr(1,out.size()-2);
+  return out;
 }
 
 static working_string nospace_lower(const working_string &s){
@@ -2121,7 +2163,7 @@ static bool try_implicit_diff(const char *input,working_string &out){
   int n=0;
   if (!parse_call(input,"diff",args,3,n) || n<2)
     return false;
-  working_string e=compact(args[0]), v=compact(args[1]);
+  working_string e=canonical_expr(args[0]), v=compact(args[1]);
   if (v!="x")
     return false;
   if (e=="(x^2)tan(y)=9" || e=="x^2tan(y)=9"){
@@ -2143,10 +2185,10 @@ static bool try_diff(const char *input,working_string &out){
   int n=0;
   if (!parse_call(input,"diff",args,3,n) || n<1)
     return false;
-  working_string e=compact(args[0]), var=n>=2?compact(args[1]):"x";
+  working_string e=canonical_expr(args[0]), var=n>=2?compact(args[1]):"x";
   if (var.size()==1){
     long coef=0,pow=0;
-    if (parse_power_term_var(args[0],var[0],coef,pow)){
+    if (parse_power_term_var(e,var[0],coef,pow)){
       out="dy/d";
       out += var;
       out += " = ";
@@ -2156,6 +2198,17 @@ static bool try_diff(const char *input,working_string &out){
   }
   if (var!="x")
     return false;
+  if (e.find(var)==working_string::npos){
+    NumParser np;
+    np.p=e.c_str();
+    np.ok=true;
+    np.expr();
+    np.skip();
+    if (np.ok && !*np.p){
+      out="dy/dx = 0";
+      return true;
+    }
+  }
   if (var.size()==1){
     if (try_diff_log_power_chain(args[0],var[0],var,out))
       return true;
@@ -2178,7 +2231,7 @@ static bool try_diff(const char *input,working_string &out){
   }
   {
     working_string sum_answer;
-    if (diff_sum_terms(args[0],sum_answer)){
+    if (diff_sum_terms(e,sum_answer)){
       out="dy/dx = ";
       out += sum_answer;
       return true;
@@ -2294,7 +2347,7 @@ static bool try_integral(const char *input,working_string &out){
   }
   if (!ok || n<1)
     return false;
-  working_string e=compact(args[0]), var=n>=2?compact(args[1]):"x";
+  working_string e=canonical_expr(args[0]), var=n>=2?compact(args[1]):"x";
   working_string method=n>=3?compact(args[n>=5?4:2]):"1";
   bool force_parts=method_is(method,"2","parts") || method_is(method,"2","byparts");
   bool force_sub=method_is(method,"3","sub") || method_is(method,"3","substitution");
@@ -2386,12 +2439,12 @@ static bool try_integral(const char *input,working_string &out){
     out="-48*(1 - x/4)^(5/4) + C";
     return true;
   }
-  if (integrate_reverse_chain_x2(args[0],out) && !force_parts && !force_sub)
+  if (integrate_reverse_chain_x2(e,out) && !force_parts && !force_sub)
     return true;
-  if (integrate_trig_identity(args[0],out) && !force_parts && !force_sub)
+  if (integrate_trig_identity(e,out) && !force_parts && !force_sub)
     return true;
   working_string trig_exp_answer;
-  if (integrate_trig_exp_sum(args[0],trig_exp_answer) && !force_parts && !force_sub){
+  if (integrate_trig_exp_sum(e,trig_exp_answer) && !force_parts && !force_sub){
     out="Answer: ";
     out += trig_exp_answer;
     out += " + C";
@@ -2402,11 +2455,11 @@ static bool try_integral(const char *input,working_string &out){
     return true;
   }
   working_string sum_answer;
-  if (split_poly_over_x_power(args[0],sum_answer) && !force_parts && !force_sub){
+  if (split_poly_over_x_power(e,sum_answer) && !force_parts && !force_sub){
     out=sum_answer;
     return true;
   }
-  if (integrate_sum_terms(args[0],sum_answer) && !force_parts && !force_sub){
+  if (integrate_sum_terms(e,sum_answer) && !force_parts && !force_sub){
     out="Integrate term by term:\n"
         "Use int(a*x^n) dx=a*x^(n+1)/(n+1)\n"
         "Answer: ";
@@ -2415,7 +2468,7 @@ static bool try_integral(const char *input,working_string &out){
     return true;
   }
   long coef=0,pow=0;
-  if (parse_power_term(args[0],coef,pow) && pow!=-1 && !force_parts && !force_sub){
+  if (parse_power_term(e,coef,pow) && pow!=-1 && !force_parts && !force_sub){
     out="Use int(a*x^n) dx=a*x^(n+1)/(n+1)\nint(";
     out += trim(args[0]);
     out += ") dx=";
@@ -2542,7 +2595,7 @@ static bool try_integral(const char *input,working_string &out){
         "Answer: e^x*(x^2-2*x+2)+C";
     return true;
   }
-  if (integrate_x_trig_parts_working(args[0],out) && !force_parts && !force_sub)
+  if (integrate_x_trig_parts_working(e,out) && !force_parts && !force_sub)
     return true;
   if (e=="exp(-x/10)sin(x)"){
     out="Answer: -10*exp(-x/10)*(sin(x)+10*cos(x))/101 + C";
@@ -2591,8 +2644,8 @@ static bool try_solve(const char *input,working_string &out){
   int n=0;
   if (!parse_call(input,"solve",args,3,n) || n<1)
     return false;
-  working_string eq=nospace_lower(args[0]);
-  working_string ceq=compact(args[0]);
+  working_string eq=canonical_expr(args[0]);
+  working_string ceq=canonical_expr(args[0]);
   working_string rawvar=n>=2?trim(args[1]):"x";
   working_string var=compact(rawvar);
   if (ceq=="[x^2+y^2=100,(x-15)^2+y^2=40]" && var=="[x,y]"){
@@ -2958,7 +3011,20 @@ static bool try_simplify(const char *input,working_string &out){
   int n=0;
   if (!parse_call(input,"simplify",args,2,n) || n<1)
     return false;
-  working_string e=compact(args[0]);
+  working_string e=canonical_expr(args[0]);
+  if (e.find('x')==working_string::npos){
+    NumParser np;
+    np.p=e.c_str();
+    np.ok=true;
+    double val=np.expr();
+    np.skip();
+    if (np.ok && !*np.p){
+      working_string exact;
+      out="Answer: ";
+      out += rational_approx(val,exact)?exact:double_s(val);
+      return true;
+    }
+  }
   if (!split_top_fraction(e,num,den))
     return false;
   char v=first_var(e);
@@ -3056,7 +3122,7 @@ static bool try_range(const char *input,working_string &out){
   int n=0;
   if (!parse_call(input,"range",args,4,n) || n<1)
     return false;
-  working_string e=compact(args[0]);
+  working_string e=canonical_expr(args[0]);
   if (e.find('x')==working_string::npos){
     NumParser np;
     np.p=e.c_str();

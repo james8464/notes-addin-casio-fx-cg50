@@ -8,6 +8,8 @@ RUNNER = ROOT / "tools" / "khicas_host_runner"
 CASES = [
     ("integrate(2*x+3,x)", ["Integrate term by term:", "Use int(a*x^n)", "Answer: x^2 + 3*x + C"]),
     ("integrate(9x)", ["Use int(a*x^n)", "int(9x) dx", "Answer: 9/2*x^2 + C"]),
+    ("integrate((x)+(3),x)", ["Integrate term by term:", "Answer: 1/2*x^2 + 3*x + C"]),
+    ("integrate(((x)^2)+(3*x)+(2),x)", ["Integrate term by term:", "Answer: 1/3*x^3 + 3/2*x^2 + 2*x + C"]),
     ("integrate(x*exp(x),x)", ["Use integration by parts", "Let u=x, dv=e^x dx", "du=dx, v=e^x"]),
     ("integrate(x*cos(x),x)", ["Use integration by parts", "Let u=x, dv=cos(x) dx", "du=dx, v=sin(x)"]),
     ("integrate((ln(x))^2)", ["Let u = ln(x)^2, dv = dx", "Let u = ln(x), dv = dx"]),
@@ -38,6 +40,9 @@ CASES = [
     ("diff(exp((2*x-1)^3),x)", ["Chain rule:", "Let u = (2*x - 1)^3", "du/dx = 6*(2*x - 1)^2", "Answer: 6*(2*x - 1)^2*exp((2*x - 1)^3)"]),
     ("diff((x^2+1)*sin(3*x-2),x)", ["Product rule:", "u = x^2 + 1", "v = sin(3*x - 2)", "du/dx = 2*x", "dv/dx = 3*cos(3*x - 2)", "Answer: 2*x*sin(3*x - 2) + (x^2 + 1)*3*cos(3*x - 2)"]),
     ("diff((x^2-1)*cos((x+1)^2),x)", ["Product rule:", "u = x^2 - 1", "v = cos((x + 1)^2)", "dv/dx = -2*(x + 1)*sin((x + 1)^2)", "Answer: 2*x*cos((x + 1)^2) - (x^2 - 1)*2*(x + 1)*sin((x + 1)^2)"]),
+    ("diff((x)+(3),x)", ["dy/dx = 1"]),
+    ("diff(6,x)", ["dy/dx = 0"]),
+    ("simplify(((8)))", ["Answer: 8"]),
 ]
 
 
