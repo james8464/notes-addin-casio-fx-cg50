@@ -1558,7 +1558,7 @@ namespace giac {
   define_unary_function_ptr5( at_ztrans ,alias_at_ztrans,&__ztrans,0,true);
 
   static gen invztranserr(GIAC_CONTEXT){
-    return gensizeerr(gettext("Inverse z-transform of non rational functions not implemented or unable to fully factor rational function"));
+    return gensizeerr(gettext("Inverse z-transform failed"));
   }
 
   // limited to rational fractions

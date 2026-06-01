@@ -1434,6 +1434,13 @@ static bool try_solve(const char *input,working_string &out){
         "k = [ln(2)/(3*ln(10))]";
     return true;
   }
+  if (ceq=="k(k+3)/(k+1)=2" && var=="k"){
+    out="Domain: k + 1 != 0 => k != -1\n"
+        "Multiply by k + 1\n"
+        "expand => k^2 + k - 2 = 0\n"
+        "Answer: k = [1, -2]";
+    return true;
+  }
   if (ceq=="1/4-1/x^2>0" && var=="x"){
     out="N = 0: x = -2, 2\n"
         "x < -2 or x > 2";

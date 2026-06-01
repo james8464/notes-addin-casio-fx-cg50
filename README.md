@@ -24,11 +24,11 @@ Current status:
 
 - app name: `CAS`
 - file: `CAS.g3a`
-- size: `2,097,008` bytes
-- hard limit headroom: `144` bytes
-- sha256: `0def95a70a86ceb607bb667f4a8e1412a4948c2199bc9e9a0e8556ea4868ef6d`
+- size: `2,096,956` bytes
+- hard limit headroom: `196` bytes
+- sha256: `5c961183466e79e68be03e660462c78f70ac75d0e4a19964b6a8da451fbf41ac`
 - exact queue runtime: `14,256/14,256`
-- strict marker quality: `13,049/14,256`
+- strict marker quality: `13,053/14,256`
 - online challenge source coverage: MadAsMaths exact rows in queue; Daily Integral hard-integration style probes inspected from `https://dailyintegral.com/archive`
 
 Notable routes:
@@ -63,6 +63,7 @@ Notable routes:
 - `exp(2*ln(7/6))` now shows the exponential marker before decimal and exact fraction output
 - vector subtraction route for `[3,-3,-4]-[2,5,-6]` now shows `(1,-8,2)`
 - by-parts route for `x^2*cos(x/3)` and partial fractions route for `apart(6/(u*(3+2*u)))`
+- rational solve route for `solve(k*(k+3)/(k+1)=2,k)` shows domain and multiply-through steps
 - generic affine chain/reverse-chain power routes
 - trig/exp term integration, shifted trig identity, damped-sine by-parts route, quadratic solve/factor/expand, log/numeric routes
 - safer solve routing: powered terms no longer fall through the linear solver
