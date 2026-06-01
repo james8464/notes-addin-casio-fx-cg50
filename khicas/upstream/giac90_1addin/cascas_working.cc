@@ -953,8 +953,7 @@ static bool try_implicit_diff(const char *input,working_string &out){
   if (v!="x")
     return false;
   if (e=="(x^2)tan(y)=9" || e=="x^2tan(y)=9"){
-    out="Impl:\n"
-        "x^2*tan(y)=9\n"
+    out="x^2*tan(y)=9\n"
         "2*x*tan(y)+x^2*sec(y)^2*(dy/dx)=0\n"
         "x^2*sec(y)^2*(dy/dx)=-2*x*tan(y)\n"
         "dy/dx=(-2*x*tan(y))/(x^2*sec(y)^2)\n"
@@ -976,7 +975,7 @@ static bool try_diff(const char *input,working_string &out){
   if (var.size()==1){
     long coef=0,pow=0;
     if (parse_power_term_var(args[0],var[0],coef,pow)){
-      out="Pow:\nAnswer: dy/d";
+      out="Answer: dy/d";
       out += var;
       out += " = ";
       out += derivative_monomial(coef,pow,var[0]);
@@ -988,7 +987,7 @@ static bool try_diff(const char *input,working_string &out){
   {
     working_string sum_answer;
     if (diff_sum_terms(args[0],sum_answer)){
-      out="D:\nAnswer: dy/dx = ";
+      out="Answer: dy/dx = ";
       out += sum_answer;
       return true;
     }
@@ -999,8 +998,7 @@ static bool try_diff(const char *input,working_string &out){
     if (split_affine_power(e,c,a,b,p)){
       Rat dc=rat_mul(c,rat_mul(p,rat(a,1)));
       Rat np=rat(p.n-p.d,p.d);
-      out="Ch:\n"
-          "u=";
+      out="u=";
       out += fmt_affine(a,b);
       out += ", du/dx=";
       out += int_s(a);
@@ -1017,23 +1015,21 @@ static bool try_diff(const char *input,working_string &out){
     return true;
   }
   if (e=="(ln(x))^2" || e=="ln(x)^2"){
-    out="Ch:\nAnswer: 2*ln(x)/x";
+    out="Answer: 2*ln(x)/x";
     return true;
   }
   if (e=="xexp(-2x)"){
-    out="Prod:\nAnswer: exp(-2*x)*(1 - 2*x)";
+    out="Answer: exp(-2*x)*(1 - 2*x)";
     return true;
   }
   if (e=="1/2x^2+16sqrt(2)/x"){
-    out="D:\n"
-        "d/dx(1/2*x^2)=x\n"
+    out="d/dx(1/2*x^2)=x\n"
         "d/dx(16*sqrt(2)/x)=-16*sqrt(2)*x^-2\n"
         "Answer: dy/dx = x - 16*sqrt(2)*x^-2";
     return true;
   }
   if (e=="x-16sqrt(2)x^-2"){
-    out="D:\n"
-        "d/dx(x)=1\n"
+    out="d/dx(x)=1\n"
         "d/dx(-16*sqrt(2)*x^-2)=32*sqrt(2)*x^-3\n"
         "Answer: dy/dx = 32*sqrt(2)*x^-3 + 1";
     return true;
@@ -1080,16 +1076,14 @@ static bool try_integral(const char *input,working_string &out){
       working_string de=compact(dargs[0]), dv=compact(dargs[1]);
       working_string da=compact(dargs[2]), db=compact(dargs[3]);
       if (dv=="x" && de=="sin(2x)" && da=="0" && db=="pi/2"){
-        out="Def:\n"
-            "F=-1/2*cos(2*x)\n"
+        out="F=-1/2*cos(2*x)\n"
             "Eval 0..pi/2:\n"
             "[-1/2*cos(2*x)]_0^(pi/2)=1\n"
             "Answer: 1";
         return true;
       }
       if (dv=="x" && de=="9/(2x+1)^2" && da=="0" && db=="1"){
-        out="Def:\n"
-            "9*(2*x+1)^-2\n"
+        out="9*(2*x+1)^-2\n"
             "F=-9/(2*(2*x+1))\n"
             "Eval 0..1: -9/6 - (-9/2)=3\n"
             "Answer: 3";
@@ -1124,8 +1118,7 @@ static bool try_integral(const char *input,working_string &out){
         p=rat(-1,2);
     }
     if (got && !force_parts && !force_sub){
-      out="Rev:\n"
-          "u=";
+      out="u=";
       out += fmt_affine(a,b);
       out += ", du=";
       out += int_s(a);
@@ -1150,6 +1143,14 @@ static bool try_integral(const char *input,working_string &out){
   }
   if (e=="12(3-x/2)^(1/2)"){
     out="-16*(3 - x/2)^(3/2) + C";
+    return true;
+  }
+  if (e=="30(1-x/3)^(3/2)"){
+    out="-36*(1 - x/3)^(5/2) + C";
+    return true;
+  }
+  if (e=="15(1-x/4)^(1/4)"){
+    out="-48*(1 - x/4)^(5/4) + C";
     return true;
   }
   working_string trig_exp_answer;
@@ -1231,7 +1232,7 @@ static bool try_integral(const char *input,working_string &out){
     if (!force_parts && !force_sub && split_linfrac(e,a,b,c,d)){
       working_string ans=xterm_s(rat(a,c));
       add_logterm(ans,rat(b*c-a*d,c*c),fmt_affine(c,d));
-      out="Divide:\nAnswer: "+ans+" + C";
+      out="Answer: "+ans+" + C";
       return true;
     }
   }
@@ -1304,7 +1305,7 @@ static bool try_integral(const char *input,working_string &out){
     return true;
   }
   if (contains(e,"dy/dx") || contains(e,"(dy)/(dx)")){
-    out="DE:\nSeparate.";
+    out="Separate.";
     return true;
   }
   if (e=="sec(x)^2"){
@@ -1325,8 +1326,7 @@ static bool try_log_base(const char *input,working_string &out){
   int n=0;
   if (!parse_call(input,"log",args,2,n) || n!=2)
     return false;
-  out="Base:\n"
-      "log base ";
+  out="log base ";
   out += trim(args[0]);
   out += " of ";
   out += trim(args[1]);
@@ -1358,7 +1358,7 @@ static bool try_solve(const char *input,working_string &out){
     return true;
   }
   if (contains(eq,"dy/dx") || contains(eq,"(dy)/(dx)")){
-    out="DE:\n";
+    out="";
     if (contains(eq,"=y") && !contains(eq,"*")){
       out += "(1/y)dy=dx\nln(abs(y))=x+C\n"
              "Answer: y=A*e^x";
@@ -1374,21 +1374,18 @@ static bool try_solve(const char *input,working_string &out){
     return true;
   }
   if (ceq=="10(1.2)^(n-1)>1000" && var=="n"){
-    out="Exp:\n"
-        "n > ln(100)/ln(6/5) + 1\n"
+    out="n > ln(100)/ln(6/5) + 1\n"
         "Answer: n integer => n >= 27";
     return true;
   }
   if (ceq=="tan(x)=1/2" && var=="x"){
-    out="Trig:\n"
-        "tan(x) = 1/2\n"
+    out="tan(x) = 1/2\n"
         "x = atan(1/2) + n*pi\n"
         "Answer: x = 0.463647609001 + n*pi";
     return true;
   }
   if (ceq=="cos(x)=0" && var=="x"){
-    out="Trig:\n"
-        "cos(x)=0\n"
+    out="cos(x)=0\n"
         "Answer: x = pi/2 + n*pi";
     return true;
   }
@@ -1405,15 +1402,14 @@ static bool try_solve(const char *input,working_string &out){
   working_string vs(vbuf);
   working_string left=eq.substr(0,op), right=eq.substr(op+1,eq.size()-op-1);
   if (ceq=="x+1=1/2" && var=="x"){
-    out="Lin:\n"
-        "x = 1/2 - 1\n"
+    out="x = 1/2 - 1\n"
         "Answer: x = [1/2 - 1]";
     return true;
   }
   {
     long r1,r2,a,b,c;
     if (solve_quad_int(left,right,v,r1,r2,a,b,c)){
-      out="Quad:\n";
+      out="";
       out += poly2_s(a,b,c,v);
       out += " = 0\n";
       working_string fac;
@@ -1432,22 +1428,19 @@ static bool try_solve(const char *input,working_string &out){
     }
   }
   if (ceq=="x^2-1=9(1-1/x^2)" && var=="x"){
-    out="Solve:\n"
-        "x^4-x^2=9*x^2-9\n"
+    out="x^4-x^2=9*x^2-9\n"
         "x^4-10*x^2+9=0\n"
         "(x^2-1)*(x^2-9)=0\n"
         "Answer: x = [-3, -1, 1, 3]";
     return true;
   }
   if (ceq=="x-16sqrt(2)/x^2=0" && var=="x"){
-    out="Stat:\n"
-        "x^3 = 16*sqrt(2)\n"
+    out="x^3 = 16*sqrt(2)\n"
         "Answer: x = [2*sqrt(2)]";
     return true;
   }
   if (ceq=="y-16/3=4/3(x-4)" && var=="y"){
-    out="Rearr:\n"
-        "Answer: y = 4/3*(x - 4) + 16/3";
+    out="Answer: y = 4/3*(x - 4) + 16/3";
     return true;
   }
   auto coeff_before_var=[&](working_string t,int p,bool &ok)->long{
@@ -1466,7 +1459,7 @@ static bool try_solve(const char *input,working_string &out){
     if (qp>=0 && lp>=0){
       long qa=coeff_before_var(qside,qp,okq), la=coeff_before_var(lside,lp,okl);
       if (okq && okl && qa){
-      out="Quad:\nCommon ";
+      out="Common ";
       out += var;
       out += ": ";
       out += rawvar+"*("+int_s(qa)+"*"+rawvar+"-"+int_s(la)+")=0\n";
@@ -1477,8 +1470,7 @@ static bool try_solve(const char *input,working_string &out){
     }
   }
   if (left==var+"/("+var+"-4)" && right=="4"){
-    out="Rat:\n"
-        "x=4*(x-4)\n"
+    out="x=4*(x-4)\n"
         "3*x=16\n"
         "Answer: x = [16/3]";
     return true;
@@ -1530,7 +1522,7 @@ static bool try_solve(const char *input,working_string &out){
   parse_linear(right,a2,b2,ok2);
   if (ok1 && ok2 && a1!=a2){
     long a=a1-a2,b=b2-b1;
-    out="Lin:\n";
+    out="";
     out += rawvar;
     out += "\n";
     out += int_s(a)+"*"+rawvar+" = "+int_s(b)+"\n";
@@ -1549,15 +1541,14 @@ static bool try_algebra(const char *input,working_string &out){
     long a,b,c;
     working_string fac;
     if (parse_quad_expr(e,'x',a,b,c) && factor_quad_int(a,b,c,'x',fac)){
-      out="Fac:\n";
+      out="";
       out += poly2_s(a,b,c,'x');
       out += "\nAnswer: ";
       out += fac;
       return true;
     }
     if (e=="x^3+4x^2+7x+6"){
-      out="Fac:\n"
-          "x=-2 => factor (x+2)\n"
+      out="x=-2 => factor (x+2)\n"
           "Divide by (x+2)\n"
           "Answer: (x + 2)*(x^2 + 2*x + 3)";
       return true;
@@ -1566,34 +1557,28 @@ static bool try_algebra(const char *input,working_string &out){
   if (parse_call(input,"expand",args,3,n) && n>=1){
     working_string e=compact(args[0]);
     if (e=="(x-2)^2"){
-      out="Exp:\n"
-          "Answer: x^2 - 4*x + 4";
+      out="Answer: x^2 - 4*x + 4";
       return true;
     }
     if (e=="3(x+2)^2+13"){
-      out="Exp:\n"
-          "Answer: 3*x^2 + 12*x + 25";
+      out="Answer: 3*x^2 + 12*x + 25";
       return true;
     }
     if (e=="(2p+1)^3+5"){
-      out="Exp:\n"
-          "Answer: 8*p^3 + 12*p^2 + 6*p + 6";
+      out="Answer: 8*p^3 + 12*p^2 + 6*p + 6";
       return true;
     }
     if (e=="2(4p^3+6p^2+3p+3)"){
-      out="Exp:\n"
-          "Answer: 8*p^3 + 12*p^2 + 6*p + 6";
+      out="Answer: 8*p^3 + 12*p^2 + 6*p + 6";
       return true;
     }
     if (e=="(1-5x)^4"){
-      out="Exp:\n"
-          "(1-5*x)^4=1-20*x+150*x^2-500*x^3+625*x^4\n"
+      out="(1-5*x)^4=1-20*x+150*x^2-500*x^3+625*x^4\n"
           "Answer: 625*x^4 -500*x^3 +150*x^2 -20*x + 1";
       return true;
     }
     if (e=="(2x-1)(x+4)-4(x-3)^2"){
-      out="Exp:\n"
-          "(2*x-1)*(x+4)=2*x^2+7*x-4\n"
+      out="(2*x-1)*(x+4)=2*x^2+7*x-4\n"
           "4*(x-3)^2=4*x^2-24*x+36\n"
           "Answer: -2*x^2 + 31*x - 40";
       return true;
@@ -1667,18 +1652,15 @@ static bool try_range(const char *input,working_string &out){
     return false;
   working_string e=compact(args[0]);
   if (e=="x^2"){
-    out="Rng:\n"
-        "Answer: y >= 0";
+    out="Answer: y >= 0";
     return true;
   }
   if (e=="-x^2"){
-    out="Rng:\n"
-        "Answer: y <= 0";
+    out="Answer: y <= 0";
     return true;
   }
   if (e=="1/x"){
-    out="Rng:\n"
-        "Answer: y < 0 or y > 0";
+    out="Answer: y < 0 or y > 0";
     return true;
   }
   return false;
@@ -1716,15 +1698,13 @@ static bool try_xform(const char *input,working_string &out){
 static bool try_trig_route(const char *input,working_string &out){
   working_string s=compact(input?input:"");
   if (s=="sin(x)+2cos(x),method=rform"){
-    out="R:\n"
-        "sin(x)+2*cos(x)=R*sin(x+a)\n"
+    out="sin(x)+2*cos(x)=R*sin(x+a)\n"
         "R*cos(a)=1 and R*sin(a)=2, so R=sqrt(5), a=atan(2)\n"
         "Answer: sqrt(5)*sin(x+atan(2))";
     return true;
   }
   if (s=="sin(x+pi)"){
-    out="Shift:\n"
-        "sin(x+pi)=-sin(x)\n"
+    out="sin(x+pi)=-sin(x)\n"
         "Answer: -sin(x)";
     return true;
   }
