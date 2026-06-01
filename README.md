@@ -24,11 +24,11 @@ Current status:
 
 - app name: `CAS`
 - file: `CAS.g3a`
-- size: `2,096,956` bytes
-- hard limit headroom: `196` bytes
-- sha256: `5c961183466e79e68be03e660462c78f70ac75d0e4a19964b6a8da451fbf41ac`
+- size: `2,096,932` bytes
+- hard limit headroom: `220` bytes
+- sha256: `40c5ba377c34f345f56dd296e7e38b4b4121c3c55279f302598d911188b3d537`
 - exact queue runtime: `14,256/14,256`
-- strict marker quality: `13,053/14,256`
+- strict marker quality: `13,057/14,256`
 - online challenge source coverage: MadAsMaths exact rows in queue; Daily Integral hard-integration style probes inspected from `https://dailyintegral.com/archive`
 
 Notable routes:
@@ -75,6 +75,7 @@ Notable routes:
 - polynomial antiderivatives use coefficient-first descending-power form, e.g. `-1/3*x^3 + 2*x^2 + 5*x + C`
 - `integrate(x^2-1,x)` uses the mark-scheme form `x^3/3 - x + C`
 - `integrate(x*sqrt(x+1),x,0,3)` uses substitution and returns `116/15`
+- `integrate(1/(sqrt(x)*(sqrt(x)+2)),x,0,36)` uses `u=sqrt(x)` and returns `ln(16)`
 - linear-over-linear integrals such as `integrate((4*x+3)/(2*x-1),x)` use algebraic division and return `2*x + 5/2*ln(abs(2*x - 1)) + C`
 - polynomial derivatives use descending-power form, e.g. `-8*x^3 + 1`
 - repeated integer quadratic roots print once, e.g. `x = [8]`

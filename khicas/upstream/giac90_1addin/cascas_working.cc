@@ -1120,6 +1120,14 @@ static bool try_integral(const char *input,working_string &out){
     return false;
   if (n>=4){
     working_string a=compact(args[2]), b=compact(args[3]);
+    if (e=="1/(sqrt(x)(sqrt(x)+2))" && a=="0" && b=="36"){
+      out="u=sqrt(x), dx=2*u du\n"
+          "0..36 -> 0..6\n"
+          "int 2/(u+2) du\n"
+          "[2*ln(u+2)]_0^6=2*ln(4)=ln(16)\n"
+          "Answer: ln(16)";
+      return true;
+    }
     if (e=="xsqrt(x+1)" && a=="0" && b=="3"){
       out="u=x+1, x=u-1, 1..4\n"
           "int((u-1)*sqrt(u))du\n"

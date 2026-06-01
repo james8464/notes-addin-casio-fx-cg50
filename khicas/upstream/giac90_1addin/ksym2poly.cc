@@ -804,7 +804,7 @@ namespace giac {
 	// cerr << "xroot" << num << endl;
 	gen numlv=r2sym(num,lv,contextptr);
 	if (!lvar(evalf(numlv,1,contextptr)).empty())
-	  *logptr(contextptr) << gettext("Warning, checking for positivity of a root depending of parameters might return wrong sign: ")<< numlv << endl;
+	  *logptr(contextptr) << gettext("Param root sign warning: ")<< numlv << endl;
 	if (is_positive(numlv,contextptr))
 	  break;
       }
@@ -2845,7 +2845,7 @@ namespace giac {
 #endif
 	if (calc_mode(contextptr)==1)
 	  return undef;
-	*logptr(contextptr) << gettext("Unable to build a single algebraic extension for simplifying.\nTrying rational simplification only. This might return a wrong answer if simplifying 0/0!") << endl;
+	*logptr(contextptr) << gettext("Algebraic extension failed; rational simplify only") << endl;
 	l=lvar(ee);
 	tmp=e2r(ee,l,contextptr);	
 	gen tmpf=evalf_double(ee-tmp,1,contextptr);
@@ -3887,7 +3887,7 @@ namespace giac {
 	    const polynome & qp=*f2_num._POLYptr;
 	    gen coeff;
 	    if (!interpolable_resultant(pp,d,coeff,true,contextptr) || !interpolable_resultant(qp,d,coeff,true,contextptr))
-	      return gensizeerr(gettext("Not enough elements in field to interpolate. Try in a field extension"));
+	      return gensizeerr(gettext("Not enough field elements"));
 	    //if (coeff.type==_USER) j=0;
 	    int dim=pp.dim;
 	    vecteur vp,vq,vp0,vq0;
@@ -4194,4 +4194,3 @@ namespace giac {
 #ifndef NO_NAMESPACE_GIAC
 } // namespace giac
 #endif // ndef NO_NAMESPACE_GIAC
-
