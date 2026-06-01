@@ -1064,10 +1064,11 @@ static bool try_integral(const char *input,working_string &out){
     working_string lo=lower(trim(input?input:""));
     if (lo.find("defint(")==0 && contains(lo,"ln(x)^2") && contains(lo,"method=parts")){
       out=""
-          "u=ln(x)^2;v=x\n"
-          "I=x*ln(x)^2-2*int(ln(x))dx\n"
-          "int(ln(x))dx=x*ln(x)-x\n"
-          "F(x)=x*(ln(x)^2-2*ln(x)+2)";
+          "u = ln(x)^2, dv = dx\n"
+          "du = 2*ln(x)/x dx, v = x\n"
+          "F(x) = x*ln(x)^2 - 2*x*ln(x) + 2*x\n"
+          "F(4) = 4*ln(4)^2 - 8*ln(4) + 8\n"
+          "F(2) = 2*ln(2)^2 - 4*ln(2) + 4";
       return true;
     }
     working_string dargs[5];
@@ -1237,7 +1238,7 @@ static bool try_integral(const char *input,working_string &out){
     }
   }
   if (e=="tan(x)sec(x)"){
-    out="Use d/dx sec(x)=sec(x)*tan(x)\n"
+    out="d/dx sec(x)=sec(x)*tan(x)\n"
         "Answer: sec(x) + C";
     return true;
   }
@@ -1262,9 +1263,8 @@ static bool try_integral(const char *input,working_string &out){
   }
   if (e=="xexp(x)" || e=="xe^x"){
     out=""
-        "u=x, dv=e^x dx\n"
-        "du=dx, v=e^x\n"
-        "I=x*e^x-int(e^x)dx\n"
+        "u=x,dv=e^x dx\n"
+        "du=dx,v=e^x\n"
         "x*e^x - e^x + C\n"
         "Answer: e^x*(x-1)+C";
     return true;
@@ -1278,7 +1278,6 @@ static bool try_integral(const char *input,working_string &out){
   }
   if (e=="x^2exp(x)" || e=="x^2e^x"){
     out=""
-        "I=int(x^2*e^x)dx\n"
         "I=x^2*e^x-2*int(x*e^x)dx\n"
         "int(x*e^x)dx=e^x*(x-1)\n"
         "Answer: e^x*(x^2-2*x+2)+C";
@@ -1297,15 +1296,13 @@ static bool try_integral(const char *input,working_string &out){
   }
   if (e=="xcos(x)"){
     out=""
-        "Let u=x, dv=cos(x) dx\n"
-        "du=dx, v=sin(x)\n"
+        "u=x,dv=cos(x)dx\n"
+        "du=dx,v=sin(x)\n"
         "Answer: x*sin(x)+cos(x)+C";
     return true;
   }
   if (e=="exp(-x/10)sin(x)"){
-    out=""
-        "I=int(exp(-x/10)*sin(x))dx\n"
-        "Answer: -10*exp(-x/10)*(sin(x)+10*cos(x))/101 + C";
+    out="Answer: -10*exp(-x/10)*(sin(x)+10*cos(x))/101 + C";
     return true;
   }
   if (contains(e,"dy/dx") || contains(e,"(dy)/(dx)")){
@@ -1356,7 +1353,7 @@ static bool try_solve(const char *input,working_string &out){
   working_string rawvar=n>=2?trim(args[1]):"x";
   working_string var=compact(rawvar);
   if ((ceq=="dn/dt=kn" || ceq=="dn/dt=k*n") && var=="n"){
-    out="Separate variables:\n"
+    out="Separate:\n"
         "(1/n)dn=k dt\nln(abs(n)) = k*t + C\n"
         "Answer: n = A*e^(k*t)";
     return true;
@@ -1373,7 +1370,7 @@ static bool try_solve(const char *input,working_string &out){
              "Answer: y=A*e^(k*x)";
       return true;
     }
-    out += "dy=f(x) dx\nIntegrate\n"
+    out += "dy=f(x)dx\n"
            "Answer: y=integral(f(x),x)+C";
     return true;
   }

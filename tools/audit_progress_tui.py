@@ -65,6 +65,8 @@ class Stat:
     g3a_hash: str
     artifact_note: str
     graph_age: str
+    state_age: str
+    state_rows: int
     report_age: str
     queue_rows: int
     queue_inputs: int
@@ -123,6 +125,13 @@ def latest_checkpoint() -> dict:
         if "g3a_size" in row or row.get("phase") == "release candidate":
             last = row
     return last
+
+
+def state_stats() -> tuple[str, int]:
+    if not STATE.exists():
+        return "missing", 0
+    rows = sum(1 for line in STATE.read_text(errors="ignore").splitlines() if line.strip())
+    return age_s(STATE), rows
 
 
 def file_size(path: Path) -> int:
@@ -188,7 +197,7 @@ def change_counts() -> tuple[int, int, int]:
     return staged, unstaged, untracked
 
 
-def dirty_files(limit: int = 5) -> list[str]:
+def dirty_files(limit: int = 3) -> list[str]:
     out = run(["git", "status", "--short"])
     if out == "n/a" or not out:
         return []
@@ -452,6 +461,7 @@ def collect() -> Stat:
     rows, inputs = queue_counts()
     staged, unstaged, untracked = change_counts()
     tools, tests_n = active_counts()
+    st_age, st_rows = state_stats()
     return Stat(
         phase=str(s.get("phase", "n/a")),
         last=str(s.get("last_event", "n/a")),
@@ -474,6 +484,8 @@ def collect() -> Stat:
         g3a_hash=short_hash(G3A),
         artifact_note=artifact_note(file_size(G3A), file_size(BUILD_G3A)),
         graph_age=graph_age(),
+        state_age=st_age,
+        state_rows=st_rows,
         report_age=age_s(QUEUE_REPORT),
         queue_rows=rows,
         queue_inputs=inputs,
@@ -703,6 +715,48 @@ def risk_rows(st: Stat) -> list[str]:
     return rows or ["none"]
 
 
+def strict_gap(st: Stat) -> int | None:
+    strict = ratio_value(st, "queue-right")
+    if not strict:
+        return None
+    return strict[1] - strict[0]
+
+
+def readiness_rows(st: Stat) -> list[str]:
+    rows: list[str] = []
+    headroom = LIMIT - st.g3a
+    if not st.g3a:
+        rows.append("build artifact missing")
+    elif headroom < 0:
+        rows.append(f"artifact over hard cap by {-headroom:,} B")
+    if st.upstream != "synced":
+        rows.append(f"git not synced: {st.upstream}")
+    if st.dirty:
+        rows.append(f"tracked tree dirty: {st.dirty}")
+    q = ratio_value(st, "queue-done")
+    if not q:
+        rows.append("exact queue not run")
+    elif q[0] < q[1]:
+        rows.append(f"queue incomplete: {q[0]:,}/{q[1]:,}")
+    gap = strict_gap(st)
+    if gap is None:
+        rows.append("strict marker report missing")
+    elif gap:
+        rows.append(f"strict marker gaps: {gap:,}")
+    if st.graph_age == "missing":
+        rows.append("graph missing")
+    return rows or ["release checklist clear"]
+
+
+def command_rows() -> list[str]:
+    return [
+        "./compile",
+        "python3 tests/run_exact_queue.py --engine production --workers 8",
+        "python3 tests/run_exact_queue.py --engine production --workers 8 --strict-markers",
+        f"python3 {ROOT / 'tools' / 'audit_progress_tui.py'} --fps 12",
+    ]
+
+
 def kv(key: str, val: str, width: int, enabled: bool) -> str:
     return trim(f"{color(key, C.dim, enabled):<18} {val}", width)
 
@@ -717,6 +771,18 @@ def panel(title: str, rows: list[str], width: int, enabled: bool) -> list[str]:
         out.append(color("| ", C.dim, enabled) + raw + color(" |", C.dim, enabled))
     out.append(color("+" + "-" * (width - 2) + "+", C.dim, enabled))
     return out
+
+
+def columns(left: list[str], right: list[str], width: int) -> list[str]:
+    if width < 112:
+        return left + [""] + right
+    gap = "  "
+    l_width = (width - len(gap)) // 2
+    r_width = width - len(gap) - l_width
+    height = max(len(left), len(right))
+    left = left + [" " * l_width] * (height - len(left))
+    right = right + [" " * r_width] * (height - len(right))
+    return [trim(left[i], l_width) + gap + trim(right[i], r_width) for i in range(height)]
 
 
 def render_compact(st: Stat, frame: int, width: int, enabled: bool) -> str:
@@ -743,6 +809,7 @@ def render_compact(st: Stat, frame: int, width: int, enabled: bool) -> str:
         kv("lane", phase_lanes(st, frame, enabled), width, enabled),
         kv("metrics", topline_metrics(st, enabled), width, enabled),
         kv("sync", st.upstream, width, enabled),
+        kv("state", f"{st.state_rows} events  age {st.state_age}", width, enabled),
         kv("phase", st.phase, width, enabled),
         kv("event", ticker(st.last, max(12, width - 20), frame), width, enabled),
         *[trim(r, width) for r in size_hint(st, frame, bar_w, enabled)],
@@ -762,6 +829,7 @@ def render_compact(st: Stat, frame: int, width: int, enabled: bool) -> str:
     lines.append(kv("risk", "; ".join(risk_rows(st)[:3]), width, enabled))
     if st.next_action not in ("", "n/a"):
         lines.append(kv("next", st.next_action, width, enabled))
+    lines.append(kv("release", "; ".join(readiness_rows(st)[:3]), width, enabled))
     ignored = ignored_rows()
     if ignored:
         lines.append(kv("ignored", "; ".join(ignored), width, enabled))
@@ -779,7 +847,7 @@ def render_compact(st: Stat, frame: int, width: int, enabled: bool) -> str:
     lines.extend(
         [
             trim("-" * width, width),
-            trim(f"run: python3 {ROOT / 'tools' / 'audit_progress_tui.py'} --fps 12", width),
+            trim("run: " + "  |  ".join(command_rows()[-2:]), width),
             trim("q/ctrl-c quit  --once one frame  --fps N animation rate  --scan-interval N refresh rate", width),
         ]
     )
@@ -805,54 +873,57 @@ def render(st: Stat, frame: int, width: int, height: int, enabled: bool) -> str:
         f"{badge('dirty ' + str(st.dirty), dirty_color, enabled)}"
     )
     lines = [trim("=" * width, width), trim(header, width), trim("=" * width, width)]
-    lines += panel(
-        "repo",
-        [
-            f"branch {st.branch} @ {st.commit}  tag {tag}  {st.upstream}",
-            f"last   {st.subject}",
-            f"phase  {st.phase}",
-            f"event  {st.last}",
-            f"graph  {st.graph_age}  checkpoint {st.checkpoint}",
-        ],
-        width,
-        enabled,
-    )
+    repo_rows = [
+        f"branch {st.branch} @ {st.commit}  tag {tag}  {st.upstream}",
+        f"last   {st.subject}",
+        f"phase  {st.phase}",
+        f"event  {st.last}",
+        f"graph  {st.graph_age}  state {st.state_rows} rows / age {st.state_age}",
+        f"checkpoint {st.checkpoint}",
+    ]
+    status_rows = [
+        status_strip(st, enabled),
+        phase_lanes(st, frame, enabled),
+        topline_metrics(st, enabled),
+        f"changes staged {st.staged}  unstaged {st.unstaged}  untracked {st.untracked}",
+        f"active tooling {st.tool_count} files  test scripts {st.test_count}",
+    ]
+    if width >= 112:
+        left_w = (width - 2) // 2
+        right_w = width - 2 - left_w
+        lines += columns(
+            panel("repo", repo_rows, left_w, enabled),
+            panel("status", status_rows, right_w, enabled),
+            width,
+        )
+    else:
+        lines += panel("repo", repo_rows, width, enabled)
+        lines.append("")
+        lines += panel("status", status_rows, width, enabled)
     lines.append("")
-    lines += panel(
-        "status",
-        [
-            status_strip(st, enabled),
-            phase_lanes(st, frame, enabled),
-            topline_metrics(st, enabled),
-            f"changes staged {st.staged}  unstaged {st.unstaged}  untracked {st.untracked}",
-            f"active tooling {st.tool_count} files  test scripts {st.test_count}",
-        ],
-        width,
-        enabled,
-    )
-    lines.append("")
-    lines += panel(
-        "artifact",
-        [
-            *size_hint(st, frame, bar_w, enabled),
-            f"age {st.g3a_age}  sha256 {st.g3a_hash}",
-            f"last build age {st.build_age}",
-            f"hard headroom {headroom:,} B  target delta {TARGET - st.g3a:,} B",
-        ],
-        width,
-        enabled,
-    )
-    lines.append("")
-    lines += panel(
-        "queue",
-        [
-            f"golden {st.queue_rows:,} rows / {st.queue_inputs:,} inputs",
-            f"latest {st.queue}  report age {st.report_age}",
-            *queue_health(st, frame, bar_w, enabled),
-        ],
-        width,
-        enabled,
-    )
+    artifact_rows = [
+        *size_hint(st, frame, bar_w, enabled),
+        f"age {st.g3a_age}  sha256 {st.g3a_hash}",
+        f"last build age {st.build_age}",
+        f"hard headroom {headroom:,} B  target delta {TARGET - st.g3a:,} B",
+    ]
+    queue_rows_ui = [
+        f"golden {st.queue_rows:,} rows / {st.queue_inputs:,} inputs",
+        f"latest {st.queue}  report age {st.report_age}",
+        *queue_health(st, frame, bar_w, enabled),
+    ]
+    if width >= 112:
+        left_w = (width - 2) // 2
+        right_w = width - 2 - left_w
+        lines += columns(
+            panel("artifact", artifact_rows, left_w, enabled),
+            panel("queue", queue_rows_ui, right_w, enabled),
+            width,
+        )
+    else:
+        lines += panel("artifact", artifact_rows, width, enabled)
+        lines.append("")
+        lines += panel("queue", queue_rows_ui, width, enabled)
     lines.append("")
     lines += panel("progress", [], width, enabled)[:1]
     lines.append(trim(f"trend          {st.ratio_trend}  {sweep(24, frame, enabled)}", width))
@@ -867,33 +938,37 @@ def render(st: Stat, frame: int, width: int, height: int, enabled: bool) -> str:
         f"changes staged {st.staged}  unstaged {st.unstaged}  untracked {st.untracked}",
         *(st.dirty_files or ["clean"]),
     ]
-    lines += panel("workspace", workspace_rows, width, enabled)
-    lines.append("")
-    lines += panel("risk", risk_rows(st), width, enabled)
+    risk = risk_rows(st)
+    if width >= 112:
+        left_w = (width - 2) // 2
+        right_w = width - 2 - left_w
+        lines += columns(
+            panel("workspace", workspace_rows, left_w, enabled),
+            panel("risk", risk, right_w, enabled),
+            width,
+        )
+    else:
+        lines += panel("workspace", workspace_rows, width, enabled)
+        lines.append("")
+        lines += panel("risk", risk, width, enabled)
+    lines += panel("release", readiness_rows(st), width, enabled)
+    cluster = ", ".join(f"{k}:{v}" for k, v in st.fail_clusters) if st.fail_clusters else "none"
+    gap_rows = [f"unsupported {st.unsupported}  clusters {cluster}"]
+    if st.failures:
+        gap_rows.append("first gap " + st.failures[0])
+    else:
+        gap_rows.append("strict gaps none reported")
+    lines += panel("quality", gap_rows, width, enabled)
     ignored = ignored_rows()
     if ignored:
         lines.append("")
         lines += panel("ignored workspace", ignored, width, enabled)
     lines.append("")
-    cluster = ", ".join(f"{k}:{v}" for k, v in st.fail_clusters) if st.fail_clusters else "none"
-    gap_rows = [f"unsupported {st.unsupported}", f"clusters {cluster}", "strict gaps:"]
-    if st.failures:
-        for sample in st.failures:
-            gap_rows.append(" - " + sample)
-    else:
-        gap_rows.append(" - none reported")
-    lines += panel("quality", gap_rows, width, enabled)
-    lines.append("")
     lines += panel("recent", st.events or ["no state events yet"], width, enabled)
     lines.append("")
     run_panel = panel(
         "run",
-        [
-            f"python3 {ROOT / 'tools' / 'audit_progress_tui.py'} --fps 12",
-            "./compile",
-            "python3 tests/run_exact_queue.py --engine production --workers 8 --strict-markers",
-            "q/ctrl-c quit  --once one frame  --fps N animation rate",
-        ],
+        [*command_rows(), "q/ctrl-c quit  --once one frame  --fps N animation rate"],
         width,
         enabled,
     )

@@ -24,9 +24,9 @@ Current status:
 
 - app name: `CAS`
 - file: `CAS.g3a`
-- size: `2,097,152` bytes
-- hard limit headroom: `0` bytes
-- sha256: `3f1332cf746508fcb5f19642dd054de328d7b80a708f78e257c1d8b56beb9d3e`
+- size: `2,097,112` bytes
+- hard limit headroom: `40` bytes
+- sha256: `395a572008bd0a75b64cb3339819a592a198877366e218f4833547b9fa01ddd1`
 - exact queue runtime: `14,256/14,256`
 - strict marker quality: `13,002/14,256`
 - online challenge source coverage: MadAsMaths exact rows in queue; Daily Integral hard-integration style probes inspected from `https://dailyintegral.com/archive`
@@ -35,6 +35,7 @@ Notable routes:
 
 - `integrate((ln(x))^2,x,2)` repeated integration by parts
 - `integrate((ln(x))^2,x)` returns the expanded mark-scheme form `x*ln(x)^2 - 2*x*ln(x) + 2*x + C`
+- `defint(ln(x)^2,x,2,4),method=parts` shows by-parts setup, antiderivative, and endpoint substitution markers
 - `integrate(12*(3-x/2)^(1/2),x)` compact reverse-chain radical route
 - `integrate(30*(1-x/3)^(3/2),x)` and `15*(1-x/4)^(1/4)` compact reverse-chain radical routes
 - `integrate((ln(x))^2/x,x,3,u=ln(x))` substitution
@@ -66,7 +67,7 @@ Notable routes:
 - distinct integer quadratic roots show explicit root lines before list answer, e.g. `k = 1 or k = -2`
 - negative-leading integer quadratics now print roots in the exam-friendly order expected by the queue, e.g. `x = [3, 11]`
 - catalogue Help on command screen shows spaced sections and F2/F3 examples
-- `/Users/james/Developer/CASIO/tools/audit_progress_tui.py` shows animated status badges, phase lanes, health score, repo sync, last commit, change counts, artifact headroom, live queue rate/ETA, pass/fail bars, quality clusters, risk, ignored workspace, active-tool counts, next action, recent events, and run-command panels
+- `/Users/james/Developer/CASIO/tools/audit_progress_tui.py` shows animated status badges, side-by-side panels on wide terminals, phase lanes, health score, repo sync, last commit, change counts, state age, artifact headroom, live queue rate/ETA, pass/fail bars, quality clusters, release blockers, risk, ignored workspace, active-tool counts, next action, recent events, and run-command panels
 
 Active tools:
 
@@ -79,6 +80,6 @@ Active tools:
 - `tools/check_catalog_scope.py`
 - `tools/check_help_quality.py`
 
-Historical worker notes, batch JSONs, stale append helpers, retired checks, and the old CMake host wrapper were pruned. The canonical test source is now `tests/golden/exact_calculator_input_queue.jsonl`.
+All current `tools/` files are referenced by build, tests, audit, or docs. Historical worker notes, batch JSONs, stale append helpers, retired checks, and the old CMake host wrapper were pruned. The canonical test source is now `tests/golden/exact_calculator_input_queue.jsonl`.
 Empty `.gitkeep` placeholders were removed from non-empty tracked folders. Active `tools/` scripts are all still referenced by build, tests, or audit docs.
 Generated caches are ignored and were removed from the working tree; transfer/report artifacts are kept ignored because they are used for calculator transfer and live audit status.
