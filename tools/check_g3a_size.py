@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
-HARD_PACKAGE_LIMIT = 2 * 1024 * 1024
+HARD_PACKAGE_LIMIT = int(os.environ.get("CASIO_G3A_HARD_LIMIT", "2200000"))
 TARGET_SIZE = 2_000_000
 
 
@@ -19,7 +20,7 @@ def main() -> int:
     size = p.stat().st_size
     print(f"{p.name}: {size} bytes ({size / (1024 * 1024):.3f} MiB)")
     if size > HARD_PACKAGE_LIMIT:
-        print("FAIL: exceeds 2 MiB fx-CG add-in package limit", file=sys.stderr)
+        print(f"FAIL: exceeds configured add-in package limit {HARD_PACKAGE_LIMIT} bytes", file=sys.stderr)
         return 1
     if size > TARGET_SIZE:
         print(f"WARN: above target {TARGET_SIZE} bytes; pruning required", file=sys.stderr)

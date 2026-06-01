@@ -1868,11 +1868,6 @@ int Console_GetKey(){
   for (;;){
     int keyflag = GetSetupSetting(0x14);
     ck_getkey(&key);
-    if (key==KEY_CTRL_F1F6){
-      cas_alt_fkeys=!cas_alt_fkeys;
-      Console_Disp();
-      continue;
-    }
     bool alph=oldalphastate;//keyflag==4||keyflag==0x84||keyflag==8||keyflag==0x88;
     // if (key==30006) OS_InnerWait_ms(1000); // key='6';
     translate_fkey(key);

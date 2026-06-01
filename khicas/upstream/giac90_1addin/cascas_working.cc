@@ -186,15 +186,16 @@ static bool parse_affine(const working_string &src,long &a,long &b){
   return terms && a;
 }
 
-static bool parse_quad_x2(const working_string &src,long &a,long &b){
+static bool parse_quad_x2(const working_string &src,long &a,long &b,long &l){
   working_string s=compact(src);
-  a=0; b=0;
+  a=0; b=0; l=0;
   int start=0,sign=1,terms=0;
   for (int i=0;i<=int(s.size());++i){
     char c=i<int(s.size())?s[i]:'+';
     if ((c=='+' || c=='-') && i>start){
       working_string t=s.substr(start,i-start);
       int x2=t.find("x^2");
+      int x=t.find('x');
       char *end=0;
       if (x2>=0){
         if (x2+3!=int(t.size())) return false;
@@ -205,6 +206,16 @@ static bool parse_quad_x2(const working_string &src,long &a,long &b){
           if (!end || *end) return false;
         }
         a += sign*cf;
+      }
+      else if (x>=0){
+        if (x!=int(t.size())-1) return false;
+        working_string cs=t.substr(0,x);
+        long cf=1;
+        if (!cs.empty()){
+          cf=strtol(cs.c_str(),&end,10);
+          if (!end || *end) return false;
+        }
+        l += sign*cf;
       }
       else {
         long v=strtol(t.c_str(),&end,10);
@@ -461,6 +472,72 @@ static bool factor_quad_int(long a,long b,long c,char v,working_string &ans){
     }
   }
   return false;
+}
+
+static working_string strip_outer_parens(working_string s){
+  s=trim(s);
+  while (s.size()>1 && s[0]=='(' && match_paren(s,0)==int(s.size())-1)
+    s=s.substr(1,s.size()-2);
+  return s;
+}
+
+static bool split_top_fraction(const working_string &src,working_string &num,working_string &den){
+  working_string s=strip_outer_parens(src);
+  int depth=0;
+  for (int i=0;i<int(s.size());++i){
+    char c=s[i];
+    if (c=='(') ++depth;
+    if (c==')') --depth;
+    if (c=='/' && !depth){
+      num=strip_outer_parens(s.substr(0,i));
+      den=strip_outer_parens(s.substr(i+1,s.size()-i-1));
+      return !num.empty() && !den.empty();
+    }
+  }
+  return false;
+}
+
+static bool factor_expr_simple(const working_string &src,char v,working_string &shown,working_string &fac){
+  working_string e=strip_outer_parens(src);
+  long a=0,b=0,c=0;
+  if (parse_quad_expr(e,v,a,b,c)){
+    if (a && factor_quad_int(a,b,c,v,fac)){
+      shown=poly2_s(a,b,c,v);
+      return true;
+    }
+    if (!a && b){
+      shown=fmt_affine(b,c);
+      fac=factor_lin(b,c,v);
+      return true;
+    }
+  }
+  return false;
+}
+
+static int factor_terms(const working_string &fac,working_string t[2]){
+  int close=fac.size()>0 && fac[0]=='('?match_paren(fac,0):-1;
+  if (close>0 && close+2<int(fac.size()) && fac[close+1]=='*'){
+    t[0]=fac.substr(0,close+1);
+    t[1]=fac.substr(close+2,fac.size()-close-2);
+    return 2;
+  }
+  t[0]=fac;
+  return 1;
+}
+
+static working_string unbracket_factor(const working_string &s){
+  return s.size()>1 && s[0]=='(' && match_paren(s,0)==int(s.size())-1 ? s.substr(1,s.size()-2) : s;
+}
+
+static working_string order_common_first(const working_string &a,const working_string &b,const working_string &common){
+  return a==common ? a+"*"+b : b+"*"+a;
+}
+
+static working_string quotient_after_cancel(const working_string &num,const working_string &den){
+  working_string n=unbracket_factor(num), d=unbracket_factor(den);
+  if (d=="1") return n;
+  if (n=="1") return "1/("+d+")";
+  return "("+n+")/("+d+")";
 }
 
 static char first_var(const working_string &src){
@@ -1072,11 +1149,22 @@ static bool parse_coef_prefix(const working_string &pre,Rat &c){
 
 static bool integrate_reverse_chain_x2(const working_string &expr,working_string &out){
   working_string s=compact(expr);
-  int x=s.find('x');
-  if (x<0) return false;
-  Rat c;
-  if (!parse_coef_prefix(s.substr(0,x),c)) return false;
-  int p=x+1;
+  Rat c=rat(1,1);
+  int p=0;
+  long fa=0,fb=0;
+  bool exact_du=false;
+  if (!s.empty() && s[0]=='('){
+    int fc=match_paren(s,0);
+    if (fc<0 || !parse_affine(s.substr(1,fc-1),fa,fb)) return false;
+    p=fc+1;
+    exact_du=true;
+  }
+  else {
+    int x=s.find('x');
+    if (x<0) return false;
+    if (!parse_coef_prefix(s.substr(0,x),c)) return false;
+    p=x+1;
+  }
   const char *fns[]={"sin(","cos(","exp(",0};
   for (int i=0;fns[i];++i){
     int fl=strlen(fns[i]);
@@ -1084,15 +1172,22 @@ static bool integrate_reverse_chain_x2(const working_string &expr,working_string
     int open=p+fl-1, close=match_paren(s,open);
     if (close!=int(s.size())-1) return false;
     working_string u=s.substr(open+1,close-open-1);
-    long a=0,b=0;
-    if (!parse_quad_x2(u,a,b)) return false;
-    Rat q=rat_div(c,rat(2*a,1));
+    long a=0,b=0,l=0;
+    if (!parse_quad_x2(u,a,b,l)) return false;
+    if (exact_du){
+      if (fa!=2*a || fb!=l) return false;
+    }
+    else
+      c=rat_div(c,rat(2*a,1));
     working_string up=spaced_pm(u), base;
+    Rat q=c;
     if (!strcmp(fns[i],"sin(")){ q=rat(-q.n,q.d); base="cos("+up+")"; }
     else if (!strcmp(fns[i],"cos(")) base="sin("+up+")";
     else base="exp("+up+")";
     out="Sub u="+up+"\n";
-    out += "du="+int_s(2*a)+"*x dx\n";
+    out += "du=";
+    out += l?"("+fmt_affine(2*a,l)+")":int_s(2*a)+"*x";
+    out += " dx\n";
     if (!(q.n==1 && q.d==1))
       out += "scale "+rat_s(q)+"\n";
     out += "Answer: "+mul_expr(q,base)+" + C";
@@ -1102,9 +1197,9 @@ static bool integrate_reverse_chain_x2(const working_string &expr,working_string
     int close=match_paren(s,p);
     if (close<0 || close+1>=int(s.size()) || s[close+1]!='^') return false;
     working_string u=s.substr(p+1,close-p-1);
-    long a=0,b=0;
+    long a=0,b=0,l=0;
     Rat pow;
-    if (!parse_quad_x2(u,a,b) || !parse_rat(s.substr(close+2,s.size()-close-2),pow))
+    if (!parse_quad_x2(u,a,b,l) || l || !parse_rat(s.substr(close+2,s.size()-close-2),pow))
       return false;
     Rat np=rat(pow.n+pow.d,pow.d);
     if (!np.n) return false;
@@ -2008,6 +2103,38 @@ static bool try_algebra(const char *input,working_string &out){
   return false;
 }
 
+static bool try_simplify(const char *input,working_string &out){
+  working_string args[2],num,den,nshow,dshow,nfac,dfac;
+  int n=0;
+  if (!parse_call(input,"simplify",args,2,n) || n<1)
+    return false;
+  working_string e=compact(args[0]);
+  if (!split_top_fraction(e,num,den))
+    return false;
+  char v=first_var(e);
+  if (!factor_expr_simple(num,v,nshow,nfac) || !factor_expr_simple(den,v,dshow,dfac))
+    return false;
+  working_string nt[2],dt[2];
+  int nc=factor_terms(nfac,nt), dc=factor_terms(dfac,dt);
+  for (int i=0;i<nc;++i){
+    for (int j=0;j<dc;++j){
+      if (nt[i]==dt[j]){
+        working_string nr=nc==1?"1":nt[1-i], dr=dc==1?"1":dt[1-j];
+        out="Factorise numerator and denominator:\n";
+        out += nshow+" = ";
+        out += nc==2?order_common_first(nt[0],nt[1],nt[i]):nfac;
+        out += "\n";
+        out += dshow+" = ";
+        out += dc==2?order_common_first(dt[0],dt[1],dt[j]):dfac;
+        out += "\nCancel common factor "+nt[i]+"\nAnswer: ";
+        out += quotient_after_cancel(nr,dr);
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 static bool try_numeric(const char *input,working_string &out){
   working_string s=trim(input?input:""), lo=lower(s);
   const char *prefix="method=numeric,";
@@ -2138,6 +2265,8 @@ bool eval_with_working(const char *input,working_string &out){
   if (try_log_base(input,out))
     return true;
   if (try_algebra(input,out))
+    return true;
+  if (try_simplify(input,out))
     return true;
   if (try_numeric(input,out))
     return true;

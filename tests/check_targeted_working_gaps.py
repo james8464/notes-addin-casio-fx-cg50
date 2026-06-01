@@ -14,6 +14,10 @@ CASES = [
     ("integrate(2*x*cos(x^2),x)", ["Sub u=x^2", "du=2*x dx", "Answer: sin(x^2) + C"]),
     ("integrate(2*x*sin(x^2),x)", ["Sub u=x^2", "Answer: -cos(x^2) + C"]),
     ("integrate(x*(3+x^2)^4,x)", ["Sub u=3 + x^2", "scale 1/2", "Answer: 1/10*(3 + x^2)^5 + C"]),
+    ("integrate((2*x+1)*cos(x^2+x),x)", ["Sub u=x^2 + x", "du=(2*x + 1) dx", "Answer: sin(x^2 + x) + C"]),
+    ("integrate((6*x-5)*exp(3*x^2-5*x),x)", ["Sub u=3x^2 - 5x", "du=(6*x - 5) dx", "Answer: exp(3x^2 - 5x) + C"]),
+    ("simplify((x^2+3*x+2)/(x+1))", ["Factorise numerator and denominator:", "x^2 + 3*x + 2 = (x + 1)*(x + 2)", "Cancel common factor (x + 1)", "Answer: x + 2"]),
+    ("simplify((x^2-4)/(x^2-2*x))", ["x^2 - 4 = (x - 2)*(x + 2)", "x^2 - 2*x = (x - 2)*(x)", "Cancel common factor (x - 2)", "Answer: (x + 2)/(x)"]),
 ]
 
 

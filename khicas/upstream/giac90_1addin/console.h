@@ -15,7 +15,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define KEY_CTRL_F1F6 30119
 
 ustl::string help_insert(const char * cmdline,int & back,bool warn);
 
