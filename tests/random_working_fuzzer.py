@@ -15,8 +15,68 @@ PROGRESS = ROOT / "progress" / "state.jsonl"
 
 OPS = ["+", "-", "*", "/"]
 FUNCS = ["sin", "cos", "tan", "ln", "sqrt", "exp"]
-COMMANDS = ["diff", "integrate", "simplify", "solve", "range", "xform"]
+COMMANDS = [
+    "diff", "integrate", "simplify", "solve", "range",
+    "xform", "xform", "xform",
+    "log", "expand", "binomial", "apart", "defint", "trig",
+]
 WEIRD_CHARS = string.ascii_letters + string.digits + "+-*/^=(),[]{} ._"
+
+TEMPLATES = {
+    "diff": [
+        "diff((x+1)(x-2)ln(x),x)",
+        "diff(ln(((x)-(6))*((x)^2)),x)",
+        "diff((sin(x))^3,x)",
+        "diff((sin(x))*(7-x)-x*x,x)",
+        "diff((x^2+1)*sin(3*x-2),x)",
+        "diff((x^2+1)/(x-1),x)",
+    ],
+    "integrate": [
+        "integrate((ln(x))^2,x,2)",
+        "integrate(x^2*ln(x),x)",
+        "integrate(3*x^2*ln(x),x)",
+        "integrate((x+1)/(x^2+2*x+3)^3,x)",
+        "integrate(x^2+sin(2*x)+exp(3*x),x)",
+        "integrate(exp(ln(x)),x,3)",
+        "integrate(tan(x),x)",
+    ],
+    "simplify": [
+        "simplify((x^2+3*x+2)/(x+1))",
+        "simplify((x^2-1)/(1-x))",
+        "simplify((x^2+2*x+1)/(x+1)^2)",
+        "simplify(sin(x))",
+    ],
+    "solve": [
+        "solve(0=(10-0.4x)*ln(x+1),x)",
+        "solve(x=-2.7,x)",
+        "solve(x=x+6,x)",
+        "solve(tan(x)=1/2,x)",
+        "solve(dy/dx=y,y)",
+    ],
+    "range": [
+        "range(2*x+3)",
+        "range(x^2+4*x+7)",
+        "range(2*sin(3*x-1)-5)",
+        "range(exp(x))",
+        "range(ln(x))",
+    ],
+    "xform": [
+        "xform(2*sin(x-60)=cos(x-30),tan(x)=3*sqrt(3))",
+        "xform(1+tan(x)^2,sec(x)^2)",
+        "xform(1+cot(x)^2,cosec(x)^2)",
+        "xform(sin(x)^2+cos(x)^2,1)",
+        "xform(log(a,x),ln(x)/ln(a))",
+        "xform(log(2,x^3),3log(2,x))",
+        "xform((x+2)^2,x^2+4*x+4)",
+        "xform(sin(x)+2cos(x),sqrt(5)*sin(x+atan(2)))",
+    ],
+    "log": ["log(2,x)", "log(5,x^2)"],
+    "expand": ["expand((1-5x)^4)", "expand((2x-1)(x+4)-4(x-3)^2)"],
+    "binomial": ["binomial((1+8x)^(1/2))", "binomial((1-2x)^(-1))"],
+    "apart": ["apart(6/(u(3+2u)))"],
+    "defint": ["defint(sin(2x),x,0,pi/2)", "defint(9/(2x+1)^2,x,0,1)"],
+    "trig": ["sin(x)+2cos(x),method=rform", "sin(x+pi)"],
+}
 
 
 def maybe_space(rng: random.Random) -> str:
@@ -68,8 +128,10 @@ def equation(rng: random.Random, depth: int) -> str:
     return f"{expr(rng, depth)}={expr(rng, depth)}"
 
 
-def command_input(rng: random.Random, depth: int) -> tuple[str, str]:
+def command_input(rng: random.Random, depth: int, template_rate: float) -> tuple[str, str]:
     cmd = rng.choice(COMMANDS)
+    if rng.random() < template_rate and cmd in TEMPLATES:
+        return cmd, rng.choice(TEMPLATES[cmd])
     if cmd == "diff":
         return cmd, f"diff({expr(rng, depth)},{rng.choice(['x', ' x ', 'x '])})"
     if cmd == "integrate":
@@ -81,8 +143,10 @@ def command_input(rng: random.Random, depth: int) -> tuple[str, str]:
         return cmd, f"solve({equation(rng, depth)},x)"
     if cmd == "range":
         return cmd, f"range({expr(rng, depth)})"
+    if cmd in TEMPLATES:
+        return cmd, rng.choice(TEMPLATES[cmd])
     start = expr(rng, depth)
-    target = rng.choice([f"expand({start})", f"factor({start})", expr(rng, depth)])
+    target = rng.choice([f"expand({start})", f"factor({start})", expr(rng, depth), "tan(x)=3*sqrt(3)"])
     return cmd, f"xform({start},{target})"
 
 
@@ -91,10 +155,10 @@ def noisy_input(rng: random.Random) -> tuple[str, str]:
     return "noise", "".join(rng.choice(WEIRD_CHARS) for _ in range(n)).strip()
 
 
-def make_case(rng: random.Random, depth: int, noise_rate: float) -> tuple[str, str]:
+def make_case(rng: random.Random, depth: int, noise_rate: float, template_rate: float) -> tuple[str, str]:
     if rng.random() < noise_rate:
         return noisy_input(rng)
-    return command_input(rng, depth)
+    return command_input(rng, depth, template_rate)
 
 
 def classify(kind: str, src: str, out: str, code: int, elapsed: float, timeout: bool) -> str:
@@ -105,6 +169,11 @@ def classify(kind: str, src: str, out: str, code: int, elapsed: float, timeout: 
         return "crash"
     if not stripped:
         return "empty"
+    lines = [line.strip() for line in stripped.splitlines() if line.strip()]
+    if "Exact:" in stripped:
+        return "exact-label"
+    if lines and lines[-1].startswith("Answer:"):
+        return "answer-label-final"
     lowered = stripped.lower()
     if any(x in lowered for x in ["segmentation", "abort", "system error", "reboot", "traceback"]):
         return "fatal-text"
@@ -153,6 +222,7 @@ def main() -> int:
     ap.add_argument("--depth", type=int, default=4)
     ap.add_argument("--timeout", type=float, default=4.0)
     ap.add_argument("--noise-rate", type=float, default=0.08)
+    ap.add_argument("--template-rate", type=float, default=0.45)
     ap.add_argument("--stop-on-fail", action="store_true")
     ap.add_argument("--strict", action="store_true", help="count weak fallback as failure")
     ap.add_argument("--jsonl", type=Path, default=ROOT / "tests" / "reports" / "random_fuzz_latest.jsonl")
@@ -170,7 +240,7 @@ def main() -> int:
     with args.jsonl.open("w", encoding="utf-8") as report:
         try:
             while args.forever or done < args.count:
-                kind, src = make_case(rng, args.depth, args.noise_rate)
+                kind, src = make_case(rng, args.depth, args.noise_rate, args.template_rate)
                 code, out, elapsed, timeout = run_case(src, args.timeout)
                 verdict = classify(kind, src, out, code, elapsed, timeout)
                 fail = verdict not in {"ok", "slow"} and (args.strict or verdict != "weak-fallback")
