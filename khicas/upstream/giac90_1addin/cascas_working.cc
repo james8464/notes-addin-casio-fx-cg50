@@ -1795,6 +1795,189 @@ static bool try_zero_product_solve(const working_string &eqraw,const working_str
   return true;
 }
 
+static bool rat_is_one(Rat r){ return r.n==r.d; }
+static bool rat_is_minus_one(Rat r){ return r.n==-r.d; }
+
+static working_string rat_abs_s(Rat r){
+  if (r.n<0) r.n=-r.n;
+  return rat_s(r);
+}
+
+static working_string fmt_rat_var(Rat a,char v){
+  working_string out;
+  if (rat_is_one(a)) out += v;
+  else if (rat_is_minus_one(a)){ out += "-"; out += v; }
+  else {
+    out += rat_s(a);
+    out += "*";
+    out += v;
+  }
+  return out;
+}
+
+static working_string fmt_linear_rat(Rat a,Rat b,char v){
+  if (!a.n)
+    return rat_s(b);
+  working_string out;
+  if (a.n<0 && b.n){
+    out=rat_s(b);
+    out += " - ";
+    out += rat_abs_s(a);
+    if (!rat_is_minus_one(a))
+      out += "*";
+    out += v;
+    return out;
+  }
+  out=fmt_rat_var(a,v);
+  if (b.n>0)
+    out += " + "+rat_s(b);
+  if (b.n<0)
+    out += " - "+rat_s(rat(-b.n,b.d));
+  return out;
+}
+
+static working_string fmt_expr_for_working(const working_string &src,char v='x'){
+  working_string s=strip_outer_parens(nospace_lower(src));
+  Rat a,b;
+  if (parse_linear_rat_var(s,v,a,b))
+    return fmt_linear_rat(a,b,v);
+  if (s.find("ln(")==0 && s[s.size()-1]==')')
+    return "ln("+fmt_expr_for_working(s.substr(3,s.size()-4),v)+")";
+  if (!s.empty() && s[0]=='('){
+    int close=match_paren(s,0);
+    if (close>0 && close+1<int(s.size()) && s[close+1]=='^')
+      return "("+fmt_expr_for_working(s.substr(1,close-1),v)+")^"+s.substr(close+2,s.size()-close-2);
+  }
+  return spaced_pm(s);
+}
+
+static bool split_affine_power_rat(const working_string &src,char v,Rat &a,Rat &b,Rat &p){
+  working_string s=strip_outer_parens(nospace_lower(src));
+  if (s.empty() || s[0]!='(')
+    return false;
+  int close=match_paren(s,0);
+  if (close<0 || close+1>=int(s.size()) || s[close+1]!='^')
+    return false;
+  return parse_linear_rat_var(s.substr(1,close-1),v,a,b) &&
+         parse_rat(s.substr(close+2,s.size()-close-2),p);
+}
+
+static working_string coeff_over_base(Rat q,const working_string &base){
+  if (!q.n)
+    return "0";
+  bool neg=q.n<0;
+  if (neg) q.n=-q.n;
+  working_string out=neg?"-":"";
+  if (rat_is_one(q))
+    out += "1";
+  else
+    out += rat_s(q);
+  out += "/("+base+")";
+  return out;
+}
+
+static bool diff_simple_expr(const working_string &src,char v,working_string &deriv,working_string &shown){
+  working_string s=strip_outer_parens(nospace_lower(src));
+  shown=fmt_expr_for_working(s,v);
+  Rat a,b;
+  if (parse_linear_rat_var(s,v,a,b)){
+    deriv=rat_s(a);
+    return true;
+  }
+  long coef=0,pow=0;
+  if (parse_power_term_var(s,v,coef,pow)){
+    deriv=derivative_monomial(coef,pow,v);
+    if (deriv.empty()) deriv="0";
+    return true;
+  }
+  if (diff_sum_terms(s,deriv))
+    return true;
+  if (s.find("ln(")==0 && s[s.size()-1]==')'){
+    working_string arg=s.substr(3,s.size()-4);
+    if (parse_linear_rat_var(arg,v,a,b)){
+      working_string base=fmt_linear_rat(a,b,v);
+      deriv=rat_is_one(a) ? "1/("+base+")" : rat_s(a)+"/("+base+")";
+      shown="ln("+base+")";
+      return true;
+    }
+  }
+  return false;
+}
+
+static working_string mul_deriv_factor(const working_string &d,const working_string &f){
+  if (d=="0") return "0";
+  if (d=="1") return f;
+  if (d=="-1") return "-"+f;
+  Rat q;
+  if (parse_rat(d,q))
+    return mul_expr(q,f);
+  if (d.find("1/(")==0)
+    return "("+f+")/"+d.substr(2,d.size()-2);
+  if (contains(d,"/"))
+    return "("+f+")*"+d;
+  return d+"*"+f;
+}
+
+static bool try_diff_product_rule(const working_string &expr,char v,const working_string &rawvar,working_string &out){
+  working_string factors[2],du,dv,u,vv;
+  int n=split_top_product(expr,factors,2);
+  if (n!=2)
+    return false;
+  if (!diff_simple_expr(factors[0],v,du,u) || !diff_simple_expr(factors[1],v,dv,vv))
+    return false;
+  out="Product rule:\n";
+  out += "u = "+u+", v = "+vv+"\n";
+  out += "du/d"+rawvar+" = "+du+"\n";
+  out += "dv/d"+rawvar+" = "+dv+"\n";
+  out += "d(uv)/d"+rawvar+" = u'v + uv'\n";
+  out += "Answer: "+mul_deriv_factor(du,vv)+" + "+mul_deriv_factor(dv,u);
+  return true;
+}
+
+static bool try_diff_quotient_rule(const working_string &expr,char v,const working_string &rawvar,working_string &out){
+  working_string num,den,du,dv,u,vv;
+  if (!split_top_fraction(nospace_lower(expr),num,den))
+    return false;
+  if (!diff_simple_expr(num,v,du,u) || !diff_simple_expr(den,v,dv,vv))
+    return false;
+  out="Quotient rule:\n";
+  out += "u = "+u+", v = "+vv+"\n";
+  out += "du/d"+rawvar+" = "+du+"\n";
+  out += "dv/d"+rawvar+" = "+dv+"\n";
+  out += "d(u/v)/d"+rawvar+" = (u'v - uv')/v^2\n";
+  out += "Answer: (("+du+")*("+vv+") - ";
+  if (dv=="1")
+    out += "("+u+")";
+  else
+    out += "("+u+")*("+dv+")";
+  out += ")/("+vv+")^2";
+  return true;
+}
+
+static bool try_diff_log_power_chain(const working_string &expr,char v,const working_string &rawvar,working_string &out){
+  working_string s=strip_outer_parens(nospace_lower(expr));
+  if (s.find("ln(")!=0 || s[s.size()-1]!=')')
+    return false;
+  working_string arg=s.substr(3,s.size()-4);
+  Rat a,b,p;
+  if (!split_affine_power_rat(arg,v,a,b,p))
+    return false;
+  working_string base=fmt_linear_rat(a,b,v);
+  Rat q=rat_mul(p,a);
+  out="Chain rule:\n";
+  out += "d/d"+rawvar+" ln(("+base+")^"+rat_s(p)+")\n";
+  out += "Let u = ("+base+")^"+rat_s(p)+"\n";
+  out += "inner derivative = ";
+  if (rat_is_one(q))
+    out += "("+base+")";
+  else
+    out += rat_s(q)+"*("+base+")";
+  out += "\n";
+  out += "d/d"+rawvar+" ln(u)=u'/u\n";
+  out += "Answer: "+coeff_over_base(q,base);
+  return true;
+}
+
 static bool try_implicit_diff(const char *input,working_string &out){
   working_string args[3];
   int n=0;
@@ -1835,6 +2018,14 @@ static bool try_diff(const char *input,working_string &out){
   }
   if (var!="x")
     return false;
+  if (var.size()==1){
+    if (try_diff_log_power_chain(args[0],var[0],var,out))
+      return true;
+    if (try_diff_product_rule(args[0],var[0],var,out))
+      return true;
+    if (try_diff_quotient_rule(args[0],var[0],var,out))
+      return true;
+  }
   if (e=="108x-36x^2+3x^3"){
     out="dy/dx = ";
     out += "- ";

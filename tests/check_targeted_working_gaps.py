@@ -24,6 +24,10 @@ CASES = [
     ("simplify((x^2-1)/(x+1)^2)", ["x^2 - 1 = (x + 1)*(x - 1)", "Cancel common factor (x + 1)", "Answer: (x - 1)/(x + 1)"]),
     ("solve(0=(10-0.4x)*ln(x+1),x)", ["Solve by zero-product rule:", "10 - 2/5*x = 0", "ln(x + 1) = 0", "Domain: x + 1 > 0", "Answer: x = [0, 25]"]),
     ("solve((3-0.5*x)*ln(2*x-1)=0,x)", ["Solve by zero-product rule:", "3 - 1/2*x = 0", "ln(2*x - 1) = 0", "Domain: 2*x - 1 > 0", "Answer: x = [1, 6]"]),
+    ("diff((10-0.4x)*ln(x+1))", ["Product rule:", "u = 10 - 2/5*x", "v = ln(x + 1)", "du/dx = -2/5", "dv/dx = 1/(x + 1)", "Answer: -2/5*ln(x + 1) + (10 - 2/5*x)/(x + 1)"]),
+    ("diff((2*x+1)*ln(3*x-2),x)", ["Product rule:", "u = 2*x + 1", "v = ln(3*x - 2)", "du/dx = 2", "dv/dx = 3/(3*x - 2)", "Answer: 2*ln(3*x - 2) + (2*x + 1)*3/(3*x - 2)"]),
+    ("diff((x^2+1)/(x-1),x)", ["Quotient rule:", "u = x^2 + 1", "v = x - 1", "du/dx = 2*x", "dv/dx = 1", "Answer: ((2*x)*(x - 1) - (x^2 + 1))/(x - 1)^2"]),
+    ("diff(ln((x+1)^2),x)", ["Chain rule:", "d/dx ln((x + 1)^2)", "inner derivative = 2*(x + 1)", "Answer: 2/(x + 1)"]),
 ]
 
 
