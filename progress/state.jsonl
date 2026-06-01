@@ -618,3 +618,6 @@
 {"phase":"queue","last_event":"exact queue 14714/14714","queue":"14714/14714 done, 14714 ok, 0 bad","tests":"queue-run 14714/14714"}
 {"phase":"ui","last_event":"final build for calculator after upstream-style F6/R fix","commit":"pending","graph":"docs/GRAPH.md 2026-06-01 12:40 BST","g3a_size":2091580,"headroom":5572,"sha256":"c72220433a55881619b6e726ec35e2e8867374148c239938ae25e2e1be41a70e","tests":"compile ok,size ok,metadata ok,border ok,catalog ok,help ok,queue-run 14714/14714,strict-markers 13331/14708","queue":"14714/14714 runtime; 13331/14708 strict markers","unsupported":0,"eta":"manual calculator check: F6 menu should no longer smear; R should blink in status bar"}
 {"phase":"queue","last_event":"exact queue 14714/14714","queue":"14714/14714 done, 14714 ok, 0 bad","tests":"queue-run 14714/14714"}
+{"phase":"queue","last_event":"exact queue 0/14722","queue":"0/14722 done, 0 ok, 0 bad","tests":"queue-run 0/14722"}
+{"phase":"queue","last_event":"exact queue 14722/14722","queue":"14722/14722 done, 14722 ok, 0 bad","tests":"queue-run 14722/14722"}
+{"phase":"queue","last_event":"exact queue 14722/14722","queue":"14722/14722 done, 14722 ok, 0 bad","tests":"queue-run 14722/14722"}

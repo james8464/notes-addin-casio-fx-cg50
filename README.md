@@ -29,7 +29,7 @@ Current status:
 - hard limit headroom: `5,572` bytes under `2,097,152`
 - sha256: `c72220433a55881619b6e726ec35e2e8867374148c239938ae25e2e1be41a70e`
 - help pack: `CAS.PAK`, `31,667` bytes, sha256 `c94294278bdfe3255577241bf57865f63596b8aac7a73ab6039b2ddbf15e2eab`
-- exact queue runtime: `14,714/14,714`
+- exact queue runtime: `14,722/14,722`
 - strict marker quality: `13,331/14,708`
 - online challenge source coverage: MadAsMaths exact rows in queue; Daily Integral hard-integration style probes inspected from `https://dailyintegral.com/archive`
 

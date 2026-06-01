@@ -72,7 +72,7 @@ graph TD
   Live --> TUI["tools/audit_progress_tui.py"]
   Report --> TUI
   TUI --> Panels["animated panels: status badges, wide side-by-side layout, phase lanes, health score, gate board, sync, last commit, change counts, state age, artifact headroom, live rate and ETA, queue bars, strict-marker ratios, strict-gap bar map, freshness rows, animated scan/meter lines, cleanup byte totals and cleanup command, project hygiene, tooling inventory, transfer path, strict clusters with first gap samples, test checkpoints, release blockers, risk, ignored workspace, active-tool counts, next action, command panel"]
-  Runner --> Runtime["14,714/14,714 runtime-safe"]
+  Runner --> Runtime["14,722/14,722 runtime-safe"]
   Runner --> Strict["13,331/14,708 strict marker pass"]
   Strict --> Remaining["remaining strict gaps: 1,377; integrate remains largest cluster; 5,572 B hard headroom"]
 ```
