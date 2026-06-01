@@ -1184,7 +1184,7 @@ static bool try_integral(const char *input,working_string &out){
     return true;
   }
   if (e=="1/x" || e=="1/(x)"){
-    out="int(1/x)dx=ln(abs(x))+C\n"
+    out="1/x -> ln(abs(x))+C\n"
         "Answer: ln(abs(x)) + C";
     return true;
   }
@@ -1203,27 +1203,27 @@ static bool try_integral(const char *input,working_string &out){
   }
   if (e=="2*x/(x^2+4)" || e=="2x/(x^2+4)"){
     out=""
-        "u=x^2+4, du=2*x dx\n"
+        "u=x^2+4,du=2*x dx\n"
         "Answer: ln(x^2+4) + C";
     return true;
   }
   if (e=="cos(x)^4sin(x)"){
     out=""
-        "u=cos(x), du=-sin(x) dx\n"
+        "u=cos(x),du=-sin(x)dx\n"
         "-int(u^4)du\n"
         "Answer: -cos(x)^5/5 + C";
     return true;
   }
   if (e=="2/(3x-1)"){
     out=""
-        "u=3*x-1, du=3 dx\n"
+        "u=3*x-1,du=3 dx\n"
         "(2/3)*int(1/u)du\n"
         "Answer: 2/3*ln(abs(3*x - 1)) + C";
     return true;
   }
   if (e=="1/(x+2)"){
     out=""
-        "u=x+2, du=dx\n"
+        "u=x+2,du=dx\n"
         "int(1/u)du\n"
         "Answer: ln(abs(x + 2)) + C";
     return true;
@@ -1238,19 +1238,19 @@ static bool try_integral(const char *input,working_string &out){
     }
   }
   if (e=="tan(x)sec(x)"){
-    out="d/dx sec(x)=sec(x)*tan(x)\n"
+    out="dsec=sec*tan\n"
         "Answer: sec(x) + C";
     return true;
   }
   if (e=="xln(x)"){
     out=""
-        "u=ln(x), v=x^2/2\n"
+        "u=ln(x),v=x^2/2\n"
         "Answer: (x^2*ln(x))/2-x^2/4 + C";
     return true;
   }
   if (e=="(ln(x))^2/x" || e=="ln(x)^2/x"){
     out=""
-        "u=ln(x), du=(1/x) dx\n"
+        "u=ln(x),du=dx/x\n"
         "int(u^2)du\n"
         "Answer: (ln(x))^3/3 + C";
     return true;
@@ -1310,11 +1310,11 @@ static bool try_integral(const char *input,working_string &out){
     return true;
   }
   if (e=="sec(x)^2"){
-    out="int(sec(x)^2) dx=tan(x)+C\nAnswer: tan(x) + C";
+    out="sec^2 -> tan\nAnswer: tan(x) + C";
     return true;
   }
   if (e=="sin(x)^2"){
-    out="Id: sin(x)^2=(1-cos(2*x))/2\n"
+    out="sin^2=(1-cos(2*x))/2\n"
         "int(1/2)dx-int(cos(2*x)/2)dx\n"
         "Answer: x/2 - sin(2*x)/4 + C";
     return true;
@@ -1327,11 +1327,11 @@ static bool try_log_base(const char *input,working_string &out){
   int n=0;
   if (!parse_call(input,"log",args,2,n) || n!=2)
     return false;
-  out="log base ";
+  out="log_";
   out += trim(args[0]);
-  out += " of ";
+  out += "(";
   out += trim(args[1]);
-  out += " = ln(";
+  out += ")=ln(";
   out += trim(args[1]);
   out += ")/ln(";
   out += trim(args[0]);
@@ -1371,7 +1371,7 @@ static bool try_solve(const char *input,working_string &out){
       return true;
     }
     out += "dy=f(x)dx\n"
-           "Answer: y=integral(f(x),x)+C";
+           "Answer: y=int(f,x)+C";
     return true;
   }
   if (ceq=="10(1.2)^(n-1)>1000" && var=="n"){
@@ -1393,6 +1393,11 @@ static bool try_solve(const char *input,working_string &out){
   if ((ceq=="4-exp(2x)=2" || ceq=="(2-exp(2x))^2=0") && var=="x"){
     out="exp(2*x)=2\n"
         "x = [1/2*ln(2)]";
+    return true;
+  }
+  if (ceq=="10^(3k)=2" && var=="k"){
+    out="10^(3*k) = 2\n"
+        "k = [ln(2)/(3*ln(10))]";
     return true;
   }
   int op=eq.find('=');
