@@ -241,7 +241,7 @@ def rand_simplify(rng: random.Random) -> str:
 
 
 def rand_xform(rng: random.Random) -> str:
-    case = rng.randrange(8)
+    case = rng.randrange(10)
     if case == 0:
         terms = ["1", "tan(x)^2"]
         rng.shuffle(terms)
@@ -266,7 +266,69 @@ def rand_xform(rng: random.Random) -> str:
     if case == 6:
         a = rng.randrange(1, 6)
         return f"xform(x^2+{2*a}*x+{a*a},(x+{a})^2)"
-    return rng.choice(TEMPLATES["xform"])
+    if case == 7:
+        return "xform(2*sin(x-60)=cos(x-30),tan(x)=3*sqrt(3))"
+    if case == 8:
+        return "xform(2*sin(x-60)-cos(x-30)=0,tan(x)=3*sqrt(3))"
+    a, b = rng.randrange(1, 6), rng.randrange(1, 6)
+    return f"xform({a}*sin(x)+{b}cos(x),sqrt({a*a+b*b})*sin(x+atan({b}/{a})))"
+
+
+def rand_log(rng: random.Random) -> str:
+    base = rng.randrange(2, 10)
+    arg = rng.choice(["x", f"x^{rng.randrange(2, 6)}", f"({lin(rng)})"])
+    return f"log({base},{arg})"
+
+
+def rand_expand(rng: random.Random) -> str:
+    case = rng.randrange(4)
+    if case == 0:
+        a, b = rng.randrange(1, 6), rng.randrange(-6, 7)
+        return f"expand(({a}*x{b:+d})^2)"
+    if case == 1:
+        a, b = rng.randrange(1, 6), rng.randrange(1, 6)
+        return f"expand((x+{a})(x-{b}))"
+    if case == 2:
+        return f"expand((1{rng.choice(['+','-'])}{rng.randrange(1,6)}x)^4)"
+    return f"expand(({expr(rng, 2)})*({expr(rng, 2)}))"
+
+
+def rand_binomial(rng: random.Random) -> str:
+    sign = rng.choice(["+", "-"])
+    a = rng.randrange(1, 9)
+    p = rng.choice(["1/2", "-1", "-1/2", "2/3"])
+    return f"binomial((1{sign}{a}x)^({p}))"
+
+
+def rand_apart(rng: random.Random) -> str:
+    a, b, c = rng.randrange(1, 8), rng.randrange(1, 6), rng.randrange(1, 6)
+    var = rng.choice(["x", "u", "t"])
+    return f"apart({a}/(({var}+{b})({var}-{c})))"
+
+
+def rand_defint(rng: random.Random) -> str:
+    case = rng.randrange(4)
+    if case == 0:
+        k = rng.randrange(1, 6)
+        return f"defint(sin({k}x),x,0,pi/{k})"
+    if case == 1:
+        p = rng.randrange(1, 5)
+        return f"defint(x^{p},x,{rng.randrange(0,3)},{rng.randrange(4,9)})"
+    if case == 2:
+        k = rng.randrange(1, 6)
+        return f"defint(exp({k}x),x,0,1)"
+    return f"defint(1/(x+{rng.randrange(1,6)}),x,0,{rng.randrange(1,6)})"
+
+
+def rand_trig(rng: random.Random) -> str:
+    case = rng.randrange(4)
+    if case == 0:
+        return f"{rng.randrange(1,6)}*sin(x)+{rng.randrange(1,6)}cos(x),method=rform"
+    if case == 1:
+        return f"sin(x+{rng.choice(['pi', 'pi/2', '2*pi'])})"
+    if case == 2:
+        return f"cos(x+{rng.choice(['pi', 'pi/2', '2*pi'])})"
+    return f"tan(x{rng.choice(['+','-'])}{rng.randrange(1,90)})"
 
 
 def command_input(rng: random.Random, depth: int, template_rate: float, commands: list[str] | None = None) -> tuple[str, str]:
@@ -285,8 +347,18 @@ def command_input(rng: random.Random, depth: int, template_rate: float, commands
         return cmd, rand_range(rng)
     if cmd == "xform":
         return cmd, rand_xform(rng)
-    if cmd in TEMPLATES:
-        return cmd, rng.choice(TEMPLATES[cmd])
+    if cmd == "log":
+        return cmd, rand_log(rng)
+    if cmd == "expand":
+        return cmd, rand_expand(rng)
+    if cmd == "binomial":
+        return cmd, rand_binomial(rng)
+    if cmd == "apart":
+        return cmd, rand_apart(rng)
+    if cmd == "defint":
+        return cmd, rand_defint(rng)
+    if cmd == "trig":
+        return cmd, rand_trig(rng)
     start = expr(rng, depth)
     target = rng.choice([f"expand({start})", f"factor({start})", expr(rng, depth), "tan(x)=3*sqrt(3)"])
     return cmd, f"xform({start},{target})"
@@ -364,7 +436,7 @@ def main() -> int:
     ap.add_argument("--depth", type=int, default=4)
     ap.add_argument("--timeout", type=float, default=4.0)
     ap.add_argument("--noise-rate", type=float, default=0.08)
-    ap.add_argument("--template-rate", type=float, default=0.10)
+    ap.add_argument("--template-rate", type=float, default=0.0)
     ap.add_argument("--only", default="", help="comma-separated command names to generate")
     ap.add_argument("--stop-on-fail", action="store_true")
     ap.add_argument("--strict", action="store_true", help="count weak fallback as failure")

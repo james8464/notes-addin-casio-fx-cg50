@@ -23,10 +23,9 @@ def main() -> int:
     require(source, "fill_rect(0, 0, 7, LCD_HEIGHT_PX, kPink);", "left border")
     require(source, "fill_rect(LCD_WIDTH_PX - 7, 0, 7, LCD_HEIGHT_PX, kPink);", "right border")
     require(source, "fill_rect(0, LCD_HEIGHT_PX - 7, LCD_WIDTH_PX, 7, kPink);", "bottom border")
-    require(source, "draw_r_indicator", "R indicator")
-    require(source, "fill_rect(339, 1, 21, 22, visible ? kBlue : kWhite);", "R blue highlight")
-    require(source, 'PrintXY(343, 4, (char *)"R"', "R glyph")
-    require(source, "r_visible = !r_visible;", "R blink toggle")
+    for marker in ("draw_r_indicator", "blink_ticks", '"R"'):
+        if marker in source:
+            raise SystemExit(f"FAIL runmat removed R marker present: {marker!r}")
 
     require(makefile, "RUNMAT.g3a: runmat_mock.bin", "make target")
     require(makefile, "-n basic:RunMat -n internal:RUNMAT", "metadata")
