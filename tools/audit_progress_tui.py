@@ -366,6 +366,23 @@ def ignored_rows(limit: int = 4) -> list[str]:
     return rows[:limit]
 
 
+def cleanup_rows(limit: int = 5) -> list[str]:
+    paths = [
+        ROOT / "build",
+        ROOT / "khicas" / "upstream" / "giac90_1addin" / "CAS.g3a",
+    ]
+    rows: list[str] = []
+    for path in paths:
+        size = tree_size(path)
+        if size:
+            rows.append(f"rm -rf {path.relative_to(ROOT)}  ({human_size(size)})")
+    for name in ("__pycache__", ".DS_Store", "*.pyc"):
+        found = list(ROOT.rglob(name))[:2]
+        if found:
+            rows.append(f"remove {name} ({len(found)} sample)")
+    return rows[:limit] or ["no cleanup candidates"]
+
+
 def ratio_history(label: str = "queue-run", limit: int = 18) -> str:
     vals: list[float] = []
     if STATE.exists():
@@ -527,12 +544,35 @@ def bar(done: int, total: int, width: int, frame: int, enabled: bool) -> str:
     return color(body, code, enabled) + f" {frac * 100:5.1f}%"
 
 
+def split_bar(ok: int, bad: int, total: int, width: int, frame: int, enabled: bool) -> str:
+    if total <= 0:
+        return color("-" * width, C.dim, enabled) + " n/a"
+    ok_w = int(width * pct(ok, total))
+    bad_w = int(width * pct(bad, total))
+    idle_w = max(0, width - ok_w - bad_w)
+    idle = ["-"] * idle_w
+    if idle:
+        idle[(frame // 2) % idle_w] = ">"
+    body = (
+        color("#" * ok_w, C.green, enabled)
+        + color("!" * bad_w, C.red, enabled)
+        + color("".join(idle), C.dim, enabled)
+    )
+    return body + f" {ok / total * 100:5.1f}% ok"
+
+
 def sweep(width: int, frame: int, enabled: bool) -> str:
     width = max(12, width)
     cells = ["."] * width
     for off in range(3):
         cells[(frame + off) % width] = "#"
     return color("".join(cells), C.magenta, enabled)
+
+
+def wave(width: int, frame: int, enabled: bool) -> str:
+    marks = "-=+#"
+    cells = [marks[(i + frame) % len(marks)] for i in range(max(12, width))]
+    return color("".join(cells), C.cyan, enabled)
 
 
 def ticker(text: str, width: int, frame: int) -> str:
@@ -585,7 +625,8 @@ def queue_health(st: Stat, frame: int, width: int, enabled: bool) -> list[str]:
         f"{badge(state, state_code, enabled)} active {st.queue_active}",
         f"age {st.queue_live_age}  rate {st.queue_rate}  eta {st.queue_eta}",
         f"pass {st.queue_ok:,}/{st.queue_total:,}  fail {st.queue_bad:,}",
-        f"scan {sweep(max(12, width // 3), frame, enabled)}",
+        split_bar(st.queue_ok, st.queue_bad, st.queue_total, max(18, width), frame, enabled),
+        f"scan {wave(max(18, width), frame, enabled)}",
     ]
     return rows
 
@@ -754,6 +795,7 @@ def command_rows() -> list[str]:
         "python3 tests/run_exact_queue.py --engine production --workers 8",
         "python3 tests/run_exact_queue.py --engine production --workers 8 --strict-markers",
         f"python3 {ROOT / 'tools' / 'audit_progress_tui.py'} --fps 12",
+        f"transfer {ROOT / 'calculator_files' / 'CAS.g3a'}",
     ]
 
 
@@ -817,8 +859,9 @@ def render_compact(st: Stat, frame: int, width: int, enabled: bool) -> str:
         kv("queue", f"{st.queue_rows:,} rows / {st.queue_inputs:,} inputs", width, enabled),
         kv("latest", f"{st.queue}  report age {st.report_age}", width, enabled),
         kv("live", f"{st.queue_active}  age {st.queue_live_age}  rate {st.queue_rate}  eta {st.queue_eta}", width, enabled),
+        kv("accuracy", split_bar(st.queue_ok, st.queue_bad, st.queue_total, bar_w, frame, enabled), width, enabled),
         trim(color("progress", C.bold, enabled), width),
-        trim(f"trend          {st.ratio_trend}  {sweep(18, frame, enabled)}", width),
+        trim(f"trend          {st.ratio_trend}  {wave(18, frame, enabled)}", width),
     ]
     for label, done, total in st.ratios[:4]:
         lines.append(trim(f"{label:<14} {bar(done, total, bar_w, frame, enabled)} {done}/{total}", width))
@@ -833,6 +876,7 @@ def render_compact(st: Stat, frame: int, width: int, enabled: bool) -> str:
     ignored = ignored_rows()
     if ignored:
         lines.append(kv("ignored", "; ".join(ignored), width, enabled))
+    lines.append(kv("cleanup", "; ".join(cleanup_rows(2)), width, enabled))
     lines.append(kv("active", f"tools {st.tool_count}  test scripts {st.test_count}", width, enabled))
     quality = f"unsupported {st.unsupported}"
     if st.fail_clusters:
@@ -847,7 +891,7 @@ def render_compact(st: Stat, frame: int, width: int, enabled: bool) -> str:
     lines.extend(
         [
             trim("-" * width, width),
-            trim("run: " + "  |  ".join(command_rows()[-2:]), width),
+            trim("run: " + "  |  ".join(command_rows()[-3:]), width),
             trim("q/ctrl-c quit  --once one frame  --fps N animation rate  --scan-interval N refresh rate", width),
         ]
     )
@@ -963,6 +1007,8 @@ def render(st: Stat, frame: int, width: int, height: int, enabled: bool) -> str:
     if ignored:
         lines.append("")
         lines += panel("ignored workspace", ignored, width, enabled)
+    lines.append("")
+    lines += panel("cleanup candidates", cleanup_rows(), width, enabled)
     lines.append("")
     lines += panel("recent", st.events or ["no state events yet"], width, enabled)
     lines.append("")

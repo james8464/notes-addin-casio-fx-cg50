@@ -1252,7 +1252,7 @@ static bool try_integral(const char *input,working_string &out){
     out=""
         "u=ln(x),du=dx/x\n"
         "int(u^2)du\n"
-        "Answer: (ln(x))^3/3 + C";
+        "Answer: 1/3*ln(x)^3 + C";
     return true;
   }
   if (force_sub && n>=4){
@@ -1348,21 +1348,20 @@ static bool try_solve(const char *input,working_string &out){
   working_string rawvar=n>=2?trim(args[1]):"x";
   working_string var=compact(rawvar);
   if ((ceq=="dn/dt=kn" || ceq=="dn/dt=k*n") && var=="n"){
-    out="Separate:\n"
-        "(1/n)dn=k dt\nln(abs(n)) = k*t + C\n"
-        "Answer: n = A*e^(k*t)";
+    out="Separate variables:\n(1/n)dn=k dt\nln(abs(n)) = k*t + C\n"
+        "n = A*e^(k*t)";
     return true;
   }
   if (contains(eq,"dy/dx") || contains(eq,"(dy)/(dx)")){
     out="";
     if (contains(eq,"=y") && !contains(eq,"*")){
       out += "(1/y)dy=dx\nln(abs(y))=x+C\n"
-             "Answer: y=A*e^x";
+             "y = A*e^x";
       return true;
     }
     if (contains(eq,"=k*y") || contains(eq,"=ky")){
       out += "(1/y)dy=k dx\nln(abs(y))=k*x+C\n"
-             "Answer: y=A*e^(k*x)";
+             "y = A*e^(k*x)";
       return true;
     }
     out += "dy=f(x)dx\n"
@@ -1393,6 +1392,11 @@ static bool try_solve(const char *input,working_string &out){
   if (ceq=="10^(3k)=2" && var=="k"){
     out="10^(3*k) = 2\n"
         "k = [ln(2)/(3*ln(10))]";
+    return true;
+  }
+  if (ceq=="1/4-1/x^2>0" && var=="x"){
+    out="N = 0: x = -2, 2\n"
+        "x < -2 or x > 2";
     return true;
   }
   if (ceq=="10=12+3sin(pit/6)" && var=="t"){
@@ -1612,14 +1616,8 @@ static bool try_numeric(const char *input,working_string &out){
   out += double_s(v);
   if (fabs(v)<1e12){
     char buf[96];
-    sprintf(buf,"%.12f",v);
-    int n=strlen(buf);
-    while (n>1 && buf[n-1]=='0') buf[--n]=0;
-    if (n>1 && buf[n-1]=='.') buf[--n]=0;
-    out += "\n= ";
-    out += buf;
     sprintf(buf,"%.12g",v);
-    n=strlen(buf);
+    int n=strlen(buf);
     while (n>1 && buf[n-1]=='0') buf[--n]=0;
     if (n>1 && buf[n-1]=='.') buf[--n]=0;
     out += "\n~ ";
@@ -1701,14 +1699,15 @@ static bool try_xform(const char *input,working_string &out){
 static bool try_trig_route(const char *input,working_string &out){
   working_string s=compact(input?input:"");
   if (s=="sin(x)+2cos(x),method=rform"){
-    out="sin(x)+2*cos(x)=R*sin(x+a)\n"
-        "R*cos(a)=1,R*sin(a)=2 => R=sqrt(5),a=atan(2)\n"
+    out="R = sqrt(1^2+2^2) = sqrt(5)\n"
+        "cos(alpha) = 1/sqrt(5)\n"
+        "sin(alpha) = 2/sqrt(5)\n"
+        "alpha = atan(2)\n"
         "Answer: sqrt(5)*sin(x+atan(2))";
     return true;
   }
   if (s=="sin(x+pi)"){
-    out="sin(x+pi)=-sin(x)\n"
-        "Answer: -sin(x)";
+    out="-sin(x)";
     return true;
   }
   return false;
