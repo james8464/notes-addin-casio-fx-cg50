@@ -113,6 +113,30 @@ def file_size(path: Path) -> int:
     return path.stat().st_size if path.exists() else 0
 
 
+def tree_size(path: Path, limit: int = 4_000) -> int:
+    if not path.exists():
+        return 0
+    if path.is_file():
+        return file_size(path)
+    total = 0
+    seen = 0
+    for item in path.rglob("*"):
+        if item.is_file():
+            total += item.stat().st_size
+            seen += 1
+            if seen >= limit:
+                break
+    return total
+
+
+def human_size(size: int) -> str:
+    if size >= 1024 * 1024:
+        return f"{size / (1024 * 1024):.1f}M"
+    if size >= 1024:
+        return f"{size / 1024:.1f}K"
+    return f"{size}B"
+
+
 def short_hash(path: Path) -> str:
     if not path.exists():
         return "missing"
@@ -236,6 +260,21 @@ def failure_clusters(limit: int = 5) -> list[tuple[str, int]]:
         key = m.group(1)
         counts[key] = counts.get(key, 0) + 1
     return sorted(counts.items(), key=lambda item: (-item[1], item[0]))[:limit]
+
+
+def ignored_rows(limit: int = 4) -> list[str]:
+    paths = [
+        ROOT / "build",
+        ROOT / "tests" / "reports",
+        ROOT / "progress" / "exact_queue_latest.json",
+        ROOT / "calculator_files" / "CAS.g3a",
+    ]
+    rows = []
+    for path in paths:
+        size = tree_size(path)
+        if size:
+            rows.append(f"{path.relative_to(ROOT)} {human_size(size)}")
+    return rows[:limit]
 
 
 def ratio_history(label: str = "queue-run", limit: int = 18) -> str:
@@ -413,6 +452,26 @@ def badge(text: str, code: str, enabled: bool) -> str:
     return color(f"[{text}]", code, enabled)
 
 
+def risk_rows(st: Stat) -> list[str]:
+    rows: list[str] = []
+    headroom = LIMIT - st.g3a
+    if st.g3a and headroom < 0:
+        rows.append(f"g3a over hard cap by {-headroom:,} B")
+    elif st.g3a and headroom < 256:
+        rows.append(f"g3a hard headroom only {headroom:,} B")
+    if st.dirty:
+        rows.append(f"{st.dirty} dirty tracked file(s)")
+    for label, done, total in st.ratios:
+        if label == "queue-right" and done < total:
+            rows.append(f"strict gaps {total - done:,}")
+            break
+    if st.report_age == "missing":
+        rows.append("no exact queue report")
+    if st.graph_age == "missing":
+        rows.append("graph missing")
+    return rows or ["none"]
+
+
 def kv(key: str, val: str, width: int, enabled: bool) -> str:
     return trim(f"{color(key, C.dim, enabled):<18} {val}", width)
 
@@ -463,6 +522,10 @@ def render_compact(st: Stat, frame: int, width: int, enabled: bool) -> str:
     if not st.ratios:
         lines.append(trim("no ratio data yet", width))
     lines.append(kv("dirty files", "; ".join(st.dirty_files) if st.dirty_files else "clean", width, enabled))
+    lines.append(kv("risk", "; ".join(risk_rows(st)[:3]), width, enabled))
+    ignored = ignored_rows()
+    if ignored:
+        lines.append(kv("ignored", "; ".join(ignored), width, enabled))
     quality = f"unsupported {st.unsupported}"
     if st.fail_clusters:
         quality += "  clusters " + ", ".join(f"{k}:{v}" for k, v in st.fail_clusters[:3])
@@ -546,6 +609,12 @@ def render(st: Stat, frame: int, width: int, height: int, enabled: bool) -> str:
     lines.append(color("+" + "-" * (width - 2) + "+", C.dim, enabled))
     lines.append("")
     lines += panel("dirty files", st.dirty_files or ["clean"], width, enabled)
+    lines.append("")
+    lines += panel("risk", risk_rows(st), width, enabled)
+    ignored = ignored_rows()
+    if ignored:
+        lines.append("")
+        lines += panel("ignored workspace", ignored, width, enabled)
     lines.append("")
     cluster = ", ".join(f"{k}:{v}" for k, v in st.fail_clusters) if st.fail_clusters else "none"
     gap_rows = [f"unsupported {st.unsupported}", f"clusters {cluster}", "strict gaps:"]

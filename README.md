@@ -24,11 +24,11 @@ Current status:
 
 - app name: `CAS`
 - file: `CAS.g3a`
-- size: `2,097,124` bytes
-- hard limit headroom: `28` bytes
-- sha256: `d6a76ae2066716e691176fa938d415ac5e7460044077bf0c348a3cb6fccd9240`
+- size: `2,097,104` bytes
+- hard limit headroom: `48` bytes
+- sha256: `3e67eafc323199e030133ef0bf42b33c7e2782c60ad32a1862662da2fcb019cc`
 - exact queue runtime: `14,256/14,256`
-- strict marker quality: `12,810/14,256`
+- strict marker quality: `12,867/14,256`
 - online challenge source coverage: MadAsMaths exact rows in queue; Daily Integral hard-integration style probes inspected from `https://dailyintegral.com/archive`
 
 Notable routes:
@@ -51,10 +51,11 @@ Notable routes:
 - polynomial antiderivatives use coefficient-first descending-power form, e.g. `-1/3*x^3 + 2*x^2 + 5*x + C`
 - `integrate(x^2-1,x)` uses the mark-scheme form `x^3/3 - x + C`
 - `integrate(x*sqrt(x+1),x,0,3)` uses substitution and returns `116/15`
+- linear-over-linear integrals such as `integrate((4*x+3)/(2*x-1),x)` use algebraic division and return `2*x + 5/2*ln(abs(2*x - 1)) + C`
 - polynomial derivatives use descending-power form, e.g. `-8*x^3 + 1`
 - repeated integer quadratic roots print once, e.g. `x = [8]`
 - catalogue Help on command screen shows spaced sections and F2/F3 examples
-- `/Users/james/Developer/CASIO/tools/audit_progress_tui.py` shows animated repo sync, artifact, queue, quality-cluster, dirty-file, recent-event, and run-command panels
+- `/Users/james/Developer/CASIO/tools/audit_progress_tui.py` shows animated repo sync, artifact, queue, quality-cluster, risk, ignored-workspace, dirty-file, recent-event, and run-command panels
 
 Active tools:
 

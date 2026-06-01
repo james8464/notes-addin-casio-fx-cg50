@@ -176,6 +176,31 @@ static bool parse_affine(const working_string &src,long &a,long &b){
   return terms && a;
 }
 
+static bool split_linfrac(const working_string &s,long &a,long &b,long &c,long &d){
+  int p=s.find(")/(");
+  if (p<0 || s.empty() || s[0]!='(' || s[s.size()-1]!=')')
+    return false;
+  return parse_affine(s.substr(1,p-1),a,b) &&
+         parse_affine(s.substr(p+3,s.size()-p-4),c,d);
+}
+
+static working_string xterm_s(Rat q){
+  if (q.n==q.d) return "x";
+  if (q.n==-q.d) return "-x";
+  return rat_s(q)+"*x";
+}
+
+static void add_logterm(working_string &out,Rat k,const working_string &base){
+  if (!k.n)
+    return;
+  bool neg=k.n<0;
+  Rat a=rat(neg?-k.n:k.n,k.d);
+  out += neg?" - ":" + ";
+  if (a.n!=a.d)
+    out += rat_s(a)+"*";
+  out += "ln(abs("+base+"))";
+}
+
 static bool split_affine_power(const working_string &expr,Rat &coef,long &a,long &b,Rat &p){
   working_string s=compact(expr);
   coef=rat(1,1);
@@ -1041,10 +1066,10 @@ static bool try_integral(const char *input,working_string &out){
   if (!ok){
     working_string lo=lower(trim(input?input:""));
     if (lo.find("defint(")==0 && contains(lo,"ln(x)^2") && contains(lo,"method=parts")){
-      out="Def int parts:\n"
+      out="Parts:\n"
           "u=ln(x)^2, v=x\n"
-          "I=x*ln(x)^2-2*integral(ln(x)) dx\n"
-          "integral(ln(x)) dx=x*ln(x)-x\n"
+          "I=x*ln(x)^2-2*int(ln(x))dx\n"
+          "int(ln(x))dx=x*ln(x)-x\n"
           "F(x)=x*(ln(x)^2-2*ln(x)+2)";
       return true;
     }
@@ -1055,17 +1080,17 @@ static bool try_integral(const char *input,working_string &out){
       working_string da=compact(dargs[2]), db=compact(dargs[3]);
       if (dv=="x" && de=="sin(2x)" && da=="0" && db=="pi/2"){
         out="Def int:\n"
-            "integral(sin(2*x)) dx=-1/2*cos(2*x)\n"
-            "Evaluate 0 to pi/2:\n"
+            "F=-1/2*cos(2*x)\n"
+            "Eval 0..pi/2:\n"
             "[-1/2*cos(2*x)]_0^(pi/2)=1\n"
             "Answer: 1";
         return true;
       }
       if (dv=="x" && de=="9/(2x+1)^2" && da=="0" && db=="1"){
         out="Def int:\n"
-            "Write 9/(2*x+1)^2 as 9*(2*x+1)^-2\n"
-            "Antiderivative: -9/(2*(2*x+1))\n"
-            "Evaluate 0 to 1: -9/6 - (-9/2)=3\n"
+            "9*(2*x+1)^-2\n"
+            "F=-9/(2*(2*x+1))\n"
+            "Eval 0..1: -9/6 - (-9/2)=3\n"
             "Answer: 3";
         return true;
       }
@@ -1098,7 +1123,7 @@ static bool try_integral(const char *input,working_string &out){
         p=rat(-1,2);
     }
     if (got && !force_parts && !force_sub){
-      out="Rev chain:\n"
+      out="Rev:\n"
           "u=";
       out += fmt_affine(a,b);
       out += ", du=";
@@ -1114,7 +1139,7 @@ static bool try_integral(const char *input,working_string &out){
       }
       Rat np=rat(p.n+p.d,p.d);
       Rat ic=rat_div(c,rat_mul(rat(a,1),np));
-      out += "Divide by ";
+      out += "/ ";
       out += int_s(a);
       out += "\nAnswer: ";
       out += term_power(ic,a,b,np);
@@ -1138,7 +1163,7 @@ static bool try_integral(const char *input,working_string &out){
   }
   working_string sum_answer;
   if (integrate_sum_terms(args[0],sum_answer) && !force_parts && !force_sub){
-    out="Power int:\n"
+    out="Power:\n"
         "Answer: ";
     out += sum_answer;
     out += " + C";
@@ -1156,7 +1181,7 @@ static bool try_integral(const char *input,working_string &out){
     return true;
   }
   if (e=="1/x" || e=="1/(x)"){
-    out="Use int(1/x) dx=ln(abs(x))+C\n"
+    out="int(1/x)dx=ln(abs(x))+C\n"
         "Answer: ln(abs(x)) + C";
     return true;
   }
@@ -1168,8 +1193,8 @@ static bool try_integral(const char *input,working_string &out){
   }
   if (e=="(ln(x))^2" || e=="ln(x)^2"){
     out="Parts twice:\n"
-        "I=x*(ln(x))^2-2*integral(ln(x)) dx\n"
-        "integral(ln(x)) dx=x*ln(x)-x\n"
+        "I=x*(ln(x))^2-2*int(ln(x))dx\n"
+        "int(ln(x))dx=x*ln(x)-x\n"
         "Answer: x*((ln(x))^2-2*ln(x)+2)+C";
     return true;
   }
@@ -1182,29 +1207,32 @@ static bool try_integral(const char *input,working_string &out){
   if (e=="cos(x)^4sin(x)"){
     out="Sub:\n"
         "u=cos(x), du=-sin(x) dx\n"
-        "integral(cos(x)^4*sin(x)) dx=-integral(u^4) du\n"
+        "-int(u^4)du\n"
         "Answer: -cos(x)^5/5 + C";
     return true;
   }
   if (e=="2/(3x-1)"){
     out="Sub:\n"
         "u=3*x-1, du=3 dx\n"
-        "integral(2/(3*x-1)) dx=(2/3)*integral(1/u) du\n"
+        "(2/3)*int(1/u)du\n"
         "Answer: 2/3*ln(abs(3*x - 1)) + C";
     return true;
   }
   if (e=="1/(x+2)"){
     out="Sub:\n"
         "u=x+2, du=dx\n"
-        "integral(1/(x+2)) dx=integral(1/u) du\n"
+        "int(1/u)du\n"
         "Answer: ln(abs(x + 2)) + C";
     return true;
   }
-  if (e=="(x+1)/(x-1)"){
-    out="Divide:\n"
-        "(x+1)/(x-1)=1+2/(x-1)\n"
-        "Answer: x + 2*ln(abs(x - 1)) + C";
-    return true;
+  {
+    long a,b,c,d;
+    if (!force_parts && !force_sub && split_linfrac(e,a,b,c,d)){
+      working_string ans=xterm_s(rat(a,c));
+      add_logterm(ans,rat(b*c-a*d,c*c),fmt_affine(c,d));
+      out="Divide:\nAnswer: "+ans+" + C";
+      return true;
+    }
   }
   if (e=="tan(x)sec(x)"){
     out="Use d/dx sec(x)=sec(x)*tan(x)\n"
@@ -1220,21 +1248,21 @@ static bool try_integral(const char *input,working_string &out){
   if (e=="(ln(x))^2/x" || e=="ln(x)^2/x"){
     out="Sub:\n"
         "u=ln(x), du=(1/x) dx\n"
-        "integral((ln(x))^2/x) dx=integral(u^2) du\n"
+        "int(u^2)du\n"
         "Answer: (ln(x))^3/3 + C";
     return true;
   }
   if (force_sub && n>=4){
     out="Sub:\nUse ";
     out += trim(args[n>=5?5:3]);
-    out += "\nRewrite, integrate, back-sub.";
+    out += "\nBack-sub.";
     return true;
   }
   if (e=="xexp(x)" || e=="xe^x"){
     out="Parts:\n"
-        "Let u=x, dv=e^x dx\n"
+        "u=x, dv=e^x dx\n"
         "du=dx, v=e^x\n"
-        "integral(x*e^x) dx=x*e^x-integral(e^x) dx\n"
+        "I=x*e^x-int(e^x)dx\n"
         "x*e^x - e^x + C\n"
         "Answer: e^x*(x-1)+C";
     return true;
@@ -1248,15 +1276,15 @@ static bool try_integral(const char *input,working_string &out){
   }
   if (e=="x^2exp(x)" || e=="x^2e^x"){
     out="Repeat parts:\n"
-        "I=integral(x^2*e^x) dx\n"
-        "I=x^2*e^x-2*integral(x*e^x) dx\n"
-        "integral(x*e^x) dx=e^x*(x-1)\n"
+        "I=int(x^2*e^x)dx\n"
+        "I=x^2*e^x-2*int(x*e^x)dx\n"
+        "int(x*e^x)dx=e^x*(x-1)\n"
         "Answer: e^x*(x^2-2*x+2)+C";
     return true;
   }
   if (e=="xsin(x)"){
     out="Parts:\n"
-        "Let u=x, dv=sin(x) dx\n"
+        "u=x, dv=sin(x) dx\n"
         "du=dx, v=-cos(x)\n"
         "Answer: -x*cos(x) + sin(x) + C";
     return true;
@@ -1270,21 +1298,21 @@ static bool try_integral(const char *input,working_string &out){
   }
   if (e=="exp(-x/10)sin(x)"){
     out="Parts twice:\n"
-        "I=integral(exp(-x/10)*sin(x)) dx\n"
+        "I=int(exp(-x/10)*sin(x))dx\n"
         "Answer: -10*exp(-x/10)*(sin(x)+10*cos(x))/101 + C";
     return true;
   }
   if (contains(e,"dy/dx") || contains(e,"(dy)/(dx)")){
-    out="DE:\nSeparate variables, integrate both sides.";
+    out="DE:\nSeparate.";
     return true;
   }
   if (e=="sec(x)^2"){
-    out="integral(sec(x)^2) dx=tan(x)+C\nAnswer: tan(x) + C";
+    out="int(sec(x)^2) dx=tan(x)+C\nAnswer: tan(x) + C";
     return true;
   }
   if (e=="sin(x)^2"){
-    out="Identity: sin(x)^2=(1-cos(2*x))/2\n"
-        "integral(sin(x)^2) dx=integral(1/2) dx-integral(cos(2*x)/2) dx\n"
+    out="Id: sin(x)^2=(1-cos(2*x))/2\n"
+        "int(1/2)dx-int(cos(2*x)/2)dx\n"
         "Answer: x/2 - sin(2*x)/4 + C";
     return true;
   }
@@ -1340,7 +1368,7 @@ static bool try_solve(const char *input,working_string &out){
              "Answer: y=A*e^(k*x)";
       return true;
     }
-    out += "dy=f(x) dx\nIntegrate both sides\n"
+    out += "dy=f(x) dx\nIntegrate\n"
            "Answer: y=integral(f(x),x)+C";
     return true;
   }
@@ -1491,7 +1519,7 @@ static bool try_solve(const char *input,working_string &out){
   parse_linear(right,a2,b2,ok2);
   if (ok1 && ok2 && a1!=a2){
     long a=a1-a2,b=b2-b1;
-    out="Linear:\nCollect ";
+    out="Linear:\n";
     out += rawvar;
     out += " terms\n";
     out += int_s(a)+"*"+rawvar+" = "+int_s(b)+"\n";
@@ -1500,8 +1528,8 @@ static bool try_solve(const char *input,working_string &out){
     return true;
   }
   if (contains(eq,"^2") && contains(eq,"*") && contains(eq,var.c_str())){
-    out="Polynomial:\nFactor, then set factors to zero.\n"
-        "Answer: use the displayed roots from KhiCAS after factorisation.";
+    out="Polynomial:\nFactor, set factors=0.\n"
+        "Answer: use KhiCAS roots.";
     return true;
   }
   return false;
@@ -1523,8 +1551,8 @@ static bool try_algebra(const char *input,working_string &out){
     }
     if (e=="x^3+4x^2+7x+6"){
       out="Factor cubic:\n"
-          "Test x=-2: (-8)+16-14+6=0, so (x+2) is a factor\n"
-          "Divide x^3+4*x^2+7*x+6 by (x+2)\n"
+          "Test x=-2 gives 0, so (x+2) is a factor\n"
+          "Divide by (x+2)\n"
           "Answer: (x + 2)*(x^2 + 2*x + 3)";
       return true;
     }
@@ -1558,7 +1586,7 @@ static bool try_algebra(const char *input,working_string &out){
       return true;
     }
     if (e=="(2x-1)(x+4)-4(x-3)^2"){
-      out="Expand and simplify:\n"
+      out="Expand:\n"
           "(2*x-1)*(x+4)=2*x^2+7*x-4\n"
           "4*(x-3)^2=4*x^2-24*x+36\n"
           "Answer: -2*x^2 + 31*x - 40";
@@ -1670,7 +1698,7 @@ static bool try_xform(const char *input,working_string &out){
   }
   if (a=="log(a,x)" || a=="ln(x)/ln(a)"){
     out="xform:\n"
-        "Use change of base: log base a of x = ln(x)/ln(a)\n"
+        "Change base: log_a(x)=ln(x)/ln(a)\n"
         "Answer: ln(x)/ln(a)";
     return true;
   }
@@ -1699,8 +1727,6 @@ bool eval_with_working(const char *input,working_string &out){
   working_string s=trim(input?input:"");
   if (s.empty() || !balanced(s) || numeric_literal(s))
     return false;
-  if (try_implicit_diff(input,out))
-    return true;
   if (try_integral(input,out))
     return true;
   if (try_diff(input,out))
