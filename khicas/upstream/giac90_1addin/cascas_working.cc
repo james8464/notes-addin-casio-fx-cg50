@@ -244,7 +244,10 @@ static bool split_affine_sqrt_div(const working_string &expr,Rat &coef,long &a,l
 
 static bool split_recip_affine(const working_string &expr,Rat &coef,long &a,long &b){
   working_string s=compact(expr);
-  int slash=s.find('/');
+  int slash=-1;
+  for (int i=0;i<int(s.size());++i)
+    if (s[i]=='/')
+      slash=i;
   if (slash<=0)
     return false;
   if (!parse_rat(s.substr(0,slash),coef))
@@ -648,6 +651,31 @@ static bool integrate_sum_terms(const working_string &expr,working_string &answe
   answer="";
   for (int i=0;i<terms;++i)
     answer=join_sum(answer,integral_monomial(coefs[i],pows[i]));
+  return terms>1;
+}
+
+static bool integrate_recip_affine_sum(const working_string &expr,working_string &answer){
+  answer="";
+  int start=0,sign=1,depth=0,terms=0;
+  for (int i=0;i<=int(expr.size());++i){
+    char c=i<int(expr.size())?expr[i]:'+';
+    if (c=='(') ++depth;
+    else if (c==')') --depth;
+    if (!depth && (c=='+' || c=='-') && i>start){
+      Rat rc; long a=0,b=0;
+      if (!split_recip_affine(expr.substr(start,i-start),rc,a,b))
+        return false;
+      if (sign<0) rc.n=-rc.n;
+      answer=join_sum(answer,log_affine_int_s(rc,a,b));
+      ++terms;
+      sign=(c=='-')?-1:1;
+      start=i+1;
+    }
+    else if (!depth && (c=='+' || c=='-') && i==start){
+      sign=(c=='-')?-1:1;
+      start=i+1;
+    }
+  }
   return terms>1;
 }
 
@@ -1253,6 +1281,10 @@ static bool try_integral(const char *input,working_string &out){
       out="Answer: ";
       out += log_affine_int_s(rc,ra,rb);
       out += " + C";
+      return true;
+    }
+    if (integrate_recip_affine_sum(e,out) && !force_parts && !force_sub){
+      out="Answer: "+out+" + C";
       return true;
     }
   }

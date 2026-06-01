@@ -15,7 +15,7 @@ graph TD
   Make --> Bin["khicasen.bin, upstream KhiCAS base"]
   Bin --> G3A["calculator_files/CAS.g3a"]
   G3A --> Meta["CAS / @CAS / CAS.g3a"]
-  G3A --> Size["2,096,756 bytes; 396 byte headroom; sha 77ed8757cf1b"]
+  G3A --> Size["2,093,928 bytes; 3,224 byte headroom; sha 9830d566a6d8"]
 ```
 
 ## Runtime
@@ -36,7 +36,7 @@ graph TD
 ```mermaid
 graph TD
   Work["working engine"] --> Diff["diff: guarded affine chain powers, optimisation/quotient derivatives, ln^2 chain, arctan inverse trig, ordered cubic route for 108*x-36*x^2+3*x^3, exp product routes incl 4*(x^2-2)*exp(-2*x), implicit, trig basics"]
-  Work --> Int["integrate: affine reverse-chain powers, reciprocal affine logs c/(a*x+b), expanded (ln(x))^2 by-parts answer, definite ln(x)^2 by-parts endpoint markers, compact radical routes including 12*(3-x/2)^(1/2), 30*(1-x/3)^(3/2), 15*(1-x/4)^(1/4), 3*x^2*(4-2*x^3)^(3/2), (x+1)/(x^2+2*x+3)^(1/3), affine trig/exp terms like sin(4*x+3), cos(2-3*x), exp(1-3*x), generic c*x*sin/cos(a*x+b) by-parts, x^2*cos(x/3) by-parts, and 1/(sqrt(x)(sqrt(x)+2)) definite substitution, linear-over-linear division logs, damped-sine by-parts, substitution, definite substitution"]
+  Work --> Int["integrate: affine reverse-chain powers, reciprocal affine logs c/(a*x+b), sums of reciprocal affine terms, expanded (ln(x))^2 by-parts answer, definite ln(x)^2 by-parts endpoint markers, compact radical routes including 12*(3-x/2)^(1/2), 30*(1-x/3)^(3/2), 15*(1-x/4)^(1/4), 3*x^2*(4-2*x^3)^(3/2), (x+1)/(x^2+2*x+3)^(1/3), affine trig/exp terms like sin(4*x+3), cos(2-3*x), exp(1-3*x), generic c*x*sin/cos(a*x+b) by-parts, x^2*cos(x/3) by-parts, and 1/(sqrt(x)(sqrt(x)+2)) definite substitution, linear-over-linear division logs, damped-sine by-parts, substitution, definite substitution"]
   Work --> Solve["solve: guarded linear with exam-order lines for 8000=64000-15*k and 64000-11200*t=0, integer/rational-root quadratics with explicit root lines, product-coefficient preservation, common-factor exam order, exp/log routes including 10^(3*k)=2, rational route for k*(k+3)/(k+1)=2, circle-intersection route, periodic trig route for 10=12+3*sin(pi*t/6), rational inequality critical-value route, dy/dx and dn/dt separable"]
   Work --> Alg["algebra: variable-aware quadratic factor, targeted expand, high-frequency exam forms, binomial series coefficient/term lines for three queue patterns"]
   Work --> PF["partial fractions: targeted apart marker route for 6/(u*(3+2*u))"]
@@ -51,6 +51,7 @@ graph TD
 ```mermaid
 graph TD
   Console["main dashboard"] --> FMenu["F1 algb / F2 calc mini menus"]
+  Console --> F6["F6 hidden/disabled: file/session/script/matrix menu not compiled"]
   Console --> Border["pink border: 6px left/right, 7px bottom"]
   Console --> Status["status bar without clock"]
   Catalog["Pure-only catalogue"] --> Help["Help on command"]
@@ -68,9 +69,9 @@ graph TD
   Live --> TUI["tools/audit_progress_tui.py"]
   Report --> TUI
   TUI --> Panels["animated panels: status badges, wide side-by-side layout, phase lanes, health score, gate board, sync, last commit, change counts, state age, artifact headroom, live rate and ETA, queue bars, strict-marker ratios, strict-gap bar map, freshness rows, animated scan/meter lines, cleanup byte totals and cleanup command, project hygiene, tooling inventory, transfer path, strict clusters with first gap samples, test checkpoints, release blockers, risk, ignored workspace, active-tool counts, next action, command panel"]
-  Runner --> Runtime["14,256/14,256 runtime-safe"]
-  Runner --> Strict["13,232/14,256 strict marker pass"]
-  Strict --> Remaining["remaining strict clusters: integrate 343, solve 133, expand 96, factor 81, derive 15; 396 B hard headroom"]
+  Runner --> Runtime["14,308/14,308 runtime-safe"]
+  Runner --> Strict["13,236/14,308 strict marker pass"]
+  Strict --> Remaining["remaining strict gaps: 1,072; integrate remains largest cluster; 3,224 B hard headroom"]
 ```
 
 ## Project Shape

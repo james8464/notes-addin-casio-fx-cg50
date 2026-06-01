@@ -1961,7 +1961,7 @@ int Console_GetKey(){
       return Console_Input((const unsigned char*)buf);
     }
     if (key==KEY_CTRL_F6){
-#if 1
+#if 0
       Menu smallmenu;
       smallmenu.numitems=13;
       MenuItem smallmenuitems[smallmenu.numitems];
@@ -2174,7 +2174,10 @@ int Console_GetKey(){
       } // end while(1)
       Console_Disp();
       return CONSOLE_SUCCEEDED;
-#else
+#endif
+      Console_Disp();
+      continue;
+#if 0
       char filename[MAX_FILENAME_SIZE+1];
       //drawRectangle(0, 24, LCD_WIDTH_PX, LCD_HEIGHT_PX-24, COLOR_WHITE);
       if (get_filename(filename))
@@ -2540,14 +2543,7 @@ const char conf_standard[] =
   "floor(\n"
   "ceil(\n"
   "round(\n"
-  "F5 A<>a\n"
-  "F6 solve\n"
-  "solve(\n"
-  "fsolve(\n"
-  "proot(\n"
-  "pcoeff(\n"
-  "gcd(\n"
-  "lcm(\n";
+  "F5 A<>a\n";
 
 // Loads the FMenus' data into memory, from a cfg file
 #if 0
@@ -2976,7 +2972,7 @@ int Console_Disp()
     menu += string(menu_f2);
     while (menu.size()<13)
       menu += " ";
-    menu += lang?"| voir | cmds | A<>a | Fich.":"| view | cmds | A<>a | File ";
+    menu += lang?"| voir | cmds | A<>a |      ":"| view | cmds | A<>a |      ";
     PrintMini(0,58,menu.c_str(),4);
   }
 

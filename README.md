@@ -24,11 +24,11 @@ Current status:
 
 - app name: `CAS`
 - file: `CAS.g3a`
-- size: `2,096,756` bytes
-- hard limit headroom: `396` bytes
-- sha256: `77ed8757cf1bd864c35d6e86fe61d6108dbf7c73954d668c63700bfb1354ba8b`
-- exact queue runtime: `14,256/14,256`
-- strict marker quality: `13,232/14,256`
+- size: `2,093,928` bytes
+- hard limit headroom: `3,224` bytes
+- sha256: `9830d566a6d83e9e64d09c1b911d07cf1e0407620412fc542b4cf5b8759502cf`
+- exact queue runtime: `14,308/14,308`
+- strict marker quality: `13,236/14,308`
 - online challenge source coverage: MadAsMaths exact rows in queue; Daily Integral hard-integration style probes inspected from `https://dailyintegral.com/archive`
 
 Notable routes:
@@ -49,6 +49,7 @@ Notable routes:
 - `integrate(x*sin(4*x))` compact integration by parts
 - generic `integrate(c*x*sin(a*x+b),x)` and `integrate(c*x*cos(a*x+b),x)` by-parts routes, including `x*sin(6*x)`, `x*cos(x/2)`, and `x*sin(2*x-1)`
 - reciprocal affine integration route for `c/(a*x+b)` and `c/(m*(a*x+b))`, including `3/(2*x-1)`, `1/(4*x)`, `4/(3*(2*x+1))`, and `1/(4*(4*x-1))`
+- sums of reciprocal affine terms now use the same log route, including `3/(x-2)-7/(x+1)` and `1/2/(2*x-1)-1/(x+1)`
 - `diff(r^2,r)` single-variable power rule
 - `diff(arctan(x))` compact inverse trig derivative route
 - `diff(108*x-36*x^2+3*x^3)` preserves the queue mark-scheme order `- 72*x + 9*x^2 + 108`
@@ -90,6 +91,7 @@ Notable routes:
 - quadratic factor routes now infer variables beyond `x`, e.g. `factor(5*w^2+w-4)` gives `(w + 1)*(5*w - 4)`
 - negative-leading integer quadratics now print roots in the exam-friendly order expected by the queue, e.g. `x = [3, 11]`
 - catalogue Help on command screen shows spaced sections and F2/F3 examples
+- F6 file/session/script/matrix menu is hidden and disabled on the dashboard; its unused shortcut strings are no longer compiled into the add-in
 - `/Users/james/Developer/CASIO/tools/audit_progress_tui.py` shows animated status badges, side-by-side panels on wide terminals, phase lanes, health score, gate board, repo sync, last commit, change counts, state age, artifact headroom, live queue rate/ETA, pass/fail bars, strict-marker ratios, strict-gap bar maps, freshness rows, animated scan/meter lines, cleanup byte totals, cleanup command, project hygiene, tooling inventory, transfer path, quality clusters with first gap samples, test checkpoint rows, release blockers, risk, ignored workspace, active-tool counts, next action, recent events, and run-command panels
 
 Active tools:

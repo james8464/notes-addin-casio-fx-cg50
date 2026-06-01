@@ -26,6 +26,7 @@ QUEUE_LIVE = ROOT / "progress" / "exact_queue_latest.json"
 QUEUE_REPORT = ROOT / "tests" / "reports" / "exact_calculator_input_queue" / "latest.jsonl"
 QUEUE_FAILS = ROOT / "tests" / "reports" / "exact_calculator_input_queue" / "failures_latest.txt"
 AUDIT_PATH = ROOT / "tools" / "audit_progress_tui.py"
+VM_ROOT = Path("/Volumes/VM")
 LIMIT = 2 * 1024 * 1024
 TARGET = 2_000_000
 _QUEUE_RATE = {"done": -1, "at": 0.0, "rate": 0.0}
@@ -93,6 +94,10 @@ class Stat:
     ignored_bytes: int
     cleanup_items: int
     cleanup_bytes: int
+    doc_done: int
+    doc_total: int
+    doc_percent: float
+    doc_status: str
 
 
 def color(text: str, code: str, enabled: bool) -> str:
@@ -341,6 +346,48 @@ def queue_counts() -> tuple[int, int]:
         except json.JSONDecodeError:
             pass
     return rows, inputs
+
+
+def source_pdfs() -> set[str]:
+    sources: set[str] = set()
+    if not QUEUE_FILE.exists():
+        return sources
+    for line in QUEUE_FILE.read_text(errors="ignore").splitlines():
+        if not line.strip():
+            continue
+        try:
+            data = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        source = str(data.get("source_pdf", "")).strip()
+        if source:
+            sources.add(source)
+    return sources
+
+
+def vm_doc_keys() -> set[str]:
+    if not VM_ROOT.exists():
+        return set()
+    keys: set[str] = set()
+    for path in VM_ROOT.rglob("* conv_png"):
+        if not path.is_dir():
+            continue
+        try:
+            rel = path.relative_to(VM_ROOT)
+        except ValueError:
+            continue
+        keys.add(str(rel).removesuffix(" conv_png") + ".pdf")
+    return keys
+
+
+def doc_progress() -> tuple[int, int, float, str]:
+    docs = vm_doc_keys()
+    if not docs:
+        return 0, 0, 0.0, "VM missing"
+    sources = source_pdfs()
+    done = len(docs & sources)
+    total = len(docs)
+    return done, total, pct(done, total), "VM source coverage"
 
 
 def failure_samples(limit: int = 3) -> list[str]:
@@ -598,6 +645,7 @@ def collect() -> Stat:
     st_age, st_rows = state_stats()
     ignored_items, ignored_bytes = stat_paths(ignored_targets())
     cleanup_items, cleanup_bytes = stat_paths(cleanup_targets())
+    doc_done, doc_total, doc_percent, doc_status = doc_progress()
     return Stat(
         phase=str(s.get("phase", "n/a")),
         last=str(s.get("last_event", "n/a")),
@@ -647,6 +695,10 @@ def collect() -> Stat:
         ignored_bytes=ignored_bytes,
         cleanup_items=cleanup_items,
         cleanup_bytes=cleanup_bytes,
+        doc_done=doc_done,
+        doc_total=doc_total,
+        doc_percent=doc_percent,
+        doc_status=doc_status,
     )
 
 
@@ -759,6 +811,16 @@ def queue_health(st: Stat, frame: int, width: int, enabled: bool) -> list[str]:
         f"pass {st.queue_ok:,}/{st.queue_total:,}  fail {st.queue_bad:,}",
         split_bar(st.queue_ok, st.queue_bad, st.queue_total, max(18, width), frame, enabled),
         f"scan {wave(max(18, width), frame, enabled)}",
+    ]
+    return rows
+
+
+def doc_health(st: Stat, frame: int, width: int, enabled: bool) -> list[str]:
+    if st.doc_total <= 0:
+        return ["docs VM missing"]
+    rows = [
+        f"{st.doc_status}: {st.doc_done:,}/{st.doc_total:,}",
+        bar(st.doc_done, st.doc_total, max(18, width), frame, enabled),
     ]
     return rows
 
@@ -1110,6 +1172,7 @@ def render_compact(st: Stat, frame: int, width: int, enabled: bool) -> str:
         *[trim(r, width) for r in size_hint(st, frame, bar_w, enabled)],
         kv("artifact", f"age {st.g3a_age}  sha256 {st.g3a_hash}  headroom {headroom:,} B", width, enabled),
         kv("queue", f"{st.queue_rows:,} rows / {st.queue_inputs:,} inputs", width, enabled),
+        kv("docs", f"{st.doc_done:,}/{st.doc_total:,} scanned  {bar(st.doc_done, st.doc_total, bar_w, frame, enabled)}", width, enabled),
         kv("latest", f"{st.queue}  report age {st.report_age}", width, enabled),
         kv("live", f"{st.queue_active}  age {st.queue_live_age}  rate {st.queue_rate}  eta {st.queue_eta}", width, enabled),
         kv("accuracy", split_bar(st.queue_ok, st.queue_bad, st.queue_total, bar_w, frame, enabled), width, enabled),
@@ -1211,6 +1274,7 @@ def render(st: Stat, frame: int, width: int, height: int, enabled: bool) -> str:
     ]
     queue_rows_ui = [
         f"golden {st.queue_rows:,} rows / {st.queue_inputs:,} inputs",
+        *doc_health(st, frame, bar_w, enabled),
         f"latest {st.queue}  report age {st.report_age}",
         *queue_health(st, frame, bar_w, enabled),
     ]
