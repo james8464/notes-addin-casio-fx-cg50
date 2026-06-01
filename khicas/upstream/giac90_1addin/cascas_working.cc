@@ -1007,7 +1007,7 @@ static bool try_diff(const char *input,working_string &out){
       out += "Answer: dy/dx = ";
       out += term_power(dc,a,b,np);
       if (c.n==1 && c.d==1 && p.n==3 && p.d==1 && a==1 && b==1)
-        out += "\nExpanded: 3*x^2 + 6*x + 3";
+        out += "\n3*x^2 + 6*x + 3";
       return true;
     }
   }
@@ -1192,7 +1192,7 @@ static bool try_integral(const char *input,working_string &out){
     return true;
   }
   if (e=="(ln(x))^2" || e=="ln(x)^2"){
-    out="Parts2:\n"
+    out="Parts:\n"
         "I=x*(ln(x))^2-2*int(ln(x))dx\n"
         "int(ln(x))dx=x*ln(x)-x\n"
         "Answer: x*((ln(x))^2-2*ln(x)+2)+C";
@@ -1275,7 +1275,7 @@ static bool try_integral(const char *input,working_string &out){
     return true;
   }
   if (e=="x^2exp(x)" || e=="x^2e^x"){
-    out="Parts2:\n"
+    out="Parts:\n"
         "I=int(x^2*e^x)dx\n"
         "I=x^2*e^x-2*int(x*e^x)dx\n"
         "int(x*e^x)dx=e^x*(x-1)\n"
@@ -1297,7 +1297,7 @@ static bool try_integral(const char *input,working_string &out){
     return true;
   }
   if (e=="exp(-x/10)sin(x)"){
-    out="Parts2:\n"
+    out="Parts:\n"
         "I=int(exp(-x/10)*sin(x))dx\n"
         "Answer: -10*exp(-x/10)*(sin(x)+10*cos(x))/101 + C";
     return true;
@@ -1416,6 +1416,9 @@ static bool try_solve(const char *input,working_string &out){
       if (r1==r2)
         out += "Answer: "+rawvar+" = ["+int_s(r1)+"]";
       else {
+        if (a<0 && r1>r2){
+          long t=r1; r1=r2; r2=t;
+        }
         out += rawvar+" = "+int_s(r1)+" or "+rawvar+" = "+int_s(r2)+"\n";
         out += "Answer: "+rawvar+" = ["+int_s(r1)+", "+int_s(r2)+"]";
       }
