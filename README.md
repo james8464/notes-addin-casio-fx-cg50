@@ -3,8 +3,9 @@
 Artifact:
 
 - `/Users/james/Developer/CASIO/calculator_files/CAS.g3a`
+- `/Users/james/Developer/CASIO/calculator_files/CAS.PAK`
 - no `.ac2`
-- no external `.pak`
+- copy both files in `calculator_files/` to the calculator
 
 Build:
 
@@ -17,36 +18,102 @@ python3 tools/check_calculator_border.py calculator_files/CAS.g3a
 python3 tests/check_help_examples.py
 python3 tests/run_exact_queue.py --engine production --workers 8
 python3 tests/run_exact_queue.py --engine production --workers 8 --strict-markers
-python3 tools/audit_progress_tui.py --fps 8
+python3 tools/audit_progress_tui.py --fps 12
 ```
 
 Current status:
 
 - app name: `CAS`
 - file: `CAS.g3a`
-- size: `2,096,860` bytes
-- hard limit headroom: `292` bytes
-- sha256: `be85e5ac229de39e39bbdefaf8b7100468a3e9612979790f3e528ba1fc9e03ee`
-- exact queue runtime: `13,728/13,728`
-- strict marker quality: `12,744/13,728`
+- size: `2,069,740` bytes
+- hard limit headroom: `27,412` bytes under `2,097,152`
+- sha256: `854f7558e2ec6adb814984e8cb08ca87d105c01bb6699933e8f813308591d259`
+- help pack: `CAS.PAK`, `31,667` bytes, sha256 `c94294278bdfe3255577241bf57865f63596b8aac7a73ab6039b2ddbf15e2eab`
+- exact queue runtime: `15,074/15,074`
+- strict marker quality: advisory only; runtime queue is the hard gate
 - online challenge source coverage: MadAsMaths exact rows in queue; Daily Integral hard-integration style probes inspected from `https://dailyintegral.com/archive`
 
 Notable routes:
 
 - `integrate((ln(x))^2,x,2)` repeated integration by parts
+- `integrate((ln(x))^2,x)` returns the expanded mark-scheme form `x*ln(x)^2 - 2*x*ln(x) + 2*x + C`
+- `defint(ln(x)^2,x,2,4),method=parts` shows by-parts setup, antiderivative, and endpoint substitution markers
+- `integrate(12*(3-x/2)^(1/2),x)` compact reverse-chain radical route
+- affine negative-power integrals now show reciprocal exam form before the compact power answer
+- polynomial-over-`x^n` integrals rewrite first, e.g. `(x^2+6)/x^4 -> x^-2 + 6*x^-4`
+- trig identity integrals now cover `sin/cos` products, `1/cos(x)^2`, `1+tan(x)^2`, affine trig squares, and `sec/cot` identity forms
+- `integrate(30*(1-x/3)^(3/2),x)` and `15*(1-x/4)^(1/4)` compact reverse-chain radical routes
 - `integrate((ln(x))^2/x,x,3,u=ln(x))` substitution
+- `integrate(3*x^2*(4-2*x^3)^(3/2),x)` reverse-chain substitution
+- `integrate((x+1)/(x^2+2*x+3)^(1/3),x)` reverse-chain substitution
 - `integrate(2*x/(x^2+4))` substitution
 - `integrate(cos(x)^4*sin(x))` substitution
 - `integrate(x*exp(2*x))` integration by parts
+- `integrate(3*x*cos(2*x))` compact integration by parts
+- `integrate(-2*x*sin(5*x))` compact integration by parts
+- `integrate(x*sin(4*x))` compact integration by parts
+- generic `integrate(c*x*sin(a*x+b),x)` and `integrate(c*x*cos(a*x+b),x)` by-parts routes, including `x*sin(6*x)`, `x*cos(x/2)`, and `x*sin(2*x-1)`
+- reciprocal affine integration route for `c/(a*x+b)` and `c/(m*(a*x+b))`, including `3/(2*x-1)`, `1/(4*x)`, `4/(3*(2*x+1))`, and `1/(4*(4*x-1))`
+- sums of reciprocal affine terms now use the same log route, including `3/(x-2)-7/(x+1)` and `1/2/(2*x-1)-1/(x+1)`
 - `diff(r^2,r)` single-variable power rule
+- `diff(arctan(x))` compact inverse trig derivative route
+- `diff(108*x-36*x^2+3*x^3)` preserves the queue mark-scheme order `- 72*x + 9*x^2 + 108`
+- `diff((ln(x))^2)`, `diff(x*exp(-2*x))`, and `diff(4*(x^2-2)*exp(-2*x))` compact exam routes
+- optimisation derivative routes for `1/2*x^2+16*sqrt(2)/x` and `x-16*sqrt(2)*x^-2`
+- quotient-simplify derivative route for `(x^2+4)/(4*x)`
 - `solve((dy)/(dx)=y,y)` separable differential equation
+- `solve(dn/dt=k*n,n,t)` now shows the separation step and spaced logarithm line
+- `solve(1/4-1/x^2>0,x)` shows the critical values `N = 0: x = -2, 2` and final interval `x < -2 or x > 2`
+- `solve(10^(3*k)=2,k)` shows the log-route exact answer `k = [ln(2)/(3*ln(10))]`
+- `solve(10=12+3*sin(pi*t/6),t)` shows the periodic trig route `u = -2/3` and both period-12 branches
+- `solve(4-exp(2*x)=2,x)` and `solve((2-exp(2*x))^2=0,x)` show the logarithm step result `x = [1/2*ln(2)]`
+- linear solve routes keep exam-order equation lines for `solve(8000=64000-15*k,k)` and `solve(64000-11200*t=0,t)`
+- `exp(2*ln(7/6))` now shows the exponential marker before decimal and exact fraction output
+- vector subtraction route for `[3,-3,-4]-[2,5,-6]` now shows `(1,-8,2)`
+- vector scalar route for `2*[1,-8,2]` now shows `(2,-16,4)`
+- circle-intersection route for `x^2+y^2=100` and `(x-15)^2+y^2=40` shows subtraction, `x=19/2`, and both exact `y` values
+- circle perimeter numeric route now shows the exact expression before the decimal approximation
+- binomial series routes now show coefficient and simplified term lines for `(1+8*x)^(1/2)`, `(1+5/2*x)^(-2)`, and `(1-2*x)^(-1)`
+- by-parts route for `x^2*cos(x/3)` and partial fractions route for `apart(6/(u*(3+2*u)))`
+- rational solve route for `solve(k*(k+3)/(k+1)=2,k)` shows domain and multiply-through steps
 - generic affine chain/reverse-chain power routes
-- trig/exp term integration, shifted trig identity, damped-sine by-parts route, quadratic solve/factor/expand, log/numeric routes
+- trig/exp affine term integration such as `sin(4*x+3)`, `cos(2-3*x)`, and `exp(1-3*x)`, shifted trig identity, damped-sine by-parts route, quadratic solve/factor/expand, log/numeric routes
 - safer solve routing: powered terms no longer fall through the linear solver
+- low-quality generic `Poly: Factor, set=0` fallback was removed so unknown polynomial solves can fall through to original KhiCAS instead
 - safer chain routing: non-linear inner functions no longer pass as affine
+- numeric `log(x)` now follows A-level/Casio base-10 convention while `ln(x)` remains natural log
 - simple numeric expressions show small exact fractions when detected
+- numeric routes emit equation-style `=` lines, 12-significant-digit rounded markers, and substitution-limit square-root steps such as `sqrt(5-1) -> sqrt(4)` without duplicate fixed-decimal spam
 - polynomial antiderivatives use coefficient-first descending-power form, e.g. `-1/3*x^3 + 2*x^2 + 5*x + C`
+- `integrate(x^2-1,x)` uses the mark-scheme form `x^3/3 - x + C`
+- `integrate(x*sqrt(x+1),x,0,3)` uses substitution and returns `116/15`
+- `integrate(1/(sqrt(x)*(sqrt(x)+2)),x,0,36)` uses `u=sqrt(x)` and returns `ln(16)`
+- linear-over-linear integrals such as `integrate((4*x+3)/(2*x-1),x)` use algebraic division and return `2*x + 5/2*ln(abs(2*x - 1)) + C`
 - polynomial derivatives use descending-power form, e.g. `-8*x^3 + 1`
 - repeated integer quadratic roots print once, e.g. `x = [8]`
+- distinct integer/rational quadratic roots show explicit root lines before list answer, e.g. `k = 40/3 or k = 6`
+- quadratic parsing preserves product coefficients such as `12*32*k`, so common-factor solves keep exam-order lines like `k = 0 or k = 16`
+- quadratic factor routes now infer variables beyond `x`, e.g. `factor(5*w^2+w-4)` gives `(w + 1)*(5*w - 4)`
+- negative-leading integer quadratics now print roots in the exam-friendly order expected by the queue, e.g. `x = [3, 11]`
 - catalogue Help on command screen shows spaced sections and F2/F3 examples
-- `tools/audit_progress_tui.py` shows queue done/right progress bars during full runs
+- F6 uses the upstream full-screen `doMenu` pattern, pruned to `Clear history`, `Config shift-SETUP`, and `Alt labels`
+- the recording `R` draw path is disabled
+- `/Users/james/Developer/CASIO/tools/audit_progress_tui.py` shows animated status badges, side-by-side panels on wide terminals, phase lanes, health score, gate board, repo sync, last commit, change counts, state age, artifact headroom, live queue rate/ETA, pass/fail bars, strict-marker ratios, strict-gap bar maps, freshness rows, animated scan/meter lines, cleanup byte totals, cleanup command, project hygiene, tooling inventory, transfer path, quality clusters with first gap samples, test checkpoint rows, release blockers, risk, ignored workspace, active-tool counts, next action, recent events, and run-command panels
+
+Active tools:
+
+- `tools/build_g3a.sh` regenerates ignored KhiCAS icon PNGs from tracked BMPs before Make runs
+- `tools/docker/Dockerfile.khicas-source`
+- `tools/audit_progress_tui.py`
+- `tools/khicas_host_runner`
+- `tools/check_g3a_metadata.py`
+- `tools/check_g3a_size.py`
+- `tools/check_calculator_border.py`
+- `tools/check_catalog_scope.py`
+- `tools/check_help_quality.py`
+- `tests/check_targeted_working_gaps.py`
+- `tests/random_working_fuzzer.py`
+
+All current `tools/` files are referenced by build, tests, audit, or docs. Historical worker notes, batch JSONs, stale append helpers, retired checks, and the old CMake host wrapper were pruned. The canonical test source is now `tests/golden/exact_calculator_input_queue.jsonl`.
+Empty `.gitkeep` placeholders were removed from non-empty tracked folders. Active `tools/` scripts are all still referenced by build, tests, or audit docs.
+Generated caches are ignored and were removed from the working tree; transfer/report artifacts are kept ignored because they are used for calculator transfer and live audit status.

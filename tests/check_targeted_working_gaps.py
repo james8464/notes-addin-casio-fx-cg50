@@ -1,0 +1,68 @@
+#!/usr/bin/env python3
+import subprocess
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+RUNNER = ROOT / "tools" / "khicas_host_runner"
+
+CASES = [
+    ("integrate(2*x+3,x)", ["Integrate term by term:", "Use int(a*x^n)", "x^2 + 3*x + C"]),
+    ("integrate(9x)", ["Use int(a*x^n)", "int(9x) dx", "9/2*x^2 + C"]),
+    ("integrate((x)+(3),x)", ["Integrate term by term:", "1/2*x^2 + 3*x + C"]),
+    ("integrate(((x)^2)+(3*x)+(2),x)", ["Integrate term by term:", "1/3*x^3 + 3/2*x^2 + 2*x + C"]),
+    ("integrate(x*exp(x),x)", ["Use integration by parts", "Let u=x, dv=e^x dx", "du=dx, v=e^x"]),
+    ("integrate(x*cos(x),x)", ["Use integration by parts", "Let u=x, dv=cos(x) dx", "du=dx, v=sin(x)"]),
+    ("integrate((ln(x))^2)", ["Let u = ln(x)^2, dv = dx", "Let u = ln(x), dv = dx"]),
+    ("integrate(2*x*cos(x^2),x)", ["Sub u=x^2", "du=2*x dx", "sin(x^2) + C"]),
+    ("integrate(2*x*sin(x^2),x)", ["Sub u=x^2", "-cos(x^2) + C"]),
+    ("integrate(x*(3+x^2)^4,x)", ["Sub u=3 + x^2", "scale 1/2", "1/10*(3 + x^2)^5 + C"]),
+    ("integrate((2*x+1)*cos(x^2+x),x)", ["Sub u=x^2 + x", "du=(2*x + 1) dx", "sin(x^2 + x) + C"]),
+    ("integrate((6*x-5)*exp(3*x^2-5*x),x)", ["Sub u=3x^2 - 5x", "du=(6*x - 5) dx", "exp(3x^2 - 5x) + C"]),
+    ("range(-9)", ["Range:", "constant", "y = -9"]),
+    ("range(2*x+3)", ["Range:", "linear", "all real"]),
+    ("range(x^2+4*x+7)", ["vertex x = -2", "minimum y = 3", "y >= 3"]),
+    ("range(-x^2+4*x+1)", ["vertex x = 2", "maximum y = 5", "y <= 5"]),
+    ("range(x^2-4*x+5,x,0,5)", ["Interval: 0 <= x <= 5", "f(0) = 5", "f(5) = 10", "vertex x = 2 is inside", "1 <= y <= 10"]),
+    ("simplify((x^2+3*x+2)/(x+1))", ["Factorise numerator and denominator:", "x^2 + 3*x + 2 = (x + 1)*(x + 2)", "Cancel common factor (x + 1)", "x + 2"]),
+    ("simplify((x^2-4)/(x^2-2*x))", ["x^2 - 4 = (x - 2)*(x + 2)", "x^2 - 2*x = (x - 2)*(x)", "Cancel common factor (x - 2)", "(x + 2)/(x)"]),
+    ("simplify((2*x^2+6*x+4)/(2*x+2))", ["Cancel common factor (x + 1)", "x + 2"]),
+    ("simplify((x^2-1)/(1-x))", ["Cancel common factor (x - 1)", "-(x + 1)"]),
+    ("simplify((x^2+2*x+1)/(x+1)^2)", ["(x + 1)*(x + 1)", "Cancel common factor (x + 1)", "1"]),
+    ("simplify((x^2-1)/(x+1)^2)", ["x^2 - 1 = (x + 1)*(x - 1)", "Cancel common factor (x + 1)", "(x - 1)/(x + 1)"]),
+    ("solve(0=(10-0.4x)*ln(x+1),x)", ["Solve by zero-product rule:", "10 - 2/5*x = 0", "ln(x + 1) = 0", "Domain: x + 1 > 0", "x = [0, 25]"]),
+    ("solve((3-0.5*x)*ln(2*x-1)=0,x)", ["Solve by zero-product rule:", "3 - 1/2*x = 0", "ln(2*x - 1) = 0", "Domain: 2*x - 1 > 0", "x = [1, 6]"]),
+    ("diff((10-0.4x)*ln(x+1))", ["Product rule:", "u = 10 - 2/5*x", "v = ln(x + 1)", "du/dx = -2/5", "dv/dx = 1/(x + 1)", "-2/5*ln(x + 1) + (10 - 2/5*x)/(x + 1)"]),
+    ("diff((2*x+1)*ln(3*x-2),x)", ["Product rule:", "u = 2*x + 1", "v = ln(3*x - 2)", "du/dx = 2", "dv/dx = 3/(3*x - 2)", "2*ln(3*x - 2) + (2*x + 1)*3/(3*x - 2)"]),
+    ("diff((x^2+1)/(x-1),x)", ["Quotient rule:", "u = x^2 + 1", "v = x - 1", "du/dx = 2*x", "dv/dx = 1", "((2*x)*(x - 1) - (x^2 + 1))/(x - 1)^2"]),
+    ("diff(ln((x+1)^2),x)", ["Chain rule:", "d/dx ln((x + 1)^2)", "inner derivative = 2*(x + 1)", "2/(x + 1)"]),
+    ("diff(sin((x+1)^2),x)", ["Chain rule:", "Let u = (x + 1)^2", "du/dx = 2*(x + 1)", "2*(x + 1)*cos((x + 1)^2)"]),
+    ("diff(cos(3*x^2-2*x),x)", ["Chain rule:", "Let u = 3*x^2 - 2*x", "du/dx = 6*x - 2", "-(6*x - 2)*sin(3*x^2 - 2*x)"]),
+    ("diff(exp((2*x-1)^3),x)", ["Chain rule:", "Let u = (2*x - 1)^3", "du/dx = 6*(2*x - 1)^2", "6*(2*x - 1)^2*exp((2*x - 1)^3)"]),
+    ("diff((x^2+1)*sin(3*x-2),x)", ["Product rule:", "u = x^2 + 1", "v = sin(3*x - 2)", "du/dx = 2*x", "dv/dx = 3*cos(3*x - 2)", "2*x*sin(3*x - 2) + (x^2 + 1)*3*cos(3*x - 2)"]),
+    ("diff((x^2-1)*cos((x+1)^2),x)", ["Product rule:", "u = x^2 - 1", "v = cos((x + 1)^2)", "dv/dx = -2*(x + 1)*sin((x + 1)^2)", "2*x*cos((x + 1)^2) - (x^2 - 1)*2*(x + 1)*sin((x + 1)^2)"]),
+    ("diff((x)+(3),x)", ["dy/dx = 1"]),
+    ("diff(6,x)", ["dy/dx = 0"]),
+    ("simplify(((8)))", ["8"]),
+    ("xform(-7,expand(-7))", ["-7"]),
+    ("xform(x,factor(x))", ["x"]),
+]
+
+
+def main() -> int:
+    bad = []
+    for expr, markers in CASES:
+        p = subprocess.run([str(RUNNER), expr], cwd=ROOT, text=True, capture_output=True)
+        out = (p.stdout or "") + (p.stderr or "")
+        missing = [m for m in markers if m not in out]
+        if p.returncode or missing:
+            bad.append((expr, p.returncode, missing, out[:600]))
+    for expr, code, missing, out in bad:
+        print(f"FAIL {expr!r} code={code} missing={missing}\n{out}")
+    if bad:
+        return 1
+    print(f"OK targeted working gaps={len(CASES)}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

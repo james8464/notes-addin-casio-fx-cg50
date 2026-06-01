@@ -12,7 +12,7 @@ QUALITY_CASES = [
         [
             "Integrate term by term:",
             "Use int(a*x) dx = a*x^2/2",
-            "Answer: x^2 + 3*x + C",
+            "x^2 + 3*x + C",
         ],
     ),
     (
@@ -21,7 +21,7 @@ QUALITY_CASES = [
         [
             "Integrate term by term:",
             "Use int(a*x) dx = a*x^2/2",
-            "Answer: x^2 + 3*x + C",
+            "x^2 + 3*x + C",
         ],
     ),
     (
@@ -30,7 +30,7 @@ QUALITY_CASES = [
         [
             "Use formula: int(cos(x)) dx = sin(x) + C",
             "d/dx sin(x)=cos(x)",
-            "Answer: sin(x) + C",
+            "sin(x) + C",
         ],
     ),
     (
@@ -39,7 +39,7 @@ QUALITY_CASES = [
         [
             "Use formula: int(sec(x)^2) dx = tan(x) + C",
             "d/dx tan(x)=sec(x)^2",
-            "Answer: tan(x) + C",
+            "tan(x) + C",
         ],
     ),
     (
@@ -49,7 +49,7 @@ QUALITY_CASES = [
             "Use formula: int(tan(k*x)) dx = 1/k*ln(abs(sec(k*x))) + C",
             "k = 3",
             "int(tan(3*x)) dx = 1/3*ln(abs(sec(3*x))) + C",
-            "Answer: 1/3*ln(abs(sec(3*x))) + C",
+            "1/3*ln(abs(sec(3*x))) + C",
         ],
     ),
     (
@@ -59,7 +59,7 @@ QUALITY_CASES = [
             "Use formula: int(cosec(k*x)) dx = -1/k*ln(abs(cosec(k*x)+cot(k*x))) + C",
             "k = 2",
             "int(cosec(2*x)) dx = -1/2*ln(abs(cosec(2*x)+cot(2*x))) + C",
-            "Answer: -1/2*ln(abs(cosec(2*x)+cot(2*x))) + C",
+            "-1/2*ln(abs(cosec(2*x)+cot(2*x))) + C",
         ],
     ),
     (
@@ -69,7 +69,7 @@ QUALITY_CASES = [
             "Use formula: int(e^(k*x)) dx = 1/k*e^(k*x) + C",
             "k = 3",
             "int(e^(3*x)) dx = 1/3*e^(3*x) + C",
-            "Answer: 1/3*e^(3*x) + C",
+            "1/3*e^(3*x) + C",
         ],
     ),
     (
@@ -79,7 +79,19 @@ QUALITY_CASES = [
             "Use integration by parts",
             "Let u=x, v'=e^x",
             "int(x*e^x) dx = x*e^x - int(e^x) dx",
-            "Answer: x*e^x - e^x + C",
+            "x*e^x - e^x + C",
+        ],
+    ),
+    (
+        "integrate((ln(x))^2)",
+        10,
+        [
+            "Let u = ln(x)^2, dv = dx",
+            "du = 2*ln(x)/x dx, v = x",
+            "Let u = ln(x), dv = dx",
+            "J = x*ln(x) - int(1) dx",
+            "General: x*ln(abs(x))^2 - 2*x*ln(abs(x)) + 2*x + C",
+            "x*ln(x)^2 - 2*x*ln(x) + 2*x + C",
         ],
     ),
     (
@@ -89,7 +101,7 @@ QUALITY_CASES = [
             "Substitute u = x^2",
             "du/dx = 2*x",
             "int(2*x*cos(x^2)) dx = int(cos(u)) du",
-            "Answer: sin(x^2) + C",
+            "sin(x^2) + C",
         ],
     ),
     (
@@ -99,7 +111,7 @@ QUALITY_CASES = [
             "Antiderivative of sin(x) is -cos(x)",
             "F(pi) = -cos(pi) = 1",
             "F(0) = -cos(0) = -1",
-            "Answer: 2",
+            "2",
         ],
     ),
     (
@@ -108,7 +120,7 @@ QUALITY_CASES = [
         [
             "x != 0",
             "d/dx ln(abs(x))=1/x",
-            "Answer: ln(abs(x)) + C",
+            "ln(abs(x)) + C",
         ],
     ),
     (
@@ -118,7 +130,7 @@ QUALITY_CASES = [
             "vertex",
             "x = -2",
             "minimum y = 3",
-            "Answer: y >= 3",
+            "y >= 3",
         ],
     ),
     (
@@ -167,7 +179,7 @@ QUALITY_CASES = [
         [
             "Take ln of both sides.",
             "3*k*ln(10) = ln(2)",
-            "Answer: k = [ln(2)/(3*ln(10))]",
+            "k = [ln(2)/(3*ln(10))]",
         ],
     ),
     (
@@ -176,7 +188,7 @@ QUALITY_CASES = [
         [
             "Use definition: log_a(x)=b means x=a^b",
             "x = 2^3",
-            "Answer: x = [8]",
+            "x = [8]",
         ],
     ),
     (
@@ -216,7 +228,7 @@ QUALITY_CASES = [
             "f(0) = 5",
             "f(5) = 10",
             "vertex x = 2 is inside the interval",
-            "Answer: 1 <= y <= 10",
+            "1 <= y <= 10",
         ],
     ),
     (
@@ -227,7 +239,7 @@ QUALITY_CASES = [
             "x - x^2 + 2 = 0 => x = -1 or x = 2",
             "f(-1) = -4*e^2",
             "As x -> -infinity, f(x) -> infinity",
-            "Answer: y >= -4*e^2",
+            "y >= -4*e^2",
         ],
     ),
     (
@@ -236,7 +248,7 @@ QUALITY_CASES = [
         [
             "Log argument must be positive",
             "4 - x > 0",
-            "Answer: x < 4",
+            "x < 4",
         ],
     ),
     (
@@ -246,7 +258,7 @@ QUALITY_CASES = [
             "Denominator must be non-zero",
             "x^2 - 1 != 0",
             "(x-1)(x+1) != 0",
-            "Answer: x != -1 and x != 1",
+            "x != -1 and x != 1",
         ],
     ),
     (
@@ -256,7 +268,7 @@ QUALITY_CASES = [
             "Denominator must be non-zero",
             "x^2 - 4 != 0",
             "(x-2)(x+2) != 0",
-            "Answer: x != -2 and x != 2",
+            "x != -2 and x != 2",
         ],
     ),
     (
@@ -266,7 +278,7 @@ QUALITY_CASES = [
             "Denominator must be non-zero",
             "x^2 - 9 != 0",
             "(x-3)(x+3) != 0",
-            "Answer: x != -3 and x != 3",
+            "x != -3 and x != 3",
         ],
     ),
     (
@@ -276,7 +288,7 @@ QUALITY_CASES = [
             "4 - x >= 0 => x <= 4",
             "x - 1 > 0 => x > 1",
             "Combine constraints",
-            "Answer: 1 < x <= 4",
+            "1 < x <= 4",
         ],
     ),
     (
@@ -287,7 +299,7 @@ QUALITY_CASES = [
             "Cancel x-1",
             "Limit becomes x+1",
             "Substitute x=1",
-            "Answer: 2",
+            "2",
         ],
     ),
     (
@@ -297,7 +309,7 @@ QUALITY_CASES = [
             "Use change of base: log_a(x)=ln(x)/ln(a)",
             "Here a = 2",
             "So log_a(x) becomes ln(x)/ln(2)",
-            "Answer: ln(x)/ln(2)",
+            "ln(x)/ln(2)",
         ],
     ),
     (
@@ -308,7 +320,7 @@ QUALITY_CASES = [
             "Here a = 2",
             "u = x, n = 2",
             "x > 0",
-            "Answer: 2*log(2,x)",
+            "2*log(2,x)",
         ],
     ),
     (
@@ -318,7 +330,7 @@ QUALITY_CASES = [
             "Complete the square:",
             "3*x^2 + 12*x + 25",
             "3*(x + 2)^2 + 13",
-            "Answer: 3*(x + 2)^2 + 13",
+            "3*(x + 2)^2 + 13",
         ],
     ),
     (
@@ -341,7 +353,7 @@ QUALITY_CASES = [
             "R*sin(alpha)=2",
             "R = sqrt(1^2+2^2) = sqrt(5)",
             "alpha = atan(2)",
-            "Answer: sqrt(5)*sin(x+atan(2))",
+            "sqrt(5)*sin(x+atan(2))",
         ],
     ),
     (
@@ -351,7 +363,7 @@ QUALITY_CASES = [
             "Small-angle approximation:",
             "theta must be in radians and close to 0",
             "cos(theta) = 1 - theta^2/2 + ...",
-            "Answer: 1 - theta^2/2",
+            "1 - theta^2/2",
         ],
     ),
     (
@@ -361,7 +373,7 @@ QUALITY_CASES = [
             "(1+u)^n = 1 + n*u + n*(n-1)*u^2/2! + n*(n-1)*(n-2)*u^3/3!",
             "u = 8*x, n = 1/2",
             "Simplified terms: T0 = 1, T1 = 4*x, T2 = -8*x^2, T3 = 32*x^3",
-            "Answer: 1 + 4*x - 8*x^2 + 32*x^3",
+            "1 + 4*x - 8*x^2 + 32*x^3",
         ],
     ),
     (
@@ -382,7 +394,7 @@ QUALITY_CASES = [
             "A/(x+2)+B/(x-1)",
             "3*x+5 = A*(x-1)+B*(x+2)",
             "A = 1/3, B = 8/3",
-            "Answer: 1/(3*(x+2)) + 8/(3*(x-1))",
+            "1/(3*(x+2)) + 8/(3*(x-1))",
         ],
     ),
 ]

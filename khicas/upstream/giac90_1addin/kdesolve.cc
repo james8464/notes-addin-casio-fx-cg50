@@ -149,6 +149,9 @@ namespace giac {
   // "unary" version
   gen _laplace(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
+#ifdef CASCAS_DISABLE_DESOLVE_RUNTIME
+    return undef;
+#endif
     bool b=approx_mode(contextptr);
     approx_mode(false,contextptr);
     gen res=_laplace_(exact(args,contextptr),contextptr);
@@ -346,6 +349,9 @@ namespace giac {
   // "unary" version
   gen _ilaplace(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
+#ifdef CASCAS_DISABLE_DESOLVE_RUNTIME
+    return undef;
+#endif
     if (args.type!=_VECT)
       return ilaplace(args,vx_var(),vx_var(),contextptr);
     vecteur & v=*args._VECTptr;
@@ -1446,6 +1452,9 @@ namespace giac {
   // "unary" version
   gen _desolve(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
+#ifdef CASCAS_DISABLE_DESOLVE_RUNTIME
+    return undef;
+#endif
     int ordre;
     vecteur parameters;
     if (args.type!=_VECT || args.subtype!=_SEQ__VECT || (!args._VECTptr->empty() && is_equal(args._VECTptr->back()) && args._VECTptr->back()._SYMBptr->feuille[0].type!=_IDNT)){

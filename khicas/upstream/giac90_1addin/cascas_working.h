@@ -11,6 +11,7 @@ typedef ustl::string working_string;
 #endif
 
 bool eval_with_working(const char *input, working_string &out);
+bool fallback_working(const char *input, working_string &out);
 }
 
 #endif

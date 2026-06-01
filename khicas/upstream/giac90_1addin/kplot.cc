@@ -1602,6 +1602,9 @@ namespace giac {
 
   const double max_nstep=1024;
   gen plotfunc(const gen & f_,const gen & vars,const vecteur & attributs,bool densityplot,double function_xmin,double function_xmax,double function_ymin,double function_ymax,double function_zmin, double function_zmax,int nstep,int jstep,bool showeq,const context * contextptr){
+#ifdef CASCAS_DISABLE_PLOT_RUNTIME
+    return undef;
+#endif
     if (f_.is_symb_of_sommet(at_equal) || is_inequation(f_)){
       return string2gen("Try plot(["+f_._SYMBptr->feuille.print(contextptr)+"],"+vars.print(contextptr)+"). (In)equations can not be plotted.",false);
     }
@@ -1893,6 +1896,9 @@ namespace giac {
   // args=[expr,[var=]x0|[x0,xmin,xmax][,niter]]
   gen _plotseq(const gen & args,const context * contextptr){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
+#ifdef CASCAS_DISABLE_PLOT_RUNTIME
+    return undef;
+#endif
     gen expr,var;
     double x0d,xmin,xmax;
     int niter;
@@ -2604,6 +2610,9 @@ namespace giac {
   }
   gen _plotcontour(const gen & f0,GIAC_CONTEXT){
     if ( f0.type==_STRNG && f0.subtype==-1) return  f0;
+#ifdef CASCAS_DISABLE_PLOT_RUNTIME
+    return undef;
+#endif
     return plotcontour(f0,true,contextptr);
   }
   static const char _plotcontour_s []="plotcontour";
@@ -2615,6 +2624,9 @@ namespace giac {
     return gensizeerr(gettext("Plotfunc: bad variable name"));
   }
   gen funcplotfunc(const gen & args,bool densityplot,const context * contextptr){
+#ifdef CASCAS_DISABLE_PLOT_RUNTIME
+    return undef;
+#endif
     double xmin=gnuplot_xmin,xmax=gnuplot_xmax,ymin=gnuplot_ymin,ymax=gnuplot_ymax,zmin=gnuplot_zmin,zmax=gnuplot_zmax;
     bool showeq=false;
     if (densityplot)
@@ -2695,6 +2707,9 @@ namespace giac {
   }
   gen _plotfunc(const gen & args,const context * contextptr){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
+#ifdef CASCAS_DISABLE_PLOT_RUNTIME
+    return undef;
+#endif
     return funcplotfunc(args,false,contextptr);
   }
   static const char _plotfunc_s []="plotfunc";
@@ -2715,6 +2730,9 @@ namespace giac {
   }
   gen _plot(const gen & g,const context * contextptr){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_DISABLE_PLOT_RUNTIME
+    return undef;
+#endif
     gen var,res;
     if (g.type!=_VECT && !is_distribution(g) && !is_algebraic_program(g,var,res) )
       return _plotfunc(g,contextptr);
@@ -2835,6 +2853,9 @@ namespace giac {
   define_unary_function_ptr5( at_plot ,alias_at_plot,&__plot,_QUOTE_ARGUMENTS,true);
 
   gen plotparam(const gen & f,const gen & vars,const vecteur & attributs,bool densityplot,double function_xmin,double function_xmax,double function_ymin,double function_ymax,double function_tmin, double function_tmax,double function_tstep,const gen & equation,const gen & parameq,const gen & vparam,const context * contextptr){
+#ifdef CASCAS_DISABLE_PLOT_RUNTIME
+    return undef;
+#endif
     if (function_tstep<=0 || (function_tmax-function_tmin)/function_tstep>max_nstep || function_tmax==function_tmin)
       return gensizeerr(gettext("Plotparam: unable to discretize: tmin, tmax, tstep=")+print_DOUBLE_(function_tmin,12)+","+print_DOUBLE_(function_tmax,12)+","+print_DOUBLE_(function_tstep,12)+gettext("\nTry a larger value for tstep"));
     gen fC(f);
@@ -2938,6 +2959,9 @@ namespace giac {
   }
 
   gen paramplotparam(const gen & args,bool densityplot,const context * contextptr){
+#ifdef CASCAS_DISABLE_PLOT_RUNTIME
+    return undef;
+#endif
     // args= [x(t)+i*y(t),t] should add a t interval
     bool f_autoscale=autoscale;
     if (args.type!=_VECT || args.subtype!=_SEQ__VECT)
@@ -3029,6 +3053,9 @@ namespace giac {
   }
   gen _plotparam(const gen & args,const context * contextptr){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
+#ifdef CASCAS_DISABLE_PLOT_RUNTIME
+    return undef;
+#endif
     return paramplotparam(args,true,contextptr);
   }
   static const char _plotparam_s []="plotparam";
@@ -3037,6 +3064,9 @@ namespace giac {
 
   gen _plotpolar(const gen & args,const context * contextptr){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
+#ifdef CASCAS_DISABLE_PLOT_RUNTIME
+    return undef;
+#endif
     // args= [rho(theta),theta] should add a theta interval
     vecteur vargs(plotpreprocess(args,contextptr));
     if (is_undef(vargs))
@@ -3057,6 +3087,9 @@ namespace giac {
 
   gen _LineTan(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_DISABLE_PLOT_RUNTIME
+    return undef;
+#endif
     vecteur attributs(1,COLOR_BLACK);
     vecteur v(seq2vecteur(g));
     int s=read_attributs(v,attributs,contextptr);
@@ -3105,6 +3138,9 @@ namespace giac {
   // args = dy/dx, [x, y], [x0, y0]
   // OR [dx/dt, dy/dt], [t, x, y], [t0, x0, y0]
   static gen plotode(const vecteur & w,GIAC_CONTEXT){
+#ifdef CASCAS_DISABLE_PLOT_RUNTIME
+    return undef;
+#endif
     vecteur v(w);
     bool curve=true;
     gen fp=v[0];
@@ -3213,6 +3249,9 @@ namespace giac {
   }
   gen _plotode(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
+#ifdef CASCAS_DISABLE_PLOT_RUNTIME
+    return undef;
+#endif
     vecteur attributs(1,COLOR_BLACK);
     vecteur v(seq2vecteur(args));
     int s=read_attributs(v,attributs,contextptr);
@@ -3227,6 +3266,9 @@ namespace giac {
 
 #if 1
   gen plotfield(const gen & xp,const gen & yp,const gen & x,const gen & y,double xmin,double xmax,double xstep,double ymin,double ymax,double ystep,double scaling,vecteur & attributs,bool normalize,const context * contextptr){
+#ifdef CASCAS_DISABLE_PLOT_RUNTIME
+    return undef;
+#endif
     if (xstep<=0 || ystep<=0)
       return gensizeerr("Invalid xstep or ystep");
     ck_parameter_x(contextptr);
@@ -3358,6 +3400,9 @@ namespace giac {
   // or [ [dx/dt,dy/dt], [x,y] ] or [ dy/dx, [x,y]]
   gen _plotfield(const gen & args,const context * contextptr){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
+#ifdef CASCAS_DISABLE_PLOT_RUNTIME
+    return undef;
+#endif
     vecteur attributs;
     gen xp,yp,x,y;
     double xmin,xmax,ymin,ymax,xstep,ystep;
