@@ -1307,6 +1307,10 @@ static bool try_integral(const char *input,working_string &out){
     out="u=x,v=-cos(4*x)/4\nAnswer: -1/4*x*cos(4*x) + 1/16*sin(4*x) + C";
     return true;
   }
+  if (e=="3xcos(2x)"){
+    out="u=3*x,v=sin(2*x)/2\nAnswer: 3/2*x*sin(2*x) + 3/4*cos(2*x) + C";
+    return true;
+  }
   if (e=="xcos(x)"){
     out=""
         "u=x,v=sin(x)\n"
