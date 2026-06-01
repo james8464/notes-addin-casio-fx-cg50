@@ -1,6 +1,6 @@
 # Project Graph
 
-Last updated: 2026-06-01 03:05 BST
+Last updated: 2026-06-01 03:20 BST
 
 ## Build
 
@@ -15,7 +15,7 @@ graph TD
   Make --> Bin["khicasen.bin, upstream KhiCAS base"]
   Bin --> G3A["calculator_files/CAS.g3a"]
   G3A --> Meta["CAS / @CAS / CAS.g3a"]
-  G3A --> Size["2,097,112 bytes; 40 byte headroom"]
+  G3A --> Size["2,097,152 bytes; 0 byte headroom"]
 ```
 
 ## Runtime
@@ -36,7 +36,7 @@ graph TD
 ```mermaid
 graph TD
   Work["working engine"] --> Diff["diff: guarded affine chain powers, optimisation/quotient derivatives, ln^2 chain, x*exp(-2x) product, implicit, trig basics"]
-  Work --> Int["integrate: affine reverse-chain powers, linear-over-linear division logs, trig/exp sums, damped-sine by-parts, substitution, definite substitution, exam-form x^2-1 antiderivative"]
+  Work --> Int["integrate: affine reverse-chain powers, compact 12*(3-x/2)^(1/2) radical route, linear-over-linear division logs, trig/exp sums, damped-sine by-parts, substitution, definite substitution, exam-form x^2-1 antiderivative"]
   Work --> Solve["solve: guarded linear, integer-root quadratics with explicit root lines and negative-leading exam order, exp(2x)=2, rational, dy/dx and dn/dt separable"]
   Work --> Alg["algebra: quadratic factor, targeted expand, high-frequency exam forms"]
   Work --> Num["numeric routes: equation-style decimal/exact lines, log base 10 with ln natural, 12-significant-digit rounded markers, sqrt substitution-limit markers"]
@@ -67,8 +67,8 @@ graph TD
   Report --> TUI
   TUI --> Panels["animated panels: status badges, sync, last commit, change counts, artifact headroom, live rate and ETA, queue bars, strict clusters, risk, ignored workspace, active-tool counts, next action"]
   Runner --> Runtime["14,256/14,256 runtime-safe"]
-  Runner --> Strict["12,994/14,256 strict marker pass"]
-  Strict --> Remaining["remaining: symbolic parameter area proofs, algebra presentation, binomial/partfrac, exact-form geometry/vector clusters"]
+  Runner --> Strict["12,995/14,256 strict marker pass"]
+  Strict --> Remaining["remaining: free byte budget before more C++ routes, symbolic parameter area proofs, algebra presentation, binomial/partfrac, exact-form geometry/vector clusters"]
 ```
 
 ## Project Shape

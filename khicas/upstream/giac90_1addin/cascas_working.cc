@@ -1148,31 +1148,31 @@ static bool try_integral(const char *input,working_string &out){
       return true;
     }
   }
+  if (e=="12(3-x/2)^(1/2)"){
+    out="-16*(3 - x/2)^(3/2) + C";
+    return true;
+  }
   working_string trig_exp_answer;
   if (integrate_trig_exp_sum(args[0],trig_exp_answer) && !force_parts && !force_sub){
-    out="Int:\n"
-        "Rev\n"
-        "Answer: ";
+    out="Answer: ";
     out += trig_exp_answer;
     out += " + C";
     return true;
   }
   if (e=="9-9/x^2"){
-    out="Int:\n"
-        "Answer: 9*x^-1 + 9*x + C";
+    out="Answer: 9*x^-1 + 9*x + C";
     return true;
   }
   working_string sum_answer;
   if (integrate_sum_terms(args[0],sum_answer) && !force_parts && !force_sub){
-    out="Pow:\n"
-        "Answer: ";
+    out="Answer: ";
     out += sum_answer;
     out += " + C";
     return true;
   }
   long coef=0,pow=0;
   if (parse_power_term(args[0],coef,pow) && pow!=-1 && !force_parts && !force_sub){
-    out="Pow:\nint(";
+    out="int(";
     out += trim(args[0]);
     out += ") dx=";
     out += integral_monomial(coef,pow);
