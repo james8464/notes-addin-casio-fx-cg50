@@ -30,7 +30,7 @@ int fileBrowser(char* filename, const char* filter, const char* title) {
 }
 
 int fileBrowserSub(char* browserbasepath, char* filename, const char* filter, const char* title) {
-  Menu menu;
+  Menu menu = {};
   MenuItemIcon icontable[12];
   buildIconTable(icontable);
   
@@ -40,6 +40,7 @@ int fileBrowserSub(char* browserbasepath, char* filename, const char* filter, co
   File* files = NULL;
   if(menu.numitems > 0) {
     menuitems = (MenuItem*)alloca(menu.numitems*sizeof(MenuItem));
+    memset(menuitems,0,menu.numitems*sizeof(MenuItem));
     files = (File*)alloca(menu.numitems*sizeof(File));
     // populate arrays
     GetFiles(files, menuitems, browserbasepath, &menu.numitems, filter);

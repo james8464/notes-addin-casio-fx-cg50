@@ -117,9 +117,9 @@ void set_xcas_status(){
 }
 
 void menu_setup(){
-  Menu smallmenu;
+  Menu smallmenu = {};
   smallmenu.numitems=10;
-  MenuItem smallmenuitems[smallmenu.numitems];
+  MenuItem smallmenuitems[10] = {};
   smallmenu.items=smallmenuitems;
   smallmenu.height=8;
   smallmenu.scrollbar=1;
@@ -1989,6 +1989,7 @@ giac::gen select_var(){
     return giac::undef;
   giac::vecteur & v=*g._VECTptr;
   MenuItem smallmenuitems[v.size()+4];
+  memset(smallmenuitems,0,sizeof(MenuItem)*(v.size()+4));
   vector<ustl::string> vs(v.size()+1);
   int i,total=0;
   const char typ[]="idzDcpiveSfEsFRmuMwgPF";
@@ -2026,7 +2027,7 @@ giac::gen select_var(){
   smallmenuitems[i+1].text=(char *)"assume(";
   smallmenuitems[i+2].text=(char *)"restart ";
   smallmenuitems[i+3].text=(char *)"VARS()";
-  Menu smallmenu;
+  Menu smallmenu = {};
   smallmenu.numitems=v.size()+4; 
   smallmenu.items=smallmenuitems;
   smallmenu.height=8;
@@ -2328,9 +2329,9 @@ int Console_Eval(const char * buf){
 static char inputparam_result[256];
 
 const char * inputparam(char curname,int symbolic){
-    Menu paramenu;
+    Menu paramenu = {};
     paramenu.numitems=7;
-    MenuItem paramenuitems[paramenu.numitems];
+    MenuItem paramenuitems[7] = {};
     paramenu.items=paramenuitems;
     paramenu.height=8;
     paramenu.title = (char *)"Parameter";
@@ -2539,9 +2540,9 @@ int Console_GetKey(){
     }
     if (key==KEY_CTRL_F6){
 #if 1
-      Menu smallmenu;
+      Menu smallmenu = {};
       smallmenu.numitems=18;
-      MenuItem smallmenuitems[smallmenu.numitems];
+      MenuItem smallmenuitems[18] = {};
       
       smallmenu.items=smallmenuitems;
       smallmenu.height=8;

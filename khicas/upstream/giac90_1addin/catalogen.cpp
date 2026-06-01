@@ -113,7 +113,7 @@ int showCatalog(char* insertText,int preselect,int menupos) {
   //int ret;
   // returns 0 on failure (user exit) and 1 on success (user chose a option)
   const int categories[]={CAT_CATEGORY_ALL,CAT_CATEGORY_ALGEBRA,CAT_CATEGORY_CALCULUS,CAT_CATEGORY_POLYNOMIAL,CAT_CATEGORY_REAL,CAT_CATEGORY_SOLVE,CAT_CATEGORY_TRIG};
-  MenuItem menuitems[sizeof(categories)/sizeof(categories[0])];
+  MenuItem menuitems[sizeof(categories)/sizeof(categories[0])] = {};
   menuitems[0].text = (char*)"All";
   menuitems[1].text = (char*)"Algebra";
   menuitems[2].text = (char*)"Calculus";
@@ -122,7 +122,7 @@ int showCatalog(char* insertText,int preselect,int menupos) {
   menuitems[5].text = (char*)"Solve";
   menuitems[6].text = (char*)"Trigonometry";
   
-  Menu menu;
+  Menu menu = {};
   menu.items=menuitems;
   menu.numitems=sizeof(menuitems)/sizeof(MenuItem);
   menu.scrollout=1;
@@ -176,6 +176,7 @@ int doCatalogMenu(char* insertText, char* title, int category,const char * cmdna
   bool isopt=category==CAT_CATEGORY_OPTIONS;
   int nitems = isall? CAT_COMPLETE_COUNT:(isopt?allopts:CAT_COMPLETE_COUNT);
   MenuItem* menuitems = (MenuItem*)alloca(sizeof(MenuItem)*nitems);
+  memset(menuitems,0,sizeof(MenuItem)*nitems);
   int cur = 0,curmi = 0,i=0,menusel=-1,cmdl=cmdname?strlen(cmdname):0;
   gen g;
   while(cur<nitems) {
@@ -226,7 +227,7 @@ int doCatalogMenu(char* insertText, char* title, int category,const char * cmdna
     cur++;
   }
   
-  Menu menu;
+  Menu menu = {};
   if (menusel>=0)
     menu.selection=menusel+1;
   menu.items=menuitems;

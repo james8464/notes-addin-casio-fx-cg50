@@ -1285,9 +1285,9 @@ int doTextArea(textArea* text) {
       break;
     case KEY_CTRL_F6:	
       if (clipline<0 && text->editable && text->filename.size()){
-	Menu smallmenu;
+	Menu smallmenu = {};
 	smallmenu.numitems=11;
-	MenuItem smallmenuitems[smallmenu.numitems];
+	MenuItem smallmenuitems[11] = {};
 	smallmenu.items=smallmenuitems;
 	smallmenu.height=8;
 	smallmenu.scrollbar=0;
