@@ -60,11 +60,12 @@ def main() -> int:
     require(source, "KEYWAIT_HALTOFF_TIMEROFF", "nonblocking key poll")
     require(source, "GetKeyWait_OS(&col, &row, KEYWAIT_HALTOFF_TIMEROFF, 0, 1, &keycode)", "nonblocking key call")
     require(source, "OS_InnerWait_ms(40)", "loop pacing")
-    require(source, "fill_rect(339, 0, 21, 23, visible ? COLOR_BLUE : kWhite);", "R blue highlight")
+    require(source, "fill_rect(339, 0, 21, visible ? 23 : 24, visible ? COLOR_BLUE : kWhite);", "R blue highlight")
     require(source, 'PrintCXY(342, 1, "R", 0x40', "status-area R glyph")
+    require(source, "hline(339, 359, 23, kFrame);", "R off-state divider restore")
     require(source, "kFKeyBlackTemplate = 0x0190", "OS black fkey template")
     require(source, "display_fkey(slot, kFKeyBlackTemplate);", "OS fkey background")
-    require(source, "PrintMini(&x, &y, (unsigned char *)text", "OS mini fkey text")
+    require(source, "Bdisp_MMPrint(x, y, text, 0, 0xffffffff", "OS fkey text")
     require(source, 'draw_os_text_fkey(2, "MAT/VCT", 4);', "MAT/VCT fkey")
     require(source, 'draw_os_text_fkey(3, "MATH", 9);', "MATH fkey")
     require(source, '"MAT/VCT"', "MAT/VCT fkey")
@@ -72,14 +73,15 @@ def main() -> int:
     require(source, "draw_input_box", "input box helper")
     require(source, "fill_rect(13, 31, 14, 17, kWhite);", "input box clear")
     require(source, "rect_outline(13, 31, 14, 17, kFrame);", "input box outline")
+    require(source, "fill_rect(13, 31, 2, 17, kFrame);", "input box left accent")
     if "PrintCXY(340" in source:
         raise SystemExit("FAIL runmat clipped R PrintCXY present")
     if "hline(6, 389, 24" in source:
         raise SystemExit("FAIL runmat duplicate status divider present")
-    if "fill_rect(13, 31, 2, 17" in source:
-        raise SystemExit("FAIL runmat filled input-box edge present")
-    if "draw_custom_fkey_text" in source or "Bdisp_MMPrint(x + 4, 196, text" in source:
+    if "draw_custom_fkey_text" in source or "PrintMini(&x, &y, (unsigned char *)text" in source:
         raise SystemExit("FAIL runmat custom fkey box renderer present")
+    if "fill_rect(339, 0, 21, 23, visible ? COLOR_BLUE : kWhite);" in source:
+        raise SystemExit("FAIL runmat R off-state leaves blue residue")
     if "static unsigned char glyph" in source or "draw_pixel_text" in source:
         raise SystemExit("FAIL runmat manual pixel glyph renderer present")
 
