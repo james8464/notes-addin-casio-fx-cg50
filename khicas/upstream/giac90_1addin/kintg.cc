@@ -4874,6 +4874,21 @@ namespace giac {
     return err;
   }
 
+#ifdef CASCAS_DISABLE_DESOLVE_RUNTIME
+  gen odesolve(const gen &,const gen &,const gen &,const gen &,double,bool,double *,double *,int,GIAC_CONTEXT){
+    return gensizeerr(contextptr);
+  }
+  static gen odesolve(const vecteur &,GIAC_CONTEXT){
+    return gensizeerr(contextptr);
+  }
+  gen _odesolve(const gen & args,GIAC_CONTEXT) {
+    if ( args.type==_STRNG && args.subtype==-1) return args;
+    return symbolic(at_odesolve,args);
+  }
+  static const char _odesolve_s []="odesolve";
+  static define_unary_function_eval (__odesolve,&_odesolve,_odesolve_s);
+  define_unary_function_ptr5( at_odesolve ,alias_at_odesolve,&__odesolve,0,true);
+#else
   // solve dy/dt=f(t,y) with initial value y(t0)=y0 to final value t1
   // returns by default y[t1] or a vector of [t,y[t]]
   // if return_curve is true stop as soon as y is outside ymin,ymax
@@ -5281,6 +5296,7 @@ namespace giac {
   static const char _odesolve_s []="odesolve";
   static define_unary_function_eval (__odesolve,&_odesolve,_odesolve_s);
   define_unary_function_ptr5( at_odesolve ,alias_at_odesolve,&__odesolve,0,true);
+#endif
 
   gen preval(const gen & f,const gen & x,const gen & a,const gen & b,GIAC_CONTEXT){
     if (x.type!=_IDNT)
@@ -5568,4 +5584,3 @@ namespace giac {
 #ifndef NO_NAMESPACE_GIAC
 } // namespace giac
 #endif // ndef NO_NAMESPACE_GIAC
-

@@ -4264,6 +4264,78 @@ static bool integrate_mixed_sum_terms(const working_string &expr,working_string 
 
 static bool try_integral(const char *input,working_string &out);
 
+static bool is_sqrt_a_minus_x_integrand(const working_string &e,const working_string &A){
+  working_string c=compact(e), a=compact(A);
+  working_string r1="x^(1/2)sqrt("+a+"-x)";
+  working_string r2="sqrt(x)sqrt("+a+"-x)";
+  working_string r3="sqrt("+a+"-x)x^(1/2)";
+  working_string r4="sqrt("+a+"-x)sqrt(x)";
+  return c==r1 || c==r2 || c==r3 || c==r4;
+}
+
+static void sqrt_a_minus_x_working(const working_string &A,working_string &out,bool final_value){
+  working_string a=trim(A);
+  out="x = "+a+"*sin(theta)^2\n";
+  out += "dx/dtheta = 2*"+a+"*sin(theta)*cos(theta)\n";
+  out += "dx = 2*"+a+"*sin(theta)*cos(theta) dtheta\n";
+  out += "x=0 -> theta=0\n";
+  out += "x="+a+" -> theta=pi/2\n";
+  out += "sqrt("+a+"-x)=sqrt("+a+"-"+a+"*sin(theta)^2)\n";
+  out += "sqrt("+a+"-"+a+"*sin(theta)^2)=sqrt("+a+")*cos(theta)\n";
+  out += "x^(1/2)=sqrt("+a+"*sin(theta)^2)=sqrt("+a+")*sin(theta)\n";
+  out += "I=int_0^"+a+" x^(1/2)*sqrt("+a+"-x) dx\n";
+  out += "I=int_0^(pi/2) sqrt("+a+")*sin(theta)*sqrt("+a+")*cos(theta)*2*"+a+"*sin(theta)*cos(theta) dtheta\n";
+  out += "I=2*"+a+"^2*int_0^(pi/2) sin(theta)^2*cos(theta)^2 dtheta\n";
+  out += "sin(2*theta)=2*sin(theta)*cos(theta)\n";
+  out += "sin(theta)^2*cos(theta)^2=1/4*sin(2*theta)^2\n";
+  out += "I=1/2*"+a+"^2*int_0^(pi/2) sin(2*theta)^2 dtheta";
+  if (!final_value)
+    return;
+  out += "\n";
+  out += "sin(2*theta)^2=(1-cos(4*theta))/2\n";
+  out += "I=1/4*"+a+"^2*int_0^(pi/2) (1-cos(4*theta)) dtheta\n";
+  out += "I=1/4*"+a+"^2*[theta - sin(4*theta)/4]_0^(pi/2)\n";
+  out += "I=1/4*"+a+"^2*((pi/2 - sin(2*pi)/4) - (0 - sin(0)/4))\n";
+  out += "pi*"+a+"^2/8";
+}
+
+static bool trig_sin2_defint_route(const working_string &expr,const working_string &var,
+                                   const working_string &lo,const working_string &hi,
+                                   working_string &out){
+  working_string e=compact(expr), v=compact(var), a=compact(lo), b=compact(hi);
+  if (a!="0" || b!="pi/2")
+    return false;
+  working_string core="sin(2"+v+")^2";
+  working_string coeff;
+  if (e==core)
+    coeff="";
+  else {
+    working_string p1="1/2*a^2"+core;
+    working_string p2="a^2/2"+core;
+    working_string p3="("+working_string("1/2")+")a^2"+core;
+    working_string p4="(a^2/2)"+core;
+    working_string p5="a^2(1/2)"+core;
+    if (e==p1 || e==p2 || e==p3 || e==p4 || e==p5)
+      coeff="1/2*a^2";
+    else
+      return false;
+  }
+  out="sin(2*"+v+")^2=(1-cos(4*"+v+"))/2\n";
+  if (coeff.empty()){
+    out += "I=1/2*int_0^(pi/2) (1-cos(4*"+v+")) d"+v+"\n";
+    out += "I=1/2*["+v+" - sin(4*"+v+")/4]_0^(pi/2)\n";
+    out += "pi/4";
+  }
+  else {
+    out += "I=1/2*a^2*int_0^(pi/2) sin(2*"+v+")^2 d"+v+"\n";
+    out += "I=1/4*a^2*int_0^(pi/2) (1-cos(4*"+v+")) d"+v+"\n";
+    out += "I=1/4*a^2*["+v+" - sin(4*"+v+")/4]_0^(pi/2)\n";
+    out += "I=1/4*a^2*((pi/2 - sin(2*pi)/4) - (0 - sin(0)/4))\n";
+    out += "pi*a^2/8";
+  }
+  return true;
+}
+
 static working_string strip_integral_constant(const working_string &s){
   working_string r=trim(last_nonempty_line(s));
   if (r.size()>=4 && r.substr(r.size()-4,4)==" + C")
@@ -4330,6 +4402,12 @@ static bool try_integral(const char *input,working_string &out){
     if (parse_call(input,"defint",dargs,5,dn) && dn>=4){
       working_string de=compact(dargs[0]), dv=compact(dargs[1]);
       working_string da=compact(dargs[2]), db=compact(dargs[3]);
+      if (dv=="x" && da=="0" && is_sqrt_a_minus_x_integrand(dargs[0],dargs[3])){
+        sqrt_a_minus_x_working(dargs[3],out,true);
+        return true;
+      }
+      if (trig_sin2_defint_route(dargs[0],dargs[1],dargs[2],dargs[3],out))
+        return true;
       if (dv=="x" && de=="sin(2x)" && da=="0" && db=="pi/2"){
         out="F=-1/2*cos(2*x)\n"
             "Eval:\n"
@@ -4356,6 +4434,14 @@ static bool try_integral(const char *input,working_string &out){
   bool force_sub=method_is(method,"3","sub") || method_is(method,"3","substitution");
   if (var.size()!=1)
     return false;
+  if (n>=4){
+    if (var=="x" && compact(args[2])=="0" && is_sqrt_a_minus_x_integrand(args[0],args[3])){
+      sqrt_a_minus_x_working(args[3],out,true);
+      return true;
+    }
+    if (trig_sin2_defint_route(args[0],args[1],args[2],args[3],out))
+      return true;
+  }
   if (var!="x"){
     if (!contains_var_symbol(e,var[0])){
       out="Const:\nno "+var+": int(a)d"+var+"=a*"+var+"+C\n";
@@ -5212,6 +5298,38 @@ static bool try_solve(const char *input,working_string &out){
   working_string ceq=canonical_expr(args[0]);
   working_string rawvar=n>=2?trim(args[1]):working_string(1,default_var_char(eq));
   working_string var=compact(rawvar);
+  if (var=="k"){
+    working_string raw=trim(args[0]);
+    int eqp=find_top_equal_solve(raw);
+    if (eqp>0){
+      working_string left=trim(raw.substr(0,eqp)), right=trim(raw.substr(eqp+1,raw.size()-eqp-1));
+      working_string lc=compact(left), rc=compact(right), iargs[6];
+      int in=0;
+      bool left_int=parse_call(left.c_str(),"defint",iargs,6,in);
+      if (!left_int)
+        left_int=parse_call(left.c_str(),"integrate",iargs,6,in);
+      if (left_int && in>=4 && compact(iargs[1])=="x" && compact(iargs[2])=="0" &&
+          is_sqrt_a_minus_x_integrand(iargs[0],iargs[3]) && rc=="kpia^2"){
+        sqrt_a_minus_x_working(iargs[3],out,true);
+        out += "\nk*pi*a^2 = pi*a^2/8\n";
+        out += "divide by pi*a^2\n";
+        out += "k = 1/8";
+        return true;
+      }
+      in=0;
+      bool right_int=parse_call(right.c_str(),"defint",iargs,6,in);
+      if (!right_int)
+        right_int=parse_call(right.c_str(),"integrate",iargs,6,in);
+      if (right_int && in>=4 && compact(iargs[1])=="x" && compact(iargs[2])=="0" &&
+          is_sqrt_a_minus_x_integrand(iargs[0],iargs[3]) && lc=="kpia^2"){
+        sqrt_a_minus_x_working(iargs[3],out,true);
+        out += "\nk*pi*a^2 = pi*a^2/8\n";
+        out += "divide by pi*a^2\n";
+        out += "k = 1/8";
+        return true;
+      }
+    }
+  }
   if (var.size()==1 && (try_solve_scaled_exp_power_raw(nospace_lower(args[0]),rawvar,var[0],out) ||
                          try_solve_exp_power_raw(compact(args[0]),rawvar,var[0],out)))
     return true;
@@ -7127,6 +7245,19 @@ static bool try_xform(const char *input,working_string &out){
   if (!parse_call(input,"xform",args,2,n) || n<2)
     return false;
   working_string a=compact(args[0]), b=compact(args[1]);
+  {
+    working_string iargs[6];
+    int in=0;
+    bool iok=parse_call(args[0].c_str(),"integrate",iargs,6,in);
+    if (!iok)
+      iok=parse_call(args[0].c_str(),"defint",iargs,6,in);
+    if (iok && in>=4 && compact(iargs[1])=="x" && compact(iargs[2])=="0" &&
+        is_sqrt_a_minus_x_integrand(iargs[0],iargs[3]) &&
+        (contains(compact(args[1]),"sin(2theta)^2") || contains(compact(args[1]),"sin^2(2theta)"))){
+      sqrt_a_minus_x_working(iargs[3],out,false);
+      return true;
+    }
+  }
   if (try_xform_shifted_trig_equation(a,b,out))
     return true;
   if (try_xform_r_form(a,b,out))

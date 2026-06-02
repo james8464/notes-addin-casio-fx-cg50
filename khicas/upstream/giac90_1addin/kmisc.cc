@@ -3014,6 +3014,9 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
 #ifdef RELEASE
   
   int step_param_(const gen & f,const gen & g,const gen & t,gen & tmin,gen&tmax,vecteur & poi,vecteur & tvi,bool printtvi,bool exactlegende,GIAC_CONTEXT,bool do_inflex){
+#ifdef CASCAS_DISABLE_PLOT_RUNTIME
+    return 0;
+#else
     if (t.type!=_IDNT)
       return 0;
     gprintf(gettext("====================\nParametric plot (%gen,%gen), variable %gen"),makevecteur(f,g,t),1,contextptr);
@@ -3521,6 +3524,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
     // finished!
     purgenoassume(t,contextptr);
     return 1 + (periode!=1);
+#endif
   }
 
   int step_param(const gen & f,const gen & g,const gen & t,gen & tmin,gen&tmax,vecteur & poi,vecteur & tvi,bool printtvi,bool exactlegende,GIAC_CONTEXT,bool do_inflex){
@@ -3573,6 +3577,9 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
   // poi will contain point of interest: asymptotes and extremas
   // xmin and xmax will be set to values containing all points in poi
   int step_func_(const gen & f,const gen & x,gen & xmin,gen&xmax,vecteur & poi,vecteur & tvi,gen& periode,vecteur & asym,vecteur & parab,vecteur & crit,vecteur & infl,bool printtvi,bool exactlegende,GIAC_CONTEXT,bool do_inflex){
+#ifdef CASCAS_DISABLE_PLOT_RUNTIME
+    return 0;
+#else
     if (x.type!=_IDNT)
       return 0;
     gprintf(gettext("====================\nFunction plot %gen, variable %gen"),makevecteur(f,x),1,contextptr);
@@ -3990,6 +3997,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
     // finished!
     purgenoassume(x,contextptr);
     return 1 + (periode!=0);
+#endif
   }
 
   int step_func(const gen & f,const gen & x,gen & xmin,gen&xmax,vecteur & poi,vecteur & tvi,gen & periode,vecteur & asym,vecteur & parab,vecteur & crit,vecteur & inflex,bool printtvi,bool exactlegende,GIAC_CONTEXT,bool do_inflex){
