@@ -823,8 +823,6 @@ def size_hint(st: Stat, frame: int, width: int, enabled: bool) -> list[str]:
     rows = [size_row("CAS.g3a", st.g3a, frame, width, enabled)]
     if not st.g3a and st.build_g3a:
         rows.append(size_row("build/CAS.g3a", st.build_g3a, frame, width, enabled))
-    rows.append(f"note {st.artifact_note}")
-    rows.append(f"path {G3A}")
     return rows
 
 
@@ -839,7 +837,6 @@ def queue_health(st: Stat, frame: int, width: int, enabled: bool) -> list[str]:
         f"age {st.queue_live_age}  rate {st.queue_rate}  eta {st.queue_eta}",
         f"pass {st.queue_ok:,}/{st.queue_total:,}  fail {st.queue_bad:,}",
         split_bar(st.queue_ok, st.queue_bad, st.queue_total, max(18, width), frame, enabled),
-        f"scan {wave(max(18, width), frame, enabled)}",
     ]
     return rows
 
@@ -1169,87 +1166,64 @@ def columns(left: list[str], right: list[str], width: int) -> list[str]:
     return [trim(left[i], l_width) + gap + trim(right[i], r_width) for i in range(height)]
 
 
-def render_compact(st: Stat, frame: int, width: int, enabled: bool) -> str:
+def render_compact(st: Stat, frame: int, width: int, height: int, enabled: bool) -> str:
     width = max(78, width)
     bar_w = max(18, min(34, width - 48))
     spin = "|/-\\"[frame % 4]
-    pulse = ("...." + ("#" * (frame % 5))).ljust(9, ".")[:9]
     headroom = LIMIT - st.g3a
     status = "OK" if st.g3a and headroom >= 0 else "OVER" if st.g3a else "MISSING"
     status_code = C.green if status == "OK" else C.red
     dirty_code = C.green if st.dirty == 0 else C.yellow
+    risk = "; ".join(risk_rows(st)[:3])
+    dirty = "; ".join(st.dirty_files) if st.dirty_files else "clean"
     lines = [
         trim("=" * width, width),
         trim(
             f"{color('CAS LIVE AUDIT', C.bold + C.cyan, enabled)} {spin} "
-            f"{time.strftime('%H:%M:%S')} scan {pulse} "
+            f"{time.strftime('%H:%M:%S')} "
             f"{badge(status, status_code, enabled)} {badge('dirty ' + str(st.dirty), dirty_code, enabled)}",
             width,
         ),
         trim("=" * width, width),
-        kv("repo", f"{st.branch} @ {st.commit}  graph {st.graph_age}", width, enabled),
+        kv("repo", f"{st.branch} @ {st.commit}  {st.upstream}", width, enabled),
         kv("commit", ticker(st.subject, max(12, width - 20), frame), width, enabled),
         kv("status", status_strip(st, enabled), width, enabled),
-        kv("run path", str(AUDIT_PATH), width, enabled),
-        kv("lane", phase_lanes(st, frame, enabled), width, enabled),
         kv("metrics", topline_metrics(st, enabled), width, enabled),
-        kv("scanner", meter(max(12, min(28, width - 22)), frame, enabled), width, enabled),
-        kv("gates", "  ".join(gate_rows(st, frame, enabled)[:3]), width, enabled),
-        kv("sync", st.upstream, width, enabled),
-        kv("state", f"{st.state_rows} events  age {st.state_age}", width, enabled),
         kv("phase", st.phase, width, enabled),
         kv("event", ticker(st.last, max(12, width - 20), frame), width, enabled),
         *[trim(r, width) for r in size_hint(st, frame, bar_w, enabled)],
         kv("artifact", f"age {st.g3a_age}  sha256 {st.g3a_hash}  headroom {headroom:,} B", width, enabled),
-        kv("queue", f"{st.queue_rows:,} rows / {st.queue_inputs:,} inputs", width, enabled),
-        kv("latest", f"{st.queue}  report age {st.report_age}", width, enabled),
-        kv("live", f"{st.queue_active}  age {st.queue_live_age}  rate {st.queue_rate}  eta {st.queue_eta}", width, enabled),
-        kv("vm docs", f"{bar(st.docs_done, st.docs_total, bar_w, frame, enabled)} {st.docs_done}/{st.docs_total} pending {st.docs_pending}", width, enabled),
+        kv("queue", f"{st.queue}  report {st.report_age}  rate {st.queue_rate}  eta {st.queue_eta}", width, enabled),
         kv("accuracy", split_bar(st.queue_ok, st.queue_bad, st.queue_total, bar_w, frame, enabled), width, enabled),
-        trim(color("progress", C.bold, enabled), width),
-        trim(f"trend          {st.ratio_trend}  {wave(18, frame, enabled)}", width),
     ]
-    for label, done, total in st.ratios[:4]:
+    for label, done, total in st.ratios[:5]:
         lines.append(trim(f"{label:<14} {bar(done, total, bar_w, frame, enabled)} {done}/{total}", width))
     if not st.ratios:
         lines.append(trim("no ratio data yet", width))
-    for row in gate_rows(st, frame, enabled)[3:8]:
+    for row in gate_rows(st, frame, enabled)[:8]:
         lines.append(kv("gate", row, width, enabled))
     lines.append(kv("changes", f"staged {st.staged}  unstaged {st.unstaged}  untracked {st.untracked}", width, enabled))
-    lines.append(kv("dirty files", "; ".join(st.dirty_files) if st.dirty_files else "clean", width, enabled))
-    lines.append(kv("risk", "; ".join(risk_rows(st)[:3]), width, enabled))
+    lines.append(kv("dirty files", dirty, width, enabled))
+    lines.append(kv("risk", risk, width, enabled))
     if st.next_action not in ("", "n/a"):
         lines.append(kv("next", st.next_action, width, enabled))
     lines.append(kv("release", "; ".join(readiness_rows(st)[:3]), width, enabled))
-    ignored = ignored_rows()
-    if ignored:
-        lines.append(kv("ignored", "; ".join(ignored), width, enabled))
-    lines.append(kv("hygiene", f"ignored {st.ignored_items} files/{human_size(st.ignored_bytes)}  cleanup {st.cleanup_items} files/{human_size(st.cleanup_bytes)}", width, enabled))
-    lines.append(kv("cleanup", "; ".join(cleanup_rows(3)), width, enabled))
-    lines.append(kv("clean cmd", cleanup_command_rows()[0], width, enabled))
-    lines.append(kv("audit path", str(AUDIT_PATH), width, enabled))
-    lines.append(kv("active", f"tools {st.tool_count}  test scripts {st.test_count}  delete candidates 0", width, enabled))
     quality = f"unsupported {st.unsupported}"
     quality += "  " + "; ".join(failure_cluster_rows(st, 3)[:2])
     lines.append(kv("quality", quality, width, enabled))
-    for row in cluster_bars(st, bar_w + 14, frame, enabled)[:4]:
-        lines.append(kv("gap map", row, width, enabled))
-    lines.append(kv("freshness", "  ".join(freshness_rows(st)[:2]), width, enabled))
-    if st.events:
-        lines.append(kv("recent", st.events[-1], width, enabled))
     lines.extend(
         [
             trim("-" * width, width),
-            trim("run: " + "  |  ".join(command_rows()[:3]), width),
+            trim("run: " + "  |  ".join(command_rows()[:4]), width),
             trim("q/ctrl-c quit  --once one frame  --fps N animation rate  --scan-interval N refresh rate", width),
         ]
     )
-    return "\n".join(lines)
+    return "\n".join(lines[:height])
 
 
 def render(st: Stat, frame: int, width: int, height: int, enabled: bool) -> str:
-    if height <= 32:
-        return render_compact(st, frame, width, enabled)
+    if height <= 48:
+        return render_compact(st, frame, width, height, enabled)
     width = max(78, width)
     bar_w = max(18, min(44, width - 54))
     spin = "|/-\\"[frame % 4]
@@ -1271,17 +1245,11 @@ def render(st: Stat, frame: int, width: int, height: int, enabled: bool) -> str:
         f"last   {st.subject}",
         f"phase  {st.phase}",
         f"event  {st.last}",
-        f"graph  {st.graph_age}  state {st.state_rows} rows / age {st.state_age}",
-        f"checkpoint {st.checkpoint}",
-        f"audit {AUDIT_PATH}",
     ]
     status_rows = [
         status_strip(st, enabled),
-        phase_lanes(st, frame, enabled),
         topline_metrics(st, enabled),
         f"changes staged {st.staged}  unstaged {st.unstaged}  untracked {st.untracked}",
-        f"active tooling {st.tool_count} files  test scripts {st.test_count}",
-        f"scanner {meter(24, frame, enabled)}",
     ]
     if width >= 112:
         left_w = (width - 2) // 2
@@ -1299,7 +1267,6 @@ def render(st: Stat, frame: int, width: int, height: int, enabled: bool) -> str:
     artifact_rows = [
         *size_hint(st, frame, bar_w, enabled),
         f"age {st.g3a_age}  sha256 {st.g3a_hash}",
-        f"last build age {st.build_age}",
         f"hard headroom {headroom:,} B  target delta {TARGET - st.g3a:,} B",
     ]
     queue_rows_ui = [
@@ -1307,7 +1274,6 @@ def render(st: Stat, frame: int, width: int, height: int, enabled: bool) -> str:
         f"latest {st.queue}  report age {st.report_age}",
         *queue_health(st, frame, bar_w, enabled),
     ]
-    doc_rows_ui = doc_scan_rows(st, frame, bar_w, enabled)
     if width >= 112:
         left_w = (width - 2) // 2
         right_w = width - 2 - left_w
@@ -1316,20 +1282,12 @@ def render(st: Stat, frame: int, width: int, height: int, enabled: bool) -> str:
             panel("queue", queue_rows_ui, right_w, enabled),
             width,
         )
-        lines += columns(
-            panel("vm docs", doc_rows_ui, left_w, enabled),
-            panel("progress", [f"trend {st.ratio_trend}", sweep(24, frame, enabled)], right_w, enabled),
-            width,
-        )
     else:
         lines += panel("artifact", artifact_rows, width, enabled)
         lines.append("")
         lines += panel("queue", queue_rows_ui, width, enabled)
-        lines.append("")
-        lines += panel("vm docs", doc_rows_ui, width, enabled)
     lines.append("")
     lines += panel("progress", [], width, enabled)[:1]
-    lines.append(trim(f"trend          {st.ratio_trend}  {sweep(24, frame, enabled)}", width))
     if st.ratios:
         for label, done, total in st.ratios:
             lines.append(trim(f"{label:<14} {bar(done, total, bar_w, frame, enabled)} {done}/{total} {rate(done,total)}", width))
@@ -1354,24 +1312,11 @@ def render(st: Stat, frame: int, width: int, height: int, enabled: bool) -> str:
         lines += panel("workspace", workspace_rows, width, enabled)
         lines.append("")
         lines += panel("risk", risk, width, enabled)
-    lines += panel("project hygiene", hygiene_rows(st, enabled), width, enabled)
-    lines += panel("tooling", tool_rows(st), width, enabled)
-    lines += panel("cleanup command", cleanup_command_rows(), width, enabled)
-    lines += panel("freshness", freshness_rows(st), width, enabled)
     lines += panel("tests", test_rows(st), width, enabled)
     lines += panel("gates", gate_rows(st, frame, enabled), width, enabled)
     lines += panel("release", readiness_rows(st), width, enabled)
     gap_rows = [f"unsupported {st.unsupported}", *failure_cluster_rows(st)]
-    gap_rows.extend(cluster_bars(st, bar_w + 14, frame, enabled))
     lines += panel("quality", gap_rows, width, enabled)
-    ignored = ignored_rows()
-    if ignored:
-        lines.append("")
-        lines += panel("ignored workspace", ignored, width, enabled)
-    lines.append("")
-    lines += panel("cleanup candidates", cleanup_rows(), width, enabled)
-    lines.append("")
-    lines += panel("recent", st.events or ["no state events yet"], width, enabled)
     lines.append("")
     run_panel = panel(
         "run",
