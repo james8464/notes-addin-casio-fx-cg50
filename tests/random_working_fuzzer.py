@@ -24,6 +24,11 @@ VISIBLE_COMMANDS = [
     "rewrite", "sec", "series", "simplify", "sin", "solve", "sqrt", "subst", "sum",
     "tan", "taylor", "tcollect", "texpand", "xform",
 ]
+OPTIONAL_ARG_COMMANDS = {
+    "coeff", "collect", "diff", "factor", "fsolve", "integrate", "limit",
+    "log", "partfrac", "product", "range", "series", "solve", "sum",
+    "taylor",
+}
 COMMANDS = [
     "diff", "integrate", "simplify", "solve", "range",
     "rewrite", "rewrite", "xform", "xform", "xform",
@@ -97,6 +102,23 @@ TEMPLATES = {
     "defint": ["defint(sin(2x),x,0,pi/2)", "defint(9/(2x+1)^2,x,0,1)"],
     "trig": ["xform(1+tan(x)^2,sec(x)^2)"],
 }
+
+
+class ChaosCommandScheduler:
+    def __init__(self, rng: random.Random, commands: list[str] | None = None):
+        self.rng = rng
+        self.commands = list(commands or VISIBLE_COMMANDS)
+        self.pool: list[str] = []
+        self.counts: dict[str, int] = {}
+
+    def next(self) -> tuple[str, int]:
+        if not self.pool:
+            self.pool = self.commands[:]
+            self.rng.shuffle(self.pool)
+        cmd = self.pool.pop()
+        variant = self.counts.get(cmd, 0)
+        self.counts[cmd] = variant + 1
+        return cmd, variant
 
 
 def maybe_space(rng: random.Random) -> str:
@@ -311,49 +333,73 @@ def chaos_equation(rng: random.Random, depth: int) -> str:
     return f"{chaos_expr(rng, depth)}={chaos_expr(rng, depth)}"
 
 
-def chaos_args(rng: random.Random, cmd: str, depth: int) -> list[str]:
+def chaos_args(rng: random.Random, cmd: str, depth: int, variant: int | None = None) -> list[str]:
     v = rng.choice(CHAOS_VARS)
     numeric = rng.random() < 0.42
     e = lambda d=depth, n=numeric: chaos_expr(rng, max(1, d), n)
     eq = lambda d=depth: chaos_equation(rng, max(1, d))
-    if rng.random() < 0.05:
+    if rng.random() < 0.01:
         return [e(depth-1) for _ in range(rng.randrange(0, 5))]
     if cmd in {"abs", "acos", "approx", "asin", "atan", "ceil", "ceiling", "cos", "cot", "exact", "expand", "floor", "ln", "round", "sec", "simplify", "sin", "sqrt", "tan", "tcollect", "texpand"}:
         return [e()]
     if cmd in {"coeff"}:
-        return [e(), v, str(rng.randrange(-3, 8))]
-    if cmd in {"collect", "degree", "factor", "partfrac", "gcd", "lcm"}:
+        args = [e(), rng.choice([v, e(depth-2, False)])]
+        if (variant is None and rng.random() < 0.75) or (variant is not None and variant % 2):
+            args.append(str(rng.randrange(-8, 18)))
+        return args
+    if cmd in {"collect", "factor", "partfrac"}:
+        args = [e()]
+        if (variant is None and rng.random() < 0.8) or (variant is not None and variant % 2):
+            args.append(rng.choice([v, e(depth-1)]))
+        return args
+    if cmd in {"degree", "gcd", "lcm"}:
         return [e(), rng.choice([v, e(depth-1)])]
     if cmd in {"diff", "implicit_diff"}:
-        args = [rng.choice([e(), eq()]), v]
-        if rng.random() < 0.35:
+        args = [rng.choice([e(), eq()])]
+        if (variant is None and rng.random() < 0.9) or (variant is not None and variant % 3 in {1, 2}):
+            args.append(v)
+        if len(args) == 2 and ((variant is None and rng.random() < 0.45) or (variant is not None and variant % 3 == 2)):
             args.append(str(rng.randrange(1, 4)))
         return args
     if cmd == "integrate":
-        args = [e(), v]
+        args = [e()]
+        if (variant is None and rng.random() < 0.92) or (variant is not None and variant % 4 != 0):
+            args.append(v)
         r = rng.random()
-        if r < 0.25:
+        mode = variant % 4 if variant is not None else -1
+        if len(args) == 2 and (r < 0.25 or mode == 1):
             args += [str(rng.randrange(-5, 6)), str(rng.randrange(6, 13))]
-        elif r < 0.5:
+        elif len(args) == 2 and (r < 0.5 or mode == 2):
             args.append(str(rng.randrange(1, 6)))
-        elif r < 0.65:
+        elif len(args) == 2 and (r < 0.7 or mode == 3):
             args += [str(rng.randrange(1, 4)), f"u={e(depth-1)}"]
         return args
     if cmd == "fsolve":
-        return [eq(), f"{v}={rng.randrange(-10,0)}..{rng.randrange(1,11)}"]
+        args = [eq()]
+        if (variant is None and rng.random() < 0.85) or (variant is not None and variant % 2):
+            args.append(f"{v}={rng.randrange(-10,0)}..{rng.randrange(1,11)}")
+        return args
     if cmd == "limit":
-        return [e(), f"{v}={rng.choice(['0','1','-1','inf'])}"]
+        args = [e(), f"{v}={rng.choice(['0','1','-1','inf'])}"]
+        if (variant is None and rng.random() < 0.45) or (variant is not None and variant % 2):
+            args.append(rng.choice(["1", "-1", "+", "-"]))
+        return args
     if cmd == "log":
-        return [rng.choice([str(rng.randrange(2, 13)), e(depth-1)]), e()]
+        if (variant is None and rng.random() < 0.2) or (variant is not None and variant % 2 == 0):
+            return [e()]
+        return [rng.choice([str(rng.randrange(2, 13)), chaos_log_base(rng, max(2, depth - 1)), e(depth-1)]), e()]
     if cmd == "pcoeff":
         return [f"[{e(depth-1, False)},{e(depth-1, False)},{e(depth-1, False)}]"]
     if cmd in {"product", "sum"}:
-        return [e(), rng.choice(["k", v]), str(rng.randrange(-3, 4)), str(rng.randrange(5, 15))]
+        args = [e(), rng.choice(["k", v])]
+        if (variant is None and rng.random() < 0.85) or (variant is not None and variant % 2):
+            args += [str(rng.randrange(-8, 4)), str(rng.randrange(5, 30))]
+        return args
     if cmd in {"proot"}:
         return [random_poly(rng, rng.randrange(2, 7))]
     if cmd == "range":
         args = [e()]
-        if rng.random() < 0.5:
+        if (variant is None and rng.random() < 0.65) or (variant is not None and variant % 2):
             args += [v, str(rng.randrange(-10, 0)), str(rng.randrange(1, 10))]
         return args
     if cmd == "rewrite":
@@ -373,24 +419,40 @@ def chaos_args(rng: random.Random, cmd: str, depth: int) -> list[str]:
         labels = [f"{chr(97+i)}={term}" if rng.random() < 0.75 else term for i, term in enumerate(terms)]
         return [start, "[" + ",".join(labels) + "]"]
     if cmd in {"series", "taylor"}:
-        return [e(), f"{v}={rng.randrange(-3, 4)}", str(rng.randrange(2, 8))]
+        if (variant is None and rng.random() < 0.25) or (variant is not None and variant % 2 == 0):
+            return [e()]
+        return [e(), f"{v}={rng.randrange(-3, 4)}", str(rng.randrange(2, 12))]
     if cmd == "solve":
+        if (variant is None and rng.random() < 0.18) or (variant is not None and variant % 3 == 0):
+            return [eq()]
+        if (variant is None and rng.random() < 0.22) or (variant is not None and variant % 3 == 1):
+            return [f"[{eq(depth-1)},{eq(depth-1)}]", f"[{v},{rng.choice([c for c in CHAOS_VARS if c != v])}]"]
         return [eq(), v]
     if cmd == "subst":
+        if (variant is None and rng.random() < 0.35) or (variant is not None and variant % 2):
+            return [e(), f"[{v}={e(depth-1)},{rng.choice([c for c in CHAOS_VARS if c != v])}={e(depth-2)}]"]
         return [e(), f"{v}={e(depth-1)}"]
     if cmd == "xform":
         return [rng.choice([e(), eq()]), rng.choice([e(), eq()])]
     return [e()]
 
 
-def chaos_case(rng: random.Random, depth: int, index: int, commands: list[str] | None = None) -> tuple[str, str]:
-    if rng.random() < 0.04:
+def chaos_case(
+    rng: random.Random,
+    depth: int,
+    index: int,
+    commands: list[str] | None = None,
+    scheduler: ChaosCommandScheduler | None = None,
+) -> tuple[str, str]:
+    if scheduler is None and rng.random() < 0.04:
         return noisy_input(rng)
-    if rng.random() < 0.06:
+    if scheduler is None and rng.random() < 0.06:
         return "chaos:raw", messy(rng, chaos_expr(rng, depth, rng.random() < 0.5))
-    choices = commands or VISIBLE_COMMANDS
-    cmd = rng.choice(choices)
-    args = ",".join(chaos_args(rng, cmd, depth))
+    if scheduler is not None:
+        cmd, variant = scheduler.next()
+    else:
+        cmd, variant = rng.choice(commands or VISIBLE_COMMANDS), None
+    args = ",".join(chaos_args(rng, cmd, depth, variant))
     return f"chaos:{cmd}", messy(rng, f"{cmd}({args})")
 
 
@@ -820,9 +882,10 @@ def make_case(
     commands: list[str] | None = None,
     chaos: bool = False,
     index: int = 0,
+    scheduler: ChaosCommandScheduler | None = None,
 ) -> tuple[str, str]:
     if chaos:
-        return chaos_case(rng, depth, index, commands)
+        return chaos_case(rng, depth, index, commands, scheduler)
     if rng.random() < noise_rate:
         return noisy_input(rng)
     return command_input(rng, depth, template_rate, commands)
@@ -914,6 +977,7 @@ def main() -> int:
 
     rng = random.Random(args.seed)
     only = [x.strip() for x in args.only.split(",") if x.strip()] or None
+    scheduler = ChaosCommandScheduler(rng, only or VISIBLE_COMMANDS) if args.chaos else None
     args.jsonl.parent.mkdir(parents=True, exist_ok=True)
     args.transcript.parent.mkdir(parents=True, exist_ok=True)
     done = bad = 0
@@ -937,6 +1001,7 @@ def main() -> int:
                     only,
                     args.chaos,
                     done,
+                    scheduler,
                 )
                 code, out, elapsed, timeout = run_case(src, args.timeout)
                 verdict = classify(kind, src, out, code, elapsed, timeout)
