@@ -9235,6 +9235,95 @@ static bool try_range_bounded_trig_shift(const working_string &e,char rv,working
   return true;
 }
 
+static bool top_sum_tan_arg(const working_string &src,working_string &found,int depth=0){
+  if (depth>4)
+    return false;
+  working_string s=strip_outer_parens(src),arg;
+  char vars[4];
+  int nvars=0;
+  if (parse_unary_arg(s,"tan",arg) && collect_visible_vars(arg,vars,4,nvars) && nvars>0){
+    found=arg;
+    return true;
+  }
+  working_string terms[12];
+  int signs[12];
+  int n=split_top_sum_terms(s,terms,signs,12);
+  if (n<=1)
+    return false;
+  for (int i=0;i<n;++i)
+    if (top_sum_tan_arg(terms[i],found,depth+1))
+      return true;
+  return false;
+}
+
+static bool try_range_top_tan_unbounded(const working_string &e,working_string &out){
+  working_string terms[12],arg;
+  int signs[12];
+  int n=split_top_sum_terms(strip_outer_parens(e),terms,signs,12);
+  if (n<1)
+    return false;
+  for (int i=0;i<n;++i){
+    if (top_sum_tan_arg(terms[i],arg)){
+      out="Find range\n";
+      out += "tan("+arg+") is unbounded\n";
+      out += "adding or subtracting the other terms only shifts it\n";
+      out += "all real";
+      return true;
+    }
+  }
+  return false;
+}
+
+static bool try_range_exp_shift(const working_string &e,char rv,bool bounded,
+                                const working_string &lo_s,const working_string &hi_s,
+                                working_string &out){
+  working_string terms[8],arg,shift;
+  int signs[8],exp_sign=0;
+  int n=split_top_sum_terms(strip_outer_parens(e),terms,signs,8);
+  if (n<1)
+    return false;
+  for (int i=0;i<n;++i){
+    working_string t=strip_outer_parens(terms[i]);
+    working_string earg;
+    if (parse_unary_arg(t,"exp",earg) && contains_var_symbol(earg,rv)){
+      if (exp_sign)
+        return false;
+      exp_sign=signs[i];
+      arg=earg;
+      continue;
+    }
+    if (contains_var_symbol(t,rv))
+      return false;
+    shift=join_sum(shift,signed_part(signs[i],t));
+  }
+  if (!exp_sign)
+    return false;
+  if (shift.empty())
+    shift="0";
+  out="Find range\n";
+  out += "let C = "+shift+"\n";
+  out += "exp("+arg+") > 0\n";
+  if (bounded){
+    Rat lo,hi;
+    if (!parse_rat(lo_s,lo) || !parse_rat(hi_s,hi))
+      return false;
+    if (rat_cmp(hi,lo)<0){ Rat t=lo; lo=hi; hi=t; }
+    out += rat_s(lo)+" <= "+working_string(1,rv)+" <= "+rat_s(hi)+"\n";
+    out += "exp is increasing\n";
+    if (exp_sign>0)
+      out += "C + exp("+rat_s(lo)+") <= y <= C + exp("+rat_s(hi)+")";
+    else
+      out += "C - exp("+rat_s(hi)+") <= y <= C - exp("+rat_s(lo)+")";
+  }
+  else {
+    if (exp_sign>0)
+      out += "y > C";
+    else
+      out += "y < C";
+  }
+  return true;
+}
+
 static bool symbol_in_known_call_arg(const working_string &s,int pos){
   int depth=0;
   for (int i=pos-1;i>=0;--i){
@@ -9358,6 +9447,22 @@ static bool try_range_symbolic_recip_affine(const working_string &e,char rv,work
   out += "D = "+spaced_pm(den)+"\n";
   out += "D is affine in "+working_string(1,rv)+"\n";
   out += "numerator is non-zero\n";
+  out += "y < 0 or y > 0";
+  return true;
+}
+
+static bool try_range_general_quotient(const working_string &e,char rv,working_string &out){
+  working_string num,den;
+  if (!split_top_fraction(e,num,den))
+    return false;
+  if (!syntactic_nonzero_expr(num))
+    return false;
+  out="Find range\n";
+  out += "Let N = "+spaced_pm(num)+"\n";
+  out += "Let D = "+spaced_pm(den)+"\n";
+  out += "D != 0\n";
+  out += "y = N/D, so y*D = N\n";
+  out += "N != 0, hence y != 0\n";
   out += "y < 0 or y > 0";
   return true;
 }
@@ -9654,6 +9759,10 @@ static bool try_range(const char *input,working_string &out){
       return true;
     }
   }
+  if (try_range_exp_shift(e,rv,n>=4,args[2],args[3],out))
+    return true;
+  if (try_range_top_tan_unbounded(e,out))
+    return true;
   {
     working_string s=strip_outer_parens(e);
     const char *fn=0;
@@ -9718,6 +9827,8 @@ static bool try_range(const char *input,working_string &out){
     return true;
   if (try_range_symbolic_recip_affine(e,rv,out))
     return true;
+  if (try_range_general_quotient(e,rv,out))
+    return true;
   for (char av='a';av<='z';++av){
     if (av==rv)
       continue;
@@ -9727,6 +9838,8 @@ static bool try_range(const char *input,working_string &out){
   if (try_range_shifted_square(e,out))
     return true;
   if (try_range_bounded_trig_shift(e,rv,out))
+    return true;
+  if (try_range_top_tan_unbounded(e,out))
     return true;
   if (try_range_odd_poly_sum(e,rv,out))
     return true;
