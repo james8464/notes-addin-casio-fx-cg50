@@ -3795,6 +3795,10 @@ namespace giac {
   // symbolic symb_resultant(const gen & args){    return symbolic(at_resultant,args);  }
   gen _resultant(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
+#ifdef CASCAS_DISABLE_UNUSED_PUBLIC_RUNTIME
+    (void)contextptr;
+    return symbolic(at_resultant,args);
+#else
     if (args.type!=_VECT)
       return gentypeerr(contextptr);
     vecteur v =*args._VECTptr;
@@ -4029,6 +4033,7 @@ namespace giac {
     if (is_zero(f2))
       return f2;
     return 1;
+#endif
   }
   static define_unary_function_eval (__resultant,&_resultant,_resultant_s);
   define_unary_function_ptr5( at_resultant ,alias_at_resultant,&__resultant,0,true);
@@ -4194,4 +4199,3 @@ namespace giac {
 #ifndef NO_NAMESPACE_GIAC
 } // namespace giac
 #endif // ndef NO_NAMESPACE_GIAC
-

@@ -1565,6 +1565,10 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
 
   gen _gramschmidt(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_DISABLE_UNUSED_PUBLIC_RUNTIME
+    (void)contextptr;
+    return symbolic(at_gramschmidt,g);
+#else
     if (g.type!=_VECT)
       return symbolic(at_gramschmidt,g);
     vecteur & v(*g._VECTptr);
@@ -1594,6 +1598,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
       return lv;
     }
     return gensizeerr(contextptr);
+#endif
   }
   static const char _gramschmidt_s []="gramschmidt";
   static define_unary_function_eval (__gramschmidt,&_gramschmidt,_gramschmidt_s);
@@ -1701,6 +1706,10 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
   }
   gen _pmin(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_DISABLE_UNUSED_PUBLIC_RUNTIME
+    (void)contextptr;
+    return symbolic(at_pmin,g);
+#else
     if (is_squarematrix(g)){
       matrice &m =*g._VECTptr;
       vecteur w;
@@ -1800,6 +1809,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
       return symb_horner(w,v.back());
     else
       return _r2e(makesequence(_pmin(m,contextptr),v.back()),contextptr);
+#endif
   }
   static const char _pmin_s []="pmin";
   static define_unary_function_eval (__pmin,&_pmin,_pmin_s);
@@ -1808,6 +1818,10 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
   // a faire: vpotential, signtab
   gen _potential(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_DISABLE_VECTOR_CALC_RUNTIME
+    (void)contextptr;
+    return symbolic(at_potential,g);
+#else
     if ( (g.type!=_VECT) || (g._VECTptr->size()!=2) )
       return symbolic(at_potential,g);
     vecteur v(plotpreprocess(g,contextptr));
@@ -1833,6 +1847,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
       res=res+integrate_gen(simplify(fv[i]-derive(res,xv[i],contextptr),contextptr),xv[i],contextptr);
     }
     return res;
+#endif
   }
   static const char _potential_s []="potential";
   static define_unary_function_eval_quoted (__potential,&_potential,_potential_s);
@@ -1840,6 +1855,10 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
 
   gen _vpotential(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_DISABLE_VECTOR_CALC_RUNTIME
+    (void)contextptr;
+    return symbolic(at_vpotential,g);
+#else
     if ( (g.type!=_VECT) || (g._VECTptr->size()!=2) )
       return symbolic(at_vpotential,g);
     vecteur v(plotpreprocess(g,contextptr));
@@ -1866,6 +1885,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
     F=integrate_gen(F,xv[1],contextptr);
     res[2]=F-res[2];
     return res;
+#endif
   }
   static const char _vpotential_s []="vpotential";
   static define_unary_function_eval_quoted (__vpotential,&_vpotential,_vpotential_s);
@@ -4384,6 +4404,9 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
 
   gen _mean(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_DISABLE_UNUSED_PUBLIC_RUNTIME
+    return symbolic(at_mean,g);
+#endif
     if (g.type==_VECT && g.subtype==_SEQ__VECT)
       return stddevmean(g,0,contextptr);
     vecteur v(gen2vecteur(g));
@@ -4399,6 +4422,9 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
 
   gen _stddev(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_DISABLE_UNUSED_PUBLIC_RUNTIME
+    return symbolic(at_stddev,g);
+#endif
     if (g.type==_VECT && g.subtype==_SEQ__VECT)
       return stddevmean(g,1,contextptr);
     vecteur v(gen2vecteur(g));
@@ -4414,6 +4440,9 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
 
   gen _stdDev(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_DISABLE_UNUSED_PUBLIC_RUNTIME
+    return symbolic(at_stdDev,g);
+#endif
     if (g.type==_VECT && g.subtype==_SEQ__VECT)
       return stddevmean(g,2,contextptr);
     vecteur v(gen2vecteur(g));
@@ -4429,6 +4458,9 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
 
   gen _variance(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_DISABLE_UNUSED_PUBLIC_RUNTIME
+    return symbolic(at_variance,g);
+#endif
     if (g.type==_VECT && g.subtype==_SEQ__VECT)
       return stddevmean(g,3,contextptr);
     vecteur v(gen2vecteur(g));
@@ -4494,6 +4526,10 @@ static define_unary_function_eval (__variance,&_variance,_variance_s);
     return v[int(std::ceil(v.size()*d))-1]; // v[(v.size()-1)/4];
   }
   gen _median(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_DISABLE_UNUSED_PUBLIC_RUNTIME
+    if ( g.type==_STRNG && g.subtype==-1) return  g;
+    return symbolic(at_median,g);
+#endif
     return quartile123(g,0.5,contextptr);
   }
   static const char _median_s []="median";
@@ -4501,6 +4537,10 @@ static define_unary_function_eval (__variance,&_variance,_variance_s);
   define_unary_function_ptr5( at_median ,alias_at_median,&unary_median,0,true);
 
   gen _quartile1(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_DISABLE_UNUSED_PUBLIC_RUNTIME
+    if ( g.type==_STRNG && g.subtype==-1) return  g;
+    return symbolic(at_quartile1,g);
+#endif
     return quartile123(g,0.25,contextptr);
   }
   static const char _quartile1_s []="quartile1";
@@ -4508,6 +4548,10 @@ static define_unary_function_eval (__variance,&_variance,_variance_s);
   define_unary_function_ptr5( at_quartile1 ,alias_at_quartile1,&unary_quartile1,0,true);
 
   gen _quartile3(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_DISABLE_UNUSED_PUBLIC_RUNTIME
+    if ( g.type==_STRNG && g.subtype==-1) return  g;
+    return symbolic(at_quartile3,g);
+#endif
     return quartile123(g,0.75,contextptr);
   }
   static const char _quartile3_s []="quartile3";
@@ -4670,6 +4714,9 @@ static define_unary_function_eval (__variance,&_variance,_variance_s);
   }
   gen _histogram(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_DISABLE_UNUSED_PUBLIC_RUNTIME
+    return symbolic(at_histogram,g);
+#endif
     if (g.type==_SYMB && is_distribution(g)){
       vecteur v(gen2vecteur(g._SYMBptr->feuille));
       v.insert(v.begin(),g._SYMBptr->sommet);
@@ -4885,6 +4932,9 @@ static define_unary_function_eval (__variance,&_variance,_variance_s);
   }
   gen _covariance(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_DISABLE_UNUSED_PUBLIC_RUNTIME
+    return symbolic(at_covariance,g);
+#endif
     int xcol,ycol,freqcol;
     gen gv;
     find_xyfreq(g,gv,xcol,ycol,freqcol,contextptr);
@@ -4897,6 +4947,9 @@ static define_unary_function_eval (__variance,&_variance,_variance_s);
 
   gen _correlation(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_DISABLE_UNUSED_PUBLIC_RUNTIME
+    return symbolic(at_correlation,g);
+#endif
     int xcol,ycol,freqcol;
     gen gv;
     find_xyfreq(g,gv,xcol,ycol,freqcol,contextptr);
@@ -5034,6 +5087,9 @@ static define_unary_function_eval (__variance,&_variance,_variance_s);
 
   gen _linear_regression(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_DISABLE_UNUSED_PUBLIC_RUNTIME
+    return symbolic(at_linear_regression,g);
+#endif
     return function_regression(g,zero,zero,contextptr);
   }
   static const char _linear_regression_s []="linear_regression";
@@ -5043,6 +5099,9 @@ static define_unary_function_eval (__variance,&_variance,_variance_s);
 
   gen _exponential_regression(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_DISABLE_UNUSED_PUBLIC_RUNTIME
+    return symbolic(at_exponential_regression,g);
+#endif
     return exp(function_regression(g,zero,at_ln,contextptr),contextptr);
   }
   static const char _exponential_regression_s []="exponential_regression";
@@ -5051,6 +5110,9 @@ static define_unary_function_eval (__exponential_regression,&_exponential_regres
 
   gen _logarithmic_regression(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_DISABLE_UNUSED_PUBLIC_RUNTIME
+    return symbolic(at_logarithmic_regression,g);
+#endif
     return function_regression(g,at_ln,zero,contextptr);
   }
   static const char _logarithmic_regression_s []="logarithmic_regression";
@@ -5059,6 +5121,9 @@ static define_unary_function_eval (__exponential_regression,&_exponential_regres
 
   gen _power_regression(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_DISABLE_UNUSED_PUBLIC_RUNTIME
+    return symbolic(at_power_regression,g);
+#endif
     gen res= function_regression(evalf(g,1,contextptr),at_ln,at_ln,contextptr);
     if (res.type==_VECT && res._VECTptr->size()==2){
       vecteur v(*res._VECTptr);
@@ -5292,6 +5357,9 @@ static define_unary_function_eval (__exponential_regression,&_exponential_regres
   }
   gen _polynomial_regression(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_DISABLE_UNUSED_PUBLIC_RUNTIME
+    return symbolic(at_polynomial_regression,g);
+#endif
     double xmin,xmax;
     return polynomial_regression(g,xmin,xmax,contextptr);
   }
@@ -5300,6 +5368,9 @@ static define_unary_function_eval (__exponential_regression,&_exponential_regres
   define_unary_function_ptr5( at_polynomial_regression ,alias_at_polynomial_regression,&__polynomial_regression,0,true);
   gen _polynomial_regression_plot(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_DISABLE_PLOT_RUNTIME
+    return undef;
+#endif
     double xmin,xmax;
     vecteur attributs;
     bool eq,r;

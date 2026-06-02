@@ -522,6 +522,10 @@ namespace giac {
 
   gen _divergence(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
+#ifdef CASCAS_DISABLE_VECTOR_CALC_RUNTIME
+    (void)contextptr;
+    return symbolic(at_divergence,args);
+#else
     if (args.type==_VECT && args._VECTptr->size()==3){
       gen opt=args._VECTptr->back();
       if (opt.is_symb_of_sommet(at_equal) && (opt._SYMBptr->feuille[0]==at_coordonnees || (opt._SYMBptr->feuille[0].type==_INT_ && opt._SYMBptr->feuille[0].val==_COORDS))){
@@ -558,6 +562,7 @@ namespace giac {
       di=di+derive(v1[k],v2[k],contextptr);
     } 
     return normal(di,contextptr);
+#endif
   }    
   static const char _divergence_s[]="divergence";
   static define_unary_function_eval_quoted (__divergence,&_divergence,_divergence_s);
@@ -565,6 +570,10 @@ namespace giac {
 
   gen _curl(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
+#ifdef CASCAS_DISABLE_VECTOR_CALC_RUNTIME
+    (void)contextptr;
+    return symbolic(at_curl,args);
+#else
     if (args.type==_VECT && args._VECTptr->size()==3){
       gen opt=args._VECTptr->back();
       if (opt.is_symb_of_sommet(at_equal) && (opt._SYMBptr->feuille[0]==at_coordonnees || (opt._SYMBptr->feuille[0].type==_INT_ && opt._SYMBptr->feuille[0].val==_COORDS))){
@@ -602,6 +611,7 @@ namespace giac {
     rot[1]=derive(v1[0],v2[2],contextptr)-derive(v1[2],v2[0],contextptr);
     rot[2]=derive(v1[1],v2[0],contextptr)-derive(v1[0],v2[1],contextptr);
     return rot;
+#endif
   }
   static const char _curl_s[]="curl";
   static define_unary_function_eval_quoted (__curl,&_curl,_curl_s);

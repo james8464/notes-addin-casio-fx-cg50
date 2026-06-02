@@ -5389,6 +5389,9 @@ namespace giac {
   }
   gen _fourier_an(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
+#ifdef CASCAS_DISABLE_UNUSED_PUBLIC_RUNTIME
+    return symbolic(at_fourier_an,args);
+#endif
     if (args.type!=_VECT) return gensizeerr(contextptr);
     vecteur v(*args._VECTptr);
     if (!get_fourier(v)) return gensizeerr(contextptr);
@@ -5411,6 +5414,9 @@ namespace giac {
   }
   gen _fourier_bn(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
+#ifdef CASCAS_DISABLE_UNUSED_PUBLIC_RUNTIME
+    return symbolic(at_fourier_bn,args);
+#endif
     if (args.type!=_VECT) return gensizeerr(contextptr);
     vecteur v(*args._VECTptr);
     if (!get_fourier(v)) return gensizeerr(contextptr);
@@ -5432,6 +5438,9 @@ namespace giac {
   }
   gen _fourier_cn(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
+#ifdef CASCAS_DISABLE_UNUSED_PUBLIC_RUNTIME
+    return symbolic(at_fourier_cn,args);
+#endif
     if (args.type!=_VECT) return gensizeerr(contextptr);
     vecteur v(*args._VECTptr);
     if (!get_fourier(v)) return gensizeerr(contextptr);

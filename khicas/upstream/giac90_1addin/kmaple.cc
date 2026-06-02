@@ -734,6 +734,10 @@ namespace giac {
 
   gen _blockmatrix(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_DISABLE_UNUSED_PUBLIC_RUNTIME
+    (void)contextptr;
+    return symbolic(at_blockmatrix,g);
+#else
     if (g.type!=_VECT || g._VECTptr->size()!=3)
       return gentypeerr();
     vecteur & v = *g._VECTptr;
@@ -781,6 +785,7 @@ namespace giac {
       }
     }
     return res;
+#endif
   }
   static const char _blockmatrix_s []="blockmatrix";
   static define_unary_function_eval (__blockmatrix,&_blockmatrix,_blockmatrix_s);
@@ -1013,6 +1018,10 @@ namespace giac {
 
   // Approx fft or exact if args=poly1,omega,n
   gen fft(const gen & g_orig,int direct,GIAC_CONTEXT){
+#ifdef CASCAS_DISABLE_FFT_RUNTIME
+    (void)g_orig; (void)direct; (void)contextptr;
+    return undef;
+#else
     if (g_orig.type==_VECT && g_orig.subtype==_SEQ__VECT && g_orig._VECTptr->size()==3 && g_orig._VECTptr->front().type==_VECT){
       vecteur & v =*g_orig._VECTptr->front()._VECTptr;
       int n=int(v.size());
@@ -1165,6 +1174,7 @@ namespace giac {
       return res;
     else
       return gen(res)/n;
+#endif
   }
 
   gen _fft(const gen & g,GIAC_CONTEXT){

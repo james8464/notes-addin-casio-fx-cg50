@@ -6155,6 +6155,10 @@ namespace giac {
   }
   gen _quorem(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
+#ifdef CASCAS_DISABLE_UNUSED_PUBLIC_RUNTIME
+    (void)contextptr;
+    return symbolic(at_quorem,args);
+#else
     if ((args.type!=_VECT) || (args._VECTptr->size()<2) )
       return gensizeerr(contextptr);
     if (args.type==_VECT && args._VECTptr->size()>=3 && args[2].type==_VECT){
@@ -6229,6 +6233,7 @@ namespace giac {
     u=r2e(u*bbd,lv,contextptr);
     v=r2e(v,lv,contextptr);
     return makevecteur(rdiv(u,ad,contextptr),rdiv(v,ad,contextptr));
+#endif
   }
   static const char _quorem_s []="quorem";
   static define_unary_function_eval (__quorem,&_quorem,_quorem_s);

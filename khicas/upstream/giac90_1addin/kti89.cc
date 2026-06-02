@@ -273,6 +273,10 @@ namespace giac {
 
   gen _randPoly(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_DISABLE_UNUSED_PUBLIC_RUNTIME
+    (void)contextptr;
+    return symbolic(at_randpoly,g);
+#else
     vecteur v(gen2vecteur(g));
     int vs=int(v.size()),deg=10;
     gen x=vx_var();
@@ -417,6 +421,7 @@ namespace giac {
     return w;
 #else
     return (f.type==_VECT && f._VECTptr->empty())?gen(w,_POLY1__VECT):symb_horner(w,x);
+#endif
 #endif
   }
   static const char _randpoly_s[]="randpoly";
