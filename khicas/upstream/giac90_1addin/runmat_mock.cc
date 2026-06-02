@@ -41,26 +41,55 @@ static void rect_outline(int x, int y, int w, int h, unsigned short color) {
   vline(x + w - 1, y, y + h - 1, color);
 }
 
-static int text_width_mm(const char *label) {
+static unsigned char glyph(char c, int row) {
+  if (c >= 'a' && c <= 'z') c = char(c - 'a' + 'A');
+  const unsigned char *g = 0;
+  static const unsigned char A[7]={14,17,17,31,17,17,17}, C[7]={14,17,16,16,16,17,14};
+  static const unsigned char D[7]={30,17,17,17,17,17,30}, E[7]={31,16,16,30,16,16,31};
+  static const unsigned char G[7]={14,17,16,23,17,17,14}, H[7]={17,17,17,31,17,17,17};
+  static const unsigned char J[7]={7,2,2,2,18,18,12}, L[7]={16,16,16,16,16,16,31};
+  static const unsigned char M[7]={17,27,21,21,17,17,17}, N[7]={17,25,21,19,17,17,17};
+  static const unsigned char O[7]={14,17,17,17,17,17,14}, P[7]={30,17,17,30,16,16,16};
+  static const unsigned char R[7]={30,17,17,30,20,18,17}, T[7]={31,4,4,4,4,4,4};
+  static const unsigned char U[7]={17,17,17,17,17,17,14}, V[7]={17,17,17,17,10,10,4};
+  static const unsigned char Y[7]={17,17,10,4,4,4,4}, Z[7]={31,1,2,4,8,16,31};
+  static const unsigned char n0[7]={14,17,19,21,25,17,14}, n1[7]={4,12,4,4,4,4,14};
+  static const unsigned char slash[7]={1,2,2,4,8,8,16}, blank[7]={0,0,0,0,0,0,0};
+  switch (c) {
+    case 'A': g=A; break; case 'C': g=C; break; case 'D': g=D; break; case 'E': g=E; break;
+    case 'G': g=G; break; case 'H': g=H; break; case 'J': g=J; break; case 'L': g=L; break;
+    case 'M': g=M; break; case 'N': g=N; break; case 'O': g=O; break; case 'P': g=P; break;
+    case 'R': g=R; break; case 'T': g=T; break; case 'U': g=U; break; case 'V': g=V; break;
+    case 'Y': g=Y; break; case 'Z': g=Z; break; case '0': g=n0; break; case '1': g=n1; break;
+    case '/': g=slash; break; default: g=blank; break;
+  }
+  return g[row];
+}
+
+static int pixel_text_width(const char *s, int sx) {
   int n = 0;
-  while (label[n]) ++n;
-  return n * 8;
+  while (s[n]) ++n;
+  return n ? n * 5 * sx + (n - 1) * sx : 0;
 }
 
-static void print_mm(int x, int y, const char *label, int fg, int bg) {
-  Bdisp_MMPrint(x, y, label, 0, 0xffffffff, 0, 0, fg, bg, 1, 0);
-}
-
-static void print_mini(int x, int y, const char *label, int fg, int bg) {
-  int tx = x, ty = y;
-  PrintMini(&tx, &ty, (unsigned char *)label, 0, 0xffffffff, 0, 0, fg, bg, 1, 0);
+static void draw_pixel_text(int x, int y, const char *s, int sx, int sy, unsigned short fg) {
+  for (const char *p = s; *p; ++p) {
+    for (int row = 0; row < 7; ++row) {
+      unsigned char bits = glyph(*p, row);
+      for (int col = 0; col < 5; ++col) {
+        if (bits & (1 << (4 - col)))
+          fill_rect(x + col * sx, y + row * sy, sx, sy, fg);
+      }
+    }
+    x += 6 * sx;
+  }
 }
 
 static void status_box(int x, const char *label) {
-  int width = text_width_mm(label) + 6;
-  fill_rect(x, 5, width, 15, kWhite);
-  rect_outline(x, 5, width, 15, kFrame);
-  print_mm(x + 3, 6, label, COLOR_BLACK, COLOR_WHITE);
+  int width = pixel_text_width(label, 1) + 7;
+  fill_rect(x, 5, width, 17, kWhite);
+  rect_outline(x, 5, width, 17, kFrame);
+  draw_pixel_text(x + 3, 7, label, 1, 2, kFrame);
 }
 
 static void draw_battery() {
@@ -77,13 +106,13 @@ static void draw_r_indicator(bool visible) {
     rect_outline(339, 1, 21, 22, kFrame);
     return;
   }
-  print_mini(343, 2, "R", COLOR_WHITE, COLOR_BLUE);
+  draw_pixel_text(344, 4, "R", 2, 2, kWhite);
 }
 
 static void soft_label(int x, int width, const char *label) {
   fill_rect(x, 192, width, 18, kSoft);
   rect_outline(x, 192, width, 18, kSoft);
-  print_mini(x + 3, 193, label, COLOR_WHITE, COLOR_BLACK);
+  draw_pixel_text(x + 4, 194, label, 1, 2, kWhite);
 }
 
 static void draw_soft_labels() {
@@ -103,10 +132,10 @@ static void draw_static_screen() {
   hline(7, LCD_WIDTH_PX - 8, 24, kBlack);
   draw_battery();
   status_box(42, "Math");
-  status_box(76, "Deg");
-  status_box(107, "Norm1");
+  status_box(73, "Deg");
+  status_box(101, "Norm1");
   status_box(193, "d/c");
-  status_box(226, "Real");
+  status_box(224, "Real");
   draw_r_indicator(true);
 
   rect_outline(13, 31, 14, 17, kBlack);
