@@ -47,15 +47,18 @@ def main() -> int:
     require(source, "GetKeyWait_OS(&col, &row, KEYWAIT_HALTOFF_TIMEROFF, 0, 1, &keycode)", "nonblocking key call")
     require(source, "OS_InnerWait_ms(40)", "loop pacing")
     require(source, "fill_rect(339, 0, 21, 24, visible ? COLOR_BLUE : kWhite);", "R blue highlight")
-    require(source, 'Bdisp_MMPrint(342, 0, "R", 0x40', "status-area R glyph")
-    require(source, "int x = slot == 2 ? 128 : 203;", "custom fkey split positions")
-    require(source, "int w = slot == 2 ? 74 : 56;", "custom fkey split widths")
-    require(source, "fill_rect(x, 192, w, 18, COLOR_BLACK);", "custom fkey black cells")
-    require(source, 'Bdisp_MMPrint(x + 4, 196, text, 0x40', "custom fkey text position")
+    require(source, 'PrintCXY(342, 1, "R", 0x40', "status-area R glyph")
+    require(source, "kFKeyBlackTemplate = 0x0190", "OS black fkey template")
+    require(source, "display_fkey(slot, kFKeyBlackTemplate);", "OS fkey background")
+    require(source, "PrintMini(&x, &y, (unsigned char *)text", "OS mini fkey text")
+    require(source, 'draw_os_text_fkey(2, "MAT/VCT", 4);', "MAT/VCT fkey")
+    require(source, 'draw_os_text_fkey(3, "MATH", 9);', "MATH fkey")
     require(source, '"MAT/VCT"', "MAT/VCT fkey")
     require(source, '"MATH"', "MATH fkey")
     if "PrintCXY(340" in source:
         raise SystemExit("FAIL runmat clipped R PrintCXY present")
+    if "draw_custom_fkey_text" in source or "Bdisp_MMPrint(x + 4, 196, text" in source:
+        raise SystemExit("FAIL runmat custom fkey box renderer present")
     if "static unsigned char glyph" in source or "draw_pixel_text" in source:
         raise SystemExit("FAIL runmat manual pixel glyph renderer present")
 
