@@ -1,10 +1,10 @@
-pcoeff(roots)
+pcoeff(p)
 
 Args:
-  roots
+  p
 
 Required:
-  roots
+  p
 
 Optional:
   None.

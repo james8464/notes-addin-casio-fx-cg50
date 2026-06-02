@@ -1,10 +1,10 @@
-lcm(a,b)
+lcm(a,b,...)
 
 Args:
-  a,b
+  a,b,...
 
 Required:
-  a, b
+  a, b, ...
 
 Optional:
   None.

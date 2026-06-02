@@ -1,10 +1,10 @@
-subst(expr,x=a)
+subst(a,b=c)
 
 Args:
-  expr,x=a
+  a,b=c
 
 Required:
-  expr, x=a
+  a, b=c
 
 Optional:
   None.

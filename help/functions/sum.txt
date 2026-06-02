@@ -1,10 +1,10 @@
-sum(f,k,m,n)
+sum(f,k,m,M)
 
 Args:
-  f,k,m,n
+  f,k,m,M
 
 Required:
-  f, k, m, n
+  f, k, m, M
 
 Optional:
   None.
