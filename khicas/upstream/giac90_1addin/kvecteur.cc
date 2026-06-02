@@ -2235,6 +2235,12 @@ namespace giac {
   }
 
   int rref_reduce(std_matrix<gen> &M,vecteur & pivots,vector<int> & permutation,gen & det,gen &detnum,int algorithm,int l,int lmax,int c,int cmax,int dont_swap_below,int rref_or_det_or_lu,int fullreduction,double eps,bool step_rref,const vecteur &lv,bool convert_internal,GIAC_CONTEXT){
+#ifdef CASCAS_DISABLE_MATRIX_EIGEN_RUNTIME
+    (void)M; (void)pivots; (void)permutation; (void)det; (void)detnum; (void)algorithm;
+    (void)l; (void)lmax; (void)c; (void)cmax; (void)dont_swap_below; (void)rref_or_det_or_lu;
+    (void)fullreduction; (void)eps; (void)step_rref; (void)lv; (void)convert_internal; (void)contextptr;
+    return 0;
+#endif
     int linit=l;
     gen bareiss (1),invbareiss(1),pivot,temp;
     int pivotline,pivotcol;
@@ -2406,6 +2412,12 @@ namespace giac {
   int mrref(const matrice & a, matrice & res, vecteur & pivots, gen & det,int l, int lmax, int c,int cmax,
 	    int fullreduction_,int dont_swap_below,bool convert_internal,int algorithm_,int rref_or_det_or_lu,
 	    GIAC_CONTEXT){
+#ifdef CASCAS_DISABLE_MATRIX_EIGEN_RUNTIME
+    (void)a; (void)res; (void)pivots; (void)det; (void)l; (void)lmax; (void)c; (void)cmax;
+    (void)fullreduction_; (void)dont_swap_below; (void)convert_internal; (void)algorithm_;
+    (void)rref_or_det_or_lu; (void)contextptr;
+    return 0;
+#endif
     if (!ckmatrix(a))
       return 0;
     double eps=epsilon(contextptr);
@@ -2998,6 +3010,11 @@ namespace giac {
   // 3 for lu without permutation
   // fullreduction=0 or 1, use 2 if the right part of a is idn
   bool modrref(const matrice & a, matrice & res, vecteur & pivots, gen & det,int l, int lmax, int c,int cmax,int fullreduction,int dont_swap_below,const gen & modulo,bool ckprime,int rref_or_det_or_lu){
+#ifdef CASCAS_DISABLE_MATRIX_EIGEN_RUNTIME
+    (void)a; (void)res; (void)pivots; (void)det; (void)l; (void)lmax; (void)c; (void)cmax;
+    (void)fullreduction; (void)dont_swap_below; (void)modulo; (void)ckprime; (void)rref_or_det_or_lu;
+    return false;
+#endif
     if (ckprime && !is_probab_prime_p(modulo)){
       CERR << "Non prime modulo. Reduction mail fail" << endl;
     }
@@ -5717,6 +5734,10 @@ namespace giac {
     return symbolic(at_egv,a);
   }
   gen _egv(const gen & a,GIAC_CONTEXT){
+#ifdef CASCAS_DISABLE_MATRIX_EIGEN_RUNTIME
+    if (a.type==_STRNG && a.subtype==-1) return a;
+    return symb_egv(a);
+#else
     if ( a.type==_STRNG && a.subtype==-1) return  a;
     if (!is_squarematrix(a)){
       if (a.type==_VECT)
@@ -5724,6 +5745,7 @@ namespace giac {
       return symb_egv(a);
     }
     return megv(*a._VECTptr,contextptr);
+#endif
   }
   static const char _egv_s []="egv";
   static define_unary_function_eval (__egv,&_egv,_egv_s);
@@ -5744,10 +5766,15 @@ namespace giac {
     return symbolic(at_egvl,a);
   }
   gen _egvl(const gen & a,GIAC_CONTEXT){
+#ifdef CASCAS_DISABLE_MATRIX_EIGEN_RUNTIME
+    if (a.type==_STRNG && a.subtype==-1) return a;
+    return symb_egvl(a);
+#else
     if ( a.type==_STRNG && a.subtype==-1) return  a;
     if (!is_squarematrix(a))
       return gendimerr(contextptr);
     return megvl(*a._VECTptr,contextptr);
+#endif
   }
   static const char _egvl_s []="egvl";
   static define_unary_function_eval (__egvl,&_egvl,_egvl_s);
@@ -5764,6 +5791,10 @@ namespace giac {
     return symbolic(at_jordan,a);
   }
   gen jordan(const gen & a,bool rational_jordan,GIAC_CONTEXT){
+#ifdef CASCAS_DISABLE_MATRIX_EIGEN_RUNTIME
+    (void)rational_jordan; (void)contextptr;
+    return symb_jordan(a);
+#else
     if (a.type==_VECT && a.subtype==_SEQ__VECT && a._VECTptr->size()==2 && is_squarematrix(a._VECTptr->front()) ){
       vecteur v(mjordan(*a._VECTptr->front()._VECTptr,rational_jordan,contextptr));
       if (is_undef(v))
@@ -5781,23 +5812,34 @@ namespace giac {
       return v[1];
     else
       return gen(v,_SEQ__VECT);
+#endif
   }
 
   gen _jordan(const gen & a,GIAC_CONTEXT){
+#ifdef CASCAS_DISABLE_MATRIX_EIGEN_RUNTIME
+    if (a.type==_STRNG && a.subtype==-1) return a;
+    return symb_jordan(a);
+#else
     if ( a.type==_STRNG && a.subtype==-1) return  a;
     bool mode=complex_mode(contextptr);
     complex_mode(true,contextptr);
     gen res=jordan(a,false,contextptr);
     complex_mode(mode,contextptr);
     return res;
+#endif
   }
   static const char _jordan_s []="jordan";
   static define_unary_function_eval (__jordan,&_jordan,_jordan_s);
   define_unary_function_ptr5( at_jordan ,alias_at_jordan,&__jordan,0,true);
 
   gen _rat_jordan(const gen & a,GIAC_CONTEXT){
+#ifdef CASCAS_DISABLE_MATRIX_EIGEN_RUNTIME
+    if (a.type==_STRNG && a.subtype==-1) return a;
+    return symbolic(at_rat_jordan,a);
+#else
     if ( a.type==_STRNG && a.subtype==-1) return  a;
     return jordan(a,true,contextptr);
+#endif
   }
   static const char _rat_jordan_s []="rat_jordan";
   static define_unary_function_eval (__rat_jordan,&_rat_jordan,_rat_jordan_s);
@@ -6197,6 +6239,10 @@ namespace giac {
   }
 
   gen lu(const gen &args,GIAC_CONTEXT){
+#ifdef CASCAS_DISABLE_MATRIX_EIGEN_RUNTIME
+    if (args.type==_STRNG && args.subtype==-1) return args;
+    return symbolic(at_lu,args);
+#else
     matrice L,U,P;
     if (args.type!=_VECT)
       return gentypeerr(contextptr);
@@ -6210,12 +6256,17 @@ namespace giac {
       }
     }
     return makesequence(P,L,U);
+#endif
   }
   static const char _lu_s []="lu";
   static define_unary_function_eval (__lu,&lu,_lu_s);
   define_unary_function_ptr5( at_lu ,alias_at_lu,&__lu,0,true);
 
   gen qr(const gen &args_orig,GIAC_CONTEXT){
+#ifdef CASCAS_DISABLE_MATRIX_EIGEN_RUNTIME
+    if (args_orig.type==_STRNG && args_orig.subtype==-1) return args_orig;
+    return symbolic(at_qr,args_orig);
+#else
     gen args;
     int method=0; // use -1 to check built-in qr
 #if !defined(HAVE_LIBLAPACK) || !defined (HAVE_LIBGSL)
@@ -6259,6 +6310,7 @@ namespace giac {
 	return makesequence(_trn(res,contextptr),r,midn(int(r.size())));
     }
     return symbolic(at_qr,args);
+#endif
   }
   static const char _qr_s []="qr";
   static define_unary_function_eval (__qr,&qr,_qr_s);

@@ -244,6 +244,9 @@ namespace giac {
 
   gen _randNorm(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
+#ifdef CASCAS_DISABLE_RANDOM_RUNTIME
+    return symbolic(at_randNorm,args);
+#endif
     if (args.type==_VECT && args._VECTptr->empty())
       return randNorm(contextptr);
     if (args.type!=_VECT || args._VECTptr->size()!=2)
@@ -282,6 +285,9 @@ namespace giac {
   }
   gen _randchisquare(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
+#ifdef CASCAS_DISABLE_RANDOM_RUNTIME
+    return symbolic(at_randchisquare,args);
+#endif
     gen g(args);
     if (!is_integral(g) || g.type!=_INT_ || g.val<=0 || g.val>1000)
       return gensizeerr(contextptr);
@@ -300,6 +306,9 @@ namespace giac {
   }
   gen _randstudent(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
+#ifdef CASCAS_DISABLE_RANDOM_RUNTIME
+    return symbolic(at_randstudent,args);
+#endif
     gen g(args);
     if (!is_integral(g) || g.type!=_INT_ || g.val<=0 || g.val>1000)
       return gensizeerr(contextptr);
@@ -317,6 +326,9 @@ namespace giac {
   }
   gen _randfisher(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
+#ifdef CASCAS_DISABLE_RANDOM_RUNTIME
+    return symbolic(at_randfisher,args);
+#endif
     if (args.type!=_VECT || args._VECTptr->size()!=2)
       return gensizeerr(contextptr);
     gen g1(args._VECTptr->front()),g2(args._VECTptr->back());
@@ -339,6 +351,9 @@ namespace giac {
   }
   gen _normald(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_DISABLE_RANDOM_RUNTIME
+    return symbolic(at_normald,g);
+#endif
     if (g.type!=_VECT)
       return normald(0,1,g,contextptr);
     vecteur & v=*g._VECTptr;
@@ -359,6 +374,9 @@ namespace giac {
 
   gen _randexp(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
+#ifdef CASCAS_DISABLE_RANDOM_RUNTIME
+    return symbolic(at_randexp,args);
+#endif
     double u=giac_rand(contextptr)/(rand_max2+1.0);
     return -gen(std::log(1-u))/args;
   }
@@ -374,6 +392,9 @@ namespace giac {
   }
   gen _normal_cdf(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_DISABLE_RANDOM_RUNTIME
+    return symbolic(at_normal_cdf,g);
+#endif
     if (g.type!=_VECT)
       return normal_cdf(g,contextptr);
     vecteur & v=*g._VECTptr;
@@ -434,6 +455,9 @@ namespace giac {
   }
   gen _normal_icdf(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_DISABLE_RANDOM_RUNTIME
+    return symbolic(at_normal_icdf,g);
+#endif
     if (g.type!=_VECT)
       return normal_icdf(g,contextptr);
     vecteur & v=*g._VECTptr;
@@ -522,6 +546,9 @@ namespace giac {
       return comb(v[0],v[1],contextptr);
     }
     if (s==3){
+#ifdef CASCAS_DISABLE_RANDOM_RUNTIME
+      return symbolic(at_binomial,g);
+#endif
       if (0 && calc_mode(contextptr)==1)
 	return binomial(v[0],v[2],v[1],contextptr);	
       return binomial(v[0],v[1],v[2],contextptr);
@@ -567,6 +594,9 @@ namespace giac {
 
   gen _randmultinomial(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
+#ifdef CASCAS_DISABLE_RANDOM_RUNTIME
+    return symbolic(at_randmultinomial,args);
+#endif
     if (args.type!=_VECT || args._VECTptr->empty())
       return gensizeerr(contextptr);
     gen g1(args._VECTptr->front());
@@ -600,6 +630,9 @@ namespace giac {
 
   gen _negbinomial(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_DISABLE_RANDOM_RUNTIME
+    return symbolic(at_negbinomial,g);
+#endif
     if (g.type!=_VECT)
       return gensizeerr(contextptr);
     vecteur & v=*g._VECTptr;
@@ -624,6 +657,9 @@ namespace giac {
 
   gen _negbinomial_cdf(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_DISABLE_RANDOM_RUNTIME
+    return symbolic(at_negbinomial_cdf,g);
+#endif
     if (g.type!=_VECT)
       return gensizeerr(contextptr);
     vecteur & v=*g._VECTptr;
@@ -644,6 +680,9 @@ namespace giac {
 
   gen _negbinomial_icdf(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_DISABLE_RANDOM_RUNTIME
+    return symbolic(at_negbinomial_icdf,g);
+#endif
     if (g.type!=_VECT)
       return gensizeerr(contextptr);
     vecteur & v=*g._VECTptr;
@@ -757,6 +796,9 @@ namespace giac {
   }
   gen _binomial_cdf(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_DISABLE_RANDOM_RUNTIME
+    return symbolic(at_binomial_cdf,g);
+#endif
     if (g.type!=_VECT)
       return gensizeerr(contextptr);
     vecteur & v=*g._VECTptr;
@@ -852,6 +894,9 @@ namespace giac {
   }
   gen _binomial_icdf(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_DISABLE_RANDOM_RUNTIME
+    return symbolic(at_binomial_icdf,g);
+#endif
     if (g.type!=_VECT)
       return gensizeerr(contextptr);
     vecteur & v=*g._VECTptr;
@@ -884,6 +929,9 @@ namespace giac {
   // randbinomial(n,p) returns k in [0..n] with proba binomial(n,k,p)
   gen _randbinomial(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_DISABLE_RANDOM_RUNTIME
+    return symbolic(at_randbinomial,g);
+#endif
     if (g.type!=_VECT)
       return gensizeerr(contextptr);
     vecteur & v=*g._VECTptr;
@@ -923,6 +971,9 @@ namespace giac {
   }
   gen _poisson(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_DISABLE_RANDOM_RUNTIME
+    return symbolic(at_poisson,g);
+#endif
     if (g.type!=_VECT)
       return symbolic(at_poisson,g);
     vecteur & v=*g._VECTptr;
@@ -995,6 +1046,9 @@ namespace giac {
   }
   gen _poisson_cdf(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_DISABLE_RANDOM_RUNTIME
+    return symbolic(at_poisson_cdf,g);
+#endif
     if (g.type!=_VECT)
       return gensizeerr(contextptr);
     vecteur & v=*g._VECTptr;
@@ -1033,6 +1087,9 @@ namespace giac {
   }
   gen _randpoisson(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_DISABLE_RANDOM_RUNTIME
+    return symbolic(at_randpoisson,g);
+#endif
     gen G=evalf_double(g,1,contextptr);
     if (G.type!=_DOUBLE_)
       return gensizeerr(contextptr);
@@ -1115,6 +1172,9 @@ namespace giac {
 
   gen _poisson_icdf(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_DISABLE_RANDOM_RUNTIME
+    return symbolic(at_poisson_icdf,g);
+#endif
     if (g.type!=_VECT)
       return gensizeerr(contextptr);
     vecteur & v=*g._VECTptr;
@@ -1139,6 +1199,9 @@ namespace giac {
   }
   gen _student(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_DISABLE_RANDOM_RUNTIME
+    return symbolic(at_student,g);
+#endif
     if (g.type!=_VECT){
       return symbolic(at_studentd,g);
     }
@@ -1271,6 +1334,9 @@ namespace giac {
   }
   gen _UTPT(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
+#ifdef CASCAS_DISABLE_RANDOM_RUNTIME
+    return symbolic(at_UTPT,args);
+#endif
     if (args.type!=_VECT)
       return gensizeerr(contextptr);
     vecteur & v=*args._VECTptr;
@@ -1307,6 +1373,9 @@ namespace giac {
   }
   gen _student_cdf(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_DISABLE_RANDOM_RUNTIME
+    return symbolic(at_student_cdf,g);
+#endif
     if (g.type!=_VECT)
       return gensizeerr(contextptr);
     vecteur & v=*g._VECTptr;
@@ -1348,6 +1417,9 @@ namespace giac {
   }
   gen _student_icdf(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_DISABLE_RANDOM_RUNTIME
+    return symbolic(at_student_icdf,g);
+#endif
     if (g.type!=_VECT)
       return gensizeerr(contextptr);
     vecteur & v=*g._VECTptr;
@@ -1374,6 +1446,9 @@ namespace giac {
   }
   gen _chisquare(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_DISABLE_RANDOM_RUNTIME
+    return symbolic(at_chisquare,g);
+#endif
     if (g.type!=_VECT){
       return symbolic(at_chisquared,g);
     }
@@ -1452,6 +1527,9 @@ namespace giac {
   }
   gen _UTPC(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
+#ifdef CASCAS_DISABLE_RANDOM_RUNTIME
+    return symbolic(at_UTPC,args);
+#endif
     if (args.type!=_VECT)
       return gensizeerr(contextptr);
     vecteur & v=*args._VECTptr;
@@ -1469,6 +1547,9 @@ namespace giac {
   }
   gen _chisquare_cdf(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_DISABLE_RANDOM_RUNTIME
+    return symbolic(at_chisquare_cdf,g);
+#endif
     if (g.type!=_VECT)
       return gensizeerr(contextptr);
     vecteur & v=*g._VECTptr;
@@ -1519,6 +1600,9 @@ namespace giac {
   }
   gen _chisquare_icdf(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_DISABLE_RANDOM_RUNTIME
+    return symbolic(at_chisquare_icdf,g);
+#endif
     if (g.type!=_VECT)
       return gensizeerr(contextptr);
     vecteur & v=*g._VECTptr;
