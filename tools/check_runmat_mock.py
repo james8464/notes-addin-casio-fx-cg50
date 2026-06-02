@@ -69,10 +69,15 @@ def main() -> int:
     require(source, 'draw_os_text_fkey(3, "MATH", 9);', "MATH fkey")
     require(source, '"MAT/VCT"', "MAT/VCT fkey")
     require(source, '"MATH"', "MATH fkey")
+    require(source, "draw_input_box", "input box helper")
+    require(source, "fill_rect(13, 31, 14, 17, kWhite);", "input box clear")
+    require(source, "rect_outline(13, 31, 14, 17, kFrame);", "input box outline")
     if "PrintCXY(340" in source:
         raise SystemExit("FAIL runmat clipped R PrintCXY present")
     if "hline(6, 389, 24" in source:
         raise SystemExit("FAIL runmat duplicate status divider present")
+    if "fill_rect(13, 31, 2, 17" in source:
+        raise SystemExit("FAIL runmat filled input-box edge present")
     if "draw_custom_fkey_text" in source or "Bdisp_MMPrint(x + 4, 196, text" in source:
         raise SystemExit("FAIL runmat custom fkey box renderer present")
     if "static unsigned char glyph" in source or "draw_pixel_text" in source:

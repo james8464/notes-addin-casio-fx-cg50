@@ -104,6 +104,11 @@ static void draw_soft_labels() {
   draw_os_text_fkey(3, "MATH", 9);
 }
 
+static void draw_input_box() {
+  fill_rect(13, 31, 14, 17, kWhite);
+  rect_outline(13, 31, 14, 17, kFrame);
+}
+
 static void draw_static_screen(bool r_visible) {
   Bdisp_AllClr_VRAM();
   fill_rect(0, 0, LCD_WIDTH_PX, LCD_HEIGHT_PX, kWhite);
@@ -111,8 +116,7 @@ static void draw_static_screen(bool r_visible) {
   draw_status_area();
   draw_r_indicator(r_visible);
 
-  rect_outline(13, 31, 14, 17, kBlack);
-  fill_rect(13, 31, 2, 17, kFrame);
+  draw_input_box();
 
   fill_rect(369, 32, 5, 136, kLightBlue);
   rect_outline(368, 31, 7, 138, kFrame);
