@@ -17,7 +17,7 @@ def main() -> int:
     makefile = (SRC / "Makefile").read_text(errors="ignore")
     build = (ROOT / "tools/build_g3a.sh").read_text(errors="ignore")
 
-    for label in ("MAT/VCT", "MATH"):
+    for label in (" MAT/VCT", " MATH"):
         require(source, f'"{label}"', label)
     require(source, "SAF_SETUP_INPUT_OUTPUT", "Math status flag")
     require(source, "SAF_SETUP_ANGLE", "Deg status flag")
@@ -36,7 +36,6 @@ def main() -> int:
     require(source, "FKey_Display", "OS fkey display")
     require(source, "kFKeyJump = 508", "JUMP fkey bitmap")
     require(source, "kFKeyDelete = 0x38", "DELETE fkey bitmap")
-    require(source, "kFKeyBlackTemplate = 0x0190", "custom fkey template")
     require(source, "Bdisp_MMPrint", "OS custom fkey text")
     require(source, "draw_r_indicator", "R indicator")
     require(source, "kRBlinkPeriodTicks = 384", "R 3s period")
@@ -46,7 +45,9 @@ def main() -> int:
     require(source, "GetKeyWait_OS(&col, &row, KEYWAIT_HALTOFF_TIMEROFF, 0, 1, &keycode)", "nonblocking key call")
     require(source, "OS_InnerWait_ms(40)", "loop pacing")
     require(source, "fill_rect(339, 0, 21, 24, visible ? COLOR_BLUE : kWhite);", "R blue highlight")
-    require(source, 'PrintCXY(340, 0, "R"', "OS R glyph")
+    require(source, 'PrintCXY(340, -7, "R"', "OS R glyph")
+    require(source, "fill_rect(x, LCD_HEIGHT_PX - 23, LCD_WIDTH_PX / 6, 23, COLOR_BLACK);", "custom fkey black cells")
+    require(source, "Bdisp_MMPrint(x, LCD_HEIGHT_PX - 24 - 19, text", "custom fkey text position")
     if "static unsigned char glyph" in source or "draw_pixel_text" in source:
         raise SystemExit("FAIL runmat manual pixel glyph renderer present")
 

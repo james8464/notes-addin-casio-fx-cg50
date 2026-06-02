@@ -69,7 +69,7 @@ static void draw_status_area() {
 static void draw_r_indicator(bool visible) {
   fill_rect(339, 0, 21, 24, visible ? COLOR_BLUE : kWhite);
   if (visible) {
-    PrintCXY(340, 0, "R", TEXT_MODE_NORMAL, -1, COLOR_WHITE, COLOR_BLUE, 1, 0);
+    PrintCXY(340, -7, "R", TEXT_MODE_NORMAL, -1, COLOR_WHITE, COLOR_BLUE, 1, 0);
   }
 }
 
@@ -86,22 +86,20 @@ static void display_fkey(int slot, int id) {
 }
 
 static void draw_custom_fkey_text(int slot, const char *text) {
-  int x = slot * 64 + 3;
-  Bdisp_MMPrint(x, 194, text, 0, 0xffffffff, 0, 0, COLOR_WHITE, COLOR_BLACK, 1, 0);
+  int x = slot * (LCD_WIDTH_PX / 6);
+  fill_rect(x, LCD_HEIGHT_PX - 23, LCD_WIDTH_PX / 6, 23, COLOR_BLACK);
+  Bdisp_MMPrint(x, LCD_HEIGHT_PX - 24 - 19, text, 0, 0xffffffff, 0, 0, COLOR_WHITE, COLOR_BLACK, 1, 0);
 }
 
 static void draw_soft_labels() {
   const int kFKeyJump = 508;
   const int kFKeyDelete = 0x38;
-  const int kFKeyBlackTemplate = 0x0190;
   display_fkey(0, kFKeyJump);
   display_fkey(1, kFKeyDelete);
-  display_fkey(2, kFKeyBlackTemplate);
-  display_fkey(3, kFKeyBlackTemplate);
   display_fkey(4, -1);
   display_fkey(5, -1);
-  draw_custom_fkey_text(2, "MAT/VCT");
-  draw_custom_fkey_text(3, "MATH");
+  draw_custom_fkey_text(2, " MAT/VCT");
+  draw_custom_fkey_text(3, " MATH");
 }
 
 static void draw_static_screen(bool r_visible) {
