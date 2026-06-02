@@ -9313,6 +9313,39 @@ static bool syntactic_nonzero_expr(const working_string &expr){
   return np.ok && !*np.p && finite_double(v) && fabs(v)>1e-12;
 }
 
+static bool syntactic_zero_expr(const working_string &expr,int depth=0){
+  if (depth>4)
+    return false;
+  working_string s=strip_outer_parens(nospace_lower(expr)),num,den,arg,base;
+  Rat r,p;
+  if (s.empty())
+    return false;
+  if (parse_rat(s,r))
+    return r.n==0;
+  NumParser np;
+  np.p=s.c_str();
+  np.ok=true;
+  double v=np.expr();
+  np.skip();
+  if (np.ok && !*np.p && finite_double(v))
+    return fabs(v)<1e-12;
+  if (split_top_fraction(s,num,den))
+    return syntactic_zero_expr(num,depth+1);
+  if (split_outer_power_general(s,base,p) && p.n>0)
+    return syntactic_zero_expr(base,depth+1);
+  if (parse_unary_arg(s,"sin",arg) || parse_unary_arg(s,"tan",arg))
+    return syntactic_zero_expr(arg,depth+1);
+  if (parse_unary_arg(s,"sqrt",arg) || parse_unary_arg(s,"abs",arg))
+    return syntactic_zero_expr(arg,depth+1);
+  working_string terms[4];
+  int signs[4];
+  int n=split_top_sum_terms(s,terms,signs,4);
+  if (n==2 && signs[0]==1 && signs[1]==-1 &&
+      strip_outer_parens(terms[0])==strip_outer_parens(terms[1]))
+    return true;
+  return false;
+}
+
 static bool try_range_symbolic_recip_affine(const working_string &e,char rv,working_string &out){
   working_string num,den;
   if (!split_top_fraction(e,num,den))
@@ -9375,17 +9408,90 @@ static bool try_range_outer_power_route(const working_string &e,char rv,working_
   return false;
 }
 
+static void append_lower_piece(working_string &acc,const working_string &piece){
+  if (piece.empty() || piece=="0")
+    return;
+  if (acc.empty() || acc=="0")
+    acc=piece;
+  else
+    acc += "+"+piece;
+}
+
+static bool nonnegative_lower_bound_expr(const working_string &expr,working_string &lb,int depth=0);
+
+static bool nonnegative_lower_bound_term(const working_string &term,working_string &lb,int depth){
+  if (depth>4)
+    return false;
+  working_string s=strip_outer_parens(nospace_lower(term)),arg,base;
+  Rat r,p;
+  if (s.empty())
+    return false;
+  if (parse_rat(s,r)){
+    if (r.n<0)
+      return false;
+    lb=rat_s(r);
+    return true;
+  }
+  if (s=="pi" || s=="e"){
+    lb=s;
+    return true;
+  }
+  if (parse_unary_arg(s,"abs",arg)){
+    arg=strip_outer_parens(arg);
+    lb=(arg=="pi" || arg=="e") ? arg : "0";
+    return true;
+  }
+  if (parse_unary_arg(s,"sqrt",arg)){
+    lb="0";
+    return true;
+  }
+  if (split_outer_power_general(s,base,p) && p.d==1 && p.n>0 && (p.n%2)==0){
+    working_string inner;
+    if (p.n==2 && parse_unary_arg(base,"sqrt",inner))
+      return nonnegative_lower_bound_expr(inner,lb,depth+1);
+    lb="0";
+    return true;
+  }
+  return false;
+}
+
+static bool nonnegative_lower_bound_expr(const working_string &expr,working_string &lb,int depth){
+  working_string terms[12];
+  int signs[12];
+  int n=split_top_sum_terms(strip_outer_parens(nospace_lower(expr)),terms,signs,12);
+  if (n<1)
+    return false;
+  working_string acc="0";
+  for (int i=0;i<n;++i){
+    if (signs[i]<0)
+      return false;
+    working_string part;
+    if (!nonnegative_lower_bound_term(terms[i],part,depth+1))
+      return false;
+    append_lower_piece(acc,part);
+  }
+  lb=acc.empty()?"0":acc;
+  return true;
+}
+
 static bool try_range(const char *input,working_string &out){
   working_string args[4];
   int n=0;
   if (!parse_call(input,"range",args,4,n) || n<1)
     return false;
   working_string e=canonical_expr(args[0]);
+  while (!e.empty() && e[0]=='+')
+    e=e.substr(1,e.size()-1);
   char rv='x';
   if (n>=2){
     working_string vv=compact(args[1]);
     if (vv.size()==1 && isalpha((unsigned char)vv[0]))
       rv=vv[0];
+    else {
+      char fv=first_var(e);
+      if (fv)
+        rv=fv;
+    }
   }
   else {
     char fv=first_var(e);
@@ -9394,6 +9500,19 @@ static bool try_range(const char *input,working_string &out){
   }
   working_string var;
   var += rv;
+  {
+    working_string logarg,exparg,sub;
+    if ((parse_unary_arg(e,"ln",logarg) || parse_unary_arg(e,"log",logarg)) &&
+        parse_unary_arg(logarg,"exp",exparg) && contains_var_symbol(exparg,rv)){
+      working_string call="range("+exparg+","+var+")";
+      out="Find range\n"+e+" = "+exparg+"\n";
+      if (try_range(call.c_str(),sub))
+        out += sub;
+      else
+        out += "same range as "+exparg;
+      return true;
+    }
+  }
   if (e=="exp("+var+")"){
     out="Find range\nexp("+var+") > 0\n";
     out += "y > 0";
@@ -9410,6 +9529,27 @@ static bool try_range(const char *input,working_string &out){
     if (parse_call(e.c_str(),"log",largs,2,ln) && ln==2 && contains_var_symbol(largs[1],rv)){
       out="Find range\nlog base "+trim(largs[0])+" maps positive input to all real values\n";
       out += "all real";
+      return true;
+    }
+    if (parse_call(e.c_str(),"log",largs,2,ln) && ln==2 &&
+        (contains_var_symbol(largs[0],rv) || contains_var_symbol(largs[1],rv))){
+      out="Find range\n";
+      out += "log("+trim(largs[0])+","+trim(largs[1])+") = ln("+trim(largs[1])+")/ln("+trim(largs[0])+")\n";
+      out += "Need base > 0, base != 1, argument > 0\n";
+      if (contains_var_symbol(largs[0],rv) && !contains_var_symbol(largs[1],rv)){
+        out += "Let A = "+trim(largs[1])+"\n";
+        if (syntactic_zero_expr(largs[1]))
+          out += "A = 0, so argument > 0 fails\nno real range";
+        else {
+          out += "If A = 1, y = 0\n";
+          out += "If A > 0 and A != 1, y < 0 or y > 0\n";
+          out += "No real value if A <= 0";
+        }
+      }
+      else {
+        out += "argument varies over positive values\n";
+        out += "all real";
+      }
       return true;
     }
     if (parse_unary_arg(e,"ln",larg) && contains_var_symbol(larg,rv)){
@@ -9464,6 +9604,14 @@ static bool try_range(const char *input,working_string &out){
         out += arg+" is all real, so sqrt reaches every non-negative value\n";
         out += "y >= 0";
         return true;
+      }
+      {
+        working_string lb;
+        if (nonnegative_lower_bound_expr(arg,lb) && lb!="0"){
+          out="Find range\ninside root >= "+lb+"\n";
+          out += "y >= sqrt("+lb+")";
+          return true;
+        }
       }
       working_string terms[3],base;
       int signs[3];
