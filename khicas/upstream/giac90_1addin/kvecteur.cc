@@ -3410,6 +3410,11 @@ namespace giac {
   }
 
   void vranm(int n,const gen & F,vecteur & res,GIAC_CONTEXT){
+#ifdef CASCAS_DISABLE_RANDOM_MATRIX_RUNTIME
+    (void)n; (void)F;
+    res=vecteur(1,gensizeerr(contextptr));
+    return;
+#else
     gen f(F);
     // if (F.type==_USER) f=symbolic(at_rand,F);
     n=giacmax(1,n);
@@ -3743,6 +3748,7 @@ namespace giac {
     }
     for (int i=0;i<n;++i)
       res.push_back(eval(f,eval_level(contextptr),contextptr));
+#endif
   }
 
   vecteur vranm(int n,const gen & F,GIAC_CONTEXT){
@@ -3752,6 +3758,10 @@ namespace giac {
   }
 
   matrice mranm(int n,int m,const gen & f,GIAC_CONTEXT){
+#ifdef CASCAS_DISABLE_RANDOM_MATRIX_RUNTIME
+    (void)n; (void)m; (void)f;
+    return vecteur(1,gensizeerr(contextptr));
+#else
     n=giacmax(1,n);
     m=giacmax(1,m);
     if (longlong(n)*m>LIST_SIZE_LIMIT/4)
@@ -3763,9 +3773,14 @@ namespace giac {
       vranm(m,f,*res[i]._VECTptr,contextptr);
     }
     return res;
+#endif
   }
 
   gen _ranm(const gen & e,GIAC_CONTEXT){
+#ifdef CASCAS_DISABLE_RANDOM_MATRIX_RUNTIME
+    if ( e.type==_STRNG && e.subtype==-1) return  e;
+    return symbolic(at_ranm,e);
+#else
     if ( e.type==_STRNG && e.subtype==-1) return  e;
     int n=0,m=0;
     switch (e.type){
@@ -3838,12 +3853,17 @@ namespace giac {
       return gensizeerr(contextptr);
     }
     return undef;
+#endif
   }
   static const char _ranm_s []="ranm";
   static define_unary_function_eval (__ranm,&_ranm,_ranm_s);
   define_unary_function_ptr5( at_ranm ,alias_at_ranm,&__ranm,0,true);
 
   gen _randvector(const gen & e,GIAC_CONTEXT){
+#ifdef CASCAS_DISABLE_RANDOM_MATRIX_RUNTIME
+    if ( e.type==_STRNG && e.subtype==-1) return  e;
+    return symbolic(at_randvector,e);
+#else
     if ( e.type==_STRNG && e.subtype==-1) return  e;
     int n=0;
     switch (e.type){
@@ -3901,6 +3921,7 @@ namespace giac {
       return gensizeerr(contextptr);
     }
     return undef;
+#endif
   }
   static const char _randvector_s []="randvector";
   static define_unary_function_eval (__randvector,&_randvector,_randvector_s);
@@ -4775,6 +4796,10 @@ namespace giac {
     return true;
   }
   gen _hessenberg(const gen & g0,GIAC_CONTEXT){
+#ifdef CASCAS_DISABLE_MATRIX_EIGEN_RUNTIME
+    if ( g0.type==_STRNG && g0.subtype==-1) return  g0;
+    return symbolic(at_hessenberg,g0);
+#else
     if ( g0.type==_STRNG && g0.subtype==-1) return  g0;
     gen g(g0);
     int modulo=0;
@@ -4805,6 +4830,7 @@ namespace giac {
       return makesequence(_trn(p,contextptr),h); // p,h such that p*h*p^-1=orig
     else
       return makesequence(inv(p,contextptr),h); // p,h such that p*h*p^-1=orig
+#endif
   }
   static const char _hessenberg_s []="hessenberg";
   static define_unary_function_eval (__hessenberg,&_hessenberg,_hessenberg_s);
@@ -5269,6 +5295,12 @@ namespace giac {
   // if jordan is false, errors for non diagonalizable matrices
   // if jordan is true, d is a matrix, not a vector
   bool egv(const matrice & m0,matrice & p,vecteur & d, GIAC_CONTEXT,bool jordan,bool rational_jordan_form,bool eigenvalues_only){
+#ifdef CASCAS_DISABLE_MATRIX_EIGEN_RUNTIME
+    (void)m0; (void)contextptr; (void)jordan; (void)rational_jordan_form; (void)eigenvalues_only;
+    p.clear();
+    d.clear();
+    return false;
+#else
     matrice m=m0;
     if (m.size()==1){
       p=vecteur(1,vecteur(1,1));
@@ -5668,6 +5700,7 @@ namespace giac {
 	d=mtran(d);
     }
     return true;
+#endif
   }
   matrice megv(const matrice & e,GIAC_CONTEXT){
     matrice m;
@@ -6352,6 +6385,10 @@ namespace giac {
   }
 
   gen _svd(const gen &args_orig,GIAC_CONTEXT){
+#ifdef CASCAS_DISABLE_MATRIX_EIGEN_RUNTIME
+    if (args_orig.type==_STRNG && args_orig.subtype==-1) return args_orig;
+    return symbolic(at_svd,args_orig);
+#else
     if (args_orig.type==_STRNG && args_orig.subtype==-1) return args_orig;
     gen args;
     int method=0; // use -1 to check built-in svd, -2 for svl (singular values only) 
@@ -6518,6 +6555,7 @@ namespace giac {
     if (transposed)
       return makesequence(p,svl,u); 
     return makesequence(u,svl,p); 
+#endif
   }
   static const char _svd_s []="svd";
   static define_unary_function_eval (__svd,&_svd,_svd_s);

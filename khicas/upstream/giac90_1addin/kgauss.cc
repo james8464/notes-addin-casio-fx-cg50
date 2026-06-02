@@ -39,6 +39,11 @@ namespace giac {
 #endif // ndef NO_NAMESPACE_GIAC
 
   vecteur quad(int &b,const gen & q, const vecteur & x,GIAC_CONTEXT){
+#ifdef CASCAS_DISABLE_QUADRATIC_FORM_RUNTIME
+    (void)q; (void)x; (void)contextptr;
+    b=0;
+    return vecteur(1,gensizeerr(contextptr));
+#else
     //x=vecteur des variables, q=la fonction a tester,n=la dimension de x
     //b=2 si q est quadratique,=0,1 ou 3 si il y des termes d'ordre 0,1 ou 3
     //renvoie (la jacobienne de q)/2
@@ -97,6 +102,7 @@ namespace giac {
     b=2;
     //(*(A[1]._VECTptr))[0]=21;
     return(A);
+#endif
   } 
   
   vecteur qxa(const gen &q,const vecteur & x,GIAC_CONTEXT){
@@ -124,6 +130,9 @@ namespace giac {
   }
   gen _q2a(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
+#ifdef CASCAS_DISABLE_QUADRATIC_FORM_RUNTIME
+    return symb_q2a(args);
+#else
     if (args.type!=_VECT)
       return _q2a(makesequence(args,lidnt(args)),contextptr);
     int s=int(args._VECTptr->size());
@@ -132,12 +141,20 @@ namespace giac {
     if (args._VECTptr->back().type==_VECT)
       return qxa(args._VECTptr->front(),*args._VECTptr->back()._VECTptr,contextptr);
     return symb_q2a(args);
+#endif
   }
   static const char _q2a_s []="q2a";
   static define_unary_function_eval (__q2a,&_q2a,_q2a_s);
   define_unary_function_ptr5( at_q2a ,alias_at_q2a,&__q2a,0,true);
 
   vecteur gauss(const gen & q, const vecteur & x, vecteur & D, vecteur & U, vecteur & P,GIAC_CONTEXT){
+#ifdef CASCAS_DISABLE_QUADRATIC_FORM_RUNTIME
+    (void)q; (void)x; (void)contextptr;
+    D.clear();
+    U.clear();
+    P.clear();
+    return vecteur(1,gensizeerr(contextptr));
+#else
     int n=int(x.size()),b;
     gen u1,u2,q1,l1,l2;
     vecteur R(1);
@@ -279,10 +296,14 @@ namespace giac {
     R[0]=rdiv(pow(u1,2),plus_two*A[r1][r2],contextptr);
     R[1]=rdiv(-pow(u2,2),plus_two*A[r1][r2],contextptr);
     return(mergevecteur(R,L)); 
+#endif
   } 
 
   gen _gauss(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
+#ifdef CASCAS_DISABLE_QUADRATIC_FORM_RUNTIME
+    return symbolic(at_gauss,args);
+#else
     if (args.type!=_VECT)
       return _gauss(makesequence(args,lidnt(args)),contextptr);
     int s=int(args._VECTptr->size());
@@ -299,12 +320,17 @@ namespace giac {
       return w;
     }
     return _randNorm(args,contextptr);
+#endif
   }
   static const char _gauss_s []="gauss";
   static define_unary_function_eval (__gauss,&_gauss,_gauss_s);
   define_unary_function_ptr5( at_gauss ,alias_at_gauss,&__gauss,0,true);
 
   gen axq(const vecteur &A,const vecteur & x,GIAC_CONTEXT){
+#ifdef CASCAS_DISABLE_QUADRATIC_FORM_RUNTIME
+    (void)A; (void)x;
+    return gensizeerr(contextptr);
+#else
     //transforme une matrice carree (symetrique) en la forme quadratique q
     //(les variables sont dans x)
     //d nbre de variables
@@ -317,11 +343,15 @@ namespace giac {
     vecteur Ax;
     multmatvecteur(A,x,Ax);
     return normal(dotvecteur(x,Ax),contextptr);
+#endif
   }
 
 
   gen _a2q(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
+#ifdef CASCAS_DISABLE_QUADRATIC_FORM_RUNTIME
+    return symbolic(at_a2q,args);
+#else
     if (args.type!=_VECT || args._VECTptr->empty())
       return gensizeerr(contextptr);
     int s=int(args._VECTptr->size());
@@ -336,6 +366,7 @@ namespace giac {
     if (ckmatrix(v.front()) && v.back().type==_VECT)
       return axq(*v.front()._VECTptr,*v.back()._VECTptr,contextptr);
     return gensizeerr(contextptr);
+#endif
   }
   static const char _a2q_s []="a2q";
   static define_unary_function_eval (__a2q,&_a2q,_a2q_s);
@@ -346,4 +377,3 @@ namespace giac {
 #ifndef NO_NAMESPACE_GIAC
 } // namespace giac
 #endif // ndef NO_NAMESPACE_GIAC
-

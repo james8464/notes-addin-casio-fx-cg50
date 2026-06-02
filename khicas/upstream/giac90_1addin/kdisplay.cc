@@ -2334,6 +2334,10 @@ namespace xcas {
   }
 
   void Turtle::draw(){
+#ifdef CASCAS_DISABLE_TURTLE_DRAW_RUNTIME
+    drawRectangle(0, 24, LCD_WIDTH_PX, LCD_HEIGHT_PX-24,COLOR_WHITE);
+    return;
+#else
     const int deltax=0,deltay=24;
     int horizontal_pixels=LCD_WIDTH_PX-2*giac::COORD_SIZE;
     // Check for fast redraw
@@ -2532,6 +2536,7 @@ namespace xcas {
       }
       return;
     } // End logo mode
+#endif
   }  
   
 #ifndef NO_NAMESPACE_XCAS

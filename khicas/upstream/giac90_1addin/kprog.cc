@@ -3505,6 +3505,10 @@ namespace giac {
 #endif
   }
   gen _rand(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_DISABLE_RANDOM_RUNTIME
+    if (args.type==_STRNG && args.subtype==-1) return args;
+    return symb_rand(args);
+#else
     int argsval;
     if (args.type==_INT_ && (argsval=args.val)){
 #ifndef FXCG
@@ -3617,6 +3621,7 @@ namespace giac {
       // return rand_interval(v);
     }
     return symb_rand(args);
+#endif
   }
   static const char _rand_s []="rand";
   static define_unary_function_eval (__rand,&_rand,_rand_s);
@@ -3627,6 +3632,10 @@ namespace giac {
   define_unary_function_ptr5( at_random ,alias_at_random,&__random,0,true);
 
   gen _randint(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_DISABLE_RANDOM_RUNTIME
+    if (args.type==_STRNG && args.subtype==-1) return args;
+    return symbolic(at_randint,args);
+#else
     if (args.type==_INT_)
       return (abs_calc_mode(contextptr)==38?0:1)+_rand(args,contextptr);
     if (args.type!=_VECT || args._VECTptr->size()!=2)
@@ -3635,12 +3644,17 @@ namespace giac {
     if (!is_integral(a) || !is_integral(b))
       return gentypeerr(contextptr);
     return (abs_calc_mode(contextptr)==38?a-1:a)+_rand(b-a+1,contextptr);
+#endif
   }
   static const char _randint_s []="randint";
   static define_unary_function_eval (__randint,&_randint,_randint_s);
   define_unary_function_ptr5( at_randint ,alias_at_randint,&__randint,0,true);
 
   gen _randrange(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_DISABLE_RANDOM_RUNTIME
+    if (args.type==_STRNG && args.subtype==-1) return args;
+    return symbolic(at_randrange,args);
+#else
     if (args.type==_INT_)
       return (abs_calc_mode(contextptr)==38?-1:0)+_rand(args,contextptr);
     if (args.type!=_VECT || args._VECTptr->size()!=2)
@@ -3649,12 +3663,17 @@ namespace giac {
     if (!is_integral(a) || !is_integral(b))
       return gentypeerr(contextptr);
     return (abs_calc_mode(contextptr)==38?a-1:a)+_rand(b-a,contextptr);
+#endif
   }
   static const char _randrange_s []="randrange";
   static define_unary_function_eval (__randrange,&_randrange,_randrange_s);
   define_unary_function_ptr5( at_randrange ,alias_at_randrange,&__randrange,0,true);
 
   gen _choice(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_DISABLE_RANDOM_RUNTIME
+    if (args.type==_STRNG && args.subtype==-1) return args;
+    return symbolic(at_choice,args);
+#else
     if (args.type!=_VECT || args.subtype==_SEQ__VECT || args._VECTptr->empty())
       return gensizeerr(contextptr);
     int n=int(args._VECTptr->size());
@@ -3662,12 +3681,17 @@ namespace giac {
     if (g.type!=_INT_ || g.val<0 || g.val>=n)
       return gendimerr(contextptr);
     return args[g.val];
+#endif
   }
   static const char _choice_s []="choice";
   static define_unary_function_eval (__choice,&_choice,_choice_s);
   define_unary_function_ptr5( at_choice ,alias_at_choice,&__choice,0,true);
 
   gen _shuffle(const gen & a,GIAC_CONTEXT){
+#ifdef CASCAS_DISABLE_RANDOM_RUNTIME
+    if (a.type==_STRNG && a.subtype==-1) return a;
+    return symbolic(at_shuffle,a);
+#else
     gen args(a);
     if (is_integral(args))
       return vector_int_2_vecteur(randperm(args.val,contextptr),contextptr);
@@ -3681,24 +3705,34 @@ namespace giac {
       w[i]=v[p[i]];
     }
     return gen(w,args.subtype);
+#endif
   }
   static const char _shuffle_s []="shuffle";
   static define_unary_function_eval (__shuffle,&_shuffle,_shuffle_s);
   define_unary_function_ptr5( at_shuffle ,alias_at_shuffle,&__shuffle,0,true);
 
   gen _sample(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_DISABLE_RANDOM_RUNTIME
+    if (args.type==_STRNG && args.subtype==-1) return args;
+    return symbolic(at_sample,args);
+#else
     if (args.type!=_VECT || args._VECTptr->size()!=2)
       return gensizeerr(contextptr);
     gen a=args._VECTptr->front(),b=args._VECTptr->back();
     if (a.type!=_VECT || !is_integral(b) || b.type==_ZINT || b.val<0)
       return gensizeerr(contextptr);
     return _rand(makesequence(b,a),contextptr);
+#endif
   }
   static const char _sample_s []="sample";
   static define_unary_function_eval (__sample,&_sample,_sample_s);
   define_unary_function_ptr5( at_sample ,alias_at_sample,&__sample,0,true);
 
   gen _srand(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_DISABLE_RANDOM_RUNTIME
+    if (args.type==_STRNG && args.subtype==-1) return args;
+    return symbolic(at_srand,args);
+#else
     if ( args.type==_STRNG &&  args.subtype==-1) return  args;
     if (args.type==_INT_){
       int n=args.val;
@@ -3731,6 +3765,7 @@ namespace giac {
 #endif
       return t;
     }
+#endif
   }
   static const char _srand_s []="srand";
   static define_unary_function_eval (__srand,&_srand,_srand_s);

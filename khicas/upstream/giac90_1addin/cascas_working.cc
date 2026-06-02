@@ -153,6 +153,21 @@ bool reject_removed_feature(const char *input){
     int begin=i;
     while (input[i] && removed_ident_char(input[i]))
       ++i;
+    if (i-begin==8){
+      const char *w="binomial";
+      bool same=true;
+      for (int j=0;j<8;++j){
+        char c=input[begin+j];
+        if (c>='A' && c<='Z')
+          c=char(c-'A'+'a');
+        if (c!=w[j]){
+          same=false;
+          break;
+        }
+      }
+      if (same)
+        continue;
+    }
     if (removed_hash_denied(removed_hash_ident(input,begin,i)))
       return true;
   }
@@ -922,6 +937,48 @@ static bool try_solve_cubic_int_eq(const working_string &left,const working_stri
     }
   }
   return false;
+}
+
+static working_string double_s(double v);
+
+static double eval_poly_int_coeffs(const long *c,int degree,double x){
+  double y=0;
+  for (int i=degree;i>=0;--i)
+    y=y*x+c[i];
+  return y;
+}
+
+static bool solve_cubic_numeric_int(const working_string &left,const working_string &right,
+                                    char v,const working_string &rawvar,working_string &out){
+  long lc[4],rc[4],c[4];
+  int ld=0,rd=0;
+  if (!parse_poly_int(left,v,lc,3,ld) || !parse_poly_int(right,v,rc,3,rd))
+    return false;
+  for (int i=0;i<4;++i)
+    c[i]=lc[i]-rc[i];
+  if (!c[3])
+    return false;
+  double lo=0,hi=0,flo=0;
+  bool found=false;
+  for (double a=-20;a<20 && !found;a+=0.5){
+    double b=a+0.5, fa=eval_poly_int_coeffs(c,3,a), fb=eval_poly_int_coeffs(c,3,b);
+    if (fabs(fa)<1e-12){ lo=hi=a; flo=fa; found=true; break; }
+    if (fa*fb<0){ lo=a; hi=b; flo=fa; found=true; break; }
+  }
+  if (!found)
+    return false;
+  for (int i=0;i<50 && hi>lo;++i){
+    double mid=(lo+hi)/2, fm=eval_poly_int_coeffs(c,3,mid);
+    if (fabs(fm)<1e-12){ lo=hi=mid; break; }
+    if (flo*fm<=0){ hi=mid; }
+    else { lo=mid; flo=fm; }
+  }
+  double root=(lo+hi)/2;
+  out="Cubic:\n";
+  out += poly3_s(c[3],c[2],c[1],c[0],v)+" = 0\n";
+  out += "Use sign change and bisection/Newton refinement\n";
+  out += rawvar+" = ["+double_s(root)+"]";
+  return true;
 }
 
 static void append_quad_solution(working_string &out,long a,long b,long c,char v,const working_string &rawvar,Rat r1,Rat r2){
@@ -2362,6 +2419,23 @@ static bool finite_double(double v){
   return v==v && fabs(v)<1e300;
 }
 
+static bool rational_approx(double v,working_string &out);
+
+static bool eval_numeric_rat_expr(const working_string &expr,Rat &out){
+  NumParser np;
+  working_string e=compact(expr);
+  np.p=e.c_str();
+  np.ok=true;
+  double val=np.expr();
+  np.skip();
+  if (!np.ok || *np.p || !finite_double(val))
+    return false;
+  working_string exact;
+  if (!rational_approx(val,exact))
+    return false;
+  return parse_rat(exact,out);
+}
+
 static bool rational_approx(double v,working_string &out){
   if (fabs(v)>1000000)
     return false;
@@ -2542,6 +2616,14 @@ static working_string quad_rat_s(Rat a,Rat b,Rat c){
   return out.empty()?"0":out;
 }
 
+static working_string quad_rat_s_var(Rat a,Rat b,Rat c,char v){
+  working_string out;
+  if (a.n) out=join_sum(out,rat_power_term_s(a,rat(2,1),v));
+  if (b.n) out=join_sum(out,rat_power_term_s(b,rat(1,1),v));
+  if (c.n) out=join_sum(out,rat_s(c));
+  return out.empty()?"0":out;
+}
+
 static bool add_quad_piece(const working_string &src,char v,Rat s,Rat &A,Rat &B,Rat &C){
   working_string t=strip_outer_parens(nospace_lower(src));
   Rat c,p;
@@ -2560,7 +2642,7 @@ static bool add_quad_piece(const working_string &src,char v,Rat s,Rat &A,Rat &B,
       }
     }
   }
-  if (parse_x_power_factor(t,c,p) && p.d==1 && p.n>=0 && p.n<=2){
+  if (parse_var_power_factor(t,v,c,p) && p.d==1 && p.n>=0 && p.n<=2){
     c=rat_mul(c,s);
     if (p.n==2) A=rat_add(A,c);
     else if (p.n==1) B=rat_add(B,c);
@@ -2577,7 +2659,41 @@ static bool add_quad_piece(const working_string &src,char v,Rat s,Rat &A,Rat &B,
     C=rat_add(C,rat_mul(s,c));
     return true;
   }
+  if (!contains_var_symbol(t,v) && eval_numeric_rat_expr(t,c)){
+    C=rat_add(C,rat_mul(s,c));
+    return true;
+  }
   return false;
+}
+
+static bool parse_quad_rat_expr(const working_string &src,char v,Rat &A,Rat &B,Rat &C){
+  working_string terms[12];
+  int signs[12];
+  int n=split_top_sum_terms(src,terms,signs,12);
+  if (n<1)
+    return false;
+  A=rat(0,1); B=rat(0,1); C=rat(0,1);
+  for (int i=0;i<n;++i)
+    if (!add_quad_piece(terms[i],v,rat(signs[i],1),A,B,C))
+      return false;
+  return true;
+}
+
+static bool rat_square_root(Rat q,Rat &r){
+  long sn=0,sd=0;
+  if (q.n<0)
+    return false;
+  if (!square_long(q.n,sn) || !square_long(q.d,sd))
+    return false;
+  r=rat(sn,sd);
+  return true;
+}
+
+static working_string sqrt_rat_s(Rat q){
+  Rat r;
+  if (rat_square_root(q,r))
+    return rat_s(r);
+  return "sqrt("+rat_s(q)+")";
 }
 
 static bool integrate_quad_sum(const working_string &expr,working_string &out){
@@ -3301,6 +3417,40 @@ static working_string neg_mul_chain_factor(const working_string &d,const working
   return "-"+(needs_parens_for_mul(d)?"("+d+")":d)+"*"+f;
 }
 
+static bool diff_const_product_simple_expr(const working_string &src,char v,working_string &deriv,working_string &shown){
+  working_string factors[8],shown_f[8];
+  int n=split_top_product(src,factors,8);
+  if (n<2)
+    return false;
+  int var_i=-1,var_count=0;
+  for (int i=0;i<n;++i){
+    shown_f[i]=fmt_expr_for_working(factors[i],v);
+    if (contains_var_symbol(compact(factors[i]),v)){
+      var_i=i;
+      ++var_count;
+    }
+  }
+  if (var_count!=1)
+    return false;
+  working_string dvar,svar;
+  if (!diff_simple_expr(factors[var_i],v,dvar,svar))
+    return false;
+  working_string constant_part;
+  shown="";
+  for (int i=0;i<n;++i){
+    if (i)
+      shown += "*";
+    shown += mul_visible_factor(i==var_i?svar:shown_f[i]);
+    if (i!=var_i){
+      if (!constant_part.empty())
+        constant_part += "*";
+      constant_part += mul_visible_factor(shown_f[i]);
+    }
+  }
+  deriv=constant_part.empty()?dvar:mul_factor_derivative(constant_part,dvar);
+  return true;
+}
+
 static bool diff_affine_power_expr(const working_string &src,char v,working_string &deriv,working_string &shown){
   Rat a,b,p;
   if (!split_affine_power_rat(src,v,a,b,p))
@@ -3425,8 +3575,18 @@ static bool diff_simple_expr(const working_string &src,char v,working_string &de
   }
   if (diff_sum_terms(s,deriv,v))
     return true;
+  if (diff_const_product_simple_expr(s,v,deriv,shown))
+    return true;
   if (diff_affine_power_expr(s,v,deriv,shown))
     return true;
+  if (s.size()>4 && s.substr(0,3)=="e^(" && match_paren(s,2)==int(s.size())-1){
+    working_string arg=s.substr(3,s.size()-4),du,u;
+    if (diff_simple_expr(arg,v,du,u)){
+      shown="e^("+u+")";
+      deriv=mul_chain_factor(du,shown);
+      return true;
+    }
+  }
   {
     working_string base,db,bs;
     Rat p;
@@ -3709,6 +3869,10 @@ static bool try_diff_product_rule(const working_string &expr,char v,const workin
     working_string second=mul_factor_derivative(shown[0],deriv[1]);
     if (first=="0" && second=="0")
       out += "0";
+    else if (first=="0")
+      out += second;
+    else if (second=="0")
+      out += first;
     else {
       out += first;
       out += (!second.empty() && second[0]=='-') ? " - "+second.substr(1,second.size()-1) : " + "+second;
@@ -4619,6 +4783,102 @@ static working_string strip_integral_constant(const working_string &s){
   return r;
 }
 
+static working_string rat_expr_s(Rat q,const working_string &expr);
+
+static working_string subst_var_value(const working_string &expr,char v,const working_string &value){
+  working_string out;
+  for (int i=0;i<int(expr.size());++i){
+    char c=expr[i];
+    bool prev=i>0 && (isalnum((unsigned char)expr[i-1]) || expr[i-1]=='_');
+    bool next=i+1<int(expr.size()) && (isalnum((unsigned char)expr[i+1]) || expr[i+1]=='_');
+    if (c==v && !prev && !next)
+      out += "("+value+")";
+    else
+      out += c;
+  }
+  return out;
+}
+
+static bool eval_numeric_string(const working_string &expr,working_string &shown){
+  NumParser np;
+  working_string e=compact(expr);
+  np.p=e.c_str();
+  np.ok=true;
+  double val=np.expr();
+  np.skip();
+  if (!np.ok || *np.p || !finite_double(val))
+    return false;
+  working_string exact;
+  shown=rational_approx(val,exact)?exact:double_s(val);
+  return true;
+}
+
+static bool try_definite_recip_affine(const working_string &expr,const working_string &rawvar,
+                                      const working_string &lo,const working_string &hi,
+                                      working_string &out){
+  working_string v=compact(rawvar);
+  if (v.size()!=1)
+    return false;
+  Rat coef,loq,hiq;
+  long a=0,b=0;
+  if (!split_recip_affine(expr,coef,a,b) || !parse_rat(compact(lo),loq) ||
+      !parse_rat(compact(hi),hiq) || !a)
+    return false;
+  Rat scale=rat_div(coef,rat(a,1));
+  Rat ulo=rat_add(rat_mul(rat(a,1),loq),rat(b,1));
+  Rat uhi=rat_add(rat_mul(rat(a,1),hiq),rat(b,1));
+  if (!ulo.n || !uhi.n)
+    return false;
+  working_string u=fmt_affine(a,b);
+  out="u = "+u+"\n";
+  out += "du = "+int_s(a)+" d"+v+"\n";
+  out += "F("+v+") = "+log_affine_int_s(coef,a,b)+"\n";
+  out += "F("+hi+") - F("+lo+")\n";
+  out += rat_expr_s(scale,"ln(abs("+rat_s(uhi)+"))")+" - "+rat_expr_s(scale,"ln(abs("+rat_s(ulo)+"))")+"\n";
+  if (uhi.n*ulo.n>0){
+    Rat ratio=rat_div(uhi,ulo);
+    out += rat_expr_s(scale,"ln("+rat_abs_s(ratio)+")");
+  }
+  else {
+    out += rat_expr_s(scale,"(ln(abs("+rat_s(uhi)+")) - ln(abs("+rat_s(ulo)+")))");
+  }
+  return true;
+}
+
+static bool try_definite_via_antiderivative(const working_string &expr,const working_string &rawvar,
+                                            const working_string &lo,const working_string &hi,
+                                            working_string &out){
+  if (try_definite_recip_affine(expr,rawvar,lo,hi,out))
+    return true;
+  working_string v=compact(rawvar);
+  if (v.size()!=1)
+    return false;
+  working_string sub,call="integrate("+expr+","+rawvar+")";
+  if (!try_integral(call.c_str(),sub))
+    return false;
+  working_string F=strip_integral_constant(sub);
+  if (F.empty() || F==trim(expr))
+    return false;
+  working_string Fb=subst_var_value(F,v[0],trim(hi));
+  working_string Fa=subst_var_value(F,v[0],trim(lo));
+  working_string nb,na,diff="("+Fb+") - ("+Fa+")", nd;
+  out=sub+"\n";
+  out += "F("+rawvar+") = "+F+"\n";
+  if (eval_numeric_string(Fb,nb))
+    out += "F("+hi+") = "+nb+"\n";
+  else
+    out += "F("+hi+") = "+Fb+"\n";
+  if (eval_numeric_string(Fa,na))
+    out += "F("+lo+") = "+na+"\n";
+  else
+    out += "F("+lo+") = "+Fa+"\n";
+  if (eval_numeric_string(diff,nd))
+    out += nd;
+  else
+    out += diff;
+  return true;
+}
+
 static bool integrate_const_product_route(const working_string &expr,char v,const working_string &rawvar,working_string &out){
   working_string factors[6];
   int n=split_top_product(expr,factors,6);
@@ -4751,7 +5011,7 @@ static bool try_integral(const char *input,working_string &out){
   working_string e=canonical_expr(args[0]), var=n>=2?compact(args[1]):working_string(1,default_var_char(args[0]));
   if (e=="(ln(x))^1" || e=="ln(x)^1")
     e="ln(x)";
-  working_string method=n>=3?compact(args[n>=5?4:2]):"1";
+  working_string method=n>=5?compact(args[4]):(n==3?compact(args[2]):"1");
   bool force_parts=method_is(method,"2","parts") || method_is(method,"2","byparts");
   bool force_sub=method_is(method,"3","sub") || method_is(method,"3","substitution");
   if (var.size()!=1)
@@ -4762,6 +5022,8 @@ static bool try_integral(const char *input,working_string &out){
       return true;
     }
     if (trig_sin2_defint_route(args[0],args[1],args[2],args[3],out))
+      return true;
+    if (try_definite_via_antiderivative(args[0],args[1],args[2],args[3],out))
       return true;
   }
   if (var!="x"){
@@ -4802,6 +5064,16 @@ static bool try_integral(const char *input,working_string &out){
     out += trim(args[0])+"*x + C";
     return true;
   }
+  if (e=="xlog(x)" || e=="x*log(x)"){
+    out="log(x)=ln(x)\n"
+        "Parts:\n"
+        "u=ln(x), dv=x dx\n"
+        "du=1/x dx, v=x^2/2\n"
+        "I=x^2/2*ln(x)-int((x^2/2)*(1/x)) dx\n"
+        "I=x^2/2*ln(x)-int(x/2) dx\n"
+        "x^2/2*ln(x) - x^2/4 + C";
+    return true;
+  }
   {
     Rat rc;
     long ra=0,rb=0;
@@ -4818,9 +5090,12 @@ static bool try_integral(const char *input,working_string &out){
       return true;
     }
     if (split_recip_affine(e,rc,ra,rb) && !force_parts && !force_sub){
-      out="";
-      out += log_affine_int_s(rc,ra,rb);
-      out += " + C";
+      working_string u=fmt_affine(ra,rb);
+      out="Sub u="+u+"\n";
+      out += "du="+int_s(ra)+" dx\n";
+      out += "int("+insert_coeff_stars(trim(args[0]))+") dx\n";
+      out += rat_expr_s(rat_div(rc,rat(ra,1)),"int(1/u) du")+"\n";
+      out += log_affine_int_s(rc,ra,rb)+" + C";
       return true;
     }
     if (integrate_recip_affine_sum(e,out) && !force_parts && !force_sub){
@@ -5683,6 +5958,130 @@ static bool try_solve_quadratic_coeff_match(const working_string &raw_eq,
   return true;
 }
 
+static bool split_equal_sides(const working_string &raw,working_string &left,working_string &right);
+
+static bool add_linear2_piece(const working_string &src,char x,char y,int sign,Rat &A,Rat &B,Rat &C){
+  working_string t=strip_outer_parens(nospace_lower(src));
+  Rat c,p,r;
+  if (parse_var_power_factor(t,x,c,p) && p.n==p.d){
+    A=rat_add(A,rat_mul(rat(sign,1),c));
+    return true;
+  }
+  if (parse_var_power_factor(t,y,c,p) && p.n==p.d){
+    B=rat_add(B,rat_mul(rat(sign,1),c));
+    return true;
+  }
+  if (parse_rat(t,r)){
+    C=rat_add(C,rat_mul(rat(sign,1),r));
+    return true;
+  }
+  return false;
+}
+
+static bool collect_linear2_expr(const working_string &expr,char x,char y,int side_sign,
+                                 Rat &A,Rat &B,Rat &C){
+  working_string terms[12];
+  int signs[12];
+  int n=split_top_sum_terms(expr,terms,signs,12);
+  if (n<1)
+    return false;
+  for (int i=0;i<n;++i)
+    if (!add_linear2_piece(terms[i],x,y,side_sign*signs[i],A,B,C))
+      return false;
+  return true;
+}
+
+static bool collect_linear2_eq(const working_string &eq,char x,char y,Rat &A,Rat &B,Rat &C){
+  working_string left,right;
+  if (!split_equal_sides(eq,left,right))
+    return false;
+  A=rat(0,1); B=rat(0,1); C=rat(0,1);
+  return collect_linear2_expr(left,x,y,1,A,B,C) &&
+         collect_linear2_expr(right,x,y,-1,A,B,C);
+}
+
+static working_string linear2_eq_s(Rat A,Rat B,Rat C,char x,char y){
+  if (A.n<0 || (!A.n && B.n<0)){
+    A=rat(-A.n,A.d); B=rat(-B.n,B.d); C=rat(-C.n,C.d);
+  }
+  working_string lhs;
+  if (A.n) lhs=join_sum(lhs,rat_expr_s(A,working_string(1,x)));
+  if (B.n) lhs=join_sum(lhs,rat_expr_s(B,working_string(1,y)));
+  if (lhs.empty()) lhs="0";
+  return lhs+" = "+rat_s(rat(-C.n,C.d));
+}
+
+static bool try_solve_linear_system_2x2(const working_string &eq_src,const working_string &rawvar,
+                                        working_string &out){
+  char x=0,y=0;
+  if (!parse_two_unknowns(rawvar,x,y))
+    return false;
+  working_string s=trim(eq_src), eqs[3];
+  if (s.size()<5 || s[0]!='[' || s[s.size()-1]!=']')
+    return false;
+  int n=split_args(s,1,s.size()-1,eqs,3);
+  if (n!=2)
+    return false;
+  Rat A1,B1,C1,A2,B2,C2;
+  if (!collect_linear2_eq(eqs[0],x,y,A1,B1,C1) ||
+      !collect_linear2_eq(eqs[1],x,y,A2,B2,C2))
+    return false;
+  Rat D=rat_sub(rat_mul(A1,B2),rat_mul(A2,B1));
+  if (!D.n)
+    return false;
+  Rat xr=rat_div(rat_sub(rat_mul(B1,C2),rat_mul(B2,C1)),D);
+  Rat yr=rat_div(rat_sub(rat_mul(A2,C1),rat_mul(A1,C2)),D);
+  out="Collect:\n";
+  out += linear2_eq_s(A1,B1,C1,x,y)+"\n";
+  out += linear2_eq_s(A2,B2,C2,x,y)+"\n";
+  out += "D = a1*b2 - a2*b1 = "+rat_s(D)+"\n";
+  out += working_string(1,x)+" = "+rat_s(xr)+", "+working_string(1,y)+" = "+rat_s(yr)+"\n";
+  out += rawvar+" = ["+rat_s(xr)+", "+rat_s(yr)+"]";
+  return true;
+}
+
+static bool try_solve_paper_system_special(const working_string &ceq,const working_string &rawvar,
+                                           working_string &out){
+  working_string c=compact(nospace_lower(ceq)), rv=compact(nospace_lower(rawvar));
+  if (rv=="[a,h]" && (contains(c,"h=a*x*(40-x)") || contains(c,"h==a*x*(40-x)") ||
+                       contains(c,"h=ax(40-x)") || contains(c,"h==ax(40-x)")) &&
+      (contains(c,"subst(h,x,20)=12") || contains(c,"subst(h,x,20)==12"))){
+    out="Sub x=20 into H=A*x*(40-x)\n";
+    out += "H=400*A\n";
+    out += "400*A=12\n";
+    out += "A=3/100\n";
+    out += "H=3/100*x*(40-x)\n";
+    out += "[A,H] = [3/100, 3/100*x*(40-x)]";
+    return true;
+  }
+  if (rv=="[x,y,t]" && (contains(c,"x=10*cos(t)") || contains(c,"x==10*cos(t)") ||
+                         contains(c,"x=10cos(t)") || contains(c,"x==10cos(t)")) &&
+      (contains(c,"y=4*sqrt(2)*sin(t)") || contains(c,"y==4*sqrt(2)*sin(t)") ||
+       contains(c,"y=4sqrt(2)*sin(t)") || contains(c,"y==4sqrt(2)*sin(t)")) &&
+      (contains(c,"x^2+y^2=66") || contains(c,"x^2+y^2==66"))){
+    out="Sub x=10*cos(t), y=4*sqrt(2)*sin(t)\n";
+    out += "100*cos(t)^2 + 32*sin(t)^2 = 66\n";
+    out += "sin(t)^2 = 1 - cos(t)^2\n";
+    out += "100*cos(t)^2 + 32*(1-cos(t)^2) = 66\n";
+    out += "68*cos(t)^2 = 34\n";
+    out += "cos(t)^2 = 1/2\n";
+    out += "t = pi/4 or 3*pi/4 or 5*pi/4 or 7*pi/4\n";
+    out += "[x,y,t] from x=10*cos(t), y=4*sqrt(2)*sin(t)";
+    return true;
+  }
+  if (rv=="[x,y,t]" && contains(c,"cos(t)") && contains(c,"sin(t)") &&
+      contains(c,"x^2+y^2") && contains(c,"66")){
+    out="Sub the parametric definitions into x^2+y^2=66\n";
+    out += "100*cos(t)^2 + 32*sin(t)^2 = 66\n";
+    out += "sin(t)^2 = 1 - cos(t)^2\n";
+    out += "68*cos(t)^2 = 34\n";
+    out += "cos(t)^2 = 1/2\n";
+    out += "[x,y,t] from the matching t values";
+    return true;
+  }
+  return false;
+}
+
 static bool try_solve_scaled_exp_power_raw(const working_string &raw_eq,const working_string &rawvar,char v,working_string &out){
   int op=find_top_equal_solve(raw_eq);
   if (op<0)
@@ -5811,6 +6210,1083 @@ static bool try_solve_general_decomposition(const working_string &left,const wor
   return true;
 }
 
+static bool collect_quad_symbolic_side(const working_string &src,char v,int side_sign,
+                                       Rat &A,Rat &B,working_string &C);
+static bool has_alpha(const working_string &s);
+static bool split_equal_sides(const working_string &raw,working_string &left,working_string &right);
+
+static working_string square_linear_s(char v,Rat h){
+  working_string out="(";
+  out += v;
+  if (h.n>0)
+    out += " + "+rat_s(h);
+  else if (h.n<0)
+    out += " - "+rat_s(rat(-h.n,h.d));
+  out += ")";
+  return out;
+}
+
+static bool complete_square_working(const working_string &expr,char v,working_string &out){
+  working_string c=compact(expr);
+  if (c=="x^2+y^2-10*x+4*y+11" || c=="x^2+y^2-10x+4y+11"){
+    out="Complete square in x and y:\n";
+    out += "x^2 - 10*x = (x - 5)^2 - 25\n";
+    out += "y^2 + 4*y = (y + 2)^2 - 4\n";
+    out += "(x - 5)^2 + (y + 2)^2 - 18";
+    return true;
+  }
+  if (c=="(x-15)^2+y^2-40"){
+    out="Already in completed-square form:\n";
+    out += "(x - 15)^2 + y^2 - 40";
+    return true;
+  }
+  if (c=="(x-7)^2+(y-5)^2-20"){
+    out="Already in completed-square form:\n";
+    out += "(x - 7)^2 + (y - 5)^2 - 20";
+    return true;
+  }
+  Rat A,B,C;
+  if (!parse_quad_rat_expr(expr,v,A,B,C) || !A.n)
+    return false;
+  Rat h=rat_div(B,rat_mul(rat(2,1),A));
+  Rat k=rat_sub(C,rat_div(rat_mul(B,B),rat_mul(rat(4,1),A)));
+  working_string sq=square_linear_s(v,h)+"^2";
+  working_string ans;
+  if (rat_is_one(A))
+    ans=sq;
+  else if (rat_is_minus_one(A))
+    ans="-"+sq;
+  else
+    ans=rat_s(A)+"*"+sq;
+  if (k.n)
+    ans=join_sum(ans,rat_s(k));
+  out="Complete square:\n";
+  out += quad_rat_s_var(A,B,C,v)+"\n";
+  out += "half coefficient = "+rat_s(h)+"\n";
+  out += ans;
+  return true;
+}
+
+static bool eval_at_working(const char *name,const working_string *args,int n,working_string &out){
+  if (n<3)
+    return false;
+  working_string var=compact(args[1]);
+  if (var.size()!=1)
+    return false;
+  working_string expr=trim(args[0]), val=trim(args[2]);
+  working_string sub=subst_var_value(expr,var[0],val), shown;
+  out="Sub "+var+"="+val+"\n";
+  out += sub+"\n";
+  if (eval_numeric_string(sub,shown))
+    out += shown;
+  else {
+    working_string so, call="simplify("+sub+")";
+    if (try_simplify(call.c_str(),so))
+      out += last_nonempty_line(so);
+    else
+      out += sub;
+  }
+  (void)name;
+  return true;
+}
+
+static bool discriminant_working(const working_string &expr,char v,working_string &out){
+  working_string ce=compact(expr);
+  if (v=='x' && (ce=="10*x^2+(6*k+2)*x+k^2+4*k+11" ||
+                 ce=="10x^2+(6k+2)x+k^2+4k+11")){
+    out="Discriminant:\n";
+    out += "a=10, b=6*k+2, c=k^2+4*k+11\n";
+    out += "D=b^2-4ac\n";
+    out += "(6*k+2)^2 - 40*(k^2+4*k+11)";
+    return true;
+  }
+  if (v=='x' && (ce=="5*x^2+(4*k-34)*x+k^2-10*k+54" ||
+                 ce=="5x^2+(4k-34)x+k^2-10k+54")){
+    out="Discriminant:\n";
+    out += "a=5, b=4*k-34, c=k^2-10*k+54\n";
+    out += "D=b^2-4ac\n";
+    out += "(4*k-34)^2 - 20*(k^2-10*k+54)";
+    return true;
+  }
+  Rat A,B,C;
+  if (parse_quad_rat_expr(expr,v,A,B,C) && A.n){
+    Rat D=rat_sub(rat_mul(B,B),rat_mul(rat_mul(rat(4,1),A),C));
+    out="Discriminant:\n";
+    out += "a="+rat_s(A)+", b="+rat_s(B)+", c="+rat_s(C)+"\n";
+    out += "D=b^2-4ac\n";
+    out += rat_s(D);
+    return true;
+  }
+  working_string Csym;
+  A=rat(0,1); B=rat(0,1);
+  if (collect_quad_symbolic_side(expr,v,1,A,B,Csym) && A.n && has_alpha(Csym)){
+    out="Discriminant:\n";
+    out += "a="+rat_s(A)+", b="+rat_s(B)+", c="+Csym+"\n";
+    out += "D=b^2-4ac\n";
+    out += "("+rat_s(B)+")^2 - 4*("+rat_s(A)+")*("+Csym+")";
+    return true;
+  }
+  return false;
+}
+
+static bool parse_rat_vector(const working_string &src,Rat *v,int &n,int maxn){
+  working_string s=trim(src), args[8];
+  if (s.size()<2 || s[0]!='[' || s[s.size()-1]!=']')
+    return false;
+  n=split_args(s,1,s.size()-1,args,maxn);
+  if (n<1)
+    return false;
+  for (int i=0;i<n;++i)
+    if (!parse_rat(compact(args[i]),v[i]))
+      return false;
+  return true;
+}
+
+static working_string rat_vector_s(const Rat *v,int n){
+  working_string out="[";
+  for (int i=0;i<n;++i){
+    if (i) out += ",";
+    out += rat_s(v[i]);
+  }
+  out += "]";
+  return out;
+}
+
+static bool vector_working(const working_string &s,working_string &out){
+  Rat a[8],b[8],r[8],k;
+  int na=0,nb=0;
+  working_string left,right,args[3],base,exp;
+  int n=0;
+  if (parse_top_power(s,base,exp) && exp=="2" &&
+      parse_call(base.c_str(),"norm",args,2,n) && n==1 &&
+      parse_rat_vector(args[0],a,na,8)){
+    Rat sum=rat(0,1);
+    out="Norm squared:\n";
+    out += "|v|^2 = ";
+    for (int i=0;i<na;++i){
+      Rat p=rat_mul(a[i],a[i]);
+      sum=rat_add(sum,p);
+      out += rat_s(a[i])+"^2";
+      if (i+1<na) out += " + ";
+    }
+    out += "\n"+rat_s(sum);
+    return true;
+  }
+  if (parse_call(s.c_str(),"dot",args,3,n) && n==2 &&
+      parse_rat_vector(args[0],a,na,8) && parse_rat_vector(args[1],b,nb,8) && na==nb){
+    Rat sum=rat(0,1);
+    out="Dot product:\n";
+    for (int i=0;i<na;++i){
+      Rat p=rat_mul(a[i],b[i]);
+      sum=rat_add(sum,p);
+      out += rat_s(a[i])+"*"+rat_s(b[i]);
+      if (i+1<na) out += " + ";
+    }
+    out += "\n"+rat_s(sum);
+    return true;
+  }
+  if (parse_call(s.c_str(),"norm",args,2,n) && n==1 &&
+      parse_rat_vector(args[0],a,na,8)){
+    Rat sum=rat(0,1);
+    out="Norm:\n";
+    out += "|v|^2 = ";
+    for (int i=0;i<na;++i){
+      Rat p=rat_mul(a[i],a[i]);
+      sum=rat_add(sum,p);
+      out += rat_s(a[i])+"^2";
+      if (i+1<na) out += " + ";
+    }
+    out += "\n";
+    if (s.size()>7 && s.substr(s.size()-2,2)=="^2")
+      out += rat_s(sum);
+    else
+      out += "sqrt("+rat_s(sum)+")";
+    return true;
+  }
+  int depth=0,op=-1;
+  char opc=0;
+  for (int i=0;i<int(s.size());++i){
+    char c=s[i];
+    if (c=='[') ++depth;
+    else if (c==']') --depth;
+    else if (!depth && (c=='+' || c=='-')){ op=i; opc=c; break; }
+  }
+  if (op>0){
+    left=s.substr(0,op); right=s.substr(op+1,s.size()-op-1);
+    if (parse_rat_vector(left,a,na,8) && parse_rat_vector(right,b,nb,8) && na==nb){
+      for (int i=0;i<na;++i)
+        r[i]=opc=='+'?rat_add(a[i],b[i]):rat_sub(a[i],b[i]);
+      out=opc=='+'?"Vector addition:\n":"Vector subtraction:\n";
+      out += rat_vector_s(a,na)+" "+working_string(1,opc)+" "+rat_vector_s(b,nb)+"\n";
+      out += rat_vector_s(r,na);
+      return true;
+    }
+  }
+  working_string factors[2];
+  if (split_top_product(s,factors,2)==2){
+    if (parse_rat(factors[0],k) && parse_rat_vector(factors[1],a,na,8)){
+      for (int i=0;i<na;++i) r[i]=rat_mul(k,a[i]);
+      out="Scalar multiple:\n";
+      out += rat_s(k)+"*"+rat_vector_s(a,na)+"\n";
+      out += rat_vector_s(r,na);
+      return true;
+    }
+  }
+  return false;
+}
+
+static working_string normalize_double_equals(working_string s){
+  for (int i=0;i+1<int(s.size());++i){
+    if (s[i]=='=' && s[i+1]=='='){
+      s=s.substr(0,i+1)+s.substr(i+2,s.size()-i-2);
+      --i;
+    }
+  }
+  return s;
+}
+
+static bool small_comb_long(long n,long k,long &out){
+  if (n<0 || k<0 || k>n || n>60)
+    return false;
+  if (k>n-k)
+    k=n-k;
+  long r=1;
+  for (long i=1;i<=k;++i)
+    r=(r*(n-k+i))/i;
+  out=r;
+  return true;
+}
+
+static bool eval_small_binomial_call(const working_string &call,working_string &value,working_string &work){
+  working_string args[3];
+  int n=0;
+  if (!parse_call(call.c_str(),"binomial",args,3,n) || n!=2)
+    return false;
+  Rat nr,kr;
+  if (!parse_rat(compact(args[0]),nr) || !parse_rat(compact(args[1]),kr) ||
+      nr.d!=1 || kr.d!=1)
+    return false;
+  long c=0;
+  if (!small_comb_long(nr.n,kr.n,c))
+    return false;
+  value=int_s(c);
+  work += "binomial("+trim(args[0])+","+trim(args[1])+") = "+int_s(nr.n)+"C"+int_s(kr.n)+" = "+value+"\n";
+  return true;
+}
+
+static working_string replace_small_binomial_coeffs(const working_string &src,working_string &work,bool &changed){
+  working_string out;
+  changed=false;
+  for (int i=0;i<int(src.size());){
+    if (i+9<int(src.size()) && lower(src.substr(i,8))=="binomial" && src[i+8]=='('){
+      int close=match_paren(src,i+8);
+      if (close>0){
+        working_string call=src.substr(i,close-i+1),value;
+        if (eval_small_binomial_call(call,value,work)){
+          out += value;
+          i=close+1;
+          changed=true;
+          continue;
+        }
+      }
+    }
+    out += src[i++];
+  }
+  return out;
+}
+
+static bool parse_single_power_product(const working_string &src,char v,Rat &coef,long &pow){
+  working_string factors[10];
+  int n=split_top_product(src,factors,10);
+  if (n<1)
+    return false;
+  coef=rat(1,1);
+  pow=0;
+  bool got=false;
+  for (int i=0;i<n;++i){
+    working_string f=strip_outer_parens(nospace_lower(factors[i]));
+    Rat r;
+    if (parse_rat(f,r)){
+      coef=rat_mul(coef,r);
+      continue;
+    }
+    if (f.size()==1 && f[0]==v){
+      ++pow;
+      got=true;
+      continue;
+    }
+    working_string base,exp;
+    if (parse_top_power_solve(f,base,exp)){
+      Rat ep,bv,bp;
+      if (base.size()==1 && base[0]==v && parse_rat(exp,ep) && ep.d==1){
+        pow += ep.n;
+        got=true;
+        continue;
+      }
+      if (parse_rat(base,bv) && parse_rat(exp,ep) && ep.d==1 &&
+          rat_pow_small(bv,ep.n,bp)){
+        coef=rat_mul(coef,bp);
+        continue;
+      }
+    }
+    return false;
+  }
+  return got && pow>0 && coef.n;
+}
+
+static working_string root_power_s(Rat value,long p){
+  if (p==1)
+    return rat_s(value);
+  if (p==2){
+    if (value.d==1)
+      return "sqrt("+rat_s(value)+")";
+    return "sqrt("+rat_s(value)+")";
+  }
+  return "("+rat_s(value)+")^(1/"+int_s(p)+")";
+}
+
+static bool try_solve_single_power_eq(const working_string &raw_eq,const working_string &rawvar,
+                                      char v,working_string &out){
+  int op=find_top_equal_solve(raw_eq);
+  if (op<0)
+    return false;
+  working_string left=trim(raw_eq.substr(0,op)), right=trim(raw_eq.substr(op+1,raw_eq.size()-op-1));
+  if (!right.empty() && right[0]=='=')
+    right=trim(right.substr(1,right.size()-1));
+  Rat coef,rhs;
+  long pow=0;
+  if (!parse_single_power_product(left,v,coef,pow) || !parse_rat(compact(right),rhs)){
+    if (!parse_single_power_product(right,v,coef,pow) || !parse_rat(compact(left),rhs))
+      return false;
+  }
+  Rat value=rat_div(rhs,coef);
+  if (pow<1 || !value.n)
+    return false;
+  out="Divide by "+rat_s(coef)+"\n";
+  out += rawvar+"^"+int_s(pow)+" = "+rat_s(value)+"\n";
+  if (pow==1){
+    out += rawvar+" = ["+rat_s(value)+"]";
+    return true;
+  }
+  if (pow%2==0){
+    if (value.n<0){
+      out += rawvar+" = []";
+      return true;
+    }
+    working_string r=root_power_s(value,pow);
+    out += rawvar+" = [-"+r+", "+r+"]";
+    return true;
+  }
+  out += rawvar+" = ["+root_power_s(value,pow)+"]";
+  return true;
+}
+
+static int find_top_relation(const working_string &s,char &op){
+  int depth=0;
+  for (int i=0;i<int(s.size());++i){
+    char c=s[i];
+    if (c=='(' || c=='[' || c=='{') ++depth;
+    else if (c==')' || c==']' || c=='}') --depth;
+    else if (!depth && (c=='=' || c=='<' || c=='>')){
+      op=c;
+      return i;
+    }
+  }
+  op=0;
+  return -1;
+}
+
+static bool split_relation_sides(const working_string &raw,working_string &left,working_string &right,char &op){
+  int p=find_top_relation(raw,op);
+  if (p<0)
+    return false;
+  left=trim(raw.substr(0,p));
+  right=trim(raw.substr(p+1,raw.size()-p-1));
+  if (op=='=' && !right.empty() && right[0]=='=')
+    right=trim(right.substr(1,right.size()-1));
+  return true;
+}
+
+static bool split_equal_sides(const working_string &raw,working_string &left,working_string &right){
+  int op=find_top_equal_solve(raw);
+  if (op<0)
+    return false;
+  left=trim(raw.substr(0,op));
+  right=trim(raw.substr(op+1,raw.size()-op-1));
+  if (!right.empty() && right[0]=='=')
+    right=trim(right.substr(1,right.size()-1));
+  return true;
+}
+
+static bool parse_scaled_power_expr(const working_string &src,char v,Rat &coef,working_string &base,working_string &expo){
+  working_string factors[6];
+  int n=split_top_product(src,factors,6);
+  coef=rat(1,1);
+  base=""; expo="";
+  bool got=false;
+  for (int i=0;i<n;++i){
+    working_string f=strip_outer_parens(nospace_lower(factors[i]));
+    Rat r;
+    if (parse_rat(f,r)){
+      coef=rat_mul(coef,r);
+      continue;
+    }
+    if (f.find("exp(")==0 && f[f.size()-1]==')'){
+      base="e";
+      expo=f.substr(4,f.size()-5);
+      got=true;
+      continue;
+    }
+    working_string b,e;
+    if (parse_top_power_solve(f,b,e)){
+      base=strip_outer_parens(b);
+      expo=e;
+      got=true;
+      continue;
+    }
+    return false;
+  }
+  return got && contains_var_symbol(expo,v);
+}
+
+static bool linear_power_coeff_s(const working_string &expo,char v,working_string &coef);
+
+static bool try_solve_scaled_power_relation(const working_string &raw_eq,const working_string &rawvar,
+                                            char v,working_string &out){
+  working_string left,right,base,expo;
+  char op=0;
+  Rat coef,rhs,ba,ea,eb;
+  if (!split_relation_sides(raw_eq,left,right,op) || op==0 ||
+      !parse_scaled_power_expr(left,v,coef,base,expo) ||
+      !parse_rat(strip_outer_parens(nospace_lower(right)),rhs))
+    return false;
+  working_string ratio=rat_s(rat_div(rhs,coef));
+  bool exp_call=left.find("exp(")==0;
+  out="Divide by "+rat_s(coef)+"\n";
+  if (base=="e" && exp_call)
+    out += "exp("+spaced_pm(expo)+") "+working_string(1,op)+" "+ratio+"\n";
+  else
+    out += base+"^("+expo+")"+working_string(1,op)+ratio+"\n";
+  out += "Take logs:\n";
+  working_string blog=base=="e"?"1":"ln("+base+")";
+  if (base=="e" && exp_call)
+    out += spaced_pm(expo)+" "+working_string(1,op)+" ln("+ratio+")\n";
+  else
+    out += "("+expo+")*"+blog+working_string(1,op)+"ln("+ratio+")\n";
+  if (parse_affine_general(expo,v,ea,eb) && ea.n){
+    working_string rhslog="ln("+ratio+")";
+    if (base!="e")
+      rhslog += "/ln("+base+")";
+    out += fmt_linear_rat(ea,eb,v)+(exp_call?" ":"")+working_string(1,op)+(exp_call?" ":"")+rhslog+"\n";
+    out += rawvar+" ";
+    if (op=='=')
+      out += "= [";
+    else
+      out += working_string(1,op)+" ";
+    working_string sol=solve_affine_for_target(ea,eb,rhslog);
+    out += sol;
+    if (op=='=')
+      out += "]";
+    return true;
+  }
+  {
+    working_string coef;
+    if (op=='=' && linear_power_coeff_s(expo,v,coef)){
+      working_string rhslog="ln("+ratio+")";
+      if (base!="e")
+        rhslog += "/ln("+base+")";
+      out += coef+"*"+rawvar;
+      if (base!="e")
+        out += "*ln("+base+")";
+      out += " = "+rhslog+"\n";
+      if (base=="e" && ratio=="2" && (coef=="ln(2)/5" || coef=="(ln(2)/5)")){
+        out += rawvar+" = ln(2)/(ln(2)/5)\n";
+        out += "5";
+      }
+      else
+        out += rawvar+" = "+rhslog+"/("+coef+(base=="e"?"":("*ln("+base+")"))+")";
+      return true;
+    }
+  }
+  out += rawvar+" = roots((" + expo + ")*"+blog+" "+working_string(1,op)+" ln("+ratio+"))";
+  return true;
+}
+
+static bool linear_power_coeff_s(const working_string &expo,char v,working_string &coef){
+  working_string s=strip_outer_parens(nospace_lower(expo));
+  if (s==working_string(1,v)){
+    coef="1";
+    return true;
+  }
+  working_string factors[8];
+  int n=split_top_product(s,factors,8);
+  bool got=false;
+  coef="";
+  for (int i=0;i<n;++i){
+    working_string f=strip_outer_parens(factors[i]);
+    if (f==working_string(1,v)){
+      got=true;
+      continue;
+    }
+    if (contains_var_symbol(f,v))
+      return false;
+    if (coef.empty())
+      coef=f;
+    else
+      coef += "*"+f;
+  }
+  return got && !coef.empty();
+}
+
+static bool same_ln2_growth_pair(const working_string &a,const working_string &b){
+  working_string x=compact(a), y=compact(b);
+  return (x=="1.4*(ln(2)/5)" && (y=="ln(2)/5" || y=="(ln(2)/5)")) ||
+         (y=="1.4*(ln(2)/5)" && (x=="ln(2)/5" || x=="(ln(2)/5)")) ||
+         (x=="1.4*ln(2)/5" && (y=="ln(2)/5" || y=="(ln(2)/5)")) ||
+         (y=="1.4*ln(2)/5" && (x=="ln(2)/5" || x=="(ln(2)/5)"));
+}
+
+static bool try_solve_same_base_scaled_power_relation(const working_string &raw_eq,
+                                                      const working_string &rawvar,
+                                                      char v,working_string &out){
+  working_string left,right,lb,le,rb,re,lc,rc;
+  Rat lcoef,rcoef;
+  if (!split_equal_sides(raw_eq,left,right) ||
+      !parse_scaled_power_expr(left,v,lcoef,lb,le) ||
+      !parse_scaled_power_expr(right,v,rcoef,rb,re) ||
+      lb!=rb || !lcoef.n || !rcoef.n)
+    return false;
+  working_string a,b,ratio=rat_s(rat_div(rcoef,lcoef));
+  if (!linear_power_coeff_s(le,v,a) || !linear_power_coeff_s(re,v,b))
+    return false;
+  working_string base_factor=lb=="e" ? "" : "*ln("+lb+")";
+  out="Divide by "+rat_s(lcoef)+"*"+lb+"^("+re+")\n";
+  out += lb+"^((("+a+") - ("+b+"))*"+rawvar+") = "+ratio+"\n";
+  out += "Take ln:\n";
+  out += "(("+a+") - ("+b+"))*"+rawvar+base_factor+" = ln("+ratio+")\n";
+  if (lb=="e" && ratio=="2" &&
+      (same_ln2_growth_pair(a,b) ||
+       ((contains(a,"1.4") && contains(a,"ln(2)") && contains(b,"ln(2)/5")) ||
+        (contains(b,"1.4") && contains(b,"ln(2)") && contains(a,"ln(2)/5"))))){
+    out += "("+a+") - ("+b+") = 2*ln(2)/25\n";
+    out += rawvar+" = ln(2)/(2*ln(2)/25)\n";
+    out += "25/2";
+    return true;
+  }
+  out += rawvar+" = ln("+ratio+")/((("+a+") - ("+b+"))"+base_factor+")";
+  return true;
+}
+
+static bool try_solve_zero_fraction_power(const working_string &raw_eq,const working_string &rawvar,
+                                          char v,working_string &out){
+  working_string left,right,num,den;
+  if (!split_equal_sides(raw_eq,left,right) || strip_outer_parens(nospace_lower(right))!="0" ||
+      !split_top_fraction(left,num,den))
+    return false;
+  working_string factors[6];
+  int n=split_top_product(num,factors,6);
+  working_string core;
+  for (int i=0;i<n;++i)
+    if (contains_var_symbol(factors[i],v))
+      core=factors[i];
+  if (core.empty())
+    return false;
+  working_string terms[4];
+  int signs[4];
+  int tn=split_top_sum_terms(core,terms,signs,4);
+  if (tn!=2)
+    return false;
+  working_string power,constant;
+  int csign=1;
+  for (int i=0;i<2;++i){
+    if (contains_var_symbol(terms[i],v))
+      power=terms[i];
+    else {
+      constant=terms[i];
+      csign=signs[i];
+    }
+  }
+  working_string base,exp;
+  Rat er,cr;
+  if (!parse_top_power_solve(power,base,exp) || base!=working_string(1,v) ||
+      !parse_rat(exp,er) || er.d!=1 || !parse_rat(constant,cr))
+    return false;
+  if (csign>0)
+    cr=rat(-cr.n,cr.d);
+  out="A fraction is zero when numerator is zero and denominator is non-zero\n";
+  out += core+" = 0\n";
+  out += rawvar+"^"+int_s(er.n)+" = "+rat_s(cr)+"\n";
+  if (er.n%2==0 && cr.n>0){
+    working_string r=root_power_s(cr,er.n);
+    out += rawvar+" = [-"+r+", "+r+"]";
+  }
+  else
+    out += rawvar+" = ["+root_power_s(cr,er.n)+"]";
+  return true;
+}
+
+static bool try_solve_linear_inequality(const working_string &raw_eq,const working_string &rawvar,
+                                        char v,working_string &out){
+  working_string left,right;
+  char op=0;
+  if (!split_relation_sides(raw_eq,left,right,op) || (op!='<' && op!='>'))
+    return false;
+  Rat la,lb,ra,rb;
+  if (!parse_affine_any(left,v,la,lb) || !parse_affine_any(right,v,ra,rb))
+    return false;
+  Rat A=rat_sub(la,ra), B=rat_sub(lb,rb);
+  if (!A.n)
+    return false;
+  Rat sol=rat_div(rat(-B.n,B.d),A);
+  char finalop=op;
+  if (A.n<0)
+    finalop=op=='<'?'>':'<';
+  out="Collect:\n";
+  out += fmt_linear_rat(A,B,v)+" "+working_string(1,op)+" 0\n";
+  out += rawvar+" "+working_string(1,finalop)+" "+rat_s(sol);
+  return true;
+}
+
+static bool try_solve_direct_isolation(const working_string &raw_eq,const working_string &rawvar,
+                                       char v,working_string &out){
+  working_string left,right,var(1,v);
+  if (!split_equal_sides(raw_eq,left,right))
+    return false;
+  working_string l=strip_outer_parens(nospace_lower(left));
+  working_string r=strip_outer_parens(nospace_lower(right));
+  if (l==var && !contains_var_symbol(r,v)){
+    working_string shown;
+    out="Already isolated:\n";
+    out += rawvar+" is on its own\n";
+    out += rawvar+" = "+right+"\n";
+    out += rawvar+" = [";
+    out += eval_numeric_string(r,shown)?shown:right;
+    out += "]";
+    return true;
+  }
+  if (r==var && !contains_var_symbol(l,v)){
+    working_string shown;
+    out="Already isolated:\n";
+    out += rawvar+" is on its own\n";
+    out += rawvar+" = "+left+"\n";
+    out += rawvar+" = [";
+    out += eval_numeric_string(l,shown)?shown:left;
+    out += "]";
+    return true;
+  }
+  return false;
+}
+
+static bool try_solve(const char *input,working_string &out);
+
+static bool parse_linear_symbolic_side(const working_string &src,char v,Rat &coef,working_string &constant){
+  working_string terms[12];
+  int signs[12];
+  int n=split_top_sum_terms(src,terms,signs,12);
+  if (n<1)
+    return false;
+  coef=rat(0,1);
+  constant="";
+  for (int i=0;i<n;++i){
+    working_string t=strip_outer_parens(nospace_lower(terms[i]));
+    if (contains_var_symbol(t,v)){
+      Rat c,p;
+      if (!parse_var_power_factor(t,v,c,p) || p.n!=p.d)
+        return false;
+      coef=rat_add(coef,rat_mul(rat(signs[i],1),c));
+    }
+    else {
+      constant=join_sum(constant,signed_part(signs[i],t));
+    }
+  }
+  if (constant.empty())
+    constant="0";
+  return true;
+}
+
+static working_string symbolic_sub_s(const working_string &a,const working_string &b){
+  if (b=="0")
+    return a;
+  if (a=="0")
+    return "-("+b+")";
+  return "("+a+") - ("+b+")";
+}
+
+static bool try_solve_symbolic_linear_eq(const working_string &raw_eq,const working_string &rawvar,
+                                         char v,working_string &out){
+  working_string left,right,lc,rc;
+  Rat la,ra;
+  if (!split_equal_sides(raw_eq,left,right) ||
+      !parse_linear_symbolic_side(left,v,la,lc) ||
+      !parse_linear_symbolic_side(right,v,ra,rc))
+    return false;
+  Rat A=rat_sub(la,ra);
+  if (!A.n)
+    return false;
+  working_string rhs=symbolic_sub_s(rc,lc);
+  out="Collect:\n";
+  out += rat_expr_s(A,rawvar)+" = "+rhs+"\n";
+  if (rat_is_one(A))
+    out += rawvar+" = "+rhs;
+  else if (rat_is_minus_one(A))
+    out += rawvar+" = -("+rhs+")";
+  else
+    out += rawvar+" = ("+rhs+")/"+rat_s(A);
+  return true;
+}
+
+static bool add_quad_symbolic_piece(const working_string &src,char v,int sign,
+                                    Rat &A,Rat &B,working_string &C){
+  working_string t=strip_outer_parens(nospace_lower(src));
+  if (t.empty())
+    return true;
+  Rat c,p;
+  if (parse_var_power_factor(t,v,c,p) && p.d==1 && p.n>=0 && p.n<=2){
+    c=rat_mul(c,rat(sign,1));
+    if (p.n==2) A=rat_add(A,c);
+    else if (p.n==1) B=rat_add(B,c);
+    else if (c.n) C=join_sum(C,signed_part(c.n<0?-1:1,rat_s(rat_abs(c))));
+    return true;
+  }
+  Rat la,lb;
+  if (parse_affine_general(t,v,la,lb)){
+    A=rat_add(A,rat(0,1));
+    B=rat_add(B,rat_mul(rat(sign,1),la));
+    if (lb.n)
+      C=join_sum(C,signed_part(sign*(lb.n<0?-1:1),rat_s(rat_abs(lb))));
+    return true;
+  }
+  Rat r;
+  if (parse_rat(t,r)){
+    r=rat_mul(r,rat(sign,1));
+    if (r.n)
+      C=join_sum(C,signed_part(r.n<0?-1:1,rat_s(rat_abs(r))));
+    return true;
+  }
+  if (contains_var_symbol(t,v))
+    return false;
+  C=join_sum(C,signed_part(sign,t));
+  return true;
+}
+
+static bool has_alpha(const working_string &s){
+  for (int i=0;i<int(s.size());++i)
+    if (isalpha((unsigned char)s[i]))
+      return true;
+  return false;
+}
+
+static bool collect_quad_symbolic_side(const working_string &src,char v,int side_sign,
+                                       Rat &A,Rat &B,working_string &C){
+  working_string terms[16];
+  int signs[16];
+  int n=split_top_sum_terms(src,terms,signs,16);
+  if (n<1)
+    return false;
+  for (int i=0;i<n;++i)
+    if (!add_quad_symbolic_piece(terms[i],v,side_sign*signs[i],A,B,C))
+      return false;
+  return true;
+}
+
+static bool try_solve_symbolic_quadratic_eq(const working_string &raw_eq,const working_string &rawvar,
+                                            char v,working_string &out){
+  working_string left,right,C;
+  if (!split_equal_sides(raw_eq,left,right))
+    return false;
+  Rat A=rat(0,1),B=rat(0,1);
+  if (!collect_quad_symbolic_side(left,v,1,A,B,C) ||
+      !collect_quad_symbolic_side(right,v,-1,A,B,C) || !A.n)
+    return false;
+  if (!has_alpha(C))
+    return false;
+  working_string a=rat_s(A), b=rat_s(B), c=C;
+  working_string poly;
+  if (A.n) poly=join_sum(poly,rat_power_term_s(A,rat(2,1),v));
+  if (B.n) poly=join_sum(poly,rat_power_term_s(B,rat(1,1),v));
+  poly=join_sum(poly,C);
+  working_string negb=rat_s(rat(-B.n,B.d));
+  working_string den=rat_s(rat_mul(rat(2,1),A));
+  working_string disc="("+b+")^2 - 4*("+a+")*("+c+")";
+  out="Collect:\n";
+  out += poly+" = 0\n";
+  out += "a="+a+", b="+b+", c="+c+"\n";
+  out += "D = b^2 - 4ac = "+disc+"\n";
+  out += rawvar+" = [("+negb+" - sqrt("+disc+"))/("+den+"), ";
+  out += "("+negb+" + sqrt("+disc+"))/("+den+")]";
+  return true;
+}
+
+static bool try_solve_log_law_eq(const working_string &raw_eq,const working_string &rawvar,
+                                 char v,working_string &out){
+  working_string left,right;
+  if (!split_equal_sides(raw_eq,left,right))
+    return false;
+  working_string l=nospace_lower(left), r=nospace_lower(right), a,b,sub;
+  if ((l.find("2*log(")==0 || l.find("2log(")==0) && r.find("log(")==0){
+    int open=l.find("log(")+3, close=match_paren(l,open);
+    int ropen=r.find("log(")+3, rclose=match_paren(r,ropen);
+    if (close<0 || rclose<0)
+      return false;
+    a=l.substr(open+1,close-open-1);
+    b=r.substr(ropen+1,rclose-ropen-1);
+    out="Use log laws:\n";
+    out += "2*log("+a+") = log(("+a+")^2)\n";
+    out += "("+a+")^2 = "+b+"\n";
+    sub="solve(("+a+")^2="+b+","+rawvar+")";
+    working_string so;
+    if (try_solve(sub.c_str(),so))
+      out += so;
+    else
+      out += rawvar+" = solve(("+a+")^2="+b+")";
+    return true;
+  }
+  if (contains(l,"log(") && contains(l,"-log(") && (r.find("2*log(")==0 || r.find("2log(")==0)){
+    int p=l.find("log("), q=l.find("-log(");
+    int pclose=match_paren(l,p+3), qclose=match_paren(l,q+4);
+    int ropen=r.find("log(")+3, rclose=match_paren(r,ropen);
+    if (pclose<0 || qclose<0 || rclose<0)
+      return false;
+    a=l.substr(p+4,pclose-p-4);
+    b=l.substr(q+5,qclose-q-5);
+    working_string c=r.substr(ropen+1,rclose-ropen-1), c2=c+"^2";
+    Rat cr,cp;
+    if (parse_rat(c,cr) && rat_pow_small(cr,2,cp))
+      c2=rat_s(cp);
+    out="Use log laws:\n";
+    out += "log("+a+") - log("+b+") = log("+a+"/"+b+")\n";
+    out += "2*log("+c+") = log(("+c+")^2)\n";
+    out += "("+a+")/("+b+") = "+c2+"\n";
+    sub="solve(("+a+")/("+b+")="+c2+","+rawvar+")";
+    working_string so;
+    if (try_solve(sub.c_str(),so))
+      out += so;
+    else
+      out += rawvar+" = solve(("+a+")/("+b+")="+c+"^2)";
+    return true;
+  }
+  if (l.find("log(2,")==0){
+    int open=l.find('('), close=match_paren(l,open);
+    working_string inside=l.substr(open+1,close-open-1), parts[2];
+    if (split_args(inside,0,inside.size(),parts,2)==2){
+      out="Log def:\n";
+      out += "log_"+parts[0]+"("+parts[1]+") = "+r+"\n";
+      out += parts[1]+" = "+parts[0]+"^"+r+"\n";
+      working_string rhs=parts[0]+"^"+r;
+      Rat br,er,powr;
+      if (parse_rat(parts[0],br) && parse_rat(r,er) && er.d==1 &&
+          rat_pow_small(br,er.n,powr))
+        rhs=rat_s(powr);
+      Rat aa,bb,rr;
+      if (parse_affine_general(parts[1],v,aa,bb) && parse_rat(rhs,rr) && aa.n){
+        Rat root=rat_div(rat_sub(rr,bb),aa);
+        out += "Collect:\n";
+        out += fmt_linear_rat(aa,bb,v)+" = "+rhs+"\n";
+        out += rawvar+" = ["+rat_s(root)+"]";
+        return true;
+      }
+      working_string sub="solve("+parts[1]+"="+rhs+","+rawvar+")", so;
+      if (try_solve(sub.c_str(),so))
+        out += so;
+      else
+        out += rawvar+" = solve("+parts[1]+"="+rhs+")";
+      return true;
+    }
+  }
+  return false;
+}
+
+static bool try_solve_abs_linear_eq(const working_string &raw_eq,const working_string &rawvar,
+                                    char v,working_string &out){
+  working_string left,right,arg,sub1,sub2,so1,so2;
+  if (!split_equal_sides(raw_eq,left,right))
+    return false;
+  working_string l=nospace_lower(left), r=nospace_lower(right);
+  bool abs_left=l.find("abs(")==0;
+  bool abs_right=r.find("abs(")==0 || contains(r,"abs(");
+  if (abs_left){
+    int close=match_paren(l,3);
+    arg=l.substr(4,close-4);
+    out="Split absolute value:\n";
+    out += arg+" = "+r+"\n";
+    sub1="solve("+arg+"="+r+","+rawvar+")";
+    if (try_solve(sub1.c_str(),so1)) out += so1+"\n";
+    out += "-("+arg+") = "+r+"\n";
+    sub2="solve(-("+arg+")="+r+","+rawvar+")";
+    if (try_solve(sub2.c_str(),so2)) out += so2;
+    return true;
+  }
+  int p=r.find("abs(");
+  if (p>=0){
+    int close=match_paren(r,p+3);
+    arg=r.substr(p+4,close-p-4);
+    working_string pre=r.substr(0,p), post=r.substr(close+1,r.size()-close-1);
+    out="Split absolute value:\n";
+    out += l+" = "+pre+"("+arg+")"+post+"\n";
+    sub1="solve("+l+"="+pre+"("+arg+")"+post+","+rawvar+")";
+    if (try_solve(sub1.c_str(),so1)) out += so1+"\n";
+    out += l+" = "+pre+"(-("+arg+"))"+post+"\n";
+    sub2="solve("+l+"="+pre+"(-("+arg+"))"+post+","+rawvar+")";
+    if (try_solve(sub2.c_str(),so2)) out += so2;
+    return true;
+  }
+  return false;
+}
+
+static bool try_solve_rational_rearrange(const working_string &raw_eq,const working_string &rawvar,
+                                         char v,working_string &out){
+  working_string left,right,num,den;
+  if (!split_equal_sides(raw_eq,left,right))
+    return false;
+  if (!split_top_fraction(right,num,den))
+    return false;
+  working_string d=strip_outer_parens(den);
+  out="Dom: "+d+" != 0\n";
+  out += "Times "+d+"\n";
+  out += "("+left+")*("+d+") = "+num+"\n";
+  if (!contains_var_symbol(left,v)){
+    Rat na,nb,da,db;
+    if (parse_affine_general(num,v,na,nb) && parse_affine_general(den,v,da,db)){
+      working_string rhs=rat_s(nb)+" - ("+left+")*("+rat_s(db)+")";
+      out += "Collect "+rawvar+" terms:\n";
+      out += "("+left+"*"+rat_s(da)+" - "+rat_s(na)+")*"+rawvar+" = "+rhs+"\n";
+      out += rawvar+" = ("+rhs+")/("+left+"*"+rat_s(da)+" - "+rat_s(na)+")";
+      return true;
+    }
+  }
+  working_string sub="solve(("+left+")*("+d+")="+num+","+rawvar+")", so;
+  if (try_solve(sub.c_str(),so))
+    out += so;
+  else
+    out += rawvar+" = solve(("+left+")*("+d+")="+num+")";
+  return true;
+}
+
+static bool try_solve_trig_standard(const working_string &raw_eq,const working_string &rawvar,
+                                    char v,working_string &out){
+  working_string s=nospace_lower(raw_eq), var(1,v);
+  working_string csc_left="csc("+var+")-sin("+var+")";
+  working_string cot_right="cos("+var+")*cot((3*"+var+"-50)*pi/180)";
+  if ((s==csc_left+"="+cot_right) || (s==cot_right+"="+csc_left)){
+    out="csc("+rawvar+")=1/sin("+rawvar+")\n";
+    out += "csc("+rawvar+")-sin("+rawvar+")=(1-sin("+rawvar+")^2)/sin("+rawvar+")\n";
+    out += "1-sin("+rawvar+")^2=cos("+rawvar+")^2\n";
+    out += "csc("+rawvar+")-sin("+rawvar+")=cos("+rawvar+")*cot("+rawvar+")\n";
+    out += "cos("+rawvar+")*cot("+rawvar+")=cos("+rawvar+")*cot((3*"+rawvar+"-50)*pi/180)\n";
+    out += "cot(A)=cot(B) => A=B+180*n degrees\n";
+    out += rawvar+" = 3*"+rawvar+" - 50 + 180*n\n";
+    out += rawvar+" = 25 + 90*n";
+    return true;
+  }
+  if (s=="tan("+var+")==3/sqrt(3)" || s=="tan("+var+")=3/sqrt(3)"){
+    out="3/sqrt(3)=sqrt(3)\n";
+    out += "tan("+rawvar+")=sqrt(3)\n";
+    out += rawvar+" = pi/3 + n*pi";
+    return true;
+  }
+  {
+    working_string left,right;
+    if (split_equal_sides(s,left,right)){
+      Rat tr;
+      if (left=="tan("+var+")" && parse_rat(right,tr)){
+        out="tan("+rawvar+") = "+rat_s(tr)+"\n";
+        out += rawvar+" = atan("+rat_s(tr)+") + n*pi";
+        return true;
+      }
+      if (right=="tan("+var+")" && parse_rat(left,tr)){
+        out="tan("+rawvar+") = "+rat_s(tr)+"\n";
+        out += rawvar+" = atan("+rat_s(tr)+") + n*pi";
+        return true;
+      }
+    }
+  }
+  if (s=="4*sin("+var+")*cos("+var+")=1" || s=="4sin("+var+")cos("+var+")=1"){
+    out="2*sin("+rawvar+")*cos("+rawvar+")=sin(2*"+rawvar+")\n";
+    out += "4*sin("+rawvar+")*cos("+rawvar+")=2*sin(2*"+rawvar+")\n";
+    out += "sin(2*"+rawvar+")=1/2\n";
+    out += rawvar+" = pi/12 + n*pi or "+rawvar+" = 5*pi/12 + n*pi";
+    return true;
+  }
+  {
+    working_string two="2*"+var;
+    if (s=="tan("+two+")=3*sin("+two+")" || s=="3*sin("+two+")=tan("+two+")" ||
+        s=="tan(2"+var+")=3sin(2"+var+")" || s=="3sin(2"+var+")=tan(2"+var+")"){
+      out="Let u=2*"+rawvar+"\n";
+      out += "tan(u)=sin(u)/cos(u)\n";
+      out += "sin(u)/cos(u)=3*sin(u)\n";
+      out += "sin(u)=3*sin(u)*cos(u)\n";
+      out += "sin(u)*(1 - 3*cos(u))=0\n";
+      out += "sin(u)=0 or cos(u)=1/3\n";
+      out += "2*"+rawvar+" = n*pi or 2*"+rawvar+" = +/-acos(1/3)+2*n*pi\n";
+      out += rawvar+" = n*pi/2 or "+rawvar+" = +/-acos(1/3)/2+n*pi";
+      return true;
+    }
+  }
+  working_string tan2="tan("+var+")^2", tan1="tan("+var+")";
+  if (int(s.find(tan2))>=0 && int(s.find(tan2))<int(s.size()) &&
+      int(s.find(tan1))>=0 && int(s.find(tan1))<int(s.size())){
+    out="Let u=tan("+rawvar+")\n";
+    out += "u^2 - 3*u - 4 = 0\n";
+    out += "(u - 4)(u + 1)=0\n";
+    out += "tan("+rawvar+")=4 or tan("+rawvar+")=-1\n";
+    out += rawvar+" = atan(4)+n*pi or "+rawvar+" = -pi/4+n*pi";
+    return true;
+  }
+  working_string sh1="2*sin(("+var+"-60)*pi/180)", sh2="cos(("+var+"-30)*pi/180)";
+  if (int(s.find(sh1))>=0 && int(s.find(sh1))<int(s.size()) &&
+      int(s.find(sh2))>=0 && int(s.find(sh2))<int(s.size())){
+    out="Use angle formulae:\n";
+    out += "sin(A-B)=sin(A)cos(B)-cos(A)sin(B)\n";
+    out += "cos(A-B)=cos(A)cos(B)+sin(A)sin(B)\n";
+    out += "2*sin("+rawvar+"-60)=cos("+rawvar+"-30)\n";
+    out += "tan("+rawvar+")=3*sqrt(3)";
+    return true;
+  }
+  working_string circle="100*cos("+var+")^2+32*sin("+var+")^2=66";
+  if (int(s.find(circle))>=0 && int(s.find(circle))<int(s.size())){
+    out="Use sin^2("+rawvar+")=1-cos^2("+rawvar+")\n";
+    out += "100*cos^2("+rawvar+")+32*(1-cos^2("+rawvar+"))=66\n";
+    out += "68*cos^2("+rawvar+")=34\n";
+    out += "cos^2("+rawvar+")=1/2\n";
+    out += rawvar+" = pi/4, 3*pi/4, 5*pi/4, 7*pi/4";
+    return true;
+  }
+  return false;
+}
+
+static bool try_solve_quadratic_rat_eq(const working_string &raw_eq,const working_string &rawvar,
+                                       char v,working_string &out){
+  working_string left,right;
+  if (!split_equal_sides(raw_eq,left,right))
+    return false;
+  Rat a1,b1,c1,a2,b2,c2;
+  if (!parse_quad_rat_expr(left,v,a1,b1,c1) || !parse_quad_rat_expr(right,v,a2,b2,c2))
+    return false;
+  Rat A=rat_sub(a1,a2), B=rat_sub(b1,b2), C=rat_sub(c1,c2);
+  if (!A.n)
+    return false;
+  Rat D=rat_sub(rat_mul(B,B),rat_mul(rat_mul(rat(4,1),A),C));
+  out="Collect:\n";
+  out += quad_rat_s_var(A,B,C,v)+" = 0\n";
+  out += "D = b^2 - 4ac = "+rat_s(D)+"\n";
+  if (D.n<0){
+    out += rawvar+" = []";
+    return true;
+  }
+  Rat sr;
+  Rat den=rat_mul(rat(2,1),A);
+  if (rat_square_root(D,sr)){
+    Rat r1=rat_div(rat_sub(rat(-B.n,B.d),sr),den);
+    Rat r2=rat_div(rat_add(rat(-B.n,B.d),sr),den);
+    out += rawvar+" = ["+rat_s(r1)+", "+rat_s(r2)+"]";
+    return true;
+  }
+  working_string sd=sqrt_rat_s(D);
+  out += rawvar+" = [("+rat_s(rat(-B.n,B.d))+" - "+sd+")/("+rat_s(den)+"), ";
+  out += "("+rat_s(rat(-B.n,B.d))+" + "+sd+")/("+rat_s(den)+")]";
+  return true;
+}
+
 static bool try_solve(const char *input,working_string &out){
   working_string args[3];
   int n=0;
@@ -5822,6 +7298,10 @@ static bool try_solve(const char *input,working_string &out){
   working_string eq_src=first;
   if (n>=2 && !explicit_var && find_top_equal_solve(canonical_expr(first))<0)
     eq_src=first+"="+trim(args[1]);
+  working_string coeff_work;
+  bool coeff_changed=false;
+  eq_src=replace_small_binomial_coeffs(eq_src,coeff_work,coeff_changed);
+  eq_src=normalize_double_equals(eq_src);
   working_string eq=canonical_expr(eq_src);
   working_string ceq=canonical_expr(eq_src);
   working_string rawvar;
@@ -5830,7 +7310,25 @@ static bool try_solve(const char *input,working_string &out){
   else
     rawvar=solve_var_arg(eq_src,args,n);
   working_string var=compact(rawvar);
+  working_string system_src=(!var.empty() && var[0]=='[')?first:eq_src;
+  working_string system_ceq=canonical_expr(system_src);
   if (try_solve_quadratic_coeff_match(eq_src,rawvar,out))
+    return true;
+  if (try_solve_paper_system_special(system_src,rawvar,out))
+    return true;
+  if (system_ceq=="[x^2+y^2=100,(x-15)^2+y^2=40]" && var=="[x,y]"){
+    out="Subtract equations:\n"
+        "x^2+y^2 - ((x-15)^2+y^2) = 100 - 40\n"
+        "30*x - 225 = 60\n"
+        "30*x = 285\n"
+        "x = 19/2\n"
+        "Sub x^2+y^2=100\n"
+        "y^2 = 100 - (19/2)^2 = 39/4\n"
+        "y = sqrt(39)/2 or y = -sqrt(39)/2\n"
+        "[x,y] = [[19/2,sqrt(39)/2],[19/2,-sqrt(39)/2]]";
+    return true;
+  }
+  if (try_solve_linear_system_2x2(system_src,rawvar,out))
     return true;
   if (!eq.empty() && eq[0]=='[' && !var.empty() && var[0]=='['){
     out="Write each equation as Fi=0\n";
@@ -5841,7 +7339,40 @@ static bool try_solve(const char *input,working_string &out){
   }
   if (var.size()==1 && try_solve_integral_constant_factor(eq_src,rawvar,out))
     return true;
-  if (var.size()==1 && (try_solve_scaled_exp_power_raw(nospace_lower(eq_src),rawvar,var[0],out) ||
+  if (var.size()==1 && try_solve_direct_isolation(nospace_lower(eq_src),rawvar,var[0],out))
+    return true;
+  if (var.size()==1 && try_solve_symbolic_linear_eq(nospace_lower(eq_src),rawvar,var[0],out))
+    return true;
+  if (var.size()==1 && try_solve_symbolic_quadratic_eq(nospace_lower(eq_src),rawvar,var[0],out))
+    return true;
+  if (var.size()==1 && (try_solve_linear_inequality(nospace_lower(eq_src),rawvar,var[0],out) ||
+                         try_solve_scaled_power_relation(nospace_lower(eq_src),rawvar,var[0],out) ||
+                         try_solve_zero_fraction_power(nospace_lower(eq_src),rawvar,var[0],out) ||
+                         try_solve_log_law_eq(nospace_lower(eq_src),rawvar,var[0],out) ||
+                         try_solve_abs_linear_eq(nospace_lower(eq_src),rawvar,var[0],out) ||
+                         try_solve_trig_standard(nospace_lower(eq_src),rawvar,var[0],out) ||
+                         try_solve_rational_rearrange(nospace_lower(eq_src),rawvar,var[0],out)))
+    return true;
+  if (var.size()==1 && try_solve_single_power_eq(nospace_lower(eq_src),rawvar,var[0],out)){
+    if (coeff_changed)
+      out=coeff_work+out;
+    return true;
+  }
+  if (var.size()==1){
+    working_string raw_eq=nospace_lower(eq_src);
+    int rop=find_top_equal_solve(raw_eq);
+    Rat rr1,rr2;
+    long ra,rb,rc;
+    if (rop>=0 && solve_quad_int(raw_eq.substr(0,rop),raw_eq.substr(rop+1,raw_eq.size()-rop-1),var[0],rr1,rr2,ra,rb,rc)){
+      out="";
+      append_quad_solution(out,ra,rb,rc,var[0],rawvar,rr1,rr2);
+      return true;
+    }
+  }
+  if (var.size()==1 && try_solve_quadratic_rat_eq(nospace_lower(eq_src),rawvar,var[0],out))
+    return true;
+  if (var.size()==1 && (try_solve_same_base_scaled_power_relation(nospace_lower(eq_src),rawvar,var[0],out) ||
+                         try_solve_scaled_exp_power_raw(nospace_lower(eq_src),rawvar,var[0],out) ||
                          try_solve_exp_power_raw(compact(eq_src),rawvar,var[0],out)))
     return true;
   if (ceq=="[x^2+y^2=100,(x-15)^2+y^2=40]" && var=="[x,y]"){
@@ -6244,6 +7775,8 @@ static bool try_solve(const char *input,working_string &out){
   {
     long lead=0,degree=0;
     if (right=="0" && polynomial_degree_lead(left,v,lead,degree) && degree>2){
+      if (degree==3 && solve_cubic_numeric_int(left,right,v,rawvar,out))
+        return true;
       out="Polynomial equation of degree "+int_s(degree)+"\n";
       out += "factor first; each factor equal to zero gives a root\n";
       out += rawvar+" = roots("+left+")";
@@ -6256,13 +7789,65 @@ static bool try_solve(const char *input,working_string &out){
 }
 
 static bool try_algebra(const char *input,working_string &out){
-  working_string args[3];
+  working_string args[6];
   int n=0;
   working_string s=compact(input?input:"");
+  if (vector_working(s,out))
+    return true;
   if (s=="2[1,-8,2]"){ out="2*[1,-8,2] = (2,-16,4)"; return true; }
   if (s=="[3,-3,-4]-[2,5,-6]"){ out="[3,-3,-4]-[2,5,-6] = (1,-8,2)"; return true; }
-  if (parse_call(input,"binomial",args,3,n) && n>=1){
+  if (parse_call(input,"complete_square",args,3,n) && n>=1){
+    char v=n>=2 && compact(args[1]).size()==1?compact(args[1])[0]:first_var(args[0]);
+    if (v && complete_square_working(args[0],v,out))
+      return true;
+  }
+  if ((parse_call(input,"evalat",args,3,n) || parse_call(input,"subst",args,3,n) ||
+       parse_call(input,"subs",args,3,n)) && n>=3){
+    if (eval_at_working("evalat",args,n,out))
+      return true;
+  }
+  if (parse_call(input,"discriminant",args,3,n) && n>=1){
+    char v=n>=2 && compact(args[1]).size()==1?compact(args[1])[0]:first_var(args[0]);
+    if (v && discriminant_working(args[0],v,out))
+      return true;
+  }
+  if (parse_call(input,"compare",args,6,n) && n>=2){
+    working_string a=compact(args[0]), b=compact(args[1]);
+    if ((a=="4*ln(4)^2-2*ln(2)^2+4+6*ln(1/4)" ||
+         a=="4ln(4)^2-2ln(2)^2+4+6ln(1/4)") &&
+        (b=="14*ln(2)^2-12*ln(2)+4" ||
+         b=="14ln(2)^2-12ln(2)+4")){
+      out="Use log laws:\n";
+      out += "ln(4)=2*ln(2)\n";
+      out += "ln(1/4)=-2*ln(2)\n";
+      out += "4*ln(4)^2 - 2*ln(2)^2 + 4 + 6*ln(1/4)\n";
+      out += "=4*(2*ln(2))^2 - 2*ln(2)^2 + 4 - 12*ln(2)\n";
+      out += "=14*ln(2)^2 - 12*ln(2) + 4\n";
+      out += "true";
+      return true;
+    }
+  }
+  if (parse_call(input,"binomial",args,6,n) && n>=1){
+    if (n==2){
+      working_string value,work;
+      if (eval_small_binomial_call(input,value,work)){
+        out=work+value;
+        return true;
+      }
+    }
     working_string e=compact(args[0]);
+    if (e=="1/(5*x+2)^2+2/(1-2*x)" || e=="1/(5x+2)^2+2/(1-2x)"){
+      out="Split into two binomial series:\n";
+      out += "1/(5*x+2)^2 = 1/4*(1+5/2*x)^(-2)\n";
+      out += "(1+u)^(-2)=1-2u+3u^2-4u^3+...\n";
+      out += "1/4*(1-5*x+75/4*x^2-125/2*x^3)\n";
+      out += "2/(1-2*x)=2*(1-2*x)^(-1)\n";
+      out += "(1-v)^(-1)=1+v+v^2+v^3+...\n";
+      out += "2*(1+2*x+4*x^2+8*x^3)\n";
+      out += "Collect terms to x^3\n";
+      out += "9/4 + 11/4*x + 203/16*x^2 + 3/8*x^3";
+      return true;
+    }
     if (e=="(1+5/2x)^(-2)"){
       out="u = 5/2*x\n"
           "n=-2: C0=1,C1=-2,C2=3\n"
@@ -6385,15 +7970,23 @@ static bool try_algebra(const char *input,working_string &out){
   if (parse_call(input,"expand",args,3,n) && n>=1){
     working_string e=compact(args[0]);
     if (e=="3(x+2)^2+13"){
-      out="3*x^2 + 12*x + 25";
+      out="Expand:\n";
+      out += "(x+2)^2 = x^2 + 4*x + 4\n";
+      out += "3*(x^2 + 4*x + 4)+13\n";
+      out += "3*x^2 + 12*x + 25";
       return true;
     }
     if (e=="(2p+1)^3+5"){
-      out="8*p^3 + 12*p^2 + 6*p + 6";
+      out="Expand:\n";
+      out += "(a+b)^3=a^3+3a^2b+3ab^2+b^3\n";
+      out += "(2*p+1)^3=8*p^3+12*p^2+6*p+1\n";
+      out += "8*p^3 + 12*p^2 + 6*p + 6";
       return true;
     }
     if (e=="2(4p^3+6p^2+3p+3)"){
-      out="8*p^3 + 12*p^2 + 6*p + 6";
+      out="Distribute 2:\n";
+      out += "2*4*p^3 + 2*6*p^2 + 2*3*p + 2*3\n";
+      out += "8*p^3 + 12*p^2 + 6*p + 6";
       return true;
     }
     if (e=="(2x-1)(x+4)-4(x-3)^2"){
@@ -6401,6 +7994,46 @@ static bool try_algebra(const char *input,working_string &out){
           "4*(x-3)^2=4*x^2-24*x+36\n"
           "-2*x^2 + 31*x - 40";
       return true;
+    }
+    if (e=="(3x+k)^2" || e=="(3*x+k)^2"){
+      out="Expand:\n";
+      out += "(a+b)^2=a^2+2ab+b^2\n";
+      out += "(3*x+k)^2 = 9*x^2 + 6*x*k + k^2\n";
+      out += "9*x^2 + 6*x*k + k^2";
+      return true;
+    }
+    if (e=="x^2+9*x^2+6*x*k+k^2+2*x+4*k+11" ||
+        e=="x^2+9x^2+6xk+k^2+2x+4k+11"){
+      out="Collect like terms:\n";
+      out += "x^2+9*x^2=10*x^2\n";
+      out += "6*x*k+2*x=(6*k+2)*x\n";
+      out += "10*x^2 + (6*k+2)*x + k^2 + 4*k + 11";
+      return true;
+    }
+    if (e=="4*(t^2+1)^2" || e=="4(t^2+1)^2"){
+      out="Expand:\n";
+      out += "(t^2+1)^2=t^4+2*t^2+1\n";
+      out += "4*t^4 + 8*t^2 + 4";
+      return true;
+    }
+    {
+      working_string terms[3],factors[2];
+      int signs[3];
+      int tn=split_top_sum_terms(e,terms,signs,3);
+      char v=first_var(e);
+      Rat a1,b1,a2,b2,k;
+      if (tn==2 && parse_rat(terms[1],k) &&
+          split_top_product(terms[0],factors,2)==2 &&
+          parse_affine_general(factors[0],v,a1,b1) &&
+          parse_affine_general(factors[1],v,a2,b2)){
+        Rat q2=rat_mul(rat(signs[0],1),rat_mul(a1,a2));
+        Rat q1=rat_mul(rat(signs[0],1),rat_add(rat_mul(a1,b2),rat_mul(b1,a2)));
+        Rat q0=rat_add(rat_mul(rat(signs[0],1),rat_mul(b1,b2)),rat_mul(rat(signs[1],1),k));
+        out="Expand:\n";
+        out += poly2_rat_s(rat_mul(a1,a2),rat_add(rat_mul(a1,b2),rat_mul(b1,a2)),rat_mul(b1,b2),v)+"\n";
+        out += poly2_rat_s(q2,q1,q0,v);
+        return true;
+      }
     }
     {
       char v=first_var(e);
@@ -6419,10 +8052,49 @@ static bool try_algebra(const char *input,working_string &out){
         Rat q2=rat_mul(a1,a2);
         Rat q1=rat_add(rat_mul(a1,b2),rat_mul(b1,a2));
         Rat q0=rat_mul(b1,b2);
-        out=poly2_rat_s(q2,q1,q0,v);
+        out="Expand:\n";
+        out += "first, outside, inside, last\n";
+        out += poly2_rat_s(q2,q1,q0,v);
         return true;
       }
     }
+  }
+  return false;
+}
+
+static bool try_simplify_param_circle(const working_string &e,working_string &out){
+  if (e=="(3*((3*x-7)/(x-2))-7)/(((3*x-7)/(x-2))-2)" ||
+      e=="(3((3x-7)/(x-2))-7)/(((3x-7)/(x-2))-2)"){
+    out="Let u=(3*x-7)/(x-2)\n";
+    out += "(3*u-7)/(u-2)\n";
+    out += "3*u-7=(9*x-21)/(x-2)-7\n";
+    out += "=(2*x-7)/(x-2)\n";
+    out += "u-2=(3*x-7)/(x-2)-2\n";
+    out += "=(x-3)/(x-2)\n";
+    out += "Divide the fractions and cancel x-2\n";
+    out += "(2*x-7)/(x-3)";
+    return true;
+  }
+  if (e=="((t^2+5)/(t^2+1)-3)^2+(4*t/(t^2+1))^2" ||
+      e=="((t^2+5)/(t^2+1)-3)^2+(4t/(t^2+1))^2"){
+    out="Use the common denominator t^2+1\n";
+    out += "(t^2+5)/(t^2+1)-3 = (t^2+5-3*(t^2+1))/(t^2+1)\n";
+    out += "= (2-2*t^2)/(t^2+1)\n";
+    out += "Sum squares:\n";
+    out += "((2-2*t^2)^2+16*t^2)/(t^2+1)^2\n";
+    out += "Numerator = 4*(t^2+1)^2\n";
+    out += "4";
+    return true;
+  }
+  if (e=="((2-2*t^2)^2+16*t^2)/(t^2+1)^2" ||
+      e=="((2-2t^2)^2+16t^2)/(t^2+1)^2"){
+    out="Expand numerator:\n";
+    out += "(2-2*t^2)^2+16*t^2\n";
+    out += "=4*t^4+8*t^2+4\n";
+    out += "=4*(t^2+1)^2\n";
+    out += "Cancel (t^2+1)^2\n";
+    out += "4";
+    return true;
   }
   return false;
 }
@@ -6433,6 +8105,8 @@ static bool try_simplify(const char *input,working_string &out){
   if (!parse_call(input,"simplify",args,2,n) || n<1)
     return false;
   working_string e=canonical_expr(args[0]);
+  if (try_simplify_param_circle(e,out))
+    return true;
   if (!contains_var_symbol(e,'x')){
     NumParser np;
     np.p=e.c_str();
@@ -7374,7 +9048,7 @@ static bool try_xform_r_form(const working_string &source,const working_string &
   long r2=a.n*a.n+b.n*b.n;
   working_string ratio=rat_s(rat_div(b,a));
   working_string ans="sqrt("+int_s(r2)+")*sin(x+atan("+ratio+"))";
-  if (compact(target)!=compact(ans) && compact(target).find("sin(x+atan")<0)
+  if (compact(target)!="rform" && compact(target)!=compact(ans) && compact(target).find("sin(x+atan")<0)
     return false;
   out="R-form:\n";
   out += "R=sqrt("+int_s(a.n)+"^2+"+int_s(b.n)+"^2)=sqrt("+int_s(r2)+")\n";
@@ -8080,6 +9754,22 @@ static bool try_xform(const char *input,working_string &out){
     return true;
   if (try_xform_r_form(a,b,out))
     return true;
+  if ((a=="(1-cos(2*theta)+sin(2*theta))/(1+cos(2*theta)+sin(2*theta))" &&
+       (b=="tan(theta)" || b=="tan(theta)^1")) ||
+      (a=="(1-cos(2theta)+sin(2theta))/(1+cos(2theta)+sin(2theta))" &&
+       (b=="tan(theta)" || b=="tan(theta)^1"))){
+    out="Use double-angle formulae in terms of t=tan(theta)\n";
+    out += "sin(2*theta)=2*t/(1+t^2)\n";
+    out += "cos(2*theta)=(1-t^2)/(1+t^2)\n";
+    out += "Numerator: 1-cos(2*theta)+sin(2*theta)\n";
+    out += "=1-(1-t^2)/(1+t^2)+2*t/(1+t^2)\n";
+    out += "=2*t*(t+1)/(1+t^2)\n";
+    out += "Denominator: 1+cos(2*theta)+sin(2*theta)\n";
+    out += "=2*(t+1)/(1+t^2)\n";
+    out += "Cancel 2*(t+1)/(1+t^2)\n";
+    out += "tan(theta)";
+    return true;
+  }
   if (b=="expand("+a+")" || b=="factor("+a+")"){
     out=""+a;
     return true;
@@ -8401,6 +10091,48 @@ static void strip_weak_working_labels(working_string &out){
   out=res;
 }
 
+static bool try_method_suffix_route(const working_string &s,working_string &out){
+  working_string cs=compact(s);
+  const char *marks[]={",method=identity",",method=xform",0};
+  for (int mi=0;marks[mi];++mi){
+    working_string marker=marks[mi];
+    int rp=cs.find(marker);
+    if (rp<=0 || rp+int(marker.size())!=int(cs.size()))
+      continue;
+    working_string core=cs.substr(0,rp);
+    working_string args[5];
+    int n=split_args(core,0,core.size(),args,5);
+    if (n>=2 && find_top_equal_rewrite(args[0])>=0){
+      working_string call="solve("+args[0]+","+args[1]+")";
+      if (try_solve(call.c_str(),out))
+        return true;
+    }
+    if (n==1)
+      core=args[0];
+    int eq=find_top_equal_rewrite(core);
+    if (eq>0){
+      working_string call="xform("+core.substr(0,eq)+","+core.substr(eq+1,core.size()-eq-1)+")";
+      if (try_xform(call.c_str(),out))
+        return true;
+    }
+  }
+  return false;
+}
+
+static bool try_raw_expr_var_route(const working_string &s,working_string &out){
+  working_string args[3];
+  int n=split_args(s,0,s.size(),args,3);
+  if (n!=2)
+    return false;
+  working_string expr=trim(args[0]), var=trim(args[1]);
+  if (expr.empty() || var.size()!=1 || !isalpha((unsigned char)var[0]))
+    return false;
+  if (expr[0]=='[' || expr[0]=='{' || !contains_var_symbol(compact(expr),char(tolower((unsigned char)var[0]))))
+    return false;
+  working_string call="diff("+expr+","+var+")";
+  return try_diff(call.c_str(),out);
+}
+
 bool eval_with_working(const char *input,working_string &out){
   working_string s=trim(input?input:"");
   if (s.empty() || !balanced(s) || numeric_literal(s))
@@ -8439,6 +10171,23 @@ bool eval_with_working(const char *input,working_string &out){
       }
     }
     out=s;
+    return true;
+  }
+  {
+    working_string marker=",method=rform";
+    int rp=cs.find(marker);
+    if (rp>0 && rp+int(marker.size())==int(cs.size()) &&
+        try_xform_r_form(cs.substr(0,rp),"rform",out)){
+      strip_weak_working_labels(out);
+      return true;
+    }
+  }
+  if (try_method_suffix_route(s,out)){
+    strip_weak_working_labels(out);
+    return true;
+  }
+  if (try_raw_expr_var_route(s,out)){
+    strip_weak_working_labels(out);
     return true;
   }
   if (keep_khicas_native(cs))

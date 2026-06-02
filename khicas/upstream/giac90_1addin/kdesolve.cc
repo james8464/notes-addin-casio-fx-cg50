@@ -1551,6 +1551,10 @@ namespace giac {
   }
 
   gen _ztrans(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_DISABLE_DESOLVE_RUNTIME
+    if ( args.type==_STRNG && args.subtype==-1) return  args;
+    return symbolic(at_ztrans,args);
+#else
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     if (args.type!=_VECT)
       return ztrans(args,vx_var(),vx_var(),contextptr);
@@ -1561,6 +1565,7 @@ namespace giac {
     if (s!=3)
       return gensizeerr(contextptr);
     return ztrans( v[0],v[1],v[2],contextptr);    
+#endif
   }
   static const char _ztrans_s []="ztrans";
   static define_unary_function_eval (__ztrans,&_ztrans,_ztrans_s);
@@ -1689,6 +1694,10 @@ namespace giac {
   }
   
   gen _invztrans(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_DISABLE_DESOLVE_RUNTIME
+    if ( args.type==_STRNG && args.subtype==-1) return  args;
+    return symbolic(at_invztrans,args);
+#else
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     if (args.type!=_VECT)
       return invztrans(args,vx_var(),vx_var(),contextptr);
@@ -1699,6 +1708,7 @@ namespace giac {
     if (s!=3)
       return gensizeerr(contextptr);
     return invztrans( v[0],v[1],v[2],contextptr);        
+#endif
   }
   static const char _invztrans_s []="invztrans";
   static define_unary_function_eval (__invztrans,&_invztrans,_invztrans_s);
