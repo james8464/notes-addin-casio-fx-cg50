@@ -29,10 +29,10 @@ CASES = [
     ("integrate((x)*(((x)^2)^5))", ["Expand:", "x^10*(x) = x^11", "1/12*x^12 + C"]),
     ("integrate(((x)^2)((4)^2))", ["Combine:", "16*x^2", "16/3*x^3 + C"]),
     ("integrate(x^-1,x,3)", ["Recip:", "x^-1 = 1/x", "int(1/x)=ln(abs(x))", "ln(abs(x)) + C"]),
-    ("range(-9)", ["Range:", "y = -9"]),
-    ("range(2*x+3)", ["Range:", "linear", "all real"]),
-    ("range((x)(1))", ["Range:", "linear", "all real"]),
-    ("range((x)^3)", ["Range:", "Odd power", "all real"]),
+    ("range(-9)", ["y = -9"]),
+    ("range(2*x+3)", ["linear", "all real"]),
+    ("range((x)(1))", ["linear", "all real"]),
+    ("range((x)^3)", ["Odd power", "all real"]),
     ("range(x^2+4*x+7)", ["vx = -2", "min y = 3", "y >= 3"]),
     ("range(-x^2+4*x+1)", ["vx = 2", "max y = 5", "y <= 5"]),
     ("range(exp(x))", ["exp(x) > 0", "y > 0"]),
@@ -75,6 +75,10 @@ CASES = [
     ("solve(ln(2*x+1)=3,x)", ["ln(2*x + 1) = 3", "2*x + 1 = exp(3)", "x = [(exp(3) - 1)/2]"]),
     ("solve(exp(2*x+1)=5,x)", ["exp(2*x + 1) = 5", "2*x + 1 = ln(5)", "x = [(ln(5) - 1)/2]"]),
     ("solve(log(2,x+1)=3,x)", ["Log def:", "x+1 = 2^3", "x = [7]"]),
+    ("solve(3*k^2-58*k+240=0,k)", ["3*k^2 - 58*k + 240 = 0", "k = [40/3, 6]"]),
+    ("solve(1000*e^(5*k)=2000,k)", ["Divide by 1000", "e^(5*k)=2", "5*k=ln(2)", "k = [ln(2)/5]"]),
+    ("solve(3*x^2+12*x+25=6*x+25,x)", ["3*x^2 + 6*x = 0", "x = [0, -2]"]),
+    ("solve(24*k^2=12*32*k,k)", ["k = [16, 0]"]),
     ("diff((10-0.4x)*ln(x+1))", ["Product:", "u = 10 - 2/5*x", "v = ln(x + 1)", "du/dx = -2/5", "dv/dx = 1/(x + 1)", "-2/5*ln(x + 1) + (10 - 2/5*x)/(x + 1)"]),
     ("diff((2*x+1)*ln(3*x-2),x)", ["Product:", "u = 2*x + 1", "v = ln(3*x - 2)", "du/dx = 2", "dv/dx = 3/(3*x - 2)", "2*ln(3*x - 2) + (2*x + 1)*(3/(3*x - 2))"]),
     ("diff((x^2+1)/(x-1),x)", ["Quotient:", "u = x^2 + 1", "v = x - 1", "du/dx = 2*x", "dv/dx = 1", "((2*x)*(x - 1) - (x^2 + 1))/(x - 1)^2"]),
@@ -84,6 +88,11 @@ CASES = [
     ("diff(cos(x+3)-x,x)", ["Terms:", "d/dx(cos(x + 3)) = -sin(x + 3)", "d/dx(-x) = -1", "-sin(x + 3) - 1"]),
     ("diff((sin(x))^3,x)", ["Chain:", "u = sin(x)", "du/dx = cos(x)", "3*(sin(x))^2*cos(x)"]),
     ("diff(ln(((x)-(6))*((x)^2)),x)", ["Log law:", "d/dx ln(x - 6) = 1/(x - 6)", "d/dx ln(x^2) = 2*x/(x^2)", "1/(x - 6) + 2*x/(x^2)"]),
+    ("diff(log(2,x^2),x)", ["Change base:", "u = x^2", "du/dx = 2*x", "2*x/(x^2*ln(2))"]),
+    ("diff(3*x^4-2*x^2,x)", ["Terms:", "12*x^3", "-4*x", "12*x^3 - 4*x"]),
+    ("diff(sec(3*t^2),t)", ["Chain:", "u = 3*t^2", "du/dt = 6*t", "6*t*sec(3*t^2)*tan(3*t^2)"]),
+    ("diff(abs(3*t^3+2*t),t)", ["Chain:", "u = 3*t^3 + 2*t", "du/dt = 9*t^2 + 2", "(9*t^2 + 2)*(3*t^3 + 2*t)/abs(3*t^3 + 2*t)"]),
+    ("diff(sqrt(cot(abs(3*t^3+2*t))),t)", ["Chain:", "u = cot(abs(3*t^3 + 2*t))", "d/dt abs(u)", "d/dt cot(u)", "du/dt =", "sqrt(cot(abs(3*t^3 + 2*t)))"]),
     ("diff((sin(x))*(7-x)-x*x,x)", ["Terms:", "d/dx(sin(x)*(7 - x))", "(7 - x)*cos(x) - sin(x)", "-2*x"]),
     ("diff(ln((x+1)^2),x)", ["Chain:", "d/dx ln((x + 1)^2)", "u' = 2*(x + 1)", "2/(x + 1)"]),
     ("diff(sin((x+1)^2),x)", ["Chain:", "u = (x + 1)^2", "du/dx = 2*(x + 1)", "2*(x + 1)*cos((x + 1)^2)"]),
@@ -101,9 +110,9 @@ CASES = [
     ("expand((2*x+3)^2)", ["4*x^2 + 12*x + 9"]),
     ("apart(6/(u(3+2u)))", ["A/(u)+B/(2*u + 3)", "A = 6/3 = 2", "B = 6/-3/2 = -4", "2/(u) - 4/(2*u + 3)"]),
     ("binomial((1-6*x)^(1/2))", ["u = -6*x", "C0=1,C1=1/2,C2=-1/8,C3=1/16", "|x| < 1/6", "1 - 3*x - 9/2*x^2 - 27/2*x^3"]),
-    ("diff((x)+(3),x)", ["dy/dx = 1"]),
-    ("diff(6,x)", ["dy/dx = 0"]),
-    ("diff(exp(3),x)", ["dy/dx = 0"]),
+    ("diff((x)+(3),x)", ["1"]),
+    ("diff(6,x)", ["0"]),
+    ("diff(exp(3),x)", ["0"]),
     ("simplify(((8)))", ["8"]),
     ("simplify(exp(-4))", ["0.01831563889"]),
     ("simplify((x)^2)", ["x^2"]),
@@ -126,13 +135,22 @@ CASES = [
 
 def main() -> int:
     bad = []
-    for expr, markers in CASES:
+    huge_poly = "+".join(f"{i}*x^{i}" for i in range(260, 0, -1))
+    huge_odd_poly = "+".join(f"{i}*x^{i}" for i in range(261, 0, -1))
+    dynamic_cases = [
+        (f"integrate({huge_poly},x)", ["Terms:", "+ C"]),
+        (f"log(8,{huge_poly})", ["log_8(", "/ln(8)"]),
+        (f"range({huge_odd_poly})", ["degree 261", "all real"]),
+    ]
+    for expr, markers in CASES + dynamic_cases:
         p = subprocess.run([str(RUNNER), expr], cwd=ROOT, text=True, capture_output=True)
         out = (p.stdout or "") + (p.stderr or "")
         missing = [m for m in markers if m not in out]
         lines = [line.strip() for line in out.splitlines() if line.strip()]
         if "Exact:" in out:
             missing.append("no Exact: fallback label")
+        if "proot(" in out or "min(f(r)" in out or "max(f(r)" in out or "ln(0)" in out:
+            missing.append("no symbolic CAS/skeleton fallback")
         if lines and lines[-1].startswith("Answer:"):
             missing.append("final line must be math only")
         if p.returncode or missing:

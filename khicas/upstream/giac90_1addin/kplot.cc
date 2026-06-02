@@ -3442,6 +3442,86 @@ namespace giac {
   }
   
 #if 1 //TURTLE
+#ifdef CASCAS_DISABLE_PLOT_RUNTIME
+#ifdef TURTLETAB
+  const int MAX_LOGO=1;
+  logo_turtle tablogo[MAX_LOGO];
+  int turtle_stack_size=0;
+#endif
+
+  vector<string> * ecrisptr=0;
+  vector<string> & ecristab(){
+    if (!ecrisptr)
+      ecrisptr=new vector<string>;
+    return * ecrisptr;
+  }
+
+  logo_turtle vecteur2turtle(const vecteur &){
+    return logo_turtle();
+  }
+
+  bool set_turtle_state(const vecteur &,GIAC_CONTEXT){
+    return false;
+  }
+
+  gen turtle2gen(const logo_turtle & t){
+    return gen(makevecteur(t.x,t.y,double(t.theta),0,t.radius,t.s),_LOGO__VECT);
+  }
+
+  gen turtle_state(GIAC_CONTEXT){
+    return turtle2gen(turtle());
+  }
+
+  static gen cascas_disabled_turtle(const gen & g,GIAC_CONTEXT){
+    if (g.type==_STRNG && g.subtype==-1)
+      return g;
+    return undef;
+  }
+
+#define CASCAS_TURTLE_EVAL2(fn, defsym, atom, literal, flags) \
+  gen fn(const gen & g,GIAC_CONTEXT){ return cascas_disabled_turtle(g,contextptr); } \
+  static const char fn##_s []=literal; \
+  static define_unary_function_eval2 (defsym,&fn,fn##_s,&printastifunction); \
+  define_unary_function_ptr5( atom ,alias_##atom,&defsym,0,flags)
+
+  CASCAS_TURTLE_EVAL2(_avance,__avance,at_avance,"avance",T_LOGO);
+  CASCAS_TURTLE_EVAL2(_recule,__recule,at_recule,"recule",T_LOGO);
+  CASCAS_TURTLE_EVAL2(_position,__position,at_position,"position",T_LOGO);
+  CASCAS_TURTLE_EVAL2(_cap,__cap,at_cap,"cap",T_LOGO);
+  CASCAS_TURTLE_EVAL2(_tourne_droite,__tourne_droite,at_tourne_droite,"tourne_droite",T_LOGO);
+  CASCAS_TURTLE_EVAL2(_tourne_gauche,__tourne_gauche,at_tourne_gauche,"tourne_gauche",T_LOGO);
+  CASCAS_TURTLE_EVAL2(_leve_crayon,__leve_crayon,at_leve_crayon,"leve_crayon",T_LOGO);
+  CASCAS_TURTLE_EVAL2(_baisse_crayon,__baisse_crayon,at_baisse_crayon,"baisse_crayon",T_LOGO);
+  CASCAS_TURTLE_EVAL2(_ecris,__ecris,at_ecris,"ecris",T_LOGO);
+  CASCAS_TURTLE_EVAL2(_signe,__signe,at_signe,"signe",T_LOGO);
+  CASCAS_TURTLE_EVAL2(_saute,__saute,at_saute,"saute",T_LOGO);
+  CASCAS_TURTLE_EVAL2(_pas_de_cote,__pas_de_cote,at_pas_de_cote,"pas_de_cote",T_LOGO);
+  CASCAS_TURTLE_EVAL2(_cache_tortue,__cache_tortue,at_cache_tortue,"cache_tortue",T_LOGO);
+  CASCAS_TURTLE_EVAL2(_montre_tortue,__montre_tortue,at_montre_tortue,"montre_tortue",T_LOGO);
+
+  gen _repete(const gen & g,GIAC_CONTEXT){ return cascas_disabled_turtle(g,contextptr); }
+  static const char _repete_s []="repete";
+  static define_unary_function_eval_quoted (__repete,&_repete,_repete_s);
+  define_unary_function_ptr5( at_repete ,alias_at_repete,&__repete,_QUOTE_ARGUMENTS,T_RETURN);
+
+  CASCAS_TURTLE_EVAL2(_crayon,__crayon,at_crayon,"crayon",T_LOGO);
+  CASCAS_TURTLE_EVAL2(_efface_logo,__efface_logo,at_efface_logo,"efface",T_LOGO);
+  CASCAS_TURTLE_EVAL2(_vers,__vers,at_vers,"vers",T_LOGO);
+  CASCAS_TURTLE_EVAL2(_rond,__rond,at_rond,"rond",T_LOGO);
+  CASCAS_TURTLE_EVAL2(_disque,__disque,at_disque,"disque",T_LOGO);
+  CASCAS_TURTLE_EVAL2(_disque_centre,__disque_centre,at_disque_centre,"disque_centre",T_LOGO);
+  CASCAS_TURTLE_EVAL2(_polygone_rempli,__polygone_rempli,at_polygone_rempli,"polygone_rempli",T_LOGO);
+  CASCAS_TURTLE_EVAL2(_rectangle_plein,__rectangle_plein,at_rectangle_plein,"rectangle_plein",T_LOGO);
+  CASCAS_TURTLE_EVAL2(_triangle_plein,__triangle_plein,at_triangle_plein,"triangle_plein",T_LOGO);
+  CASCAS_TURTLE_EVAL2(_dessine_tortue,__dessine_tortue,at_dessine_tortue,"dessine_tortue",T_LOGO);
+
+  gen _inverser(const gen & g,GIAC_CONTEXT){ return cascas_disabled_turtle(g,contextptr); }
+  static const char _inverser_s []="inverser";
+  static define_unary_function_eval2 (__inverser,&_inverser,_inverser_s,&printastifunction);
+  define_unary_function_ptr5( at_inverser ,alias_at_inverser,&__inverser,_QUOTE_ARGUMENTS,T_LOGO);
+
+#undef CASCAS_TURTLE_EVAL2
+#else
 #ifdef TURTLETAB
   const int MAX_LOGO=2048;//128; // 1024
   logo_turtle tablogo[MAX_LOGO];
@@ -4150,6 +4230,7 @@ namespace giac {
   static define_unary_function_eval2 (__inverser,&_inverser,_inverser_s,&printastifunction);
   define_unary_function_ptr5( at_inverser ,alias_at_inverser,&__inverser,_QUOTE_ARGUMENTS,T_LOGO);
   
+#endif // CASCAS_DISABLE_PLOT_RUNTIME
 #endif
   
 #if defined(GIAC_GENERIC_CONSTANTS) || (defined(VISUALC) && !defined(RTOS_THREADX)) || defined(x86_64)

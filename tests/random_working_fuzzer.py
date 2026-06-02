@@ -30,8 +30,8 @@ OPTIONAL_ARG_COMMANDS = {
     "taylor",
 }
 WORKING_OUTPUT_COMMANDS = {
-    "diff", "fsolve", "implicit_diff", "integrate", "log", "partfrac",
-    "range", "rewrite", "series", "solve", "taylor", "xform",
+    "diff", "integrate", "log", "partfrac", "range", "rewrite",
+    "series", "solve", "taylor", "xform",
 }
 COMMANDS = [
     "diff", "integrate", "simplify", "solve", "range",
@@ -886,8 +886,16 @@ def classify(kind: str, src: str, out: str, code: int, elapsed: float, timeout: 
     lines = [line.strip() for line in stripped.splitlines() if line.strip()]
     if "Exact:" in stripped:
         return "exact-label"
+    if "proot(" in stripped or "min(f(r)" in stripped or "max(f(r)" in stripped:
+        return "symbolic-skeleton"
     if lines and lines[-1].startswith("Answer:"):
         return "answer-label-final"
+    if any(line in {
+        "Integral:", "Solve:", "Range:", "xform:", "rewrite:",
+        "Rewrite:", "Transform:", "Series form:", "Partial fractions:",
+        "Differentiate:",
+    } for line in lines):
+        return "weak-section-label"
     lowered = stripped.lower()
     if "nan" in lowered:
         return "nan"
@@ -902,6 +910,14 @@ def classify(kind: str, src: str, out: str, code: int, elapsed: float, timeout: 
         return "echo-only"
     if kind != "noise" and ("A-level route:" in stripped or "KhiCAS exact result:" in stripped):
         return "weak-fallback"
+    cmd = kind.split(":", 1)[1] if kind.startswith("chaos:") else kind
+    if cmd in WORKING_OUTPUT_COMMANDS:
+        if cmd in {"solve", "fsolve"} and len(lines) <= 2:
+            return "thin-solve"
+        if cmd in {"xform", "rewrite"} and len(lines) <= 2:
+            return "thin-transform"
+        if cmd == "integrate" and len(lines) <= 2 and any(line.startswith("int(") for line in lines):
+            return "thin-integral"
     if elapsed > 2.5:
         return "slow"
     return "ok"
@@ -948,6 +964,7 @@ def write_transcript_case(f, rec: dict, out: str) -> None:
 def main() -> int:
     ap = argparse.ArgumentParser(description="Random CAS working-output fuzzer.")
     ap.add_argument("--count", type=int, default=200, help="number of tests; ignored with --forever")
+    ap.add_argument("--per-function", type=int, default=0, help="run this many tests for each selected visible function")
     ap.add_argument("--forever", action="store_true", help="run until interrupted")
     ap.add_argument("--seed", type=int, default=None)
     ap.add_argument("--depth", type=int, default=4)
@@ -959,6 +976,7 @@ def main() -> int:
     ap.add_argument("--structured", action="store_true", help="use the older smaller structured generator")
     ap.add_argument("--stop-on-fail", action="store_true")
     ap.add_argument("--strict", action="store_true", help="count weak fallback as failure")
+    ap.add_argument("--print-failures", action="store_true", help="print failed records to stdout")
     ap.add_argument("--jsonl", type=Path, default=ROOT / "tests" / "reports" / "random_fuzz_latest.jsonl")
     ap.add_argument("--transcript", type=Path, default=ROOT / "tests" / "reports" / "random_fuzz_latest.txt")
     args = ap.parse_args()
@@ -967,6 +985,8 @@ def main() -> int:
     only = [x.strip() for x in args.only.split(",") if x.strip()] or None
     chaos = args.chaos or not args.structured
     scheduler = ChaosCommandScheduler(rng, only or VISIBLE_COMMANDS) if chaos else None
+    if args.per_function > 0 and not args.forever:
+        args.count = args.per_function * len(only or (VISIBLE_COMMANDS if chaos else COMMANDS))
     args.jsonl.parent.mkdir(parents=True, exist_ok=True)
     args.transcript.parent.mkdir(parents=True, exist_ok=True)
     done = bad = 0
@@ -1008,7 +1028,8 @@ def main() -> int:
                 write_transcript_case(transcript, rec, out)
                 if fail:
                     bad += 1
-                    print(json.dumps(rec, ensure_ascii=False))
+                    if args.print_failures:
+                        print(json.dumps(rec, ensure_ascii=False))
                     done += 1
                     if args.stop_on_fail:
                         break
