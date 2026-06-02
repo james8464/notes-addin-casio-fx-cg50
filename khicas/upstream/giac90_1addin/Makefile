@@ -96,8 +96,8 @@ runmat_mock.elf: runmat_mock.o
 runmat_mock.bin: runmat_mock.elf
 	$(OBJCOPY) $(OBJFLAGS) runmat_mock.elf runmat_mock.bin
 
-RUNMAT.g3a: runmat_mock.bin
-	mkg3a -n basic:RunMat -n internal:RUNMAT -V 1.0.0 -i uns:khicasio.png -i sel:khicasio1.png $^ $@
+RUNMAT.g3a: runmat_mock.bin runmat_icon.png runmat_icon_selected.png
+	mkg3a -n basic:RunMat -n internal:RUNMAT -V 1.0.0 -i uns:runmat_icon.png -i sel:runmat_icon_selected.png runmat_mock.bin $@
 	/bin/cp RUNMAT.g3a ~/.wine/drive_c
 
 clean:

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import struct
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "khicas/upstream/giac90_1addin"
@@ -12,10 +13,23 @@ def require(text: str, marker: str, label: str) -> None:
         raise SystemExit(f"FAIL runmat {label}: missing {marker!r}")
 
 
+def png_size(path: Path) -> tuple[int, int]:
+    data = path.read_bytes()[:24]
+    if data[:8] != b"\x89PNG\r\n\x1a\n":
+        raise SystemExit(f"FAIL runmat icon is not PNG: {path.name}")
+    return struct.unpack(">II", data[16:24])
+
+
 def main() -> int:
     source = (ROOT / "tools/runmat_mock.cc").read_text(errors="ignore")
     makefile = (SRC / "Makefile").read_text(errors="ignore")
     build = (ROOT / "tools/build_g3a.sh").read_text(errors="ignore")
+    for icon_name in ("runmat_icon.png", "runmat_icon_selected.png"):
+        icon_path = SRC / icon_name
+        if not icon_path.exists():
+            raise SystemExit(f"FAIL runmat icon missing: {icon_name}")
+        if png_size(icon_path) != (92, 64):
+            raise SystemExit(f"FAIL runmat icon size: {icon_name}")
 
     require(source, "SAF_BATTERY", "battery status flag")
     for setup_flag in (
@@ -64,13 +78,17 @@ def main() -> int:
     if "static unsigned char glyph" in source or "draw_pixel_text" in source:
         raise SystemExit("FAIL runmat manual pixel glyph renderer present")
 
-    require(makefile, "RUNMAT.g3a: runmat_mock.bin", "make target")
+    require(makefile, "RUNMAT.g3a: runmat_mock.bin runmat_icon.png runmat_icon_selected.png", "make target")
     require(makefile, "-n basic:RunMat -n internal:RUNMAT", "metadata")
+    require(makefile, "-i uns:runmat_icon.png -i sel:runmat_icon_selected.png", "RUNMAT icons")
+    if "RUNMAT.g3a: runmat_mock.bin\n\tmkg3a" in makefile:
+        raise SystemExit("FAIL runmat still using shared Khicas icons")
     require(makefile, "RUNMAT_LIBS =", "standalone libs")
     if "RUNMAT_LIBS = " in makefile and ("-lcas" in makefile.split("RUNMAT_LIBS =", 1)[1].split("\n", 1)[0]):
         raise SystemExit("FAIL runmat standalone libs include -lcas")
 
     require(build, "RUNMAT_TARGET", "build variable")
+    require(build, 'python3 "${ROOT_DIR}/tools/generate_runmat_icons.py"', "RUNMAT icon generation")
     require(build, 'cp "${ROOT_DIR}/tools/runmat_mock.cc" "${SRC_DIR}/runmat_mock.cc"', "source install")
     require(build, 'cp "${OUT_DIR}/${RUNMAT_TARGET}" "${TRANSFER_DIR}/${RUNMAT_TARGET}"', "transfer copy")
     require(build, "--name RunMat", "metadata check")

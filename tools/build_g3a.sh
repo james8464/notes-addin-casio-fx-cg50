@@ -60,6 +60,7 @@ touch "${TRANSFER_DIR}/.gitkeep"
 ensure_image
 clean_source_outputs
 prepare_icons
+python3 "${ROOT_DIR}/tools/generate_runmat_icons.py"
 cp "${ROOT_DIR}/tools/runmat_mock.cc" "${SRC_DIR}/runmat_mock.cc"
 
 cat > "${DOCKER_BUILD_SCRIPT}" <<'SH'
