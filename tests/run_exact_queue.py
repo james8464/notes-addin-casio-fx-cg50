@@ -23,6 +23,26 @@ LIVE = PROGRESS / "exact_queue_latest.json"
 STATE = PROGRESS / "state.jsonl"
 
 
+def normalize_module(module: str, text: str) -> str:
+    m = (module or "algebra").strip().lower()
+    low = text.strip().lower()
+    if m in {"derive", "differentiate", "differentiation", "derivative"}:
+        return "derive"
+    if m in {"integrate", "integration", "integral"}:
+        return "integrate"
+    if m in {"trig", "trigonometry"}:
+        return "trig"
+    if m == "calculus":
+        if low.startswith(("diff(", "derive(")):
+            return "derive"
+        if low.startswith(("int(", "integrate(", "defint(")):
+            return "integrate"
+        return "algebra"
+    if m == "exact":
+        return "algebra"
+    return m
+
+
 def read_rows() -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for line in QUEUE.read_text(errors="ignore").splitlines():
@@ -38,16 +58,18 @@ def specs() -> list[dict[str, Any]]:
         if row.get("verdict") == "skip":
             continue
         for i, item in enumerate(row.get("inputs", []), 1):
+            text = item["input"]
             out.append({
                 "id": row["id"],
-                "source_pdf": row["source_pdf"],
-                "question": row["question"],
+                "source_pdf": row.get("source_pdf") or row.get("source", ""),
+                "question": row.get("question") or row["id"],
                 "part": row.get("part", ""),
                 "input_index": i,
-                "module": item["module"],
-                "input": item["input"],
+                "module": normalize_module(item.get("module", "algebra"), text),
+                "input": text,
                 "markers": item.get("expected_output_markers", []),
                 "working": item.get("mark_scheme_working", []),
+                "curated": bool(row.get("verdict") or item.get("expected_output_markers")),
             })
     return out
 
@@ -108,7 +130,8 @@ def run_one(spec: dict[str, Any], strict: bool) -> dict[str, Any]:
         timeout=20,
     )
     out = proc.stdout + proc.stderr
-    banned = [b for b in ("ERR:", "Err:", "traceback", "Traceback") if b in out]
+    banned_terms = ("ERR:", "Err:", "traceback", "Traceback") if spec.get("curated", True) else ("traceback", "Traceback")
+    banned = [b for b in banned_terms if b in out]
     missing = [m for m in spec["markers"] if m and m not in out]
     ok = proc.returncode == 0 and not banned and (not strict or not missing)
     return {

@@ -26,9 +26,9 @@ def checksum(buf: bytes) -> int:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("g3a", type=Path)
-    ap.add_argument("--name", default="CasioCAS")
-    ap.add_argument("--internal", default="@CASCAS")
-    ap.add_argument("--filename", default="/CasioCAS.g3a")
+    ap.add_argument("--name", default="CAS")
+    ap.add_argument("--internal", default="@CAS")
+    ap.add_argument("--filename", default="CAS.g3a")
     args = ap.parse_args()
     buf = args.g3a.read_bytes()
     bad: list[str] = []
