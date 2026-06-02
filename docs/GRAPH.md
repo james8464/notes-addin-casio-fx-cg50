@@ -1,6 +1,6 @@
 # Project Graph
 
-Last updated: 2026-06-02 10:52 BST
+Last updated: 2026-06-02 12:09 BST
 
 ## Build
 
@@ -52,6 +52,7 @@ graph TD
   Work --> Shared["shared helpers: top-level parser guards, parenthesis-aware fraction split, affine parser, quadratic formatter, surd arithmetic"]
   Work --> Guards["finite numeric guards: invalid-domain numeric routes keep symbolic output, not nan"]
   Work --> Empty["empty function calls preserve input safely: simplify(), diff(), log()"]
+  Work --> FuzzGuards["random-fuzz guards: one-arg log route, oversized working input surface, no raw echo for working commands, no host abort on deep diff"]
 ```
 
 ## UI
@@ -92,6 +93,7 @@ graph TD
   Chaos --> Transcript["tests/reports/random_chaos_latest.txt reset each run with full input/output"]
   Chaos --> FuzzReport["tests/reports/random_chaos_latest.jsonl"]
   Chaos --> Modes["finite --count N or indefinite --forever"]
+  Chaos --> FinalStrict["2026-06-02 strict full pass: 45 visible commands * 500 = 22,500; bad=0"]
   TUI --> Panels["animated panels: status badges, wide side-by-side layout, phase lanes, health score, gate board, sync, last commit, change counts, state age, artifact headroom, live rate and ETA, queue bars, strict-marker ratios, strict-gap bar map, freshness rows, animated scan/meter lines, cleanup byte totals and cleanup command, project hygiene, tooling inventory, transfer path, strict clusters with first gap samples, test checkpoints, release blockers, risk, ignored workspace, active-tool counts, next action, command panel"]
   Runner --> Runtime["16,553/16,553 runtime-safe"]
   Runner --> Strict["strict marker checks kept as advisory; runtime queue is hard gate"]
