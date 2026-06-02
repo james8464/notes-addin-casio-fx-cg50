@@ -3961,7 +3961,14 @@ static bool try_integral(const char *input,working_string &out){
 static bool try_log_base(const char *input,working_string &out){
   working_string args[2];
   int n=0;
-  if (!parse_call(input,"log",args,2,n) || n!=2)
+  if (!parse_call(input,"log",args,2,n))
+    return false;
+  if (n==1){
+    out="log(u)=ln(u)\n";
+    out += "ln("+trim(args[0])+")";
+    return true;
+  }
+  if (n!=2)
     return false;
   out="log_";
   out += trim(args[0]);
@@ -5609,7 +5616,7 @@ static bool working_route_too_large(const working_string &s){
     else if (c=='(' || c==')' || c=='[' || c==']')
       ++brackets;
   }
-  return s.size()>12000 || ops>1800 || brackets>2400;
+  return s.size()>5000 || ops>1800 || brackets>2400;
 }
 
 static void rewrite_acc_init(RewriteAcc &acc){
@@ -6168,6 +6175,13 @@ bool eval_with_working(const char *input,working_string &out){
     if ((parse_call(input,"solve",args,3,n) || parse_call(input,"fsolve",args,3,n)) && n>=1){
       out="Solve:\n"+trim(args[0]);
       return true;
+    }
+    const char *more[]={"implicit_diff","series","taylor","partfrac","log","sum","product",0};
+    for (int i=0;more[i];++i){
+      if (parse_call(input,more[i],args,3,n) && n>=1){
+        out=working_string(more[i])+":\n"+trim(args[0]);
+        return true;
+      }
     }
     out=s;
     return true;
