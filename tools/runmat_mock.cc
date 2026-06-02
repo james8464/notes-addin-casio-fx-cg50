@@ -57,19 +57,34 @@ static void flush_screen() {
   drawCasioCasBorder();
 }
 
+static void print_mini_text(int x, int y, const char *text, int fg, int bg) {
+  PrintMini(&x, &y, (unsigned char *)text, 0, 0xffffffff, 0, 0, fg, bg, 1, 0);
+}
+
+static void status_box(int x, int w, const char *label) {
+  fill_rect(x, 5, w, 17, kWhite);
+  rect_outline(x, 5, w, 17, kFrame);
+  print_mini_text(x + 3, 8, label, COLOR_BLACK, COLOR_WHITE);
+}
+
 static void draw_status_area() {
-  DefineStatusAreaFlags(3,
-                        SAF_BATTERY | SAF_SETUP_INPUT_OUTPUT | SAF_SETUP_FRAC_RESULT |
-                            SAF_SETUP_ANGLE | SAF_SETUP_COMPLEX_MODE | SAF_SETUP_DISPLAY,
-                        0, 0);
+  DefineStatusAreaFlags(3, SAF_BATTERY, 0, 0);
   EnableStatusArea(2);
   DisplayStatusArea();
+}
+
+static void draw_status_labels() {
+  status_box(42, 31, "Math");
+  status_box(74, 28, "Deg");
+  status_box(103, 44, "Norm1");
+  status_box(193, 31, "d/c");
+  status_box(225, 32, "Real");
 }
 
 static void draw_r_indicator(bool visible) {
   fill_rect(339, 0, 21, 24, visible ? COLOR_BLUE : kWhite);
   if (visible) {
-    PrintCXY(340, -7, "R", TEXT_MODE_NORMAL, -1, COLOR_WHITE, COLOR_BLUE, 1, 0);
+    Bdisp_MMPrint(342, 0, "R", 0, 0xffffffff, 0, 0, COLOR_WHITE, COLOR_BLUE, 1, 0);
   }
 }
 
@@ -86,9 +101,10 @@ static void display_fkey(int slot, int id) {
 }
 
 static void draw_custom_fkey_text(int slot, const char *text) {
-  int x = slot * (LCD_WIDTH_PX / 6);
-  fill_rect(x, LCD_HEIGHT_PX - 23, LCD_WIDTH_PX / 6, 23, COLOR_BLACK);
-  Bdisp_MMPrint(x, LCD_HEIGHT_PX - 24 - 19, text, 0, 0xffffffff, 0, 0, COLOR_WHITE, COLOR_BLACK, 1, 0);
+  int x = slot == 2 ? 128 : 203;
+  int w = slot == 2 ? 74 : 56;
+  fill_rect(x, 192, w, 18, COLOR_BLACK);
+  print_mini_text(x + 4, 196, text, COLOR_WHITE, COLOR_BLACK);
 }
 
 static void draw_soft_labels() {
@@ -98,8 +114,8 @@ static void draw_soft_labels() {
   display_fkey(1, kFKeyDelete);
   display_fkey(4, -1);
   display_fkey(5, -1);
-  draw_custom_fkey_text(2, " MAT/VCT");
-  draw_custom_fkey_text(3, " MATH");
+  draw_custom_fkey_text(2, "MAT/VCT");
+  draw_custom_fkey_text(3, "MATH");
 }
 
 static void draw_static_screen(bool r_visible) {
@@ -107,6 +123,7 @@ static void draw_static_screen(bool r_visible) {
   fill_rect(0, 0, LCD_WIDTH_PX, LCD_HEIGHT_PX, kWhite);
 
   draw_status_area();
+  draw_status_labels();
   hline(6, 389, 24, kBlack);
   draw_r_indicator(r_visible);
 
