@@ -4396,27 +4396,36 @@ static bool integrate_mixed_sum_terms(const working_string &expr,working_string 
 }
 
 static bool try_integral(const char *input,working_string &out);
+static bool parse_top_power(const working_string &src,working_string &base,working_string &exp);
 
-static bool is_sqrt_a_minus_x_integrand(const working_string &e,const working_string &A){
-  working_string c=compact(e), a=compact(A);
-  working_string r1="x^(1/2)sqrt("+a+"-x)";
-  working_string r2="sqrt(x)sqrt("+a+"-x)";
-  working_string r3="sqrt("+a+"-x)x^(1/2)";
-  working_string r4="sqrt("+a+"-x)sqrt(x)";
+static bool is_sqrt_A_minus_v_integrand(const working_string &e,const working_string &A,const working_string &var){
+  working_string c=compact(e), a=compact(A), v=compact(var);
+  if (v.empty())
+    return false;
+  working_string r1=v+"^(1/2)sqrt("+a+"-"+v+")";
+  working_string r2="sqrt("+v+")sqrt("+a+"-"+v+")";
+  working_string r3="sqrt("+a+"-"+v+")"+v+"^(1/2)";
+  working_string r4="sqrt("+a+"-"+v+")sqrt("+v+")";
   return c==r1 || c==r2 || c==r3 || c==r4;
 }
 
-static void sqrt_a_minus_x_working(const working_string &A,working_string &out,bool final_value){
-  working_string a=trim(A);
-  out="x = "+a+"*sin(theta)^2\n";
-  out += "dx/dtheta = 2*"+a+"*sin(theta)*cos(theta)\n";
-  out += "dx = 2*"+a+"*sin(theta)*cos(theta) dtheta\n";
-  out += "x=0 -> theta=0\n";
-  out += "x="+a+" -> theta=pi/2\n";
-  out += "sqrt("+a+"-x)=sqrt("+a+"-"+a+"*sin(theta)^2)\n";
+static bool is_sqrt_a_minus_x_integrand(const working_string &e,const working_string &A){
+  return is_sqrt_A_minus_v_integrand(e,A,"x");
+}
+
+static void sqrt_A_minus_v_working(const working_string &A,const working_string &var,working_string &out,bool final_value){
+  working_string a=trim(A), v=trim(var);
+  if (v.empty())
+    v="x";
+  out=v+" = "+a+"*sin(theta)^2\n";
+  out += "d"+v+"/dtheta = 2*"+a+"*sin(theta)*cos(theta)\n";
+  out += "d"+v+" = 2*"+a+"*sin(theta)*cos(theta) dtheta\n";
+  out += v+"=0 -> theta=0\n";
+  out += v+"="+a+" -> theta=pi/2\n";
+  out += "sqrt("+a+"-"+v+")=sqrt("+a+"-"+a+"*sin(theta)^2)\n";
   out += "sqrt("+a+"-"+a+"*sin(theta)^2)=sqrt("+a+")*cos(theta)\n";
-  out += "x^(1/2)=sqrt("+a+"*sin(theta)^2)=sqrt("+a+")*sin(theta)\n";
-  out += "I=int_0^"+a+" x^(1/2)*sqrt("+a+"-x) dx\n";
+  out += v+"^(1/2)=sqrt("+a+"*sin(theta)^2)=sqrt("+a+")*sin(theta)\n";
+  out += "I=int_0^"+a+" "+v+"^(1/2)*sqrt("+a+"-"+v+") d"+v+"\n";
   out += "I=int_0^(pi/2) sqrt("+a+")*sin(theta)*sqrt("+a+")*cos(theta)*2*"+a+"*sin(theta)*cos(theta) dtheta\n";
   out += "I=2*"+a+"^2*int_0^(pi/2) sin(theta)^2*cos(theta)^2 dtheta\n";
   out += "sin(2*theta)=2*sin(theta)*cos(theta)\n";
@@ -4432,39 +4441,125 @@ static void sqrt_a_minus_x_working(const working_string &A,working_string &out,b
   out += "pi*"+a+"^2/8";
 }
 
+static void sqrt_a_minus_x_working(const working_string &A,working_string &out,bool final_value){
+  sqrt_A_minus_v_working(A,"x",out,final_value);
+}
+
+static bool parse_symbol_square_factor(const working_string &src,working_string &sym){
+  working_string s=strip_outer_parens(nospace_lower(src)), base,exp;
+  if (!parse_top_power(s,base,exp) || exp!="2")
+    return false;
+  base=strip_outer_parens(base);
+  if (base.empty())
+    return false;
+  for (int i=0;i<int(base.size());++i)
+    if (!isalpha((unsigned char)base[i]) && base[i]!='_')
+      return false;
+  sym=base;
+  return true;
+}
+
+static bool merge_square_symbol(working_string &sym,const working_string &candidate){
+  if (sym.empty()){
+    sym=candidate;
+    return true;
+  }
+  return sym==candidate;
+}
+
+static bool parse_sin2_coeff_piece(const working_string &piece,Rat &scale,working_string &square_sym){
+  working_string p=strip_outer_parens(nospace_lower(piece)), num,den,sym;
+  Rat r;
+  if (parse_rat(p,r)){
+    scale=rat_mul(scale,r);
+    return true;
+  }
+  if (parse_symbol_square_factor(p,sym))
+    return merge_square_symbol(square_sym,sym);
+  if (split_top_fraction(p,num,den)){
+    if (parse_symbol_square_factor(num,sym) && parse_rat(den,r) && r.n){
+      scale=rat_div(scale,r);
+      return merge_square_symbol(square_sym,sym);
+    }
+  }
+  return false;
+}
+
+static bool extract_sin2_coeff(const working_string &expr,const working_string &var,
+                               Rat &scale,working_string &square_sym){
+  working_string factors[6], core="sin(2"+compact(var)+")^2";
+  int n=split_top_product(expr,factors,6);
+  scale=rat(1,1);
+  square_sym="";
+  if (n<=0){
+    if (compact(expr)==core)
+      return true;
+    return false;
+  }
+  bool found_core=false;
+  for (int i=0;i<n;++i){
+    if (compact(factors[i])==core){
+      found_core=true;
+      continue;
+    }
+    if (!parse_sin2_coeff_piece(factors[i],scale,square_sym))
+      return false;
+  }
+  return found_core;
+}
+
+static working_string coeff_square_s(Rat q,const working_string &sym){
+  working_string sq=sym.empty()?working_string(""):sym+"^2";
+  if (sq.empty())
+    return rat_s(q);
+  if (rat_is_one(q))
+    return sq;
+  if (rat_is_minus_one(q))
+    return "-"+sq;
+  return rat_s(q)+"*"+sq;
+}
+
+static working_string pi_coeff_square_s(Rat q,const working_string &sym){
+  if (sym.empty()){
+    if (rat_is_one(q))
+      return "pi";
+    if (q.d==1)
+      return rat_s(q)+"*pi";
+    return "pi/"+rat_s(rat(q.d,q.n));
+  }
+  if (rat_is_one(q))
+    return "pi*"+sym+"^2";
+  if (q.d==1)
+    return rat_s(q)+"*pi*"+sym+"^2";
+  if (q.n==1)
+    return "pi*"+sym+"^2/"+int_s(q.d);
+  return rat_s(q)+"*pi*"+sym+"^2";
+}
+
 static bool trig_sin2_defint_route(const working_string &expr,const working_string &var,
                                    const working_string &lo,const working_string &hi,
                                    working_string &out){
   working_string e=compact(expr), v=compact(var), a=compact(lo), b=compact(hi);
   if (a!="0" || b!="pi/2")
     return false;
-  working_string core="sin(2"+v+")^2";
-  working_string coeff;
-  if (e==core)
-    coeff="";
-  else {
-    working_string p1="1/2*a^2"+core;
-    working_string p2="a^2/2"+core;
-    working_string p3="("+working_string("1/2")+")a^2"+core;
-    working_string p4="(a^2/2)"+core;
-    working_string p5="a^2(1/2)"+core;
-    if (e==p1 || e==p2 || e==p3 || e==p4 || e==p5)
-      coeff="1/2*a^2";
-    else
-      return false;
-  }
+  Rat scale;
+  working_string square_sym;
+  if (!extract_sin2_coeff(expr,var,scale,square_sym))
+    return false;
+  working_string coeff=coeff_square_s(scale,square_sym);
+  Rat ans_scale=rat_div(scale,rat(4,1));
   out="sin(2*"+v+")^2=(1-cos(4*"+v+"))/2\n";
-  if (coeff.empty()){
+  if (square_sym.empty() && rat_is_one(scale)){
     out += "I=1/2*int_0^(pi/2) (1-cos(4*"+v+")) d"+v+"\n";
     out += "I=1/2*["+v+" - sin(4*"+v+")/4]_0^(pi/2)\n";
     out += "pi/4";
   }
   else {
-    out += "I=1/2*a^2*int_0^(pi/2) sin(2*"+v+")^2 d"+v+"\n";
-    out += "I=1/4*a^2*int_0^(pi/2) (1-cos(4*"+v+")) d"+v+"\n";
-    out += "I=1/4*a^2*["+v+" - sin(4*"+v+")/4]_0^(pi/2)\n";
-    out += "I=1/4*a^2*((pi/2 - sin(2*pi)/4) - (0 - sin(0)/4))\n";
-    out += "pi*a^2/8";
+    out += "I="+coeff+"*int_0^(pi/2) sin(2*"+v+")^2 d"+v+"\n";
+    out += "I="+coeff_square_s(rat_div(scale,rat(2,1)),square_sym)+"*int_0^(pi/2) (1-cos(4*"+v+")) d"+v+"\n";
+    out += "I="+coeff_square_s(rat_div(scale,rat(2,1)),square_sym)+"*["+v+" - sin(4*"+v+")/4]_0^(pi/2)\n";
+    out += "I="+coeff_square_s(rat_div(scale,rat(2,1)),square_sym)+"*((pi/2 - sin(2*pi)/4) - (0 - sin(0)/4))\n";
+    out += pi_coeff_square_s(ans_scale,square_sym);
   }
   return true;
 }
@@ -4583,8 +4678,8 @@ static bool try_integral(const char *input,working_string &out){
     if (parse_call(input,"defint",dargs,5,dn) && dn>=4){
       working_string de=compact(dargs[0]), dv=compact(dargs[1]);
       working_string da=compact(dargs[2]), db=compact(dargs[3]);
-      if (dv=="x" && da=="0" && is_sqrt_a_minus_x_integrand(dargs[0],dargs[3])){
-        sqrt_a_minus_x_working(dargs[3],out,true);
+      if (dv.size()==1 && da=="0" && is_sqrt_A_minus_v_integrand(dargs[0],dargs[3],dv)){
+        sqrt_A_minus_v_working(dargs[3],dargs[1],out,true);
         return true;
       }
       if (trig_sin2_defint_route(dargs[0],dargs[1],dargs[2],dargs[3],out))
@@ -4614,10 +4709,10 @@ static bool try_integral(const char *input,working_string &out){
   bool force_parts=method_is(method,"2","parts") || method_is(method,"2","byparts");
   bool force_sub=method_is(method,"3","sub") || method_is(method,"3","substitution");
   if (var.size()!=1)
-    return false;
+    var=working_string(1,default_var_char(args[0]));
   if (n>=4){
-    if (var=="x" && compact(args[2])=="0" && is_sqrt_a_minus_x_integrand(args[0],args[3])){
-      sqrt_a_minus_x_working(args[3],out,true);
+    if (var.size()==1 && compact(args[2])=="0" && is_sqrt_A_minus_v_integrand(args[0],args[3],var)){
+      sqrt_A_minus_v_working(args[3],args[1],out,true);
       return true;
     }
     if (trig_sin2_defint_route(args[0],args[1],args[2],args[3],out))
@@ -5369,6 +5464,179 @@ static bool try_solve_exp_power_raw(const working_string &raw_eq,const working_s
   return true;
 }
 
+static bool matches_unknown_pi_square(const working_string &expr,const working_string &unknown,const working_string &A){
+  working_string factors[5], u=compact(unknown), a=canonical_expr(A);
+  int n=split_top_product(expr,factors,5);
+  if (n!=3)
+    return false;
+  bool got_unknown=false,got_pi=false,got_square=false;
+  for (int i=0;i<n;++i){
+    working_string f=strip_outer_parens(nospace_lower(factors[i]));
+    if (compact(f)==u){
+      got_unknown=true;
+      continue;
+    }
+    if (compact(f)=="pi"){
+      got_pi=true;
+      continue;
+    }
+    working_string base,exp;
+    if (parse_top_power(f,base,exp) && exp=="2" &&
+        (canonical_expr(base)==a || compact(base)==compact(A))){
+      got_square=true;
+      continue;
+    }
+    return false;
+  }
+  return got_unknown && got_pi && got_square;
+}
+
+static bool try_solve_integral_constant_factor(const working_string &raw,
+                                               const working_string &rawvar,
+                                               working_string &out){
+  int eqp=find_top_equal_solve(raw);
+  if (eqp<=0)
+    return false;
+  working_string left=trim(raw.substr(0,eqp)), right=trim(raw.substr(eqp+1,raw.size()-eqp-1));
+  working_string iargs[6];
+  int in=0;
+  bool left_int=parse_call(left.c_str(),"defint",iargs,6,in);
+  if (!left_int)
+    left_int=parse_call(left.c_str(),"integrate",iargs,6,in);
+  if (left_int && in>=4 && compact(iargs[1]).size()==1 && compact(iargs[2])=="0" &&
+      is_sqrt_A_minus_v_integrand(iargs[0],iargs[3],iargs[1]) &&
+      matches_unknown_pi_square(right,rawvar,iargs[3])){
+    sqrt_A_minus_v_working(iargs[3],iargs[1],out,true);
+    out += "\n"+rawvar+"*pi*"+trim(iargs[3])+"^2 = pi*"+trim(iargs[3])+"^2/8\n";
+    out += "divide by pi*"+trim(iargs[3])+"^2\n";
+    out += rawvar+" = 1/8";
+    return true;
+  }
+  in=0;
+  bool right_int=parse_call(right.c_str(),"defint",iargs,6,in);
+  if (!right_int)
+    right_int=parse_call(right.c_str(),"integrate",iargs,6,in);
+  if (right_int && in>=4 && compact(iargs[1]).size()==1 && compact(iargs[2])=="0" &&
+      is_sqrt_A_minus_v_integrand(iargs[0],iargs[3],iargs[1]) &&
+      matches_unknown_pi_square(left,rawvar,iargs[3])){
+    sqrt_A_minus_v_working(iargs[3],iargs[1],out,true);
+    out += "\n"+rawvar+"*pi*"+trim(iargs[3])+"^2 = pi*"+trim(iargs[3])+"^2/8\n";
+    out += "divide by pi*"+trim(iargs[3])+"^2\n";
+    out += rawvar+" = 1/8";
+    return true;
+  }
+  return false;
+}
+
+static int parse_two_unknowns(const working_string &raw,char &a,char &b){
+  working_string s=trim(raw), args[3];
+  if (s.size()<5 || s[0]!='[' || s[s.size()-1]!=']')
+    return 0;
+  int n=split_args(s,1,s.size()-1,args,3);
+  if (n!=2)
+    return 0;
+  working_string av=compact(args[0]), bv=compact(args[1]);
+  if (av.size()!=1 || bv.size()!=1 || !isalpha((unsigned char)av[0]) ||
+      !isalpha((unsigned char)bv[0]) || av[0]==bv[0])
+    return 0;
+  a=av[0];
+  b=bv[0];
+  return 2;
+}
+
+static bool parse_x_plus_unknown_factor(const working_string &src,char u1,char u2,
+                                        char &u,int &sign){
+  working_string terms[3];
+  int signs[3];
+  int n=split_top_sum_terms(src,terms,signs,3);
+  if (n!=2)
+    return false;
+  bool gotx=false,gotu=false;
+  for (int i=0;i<n;++i){
+    working_string t=compact(terms[i]);
+    if (t=="x" && signs[i]>0)
+      gotx=true;
+    else if (t.size()==1 && (t[0]==u1 || t[0]==u2)){
+      u=t[0];
+      sign=signs[i];
+      gotu=true;
+    }
+    else
+      return false;
+  }
+  return gotx && gotu;
+}
+
+static working_string signed_unknown_s(int sign,char u){
+  return sign<0 ? working_string("-")+working_string(1,u) : working_string(1,u);
+}
+
+static working_string signed_unknown_sum_s(int s1,char u1,int s2,char u2){
+  working_string out=signed_unknown_s(s1,u1);
+  if (s2<0)
+    out += " - "+working_string(1,u2);
+  else
+    out += " + "+working_string(1,u2);
+  return out;
+}
+
+static working_string signed_unknown_product_s(int s1,char u1,int s2,char u2){
+  working_string out;
+  if (s1*s2<0)
+    out="-";
+  out += working_string(1,u1)+"*"+working_string(1,u2);
+  return out;
+}
+
+static working_string x_plus_unknown_factor_s(int sign,char u){
+  return sign<0 ? working_string("(x-")+working_string(1,u)+")" :
+                  working_string("(x+")+working_string(1,u)+")";
+}
+
+static bool try_solve_quadratic_coeff_match(const working_string &raw_eq,
+                                            const working_string &rawvar,
+                                            working_string &out){
+  char u1=0,u2=0,fu1=0,fu2=0;
+  if (!parse_two_unknowns(rawvar,u1,u2))
+    return false;
+  int op=find_top_equal_solve(raw_eq);
+  if (op<0)
+    return false;
+  working_string left=trim(raw_eq.substr(0,op)), right=trim(raw_eq.substr(op+1,raw_eq.size()-op-1));
+  long qa=0,qb=0,qc=0;
+  working_string product;
+  if (parse_quad_expr(canonical_expr(left),'x',qa,qb,qc))
+    product=right;
+  else if (parse_quad_expr(canonical_expr(right),'x',qa,qb,qc))
+    product=left;
+  else
+    return false;
+  if (qa!=1)
+    return false;
+  working_string factors[2];
+  int fn=split_top_product(product,factors,2);
+  int s1=1,s2=1;
+  if (fn!=2 ||
+      !parse_x_plus_unknown_factor(factors[0],u1,u2,fu1,s1) ||
+      !parse_x_plus_unknown_factor(factors[1],u1,u2,fu2,s2) ||
+      fu1==fu2)
+    return false;
+  long disc=qb*qb-4*qc, sd=0;
+  if (disc<0 || !square_long(disc,sd))
+    return false;
+  Rat p=rat(qb+sd,2), q=rat(qb-sd,2);
+  Rat a1=s1>0?p:rat(-p.n,p.d), b1=s2>0?q:rat(-q.n,q.d);
+  Rat a2=s1>0?q:rat(-q.n,q.d), b2=s2>0?p:rat(-p.n,p.d);
+  out="Expand RHS:\n";
+  out += x_plus_unknown_factor_s(s1,fu1)+x_plus_unknown_factor_s(s2,fu2)+"\n";
+  out += "Compare coefficients:\n";
+  out += signed_unknown_sum_s(s1,fu1,s2,fu2)+" = "+int_s(qb)+"\n";
+  out += signed_unknown_product_s(s1,fu1,s2,fu2)+" = "+int_s(qc)+"\n";
+  out += "Numbers with sum "+int_s(qb)+" and product "+int_s(qc)+": "+rat_s(p)+", "+rat_s(q)+"\n";
+  out += "["+working_string(1,fu1)+","+working_string(1,fu2)+"] = [["+rat_s(a1)+","+rat_s(b1)+"],["+rat_s(a2)+","+rat_s(b2)+"]]";
+  return true;
+}
+
 static bool try_solve_scaled_exp_power_raw(const working_string &raw_eq,const working_string &rawvar,char v,working_string &out){
   int op=find_top_equal_solve(raw_eq);
   if (op<0)
@@ -5506,6 +5774,8 @@ static bool try_solve(const char *input,working_string &out){
   working_string ceq=canonical_expr(args[0]);
   working_string rawvar=n>=2?trim(args[1]):working_string(1,default_var_char(eq));
   working_string var=compact(rawvar);
+  if (try_solve_quadratic_coeff_match(trim(args[0]),rawvar,out))
+    return true;
   if (!eq.empty() && eq[0]=='[' && !var.empty() && var[0]=='['){
     out="Write each equation as Fi=0\n";
     out += "use substitution or elimination to reduce the system one variable at a time\n";
@@ -5513,38 +5783,8 @@ static bool try_solve(const char *input,working_string &out){
     out += var+" = solution_set";
     return true;
   }
-  if (var=="k"){
-    working_string raw=trim(args[0]);
-    int eqp=find_top_equal_solve(raw);
-    if (eqp>0){
-      working_string left=trim(raw.substr(0,eqp)), right=trim(raw.substr(eqp+1,raw.size()-eqp-1));
-      working_string lc=compact(left), rc=compact(right), iargs[6];
-      int in=0;
-      bool left_int=parse_call(left.c_str(),"defint",iargs,6,in);
-      if (!left_int)
-        left_int=parse_call(left.c_str(),"integrate",iargs,6,in);
-      if (left_int && in>=4 && compact(iargs[1])=="x" && compact(iargs[2])=="0" &&
-          is_sqrt_a_minus_x_integrand(iargs[0],iargs[3]) && rc=="kpia^2"){
-        sqrt_a_minus_x_working(iargs[3],out,true);
-        out += "\nk*pi*a^2 = pi*a^2/8\n";
-        out += "divide by pi*a^2\n";
-        out += "k = 1/8";
-        return true;
-      }
-      in=0;
-      bool right_int=parse_call(right.c_str(),"defint",iargs,6,in);
-      if (!right_int)
-        right_int=parse_call(right.c_str(),"integrate",iargs,6,in);
-      if (right_int && in>=4 && compact(iargs[1])=="x" && compact(iargs[2])=="0" &&
-          is_sqrt_a_minus_x_integrand(iargs[0],iargs[3]) && lc=="kpia^2"){
-        sqrt_a_minus_x_working(iargs[3],out,true);
-        out += "\nk*pi*a^2 = pi*a^2/8\n";
-        out += "divide by pi*a^2\n";
-        out += "k = 1/8";
-        return true;
-      }
-    }
-  }
+  if (var.size()==1 && try_solve_integral_constant_factor(trim(args[0]),rawvar,out))
+    return true;
   if (var.size()==1 && (try_solve_scaled_exp_power_raw(nospace_lower(args[0]),rawvar,var[0],out) ||
                          try_solve_exp_power_raw(compact(args[0]),rawvar,var[0],out)))
     return true;
@@ -7578,10 +7818,10 @@ static bool try_xform(const char *input,working_string &out){
     bool iok=parse_call(args[0].c_str(),"integrate",iargs,6,in);
     if (!iok)
       iok=parse_call(args[0].c_str(),"defint",iargs,6,in);
-    if (iok && in>=4 && compact(iargs[1])=="x" && compact(iargs[2])=="0" &&
-        is_sqrt_a_minus_x_integrand(iargs[0],iargs[3]) &&
+    if (iok && in>=4 && compact(iargs[1]).size()==1 && compact(iargs[2])=="0" &&
+        is_sqrt_A_minus_v_integrand(iargs[0],iargs[3],iargs[1]) &&
         (contains(compact(args[1]),"sin(2theta)^2") || contains(compact(args[1]),"sin^2(2theta)"))){
-      sqrt_a_minus_x_working(iargs[3],out,false);
+      sqrt_A_minus_v_working(iargs[3],iargs[1],out,false);
       return true;
     }
   }

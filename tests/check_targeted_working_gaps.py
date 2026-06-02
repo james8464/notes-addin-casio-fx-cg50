@@ -29,6 +29,7 @@ CASES = [
     ("integrate((x)*(((x)^2)^5))", ["Expand:", "x^10*(x) = x^11", "1/12*x^12 + C"]),
     ("integrate(((x)^2)((4)^2))", ["Combine:", "16*x^2", "16/3*x^3 + C"]),
     ("integrate(x^-1,x,3)", ["Recip:", "x^-1 = 1/x", "int(1/x)=ln(abs(x))", "ln(abs(x)) + C"]),
+    ("integrate(x^2,sin(k))", ["Power:", "int(x^2) dx", "1/3*x^3 + C"]),
     ("range(-9)", ["y = -9"]),
     ("range(2*x+3)", ["linear", "all real"]),
     ("range((x)(1))", ["linear", "all real"]),
@@ -79,6 +80,8 @@ CASES = [
     ("solve(1000*e^(5*k)=2000,k)", ["Divide by 1000", "e^(5*k)=2", "5*k=ln(2)", "k = [ln(2)/5]"]),
     ("solve(3*x^2+12*x+25=6*x+25,x)", ["3*x^2 + 6*x = 0", "x = [0, -2]"]),
     ("solve(24*k^2=12*32*k,k)", ["k = [16, 0]"]),
+    ("solve(x^2+5*x+6=(x+a)*(x+b),[a,b])", ["Compare coefficients:", "a + b = 5", "a*b = 6", "[a,b] = [["]),
+    ("solve(x^2-5*x+6=(x-a)*(x-b),[a,b])", ["Compare coefficients:", "-a - b = -5", "a*b = 6", "[a,b] = [["]),
     ("diff((10-0.4x)*ln(x+1))", ["Product:", "u = 10 - 2/5*x", "v = ln(x + 1)", "du/dx = -2/5", "dv/dx = 1/(x + 1)", "-2/5*ln(x + 1) + (10 - 2/5*x)/(x + 1)"]),
     ("diff((2*x+1)*ln(3*x-2),x)", ["Product:", "u = 2*x + 1", "v = ln(3*x - 2)", "du/dx = 2", "dv/dx = 3/(3*x - 2)", "2*ln(3*x - 2) + (2*x + 1)*(3/(3*x - 2))"]),
     ("diff((x^2+1)/(x-1),x)", ["Quotient:", "u = x^2 + 1", "v = x - 1", "du/dx = 2*x", "dv/dx = 1", "((2*x)*(x - 1) - (x^2 + 1))/(x - 1)^2"]),
@@ -106,6 +109,11 @@ CASES = [
     ("integrate((x+1)/(x^2+2*x+3),x)", ["Sub u=x^2 + 2*x + 3", "du=2*x + 2 dx", "x + 1 = 1/2*(2*x + 2)", "1/2*ln(abs(x^2 + 2*x + 3)) + C"]),
     ("integrate((x^2+2*x+1)/(x+1),x)", ["Simplify:", "x^2 + 2*x + 1 = (x + 1)*(x + 1)", "Cancel (x + 1)", "1/2*x^2 + x + C"]),
     ("integrate((x^2-1)/(x+1),x)", ["Simplify:", "x^2 - 1 = (x + 1)*(x - 1)", "Cancel (x + 1)", "1/2*x^2 - x + C"]),
+    ("defint(t^(1/2)*sqrt(b-t),t,0,b)", ["t = b*sin(theta)^2", "dt = 2*b*sin(theta)*cos(theta) dtheta", "pi*b^2/8"]),
+    ("integrate(sqrt(c-x)*sqrt(x),x,0,c)", ["x = c*sin(theta)^2", "sqrt(c-x)=sqrt(c-c*sin(theta)^2)", "pi*c^2/8"]),
+    ("defint((1/2)*c^2*sin(2*theta)^2,theta,0,pi/2)", ["sin(2*theta)^2=(1-cos(4*theta))/2", "pi*c^2/8"]),
+    ("solve(integrate(t^(1/2)*sqrt(c-t),t,0,c)=m*pi*c^2,m)", ["t = c*sin(theta)^2", "m*pi*c^2 = pi*c^2/8", "m = 1/8"]),
+    ("solve(q*pi*b^2=defint(sqrt(b-u)*sqrt(u),u,0,b),q)", ["u = b*sin(theta)^2", "q*pi*b^2 = pi*b^2/8", "q = 1/8"]),
     ("expand((3*x-2)*(x+5))", ["3*x^2 + 13*x - 10"]),
     ("expand((2*x+3)^2)", ["4*x^2 + 12*x + 9"]),
     ("apart(6/(u(3+2u)))", ["A/(u)+B/(2*u + 3)", "A = 6/3 = 2", "B = 6/-3/2 = -4", "2/(u) - 4/(2*u + 3)"]),
@@ -130,6 +138,7 @@ CASES = [
     ("xform(exp(ln(x+1)),x+1)", ["Inverse:", "exp(ln(u))=u", "x+1"]),
     ("xform(sqrt(x)^2,x)", ["Inverse:", "(sqrt(u))^2=u", "x"]),
     ("xform(sin(x)+2cos(x),sqrt(5)*sin(x+atan(2)))", ["R-form:", "R=sqrt(1^2+2^2)=sqrt(5)", "A=atan(2)", "sqrt(5)*sin(x+atan(2))"]),
+    ("xform(integrate(sqrt(p-u)*sqrt(u),u,0,p),1/2*p^2*defint(sin(2*theta)^2,theta,0,pi/2))", ["u = p*sin(theta)^2", "I=1/2*p^2*int_0^(pi/2) sin(2*theta)^2 dtheta"]),
 ]
 
 
