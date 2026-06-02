@@ -10,7 +10,7 @@ Optional:
   None.
 
 Does:
-  Taylor/binomial series. Required: f, expansion point x=a, order n.
+  Taylor/power series. Required: f, expansion value x=a, order n.
 
 Examples:
   series(sin(x),x=0,5); series((1+x)^(-1),x=0,4)

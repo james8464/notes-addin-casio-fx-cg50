@@ -20,12 +20,12 @@ VISIBLE_COMMANDS = [
     "collect", "cos", "cot", "degree", "diff", "exact", "expand", "factor",
     "floor", "fsolve", "gcd", "integrate", "implicit_diff", "lcm", "limit",
     "ln", "log", "partfrac", "pcoeff", "product", "proot", "range", "round",
-    "sec", "series", "simplify", "sin", "solve", "sqrt", "subst", "sum",
+    "rewrite", "sec", "series", "simplify", "sin", "solve", "sqrt", "subst", "sum",
     "tan", "taylor", "tcollect", "texpand", "xform",
 ]
 COMMANDS = [
     "diff", "integrate", "simplify", "solve", "range",
-    "xform", "xform", "xform",
+    "rewrite", "rewrite", "xform", "xform", "xform",
     "log", "expand", "binomial", "apart", "defint", "trig",
 ]
 WEIRD_CHARS = string.ascii_letters + string.digits + "+-*/^=(),[]{} ._"
@@ -81,6 +81,13 @@ TEMPLATES = {
         "xform(log(2,x^3),3log(2,x))",
         "xform((x+2)^2,x^2+4*x+4)",
         "xform(sin(x)+2cos(x),sqrt(5)*sin(x+atan(2)))",
+    ],
+    "rewrite": [
+        "rewrite(log(2,sqrt(x)),[log(2,x),log(2,x+8)])",
+        "rewrite(log(2,sqrt(x)),[a=log(2,x),b=log(2,x+8)])",
+        "rewrite(log(2,x^2+8*x),[a=log(2,x),b=log(2,x+8)])",
+        "rewrite(log(2,8+64/x),[a=log(2,x),b=log(2,x+8)])",
+        "rewrite((x+1)^2+sin(x),[u=(x+1)^2,v=sin(x)])",
     ],
     "log": ["log(2,x)", "log(5,x^2)"],
     "expand": ["expand((3*x-2)*(x+5))", "expand((2*x+3)^2)"],
@@ -259,6 +266,20 @@ def chaos_args(rng: random.Random, cmd: str, depth: int) -> list[str]:
         if rng.random() < 0.5:
             args += [v, str(rng.randrange(-10, 0)), str(rng.randrange(1, 10))]
         return args
+    if cmd == "rewrite":
+        if rng.random() < 0.55:
+            k = rng.randrange(1, 10)
+            base = rng.randrange(2, 6)
+            form = rng.choice([
+                f"log({base},sqrt(x))",
+                f"log({base},x^2+{k}*x)",
+                f"log({base},{base**3}+{base**3*k}/x)",
+            ])
+            return [form, f"[a=log({base},x),b=log({base},x+{k})]"]
+        t1 = chaos_expr(rng, max(1, depth - 1), numeric)
+        t2 = chaos_expr(rng, max(1, depth - 1), numeric)
+        start = rng.choice([f"({t1})+({t2})", f"({t1})*({t2})", f"{rng.choice(['sin','cos','ln'])}({t1})"])
+        return [start, f"[a={t1},b={t2}]"]
     if cmd in {"series", "taylor"}:
         return [e(), f"{v}={rng.randrange(-3, 4)}", str(rng.randrange(2, 8))]
     if cmd == "solve":
@@ -270,12 +291,13 @@ def chaos_args(rng: random.Random, cmd: str, depth: int) -> list[str]:
     return [e()]
 
 
-def chaos_case(rng: random.Random, depth: int, index: int) -> tuple[str, str]:
+def chaos_case(rng: random.Random, depth: int, index: int, commands: list[str] | None = None) -> tuple[str, str]:
     if rng.random() < 0.08:
         return noisy_input(rng)
     if rng.random() < 0.10:
         return "chaos:raw", messy(rng, chaos_expr(rng, depth, rng.random() < 0.5))
-    cmd = VISIBLE_COMMANDS[index % len(VISIBLE_COMMANDS)]
+    choices = commands or VISIBLE_COMMANDS
+    cmd = choices[index % len(choices)]
     args = ",".join(chaos_args(rng, cmd, depth))
     return f"chaos:{cmd}", messy(rng, f"{cmd}({args})")
 
@@ -559,6 +581,31 @@ def rand_xform(rng: random.Random) -> str:
     return messy(rng, f"xform(({num})/({den}),{ans})")
 
 
+def rand_rewrite(rng: random.Random) -> str:
+    case = rng.randrange(10)
+    base = rng.randrange(2, 6)
+    k = rng.randrange(1, 10)
+    if case == 0:
+        return messy(rng, f"rewrite(log({base},sqrt(x)),[log({base},x),log({base},x+{k})])")
+    if case == 1:
+        return messy(rng, f"rewrite(log({base},sqrt(x)),[a=log({base},x),b=log({base},x+{k})])")
+    if case == 2:
+        return messy(rng, f"rewrite(log({base},x^2+{k}*x),[a=log({base},x),b=log({base},x+{k})])")
+    if case == 3:
+        return messy(rng, f"rewrite(log({base},{base**3}+{base**3*k}/x),[a=log({base},x),b=log({base},x+{k})])")
+    if case == 4:
+        return messy(rng, f"rewrite((x+{k})^2+sin(x),[u=(x+{k})^2,v=sin(x)])")
+    if case == 5:
+        return messy(rng, f"rewrite(({pos_lin(rng)})/({pos_lin(rng)}),[a=x,b=ln(x),c=sin(x)])")
+    if case == 6:
+        return messy(rng, f"rewrite(ln((x+{k})^2),[a=ln(x+{k})])")
+    if case == 7:
+        return messy(rng, f"rewrite(log({base},(x+{k})^3/x),[a=log({base},x),b=log({base},x+{k})])")
+    if case == 8:
+        return messy(rng, f"rewrite(sin(x)+cos(x)+x,[a=sin(x),b=cos(x),c=x])")
+    return messy(rng, f"rewrite({chaos_expr(rng,3)},[a={chaos_expr(rng,2)},b={chaos_expr(rng,2)}])")
+
+
 def rand_log(rng: random.Random) -> str:
     base = rng.randrange(2, 10)
     arg = rng.choice(["x", f"x^{rng.randrange(2, 6)}", f"({pos_lin(rng)})", f"sqrt({pos_lin(rng)})"])
@@ -647,6 +694,8 @@ def command_input(rng: random.Random, depth: int, template_rate: float, commands
         return cmd, rand_solve(rng)
     if cmd == "range":
         return cmd, rand_range(rng)
+    if cmd == "rewrite":
+        return cmd, rand_rewrite(rng)
     if cmd == "xform":
         return cmd, rand_xform(rng)
     if cmd == "log":
@@ -681,7 +730,7 @@ def make_case(
     index: int = 0,
 ) -> tuple[str, str]:
     if chaos:
-        return chaos_case(rng, depth, index)
+        return chaos_case(rng, depth, index, commands)
     if rng.random() < noise_rate:
         return noisy_input(rng)
     return command_input(rng, depth, template_rate, commands)

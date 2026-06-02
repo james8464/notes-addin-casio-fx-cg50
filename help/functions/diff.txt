@@ -1,13 +1,13 @@
 diff(expr,var) or diff(equation,var)
 
 Args:
-  expr/equation, var, [order/point]
+  expr/equation, var, [order/value]
 
 Required:
   expr or equation, variable
 
 Optional:
-  order n, parametric point t0
+  order n, parametric value t0
 
 Does:
   Differentiates expressions. Equation input gives implicit differentiation; list input can be used for parametric differentiation.

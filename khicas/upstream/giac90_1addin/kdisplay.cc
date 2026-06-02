@@ -1875,6 +1875,10 @@ namespace xcas {
   }
 
   void fltk_draw(Graph2d & Mon_image,const gen & g,double x_scale,double y_scale,int clip_x,int clip_y,int clip_w,int clip_h){
+#ifdef CASCAS_DISABLE_PLOT_RUNTIME
+    (void)Mon_image; (void)g; (void)x_scale; (void)y_scale; (void)clip_x; (void)clip_y; (void)clip_w; (void)clip_h;
+    return;
+#else
     int deltax=0,deltay=STATUS_AREA_PX,fontsize=Mon_image.labelsize;
     if (g.type==_VECT){
       const vecteur & v=*g._VECTptr;
@@ -2177,6 +2181,7 @@ namespace xcas {
 	  draw_legende(f,round(i0),round(j0),labelpos,&Mon_image,clip_x,clip_y,clip_w,clip_h,0,0,couleur);
       }
     } // end pnt subcase
+#endif
   }
 #endif
 
@@ -2208,6 +2213,9 @@ namespace xcas {
   }
 
   void Graph2d::draw(){
+#ifdef CASCAS_DISABLE_PLOT_RUNTIME
+    return;
+#else
     int save_clip_ymin=clip_ymin;
     clip_ymin=STATUS_AREA_PX;
     int horizontal_pixels=LCD_WIDTH_PX,vertical_pixels=LCD_HEIGHT_PX-STATUS_AREA_PX,deltax=0,deltay=STATUS_AREA_PX,clip_x=0,clip_y=0,clip_w=horizontal_pixels,clip_h=vertical_pixels;
@@ -2302,6 +2310,7 @@ namespace xcas {
     // draw
     fltk_draw(*this,g,x_scale,y_scale,clip_x,clip_y,clip_w,clip_h);
     clip_ymin=save_clip_ymin;
+#endif
   }
   
   void Graph2d::left(double d){ 
@@ -2528,4 +2537,3 @@ namespace xcas {
 #ifndef NO_NAMESPACE_XCAS
 } // namespace xcas
 #endif // ndef NO_NAMESPACE_XCAS
-

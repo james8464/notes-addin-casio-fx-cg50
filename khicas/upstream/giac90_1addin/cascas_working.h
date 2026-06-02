@@ -12,6 +12,7 @@ typedef ustl::string working_string;
 
 bool eval_with_working(const char *input, working_string &out);
 bool fallback_working(const char *input, working_string &out);
+bool reject_removed_feature(const char *input);
 }
 
 #endif

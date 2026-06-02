@@ -10,7 +10,7 @@ Optional:
   None.
 
 Does:
-  Expand trig/log/exponential forms. Required: expr.
+  Expand trig/log/exp forms. Required: expr.
 
 Examples:
   texpand(sin(2*x)); texpand(ln(x*y))

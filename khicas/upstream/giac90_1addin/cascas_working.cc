@@ -48,6 +48,93 @@ static bool keep_khicas_native(const working_string &s){
          starts_command(s,"round") || starts_command(s,"sqrt");
 }
 
+static bool removed_ident_char(char c){
+  return isalnum((unsigned char)c) || c=='_';
+}
+
+static unsigned removed_hash_ident(const char *s,int begin,int end){
+  unsigned h=2166136261u;
+  for (int i=begin;i<end;++i){
+    unsigned char c=(unsigned char)s[i];
+    if (c>='A' && c<='Z')
+      c=(unsigned char)(c-'A'+'a');
+    h ^= c;
+    h *= 16777619u;
+  }
+  return h;
+}
+
+static bool removed_hash_denied(unsigned h){
+  static const unsigned denied[]={
+    0x917c0699u, 0xd686c6a1u, 0x1100db48u, 0x9ede2954u, 0x14cdb897u, 0x41229629u, 0x0dd0b0beu, 0xd7599ae2u,
+    0xc1c5c6a2u, 0x5319fe9eu, 0x1427b873u, 0xae13f94au, 0x50b13859u, 0x4ceb35d5u, 0xfcaee333u, 0x8fae83d8u,
+    0xfba40b66u, 0xa3325c6fu, 0xb1c0e744u, 0x19f1a786u, 0x519b7f08u, 0xee65cbdau, 0xb3dab835u, 0xf3c7dd11u,
+    0x4d19907fu, 0x3f29a48cu, 0xdee6ee22u, 0x98924db9u, 0xcb08e2d8u, 0x8117ae3du, 0xa19b8cd6u, 0xa9cba3f7u,
+    0xbcefb4d8u, 0x8f9b7080u, 0xaa9b9b01u, 0xdf9e7283u, 0x28a080d8u, 0xdb6d3576u, 0x0b11b072u, 0xf5cf8c7du,
+    0xaa7d7949u, 0x11c2662du, 0xc7e16877u, 0xdb9215fdu, 0xe667368du, 0x178d4c35u, 0x8e9dd543u, 0x8a2c68b7u,
+    0x65c08844u, 0x9e99b437u, 0xa1ed81c2u, 0xeb2af50bu, 0xfceb725bu, 0x0073dacfu, 0x3508aee0u, 0x5c95b7aeu,
+    0x9c265311u, 0x62e5b688u, 0x3bea1b45u, 0x6ce3e74du, 0x69e3e294u, 0xdef6fa2au, 0x9ebaa335u, 0x10d2583fu,
+    0xf45c461cu, 0x092855d0u, 0xbab19e4au, 0xedf2c855u, 0x07275075u, 0x0fceff97u, 0x3d8466cbu, 0x64bcb23du,
+    0xc2ab04e9u, 0xacf38390u, 0x0dc628ceu, 0x9c436708u, 0x85ee37bfu, 0x12ca106eu, 0x7a78762fu, 0xc9648178u,
+    0xb1727e44u, 0x9fff2789u, 0xa48fb4c9u, 0x79a94f04u, 0xf9d86f7bu, 0x0aa7f0b9u, 0x7084d38du, 0x89eabb08u,
+    0xa01e3d98u, 0xa21ca480u, 0x1f949aa9u, 0x826fd909u, 0x660d7050u, 0x99b5d744u, 0x830223f4u, 0x15c2f8ecu,
+    0x813d75aeu, 0xc03183c0u, 0xfb3d7a15u, 0xb323923eu, 0x0cbc8ba4u, 0xfe42bdf4u, 0xb0f0336bu, 0x1d11622cu,
+    0x68365378u, 0xeb40ffd3u, 0x23c6e902u, 0x46b93feau, 0xe49f78d1u, 0x7a0e47bau, 0x02dc2b01u, 0x08230495u,
+    0x8bfaffcfu, 0x1ebe2c6au, 0x1413edcdu, 0x17d1d6fcu, 0xeea7e9ccu, 0x2b8eb358u, 0x8f605233u, 0xd7037e9bu,
+    0x633cdd81u, 0xd2353873u, 0x38185d76u, 0xe272ae1bu, 0xb9c6a953u, 0xbbc6ac79u, 0x7bc647b9u, 0xab66535cu,
+    0x31bd46a1u, 0xbdeeca89u, 0xc7bd6948u, 0xd4d5660fu, 0x4a8d76c1u, 0x4f04d9d2u, 0x547835f3u, 0x24fa4703u,
+    0x22fc8274u, 0x04fe91d1u, 0xb5fc9604u, 0xd51ec1fdu, 0x9c662fa4u, 0xd6f47b66u, 0xc109695bu, 0xad7f573cu,
+    0xcedfa3c5u, 0xbe269f5cu, 0x6e12076fu, 0xa8aef257u, 0x78fda3ffu, 0xfbf05517u, 0x1832aa87u, 0x47f5473cu,
+    0x4ed10951u, 0xd46fb0cfu, 0x2272d6aau, 0xa84c031du, 0x46574072u, 0x6ef4d9bdu, 0xe26424d0u, 0x7d033966u,
+    0xd81f50a6u, 0x1b777caeu, 0x6c04a192u, 0xea42b557u, 0x4c515decu, 0xbde0f6e0u, 0x78b0ef32u, 0x4edf1404u,
+    0x0ad0ed6cu, 0xea8bdf11u, 0x2bd14411u, 0xb5bda71fu, 0x89b28834u, 0x9b4bf7b0u, 0x83092c31u, 0x11a3508au,
+    0x94b9211bu, 0x6371dcb0u, 0xd20a0c9du, 0xd04036f3u, 0x58547550u, 0x4038790bu, 0x2f271707u, 0xf3fa9284u,
+    0x49f2dba0u, 0x18ae6c91u, 0xae96da47u, 0x80945346u, 0x1809966eu, 0x17db1627u, 0x0f9079dbu, 0xab54ea82u,
+    0x77b7a398u, 0xf3c342e6u, 0x28217089u, 0x46544626u, 0x14f25eb6u, 0xe145ee5du, 0xb7f23106u, 0x9ef2cbdcu,
+    0x0cbf3400u, 0xdbf7eff4u, 0xb1e15f65u, 0x97736dd1u, 0x8d2519cbu, 0xfd455c3bu, 0xfa10a755u, 0x9311bc11u,
+    0xceaa3082u, 0x318b991du, 0x70c17171u, 0x6fc16fdeu, 0x6cf8e81cu, 0x8c496ab8u, 0x616bf796u, 0x102c19eau,
+    0xbf5074c1u, 0xdd404b6au, 0x6b91d120u, 0xad1ebfefu, 0xf2e361a3u, 0x43190e92u, 0x89a905a4u, 0xafd98518u,
+    0xfccd1337u, 0x2ee0698fu, 0xac5195bau, 0xb4e7f8e4u, 0xb469c380u, 0xacda80fbu, 0xec7aec99u, 0x1b5e2979u,
+    0x8e816a60u, 0xcc30f8fau, 0x1696d742u, 0x856d7f49u, 0x1eab292au, 0x071515d2u, 0xa71467f9u, 0x9c90b906u,
+    0x7d6fc026u, 0x5d36cd35u, 0x5824dcf7u, 0xf2c80d5bu, 0x98a2959eu, 0x00313120u, 0x91708e0cu, 0xf3a20824u,
+    0x9e888b98u, 0xd4cbbf07u, 0x51295e73u, 0xf78714e6u, 0x2ba548a6u, 0x64f89bc6u, 0x503e3086u, 0x372f4f55u,
+    0xd5b7b015u, 0x45855c00u, 0xd4f0716cu, 0x0fad7a44u, 0x198be6b8u, 0xdd4a6ba7u, 0xee43b913u, 0xbda420c0u,
+    0x2d5f622cu, 0x626e3204u, 0xaf645378u, 0x46e55a67u, 0xf8aaffd3u, 0x1e21273au, 0xb9edf782u, 0x67960d89u,
+    0xf28765e9u, 0x1642b069u, 0xb4423af0u, 0x05804268u, 0x0e684b5cu, 0xe35093bfu, 0xde375a53u, 0xe67c786cu,
+    0xe02a462fu, 0x940b5e09u, 0xebd12f63u, 0xd1b1e431u, 0x9450ab6au, 0xa450c49au, 0x65cc8d1bu, 0x66cc8eaeu,
+    0x6acc94fau, 0x3ba561d6u, 0x13c6cfd2u, 0xa170a73cu, 0xd4ada34au, 0x262cfcabu, 0xccee2183u, 0x81df5ea5u,
+    0xcc8d8dedu, 0x8bd5ceabu, 0x7d3ff927u, 0x6eb56479u, 0x7e8a3329u, 0x5e7f5371u, 0xe89516b0u, 0xe83e3398u,
+    0x18ba068bu, 0x6f20f7ddu, 0x05f85713u, 0xe30b509cu, 0x144f0c62u, 0x8dffe37bu, 0x66bb20b3u, 0x9a0f9c08u,
+    0x1bbf4029u, 0x5683a798u, 0x6a7d2c89u, 0x880dac7fu, 0xc3e8e5f7u, 0xd4f67cfdu, 0x4172a512u, 0xc2eb0145u,
+    0xe44789e8u, 0x7315d9bdu, 0x229e4ed8u, 0xac9b9e27u, 0xdd1afb2fu, 0xb66f5021u, 0x43831c98u, 0x1f82d9a8u,
+    0x15351b6du, 0xb35135fau, 0xf752b052u, 0x42f48402u, 0x18585f14u, 0x0f477e9au, 0x0e5f3468u, 0xeb64d5d5u,
+    0x79a98884u, 0x50a09eb9u, 0x0c5bcd9du, 0xaef31c63u, 0xa51be2bbu, 0xcccb0055u,
+  };
+  for (unsigned i=0;i<sizeof(denied)/sizeof(denied[0]);++i)
+    if (denied[i]==h)
+      return true;
+  return false;
+}
+
+bool reject_removed_feature(const char *input){
+  if (!input)
+    return false;
+  if (strchr(input,'%') || strstr(input,"[["))
+    return true;
+  for (int i=0;input[i];){
+    if (!removed_ident_char(input[i])){
+      ++i;
+      continue;
+    }
+    int begin=i;
+    while (input[i] && removed_ident_char(input[i]))
+      ++i;
+    if (removed_hash_denied(removed_hash_ident(input,begin,i)))
+      return true;
+  }
+  return false;
+}
+
 static bool has_top_add_sub_div(const working_string &s){
   int depth=0;
   for (int i=0;i<int(s.size());++i){
@@ -5241,6 +5328,454 @@ static bool has_two_terms(const working_string &s,const char *a,const char *b){
   return (t[0]==a && t[1]==b) || (t[0]==b && t[1]==a);
 }
 
+struct RewriteTarget {
+  working_string label,value,log_base,log_arg;
+  bool assigned,is_log;
+};
+
+struct RewriteAcc {
+  Rat c[12];
+  Rat k;
+  working_string work;
+};
+
+static int find_top_equal_rewrite(const working_string &s){
+  int depth=0;
+  for (int i=0;i<int(s.size());++i){
+    char c=s[i];
+    if (c=='(' || c=='[' || c=='{') ++depth;
+    else if (c==')' || c==']' || c=='}') --depth;
+    else if (!depth && c=='=')
+      return i;
+  }
+  return -1;
+}
+
+static bool same_rewrite_expr(const working_string &a,const working_string &b){
+  return canonical_expr(a)==canonical_expr(b) || compact(a)==compact(b);
+}
+
+static bool parse_log_call_ws(const working_string &src,working_string &base,working_string &arg){
+  working_string s=strip_outer_parens(nospace_lower(src));
+  if (s.size()>=5 && s.substr(0,3)=="ln("){
+    int close=match_paren(s,2);
+    if (close!=int(s.size())-1)
+      return false;
+    base="e";
+    arg=canonical_expr(s.substr(3,s.size()-4));
+    return !arg.empty();
+  }
+  if (s.size()<7 || s.substr(0,4)!="log(")
+    return false;
+  int close=match_paren(s,3);
+  if (close!=int(s.size())-1)
+    return false;
+  working_string args[2];
+  int n=split_args(s,4,close,args,2);
+  if (n!=2)
+    return false;
+  base=canonical_expr(args[0]);
+  arg=canonical_expr(args[1]);
+  return !base.empty() && !arg.empty();
+}
+
+static int parse_rewrite_targets(const working_string &raw,RewriteTarget *targets,int maxn){
+  working_string s=trim(raw);
+  int begin=0,end=s.size();
+  if (s.size()>=2 && s[0]=='[' && s[s.size()-1]==']'){
+    begin=1;
+    end=s.size()-1;
+  }
+  working_string args[12];
+  int n=split_args(s,begin,end,args,maxn);
+  for (int i=0;i<n;++i){
+    working_string item=trim(args[i]), label, value;
+    int eq=find_top_equal_rewrite(item);
+    if (eq>0){
+      label=compact(item.substr(0,eq));
+      value=trim(item.substr(eq+1,item.size()-eq-1));
+      targets[i].assigned=true;
+    }
+    else {
+      value=trim(item);
+      label=canonical_expr(value);
+      targets[i].assigned=false;
+    }
+    targets[i].label=label;
+    targets[i].value=canonical_expr(value);
+    targets[i].is_log=parse_log_call_ws(value,targets[i].log_base,targets[i].log_arg);
+  }
+  return n;
+}
+
+static int rewrite_target_index(const working_string &expr,RewriteTarget *targets,int n){
+  for (int i=0;i<n;++i)
+    if (same_rewrite_expr(expr,targets[i].value))
+      return i;
+  return -1;
+}
+
+static int rewrite_log_target_index(const working_string &base,const working_string &arg,RewriteTarget *targets,int n){
+  for (int i=0;i<n;++i)
+    if (targets[i].is_log && same_rewrite_expr(base,targets[i].log_base) &&
+        same_rewrite_expr(arg,targets[i].log_arg))
+      return i;
+  return -1;
+}
+
+static void rewrite_acc_init(RewriteAcc &acc){
+  acc.k=rat(0,1);
+  acc.work="";
+  for (int i=0;i<12;++i)
+    acc.c[i]=rat(0,1);
+}
+
+static void rewrite_add_coeff(RewriteAcc &acc,int idx,Rat q){
+  if (idx>=0 && idx<12)
+    acc.c[idx]=rat_add(acc.c[idx],q);
+}
+
+static bool parse_top_power(const working_string &src,working_string &base,working_string &exp){
+  working_string s=strip_outer_parens(nospace_lower(src));
+  int depth=0;
+  for (int i=int(s.size())-1;i>=0;--i){
+    char c=s[i];
+    if (c==')' || c==']' || c=='}') ++depth;
+    else if (c=='(' || c=='[' || c=='{') --depth;
+    else if (!depth && c=='^' && i>0 && i<int(s.size())-1){
+      base=strip_outer_parens(s.substr(0,i));
+      exp=strip_outer_parens(s.substr(i+1,s.size()-i-1));
+      return !base.empty() && !exp.empty();
+    }
+  }
+  return false;
+}
+
+static bool parse_positive_int_ws(const working_string &src,long &v){
+  Rat r;
+  if (!parse_rat(src,r) || r.d!=1 || r.n<=0)
+    return false;
+  v=r.n;
+  return true;
+}
+
+static bool log_const_power(const working_string &base,const working_string &arg,Rat &pow){
+  long b=0,a=0;
+  if (!parse_positive_int_ws(base,b) || !parse_positive_int_ws(arg,a) || b<=1)
+    return false;
+  if (a==1){
+    pow=rat(0,1);
+    return true;
+  }
+  long v=1;
+  for (int p=1;p<16;++p){
+    if (v>2147483647L/b)
+      return false;
+    v*=b;
+    if (v==a){
+      pow=rat(p,1);
+      return true;
+    }
+    if (v>a)
+      return false;
+  }
+  return false;
+}
+
+static working_string rewrite_term_abs(Rat q,const working_string &label){
+  if (q.n<0)
+    q.n=-q.n;
+  if (q.n==q.d)
+    return label;
+  if (q.d==1)
+    return rat_s(q)+"*"+label;
+  return "("+rat_s(q)+")*"+label;
+}
+
+static working_string format_rewrite_result(RewriteTarget *targets,int n,const RewriteAcc &acc){
+  working_string out;
+  if (acc.k.n)
+    out=rat_s(acc.k);
+  for (int pass=0;pass<2;++pass)
+  for (int i=0;i<n;++i){
+    Rat q=acc.c[i];
+    if (!q.n)
+      continue;
+    bool neg=q.n<0;
+    if ((pass==0 && neg) || (pass==1 && !neg))
+      continue;
+    working_string term=rewrite_term_abs(q,targets[i].label);
+    if (out.empty())
+      out=neg ? "-"+term : term;
+    else
+      out += (neg ? "-" : "+")+term;
+  }
+  return out.empty()?working_string("0"):out;
+}
+
+static working_string log_expr_ws(const working_string &base,const working_string &arg){
+  return "log("+base+","+arg+")";
+}
+
+static bool decompose_log_arg(const working_string &base,const working_string &arg,Rat scale,
+                              RewriteTarget *targets,int n,RewriteAcc &acc);
+
+static bool decompose_log_product(const working_string &base,const working_string &arg,Rat scale,
+                                  RewriteTarget *targets,int n,RewriteAcc &acc){
+  working_string factors[8];
+  int fn=split_top_product(arg,factors,8);
+  if (fn<=1)
+    return false;
+  acc.work += log_expr_ws(base,arg)+" = ";
+  for (int i=0;i<fn;++i){
+    if (i) acc.work += " + ";
+    acc.work += log_expr_ws(base,factors[i]);
+  }
+  acc.work += "\n";
+  for (int i=0;i<fn;++i)
+    if (!decompose_log_arg(base,factors[i],scale,targets,n,acc))
+      return false;
+  return true;
+}
+
+static bool decompose_log_special_sum_fraction(const working_string &base,const working_string &arg,Rat scale,
+                                               RewriteTarget *targets,int n,RewriteAcc &acc){
+  working_string terms[3],num,den;
+  int signs[3];
+  int tn=split_top_sum_terms(arg,terms,signs,3);
+  if (tn!=2 || signs[0]<0 || signs[1]<0)
+    return false;
+  Rat c,d;
+  bool ok=false;
+  if (parse_rat(terms[0],c) && split_top_fraction(terms[1],num,den) &&
+      den=="x" && parse_rat(num,d))
+    ok=true;
+  else if (parse_rat(terms[1],c) && split_top_fraction(terms[0],num,den) &&
+           den=="x" && parse_rat(num,d))
+    ok=true;
+  if (!ok || c.d!=1 || d.d!=1 || c.n<=0 || d.n<=0)
+    return false;
+  long g=gcd_long(c.n,d.n);
+  working_string inner;
+  long k=d.n/g;
+  if (k==1)
+    inner="x+1";
+  else
+    inner="x+"+int_s(k);
+  acc.work += arg+" = "+int_s(g)+"*("+inner+")/x\n";
+  if (!decompose_log_arg(base,int_s(g),scale,targets,n,acc))
+    return false;
+  if (!decompose_log_arg(base,inner,scale,targets,n,acc))
+    return false;
+  return decompose_log_arg(base,"x",rat_mul(scale,rat(-1,1)),targets,n,acc);
+}
+
+static bool decompose_log_arg(const working_string &base,const working_string &arg,Rat scale,
+                              RewriteTarget *targets,int n,RewriteAcc &acc){
+  working_string s=canonical_expr(arg), u, e;
+  int idx=rewrite_log_target_index(base,s,targets,n);
+  if (idx>=0){
+    rewrite_add_coeff(acc,idx,scale);
+    return true;
+  }
+  Rat kp;
+  if (log_const_power(base,s,kp)){
+    acc.work += log_expr_ws(base,s)+" = "+rat_s(kp)+"\n";
+    acc.k=rat_add(acc.k,rat_mul(scale,kp));
+    return true;
+  }
+  if (parse_unary_arg(s,"sqrt",u)){
+    acc.work += "sqrt("+u+") = ("+u+")^(1/2)\n";
+    return decompose_log_arg(base,u,rat_mul(scale,rat(1,2)),targets,n,acc);
+  }
+  if (parse_top_power(s,u,e)){
+    Rat p;
+    if (parse_rat(e,p)){
+      acc.work += log_expr_ws(base,s)+" = "+rat_s(p)+"*"+log_expr_ws(base,u)+"\n";
+      return decompose_log_arg(base,u,rat_mul(scale,p),targets,n,acc);
+    }
+  }
+  working_string num,den;
+  if (split_top_fraction(s,num,den)){
+    acc.work += log_expr_ws(base,s)+" = "+log_expr_ws(base,num)+" - "+log_expr_ws(base,den)+"\n";
+    return decompose_log_arg(base,num,scale,targets,n,acc) &&
+           decompose_log_arg(base,den,rat_mul(scale,rat(-1,1)),targets,n,acc);
+  }
+  if (decompose_log_special_sum_fraction(base,s,scale,targets,n,acc))
+    return true;
+  if (decompose_log_product(base,s,scale,targets,n,acc))
+    return true;
+  working_string shown,fac;
+  if (factor_expr_simple(s,'x',shown,fac) && canonical_expr(fac)!=canonical_expr(s)){
+    acc.work += shown+" = "+fac+"\n";
+    return decompose_log_arg(base,fac,scale,targets,n,acc);
+  }
+  Rat a,b;
+  if (parse_affine_any(s,'x',a,b) && a.d==1 && b.d==1 && a.n && b.n){
+    long g=gcd_long(a.n,b.n);
+    if (g>1){
+      working_string inner=fmt_affine(a.n/g,b.n/g);
+      acc.work += s+" = "+int_s(g)+"*("+inner+")\n";
+      return decompose_log_arg(base,int_s(g),scale,targets,n,acc) &&
+             decompose_log_arg(base,inner,scale,targets,n,acc);
+    }
+  }
+  return false;
+}
+
+static working_string generic_rewrite_expr(const working_string &expr,RewriteTarget *targets,int n,working_string &work,bool &changed){
+  working_string s=canonical_expr(expr);
+  int idx=rewrite_target_index(s,targets,n);
+  if (idx>=0){
+    changed=true;
+    return targets[idx].label;
+  }
+  for (int i=0;i<n;++i){
+    working_string tv=canonical_expr(targets[i].value);
+    if (tv.size()==1 && isalpha((unsigned char)tv[0])){
+      Rat a,b;
+      if (parse_affine_any(s,tv[0],a,b) && a.n){
+        working_string out;
+        if (a.n==a.d)
+          out=targets[i].label;
+        else if (a.n==-a.d)
+          out="-"+targets[i].label;
+        else
+          out=rat_s(a)+"*"+targets[i].label;
+        if (b.n>0)
+          out += "+"+rat_s(b);
+        else if (b.n<0)
+          out += rat_s(b);
+        changed=true;
+        return out;
+      }
+    }
+  }
+  working_string terms[8];
+  int signs[8];
+  int tn=split_top_sum_terms(s,terms,signs,8);
+  if (tn>1){
+    working_string out;
+    bool any=false;
+    for (int i=0;i<tn;++i){
+      bool ch=false;
+      working_string r=generic_rewrite_expr(terms[i],targets,n,work,ch);
+      any = any || ch;
+      if (!i)
+        out = signs[i]<0 ? "-"+r : r;
+      else
+        out += (signs[i]<0 ? "-" : "+")+r;
+    }
+    changed = changed || any;
+    return out;
+  }
+  working_string num,den;
+  if (split_top_fraction(s,num,den)){
+    bool cn=false,cd=false;
+    working_string rn=generic_rewrite_expr(num,targets,n,work,cn);
+    working_string rd=generic_rewrite_expr(den,targets,n,work,cd);
+    changed = changed || cn || cd;
+    return "("+rn+")/("+rd+")";
+  }
+  working_string factors[8];
+  int fn=split_top_product(s,factors,8);
+  if (fn>1){
+    working_string out;
+    bool any=false;
+    for (int i=0;i<fn;++i){
+      bool ch=false;
+      working_string r=generic_rewrite_expr(factors[i],targets,n,work,ch);
+      any = any || ch;
+      if (i) out += "*";
+      out += r;
+    }
+    changed = changed || any;
+    return out;
+  }
+  working_string base,exp;
+  if (parse_top_power(s,base,exp)){
+    bool cb=false,ce=false;
+    working_string rb=generic_rewrite_expr(base,targets,n,work,cb);
+    working_string re=generic_rewrite_expr(exp,targets,n,work,ce);
+    changed = changed || cb || ce;
+    return "("+rb+")^("+re+")";
+  }
+  int p=s.find('(');
+  if (p>0 && match_paren(s,p)==int(s.size())-1){
+    working_string fnm=s.substr(0,p), args[6], out=fnm+"(";
+    int an=split_args(s,p+1,s.size()-1,args,6);
+    bool any=false;
+    for (int i=0;i<an;++i){
+      bool ch=false;
+      working_string r=generic_rewrite_expr(args[i],targets,n,work,ch);
+      any = any || ch;
+      if (i) out += ",";
+      out += r;
+    }
+    out += ")";
+    changed = changed || any;
+    return out;
+  }
+  working_string shown,fac;
+  if (factor_expr_simple(s,'x',shown,fac) && canonical_expr(fac)!=canonical_expr(s)){
+    bool ch=false;
+    working_string r=generic_rewrite_expr(fac,targets,n,work,ch);
+    if (ch){
+      work += shown+" = "+fac+"\n";
+      changed=true;
+      return r;
+    }
+  }
+  return s;
+}
+
+static bool try_rewrite(const char *input,working_string &out){
+  working_string args[2];
+  int n=0;
+  if (!parse_call(input,"rewrite",args,2,n) || n<2)
+    return false;
+  RewriteTarget targets[12];
+  int tn=parse_rewrite_targets(args[1],targets,12);
+  if (tn<=0)
+    return false;
+  out="Rewrite:\n";
+  for (int i=0;i<tn;++i)
+    if (targets[i].assigned)
+      out += targets[i].label+" = "+targets[i].value+"\n";
+  working_string expr=canonical_expr(args[0]), base,arg;
+  int eq=find_top_equal_rewrite(expr);
+  if (eq>=0){
+    bool cl=false,cr=false;
+    working_string work;
+    working_string l=generic_rewrite_expr(expr.substr(0,eq),targets,tn,work,cl);
+    working_string r=generic_rewrite_expr(expr.substr(eq+1,expr.size()-eq-1),targets,tn,work,cr);
+    if (!cl && !cr)
+      return false;
+    out += work;
+    out += l+"="+r;
+    return true;
+  }
+  if (parse_log_call_ws(expr,base,arg)){
+    RewriteAcc acc;
+    rewrite_acc_init(acc);
+    if (decompose_log_arg(base,arg,rat(1,1),targets,tn,acc)){
+      out += acc.work;
+      out += format_rewrite_result(targets,tn,acc);
+      return true;
+    }
+  }
+  bool changed=false;
+  working_string work;
+  working_string r=generic_rewrite_expr(expr,targets,tn,work,changed);
+  if (!changed){
+    out += expr;
+    return true;
+  }
+  out += work;
+  out += r;
+  return true;
+}
+
 static bool try_xform(const char *input,working_string &out){
   working_string args[2];
   int n=0;
@@ -5406,6 +5941,10 @@ bool eval_with_working(const char *input,working_string &out){
   working_string s=trim(input?input:"");
   if (s.empty() || !balanced(s) || numeric_literal(s))
     return false;
+  if (reject_removed_feature(input)){
+    out="Err: unsupported (not A-level scope)";
+    return true;
+  }
   if (empty_function_call(s)){
     out=s;
     return true;
@@ -5415,7 +5954,7 @@ bool eval_with_working(const char *input,working_string &out){
   if (try_integral(input,out) || try_diff(input,out) || try_log_base(input,out) ||
       try_algebra(input,out) || try_simplify(input,out) || try_numeric(input,out) ||
       try_numeric_expr(input,out) || try_solve(input,out) || try_range(input,out) ||
-      try_xform(input,out)){
+      try_rewrite(input,out) || try_xform(input,out)){
     return true;
   }
   return false;

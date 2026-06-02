@@ -10,7 +10,7 @@ Optional:
   None.
 
 Does:
-  Limit. Required: expression f and point x=a. Optional: side 1 or -1.
+  Limit. Required: expression f and target value x=a. Optional: side 1 or -1.
 
 Examples:
   limit(sin(x)/x,x=0); limit(1/x,x=0,1)

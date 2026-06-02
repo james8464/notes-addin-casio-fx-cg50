@@ -92,6 +92,7 @@ const catalogFunc completeCat[] = { // list of all functions (including some not
   {"product(f,k,m,M)", 0, "Product notation.", "k,k,1,n", 0, CAT_CATEGORY_CALCULUS},
   {"proot(p)", 0, "Numerical polynomial roots.", "x^3-2*x+1", 0, CAT_CATEGORY_POLYNOMIAL | (CAT_CATEGORY_SOLVE<<8)},
   {"range(expr,[x,a,b])", "range(", "Range of a function; checks restrictions/endpoints.", "x^2", "1/x", CAT_CATEGORY_ALGEBRA},
+  {"rewrite(expr,terms)", "rewrite(", "Rewrite expression/equation in terms of chosen target expressions.", "log(2,x^2+8*x),[a=log(2,x),b=log(2,x+8)]", "log(2,8+64/x),[a=log(2,x),b=log(2,x+8)]", CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_TRIG<<8)},
   {"round(x)", 0, "Round to nearest integer.", "1.6", 0, CAT_CATEGORY_REAL},
   {"sec(x)", 0, "Secant: sec(x)=1/cos(x).", "x", 0, CAT_CATEGORY_TRIG},
   {"series(f,x=a,n)", 0, "Taylor/binomial series.", "sin(x),x=0,5", "(1+x)^(-1),x=0,4", CAT_CATEGORY_CALCULUS},

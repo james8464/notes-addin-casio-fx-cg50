@@ -10,7 +10,7 @@ Optional:
   None.
 
 Does:
-  Taylor expansion. Required: expression f, point x=a, order n.
+  Taylor expansion. Required: expression f, centre x=a, order n.
 
 Examples:
   taylor(sin(x),x=0,5)
