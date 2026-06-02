@@ -67,11 +67,11 @@ static void draw_status_area() {
 }
 
 static void draw_r_indicator(bool visible) {
-  fill_rect(339, 0, 21, visible ? 23 : 24, visible ? COLOR_BLUE : kWhite);
   if (visible) {
+    fill_rect(339, 0, 21, 23, COLOR_BLUE);
     PrintCXY(342, 1, "R", 0x40, -1, COLOR_WHITE, COLOR_BLUE, 1, 0);
   } else {
-    hline(339, 359, 23, kFrame);
+    fill_rect(339, 0, 21, 26, kWhite);
   }
 }
 
@@ -108,8 +108,8 @@ static void draw_soft_labels() {
 
 static void draw_input_box() {
   fill_rect(13, 31, 14, 17, kWhite);
-  rect_outline(13, 31, 14, 17, kFrame);
-  fill_rect(13, 31, 2, 17, kFrame);
+  rect_outline(13, 31, 14, 17, kBlack);
+  fill_rect(13, 31, 2, 17, kBlack);
 }
 
 static void draw_static_screen(bool r_visible) {

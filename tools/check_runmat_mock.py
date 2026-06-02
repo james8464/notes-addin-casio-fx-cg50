@@ -60,9 +60,9 @@ def main() -> int:
     require(source, "KEYWAIT_HALTOFF_TIMEROFF", "nonblocking key poll")
     require(source, "GetKeyWait_OS(&col, &row, KEYWAIT_HALTOFF_TIMEROFF, 0, 1, &keycode)", "nonblocking key call")
     require(source, "OS_InnerWait_ms(40)", "loop pacing")
-    require(source, "fill_rect(339, 0, 21, visible ? 23 : 24, visible ? COLOR_BLUE : kWhite);", "R blue highlight")
+    require(source, "fill_rect(339, 0, 21, 23, COLOR_BLUE);", "R blue highlight")
+    require(source, "fill_rect(339, 0, 21, 26, kWhite);", "R off-state clear")
     require(source, 'PrintCXY(342, 1, "R", 0x40', "status-area R glyph")
-    require(source, "hline(339, 359, 23, kFrame);", "R off-state divider restore")
     require(source, "kFKeyBlackTemplate = 0x0190", "OS black fkey template")
     require(source, "display_fkey(slot, kFKeyBlackTemplate);", "OS fkey background")
     require(source, "Bdisp_MMPrint(x, y, text, 0, 0xffffffff", "OS fkey text")
@@ -72,8 +72,8 @@ def main() -> int:
     require(source, '"MATH"', "MATH fkey")
     require(source, "draw_input_box", "input box helper")
     require(source, "fill_rect(13, 31, 14, 17, kWhite);", "input box clear")
-    require(source, "rect_outline(13, 31, 14, 17, kFrame);", "input box outline")
-    require(source, "fill_rect(13, 31, 2, 17, kFrame);", "input box left accent")
+    require(source, "rect_outline(13, 31, 14, 17, kBlack);", "input box outline")
+    require(source, "fill_rect(13, 31, 2, 17, kBlack);", "input box left accent")
     if "PrintCXY(340" in source:
         raise SystemExit("FAIL runmat clipped R PrintCXY present")
     if "hline(6, 389, 24" in source:
@@ -82,6 +82,8 @@ def main() -> int:
         raise SystemExit("FAIL runmat custom fkey box renderer present")
     if "fill_rect(339, 0, 21, 23, visible ? COLOR_BLUE : kWhite);" in source:
         raise SystemExit("FAIL runmat R off-state leaves blue residue")
+    if "hline(339, 359, 23" in source:
+        raise SystemExit("FAIL runmat R off-state divider residue present")
     if "static unsigned char glyph" in source or "draw_pixel_text" in source:
         raise SystemExit("FAIL runmat manual pixel glyph renderer present")
 
