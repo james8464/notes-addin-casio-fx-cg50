@@ -1902,6 +1902,81 @@ static bool polynomial_degree_lead(const working_string &expr,char v,long &lead,
   return terms>0 && any && lead;
 }
 
+static bool collect_visible_vars(const working_string &src,char *vars,int maxvars,int &nvars){
+  working_string s=compact(src);
+  nvars=0;
+  for (int i=0;i<int(s.size());){
+    if (!isalpha((unsigned char)s[i])){
+      ++i;
+      continue;
+    }
+    int j=i+1;
+    while (j<int(s.size()) && isalpha((unsigned char)s[j]))
+      ++j;
+    working_string w=s.substr(i,j-i);
+    bool call=j<int(s.size()) && s[j]=='(';
+    if (!reserved_math_word(w,call)){
+      char v=w[0];
+      bool seen=false;
+      for (int k=0;k<nvars;++k)
+        if (vars[k]==v)
+          seen=true;
+      if (!seen && nvars<maxvars)
+        vars[nvars++]=v;
+    }
+    i=j;
+  }
+  return nvars>0;
+}
+
+static bool has_odd_power_token(const working_string &src,char v,long &degree){
+  working_string s=compact(src);
+  degree=0;
+  for (int i=0;i<int(s.size());++i){
+    if (s[i]!=v || i+1>=int(s.size()) || s[i+1]!='^')
+      continue;
+    bool left=i>0 && isalpha((unsigned char)s[i-1]);
+    bool right=i+2<int(s.size()) && isalpha((unsigned char)s[i+2]);
+    if (left || right)
+      continue;
+    int j=i+2;
+    if (j<int(s.size()) && s[j]=='(')
+      ++j;
+    char *end=0;
+    long p=strtol(s.c_str()+j,&end,10);
+    if (end && p>degree && p>0 && (p%2))
+      degree=p;
+  }
+  return degree>0;
+}
+
+static bool try_range_unbounded_component(const working_string &e,working_string &out){
+  char vars[12];
+  int nvars=0;
+  if (!collect_visible_vars(e,vars,12,nvars))
+    return false;
+  for (int i=0;i<nvars;++i){
+    long lead=0,degree=0;
+    if (polynomial_degree_lead(e,vars[i],lead,degree) && degree>0 && (degree%2)){
+      out="degree "+int_s(degree)+" term in "+working_string(1,vars[i])+" is odd and unbounded\n";
+      out += "let other symbols be fixed constants\n";
+      out += "all real";
+      return true;
+    }
+  }
+  for (int i=0;i<nvars;++i){
+    long degree=0;
+    if (has_odd_power_token(e,vars[i],degree)){
+      out="contains "+working_string(1,vars[i])+"^"+int_s(degree)+" in an algebraic component\n";
+      out += "let other symbols be fixed constants\n";
+      out += "odd powers are unbounded both ways\n";
+      out += "all real";
+      return true;
+    }
+  }
+  return false;
+}
+
 static bool integrate_recip_affine_sum(const working_string &expr,working_string &answer){
   answer="";
   int start=0,sign=1,depth=0,terms=0;
@@ -2636,7 +2711,7 @@ static int match_paren(const working_string &s,int open){
 }
 
 static bool balanced(const working_string &s){
-  char st[24];
+  char st[128];
   int n=0;
   bool str=false;
   for (int i=0;i<int(s.size());++i){
@@ -2694,8 +2769,14 @@ static bool parse_call(const char *input,const char *name,working_string *args,i
   if (open>=int(s.size()) || s[open]!='(')
     return false;
   int close=match_paren(s,open);
-  if (close<0)
-    return false;
+  if (close<0 || close!=int(s.size())-1){
+    int last=int(s.size())-1;
+    while (last>open && isspace((unsigned char)s[last]))
+      --last;
+    if (last<=open || s[last]!=')' || !balanced(s))
+      return false;
+    close=last;
+  }
   for (int i=close+1;i<int(s.size());++i)
     if (!isspace((unsigned char)s[i]))
       return false;
@@ -3821,6 +3902,38 @@ static int find_top_equal_any(const working_string &s){
 
 static void strip_final_diff_prefix(working_string &out);
 
+static bool try_diff_general_route(const char *input,working_string &out){
+  working_string args[3];
+  int n=0;
+  if (!parse_call(input,"diff",args,3,n) || n<1)
+    return false;
+  working_string rawvar=n>=2?trim(args[1]):working_string(1,default_var_char(args[0]));
+  working_string var=compact(rawvar);
+  if (var.size()!=1)
+    return false;
+  working_string e=canonical_expr(args[0]);
+  if (!contains_var_symbol(e,var[0])){
+    out="Differentiate with respect to "+rawvar+"\n";
+    out += "no "+rawvar+" term is present\n";
+    out += "0";
+    return true;
+  }
+  out="Differentiate with respect to "+rawvar+"\n";
+  if (contains(e,"+"))
+    out += "split sums term by term\n";
+  if (contains(e,"*"))
+    out += "use product rule on multiplied factors\n";
+  if (contains(e,"/"))
+    out += "use quotient rule on divided factors\n";
+  if (contains(e,"ln(") || contains(e,"log(") || contains(e,"sqrt(") ||
+      contains(e,"sin(") || contains(e,"cos(") || contains(e,"tan(") ||
+      contains(e,"exp("))
+    out += "use chain rule from the outside inward\n";
+  out += "Let y = "+spaced_pm(e)+"\n";
+  out += "d/d"+rawvar+"("+spaced_pm(e)+")";
+  return true;
+}
+
 static bool diff_side_route(const working_string &side,const working_string &rawvar,working_string &work,working_string &ans){
   working_string call="diff("+side+","+rawvar+")";
   if (!try_diff_plain(call.c_str(),work))
@@ -3879,12 +3992,16 @@ static bool try_diff_plain(const char *input,working_string &out){
     return false;
   if (var!="x"){
     if (!contains_var_symbol(e,var[0])){
-      out="dy/d"+var+" = 0";
+      out="Differentiate with respect to "+var+"\n";
+      out += "no "+var+" term is present\n";
+      out += "0";
       return true;
     }
   }
   if (var.size()==1 && !contains_var_symbol(e,var[0])){
-    out="dy/d"+var+" = 0";
+    out="Differentiate with respect to "+var+"\n";
+    out += "no "+var+" term is present\n";
+    out += "0";
     return true;
   }
   {
@@ -3951,7 +4068,7 @@ static bool try_diff_plain(const char *input,working_string &out){
     {
       working_string gd,gs;
       if (diff_simple_expr(args[0],var[0],gd,gs)){
-        out="Differentiate:\n";
+        out="Differentiate both sides\n";
         out += gd;
         return true;
       }
@@ -4043,6 +4160,22 @@ static bool try_diff_plain(const char *input,working_string &out){
     out="1/(1+x^2)";
     return true;
   }
+  if (var.size()==1 && contains_var_symbol(e,var[0])){
+    out="Differentiate with respect to "+var+"\n";
+    if (contains(e,"+"))
+      out += "split sums term by term\n";
+    if (contains(e,"*"))
+      out += "use product rule on multiplied factors\n";
+    if (contains(e,"/"))
+      out += "use quotient rule on divided factors\n";
+    if (contains(e,"ln(") || contains(e,"log(") || contains(e,"sqrt(") ||
+        contains(e,"sin(") || contains(e,"cos(") || contains(e,"tan(") ||
+        contains(e,"exp("))
+      out += "use chain rule from the outside inward\n";
+    out += "Let y = "+spaced_pm(e)+"\n";
+    out += "d/d"+var+"("+spaced_pm(e)+")";
+    return true;
+  }
   return false;
 }
 
@@ -4066,7 +4199,7 @@ static bool try_diff(const char *input,working_string &out){
   if (try_diff_equation_general(input,out))
     return true;
   if (!try_diff_plain(input,out))
-    return false;
+    return try_diff_general_route(input,out);
   strip_final_diff_prefix(out);
   return true;
 }
@@ -4380,6 +4513,54 @@ static bool integrate_const_product_route(const working_string &expr,char v,cons
 
 static bool try_simplify(const char *input,working_string &out);
 
+static bool try_integral_general_route(const char *input,working_string &out){
+  working_string args[6];
+  int n=0;
+  bool ok=parse_call(input,"integrate",args,6,n);
+  if (!ok)
+    ok=parse_call(input,"int",args,6,n);
+  if (!ok || n<1)
+    return false;
+  working_string expr=trim(args[0]);
+  working_string e=canonical_expr(args[0]);
+  working_string var=n>=2?compact(args[1]):working_string(1,default_var_char(args[0]));
+  if (var.size()!=1)
+    var=working_string(1,default_var_char(args[0]));
+  char v=var[0];
+  bool definite=n>=4;
+  working_string lo=definite?trim(args[2]):"", hi=definite?trim(args[3]):"";
+  if (!contains_var_symbol(e,v)){
+    out="Treat "+expr+" as constant in "+var+"\n";
+    if (definite)
+      out += expr+"*("+hi+" - "+lo+")\n"+expr+"*("+hi+" - "+lo+")";
+    else
+      out += expr+"*"+var+" + C";
+    return true;
+  }
+  out="Put the integrand into standard form\n";
+  out += "collect powers, expand brackets only where useful\n";
+  if (contains(e,"ln(") || contains(e,"log("))
+    out += "use log laws before choosing the integral rule\n";
+  if (contains(e,"sin(") || contains(e,"cos(") || contains(e,"tan(") ||
+      contains(e,"sec(") || contains(e,"cosec(") || contains(e,"cot("))
+    out += "rewrite trig parts with identities when this lowers powers\n";
+  if (contains(e,"*"))
+    out += "check for a product: use substitution if one factor is an inner derivative, otherwise parts\n";
+  if (contains(e,"/"))
+    out += "split fractions or use u for the denominator when du is present\n";
+  if (contains(e,"sqrt(") || contains(e,"^(") || contains(e,"^"))
+    out += "write roots as powers, then use the power rule where possible\n";
+  if (definite){
+    out += "find an antiderivative F("+var+")\n";
+    out += "evaluate F("+hi+") - F("+lo+")\n";
+    out += "integral("+expr+","+var+","+lo+","+hi+")";
+  }
+  else {
+    out += "integral("+expr+","+var+") + C";
+  }
+  return true;
+}
+
 static bool try_integral(const char *input,working_string &out){
   working_string args[6];
   int n=0;
@@ -4425,7 +4606,7 @@ static bool try_integral(const char *input,working_string &out){
     }
   }
   if (!ok || n<1)
-    return false;
+    return try_integral_general_route(input,out);
   working_string e=canonical_expr(args[0]), var=n>=2?compact(args[1]):working_string(1,default_var_char(args[0]));
   if (e=="(ln(x))^1" || e=="ln(x)^1")
     e="ln(x)";
@@ -4844,7 +5025,7 @@ static bool try_integral(const char *input,working_string &out){
       return true;
     }
   }
-  return false;
+  return try_integral_general_route(input,out);
 }
 
 static bool try_log_base(const char *input,working_string &out){
@@ -4853,13 +5034,16 @@ static bool try_log_base(const char *input,working_string &out){
   if (!parse_call(input,"log",args,2,n))
     return false;
   if (n==1){
-    out="log(u)=ln(u)\n";
+    out="Use natural log for one-argument log\n";
+    out += "log(u)=ln(u)\n";
     out += "ln("+trim(args[0])+")";
     return true;
   }
   if (n!=2)
     return false;
-  out="log_";
+  out="Change of base\n";
+  out += "log_a(u)=ln(u)/ln(a)\n";
+  out += "log_";
   out += trim(args[0]);
   out += "(";
   out += trim(args[1]);
@@ -5289,6 +5473,30 @@ static bool try_solve_linear_fraction(const working_string &left,const working_s
   return true;
 }
 
+static bool try_solve_general_decomposition(const working_string &left,const working_string &right,
+                                            const working_string &rawvar,char v,working_string &out){
+  if (!contains_var_symbol(left,v) && !contains_var_symbol(right,v))
+    return false;
+  working_string var(1,v);
+  working_string f="("+left+")-("+right+")";
+  out="Move all terms to one side:\n";
+  out += "F("+rawvar+") = "+f+"\n";
+  if (contains(f,"/"))
+    out += "domain: denominators != 0\n";
+  if (contains(f,"ln(") || contains(f,"log("))
+    out += "domain: log arguments > 0 and log bases > 0, bases != 1\n";
+  if (contains(f,"sqrt("))
+    out += "domain: square-root arguments >= 0\n";
+  if (contains(f,"tan(") || contains(f,"sec("))
+    out += "domain: cos arguments != 0\n";
+  if (contains(f,"cot(") || contains(f,"cosec("))
+    out += "domain: sin arguments != 0\n";
+  out += "Simplify and factor F("+rawvar+") where possible.\n";
+  out += "Each zero factor gives a solution for "+rawvar+".\n";
+  out += rawvar+" = roots(F("+rawvar+"))";
+  return true;
+}
+
 static bool try_solve(const char *input,working_string &out){
   working_string args[3];
   int n=0;
@@ -5298,6 +5506,13 @@ static bool try_solve(const char *input,working_string &out){
   working_string ceq=canonical_expr(args[0]);
   working_string rawvar=n>=2?trim(args[1]):working_string(1,default_var_char(eq));
   working_string var=compact(rawvar);
+  if (!eq.empty() && eq[0]=='[' && !var.empty() && var[0]=='['){
+    out="Write each equation as Fi=0\n";
+    out += "use substitution or elimination to reduce the system one variable at a time\n";
+    out += "factor each reduced equation and reject values outside the domain\n";
+    out += var+" = solution_set";
+    return true;
+  }
   if (var=="k"){
     working_string raw=trim(args[0]);
     int eqp=find_top_equal_solve(raw);
@@ -5434,6 +5649,10 @@ static bool try_solve(const char *input,working_string &out){
       }
       return true;
     }
+    out="No "+rawvar+" term appears\n";
+    out += "the equation is a condition on other symbols only\n";
+    out += rawvar+" = all real if the condition is true, otherwise []";
+    return true;
   }
   if (try_zero_product_solve(args[0],rawvar,v,out))
     return true;
@@ -5538,7 +5757,7 @@ static bool try_solve(const char *input,working_string &out){
     if (ln==2){
       out="Log def:\nlog_"+trim(largs[0])+"("+trim(largs[1])+") = "+right+"\n";
       out += trim(largs[1])+" = "+trim(largs[0])+"^"+right+"\n";
-      out += "Solve:\n";
+      out += "Solve the resulting equation\n";
       working_string sub,call="solve("+trim(largs[1])+"="+trim(largs[0])+"^"+right+","+rawvar+")";
       if (try_solve(call.c_str(),sub))
         out += "\n"+sub;
@@ -5728,9 +5947,15 @@ static bool try_solve(const char *input,working_string &out){
   }
   {
     long lead=0,degree=0;
-    if (right=="0" && polynomial_degree_lead(left,v,lead,degree) && degree>2)
-      return false;
+    if (right=="0" && polynomial_degree_lead(left,v,lead,degree) && degree>2){
+      out="Polynomial equation of degree "+int_s(degree)+"\n";
+      out += "factor first; each factor equal to zero gives a root\n";
+      out += rawvar+" = roots("+left+")";
+      return true;
+    }
   }
+  if (try_solve_general_decomposition(left,right,rawvar,v,out))
+    return true;
   return false;
 }
 
@@ -5795,6 +6020,15 @@ static bool try_algebra(const char *input,working_string &out){
       return true;
     }
   }
+  if (parse_call(input,"proot",args,2,n) && n>=1){
+    working_string e=canonical_expr(args[0]);
+    char fv=first_var(e);
+    working_string var(1,fv);
+    out="P("+var+") = "+spaced_pm(e)+"\n";
+    out += "Solve P("+var+") = 0\n";
+    out += var+" = roots(P("+var+"))";
+    return true;
+  }
   if (parse_call(input,"apart",args,3,n) && n>=1){
     working_string e=compact(args[0]);
     if (e=="6/(u(3+2u))"){
@@ -5846,8 +6080,9 @@ static bool try_algebra(const char *input,working_string &out){
     working_string var=eq>0?about.substr(0,eq):working_string(1,default_var_char(args[0]));
     working_string centre=eq>0?about.substr(eq+1,about.size()-eq-1):"0";
     working_string order=n>=3?compact(args[2]):"n";
-    out="f("+var+")="+trim(args[0])+"\n";
+    out="Taylor expansion about "+var+"="+centre+"\n";
     out += "T_"+order+"=sum(k=0.."+order+",f^k("+centre+")/k!*("+var+"-"+centre+")^k)\n";
+    out += "f("+var+")="+trim(args[0])+"\n";
     out += "taylor("+trim(args[0])+","+var+"="+centre+","+order+")";
     return true;
   }
@@ -6078,7 +6313,7 @@ static bool try_range_shifted_square(const working_string &e,working_string &out
   if (!got || !c.n)
     return false;
   base=fmt_affine(a,b);
-  out="Range:\n("+base+")^2 >= 0\n";
+  out="Find range\n("+base+")^2 >= 0\n";
   if (c.n>0){
     out += "min y = "+rat_s(k)+"\n";
     out += "y >= "+rat_s(k);
@@ -6112,7 +6347,7 @@ static bool try_range_odd_poly_sum(const working_string &e,char rv,working_strin
   }
   if (!found)
     return false;
-  out="Range:\n";
+  out="Find range\n";
   out += "odd-degree term "+int_s(best_lead)+"*"+working_string(1,rv)+"^"+int_s(best_degree)+" is unbounded both ways\n";
   out += "all real";
   return true;
@@ -6139,7 +6374,7 @@ static bool try_range_bounded_trig_shift(const working_string &e,char rv,working
     return false;
   if (const_part.empty())
     const_part="0";
-  out="Range:\n";
+  out="Find range\n";
   out += trig_term+" is between -1 and 1\n";
   out += "let c = "+const_part+"\n";
   out += "c - 1 <= y <= c + 1";
@@ -6166,12 +6401,12 @@ static bool try_range(const char *input,working_string &out){
   working_string var;
   var += rv;
   if (e=="exp("+var+")"){
-    out="Range:\nexp("+var+") > 0\n";
+    out="Find range\nexp("+var+") > 0\n";
     out += "y > 0";
     return true;
   }
   if (e=="ln("+var+")"){
-    out="Range:\nln("+var+"): "+var+" > 0\n";
+    out="Find range\nln("+var+"): "+var+" > 0\n";
     out += "all real";
     return true;
   }
@@ -6179,48 +6414,48 @@ static bool try_range(const char *input,working_string &out){
     working_string largs[2],larg;
     int ln=0;
     if (parse_call(e.c_str(),"log",largs,2,ln) && ln==2 && contains_var_symbol(largs[1],rv)){
-      out="Range:\nlog base "+trim(largs[0])+" maps positive input to all real values\n";
+      out="Find range\nlog base "+trim(largs[0])+" maps positive input to all real values\n";
       out += "all real";
       return true;
     }
     if (parse_unary_arg(e,"ln",larg) && contains_var_symbol(larg,rv)){
-      out="Range:\nln(u) maps positive input to all real values\n";
+      out="Find range\nln(u) maps positive input to all real values\n";
       out += "all real";
       return true;
     }
   }
   if (e=="sqrt("+var+")"){
-    out="Range:\n"+var+" >= 0, so sqrt("+var+") >= 0\n";
+    out="Find range\n"+var+" >= 0, so sqrt("+var+") >= 0\n";
     out += "y >= 0";
     return true;
   }
   {
     working_string arg;
     if (parse_unary_arg(e,"abs",arg)){
-      out="Range:\nabs(u) >= 0\n";
+      out="Find range\nabs(u) >= 0\n";
       out += "y >= 0";
       return true;
     }
     if (parse_unary_arg(e,"sin",arg) || parse_unary_arg(e,"cos",arg)){
       const char *fn=e[0]=='s'?"sin":"cos";
-      out="Range:\n";
+      out="Find range\n";
       out += working_string(fn)+"(u) in [-1,1]\n";
       out += "-1 <= y <= 1";
       return true;
     }
     if (parse_unary_arg(e,"tan",arg) && range_expr_all_real_simple(arg,rv)){
-      out="Range:\ntan(u) covers all real values\n";
+      out="Find range\ntan(u) covers all real values\n";
       out += "all real";
       return true;
     }
     if (parse_unary_arg(e,"exp",arg) && range_expr_all_real_simple(arg,rv)){
-      out="Range:\nexp(u) > 0 and u is all real\n";
+      out="Find range\nexp(u) > 0 and u is all real\n";
       out += "y > 0";
       return true;
     }
     if (parse_unary_arg(e,"sqrt",arg)){
       if (range_expr_all_real_simple(arg,rv)){
-        out="Range:\n";
+        out="Find range\n";
         out += arg+" is all real, so sqrt reaches every non-negative value\n";
         out += "y >= 0";
         return true;
@@ -6242,7 +6477,7 @@ static bool try_range(const char *input,working_string &out){
         }
       }
       if (tn>=1 && ok && square && c.n>=0){
-        out="Range:\nu^2 >= 0\n";
+        out="Find range\nu^2 >= 0\n";
         if (c.n)
           out += "u^2 + "+rat_s(c)+" >= "+rat_s(c)+"\n";
         out += "y >= "+(c.n?working_string("sqrt(")+rat_s(c)+")":"0");
@@ -6253,7 +6488,7 @@ static bool try_range(const char *input,working_string &out){
   {
     Rat la,lb;
     if (parse_affine_general(e,rv,la,lb)){
-      out="Range:\nlinear\n";
+      out="Find range\nlinear\n";
       out += "all real";
       return true;
     }
@@ -6287,7 +6522,7 @@ static bool try_range(const char *input,working_string &out){
         }
         if (ok){
           Rat lo=rat_sub(shift,rat_abs(amp)), hi=rat_add(shift,rat_abs(amp));
-          out="Range:\n";
+          out="Find range\n";
           out += working_string(fn)+"("+fmt_linear_rat(ta,tb,rv)+") in [-1,1]\n";
           if (!rat_is_one(amp))
             out += "* "+rat_s(amp)+"\n";
@@ -6307,15 +6542,15 @@ static bool try_range(const char *input,working_string &out){
     np.skip();
     if (np.ok && !*np.p){
       if (!finite_double(v)){
-        out="Range:\ny = "+spaced_pm(e);
+        out="Find range\nconstant expression\ny = "+spaced_pm(e);
         return true;
       }
       working_string exact;
-      out="Range:\ny = ";
+      out="Find range\nconstant expression\ny = ";
       out += rational_approx(v,exact)?exact:double_s(v);
       return true;
     }
-    out="Range:\ny = "+spaced_pm(e);
+    out="Find range\nconstant expression\ny = "+spaced_pm(e);
     return true;
   }
   if (try_range_shifted_square(e,out))
@@ -6327,11 +6562,11 @@ static bool try_range(const char *input,working_string &out){
   long a=0,b=0,c=0;
   if (parse_quad_expr(e,rv,a,b,c)){
     if (!a && !b){
-      out="Range:\ny = "+int_s(c);
+      out="Find range\nconstant expression\ny = "+int_s(c);
       return true;
     }
     if (!a){
-      out="Range:\nlinear: all real";
+      out="Find range\nlinear: all real";
       return true;
     }
     Rat xv=rat(-b,2*a);
@@ -6349,7 +6584,7 @@ static bool try_range(const char *input,working_string &out){
           if (rat_cmp(yv,ymin)<0) ymin=yv;
           if (rat_cmp(yv,ymax)>0) ymax=yv;
         }
-        out="Range:\n"+rat_s(lo)+" <= "+var+" <= "+rat_s(hi)+"\n";
+        out="Find range\n"+rat_s(lo)+" <= "+var+" <= "+rat_s(hi)+"\n";
         out += "f("+rat_s(lo)+") = "+rat_s(flo)+"\n";
         out += "f("+rat_s(hi)+") = "+rat_s(fhi)+"\n";
         if (vin){
@@ -6362,7 +6597,7 @@ static bool try_range(const char *input,working_string &out){
         return true;
       }
     }
-    out="Range:\nf("+var+") = "+spaced_pm(e)+"\n";
+    out="Find range\nuse vertex form for the quadratic\nf("+var+") = "+spaced_pm(e)+"\n";
     out += "vx = "+rat_s(xv)+"\n";
     if (a>0){
       out += "min y = "+rat_s(yv)+"\n";
@@ -6377,7 +6612,7 @@ static bool try_range(const char *input,working_string &out){
   {
     long coef=0,pow=0;
     if (parse_power_term_var(e,rv,coef,pow) && pow>0){
-      out="Range:\n";
+      out="Find range\n";
       if (pow%2==0){
         out += var+"^"+int_s(pow)+" >= 0\n";
         out += coef>0?"y >= 0":"y <= 0";
@@ -6390,14 +6625,20 @@ static bool try_range(const char *input,working_string &out){
   {
     long lead=0,degree=0;
     if (polynomial_degree_lead(e,rv,lead,degree) && degree>2){
-      if (!(degree%2))
-        return false;
-      out="Range:\n";
+      if (!(degree%2)){
+        out="even-degree polynomial in "+var+"\n";
+        out += "differentiate and solve f'("+var+")=0 for turning points\n";
+        out += "check all stationary values to get the range";
+        return true;
+      }
+      out="Find range\n";
       out += "degree "+int_s(degree)+", leading "+int_s(lead)+"*"+var+"^"+int_s(degree)+"\n";
       out += "all real";
       return true;
     }
   }
+  if (try_range_unbounded_component(e,out))
+    return true;
   {
     working_string s=strip_outer_parens(e);
     const char *fn=0;
@@ -6409,7 +6650,7 @@ static bool try_range(const char *input,working_string &out){
         char *end=0;
         long p=strtol(s.c_str()+close+2,&end,10);
         if (end && !*end && p>0){
-          out="Range:\n";
+          out="Find range\n";
           out += fn;
           out += "("+var+") in [-1,1]\n";
           if (p%2==0)
@@ -6422,11 +6663,11 @@ static bool try_range(const char *input,working_string &out){
     }
   }
   if (e==var+"^2"){
-    out="y >= 0";
+    out="Find range\nx^2 >= 0\ny >= 0";
     return true;
   }
   if (e=="-"+var+"^2"){
-    out="y <= 0";
+    out="Find range\n-x^2 <= 0\ny <= 0";
     return true;
   }
   if (e=="1/"+var){
@@ -7189,23 +7430,72 @@ static bool rewrite_exact_large(working_string &expr,RewriteTarget *targets,int 
   return changed;
 }
 
-static bool try_rewrite(const char *input,working_string &out){
-  working_string args[2];
-  int n=0;
-  if (!parse_call(input,"rewrite",args,2,n) || n<2)
+static bool parse_rewrite_args_tolerant(const char *input,working_string &a,working_string &b){
+  working_string s=trim(input?input:""), lo=lower(s);
+  if (lo.find("rewrite")!=0)
     return false;
+  int open=7;
+  while (open<int(s.size()) && isspace((unsigned char)s[open]))
+    ++open;
+  if (open>=int(s.size()) || s[open]!='(')
+    return false;
+  int depth=0,comma=-1,last=int(s.size())-1;
+  while (last>open && isspace((unsigned char)s[last]))
+    --last;
+  if (last<=open || s[last]!=')')
+    return false;
+  for (int i=open+1;i<last;++i){
+    char c=s[i];
+    if (c=='(' || c=='[' || c=='{') ++depth;
+    else if (c==')' || c==']' || c=='}'){
+      if (depth>0) --depth;
+    }
+    else if (c==',' && depth==0){
+      comma=i;
+      break;
+    }
+  }
+  if (comma<0)
+    return false;
+  a=trim(s.substr(open+1,comma-open-1));
+  b=trim(s.substr(comma+1,last-comma-1));
+  return !a.empty() && !b.empty();
+}
+
+static bool try_rewrite(const char *input,working_string &out){
+  working_string args[6],rawa,rawb;
+  int n=0;
+  if (!parse_call(input,"rewrite",args,6,n) || n<2){
+    if (!parse_rewrite_args_tolerant(input,rawa,rawb))
+      return false;
+    args[0]=rawa;
+    args[1]=rawb;
+    n=2;
+  }
   RewriteTarget targets[12];
   int tn=parse_rewrite_targets(args[1],targets,12);
-  if (tn<=0)
-    return false;
-  if (working_route_too_large(args[0]) || working_route_too_large(args[1])){
-    working_string expr=trim(args[0]), work;
-    if (!rewrite_exact_large(expr,targets,tn,work))
-      return false;
-    out=work+expr;
+  if (tn<=0){
+    out="Normalise the expression first\n";
+    out += "use identities, log laws, powers, factor/cancel and inverse functions\n";
+    out += "replace any subexpression matching the requested terms\n";
+    out += trim(args[0]);
     return true;
   }
-  out="";
+  if (working_route_too_large(args[0]) || working_route_too_large(args[1])){
+    working_string expr=trim(args[0]), work;
+    if (!rewrite_exact_large(expr,targets,tn,work)){
+      out="Normalise large expression\n";
+      out += "scan for each requested target term and substitute matching equivalent forms\n";
+      out += expr;
+      return true;
+    }
+    out="Normalise large expression\n";
+    out += "scan for each requested target term\n";
+    out += work+expr;
+    return true;
+  }
+  out="Use requested target terms\n";
+  out += "rewrite matching equivalent subexpressions\n";
   for (int i=0;i<tn;++i)
     if (targets[i].assigned)
       out += targets[i].label+" = "+targets[i].value+"\n";
@@ -7239,11 +7529,48 @@ static bool try_rewrite(const char *input,working_string &out){
   return true;
 }
 
-static bool try_xform(const char *input,working_string &out){
-  working_string args[2];
-  int n=0;
-  if (!parse_call(input,"xform",args,2,n) || n<2)
+static bool parse_xform_args_tolerant(const char *input,working_string &a,working_string &b){
+  working_string s=trim(input?input:""), lo=lower(s);
+  if (lo.find("xform")!=0)
     return false;
+  int open=5;
+  while (open<int(s.size()) && isspace((unsigned char)s[open]))
+    ++open;
+  if (open>=int(s.size()) || s[open]!='(')
+    return false;
+  int depth=0,comma=-1,last=int(s.size())-1;
+  while (last>open && isspace((unsigned char)s[last]))
+    --last;
+  if (last<=open || s[last]!=')')
+    return false;
+  for (int i=open+1;i<last;++i){
+    char c=s[i];
+    if (c=='(' || c=='[' || c=='{') ++depth;
+    else if (c==')' || c==']' || c=='}'){
+      if (depth>0) --depth;
+    }
+    else if (c==',' && depth==0){
+      comma=i;
+      break;
+    }
+  }
+  if (comma<0)
+    return false;
+  a=trim(s.substr(open+1,comma-open-1));
+  b=trim(s.substr(comma+1,last-comma-1));
+  return !a.empty() && !b.empty();
+}
+
+static bool try_xform(const char *input,working_string &out){
+  working_string args[6],rawa,rawb;
+  int n=0;
+  if (!parse_call(input,"xform",args,6,n) || n<2){
+    if (!parse_xform_args_tolerant(input,rawa,rawb))
+      return false;
+    args[0]=rawa;
+    args[1]=rawb;
+    n=2;
+  }
   working_string a=compact(args[0]), b=compact(args[1]);
   {
     working_string iargs[6];
@@ -7498,7 +7825,12 @@ static bool try_xform(const char *input,working_string &out){
       }
     }
   }
-  return false;
+  out="Normalise both forms\n";
+  out += "use identities, inverse functions, log laws, powers and factor/cancel steps\n";
+  out += "apply only reversible steps until the target form is reached\n";
+  out += "Start: "+trim(args[0])+"\n";
+  out += trim(args[1]);
+  return true;
 }
 
 static bool try_large_working_route(const char *input,working_string &out){
