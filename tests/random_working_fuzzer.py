@@ -15,12 +15,22 @@ PROGRESS = ROOT / "progress" / "state.jsonl"
 
 OPS = ["+", "-", "*", "/"]
 FUNCS = ["sin", "cos", "tan", "ln", "sqrt", "exp"]
+VISIBLE_COMMANDS = [
+    "abs", "acos", "approx", "asin", "atan", "ceil", "ceiling", "coeff",
+    "collect", "cos", "cot", "degree", "diff", "exact", "expand", "factor",
+    "floor", "fsolve", "gcd", "integrate", "implicit_diff", "lcm", "limit",
+    "ln", "log", "partfrac", "pcoeff", "product", "proot", "range", "round",
+    "sec", "series", "simplify", "sin", "solve", "sqrt", "subst", "sum",
+    "tan", "taylor", "tcollect", "texpand", "xform",
+]
 COMMANDS = [
     "diff", "integrate", "simplify", "solve", "range",
     "xform", "xform", "xform",
     "log", "expand", "binomial", "apart", "defint", "trig",
 ]
 WEIRD_CHARS = string.ascii_letters + string.digits + "+-*/^=(),[]{} ._"
+CHAOS_VARS = ["x", "y", "z", "t", "u", "v", "a", "b", "k", "n"]
+CHAOS_CONSTS = ["pi", "e"]
 
 TEMPLATES = {
     "diff": [
@@ -153,6 +163,121 @@ def expr(rng: random.Random, depth: int) -> str:
 
 def equation(rng: random.Random, depth: int) -> str:
     return f"{expr(rng, depth)}={expr(rng, depth)}"
+
+
+def chaos_number(rng: random.Random) -> str:
+    case = rng.randrange(5)
+    if case == 0:
+        return str(rng.randrange(-10**6, 10**6 + 1))
+    if case == 1:
+        return f"{rng.randrange(-5000,5001)}/{nz(rng,1,97)}"
+    if case == 2:
+        return f"{rng.choice(['', '-'])}{rng.randrange(0, 1000)}.{rng.randrange(0, 100000):05d}"
+    if case == 3:
+        return rng.choice(CHAOS_CONSTS)
+    return f"sqrt({rng.randrange(2, 200)})"
+
+
+def chaos_atom(rng: random.Random, numeric: bool = False) -> str:
+    if not numeric and rng.random() < 0.45:
+        return rng.choice(CHAOS_VARS)
+    return chaos_number(rng)
+
+
+def chaos_expr(rng: random.Random, depth: int, numeric: bool = False) -> str:
+    if depth <= 0 or rng.random() < 0.12:
+        return maybe_wrap(rng, chaos_atom(rng, numeric), 0.2)
+    case = rng.randrange(9)
+    if case == 0:
+        f = rng.choice(["sin", "cos", "tan", "sec", "cot", "ln", "log", "sqrt", "abs", "exp"])
+        if f == "log" and rng.random() < 0.75:
+            return f"log({chaos_expr(rng, depth-1, numeric)},{chaos_expr(rng, depth-1, numeric)})"
+        return f"{f}({chaos_expr(rng, depth-1, numeric)})"
+    if case == 1:
+        return f"({chaos_expr(rng, depth-1, numeric)})^{rng.choice(['-3','-2','-1','1/2','2/3','3/2','2','3','4'])}"
+    if case == 2:
+        return f"({chaos_expr(rng, depth-1, numeric)}){rng.choice(OPS)}({chaos_expr(rng, depth-1, numeric)})"
+    if case == 3:
+        return f"({chaos_expr(rng, depth-1, numeric)})*({chaos_expr(rng, depth-1, numeric)})"
+    if case == 4:
+        return f"{rng.choice(['sin','cos','tan','exp','ln','sqrt'])}({chaos_expr(rng, depth-1, numeric)})"
+    if case == 5:
+        return f"(({chaos_expr(rng, depth-1, numeric)})+({chaos_expr(rng, depth-1, numeric)}))"
+    if case == 6:
+        return f"(({chaos_expr(rng, depth-1, numeric)})-({chaos_expr(rng, depth-1, numeric)}))"
+    if case == 7:
+        return f"{rng.choice(['+', '-'])}{chaos_expr(rng, depth-1, numeric)}"
+    return maybe_wrap(rng, chaos_expr(rng, depth-1, numeric), 0.55)
+
+
+def chaos_equation(rng: random.Random, depth: int) -> str:
+    return f"{chaos_expr(rng, depth)}={chaos_expr(rng, depth)}"
+
+
+def chaos_args(rng: random.Random, cmd: str, depth: int) -> list[str]:
+    v = rng.choice(CHAOS_VARS)
+    numeric = rng.random() < 0.42
+    e = lambda d=depth, n=numeric: chaos_expr(rng, max(1, d), n)
+    eq = lambda d=depth: chaos_equation(rng, max(1, d))
+    if rng.random() < 0.05:
+        return [e(depth-1) for _ in range(rng.randrange(0, 5))]
+    if cmd in {"abs", "acos", "approx", "asin", "atan", "ceil", "ceiling", "cos", "cot", "exact", "expand", "floor", "ln", "round", "sec", "simplify", "sin", "sqrt", "tan", "tcollect", "texpand"}:
+        return [e()]
+    if cmd in {"coeff"}:
+        return [e(), v, str(rng.randrange(-3, 8))]
+    if cmd in {"collect", "degree", "factor", "partfrac", "gcd", "lcm"}:
+        return [e(), rng.choice([v, e(depth-1)])]
+    if cmd in {"diff", "implicit_diff"}:
+        args = [rng.choice([e(), eq()]), v]
+        if rng.random() < 0.35:
+            args.append(str(rng.randrange(1, 4)))
+        return args
+    if cmd == "integrate":
+        args = [e(), v]
+        r = rng.random()
+        if r < 0.25:
+            args += [str(rng.randrange(-5, 6)), str(rng.randrange(6, 13))]
+        elif r < 0.5:
+            args.append(str(rng.randrange(1, 6)))
+        elif r < 0.65:
+            args += [str(rng.randrange(1, 4)), f"u={e(depth-1)}"]
+        return args
+    if cmd == "fsolve":
+        return [eq(), f"{v}={rng.randrange(-10,0)}..{rng.randrange(1,11)}"]
+    if cmd == "limit":
+        return [e(), f"{v}={rng.choice(['0','1','-1','inf'])}"]
+    if cmd == "log":
+        return [rng.choice([str(rng.randrange(2, 13)), e(depth-1)]), e()]
+    if cmd == "pcoeff":
+        return [f"[{e(depth-1, False)},{e(depth-1, False)},{e(depth-1, False)}]"]
+    if cmd in {"product", "sum"}:
+        return [e(), rng.choice(["k", v]), str(rng.randrange(-3, 4)), str(rng.randrange(5, 15))]
+    if cmd in {"proot"}:
+        return [random_poly(rng, rng.randrange(2, 7))]
+    if cmd == "range":
+        args = [e()]
+        if rng.random() < 0.5:
+            args += [v, str(rng.randrange(-10, 0)), str(rng.randrange(1, 10))]
+        return args
+    if cmd in {"series", "taylor"}:
+        return [e(), f"{v}={rng.randrange(-3, 4)}", str(rng.randrange(2, 8))]
+    if cmd == "solve":
+        return [eq(), v]
+    if cmd == "subst":
+        return [e(), f"{v}={e(depth-1)}"]
+    if cmd == "xform":
+        return [rng.choice([e(), eq()]), rng.choice([e(), eq()])]
+    return [e()]
+
+
+def chaos_case(rng: random.Random, depth: int, index: int) -> tuple[str, str]:
+    if rng.random() < 0.08:
+        return noisy_input(rng)
+    if rng.random() < 0.10:
+        return "chaos:raw", messy(rng, chaos_expr(rng, depth, rng.random() < 0.5))
+    cmd = VISIBLE_COMMANDS[index % len(VISIBLE_COMMANDS)]
+    args = ",".join(chaos_args(rng, cmd, depth))
+    return f"chaos:{cmd}", messy(rng, f"{cmd}({args})")
 
 
 def nz(rng: random.Random, lo: int = -7, hi: int = 7) -> int:
@@ -546,7 +671,17 @@ def noisy_input(rng: random.Random) -> tuple[str, str]:
     return "noise", "".join(rng.choice(WEIRD_CHARS) for _ in range(n)).strip()
 
 
-def make_case(rng: random.Random, depth: int, noise_rate: float, template_rate: float, commands: list[str] | None = None) -> tuple[str, str]:
+def make_case(
+    rng: random.Random,
+    depth: int,
+    noise_rate: float,
+    template_rate: float,
+    commands: list[str] | None = None,
+    chaos: bool = False,
+    index: int = 0,
+) -> tuple[str, str]:
+    if chaos:
+        return chaos_case(rng, depth, index)
     if rng.random() < noise_rate:
         return noisy_input(rng)
     return command_input(rng, depth, template_rate, commands)
@@ -566,8 +701,12 @@ def classify(kind: str, src: str, out: str, code: int, elapsed: float, timeout: 
     if lines and lines[-1].startswith("Answer:"):
         return "answer-label-final"
     lowered = stripped.lower()
+    if "nan" in lowered:
+        return "nan"
     if any(x in lowered for x in ["segmentation", "abort", "system error", "reboot", "traceback"]):
         return "fatal-text"
+    if kind.startswith("chaos") and stripped == src.strip():
+        return "symbolic"
     if kind != "noise" and stripped == src.strip():
         return "echo-only"
     if kind != "noise" and ("A-level route:" in stripped or "KhiCAS exact result:" in stripped):
@@ -605,6 +744,16 @@ def run_case(src: str, timeout_s: float) -> tuple[int, str, float, bool]:
         return 124, out, time.monotonic() - start, True
 
 
+def write_transcript_case(f, rec: dict, out: str) -> None:
+    f.write("=" * 72 + "\n")
+    f.write(f"#{rec['i']} kind={rec['kind']} verdict={rec['verdict']} ")
+    f.write(f"returncode={rec['returncode']} elapsed={rec['elapsed']}s\n")
+    f.write("INPUT:\n")
+    f.write(rec["input"] + "\n")
+    f.write("OUTPUT:\n")
+    f.write(out.rstrip() + "\n\n")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Random CAS working-output fuzzer.")
     ap.add_argument("--count", type=int, default=200, help="number of tests; ignored with --forever")
@@ -615,14 +764,17 @@ def main() -> int:
     ap.add_argument("--noise-rate", type=float, default=0.08)
     ap.add_argument("--template-rate", type=float, default=0.0, help="optional fixed regression seed rate; default is fully random")
     ap.add_argument("--only", default="", help="comma-separated command names to generate")
+    ap.add_argument("--chaos", action="store_true", help="ignore templates and generate unpredictable catalog-wide tests")
     ap.add_argument("--stop-on-fail", action="store_true")
     ap.add_argument("--strict", action="store_true", help="count weak fallback as failure")
     ap.add_argument("--jsonl", type=Path, default=ROOT / "tests" / "reports" / "random_fuzz_latest.jsonl")
+    ap.add_argument("--transcript", type=Path, default=ROOT / "tests" / "reports" / "random_fuzz_latest.txt")
     args = ap.parse_args()
 
     rng = random.Random(args.seed)
     only = [x.strip() for x in args.only.split(",") if x.strip()] or None
     args.jsonl.parent.mkdir(parents=True, exist_ok=True)
+    args.transcript.parent.mkdir(parents=True, exist_ok=True)
     done = bad = 0
     append_progress(0, 0, "random-fuzz running")
 
@@ -630,13 +782,24 @@ def main() -> int:
         raise KeyboardInterrupt
 
     signal.signal(signal.SIGINT, interrupted)
-    with args.jsonl.open("w", encoding="utf-8") as report:
+    with args.jsonl.open("w", encoding="utf-8") as report, args.transcript.open("w", encoding="utf-8") as transcript:
+        transcript.write("CAS random working fuzzer transcript\n")
+        transcript.write(f"seed={args.seed} count={args.count} forever={args.forever} chaos={args.chaos} depth={args.depth}\n")
+        transcript.write(f"commands={','.join(only or (VISIBLE_COMMANDS if args.chaos else COMMANDS))}\n\n")
         try:
             while args.forever or done < args.count:
-                kind, src = make_case(rng, args.depth, args.noise_rate, args.template_rate, only)
+                kind, src = make_case(
+                    rng,
+                    args.depth,
+                    args.noise_rate,
+                    args.template_rate,
+                    only,
+                    args.chaos,
+                    done,
+                )
                 code, out, elapsed, timeout = run_case(src, args.timeout)
                 verdict = classify(kind, src, out, code, elapsed, timeout)
-                fail = verdict not in {"ok", "slow"} and (args.strict or verdict != "weak-fallback")
+                fail = verdict not in {"ok", "slow", "symbolic"} and (args.strict or verdict != "weak-fallback")
                 rec = {
                     "i": done,
                     "kind": kind,
@@ -647,6 +810,7 @@ def main() -> int:
                     "output": out[:1200],
                 }
                 report.write(json.dumps(rec, ensure_ascii=False) + "\n")
+                write_transcript_case(transcript, rec, out)
                 if fail:
                     bad += 1
                     print(json.dumps(rec, ensure_ascii=False))

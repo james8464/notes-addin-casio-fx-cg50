@@ -1,6 +1,6 @@
 # Project Graph
 
-Last updated: 2026-06-02 10:23 BST
+Last updated: 2026-06-02 10:52 BST
 
 ## Build
 
@@ -20,7 +20,7 @@ graph TD
   Build --> Help["help/functions/*.txt"]
   Help --> PAK["calculator_files/CAS.PAK: 31,667 bytes; sha c9429427"]
   G3A --> Meta["CAS / @CAS / CAS.g3a"]
-  G3A --> Size["2,095,324 bytes; 2,828 B under 2,097,152 cap; sha ebdd9200"]
+  G3A --> Size["2,095,708 bytes; 1,444 B under 2,097,152 cap; sha f7906e2e"]
 ```
 
 ## Runtime
@@ -50,6 +50,8 @@ graph TD
   Work --> Trig["trig: R-form and pi-shift identities"]
   Work --> Xform["xform trig/log identities, inverse exp-ln/ln-exp/sqrt-square rewrites, factor-cancel routes"]
   Work --> Shared["shared helpers: top-level parser guards, parenthesis-aware fraction split, affine parser, quadratic formatter, surd arithmetic"]
+  Work --> Guards["finite numeric guards: invalid-domain numeric routes keep symbolic output, not nan"]
+  Work --> Empty["empty function calls preserve input safely: simplify(), diff(), log()"]
 ```
 
 ## UI
@@ -86,10 +88,14 @@ graph TD
   Runner --> Report["tests/reports/.../latest.jsonl"]
   Live --> TUI["tools/audit_progress_tui.py"]
   Report --> TUI
+  Queue --> Chaos["tests/random_working_fuzzer.py --chaos"]
+  Chaos --> Transcript["tests/reports/random_chaos_latest.txt reset each run with full input/output"]
+  Chaos --> FuzzReport["tests/reports/random_chaos_latest.jsonl"]
+  Chaos --> Modes["finite --count N or indefinite --forever"]
   TUI --> Panels["animated panels: status badges, wide side-by-side layout, phase lanes, health score, gate board, sync, last commit, change counts, state age, artifact headroom, live rate and ETA, queue bars, strict-marker ratios, strict-gap bar map, freshness rows, animated scan/meter lines, cleanup byte totals and cleanup command, project hygiene, tooling inventory, transfer path, strict clusters with first gap samples, test checkpoints, release blockers, risk, ignored workspace, active-tool counts, next action, command panel"]
-  Runner --> Runtime["15,074/15,074 runtime-safe"]
+  Runner --> Runtime["16,553/16,553 runtime-safe"]
   Runner --> Strict["strict marker checks kept as advisory; runtime queue is hard gate"]
-  Strict --> Remaining["current hard headroom: 27,412 B"]
+  Strict --> Remaining["current hard headroom: 1,444 B"]
 ```
 
 ## Project Shape

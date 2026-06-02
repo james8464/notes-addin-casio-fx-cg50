@@ -1689,6 +1689,10 @@ static working_string double_s(double v){
   return working_string(buf);
 }
 
+static bool finite_double(double v){
+  return v==v && fabs(v)<1e300;
+}
+
 static bool rational_approx(double v,working_string &out){
   if (fabs(v)>1000000)
     return false;
@@ -4618,6 +4622,10 @@ static bool try_simplify(const char *input,working_string &out){
     double val=np.expr();
     np.skip();
     if (np.ok && !*np.p){
+      if (!finite_double(val)){
+        out=e;
+        return true;
+      }
       working_string exact;
       out="";
       out += rational_approx(val,exact)?exact:double_s(val);
@@ -4711,6 +4719,10 @@ static bool try_numeric(const char *input,working_string &out){
   np.skip();
   if (!np.ok || *np.p)
     return false;
+  if (!finite_double(v)){
+    out=trim(expr);
+    return true;
+  }
   out="";
   out += spaced_pm(trim(expr));
   out += "\n= ";
@@ -4740,6 +4752,10 @@ static bool try_numeric_expr(const char *input,working_string &out){
   np.skip();
   if (!np.ok || *np.p)
     return false;
+  if (!finite_double(v)){
+    out=s;
+    return true;
+  }
   out="= ";
   if (s=="exp(2*ln(7/6))") out="e^(2*ln(7/6))\n= ";
   out += double_s(v);
@@ -4864,6 +4880,10 @@ static bool try_range(const char *input,working_string &out){
     double v=np.expr();
     np.skip();
     if (np.ok && !*np.p){
+      if (!finite_double(v)){
+        out="Range:\ny = "+spaced_pm(e);
+        return true;
+      }
       working_string exact;
       out="Range:\ny = ";
       out += rational_approx(v,exact)?exact:double_s(v);
@@ -5375,10 +5395,21 @@ static bool try_xform(const char *input,working_string &out){
   return false;
 }
 
+static bool empty_function_call(const working_string &s){
+  int p=s.find('(');
+  if (p<=0 || match_paren(s,p)!=int(s.size())-1)
+    return false;
+  return trim(s.substr(p+1,s.size()-p-2)).empty();
+}
+
 bool eval_with_working(const char *input,working_string &out){
   working_string s=trim(input?input:"");
   if (s.empty() || !balanced(s) || numeric_literal(s))
     return false;
+  if (empty_function_call(s)){
+    out=s;
+    return true;
+  }
   if (keep_khicas_native(compact(s)))
     return false;
   if (try_integral(input,out) || try_diff(input,out) || try_log_base(input,out) ||
