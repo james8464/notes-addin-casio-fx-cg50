@@ -316,7 +316,8 @@ def rand_binomial(rng: random.Random) -> str:
 
 
 def rand_apart(rng: random.Random) -> str:
-    return "apart(6/(u(3+2u)))"
+    s = maybe_space
+    return f"apart({s(rng)}6{s(rng)}/{s(rng)}({s(rng)}u{s(rng)}({s(rng)}3{s(rng)}+{s(rng)}2u{s(rng)}){s(rng)}))"
 
 
 def rand_defint(rng: random.Random) -> str:
