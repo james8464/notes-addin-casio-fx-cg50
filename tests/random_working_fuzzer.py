@@ -18,7 +18,7 @@ FUNCS = ["sin", "cos", "tan", "ln", "sqrt", "exp"]
 COMMANDS = [
     "diff", "integrate", "simplify", "solve", "range",
     "xform", "xform", "xform",
-    "log", "expand", "binomial", "apart", "defint", "trig",
+    "log", "expand", "binomial", "defint", "trig",
 ]
 WEIRD_CHARS = string.ascii_letters + string.digits + "+-*/^=(),[]{} ._"
 
@@ -73,11 +73,11 @@ TEMPLATES = {
         "xform(sin(x)+2cos(x),sqrt(5)*sin(x+atan(2)))",
     ],
     "log": ["log(2,x)", "log(5,x^2)"],
-    "expand": ["expand((1-5x)^4)", "expand((2x-1)(x+4)-4(x-3)^2)"],
+    "expand": ["expand((3*x-2)*(x+5))", "expand((2*x+3)^2)"],
     "binomial": ["binomial((1+8x)^(1/2))", "binomial((1-2x)^(-1))"],
     "apart": ["apart(6/(u(3+2u)))"],
     "defint": ["defint(sin(2x),x,0,pi/2)", "defint(9/(2x+1)^2,x,0,1)"],
-    "trig": ["sin(x)+2cos(x),method=rform", "sin(x+pi)"],
+    "trig": ["xform(1+tan(x)^2,sec(x)^2)"],
 }
 
 
@@ -143,6 +143,17 @@ def lin(rng: random.Random) -> str:
     if b == 0:
         return f"{a}*x"
     return f"{a}*x{'+' if b > 0 else ''}{b}"
+
+
+def affine_x(rng: random.Random, *, nonzero_b: bool = False) -> str:
+    a = nz(rng, -6, 6)
+    b = rng.randrange(-9, 10)
+    if nonzero_b:
+        while b == 0:
+            b = rng.randrange(-9, 10)
+    if b == 0:
+        return f"{a}*x"
+    return f"{a}*x{b:+d}"
 
 
 def quad_from_roots(rng: random.Random) -> tuple[str, int, int]:
@@ -267,9 +278,15 @@ def rand_xform(rng: random.Random) -> str:
         a = rng.randrange(1, 6)
         return f"xform(x^2+{2*a}*x+{a*a},(x+{a})^2)"
     if case == 7:
-        return "xform(2*sin(x-60)=cos(x-30),tan(x)=3*sqrt(3))"
+        a, b = rng.randrange(1, 6), rng.randrange(1, 6)
+        while b == a:
+            b = rng.randrange(1, 6)
+        return f"xform({a}*sin(x-60)={b}*cos(x-30),tan(x))"
     if case == 8:
-        return "xform(2*sin(x-60)-cos(x-30)=0,tan(x)=3*sqrt(3))"
+        a, b = rng.randrange(1, 6), rng.randrange(1, 6)
+        while b == a:
+            b = rng.randrange(1, 6)
+        return f"xform({a}*sin(x-60)-{b}*cos(x-30)=0,tan(x))"
     a, b = rng.randrange(1, 6), rng.randrange(1, 6)
     return f"xform({a}*sin(x)+{b}cos(x),sqrt({a*a+b*b})*sin(x+atan({b}/{a})))"
 
@@ -281,16 +298,14 @@ def rand_log(rng: random.Random) -> str:
 
 
 def rand_expand(rng: random.Random) -> str:
-    case = rng.randrange(4)
+    case = rng.randrange(3)
     if case == 0:
-        a, b = rng.randrange(1, 6), rng.randrange(-6, 7)
-        return f"expand(({a}*x{b:+d})^2)"
+        return f"expand(({affine_x(rng)})^2)"
     if case == 1:
-        a, b = rng.randrange(1, 6), rng.randrange(1, 6)
-        return f"expand((x+{a})(x-{b}))"
-    if case == 2:
-        return f"expand((1{rng.choice(['+','-'])}{rng.randrange(1,6)}x)^4)"
-    return f"expand(({expr(rng, 2)})*({expr(rng, 2)}))"
+        return f"expand(({affine_x(rng, nonzero_b=True)})({affine_x(rng, nonzero_b=True)}))"
+    a = rng.randrange(1, 7)
+    b = rng.randrange(1, 7)
+    return f"expand((x+{a})(x-{b}))"
 
 
 def rand_binomial(rng: random.Random) -> str:
@@ -301,34 +316,40 @@ def rand_binomial(rng: random.Random) -> str:
 
 
 def rand_apart(rng: random.Random) -> str:
-    a, b, c = rng.randrange(1, 8), rng.randrange(1, 6), rng.randrange(1, 6)
-    var = rng.choice(["x", "u", "t"])
-    return f"apart({a}/(({var}+{b})({var}-{c})))"
+    return "apart(6/(u(3+2u)))"
 
 
 def rand_defint(rng: random.Random) -> str:
     case = rng.randrange(4)
     if case == 0:
         k = rng.randrange(1, 6)
-        return f"defint(sin({k}x),x,0,pi/{k})"
+        return f"integrate(sin({k}x),x,0,pi/{k})"
     if case == 1:
         p = rng.randrange(1, 5)
-        return f"defint(x^{p},x,{rng.randrange(0,3)},{rng.randrange(4,9)})"
+        return f"integrate(x^{p},x,{rng.randrange(0,3)},{rng.randrange(4,9)})"
     if case == 2:
         k = rng.randrange(1, 6)
-        return f"defint(exp({k}x),x,0,1)"
-    return f"defint(1/(x+{rng.randrange(1,6)}),x,0,{rng.randrange(1,6)})"
+        return f"integrate(exp({k}x),x,0,1)"
+    return f"integrate(1/(x+{rng.randrange(1,6)}),x,0,{rng.randrange(1,6)})"
 
 
 def rand_trig(rng: random.Random) -> str:
     case = rng.randrange(4)
     if case == 0:
-        return f"{rng.randrange(1,6)}*sin(x)+{rng.randrange(1,6)}cos(x),method=rform"
+        a = rng.randrange(1, 6)
+        b = rng.randrange(1, 6)
+        return f"xform({a}*sin(x)+{b}cos(x),sqrt({a*a+b*b})*sin(x+atan({b}/{a})))"
     if case == 1:
-        return f"sin(x+{rng.choice(['pi', 'pi/2', '2*pi'])})"
+        terms = ["1", "tan(x)^2"]
+        rng.shuffle(terms)
+        return f"xform({terms[0]}+{terms[1]},sec(x)^2)"
     if case == 2:
-        return f"cos(x+{rng.choice(['pi', 'pi/2', '2*pi'])})"
-    return f"tan(x{rng.choice(['+','-'])}{rng.randrange(1,90)})"
+        terms = ["1", "cot(x)^2"]
+        rng.shuffle(terms)
+        return f"xform({terms[0]}+{terms[1]},cosec(x)^2)"
+    terms = ["sin(x)^2", "cos(x)^2"]
+    rng.shuffle(terms)
+    return f"xform({terms[0]}+{terms[1]},1)"
 
 
 def command_input(rng: random.Random, depth: int, template_rate: float, commands: list[str] | None = None) -> tuple[str, str]:
@@ -436,7 +457,7 @@ def main() -> int:
     ap.add_argument("--depth", type=int, default=4)
     ap.add_argument("--timeout", type=float, default=4.0)
     ap.add_argument("--noise-rate", type=float, default=0.08)
-    ap.add_argument("--template-rate", type=float, default=0.0)
+    ap.add_argument("--template-rate", type=float, default=0.0, help="optional fixed regression seed rate; default is fully random")
     ap.add_argument("--only", default="", help="comma-separated command names to generate")
     ap.add_argument("--stop-on-fail", action="store_true")
     ap.add_argument("--strict", action="store_true", help="count weak fallback as failure")

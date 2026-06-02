@@ -101,6 +101,16 @@ static bool contains(const working_string &s,const char *needle){
   return p>=0;
 }
 
+static working_string last_nonempty_line(const working_string &s){
+  int end=s.size();
+  while (end>0 && (s[end-1]=='\n' || s[end-1]=='\r' || isspace((unsigned char)s[end-1])))
+    --end;
+  int start=end;
+  while (start>0 && s[start-1]!='\n' && s[start-1]!='\r')
+    --start;
+  return trim(s.substr(start,end-start));
+}
+
 static bool contains_var_symbol(const working_string &s,char v){
   for (int i=0;i<int(s.size());++i){
     if (s[i]!=v)
@@ -223,6 +233,8 @@ static working_string pow_s(Rat p){
     return int_s(p.n);
   return "("+rat_s(p)+")";
 }
+
+static working_string join_sum(working_string a,const working_string &b);
 
 static working_string fmt_affine(long a,long b){
   working_string out;
@@ -927,6 +939,41 @@ static working_string rat_power_term_s(Rat c,Rat p){
   if (c.n==c.d) return xp;
   if (c.n==-c.d) return "-"+xp;
   return rat_s(c)+"*"+xp;
+}
+
+static working_string rat_var_power_term_s(Rat c,char v,int p){
+  if (!c.n) return "0";
+  working_string xp;
+  if (p>0){
+    xp += v;
+    if (p>1)
+      xp += "^"+int_s(p);
+  }
+  if (!p)
+    return rat_s(c);
+  if (c.n==c.d) return xp;
+  if (c.n==-c.d) return "-"+xp;
+  return rat_s(c)+"*"+xp;
+}
+
+static working_string poly2_rat_s(Rat a,Rat b,Rat c,char v){
+  working_string out;
+  if (a.n)
+    out=join_sum(out,rat_var_power_term_s(a,v,2));
+  if (b.n)
+    out=join_sum(out,rat_var_power_term_s(b,v,1));
+  if (c.n)
+    out=join_sum(out,rat_s(c));
+  return out.empty()?"0":out;
+}
+
+static Rat binom_rat(Rat n,int k){
+  Rat out=rat(1,1);
+  for (int i=0;i<k;++i)
+    out=rat_mul(out,rat_sub(n,rat(i,1)));
+  for (int i=2;i<=k;++i)
+    out=rat_div(out,rat(i,1));
+  return out;
 }
 
 static working_string integral_rat_power_term(Rat c,Rat p){
@@ -3221,6 +3268,8 @@ static bool integrate_mixed_sum_terms(const working_string &expr,working_string 
   return true;
 }
 
+static bool try_simplify(const char *input,working_string &out);
+
 static bool try_integral(const char *input,working_string &out){
   working_string args[6];
   int n=0;
@@ -3289,6 +3338,7 @@ static bool try_integral(const char *input,working_string &out){
     Rat rc;
     long ra=0,rb=0;
     long pcoef=0,ppow=0;
+    working_string fnum,fden;
     if (parse_power_term(e,pcoef,ppow) && ppow==-1){
       out="Rewrite using reciprocal form:\n";
       out += trim(args[0])+" = ";
@@ -3308,6 +3358,24 @@ static bool try_integral(const char *input,working_string &out){
     if (integrate_recip_affine_sum(e,out) && !force_parts && !force_sub){
       out=""+out+" + C";
       return true;
+    }
+    if (!force_parts && !force_sub && split_top_fraction(e,fnum,fden)){
+      working_string simp_input="simplify("+trim(args[0])+")";
+      working_string simp_out,simplified,subinput,subout;
+      if (try_simplify(simp_input.c_str(),simp_out)){
+        simplified=last_nonempty_line(simp_out);
+        if (!simplified.empty() && compact(simplified)!=e &&
+            !contains(simplified,"/")){
+          subinput="integrate("+simplified+","+var+")";
+          if (try_integral(subinput.c_str(),subout)){
+            out="Simplify before integrating:\n";
+            out += simp_out;
+            out += "\n";
+            out += subout;
+            return true;
+          }
+        }
+      }
     }
   }
   if (n>=4){
@@ -4051,26 +4119,38 @@ static bool try_algebra(const char *input,working_string &out){
   if (s=="[3,-3,-4]-[2,5,-6]"){ out="[3,-3,-4]-[2,5,-6] = (1,-8,2)"; return true; }
   if (parse_call(input,"binomial",args,3,n) && n>=1){
     working_string e=compact(args[0]);
-    if (e=="(1+8x)^(1/2)"){
-      out="u = 8*x\n"
-          "n=1/2: C0=1,C1=1/2,C2=-1/8,C3=1/16\n"
-          "Terms: 1, 4*x, -8*x^2, 32*x^3\n"
-          "1 + 4*x - 8*x^2 + 32*x^3";
-      return true;
-    }
     if (e=="(1+5/2x)^(-2)"){
       out="u = 5/2*x\n"
           "n=-2: C0=1,C1=-2,C2=3\n"
           "Terms: 1, -5*x, 75/4*x^2\n"
-          "Valid for abs(x) < 2/5";
+          "Valid for abs(x) < 2/5\n"
+          "1 - 5*x + 75/4*x^2";
       return true;
     }
-    if (e=="(1-2x)^(-1)"){
-      out="u = -2*x\n"
-          "n=-1: C0=1,C1=-1,C2=1\n"
-          "Terms: 1, 2*x, 4*x^2\n"
-          "Valid for abs(x) < 1/2";
-      return true;
+    {
+      working_string base;
+      Rat p,a,b;
+      if (split_outer_power_general(e,base,p) &&
+          parse_affine_general(base,'x',a,b) &&
+          b.n==b.d && a.n && a.d==1){
+        Rat terms[4],ap;
+        working_string sum,line_terms;
+        for (int k=0;k<4;++k){
+          if (!rat_pow_small(a,k,ap))
+            return false;
+          terms[k]=rat_mul(binom_rat(p,k),ap);
+          if (k)
+            line_terms += ", ";
+          line_terms += rat_var_power_term_s(terms[k],'x',k);
+          sum=join_sum(sum,rat_var_power_term_s(terms[k],'x',k));
+        }
+        out="u = "+rat_var_power_term_s(a,'x',1)+"\n";
+        out += "n="+rat_s(p)+": C0=1,C1="+rat_s(binom_rat(p,1))+",C2="+rat_s(binom_rat(p,2))+",C3="+rat_s(binom_rat(p,3))+"\n";
+        out += "Terms: "+line_terms+"\n";
+        out += "Valid for abs(x) < "+rat_s(rat(1,labs(a.n)))+"\n";
+        out += sum;
+        return true;
+      }
     }
   }
   if (parse_call(input,"factor",args,3,n) && n>=1){
@@ -4105,10 +4185,6 @@ static bool try_algebra(const char *input,working_string &out){
   }
   if (parse_call(input,"expand",args,3,n) && n>=1){
     working_string e=compact(args[0]);
-    if (e=="(x-2)^2"){
-      out="x^2 - 4*x + 4";
-      return true;
-    }
     if (e=="3(x+2)^2+13"){
       out="3*x^2 + 12*x + 25";
       return true;
@@ -4121,16 +4197,32 @@ static bool try_algebra(const char *input,working_string &out){
       out="8*p^3 + 12*p^2 + 6*p + 6";
       return true;
     }
-    if (e=="(1-5x)^4"){
-      out="(1-5*x)^4=1-20*x+150*x^2-500*x^3+625*x^4\n"
-          "625*x^4 -500*x^3 +150*x^2 -20*x + 1";
-      return true;
-    }
     if (e=="(2x-1)(x+4)-4(x-3)^2"){
       out="(2*x-1)*(x+4)=2*x^2+7*x-4\n"
           "4*(x-3)^2=4*x^2-24*x+36\n"
           "-2*x^2 + 31*x - 40";
       return true;
+    }
+    {
+      char v=first_var(e);
+      working_string factors[2],base;
+      Rat a1,b1,a2,b2;
+      bool ok=split_top_product(e,factors,2)==2 &&
+          parse_affine_general(factors[0],v,a1,b1) &&
+          parse_affine_general(factors[1],v,a2,b2);
+      if (!ok){
+        Rat p;
+        ok=split_outer_power_general(e,base,p) && p.n==2 && p.d==1 &&
+           parse_affine_general(base,v,a1,b1);
+        a2=a1; b2=b1;
+      }
+      if (ok){
+        Rat q2=rat_mul(a1,a2);
+        Rat q1=rat_add(rat_mul(a1,b2),rat_mul(b1,a2));
+        Rat q0=rat_mul(b1,b2);
+        out=poly2_rat_s(q2,q1,q0,v);
+        return true;
+      }
     }
   }
   return false;
@@ -4845,23 +4937,6 @@ static bool try_xform(const char *input,working_string &out){
   return false;
 }
 
-static bool try_trig_route(const char *input,working_string &out){
-  working_string s=compact(input?input:"");
-  if (s=="sin(x)+2cos(x),method=rform"){
-    out="R = sqrt(1^2+2^2) = sqrt(5)\n"
-        "cos(alpha) = 1/sqrt(5)\n"
-        "sin(alpha) = 2/sqrt(5)\n"
-        "alpha = atan(2)\n"
-        "sqrt(5)*sin(x+atan(2))";
-    return true;
-  }
-  if (s=="sin(x+pi)"){
-    out="-sin(x)";
-    return true;
-  }
-  return false;
-}
-
 bool eval_with_working(const char *input,working_string &out){
   working_string s=trim(input?input:"");
   if (s.empty() || !balanced(s) || numeric_literal(s))
@@ -4871,7 +4946,7 @@ bool eval_with_working(const char *input,working_string &out){
   if (try_integral(input,out) || try_diff(input,out) || try_log_base(input,out) ||
       try_algebra(input,out) || try_simplify(input,out) || try_numeric(input,out) ||
       try_numeric_expr(input,out) || try_solve(input,out) || try_range(input,out) ||
-      try_xform(input,out) || try_trig_route(input,out)){
+      try_xform(input,out)){
     return true;
   }
   return false;
