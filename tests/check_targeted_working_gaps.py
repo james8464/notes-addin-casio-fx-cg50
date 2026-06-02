@@ -61,8 +61,14 @@ CASES = [
     ("solve(tan(-6)=-5,x)", ["No x term.", "x = []"]),
     ("solve(tan(x)=4/5,x)", ["tan(x) = 4/5", "x = atan(4/5) + n*pi"]),
     ("solve((2*x+3)/(x-1)=5,x)", ["Dom: x - 1 != 0", "Times x - 1", "2*x + 3 = 5*(x - 1)", "x = [8/3]"]),
+    ("solve(3*x-5/x=2,x)", ["Dom: x != 0", "Times x", "3*x^2 - 5 = 2*x", "x = [-1, 5/3]"]),
+    ("solve((2+y)/y=sqrt(2),y)", ["Dom: y != 0", "Times y", "y + 2 = sqrt(2)*y", "y = [2 + 2*sqrt(2)]"]),
+    ("solve(sqrt(3)*x-sqrt(3)=x+sqrt(3),x)", ["Collect:", "(sqrt(3) - 1)*x = 2*sqrt(3)", "x = [3 + sqrt(3)]"]),
+    ("solve(2*sqrt(3)*x-4*sqrt(3)=x+sqrt(3),x)", ["Collect:", "(2*sqrt(3) - 1)*x = 5*sqrt(3)", "x = [30/11 + 5/11*sqrt(3)]"]),
+    ("solve((3*y+2)/y=sqrt(5),y)", ["Dom: y != 0", "3*y + 2 = sqrt(5)*y", "y = [-3/2 - 1/2*sqrt(5)]"]),
     ("solve(ln(2*x+1)=3,x)", ["ln(2*x + 1) = 3", "2*x + 1 = exp(3)", "x = [(exp(3) - 1)/2]"]),
     ("solve(exp(2*x+1)=5,x)", ["exp(2*x + 1) = 5", "2*x + 1 = ln(5)", "x = [(ln(5) - 1)/2]"]),
+    ("solve(log(2,x+1)=3,x)", ["Log def:", "x+1 = 2^3", "x = [7]"]),
     ("diff((10-0.4x)*ln(x+1))", ["Product:", "u = 10 - 2/5*x", "v = ln(x + 1)", "du/dx = -2/5", "dv/dx = 1/(x + 1)", "-2/5*ln(x + 1) + (10 - 2/5*x)/(x + 1)"]),
     ("diff((2*x+1)*ln(3*x-2),x)", ["Product:", "u = 2*x + 1", "v = ln(3*x - 2)", "du/dx = 2", "dv/dx = 3/(3*x - 2)", "2*ln(3*x - 2) + (2*x + 1)*(3/(3*x - 2))"]),
     ("diff((x^2+1)/(x-1),x)", ["Quotient:", "u = x^2 + 1", "v = x - 1", "du/dx = 2*x", "dv/dx = 1", "((2*x)*(x - 1) - (x^2 + 1))/(x - 1)^2"]),
@@ -106,6 +112,8 @@ CASES = [
     ("xform(ln(x^3),3*ln(x))", ["ln(u^n)=n*ln(u)", "3*ln(x)"]),
     ("xform(x^2+4*x+4,(x+2)^2)", ["Factor:", "x^2 + 4*x + 4 = (x + 2)^2", "(x + 2)^2"]),
     ("xform((x^3-1)/(x-1),x^2+x+1)", ["x^3 - 1 = (x - 1)*(x^2 + x + 1)", "Cancel (x - 1)", "x^2 + x + 1"]),
+    ("xform(exp(ln(x+1)),x+1)", ["Inverse:", "exp(ln(u))=u", "x+1"]),
+    ("xform(sqrt(x)^2,x)", ["Inverse:", "(sqrt(u))^2=u", "x"]),
     ("xform(sin(x)+2cos(x),sqrt(5)*sin(x+atan(2)))", ["R-form:", "R=sqrt(1^2+2^2)=sqrt(5)", "A=atan(2)", "sqrt(5)*sin(x+atan(2))"]),
 ]
 

@@ -62,6 +62,23 @@ static bool has_top_add_sub_div(const working_string &s){
   return false;
 }
 
+static bool has_top_add_sub(const working_string &s){
+  int depth=0;
+  for (int i=0;i<int(s.size());++i){
+    char c=s[i];
+    if (c=='(' || c=='[' || c=='{') ++depth;
+    else if (c==')' || c==']' || c=='}') --depth;
+    else if (!depth && (c=='+' || c=='-') && i>0 && s[i-1]!='^' && s[i-1]!='e' && s[i-1]!='E')
+      return true;
+  }
+  return false;
+}
+
+static bool wrapped_all(const working_string &s){
+  working_string t=trim(s);
+  return t.size()>1 && t[0]=='(' && match_paren(t,0)==int(t.size())-1;
+}
+
 static working_string canonical_expr(const working_string &src){
   working_string s=compact(src), out;
   while (s.size()>1 && s[0]=='(' && match_paren(s,0)==int(s.size())-1)
@@ -635,6 +652,22 @@ static bool factor_quad_int(long a,long b,long c,char v,working_string &ans){
   return false;
 }
 
+static void append_quad_solution(working_string &out,long a,long b,long c,char v,const working_string &rawvar,Rat r1,Rat r2){
+  out += poly2_s(a,b,c,v)+" = 0\n";
+  working_string fac;
+  if (factor_quad_int(a,b,c,v,fac))
+    out += fac+" = 0\n";
+  if (r1.n==r2.n && r1.d==r2.d){
+    out += rawvar+" = ["+rat_s(r1)+"]";
+    return;
+  }
+  if (a<0 && r1.n*r2.d>r2.n*r1.d){
+    Rat t=r1; r1=r2; r2=t;
+  }
+  out += rawvar+" = "+rat_s(r1)+" or "+rawvar+" = "+rat_s(r2)+"\n";
+  out += rawvar+" = ["+rat_s(r1)+", "+rat_s(r2)+"]";
+}
+
 static working_string strip_outer_parens(working_string s){
   s=trim(s);
   while (s.size()>1 && s[0]=='(' && match_paren(s,0)==int(s.size())-1)
@@ -650,8 +683,12 @@ static bool split_top_fraction(const working_string &src,working_string &num,wor
     if (c=='(') ++depth;
     if (c==')') --depth;
     if (c=='/' && !depth){
-      num=strip_outer_parens(s.substr(0,i));
-      den=strip_outer_parens(s.substr(i+1,s.size()-i-1));
+      working_string rawnum=s.substr(0,i), rawden=s.substr(i+1,s.size()-i-1);
+      if ((has_top_add_sub(rawnum) && !wrapped_all(rawnum)) ||
+          (has_top_add_sub(rawden) && !wrapped_all(rawden)))
+        return false;
+      num=strip_outer_parens(rawnum);
+      den=strip_outer_parens(rawden);
       return !num.empty() && !den.empty();
     }
   }
@@ -2295,6 +2332,20 @@ static bool parse_affine_general(const working_string &src,char v,Rat &a,Rat &b)
   return true;
 }
 
+static bool parse_affine_any(const working_string &src,char v,Rat &a,Rat &b){
+  AffineParser ap;
+  ap.s=nospace_lower(src);
+  ap.p=ap.s.c_str();
+  ap.v=v;
+  ap.ok=true;
+  Lin r=ap.expr();
+  ap.skip();
+  if (!ap.ok || *ap.p)
+    return false;
+  a=r.a; b=r.b;
+  return true;
+}
+
 static bool known_call_word(const working_string &w){
   return w=="sin" || w=="cos" || w=="tan" || w=="ln" || w=="log" ||
          w=="exp" || w=="sqrt" || w=="abs";
@@ -3798,6 +3849,192 @@ static working_string solve_affine_for_target(Rat a,Rat b,const working_string &
   return t+"/"+rat_s(a);
 }
 
+static bool try_solve_affine_eq(const working_string &left,const working_string &right,const working_string &rawvar,char v,working_string &out){
+  Rat a1,b1,a2,b2;
+  if (!parse_affine_any(left,v,a1,b1) || !parse_affine_any(right,v,a2,b2))
+    return false;
+  Rat a=rat_sub(a1,a2), b=rat_sub(b1,b2);
+  if (!a.n)
+    return false;
+  Rat root=rat_div(rat(-b.n,b.d),a);
+  out="Collect:\n";
+  out += fmt_linear_rat(a,b,v)+" = 0\n";
+  out += rawvar+" = ["+rat_s(root)+"]";
+  return true;
+}
+
+static bool parse_sqrt_int(const working_string &s,long &r){
+  working_string t=nospace_lower(s);
+  if (t.size()<7 || t.find("sqrt(")!=0 || t[t.size()-1]!=')')
+    return false;
+  char *end=0;
+  r=strtol(t.c_str()+5,&end,10);
+  return end && *end==')' && r>0;
+}
+
+struct Srd { Rat a,b; long r; };
+static Srd srd(Rat a,Rat b,long r){ Srd x={a,b,r}; return x; }
+static Srd srd_sub(Srd x,Srd y){ return srd(rat_sub(x.a,y.a),rat_sub(x.b,y.b),x.r?x.r:y.r); }
+static Srd srd_neg(Srd x){ return srd(rat(-x.a.n,x.a.d),rat(-x.b.n,x.b.d),x.r); }
+
+static working_string srd_s(Srd x){
+  working_string out;
+  if (x.a.n<0 && x.b.n>0){
+    Rat b=x.b;
+    out=(b.n==b.d?"":rat_s(b)+"*")+"sqrt("+int_s(x.r)+")";
+    out += " - "+rat_s(rat(-x.a.n,x.a.d));
+    return out;
+  }
+  if (x.a.n) out=rat_s(x.a);
+  if (x.b.n){
+    working_string t;
+    Rat b=x.b;
+    bool neg=b.n<0;
+    if (neg) b.n=-b.n;
+    if (!(b.n==b.d)) t=rat_s(b)+"*";
+    t += "sqrt("+int_s(x.r)+")";
+    if (out.empty()) out=neg?"-"+t:t;
+    else out += neg?" - "+t:" + "+t;
+  }
+  return out.empty()?"0":out;
+}
+
+static bool srd_div(Srd n,Srd d,Srd &q){
+  long r=n.r?n.r:d.r;
+  if ((n.r && n.r!=r) || (d.r && d.r!=r))
+    return false;
+  Rat den=rat_sub(rat_mul(d.a,d.a),rat_mul(rat_mul(d.b,d.b),rat(r,1)));
+  if (!den.n)
+    return false;
+  Rat ca=rat_sub(rat_mul(n.a,d.a),rat_mul(rat_mul(n.b,d.b),rat(r,1)));
+  Rat cb=rat_sub(rat_mul(n.b,d.a),rat_mul(n.a,d.b));
+  q=srd(rat_div(ca,den),rat_div(cb,den),r);
+  return true;
+}
+
+static bool parse_srd_term(const working_string &src,char v,Rat sign,long &rad,Srd &xc,Srd &cc){
+  working_string t=strip_outer_parens(nospace_lower(src));
+  long r=0;
+  if (t==working_string(1,v)){
+    xc.a=rat_add(xc.a,sign);
+    return true;
+  }
+  working_string vx=working_string(1,v);
+  int sp=t.find("sqrt(");
+  if (sp>=0){
+    int close=match_paren(t,sp+4);
+    if (close<0) return false;
+    if (!parse_sqrt_int(t.substr(sp,close-sp+1),r))
+      return false;
+    if (rad && rad!=r) return false;
+    rad=r;
+    working_string rest=t.substr(0,sp)+t.substr(close+1,t.size()-close-1);
+    working_string clean;
+    for (int i=0;i<int(rest.size());++i) if (rest[i]!='*') clean += rest[i];
+    Rat k=rat(1,1);
+    if (clean.empty())
+      cc.b=rat_add(cc.b,sign);
+    else if (clean[clean.size()-1]==v){
+      working_string pre=clean.substr(0,clean.size()-1);
+      if (!pre.empty() && !parse_rat(pre,k)) return false;
+      xc.b=rat_add(xc.b,rat_mul(sign,k));
+    }
+    else {
+      if (!parse_rat(clean,k)) return false;
+      cc.b=rat_add(cc.b,rat_mul(sign,k));
+    }
+    return true;
+  }
+  Rat k;
+  if (parse_rat(t,k)){
+    cc.a=rat_add(cc.a,rat_mul(sign,k));
+    return true;
+  }
+  return false;
+}
+
+static bool parse_srd_linear_side(const working_string &src,char v,long &rad,Srd &xc,Srd &cc){
+  working_string terms[8];
+  int signs[8];
+  int n=split_top_sum_terms(src,terms,signs,8);
+  if (n<1) return false;
+  for (int i=0;i<n;++i)
+    if (!parse_srd_term(terms[i],v,rat(signs[i],1),rad,xc,cc))
+      return false;
+  if (rad){ xc.r=cc.r=rad; }
+  return true;
+}
+
+static bool try_solve_srd_linear(const working_string &left,const working_string &right,const working_string &rawvar,char v,working_string &out){
+  long rad=0;
+  Srd lx=srd(rat(0,1),rat(0,1),0), lc=lx, rx=lx, rc=lx;
+  if (!parse_srd_linear_side(left,v,rad,lx,lc) || !parse_srd_linear_side(right,v,rad,rx,rc) || !rad)
+    return false;
+  Srd coef=srd_sub(lx,rx), cons=srd_sub(lc,rc), root;
+  if (!coef.a.n && !coef.b.n)
+    return false;
+  if (!srd_div(srd_neg(cons),coef,root))
+    return false;
+  out="Collect:\n";
+  out += "("+srd_s(coef)+")*"+rawvar+" = "+srd_s(srd_neg(cons))+"\n";
+  out += rawvar+" = ["+srd_s(root)+"]";
+  return true;
+}
+
+static bool parse_linear_recip_side(const working_string &src,char v,Rat &a,Rat &b,Rat &recip){
+  working_string terms[8],num,den;
+  int signs[8];
+  int n=split_top_sum_terms(src,terms,signs,8);
+  if (n<1) return false;
+  for (int i=0;i<n;++i){
+    Rat ta,tb,k;
+    if (split_top_fraction(terms[i],num,den) && den==working_string(1,v) && parse_rat(num,k))
+      recip=rat_add(recip,rat_mul(rat(signs[i],1),k));
+    else if (parse_affine_any(terms[i],v,ta,tb)){
+      a=rat_add(a,rat_mul(rat(signs[i],1),ta));
+      b=rat_add(b,rat_mul(rat(signs[i],1),tb));
+    }
+    else
+      return false;
+  }
+  return true;
+}
+
+static long lcm_long(long a,long b){
+  if (a<0) a=-a; if (b<0) b=-b;
+  return a/gcd_long(a,b)*b;
+}
+
+static bool try_solve_linear_recip(const working_string &left,const working_string &right,const working_string &rawvar,char v,working_string &out){
+  Rat la=rat(0,1),lb=rat(0,1),lr=rat(0,1),ra=rat(0,1),rb=rat(0,1),rr=rat(0,1);
+  if (!parse_linear_recip_side(left,v,la,lb,lr) || !parse_linear_recip_side(right,v,ra,rb,rr))
+    return false;
+  Rat A=rat_sub(la,ra), B=rat_sub(lb,rb), C=rat_sub(lr,rr);
+  if (!C.n || !A.n)
+    return false;
+  long l=lcm_long(lcm_long(A.d,B.d),C.d), sd=0;
+  long ai=A.n*(l/A.d), bi=B.n*(l/B.d), ci=C.n*(l/C.d);
+  long disc=bi*bi-4*ai*ci;
+  out="Dom: "+rawvar+" != 0 => "+rawvar+" != 0\n";
+  out += "Times "+rawvar+"\n";
+  out += poly2_rat_s(la,lb,lr,v)+" = "+poly2_rat_s(ra,rb,rr,v)+"\n";
+  if (disc<0){
+    out += poly2_s(ai,bi,ci,v)+" = 0\n";
+    out += "D = "+int_s(disc)+" < 0\n";
+    out += rawvar+" = []";
+    return true;
+  }
+  if (!square_long(disc,sd)){
+    out += poly2_s(ai,bi,ci,v)+" = 0\n";
+    out += "D = "+int_s(disc)+"\n";
+    out += rawvar+" = [("+int_s(-bi)+" - sqrt("+int_s(disc)+"))/"+int_s(2*ai)+", ";
+    out += "("+int_s(-bi)+" + sqrt("+int_s(disc)+"))/"+int_s(2*ai)+"]";
+    return true;
+  }
+  Rat r1=rat(-bi-sd,2*ai), r2=rat(-bi+sd,2*ai);
+  append_quad_solution(out,ai,bi,ci,v,rawvar,r1,r2);
+  return true;
+}
 static bool try_solve_inverse_call(const working_string &left,const working_string &right,const working_string &rawvar,char v,working_string &out){
   const char *fn[]={"ln","exp"}, *inv[]={"exp","ln"};
   working_string arg,show,argshow;
@@ -3827,17 +4064,36 @@ static bool try_solve_linear_fraction(const working_string &left,const working_s
   Rat na,nb,da,db,rb;
   if (!parse_affine_general(num,v,na,nb) || !parse_affine_general(den,v,da,db))
     return false;
-  if (!parse_rat(rhs,rb))
+  long sr=0,sq=0;
+  if (parse_sqrt_int(rhs,sr) && !square_long(sr,sq)){
+    Srd top=srd(rat(-nb.n,nb.d),db,sr), bot=srd(na,rat(-da.n,da.d),sr), root;
+    if (!srd_div(top,bot,root))
+      return false;
+    working_string dshow=fmt_linear_rat(da,db,v);
+    out="Dom: "+dshow+" != 0";
+    if (da.n) out += " => "+rawvar+" != "+rat_s(rat_div(rat(-db.n,db.d),da));
+    out += "\nTimes "+dshow+"\n";
+    out += fmt_linear_rat(na,nb,v)+" = sqrt("+int_s(sr)+")*"+(has_top_add_sub(dshow)?"("+dshow+")":dshow)+"\n";
+    out += rawvar+" = ["+srd_s(root)+"]";
+    return true;
+  }
+  if (sr && sq)
+    rb=rat(sq,1);
+  else if (!parse_rat(rhs,rb))
     return false;
   Rat coef=rat_sub(na,rat_mul(rb,da));
-  if (!coef.n)
-    return false;
-  Rat root=rat_div(rat_sub(rat_mul(rb,db),nb),coef);
+  Rat constant=rat_sub(nb,rat_mul(rb,db));
   Rat bad=rat_div(rat(-db.n,db.d),da);
   working_string dshow=fmt_linear_rat(da,db,v);
   out="Dom: "+dshow+" != 0 => "+rawvar+" != "+rat_s(bad)+"\n";
   out += "Times "+dshow+"\n";
   out += fmt_linear_rat(na,nb,v)+" = "+rat_s(rb)+"*("+dshow+")\n";
+  if (!coef.n){
+    out += rawvar;
+    out += constant.n?" = []":" = all real";
+    return true;
+  }
+  Rat root=rat_div(rat_sub(rat_mul(rb,db),nb),coef);
   if (rat_cmp(root,bad)==0)
     out += rawvar+" = []";
   else
@@ -3956,6 +4212,12 @@ static bool try_solve(const char *input,working_string &out){
   char vbuf[2]={v,0};
   working_string vs(vbuf);
   working_string left=ceq.substr(0,op), right=ceq.substr(op+1,ceq.size()-op-1);
+  if (try_solve_linear_recip(left,right,rawvar,v,out))
+    return true;
+  if (try_solve_srd_linear(left,right,rawvar,v,out))
+    return true;
+  if (try_solve_affine_eq(left,right,rawvar,v,out))
+    return true;
   if (try_solve_linear_fraction(left,right,rawvar,v,out))
     return true;
   if (try_solve_inverse_call(left,right,rawvar,v,out) ||
@@ -4113,20 +4375,7 @@ static bool try_solve(const char *input,working_string &out){
     long a,b,c;
     if (solve_quad_int(left,right,v,r1,r2,a,b,c)){
       out="";
-      out += poly2_s(a,b,c,v);
-      out += " = 0\n";
-      working_string fac;
-      if (factor_quad_int(a,b,c,v,fac))
-        out += fac+" = 0\n";
-      if (r1.n==r2.n && r1.d==r2.d)
-        out += ""+rawvar+" = ["+rat_s(r1)+"]";
-      else {
-        if (a<0 && r1.n*r2.d>r2.n*r1.d){
-          Rat t=r1; r1=r2; r2=t;
-        }
-        out += rawvar+" = "+rat_s(r1)+" or "+rawvar+" = "+rat_s(r2)+"\n";
-        out += ""+rawvar+" = ["+rat_s(r1)+", "+rat_s(r2)+"]";
-      }
+      append_quad_solution(out,a,b,c,v,rawvar,r1,r2);
       return true;
     }
   }
@@ -4985,6 +5234,27 @@ static bool try_xform(const char *input,working_string &out){
   if (b=="expand("+a+")" || b=="factor("+a+")"){
     out=""+a;
     return true;
+  }
+  {
+    working_string arg,inner;
+    if (parse_unary_arg(a,"exp",arg) && parse_unary_arg(arg,"ln",inner) && compact(inner)==b){
+      out="Inverse:\nexp(ln(u))=u\n"+inner;
+      return true;
+    }
+    if (parse_unary_arg(a,"ln",arg) && parse_unary_arg(arg,"exp",inner) && compact(inner)==b){
+      out="Inverse:\nln(exp(u))=u\n"+inner;
+      return true;
+    }
+    if (a.find("sqrt(")==0){
+      int close=match_paren(a,4);
+      if (close>4 && close+2==int(a.size())-1 && a[close+1]=='^' && a[close+2]=='2'){
+        inner=a.substr(5,close-5);
+        if (compact(inner)==b){
+          out="Inverse:\n(sqrt(u))^2=u\n"+inner;
+          return true;
+        }
+      }
+    }
   }
   {
     working_string so,si="simplify("+args[0]+")";

@@ -18,7 +18,7 @@ FUNCS = ["sin", "cos", "tan", "ln", "sqrt", "exp"]
 COMMANDS = [
     "diff", "integrate", "simplify", "solve", "range",
     "xform", "xform", "xform",
-    "log", "expand", "binomial", "defint", "trig",
+    "log", "expand", "binomial", "apart", "defint", "trig",
 ]
 WEIRD_CHARS = string.ascii_letters + string.digits + "+-*/^=(),[]{} ._"
 
@@ -286,7 +286,7 @@ def rand_integrate(rng: random.Random) -> str:
 
 
 def rand_solve(rng: random.Random) -> str:
-    case = rng.randrange(8)
+    case = rng.randrange(12)
     if case == 0:
         a, b, r = nz(rng, -7, 7), rng.randrange(-9, 10), rng.randrange(-9, 10)
         return messy(rng, f"solve({a}*x+{b}={r},x)")
@@ -310,6 +310,21 @@ def rand_solve(rng: random.Random) -> str:
         return messy(rng, f"solve(tan(x)={rng.randrange(1,6)}/{rng.randrange(2,7)},x)")
     if case == 6:
         return messy(rng, f"solve({lin(rng)}={lin(rng)},x)")
+    if case == 7:
+        a, b, c = nz(rng, 1, 6), nz(rng, -8, 8), rng.randrange(-5, 6)
+        return messy(rng, f"solve({a}*x{b:+d}/x={c},x)")
+    if case == 8:
+        a, b, c = nz(rng, 1, 6), nz(rng, 1, 8), rng.randrange(2, 8)
+        return messy(rng, f"solve(({a}*x+{b})/x=sqrt({c}),x)")
+    if case == 9:
+        n = rng.randrange(2, 8)
+        k = nz(rng, 1, 5)
+        c = rng.randrange(1, 6)
+        return messy(rng, f"solve({k}*sqrt({n})*x-{c}*sqrt({n})=x+sqrt({n}),x)")
+    if case == 10:
+        base = rng.randrange(2, 7)
+        p = rng.randrange(2, 5)
+        return messy(rng, f"solve(log({base},x+1)={p},x)")
     q, _, _ = quad_from_roots(rng)
     return messy(rng, f"solve({q}=0,x)")
 
@@ -359,7 +374,7 @@ def rand_simplify(rng: random.Random) -> str:
 
 
 def rand_xform(rng: random.Random) -> str:
-    case = rng.randrange(14)
+    case = rng.randrange(17)
     if case == 0:
         terms = ["1", "tan(x)^2"]
         rng.shuffle(terms)
@@ -406,6 +421,15 @@ def rand_xform(rng: random.Random) -> str:
     if case == 12:
         a = rng.randrange(1, 7)
         return messy(rng, f"xform((x^2-{a*a})/(x-{a}),x+{a})")
+    if case == 13:
+        inner = rng.choice(["x+1", pos_lin(rng), f"(x+{rng.randrange(1,6)})^2"])
+        return messy(rng, f"xform(exp(ln({inner})),{inner})")
+    if case == 14:
+        inner = rng.choice(["x", pos_lin(rng), f"x+{rng.randrange(1,6)}"])
+        return messy(rng, f"xform(sqrt({inner})^2,{inner})")
+    if case == 15:
+        inner = rng.choice(["x+1", pos_lin(rng)])
+        return messy(rng, f"xform(ln(exp({inner})),{inner})")
     num, den, ans = factorable_ratio(rng)
     return messy(rng, f"xform(({num})/({den}),{ans})")
 

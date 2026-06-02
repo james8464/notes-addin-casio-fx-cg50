@@ -210,6 +210,9 @@ namespace giac {
   }
   gen _scatterplot(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_DISABLE_PLOT_RUNTIME
+    return undef;
+#endif
     return scatterplot(g,2,contextptr);
   }
   static const char _scatterplot_s []="scatterplot";
@@ -218,6 +221,9 @@ namespace giac {
 
   gen _polygonplot(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_DISABLE_PLOT_RUNTIME
+    return undef;
+#endif
     return scatterplot(g,1,contextptr);
   }
   static const char _polygonplot_s []="polygonplot";
@@ -230,6 +236,9 @@ namespace giac {
 
   gen _polygonscatterplot(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_DISABLE_PLOT_RUNTIME
+    return undef;
+#endif
     return scatterplot(g,3,contextptr);
   }
   static const char _polygonscatterplot_s []="polygonscatterplot";
@@ -5092,6 +5101,9 @@ static define_unary_function_eval (__exponential_regression,&_exponential_regres
 
   gen _linear_regression_plot(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_DISABLE_PLOT_RUNTIME
+    return undef;
+#endif
     gen a,b,correl2;
     double xmin,xmax;
     vecteur attributs;
@@ -5120,6 +5132,9 @@ static define_unary_function_eval (__exponential_regression,&_exponential_regres
 
   gen _exponential_regression_plot(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_DISABLE_PLOT_RUNTIME
+    return undef;
+#endif
     gen a,b,correl2;
     double xmin,xmax;
     vecteur attributs;
@@ -5147,6 +5162,9 @@ static define_unary_function_eval (__exponential_regression,&_exponential_regres
 
   gen _logarithmic_regression_plot(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_DISABLE_PLOT_RUNTIME
+    return undef;
+#endif
     gen a,b,correl2;
     double xmin,xmax;
     vecteur attributs;
@@ -5175,6 +5193,9 @@ static define_unary_function_eval (__exponential_regression,&_exponential_regres
 
   gen _power_regression_plot(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_DISABLE_PLOT_RUNTIME
+    return undef;
+#endif
     gen a,b,correl2;
     double xmin,xmax;
     vecteur attributs;
@@ -5334,6 +5355,9 @@ static define_unary_function_eval (__exponential_regression,&_exponential_regres
   gen _diagramme_batons(const gen & g_,GIAC_CONTEXT){
     gen g(g_);
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_DISABLE_PLOT_RUNTIME
+    return undef;
+#endif
     vecteur vals,names,attributs,res;
     double largeur=.8;
     if (g.type==_VECT && g.subtype==_SEQ__VECT){
@@ -5415,6 +5439,9 @@ static define_unary_function_eval (__exponential_regression,&_exponential_regres
 
   gen _camembert(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_DISABLE_PLOT_RUNTIME
+    return undef;
+#endif
     vecteur vals,names,attributs,res;
     gen errcode=read_camembert_args(g,vals,names,attributs,contextptr);
     if (is_undef(errcode)) return errcode;
@@ -6242,6 +6269,9 @@ static define_unary_function_eval (__camembert,&_camembert,_camembert_s);
   // method=trapeze,point_milieu,rectangle_gauche,rectangle_droit
   gen _plotarea(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_DISABLE_PLOT_RUNTIME
+    return undef;
+#endif
     vecteur v(gen2vecteur(g));
     vecteur attributs(1,COLOR_BLACK);
     int s=read_attributs(v,attributs,contextptr);
