@@ -85,6 +85,31 @@ def maybe_space(rng: random.Random) -> str:
     return " " * rng.randrange(0, 3)
 
 
+def maybe_wrap(rng: random.Random, s: str, p: float = 0.35) -> str:
+    while rng.random() < p:
+        s = f"({s})"
+        p *= 0.45
+    return s
+
+
+def messy(rng: random.Random, s: str) -> str:
+    out = []
+    for ch in s:
+        if ch in "+-*/=,":
+            out.append(maybe_space(rng))
+            out.append(ch)
+            out.append(maybe_space(rng))
+        else:
+            out.append(ch)
+    return "".join(out)
+
+
+def mul(rng: random.Random, a: str, b: str) -> str:
+    if rng.random() < 0.4:
+        return f"({a})({b})"
+    return f"({a})*({b})"
+
+
 def var_or_num(rng: random.Random) -> str:
     if rng.random() < 0.45:
         return "x"
@@ -145,6 +170,12 @@ def lin(rng: random.Random) -> str:
     return f"{a}*x{'+' if b > 0 else ''}{b}"
 
 
+def pos_lin(rng: random.Random) -> str:
+    a = nz(rng, 1, 6)
+    b = rng.randrange(1, 10)
+    return f"{a}*x+{b}"
+
+
 def affine_x(rng: random.Random, *, nonzero_b: bool = False) -> str:
     a = nz(rng, -6, 6)
     b = rng.randrange(-9, 10)
@@ -168,151 +199,240 @@ def quad_from_roots(rng: random.Random) -> tuple[str, int, int]:
     return "".join(parts), r1, r2
 
 
+def factorable_ratio(rng: random.Random) -> tuple[str, str, str]:
+    a = rng.randrange(1, 8)
+    b = rng.randrange(1, 8)
+    den = f"x+{a}"
+    num = f"({den})*(x{b:+d})"
+    ans = f"x{b:+d}"
+    return num, den, ans
+
+
+def random_poly(rng: random.Random, degree: int = 3) -> str:
+    parts = []
+    for p in range(degree, -1, -1):
+        c = rng.randrange(-7, 8)
+        if p == degree and c == 0:
+            c = nz(rng, -7, 7)
+        if c == 0:
+            continue
+        if p == 0:
+            term = str(abs(c))
+        elif p == 1:
+            term = "x" if abs(c) == 1 else f"{abs(c)}*x"
+        else:
+            term = f"x^{p}" if abs(c) == 1 else f"{abs(c)}*x^{p}"
+        parts.append(("+" if c > 0 else "-", term))
+    if not parts:
+        return "0"
+    out = parts[0][1] if parts[0][0] == "+" else "-" + parts[0][1]
+    for sign, term in parts[1:]:
+        out += sign + term
+    return out
+
+
 def rand_diff(rng: random.Random) -> str:
-    case = rng.randrange(6)
+    case = rng.randrange(9)
     if case == 0:
-        return f"diff(({lin(rng)})^2,x)"
+        return messy(rng, f"diff(({lin(rng)})^{rng.randrange(2,5)},x)")
     if case == 1:
-        return f"diff(sin(({lin(rng)})^2),x)"
+        return messy(rng, f"diff({rng.choice(['sin','cos','exp'])}(({lin(rng)})^2),x)")
     if case == 2:
-        return f"diff(({lin(rng)})*ln({lin(rng)}),x)"
+        return messy(rng, f"diff({mul(rng, lin(rng), 'ln('+pos_lin(rng)+')')},x)")
     if case == 3:
-        return f"diff((x^2+{rng.randrange(1,8)})/(x{rng.choice(['-','+'])}{rng.randrange(1,6)}),x)"
+        return messy(rng, f"diff((x^2+{rng.randrange(1,8)})/(x{rng.choice(['-','+'])}{rng.randrange(1,6)}),x)")
     if case == 4:
-        return f"diff((x+{rng.randrange(1,6)})(x-{rng.randrange(1,6)})ln(x),x)"
-    return f"diff(({lin(rng)})+sin({lin(rng)}),x)"
+        return messy(rng, f"diff({mul(rng, mul(rng, 'x+'+str(rng.randrange(1,6)), 'x-'+str(rng.randrange(1,6))), 'ln(x)')},x)")
+    if case == 5:
+        return messy(rng, f"diff({random_poly(rng, rng.randrange(2,5))}+sin({lin(rng)}),x)")
+    if case == 6:
+        return messy(rng, f"diff(ln(({pos_lin(rng)})^2),x)")
+    if case == 7:
+        return messy(rng, f"diff(({pos_lin(rng)})^2,x)")
+    return messy(rng, f"diff(({lin(rng)})+{rng.choice(['sin','cos'])}({lin(rng)}),x)")
 
 
 def rand_integrate(rng: random.Random) -> str:
-    case = rng.randrange(7)
+    case = rng.randrange(11)
     if case == 0:
         a, p = nz(rng, -8, 8), rng.randrange(1, 6)
-        return f"integrate({a}*x^{p}+{rng.randrange(-9,10)},x)"
+        return messy(rng, f"integrate({a}*x^{p}+{rng.randrange(-9,10)},x)")
     if case == 1:
         k = nz(rng, 1, 6)
-        return f"integrate(sin({k}*x),x)"
+        return messy(rng, f"integrate(sin({k}*x),x)")
     if case == 2:
         k = nz(rng, 1, 6)
-        return f"integrate(exp({k}*x),x)"
+        return messy(rng, f"integrate(exp({k}*x),x)")
     if case == 3:
         p = rng.randrange(1, 5)
-        return f"integrate(x^{p}*ln(x),x)"
+        return messy(rng, f"integrate({mul(rng, f'x^{p}', 'ln(x)')},x)")
     if case == 4:
         a, b, p = nz(rng, 1, 5), rng.randrange(-5, 6), rng.randrange(2, 5)
-        return f"integrate({a}*x*({b}+x^2)^{p},x)"
+        return messy(rng, f"integrate({a}*x*({b}+x^2)^{p},x)")
     if case == 5:
         c = rng.randrange(2, 8)
-        return f"integrate(((x)^2)(({c})^2))"
-    return f"integrate(({lin(rng)})+cos({nz(rng,1,6)}*x),x)"
+        return messy(rng, f"integrate({mul(rng, '((x)^2)', f'(({c})^2)')})")
+    if case == 6:
+        return messy(rng, f"integrate(({lin(rng)})+cos({nz(rng,1,6)}*x),x)")
+    if case == 7:
+        k = rng.randrange(-5, 6)
+        return messy(rng, f"integrate((2*x+{k})*cos(x^2+{k}*x),x)")
+    if case == 8:
+        k, c = rng.randrange(1, 6), rng.randrange(2, 9)
+        return messy(rng, f"integrate((2*x+{k})/(x^2+{k}*x+{c}),x)")
+    if case == 9:
+        return messy(rng, f"integrate((ln(x))^{rng.randrange(1,3)},x,{rng.choice([1,2])})")
+    return messy(rng, f"integrate({random_poly(rng, rng.randrange(1,4))},x)")
 
 
 def rand_solve(rng: random.Random) -> str:
-    case = rng.randrange(5)
+    case = rng.randrange(8)
     if case == 0:
         a, b, r = nz(rng, -7, 7), rng.randrange(-9, 10), rng.randrange(-9, 10)
-        return f"solve({a}*x+{b}={r},x)"
+        return messy(rng, f"solve({a}*x+{b}={r},x)")
     if case == 1:
         q, r1, r2 = quad_from_roots(rng)
-        return f"solve({q}=0,x)"
+        return messy(rng, f"solve({q}=0,x)")
     if case == 2:
         n = rng.randrange(2, 10)
-        return f"solve({n}=(x)^2,x)"
+        return messy(rng, f"solve({n}=(x)^2,x)")
     if case == 3:
         a, b = nz(rng, 1, 6), rng.randrange(-4, 5)
-        return f"solve(({a}*x+{b})*ln(x+1)=0,x)"
-    return f"solve(tan(x)={rng.randrange(1,6)}/{rng.randrange(2,7)},x)"
+        arg = rng.choice(["x+1", pos_lin(rng)])
+        eq = f"({a}*x+{b})*ln({arg})=0"
+        if rng.random() < 0.5:
+            eq = "0=" + eq[:-2]
+        return messy(rng, f"solve({eq},x)")
+    if case == 4:
+        q, _, _ = quad_from_roots(rng)
+        return messy(rng, f"solve(0=({q})*ln(x+1),x)")
+    if case == 5:
+        return messy(rng, f"solve(tan(x)={rng.randrange(1,6)}/{rng.randrange(2,7)},x)")
+    if case == 6:
+        return messy(rng, f"solve({lin(rng)}={lin(rng)},x)")
+    q, _, _ = quad_from_roots(rng)
+    return messy(rng, f"solve({q}=0,x)")
 
 
 def rand_range(rng: random.Random) -> str:
-    case = rng.randrange(5)
+    case = rng.randrange(8)
     if case == 0:
-        return f"range({lin(rng)})"
+        return messy(rng, f"range({lin(rng)})")
     if case == 1:
         q, _, _ = quad_from_roots(rng)
-        return f"range({q})"
+        return messy(rng, f"range({q})")
     if case == 2:
-        return f"range((x)^{rng.choice([3,5])})"
+        return messy(rng, f"range((x)^{rng.choice([2,3,4,5])})")
     if case == 3:
         a, b, c = nz(rng, 1, 5), nz(rng, 1, 5), rng.randrange(-8, 9)
-        return f"range({a}*sin({b}*x{c:+d}){rng.randrange(-8,9):+d})"
-    return rng.choice(["range(exp(x))", "range(ln(x))", "range(sqrt(x))"])
+        return messy(rng, f"range({a}*{rng.choice(['sin','cos'])}({b}*x{c:+d}){rng.randrange(-8,9):+d})")
+    if case == 4:
+        q, _, _ = quad_from_roots(rng)
+        return messy(rng, f"range({q},x,{rng.randrange(-5,2)},{rng.randrange(3,9)})")
+    if case == 5:
+        return messy(rng, f"range({rng.choice(['exp','ln','sqrt'])}({maybe_wrap(rng, 'x')}))")
+    if case == 6:
+        return messy(rng, f"range({rng.randrange(-9,10)})")
+    q, _, _ = quad_from_roots(rng)
+    return messy(rng, f"range({q})")
 
 
 def rand_simplify(rng: random.Random) -> str:
-    case = rng.randrange(4)
+    case = rng.randrange(7)
     if case == 0:
         a = rng.randrange(1, 7)
-        return f"simplify((x^2+{2*a}*x+{a*a})/(x+{a})^2)"
+        return messy(rng, f"simplify((x^2+{2*a}*x+{a*a})/(x+{a})^2)")
     if case == 1:
         a = rng.randrange(1, 7)
-        return f"simplify((x^2-{a*a})/(x-{a}))"
+        return messy(rng, f"simplify((x^2-{a*a})/(x-{a}))")
     if case == 2:
-        return f"simplify(((x)^{rng.randrange(2,6)}))"
-    return f"simplify({expr(rng, 3)})"
+        return messy(rng, f"simplify(((x)^{rng.randrange(2,6)}))")
+    if case == 3:
+        num, den, _ = factorable_ratio(rng)
+        return messy(rng, f"simplify(({num})/({den}))")
+    if case == 4:
+        a = rng.randrange(1, 7)
+        return messy(rng, f"simplify(((x-{a})*(x+{a}))/(x-{a}))")
+    if case == 5:
+        return messy(rng, f"simplify(exp(ln({pos_lin(rng)})))")
+    return messy(rng, f"simplify({expr(rng, 3)})")
 
 
 def rand_xform(rng: random.Random) -> str:
-    case = rng.randrange(10)
+    case = rng.randrange(14)
     if case == 0:
         terms = ["1", "tan(x)^2"]
         rng.shuffle(terms)
-        return f"xform({terms[0]}+{terms[1]},sec(x)^2)"
+        return messy(rng, f"xform({terms[0]}+{terms[1]},sec(x)^2)")
     if case == 1:
         terms = ["sin(x)^2", "cos(x)^2"]
         rng.shuffle(terms)
-        return f"xform({terms[0]}+{terms[1]},1)"
+        return messy(rng, f"xform({terms[0]}+{terms[1]},1)")
     if case == 2:
         terms = ["1", "cot(x)^2"]
         rng.shuffle(terms)
-        return f"xform({terms[0]}+{terms[1]},cosec(x)^2)"
+        return messy(rng, f"xform({terms[0]}+{terms[1]},cosec(x)^2)")
     if case == 3:
         n = rng.randrange(2, 7)
-        return f"xform(ln(x^{n}),{n}*ln(x))"
+        return messy(rng, f"xform(ln(x^{n}),{n}*ln(x))")
     if case == 4:
         base, n = rng.randrange(2, 8), rng.randrange(2, 6)
-        return f"xform(log({base},x^{n}),{n}*log({base},x))"
+        return messy(rng, f"xform(log({base},x^{n}),{n}*log({base},x))")
     if case == 5:
         a = rng.randrange(1, 6)
-        return f"xform((x+{a})^2,x^2+{2*a}*x+{a*a})"
+        return messy(rng, f"xform((x+{a})^2,x^2+{2*a}*x+{a*a})")
     if case == 6:
         a = rng.randrange(1, 6)
-        return f"xform(x^2+{2*a}*x+{a*a},(x+{a})^2)"
+        return messy(rng, f"xform(x^2+{2*a}*x+{a*a},(x+{a})^2)")
     if case == 7:
         a, b = rng.randrange(1, 6), rng.randrange(1, 6)
         while b == a:
             b = rng.randrange(1, 6)
-        return f"xform({a}*sin(x-60)={b}*cos(x-30),tan(x))"
+        return messy(rng, f"xform({a}*sin(x-60)={b}*cos(x-30),tan(x))")
     if case == 8:
         a, b = rng.randrange(1, 6), rng.randrange(1, 6)
         while b == a:
             b = rng.randrange(1, 6)
-        return f"xform({a}*sin(x-60)-{b}*cos(x-30)=0,tan(x))"
-    a, b = rng.randrange(1, 6), rng.randrange(1, 6)
-    return f"xform({a}*sin(x)+{b}cos(x),sqrt({a*a+b*b})*sin(x+atan({b}/{a})))"
+        return messy(rng, f"xform({a}*sin(x-60)-{b}*cos(x-30)=0,tan(x))")
+    if case == 9:
+        a, b = rng.randrange(1, 6), rng.randrange(1, 6)
+        return messy(rng, f"xform({a}*sin(x)+{b}cos(x),sqrt({a*a+b*b})*sin(x+atan({b}/{a})))")
+    if case == 10:
+        a, b = rng.randrange(1, 6), rng.randrange(1, 6)
+        return messy(rng, f"xform({a}*cos(x)+{b}sin(x),sqrt({a*a+b*b})*cos(x-atan({b}/{a})))")
+    if case == 11:
+        num, den, ans = factorable_ratio(rng)
+        return messy(rng, f"xform(({num})/({den}),{ans})")
+    if case == 12:
+        a = rng.randrange(1, 7)
+        return messy(rng, f"xform((x^2-{a*a})/(x-{a}),x+{a})")
+    num, den, ans = factorable_ratio(rng)
+    return messy(rng, f"xform(({num})/({den}),{ans})")
 
 
 def rand_log(rng: random.Random) -> str:
     base = rng.randrange(2, 10)
-    arg = rng.choice(["x", f"x^{rng.randrange(2, 6)}", f"({lin(rng)})"])
-    return f"log({base},{arg})"
+    arg = rng.choice(["x", f"x^{rng.randrange(2, 6)}", f"({pos_lin(rng)})", f"sqrt({pos_lin(rng)})"])
+    return messy(rng, f"log({base},{arg})")
 
 
 def rand_expand(rng: random.Random) -> str:
     case = rng.randrange(3)
     if case == 0:
-        return f"expand(({affine_x(rng)})^2)"
+        return messy(rng, f"expand(({affine_x(rng)})^2)")
     if case == 1:
-        return f"expand(({affine_x(rng, nonzero_b=True)})({affine_x(rng, nonzero_b=True)}))"
+        return messy(rng, f"expand({mul(rng, affine_x(rng, nonzero_b=True), affine_x(rng, nonzero_b=True))})")
     a = rng.randrange(1, 7)
     b = rng.randrange(1, 7)
-    return f"expand((x+{a})(x-{b}))"
+    return messy(rng, f"expand({mul(rng, f'x+{a}', f'x-{b}')})")
 
 
 def rand_binomial(rng: random.Random) -> str:
     sign = rng.choice(["+", "-"])
     a = rng.randrange(1, 9)
-    p = rng.choice(["1/2", "-1", "-1/2", "2/3"])
-    return f"binomial((1{sign}{a}x)^({p}))"
+    p = rng.choice(["1/2", "-1", "-1/2", "2/3", "3/2"])
+    n = rng.choice(["", f",x,0,{rng.randrange(2,5)}"])
+    return messy(rng, f"binomial((1{sign}{a}x)^({p}){n})")
 
 
 def rand_apart(rng: random.Random) -> str:
@@ -321,36 +441,47 @@ def rand_apart(rng: random.Random) -> str:
 
 
 def rand_defint(rng: random.Random) -> str:
-    case = rng.randrange(4)
+    case = rng.randrange(6)
     if case == 0:
         k = rng.randrange(1, 6)
-        return f"integrate(sin({k}x),x,0,pi/{k})"
+        return messy(rng, f"integrate(sin({k}x),x,0,pi/{k})")
     if case == 1:
         p = rng.randrange(1, 5)
-        return f"integrate(x^{p},x,{rng.randrange(0,3)},{rng.randrange(4,9)})"
+        return messy(rng, f"integrate(x^{p},x,{rng.randrange(0,3)},{rng.randrange(4,9)})")
     if case == 2:
         k = rng.randrange(1, 6)
-        return f"integrate(exp({k}x),x,0,1)"
-    return f"integrate(1/(x+{rng.randrange(1,6)}),x,0,{rng.randrange(1,6)})"
+        return messy(rng, f"integrate(exp({k}x),x,0,1)")
+    if case == 3:
+        return messy(rng, f"integrate(1/(x+{rng.randrange(1,6)}),x,0,{rng.randrange(1,6)})")
+    if case == 4:
+        return messy(rng, f"integrate(({lin(rng)}),x,{rng.randrange(-3,2)},{rng.randrange(3,9)})")
+    return messy(rng, f"integrate(cos({rng.randrange(1,6)}x),x,0,pi/{rng.randrange(1,5)})")
 
 
 def rand_trig(rng: random.Random) -> str:
-    case = rng.randrange(4)
+    case = rng.randrange(6)
     if case == 0:
         a = rng.randrange(1, 6)
         b = rng.randrange(1, 6)
-        return f"xform({a}*sin(x)+{b}cos(x),sqrt({a*a+b*b})*sin(x+atan({b}/{a})))"
+        return messy(rng, f"xform({a}*sin(x)+{b}cos(x),sqrt({a*a+b*b})*sin(x+atan({b}/{a})))")
     if case == 1:
         terms = ["1", "tan(x)^2"]
         rng.shuffle(terms)
-        return f"xform({terms[0]}+{terms[1]},sec(x)^2)"
+        return messy(rng, f"xform({terms[0]}+{terms[1]},sec(x)^2)")
     if case == 2:
         terms = ["1", "cot(x)^2"]
         rng.shuffle(terms)
-        return f"xform({terms[0]}+{terms[1]},cosec(x)^2)"
-    terms = ["sin(x)^2", "cos(x)^2"]
-    rng.shuffle(terms)
-    return f"xform({terms[0]}+{terms[1]},1)"
+        return messy(rng, f"xform({terms[0]}+{terms[1]},cosec(x)^2)")
+    if case == 3:
+        terms = ["sin(x)^2", "cos(x)^2"]
+        rng.shuffle(terms)
+        return messy(rng, f"xform({terms[0]}+{terms[1]},1)")
+    if case == 4:
+        return messy(rng, f"xform(2*sin(x-60)=cos(x-30),tan(x)=3*sqrt(3))")
+    a, b = rng.randrange(1, 6), rng.randrange(1, 6)
+    while b == a:
+        b = rng.randrange(1, 6)
+    return messy(rng, f"xform({a}*sin(x-60)-{b}*cos(x-30)=0,tan(x))")
 
 
 def command_input(rng: random.Random, depth: int, template_rate: float, commands: list[str] | None = None) -> tuple[str, str]:
