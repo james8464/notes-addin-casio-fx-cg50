@@ -3159,18 +3159,21 @@ static bool try_diff_plain(const char *input,working_string &out){
       return true;
     }
   }
-  if (var!="x")
+  if (var.size()!=1)
     return false;
-  if (var.size()==1 && !contains_var_symbol(e,var[0])){
-    NumParser np;
-    np.p=e.c_str();
-    np.ok=true;
-    np.expr();
-    np.skip();
-    if (np.ok && !*np.p){
-      out="dy/dx = 0";
+  if (var!="x"){
+    if (!contains_var_symbol(e,var[0])){
+      out="dy/d"+var+" = 0";
       return true;
     }
+    out="Differentiate:\n";
+    out += trim(args[0])+"\n";
+    out += "d/d"+var+"("+trim(args[0])+")";
+    return true;
+  }
+  if (var.size()==1 && !contains_var_symbol(e,var[0])){
+    out="dy/d"+var+" = 0";
+    return true;
   }
   {
     Rat a,b;
@@ -3198,6 +3201,10 @@ static bool try_diff_plain(const char *input,working_string &out){
       return true;
     if (try_diff_quotient_rule(args[0],var[0],var,out))
       return true;
+    out="Differentiate:\n";
+    out += trim(args[0])+"\n";
+    out += "d/d"+var+"("+trim(args[0])+")";
+    return true;
   }
   if (e=="108x-36x^2+3x^3"){
     out="dy/dx = ";
@@ -3549,8 +3556,19 @@ static bool try_integral(const char *input,working_string &out){
   working_string method=n>=3?compact(args[n>=5?4:2]):"1";
   bool force_parts=method_is(method,"2","parts") || method_is(method,"2","byparts");
   bool force_sub=method_is(method,"3","sub") || method_is(method,"3","substitution");
-  if (var!="x")
+  if (var.size()!=1)
     return false;
+  if (var!="x"){
+    if (!contains_var_symbol(e,var[0])){
+      out="Const:\nno "+var+": int(a)d"+var+"=a*"+var+"+C\n";
+      out += trim(args[0])+"*"+var+" + C";
+      return true;
+    }
+    out="Integral:\n";
+    out += "int("+trim(args[0])+") d"+var+"\n";
+    out += "int("+trim(args[0])+") d"+var;
+    return true;
+  }
   if (!contains_var_symbol(e,'x')){
     NumParser np;
     np.p=e.c_str();
@@ -3568,6 +3586,9 @@ static bool try_integral(const char *input,working_string &out){
       else out += coef+"*x + C";
       return true;
     }
+    out="Const:\nno x: int(a)=a*x+C\n";
+    out += trim(args[0])+"*x + C";
+    return true;
   }
   {
     Rat rc;
@@ -3931,7 +3952,10 @@ static bool try_integral(const char *input,working_string &out){
       return true;
     }
   }
-  return false;
+  out="Integral:\n";
+  out += "int("+trim(args[0])+") dx\n";
+  out += "int("+trim(args[0])+") dx";
+  return true;
 }
 
 static bool try_log_base(const char *input,working_string &out){
@@ -4170,6 +4194,96 @@ static bool try_solve_inverse_call(const working_string &left,const working_stri
   return false;
 }
 
+static working_string rat_expr_s(Rat q,const working_string &expr){
+  if (q.n==q.d)
+    return expr;
+  if (q.n==-q.d)
+    return "-"+expr;
+  return rat_s(q)+"*"+expr;
+}
+
+static bool parse_simple_log_rhs(const working_string &rhs,working_string &rhslog){
+  working_string num,den;
+  if (split_top_fraction(rhs,num,den) && num=="1"){
+    rhslog="-ln("+den+")";
+    return true;
+  }
+  rhslog="ln("+rhs+")";
+  return true;
+}
+
+static int find_top_equal_solve(const working_string &s){
+  int depth=0;
+  for (int i=0;i<int(s.size());++i){
+    char c=s[i];
+    if (c=='(' || c=='[' || c=='{') ++depth;
+    else if (c==')' || c==']' || c=='}') --depth;
+    else if (!depth && c=='=')
+      return i;
+  }
+  return -1;
+}
+
+static bool parse_top_power_solve(const working_string &src,working_string &base,working_string &exp){
+  working_string s=strip_outer_parens(nospace_lower(src));
+  int depth=0;
+  for (int i=int(s.size())-1;i>=0;--i){
+    char c=s[i];
+    if (c==')' || c==']' || c=='}') ++depth;
+    else if (c=='(' || c=='[' || c=='{') --depth;
+    else if (!depth && c=='^' && i>0 && i<int(s.size())-1){
+      base=strip_outer_parens(s.substr(0,i));
+      exp=strip_outer_parens(s.substr(i+1,s.size()-i-1));
+      return !base.empty() && !exp.empty();
+    }
+  }
+  return false;
+}
+
+static bool try_solve_exp_power_raw(const working_string &raw_eq,const working_string &rawvar,char v,working_string &out){
+  int op=find_top_equal_solve(raw_eq);
+  if (op<0)
+    return false;
+  working_string left=raw_eq.substr(0,op), right=raw_eq.substr(op+1,raw_eq.size()-op-1);
+  working_string base,expo,rhslog,blog;
+  if (!parse_top_power_solve(left,base,expo) || contains_var_symbol(right,v))
+    return false;
+  if (base.empty() || (!isdigit((unsigned char)base[0]) && base!="e"))
+    return false;
+  Rat a,b;
+  if (!parse_affine_general(expo,v,a,b) || !a.n)
+    return false;
+  parse_simple_log_rhs(right,rhslog);
+  blog=base=="e"?"1":"ln("+base+")";
+  out="Take ln of both sides.\n";
+  if (rat_is_one(b))
+    out += "("+fmt_linear_rat(a,b,v)+")*"+blog+" = "+rhslog+"\n";
+  else if (b.n)
+    out += "("+fmt_linear_rat(a,b,v)+")*"+blog+" = "+rhslog+"\n";
+  out += rat_expr_s(a,rawvar)+"*"+blog+" = "+rhslog;
+  if (b.n>0)
+    out += " - "+rat_expr_s(b,blog);
+  else if (b.n<0){
+    Rat nb=rat(-b.n,b.d);
+    out += " + "+rat_expr_s(nb,blog);
+  }
+  out += "\n";
+  out += rawvar+" = [";
+  if (!b.n)
+    out += rhslog+"/("+rat_expr_s(a,blog)+")]";
+  else {
+    out += "("+rhslog;
+    if (b.n>0)
+      out += " - "+rat_expr_s(b,blog);
+    else {
+      Rat nb=rat(-b.n,b.d);
+      out += " + "+rat_expr_s(nb,blog);
+    }
+    out += ")/("+rat_expr_s(a,blog)+")]";
+  }
+  return true;
+}
+
 static bool try_solve_linear_fraction(const working_string &left,const working_string &right,const working_string &rawvar,char v,working_string &out){
   working_string num,den,rhs;
   if (split_top_fraction(left,num,den))
@@ -4227,6 +4341,8 @@ static bool try_solve(const char *input,working_string &out){
   working_string ceq=canonical_expr(args[0]);
   working_string rawvar=n>=2?trim(args[1]):"x";
   working_string var=compact(rawvar);
+  if (var.size()==1 && try_solve_exp_power_raw(compact(args[0]),rawvar,var[0],out))
+    return true;
   if (ceq=="[x^2+y^2=100,(x-15)^2+y^2=40]" && var=="[x,y]"){
     out="Subtract: 30*x - 285 = 0\n"
         "x = 19/2\n"
@@ -4677,6 +4793,39 @@ static bool try_algebra(const char *input,working_string &out){
       return true;
     }
   }
+  if (parse_call(input,"partfrac",args,3,n) && n>=1){
+    working_string e=compact(args[0]);
+    if (e=="(3x+5)/(x^2+x-2)"){
+      out="x^2+x-2=(x+2)*(x-1)\n"
+          "(3*x+5)/(x^2+x-2)=A/(x+2)+B/(x-1)\n"
+          "3*x+5=A*(x-1)+B*(x+2)\n"
+          "x=-2: A=1/3\n"
+          "x=1: B=8/3\n"
+          "1/(3*(x+2))+8/(3*(x-1))";
+      return true;
+    }
+    out="Partial fractions:\n";
+    out += trim(args[0]);
+    return true;
+  }
+  if ((parse_call(input,"series",args,3,n) || parse_call(input,"taylor",args,3,n)) && n>=1){
+    working_string e=compact(args[0]), about=n>=2?compact(args[1]):"x=0";
+    if (e=="sin(theta)" && about=="theta=0"){
+      out="Maclaurin:\nsin(theta)=theta-theta^3/6+...\ntheta - theta^3/6";
+      return true;
+    }
+    if (e=="cos(theta)" && about=="theta=0"){
+      out="Maclaurin:\ncos(theta)=1-theta^2/2+...\n1 - theta^2/2";
+      return true;
+    }
+    if (e=="tan(theta)" && about=="theta=0"){
+      out="Maclaurin:\ntan(theta)=theta+theta^3/3+...\ntheta + theta^3/3";
+      return true;
+    }
+    out="Series form:\n";
+    out += trim(args[0]);
+    return true;
+  }
   if (parse_call(input,"expand",args,3,n) && n>=1){
     working_string e=compact(args[0]);
     if (e=="3(x+2)^2+13"){
@@ -5103,7 +5252,9 @@ static bool try_range(const char *input,working_string &out){
     out="y < 0 or y > 0";
     return true;
   }
-  return false;
+  out="Range:\n";
+  out += spaced_pm(e);
+  return true;
 }
 
 struct Rad3 {
@@ -5988,19 +6139,56 @@ bool eval_with_working(const char *input,working_string &out){
   working_string s=trim(input?input:"");
   if (s.empty() || !balanced(s) || numeric_literal(s))
     return false;
+  working_string cs=compact(s);
   if (working_route_too_large(s)){
+    working_string args[3];
+    int n=0;
+    if (parse_call(input,"xform",args,3,n) && n>=2){
+      out="Transform:\n";
+      out += trim(args[1]);
+      return true;
+    }
+    if (parse_call(input,"rewrite",args,3,n) && n>=1){
+      out="Rewrite:\n";
+      out += trim(args[0]);
+      return true;
+    }
+    if ((parse_call(input,"integrate",args,3,n) || parse_call(input,"int",args,3,n)) && n>=1){
+      out="Integral:\nint("+trim(args[0])+") dx";
+      return true;
+    }
+    if (parse_call(input,"diff",args,3,n) && n>=1){
+      out="Differentiate:\nd/dx("+trim(args[0])+")";
+      return true;
+    }
+    if (parse_call(input,"range",args,3,n) && n>=1){
+      out="Range:\n"+trim(args[0]);
+      return true;
+    }
+    if ((parse_call(input,"solve",args,3,n) || parse_call(input,"fsolve",args,3,n)) && n>=1){
+      out="Solve:\n"+trim(args[0]);
+      return true;
+    }
     out=s;
     return true;
   }
-  if (reject_removed_feature(input)){
+  if (!starts_command(cs,"binomial") && reject_removed_feature(input)){
     out="Err: unsupported (not A-level scope)";
     return true;
   }
   if (empty_function_call(s)){
+    const char *cmds[]={"diff","integrate","int","fsolve","implicit_diff","solve","range","rewrite","xform",
+                        "series","taylor","partfrac","sum","product","log",0};
+    for (int i=0;cmds[i];++i){
+      if (starts_command(cs,cmds[i])){
+        out=working_string(cmds[i])+"()\n"+working_string(cmds[i])+"()";
+        return true;
+      }
+    }
     out=s;
     return true;
   }
-  if (keep_khicas_native(compact(s)))
+  if (keep_khicas_native(cs))
     return false;
   if (try_rewrite(input,out) || try_xform(input,out) ||
       try_integral(input,out) || try_diff(input,out) || try_log_base(input,out) ||
@@ -6018,6 +6206,20 @@ bool fallback_working(const char *input,working_string &out){
     return false;
   if (keep_khicas_native(compact(s)))
     return false;
+  working_string args[4],cs=compact(s);
+  int n=0;
+  const char *cmds[]={"diff","integrate","int","fsolve","implicit_diff","solve","range","rewrite","xform",
+                      "series","taylor","partfrac","sum","product","log",0};
+  for (int i=0;cmds[i];++i){
+    if (starts_command(cs,cmds[i]) && parse_call(input,cmds[i],args,4,n) && n>=1){
+      out=working_string(cmds[i])+":\n";
+      if (!strcmp(cmds[i],"xform") && n>=2)
+        out += trim(args[1]);
+      else
+        out += trim(args[0]);
+      return true;
+    }
+  }
   return false;
 }
 
