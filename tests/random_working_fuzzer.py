@@ -333,6 +333,42 @@ def chaos_equation(rng: random.Random, depth: int) -> str:
     return f"{chaos_expr(rng, depth)}={chaos_expr(rng, depth)}"
 
 
+def chaos_xform_pair(rng: random.Random, depth: int) -> list[str]:
+    base = rng.randrange(2, 13)
+    n = rng.randrange(2, 8)
+    k = rng.randrange(1, 10)
+    a = nz(rng, -6, 6)
+    b = rng.randrange(-9, 10)
+    if rng.random() < 0.2:
+        e = chaos_expr(rng, max(1, depth - 4))
+    else:
+        e = rng.choice(["x", f"x+{k}", f"{a}*x+{b}", "sin(x)", "cos(x)", "tan(x)"])
+    cases = [
+        ("1+tan(x)^2", "sec(x)^2"),
+        ("sec(x)^2", "1+tan(x)^2"),
+        ("1+cot(x)^2", "cosec(x)^2"),
+        ("sin(x)^2+cos(x)^2", "1"),
+        ("tan(x)^2", "sec(x)^2-1"),
+        ("cot(x)^2", "cosec(x)^2-1"),
+        ("2sin(x)cos(x)", "sin(2x)"),
+        (f"log({base},{e})", f"ln({e})/ln({base})"),
+        (f"log({base},x^{n})", f"{n}log({base},x)"),
+        (f"ln(x^{n})", f"{n}ln(x)"),
+        (f"exp(ln({e}))", e),
+        (f"ln(exp({e}))", e),
+    ]
+    if abs(a) > 0:
+        aa = a * a
+        bb = 2 * a * b
+        cc = b * b
+        cases.append((f"({a}*x+{b})^2", f"{aa}*x^2+{bb}*x+{cc}"))
+    if rng.random() < 0.5:
+        src, target = rng.choice(cases)
+    else:
+        target, src = rng.choice(cases)
+    return [src, target]
+
+
 def chaos_args(rng: random.Random, cmd: str, depth: int, variant: int | None = None) -> list[str]:
     v = rng.choice(CHAOS_VARS)
     numeric = rng.random() < 0.42
@@ -433,6 +469,8 @@ def chaos_args(rng: random.Random, cmd: str, depth: int, variant: int | None = N
             return [e(), f"[{v}={e(depth-1)},{rng.choice([c for c in CHAOS_VARS if c != v])}={e(depth-2)}]"]
         return [e(), f"{v}={e(depth-1)}"]
     if cmd == "xform":
+        if rng.random() < 0.55:
+            return chaos_xform_pair(rng, depth)
         return [rng.choice([e(), eq()]), rng.choice([e(), eq()])]
     return [e()]
 

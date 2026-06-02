@@ -2965,9 +2965,14 @@ static bool try_diff_product_rule(const working_string &expr,char v,const workin
     out += "du/d"+rawvar+" = "+deriv[0]+"\n";
     out += "dv/d"+rawvar+" = "+deriv[1]+"\n";
     out += "u'v+uv'\n";
+    working_string first=mul_deriv_factor(deriv[0],shown[1]);
     working_string second=mul_factor_derivative(shown[0],deriv[1]);
-    out += ""+mul_deriv_factor(deriv[0],shown[1]);
-    out += (!second.empty() && second[0]=='-') ? " - "+second.substr(1,second.size()-1) : " + "+second;
+    if (first=="0" && second=="0")
+      out += "0";
+    else {
+      out += first;
+      out += (!second.empty() && second[0]=='-') ? " - "+second.substr(1,second.size()-1) : " + "+second;
+    }
     return true;
   }
   for (int i=0;i<n;++i)
@@ -3138,9 +3143,7 @@ static bool try_implicit_diff(const char *input,working_string &out){
   return false;
 }
 
-static bool try_diff(const char *input,working_string &out){
-  if (try_implicit_diff(input,out))
-    return true;
+static bool try_diff_plain(const char *input,working_string &out){
   working_string args[3];
   int n=0;
   if (!parse_call(input,"diff",args,3,n) || n<1)
@@ -3282,6 +3285,29 @@ static bool try_diff(const char *input,working_string &out){
     return true;
   }
   return false;
+}
+
+static void strip_final_diff_prefix(working_string &out){
+  size_t start=out.rfind('\n');
+  start = start==working_string::npos ? 0 : start+1;
+  working_string line=trim(out.substr(start,out.size()-start));
+  if (line.size()<5 || line.substr(0,4)!="dy/d")
+    return;
+  size_t eq=line.find('=');
+  if (eq==working_string::npos || eq>12)
+    return;
+  working_string ans=trim(line.substr(eq+1,line.size()-eq-1));
+  if (!ans.empty())
+    out=out.substr(0,start)+ans;
+}
+
+static bool try_diff(const char *input,working_string &out){
+  if (try_implicit_diff(input,out))
+    return true;
+  if (!try_diff_plain(input,out))
+    return false;
+  strip_final_diff_prefix(out);
+  return true;
 }
 
 static bool integrate_log_reverse_chain(const working_string &expr,working_string &out){
@@ -5423,6 +5449,18 @@ static int rewrite_log_target_index(const working_string &base,const working_str
   return -1;
 }
 
+static bool working_route_too_large(const working_string &s){
+  int ops=0,brackets=0;
+  for (int i=0;i<int(s.size());++i){
+    char c=s[i];
+    if (c=='+' || c=='-' || c=='*' || c=='/' || c=='^' || c=='=' || c==',')
+      ++ops;
+    else if (c=='(' || c==')' || c=='[' || c==']')
+      ++brackets;
+  }
+  return s.size()>12000 || ops>1800 || brackets>2400;
+}
+
 static void rewrite_acc_init(RewriteAcc &acc){
   acc.k=rat(0,1);
   acc.work="";
@@ -5623,8 +5661,11 @@ static bool decompose_log_arg(const working_string &base,const working_string &a
   return false;
 }
 
-static working_string generic_rewrite_expr(const working_string &expr,RewriteTarget *targets,int n,working_string &work,bool &changed){
+static working_string generic_rewrite_expr(const working_string &expr,RewriteTarget *targets,int n,working_string &work,bool &changed,int depth,int &budget){
   working_string s=canonical_expr(expr);
+  budget -= 1 + int(s.size()/256);
+  if (budget<0 || depth>28 || working_route_too_large(s))
+    return s;
   int idx=rewrite_target_index(s,targets,n);
   if (idx>=0){
     changed=true;
@@ -5659,7 +5700,7 @@ static working_string generic_rewrite_expr(const working_string &expr,RewriteTar
     bool any=false;
     for (int i=0;i<tn;++i){
       bool ch=false;
-      working_string r=generic_rewrite_expr(terms[i],targets,n,work,ch);
+      working_string r=generic_rewrite_expr(terms[i],targets,n,work,ch,depth+1,budget);
       any = any || ch;
       if (!i)
         out = signs[i]<0 ? "-"+r : r;
@@ -5672,8 +5713,8 @@ static working_string generic_rewrite_expr(const working_string &expr,RewriteTar
   working_string num,den;
   if (split_top_fraction(s,num,den)){
     bool cn=false,cd=false;
-    working_string rn=generic_rewrite_expr(num,targets,n,work,cn);
-    working_string rd=generic_rewrite_expr(den,targets,n,work,cd);
+    working_string rn=generic_rewrite_expr(num,targets,n,work,cn,depth+1,budget);
+    working_string rd=generic_rewrite_expr(den,targets,n,work,cd,depth+1,budget);
     changed = changed || cn || cd;
     return "("+rn+")/("+rd+")";
   }
@@ -5684,7 +5725,7 @@ static working_string generic_rewrite_expr(const working_string &expr,RewriteTar
     bool any=false;
     for (int i=0;i<fn;++i){
       bool ch=false;
-      working_string r=generic_rewrite_expr(factors[i],targets,n,work,ch);
+      working_string r=generic_rewrite_expr(factors[i],targets,n,work,ch,depth+1,budget);
       any = any || ch;
       if (i) out += "*";
       out += r;
@@ -5695,8 +5736,8 @@ static working_string generic_rewrite_expr(const working_string &expr,RewriteTar
   working_string base,exp;
   if (parse_top_power(s,base,exp)){
     bool cb=false,ce=false;
-    working_string rb=generic_rewrite_expr(base,targets,n,work,cb);
-    working_string re=generic_rewrite_expr(exp,targets,n,work,ce);
+    working_string rb=generic_rewrite_expr(base,targets,n,work,cb,depth+1,budget);
+    working_string re=generic_rewrite_expr(exp,targets,n,work,ce,depth+1,budget);
     changed = changed || cb || ce;
     return "("+rb+")^("+re+")";
   }
@@ -5707,7 +5748,7 @@ static working_string generic_rewrite_expr(const working_string &expr,RewriteTar
     bool any=false;
     for (int i=0;i<an;++i){
       bool ch=false;
-      working_string r=generic_rewrite_expr(args[i],targets,n,work,ch);
+      working_string r=generic_rewrite_expr(args[i],targets,n,work,ch,depth+1,budget);
       any = any || ch;
       if (i) out += ",";
       out += r;
@@ -5719,7 +5760,7 @@ static working_string generic_rewrite_expr(const working_string &expr,RewriteTar
   working_string shown,fac;
   if (factor_expr_simple(s,'x',shown,fac) && canonical_expr(fac)!=canonical_expr(s)){
     bool ch=false;
-    working_string r=generic_rewrite_expr(fac,targets,n,work,ch);
+    working_string r=generic_rewrite_expr(fac,targets,n,work,ch,depth+1,budget);
     if (ch){
       work += shown+" = "+fac+"\n";
       changed=true;
@@ -5734,6 +5775,10 @@ static bool try_rewrite(const char *input,working_string &out){
   int n=0;
   if (!parse_call(input,"rewrite",args,2,n) || n<2)
     return false;
+  if (working_route_too_large(args[0]) || working_route_too_large(args[1])){
+    out=trim(args[0]);
+    return true;
+  }
   RewriteTarget targets[12];
   int tn=parse_rewrite_targets(args[1],targets,12);
   if (tn<=0)
@@ -5747,8 +5792,9 @@ static bool try_rewrite(const char *input,working_string &out){
   if (eq>=0){
     bool cl=false,cr=false;
     working_string work;
-    working_string l=generic_rewrite_expr(expr.substr(0,eq),targets,tn,work,cl);
-    working_string r=generic_rewrite_expr(expr.substr(eq+1,expr.size()-eq-1),targets,tn,work,cr);
+    int budget=384;
+    working_string l=generic_rewrite_expr(expr.substr(0,eq),targets,tn,work,cl,0,budget);
+    working_string r=generic_rewrite_expr(expr.substr(eq+1,expr.size()-eq-1),targets,tn,work,cr,0,budget);
     if (!cl && !cr)
       return false;
     out += work;
@@ -5766,7 +5812,8 @@ static bool try_rewrite(const char *input,working_string &out){
   }
   bool changed=false;
   working_string work;
-  working_string r=generic_rewrite_expr(expr,targets,tn,work,changed);
+  int budget=384;
+  working_string r=generic_rewrite_expr(expr,targets,tn,work,changed,0,budget);
   if (!changed){
     out += expr;
     return true;
@@ -5941,6 +5988,10 @@ bool eval_with_working(const char *input,working_string &out){
   working_string s=trim(input?input:"");
   if (s.empty() || !balanced(s) || numeric_literal(s))
     return false;
+  if (working_route_too_large(s)){
+    out=s;
+    return true;
+  }
   if (reject_removed_feature(input)){
     out="Err: unsupported (not A-level scope)";
     return true;
@@ -5951,7 +6002,8 @@ bool eval_with_working(const char *input,working_string &out){
   }
   if (keep_khicas_native(compact(s)))
     return false;
-  if (try_integral(input,out) || try_diff(input,out) || try_log_base(input,out) ||
+  if (try_rewrite(input,out) || try_xform(input,out) ||
+      try_integral(input,out) || try_diff(input,out) || try_log_base(input,out) ||
       try_algebra(input,out) || try_simplify(input,out) || try_numeric(input,out) ||
       try_numeric_expr(input,out) || try_solve(input,out) || try_range(input,out) ||
       try_rewrite(input,out) || try_xform(input,out)){
