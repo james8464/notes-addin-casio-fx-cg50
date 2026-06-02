@@ -29,6 +29,10 @@ OPTIONAL_ARG_COMMANDS = {
     "log", "partfrac", "product", "range", "series", "solve", "sum",
     "taylor",
 }
+WORKING_OUTPUT_COMMANDS = {
+    "diff", "fsolve", "implicit_diff", "integrate", "log", "partfrac",
+    "range", "rewrite", "series", "solve", "taylor", "xform",
+}
 COMMANDS = [
     "diff", "integrate", "simplify", "solve", "range",
     "rewrite", "rewrite", "xform", "xform", "xform",
@@ -890,6 +894,9 @@ def classify(kind: str, src: str, out: str, code: int, elapsed: float, timeout: 
     if any(x in lowered for x in ["segmentation", "abort", "system error", "reboot", "traceback"]):
         return "fatal-text"
     if kind.startswith("chaos") and stripped == src.strip():
+        cmd = kind.split(":", 1)[1] if ":" in kind else ""
+        if cmd in WORKING_OUTPUT_COMMANDS:
+            return "echo-only"
         return "symbolic"
     if kind != "noise" and stripped == src.strip():
         return "echo-only"
