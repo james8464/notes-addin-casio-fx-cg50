@@ -17,8 +17,6 @@ def main() -> int:
     makefile = (SRC / "Makefile").read_text(errors="ignore")
     build = (ROOT / "tools/build_g3a.sh").read_text(errors="ignore")
 
-    for label in ("Math", "Deg", "Norm1", "d/c", "Real", "MAT/VCT", "MATH"):
-        require(source, f'"{label}"', label)
     require(source, "SAF_BATTERY", "battery status flag")
     for setup_flag in (
         "SAF_SETUP_INPUT_OUTPUT",
@@ -27,15 +25,10 @@ def main() -> int:
         "SAF_SETUP_FRAC_RESULT",
         "SAF_SETUP_COMPLEX_MODE",
     ):
-        if setup_flag in source:
-            raise SystemExit(f"FAIL runmat OS inverted setup label present: {setup_flag}")
+        require(source, setup_flag, setup_flag)
     require(source, "DisplayStatusArea();", "OS status draw")
-    require(source, "status_box(42, 31, \"Math\")", "Math status chip")
-    require(source, "status_box(74, 28, \"Deg\")", "Deg status chip")
-    require(source, "status_box(103, 44, \"Norm1\")", "Norm1 status chip")
-    require(source, "status_box(193, 31, \"d/c\")", "d/c status chip")
-    require(source, "status_box(225, 32, \"Real\")", "Real status chip")
-    require(source, "PrintMini(&x, &y", "OS mini text")
+    if "status_box(" in source or "draw_status_labels" in source:
+        raise SystemExit("FAIL runmat custom status text present")
     require(source, "extern \"C\" void DirectDrawRectangle", "direct border syscall")
     require(source, "const unsigned short kCasioCasPink = 0xF81F;", "pink")
     require(source, "DirectDrawRectangle(0, 0, 5, 223, kCasioCasPink);", "left border")
@@ -54,11 +47,13 @@ def main() -> int:
     require(source, "GetKeyWait_OS(&col, &row, KEYWAIT_HALTOFF_TIMEROFF, 0, 1, &keycode)", "nonblocking key call")
     require(source, "OS_InnerWait_ms(40)", "loop pacing")
     require(source, "fill_rect(339, 0, 21, 24, visible ? COLOR_BLUE : kWhite);", "R blue highlight")
-    require(source, 'Bdisp_MMPrint(342, 0, "R"', "OS R glyph")
+    require(source, 'Bdisp_MMPrint(342, 0, "R", 0x40', "status-area R glyph")
     require(source, "int x = slot == 2 ? 128 : 203;", "custom fkey split positions")
     require(source, "int w = slot == 2 ? 74 : 56;", "custom fkey split widths")
     require(source, "fill_rect(x, 192, w, 18, COLOR_BLACK);", "custom fkey black cells")
-    require(source, "print_mini_text(x + 4, 196, text", "custom fkey text position")
+    require(source, 'Bdisp_MMPrint(x + 4, 196, text, 0x40', "custom fkey text position")
+    require(source, '"MAT/VCT"', "MAT/VCT fkey")
+    require(source, '"MATH"', "MATH fkey")
     if "PrintCXY(340" in source:
         raise SystemExit("FAIL runmat clipped R PrintCXY present")
     if "static unsigned char glyph" in source or "draw_pixel_text" in source:
