@@ -15,6 +15,7 @@ PROGRESS = ROOT / "progress" / "state.jsonl"
 
 OPS = ["+", "-", "*", "/"]
 FUNCS = ["sin", "cos", "tan", "ln", "sqrt", "exp"]
+CHAOS_FUNCS = ["sin", "cos", "tan", "sec", "cot", "ln", "sqrt", "exp", "abs"]
 VISIBLE_COMMANDS = [
     "abs", "acos", "approx", "asin", "atan", "ceil", "ceiling", "coeff",
     "collect", "cos", "cot", "degree", "diff", "exact", "expand", "factor",
@@ -172,36 +173,114 @@ def equation(rng: random.Random, depth: int) -> str:
     return f"{expr(rng, depth)}={expr(rng, depth)}"
 
 
-def chaos_number(rng: random.Random) -> str:
-    case = rng.randrange(5)
+def chaos_number(rng: random.Random, huge: bool = False) -> str:
+    case = rng.randrange(6)
+    scale = 10**12 if huge else 10**6
     if case == 0:
-        return str(rng.randrange(-10**6, 10**6 + 1))
+        return str(rng.randrange(-scale, scale + 1))
     if case == 1:
-        return f"{rng.randrange(-5000,5001)}/{nz(rng,1,97)}"
+        return f"{rng.randrange(-500000 if huge else -5000, 500001 if huge else 5001)}/{nz(rng,1,997 if huge else 97)}"
     if case == 2:
-        return f"{rng.choice(['', '-'])}{rng.randrange(0, 1000)}.{rng.randrange(0, 100000):05d}"
+        return f"{rng.choice(['', '-'])}{rng.randrange(0, 10**6 if huge else 1000)}.{rng.randrange(0, 10**8 if huge else 100000):05d}"
     if case == 3:
         return rng.choice(CHAOS_CONSTS)
-    return f"sqrt({rng.randrange(2, 200)})"
+    if case == 4:
+        return f"sqrt({rng.randrange(2, 10**6 if huge else 200)})"
+    return f"({rng.randrange(-999,1000)}/{nz(rng,2,999)})*sqrt({rng.randrange(2,999)})"
 
 
-def chaos_atom(rng: random.Random, numeric: bool = False) -> str:
+def chaos_atom(rng: random.Random, numeric: bool = False, huge: bool = False) -> str:
     if not numeric and rng.random() < 0.45:
         return rng.choice(CHAOS_VARS)
-    return chaos_number(rng)
+    return chaos_number(rng, huge)
+
+
+def chaos_poly(rng: random.Random, min_terms: int = 35, max_terms: int = 130, var: str | None = None) -> str:
+    v = var or rng.choice(CHAOS_VARS[:5])
+    terms = rng.randrange(min_terms, max_terms + 1)
+    start_power = rng.randrange(terms + 5, terms + 80)
+    out = []
+    for i in range(terms):
+        p = max(0, start_power - i)
+        c = rng.randrange(-9999, 10000)
+        if c == 0:
+            c = nz(rng, -9999, 9999)
+        sign = "+" if c > 0 else "-"
+        a = abs(c)
+        if p == 0:
+            term = str(a)
+        elif p == 1:
+            term = f"{a}*{v}"
+        else:
+            term = f"{a}*{v}^{p}"
+        if not out:
+            out.append(term if sign == "+" else "-" + term)
+        else:
+            out.append(sign + term)
+    return "".join(out)
+
+
+def chaos_poly_expr(rng: random.Random, depth: int) -> str:
+    p = chaos_poly(rng, rng.randrange(35, 80), rng.randrange(90, 140))
+    if depth <= 1 or rng.random() < 0.35:
+        return p
+    op = rng.choice(["+", "-", "*", "/"])
+    small = chaos_expr(rng, depth - 2)
+    return f"({p}){op}({small})"
+
+
+def chaos_nested_tower(rng: random.Random, depth: int, numeric: bool = False) -> str:
+    inner = chaos_atom(rng, numeric, huge=True)
+    funcs = rng.sample(CHAOS_FUNCS, k=rng.randrange(5, min(8, len(CHAOS_FUNCS)) + 1))
+    if rng.random() < 0.45:
+        inner = chaos_poly(rng, 10, 28)
+    for f in funcs:
+        if f == "ln" and rng.random() < 0.35:
+            inner = f"ln(abs({inner})+1)"
+        elif f == "sqrt" and rng.random() < 0.35:
+            inner = f"sqrt(({inner})^2+1)"
+        else:
+            inner = f"{f}({inner})"
+    if depth > 4 and rng.random() < 0.4:
+        inner = f"{inner}{rng.choice(OPS)}({chaos_expr(rng, depth-3, numeric)})"
+    return inner
+
+
+def chaos_log_base(rng: random.Random, depth: int) -> str:
+    base_case = rng.randrange(6)
+    if base_case == 0:
+        base = f"sqrt({chaos_poly(rng, 18, 55)})"
+    elif base_case == 1:
+        base = f"ln(abs({chaos_poly(rng, 12, 45)})+2)"
+    elif base_case == 2:
+        base = f"exp(sqrt(abs({chaos_expr(rng, max(1, depth-2))})))"
+    elif base_case == 3:
+        base = f"{rng.choice(['sin','cos','tan'])}(sqrt(abs({chaos_poly(rng, 8, 25)})))+{rng.randrange(2,9)}"
+    elif base_case == 4:
+        base = f"({chaos_expr(rng, max(1, depth-1))})^2+{rng.randrange(2,11)}"
+    else:
+        base = str(rng.randrange(2, 20))
+    arg = chaos_expr(rng, max(1, depth - 1))
+    return f"log({base},{arg})"
 
 
 def chaos_expr(rng: random.Random, depth: int, numeric: bool = False) -> str:
-    if depth <= 0 or rng.random() < 0.12:
-        return maybe_wrap(rng, chaos_atom(rng, numeric), 0.2)
-    case = rng.randrange(9)
+    if depth <= 0 or rng.random() < 0.06:
+        return maybe_wrap(rng, chaos_atom(rng, numeric, huge=depth > 4), 0.2)
+    if depth >= 5 and rng.random() < 0.18:
+        return chaos_poly_expr(rng, depth)
+    if depth >= 5 and rng.random() < 0.18:
+        return chaos_nested_tower(rng, depth, numeric)
+    if depth >= 4 and rng.random() < 0.16:
+        return chaos_log_base(rng, depth)
+    case = rng.randrange(14)
     if case == 0:
-        f = rng.choice(["sin", "cos", "tan", "sec", "cot", "ln", "log", "sqrt", "abs", "exp"])
+        f = rng.choice(CHAOS_FUNCS + ["log"])
         if f == "log" and rng.random() < 0.75:
-            return f"log({chaos_expr(rng, depth-1, numeric)},{chaos_expr(rng, depth-1, numeric)})"
+            return chaos_log_base(rng, depth)
         return f"{f}({chaos_expr(rng, depth-1, numeric)})"
     if case == 1:
-        return f"({chaos_expr(rng, depth-1, numeric)})^{rng.choice(['-3','-2','-1','1/2','2/3','3/2','2','3','4'])}"
+        return f"({chaos_expr(rng, depth-1, numeric)})^{rng.choice(['-5','-4','-3','-2','-1','1/3','1/2','2/3','3/2','5/2','2','3','4','7'])}"
     if case == 2:
         return f"({chaos_expr(rng, depth-1, numeric)}){rng.choice(OPS)}({chaos_expr(rng, depth-1, numeric)})"
     if case == 3:
@@ -214,6 +293,17 @@ def chaos_expr(rng: random.Random, depth: int, numeric: bool = False) -> str:
         return f"(({chaos_expr(rng, depth-1, numeric)})-({chaos_expr(rng, depth-1, numeric)}))"
     if case == 7:
         return f"{rng.choice(['+', '-'])}{chaos_expr(rng, depth-1, numeric)}"
+    if case == 8:
+        return chaos_poly_expr(rng, depth)
+    if case == 9:
+        return chaos_nested_tower(rng, depth, numeric)
+    if case == 10:
+        return chaos_log_base(rng, depth)
+    if case == 11:
+        pieces = [chaos_expr(rng, depth-2, numeric) for _ in range(rng.randrange(3, 7))]
+        return "(" + rng.choice(["+", "-", "*"]).join(f"({p})" for p in pieces) + ")"
+    if case == 12:
+        return f"sqrt(abs({chaos_expr(rng, depth-1, numeric)})+({chaos_expr(rng, depth-2, numeric)})^2)"
     return maybe_wrap(rng, chaos_expr(rng, depth-1, numeric), 0.55)
 
 
@@ -267,7 +357,7 @@ def chaos_args(rng: random.Random, cmd: str, depth: int) -> list[str]:
             args += [v, str(rng.randrange(-10, 0)), str(rng.randrange(1, 10))]
         return args
     if cmd == "rewrite":
-        if rng.random() < 0.55:
+        if rng.random() < 0.25:
             k = rng.randrange(1, 10)
             base = rng.randrange(2, 6)
             form = rng.choice([
@@ -276,10 +366,12 @@ def chaos_args(rng: random.Random, cmd: str, depth: int) -> list[str]:
                 f"log({base},{base**3}+{base**3*k}/x)",
             ])
             return [form, f"[a=log({base},x),b=log({base},x+{k})]"]
-        t1 = chaos_expr(rng, max(1, depth - 1), numeric)
-        t2 = chaos_expr(rng, max(1, depth - 1), numeric)
-        start = rng.choice([f"({t1})+({t2})", f"({t1})*({t2})", f"{rng.choice(['sin','cos','ln'])}({t1})"])
-        return [start, f"[a={t1},b={t2}]"]
+        terms = [chaos_expr(rng, max(2, depth - rng.randrange(1, 4)), numeric) for _ in range(rng.randrange(2, 6))]
+        start = chaos_expr(rng, depth, numeric)
+        if rng.random() < 0.5:
+            start = rng.choice(["+", "-", "*"]).join(f"({t})" for t in terms) + rng.choice(["", f"+({start})"])
+        labels = [f"{chr(97+i)}={term}" if rng.random() < 0.75 else term for i, term in enumerate(terms)]
+        return [start, "[" + ",".join(labels) + "]"]
     if cmd in {"series", "taylor"}:
         return [e(), f"{v}={rng.randrange(-3, 4)}", str(rng.randrange(2, 8))]
     if cmd == "solve":
@@ -292,12 +384,12 @@ def chaos_args(rng: random.Random, cmd: str, depth: int) -> list[str]:
 
 
 def chaos_case(rng: random.Random, depth: int, index: int, commands: list[str] | None = None) -> tuple[str, str]:
-    if rng.random() < 0.08:
+    if rng.random() < 0.04:
         return noisy_input(rng)
-    if rng.random() < 0.10:
+    if rng.random() < 0.06:
         return "chaos:raw", messy(rng, chaos_expr(rng, depth, rng.random() < 0.5))
     choices = commands or VISIBLE_COMMANDS
-    cmd = choices[index % len(choices)]
+    cmd = rng.choice(choices)
     args = ",".join(chaos_args(rng, cmd, depth))
     return f"chaos:{cmd}", messy(rng, f"{cmd}({args})")
 
