@@ -2508,6 +2508,7 @@ const char conf_standard[] =
   "range(\n"
   "xform(\n"
   "F2 calc\n"
+  "solve(\n"
   "diff(\n"
   "integrate(\n"
   "limit(\n"
