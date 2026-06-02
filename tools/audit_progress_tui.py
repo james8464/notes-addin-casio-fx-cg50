@@ -847,9 +847,10 @@ def queue_health(st: Stat, frame: int, width: int, enabled: bool) -> list[str]:
 def doc_scan_rows(st: Stat, frame: int, width: int, enabled: bool) -> list[str]:
     if st.docs_total <= 0:
         return [f"docs {st.docs_label}"]
+    percent = pct(st.docs_done, st.docs_total) * 100
     return [
-        f"docs {st.docs_done:,}/{st.docs_total:,} done  pending {st.docs_pending:,}",
-        bar(st.docs_done, st.docs_total, max(18, width), frame, enabled),
+        f"docs {st.docs_done:,}/{st.docs_total:,} done  {percent:5.1f}%  pending {st.docs_pending:,}",
+        f"scan {bar(st.docs_done, st.docs_total, max(18, width), frame, enabled)}",
         f"root {st.docs_label}",
     ]
 
