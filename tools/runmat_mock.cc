@@ -89,8 +89,9 @@ static void display_fkey(int slot, int id) {
   FKey_Display(slot, (int *)ptr);
 }
 
-static void draw_os_text_fkey(int slot, const char *text, int xoffset) {
-  fill_rect(slot * 64, 196, 64, 20, kBlack);
+static void draw_os_text_fkey(int slot, int base_id, const char *text, int xoffset) {
+  display_fkey(slot, base_id);
+  fill_rect(slot * 64 + 2, 198, 60, 16, kBlack);
   Bdisp_MMPrint(slot * 64 + xoffset, 196, text, 0x40, 0xffffffff, 0, 0, COLOR_WHITE, COLOR_BLACK, 1, 0);
 }
 
@@ -99,8 +100,8 @@ static void draw_soft_labels() {
   const int kFKeyDelete = 0x38;
   display_fkey(0, kFKeyJump);
   display_fkey(1, kFKeyDelete);
-  draw_os_text_fkey(2, "MAT/VCT", 4);
-  draw_os_text_fkey(3, "MATH", 9);
+  draw_os_text_fkey(2, kFKeyDelete, "MAT/VCT", 4);
+  draw_os_text_fkey(3, kFKeyDelete, "MATH", 9);
 }
 
 static void draw_input_box() {
