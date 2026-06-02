@@ -107,15 +107,6 @@ const unsigned short translated_keys[] =
 };
 
 static volatile int menutimer=0;
-static int cas_key_down(int k){
-  volatile const unsigned short *r=(volatile const unsigned short *)0xA44B0000;
-  int row=k%10, col=k/10-1;
-  return r[row>>1] & (1<<(col+8*(row&1)));
-}
-static int cas_f1f6_down(){
-  return cas_key_down(79) && cas_key_down(29);
-}
-
 void clear_menu_timer(){
   if (menutimer > 0) {
     // menu row 9 col 4
@@ -168,13 +159,9 @@ int ck_getkey(int * keyptr){
     alphamaj=false;
   if (keyflag & 1)
     shiftstate=true;
-  static int f1f6_latch=0;
   while (1){
-    if (!cas_f1f6_down())
-      f1f6_latch=0;
     casiostatus();
     DisplayStatusArea();
-    drawRecordingIndicator();
     Bdisp_PutDisp_DD ();
     SetSetupSetting(0x14,0); // disable OFF
     int ret=GetKeyWait_OS(&col,&row, 2 /* KEYWAIT_HALTON_TIMERON*/, timeout_delay /*timeout_period*/, 1 /* 0: handle menu key*/, &keycode) ;
@@ -225,14 +212,6 @@ int ck_getkey(int * keyptr){
       code=35;
     else
       code=(10-row)*6+(7-col);
-    if ((code==0 || code==5) && cas_f1f6_down()){
-      if (!f1f6_latch){
-	f1f6_latch=1;
-	*keyptr=KEY_CTRL_F1F6;
-	return 1;
-      }
-      continue;
-    }
     //char buf[256],buf2[256];
     //sprint_int(buf,row);
     //sprint_int(buf2,col);
