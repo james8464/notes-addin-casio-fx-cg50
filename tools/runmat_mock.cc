@@ -67,7 +67,7 @@ static void draw_status_area() {
 }
 
 static void draw_r_indicator(bool visible) {
-  fill_rect(339, 0, 21, 24, visible ? COLOR_BLUE : kWhite);
+  fill_rect(339, 0, 21, 23, visible ? COLOR_BLUE : kWhite);
   if (visible) {
     PrintCXY(342, 1, "R", 0x40, -1, COLOR_WHITE, COLOR_BLUE, 1, 0);
   }
@@ -109,7 +109,6 @@ static void draw_static_screen(bool r_visible) {
   fill_rect(0, 0, LCD_WIDTH_PX, LCD_HEIGHT_PX, kWhite);
 
   draw_status_area();
-  hline(6, 389, 24, kBlack);
   draw_r_indicator(r_visible);
 
   rect_outline(13, 31, 14, 17, kBlack);

@@ -46,7 +46,7 @@ def main() -> int:
     require(source, "KEYWAIT_HALTOFF_TIMEROFF", "nonblocking key poll")
     require(source, "GetKeyWait_OS(&col, &row, KEYWAIT_HALTOFF_TIMEROFF, 0, 1, &keycode)", "nonblocking key call")
     require(source, "OS_InnerWait_ms(40)", "loop pacing")
-    require(source, "fill_rect(339, 0, 21, 24, visible ? COLOR_BLUE : kWhite);", "R blue highlight")
+    require(source, "fill_rect(339, 0, 21, 23, visible ? COLOR_BLUE : kWhite);", "R blue highlight")
     require(source, 'PrintCXY(342, 1, "R", 0x40', "status-area R glyph")
     require(source, "kFKeyBlackTemplate = 0x0190", "OS black fkey template")
     require(source, "display_fkey(slot, kFKeyBlackTemplate);", "OS fkey background")
@@ -57,6 +57,8 @@ def main() -> int:
     require(source, '"MATH"', "MATH fkey")
     if "PrintCXY(340" in source:
         raise SystemExit("FAIL runmat clipped R PrintCXY present")
+    if "hline(6, 389, 24" in source:
+        raise SystemExit("FAIL runmat duplicate status divider present")
     if "draw_custom_fkey_text" in source or "Bdisp_MMPrint(x + 4, 196, text" in source:
         raise SystemExit("FAIL runmat custom fkey box renderer present")
     if "static unsigned char glyph" in source or "draw_pixel_text" in source:
