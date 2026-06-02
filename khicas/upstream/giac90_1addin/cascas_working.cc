@@ -660,6 +660,15 @@ static bool split_top_fraction(const working_string &src,working_string &num,wor
 
 static int factor_terms(const working_string &fac,working_string *t,int maxterms);
 static working_string normalize_top_product(const working_string &raw);
+static working_string spaced_pm(const working_string &s);
+
+static bool cube_long(long n,long &r){
+  if (n<0) n=-n;
+  for (r=0;r<=2048;++r)
+    if (r*r*r==n)
+      return true;
+  return false;
+}
 
 static bool factor_expr_simple(const working_string &src,char v,working_string &shown,working_string &fac){
   working_string e=normalize_top_product(strip_outer_parens(src));
@@ -685,6 +694,23 @@ static bool factor_expr_simple(const working_string &src,char v,working_string &
           fac += factor_lin(a,b,v);
         }
         return true;
+      }
+    }
+  }
+  {
+    working_string pfx;
+    pfx += v; pfx += "^3";
+    if (e.size()>pfx.size()+1 && e.substr(0,pfx.size())==pfx &&
+        (e[pfx.size()]=='-' || e[pfx.size()]=='+')){
+      Rat cr;
+      if (parse_rat(e.substr(pfx.size()+1,e.size()-pfx.size()-1),cr) && cr.d==1){
+        long cv=e[pfx.size()]=='-'?-cr.n:cr.n, r=0;
+        if (cv && cube_long(cv,r)){
+          shown=spaced_pm(e);
+          long b=cv<0?r:-r;
+          fac=factor_lin(1,cv<0?-r:r,v)+"*("+poly2_s(1,b,r*r,v)+")";
+          return true;
+        }
       }
     }
   }
@@ -3761,6 +3787,64 @@ static bool try_log_base(const char *input,working_string &out){
   return true;
 }
 
+static working_string solve_affine_for_target(Rat a,Rat b,const working_string &target){
+  working_string t=target;
+  if (b.n>0) t="("+target+" - "+rat_s(b)+")";
+  else if (b.n<0) t="("+target+" + "+rat_s(rat(-b.n,b.d))+")";
+  if (rat_is_one(a))
+    return t;
+  if (rat_is_minus_one(a))
+    return "-"+t;
+  return t+"/"+rat_s(a);
+}
+
+static bool try_solve_inverse_call(const working_string &left,const working_string &right,const working_string &rawvar,char v,working_string &out){
+  const char *fn[]={"ln","exp"}, *inv[]={"exp","ln"};
+  working_string arg,show,argshow;
+  Rat a,b;
+  for (int i=0;i<2;++i){
+    if (parse_unary_arg(left,fn[i],arg) && !contains_var_symbol(right,v) &&
+        parse_affine_general(arg,v,a,b)){
+      argshow=fmt_linear_rat(a,b,v);
+      show=working_string(inv[i])+"("+spaced_pm(right)+")";
+      out=working_string(fn[i])+"("+argshow+") = "+spaced_pm(right)+"\n";
+      out += argshow+" = "+show+"\n";
+      out += rawvar+" = ["+solve_affine_for_target(a,b,show)+"]";
+      return true;
+    }
+  }
+  return false;
+}
+
+static bool try_solve_linear_fraction(const working_string &left,const working_string &right,const working_string &rawvar,char v,working_string &out){
+  working_string num,den,rhs;
+  if (split_top_fraction(left,num,den))
+    rhs=right;
+  else if (split_top_fraction(right,num,den))
+    rhs=left;
+  else
+    return false;
+  Rat na,nb,da,db,rb;
+  if (!parse_affine_general(num,v,na,nb) || !parse_affine_general(den,v,da,db))
+    return false;
+  if (!parse_rat(rhs,rb))
+    return false;
+  Rat coef=rat_sub(na,rat_mul(rb,da));
+  if (!coef.n)
+    return false;
+  Rat root=rat_div(rat_sub(rat_mul(rb,db),nb),coef);
+  Rat bad=rat_div(rat(-db.n,db.d),da);
+  working_string dshow=fmt_linear_rat(da,db,v);
+  out="Dom: "+dshow+" != 0 => "+rawvar+" != "+rat_s(bad)+"\n";
+  out += "Times "+dshow+"\n";
+  out += fmt_linear_rat(na,nb,v)+" = "+rat_s(rb)+"*("+dshow+")\n";
+  if (rat_cmp(root,bad)==0)
+    out += rawvar+" = []";
+  else
+    out += rawvar+" = ["+rat_s(root)+"]";
+  return true;
+}
+
 static bool try_solve(const char *input,working_string &out){
   working_string args[3];
   int n=0;
@@ -3872,6 +3956,11 @@ static bool try_solve(const char *input,working_string &out){
   char vbuf[2]={v,0};
   working_string vs(vbuf);
   working_string left=ceq.substr(0,op), right=ceq.substr(op+1,ceq.size()-op-1);
+  if (try_solve_linear_fraction(left,right,rawvar,v,out))
+    return true;
+  if (try_solve_inverse_call(left,right,rawvar,v,out) ||
+      try_solve_inverse_call(right,left,rawvar,v,out))
+    return true;
   {
     working_string tan_rhs;
     Rat tv;
@@ -4413,6 +4502,42 @@ static bool try_numeric_expr(const char *input,working_string &out){
   return true;
 }
 
+static bool try_range_shifted_square(const working_string &e,working_string &out){
+  working_string terms[3],base;
+  int signs[3];
+  int n=split_top_sum_terms(e,terms,signs,3);
+  if (n<1 || n>2)
+    return false;
+  Rat c=rat(0,1),p=rat(0,1),k=rat(0,1);
+  long a=0,b=0;
+  bool got=false;
+  for (int i=0;i<n;++i){
+    Rat tc;
+    long ta=0,tb=0;
+    if (split_affine_power(terms[i],tc,ta,tb,p) && p.n==2 && p.d==1){
+      c=rat_mul(tc,rat(signs[i],1));
+      a=ta; b=tb; got=true;
+    }
+    else if (parse_rat(terms[i],tc))
+      k=rat_add(k,rat_mul(tc,rat(signs[i],1)));
+    else
+      return false;
+  }
+  if (!got || !c.n)
+    return false;
+  base=fmt_affine(a,b);
+  out="Range:\n("+base+")^2 >= 0\n";
+  if (c.n>0){
+    out += "min y = "+rat_s(k)+"\n";
+    out += "y >= "+rat_s(k);
+  }
+  else {
+    out += "max y = "+rat_s(k)+"\n";
+    out += "y <= "+rat_s(k);
+  }
+  return true;
+}
+
 static bool try_range(const char *input,working_string &out){
   working_string args[4];
   int n=0;
@@ -4496,6 +4621,8 @@ static bool try_range(const char *input,working_string &out){
       return true;
     }
   }
+  if (try_range_shifted_square(e,out))
+    return true;
   long a=0,b=0,c=0;
   if (parse_quad_expr(e,'x',a,b,c)){
     if (!a && !b){
