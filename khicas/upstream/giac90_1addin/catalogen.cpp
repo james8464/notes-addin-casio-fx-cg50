@@ -132,6 +132,29 @@ ustl::string insert_string(int index){
   return s;//s+' ';
 }
 
+static void add_help_line(ustl::vector<textElement> & elem,const ustl::string & s,color_t color,int spacing){
+  textElement e;
+  e.s=s;
+  e.color=color;
+  e.newLine=elem.size()?1:0;
+  e.lineSpacing=spacing;
+  elem.push_back(e);
+}
+
+static ustl::string example_string(int index,char * example){
+  ustl::string s;
+  if (!example)
+    return s;
+  if (example[0]=='#')
+    s=example+1;
+  else {
+    s=insert_string(index);
+    s += example;
+    s += ")";
+  }
+  return s;
+}
+
 int showCatalog(char* insertText,int preselect,int menupos) {
   //int ret;
   // returns 0 on failure (user exit) and 1 on success (user chose a option)
@@ -286,78 +309,55 @@ int doCatalogMenu(char* insertText, char* title, int category,const char * cmdna
       text.clipline=-1;
       text.allowF1=true;
       ustl::vector<textElement> & elem=text.elements;
-      elem = ustl::vector<textElement> (example2?5:4);
-      elem[0].s = index<allcmds?completeCat[index].name:menuitems[menu.selection-1].text;
-      elem[0].color = COLOR_BLUE;
-      elem[1].newLine = 1;
-      elem[1].lineSpacing = 4;
+      elem = ustl::vector<textElement>();
+      add_help_line(elem,index<allcmds?completeCat[index].name:menuitems[menu.selection-1].text,COLOR_BLUE,0);
       ustl::string autoexample;
       if (index<allcmds) {
-	elem[1].s = "Use:\n";
-	elem[1].s += completeCat[index].desc;
-	elem[1].s += "\n\nArgs:\nRequired values are shown before [optional] values in the command line above.";
+	add_help_line(elem,"Use",COLOR_BLACK,4);
+	add_help_line(elem,completeCat[index].desc,COLOR_BLACK,0);
+	add_help_line(elem,"Args",COLOR_BLACK,4);
+	add_help_line(elem,"Required args come first; [optional] args are in brackets.",COLOR_BLACK,0);
       }
       else {
-	elem[1].s="Sorry, no help available...";
+	add_help_line(elem,"Sorry, no help available.",COLOR_BLACK,4);
 	int token=menuitems[menu.selection-1].token;
 	if (isopt){
 	  if (token==_INT_PLOT+T_NUMBER*256){
 	    autoexample="display="+elem[0].s;
-	    elem[1].s="Graphic option: "+autoexample;
+	    elem.back().s="Graphic option: "+autoexample;
 	  }
 	  if (token==_INT_COLOR+T_NUMBER*256){
 	    autoexample="display="+elem[0].s;
-	    elem[1].s="Color: "+autoexample;
+	    elem.back().s="Color: "+autoexample;
 	  }
 	  if (token==_INT_SOLVER+T_NUMBER*256){
 	    autoexample=elem[0].s;
-	    elem[1].s="fsolve option: " + autoexample;
+	    elem.back().s="fsolve option: " + autoexample;
 	  }
 	  if (token==_INT_TYPE+T_TYPE_ID*256){
 	    autoexample=elem[0].s;
-	    elem[1].s="Object type: " + autoexample;
+	    elem.back().s="Object type: " + autoexample;
 	  }
 	}
 	if (isall){
 	  if (token==T_UNARY_OP || token==T_UNARY_OP_38)
-	    elem[1].s=elem[0].s+"(args)";
+	    elem.back().s=elem[0].s+"(args)";
 	}
       }
-      ustl::string ex("F2 example:\n");
       if (example){
-	elem[2].newLine = 1;
-	elem[2].lineSpacing = 4;
-	if (example[0]=='#')
-	  ex += example+1;
-	else {
-	  ex += insert_string(index);
-	  ex += example;
-	  ex += ")";
-	}
-	elem[2].s = ex;
+	add_help_line(elem,"F2 example",COLOR_BLACK,4);
+	add_help_line(elem,example_string(index,example),COLOR_BLACK,0);
 	if (example2){
-	  string ex2="F3 example:\n";
-	  if (example2[0]=='#')
-	    ex2 += example2+1;
-	  else {
-	    ex2 += insert_string(index);
-	    ex2 += example2;
-	    ex2 += ")";
-	  }
-	  elem[3].newLine = 1;
-	  elem[3].lineSpacing = 4;
-	  elem[3].s=ex2;
+	  add_help_line(elem,"F3 example",COLOR_BLACK,4);
+	  add_help_line(elem,example_string(index,example2),COLOR_BLACK,0);
 	}
       }
       else {
 	if (autoexample.size())
-	  elem[2].s=ex+autoexample;
-	else
-	  elem.pop_back();
+	  add_help_line(elem,autoexample,COLOR_BLACK,4);
       }
-      elem.back().newLine = 1;
-      elem.back().lineSpacing = 4;
-      elem.back().s = "Keys:\nF1 inserts command\nF2/F3 insert examples\nEXIT returns";
+      add_help_line(elem,"Keys",COLOR_BLACK,4);
+      add_help_line(elem,"F1 command. F2/F3 examples. EXIT back.",COLOR_BLACK,0);
       sres=doTextArea(&text);
     }
     if (sres == KEY_CTRL_F2 || sres==KEY_CTRL_F3) {
