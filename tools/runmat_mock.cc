@@ -71,8 +71,10 @@ static void draw_r_indicator(bool visible) {
     fill_rect(339, 0, 21, 23, COLOR_BLUE);
     PrintCXY(342, 1, "R", 0x40, -1, COLOR_WHITE, COLOR_BLUE, 1, 0);
   } else {
-    fill_rect(339, 0, 21, 26, kWhite);
+    fill_rect(339, 0, 21, 23, kWhite);
   }
+  fill_rect(339, 23, 21, 2, kWhite);
+  hline(339, 359, 23, kBlack);
 }
 
 static bool r_is_visible(unsigned start_tick) {
@@ -87,14 +89,9 @@ static void display_fkey(int slot, int id) {
   FKey_Display(slot, (int *)ptr);
 }
 
-static void print_fkey_text(int x, int y, const char *text) {
-  Bdisp_MMPrint(x, y, text, 0, 0xffffffff, 0, 0, COLOR_WHITE, COLOR_BLACK, 1, 0);
-}
-
 static void draw_os_text_fkey(int slot, const char *text, int xoffset) {
-  const int kFKeyBlackTemplate = 0x0190;
-  display_fkey(slot, kFKeyBlackTemplate);
-  print_fkey_text(slot * 64 + xoffset, 196, text);
+  fill_rect(slot * 64, 196, 64, 20, kBlack);
+  Bdisp_MMPrint(slot * 64 + xoffset, 196, text, 0x40, 0xffffffff, 0, 0, COLOR_WHITE, COLOR_BLACK, 1, 0);
 }
 
 static void draw_soft_labels() {

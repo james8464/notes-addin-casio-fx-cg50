@@ -61,11 +61,12 @@ def main() -> int:
     require(source, "GetKeyWait_OS(&col, &row, KEYWAIT_HALTOFF_TIMEROFF, 0, 1, &keycode)", "nonblocking key call")
     require(source, "OS_InnerWait_ms(40)", "loop pacing")
     require(source, "fill_rect(339, 0, 21, 23, COLOR_BLUE);", "R blue highlight")
-    require(source, "fill_rect(339, 0, 21, 26, kWhite);", "R off-state clear")
+    require(source, "fill_rect(339, 0, 21, 23, kWhite);", "R off-state clear")
+    require(source, "fill_rect(339, 23, 21, 2, kWhite);", "R lower cleanup")
+    require(source, "hline(339, 359, 23, kBlack);", "R divider restore")
     require(source, 'PrintCXY(342, 1, "R", 0x40', "status-area R glyph")
-    require(source, "kFKeyBlackTemplate = 0x0190", "OS black fkey template")
-    require(source, "display_fkey(slot, kFKeyBlackTemplate);", "OS fkey background")
-    require(source, "Bdisp_MMPrint(x, y, text, 0, 0xffffffff", "OS fkey text")
+    require(source, "fill_rect(slot * 64, 196, 64, 20, kBlack);", "black fkey slot")
+    require(source, "Bdisp_MMPrint(slot * 64 + xoffset, 196, text, 0x40, 0xffffffff", "OS fkey text")
     require(source, 'draw_os_text_fkey(2, "MAT/VCT", 4);', "MAT/VCT fkey")
     require(source, 'draw_os_text_fkey(3, "MATH", 9);', "MATH fkey")
     require(source, '"MAT/VCT"', "MAT/VCT fkey")
@@ -82,8 +83,8 @@ def main() -> int:
         raise SystemExit("FAIL runmat custom fkey box renderer present")
     if "fill_rect(339, 0, 21, 23, visible ? COLOR_BLUE : kWhite);" in source:
         raise SystemExit("FAIL runmat R off-state leaves blue residue")
-    if "hline(339, 359, 23" in source:
-        raise SystemExit("FAIL runmat R off-state divider residue present")
+    if "kFKeyBlackTemplate = 0x0190" in source:
+        raise SystemExit("FAIL runmat wave fkey template present")
     if "static unsigned char glyph" in source or "draw_pixel_text" in source:
         raise SystemExit("FAIL runmat manual pixel glyph renderer present")
 
