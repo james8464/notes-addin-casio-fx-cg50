@@ -2,17 +2,21 @@
 #include <fxcg/keyboard.h>
 #include <fxcg/system.h>
 
+extern "C" {
+#include <fxcg/rtc.h>
+}
+
 #define RGB565(r, g, b) (unsigned short)((((r) & 0xf8) << 8) | (((g) & 0xfc) << 3) | ((b) >> 3))
 
-static const unsigned short kWhite = 0xffff;
-static const unsigned short kBlack = 0x0000;
-static const unsigned short kPink = 0xf81f;
-static const unsigned short kBlue = 0x001f;
-static const unsigned short kLightBlue = RGB565(30, 190, 255);
+extern "C" void DirectDrawRectangle(int x1, int y1, int x2, int y2, int color);
+
+static const unsigned short kWhite = COLOR_WHITE;
+static const unsigned short kBlack = COLOR_BLACK;
 static const unsigned short kFrame = RGB565(74, 74, 82);
-static const unsigned short kSoft = RGB565(62, 67, 82);
-static const int kRBlinkPeriodTicks = 12;
-static const int kRVisibleTicks = 8;
+static const unsigned short kLightBlue = RGB565(30, 190, 255);
+static const unsigned kRBlinkPeriodTicks = 384;
+static const unsigned kRVisibleTicks = 256;
+
 static void pixel(int x, int y, unsigned short color) {
   if (x < 0 || x >= LCD_WIDTH_PX || y < 0 || y >= LCD_HEIGHT_PX) return;
   Bdisp_SetPoint_VRAM(x, y, color);
@@ -41,117 +45,87 @@ static void rect_outline(int x, int y, int w, int h, unsigned short color) {
   vline(x + w - 1, y, y + h - 1, color);
 }
 
-static unsigned char glyph(char c, int row) {
-  if (c >= 'a' && c <= 'z') c = char(c - 'a' + 'A');
-  const unsigned char *g = 0;
-  static const unsigned char A[7]={14,17,17,31,17,17,17}, C[7]={14,17,16,16,16,17,14};
-  static const unsigned char D[7]={30,17,17,17,17,17,30}, E[7]={31,16,16,30,16,16,31};
-  static const unsigned char G[7]={14,17,16,23,17,17,14}, H[7]={17,17,17,31,17,17,17};
-  static const unsigned char J[7]={7,2,2,2,18,18,12}, L[7]={16,16,16,16,16,16,31};
-  static const unsigned char M[7]={17,27,21,21,17,17,17}, N[7]={17,25,21,19,17,17,17};
-  static const unsigned char O[7]={14,17,17,17,17,17,14}, P[7]={30,17,17,30,16,16,16};
-  static const unsigned char R[7]={30,17,17,30,20,18,17}, T[7]={31,4,4,4,4,4,4};
-  static const unsigned char U[7]={17,17,17,17,17,17,14}, V[7]={17,17,17,17,10,10,4};
-  static const unsigned char Y[7]={17,17,10,4,4,4,4}, Z[7]={31,1,2,4,8,16,31};
-  static const unsigned char n0[7]={14,17,19,21,25,17,14}, n1[7]={4,12,4,4,4,4,14};
-  static const unsigned char slash[7]={1,2,2,4,8,8,16}, blank[7]={0,0,0,0,0,0,0};
-  switch (c) {
-    case 'A': g=A; break; case 'C': g=C; break; case 'D': g=D; break; case 'E': g=E; break;
-    case 'G': g=G; break; case 'H': g=H; break; case 'J': g=J; break; case 'L': g=L; break;
-    case 'M': g=M; break; case 'N': g=N; break; case 'O': g=O; break; case 'P': g=P; break;
-    case 'R': g=R; break; case 'T': g=T; break; case 'U': g=U; break; case 'V': g=V; break;
-    case 'Y': g=Y; break; case 'Z': g=Z; break; case '0': g=n0; break; case '1': g=n1; break;
-    case '/': g=slash; break; default: g=blank; break;
-  }
-  return g[row];
+static void drawCasioCasBorder() {
+  const unsigned short kCasioCasPink = 0xF81F;
+  DirectDrawRectangle(0, 0, 5, 223, kCasioCasPink);
+  DirectDrawRectangle(390, 0, 395, 223, kCasioCasPink);
+  DirectDrawRectangle(0, 217, 395, 223, kCasioCasPink);
 }
 
-static int pixel_text_width(const char *s, int sx) {
-  int n = 0;
-  while (s[n]) ++n;
-  return n ? n * 5 * sx + (n - 1) * sx : 0;
+static void flush_screen() {
+  Bdisp_PutDisp_DD();
+  drawCasioCasBorder();
 }
 
-static void draw_pixel_text(int x, int y, const char *s, int sx, int sy, unsigned short fg) {
-  for (const char *p = s; *p; ++p) {
-    for (int row = 0; row < 7; ++row) {
-      unsigned char bits = glyph(*p, row);
-      for (int col = 0; col < 5; ++col) {
-        if (bits & (1 << (4 - col)))
-          fill_rect(x + col * sx, y + row * sy, sx, sy, fg);
-      }
-    }
-    x += 6 * sx;
-  }
-}
-
-static void status_box(int x, const char *label) {
-  int width = pixel_text_width(label, 1) + 7;
-  fill_rect(x, 5, width, 17, kWhite);
-  rect_outline(x, 5, width, 17, kFrame);
-  draw_pixel_text(x + 3, 7, label, 1, 2, kFrame);
-}
-
-static void draw_battery() {
-  rect_outline(14, 5, 9, 14, kFrame);
-  rect_outline(16, 2, 5, 4, kFrame);
-  fill_rect(15, 15, 5, 2, kBlue);
-  fill_rect(15, 12, 5, 2, kLightBlue);
-  fill_rect(15, 9, 5, 2, kLightBlue);
+static void draw_status_area() {
+  DefineStatusAreaFlags(3,
+                        SAF_BATTERY | SAF_SETUP_INPUT_OUTPUT | SAF_SETUP_FRAC_RESULT |
+                            SAF_SETUP_ANGLE | SAF_SETUP_COMPLEX_MODE | SAF_SETUP_DISPLAY,
+                        0, 0);
+  EnableStatusArea(2);
+  DisplayStatusArea();
 }
 
 static void draw_r_indicator(bool visible) {
-  fill_rect(339, 1, 21, 22, visible ? kBlue : kWhite);
-  if (!visible) {
-    rect_outline(339, 1, 21, 22, kFrame);
-    return;
+  fill_rect(339, 0, 21, 24, visible ? COLOR_BLUE : kWhite);
+  if (visible) {
+    PrintCXY(340, 0, "R", TEXT_MODE_NORMAL, -1, COLOR_WHITE, COLOR_BLUE, 1, 0);
   }
-  draw_pixel_text(344, 4, "R", 2, 2, kWhite);
 }
 
-static void soft_label(int x, int width, const char *label) {
-  fill_rect(x, 192, width, 18, kSoft);
-  rect_outline(x, 192, width, 18, kSoft);
-  draw_pixel_text(x + 4, 194, label, 1, 2, kWhite);
+static bool r_is_visible(unsigned start_tick) {
+  unsigned phase = ((unsigned)RTC_GetTicks() - start_tick) % kRBlinkPeriodTicks;
+  return phase < kRVisibleTicks;
+}
+
+static void display_fkey(int slot, int id) {
+  if (id < 0) return;
+  int ptr = 0;
+  GetFKeyPtr(id, &ptr);
+  FKey_Display(slot, (int *)ptr);
+}
+
+static void draw_custom_fkey_text(int slot, const char *text) {
+  int x = slot * 64 + 3;
+  Bdisp_MMPrint(x, 194, text, 0, 0xffffffff, 0, 0, COLOR_WHITE, COLOR_BLACK, 1, 0);
 }
 
 static void draw_soft_labels() {
-  soft_label(7, 56, "JUMP");
-  soft_label(64, 66, "DELETE");
-  soft_label(131, 70, "MAT/VCT");
-  soft_label(202, 56, "MATH");
+  const int kFKeyJump = 508;
+  const int kFKeyDelete = 0x38;
+  const int kFKeyBlackTemplate = 0x0190;
+  display_fkey(0, kFKeyJump);
+  display_fkey(1, kFKeyDelete);
+  display_fkey(2, kFKeyBlackTemplate);
+  display_fkey(3, kFKeyBlackTemplate);
+  display_fkey(4, -1);
+  display_fkey(5, -1);
+  draw_custom_fkey_text(2, "MAT/VCT");
+  draw_custom_fkey_text(3, "MATH");
 }
 
-static void draw_static_screen() {
+static void draw_static_screen(bool r_visible) {
+  Bdisp_AllClr_VRAM();
   fill_rect(0, 0, LCD_WIDTH_PX, LCD_HEIGHT_PX, kWhite);
-  fill_rect(0, 0, 7, LCD_HEIGHT_PX, kPink);
-  fill_rect(LCD_WIDTH_PX - 7, 0, 7, LCD_HEIGHT_PX, kPink);
-  fill_rect(0, LCD_HEIGHT_PX - 7, LCD_WIDTH_PX, 7, kPink);
 
-  fill_rect(7, 0, LCD_WIDTH_PX - 14, LCD_HEIGHT_PX - 7, kWhite);
-  hline(7, LCD_WIDTH_PX - 8, 24, kBlack);
-  draw_battery();
-  status_box(42, "Math");
-  status_box(73, "Deg");
-  status_box(101, "Norm1");
-  status_box(193, "d/c");
-  status_box(224, "Real");
-  draw_r_indicator(true);
+  draw_status_area();
+  hline(6, 389, 24, kBlack);
+  draw_r_indicator(r_visible);
 
   rect_outline(13, 31, 14, 17, kBlack);
   fill_rect(13, 31, 2, 17, kFrame);
 
   fill_rect(369, 32, 5, 136, kLightBlue);
   rect_outline(368, 31, 7, 138, kFrame);
-  fill_rect(371, 32, 2, 136, kBlue);
+  fill_rect(371, 32, 2, 136, COLOR_BLUE);
 
   draw_soft_labels();
 }
 
-static int key_wait_250ms() {
+static int key_poll() {
   int col = 0, row = 0;
   unsigned short keycode = 0;
-  int ret = GetKeyWait_OS(&col, &row, KEYWAIT_HALTON_TIMERON, 25, 1, &keycode);
+  int ret = GetKeyWait_OS(&col, &row, KEYWAIT_HALTOFF_TIMEROFF, 0, 1, &keycode);
   if (ret != KEYREP_KEYEVENT) return KEY_CTRL_NOP;
   if (col == 1) return KEY_CTRL_AC;
   if (col == 4 && row == 9) return KEY_CTRL_MENU;
@@ -161,16 +135,21 @@ static int key_wait_250ms() {
 
 int main() {
   Bdisp_EnableColor(1);
-  EnableStatusArea(0);
-  draw_static_screen();
-  Bdisp_PutDisp_DD();
-  int r_ticks = 0;
+  unsigned r_start_tick = (unsigned)RTC_GetTicks();
+  bool r_visible = true;
+
+  draw_static_screen(r_visible);
+  flush_screen();
 
   for (;;) {
-    int key = key_wait_250ms();
-    r_ticks = (r_ticks + 1) % kRBlinkPeriodTicks;
-    draw_r_indicator(r_ticks < kRVisibleTicks);
-    Bdisp_PutDisp_DD();
+    int key = key_poll();
+    bool next_r_visible = r_is_visible(r_start_tick);
+    if (next_r_visible != r_visible) {
+      r_visible = next_r_visible;
+      draw_r_indicator(r_visible);
+      flush_screen();
+    }
     if (key == KEY_CTRL_EXIT || key == KEY_CTRL_AC || key == KEY_CTRL_MENU) return 0;
+    OS_InnerWait_ms(40);
   }
 }
