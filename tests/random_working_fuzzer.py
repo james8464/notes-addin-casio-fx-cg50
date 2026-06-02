@@ -144,17 +144,17 @@ def equation(rng: random.Random, depth: int) -> str:
 
 def chaos_number(rng: random.Random, huge: bool = False) -> str:
     case = rng.randrange(6)
-    scale = 10**12 if huge else 10**6
+    scale = 1_000_000_000_000 if huge else 1_000_000
     if case == 0:
         return str(rng.randrange(-scale, scale + 1))
     if case == 1:
         return f"{rng.randrange(-500000 if huge else -5000, 500001 if huge else 5001)}/{nz(rng,1,997 if huge else 97)}"
     if case == 2:
-        return f"{pick(rng, ['', '-'])}{rng.randrange(0, 10**6 if huge else 1000)}.{rng.randrange(0, 10**8 if huge else 100000):05d}"
+        return f"{pick(rng, ['', '-'])}{rng.randrange(0, 1_000_000 if huge else 1000)}.{rng.randrange(0, 100_000_000 if huge else 100000):05d}"
     if case == 3:
         return pick(rng, CHAOS_CONSTS)
     if case == 4:
-        return f"sqrt({rng.randrange(2, 10**6 if huge else 200)})"
+        return f"sqrt({rng.randrange(2, 1_000_000 if huge else 200)})"
     return f"({rng.randrange(-999,1000)}/{nz(rng,2,999)})*sqrt({rng.randrange(2,999)})"
 
 
@@ -389,10 +389,11 @@ def chaos_args(rng: random.Random, cmd: str, depth: int, variant: int | None = N
         if chance(rng, 25, 100):
             k = rng.randrange(1, 10)
             base = rng.randrange(2, 6)
+            base_cubed = base * base * base
             form = pick(rng, [
                 f"log({base},sqrt(x))",
                 f"log({base},x^2+{k}*x)",
-                f"log({base},{base**3}+{base**3*k}/x)",
+                f"log({base},{base_cubed}+{base_cubed*k}/x)",
             ])
             return [form, f"[a=log({base},x),b=log({base},x+{k})]"]
         terms = [chaos_expr(rng, max(2, depth - rng.randrange(1, 4)), numeric) for _ in range(rng.randrange(2, 6))]
@@ -731,7 +732,8 @@ def rand_rewrite(rng: random.Random) -> str:
     if case == 2:
         return messy(rng, f"rewrite(log({base},x^2+{k}*x),[a=log({base},x),b=log({base},x+{k})])")
     if case == 3:
-        return messy(rng, f"rewrite(log({base},{base**3}+{base**3*k}/x),[a=log({base},x),b=log({base},x+{k})])")
+        base_cubed = base * base * base
+        return messy(rng, f"rewrite(log({base},{base_cubed}+{base_cubed*k}/x),[a=log({base},x),b=log({base},x+{k})])")
     if case == 4:
         return messy(rng, f"rewrite((x+{k})^2+sin(x),[u=(x+{k})^2,v=sin(x)])")
     if case == 5:
