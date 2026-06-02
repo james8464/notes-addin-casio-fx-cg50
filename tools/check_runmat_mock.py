@@ -27,7 +27,10 @@ def main() -> int:
     require(source, "kRBlinkPeriodTicks = 12", "R 3s period")
     require(source, "kRVisibleTicks = 8", "R 2s visible window")
     require(source, "fill_rect(339, 1, 21, 22, visible ? kBlue : kWhite);", "R blue highlight")
-    require(source, 'PrintXY(343, 4, (char *)"R"', "R glyph")
+    require(source, 'print_mini(343, 2, "R", COLOR_WHITE, COLOR_BLUE);', "R glyph")
+    require(source, "Bdisp_MMPrint", "Casio mini-font labels")
+    require(source, "PrintMini", "Casio mini-font R/soft labels")
+    require(source, "EnableStatusArea(0);", "OS status disable before mock")
     require(source, "r_ticks = (r_ticks + 1) % kRBlinkPeriodTicks;", "R blink loop")
     require(source, "draw_r_indicator(r_ticks < kRVisibleTicks);", "R blink duty cycle")
 

@@ -1,5 +1,6 @@
 #include <fxcg/display.h>
 #include <fxcg/keyboard.h>
+#include <fxcg/system.h>
 
 #define RGB565(r, g, b) (unsigned short)((((r) & 0xf8) << 8) | (((g) & 0xfc) << 3) | ((b) >> 3))
 
@@ -8,7 +9,8 @@ static const unsigned short kBlack = 0x0000;
 static const unsigned short kPink = 0xf81f;
 static const unsigned short kBlue = 0x001f;
 static const unsigned short kLightBlue = RGB565(30, 190, 255);
-static const unsigned short kGray = RGB565(88, 88, 96);
+static const unsigned short kFrame = RGB565(74, 74, 82);
+static const unsigned short kSoft = RGB565(62, 67, 82);
 static const int kRBlinkPeriodTicks = 12;
 static const int kRVisibleTicks = 8;
 static void pixel(int x, int y, unsigned short color) {
@@ -39,17 +41,31 @@ static void rect_outline(int x, int y, int w, int h, unsigned short color) {
   vline(x + w - 1, y, y + h - 1, color);
 }
 
+static int text_width_mm(const char *label) {
+  int n = 0;
+  while (label[n]) ++n;
+  return n * 8;
+}
+
+static void print_mm(int x, int y, const char *label, int fg, int bg) {
+  Bdisp_MMPrint(x, y, label, 0, 0xffffffff, 0, 0, fg, bg, 1, 0);
+}
+
+static void print_mini(int x, int y, const char *label, int fg, int bg) {
+  int tx = x, ty = y;
+  PrintMini(&tx, &ty, (unsigned char *)label, 0, 0xffffffff, 0, 0, fg, bg, 1, 0);
+}
+
 static void status_box(int x, const char *label) {
-  int width = 10 + 12;
-  for (const char *p = label; *p; ++p) width += 8;
-  fill_rect(x, 4, width, 17, kWhite);
-  rect_outline(x, 4, width, 17, kGray);
-  PrintXY(x + 4, 5, (char *)label, 0, kBlack);
+  int width = text_width_mm(label) + 6;
+  fill_rect(x, 5, width, 15, kWhite);
+  rect_outline(x, 5, width, 15, kFrame);
+  print_mm(x + 3, 6, label, COLOR_BLACK, COLOR_WHITE);
 }
 
 static void draw_battery() {
-  rect_outline(13, 5, 9, 14, kGray);
-  rect_outline(15, 2, 5, 4, kGray);
+  rect_outline(14, 5, 9, 14, kFrame);
+  rect_outline(16, 2, 5, 4, kFrame);
   fill_rect(15, 15, 5, 2, kBlue);
   fill_rect(15, 12, 5, 2, kLightBlue);
   fill_rect(15, 9, 5, 2, kLightBlue);
@@ -57,14 +73,24 @@ static void draw_battery() {
 
 static void draw_r_indicator(bool visible) {
   fill_rect(339, 1, 21, 22, visible ? kBlue : kWhite);
-  rect_outline(339, 1, 21, 22, kGray);
-  PrintXY(343, 4, (char *)"R", 0, visible ? kWhite : kBlue);
+  if (!visible) {
+    rect_outline(339, 1, 21, 22, kFrame);
+    return;
+  }
+  print_mini(343, 2, "R", COLOR_WHITE, COLOR_BLUE);
 }
 
 static void soft_label(int x, int width, const char *label) {
-  fill_rect(x, 193, width, 16, kGray);
-  rect_outline(x, 193, width, 16, kGray);
-  PrintXY(x + 4, 194, (char *)label, 0, kWhite);
+  fill_rect(x, 192, width, 18, kSoft);
+  rect_outline(x, 192, width, 18, kSoft);
+  print_mini(x + 3, 193, label, COLOR_WHITE, COLOR_BLACK);
+}
+
+static void draw_soft_labels() {
+  soft_label(7, 56, "JUMP");
+  soft_label(64, 66, "DELETE");
+  soft_label(131, 70, "MAT/VCT");
+  soft_label(202, 56, "MATH");
 }
 
 static void draw_static_screen() {
@@ -77,23 +103,20 @@ static void draw_static_screen() {
   hline(7, LCD_WIDTH_PX - 8, 24, kBlack);
   draw_battery();
   status_box(42, "Math");
-  status_box(86, "Deg");
-  status_box(126, "Norm1");
-  status_box(205, "d/c");
-  status_box(251, "Real");
+  status_box(76, "Deg");
+  status_box(107, "Norm1");
+  status_box(193, "d/c");
+  status_box(226, "Real");
   draw_r_indicator(true);
 
   rect_outline(13, 31, 14, 17, kBlack);
-  fill_rect(13, 31, 2, 17, kGray);
+  fill_rect(13, 31, 2, 17, kFrame);
 
   fill_rect(369, 32, 5, 136, kLightBlue);
-  rect_outline(368, 31, 7, 138, kGray);
+  rect_outline(368, 31, 7, 138, kFrame);
   fill_rect(371, 32, 2, 136, kBlue);
 
-  soft_label(13, 52, "JUMP");
-  soft_label(67, 63, "DELETE");
-  soft_label(132, 64, "MAT/VCT");
-  soft_label(198, 53, "MATH");
+  draw_soft_labels();
 }
 
 static int key_wait_250ms() {
@@ -109,6 +132,7 @@ static int key_wait_250ms() {
 
 int main() {
   Bdisp_EnableColor(1);
+  EnableStatusArea(0);
   draw_static_screen();
   Bdisp_PutDisp_DD();
   int r_ticks = 0;
