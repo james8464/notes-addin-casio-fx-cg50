@@ -5524,7 +5524,7 @@ static bool try_definite_via_antiderivative(const working_string &expr,const wor
   working_string Fb=subst_var_value(F,v[0],trim(hi));
   working_string Fa=subst_var_value(F,v[0],trim(lo));
   working_string nb,na,diff="("+Fb+") - ("+Fa+")", nd;
-  if (sub.size()+F.size()+Fb.size()+Fa.size()+diff.size()>420){
+  if (sub.size()+F.size()+Fb.size()+Fa.size()+diff.size()>320){
     out="F=A\nF(b)-F(a)";
     return true;
   }
