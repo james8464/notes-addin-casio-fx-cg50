@@ -3985,14 +3985,13 @@ static bool try_diff_chain_rule(const working_string &expr,char v,const working_
     return true;
   }
   out += "u = "+u+"\n";
-  {
-    working_string inner_trace;
-    if (trace_inner_diff(u,rawvar,inner_trace))
-      out += inner_trace+"\n";
-  }
+  working_string inner_trace;
+  bool show_inner=trace_inner_diff(u,rawvar,inner_trace);
   out += "du/d"+rawvar+" = "+du+"\n";
   out += "d/d"+rawvar+" "+working_string(fn)+"(u)\n";
   out += ""+deriv;
+  if (show_inner && out.size()+inner_trace.size()<700)
+    out += "\n"+inner_trace;
   return true;
 }
 
