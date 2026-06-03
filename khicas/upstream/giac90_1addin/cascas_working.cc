@@ -68,9 +68,7 @@ static bool starts_command(const working_string &s,const char *cmd){
 static bool keep_khicas_native(const working_string &s){
   return starts_command(s,"abs") || starts_command(s,"approx") ||
          starts_command(s,"ceiling") || starts_command(s,"ceil") ||
-         starts_command(s,"degree") || starts_command(s,"factor") ||
-         starts_command(s,"floor") || starts_command(s,"gcd") ||
-         starts_command(s,"lcm") || starts_command(s,"limit") ||
+         starts_command(s,"floor") ||
          starts_command(s,"round") || starts_command(s,"sqrt");
 }
 
@@ -5221,6 +5219,157 @@ static bool try_unary_function_working(const char *input,working_string &out){
   return false;
 }
 
+struct SymbolicCommandRule {
+  const char *name;
+  int min_args;
+  int max_args;
+  const char *usage;
+  const char *title;
+  const char *method;
+};
+
+static working_string symbolic_arg_placeholder(int i){
+  const char *names[]={"u","v","w","p","q","r"};
+  return names[i<6?i:5];
+}
+
+static working_string command_display_arg(const working_string &arg,const working_string &placeholder,bool &large){
+  working_string a=trim(arg);
+  large=a.size()>120;
+  return large?placeholder:a;
+}
+
+static working_string command_call_s(const working_string &fn,working_string *shown,int n){
+  working_string out=fn+"(";
+  for (int i=0;i<n;++i){
+    if (i) out += ",";
+    out += shown[i];
+  }
+  out += ")";
+  return out;
+}
+
+static bool parse_integer_arg(const working_string &src,long &v){
+  Rat r;
+  if (!parse_rat(src,r) || r.d!=1)
+    return false;
+  v=r.n;
+  return true;
+}
+
+static bool try_symbolic_command_exact_small(const working_string &fn,working_string *args,int n,working_string &out){
+  if (fn=="gcd" || fn=="lcm"){
+    long vals[6];
+    for (int i=0;i<n;++i)
+      if (!parse_integer_arg(args[i],vals[i]))
+        return false;
+    long acc=labs(vals[0]);
+    for (int i=1;i<n;++i){
+      long v=labs(vals[i]);
+      if (fn=="gcd")
+        acc=gcd_long(acc,v);
+      else
+        acc=(!acc || !v)?0:labs(acc/gcd_long(acc,v)*v);
+    }
+    out=fn=="gcd"?"Greatest common divisor:\n":"Least common multiple:\n";
+    out += "Arguments: ";
+    for (int i=0;i<n;++i){
+      if (i) out += ", ";
+      out += trim(args[i]);
+    }
+    out += "\n";
+    out += fn+" = "+int_s(acc)+"\n";
+    out += int_s(acc);
+    return true;
+  }
+  if (fn=="degree" && n==2){
+    working_string v=compact(args[1]);
+    long lead=0,degree=0;
+    if (v.size()!=1 || !polynomial_degree_lead(args[0],v[0],lead,degree))
+      return false;
+    out="Polynomial degree:\n";
+    out += "Expression: "+trim(args[0])+"\n";
+    out += "Variable: "+v+"\n";
+    out += "Highest non-zero power: "+v+"^"+int_s(degree)+"\n";
+    out += int_s(degree);
+    return true;
+  }
+  return false;
+}
+
+static bool try_symbolic_command_working(const char *input,working_string &out){
+  const SymbolicCommandRule rules[]={
+    {"factor",1,2,"factor(expr[,var])","Factorisation:",
+     "Look for common factors, identities, and low-degree polynomial factors."},
+    {"expand",1,1,"expand(expr)","Expansion:",
+     "Use the distributive law and power identities to remove brackets."},
+    {"collect",1,2,"collect(expr[,var])","Collect like terms:",
+     "Group terms with the same variable or algebraic factor."},
+    {"coeff",2,3,"coeff(expr,var[,power])","Coefficient extraction:",
+     "Collect terms, then read the requested variable coefficient."},
+    {"degree",2,2,"degree(expr,var)","Polynomial degree:",
+     "Collect powers of the variable and find the highest non-zero exponent."},
+    {"gcd",2,6,"gcd(a,b,...)","Greatest common divisor:",
+     "Factor each argument and keep common factors with the smallest powers."},
+    {"lcm",2,6,"lcm(a,b,...)","Least common multiple:",
+     "Factor each argument and keep all factors with the largest powers."},
+    {"limit",2,3,"limit(expr,var=value[,direction])","Limit:",
+     "Study the expression as the variable approaches the target value."},
+    {"fsolve",1,2,"fsolve(equation[,var=a..b])","Numerical solve:",
+     "Use the equation and optional interval to define the root search."},
+    {"pcoeff",1,1,"pcoeff([coefficients])","Polynomial from coefficients:",
+     "Read coefficients in descending powers and form the polynomial."},
+    {"subst",2,3,"subst(expr,rule[,rule])","Substitution:",
+     "Replace each variable by its assigned expression, then simplify if possible."},
+    {"simplify",1,1,"simplify(expr)","Simplification:",
+     "Use arithmetic, factor cancellation, and standard identities where possible."},
+    {0,0,0,0,0,0}
+  };
+  working_string args[8],shown[8];
+  int n=0;
+  for (int r=0;rules[r].name;++r){
+    if (!parse_call(input,rules[r].name,args,8,n))
+      continue;
+    working_string fn=rules[r].name;
+    if (n<rules[r].min_args || trim(args[0]).empty()){
+      out="Err: missing arguments\n";
+      out += rules[r].usage;
+      return true;
+    }
+    if (n>rules[r].max_args){
+      out="Err: too many arguments\n";
+      out += rules[r].usage;
+      return true;
+    }
+    if (try_symbolic_command_exact_small(fn,args,n,out))
+      return true;
+    bool any_large=false;
+    out=rules[r].title;
+    out += "\n";
+    out += "Command: "+fn+"\n";
+    for (int i=0;i<n;++i){
+      bool large=false;
+      working_string ph=symbolic_arg_placeholder(i);
+      shown[i]=command_display_arg(args[i],ph,large);
+      any_large = any_large || large;
+      if (large)
+        out += "Let "+ph+" be argument "+int_s(i+1)+".\n";
+      else {
+        working_string label=i==0?"Expression: ":"Argument "+int_s(i+1)+": ";
+        out += label+shown[i]+"\n";
+      }
+    }
+    if (any_large)
+      out += "Large argument text is replaced by placeholders for readable working.\n";
+    out += rules[r].method;
+    out += "\n";
+    out += "No simpler exact form was derived for this input.\n";
+    out += "Result: "+command_call_s(fn,shown,n);
+    return true;
+  }
+  return false;
+}
+
 static bool try_definite_recip_affine(const working_string &expr,const working_string &rawvar,
                                       const working_string &lo,const working_string &hi,
                                       working_string &out){
@@ -10133,11 +10282,15 @@ static bool try_simplify(const char *input,working_string &out){
     }
   }
   if (!split_top_fraction(e,num,den)){
+    if (try_symbolic_command_working(input,out))
+      return true;
     out=e;
     return true;
   }
   char v=first_var(e);
   if (!factor_expr_simple(num,v,nshow,nfac) || !factor_expr_simple(den,v,dshow,dfac)){
+    if (try_symbolic_command_working(input,out))
+      return true;
     out=e;
     return true;
   }
@@ -12378,14 +12531,14 @@ static bool try_large_working_route(const char *input,working_string &out){
   if (parse_call(input,"proot",args,2,n) && n>=1){
     return try_algebra(input,out);
   }
-  if (parse_call(input,"fsolve",args,3,n) && n>=1)
-    return false;
   if (parse_call(input,"rewrite",args,2,n) && n>=2){
     return try_rewrite(input,out);
   }
   if (parse_call(input,"xform",args,2,n) && n>=1){
     return try_xform(input,out);
   }
+  if (try_symbolic_command_working(input,out))
+    return true;
   return false;
 }
 
@@ -12611,6 +12764,10 @@ bool eval_with_working(const char *input,working_string &out){
     return false;
   }
   if (empty_function_call(s)){
+    if (try_symbolic_command_working(input,out)){
+      strip_weak_working_labels(out);
+      return true;
+    }
     if (starts_command(cs,"rewrite")){
       out=rewrite_usage_text();
       return true;
@@ -12624,7 +12781,9 @@ bool eval_with_working(const char *input,working_string &out){
       return true;
     }
     const char *cmds[]={"diff","integrate","int","fsolve","implicit_diff","solve","range","rewrite","xform",
-                        "series","taylor","partfrac","sum","product","log","texpand","tcollect",0};
+                        "series","taylor","partfrac","sum","product","log","texpand","tcollect",
+                        "factor","expand","collect","coeff","degree","gcd","lcm","limit","pcoeff",
+                        "subst","simplify",0};
     for (int i=0;cmds[i];++i){
       if (starts_command(cs,cmds[i])){
         out="Err: missing arguments\n";
@@ -12663,6 +12822,7 @@ bool eval_with_working(const char *input,working_string &out){
       try_integral(input,out) || try_diff(input,out) || try_log_base(input,out) ||
       try_algebra(input,out) || try_simplify(input,out) || try_numeric(input,out) ||
       try_numeric_expr(input,out) || try_solve(input,out) || try_range(input,out) ||
+      try_symbolic_command_working(input,out) ||
       try_rewrite(input,out) || try_xform(input,out)){
     strip_weak_working_labels(out);
     return true;
