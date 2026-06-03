@@ -5445,10 +5445,10 @@ static bool try_symbolic_command_working(const char *input,working_string &out){
       }
     }
     if (any_large)
-      out += "Large args use placeholders.\n";
+      out += "Large args placeholders.\n";
     out += rules[r].method;
     out += "\n";
-    out += "No simpler exact form found.\n";
+    out += "No simpler exact form.\n";
     out += "Result: "+command_call_s(fn,shown,n);
     return true;
   }
@@ -9029,7 +9029,7 @@ static bool try_solve(const char *input,working_string &out){
     }
     return try_solve_large_structure(early_rawvar,out);
   }
-  if (eq_src.size()>500 && contains(guard_src,"abs("))
+  if (eq_src.size()>350 && contains(guard_src,"abs("))
     return try_solve_large_structure(early_rawvar,out);
   working_string coeff_work;
   bool coeff_changed=false;
@@ -9801,7 +9801,11 @@ static bool try_algebra(const char *input,working_string &out){
     working_string e=canonical_expr(args[0]);
     char fv=first_var(e);
     working_string var(1,fv);
-    out="P("+var+") = "+spaced_pm(e)+"\n";
+    if (e.size()>120)
+      e="A";
+    else
+      e=spaced_pm(e);
+    out="P("+var+") = "+e+"\n";
     out += "Solve P("+var+") = 0\n";
     out += var+" = roots(P("+var+"))";
     return true;
@@ -10628,6 +10632,8 @@ static bool try_range_shifted_square(const working_string &e,working_string &out
   if (!got || !c.n)
     return false;
   base=fmt_affine(a,b);
+  if (base.size()>120)
+    base="A";
   out="Find range\n("+base+")^2 >= 0\n";
   if (c.n>0){
     out += "min y = "+rat_s(k)+"\n";
@@ -10689,6 +10695,10 @@ static bool try_range_bounded_trig_shift(const working_string &e,char rv,working
     return false;
   if (const_part.empty())
     const_part="0";
+  if (trig_term.size()>120)
+    trig_term="u";
+  if (const_part.size()>120)
+    const_part="C";
   out="Find range\n";
   out += trig_term+" is between -1 and 1\n";
   out += "let c = "+const_part+"\n";
@@ -10947,6 +10957,8 @@ static bool try_range_outer_power_route(const working_string &e,char rv,working_
   Rat p;
   if (!split_outer_power_general(e,base,p) || !contains_var_symbol(base,rv))
     return false;
+  if (base.size()>120)
+    base="A";
   out="Find range\n";
   out += "P="+base+"\n";
   out += "y=P^"+rat_s(p)+"\n";
@@ -11883,15 +11895,13 @@ static int rewrite_log_target_index(const working_string &base,const working_str
 }
 
 static bool working_route_too_large(const working_string &s){
-  int ops=0,brackets=0;
+  int ops=0;
   for (int i=0;i<int(s.size());++i){
     char c=s[i];
     if (c=='+' || c=='-' || c=='*' || c=='/' || c=='^' || c=='=' || c==',')
       ++ops;
-    else if (c=='(' || c==')' || c=='[' || c==']')
-      ++brackets;
   }
-  return s.size()>1500 || ops>650 || brackets>900;
+  return s.size()>500 || ops>250;
 }
 
 static void rewrite_acc_init(RewriteAcc &acc){
@@ -12303,16 +12313,12 @@ static bool try_rewrite(const char *input,working_string &out){
   if (working_route_too_large(args[0]) || working_route_too_large(args[1])){
     working_string expr=trim(args[0]), work;
     if (!rewrite_exact_large(expr,targets,tn,work)){
-      out="Normalise large expression\n";
-      out += "scan targets, substitute matches\n";
-      bool large=false;
-      out += command_display_arg(expr,"A",large);
+      out="Rewrite\nnormalise A\napply targets";
       return true;
     }
-    out="Normalise large expression\n";
-    out += "scan for each requested target term\n";
+    out="Rewrite\napply targets\n";
     if (work.size()+expr.size()>800)
-      out += "targets applied\nA";
+      out += "A";
     else
       out += work+expr;
     return true;
@@ -12505,6 +12511,10 @@ static bool try_xform(const char *input,working_string &out){
     n=2;
   }
   working_string a=compact(args[0]), b=compact(args[1]);
+  if (a.size()>500 || b.size()>500){
+    out="Transform\nA->B\nid";
+    return true;
+  }
   {
     working_string iargs[6];
     int in=0;
@@ -12780,7 +12790,7 @@ static bool try_xform(const char *input,working_string &out){
   bool la=false,lb=false;
   out += "Start: "+command_display_arg(args[0],"A",la)+"\n";
   out += "Target: "+command_display_arg(args[1],"B",lb)+"\n";
-  out += "No matching reversible route\n";
+  out += "no route\n";
   out += "false";
   return true;
 }
