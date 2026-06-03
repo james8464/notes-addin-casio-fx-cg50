@@ -9272,7 +9272,9 @@ static bool try_algebra(const char *input,working_string &out){
     }
     working_string num,den;
     if (!split_top_fraction(e,num,den)){
-      out=e;
+      out="Partial fractions:\n";
+      out += "No rational denominator to split.\n";
+      out += trim(args[0])+" is already not a proper rational fraction.";
       return true;
     }
     out="Denominator:\n";
@@ -12353,7 +12355,8 @@ bool eval_with_working(const char *input,working_string &out){
                         "series","taylor","partfrac","sum","product","log",0};
     for (int i=0;cmds[i];++i){
       if (starts_command(cs,cmds[i])){
-        out=working_string(cmds[i])+"()\n"+working_string(cmds[i])+"()";
+        out="Err: missing arguments\n";
+        out += working_string(cmds[i])+"(...)";
         return true;
       }
     }
