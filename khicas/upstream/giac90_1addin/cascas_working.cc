@@ -2033,9 +2033,11 @@ static bool collect_visible_vars(const working_string &src,char *vars,int maxvar
   return nvars>0;
 }
 
+static bool symbol_in_known_call_arg(const working_string &s,int pos);
+
 static bool has_odd_power_token(const working_string &src,char v,long &degree){
   working_string s=compact(src);
-  degree=0;
+  long maxp=0;
   for (int i=0;i<int(s.size());++i){
     if (s[i]!=v || i+1>=int(s.size()) || s[i+1]!='^')
       continue;
@@ -2043,15 +2045,18 @@ static bool has_odd_power_token(const working_string &src,char v,long &degree){
     bool right=i+2<int(s.size()) && isalpha((unsigned char)s[i+2]);
     if (left || right)
       continue;
+    if (symbol_in_known_call_arg(s,i))
+      continue;
     int j=i+2;
     if (j<int(s.size()) && s[j]=='(')
       ++j;
     char *end=0;
     long p=strtol(s.c_str()+j,&end,10);
-    if (end && p>degree && p>0 && (p%2))
-      degree=p;
+    if (end && p>maxp && p>0)
+      maxp=p;
   }
-  return degree>0;
+  degree=maxp;
+  return degree>0 && (degree%2);
 }
 
 static bool try_range_unbounded_component(const working_string &e,working_string &out){
@@ -6132,6 +6137,10 @@ static bool try_integral(const char *input,working_string &out){
   }
   if (!ok || n<1)
     return try_integral_general_route(input,out);
+  if (n>=4 && (find_top_equal_any(args[2])>=0 || find_top_equal_any(args[3])>=0)){
+    out="Err: bad bounds\nintegrate(expr,var,lo,hi)";
+    return true;
+  }
   working_string raw_expr=compact(args[0]);
   working_string e=canonical_expr(args[0]), var=n>=2?compact(args[1]):working_string(1,default_var_char(args[0]));
   for (int lp=e.find("log(x)"); lp>=0; lp=e.find("log(x)",lp+5))
@@ -10575,13 +10584,14 @@ static bool try_range_bounded_trig_shift(const working_string &e,char rv,working
   return true;
 }
 
-static bool top_sum_tan_arg(const working_string &src,working_string &found,int depth=0){
+static bool top_sum_tan_arg(const working_string &src,char rv,working_string &found,int depth=0){
   if (depth>4)
     return false;
   working_string s=strip_outer_parens(src),arg;
   char vars[4];
   int nvars=0;
-  if (parse_unary_arg(s,"tan",arg) && collect_visible_vars(arg,vars,4,nvars) && nvars>0){
+  if (parse_unary_arg(s,"tan",arg) && collect_visible_vars(arg,vars,4,nvars) && nvars>0 &&
+      range_expr_all_real_simple(arg,rv)){
     found=arg;
     return true;
   }
@@ -10591,19 +10601,19 @@ static bool top_sum_tan_arg(const working_string &src,working_string &found,int 
   if (n<=1)
     return false;
   for (int i=0;i<n;++i)
-    if (top_sum_tan_arg(terms[i],found,depth+1))
+    if (top_sum_tan_arg(terms[i],rv,found,depth+1))
       return true;
   return false;
 }
 
-static bool try_range_top_tan_unbounded(const working_string &e,working_string &out){
+static bool try_range_top_tan_unbounded(const working_string &e,char rv,working_string &out){
   working_string terms[12],arg;
   int signs[12];
   int n=split_top_sum_terms(strip_outer_parens(e),terms,signs,12);
   if (n<1)
     return false;
   for (int i=0;i<n;++i){
-    if (top_sum_tan_arg(terms[i],arg)){
+    if (top_sum_tan_arg(terms[i],rv,arg)){
       out="Find range\n";
       out += "tan("+arg+") is unbounded\n";
       out += "adding or subtracting the other terms only shifts it\n";
@@ -10677,7 +10687,8 @@ static bool symbol_in_known_call_arg(const working_string &s,int pos){
       int j=i-1;
       while (j>=0 && isalpha((unsigned char)s[j]))
         --j;
-      return j+1<i && known_call_word(s.substr(j+1,i-j-1));
+      if (j+1<i && known_call_word(s.substr(j+1,i-j-1)))
+        return true;
     }
   }
   return false;
@@ -10825,10 +10836,10 @@ static bool try_range_outer_power_route(const working_string &e,char rv,working_
   if (!split_outer_power_general(e,base,p) || !contains_var_symbol(base,rv))
     return false;
   out="Find range\n";
-  out += "let u = "+base+"\n";
-  out += "y = u^"+rat_s(p)+"\n";
+  out += "P="+base+"\n";
+  out += "y=P^"+rat_s(p)+"\n";
   if (p.n<0){
-    out += "u != 0\n";
+    out += "P!=0\n";
     if (p.d==1 && ((-p.n)%2)==0)
       out += "y > 0";
     else
@@ -10846,7 +10857,7 @@ static bool try_range_outer_power_route(const working_string &e,char rv,working_
     return true;
   }
   if (p.d>1){
-    out += "root power needs u >= 0\n";
+    out += "need P>=0\n";
     out += "y >= 0";
     return true;
   }
@@ -10889,6 +10900,13 @@ static bool nonnegative_lower_bound_term(const working_string &term,working_stri
   if (parse_unary_arg(s,"sqrt",arg)){
     lb="0";
     return true;
+  }
+  {
+    int c=s.find("^2");
+    if (c>0 && c+2==int(s.size()) && isalpha((unsigned char)s[c-1])){
+      lb="0";
+      return true;
+    }
   }
   if (split_outer_power_general(s,base,p) && p.d==1 && p.n>0 && (p.n%2)==0){
     working_string inner;
@@ -10998,8 +11016,21 @@ static bool try_range(const char *input,working_string &out){
     int ln=0;
     if ((parse_unary_arg(e,"ln",larg) || parse_unary_arg(e,"log",larg)) &&
         split_args(larg,0,larg.size(),largs,2)==1 && contains_var_symbol(larg,rv)){
-      out="Find range\nln/log input > 0; all real\n";
-      out += "all real";
+      working_string lin=strip_outer_parens(nospace_lower(larg));
+      Rat la,lb;
+      if (parse_affine_general(lin,rv,la,lb) && la.n){
+        out="Find range\nlog input>0; all real\n";
+        out += "all real";
+        return true;
+      }
+      working_string low;
+      if (nonnegative_lower_bound_expr(lin,low) && low!="0"){
+        out="Find range\ninput>="+low+"\n";
+        out += "y>=ln("+low+")";
+        return true;
+      }
+      out="Find range\ny=ln(g)\ng>0\n";
+      out += "positive part";
       return true;
     }
     if (parse_call(e.c_str(),"log",largs,2,ln) && ln==2 && contains_var_symbol(largs[1],rv)){
@@ -11074,6 +11105,21 @@ static bool try_range(const char *input,working_string &out){
         out="Find range\nconstant expression\ny = "+spaced_pm(e);
         return true;
       }
+      {
+        working_string trigarg;
+        const char *tfn=0;
+        if (parse_unary_arg(arg,"sin",trigarg))
+          tfn="sin";
+        else if (parse_unary_arg(arg,"cos",trigarg))
+          tfn="cos";
+        if (tfn && range_expr_all_real_simple(trigarg,rv)){
+          out="Find range\n";
+          out += working_string(tfn)+"(u) in [-1,1]\n";
+          out += "need input>=0\n";
+          out += "0<=y<=1";
+          return true;
+        }
+      }
       if (range_expr_all_real_simple(arg,rv)){
         out="Find range\n";
         out += arg+" is all real, so sqrt reaches every non-negative value\n";
@@ -11113,9 +11159,9 @@ static bool try_range(const char *input,working_string &out){
       }
       if (contains_var_symbol(arg,rv)){
         out="Find range\n";
-        out += "Let u = "+arg+"\n";
-        out += "need u >= 0\n";
-        out += "sqrt(u) >= 0\n";
+        out += "R="+arg+"\n";
+        out += "need R>=0\n";
+        out += "sqrt(R)>=0\n";
         out += "y >= 0";
         return true;
       }
@@ -11131,7 +11177,7 @@ static bool try_range(const char *input,working_string &out){
   }
   if (try_range_exp_shift(e,rv,n>=4,args[2],args[3],out))
     return true;
-  if (try_range_top_tan_unbounded(e,out))
+  if (try_range_top_tan_unbounded(e,rv,out))
     return true;
   {
     working_string s=strip_outer_parens(e);
@@ -11190,7 +11236,7 @@ static bool try_range(const char *input,working_string &out){
     return true;
   if (try_range_bounded_trig_shift(e,rv,out))
     return true;
-  if (try_range_top_tan_unbounded(e,out))
+  if (try_range_top_tan_unbounded(e,rv,out))
     return true;
   if (try_range_odd_poly_sum(e,rv,out))
     return true;
@@ -11291,7 +11337,7 @@ static bool try_range(const char *input,working_string &out){
           out += fn;
           out += "("+var+") in [-1,1]\n";
           if (p%2==0)
-            out += "Even >=0\n0 <= y <= 1";
+            out += "Even >=0\n0<=y<=1";
           else
             out += "Odd keeps sign\n-1 <= y <= 1";
           return true;
