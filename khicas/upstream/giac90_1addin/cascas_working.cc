@@ -5178,6 +5178,8 @@ static working_string replace_all_literal(working_string src,const working_strin
   return src;
 }
 
+static double last_numeric_value;
+
 static bool eval_numeric_string(const working_string &expr,working_string &shown){
   NumParser np;
   working_string e=nospace_lower(expr);
@@ -5187,6 +5189,7 @@ static bool eval_numeric_string(const working_string &expr,working_string &shown
   np.skip();
   if (!np.ok || *np.p || !finite_double(val))
     return false;
+  last_numeric_value=val;
   working_string exact;
   shown=rational_approx(val,exact)?exact:double_s(val);
   return true;
@@ -5200,23 +5203,23 @@ static working_string unary_display_arg(const working_string &arg){
 }
 
 static const char *unary_function_rule(const working_string &fn){
-  if (fn=="sin") return "sin(u): unit-circle y.";
-  if (fn=="cos") return "cos(u): unit-circle x.";
-  if (fn=="tan") return "tan(u)=sin(u)/cos(u).";
-  if (fn=="sec") return "sec(u)=1/cos(u).";
-  if (fn=="cot") return "cot(u)=1/tan(u).";
-  if (fn=="asin") return "asin(u): sin(angle)=u.\nreal: -1<=u<=1";
-  if (fn=="acos") return "acos(u): cos(angle)=u.\nreal: -1<=u<=1";
+  if (fn=="sin") return "sin: unit y";
+  if (fn=="cos") return "cos: unit x";
+  if (fn=="tan") return "tan=sin/cos";
+  if (fn=="sec") return "sec=1/cos";
+  if (fn=="cot") return "cot=1/tan";
+  if (fn=="asin") return "asin real: -1<=u<=1";
+  if (fn=="acos") return "acos real: -1<=u<=1";
   if (fn=="atan") return "atan(u) is the angle whose tangent is u.";
-  if (fn=="ln") return "ln inverse of exp.\nreal: u>0";
-  if (fn=="sqrt") return "sqrt(u)^2=u, sqrt(u)>=0.\nreal: u>=0";
-  if (fn=="abs") return "abs(u) is the distance of u from 0.";
-  if (fn=="floor") return "floor(u) is the greatest integer <= u.";
-  if (fn=="ceil" || fn=="ceiling") return "ceil(u) is the least integer >= u.";
-  if (fn=="round") return "round(u) is the nearest integer.";
-  if (fn=="exact") return "exact(u): decimal to exact where possible.";
-  if (fn=="approx") return "approx(u) gives a decimal approximation.";
-  return "Evaluate the one-argument function.";
+  if (fn=="ln") return "ln real: u>0";
+  if (fn=="sqrt") return "sqrt real: u>=0";
+  if (fn=="abs") return "abs distance";
+  if (fn=="floor") return "floor: greatest int<=u";
+  if (fn=="ceil" || fn=="ceiling") return "ceil: least int>=u";
+  if (fn=="round") return "round nearest int";
+  if (fn=="exact") return "exact decimal";
+  if (fn=="approx") return "decimal approx";
+  return "Evaluate.";
 }
 
 static bool try_unary_function_working(const char *input,working_string &out){
@@ -5244,13 +5247,24 @@ static bool try_unary_function_working(const char *input,working_string &out){
     out="Function evaluation:\n";
     out += "Function: "+fn+"\n";
     if (large_arg)
-      out += "Let u be the input expression.\n";
+      out += "Let u=input.\n";
     else
       out += "Let u = "+shown+"\n";
     if (large_arg)
-      out += "Large argument; using u.\n";
+      out += "Large arg -> u.\n";
     out += unary_function_rule(fn);
     out += "\n";
+    working_string arg_num;
+    if (eval_numeric_string(arg,arg_num)){
+      double arg_value=last_numeric_value;
+      bool bad=(fn=="ln" && arg_value<=0) ||
+               (fn=="sqrt" && arg_value<0) ||
+               ((fn=="asin" || fn=="acos") && (arg_value<-1 || arg_value>1));
+      if (bad){
+        out += fn+"("+result_arg+")\nNo real";
+        return true;
+      }
+    }
     working_string value;
     if (eval_numeric_string(fn+"("+arg+")",value)){
       out += fn+"("+result_arg+") = "+value+"\n";
@@ -5339,7 +5353,10 @@ static bool try_symbolic_command_exact_small(const working_string &fn,working_st
     if (v.size()!=1 || !polynomial_degree_lead(args[0],v[0],lead,degree))
       return false;
     out="Polynomial degree:\n";
-    out += "Expression: "+trim(args[0])+"\n";
+    if (trim(args[0]).size()>500)
+      out += "large polynomial\n";
+    else
+      out += "Expression: "+trim(args[0])+"\n";
     out += "Variable: "+v+"\n";
     out += "Highest non-zero power: "+v+"^"+int_s(degree)+"\n";
     out += int_s(degree);
@@ -6501,8 +6518,13 @@ static bool try_integral(const char *input,working_string &out){
     out="Terms:\n"
         "Power:\n"
         "";
-    out += sum_answer;
-    out += " + C";
+    if (e.size()>600 || sum_answer.size()>700){
+      out += "large + C";
+    }
+    else {
+      out += sum_answer;
+      out += " + C";
+    }
     return true;
   }
   long coef=0,pow=0;
@@ -6720,6 +6742,16 @@ static bool try_log_base(const char *input,working_string &out){
   }
   if (n!=2)
     return false;
+  {
+    double bv=0;
+    working_string num;
+    bool bnum=eval_numeric_string(args[0],num);
+    if (bnum) bv=last_numeric_value;
+    if (bnum && (bv<=0 || fabs(bv-1)<1e-12)){
+      out="No real";
+      return true;
+    }
+  }
   if (trim(args[0]).size()>120 || trim(args[1]).size()>120){
     working_string b=trim(args[0]), u=trim(args[1]);
     if (b.size()>120)
@@ -8997,6 +9029,8 @@ static bool try_solve(const char *input,working_string &out){
     }
     return try_solve_large_structure(early_rawvar,out);
   }
+  if (eq_src.size()>500 && contains(guard_src,"abs("))
+    return try_solve_large_structure(early_rawvar,out);
   working_string coeff_work;
   bool coeff_changed=false;
   eq_src=replace_small_binomial_coeffs(eq_src,coeff_work,coeff_changed);
@@ -9835,6 +9869,10 @@ static bool try_algebra(const char *input,working_string &out){
       }
     }
     out="Denominator:\n";
+    if (den.size()>500){
+      out += "large den\npartfrac(A)";
+      return true;
+    }
     out += den+"\n";
     out += "Set A,B,... over linear factors\n";
     out += "partfrac("+trim(args[0])+")";
