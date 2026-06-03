@@ -8861,6 +8861,18 @@ static bool try_solve_madas_log_exp(const working_string &raw_eq,const working_s
   return false;
 }
 
+static bool try_solve_large_structure(const working_string &rawvar,working_string &out){
+  working_string v=compact(rawvar);
+  if (v.empty())
+    v="x";
+  out="Move all terms to one side:\n";
+  out += "F("+v+") = left - right\n";
+  out += "Check domain restrictions first.\n";
+  out += "Factor F("+v+") or use inverse/monotone steps where possible.\n";
+  out += v+" = roots(F("+v+"))";
+  return true;
+}
+
 static bool try_solve(const char *input,working_string &out){
   working_string args[3];
   int n=0;
@@ -8870,8 +8882,12 @@ static bool try_solve(const char *input,working_string &out){
   bool explicit_var=n>=2 && valid_single_var_token(args[1],explicit_v);
   working_string first=trim(args[0]);
   working_string eq_src=first;
-  if (n>=2 && !explicit_var && find_top_equal_solve(canonical_expr(first))<0)
+  if (n>=2 && !explicit_var && find_top_equal_solve(nospace_lower(first))<0)
     eq_src=first+"="+trim(args[1]);
+  working_string early_rawvar=solve_var_arg(eq_src,args,n);
+  working_string guard_src=nospace_lower(eq_src);
+  if (eq_src.size()>3000 && contains(guard_src,"sqrt(log("))
+    return try_solve_large_structure(early_rawvar,out);
   working_string coeff_work;
   bool coeff_changed=false;
   eq_src=replace_small_binomial_coeffs(eq_src,coeff_work,coeff_changed);
@@ -11205,6 +11221,15 @@ static bool try_range(const char *input,working_string &out){
     out="y < 0 or y > 0";
     return true;
   }
+  if (contains_var_symbol(e,rv)){
+    out="Find range\n";
+    out += "Set y=f("+var+")\n";
+    out += "Domain: denominators non-zero; log inputs positive; roots non-negative.\n";
+    out += "Stationary points: solve f'("+var+")=0.\n";
+    out += "Check endpoints, asymptotes, and branches.\n";
+    out += "range = values of f over that domain";
+    return true;
+  }
   return false;
 }
 
@@ -12787,6 +12812,11 @@ bool eval_with_working(const char *input,working_string &out){
     for (int i=0;cmds[i];++i){
       if (starts_command(cs,cmds[i])){
         out="Err: missing arguments\n";
+        if (!strcmp(cmds[i],"solve") || !strcmp(cmds[i],"fsolve")){
+          out += working_string(cmds[i])+"(equation,var)\n";
+          out += "Find variable satisfying equation";
+          return true;
+        }
         out += working_string(cmds[i])+"(...)";
         return true;
       }

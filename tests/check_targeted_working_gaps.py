@@ -51,6 +51,7 @@ CASES = [
     ("range(cot(k))", ["cot(u) covers all real values", "all real"]),
     ("range(exp(sec(sin(sqrt(cot(ln(abs(u)+1)))))))", ["exp(u) > 0", "y > 0"]),
     ("range(b+x^5*(3-x)^3+sqrt(t))", ["unbounded both ways", "all real"]),
+    ("range(cot(sec(sqrt((exp(tan(v)))^2+1)))-v)", ["Set y=f(v)", "Stationary points", "range = values of f over that domain"]),
     ("simplify((x^2+3*x+2)/(x+1))", ["Factor:", "x^2 + 3*x + 2 = (x + 1)*(x + 2)", "Cancel (x + 1)", "x + 2"]),
     ("simplify((x^2-4)/(x^2-2*x))", ["x^2 - 4 = (x - 2)*(x + 2)", "x^2 - 2*x = (x - 2)*(x)", "Cancel (x - 2)", "(x + 2)/(x)"]),
     ("simplify((2*x^2+6*x+4)/(2*x+2))", ["Cancel (x + 1)", "x + 2"]),
@@ -193,6 +194,7 @@ def main() -> int:
         (f"integrate({huge_poly},x)", ["Terms:", "+ C"]),
         (f"log(8,{huge_poly})", ["log_8(", "/ln(8)"]),
         (f"range({huge_odd_poly})", ["degree 261", "all real"]),
+        (f"solve(sqrt(log(x))+{huge_poly}=sin(x),x)", ["Move all terms to one side", "F(x)", "x = roots(F(x))"]),
     ]
     for expr, markers in CASES + dynamic_cases:
         p = subprocess.run([str(RUNNER), expr], cwd=ROOT, text=True, capture_output=True)
