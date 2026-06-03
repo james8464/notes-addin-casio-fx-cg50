@@ -5122,6 +5122,8 @@ static bool trig_power_defint_route(const working_string &expr,const working_str
 
 static working_string strip_integral_constant(const working_string &s){
   working_string r=trim(last_nonempty_line(s));
+  if (r.find("Result:")==0)
+    r=trim(r.substr(7,r.size()-7));
   if (r.size()>=4 && r.substr(r.size()-4,4)==" + C")
     r=trim(r.substr(0,r.size()-4));
   if (r.size()>=2 && r.substr(r.size()-2,2)=="+C")
@@ -5221,7 +5223,7 @@ static bool eval_numeric_string(const working_string &expr,working_string &shown
 
 static working_string unary_display_arg(const working_string &arg){
   working_string a=trim(arg);
-  if (a.size()>120)
+  if (a.size()>100)
     return "input expression";
   return a;
 }
@@ -5318,7 +5320,7 @@ static working_string symbolic_arg_placeholder(int i){
 
 static working_string command_display_arg(const working_string &arg,const working_string &placeholder,bool &large){
   working_string a=trim(arg);
-  large=a.size()>90;
+  large=a.size()>70;
   return large?placeholder:a;
 }
 
@@ -5341,6 +5343,22 @@ static bool parse_integer_arg(const working_string &src,long &v){
 }
 
 static bool try_symbolic_command_exact_small(const working_string &fn,working_string *args,int n,working_string &out){
+  if (fn=="subst" && n>=2){
+    int eq=find_top_equal_any(args[1]);
+    if (eq>0){
+      working_string v=compact(args[1].substr(0,eq));
+      if (v.size()==1 && isalpha((unsigned char)v[0]) &&
+          !contains_var_symbol(canonical_expr(args[0]),v[0])){
+        bool large=false;
+        working_string shown=command_display_arg(args[0],"A",large);
+        out="Substitution:\n";
+        if (large)
+          out += "Let A be argument 1.\n";
+        out += "no "+v+" term\n"+shown;
+        return true;
+      }
+    }
+  }
   if (fn=="gcd" || fn=="lcm"){
     long vals[6];
     for (int i=0;i<n;++i)
@@ -6770,12 +6788,12 @@ static bool try_log_base(const char *input,working_string &out){
       return true;
     }
   }
-  if (trim(args[0]).size()+trim(args[1]).size()>100){
+  if (trim(args[0]).size()+trim(args[1]).size()>80){
     working_string b=trim(args[0]), u=trim(args[1]);
-    if (b.size()>60)
-      b="a";
-    if (u.size()>60)
-      u="u";
+    if (b.size()>40)
+      b="b";
+    if (u.size()>40)
+      u="x";
     out="Change of base\n";
     out += "log_a(u)=ln(u)/ln(a)\n";
     out += "log_"+b+"("+u+")=ln("+u+")/ln("+b+")\n";
