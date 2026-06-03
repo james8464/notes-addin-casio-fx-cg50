@@ -4889,6 +4889,10 @@ static bool integrate_mixed_sum_terms(const working_string &expr,working_string 
     return false;
   working_string ans;
   out="Terms:\nPower:\n";
+  if (expr.size()>350){
+    out += "poly + C";
+    return true;
+  }
   for (int i=0;i<n;++i){
     if (!integrate_basic_term(terms[i],signs[i],part))
       return false;
@@ -5520,8 +5524,8 @@ static bool try_definite_via_antiderivative(const working_string &expr,const wor
   working_string Fb=subst_var_value(F,v[0],trim(hi));
   working_string Fa=subst_var_value(F,v[0],trim(lo));
   working_string nb,na,diff="("+Fb+") - ("+Fa+")", nd;
-  if (sub.size()+F.size()+Fb.size()+Fa.size()+diff.size()>620){
-    out="Antiderivative\nF=A\nF(b)-F(a)";
+  if (sub.size()+F.size()+Fb.size()+Fa.size()+diff.size()>420){
+    out="F=A\nF(b)-F(a)";
     return true;
   }
   out=sub+"\n";
@@ -6137,23 +6141,17 @@ static bool try_integral_general_route(const char *input,working_string &out){
       out += shown_expr+"*"+var+" + C";
     return true;
   }
-  out="Put the integrand into standard form\n";
-  out += "collect powers\n";
-  if (contains(e,"ln(") || contains(e,"log("))
-    out += "use log laws\n";
-  if (contains(e,"sin(") || contains(e,"cos(") || contains(e,"tan(") ||
-      contains(e,"sec(") || contains(e,"cosec(") || contains(e,"cot("))
-    out += "use trig identities\n";
-  if (contains(e,"*"))
-    out += "check substitution or parts\n";
-  if (contains(e,"/"))
-    out += "split fractions or use u-sub\n";
-  if (contains(e,"sqrt(") || contains(e,"^(") || contains(e,"^"))
-    out += "write roots as powers\n";
+  out="";
   if (definite){
     out += "find an antiderivative F("+var+")\n";
-    out += "evaluate F("+hi+") - F("+lo+")\n";
-    out += "integral("+shown_expr+","+var+","+lo+","+hi+")";
+    if (lo.size()+hi.size()>180){
+      out += "evaluate F(H)-F(L)\n";
+      out += "integral("+shown_expr+","+var+",L,H)";
+    }
+    else {
+      out += "evaluate F("+hi+") - F("+lo+")\n";
+      out += "integral("+shown_expr+","+var+","+lo+","+hi+")";
+    }
   }
   else {
     out += "integral("+shown_expr+","+var+") + C";
@@ -6721,18 +6719,14 @@ static bool try_integral(const char *input,working_string &out){
   if (force_parts || force_sub){
     working_string late_sum_answer;
     if (integrate_sum_terms(e,late_sum_answer)){
-      out="Terms:\n"
-          "int x^n=x^(n+1)/(n+1)\n"
-          "";
-      out += late_sum_answer;
+      out="Terms:\n";
+      out += (e.size()>350 || late_sum_answer.size()>420) ? "poly" : late_sum_answer;
       out += " + C";
       return true;
     }
     long late_coef=0,late_pow=0;
     if (parse_power_term(e,late_coef,late_pow) && late_pow!=-1){
-      out=""
-          "int x^n=x^(n+1)/(n+1)\n"
-          "";
+      out="int x^n\n";
       out += integral_monomial(late_coef,late_pow);
       out += " + C";
       return true;
@@ -9869,8 +9863,7 @@ static bool try_algebra(const char *input,working_string &out){
     }
     working_string num,den;
     if (!split_top_fraction(e,num,den)){
-      out="Partial fractions:\n";
-      out += "No rational denominator to split.\n";
+      out="No rational denominator.\n";
       bool large=false;
       working_string shown=command_display_arg(args[0],"A",large);
       out += shown+" not proper rational.";
@@ -9878,25 +9871,25 @@ static bool try_algebra(const char *input,working_string &out){
     }
     Rat dq;
     if (parse_rat(den,dq)){
-      out="No rational denominator to split.\n";
-      out += "Constant denominator.";
+      out="No rational denominator.\n";
+      out += "Constant denominator";
       return true;
     }
     const char *bad_den[]={"sin(","cos(","tan(","cot(","sec(","sqrt(","abs(","ln(","log(","exp(",",",0};
     for (int i=0;bad_den[i];++i){
       if (contains(den,bad_den[i])){
-        out="No rational denominator to split.\n";
-        out += "Denominator is not polynomial.";
+        out="No rational denominator.\n";
+        out += "not polynomial.";
         return true;
       }
     }
-    out="Denominator:\n";
-    if (den.size()>500){
-      out += "large den\npartfrac(A)";
+    out="D:\n";
+    if (den.size()>120 || args[0].size()>300){
+      out += "D\npartfrac(A)";
       return true;
     }
     out += den+"\n";
-    out += "Set A,B,... over linear factors\n";
+    out += "A,B over factors\n";
     out += "partfrac("+trim(args[0])+")";
     return true;
   }
