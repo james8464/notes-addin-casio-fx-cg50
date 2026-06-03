@@ -3959,13 +3959,13 @@ static bool try_diff_plain(const char *input,working_string &out);
 
 static bool trace_inner_diff(const working_string &arg,const working_string &rawvar,working_string &trace){
   static int depth=0;
-  if (depth>=5)
+  if (depth>=3 || arg.size()>120)
     return false;
   working_string cmd="diff("+arg+","+rawvar+")";
   ++depth;
   bool ok=try_diff_plain(cmd.c_str(),trace);
   --depth;
-  return ok && contains(trace,"\n") && trace.size()<1800;
+  return ok && contains(trace,"\n") && trace.size()<1000;
 }
 
 static bool try_diff_chain_rule(const working_string &expr,char v,const working_string &rawvar,working_string &out){
@@ -3974,6 +3974,12 @@ static bool try_diff_chain_rule(const working_string &expr,char v,const working_
   if (!unary_chain_derivative(expr,v,deriv,shown,&u,&du,&fn))
     return false;
   out="Chain:\n";
+  if (u.size()>120 || du.size()>180 || deriv.size()>260){
+    out += "u=A\n";
+    out += "u'=D\n";
+    out += "f'(A)*D";
+    return true;
+  }
   out += "u = "+u+"\n";
   {
     working_string inner_trace;
@@ -4014,7 +4020,7 @@ static bool try_diff_power_chain_general(const working_string &expr,char v,const
   }
   working_string first=rat_is_one(coef)?powpart:mul_expr(coef,powpart);
   working_string ans=mul_factor_derivative(first,db);
-    out="Chain:\n";
+  out="Chain:\n";
   out += "u = "+shown+"\n";
   out += "du/d"+rawvar+" = "+db+"\n";
   out += "d/d"+rawvar+"(u^"+rat_s(p)+") = "+rat_s(p)+"*u^"+rat_s(np)+"*du/d"+rawvar+"\n";
@@ -5506,6 +5512,10 @@ static bool try_definite_via_antiderivative(const working_string &expr,const wor
   working_string Fb=subst_var_value(F,v[0],trim(hi));
   working_string Fa=subst_var_value(F,v[0],trim(lo));
   working_string nb,na,diff="("+Fb+") - ("+Fa+")", nd;
+  if (sub.size()+F.size()+Fb.size()+Fa.size()+diff.size()>620){
+    out="Antiderivative\nF=A\nF(b)-F(a)";
+    return true;
+  }
   out=sub+"\n";
   out += "F("+rawvar+") = "+F+"\n";
   if (eval_numeric_string(Fb,nb))
@@ -6518,8 +6528,8 @@ static bool try_integral(const char *input,working_string &out){
     out="Terms:\n"
         "Power:\n"
         "";
-    if (e.size()>600 || sum_answer.size()>700){
-      out += "large + C";
+    if (e.size()>350 || sum_answer.size()>420){
+      out += "poly + C";
     }
     else {
       out += sum_answer;
@@ -9019,14 +9029,14 @@ static bool try_solve(const char *input,working_string &out){
     eq_src=first+"="+trim(args[1]);
   working_string early_rawvar=solve_var_arg(eq_src,args,n);
   working_string guard_src=nospace_lower(eq_src);
+  working_string gv=compact(early_rawvar);
+  if (eq_src.size()>250 && gv.size()==1 && find_top_equal_solve(guard_src)>=0 && !contains_var_symbol(guard_src,gv[0])){
+    out="No "+early_rawvar+" term\n";
+    out += "Independent\n";
+    out += early_rawvar+"=all real or []";
+    return true;
+  }
   if (eq_src.size()>600){
-    working_string gv=compact(early_rawvar);
-    if (gv.size()==1 && !contains_var_symbol(guard_src,gv[0])){
-      out="No "+early_rawvar+" term\n";
-      out += "Independent\n";
-      out += early_rawvar+"=all real or []";
-      return true;
-    }
     return try_solve_large_structure(early_rawvar,out);
   }
   if (eq_src.size()>350 && contains(guard_src,"abs("))
