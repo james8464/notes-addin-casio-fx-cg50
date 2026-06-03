@@ -5149,6 +5149,78 @@ static bool eval_numeric_string(const working_string &expr,working_string &shown
   return true;
 }
 
+static working_string unary_display_arg(const working_string &arg){
+  working_string a=trim(arg);
+  if (a.size()>120)
+    return "input expression";
+  return a;
+}
+
+static const char *unary_function_rule(const working_string &fn){
+  if (fn=="sin") return "sin(u) is the y-coordinate on the unit circle.";
+  if (fn=="cos") return "cos(u) is the x-coordinate on the unit circle.";
+  if (fn=="tan") return "tan(u)=sin(u)/cos(u).";
+  if (fn=="sec") return "sec(u)=1/cos(u).";
+  if (fn=="cot") return "cot(u)=1/tan(u).";
+  if (fn=="asin") return "asin(u) is the angle whose sine is u.";
+  if (fn=="acos") return "acos(u) is the angle whose cosine is u.";
+  if (fn=="atan") return "atan(u) is the angle whose tangent is u.";
+  if (fn=="ln") return "ln(u) is the inverse of exp(u).";
+  if (fn=="sqrt") return "sqrt(u) is the non-negative value whose square is u.";
+  if (fn=="abs") return "abs(u) is the distance of u from 0.";
+  if (fn=="floor") return "floor(u) is the greatest integer <= u.";
+  if (fn=="ceil" || fn=="ceiling") return "ceil(u) is the least integer >= u.";
+  if (fn=="round") return "round(u) is the nearest integer.";
+  if (fn=="exact") return "exact(u) converts a decimal approximation to exact form where possible.";
+  if (fn=="approx") return "approx(u) gives a decimal approximation.";
+  return "Evaluate the one-argument function.";
+}
+
+static bool try_unary_function_working(const char *input,working_string &out){
+  const char *fns[]={"abs","acos","approx","asin","atan","ceil","ceiling","cos","cot",
+                    "exact","exp","floor","ln","round","sec","sin","sqrt","tan",0};
+  working_string args[2];
+  int n=0;
+  for (int i=0;fns[i];++i){
+    if (!parse_call(input,fns[i],args,2,n))
+      continue;
+    working_string fn=fns[i];
+    if (n<1 || trim(args[0]).empty()){
+      out="Err: missing arguments\n";
+      out += fn+"(expr)";
+      return true;
+    }
+    if (n!=1){
+      out="Err: expected one argument\n";
+      out += fn+"(expr)";
+      return true;
+    }
+    working_string arg=trim(args[0]), shown=unary_display_arg(arg);
+    bool large_arg=shown=="input expression";
+    working_string result_arg=large_arg?"u":shown;
+    out="Function evaluation:\n";
+    out += "Function: "+fn+"\n";
+    if (large_arg)
+      out += "Let u be the input expression.\n";
+    else
+      out += "Let u = "+shown+"\n";
+    if (large_arg)
+      out += "Argument is kept symbolic because it is too large for readable working.\n";
+    out += unary_function_rule(fn);
+    out += "\n";
+    working_string value;
+    if (eval_numeric_string(fn+"("+arg+")",value)){
+      out += fn+"("+result_arg+") = "+value+"\n";
+      out += value;
+    }
+    else {
+      out += "Result: "+fn+"("+result_arg+")";
+    }
+    return true;
+  }
+  return false;
+}
+
 static bool try_definite_recip_affine(const working_string &expr,const working_string &rawvar,
                                       const working_string &lo,const working_string &hi,
                                       working_string &out){
@@ -12520,6 +12592,10 @@ bool eval_with_working(const char *input,working_string &out){
     return true;
   }
   if (try_implicit_diff_command(input,out)){
+    strip_weak_working_labels(out);
+    return true;
+  }
+  if (try_unary_function_working(input,out)){
     strip_weak_working_labels(out);
     return true;
   }
