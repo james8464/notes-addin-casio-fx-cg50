@@ -6279,6 +6279,8 @@ static bool try_integral(const char *input,working_string &out){
       bool large=false;
       working_string shown=command_display_arg(args[0],"A",large);
       out="Const:\nno "+var+": int(c)d"+var+"=c*"+var+"+C\n";
+      if (large)
+        out += "Let A be the integrand.\n";
       out += shown+"*"+var+" + C";
       return true;
     }
@@ -6313,6 +6315,8 @@ static bool try_integral(const char *input,working_string &out){
     out="Const:\nno x: int(c)=c*x+C\n";
     bool large=false;
     working_string shown=command_display_arg(args[0],"A",large);
+    if (large)
+      out += "Let A be the integrand.\n";
     out += shown+"*x + C";
     return true;
   }
