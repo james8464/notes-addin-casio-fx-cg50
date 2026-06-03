@@ -3854,7 +3854,7 @@ static bool try_diff_top_sum(const working_string &expr,char v,const working_str
     working_string sd=signed_part(signs[i],deriv[i]);
     out += "d/d"+rawvar+"("+signed_part(signs[i],shown[i])+") = "+sd+"\n";
     if (sd!="0")
-      ans=join_sum(ans,sd);
+      ans=join_sum(ans,sd.size()>140?working_string("D")+int_s(i+1):sd);
   }
   if (ans.empty())
     ans="0";
@@ -6770,11 +6770,11 @@ static bool try_log_base(const char *input,working_string &out){
       return true;
     }
   }
-  if (trim(args[0]).size()>120 || trim(args[1]).size()>120){
+  if (trim(args[0]).size()+trim(args[1]).size()>100){
     working_string b=trim(args[0]), u=trim(args[1]);
-    if (b.size()>120)
+    if (b.size()>60)
       b="a";
-    if (u.size()>120)
+    if (u.size()>60)
       u="u";
     out="Change of base\n";
     out += "log_a(u)=ln(u)/ln(a)\n";
