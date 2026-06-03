@@ -56,6 +56,13 @@ static working_string normalize_pm_compact(working_string s){
       changed=true;
       break;
     }
+    for (int i=0;i<int(s.size());++i){
+      if (s[i]=='+' && (i==0 || s[i-1]=='(')){
+        s=s.substr(0,i)+s.substr(i+1,s.size()-i-1);
+        changed=true;
+        break;
+      }
+    }
   }
   return s;
 }
@@ -1886,12 +1893,12 @@ static int split_top_sum_terms(const working_string &src,working_string *terms,i
 
 static working_string signed_part(int sign,const working_string &s){
   if (sign>=0)
-    return s;
+    return normalize_pm_compact(s);
   if (!s.empty() && s[0]=='-')
-    return s.substr(1,s.size()-1);
+    return normalize_pm_compact(s.substr(1,s.size()-1));
   if (needs_parens_for_mul(s))
-    return "-("+s+")";
-  return "-"+s;
+    return normalize_pm_compact("-("+s+")");
+  return normalize_pm_compact("-"+s);
 }
 
 static void sort_terms(long *coefs,long *pows,int terms){
@@ -5285,6 +5292,12 @@ static bool try_symbolic_command_exact_small(const working_string &fn,working_st
   if (fn=="degree" && n==2){
     working_string v=compact(args[1]);
     long lead=0,degree=0;
+    Rat z;
+    if (v.size()==1 && !contains_var_symbol(canonical_expr(args[0]),v[0]) &&
+        (!parse_rat(canonical_expr(args[0]),z) || z.n)){
+      out="Polynomial degree:\nconstant non-zero\n0";
+      return true;
+    }
     if (v.size()!=1 || !polynomial_degree_lead(args[0],v[0],lead,degree))
       return false;
     out="Polynomial degree:\n";
@@ -5293,6 +5306,23 @@ static bool try_symbolic_command_exact_small(const working_string &fn,working_st
     out += "Highest non-zero power: "+v+"^"+int_s(degree)+"\n";
     out += int_s(degree);
     return true;
+  }
+  if (fn=="limit" && n>=2){
+    working_string a=compact(args[1]);
+    int eq=a.find('=');
+    if (eq>0){
+      working_string v=a.substr(0,eq);
+      if (v.size()==1 && isalpha((unsigned char)v[0]) &&
+          !contains_var_symbol(canonical_expr(args[0]),v[0])){
+        bool large=false;
+        working_string shown=command_display_arg(args[0],"u",large);
+        out="Limit:\n";
+        if (large)
+          out += "Let u be the constant expression.\n";
+        out += "no "+v+" term\nconstant\n"+shown;
+        return true;
+      }
+    }
   }
   return false;
 }
@@ -6139,7 +6169,7 @@ static bool try_integral(const char *input,working_string &out){
   }
   if (var!="x"){
     if (!contains_var_symbol(e,var[0])){
-      out="Const:\nno "+var+": int(a)d"+var+"=a*"+var+"+C\n";
+      out="Const:\nno "+var+": int(c)d"+var+"=c*"+var+"+C\n";
       out += trim(args[0])+"*"+var+" + C";
       return true;
     }
@@ -11010,6 +11040,10 @@ static bool try_range(const char *input,working_string &out){
       return true;
     }
     if (parse_unary_arg(e,"sqrt",arg)){
+      if (!contains_var_symbol(arg,rv)){
+        out="Find range\nconstant expression\ny = "+spaced_pm(e);
+        return true;
+      }
       if (range_expr_all_real_simple(arg,rv)){
         out="Find range\n";
         out += arg+" is all real, so sqrt reaches every non-negative value\n";
@@ -11112,13 +11146,14 @@ static bool try_range(const char *input,working_string &out){
   }
   if (!contains_var_symbol(e,rv)){
     NumParser np;
-    np.p=e.c_str();
+    working_string raw=nospace_lower(args[0]);
+    np.p=raw.c_str();
     np.ok=true;
     double v=np.expr();
     np.skip();
     if (np.ok && !*np.p){
       if (!finite_double(v)){
-        out="Find range\nconstant expression\ny = "+spaced_pm(e);
+        out="Find range\nconstant expression\ny = "+trim(args[0]);
         return true;
       }
       working_string exact;
@@ -11126,7 +11161,7 @@ static bool try_range(const char *input,working_string &out){
       out += rational_approx(v,exact)?exact:double_s(v);
       return true;
     }
-    out="Find range\nconstant expression\ny = "+spaced_pm(e);
+    out="Find range\nconstant expression\ny = "+trim(args[0]);
     return true;
   }
   if (try_range_outer_power_route(e,rv,out))
