@@ -5318,7 +5318,7 @@ static working_string symbolic_arg_placeholder(int i){
 
 static working_string command_display_arg(const working_string &arg,const working_string &placeholder,bool &large){
   working_string a=trim(arg);
-  large=a.size()>120;
+  large=a.size()>90;
   return large?placeholder:a;
 }
 
@@ -11147,7 +11147,8 @@ static bool try_range(const char *input,working_string &out){
     if ((parse_unary_arg(e,"ln",logarg) || parse_unary_arg(e,"log",logarg)) &&
         parse_unary_arg(logarg,"exp",exparg) && contains_var_symbol(exparg,rv)){
       working_string call="range("+exparg+","+var+")";
-      out="Find range\n"+e+" = "+exparg+"\n";
+      out="Find range\n";
+      out += e.size()+exparg.size()>180 ? "ln(exp(A)) = A\n" : e+" = "+exparg+"\n";
       if (try_range(call.c_str(),sub))
         out += sub;
       else
