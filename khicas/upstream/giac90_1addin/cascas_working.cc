@@ -9191,11 +9191,89 @@ static bool try_sequence_working(const char *input,working_string &out){
   return true;
 }
 
+static bool try_trig_transform_working(const char *input,working_string &out){
+  working_string args[3];
+  int n=0;
+  bool collect=false;
+  if (!parse_call(input,"texpand",args,3,n)){
+    if (!parse_call(input,"tcollect",args,3,n))
+      return false;
+    collect=true;
+  }
+  const char *name=collect?"tcollect":"texpand";
+  if (n<1 || trim(args[0]).empty()){
+    out="Err: missing arguments\n";
+    out += working_string(name)+"(expr)";
+    return true;
+  }
+  working_string raw=trim(args[0]), e=compact(raw);
+  if (!collect){
+    if (e=="sin(2*x)" || e=="sin(2x)"){
+      out="Trig expand:\n";
+      out += "sin(2*x)=2*sin(x)*cos(x)\n";
+      out += "2*sin(x)*cos(x)";
+      return true;
+    }
+    if (e=="cos(2*x)" || e=="cos(2x)"){
+      out="Trig expand:\n";
+      out += "cos(2*x)=cos(x)^2-sin(x)^2\n";
+      out += "cos(x)^2-sin(x)^2";
+      return true;
+    }
+    if (e=="tan(2*x)" || e=="tan(2x)"){
+      out="Trig expand:\n";
+      out += "tan(2*x)=2*tan(x)/(1-tan(x)^2)\n";
+      out += "2*tan(x)/(1-tan(x)^2)";
+      return true;
+    }
+    out="Trig expand:\n";
+  }
+  else {
+    if (e=="2*sin(x)*cos(x)" || e=="2sin(x)cos(x)" ||
+        e=="sin(x)*2*cos(x)" || e=="sin(x)cos(x)2"){
+      out="Trig collect:\n";
+      out += "2*sin(x)*cos(x)=sin(2*x)\n";
+      out += "sin(2*x)";
+      return true;
+    }
+    if (e=="cos(x)^2-sin(x)^2"){
+      out="Trig collect:\n";
+      out += "cos(x)^2-sin(x)^2=cos(2*x)\n";
+      out += "cos(2*x)";
+      return true;
+    }
+    if (e=="sin(x)^2+cos(x)^2" || e=="cos(x)^2+sin(x)^2"){
+      out="Trig collect:\n";
+      out += "sin(x)^2+cos(x)^2=1\n";
+      out += "1";
+      return true;
+    }
+    if (e=="1+tan(x)^2" || e=="tan(x)^2+1"){
+      out="Trig collect:\n";
+      out += "1+tan(x)^2=sec(x)^2\n";
+      out += "sec(x)^2";
+      return true;
+    }
+    out="Trig collect:\n";
+  }
+  if (!contains(e,"sin(") && !contains(e,"cos(") && !contains(e,"tan(") &&
+      !contains(e,"sec(") && !contains(e,"cot(")){
+    out += "No trig terms to transform.\n";
+    out += raw;
+    return true;
+  }
+  out += "No matching standard identity pattern.\n";
+  out += raw;
+  return true;
+}
+
 static bool try_algebra(const char *input,working_string &out){
   working_string args[6];
   int n=0;
   working_string s=compact(input?input:"");
   if (vector_working(s,out))
+    return true;
+  if (try_trig_transform_working(input,out))
     return true;
   if (try_sequence_working(input,out))
     return true;
@@ -12408,6 +12486,10 @@ bool eval_with_working(const char *input,working_string &out){
     strip_weak_working_labels(out);
     return true;
   }
+  if (try_trig_transform_working(input,out)){
+    strip_weak_working_labels(out);
+    return true;
+  }
   if (try_sequence_working(input,out)){
     strip_weak_working_labels(out);
     return true;
@@ -12433,7 +12515,7 @@ bool eval_with_working(const char *input,working_string &out){
       return true;
     }
     const char *cmds[]={"diff","integrate","int","fsolve","implicit_diff","solve","range","rewrite","xform",
-                        "series","taylor","partfrac","sum","product","log",0};
+                        "series","taylor","partfrac","sum","product","log","texpand","tcollect",0};
     for (int i=0;cmds[i];++i){
       if (starts_command(cs,cmds[i])){
         out="Err: missing arguments\n";
