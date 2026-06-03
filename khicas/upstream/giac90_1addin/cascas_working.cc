@@ -3884,6 +3884,10 @@ static bool try_diff_product_rule(const working_string &expr,char v,const workin
       return false;
   out="Product:\n";
   if (n==2){
+    if (shown[0].size()+shown[1].size()+deriv[0].size()+deriv[1].size()>240){
+      out += "u=A, v=B\nu'v+uv'\nA'B+AB'";
+      return true;
+    }
     out += "u = "+shown[0]+", v = "+shown[1]+"\n";
     out += "du/d"+rawvar+" = "+deriv[0]+"\n";
     out += "dv/d"+rawvar+" = "+deriv[1]+"\n";
@@ -4337,7 +4341,7 @@ static bool try_diff_equation_general(const char *input,working_string &out){
   working_string rawvar=diff_var_arg(raw,args,n,true);
   if (left.empty() || right.empty())
     return false;
-  if (raw.size()>600){
+  if (raw.size()>350 || left.size()>180 || right.size()>180){
     out="Differentiate both sides:\n";
     out += "d/d"+rawvar+"(L)=d/d"+rawvar+"(R)";
     return true;
@@ -4688,6 +4692,10 @@ static bool try_implicit_diff_command(const char *input,working_string &out){
   working_string work;
   if (try_diff(call.c_str(),work)){
     out="Implicit differentiation:\n";
+    if (work.size()>420){
+      out += "Chain\nD";
+      return true;
+    }
     out += work;
     return true;
   }
@@ -5393,27 +5401,27 @@ static bool try_symbolic_command_working(const char *input,working_string &out){
     {"factor",1,2,"factor(expr[,var])","Factorisation:",
      "Look for common factors."},
     {"expand",1,1,"expand(expr)","Expansion:",
-     "Use distributive law."},
+     "Use distributive law"},
     {"collect",1,2,"collect(expr[,var])","Collect like terms:",
-     "Group terms."},
+     "Group terms"},
     {"coeff",2,3,"coeff(expr,var[,power])","Coefficient extraction:",
-     "Collect terms, read coefficient."},
+     "Read coefficient."},
     {"degree",2,2,"degree(expr,var)","Polynomial degree:",
-     "Find highest non-zero power."},
+     "Highest power."},
     {"gcd",2,6,"gcd(a,b,...)","Greatest common divisor:",
-     "Keep common factors with smallest powers."},
+     "Common factors."},
     {"lcm",2,6,"lcm(a,b,...)","Least common multiple:",
-     "Keep all factors with largest powers."},
+     "Largest powers."},
     {"limit",2,3,"limit(expr,var=value[,direction])","Limit:",
-     "Study the approach to the target."},
+     "Approach target."},
     {"fsolve",1,2,"fsolve(equation[,var=a..b])","Numerical solve:",
-     "Use equation and interval for root search."},
+     "Use interval."},
     {"pcoeff",1,1,"pcoeff([coefficients])","Polynomial from coefficients:",
-     "Form polynomial from coefficients."},
+     "Form polynomial."},
     {"subst",2,3,"subst(expr,rule[,rule])","Substitution:",
-     "Apply substitutions, then simplify."},
+     "Substitute."},
     {"simplify",1,1,"simplify(expr)","Simplification:",
-     "Use arithmetic, cancellation, identities."},
+     "Simplify."},
     {0,0,0,0,0,0}
   };
   working_string args[8],shown[8];
@@ -5451,10 +5459,10 @@ static bool try_symbolic_command_working(const char *input,working_string &out){
       }
     }
     if (any_large)
-      out += "Large args placeholders.\n";
+      out += "Large args.\n";
     out += rules[r].method;
     out += "\n";
-    out += "No simpler exact form.\n";
+    out += "No exact form.\n";
     out += "Result: "+command_call_s(fn,shown,n);
     return true;
   }
@@ -10782,6 +10790,10 @@ static bool try_range_exp_shift(const working_string &e,char rv,bool bounded,
     return false;
   if (shift.empty())
     shift="0";
+  if (shift.size()>120)
+    shift="C";
+  if (arg.size()>120)
+    arg="A";
   out="Find range\n";
   out += "let C = "+shift+"\n";
   out += "exp("+arg+") > 0\n";
@@ -10940,6 +10952,10 @@ static bool try_range_general_quotient(const working_string &e,char rv,working_s
     return false;
   if (!syntactic_nonzero_expr(num))
     return false;
+  if (num.size()>120)
+    num="N";
+  if (den.size()>120)
+    den="D";
   out="Find range\n";
   out += "Let N = "+spaced_pm(num)+"\n";
   out += "Let D = "+spaced_pm(den)+"\n";
@@ -12320,14 +12336,14 @@ static bool try_rewrite(const char *input,working_string &out){
     out += command_display_arg(args[0],"A",large);
     return true;
   }
-  if (working_route_too_large(args[0]) || working_route_too_large(args[1])){
+  if (working_route_too_large(args[0]) || working_route_too_large(args[1]) || args[0].size()+args[1].size()>500){
     working_string expr=trim(args[0]), work;
     if (!rewrite_exact_large(expr,targets,tn,work)){
       out="Rewrite\nnormalise A\napply targets";
       return true;
     }
     out="Rewrite\napply targets\n";
-    if (work.size()+expr.size()>800)
+    if (work.size()+expr.size()>350)
       out += "A";
     else
       out += work+expr;
