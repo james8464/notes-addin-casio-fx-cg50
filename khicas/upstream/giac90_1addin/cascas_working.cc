@@ -4025,6 +4025,12 @@ static bool try_diff_power_chain_general(const working_string &expr,char v,const
   working_string first=rat_is_one(coef)?powpart:mul_expr(coef,powpart);
   working_string ans=mul_factor_derivative(first,db);
   out="Chain:\n";
+  if (shown.size()+db.size()+ans.size()>420 || db.size()>180 || ans.size()>260){
+    out += "u = "+(shown.size()<=120?shown:"A")+"\n";
+    out += "du/d"+rawvar+" = D\n";
+    out += "d/d"+rawvar+"(u^"+rat_s(p)+") = "+rat_s(p)+"*u^"+rat_s(np)+"*D";
+    return true;
+  }
   out += "u = "+shown+"\n";
   out += "du/d"+rawvar+" = "+db+"\n";
   out += "d/d"+rawvar+"(u^"+rat_s(p)+") = "+rat_s(p)+"*u^"+rat_s(np)+"*du/d"+rawvar+"\n";
@@ -8536,7 +8542,7 @@ static bool try_solve_abs_linear_eq(const working_string &raw_eq,const working_s
     return false;
   if (try_solve_abs_linear_relation(raw_eq,rawvar,v,out))
     return true;
-  working_string left,right,arg,sub1,sub2,so1,so2;
+  working_string left,right,arg;
   if (!split_equal_sides(raw_eq,left,right))
     return false;
   working_string l=nospace_lower(left), r=nospace_lower(right);
@@ -8546,26 +8552,25 @@ static bool try_solve_abs_linear_eq(const working_string &raw_eq,const working_s
     int close=match_paren(l,3);
     arg=l.substr(4,close-4);
     out="Split abs:\n";
-    out += arg+" = "+r+"\n";
-    sub1="solve("+arg+"="+r+","+rawvar+")";
-    if (try_solve(sub1.c_str(),so1)) out += so1+"\n";
-    out += "-("+arg+") = "+r+"\n";
-    sub2="solve(-("+arg+")="+r+","+rawvar+")";
-    if (try_solve(sub2.c_str(),so2)) out += so2;
+    out += "A="+(arg.size()<=90?arg:"abs arg")+"\n";
+    out += "A>=0: solve A="+(r.size()<=80?r:"right")+"\n";
+    out += "A<0: solve -A="+(r.size()<=80?r:"right")+"\n";
+    out += "Move all terms to one side\n";
+    out += "F("+rawvar+")=0\n";
+    out += rawvar+" = roots(F("+rawvar+"))\nreject invalid";
     return true;
   }
   int p=r.find("abs(");
   if (p>=0){
     int close=match_paren(r,p+3);
     arg=r.substr(p+4,close-p-4);
-    working_string pre=r.substr(0,p), post=r.substr(close+1,r.size()-close-1);
     out="Split abs:\n";
-    out += l+" = "+pre+"("+arg+")"+post+"\n";
-    sub1="solve("+l+"="+pre+"("+arg+")"+post+","+rawvar+")";
-    if (try_solve(sub1.c_str(),so1)) out += so1+"\n";
-    out += l+" = "+pre+"(-("+arg+"))"+post+"\n";
-    sub2="solve("+l+"="+pre+"(-("+arg+"))"+post+","+rawvar+")";
-    if (try_solve(sub2.c_str(),so2)) out += so2;
+    out += "A="+(arg.size()<=90?arg:"abs arg")+"\n";
+    out += "A>=0: replace abs(A) by A\n";
+    out += "A<0: replace abs(A) by -A\n";
+    out += "Move all terms to one side\n";
+    out += "F("+rawvar+")=0\n";
+    out += rawvar+" = roots(F("+rawvar+"))\nreject invalid";
     return true;
   }
   return false;
