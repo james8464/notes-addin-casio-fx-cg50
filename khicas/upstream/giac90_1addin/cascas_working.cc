@@ -6159,6 +6159,8 @@ static bool try_integral_general_route(const char *input,working_string &out){
   working_string shown_expr=command_display_arg(expr,"A",large_expr);
   if (!contains_var_symbol(e,v)){
     out="Treat "+shown_expr+" as constant in "+var+"\n";
+    if (large_expr)
+      out += "Let A be the integrand.\n";
     if (definite)
       out += shown_expr+"*("+hi+" - "+lo+")\n"+shown_expr+"*("+hi+" - "+lo+")";
     else
@@ -6166,9 +6168,12 @@ static bool try_integral_general_route(const char *input,working_string &out){
     return true;
   }
   out="";
+  if (large_expr)
+    out += "Let A be the integrand.\n";
   if (definite){
     out += "find an antiderivative F("+var+")\n";
     if (lo.size()+hi.size()>180){
+      out += "Let L,H be bounds.\n";
       out += "evaluate F(H)-F(L)\n";
       out += "integral("+shown_expr+","+var+",L,H)";
     }
@@ -9971,6 +9976,8 @@ static bool try_algebra(const char *input,working_string &out){
     bool large=false;
     working_string shown=command_display_arg(args[0],"A",large);
     out="Taylor expansion about "+var+"="+centre+"\n";
+    if (large)
+      out += "Let A be argument 1.\n";
     out += "T_"+order+"=sum("+idx+"=0.."+order+",f^"+idx+"("+centre+")/"+idx+"!*("+shift+")^"+idx+")\n";
     out += "f("+var+")="+shown+"\n";
     out += "taylor("+shown+","+var+"="+centre+","+order+")";
