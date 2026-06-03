@@ -8908,11 +8908,9 @@ static bool try_solve_large_structure(const working_string &rawvar,working_strin
   working_string v=compact(rawvar);
   if (v.empty())
     v="x";
-  out="Move all terms to one side:\n";
-  out += "F("+v+") = left - right\n";
-  out += "Check domain restrictions first.\n";
-  out += "Factor F("+v+") or use inverse/monotone steps where possible.\n";
-  out += v+" = roots(F("+v+"))";
+  out="F("+v+")=L-R\n";
+  out += "Domain\n";
+  out += v+"=roots(F("+v+"))";
   return true;
 }
 
@@ -8929,8 +8927,16 @@ static bool try_solve(const char *input,working_string &out){
     eq_src=first+"="+trim(args[1]);
   working_string early_rawvar=solve_var_arg(eq_src,args,n);
   working_string guard_src=nospace_lower(eq_src);
-  if (eq_src.size()>3000 && contains(guard_src,"sqrt(log("))
+  if (eq_src.size()>3000){
+    working_string gv=compact(early_rawvar);
+    if (gv.size()==1 && !contains_var_symbol(guard_src,gv[0])){
+      out="No "+early_rawvar+" term\n";
+      out += "Independent\n";
+      out += early_rawvar+"=all real or []";
+      return true;
+    }
     return try_solve_large_structure(early_rawvar,out);
+  }
   working_string coeff_work;
   bool coeff_changed=false;
   eq_src=replace_small_binomial_coeffs(eq_src,coeff_work,coeff_changed);
@@ -11033,11 +11039,6 @@ static bool try_range(const char *input,working_string &out){
       out += "positive part";
       return true;
     }
-    if (parse_call(e.c_str(),"log",largs,2,ln) && ln==2 && contains_var_symbol(largs[1],rv)){
-      out="Find range\nlog base "+trim(largs[0])+" maps positive input to all real values\n";
-      out += "all real";
-      return true;
-    }
     if (parse_call(e.c_str(),"log",largs,2,ln) && ln==2 &&
         (contains_var_symbol(largs[0],rv) || contains_var_symbol(largs[1],rv))){
       out="Find range\n";
@@ -11054,8 +11055,7 @@ static bool try_range(const char *input,working_string &out){
         }
       }
       else {
-        out += "argument varies over positive values\n";
-        out += "all real";
+        out += "arg>0, divide by ln(base)";
       }
       return true;
     }
@@ -12671,6 +12671,11 @@ static bool try_large_working_route(const char *input,working_string &out){
   if (parse_call(input,"log",args,2,n) && n>=1)
     return try_log_base(input,out);
   if (parse_call(input,"diff",args,3,n) && n>=1){
+    if (contains(compact(args[0]),"=")){
+      working_string rv=diff_var_arg(args[0],args,n,true);
+      out="d/d"+rv+"(L)=d/d"+rv+"(R)";
+      return true;
+    }
     if (!working_route_too_large(args[0]) && try_diff_equation_general(input,out))
       return true;
     return try_diff_general_route(input,out);
