@@ -12883,7 +12883,7 @@ static bool try_large_working_route(const char *input,working_string &out){
   if (parse_call(input,"proot",args,2,n) && n>=1){
     return try_algebra(input,out);
   }
-  if (parse_call(input,"rewrite",args,2,n) && n>=2){
+  if (starts_command(compact(input?input:""),"rewrite")){
     return try_rewrite(input,out);
   }
   if (parse_call(input,"xform",args,2,n) && n>=1){
