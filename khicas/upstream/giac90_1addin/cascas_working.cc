@@ -5174,11 +5174,11 @@ static const char *unary_function_rule(const working_string &fn){
   if (fn=="tan") return "tan(u)=sin(u)/cos(u).";
   if (fn=="sec") return "sec(u)=1/cos(u).";
   if (fn=="cot") return "cot(u)=1/tan(u).";
-  if (fn=="asin") return "asin(u) is the angle whose sine is u.";
-  if (fn=="acos") return "acos(u) is the angle whose cosine is u.";
+  if (fn=="asin") return "asin(u): sin(angle)=u.\nreal: -1<=u<=1";
+  if (fn=="acos") return "acos(u): cos(angle)=u.\nreal: -1<=u<=1";
   if (fn=="atan") return "atan(u) is the angle whose tangent is u.";
-  if (fn=="ln") return "ln(u) is the inverse of exp(u).";
-  if (fn=="sqrt") return "sqrt(u) is the non-negative value whose square is u.";
+  if (fn=="ln") return "ln inverse of exp.\nreal: u>0";
+  if (fn=="sqrt") return "sqrt(u)^2=u, sqrt(u)>=0.\nreal: u>=0";
   if (fn=="abs") return "abs(u) is the distance of u from 0.";
   if (fn=="floor") return "floor(u) is the greatest integer <= u.";
   if (fn=="ceil" || fn=="ceiling") return "ceil(u) is the least integer >= u.";
@@ -5217,7 +5217,7 @@ static bool try_unary_function_working(const char *input,working_string &out){
     else
       out += "Let u = "+shown+"\n";
     if (large_arg)
-      out += "Argument is kept symbolic because it is too large for readable working.\n";
+      out += "Large argument; using u.\n";
     out += unary_function_rule(fn);
     out += "\n";
     working_string value;
@@ -6666,8 +6666,8 @@ static bool try_log_base(const char *input,working_string &out){
   if (!parse_call(input,"log",args,2,n))
     return false;
   if (n==1){
-    out="Use natural log for one-argument log\n";
-    out += "log(u)=ln(u)\n";
+    out="log(u)=ln(u)\n";
+    out += "real: u>0\n";
     out += "ln("+trim(args[0])+")";
     return true;
   }
@@ -11042,10 +11042,13 @@ static bool try_range(const char *input,working_string &out){
     if (parse_call(e.c_str(),"log",largs,2,ln) && ln==2 &&
         (contains_var_symbol(largs[0],rv) || contains_var_symbol(largs[1],rv))){
       out="Find range\n";
-      out += "log("+trim(largs[0])+","+trim(largs[1])+") = ln("+trim(largs[1])+")/ln("+trim(largs[0])+")\n";
-      out += "Need base > 0, base != 1, argument > 0\n";
+      out += "log(base,arg)=ln(arg)/ln(base)\n";
+      out += "base>0, base!=1, arg>0\n";
       if (contains_var_symbol(largs[0],rv) && !contains_var_symbol(largs[1],rv)){
-        out += "Let A = "+trim(largs[1])+"\n";
+        working_string A=trim(largs[1]);
+        if (A.size()>80)
+          A="arg";
+        out += "Let A = "+A+"\n";
         if (syntactic_zero_expr(largs[1]))
           out += "A = 0, so argument > 0 fails\nno real range";
         else {
