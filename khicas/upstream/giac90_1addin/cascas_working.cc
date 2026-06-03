@@ -9116,11 +9116,88 @@ static bool try_solve(const char *input,working_string &out){
   return false;
 }
 
+static bool integer_bound_arg(const working_string &src,long &v){
+  Rat r;
+  if (!parse_rat(compact(src),r) || r.d!=1)
+    return false;
+  v=r.n;
+  return true;
+}
+
+static bool try_sequence_working(const char *input,working_string &out){
+  working_string args[5];
+  int n=0;
+  bool prod=false;
+  if (!parse_call(input,"sum",args,5,n)){
+    if (!parse_call(input,"product",args,5,n))
+      return false;
+    prod=true;
+  }
+  const char *name=prod?"product":"sum";
+  if (n<4){
+    out="Err: missing bounds\n";
+    out += working_string(name)+"(expr,k,lower,upper)";
+    return true;
+  }
+  working_string var=compact(args[1]), expr=trim(args[0]);
+  if (var.size()!=1 || !isalpha((unsigned char)var[0])){
+    out="Err: invalid index\n";
+    out += working_string(name)+"(expr,k,lower,upper)";
+    return true;
+  }
+  long lo=0,hi=0;
+  if (!integer_bound_arg(args[2],lo) || !integer_bound_arg(args[3],hi)){
+    out=(prod?"Finite product:\n":"Finite sum:\n");
+    out += "Integer lower and upper bounds required.\n";
+    out += working_string(name)+"("+expr+","+var+",lower,upper)";
+    return true;
+  }
+  long count=hi>=lo?hi-lo+1:0;
+  out=(prod?"Finite product:\n":"Finite sum:\n");
+  out += var+"="+int_s(lo)+".."+int_s(hi)+"\n";
+  if (!count){
+    out += prod?"empty product = 1":"empty sum = 0";
+    return true;
+  }
+  if (count<=10){
+    Rat acc=prod?rat(1,1):rat(0,1),val;
+    working_string terms;
+    bool ok=true;
+    for (long j=lo;j<=hi;++j){
+      working_string term=replace_identifier_token(expr,var,int_s(j));
+      if (!eval_numeric_rat_expr(term,val)){
+        ok=false;
+        break;
+      }
+      acc=prod?rat_mul(acc,val):rat_add(acc,val);
+      if (!terms.empty())
+        terms += prod?" * ":" + ";
+      terms += rat_s(val);
+    }
+    if (ok){
+      out += "Terms: "+terms+"\n";
+      out += prod?"Product = ":"Sum = ";
+      out += rat_s(acc);
+      return true;
+    }
+  }
+  if (!contains_var_symbol(compact(expr),var[0])){
+    out += expr+" is constant in "+var+"\n";
+    out += prod?("("+expr+")^"+int_s(count)):(int_s(count)+"*("+expr+")");
+    return true;
+  }
+  out += "Evaluate "+int_s(count)+" terms and combine\n";
+  out += working_string(name)+"("+expr+","+var+","+int_s(lo)+","+int_s(hi)+")";
+  return true;
+}
+
 static bool try_algebra(const char *input,working_string &out){
   working_string args[6];
   int n=0;
   working_string s=compact(input?input:"");
   if (vector_working(s,out))
+    return true;
+  if (try_sequence_working(input,out))
     return true;
   if (s=="2[1,-8,2]"){ out="2*[1,-8,2] = (2,-16,4)"; return true; }
   if (s=="[3,-3,-4]-[2,5,-6]"){ out="[3,-3,-4]-[2,5,-6] = (1,-8,2)"; return true; }
@@ -12328,6 +12405,10 @@ bool eval_with_working(const char *input,working_string &out){
     return true;
   }
   if (try_raw_constant_integral_route(s,out)){
+    strip_weak_working_labels(out);
+    return true;
+  }
+  if (try_sequence_working(input,out)){
     strip_weak_working_labels(out);
     return true;
   }
