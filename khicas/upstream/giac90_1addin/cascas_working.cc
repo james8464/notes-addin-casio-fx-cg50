@@ -9672,6 +9672,13 @@ static bool try_algebra(const char *input,working_string &out){
   }
   if (parse_call(input,"partfrac",args,3,n) && n>=1){
     working_string e=compact(args[0]);
+    Rat q;
+    if (parse_rat(e,q)){
+      out="Constant:\n";
+      out += trim(args[0])+" = "+rat_s(q)+"\n";
+      out += "No partial fractions";
+      return true;
+    }
     if (e=="(3x+5)/(x^2+x-2)"){
       out="x^2+x-2=(x+2)*(x-1)\n"
           "(3*x+5)/(x^2+x-2)=A/(x+2)+B/(x-1)\n"
@@ -9698,14 +9705,41 @@ static bool try_algebra(const char *input,working_string &out){
       out += trim(args[0])+" is already not a proper rational fraction.";
       return true;
     }
+    Rat dq;
+    if (parse_rat(den,dq)){
+      out="No rational denominator to split.\n";
+      out += "Constant denominator.";
+      return true;
+    }
+    const char *bad_den[]={"sin(","cos(","tan(","cot(","sec(","sqrt(","abs(","ln(","log(","exp(",",",0};
+    for (int i=0;bad_den[i];++i){
+      if (contains(den,bad_den[i])){
+        out="No rational denominator to split.\n";
+        out += "Denominator is not polynomial.";
+        return true;
+      }
+    }
     out="Denominator:\n";
     out += den+"\n";
     out += "Set A,B,... over linear factors\n";
     out += "partfrac("+trim(args[0])+")";
     return true;
   }
-  if ((parse_call(input,"series",args,6,n) || parse_call(input,"taylor",args,6,n)) && n>=1){
+  bool series_call=parse_call(input,"series",args,6,n);
+  if (!series_call)
+    n=0;
+  bool taylor_call=series_call?false:parse_call(input,"taylor",args,6,n);
+  if ((series_call || taylor_call) && n>=1){
     working_string e=compact(args[0]), about=n>=4?(compact(args[1])+"="+compact(args[2])):(n>=2?compact(args[1]):"x=0");
+    working_string order=n>=4?compact(args[3]):(n>=3?compact(args[2]):"n");
+    if (n>=3){
+      long oi=0;
+      if (!integer_bound_arg(order,oi) || oi<0){
+        out="Err: order integer >=0\n";
+        out += working_string(series_call?"series":"taylor")+"(expr,var=0,order)";
+        return true;
+      }
+    }
     if ((contains(e,"3-2*x") || contains(e,"3-2x")) && contains(e,"1-x") &&
         contains(e,"-1") && contains(e,"-2") &&
         n>=4 && compact(args[1])=="x" && compact(args[2])=="0"){
@@ -9731,9 +9765,14 @@ static bool try_algebra(const char *input,working_string &out){
     int eq=about.find('=');
     working_string var=eq>0?about.substr(0,eq):working_string(1,default_var_char(args[0]));
     working_string centre=eq>0?about.substr(eq+1,about.size()-eq-1):"0";
-    working_string order=n>=3?compact(args[2]):"n";
+    working_string idx=var=="k"?"j":"k";
+    working_string shift;
+    if (!centre.empty() && centre[0]=='-')
+      shift=var+"+"+centre.substr(1,centre.size()-1);
+    else
+      shift=var+"-"+centre;
     out="Taylor expansion about "+var+"="+centre+"\n";
-    out += "T_"+order+"=sum(k=0.."+order+",f^k("+centre+")/k!*("+var+"-"+centre+")^k)\n";
+    out += "T_"+order+"=sum("+idx+"=0.."+order+",f^"+idx+"("+centre+")/"+idx+"!*("+shift+")^"+idx+")\n";
     out += "f("+var+")="+trim(args[0])+"\n";
     out += "taylor("+trim(args[0])+","+var+"="+centre+","+order+")";
     return true;
@@ -10264,6 +10303,12 @@ static bool try_simplify(const char *input,working_string &out){
       out += rational_approx(val,exact)?exact:double_s(val);
       return true;
     }
+  }
+  if (e.size()==1 && isalpha((unsigned char)e[0])){
+    out="Simplification:\n";
+    out += e+" is already simple\n";
+    out += e;
+    return true;
   }
   {
     Rat a,b;
