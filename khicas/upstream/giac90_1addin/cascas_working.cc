@@ -3969,7 +3969,7 @@ static bool trace_inner_diff(const working_string &arg,const working_string &raw
   ++depth;
   bool ok=try_diff_plain(cmd.c_str(),trace);
   --depth;
-  return ok && contains(trace,"\n") && trace.size()<1000;
+  return ok && contains(trace,"\n") && trace.size()<400;
 }
 
 static bool try_diff_chain_rule(const working_string &expr,char v,const working_string &rawvar,working_string &out){
@@ -11137,7 +11137,7 @@ static bool try_range(const char *input,working_string &out){
   var += rv;
   if (!contains_var_symbol(e,rv)){
     if (trim(args[0]).size()>120){
-      out="Find range\nconstant expression\ny = A";
+      out="Find range\nconstant expression\nLet A be argument 1.\ny = A";
       return true;
     }
     working_string sqarg;
