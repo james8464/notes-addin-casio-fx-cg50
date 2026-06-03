@@ -4622,6 +4622,35 @@ static bool try_diff(const char *input,working_string &out){
   return true;
 }
 
+static bool try_implicit_diff_command(const char *input,working_string &out){
+  working_string args[3];
+  int n=0;
+  if (!parse_call(input,"implicit_diff",args,3,n))
+    return false;
+  if (n<1 || trim(args[0]).empty()){
+    out="Err: missing arguments\nimplicit_diff(expr,var)";
+    return true;
+  }
+  working_string rawvar=diff_var_arg(args[0],args,n,true);
+  working_string call="diff("+args[0]+","+rawvar;
+  if (n>=3 && !trim(args[2]).empty())
+    call += ","+trim(args[2]);
+  call += ")";
+  working_string work;
+  if (try_diff(call.c_str(),work)){
+    out="Implicit differentiation:\n";
+    out += work;
+    return true;
+  }
+  out="Implicit differentiation:\n";
+  if (find_top_equal_any(args[0])>=0)
+    out += "Differentiate both sides with respect to "+rawvar+"\n";
+  else
+    out += "Differentiate expression with respect to "+rawvar+"\n";
+  out += "d/d"+rawvar+"("+trim(args[0])+")";
+  return true;
+}
+
 static bool integrate_log_reverse_chain(const working_string &expr,working_string &out){
   working_string num,den;
   if (!split_top_fraction(nospace_lower(expr),num,den))
@@ -12487,6 +12516,10 @@ bool eval_with_working(const char *input,working_string &out){
     return true;
   }
   if (try_trig_transform_working(input,out)){
+    strip_weak_working_labels(out);
+    return true;
+  }
+  if (try_implicit_diff_command(input,out)){
     strip_weak_working_labels(out);
     return true;
   }
