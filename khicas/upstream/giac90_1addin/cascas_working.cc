@@ -4168,8 +4168,9 @@ static bool try_diff_general_route(const char *input,working_string &out){
       contains(e,"sin(") || contains(e,"cos(") || contains(e,"tan(") ||
       contains(e,"exp("))
     out += "use chain rule from the outside inward\n";
-  out += "Let y = "+spaced_pm(e)+"\n";
-  out += "d/d"+rawvar+"("+spaced_pm(e)+")";
+  working_string shown=normalize_pm_compact(spaced_pm(e));
+  out += "Let F = "+shown+"\n";
+  out += "d/d"+rawvar+"("+shown+")";
   return true;
 }
 
@@ -4558,8 +4559,9 @@ static bool try_diff_plain(const char *input,working_string &out){
         contains(e,"sin(") || contains(e,"cos(") || contains(e,"tan(") ||
         contains(e,"exp("))
       out += "use chain rule from the outside inward\n";
-    out += "Let y = "+spaced_pm(e)+"\n";
-    out += "d/d"+var+"("+spaced_pm(e)+")";
+    working_string shown=normalize_pm_compact(spaced_pm(e));
+    out += "Let F = "+shown+"\n";
+    out += "d/d"+var+"("+shown+")";
     return true;
   }
   return false;
@@ -5236,7 +5238,7 @@ struct SymbolicCommandRule {
 };
 
 static working_string symbolic_arg_placeholder(int i){
-  const char *names[]={"u","v","w","p","q","r"};
+  const char *names[]={"A","B","C","P","Q","R"};
   return names[i<6?i:5];
 }
 
@@ -5315,10 +5317,10 @@ static bool try_symbolic_command_exact_small(const working_string &fn,working_st
       if (v.size()==1 && isalpha((unsigned char)v[0]) &&
           !contains_var_symbol(canonical_expr(args[0]),v[0])){
         bool large=false;
-        working_string shown=command_display_arg(args[0],"u",large);
+        working_string shown=command_display_arg(args[0],"A",large);
         out="Limit:\n";
         if (large)
-          out += "Let u be the constant expression.\n";
+          out += "Let A be the constant expression.\n";
         out += "no "+v+" term\nconstant\n"+shown;
         return true;
       }
@@ -5445,6 +5447,8 @@ static bool try_definite_via_antiderivative(const working_string &expr,const wor
     return false;
   working_string F=strip_integral_constant(sub);
   if (F.empty() || F==trim(expr))
+    return false;
+  if (contains(F,"integral("))
     return false;
   working_string Fb=subst_var_value(F,v[0],trim(hi));
   working_string Fa=subst_var_value(F,v[0],trim(lo));
@@ -6193,7 +6197,7 @@ static bool try_integral(const char *input,working_string &out){
     if (np.ok && !*np.p && isfinite(val)){
       working_string exact, coef=rational_approx(val,exact)?exact:double_s(val);
       out="Const:\n";
-      out += "no x: int(a)=a*x+C\n";
+      out += "no x: int(c)=c*x+C\n";
       out += "";
       if (coef=="0") out += "C";
       else if (coef=="1") out += "x + C";
@@ -6201,7 +6205,7 @@ static bool try_integral(const char *input,working_string &out){
       else out += coef+"*x + C";
       return true;
     }
-    out="Const:\nno x: int(a)=a*x+C\n";
+    out="Const:\nno x: int(c)=c*x+C\n";
     out += trim(args[0])+"*x + C";
     return true;
   }
@@ -10941,6 +10945,31 @@ static bool try_range(const char *input,working_string &out){
   }
   working_string var;
   var += rv;
+  if (!contains_var_symbol(e,rv)){
+    working_string sqarg;
+    if (parse_unary_arg(e,"sqrt",sqarg)){
+      out="Find range\nconstant expression\ny = "+spaced_pm(e);
+      return true;
+    }
+    NumParser np;
+    working_string raw=nospace_lower(args[0]);
+    np.p=raw.c_str();
+    np.ok=true;
+    double v=np.expr();
+    np.skip();
+    if (np.ok && !*np.p){
+      if (!finite_double(v)){
+        out="Find range\nconstant expression\ny = "+trim(args[0]);
+        return true;
+      }
+      working_string exact;
+      out="Find range\nconstant expression\ny = ";
+      out += rational_approx(v,exact)?exact:double_s(v);
+      return true;
+    }
+    out="Find range\nconstant expression\ny = "+trim(args[0]);
+    return true;
+  }
   {
     working_string logarg,exparg,sub;
     if ((parse_unary_arg(e,"ln",logarg) || parse_unary_arg(e,"log",logarg)) &&
@@ -10967,6 +10996,12 @@ static bool try_range(const char *input,working_string &out){
   {
     working_string largs[2],larg;
     int ln=0;
+    if ((parse_unary_arg(e,"ln",larg) || parse_unary_arg(e,"log",larg)) &&
+        split_args(larg,0,larg.size(),largs,2)==1 && contains_var_symbol(larg,rv)){
+      out="Find range\nln/log input > 0; all real\n";
+      out += "all real";
+      return true;
+    }
     if (parse_call(e.c_str(),"log",largs,2,ln) && ln==2 && contains_var_symbol(largs[1],rv)){
       out="Find range\nlog base "+trim(largs[0])+" maps positive input to all real values\n";
       out += "all real";
@@ -10991,11 +11026,6 @@ static bool try_range(const char *input,working_string &out){
         out += "argument varies over positive values\n";
         out += "all real";
       }
-      return true;
-    }
-    if (parse_unary_arg(e,"ln",larg) && contains_var_symbol(larg,rv)){
-      out="Find range\nln(u) maps positive input to all real values\n";
-      out += "all real";
       return true;
     }
   }
@@ -11143,26 +11173,6 @@ static bool try_range(const char *input,working_string &out){
         }
       }
     }
-  }
-  if (!contains_var_symbol(e,rv)){
-    NumParser np;
-    working_string raw=nospace_lower(args[0]);
-    np.p=raw.c_str();
-    np.ok=true;
-    double v=np.expr();
-    np.skip();
-    if (np.ok && !*np.p){
-      if (!finite_double(v)){
-        out="Find range\nconstant expression\ny = "+trim(args[0]);
-        return true;
-      }
-      working_string exact;
-      out="Find range\nconstant expression\ny = ";
-      out += rational_approx(v,exact)?exact:double_s(v);
-      return true;
-    }
-    out="Find range\nconstant expression\ny = "+trim(args[0]);
-    return true;
   }
   if (try_range_outer_power_route(e,rv,out))
     return true;
@@ -12683,7 +12693,7 @@ static void strip_weak_working_labels(working_string &out){
       break;
     start=end+1;
   }
-  out=res;
+  out=normalize_pm_compact(res);
 }
 
 static bool try_method_suffix_route(const working_string &s,working_string &out){

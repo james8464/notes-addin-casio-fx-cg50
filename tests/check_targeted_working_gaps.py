@@ -25,8 +25,9 @@ CASES = [
     ("integrate(x^2+sin(2*x)+exp(3*x),x)", ["Terms:", "int(x^2) dx = 1/3*x^3", "int(sin(2*x)) dx = -1/2*cos(2*x)", "int(exp(3*x)) dx = 1/3*exp(3*x)", "1/3*x^3 - 1/2*cos(2*x) + 1/3*exp(3*x) + C"]),
     ("integrate((2*x+7)+cos(6*x),x)", ["Terms:", "int(2*x+7) dx = x^2 + 7*x", "int(cos(6*x)) dx = 1/6*sin(6*x)", "x^2 + 7*x + 1/6*sin(6*x) + C"]),
     ("integrate(exp(ln(x)),x,3)", ["exp(ln(x)) = x", "1/2*x^2 + C"]),
-    ("integrate(exp(-4))", ["no x: int(a)=a*x+C", "0.01831563889*x + C"]),
+    ("integrate(exp(-4))", ["no x: int(c)=c*x+C", "0.01831563889*x + C"]),
     ("integrate(z^2,a)", ["no a: int(c)da=c*a+C", "z^2*a + C"]),
+    ("integrate(cos(tan(sec(sqrt(sin(z))))),z,-3,9)", ["find an antiderivative F(z)", "evaluate F(9) - F(-3)", "integral(cos(tan(sec(sqrt(sin(z))))),z,-3,9)"]),
     ("integrate((x)*(((x)^2)^5))", ["Expand:", "x^10*(x) = x^11", "1/12*x^12 + C"]),
     ("integrate(((x)^2)((4)^2))", ["Combine:", "16*x^2", "16/3*x^3 + C"]),
     ("integrate(x^-1,x,3)", ["Recip:", "x^-1 = 1/x", "int(1/x)=ln(abs(x))", "ln(abs(x)) + C"]),
@@ -53,6 +54,10 @@ CASES = [
     ("range((log(13,sqrt(u*538422)-sqrt(abs(k^2/3)+(-915353)^2)))^-3)", ["let u =", "u != 0", "y < 0 or y > 0"]),
     ("range(cot(k))", ["cot(u) covers all real values", "all real"]),
     ("range(exp(sec(sin(sqrt(cot(ln(abs(u)+1)))))))", ["exp(u) > 0", "y > 0"]),
+    ("range(sec(sin(exp(1))),u,-1,1)", ["constant expression", "y = sec(sin(exp(1)))"]),
+    ("range(log(x^2+2))", ["ln/log input > 0; all real", "all real"]),
+    ("range(-7806*x^123+2112*x^122)", ["degree 123", "all real"]),
+    ("range(-2418*t^94+3007*t^93)", ["even-degree polynomial in t", "stationary values"]),
     ("range(b+x^5*(3-x)^3+sqrt(t))", ["unbounded both ways", "all real"]),
     ("range(cot(sec(sqrt((exp(tan(v)))^2+1)))-v)", ["Set y=f(v)", "Stationary points", "range = values of f over that domain"]),
     ("simplify((x^2+3*x+2)/(x+1))", ["Factor:", "x^2 + 3*x + 2 = (x + 1)*(x + 2)", "Cancel (x + 1)", "x + 2"]),
@@ -153,6 +158,7 @@ CASES = [
     ("diff(x^2*ln(x)*sin(x),x)", ["Product:", "f1 = x^2", "f2 = ln(x)", "f3 = sin(x)", "f1' = 2*x", "f2' = 1/(x)", "f3' = cos(x)", "2*x*ln(x)*sin(x) + x^2*sin(x)/(x) + x^2*ln(x)*cos(x)"]),
     ("diff((x+1)*(x-2)*ln(x),x)", ["Product:", "f1 = x + 1", "f2 = x - 2", "f3 = ln(x)", "f1' = 1", "f2' = 1", "f3' = 1/(x)", "(x - 2)*ln(x) + (x + 1)*ln(x) + (x + 1)*(x - 2)/(x)"]),
     ("diff((x^2+1),sin(k))", ["Differentiate with respect to x", "2*x"]),
+    ("diff(max(a,x),a)", ["Differentiate with respect to a", "Let F = max(a,x)", "d/da(max(a,x))"]),
     ("integrate((x+1)/(x^2+2*x+3),x)", ["Sub u=x^2 + 2*x + 3", "du=2*x + 2 dx", "x + 1 = 1/2*(2*x + 2)", "1/2*ln(abs(x^2 + 2*x + 3)) + C"]),
     ("integrate((x^2+2*x+1)/(x+1),x)", ["Simplify:", "x^2 + 2*x + 1 = (x + 1)*(x + 1)", "Cancel (x + 1)", "1/2*x^2 + x + C"]),
     ("integrate((x^2-1)/(x+1),x)", ["Simplify:", "x^2 - 1 = (x + 1)*(x - 1)", "Cancel (x + 1)", "1/2*x^2 - x + C"]),
@@ -203,11 +209,14 @@ def main() -> int:
     bad = []
     huge_poly = "+".join(f"{i}*x^{i}" for i in range(260, 0, -1))
     huge_odd_poly = "+".join(f"{i}*x^{i}" for i in range(261, 0, -1))
+    huge_u_poly = "+".join(f"{i}*u^{i}" for i in range(180, 120, -1))
     dynamic_cases = [
         (f"integrate({huge_poly},x)", ["Terms:", "+ C"]),
         (f"log(8,{huge_poly})", ["log_8(", "/ln(8)"]),
         (f"range({huge_odd_poly})", ["degree 261", "all real"]),
         (f"solve(sqrt(log(x))+{huge_poly}=sin(x),x)", ["Move all terms to one side", "F(x)", "x = roots(F(x))"]),
+        (f"limit({huge_poly},u=0)", ["Let A be the constant expression.", "no u term", "constant\nA"]),
+        (f"coeff({huge_u_poly},u,8)", ["Let A be argument 1.", "Argument 2: u", "Result: coeff(A,u,8)"]),
     ]
     for expr, markers in CASES + dynamic_cases:
         p = subprocess.run([str(RUNNER), expr], cwd=ROOT, text=True, capture_output=True)
