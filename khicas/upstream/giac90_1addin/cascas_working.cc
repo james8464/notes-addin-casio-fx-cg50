@@ -8532,6 +8532,8 @@ static bool try_solve_abs_linear_relation(const working_string &raw_eq,const wor
 
 static bool try_solve_abs_linear_eq(const working_string &raw_eq,const working_string &rawvar,
                                     char v,working_string &out){
+  if (!contains_var_symbol(raw_eq,v))
+    return false;
   if (try_solve_abs_linear_relation(raw_eq,rawvar,v,out))
     return true;
   working_string left,right,arg,sub1,sub2,so1,so2;
@@ -12530,8 +12532,8 @@ static bool try_xform(const char *input,working_string &out){
     n=2;
   }
   working_string a=compact(args[0]), b=compact(args[1]);
-  if (a.size()>500 || b.size()>500){
-    out="Transform\nA->B\nid";
+  if (a.size()>350 || b.size()>350){
+    out="Transform\nA->B\nlarge args";
     return true;
   }
   {
