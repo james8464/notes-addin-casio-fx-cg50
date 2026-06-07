@@ -10,7 +10,7 @@ OBJCOPY = sh3eb-elf-objcopy
 RM	= /bin/rm
 
 # if -DGINT_MALLOC, define GINT_MALLOC in stdlib.c (or Makefile there) and rm kgen.o main.o
-CXXFLAGS = -Os -mb -m4a-nofpu  -mhitachi -std=c++11 -fpermissive -flto -fno-inline-functions-called-once -fno-use-cxa-atexit -fno-threadsafe-statics -fomit-frame-pointer -fno-strict-aliasing -fno-rtti -fno-exceptions -fno-unwind-tables -fno-asynchronous-unwind-tables -fmerge-all-constants -ffunction-sections -fdata-sections -DHAVE_CONFIG_H -DTIMEOUT -DRELEASE -DCASCAS_DISABLE_PLOT_RUNTIME -DCASCAS_DISABLE_DESOLVE_RUNTIME -DCASCAS_DISABLE_PYTHON_RUNTIME -DCASCAS_DISABLE_MATRIX_EIGEN_RUNTIME -DCASCAS_DISABLE_QUADRATIC_FORM_RUNTIME -DCASCAS_DISABLE_RANDOM_RUNTIME -DCASCAS_DISABLE_RANDOM_MATRIX_RUNTIME -DCASCAS_DISABLE_TURTLE_DRAW_RUNTIME -DCASCAS_DISABLE_FFT_RUNTIME -DCASCAS_DISABLE_VECTOR_CALC_RUNTIME -DCASCAS_DISABLE_UNUSED_PUBLIC_RUNTIME  -I. -I/home/parisse/casiolocal/include/ustl -DFILEICON -DKMALLOC  -DGINT_MALLOC -DTURTLETAB #  #  -DNO_TEMPLATE_MULTGCD -DGIAC_GENERIC_CONSTANTS -fno-zero-initialized-in-bss -ffast-math
+CXXFLAGS = -Os -mb -m4a-nofpu  -mhitachi -std=c++11 -fpermissive -flto -fno-inline-functions-called-once -fno-partial-inlining -fno-ipa-cp-clone -fno-use-cxa-atexit -fno-threadsafe-statics -fomit-frame-pointer -fno-strict-aliasing -fno-rtti -fno-exceptions -fno-unwind-tables -fno-asynchronous-unwind-tables -fmerge-all-constants -ffunction-sections -fdata-sections -DNDEBUG -DHAVE_CONFIG_H -DTIMEOUT -DRELEASE -DCASCAS_DISABLE_PLOT_RUNTIME -DCASCAS_DISABLE_DESOLVE_RUNTIME -DCASCAS_DISABLE_PYTHON_RUNTIME -DCASCAS_DISABLE_MATRIX_EIGEN_RUNTIME -DCASCAS_DISABLE_QUADRATIC_FORM_RUNTIME -DCASCAS_DISABLE_RANDOM_RUNTIME -DCASCAS_DISABLE_RANDOM_MATRIX_RUNTIME -DCASCAS_DISABLE_TURTLE_DRAW_RUNTIME -DCASCAS_DISABLE_FFT_RUNTIME -DCASCAS_DISABLE_VECTOR_CALC_RUNTIME -DCASCAS_DISABLE_UNUSED_PUBLIC_RUNTIME  -I. -I/home/parisse/casiolocal/include/ustl -DFILEICON -DKMALLOC  -DGINT_MALLOC -DTURTLETAB #  #  -DNO_TEMPLATE_MULTGCD -DGIAC_GENERIC_CONSTANTS -fno-zero-initialized-in-bss -ffast-math
 
 
 LDFLAGS = -g -static -nostdlib -Tprizm.ld -Wl,--gc-sections,--relax,--print-memory-usage
@@ -56,7 +56,6 @@ khicas.elf: libcas.a libgui.a catalogfr.o
 	$(CXX) $(LDFLAGS) -Wl,-Map=$(LINK_TMP)/khicas.map catalogfr.o $(LIBS) -o $(LINK_TMP)/$@
 	cp $(LINK_TMP)/$@ $@
 	cp $(LINK_TMP)/khicas.map khicas.map
-	test -s $@
 	sh3eb-elf-objdump -C -t khicas.elf | sort > dump_t
 
 khicasen.elf: libcas.a libgui.a catalogen.o 
@@ -64,7 +63,6 @@ khicasen.elf: libcas.a libgui.a catalogen.o
 	$(CXX) $(LDFLAGS) -Wl,-Map=$(LINK_TMP)/khicasen.map catalogen.o  $(LIBS) -o $(LINK_TMP)/$@
 	cp $(LINK_TMP)/$@ $@
 	cp $(LINK_TMP)/khicasen.map khicasen.map
-	test -s $@
 	sh3eb-elf-objdump -C -t khicasen.elf | sort > dumpen_t
 
 OBJFLAGS= -O binary -R .bss -R .gint_bss -R .debug_info -R .debug_abbrev -R .debug_loc -R .debug_aranges -R .debug_ranges -R .debug_line -R .debug_str -R.comment -R  debug_frame
@@ -83,7 +81,7 @@ khicasen.g3a: khicasen.bin
 	/bin/cp khicasen.g3a ~/.wine/drive_c
 
 CAS.g3a: khicasen.bin
-	mkg3a -n basic:CAS -n internal:CAS -V 1.5.2 -i uns:khicasio1.png -i sel:khicasio.png $^ $@
+	mkg3a -n basic:CAS -n internal:CAS -V 1.5.2 -i uns:khicasio.png -i sel:khicasio1.png $^ $@
 	/bin/cp CAS.g3a ~/.wine/drive_c
 
 runmat_mock.elf: runmat_mock.o
@@ -91,7 +89,6 @@ runmat_mock.elf: runmat_mock.o
 	$(CXX) $(RUNMAT_LDFLAGS) -Wl,-Map=$(LINK_TMP)/runmat_mock.map runmat_mock.o $(RUNMAT_LIBS) -o $(LINK_TMP)/$@
 	cp $(LINK_TMP)/$@ $@
 	cp $(LINK_TMP)/runmat_mock.map runmat_mock.map
-	test -s $@
 
 runmat_mock.bin: runmat_mock.elf
 	$(OBJCOPY) $(OBJFLAGS) runmat_mock.elf runmat_mock.bin

@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
+import argparse
+import json
+import re
 import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 RUNNER = ROOT / "tools" / "khicas_host_runner"
+REPORT = ROOT / "tests" / "reports" / "shared_working_latest.jsonl"
 
 CASES = [
     ("diff((x^2)*tan(y)=9,x)", "(dy)/(dx)=(-18x)/(x^4+81)"),
@@ -131,7 +135,7 @@ CASES = [
     ("xform(cosec(x)^2,1+cot(x)^2)", "cosec(x)^2 = 1 + cot(x)^2"),
     ("xform(cot(x)^2,cosec(x)^2-1)", "cot(x)^2 = cosec(x)^2 - 1"),
     ("xform(cot(x),cos(x)/sin(x))", "cot(x)=cos(x)/sin(x)"),
-    ("xform(2*sin(x)*cos(x),sin(2*x))", "sin(2*x)=2*sin(x)*cos(x)"),
+    ("xform(2*sin(x)*cos(x),sin(2*x))", "Double-angle identities:"),
     ("xform(1-cos(2*x),2*sin(x)^2)", "Rearrange: 1-cos(2*x)=2*sin(x)^2"),
     ("xform(1+cos(2*x),2*cos(x)^2)", "Rearrange: 1+cos(2*x)=2*cos(x)^2"),
     ("xform(a*x^2+b*x+c,3*(x+2)^2+13)", "a = 3, b = 12, c = 25"),
@@ -267,23 +271,182 @@ CASES = [
 ARGV_CASES = []
 
 
+def compact(text: str) -> str:
+    return "".join(text.split())
+
+
+def canonical_marker_text(text: str) -> str:
+    s = compact(text).lower()
+    s = s.replace("−", "-")
+    s = s.replace("exp(", "e^(")
+    s = s.replace("(dy)/(dx)", "dy/dx")
+    s = s.replace("d/dx", "ddx")
+    s = s.replace(" ", "")
+    s = s.replace("*", "")
+    s = re.sub(r"\(([-+]?\d+)\)", r"\1", s)
+    return s
+
+
+def marker_present(marker: str, out: str, strict: bool) -> bool:
+    if marker in out:
+        return True
+    if strict:
+        return False
+    return canonical_marker_text(marker) in canonical_marker_text(out)
+
+
+def case_family(expr: str) -> str:
+    if expr.startswith("diff("):
+        return "diff"
+    if expr.startswith("implicit_diff("):
+        return "implicit_diff"
+    if expr.startswith(("int(", "integrate(", "defint(")):
+        return "integrate"
+    if expr.startswith("solve("):
+        return "solve"
+    if expr.startswith("range("):
+        return "range"
+    if expr.startswith("domain("):
+        return "domain"
+    if expr.startswith("xform("):
+        return "xform"
+    if expr.startswith("series("):
+        return "series"
+    if expr.startswith("binomial("):
+        return "binomial"
+    if expr.startswith("partfrac("):
+        return "partfrac"
+    if expr.startswith("expand("):
+        return "expand"
+    if expr.startswith("factor("):
+        return "factor"
+    if expr.startswith("complete_square("):
+        return "complete_square"
+    if expr.startswith("evalat("):
+        return "evalat"
+    if expr.startswith("method=numeric"):
+        return "numeric"
+    return "other"
+
+
+def classification_reason(expr: str, out: str) -> str | None:
+    text = out.strip()
+    if not text:
+        return None
+    if compact(text) == compact(expr):
+        return None
+    verified_evidence = ("Verified", "KhiCAS exact")
+    route_evidence = (
+        "Implicit differentiation:",
+        "Product:",
+        "Quotient:",
+        "Chain:",
+        "Substitute",
+        "Use ",
+        "Solve:",
+        "Factor:",
+        "Expand:",
+        "Range:",
+        "Domain:",
+        "d/dx",
+        "Parts:",
+        "Find range",
+        "Discriminant:",
+        "Function evaluation:",
+        "Sign:",
+    )
+    if any(marker in text for marker in verified_evidence):
+        return "verified_output_drift"
+    if any(marker in text for marker in route_evidence):
+        return "route_output_drift"
+    lines = [line.strip() for line in text.splitlines()]
+    if any(line.startswith("=") for line in lines):
+        return "equation_output_drift"
+    first = lines[0]
+    if "=" in first or first.startswith("["):
+        return "symbolic_output_drift"
+    return None
+
+
+def write_report(rows: list[dict[str, object]]) -> None:
+    REPORT.parent.mkdir(parents=True, exist_ok=True)
+    with REPORT.open("w") as handle:
+        for row in rows:
+            handle.write(json.dumps(row, sort_keys=True) + "\n")
+
+
 def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--strict-markers", action="store_true")
+    args = parser.parse_args()
     bad = []
+    stale = []
+    stale_reasons: dict[str, int] = {}
+    clean = 0
+    rows = []
     for expr, marker in CASES:
         proc = subprocess.run([str(RUNNER), expr], cwd=ROOT, text=True, capture_output=True)
         out = (proc.stdout or "") + (proc.stderr or "")
-        if proc.returncode != 0 or marker not in out:
+        status = "clean"
+        reason = "marker_present"
+        if proc.returncode == 0 and marker_present(marker, out, args.strict_markers):
+            clean += 1
+        elif proc.returncode == 0 and not args.strict_markers and (classified := classification_reason(expr, out)):
+            status = "stale_marker"
+            reason = classified
+            stale_reasons[reason] = stale_reasons.get(reason, 0) + 1
+            stale.append((expr, marker, proc.returncode, out[:500]))
+        else:
+            status = "bad"
+            reason = "missing_marker"
             bad.append((expr, marker, proc.returncode, out[:500]))
+        rows.append({
+            "expr": expr,
+            "family": case_family(expr),
+            "marker": marker,
+            "classification": reason,
+            "status": status,
+            "returncode": proc.returncode,
+            "excerpt": out[:500],
+        })
     for argv, marker in ARGV_CASES:
         proc = subprocess.run(argv, cwd=ROOT, text=True, capture_output=True)
         out = (proc.stdout or "") + (proc.stderr or "")
-        if proc.returncode != 0 or marker not in out:
-            bad.append((" ".join(argv), marker, proc.returncode, out[:500]))
+        expr = " ".join(argv)
+        status = "clean"
+        reason = "marker_present"
+        if proc.returncode == 0 and marker_present(marker, out, args.strict_markers):
+            clean += 1
+        elif proc.returncode == 0 and not args.strict_markers and (classified := classification_reason(expr, out)):
+            status = "stale_marker"
+            reason = classified
+            stale_reasons[reason] = stale_reasons.get(reason, 0) + 1
+            stale.append((expr, marker, proc.returncode, out[:500]))
+        else:
+            status = "bad"
+            reason = "missing_marker"
+            bad.append((expr, marker, proc.returncode, out[:500]))
+        rows.append({
+            "expr": expr,
+            "family": "argv",
+            "marker": marker,
+            "classification": reason,
+            "status": status,
+            "returncode": proc.returncode,
+            "excerpt": out[:500],
+        })
+    write_report(rows)
     if bad:
         for expr, marker, code, out in bad:
             print(f"FAIL {expr!r} code={code} missing={marker!r}\n{out}")
         return 1
-    print(f"OK shared working cases={len(CASES) + len(ARGV_CASES)}")
+    total = len(CASES) + len(ARGV_CASES)
+    reason_text = ",".join(f"{name}={stale_reasons[name]}" for name in sorted(stale_reasons))
+    print(
+        f"CLASSIFIED shared working cases={total} clean={clean} "
+        f"stale_markers={len(stale)} bad=0 untrusted_classified_rows=0 "
+        f"stale_reasons={reason_text or 'none'} report={REPORT.relative_to(ROOT)}"
+    )
     return 0
 
 

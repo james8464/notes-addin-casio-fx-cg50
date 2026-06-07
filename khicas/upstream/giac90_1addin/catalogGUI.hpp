@@ -17,6 +17,12 @@
 
 extern int lang; // 0 english, 1 francais
 
+#ifdef CASCAS_MIN_CATALOG
+typedef struct {
+  char* name;
+  int category;
+} catalogFunc;
+#else
 typedef struct {
   char* name;
   char* insert;
@@ -25,6 +31,7 @@ typedef struct {
   char * example2;
   int category;
 } catalogFunc;
+#endif
 
 int showCatalog(char* insertText,int preselect=0,int menupos=0);
 

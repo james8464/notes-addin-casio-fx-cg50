@@ -1,33 +1,5 @@
-integrate(expr,var,[a,b],[method],[u=...])
-
-Args:
-  expr, var, [a,b], [method], [u=...]
-
-Required:
-  expr, var
-
-Optional:
-  bounds a,b; method code; substitution u=...
-
-Does:
-  Finds antiderivatives or definite integrals. Method code guides the shown exam route: 1 auto, 2 by parts, 3 substitution, 4 partial fractions, 5 trig/formula.
-
-Examples:
-  integrate((ln(x))^2,x,2); integrate((ln(x))^2/x,x,3,u=ln(x))
-
-F2:
-  integrate((ln(x))^2,x,2)
-
-F3:
-  integrate((ln(x))^2/x,x,3,u=ln(x))
-
-Keys:
-  F1 inserts the command.
-  F2 inserts the first example.
-  F3 inserts the second example when available.
-
-Working:
-  Shows term-by-term integration, reverse chain rule, repeated integration by parts, substitution with user u, trig formulae, partial fractions, and limit substitution where routed.
-
-Tip:
-  Use brackets around compound numerators, denominators, powers, and substitutions for readable exam-style output.
+integrate
+Args: see catalog signature for integrate.
+Required: A-level Pure scoped use only.
+Does: returns exact KhiCAS output, or verified working when a verified route exists.
+Examples: integrate(2*x+3,x)

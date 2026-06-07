@@ -1062,8 +1062,8 @@ int doTextArea(textArea* text) {
 	if ( (key>=KEY_CTRL_F1 && key<=KEY_CTRL_F3) ||
 	     (key >= KEY_CTRL_F7 && key <= KEY_CTRL_F14)
 	     ){
-	  string le_menu=text->python?"F1 test\nif \nelse \n<\n>\n==\n!=\n&&\n||\nF2 loop\nfor \nfor in\nrange(\nwhile \nbreak\ndef\nreturn \n#\nF3 misc\n:\n;\n_\n!\n%\n&\nprint(\ninput(\n":"F1 test\nif \nelse \n<\n>\n==\n!=\nand\nor\nF2 loop\nfor \nfor in\nrange(\nwhile \nbreak\nf(x):=\nreturn \nlocal\nF3 misc\n;\n:\n_\n!\n%\n&\nprint(\ninput(\n";
-	  le_menu += "F7 arit\n mod \nirem(\nifactor(\ngcd(\nisprime(\nnextprime(\npowmod(\niegcd(\nF8 lin\nmatrix(\ndet(\nmatpow(\nranm(\ncross(\ncurl(\negvl(\negv(\nF9 list\nmakelist(\nrange(\nseq(\nsize(\nappend(\nranv(\nsort(\napply(\nF: plot\nplot(\nplotseq(\nplotlist(\nplotparam(\nplotpolar(\nplotfield(\nhistogram(\nbarplot(\nF; real\nexact(\napprox(\nfloor(\nceil(\nround(\nsign(\nmax(\nmin(\nF< prog\n;\n:\n\\\n&\n?\n!\ndebug(\npython(\nF= cplx\nabs(\narg(\nre(\nim(\nconj(\ncsolve(\ncfactor(\ncpartfrac(\nF> misc\n<\n>\n_\n!\n % \nrand(\nbinomial(\nnormald(";
+		  string le_menu=text->python?"F1 test\nif \nelse \n<\n>\n==\n!=\n&&\n||\nF2 loop\nfor \nrange(\nwhile \nF3 misc\n:\n;\n_\n":"F1 alg\nexpand(\nfactor(\ncollect(\npartfrac(\nF2 calc\ndiff(\nintegrate(\nlimit(\nseries(\nF3 solve\nsolve(\nfsolve(\nxform(\n";
+		  le_menu += "F7 trig\nsin(\ncos(\ntan(\nsec(\ncosec(\ncot(\nF8 funcs\nsqrt(\nln(\nlog(\nexp(\nabs(\nF9 nums\nexact(\napprox(\nfloor(\nceil(\nround(\nF: lists\nsum(\nproduct(\nsubst(\nrange(\nF; misc\nrewrite(\ndomain(\ndot(\n";
 	  const char * ptr=console_menu(key,(unsigned char*)(le_menu.c_str()),2);
 	  if (!ptr){
 	    show_status(text,search,replace);
@@ -1081,18 +1081,8 @@ int doTextArea(textArea* text) {
 	    iselse=strcmp(adds,"else ")==0,
 	    isfor=strcmp(adds,"for ")==0,
 	    isforin=strcmp(adds,"for in")==0,
-	    isdef=(strcmp(adds,"f(x):=")==0 || strcmp(adds,"def")==0),
-	    iswhile=strcmp(adds,"while ")==0,
-	    islist=strcmp(adds,"list ")==0,
-	    ismat=strcmp(adds,"matrix ")==0;
-	  if (islist){
-	    input_matrix(true);
-	    continue;
-	  }
-	  if (ismat){
-	    input_matrix(false);
-	    continue;
-	  }
+		    isdef=(strcmp(adds,"f(x):=")==0 || strcmp(adds,"def")==0),
+		    iswhile=strcmp(adds,"while ")==0;
 	  if (text->python){
 	    if (isif)
 	      adds=isex?"if x<0:\nx=-x":"if :\n";

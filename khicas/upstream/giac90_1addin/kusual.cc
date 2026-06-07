@@ -2886,7 +2886,7 @@ namespace giac {
       gen expo=arg._SPOL1ptr->front().exponent;
       char sv=series_variable_name(contextptr);
       if (expo!=1)
-	*logptr(contextptr) << "order_size argument should always be the series variable name. This means that O("<<sv<<"^"<<expo << ") should be written "<< sv << "^" << expo <<"*order_size("<< sv << ")" << endl;
+	*logptr(contextptr) << "Warn: order_size var O("<<sv<<"^"<<expo << ") -> "<< sv << "^" << expo <<"*order_size("<< sv << ")" << endl;
       return sparse_poly1(1,monome(undef,0));
     }
     return symb_order_size(arg);
@@ -3531,7 +3531,7 @@ namespace giac {
       if ( (destination.type!=_IDNT && !destination.is_symb_of_sommet(at_double_deux_points)) || (valeur.type!=_VECT && valeur.type!=_MAP && valeur.type!=_IDNT && valeur.type!=_STRNG && valeur.type!=_SYMB) ){
 	string endstring=" not allowed.";
 	if (b.is_symb_of_sommet(at_at))
-	  endstring += " Run purge if you want to create a sparse matrix in "+b[1].print(contextptr)+".";
+	  endstring += " Use purge for sparse matrix in "+b[1].print(contextptr)+".";
 	return gentypeerr(gettext("sto ")+b.print(contextptr)+ ":="+valeur.print(contextptr)+endstring);
       }
       if (valeur.type==_IDNT){ 
@@ -5156,7 +5156,7 @@ namespace giac {
 
   static bool warn_implicit(const gen & a,const gen &b,GIAC_CONTEXT){
     if (contains(lidnt(b),i__IDNT_e))
-      *logptr(contextptr) << gettext("Implicit multiplication does not work with complex numbers.")<<endl;
+      *logptr(contextptr) << gettext("Reject complex implicit mul")<<endl;
     else
       *logptr(contextptr) << gettext("Warning : using implicit multiplication for (") << a.print(contextptr) << ")(" << b.print(contextptr) << ')' << endl;
     return true;
@@ -5810,7 +5810,7 @@ namespace giac {
 	if (same_warning){
 	  string s=autosimplify(contextptr);
 	  if (unlocalize(s)!="'simplify'"){
-	    *logptr(contextptr) << gettext("Warning, the test a==b is performed by checking\nthat the internal representation of ") << s << gettext("(a-b) is not 0.\nTherefore a==b may return false even if a and b are mathematically equal,\nif they have different internal representations.\nYou can explicitly call a simplification function like simplify(a-b)==0 to avoid this.") << endl;
+	    *logptr(contextptr) << gettext("Warn: == checks internal form of ") << s << gettext("(a-b); use simplify(a-b)==0 if needed.") << endl;
 	    same_warning=false;
 	  }
 	}
@@ -6178,7 +6178,7 @@ namespace giac {
       if (a.size()==3 && a.back().type==_INT_){
 	polynome rem,quo;
 	if ( !divrem1(*a.front()._POLYptr,*a[1]._POLYptr,quo,rem,args._VECTptr->back().val) )
-	  return gensizeerr(gettext("Unable to divide, perhaps due to rounding error")+a.front().print(contextptr)+" / "+a.back().print(contextptr));
+	  return gensizeerr(gettext("Unable to divide")+a.front().print(contextptr)+" / "+a.back().print(contextptr));
 	return makevecteur(quo,rem);
       }
       vecteur aa(polynome2poly1(*a.front()._POLYptr,1));
@@ -6206,7 +6206,7 @@ namespace giac {
       if (a.size()>=3 && a.back().type==_INT_){
 	polynome rem,quo;
 	if ( !divrem1(*aan._POLYptr,*bbn._POLYptr,quo,rem,args._VECTptr->back().val) )
-	  return gensizeerr(gettext("Unable to divide, perhaps due to rounding error")+aan.print(contextptr)+" / "+bbn.print(contextptr));
+	  return gensizeerr(gettext("Unable to divide")+aan.print(contextptr)+" / "+bbn.print(contextptr));
 	u=rdiv(r2e(bbd,lv,contextptr),ad,contextptr)*r2e(quo,lv,contextptr);
 	v=inv(ad,contextptr)*r2e(rem,lv,contextptr);
 	return makevecteur(u,v);

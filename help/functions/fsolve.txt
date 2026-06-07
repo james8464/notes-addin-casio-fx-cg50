@@ -1,30 +1,5 @@
-fsolve(equation,x=a..b)
-
-Args:
-  equation,x=a..b
-
-Required:
-  equation, x=a..b
-
-Optional:
-  None.
-
-Does:
-  Numerical solve. Required: equation and interval x=a..b. Use when exact solve is not expected.
-
-Examples:
-  fsolve(cos(x)=x,x=0..1)
-
-F2:
-  fsolve(cos(x)=x,x=0..1)
-
-Keys:
-  F1 inserts the command.
-  F2 inserts the first example.
-  F3 inserts the second example when available.
-
-Working:
-  Shows exam-style lines when this command has a routed A-level working path; otherwise returns the exact KhiCAS result for the expression.
-
-Tip:
-  Use brackets around compound numerators, denominators, powers, and substitutions for readable exam-style output.
+fsolve
+Args: see catalog signature for fsolve.
+Required: A-level Pure scoped use only.
+Does: returns exact KhiCAS output, or verified working when a verified route exists.
+Examples: fsolve(1)

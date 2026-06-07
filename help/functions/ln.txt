@@ -1,30 +1,5 @@
-ln(x)
-
-Args:
-  x
-
-Required:
-  x
-
-Optional:
-  None.
-
-Does:
-  Natural logarithm. Required: x>0.
-
-Examples:
-  ln(e^2)
-
-F2:
-  ln(e^2)
-
-Keys:
-  F1 inserts the command.
-  F2 inserts the first example.
-  F3 inserts the second example when available.
-
-Working:
-  Shows exam-style lines when this command has a routed A-level working path; otherwise returns the exact KhiCAS result for the expression.
-
-Tip:
-  Use brackets around compound numerators, denominators, powers, and substitutions for readable exam-style output.
+ln
+Args: see catalog signature for ln.
+Required: A-level Pure scoped use only.
+Does: returns exact KhiCAS output, or verified working when a verified route exists.
+Examples: ln(e)

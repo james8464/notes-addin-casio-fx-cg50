@@ -563,6 +563,116 @@ namespace giac {
   static define_unary_function_eval (__BINOMIAL,&_binomial,_BINOMIAL_s);
   define_unary_function_ptr5( at_BINOMIAL ,alias_at_BINOMIAL,&__BINOMIAL,0,true);
 
+#ifdef CASCAS_DISABLE_RANDOM_RUNTIME
+  static gen cascas_probability_undef(const gen & g,GIAC_CONTEXT){
+    if (g.type==_STRNG && g.subtype==-1) return g;
+    return undef;
+  }
+#define CASCAS_PROB_UNARY(fn,name) \
+  gen _##fn(const gen & g,GIAC_CONTEXT){ return cascas_probability_undef(g,contextptr); } \
+  static const char _##fn##_s []=name; \
+  static define_unary_function_eval (__##fn,&_##fn,_##fn##_s); \
+  define_unary_function_ptr5( at_##fn ,alias_at_##fn,&__##fn,0,true)
+
+  CASCAS_PROB_UNARY(multinomial,"multinomial");
+  CASCAS_PROB_UNARY(randmultinomial,"randmultinomial");
+  CASCAS_PROB_UNARY(negbinomial,"negbinomial");
+  CASCAS_PROB_UNARY(negbinomial_cdf,"negbinomial_cdf");
+  CASCAS_PROB_UNARY(negbinomial_icdf,"negbinomial_icdf");
+  CASCAS_PROB_UNARY(binomial_cdf,"binomial_cdf");
+  CASCAS_PROB_UNARY(binomial_icdf,"binomial_icdf");
+  CASCAS_PROB_UNARY(randbinomial,"randbinomial");
+  CASCAS_PROB_UNARY(poisson,"poisson");
+  CASCAS_PROB_UNARY(POISSON,"POISSON");
+  CASCAS_PROB_UNARY(poisson_cdf,"poisson_cdf");
+  CASCAS_PROB_UNARY(randpoisson,"randpoisson");
+  CASCAS_PROB_UNARY(poisson_icdf,"poisson_icdf");
+  CASCAS_PROB_UNARY(student,"student");
+  CASCAS_PROB_UNARY(studentd,"studentd");
+  CASCAS_PROB_UNARY(UTPT,"UTPT");
+  CASCAS_PROB_UNARY(student_cdf,"student_cdf");
+  CASCAS_PROB_UNARY(studentd_cdf,"studentd_cdf");
+  CASCAS_PROB_UNARY(student_icdf,"student_icdf");
+  CASCAS_PROB_UNARY(studentd_icdf,"studentd_icdf");
+  CASCAS_PROB_UNARY(chisquare,"chisquare");
+  CASCAS_PROB_UNARY(chisquared,"chisquared");
+  CASCAS_PROB_UNARY(UTPC,"UTPC");
+  CASCAS_PROB_UNARY(chisquare_cdf,"chisquare_cdf");
+  CASCAS_PROB_UNARY(chisquared_cdf,"chisquared_cdf");
+  CASCAS_PROB_UNARY(chisquare_icdf,"chisquare_icdf");
+  CASCAS_PROB_UNARY(chisquared_icdf,"chisquared_icdf");
+  CASCAS_PROB_UNARY(snedecor,"snedecor");
+  CASCAS_PROB_UNARY(snedecord,"snedecord");
+  CASCAS_PROB_UNARY(fisher,"fisher");
+  CASCAS_PROB_UNARY(fisherd,"fisherd");
+  CASCAS_PROB_UNARY(UTPF,"UTPF");
+  CASCAS_PROB_UNARY(snedecor_cdf,"snedecor_cdf");
+  CASCAS_PROB_UNARY(fisher_cdf,"fisher_cdf");
+  CASCAS_PROB_UNARY(fisherd_cdf,"fisherd_cdf");
+  CASCAS_PROB_UNARY(snedecor_icdf,"snedecor_icdf");
+  CASCAS_PROB_UNARY(snedecord_icdf,"snedecord_icdf");
+  CASCAS_PROB_UNARY(fisher_icdf,"fisher_icdf");
+  CASCAS_PROB_UNARY(fisherd_icdf,"fisherd_icdf");
+  CASCAS_PROB_UNARY(cauchy,"cauchy");
+  CASCAS_PROB_UNARY(cauchyd,"cauchyd");
+  CASCAS_PROB_UNARY(cauchy_cdf,"cauchy_cdf");
+  CASCAS_PROB_UNARY(cauchyd_cdf,"cauchyd_cdf");
+  CASCAS_PROB_UNARY(cauchy_icdf,"cauchy_icdf");
+  CASCAS_PROB_UNARY(cauchyd_icdf,"cauchyd_icdf");
+  CASCAS_PROB_UNARY(weibull,"weibull");
+  CASCAS_PROB_UNARY(weibulld,"weibulld");
+  CASCAS_PROB_UNARY(weibull_cdf,"weibull_cdf");
+  CASCAS_PROB_UNARY(weibulld_cdf,"weibulld_cdf");
+  CASCAS_PROB_UNARY(weibull_icdf,"weibull_icdf");
+  CASCAS_PROB_UNARY(weibulld_icdf,"weibulld_icdf");
+  CASCAS_PROB_UNARY(betad,"betad");
+  CASCAS_PROB_UNARY(betad_cdf,"betad_cdf");
+  CASCAS_PROB_UNARY(betad_icdf,"betad_icdf");
+  CASCAS_PROB_UNARY(gammad,"gammad");
+  CASCAS_PROB_UNARY(gammad_cdf,"gammad_cdf");
+  CASCAS_PROB_UNARY(gammad_icdf,"gammad_icdf");
+  CASCAS_PROB_UNARY(uniform,"uniform");
+  CASCAS_PROB_UNARY(uniformd,"uniformd");
+  CASCAS_PROB_UNARY(uniform_cdf,"uniform_cdf");
+  CASCAS_PROB_UNARY(uniformd_cdf,"uniformd_cdf");
+  CASCAS_PROB_UNARY(uniform_icdf,"uniform_icdf");
+  CASCAS_PROB_UNARY(uniformd_icdf,"uniformd_icdf");
+  CASCAS_PROB_UNARY(exponential,"exponential");
+  CASCAS_PROB_UNARY(exponentiald,"exponentiald");
+  CASCAS_PROB_UNARY(exponential_cdf,"exponential_cdf");
+  CASCAS_PROB_UNARY(exponentiald_cdf,"exponentiald_cdf");
+  CASCAS_PROB_UNARY(exponential_icdf,"exponential_icdf");
+  CASCAS_PROB_UNARY(exponentiald_icdf,"exponentiald_icdf");
+  CASCAS_PROB_UNARY(geometric,"geometric");
+  CASCAS_PROB_UNARY(geometric_cdf,"geometric_cdf");
+  CASCAS_PROB_UNARY(geometric_icdf,"geometric_icdf");
+  CASCAS_PROB_UNARY(randgeometric,"randgeometric");
+#undef CASCAS_PROB_UNARY
+
+  gen binomial_cdf(const gen &,const gen &,const gen &,const gen &,GIAC_CONTEXT){ return undef; }
+  gen binomial_icdf(const gen &,const gen &,const gen &,GIAC_CONTEXT){ return undef; }
+  gen randbinomial(int,double,GIAC_CONTEXT){ return undef; }
+  gen poisson(const gen &,const gen &,GIAC_CONTEXT){ return undef; }
+  double poisson_cdf(double,double){ return 0; }
+  gen poisson_cdf(const gen &,const gen &,GIAC_CONTEXT){ return undef; }
+  gen poisson_icdf(double,double,GIAC_CONTEXT){ return undef; }
+  gen poisson_icdf(const gen &,const gen &,GIAC_CONTEXT){ return undef; }
+  gen student(const gen &,const gen &,GIAC_CONTEXT){ return undef; }
+  gen student_cdf(const gen &,const gen &,const gen &,GIAC_CONTEXT){ return undef; }
+  gen student_icdf(const gen &,const gen &,GIAC_CONTEXT){ return undef; }
+  gen chisquare(const gen &,const gen &,GIAC_CONTEXT){ return undef; }
+  gen chisquare_cdf(const gen &,const gen &,const gen &,GIAC_CONTEXT){ return undef; }
+  gen chisquare_icdf(const gen &,const gen &,GIAC_CONTEXT){ return undef; }
+  gen snedecor(const gen &,const gen &,const gen &,GIAC_CONTEXT){ return undef; }
+  gen snedecor_cdf(const gen &,const gen &,const gen &,GIAC_CONTEXT){ return undef; }
+  gen snedecor_icdf(const gen &,const gen &,const gen &,GIAC_CONTEXT){ return undef; }
+  gen geometric(const gen &,const gen &,GIAC_CONTEXT){ return undef; }
+  gen geometric_cdf(const gen &,const gen &,GIAC_CONTEXT){ return undef; }
+  gen geometric_icdf(const gen &,const gen &,GIAC_CONTEXT){ return undef; }
+  int is_distribution(const gen &){ return 0; }
+  bool distrib_support(int,gen &,gen &,bool){ return false; }
+  int distrib_nargs(int){ return 0; }
+#else
   gen _multinomial(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     if (g.type!=_VECT)
@@ -2418,6 +2528,7 @@ namespace giac {
       return 2;
     }
   }
+#endif
 
   int giacmin(const std::vector<int> & X){
     vector<int>::const_iterator it=X.begin(),itend=X.end();

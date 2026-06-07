@@ -2281,7 +2281,7 @@ namespace giac {
     subst1=mergevecteur(l1surd,l1NTHROOT);
     subst2=mergevecteur(l2surd,l2NTHROOT);
     if (!subst1.empty())
-      *logptr(contextptr) << gettext("Temporary replacing surd/NTHROOT by fractional powers") << endl;
+      *logptr(contextptr) << gettext("Temporarily using fractional powers") << endl;
   }
 
   bool is_elementary(const vecteur & v,const gen & x){
@@ -2305,7 +2305,7 @@ namespace giac {
     // Additional check: atan/asin in degree/grad
     if (angle_mode(contextptr)){
       if (has_op(e,*at_asin)|| has_op(e,*at_atan) || has_op(e,*at_acos))
-	return undeferr("Inverse trigonometric functions are supported in radian mode only.");
+	return undeferr("Use radian mode.");
     }
     // Step -3: replace when by piecewise
     e=when2piecewise(e,contextptr);
@@ -2323,7 +2323,7 @@ namespace giac {
     vecteur lpiece(lop(e,at_piecewise));
     if (!lpiece.empty()) lpiece=lvarx(lpiece,gen_x);
     if (!lpiece.empty()){
-      *logptr(contextptr) << gettext("! piecewise indefinite integration does not return a continuous antiderivative") << endl;
+      *logptr(contextptr) << gettext("Warn: piecewise antiderivative may be discontinuous") << endl;
       gen piece=lpiece.front();
       if (piece.is_symb_of_sommet(at_piecewise))
 	return integrate_piecewise(e,piece,gen_x,remains_to_integrate,contextptr,intmode);
@@ -2998,7 +2998,7 @@ namespace giac {
 	 abs(tmp-tmp2,contextptr)._DOUBLE_val<=1e-3*abs(tmp2,contextptr)._DOUBLE_val
 	 )
       return simplifier(exactvalue,contextptr);
-    *logptr(contextptr) << gettext("Error while checking exact value with approximate value, returning both!") << endl;
+      *logptr(contextptr) << gettext("Check mismatch; returning both") << endl;
     return makevecteur(exactvalue,tmp2);
   }
 
@@ -3069,7 +3069,7 @@ namespace giac {
   // "unary" version
   gen _integrate(const gen & args,GIAC_CONTEXT){
     if (complex_variables(contextptr))
-      *logptr(contextptr) << gettext("! complex variables is set, this can lead to fairly complex answers.\nIt is recommended to switch off complex variables in the settings or by complex_variables:=0;\n and declare individual variables to be complex by e.g. assume(a,complex).") << endl;
+      *logptr(contextptr) << gettext("Warn: complex_variables is set") << endl;
 #ifdef LOGINT
     *logptr(contextptr) << gettext("integrate begin") << endl;
 #endif
@@ -3289,13 +3289,13 @@ namespace giac {
       if (!lfloor.empty()){
 	gen a,b,l,cond=lfloor.front()._SYMBptr->feuille,tmp;
 	if (lvarx(cond,x).size()>1 || !is_linear_wrt(cond,x,a,b,contextptr) ){
-	  *logptr(contextptr) << gettext("Floor definite integration: can only handle linear < or > condition") << endl;
+	  *logptr(contextptr) << gettext("Floor integral needs linear condition") << endl;
 	  if (!tegral(v0orig,x,aorig,borig,1e-12,(1<<10),res,true,contextptr))
 	    return undef;
 	  return res;
 	}
 	if (is_inf(borne_inf) || is_inf(borne_sup)){
-	  *logptr(contextptr) << gettext("Floor definite integration: unable to handle infinite boundaries") << endl;
+	  *logptr(contextptr) << gettext("Floor integral cannot use infinite bounds") << endl;
 	}
 	else {
 	  // find integers of the form a*x+b in [borne_inf,borne_sup]
@@ -3372,7 +3372,7 @@ namespace giac {
 	  }
 	  gen a,b,l;
 	  if (unable || !is_linear_wrt(cond,x,a,b,contextptr)){
-	    *logptr(contextptr) << gettext("Piecewise definite integration: can only handle linear < or > condition") << endl;
+	    *logptr(contextptr) << gettext("Piecewise integral needs linear condition") << endl;
 	    if (!tegral(v0orig,x,aorig,borig,1e-12,(1<<10),res,true,contextptr))
 	      return undef;
 	    return res;
@@ -3517,7 +3517,7 @@ namespace giac {
     vecteur sp;
     sp=lidnt(evalf(makevecteur(primitive,borne_inf,borne_sup),1,contextptr));
     if (sp.size()>1){
-      *logptr(contextptr) << gettext("No checks were made for answer. Confirm with\n  preval(")+primitive.print(contextptr)+","+borne_inf.print(contextptr)+","+borne_sup.print(contextptr)+")" << endl ;
+	*logptr(contextptr) << gettext("Check with preval(")+primitive.print(contextptr)+","+borne_inf.print(contextptr)+","+borne_sup.print(contextptr)+")" << endl ;
       sp.clear();
     }
     else {
@@ -3536,7 +3536,7 @@ namespace giac {
       else
 	sp=protect_find_singularities(primitive,*x._IDNTptr,0,contextptr);
       if (is_undef(sp)){
-	*logptr(contextptr) << gettext("Unable to find singular points of antiderivative") << endl ;
+	*logptr(contextptr) << gettext("Cannot find antiderivative singularities") << endl ;
 	if (!tegral(v0orig,x,aorig,borig,1e-12,(1<<10),res,true,contextptr))
 	  return undef;
 	return res;
@@ -3547,7 +3547,7 @@ namespace giac {
     int sps=int(sp.size());
     for (int i=0;i<sps;i++){
       if (sp[i].type==_DOUBLE_ || sp[i].type==_REAL || has_op(sp[i],*at_rootof)){
-	*logptr(contextptr) << gettext("Unable to handle approx. or algebraic extension singular point\n")+sp[i].print(contextptr)+gettext(" of antiderivative");
+	*logptr(contextptr) << gettext("Unhandled singular point ")+sp[i].print(contextptr);
 	if (!tegral(v0orig,x,aorig,borig,1e-12,(1<<10),res,true,contextptr))
 	  return undef;
 	return res;
@@ -4601,7 +4601,7 @@ namespace giac {
       return seqprod(gen(v,_SEQ__VECT),2,contextptr);
     if (s==4) {
       if (v[1]==cst_i)
-	return gensizeerr(gettext("i=sqrt(-1), please use a valid identifier name"));
+	return gensizeerr(gettext("Invalid index i=sqrt(-1)"));
       gen af=evalf_double(v[2],1,contextptr),bf=evalf_double(v[3],1,contextptr);
       if (v[1].type==_IDNT && (is_inf(af) || af.type==_DOUBLE_) && (is_inf(bf) || bf.type==_DOUBLE_)){
 	vecteur w;

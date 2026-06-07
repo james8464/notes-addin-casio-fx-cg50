@@ -1,37 +1,5 @@
-rewrite(expr,terms)
-
-Args:
-  expr, terms
-
-Required:
-  expr is the expression or equation to rewrite.
-  terms is a list of target expressions.
-
-Optional:
-  Target terms may be named with equals signs.
-  Example: [a=log(2,x),b=log(2,x+8)]
-
-Does:
-  Rewrites the input in terms of the chosen target expressions.
-  Uses direct substitution, factorisation, products, quotients, powers, roots, and log laws where useful.
-
-Examples:
-  rewrite(log(2,sqrt(x)),[log(2,x),log(2,x+8)])
-  rewrite(log(2,x^2+8*x),[a=log(2,x),b=log(2,x+8)])
-
-F2:
-  rewrite(log(2,sqrt(x)),[a=log(2,x),b=log(2,x+8)])
-
-F3:
-  rewrite(log(2,8+64/x),[a=log(2,x),b=log(2,x+8)])
-
-Keys:
-  F1 inserts the command.
-  F2 inserts the first example.
-  F3 inserts the second example when available.
-
-Working:
-  Shows the route used, then ends with only the rewritten expression or equation.
-
-Tip:
-  Use named targets when you want a short final result, e.g. a+b instead of log(2,x)+log(2,x+8).
+rewrite
+Args: see catalog signature for rewrite.
+Required: A-level Pure scoped use only.
+Does: returns exact KhiCAS output, or verified working when a verified route exists.
+Examples: rewrite(1)

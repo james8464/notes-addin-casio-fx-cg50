@@ -1,33 +1,5 @@
-series(f,x=a,n)
-
-Args:
-  f,x=a,n
-
-Required:
-  f, x=a, n
-
-Optional:
-  None.
-
-Does:
-  Taylor/power series. Required: f, expansion value x=a, order n.
-
-Examples:
-  series(sin(x),x=0,5); series((1+x)^(-1),x=0,4)
-
-F2:
-  series(sin(x),x=0,5)
-
-F3:
-  series((1+x)^(-1),x=0,4)
-
-Keys:
-  F1 inserts the command.
-  F2 inserts the first example.
-  F3 inserts the second example when available.
-
-Working:
-  Shows exam-style lines when this command has a routed A-level working path; otherwise returns the exact KhiCAS result for the expression.
-
-Tip:
-  Use brackets around compound numerators, denominators, powers, and substitutions for readable exam-style output.
+series
+Args: see catalog signature for series.
+Required: A-level Pure scoped use only.
+Does: returns exact KhiCAS output, or verified working when a verified route exists.
+Examples: series(exp(x),x,0,4)

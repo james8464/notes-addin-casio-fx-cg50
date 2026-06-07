@@ -270,7 +270,7 @@ namespace giac {
       if (vs>=3 && s.sommet==at_Beta){
 	gen v0=v[0],v1=v[1],v2=v[2]; 
 	if (!is_zero(derive(v0,i,contextptr)) || !is_zero(derive(v1,i,contextptr)) )
-	  return gensizeerr("diff of incomplete beta with respect to non constant 1st or 2nd arg not implemented");
+	  return gensizeerr("unsupported diff");
 	// diff/v2 of int_0^v2 t^(v0-1)*(1-t)^(v1-1) dt
 	gen tmp=pow(v2,v0-1,contextptr)*pow(1-v2,v1-1,contextptr)*derive(v2,i,contextptr);
 	if (vs==4){
@@ -287,7 +287,7 @@ namespace giac {
       if (vs==4 && s.sommet==at_sum){
 	gen v0=v[0],v1=v[1],v2=v[2],v3=v[3];
 	if (!is_zero(derive(v1,i,contextptr)) || !is_zero(derive(v2,i,contextptr)) || ! is_zero(derive(v3,i,contextptr)) )
-	  return gensizeerr(gettext("diff of sum with boundaries or mute variable depending on differentiation variable"));
+	  return gensizeerr(gettext("unsupported diff"));
 	if (is_inf(v2) || is_inf(v3))
 	  *logptr(contextptr) << gettext("Warning, assuming derivative commutes with infinite sum") << endl;
 	return _sum(makesequence(derive(v0,i,contextptr),v1,v2,v3),contextptr);
@@ -295,7 +295,7 @@ namespace giac {
       if ( (vs==2 || (vs==3 && is_zero(v[2]))) && (s.sommet==at_upper_incomplete_gamma || s.sommet==at_lower_incomplete_gamma || s.sommet==at_Gamma)){
 	gen v0=v[0],v1=v[1]; 
 	if (!is_zero(derive(v0,i,contextptr)))
-	  return gensizeerr(gettext("diff of incomplete gamma with respect to non constant 1st arg not implemented"));
+	  return gensizeerr(gettext("unsupported diff"));
 	// diff(int_v1^inf exp(-t)*t^(v0-1) dt)
 	gen tmp1=exp(-v1,contextptr)*pow(v1,v0-1,contextptr)*derive(v1,i,contextptr);
 	return (s.sommet==at_lower_incomplete_gamma)?tmp1:-tmp1;

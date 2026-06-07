@@ -37,19 +37,16 @@ clean_source_outputs() {
 prepare_icons() {
   python3 - "${SRC_DIR}" <<'PY'
 from pathlib import Path
-import shutil
 import sys
 
 root = Path(sys.argv[1])
-try:
-    from PIL import Image
+from PIL import Image
 
-    for src, dst in (("unselected.bmp", "khicasio.png"), ("selected.bmp", "khicasio1.png")):
-        icon = Image.open(root / src).convert("P", palette=Image.ADAPTIVE, colors=8).convert("RGB")
-        icon.save(root / dst, optimize=True, compress_level=9)
-except Exception:
-    shutil.copyfile(root / "logo.png", root / "khicasio.png")
-    shutil.copyfile(root / "logo.png", root / "khicasio1.png")
+def draw_icon(selected: bool) -> Image.Image:
+    return Image.new("RGB", (92, 64), (32, 86, 170) if selected else (245, 245, 245))
+
+draw_icon(False).save(root / "khicasio.png", optimize=True, compress_level=9)
+draw_icon(True).save(root / "khicasio1.png", optimize=True, compress_level=9)
 PY
 }
 
@@ -98,6 +95,9 @@ docker run --rm \
 
 cp "${SRC_DIR}/${TARGET}" "${OUT_DIR}/${TARGET}"
 cp "${SRC_DIR}/${RUNMAT_TARGET}" "${OUT_DIR}/${RUNMAT_TARGET}"
+python3 "${ROOT_DIR}/tools/normalize_g3a_metadata.py" \
+  "${OUT_DIR}/${TARGET}" \
+  "${OUT_DIR}/${RUNMAT_TARGET}"
 for ext in bin elf map; do
   src="${SRC_DIR}/khicasen.${ext}"
   [ ! -f "${src}" ] || cp "${src}" "${OUT_DIR}/khicasen.${ext}"

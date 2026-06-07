@@ -1686,15 +1686,15 @@ const char * keytostring(int key,int keyflag,bool py,const giac::context * conte
   case KEY_CHAR_VALR:
     return "abs(";
   case KEY_CHAR_ANGLE: case KEY_CTRL_F13:
-    return "polar_complex(";
+    return "";
   case KEY_CTRL_XTT:
     return xthetat?"t":"x";
   case KEY_CHAR_LN:
     return "ln(";
   case KEY_CHAR_LOG:
-    return "log10(";
+    return "log(";
   case KEY_CHAR_EXPN10:
-    return "alog10(";
+    return "";
   case KEY_CHAR_EXPN:
     return "exp(";
   case KEY_CHAR_SIN:
@@ -1714,7 +1714,7 @@ const char * keytostring(int key,int keyflag,bool py,const giac::context * conte
   case KEY_CTRL_FRACCNVRT: case KEY_CTRL_F7:
     return "exact(";
   case KEY_CTRL_FORMAT:
-    return "purge(";
+    return "";
   case KEY_CTRL_FD: case KEY_CTRL_F11:
     return "approx(";
   case KEY_CHAR_STORE:
@@ -2072,13 +2072,8 @@ int Console_GetKey(){
 	    erase_script();
 	    break;
 	  }
-          if (smallmenu.selection==11){
-	    drawRectangle(0, 0, LCD_WIDTH_PX, LCD_HEIGHT_PX-8, COLOR_WHITE);
-	    if (ptr=input_matrix(false)) {
-	      return Console_Input((const unsigned char *)ptr);
-	    }
-	    break;
-	  }
+	          if (smallmenu.selection==11)
+		    break;
 	  if (smallmenu.selection == 12){
 	    Menu paramenu;
 	    paramenu.numitems=6;
@@ -2298,15 +2293,11 @@ int Console_GetKey(){
 static unsigned char* original_cfg=0;
 
 int Console_FMenu(int key){
-  const char * s=console_menu(key,original_cfg,0),*ptr=0;
+  const char * s=console_menu(key,original_cfg,0);
   if (!s){
     //cout << "console " << unsigned(s) << endl;
     return CONSOLE_NO_EVENT;
   }
-  if (strcmp("matrix(",s)==0 && (ptr=input_matrix(false)) )
-    s=ptr;
-  if (strcmp("makelist(",s)==0 && (ptr=input_matrix(true)) )
-    s=ptr;
   return Console_Input((const unsigned char *)s);
 }
 
@@ -2501,7 +2492,7 @@ const char conf_standard[] =
   "F1 algb\n"
   "simplify(\n"
   "factor(\n"
-  "expand(\n"
+  "texpand(\n"
   "collect(\n"
   "partfrac(\n"
   "subst(\n"
@@ -2538,8 +2529,6 @@ const char conf_standard[] =
   "F6 solve\n"
   "solve(\n"
   "fsolve(\n"
-  "proot(\n"
-  "pcoeff(\n"
   "gcd(\n"
   "lcm(\n";
 
@@ -2973,6 +2962,7 @@ int Console_Disp()
 
   // status, clock, 
   set_xcas_status();
+  drawCasioCasRunIndicator();
   Bdisp_PutDisp_DD();
   drawCasioCasBorder();
   return CONSOLE_SUCCEEDED;

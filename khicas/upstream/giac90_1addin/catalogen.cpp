@@ -22,6 +22,7 @@ extern "C" {
 #include "history.h"
 #include "dConsole.h"
   //#include "memmgr.h"
+#define CASCAS_MIN_CATALOG
 #include "catalogGUI.hpp"
 #include "fileGUI.hpp"
 #include "textGUI.hpp"
@@ -51,7 +52,8 @@ extern "C" {
 #define CAT_CATEGORY_MATRIX 16
 #define CAT_CATEGORY_PROG 17
 #define CAT_CATEGORY_SOFUS 18 
-#define CAT_CATEGORY_LOGO 19 // should be the last one
+#define CAT_CATEGORY_VECTOR 19
+#define CAT_CATEGORY_LOGO 20 // should be the last one
 
 using namespace giac;
 extern giac::context * contextptr;
@@ -61,215 +63,250 @@ void reset_alpha(){
 }
 
 int lang=0;
-const catalogFunc completeCat[] = { // list of all functions (including some not in any category)
-  {"abs(x)", 0, "See help.", "-3", "x-2", CAT_CATEGORY_REAL | (CAT_CATEGORY_ALGEBRA<<8)},
-  {"acos(x)", 0, "See help.", "1/2", 0, CAT_CATEGORY_TRIG},
-  {"approx(x)", 0, "See help.", "sqrt(2)", "pi", CAT_CATEGORY_REAL},
-  {"asin(x)", 0, "See help.", "1/2", 0, CAT_CATEGORY_TRIG},
-  {"atan(x)", 0, "See help.", "1", 0, CAT_CATEGORY_TRIG},
-  {"ceil(x)", 0, "See help.", "1.2", 0, CAT_CATEGORY_REAL},
-  {"ceiling(x)", 0, "See help.", "1.2", 0, CAT_CATEGORY_REAL},
-  {"coeff(p,x,n)", 0, "See help.", "3*x^2+2*x+1,x,2", 0, CAT_CATEGORY_POLYNOMIAL},
-  {"collect(expr,x)", 0, "See help.", "x+x^2+2*x", "sin(x)^2+cos(x)^2", CAT_CATEGORY_ALGEBRA},
-  {"cos(x)", 0, "See help.", "pi/3", 0, CAT_CATEGORY_TRIG},
-  {"cot(x)", 0, "See help.", "x", 0, CAT_CATEGORY_TRIG},
-  {"degree(p,x)", 0, "See help.", "x^4-1,x", 0, CAT_CATEGORY_POLYNOMIAL},
-  {"diff(f,var,[n])", 0, "See help.", "x^3,x", "(x^2)*tan(y)=9,x", CAT_CATEGORY_CALCULUS},
-  {"exact(x)", 0, "See help.", "1.25", 0, CAT_CATEGORY_REAL},
-  {"expand(expr)", 0, "See help.", "(x+1)^3", "sin(2*x)", CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_TRIG<<8)},
-  {"factor(p,[x])", 0, "See help.", "x^2-5*x+6", "x^3-1", CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_POLYNOMIAL<<8)},
-  {"floor(x)", 0, "See help.", "1.8", 0, CAT_CATEGORY_REAL},
-  {"fsolve(equation,x=a..b)", 0, "See help.", "cos(x)=x,x=0..1", 0, CAT_CATEGORY_SOLVE},
-  {"gcd(a,b,...)", 0, "See help.", "x^2-1,x^3-1", 0, CAT_CATEGORY_POLYNOMIAL},
-  {"integrate(f,x,[a,b])", 0, "See help.", "(ln(x))^2,x,2", "(ln(x))^2/x,x,3,u=ln(x)", CAT_CATEGORY_CALCULUS},
-  {"implicit_diff(eq,[x,y])", "diff(", "See help.", "(x^2)*tan(y)=9,x", 0, CAT_CATEGORY_CALCULUS},
-  {"lcm(a,b,...)", 0, "See help.", "x^2-1,x^3-1", 0, CAT_CATEGORY_POLYNOMIAL},
-  {"limit(f,x=a)", 0, "See help.", "sin(x)/x,x=0", "1/x,x=0,1", CAT_CATEGORY_CALCULUS},
-  {"ln(x)", 0, "See help.", "e^2", 0, CAT_CATEGORY_CALCULUS | (CAT_CATEGORY_REAL<<8)},
-  {"log(base,x)", "log(", "See help.", "2,x", "3,81", CAT_CATEGORY_CALCULUS | (CAT_CATEGORY_REAL<<8)},
-  {"partfrac(p,x)", 0, "See help.", "1/(x^2-1),x", 0, CAT_CATEGORY_ALGEBRA},
-  {"pcoeff(p)", 0, "See help.", "[1,2,3]", 0, CAT_CATEGORY_POLYNOMIAL},
-  {"product(f,k,m,M)", 0, "See help.", "k,k,1,n", 0, CAT_CATEGORY_CALCULUS},
-  {"proot(p)", 0, "See help.", "x^3-2*x+1", 0, CAT_CATEGORY_POLYNOMIAL | (CAT_CATEGORY_SOLVE<<8)},
-  {"range(expr,[x,a,b])", "range(", "See help.", "x^2", "1/x", CAT_CATEGORY_ALGEBRA},
-  {"rewrite(expr,terms)", "rewrite(", "See help.", "log(2,x^2+8*x),[a=log(2,x),b=log(2,x+8)]", "log(2,8+64/x),[a=log(2,x),b=log(2,x+8)]", CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_TRIG<<8)},
-  {"round(x)", 0, "See help.", "1.6", 0, CAT_CATEGORY_REAL},
-  {"sec(x)", 0, "See help.", "x", 0, CAT_CATEGORY_TRIG},
-  {"series(f,x=a,n)", 0, "See help.", "sin(x),x=0,5", "(1+x)^(-1),x=0,4", CAT_CATEGORY_CALCULUS},
-  {"simplify(expr)", 0, "See help.", "sin(x)^2+cos(x)^2", "sqrt(x^2)", CAT_CATEGORY_ALGEBRA},
-  {"sin(x)", 0, "See help.", "pi/6", 0, CAT_CATEGORY_TRIG},
-  {"solve(equation,x)", 0, "See help.", "x^2-5*x+6=0,x", "(dy)/(dx)=y,y", CAT_CATEGORY_SOLVE},
-  {"sqrt(x)", 0, "See help.", "9", "x^2", CAT_CATEGORY_REAL | (CAT_CATEGORY_ALGEBRA<<8)},
-  {"subst(a,b=c)", 0, "See help.", "x^2,x=3", 0, CAT_CATEGORY_ALGEBRA},
-  {"sum(f,k,m,M)", 0, "See help.", "k^2,k,1,n", 0, CAT_CATEGORY_CALCULUS},
-  {"tan(x)", 0, "See help.", "pi/4", 0, CAT_CATEGORY_TRIG},
-  {"taylor(f,x=a,n)", 0, "See help.", "sin(x),x=0,5", 0, CAT_CATEGORY_CALCULUS},
-  {"tcollect(expr)", 0, "See help.", "sin(x)+cos(x)", 0, CAT_CATEGORY_TRIG},
-  {"texpand(expr)", 0, "See help.", "sin(2*x)", "ln(x*y)", CAT_CATEGORY_TRIG | (CAT_CATEGORY_ALGEBRA<<8)},
-  {"xform(expr,target)", "xform(", "See help.", "1+tan(x)^2,sec(x)^2", "log(a,x),ln(x)/ln(a)", CAT_CATEGORY_ALGEBRA | (CAT_CATEGORY_TRIG<<8)},
+const catalogFunc completeCat[] = { // scoped A-level Pure catalog
+  {"abs(x)", CAT_CATEGORY_ALGEBRA},
+  {"acos(x)", CAT_CATEGORY_TRIG},
+  {"approx(x)", CAT_CATEGORY_REAL},
+  {"asin(x)", CAT_CATEGORY_TRIG},
+  {"atan(x)", CAT_CATEGORY_TRIG},
+  {"ceil(x)", CAT_CATEGORY_REAL},
+  {"coeff(p,x,n)", CAT_CATEGORY_POLYNOMIAL},
+  {"collect(expr,x)", CAT_CATEGORY_ALGEBRA},
+  {"cos(x)", CAT_CATEGORY_TRIG},
+  {"cosec(x)", CAT_CATEGORY_TRIG},
+  {"cot(x)", CAT_CATEGORY_TRIG},
+  {"degree(p,x)", CAT_CATEGORY_POLYNOMIAL},
+  {"diff(f,var)", CAT_CATEGORY_CALCULUS},
+  {"domain(expr,x)", CAT_CATEGORY_SOLVE},
+  {"dot(u,v)", CAT_CATEGORY_VECTOR},
+  {"exact(x)", CAT_CATEGORY_REAL},
+  {"exp(x)", CAT_CATEGORY_ALGEBRA},
+  {"factor(p)", CAT_CATEGORY_ALGEBRA},
+  {"floor(x)", CAT_CATEGORY_REAL},
+  {"fsolve(equation,x=a..b)", CAT_CATEGORY_SOLVE},
+  {"gcd(a,b)", CAT_CATEGORY_ARIT},
+  {"integrate(f,x)", CAT_CATEGORY_CALCULUS},
+  {"int(f,x)", CAT_CATEGORY_CALCULUS},
+  {"implicit_diff(eq,[x,y])", CAT_CATEGORY_CALCULUS},
+  {"lcm(a,b)", CAT_CATEGORY_ARIT},
+  {"limit(f,x=a)", CAT_CATEGORY_CALCULUS},
+  {"ln(x)", CAT_CATEGORY_ALGEBRA},
+  {"log(a,x)", CAT_CATEGORY_ALGEBRA},
+  {"partfrac(p,x)", CAT_CATEGORY_ALGEBRA},
+  {"product(expr,k,a,b)", CAT_CATEGORY_CALCULUS},
+  {"range(expr,x)", CAT_CATEGORY_SOLVE},
+  {"rewrite(expr,target)", CAT_CATEGORY_ALGEBRA},
+  {"round(x)", CAT_CATEGORY_REAL},
+  {"sec(x)", CAT_CATEGORY_TRIG},
+  {"series(expr,x,a,n)", CAT_CATEGORY_CALCULUS},
+  {"simplify(expr)", CAT_CATEGORY_ALGEBRA},
+  {"sin(x)", CAT_CATEGORY_TRIG},
+  {"solve(equation,x)", CAT_CATEGORY_SOLVE},
+  {"sqrt(x)", CAT_CATEGORY_ALGEBRA},
+  {"subst(expr,var,value)", CAT_CATEGORY_ALGEBRA},
+  {"sum(expr,k,a,b)", CAT_CATEGORY_CALCULUS},
+  {"tan(x)", CAT_CATEGORY_TRIG},
+  {"taylor(expr,x,a,n)", CAT_CATEGORY_CALCULUS},
+  {"tcollect(expr)", CAT_CATEGORY_TRIG},
+  {"texpand(expr)", CAT_CATEGORY_TRIG},
+  {"xform(expr,target)", CAT_CATEGORY_ALGEBRA},
+
 };
 
-const char chk_restart_string1[]="Keep variables?";
-const char chk_restart_string2[]="F1: keep,   F6: erase";
-const char aide_khicas_string[]="Khicas Help";
-const char main_string1[]="Clear variables?";
-const char main_string2[]="F1: cancel,  F6: confirm";
-const char shortcuts_string[]="A-level Pure build: use catalog for commands.";
-const char apropos_string[]="KhiCASen A-level Pure build.";
+typedef struct {
+  char* title;
+  int category;
+} catalogFolder;
+
+const catalogFolder catalogFolders[] = {
+  {(char*)"Algebra", CAT_CATEGORY_ALGEBRA},
+  {(char*)"Calculus", CAT_CATEGORY_CALCULUS},
+  {(char*)"Trig", CAT_CATEGORY_TRIG},
+  {(char*)"Solve/Range", CAT_CATEGORY_SOLVE},
+  {(char*)"Polynomials", CAT_CATEGORY_POLYNOMIAL},
+  {(char*)"Numbers", CAT_CATEGORY_REAL},
+  {(char*)"Arithmetic", CAT_CATEGORY_ARIT},
+  {(char*)"Vectors", CAT_CATEGORY_VECTOR},
+};
+
+const char chk_restart_string1[]="Keep vars?";
+const char chk_restart_string2[]="F1 keep F6 erase";
+const char aide_khicas_string[]="Help";
+const char main_string1[]="Clear vars?";
+const char main_string2[]="F1 cancel F6 ok";
+const char shortcuts_string[]="CAS.";
+const char apropos_string[]="CAS.";
 
 int CAT_COMPLETE_COUNT=sizeof(completeCat)/sizeof(catalogFunc);
+int CAT_FOLDER_COUNT=sizeof(catalogFolders)/sizeof(catalogFolder);
 
 ustl::string insert_string(int index){
-  ustl::string s;
-  if (completeCat[index].insert)
-    s=completeCat[index].insert;
-  else {
-    s=completeCat[index].name;
-    int pos=s.find('(');
-    if (pos>=0 && pos<s.size())
-      s=s.substr(0,pos+1);
-  }
+  ustl::string s=completeCat[index].name;
+  int pos=s.find('(');
+  if (pos>=0 && pos<s.size())
+    s=s.substr(0,pos+1);
   return s;//s+' ';
 }
 
-static void add_help_line(ustl::vector<textElement> & elem,const ustl::string & s,color_t color,int spacing){
-  textElement e;
-  e.s=s;
-  e.color=color;
-  e.newLine=elem.size()?1:0;
-  e.lineSpacing=spacing;
-  elem.push_back(e);
+static void catalog_command_name(int index,char *out,int outsz){
+  const char *src=completeCat[index].name;
+  int i=0;
+  for (;src[i] && src[i]!='(' && src[i]!='[' && i<outsz-1;++i)
+    out[i]=src[i];
+  out[i]=0;
 }
 
-static ustl::string example_string(int index,char * example){
-  ustl::string s;
-  if (!example)
-    return s;
-  if (example[0]=='#')
-    s=example+1;
-  else {
-    s=insert_string(index);
-    s += example;
-    s += ")";
+static unsigned pak_u16(const unsigned char *p){
+  return (unsigned(p[0])<<8)|unsigned(p[1]);
+}
+
+static unsigned pak_u32(const unsigned char *p){
+  return (unsigned(p[0])<<24)|(unsigned(p[1])<<16)|(unsigned(p[2])<<8)|unsigned(p[3]);
+}
+
+static bool read_all_file(const char *path,unsigned char **data,int *size){
+  unsigned short pFile[300];
+  Bfile_StrToName_ncpy(pFile,(const unsigned char*)path,strlen(path)+1);
+  int h=Bfile_OpenFile_OS(pFile,READWRITE);
+  if (h<0)
+    return false;
+  int sz=Bfile_GetFileSize_OS(h);
+  if (sz<=0 || sz>262144){
+    Bfile_CloseFile_OS(h);
+    return false;
   }
-  return s;
+  unsigned char *buf=(unsigned char*)malloc(sz);
+  if (!buf){
+    Bfile_CloseFile_OS(h);
+    return false;
+  }
+  int rd=Bfile_ReadFile_OS(h,buf,sz,0);
+  Bfile_CloseFile_OS(h);
+  if (rd!=sz){
+    free(buf);
+    return false;
+  }
+  *data=buf;
+  *size=sz;
+  return true;
+}
+
+static bool load_help_record(const char *cmd,ustl::string &out){
+  const char *paths[]={
+    "\\\\fls0\\CAS.PAK",
+    "\\\\crd0\\CAS.PAK",
+    "\\\\fls0\\CASIOCAS.PAK",
+    "\\\\crd0\\CASIOCAS.PAK",
+    0
+  };
+  for (int pi=0;paths[pi];++pi){
+    unsigned char *buf=0;
+    int sz=0;
+    if (!read_all_file(paths[pi],&buf,&sz))
+      continue;
+    bool ok=false;
+    if (sz>=10 && !memcmp(buf,"CASPAK1",7)){
+      unsigned pos=8;
+      unsigned count=pak_u16(buf+pos);
+      pos+=2;
+      for (unsigned i=0;i<count && pos<unsigned(sz);++i){
+        unsigned nl=buf[pos++];
+        if (pos+nl+8>unsigned(sz))
+          break;
+        const unsigned char *name=buf+pos;
+        pos+=nl;
+        unsigned off=pak_u32(buf+pos); pos+=4;
+        unsigned len=pak_u32(buf+pos); pos+=4;
+        if (strlen(cmd)==nl && !memcmp(name,cmd,nl) && off+len<=unsigned(sz)){
+          out.assign((const char*)(buf+off),len);
+          ok=true;
+          break;
+        }
+      }
+    }
+    free(buf);
+    if (ok)
+      return true;
+  }
+  return false;
+}
+
+static void show_command_help(int index){
+  char cmd[40];
+  catalog_command_name(index,cmd,sizeof(cmd));
+  ustl::string body;
+  if (!load_help_record(cmd,body))
+    body="Copy CAS.PAK to storage root.\nThen press F6 on a command.";
+  textArea text;
+  text.editable=false;
+  text.clipline=-1;
+  text.title=(char*)"Help on command";
+  text.allowF1=true;
+  text.python=0;
+  ustl::vector<textElement> & elem=text.elements;
+  elem=ustl::vector<textElement>(0);
+  textElement head;
+  head.s=completeCat[index].name;
+  head.color=COLOR_BLUE;
+  elem.push_back(head);
+  const char *p=body.c_str();
+  while (*p){
+    const char *q=p;
+    while (*q && *q!='\n')
+      ++q;
+    textElement e;
+    e.newLine=1;
+    e.lineSpacing=1;
+    e.s=ustl::string(p,q-p);
+    elem.push_back(e);
+    p=*q?q+1:q;
+  }
+  doTextArea(&text);
 }
 
 int showCatalog(char* insertText,int preselect,int menupos) {
-  //int ret;
-  // returns 0 on failure (user exit) and 1 on success (user chose a option)
-  const int categories[]={CAT_CATEGORY_ALL,CAT_CATEGORY_ALGEBRA,CAT_CATEGORY_CALCULUS,CAT_CATEGORY_POLYNOMIAL,CAT_CATEGORY_REAL,CAT_CATEGORY_SOLVE,CAT_CATEGORY_TRIG};
-  MenuItem menuitems[sizeof(categories)/sizeof(categories[0])];
-  menuitems[0].text = (char*)"All";
-  menuitems[1].text = (char*)"Algebra";
-  menuitems[2].text = (char*)"Calculus";
-  menuitems[3].text = (char*)"Polynomials";
-  menuitems[4].text = (char*)"Reals";
-  menuitems[5].text = (char*)"Solve";
-  menuitems[6].text = (char*)"Trigonometry";
-  
-  Menu menu;
-  menu.items=menuitems;
-  menu.numitems=sizeof(menuitems)/sizeof(MenuItem);
-  menu.scrollout=1;
-  menu.title = (char*)"Function Catalog";
-  
-  while(1) {
-    if (preselect)
-      menu.selection=preselect;
-    else {
-      if (menupos>0)
-	menu.selection=menupos;
-      int sres = doMenu(&menu);
-      if (sres != MENU_RETURN_SELECTION)
-	return 0;
-    }
-    // puts("catalog 3");
-    int category=preselect;
-    if (!category)
-      category=categories[menu.selection-1];
-    if (category!=CAT_CATEGORY_ALL && category!=CAT_CATEGORY_ALGEBRA && category!=CAT_CATEGORY_CALCULUS && category!=CAT_CATEGORY_POLYNOMIAL && category!=CAT_CATEGORY_REAL && category!=CAT_CATEGORY_SOLVE && category!=CAT_CATEGORY_TRIG)
-      category=CAT_CATEGORY_ALL;
-    char *submenu_title=preselect?(char*)"Function Catalog":menuitems[menu.selection-1].text;
-    if(doCatalogMenu(insertText, submenu_title, category)) {
-      const char * ptr=0;
-      if (strcmp("matrix ",insertText)==0 && (ptr=input_matrix(false)) )
-	return 0;
-      if (strcmp("list ",insertText)==0 && (ptr=input_matrix(true)) )
-	return 0;
-      return 1;
-    }
-    if (preselect)
-      return 0;
-  }
-  return 0;
+  return doCatalogMenu(insertText, (char*)"Catalog", CAT_CATEGORY_ALL);
 }
 
-int find_category(const char *cmdname){
-  int l=strlen(cmdname);
-  for (int i=0;i<CAT_COMPLETE_COUNT;++i){
-    if (!strncmp(cmdname,completeCat[i].name,l))
-      return completeCat[i].category;
-  }
-  return -1;
+static int catalog_count_for_category(int category){
+  if (category==CAT_CATEGORY_ALL)
+    return CAT_FOLDER_COUNT;
+  int n=0;
+  for (int i=0;i<CAT_COMPLETE_COUNT;++i)
+    if (completeCat[i].category==category)
+      ++n;
+  return n;
 }
 
 // 0 on exit, 1 on success
 int doCatalogMenu(char* insertText, char* title, int category,const char * cmdname) {
-  int allcmds=builtin_lexer_functions_end()-builtin_lexer_functions_begin();
-  int allopts=lexer_tab_int_values_end-lexer_tab_int_values_begin;
-  bool isall=category==CAT_CATEGORY_ALL;
-  bool isopt=category==CAT_CATEGORY_OPTIONS;
-  int nitems = isall? CAT_COMPLETE_COUNT:(isopt?allopts:CAT_COMPLETE_COUNT);
+  int allcmds=CAT_COMPLETE_COUNT;
+  int nitems = catalog_count_for_category(category);
+  if (nitems<=0)
+    return 0;
   MenuItem* menuitems = (MenuItem*)alloca(sizeof(MenuItem)*nitems);
-  int cur = 0,curmi = 0,i=0,menusel=-1,cmdl=cmdname?strlen(cmdname):0;
-  gen g;
-  while(cur<nitems) {
-    menuitems[curmi].type = MENUITEM_NORMAL;
-    menuitems[curmi].color = TEXT_COLOR_BLACK;    
-    if (isall) {
-      menuitems[curmi].isfolder = cur;
-      menuitems[curmi].text = completeCat[cur].name;
-      ++curmi;
+  int cur = 0,curmi = 0,menusel=-1;
+  if (category==CAT_CATEGORY_ALL){
+    while(cur<CAT_FOLDER_COUNT) {
+      menuitems[curmi].type = MENUITEM_NORMAL;
+      menuitems[curmi].color = TEXT_COLOR_BLUE;
+      menuitems[curmi].isfolder = cur+1;
+      menuitems[curmi].text = catalogFolders[cur].title;
+      curmi++;
+      cur++;
     }
-    else if (isopt) {
-      const char * text=isall?(builtin_lexer_functions_begin()+curmi)->first:(lexer_tab_int_values_begin+curmi)->keyword;
-      if (menusel<0 && cmdname && !strncmp(cmdname,text,cmdl))
-	menusel=curmi;
-      menuitems[curmi].text = text;
-      menuitems[curmi].isfolder = allcmds; // assumes allcmds>allopts
-      menuitems[curmi].token=isall?find_or_make_symbol(text,g,0,false,contextptr):((lexer_tab_int_values_begin+curmi)->subtype+(lexer_tab_int_values_begin+curmi)->return_value*256);
-      for (;i<CAT_COMPLETE_COUNT;++i){
-	const char * catname=completeCat[i].name;
-	int tmp=strcmp(catname,text);
-	if (tmp>=0){
-	  size_t st=strlen(text),j=tmp?0:st;
-	  for (;j<st;++j){
-	    if (catname[j]!=text[j])
-	      break;
-	  }
-	  if (j==st && (!isalphanum(catname[j]))){
-	    menuitems[curmi].isfolder = i;
-	    ++i;
-	  }
-	  break;
-	}
+  }
+  else {
+    while(cur<allcmds) {
+      if (completeCat[cur].category==category){
+        menuitems[curmi].type = MENUITEM_NORMAL;
+        menuitems[curmi].color = TEXT_COLOR_BLACK;
+        menuitems[curmi].isfolder = cur;
+        menuitems[curmi].text = completeCat[cur].name;
+        curmi++;
       }
-      // compare text with completeCat
-      ++curmi;
+      cur++;
     }
-    else {
-      int cat=completeCat[cur].category;
-      if ( (cat & 0xff) == category ||
-	   (cat & 0xff00) == (category<<8) ||
-	   (cat & 0xff0000) == (category <<16)
-	   ){
-	menuitems[curmi].isfolder = cur; // little hack: store index of the command in the full list in the isfolder property (unused by the menu system in this case)
-	menuitems[curmi].text = completeCat[cur].name;
-	curmi++;
-      }
-    }
-    cur++;
   }
   
   Menu menu;
@@ -277,121 +314,42 @@ int doCatalogMenu(char* insertText, char* title, int category,const char * cmdna
     menu.selection=menusel+1;
   menu.items=menuitems;
   menu.numitems=curmi;
-  if (isopt){ menu.selection=5; menu.scroll=4; }
   if (curmi>=100)
     SetSetupSetting( (unsigned int)0x14, 0x88);	
   DisplayStatusArea();
   menu.scrollout=1;
   menu.title = title;
-  menu.type = MENUTYPE_FKEYS;
+  menu.type = category==CAT_CATEGORY_ALL ? MENUTYPE_NORMAL : MENUTYPE_FKEYS;
   menu.height = 7;
   while(1) {
-    drawFkeyLabels(0x03FC, 0x03fc, 0, 0, 0, 0x03FD);
-    int fkeyw=LCD_WIDTH_PX/6;
-    drawRectangle(fkeyw,LCD_HEIGHT_PX-23, fkeyw, 23, TEXT_COLOR_BLACK);
-    Bdisp_MMPrint(fkeyw,LCD_HEIGHT_PX-STATUS_AREA_PX-19," EXAMPL1",0,0xffffffff,0,0,COLOR_WHITE,COLOR_BLACK,1,0);
-    drawRectangle(2*fkeyw,LCD_HEIGHT_PX-23, fkeyw, 23, TEXT_COLOR_BLACK);
-    Bdisp_MMPrint(2*fkeyw,LCD_HEIGHT_PX-STATUS_AREA_PX-19," EXAMPL2",0,0xffffffff,0,0,COLOR_WHITE,COLOR_BLACK,1,0);
-    Bdisp_PutDisp_DD();
-    drawCasioCasBorder();
+    if (category!=CAT_CATEGORY_ALL){
+      drawFkeyLabels(0x03FC, -1, -1, -1, -1, 0x03FD);
+      int fkeyw=LCD_WIDTH_PX/6;
+      drawRectangle(5*fkeyw,LCD_HEIGHT_PX-23, fkeyw, 23, TEXT_COLOR_BLACK);
+      Bdisp_MMPrint(5*fkeyw+7,LCD_HEIGHT_PX-STATUS_AREA_PX-19," HELP",0,0xffffffff,0,0,COLOR_WHITE,COLOR_BLACK,1,0);
+    }
     int sres = doMenu(&menu);
     if(sres == MENU_RETURN_EXIT){
       reset_alpha();
       return 0;
     }
     int index=menuitems[menu.selection-1].isfolder;
-    if(sres == KEY_CTRL_F6) {
-      char * example=index<allcmds?completeCat[index].example:0;
-      char * example2=index<allcmds?completeCat[index].example2:0;
-      textArea text;
-      text.title = (char*)"Help on command";
-      text.editable=false;
-      text.clipline=-1;
-      text.allowF1=true;
-      ustl::vector<textElement> & elem=text.elements;
-      elem = ustl::vector<textElement>();
-      add_help_line(elem,index<allcmds?completeCat[index].name:menuitems[menu.selection-1].text,COLOR_BLUE,0);
-      ustl::string autoexample;
-      if (index<allcmds) {
-	add_help_line(elem,"Use",COLOR_BLACK,4);
-	add_help_line(elem,completeCat[index].desc,COLOR_BLACK,0);
-	add_help_line(elem,"Args",COLOR_BLACK,4);
-	add_help_line(elem,"Required args come first; [optional] args are in brackets.",COLOR_BLACK,0);
-      }
-      else {
-	add_help_line(elem,"Sorry, no help available.",COLOR_BLACK,4);
-	int token=menuitems[menu.selection-1].token;
-	if (isopt){
-	  if (token==_INT_PLOT+T_NUMBER*256){
-	    autoexample="display="+elem[0].s;
-	    elem.back().s="Graphic option: "+autoexample;
-	  }
-	  if (token==_INT_COLOR+T_NUMBER*256){
-	    autoexample="display="+elem[0].s;
-	    elem.back().s="Color: "+autoexample;
-	  }
-	  if (token==_INT_SOLVER+T_NUMBER*256){
-	    autoexample=elem[0].s;
-	    elem.back().s="fsolve option: " + autoexample;
-	  }
-	  if (token==_INT_TYPE+T_TYPE_ID*256){
-	    autoexample=elem[0].s;
-	    elem.back().s="Object type: " + autoexample;
-	  }
-	}
-	if (isall){
-	  if (token==T_UNARY_OP || token==T_UNARY_OP_38)
-	    elem.back().s=elem[0].s+"(args)";
-	}
-      }
-      if (example){
-	add_help_line(elem,"F2 example",COLOR_BLACK,4);
-	add_help_line(elem,example_string(index,example),COLOR_BLACK,0);
-	if (example2){
-	  add_help_line(elem,"F3 example",COLOR_BLACK,4);
-	  add_help_line(elem,example_string(index,example2),COLOR_BLACK,0);
-	}
-      }
-      else {
-	if (autoexample.size())
-	  add_help_line(elem,autoexample,COLOR_BLACK,4);
-      }
-      add_help_line(elem,"Keys",COLOR_BLACK,4);
-      add_help_line(elem,"F1 command. F2/F3 examples. EXIT back.",COLOR_BLACK,0);
-      sres=doTextArea(&text);
-    }
-    if (sres == KEY_CTRL_F2 || sres==KEY_CTRL_F3) {
-      reset_alpha();
-      if (index<allcmds && completeCat[index].example){
-	ustl::string s(insert_string(index));
-	char * example=0;
-	if (sres==KEY_CTRL_F2)
-	  example=completeCat[index].example;
-	else
-	  example=completeCat[index].example2;
-	if (example){
-	  if (example[0]=='#')
-	    s=example+1;
-	  else {
-	    s += example;
-	    s += ")";
-	  }
-	}
-	strcpy(insertText, s.c_str());
-	return 1;
-      }
-      if (isopt){
-	int token=menuitems[menu.selection-1].token;
-	if (token==_INT_PLOT+T_NUMBER*256 || token==_INT_COLOR+T_NUMBER*256)
-	  strcpy(insertText,"display=");
-	else
-	  *insertText=0;
-	strcat(insertText,menuitems[menu.selection-1].text);
-	return 1;
-      }
-      sres=KEY_CTRL_F1;
+    if (category!=CAT_CATEGORY_ALL && sres==KEY_CTRL_F6){
+      if (index<allcmds)
+        show_command_help(index);
+      DisplayStatusArea();
+      continue;
     }
     if(sres == MENU_RETURN_SELECTION || sres == KEY_CTRL_F1) {
+      if (category==CAT_CATEGORY_ALL){
+        int folder=index-1;
+        if (folder>=0 && folder<CAT_FOLDER_COUNT){
+          if (doCatalogMenu(insertText,catalogFolders[folder].title,catalogFolders[folder].category))
+            return 1;
+          DisplayStatusArea();
+        }
+        continue;
+      }
       reset_alpha();
       strcpy(insertText,index<allcmds?insert_string(index).c_str():menuitems[menu.selection-1].text);
       return 1;

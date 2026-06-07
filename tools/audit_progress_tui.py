@@ -748,6 +748,20 @@ def bar(done: int, total: int, width: int, frame: int, enabled: bool) -> str:
     return color(body, code, enabled) + f" {frac * 100:5.1f}%"
 
 
+def docs_bar(done: int, total: int, width: int, frame: int, enabled: bool) -> str:
+    if total <= 0:
+        return color("-" * max(12, width), C.dim, enabled) + " n/a"
+    width = max(12, width)
+    frac = pct(done, total)
+    fill = min(width, int(frac * width))
+    cells = ["#"] * fill + ["-"] * max(0, width - fill)
+    if fill < width:
+        span = width - fill
+        cells[fill + (frame % span)] = ">"
+    code = C.green if done >= total else C.cyan
+    return f"{frac * 100:5.1f}% " + color("".join(cells), code, enabled)
+
+
 def split_bar(ok: int, bad: int, total: int, width: int, frame: int, enabled: bool) -> str:
     if total <= 0:
         return color("-" * width, C.dim, enabled) + " n/a"
@@ -844,10 +858,9 @@ def queue_health(st: Stat, frame: int, width: int, enabled: bool) -> list[str]:
 def doc_scan_rows(st: Stat, frame: int, width: int, enabled: bool) -> list[str]:
     if st.docs_total <= 0:
         return [f"docs {st.docs_label}"]
-    percent = pct(st.docs_done, st.docs_total) * 100
     return [
-        f"docs {st.docs_done:,}/{st.docs_total:,} done  {percent:5.1f}%  pending {st.docs_pending:,}",
-        f"scan {bar(st.docs_done, st.docs_total, max(18, width), frame, enabled)}",
+        f"docs {st.docs_done:,}/{st.docs_total:,} done  pending {st.docs_pending:,}",
+        f"scan {docs_bar(st.docs_done, st.docs_total, max(18, width), frame, enabled)}",
         f"root {st.docs_label}",
     ]
 
@@ -1195,6 +1208,7 @@ def render_compact(st: Stat, frame: int, width: int, height: int, enabled: bool)
         kv("artifact", f"age {st.g3a_age}  sha256 {st.g3a_hash}  headroom {headroom:,} B", width, enabled),
         kv("queue", f"{st.queue}  report {st.report_age}  rate {st.queue_rate}  eta {st.queue_eta}", width, enabled),
         kv("accuracy", split_bar(st.queue_ok, st.queue_bad, st.queue_total, bar_w, frame, enabled), width, enabled),
+        kv("docs", f"{st.docs_done:,}/{st.docs_total:,} pending {st.docs_pending:,}  {docs_bar(st.docs_done, st.docs_total, bar_w, frame, enabled)}", width, enabled),
     ]
     for label, done, total in st.ratios[:5]:
         lines.append(trim(f"{label:<14} {bar(done, total, bar_w, frame, enabled)} {done}/{total}", width))

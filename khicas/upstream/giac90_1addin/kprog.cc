@@ -604,8 +604,8 @@ namespace giac {
       }
     }
     if (warn_equal_in_prog && !res1.empty()){ // syntax = for := is now accepted
-      res += gettext("// Warning, assignation is :=, check the lines below:\n");
-      res += "// (Run warn_equal_in_prog(0) to disable this warning)\n";
+      res += gettext("// Warning: use :=\n");
+      res += "// warn_equal_in_prog(0) disables this\n";
       const_iterateur it=res1.begin(),itend=res1.end();
       for (;it!=itend;++it){
 	res += '\n'+it->print(contextptr);
@@ -619,7 +619,7 @@ namespace giac {
 	// pi already checked if (*it!=cst_pi)
 	res += it->print(contextptr)+",";
       }
-      res +=gettext(" declared as global variable(s). If symbolic variables are required, declare them as local and run purge\n");
+      res +=gettext(" global; use local or purge for symbolic variables\n");
     }
     if (res.empty())
       return first_error_line(contextptr)?gettext("// Error(s)\n"):gettext("// Success\n");
@@ -1052,7 +1052,7 @@ namespace giac {
     if (v1.empty())
       newb=b;
     else {
-      *logptr(contextptr) << gettext("Invalid or typed variable(s) name(s) were replaced by creating special identifiers, check ") << v1 << endl;
+      *logptr(contextptr) << gettext("Warn: renamed vars ") << v1 << endl;
       newb=quotesubst(b,v1,v2,contextptr);
     }
   }
@@ -1086,7 +1086,7 @@ namespace giac {
       *logptr(contextptr) << gettext("// Parsing ") << d << endl;
       lastprog_name(d.print(contextptr),contextptr);
       if (c.is_symb_of_sommet(at_derive))
-	*logptr(contextptr) << gettext("Warning, defining a derivative function should be done with function_diff or unapply: ") << c << endl;
+	*logptr(contextptr) << gettext("Warn: define derivative with function_diff/unapply: ") << c << endl;
        if (c.type==_SYMB && c._SYMBptr->sommet!=at_local && c._SYMBptr->sommet!=at_bloc && c._SYMBptr->sommet!=at_when && c._SYMBptr->sommet!=at_for && c._SYMBptr->sommet!=at_ifte){
 	 vecteur lofc=lop(c,at_of);
 	 vecteur lofc_no_d;
@@ -1096,7 +1096,7 @@ namespace giac {
 	     lofc_no_d.push_back(lofc[i]);
 	 }
 	 if (!lofc_no_d.empty()){
-	   *logptr(contextptr) << gettext("Warning: algebraic function defined in term of others functions may lead to evaluation errors") << endl;
+	   *logptr(contextptr) << gettext("Warn: algebraic function") << endl;
 	   CERR << c.print(contextptr) << endl;
 	   *logptr(contextptr) << gettext("Perhaps you meant ") << d.print(contextptr) << ":=unapply(" << c.print(contextptr) << ",";
 	   if (a.type==_VECT && a.subtype==_SEQ__VECT && a._VECTptr->size()==1)
@@ -1212,7 +1212,7 @@ namespace giac {
 	gen inters=_intersect(makesequence(vars,newa),contextptr);
 	if (inters.type==_VECT && !inters._VECTptr->empty()){
 	  inters.subtype=_SEQ__VECT;
-	  *logptr(contextptr) << gettext("Warning: Local variables shadow function arguments ") << inters << endl;
+	  *logptr(contextptr) << gettext("Warn: local variables shadow arguments ") << inters << endl;
 	}
       }
     }

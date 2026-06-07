@@ -804,7 +804,7 @@ namespace giac {
 	// cerr << "xroot" << num << endl;
 	gen numlv=r2sym(num,lv,contextptr);
 	if (!lvar(evalf(numlv,1,contextptr)).empty())
-	  *logptr(contextptr) << gettext("Warning, checking for positivity of a root depending of parameters might return wrong sign: ")<< numlv << endl;
+	  *logptr(contextptr) << gettext("Warn: root sign ")<< numlv << endl;
 	if (is_positive(numlv,contextptr))
 	  break;
       }
@@ -2845,7 +2845,7 @@ namespace giac {
 #endif
 	if (calc_mode(contextptr)==1)
 	  return undef;
-	*logptr(contextptr) << gettext("Unable to build a single algebraic extension for simplifying.\nTrying rational simplification only. This might return a wrong answer if simplifying 0/0!") << endl;
+	*logptr(contextptr) << gettext("Algebraic extension merge failed; using rational simplify") << endl;
 	l=lvar(ee);
 	tmp=e2r(ee,l,contextptr);	
 	gen tmpf=evalf_double(ee-tmp,1,contextptr);

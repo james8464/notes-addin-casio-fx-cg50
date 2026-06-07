@@ -1,33 +1,5 @@
-solve(equation,var)
-
-Args:
-  equation/expression, var
-
-Required:
-  equation or expression, variable
-
-Optional:
-  None.
-
-Does:
-  Solves exact equations. Simple dy/dx separable differential equations are routed to A-level working before falling back to KhiCAS.
-
-Examples:
-  solve(x^2-5*x+6=0,x); solve((dy)/(dx)=y,y)
-
-F2:
-  solve(x^2-5*x+6=0,x)
-
-F3:
-  solve((dy)/(dx)=y,y)
-
-Keys:
-  F1 inserts the command.
-  F2 inserts the first example.
-  F3 inserts the second example when available.
-
-Working:
-  Collects terms, factorises, uses quadratic/rational/log/trig routes, and separates variables for supported first-order differential equations.
-
-Tip:
-  Use brackets around compound numerators, denominators, powers, and substitutions for readable exam-style output.
+solve
+Args: see catalog signature for solve.
+Required: A-level Pure scoped use only.
+Does: returns exact KhiCAS output, or verified working when a verified route exists.
+Examples: solve(10^(3*k)=2,k)

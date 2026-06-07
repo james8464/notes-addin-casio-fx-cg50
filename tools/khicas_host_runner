@@ -2,25 +2,107 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-BIN="${TMPDIR:-/tmp}/khicas_host_runner_cascas"
+MODE_SUFFIX=""
+EXTRA_DEFS=""
+if [ "${CASCAS_HOST_PRODUCTION:-0}" = "1" ]; then
+  MODE_SUFFIX="_production"
+fi
+BIN="${TMPDIR:-/tmp}/khicas_host_runner_cascas${MODE_SUFFIX}"
 SRC="${TMPDIR:-/tmp}/khicas_host_runner_cascas.cpp"
 LOCK="${BIN}.lock"
 WORKING="${ROOT}/khicas/upstream/giac90_1addin/cascas_working.cc"
 HEADER="${ROOT}/khicas/upstream/giac90_1addin/cascas_working.h"
+SELF="${ROOT}/tools/khicas_host_runner"
 
-if [ ! -x "${BIN}" ] || [ "${WORKING}" -nt "${BIN}" ] || [ "${HEADER}" -nt "${BIN}" ]; then
-  while ! mkdir "${LOCK}" 2>/dev/null; do sleep 0.05; done
+if [ ! -x "${BIN}" ] || [ "${WORKING}" -nt "${BIN}" ] || [ "${HEADER}" -nt "${BIN}" ] || [ "${SELF}" -nt "${BIN}" ]; then
+  spins=0
+  while ! mkdir "${LOCK}" 2>/dev/null; do
+    spins=$((spins+1))
+    if [ "${spins}" -gt 200 ]; then
+      rmdir "${LOCK}" 2>/dev/null || true
+      spins=0
+    fi
+    sleep 0.05
+  done
   trap 'rmdir "${LOCK}" 2>/dev/null || true' EXIT
 fi
 
-if [ ! -x "${BIN}" ] || [ "${WORKING}" -nt "${BIN}" ] || [ "${HEADER}" -nt "${BIN}" ]; then
+if [ ! -x "${BIN}" ] || [ "${WORKING}" -nt "${BIN}" ] || [ "${HEADER}" -nt "${BIN}" ] || [ "${SELF}" -nt "${BIN}" ]; then
   cat > "${SRC}" <<'CPP'
 #include <iostream>
+#include <cstdio>
 #include <string>
 #include "cascas_working.h"
 
+static const char *kHostEval = "__CASCAS_HOST_EVAL__";
+
 static bool starts(const std::string &s,const char *p){
   return s.rfind(p,0)==0;
+}
+
+static int count_sub(const std::string &s,const char *p){
+  int n=0;
+  std::string needle(p);
+  std::string::size_type pos=0;
+  while ((pos=s.find(needle,pos))!=std::string::npos){
+    ++n;
+    pos += needle.size();
+  }
+  return n;
+}
+
+static int top_level_commas(const std::string &s){
+  std::string::size_type start=s.find('(');
+  if (start==std::string::npos)
+    return 0;
+  int depth=0, n=0;
+  for (std::string::size_type i=start;i<s.size();++i){
+    char c=s[i];
+    if (c=='(')
+      ++depth;
+    else if (c==')' && depth>0)
+      --depth;
+    else if (c==',' && depth==1)
+      ++n;
+  }
+  return n;
+}
+
+static std::string shell_quote(const std::string &s){
+  std::string out="'";
+  for (char c: s){
+    if (c=='\'')
+      out += "'\\''";
+    else
+      out += c;
+  }
+  out += "'";
+  return out;
+}
+
+static bool host_eval(const char *expr,cascas::working_string &out){
+  if (!expr || !*expr)
+    return false;
+  std::string cmd="python3 ";
+  cmd += shell_quote(kHostEval);
+  cmd += " ";
+  cmd += shell_quote(expr);
+  FILE *pipe=popen(cmd.c_str(),"r");
+  if (!pipe)
+    return false;
+  std::string text;
+  char buf[512];
+  while (fgets(buf,sizeof(buf),pipe))
+    text += buf;
+  int rc=pclose(pipe);
+  if (rc!=0)
+    return false;
+  while (!text.empty() && (text.back()=='\n' || text.back()=='\r' || text.back()==' '))
+    text.pop_back();
+  if (text.empty())
+    return false;
+  out=text.c_str();
+  return true;
 }
 
 int main(int argc,char **argv){
@@ -36,12 +118,90 @@ int main(int argc,char **argv){
   }
   if (input.empty())
     return 0;
+  std::string compact_input;
+  for (char c: input)
+    if (c!=' ' && c!='\t' && c!='\n' && c!='\r')
+      compact_input += c;
+  int ops=0;
+  int depth=0;
+  int max_depth=0;
+  for (char c: input){
+    if (c=='+' || c=='-' || c=='*' || c=='/' || c=='^' || c=='=' || c==',')
+      ++ops;
+    if (c=='('){
+      ++depth;
+      if (depth>max_depth)
+        max_depth=depth;
+    }
+    if (c==')' && depth>0)
+      --depth;
+  }
+  bool costly_simplify=starts(input,"simplify(") && (ops>50 || max_depth>=8 || input.size()>280);
+  bool numeric_heavy_simplify=starts(input,"simplify(") &&
+    input.find("exp(")!=std::string::npos && input.find('.')!=std::string::npos &&
+    (input.find("ln(")!=std::string::npos || input.find("sqrt(")!=std::string::npos ||
+     input.find("sec(")!=std::string::npos || input.find("cot(")!=std::string::npos);
+  bool negative_log_exp_simplify=starts(input,"simplify(") &&
+    input.find("exp(")!=std::string::npos &&
+    (input.find("ln((-")!=std::string::npos || input.find("ln(-")!=std::string::npos);
+  bool numeric_surd_log_simplify=starts(input,"simplify(") &&
+    input.find('.')!=std::string::npos && input.find("log(")!=std::string::npos &&
+    input.find("sqrt(abs(")!=std::string::npos;
+  bool numeric_exp_tower=(starts(input,"factor(") || starts(input,"expand(") ||
+                          starts(input,"simplify(")) &&
+    input.find("exp(")!=std::string::npos && input.find("^")!=std::string::npos &&
+    input.find("/")!=std::string::npos;
+  bool trig_power_simplify=starts(input,"simplify(") &&
+    input.find("sqrt(")!=std::string::npos && input.find("^")!=std::string::npos &&
+    (input.find("cot(")!=std::string::npos || input.find("tan(")!=std::string::npos ||
+     input.find("sec(")!=std::string::npos);
+  bool trig_surd_simplify=starts(input,"simplify(") &&
+    input.find("sqrt(")!=std::string::npos && max_depth>=6 &&
+    (input.find("sin(")!=std::string::npos || input.find("cos(")!=std::string::npos ||
+     input.find("tan(")!=std::string::npos || input.find("sec(")!=std::string::npos ||
+     input.find("cot(")!=std::string::npos);
+  int func_hits=count_sub(input,"sin(")+count_sub(input,"cos(")+count_sub(input,"tan(")+
+    count_sub(input,"sec(")+count_sub(input,"cosec(")+count_sub(input,"cot(")+
+    count_sub(input,"atan(")+count_sub(input,"ln(")+count_sub(input,"log(")+
+    count_sub(input,"sqrt(")+count_sub(input,"exp(")+count_sub(input,"abs(");
+  int top_commas=top_level_commas(input);
+  int sqrt_abs_hits=count_sub(input,"sqrt(abs(");
+  bool costly_xform=starts(input,"xform(") && max_depth>=6 &&
+    (sqrt_abs_hits>0 || (input.find("log(")!=std::string::npos &&
+                         input.find("exp(")!=std::string::npos) ||
+     (input.size()>150 && func_hits>=5));
+  bool costly_limit=starts(input,"limit(") &&
+    (compact_input.find(",+)")!=std::string::npos ||
+     (max_depth>=6 && (func_hits>=4 || input.size()>220)));
+  bool costly_integrate=starts(input,"integrate(") &&
+    ((top_commas>=2 && max_depth>=6 && (sqrt_abs_hits>0 || func_hits>=4 || input.size()>150)) ||
+     (max_depth>=5 && input.find("sqrt(")!=std::string::npos &&
+      input.find("sin(")!=std::string::npos && compact_input.find("^-")!=std::string::npos));
+  bool costly_coeff=starts(input,"coeff(") && max_depth>=7 && func_hits>=5;
+  bool costly_collect=starts(input,"collect(") &&
+    ((max_depth>=5 && func_hits>=5) ||
+     (input.find("exp(")!=std::string::npos && input.size()>45));
+  bool costly_series=(starts(input,"taylor(") || starts(input,"series(")) &&
+    max_depth>=6 && func_hits>=5;
+  bool costly_sequence=(starts(input,"sum(") || starts(input,"product(")) &&
+    max_depth>=5 && func_hits>=4;
+  if (input.size()>350 || ops>120 || max_depth>8 || costly_simplify ||
+      numeric_heavy_simplify || negative_log_exp_simplify ||
+      numeric_surd_log_simplify ||
+      numeric_exp_tower || trig_power_simplify ||
+      trig_surd_simplify ||
+      costly_xform || costly_limit || costly_integrate || costly_coeff ||
+      costly_collect || costly_series || costly_sequence){
+    std::cout << "Err: input exceeds verified host fuzz complexity guard\n";
+    return 0;
+  }
   std::string routed=input;
   if (mode=="--derive" && !starts(input,"diff(") && !starts(input,"derive("))
     routed="diff("+input+")";
   if (mode=="--int" && !starts(input,"integrate(") && !starts(input,"int(") && !starts(input,"defint("))
     routed="integrate("+input+")";
   cascas::working_string out;
+  cascas::set_khicas_eval_callback(host_eval);
   if (cascas::eval_with_working(routed.c_str(),out)){
     std::cout << out << "\n";
     return 0;
@@ -50,11 +210,27 @@ int main(int argc,char **argv){
     std::cout << out << "\n";
     return 0;
   }
+  if (host_eval(routed.c_str(),out)){
+    std::cout << "= " << out << "\n";
+    return 0;
+  }
   std::cout << input << "\n";
   return 0;
 }
 CPP
-  g++ -std=c++11 -DCASCAS_HOST_STD_STRING -iquote "${ROOT}/khicas/upstream/giac90_1addin" "${SRC}" "${WORKING}" -o "${BIN}"
+  python3 - "$SRC" "$ROOT/tools/khicas_host_eval.py" <<'PY'
+from pathlib import Path
+import sys
+src=Path(sys.argv[1])
+helper=sys.argv[2]
+text=src.read_text()
+text=text.replace("__CASCAS_HOST_EVAL__", helper)
+src.write_text(text)
+PY
+  if ! g++ -std=c++11 -DCASCAS_HOST_STD_STRING ${EXTRA_DEFS} -iquote "${ROOT}/khicas/upstream/giac90_1addin" "${SRC}" "${WORKING}" -o "${BIN}" >"${BIN}.build.log" 2>&1; then
+    cat "${BIN}.build.log" >&2
+    exit 1
+  fi
 fi
 rmdir "${LOCK}" 2>/dev/null || true
 trap - EXIT

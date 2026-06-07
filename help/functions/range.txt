@@ -1,33 +1,5 @@
-range(expr,[var,a,b])
-
-Args:
-  expr, [var,a,b]
-
-Required:
-  expr
-
-Optional:
-  variable and interval endpoints
-
-Does:
-  Returns the real range as inequalities where possible, including algebraic forms instead of only sampled values.
-
-Examples:
-  range(x^2); range(1/x)
-
-F2:
-  range(x^2)
-
-F3:
-  range(1/x)
-
-Keys:
-  F1 inserts the command.
-  F2 inserts the first example.
-  F3 inserts the second example when available.
-
-Working:
-  Finds restrictions, endpoints, turning points, asymptotes, and inequality form where routed.
-
-Tip:
-  Use brackets around compound numerators, denominators, powers, and substitutions for readable exam-style output.
+range
+Args: see catalog signature for range.
+Required: A-level Pure scoped use only.
+Does: returns exact KhiCAS output, or verified working when a verified route exists.
+Examples: range(x^2+4*x+7,x)

@@ -1,30 +1,5 @@
-asin(x)
-
-Args:
-  x
-
-Required:
-  x
-
-Optional:
-  None.
-
-Does:
-  Inverse sine. Required: x in [-1,1]. Returns an angle in the current angle mode.
-
-Examples:
-  asin(1/2)
-
-F2:
-  asin(1/2)
-
-Keys:
-  F1 inserts the command.
-  F2 inserts the first example.
-  F3 inserts the second example when available.
-
-Working:
-  Shows exam-style lines when this command has a routed A-level working path; otherwise returns the exact KhiCAS result for the expression.
-
-Tip:
-  Use brackets around compound numerators, denominators, powers, and substitutions for readable exam-style output.
+asin
+Args: see catalog signature for asin.
+Required: A-level Pure scoped use only.
+Does: returns exact KhiCAS output, or verified working when a verified route exists.
+Examples: asin(1)

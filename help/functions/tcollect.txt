@@ -1,30 +1,5 @@
-tcollect(expr)
-
-Args:
-  expr
-
-Required:
-  expr
-
-Optional:
-  None.
-
-Does:
-  Collect trigonometric terms. Required: expr.
-
-Examples:
-  tcollect(sin(x)+cos(x))
-
-F2:
-  tcollect(sin(x)+cos(x))
-
-Keys:
-  F1 inserts the command.
-  F2 inserts the first example.
-  F3 inserts the second example when available.
-
-Working:
-  Shows exam-style lines when this command has a routed A-level working path; otherwise returns the exact KhiCAS result for the expression.
-
-Tip:
-  Use brackets around compound numerators, denominators, powers, and substitutions for readable exam-style output.
+tcollect
+Args: see catalog signature for tcollect.
+Required: A-level Pure scoped use only.
+Does: returns exact KhiCAS output, or verified working when a verified route exists.
+Examples: tcollect(sin(x)^2+cos(x)^2)

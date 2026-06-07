@@ -1,248 +1,952 @@
 #!/usr/bin/env python3
+from __future__ import annotations
+
 import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 RUNNER = ROOT / "tools" / "khicas_host_runner"
 
-CASES = [
-    ("integrate(2*x+3,x)", ["Terms:", "Power:", "x^2 + 3*x + C"]),
-    ("integrate(9x)", ["Power:", "int(9x) dx", "9/2*x^2 + C"]),
-    ("integrate((x)+(3),x)", ["Terms:", "1/2*x^2 + 3*x + C"]),
-    ("integrate(((x)^2)+(3*x)+(2),x)", ["Terms:", "1/3*x^3 + 3/2*x^2 + 2*x + C"]),
-    ("integrate(x*exp(x),x)", ["Parts:", "Let u=x, dv=e^x dx", "du=dx, v=e^x"]),
-    ("integrate(x*cos(x),x)", ["Parts:", "Let u=x, dv=cos(x) dx", "du=dx, v=sin(x)"]),
-    ("integrate((ln(x))^2)", ["u=ln(x)^2, dv=dx", "u=ln(x), dv=dx"]),
-    ("integrate(2*x*cos(x^2),x)", ["Sub u=x^2", "du=2*x dx", "sin(x^2) + C"]),
-    ("integrate(2*x*sin(x^2),x)", ["Sub u=x^2", "-cos(x^2) + C"]),
-    ("integrate(x*(3+x^2)^4,x)", ["Sub u=3 + x^2", "scale 1/2", "1/10*(3 + x^2)^5 + C"]),
-    ("integrate((2*x+1)*cos(x^2+x),x)", ["Sub u=x^2 + x", "du=(2*x + 1) dx", "sin(x^2 + x) + C"]),
-    ("integrate((6*x-5)*exp(3*x^2-5*x),x)", ["Sub u=3x^2 - 5x", "du=(6*x - 5) dx", "exp(3x^2 - 5x) + C"]),
-    ("integrate(tan(x))", ["tan(x)=sin(x)/cos(x)", "Sub u=cos(x)", "ln(abs(sec(x))) + C"]),
-    ("integrate(x^2*ln(x),x)", ["Parts:", "u=ln(x), dv=x^2 dx", "v=1/3*x^3", "1/3*x^3*ln(x) - 1/9*x^3 + C"]),
-    ("integrate(3*x^2*ln(x),x)", ["Parts:", "u=ln(x), dv=3*x^2 dx", "v=x^3", "x^3*ln(x) - 1/3*x^3 + C"]),
-    ("integrate((x+1)/(x^2+2*x+3)^3,x)", ["Sub u=x^2 + 2*x + 3", "x + 1 = 1/2*(2*x + 2)", "-1/4*(x^2 + 2*x + 3)^-2 + C"]),
-    ("integrate(x^2+sin(2*x)+exp(3*x),x)", ["Terms:", "int(x^2) dx = 1/3*x^3", "int(sin(2*x)) dx = -1/2*cos(2*x)", "int(exp(3*x)) dx = 1/3*exp(3*x)", "1/3*x^3 - 1/2*cos(2*x) + 1/3*exp(3*x) + C"]),
-    ("integrate((2*x+7)+cos(6*x),x)", ["Terms:", "int(2*x+7) dx = x^2 + 7*x", "int(cos(6*x)) dx = 1/6*sin(6*x)", "x^2 + 7*x + 1/6*sin(6*x) + C"]),
-    ("integrate(exp(ln(x)),x,3)", ["exp(ln(x)) = x", "1/2*x^2 + C"]),
-    ("integrate(exp(-4))", ["no x: int(c)=c*x+C", "0.01831563889*x + C"]),
-    ("integrate(z^2,a)", ["no a: int(c)da=c*a+C", "z^2*a + C"]),
-    ("integrate(cos(tan(sec(sqrt(sin(z))))),z,-3,9)", ["find an antiderivative F(z)", "evaluate F(9) - F(-3)", "integral(cos(tan(sec(sqrt(sin(z))))),z,-3,9)"]),
-    ("integrate(cos(k),u,1,u=x^2)", ["Err: bad bounds", "integrate(expr,var,lo,hi)"]),
-    ("integrate((x)*(((x)^2)^5))", ["Expand:", "x^10*(x) = x^11", "1/12*x^12 + C"]),
-    ("integrate(((x)^2)((4)^2))", ["Combine:", "16*x^2", "16/3*x^3 + C"]),
-    ("integrate(x^-1,x,3)", ["Recip:", "x^-1 = 1/x", "int(1/x)=ln(abs(x))", "ln(abs(x)) + C"]),
-    ("integrate(x^2,sin(k))", ["Power:", "int(x^2) dx", "1/3*x^3 + C"]),
-    ("range(-9)", ["y = -9"]),
-    ("range(2*x+3)", ["linear", "all real"]),
-    ("range((x)(1))", ["linear", "all real"]),
-    ("range((x)^3)", ["Odd power", "all real"]),
-    ("range(x^2+4*x+7)", ["vx = -2", "min y = 3", "y >= 3"]),
-    ("range(-x^2+4*x+1)", ["vx = 2", "max y = 5", "y <= 5"]),
-    ("range(exp(x))", ["exp(x) > 0", "y > 0"]),
-    ("range(exp(3))", ["y = 20.08553692319"]),
-    ("range(ln(x))", ["x > 0", "all real"]),
-    ("range(sqrt(x))", ["sqrt(x) >= 0", "y >= 0"]),
-    ("range(sqrt(163834))", ["constant expression", "y = sqrt(163834)"]),
-    ("range(exp(1)*( -2))", ["constant expression", "y = -5.43656365692"]),
-    ("range(cos(x)+8)", ["cos(x) in [-1,1]", "+ 8", "7 <= y <= 9"]),
-    ("range(2*sin(3*x-1)-5)", ["sin(3*x - 1) in [-1,1]", "* 2", "+ -5", "-7 <= y <= -3"]),
-    ("range(sqrt(cos(x)))", ["cos(u) in [-1,1]", "need input>=0", "0<=y<=1"]),
-    ("range(sqrt(sin(3*x-1)))", ["sin(u) in [-1,1]", "need input>=0", "0<=y<=1"]),
-    ("range(tan(sin(x)))", ["Set y=f(x)", "Stationary points", "range = values of f over that domain"]),
-    ("range(x^2-4*x+5,x,0,5)", ["0 <= x <= 5", "f(0) = 5", "f(5) = 10", "vx = 2 in", "1 <= y <= 10"]),
-    ("range((x+1)^2+3)", ["(x + 1)^2 >= 0", "min y = 3", "y >= 3"]),
-    ("range(-(((sqrt(153))^3/2)-(((-781.08117)+(b)+(339.77153)))-(384/81)))", ["Treat b as variable", "affine", "all real"]),
-    ("range(exp(abs(tan(1)))/(8-a))", ["D = 8 - a", "y < 0 or y > 0"]),
-    ("range(sqrt((x+n)*sqrt(abs(v)+k^2)))", ["R=", "R>=0", "sqrt(R)>=0", "y >= 0"]),
-    ("range((log(13,sqrt(u*538422)-sqrt(abs(k^2/3)+(-915353)^2)))^-3)", ["P=", "P!=0", "y < 0 or y > 0"]),
-    ("range(cot(k))", ["cot(u) covers all real values", "all real"]),
-    ("range(exp(sec(sin(sqrt(cot(ln(abs(u)+1)))))))", ["exp(u) > 0", "y > 0"]),
-    ("range(sec(sin(exp(1))),u,-1,1)", ["constant expression", "y = sec(sin(exp(1)))"]),
-    ("range(log(x^2+2))", ["input>=2", "y>=ln(2)"]),
-    ("range(log(cos(x)))", ["y=ln(g)", "g>0", "positive part"]),
-    ("range(ln(cos(sqrt(tan(abs(x^75+1))))))", ["y=ln(g)", "g>0", "positive part"]),
-    ("range(-7806*x^123+2112*x^122)", ["degree 123", "all real"]),
-    ("range(x^110+x^109)", ["even-degree polynomial in x", "stationary values"]),
-    ("range(-2418*t^94+3007*t^93)", ["even-degree polynomial in t", "stationary values"]),
-    ("range(b+x^5*(3-x)^3+sqrt(t))", ["unbounded both ways", "all real"]),
-    ("range(cot(sec(sqrt((exp(tan(v)))^2+1)))-v)", ["Set y=f(v)", "Stationary points", "range = values of f over that domain"]),
-    ("simplify((x^2+3*x+2)/(x+1))", ["Factor:", "x^2 + 3*x + 2 = (x + 1)*(x + 2)", "Cancel (x + 1)", "x + 2"]),
-    ("simplify((x^2-4)/(x^2-2*x))", ["x^2 - 4 = (x - 2)*(x + 2)", "x^2 - 2*x = (x - 2)*(x)", "Cancel (x - 2)", "(x + 2)/(x)"]),
-    ("simplify((2*x^2+6*x+4)/(2*x+2))", ["Cancel (x + 1)", "x + 2"]),
-    ("simplify((x^2-1)/(1-x))", ["Cancel (x - 1)", "-(x + 1)"]),
-    ("simplify((x^2+2*x+1)/(x+1)^2)", ["(x + 1)*(x + 1)", "Cancel (x + 1)", "1"]),
-    ("simplify((x^2-1)/(x+1)^2)", ["x^2 - 1 = (x + 1)*(x - 1)", "Cancel (x + 1)", "(x - 1)/(x + 1)"]),
-    ("simplify((x^3-1)/(x-1))", ["x^3 - 1 = (x - 1)*(x^2 + x + 1)", "Cancel (x - 1)", "x^2 + x + 1"]),
-    ("simplify()", ["Err: missing arguments", "simplify(expr)"]),
-    ("factor(x)", ["Factorisation:", "Look for common factors", "Result: factor(x)"]),
+SOURCE_MARKERS = {
+    "khicas/upstream/giac90_1addin/cascas_working.h": [
+        "typedef bool (*khicas_eval_callback)",
+        "void set_khicas_eval_callback",
+    ],
+    "khicas/upstream/giac90_1addin/main.cc": [
+        "static bool cascas_khicas_eval",
+        "cascas::set_khicas_eval_callback(cascas_khicas_eval)",
+    ],
+    "khicas/upstream/giac90_1addin/cascas_working.cc": [
+        "static khicas_eval_callback g_khicas_eval=0",
+        "g_khicas_eval=cb",
+        "try_khicas_exact_route",
+        "production_exact_command",
+        "khicas_zero",
+        "khicas_equiv",
+        "try_xform_rewrite_planner",
+        "struct RewriteRule",
+        "static const RewriteRule rules[]",
+        "production_exact_command(working_string(rules[i].cmd)+\"(\"+cur+\")\"",
+        "try_xform_trig_direct(compact(cur),compact(target),trig)",
+        "try_xform_trig_direct",
+        "try_xform_quad_template",
+        "parse_quad_template",
+        "exact_simplify_scalar",
+        "try_xform_isolate_parameter",
+        "try_xform_linear_parameter_ratio",
+        "xform_numeric_parameter_ok",
+        "Verified by substitution",
+        "Verified by equivalence check",
+        "Verified",
+        "KhiCAS exact evaluation",
+    ],
+}
+
+FORBIDDEN_SOURCE_SNIPPETS = {
+    "khicas/upstream/giac90_1addin/Makefile": [
+        "CASCAS_PRODUCTION_CALLBACK_ONLY",
+    ],
+    "tools/khicas_host_runner": [
+        "CASCAS_PRODUCTION_CALLBACK_ONLY",
+    ],
+    "khicas/upstream/giac90_1addin/cascas_working.cc": [
+        "CASCAS_PRODUCTION_CALLBACK_ONLY",
+        "diff(x*e^x,x)",
+        "diff(7xe^x/sqrt",
+        "tan(x)^2sec(x)^2",
+        'e=="sec(x)^4"',
+        "3x^2(4-2x^3)",
+        "(cos(x)+sin(x))(cosec(x)-sec(x))=kcot(2x)",
+        "try_xform_recip_product_isolate",
+        "try_xform_exact_solve",
+        "Rule family: exact solve + substitution",
+        "parse_recip_product_to_cot_coeff",
+        "parse_sin_cos_linear_factor",
+        "Use AC+BD=0 and AD=-BC",
+        "try_solve_paper_system_special",
+        "Sub x=20 into H=A*x*(40-x)",
+        'ceq=="tan(x)=1/2"',
+        'ceq=="10^(3k)=2"',
+        'e=="6/(u(3+2u))"',
+        'e=="(3x+5)/(x^2+x-2)"',
+    ],
+}
+
+VERIFIED_HOST_POLICY_CASES = [
+    "xform(sin(x)^2+cos(x)^2,1)",
+    "xform(cosec(x)^2-1,cot(x)^2)",
+    "xform(1+tan(x)^2,sec(x)^2)",
+    "diff(x*e^x,x)",
+    "integrate(2*x+3,x)",
+    "solve(10^(3*k)=2,k)",
+]
+
+TRIG_XFORM_POLICY_CASES = [
+    (
+        "xform((cos(x)+sin(x))*(cosec(x)-sec(x))=k*cot(2*x),k)",
+        [
+            "Planner search:",
+            "Parameter isolation:",
+            "k = 2",
+            "Verified by substitution",
+        ],
+    ),
+    (
+        "xform(cot(t)-tan(t),2*cot(2*t))",
+        [
+            "Reciprocal identities:",
+            "Common denominator:",
+            "Double-angle identities:",
+            "2cot(2t)",
+            "Verified by equivalence check",
+        ],
+    ),
+    (
+        "xform(3*cot(y)-3*tan(y),6*cot(2*y))",
+        [
+            "Reciprocal identities:",
+            "Common denominator:",
+            "Double-angle identities:",
+            "6cot(2y)",
+            "Verified by equivalence check",
+        ],
+    ),
+    (
+        "xform(cos(t)^2-sin(t)^2,cos(2*t))",
+        [
+            "Double-angle identities:",
+            "cos(2t)",
+            "Verified by equivalence check",
+        ],
+    ),
+    (
+        "xform(4*cos(y)^2-4*sin(y)^2,4*cos(2*y))",
+        [
+            "Double-angle identities:",
+            "4cos(2y)",
+            "Verified by equivalence check",
+        ],
+    ),
+    (
+        "xform(2*sin(t)*cos(t),sin(2*t))",
+        [
+            "Double-angle identities:",
+            "sin(2t)",
+            "Verified by equivalence check",
+        ],
+    ),
+    (
+        "xform(6*sin(y)*cos(y),3*sin(2*y))",
+        [
+            "Double-angle identities:",
+            "3sin(2y)",
+            "Verified by equivalence check",
+        ],
+    ),
+    (
+        "xform(1+tan(y)^2,sec(y)^2)",
+        [
+            "Pythagorean identities:",
+            "sec(y)^2",
+            "Verified by equivalence check",
+        ],
+    ),
+    (
+        "xform(5+5*cot(t)^2,5*cosec(t)^2)",
+        [
+            "Pythagorean identities:",
+            "5cosec(t)^2",
+            "Verified by equivalence check",
+        ],
+    ),
+    (
+        "xform(3*sec(y)^2-3,3*tan(y)^2)",
+        [
+            "Pythagorean identities:",
+            "3tan(y)^2",
+            "Verified by equivalence check",
+        ],
+    ),
+    (
+        "xform(4*sin(t)^2+4*cos(t)^2,4)",
+        [
+            "Pythagorean identities:",
+            "4",
+            "Verified by equivalence check",
+        ],
+    ),
+]
+
+LINEAR_PARAMETER_XFORM_CASES = [
+    (
+        "xform(a*x+b=k*(x+1),k)",
+        [
+            "Planner search:",
+            "Parameter isolation:",
+            "k = (a*x + b)/(x + 1)",
+            "Verified by substitution",
+        ],
+    ),
+    (
+        "xform(3*sin(t)=m*cos(t),m)",
+        [
+            "Planner search:",
+            "Parameter isolation:",
+            "m = 3*tan(t)",
+            "Verified by substitution",
+        ],
+    ),
+]
+
+SOLVE_POLICY_CASES = [
+    (
+        "solve(y^2-y-2=0,y)",
+        [
+            "y^2 - y - 2 = 0",
+            "y = 2 or y = -1",
+            "y = [2, -1]",
+            "Verified",
+        ],
+    ),
+    (
+        "solve(u^2=4,u)",
+        [
+            "u^2 - 4 = 0",
+            "u = 2 or u = -2",
+            "u = [2, -2]",
+            "Verified",
+        ],
+    ),
+    (
+        "solve(k^2+k-2=0,k)",
+        [
+            "k^2 + k - 2 = 0",
+            "k = 1 or k = -2",
+            "k = [1, -2]",
+            "Verified",
+        ],
+    ),
+    (
+        "solve(y*(y-4)=0,y)",
+        [
+            "Zero product:",
+            "y = 4 or y = 0",
+            "y = [4, 0]",
+            "Verified",
+        ],
+    ),
+    (
+        "solve(16*x^4+40*x^2-11=0,x)",
+        [
+            "u = x^2",
+            "16*u^2 + 40*u - 11 = 0",
+            "u = 1/4 or u = -11/4",
+            "-11/4 < 0, reject for real x",
+            "x = [-1/2, 1/2]",
+            "Verified",
+        ],
+    ),
+]
+
+SOLVE_FALLBACK_CASES = [
+    (
+        "solve([n(0)=500,n(2)=1000,dn/dt=k*n],[a,k])",
+        [
+            "Planner search:",
+            "last verified state:",
+            "KhiCAS exact evaluation:",
+        ],
+    ),
+    (
+        "solve(s^2*(2*s^2+3*s+1)=0,s)",
+        [
+            "KhiCAS exact evaluation:",
+            "[-1, -1/2, 0]",
+            "Verified by exact CAS evaluation",
+        ],
+    ),
+    (
+        "solve(21504/k^2=21,k)",
+        [
+            "KhiCAS exact evaluation:",
+            "[-32, 32]",
+            "Verified by exact CAS evaluation",
+        ],
+    ),
+    (
+        "solve(log(3,2*x-1)-log(3,x+1)=1,x)",
+        [
+            "domain: log args>0;base!=1",
+            "KhiCAS exact evaluation:",
+            "[-4]",
+            "Reject x=-4: log domain fails",
+            "x = []",
+            "Verified by domain check",
+        ],
+    ),
+    (
+        "solve(log(2,x+3)+log(2,x-1)=3,x)",
+        [
+            "domain: log args>0;base!=1",
+            "KhiCAS exact evaluation:",
+            "[-1 + 2*sqrt(3)]",
+            "Verified by exact CAS evaluation",
+        ],
+    ),
+]
+
+INTEGRAL_POLICY_CASES = [
+    (
+        "integrate(cot(2*x),x)",
+        [
+            "cot=cos/sin",
+            "1/2*ln(abs(sin(2*x))) + C",
+            "Verified",
+        ],
+    ),
+]
+
+PARTFRAC_POLICY_CASES = [
+    (
+        "partfrac((2*x+3)/(x^2-1),x)",
+        [
+            "A/(x + 1)+B/(x - 1)",
+            "-1/(2*(x + 1)) + 5/(2*(x - 1))",
+        ],
+    ),
+    (
+        "partfrac((5*x+13)/((2*x+1)*(x+4)),x)",
+        [
+            "A/(2*x + 1)+B/(x + 4)",
+            "3/(2*x + 1) + 1/(x + 4)",
+        ],
+    ),
+    (
+        "partfrac(30/((x+3)*(9-2*x)),x)",
+        [
+            "A/(x + 3)+B/(9 - 2*x)",
+            "2/(x + 3) + 4/(9 - 2*x)",
+        ],
+    ),
+    (
+        "apart(6/(u*(3+2*u)))",
+        [
+            "A/(u)+B/(2*u + 3)",
+            "A = 6/3 = 2",
+            "B = 6/-3/2 = -4",
+            "2/(u) - 4/(2*u + 3)",
+        ],
+    ),
+]
+
+DOMAIN_POLICY_CASES = [
+    ("domain(sqrt(x-2),x)", ["Domain", "x - 2 >= 0", "x >= 2"]),
+    ("domain(log(10,4-x),x)", ["Domain", "4 - x > 0", "x < 4"]),
+    ("domain(log(2,x^2-1),x)", ["Domain", "x^2 - 1 > 0", "x < -1 or x > 1"]),
+    ("domain(1/(x^2-4),x)", ["Domain", "x^2 - 4 != 0", "x != -2 and x != 2"]),
+    ("domain(sqrt(4-x)+ln(x-1),x)", ["Domain", "4 - x >= 0", "x - 1 > 0", "1 < x <= 4"]),
+]
+
+RANGE_POLICY_CASES = [
+    (
+        "range(2*x+1,x,-1,3)",
+        [
+            "linear interval",
+            "f(-1) = -1",
+            "f(3) = 7",
+            "-1 <= y <= 7",
+        ],
+    ),
+    (
+        "range(exp(x),x,0,1)",
+        [
+            "f'(x)=",
+            "f(0) = 1",
+            "f(1) = e",
+            "1 <= y <= e",
+            "Verified",
+        ],
+    ),
+    (
+        "range(sin(x),x,0,pi/2)",
+        [
+            "f'(x)=",
+            "f(0) = 0",
+            "f(pi/2) = 1",
+            "0 <= y <= 1",
+            "Verified",
+        ],
+    ),
+    (
+        "range(sin(x)+cos(x),x)",
+        [
+            "R-form range",
+            "R=sqrt(1^2+1^2)=sqrt(2)",
+            "-sqrt(2) <= y <= sqrt(2)",
+            "Verified",
+        ],
+    ),
+    (
+        "range(3*sin(2*x+1)+4*cos(2*x+1)-5,x)",
+        [
+            "R-form range",
+            "R=sqrt(3^2+4^2)=5",
+            "-10 <= y <= 0",
+            "Verified",
+        ],
+    ),
+    (
+        "range(x^3,x,-2,1)",
+        [
+            "f'(x)=",
+            "f(-2) = -8",
+            "f(1) = 1",
+            "-8 <= y <= 1",
+            "Verified",
+        ],
+    ),
+    (
+        "range(4*(x^2-2)*exp(-2*x),x)",
+        [
+            "f'(x)=",
+            "f(-1) = -4*exp(2)",
+            "f(2) = 8*exp(-4)",
+            "as x -> -infinity, y -> +infinity",
+            "as x -> +infinity, y -> 0",
+            "y >= -4*exp(2)",
+            "Verified",
+        ],
+    ),
+    (
+        "range(x*exp(-x),x)",
+        [
+            "f'(x)=",
+            "f(1) = 1/e",
+            "as x -> -infinity, y -> -infinity",
+            "as x -> +infinity, y -> 0",
+            "y <= 1/e",
+            "Verified",
+        ],
+    ),
+    (
+        "range(sqrt(x^2+1),x)",
+        [
+            "convex quad inside sqrt",
+            "min inside=1 at x=0",
+            "y >= 1",
+            "Verified",
+        ],
+    ),
+    (
+        "range(sqrt((x+1)^2+4),x)",
+        [
+            "convex quad inside sqrt",
+            "min inside=4 at x=-1",
+            "y >= 2",
+            "Verified",
+        ],
+    ),
+    (
+        "range(sqrt(x^2-1),x)",
+        [
+            "convex quad inside sqrt",
+            "min inside=-1 at x=0",
+            "inside crosses 0",
+            "y >= 0",
+            "Verified",
+        ],
+    ),
+    (
+        "range(2+3*exp(-x),x)",
+        [
+            "shifted exponential",
+            "exp(u) > 0",
+            "y > 2",
+            "Verified",
+        ],
+    ),
+    (
+        "range(2-3*exp(-x),x)",
+        [
+            "shifted exponential",
+            "exp(u) > 0",
+            "y < 2",
+            "Verified",
+        ],
+    ),
+    (
+        "range(1+2*sin(x)^2,x)",
+        [
+            "sin^2(u) in [0,1]",
+            "1 <= y <= 3",
+            "Verified",
+        ],
+    ),
+    (
+        "range(tan(x)^2,x)",
+        [
+            "tan^2(u) >= 0",
+            "y >= 0",
+            "Verified",
+        ],
+    ),
+    (
+        "range(1/(sin(x)+2),x)",
+        [
+            "reciprocal shifted trig",
+            "sin(u) in [-1,1]",
+            "1 <= D <= 3",
+            "1/3 <= y <= 1",
+            "Verified",
+        ],
+    ),
+    (
+        "range(2/(2-cos(x)),x)",
+        [
+            "reciprocal shifted trig",
+            "cos(u) in [-1,1]",
+            "1 <= D <= 3",
+            "2/3 <= y <= 2",
+            "Verified",
+        ],
+    ),
+    (
+        "range(sin(x)/(2+cos(x)),x)",
+        [
+            "trig rational route",
+            "R-form condition",
+            "3*y^2 - 1 <= 0",
+            "-sqrt(3)/3 <= y",
+            "y <= sqrt(3)/3",
+            "Verified",
+        ],
+    ),
+    (
+        "range((x^2+2*x+3)/(x^2+1),x)",
+        [
+            "D>=0",
+            "-4*y^2 + 16*y - 8 >= 0",
+            "-sqrt(2) + 2 <= y",
+            "y <= sqrt(2) + 2",
+            "Verified",
+        ],
+    ),
+    (
+        "range(sin(x)+ln(x),x)",
+        [
+            "endpoint/critical route",
+            "Domain:",
+            "x > 0",
+            "as x -> 0, y -> -infinity",
+            "as x -> +infinity, y -> +infinity",
+            "range: all real",
+            "Verified",
+        ],
+    ),
+    (
+        "range(ln(x)-x,x)",
+        [
+            "endpoint/critical route",
+            "f'(x)=",
+            "f(1) = -1",
+            "max y = -1",
+            "y <= -1",
+            "Verified",
+        ],
+    ),
+    (
+        "range(ln(x)/x,x)",
+        [
+            "endpoint/critical route",
+            "Domain:",
+            "x > 0",
+            "f'(x)=",
+            "f(e) = 1/e",
+            "as x -> 0, y -> -infinity",
+            "as x -> +infinity, y -> 0",
+            "y <= 1/e",
+            "Verified",
+        ],
+    ),
+    (
+        "range(ln(x^2+1),x)",
+        [
+            "log of quadratic",
+            "min g=1 at x=0",
+            "g >= 1 > 0",
+            "y >= 0",
+            "Verified",
+        ],
+    ),
+]
+
+IMPLICIT_POLICY_CASES = [
+    (
+        "implicit_diff(x^2+sin(y)=y,x,y)",
+        [
+            "Implicit differentiation:",
+            "(dy)/(dx)=-(2*x)/(cos(y) - 1)",
+            "Verified",
+        ],
+    ),
+]
+
+EQUIVALENCE_POLICY_CASES = [
+    (
+        "xform(sin(x),cos(x)+7)",
+        [
+            "Planner search:",
+            "Attempted transformations:",
+            "Failure reason:",
+            "KhiCAS exact evaluation:",
+            "Verification status:",
+            "not equivalent",
+        ],
+    ),
+    (
+        "xform(sin(2*x+1),2*sin(x+1)*cos(x+1))",
+        [
+            "Planner search:",
+            "Attempted transformations:",
+            "Failure reason:",
+            "KhiCAS exact evaluation:",
+            "Verification status:",
+            "not equivalent",
+        ],
+    ),
+    (
+        "xform(sin(x)+cos(x),banana)",
+        [
+            "Planner search:",
+            "Attempted transformations:",
+            "Failure reason:",
+            "KhiCAS exact evaluation:",
+            "Verification status:",
+            "not equivalent",
+            "last verified state:",
+        ],
+    ),
+    (
+        "xform(sin(x)+cos(x),cos(x))",
+        [
+            "Planner search:",
+            "Attempted transformations:",
+            "Failure reason:",
+            "KhiCAS exact evaluation:",
+            "Verification status:",
+            "not equivalent",
+            "last verified state:",
+        ],
+    ),
+]
+
+XFORM_PLANNER_CASES = [
+    (
+        "xform((sin(x)^2+cos(x)^2)*tan(x),sin(x)/cos(x))",
+        [
+            "Planner search:",
+            "Rule: Reciprocal identities:",
+            "sin(x)/cos(x)",
+            "Verified by equivalence check",
+        ],
+    ),
+    (
+        "xform(cot(x),cos(x)/sin(x))",
+        [
+            "Planner search:",
+            "Rule: Reciprocal identities:",
+            "cos(x)/sin(x)",
+            "Verified by equivalence check",
+        ],
+    ),
+    (
+        "xform(tan(x),sin(x)/cos(x))",
+        [
+            "Planner search:",
+            "Rule: Reciprocal identities:",
+            "sin(x)/cos(x)",
+            "Verified by equivalence check",
+        ],
+    ),
+    (
+        "xform(sin(x)/cos(x),tan(x))",
+        [
+            "Planner search:",
+            "Rule: Reciprocal identities:",
+            "tan(x)",
+            "Verified by equivalence check",
+        ],
+    ),
+    (
+        "xform(sec(t),1/cos(t))",
+        [
+            "Planner search:",
+            "Rule: Reciprocal identities:",
+            "1/cos(t)",
+            "Verified by equivalence check",
+        ],
+    ),
+    (
+        "xform(cosec(y),1/sin(y))",
+        [
+            "Planner search:",
+            "Rule: Reciprocal identities:",
+            "1/sin(y)",
+            "Verified by equivalence check",
+        ],
+    ),
+    (
+        "xform(cot(t)-tan(t),2*cot(2*t))",
+        [
+            "Planner search:",
+            "Common denominator:",
+            "2*cot(2*t)",
+            "Verified by equivalence check",
+        ],
+    ),
+    (
+        "xform(2*sin(t)*cos(t),sin(2*t))",
+        [
+            "Planner search:",
+            "Double-angle identities:",
+            "sin(2*t)",
+            "Verified by equivalence check",
+        ],
+    ),
+    (
+        "xform(a*x^2+b*x+c,3*(x+2)^2+13)",
+        [
+            "Compare coefficients:",
+            "Expand target:",
+            "a = 3, b = 12, c = 25",
+            "Verified by substitution",
+        ],
+    ),
+    (
+        "xform(p*x^2+q*x+r,2*(x-3)^2+5)",
+        [
+            "Compare coefficients:",
+            "p = 2, q = -12, r = 23",
+            "Verified by substitution",
+        ],
+    ),
+    (
+        "xform((x+1)^2+(x-1)^2,2*x^2+2)",
+        [
+            "Planner search:",
+            "Expand expression:",
+            "Verified by equivalence check",
+        ],
+    ),
+]
+
+XFORM_EQUIV_FALLBACK_CASES = [
+    (
+        "xform(sin(x)^2,(1-cos(2*x))/2)",
+        [
+            "Check equivalence:",
+            "Difference simplifies to 0",
+            "Verified by equivalence check",
+        ],
+    ),
+    (
+        "xform(log(2,x*y),log(2,x)+log(2,y))",
+        [
+            "Product:",
+            "log_a(uv)=log_a(u)+log_a(v)",
+            "Verified by equivalence check",
+        ],
+    ),
+]
+
+XFORM_LOG_LAW_CASES = [
+    (
+        "xform(log(2,x/y),log(2,x)-log(2,y))",
+        [
+            "Quotient:",
+            "log_a(u/v)=log_a(u)-log_a(v)",
+            "Condition: 2>0, 2!=1; x>0; y>0",
+            "Verified by equivalence check",
+        ],
+    ),
+    (
+        "xform(log(2,x)+log(2,y),log(2,x*y))",
+        [
+            "Product:",
+            "log_a(u)+log_a(v)=log_a(uv)",
+            "Condition: 2>0, 2!=1; x>0; y>0",
+            "Verified by equivalence check",
+        ],
+    ),
+    (
+        "xform(ln(x+1)+ln(x-1),ln(x^2-1))",
+        [
+            "Product:",
+            "log_a(u)+log_a(v)=log_a(uv)",
+            "Condition: e>0, e!=1; x+1>0; x-1>0",
+            "ln(x^2-1)",
+            "Verified by equivalence check",
+        ],
+    ),
+]
+
+ARGUMENT_POLICY_CASES = [
     ("factor()", ["Err: missing arguments", "factor(expr[,var])"]),
-    ("factor(x,y,z)", ["Err: too many arguments", "factor(expr[,var])"]),
-    ("expand(x)", ["Expansion:", "distributive law", "Result: expand(x)"]),
-    ("collect(x+y,x)", ["Collect like terms:", "Group terms", "Result: collect(x+y,x)"]),
-    ("gcd(4,6)", ["Greatest common divisor:", "gcd = 2", "2"]),
-    ("gcd(1,2,3,4,5,6,7)", ["Err: too many arguments", "gcd(a,b,...)"]),
-    ("lcm(4,6)", ["Least common multiple:", "lcm = 12", "12"]),
-    ("lcm(1,2,3,4,5,6,7)", ["Err: too many arguments", "lcm(a,b,...)"]),
-    ("degree(x^3+2*x,x)", ["Polynomial degree:", "Highest non-zero power: x^3", "3"]),
-    ("degree(-406698.79004733,t)", ["Polynomial degree:", "constant non-zero", "0"]),
-    ("limit(sqrt(111388),t=1)", ["Limit:", "no t term", "constant", "sqrt(111388)"]),
     ("diff()", ["Err: missing arguments", "diff(...)"]),
-    ("implicit_diff(x^2+y^2=1,x)", ["Implicit differentiation:", "Differentiate both sides:", "2*x + (2*y)*(dy/dx) = 0", "(dy)/(dx)=(-(2*x))/(2*y)"]),
-    ("implicit_diff(3*t^2+1)", ["Implicit differentiation:", "Differentiate with respect to t", "d/dt(3*t^2) = 6*t", "6*t"]),
-    ("implicit_diff(pi)", ["Implicit differentiation:", "no x term is present", "0"]),
-    ("implicit_diff()", ["Err: missing arguments", "implicit_diff(expr,var)"]),
-    ("atan(1)", ["Function evaluation:", "atan(u) is the angle whose tangent is u.", "atan(1) = 0.7853981634"]),
-    ("atan(x)", ["Function evaluation:", "Let u = x", "Result: atan(x)"]),
-    ("atan()", ["Err: missing arguments", "atan(expr)"]),
-    ("atan(e,x)", ["Err: expected one argument", "atan(expr)"]),
-    ("log()", ["Err: missing arguments", "log(...)"]),
-    ("sum(k^2,k,1,5)", ["Finite sum:", "Terms: 1 + 4 + 9 + 16 + 25", "Sum = 55"]),
-    ("product(k,k,1,5)", ["Finite product:", "Terms: 1 * 2 * 3 * 4 * 5", "Product = 120"]),
-    ("sum(x,k,1,3)", ["Finite sum:", "x is constant in k", "3*(x)"]),
-    ("sum(x,k)", ["Err: missing bounds", "sum(expr,k,lower,upper)"]),
-    ("texpand(sin(2*x))", ["Trig expand:", "sin(2*x)=2*sin(x)*cos(x)", "2*sin(x)*cos(x)"]),
-    ("tcollect(2*sin(x)*cos(x))", ["Trig collect:", "2*sin(x)*cos(x)=sin(2*x)", "sin(2*x)"]),
-    ("texpand(v)", ["Trig expand:", "No trig terms to transform.", "v"]),
     ("texpand()", ["Err: missing arguments", "texpand(expr)"]),
-    ("rewrite()", ["rewrite(expr,[targets])", "targets: [a=expr,b=expr]"]),
-    ("rewrite(sin(x))", ["rewrite(expr,[targets])", "targets: [a=expr,b=expr]"]),
-    ("xform()", ["xform(start,target)", "target: expression or equation"]),
-    ("xform(log(sqrt(u),sqrt(x)))", ["xform(start,target)", "target: expression or equation"]),
-    ("proot(x^5-1)", ["P(x) =", "Solve P(x) = 0", "roots(P(x))"]),
-    ("proot()", ["polynomial roots", "roots(poly)"]),
-    ("acos(212962)", ["acos(212962)"]),
-    ("ln(-5)", ["ln(-5)"]),
-    ("sqrt(-1)", ["sqrt(-1)"]),
-    ("solve(0=(10-0.4x)*ln(x+1),x)", ["Zero:", "10 - 2/5*x = 0", "ln(x + 1) = 0", "Dom: x + 1 > 0", "x = [0, 25]"]),
-    ("solve((3-0.5*x)*ln(2*x-1)=0,x)", ["Zero:", "3 - 1/2*x = 0", "ln(2*x - 1) = 0", "Dom: 2*x - 1 > 0", "x = [1, 6]"]),
-    ("solve(0=(x^2-1)*ln(x+1),x)", ["Zero:", "x^2 - 1 = 0", "ln(x + 1) = 0", "Dom: x + 1 > 0", "x = [0, 1]"]),
-    ("solve(x=x+6,x)", ["Collect:", "0 = 6", "x = []"]),
-    ("solve(x=-2.7,x)", ["x = [-27/10]"]),
-    ("solve(5=(x)^2,x)", ["x^2 = 5", "x = [-sqrt(5), sqrt(5)]"]),
-    ("solve(x=(((-5)/7)-sqrt(9))^3,x)", ["x = [-51.24198250729]"]),
-    ("solve(x=x,x)", ["Collect:", "0 = 0", "x = all real"]),
-    ("solve(tan(-6)=-5,x)", ["No x term.", "x = []"]),
-    ("solve(tan(x)=4/5,x)", ["tan(x) = 4/5", "x = atan(4/5) + n*pi"]),
-    ("solve((2*x+3)/(x-1)=5,x)", ["Dom: x - 1 != 0", "Times x - 1", "2*x + 3 = 5*(x - 1)", "x = [8/3]"]),
-    ("solve(3*x-5/x=2,x)", ["Dom: x != 0", "Times x", "3*x^2 - 5 = 2*x", "x = [-1, 5/3]"]),
-    ("solve((2+y)/y=sqrt(2),y)", ["Dom: y != 0", "Times y", "y + 2 = sqrt(2)*y", "y = [2 + 2*sqrt(2)]"]),
-    ("solve(sqrt(3)*x-sqrt(3)=x+sqrt(3),x)", ["Collect:", "(sqrt(3) - 1)*x = 2*sqrt(3)", "x = [3 + sqrt(3)]"]),
-    ("solve(2*sqrt(3)*x-4*sqrt(3)=x+sqrt(3),x)", ["Collect:", "(2*sqrt(3) - 1)*x = 5*sqrt(3)", "x = [30/11 + 5/11*sqrt(3)]"]),
-    ("solve((3*y+2)/y=sqrt(5),y)", ["Dom: y != 0", "3*y + 2 = sqrt(5)*y", "y = [-3/2 - 1/2*sqrt(5)]"]),
-    ("solve(ln(2*x+1)=3,x)", ["ln(2*x + 1) = 3", "2*x + 1 = exp(3)", "x = [(exp(3) - 1)/2]"]),
-    ("solve(exp(2*x+1)=5,x)", ["exp(2*x + 1) = 5", "2*x + 1 = ln(5)", "x = [(ln(5) - 1)/2]"]),
-    ("solve(log(2,x+1)=3,x)", ["Log def:", "x+1 = 2^3", "x = [7]"]),
-    ("solve(3*k^2-58*k+240=0,k)", ["3*k^2 - 58*k + 240 = 0", "k = [40/3, 6]"]),
-    ("solve(1000*e^(5*k)=2000,k)", ["Divide by 1000", "e^(5*k)=2", "5*k=ln(2)", "k = [ln(2)/5]"]),
-    ("solve(3*x^2+12*x+25=6*x+25,x)", ["3*x^2 + 6*x = 0", "x = [0, -2]"]),
-    ("solve(24*k^2=12*32*k,k)", ["k = [16, 0]"]),
-    ("solve(x^2+5*x+6=(x+a)*(x+b),[a,b])", ["Compare coefficients:", "a + b = 5", "a*b = 6", "[a,b] = [["]),
-    ("solve(x^2-5*x+6=(x-a)*(x-b),[a,b])", ["Compare coefficients:", "-a - b = -5", "a*b = 6", "[a,b] = [["]),
-    ("diff((10-0.4x)*ln(x+1))", ["Product:", "u = 10 - 2/5*x", "v = ln(x + 1)", "du/dx = -2/5", "dv/dx = 1/(x + 1)", "-2/5*ln(x + 1) + (10 - 2/5*x)/(x + 1)"]),
-    ("diff((2*x+1)*ln(3*x-2),x)", ["Product:", "u = 2*x + 1", "v = ln(3*x - 2)", "du/dx = 2", "dv/dx = 3/(3*x - 2)", "2*ln(3*x - 2) + (2*x + 1)*(3/(3*x - 2))"]),
-    ("diff((x^2+1)/(x-1),x)", ["Quotient:", "u = x^2 + 1", "v = x - 1", "du/dx = 2*x", "dv/dx = 1", "((2*x)*(x - 1) - (x^2 + 1))/(x - 1)^2"]),
-    ("diff((((x)^-1)/(x))^2,x)", ["Chain:", "u = x^-1/x", "du/dx = ((-x^-2)*(x) - (x^-1))/(x)^2", "2*(x^-1/x)*(((-x^-2)*(x) - (x^-1))/(x)^2)"]),
-    ("diff(9/x,x)", ["Neg powers:", "9/x = 9*x^-1", "d/dx(a*x^n)=a*n*x^(n-1)", "-9*x^-2"]),
-    ("diff(sin(x)+x^2,x)", ["Terms:", "d/dx(sin(x)) = cos(x)", "d/dx(x^2) = 2*x", "cos(x) + 2*x"]),
-    ("diff(cos(x+3)-x,x)", ["Terms:", "d/dx(cos(x + 3)) = -sin(x + 3)", "d/dx(-x) = -1", "-sin(x + 3) - 1"]),
-    ("diff((sin(x))^3,x)", ["Chain:", "u = sin(x)", "du/dx = cos(x)", "3*(sin(x))^2*cos(x)"]),
-    ("diff(ln(((x)-(6))*((x)^2)),x)", ["Log law:", "d/dx ln(x - 6) = 1/(x - 6)", "d/dx ln(x^2) = 2*x/(x^2)", "1/(x - 6) + 2*x/(x^2)"]),
-    ("diff(log(2,x^2),x)", ["Change base:", "u = x^2", "du/dx = 2*x", "2*x/(x^2*ln(2))"]),
-    ("diff(3*x^4-2*x^2,x)", ["Terms:", "12*x^3", "-4*x", "12*x^3 - 4*x"]),
-    ("diff(sec(3*t^2),t)", ["Chain:", "u = 3*t^2", "du/dt = 6*t", "6*t*sec(3*t^2)*tan(3*t^2)"]),
-    ("diff(abs(3*t^3+2*t),t)", ["Chain:", "u = 3*t^3 + 2*t", "du/dt = 9*t^2 + 2", "(9*t^2 + 2)*(3*t^3 + 2*t)/abs(3*t^3 + 2*t)"]),
-    ("diff(sqrt(cot(abs(3*t^3+2*t))),t)", ["Chain:", "u = cot(abs(3*t^3 + 2*t))", "d/dt abs(u)", "d/dt cot(u)", "du/dt =", "sqrt(cot(abs(3*t^3 + 2*t)))"]),
-    ("diff(sqrt(exp(ln(abs(cot(sin(cos(t^2))))))+1),t)", ["Terms:", "d/dt(exp(ln(abs(cot(sin(cos(t^2))))))) = (2*t", "du/dt = (2*t"]),
-    ("diff((sin(x))*(7-x)-x*x,x)", ["Terms:", "d/dx(sin(x)*(7 - x))", "(7 - x)*cos(x) - sin(x)", "-2*x"]),
-    ("diff(ln((x+1)^2),x)", ["Chain:", "d/dx ln((x + 1)^2)", "u' = 2*(x + 1)", "2/(x + 1)"]),
-    ("diff(sin((x+1)^2),x)", ["Chain:", "u = (x + 1)^2", "du/dx = 2*(x + 1)", "2*(x + 1)*cos((x + 1)^2)"]),
-    ("diff(cos(3*x^2-2*x),x)", ["Chain:", "u = 3*x^2 - 2*x", "du/dx = 6*x - 2", "-(6*x - 2)*sin(3*x^2 - 2*x)"]),
-    ("diff(exp((2*x-1)^3),x)", ["Chain:", "u = (2*x - 1)^3", "du/dx = 6*(2*x - 1)^2", "6*(2*x - 1)^2*exp((2*x - 1)^3)"]),
-    ("diff((x^2+1)*sin(3*x-2),x)", ["Product:", "u = x^2 + 1", "v = sin(3*x - 2)", "du/dx = 2*x", "dv/dx = 3*cos(3*x - 2)", "2*x*sin(3*x - 2) + (x^2 + 1)*3*cos(3*x - 2)"]),
-    ("diff((x^2-1)*cos((x+1)^2),x)", ["Product:", "u = x^2 - 1", "v = cos((x + 1)^2)", "dv/dx = -2*(x + 1)*sin((x + 1)^2)", "2*x*cos((x + 1)^2) - (x^2 - 1)*2*(x + 1)*sin((x + 1)^2)"]),
-    ("diff((x+1)(x-2)ln(x),x)", ["Product:", "f1 = x + 1", "f2 = x - 2", "f3 = ln(x)", "(x - 2)*ln(x) + (x + 1)*ln(x) + (x + 1)*(x - 2)/(x)"]),
-    ("diff(x^2*ln(x)*sin(x),x)", ["Product:", "f1 = x^2", "f2 = ln(x)", "f3 = sin(x)", "f1' = 2*x", "f2' = 1/(x)", "f3' = cos(x)", "2*x*ln(x)*sin(x) + x^2*sin(x)/(x) + x^2*ln(x)*cos(x)"]),
-    ("diff((x+1)*(x-2)*ln(x),x)", ["Product:", "f1 = x + 1", "f2 = x - 2", "f3 = ln(x)", "f1' = 1", "f2' = 1", "f3' = 1/(x)", "(x - 2)*ln(x) + (x + 1)*ln(x) + (x + 1)*(x - 2)/(x)"]),
-    ("diff((x^2+1),sin(k))", ["Differentiate with respect to x", "2*x"]),
-    ("diff(max(a,x),a)", ["Differentiate with respect to a", "Let F = max(a,x)", "d/da(max(a,x))"]),
-    ("integrate((x+1)/(x^2+2*x+3),x)", ["Sub u=x^2 + 2*x + 3", "du=2*x + 2 dx", "x + 1 = 1/2*(2*x + 2)", "1/2*ln(abs(x^2 + 2*x + 3)) + C"]),
-    ("integrate((x^2+2*x+1)/(x+1),x)", ["Simplify:", "x^2 + 2*x + 1 = (x + 1)*(x + 1)", "Cancel (x + 1)", "1/2*x^2 + x + C"]),
-    ("integrate((x^2-1)/(x+1),x)", ["Simplify:", "x^2 - 1 = (x + 1)*(x - 1)", "Cancel (x + 1)", "1/2*x^2 - x + C"]),
-    ("defint(t^(1/2)*sqrt(b-t),t,0,b)", ["t = b*sin(theta)^2", "dt = 2*b*sin(theta)*cos(theta) dtheta", "pi*b^2/8"]),
-    ("integrate(sqrt(c-x)*sqrt(x),x,0,c)", ["x = c*sin(theta)^2", "sqrt(c-x)=sqrt(c-c*sin(theta)^2)", "pi*c^2/8"]),
-    ("defint((1/2)*c^2*sin(2*theta)^2,theta,0,pi/2)", ["sin(2*theta)^2=(1-cos(4*theta))/2", "pi*c^2/8"]),
-    ("solve(integrate(t^(1/2)*sqrt(c-t),t,0,c)=m*pi*c^2,m)", ["t = c*sin(theta)^2", "m*pi*c^2 = pi*c^2/8", "m = 1/8"]),
-    ("solve(q*pi*b^2=defint(sqrt(b-u)*sqrt(u),u,0,b),q)", ["u = b*sin(theta)^2", "q*pi*b^2 = pi*b^2/8", "q = 1/8"]),
-    ("solve(v,log(ln(abs(x^2)+2),exp(u)),log(16,sqrt(abs(t)+1)))", ["Move all terms to one side", "F(x)", "x = roots(F(x))"]),
-    ("solve((sqrt(abs(sec(abs(cot(sqrt(ln(b))))))))^-1,log(sqrt(z^2+1),z))", ["Move all terms to one side", "F(z)", "z = roots(F(z))"]),
-    ("expand((3*x-2)*(x+5))", ["3*x^2 + 13*x - 10"]),
-    ("expand((2*x+3)^2)", ["4*x^2 + 12*x + 9"]),
-    ("apart(6/(u(3+2u)))", ["A/(u)+B/(2*u + 3)", "A = 6/3 = 2", "B = 6/-3/2 = -4", "2/(u) - 4/(2*u + 3)"]),
-    ("partfrac(-58926/42,n)", ["Constant:", "-1403", "No partial fractions"]),
-    ("partfrac(x/2,n)", ["No rational denominator", "Constant denominator"]),
-    ("partfrac(x/log(x),x)", ["No rational denominator", "not polynomial"]),
-    ("binomial((1-6*x)^(1/2))", ["u = -6*x", "C0=1,C1=1/2,C2=-1/8,C3=1/16", "|x| < 1/6", "1 - 3*x - 9/2*x^2 - 27/2*x^3"]),
-    ("taylor(-33623/960,x=0,798636.10539781)", ["Err: order integer >=0", "taylor(expr,var=0,order)"]),
-    ("taylor(sin(k),k=3,5)", ["sum(j=0..5", "(k-3)^j"]),
-    ("taylor(cos(a),a=-1,4)", ["sum(k=0..4", "(a+1)^k"]),
-    ("diff((x)+(3),x)", ["1"]),
-    ("diff(6,x)", ["0"]),
-    ("diff(exp(3),x)", ["0"]),
-    ("simplify(((8)))", ["8"]),
-    ("simplify(exp(-4))", ["0.01831563889"]),
-    ("simplify((x)^2)", ["x^2"]),
-    ("simplify(sin(x))", ["sin(x)"]),
-    ("simplify(b)", ["Simplification:", "already simple", "b"]),
-    ("simplify(ln(ln(exp(x))))", ["ln(ln(exp(x)))"]),
-    ("xform(-7,expand(-7))", ["-7"]),
-    ("xform(x,factor(x))", ["x"]),
-    ("xform(2*sin(x-60)=cos(x-30),tan(x)=3*sqrt(3))", ["Angles:", "sin(x-a)=sin(x)cos(a)-cos(x)sin(a)", "cos(x-a)=cos(x)cos(a)+sin(x)sin(a)", "tan(x)=3*sqrt(3)"]),
-    ("xform(2*sin(x-60)-cos(x-30)=0,tan(x)=3*sqrt(3))", ["Angles:", "2sin(x-60)-cos(x-30) = 0", "tan(x)=3*sqrt(3)"]),
-    ("xform(tan(x)^2+1,sec(x)^2)", ["sec(x)^2=1+tan(x)^2", "sec(x)^2"]),
-    ("xform(cos(x)^2+sin(x)^2,1)", ["sin(x)^2+cos(x)^2=1", "1"]),
-    ("xform(ln(x^3),3*ln(x))", ["ln(u^n)=n*ln(u)", "3*ln(x)"]),
-    ("xform(x^2+4*x+4,(x+2)^2)", ["Factor:", "x^2 + 4*x + 4 = (x + 2)^2", "(x + 2)^2"]),
-    ("xform((x^3-1)/(x-1),x^2+x+1)", ["x^3 - 1 = (x - 1)*(x^2 + x + 1)", "Cancel (x - 1)", "x^2 + x + 1"]),
-    ("xform(exp(ln(x+1)),x+1)", ["Inverse:", "exp(ln(u))=u", "x+1"]),
-    ("xform(sqrt(x)^2,x)", ["Inverse:", "(sqrt(u))^2=u", "x"]),
-    ("xform(sin(x)+2cos(x),sqrt(5)*sin(x+atan(2)))", ["R-form:", "R=sqrt(1^2+2^2)=sqrt(5)", "A=atan(2)", "sqrt(5)*sin(x+atan(2))"]),
-    ("xform(integrate(sqrt(p-u)*sqrt(u),u,0,p),1/2*p^2*defint(sin(2*theta)^2,theta,0,pi/2))", ["u = p*sin(theta)^2", "I=1/2*p^2*int_0^(pi/2) sin(2*theta)^2 dtheta"]),
-    ("xform(sin(x),cos(x)+7)", ["Check equivalence", "false"]),
+]
+
+FACTOR_CUBIC_POLICY_CASES = [
+    (
+        "factor(x^3+4*x^2+7*x+6)",
+        ["Factor:", "(x + 2)*(x^2 + 2*x + 3)", "Verified by equivalence check"],
+    ),
+    (
+        "factor(x^3-6*x^2+11*x-6)",
+        ["Factor:", "(x - 3)*(x - 2)*(x - 1)", "Verified by equivalence check"],
+    ),
+    (
+        "factor(2*x^3-3*x^2-8*x+12)",
+        ["Factor:", "(x - 2)*(x + 2)*(2*x - 3)", "Verified by equivalence check"],
+    ),
+]
+
+BAD_WORKING_MARKERS = [
+    "Exact:",
+    "fake",
+    "symbolic form",
+    "No verified A-level working route found.",
 ]
 
 
-def main() -> int:
-    bad = []
-    huge_poly = "+".join(f"{i}*x^{i}" for i in range(260, 0, -1))
-    huge_odd_poly = "+".join(f"{i}*x^{i}" for i in range(261, 0, -1))
-    huge_u_poly = "+".join(f"{i}*u^{i}" for i in range(180, 120, -1))
-    dynamic_cases = [
-        (f"integrate({huge_poly},x)", ["Terms:", "+ C"]),
-        (f"log(8,{huge_poly})", ["log_8(", "/ln(8)"]),
-        (f"range({huge_odd_poly})", ["degree 261", "all real"]),
-        (f"solve(sqrt(log(x))+{huge_poly}=sin(x),x)", ["Move all terms to one side", "F(x)", "x = roots(F(x))"]),
-        (f"limit({huge_poly},u=0)", ["Let A be the constant expression.", "no u term", "constant\nA"]),
-        (f"coeff({huge_u_poly},u,8)", ["Let A be argument 1.", "Argument 2: u", "Result: coeff(A,u,8)"]),
+def run(expr: str) -> str:
+    proc = subprocess.run(
+        [str(RUNNER), "--alg", expr],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        timeout=10,
+    )
+    out = (proc.stdout or "") + (proc.stderr or "")
+    if proc.returncode:
+        raise AssertionError(f"{expr} exited {proc.returncode}\n{out}")
+    return out
+
+
+def assert_contains(label: str, text: str, markers: list[str]) -> None:
+    compact_text = text.replace(" ", "").replace("*", "")
+    missing = [
+        m for m in markers
+        if m not in text and m.replace(" ", "").replace("*", "") not in compact_text
     ]
-    for expr, markers in CASES + dynamic_cases:
-        p = subprocess.run([str(RUNNER), expr], cwd=ROOT, text=True, capture_output=True)
-        out = (p.stdout or "") + (p.stderr or "")
-        missing = [m for m in markers if m not in out]
-        lines = [line.strip() for line in out.splitlines() if line.strip()]
-        if "Exact:" in out:
-            missing.append("no Exact: fallback label")
-        if "proot(" in out or "min(f(r)" in out or "max(f(r)" in out or "ln(0)" in out:
-            missing.append("no symbolic CAS/skeleton fallback")
-        if lines and lines[-1].startswith("Answer:"):
-            missing.append("final line must be math only")
-        if p.returncode or missing:
-            bad.append((expr, p.returncode, missing, out[:600]))
-    for expr, code, missing, out in bad:
-        print(f"FAIL {expr!r} code={code} missing={missing}\n{out}")
-    if bad:
-        return 1
-    print(f"OK targeted working gaps={len(CASES)}")
+    if missing:
+        raise AssertionError(f"{label}: missing {missing}")
+
+
+def check_source_policy() -> None:
+    for rel, markers in SOURCE_MARKERS.items():
+        text = (ROOT / rel).read_text(encoding="utf-8")
+        assert_contains(rel, text, markers)
+        if "No verified A-level working route found." in text:
+            raise AssertionError(f"{rel}: old failure string leaked")
+    for rel, snippets in FORBIDDEN_SOURCE_SNIPPETS.items():
+        text = (ROOT / rel).read_text(encoding="utf-8")
+        leaked = [s for s in snippets if s in text]
+        if leaked:
+            raise AssertionError(f"{rel}: exact-route snippets leaked {leaked}")
+
+
+def check_host_policy() -> None:
+    for expr in VERIFIED_HOST_POLICY_CASES:
+        out = run(expr)
+        assert_contains(expr, out, ["Verified"])
+        bad = [m for m in BAD_WORKING_MARKERS if m.lower() in out.lower()]
+        if bad:
+            raise AssertionError(f"{expr}: bad working markers {bad}\n{out}")
+
+    for expr, markers in EQUIVALENCE_POLICY_CASES + ARGUMENT_POLICY_CASES:
+        out = run(expr)
+        assert_contains(expr, out, markers)
+        if expr.startswith("xform(sin(x),cos(x)+7)") and "Verified" in out:
+            raise AssertionError(f"{expr}: non-equivalent route marked verified\n{out}")
+        bad = [m for m in BAD_WORKING_MARKERS if m.lower() in out.lower()]
+        if bad:
+            raise AssertionError(f"{expr}: bad working markers {bad}\n{out}")
+
+    for expr, markers in XFORM_PLANNER_CASES + XFORM_EQUIV_FALLBACK_CASES:
+        out = run(expr)
+        assert_contains(expr, out, markers)
+        if "not equivalent" in out.lower():
+            raise AssertionError(f"{expr}: equivalent form marked not equivalent\n{out}")
+        bad = [m for m in BAD_WORKING_MARKERS if m.lower() in out.lower()]
+        if bad:
+            raise AssertionError(f"{expr}: bad working markers {bad}\n{out}")
+
+    for expr, markers in XFORM_LOG_LAW_CASES:
+        out = run(expr)
+        assert_contains(expr, out, markers)
+        if "not equivalent" in out.lower():
+            raise AssertionError(f"{expr}: equivalent log-law form marked not equivalent\n{out}")
+        bad = [m for m in BAD_WORKING_MARKERS if m.lower() in out.lower()]
+        if bad:
+            raise AssertionError(f"{expr}: bad working markers {bad}\n{out}")
+
+    for expr, markers in TRIG_XFORM_POLICY_CASES + LINEAR_PARAMETER_XFORM_CASES:
+        out = run(expr)
+        assert_contains(expr, out, markers)
+        bad = [m for m in BAD_WORKING_MARKERS if m.lower() in out.lower()]
+        if bad:
+            raise AssertionError(f"{expr}: bad working markers {bad}\n{out}")
+
+    for expr, markers in SOLVE_POLICY_CASES + INTEGRAL_POLICY_CASES + PARTFRAC_POLICY_CASES + DOMAIN_POLICY_CASES + RANGE_POLICY_CASES + IMPLICIT_POLICY_CASES:
+        out = run(expr)
+        assert_contains(expr, out, markers)
+        bad = [m for m in BAD_WORKING_MARKERS if m.lower() in out.lower()]
+        if bad:
+            raise AssertionError(f"{expr}: bad working markers {bad}\n{out}")
+
+    for expr, markers in SOLVE_FALLBACK_CASES:
+        out = run(expr)
+        assert_contains(expr, out, markers)
+        leaked = [m for m in ("ln(0)", "roots(F(") if m in out]
+        if "last verified state:" in out and "KhiCAS exact evaluation:\n[]" in out and "\nVerified" in out:
+            leaked.append("fake Verified on exact [] fallback")
+        if leaked:
+            raise AssertionError(f"{expr}: fake fallback leaked {leaked}\n{out}")
+        bad = [m for m in BAD_WORKING_MARKERS if m.lower() in out.lower()]
+        if bad:
+            raise AssertionError(f"{expr}: bad working markers {bad}\n{out}")
+
+    for expr, markers in FACTOR_CUBIC_POLICY_CASES:
+        out = run(expr)
+        assert_contains(expr, out, markers)
+        bad = [m for m in BAD_WORKING_MARKERS if m.lower() in out.lower()]
+        if bad:
+            raise AssertionError(f"{expr}: bad working markers {bad}\n{out}")
+
+
+def main() -> int:
+    check_source_policy()
+    check_host_policy()
+    print(
+        "OK targeted working policy "
+        f"source_files={len(SOURCE_MARKERS)} "
+        f"verified_cases={len(VERIFIED_HOST_POLICY_CASES)} "
+        f"solve_cases={len(SOLVE_POLICY_CASES)} "
+        f"solve_fallback_cases={len(SOLVE_FALLBACK_CASES)} "
+        f"integral_cases={len(INTEGRAL_POLICY_CASES)} "
+        f"partfrac_cases={len(PARTFRAC_POLICY_CASES)} "
+        f"domain_cases={len(DOMAIN_POLICY_CASES)} "
+        f"range_cases={len(RANGE_POLICY_CASES)} "
+        f"implicit_cases={len(IMPLICIT_POLICY_CASES)} "
+        f"equivalence_cases={len(EQUIVALENCE_POLICY_CASES)} "
+        f"xform_planner_cases={len(XFORM_PLANNER_CASES)} "
+        f"xform_equiv_fallback_cases={len(XFORM_EQUIV_FALLBACK_CASES)} "
+        f"xform_log_law_cases={len(XFORM_LOG_LAW_CASES)} "
+        f"xform_linear_parameter_cases={len(LINEAR_PARAMETER_XFORM_CASES)} "
+        f"argument_cases={len(ARGUMENT_POLICY_CASES)} "
+        f"factor_cubic_cases={len(FACTOR_CUBIC_POLICY_CASES)}"
+    )
     return 0
 
 

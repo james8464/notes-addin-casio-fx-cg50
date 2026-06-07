@@ -286,57 +286,6 @@ int PrintMiniFix( int x, int y, const unsigned char*Msg, const int flags, const 
   return x;
 }
 
-// the following function will draw a variation of the Segvault logo,
-// starting at screen coordinates x,y
-// w: 101
-// h: 44
-static const unsigned char logoLines[]={
-  // S, E, G:
-  0, 10, 10, 0,
-  1, 11, 10, 20,
-  0, 30, 9, 21,
-  14, 10, 24, 0,
-  15, 11, 24, 20,
-  14, 11, 14, 20,
-  15, 21, 24, 30,
-  28, 10, 38, 0,
-  28, 11, 28, 20,
-  29, 21, 38, 30,
-  38, 29, 38, 20,
-  37, 19, 34, 16,
-  // V:
-  42, 0, 47, 30,
-  52, 0, 47, 30,
-  // A, U, L, T:
-  52, 30, 57, 0,
-  62, 30, 57, 0,
-  66, 0, 66, 20,
-  67, 21, 76, 30,
-  76, 29, 76, 0,
-  80, 0, 80, 30,
-  81, 29, 90, 20,
-  94, 0, 94, 30,
-  89, 10, 99, 0
-};
-
-void drawSegvaultLogo(int x, int y) {
-  int i;
-  for(i = 0; i < 12*4; i += 4) {
-    drawLine(x+logoLines[i], y+logoLines[i+1], x+logoLines[i+2], y+logoLines[i+3], COLOR_BLACK);
-    drawLine(x+logoLines[i]+1, y+logoLines[i+1], x+logoLines[i+2]+1, y+logoLines[i+3], COLOR_BLACK);
-  }
-  for(; i < 14*4; i += 4) {
-    drawLine(x+logoLines[i], y+logoLines[i+1], x+logoLines[i+2], y+logoLines[i+3], 0x02BF);
-    drawLine(x+logoLines[i]+1, y+logoLines[i+1], x+logoLines[i+2]+1, y+logoLines[i+3], 0x02BF);
-  }
-  for(; i < 23*4; i += 4) {
-    drawLine(x+logoLines[i], y+logoLines[i+1], x+logoLines[i+2], y+logoLines[i+3], 0x04BF);
-    drawLine(x+logoLines[i]+1, y+logoLines[i+1], x+logoLines[i+2]+1, y+logoLines[i+3], 0x04BF);
-  }
-  int mx = x+16, my=y+35;
-  PrintMiniMini(&mx, &my, "BROAD LEAPS", 64, TEXT_COLOR_BLACK, 0);
-}
-
 #endif
 
 #ifdef FILEICON
@@ -400,6 +349,19 @@ void drawCasioCasBorder(){
   DirectDrawRectangle(0, 0, 5, 223, kCasioCasPink);
   DirectDrawRectangle(390, 0, 395, 223, kCasioCasPink);
   DirectDrawRectangle(0, 217, 395, 223, kCasioCasPink);
+}
+
+void drawCasioCasRunIndicator(){
+  unsigned phase=(unsigned)RTC_GetTicks()%384;
+  if (phase<256){
+    drawRectangle(339,0,21,23,COLOR_BLUE);
+    PrintCXY(342,1,(char*)"R",0x40,-1,COLOR_WHITE,COLOR_BLUE,1,0);
+  }
+  else {
+    drawRectangle(339,0,21,23,COLOR_WHITE);
+  }
+  drawRectangle(339,23,21,2,COLOR_WHITE);
+  drawLine(339,23,359,23,COLOR_BLACK);
 }
 
 //Uses the Bresenham line algorithm 

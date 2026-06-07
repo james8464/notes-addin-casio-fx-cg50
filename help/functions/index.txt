@@ -1,15 +1,5 @@
-CAS Pure help pack.
-
-The calculator Help on command screen is built from these source sheets and catalogue entries.
-
-Keys:
-  F1 inserts the command.
-  F2 inserts the first example.
-  F3 inserts the second example when available.
-
-Methods:
-  integrate(...,1) auto
-  integrate(...,2) by parts
-  integrate(...,3,u=...) substitution
-  integrate(...,4) partial fractions
-  integrate(...,5) trig/formula
+index
+Args: command name.
+Required: A-level Pure scoped commands only.
+Does: lists help records.
+Examples: sin(0)

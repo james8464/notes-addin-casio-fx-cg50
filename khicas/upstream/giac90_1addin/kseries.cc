@@ -2209,7 +2209,7 @@ namespace giac {
       if (lv.empty())
 	continue;
       if (lv.size()>=2 || lv[0]!=w[i]){
-	//gensizeerr("Limit probably undefined, algorithm unable to handle "+g.print(contextptr));
+	//gensizeerr("Limit probably undefined: "+g.print(contextptr));
 	return -1;
       }
     }
@@ -2404,20 +2404,20 @@ namespace giac {
     gen coeff,mrv_var,exponent;
     sparse_poly1 p;
     if (!mrv_lead_term(e_copy,x,coeff,mrv_var,exponent,p,mrv_begin_order,contextptr,false) || is_undef(coeff)){
-      gensizeerr("Limit: Max order reached or unable to make series expansion");
+      gensizeerr("Limit: max order reached");
       return undef;
     }
     // check added for limit((tan(x)-x)/x^3,x=inf)
     for (unsigned i=0;i<p.size();++i){
       if (check_bounded(p[i].coeff,contextptr)==-1)
-	return gensizeerr("Limit probably undefined, algorithm unable to handle "+p[i].coeff.print(contextptr));
+	return gensizeerr("Limit probably undefined: "+p[i].coeff.print(contextptr));
     }
     if (ck_is_strictly_positive(exponent,contextptr))
       return 0;
     if (is_zero(exponent)){
       int l=check_bounded(coeff,contextptr);
       if (l==-1)
-	return gensizeerr("Limit probably undefined, algorithm unable to handle "+coeff.print(contextptr));
+	return gensizeerr("Limit probably undefined: "+coeff.print(contextptr));
       return l==1?bounded_function(contextptr):coeff;
     }
     // check sign of coeff, if coeff depends on x first find equivalent
@@ -2441,7 +2441,7 @@ namespace giac {
     // limit((-2)^n,n,inf)
     int l=check_bounded(essai,contextptr);
     if (l==-1)
-      return gensizeerr("Limit probably undefined, algorithm unable to handle "+essai.print(contextptr));
+      return gensizeerr("Limit probably undefined: "+essai.print(contextptr));
     return l==1?undef:unsigned_inf;
     /* 
     essai=eval(subst(essai,sincosinf,vecteur(sincosinf.size(),undef)));
@@ -2529,7 +2529,7 @@ namespace giac {
 	}
       }
       if (lim_point==unsigned_inf){
-	*logptr(contextptr) << gettext("Warning, infinity is unsigned, perhaps you meant +infinity")<< endl;
+	*logptr(contextptr) << gettext("Warn: infinity is unsigned")<< endl;
 	first_try = subst(partfrac(e,false,contextptr),x,lim_point,false,contextptr);
 	// first_try = subst(ratnormal(e,contextptr),x,lim_point,false,contextptr);
       }
@@ -2587,7 +2587,7 @@ namespace giac {
       e_copy=subst(e_copy,tan_tab,tan2sincos_tab,true,contextptr);
       e_copy=subst(e_copy,exp_tab,exp2sincos_tab,true,contextptr);
       if (has_i(lop(e_copy,at_erfs)))
-	return gensizeerr(gettext("erf/erfc/erfs with complex argument not yet implemented in limit"));
+	return gensizeerr(gettext("complex erf limit not implemented"));
     }
     // Rewrite constants
     vecteur rv=rlvar(e_copy,false),cv;
@@ -2656,7 +2656,7 @@ namespace giac {
 	}
 	int l=check_bounded(p.front().coeff,contextptr);
 	if (l==-1)
-	  return gensizeerr("Limit probably undefined, algorithm unable to handle "+p.front().coeff.print(contextptr));
+	  return gensizeerr("Limit probably undefined: "+p.front().coeff.print(contextptr));
 	return l==1?bounded_function(contextptr):p.front().coeff;
       }
       //*logptr(contextptr) << p.front().coeff << "," << p.front().exponent << '\n';
@@ -2793,7 +2793,7 @@ namespace giac {
 	}
       }
       if (temp._SYMBptr->feuille.type==_VECT){
-	*logptr(contextptr) << gettext("Limit probably undefined, algorithm unable to handle ")+temp.print(contextptr) << endl;
+	*logptr(contextptr) << gettext("Limit probably undefined: ")+temp.print(contextptr) << endl;
 	return false;
       }
       gen l=in_limit(temp._SYMBptr->feuille,x,plus_inf,0,contextptr);

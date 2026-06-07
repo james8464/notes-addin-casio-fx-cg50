@@ -1,33 +1,5 @@
-limit(f,x=a)
-
-Args:
-  f,x=a
-
-Required:
-  f, x=a
-
-Optional:
-  None.
-
-Does:
-  Limit. Required: expression f and target value x=a. Optional: side 1 or -1.
-
-Examples:
-  limit(sin(x)/x,x=0); limit(1/x,x=0,1)
-
-F2:
-  limit(sin(x)/x,x=0)
-
-F3:
-  limit(1/x,x=0,1)
-
-Keys:
-  F1 inserts the command.
-  F2 inserts the first example.
-  F3 inserts the second example when available.
-
-Working:
-  Shows exam-style lines when this command has a routed A-level working path; otherwise returns the exact KhiCAS result for the expression.
-
-Tip:
-  Use brackets around compound numerators, denominators, powers, and substitutions for readable exam-style output.
+limit
+Args: see catalog signature for limit.
+Required: A-level Pure scoped use only.
+Does: returns exact KhiCAS output, or verified working when a verified route exists.
+Examples: limit(1)

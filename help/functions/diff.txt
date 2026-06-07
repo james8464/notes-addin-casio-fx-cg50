@@ -1,33 +1,5 @@
-diff(expr,var) or diff(equation,var)
-
-Args:
-  expr/equation, var, [order/value]
-
-Required:
-  expr or equation, variable
-
-Optional:
-  order n, parametric value t0
-
-Does:
-  Differentiates expressions. Equation input gives implicit differentiation; list input can be used for parametric differentiation.
-
-Examples:
-  diff(x^3,x); diff((x^2)*tan(y)=9,x)
-
-F2:
-  diff(x^3,x)
-
-F3:
-  diff((x^2)*tan(y)=9,x)
-
-Keys:
-  F1 inserts the command.
-  F2 inserts the first example.
-  F3 inserts the second example when available.
-
-Working:
-  Shows product, chain, implicit, parametric, quotient, trig, log, and rearrangement lines where routed.
-
-Tip:
-  Use brackets around compound numerators, denominators, powers, and substitutions for readable exam-style output.
+diff
+Args: see catalog signature for diff.
+Required: A-level Pure scoped use only.
+Does: returns exact KhiCAS output, or verified working when a verified route exists.
+Examples: diff(x*e^x,x)

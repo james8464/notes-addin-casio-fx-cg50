@@ -115,7 +115,7 @@ static bool cascas_denied_hash(unsigned h){
 static bool cascas_reject_removed_feature(const char *input){
   if (!input)
     return false;
-  const char *unsupported_marker="Err: unsupported (not A-level scope)";
+  const char *unsupported_marker="Err: unsupported";
   (void)unsupported_marker;
   if (strchr(input,'%') || strstr(input,"[["))
     return true;
@@ -527,6 +527,16 @@ static void cascas_console_output(const char *s){
   }
 }
 
+static bool cascas_khicas_eval(const char *expr,cascas::working_string &out){
+  if (!expr || !*expr || !contextptr)
+    return false;
+  gen g(expr,contextptr);
+  gen ge=eval(g,1,contextptr);
+  string s=ge.print(contextptr);
+  out=s.c_str();
+  return true;
+}
+
 static int FindZeroedMemory(void *start)
 {
   /* Look for zero-longwords every 16 bytes */
@@ -607,6 +617,7 @@ int main(){
   //confirm("main","2");
   context ct;
   contextptr=&ct;
+  cascas::set_khicas_eval_callback(cascas_khicas_eval);
   SetQuitHandler(save_session); // automatically save session when exiting
   turtle();
 #ifdef TURTLETAB
@@ -660,7 +671,7 @@ int main(){
         if (cascas::eval_with_working((const char *)expr,working))
           cascas_console_output(working.c_str());
         else if (cascas_reject_removed_feature((const char *)expr))
-          Console_Output((const unsigned char*)"Err: unsupported (not A-level scope)");
+          Console_Output((const unsigned char*)"Err: unsupported");
         else
           run((char *)expr);
       }

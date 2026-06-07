@@ -1,0 +1,5 @@
+dot
+Args: see catalog signature for dot.
+Required: A-level Pure scoped use only.
+Does: returns exact KhiCAS output, or verified working when a verified route exists.
+Examples: dot([1,2],[3,4])

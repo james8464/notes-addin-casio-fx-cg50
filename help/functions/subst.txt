@@ -1,30 +1,5 @@
-subst(a,b=c)
-
-Args:
-  a,b=c
-
-Required:
-  a, b=c
-
-Optional:
-  None.
-
-Does:
-  Substitution. Required: expression and replacement x=a.
-
-Examples:
-  subst(x^2+1,x=3)
-
-F2:
-  subst(x^2+1,x=3)
-
-Keys:
-  F1 inserts the command.
-  F2 inserts the first example.
-  F3 inserts the second example when available.
-
-Working:
-  Shows exam-style lines when this command has a routed A-level working path; otherwise returns the exact KhiCAS result for the expression.
-
-Tip:
-  Use brackets around compound numerators, denominators, powers, and substitutions for readable exam-style output.
+subst
+Args: see catalog signature for subst.
+Required: A-level Pure scoped use only.
+Does: returns exact KhiCAS output, or verified working when a verified route exists.
+Examples: subst(x^2,x,2)

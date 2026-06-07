@@ -1,0 +1,5 @@
+int
+Args: see catalog signature for int.
+Required: A-level Pure scoped use only.
+Does: returns exact KhiCAS output, or verified working when a verified route exists.
+Examples: int(cos(x),x)

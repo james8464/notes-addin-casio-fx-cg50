@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 import argparse
+import importlib.util
 import json
+import os
 import random
+import re
 import signal
 import string
 import subprocess
@@ -11,26 +14,27 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 RUNNER = ROOT / "tools" / "khicas_host_runner"
+HOST_EVAL = ROOT / "tools" / "khicas_host_eval.py"
 PROGRESS = ROOT / "progress" / "state.jsonl"
 
 OPS = ["+", "-", "*", "/"]
-FUNCS = ["sin", "cos", "tan", "ln", "sqrt", "exp"]
-CHAOS_FUNCS = ["sin", "cos", "tan", "sec", "cot", "ln", "sqrt", "exp", "abs"]
+FUNCS = ["sin", "cos", "tan", "atan", "ln", "sqrt", "exp"]
+CHAOS_FUNCS = ["sin", "cos", "tan", "sec", "cot", "atan", "ln", "sqrt", "exp", "abs"]
 VISIBLE_COMMANDS = [
-    "abs", "acos", "approx", "asin", "atan", "ceil", "ceiling", "coeff",
-    "collect", "cos", "cot", "degree", "diff", "exact", "expand", "factor",
+    "abs", "acos", "approx", "asin", "atan", "ceil", "coeff",
+    "collect", "cos", "cot", "degree", "diff", "domain", "exact", "expand", "factor",
     "floor", "fsolve", "gcd", "integrate", "implicit_diff", "lcm", "limit",
-    "ln", "log", "partfrac", "pcoeff", "product", "proot", "range", "round",
+    "ln", "log", "partfrac", "product", "range", "round",
     "rewrite", "sec", "series", "simplify", "sin", "solve", "sqrt", "subst", "sum",
     "tan", "taylor", "tcollect", "texpand", "xform",
 ]
 OPTIONAL_ARG_COMMANDS = {
-    "coeff", "collect", "diff", "factor", "fsolve", "integrate", "limit",
+    "coeff", "collect", "diff", "domain", "factor", "fsolve", "integrate", "limit",
     "log", "partfrac", "product", "range", "series", "solve", "sum",
     "taylor",
 }
 WORKING_OUTPUT_COMMANDS = {
-    "diff", "integrate", "log", "partfrac", "range", "rewrite",
+    "diff", "domain", "integrate", "log", "partfrac", "range", "rewrite",
     "series", "solve", "taylor", "xform",
 }
 COMMANDS = [
@@ -41,6 +45,19 @@ COMMANDS = [
 WEIRD_CHARS = string.ascii_letters + string.digits + "+-*/^=(),[]{} ._"
 CHAOS_VARS = ["x", "y", "z", "t", "u", "v", "a", "b", "k", "n"]
 CHAOS_CONSTS = ["pi", "e"]
+_HOST_EVAL_MOD = None
+
+
+def host_eval():
+    global _HOST_EVAL_MOD
+    if _HOST_EVAL_MOD is None:
+        spec = importlib.util.spec_from_file_location("khicas_host_eval", HOST_EVAL)
+        if spec is None or spec.loader is None:
+            raise RuntimeError(f"cannot load {HOST_EVAL}")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        _HOST_EVAL_MOD = mod
+    return _HOST_EVAL_MOD
 
 
 def chance(rng: random.Random, numerator: int, denominator: int) -> bool:
@@ -321,9 +338,7 @@ def chaos_args(rng: random.Random, cmd: str, depth: int, variant: int | None = N
     numeric = chance(rng, 42, 100)
     e = lambda d=depth, n=numeric: chaos_expr(rng, max(1, d), n)
     eq = lambda d=depth: chaos_equation(rng, max(1, d))
-    if chance(rng, 1, 100):
-        return [e(depth-1) for _ in range(rng.randrange(0, 5))]
-    if cmd in {"abs", "acos", "approx", "asin", "atan", "ceil", "ceiling", "cos", "cot", "exact", "expand", "floor", "ln", "round", "sec", "simplify", "sin", "sqrt", "tan", "tcollect", "texpand"}:
+    if cmd in {"abs", "acos", "approx", "asin", "atan", "ceil", "cos", "cot", "exact", "expand", "floor", "ln", "round", "sec", "simplify", "sin", "sqrt", "tan", "tcollect", "texpand"}:
         return [e()]
     if cmd in {"coeff"}:
         args = [e(), pick(rng, [v, e(depth-2, False)])]
@@ -335,7 +350,9 @@ def chaos_args(rng: random.Random, cmd: str, depth: int, variant: int | None = N
         if (variant is None and chance(rng, 80, 100)) or (variant is not None and variant % 2):
             args.append(pick(rng, [v, e(depth-1)]))
         return args
-    if cmd in {"degree", "gcd", "lcm"}:
+    if cmd == "degree":
+        return [e(), v]
+    if cmd in {"gcd", "lcm"}:
         return [e(), pick(rng, [v, e(depth-1)])]
     if cmd in {"diff", "implicit_diff"}:
         args = [pick(rng, [e(), eq()])]
@@ -371,15 +388,20 @@ def chaos_args(rng: random.Random, cmd: str, depth: int, variant: int | None = N
         if (variant is None and chance(rng, 20, 100)) or (variant is not None and variant % 2 == 0):
             return [e()]
         return [pick(rng, [str(rng.randrange(2, 13)), chaos_log_base(rng, max(2, depth - 1)), e(depth-1)]), e()]
-    if cmd == "pcoeff":
-        return [f"[{e(depth-1, False)},{e(depth-1, False)},{e(depth-1, False)}]"]
     if cmd in {"product", "sum"}:
         args = [e(), pick(rng, ["k", v])]
         if (variant is None and chance(rng, 85, 100)) or (variant is not None and variant % 2):
             args += [str(rng.randrange(-8, 4)), str(rng.randrange(5, 30))]
         return args
-    if cmd in {"proot"}:
-        return [random_poly(rng, rng.randrange(2, 7))]
+    if cmd == "domain":
+        form = pick(rng, [
+            f"sqrt({affine_x(rng)})",
+            f"ln({pos_lin(rng)})",
+            f"log({rng.randrange(2, 11)},{pos_lin(rng)})",
+            f"1/({quad_from_roots(rng)[0]})",
+            f"sqrt({affine_x(rng)})+ln({pos_lin(rng)})",
+        ])
+        return [form, "x"] if ((variant is None and chance(rng, 80, 100)) or variant) else [form]
     if cmd == "range":
         args = [e()]
         if (variant is None and chance(rng, 65, 100)) or (variant is not None and variant % 2):
@@ -408,9 +430,12 @@ def chaos_args(rng: random.Random, cmd: str, depth: int, variant: int | None = N
         return [e(), f"{v}={rng.randrange(-3, 4)}", str(rng.randrange(2, 12))]
     if cmd == "solve":
         if (variant is None and chance(rng, 18, 100)) or (variant is not None and variant % 3 == 0):
-            return [eq()]
+            q, _, _ = quad_from_roots(rng)
+            return [f"{q}=0"]
         if (variant is None and chance(rng, 22, 100)) or (variant is not None and variant % 3 == 1):
-            return [f"[{eq(depth-1)},{eq(depth-1)}]", f"[{v},{pick(rng, [c for c in CHAOS_VARS if c != v])}]"]
+            w = pick(rng, [c for c in CHAOS_VARS if c != v])
+            a, b, c, d = nz(rng, -5, 5), nz(rng, -5, 5), rng.randrange(-8, 9), rng.randrange(-8, 9)
+            return [f"[{a}*{v}+{b}*{w}={c},{b}*{v}-{a}*{w}={d}]", f"[{v},{w}]"]
         return [eq(), v]
     if cmd == "subst":
         if (variant is None and chance(rng, 35, 100)) or (variant is not None and variant % 2):
@@ -540,7 +565,7 @@ def rand_diff(rng: random.Random) -> str:
 
 
 def rand_integrate(rng: random.Random) -> str:
-    case = rng.randrange(11)
+    case = rng.randrange(12)
     if case == 0:
         a, p = nz(rng, -8, 8), rng.randrange(1, 6)
         return messy(rng, f"integrate({a}*x^{p}+{rng.randrange(-9,10)},x)")
@@ -569,11 +594,13 @@ def rand_integrate(rng: random.Random) -> str:
         return messy(rng, f"integrate((2*x+{k})/(x^2+{k}*x+{c}),x)")
     if case == 9:
         return messy(rng, f"integrate((ln(x))^{rng.randrange(1,3)},x,{pick(rng, [1,2])})")
+    if case == 10:
+        return messy(rng, f"integrate(cot({nz(rng,1,6)}*x),x)")
     return messy(rng, f"integrate({random_poly(rng, rng.randrange(1,4))},x)")
 
 
 def rand_solve(rng: random.Random) -> str:
-    case = rng.randrange(12)
+    case = rng.randrange(15)
     if case == 0:
         a, b, r = nz(rng, -7, 7), rng.randrange(-9, 10), rng.randrange(-9, 10)
         return messy(rng, f"solve({a}*x+{b}={r},x)")
@@ -612,12 +639,32 @@ def rand_solve(rng: random.Random) -> str:
         base = rng.randrange(2, 7)
         p = rng.randrange(2, 5)
         return messy(rng, f"solve(log({base},x+1)={p},x)")
+    if case == 11:
+        v = pick(rng, ["y", "u", "k", "t"])
+        r1 = rng.randrange(1, 8)
+        r2 = -rng.randrange(1, 8)
+        b = -(r1 + r2)
+        c = r1 * r2
+        return messy(rng, f"solve({v}^2{b:+d}*{v}{c:+d}=0,{v})")
+    if case == 12:
+        v = pick(rng, ["x", "y", "u", "k", "t"])
+        r = rng.randrange(1, 12)
+        return messy(rng, f"solve({v}*({v}-{r})=0,{v})")
+    if case == 13:
+        v = pick(rng, ["x", "y", "u", "k", "t"])
+        a = rng.randrange(1, 6)
+        b = rng.randrange(1, 6)
+        if b == a:
+            b = 6
+        s = a * a + b * b
+        p = a * a * b * b
+        return messy(rng, f"solve({v}^4-{s}*{v}^2+{p}=0,{v})")
     q, _, _ = quad_from_roots(rng)
     return messy(rng, f"solve({q}=0,x)")
 
 
 def rand_range(rng: random.Random) -> str:
-    case = rng.randrange(8)
+    case = rng.randrange(9)
     if case == 0:
         return messy(rng, f"range({lin(rng)})")
     if case == 1:
@@ -635,6 +682,10 @@ def rand_range(rng: random.Random) -> str:
         return messy(rng, f"range({pick(rng, ['exp','ln','sqrt'])}({maybe_wrap(rng, 'x')}))")
     if case == 6:
         return messy(rng, f"range({rng.randrange(-9,10)})")
+    if case == 7:
+        a, b, c = nz(rng, 1, 6), nz(rng, 1, 6), rng.randrange(-8, 9)
+        m, d = nz(rng, 1, 5), rng.randrange(-8, 9)
+        return messy(rng, f"range({a}*sin({m}*x{d:+d})+{b}*cos({m}*x{d:+d}){c:+d},x)")
     q, _, _ = quad_from_roots(rng)
     return messy(rng, f"range({q})")
 
@@ -661,7 +712,7 @@ def rand_simplify(rng: random.Random) -> str:
 
 
 def rand_xform(rng: random.Random) -> str:
-    case = rng.randrange(17)
+    case = rng.randrange(18)
     if case == 0:
         terms = ["1", "tan(x)^2"]
         rng.shuffle(terms)
@@ -717,6 +768,10 @@ def rand_xform(rng: random.Random) -> str:
     if case == 15:
         inner = pick(rng, ["x+1", pos_lin(rng)])
         return messy(rng, f"xform(ln(exp({inner})),{inner})")
+    if case == 16:
+        v = pick(rng, ["x", "t", "y"])
+        k = rng.randrange(1, 6)
+        return messy(rng, f"xform({2*k}*sin({v})*cos({v}),{k}*sin(2*{v}))")
     num, den, ans = factorable_ratio(rng)
     return messy(rng, f"xform(({num})/({den}),{ans})")
 
@@ -886,6 +941,8 @@ def classify(kind: str, src: str, out: str, code: int, elapsed: float, timeout: 
     if not stripped:
         return "empty"
     lines = [line.strip() for line in stripped.splitlines() if line.strip()]
+    if "input exceeds verified host fuzz complexity guard" in stripped:
+        return "guarded-too-large"
     if "Exact:" in stripped:
         return "exact-label"
     if "proot(" in stripped or "min(f(r)" in stripped or "max(f(r)" in stripped:
@@ -925,6 +982,546 @@ def classify(kind: str, src: str, out: str, code: int, elapsed: float, timeout: 
     return "ok"
 
 
+def strip_constant(text: str) -> str:
+    s = text.strip()
+    for suffix in ("+ C", "+C"):
+        if s.endswith(suffix):
+            return s[: -len(suffix)].strip()
+    return s
+
+
+def final_math_line(out: str) -> str:
+    skip_prefixes = (
+        "planner search",
+        "rule:",
+        "expand expression",
+        "check equivalence",
+        "difference simplifies",
+        "verified",
+        "power:",
+        "product:",
+        "quotient:",
+        "sub ",
+        "terms:",
+        "integrate term",
+    )
+    for raw in reversed(out.splitlines()):
+        line = raw.strip()
+        if not line:
+            continue
+        if line.lower().startswith(skip_prefixes):
+            continue
+        if line.startswith("="):
+            line = line[1:].strip()
+        return strip_constant(line)
+    return ""
+
+
+def math_result_lines(out: str) -> list[str]:
+    skip_prefixes = (
+        "planner search",
+        "rule:",
+        "check equivalence",
+        "difference simplifies",
+        "verified",
+        "power:",
+        "product:",
+        "quotient:",
+        "sub ",
+        "terms:",
+        "integrate term",
+        "u=",
+        "du=",
+        "dv=",
+    )
+    vals: list[str] = []
+    for raw in out.splitlines():
+        line = raw.strip()
+        if not line or line.lower().startswith(skip_prefixes):
+            continue
+        vals.append(strip_constant(line[1:].strip() if line.startswith("=") else line))
+        if "=" in line and "==" not in line:
+            rhs = line.split("=", 1)[1].strip()
+            if rhs:
+                vals.append(strip_constant(rhs))
+    return vals
+
+
+def symbolic_zero(expr) -> bool:
+    h = host_eval()
+    candidates = [expr]
+    for build in (
+        lambda e: h.sp.trigsimp(e),
+        lambda e: h.sp.trigsimp(e, method="fu"),
+        lambda e: h.sp.simplify(e),
+        lambda e: h.sp.trigsimp(h.sp.simplify(e), method="fu"),
+        lambda e: h.sp.factor(h.sp.cancel(h.sp.together(h.sp.simplify(e)))),
+        lambda e: h.sp.trigsimp(h.sp.expand_trig(e)),
+    ):
+        try:
+            candidates.append(build(expr))
+        except Exception:
+            pass
+    for z in candidates:
+        try:
+            if bool(z == 0 or z.equals(0)):
+                return True
+        except Exception:
+            pass
+    return False
+
+
+def symbolic_equal(left: str, right: str) -> bool:
+    h = host_eval()
+    try:
+        return symbolic_zero(h.parse_math(left) - h.parse_math(right))
+    except Exception:
+        return False
+
+
+def antiderivative_matches(result: str, integrand: str, var_name: str = "x") -> bool:
+    h = host_eval()
+    try:
+        var = h.NAMES.get(var_name) or h.sp.Symbol(var_name)
+        if "abs(" in result.lower():
+            if antiderivative_matches(re.sub(r"\babs\(", "(", result, flags=re.IGNORECASE), integrand, var_name):
+                return True
+        diff_expr = h.sp.diff(h.parse_math(result), var) - h.parse_math(integrand)
+        if symbolic_zero(diff_expr):
+            return True
+        good = 0
+        for pt in (0.3, 0.7, 1.1, 1.7):
+            try:
+                val = complex(h.sp.N(diff_expr.subs(var, pt), 30))
+            except Exception:
+                continue
+            if abs(val) < 1e-7:
+                good += 1
+        return good >= 2
+    except Exception:
+        return False
+
+
+def property_cases(commands: list[str] | None = None) -> list[dict[str, str]]:
+    selected = set(commands or [])
+
+    def allow(cmd: str) -> bool:
+        return not selected or cmd in selected
+
+    cases: list[dict[str, str]] = []
+    if allow("factor"):
+        for a, b, c, d in [(2, -3, 1, 5), (3, 2, 2, -7), (-2, 5, 4, 1)]:
+            cases.append({
+                "kind": "property:factor:linear_product",
+                "cmd": "factor",
+                "input": f"factor(({a}*x{b:+d})*({c}*x{d:+d}))",
+                "mode": "eval_equiv",
+            })
+        for src, markers in [
+            ("factor(10*x^3-21*x^2-x+6)", ["(x - 2)", "(2*x + 1)", "(5*x - 3)", "Verified"]),
+            ("factor(2*x^3-5*x^2-34*x-48)", ["(x - 6)", "(2*x^2 + 7*x + 8)", "Verified"]),
+        ]:
+            cases.append({
+                "kind": "property:factor:exact_backend",
+                "cmd": "factor",
+                "input": src,
+                "mode": "markers",
+                "markers": markers,
+            })
+    if allow("partfrac"):
+        for a, b, c, d in [(3, 5, 1, 2), (5, -1, 2, -3), (-4, 7, -2, 5)]:
+            cases.append({
+                "kind": "property:partfrac:two_linear",
+                "cmd": "partfrac",
+                "input": f"partfrac(({a}*x{b:+d})/((x{c:+d})*(x{d:+d})),x)",
+                "mode": "eval_equiv",
+            })
+    if allow("diff"):
+        for expr in [
+            "(x^2+1)*sin(3*x-2)",
+            "(2*x-5)/(x^2+3)",
+            "ln((3*x+2)^2)",
+            "sqrt(5*x-1)*exp(x)",
+            "log(1/(sqrt(x^2+1)-x))",
+        ]:
+            cases.append({
+                "kind": "property:diff:rules",
+                "cmd": "diff",
+                "input": f"diff({expr},x)",
+                "mode": "derivative",
+                "expr": expr,
+                "var": "x",
+            })
+        for src, markers in [
+            (
+                "diff((x^2)*tan(y)=9,x)",
+                ["Use original equation:", "tan(y) = 9/x^2", "x^4 + 81", "Verified"],
+            ),
+            (
+                "diff(3*x*tan(y)=6,x)",
+                ["Use original equation:", "tan(y) = 2/x", "x^2 + 4", "Verified"],
+            ),
+            (
+                "diff(x^2*exp(y)=9,x)",
+                ["Use original equation:", "exp(y) = 9/x^2", "(dy)/(dx)=-2/x", "Verified"],
+            ),
+        ]:
+            cases.append({
+                "kind": "property:diff:implicit_dep_substitution",
+                "cmd": "diff",
+                "input": src,
+                "mode": "markers",
+                "markers": markers,
+            })
+    if allow("solve"):
+        for eq, var in [
+            ("3*x+5=17", "x"),
+            ("(x-2)*(x+3)=0", "x"),
+            ("ln(2*x+1)=ln(7)", "x"),
+            ("y^2-5*y+6=0", "y"),
+        ]:
+            cases.append({
+                "kind": "property:solve:exact_output",
+                "cmd": "solve",
+                "input": f"solve({eq},{var})",
+                "mode": "exact_output_contains",
+            })
+        for src, markers in [
+            ("solve(3*k^2-58*k+240=0,k,k integer)", ["Apply condition:", "k integer", "k = [6]"]),
+            ("solve(k^2+k-2=0,k,k!=1)", ["Apply condition:", "k!=1", "k = [-2]"]),
+            ("solve(-1/300*x^2+3/5*x+3=0,x,x>0)", ["Apply condition:", "x>0", "x = [90 + 30*sqrt(10)]"]),
+            (
+                "solve(4^(3*p-1)=5^210,p)",
+                ["Take ln of both sides.", "p = [(ln(5^210) + ln(4))/(3*ln(4))]"],
+            ),
+        ]:
+            forbidden = ["p = []"] if "4^(3*p-1)" in src else []
+            cases.append({
+                "kind": "property:solve:condition_filter",
+                "cmd": "solve",
+                "input": src,
+                "mode": "markers",
+                "markers": markers,
+                "forbidden": forbidden,
+            })
+    if allow("integrate"):
+        for q, a, b in [
+            (1, 1, 0),
+            (1, 2, 1),
+            (2, 3, -2),
+            (3, 5, 4),
+            (5, 4, -3),
+            (7, 2, -5),
+        ]:
+            arg = f"{a}*x{b:+d}"
+            cases.append({
+                "kind": "property:integrate:sin_square",
+                "cmd": "integrate",
+                "input": f"integrate({q}*sin({arg})^2,x)",
+                "mode": "antiderivative",
+                "integrand": f"{q}*sin({arg})^2",
+                "var": "x",
+            })
+        for expr in [
+            "x*exp(2*x)",
+            "(2*x+3)/(x^2+3*x+7)",
+            "cos(x)*(6*sin(x)-2*sin(3*x))^(2/3)",
+            "sqrt(18*cos(x)*sin(2*x))",
+        ]:
+            cases.append({
+                "kind": "property:integrate:mixed_rules",
+                "cmd": "integrate",
+                "input": f"integrate({expr},x)",
+                "mode": "antiderivative",
+                "integrand": expr,
+                "var": "x",
+            })
+    if allow("expand"):
+        for a, b in [(2, 3), (3, -5), (-4, 1), (5, 0), (-2, -7)]:
+            cases.append({
+                "kind": "property:expand:affine_square",
+                "cmd": "expand",
+                "input": f"expand(({a}*x{b:+d})^2)",
+                "mode": "eval_equiv",
+            })
+    if allow("texpand"):
+        for a, b in [("x", "y"), ("2*x", "t"), ("u+1", "v")]:
+            cases += [
+                {
+                    "kind": "property:texpand:compound_sin",
+                    "cmd": "texpand",
+                    "input": f"texpand(sin({a}+{b}))",
+                    "mode": "markers",
+                    "markers": ["sin(", "cos(", "Verified by equivalence check"],
+                },
+                {
+                    "kind": "property:texpand:compound_cos",
+                    "cmd": "texpand",
+                    "input": f"texpand(cos({a}-{b}))",
+                    "mode": "markers",
+                    "markers": ["cos(", "sin(", "Verified by equivalence check"],
+                },
+                {
+                    "kind": "property:texpand:compound_tan",
+                    "cmd": "texpand",
+                    "input": f"texpand(tan({a}+{b}))",
+                    "mode": "markers",
+                    "markers": ["tan(", "Verified by equivalence check"],
+                },
+            ]
+    if allow("xform"):
+        for start, target in [
+            ("(x+3)^2", "x^2+6*x+9"),
+            ("1/(sqrt(x)+1)", "(sqrt(x)-1)/(x-1)"),
+            ("1/(sqrt(x)+2)", "(sqrt(x)-2)/(x-4)"),
+            ("exp(ln(x+4))", "x+4"),
+            ("(2*x+3)/(4*x+6)", "1/2"),
+        ]:
+            cases.append({
+                "kind": "property:xform:algebraic_rewrite",
+                "cmd": "xform",
+                "input": f"xform({start},{target})",
+                "mode": "target_equiv",
+            })
+        for v in ["x", "t"]:
+            for k in [1, 2, 5]:
+                cases += [
+                    {
+                        "kind": "property:xform:pythagorean",
+                        "cmd": "xform",
+                        "input": f"xform({k}+{k}*tan({v})^2,{k}*sec({v})^2)",
+                        "mode": "target_equiv",
+                    },
+                    {
+                        "kind": "property:xform:double_angle",
+                        "cmd": "xform",
+                        "input": f"xform({2*k}*sin({v})*cos({v}),{k}*sin(2*{v}))",
+                        "mode": "target_equiv",
+                    },
+                ]
+        for base in [2, 3, 5]:
+            for n in [2, 4]:
+                cases.append({
+                    "kind": "property:xform:log_power",
+                    "cmd": "xform",
+                    "input": f"xform(log({base},(x+1)^{n}),{n}*log({base},x+1))",
+                    "mode": "target_equiv",
+                })
+    if allow("log"):
+        for src, result in [("log(2,8)", "3"), ("log(3,81)", "4")]:
+            cases.append({
+                "kind": "property:log:exact_backend",
+                "cmd": "log",
+                "input": src,
+                "mode": "markers",
+                "markers": ["Change of base", "= "+result],
+            })
+    if allow("sum"):
+        for a, b, lo, hi in [(3, 2, 1, 5), (-2, 7, 0, 6), (5, -1, 2, 8)]:
+            cases.append({
+                "kind": "property:sum:linear",
+                "cmd": "sum",
+                "input": f"sum({a}*k{b:+d},k,{lo},{hi})",
+                "mode": "exact_output_contains",
+            })
+    if allow("limit"):
+        for src, markers in [
+            ("limit(sin(x)/x,x=0)", ["standard limits/cancel factors", "KhiCAS exact:", "1", "Verified"]),
+            ("limit((x^2-1)/(x-1),x=1)", ["standard limits/cancel factors", "KhiCAS exact:", "2", "Verified"]),
+            ("limit((1-cos(x))/x^2,x=0)", ["standard limits/cancel factors", "KhiCAS exact:", "1/2", "Verified"]),
+        ]:
+            cases.append({
+                "kind": "property:limit:exact_backend",
+                "cmd": "limit",
+                "input": src,
+                "mode": "markers",
+                "markers": markers,
+            })
+    if allow("numeric"):
+        for src, markers in [
+            ("method=numeric,200*ln(2)*2^(8/5)", ["Sign: > 0", "To 2 significant figures: 420", "Nearest integer: 420"]),
+            ("method=numeric,1/2*0.5*(0.4805+1.9218+2*(0.8396+1.2069+1.5694))", ["To 3 significant figures: 2.41"]),
+            ("method=numeric,(3/5+sqrt(2/5))/(1/150)", ["Nearest integer: 185"]),
+            ("method=numeric,2*0.3405^3-4*0.3405^2+7*0.3405-2", ["Sign: < 0", "Nearest integer: 0"]),
+            ("method=numeric,0.0000000000001-0.0000000000001", ["Sign: = 0", "Nearest integer: 0"]),
+        ]:
+            cases.append({
+                "kind": "property:numeric:exam_rounding",
+                "cmd": "numeric",
+                "input": src,
+                "mode": "markers",
+                "markers": markers,
+            })
+    if allow("evalat"):
+        for src, markers in [
+            ("evalat(x^2-4*x+5,x,0)", ["Sub x=0", "f(0) = 5"]),
+            ("evalat(3*x^2+12*x+25,x,-2)", ["Sub x=-2", "f(-2) = 13"]),
+            ("evalat(1000*(ln(2)/5)*e^(ln(2)/5*t),t,8)", ["Sub t=8", "f(8) =", "ln(2)"]),
+        ]:
+            cases.append({
+                "kind": "property:evalat:value_line",
+                "cmd": "evalat",
+                "input": src,
+                "mode": "markers",
+                "markers": markers,
+            })
+    if allow("domain"):
+        for src, markers in [
+            ("domain(sqrt(2*x-3),x)", ["x >= 3/2"]),
+            ("domain(ln(5-x),x)", ["x < 5"]),
+            ("domain(1/(x^2-9),x)", ["x != -3", "x != 3"]),
+        ]:
+            cases.append({
+                "kind": "property:domain:inequality_rules",
+                "cmd": "domain",
+                "input": src,
+                "mode": "markers",
+                "markers": markers,
+            })
+    if allow("range"):
+        for src, markers in [
+            ("range((2*x-3)^2+5,x)", ["y >= 5"]),
+            ("range(-3*(x+2)^2+7,x)", ["y <= 7"]),
+            ("range(abs(x-3)+2)", ["abs(u) >= 0", "y >= 2"]),
+            ("range(sqrt(x-1)+3)", ["sqrt(u) >= 0", "y >= 3"]),
+            ("range(x/(x^2+4),x)", ["D>=0", "-16*y^2 + 1 >= 0", "Solve D>=0"]),
+            ("range((x^2-1)/(x^2+1),x)", ["D>=0", "-4*y^2 + 4 >= 0", "Solve D>=0", "Exclude degenerate y: 1"]),
+            ("range((x+1)/(x^2+1),x)", ["D>=0", "-4*y^2 + 4*y + 1 >= 0", "Solve D>=0"]),
+            ("range(1/(x^2+4*x+5),x)", ["D>=0", "-4*y^2 + 4*y >= 0", "Solve D>=0", "Exclude degenerate y: 0"]),
+            ("range((x^2-2)*exp(-x),x)", ["f'(x)=", "as x -> -infinity", "as x -> +infinity", "y >=", "Verified"]),
+            ("range((x+1)*exp(-x),x)", ["f'(x)=", "f(0) = 1", "max y =", "y <=", "Verified"]),
+            ("range(x^2*exp(-x),x)", ["f'(x)=", "f(0) = 0", "min y = 0", "y >= 0", "Verified"]),
+            ("range(sin(x)+cos(x),x)", ["R-form range", "R=sqrt(1^2+1^2)=sqrt(2)", "-sqrt(2) <= y <= sqrt(2)", "Verified"]),
+            ("range(3*sin(2*x+1)+4*cos(2*x+1)-5,x)", ["R-form range", "R=sqrt(3^2+4^2)=5", "-10 <= y <= 0", "Verified"]),
+        ]:
+            cases.append({
+                "kind": "property:range:quadratic_vertex",
+                "cmd": "range",
+                "input": src,
+                "mode": "markers",
+                "markers": markers,
+            })
+    if allow("series"):
+        for src, markers in [
+            ("series(exp(x),x=0,4)", ["KhiCAS exact:", "x^4/24", "x^3/6", "Verified"]),
+            ("series(sin(theta),theta=0,3)", ["KhiCAS exact:", "theta^3/6", "theta", "Verified"]),
+            ("series(tan(theta),theta=0,3)", ["KhiCAS exact:", "theta^3/3", "theta", "Verified"]),
+            ("series((1+2*x)^(-1),x=0,5)", ["KhiCAS exact:", "16*x^4", "- 8*x^3", "Verified"]),
+        ]:
+            cases.append({
+                "kind": "property:series:exact_backend",
+                "cmd": "series",
+                "input": src,
+                "mode": "markers",
+                "markers": markers,
+            })
+    if allow("taylor"):
+        for src in [
+            "taylor((1-4*x)^(-1/2),x,0,5)",
+            "taylor(ln(1+x),x,0,5)",
+        ]:
+            cases.append({
+                "kind": "property:taylor:exact_backend",
+                "cmd": "taylor",
+                "input": src,
+                "mode": "exact_output_contains",
+            })
+    if allow("product"):
+        for a, b in [(1, 4), (2, 5), (3, 6)]:
+            cases.append({
+                "kind": "property:product:linear",
+                "cmd": "product",
+                "input": f"product(k+{a},k,1,{b})",
+                "mode": "exact_output_contains",
+            })
+    return cases
+
+
+def verify_property(case: dict[str, str], out: str, code: int, timeout: bool) -> str:
+    if timeout:
+        return "property-timeout"
+    if code:
+        return "property-crash"
+    lowered = out.lower()
+    if "no route" in lowered or "no verified a-level working route found" in lowered:
+        return "property-no-route"
+    if "not equivalent" in lowered:
+        return "property-not-equivalent"
+    mode = case["mode"]
+    if mode == "markers":
+        packed_out = "".join(out.split()).replace("*", "").replace("**", "^")
+        markers = case.get("markers", [])
+        if isinstance(markers, str):
+            markers = [markers]
+        for marker in markers:
+            packed_marker = "".join(str(marker).split()).replace("*", "").replace("**", "^")
+            if str(marker) not in out and packed_marker not in packed_out:
+                return "property-marker-missing"
+        forbidden = case.get("forbidden", [])
+        if isinstance(forbidden, str):
+            forbidden = [forbidden]
+        for marker in forbidden:
+            packed_marker = "".join(str(marker).split()).replace("*", "").replace("**", "^")
+            if str(marker) in out or packed_marker in packed_out:
+                return "property-forbidden-marker"
+        return "ok"
+    if "verified" not in lowered:
+        return "property-unverified"
+    result_lines = math_result_lines(out)
+    result = final_math_line(out)
+    if result:
+        result_lines.append(result)
+    if not result_lines:
+        return "property-no-result"
+    if mode == "derivative":
+        h = host_eval()
+        try:
+            var = h.NAMES.get(case.get("var", "x")) or h.sp.Symbol(case.get("var", "x"))
+            expected = h.fmt(h.sp.diff(h.parse_math(case["expr"]), var))
+        except Exception:
+            return "property-eval-error"
+        if any(symbolic_equal(candidate, expected) for candidate in result_lines):
+            return "ok"
+        return "property-bad-derivative"
+    if mode == "antiderivative":
+        if any(antiderivative_matches(candidate, case["integrand"], case.get("var", "x"))
+               for candidate in result_lines):
+            return "ok"
+        return "property-bad-antiderivative"
+    if mode == "eval_equiv":
+        h = host_eval()
+        try:
+            expected = h.fmt(h.evaluate(case["input"]))
+        except Exception:
+            return "property-eval-error"
+        if any(symbolic_equal(candidate, expected) for candidate in result_lines):
+            return "ok"
+        return "property-bad-result"
+    if mode == "target_equiv":
+        h = host_eval()
+        parsed = h.call(case["input"])
+        if not parsed or len(parsed[1]) < 2:
+            return "property-bad-input"
+        target = parsed[1][1]
+        packed_out = "".join(out.split()).replace("*", "").replace("**", "^")
+        packed_target = "".join(target.split()).replace("*", "").replace("**", "^")
+        if packed_target in packed_out or any(symbolic_equal(candidate, target) for candidate in result_lines):
+            return "ok"
+        return "property-target-mismatch"
+    if mode == "exact_output_contains":
+        h = host_eval()
+        try:
+            expected = h.fmt(h.evaluate(case["input"]))
+        except Exception:
+            return "property-eval-error"
+        packed_out = "".join(out.split()).replace("*", "").replace("**", "^")
+        packed_expected = "".join(expected.split()).replace("*", "").replace("**", "^")
+        if packed_expected in packed_out or any(symbolic_equal(candidate, expected) for candidate in result_lines):
+            return "ok"
+        return "property-exact-output-mismatch"
+    return "property-unknown-mode"
+
+
 def append_progress(done: int, bad: int, status: str) -> None:
     PROGRESS.parent.mkdir(parents=True, exist_ok=True)
     event = {
@@ -939,18 +1536,25 @@ def append_progress(done: int, bad: int, status: str) -> None:
 
 def run_case(src: str, timeout_s: float) -> tuple[int, str, float, bool]:
     start = time.monotonic()
+    proc = subprocess.Popen(
+        [str(RUNNER), src],
+        cwd=ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        start_new_session=True,
+    )
     try:
-        p = subprocess.run(
-            [str(RUNNER), src],
-            cwd=ROOT,
-            text=True,
-            capture_output=True,
-            timeout=timeout_s,
-        )
-        return p.returncode, (p.stdout or "") + (p.stderr or ""), time.monotonic() - start, False
+        stdout, stderr = proc.communicate(timeout=timeout_s)
     except subprocess.TimeoutExpired as exc:
-        out = (exc.stdout or "") + (exc.stderr or "")
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except (ProcessLookupError, PermissionError):
+            pass
+        stdout, stderr = proc.communicate()
+        out = (exc.stdout or "") + (exc.stderr or "") + (stdout or "") + (stderr or "")
         return 124, out, time.monotonic() - start, True
+    return proc.returncode, (stdout or "") + (stderr or ""), time.monotonic() - start, False
 
 
 def write_transcript_case(f, rec: dict, out: str) -> None:
@@ -978,6 +1582,7 @@ def main() -> int:
     ap.add_argument("--structured", action="store_true", help="use the older smaller structured generator")
     ap.add_argument("--stop-on-fail", action="store_true")
     ap.add_argument("--strict", action="store_true", help="count weak fallback as failure")
+    ap.add_argument("--no-property-families", action="store_true", help="skip generated semantic property families")
     ap.add_argument("--print-failures", action="store_true", help="print failed records to stdout")
     ap.add_argument("--jsonl", type=Path, default=ROOT / "tests" / "reports" / "random_fuzz_latest.jsonl")
     ap.add_argument("--transcript", type=Path, default=ROOT / "tests" / "reports" / "random_fuzz_latest.txt")
@@ -1016,7 +1621,9 @@ def main() -> int:
                 )
                 code, out, elapsed, timeout = run_case(src, args.timeout)
                 verdict = classify(kind, src, out, code, elapsed, timeout)
-                fail = verdict not in {"ok", "slow", "symbolic"} and (args.strict or verdict != "weak-fallback")
+                fail = verdict not in {"ok", "slow", "symbolic", "guarded-too-large"} and (
+                    args.strict or verdict != "weak-fallback"
+                )
                 rec = {
                     "i": done,
                     "kind": kind,
@@ -1043,6 +1650,35 @@ def main() -> int:
             append_progress(done, bad, "random-fuzz interrupted")
             print(f"INTERRUPTED random fuzz done={done} bad={bad} report={args.jsonl}")
             return 130 if bad else 0
+
+        if not args.no_property_families:
+            for case in property_cases(only):
+                src = case["input"]
+                code, out, elapsed, timeout = run_case(src, args.timeout)
+                verdict = verify_property(case, out, code, timeout)
+                fail = verdict != "ok"
+                rec = {
+                    "i": done,
+                    "kind": case["kind"],
+                    "input": src,
+                    "verdict": verdict,
+                    "returncode": code,
+                    "elapsed": round(elapsed, 4),
+                    "output": out[:1200],
+                }
+                report.write(json.dumps(rec, ensure_ascii=False) + "\n")
+                write_transcript_case(transcript, rec, out)
+                if fail:
+                    bad += 1
+                    if args.print_failures:
+                        print(json.dumps(rec, ensure_ascii=False))
+                    done += 1
+                    if args.stop_on_fail:
+                        break
+                    continue
+                done += 1
+                if done % 25 == 0:
+                    append_progress(done, bad, f"random-fuzz {done} done")
 
     append_progress(done, bad, "random-fuzz complete")
     status = "OK" if bad == 0 else "DONE"

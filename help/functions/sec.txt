@@ -1,30 +1,5 @@
-sec(x)
-
-Args:
-  x
-
-Required:
-  x
-
-Optional:
-  None.
-
-Does:
-  Secant. Required: angle x. Uses sec(x)=1/cos(x).
-
-Examples:
-  sec(x)
-
-F2:
-  sec(x)
-
-Keys:
-  F1 inserts the command.
-  F2 inserts the first example.
-  F3 inserts the second example when available.
-
-Working:
-  Shows exam-style lines when this command has a routed A-level working path; otherwise returns the exact KhiCAS result for the expression.
-
-Tip:
-  Use brackets around compound numerators, denominators, powers, and substitutions for readable exam-style output.
+sec
+Args: see catalog signature for sec.
+Required: A-level Pure scoped use only.
+Does: returns exact KhiCAS output, or verified working when a verified route exists.
+Examples: sec(1)

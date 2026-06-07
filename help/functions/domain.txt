@@ -1,33 +1,5 @@
-domain(expr,[var])
-
-Args:
-  expr, [var]
-
-Required:
-  expr
-
-Optional:
-  variable
-
-Does:
-  Finds allowed real input values as inequalities.
-
-Examples:
-  domain(sqrt(x-2),x); domain(log(10,4-x),x)
-
-F2:
-  domain(sqrt(x-2),x)
-
-F3:
-  domain(log(10,4-x),x)
-
-Keys:
-  F1 inserts the command.
-  F2 inserts the first example.
-  F3 inserts the second example when available.
-
-Working:
-  Combines denominator not-zero, square-root non-negative, and logarithm positive constraints.
-
-Tip:
-  Use brackets around compound numerators, denominators, powers, and substitutions for readable exam-style output.
+domain
+Args: see catalog signature for domain.
+Required: A-level Pure scoped use only.
+Does: returns exact KhiCAS output, or verified working when a verified route exists.
+Examples: domain(sqrt(x-1),x)

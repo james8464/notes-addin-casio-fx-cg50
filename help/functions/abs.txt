@@ -1,33 +1,5 @@
-abs(x)
-
-Args:
-  x
-
-Required:
-  x
-
-Optional:
-  None.
-
-Does:
-  Absolute value. Required: x. Returns distance from 0; useful for modulus inequalities and domains.
-
-Examples:
-  abs(-3); abs(x-2)
-
-F2:
-  abs(-3)
-
-F3:
-  abs(x-2)
-
-Keys:
-  F1 inserts the command.
-  F2 inserts the first example.
-  F3 inserts the second example when available.
-
-Working:
-  Shows exam-style lines when this command has a routed A-level working path; otherwise returns the exact KhiCAS result for the expression.
-
-Tip:
-  Use brackets around compound numerators, denominators, powers, and substitutions for readable exam-style output.
+abs
+Args: see catalog signature for abs.
+Required: A-level Pure scoped use only.
+Does: returns exact KhiCAS output, or verified working when a verified route exists.
+Examples: abs(1)

@@ -1,30 +1,5 @@
-floor(x)
-
-Args:
-  x
-
-Required:
-  x
-
-Optional:
-  None.
-
-Does:
-  Floor. Required: x. Returns the greatest integer less than or equal to x.
-
-Examples:
-  floor(1.8)
-
-F2:
-  floor(1.8)
-
-Keys:
-  F1 inserts the command.
-  F2 inserts the first example.
-  F3 inserts the second example when available.
-
-Working:
-  Shows exam-style lines when this command has a routed A-level working path; otherwise returns the exact KhiCAS result for the expression.
-
-Tip:
-  Use brackets around compound numerators, denominators, powers, and substitutions for readable exam-style output.
+floor
+Args: see catalog signature for floor.
+Required: A-level Pure scoped use only.
+Does: returns exact KhiCAS output, or verified working when a verified route exists.
+Examples: floor(1)

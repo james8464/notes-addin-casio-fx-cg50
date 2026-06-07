@@ -1,30 +1,5 @@
-coeff(p,x,n)
-
-Args:
-  p,x,n
-
-Required:
-  p, x, n
-
-Optional:
-  None.
-
-Does:
-  Coefficient extraction. Required: expression p, variable x, power n. Returns the coefficient of x^n.
-
-Examples:
-  coeff(3*x^2+2*x+1,x,2)
-
-F2:
-  coeff(3*x^2+2*x+1,x,2)
-
-Keys:
-  F1 inserts the command.
-  F2 inserts the first example.
-  F3 inserts the second example when available.
-
-Working:
-  Shows exam-style lines when this command has a routed A-level working path; otherwise returns the exact KhiCAS result for the expression.
-
-Tip:
-  Use brackets around compound numerators, denominators, powers, and substitutions for readable exam-style output.
+coeff
+Args: see catalog signature for coeff.
+Required: A-level Pure scoped use only.
+Does: returns exact KhiCAS output, or verified working when a verified route exists.
+Examples: coeff(1)

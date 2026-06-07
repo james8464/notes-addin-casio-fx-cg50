@@ -1,33 +1,5 @@
-log(base,x) or log(x)
-
-Args:
-  base, x
-
-Required:
-  x; base when not base 10/default form
-
-Optional:
-  base may be omitted for calculator default log form
-
-Does:
-  Works with logarithms to different bases and shows change of base for non-default bases.
-
-Examples:
-  log(2,x); solve(log(3,x)=4,x)
-
-F2:
-  log(2,x)
-
-F3:
-  solve(log(3,x)=4,x)
-
-Keys:
-  F1 inserts the command.
-  F2 inserts the first example.
-  F3 inserts the second example when available.
-
-Working:
-  Shows ln(x)/ln(base), log laws, domain x>0, and exponentiation when solving.
-
-Tip:
-  Use brackets around compound numerators, denominators, powers, and substitutions for readable exam-style output.
+log
+Args: see catalog signature for log.
+Required: A-level Pure scoped use only.
+Does: returns exact KhiCAS output, or verified working when a verified route exists.
+Examples: log(2,8)

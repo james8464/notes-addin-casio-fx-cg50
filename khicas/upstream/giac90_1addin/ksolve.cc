@@ -470,7 +470,7 @@ namespace giac {
 	  break;
 	}
 	if (is_inf(l) || n.type!=_IDNT || n.print(contextptr).substr(0,2)!="n_" || !is_linear_wrt(expr,n,a,b,contextptr)){
-	  *logptr(contextptr) << gettext("Warning: unable to find ") <<n << gettext(" integer solutions for ") << expr << ">=" << l << gettext(" and <=") << m << gettext(", answer may be wrong.\nIf you are computing an integral with exact boundaries, replace by approx. boundaries") << endl;
+	  *logptr(contextptr) << gettext("Warn: integer solution search incomplete ") <<n << gettext(" for ") << expr << ">=" << l << gettext(" and <=") << m << endl;
 	  if (v.size()!=1) v=vecteur(1,undef);
 	  return;
 	}
@@ -1196,8 +1196,8 @@ namespace giac {
     gen singuf=evalf(singu,1,contextptr), veq_not_singuf=evalf(veq_not_singu,1,contextptr);
     if (singuf.type!=_VECT || veq_not_singuf.type!=_VECT || !is_numericv(*singuf._VECTptr) || !is_numericv(*veq_not_singuf._VECTptr)){
       if (eids.size()>eid.size())
-	return vecteur(1,gensizeerr(gettext("Unable to find numeric values solving equation. For trigonometric equations this may be solved using assumptions, e.g. assume(x>-pi && x<pi)")));
-      *logptr(contextptr) << gettext("Warning! Solving parametric inequation requires assumption on parameters otherwise solutions may be missed. The solutions of the equation are ") << veq_not_singu << endl;
+	return vecteur(1,gensizeerr(gettext("No numeric solve values; add assumptions")));
+      *logptr(contextptr) << gettext("Warn: parametric inequation needs assumptions; equation solutions are ") << veq_not_singu << endl;
     }
     veq=mergevecteur(veq_not_singu,singu);
     vecteur range,excluded_not_singu(find_excluded(x,contextptr));
@@ -3254,7 +3254,7 @@ namespace giac {
       if (1
 	  //abs_calc_mode(contextptr)==38
 	  ){
-	*logptr(contextptr) << gettext("Solving by bisection with change of variable x=tan(t) and t=-1.57..1.57. Try fsolve(equation,x=guess) for iterative solver or fsolve(equation,x=xmin..xmax) for bisection.") << endl;
+	*logptr(contextptr) << gettext("Bisection with x=tan(t), t=-1.57..1.57") << endl;
 	gen eq=subst(v[0],v[1],tan(v[1],contextptr),false,contextptr);
   //grad
 	vecteur v_=makevecteur(eq,symb_equal(v[1],angle_radian(contextptr)?symb_interval(-1.57,1.57):(angle_degree(contextptr)?symb_interval(-89.97,89.97):symb_interval(-99.97,99.97))));
@@ -3262,13 +3262,13 @@ namespace giac {
 	if (is_undef(res))
 	  return res;
 	if (res.type==_VECT && res._VECTptr->empty()){
-	  *logptr(contextptr) << gettext("No solution found by bisection. Trying iterative method starting at 0") << endl;
+	  *logptr(contextptr) << gettext("No bisection root; try guess 0") << endl;
 	  v_=makevecteur(v[0],v[1],0);
 	  return in_fsolve(v_,contextptr);
 	}
 	return tan(res,contextptr);
       }
-      *logptr(contextptr) << gettext("Solving with initial guess 0. Try fsolve(equation,x=guess) for iterative solver or fsolve(equation,x=xmin..xmax) for bisection.") << endl;
+      *logptr(contextptr) << gettext("Solving with guess 0") << endl;
     }
     gen gguess;
     if (v[1].type==_VECT && !v[1]._VECTptr->empty() && is_equal(v[1]._VECTptr->front())){
@@ -5811,7 +5811,7 @@ namespace giac {
 	  }
 	}
 	else
-	  *logptr(contextptr) << "Rational univariate representation is not certified, set proba_epsilon:=0 to certify" << endl;
+	  *logptr(contextptr) << "RUR not certified" << endl;
 	int deg=_degree(makesequence(Gv[2],var.front()),contextptr).val;
 	if (evalf_after & 1){
 	  gen pol=Gv[2],tmp;
@@ -6665,7 +6665,7 @@ namespace giac {
     if (returngb==3 && eqs.size()<=l.size()+3){
       bool ok=es>=1;
       if (ok){
-	*logptr(contextptr) << "Eliminating with resultant. Original equations may reduce further."<<endl;
+	*logptr(contextptr) << "Eliminating with resultant."<<endl;
 	vector<int> vtdeg;
 	// Choose lowest degree pivot 
 	int curdeg=_total_degree(makesequence(eqs.front(),l),contextptr).val;
@@ -6932,13 +6932,13 @@ namespace giac {
     }
     gen solu=_solve(makesequence(sol,vecteur(1,idnt)),contextptr);
     if (equalposcomp(lidnt_with_at(solu),idnt))
-      return gensizeerr(gettext("Error solving equations. Check that your variables are purged"));
+      return gensizeerr(gettext("Error solving equations"));
     if (solu.type!=_VECT)
       return gensizeerr(contextptr);
     if (solu._VECTptr->empty())
       return args._VECTptr->back();
     if (solu._VECTptr->size()>1)
-      *logptr(contextptr) << gettext("Warning: algsubs selected one branch. Consider running G:=gbasis(") << gen2vecteur(eq) << ","<< ids << ");greduce("<<args._VECTptr->back()<<",G," << ids << ");" << endl;
+      *logptr(contextptr) << gettext("Warn: algsubs selected one branch") << endl;
     return normal(solu[0][0],contextptr);
   }
   static const char _algsubs_s []="algsubs";

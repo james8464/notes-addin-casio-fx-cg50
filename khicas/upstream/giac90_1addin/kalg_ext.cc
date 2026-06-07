@@ -866,7 +866,7 @@ namespace giac {
       // Change for multivariate polynomials p, added evaluation
       if (innerdim){
 	gen params;
-	*logptr(contextptr) << gettext("Warning, need to choose a branch for the root of a polynomial with parameters. This might be wrong.") << endl;
+	*logptr(contextptr) << gettext("Warn: choosing parameter root branch") << endl;
 	if (l && l->size()>=2){
 	  for (int i=1;i<l->size();++i){
 	    params=(*l)[i];
