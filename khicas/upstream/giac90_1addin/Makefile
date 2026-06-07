@@ -13,7 +13,7 @@ RM	= /bin/rm
 CXXFLAGS = -Os -mb -m4a-nofpu  -mhitachi -std=c++11 -fpermissive -flto -fno-inline-functions-called-once -fno-partial-inlining -fno-ipa-cp-clone -fno-use-cxa-atexit -fno-threadsafe-statics -fomit-frame-pointer -fno-strict-aliasing -fno-rtti -fno-exceptions -fno-unwind-tables -fno-asynchronous-unwind-tables -fmerge-all-constants -ffunction-sections -fdata-sections -DNDEBUG -DHAVE_CONFIG_H -DTIMEOUT -DRELEASE -DCASCAS_DISABLE_PLOT_RUNTIME -DCASCAS_DISABLE_DESOLVE_RUNTIME -DCASCAS_DISABLE_PYTHON_RUNTIME -DCASCAS_DISABLE_MATRIX_EIGEN_RUNTIME -DCASCAS_DISABLE_QUADRATIC_FORM_RUNTIME -DCASCAS_DISABLE_RANDOM_RUNTIME -DCASCAS_DISABLE_RANDOM_MATRIX_RUNTIME -DCASCAS_DISABLE_TURTLE_DRAW_RUNTIME -DCASCAS_DISABLE_FFT_RUNTIME -DCASCAS_DISABLE_VECTOR_CALC_RUNTIME -DCASCAS_DISABLE_UNUSED_PUBLIC_RUNTIME  -I. -I/home/parisse/casiolocal/include/ustl -DFILEICON -DKMALLOC  -DGINT_MALLOC -DTURTLETAB #  #  -DNO_TEMPLATE_MULTGCD -DGIAC_GENERIC_CONSTANTS -fno-zero-initialized-in-bss -ffast-math
 
 
-LDFLAGS = -g -static -nostdlib -Tprizm.ld -Wl,--gc-sections,--relax,--print-memory-usage
+LDFLAGS = -static -nostdlib -Tprizm.ld -Wl,--gc-sections,--relax,--print-memory-usage
 
 LIBS = -L. -L/home/parisse/casiolocal/lib -Wl,--start-group -lgui -lcas -ltommath -lustl -lm -lc -lgcc -Wl,--end-group
 RUNMAT_CXXFLAGS = -Os -mb -m4a-nofpu -mhitachi -std=c++11 -fno-use-cxa-atexit -fno-threadsafe-statics -fomit-frame-pointer -fno-strict-aliasing -fno-rtti -fno-exceptions -fno-unwind-tables -fno-asynchronous-unwind-tables -ffunction-sections -fdata-sections -I/home/parisse/casiolocal/include -I/home/parisse/casiolocal/include/fxcg

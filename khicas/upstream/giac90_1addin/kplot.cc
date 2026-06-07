@@ -539,6 +539,9 @@ namespace giac {
 
   gen _point(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
+#ifdef CASCAS_DISABLE_PLOT_RUNTIME
+    return undef;
+#endif
     if ( (args.type==_SYMB) && (args._SYMBptr->sommet==at_pnt))
       return args;
     vecteur attributs(1,COLOR_BLACK | _QUADRANT3);
@@ -935,6 +938,9 @@ namespace giac {
   int read_attributs(const vecteur & v,vecteur & attributs,GIAC_CONTEXT){
     if (attributs.empty())
       attributs.push_back(COLOR_BLACK);
+#ifdef CASCAS_DISABLE_PLOT_RUNTIME
+    return int(v.size());
+#endif
     const_iterateur it=v.begin(),itend=v.end();
     int s=int(itend-it),smax(s);
     for (;it!=itend;++it){
@@ -1156,6 +1162,9 @@ namespace giac {
 
   gen _segment(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
+#ifdef CASCAS_DISABLE_PLOT_RUNTIME
+    return undef;
+#endif
     if (args.type!=_VECT)
       return gensizeerr(contextptr);
     vecteur attributs(1,COLOR_BLACK);
@@ -1231,6 +1240,9 @@ namespace giac {
 
   gen _affixe(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
+#ifdef CASCAS_DISABLE_PLOT_RUNTIME
+    return undef;
+#endif
     if (args.type==_VECT && args._VECTptr->size()==2 && !args._VECTptr->front().is_symb_of_sommet(at_pnt))
       return vect2c(args);
     if (args.type==_VECT)
@@ -1246,6 +1258,9 @@ namespace giac {
 
   gen _slope(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
+#ifdef CASCAS_DISABLE_PLOT_RUNTIME
+    return undef;
+#endif
     gen g=remove_at_pnt(args);
     if (g.type!=_VECT || g._VECTptr->size()!=2)
       return gensizeerr(contextptr);
@@ -1328,6 +1343,9 @@ namespace giac {
 
   gen _droite(const gen & args0,GIAC_CONTEXT){
     if (is_undef(args0)) return args0;
+#ifdef CASCAS_DISABLE_PLOT_RUNTIME
+    return undef;
+#endif
     if (args0.type==_SYMB || args0.type==_IDNT){
       // eval args with x/y or X/Y quoted
       vecteur argv=eval_with_xy_quoted(args0,contextptr);
@@ -1368,6 +1386,9 @@ namespace giac {
   define_unary_function_ptr5( at_plot_style ,alias_at_plot_style,&__plot_style,0,true);
 
   gen _parameter(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_DISABLE_PLOT_RUNTIME
+    return undef;
+#endif
     if ( (args.type!=_VECT) || (args._VECTptr->size()<4))
       return gensizeerr(contextptr);
     return symbolic(at_parameter,args);
@@ -1382,6 +1403,10 @@ namespace giac {
   }
   
   gen _coordonnees(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_DISABLE_PLOT_RUNTIME
+    if (args.type==_STRNG && args.subtype==-1) return args;
+    return undef;
+#endif
     if (args.type==_VECT) return args;
     gen P=remove_at_pnt(args);
     if (P.type==_VECT)
@@ -1407,6 +1432,10 @@ namespace giac {
   define_unary_function_ptr5( at_cylindre ,alias_at_cylindre,&__cylindre,0,true);
 
   gen _legende(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_DISABLE_PLOT_RUNTIME
+    if (args.type==_STRNG && args.subtype==-1) return args;
+    return undef;
+#endif
     int s;
     if (args.type!=_VECT || (s=args._VECTptr->size())<2)
       return gensizeerr(contextptr);
@@ -1514,6 +1543,10 @@ namespace giac {
     return false;
   }
   gen _couleur(const gen & a,GIAC_CONTEXT){
+#ifdef CASCAS_DISABLE_PLOT_RUNTIME
+    if (a.type==_STRNG && a.subtype==-1) return a;
+    return undef;
+#endif
 #ifdef RELEASE
     if (is_undef(a)) return a;
     if (a.type==_STRNG){
@@ -1920,6 +1953,9 @@ namespace giac {
 
   gen _centre(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
+#ifdef CASCAS_DISABLE_PLOT_RUNTIME
+    return undef;
+#endif
     gen a=args;
     if (a.is_symb_of_sommet(at_equal)){
       a=_cercle(a,contextptr);
@@ -1942,6 +1978,9 @@ namespace giac {
 
   gen _rayon(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
+#ifdef CASCAS_DISABLE_PLOT_RUNTIME
+    return undef;
+#endif
     gen a(args);
     if (a.is_symb_of_sommet(at_equal)){
       a=_cercle(a,contextptr);
@@ -1961,6 +2000,9 @@ namespace giac {
   // point + rayon or line
   gen _cercle(const gen & args,GIAC_CONTEXT){
     if (is_undef(args)) return args;
+#ifdef CASCAS_DISABLE_PLOT_RUNTIME
+    return undef;
+#endif
     // inert form (since cercle return itself with a pnt__vect arg)
     if (args.type==_VECT && args.subtype==_PNT__VECT) return symbolic(at_cercle,args); 
     vecteur v(gen2vecteur(args));
@@ -2133,6 +2175,9 @@ namespace giac {
 
   gen _equation(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
+#ifdef CASCAS_DISABLE_PLOT_RUNTIME
+    return undef;
+#endif
     if (args.type!=_VECT || args._VECTptr->size()!=2 || (*args._VECTptr)[1].type!=_IDNT){
       ck_parameter_x(contextptr);
       ck_parameter_y(contextptr);
@@ -2162,6 +2207,9 @@ namespace giac {
 
   gen _polygone(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
+#ifdef CASCAS_DISABLE_PLOT_RUNTIME
+    return undef;
+#endif
     if (args.type!=_VECT)
       return symbolic(at_polygone,args);
     vecteur v(*apply(args,remove_at_pnt)._VECTptr);

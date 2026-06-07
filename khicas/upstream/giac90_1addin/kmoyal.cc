@@ -37,6 +37,9 @@ using namespace std;
 namespace giac {
 #endif // ndef NO_NAMESPACE_GIAC
   gen incomplete_beta(double a,double b,double p,bool regularize){ // regularize=true by default
+#ifdef CASCAS_DISABLE_RANDOM_RUNTIME
+    return undef;
+#else
     // I_p(a,b)=1/B(a,b)*int(t^(a-1)*(1-t)^(b-1),t=0..p)
     // =p^a*(1-p)^(b-1)/B(a,b)*continued fraction expansion
     // 1/(1+e2/(1+e3/(1+...)))
@@ -95,6 +98,7 @@ namespace giac {
       }
     }
     return undef; //error
+#endif
   }
 
   static void beta_mult(gen &res,gen & a,GIAC_CONTEXT){
@@ -163,6 +167,10 @@ namespace giac {
   define_unary_function_ptr5( at_Beta ,alias_at_Beta,&__Beta,0,true);
 
   gen _upper_incomplete_gamma(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_DISABLE_RANDOM_RUNTIME
+    if ( args.type==_STRNG && args.subtype==-1) return args;
+    return symbolic(at_upper_incomplete_gamma,args);
+#else
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     if (args.type!=_VECT)
       return symbolic(at_upper_incomplete_gamma,args);
@@ -192,12 +200,17 @@ namespace giac {
       return symbolic(at_Gamma,makesequence(v[0],v[1],1));
     }
     return symbolic(at_upper_incomplete_gamma,args);
+#endif
   }
   static const char _upper_incomplete_gamma_s []="ugamma";
   static define_unary_function_eval (__upper_incomplete_gamma,&_upper_incomplete_gamma,_upper_incomplete_gamma_s);
   define_unary_function_ptr5( at_upper_incomplete_gamma ,alias_at_upper_incomplete_gamma,&__upper_incomplete_gamma,0,true);
 
   gen _polygamma(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_DISABLE_RANDOM_RUNTIME
+    if ( args.type==_STRNG && args.subtype==-1) return args;
+    return symbolic(at_polygamma,args);
+#else
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     if (args.type!=_VECT)
       return symbolic(at_polygamma,args);
@@ -206,12 +219,16 @@ namespace giac {
     if (args.subtype==_SEQ__VECT && s==2)
       return _Psi(makesequence(v[1],v[0]),contextptr);
     return symbolic(at_polygamma,args);
+#endif
   }
   static const char _polygamma_s []="polygamma";
   static define_unary_function_eval (__polygamma,&_polygamma,_polygamma_s);
   define_unary_function_ptr5( at_polygamma ,alias_at_polygamma,&__polygamma,0,true);
 
   double randNorm(GIAC_CONTEXT){
+#ifdef CASCAS_DISABLE_RANDOM_RUNTIME
+    return 0;
+#else
     /*
     double d=rand()/(rand_max2+1.0);
     d=2*d-1;
@@ -221,8 +238,12 @@ namespace giac {
     double u=giac_rand(contextptr)/(rand_max2+1.0);
     double d=giac_rand(contextptr)/(rand_max2+1.0);
     return std::sqrt(-2*std::log(u))*std::cos(2*M_PI*d);
+#endif
   }
   void randnorm2(double & r1,double & r2,GIAC_CONTEXT){
+#ifdef CASCAS_DISABLE_RANDOM_RUNTIME
+    r1=0; r2=0; return;
+#else
     /*
     double d=rand()/(rand_max2+1.0);
     d=2*d-1;
@@ -240,6 +261,7 @@ namespace giac {
 	return;
       }
     }
+#endif
   }
 
   gen _randNorm(const gen & args,GIAC_CONTEXT){

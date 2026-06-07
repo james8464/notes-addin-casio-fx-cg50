@@ -27,18 +27,34 @@ static bool calc_like_eval(const char *expr,cascas::working_string &out){
 int main(){
   cascas::set_khicas_eval_callback(calc_like_eval);
   cascas::working_string out;
-  const char *input="xform((cos(x)+sin(x))*(cosec(x)-sec(x))=k*cot(2*x),k)";
-  if (!cascas::eval_with_working(input,out))
-    return 2;
-  std::cout << out << "\n";
+  const char *inputs[]={
+    "xform((cos(x)+sin(x))*(cosec(x)-sec(x))=k*cot(2*x),k)",
+    "xform((cos(x)+sin(x))*(cosec(x)-sec(x))=k*cot(2x),k)",
+  };
+  for (int i=0;i<2;++i){
+    out.clear();
+    if (!cascas::eval_with_working(inputs[i],out))
+      return 2;
+    std::cout << out << "\n";
+    std::string s=out.c_str();
+    if (s.find("Parameter isolation:")==std::string::npos ||
+        s.find("k = 2")==std::string::npos ||
+        s.find("Verified by substitution")==std::string::npos ||
+        s.find("not equivalent")!=std::string::npos ||
+        s.find("k = 1")!=std::string::npos ||
+        s.find("not verified")!=std::string::npos)
+      return 1;
+  }
+  cascas::set_khicas_eval_callback(0);
+  out.clear();
+  if (!cascas::eval_with_working("xform((cos(x)+sin(x))*(cosec(x)-sec(x))=k*cot(2x),k)",out))
+    return 3;
   std::string s=out.c_str();
   if (s.find("Parameter isolation:")==std::string::npos ||
       s.find("k = 2")==std::string::npos ||
-      s.find("Verified by substitution")==std::string::npos ||
       s.find("not equivalent")!=std::string::npos ||
-      s.find("k = 1")!=std::string::npos ||
       s.find("not verified")!=std::string::npos)
-    return 1;
+    return 4;
   return 0;
 }
 '''

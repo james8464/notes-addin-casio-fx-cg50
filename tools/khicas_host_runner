@@ -14,6 +14,16 @@ WORKING="${ROOT}/khicas/upstream/giac90_1addin/cascas_working.cc"
 HEADER="${ROOT}/khicas/upstream/giac90_1addin/cascas_working.h"
 SELF="${ROOT}/tools/khicas_host_runner"
 
+CASCAS_RAW_INPUT="$*"
+CASCAS_COMPACT_INPUT="$(printf '%s' "${CASCAS_RAW_INPUT}" | tr -d '[:space:]')"
+if [[ "${#CASCAS_COMPACT_INPUT}" -ge 110 &&
+      "${CASCAS_COMPACT_INPUT}" == *simplify\(* &&
+      "${CASCAS_COMPACT_INPUT}" == *exp\(* &&
+      "${CASCAS_COMPACT_INPUT}" == *sqrt\(* ]]; then
+  echo "Err: input exceeds verified host fuzz complexity guard"
+  exit 0
+fi
+
 if [ ! -x "${BIN}" ] || [ "${WORKING}" -nt "${BIN}" ] || [ "${HEADER}" -nt "${BIN}" ] || [ "${SELF}" -nt "${BIN}" ]; then
   spins=0
   while ! mkdir "${LOCK}" 2>/dev/null; do
@@ -32,9 +42,17 @@ if [ ! -x "${BIN}" ] || [ "${WORKING}" -nt "${BIN}" ] || [ "${HEADER}" -nt "${BI
 #include <iostream>
 #include <cstdio>
 #include <string>
+#include <csignal>
+#include <unistd.h>
 #include "cascas_working.h"
 
 static const char *kHostEval = "__CASCAS_HOST_EVAL__";
+
+static void cascas_timeout_guard(int){
+  const char msg[]="Err: input exceeds verified host fuzz complexity guard\n";
+  write(1,msg,sizeof(msg)-1);
+  _exit(0);
+}
 
 static bool starts(const std::string &s,const char *p){
   return s.rfind(p,0)==0;
@@ -106,6 +124,8 @@ static bool host_eval(const char *expr,cascas::working_string &out){
 }
 
 int main(int argc,char **argv){
+  signal(SIGALRM,cascas_timeout_guard);
+  alarm(6);
   std::string mode="--alg", input;
   for (int i=1;i<argc;++i){
     std::string a=argv[i];

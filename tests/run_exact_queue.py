@@ -116,7 +116,7 @@ def write_progress(done: int, total: int, ok: int, bad: int, active: str = "", i
         "active": active,
         "updated": round(time.time(), 3),
     }
-    tmp = LIVE.with_suffix(".tmp")
+    tmp = LIVE.with_name(f"{LIVE.name}.{os.getpid()}.tmp")
     tmp.write_text(json.dumps(payload, separators=(",", ":")) + "\n")
     tmp.replace(LIVE)
     if done not in (0, total):
@@ -1174,7 +1174,7 @@ def write_final_reports(results: list[dict[str, Any]], strict_markers: bool) -> 
 def run_parent_chunks(args: argparse.Namespace, total: int) -> int:
     OUT.mkdir(parents=True, exist_ok=True)
     chunk_size = 2000
-    reports: list[Path] = []
+    results: list[dict[str, Any]] = []
     write_progress(0, total, 0, 0, "start")
     for start in range(0, total, chunk_size):
         end = min(total, start + chunk_size)
@@ -1195,17 +1195,16 @@ def run_parent_chunks(args: argparse.Namespace, total: int) -> int:
         env = os.environ.copy()
         env["CASCAS_QUEUE_CHILD"] = "1"
         proc = subprocess.run(cmd, cwd=REPO, env=env)
-        if child_report.exists():
-            reports.append(child_report)
-        elif proc.returncode != 0:
+        if proc.returncode != 0:
             return proc.returncode
-        done = end
-        write_progress(done, total, done, 0, f"chunk {start}-{end}")
-    results: list[dict[str, Any]] = []
-    for report in reports:
-        for line in report.read_text().splitlines():
+        if not child_report.exists():
+            print(f"FAIL exact queue missing child report {child_report}")
+            return 1
+        for line in child_report.read_text().splitlines():
             if line.strip():
                 results.append(json.loads(line))
+        done = end
+        write_progress(done, total, done, 0, f"chunk {start}-{end}")
     return write_final_reports(results, args.strict_markers)
 
 
