@@ -1915,9 +1915,13 @@ namespace giac {
   }
   
   gen ckmtrace(const gen & a,GIAC_CONTEXT){
+#ifdef CASCAS_DISABLE_UNUSED_PUBLIC_RUNTIME
+    return symbolic(at_trace,a);
+#else
     if (!is_squarematrix(a))
       return symbolic(at_trace,a); // gendimerr(contextptr); required to keep trace for geometry
     return mtrace(*a._VECTptr);
+#endif
   }
   static const char _trace_s []="trace";
   static define_unary_function_eval (__trace,&ckmtrace,_trace_s);
@@ -6615,6 +6619,9 @@ namespace giac {
 
   gen _cholesky(const gen &_args,GIAC_CONTEXT){
     if (_args.type==_STRNG && _args.subtype==-1) return _args;
+#ifdef CASCAS_DISABLE_UNUSED_PUBLIC_RUNTIME
+    return symbolic(at_cholesky,_args);
+#else
     if (!is_squarematrix(_args))
       return gensizeerr(contextptr);
     gen args;
@@ -6647,6 +6654,7 @@ namespace giac {
     matrice Cmat;
     std_matrix_gen2matrice_destroy(C,Cmat);
     return Cmat;
+#endif
   }
   static const char _cholesky_s []="cholesky";
   static define_unary_function_eval (__cholesky,&_cholesky,_cholesky_s);

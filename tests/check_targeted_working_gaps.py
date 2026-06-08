@@ -203,8 +203,8 @@ SOLVE_POLICY_CASES = [
         "solve(y^2-y-2=0,y)",
         [
             "y^2 - y - 2 = 0",
-            "y = 2 or y = -1",
-            "y = [2, -1]",
+            "y = -1 or y = 2",
+            "y = [-1, 2]",
             "Verified",
         ],
     ),
@@ -212,8 +212,8 @@ SOLVE_POLICY_CASES = [
         "solve(u^2=4,u)",
         [
             "u^2 - 4 = 0",
-            "u = 2 or u = -2",
-            "u = [2, -2]",
+            "u = -2 or u = 2",
+            "u = [-2, 2]",
             "Verified",
         ],
     ),
@@ -221,8 +221,8 @@ SOLVE_POLICY_CASES = [
         "solve(k^2+k-2=0,k)",
         [
             "k^2 + k - 2 = 0",
-            "k = 1 or k = -2",
-            "k = [1, -2]",
+            "k = -2 or k = 1",
+            "k = [-2, 1]",
             "Verified",
         ],
     ),
@@ -230,8 +230,8 @@ SOLVE_POLICY_CASES = [
         "solve(y*(y-4)=0,y)",
         [
             "Zero product:",
-            "y = 4 or y = 0",
-            "y = [4, 0]",
+            "y = 0 or y = 4",
+            "y = [0, 4]",
             "Verified",
         ],
     ),
@@ -240,7 +240,7 @@ SOLVE_POLICY_CASES = [
         [
             "u = x^2",
             "16*u^2 + 40*u - 11 = 0",
-            "u = 1/4 or u = -11/4",
+            "u = -11/4 or u = 1/4",
             "-11/4 < 0, reject for real x",
             "x = [-1/2, 1/2]",
             "Verified",

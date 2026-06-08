@@ -6586,6 +6586,9 @@ namespace giac {
   // eliminate/algsubs (very first version adapted from Reinhard Oldenburg user code)
   // eliminate(eqs,vars)
   gen _eliminate(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_DISABLE_UNUSED_PUBLIC_RUNTIME
+    return symbolic(at_eliminate,args);
+#endif
     if (args.type!=_VECT || args._VECTptr->size()<2)
       return gensizeerr(contextptr);
     int returngb=0;

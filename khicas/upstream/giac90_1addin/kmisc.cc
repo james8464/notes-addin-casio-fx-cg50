@@ -2372,6 +2372,10 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
   define_unary_function_ptr5( at_BlockDiagonal ,alias_at_BlockDiagonal,&__BlockDiagonal,0,true);
   
   gen _giacinput(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_DISABLE_UNUSED_PUBLIC_RUNTIME
+    if (args.type==_STRNG && args.subtype==-1) return args;
+    return symbolic(at_input,args);
+#else
     //return undef; // GIAC FIXME
 #if 1
     string s;
@@ -2428,6 +2432,7 @@ static define_unary_function_eval (__set_language,&_scatterplot,_set_language_s)
     buf[i]=0;
     set_abort();
     return string2gen(buf,false);
+#endif
 #endif
   }
   static const char _input_s []="input";

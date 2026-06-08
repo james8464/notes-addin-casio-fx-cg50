@@ -622,6 +622,9 @@ namespace giac {
 
   gen _evalc(const gen & g,GIAC_CONTEXT){
     if ( g.type==_STRNG && g.subtype==-1) return  g;
+#ifdef CASCAS_DISABLE_UNUSED_PUBLIC_RUNTIME
+    return symbolic(at_evalc,g);
+#else
     if (g.type==_VECT)
       return apply(g,_evalc,contextptr);
     gen tmp(_exp2pow(_lin(recursive_normal(g,contextptr),contextptr),contextptr));
@@ -649,6 +652,7 @@ namespace giac {
     if (is_zero(r))
       return cst_i*i;
     return symb_plus(gen(makesequence(r,cst_i*i)));
+#endif
   }
   static const char _evalc_s []="evalc";
   static define_unary_function_eval (__evalc,&_evalc,_evalc_s);

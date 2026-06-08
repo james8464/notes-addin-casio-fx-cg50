@@ -48,7 +48,7 @@ A row is implemented only when all are true:
 | Integration by parts | `integrate`, `int` | `u dv = uv - int(v du)`, repeated when bounded | generated polynomial*exp/trig/log forms | required | non-terminating parts loop |
 | Integration partial fractions | `integrate`, `int`, `partfrac` | decompose rational then integrate logs/arctan if in scope | generated rational forms | required | complex-only decomposition required |
 | Definite integrals | `integrate`, `int`, `defint` if kept | antiderivative, endpoint substitution, exact simplification | generated definite integral identities | required | improper/out-of-scope convergence proof |
-| A-level differential equations | `solve`, `integrate` | separable equations, exponential growth/decay | generated separable families | required | general ODE solving beyond A-level |
+| A-level differential equations | `desolve`, `solve`, `integrate` | separable equations, exponential growth/decay, first-order linear integrating factor where A-level | generated separable/linear first-order families | required | general ODE systems/numeric `odesolve` beyond A-level |
 | Sequences/series | `sum`, `product`, `series`, `taylor` | arithmetic/geometric/sigma/binomial series within Pure | generated finite sums and geometric series | required | stats/probability series commands |
 | Numerical methods | keep only if menu keeps route | sign change, iteration, Newton, trapezium with labelled approximations | generated numeric-method worksheets | required if kept | method removed from menu |
 | Vectors | kept only for Edexcel-style vector arithmetic | component add/subtract, scalar multiply, dot product, magnitude/unit vectors | generated vector component identities | required if kept | reject cross product/matrix surface |

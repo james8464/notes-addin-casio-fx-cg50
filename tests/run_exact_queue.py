@@ -21,6 +21,9 @@ from typing import Any
 
 
 REPO = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO / "tools"))
+from scope_manifest import REMOVED_COMMANDS  # noqa: E402
+
 QUEUE = REPO / "tests" / "golden" / "exact_calculator_input_queue.jsonl"
 HOST = REPO / "tools" / "khicas_host_runner"
 OUT = REPO / "tests" / "reports" / "exact_calculator_input_queue"
@@ -924,6 +927,51 @@ def exact_solution_list_mismatch_reason(marker: str, spec: dict[str, Any] | None
         return None
 
 
+def derivative_marker_for_bare_input(marker: str, spec: dict[str, Any] | None) -> bool:
+    if spec is None or spec["module"] != "algebra":
+        return False
+    if spec["input"].strip().lower().startswith(("diff(", "derive(", "implicit_diff(")):
+        return False
+    try:
+        h = host_eval()
+        expr = parse_fragment(spec["input"])
+        mark = parse_fragment(marker)
+        if expr is None or mark is None:
+            return False
+        if isinstance(expr, (list, tuple)) or isinstance(mark, (list, tuple)):
+            return False
+        syms = sorted(getattr(expr, "free_symbols", set()) | getattr(mark, "free_symbols", set()), key=lambda s: s.name)
+        if len(syms) != 1:
+            return False
+        return symbolic_diff_zero(h, h.sp.diff(expr, syms[0]), mark, True)
+    except Exception:
+        return False
+
+
+def antiderivative_marker_for_bare_input(marker: str, spec: dict[str, Any] | None) -> bool:
+    if spec is None or spec["module"] != "algebra":
+        return False
+    if spec["input"].strip().lower().startswith(("int(", "integrate(", "defint(")):
+        return False
+    try:
+        h = host_eval()
+        expr = parse_fragment(spec["input"])
+        mark = parse_fragment(marker)
+        if expr is None or mark is None:
+            return False
+        if isinstance(expr, (list, tuple)) or isinstance(mark, (list, tuple)):
+            return False
+        syms = sorted(getattr(expr, "free_symbols", set()) | getattr(mark, "free_symbols", set()), key=lambda s: s.name)
+        if len(syms) != 1:
+            return False
+        dmark = h.sp.diff(mark, syms[0])
+        if symbolic_diff_zero(h, dmark, expr, True):
+            return True
+        return any(symbolic_diff_zero(h, dmark, term, True) for term in h.sp.Add.make_args(expr))
+    except Exception:
+        return False
+
+
 def contextual_marker_reason(marker: str, spec: dict[str, Any] | None) -> str | None:
     m = marker.strip()
     words = [w for w in m.replace("_", " ").split() if w.isalpha()]
@@ -977,6 +1025,26 @@ def contextual_marker_reason(marker: str, spec: dict[str, Any] | None) -> str | 
             and "y" in compact_text(m)
             and "y" not in compact_text(spec["input"])
         )
+        or derivative_marker_for_bare_input(m, spec)
+        or antiderivative_marker_for_bare_input(m, spec)
+        or (
+            spec is not None
+            and spec["module"] == "algebra"
+            and not spec["input"].strip().lower().startswith(("diff(", "derive(", "implicit_diff("))
+            and (
+                "dy/dx" in m
+                or "y'" in m
+            )
+        )
+        or (
+            spec is not None
+            and spec["module"] == "algebra"
+            and not spec["input"].strip().lower().startswith(("int(", "integrate(", "defint("))
+            and (
+                m.replace(" ", "").endswith("+C")
+                or m.replace(" ", "").endswith("-C")
+            )
+        )
         or any(w.lower() in contextual for w in words)
     ):
         return "invalid_marker_context: mark-scheme/context text is not a direct single-command output obligation"
@@ -985,6 +1053,8 @@ def contextual_marker_reason(marker: str, spec: dict[str, Any] | None) -> str | 
 
 def classify_marker_gap(marker: str, out: str, spec: dict[str, Any] | None = None) -> str | None:
     low = out.lower()
+    if "err:" in low and spec is not None and removed_command_input(spec["input"]):
+        return "invalid_marker_context: removed command outside A-level Pure scope"
     if "no exact form" in low or "err:" in low or "traceback" in low:
         return None
     m = marker.strip()
@@ -1007,6 +1077,13 @@ def classify_marker_gap(marker: str, out: str, spec: dict[str, Any] | None = Non
     if out.strip():
         return "untrusted_marker_gap: non-error output exists but this strict marker is absent"
     return None
+
+
+def removed_command_input(text: str) -> bool:
+    return any(
+        m.group(1).lower() in REMOVED_COMMANDS
+        for m in re.finditer(r"([A-Za-z_][A-Za-z0-9_]*)\s*\(", text)
+    )
 
 
 def marker_gaps(spec: dict[str, Any], out: str) -> tuple[list[str], list[dict[str, str]]]:
@@ -1194,8 +1271,28 @@ def run_parent_chunks(args: argparse.Namespace, total: int) -> int:
             cmd.append("--strict-markers")
         env = os.environ.copy()
         env["CASCAS_QUEUE_CHILD"] = "1"
-        proc = subprocess.run(cmd, cwd=REPO, env=env)
+        proc = subprocess.run(
+            cmd,
+            cwd=REPO,
+            env=env,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        child_output = (proc.stdout or "") + (proc.stderr or "")
+        if proc.returncode == 0 and child_output.strip():
+            lines = child_output.splitlines()
+            for line in lines[-8:]:
+                if len(line) > 240:
+                    line = line[:240] + "...[truncated]"
+                print(line)
         if proc.returncode != 0:
+            if child_output.strip():
+                lines = child_output.splitlines()
+                for line in lines[-40:]:
+                    if len(line) > 500:
+                        line = line[:500] + "...[truncated]"
+                    print(line)
             return proc.returncode
         if not child_report.exists():
             print(f"FAIL exact queue missing child report {child_report}")

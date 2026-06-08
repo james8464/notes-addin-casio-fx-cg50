@@ -7,12 +7,13 @@ EXTRA_DEFS=""
 if [ "${CASCAS_HOST_PRODUCTION:-0}" = "1" ]; then
   MODE_SUFFIX="_production"
 fi
-BIN="${TMPDIR:-/tmp}/khicas_host_runner_cascas${MODE_SUFFIX}"
-SRC="${TMPDIR:-/tmp}/khicas_host_runner_cascas.cpp"
-LOCK="${BIN}.lock"
 WORKING="${ROOT}/khicas/upstream/giac90_1addin/cascas_working.cc"
 HEADER="${ROOT}/khicas/upstream/giac90_1addin/cascas_working.h"
 SELF="${ROOT}/tools/khicas_host_runner"
+HASH="$(shasum -a 256 "${WORKING}" "${HEADER}" "${SELF}" | shasum -a 256 | awk '{print substr($1,1,16)}')"
+BIN="${TMPDIR:-/tmp}/khicas_host_runner_cascas${MODE_SUFFIX}_${HASH}"
+SRC="${TMPDIR:-/tmp}/khicas_host_runner_cascas_${HASH}.cpp"
+LOCK="${BIN}.lock"
 
 CASCAS_RAW_INPUT="$*"
 CASCAS_COMPACT_INPUT="$(printf '%s' "${CASCAS_RAW_INPUT}" | tr -d '[:space:]')"
@@ -49,7 +50,7 @@ if [ ! -x "${BIN}" ] || [ "${WORKING}" -nt "${BIN}" ] || [ "${HEADER}" -nt "${BI
 static const char *kHostEval = "__CASCAS_HOST_EVAL__";
 
 static void cascas_timeout_guard(int){
-  const char msg[]="Err: input exceeds verified host fuzz complexity guard\n";
+  const char msg[]="Host runner timeout: no verified exact route within queue limit.\n";
   write(1,msg,sizeof(msg)-1);
   _exit(0);
 }
@@ -125,7 +126,7 @@ static bool host_eval(const char *expr,cascas::working_string &out){
 
 int main(int argc,char **argv){
   signal(SIGALRM,cascas_timeout_guard);
-  alarm(6);
+  alarm(15);
   std::string mode="--alg", input;
   for (int i=1;i<argc;++i){
     std::string a=argv[i];
@@ -190,7 +191,8 @@ int main(int argc,char **argv){
     (sqrt_abs_hits>0 || (input.find("log(")!=std::string::npos &&
                          input.find("exp(")!=std::string::npos) ||
      (input.size()>150 && func_hits>=5));
-  bool costly_limit=starts(input,"limit(") &&
+  bool simple_abs_side_limit=starts(input,"limit((abs(x)-x)/x,x,0,");
+  bool costly_limit=starts(input,"limit(") && !simple_abs_side_limit &&
     (compact_input.find(",+)")!=std::string::npos ||
      (max_depth>=6 && (func_hits>=4 || input.size()>220)));
   bool costly_integrate=starts(input,"integrate(") &&

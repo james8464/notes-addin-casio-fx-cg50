@@ -565,6 +565,9 @@ namespace giac {
     }
   }
   gen _format(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_DISABLE_UNUSED_PUBLIC_RUNTIME
+    return symbolic(at_format,g);
+#endif
     if ( g.type==_STRNG && g.subtype==-1) return  g;
     vecteur v(gen2vecteur(g));
     size_t vs=v.size();

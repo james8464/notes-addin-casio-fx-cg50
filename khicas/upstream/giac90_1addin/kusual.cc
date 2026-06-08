@@ -6596,6 +6596,9 @@ namespace giac {
     return hasnl;
   }
   gen _print(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_DISABLE_UNUSED_PUBLIC_RUNTIME
+    return plus_one;
+#endif
 #if 0
     gen tmp=args.eval(eval_level(contextptr),contextptr);
     *logptr(contextptr) << tmp << endl;

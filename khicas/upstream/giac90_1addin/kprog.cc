@@ -1367,6 +1367,9 @@ namespace giac {
   }
 
   gen _program(const gen & args,const gen & name,const context * contextptr){
+#ifdef CASCAS_DISABLE_UNUSED_PUBLIC_RUNTIME
+    return symbolic(at_program,args);
+#endif
     if ( args.type==_STRNG &&  args.subtype==-1) return  args;
     if (args.type!=_VECT)
       return args.eval(prog_eval_level(contextptr),contextptr);
@@ -2116,6 +2119,9 @@ namespace giac {
     return true;
   }
   gen _for(const gen & args,const context * contextptr){
+#ifdef CASCAS_DISABLE_UNUSED_PUBLIC_RUNTIME
+    return symbolic(at_for,args);
+#endif
     if ( args.type==_STRNG &&  args.subtype==-1) return  args;
     // for elem in list: for(elem,list), inert form
     if (args.type!=_VECT || args._VECTptr->size()==2)
@@ -3833,6 +3839,9 @@ namespace giac {
     return symbolic(at_map,args);
   }
   gen _map(const gen & args,const context * contextptr){
+#ifdef CASCAS_DISABLE_UNUSED_PUBLIC_RUNTIME
+    return symb_map(args);
+#endif
     if ( args.type==_STRNG &&  args.subtype==-1) return  args;
     if (args.type!=_VECT)
       return symb_map(args);
@@ -3966,6 +3975,9 @@ namespace giac {
     return symbolic(at_apply,args);
   }
   gen _apply(const gen & args,const context * contextptr){
+#ifdef CASCAS_DISABLE_UNUSED_PUBLIC_RUNTIME
+    return symb_apply(args);
+#endif
     if ( args.type==_STRNG &&  args.subtype==-1) return  args;
     if (args.type!=_VECT)
       return symb_apply(args);
@@ -4027,6 +4039,9 @@ namespace giac {
   
   // static gen symb_makelist(const gen & args){  return symbolic(at_makelist,args);  }
   gen _makelist(const gen & args,GIAC_CONTEXT){
+#ifdef CASCAS_DISABLE_UNUSED_PUBLIC_RUNTIME
+    return symbolic(at_makelist,args);
+#endif
     if ( args.type==_STRNG &&  args.subtype==-1) return  args;
     if (args.type==_INT_){
       if (args.val>=0 && args.val<LIST_SIZE_LIMIT)
@@ -6549,6 +6564,10 @@ namespace giac {
     return true;
   }
   gen _read(const gen & args_,GIAC_CONTEXT){
+#ifdef CASCAS_DISABLE_UNUSED_PUBLIC_RUNTIME
+    if (args_.type==_STRNG && args_.subtype==-1) return args_;
+    return symbolic(at_read,args_);
+#else
     gen args(args_);
     size_t addr;
     if (is_address(args,addr,contextptr))
@@ -6581,6 +6600,7 @@ namespace giac {
     gen g(s,contextptr);
     g=eval(g,1,contextptr);
     return g;
+#endif
   }   
   static const char _read_s []="read";
   static define_unary_function_eval (__read,&_read,_read_s);
@@ -6599,6 +6619,9 @@ namespace giac {
   }
   gen _write(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG &&  args.subtype==-1) return  args;
+#ifdef CASCAS_DISABLE_UNUSED_PUBLIC_RUNTIME
+    return symbolic(at_write,args);
+#else
     string res,fname;
     if (args.type==_VECT){
       vecteur v=*args._VECTptr;
@@ -6670,6 +6693,7 @@ namespace giac {
     Bfile_WriteFile_OS(hFile, res, res.size());
     Bfile_CloseFile_OS(hFile);
     return plus_one;
+#endif
   }
   static const char _write_s []="write";
   static define_unary_function_eval_quoted (__write,&_write,_write_s);
@@ -6901,6 +6925,9 @@ namespace giac {
   define_unary_function_ptr5( at_makesuite ,alias_at_makesuite,&__makesuite,0,true);
 
   gen _matrix(const gen & g,const context * contextptr){
+#ifdef CASCAS_DISABLE_MATRIX_EIGEN_RUNTIME
+    return symbolic(at_matrix,g);
+#endif
     if ( g.type==_STRNG &&  g.subtype==-1) return  g;
     if (g.type!=_VECT)
       return gentypeerr(contextptr);
@@ -7717,6 +7744,9 @@ namespace giac {
   define_unary_function_ptr5( at_autosimplify ,alias_at_autosimplify,&__autosimplify,0,true);
 
   gen _struct_dot(const gen & g,GIAC_CONTEXT){
+#ifdef CASCAS_DISABLE_UNUSED_PUBLIC_RUNTIME
+    return symbolic(at_struct_dot,g);
+#endif
     if (g.type!=_VECT)
       return gensizeerr(contextptr);
     vecteur w=*g._VECTptr;
