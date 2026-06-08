@@ -13179,7 +13179,7 @@ static bool try_range(const char *input,working_string &out){
         out="Find range\nlinear interval\n";
         out += "f("+rat_s(blo)+") = "+rat_s(y1)+"\n";
         out += "f("+rat_s(bhi)+") = "+rat_s(y2)+"\n";
-        out += rat_s(ymin)+" <= y <= "+rat_s(ymax);
+        out += rat_s(ymin)+" <= y <= "+rat_s(ymax)+"\nVerified";
         return true;
       }
     }
@@ -14729,7 +14729,7 @@ static bool double_arg(const working_string &dbl,const working_string &arg){
 static bool emit_trig_verified(const char *label,const working_string &target,working_string &out){
   out=label;
   out += ":\n";
-  out += target+"\nVerified by equivalence check";
+  out += insert_coeff_stars(target)+"\nVerified by equivalence check";
   return true;
 }
 
@@ -15089,7 +15089,7 @@ static bool try_xform_trig_direct(const working_string &a,const working_string &
   if (parse_linear_tan_cot_int(a,arg,tc,cc) && cc && tc==-cc &&
       parse_int_func_pow(b,"cot",c,targ,p) && p==1 && c==2*cc && double_arg(targ,arg)){
     out="Reciprocal identities:\nCommon denominator:\nDouble-angle identities:\n";
-    out += b+"\nVerified by equivalence check";
+    out += insert_coeff_stars(b)+"\nVerified by equivalence check";
     return true;
   }
   if (parse_sin_cos_product_int(a,arg,cc) &&
@@ -15539,7 +15539,9 @@ static bool try_xform_rewrite_planner(const working_string &start,const working_
       }
       if (seen)
         continue;
-      working_string next=path+rules[i].label+":\n"+cur+" = "+cand+"\nVerified by equivalence check\n";
+      working_string next=path+rules[i].label+":\n"+
+        insert_coeff_stars(cur)+" = "+insert_coeff_stars(cand)+
+        "\nVerified by equivalence check\n";
       if (same_rewrite_expr(cand,target)){
         out=next;
         return true;
@@ -15550,7 +15552,8 @@ static bool try_xform_rewrite_planner(const working_string &start,const working_
                                 contains(compact(cand),"sec(") ||
                                 contains(compact(cand),"cosec(")));
       if (!reciprocal_pending && khicas_equiv(cand,target)){
-        out=next+"Target form:\n"+cand+" = "+target+"\nVerified by equivalence check";
+        out=next+"Target form:\n"+insert_coeff_stars(cand)+" = "+
+          insert_coeff_stars(target)+"\nVerified by equivalence check";
         return true;
       }
       if (tail<10){
