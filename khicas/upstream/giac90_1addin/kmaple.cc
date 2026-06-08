@@ -1405,6 +1405,17 @@ namespace giac {
   }
   */
 
+#ifdef CASCAS_DISABLE_UNUSED_PUBLIC_RUNTIME
+  gen symb_seqsolve(const gen & g){
+    return symbolic(at_seqsolve,g);
+  }
+  gen _seqsolve(const gen & args,GIAC_CONTEXT){
+    return gensizeerr("seqsolve removed");
+  }
+  static const char _seqsolve_s []="seqsolve";
+  static define_unary_function_eval_quoted (__seqsolve,&_seqsolve,_seqsolve_s);
+  define_unary_function_ptr5( at_seqsolve ,alias_at_seqsolve,&__seqsolve,_QUOTE_ARGUMENTS,true);
+#else
   gen symb_seqsolve(const gen & g){
     return symbolic(at_seqsolve,g);
   }
@@ -1626,6 +1637,7 @@ namespace giac {
   static const char _seqsolve_s []="seqsolve";
   static define_unary_function_eval_quoted (__seqsolve,&_seqsolve,_seqsolve_s);
   define_unary_function_ptr5( at_seqsolve ,alias_at_seqsolve,&__seqsolve,_QUOTE_ARGUMENTS,true);
+#endif
 
   static vecteur rsolve_initcond(const vecteur & initcond,const gen & un,const gen & u,const gen & n,const vecteur & uinit,GIAC_CONTEXT){
     if (initcond.empty())
@@ -1831,6 +1843,11 @@ namespace giac {
     return res;
   }
   // example args=u(n+1)=2*u(n)+n,u(n),u(0)=1
+#ifdef CASCAS_DISABLE_UNUSED_PUBLIC_RUNTIME
+  gen _rsolve(const gen & args,GIAC_CONTEXT){
+    return gensizeerr("rsolve removed");
+  }
+#else
   gen _rsolve(const gen & args,GIAC_CONTEXT){
     if ( args.type==_STRNG && args.subtype==-1) return  args;
     vecteur varg=gen2vecteur(args);
@@ -1905,6 +1922,7 @@ namespace giac {
     step_infolevel(st,contextptr);
     return res;
   }
+#endif
   static const char _rsolve_s []="rsolve";
   static define_unary_function_eval_quoted (__rsolve,&_rsolve,_rsolve_s);
   define_unary_function_ptr5( at_rsolve ,alias_at_rsolve,&__rsolve,_QUOTE_ARGUMENTS,true);

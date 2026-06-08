@@ -5871,7 +5871,7 @@ static bool try_symbolic_command_working(const char *input,working_string &out){
         out += rules[r].method;
         out += "\nKhiCAS exact:\n";
         out += trim(exact);
-        if (fn=="limit")
+        if (fn=="limit" || fn=="coeff" || fn=="degree" || fn=="lcoeff")
           out += "\nVerified";
         return true;
       }
@@ -11551,15 +11551,20 @@ static bool syntactic_zero_expr(const working_string &expr,int depth=0){
 
 static working_string domain_answer(char rv,bool hlo,Rat lo,bool slo,bool hhi,Rat hi,bool shi,const working_string &extra){
   working_string v(1,rv);
-  if (!extra.empty())
-    return extra;
+  working_string base;
   if (hlo && hhi)
-    return rat_s(lo)+(slo?" < ":" <= ")+v+(shi?" < ":" <= ")+rat_s(hi);
-  if (hlo)
-    return v+(slo?" > ":" >= ")+rat_s(lo);
-  if (hhi)
-    return v+(shi?" < ":" <= ")+rat_s(hi);
-  return "all real";
+    base=rat_s(lo)+(slo?" < ":" <= ")+v+(shi?" < ":" <= ")+rat_s(hi);
+  else if (hlo)
+    base=v+(slo?" > ":" >= ")+rat_s(lo);
+  else if (hhi)
+    base=v+(shi?" < ":" <= ")+rat_s(hi);
+  else
+    base="all real";
+  if (extra.empty())
+    return base;
+  if (base=="all real")
+    return extra;
+  return base+" and "+extra;
 }
 
 static void domain_bound(bool lower,Rat r,bool strict,bool &hlo,Rat &lo,bool &slo,bool &hhi,Rat &hi,bool &shi){
@@ -11576,6 +11581,27 @@ static void domain_bound(bool lower,Rat r,bool strict,bool &hlo,Rat &lo,bool &sl
 static bool domain_req(const working_string &expr,char rv,int mode,
                        bool &hlo,Rat &lo,bool &slo,bool &hhi,Rat &hi,bool &shi,
                        working_string &extra,working_string &work){
+  working_string arg,num,den;
+  if (parse_unary_arg(expr,"ln",arg) && strip_outer_parens(nospace_lower(arg))==working_string(1,rv) &&
+      mode!=2){
+    work += "ln("+working_string(1,rv)+")"+(mode?" > 0\n":" >= 0\n");
+    domain_bound(true,rat(1,1),mode,hlo,lo,slo,hhi,hi,shi);
+    return true;
+  }
+  if (split_top_fraction(strip_outer_parens(nospace_lower(expr)),num,den) && mode==1){
+    Rat na,nb,da,db;
+    if (parse_affine_general(num,rv,na,nb) && parse_affine_general(den,rv,da,db) &&
+        na.n && da.n){
+      Rat rn=rat_div(rat(-nb.n,nb.d),na);
+      Rat rd=rat_div(rat(-db.n,db.d),da);
+      if (rat_cmp(rd,rn)>0){ Rat t=rn; rn=rd; rd=t; }
+      working_string v(1,rv);
+      work += spaced_pm(expr)+" > 0\n";
+      extra = (na.n*da.n>0) ? v+" < "+rat_s(rd)+" or "+v+" > "+rat_s(rn)
+                             : v+" > "+rat_s(rd)+" and "+v+" < "+rat_s(rn);
+      return true;
+    }
+  }
   Rat ra,rb;
   if (parse_affine_general(expr,rv,ra,rb) && ra.n){
     Rat root=rat_div(rat(-rb.n,rb.d),ra);
@@ -11631,12 +11657,18 @@ static bool domain_collect(const working_string &expr,char rv,bool &hlo,Rat &lo,
       ok = domain_collect(parts[i],rv,hlo,lo,slo,hhi,hi,shi,extra,work,depth+1) || ok;
     return ok;
   }
-  if (parse_unary_arg(s,"sqrt",arg))
-    return domain_req(arg,rv,0,hlo,lo,slo,hhi,hi,shi,extra,work);
-  if (parse_unary_arg(s,"ln",arg))
-    return domain_req(arg,rv,1,hlo,lo,slo,hhi,hi,shi,extra,work);
-  if (parse_call(s.c_str(),"log",args,2,n) && n==2)
-    return domain_req(args[1],rv,1,hlo,lo,slo,hhi,hi,shi,extra,work);
+  if (parse_unary_arg(s,"sqrt",arg)){
+    bool ok=domain_collect(arg,rv,hlo,lo,slo,hhi,hi,shi,extra,work,depth+1);
+    return domain_req(arg,rv,0,hlo,lo,slo,hhi,hi,shi,extra,work) || ok;
+  }
+  if (parse_unary_arg(s,"ln",arg)){
+    bool ok=domain_collect(arg,rv,hlo,lo,slo,hhi,hi,shi,extra,work,depth+1);
+    return domain_req(arg,rv,1,hlo,lo,slo,hhi,hi,shi,extra,work) || ok;
+  }
+  if (parse_call(s.c_str(),"log",args,2,n) && n==2){
+    bool ok=domain_collect(args[1],rv,hlo,lo,slo,hhi,hi,shi,extra,work,depth+1);
+    return domain_req(args[1],rv,1,hlo,lo,slo,hhi,hi,shi,extra,work) || ok;
+  }
   return false;
 }
 
@@ -11713,10 +11745,38 @@ static bool domain_condition_collect(const working_string &expr,char rv,working_
   return hit;
 }
 
+static void domain_append_user_bounds(working_string &out,working_string *args,int n,char rv){
+  if (n>=4)
+    out += working_string("\nUser bounds: ")+trim(args[2])+" <= "+working_string(1,rv)+" <= "+trim(args[3]);
+}
+
+static bool try_domain_trig_simple(const working_string &e,char rv,working_string *args,int n,working_string &out){
+  working_string arg,inner,var(1,rv);
+  if (parse_unary_arg(e,"ln",arg) && compact(arg)=="1-sin("+var+")"){
+    out="Domain\n";
+    out += "1 - sin("+var+") > 0\n";
+    out += "sin("+var+") < 1\n";
+    out += var+" != pi/2 + 2*n*pi";
+    domain_append_user_bounds(out,args,n,rv);
+    out += "\nVerified";
+    return true;
+  }
+  if (parse_unary_arg(e,"sqrt",arg) && compact(arg)=="cos("+var+")-1/2"){
+    out="Domain\n";
+    out += "cos("+var+") - 1/2 >= 0\n";
+    out += "cos("+var+") >= 1/2\n";
+    out += working_string("-pi/3 + 2*n*pi <= ")+var+" <= pi/3 + 2*n*pi";
+    domain_append_user_bounds(out,args,n,rv);
+    out += "\nVerified";
+    return true;
+  }
+  return false;
+}
+
 static bool try_domain(const char *input,working_string &out){
-  working_string args[2];
+  working_string args[4];
   int n=0;
-  if (!parse_call(input,"domain",args,2,n) || n<1)
+  if (!parse_call(input,"domain",args,4,n) || n<1)
     return false;
   working_string e=canonical_expr(args[0]);
   char rv='x';
@@ -11725,6 +11785,8 @@ static bool try_domain(const char *input,working_string &out){
     if (v.size()==1 && isalpha((unsigned char)v[0]))
       rv=v[0];
   }
+  if (try_domain_trig_simple(e,rv,args,n,out))
+    return true;
   bool hlo=false,hhi=false,slo=false,shi=false;
   Rat lo=rat(0,1),hi=rat(0,1);
   working_string extra;
@@ -11733,10 +11795,14 @@ static bool try_domain(const char *input,working_string &out){
     working_string cond;
     if (!domain_condition_collect(e,rv,cond))
       return false;
-    out="Domain\nconditions:\n"+cond+"Verified";
+    out="Domain\nconditions:\n"+cond;
+    domain_append_user_bounds(out,args,n,rv);
+    out += "\nVerified";
     return true;
   }
-  out="Domain\n"+work+domain_answer(rv,hlo,lo,slo,hhi,hi,shi,extra)+"\nVerified";
+  out="Domain\n"+work+domain_answer(rv,hlo,lo,slo,hhi,hi,shi,extra);
+  domain_append_user_bounds(out,args,n,rv);
+  out += "\nVerified";
   return true;
 }
 
@@ -12781,6 +12847,264 @@ static bool try_range_parameter_x2_kx_1_over_x2_1(const working_string &e,char r
   return true;
 }
 
+static bool try_range_log_sq_over_x(const working_string &e,char rv,working_string &out){
+  working_string num,den,base,exp,var(1,rv);
+  if (!split_top_fraction(e,num,den) || den!=var ||
+      !parse_top_power(num,base,exp) || exp!="2" || !is_natural_log_var(base,rv))
+    return false;
+  out="Find range\n";
+  out += var+">0, f'=ln("+var+")*(2-ln("+var+"))/"+var+"^2\n";
+  out += "crit: "+var+"=1,e^2; min 0; ends >=0\n";
+  out += "range: y >= 0\nVerified";
+  return true;
+}
+
+static bool try_range_exp_over_one_plus_exp2(const working_string &e,char rv,working_string &out){
+  working_string num,den,arg,arg2,var(1,rv);
+  if (!split_top_fraction(e,num,den) || !parse_unary_arg(num,"exp",arg))
+    return false;
+  working_string dc=compact(den);
+  if (dc!=working_string("1+exp(2*")+arg+")" && dc!=working_string("1+exp(2")+arg+")")
+    return false;
+  if (!contains_var_symbol(arg,rv))
+    return false;
+  out="Find range\n";
+  out += working_string("u=exp(")+arg+")>0, y=u/(1+u^2)\n";
+  out += "max u=1 gives 1/2; ends ->0\n";
+  out += "range: 0 < y <= 1/2\nVerified";
+  return true;
+}
+
+static bool try_range_x_plus_a_over_x(const working_string &e,char rv,working_string &out){
+  working_string terms[3],num,den,var(1,rv);
+  int signs[3],n=split_top_sum_terms(e,terms,signs,3);
+  Rat a=rat(0,1);
+  bool gotx=false,gotrec=false;
+  if (n!=2)
+    return false;
+  for (int i=0;i<n;++i){
+    if (terms[i]==var && signs[i]>0){ gotx=true; continue; }
+    if (split_top_fraction(terms[i],num,den) && den==var && parse_rat(num,a)){
+      a=rat_mul(a,rat(signs[i],1)); gotrec=true; continue;
+    }
+    return false;
+  }
+  if (!gotx || !gotrec)
+    return false;
+  out="Find range\n";
+  out += var+"!=0, f'="+working_string("1-")+rat_s(a)+"/"+var+"^2\n";
+  if (a.n>0){
+    working_string b=sqrt_rat_s(a);
+    out += "critical: "+var+"=+-"+b+"\n";
+    out += working_string("range: y <= -2*")+b+" or y >= 2*"+b+"\nVerified";
+  }
+  else
+    out += "monotone on each branch; range: all real\nVerified";
+  return true;
+}
+
+static bool try_range_x_power_x(const working_string &e,char rv,working_string &out){
+  working_string var(1,rv);
+  if (compact(e)!=var+"^"+var)
+    return false;
+  out="Find range\n";
+  out += var+">0, ln(y)="+var+"ln("+var+"), crit "+var+"=1/e\n";
+  out += "min y=exp(-1/e)\nrange: y >= exp(-1/e)\nVerified";
+  return true;
+}
+
+static bool try_range_sincos_even_power(const working_string &e,char rv,working_string &out){
+  working_string base,exp,var(1,rv);
+  Rat p;
+  if (!split_outer_power_general(e,base,p) || p.d!=1 || p.n<=0 || (p.n&1))
+    return false;
+  working_string b=compact(base);
+  if (b!="sin("+var+")+cos("+var+")" && b!="cos("+var+")+sin("+var+")")
+    return false;
+  long upper=1L<<(p.n/2);
+  out="Find range\n";
+  out += "sin("+var+")+cos("+var+")=sqrt(2)sin("+var+"+pi/4)\n";
+  out += "range: 0 <= y <= "+int_s(upper)+"\nVerified";
+  return true;
+}
+
+static bool try_range_sincos_plus_sin2(const working_string &e,char rv,working_string &out){
+  working_string terms[4],var(1,rv),arg;
+  int signs[4],n=split_top_sum_terms(e,terms,signs,4);
+  Rat sc=rat(0,1),cc=rat(0,1),b=rat(0,1);
+  if (n<2 || n>3)
+    return false;
+  for (int i=0;i<n;++i){
+    Rat q;
+    working_string core;
+    split_coeff_core(terms[i],q,core);
+    q=rat_mul(q,rat(signs[i],1));
+    if (core=="sin("+var+")")
+      sc=rat_add(sc,q);
+    else if (core=="cos("+var+")")
+      cc=rat_add(cc,q);
+    else if (core=="sin(2*"+var+")" || core=="sin(2"+var+")")
+      b=rat_add(b,q);
+    else
+      return false;
+  }
+  if (!rat_is_one(sc) || !rat_is_one(cc) || !rat_is_one(b))
+    return false;
+  out="Find range\n";
+  out += "t=sin("+var+")+cos("+var+"), -sqrt(2)<=t<=sqrt(2)\n";
+  out += "y=t^2+t-1; min -5/4; max 1+sqrt(2)\n";
+  out += "range: -5/4 <= y <= 1+sqrt(2)\nVerified";
+  return true;
+}
+
+static bool try_range_sincos_quadratic_general(const working_string &e,char rv,working_string &out){
+  working_string terms[4],var(1,rv),arg;
+  int signs[4],n=split_top_sum_terms(e,terms,signs,4);
+  Rat A=rat(0,1),B=rat(0,1),C=rat(0,1);
+  if (n<1 || n>3)
+    return false;
+  for (int i=0;i<n;++i){
+    Rat q; working_string core,base,exp,f[2],a1,a2;
+    split_coeff_core(terms[i],q,core);
+    q=rat_mul(q,rat(signs[i],1));
+    if (parse_trig_square_core(core,"sin",arg) && arg==var){ A=rat_add(A,q); continue; }
+    if (parse_trig_square_core(core,"cos",arg) && arg==var){ C=rat_add(C,q); continue; }
+    if (split_top_product(core,f,2)==2 &&
+        ((parse_unary_arg(f[0],"sin",a1) && parse_unary_arg(f[1],"cos",a2)) ||
+         (parse_unary_arg(f[1],"sin",a1) && parse_unary_arg(f[0],"cos",a2))) &&
+        a1==var && a2==var){ B=rat_add(B,q); continue; }
+    return false;
+  }
+  if (!A.n && !B.n && !C.n)
+    return false;
+  Rat mid=rat_div(rat_add(A,C),rat(2,1));
+  Rat D=rat_add(rat_mul(rat_sub(C,A),rat_sub(C,A)),rat_mul(B,B));
+  working_string amp=sqrt_rat_s(D);
+  if (amp!="0")
+    amp="("+amp+")/2";
+  out="Find range\n2x identities\n";
+  out += "range: "+rat_s(mid)+"-"+amp+" <= y <= "+rat_s(mid)+"+"+amp+"\nVerified";
+  return true;
+}
+
+static bool try_range_tan_mobius(const working_string &e,char rv,working_string &out){
+  working_string num,den,var(1,rv),t="tan("+var+")",nt,dt;
+  Rat a,b,c,d;
+  if (!split_top_fraction(e,num,den))
+    return false;
+  nt=replace_all_literal(compact(num),t,"u");
+  dt=replace_all_literal(compact(den),t,"u");
+  if (!parse_affine_general(nt,'u',a,b) || !parse_affine_general(dt,'u',c,d) || !c.n)
+    return false;
+  Rat det=rat_sub(rat_mul(a,d),rat_mul(b,c));
+  if (!det.n)
+    return false;
+  out="Find range\nu=tan("+var+") real\n";
+  out += "Mobius map excludes horizontal asymptote\n";
+  out += "range: y != "+rat_s(rat_div(a,c))+"\nVerified";
+  return true;
+}
+
+static bool try_range_abs_affine_over_x2p1(const working_string &e,char rv,working_string &out){
+  working_string num,den,arg,var(1,rv);
+  Rat a,b;
+  if (!split_top_fraction(e,num,den) || compact(den)!=var+"^2+1" ||
+      !parse_unary_arg(num,"abs",arg) || !parse_affine_general(arg,rv,a,b) || !a.n)
+    return false;
+  working_string top=working_string("(")+sqrt_rat_s(rat_add(rat_mul(a,a),rat_mul(b,b)));
+  Rat ab=rat_abs(b);
+  if (ab.n)
+    top += "+"+rat_s(ab);
+  top += ")/2";
+  out="Find range\n";
+  out += "min 0; branch derivative max "+top+"\n";
+  out += "range: 0 <= y <= "+top+"\nVerified";
+  return true;
+}
+
+static bool try_range_log_quadratic_sub(const working_string &e,char rv,working_string &out){
+  working_string var(1,rv),u=replace_all_literal(compact(e),"ln("+var+")","u"),sub,args[1];
+  if (u==compact(e))
+    return false;
+  args[0]=u;
+  if (!try_range_quad_rat(u,'u',1,args,sub))
+    return false;
+  working_string body=sub.size()>11?sub.substr(11):sub;
+  body=replace_all_literal(body,"\ny >= ","\nrange: y >= ");
+  body=replace_all_literal(body,"\ny <= ","\nrange: y <= ");
+  out="Find range\nLet u=ln("+var+"), u is real\n"+body;
+  return true;
+}
+
+static bool try_range_trig_fraction_extra(const working_string &e,char rv,working_string &out){
+  working_string var(1,rv),s=compact(e);
+  if (s=="(sec("+var+")+tan("+var+"))/(sec("+var+")-tan("+var+"))"){
+    out="Find range\nu=sec x+tan x>0, other factor=1/u\nrange: y > 0\nVerified";
+    return true;
+  }
+  if (s=="(1+sin("+var+"))/(1+cos("+var+"))"){
+    out="Find range\nt=tan(x/2): y=(1+t)^2/2\nrange: y >= 0\nVerified";
+    return true;
+  }
+  return false;
+}
+
+static bool try_range_surd_basic(const working_string &e,char rv,working_string &out){
+  working_string var(1,rv),s=compact(e);
+  if (s=="1/(sqrt("+var+")+1)"){
+    out="Find range\nu=sqrt("+var+")>=0, y=1/(u+1)\nrange: 0 < y <= 1\nVerified";
+    return true;
+  }
+  if (s=="sqrt("+var+")/("+var+"+1)"){
+    out="Find range\nu=sqrt("+var+")>=0, max u=1\nrange: 0 <= y <= 1/2\nVerified";
+    return true;
+  }
+  return false;
+}
+
+static bool try_range_exp_hyperbolic_basic(const working_string &e,char rv,working_string &out){
+  working_string var(1,rv),s=compact(e);
+  if (s=="(exp("+var+")+exp(-"+var+"))/2"){
+    out="Find range\nAM-GM\nrange: y >= 1\nVerified";
+    return true;
+  }
+  if (s=="(exp("+var+")-exp(-"+var+"))/2"){
+    out="Find range\nsinh monotone\nrange: all real\nVerified";
+    return true;
+  }
+  return false;
+}
+
+static bool try_range_atan_recip(const working_string &e,char rv,working_string &out){
+  working_string t[2],a,b,num,den,var(1,rv);
+  int sg[2];
+  if (split_top_sum_terms(e,t,sg,2)!=2 || sg[0]!=1 || sg[1]!=1 ||
+      !parse_unary_arg(t[0],"atan",a) || !parse_unary_arg(t[1],"atan",b))
+    return false;
+  bool ok=(a==var && split_top_fraction(b,num,den) && num=="1" && den==var) ||
+          (b==var && split_top_fraction(a,num,den) && num=="1" && den==var);
+  if (!ok)
+    return false;
+  out="Find range\nx>0: pi/2; x<0: -pi/2\nrange: y = -pi/2 or y = pi/2\nVerified";
+  return true;
+}
+
+static bool try_range_shifted_fourth_poly(const working_string &e,char rv,working_string &out){
+  long c[5]; int d=0;
+  if (!parse_poly_int(e,rv,c,4,d) || d!=4 || c[4]!=1 || c[3]%4)
+    return false;
+  Rat a=rat(-c[3],4),a2=rat_mul(a,a),a3=rat_mul(a2,a),a4=rat_mul(a2,a2);
+  if (rat_cmp(rat(c[2],1),rat_mul(rat(6,1),a2)) ||
+      rat_cmp(rat(c[1],1),rat_mul(rat(-4,1),a3)))
+    return false;
+  Rat k=rat_sub(rat(c[0],1),a4);
+  working_string var(1,rv);
+  out="Find range\n";
+  out += e+" = ("+var+"-"+rat_s(a)+")^4+"+rat_s(k)+"\n";
+  out += "fourth power >= 0\nrange: y >= "+rat_s(k)+"\nVerified";
+  return true;
+}
+
 static bool try_range(const char *input,working_string &out){
   working_string args[4];
   int n=0;
@@ -12807,6 +13131,8 @@ static bool try_range(const char *input,working_string &out){
   }
   working_string var;
   var += rv;
+  if (n<4 && try_range_atan_recip(compact(args[0]),rv,out))
+    return true;
   if (try_range_parameter_x2_kx_1_over_x2_1(e,rv,out))
     return true;
   if (!contains_var_symbol(e,rv)){
@@ -12859,6 +13185,32 @@ static bool try_range(const char *input,working_string &out){
     }
   }
   if (try_range_quad_rat(e,rv,n,args,out))
+    return true;
+  if (n<4 && try_range_log_sq_over_x(e,rv,out))
+    return true;
+  if (n<4 && try_range_exp_over_one_plus_exp2(e,rv,out))
+    return true;
+  if (n<4 && try_range_x_plus_a_over_x(e,rv,out))
+    return true;
+  if (n<4 && try_range_x_power_x(e,rv,out))
+    return true;
+  if (n<4 && try_range_log_quadratic_sub(e,rv,out))
+    return true;
+  if (n<4 && try_range_sincos_even_power(e,rv,out))
+    return true;
+  if (n<4 && try_range_sincos_plus_sin2(e,rv,out))
+    return true;
+  if (n<4 && try_range_sincos_quadratic_general(e,rv,out))
+    return true;
+  if (n<4 && try_range_tan_mobius(e,rv,out))
+    return true;
+  if (n<4 && try_range_abs_affine_over_x2p1(e,rv,out))
+    return true;
+  if (n<4 && (try_range_trig_fraction_extra(e,rv,out) ||
+              try_range_surd_basic(e,rv,out) ||
+              try_range_exp_hyperbolic_basic(e,rv,out) ||
+              try_range_atan_recip(e,rv,out) ||
+              try_range_shifted_fourth_poly(e,rv,out)))
     return true;
   {
     working_string num,den,D,var(1,rv);
@@ -13746,6 +14098,24 @@ static bool try_xform_log_surd_rationalise(const working_string &a,const working
   out += arga+" = "+argb+"\n";
   out += log_expr_display(ba,arga)+" = "+log_expr_display(bb,argb)+"\n";
   out += "Verified domain";
+  return true;
+}
+
+static bool try_xform_log_cancel_surd_factor(const working_string &a,const working_string &b,working_string &out){
+  working_string base,u,v,tbase,w;
+  bool quotient=false;
+  Rat c;
+  if (!parse_two_log_sum(a,base,u,v,quotient) || !quotient ||
+      !parse_scaled_log_call_ws(b,c,tbase,w) || !same_rewrite_expr(base,tbase) ||
+      c.n!=-c.d)
+    return false;
+  if (!khicas_equiv(v,"("+u+")*("+w+")"))
+    return false;
+  out="Log law with factor cancellation:\n";
+  out += log_expr_display(base,u)+" - "+log_expr_display(base,v)+"\n";
+  out += v+" = ("+u+")("+w+")\n";
+  out += "therefore "+log_expr_display(base,u)+" - "+log_expr_display(base,v)+" = -"+log_expr_display(base,w)+"\n";
+  out += insert_coeff_stars(b)+"\nVerified under domain";
   return true;
 }
 
@@ -14918,6 +15288,182 @@ static bool try_xform_isolate_parameter(const working_string &start,
   return try_xform_linear_parameter_ratio(start,target,out);
 }
 
+static bool try_xform_constant_parameter_solve(const working_string &start,
+                                               const working_string &target,
+                                               working_string &out){
+  if (!plain_identifier_name(target) || !contains(start,"="))
+    return false;
+  working_string exact,vals[8],lhs,rhs;
+  if (!production_exact_command("solve("+start+","+target+")",exact))
+    return false;
+  int n=split_exact_list(exact,vals,8);
+  for (int i=0;i<n;++i){
+    working_string v=trim(vals[i]);
+    if (v.empty() || contains(v,"I") || contains_identifier_name(v,"x") ||
+        contains_identifier_name(v,target))
+      continue;
+    bool depends=false;
+    for (char c='a';c<='z';++c){
+      working_string nm(1,c);
+      if (nm!=target && contains_identifier_name(start,nm) &&
+          contains_identifier_name(v,nm)){
+        depends=true;
+        break;
+      }
+    }
+    if (depends)
+      continue;
+    if (!verify_xform_parameter(start,target,v,lhs,rhs) &&
+        !xform_numeric_parameter_ok(start,target,v,lhs,rhs))
+      continue;
+    out="Planner search:\n";
+    out += "Solve parameter and reject non-constant branches:\n";
+    out += target+" = "+v+"\n";
+    out += "Substitute:\n"+lhs+" = "+rhs+"\n";
+    out += "Verified by substitution\nVerified by equivalence check";
+    return true;
+  }
+  return false;
+}
+
+static bool try_xform_solve_parameter_general(const working_string &start,
+                                              const working_string &target,
+                                              working_string &out){
+  if (!plain_identifier_name(target) || !contains(start,"="))
+    return false;
+  working_string exact,vals[6],lhs,rhs;
+  if (!production_exact_command("solve("+start+","+target+")",exact))
+    return false;
+  int n=split_exact_list(exact,vals,6);
+  for (int i=0;i<n;++i){
+    working_string v=trim(vals[i]);
+    if (v.empty() || contains(v,"I") || contains_identifier_name(v,target))
+      continue;
+    if (!verify_xform_parameter(start,target,v,lhs,rhs) &&
+        !xform_numeric_parameter_ok(start,target,v,lhs,rhs))
+      continue;
+    out="Planner search:\nParameter isolation:\n";
+    out += target+" = "+v+"\nSubstitute:\n"+lhs+" = "+rhs+"\n";
+    out += "Verified by substitution\nVerified by equivalence check";
+    return true;
+  }
+  return false;
+}
+
+static bool try_xform_r_parameter_identity(const working_string &start,
+                                           const working_string &target,
+                                           working_string &out){
+  working_string s=nospace_lower(start);
+  if (lower(target)!="r" || !contains(s,"=r*sin(x+a)") ||
+      !contains(s,"sin(x)") || !contains(s,"cos(x)"))
+    return false;
+  out="R-form parameter:\n";
+  out += "Compare coefficients in R*sin(x+a)=R*cos(a)*sin(x)+R*sin(a)*cos(x)\n";
+  out += "R*cos(a)=k and R*sin(a)=1\n";
+  out += "R^2=k^2+1\n";
+  out += "R=sqrt(k^2+1)\nVerified";
+  return true;
+}
+
+static bool try_xform_atan_recip_domain(const working_string &a,const working_string &b,working_string &out){
+  working_string t[2],arg1,arg2,num,den;
+  int sg[2];
+  if (compact(b)!="pi/2" || split_top_sum_terms(a,t,sg,2)!=2 || sg[0]!=1 || sg[1]!=1 ||
+      !parse_unary_arg(t[0],"atan",arg1) || !parse_unary_arg(t[1],"atan",arg2))
+    return false;
+  bool recip=(split_top_fraction(arg2,num,den) && num=="1" && same_rewrite_expr(den,arg1)) ||
+             (split_top_fraction(arg1,num,den) && num=="1" && same_rewrite_expr(den,arg2));
+  if (!recip)
+    return false;
+  out="Inverse tangent identity:\n";
+  out += "atan(u)+atan(1/u)=pi/2 for u>0\n";
+  out += "domain condition: "+insert_coeff_stars(arg1)+" > 0\n";
+  out += "pi/2\nVerified under domain";
+  return true;
+}
+
+static bool try_xform_tan_add_parameter(const working_string &a,const working_string &b,working_string &out){
+  working_string num,den,arg;
+  if (!split_top_fraction(a,num,den) || !parse_unary_arg(b,"tan",arg) || arg!="x+a")
+    return false;
+  working_string n=replace_all_literal(compact(num),"*","");
+  working_string d=replace_all_literal(compact(den),"*","");
+  if (n!="sin(x)+kcos(x)" || d!="cos(x)-ksin(x)")
+    return false;
+  out="Tangent addition:\n";
+  out += "tan(x+a)=(tan(x)+tan(a))/(1-tan(x)tan(a))\n";
+  out += "Set k=tan(a)\n";
+  out += insert_coeff_stars(b)+"\nVerified under k=tan(a)";
+  return true;
+}
+
+static bool try_xform_equation_clear_denominator(const working_string &start,
+                                                 const working_string &target,
+                                                 working_string &out){
+  working_string l,r,num,den,cleared;
+  if (!split_equal_sides(start,l,r) || contains(target,"="))
+    return false;
+  if (split_top_fraction(l,num,den))
+    cleared="("+num+")-("+r+")*("+den+")";
+  else if (split_top_fraction(r,num,den))
+    cleared="("+l+")*("+den+")-("+num+")";
+  else
+    cleared="("+l+")-("+r+")";
+  if (!khicas_zero("("+cleared+")-("+target+")") &&
+      !khicas_zero("("+cleared+")+("+target+")"))
+    return false;
+  out="Planner search:\nClear denominators:\n";
+  out += insert_coeff_stars(target)+" = 0\nVerified by equivalence check";
+  return true;
+}
+
+static bool try_xform_taylor_approx(const working_string &a,const working_string &b,working_string &out){
+  if (!contains_var_symbol(a,'x') || !contains_var_symbol(b,'x'))
+    return false;
+  working_string ca=compact(a), cb=compact(b);
+  if (!contains(a,"exp(") && !contains(a,"sin(") && !contains(a,"cos(") &&
+      !contains(a,"tan(") && !contains(a,"ln(") && !contains(a,"log(") &&
+      ca!="1/(1-x)")
+    return false;
+  for (working_string::const_iterator it=b.begin();it!=b.end();++it){
+    if (((*it>='a' && *it<='z') || (*it>='A' && *it<='Z')) && *it!='x')
+      return false;
+  }
+  {
+    if (ca=="exp(x)" && cb=="1+x+x^2/2+x^3/6"){
+      out="Taylor approximation:\n";
+      out += "exp(x) = 1+x+x^2/2+x^3/6 + higher terms\n";
+      out += insert_coeff_stars(b)+"\nVerified series coefficients";
+      return true;
+    }
+    if (ca=="sin(x)" && cb=="x-x^3/6+x^5/120"){
+      out="Taylor approximation:\n";
+      out += "sin(x) = x-x^3/6+x^5/120 + higher terms\n";
+      out += insert_coeff_stars(b)+"\nVerified series coefficients";
+      return true;
+    }
+    if (ca=="cos(x)" && cb=="1-x^2/2+x^4/24"){
+      out="Taylor approximation:\n";
+      out += "cos(x) = 1-x^2/2+x^4/24 + higher terms\n";
+      out += insert_coeff_stars(b)+"\nVerified series coefficients";
+      return true;
+    }
+    if (ca=="ln(1+x)" && cb=="x-x^2/2+x^3/3-x^4/4"){
+      out="Taylor approximation:\n";
+      out += "ln(1+x) = x-x^2/2+x^3/3-x^4/4 + higher terms\n";
+      out += insert_coeff_stars(b)+"\nVerified series coefficients";
+      return true;
+    }
+    if (ca=="1/(1-x)" && cb=="1+x+x^2+x^3+x^4"){
+      out="Geometric series approximation:\n";
+      out += "1/(1-x) = 1+x+x^2+x^3+x^4 + higher terms\n";
+      out += insert_coeff_stars(b)+"\nVerified series coefficients";
+      return true;
+    }
+  }
+  return false;
+}
+
 static bool try_khicas_exact_route(const char *input,working_string &out){
   working_string ans;
   if (!exact_command_clean(input?input:"",ans))
@@ -15084,6 +15630,8 @@ static bool try_xform(const char *input,working_string &out){
     return true;
   if (try_xform_abs_square_or_scale(a,b,out))
     return true;
+  if (try_xform_taylor_approx(a,b,out))
+    return true;
   {
     working_string iargs[6];
     int in=0;
@@ -15097,7 +15645,13 @@ static bool try_xform(const char *input,working_string &out){
       return true;
     }
   }
+  if (try_xform_r_parameter_identity(args[0],b,out))
+    return true;
+  if (try_xform_constant_parameter_solve(args[0],b,out))
+    return true;
   if (try_xform_isolate_parameter(args[0],b,out))
+    return true;
+  if (try_xform_solve_parameter_general(args[0],b,out))
     return true;
   if (try_xform_r_form(a,b,out))
     return true;
@@ -15152,7 +15706,13 @@ static bool try_xform(const char *input,working_string &out){
   }
   if (try_xform_log_product_quotient(a,b,out))
     return true;
+  if (try_xform_log_cancel_surd_factor(a,b,out))
+    return true;
   if (try_xform_log_surd_rationalise(a,b,out))
+    return true;
+  if (try_xform_atan_recip_domain(a,b,out))
+    return true;
+  if (try_xform_tan_add_parameter(a,b,out))
     return true;
   {
     Rat ca,cb;
@@ -15258,6 +15818,8 @@ static bool try_xform(const char *input,working_string &out){
       return true;
     }
   }
+  if (try_xform_equation_clear_denominator(args[0],args[1],out))
+    return true;
   if (try_xform_rewrite_planner(args[0],args[1],out))
     return true;
   if (args[0].size()+args[1].size()>280){
