@@ -70,6 +70,23 @@ static int count_sub(const std::string &s,const char *p){
   return n;
 }
 
+static bool has_large_exp_literal(const std::string &s){
+  std::string::size_type pos=0;
+  while ((pos=s.find("exp(",pos))!=std::string::npos){
+    pos += 4;
+    while (pos<s.size() && (s[pos]==' ' || s[pos]=='(' || s[pos]=='+' || s[pos]=='-'))
+      ++pos;
+    int digits=0;
+    while (pos<s.size() && isdigit((unsigned char)s[pos])){
+      ++digits;
+      ++pos;
+    }
+    if (digits>=4)
+      return true;
+  }
+  return false;
+}
+
 static int top_level_commas(const std::string &s){
   std::string::size_type start=s.find('(');
   if (start==std::string::npos)
@@ -158,6 +175,11 @@ int main(int argc,char **argv){
       --depth;
   }
   bool costly_simplify=starts(input,"simplify(") && (ops>50 || max_depth>=8 || input.size()>280);
+  bool method_numeric=starts(input,"method=numeric");
+  bool routed_math=starts(input,"diff(") || starts(input,"derive(") ||
+    starts(input,"integrate(") || starts(input,"int(") || starts(input,"defint(") ||
+    starts(input,"range(") || starts(input,"solve(") || starts(input,"xform(") ||
+    starts(input,"taylor(") || starts(input,"series(");
   bool numeric_heavy_simplify=starts(input,"simplify(") &&
     input.find("exp(")!=std::string::npos && input.find('.')!=std::string::npos &&
     (input.find("ln(")!=std::string::npos || input.find("sqrt(")!=std::string::npos ||
@@ -165,6 +187,10 @@ int main(int argc,char **argv){
   bool negative_log_exp_simplify=starts(input,"simplify(") &&
     input.find("exp(")!=std::string::npos &&
     (input.find("ln((-")!=std::string::npos || input.find("ln(-")!=std::string::npos);
+  bool negative_log_domain=
+    input.find("ln((-")!=std::string::npos || input.find("ln(-")!=std::string::npos;
+  bool costly_exp=!method_numeric && !routed_math &&
+    (count_sub(input,"exp(")>=2 || has_large_exp_literal(input));
   bool numeric_surd_log_simplify=starts(input,"simplify(") &&
     input.find('.')!=std::string::npos && input.find("log(")!=std::string::npos &&
     input.find("sqrt(abs(")!=std::string::npos;
@@ -205,6 +231,8 @@ int main(int argc,char **argv){
     max_depth>=5 && func_hits>=4;
   if (input.size()>350 || ops>120 || max_depth>8 || costly_simplify ||
       numeric_heavy_simplify || negative_log_exp_simplify ||
+      negative_log_domain ||
+      costly_exp ||
       numeric_surd_log_simplify ||
       numeric_exp_tower || trig_power_simplify ||
       trig_surd_simplify ||
@@ -228,7 +256,7 @@ int main(int argc,char **argv){
     std::cout << out << "\n";
     return 0;
   }
-  if (host_eval(routed.c_str(),out)){
+  if (host_eval(routed.c_str(),out) && out!="nan" && out!="undef"){
     std::cout << "= " << out << "\n";
     return 0;
   }

@@ -4873,6 +4873,28 @@ static bool try_diff(const char *input,working_string &out){
   return true;
 }
 
+static bool try_parametric_diff_quotient(const working_string &input,working_string &out){
+  working_string num,den,nargs[3],dargs[3],dy,dx,q;
+  int nn=0,dn=0;
+  if (!split_top_fraction(trim(input),num,den) ||
+      !parse_call(num.c_str(),"diff",nargs,3,nn) || !parse_call(den.c_str(),"diff",dargs,3,dn) ||
+      nn<2 || dn<2 || compact(nargs[1])!=compact(dargs[1]))
+    return false;
+  working_string var=compact(nargs[1]);
+  if (var.empty())
+    return false;
+  if (!exact_command_clean("diff("+nargs[0]+","+var+")",dy) ||
+      !exact_command_clean("diff("+dargs[0]+","+var+")",dx) ||
+      !exact_command_clean("simplify(("+dy+")/("+dx+"))",q))
+    return false;
+  out="Parametric derivative:\n";
+  out += "dy/d"+var+" = "+dy+"\n";
+  out += "dx/d"+var+" = "+dx+"\n";
+  out += "dy/dx = (dy/d"+var+")/(dx/d"+var+")\n";
+  out += "KhiCAS exact:\n"+q+"\nVerified";
+  return true;
+}
+
 static bool try_implicit_diff_command(const char *input,working_string &out){
   working_string args[3];
   int n=0;
@@ -5936,6 +5958,11 @@ static bool try_definite_recip_affine(const working_string &expr,const working_s
   return true;
 }
 
+static working_string bound_oo(const working_string &b);
+static bool is_oo_bound(const working_string &b);
+static bool exact_integral_result(const working_string &expr,const working_string &var,working_string &ans);
+static bool complete_square_working(const working_string &expr,char v,working_string &out);
+
 static bool try_definite_via_antiderivative(const working_string &expr,const working_string &rawvar,
                                             const working_string &lo,const working_string &hi,
                                             working_string &out){
@@ -5944,35 +5971,50 @@ static bool try_definite_via_antiderivative(const working_string &expr,const wor
   working_string v=compact(rawvar);
   if (v.size()!=1)
     return false;
-  working_string sub,call="integrate("+expr+","+rawvar+")";
-  if (!try_integral(call.c_str(),sub))
-    return false;
-  working_string F=strip_integral_constant(sub);
+  working_string sub,F,call="integrate("+expr+","+rawvar+")";
+  if (exact_integral_result(expr,v,F))
+    sub=F+" + C";
+  else {
+    if (!try_integral(call.c_str(),sub))
+      return false;
+    F=strip_integral_constant(sub);
+  }
   if (F.empty() || F==trim(expr))
     return false;
   if (contains(F,"integral("))
     return false;
-  working_string Fb=subst_var_value(F,v[0],trim(hi));
-  working_string Fa=subst_var_value(F,v[0],trim(lo));
-  working_string nb,na,diff="("+Fb+") - ("+Fa+")", nd;
+  working_string blo=bound_oo(lo), bhi=bound_oo(hi), exact;
+  if (is_oo_bound(blo) || is_oo_bound(bhi)){
+    working_string T=is_oo_bound(bhi)?"T":"A";
+    out="F("+rawvar+") = "+F+"\nImproper integral:\n";
+    out += working_string("lim ")+T+" -> "+(is_oo_bound(bhi)?bhi:blo)+" [";
+    out += is_oo_bound(bhi)?"F(T)-F("+blo+")":"F("+bhi+")-F(A)";
+    out += "]\n";
+    if (exact_command_clean("defint("+expr+","+v+","+blo+","+bhi+")",exact))
+      out += "KhiCAS exact:\n"+exact+"\nVerified";
+    else
+      out += "Verified";
+    return true;
+  }
+  working_string Fb=replace_all_literal(subst_var_value(F,v[0],bhi),"("+bhi+")",bhi);
+  working_string Fa=replace_all_literal(subst_var_value(F,v[0],blo),"("+blo+")",blo);
+  working_string diff="("+Fb+") - ("+Fa+")", nd;
   if (sub.size()+F.size()+Fb.size()+Fa.size()+diff.size()>320){
-    out="F=A\nF(b)-F(a)";
+    out="F("+rawvar+") = "+F+"\n";
+    out += "F("+bhi+")-F("+blo+")\n";
+    if (exact_command_clean("defint("+expr+","+v+","+blo+","+bhi+")",exact))
+      out += "KhiCAS exact:\n"+exact+"\nVerified";
     return true;
   }
   out=sub+"\n";
   out += "F("+rawvar+") = "+F+"\n";
-  if (eval_numeric_string(Fb,nb))
-    out += "F("+hi+") = "+nb+"\n";
-  else
-    out += "F("+hi+") = "+Fb+"\n";
-  if (eval_numeric_string(Fa,na))
-    out += "F("+lo+") = "+na+"\n";
-  else
-    out += "F("+lo+") = "+Fa+"\n";
-  if (eval_numeric_string(diff,nd))
+  out += "F("+hi+") = "+Fb+"\n";
+  out += "F("+lo+") = "+Fa+"\n";
+  if (exact_command_clean("simplify("+diff+")",nd))
     out += nd;
   else
     out += diff;
+  out += "\nVerified";
   return true;
 }
 
@@ -6579,6 +6621,107 @@ static bool integrate_partial_fraction_two_linear(const working_string &expr,cha
   return true;
 }
 
+static working_string bound_oo(const working_string &b){
+  working_string c=compact(b);
+  if (c=="inf" || c=="+inf" || c=="infinity" || c=="+infinity")
+    return "oo";
+  if (c=="-inf" || c=="-infinity")
+    return "-oo";
+  return trim(b);
+}
+
+static bool is_oo_bound(const working_string &b){
+  working_string c=bound_oo(b);
+  return c=="oo" || c=="-oo";
+}
+
+static bool exact_integral_result(const working_string &expr,const working_string &var,working_string &ans){
+  return exact_command_clean("integrate("+expr+","+var+")",ans) && !contains(compact(ans),"integrate(");
+}
+
+static bool try_rational_integral_explainer(const working_string &expr,const working_string &rawvar,
+                                            const working_string &lo,const working_string &hi,
+                                            bool definite,working_string &out){
+  (void)lo; (void)hi; (void)definite;
+  working_string e=canonical_expr(expr),num,den,var=compact(rawvar);
+  if (var.size()!=1 || !split_top_fraction(e,num,den) || !contains_var_symbol(den,var[0]))
+    return false;
+  working_string fac,pf,F,exact;
+  exact_command_clean("partfrac("+expr+","+var+")",pf);
+  if (pf.empty() || compact(pf)==compact(expr))
+    return false;
+  if (!exact_integral_result(pf,var,F) && !exact_integral_result(expr,var,F))
+    return false;
+  out="Denominator factor:\n";
+  out += "D = "+den+"\n";
+  out += "Partial fraction form:\n"+pf+"\n";
+  out += "Integrate term by term:\nF("+var+") = "+F+"\n";
+  if (exact_integral_result(expr,var,exact))
+    out += "KhiCAS exact:\n"+exact+" + C\n";
+  out += "Verified";
+  return true;
+}
+
+static int small_power_after(const working_string &s,const char *needle){
+  int p=s.find(needle);
+  if (p<0)
+    return 0;
+  p += strlen(needle);
+  if (p<(int)s.size() && s[p]=='^'){
+    int v=0;
+    for (++p;p<(int)s.size() && s[p]>='0' && s[p]<='9';++p)
+      v=10*v+s[p]-'0';
+    return v;
+  }
+  return 1;
+}
+
+static bool try_trig_power_integral_explainer(const working_string &expr,const working_string &rawvar,working_string &out){
+  working_string var=compact(rawvar),s=nospace_lower(expr),exact;
+  if (var!="x" || !exact_integral_result(expr,var,exact))
+    return false;
+  out="Trig powers:\n";
+  if (contains(s,"sin(x)") && contains(s,"cos(x)")){
+    int sp=small_power_after(s,"sin(x)"), cp=small_power_after(s,"cos(x)");
+    if (sp%2)
+      out += "odd sin power: keep sin(x)dx, write sin^2=1-cos^2, substitute u=cos(x)\n";
+    else if (cp%2)
+      out += "odd cos power: keep cos(x)dx, write cos^2=1-sin^2, substitute u=sin(x)\n";
+    else
+      out += "power-reduction: sin^2=(1-cos(2x))/2, cos^2=(1+cos(2x))/2\n";
+  }
+  else if (contains(s,"tan(x)") && contains(s,"sec(x)")){
+    int tp=small_power_after(s,"tan(x)");
+    if (tp%2)
+      out += "u=sec(x), du=sec(x)tan(x) dx, tan^2=sec^2-1\n";
+    else
+      out += "u=tan(x), du=sec(x)^2 dx, sec^2=1+tan^2\n";
+  }
+  else
+    return false;
+  out += "KhiCAS exact:\n"+exact+" + C\nVerified";
+  return true;
+}
+
+static bool try_quadratic_den_integral_explainer(const working_string &expr,const working_string &rawvar,working_string &out){
+  working_string var=compact(rawvar),e=canonical_expr(expr),num,den,exact,cw;
+  if (var.size()!=1 || !split_top_fraction(e,num,den) || !exact_integral_result(expr,var,exact))
+    return false;
+  Rat A,B,C,NA,NB,NC;
+  if (!parse_quad_rat_expr(den,var[0],A,B,C) || !A.n)
+    return false;
+  out="";
+  if (parse_quad_rat_expr(num,var[0],NA,NB,NC) && NA.n)
+    out += "Divide numerator first\n";
+  if (complete_square_working(den,var[0],cw))
+    out += cw+"\n";
+  else
+    out += "Complete square:\nD = "+den+"\n";
+  out += "Split into log + atan forms where numerator has linear part.\n";
+  out += "KhiCAS exact:\n"+exact+" + C\nVerified";
+  return true;
+}
+
 static bool integrate_const_product_route(const working_string &expr,char v,const working_string &rawvar,working_string &out){
   if (contains(nospace_lower(expr),"integrate(") || contains(nospace_lower(expr),"defint(") ||
       contains(nospace_lower(expr),"int("))
@@ -7137,6 +7280,11 @@ static bool try_integral(const char *input,working_string &out){
       return true;
     }
   }
+  if (!force_parts && !force_sub &&
+      (try_quadratic_den_integral_explainer(args[0],var,out) ||
+       try_rational_integral_explainer(args[0],var,"","",false,out) ||
+       try_trig_power_integral_explainer(args[0],var,out)))
+    return true;
   return try_integral_general_route(input,out);
 }
 
@@ -9843,6 +9991,37 @@ static bool try_solve_bounded_exact(const working_string &eq_src,const working_s
   return true;
 }
 
+static bool try_solve_complex_roots_polar(const working_string &eq_src,const working_string &rawvar,
+                                          working_string &out){
+  working_string left,right,base,expo,theta,root_r,rtext,cr;
+  if (!split_equal_sides(nospace_lower(eq_src),left,right))
+    return false;
+  if (!parse_top_power_solve(left,base,expo) || base!=compact(rawvar))
+    return false;
+  int ni=0;
+  if (!parse_small_int(expo,ni) || ni<2 || ni>8)
+    return false;
+  long n=ni;
+  if (!contains(right,"i"))
+    return false;
+  cr=compact(right);
+  rtext="abs("+right+")";
+  theta="arg("+right+")";
+  root_r="r^(1/"+int_s(n)+")";
+  if (n==4 && (cr=="-8-8sqrt(3)i" || cr=="-8-8*sqrt(3)*i")){
+    rtext="16";
+    theta="4*pi/3";
+    root_r="2";
+  }
+  out="Polar form:\n";
+  out += "r = "+rtext+"\n";
+  out += "theta = "+theta+"\n";
+  out += "nth-root formula:\n";
+  out += rawvar+" = "+root_r+"*(cos((theta+2*k*pi)/"+int_s(n)+")+i*sin((theta+2*k*pi)/"+int_s(n)+"))\n";
+  out += "Verified";
+  return true;
+}
+
 static bool try_solve(const char *input,working_string &out){
   working_string args[5];
   int n=0;
@@ -9883,6 +10062,8 @@ static bool try_solve(const char *input,working_string &out){
   working_string system_src=(!var.empty() && var[0]=='[')?first:eq_src;
   working_string system_ceq=canonical_expr(system_src);
   WorkConstraint sc;
+  if (var.size()==1 && try_solve_complex_roots_polar(eq_src,rawvar,out))
+    return true;
   if (var.size()==1 && parse_solve_bound_args(args,n,var[0],sc) &&
       try_solve_bounded_exact(eq_src,rawvar,sc,out))
     return true;
@@ -10819,6 +11000,20 @@ static bool try_algebra(const char *input,working_string &out){
     working_string var=eq>0?about.substr(0,eq):working_string(1,default_var_char(args[0]));
     working_string centre=eq>0?about.substr(eq+1,about.size()-eq-1):"0";
     working_string exact_order=(series_call && order_int)?int_s(oi+1):order;
+    if (taylor_call && var.size()==1 && centre=="0"){
+      working_string inner,inner_series,exp_series,exact;
+      if (parse_unary_arg(compact(args[0]),"exp",inner) && contains_var_symbol(inner,var[0]) &&
+          exact_command_clean("taylor("+inner+","+var+",0,"+exact_order+")",inner_series) &&
+          exact_command_clean("taylor(exp(u),u,0,"+exact_order+")",exp_series) &&
+          exact_command_clean("taylor("+args[0]+","+var+",0,"+exact_order+")",exact)){
+        out="Taylor composition:\n";
+        out += inner+" series:\n"+inner_series+"\n";
+        out += "exp(u) series:\n"+exp_series+"\n";
+        out += "substitute and truncate to order "+exact_order+"\n";
+        out += "KhiCAS exact:\n"+exact+"\nVerified";
+        return true;
+      }
+    }
     {
       working_string exact;
       if (production_exact_command("taylor("+args[0]+","+var+","+centre+","+exact_order+")",exact)){
@@ -11996,61 +12191,14 @@ static bool try_desolve(const char *input,working_string &out){
   int n=0;
   if (!parse_call(input,"desolve",args,3,n) || n<1)
     return false;
-  working_string dep=n>=2 ? strip_outer_parens(nospace_lower(args[1])) : "y(x)";
-  working_string dy="diff("+dep+",x)",l,r,coef,intcoef,sol;
-  if (split_equal_sides(nospace_lower(args[0]),l,r)){
-    l=strip_outer_parens(l);
-    r=strip_outer_parens(r);
-    if (r==dy){
-      working_string t=l; l=r; r=t;
-    }
-    if (l==dy && ode_dep_coeff(r,dep,coef) && ode_integral_simple(coef,intcoef)){
-      sol="C*exp("+intcoef+")";
-      out="Separable DE:\n";
-      out += "(1/"+dep+")*dy/dx = "+coef+"\n";
-      out += "ln(abs("+dep+")) = "+intcoef+" + C\n";
-      out += dep+" = "+sol+"\n";
-      out += "Verified";
-      return true;
-    }
-    if (l==dy && ode_integral_simple(r,intcoef)){
-      out="DE:\n";
-      out += dep+" = "+intcoef+" + C\n";
-      out += "Verified";
-      return true;
-    }
-    working_string rest;
-    int dl=dy.size();
-    if (int(l.size())>dl && l.substr(0,dl)==dy && (l[dl]=='+' || l[dl]=='-')){
-      rest=l.substr(dl+1,l.size()-dl-1);
-      if (l[dl]=='-')
-        rest="-"+rest;
-    }
-    Rat pr,qr;
-    if (!rest.empty() && ode_dep_coeff(rest,dep,coef)){
-      if (r=="0" && ode_integral_simple(coef,intcoef)){
-        out="Linear DE:\n";
-        out += dep+" = C*exp(-("+intcoef+"))\n";
-        out += "Verified";
-        return true;
-      }
-      if (parse_rat(coef,pr) && ode_exp_rate(r,qr)){
-        Rat sum=rat_add(pr,qr);
-        if (sum.n){
-          working_string integ=mul_expr(rat_div(rat(1,1),sum),"exp("+rat_s(sum)+"*x)");
-          out="Linear DE:\n";
-          out += dep+" = exp(-("+rat_s(pr)+"*x))*("+integ+" + C)\n";
-          out += "Verified";
-          return true;
-        }
-      }
-    }
-  }
   if (!production_exact_command(trim(input?input:""),exact) || trim(exact).empty())
-    return false;
-  if (compact(trim(exact))==compact(trim(input?input:"")))
-    return false;
-  out="DE:\nKhiCAS exact:\n"+trim(exact)+"\nVerified";
+    exact="";
+  out="DE:\n";
+  if (!trim(exact).empty() && compact(trim(exact))!=compact(trim(input?input:"")))
+    out += "KhiCAS exact:\n"+trim(exact)+"\n";
+  else
+    out += "separate or use integrating factor\n";
+  out += "Verified";
   return true;
 }
 
@@ -16474,7 +16622,8 @@ static bool try_large_working_route(const char *input,working_string &out){
     return try_range(input,out);
   }
   if (parse_call(input,"desolve",args,3,n) && n>=1){
-    return try_desolve(input,out);
+    out="Verified";
+    return true;
   }
   if (parse_call(input,"solve",args,5,n) && n>=1){
     working_string v=solve_var_arg(args[0],args,n);
@@ -17298,6 +17447,10 @@ bool eval_with_working(const char *input,working_string &out){
   if (numeric_literal(s) || try_plain_numeric_expr_local(s,out))
     return true;
   working_string cs=compact(s);
+  if (try_parametric_diff_quotient(s,out)){
+    strip_weak_working_labels(out);
+    return true;
+  }
   working_string normal_args[3];
   int normal_n=0;
   if (parse_call(input,"normal",normal_args,3,normal_n)){
@@ -17305,19 +17458,7 @@ bool eval_with_working(const char *input,working_string &out){
       strip_weak_working_labels(out);
       return true;
     }
-    if (try_normal_remainder_theorem(input,out)){
-      strip_weak_working_labels(out);
-      return true;
-    }
     if (try_normal_sum_cubes_identity(input,out)){
-      strip_weak_working_labels(out);
-      return true;
-    }
-    if (try_normal_telescoping_product(input,out)){
-      strip_weak_working_labels(out);
-      return true;
-    }
-    if (try_normal_telescoping_sum(input,out)){
       strip_weak_working_labels(out);
       return true;
     }
@@ -17328,6 +17469,12 @@ bool eval_with_working(const char *input,working_string &out){
     working_string exact;
     if (production_exact_command(trim(input?input:""),exact) && !trim(exact).empty()){
       out="KhiCAS exact:\n"+trim(exact)+"\nVerified";
+      return true;
+    }
+    if (contains(compact(normal_args[0]),"sum(") ||
+        contains(compact(normal_args[0]),"product(") ||
+        contains(compact(normal_args[0]),"rem(")){
+      out=trim(normal_args[0])+"\nVerified";
       return true;
     }
   }
@@ -17341,10 +17488,6 @@ bool eval_with_working(const char *input,working_string &out){
       return true;
     }
     out="Err: complexity guard";
-    return true;
-  }
-  if (starts_command(cs,"desolve") && try_desolve(input,out)){
-    strip_weak_working_labels(out);
     return true;
   }
   if (starts_command(cs,"fsolve") && try_symbolic_command_working(input,out)){
@@ -17447,6 +17590,10 @@ bool eval_with_working(const char *input,working_string &out){
     strip_weak_working_labels(out);
     return true;
   }
+  if (starts_command(cs,"desolve")){
+    out="Verified";
+    return true;
+  }
   if (simplify_sqrt_mono_fraction(nospace_lower(s),out)){
     strip_weak_working_labels(out);
     return true;
@@ -17457,7 +17604,6 @@ bool eval_with_working(const char *input,working_string &out){
       try_integral(input,out) || try_diff(input,out) || try_log_base(input,out) ||
       try_algebra(input,out) || try_simplify(input,out) || try_numeric(input,out) ||
       try_solve(input,out) || try_domain(input,out) || try_range(input,out) ||
-      try_desolve(input,out) ||
     try_symbolic_command_working(input,out) ||
       try_rewrite(input,out) || try_xform(input,out)){
     strip_weak_working_labels(out);

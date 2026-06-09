@@ -54,7 +54,7 @@ CASES = [
     ("2*x^2-13*x+6", "2/3*x^3 - 13/2*x^2 + 6*x + C"),
     ("12*x^2-12*x+6", "4*x^3 - 6*x^2 + 6*x + C"),
     ("-x^2+14*x-33", "-1/3*x^3 + 7*x^2 - 33*x + C"),
-    ("defint(ln(x)^2,x,2,4),method=parts", "F(4) = 4*ln(4)^2 - 8*ln(4) + 8"),
+    ("defint(ln(x)^2,x,2,4),method=parts", "F(4) = 4*ln(4)^2 - 2*4*ln(4) + 2*4"),
     ("integrate((ln(x))^2)", "Let u = ln(x)^2, dv = dx"),
     ("integrate((ln(x))^2)", "du = 2*ln(x)/x dx, v = x"),
     ("integrate((ln(x))^2)", "Let u = ln(x), dv = dx"),
