@@ -1,5 +1,8 @@
 abs
-Args: see catalog signature for abs.
-Required: A-level Pure scoped use only.
-Does: returns exact KhiCAS output, or verified working when a verified route exists.
-Examples: abs(1)
+Args: abs(expr)
+Required: expr: real or symbolic expression.
+Optional: None.
+Does: Returns absolute value. In inequalities/range work, abs is treated as a modulus with sign-change breakpoints.
+Working: Split at zeros of the inner expression, then simplify each branch.
+Checks: Roots introduced by branch changes are checked against the active domain.
+Examples: abs(x-3)

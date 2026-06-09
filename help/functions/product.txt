@@ -1,5 +1,8 @@
 product
-Args: see catalog signature for product.
-Required: A-level Pure scoped use only.
-Does: returns exact KhiCAS output, or verified working when a verified route exists.
+Args: product(expr,var,a,b)
+Required: expr: term; var: index; a,b: integer bounds.
+Optional: None.
+Does: Computes finite product.
+Working: Substitute integer index values over the bounds and multiply, simplifying exactly.
+Checks: Bounds and index substitutions are checked for finite integer range.
 Examples: product(k,k,1,4)

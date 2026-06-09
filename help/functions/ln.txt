@@ -1,5 +1,8 @@
 ln
-Args: see catalog signature for ln.
-Required: A-level Pure scoped use only.
-Does: returns exact KhiCAS output, or verified working when a verified route exists.
+Args: ln(expr)
+Required: expr: positive expression for real logs.
+Optional: None.
+Does: Natural logarithm.
+Working: Use log laws only under valid positive-domain assumptions.
+Checks: Log rewrites and xform steps are checked with domain restrictions.
 Examples: ln(e)

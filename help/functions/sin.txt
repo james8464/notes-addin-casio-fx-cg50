@@ -1,5 +1,8 @@
 sin
-Args: see catalog signature for sin.
-Required: A-level Pure scoped use only.
-Does: returns exact KhiCAS output, or verified working when a verified route exists.
-Examples: sin(1)
+Args: sin(expr)
+Required: expr: angle in radians unless calculator angle mode says otherwise.
+Optional: Exact special angles are simplified where possible.
+Does: Returns sine and participates in trig identities and equation solving.
+Working: Use reciprocal/Pythagorean/double-angle rewrites through texpand/tcollect when useful.
+Checks: Trig rewrites are equivalence-checked before being shown as verified steps.
+Examples: sin(pi/6)

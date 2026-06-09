@@ -1,5 +1,8 @@
 texpand
-Args: see catalog signature for texpand.
-Required: A-level Pure scoped use only.
-Does: returns exact KhiCAS output, or verified working when a verified route exists.
+Args: texpand(expr)
+Required: expr: trig/algebraic expression.
+Optional: None.
+Does: Expands trig expressions using identities.
+Working: Apply compound-angle, double-angle, reciprocal and algebraic expansion rules.
+Checks: Expanded form is checked by collecting/simplifying back to the input.
 Examples: texpand(sin(2*x))

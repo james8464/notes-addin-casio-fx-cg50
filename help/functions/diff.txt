@@ -1,5 +1,8 @@
 diff
-Args: see catalog signature for diff.
-Required: A-level Pure scoped use only.
-Does: returns exact KhiCAS output, or verified working when a verified route exists.
-Examples: diff(x*e^x,x)
+Args: diff(f,var)
+Required: f: expression; var: differentiation variable.
+Optional: Higher derivatives may use diff(f,var,n) if accepted by KhiCAS.
+Does: Differentiates using standard exact calculus rules.
+Working: Use constant, power, product, quotient and chain rules; preserve grouping in quotient steps.
+Checks: Differentiate result is checked by simplifying against the KhiCAS exact derivative.
+Examples: diff(7*exp(x)/(sqrt(exp(x))-2),x)

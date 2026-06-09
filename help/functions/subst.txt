@@ -1,5 +1,8 @@
 subst
-Args: see catalog signature for subst.
-Required: A-level Pure scoped use only.
-Does: returns exact KhiCAS output, or verified working when a verified route exists.
+Args: subst(expr,var,value)
+Required: expr: expression; var: variable; value: replacement.
+Optional: subst(expr,var=val) may be accepted by KhiCAS syntax.
+Does: Substitutes value for variable.
+Working: Replace every free occurrence of var, then simplify exactly.
+Checks: Substitution result is checked by direct evaluation of the transformed expression.
 Examples: subst(x^2,x,2)

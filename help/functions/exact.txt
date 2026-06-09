@@ -1,5 +1,8 @@
 exact
-Args: see catalog signature for exact.
-Required: A-level Pure scoped use only.
-Does: returns exact KhiCAS output, or verified working when a verified route exists.
-Examples: exact(1)
+Args: exact(expr)
+Required: expr: decimal or approximate expression.
+Optional: None.
+Does: Converts decimal input to exact rational/symbolic form where possible.
+Working: Parse the numeric value, rationalise finite decimals, then simplify.
+Checks: Exact conversion is checked by re-approximating to the original numeric value.
+Examples: exact(0.25)

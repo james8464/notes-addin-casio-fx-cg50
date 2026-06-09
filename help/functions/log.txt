@@ -1,5 +1,8 @@
 log
-Args: see catalog signature for log.
-Required: A-level Pure scoped use only.
-Does: returns exact KhiCAS output, or verified working when a verified route exists.
+Args: log(base,arg)
+Required: base: positive base not equal to 1; arg: positive expression.
+Optional: Some KhiCAS forms accept log(arg) for natural log; prefer ln for natural log.
+Does: Logarithm with explicit base.
+Working: Use base conversion and log laws under valid domain assumptions.
+Checks: Solutions/rewrite steps are checked against positive argument/base restrictions.
 Examples: log(2,8)

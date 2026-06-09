@@ -1,5 +1,8 @@
 approx
-Args: see catalog signature for approx.
-Required: A-level Pure scoped use only.
-Does: returns exact KhiCAS output, or verified working when a verified route exists.
-Examples: approx(1)
+Args: approx(expr)
+Required: expr: exact number or expression.
+Optional: Display precision follows calculator settings.
+Does: Returns a decimal approximation without changing the exact expression rules.
+Working: Evaluate exact form first, then convert to numeric display.
+Checks: Approximate output is not used as proof unless an exact check is unavailable.
+Examples: approx(1/3)

@@ -1,5 +1,8 @@
 xform
-Args: see catalog signature for xform.
-Required: A-level Pure scoped use only.
-Does: returns exact KhiCAS output, or verified working when a verified route exists.
-Examples: xform(sin(x)^2+cos(x)^2,1)
+Args: xform(start,target)
+Required: start: expression/equation; target: desired expression, equation, form or parameter.
+Optional: Target may be a parameter to isolate, e.g. xform(eq,k).
+Does: Finds a verified transformation route from start to target.
+Working: Search reciprocal/log/trig identities, expand, factor, collect, clear denominators, substitute and solve-for-parameter routes.
+Checks: Verified only after equivalence or substitution check under domain assumptions; approximation targets are labelled as such.
+Examples: xform((1-cos(x))/sin(x),tan(x/2))

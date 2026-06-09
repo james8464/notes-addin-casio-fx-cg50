@@ -1,5 +1,8 @@
 coeff
-Args: see catalog signature for coeff.
-Required: A-level Pure scoped use only.
-Does: returns exact KhiCAS output, or verified working when a verified route exists.
-Examples: coeff(1)
+Args: coeff(poly,var,n)
+Required: poly: polynomial/expression; var: variable; n: requested power.
+Optional: coeff(poly,var) may return coefficient list if KhiCAS accepts it.
+Does: Extracts the coefficient of var^n after expansion/collection.
+Working: Expand as needed, collect in var, then read the requested coefficient.
+Checks: Coefficient is checked by comparing the collected polynomial term with the original expansion.
+Examples: coeff((2*x+1)^5,x,3)

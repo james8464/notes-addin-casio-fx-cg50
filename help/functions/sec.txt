@@ -1,5 +1,8 @@
 sec
-Args: see catalog signature for sec.
-Required: A-level Pure scoped use only.
-Does: returns exact KhiCAS output, or verified working when a verified route exists.
-Examples: sec(1)
+Args: sec(expr)
+Required: expr: angle; cos(expr) must be non-zero.
+Optional: None.
+Does: Returns 1/cos(expr).
+Working: Rewrite to reciprocal cosine when simplifying, solving or verifying identities.
+Checks: Domain excludes cos(expr)=0; interval routes filter singular points.
+Examples: sec(0)

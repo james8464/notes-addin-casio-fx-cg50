@@ -1,5 +1,8 @@
 dot
-Args: see catalog signature for dot.
-Required: A-level Pure scoped use only.
-Does: returns exact KhiCAS output, or verified working when a verified route exists.
+Args: dot(u,v)
+Required: u and v: equal-length vectors/lists.
+Optional: None.
+Does: Returns scalar dot product.
+Working: Multiply matching components and sum them.
+Checks: Vector lengths must match; components are simplified exactly.
 Examples: dot([1,2],[3,4])

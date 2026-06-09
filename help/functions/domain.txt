@@ -1,5 +1,8 @@
 domain
-Args: see catalog signature for domain.
-Required: A-level Pure scoped use only.
-Does: returns exact KhiCAS output, or verified working when a verified route exists.
-Examples: domain(sqrt(x-1),x)
+Args: domain(expr,var)
+Required: expr: expression; var: variable.
+Optional: Predicates and intervals may be used by commands that call domain internally.
+Does: Finds real input values for which expr is defined.
+Working: Intersect restrictions from denominators, even roots, logs, inverse trig and trig poles.
+Checks: Domain restrictions are reused by range, solve and xform verification.
+Examples: domain(sqrt(ln((x+3)/(x-1))),x)

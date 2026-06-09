@@ -1,5 +1,8 @@
 lcm
-Args: see catalog signature for lcm.
-Required: A-level Pure scoped use only.
-Does: returns exact KhiCAS output, or verified working when a verified route exists.
-Examples: lcm(1)
+Args: lcm(a,b)
+Required: a and b: integers or polynomials.
+Optional: More arguments may be accepted by KhiCAS.
+Does: Returns least common multiple.
+Working: Use gcd relationship and normalise sign/content.
+Checks: Result is divisible by each input where defined.
+Examples: lcm(6,8)

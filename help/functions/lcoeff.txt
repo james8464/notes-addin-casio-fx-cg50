@@ -1,11 +1,8 @@
-Args:
-lcoeff(p,x)
-
-Required:
-Polynomial expression p and variable x.
-
-Does:
-Returns the leading coefficient of p in x.
-
-Examples:
-lcoeff(3*x^4-2*x+1,x)
+lcoeff
+Args: lcoeff(poly,var)
+Required: poly: polynomial/expression; var: variable.
+Optional: None.
+Does: Returns leading coefficient of poly in var.
+Working: Expand/collect in var, find highest power, then read its coefficient.
+Checks: Leading term is checked against the collected polynomial.
+Examples: lcoeff(3*x^4-2*x+1,x)

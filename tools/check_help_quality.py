@@ -9,7 +9,7 @@ CATALOG = ROOT / "khicas/upstream/giac90_1addin/catalogen.cpp"
 
 EXTRA_REQUIRED = {"domain", "sin", "cos", "tan", "sec", "cosec", "cot"}
 
-FIELDS = ["Args:", "Required:", "Does:", "Examples:"]
+FIELDS = ["Args:", "Required:", "Optional:", "Does:", "Working:", "Checks:", "Examples:"]
 
 
 def main() -> int:
@@ -34,6 +34,10 @@ def main() -> int:
         absent = [field for field in FIELDS if field not in text]
         if absent:
             weak.append(f"{name}({','.join(absent)})")
+        if "see catalog signature" in text:
+            weak.append(f"{name}(placeholder args)")
+        if len([line for line in text.splitlines() if line.strip()]) < 8:
+            weak.append(f"{name}(too short)")
     if missing:
         raise SystemExit("FAIL help: missing " + ", ".join(missing))
     if weak:

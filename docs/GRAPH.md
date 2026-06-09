@@ -1,6 +1,6 @@
 # Project Graph
 
-Last updated: 2026-06-02 12:09 BST
+Last updated: 2026-06-09 22:20 BST
 
 ## Build
 
@@ -18,9 +18,9 @@ graph TD
   RunMatMake --> RunMatSrc["runmat_mock.cc standalone libfxcg UI"]
   RunMatSrc --> RunMatG3A["calculator_files/RUNMAT.g3a"]
   Build --> Help["help/functions/*.txt"]
-  Help --> PAK["calculator_files/CAS.PAK: 31,667 bytes; sha c9429427"]
+  Help --> PAK["calculator_files/CAS.PAK: 18,515 bytes; sha b816944d"]
   G3A --> Meta["CAS / @CAS / CAS.g3a"]
-  G3A --> Size["2,095,708 bytes; 1,444 B under 2,097,152 cap; sha f7906e2e"]
+  G3A --> Size["2,097,120 bytes; 32 B under 2,097,152 cap; sha b453a8e2"]
 ```
 
 ## Runtime
@@ -95,9 +95,9 @@ graph TD
   Chaos --> Modes["finite --count N or indefinite --forever"]
   Chaos --> FinalStrict["2026-06-02 strict full pass: 45 visible commands * 500 = 22,500; bad=0"]
   TUI --> Panels["animated panels: status badges, wide side-by-side layout, phase lanes, health score, gate board, sync, last commit, change counts, state age, artifact headroom, live rate and ETA, queue bars, strict-marker ratios, strict-gap bar map, freshness rows, animated scan/meter lines, cleanup byte totals and cleanup command, project hygiene, tooling inventory, transfer path, strict clusters with first gap samples, test checkpoints, release blockers, risk, ignored workspace, active-tool counts, next action, command panel"]
-  Runner --> Runtime["16,553/16,553 runtime-safe"]
-  Runner --> Strict["strict marker checks kept as advisory; runtime queue is hard gate"]
-  Strict --> Remaining["current hard headroom: 1,444 B"]
+  Runner --> Runtime["last completed strict queue: 51,838/52,334 accepted, bad=0, invalid=496"]
+  Runner --> Strict["strict marker checks enforced for accepted rows; classified invalid rows are reported"]
+  Strict --> Remaining["current hard headroom: 32 B"]
 ```
 
 ## Project Shape

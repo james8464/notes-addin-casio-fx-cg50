@@ -1,5 +1,8 @@
 integrate
-Args: see catalog signature for integrate.
-Required: A-level Pure scoped use only.
-Does: returns exact KhiCAS output, or verified working when a verified route exists.
-Examples: integrate(2*x+3,x)
+Args: integrate(f,var)
+Required: f: integrand; var: integration variable.
+Optional: Bounds integrate(f,var,a,b) for definite integrals; method hints may be accepted by KhiCAS.
+Does: Integrates exactly where possible.
+Working: Use recognition, substitution, parts, partial fractions and trig identities; show substitution lines for simple u-substitution.
+Checks: Antiderivative is checked by differentiating back; definite results check endpoints/domain.
+Examples: integrate(exp(x)/(1+exp(x)),x)

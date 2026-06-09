@@ -1,5 +1,8 @@
 factor
-Args: see catalog signature for factor.
-Required: A-level Pure scoped use only.
-Does: returns exact KhiCAS output, or verified working when a verified route exists.
+Args: factor(expr)
+Required: expr: polynomial or algebraic expression.
+Optional: Optional variable may be accepted for multivariate expressions.
+Does: Factorises exactly over the supported algebraic domain.
+Working: Expand only when needed, then factor common factors and polynomial factors.
+Checks: The factorised form is checked by re-expansion against the original expression.
 Examples: factor(x^2-1)

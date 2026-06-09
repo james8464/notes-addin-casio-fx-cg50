@@ -1,5 +1,8 @@
 acos
-Args: see catalog signature for acos.
-Required: A-level Pure scoped use only.
-Does: returns exact KhiCAS output, or verified working when a verified route exists.
+Args: acos(expr)
+Required: expr: value in [-1,1] for real output.
+Optional: Use complex mode only if explicitly working outside real A-level routes.
+Does: Returns inverse cosine in principal range [0,pi].
+Working: Use exact known angles first; otherwise keep exact inverse trig form.
+Checks: For solve/range, returned angles are filtered by domain and interval.
 Examples: acos(1)

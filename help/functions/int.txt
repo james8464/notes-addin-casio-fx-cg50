@@ -1,5 +1,8 @@
 int
-Args: see catalog signature for int.
-Required: A-level Pure scoped use only.
-Does: returns exact KhiCAS output, or verified working when a verified route exists.
+Args: int(f,var)
+Required: f: integrand; var: integration variable.
+Optional: Bounds int(f,var,a,b) for definite integrals if accepted.
+Does: Alias for integrate.
+Working: Use recognition, substitution, parts, partial fractions and trig rewrites as appropriate.
+Checks: Antiderivative is checked by differentiating back to the integrand where possible.
 Examples: int(cos(x),x)

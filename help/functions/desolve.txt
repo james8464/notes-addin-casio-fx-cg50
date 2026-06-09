@@ -1,11 +1,8 @@
-Args:
-desolve(eq,y)
-
-Required:
-A-level separable or first-order differential equation form.
-
-Does:
-Solves a differential equation where the scoped engine has a verified exact route.
-
-Examples:
-desolve(diff(y,x)=k*y,y)
+desolve
+Args: desolve(ode,dep)
+Required: ode: differential equation; dep: dependent function or variable.
+Optional: Initial conditions may be supplied if accepted by KhiCAS syntax.
+Does: Solves supported A-level differential equations exactly where possible.
+Working: Identify separable/first-order linear form, separate or use integrating factor, then integrate.
+Checks: Returned solution is checked by substitution into the differential equation where possible.
+Examples: desolve(diff(y,x)=k*y,y)

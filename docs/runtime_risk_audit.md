@@ -15,10 +15,11 @@ graph TD
 
 - CAS add-in: `calculator_files/CAS.g3a`
 - CAS metadata: `CAS`, `@CAS`, `CAS.g3a`
-- CAS size: 2,088,876 bytes, 8,276 bytes under the 2,097,152-byte limit.
-- CAS SHA256: `ab5969e0f2c54cc6fc7c503e7437c5d8495e7d07549d7aa49ce52be595327df9`
+- CAS size: 2,097,120 bytes, 32 bytes under the 2,097,152-byte limit.
+- CAS SHA256: `b453a8e2265d889c5f0c614698e225716cb954f98b75439ff500e8f30d0b8ff9`
 - Help pack: `calculator_files/CAS.PAK`
-- Help pack SHA256: `052c840eda857b109282acae7768ed5bbabcf7e5a4478d2847aadab2152af398`
+- Help pack size: 18,515 bytes.
+- Help pack SHA256: `b816944d708f90aa8d922f7657d47f482d4eb5060f594a6cd2ce9ece9104a533`
 - RunMat add-in: `calculator_files/RUNMAT.g3a`
 - RunMat metadata: `RunMat`, `@RUNMAT`, `RUNMAT.g3a`
 - RunMat SHA256: `084e197a81a047efbabaff2d2c051c5fab4c2180667967074f7075665ad39d70`
@@ -41,11 +42,10 @@ graph TD
 
 ## Manual Smoke Status
 
-Passed in fx-CG Manager emulator/background automation:
+Previously passed in fx-CG Manager emulator/background automation:
 
-- Replaced emulator SD-card `CAS.g3a`, `CasioCAS.g3a`, and `CAS.PAK` with current artifacts.
-- Current SD-card `CAS.g3a`, `CasioCAS.g3a`, and `khicasen.g3a` SHA256 match `ab5969e0f2c54cc6fc7c503e7437c5d8495e7d07549d7aa49ce52be595327df9`.
-- Current SD-card `CAS.PAK` SHA256 matches `052c840eda857b109282acae7768ed5bbabcf7e5a4478d2847aadab2152af398`.
+- Replaced emulator SD-card `CAS.g3a`, `CasioCAS.g3a`, and `CAS.PAK` with then-current artifacts.
+- 2026-06-09 artifacts above still need foreground emulator or hardware smoke after transfer.
 - Memory Manager UI remains responsive after import cancellation and returns to the Memory Manager screen.
 - Main menu navigation can select `CasioCAS` by D-pad and open a CAS session. Screenshot: `/tmp/casio-smoke-current/casiocas_dpad_launch_final.png`.
 
@@ -111,6 +111,6 @@ python3 tools/check_calculator_border.py
 python3 tools/check_removed_features.py
 python3 tools/check_catalog_scope.py
 python3 tests/check_shared_working.py
-python3 tests/run_exact_queue.py --engine production --strict-markers --workers 4
+python3 tests/run_exact_queue.py --engine production --strict-markers --workers 2
 python3 tests/random_working_fuzzer.py --per-function 20 --strict --timeout 10 --seed 60606 --jsonl tests/reports/random_working_fuzzer_per_function_latest.jsonl --transcript tests/reports/random_working_fuzzer_per_function_latest.txt --print-failures
 ```

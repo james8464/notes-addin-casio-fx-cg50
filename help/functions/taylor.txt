@@ -1,5 +1,8 @@
 taylor
-Args: see catalog signature for taylor.
-Required: A-level Pure scoped use only.
-Does: returns exact KhiCAS output, or verified working when a verified route exists.
+Args: taylor(f,var,a,n)
+Required: f: expression; var: variable; a: centre; n: order.
+Optional: None.
+Does: Returns Taylor polynomial/series about a.
+Working: Differentiate as needed and build terms up to requested order.
+Checks: Taylor output is labelled as approximation/truncation unless exact polynomial equivalence holds.
 Examples: taylor(sin(x),x,0,5)

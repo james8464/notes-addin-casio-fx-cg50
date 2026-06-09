@@ -1,5 +1,8 @@
 series
-Args: see catalog signature for series.
-Required: A-level Pure scoped use only.
-Does: returns exact KhiCAS output, or verified working when a verified route exists.
+Args: series(f,var,a,n)
+Required: f: expression; var: variable; a: centre; n: order.
+Optional: Taylor-style syntax may overlap with taylor.
+Does: Returns local series expansion.
+Working: Use exact Taylor/series expansion around the centre to the requested order.
+Checks: Series output is an approximation/truncated expansion, not full equivalence away from the centre.
 Examples: series(exp(x),x,0,4)

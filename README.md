@@ -20,8 +20,8 @@ python3 tools/check_catalog_scope.py
 python3 tools/check_calculator_border.py calculator_files/CAS.g3a
 python3 tools/check_runmat_mock.py
 python3 tests/check_help_examples.py
-python3 tests/run_exact_queue.py --engine production --workers 8
-python3 tests/run_exact_queue.py --engine production --workers 8 --strict-markers
+python3 tests/run_exact_queue.py --engine production --workers 2
+python3 tests/run_exact_queue.py --engine production --workers 2 --strict-markers
 python3 tools/audit_progress_tui.py --fps 12
 ```
 
@@ -30,12 +30,12 @@ Current status:
 - app name: `CAS`
 - file: `CAS.g3a`
 - companion visual mock: `RUNMAT.g3a`
-- size: `2,069,740` bytes
-- hard limit headroom: `27,412` bytes under `2,097,152`
-- sha256: `854f7558e2ec6adb814984e8cb08ca87d105c01bb6699933e8f813308591d259`
-- help pack: `CAS.PAK`, `31,667` bytes, sha256 `c94294278bdfe3255577241bf57865f63596b8aac7a73ab6039b2ddbf15e2eab`
-- exact queue runtime: `15,074/15,074`
-- strict marker quality: advisory only; runtime queue is the hard gate
+- size: `2,097,120` bytes
+- hard limit headroom: `32` bytes under `2,097,152`
+- sha256: `b453a8e2265d889c5f0c614698e225716cb954f98b75439ff500e8f30d0b8ff9`
+- help pack: `CAS.PAK`, `18,515` bytes, sha256 `b816944d708f90aa8d922f7657d47f482d4eb5060f594a6cd2ce9ece9104a533`
+- last completed strict exact queue: `51,838/52,334` accepted, `bad=0`, `invalid=496`
+- strict marker quality: enforced for accepted rows; invalid rows are classified
 - online challenge source coverage: MadAsMaths exact rows in queue; Daily Integral hard-integration style probes inspected from `https://dailyintegral.com/archive`
 
 Notable routes:
