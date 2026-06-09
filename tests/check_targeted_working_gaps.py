@@ -35,6 +35,9 @@ SOURCE_MARKERS = {
         "try_xform_isolate_parameter",
         "try_xform_linear_parameter_ratio",
         "xform_numeric_parameter_ok",
+        "struct WorkConstraint",
+        "try_range_constrained",
+        "try_solve_bounded_exact",
         "Verified by substitution",
         "Verified by equivalence check",
         "Verified",
@@ -345,6 +348,8 @@ DOMAIN_POLICY_CASES = [
     ("domain(log(2,x^2-1),x)", ["Domain", "x^2 - 1 > 0", "x < -1 or x > 1"]),
     ("domain(1/(x^2-4),x)", ["Domain", "x^2 - 4 != 0", "x != -2 and x != 2"]),
     ("domain(sqrt(4-x)+ln(x-1),x)", ["Domain", "4 - x >= 0", "x - 1 > 0", "1 < x <= 4"]),
+    ("domain(sqrt(ln((x+3)/(x-1))),x)", ["Domain", "conditions:", "x - 1 != 0", "(x+3)/(x-1) > 0", "ln((x+3)/(x-1)) >= 0", "Verified"]),
+    ("domain(log(2,(x^2-1)/(x-3)),x)", ["Domain", "conditions:", "x - 3 != 0", "(x^2-1)/(x-3) > 0", "Verified"]),
 ]
 
 RANGE_POLICY_CASES = [
@@ -588,6 +593,57 @@ IMPLICIT_POLICY_CASES = [
             "(dy)/(dx)=-(2*x)/(cos(y) - 1)",
             "Verified",
         ],
+    ),
+]
+
+CONSTRAINED_POLICY_CASES = [
+    (
+        "range(x^2,x>0)",
+        ["x > 0", "as x -> 0, y -> 0", "y > 0", "Verified under constraint"],
+    ),
+    (
+        "range(ln(x),x,1,inf)",
+        ["x >= 1", "f(1) = 0", "y >= 0", "Verified under constraint"],
+    ),
+    (
+        "range(sqrt(x),x,1,4)",
+        ["1 <= x <= 4", "f(1) = 1", "f(4) = 2", "1 <= y <= 2", "Verified under constraint"],
+    ),
+    (
+        "range(1/(x-1),x,2,inf)",
+        ["x >= 2", "f(2) = 1", "0 < y <= 1", "Verified under constraint"],
+    ),
+    (
+        "range(tan(x),x,-pi/4,pi/4)",
+        ["-pi/4 <= x <= pi/4", "f(-pi/4) = -1", "f(pi/4) = 1", "-1 <= y <= 1", "Verified under constraint"],
+    ),
+    (
+        "range(x^2,x!=0)",
+        ["Err: unsupported domain predicate"],
+    ),
+    (
+        "solve(cos(x)=0,x,0,pi)",
+        ["0 <= x <= pi", "x = [pi/2]", "Verified under constraint"],
+    ),
+    (
+        "solve(tan(x)=1,x,0,pi)",
+        ["0 <= x <= pi", "x = [pi/4]", "Verified under constraint"],
+    ),
+    (
+        "diff(7*exp(x)/(sqrt(exp(x))-2),x)",
+        ["Quotient:", "du/dx = 7*exp(x)", "dv/dx = exp(x)/(2*sqrt(exp(x)))", "Verified"],
+    ),
+    (
+        "diff(exp(sin(x)^2)*cos(x),x)",
+        ["Product:", "u = exp((sin(x))^2)", "du/dx = 2*(sin(x))*cos(x)*exp((sin(x))^2)", "dv/dx = -sin(x)", "Verified"],
+    ),
+    (
+        "integrate(exp(x)/(1+exp(x)),x)",
+        ["Substitution:", "u = 1+exp(x)", "du = exp(x) dx", "ln(abs(1+exp(x))) + C", "Verified"],
+    ),
+    (
+        "coeff((2*x+1)^5,x,3)",
+        ["Coeff:", "texpand:", "[x^3] = 80", "Verified"],
     ),
 ]
 
@@ -898,7 +954,7 @@ def check_host_policy() -> None:
         if bad:
             raise AssertionError(f"{expr}: bad working markers {bad}\n{out}")
 
-    for expr, markers in SOLVE_POLICY_CASES + INTEGRAL_POLICY_CASES + PARTFRAC_POLICY_CASES + DOMAIN_POLICY_CASES + RANGE_POLICY_CASES + IMPLICIT_POLICY_CASES:
+    for expr, markers in SOLVE_POLICY_CASES + INTEGRAL_POLICY_CASES + PARTFRAC_POLICY_CASES + DOMAIN_POLICY_CASES + RANGE_POLICY_CASES + IMPLICIT_POLICY_CASES + CONSTRAINED_POLICY_CASES:
         out = run(expr)
         assert_contains(expr, out, markers)
         bad = [m for m in BAD_WORKING_MARKERS if m.lower() in out.lower()]
@@ -939,6 +995,7 @@ def main() -> int:
         f"domain_cases={len(DOMAIN_POLICY_CASES)} "
         f"range_cases={len(RANGE_POLICY_CASES)} "
         f"implicit_cases={len(IMPLICIT_POLICY_CASES)} "
+        f"constrained_cases={len(CONSTRAINED_POLICY_CASES)} "
         f"equivalence_cases={len(EQUIVALENCE_POLICY_CASES)} "
         f"xform_planner_cases={len(XFORM_PLANNER_CASES)} "
         f"xform_equiv_fallback_cases={len(XFORM_EQUIV_FALLBACK_CASES)} "

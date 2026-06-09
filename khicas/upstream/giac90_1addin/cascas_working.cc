@@ -4176,14 +4176,8 @@ static bool try_diff_chain_rule(const working_string &expr,char v,const working_
 }
 
 static bool split_outer_power_general(const working_string &src,working_string &base,Rat &p){
-  working_string s=strip_outer_parens(nospace_lower(src));
-  if (s.empty() || s[0]!='(')
-    return false;
-  int close=match_paren(s,0);
-  if (close<0 || close+1>=int(s.size()) || s[close+1]!='^')
-    return false;
-  base=s.substr(1,close-1);
-  return parse_rat(s.substr(close+2,s.size()-close-2),p);
+  working_string exp;
+  return parse_top_power(strip_outer_parens(nospace_lower(src)),base,exp) && parse_rat(exp,p);
 }
 
 static bool try_diff_power_chain_general(const working_string &expr,char v,const working_string &rawvar,working_string &out){
@@ -4711,13 +4705,13 @@ static bool try_diff_plain(const char *input,working_string &out){
       return true;
     if (try_diff_power_chain_general(args[0],var[0],var,out))
       return true;
-    if (try_diff_chain_rule(args[0],var[0],var,out))
+    if (try_diff_quotient_rule(args[0],var[0],var,out))
       return true;
     if (try_diff_product_rule(args[0],var[0],var,out))
       return true;
-    if (try_diff_recip_power(args[0],var[0],var,out))
+    if (try_diff_chain_rule(args[0],var[0],var,out))
       return true;
-    if (try_diff_quotient_rule(args[0],var[0],var,out))
+    if (try_diff_recip_power(args[0],var[0],var,out))
       return true;
     {
       working_string poly_answer;
@@ -5237,7 +5231,7 @@ static bool integrate_xn_ln_parts(const working_string &expr,working_string &out
   Rat secondcoef=rat_div(c,rat_mul(q,q));
   working_string second=rat_power_term_s(secondcoef,q);
   working_string ans=join_sum(vterm+"*ln(x)",signed_part(-1,second));
-  out="Use integration by parts\nParts:\n";
+  out="Parts:\n";
   out += "u=ln(x), dv="+rat_power_term_s(c,p)+" dx\n";
   out += "du=1/x dx, v="+vterm+"\n";
   out += "I=u*v-int(v*du)\n";
@@ -5578,6 +5572,115 @@ static bool eval_numeric_string(const working_string &expr,working_string &shown
   return true;
 }
 
+struct WorkConstraint {
+  bool active,hlo,hhi,slo,shi;
+  double lo,hi;
+  working_string los,his,desc;
+  char rv;
+};
+
+static void constraint_init(WorkConstraint &c,char rv){
+  c.active=c.hlo=c.hhi=c.slo=c.shi=false;
+  c.lo=c.hi=0;
+  c.los=c.his=c.desc="";
+  c.rv=rv;
+}
+
+static bool constraint_bound_value(const working_string &src,int &inf,double &v,working_string &shown){
+  working_string s=lower(compact(src));
+  if (s=="inf" || s=="+inf" || s=="oo" || s=="+oo" || s=="infinity" || s=="+infinity"){
+    inf=1; shown="inf"; return true;
+  }
+  if (s=="-inf" || s=="-oo" || s=="-infinity"){
+    inf=-1; shown="-inf"; return true;
+  }
+  inf=0;
+  if (!eval_numeric_string(src,shown))
+    return false;
+  v=last_numeric_value;
+  shown=compact(src);
+  return true;
+}
+
+static bool constraint_set_bounds(WorkConstraint &c,const working_string &lo,const working_string &hi,
+                                  bool slo,bool shi){
+  int li=0,hiinf=0;
+  double lv=0,hv=0;
+  working_string ls,hs;
+  if (!constraint_bound_value(lo,li,lv,ls) || !constraint_bound_value(hi,hiinf,hv,hs))
+    return false;
+  c.active=true; c.slo=slo; c.shi=shi;
+  c.hlo=li>=0;
+  c.hhi=hiinf<=0;
+  if (c.hlo){ c.lo=lv; c.los=ls; } else c.los="-inf";
+  if (c.hhi){ c.hi=hv; c.his=hs; } else c.his="inf";
+  if (c.hlo && c.hhi && c.hi<c.lo){
+    double tv=c.lo; c.lo=c.hi; c.hi=tv;
+    working_string ts=c.los; c.los=c.his; c.his=ts;
+    bool tb=c.slo; c.slo=c.shi; c.shi=tb;
+  }
+  working_string v(1,c.rv);
+  if (c.hlo && c.hhi)
+    c.desc=c.los+(c.slo?" < ":" <= ")+v+(c.shi?" < ":" <= ")+c.his;
+  else if (c.hlo)
+    c.desc=v+(c.slo?" > ":" >= ")+c.los;
+  else if (c.hhi)
+    c.desc=v+(c.shi?" < ":" <= ")+c.his;
+  else
+    c.desc="all real";
+  return true;
+}
+
+static bool constraint_contains(const WorkConstraint &c,double x){
+  if (c.hlo && (c.slo ? x<=c.lo+1e-9 : x<c.lo-1e-9))
+    return false;
+  if (c.hhi && (c.shi ? x>=c.hi-1e-9 : x>c.hi+1e-9))
+    return false;
+  return true;
+}
+
+static bool parse_predicate_constraint(const working_string &src,char rv,WorkConstraint &c){
+  working_string s=lower(compact(src)),v(1,rv);
+  const char *ops[]={">=","<=",">","<",0};
+  for (int i=0;ops[i];++i){
+    working_string op=ops[i];
+    int p=s.find(op);
+    if (p<=0)
+      continue;
+    working_string a=s.substr(0,p),b=s.substr(p+op.size(),s.size()-p-op.size());
+    if (a==v){
+      if (op==">" || op==">=")
+        return constraint_set_bounds(c,b,"inf",op==">",false);
+      return constraint_set_bounds(c,"-inf",b,false,op=="<");
+    }
+    if (b==v){
+      if (op=="<" || op=="<=")
+        return constraint_set_bounds(c,a,"inf",op=="<",false);
+      return constraint_set_bounds(c,"-inf",a,false,op==">");
+    }
+  }
+  return false;
+}
+
+static bool parse_range_constraint_args(working_string *args,int n,char rv,WorkConstraint &c,bool &unsupported){
+  constraint_init(c,rv);
+  unsupported=false;
+  if (n>=4 && compact(args[1])==working_string(1,rv))
+    return constraint_set_bounds(c,args[2],args[3],false,false);
+  if (n>=2 && compact(args[1])!=working_string(1,rv)){
+    if (parse_predicate_constraint(args[1],rv,c))
+      return true;
+    unsupported=true;
+  }
+  return false;
+}
+
+static bool parse_solve_bound_args(working_string *args,int n,char rv,WorkConstraint &c){
+  constraint_init(c,rv);
+  return n>=4 && compact(args[1])==working_string(1,rv) &&
+         constraint_set_bounds(c,args[2],args[3],false,false);
+}
+
 static working_string unary_display_arg(const working_string &arg){
   working_string a=trim(arg);
   if (a.size()>100)
@@ -5775,6 +5878,18 @@ static bool try_symbolic_command_working(const char *input,working_string &out){
       out="Err: complexity guard";
       return true;
     }
+    if (fn=="coeff" && n>=3){
+      working_string expanded, exact;
+      bool have_expanded=production_exact_command("texpand("+args[0]+")",expanded);
+      if (production_exact_command("coeff("+args[0]+","+args[1]+","+args[2]+")",exact)){
+        out="Coeff:\n";
+        if (have_expanded && trim(expanded).size()<160)
+          out += "texpand: "+trim(expanded)+"\n";
+        out += "["+trim(args[1])+"^"+trim(args[2])+"] = "+trim(exact)+"\n";
+        out += "Verified";
+        return true;
+      }
+    }
     working_string exact;
     if (production_exact_command(trim(input?input:""),exact) && !trim(exact).empty() &&
         exact!="nan" && compact(exact)!=compact(input?input:"")){
@@ -5952,12 +6067,12 @@ static bool integrate_x_exp_parts_general(const working_string &expr,char v,work
   if (!gotx || p.d!=1 || p.n<2 || p.n>5 || !parse_x_coeff(arg,k) || !k.n)
     return false;
   working_string E=(arg==working_string(1,v))?"e^"+working_string(1,v):"exp("+arg+")", vx(1,v);
-  out="Use integration by parts\nParts:\n";
+  out="Parts:\n";
   out += "Let u="+power_var_s(v,p)+", dv="+E+" d"+vx+"\n";
   working_string du=p.n==1?"d"+vx:rat_s(p)+"*"+power_var_s(v,rat(p.n-1,1))+" d"+vx;
   out += "du="+du+", v="+mul_expr(rat_div(rat(1,1),k),E)+"\n";
   if (p.n>1)
-    out += "repeat parts until the power is 0\n";
+    out += "repeat parts\n";
   Rat fact=rat(1,1), kpow=k, sign=rat(1,1);
   working_string poly;
   for (long j=0;j<=p.n;++j){
@@ -6334,7 +6449,7 @@ static bool integrate_x2_trig_parts_general(const working_string &expr,char v,wo
   }
   out="Parts twice:\n";
   out += "start with u="+x+"^2, dv="+working_string(fn)+"("+arg+") d"+x+"\n";
-  out += "then repeat parts on the remaining "+x+" trig integral\n";
+  out += "repeat parts\n";
   out += ans+" + C";
   return true;
 }
@@ -6602,6 +6717,20 @@ static bool try_integral_general_route(const char *input,working_string &out){
   return true;
 }
 
+static bool try_integral_reverse_chain_fraction(const working_string &e,const working_string &rawvar,working_string &out){
+  working_string num,den,dd,var=compact(rawvar);
+  if (var.size()!=1 || !split_top_fraction(e,num,den))
+    return false;
+  if (!production_exact_command("diff("+den+","+var+")",dd) || !khicas_equiv(num,trim(dd)))
+    return false;
+  out="Substitution:\n";
+  out += "u = "+den+"\n";
+  out += "du = "+num+" d"+var+"\n";
+  out += "int(1/u) du\n";
+  out += "ln(abs("+den+")) + C";
+  return true;
+}
+
 static bool try_integral(const char *input,working_string &out){
   working_string whole=trim(input?input:"");
   int ms=whole.find("),method=");
@@ -6649,6 +6778,8 @@ static bool try_integral(const char *input,working_string &out){
     e=e.substr(0,lp)+"ln(x)"+e.substr(lp+6,e.size()-lp-6);
   if (e=="(ln(x))^1" || e=="ln(x)^1")
     e="ln(x)";
+  if (!force_parts && !force_sub && try_integral_reverse_chain_fraction(e,var,out))
+    return true;
   if (var.size()>1 && plain_identifier_name(var)){
     working_string subinput="integrate("+replace_identifier_token(args[0],var,"x")+",x";
     for (int i=2;i<n;++i)
@@ -9688,10 +9819,34 @@ static bool try_solve_biquad_eq(const working_string &left,const working_string 
   return true;
 }
 
+static bool try_solve_bounded_exact(const working_string &eq_src,const working_string &rawvar,
+                                    const WorkConstraint &c,working_string &out){
+  working_string exact,items[16],kept,var=compact(rawvar);
+  if (var.size()!=1 || !production_exact_command("solve("+eq_src+","+rawvar+")",exact))
+    return false;
+  exact=trim(exact);
+  int m=split_exact_list(exact,items,16);
+  if (m<=0)
+    return false;
+  for (int i=0;i<m;++i){
+    working_string sol=trim(items[i]),shown;
+    if (sol.empty() || contains(sol,"I") || contains(sol,"n*pi") ||
+        !eval_numeric_string(sol,shown) || !constraint_contains(c,last_numeric_value))
+      continue;
+    if (!kept.empty()) kept += ", ";
+    kept += sol;
+  }
+  out="Solve:\n";
+  out += c.desc+"\n";
+  out += rawvar+" = ["+kept+"]\n";
+  out += "Verified under constraint";
+  return true;
+}
+
 static bool try_solve(const char *input,working_string &out){
-  working_string args[3];
+  working_string args[5];
   int n=0;
-  if (!parse_call(input,"solve",args,3,n) || n<1)
+  if (!parse_call(input,"solve",args,5,n) || n<1)
     return false;
   char explicit_v=0;
   bool explicit_var=n>=2 && valid_single_var_token(args[1],explicit_v);
@@ -9727,6 +9882,10 @@ static bool try_solve(const char *input,working_string &out){
   working_string var=compact(rawvar);
   working_string system_src=(!var.empty() && var[0]=='[')?first:eq_src;
   working_string system_ceq=canonical_expr(system_src);
+  WorkConstraint sc;
+  if (var.size()==1 && parse_solve_bound_args(args,n,var[0],sc) &&
+      try_solve_bounded_exact(eq_src,rawvar,sc,out))
+    return true;
   if (try_solve_linear_system_2x2(system_src,rawvar,out))
     return true;
   if (!eq.empty() && eq[0]=='[' && !var.empty() && var[0]=='['){
@@ -11571,18 +11730,21 @@ static bool domain_collect(const working_string &expr,char rv,bool &hlo,Rat &lo,
   }
   if (parse_unary_arg(s,"sqrt",arg)){
     bool ok=domain_collect(arg,rv,hlo,lo,slo,hhi,hi,shi,extra,work,depth+1);
-    return domain_req(arg,rv,0,hlo,lo,slo,hhi,hi,shi,extra,work) || ok;
+    (void)ok;
+    return domain_req(arg,rv,0,hlo,lo,slo,hhi,hi,shi,extra,work);
   }
   if (parse_unary_arg(s,"ln",arg)){
     bool ok=domain_collect(arg,rv,hlo,lo,slo,hhi,hi,shi,extra,work,depth+1);
-    return domain_req(arg,rv,1,hlo,lo,slo,hhi,hi,shi,extra,work) || ok;
+    (void)ok;
+    return domain_req(arg,rv,1,hlo,lo,slo,hhi,hi,shi,extra,work);
   }
   if (parse_unary_arg(s,"atan",arg) || parse_unary_arg(s,"sin",arg) ||
       parse_unary_arg(s,"cos",arg) || parse_unary_arg(s,"exp",arg))
     return domain_collect(arg,rv,hlo,lo,slo,hhi,hi,shi,extra,work,depth+1);
   if (parse_call(s.c_str(),"log",args,2,n) && n==2){
     bool ok=domain_collect(args[1],rv,hlo,lo,slo,hhi,hi,shi,extra,work,depth+1);
-    return domain_req(args[1],rv,1,hlo,lo,slo,hhi,hi,shi,extra,work) || ok;
+    (void)ok;
+    return domain_req(args[1],rv,1,hlo,lo,slo,hhi,hi,shi,extra,work);
   }
   return false;
 }
@@ -11962,6 +12124,205 @@ static bool exact_limit_kind(const working_string &expr,int &kind,double &v){
     return true;
   }
   return false;
+}
+
+static working_string range_value_display(const working_string &src);
+
+struct RangeVal {
+  working_string s;
+  double v;
+  bool open;
+};
+
+static bool add_range_val(RangeVal *vals,int &n,const working_string &s,double v,bool open){
+  if (!finite_double(v) || n>=12)
+    return false;
+  vals[n].s=range_value_display(trim(s));
+  vals[n].v=v;
+  vals[n].open=open;
+  ++n;
+  return true;
+}
+
+static bool add_range_eval(const working_string &e,const working_string &var,const working_string &x,
+                           bool open,RangeVal *vals,int &n){
+  working_string y;
+  double v=0;
+  if (!production_exact_command("subst("+e+","+var+"="+x+")",y) || !exact_approx_double(y,v))
+    return false;
+  return add_range_val(vals,n,y,v,open);
+}
+
+static bool add_range_point(const working_string &e,const working_string &var,const working_string &x,
+                            bool open,RangeVal *vals,int &n,working_string &steps){
+  int before=n;
+  if (!add_range_eval(e,var,x,open,vals,n))
+    return false;
+  if (n>before)
+    steps += "f("+x+") = "+vals[n-1].s+"\n";
+  return true;
+}
+
+static bool add_range_limit(const working_string &e,const working_string &var,const working_string &x,
+                            int &plus,int &minus,RangeVal *vals,int &n){
+  working_string y;
+  int k=0;
+  double v=0;
+  if (!production_exact_command("limit("+e+","+var+","+x+")",y) || !exact_limit_kind(y,k,v))
+    return false;
+  if (k>0){ ++plus; return true; }
+  if (k<0){ ++minus; return true; }
+  return add_range_val(vals,n,y,v,true);
+}
+
+static bool add_range_boundary_limit(const working_string &e,const working_string &var,const working_string &x,
+                                     int &plus,int &minus,RangeVal *vals,int &n,working_string &steps){
+  int bp=plus,bm=minus,bn=n;
+  working_string sx=x=="oo"?"+infinity":(x=="-oo"?"-infinity":x);
+  if (!add_range_limit(e,var,x,plus,minus,vals,n))
+    return false;
+  if (plus>bp)
+    steps += "as "+var+" -> "+sx+", y -> +infinity\n";
+  else if (minus>bm)
+    steps += "as "+var+" -> "+sx+", y -> -infinity\n";
+  else if (n>bn)
+    steps += "as "+var+" -> "+sx+", y -> "+vals[n-1].s+"\n";
+  return true;
+}
+
+static bool range_value_closed(RangeVal *vals,int n,double v){
+  for (int i=0;i<n;++i)
+    if (!vals[i].open && fabs(vals[i].v-v)<1e-8)
+      return true;
+  return false;
+}
+
+static working_string range_cmp_line(RangeVal lo,RangeVal hi,RangeVal *vals,int n){
+  bool lo_open=lo.open && !range_value_closed(vals,n,lo.v);
+  bool hi_open=hi.open && !range_value_closed(vals,n,hi.v);
+  if (fabs(lo.v-hi.v)<1e-9)
+    return working_string("y = ")+lo.s;
+  return lo.s+(lo_open?" < ":" <= ")+"y"+(hi_open?" < ":" <= ")+hi.s;
+}
+
+static bool try_range_recip_affine_constrained(const working_string &e,char rv,const WorkConstraint &c,working_string &out){
+  working_string num,den,var(1,rv);
+  Rat nr,da,db;
+  if (!split_top_fraction(e,num,den) || !parse_rat(num,nr) || !nr.n ||
+      !parse_affine_general(den,rv,da,db) || !da.n)
+    return false;
+  double root=-double(db.n)/double(db.d)/(double(da.n)/double(da.d));
+  if (!constraint_contains(c,root))
+    return false;
+  if ((!c.hlo || root<=c.lo+1e-9) || (!c.hhi || root>=c.hi-1e-9))
+    return false;
+  RangeVal lv,hv;
+  int n=0;
+  RangeVal vals[2];
+  if (c.hlo && !c.slo && !add_range_eval(e,var,c.los,false,vals,n))
+    return false;
+  if (c.hhi && !c.shi && !add_range_eval(e,var,c.his,false,vals,n))
+    return false;
+  if (n<2)
+    return false;
+  lv=vals[0]; hv=vals[1];
+  out="Range:\n"+c.desc+"\n";
+  out += "pole at "+var+"="+double_s(root)+"\n";
+  out += "split interval at pole\n";
+  if (lv.v<hv.v)
+    out += "range: y <= "+lv.s+" or y >= "+hv.s+"\n";
+  else
+    out += "range: y <= "+hv.s+" or y >= "+lv.s+"\n";
+  out += "Verified under constraint";
+  return true;
+}
+
+static bool try_range_constrained(const working_string &e,char rv,const WorkConstraint &c,working_string &out){
+  working_string var(1,rv),df,roots,rs[8];
+  RangeVal vals[12];
+  int vn=0,plus=0,minus=0;
+  working_string steps;
+  if (!c.active || !only_var_symbol(e,rv) || working_route_too_large(e))
+    return false;
+  if (try_range_recip_affine_constrained(e,rv,c,out))
+    return true;
+  if (c.hlo){
+    if (c.slo){
+      if (!add_range_boundary_limit(e,var,c.los,plus,minus,vals,vn,steps)) return false;
+    }
+    else if (!add_range_point(e,var,c.los,false,vals,vn,steps)) return false;
+  }
+  else if (!add_range_boundary_limit(e,var,"-oo",plus,minus,vals,vn,steps)) return false;
+  if (c.hhi){
+    if (c.shi){
+      if (!add_range_boundary_limit(e,var,c.his,plus,minus,vals,vn,steps)) return false;
+    }
+    else if (!add_range_point(e,var,c.his,false,vals,vn,steps)) return false;
+  }
+  else if (!add_range_boundary_limit(e,var,"oo",plus,minus,vals,vn,steps)) return false;
+  if (production_exact_command("diff("+e+","+var+")",df) &&
+      production_exact_command("solve(("+trim(df)+")=0,"+var+")",roots)){
+    int rn=split_exact_list(roots,rs,8);
+    for (int i=0;i<rn;++i){
+      working_string r=trim(rs[i]),shown;
+      if (r.empty() || contains(r,"I") || contains_var_symbol(r,rv) ||
+          !eval_numeric_string(r,shown) || !constraint_contains(c,last_numeric_value))
+        continue;
+      if (!add_range_point(e,var,r,false,vals,vn,steps))
+        return false;
+    }
+  }
+  out="Range:\n"+c.desc+"\n";
+  if (!trim(df).empty() && !contains_var_symbol(trim(df),rv))
+    out += "linear interval\n";
+  if (!trim(df).empty())
+    out += "f'("+var+")="+trim(df)+"\n";
+  out += steps;
+  if (plus && minus){
+    out += "range: all real\nVerified under constraint";
+    return true;
+  }
+  int lo=-1,hi=-1;
+  for (int i=0;i<vn;++i){
+    if (lo<0 || vals[i].v<vals[lo].v) lo=i;
+    if (hi<0 || vals[i].v>vals[hi].v) hi=i;
+  }
+  if (plus && lo>=0){
+    bool op=vals[lo].open && !range_value_closed(vals,vn,vals[lo].v);
+    if (!op)
+      out += "min y = "+vals[lo].s+"\n";
+    out += working_string("y")+(op?" > ":" >= ")+vals[lo].s+"\nVerified under constraint";
+    return true;
+  }
+  if (minus && hi>=0){
+    bool op=vals[hi].open && !range_value_closed(vals,vn,vals[hi].v);
+    if (!op)
+      out += "max y = "+vals[hi].s+"\n";
+    out += working_string("y")+(op?" < ":" <= ")+vals[hi].s+"\nVerified under constraint";
+    return true;
+  }
+  if (lo>=0 && hi>=0){
+    out += range_cmp_line(vals[lo],vals[hi],vals,vn)+"\nVerified under constraint";
+    return true;
+  }
+  return false;
+}
+
+static bool try_range_all_real_constrained(const working_string &e,char rv,working_string &out){
+  WorkConstraint c;
+  constraint_init(c,rv);
+  c.active=true;
+  c.desc="all real";
+  return try_range_constrained(e,rv,c,out);
+}
+
+static bool try_range_positive_constrained(const working_string &e,char rv,working_string &out){
+  WorkConstraint c;
+  constraint_init(c,rv);
+  if (!constraint_set_bounds(c,"0","inf",true,false) || !try_range_constrained(e,rv,c,out))
+    return false;
+  out="endpoint/critical route\nDomain:\n"+out;
+  return true;
 }
 
 static working_string range_value_display(const working_string &src){
@@ -13285,6 +13646,19 @@ static bool try_range(const char *input,working_string &out){
   working_string var;
   var += rv;
   working_string raw_e=nospace_lower(args[0]);
+  WorkConstraint rc;
+  bool unsupported_constraint=false;
+  if (parse_range_constraint_args(args,n,rv,rc,unsupported_constraint)){
+    if (try_range_constrained(e,rv,rc,out))
+      return true;
+    out="Err: unsupported range route\n";
+    out += rc.desc;
+    return true;
+  }
+  if (unsupported_constraint){
+    out="Err: unsupported domain predicate";
+    return true;
+  }
   if (try_range_symbolic_quadratic(raw_e,rv,out) ||
       try_range_symbolic_modulus(raw_e,rv,out) ||
       try_range_symbolic_rform(raw_e,rv,out) ||
@@ -13486,11 +13860,11 @@ static bool try_range(const char *input,working_string &out){
     if (n<4 && try_range_abs_sin_plus_cos(e,rv,out))
       return true;
     if (!contains(e,"abs(") && !split_top_fraction(e,num,den) &&
-        try_range_exp_poly_route(e,rv,n,args,out))
+        contains(e,"exp(") && try_range_all_real_constrained(e,rv,out))
       return true;
     if (n<4 && try_range_log_quad_route(e,rv,out))
       return true;
-    if (try_range_endpoint_limit_route(e,rv,out))
+    if (n<4 && contains(e,"ln(x)") && try_range_positive_constrained(e,rv,out))
       return true;
   }
   {
@@ -16102,7 +16476,7 @@ static bool try_large_working_route(const char *input,working_string &out){
   if (parse_call(input,"desolve",args,3,n) && n>=1){
     return try_desolve(input,out);
   }
-  if (parse_call(input,"solve",args,3,n) && n>=1){
+  if (parse_call(input,"solve",args,5,n) && n>=1){
     working_string v=solve_var_arg(args[0],args,n);
     return try_solve_large_structure(v,out);
   }

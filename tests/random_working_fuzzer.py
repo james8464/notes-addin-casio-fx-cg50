@@ -600,7 +600,7 @@ def rand_integrate(rng: random.Random) -> str:
 
 
 def rand_solve(rng: random.Random) -> str:
-    case = rng.randrange(15)
+    case = rng.randrange(18)
     if case == 0:
         a, b, r = nz(rng, -7, 7), rng.randrange(-9, 10), rng.randrange(-9, 10)
         return messy(rng, f"solve({a}*x+{b}={r},x)")
@@ -659,12 +659,18 @@ def rand_solve(rng: random.Random) -> str:
         s = a * a + b * b
         p = a * a * b * b
         return messy(rng, f"solve({v}^4-{s}*{v}^2+{p}=0,{v})")
+    if case == 14:
+        return messy(rng, "solve(cos(x)=0,x,0,pi)")
+    if case == 15:
+        return messy(rng, "solve(tan(x)=1,x,0,pi)")
+    if case == 16:
+        return messy(rng, f"solve(x^2-{rng.randrange(1,6)}^2=0,x,0,{rng.randrange(6,12)})")
     q, _, _ = quad_from_roots(rng)
     return messy(rng, f"solve({q}=0,x)")
 
 
 def rand_range(rng: random.Random) -> str:
-    case = rng.randrange(9)
+    case = rng.randrange(13)
     if case == 0:
         return messy(rng, f"range({lin(rng)})")
     if case == 1:
@@ -686,6 +692,14 @@ def rand_range(rng: random.Random) -> str:
         a, b, c = nz(rng, 1, 6), nz(rng, 1, 6), rng.randrange(-8, 9)
         m, d = nz(rng, 1, 5), rng.randrange(-8, 9)
         return messy(rng, f"range({a}*sin({m}*x{d:+d})+{b}*cos({m}*x{d:+d}){c:+d},x)")
+    if case == 8:
+        return messy(rng, "range(ln(x),x,1,inf)")
+    if case == 9:
+        return messy(rng, f"range(sqrt(x),x,{rng.randrange(0,3)},{rng.randrange(4,10)})")
+    if case == 10:
+        return messy(rng, "range(tan(x),x,-pi/4,pi/4)")
+    if case == 11:
+        return messy(rng, "range(x^2,x>0)")
     q, _, _ = quad_from_roots(rng)
     return messy(rng, f"range({q})")
 
