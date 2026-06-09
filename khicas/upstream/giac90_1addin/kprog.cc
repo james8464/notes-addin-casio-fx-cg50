@@ -941,7 +941,7 @@ namespace giac {
       if (it->is_symb_of_sommet(at_sto) || it->is_symb_of_sommet(at_check_type) || it->is_symb_of_sommet(at_equal)) // FIXME check 1st arg too
 	continue;
       if (it->is_symb_of_sommet(at_of)){
-	*logptr(contextptr) << gettext("Invalid argument name ") << *it << gettext(". You should use ") << it->_SYMBptr->feuille._VECTptr->front() << gettext(" instead, even if the argument should be of type function") << endl;
+	*logptr(contextptr) << gettext("Invalid argument name ") << *it << gettext(". You should use ") << it->_SYMBptr->feuille._VECTptr->front() << gettext(" instead") << endl;
 	*it=it->_SYMBptr->feuille._VECTptr->front();
       }
       if (it->is_symb_of_sommet(at_deuxpoints)){
@@ -5497,7 +5497,7 @@ namespace giac {
       return xcas_mode(contextptr);
     xcas_mode(contextptr)=args.val & 0xff;
     python_compat(args.val>=256,contextptr);
-    return string2gen(gettext("Warning: some commands like subs might change arguments order"),false);
+    return string2gen(gettext("subs may reorder args"),false);
   }
   static const char _xcas_mode_s []="xcas_mode";
   static define_unary_function_eval (__xcas_mode,&_xcas_mode,_xcas_mode_s);

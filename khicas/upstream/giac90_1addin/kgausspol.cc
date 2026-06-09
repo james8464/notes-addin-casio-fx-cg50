@@ -889,9 +889,9 @@ namespace giac {
     if ( !divrem1(th,other,quo,rem) ){
 #ifdef NO_STDEXCEPT
       quo.coord.clear();
-      quo.coord.push_back(monomial<gen>(gensizeerr(gettext("Unable to divide, perhaps due to rounding error")+th.print()+" / "+other.print()),quo.dim));
+      quo.coord.push_back(monomial<gen>(gensizeerr(gettext("divide error")+th.print()+" / "+other.print()),quo.dim));
 #else
-      setsizeerr(gettext("Unable to divide, perhaps due to rounding error")+th.print()+" / "+other.print());
+      setsizeerr(gettext("divide error")+th.print()+" / "+other.print());
 #endif
     }
     return(quo);
@@ -912,9 +912,9 @@ namespace giac {
     if ( !(th).TDivRem1(other,quo,rem) ){
 #ifdef NO_STDEXCEPT
       rem.coord.clear();
-      rem.coord.push_back(monomial<gen>(gensizeerr(gettext("Unable to divide, perhaps due to rounding error")+th.print()+" / "+other.print()),quo.dim));
+      rem.coord.push_back(monomial<gen>(gensizeerr(gettext("divide error")+th.print()+" / "+other.print()),quo.dim));
 #else
-      setsizeerr(gettext("Unable to divide, perhaps due to rounding error")+th.print()+" / "+other.print());
+      setsizeerr(gettext("divide error")+th.print()+" / "+other.print());
 #endif
     }
     return(rem);

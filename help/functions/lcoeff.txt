@@ -1,0 +1,11 @@
+Args:
+lcoeff(p,x)
+
+Required:
+Polynomial expression p and variable x.
+
+Does:
+Returns the leading coefficient of p in x.
+
+Examples:
+lcoeff(3*x^4-2*x+1,x)

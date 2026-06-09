@@ -170,10 +170,10 @@ CASES = [
     ("method=numeric,20000*(1-1.08^20)/(1-1.08)", "915239.285962"),
     ("method=numeric,20000*(1-1.08^20)/(1-1.08)", "250000*(27/25)^20 - 250000"),
     ("method=numeric,(ln(1000)-ln(500))/(2/5*ln(2)/5)", "12.5"),
-    ("expand((2*x-1)*(x+4)-4*(x-3)^2)", "-2*x^2 + 31*x - 40"),
-    ("expand((1+2*x)^5)", "32*x^5 + 80*x^4 + 80*x^3 + 40*x^2 + 10*x + 1"),
-    ("expand((1-2*x)^5)", "-32*x^5 + 80*x^4 -80*x^3 + 40*x^2 -10*x + 1"),
-    ("expand((3*x+2)^2-(2*x+4)*(x^2-11))", "-2*x^3 + 5*x^2 + 34*x + 48"),
+    ("texpand((2*x-1)*(x+4)-4*(x-3)^2)", "-2*x^2 + 31*x - 40"),
+    ("texpand((1+2*x)^5)", "32*x^5 + 80*x^4 + 80*x^3 + 40*x^2 + 10*x + 1"),
+    ("texpand((1-2*x)^5)", "-32*x^5 + 80*x^4 -80*x^3 + 40*x^2 -10*x + 1"),
+    ("texpand((3*x+2)^2-(2*x+4)*(x^2-11))", "-2*x^3 + 5*x^2 + 34*x + 48"),
     ("factor(x^3-2*x^2-x-6)", "(x - 3)*(x^2 + x + 2)"),
     ("factor(2*x^2-13*x+6)", "(2*x - 1)*(x - 6)"),
     ("factor(2*x^3-5*x^2-34*x-48)", "(x - 6)*(2*x^2 + 7*x + 8)"),
@@ -228,11 +228,11 @@ CASES = [
     ("1/4*pi*(6*sqrt(3))^2", "27*pi"),
     ("1/2*6*6*sqrt(3)", "18*sqrt(3)"),
     ("18*sqrt(3)+48*pi-27*pi", "18*sqrt(3) + 21*pi"),
-    ("expand(((54*x+6*(54-3*x)-x*(54-3*x)-324)^2)/(3*x))", "= 3*x^3 - 36*x^2 + 108*x"),
+    ("texpand(((54*x+6*(54-3*x)-x*(54-3*x)-324)^2)/(3*x))", "= 3*x^3 - 36*x^2 + 108*x"),
     ("27/(sqrt(50)*sqrt(18))", "= 9/10"),
     ("complete_square(x^2+y^2-10*x+4*y+11)", "r = 3*sqrt(2)"),
-    ("expand((3*x+k)^2)", "= 9*x^2 + 6*x*k + k^2"),
-    ("expand(x^2+9*x^2+6*x*k+k^2+2*x+4*k+11)", "10*x^2 + 6*x*k + k^2 + 2*x + 4*k + 11"),
+    ("texpand((3*x+k)^2)", "= 9*x^2 + 6*x*k + k^2"),
+    ("texpand(x^2+9*x^2+6*x*k+k^2+2*x+4*k+11)", "10*x^2 + 6*x*k + k^2 + 2*x + 4*k + 11"),
     ("discriminant(10*x^2+(6*k+2)*x+k^2+4*k+11,x)", "D = - 4*k^2 - 136*k - 436"),
     ("discriminant(3*x^2+12*x+25,x)", "D = -156"),
     ("evalat(1000*(ln(2)/5)*e^(ln(2)/5*t),t,8)", "f(8) = 200*ln(2)*2^(8/5)"),
@@ -316,8 +316,8 @@ def case_family(expr: str) -> str:
         return "binomial"
     if expr.startswith("partfrac("):
         return "partfrac"
-    if expr.startswith("expand("):
-        return "expand"
+    if expr.startswith("texpand("):
+        return "texpand"
     if expr.startswith("factor("):
         return "factor"
     if expr.startswith("complete_square("):

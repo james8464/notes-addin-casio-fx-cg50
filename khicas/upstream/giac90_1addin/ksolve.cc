@@ -1163,7 +1163,7 @@ namespace giac {
   static vecteur solve_inequation(const gen & e0,const identificateur & x,int direction,GIAC_CONTEXT){
     gen e=e0;
     if (has_num_coeff(e0)){
-      *logptr(contextptr) << gettext("Unable to solve inequations with approx coeffs ") << endl;
+      *logptr(contextptr) << gettext("approx inequation") << endl;
       e=exact(e0,contextptr);
     }    
     gen a1=e._SYMBptr->feuille[0];
@@ -1196,8 +1196,8 @@ namespace giac {
     gen singuf=evalf(singu,1,contextptr), veq_not_singuf=evalf(veq_not_singu,1,contextptr);
     if (singuf.type!=_VECT || veq_not_singuf.type!=_VECT || !is_numericv(*singuf._VECTptr) || !is_numericv(*veq_not_singuf._VECTptr)){
       if (eids.size()>eid.size())
-	return vecteur(1,gensizeerr(gettext("No numeric solve values; add assumptions")));
-      *logptr(contextptr) << gettext("Warn: parametric inequation needs assumptions; equation solutions are ") << veq_not_singu << endl;
+	return vecteur(1,gensizeerr(gettext("No numeric solve values")));
+      *logptr(contextptr) << gettext("Param inequation roots: ") << veq_not_singu << endl;
     }
     veq=mergevecteur(veq_not_singu,singu);
     vecteur range,excluded_not_singu(find_excluded(x,contextptr));
@@ -3254,7 +3254,7 @@ namespace giac {
       if (1
 	  //abs_calc_mode(contextptr)==38
 	  ){
-	*logptr(contextptr) << gettext("Bisection with x=tan(t), t=-1.57..1.57") << endl;
+	*logptr(contextptr) << gettext("Bisection x=tan(t)") << endl;
 	gen eq=subst(v[0],v[1],tan(v[1],contextptr),false,contextptr);
   //grad
 	vecteur v_=makevecteur(eq,symb_equal(v[1],angle_radian(contextptr)?symb_interval(-1.57,1.57):(angle_degree(contextptr)?symb_interval(-89.97,89.97):symb_interval(-99.97,99.97))));
@@ -5475,7 +5475,7 @@ namespace giac {
     }
     vectpoly res(v);
     if (!giac_gbasis(res,order,env,modular,rur,contextptr,eliminate_flag))
-      gensizeerr(gettext("Unable to compute gbasis with giac, perhaps dimension is too large"));
+      gensizeerr(gettext("gbasis too large"));
     return res;
   }
 

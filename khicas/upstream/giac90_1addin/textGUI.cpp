@@ -1062,7 +1062,7 @@ int doTextArea(textArea* text) {
 	if ( (key>=KEY_CTRL_F1 && key<=KEY_CTRL_F3) ||
 	     (key >= KEY_CTRL_F7 && key <= KEY_CTRL_F14)
 	     ){
-		  string le_menu=text->python?"F1 test\nif \nelse \n<\n>\n==\n!=\n&&\n||\nF2 loop\nfor \nrange(\nwhile \nF3 misc\n:\n;\n_\n":"F1 alg\nexpand(\nfactor(\ncollect(\npartfrac(\nF2 calc\ndiff(\nintegrate(\nlimit(\nseries(\nF3 solve\nsolve(\nfsolve(\nxform(\n";
+		  string le_menu=text->python?"F1 test\nif \nelse \n<\n>\n==\n!=\n&&\n||\nF2 loop\nfor \nrange(\nwhile \nF3 misc\n:\n;\n_\n":"F1 alg\ntexpand(\nfactor(\ntcollect(\npartfrac(\nF2 calc\ndiff(\nintegrate(\nlimit(\nseries(\nF3 solve\nsolve(\nfsolve(\nxform(\n";
 		  le_menu += "F7 trig\nsin(\ncos(\ntan(\nsec(\ncosec(\ncot(\nF8 funcs\nsqrt(\nln(\nlog(\nexp(\nabs(\nF9 nums\nexact(\napprox(\nfloor(\nceil(\nround(\nF: lists\nsum(\nproduct(\nsubst(\nrange(\nF; misc\nrewrite(\ndomain(\ndot(\n";
 	  const char * ptr=console_menu(key,(unsigned char*)(le_menu.c_str()),2);
 	  if (!ptr){

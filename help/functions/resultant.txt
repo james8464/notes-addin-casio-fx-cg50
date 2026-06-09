@@ -1,0 +1,11 @@
+Args:
+resultant(p,q,x)
+
+Required:
+Two polynomial expressions p and q, with variable x.
+
+Does:
+Eliminates x by returning the polynomial resultant.
+
+Examples:
+resultant(x^2-a,x-b,x)

@@ -87,17 +87,13 @@ CASES = [
     (
         "integrate(sin(log(14,log(tan(sqrt(abs(1676*u^52-1314*u^51+2509*u^50-3057*u^49+6241*u^48-7626*u^47+1772*u^46-6044*u^45+7219*u^44-9404*u^43+7302*u^42+352*u^41)))+8,((v)+(((939/834)*sqrt(571))))))))",
         [
-            "Let A be the integrand.",
-            "Search A-level methods.",
-            "integral(A,x) + C",
+            "Err: complexity guard",
         ],
     ),
     (
         "lcm(tan(cos(abs(exp(sqrt(2554*u^44+7170*u^43+5818*u^42+2085*u^41-6467*u^40-5271*u^39-1035*u^38-8230*u^37+1817*u^36+466*u^35-4014*u^34-4723*u^33))))),x)",
         [
-            "Least common multiple:",
-            "Result kept unevaluated:",
-            "lcm(A,x)",
+            "Err: unsupported",
         ],
     ),
 ]
@@ -112,6 +108,8 @@ BAD = [
     "A=integrand",
     "no exact form",
     "use ac+bd=0 and ad=-bc",
+    "result kept unevaluated",
+    "integral(a,",
 ]
 
 

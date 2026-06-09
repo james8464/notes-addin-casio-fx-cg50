@@ -734,7 +734,7 @@ XFORM_PLANNER_CASES = [
         "xform((x+1)^2+(x-1)^2,2*x^2+2)",
         [
             "Planner search:",
-            "Expand expression:",
+            "texpand:",
             "Verified by equivalence check",
         ],
     ),

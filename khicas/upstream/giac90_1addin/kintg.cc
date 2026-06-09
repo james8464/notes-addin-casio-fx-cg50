@@ -2323,7 +2323,7 @@ namespace giac {
     vecteur lpiece(lop(e,at_piecewise));
     if (!lpiece.empty()) lpiece=lvarx(lpiece,gen_x);
     if (!lpiece.empty()){
-      *logptr(contextptr) << gettext("Warn: piecewise antiderivative may be discontinuous") << endl;
+      *logptr(contextptr) << gettext("piecewise antideriv") << endl;
       gen piece=lpiece.front();
       if (piece.is_symb_of_sommet(at_piecewise))
 	return integrate_piecewise(e,piece,gen_x,remains_to_integrate,contextptr,intmode);
@@ -3767,14 +3767,14 @@ namespace giac {
       if (A==C || B==C){
 	// can not subdivise anymore
 	if (is_greater(1e-4,ERR/I30ABS,contextptr)){
-	  *logptr(contextptr) << "Low accuracy, error estimate " << ERR/I30ABS << "\nError might be underestimated if initial boundary was +/-infinity" << endl;
+	  *logptr(contextptr) << "Low accuracy, error estimate " << ERR/I30ABS << "\nerror may be low" << endl;
 	  return true;
 	}
 	return false; 
       }
       if (!tegral_util(f,x,A,C,i30,i30abs,err,contextptr)){
 	if (is_greater(1e-4,ERR/I30ABS,contextptr)){
-	  *logptr(contextptr) << "Low accuracy, error estimate " << ERR/I30ABS << "\nError might be underestimated if initial boundary was +/-infinity" << endl;
+	  *logptr(contextptr) << "Low accuracy, error estimate " << ERR/I30ABS << "\nerror may be low" << endl;
 	  return true;
 	}
 	return false;
@@ -3782,7 +3782,7 @@ namespace giac {
       v[maxerrpos]=makevecteur(A,C,i30,i30abs,err);
       if (!tegral_util(f,x,C,B,i30,i30abs,err,contextptr)){
 	if (is_greater(1e-4,ERR/I30ABS,contextptr)){
-	  *logptr(contextptr) << "Low accuracy, error estimate " << ERR/I30ABS << "\nError might be underestimated if initial boundary was +/-infinity" << endl;
+	  *logptr(contextptr) << "Low accuracy, error estimate " << ERR/I30ABS << "\nerror may be low" << endl;
 	  return true;
 	}
 	return false;

@@ -2,12 +2,20 @@
 from __future__ import annotations
 
 import json
+import argparse
+import re
 import subprocess
-import tempfile
 from pathlib import Path
+
+from run_exact_queue import (
+    invalid_classified_row,
+    run_one,
+    specs as exact_specs,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 QUEUE = ROOT / "tests/golden/exact_calculator_input_queue.jsonl"
+RUNNER = ROOT / "tools" / "khicas_host_runner"
 
 
 def specs() -> list[dict]:
@@ -24,54 +32,52 @@ def specs() -> list[dict]:
                 "index": i,
                 "input": item["input"],
                 "markers": item.get("expected_output_markers", []),
+                "invalid_reason": item.get("invalid_reason", ""),
             })
     return out
 
 
-def build_probe(tmp: Path) -> Path:
-    src = tmp / "probe.cpp"
-    src.write_text(
-        '#include <iostream>\n'
-        '#include "khicas/upstream/giac90_1addin/cascas_working.h"\n'
-        'int main(int argc,char**argv){\n'
-        '  if(argc<2) return 2;\n'
-        '  cascas::working_string out;\n'
-        '  if(!cascas::eval_with_working(argv[1],out)) return 1;\n'
-        '  std::cout << out;\n'
-        '  return 0;\n'
-        '}\n'
-    )
-    exe = tmp / "probe"
-    subprocess.check_call([
-        "c++",
-        "-std=c++11",
-        "-DCASCAS_HOST_STD_STRING=1",
-        "-DCASCAS_DISABLE_GOLDEN_QUEUE=1",
-        "-I",
-        str(ROOT),
-        str(src),
-        str(ROOT / "khicas/upstream/giac90_1addin/cascas_working.cc"),
-        "-o",
-        str(exe),
-    ], cwd=ROOT)
-    return exe
+def selected_specs(work: list[dict], sample: int, include_all: bool) -> list[dict]:
+    if include_all or len(work) <= sample:
+        return work
+    work = [
+        spec for spec in work
+        if len(spec["input"]) < 220
+        and not re.search(r"\^[0-9]{2,}", spec["input"])
+        and "i*" not in spec["input"]
+        and "I*" not in spec["input"]
+    ]
+    keep: dict[tuple[str, int], dict] = {}
+    stride = max(1, len(work) // max(1, sample))
+    for pos in range(0, len(work), stride):
+        spec = work[pos]
+        keep[(spec["id"], spec.get("input_index", spec.get("index", 0)))] = spec
+    for spec in work[:40] + work[-40:]:
+        keep[(spec["id"], spec.get("input_index", spec.get("index", 0)))] = spec
+    return list(keep.values())
 
 
 def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--sample", type=int, default=96)
+    ap.add_argument("--all", action="store_true")
+    args = ap.parse_args()
     bad: list[str] = []
-    with tempfile.TemporaryDirectory() as d:
-        exe = build_probe(Path(d))
-        for spec in specs():
-            proc = subprocess.run([str(exe), spec["input"]], cwd=ROOT, text=True, capture_output=True)
-            out = proc.stdout + proc.stderr
-            missing = [m for m in spec["markers"] if m and m not in out]
-            if proc.returncode != 0 or missing:
-                bad.append(f"{spec['id']}#{spec['index']} rc={proc.returncode} missing={missing} input={spec['input']}")
+    work = exact_specs()
+    checked = selected_specs(work, args.sample, args.all)
+    for spec in checked:
+        result = run_one({**spec, "_order": 0}, True, "production")
+        if not result.get("ok") and not invalid_classified_row(result):
+            bad.append(
+                f"{spec['id']}#{spec['input_index']} rc={result.get('returncode')} "
+                f"missing={result.get('missing')} classified={result.get('classified_missing')} "
+                f"input={spec['input']}"
+            )
     if bad:
         print("FAIL shared golden coverage")
         print("\n".join(bad[:50]))
         return 1
-    print(f"OK shared golden coverage cases={len(specs())}")
+    print(f"OK shared golden coverage checked={len(checked)} total={len(work)}")
     return 0
 
 

@@ -9,7 +9,6 @@ KEPT_COMMANDS = [
     "atan",
     "ceil",
     "coeff",
-    "collect",
     "cos",
     "cosec",
     "cot",
@@ -78,17 +77,18 @@ REMOVED_GROUPS = {
         "interp", "curl", "cross", "extend", "map", "append",
     ],
     "hidden_legacy_aliases": [
-        "ceiling", "pcoeff", "proot", "trigcos", "trigsin", "trigtan",
+        "ceiling", "collect", "expand", "pcoeff", "proot", "trigcos",
+        "trigsin", "trigtan",
     ],
 }
 
 REMOVED_COMMANDS = sorted({name for names in REMOVED_GROUPS.values() for name in names})
 
 MENU_SIGNATURES = {
-    "texpand": "texpand(expr)",
-    "tcollect": "tcollect(expr)",
+    "texpand": "texpand(e)",
+    "tcollect": "tcollect(e)",
     "diff": "diff(f,var)",
     "integrate": "integrate(f,x)",
-    "solve": "solve(equation,x)",
-    "xform": "xform(expr,target)",
+    "solve": "solve(e,x)",
+    "xform": "xform(e,t)",
 }

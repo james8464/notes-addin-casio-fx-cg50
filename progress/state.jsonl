@@ -17491,3 +17491,769 @@
 {"phase":"queue","last_event":"exact queue 1300/1300","queue":"1300/1300 done, 1277 ok, 0 bad, 23 invalid","tests":"queue-run 1277/1300"}
 {"phase":"queue","last_event":"exact queue 17300/17300","queue":"17300/17300 done, 17300 ok, 0 bad, 0 invalid","tests":"queue-run 17300/17300"}
 {"phase":"queue","last_event":"exact queue 17300/17300","queue":"17300/17300 done, 17233 ok, 0 bad, 67 invalid","tests":"queue-run 17233/17300"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 0 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 0 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 0 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 0 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 0 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 0 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 0 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 200 done, 0 bad","queue":"fuzz 200 cases","tests":"random-fuzz 200 done"}
+{"phase":"fuzz","last_event":"random fuzz 225 done, 0 bad","queue":"fuzz 225 cases","tests":"random-fuzz 225 done"}
+{"phase":"fuzz","last_event":"random fuzz 250 done, 3 bad","queue":"fuzz 250 cases","tests":"random-fuzz 250 done"}
+{"phase":"fuzz","last_event":"random fuzz 267 done, 3 bad","queue":"fuzz 267 cases","tests":"random-fuzz complete"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 0 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 0 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 0 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 0 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 0 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 0 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 0 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 200 done, 0 bad","queue":"fuzz 200 cases","tests":"random-fuzz 200 done"}
+{"phase":"fuzz","last_event":"random fuzz 225 done, 0 bad","queue":"fuzz 225 cases","tests":"random-fuzz 225 done"}
+{"phase":"fuzz","last_event":"random fuzz 250 done, 0 bad","queue":"fuzz 250 cases","tests":"random-fuzz 250 done"}
+{"phase":"fuzz","last_event":"random fuzz 267 done, 0 bad","queue":"fuzz 267 cases","tests":"random-fuzz complete"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 0 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 0 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 0 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 0 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 0 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 1 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 1 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 200 done, 1 bad","queue":"fuzz 200 cases","tests":"random-fuzz 200 done"}
+{"phase":"fuzz","last_event":"random fuzz 225 done, 1 bad","queue":"fuzz 225 cases","tests":"random-fuzz 225 done"}
+{"phase":"fuzz","last_event":"random fuzz 250 done, 1 bad","queue":"fuzz 250 cases","tests":"random-fuzz 250 done"}
+{"phase":"fuzz","last_event":"random fuzz 267 done, 1 bad","queue":"fuzz 267 cases","tests":"random-fuzz complete"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 0 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 0 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 0 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 0 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 0 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 0 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 0 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 200 done, 0 bad","queue":"fuzz 200 cases","tests":"random-fuzz 200 done"}
+{"phase":"fuzz","last_event":"random fuzz 225 done, 0 bad","queue":"fuzz 225 cases","tests":"random-fuzz 225 done"}
+{"phase":"fuzz","last_event":"random fuzz 250 done, 0 bad","queue":"fuzz 250 cases","tests":"random-fuzz 250 done"}
+{"phase":"fuzz","last_event":"random fuzz 267 done, 0 bad","queue":"fuzz 267 cases","tests":"random-fuzz complete"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 0 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 0 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 0 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 0 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 0 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 0 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 0 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 200 done, 0 bad","queue":"fuzz 200 cases","tests":"random-fuzz 200 done"}
+{"phase":"fuzz","last_event":"random fuzz 225 done, 0 bad","queue":"fuzz 225 cases","tests":"random-fuzz 225 done"}
+{"phase":"fuzz","last_event":"random fuzz 250 done, 0 bad","queue":"fuzz 250 cases","tests":"random-fuzz 250 done"}
+{"phase":"fuzz","last_event":"random fuzz 267 done, 0 bad","queue":"fuzz 267 cases","tests":"random-fuzz complete"}
+{"phase":"queue","last_event":"exact queue 0/52334","queue":"0/52334 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/52334"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1976 ok, 0 bad, 24 invalid","tests":"queue-run 1976/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1985 ok, 0 bad, 15 invalid","tests":"queue-run 1985/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1999 ok, 0 bad, 1 invalid","tests":"queue-run 1999/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1614 ok, 0 bad, 386 invalid","tests":"queue-run 1614/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1984 ok, 0 bad, 16 invalid","tests":"queue-run 1984/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1959 ok, 41 bad, 0 invalid","tests":"queue-run 1959/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1936 ok, 41 bad, 23 invalid","tests":"queue-run 1936/2000"}
+{"phase":"queue","last_event":"exact queue 0/52334","queue":"0/52334 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/52334"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1976 ok, 0 bad, 24 invalid","tests":"queue-run 1976/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1985 ok, 0 bad, 15 invalid","tests":"queue-run 1985/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1999 ok, 0 bad, 1 invalid","tests":"queue-run 1999/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1614 ok, 0 bad, 386 invalid","tests":"queue-run 1614/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 0 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 0 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 0 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 0 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 0 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 0 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 0 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 194 done, 0 bad","queue":"fuzz 194 cases","tests":"random-fuzz complete"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 0 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 0 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 0 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 0 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"queue","last_event":"exact queue 0/52334","queue":"0/52334 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/52334"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1976 ok, 0 bad, 24 invalid","tests":"queue-run 1976/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1985 ok, 0 bad, 15 invalid","tests":"queue-run 1985/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1999 ok, 0 bad, 1 invalid","tests":"queue-run 1999/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1614 ok, 0 bad, 386 invalid","tests":"queue-run 1614/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1984 ok, 0 bad, 16 invalid","tests":"queue-run 1984/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1960 ok, 40 bad, 0 invalid","tests":"queue-run 1960/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1937 ok, 40 bad, 23 invalid","tests":"queue-run 1937/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1993 ok, 7 bad, 0 invalid","tests":"queue-run 1993/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1970 ok, 7 bad, 23 invalid","tests":"queue-run 1970/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1977 ok, 0 bad, 23 invalid","tests":"queue-run 1977/2000"}
+{"phase":"queue","last_event":"exact queue 0/52334","queue":"0/52334 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/52334"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1976 ok, 0 bad, 24 invalid","tests":"queue-run 1976/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1985 ok, 0 bad, 15 invalid","tests":"queue-run 1985/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1999 ok, 0 bad, 1 invalid","tests":"queue-run 1999/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1614 ok, 0 bad, 386 invalid","tests":"queue-run 1614/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1984 ok, 0 bad, 16 invalid","tests":"queue-run 1984/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1977 ok, 0 bad, 23 invalid","tests":"queue-run 1977/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1997 ok, 3 bad, 0 invalid","tests":"queue-run 1997/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1997 ok, 3 bad, 0 invalid","tests":"queue-run 1997/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/52334","queue":"0/52334 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/52334"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1976 ok, 0 bad, 24 invalid","tests":"queue-run 1976/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1985 ok, 0 bad, 15 invalid","tests":"queue-run 1985/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1999 ok, 0 bad, 1 invalid","tests":"queue-run 1999/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1614 ok, 0 bad, 386 invalid","tests":"queue-run 1614/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1984 ok, 0 bad, 16 invalid","tests":"queue-run 1984/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1977 ok, 0 bad, 23 invalid","tests":"queue-run 1977/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1972 ok, 28 bad, 0 invalid","tests":"queue-run 1972/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1972 ok, 28 bad, 0 invalid","tests":"queue-run 1972/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 0 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 0 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 0 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 0 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 0 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 1 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 1 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 200 done, 1 bad","queue":"fuzz 200 cases","tests":"random-fuzz 200 done"}
+{"phase":"fuzz","last_event":"random fuzz 225 done, 1 bad","queue":"fuzz 225 cases","tests":"random-fuzz 225 done"}
+{"phase":"fuzz","last_event":"random fuzz 250 done, 1 bad","queue":"fuzz 250 cases","tests":"random-fuzz 250 done"}
+{"phase":"fuzz","last_event":"random fuzz 267 done, 1 bad","queue":"fuzz 267 cases","tests":"random-fuzz complete"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 0 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 0 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 0 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 0 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 0 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 0 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 0 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 200 done, 0 bad","queue":"fuzz 200 cases","tests":"random-fuzz 200 done"}
+{"phase":"fuzz","last_event":"random fuzz 225 done, 0 bad","queue":"fuzz 225 cases","tests":"random-fuzz 225 done"}
+{"phase":"fuzz","last_event":"random fuzz 250 done, 0 bad","queue":"fuzz 250 cases","tests":"random-fuzz 250 done"}
+{"phase":"fuzz","last_event":"random fuzz 267 done, 0 bad","queue":"fuzz 267 cases","tests":"random-fuzz complete"}
+{"phase":"queue","last_event":"exact queue 0/52334","queue":"0/52334 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/52334"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1976 ok, 0 bad, 24 invalid","tests":"queue-run 1976/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1985 ok, 0 bad, 15 invalid","tests":"queue-run 1985/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1999 ok, 0 bad, 1 invalid","tests":"queue-run 1999/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1614 ok, 0 bad, 386 invalid","tests":"queue-run 1614/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1984 ok, 0 bad, 16 invalid","tests":"queue-run 1984/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1977 ok, 0 bad, 23 invalid","tests":"queue-run 1977/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1934 ok, 66 bad, 0 invalid","tests":"queue-run 1934/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1934 ok, 66 bad, 0 invalid","tests":"queue-run 1934/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 0 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 0 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 0 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 0 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 0 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 0 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 0 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 200 done, 0 bad","queue":"fuzz 200 cases","tests":"random-fuzz 200 done"}
+{"phase":"fuzz","last_event":"random fuzz 225 done, 0 bad","queue":"fuzz 225 cases","tests":"random-fuzz 225 done"}
+{"phase":"fuzz","last_event":"random fuzz 250 done, 0 bad","queue":"fuzz 250 cases","tests":"random-fuzz 250 done"}
+{"phase":"fuzz","last_event":"random fuzz 267 done, 0 bad","queue":"fuzz 267 cases","tests":"random-fuzz complete"}
+{"phase":"queue","last_event":"exact queue 0/52334","queue":"0/52334 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/52334"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1976 ok, 0 bad, 24 invalid","tests":"queue-run 1976/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1985 ok, 0 bad, 15 invalid","tests":"queue-run 1985/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1999 ok, 0 bad, 1 invalid","tests":"queue-run 1999/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1614 ok, 0 bad, 386 invalid","tests":"queue-run 1614/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1984 ok, 0 bad, 16 invalid","tests":"queue-run 1984/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1977 ok, 0 bad, 23 invalid","tests":"queue-run 1977/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1826 ok, 174 bad, 0 invalid","tests":"queue-run 1826/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1826 ok, 174 bad, 0 invalid","tests":"queue-run 1826/2000"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 0 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 0 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 0 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 0 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 0 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 0 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 0 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 200 done, 0 bad","queue":"fuzz 200 cases","tests":"random-fuzz 200 done"}
+{"phase":"fuzz","last_event":"random fuzz 225 done, 0 bad","queue":"fuzz 225 cases","tests":"random-fuzz 225 done"}
+{"phase":"fuzz","last_event":"random fuzz 250 done, 3 bad","queue":"fuzz 250 cases","tests":"random-fuzz 250 done"}
+{"phase":"fuzz","last_event":"random fuzz 267 done, 3 bad","queue":"fuzz 267 cases","tests":"random-fuzz complete"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 0 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 0 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 0 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 0 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 0 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 0 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 0 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 200 done, 0 bad","queue":"fuzz 200 cases","tests":"random-fuzz 200 done"}
+{"phase":"fuzz","last_event":"random fuzz 225 done, 0 bad","queue":"fuzz 225 cases","tests":"random-fuzz 225 done"}
+{"phase":"fuzz","last_event":"random fuzz 250 done, 0 bad","queue":"fuzz 250 cases","tests":"random-fuzz 250 done"}
+{"phase":"fuzz","last_event":"random fuzz 267 done, 0 bad","queue":"fuzz 267 cases","tests":"random-fuzz complete"}
+{"phase":"queue","last_event":"exact queue 0/52334","queue":"0/52334 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/52334"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1975 ok, 0 bad, 25 invalid","tests":"queue-run 1975/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1985 ok, 0 bad, 15 invalid","tests":"queue-run 1985/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1999 ok, 0 bad, 1 invalid","tests":"queue-run 1999/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1578 ok, 0 bad, 422 invalid","tests":"queue-run 1578/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1984 ok, 0 bad, 16 invalid","tests":"queue-run 1984/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1999 ok, 1 bad, 0 invalid","tests":"queue-run 1999/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1976 ok, 1 bad, 23 invalid","tests":"queue-run 1976/2000"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 0 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 0 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 0 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 0 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 0 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 0 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 0 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 200 done, 0 bad","queue":"fuzz 200 cases","tests":"random-fuzz 200 done"}
+{"phase":"fuzz","last_event":"random fuzz 225 done, 0 bad","queue":"fuzz 225 cases","tests":"random-fuzz 225 done"}
+{"phase":"fuzz","last_event":"random fuzz 250 done, 0 bad","queue":"fuzz 250 cases","tests":"random-fuzz 250 done"}
+{"phase":"fuzz","last_event":"random fuzz 267 done, 0 bad","queue":"fuzz 267 cases","tests":"random-fuzz complete"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1984 ok, 0 bad, 16 invalid","tests":"queue-run 1984/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1976 ok, 0 bad, 24 invalid","tests":"queue-run 1976/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1824 ok, 176 bad, 0 invalid","tests":"queue-run 1824/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1824 ok, 176 bad, 0 invalid","tests":"queue-run 1824/2000"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 0 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 0 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 0 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 0 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 0 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 0 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 0 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 200 done, 0 bad","queue":"fuzz 200 cases","tests":"random-fuzz 200 done"}
+{"phase":"fuzz","last_event":"random fuzz 225 done, 0 bad","queue":"fuzz 225 cases","tests":"random-fuzz 225 done"}
+{"phase":"fuzz","last_event":"random fuzz 250 done, 1 bad","queue":"fuzz 250 cases","tests":"random-fuzz 250 done"}
+{"phase":"fuzz","last_event":"random fuzz 267 done, 1 bad","queue":"fuzz 267 cases","tests":"random-fuzz complete"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 0 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 0 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 0 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 0 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 0 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 0 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 0 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 200 done, 0 bad","queue":"fuzz 200 cases","tests":"random-fuzz 200 done"}
+{"phase":"fuzz","last_event":"random fuzz 225 done, 0 bad","queue":"fuzz 225 cases","tests":"random-fuzz 225 done"}
+{"phase":"fuzz","last_event":"random fuzz 250 done, 0 bad","queue":"fuzz 250 cases","tests":"random-fuzz 250 done"}
+{"phase":"fuzz","last_event":"random fuzz 267 done, 0 bad","queue":"fuzz 267 cases","tests":"random-fuzz complete"}
+{"phase":"queue","last_event":"exact queue 0/52334","queue":"0/52334 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/52334"}
+{"phase":"queue","last_event":"exact queue 0/300","queue":"0/300 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/300"}
+{"phase":"queue","last_event":"exact queue 300/300","queue":"300/300 done, 300 ok, 0 bad, 0 invalid","tests":"queue-run 300/300"}
+{"phase":"queue","last_event":"exact queue 300/300","queue":"300/300 done, 299 ok, 0 bad, 1 invalid","tests":"queue-run 299/300"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 0 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 0 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 0 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 0 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 0 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 0 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 0 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 200 done, 0 bad","queue":"fuzz 200 cases","tests":"random-fuzz 200 done"}
+{"phase":"fuzz","last_event":"random fuzz 225 done, 0 bad","queue":"fuzz 225 cases","tests":"random-fuzz 225 done"}
+{"phase":"fuzz","last_event":"random fuzz 250 done, 0 bad","queue":"fuzz 250 cases","tests":"random-fuzz 250 done"}
+{"phase":"fuzz","last_event":"random fuzz 267 done, 2 bad","queue":"fuzz 267 cases","tests":"random-fuzz complete"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 0 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 0 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 0 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 0 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 0 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 0 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 0 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 200 done, 0 bad","queue":"fuzz 200 cases","tests":"random-fuzz 200 done"}
+{"phase":"fuzz","last_event":"random fuzz 225 done, 0 bad","queue":"fuzz 225 cases","tests":"random-fuzz 225 done"}
+{"phase":"fuzz","last_event":"random fuzz 250 done, 0 bad","queue":"fuzz 250 cases","tests":"random-fuzz 250 done"}
+{"phase":"fuzz","last_event":"random fuzz 267 done, 0 bad","queue":"fuzz 267 cases","tests":"random-fuzz complete"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 0 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 0 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 0 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 0 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 0 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 0 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 0 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 200 done, 0 bad","queue":"fuzz 200 cases","tests":"random-fuzz 200 done"}
+{"phase":"fuzz","last_event":"random fuzz 225 done, 0 bad","queue":"fuzz 225 cases","tests":"random-fuzz 225 done"}
+{"phase":"fuzz","last_event":"random fuzz 250 done, 0 bad","queue":"fuzz 250 cases","tests":"random-fuzz 250 done"}
+{"phase":"fuzz","last_event":"random fuzz 267 done, 0 bad","queue":"fuzz 267 cases","tests":"random-fuzz complete"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/52334","queue":"0/52334 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/52334"}
+{"phase":"queue","last_event":"exact queue 0/200","queue":"0/200 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/200"}
+{"phase":"queue","last_event":"exact queue 200/200","queue":"200/200 done, 200 ok, 0 bad, 0 invalid","tests":"queue-run 200/200"}
+{"phase":"queue","last_event":"exact queue 200/200","queue":"200/200 done, 200 ok, 0 bad, 0 invalid","tests":"queue-run 200/200"}
+{"phase":"queue","last_event":"exact queue 0/1000","queue":"0/1000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/1000"}
+{"phase":"queue","last_event":"exact queue 1000/1000","queue":"1000/1000 done, 999 ok, 1 bad, 0 invalid","tests":"queue-run 999/1000"}
+{"phase":"queue","last_event":"exact queue 1000/1000","queue":"1000/1000 done, 976 ok, 1 bad, 23 invalid","tests":"queue-run 976/1000"}
+{"phase":"queue","last_event":"exact queue 0/50","queue":"0/50 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/50"}
+{"phase":"queue","last_event":"exact queue 50/50","queue":"50/50 done, 50 ok, 0 bad, 0 invalid","tests":"queue-run 50/50"}
+{"phase":"queue","last_event":"exact queue 50/50","queue":"50/50 done, 45 ok, 0 bad, 5 invalid","tests":"queue-run 45/50"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 0 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 0 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 0 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 0 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 0 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 0 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 0 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 200 done, 0 bad","queue":"fuzz 200 cases","tests":"random-fuzz 200 done"}
+{"phase":"fuzz","last_event":"random fuzz 225 done, 0 bad","queue":"fuzz 225 cases","tests":"random-fuzz 225 done"}
+{"phase":"fuzz","last_event":"random fuzz 250 done, 0 bad","queue":"fuzz 250 cases","tests":"random-fuzz 250 done"}
+{"phase":"fuzz","last_event":"random fuzz 267 done, 0 bad","queue":"fuzz 267 cases","tests":"random-fuzz complete"}
+{"phase":"queue","last_event":"exact queue 0/1000","queue":"0/1000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/1000"}
+{"phase":"queue","last_event":"exact queue 1000/1000","queue":"1000/1000 done, 1000 ok, 0 bad, 0 invalid","tests":"queue-run 1000/1000"}
+{"phase":"queue","last_event":"exact queue 1000/1000","queue":"1000/1000 done, 976 ok, 0 bad, 24 invalid","tests":"queue-run 976/1000"}
+{"phase":"queue","last_event":"exact queue 0/1000","queue":"0/1000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/1000"}
+{"phase":"queue","last_event":"exact queue 1000/1000","queue":"1000/1000 done, 1000 ok, 0 bad, 0 invalid","tests":"queue-run 1000/1000"}
+{"phase":"queue","last_event":"exact queue 1000/1000","queue":"1000/1000 done, 1000 ok, 0 bad, 0 invalid","tests":"queue-run 1000/1000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/52334","queue":"0/52334 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/52334"}
+{"phase":"queue","last_event":"exact queue 0/350","queue":"0/350 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/350"}
+{"phase":"queue","last_event":"exact queue 350/350","queue":"350/350 done, 350 ok, 0 bad, 0 invalid","tests":"queue-run 350/350"}
+{"phase":"queue","last_event":"exact queue 350/350","queue":"350/350 done, 350 ok, 0 bad, 0 invalid","tests":"queue-run 350/350"}
+{"phase":"queue","last_event":"exact queue 0/52334","queue":"0/52334 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/52334"}
+{"phase":"queue","last_event":"exact queue 0/800","queue":"0/800 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/800"}
+{"phase":"queue","last_event":"exact queue 0/800","queue":"0/800 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/800"}
+{"phase":"queue","last_event":"exact queue 800/800","queue":"800/800 done, 800 ok, 0 bad, 0 invalid","tests":"queue-run 800/800"}
+{"phase":"queue","last_event":"exact queue 800/800","queue":"800/800 done, 800 ok, 0 bad, 0 invalid","tests":"queue-run 800/800"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 0 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 0 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 0 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 0 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 0 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 0 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 0 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 200 done, 0 bad","queue":"fuzz 200 cases","tests":"random-fuzz 200 done"}
+{"phase":"fuzz","last_event":"random fuzz 225 done, 0 bad","queue":"fuzz 225 cases","tests":"random-fuzz 225 done"}
+{"phase":"fuzz","last_event":"random fuzz 250 done, 0 bad","queue":"fuzz 250 cases","tests":"random-fuzz 250 done"}
+{"phase":"fuzz","last_event":"random fuzz 267 done, 0 bad","queue":"fuzz 267 cases","tests":"random-fuzz complete"}
+{"phase":"queue","last_event":"exact queue 0/52334","queue":"0/52334 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/52334"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1975 ok, 0 bad, 25 invalid","tests":"queue-run 1975/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1985 ok, 0 bad, 15 invalid","tests":"queue-run 1985/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1999 ok, 0 bad, 1 invalid","tests":"queue-run 1999/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1578 ok, 0 bad, 422 invalid","tests":"queue-run 1578/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1984 ok, 0 bad, 16 invalid","tests":"queue-run 1984/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1999 ok, 1 bad, 0 invalid","tests":"queue-run 1999/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1976 ok, 1 bad, 23 invalid","tests":"queue-run 1976/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1976 ok, 0 bad, 24 invalid","tests":"queue-run 1976/2000"}
+{"phase":"queue","last_event":"exact queue 0/52334","queue":"0/52334 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/52334"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1975 ok, 0 bad, 25 invalid","tests":"queue-run 1975/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1985 ok, 0 bad, 15 invalid","tests":"queue-run 1985/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1999 ok, 0 bad, 1 invalid","tests":"queue-run 1999/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1578 ok, 0 bad, 422 invalid","tests":"queue-run 1578/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1984 ok, 0 bad, 16 invalid","tests":"queue-run 1984/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1976 ok, 0 bad, 24 invalid","tests":"queue-run 1976/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1804 ok, 196 bad, 0 invalid","tests":"queue-run 1804/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1804 ok, 196 bad, 0 invalid","tests":"queue-run 1804/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/14334","queue":"0/14334 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/14334"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1902 ok, 98 bad, 0 invalid","tests":"queue-run 1902/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1902 ok, 98 bad, 0 invalid","tests":"queue-run 1902/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/12334","queue":"0/12334 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/12334"}
+{"phase":"queue","last_event":"exact queue 0/12334","queue":"0/12334 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/12334"}
+{"phase":"queue","last_event":"exact queue 0/12334","queue":"0/12334 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/12334"}
+{"phase":"queue","last_event":"exact queue 0/12334","queue":"0/12334 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/12334"}
+{"phase":"queue","last_event":"exact queue 12334/12334","queue":"12334/12334 done, 11911 ok, 423 bad, 0 invalid","tests":"queue-run 11911/12334"}
+{"phase":"queue","last_event":"exact queue 12334/12334","queue":"12334/12334 done, 11911 ok, 423 bad, 0 invalid","tests":"queue-run 11911/12334"}
+{"phase":"queue","last_event":"exact queue 0/12334","queue":"0/12334 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/12334"}
+{"phase":"queue","last_event":"exact queue 12334/12334","queue":"12334/12334 done, 12326 ok, 8 bad, 0 invalid","tests":"queue-run 12326/12334"}
+{"phase":"queue","last_event":"exact queue 12334/12334","queue":"12334/12334 done, 12326 ok, 8 bad, 0 invalid","tests":"queue-run 12326/12334"}
+{"phase":"queue","last_event":"exact queue 0/534","queue":"0/534 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/534"}
+{"phase":"queue","last_event":"exact queue 534/534","queue":"534/534 done, 534 ok, 0 bad, 0 invalid","tests":"queue-run 534/534"}
+{"phase":"queue","last_event":"exact queue 534/534","queue":"534/534 done, 534 ok, 0 bad, 0 invalid","tests":"queue-run 534/534"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 0 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 0 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 0 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 0 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 0 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 0 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 0 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 200 done, 0 bad","queue":"fuzz 200 cases","tests":"random-fuzz 200 done"}
+{"phase":"fuzz","last_event":"random fuzz 225 done, 0 bad","queue":"fuzz 225 cases","tests":"random-fuzz 225 done"}
+{"phase":"fuzz","last_event":"random fuzz 250 done, 0 bad","queue":"fuzz 250 cases","tests":"random-fuzz 250 done"}
+{"phase":"fuzz","last_event":"random fuzz 267 done, 0 bad","queue":"fuzz 267 cases","tests":"random-fuzz complete"}
+{"phase":"queue","last_event":"exact queue 0/52334","queue":"0/52334 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/52334"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1975 ok, 0 bad, 25 invalid","tests":"queue-run 1975/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1985 ok, 0 bad, 15 invalid","tests":"queue-run 1985/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1999 ok, 0 bad, 1 invalid","tests":"queue-run 1999/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1584 ok, 0 bad, 416 invalid","tests":"queue-run 1584/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1984 ok, 0 bad, 16 invalid","tests":"queue-run 1984/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1997 ok, 3 bad, 0 invalid","tests":"queue-run 1997/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1974 ok, 3 bad, 23 invalid","tests":"queue-run 1974/2000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1977 ok, 0 bad, 23 invalid","tests":"queue-run 1977/2000"}
+{"phase":"queue","last_event":"exact queue 0/34334","queue":"0/34334 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/34334"}
+{"phase":"queue","last_event":"exact queue 0/33935","queue":"0/33935 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/33935"}
+{"phase":"queue","last_event":"exact queue 0/33489","queue":"0/33489 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/33489"}
+{"phase":"queue","last_event":"exact queue 0/31942","queue":"0/31942 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/31942"}
+{"phase":"queue","last_event":"exact queue 0/31198","queue":"0/31198 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/31198"}
+{"phase":"queue","last_event":"exact queue 0/30684","queue":"0/30684 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/30684"}
+{"phase":"queue","last_event":"exact queue 0/29476","queue":"0/29476 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/29476"}
+{"phase":"queue","last_event":"exact queue 0/28679","queue":"0/28679 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/28679"}
+{"phase":"queue","last_event":"exact queue 0/16292","queue":"0/16292 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/16292"}
+{"phase":"queue","last_event":"exact queue 0/12315","queue":"0/12315 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/12315"}
+{"phase":"queue","last_event":"exact queue 0/11369","queue":"0/11369 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/11369"}
+{"phase":"queue","last_event":"exact queue 11369/11369","queue":"11369/11369 done, 11369 ok, 0 bad, 0 invalid","tests":"queue-run 11369/11369"}
+{"phase":"queue","last_event":"exact queue 11369/11369","queue":"11369/11369 done, 11369 ok, 0 bad, 0 invalid","tests":"queue-run 11369/11369"}
+{"phase":"queue","last_event":"exact queue 0/16000","queue":"0/16000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/16000"}
+{"phase":"queue","last_event":"exact queue 16000/16000","queue":"16000/16000 done, 15935 ok, 65 bad, 0 invalid","tests":"queue-run 15935/16000"}
+{"phase":"queue","last_event":"exact queue 16000/16000","queue":"16000/16000 done, 15456 ok, 65 bad, 479 invalid","tests":"queue-run 15456/16000"}
+{"phase":"queue","last_event":"exact queue 0/2000","queue":"0/2000 done, 0 ok, 0 bad, 0 invalid","tests":"queue-run 0/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 2000 ok, 0 bad, 0 invalid","tests":"queue-run 2000/2000"}
+{"phase":"queue","last_event":"exact queue 2000/2000","queue":"2000/2000 done, 1984 ok, 0 bad, 16 invalid","tests":"queue-run 1984/2000"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 0 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 0 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 0 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 0 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 0 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 0 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 0 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 200 done, 0 bad","queue":"fuzz 200 cases","tests":"random-fuzz 200 done"}
+{"phase":"fuzz","last_event":"random fuzz 225 done, 0 bad","queue":"fuzz 225 cases","tests":"random-fuzz 225 done"}
+{"phase":"fuzz","last_event":"random fuzz 250 done, 3 bad","queue":"fuzz 250 cases","tests":"random-fuzz 250 done"}
+{"phase":"fuzz","last_event":"random fuzz 267 done, 3 bad","queue":"fuzz 267 cases","tests":"random-fuzz complete"}
+{"phase":"fuzz","last_event":"random fuzz 0 done, 0 bad","queue":"fuzz 0 cases","tests":"random-fuzz running"}
+{"phase":"fuzz","last_event":"random fuzz 25 done, 0 bad","queue":"fuzz 25 cases","tests":"random-fuzz 25 done"}
+{"phase":"fuzz","last_event":"random fuzz 50 done, 0 bad","queue":"fuzz 50 cases","tests":"random-fuzz 50 done"}
+{"phase":"fuzz","last_event":"random fuzz 75 done, 0 bad","queue":"fuzz 75 cases","tests":"random-fuzz 75 done"}
+{"phase":"fuzz","last_event":"random fuzz 100 done, 0 bad","queue":"fuzz 100 cases","tests":"random-fuzz 100 done"}
+{"phase":"fuzz","last_event":"random fuzz 125 done, 0 bad","queue":"fuzz 125 cases","tests":"random-fuzz 125 done"}
+{"phase":"fuzz","last_event":"random fuzz 150 done, 0 bad","queue":"fuzz 150 cases","tests":"random-fuzz 150 done"}
+{"phase":"fuzz","last_event":"random fuzz 175 done, 0 bad","queue":"fuzz 175 cases","tests":"random-fuzz 175 done"}
+{"phase":"fuzz","last_event":"random fuzz 200 done, 0 bad","queue":"fuzz 200 cases","tests":"random-fuzz 200 done"}
+{"phase":"fuzz","last_event":"random fuzz 225 done, 0 bad","queue":"fuzz 225 cases","tests":"random-fuzz 225 done"}
+{"phase":"fuzz","last_event":"random fuzz 250 done, 0 bad","queue":"fuzz 250 cases","tests":"random-fuzz 250 done"}
+{"phase":"fuzz","last_event":"random fuzz 267 done, 0 bad","queue":"fuzz 267 cases","tests":"random-fuzz complete"}

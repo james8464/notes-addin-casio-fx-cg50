@@ -168,8 +168,7 @@ int main(int argc,char **argv){
   bool numeric_surd_log_simplify=starts(input,"simplify(") &&
     input.find('.')!=std::string::npos && input.find("log(")!=std::string::npos &&
     input.find("sqrt(abs(")!=std::string::npos;
-  bool numeric_exp_tower=(starts(input,"factor(") || starts(input,"expand(") ||
-                          starts(input,"simplify(")) &&
+  bool numeric_exp_tower=(starts(input,"factor(") || starts(input,"simplify(")) &&
     input.find("exp(")!=std::string::npos && input.find("^")!=std::string::npos &&
     input.find("/")!=std::string::npos;
   bool trig_power_simplify=starts(input,"simplify(") &&
@@ -200,9 +199,6 @@ int main(int argc,char **argv){
      (max_depth>=5 && input.find("sqrt(")!=std::string::npos &&
       input.find("sin(")!=std::string::npos && compact_input.find("^-")!=std::string::npos));
   bool costly_coeff=starts(input,"coeff(") && max_depth>=7 && func_hits>=5;
-  bool costly_collect=starts(input,"collect(") &&
-    ((max_depth>=5 && func_hits>=5) ||
-     (input.find("exp(")!=std::string::npos && input.size()>45));
   bool costly_series=(starts(input,"taylor(") || starts(input,"series(")) &&
     max_depth>=6 && func_hits>=5;
   bool costly_sequence=(starts(input,"sum(") || starts(input,"product(")) &&
@@ -213,7 +209,7 @@ int main(int argc,char **argv){
       numeric_exp_tower || trig_power_simplify ||
       trig_surd_simplify ||
       costly_xform || costly_limit || costly_integrate || costly_coeff ||
-      costly_collect || costly_series || costly_sequence){
+      costly_series || costly_sequence){
     std::cout << "Err: input exceeds verified host fuzz complexity guard\n";
     return 0;
   }

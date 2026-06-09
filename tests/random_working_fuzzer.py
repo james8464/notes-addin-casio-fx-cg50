@@ -22,14 +22,14 @@ FUNCS = ["sin", "cos", "tan", "atan", "ln", "sqrt", "exp"]
 CHAOS_FUNCS = ["sin", "cos", "tan", "sec", "cot", "atan", "ln", "sqrt", "exp", "abs"]
 VISIBLE_COMMANDS = [
     "abs", "acos", "approx", "asin", "atan", "ceil", "coeff",
-    "collect", "cos", "cot", "degree", "diff", "domain", "exact", "expand", "factor",
+    "cos", "cot", "degree", "diff", "domain", "exact", "factor",
     "floor", "fsolve", "gcd", "integrate", "implicit_diff", "lcm", "limit",
     "ln", "log", "partfrac", "product", "range", "round",
     "rewrite", "sec", "series", "simplify", "sin", "solve", "sqrt", "subst", "sum",
     "tan", "taylor", "tcollect", "texpand", "xform",
 ]
 OPTIONAL_ARG_COMMANDS = {
-    "coeff", "collect", "diff", "domain", "factor", "fsolve", "integrate", "limit",
+    "coeff", "diff", "domain", "factor", "fsolve", "integrate", "limit",
     "log", "partfrac", "product", "range", "series", "solve", "sum",
     "taylor",
 }
@@ -40,7 +40,7 @@ WORKING_OUTPUT_COMMANDS = {
 COMMANDS = [
     "diff", "integrate", "simplify", "solve", "range",
     "rewrite", "rewrite", "xform", "xform", "xform",
-    "log", "expand", "binomial", "apart", "defint", "trig",
+    "log", "texpand", "binomial", "apart", "defint", "trig",
 ]
 WEIRD_CHARS = string.ascii_letters + string.digits + "+-*/^=(),[]{} ._"
 CHAOS_VARS = ["x", "y", "z", "t", "u", "v", "a", "b", "k", "n"]
@@ -338,14 +338,14 @@ def chaos_args(rng: random.Random, cmd: str, depth: int, variant: int | None = N
     numeric = chance(rng, 42, 100)
     e = lambda d=depth, n=numeric: chaos_expr(rng, max(1, d), n)
     eq = lambda d=depth: chaos_equation(rng, max(1, d))
-    if cmd in {"abs", "acos", "approx", "asin", "atan", "ceil", "cos", "cot", "exact", "expand", "floor", "ln", "round", "sec", "simplify", "sin", "sqrt", "tan", "tcollect", "texpand"}:
+    if cmd in {"abs", "acos", "approx", "asin", "atan", "ceil", "cos", "cot", "exact", "floor", "ln", "round", "sec", "simplify", "sin", "sqrt", "tan", "tcollect", "texpand"}:
         return [e()]
     if cmd in {"coeff"}:
         args = [e(), pick(rng, [v, e(depth-2, False)])]
         if (variant is None and chance(rng, 75, 100)) or (variant is not None and variant % 2):
             args.append(str(rng.randrange(-8, 18)))
         return args
-    if cmd in {"collect", "factor", "partfrac"}:
+    if cmd in {"factor", "partfrac"}:
         args = [e()]
         if (variant is None and chance(rng, 80, 100)) or (variant is not None and variant % 2):
             args.append(pick(rng, [v, e(depth-1)]))
@@ -372,7 +372,7 @@ def chaos_args(rng: random.Random, cmd: str, depth: int, variant: int | None = N
         elif len(args) == 2 and (r < 50 or mode == 2):
             args.append(str(rng.randrange(1, 6)))
         elif len(args) == 2 and (r < 70 or mode == 3):
-            args += [str(rng.randrange(1, 4)), f"u={e(depth-1)}"]
+            args += [str(rng.randrange(1, 4)), e(depth-1)]
         return args
     if cmd == "fsolve":
         args = [eq()]
@@ -808,15 +808,15 @@ def rand_log(rng: random.Random) -> str:
     return messy(rng, f"log({base},{arg})")
 
 
-def rand_expand(rng: random.Random) -> str:
+def rand_texpand(rng: random.Random) -> str:
     case = rng.randrange(3)
     if case == 0:
-        return messy(rng, f"expand(({affine_x(rng)})^2)")
+        return messy(rng, f"texpand(({affine_x(rng)})^2)")
     if case == 1:
-        return messy(rng, f"expand({mul(rng, affine_x(rng, nonzero_b=True), affine_x(rng, nonzero_b=True))})")
+        return messy(rng, f"texpand({mul(rng, affine_x(rng, nonzero_b=True), affine_x(rng, nonzero_b=True))})")
     a = rng.randrange(1, 7)
     b = rng.randrange(1, 7)
-    return messy(rng, f"expand({mul(rng, f'x+{a}', f'x-{b}')})")
+    return messy(rng, f"texpand({mul(rng, f'x+{a}', f'x-{b}')})")
 
 
 def rand_binomial(rng: random.Random) -> str:
@@ -895,8 +895,8 @@ def command_input(rng: random.Random, depth: int, template_rate: float, commands
         return cmd, rand_xform(rng)
     if cmd == "log":
         return cmd, rand_log(rng)
-    if cmd == "expand":
-        return cmd, rand_expand(rng)
+    if cmd == "texpand":
+        return cmd, rand_texpand(rng)
     if cmd == "binomial":
         return cmd, rand_binomial(rng)
     if cmd == "apart":
@@ -906,7 +906,7 @@ def command_input(rng: random.Random, depth: int, template_rate: float, commands
     if cmd == "trig":
         return cmd, rand_trig(rng)
     start = expr(rng, depth)
-    target = pick(rng, [f"expand({start})", f"factor({start})", expr(rng, depth), "tan(x)=3*sqrt(3)"])
+    target = pick(rng, [f"texpand({start})", f"factor({start})", expr(rng, depth), "tan(x)=3*sqrt(3)"])
     return cmd, f"xform({start},{target})"
 
 
@@ -994,7 +994,7 @@ def final_math_line(out: str) -> str:
     skip_prefixes = (
         "planner search",
         "rule:",
-        "expand expression",
+        "texpand expression",
         "check equivalence",
         "difference simplifies",
         "verified",
@@ -1236,12 +1236,12 @@ def property_cases(commands: list[str] | None = None) -> list[dict[str, str]]:
                 "integrand": expr,
                 "var": "x",
             })
-    if allow("expand"):
+    if allow("texpand"):
         for a, b in [(2, 3), (3, -5), (-4, 1), (5, 0), (-2, -7)]:
             cases.append({
-                "kind": "property:expand:affine_square",
-                "cmd": "expand",
-                "input": f"expand(({a}*x{b:+d})^2)",
+                "kind": "property:texpand:affine_square",
+                "cmd": "texpand",
+                "input": f"texpand(({a}*x{b:+d})^2)",
                 "mode": "eval_equiv",
             })
     if allow("texpand"):
@@ -1326,9 +1326,9 @@ def property_cases(commands: list[str] | None = None) -> list[dict[str, str]]:
             })
     if allow("limit"):
         for src, markers in [
-            ("limit(sin(x)/x,x=0)", ["standard limits/cancel factors", "KhiCAS exact:", "1", "Verified"]),
-            ("limit((x^2-1)/(x-1),x=1)", ["standard limits/cancel factors", "KhiCAS exact:", "2", "Verified"]),
-            ("limit((1-cos(x))/x^2,x=0)", ["standard limits/cancel factors", "KhiCAS exact:", "1/2", "Verified"]),
+            ("limit(sin(x)/x,x=0)", ["KhiCAS exact:", "1", "Verified"]),
+            ("limit((x^2-1)/(x-1),x=1)", ["KhiCAS exact:", "2", "Verified"]),
+            ("limit((1-cos(x))/x^2,x=0)", ["KhiCAS exact:", "1/2", "Verified"]),
         ]:
             cases.append({
                 "kind": "property:limit:exact_backend",

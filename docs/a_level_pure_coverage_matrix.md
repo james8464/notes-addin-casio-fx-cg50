@@ -20,7 +20,7 @@ A row is implemented only when all are true:
 
 | Area | Kept route | General rules | Property families | Exact queue | Reject when |
 |---|---|---|---|---|---|
-| Expansion | `texpand`, `expand` only if upstream-visible | distribute products, powers of binomials, collect like monomials after expansion | random polynomial products and binomial powers | required | command renamed or hidden surface mismatch |
+| Expansion | `texpand` | distribute products, powers of binomials, collect like monomials after expansion | random polynomial products and binomial powers | required | command renamed or hidden surface mismatch |
 | Factorisation | `factor` | common factor, quadratic factor, difference of squares, factor theorem for integer/rational roots | generated expanded factors round-trip to factor form | required | non-Pure special factor domains only |
 | Completing square | `rewrite`, `xform`, `solve`, `range` | quadratic `ax^2+bx+c -> a(x+h)^2+k`, vertex extraction | random quadratics with rational coefficients | required | matrix/conic transform command required |
 | Rearranging formulae | `solve`, `xform` | isolate target through inverse operations, multiply/divide nonzero expressions with domain note | random linear/rational formula rearrangements | required | removed-feature command only |

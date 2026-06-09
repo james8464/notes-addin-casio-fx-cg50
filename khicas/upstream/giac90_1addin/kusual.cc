@@ -8408,7 +8408,7 @@ namespace giac {
     static bool warnmod=true;
     if (f.type==_MOD){
       if (warnmod){
-	*logptr(contextptr) << "// Warning: a % b returns the class of a in Z/bZ. Use irem(a,b) for remainder" << endl;
+	*logptr(contextptr) << "Warn: use irem(a,b)" << endl;
 	warnmod=false;
       }
       f=*f._MODptr;
@@ -8419,7 +8419,7 @@ namespace giac {
     }
     if (b.type==_MOD){
       if (warnmod){
-	*logptr(contextptr) << "// Warning: a % b returns the class of a in Z/bZ. Use irem(a,b) for remainder" << endl;
+	*logptr(contextptr) << "Warn: use irem(a,b)" << endl;
 	warnmod=false;
       }
       b=*b._MODptr;

@@ -29,6 +29,8 @@ def main() -> int:
 
     if '{"expand(expr)"' in block:
         raise SystemExit("FAIL catalog: visible expand alias; use texpand")
+    if '"collect"' in block or '"collect(' in block:
+        raise SystemExit("FAIL catalog: visible collect alias; use tcollect")
 
     hidden_labels = [
         "Statistics", "Probabilities", "Matrices", "Programs", "Options",

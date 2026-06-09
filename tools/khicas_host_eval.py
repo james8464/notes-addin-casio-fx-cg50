@@ -9,11 +9,13 @@ bounded SymPy evaluator as the callback for the same route shape.
 from __future__ import annotations
 
 import sys
+import signal
 from functools import reduce
 from math import prod
 import re
 
 import sympy as sp
+from sympy.calculus.util import continuous_domain, function_range
 from sympy.core.relational import Relational
 from sympy.parsing.sympy_parser import (
     convert_xor,
@@ -232,6 +234,21 @@ def parse_math(src: str):
     return parse_expr(src, local_dict=NAMES, transformations=TRANSFORMS, evaluate=True)
 
 
+def parse_value(src: str):
+    parsed = call(src)
+    if parsed and parsed[0] in {
+        "normal",
+        "simplify",
+        "factor",
+        "texpand",
+        "tcollect",
+        "partfrac",
+        "apart",
+    }:
+        return eval_call(parsed[0], parsed[1])
+    return parse_math(src)
+
+
 def definite_integral(expr, var, lo, hi):
     direct = sp.integrate(expr, (var, lo, hi))
     if direct in (sp.nan, sp.zoo, sp.oo, -sp.oo):
@@ -290,6 +307,60 @@ def normal(expr: str):
     simplified = sp.trigsimp(sp.expand_trig(parsed), method="fu")
     simplified = sp.trigsimp(sp.simplify(simplified), method="fu")
     return sp.factor(sp.cancel(sp.together(simplified)))
+
+
+def _range_with_limits(expr, var, domain):
+    return function_range(expr, var, domain)
+
+
+def range_expr(args: list[str]):
+    expr = parse_math(args[0])
+    if len(args) >= 2:
+        var = parse_math(args[1])
+    else:
+        syms = sorted(expr.free_symbols, key=lambda s: s.name)
+        var = syms[0] if syms else sp.Symbol("x")
+    if len(args) >= 4:
+        domain = sp.Interval(parse_math(args[2]), parse_math(args[3]))
+    else:
+        domain = continuous_domain(expr, var, sp.S.Reals)
+    try:
+        poly = sp.Poly(expr, var)
+        if poly.degree() == 2:
+            a = poly.coeff_monomial(var**2)
+            b = poly.coeff_monomial(var)
+            c = poly.coeff_monomial(1)
+            vertex = sp.simplify(c - b**2 / (4 * a))
+            if a.is_positive or a == 1:
+                return sp.Interval(vertex, sp.oo)
+            if a.is_negative or a == -1:
+                return sp.Interval(-sp.oo, vertex)
+    except Exception:
+        pass
+    try:
+        return _range_with_limits(expr, var, domain)
+    except Exception:
+        pass
+
+    t = sp.Symbol("_t", real=True)
+    tan_expr = expr.replace(
+        lambda z: getattr(z, "func", None) == sp.tan and z.args[0].has(var),
+        lambda z: t,
+    )
+    if tan_expr != expr and not tan_expr.has(var):
+        return _range_with_limits(sp.cancel(tan_expr), t, sp.S.Reals)
+
+    u = sp.Symbol("_u", real=True)
+    half = expr.replace(
+        lambda z: getattr(z, "func", None) == sp.sin and z.args[0] == var,
+        lambda z: 2 * u / (1 + u**2),
+    ).replace(
+        lambda z: getattr(z, "func", None) == sp.cos and z.args[0] == var,
+        lambda z: (1 - u**2) / (1 + u**2),
+    )
+    if half != expr and not half.has(var):
+        return _range_with_limits(sp.cancel(half), u, sp.S.Reals)
+    raise ValueError("range unsupported")
 
 
 def solve_expr(args: list[str]):
@@ -365,7 +436,7 @@ def eval_call(name: str, args: list[str]):
             return [sp.N(x, 12) for x in parsed]
         return sp.N(parsed, 12)
     if name == "factor" and len(args) >= 1:
-        return sp.factor(parse_math(args[0]))
+        return sp.factor(parse_value(args[0]))
     if name == "expand" and len(args) >= 1:
         return sp.expand(parse_math(args[0]))
     if name == "collect" and len(args) >= 2:
@@ -374,9 +445,12 @@ def eval_call(name: str, args: list[str]):
         var = parse_math(args[1]) if len(args) >= 2 else None
         return sp.apart(parse_math(args[0]), var)
     if name == "texpand" and len(args) >= 1:
-        return sp.expand_trig(parse_math(args[0]))
+        return sp.expand(sp.expand_trig(parse_value(args[0])))
     if name == "tcollect" and len(args) >= 1:
-        return sp.trigsimp(parse_math(args[0]), method="fu")
+        expr = sp.trigsimp(parse_value(args[0]), method="fu")
+        if len(args) >= 2:
+            expr = sp.collect(expr, parse_math(args[1]))
+        return expr
     if name in {"diff", "derive"} and len(args) >= 1:
         var = parse_math(args[1]) if len(args) >= 2 else sp.Symbol("x")
         order = parse_math(args[2]) if len(args) >= 3 else 1
@@ -398,13 +472,18 @@ def eval_call(name: str, args: list[str]):
         return definite_integral(parse_math(args[0]), var, parse_math(args[2]), parse_math(args[3]))
     if name in {"solve", "fsolve"} and len(args) >= 1:
         return solve_expr(args)
+    if name == "range" and len(args) >= 1:
+        return range_expr(args)
     if name == "coeff" and len(args) >= 2:
-        expr = sp.expand(parse_math(args[0]))
+        expr = sp.expand(parse_value(args[0]))
         var = parse_math(args[1])
         power = int(parse_math(args[2])) if len(args) >= 3 else 1
         return expr.coeff(var, power)
     if name == "degree" and len(args) >= 2:
-        return sp.degree(parse_math(args[0]), parse_math(args[1]))
+        return sp.degree(parse_value(args[0]), parse_math(args[1]))
+    if name == "lcoeff" and len(args) >= 2:
+        expr = sp.Poly(sp.expand(parse_value(args[0])), parse_math(args[1]))
+        return expr.LC()
     if name == "gcd" and len(args) >= 2:
         vals = [parse_math(a) for a in args]
         return reduce(sp.gcd, vals)
@@ -447,10 +526,16 @@ def evaluate(src: str):
 def main(argv: list[str]) -> int:
     if len(argv) != 2:
         return 2
+    def _timeout(_signum, _frame):
+        raise TimeoutError("host eval timeout")
     try:
+        signal.signal(signal.SIGALRM, _timeout)
+        signal.alarm(6)
         print(fmt(evaluate(argv[1])))
+        signal.alarm(0)
         return 0
     except Exception:
+        signal.alarm(0)
         return 1
 
 

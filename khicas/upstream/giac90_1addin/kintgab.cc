@@ -810,7 +810,7 @@ namespace giac {
       return true;
     }
     if (a==unsigned_inf || b==unsigned_inf){
-      *logptr(contextptr) << gettext("Please use +infinity or -infinity since infinity is unsigned") << endl;
+      *logptr(contextptr) << gettext("use +/-infinity") << endl;
       return false;
     }
     if (is_strictly_greater(a,b,contextptr)){

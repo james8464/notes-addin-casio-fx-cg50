@@ -1,5 +1,0 @@
-collect
-Args: see catalog signature for collect.
-Required: A-level Pure scoped use only.
-Does: returns exact KhiCAS output, or verified working when a verified route exists.
-Examples: collect(1)

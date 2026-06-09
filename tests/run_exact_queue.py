@@ -299,7 +299,7 @@ def strip_constant(text: str) -> str:
 
 
 def normalize_math_text(text: str) -> str:
-    s = text.strip().replace("π", "pi").replace("√", "sqrt")
+    s = text.strip().replace("π", "pi").replace("√", "sqrt").replace("cosec", "csc")
     for fn in ("ln", "log", "sqrt", "sin", "cos", "tan", "exp"):
         s = re.sub(rf"(?<=\d){fn}(?!\()([0-9]+(?:\.\d+)?|pi|[A-Za-z])", rf"*{fn}(\1)", s)
         s = re.sub(rf"\b{fn}(?!\()([0-9]+(?:\.\d+)?|pi|[A-Za-z])", rf"{fn}(\1)", s)

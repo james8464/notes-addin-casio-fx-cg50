@@ -49,8 +49,8 @@ def main() -> int:
     with tempfile.TemporaryDirectory() as d:
         exe = build_probe(Path(d))
         for spec in work:
-            proc = subprocess.run([str(exe), spec["input"]], cwd=ROOT, text=True, capture_output=True)
-            out = proc.stdout + proc.stderr
+            proc = subprocess.run([str(exe), spec["input"]], cwd=ROOT, capture_output=True)
+            out = (proc.stdout + proc.stderr).decode("utf-8", "replace")
             missing = [m for m in spec["markers"] if m and m not in out]
             if proc.returncode == 0 and not missing:
                 ok += 1

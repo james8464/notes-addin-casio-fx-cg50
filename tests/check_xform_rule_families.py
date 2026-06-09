@@ -87,12 +87,12 @@ def generated_cases() -> list[tuple[str, list[str], bool]]:
         cases += [
             (
                 f"xform(sin({a}+{b}),sin({a})*cos({b})+cos({a})*sin({b}))",
-                ["Trig expand", "Verified"],
+                ["texpand", "Verified"],
                 True,
             ),
             (
                 f"xform(cos({a}+{b}),cos({a})*cos({b})-sin({a})*sin({b}))",
-                ["Trig expand", "Verified"],
+                ["texpand", "Verified"],
                 True,
             ),
         ]

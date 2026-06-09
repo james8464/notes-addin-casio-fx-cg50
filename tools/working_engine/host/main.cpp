@@ -175,12 +175,12 @@ static char const *pure_method_fallback(bool removed)
         ? "Pure method fallback:\n"
           "Unsupported built-in removed from this Pure build.\n"
           "1. Rewrite the question using algebra, trig, logs or calculus.\n"
-          "2. Try solve, diff, integrate, range, domain, xform, expand or factor.\n"
+          "2. Try solve, diff, integrate, range, domain, xform, texpand or factor.\n"
           "3. For stats, matrices, plotting, scripts or mechanics, use the calculator app for that topic.\n"
         : "General Pure method:\n"
           "1. Identify the target: simplify, solve, differentiate, integrate, prove, range or domain.\n"
           "2. Rewrite with standard A-level identities and restrictions first.\n"
-          "3. Then use solve, diff, integrate, range, domain, xform, expand or factor on the clean sub-step.\n";
+          "3. Then use solve, diff, integrate, range, domain, xform, texpand or factor on the clean sub-step.\n";
 }
 
 static std::string stdin_text()

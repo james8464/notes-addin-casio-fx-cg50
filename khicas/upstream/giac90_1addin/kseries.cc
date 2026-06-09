@@ -1564,7 +1564,7 @@ namespace giac {
 	  vecteur & tempfv=*temp__SYMB.feuille._VECTptr;
 	  gen k=tempfv[1],lo=tempfv[2],up=tempfv[3];
 	  if (contains(k,x)){
-	    invalidserieserr(gettext("Summation variable must be != from series expansion variable"));
+	    invalidserieserr(gettext("sum var = series var"));
 	    return false;
 	  }
 	  if (k.type!=_IDNT || derive(lo,x,contextptr)!=0 || derive(up,x,contextptr)!=0)
@@ -1592,7 +1592,7 @@ namespace giac {
 	  vecteur & tempfv=*temp__SYMB.feuille._VECTptr;
 	  gen k=tempfv[2];
 	  if (contains(k,x)){
-	    invalidserieserr(gettext("Summation variable must be != from series expansion variable"));
+	    invalidserieserr(gettext("sum var = series var"));
 	    return false;
 	  }
 	  if (k.type!=_IDNT)
@@ -1727,7 +1727,7 @@ namespace giac {
 	  vecteur & tempfv=*temp__SYMB.feuille._VECTptr;
 	  gen t=tempfv[1];
 	  if (contains(t,x)){
-	    invalidserieserr(gettext("Integration variable must be != from series expansion variable"));
+	    invalidserieserr(gettext("int var = series var"));
 	    return false;
 	  }
 	  if (!contains(tempfv[0],x)){

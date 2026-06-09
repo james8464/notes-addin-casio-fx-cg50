@@ -105,6 +105,7 @@ static bool cascas_denied_hash(unsigned h){
     0x15351b6du, 0xb35135fau, 0xf752b052u, 0x42f48402u, 0x18585f14u, 0x0f477e9au, 0x0e5f3468u, 0xeb64d5d5u,
     0x79a98884u, 0x50a09eb9u, 0x0c5bcd9du, 0xaef31c63u, 0xa51be2bbu, 0xcccb0055u,
     0xa3ad2dc9u, 0x28c49dd1u, 0xb760552au, 0x4810513cu, 0xd6b186b8u,
+    0xf7faaee1u, 0x8efe6e31u,
   };
   for (unsigned i=0;i<sizeof(denied)/sizeof(denied[0]);++i)
     if (denied[i]==h)
@@ -479,7 +480,9 @@ int find_color(const char * s){
   buf[ptr-s]=0;
   if (strcmp(buf,"def")==0)
     return 1;
-  if (strcmp(buf,"xform")==0 || strcmp(buf,"log")==0 || strcmp(buf,"cosec")==0)
+  if (strcmp(buf,"cot")==0)
+    return 3;
+  if (strcmp(buf,"xform")==0 || strcmp(buf,"log")==0 || strcmp(buf,"cosec")==0 || strcmp(buf,"cot")==0)
     return 3;
   //int pos=dichotomic_search(keywords,sizeof(keywords),buf);
   //if (pos>=0) return 1;
@@ -1874,11 +1877,11 @@ int restore_session(const char * fname){
   string filename(remove_path(remove_extension(fname)));
   if (!load_console_state_smem((string("\\\\fls0\\")+filename+string(".xw")).c_str())){
     int x=0,y=120;
-    PrintMini(&x,&y,(unsigned char*)"KhiCAS 1.5 (c) 2019 B. Parisse et al",0x02, 0xFFFFFFFF, 0, 0, COLOR_BLACK, COLOR_WHITE, 1, 0);
+    PrintMini(&x,&y,(unsigned char*)"CAS",0x02, 0xFFFFFFFF, 0, 0, COLOR_BLACK, COLOR_WHITE, 1, 0);
     x=0; y=138;
     PrintMini(&x,&y,(unsigned char*)"  License GPL 2",0x02, 0xFFFFFFFF, 0, 0, COLOR_BLACK, COLOR_WHITE, 1, 0);
     x=0; y=156;
-    PrintMini(&x,&y,(unsigned char*)"  Do not use if CAS is forbidden",0x02, 0xFFFFFFFF, 0, 0, COLOR_BLACK, COLOR_WHITE, 1, 0);
+    PrintMini(&x,&y,(unsigned char*)"  Exam rules apply",0x02, 0xFFFFFFFF, 0, 0, COLOR_BLACK, COLOR_WHITE, 1, 0);
     if (confirm("Syntax?","F1: Xcas, F6: Python")==KEY_CTRL_F6)
       python_compat(true,contextptr);
     Bdisp_AllClr_VRAM();  

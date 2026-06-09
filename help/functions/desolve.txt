@@ -1,0 +1,11 @@
+Args:
+desolve(eq,y)
+
+Required:
+A-level separable or first-order differential equation form.
+
+Does:
+Solves a differential equation where the scoped engine has a verified exact route.
+
+Examples:
+desolve(diff(y,x)=k*y,y)

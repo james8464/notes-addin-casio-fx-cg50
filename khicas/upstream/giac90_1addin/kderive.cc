@@ -289,7 +289,7 @@ namespace giac {
 	if (!is_zero(derive(v1,i,contextptr)) || !is_zero(derive(v2,i,contextptr)) || ! is_zero(derive(v3,i,contextptr)) )
 	  return gensizeerr(gettext("unsupported diff"));
 	if (is_inf(v2) || is_inf(v3))
-	  *logptr(contextptr) << gettext("Warning, assuming derivative commutes with infinite sum") << endl;
+	  *logptr(contextptr) << gettext("warn: d/sum commute") << endl;
 	return _sum(makesequence(derive(v0,i,contextptr),v1,v2,v3),contextptr);
       }
       if ( (vs==2 || (vs==3 && is_zero(v[2]))) && (s.sommet==at_upper_incomplete_gamma || s.sommet==at_lower_incomplete_gamma || s.sommet==at_Gamma)){

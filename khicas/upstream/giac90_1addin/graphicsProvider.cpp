@@ -352,7 +352,8 @@ void drawCasioCasBorder(){
 }
 
 void drawCasioCasRunIndicator(){
-  unsigned phase=(unsigned)RTC_GetTicks()%384;
+  static unsigned r_start_tick=(unsigned)RTC_GetTicks();
+  unsigned phase=((unsigned)RTC_GetTicks()-r_start_tick)%384;
   if (phase<256){
     drawRectangle(339,0,21,23,COLOR_BLUE);
     PrintCXY(342,1,(char*)"R",0x40,-1,COLOR_WHITE,COLOR_BLUE,1,0);

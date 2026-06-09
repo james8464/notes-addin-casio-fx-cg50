@@ -2845,7 +2845,7 @@ namespace giac {
 #endif
 	if (calc_mode(contextptr)==1)
 	  return undef;
-	*logptr(contextptr) << gettext("Algebraic extension merge failed; using rational simplify") << endl;
+	*logptr(contextptr) << gettext("algext merge failed") << endl;
 	l=lvar(ee);
 	tmp=e2r(ee,l,contextptr);	
 	gen tmpf=evalf_double(ee-tmp,1,contextptr);
@@ -3294,7 +3294,7 @@ namespace giac {
     factorization v;
     polynome p_content(pp.dim);
     if (!factor(pp,p_content,v,false,with_sqrt,complex_mode(contextptr),divide_an_by,extra_div))
-      return gentypeerr(gettext("Not implemented, e.g. for multivariate mod/approx polynomials"));
+      return gentypeerr(gettext("not implemented"));
     // factor p_content
     pp=p_content.trunc1();
     vecteur ll;
@@ -3331,7 +3331,7 @@ namespace giac {
     factorization v;
     polynome p_content(p.dim);
     if (!factor(p,p_content,v,false,with_sqrt,complex_mode(contextptr),divide_an_by,extra_div))
-      return gentypeerr(gettext("Not implemented, e.g. for multivariate mod/approx polynomials"));
+      return gentypeerr(gettext("not implemented"));
     // factor p_content
     if (is_one(p_content))
       return r2sym(v,l,contextptr)/r2sym(extra_div,l,contextptr);
