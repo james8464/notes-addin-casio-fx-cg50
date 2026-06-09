@@ -20,7 +20,7 @@ graph TD
   Build --> Help["help/functions/*.txt"]
   Help --> PAK["calculator_files/CAS.PAK: 18,515 bytes; sha b816944d"]
   G3A --> Meta["CAS / @CAS / CAS.g3a"]
-  G3A --> Size["2,097,120 bytes; 32 B under 2,097,152 cap; sha b453a8e2"]
+  G3A --> Size["2,096,992 bytes; 160 B under 2,097,152 cap; sha 38561327"]
 ```
 
 ## Runtime
@@ -97,7 +97,7 @@ graph TD
   TUI --> Panels["animated panels: status badges, wide side-by-side layout, phase lanes, health score, gate board, sync, last commit, change counts, state age, artifact headroom, live rate and ETA, queue bars, strict-marker ratios, strict-gap bar map, freshness rows, animated scan/meter lines, cleanup byte totals and cleanup command, project hygiene, tooling inventory, transfer path, strict clusters with first gap samples, test checkpoints, release blockers, risk, ignored workspace, active-tool counts, next action, command panel"]
   Runner --> Runtime["last completed strict queue: 51,838/52,334 accepted, bad=0, invalid=496"]
   Runner --> Strict["strict marker checks enforced for accepted rows; classified invalid rows are reported"]
-  Strict --> Remaining["current hard headroom: 32 B"]
+  Strict --> Remaining["current hard headroom: 160 B"]
 ```
 
 ## Project Shape

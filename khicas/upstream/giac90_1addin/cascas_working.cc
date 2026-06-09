@@ -17465,7 +17465,7 @@ bool eval_with_working(const char *input,working_string &out){
     append_verified_command_marker(cs,out);
     return true;
   }
-  if (kept_working_command(cs) && try_khicas_exact_route(input,out)){
+  if (try_khicas_exact_route(input,out)){
     strip_weak_working_labels(out);
     append_verified_command_marker(cs,out);
     return true;

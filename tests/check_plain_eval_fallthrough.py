@@ -61,6 +61,47 @@ def main() -> int:
                 bad.append(f"{expr}: unexpected return {proc.returncode}: {text}")
             elif proc.returncode == 1 and not text.startswith("="):
                 bad.append(f"{expr}: unexpected local output: {text}")
+    good_src = (
+        '#include <iostream>\n'
+        '#include <string>\n'
+        '#include "khicas/upstream/giac90_1addin/cascas_working.h"\n'
+        'static bool exact_eval(const char *expr,cascas::working_string &out){\n'
+        '  std::string s=expr?expr:"";\n'
+        '  if(s=="2*x+1"){ out="2*x + 1"; return true; }\n'
+        '  return false;\n'
+        '}\n'
+        'int main(){\n'
+        '  cascas::set_khicas_eval_callback(exact_eval);\n'
+        '  cascas::working_string out;\n'
+        '  if(!cascas::eval_with_working("2*x+1",out)) return 2;\n'
+        '  std::string s=out.c_str();\n'
+        '  std::cout << s << "\\n";\n'
+        '  return s.find("KhiCAS exact evaluation:")==std::string::npos || s.find("Verified")==std::string::npos;\n'
+        '}\n'
+    )
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        src = tmp / "good.cpp"
+        exe = tmp / "good"
+        src.write_text(good_src)
+        subprocess.check_call(
+            [
+                "c++",
+                "-std=c++11",
+                "-DCASCAS_HOST_STD_STRING=1",
+                "-DCASCAS_DISABLE_GOLDEN_QUEUE=1",
+                "-I",
+                str(ROOT),
+                str(src),
+                str(ROOT / "khicas/upstream/giac90_1addin/cascas_working.cc"),
+                "-o",
+                str(exe),
+            ],
+            cwd=ROOT,
+        )
+        proc = subprocess.run([str(exe)], cwd=ROOT, text=True, capture_output=True)
+        if proc.returncode:
+            bad.append("2*x+1: missing KhiCAS exact fallback route: " + (proc.stdout + proc.stderr).strip())
     if bad:
         print("FAIL plain eval callback guard")
         print("\n".join(bad))

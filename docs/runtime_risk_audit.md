@@ -15,8 +15,8 @@ graph TD
 
 - CAS add-in: `calculator_files/CAS.g3a`
 - CAS metadata: `CAS`, `@CAS`, `CAS.g3a`
-- CAS size: 2,097,120 bytes, 32 bytes under the 2,097,152-byte limit.
-- CAS SHA256: `b453a8e2265d889c5f0c614698e225716cb954f98b75439ff500e8f30d0b8ff9`
+- CAS size: 2,096,992 bytes, 160 bytes under the 2,097,152-byte limit.
+- CAS SHA256: `3856132726e1d2fa7786fd45a9ba161cc75007aa212f3226fcafe6f97af8c597`
 - Help pack: `calculator_files/CAS.PAK`
 - Help pack size: 18,515 bytes.
 - Help pack SHA256: `b816944d708f90aa8d922f7657d47f482d4eb5060f594a6cd2ce9ece9104a533`

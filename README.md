@@ -30,9 +30,9 @@ Current status:
 - app name: `CAS`
 - file: `CAS.g3a`
 - companion visual mock: `RUNMAT.g3a`
-- size: `2,097,120` bytes
-- hard limit headroom: `32` bytes under `2,097,152`
-- sha256: `b453a8e2265d889c5f0c614698e225716cb954f98b75439ff500e8f30d0b8ff9`
+- size: `2,096,992` bytes
+- hard limit headroom: `160` bytes under `2,097,152`
+- sha256: `3856132726e1d2fa7786fd45a9ba161cc75007aa212f3226fcafe6f97af8c597`
 - help pack: `CAS.PAK`, `18,515` bytes, sha256 `b816944d708f90aa8d922f7657d47f482d4eb5060f594a6cd2ce9ece9104a533`
 - last completed strict exact queue: `51,838/52,334` accepted, `bad=0`, `invalid=496`
 - strict marker quality: enforced for accepted rows; invalid rows are classified
