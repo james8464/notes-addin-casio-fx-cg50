@@ -30,6 +30,7 @@ extern "C" {
 #include "kdisplay.h"
 #include "input_lexer.h"
 #include "input_parser.h"
+#include "graphicsProvider.hpp"
 #define STATUS_AREA_PX 24
 
 #define CAT_CATEGORY_ALL 0
@@ -163,6 +164,12 @@ static int catalog_count_for_category(int category){
   return n;
 }
 
+static void draw_catalog_fkeys(bool folders){
+  drawFkeyLabels(0,0,0,0,0,0);
+  drawRectangle(0,LCD_HEIGHT_PX-24,LCD_WIDTH_PX,24,COLOR_BLACK);
+  Bdisp_MMPrint(2,LCD_HEIGHT_PX-STATUS_AREA_PX-18,folders?" OPEN":" INS",0,0xffffffff,0,0,COLOR_WHITE,COLOR_BLACK,1,0);
+}
+
 // 0 on exit, 1 on success
 int doCatalogMenu(char* insertText, char* title, int category,const char * cmdname) {
   int allcmds=CAT_COMPLETE_COUNT;
@@ -207,6 +214,7 @@ int doCatalogMenu(char* insertText, char* title, int category,const char * cmdna
   menu.type = category==CAT_CATEGORY_ALL ? MENUTYPE_NORMAL : MENUTYPE_FKEYS;
   menu.height = 7;
   while(1) {
+    draw_catalog_fkeys(category==CAT_CATEGORY_ALL);
     int sres = doMenu(&menu);
     if(sres == MENU_RETURN_EXIT){
       reset_alpha();
