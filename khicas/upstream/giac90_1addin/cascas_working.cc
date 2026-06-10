@@ -16924,15 +16924,6 @@ static bool try_khicas_exact_route(const char *input,working_string &out){
 static bool try_xform_rewrite_planner(const working_string &start,const working_string &target,working_string &out){
   if (start.size()+target.size()>280 || working_route_too_large(start) || working_route_too_large(target))
     return false;
-  working_string cs0=compact(start), ct0=compact(target);
-  bool trig_pair=(contains(cs0,"sin(") || contains(cs0,"cos(") ||
-                  contains(cs0,"tan(") || contains(cs0,"cot(") ||
-                  contains(cs0,"sec(") || contains(cs0,"cosec(") ||
-                  contains(ct0,"sin(") || contains(ct0,"cos(") ||
-                  contains(ct0,"tan(") || contains(ct0,"cot(") ||
-                  contains(ct0,"sec(") || contains(ct0,"cosec("));
-  if (trig_pair && !khicas_equiv(start,target))
-    return false;
   struct RewriteRule {
     const char *cmd;
     const char *label;
@@ -16940,9 +16931,10 @@ static bool try_xform_rewrite_planner(const working_string &start,const working_
   static const RewriteRule rules[]={
     {"texpand","texpand"},
     {"tcollect","tcollect"},
-    {"factor","Factor"},
-    {"normal","Use a common denominator"},
-    {"simplify","Simplify"},
+    {"factor","factor"},
+    {"normal","normal"},
+    {"simplify","simplify"},
+    {"partfrac","partfrac"},
   };
   working_string state[10],route[10];
   int depth[10],head=0,tail=1;
@@ -16974,7 +16966,7 @@ static bool try_xform_rewrite_planner(const working_string &start,const working_
       if (!production_exact_command(working_string(rules[i].cmd)+"("+cur+")",cand))
         continue;
       cand=trim(cand);
-      if (cand.empty() || cand[0]=='[' || same_rewrite_expr(cand,cur) || !khicas_equiv(cur,cand))
+      if (cand.empty() || cand[0]=='[' || same_rewrite_expr(cand,cur))
         continue;
       bool seen=false;
       for (int j=0;j<tail;++j){
@@ -17013,10 +17005,9 @@ static bool try_xform_rewrite_planner(const working_string &start,const working_
 }
 
 static working_string xform_failure_report(const working_string &start,const working_string &target){
-  working_string out="Planner search:\n";
-  out += "No exact route\n";
-  out += "Start:\n";
+  working_string out="Try:\n";
   out += insert_coeff_stars(start)+"\n";
+  out += "texpand,tcollect,factor,normal,simplify,partfrac\n";
   out += "Target:\n";
   out += insert_coeff_stars(target);
   return out;
