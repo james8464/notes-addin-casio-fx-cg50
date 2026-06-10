@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import os
 import subprocess
 import tempfile
 from pathlib import Path
@@ -61,47 +62,21 @@ def main() -> int:
                 bad.append(f"{expr}: unexpected return {proc.returncode}: {text}")
             elif proc.returncode == 1 and not text.startswith("="):
                 bad.append(f"{expr}: unexpected local output: {text}")
-    good_src = (
-        '#include <iostream>\n'
-        '#include <string>\n'
-        '#include "khicas/upstream/giac90_1addin/cascas_working.h"\n'
-        'static bool exact_eval(const char *expr,cascas::working_string &out){\n'
-        '  std::string s=expr?expr:"";\n'
-        '  if(s=="2*x+1"){ out="2*x + 1"; return true; }\n'
-        '  return false;\n'
-        '}\n'
-        'int main(){\n'
-        '  cascas::set_khicas_eval_callback(exact_eval);\n'
-        '  cascas::working_string out;\n'
-        '  if(!cascas::eval_with_working("2*x+1",out)) return 2;\n'
-        '  std::string s=out.c_str();\n'
-        '  std::cout << s << "\\n";\n'
-        '  return s.find("KhiCAS exact evaluation:")==std::string::npos || s.find("Verified")==std::string::npos;\n'
-        '}\n'
-    )
-    with tempfile.TemporaryDirectory() as d:
-        tmp = Path(d)
-        src = tmp / "good.cpp"
-        exe = tmp / "good"
-        src.write_text(good_src)
-        subprocess.check_call(
-            [
-                "c++",
-                "-std=c++11",
-                "-DCASCAS_HOST_STD_STRING=1",
-                "-DCASCAS_DISABLE_GOLDEN_QUEUE=1",
-                "-I",
-                str(ROOT),
-                str(src),
-                str(ROOT / "khicas/upstream/giac90_1addin/cascas_working.cc"),
-                "-o",
-                str(exe),
-            ],
+    env = dict(os.environ, CASCAS_HOST_PRODUCTION="1")
+    for expr, want in [("2*x+1", "2*x + 1"), ("coeff((1+x+x^3)^7,x,9)", "252")]:
+        proc = subprocess.run(
+            [str(ROOT / "tools/khicas_host_runner"), expr],
             cwd=ROOT,
+            text=True,
+            capture_output=True,
+            timeout=30,
+            env=env,
         )
-        proc = subprocess.run([str(exe)], cwd=ROOT, text=True, capture_output=True)
-        if proc.returncode:
-            bad.append("2*x+1: missing KhiCAS exact fallback route: " + (proc.stdout + proc.stderr).strip())
+        text = (proc.stdout + proc.stderr).strip()
+        if proc.returncode or want not in text:
+            bad.append(f"{expr}: missing exact host fallback: {text}")
+        if "Verified" in text or "KhiCAS exact" in text:
+            bad.append(f"{expr}: stale exact fallback wording: {text}")
     if bad:
         print("FAIL plain eval callback guard")
         print("\n".join(bad))

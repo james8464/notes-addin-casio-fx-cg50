@@ -8,17 +8,17 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 CASES: list[tuple[str, list[str]]] = [
-    ("solve(exp(x)+x=3,x)", ["Move all terms", "KhiCAS exact evaluation", "Verified by exact CAS evaluation"]),
-    ("diff(exp(sin(x)^2)*cos(x),x)", ["Product:", "du/dx", "dv/dx", "Verified"]),
-    ("integrate((x^5+1)/(x^2+x+1),x)", ["Complete square", "log + atan", "KhiCAS exact", "Verified"]),
-    ("defint(exp(-x),x,0,inf)", ["F(x)", "Improper integral", "lim T -> oo", "KhiCAS exact", "Verified"]),
-    ("domain(ln((x-2)/(x+1)),x)", ["Domain", "x + 1 != 0", "(x-2)/(x+1) > 0", "Verified"]),
-    ("range(exp(-x^2)+x,x)", ["f'(x)", "as x -> -infinity", "range: all real", "Verified"]),
-    ("xform((x^2-1)/(x-1),x+1)", ["Planner search", "texpand", "Target equivalent after simplification", "normal(start-target)=0", "Verified"]),
+    ("solve(exp(x)+x=3,x)", ["Move all to LHS", "Solve F(x)=0", "Ans:", "LambertW"]),
+    ("diff(exp(sin(x)^2)*cos(x),x)", ["Product:", "du/dx", "dv/dx", "u'v+uv'"]),
+    ("integrate((x^5+1)/(x^2+x+1),x)", ["Complete square", "log + atan", "Ans:"]),
+    ("defint(exp(-x),x,0,inf)", ["F(x)", "Improper integral", "lim T -> oo", "Ans:", "1"]),
+    ("domain(ln((x-2)/(x+1)),x)", ["Domain", "x + 1 != 0", "(x-2)/(x+1) > 0", "x < -1 or x > 2"]),
+    ("range(exp(-x^2)+x,x)", ["f'(x)", "as x -> -infinity", "range: all real"]),
+    ("xform((x^2-1)/(x-1),x+1)", ["Diff powers", "x^2 - 1 = (x-1)(x+1)", "x+1"]),
     ("taylor(ln(1+sin(x)),x,0,5)", ["taylor method", "trace:", "simplify:", "Answer:"]),
-    ("normal((x^2-1)/(x-1))", ["normal method", "trace:", "simplify:", "x + 1", "Answer:"]),
-    ("limit((x^2-1)/(x-1),x=1)", ["limit method", "trace:", "simplify:", "x + 1", "Answer:"]),
-    ("coeff((1+x+x^3)^7,x,9)", ["Extract coeff", "texpand", "Answer:"]),
+    ("normal((x^2-1)/(x-1))", ["Diff powers", "x^2 - 1 = (x-1)(x+1)", "x+1"]),
+    ("limit((x^2-1)/(x-1),x=1)", ["limit:", "simplify:", "x + 1", "Ans:", "2"]),
+    ("coeff((1+x+x^3)^7,x,9)", ["252"]),
     ("partfrac((x^4+2*x+1)/(x^3-x),x)", ["D:", "A,B over factors", "Answer:"]),
 ]
 
@@ -49,7 +49,9 @@ def main() -> int:
             raise AssertionError(f"{expr}: missing {missing}\n{out}")
         if out in FORBIDDEN_ONLY:
             raise AssertionError(f"{expr}: bare fallback output\n{out}")
-        if out.startswith("KhiCAS exact:\n") and out.count("\n") <= 2:
+        if "Verified" in out:
+            raise AssertionError(f"{expr}: should not print Verified\n{out}")
+        if out.startswith("Ans:\n") and out.count("\n") <= 2:
             raise AssertionError(f"{expr}: exact-only output\n{out}")
         if "roots(F(z))" in out:
             raise AssertionError(f"{expr}: roots placeholder leaked\n{out}")

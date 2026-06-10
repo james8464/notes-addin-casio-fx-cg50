@@ -16029,7 +16029,7 @@ static bool try_sum_to_product(const working_string &a,const working_string &b,w
                : product_two_trig_s(rat(-two.n,two.d),"sin",mid,"sin",halfdiff);
   if (!same_rewrite_expr(b,expect) && !khicas_equiv(expect,b))
     return false;
-  out="Sum-prod:\n";
+  out="Sum-prod:\nUse sum-to-product identity\n";
   out += expect+"";
   return true;
 }
@@ -16046,8 +16046,21 @@ static bool double_arg(const working_string &dbl,const working_string &arg){
 static bool emit_trig_route(const char *label,const working_string &target,working_string &out){
   out=label;
   out += ":\n";
+  if (!strcmp(label,"Reciprocal identities"))
+    out += "Use reciprocal identity\n";
+  else if (!strcmp(label,"Pythagorean identities"))
+    out += "Use Pythagorean identity\n";
+  else if (!strcmp(label,"Double-angle identities"))
+    out += "Use double-angle identity\n";
   out += insert_coeff_stars(target)+"";
   return true;
+}
+
+static working_string xform_trig_bridge(const working_string &a,const working_string &b){
+  working_string ca=compact(a),cb=compact(b);
+  if (contains(ca,"/cos(") && contains(cb,"sin("))
+    return "Use cos^2=1-sin^2\nCancel common factor\n";
+  return "";
 }
 
 static bool try_pyth_pair(const working_string &a,const working_string &b,const char *sumfn,const char *singlefn,bool minus,working_string &out){
@@ -16055,10 +16068,10 @@ static bool try_pyth_pair(const working_string &a,const working_string &b,const 
   int c=0,cc=0,p=0;
   if (parse_const_trig_square_int(a,sumfn,minus,arg,cc) &&
       parse_int_func_pow(b,singlefn,c,targ,p) && p==2 && c==cc && compact(arg)==compact(targ))
-    return emit_trig_route("Pyth identities",b,out);
+    return emit_trig_route("Pythagorean identities",b,out);
   if (parse_int_func_pow(a,singlefn,c,arg,p) && p==2 &&
       parse_const_trig_square_int(b,sumfn,minus,targ,cc) && c==cc && compact(arg)==compact(targ))
-    return emit_trig_route("Pyth identities",b,out);
+    return emit_trig_route("Pythagorean identities",b,out);
   return false;
 }
 
@@ -16088,12 +16101,12 @@ static bool try_xform_trig_power_identity(const working_string &a,const working_
   if (parse_top_power(a,base,exp) && parse_small_int(exp,n) && n>1){
     if (parse_one_plus_trig_square(base,"tan",arg) &&
         parse_int_func_pow(b,"sec",c,targ,p) && c==1 && p==2*n && compact(arg)==compact(targ)){
-      out="Pyth identities:\n1+tan(u)^2=sec(u)^2\n"+b+"";
+      out="Pythagorean identities:\nUse Pythagorean identity\n1+tan(u)^2=sec(u)^2\n"+b+"";
       return true;
     }
     if (parse_one_plus_trig_square(base,"cot",arg) &&
         parse_int_func_pow(b,"cosec",c,targ,p) && c==1 && p==2*n && compact(arg)==compact(targ)){
-      out="Pyth identities:\n1+cot(u)^2=cosec(u)^2\n"+b+"";
+      out="Pythagorean identities:\nUse Pythagorean identity\n1+cot(u)^2=cosec(u)^2\n"+b+"";
       return true;
     }
   }
@@ -16406,10 +16419,41 @@ static working_string recip_rule_expr(const RecipRule &r,const working_string &a
 static bool try_recip_rule(const RecipRule &r,const working_string &a,const working_string &b,working_string &out){
   working_string arg;
   if (parse_unary_arg(a,r.fn,arg) && same_rewrite_expr(b,recip_rule_expr(r,arg)))
-    return emit_trig_route("Reciprocal ids",b,out);
+    return emit_trig_route("Reciprocal identities",b,out);
   if (parse_unary_arg(b,r.fn,arg) && same_rewrite_expr(a,recip_rule_expr(r,arg)))
-    return emit_trig_route("Reciprocal ids",b,out);
+    return emit_trig_route("Reciprocal identities",b,out);
   return false;
+}
+
+static bool try_xform_angle_sum(const working_string &a,const working_string &b,working_string &out){
+  working_string arg,t[2],expect;
+  int sg[2];
+  bool is_sin=false,is_cos=false;
+  if (parse_unary_arg(a,"sin",arg))
+    is_sin=true;
+  else if (parse_unary_arg(a,"cos",arg))
+    is_cos=true;
+  else
+    return false;
+  if (split_top_sum_terms(arg,t,sg,2)!=2 || sg[0]!=1 || (sg[1]!=1 && sg[1]!=-1))
+    return false;
+  if (is_sin){
+    expect="sin("+t[0]+")*cos("+t[1]+")";
+    expect += sg[1]>0 ? "+cos(" : "-cos(";
+    expect += t[0]+")*sin("+t[1]+")";
+  } else if (is_cos){
+    expect="cos("+t[0]+")*cos("+t[1]+")";
+    expect += sg[1]>0 ? "-sin(" : "+sin(";
+    expect += t[0]+")*sin("+t[1]+")";
+  }
+  if (!same_rewrite_expr(expect,b) && !khicas_equiv(expect,b))
+    return false;
+  out="Angle addition:\nUse ";
+  out += is_sin ? "sin(A" : "cos(A";
+  out += sg[1]>0 ? "+B)" : "-B)";
+  out += " identity\n";
+  out += insert_coeff_stars(expect)+"";
+  return true;
 }
 
 static bool try_xform_trig_direct(const working_string &a,const working_string &b,working_string &out){
@@ -16419,6 +16463,8 @@ static bool try_xform_trig_direct(const working_string &a,const working_string &
   for (int i=0;i<4;++i)
     if (try_recip_rule(recip[i],a,b,out))
       return true;
+  if (try_xform_angle_sum(a,b,out))
+    return true;
   if (try_xform_trig_power_identity(a,b,out))
     return true;
   if (try_xform_half_angle_identity(a,b,out))
@@ -16427,7 +16473,7 @@ static bool try_xform_trig_direct(const working_string &a,const working_string &
     return true;
   if (parse_linear_tan_cot_int(a,arg,tc,cc) && cc && tc==-cc &&
       parse_int_func_pow(b,"cot",c,targ,p) && p==1 && c==2*cc && double_arg(targ,arg)){
-    out="Reciprocal ids:\nCommon denom:\nDouble-angle:\n";
+    out="Reciprocal identities:\nCommon denom:\nDouble-angle:\n";
     out += insert_coeff_stars(b)+"";
     return true;
   }
@@ -16445,10 +16491,10 @@ static bool try_xform_trig_direct(const working_string &a,const working_string &
       try_pyth_pair(a,b,"cot","cosec",false,out))
     return true;
   if (parse_sin2_cos2_sum_int(a,arg,cc) && parse_small_int(b,c) && c==cc){
-    return emit_trig_route("Pyth identities",b,out);
+    return emit_trig_route("Pythagorean identities",b,out);
   }
   if (parse_small_int(a,c) && parse_sin2_cos2_sum_int(b,arg,cc) && c==cc){
-    return emit_trig_route("Pyth identities",b,out);
+    return emit_trig_route("Pythagorean identities",b,out);
   }
   return try_pyth_pair(a,b,"sec","tan",true,out) ||
          try_pyth_pair(a,b,"cosec","cot",true,out);
@@ -17028,7 +17074,7 @@ static bool try_xform_rewrite_planner(const working_string &start,const working_
                                 contains(compact(cand),"sec(") ||
                                 contains(compact(cand),"cosec(")));
       if (!reciprocal_pending && khicas_equiv(cand,target)){
-        out=next+"Target:\n"+
+        out=next+xform_trig_bridge(cand,target)+"Target:\n"+
           insert_coeff_stars(target)+"";
         return true;
       }

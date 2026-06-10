@@ -258,6 +258,11 @@ int main(int argc, char **argv)
         if(out.empty() || out[out.size() - 1] != '\n') std::cout << "\n";
         return 0;
     }
+    if(host_exact_eval(expr.c_str(), out)) {
+        std::cout << out;
+        if(out.empty() || out[out.size() - 1] != '\n') std::cout << "\n";
+        return 0;
+    }
 
     std::cout << pure_method_fallback(false);
     return 0;

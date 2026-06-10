@@ -11,11 +11,11 @@ RUNNER = ROOT / "tools" / "khicas_host_runner"
 CASES = [
     (
         "solve((x^2-1)/(x-1)=2,x)",
-        ["x - 1 != 0", "Reject x=1", "denominator domain fails", "x = []", "Verified by domain check"],
+        ["x - 1 != 0", "Reject x=1", "denominator domain fails", "x = []"],
     ),
     (
         "solve((x^2-1)/(x-1)=3,x)",
-        ["x - 1 != 0", "Reject x=1", "x = [2]", "Verified by domain check"],
+        ["x - 1 != 0", "Reject x=1", "x = [2]"],
     ),
     (
         "solve(k*(k+3)/(k+1)=2,k)",
@@ -23,15 +23,15 @@ CASES = [
     ),
     (
         "solve(cos(x)=0,x,0,pi)",
-        ["0 <= x <= pi", "x = [pi/2]", "Verified under constraint"],
+        ["0 <= x <= pi", "x = [pi/2]"],
     ),
     (
         "solve(tan(x)=1,x,0,pi)",
-        ["0 <= x <= pi", "x = [pi/4]", "Verified under constraint"],
+        ["0 <= x <= pi", "x = [pi/4]"],
     ),
     (
         "solve(x^2=1,x>0)",
-        ["x > 0", "Reject x=-1", "x = [1]", "Verified under constraint"],
+        ["x > 0", "Reject x=-1", "x = [1]"],
     ),
 ]
 
@@ -40,6 +40,7 @@ FORBIDDEN = [
     "x = [-1, 1]",
     "x = atan(1) + n*pi",
     "Reject k=-1",
+    "Verified",
 ]
 
 

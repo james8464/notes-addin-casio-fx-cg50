@@ -12,15 +12,17 @@ CASES = [
     (
         "xform((sec(x)+tan(x))^2,(1+sin(x))/(1-sin(x)))",
         [
-            "Target equivalent after simplification",
-            "normal(start-target)=0",
-            "Verified by equivalence check",
+            "normal:",
+            "Use cos^2=1-sin^2",
+            "Cancel common factor",
+            "Target:",
         ],
     ),
     (
         "xform(((cos(3*x)/sin(x))+((sin(3*x))/cos(x))),2*cot(2*x))",
         [
-            "Verified by equivalence check",
+            "t=tan(x/2)",
+            "Simplify in t",
             "2*cot(2*x)",
         ],
     ),
@@ -31,6 +33,7 @@ FORBIDDEN = [
     "no route",
     "not equivalent",
     "not verified",
+    "Verified",
 ]
 
 

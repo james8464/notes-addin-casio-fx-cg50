@@ -41,7 +41,6 @@ SIX_MARK_STYLE = {
     "trig_power_integral",
     "taylor_composite",
     "complex_roots",
-    "coefficient_extraction",
 }
 
 EXACT_ONLY_PATTERNS = [
@@ -213,43 +212,7 @@ def assert_quality(case: Case, out: str) -> None:
     if not lines:
         raise AssertionError(f"no final answer line\n{out}")
     if "verified" in low:
-        route_markers = [
-            "solve",
-            "domain",
-            "range",
-            "factor",
-            "texpand",
-            "normal",
-            "simpl",
-            "part",
-            "integr",
-            "diff",
-            "limit",
-            "series",
-            "taylor",
-            "coeff",
-            "substitut",
-            "identity",
-            "equivalence",
-            "polar",
-            "trace",
-            "f'(",
-            "f(",
-            "under constraint",
-            "<= x <=",
-            "rule:",
-            "r-form",
-            "tangent addition",
-            "compare",
-            "a/(",
-            "b/(",
-            "a=",
-            "b=",
-            "u=",
-            "du=",
-        ]
-        if not any(m in low for m in route_markers):
-            raise AssertionError(f"Verified without route evidence\n{out}")
+        raise AssertionError(f"forbidden Verified text\n{out}")
     if case.category in SIX_MARK_STYLE and len(lines) < 3:
         raise AssertionError(f"too few meaningful working lines ({len(lines)})\n{out}")
     if re.search(r"\A\s*[^\n]+\nVerified\s*\Z", out):

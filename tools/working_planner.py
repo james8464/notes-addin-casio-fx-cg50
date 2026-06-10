@@ -210,7 +210,7 @@ def find_route(start: object, target: object, rules: list[Rule], max_steps: int 
             for cand in candidates(expr, rule):
                 if len(seen) >= max_states:
                     if equivalent(start, target):
-                        return [Step(Rule("verified_target", "Verified target form", "equiv", 999), start, target)]
+                        return [Step(Rule("target_form", "Target form", "equiv", 999), start, target)]
                     return None
                 if cand == expr:
                     continue
@@ -225,25 +225,25 @@ def find_route(start: object, target: object, rules: list[Rule], max_steps: int 
                 if same_form(cand, target):
                     return path + [step]
     if equivalent(start, target):
-        return [Step(Rule("verified_target", "Verified target form", "equiv", 999), start, target)]
+        return [Step(Rule("target_form", "Target form", "equiv", 999), start, target)]
     return None
 
 
 def render(start: object, target: object, route: list[Step] | None) -> str:
     lines = ["Planner search:"]
     if route is None:
-        lines += ["Bounded search exhausted.", f"Last verified state: {fmt(start)}"]
+        lines += ["Bounded search exhausted.", f"Last checked state: {fmt(start)}"]
         return "\n".join(lines)
     current = start
     for step in route:
         lines.append(f"{step.rule.label}:")
         lines.append(f"{fmt(current)} = {fmt(step.after)}")
-        lines.append("Verified by equivalence check")
+        lines.append("CAS equivalence check")
         current = step.after
     if fmt(current) != fmt(target):
         lines.append("Target form:")
         lines.append(f"{fmt(current)} = {fmt(target)}")
-        lines.append("Verified by equivalence check")
+        lines.append("CAS equivalence check")
     return "\n".join(lines)
 
 
