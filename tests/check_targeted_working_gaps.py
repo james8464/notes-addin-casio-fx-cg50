@@ -619,7 +619,7 @@ CONSTRAINED_POLICY_CASES = [
     ),
     (
         "range(x^2,x!=0)",
-        ["Err: unsupported domain predicate"],
+        ["x != 0", "as x -> 0, y -> 0", "y > 0", "Verified under constraint"],
     ),
     (
         "solve(cos(x)=0,x,0,pi)",

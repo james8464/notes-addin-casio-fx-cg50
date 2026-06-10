@@ -50,7 +50,7 @@ CASES: list[tuple[str, list[str]]] = [
     ),
     (
         "solve(z^4=-8-8*sqrt(3)*i,z)",
-        ["Polar form", "r = 16", "theta = 4*pi/3", "nth-root formula", "Verified"],
+        ["Polar form", "r = 16", "theta = 4*pi/3", "nth-root formula", "roots:", "Verified"],
     ),
     (
         "diff((1+2*cos(t))*sin(t),t)/diff((1+2*cos(t))*cos(t),t)",

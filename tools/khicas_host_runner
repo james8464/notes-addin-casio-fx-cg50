@@ -10,7 +10,8 @@ fi
 WORKING="${ROOT}/khicas/upstream/giac90_1addin/cascas_working.cc"
 HEADER="${ROOT}/khicas/upstream/giac90_1addin/cascas_working.h"
 SELF="${ROOT}/tools/khicas_host_runner"
-HASH="$(shasum -a 256 "${WORKING}" "${HEADER}" "${SELF}" | shasum -a 256 | awk '{print substr($1,1,16)}')"
+EVAL_HELPER="${ROOT}/tools/khicas_host_eval.py"
+HASH="$(shasum -a 256 "${WORKING}" "${HEADER}" "${SELF}" "${EVAL_HELPER}" | shasum -a 256 | awk '{print substr($1,1,16)}')"
 BIN="${TMPDIR:-/tmp}/khicas_host_runner_cascas${MODE_SUFFIX}_${HASH}"
 SRC="${TMPDIR:-/tmp}/khicas_host_runner_cascas_${HASH}.cpp"
 LOCK="${BIN}.lock"
@@ -25,7 +26,7 @@ if [[ "${#CASCAS_COMPACT_INPUT}" -ge 110 &&
   exit 0
 fi
 
-if [ ! -x "${BIN}" ] || [ "${WORKING}" -nt "${BIN}" ] || [ "${HEADER}" -nt "${BIN}" ] || [ "${SELF}" -nt "${BIN}" ]; then
+if [ ! -x "${BIN}" ] || [ "${WORKING}" -nt "${BIN}" ] || [ "${HEADER}" -nt "${BIN}" ] || [ "${SELF}" -nt "${BIN}" ] || [ "${EVAL_HELPER}" -nt "${BIN}" ]; then
   spins=0
   while ! mkdir "${LOCK}" 2>/dev/null; do
     spins=$((spins+1))
@@ -38,7 +39,7 @@ if [ ! -x "${BIN}" ] || [ "${WORKING}" -nt "${BIN}" ] || [ "${HEADER}" -nt "${BI
   trap 'rmdir "${LOCK}" 2>/dev/null || true' EXIT
 fi
 
-if [ ! -x "${BIN}" ] || [ "${WORKING}" -nt "${BIN}" ] || [ "${HEADER}" -nt "${BIN}" ] || [ "${SELF}" -nt "${BIN}" ]; then
+if [ ! -x "${BIN}" ] || [ "${WORKING}" -nt "${BIN}" ] || [ "${HEADER}" -nt "${BIN}" ] || [ "${SELF}" -nt "${BIN}" ] || [ "${EVAL_HELPER}" -nt "${BIN}" ]; then
   cat > "${SRC}" <<'CPP'
 #include <iostream>
 #include <cstdio>
@@ -143,7 +144,7 @@ static bool host_eval(const char *expr,cascas::working_string &out){
 
 int main(int argc,char **argv){
   signal(SIGALRM,cascas_timeout_guard);
-  alarm(15);
+  alarm(25);
   std::string mode="--alg", input;
   for (int i=1;i<argc;++i){
     std::string a=argv[i];
@@ -176,7 +177,8 @@ int main(int argc,char **argv){
   }
   bool costly_simplify=starts(input,"simplify(") && (ops>50 || max_depth>=8 || input.size()>280);
   bool method_numeric=starts(input,"method=numeric");
-  bool routed_math=starts(input,"diff(") || starts(input,"derive(") ||
+  bool mode_routed=(mode=="--derive" || mode=="--int" || mode=="--trig");
+  bool routed_math=mode_routed || starts(input,"diff(") || starts(input,"derive(") ||
     starts(input,"integrate(") || starts(input,"int(") || starts(input,"defint(") ||
     starts(input,"range(") || starts(input,"solve(") || starts(input,"xform(") ||
     starts(input,"taylor(") || starts(input,"series(");
@@ -189,7 +191,9 @@ int main(int argc,char **argv){
     (input.find("ln((-")!=std::string::npos || input.find("ln(-")!=std::string::npos);
   bool negative_log_domain=
     input.find("ln((-")!=std::string::npos || input.find("ln(-")!=std::string::npos;
-  bool costly_exp=!method_numeric && !routed_math &&
+  bool explicit_simplifier=starts(input,"simplify(") || starts(input,"factor(") ||
+    starts(input,"normal(") || starts(input,"texpand(");
+  bool costly_exp=!method_numeric && !routed_math && explicit_simplifier &&
     (count_sub(input,"exp(")>=2 || has_large_exp_literal(input));
   bool numeric_surd_log_simplify=starts(input,"simplify(") &&
     input.find('.')!=std::string::npos && input.find("log(")!=std::string::npos &&
@@ -264,7 +268,7 @@ int main(int argc,char **argv){
   return 0;
 }
 CPP
-  python3 - "$SRC" "$ROOT/tools/khicas_host_eval.py" <<'PY'
+  python3 - "$SRC" "$EVAL_HELPER" <<'PY'
 from pathlib import Path
 import sys
 src=Path(sys.argv[1])

@@ -456,9 +456,15 @@ def eval_call(name: str, args: list[str]):
         order = parse_math(args[2]) if len(args) >= 3 else 1
         return _diff(parse_math(args[0]), var, order)
     if name in {"series", "taylor"} and len(args) >= 1:
-        var = parse_math(args[1]) if len(args) >= 2 else sp.Symbol("x")
-        about = parse_math(args[2]) if len(args) >= 3 else 0
-        order = int(parse_math(args[3])) if len(args) >= 4 else 6
+        if len(args) >= 2 and top_equal(args[1]) >= 0:
+            eq = top_equal(args[1])
+            var = parse_math(args[1][:eq])
+            about = parse_math(args[1][eq + 1 :])
+            order = int(parse_math(args[2])) if len(args) >= 3 else 6
+        else:
+            var = parse_math(args[1]) if len(args) >= 2 else sp.Symbol("x")
+            about = parse_math(args[2]) if len(args) >= 3 else 0
+            order = int(parse_math(args[3])) if len(args) >= 4 else 6
         if name == "series":
             order += 1
         return sp.series(parse_math(args[0]), var, about, order).removeO()

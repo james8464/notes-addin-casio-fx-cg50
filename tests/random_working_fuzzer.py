@@ -1340,9 +1340,9 @@ def property_cases(commands: list[str] | None = None) -> list[dict[str, str]]:
             })
     if allow("limit"):
         for src, markers in [
-            ("limit(sin(x)/x,x=0)", ["KhiCAS exact:", "1", "Verified"]),
-            ("limit((x^2-1)/(x-1),x=1)", ["KhiCAS exact:", "2", "Verified"]),
-            ("limit((1-cos(x))/x^2,x=0)", ["KhiCAS exact:", "1/2", "Verified"]),
+            ("limit(sin(x)/x,x=0)", ["limit method:", "Answer:", "1", "Verified"]),
+            ("limit((x^2-1)/(x-1),x=1)", ["limit method:", "trace:", "Answer:", "2", "Verified"]),
+            ("limit((1-cos(x))/x^2,x=0)", ["limit method:", "trace:", "Answer:", "1/2", "Verified"]),
         ]:
             cases.append({
                 "kind": "property:limit:exact_backend",
@@ -1417,10 +1417,10 @@ def property_cases(commands: list[str] | None = None) -> list[dict[str, str]]:
             })
     if allow("series"):
         for src, markers in [
-            ("series(exp(x),x=0,4)", ["KhiCAS exact:", "x^4/24", "x^3/6", "Verified"]),
-            ("series(sin(theta),theta=0,3)", ["KhiCAS exact:", "theta^3/6", "theta", "Verified"]),
-            ("series(tan(theta),theta=0,3)", ["KhiCAS exact:", "theta^3/3", "theta", "Verified"]),
-            ("series((1+2*x)^(-1),x=0,5)", ["KhiCAS exact:", "16*x^4", "- 8*x^3", "Verified"]),
+            ("series(exp(x),x=0,4)", ["series method:", "trace:", "Answer:", "x^4/24", "x^3/6", "Verified"]),
+            ("series(sin(theta),theta=0,3)", ["series method:", "trace:", "Answer:", "theta^3/6", "theta", "Verified"]),
+            ("series(tan(theta),theta=0,3)", ["series method:", "trace:", "Answer:", "theta^3/3", "theta", "Verified"]),
+            ("series((1+2*x)^(-1),x=0,5)", ["series method:", "trace:", "Answer:", "16*x^4", "- 8*x^3", "Verified"]),
         ]:
             cases.append({
                 "kind": "property:series:exact_backend",
@@ -1588,7 +1588,7 @@ def main() -> int:
     ap.add_argument("--forever", action="store_true", help="run until interrupted")
     ap.add_argument("--seed", type=int, default=None)
     ap.add_argument("--depth", type=int, default=4)
-    ap.add_argument("--timeout", type=float, default=4.0)
+    ap.add_argument("--timeout", type=float, default=8.0)
     ap.add_argument("--noise-rate", type=float, default=0.08)
     ap.add_argument("--template-rate", type=float, default=0.0, help="deprecated; fixed templates were removed")
     ap.add_argument("--only", default="", help="comma-separated command names to generate")

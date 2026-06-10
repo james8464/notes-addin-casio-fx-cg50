@@ -15,9 +15,11 @@ CASES: list[tuple[str, list[str]]] = [
     ("domain(ln((x-2)/(x+1)),x)", ["Domain", "x + 1 != 0", "(x-2)/(x+1) > 0", "Verified"]),
     ("range(exp(-x^2)+x,x)", ["f'(x)", "as x -> -infinity", "range: all real", "Verified"]),
     ("xform((x^2-1)/(x-1),x+1)", ["Planner search", "texpand", "Target equivalent after simplification", "normal(start-target)=0", "Verified"]),
-    ("taylor(ln(1+sin(x)),x,0,5)", ["taylor fallback", "factor", "Exact final answer"]),
-    ("coeff((1+x+x^3)^7,x,9)", ["Coefficient fallback", "texpand", "Exact final answer"]),
-    ("partfrac((x^4+2*x+1)/(x^3-x),x)", ["D:", "A,B over factors", "Exact final answer"]),
+    ("taylor(ln(1+sin(x)),x,0,5)", ["taylor method", "trace:", "simplify:", "Answer:"]),
+    ("normal((x^2-1)/(x-1))", ["normal method", "trace:", "simplify:", "x + 1", "Answer:"]),
+    ("limit((x^2-1)/(x-1),x=1)", ["limit method", "trace:", "simplify:", "x + 1", "Answer:"]),
+    ("coeff((1+x+x^3)^7,x,9)", ["Extract coeff", "texpand", "Answer:"]),
+    ("partfrac((x^4+2*x+1)/(x^3-x),x)", ["D:", "A,B over factors", "Answer:"]),
 ]
 
 FORBIDDEN_ONLY = {"Verified", "F=A"}
