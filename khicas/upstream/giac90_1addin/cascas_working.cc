@@ -4430,7 +4430,7 @@ static bool try_implicit_poly_equation(const working_string &left,const working_
   }
   if (production_exact_command("simplify("+ratio+")",sr) && !trim(sr).empty())
     ratio=trim(sr);
-  out="Differentiate both sides:\n";
+  out="Diff both sides:\n";
   if (expanded)
     out += "Expand: "+el+" = "+er+"\n";
   else
@@ -4488,7 +4488,7 @@ static bool try_diff_equation_general(const char *input,working_string &out){
   if (left.empty() || right.empty())
     return false;
   if (raw.size()>350 || left.size()>180 || right.size()>180){
-    out="Differentiate both sides:\n";
+    out="Diff both sides:\n";
     out += "d/d"+rawvar+"(L)=d/d"+rawvar+"(R)";
     return true;
   }
@@ -4515,7 +4515,7 @@ static bool try_diff_equation_general(const char *input,working_string &out){
   working_string lw,rw,la,ra;
   if (!diff_side_route(left,rawvar,lw,la) || !diff_side_route(right,rawvar,rw,ra))
     return false;
-  out="Differentiate both sides:\n";
+  out="Diff both sides:\n";
   out += left+" = "+right+"\n";
   out += lw+"\n";
   out += rw+"\n";
@@ -4557,8 +4557,8 @@ static bool try_diff_plain(const char *input,working_string &out){
       working_string shown=rat_power_term_s(rat(coef,1),rat(pow,1),var[0]);
       working_string deriv=derivative_monomial(coef,pow,var[0]);
       out="Power:\n";
-      out += var=="x" ? "Power rule: d/dx x^n = n*x^(n-1)\n" :
-                         "Power rule: d/d"+var+" "+var+"^n = n*"+var+"^(n-1)\n";
+      out += var=="x" ? "Power rule: n*x^(n-1)\n" :
+                         "Power rule: n*"+var+"^(n-1)\n";
       out += "d/d"+var+"("+shown+") = "+deriv+"\n";
       out += deriv;
       return true;
@@ -4629,8 +4629,8 @@ static bool try_diff_plain(const char *input,working_string &out){
       }
       else
         out="Power:\n";
-      out += var=="x" ? "Power rule: d/dx x^n = n*x^(n-1)\n" :
-                         "Power rule: d/d"+var+" "+var+"^n = n*"+var+"^(n-1)\n";
+      out += var=="x" ? "Power rule: n*x^(n-1)\n" :
+                         "Power rule: n*"+var+"^(n-1)\n";
       out += "d/d"+var+"("+rat_power_term_s(c,p,var[0])+") = ";
       out += derivative_rat_power_term(c,p,var[0]);
       return true;
@@ -4664,7 +4664,7 @@ static bool try_diff_plain(const char *input,working_string &out){
     {
       working_string poly_answer;
       if (diff_sum_terms(e,poly_answer,var[0])){
-        out="Differentiate each term:\n";
+        out="Diff each term:\n";
         out += poly_answer;
         return true;
       }
@@ -4672,7 +4672,7 @@ static bool try_diff_plain(const char *input,working_string &out){
     {
       working_string gd,gs;
       if (diff_simple_expr(args[0],var[0],gd,gs)){
-        out="Differentiate both sides\n";
+        out="Diff both sides\n";
         out += gd;
         return true;
       }
@@ -5260,7 +5260,7 @@ static bool integrate_mixed_sum_terms(const working_string &expr,working_string 
   if (n<2)
     return false;
   working_string ans;
-  out="Integrate term by term\nTerms:\nPower:\n";
+  out="Integrate terms\nTerms:\nPower:\n";
   if (expr.size()>350){
     out += "poly + C";
     return true;
@@ -5393,7 +5393,7 @@ static bool try_symbolic_poly_diff_cmd(const char *input,working_string &out){
     return false;
   if (!symbolic_poly_diff(args[0],var[0],ans) || ans=="0")
     return false;
-  out="Differentiate each term:\n";
+  out="Diff each term:\n";
   out += ans;
   return true;
 }
@@ -6291,7 +6291,7 @@ static bool integrate_affine_product_general(const working_string &expr,char v,w
   if (C.n) ans=join_sum(ans,rat_power_term_s(C,rat(1,1),v));
   out="Expand:\n";
   out += "("+fmt_linear_rat(a1,b1,v)+")("+fmt_linear_rat(a2,b2,v)+") = "+poly+"\n";
-  out += "Integrate term by term\n";
+  out += "Integrate terms\n";
   out += ans+" + C";
   return true;
 }
@@ -6790,8 +6790,8 @@ static bool partfrac_two_linear_route(const working_string &expr,char v,working_
   if (ans.empty()) ans="0";
   out="A/("+p.F1+")+B/("+p.F2+")\n";
   out += fmt_linear_rat(p.N,p.M,v)+"=A*("+p.F2+")+B*("+p.F1+")\n";
-  out += "A="+rat_s(p.n1)+"/"+rat_s(p.d1)+"="+rat_s(p.A)+"\n";
-  out += "B="+rat_s(p.n2)+"/"+rat_s(p.d2)+"="+rat_s(p.B)+"\n";
+  out += working_string(1,v)+"="+rat_s(p.r1)+": "+rat_s(p.n1)+"=A*("+rat_s(p.d1)+"), A="+rat_s(p.A)+"\n";
+  out += working_string(1,v)+"="+rat_s(p.r2)+": "+rat_s(p.n2)+"=B*("+rat_s(p.d2)+"), B="+rat_s(p.B)+"\n";
   out += ans;
   return true;
 }
@@ -6848,11 +6848,17 @@ static bool integrate_partial_fraction_two_linear(const working_string &expr,cha
   PF2 p;
   if (!partial_fraction_two_linear_data(expr,v,p))
     return false;
-  working_string ans;
+  working_string ans,pf;
   if (p.A.n) ans=join_sum(ans,rat_expr_s(rat_div(p.A,p.a1),"ln(abs("+p.F1+"))"));
   if (p.B.n) ans=join_sum(ans,rat_expr_s(rat_div(p.B,p.a2),"ln(abs("+p.F2+"))"));
-  out="("+fmt_linear_rat(p.N,p.M,v)+")/(("+p.F1+")("+p.F2+")) = A/("+p.F1+") + B/("+p.F2+")\n";
-  out += "A="+rat_s(p.A)+", B="+rat_s(p.B)+"\n";
+  if (!partfrac_two_linear_route(expr,v,pf))
+    return false;
+  out=pf+"\n";
+  out += "Integrate:\n";
+  out += "int("+pf_term_s(p.A,p.F1)+") d"+working_string(1,v)+" = "+
+         rat_expr_s(rat_div(p.A,p.a1),"ln(abs("+p.F1+"))")+"\n";
+  out += "int("+pf_term_s(p.B,p.F2)+") d"+working_string(1,v)+" = "+
+         rat_expr_s(rat_div(p.B,p.a2),"ln(abs("+p.F2+"))")+"\n";
   out += ans+" + C";
   return true;
 }
@@ -6893,7 +6899,7 @@ static bool try_rational_integral_explainer(const working_string &expr,const wor
     return false;
   out="Denominator factor:\n";
   out += "Partial fraction form:\n"+pf+"\n";
-  out += "Integrate term by term\n"+F+"\n";
+  out += "Integrate terms\n"+F+"\n";
   if (exact_integral_result(expr,var,exact))
     out += "KhiCAS exact:\n"+exact+" + C\n";
   out += "";
@@ -7464,7 +7470,7 @@ static bool try_integral(const char *input,working_string &out){
         ans=join_sum(ans,rat_power_term_s(b,rat(1,1)));
       out="Collect:\n";
       out += fmt_linear_rat(a,b,'x')+"\n";
-      out += "Integrate term by term\nTerms:\n";
+      out += "Integrate terms\nTerms:\n";
       out += "Power:\n";
       out += ""+ans+" + C";
       return true;
@@ -7483,7 +7489,7 @@ static bool try_integral(const char *input,working_string &out){
   if (integrate_const_product_route(args[0],var[0],var,out) && !force_parts && !force_sub)
     return true;
   if (integrate_sum_terms(e,sum_answer) && !force_parts && !force_sub){
-    out="Integrate term by term\n"
+    out="Integrate terms\n"
         "Terms:\n"
         "Power:\n"
         "";
@@ -7573,7 +7579,7 @@ static bool try_integral(const char *input,working_string &out){
   if (integrate_x_trig_parts_working(e,out) && !force_parts && !force_sub)
     return true;
   if (contains(e,"dy/dx") || contains(e,"(dy)/(dx)")){
-    out="Separate variables:";
+    out="Separate vars:";
     return true;
   }
   if (force_parts || force_sub){
@@ -8231,7 +8237,7 @@ static bool try_solve_linear_system_2x2(const working_string &eq_src,const worki
   out += "D = a1*b2 - a2*b1 = "+rat_s(D)+"\n";
   out += working_string(1,x)+" = "+rat_s(xr)+", "+working_string(1,y)+" = "+rat_s(yr)+"\n";
   out += rawvar+" = ["+rat_s(xr)+", "+rat_s(yr)+"]";
-  out += "\nKhiCAS exact evaluation:\n[[";
+  out += "\nKhiCAS exact:\n[[";
   out += working_string(1,x)+"="+rat_s(xr)+", "+working_string(1,y)+"="+rat_s(yr)+"]]";
   return true;
 }
@@ -8449,7 +8455,7 @@ static bool try_solve_general_decomposition(const working_string &left,const wor
     return false;
   working_string var(1,v);
   working_string f="("+left+")-("+right+")";
-  out="Move all terms to one side:\n";
+  out="Move all to LHS:\n";
   out += "F("+rawvar+") = "+f+"\n";
   if (contains(f,"/"))
     out += "domain: denom !=0\n";
@@ -8466,12 +8472,12 @@ static bool try_solve_general_decomposition(const working_string &left,const wor
     working_string exact;
     if (production_exact_command("solve("+raw_eq+","+rawvar+")",exact) && !trim(exact).empty()){
       if (!contains(exact,"I")){
-        out += "KhiCAS exact evaluation:\n";
+        out += "KhiCAS exact:\n";
         out += trim(exact)+"\n";
         working_string filtered,notes;
         if (filter_exact_real_domain(raw_eq,rawvar,v,trim(exact),filtered,notes)){
           out += notes;
-          out += "Domain-checked real solutions:\n";
+          out += "Valid real sols:\n";
           out += rawvar+" = "+filtered+"\n";
           out += "";
           return true;
@@ -9249,7 +9255,7 @@ static bool try_solve_symbolic_linear_eq(const working_string &raw_eq,const work
     Rat ln,rn;
     if (parse_rat(lc,ln) && parse_rat(rc,rn))
       sol=rat_s(rat_div(rat_sub(rn,ln),A));
-    out += "\nKhiCAS exact evaluation:\n"+rawvar+" = ["+sol+"]";
+    out += "\nKhiCAS exact:\n"+rawvar+" = ["+sol+"]";
     return true;
   }
   working_string f="("+left+")-("+right+")", A,B;
@@ -9650,7 +9656,7 @@ static bool try_solve_abs_linear_eq(const working_string &raw_eq,const working_s
     out += "A="+(arg.size()<=90?arg:"abs arg")+"\n";
     out += "A>=0: solve A="+(r.size()<=80?r:"right")+"\n";
     out += "A<0: solve -A="+(r.size()<=80?r:"right")+"\n";
-    out += "Move all terms to one side\n";
+    out += "Move all to LHS\n";
     out += "F("+rawvar+")=0\n";
     out += rawvar+" = roots(F("+rawvar+"))\nreject invalid";
     return true;
@@ -9663,7 +9669,7 @@ static bool try_solve_abs_linear_eq(const working_string &raw_eq,const working_s
     out += "A="+(arg.size()<=90?arg:"abs arg")+"\n";
     out += "A>=0: replace abs(A) by A\n";
     out += "A<0: replace abs(A) by -A\n";
-    out += "Move all terms to one side\n";
+    out += "Move all to LHS\n";
     out += "F("+rawvar+")=0\n";
     out += rawvar+" = roots(F("+rawvar+"))\nreject invalid";
     return true;
@@ -10401,7 +10407,7 @@ static bool try_solve_large_structure(const working_string &rawvar,working_strin
   working_string v=compact(rawvar);
   if (v.empty())
     v="x";
-  out="Move all terms to one side\n";
+  out="Move all to LHS\n";
   out += "F("+v+")=L-R\n";
   out += "Domain\n";
   out += v+" = roots(F("+v+"))";
@@ -10608,10 +10614,10 @@ static bool try_solve(const char *input,working_string &out){
         return true;
       }
     }
-    out="Planner search:\nlast state:\n";
+    out="Search:\nlast state:\n";
     out += system_src;
     if (!trim(exact).empty())
-      out += "\nKhiCAS exact evaluation:\n"+trim(exact);
+      out += "\nKhiCAS exact:\n"+trim(exact);
     return true;
   }
   if (var.size()==1 && try_solve_cot_identity_periodic(eq_src,args,n,rawvar,var[0],out))
@@ -10660,7 +10666,7 @@ static bool try_solve(const char *input,working_string &out){
                          try_solve_exp_power_raw(compact(eq_src),rawvar,var[0],out)))
     return true;
   if ((ceq=="dn/dt=kn" || ceq=="dn/dt=k*n") && var=="n"){
-    out="Separate variables:\n(1/n)dn=k dt\nln(abs(n))=k*t+C\n"
+    out="Separate vars:\n(1/n)dn=k dt\nln(abs(n))=k*t+C\n"
         "n = A*e^(k*t)";
     return true;
   }
@@ -11289,7 +11295,7 @@ static bool factor_nonpoly_guard(const char *input,working_string &out){
   working_string var=n>=2?trim(args[1]):working_string(1,first_var(e));
   if (var.empty())
     var="x";
-  out="Factorisation:\nnot a polynomial in "+var+"\n";
+  out="Factor:\nnot a polynomial in "+var+"\n";
   out += insert_coeff_stars(args[0]);
   return true;
 }
@@ -14428,12 +14434,12 @@ static bool try_range(const char *input,working_string &out){
   if (parse_range_constraint_args(args,n,rv,rc,unsupported_constraint)){
     if (try_range_constrained(e,rv,rc,out))
       return true;
-    out="Err: unsupported range route\n";
+    out="Err: range route\n";
     out += rc.desc;
     return true;
   }
   if (unsupported_constraint){
-    out="Err: unsupported domain predicate";
+    out="Err: domain predicate";
     return true;
   }
   if (try_range_symbolic_quadratic(raw_e,rv,out) ||
@@ -14998,7 +15004,7 @@ static bool try_xform_quad_template(const working_string &source,const working_s
     inst=replace_identifier_token(inst,name[i],rat_s(val[i]));
   if (!khicas_equiv(inst,target))
     return false;
-  out="Compare coefficients:\n";
+  out="Compare coeffs:\n";
   out += "Expand target:\n";
   out += target+" = "+trim(expanded)+"\n";
   out += name[2]+" = "+rat_s(val[2])+", "+name[1]+" = "+rat_s(val[1])+", "+name[0]+" = "+rat_s(val[0])+"\n";
@@ -16039,10 +16045,10 @@ static bool try_pyth_pair(const working_string &a,const working_string &b,const 
   int c=0,cc=0,p=0;
   if (parse_const_trig_square_int(a,sumfn,minus,arg,cc) &&
       parse_int_func_pow(b,singlefn,c,targ,p) && p==2 && c==cc && compact(arg)==compact(targ))
-    return emit_trig_route("Pythagorean identities",b,out);
+    return emit_trig_route("Pyth identities",b,out);
   if (parse_int_func_pow(a,singlefn,c,arg,p) && p==2 &&
       parse_const_trig_square_int(b,sumfn,minus,targ,cc) && c==cc && compact(arg)==compact(targ))
-    return emit_trig_route("Pythagorean identities",b,out);
+    return emit_trig_route("Pyth identities",b,out);
   return false;
 }
 
@@ -16072,12 +16078,12 @@ static bool try_xform_trig_power_identity(const working_string &a,const working_
   if (parse_top_power(a,base,exp) && parse_small_int(exp,n) && n>1){
     if (parse_one_plus_trig_square(base,"tan",arg) &&
         parse_int_func_pow(b,"sec",c,targ,p) && c==1 && p==2*n && compact(arg)==compact(targ)){
-      out="Pythagorean identities:\n1+tan(u)^2=sec(u)^2\n"+b+"";
+      out="Pyth identities:\n1+tan(u)^2=sec(u)^2\n"+b+"";
       return true;
     }
     if (parse_one_plus_trig_square(base,"cot",arg) &&
         parse_int_func_pow(b,"cosec",c,targ,p) && c==1 && p==2*n && compact(arg)==compact(targ)){
-      out="Pythagorean identities:\n1+cot(u)^2=cosec(u)^2\n"+b+"";
+      out="Pyth identities:\n1+cot(u)^2=cosec(u)^2\n"+b+"";
       return true;
     }
   }
@@ -16230,7 +16236,7 @@ static bool try_xform_ellipse_clear_denominators(const working_string &a,const w
   working_string expected="("+num1+")"+rat_s(d2)+"+("+num2+")"+rat_s(d1)+"="+rat_s(prod);
   if (b!=compact(expected))
     return false;
-  out="Clear denominators:\n";
+  out="Clear denoms:\n";
   out += left+" = 1\n";
   out += "multiply by "+rat_s(prod)+"\n";
   out += b+"";
@@ -16390,9 +16396,9 @@ static working_string recip_rule_expr(const RecipRule &r,const working_string &a
 static bool try_recip_rule(const RecipRule &r,const working_string &a,const working_string &b,working_string &out){
   working_string arg;
   if (parse_unary_arg(a,r.fn,arg) && same_rewrite_expr(b,recip_rule_expr(r,arg)))
-    return emit_trig_route("Reciprocal identities",b,out);
+    return emit_trig_route("Reciprocal ids",b,out);
   if (parse_unary_arg(b,r.fn,arg) && same_rewrite_expr(a,recip_rule_expr(r,arg)))
-    return emit_trig_route("Reciprocal identities",b,out);
+    return emit_trig_route("Reciprocal ids",b,out);
   return false;
 }
 
@@ -16411,7 +16417,7 @@ static bool try_xform_trig_direct(const working_string &a,const working_string &
     return true;
   if (parse_linear_tan_cot_int(a,arg,tc,cc) && cc && tc==-cc &&
       parse_int_func_pow(b,"cot",c,targ,p) && p==1 && c==2*cc && double_arg(targ,arg)){
-    out="Reciprocal identities:\nCommon denominator:\nDouble-angle identities:\n";
+    out="Reciprocal ids:\nCommon denom:\nDouble-angle:\n";
     out += insert_coeff_stars(b)+"";
     return true;
   }
@@ -16429,10 +16435,10 @@ static bool try_xform_trig_direct(const working_string &a,const working_string &
       try_pyth_pair(a,b,"cot","cosec",false,out))
     return true;
   if (parse_sin2_cos2_sum_int(a,arg,cc) && parse_small_int(b,c) && c==cc){
-    return emit_trig_route("Pythagorean identities",b,out);
+    return emit_trig_route("Pyth identities",b,out);
   }
   if (parse_small_int(a,c) && parse_sin2_cos2_sum_int(b,arg,cc) && c==cc){
-    return emit_trig_route("Pythagorean identities",b,out);
+    return emit_trig_route("Pyth identities",b,out);
   }
   return try_pyth_pair(a,b,"sec","tan",true,out) ||
          try_pyth_pair(a,b,"cosec","cot",true,out);
@@ -16595,8 +16601,8 @@ static bool try_xform_linear_parameter_ratio(const working_string &start,
   if (!verify_xform_parameter(start,target,sol,lhs,rhs) &&
       !xform_numeric_parameter_ok(start,target,sol,lhs,rhs))
     return false;
-  out="Planner search:\n";
-  out += "Parameter isolation:\n";
+  out="Search:\n";
+  out += "Isolate param:\n";
   out += target+" = "+sol+"\n";
   out += "Substitute:\n";
   out += lhs+" = "+rhs+"\n";
@@ -16639,7 +16645,7 @@ static bool try_xform_constant_parameter_solve(const working_string &start,
     if (!verify_xform_parameter(start,target,v,lhs,rhs) &&
         !xform_numeric_parameter_ok(start,target,v,lhs,rhs))
       continue;
-    out="Planner search:\n";
+    out="Search:\n";
     out += "Solve parameter:\n";
     out += target+" = "+v+"\n";
     out += "Substitute:\n"+lhs+" = "+rhs+"\n";
@@ -16665,7 +16671,7 @@ static bool try_xform_solve_parameter_general(const working_string &start,
     if (!verify_xform_parameter(start,target,v,lhs,rhs) &&
         !xform_numeric_parameter_ok(start,target,v,lhs,rhs))
       continue;
-    out="Planner search:\nParameter isolation:\n";
+    out="Search:\nIsolate param:\n";
     out += target+" = "+v+"\nSubstitute:\n"+lhs+" = "+rhs+"\n";
     out += "";
     return true;
@@ -16868,7 +16874,7 @@ static bool try_xform_equation_clear_denominator(const working_string &start,
   if (!khicas_zero("("+cleared+")-("+target_expr+")") &&
       !khicas_zero("("+cleared+")+("+target_expr+")"))
     return false;
-  out="Planner search:\nClear denominators:\n";
+  out="Search:\nClear denoms:\n";
   out += insert_coeff_stars(target)+"";
   return true;
 }
@@ -17223,7 +17229,7 @@ static bool try_xform(const char *input,working_string &out){
   if (try_xform_quad_template(args[0],args[1],out))
     return true;
   if (try_xform_trig_direct(a,b,out)){
-    out="Planner search:\nRule: "+out;
+    out="Search:\nRule: "+out;
     return true;
   }
   if (b=="texpand("+a+")" || b=="factor("+a+")"){
@@ -17327,14 +17333,14 @@ static bool try_xform(const char *input,working_string &out){
     if (split_top_fraction(a,num,den) && parse_unary_arg(num,"ln",narg) &&
         parse_unary_arg(den,"ln",darg) && parse_log_call_ws(b,bb,argb) &&
         same_rewrite_expr(darg,bb) && same_rewrite_expr(narg,argb)){
-      out="Use change of base: log_a(u)=ln(u)/ln(a)\n";
+      out="Change base: log_a(u)=ln(u)/ln(a)\n";
       out += b+"";
       return true;
     }
     if (parse_log_call_ws(a,bb,argb) && split_top_fraction(b,num,den) &&
         parse_unary_arg(num,"ln",narg) && parse_unary_arg(den,"ln",darg) &&
         same_rewrite_expr(darg,bb) && same_rewrite_expr(narg,argb)){
-      out="Use change of base: log_a(u)=ln(u)/ln(a)\n";
+      out="Change base: log_a(u)=ln(u)/ln(a)\n";
       out += b+"";
       return true;
     }
@@ -17367,7 +17373,7 @@ static bool try_xform(const char *input,working_string &out){
   if (try_xform_rewrite_planner(args[0],args[1],out))
     return true;
   if (args[0].size()+args[1].size()>280){
-    out="Planner search:\nlast state: A";
+    out="Search:\nlast state: A";
     return true;
   }
   if (khicas_equiv(args[0],args[1])){
