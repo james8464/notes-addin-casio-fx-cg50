@@ -264,11 +264,7 @@ int ck_getkey(int * keyptr){
     Bdisp_PutDisp_DD ();
     drawCasioCasBorder();
     SetSetupSetting(0x14,0); // disable OFF
-    int ret=GetKeyWait_OS(&col,&row, KEYWAIT_HALTOFF_TIMEROFF, 0, 1 /* 0: handle menu key*/, &keycode) ;
-    if (ret!=KEYREP_KEYEVENT){
-      OS_InnerWait_ms(40);
-      continue;
-    }
+    int ret=GetKeyWait_OS(&col,&row, 2 /* KEYWAIT_HALTON_TIMERON*/, timeout_delay /*timeout_period*/, 1 /* 0: handle menu key*/, &keycode) ;
     if (!shiftstate && (col==4 && row==9)){
       set_menu_timer();
       GetKey(keyptr);
