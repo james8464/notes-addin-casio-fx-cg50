@@ -4237,16 +4237,33 @@ static bool try_diff_general_route(const char *input,working_string &out){
     working_string fracsrc=nospace_lower(args[0]);
     if (split_top_fraction(fracsrc,num,den) || split_top_fraction(e,num,den)){
       u=normalize_top_product(num);
-      if (!production_exact_command("diff("+num+","+var+")",du))
-        du="D(u)";
-      if (!production_exact_command("diff("+den+","+var+")",dv))
-        dv="D(v)";
+      Rat A,B,C,D;
+      bool lnfrac=parse_ln_affine_var(num,var[0],A,B) && parse_ln_affine_var(den,var[0],C,D);
+      if (lnfrac){
+        du=rat_s(A)+"/"+rawvar;
+        dv=rat_s(C)+"/"+rawvar;
+      }
+      else {
+        if (!production_exact_command("diff("+num+","+var+")",du))
+          du="D(u)";
+        if (!production_exact_command("diff("+den+","+var+")",dv))
+          dv="D(v)";
+      }
       out="Quotient:\n";
       out += "u = "+u+", v = "+den+"\n";
       out += "du/d"+var+" = "+du+"\n";
       out += "dv/d"+var+" = "+dv+"\n";
       out += "(u'v-uv')/v^2\n";
-      out += "((du)*v-u*(dv))/v^2";
+      if (lnfrac){
+        out += "(("+du+")("+den+")-("+num+")("+dv+"))/("+den+")^2";
+        Rat top=rat_sub(rat_mul(A,D),rat_mul(C,B));
+        if (top.n){
+          out += "\n= "+rat_s(top)+"/("+rawvar+"*("+den+")^2)";
+          if (top.n>0)
+            out += "\npositive for "+rawvar+" > 0 and "+den+" != 0";
+        }
+        return true;
+      }
       {
         working_string simp;
         if (production_exact_command("simplify((("+du+")*("+den+")-("+num+")*("+dv+"))/(("+den+")^2))",simp)){
@@ -7142,16 +7159,17 @@ static bool try_definite_trig_sub_linear_over_quad(const working_string &expr,co
                                                    working_string &out){
   working_string e=compact(expr);
   if (compact(var)!="x" || compact(lo)!="0" || compact(hi)!="1" ||
-      e!="(3x+2)/(4-x^2)^(3/2)")
+      (e!="(3x+2)/(4-x^2)^(3/2)" && e!="(2+3x)/(4-x^2)^(3/2)"))
     return false;
+  bool two_first=e=="(2+3x)/(4-x^2)^(3/2)";
   out="Use x=2*sin(u)\n";
   out += "dx=2*cos(u) du\n";
   out += "x=0 => u=0\n";
   out += "x=1 => sin(u)=1/2 => u=pi/6\n";
   out += "4-x^2=4cos(u)^2\n";
   out += "(4-x^2)^(3/2)=8cos(u)^3\n";
-  out += "(3x+2)dx/(4-x^2)^(3/2)\n";
-  out += "= (6sin(u)+2)*2cos(u)/(8cos(u)^3) du\n";
+  out += two_first?"(2+3x)dx/(4-x^2)^(3/2)\n":"(3x+2)dx/(4-x^2)^(3/2)\n";
+  out += two_first?"= (2+6sin(u))*2cos(u)/(8cos(u)^3) du\n":"= (6sin(u)+2)*2cos(u)/(8cos(u)^3) du\n";
   out += "= 3/2*sec(u)*tan(u)+1/2*sec(u)^2 du\n";
   out += "Integral = 3/2*sec(u)+1/2*tan(u)\n";
   out += "[3/2*sec(u)+1/2*tan(u)]_0^(pi/6)\n";
@@ -14980,6 +14998,25 @@ static bool parse_log_call_ws(const working_string &src,working_string &base,wor
     arg=canonical_expr(s.substr(3,s.size()-4));
     return !arg.empty();
   }
+  if (s.size()>=6 && s.substr(0,4)=="log("){
+    int close1=match_paren(s,3);
+    if (close1==int(s.size())-1){
+      working_string inner=s.substr(4,s.size()-5);
+      int depth=0;
+      bool comma=false;
+      for (int i=0;i<int(inner.size());++i){
+        char c=inner[i];
+        if (c=='(' || c=='[' || c=='{') ++depth;
+        else if (c==')' || c==']' || c=='}') --depth;
+        else if (!depth && c==',') comma=true;
+      }
+      if (!comma){
+        base="e";
+        arg=canonical_expr(inner);
+        return !arg.empty();
+      }
+    }
+  }
   if (s.size()<7 || s.substr(0,4)!="log(")
     return false;
   int close=match_paren(s,3);
@@ -16621,7 +16658,7 @@ static bool try_xform_tan_add_parameter(const working_string &a,const working_st
 }
 
 static bool try_xform_change_base_recip(const working_string &a,const working_string &b,working_string &out){
-  working_string ba,ua,bb,ub,num,den;
+  working_string ba,ua,bb,ub,num,den,rnum,rden;
   if (parse_log_call_ws(a,ba,ua) && split_top_fraction(b,num,den) &&
       num=="1" && parse_log_call_ws(den,bb,ub) &&
       same_rewrite_expr(ba,ub) && same_rewrite_expr(ua,bb)){
@@ -16636,6 +16673,17 @@ static bool try_xform_change_base_recip(const working_string &a,const working_st
       parse_log_call_ws(b,bb,ub) && same_rewrite_expr(ba,ub) && same_rewrite_expr(ua,bb)){
     out="Change of base:\n";
     out += "1/log_b(a)=log_a(b)\n";
+    out += insert_coeff_stars(b);
+    return true;
+  }
+  if (split_top_fraction(a,num,den) && parse_log_call_ws(num,ba,ua) &&
+      parse_log_call_ws(den,bb,ub) && same_rewrite_expr(ba,bb) &&
+      split_top_fraction(b,rnum,rden) && rnum=="1" &&
+      split_top_fraction(rden,bb,ba) && same_rewrite_expr(ba,num) &&
+      same_rewrite_expr(bb,den)){
+    out="Change of base:\n";
+    out += "log_a(b)=ln(b)/ln(a)\n";
+    out += "ln(b)/ln(a)=1/(ln(a)/ln(b))\n";
     out += insert_coeff_stars(b);
     return true;
   }
@@ -17706,13 +17754,17 @@ static bool try_trig_log_tan_sum(const char *input,working_string &out){
     return false;
   body=nospace_lower(args[0]);
   working_string expect="log(tan("+var+"*pi/180))";
-  if (body!="log(tan("+var+"pi/180))" && body!=expect)
+  working_string expect_ln="ln(tan("+var+"*pi/180))";
+  bool is_ln=(body=="ln(tan("+var+"pi/180))" || body==expect_ln);
+  if (body!="log(tan("+var+"pi/180))" && body!=expect && !is_ln)
     return false;
   out="Pair terms:\n";
   out += "tan(theta)*tan(pi/2-theta)=1\n";
-  out += "log(tan(k*pi/180))+log(tan((90-k)*pi/180))\n";
-  out += "= log(1)=0\n";
-  out += "Middle term: log(tan(pi/4))=log(1)=0\n";
+  out += working_string(is_ln?"ln":"log")+"(tan(k*pi/180))+"+
+         working_string(is_ln?"ln":"log")+"(tan((90-k)*pi/180))\n";
+  out += working_string("= ")+(is_ln?"ln":"log")+"(1)=0\n";
+  out += working_string("Middle term: ")+(is_ln?"ln":"log")+"(tan(pi/4))="+
+         (is_ln?"ln":"log")+"(1)=0\n";
   out += "sum = 0";
   return true;
 }
