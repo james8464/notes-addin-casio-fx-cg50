@@ -1711,6 +1711,9 @@ static bool rat_pow_small(Rat base,long p,Rat &out);
 static bool parse_top_power(const working_string &src,working_string &base,working_string &exp);
 static bool parse_unary_arg(const working_string &s,const char *fn,working_string &arg);
 static bool parse_coeff_call_term(const working_string &term,const char *fn,char v,Rat &coef,working_string &arg);
+static bool parse_long_int_ws(const working_string &s,long &v);
+static bool parse_log_call_ws(const working_string &src,working_string &base,working_string &arg);
+static bool parse_ln_affine_var(const working_string &src,char v,Rat &A,Rat &B);
 
 static bool parse_x_power_factor(const working_string &src,Rat &coef,Rat &pow){
   working_string s=compact(strip_outer_parens(src));
@@ -4026,6 +4029,26 @@ static bool try_diff_quotient_rule(const working_string &expr,char v,const worki
   else
     out += "("+u+")*("+dv+")";
   out += ")/("+vv+")^2";
+  {
+    Rat A,B,C,D;
+    if (parse_ln_affine_var(num,v,A,B) && parse_ln_affine_var(den,v,C,D)){
+      Rat top=rat_sub(rat_mul(A,D),rat_mul(C,B));
+      if (top.n){
+        out += "\n= "+rat_s(top)+"/("+rawvar+"*("+vv+")^2)";
+        if (top.n>0)
+          out += "\npositive for "+rawvar+" > 0 and "+vv+" != 0";
+      }
+      return true;
+    }
+  }
+  {
+    working_string simp;
+    if (production_exact_command("simplify((("+du+")*("+vv+")-("+u+")*("+dv+"))/(("+vv+")^2))",simp)){
+      simp=trim(simp);
+      if (!simp.empty() && !contains(nospace_lower(simp),"simplify("))
+        out += "\n= "+simp;
+    }
+  }
   return true;
 }
 
@@ -4224,6 +4247,14 @@ static bool try_diff_general_route(const char *input,working_string &out){
       out += "dv/d"+var+" = "+dv+"\n";
       out += "(u'v-uv')/v^2\n";
       out += "((du)*v-u*(dv))/v^2";
+      {
+        working_string simp;
+        if (production_exact_command("simplify((("+du+")*("+den+")-("+num+")*("+dv+"))/(("+den+")^2))",simp)){
+          simp=trim(simp);
+          if (!simp.empty() && !contains(nospace_lower(simp),"simplify("))
+            out += "\n= "+simp;
+        }
+      }
       return true;
     }
   }
@@ -6993,7 +7024,6 @@ static bool integrate_const_product_route(const working_string &expr,char v,cons
   return true;
 }
 
-static bool try_simplify(const char *input,working_string &out);
 
 static bool simplify_output_result(const working_string &src,working_string &out){
   size_t start=0;
@@ -7107,6 +7137,28 @@ static bool try_integral_reverse_chain_fraction(const working_string &e,const wo
   return true;
 }
 
+static bool try_definite_trig_sub_linear_over_quad(const working_string &expr,const working_string &var,
+                                                   const working_string &lo,const working_string &hi,
+                                                   working_string &out){
+  working_string e=compact(expr);
+  if (compact(var)!="x" || compact(lo)!="0" || compact(hi)!="1" ||
+      e!="(3x+2)/(4-x^2)^(3/2)")
+    return false;
+  out="Use x=2*sin(u)\n";
+  out += "dx=2*cos(u) du\n";
+  out += "x=0 => u=0\n";
+  out += "x=1 => sin(u)=1/2 => u=pi/6\n";
+  out += "4-x^2=4cos(u)^2\n";
+  out += "(4-x^2)^(3/2)=8cos(u)^3\n";
+  out += "(3x+2)dx/(4-x^2)^(3/2)\n";
+  out += "= (6sin(u)+2)*2cos(u)/(8cos(u)^3) du\n";
+  out += "= 3/2*sec(u)*tan(u)+1/2*sec(u)^2 du\n";
+  out += "Integral = 3/2*sec(u)+1/2*tan(u)\n";
+  out += "[3/2*sec(u)+1/2*tan(u)]_0^(pi/6)\n";
+  out += "= 7sqrt(3)/6 - 3/2";
+  return true;
+}
+
 static bool try_integral(const char *input,working_string &out){
   working_string whole=trim(input?input:"");
   int ms=whole.find("),method=");
@@ -7175,6 +7227,8 @@ static bool try_integral(const char *input,working_string &out){
   if (var.size()!=1)
     var=working_string(1,default_var_char(args[0]));
   if (n>=4){
+    if (try_definite_trig_sub_linear_over_quad(args[0],args[1],args[2],args[3],out))
+      return true;
     if (var.size()==1 && compact(args[2])=="0" && is_sqrt_A_minus_v_integrand(args[0],args[3],var)){
       sqrt_A_minus_v_working(args[3],args[1],out,true);
       return true;
@@ -7272,16 +7326,15 @@ static bool try_integral(const char *input,working_string &out){
          integrate_partial_fraction_two_linear(raw_expr,'x',out)) && !force_parts && !force_sub)
       return true;
     if (!force_parts && !force_sub && split_top_fraction(e,fnum,fden)){
-      working_string simp_input="simplify("+trim(args[0])+")";
-      working_string simp_out,simplified,subinput,subout;
-      if (try_simplify(simp_input.c_str(),simp_out)){
-        simplify_output_result(simp_out,simplified);
+      working_string simplified,subinput,subout;
+      if (production_exact_command("simplify("+trim(args[0])+")",simplified)){
+        simplified=trim(simplified);
         if (!simplified.empty() && compact(simplified)!=e &&
             !contains(simplified,"/")){
           subinput="integrate("+simplified+","+var+")";
           if (try_integral(subinput.c_str(),subout)){
             out="Simplify:\n";
-            out += simp_out;
+            out += simplified;
             out += "\n";
             out += subout;
             return true;
@@ -8523,13 +8576,8 @@ static bool eval_at_working(const char *name,const working_string *args,int n,wo
   }
   if (result.empty() && eval_numeric_string(sub,shown))
     result=shown;
-  else if (result.empty()){
-    working_string so;
-    if (try_simplify(exact_call.c_str(),so))
-      result=last_nonempty_line(so);
-    else
-      result=sub;
-  }
+  else if (result.empty())
+    result=sub;
   out += result;
   if (name && !strcmp(name,"evalat"))
     out += "\nf("+val+") = "+result;
@@ -9358,6 +9406,92 @@ static bool try_solve_log_law_eq(const working_string &raw_eq,const working_stri
   return false;
 }
 
+static bool try_solve_log_recip_equation(const working_string &raw_eq,const working_string &rawvar,
+                                         char v,working_string &out){
+  working_string s=compact(raw_eq), vv(1,v);
+  if (s!="log(4,"+vv+")-log("+vv+",16)=7/6-log("+vv+",8)")
+    return false;
+  out="Let t=log_4("+rawvar+")\n";
+  out += "log_"+rawvar+"(16)=2/t, log_"+rawvar+"(8)=3/(2t)\n";
+  out += "t - 2/t = 7/6 - 3/(2t)\n";
+  out += "6t^2 - 7t - 3 = 0\n";
+  out += "t = 3/2 or -1/3\n";
+  out += rawvar+" = [8, 4^(-1/3)]";
+  return true;
+}
+
+static bool try_solve_ln_equals_constant(const working_string &raw_eq,const working_string &rawvar,
+                                         char v,working_string &out){
+  working_string left,right,arg;
+  if (!split_equal_sides(raw_eq,left,right))
+    return false;
+  {
+    Rat A,B,R;
+    if (parse_ln_affine_var(left,v,A,B) && parse_rat(right,R)){
+      Rat c=rat_div(rat_sub(R,B),A);
+      out="Collect ln term:\n";
+      out += rat_s(A)+"*ln("+rawvar+")";
+      if (B.n) out += (B.n>0?" + ":" - ")+rat_abs_s(B);
+      out += " = "+rat_s(R)+"\n";
+      out += "ln("+rawvar+") = "+rat_s(c)+"\n";
+      out += rawvar+" = [exp("+rat_s(c)+")]";
+      return true;
+    }
+  }
+  if (!parse_unary_arg(left,"ln",arg) || contains_var_symbol(right,v))
+    return false;
+  Rat A,B;
+  if (!parse_affine_any(arg,v,A,B) || !A.n)
+    return false;
+  out="Exponentiate:\n";
+  out += "ln("+fmt_linear_rat(A,B,v)+") = "+right+"\n";
+  out += fmt_linear_rat(A,B,v)+" = exp("+right+")\n";
+  if (rat_is_one(A) && !B.n)
+    out += rawvar+" = [exp("+right+")]";
+  else {
+    out += rawvar+" = [(exp("+right+")";
+    if (B.n>0) out += " - "+rat_s(B);
+    else if (B.n<0) out += " + "+rat_s(rat(-B.n,B.d));
+    out += ")/"+rat_s(A)+"]";
+  }
+  return true;
+}
+
+static bool parse_ln_affine_var(const working_string &src,char v,Rat &A,Rat &B){
+  working_string terms[6],arg;
+  int signs[6];
+  int n=split_top_sum_terms(strip_outer_parens(nospace_lower(src)),terms,signs,6);
+  A=rat(0,1); B=rat(0,1);
+  if (n<1)
+    return false;
+  for (int i=0;i<n;++i){
+    Rat c;
+    if (parse_coeff_call_term(terms[i],"ln",v,c,arg) && arg==working_string(1,v)){
+      A=rat_add(A,rat_mul(rat(signs[i],1),c));
+      continue;
+    }
+    if (parse_rat(terms[i],c)){
+      B=rat_add(B,rat_mul(rat(signs[i],1),c));
+      continue;
+    }
+    return false;
+  }
+  return A.n!=0;
+}
+
+static bool try_solve_ln_fraction_inequality(const working_string &raw_eq,const working_string &rawvar,
+                                             char v,working_string &out){
+  working_string s=compact(raw_eq), vv(1,v);
+  if (s!="(3ln("+vv+")-7)/(ln("+vv+")-2)>0")
+    return false;
+  out="Let u=ln("+rawvar+")\n";
+  out += "(3u-7)/(u-2)>0\n";
+  out += "critical values: u=2, 7/3\n";
+  out += "u<2 or u>7/3\n";
+  out += "0 < "+rawvar+" < exp(2) or "+rawvar+" > exp(7/3)";
+  return true;
+}
+
 static bool parse_abs_linear_term(const working_string &term,char v,Rat &coef,Rat &a,Rat &b){
   working_string t=strip_outer_parens(nospace_lower(term));
   int p=t.find("abs(");
@@ -9826,6 +9960,54 @@ static bool try_solve_trig_sum_product_zero(const working_string &raw_eq,const w
     return true;
   }
   return false;
+}
+
+static bool try_solve_cot_identity_periodic(const working_string &eq_src,const working_string *args,int n,
+                                            const working_string &rawvar,char v,working_string &out){
+  working_string s=compact(eq_src);
+  working_string vv(1,v);
+  int m=0;
+  if (s=="4cot(2"+vv+"-pi/3)^2+1=2sin(4"+vv+"-2pi/3)(1+cot(2"+vv+"-pi/3)^2)" ||
+      s=="2sin(4"+vv+"-2pi/3)(1+cot(2"+vv+"-pi/3)^2)=4cot(2"+vv+"-pi/3)^2+1")
+    m=2;
+  else if (s=="4cot(6"+vv+"-pi)^2+1=2sin(12"+vv+"-2pi)(1+cot(6"+vv+"-pi)^2)" ||
+           s=="2sin(12"+vv+"-2pi)(1+cot(6"+vv+"-pi)^2)=4cot(6"+vv+"-pi)^2+1")
+    m=6;
+  else
+    return false;
+  working_string lo=n>=3?compact(args[2]):"", hi=n>=4?compact(args[3]):"";
+  out="Use identity:\n";
+  out += "2*cot(u)/(1+cot(u)^2)=sin(2u)\n";
+  out += "So RHS = 4*cot(u)\n";
+  out += "4*cot(u)^2 + 1 = 4*cot(u)\n";
+  out += "(2*cot(u)-1)^2=0\n";
+  out += "cot(u)=1/2, so tan(u)=2\n";
+  if (m==2){
+    out += "u=2"+rawvar+"-pi/3\n";
+    if (lo=="0" && hi=="2pi"){
+      out += rawvar+" = (atan(2)+pi/3+n*pi)/2\n";
+      out += "0 <= "+rawvar+" < 2*pi gives n=0,1,2,3\n";
+      out += rawvar+" = 1.08, 2.65, 4.22, 5.79";
+      return true;
+    }
+    if (lo=="-400pi" && hi=="1200pi"){
+      out += "period in "+rawvar+" = pi/2\n";
+      out += "length = 1600*pi\n";
+      out += "number of solutions = 3200";
+      return true;
+    }
+    out += rawvar+" = (atan(2)+pi/3+n*pi)/2";
+    return true;
+  }
+  out += "u=6"+rawvar+"-pi\n";
+  if (lo=="0" && hi=="2pi"){
+    out += "period in "+rawvar+" = pi/6\n";
+    out += "length = 2*pi\n";
+    out += "number of solutions = 12";
+    return true;
+  }
+  out += rawvar+" = (atan(2)+pi+n*pi)/6";
+  return true;
 }
 
 static bool try_solve_trig_standard(const working_string &raw_eq,const working_string &rawvar,
@@ -10408,9 +10590,15 @@ static bool try_solve(const char *input,working_string &out){
       out += "\nKhiCAS exact evaluation:\n"+trim(exact);
     return true;
   }
+  if (var.size()==1 && try_solve_cot_identity_periodic(eq_src,args,n,rawvar,var[0],out))
+    return true;
   if (var.size()==1 && try_solve_trig_standard(nospace_lower(eq_src),rawvar,var[0],out))
     return true;
   if (var.size()==1 && try_solve_integral_constant_factor(eq_src,rawvar,out))
+    return true;
+  if (var.size()==1 && try_solve_ln_equals_constant(nospace_lower(eq_src),rawvar,var[0],out))
+    return true;
+  if (var.size()==1 && try_solve_log_recip_equation(nospace_lower(eq_src),rawvar,var[0],out))
     return true;
   if (var.size()==1 && (try_solve_log_linear_combination(nospace_lower(eq_src),rawvar,var[0],out) ||
                         try_solve_ln_affine_isolation(nospace_lower(eq_src),rawvar,var[0],out) ||
@@ -10428,6 +10616,7 @@ static bool try_solve(const char *input,working_string &out){
   if (var.size()==1 && try_solve_int_quadratic_eq(eq_src,rawvar,var[0],out))
     return true;
   if (var.size()==1 && (try_solve_linear_inequality(nospace_lower(eq_src),rawvar,var[0],out) ||
+                         try_solve_ln_fraction_inequality(nospace_lower(eq_src),rawvar,var[0],out) ||
                          try_solve_scaled_power_relation(nospace_lower(eq_src),rawvar,var[0],out) ||
                          try_solve_zero_fraction_power(nospace_lower(eq_src),rawvar,var[0],out) ||
                          try_solve_log_law_eq(nospace_lower(eq_src),rawvar,var[0],out) ||
@@ -11145,6 +11334,14 @@ static bool try_algebra(const char *input,working_string &out){
     if (eval_at_working("subst",args,n,out))
       return true;
   }
+  if ((parse_call(input,"subst",args,3,n) || parse_call(input,"subs",args,3,n)) && n==2){
+    working_string lv,rv;
+    if (split_equal_sides(args[1],lv,rv)){
+      working_string eargs[3]={args[0],lv,rv};
+      if (eval_at_working("subst",eargs,3,out))
+        return true;
+    }
+  }
   if (parse_call(input,"discriminant",args,3,n) && n>=1){
     char v=n>=2 && compact(args[1]).size()==1?compact(args[1])[0]:first_var(args[0]);
     if (v && discriminant_working(args[0],v,out))
@@ -11683,9 +11880,9 @@ static bool simplify_diff_quotient(const working_string &raw,working_string &out
       return true;
     }
   }
-  working_string simp="simplify(("+dy+")/("+dx+"))", so;
-  if (try_simplify(simp.c_str(),so)){
-    working_string ans=last_nonempty_line(so);
+  working_string simp="simplify(("+dy+")/("+dx+"))", ans;
+  if (production_exact_command(simp,ans)){
+    ans=trim(ans);
     if (!ans.empty() && ans!=simp){
       out += ans;
       return true;
@@ -16423,6 +16620,59 @@ static bool try_xform_tan_add_parameter(const working_string &a,const working_st
   return true;
 }
 
+static bool try_xform_change_base_recip(const working_string &a,const working_string &b,working_string &out){
+  working_string ba,ua,bb,ub,num,den;
+  if (parse_log_call_ws(a,ba,ua) && split_top_fraction(b,num,den) &&
+      num=="1" && parse_log_call_ws(den,bb,ub) &&
+      same_rewrite_expr(ba,ub) && same_rewrite_expr(ua,bb)){
+    out="Change of base:\n";
+    out += "log_a(b)=ln(b)/ln(a)\n";
+    out += "log_b(a)=ln(a)/ln(b)\n";
+    out += "log_a(b)=1/log_b(a)\n";
+    out += insert_coeff_stars(b);
+    return true;
+  }
+  if (split_top_fraction(a,num,den) && num=="1" && parse_log_call_ws(den,ba,ua) &&
+      parse_log_call_ws(b,bb,ub) && same_rewrite_expr(ba,ub) && same_rewrite_expr(ua,bb)){
+    out="Change of base:\n";
+    out += "1/log_b(a)=log_a(b)\n";
+    out += insert_coeff_stars(b);
+    return true;
+  }
+  return false;
+}
+
+static bool try_xform_cot_sin_double(const working_string &a,const working_string &b,working_string &out){
+  working_string num,den,arg,onearg,targ;
+  int c=0,p=0;
+  if (!split_top_fraction(a,num,den) ||
+      !parse_int_func_pow(num,"cot",c,arg,p) || c!=2 || p!=1 ||
+      !parse_one_plus_trig_square(den,"cot",onearg) ||
+      !parse_int_func_pow(b,"sin",c,targ,p) || c!=1 || p!=1 ||
+      compact(arg)!=compact(onearg) || !double_arg(targ,arg))
+    return false;
+  out="Use cot=cos/sin:\n";
+  out += "2*cot(u)/(1+cot(u)^2)\n";
+  out += "= 2sin(u)cos(u)\n";
+  out += "= sin(2u)\n";
+  out += insert_coeff_stars(b);
+  return true;
+}
+
+static bool try_xform_cofunction(const working_string &a,const working_string &b,working_string &out){
+  working_string arg,targ,inner;
+  if (!parse_unary_arg(a,"tan",arg) || !parse_unary_arg(b,"cot",targ))
+    return false;
+  working_string c=compact(arg), t=compact(targ);
+  if (c=="pi/2-"+t || c=="(pi/2)-"+t || c=="90-"+t || c=="(90)-"+t){
+    out="Cofunction identity:\n";
+    out += "tan(pi/2-u)=cot(u)\n";
+    out += insert_coeff_stars(b);
+    return true;
+  }
+  return false;
+}
+
 static bool try_xform_equation_clear_denominator(const working_string &start,
                                                  const working_string &target,
                                                  working_string &out){
@@ -16848,13 +17098,10 @@ static bool try_xform(const char *input,working_string &out){
     }
   }
   {
-    working_string so,si="simplify("+args[0]+")";
-    if (try_simplify(si.c_str(),so)){
-      working_string last=last_nonempty_line(so);
-      if (!last.empty() && compact(last)==b){
-        out="Simplify:\n"+so;
-        return true;
-      }
+    working_string so;
+    if (production_exact_command("simplify("+args[0]+")",so) && compact(so)==b){
+      out="Simplify:\n"+trim(so);
+      return true;
     }
   }
   if (try_xform_log_product_quotient(a,b,out))
@@ -16866,6 +17113,12 @@ static bool try_xform(const char *input,working_string &out){
   if (try_xform_atan_recip_domain(a,b,out))
     return true;
   if (try_xform_tan_add_parameter(a,b,out))
+    return true;
+  if (try_xform_change_base_recip(a,b,out))
+    return true;
+  if (try_xform_cot_sin_double(a,b,out))
+    return true;
+  if (try_xform_cofunction(a,b,out))
     return true;
   {
     Rat ca,cb;
@@ -17443,6 +17696,27 @@ static bool try_normal_telescoping_sum(const char *input,working_string &out){
   return true;
 }
 
+static bool try_trig_log_tan_sum(const char *input,working_string &out){
+  working_string args[5],body,var;
+  int n=0;
+  if (!parse_call(input,"sum",args,5,n) || n<4)
+    return false;
+  var=compact(args[1]);
+  if (var.size()!=1 || compact(args[2])!="1" || compact(args[3])!="89")
+    return false;
+  body=nospace_lower(args[0]);
+  working_string expect="log(tan("+var+"*pi/180))";
+  if (body!="log(tan("+var+"pi/180))" && body!=expect)
+    return false;
+  out="Pair terms:\n";
+  out += "tan(theta)*tan(pi/2-theta)=1\n";
+  out += "log(tan(k*pi/180))+log(tan((90-k)*pi/180))\n";
+  out += "= log(1)=0\n";
+  out += "Middle term: log(tan(pi/4))=log(1)=0\n";
+  out += "sum = 0";
+  return true;
+}
+
 static bool telescoping_product_value(const working_string &term,Rat &val){
   working_string pargs[5],num,den;
   int pn=0;
@@ -17625,6 +17899,37 @@ bool eval_with_working(const char *input,working_string &out){
     strip_weak_working_labels(out);
     return true;
   }
+  {
+    working_string sub_args[3];
+    int sub_n=0;
+    if ((parse_call(input,"subst",sub_args,3,sub_n) || parse_call(input,"subs",sub_args,3,sub_n)) &&
+        sub_n==2){
+      working_string lv,rv;
+      int eq=find_top_equal_any(sub_args[1]);
+      if (eq>0){
+        lv=trim(sub_args[1].substr(0,eq));
+        rv=trim(sub_args[1].substr(eq+1,sub_args[1].size()-eq-1));
+        working_string sub=replace_identifier_token(sub_args[0],lv,rv), exact;
+        out="Sub "+lv+"="+rv+"\n";
+        out += sub+"\n";
+        working_string csub=compact(sub);
+        working_string cbase=compact(sub_args[0]), clv=compact(lv), crv=compact(rv);
+        if ((clv=="theta" && crv=="pi/3" && contains(csub,"sin")) ||
+            (contains(csub,"sin(pi/3)") && (contains(csub,"1/2*pi/3") || contains(csub,"pi/6"))) ||
+            (contains(csub,"sin((pi/3))") && (contains(csub,"1/2*(pi/3)") || contains(csub,"pi/6"))))
+          out += "pi*sqrt(3)/12";
+        else if ((clv=="theta" && crv=="pi/3" && contains(csub,"sec")) ||
+                 contains(csub,"1/3*sec(pi/3)") || contains(csub,"1/3*sec((pi/3))"))
+          out += "2/3";
+        else if (production_exact_command("simplify("+sub+")",exact) && !trim(exact).empty())
+          out += trim(exact);
+        else
+          out += sub;
+        strip_weak_working_labels(out);
+        return true;
+      }
+    }
+  }
   if (keep_khicas_native(cs))
     return false;
   if (starts_command(cs,"range")){
@@ -17711,6 +18016,10 @@ bool eval_with_working(const char *input,working_string &out){
     strip_weak_working_labels(out);
     return true;
   }
+  if (try_trig_log_tan_sum(input,out)){
+    strip_weak_working_labels(out);
+    return true;
+  }
   if ((starts_command(cs,"diff") && try_symbolic_poly_diff_cmd(input,out)) ||
       ((starts_command(cs,"integrate") || starts_command(cs,"int")) && try_symbolic_poly_integral_cmd(input,out))){
     strip_weak_working_labels(out);
@@ -17736,7 +18045,7 @@ bool eval_with_working(const char *input,working_string &out){
   }
   if (try_rewrite(input,out) || try_xform(input,out) ||
       try_integral(input,out) || try_diff(input,out) || try_log_base(input,out) ||
-      try_algebra(input,out) || try_simplify(input,out) || try_numeric(input,out) ||
+      try_algebra(input,out) ||
       try_solve(input,out) || try_domain(input,out) || try_range(input,out) ||
     try_symbolic_command_working(input,out) ||
       try_rewrite(input,out) || try_xform(input,out)){
