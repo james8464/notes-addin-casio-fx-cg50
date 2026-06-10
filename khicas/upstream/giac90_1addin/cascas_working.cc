@@ -42,6 +42,10 @@ static working_string lower(const working_string &s){
   return r;
 }
 
+static working_string normalize_input_aliases(working_string r){
+  return replace_all_literal(r,"csc(","cosec(");
+}
+
 static working_string compact(const working_string &s){
   working_string r;
   for (int i=0;i<int(s.size());++i){
@@ -49,7 +53,7 @@ static working_string compact(const working_string &s){
     if (!isspace((unsigned char)c) && c!='*')
       r += char(tolower((unsigned char)c));
   }
-  return r;
+  return normalize_input_aliases(r);
 }
 
 static bool production_exact_command(const working_string &expr,working_string &out){
@@ -316,7 +320,7 @@ static working_string nospace_lower(const working_string &s){
   for (int i=0;i<int(s.size());++i)
     if (!isspace((unsigned char)s[i]))
       r += char(tolower((unsigned char)s[i]));
-  return r;
+  return normalize_input_aliases(r);
 }
 
 static bool contains(const working_string &s,const char *needle){
@@ -4245,9 +4249,9 @@ static bool try_diff_general_route(const char *input,working_string &out){
       }
       else {
         if (!production_exact_command("diff("+num+","+var+")",du))
-          du="D(u)";
+          return false;
         if (!production_exact_command("diff("+den+","+var+")",dv))
-          dv="D(v)";
+          return false;
       }
       out="Quotient:\n";
       out += "u = "+u+", v = "+den+"\n";
@@ -11378,7 +11382,7 @@ static bool try_algebra(const char *input,working_string &out){
       return true;
     }
     out += "E1-E2 = "+(d.empty()?working_string("not 0"):d)+"\n";
-    out += "not equivalent";
+    out += "different";
     return true;
   }
   if (parse_call(input,"factor",args,3,n) && n>=1){
@@ -16800,13 +16804,11 @@ static bool try_xform_trig_recip_product_expand(const working_string &rawa,
     res="0";
   if (!same_rewrite_expr(res,rawb) && !khicas_equiv(res,rawb))
     return false;
-  out="Expand brackets:\n";
+  out="Expand:\n";
   out += insert_coeff_stars(rawa)+"\n";
-  out += "Use identities:\n";
-  out += "sin*cosec=1, cos*sec=1\n";
-  out += "cos*cosec=cot, sin*sec=tan\n";
+  out += "Use reciprocal identities\n";
   out += insert_coeff_stars(res)+"\n";
-  out += "Target form:\n"+insert_coeff_stars(rawb);
+  out += "Target:\n"+insert_coeff_stars(rawb);
   return true;
 }
 
@@ -16905,17 +16907,17 @@ static bool try_khicas_exact_route(const char *input,working_string &out){
     if (split_equal_sides(cur,l,r))
       cur="("+l+")-("+r+")";
   }
-  out=cmd+" method:\n";
+  out=cmd+":\n";
   if (!cur.empty()){
     static const char *lab[]={"simplify","normal","texpand","simplify"};
     for (int i=0;i<4;++i){
       if (exact_rewrite_clean(cur,i,cand) && compact(cand)!=compact(cur) && khicas_equiv(cur,cand)){
-        out += "trace:\n"+working_string(lab[i])+":\n"+cand+"\n";
+        out += working_string(lab[i])+":\n"+cand+"\n";
         cur=cand;
       }
     }
   }
-  out += "Answer:\n"+trim(ans)+"";
+  out += "Ans:\n"+trim(ans)+"";
   return true;
 }
 
@@ -17011,19 +17013,12 @@ static bool try_xform_rewrite_planner(const working_string &start,const working_
 }
 
 static working_string xform_failure_report(const working_string &start,const working_string &target){
-  working_string exact;
   working_string out="Planner search:\n";
   out += "No exact route\n";
   out += "Start:\n";
   out += insert_coeff_stars(start)+"\n";
   out += "Target:\n";
-  out += insert_coeff_stars(target)+"\n";
-  out += "Simplified start:\n";
-  if (production_exact_command("simplify("+start+")",exact) && !trim(exact).empty())
-    out += trim(exact)+"\n";
-  else
-    out += "?\n";
-  out += "Check target";
+  out += insert_coeff_stars(target);
   return out;
 }
 
@@ -17729,12 +17724,18 @@ static bool parse_power_diff(const working_string &src,working_string &u,working
   int sg[2];
   if (split_top_sum_terms(strip_outer_parens(nospace_lower(src)),t,sg,2)!=2 ||
       sg[0]!=1 || sg[1]!=-1 ||
-      !parse_top_power(t[0],b1,e1) || !parse_top_power(t[1],b2,e2) ||
-      !parse_long_int_ws(e1,p) || e2!=e1 || p<2)
+      !parse_top_power(t[0],b1,e1) || !parse_long_int_ws(e1,p) || p<2)
+    return false;
+  if (t[1]=="1"){
+    b2="1";
+    e2=e1;
+  }
+  else if (!parse_top_power(t[1],b2,e2) || e2!=e1)
     return false;
   u=strip_outer_parens(b1);
   v=strip_outer_parens(b2);
-  return u.size()==1 && v.size()==1 && isalpha((unsigned char)u[0]) && isalpha((unsigned char)v[0]);
+  return u.size()==1 && isalpha((unsigned char)u[0]) &&
+         ((v.size()==1 && isalpha((unsigned char)v[0])) || v=="1");
 }
 
 static working_string power_diff_sum(const working_string &u,const working_string &v,long p){
@@ -17749,6 +17750,13 @@ static bool try_normal_power_difference_quotient(const char *input,working_strin
       !split_top_fraction(strip_outer_parens(nospace_lower(args[0])),num,den) ||
       !parse_power_diff(num,u,v,p) || den!=u+"-"+v)
     return false;
+  if (v=="1"){
+    working_string q=p==2?u+"+1":(p==3?u+"^2+"+u+"+1":u+"^(n-1)+...+1");
+    out="Diff powers:\n";
+    out += u+"^"+int_s(p)+" - 1 = ("+u+"-1)("+q+")\n";
+    out += q;
+    return true;
+  }
   out="Factor theorem:\n";
   out += "("+u+"^n-"+v+"^n)/("+u+"-"+v+")\n";
   out += power_diff_sum(u,v,p)+"";
@@ -17762,7 +17770,7 @@ static bool try_factor_power_difference(const char *input,working_string &out){
   if (!parse_call(input,"factor",args,2,n) || n!=1 ||
       !parse_power_diff(args[0],u,v,p))
     return false;
-  out="Difference of powers:\n";
+  out="Diff powers:\n";
   out += u+"^n - "+v+"^n = ("+u+"-"+v+")*sum("+u+"^(n-1-k)*"+v+"^k)\n";
   out += "("+u+"-"+v+")*"+power_diff_sum(u,v,p)+"";
   return true;
