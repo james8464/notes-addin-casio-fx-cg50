@@ -13358,6 +13358,9 @@ static working_string range_symbolic_bound(const working_string &shift,Rat add){
   if (shift.empty())
     return rat_s(add);
   working_string clean=compact(shift);
+  Rat q;
+  if (parse_rat(clean,q))
+    return rat_s(rat_add(q,add));
   if (!add.n)
     return spaced_pm(clean);
   return spaced_pm(compact(join_sum(clean,rat_s(add))));
@@ -13395,6 +13398,57 @@ static bool try_range_exp_shift(const working_string &e,char rv,working_string &
   out += "exp(u) > 0\n";
   out += coef.n>0 ? "y > " : "y < ";
   out += range_symbolic_bound(shift,rat(0,1))+"";
+  return true;
+}
+
+static bool try_range_shifted_base_function(const working_string &e,char rv,working_string &out){
+  working_string terms[4],arg,shift,fn;
+  int signs[4],n=split_top_sum_terms(e,terms,signs,4),got=0;
+  Rat coef=rat(0,1);
+  if (n<1)
+    return false;
+  for (int i=0;i<n;++i){
+    Rat q;
+    if (!contains_var_symbol(terms[i],rv)){
+      shift=join_sum(shift,signed_part(signs[i],terms[i]));
+      continue;
+    }
+    const char *names[]={"exp","sqrt","abs","tan","cot","sec","cosec"};
+    bool hit=false;
+    for (int j=0;j<7 && !hit;++j){
+      working_string a;
+      if (parse_coeff_call_term(terms[i],names[j],rv,q,a)){
+        fn=names[j];
+        arg=a;
+        coef=rat_mul(q,rat(signs[i],1));
+        hit=true;
+      }
+    }
+    if (!hit || got++ || !coef.n || !contains_var_symbol(arg,rv))
+      return false;
+  }
+  if (!got)
+    return false;
+  out="Range:\n";
+  if (fn=="tan" || fn=="cot"){
+    out += fn+"(u): all real\nall real";
+    return true;
+  }
+  if (fn=="sec" || fn=="cosec"){
+    Rat a=rat_abs_v(coef);
+    out += fn+"(u): y <= -1 or y >= 1\n";
+    out += "scale/shift\n";
+    out += "y <= "+range_symbolic_bound(shift,rat(-a.n,a.d))+
+           " or y >= "+range_symbolic_bound(shift,a);
+    return true;
+  }
+  out += fn+"(u)";
+  out += fn=="exp" ? " > 0\n" : " >= 0\n";
+  out += "scale/shift\n";
+  if (coef.n>0)
+    out += working_string("y ")+(fn=="exp"?"> ":">= ")+range_symbolic_bound(shift,rat(0,1));
+  else
+    out += working_string("y ")+(fn=="exp"?"< ":"<= ")+range_symbolic_bound(shift,rat(0,1));
   return true;
 }
 
@@ -14575,6 +14629,8 @@ static bool try_range(const char *input,working_string &out){
     if (n<4 && try_range_abs_over_positive_quad(e,rv,out))
       return true;
     if (n<4 && try_range_abs_sin_plus_cos(e,rv,out))
+      return true;
+    if (n<4 && try_range_shifted_base_function(e,rv,out))
       return true;
     if (!contains(e,"abs(") && !split_top_fraction(e,num,den) &&
         contains(e,"exp(") && try_range_all_real_constrained(e,rv,out))
@@ -16707,6 +16763,53 @@ static bool try_xform_cot_sin_double(const working_string &a,const working_strin
   return true;
 }
 
+static bool trig_recip_product_term(const working_string &a,const working_string &b,working_string &res){
+  working_string aa,bb;
+  if (parse_unary_arg(a,"sin",aa) && (parse_unary_arg(b,"cosec",bb) || parse_unary_arg(b,"csc",bb)) && same_rewrite_expr(aa,bb)){ res="1"; return true; }
+  if ((parse_unary_arg(a,"cosec",aa) || parse_unary_arg(a,"csc",aa)) && parse_unary_arg(b,"sin",bb) && same_rewrite_expr(aa,bb)){ res="1"; return true; }
+  if (parse_unary_arg(a,"cos",aa) && parse_unary_arg(b,"sec",bb) && same_rewrite_expr(aa,bb)){ res="1"; return true; }
+  if (parse_unary_arg(a,"sec",aa) && parse_unary_arg(b,"cos",bb) && same_rewrite_expr(aa,bb)){ res="1"; return true; }
+  if (parse_unary_arg(a,"cos",aa) && (parse_unary_arg(b,"cosec",bb) || parse_unary_arg(b,"csc",bb)) && same_rewrite_expr(aa,bb)){ res="cot("+aa+")"; return true; }
+  if ((parse_unary_arg(a,"cosec",aa) || parse_unary_arg(a,"csc",aa)) && parse_unary_arg(b,"cos",bb) && same_rewrite_expr(aa,bb)){ res="cot("+aa+")"; return true; }
+  if (parse_unary_arg(a,"sin",aa) && parse_unary_arg(b,"sec",bb) && same_rewrite_expr(aa,bb)){ res="tan("+aa+")"; return true; }
+  if (parse_unary_arg(a,"sec",aa) && parse_unary_arg(b,"sin",bb) && same_rewrite_expr(aa,bb)){ res="tan("+aa+")"; return true; }
+  return false;
+}
+
+static bool try_xform_trig_recip_product_expand(const working_string &rawa,
+                                                const working_string &rawb,
+                                                working_string &out){
+  working_string f[2],t0[3],t1[3],res,term;
+  int s0[3],s1[3],one=0;
+  if (split_top_product(rawa,f,2)!=2)
+    return false;
+  int n0=split_top_sum_terms(f[0],t0,s0,3),n1=split_top_sum_terms(f[1],t1,s1,3);
+  if (n0<2 || n1<2)
+    return false;
+  for (int i=0;i<n0;++i)
+    for (int j=0;j<n1;++j){
+      if (!trig_recip_product_term(t0[i],t1[j],term))
+        return false;
+      int sg=s0[i]*s1[j];
+      if (term=="1") one += sg;
+      else res=join_sum(res,signed_part(sg,term));
+    }
+  if (one)
+    res=join_sum(res,int_s(one));
+  if (res.empty())
+    res="0";
+  if (!same_rewrite_expr(res,rawb) && !khicas_equiv(res,rawb))
+    return false;
+  out="Expand brackets:\n";
+  out += insert_coeff_stars(rawa)+"\n";
+  out += "Use identities:\n";
+  out += "sin*cosec=1, cos*sec=1\n";
+  out += "cos*cosec=cot, sin*sec=tan\n";
+  out += insert_coeff_stars(res)+"\n";
+  out += "Target form:\n"+insert_coeff_stars(rawb);
+  return true;
+}
+
 static bool try_xform_cofunction(const working_string &a,const working_string &b,working_string &out){
   working_string arg,targ,inner;
   if (!parse_unary_arg(a,"tan",arg) || !parse_unary_arg(b,"cot",targ))
@@ -16893,7 +16996,7 @@ static bool try_xform_rewrite_planner(const working_string &start,const working_
                                 contains(compact(cand),"sec(") ||
                                 contains(compact(cand),"cosec(")));
       if (!reciprocal_pending && khicas_equiv(cand,target)){
-        out=next+"Target equivalent after simplification\nnormal(start-target)=0\nTarget form:\n"+
+        out=next+"Simplify to target form\nstart-target simplifies to 0\nTarget form:\n"+
           insert_coeff_stars(target)+"";
         return true;
       }
@@ -16910,17 +17013,17 @@ static bool try_xform_rewrite_planner(const working_string &start,const working_
 static working_string xform_failure_report(const working_string &start,const working_string &target){
   working_string exact;
   working_string out="Planner search:\n";
-  out += "Attempted transformations:\n";
-  out += "Failure reason:\n";
-  out += "Check equivalence:\nnot equivalent\n";
-  out += "last state:\n";
+  out += "No exact route\n";
+  out += "Start:\n";
   out += insert_coeff_stars(start)+"\n";
-  out += "KhiCAS exact evaluation:\n";
+  out += "Target:\n";
+  out += insert_coeff_stars(target)+"\n";
+  out += "Simplified start:\n";
   if (production_exact_command("simplify("+start+")",exact) && !trim(exact).empty())
     out += trim(exact)+"\n";
   else
     out += "?\n";
-  out += "Status:\nnot checked";
+  out += "Check target";
   return out;
 }
 
@@ -17168,6 +17271,8 @@ static bool try_xform(const char *input,working_string &out){
     return true;
   if (try_xform_cofunction(a,b,out))
     return true;
+  if (try_xform_trig_recip_product_expand(args[0],args[1],out))
+    return true;
   {
     Rat ca,cb;
     working_string ba,arga,bb,argb,root,exp;
@@ -17264,8 +17369,8 @@ static bool try_xform(const char *input,working_string &out){
   if (khicas_equiv(args[0],args[1])){
     if (try_xform_trig_fraction_fallback(a,b,args[0],args[1],false,out))
       return true;
-    out="Target equivalent after simplification\n";
-    out += "normal(start-target)=0\nTarget form:\n";
+    out="Simplify to target form\n";
+    out += "start-target simplifies to 0\nTarget form:\n";
     out += insert_coeff_stars(args[1])+"\n";
     out += "";
     return true;
