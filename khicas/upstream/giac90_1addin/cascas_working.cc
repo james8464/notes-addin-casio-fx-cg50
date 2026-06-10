@@ -16133,7 +16133,7 @@ static bool try_khicas_exact_route(const char *input,working_string &out){
   if (!plain_identifier_name(cmd))
     return false;
   out=cmd+" fallback:\n";
-  out += "factor taylor\n";
+  out += "factor\n";
   out += "Exact final answer:\n"+trim(ans)+"\nVerified";
   return true;
 }
@@ -16215,7 +16215,7 @@ static bool try_xform_rewrite_planner(const working_string &start,const working_
                                 contains(compact(cand),"sec(") ||
                                 contains(compact(cand),"cosec(")));
       if (!reciprocal_pending && khicas_equiv(cand,target)){
-        out=next+"Target form:\n"+insert_coeff_stars(cand)+" = "+
+        out=next+"Target equivalent after simplification\nnormal(start-target)=0\n"+
           insert_coeff_stars(target)+"\nVerified by equivalence check";
         return true;
       }
@@ -16583,8 +16583,8 @@ static bool try_xform(const char *input,working_string &out){
   if (khicas_equiv(args[0],args[1])){
     if (try_xform_trig_fraction_fallback(a,b,args[0],args[1],false,out))
       return true;
-    out="Check equivalence:\n";
-    out += "Difference simplifies to 0\n";
+    out="Target equivalent after simplification\n";
+    out += "normal(start-target)=0\n";
     out += insert_coeff_stars(args[1])+"\n";
     out += "Verified by equivalence check";
     return true;

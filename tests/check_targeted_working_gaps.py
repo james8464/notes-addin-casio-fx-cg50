@@ -800,8 +800,8 @@ XFORM_EQUIV_FALLBACK_CASES = [
     (
         "xform(sin(x)^2,(1-cos(2*x))/2)",
         [
-            "Check equivalence:",
-            "Difference simplifies to 0",
+            "Target equivalent after simplification",
+            "normal(start-target)=0",
             "Verified by equivalence check",
         ],
     ),
