@@ -5270,7 +5270,7 @@ static bool integrate_mixed_sum_terms(const working_string &expr,working_string 
   if (n<2)
     return false;
   working_string ans;
-  out="Integrate terms\nTerms:\nPower:\n";
+  out="Integrate term by term\nTerms:\nPower:\n";
   if (expr.size()>350){
     out += "poly + C";
     return true;
@@ -6301,7 +6301,7 @@ static bool integrate_affine_product_general(const working_string &expr,char v,w
   if (C.n) ans=join_sum(ans,rat_power_term_s(C,rat(1,1),v));
   out="Expand:\n";
   out += "("+fmt_linear_rat(a1,b1,v)+")("+fmt_linear_rat(a2,b2,v)+") = "+poly+"\n";
-  out += "Integrate terms\n";
+  out += "Integrate term by term\n";
   out += ans+" + C";
   return true;
 }
@@ -6907,9 +6907,9 @@ static bool try_rational_integral_explainer(const working_string &expr,const wor
     return false;
   if (!exact_integral_result(pf,var,F) && !exact_integral_result(expr,var,F))
     return false;
-  out="Den factor:\n";
+  out="Denominator factor:\n";
   out += "Partial fractions:\n"+pf+"\n";
-  out += "Integrate terms\n"+F+"\n";
+  out += "Integrate term by term\n"+F+"\n";
   if (exact_integral_result(expr,var,exact))
     out += "Ans:\n"+exact+" + C\n";
   out += "";
@@ -7480,7 +7480,7 @@ static bool try_integral(const char *input,working_string &out){
         ans=join_sum(ans,rat_power_term_s(b,rat(1,1)));
       out="Collect:\n";
       out += fmt_linear_rat(a,b,'x')+"\n";
-      out += "Integrate terms\nTerms:\n";
+      out += "Integrate term by term\nTerms:\n";
       out += "Power:\n";
       out += ""+ans+" + C";
       return true;
@@ -7499,7 +7499,7 @@ static bool try_integral(const char *input,working_string &out){
   if (integrate_const_product_route(args[0],var[0],var,out) && !force_parts && !force_sub)
     return true;
   if (integrate_sum_terms(e,sum_answer) && !force_parts && !force_sub){
-    out="Integrate terms\n"
+    out="Integrate term by term\n"
         "Terms:\n"
         "Power:\n"
         "";
