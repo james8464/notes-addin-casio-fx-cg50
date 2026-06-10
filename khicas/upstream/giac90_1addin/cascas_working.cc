@@ -16936,8 +16936,8 @@ static bool try_xform_rewrite_planner(const working_string &start,const working_
     {"simplify","simplify"},
     {"partfrac","partfrac"},
   };
-  working_string state[10],route[10];
-  int depth[10],head=0,tail=1;
+  working_string state[20],route[20];
+  int depth[20],head=0,tail=1;
   state[0]=trim(start);
   route[0]="Planner search:\n";
   depth[0]=0;
@@ -16953,7 +16953,7 @@ static bool try_xform_rewrite_planner(const working_string &start,const working_
       out=path+"Rule: "+trig;
       return true;
     }
-    if (d>=3)
+    if (d>=5)
       continue;
     for (int i=0;i<int(sizeof(rules)/sizeof(rules[0]));++i){
       working_string ccur=compact(cur);
@@ -16966,6 +16966,7 @@ static bool try_xform_rewrite_planner(const working_string &start,const working_
       if (!production_exact_command(working_string(rules[i].cmd)+"("+cur+")",cand))
         continue;
       cand=trim(cand);
+      cand=last_nonempty_line(cand);
       if (cand.empty() || cand[0]=='[' || same_rewrite_expr(cand,cur))
         continue;
       bool seen=false;
@@ -16994,7 +16995,7 @@ static bool try_xform_rewrite_planner(const working_string &start,const working_
           insert_coeff_stars(target)+"";
         return true;
       }
-      if (tail<10){
+      if (tail<20){
         state[tail]=cand;
         route[tail]=next;
         depth[tail++]=d+1;
@@ -17235,10 +17236,16 @@ static bool try_xform(const char *input,working_string &out){
     }
   }
   {
-    working_string so;
-    if (production_exact_command("simplify("+args[0]+")",so) && compact(so)==b){
-      out="Simplify:\n"+trim(so);
-      return true;
+    static const char *cmds[]={"simplify","normal","texpand","factor","partfrac"};
+    for (int i=0;i<5;++i){
+      working_string so,line;
+      if (production_exact_command(working_string(cmds[i])+"("+args[0]+")",so)){
+        line=last_nonempty_line(so);
+        if (same_rewrite_expr(line,args[1])){
+          out=working_string(cmds[i])+":\n"+trim(so);
+          return true;
+        }
+      }
     }
   }
   if (try_xform_log_product_quotient(a,b,out))
