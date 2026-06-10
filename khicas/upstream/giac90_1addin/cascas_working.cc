@@ -27,6 +27,8 @@ static bool try_taylor_symbolic_binomial_cmd(const char *input,working_string &o
 static working_string symbolic_sub_s(const working_string &a,const working_string &b);
 static bool split_equal_sides(const working_string &raw,working_string &left,working_string &right);
 static bool integer_bound_arg(const working_string &src,long &v);
+static bool parse_power_diff(const working_string &src,working_string &u,working_string &v,long &p);
+static bool try_normal_power_difference_quotient(const char *input,working_string &out);
 
 static working_string trim(const working_string &s){
   int a=0,b=s.size();
@@ -16767,6 +16769,29 @@ static bool try_xform_cot_sin_double(const working_string &a,const working_strin
   return true;
 }
 
+static bool try_xform_power_diff_cancel(const working_string &a,const working_string &b,working_string &out){
+  working_string tmp,last;
+  if (!try_normal_power_difference_quotient((working_string("normal(")+a+")").c_str(),tmp))
+    return false;
+  last=last_nonempty_line(tmp);
+  if (!same_rewrite_expr(last,b))
+    return false;
+  out=tmp;
+  return true;
+}
+
+static bool try_xform_trig_identity_quotient(const working_string &a,const working_string &b,working_string &out){
+  working_string num,den,arg,targ;
+  int c=0,p=0;
+  if (b!="1" || !split_top_fraction(a,num,den))
+    return false;
+  if (!parse_one_plus_trig_square(num,"tan",arg) ||
+      !parse_int_func_pow(den,"sec",c,targ,p) || c!=1 || p!=2 || compact(arg)!=compact(targ))
+    return false;
+  out="Pyth:\n1+tan(u)^2=sec(u)^2\n=1";
+  return true;
+}
+
 static bool trig_recip_product_term(const working_string &a,const working_string &b,working_string &res){
   working_string aa,bb;
   if (parse_unary_arg(a,"sin",aa) && (parse_unary_arg(b,"cosec",bb) || parse_unary_arg(b,"csc",bb)) && same_rewrite_expr(aa,bb)){ res="1"; return true; }
@@ -16924,22 +16949,18 @@ static bool try_khicas_exact_route(const char *input,working_string &out){
 static bool try_xform_rewrite_planner(const working_string &start,const working_string &target,working_string &out){
   if (start.size()+target.size()>280 || working_route_too_large(start) || working_route_too_large(target))
     return false;
-  struct RewriteRule {
-    const char *cmd;
-    const char *label;
+  static const char *rules[]={
+    "texpand",
+    "tcollect",
+    "factor",
+    "normal",
+    "simplify",
+    "partfrac",
   };
-  static const RewriteRule rules[]={
-    {"texpand","texpand"},
-    {"tcollect","tcollect"},
-    {"factor","factor"},
-    {"normal","normal"},
-    {"simplify","simplify"},
-    {"partfrac","partfrac"},
-  };
-  working_string state[20],route[20];
-  int depth[20],head=0,tail=1;
+  working_string state[28],route[28];
+  int depth[28],head=0,tail=1;
   state[0]=trim(start);
-  route[0]="Planner search:\n";
+  route[0]="";
   depth[0]=0;
   while (head<tail){
     working_string cur=state[head],path=route[head];
@@ -16953,17 +16974,17 @@ static bool try_xform_rewrite_planner(const working_string &start,const working_
       out=path+"Rule: "+trig;
       return true;
     }
-    if (d>=5)
+    if (d>=7)
       continue;
     for (int i=0;i<int(sizeof(rules)/sizeof(rules[0]));++i){
       working_string ccur=compact(cur);
-      if (!strcmp(rules[i].cmd,"tcollect") &&
+      if (!strcmp(rules[i],"tcollect") &&
           !contains(ccur,"sin(") && !contains(ccur,"cos(") &&
           !contains(ccur,"tan(") && !contains(ccur,"cot(") &&
           !contains(ccur,"sec(") && !contains(ccur,"cosec("))
         continue;
       working_string cand;
-      if (!production_exact_command(working_string(rules[i].cmd)+"("+cur+")",cand))
+      if (!production_exact_command(working_string(rules[i])+"("+cur+")",cand))
         continue;
       cand=trim(cand);
       cand=last_nonempty_line(cand);
@@ -16978,7 +16999,7 @@ static bool try_xform_rewrite_planner(const working_string &start,const working_
       }
       if (seen)
         continue;
-      working_string next=path+rules[i].label+":\n"+
+      working_string next=path+rules[i]+":\n"+
         insert_coeff_stars(cur)+" = "+insert_coeff_stars(cand)+
         "\n";
       if (same_rewrite_expr(cand,target)){
@@ -16991,11 +17012,11 @@ static bool try_xform_rewrite_planner(const working_string &start,const working_
                                 contains(compact(cand),"sec(") ||
                                 contains(compact(cand),"cosec(")));
       if (!reciprocal_pending && khicas_equiv(cand,target)){
-        out=next+"Simplify to target form\nstart-target simplifies to 0\nTarget form:\n"+
+        out=next+"Target:\n"+
           insert_coeff_stars(target)+"";
         return true;
       }
-      if (tail<20){
+      if (tail<28){
         state[tail]=cand;
         route[tail]=next;
         depth[tail++]=d+1;
@@ -17008,7 +17029,6 @@ static bool try_xform_rewrite_planner(const working_string &start,const working_
 static working_string xform_failure_report(const working_string &start,const working_string &target){
   working_string out="Try:\n";
   out += insert_coeff_stars(start)+"\n";
-  out += "texpand,tcollect,factor,normal,simplify,partfrac\n";
   out += "Target:\n";
   out += insert_coeff_stars(target);
   return out;
@@ -17167,6 +17187,10 @@ static bool try_xform(const char *input,working_string &out){
     return true;
   if (try_xform_difference_square_quotient(a,b,out))
     return true;
+  if (try_xform_power_diff_cancel(a,b,out))
+    return true;
+  if (try_xform_trig_identity_quotient(a,b,out))
+    return true;
   if (try_xform_abs_square_or_scale(a,b,out))
     return true;
   if (try_xform_complex_polar(args[0],args[1],out))
@@ -17233,19 +17257,6 @@ static bool try_xform(const char *input,working_string &out){
     if (parse_unary_arg(b,"ln",arg) && parse_unary_arg(arg,"exp",inner) && compact(inner)==a){
       out="Inverse:\nu=ln(exp(u))\n"+b;
       return true;
-    }
-  }
-  {
-    static const char *cmds[]={"simplify","normal","texpand","factor","partfrac"};
-    for (int i=0;i<5;++i){
-      working_string so,line;
-      if (production_exact_command(working_string(cmds[i])+"("+args[0]+")",so)){
-        line=last_nonempty_line(so);
-        if (same_rewrite_expr(line,args[1])){
-          out=working_string(cmds[i])+":\n"+trim(so);
-          return true;
-        }
-      }
     }
   }
   if (try_xform_log_product_quotient(a,b,out))
