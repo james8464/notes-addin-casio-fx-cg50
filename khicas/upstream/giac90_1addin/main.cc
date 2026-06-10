@@ -205,6 +205,7 @@ const unsigned short translated_keys[] =
 };
 
 static volatile int menutimer=0;
+static volatile int rstatustimer=0;
 void clear_menu_timer(){
   if (menutimer > 0) {
     // menu row 9 col 4
@@ -230,6 +231,27 @@ void set_menu_timer(){
   if (menutimer > 0) {
     Timer_Start(menutimer);
   }
+}
+
+void draw_r_status_timer(){
+  drawCasioCasRunIndicator();
+  Bdisp_PutDisp_DD();
+  drawCasioCasBorder();
+}
+
+void clear_r_status_timer(){
+  if (rstatustimer > 0) {
+    Timer_Stop(rstatustimer);
+    Timer_Deinstall(rstatustimer);
+    rstatustimer=0;
+  }
+}
+
+void set_r_status_timer(){
+  if (rstatustimer) return;
+  rstatustimer = Timer_Install(0,draw_r_status_timer, 64);
+  if (rstatustimer > 0)
+    Timer_Start(rstatustimer);
 }
 
 int ck_getkey(int * keyptr){
@@ -264,7 +286,9 @@ int ck_getkey(int * keyptr){
     Bdisp_PutDisp_DD ();
     drawCasioCasBorder();
     SetSetupSetting(0x14,0); // disable OFF
+    set_r_status_timer();
     int ret=GetKeyWait_OS(&col,&row, 2 /* KEYWAIT_HALTON_TIMERON*/, timeout_delay /*timeout_period*/, 1 /* 0: handle menu key*/, &keycode) ;
+    clear_r_status_timer();
     if (!shiftstate && (col==4 && row==9)){
       set_menu_timer();
       GetKey(keyptr);
@@ -633,8 +657,11 @@ int main(){
   // return 1;
   Bdisp_AllClr_VRAM();
   Bdisp_EnableColor(1);
-  EnableStatusArea(0);
-  DefineStatusAreaFlags(3, SAF_BATTERY | SAF_TEXT | SAF_GLYPH | SAF_ALPHA_SHIFT, 0, 0);
+  DefineStatusAreaFlags(3,
+                        SAF_BATTERY | SAF_SETUP_INPUT_OUTPUT | SAF_SETUP_FRAC_RESULT |
+                            SAF_SETUP_ANGLE | SAF_SETUP_COMPLEX_MODE | SAF_SETUP_DISPLAY,
+                        0, 0);
+  EnableStatusArea(2);
   rand_seed(RTC_GetTicks(),contextptr);
   VRAM_base = (color_t*)GetVRAMAddress();
   restore_session("session");

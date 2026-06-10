@@ -59,24 +59,11 @@ int dconsole_mode=1; // 0 disables dConsole commands
 char xcas_status[64];
 
 void set_xcas_status(){
-  ustl::string status;
-  status += xthetat?"t ":"x ";
-  status += giac::python_compat(contextptr)?(giac::python_compat(contextptr)==2?" Py xor ":" Py ** "):" CAS ";
-  status += giac::angle_radian(contextptr)?"RAD ":"DEG ";
-  if (strlen(session_filename)<=24)
-    status += ustl::string(session_filename);
-#if 0
-  else {
-    void * ptr = malloc(1024);
-    size_t k=(size_t) ptr ;
-    free(ptr);
-    // size_t k=(size_t) status.c_str();
-    // k &= 0x7fffffff;
-    status += giac::hexa_print_INT_((int) k);
-  }
-#endif
-  strcpy(xcas_status,status.c_str());
-  DefineStatusMessage(xcas_status, 1, 0, 0);
+  DefineStatusAreaFlags(3,
+                        SAF_BATTERY | SAF_SETUP_INPUT_OUTPUT | SAF_SETUP_FRAC_RESULT |
+                            SAF_SETUP_ANGLE | SAF_SETUP_COMPLEX_MODE | SAF_SETUP_DISPLAY,
+                        0, 0);
+  EnableStatusArea(2);
   DisplayStatusArea();
 }
 
