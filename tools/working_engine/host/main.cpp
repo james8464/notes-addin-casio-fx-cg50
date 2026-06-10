@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstdio>
+#include <cstdlib>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -173,7 +175,7 @@ static char const *pure_method_fallback(bool removed)
 {
     return removed
         ? "Pure method fallback:\n"
-          "Unsupported built-in removed from this Pure build.\n"
+          "unsupported built-in removed from this Pure build.\n"
           "1. Rewrite the question using algebra, trig, logs or calculus.\n"
           "2. Try solve, diff, integrate, range, domain, xform, texpand or factor.\n"
           "3. For stats, matrices, plotting, scripts or mechanics, use the calculator app for that topic.\n"
@@ -190,8 +192,38 @@ static std::string stdin_text()
     return out.str();
 }
 
+static std::string shell_quote(std::string const &s)
+{
+    std::string out = "'";
+    for(char c : s) {
+        if(c == '\'') out += "'\\''";
+        else out.push_back(c);
+    }
+    out += "'";
+    return out;
+}
+
+static bool host_exact_eval(char const *expr, cascas::working_string &out)
+{
+    if(!std::getenv("CASCAS_HOST_PRODUCTION")) return false;
+    std::string cmd = "python3 tools/khicas_host_eval.py " + shell_quote(expr ? expr : "");
+    FILE *pipe = popen(cmd.c_str(), "r");
+    if(!pipe) return false;
+    char buf[512];
+    std::string text;
+    while(fgets(buf, sizeof(buf), pipe)) text += buf;
+    int status = pclose(pipe);
+    if(status != 0) return false;
+    while(!text.empty() && (text.back() == '\n' || text.back() == '\r')) text.pop_back();
+    if(text.empty()) return false;
+    out = text;
+    return true;
+}
+
 int main(int argc, char **argv)
 {
+    cascas::set_khicas_eval_callback(host_exact_eval);
+
     if(argc < 2) {
         std::cerr << "usage: casio_host [--alg|--derive|--int|--trig|--stats] EXPR\n";
         return 2;

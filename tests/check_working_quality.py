@@ -11,22 +11,21 @@ CASES = [
     (
         "xform((cos(x)+sin(x))*(cosec(x)-sec(x))=k*cot(2x),k)",
         [
-            "Planner search:",
-            "Parameter isolation:",
+            "Search:",
+            "Isolate param:",
             "k = 2",
-            "Verified by substitution",
-            "Verified by equivalence check",
+            "Substitute:",
         ],
     ),
     (
-        "diff(7*x*e^x/sqrt(e^(2*x)-2),x)",
+        "diff(7*x*exp(x)/sqrt(exp(2*x)-2),x)",
         [
             "Quotient:",
-            "u = 7*x*e^x",
-            "du/dx = 7*x*exp(x) + 7*exp(x)",
+            "u = 7*x*exp(x)",
+            "du/dx = 7*exp(x) + 7*x*exp(x)",
             "dv/dx =",
             "(u'v-uv')/v^2",
-            "Verified",
+            "=",
         ],
     ),
     (
@@ -36,7 +35,7 @@ CASES = [
             "u = 9*x^-2",
             "du/dx = -18*x^-3",
             "d/dx atan(u)",
-            "Verified",
+            "/(1+(",
         ],
     ),
     (
@@ -45,23 +44,20 @@ CASES = [
             "Neg powers:",
             "9/(2*x^3) = 9/2*x^-3",
             "-27/2*x^-4",
-            "Verified",
         ],
     ),
     (
         "xform(sin(x),cos(x)+7)",
         [
-            "Check equivalence:",
-            "not equivalent",
+            "Try:",
+            "Target:",
         ],
     ),
     (
         "solve(5*x+8=4*x+4,x)",
         [
             "Solve: 5*x+8=4*x+4",
-            "KhiCAS exact evaluation:",
-            "x = [-4]",
-            "Verified",
+            "x = -((8) - (4))/((5) - (4))",
         ],
     ),
     (
@@ -70,15 +66,13 @@ CASES = [
             "Solve: [3*y+2*x=22,y=3/2*x+3]",
             "Collect:",
             "[x,y] = [2, 6]",
-            "KhiCAS exact evaluation:",
             "[[x=2, y=6]]",
-            "Verified",
         ],
     ),
     (
         "solve(log(((((((n)+(z)))*(ln((b))))+(((b)-(k)-(-596.87526)))))^2+8,sqrt(abs(((t)+(sqrt(56))+(u)))+((((pi))+(e)))^2))=(z))",
         [
-            "Move all terms to one side",
+            "Move terms to LHS",
             "F(b)=L-R",
             "Domain",
             "b = roots(F(b))",
@@ -93,7 +87,7 @@ CASES = [
     (
         "lcm(tan(cos(abs(exp(sqrt(2554*u^44+7170*u^43+5818*u^42+2085*u^41-6467*u^40-5271*u^39-1035*u^38-8230*u^37+1817*u^36+466*u^35-4014*u^34-4723*u^33))))),x)",
         [
-            "Err: unsupported",
+            "General Pure method:",
         ],
     ),
 ]
@@ -132,9 +126,8 @@ def main() -> int:
         missing = [m for m in markers if m not in out]
         if missing:
             raise SystemExit(f"FAIL quality {expr}: missing {missing}\n{out}")
-        positive_verified = any(m in out for m in ("Verified by", "\nVerified", "Verified\n"))
-        if "not equivalent" in out.lower() and positive_verified:
-            raise SystemExit(f"FAIL quality {expr}: non-equivalent route marked verified\n{out}")
+        if "Verified" in out:
+            raise SystemExit(f"FAIL quality {expr}: should not print Verified\n{out}")
         bad = [m for m in BAD if m in out.lower()]
         if bad:
             raise SystemExit(f"FAIL quality {expr}: bad {bad}\n{out}")

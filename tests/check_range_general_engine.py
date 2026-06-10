@@ -11,23 +11,23 @@ RUNNER = ROOT / "tools" / "khicas_host_runner"
 CASES = [
     (
         "range(sqrt(x-1),x,0,4)",
-        ["1 <= x <= 4", "natural domain", "f(1) = 0", "f(4) = sqrt(3)", "0 <= y <= sqrt(3)", "Verified under constraint"],
+        ["1 <= x <= 4", "natural domain", "f(1) = 0", "f(4) = sqrt(3)", "0 <= y <= sqrt(3)"],
     ),
     (
         "range(ln(x-1),x,0,4)",
-        ["x > 1", "natural domain", "as x -> 1, y -> -infinity", "f(4) = ln(3)", "y <= ln(3)", "Verified under constraint"],
+        ["x > 1", "natural domain", "as x -> 1, y -> -infinity", "f(4) = ln(3)", "y <= ln(3)"],
     ),
     (
         "range(tan(x),x,0,pi)",
-        ["0 <= x <= pi", "pole at x=pi/2", "split interval at pole", "range: all real", "Verified under constraint"],
+        ["0 <= x <= pi", "pole at x=pi/2", "split interval at pole", "range: all real"],
     ),
     (
         "range(abs(x^2-4),x,-3,3)",
-        ["split at x=-2,2", "f(-2) = 0", "f(2) = 0", "0 <= y <= 5", "Verified under constraint"],
+        ["split at x=-2,2", "f(-2) = 0", "f(2) = 0", "0 <= y <= 5"],
     ),
     (
         "range(x^2,x!=0)",
-        ["x != 0", "as x -> 0, y -> 0", "y > 0", "Verified under constraint"],
+        ["x != 0", "as x -> 0, y -> 0", "y > 0"],
     ),
 ]
 
@@ -56,6 +56,8 @@ def main() -> int:
             raise AssertionError(f"{expr}: missing {missing}\n{out}")
         if "Err:" in out:
             raise AssertionError(f"{expr}: unexpected error\n{out}")
+        if "Verified" in out:
+            raise AssertionError(f"{expr}: should not print Verified\n{out}")
     print(f"OK range general engine cases={len(CASES)}")
     return 0
 

@@ -139,6 +139,8 @@ static bool cascas_reject_removed_feature(const char *input){
   return cascas::reject_removed_feature(input);
 }
 
+void quit_handler();
+
 void casiostatus(){
   int casioset=0;
   if (shiftstate)
@@ -645,7 +647,7 @@ int main(){
   context ct;
   contextptr=&ct;
   cascas::set_khicas_eval_callback(cascas_khicas_eval);
-  SetQuitHandler(save_session); // automatically save session when exiting
+  SetQuitHandler(quit_handler);
   turtle();
 #ifdef TURTLETAB
   turtle_stack_size=0;
@@ -664,7 +666,6 @@ int main(){
   EnableStatusArea(2);
   rand_seed(RTC_GetTicks(),contextptr);
   VRAM_base = (color_t*)GetVRAMAddress();
-  restore_session("session");
   //ck_getkey(&key);
 #if 0
   //int tableau=0;
@@ -692,8 +693,7 @@ int main(){
     }
     // should save in another file
     if (strcmp((const char *)expr,"=>")==0 || strcmp((const char *)expr,"=>\n")==0){
-      save_session();
-      Console_Output((unsigned char*)"Session saved");
+      save("session");
     }
     else 
       {
@@ -1873,49 +1873,19 @@ string remove_path(const string & st){
 }
 
 void save(const char * fname){
-  clear_abort();
-  string filename(remove_path(remove_extension(fname)));
-  save_console_state_smem(("\\\\fls0\\"+filename+".xw").c_str()); // call before save_khicas_symbols_smem(), because this calls create_data_folder if necessary!
-  // save_khicas_symbols_smem(("\\\\fls0\\"+filename+".xw").c_str());
-  if (edptr)
-    check_leave(edptr);
+  (void)fname;
+  Console_Output((unsigned char*)"Disabled");
 }
 
 void save_session(){
-  if (strcmp(session_filename,"session") && console_changed){
-    ustl::string tmp(session_filename);
-    tmp += lang?" a ete modifie!":" was modified!";
-    if (confirm(tmp.c_str(),lang?"F1: sauvegarder, F6: tant pis":"F1: save, F6: discard changes")==KEY_CTRL_F1){
-      save(session_filename);
-      console_changed=0;
-    }    
-  }
-  save("session");
-  // this is only called on exit, no need to reinstall the check_execution_abort timer.
-  if (edptr && edptr->changed && edptr->filename!="\\\\fls0\\session.py"){
-    if (!check_leave(edptr)){
-      save_script("\\\\fls0\\lastprg.py",merge_area(edptr->elements));
-    }
-  }
 }
 
 int restore_session(const char * fname){
-  // cout << "0" << fname << endl; Console_Disp(); ck_getkey(&key);
-  string filename(remove_path(remove_extension(fname)));
-  if (!load_console_state_smem((string("\\\\fls0\\")+filename+string(".xw")).c_str())){
-    int x=0,y=120;
-    PrintMini(&x,&y,(unsigned char*)"CAS",0x02, 0xFFFFFFFF, 0, 0, COLOR_BLACK, COLOR_WHITE, 1, 0);
-    x=0; y=138;
-    PrintMini(&x,&y,(unsigned char*)"  License GPL 2",0x02, 0xFFFFFFFF, 0, 0, COLOR_BLACK, COLOR_WHITE, 1, 0);
-    x=0; y=156;
-    PrintMini(&x,&y,(unsigned char*)"  Exam rules apply",0x02, 0xFFFFFFFF, 0, 0, COLOR_BLACK, COLOR_WHITE, 1, 0);
-    if (confirm("Syntax?","F1: Xcas, F6: Python")==KEY_CTRL_F6)
-      python_compat(true,contextptr);
-    Bdisp_AllClr_VRAM();  
-    //menu_about();
-    return 0;
-  }
-  return 1;
+  (void)fname;
+  return 0;
+}
+
+void quit_handler(){
 }
 
 int select_script_and_run() {
