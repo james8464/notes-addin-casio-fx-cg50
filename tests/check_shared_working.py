@@ -25,6 +25,7 @@ CASES = [
     ("diff(tan(3*x),x)", "dy/dx = 3*sec(3*x)^2"),
     ("diff(sec(x),x)", "d/dx sec(x)=sec(x)*tan(x)"),
     ("diff(cosec(x),x)", "d/dx cosec(x)=-cosec(x)*cot(x)"),
+    ("diff(k*x^2+a*x+b,x)", "2*k*x + a"),
     ("diff([x=t^2,y=t^3],t)", "(dy)/(dx) = 3*t/2"),
     ("diff([x=t^2,y=t^3],t,2)", "At t = 2, (dy)/(dx) = 3"),
     ("1/2*x^2+16*sqrt(2)/x", "dy/dx = x - 16*sqrt(2)*x^-2"),
@@ -61,6 +62,7 @@ CASES = [
     ("integrate((ln(x))^2)", "J = x*ln(x) - int(1) dx"),
     ("integrate((ln(x))^2)", "General: x*ln(abs(x))^2 - 2*x*ln(abs(x)) + 2*x + C"),
     ("integrate(2*x+3,x)", "Integrate term by term"),
+    ("integrate(k*x+a,x)", "(k)/2*x^2 + a*x + C"),
     ("solve(x/(x-4)=4,x)", "x = [16/3]"),
     ("solve(3*k^2-58*k+240=0,k)", "k = [40/3, 6]"),
     ("solve(3*k^2-58*k+240=0,k,k integer)", "k = [6]"),
@@ -69,6 +71,7 @@ CASES = [
     ("solve(k^2+k-2=0,k)", "k = [1, -2]"),
     ("solve(k^2+k-2=0,k,k!=1)", "k = [-2]"),
     ("solve(10+3*k=-2,k)", "k = [-4]"),
+    ("solve(a*x+b=0,x)", "x = -(b)/(a)"),
     ("solve(24*k^2=12*32*k,k)", "k = 0 or k = 16"),
     ("solve(10*(1.2)^(n-1)>1000,n)", "n integer => n >= 27"),
     ("solve(10^(3*k)=2,k)", "k = [ln(2)/(3*ln(10))]"),
@@ -104,6 +107,13 @@ CASES = [
     ("range((x^2-1)/(x^2+1))", "-1 <= y < 1"),
     ("range(abs(x-3)+2)", "y >= 2"),
     ("range(sqrt(x-1)+3)", "y >= 3"),
+    ("range(exp(2x)-k)", "y > -k"),
+    ("range(3*exp(2*x)-k+2,x)", "y > -k + 2"),
+    ("range(sin(x)^2-k,x)", "-k <= y <= -k + 1"),
+    ("range(k-sin(x)^2,x)", "k - 1 <= y <= k"),
+    ("range(sin(x)+cos(x)-k,x)", "-k - sqrt(2) <= y <= -k + sqrt(2)"),
+    ("range(abs(x)-k,x)", "y >= -k"),
+    ("range(k-sqrt(x),x)", "y <= k"),
     ("range(sqrt(9-x^2),x)", "0 <= y <= 3"),
     ("range((x+1)/(x^2+1))", "(1-sqrt(2))/2 <= y <= (1+sqrt(2))/2"),
     ("range(1/(x^2+4*x+5))", "0 < y <= 1"),
@@ -145,8 +155,7 @@ CASES = [
     ("series(cos(theta),theta=0,3)", "cos(theta) = 1 - theta^2/2 + ..."),
     ("series(tan(theta),theta=0,3)", "tan(theta) = theta + theta^3/3 + ..."),
     ("sin(x)+2*cos(x),method=rform", "sqrt(5)*sin(x+atan(2))"),
-    ("coeff((9/(2*x)-2*x^2/3)^13,x,11)", "Coefficient = 92664"),
-    ("binomial((1+8*x)^(1/2),x,0,3)", "1 + 4*x - 8*x^2 + 32*x^3"),
+    ("taylor((1+8*x)^(1/2),x=0,4)", "1 + 4*x - 8*x^2 + 32*x^3"),
     ("log(2,8)", "3"),
     ("compare(4*ln(4)^2 - 2*ln(2)^2 + 4 + 6*ln(1/4),14*ln(2)^2-12*ln(2)+4)", "E1-E2 = 0"),
     ("method=numeric,200*ln(2)*2^(8/5)", "To 2 significant figures: 420"),
@@ -232,6 +241,7 @@ CASES = [
     ("27/(sqrt(50)*sqrt(18))", "= 9/10"),
     ("complete_square(x^2+y^2-10*x+4*y+11)", "r = 3*sqrt(2)"),
     ("texpand((3*x+k)^2)", "= 9*x^2 + 6*x*k + k^2"),
+    ("texpand((x+k)^2)", "x^2 + 2*x*k + k^2"),
     ("texpand(x^2+9*x^2+6*x*k+k^2+2*x+4*k+11)", "10*x^2 + 6*x*k + k^2 + 2*x + 4*k + 11"),
     ("discriminant(10*x^2+(6*k+2)*x+k^2+4*k+11,x)", "D = - 4*k^2 - 136*k - 436"),
     ("discriminant(3*x^2+12*x+25,x)", "D = -156"),
@@ -239,10 +249,11 @@ CASES = [
     ("partfrac((50*x^2+38*x+9)/((5*x+2)^2*(1-2*x)))", "1/(5*x + 2)^2 + 2/(- 2*x + 1)"),
     ("partfrac((3*x+5)/(x^2+x-2),x)", "A/(x+2)+B/(x-1)"),
     ("partfrac((2*x+3)/(x^2-1),x)", "A/(x-1)+B/(x+1)"),
-    ("binomial((1+5/2*x)^(-2),x,0,3)", "Valid for abs(x) < 2/5"),
-    ("binomial((1-2*x)^(-1),x,0,3)", "Valid for abs(x) < 1/2"),
-    ("binomial((1-3*x)^(-1),x,0,3)", "1 + 3*x + 9*x^2 + 27*x^3"),
-    ("binomial(1/(5*x+2)^2+2/(1-2*x),x,0,3)", "9/4 + 11/4*x + 203/16*x^2"),
+    ("taylor((1+5/2*x)^(-2),x=0,3)", "1 - 5*x + 75/4*x^2"),
+    ("taylor((1-2*x)^(-1),x=0,4)", "1 + 2*x + 4*x^2 + 8*x^3"),
+    ("taylor((1-3*x)^(-1),x=0,4)", "1 + 3*x + 9*x^2 + 27*x^3"),
+    ("taylor((1+a*x)^n,x=0,3)", "1 + (n)*(a)*x + (n)*(n-1)/2*(a)^2*x^2"),
+    ("taylor(1/(5*x+2)^2+2/(1-2*x),x=0,3)", "9/4 + 11/4*x + 203/16*x^2"),
     ("(1-cos(2*theta)+sin(2*theta))/(1+cos(2*theta)+sin(2*theta))=tan(theta),method=identity", "LHS = RHS = tan(theta)"),
     ("tan(2*x)=3*sin(2*x),x,(0,180),10,method=identity", "x = [35.2643896828, 90, 144.735610317]"),
     ("-1/300*x^2+3/5*x+3", "(180*x - x^2 + 900)/300"),
@@ -312,8 +323,6 @@ def case_family(expr: str) -> str:
         return "xform"
     if expr.startswith("series("):
         return "series"
-    if expr.startswith("binomial("):
-        return "binomial"
     if expr.startswith("partfrac("):
         return "partfrac"
     if expr.startswith("texpand("):
@@ -335,7 +344,7 @@ def classification_reason(expr: str, out: str) -> str | None:
         return None
     if compact(text) == compact(expr):
         return None
-    verified_evidence = ("Verified", "KhiCAS exact")
+    checked_evidence = ("KhiCAS exact", "Answer:")
     route_evidence = (
         "Implicit differentiation:",
         "Product:",
@@ -355,8 +364,8 @@ def classification_reason(expr: str, out: str) -> str | None:
         "Function evaluation:",
         "Sign:",
     )
-    if any(marker in text for marker in verified_evidence):
-        return "verified_output_drift"
+    if any(marker in text for marker in checked_evidence):
+        return "checked_output_drift"
     if any(marker in text for marker in route_evidence):
         return "route_output_drift"
     lines = [line.strip() for line in text.splitlines()]

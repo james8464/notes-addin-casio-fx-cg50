@@ -3,6 +3,6 @@ Args: lcoeff(poly,var)
 Required: poly: polynomial/expression; var: variable.
 Optional: None.
 Does: Returns leading coefficient of poly in var.
-Working: Expand/collect in var, find highest power, then read its coefficient.
+Working: Native KhiCAS output; no extra working lines.
 Checks: Leading term is checked against the collected polynomial.
 Examples: lcoeff(3*x^4-2*x+1,x)

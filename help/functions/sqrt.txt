@@ -3,6 +3,6 @@ Args: sqrt(expr)
 Required: expr: non-negative expression for real output.
 Optional: Complex output may occur only outside real A-level routes.
 Does: Principal square root.
-Working: Use surd simplification and rationalising identities under valid domain assumptions.
+Working: Native KhiCAS output; no extra working lines.
 Checks: Squaring steps in solve/xform are checked to remove extraneous roots.
 Examples: sqrt(4)

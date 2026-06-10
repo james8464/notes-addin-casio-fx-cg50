@@ -3,6 +3,6 @@ Args: subst(expr,var,value)
 Required: expr: expression; var: variable; value: replacement.
 Optional: subst(expr,var=val) may be accepted by KhiCAS syntax.
 Does: Substitutes value for variable.
-Working: Replace every free occurrence of var, then simplify exactly.
+Working: Native KhiCAS output; no extra working lines.
 Checks: Substitution result is checked by direct evaluation of the transformed expression.
 Examples: subst(x^2,x,2)

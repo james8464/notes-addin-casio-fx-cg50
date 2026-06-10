@@ -3,6 +3,6 @@ Args: index
 Required: None.
 Optional: Use catalog folders or type a command directly.
 Does: Overview page for the CAS command help pack.
-Working: Choose command help from the catalog; each sheet lists syntax, required arguments, optional arguments and verification behaviour.
+Working: Choose command help from the catalog; each sheet lists syntax, required arguments, optional arguments and checking behaviour.
 Checks: Help text is external in CAS.PAK, so detailed sheets do not increase CAS.g3a size.
 Examples: sin(0)

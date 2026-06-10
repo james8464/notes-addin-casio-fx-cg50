@@ -40,7 +40,7 @@ WORKING_OUTPUT_COMMANDS = {
 COMMANDS = [
     "diff", "integrate", "simplify", "solve", "range",
     "rewrite", "rewrite", "xform", "xform", "xform",
-    "log", "texpand", "binomial", "apart", "defint", "trig",
+    "log", "texpand", "apart", "defint", "trig",
 ]
 WEIRD_CHARS = string.ascii_letters + string.digits + "+-*/^=(),[]{} ._"
 CHAOS_VARS = ["x", "y", "z", "t", "u", "v", "a", "b", "k", "n"]
@@ -911,8 +911,6 @@ def command_input(rng: random.Random, depth: int, template_rate: float, commands
         return cmd, rand_log(rng)
     if cmd == "texpand":
         return cmd, rand_texpand(rng)
-    if cmd == "binomial":
-        return cmd, rand_binomial(rng)
     if cmd == "apart":
         return cmd, rand_apart(rng)
     if cmd == "defint":
@@ -955,7 +953,7 @@ def classify(kind: str, src: str, out: str, code: int, elapsed: float, timeout: 
     if not stripped:
         return "empty"
     lines = [line.strip() for line in stripped.splitlines() if line.strip()]
-    if "input exceeds verified host fuzz complexity guard" in stripped:
+    if "input exceeds host fuzz complexity guard" in stripped:
         return "guarded-too-large"
     if "Exact:" in stripped:
         return "exact-label"
@@ -1011,7 +1009,7 @@ def final_math_line(out: str) -> str:
         "texpand expression",
         "check equivalence",
         "difference simplifies",
-        "verified",
+        "checked",
         "power:",
         "product:",
         "quotient:",
@@ -1037,7 +1035,7 @@ def math_result_lines(out: str) -> list[str]:
         "rule:",
         "check equivalence",
         "difference simplifies",
-        "verified",
+        "checked",
         "power:",
         "product:",
         "quotient:",
@@ -1132,8 +1130,8 @@ def property_cases(commands: list[str] | None = None) -> list[dict[str, str]]:
                 "mode": "eval_equiv",
             })
         for src, markers in [
-            ("factor(10*x^3-21*x^2-x+6)", ["(x - 2)", "(2*x + 1)", "(5*x - 3)", "Verified"]),
-            ("factor(2*x^3-5*x^2-34*x-48)", ["(x - 6)", "(2*x^2 + 7*x + 8)", "Verified"]),
+            ("factor(10*x^3-21*x^2-x+6)", ["(x - 2)", "(2*x + 1)", "(5*x - 3)"]),
+            ("factor(2*x^3-5*x^2-34*x-48)", ["(x - 6)", "(2*x^2 + 7*x + 8)"]),
         ]:
             cases.append({
                 "kind": "property:factor:exact_backend",
@@ -1169,15 +1167,15 @@ def property_cases(commands: list[str] | None = None) -> list[dict[str, str]]:
         for src, markers in [
             (
                 "diff((x^2)*tan(y)=9,x)",
-                ["Use original equation:", "tan(y) = 9/x^2", "x^4 + 81", "Verified"],
+                ["Use original equation:", "tan(y) = 9/x^2", "x^4 + 81"],
             ),
             (
                 "diff(3*x*tan(y)=6,x)",
-                ["Use original equation:", "tan(y) = 2/x", "x^2 + 4", "Verified"],
+                ["Use original equation:", "tan(y) = 2/x", "x^2 + 4"],
             ),
             (
                 "diff(x^2*exp(y)=9,x)",
-                ["Use original equation:", "exp(y) = 9/x^2", "(dy)/(dx)=-2/x", "Verified"],
+                ["Use original equation:", "exp(y) = 9/x^2", "(dy)/(dx)=-2/x"],
             ),
         ]:
             cases.append({
@@ -1266,21 +1264,21 @@ def property_cases(commands: list[str] | None = None) -> list[dict[str, str]]:
                     "cmd": "texpand",
                     "input": f"texpand(sin({a}+{b}))",
                     "mode": "markers",
-                    "markers": ["sin(", "cos(", "Verified by equivalence check"],
+                    "markers": ["sin(", "cos("],
                 },
                 {
                     "kind": "property:texpand:compound_cos",
                     "cmd": "texpand",
                     "input": f"texpand(cos({a}-{b}))",
                     "mode": "markers",
-                    "markers": ["cos(", "sin(", "Verified by equivalence check"],
+                    "markers": ["cos(", "sin("],
                 },
                 {
                     "kind": "property:texpand:compound_tan",
                     "cmd": "texpand",
                     "input": f"texpand(tan({a}+{b}))",
                     "mode": "markers",
-                    "markers": ["tan(", "Verified by equivalence check"],
+                    "markers": ["tan("],
                 },
             ]
     if allow("xform"):
@@ -1340,9 +1338,9 @@ def property_cases(commands: list[str] | None = None) -> list[dict[str, str]]:
             })
     if allow("limit"):
         for src, markers in [
-            ("limit(sin(x)/x,x=0)", ["limit method:", "Answer:", "1", "Verified"]),
-            ("limit((x^2-1)/(x-1),x=1)", ["limit method:", "trace:", "Answer:", "2", "Verified"]),
-            ("limit((1-cos(x))/x^2,x=0)", ["limit method:", "trace:", "Answer:", "1/2", "Verified"]),
+            ("limit(sin(x)/x,x=0)", ["limit method:", "Answer:", "1"]),
+            ("limit((x^2-1)/(x-1),x=1)", ["limit method:", "trace:", "Answer:", "2"]),
+            ("limit((1-cos(x))/x^2,x=0)", ["limit method:", "trace:", "Answer:", "1/2"]),
         ]:
             cases.append({
                 "kind": "property:limit:exact_backend",
@@ -1402,11 +1400,11 @@ def property_cases(commands: list[str] | None = None) -> list[dict[str, str]]:
             ("range((x^2-1)/(x^2+1),x)", ["D>=0", "-4*y^2 + 4 >= 0", "Solve D>=0", "Exclude degenerate y: 1"]),
             ("range((x+1)/(x^2+1),x)", ["D>=0", "-4*y^2 + 4*y + 1 >= 0", "Solve D>=0"]),
             ("range(1/(x^2+4*x+5),x)", ["D>=0", "-4*y^2 + 4*y >= 0", "Solve D>=0", "Exclude degenerate y: 0"]),
-            ("range((x^2-2)*exp(-x),x)", ["f'(x)=", "as x -> -infinity", "as x -> +infinity", "y >=", "Verified"]),
-            ("range((x+1)*exp(-x),x)", ["f'(x)=", "f(0) = 1", "max y =", "y <=", "Verified"]),
-            ("range(x^2*exp(-x),x)", ["f'(x)=", "f(0) = 0", "min y = 0", "y >= 0", "Verified"]),
-            ("range(sin(x)+cos(x),x)", ["R-form range", "R=sqrt(1^2+1^2)=sqrt(2)", "-sqrt(2) <= y <= sqrt(2)", "Verified"]),
-            ("range(3*sin(2*x+1)+4*cos(2*x+1)-5,x)", ["R-form range", "R=sqrt(3^2+4^2)=5", "-10 <= y <= 0", "Verified"]),
+            ("range((x^2-2)*exp(-x),x)", ["f'(x)=", "as x -> -infinity", "as x -> +infinity", "y >="]),
+            ("range((x+1)*exp(-x),x)", ["f'(x)=", "f(0) = 1", "max y =", "y <="]),
+            ("range(x^2*exp(-x),x)", ["f'(x)=", "f(0) = 0", "min y = 0", "y >= 0"]),
+            ("range(sin(x)+cos(x),x)", ["R-form range", "R=sqrt(1^2+1^2)=sqrt(2)", "-sqrt(2) <= y <= sqrt(2)"]),
+            ("range(3*sin(2*x+1)+4*cos(2*x+1)-5,x)", ["R-form range", "R=sqrt(3^2+4^2)=5", "-10 <= y <= 0"]),
         ]:
             cases.append({
                 "kind": "property:range:quadratic_vertex",
@@ -1417,10 +1415,10 @@ def property_cases(commands: list[str] | None = None) -> list[dict[str, str]]:
             })
     if allow("series"):
         for src, markers in [
-            ("series(exp(x),x=0,4)", ["series method:", "trace:", "Answer:", "x^4/24", "x^3/6", "Verified"]),
-            ("series(sin(theta),theta=0,3)", ["series method:", "trace:", "Answer:", "theta^3/6", "theta", "Verified"]),
-            ("series(tan(theta),theta=0,3)", ["series method:", "trace:", "Answer:", "theta^3/3", "theta", "Verified"]),
-            ("series((1+2*x)^(-1),x=0,5)", ["series method:", "trace:", "Answer:", "16*x^4", "- 8*x^3", "Verified"]),
+            ("series(exp(x),x=0,4)", ["series method:", "trace:", "Answer:", "x^4/24", "x^3/6"]),
+            ("series(sin(theta),theta=0,3)", ["series method:", "trace:", "Answer:", "theta^3/6", "theta"]),
+            ("series(tan(theta),theta=0,3)", ["series method:", "trace:", "Answer:", "theta^3/3", "theta"]),
+            ("series((1+2*x)^(-1),x=0,5)", ["series method:", "trace:", "Answer:", "16*x^4", "- 8*x^3"]),
         ]:
             cases.append({
                 "kind": "property:series:exact_backend",
@@ -1457,7 +1455,7 @@ def verify_property(case: dict[str, str], out: str, code: int, timeout: bool) ->
     if code:
         return "property-crash"
     lowered = out.lower()
-    if "no route" in lowered or "no verified a-level working route found" in lowered:
+    if "no route" in lowered or "no a-level working route found" in lowered:
         return "property-no-route"
     if "not equivalent" in lowered:
         return "property-not-equivalent"
@@ -1479,8 +1477,8 @@ def verify_property(case: dict[str, str], out: str, code: int, timeout: bool) ->
             if str(marker) in out or packed_marker in packed_out:
                 return "property-forbidden-marker"
         return "ok"
-    if "verified" not in lowered:
-        return "property-unverified"
+    if "checked" not in lowered:
+        return "property-unchecked"
     result_lines = math_result_lines(out)
     result = final_math_line(out)
     if result:

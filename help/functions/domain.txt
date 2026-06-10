@@ -4,5 +4,5 @@ Required: expr: expression; var: variable.
 Optional: Predicates and intervals may be used by commands that call domain internally.
 Does: Finds real input values for which expr is defined.
 Working: Intersect restrictions from denominators, even roots, logs, inverse trig and trig poles.
-Checks: Domain restrictions are reused by range, solve and xform verification.
+Checks: Domain restrictions are reused by range, solve and xform checking.
 Examples: domain(sqrt(ln((x+3)/(x-1))),x)

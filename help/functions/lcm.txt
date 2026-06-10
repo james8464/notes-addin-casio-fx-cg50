@@ -3,6 +3,6 @@ Args: lcm(a,b)
 Required: a and b: integers or polynomials.
 Optional: More arguments may be accepted by KhiCAS.
 Does: Returns least common multiple.
-Working: Use gcd relationship and normalise sign/content.
+Working: Native KhiCAS output; no extra working lines.
 Checks: Result is divisible by each input where defined.
 Examples: lcm(6,8)

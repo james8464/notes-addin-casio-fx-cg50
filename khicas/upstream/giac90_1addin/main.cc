@@ -260,9 +260,15 @@ int ck_getkey(int * keyptr){
   while (1){
     casiostatus();
     DisplayStatusArea();
+    drawCasioCasRunIndicator();
     Bdisp_PutDisp_DD ();
+    drawCasioCasBorder();
     SetSetupSetting(0x14,0); // disable OFF
-    int ret=GetKeyWait_OS(&col,&row, 2 /* KEYWAIT_HALTON_TIMERON*/, timeout_delay /*timeout_period*/, 1 /* 0: handle menu key*/, &keycode) ;
+    int ret=GetKeyWait_OS(&col,&row, KEYWAIT_HALTOFF_TIMEROFF, 0, 1 /* 0: handle menu key*/, &keycode) ;
+    if (ret!=KEYREP_KEYEVENT){
+      OS_InnerWait_ms(40);
+      continue;
+    }
     if (!shiftstate && (col==4 && row==9)){
       set_menu_timer();
       GetKey(keyptr);
@@ -480,9 +486,7 @@ int find_color(const char * s){
   buf[ptr-s]=0;
   if (strcmp(buf,"def")==0)
     return 1;
-  if (strcmp(buf,"cot")==0)
-    return 3;
-  if (strcmp(buf,"xform")==0 || strcmp(buf,"log")==0 || strcmp(buf,"cosec")==0 || strcmp(buf,"cot")==0)
+  if (strcmp(buf,"xform")==0 || strcmp(buf,"rewrite")==0 || strcmp(buf,"range")==0 || strcmp(buf,"domain")==0 || strcmp(buf,"log")==0 || strcmp(buf,"cosec")==0 || strcmp(buf,"cot")==0)
     return 3;
   //int pos=dichotomic_search(keywords,sizeof(keywords),buf);
   //if (pos>=0) return 1;

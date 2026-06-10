@@ -120,23 +120,23 @@ typedef struct {
 } catalogFolder;
 
 const catalogFolder catalogFolders[] = {
-  {(char*)"Alg", CAT_CATEGORY_ALGEBRA},
-  {(char*)"Cal", CAT_CATEGORY_CALCULUS},
-  {(char*)"Tr", CAT_CATEGORY_TRIG},
-  {(char*)"S", CAT_CATEGORY_SOLVE},
-  {(char*)"P", CAT_CATEGORY_POLYNOMIAL},
-  {(char*)"R", CAT_CATEGORY_REAL},
-  {(char*)"Ar", CAT_CATEGORY_ARIT},
-  {(char*)"V", CAT_CATEGORY_VECTOR},
+  {(char*)"Algebra", CAT_CATEGORY_ALGEBRA},
+  {(char*)"Calculus", CAT_CATEGORY_CALCULUS},
+  {(char*)"Arithmetic", CAT_CATEGORY_ARIT},
+  {(char*)"Polynomials", CAT_CATEGORY_POLYNOMIAL},
+  {(char*)"Reals", CAT_CATEGORY_REAL},
+  {(char*)"Solve (log)", CAT_CATEGORY_SOLVE},
+  {(char*)"Trigonometry (sin)", CAT_CATEGORY_TRIG},
+  {(char*)"Vectors", CAT_CATEGORY_VECTOR},
 };
 
-const char chk_restart_string1[]="K?";
-const char chk_restart_string2[]="F1/F6";
-const char aide_khicas_string[]="?";
-const char main_string1[]="Clr?";
-const char main_string2[]="F1/F6";
-const char shortcuts_string[]="";
-const char apropos_string[]="";
+const char chk_restart_string1[]="Keep variables?";
+const char chk_restart_string2[]="F1: keep,   F6: erase";
+const char aide_khicas_string[]="Khicas Help";
+const char main_string1[]="Clear variables?";
+const char main_string2[]="F1: cancel,  F6: confirm";
+const char shortcuts_string[]="Use catalog for commands.";
+const char apropos_string[]="KhiCASen";
 
 int CAT_COMPLETE_COUNT=sizeof(completeCat)/sizeof(catalogFunc);
 int CAT_FOLDER_COUNT=sizeof(catalogFolders)/sizeof(catalogFolder);
@@ -150,7 +150,7 @@ ustl::string insert_string(int index){
 }
 
 int showCatalog(char* insertText,int preselect,int menupos) {
-  return doCatalogMenu(insertText, (char*)"Catalog", CAT_CATEGORY_ALL);
+  return doCatalogMenu(insertText, (char*)"Function Catalog", CAT_CATEGORY_ALL);
 }
 
 static int catalog_count_for_category(int category){

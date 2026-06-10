@@ -3,6 +3,6 @@ Args: resultant(p,q,var)
 Required: p,q: polynomials; var: eliminated variable.
 Optional: None.
 Does: Eliminates var by computing the polynomial resultant.
-Working: Build resultant with respect to var after collecting both polynomials.
+Working: Native KhiCAS output; no extra working lines.
 Checks: Output is checked against common-root elimination semantics where possible.
 Examples: resultant(x^2-a,x-b,x)

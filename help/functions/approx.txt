@@ -3,6 +3,6 @@ Args: approx(expr)
 Required: expr: exact number or expression.
 Optional: Display precision follows calculator settings.
 Does: Returns a decimal approximation without changing the exact expression rules.
-Working: Evaluate exact form first, then convert to numeric display.
+Working: Native KhiCAS output; no extra working lines.
 Checks: Approximate output is not used as proof unless an exact check is unavailable.
 Examples: approx(1/3)
