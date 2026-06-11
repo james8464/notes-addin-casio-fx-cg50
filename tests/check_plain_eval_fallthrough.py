@@ -66,7 +66,8 @@ def build_xform_probe(tmp: Path) -> Path:
         '  std::cout << s << "\\n";\n'
         '  if(s.find("Warning")!=std::string::npos || s.find("syntax error")!=std::string::npos ||\n'
         '     s.find("Bad Argument")!=std::string::npos || s.find("//")!=std::string::npos ||\n'
-        '     s.find("Error:")!=std::string::npos) return 1;\n'
+        '     s.find("Error:")!=std::string::npos || s.find("Ans:\\\\nxform")!=std::string::npos ||\n'
+        '     s.find("Search:")==std::string::npos || s.find("Target form:")==std::string::npos) return 1;\n'
         '  return 0;\n'
         '}\n'
     )

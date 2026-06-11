@@ -62,7 +62,7 @@ static bool exact_approx_double(const working_string &expr,double &v);
 
 static bool bad_exact_output(const working_string &s){
   working_string t=lower(trim(s));
-  if (t.empty() || t=="undef")
+  if (t.empty() || t=="undef" || t=="xform")
     return true;
   return t.find("error")!=working_string::npos ||
          t.find("bad argument")!=working_string::npos ||
@@ -17191,9 +17191,7 @@ static bool try_xform_rewrite_planner(const working_string &start,const working_
 
 static working_string xform_failure_report(const working_string &start,const working_string &target){
   working_string out="Search:\n";
-  out += insert_coeff_stars(start)+"\n";
-  out += "Target form:\n";
-  out += insert_coeff_stars(target);
+  out += insert_coeff_stars(start)+"\nTarget form:\n"+insert_coeff_stars(target);
   return out;
 }
 
