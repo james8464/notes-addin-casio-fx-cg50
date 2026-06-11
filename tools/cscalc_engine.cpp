@@ -229,6 +229,17 @@ static double mantissa_decode(const char *s) {
   return v;
 }
 
+static void mantissa_encode(double m, int mb, char *mant) {
+  mant[0] = m < 0 ? '1' : '0';
+  double rem = m < 0 ? m + 1.0 : m;
+  for (int i = 1; i < mb; ++i) {
+    double bitv = pow2(-i);
+    if (rem >= bitv) { mant[i] = '1'; rem -= bitv; }
+    else mant[i] = '0';
+  }
+  mant[mb] = 0;
+}
+
 static int conv(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN], char a[][48], int na) {
   if (na < 1) return 0;
   if (starts(a[0], "0b")) {
@@ -416,6 +427,20 @@ static int eval_float(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]
     n = add(out, n, "exponent %s = %d", a[1], e);
     return add(out, n, "value = %.10g * 2^%d = %.10g", m, e, m * pow2(e));
   }
+  if ((starts(s, "floatnorm(") || starts(s, "fpnorm(") || starts(s, "normalise(") || starts(s, "normalize(")) && na >= 2) {
+    double m = mantissa_decode(a[0]);
+    int e = twos_decode(a[1]);
+    int mb = (int)strlen(a[0]), eb = (int)strlen(a[1]), lefts = 0, rights = 0;
+    int n = add(out, 0, "Normalise so the first two mantissa bits differ.");
+    n = add(out, n, "start: %.10g * 2^%d", m, e);
+    while (m != 0 && m > -0.5 && m < 0.5 && lefts < mb + eb + 2) { m *= 2.0; e--; lefts++; }
+    while ((m >= 1.0 || m < -1.0) && rights < mb + eb + 4) { m /= 2.0; e++; rights++; }
+    char mant[65], expb[65]; mantissa_encode(m, mb, mant); to_bin(e, eb, expb);
+    if (lefts) n = add(out, n, "shift mantissa left %d place(s), subtract %d from exponent.", lefts, lefts);
+    if (rights) n = add(out, n, "shift mantissa right %d place(s), add %d to exponent.", rights, rights);
+    n = add(out, n, "mantissa = %s", mant);
+    return add(out, n, "exponent = %s", expb);
+  }
   if (starts(s, "normal(") && na >= 1) {
     int n = add(out, 0, "Normalised AQA mantissa starts 01 if positive, 10 if negative.");
     bool ok = (a[0][0] == '0' && a[0][1] == '1') || (a[0][0] == '1' && a[0][1] == '0');
@@ -428,18 +453,18 @@ static int eval_float(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]
       while (m >= 1.0 || m < -1.0) { m /= 2.0; ++e; }
       while (m > -0.5 && m < 0.5) { m *= 2.0; --e; }
     }
-    char mant[65], expb[65]; mant[0] = m < 0 ? '1' : '0';
-    double rem = m < 0 ? m + 1.0 : m;
-    for (int i = 1; i < mb; ++i) {
-      double bitv = pow2(-i);
-      if (rem >= bitv) { mant[i] = '1'; rem -= bitv; }
-      else mant[i] = '0';
-    }
-    mant[mb] = 0; to_bin(e, eb, expb);
+    char mant[65], expb[65]; mantissa_encode(m, mb, mant); to_bin(e, eb, expb);
     int n = add(out, 0, "Normalise so mantissa starts 01 for positive or 10 for negative.");
     n = add(out, n, "%.10g = %.10g * 2^%d", value, m, e);
     n = add(out, n, "mantissa (%d bits) = %s", mb, mant);
     return add(out, n, "exponent (%d bits) = %s", eb, expb);
+  }
+  if (starts3(s, "floatprecision(", "fpprecision(", "floatstep(") && na >= 2) {
+    int mb = (int)parse_int(a[0]), e = (int)parse_int(a[1]);
+    double step = pow2(e - (mb - 1));
+    int n = add(out, 0, "Precision is the value of the last mantissa bit after scaling.");
+    n = add(out, n, "step = 2^(exponent-(mantissa bits-1))");
+    return add(out, n, "step = 2^(%d-(%d-1)) = %.10g", e, mb, step);
   }
   if (starts3(s, "floatrange(", "fprange(", "realrange(") && na >= 2) {
     int mb = (int)parse_int(a[0]), eb = (int)parse_int(a[1]);
@@ -898,6 +923,15 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   char fixed[48];
   if (has(t, "fixed") && scan_fixed_bits(t, fixed, sizeof(fixed))) {
     sprintf(cmd, (tc || has(t, "complement")) ? "fixedtc(%s)" : "fixed(%s)", fixed); return eval_float(cmd, out);
+  }
+  if ((has(t, "normalise") || has(t, "normalize")) && nb >= 2) {
+    sprintf(cmd, "floatnorm(%s,%s)", bits[0], bits[1]); return eval_float(cmd, out);
+  }
+  if ((has(t, "float") || has(t, "floating")) && (has(t, "encode") || has(t, "represent") || has(t, "convert")) && nv >= 3) {
+    sprintf(cmd, "floatenc(%.10g,%lld,%lld)", v[0], (long long)v[1], (long long)v[2]); return eval_float(cmd, out);
+  }
+  if ((has(t, "precision") || has(t, "smallestchange") || has(t, "step")) && (has(t, "float") || has(t, "mantissa")) && nv >= 2) {
+    sprintf(cmd, "floatprecision(%lld,%lld)", (long long)v[0], (long long)v[1]); return eval_float(cmd, out);
   }
   if ((has(t, "mantissa") || has(t, "floating") || has(t, "float")) && has(t, "exponent") && nb >= 2) {
     sprintf(cmd, "floatdec(%s,%s)", bits[0], bits[1]); return eval_float(cmd, out);

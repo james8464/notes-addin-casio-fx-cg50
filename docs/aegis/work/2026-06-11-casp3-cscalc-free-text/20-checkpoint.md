@@ -81,3 +81,22 @@ Evidence:
 Drift check:
 - Still inside CSCALC Boolean algebra/free-text goal.
 - Did not touch UI/menu/status code.
+
+## 2026-06-11 Floating Point Normalisation Slice
+
+Completed:
+- Added CSCALC `floatnorm` / `fpnorm` / `normalise` / `normalize` route for AQA mantissa/exponent normalisation.
+- Added `floatprecision` / `fpprecision` / `floatstep` route for representable step-size working.
+- Added natural-language triggers for normalisation, decimal-to-floating encode, and precision questions.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CSCALC AQA Paper 2 calculation scope.
+- Did not touch CAS Pure, CASP3, NOTES, UI/menu/status code.
