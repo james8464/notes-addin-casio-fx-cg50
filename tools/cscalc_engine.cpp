@@ -5,6 +5,10 @@
 #include <stdio.h>
 #include <string.h>
 
+#ifdef __clang__
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
 static int add(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN], int n, const char *fmt, ...) {
   if (n >= CSCALC_MAX_LINES) return n;
   va_list ap;
@@ -24,9 +28,21 @@ static void clean(const char *in, char *out, int cap) {
   out[j] = 0;
 }
 
+static void raw_clean(const char *in, char *out, int cap) {
+  int j = 0;
+  for (int i = 0; in && in[i] && j + 1 < cap; ++i) {
+    unsigned char c = (unsigned char)in[i];
+    if (isalnum(c) || c == '.' || c == '-' || c == '\'') out[j++] = (char)tolower(c);
+    else out[j++] = ',';
+  }
+  out[j] = 0;
+}
+
 static bool starts(const char *s, const char *p) {
   return strncmp(s, p, strlen(p)) == 0;
 }
+
+static bool has(const char *s, const char *p) { return strstr(s, p) != 0; }
 
 static bool starts2(const char *s, const char *a, const char *b) {
   return starts(s, a) || starts(s, b);
@@ -48,6 +64,32 @@ static int args(const char *s, char a[][48], int maxa) {
     } else if (j < 47) a[n][j++] = *p;
   }
   if (n < maxa) { a[n][j] = 0; n++; }
+  return n;
+}
+
+static int scan_nums(const char *s, double v[], int maxv) {
+  int n = 0;
+  for (int i = 0; s[i] && n < maxv; ++i) {
+    bool neg = s[i] == '-' && isdigit((unsigned char)s[i+1]);
+    if (!isdigit((unsigned char)s[i]) && !neg) continue;
+    int j = i + (neg ? 1 : 0); double x = 0, scale = 1;
+    while (isdigit((unsigned char)s[j])) { x = x * 10 + (s[j++] - '0'); }
+    if (s[j] == '.') for (++j; isdigit((unsigned char)s[j]); ++j) { scale *= 10; x += (s[j] - '0') / scale; }
+    v[n++] = neg ? -x : x; i = j - 1;
+  }
+  return n;
+}
+
+static int scan_bits(const char *s, char b[][48], int maxb) {
+  int n = 0;
+  for (int i = 0; s[i] && n < maxb;) {
+    if (s[i] != '0' && s[i] != '1') { ++i; continue; }
+    int j = i, k = 0;
+    while ((s[j] == '0' || s[j] == '1') && k < 47) b[n][k++] = s[j++];
+    b[n][k] = 0;
+    if (k > 1) ++n;
+    i = j;
+  }
   return n;
 }
 
@@ -141,7 +183,7 @@ static double mantissa_decode(const char *s) {
 }
 
 static int conv(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN], char a[][48], int na) {
-  if (na < 1) return add(out, 0, "Use bin(n), hex(n), den(bits,2), convert(n,from,to).");
+  if (na < 1) return 0;
   if (starts(a[0], "0b")) {
     int v = bin_unsigned(a[0] + 2);
     int n = add(out, 0, "Binary place values: 128 64 32 16 8 4 2 1");
@@ -505,6 +547,63 @@ static int eval_bool(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN])
   return add(out, n, "simplified = %s", sim);
 }
 
+static int eval_free_text(const char *input, const char *compact, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
+  char t[192]; raw_clean(input, t, sizeof(t));
+  double v[8]; int nv = scan_nums(t, v, 8);
+  char bits[4][48]; int nb = scan_bits(t, bits, 4);
+  char cmd[160];
+  if ((has(t, "denary") || has(t, "decimal")) && nb >= 1) {
+    sprintf(cmd, "den(%s,2)", bits[0]); return eval_base(cmd, out);
+  }
+  if (has(t, "binary") && nv >= 1 && nb == 0) {
+    sprintf(cmd, "bin(%lld)", (long long)v[0]); return eval_base(cmd, out);
+  }
+  if ((has(t, "hex") || has(t, "hexadecimal")) && nv >= 1) {
+    sprintf(cmd, "hex(%lld)", (long long)v[0]); return eval_base(cmd, out);
+  }
+  bool tc = has(t, "twos") || (has(t, "two") && has(t, "complement"));
+  if (has(t, "unsigned") && has(t, "range") && nv >= 1) {
+    sprintf(cmd, "unsignedrange(%lld)", (long long)v[0]); return eval_twos(cmd, out);
+  }
+  if (tc && has(t, "range") && nv >= 1) {
+    sprintf(cmd, "twosrange(%lld)", (long long)v[0]); return eval_twos(cmd, out);
+  }
+  if (tc && nb >= 1 && (has(t, "decode") || has(t, "denary") || has(t, "decimal"))) {
+    sprintf(cmd, "twosdec(%s)", bits[0]); return eval_twos(cmd, out);
+  }
+  if (tc && nv >= 2 && nb == 0) {
+    sprintf(cmd, "twos(%lld,%lld)", (long long)v[0], (long long)v[1]); return eval_twos(cmd, out);
+  }
+  if (has(t, "add") && nb >= 2) {
+    sprintf(cmd, "binadd(%s,%s,%d)", bits[0], bits[1], (int)strlen(bits[0])); return eval_binary_arith(cmd, out);
+  }
+  if (has(t, "shift") && nb >= 1 && nv >= 1) {
+    sprintf(cmd, "shift(%s,%s,%lld)", bits[0], has(t, "right") ? "right" : "left", (long long)v[nv-1]); return eval_binary_arith(cmd, out);
+  }
+  if ((has(t, "mantissa") || has(t, "floating") || has(t, "float")) && has(t, "exponent") && nb >= 2) {
+    sprintf(cmd, "floatdec(%s,%s)", bits[0], bits[1]); return eval_float(cmd, out);
+  }
+  if ((has(t, "float") || has(t, "real")) && has(t, "range") && nv >= 2) {
+    sprintf(cmd, "floatrange(%lld,%lld)", (long long)v[0], (long long)v[1]); return eval_float(cmd, out);
+  }
+  if ((has(t, "image") || has(t, "bitmap")) && nv >= 3) {
+    sprintf(cmd, "image(%lld,%lld,%lld)", (long long)v[0], (long long)v[1], (long long)v[2]); return eval_storage(cmd, out);
+  }
+  if ((has(t, "sound") || has(t, "audio")) && nv >= 3) {
+    sprintf(cmd, "sound(%lld,%lld,%lld,%lld)", (long long)v[0], (long long)v[1], (long long)v[2], nv > 3 ? (long long)v[3] : 1); return eval_storage(cmd, out);
+  }
+  if ((has(t, "compress") || has(t, "compression")) && nv >= 2) {
+    sprintf(cmd, "compress(%.10g,%.10g)", v[0], v[1]); return eval_storage(cmd, out);
+  }
+  if ((has(t, "character") || has(t, "text")) && nv >= 2) {
+    sprintf(cmd, "chars(%lld,%lld)", (long long)v[0], (long long)v[1]); return eval_storage(cmd, out);
+  }
+  if (nv == 0 && (has(compact, "nand") || has(compact, "nor") || has(compact, "xor") || has(compact, "and") || has(compact, "or") || has(compact, "'"))) {
+    sprintf(cmd, "bool(%s)", compact); return eval_bool(cmd, out);
+  }
+  return 0;
+}
+
 int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
   for (int i = 0; i < CSCALC_MAX_LINES; ++i) out[i][0] = 0;
   char s[192]; clean(input, s, sizeof(s));
@@ -519,6 +618,7 @@ int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
   n = eval_float(s, out); if (n) return n;
   n = eval_storage(s, out); if (n) return n;
   n = eval_bool(s, out); if (n) return n;
+  n = eval_free_text(input, s, out); if (n) return n;
   n = add(out, 0, "Supported:");
   n = add(out, n, "bin hex den convert twos twosdec fixed");
   n = add(out, n, "floatdec floatrange normal image sound bitrate");

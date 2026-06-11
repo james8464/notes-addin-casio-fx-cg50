@@ -5,6 +5,10 @@
 #include <stdio.h>
 #include <string.h>
 
+#ifdef __clang__
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
@@ -27,7 +31,18 @@ static void clean(const char *in, char *out, int cap) {
   out[j] = 0;
 }
 
+static void raw_clean(const char *in, char *out, int cap) {
+  int j = 0;
+  for (int i = 0; in && in[i] && j + 1 < cap; ++i) {
+    unsigned char c = (unsigned char)in[i];
+    if (isalnum(c) || c == '.' || c == '-') out[j++] = (char)tolower(c);
+    else out[j++] = ',';
+  }
+  out[j] = 0;
+}
+
 static bool starts(const char *s, const char *p) { return strncmp(s, p, strlen(p)) == 0; }
+static bool has(const char *s, const char *p) { return strstr(s, p) != 0; }
 
 static bool starts2(const char *s, const char *a, const char *b) {
   return starts(s, a) || starts(s, b);
@@ -78,6 +93,19 @@ static int args(const char *s, char a[][48], int maxa) {
     else if (j < 47) a[n][j++] = *p;
   }
   if (n < maxa) { a[n][j] = 0; n++; }
+  return n;
+}
+
+static int scan_nums(const char *s, double v[], int maxv) {
+  int n = 0;
+  for (int i = 0; s[i] && n < maxv; ++i) {
+    bool neg = s[i] == '-' && isdigit((unsigned char)s[i+1]);
+    if (!isdigit((unsigned char)s[i]) && !neg) continue;
+    int j = i + (neg ? 1 : 0); double x = 0, scale = 1;
+    while (isdigit((unsigned char)s[j])) { x = x * 10 + (s[j++] - '0'); }
+    if (s[j] == '.') for (++j; isdigit((unsigned char)s[j]); ++j) { scale *= 10; x += (s[j] - '0') / scale; }
+    v[n++] = neg ? -x : x; i = j - 1;
+  }
   return n;
 }
 
@@ -301,6 +329,59 @@ static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   return 0;
 }
 
+static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]) {
+  char t[192]; raw_clean(input, t, sizeof(t));
+  double v[8]; int nv = scan_nums(t, v, 8);
+  char cmd[160];
+  if ((has(t, "projectile") || has(t, "projectiles")) && nv >= 2) {
+    sprintf(cmd, "projectile(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
+  }
+  if ((has(t, "force") || has(t, "newton")) && (has(t, "mass") || has(t, "accel")) && nv >= 2) {
+    sprintf(cmd, "force(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
+  }
+  if (has(t, "weight") && nv >= 1) {
+    sprintf(cmd, "weight(%.10g)", v[0]); return eval_mech(cmd, out);
+  }
+  if ((has(t, "friction") || has(t, "coefficientoffriction")) && nv >= 2) {
+    sprintf(cmd, "friction(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
+  }
+  if (has(t, "moment") && nv >= 2) {
+    sprintf(cmd, "moment(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
+  }
+  if ((has(t, "incline") || has(t, "slope") || has(t, "plane")) && nv >= 2) {
+    sprintf(cmd, "incline(%.10g,%.10g,%.10g)", v[0], v[1], nv > 2 ? v[2] : 0); return eval_mech(cmd, out);
+  }
+  if ((has(t, "pulley") || has(t, "connectedparticles")) && nv >= 2) {
+    sprintf(cmd, has(t, "pulley") ? "pulley(%.10g,%.10g)" : "connected(%.10g,%.10g,%.10g)", v[0], v[1], nv > 2 ? v[2] : 0); return eval_mech(cmd, out);
+  }
+  if (has(t, "power") && nv >= 2) {
+    sprintf(cmd, "power(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
+  }
+  if ((has(t, "workdone") || has(t, "work")) && nv >= 2) {
+    sprintf(cmd, "work(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
+  }
+  if ((has(t, "restitution") || has(t, "collision") || has(t, "impact")) && nv >= 4) {
+    sprintf(cmd, "restitution(%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3]); return eval_mech(cmd, out);
+  }
+  if ((has(t, "resultant") || has(t, "vector")) && nv >= 2) {
+    sprintf(cmd, "vector(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
+  }
+  if ((has(t, "normaldistribution") || has(t, "normalcdf") || (has(t, "normal") && has(t, "between"))) && nv >= 4) {
+    sprintf(cmd, "normalprob(%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3]); return eval_stats(cmd, out);
+  }
+  if ((has(t, "standardise") || has(t, "standardize") || has(t, "zscore")) && nv >= 3) {
+    sprintf(cmd, "normal(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_stats(cmd, out);
+  }
+  if ((has(t, "critical") || has(t, "criticalregion")) && has(t, "binom") && nv >= 3) {
+    double tail = has(t, "upper") ? 1 : -1;
+    sprintf(cmd, "critbinom(%d,%.10g,%.10g,%.0f)", (int)v[0], v[1], v[2], tail); return eval_stats(cmd, out);
+  }
+  if (has(t, "binom") && nv >= 3) {
+    sprintf(cmd, (has(t, "cdf") || has(t, "atmost") || has(t, "<=")) ? "binomcdf(%d,%.10g,%d)" : "binom(%d,%.10g,%d)", (int)v[0], v[1], (int)v[2]); return eval_stats(cmd, out);
+  }
+  return 0;
+}
+
 int p3_eval(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   for (int i=0;i<P3_MAX_LINES;++i) out[i][0]=0;
   char s[192]; clean(input, s, sizeof(s));
@@ -308,6 +389,7 @@ int p3_eval(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   int n = eval_suvat(s, out); if (n) return n;
   n = eval_mech(s, out); if (n) return n;
   n = eval_stats(s, out); if (n) return n;
+  n = eval_free_text(input, out); if (n) return n;
   n = add(out, 0, "Supported:");
   n = add(out, n, "suvat projectile force weight friction moment incline");
   n = add(out, n, "connected pulley impulse work power restitution vector varacc");
