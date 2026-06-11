@@ -104,6 +104,9 @@ def main():
     require("pmcc sxx=10 syy=40 sxy=18", ["PMCC from summary", "Sxy/sqrt"])
     require("meanvar(5,20,90)", ["mean = Sx/n", "variance"])
     require("mean variance n 5 sx 20 sx2 90", ["mean = Sx/n", "variance"])
+    require("uncode(3,2,20,5)", ["Y=(X-a)/b", "mean X = 20 + 5*3 = 35", "sd X = |b|*sd Y = 5*2 = 10"])
+    require("coded data y=(x-20)/5 mean 3 sd 2", ["Y=(X-a)/b", "mean X = 20 + 5*3 = 35", "sd X"])
+    require("code(35,10,20,5)", ["For coded data Y=(X-a)/b", "mean Y = (35-20)/5 = 3", "sd Y = sd X/|b| = 10/5 = 2"])
     print("OK p3 engine")
 
 

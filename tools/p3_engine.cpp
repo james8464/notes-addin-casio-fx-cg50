@@ -471,6 +471,20 @@ static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     n = add(out, n, "variance = Sx2/n - mean^2");
     return add(out, n, "variance = %.10g, sd = %.10g", var, root(var));
   }
+  if (starts3(s, "uncode(", "decodecoded(", "codedtox(") && na >= 4) {
+    double my=num(a[0]), sy=num(a[1]), A=num(a[2]), B=num(a[3]), ab=B < 0 ? -B : B;
+    int n = add(out, 0, "For coded data Y=(X-a)/b, rearrange to X=a+bY.");
+    n = add(out, n, "mean X = a + b*mean Y");
+    n = add(out, n, "mean X = %.6g + %.6g*%.6g = %.6g", A, B, my, A+B*my);
+    return add(out, n, "sd X = |b|*sd Y = %.6g*%.6g = %.6g", ab, sy, ab*sy);
+  }
+  if (starts3(s, "code(", "codex(", "xtocoded(") && na >= 4) {
+    double mx=num(a[0]), sx=num(a[1]), A=num(a[2]), B=num(a[3]), ab=B < 0 ? -B : B;
+    int n = add(out, 0, "For coded data Y=(X-a)/b.");
+    n = add(out, n, "mean Y = (mean X - a)/b");
+    n = add(out, n, "mean Y = (%.6g-%.6g)/%.6g = %.6g", mx, A, B, (mx-A)/B);
+    return add(out, n, "sd Y = sd X/|b| = %.6g/%.6g = %.6g", sx, ab, sx/ab);
+  }
   return 0;
 }
 
@@ -622,6 +636,11 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       return eval_stats(cmd, out);
     }
   }
+  if ((has(t, "coded") || has(t, "coding")) && has(t, "mean") && (has(t, "sd") || has(t, "standarddeviation")) && nv >= 4) {
+    if (has(c, "y=(x-") || has(c, "y=(x+")) sprintf(cmd, "uncode(%.10g,%.10g,%.10g,%.10g)", v[2], v[3], -v[0], v[1]);
+    else sprintf(cmd, "code(%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3]);
+    return eval_stats(cmd, out);
+  }
   if ((has(t, "mean") || has(t, "variance") || has(t, "standarddeviation")) && nv >= 3) {
     sprintf(cmd, "meanvar(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_stats(cmd, out);
   }
@@ -639,5 +658,5 @@ int p3_eval(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   n = add(out, 0, "Supported:");
   n = add(out, n, "suvat projectile force weight friction moment incline");
   n = add(out, n, "connected pulley impulse work power energy restitution vector varacc");
-  return add(out, n, "normal normalprob invnormal binom binomtail critbinom hypbinom cond probor poisson poissontail regress pmcc meanvar");
+  return add(out, n, "normal normalprob invnormal binom binomtail critbinom hypbinom cond probor poisson poissontail regress pmcc meanvar code");
 }
