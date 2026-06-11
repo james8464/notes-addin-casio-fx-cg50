@@ -236,3 +236,21 @@ Evidence:
 Drift check:
 - Still inside CASP3 Edexcel Paper 3 statistics support.
 - Did not touch CAS Pure, CSCALC, NOTES, UI/menu/status code.
+
+## 2026-06-11 CSCALC Boolean Distributive Slice
+
+Completed:
+- Added named Boolean algebra working for common-factor/distributive simplification, e.g. `AB+AC -> A(B+C)`.
+- Preserved the existing truth-table/minterm simplification fallback.
+- Added a golden test for spaced free-text style Boolean input.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CSCALC AQA Paper 2 Boolean algebra support.
+- Did not touch CAS Pure, CASP3, NOTES, UI/menu/status code.
