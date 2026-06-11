@@ -473,3 +473,29 @@ Evidence:
 Drift check:
 - Still inside CASP3 Edexcel Paper 3 statistics support.
 - Did not touch CAS Pure, CSCALC behavior, NOTES, menus, or status/UI code.
+
+## 2026-06-11 CASP3 Histogram Density Slice
+
+Completed:
+- Added histogram frequency-density working:
+  `histdensity(frequency,width)` / `frequencydensity(...)`.
+- Added reverse route:
+  `histfreq(density,width)` / `frequencyfromdensity(...)`.
+- Added free-text handling for simple histogram density prompts.
+- Output shows formula, substitution, and value.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py && python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 84512 bytes`
+  - `CSCALC.g3a: 82736 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Still inside CASP3 Edexcel Paper 3 statistics support.
+- Did not touch CAS Pure, CSCALC behavior, NOTES, menus, or status/UI code.
