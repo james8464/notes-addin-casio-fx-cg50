@@ -540,6 +540,20 @@ static int eval_storage(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LE
     n = add(out, n, "%s*%s = %.10g bytes", a[0], a[1], bytes);
     return add(out, n, "= %.10g MB", bytes / 1000000.0);
   }
+  if (starts3(s, "addressspace(", "addresses(", "addressbus(") && na >= 1) {
+    int bits = (int)parse_int(a[0]);
+    double addresses = pow2(bits);
+    int n = add(out, 0, "Addressable locations = 2^(address bits).");
+    return add(out, n, "2^%d = %.10g addresses", bits, addresses);
+  }
+  if (starts3(s, "memorycapacity(", "addresscapacity(", "memorybus(") && na >= 2) {
+    int abits = (int)parse_int(a[0]), wbits = (int)parse_int(a[1]);
+    double addresses = pow2(abits), bits = addresses * wbits, bytes = bits / 8.0;
+    int n = add(out, 0, "Memory capacity = addressable locations * word size.");
+    n = add(out, n, "locations = 2^%d = %.10g", abits, addresses);
+    n = add(out, n, "bits = %.10g*%d = %.10g", addresses, wbits, bits);
+    return add(out, n, "= %.10g bytes", bytes);
+  }
   if (starts3(s, "hashmod(", "hashtable(", "modhash(") && na >= 2) {
     long long size = parse_int(a[0]);
     if (size <= 0) return add(out, 0, "Table size must be positive.");
@@ -1240,6 +1254,12 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if ((has(t, "record") || has(t, "database")) && nv >= 2) {
     sprintf(cmd, "records(%.10g,%.10g)", v[0], v[1]); return eval_storage(cmd, out);
   }
+  if (has(t, "address") && (has(t, "bus") || has(t, "space") || has(t, "locations")) && nv >= 1) {
+    if ((has(t, "word") || has(t, "capacity") || has(t, "memory")) && nv >= 2) {
+      sprintf(cmd, "memorycapacity(%lld,%lld)", (long long)v[0], (long long)v[1]); return eval_storage(cmd, out);
+    }
+    sprintf(cmd, "addressspace(%lld)", (long long)v[0]); return eval_storage(cmd, out);
+  }
   if ((has(t, "hash") || has(t, "hashtable")) && nv >= 2) {
     int p = sprintf(cmd, "hashmod(%lld", (long long)v[0]);
     for (int i = 1; i < nv && p < (int)sizeof(cmd) - 24; ++i) p += sprintf(cmd + p, ",%lld", (long long)v[i]);
@@ -1303,5 +1323,5 @@ int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
   n = add(out, 0, "Supported:");
   n = add(out, n, "bin hex den convert twos twosdec fixed fixedenc parity xorbits andbits orbits notbits hamming checksum checkdigit");
   n = add(out, n, "floatdec floatrange normal image sound bitrate transfer transfermb");
-  return add(out, n, "compress rle records hashmod chars bool truth nandform norform");
+  return add(out, n, "compress rle records hashmod addressspace chars bool truth nandform norform");
 }
