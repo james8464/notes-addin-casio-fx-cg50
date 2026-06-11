@@ -441,7 +441,7 @@ static int eval_binary_arith(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LI
 }
 
 static int eval_storage(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
-  char a[5][48]; int na = args(s, a, 5);
+  char a[10][48]; int na = args(s, a, 10);
   if (starts3(s, "image(", "bitmap(", "imagesize(") && na >= 3) {
     long long bits = parse_int(a[0]) * parse_int(a[1]) * parse_int(a[2]);
     double bytes = bits / 8.0;
@@ -539,6 +539,23 @@ static int eval_storage(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LE
     int n = add(out, 0, "File size = records * bytes per record.");
     n = add(out, n, "%s*%s = %.10g bytes", a[0], a[1], bytes);
     return add(out, n, "= %.10g MB", bytes / 1000000.0);
+  }
+  if (starts3(s, "hashmod(", "hashtable(", "modhash(") && na >= 2) {
+    long long size = parse_int(a[0]);
+    if (size <= 0) return add(out, 0, "Table size must be positive.");
+    long long seen[10]; int ns = 0;
+    int n = add(out, 0, "Hash address = key mod table size.");
+    n = add(out, n, "table size = %lld", size);
+    for (int i = 1; i < na; ++i) {
+      long long key = parse_int(a[i]);
+      long long addr = key % size; if (addr < 0) addr += size;
+      bool collision = false;
+      for (int j = 0; j < ns; ++j) if (seen[j] == addr) collision = true;
+      if (ns < 10) seen[ns++] = addr;
+      if (collision) n = add(out, n, "%lld mod %lld = %lld, collision", key, size, addr);
+      else n = add(out, n, "%lld mod %lld = %lld", key, size, addr);
+    }
+    return n;
   }
   return 0;
 }
@@ -1223,6 +1240,12 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if ((has(t, "record") || has(t, "database")) && nv >= 2) {
     sprintf(cmd, "records(%.10g,%.10g)", v[0], v[1]); return eval_storage(cmd, out);
   }
+  if ((has(t, "hash") || has(t, "hashtable")) && nv >= 2) {
+    int p = sprintf(cmd, "hashmod(%lld", (long long)v[0]);
+    for (int i = 1; i < nv && p < (int)sizeof(cmd) - 24; ++i) p += sprintf(cmd + p, ",%lld", (long long)v[i]);
+    sprintf(cmd + p, ")");
+    return eval_storage(cmd, out);
+  }
   if ((has(t, "character") || has(t, "text")) && nv >= 2) {
     if (has(t, "characterset") || has(t, "symbols") || has(t, "alphabet")) {
       sprintf(cmd, "charset(%lld,%lld)", (long long)v[0], (long long)v[1]); return eval_storage(cmd, out);
@@ -1280,5 +1303,5 @@ int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
   n = add(out, 0, "Supported:");
   n = add(out, n, "bin hex den convert twos twosdec fixed fixedenc parity xorbits andbits orbits notbits hamming checksum checkdigit");
   n = add(out, n, "floatdec floatrange normal image sound bitrate transfer transfermb");
-  return add(out, n, "compress rle records chars bool truth nandform norform");
+  return add(out, n, "compress rle records hashmod chars bool truth nandform norform");
 }

@@ -99,6 +99,8 @@ def main():
     require("run length encode aaabcccc with 8 symbol bits and 4 count bits", ["consecutive repeated", "runs: ax3,bx1,cx4", "encoded bits = 3*(8+4)"])
     require("records(120,32)", ["records * bytes", "3840 bytes"])
     require("database file 120 records 32 bytes per record", ["records * bytes", "3840 bytes"])
+    require("hashmod(10,27,18,29,37)", ["Hash address = key mod table size", "27 mod 10 = 7", "37 mod 10 = 7, collision"])
+    require("hash table size 10 keys 27 18 29 37", ["Hash address = key mod table size", "29 mod 10 = 9", "collision"])
     require("chars(120,8)", ["characters", "960 bits", "MB"])
     require("charset(120,128)", ["ceil(log2(128)) = 7", "text bits = 120*7"])
     require("store 120 characters from character set of 128 symbols", ["ceil(log2(128)) = 7", "840 bits"])
