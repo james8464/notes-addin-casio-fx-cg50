@@ -312,6 +312,13 @@ static int eval_mech(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     n = add(out, n, "|R| = sqrt(%.6g^2+%.6g^2) = %.6g", x, y, mag);
     return add(out, n, "direction: use tan(theta)=y/x on calculator.");
   }
+  if (starts3(s, "resolve(", "componentsfromforce(", "forcecomponents(") && na >= 2) {
+    double F=num(a[0]), deg=num(a[1]), th=deg*M_PI/180.0;
+    int n = add(out, 0, "Resolve the force into perpendicular components.");
+    n = add(out, n, "horizontal = F cos(theta) = %.6g cos(%.6g)", F, deg);
+    n = add(out, n, "vertical = F sin(theta) = %.6g sin(%.6g)", F, deg);
+    return add(out, n, "components = %.10g, %.10g", F*cosine(th), F*sine(th));
+  }
   if (starts3(s, "varacc(", "variableacc(", "variableacceleration(") && na >= 4) {
     double c=num(a[0]), k=num(a[1]), u=num(a[2]), t=num(a[3]);
     int n = add(out, 0, "Given a(t)=c+kt, integrate to get velocity.");
@@ -559,6 +566,12 @@ static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     n = add(out, n, "E(X^2) = %s = %.10g", l2, ex2);
     return add(out, n, "Var(X)=E(X^2)-E(X)^2 = %.10g", ex2 - ex*ex);
   }
+  if (starts3(s, "stratified(", "stratifiedsample(", "stratum(") && na >= 3) {
+    double pop=num(a[0]), group=num(a[1]), sample=num(a[2]), ans=group/pop*sample;
+    int n = add(out, 0, "For stratified sampling, use group/population * sample size.");
+    n = add(out, n, "sample from group = %.6g/%.6g * %.6g", group, pop, sample);
+    return add(out, n, "= %.10g, then round sensibly for people/items.", ans);
+  }
   if (starts3(s, "groupmedian(", "groupedmedian(", "interpolatemedian(") && na >= 5) {
     double L=num(a[0]), cf=num(a[1]), f=num(a[2]), w=num(a[3]), n0=num(a[4]), pos=n0/2.0;
     int n = add(out, 0, "Use linear interpolation in the median class.");
@@ -657,6 +670,9 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if ((has(t, "resultant") || has(t, "vector")) && nv >= 2) {
     sprintf(cmd, "vector(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
+  }
+  if ((has(t, "resolve") || has(t, "components")) && has(t, "force") && nv >= 2) {
+    sprintf(cmd, "resolve(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
   }
   if ((has(t, "varacc") || has(t, "variableacceleration") || (has(t, "acceleration") && has(t, "integrate"))) && nv >= 4) {
     sprintf(cmd, "varacc(%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3]); return eval_mech(cmd, out);
@@ -785,6 +801,9 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     sprintf(cmd+p, ")");
     return eval_stats(cmd, out);
   }
+  if ((has(t, "stratified") || has(t, "stratum")) && nv >= 3) {
+    sprintf(cmd, "stratified(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_stats(cmd, out);
+  }
   if ((has(t, "grouped") || has(t, "interpolate") || has(t, "interpolation")) && has(t, "median") && nv >= 5) {
     sprintf(cmd, "groupmedian(%.10g,%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3], v[4]); return eval_stats(cmd, out);
   }
@@ -809,6 +828,6 @@ int p3_eval(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   n = eval_free_text(input, out); if (n) return n;
   n = add(out, 0, "Supported:");
   n = add(out, n, "suvat projectile force weight friction moment incline");
-  n = add(out, n, "connected pulley impulse work power energy restitution vector varacc");
-  return add(out, n, "normal normalprob invnormal binom binomtail critbinom hypbinom cond probor bayes independent poisson poissontail poissonnorm critpoisson hyppoisson regress pmcc meanvar discrete groupmedian histdensity code");
+  n = add(out, n, "connected pulley impulse work power energy restitution vector resolve varacc");
+  return add(out, n, "normal normalprob invnormal binom binomtail critbinom hypbinom cond probor bayes independent poisson poissontail poissonnorm critpoisson hyppoisson regress pmcc meanvar discrete stratified groupmedian histdensity code");
 }
