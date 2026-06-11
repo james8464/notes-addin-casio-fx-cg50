@@ -1,5 +1,24 @@
 # Checkpoint
 
+## 2026-06-12 CASP3 Projectile Height Slice
+
+Completed:
+- Added `projectileh(...)` / `projectileheight(...)` / `projheight(...)` for projectiles launched from a height.
+- Added free-text dispatch before the same-height projectile fallback when prompts mention height/above.
+- Output now shows resolving, vertical equation, time from the quadratic, and horizontal range.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CASP3 Paper 3 mechanics support.
+- Did not touch CAS Pure, CSCALC behavior, NOTES, UI/menu/status code.
+
 ## 2026-06-12 CASP3 Conservation Of Momentum Slice
 
 Completed:

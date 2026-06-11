@@ -225,6 +225,17 @@ static int eval_suvat(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
 
 static int eval_mech(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   char a[8][48]; int na = args(s, a, 8);
+  if (starts3(s, "projectileh(", "projectileheight(", "projheight(") && na >= 3) {
+    double u = num(a[0]), deg = num(a[1]), h = num(a[2]), g = na > 3 ? num(a[3]) : 9.8;
+    double th = deg * M_PI / 180.0, ux = u*cosine(th), uy = u*sine(th);
+    double t = (uy + root(uy*uy + 2*g*h)) / g, r = ux*t;
+    int n = add(out, 0, "Resolve, then use vertical motion to find time.");
+    n = add(out, n, "u_x = %.6g cos %.6g = %.6g", u, deg, ux);
+    n = add(out, n, "u_y = %.6g sin %.6g = %.6g", u, deg, uy);
+    n = add(out, n, "-h = u_y t - 1/2 g t^2, so h=%.6g", h);
+    n = add(out, n, "t = (u_y+sqrt(u_y^2+2gh))/g = %.10g", t);
+    return add(out, n, "range = u_x t = %.10g", r);
+  }
   if (starts3(s, "projectile(", "proj(", "projectiles(") && na >= 2) {
     double u = num(a[0]), th = num(a[1]) * M_PI / 180.0, g = na > 2 ? num(a[2]) : 9.8;
     double ux = u*cosine(th), uy = u*sine(th), T = 2*uy/g, R = ux*T, H = uy*uy/(2*g);
@@ -648,6 +659,9 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       return eval_suvat(cmd, out);
     }
   }
+  if ((has(t, "projectile") || has(t, "projectiles")) && (has(t, "height") || has(t, "above")) && nv >= 3) {
+    sprintf(cmd, "projectileh(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_mech(cmd, out);
+  }
   if ((has(t, "projectile") || has(t, "projectiles")) && nv >= 2) {
     sprintf(cmd, "projectile(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
   }
@@ -855,7 +869,7 @@ int p3_eval(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   n = eval_stats(s, out); if (n) return n;
   n = eval_free_text(input, out); if (n) return n;
   n = add(out, 0, "Supported:");
-  n = add(out, n, "suvat projectile force weight friction moment incline");
+  n = add(out, n, "suvat projectile projectileh force weight friction moment incline");
   n = add(out, n, "connected pulley impulse momentum work power energy restitution vector resolve varacc");
   return add(out, n, "normal normalprob invnormal binom binomtail critbinom hypbinom cond probor bayes independent poisson poissontail poissonnorm critpoisson hyppoisson regress pmcc meanvar discrete stratified groupmedian histdensity code");
 }
