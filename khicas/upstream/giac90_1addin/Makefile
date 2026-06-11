@@ -41,6 +41,15 @@ all: khicasen.g3a khicas.g3a  # pour la version console, supprimer le lien iostr
 runmat_mock.o: runmat_mock.cc
 	$(CXX) $(RUNMAT_CXXFLAGS) -c $<
 
+casio_p3_app.o: p3_app.cc casio_suite_ui.hpp
+	$(CXX) $(RUNMAT_CXXFLAGS) -c $< -o $@
+
+casio_cscalc_app.o: cscalc_app.cc casio_suite_ui.hpp
+	$(CXX) $(RUNMAT_CXXFLAGS) -c $< -o $@
+
+casio_notes_app.o: notes_app.cc casio_suite_ui.hpp
+	$(CXX) $(RUNMAT_CXXFLAGS) -c $< -o $@
+
 libgui.a: $(GUI_OBJS)
 	$(RM) -f $@
 	$(AR) cru $@ $^
@@ -96,6 +105,45 @@ runmat_mock.bin: runmat_mock.elf
 RUNMAT.g3a: runmat_mock.bin runmat_icon.png runmat_icon_selected.png
 	mkg3a -n basic:RunMat -n internal:RUNMAT -V 1.0.0 -i uns:runmat_icon.png -i sel:runmat_icon_selected.png runmat_mock.bin $@
 	/bin/cp RUNMAT.g3a ~/.wine/drive_c
+
+CASP3.elf: casio_p3_app.o
+	mkdir -p $(LINK_TMP)
+	$(CXX) $(RUNMAT_LDFLAGS) -Wl,-Map=$(LINK_TMP)/CASP3.map casio_p3_app.o $(RUNMAT_LIBS) -o $(LINK_TMP)/$@
+	cp $(LINK_TMP)/$@ $@
+	cp $(LINK_TMP)/CASP3.map CASP3.map
+
+CASP3.bin: CASP3.elf
+	$(OBJCOPY) $(OBJFLAGS) CASP3.elf CASP3.bin
+
+CASP3.g3a: CASP3.bin runmat_icon.png runmat_icon_selected.png
+	mkg3a -n basic:CASP3 -n internal:CASP3 -V 1.0.0 -i uns:runmat_icon.png -i sel:runmat_icon_selected.png CASP3.bin $@
+	/bin/cp CASP3.g3a ~/.wine/drive_c
+
+CSCALC.elf: casio_cscalc_app.o
+	mkdir -p $(LINK_TMP)
+	$(CXX) $(RUNMAT_LDFLAGS) -Wl,-Map=$(LINK_TMP)/CSCALC.map casio_cscalc_app.o $(RUNMAT_LIBS) -o $(LINK_TMP)/$@
+	cp $(LINK_TMP)/$@ $@
+	cp $(LINK_TMP)/CSCALC.map CSCALC.map
+
+CSCALC.bin: CSCALC.elf
+	$(OBJCOPY) $(OBJFLAGS) CSCALC.elf CSCALC.bin
+
+CSCALC.g3a: CSCALC.bin runmat_icon.png runmat_icon_selected.png
+	mkg3a -n basic:CSCalc -n internal:CSCALC -V 1.0.0 -i uns:runmat_icon.png -i sel:runmat_icon_selected.png CSCALC.bin $@
+	/bin/cp CSCALC.g3a ~/.wine/drive_c
+
+NOTES.elf: casio_notes_app.o
+	mkdir -p $(LINK_TMP)
+	$(CXX) $(RUNMAT_LDFLAGS) -Wl,-Map=$(LINK_TMP)/NOTES.map casio_notes_app.o $(RUNMAT_LIBS) -o $(LINK_TMP)/$@
+	cp $(LINK_TMP)/$@ $@
+	cp $(LINK_TMP)/NOTES.map NOTES.map
+
+NOTES.bin: NOTES.elf
+	$(OBJCOPY) $(OBJFLAGS) NOTES.elf NOTES.bin
+
+NOTES.g3a: NOTES.bin runmat_icon.png runmat_icon_selected.png
+	mkg3a -n basic:Notes -n internal:NOTES -V 1.0.0 -i uns:runmat_icon.png -i sel:runmat_icon_selected.png NOTES.bin $@
+	/bin/cp NOTES.g3a ~/.wine/drive_c
 
 clean:
 	$(RM) -f *.o libcas.a libgui.a 

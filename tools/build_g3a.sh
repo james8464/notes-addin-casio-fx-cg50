@@ -8,6 +8,9 @@ OUT_DIR="${ROOT_DIR}/build"
 TRANSFER_DIR="${ROOT_DIR}/calculator_files"
 TARGET="${CASIO_KHICAS_TARGET:-CAS.g3a}"
 RUNMAT_TARGET="${CASIO_RUNMAT_TARGET:-RUNMAT.g3a}"
+P3_TARGET="${CASIO_P3_TARGET:-CASP3.g3a}"
+CS_TARGET="${CASIO_CS_TARGET:-CSCALC.g3a}"
+NOTES_TARGET="${CASIO_NOTES_TARGET:-NOTES.g3a}"
 PACK_TARGET="${CASIO_HELP_PACK_TARGET:-${TARGET%.*}.PAK}"
 MAKE_JOBS="${CASIO_MAKE_JOBS:-1}"
 IMAGE_VERSION="runmat-v2"
@@ -59,6 +62,10 @@ clean_source_outputs
 prepare_icons
 python3 "${ROOT_DIR}/tools/generate_runmat_icons.py"
 cp "${ROOT_DIR}/tools/runmat_mock.cc" "${SRC_DIR}/runmat_mock.cc"
+cp "${ROOT_DIR}/tools/casio_suite_ui.hpp" "${SRC_DIR}/casio_suite_ui.hpp"
+cp "${ROOT_DIR}/tools/p3_app.cc" "${SRC_DIR}/p3_app.cc"
+cp "${ROOT_DIR}/tools/cscalc_app.cc" "${SRC_DIR}/cscalc_app.cc"
+cp "${ROOT_DIR}/tools/notes_app.cc" "${SRC_DIR}/notes_app.cc"
 
 cat > "${DOCKER_BUILD_SCRIPT}" <<'SH'
 #!/usr/bin/env bash
@@ -66,6 +73,9 @@ set -euo pipefail
 
 : "${CASIO_KHICAS_TARGET:=CAS.g3a}"
 : "${CASIO_RUNMAT_TARGET:=RUNMAT.g3a}"
+: "${CASIO_P3_TARGET:=CASP3.g3a}"
+: "${CASIO_CS_TARGET:=CSCALC.g3a}"
+: "${CASIO_NOTES_TARGET:=NOTES.g3a}"
 : "${CASIO_MAKE_JOBS:=1}"
 
 mkdir -p /shared/tmp ~/.wine/drive_c
@@ -74,13 +84,19 @@ cp -a /work/khicas/upstream/giac90_1addin /tmp/giac90_1addin
 cd /tmp/giac90_1addin
 
 make clean
-rm -f "${CASIO_KHICAS_TARGET}" "${CASIO_RUNMAT_TARGET}"
-make -j"${CASIO_MAKE_JOBS}" "${CASIO_KHICAS_TARGET}" "${CASIO_RUNMAT_TARGET}"
+rm -f "${CASIO_KHICAS_TARGET}" "${CASIO_RUNMAT_TARGET}" "${CASIO_P3_TARGET}" "${CASIO_CS_TARGET}" "${CASIO_NOTES_TARGET}"
+make -j"${CASIO_MAKE_JOBS}" "${CASIO_KHICAS_TARGET}" "${CASIO_RUNMAT_TARGET}" "${CASIO_P3_TARGET}" "${CASIO_CS_TARGET}" "${CASIO_NOTES_TARGET}"
 
 cp "${CASIO_KHICAS_TARGET}" /work/khicas/upstream/giac90_1addin/
 cp "${CASIO_RUNMAT_TARGET}" /work/khicas/upstream/giac90_1addin/
+cp "${CASIO_P3_TARGET}" /work/khicas/upstream/giac90_1addin/
+cp "${CASIO_CS_TARGET}" /work/khicas/upstream/giac90_1addin/
+cp "${CASIO_NOTES_TARGET}" /work/khicas/upstream/giac90_1addin/
 cp khicasen.bin khicasen.elf khicasen.map /work/khicas/upstream/giac90_1addin/
 cp runmat_mock.bin runmat_mock.elf runmat_mock.map /work/khicas/upstream/giac90_1addin/
+for app in CASP3 CSCALC NOTES; do
+  cp "${app}.bin" "${app}.elf" "${app}.map" /work/khicas/upstream/giac90_1addin/
+done
 SH
 
 docker run --rm \
@@ -88,6 +104,9 @@ docker run --rm \
   -e CASIO_MAKE_JOBS="${MAKE_JOBS}" \
   -e CASIO_KHICAS_TARGET="${TARGET}" \
   -e CASIO_RUNMAT_TARGET="${RUNMAT_TARGET}" \
+  -e CASIO_P3_TARGET="${P3_TARGET}" \
+  -e CASIO_CS_TARGET="${CS_TARGET}" \
+  -e CASIO_NOTES_TARGET="${NOTES_TARGET}" \
   -v "${ROOT_DIR}:/work" \
   -w /work/khicas/upstream/giac90_1addin \
   "${IMAGE_TAG}" \
@@ -95,9 +114,15 @@ docker run --rm \
 
 cp "${SRC_DIR}/${TARGET}" "${OUT_DIR}/${TARGET}"
 cp "${SRC_DIR}/${RUNMAT_TARGET}" "${OUT_DIR}/${RUNMAT_TARGET}"
+cp "${SRC_DIR}/${P3_TARGET}" "${OUT_DIR}/${P3_TARGET}"
+cp "${SRC_DIR}/${CS_TARGET}" "${OUT_DIR}/${CS_TARGET}"
+cp "${SRC_DIR}/${NOTES_TARGET}" "${OUT_DIR}/${NOTES_TARGET}"
 python3 "${ROOT_DIR}/tools/normalize_g3a_metadata.py" \
   "${OUT_DIR}/${TARGET}" \
-  "${OUT_DIR}/${RUNMAT_TARGET}"
+  "${OUT_DIR}/${RUNMAT_TARGET}" \
+  "${OUT_DIR}/${P3_TARGET}" \
+  "${OUT_DIR}/${CS_TARGET}" \
+  "${OUT_DIR}/${NOTES_TARGET}"
 for ext in bin elf map; do
   src="${SRC_DIR}/khicasen.${ext}"
   [ ! -f "${src}" ] || cp "${src}" "${OUT_DIR}/khicasen.${ext}"
@@ -105,6 +130,12 @@ done
 for ext in bin elf map; do
   src="${SRC_DIR}/runmat_mock.${ext}"
   [ ! -f "${src}" ] || cp "${src}" "${OUT_DIR}/runmat_mock.${ext}"
+done
+for app in CASP3 CSCALC NOTES; do
+  for ext in bin elf map; do
+    src="${SRC_DIR}/${app}.${ext}"
+    [ ! -f "${src}" ] || cp "${src}" "${OUT_DIR}/${app}.${ext}"
+  done
 done
 
 python3 "${ROOT_DIR}/tools/check_g3a_metadata.py" "${OUT_DIR}/${TARGET}" \
@@ -117,15 +148,35 @@ python3 "${ROOT_DIR}/tools/check_g3a_metadata.py" "${OUT_DIR}/${RUNMAT_TARGET}" 
   --internal @RUNMAT \
   --filename "${RUNMAT_TARGET}"
 python3 "${ROOT_DIR}/tools/check_g3a_size.py" "${OUT_DIR}/${RUNMAT_TARGET}"
+python3 "${ROOT_DIR}/tools/check_g3a_metadata.py" "${OUT_DIR}/${P3_TARGET}" \
+  --name CASP3 \
+  --internal @CASP3 \
+  --filename "${P3_TARGET}"
+python3 "${ROOT_DIR}/tools/check_g3a_size.py" "${OUT_DIR}/${P3_TARGET}"
+python3 "${ROOT_DIR}/tools/check_g3a_metadata.py" "${OUT_DIR}/${CS_TARGET}" \
+  --name CSCalc \
+  --internal @CSCALC \
+  --filename "${CS_TARGET}"
+python3 "${ROOT_DIR}/tools/check_g3a_size.py" "${OUT_DIR}/${CS_TARGET}"
+python3 "${ROOT_DIR}/tools/check_g3a_metadata.py" "${OUT_DIR}/${NOTES_TARGET}" \
+  --name Notes \
+  --internal @NOTES \
+  --filename "${NOTES_TARGET}"
+python3 "${ROOT_DIR}/tools/check_g3a_size.py" "${OUT_DIR}/${NOTES_TARGET}"
 python3 "${ROOT_DIR}/tools/build_help_pack.py" \
   "${ROOT_DIR}/help/functions" \
   "${OUT_DIR}/${PACK_TARGET}"
 
 cp "${OUT_DIR}/${TARGET}" "${TRANSFER_DIR}/${TARGET}"
 cp "${OUT_DIR}/${RUNMAT_TARGET}" "${TRANSFER_DIR}/${RUNMAT_TARGET}"
+cp "${OUT_DIR}/${P3_TARGET}" "${TRANSFER_DIR}/${P3_TARGET}"
+cp "${OUT_DIR}/${CS_TARGET}" "${TRANSFER_DIR}/${CS_TARGET}"
+cp "${OUT_DIR}/${NOTES_TARGET}" "${TRANSFER_DIR}/${NOTES_TARGET}"
 cp "${OUT_DIR}/${PACK_TARGET}" "${TRANSFER_DIR}/${PACK_TARGET}"
 clean_source_outputs
-rm -f "${SRC_DIR}/khicasio.png" "${SRC_DIR}/khicasio1.png"
+rm -f "${SRC_DIR}/khicasio.png" "${SRC_DIR}/khicasio1.png" \
+  "${SRC_DIR}/casio_suite_ui.hpp" \
+  "${SRC_DIR}/p3_app.cc" "${SRC_DIR}/cscalc_app.cc" "${SRC_DIR}/notes_app.cc"
 
-ls -lh "${TRANSFER_DIR}/${TARGET}" "${TRANSFER_DIR}/${RUNMAT_TARGET}" "${TRANSFER_DIR}/${PACK_TARGET}"
-shasum -a 256 "${TRANSFER_DIR}/${TARGET}" "${TRANSFER_DIR}/${RUNMAT_TARGET}" "${TRANSFER_DIR}/${PACK_TARGET}"
+ls -lh "${TRANSFER_DIR}/${TARGET}" "${TRANSFER_DIR}/${RUNMAT_TARGET}" "${TRANSFER_DIR}/${P3_TARGET}" "${TRANSFER_DIR}/${CS_TARGET}" "${TRANSFER_DIR}/${NOTES_TARGET}" "${TRANSFER_DIR}/${PACK_TARGET}"
+shasum -a 256 "${TRANSFER_DIR}/${TARGET}" "${TRANSFER_DIR}/${RUNMAT_TARGET}" "${TRANSFER_DIR}/${P3_TARGET}" "${TRANSFER_DIR}/${CS_TARGET}" "${TRANSFER_DIR}/${NOTES_TARGET}" "${TRANSFER_DIR}/${PACK_TARGET}"
