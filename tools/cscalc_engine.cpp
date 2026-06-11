@@ -803,6 +803,21 @@ static bool bool_law_once(const char *expr, char *res, char *law) {
         char l[40], r[40]; memcpy(l, aa, q); l[q] = 0; strcpy(r, aa + q + 1);
         if (strcmp(bb, l) == 0 || strcmp(bb, r) == 0) { strcpy(res, bb); strcpy(law, "Absorption law"); return true; }
       }
+      int qa = top_op(aa, '+'), qb = top_op(bb, '+');
+      if (qa > 0 && qb > 0) {
+        char al[40], ar[40], bl[40], br[40], common[40], ao[40], bo[40];
+        memcpy(al, aa, qa); al[qa] = 0; strcpy(ar, aa + qa + 1);
+        memcpy(bl, bb, qb); bl[qb] = 0; strcpy(br, bb + qb + 1);
+        common[0] = ao[0] = bo[0] = 0;
+        if (strcmp(al, bl) == 0) { strcpy(common, al); strcpy(ao, ar); strcpy(bo, br); }
+        else if (strcmp(al, br) == 0) { strcpy(common, al); strcpy(ao, ar); strcpy(bo, bl); }
+        else if (strcmp(ar, bl) == 0) { strcpy(common, ar); strcpy(ao, al); strcpy(bo, br); }
+        else if (strcmp(ar, br) == 0) { strcpy(common, ar); strcpy(ao, al); strcpy(bo, bl); }
+        if (common[0]) {
+          sprintf(res, "%s+%s&%s", common, ao, bo);
+          strcpy(law, "Distributive law"); return true;
+        }
+      }
     }
   }
   return false;

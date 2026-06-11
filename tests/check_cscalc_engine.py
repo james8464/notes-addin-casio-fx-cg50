@@ -99,6 +99,7 @@ def main():
     require("bool(A+A')", ["Boolean algebra", "Complement law", "simplified = 1"])
     require("bool(not(A and B))", ["Boolean algebra", "De Morgan", "simplified"])
     require("bool(A B + A C)", ["Boolean algebra", "Distributive law", "a&(b+c)", "simplified"])
+    require("bool((A+B)(A+C))", ["Boolean algebra", "Distributive law", "a+b&c", "simplified"])
     require("bool(A nand B)", ["truth table", "simplified = A'+B'"])
     require("nandform(A+B)", ["Use NAND", "NAND form", "A NAND A"])
     require("nand form A or B", ["Use NAND", "NAND form", "A NAND A"])
