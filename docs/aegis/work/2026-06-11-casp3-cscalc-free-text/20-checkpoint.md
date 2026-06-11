@@ -1,5 +1,24 @@
 # Checkpoint
 
+## 2026-06-11 CASP3 Bayes / Independence Slice
+
+Completed:
+- Added `bayes(...)` / `bayestheorem(...)` / `reverseconditional(...)` working.
+- Added `independent(...)` / `independence(...)` / `testindependent(...)` working.
+- Ordered free-text dispatch so reverse-conditional/Bayes prompts are not stolen by generic conditional probability.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CASP3 probability free-text/method support.
+- Did not touch CAS Pure, CSCALC, NOTES, UI/menu/status code.
+
 ## 2026-06-11 Labelled Stats / Boolean Proof Slice
 
 Completed:

@@ -451,6 +451,18 @@ static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     int n = add(out, 0, "Use P(A or B)=P(A)+P(B)-P(A and B).");
     return add(out, n, "%.6g+%.6g-%.6g=%.6g", pa, pb, pab, pa+pb-pab);
   }
+  if (starts3(s, "bayes(", "bayestheorem(", "reverseconditional(") && na >= 3) {
+    double pba=num(a[0]), pa=num(a[1]), pb=num(a[2]);
+    int n = add(out, 0, "Use Bayes' theorem: P(A|B)=P(B|A)P(A)/P(B).");
+    return add(out, n, "P(A|B)=%.6g*%.6g/%.6g=%.10g", pba, pa, pb, pba*pa/pb);
+  }
+  if (starts3(s, "independent(", "independence(", "testindependent(") && na >= 3) {
+    double pa=num(a[0]), pb=num(a[1]), pab=num(a[2]), prod=pa*pb;
+    double diff = pab > prod ? pab - prod : prod - pab;
+    int n = add(out, 0, "For independence, check whether P(A and B)=P(A)P(B).");
+    n = add(out, n, "P(A)P(B)=%.6g*%.6g=%.10g", pa, pb, prod);
+    return add(out, n, diff < 1e-9 ? "Since %.10g = %.10g, A and B are independent." : "Since %.10g != %.10g, A and B are not independent.", pab, prod);
+  }
   if (starts2(s, "poisson(", "poissonpdf(") && na >= 2) {
     double lam=num(a[0]); int r=(int)num(a[1]);
     int n = add(out, 0, "For X~Po(lambda), P(X=r)=e^-lambda lambda^r/r!.");
@@ -662,6 +674,12 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     double tail = has(t, "upper") || has(t, "greater") || has(t, "more") ? 1 : -1;
     sprintf(cmd, "hypbinom(%d,%.10g,%d,%.10g,%.0f)", (int)v[0], v[1], (int)v[2], v[3], tail); return eval_stats(cmd, out);
   }
+  if ((has(t, "bayes") || has(t, "reverseconditional")) && nv >= 3) {
+    sprintf(cmd, "bayes(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_stats(cmd, out);
+  }
+  if ((has(t, "independent") || has(t, "independence")) && nv >= 3) {
+    sprintf(cmd, "independent(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_stats(cmd, out);
+  }
   if ((has(t, "conditional") || has(t, "given")) && nv >= 2) {
     sprintf(cmd, "cond(%.10g,%.10g)", v[0], v[1]); return eval_stats(cmd, out);
   }
@@ -757,5 +775,5 @@ int p3_eval(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   n = add(out, 0, "Supported:");
   n = add(out, n, "suvat projectile force weight friction moment incline");
   n = add(out, n, "connected pulley impulse work power energy restitution vector varacc");
-  return add(out, n, "normal normalprob invnormal binom binomtail critbinom hypbinom cond probor poisson poissontail poissonnorm critpoisson hyppoisson regress pmcc meanvar groupmedian histdensity code");
+  return add(out, n, "normal normalprob invnormal binom binomtail critbinom hypbinom cond probor bayes independent poisson poissontail poissonnorm critpoisson hyppoisson regress pmcc meanvar groupmedian histdensity code");
 }
