@@ -100,3 +100,22 @@ Evidence:
 Drift check:
 - Still inside CSCALC AQA Paper 2 calculation scope.
 - Did not touch CAS Pure, CASP3, NOTES, UI/menu/status code.
+
+## 2026-06-11 CASP3 Normal Tail/Test Slice
+
+Completed:
+- Added CASP3 `normaltail` / `normalupper` / `normaltp` route with z-standardisation and fx-CG50 NormalCD setup.
+- Added `hypnormal` / `normaltest` / `hypmean` route with H0/H1, standard error, z statistic, alpha comparison, and context conclusion prompt.
+- Added natural-language parsing for normal upper/lower tail and normal hypothesis-test wording.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CASP3 Edexcel Paper 3 method support.
+- Did not touch CAS Pure, CSCALC, NOTES, UI/menu/status code.
