@@ -1,5 +1,23 @@
 # Checkpoint
 
+## 2026-06-12 CASP3 SUVAT Free-Text Bridge Slice
+
+Completed:
+- Broadened the labelled SUVAT parser so constant-acceleration/velocity/distance/time wording works without the literal word `suvat`.
+- Added tests for natural labelled constant-acceleration prompts.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CASP3 Paper 3 mechanics free-text support.
+- Did not touch CAS Pure, CSCALC behavior, NOTES, UI/menu/status code.
+
 ## 2026-06-12 CSCALC Bitwise Operation Slice
 
 Completed:

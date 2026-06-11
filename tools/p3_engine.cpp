@@ -618,7 +618,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   char c[192]; clean(input, c, sizeof(c));
   double v[8]; int nv = scan_nums(t, v, 8);
   char cmd[160];
-  if (has(t, "suvat")) {
+  if (has(t, "suvat") || has(t, "velocity") || has(t, "acceleration") || has(t, "distance") || has(t, "displacement") || has(t, "time")) {
     double u=0, vv=0, acc=0, dist=0, time=0; bool hu=label_num(input,"u",&u), hv=label_num(input,"v",&vv), ha=label_num(input,"a",&acc), hs=label_num(input,"s",&dist), ht=label_num(input,"t",&time);
     if (hu || hv || ha || hs || ht) {
       int p = sprintf(cmd, "suvat(");
