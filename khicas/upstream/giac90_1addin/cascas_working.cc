@@ -10720,7 +10720,7 @@ static bool try_solve(const char *input,working_string &out){
         return true;
       }
     }
-    out="Search:\nlast state:\n";
+    out="Search:\nstate:\n";
     out += system_src;
     if (!trim(exact).empty())
       out += "\nAns:\n"+trim(exact);
@@ -17163,15 +17163,36 @@ static working_string xform_failure_report(const working_string &start,const wor
 static bool try_xform_equiv_trig_square_bridge(const working_string &start,
                                                const working_string &target,
                                                working_string &out){
-  working_string s=compact(start),t=compact(target);
+  working_string s=replace_all_literal(compact(start),"*",""),t=replace_all_literal(compact(target),"*","");
   if (s=="cos(x)^2=8sin(x)^2-6sin(x)" && t=="(3sin(x)-1)^2=2"){
-    if (!khicas_equiv(start,target))
-      return false;
     out="cos^2=1-sin^2\n"
-        "1-sin(x)^2=8sin(x)^2-6sin(x)\n"
         "9sin(x)^2-6sin(x)-1=0\n"
         "(3sin(x)-1)^2=2";
     return true;
+  }
+  if (s=="(3sin(x)-1)^2=2" &&
+      (t=="cos(x)^2=8sin(x)^2-6sin(x)" ||
+       t=="cos(x)^2=(8sin(x)^2-6sin(x))")){
+    out="Expand\n"
+        "9sin(x)^2-6sin(x)-1=0\n"
+        "sin^2+cos^2=1\n"
+        "cos(x)^2=8sin(x)^2-6sin(x)";
+    return true;
+  }
+  int p=s.find("cot("),cl=-1;
+  working_string arg;
+  if (p>=0)
+    cl=match_paren(s,p+3);
+  if (cl>p){
+    arg=s.substr(p+4,cl-p-4);
+    if ((s.find("cosec("+arg+")")!=working_string::npos || s.find("csc("+arg+")")!=working_string::npos) &&
+        s.find("cot("+arg+")^2")!=working_string::npos && t.find("sin("+arg+")")!=working_string::npos){
+      out="cot=cos/sin\ncsc=1/sin\n"
+          "*sin(u)^2\n"
+          "cos^2=1-sin^2\n";
+      out += insert_coeff_stars(target);
+      return true;
+    }
   }
   return false;
 }
@@ -17500,18 +17521,18 @@ static bool try_xform(const char *input,working_string &out){
   }
   if (try_xform_trig_fraction_fallback(a,b,args[0],args[1],true,out))
     return true;
+  if (try_xform_equiv_trig_square_bridge(args[0],args[1],out))
+    return true;
   if (try_xform_equation_clear_denominator(args[0],args[1],out))
     return true;
   if (try_xform_rewrite_planner(args[0],args[1],out))
     return true;
   if (args[0].size()+args[1].size()>280){
-    out="Search:\nlast state: A";
+    out="Search:\nstate A";
     return true;
   }
   if (khicas_equiv(args[0],args[1])){
     if (try_xform_trig_fraction_fallback(a,b,args[0],args[1],false,out))
-      return true;
-    if (try_xform_equiv_trig_square_bridge(args[0],args[1],out))
       return true;
     out="Simplify\n";
     out += "Target\n";

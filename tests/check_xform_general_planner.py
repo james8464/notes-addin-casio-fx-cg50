@@ -37,9 +37,46 @@ CASES = [
         "xform(cos(x)^2=8*sin(x)^2-6*sin(x),(3*sin(x)-1)^2=2)",
         [
             "cos^2=1-sin^2",
-            "1-sin(x)^2=8sin(x)^2-6sin(x)",
             "9sin(x)^2",
             "(3sin(x)-1)^2=2",
+        ],
+    ),
+    (
+        "xform((3*sin(x)-1)^2=2,cos(x)^2=(8*sin(x)^2-6*sin(x)))",
+        [
+            "Expand",
+            "sin^2+cos^2=1",
+            "cos(x)^2=8sin(x)^2-6sin(x)",
+        ],
+    ),
+    (
+        "xform(2*cot(x)^2-9*cosec(x)-3=0,5*sin(x)^2+9*sin(x)-2=0)",
+        [
+            "cot=cos/sin",
+            "csc=1/sin",
+            "*sin(u)^2",
+            "cos^2=1-sin^2",
+            "5*sin(x)^2+9*sin(x)-2=0",
+        ],
+    ),
+    (
+        "xform(3*cot(2*x)^2-4*cosec(2*x)+1=0,-2*sin(2*x)^2-4*sin(2*x)+3=0)",
+        [
+            "cot=cos/sin",
+            "csc=1/sin",
+            "*sin(u)^2",
+            "cos^2=1-sin^2",
+            "-2*sin(2*x)^2-4*sin(2*x)+3=0",
+        ],
+    ),
+    (
+        "xform(cot(t)^2+csc(t)-2=0,-3*sin(t)^2+sin(t)+1=0)",
+        [
+            "cot=cos/sin",
+            "csc=1/sin",
+            "*sin(u)^2",
+            "cos^2=1-sin^2",
+            "-3*sin(t)^2+sin(t)+1=0",
         ],
     ),
     (

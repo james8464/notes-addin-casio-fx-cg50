@@ -165,9 +165,7 @@ static int catalog_count_for_category(int category){
 }
 
 static void draw_catalog_fkeys(bool folders){
-  drawFkeyLabels(0,0,0,0,0,0);
-  drawRectangle(0,LCD_HEIGHT_PX-24,LCD_WIDTH_PX,24,COLOR_BLACK);
-  Bdisp_MMPrint(2,LCD_HEIGHT_PX-STATUS_AREA_PX-18,folders?" OPEN":" INS",0,0xffffffff,0,0,COLOR_WHITE,COLOR_BLACK,1,0);
+  drawFkeyLabels(folders?0:0x03FC,0,0,0,0,folders?0:0x03FD);
 }
 
 // 0 on exit, 1 on success
@@ -221,6 +219,9 @@ int doCatalogMenu(char* insertText, char* title, int category,const char * cmdna
       return 0;
     }
     int index=menuitems[menu.selection-1].isfolder;
+    if(category!=CAT_CATEGORY_ALL && sres == KEY_CTRL_F6) {
+      sres=KEY_CTRL_F1;
+    }
     if(sres == MENU_RETURN_SELECTION || sres == KEY_CTRL_F1) {
       if (category==CAT_CATEGORY_ALL){
         int folder=index-1;
