@@ -31,7 +31,9 @@ def require(expr, needles):
 def main():
     build()
     require("suvat(u=2,a=3,t=4)", ["SUVAT", "v = u + at", "v = 14"])
+    require("suvat u=2 a=3 t=4", ["SUVAT", "v = u + at", "v = 14"])
     require("suvat(u=2,a=3,s=10)", ["v^2 = u^2 + 2as", "v = 8"])
+    require("suvat u=2 a=3 s=10", ["v^2 = u^2 + 2as", "v = 8"])
     require("projectile(20,30)", ["Resolve", "u_x", "range"])
     require("proj(20,30)", ["Resolve", "u_x", "range"])
     require("projectile speed 20 angle 30", ["Resolve", "u_x", "range"])

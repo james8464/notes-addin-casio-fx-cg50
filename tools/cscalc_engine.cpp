@@ -93,6 +93,46 @@ static int scan_bits(const char *s, char b[][48], int maxb) {
   return n;
 }
 
+static bool scan_fixed_bits(const char *s, char *buf, int cap) {
+  for (int i = 0; s[i]; ++i) {
+    if (s[i] != '0' && s[i] != '1') continue;
+    int j = i, k = 0; bool dot = false;
+    while ((s[j] == '0' || s[j] == '1' || s[j] == '.') && k + 1 < cap) {
+      if (s[j] == '.') dot = true;
+      buf[k++] = s[j++];
+    }
+    buf[k] = 0;
+    if (dot && k > 2) return true;
+    i = j;
+  }
+  return false;
+}
+
+static double read_num(const char *s) {
+  double sign = 1, v = 0, scale = 1;
+  if (*s == '-') { sign = -1; ++s; }
+  while (*s >= '0' && *s <= '9') v = v * 10 + (*s++ - '0');
+  if (*s == '.') for (++s; *s >= '0' && *s <= '9'; ++s) { scale *= 10; v += (*s - '0') / scale; }
+  return sign * v;
+}
+
+static bool label_num(const char *s, const char *name, double *v) {
+  int nl = (int)strlen(name);
+  for (int i = 0; s && s[i]; ++i) {
+    int j = 0;
+    while (j < nl && s[i+j] && tolower((unsigned char)s[i+j]) == name[j]) ++j;
+    if (j != nl) continue;
+    int k = i + j;
+    while (s[k] == ' ' || s[k] == '\t') ++k;
+    if (s[k] != '=') continue;
+    ++k;
+    while (s[k] == ' ' || s[k] == '\t') ++k;
+    *v = read_num(s + k);
+    return true;
+  }
+  return false;
+}
+
 static double num(const char *s) {
   double sign = 1, v = 0, scale = 1;
   if (*s == '-') { sign = -1; ++s; }
@@ -557,6 +597,10 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   double v[8]; int nv = scan_nums(t, v, 8);
   char bits[4][48]; int nb = scan_bits(t, bits, 4);
   char cmd[160];
+  double width=0, height=0, depth=0;
+  if ((has(t, "image") || has(t, "bitmap")) && label_num(input,"width",&width) && label_num(input,"height",&height) && (label_num(input,"depth",&depth) || label_num(input,"bits",&depth))) {
+    sprintf(cmd, "image(%lld,%lld,%lld)", (long long)width, (long long)height, (long long)depth); return eval_storage(cmd, out);
+  }
   if ((has(t, "denary") || has(t, "decimal")) && nb >= 1) {
     sprintf(cmd, "den(%s,2)", bits[0]); return eval_base(cmd, out);
   }
@@ -584,6 +628,10 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   if (has(t, "shift") && nb >= 1 && nv >= 1) {
     sprintf(cmd, "shift(%s,%s,%lld)", bits[0], has(t, "right") ? "right" : "left", (long long)v[nv-1]); return eval_binary_arith(cmd, out);
+  }
+  char fixed[48];
+  if (has(t, "fixed") && scan_fixed_bits(t, fixed, sizeof(fixed))) {
+    sprintf(cmd, (tc || has(t, "complement")) ? "fixedtc(%s)" : "fixed(%s)", fixed); return eval_float(cmd, out);
   }
   if ((has(t, "mantissa") || has(t, "floating") || has(t, "float")) && has(t, "exponent") && nb >= 2) {
     sprintf(cmd, "floatdec(%s,%s)", bits[0], bits[1]); return eval_float(cmd, out);

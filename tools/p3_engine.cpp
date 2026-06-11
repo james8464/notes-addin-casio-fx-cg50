@@ -117,6 +117,31 @@ static bool kv(char a[][48], int na, const char *name, double *v) {
   return false;
 }
 
+static double read_num(const char *s) {
+  double sign = 1, v = 0, scale = 1;
+  if (*s == '-') { sign = -1; ++s; }
+  while (*s >= '0' && *s <= '9') v = v * 10 + (*s++ - '0');
+  if (*s == '.') for (++s; *s >= '0' && *s <= '9'; ++s) { scale *= 10; v += (*s - '0') / scale; }
+  return sign * v;
+}
+
+static bool label_num(const char *s, const char *name, double *v) {
+  int nl = (int)strlen(name);
+  for (int i = 0; s && s[i]; ++i) {
+    int j = 0;
+    while (j < nl && s[i+j] && tolower((unsigned char)s[i+j]) == name[j]) ++j;
+    if (j != nl) continue;
+    int k = i + j;
+    while (s[k] == ' ' || s[k] == '\t') ++k;
+    if (s[k] != '=') continue;
+    ++k;
+    while (s[k] == ' ' || s[k] == '\t') ++k;
+    *v = read_num(s + k);
+    return true;
+  }
+  return false;
+}
+
 static double choose(int n, int r) {
   if (r < 0 || r > n) return 0;
   if (r > n - r) r = n - r;
@@ -333,6 +358,20 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   char t[192]; raw_clean(input, t, sizeof(t));
   double v[8]; int nv = scan_nums(t, v, 8);
   char cmd[160];
+  if (has(t, "suvat")) {
+    double u=0, vv=0, acc=0, dist=0, time=0; bool hu=label_num(input,"u",&u), hv=label_num(input,"v",&vv), ha=label_num(input,"a",&acc), hs=label_num(input,"s",&dist), ht=label_num(input,"t",&time);
+    if (hu || hv || ha || hs || ht) {
+      int p = sprintf(cmd, "suvat(");
+      bool any = false;
+      if (hu) { p += sprintf(cmd+p, "u=%.10g", u); any = true; }
+      if (hv) { p += sprintf(cmd+p, "%sv=%.10g", any ? "," : "", vv); any = true; }
+      if (ha) { p += sprintf(cmd+p, "%sa=%.10g", any ? "," : "", acc); any = true; }
+      if (hs) { p += sprintf(cmd+p, "%ss=%.10g", any ? "," : "", dist); any = true; }
+      if (ht) { p += sprintf(cmd+p, "%st=%.10g", any ? "," : "", time); any = true; }
+      sprintf(cmd+p, ")");
+      return eval_suvat(cmd, out);
+    }
+  }
   if ((has(t, "projectile") || has(t, "projectiles")) && nv >= 2) {
     sprintf(cmd, "projectile(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
   }
