@@ -774,6 +774,14 @@ static bool bool_law_once(const char *expr, char *res, char *law) {
       strcpy(law, "De Morgan's law"); return true;
     }
   }
+  {
+    int p = top_op(e, '^');
+    if (p > 0) {
+      char a[40], b[40]; memcpy(a, e, p); a[p] = 0; strcpy(b, e + p + 1);
+      sprintf(res, "%s'&%s+%s&%s'", a, b, a, b);
+      strcpy(law, "XOR identity"); return true;
+    }
+  }
   for (int oi = 0; oi < 2; ++oi) {
     char op = oi ? '&' : '+';
     int p = top_op(e, op);

@@ -104,6 +104,8 @@ def main():
     require("bool(not(A and B))", ["Boolean algebra", "De Morgan", "simplified"])
     require("bool(A B + A C)", ["Boolean algebra", "Distributive law", "a&(b+c)", "simplified"])
     require("bool((A+B)(A+C))", ["Boolean algebra", "Distributive law", "a+b&c", "simplified"])
+    require("bool(A xor B)", ["Boolean algebra", "XOR identity", "a'&b+a&b'", "simplified"])
+    require("bool(A^B)", ["Boolean algebra", "XOR identity", "a'&b+a&b'", "simplified"])
     require("bool(A nand B)", ["truth table", "simplified = A'+B'"])
     require("nandform(A+B)", ["Use NAND", "NAND form", "A NAND A"])
     require("nand form A or B", ["Use NAND", "NAND form", "A NAND A"])
