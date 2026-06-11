@@ -164,6 +164,13 @@ static int bin_unsigned(const char *s) {
   return v;
 }
 
+static int ceil_log2_ll(long long x) {
+  if (x <= 1) return 0;
+  int b = 0; long long v = 1;
+  while (v < x && b < 62) { v <<= 1; ++b; }
+  return b;
+}
+
 static int is_bits(const char *s) {
   if (!s || !*s) return 0;
   for (int i = 0; s[i]; ++i) if (s[i] != '0' && s[i] != '1' && s[i] != '.') return 0;
@@ -327,16 +334,30 @@ static int eval_storage(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LE
   char a[5][48]; int na = args(s, a, 5);
   if (starts3(s, "image(", "bitmap(", "imagesize(") && na >= 3) {
     long long bits = parse_int(a[0]) * parse_int(a[1]) * parse_int(a[2]);
+    double bytes = bits / 8.0;
     int n = add(out, 0, "Image bits = width * height * colour depth.");
     n = add(out, n, "%s*%s*%s = %lld bits", a[0], a[1], a[2], bits);
-    return add(out, n, "= %.6g bytes", bits / 8.0);
+    n = add(out, n, "= %.6g bytes", bytes);
+    return add(out, n, "= %.6g MB", bytes / 1000000.0);
+  }
+  if (starts3(s, "imagecolors(", "bitmapcolors(", "colours(") && na >= 3) {
+    int depth = ceil_log2_ll(parse_int(a[2]));
+    long long bits = parse_int(a[0]) * parse_int(a[1]) * depth;
+    double bytes = bits / 8.0;
+    int n = add(out, 0, "Colour depth = ceil(log2(number of colours)).");
+    n = add(out, n, "ceil(log2(%s)) = %d bits per pixel", a[2], depth);
+    n = add(out, n, "Image bits = width * height * colour depth.");
+    n = add(out, n, "%s*%s*%d = %lld bits = %.6g bytes", a[0], a[1], depth, bits, bytes);
+    return add(out, n, "= %.6g MB", bytes / 1000000.0);
   }
   if (starts3(s, "sound(", "audio(", "soundsize(") && na >= 3) {
     long long chans = na > 3 ? parse_int(a[3]) : 1;
     double bits = num(a[0]) * num(a[1]) * num(a[2]) * chans;
+    double bytes = bits / 8.0;
     int n = add(out, 0, "Sound bits = sample rate * seconds * resolution * channels.");
     n = add(out, n, "%s*%s*%s*%lld = %.10g bits", a[0], a[1], a[2], chans, bits);
-    return add(out, n, "= %.10g bytes", bits / 8.0);
+    n = add(out, n, "= %.10g bytes", bytes);
+    return add(out, n, "= %.10g MB", bytes / 1000000.0);
   }
   if (starts3(s, "bitrate(", "datarate(", "rate(") && na >= 2) {
     double rate = num(a[0]) / num(a[1]);
@@ -350,8 +371,10 @@ static int eval_storage(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LE
   }
   if (starts3(s, "chars(", "textsize(", "characters(") && na >= 2) {
     long long bits = parse_int(a[0]) * parse_int(a[1]);
+    double bytes = bits / 8.0;
     int n = add(out, 0, "Text bits = characters * bits per character.");
-    return add(out, n, "%s*%s = %lld bits = %.6g bytes", a[0], a[1], bits, bits / 8.0);
+    n = add(out, n, "%s*%s = %lld bits = %.6g bytes", a[0], a[1], bits, bytes);
+    return add(out, n, "= %.6g MB", bytes / 1000000.0);
   }
   if (starts3(s, "compress(", "compression(", "ratio(") && na >= 2) {
     double oldv = num(a[0]), newv = num(a[1]);
@@ -601,6 +624,9 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if ((has(t, "image") || has(t, "bitmap")) && label_num(input,"width",&width) && label_num(input,"height",&height) && (label_num(input,"depth",&depth) || label_num(input,"bits",&depth))) {
     sprintf(cmd, "image(%lld,%lld,%lld)", (long long)width, (long long)height, (long long)depth); return eval_storage(cmd, out);
   }
+  if ((has(t, "image") || has(t, "bitmap")) && label_num(input,"width",&width) && label_num(input,"height",&height) && (label_num(input,"colours",&depth) || label_num(input,"colors",&depth))) {
+    sprintf(cmd, "imagecolors(%lld,%lld,%lld)", (long long)width, (long long)height, (long long)depth); return eval_storage(cmd, out);
+  }
   if ((has(t, "denary") || has(t, "decimal")) && nb >= 1) {
     sprintf(cmd, "den(%s,2)", bits[0]); return eval_base(cmd, out);
   }
@@ -640,6 +666,9 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     sprintf(cmd, "floatrange(%lld,%lld)", (long long)v[0], (long long)v[1]); return eval_float(cmd, out);
   }
   if ((has(t, "image") || has(t, "bitmap")) && nv >= 3) {
+    if (has(t, "colours") || has(t, "colors")) {
+      sprintf(cmd, "imagecolors(%lld,%lld,%lld)", (long long)v[0], (long long)v[1], (long long)v[2]); return eval_storage(cmd, out);
+    }
     sprintf(cmd, "image(%lld,%lld,%lld)", (long long)v[0], (long long)v[1], (long long)v[2]); return eval_storage(cmd, out);
   }
   if ((has(t, "sound") || has(t, "audio")) && nv >= 3) {
