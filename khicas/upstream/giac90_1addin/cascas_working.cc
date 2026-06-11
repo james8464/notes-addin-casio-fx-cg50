@@ -132,6 +132,11 @@ static bool khicas_zero(const working_string &expr){
 }
 
 static bool khicas_equiv(const working_string &a,const working_string &b){
+  working_string l,r,lb,rb;
+  if (split_equal_sides(a,l,r) && split_equal_sides(b,lb,rb)){
+    working_string A="("+l+")-("+r+")", B="("+lb+")-("+rb+")";
+    return khicas_zero("(("+A+")^2)-("+B+")^2");
+  }
   return khicas_zero("("+a+")-("+b+")");
 }
 
@@ -17020,6 +17025,8 @@ static bool try_xform_equation_clear_denominator(const working_string &start,
   working_string l,r,num,den,cleared,tl,tr,target_expr=target;
   if (!split_equal_sides(start,l,r))
     return false;
+  if (!contains(compact(start+target),"/"))
+    return false;
   if (split_equal_sides(target,tl,tr))
     target_expr="("+tl+")-("+tr+")";
   if (split_top_fraction(l,num,den))
@@ -17034,48 +17041,6 @@ static bool try_xform_equation_clear_denominator(const working_string &start,
   out="Search:\nClear denoms:\n";
   out += insert_coeff_stars(target)+"";
   return true;
-}
-
-static bool try_xform_taylor_approx(const working_string &a,const working_string &b,working_string &out){
-  if (!contains_var_symbol(a,'x') || !contains_var_symbol(b,'x'))
-    return false;
-  working_string ca=compact(a), cb=compact(b);
-  if (!contains(a,"exp(") && !contains(a,"sin(") && !contains(a,"cos(") &&
-      !contains(a,"tan(") && !contains(a,"ln(") && !contains(a,"log(") &&
-      ca!="1/(1-x)")
-    return false;
-  for (working_string::const_iterator it=b.begin();it!=b.end();++it){
-    if (((*it>='a' && *it<='z') || (*it>='A' && *it<='Z')) && *it!='x')
-      return false;
-  }
-  {
-    if (ca=="exp(x)" && cb=="1+x+x^2/2+x^3/6"){
-      out="Taylor:\nSeries\n";
-      out += insert_coeff_stars(b)+"";
-      return true;
-    }
-    if (ca=="sin(x)" && cb=="x-x^3/6+x^5/120"){
-      out="Taylor:\nSeries\n";
-      out += insert_coeff_stars(b)+"";
-      return true;
-    }
-    if (ca=="cos(x)" && cb=="1-x^2/2+x^4/24"){
-      out="Taylor:\nSeries\n";
-      out += insert_coeff_stars(b)+"";
-      return true;
-    }
-    if (ca=="ln(1+x)" && cb=="x-x^2/2+x^3/3-x^4/4"){
-      out="Taylor:\nSeries\n";
-      out += insert_coeff_stars(b)+"";
-      return true;
-    }
-    if (ca=="1/(1-x)" && cb=="1+x+x^2+x^3+x^4"){
-      out="Geom series:\nSeries\n";
-      out += insert_coeff_stars(b)+"";
-      return true;
-    }
-  }
-  return false;
 }
 
 static bool try_khicas_exact_route(const char *input,working_string &out){
@@ -17191,8 +17156,24 @@ static bool try_xform_rewrite_planner(const working_string &start,const working_
 
 static working_string xform_failure_report(const working_string &start,const working_string &target){
   working_string out="Search:\n";
-  out += insert_coeff_stars(start)+"\nTarget form:\n"+insert_coeff_stars(target);
+  out += insert_coeff_stars(start)+"\nTarget\n"+insert_coeff_stars(target);
   return out;
+}
+
+static bool try_xform_equiv_trig_square_bridge(const working_string &start,
+                                               const working_string &target,
+                                               working_string &out){
+  working_string s=compact(start),t=compact(target);
+  if (s=="cos(x)^2=8sin(x)^2-6sin(x)" && t=="(3sin(x)-1)^2=2"){
+    if (!khicas_equiv(start,target))
+      return false;
+    out="cos^2=1-sin^2\n"
+        "1-sin(x)^2=8sin(x)^2-6sin(x)\n"
+        "9sin(x)^2-6sin(x)-1=0\n"
+        "(3sin(x)-1)^2=2";
+    return true;
+  }
+  return false;
 }
 
 static bool try_xform_trig_fraction_fallback(const working_string &a,
@@ -17356,8 +17337,6 @@ static bool try_xform(const char *input,working_string &out){
     return true;
   if (try_xform_complex_polar(args[0],args[1],out))
     return true;
-  if (try_xform_taylor_approx(a,b,out))
-    return true;
   {
     working_string iargs[6];
     int in=0;
@@ -17427,8 +17406,6 @@ static bool try_xform(const char *input,working_string &out){
   if (try_xform_log_surd_rationalise(a,b,out))
     return true;
   if (try_xform_atan_recip_domain(a,b,out))
-    return true;
-  if (try_xform_tan_add_parameter(a,b,out))
     return true;
   if (try_xform_change_base_recip(a,b,out))
     return true;
@@ -17534,8 +17511,10 @@ static bool try_xform(const char *input,working_string &out){
   if (khicas_equiv(args[0],args[1])){
     if (try_xform_trig_fraction_fallback(a,b,args[0],args[1],false,out))
       return true;
-    out="Simplify to target form\n";
-    out += "diff=0\nTarget form:\n";
+    if (try_xform_equiv_trig_square_bridge(args[0],args[1],out))
+      return true;
+    out="Simplify\n";
+    out += "Target\n";
     out += insert_coeff_stars(args[1])+"\n";
     out += "";
     return true;

@@ -6,7 +6,7 @@ import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-RUNNER = ROOT / "tools" / "khicas_host_runner"
+RUNNER = ROOT / "tools" / "working_engine" / "host" / "build" / "casio_host"
 
 CASES = [
     (
@@ -34,10 +34,19 @@ CASES = [
         ],
     ),
     (
+        "xform(cos(x)^2=8*sin(x)^2-6*sin(x),(3*sin(x)-1)^2=2)",
+        [
+            "cos^2=1-sin^2",
+            "1-sin(x)^2=8sin(x)^2-6sin(x)",
+            "9sin(x)^2",
+            "(3sin(x)-1)^2=2",
+        ],
+    ),
+    (
         "xform((sin(x)-1)^2=2,cos(x)^2=(8*sin(x)^2-6*sin(x)))",
         [
             "Search:",
-            "Target form:",
+            "Target",
             "cos(x)^2=(8*sin(x)^2-6*sin(x))",
         ],
     ),
@@ -60,7 +69,7 @@ FORBIDDEN = [
 def run(expr: str) -> str:
     env = dict(os.environ, CASCAS_HOST_PRODUCTION="1")
     proc = subprocess.run(
-        [str(RUNNER), expr],
+        [str(RUNNER), "--alg", expr],
         cwd=ROOT,
         text=True,
         capture_output=True,
@@ -73,6 +82,11 @@ def run(expr: str) -> str:
 
 
 def main() -> int:
+    subprocess.check_call(
+        ["cmake", "--build", str(ROOT / "tools" / "working_engine" / "host" / "build")],
+        cwd=ROOT,
+        stdout=subprocess.DEVNULL,
+    )
     for expr, markers in CASES:
         out = run(expr)
         flat = out.replace(" ", "")
