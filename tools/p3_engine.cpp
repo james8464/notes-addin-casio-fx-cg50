@@ -524,6 +524,20 @@ static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     n = add(out, n, "variance = Sx2/n - mean^2");
     return add(out, n, "variance = %.10g, sd = %.10g", var, root(var));
   }
+  if (starts3(s, "groupmedian(", "groupedmedian(", "interpolatemedian(") && na >= 5) {
+    double L=num(a[0]), cf=num(a[1]), f=num(a[2]), w=num(a[3]), n0=num(a[4]), pos=n0/2.0;
+    int n = add(out, 0, "Use linear interpolation in the median class.");
+    n = add(out, n, "position = n/2 = %.6g/2 = %.6g", n0, pos);
+    n = add(out, n, "median = L + ((position-CF before)/f)*class width");
+    return add(out, n, "median = %.6g + ((%.6g-%.6g)/%.6g)*%.6g = %.10g", L, pos, cf, f, w, L + ((pos-cf)/f)*w);
+  }
+  if (starts3(s, "groupquantile(", "groupedq(", "interpolateq(") && na >= 6) {
+    double L=num(a[0]), cf=num(a[1]), f=num(a[2]), w=num(a[3]), n0=num(a[4]), q=num(a[5]), pos=q*n0;
+    int n = add(out, 0, "Use linear interpolation in the required class.");
+    n = add(out, n, "position = %.6g*n = %.6g*%.6g = %.6g", q, q, n0, pos);
+    n = add(out, n, "value = L + ((position-CF before)/f)*class width");
+    return add(out, n, "value = %.6g + ((%.6g-%.6g)/%.6g)*%.6g = %.10g", L, pos, cf, f, w, L + ((pos-cf)/f)*w);
+  }
   if (starts3(s, "uncode(", "decodecoded(", "codedtox(") && na >= 4) {
     double my=num(a[0]), sy=num(a[1]), A=num(a[2]), B=num(a[3]), ab=B < 0 ? -B : B;
     int n = add(out, 0, "For coded data Y=(X-a)/b, rearrange to X=a+bY.");
@@ -708,6 +722,12 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if ((has(t, "mean") || has(t, "variance") || has(t, "standarddeviation")) && nv >= 3) {
     sprintf(cmd, "meanvar(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_stats(cmd, out);
   }
+  if ((has(t, "grouped") || has(t, "interpolate") || has(t, "interpolation")) && has(t, "median") && nv >= 5) {
+    sprintf(cmd, "groupmedian(%.10g,%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3], v[4]); return eval_stats(cmd, out);
+  }
+  if ((has(t, "grouped") || has(t, "interpolate") || has(t, "interpolation")) && (has(t, "quartile") || has(t, "quantile")) && nv >= 6) {
+    sprintf(cmd, "groupquantile(%.10g,%.10g,%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3], v[4], v[5]); return eval_stats(cmd, out);
+  }
   return 0;
 }
 
@@ -722,5 +742,5 @@ int p3_eval(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   n = add(out, 0, "Supported:");
   n = add(out, n, "suvat projectile force weight friction moment incline");
   n = add(out, n, "connected pulley impulse work power energy restitution vector varacc");
-  return add(out, n, "normal normalprob invnormal binom binomtail critbinom hypbinom cond probor poisson poissontail poissonnorm critpoisson hyppoisson regress pmcc meanvar code");
+  return add(out, n, "normal normalprob invnormal binom binomtail critbinom hypbinom cond probor poisson poissontail poissonnorm critpoisson hyppoisson regress pmcc meanvar groupmedian code");
 }

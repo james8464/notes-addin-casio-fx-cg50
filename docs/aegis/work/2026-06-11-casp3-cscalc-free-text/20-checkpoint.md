@@ -447,3 +447,29 @@ Evidence:
 Drift check:
 - Still inside CSCALC AQA Paper 2 calculation support.
 - Did not touch CAS Pure, CASP3 behavior, NOTES, menus, or status/UI code.
+
+## 2026-06-11 CASP3 Grouped Interpolation Slice
+
+Completed:
+- Added grouped-data interpolation working for median:
+  `groupmedian(L,cfBefore,f,width,n)`.
+- Added grouped quantile interpolation:
+  `groupquantile(L,cfBefore,f,width,n,q)`.
+- Added free-text handling for grouped median/quartile prompts.
+- Output shows position, interpolation formula, substitution, and final value.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py && python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 83688 bytes`
+  - `CSCALC.g3a: 82736 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Still inside CASP3 Edexcel Paper 3 statistics support.
+- Did not touch CAS Pure, CSCALC behavior, NOTES, menus, or status/UI code.
