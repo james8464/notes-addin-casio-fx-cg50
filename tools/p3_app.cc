@@ -1,6 +1,8 @@
 #include "casio_suite_ui.hpp"
+#include "p3_engine.hpp"
 
 static const char *const menu_items[] = {
+  "Free input",
   "SUVAT",
   "Projectiles",
   "Forces",
@@ -118,16 +120,27 @@ static const char *const reg[] = {
   "Product moment r near +/-1 is stronger."
 };
 
+static void run_input(unsigned *tick) {
+  char input[96] = "suvat(u=2,a=3,t=4)";
+  if (!ui_input("CASP3 input", input, sizeof(input), tick)) return;
+  char lines[P3_MAX_LINES][P3_LINE_LEN];
+  int count = p3_eval(input, lines);
+  const char *ptrs[P3_MAX_LINES];
+  for (int i = 0; i < count; ++i) ptrs[i] = lines[i];
+  ui_wait_page("Working", ptrs, count, tick);
+}
+
 static void open_item(int sel, unsigned *tick) {
-  if (sel == 0) ui_wait_page("SUVAT", suvat, sizeof(suvat)/sizeof(suvat[0]), tick);
-  else if (sel == 1) ui_wait_page("Projectiles", projectile, sizeof(projectile)/sizeof(projectile[0]), tick);
-  else if (sel == 2 || sel == 3 || sel == 4) ui_wait_page(menu_items[sel], forces, sizeof(forces)/sizeof(forces[0]), tick);
-  else if (sel == 5) ui_wait_page("Moments", moments, sizeof(moments)/sizeof(moments[0]), tick);
-  else if (sel == 6) ui_wait_page("Variable accel", varacc, sizeof(varacc)/sizeof(varacc[0]), tick);
-  else if (sel == 7) ui_wait_page("Hypothesis", hyp, sizeof(hyp)/sizeof(hyp[0]), tick);
-  else if (sel == 8) ui_wait_page("Normal", norm, sizeof(norm)/sizeof(norm[0]), tick);
-  else if (sel == 9) ui_wait_page("Binomial", binom, sizeof(binom)/sizeof(binom[0]), tick);
-  else if (sel == 10) ui_wait_page("Probability", prob, sizeof(prob)/sizeof(prob[0]), tick);
+  if (sel == 0) run_input(tick);
+  else if (sel == 1) ui_wait_page("SUVAT", suvat, sizeof(suvat)/sizeof(suvat[0]), tick);
+  else if (sel == 2) ui_wait_page("Projectiles", projectile, sizeof(projectile)/sizeof(projectile[0]), tick);
+  else if (sel == 3 || sel == 4 || sel == 5) ui_wait_page(menu_items[sel], forces, sizeof(forces)/sizeof(forces[0]), tick);
+  else if (sel == 6) ui_wait_page("Moments", moments, sizeof(moments)/sizeof(moments[0]), tick);
+  else if (sel == 7) ui_wait_page("Variable accel", varacc, sizeof(varacc)/sizeof(varacc[0]), tick);
+  else if (sel == 8) ui_wait_page("Hypothesis", hyp, sizeof(hyp)/sizeof(hyp[0]), tick);
+  else if (sel == 9) ui_wait_page("Normal", norm, sizeof(norm)/sizeof(norm[0]), tick);
+  else if (sel == 10) ui_wait_page("Binomial", binom, sizeof(binom)/sizeof(binom[0]), tick);
+  else if (sel == 11) ui_wait_page("Probability", prob, sizeof(prob)/sizeof(prob[0]), tick);
   else ui_wait_page("Regression", reg, sizeof(reg)/sizeof(reg[0]), tick);
 }
 

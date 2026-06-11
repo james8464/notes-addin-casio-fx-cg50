@@ -63,6 +63,10 @@ prepare_icons
 python3 "${ROOT_DIR}/tools/generate_runmat_icons.py"
 cp "${ROOT_DIR}/tools/runmat_mock.cc" "${SRC_DIR}/runmat_mock.cc"
 cp "${ROOT_DIR}/tools/casio_suite_ui.hpp" "${SRC_DIR}/casio_suite_ui.hpp"
+cp "${ROOT_DIR}/tools/p3_engine.hpp" "${SRC_DIR}/p3_engine.hpp"
+cp "${ROOT_DIR}/tools/p3_engine.cpp" "${SRC_DIR}/p3_engine.cpp"
+cp "${ROOT_DIR}/tools/cscalc_engine.hpp" "${SRC_DIR}/cscalc_engine.hpp"
+cp "${ROOT_DIR}/tools/cscalc_engine.cpp" "${SRC_DIR}/cscalc_engine.cpp"
 cp "${ROOT_DIR}/tools/p3_app.cc" "${SRC_DIR}/p3_app.cc"
 cp "${ROOT_DIR}/tools/cscalc_app.cc" "${SRC_DIR}/cscalc_app.cc"
 cp "${ROOT_DIR}/tools/notes_app.cc" "${SRC_DIR}/notes_app.cc"
@@ -176,6 +180,8 @@ cp "${OUT_DIR}/${PACK_TARGET}" "${TRANSFER_DIR}/${PACK_TARGET}"
 clean_source_outputs
 rm -f "${SRC_DIR}/khicasio.png" "${SRC_DIR}/khicasio1.png" \
   "${SRC_DIR}/casio_suite_ui.hpp" \
+  "${SRC_DIR}/p3_engine.hpp" "${SRC_DIR}/p3_engine.cpp" \
+  "${SRC_DIR}/cscalc_engine.hpp" "${SRC_DIR}/cscalc_engine.cpp" \
   "${SRC_DIR}/p3_app.cc" "${SRC_DIR}/cscalc_app.cc" "${SRC_DIR}/notes_app.cc"
 
 ls -lh "${TRANSFER_DIR}/${TARGET}" "${TRANSFER_DIR}/${RUNMAT_TARGET}" "${TRANSFER_DIR}/${P3_TARGET}" "${TRANSFER_DIR}/${CS_TARGET}" "${TRANSFER_DIR}/${NOTES_TARGET}" "${TRANSFER_DIR}/${PACK_TARGET}"

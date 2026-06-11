@@ -1,6 +1,8 @@
 #include "casio_suite_ui.hpp"
+#include "cscalc_engine.hpp"
 
 static const char *const menu_items[] = {
+  "Free input",
   "Base conversions",
   "Two's complement",
   "Binary arithmetic",
@@ -135,17 +137,28 @@ static const char *const db[] = {
   "Normalisation reduces duplication."
 };
 
+static void run_input(unsigned *tick) {
+  char input[96] = "floatdec(0101100,11101)";
+  if (!ui_input("CSCalc input", input, sizeof(input), tick)) return;
+  char lines[CSCALC_MAX_LINES][CSCALC_LINE_LEN];
+  int count = cscalc_eval(input, lines);
+  const char *ptrs[CSCALC_MAX_LINES];
+  for (int i = 0; i < count; ++i) ptrs[i] = lines[i];
+  ui_wait_page("Working", ptrs, count, tick);
+}
+
 static void open_item(int sel, unsigned *tick) {
-  if (sel == 0) ui_wait_page("Base conversions", baseconv, sizeof(baseconv)/sizeof(baseconv[0]), tick);
-  else if (sel == 1) ui_wait_page("Two's complement", twos, sizeof(twos)/sizeof(twos[0]), tick);
-  else if (sel == 2) ui_wait_page("Binary arithmetic", binaryarith, sizeof(binaryarith)/sizeof(binaryarith[0]), tick);
-  else if (sel == 3) ui_wait_page("Fixed point", fixedp, sizeof(fixedp)/sizeof(fixedp[0]), tick);
-  else if (sel == 4) ui_wait_page("Floating decode", floatdec, sizeof(floatdec)/sizeof(floatdec[0]), tick);
-  else if (sel == 5) ui_wait_page("Floating encode", floatenc, sizeof(floatenc)/sizeof(floatenc[0]), tick);
-  else if (sel == 6 || sel == 7) ui_wait_page(menu_items[sel], normalise, sizeof(normalise)/sizeof(normalise[0]), tick);
-  else if (sel >= 8 && sel <= 10) ui_wait_page(menu_items[sel], storage, sizeof(storage)/sizeof(storage[0]), tick);
-  else if (sel == 11) ui_wait_page("Compression", compress, sizeof(compress)/sizeof(compress[0]), tick);
-  else if (sel == 12) ui_wait_page("Char storage", chars, sizeof(chars)/sizeof(chars[0]), tick);
+  if (sel == 0) run_input(tick);
+  else if (sel == 1) ui_wait_page("Base conversions", baseconv, sizeof(baseconv)/sizeof(baseconv[0]), tick);
+  else if (sel == 2) ui_wait_page("Two's complement", twos, sizeof(twos)/sizeof(twos[0]), tick);
+  else if (sel == 3) ui_wait_page("Binary arithmetic", binaryarith, sizeof(binaryarith)/sizeof(binaryarith[0]), tick);
+  else if (sel == 4) ui_wait_page("Fixed point", fixedp, sizeof(fixedp)/sizeof(fixedp[0]), tick);
+  else if (sel == 5) ui_wait_page("Floating decode", floatdec, sizeof(floatdec)/sizeof(floatdec[0]), tick);
+  else if (sel == 6) ui_wait_page("Floating encode", floatenc, sizeof(floatenc)/sizeof(floatenc[0]), tick);
+  else if (sel == 7 || sel == 8) ui_wait_page(menu_items[sel], normalise, sizeof(normalise)/sizeof(normalise[0]), tick);
+  else if (sel >= 9 && sel <= 11) ui_wait_page(menu_items[sel], storage, sizeof(storage)/sizeof(storage[0]), tick);
+  else if (sel == 12) ui_wait_page("Compression", compress, sizeof(compress)/sizeof(compress[0]), tick);
+  else if (sel == 13) ui_wait_page("Char storage", chars, sizeof(chars)/sizeof(chars[0]), tick);
   else ui_wait_page("Databases", db, sizeof(db)/sizeof(db[0]), tick);
 }
 

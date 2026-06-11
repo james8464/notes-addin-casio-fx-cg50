@@ -4,6 +4,7 @@
 #include <fxcg/display.h>
 #include <fxcg/keyboard.h>
 #include <fxcg/system.h>
+#include <string.h>
 
 extern "C" {
 #include <fxcg/rtc.h>
@@ -134,6 +135,48 @@ static void ui_wait_page(const char *title, const char *const *lines, int count,
     if (key == KEY_CTRL_EXIT || key == KEY_CTRL_AC) return;
     if (key == KEY_CTRL_UP && top > 0) ui_page(title, lines, count, --top, rv);
     if (key == KEY_CTRL_DOWN && top + 8 < count) ui_page(title, lines, count, ++top, rv);
+    OS_InnerWait_ms(35);
+  }
+}
+
+static int ui_key_char(int key) {
+  if (key >= 32 && key <= 126) return key;
+  if (key == KEY_CHAR_PLUS) return '+';
+  if (key == KEY_CHAR_MINUS || key == KEY_CHAR_PMINUS) return '-';
+  if (key == KEY_CHAR_MULT) return '*';
+  if (key == KEY_CHAR_DIV) return '/';
+  if (key == KEY_CHAR_LPAR) return '(';
+  if (key == KEY_CHAR_RPAR) return ')';
+  if (key == KEY_CHAR_COMMA) return ',';
+  if (key == KEY_CHAR_EQUAL) return '=';
+  if (key == KEY_CHAR_STORE) return '>';
+  return 0;
+}
+
+static bool ui_input(const char *title, char *buf, int cap, unsigned *tick) {
+  int len = (int)strlen(buf);
+  bool rv = ui_r_visible(*tick);
+  for (;;) {
+    Bdisp_AllClr_VRAM();
+    ui_fill(0, 0, LCD_WIDTH_PX, LCD_HEIGHT_PX, UI_WHITE);
+    ui_status(rv);
+    Bdisp_MMPrint(10, 28, title, 0x40, 0xffffffff, 0, 0, UI_BLACK, UI_WHITE, 1, 0);
+    DirectDrawRectangle(8, 47, 387, 49, RGB565(70, 70, 80));
+    ui_print(14, 58, "Type command, EXE runs.");
+    ui_fill(12, 82, 370, 38, RGB565(245, 245, 245));
+    Bdisp_MMPrint(16, 90, buf, 0x40, 0xffffffff, 0, 0, UI_BLACK, RGB565(245, 245, 245), 1, 0);
+    ui_text_fkey(0, "RUN");
+    ui_text_fkey(1, "BACK");
+    ui_text_fkey(2, "DEL");
+    ui_flush();
+    int key = ui_key_poll();
+    bool nr = ui_r_visible(*tick);
+    if (nr != rv) { rv = nr; continue; }
+    if (key == KEY_CTRL_EXIT || key == KEY_CTRL_AC) return false;
+    if (key == KEY_CTRL_EXE || key == KEY_CTRL_F1) return true;
+    if ((key == KEY_CTRL_DEL || key == KEY_CTRL_F3) && len > 0) buf[--len] = 0;
+    int ch = ui_key_char(key);
+    if (ch && len + 1 < cap) { buf[len++] = (char)ch; buf[len] = 0; }
     OS_InnerWait_ms(35);
   }
 }

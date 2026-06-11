@@ -17,7 +17,7 @@ LDFLAGS = -static -nostdlib -Tprizm.ld -Wl,--gc-sections,--relax,--print-memory-
 
 LIBS = -L. -L/home/parisse/casiolocal/lib -Wl,--start-group -lgui -lcas -ltommath -lustl -lm -lc -lgcc -Wl,--end-group
 RUNMAT_CXXFLAGS = -Os -mb -m4a-nofpu -mhitachi -std=c++11 -fno-use-cxa-atexit -fno-threadsafe-statics -fomit-frame-pointer -fno-strict-aliasing -fno-rtti -fno-exceptions -fno-unwind-tables -fno-asynchronous-unwind-tables -ffunction-sections -fdata-sections -I/home/parisse/casiolocal/include -I/home/parisse/casiolocal/include/fxcg
-RUNMAT_LDFLAGS = -static -nostdlib -Tprizm.ld -Wl,--gc-sections,--relax,--print-memory-usage
+RUNMAT_LDFLAGS = -static -nostdlib -Tprizm.ld -Wl,--gc-sections,--relax,--print-memory-usage,--allow-multiple-definition
 RUNMAT_LIBS = -L/home/parisse/casiolocal/lib -Wl,--start-group -lfxcg -lc -lgcc -Wl,--end-group
 LINK_TMP = /tmp/casio-link
 
@@ -41,10 +41,16 @@ all: khicasen.g3a khicas.g3a  # pour la version console, supprimer le lien iostr
 runmat_mock.o: runmat_mock.cc
 	$(CXX) $(RUNMAT_CXXFLAGS) -c $<
 
-casio_p3_app.o: p3_app.cc casio_suite_ui.hpp
+casio_p3_app.o: p3_app.cc p3_engine.hpp casio_suite_ui.hpp
 	$(CXX) $(RUNMAT_CXXFLAGS) -c $< -o $@
 
-casio_cscalc_app.o: cscalc_app.cc casio_suite_ui.hpp
+p3_engine.o: p3_engine.cpp p3_engine.hpp
+	$(CXX) $(RUNMAT_CXXFLAGS) -c $< -o $@
+
+casio_cscalc_app.o: cscalc_app.cc cscalc_engine.hpp casio_suite_ui.hpp
+	$(CXX) $(RUNMAT_CXXFLAGS) -c $< -o $@
+
+cscalc_engine.o: cscalc_engine.cpp cscalc_engine.hpp
 	$(CXX) $(RUNMAT_CXXFLAGS) -c $< -o $@
 
 casio_notes_app.o: notes_app.cc casio_suite_ui.hpp
@@ -106,9 +112,9 @@ RUNMAT.g3a: runmat_mock.bin runmat_icon.png runmat_icon_selected.png
 	mkg3a -n basic:RunMat -n internal:RUNMAT -V 1.0.0 -i uns:runmat_icon.png -i sel:runmat_icon_selected.png runmat_mock.bin $@
 	/bin/cp RUNMAT.g3a ~/.wine/drive_c
 
-CASP3.elf: casio_p3_app.o
+CASP3.elf: casio_p3_app.o p3_engine.o
 	mkdir -p $(LINK_TMP)
-	$(CXX) $(RUNMAT_LDFLAGS) -Wl,-Map=$(LINK_TMP)/CASP3.map casio_p3_app.o $(RUNMAT_LIBS) -o $(LINK_TMP)/$@
+	$(CXX) $(RUNMAT_LDFLAGS) -Wl,-Map=$(LINK_TMP)/CASP3.map casio_p3_app.o p3_engine.o $(RUNMAT_LIBS) -o $(LINK_TMP)/$@
 	cp $(LINK_TMP)/$@ $@
 	cp $(LINK_TMP)/CASP3.map CASP3.map
 
@@ -119,9 +125,9 @@ CASP3.g3a: CASP3.bin runmat_icon.png runmat_icon_selected.png
 	mkg3a -n basic:CASP3 -n internal:CASP3 -V 1.0.0 -i uns:runmat_icon.png -i sel:runmat_icon_selected.png CASP3.bin $@
 	/bin/cp CASP3.g3a ~/.wine/drive_c
 
-CSCALC.elf: casio_cscalc_app.o
+CSCALC.elf: casio_cscalc_app.o cscalc_engine.o
 	mkdir -p $(LINK_TMP)
-	$(CXX) $(RUNMAT_LDFLAGS) -Wl,-Map=$(LINK_TMP)/CSCALC.map casio_cscalc_app.o $(RUNMAT_LIBS) -o $(LINK_TMP)/$@
+	$(CXX) $(RUNMAT_LDFLAGS) -Wl,-Map=$(LINK_TMP)/CSCALC.map casio_cscalc_app.o cscalc_engine.o $(RUNMAT_LIBS) -o $(LINK_TMP)/$@
 	cp $(LINK_TMP)/$@ $@
 	cp $(LINK_TMP)/CSCALC.map CSCALC.map
 

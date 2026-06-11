@@ -14,8 +14,10 @@ def require(path: str, needles: list[str]) -> None:
 
 
 def main() -> int:
-    require("tools/p3_app.cc", ["SUVAT", "Projectiles", "Hypothesis tests", "Normal dist", "Regression"])
-    require("tools/cscalc_app.cc", ["Two's complement", "Floating decode", "Image storage", "Compression"])
+    require("tools/p3_app.cc", ["Free input", "p3_eval", "SUVAT", "Projectiles", "Hypothesis tests", "Normal dist", "Regression"])
+    require("tools/p3_engine.cpp", ["suvat(", "projectile(", "hypbinom(", "binomcdf("])
+    require("tools/cscalc_app.cc", ["Free input", "cscalc_eval", "Two's complement", "Floating decode", "Image storage", "Compression"])
+    require("tools/cscalc_engine.cpp", ["twosdec(", "floatdec(", "bool(", "image("])
     require("tools/notes_app.cc", ["Bfile_FindFirst_NON_SMEM", ".txt", ".bmp", "load_text"])
     require("tools/build_g3a.sh", ["CASP3.g3a", "CSCALC.g3a", "NOTES.g3a"])
     require("docs/aqa_cs_calc_scope.md", ["AQA 7517", "floating-point", "two's complement"])
