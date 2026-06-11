@@ -48,6 +48,8 @@ def main():
     require("shift(00101100,left,2)", ["left shift", "10110000"])
     require("parity(1011001,even)", ["Even parity", "has 4 one-bits", "parity bit = 0"])
     require("odd parity bit for 1011001", ["Odd parity", "has 4 one-bits", "parity bit = 1"])
+    require("checkdigit(12345,11,6,5,4,3,2)", ["weighted modulo", "sum = 50", "remainder", "mod 11 = 5"])
+    require("check digit for 12345 weights 6 5 4 3 2 mod 11", ["weighted modulo", "sum = 50", "mod 11 = 5"])
     require("fixed(101.101)", ["place values", "5.625"])
     require("fixed point 101.101", ["place values", "5.625"])
     require("fixedtc(111.01)", ["two's complement", "-0.75"])

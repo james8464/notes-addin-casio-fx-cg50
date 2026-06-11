@@ -354,7 +354,7 @@ static int eval_twos(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN])
 }
 
 static int eval_binary_arith(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
-  char a[4][48]; int na = args(s, a, 4);
+  char a[16][48]; int na = args(s, a, 16);
   if (starts3(s, "binadd(", "binaryadd(", "addbits(") && na >= 2) {
     int w = na > 2 ? (int)parse_int(a[2]) : (int)((strlen(a[0]) > strlen(a[1])) ? strlen(a[0]) : strlen(a[1]));
     char b[65]; int carry = 0; add_bits(a[0], a[1], w, b, &carry);
@@ -382,6 +382,20 @@ static int eval_binary_arith(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LI
     int n = add(out, 0, odd ? "Odd parity means total number of 1s is odd." : "Even parity means total number of 1s is even.");
     n = add(out, n, "%s has %d one-bits.", a[0], ones);
     return add(out, n, "parity bit = %d, transmitted bits = %s%d", bit, a[0], bit);
+  }
+  if (starts3(s, "checkdigit(", "modcheck(", "weightedcheck(") && na >= 3) {
+    int mod = (int)parse_int(a[1]), sum = 0, len = (int)strlen(a[0]);
+    int n = add(out, 0, "Use weighted modulo check digit.");
+    n = add(out, n, "Multiply each digit by its weight and add.");
+    for (int i = 0; i < len && i + 2 < na; ++i) {
+      int d = a[0][i] >= '0' && a[0][i] <= '9' ? a[0][i] - '0' : 0;
+      int w = (int)parse_int(a[i + 2]);
+      sum += d * w;
+    }
+    int rem = mod ? sum % mod : 0;
+    int digit = mod ? (mod - rem) % mod : 0;
+    n = add(out, n, "sum = %d, remainder on division by %d is %d", sum, mod, rem);
+    return add(out, n, "check digit = (%d-%d) mod %d = %d", mod, rem, mod, digit);
   }
   return 0;
 }
@@ -1075,6 +1089,12 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if (has(t, "parity") && nb >= 1) {
     sprintf(cmd, "parity(%s,%s)", bits[0], has(t, "odd") ? "odd" : "even"); return eval_binary_arith(cmd, out);
   }
+  if ((has(t, "checkdigit") || (has(t, "check") && has(t, "digit"))) && nv >= 3) {
+    int p = sprintf(cmd, "checkdigit(%lld,%lld", (long long)v[0], (long long)v[nv-1]);
+    for (int i = 1; i < nv - 1 && p < (int)sizeof(cmd) - 20; ++i) p += sprintf(cmd + p, ",%lld", (long long)v[i]);
+    sprintf(cmd + p, ")");
+    return eval_binary_arith(cmd, out);
+  }
   char fixed[48];
   if (has(t, "fixed") && (has(t, "encode") || has(t, "represent") || has(t, "convert")) && nv >= 3) {
     sprintf(cmd, (tc || has(t, "signed") || has(t, "negative")) ? "fixedtcenc(%.10g,%lld,%lld)" : "fixedenc(%.10g,%lld,%lld)", v[0], (long long)v[1], (long long)v[2]);
@@ -1189,7 +1209,7 @@ int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
   n = eval_bool(s, out); if (n) return n;
   n = eval_free_text(input, s, out); if (n) return n;
   n = add(out, 0, "Supported:");
-  n = add(out, n, "bin hex den convert twos twosdec fixed fixedenc parity");
+  n = add(out, n, "bin hex den convert twos twosdec fixed fixedenc parity checkdigit");
   n = add(out, n, "floatdec floatrange normal image sound bitrate transfer transfermb");
   return add(out, n, "compress rle records chars bool truth nandform norform");
 }
