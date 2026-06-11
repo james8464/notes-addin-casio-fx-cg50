@@ -411,6 +411,15 @@ static int eval_storage(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LE
     n = add(out, n, "%s*%s = %lld bits = %.6g bytes", a[0], a[1], bits, bytes);
     return add(out, n, "= %.6g MB", bytes / 1000000.0);
   }
+  if (starts3(s, "charset(", "charsetsize(", "textsymbols(") && na >= 2) {
+    int bpc = ceil_log2_ll(parse_int(a[1]));
+    long long bits = parse_int(a[0]) * bpc;
+    double bytes = bits / 8.0;
+    int n = add(out, 0, "Bits per character = ceil(log2(character set size)).");
+    n = add(out, n, "ceil(log2(%s)) = %d bits per character", a[1], bpc);
+    n = add(out, n, "text bits = %s*%d = %lld bits", a[0], bpc, bits);
+    return add(out, n, "= %.6g bytes", bytes);
+  }
   if (starts3(s, "compress(", "compression(", "ratio(") && na >= 2) {
     double oldv = num(a[0]), newv = num(a[1]);
     int n = add(out, 0, "Compression ratio = original / compressed.");
@@ -1007,6 +1016,9 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     sprintf(cmd, "records(%.10g,%.10g)", v[0], v[1]); return eval_storage(cmd, out);
   }
   if ((has(t, "character") || has(t, "text")) && nv >= 2) {
+    if (has(t, "characterset") || has(t, "symbols") || has(t, "alphabet")) {
+      sprintf(cmd, "charset(%lld,%lld)", (long long)v[0], (long long)v[1]); return eval_storage(cmd, out);
+    }
     sprintf(cmd, "chars(%lld,%lld)", (long long)v[0], (long long)v[1]); return eval_storage(cmd, out);
   }
   if (nv == 0 && starts(compact, "nandform")) {

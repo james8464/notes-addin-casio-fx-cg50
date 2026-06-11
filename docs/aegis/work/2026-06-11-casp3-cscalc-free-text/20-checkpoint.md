@@ -161,3 +161,21 @@ Evidence:
 Drift check:
 - Still inside CSCALC AQA Paper 2 calculation support.
 - Did not touch CAS Pure, CASP3 behavior, NOTES, UI/menu/status code.
+
+## 2026-06-11 CSCALC Character Set Slice
+
+Completed:
+- Added `charset(characters,characterSetSize)` / `charsetsize` / `textsymbols`.
+- Added working for bits per character from `ceil(log2(character set size))`.
+- Added free-text parsing for character-set/alphabet/symbol storage questions.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CSCALC AQA Paper 2 storage-calculation support.
+- Did not touch CAS Pure, CASP3, NOTES, UI/menu/status code.

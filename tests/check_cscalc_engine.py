@@ -78,6 +78,8 @@ def main():
     require("records(120,32)", ["records * bytes", "3840 bytes"])
     require("database file 120 records 32 bytes per record", ["records * bytes", "3840 bytes"])
     require("chars(120,8)", ["characters", "960 bits", "MB"])
+    require("charset(120,128)", ["ceil(log2(128)) = 7", "text bits = 120*7"])
+    require("store 120 characters from character set of 128 symbols", ["ceil(log2(128)) = 7", "840 bits"])
     require("bool(A+B')", ["truth table", "minterms", "simplified"])
     require("boolean(AB+C)", ["truth table", "simplified"])
     require("bool(A and not B)", ["truth table", "simplified = AB'"])
