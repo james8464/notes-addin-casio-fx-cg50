@@ -4862,7 +4862,7 @@ static bool try_implicit_diff_command(const char *input,working_string &out){
   if (!parse_call(input,"implicit_diff",args,3,n))
     return false;
   if (n<1 || trim(args[0]).empty()){
-    out="Err: missing arguments\nimplicit_diff(eq,x,y)";
+    out="Err: implicit_diff(eq,x,y)";
     return true;
   }
   char iv=0,dv=0;
@@ -4888,7 +4888,7 @@ static bool try_implicit_diff_command(const char *input,working_string &out){
   working_string work;
   if (try_diff(call.c_str(),work)){
     if (work.size()>420){
-      out="Implicit differentiation:\nChain\nD";
+      out="Implicit diff:\nChain\nD";
       return true;
     }
     if (work.find("Implicit differentiation:")==0)
@@ -5270,7 +5270,7 @@ static bool integrate_mixed_sum_terms(const working_string &expr,working_string 
   if (n<2)
     return false;
   working_string ans;
-  out="Integrate term by term\nTerms:\nPower:\n";
+  out="Termwise:\nPower:\n";
   if (expr.size()>350){
     out += "poly + C";
     return true;
@@ -6401,7 +6401,7 @@ static bool integrate_affine_exp_parts_general(const working_string &expr,char v
   else
     inner=join_sum(mul_expr(rat_div(rat(1,1),k),lin),
                    rat_s(rat_div(rat(-a.n,a.d),rat_mul(k,k))));
-  out="Use integration by parts\nParts:\n";
+  out="By parts:\n";
   out += "u="+lin+", dv="+E+" d"+working_string(1,v)+"\n";
   out += "du="+rat_s(a)+" d"+working_string(1,v)+", v="+mul_expr(rat_div(rat(1,1),k),E)+"\n";
   out += "("+inner+")*"+E+" + C";
@@ -6487,7 +6487,7 @@ static bool integrate_xn_trig_parts_general(const working_string &expr,char v,wo
     return false;
   out="Repeated parts:\n";
   out += "u="+power_var_s(v,p)+", dv="+working_string(is_sin?"sin":"cos")+"("+arg+") d"+working_string(1,v)+"\n";
-  out += "lower the power by one each time\n";
+  out += "lower power\n";
   out += integrate_xn_trig_terms(p.n,is_sin,c,k,v)+" + C";
   return true;
 }
@@ -6916,6 +6916,98 @@ static bool try_rational_integral_explainer(const working_string &expr,const wor
   return true;
 }
 
+static bool parse_affine_sin_cos_x(const working_string &src,Rat &scoef,Rat &ccoef){
+  working_string t[3];
+  int sg[3];
+  int n=split_top_sum_terms(strip_outer_parens(nospace_lower(src)),t,sg,3);
+  if (n<1 || n>2)
+    return false;
+  scoef=rat(0,1); ccoef=rat(0,1);
+  for (int i=0;i<n;++i){
+    int c=0,p=0;
+    working_string arg;
+    if (parse_int_func_pow(t[i],"sin",c,arg,p) && p==1 && arg=="x"){
+      scoef=rat_add(scoef,rat(sg[i]*c,1));
+      continue;
+    }
+    if (parse_int_func_pow(t[i],"cos",c,arg,p) && p==1 && arg=="x"){
+      ccoef=rat_add(ccoef,rat(sg[i]*c,1));
+      continue;
+    }
+    return false;
+  }
+  return scoef.n || ccoef.n;
+}
+
+static bool parse_trig_linear_den_product(const working_string &expr,Rat &a,Rat &b,Rat &c,Rat &d){
+  working_string num,den,f[3];
+  if (!split_top_fraction(nospace_lower(expr),num,den) || num!="1")
+    return false;
+  int n=split_top_product(den,f,3);
+  if (n!=2)
+    return false;
+  return parse_affine_sin_cos_x(f[0],a,b) && parse_affine_sin_cos_x(f[1],c,d);
+}
+
+static working_string linear_u_s(Rat a,Rat b){
+  working_string out;
+  if (a.n)
+    out=rat_s(a)+"*u";
+  if (b.n)
+    out=join_sum(out,rat_s(b));
+  if (out.empty()) out="0";
+  return out;
+}
+
+static bool tan_bound_from_inverse(const working_string &raw,working_string &uval){
+  working_string s=nospace_lower(raw),arg;
+  bool isasin=parse_unary_arg(s,"asin",arg), isacos=false;
+  if (!isasin)
+    isacos=parse_unary_arg(s,"acos",arg);
+  if (!isasin && !isacos)
+    return false;
+  Rat r;
+  if (!parse_rat(arg,r) || !r.n)
+    return false;
+  long rem=r.d*r.d-r.n*r.n, root=0;
+  if (rem<=0 || !square_long(rem,root) || !root)
+    return false;
+  if (isasin)
+    uval=rat_s(rat(r.n,root));
+  else
+    uval=rat_s(rat(root,r.n));
+  return true;
+}
+
+static bool try_tan_sub_affine_trig_product(const working_string &expr,const working_string &rawvar,
+                                            const working_string &lo,const working_string &hi,
+                                            working_string &out){
+  if (compact(rawvar)!="x")
+    return false;
+  Rat a,b,c,d;
+  if (!parse_trig_linear_den_product(expr,a,b,c,d))
+    return false;
+  working_string L1=linear_u_s(a,b), L2=linear_u_s(c,d);
+  working_string uexpr="1/(("+L1+")*("+L2+"))";
+  working_string subout;
+  if (!try_integral(("integrate("+uexpr+",u)").c_str(),subout))
+    return false;
+  out="Substitution:\n";
+  out += "u=tan(x), du=sec(x)^2 dx\n";
+  out += "sin(x)=u*cos(x)\n";
+  out += "dx=cos(x)^2 du\n";
+  out += "I=int "+uexpr+" du\n";
+  working_string ulo,uhi,ans;
+  if (!tan_bound_from_inverse(lo,ulo) || !tan_bound_from_inverse(hi,uhi))
+    return false;
+  out += "bounds: u="+ulo+" to "+uhi+"\n";
+  out += subout+"\n";
+  out += "Evaluate between "+ulo+" and "+uhi+"\n";
+  if (exact_command_clean("integrate("+uexpr+",u,"+ulo+","+uhi+")",ans))
+    out += "Ans:\n"+ans;
+  return true;
+}
+
 static int small_power_after(const working_string &s,const char *needle){
   int p=s.find(needle);
   if (p<0)
@@ -7267,6 +7359,8 @@ static bool try_integral(const char *input,working_string &out){
   if (var.size()!=1)
     var=working_string(1,default_var_char(args[0]));
   if (n>=4){
+    if (try_tan_sub_affine_trig_product(args[0],args[1],args[2],args[3],out))
+      return true;
     if (try_definite_trig_sub_linear_over_quad(args[0],args[1],args[2],args[3],out))
       return true;
     if (var.size()==1 && compact(args[2])=="0" && is_sqrt_A_minus_v_integrand(args[0],args[3],var)){
@@ -7480,7 +7574,7 @@ static bool try_integral(const char *input,working_string &out){
         ans=join_sum(ans,rat_power_term_s(b,rat(1,1)));
       out="Collect:\n";
       out += fmt_linear_rat(a,b,'x')+"\n";
-      out += "Integrate term by term\nTerms:\n";
+      out += "Termwise:\n";
       out += "Power:\n";
       out += ""+ans+" + C";
       return true;
@@ -7988,7 +8082,7 @@ static bool try_identity_method_input(const working_string &raw,working_string &
         return true;
       }
       if (khicas_equiv(left,right)){
-        out="Identity route:\nnormal(LHS-RHS)=0\nLHS = RHS";
+        out="normal(LHS-RHS)=0\nLHS = RHS";
         return true;
       }
     }
@@ -16029,7 +16123,7 @@ static bool try_sum_to_product(const working_string &a,const working_string &b,w
                : product_two_trig_s(rat(-two.n,two.d),"sin",mid,"sin",halfdiff);
   if (!same_rewrite_expr(b,expect) && !khicas_equiv(expect,b))
     return false;
-  out="Sum-prod:\nUse sum-to-product identity\n";
+  out="Sum-prod identity:\n";
   out += expect+"";
   return true;
 }
@@ -16047,11 +16141,11 @@ static bool emit_trig_route(const char *label,const working_string &target,worki
   out=label;
   out += ":\n";
   if (!strcmp(label,"Reciprocal identities"))
-    out += "Use reciprocal identity\n";
+    out += "Use reciprocal\n";
   else if (!strcmp(label,"Pythagorean identities"))
-    out += "Use Pythagorean identity\n";
+    out += "Use Pythagorean\n";
   else if (!strcmp(label,"Double-angle identities"))
-    out += "Use double-angle identity\n";
+    out += "Use double-angle\n";
   out += insert_coeff_stars(target)+"";
   return true;
 }
@@ -16059,7 +16153,7 @@ static bool emit_trig_route(const char *label,const working_string &target,worki
 static working_string xform_trig_bridge(const working_string &a,const working_string &b){
   working_string ca=compact(a),cb=compact(b);
   if (contains(ca,"/cos(") && contains(cb,"sin("))
-    return "Use cos^2=1-sin^2\nCancel common factor\n";
+    return "cos^2=1-sin^2\nCancel factor\n";
   return "";
 }
 
@@ -16101,12 +16195,12 @@ static bool try_xform_trig_power_identity(const working_string &a,const working_
   if (parse_top_power(a,base,exp) && parse_small_int(exp,n) && n>1){
     if (parse_one_plus_trig_square(base,"tan",arg) &&
         parse_int_func_pow(b,"sec",c,targ,p) && c==1 && p==2*n && compact(arg)==compact(targ)){
-      out="Pythagorean identities:\nUse Pythagorean identity\n1+tan(u)^2=sec(u)^2\n"+b+"";
+      out="Pythagorean:\n1+tan(u)^2=sec(u)^2\n"+b+"";
       return true;
     }
     if (parse_one_plus_trig_square(base,"cot",arg) &&
         parse_int_func_pow(b,"cosec",c,targ,p) && c==1 && p==2*n && compact(arg)==compact(targ)){
-      out="Pythagorean identities:\nUse Pythagorean identity\n1+cot(u)^2=cosec(u)^2\n"+b+"";
+      out="Pythagorean:\n1+cot(u)^2=cosec(u)^2\n"+b+"";
       return true;
     }
   }
@@ -16473,7 +16567,7 @@ static bool try_xform_trig_direct(const working_string &a,const working_string &
     return true;
   if (parse_linear_tan_cot_int(a,arg,tc,cc) && cc && tc==-cc &&
       parse_int_func_pow(b,"cot",c,targ,p) && p==1 && c==2*cc && double_arg(targ,arg)){
-    out="Reciprocal identities:\nCommon denom:\nDouble-angle:\n";
+    out="Reciprocal:\nCommon denom:\nDouble-angle:\n";
     out += insert_coeff_stars(b)+"";
     return true;
   }
@@ -17389,14 +17483,14 @@ static bool try_xform(const char *input,working_string &out){
     if (split_top_fraction(a,num,den) && parse_unary_arg(num,"ln",narg) &&
         parse_unary_arg(den,"ln",darg) && parse_log_call_ws(b,bb,argb) &&
         same_rewrite_expr(darg,bb) && same_rewrite_expr(narg,argb)){
-      out="Change base: log_a(u)=ln(u)/ln(a)\n";
+      out="Change base:\n";
       out += b+"";
       return true;
     }
     if (parse_log_call_ws(a,bb,argb) && split_top_fraction(b,num,den) &&
         parse_unary_arg(num,"ln",narg) && parse_unary_arg(den,"ln",darg) &&
         same_rewrite_expr(darg,bb) && same_rewrite_expr(narg,argb)){
-      out="Change base: log_a(u)=ln(u)/ln(a)\n";
+      out="Change base:\n";
       out += b+"";
       return true;
     }
