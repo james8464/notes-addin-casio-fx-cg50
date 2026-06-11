@@ -1,5 +1,25 @@
 # Checkpoint
 
+## 2026-06-12 CASP3 Conservation Of Momentum Slice
+
+Completed:
+- Added `momentum(...)` / `momcons(...)` / `consmomentum(...)` working for two-particle conservation of linear momentum.
+- Added `commonvelocity(...)` / `coalesce(...)` / `stick(...)` working for particles moving together after impact.
+- Added labelled free-text dispatch for `m1=... u1=... m2=... u2=... v1=...`.
+- Fixed `momentum` being misrouted as `moment`.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CASP3 Paper 3 mechanics support.
+- Did not touch CAS Pure, CSCALC behavior, NOTES, UI/menu/status code.
+
 ## 2026-06-12 CSCALC Hash Table Slice
 
 Completed:

@@ -282,6 +282,22 @@ static int eval_mech(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     int n = add(out, 0, "Impulse equals change in momentum.");
     return add(out, n, "I = m(v-u) = %.6g(%.6g-%.6g) = %.6g Ns", m, v, u, m*(v-u));
   }
+  if ((starts(s, "momentum(") || starts(s, "momcons(") || starts(s, "consmomentum(")) && na >= 5) {
+    double m1=num(a[0]), u1=num(a[1]), m2=num(a[2]), u2=num(a[3]), v1=num(a[4]);
+    double before=m1*u1+m2*u2, v2=(before-m1*v1)/m2;
+    int n = add(out, 0, "Use conservation of linear momentum.");
+    n = add(out, n, "m1u1 + m2u2 = m1v1 + m2v2");
+    n = add(out, n, "%.6g*%.6g + %.6g*%.6g = %.6g*%.6g + %.6g*v2", m1, u1, m2, u2, m1, v1, m2);
+    return add(out, n, "v2 = (%.6g - %.6g*%.6g)/%.6g = %.10g m/s", before, m1, v1, m2, v2);
+  }
+  if ((starts(s, "commonvelocity(") || starts(s, "coalesce(") || starts(s, "stick(")) && na >= 4) {
+    double m1=num(a[0]), u1=num(a[1]), m2=num(a[2]), u2=num(a[3]);
+    double v=(m1*u1+m2*u2)/(m1+m2);
+    int n = add(out, 0, "Particles move together, so conserve linear momentum.");
+    n = add(out, n, "m1u1 + m2u2 = (m1+m2)v");
+    n = add(out, n, "%.6g*%.6g + %.6g*%.6g = (%.6g+%.6g)v", m1, u1, m2, u2, m1, m2);
+    return add(out, n, "v = %.10g m/s", v);
+  }
   if (starts2(s, "work(", "workdone(") && na >= 2) {
     double f=num(a[0]), d=num(a[1]);
     int n = add(out, 0, "Work done = force * distance in the direction of motion.");
@@ -644,7 +660,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if ((has(t, "friction") || has(t, "coefficientoffriction")) && nv >= 2) {
     sprintf(cmd, "friction(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
   }
-  if (has(t, "moment") && nv >= 2) {
+  if (has(t, "moment") && !has(t, "momentum") && nv >= 2) {
     sprintf(cmd, "moment(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
   }
   if ((has(t, "incline") || has(t, "slope") || has(t, "plane")) && nv >= 2) {
@@ -655,6 +671,18 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if ((has(t, "impulse") || has(t, "momentumchange")) && nv >= 3) {
     sprintf(cmd, "impulse(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_mech(cmd, out);
+  }
+  if ((has(t, "momentum") || has(t, "collision") || has(t, "collide")) && (has(t, "conserve") || has(t, "conservation") || has(t, "mom")) ) {
+    double m1=0,u1=0,m2=0,u2=0,v1=0;
+    if (label_num(input,"m1",&m1) && label_num(input,"u1",&u1) && label_num(input,"m2",&m2) && label_num(input,"u2",&u2) && label_num(input,"v1",&v1)) {
+      sprintf(cmd, "momentum(%.10g,%.10g,%.10g,%.10g,%.10g)", m1, u1, m2, u2, v1); return eval_mech(cmd, out);
+    }
+    if ((has(t, "together") || has(t, "coalesce") || has(t, "stick")) && nv >= 4) {
+      sprintf(cmd, "commonvelocity(%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3]); return eval_mech(cmd, out);
+    }
+    if (nv >= 5) {
+      sprintf(cmd, "momentum(%.10g,%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3], v[4]); return eval_mech(cmd, out);
+    }
   }
   if (has(t, "power") && nv >= 2) {
     sprintf(cmd, "power(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
@@ -828,6 +856,6 @@ int p3_eval(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   n = eval_free_text(input, out); if (n) return n;
   n = add(out, 0, "Supported:");
   n = add(out, n, "suvat projectile force weight friction moment incline");
-  n = add(out, n, "connected pulley impulse work power energy restitution vector resolve varacc");
+  n = add(out, n, "connected pulley impulse momentum work power energy restitution vector resolve varacc");
   return add(out, n, "normal normalprob invnormal binom binomtail critbinom hypbinom cond probor bayes independent poisson poissontail poissonnorm critpoisson hyppoisson regress pmcc meanvar discrete stratified groupmedian histdensity code");
 }
