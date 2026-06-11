@@ -1,5 +1,24 @@
 # Checkpoint
 
+## 2026-06-12 CSCALC Error Detection Slice
+
+Completed:
+- Added `hamming(...)` / `hammingdistance(...)` / `bitdiff(...)` working.
+- Added `checksum(...)` / `checksummod(...)` / `binarychecksum(...)` working.
+- Added free-text dispatch for Hamming distance and checksum prompts before generic binary addition.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CSCALC AQA Paper 2 calculation support.
+- Did not touch CAS Pure, CASP3 behavior, NOTES, UI/menu/status code.
+
 ## 2026-06-12 CASP3 Discrete Random Variable Slice
 
 Completed:

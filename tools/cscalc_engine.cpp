@@ -383,6 +383,26 @@ static int eval_binary_arith(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LI
     n = add(out, n, "%s has %d one-bits.", a[0], ones);
     return add(out, n, "parity bit = %d, transmitted bits = %s%d", bit, a[0], bit);
   }
+  if (starts3(s, "hamming(", "hammingdistance(", "bitdiff(") && na >= 2) {
+    int len = (int)strlen(a[0]), d = 0; char pos[80] = ""; int pp = 0;
+    if ((int)strlen(a[1]) < len) len = (int)strlen(a[1]);
+    for (int i = 0; i < len; ++i) if (a[0][i] != a[1][i]) {
+      d++; pp += sprintf(pos + pp, "%s%d", pp ? "," : "", i + 1);
+    }
+    int n = add(out, 0, "Hamming distance counts bit positions that differ.");
+    n = add(out, n, "%s", a[0]);
+    n = add(out, n, "%s", a[1]);
+    return add(out, n, "different positions: %s, distance = %d", d ? pos : "none", d);
+  }
+  if (starts3(s, "checksum(", "checksummod(", "binarychecksum(") && na >= 2) {
+    int w = (int)parse_int(a[0]), sum = 0; char b[65];
+    for (int i = 1; i < na; ++i) sum += bin_unsigned(a[i]);
+    int mod = w >= 30 ? 0 : (1 << w), chk = mod ? sum % mod : sum;
+    to_bin(chk, w, b);
+    int n = add(out, 0, "Checksum: add blocks as unsigned binary, then keep the lowest %d bits.", w);
+    n = add(out, n, "decimal sum = %d", sum);
+    return add(out, n, "checksum = %d mod 2^%d = %s", chk, w, b);
+  }
   if (starts3(s, "checkdigit(", "modcheck(", "weightedcheck(") && na >= 3) {
     int mod = (int)parse_int(a[1]), sum = 0, len = (int)strlen(a[0]);
     int n = add(out, 0, "Use weighted modulo check digit.");
@@ -1088,6 +1108,15 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if (tc && nv >= 2 && nb == 0) {
     sprintf(cmd, "twos(%lld,%lld)", (long long)v[0], (long long)v[1]); return eval_twos(cmd, out);
   }
+  if ((has(t, "hamming") || has(t, "bitdiff")) && nb >= 2) {
+    sprintf(cmd, "hamming(%s,%s)", bits[0], bits[1]); return eval_binary_arith(cmd, out);
+  }
+  if (has(t, "checksum") && nb >= 1) {
+    int p = sprintf(cmd, "checksum(%d", (int)strlen(bits[0]));
+    for (int i = 0; i < nb && p < (int)sizeof(cmd) - 50; ++i) p += sprintf(cmd + p, ",%s", bits[i]);
+    sprintf(cmd + p, ")");
+    return eval_binary_arith(cmd, out);
+  }
   if (has(t, "add") && nb >= 2) {
     sprintf(cmd, "binadd(%s,%s,%d)", bits[0], bits[1], (int)strlen(bits[0])); return eval_binary_arith(cmd, out);
   }
@@ -1217,7 +1246,7 @@ int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
   n = eval_bool(s, out); if (n) return n;
   n = eval_free_text(input, s, out); if (n) return n;
   n = add(out, 0, "Supported:");
-  n = add(out, n, "bin hex den convert twos twosdec fixed fixedenc parity checkdigit");
+  n = add(out, n, "bin hex den convert twos twosdec fixed fixedenc parity hamming checksum checkdigit");
   n = add(out, n, "floatdec floatrange normal image sound bitrate transfer transfermb");
   return add(out, n, "compress rle records chars bool truth nandform norform");
 }
