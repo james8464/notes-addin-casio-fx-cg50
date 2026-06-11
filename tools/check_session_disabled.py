@@ -17,19 +17,25 @@ def body(text: str, name: str) -> str:
 
 def main() -> int:
     text = MAIN.read_text(errors="ignore")
-    danger = [
-        "save_console_state_smem",
-        "load_console_state_smem",
+    blocks = "\n".join(body(text, name) for name in ["save", "save_session", "restore_session", "quit_handler"])
+    required = [
+        'save_console_state_smem("\\\\\\\\fls0\\\\session.xw")',
+        'load_console_state_smem("\\\\\\\\fls0\\\\session.xw")',
+        'restore_session("session")',
+        "save_session();",
+    ]
+    missing = [item for item in required if item not in text]
+    if missing:
+        raise SystemExit("FAIL session: shared session path missing " + ", ".join(missing))
+    forbidden = [
+        'Console_Output((unsigned char*)"Disabled")',
         "Bfile_DeleteEntry",
         "save_script",
     ]
-    blocks = "\n".join(body(text, name) for name in ["save", "save_session", "restore_session", "quit_handler"])
-    leaks = [item for item in danger if item in blocks]
+    leaks = [item for item in forbidden if item in blocks]
     if leaks:
-        raise SystemExit("FAIL session: file-backed call in session path " + ", ".join(leaks))
-    if 'Console_Output((unsigned char*)"Disabled")' not in text:
-        raise SystemExit("FAIL session: save command does not report disabled")
-    print("OK session disabled")
+        raise SystemExit("FAIL session: unwanted session path call " + ", ".join(leaks))
+    print("OK session shared")
     return 0
 
 

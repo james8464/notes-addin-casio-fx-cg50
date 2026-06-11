@@ -680,6 +680,7 @@ int main(){
   // disable Catalog function throughout the add-in, as we don't know how to make use of it:
   Bkey_SetAllFlags(0x80);
   unsigned char *expr=0;
+  restore_session("session");
   while(1){
     if((expr=Console_GetLine())==NULL) stop("memory error");
     if (strcmp((const char *)expr,"restart")==0){
@@ -1770,65 +1771,13 @@ void check_do_graph(giac::gen & ge,int do_logo_graph_eqw) {
 }
 
 int load_script(const char * filename,ustl::string & s){
-  unsigned short pFile[MAX_FILENAME_SIZE+1];
-  Bfile_StrToName_ncpy(pFile,(const unsigned char *) filename, strlen(filename)+1); 
-  int hFile = Bfile_OpenFile_OS(pFile, READWRITE); // Get handle
-  // Check for file existence
-  if(hFile < 0) 
-    return 0;
-  // Returned no error, file exists, open it
-  int size = Bfile_GetFileSize_OS(hFile);
-  // File exists and has size 'size'
-  // Read file into a buffer
-  if ((unsigned int)size > MAX_TEXTVIEWER_FILESIZE) {
-    Bfile_CloseFile_OS(hFile);
-    puts("Stop: script too big");
-    return 0; //file too big, return
-  }
-  unsigned char* asrc = (unsigned char*)alloca(size*sizeof(unsigned char)+5); // 5 more bytes to make sure it fits...
-  memset(asrc, 0, size+5); //alloca does not clear the allocated space. Make sure the string is null-terminated this way.
-  int rsize = Bfile_ReadFile_OS(hFile, asrc, size, 0);
-  Bfile_CloseFile_OS(hFile); //we got file contents, close it
-  asrc[rsize]='\0';
-  s=string((const char *)asrc);
-  return 1;
+  (void)filename;
+  s.clear();
+  return 0;
 }
 
 int run_script(const char* filename) {
-  // returns 1 if script was run, 0 otherwise
-  unsigned short pFile[MAX_FILENAME_SIZE+1];
-  Bfile_StrToName_ncpy(pFile, (const unsigned char *)filename, strlen(filename)+1); 
-  int hFile = Bfile_OpenFile_OS(pFile, READWRITE); // Get handle
-  if(hFile < 0) 
-    return 0;
-  // Check for file existence
-  if(hFile >= 0) // Check if it opened
-  {
-    // Returned no error, file exists, open it
-    int size = Bfile_GetFileSize_OS(hFile);
-    // File exists and has size 'size'
-    // Read file into a buffer
-    if ((unsigned int)size > MAX_TEXTVIEWER_FILESIZE) {
-      Bfile_CloseFile_OS(hFile);
-      puts("Stop: script too big");
-      return 0; //file too big, return
-    }
-    unsigned char* asrc = (unsigned char*)alloca(size*sizeof(unsigned char)+5); // 5 more bytes to make sure it fits...
-    memset(asrc, 0, size+5); //alloca does not clear the allocated space. Make sure the string is null-terminated this way.
-    int rsize = Bfile_ReadFile_OS(hFile, asrc, size, 0);
-    Bfile_CloseFile_OS(hFile); //we got file contents, close it
-    asrc[rsize]='\0';
-    execution_in_progress = 1;
-    run((char*)asrc);
-    execution_in_progress = 0;
-    if (asrc[0]=='#' || (asrc[0]=='d' && asrc[1]=='e' && asrc[2]=='f' && asrc[3]==' '))
-      return 2;
-    if ( (asrc[0]=='/' && asrc[1]=='/') ||
-	 (rsize>8 && asrc[0]=='f' && (asrc[1]=='o' || asrc[1]=='u') && asrc[2]=='n' && asrc[3]=='c' && asrc[4]=='t' && asrc[5]=='i' && asrc[6]=='o' && asrc[7]=='n' && asrc[8]==' ')
-	 )
-      return 3;
-    return 1;
-  }
+  (void)filename;
   return 0;
 }
 
@@ -1874,40 +1823,27 @@ string remove_path(const string & st){
 
 void save(const char * fname){
   (void)fname;
-  Console_Output((unsigned char*)"Disabled");
+  save_console_state_smem("\\\\fls0\\session.xw");
 }
 
 void save_session(){
+  save("session");
 }
 
 int restore_session(const char * fname){
   (void)fname;
-  return 0;
+  return load_console_state_smem("\\\\fls0\\session.xw")?1:0;
 }
 
 void quit_handler(){
+  save_session();
 }
 
 int select_script_and_run() {
-  char filename[MAX_FILENAME_SIZE+1];
-  if(fileBrowser(filename, (char*)"*.py", "Scripts")) 
-    return run_script(filename);
   return 0;
 }
 
 void erase_script(){
-  char filename[MAX_FILENAME_SIZE+1];
-  int res=fileBrowser(filename, (char*)"*.py", "Scripts");
-  if (res && do_confirm(lang?"Vraiment effacer":"Really erase?")){
-    unsigned short pFile[MAX_FILENAME_SIZE+1];
-    // create file in data folder (assumes data folder already exists)
-    Bfile_StrToName_ncpy(pFile, (const unsigned char *)filename, strlen(filename)+1);
-    int hFile = Bfile_OpenFile_OS(pFile, READWRITE); // Get handle
-    if (hFile>=0){
-      Bfile_CloseFile_OS(hFile);
-      Bfile_DeleteEntry(pFile);
-    }
-  }
 }
 
 string extract_name(const char * s){
@@ -1928,50 +1864,7 @@ string extract_name(const char * s){
 }
 
 void edit_script(char * fname){
-  char fname_[MAX_FILENAME_SIZE+1];
-  char * filename=0;
-  int res=1;
-  if (fname)
-    filename=fname;
-  else {
-    res=fileBrowser(fname_, (char*)"*.py", "Scripts");
-    filename=fname_;
-  }
-  if(res) {
-    string s;
-    load_script(filename,s);
-    if (s.empty()){
-      s=python_compat(contextptr)?(lang?"Prog. Python, sinon taper":"Python prog., for Xcas"):(lang?"Prog. Xcas, sinon taper":"Xcas prog., for Python");
-      s += " AC F6 12";
-      int k=confirm(s.c_str(),"F1: Tortue, F6: Prog",true);
-      if (k==-1)
-	return;
-      if (k==KEY_CTRL_F1)
-	s="\nefface;\n ";
-      else
-	s=python_compat(contextptr)?"def "+extract_name(filename)+"(x):\n  \n  return x":"function "+extract_name(filename)+"(x)\nlocal j;\n  \n  return x;\nffunction";
-    }
-    // split s at newlines
-    if (edptr==0)
-      edptr=new textArea;
-    if (!edptr) return;
-    edptr->elements.clear();
-    edptr->clipline=-1;
-    edptr->filename=filename;
-    edptr->editable=true;
-    edptr->changed=false;
-    edptr->python=python_compat(contextptr);
-    edptr->elements.clear();
-    add(edptr,s);
-    s.clear();
-    edptr->line=0;
-    //edptr->line=edptr->elements.size()-1;
-    edptr->pos=0;
-    int res=doTextArea(edptr);
-    if (res==-1)
-      python_compat(edptr->python,contextptr);
-    dConsolePutChar('\x1e');
-  }
+  (void)fname;
 }
 
 string khicas_state(){

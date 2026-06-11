@@ -504,10 +504,7 @@ void save_console_state_smem(const char * filename){
   Bfile_StrToName_ncpy(pFile, (const unsigned char *)filename, strlen(filename)+1);
   string state(khicas_state());
   int statesize=state.size();
-  string script;
-  if (edptr)
-    script=merge_area(edptr->elements);
-  int scriptsize=script.size();
+  int scriptsize=0;
   // save format: line_size (2), start_col(2), line_type (1), readonly (1), line
   int size=2*sizeof(int)+statesize+scriptsize,consolesize=0;
   int start_row=Last_Line-max_lines_saved; 
@@ -533,7 +530,6 @@ void save_console_state_smem(const char * filename){
   Bfile_WriteFile_OS(hFile, state.c_str(), statesize);
   // save script
   Bfile_WriteFile_OS(hFile, &scriptsize, sizeof(scriptsize));
-  Bfile_WriteFile_OS(hFile, script.c_str(), scriptsize);
   // save console state
 #if 1
   char consolebuf[consolesize+4];
@@ -680,29 +676,8 @@ bool load_console_state_smem(const char * filename){
     return false;
   }
   if (L>0){
-    char bufscript[L+1];
-    if (Bfile_ReadFile_OS(hf,bufscript,L,-1)!=L){
-      Bfile_CloseFile_OS(hf);
-      return false;
-    }
-    bufscript[L]=0;
-    if (edptr==0)
-      edptr=new textArea;
-    if (edptr){
-      edptr->elements.clear();
-      edptr->clipline=-1;
-      edptr->filename="\\\\fls0\\"+remove_path(giac::remove_extension(filename))+".py";
-      //cout << "script " << edptr->filename << endl;
-      edptr->editable=true;
-      edptr->changed=false;
-      edptr->python=python_compat(contextptr);
-      edptr->elements.clear();
-      edptr->y=0;
-      add(edptr,bufscript);
-      edptr->line=0;
-      //edptr->line=edptr->elements.size()-1;
-      edptr->pos=0;
-    }    
+    Bfile_CloseFile_OS(hf);
+    return false;
   }
   // read console state
   // insure parse messages are cleared
