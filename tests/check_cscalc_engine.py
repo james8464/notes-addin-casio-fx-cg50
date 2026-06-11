@@ -83,6 +83,8 @@ def main():
     require("norform(A*B)", ["Use NOR", "NOR form", "A NOR A"])
     require("nor form A and B", ["Use NOR", "NOR form", "A NOR A"])
     require("boolprove(A+B,B+A)", ["truth tables", "LHS output-1 rows", "Same output rows"])
+    require("prove A+B = B+A", ["truth tables", "LHS output-1 rows", "Same output rows"])
+    require("show that A and not B = A*B'", ["truth tables", "Same output rows"])
     print("OK cscalc engine")
 
 

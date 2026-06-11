@@ -741,6 +741,22 @@ static int eval_bool_prove(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE
   return add(out, n, same_rows ? "Same output rows, so LHS = RHS." : "Different output rows, so not identical.");
 }
 
+static const char *skip_bool_words(const char *e) {
+  bool moved = true;
+  while (moved) {
+    moved = false;
+    if (starts(e, "simplify")) { e += 8; moved = true; }
+    if (starts(e, "prove")) { e += 5; moved = true; }
+    if (starts(e, "showthat")) { e += 8; moved = true; }
+    if (starts(e, "show")) { e += 4; moved = true; }
+    if (starts(e, "identity")) { e += 8; moved = true; }
+    if (starts(e, "boolean")) { e += 7; moved = true; }
+    if (starts(e, "logic")) { e += 5; moved = true; }
+    if (starts(e, "expression")) { e += 10; moved = true; }
+  }
+  return e;
+}
+
 static int eval_free_text(const char *input, const char *compact, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
   char t[192]; raw_clean(input, t, sizeof(t));
   double v[8]; int nv = scan_nums(t, v, 8);
@@ -827,16 +843,20 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if (nv == 0 && starts(compact, "onlynor")) {
     sprintf(cmd, "norform(%s)", compact + 7); return eval_gate_form(cmd, out);
   }
-  if (nv == 0 && (has(compact, "nand") || has(compact, "nor") || has(compact, "xor") || has(compact, "and") || has(compact, "or") || has(compact, "'"))) {
-    const char *e = compact;
-    bool moved = true;
-    while (moved) {
-      moved = false;
-      if (starts(e, "simplify")) { e += 8; moved = true; }
-      if (starts(e, "boolean")) { e += 7; moved = true; }
-      if (starts(e, "logic")) { e += 5; moved = true; }
-      if (starts(e, "expression")) { e += 10; moved = true; }
+  if (nv == 0 && has(compact, "=")) {
+    const char *e = skip_bool_words(compact);
+    const char *eq = strchr(e, '=');
+    if (eq && eq > e && eq[1]) {
+      char lhs[48], rhs[48]; int li = 0, ri = 0;
+      for (const char *p = e; p < eq && li < 47; ++p) lhs[li++] = *p;
+      lhs[li] = 0;
+      for (const char *p = eq + 1; *p && ri < 47; ++p) rhs[ri++] = *p;
+      rhs[ri] = 0;
+      sprintf(cmd, "boolprove(%s,%s)", lhs, rhs); return eval_bool_prove(cmd, out);
     }
+  }
+  if (nv == 0 && (has(compact, "nand") || has(compact, "nor") || has(compact, "xor") || has(compact, "and") || has(compact, "or") || has(compact, "'"))) {
+    const char *e = skip_bool_words(compact);
     sprintf(cmd, "bool(%s)", e); return eval_bool(cmd, out);
   }
   return 0;

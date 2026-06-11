@@ -78,6 +78,8 @@ def main():
     require("regress(2,0.5,10)", ["regression line", "y=7"])
     require("pmcc(5,20,30,140,90,220)", ["product moment", "top =", "r ="])
     require("correlation n 5 sx 20 sy 30 sxy 140 sx2 90 sy2 220", ["product moment", "r ="])
+    require("correlation n=5 sx=20 sy=30 sxy=140 sx2=90 sy2=220", ["product moment", "top =", "r ="])
+    require("pmcc sxx=10 syy=40 sxy=18", ["PMCC from summary", "Sxy/sqrt"])
     require("meanvar(5,20,90)", ["mean = Sx/n", "variance"])
     require("mean variance n 5 sx 20 sx2 90", ["mean = Sx/n", "variance"])
     print("OK p3 engine")

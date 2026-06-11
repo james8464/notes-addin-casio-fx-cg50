@@ -366,6 +366,12 @@ static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     n = add(out, n, "top = %.6g*%.6g - %.6g*%.6g = %.6g", n0, sxy, sx, sy, top);
     return add(out, n, "r = %.10g", top / root(bx * by));
   }
+  if (starts3(s, "pmccs(", "correlations(", "productmoments(") && na >= 3) {
+    double sxx=num(a[0]), syy=num(a[1]), sxy=num(a[2]);
+    int n = add(out, 0, "Use PMCC from summary values.");
+    n = add(out, n, "r = Sxy/sqrt(Sxx*Syy)");
+    return add(out, n, "r = %.6g/sqrt(%.6g*%.6g) = %.10g", sxy, sxx, syy, sxy/root(sxx*syy));
+  }
   if (starts3(s, "meanvar(", "variance(", "summary(") && na >= 3) {
     double n0=num(a[0]), sx=num(a[1]), sx2=num(a[2]), mean=sx/n0, var=sx2/n0-mean*mean;
     int n = add(out, 0, "Use summary statistics formulae.");
@@ -455,6 +461,15 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if (has(t, "poisson") && nv >= 2) {
     sprintf(cmd, "poisson(%.10g,%d)", v[0], (int)v[1]); return eval_stats(cmd, out);
+  }
+  if (has(t, "pmcc") || has(t, "correlation")) {
+    double n0=0, sx=0, sy=0, sxy=0, sx2=0, sy2=0, sxx=0, syy=0;
+    if (label_num(input,"sxx",&sxx) && label_num(input,"syy",&syy) && label_num(input,"sxy",&sxy)) {
+      sprintf(cmd, "pmccs(%.10g,%.10g,%.10g)", sxx, syy, sxy); return eval_stats(cmd, out);
+    }
+    if (label_num(input,"n",&n0) && label_num(input,"sx",&sx) && label_num(input,"sy",&sy) && label_num(input,"sxy",&sxy) && (label_num(input,"sx2",&sx2) || label_num(input,"sx^2",&sx2)) && (label_num(input,"sy2",&sy2) || label_num(input,"sy^2",&sy2))) {
+      sprintf(cmd, "pmcc(%.10g,%.10g,%.10g,%.10g,%.10g,%.10g)", n0, sx, sy, sxy, sx2, sy2); return eval_stats(cmd, out);
+    }
   }
   if ((has(t, "pmcc") || has(t, "correlation")) && nv >= 6) {
     sprintf(cmd, "pmcc(%.10g,%.10g,%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3], v[4], v[5]); return eval_stats(cmd, out);
