@@ -119,6 +119,7 @@ static double read_num(const char *s) {
 static bool label_num(const char *s, const char *name, double *v) {
   int nl = (int)strlen(name);
   for (int i = 0; s && s[i]; ++i) {
+    if (i > 0 && isalnum((unsigned char)s[i-1])) continue;
     int j = 0;
     while (j < nl && s[i+j] && tolower((unsigned char)s[i+j]) == name[j]) ++j;
     if (j != nl) continue;

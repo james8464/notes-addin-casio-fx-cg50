@@ -119,3 +119,25 @@ Evidence:
 Drift check:
 - Still inside CASP3 Edexcel Paper 3 method support.
 - Did not touch CAS Pure, CSCALC, NOTES, UI/menu/status code.
+
+## 2026-06-11 CASP3 Regression Summary Slice
+
+Completed:
+- Added CASP3 least-squares regression route from summary values:
+  `regresscalc(n,Sx,Sy,Sxx,Sxy[,x])`.
+- Added route from means and corrected sums:
+  `regresss(xbar,ybar,Sxx,Sxy[,x])`.
+- Added free-text labelled parsing for regression summaries and predictions.
+- Hardened label parsing in CASP3 and CSCALC so short labels do not match inside longer labels, e.g. `x` inside `sx`.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CASP3/CSCALC free-text arbitrary-input hardening.
+- Did not touch CAS Pure, NOTES, UI/menu/status code.

@@ -128,6 +128,7 @@ static double read_num(const char *s) {
 static bool label_num(const char *s, const char *name, double *v) {
   int nl = (int)strlen(name);
   for (int i = 0; s && s[i]; ++i) {
+    if (i > 0 && isalnum((unsigned char)s[i-1])) continue;
     int j = 0;
     while (j < nl && s[i+j] && tolower((unsigned char)s[i+j]) == name[j]) ++j;
     if (j != nl) continue;
@@ -405,6 +406,28 @@ static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     n = add(out, n, "y = %.6g + %.6g x", a0, b);
     return add(out, n, "when x=%.6g, y=%.6g", x, a0+b*x);
   }
+  if (starts3(s, "regresscalc(", "regressionline(", "lobf(") && na >= 5) {
+    double n0=num(a[0]), sx=num(a[1]), sy=num(a[2]), sxx=num(a[3]), sxy=num(a[4]);
+    double xb=sx/n0, yb=sy/n0, b=sxy/sxx, a0=yb-b*xb;
+    int n = add(out, 0, "Find least-squares regression line y = a + bx.");
+    n = add(out, n, "xbar = Sx/n = %.6g/%.6g = %.6g", sx, n0, xb);
+    n = add(out, n, "ybar = Sy/n = %.6g/%.6g = %.6g", sy, n0, yb);
+    n = add(out, n, "b = Sxy/Sxx = %.6g/%.6g = %.6g", sxy, sxx, b);
+    n = add(out, n, "a = ybar - b*xbar = %.6g", a0);
+    n = add(out, n, "regression line: y = %.6g + %.6g x", a0, b);
+    if (na >= 6) n = add(out, n, "when x=%.6g, y=%.6g", num(a[5]), a0+b*num(a[5]));
+    return n;
+  }
+  if (starts3(s, "regresss(", "regresssummary(", "regsummary(") && na >= 4) {
+    double xb=num(a[0]), yb=num(a[1]), sxx=num(a[2]), sxy=num(a[3]);
+    double b=sxy/sxx, a0=yb-b*xb;
+    int n = add(out, 0, "Find least-squares regression line y = a + bx.");
+    n = add(out, n, "b = Sxy/Sxx = %.6g/%.6g = %.6g", sxy, sxx, b);
+    n = add(out, n, "a = ybar - b*xbar = %.6g - %.6g*%.6g = %.6g", yb, b, xb, a0);
+    n = add(out, n, "regression line: y = %.6g + %.6g x", a0, b);
+    if (na >= 5) n = add(out, n, "when x=%.6g, y=%.6g", num(a[4]), a0+b*num(a[4]));
+    return n;
+  }
   if (starts3(s, "pmcc(", "correlation(", "productmoment(") && na >= 6) {
     double n0=num(a[0]), sx=num(a[1]), sy=num(a[2]), sxy=num(a[3]), sx2=num(a[4]), sy2=num(a[5]);
     double top = n0*sxy - sx*sy, bx = n0*sx2 - sx*sx, by = n0*sy2 - sy*sy;
@@ -545,6 +568,20 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if ((has(t, "pmcc") || has(t, "correlation")) && nv >= 6) {
     sprintf(cmd, "pmcc(%.10g,%.10g,%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3], v[4], v[5]); return eval_stats(cmd, out);
+  }
+  if (has(t, "regression") || has(t, "leastsquares") || has(t, "lineofbestfit")) {
+    double n0=0, sx=0, sy=0, sxx=0, sxy=0, xb=0, yb=0, x=0;
+    bool hx = label_num(input,"x",&x);
+    if (label_num(input,"n",&n0) && label_num(input,"sx",&sx) && label_num(input,"sy",&sy) && label_num(input,"sxx",&sxx) && label_num(input,"sxy",&sxy)) {
+      if (hx) sprintf(cmd, "regresscalc(%.10g,%.10g,%.10g,%.10g,%.10g,%.10g)", n0, sx, sy, sxx, sxy, x);
+      else sprintf(cmd, "regresscalc(%.10g,%.10g,%.10g,%.10g,%.10g)", n0, sx, sy, sxx, sxy);
+      return eval_stats(cmd, out);
+    }
+    if (label_num(input,"xbar",&xb) && label_num(input,"ybar",&yb) && label_num(input,"sxx",&sxx) && label_num(input,"sxy",&sxy)) {
+      if (hx) sprintf(cmd, "regresss(%.10g,%.10g,%.10g,%.10g,%.10g)", xb, yb, sxx, sxy, x);
+      else sprintf(cmd, "regresss(%.10g,%.10g,%.10g,%.10g)", xb, yb, sxx, sxy);
+      return eval_stats(cmd, out);
+    }
   }
   if ((has(t, "mean") || has(t, "variance") || has(t, "standarddeviation")) && nv >= 3) {
     sprintf(cmd, "meanvar(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_stats(cmd, out);
