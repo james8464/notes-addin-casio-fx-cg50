@@ -76,6 +76,7 @@ def main():
     require("bool(A and not B)", ["truth table", "simplified = AB'"])
     require("A and not B", ["truth table", "simplified = AB'"])
     require("simplify A and not B", ["truth table", "simplified = AB'"])
+    require("simplify boolean expression A and not B", ["truth table", "simplified = AB'"])
     require("bool(A nand B)", ["truth table", "simplified = A'+B'"])
     print("OK cscalc engine")
 

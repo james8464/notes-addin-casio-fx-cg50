@@ -702,9 +702,14 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   if (nv == 0 && (has(compact, "nand") || has(compact, "nor") || has(compact, "xor") || has(compact, "and") || has(compact, "or") || has(compact, "'"))) {
     const char *e = compact;
-    if (starts(e, "simplify")) e += 8;
-    if (starts(e, "boolean")) e += 7;
-    if (starts(e, "logic")) e += 5;
+    bool moved = true;
+    while (moved) {
+      moved = false;
+      if (starts(e, "simplify")) { e += 8; moved = true; }
+      if (starts(e, "boolean")) { e += 7; moved = true; }
+      if (starts(e, "logic")) { e += 5; moved = true; }
+      if (starts(e, "expression")) { e += 10; moved = true; }
+    }
     sprintf(cmd, "bool(%s)", e); return eval_bool(cmd, out);
   }
   return 0;

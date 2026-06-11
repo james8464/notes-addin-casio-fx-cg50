@@ -425,6 +425,10 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     double tail = has(t, "upper") ? 1 : -1;
     sprintf(cmd, "critbinom(%d,%.10g,%.10g,%.0f)", (int)v[0], v[1], v[2], tail); return eval_stats(cmd, out);
   }
+  if ((has(t, "hypothesis") || has(t, "significance") || has(t, "binomtest")) && has(t, "binom") && nv >= 4) {
+    double tail = has(t, "upper") || has(t, "greater") || has(t, "more") ? 1 : -1;
+    sprintf(cmd, "hypbinom(%d,%.10g,%d,%.10g,%.0f)", (int)v[0], v[1], (int)v[2], v[3], tail); return eval_stats(cmd, out);
+  }
   if ((has(t, "conditional") || has(t, "given")) && nv >= 2) {
     sprintf(cmd, "cond(%.10g,%.10g)", v[0], v[1]); return eval_stats(cmd, out);
   }
@@ -433,6 +437,9 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if (has(t, "binom") && nv >= 3) {
     sprintf(cmd, (has(t, "cdf") || has(t, "atmost") || has(t, "<=")) ? "binomcdf(%d,%.10g,%d)" : "binom(%d,%.10g,%d)", (int)v[0], v[1], (int)v[2]); return eval_stats(cmd, out);
+  }
+  if (has(t, "poisson") && nv >= 2) {
+    sprintf(cmd, "poisson(%.10g,%d)", v[0], (int)v[1]); return eval_stats(cmd, out);
   }
   return 0;
 }

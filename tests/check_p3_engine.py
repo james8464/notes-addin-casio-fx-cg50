@@ -66,6 +66,7 @@ def main():
     require("critbinom(20,0.4,0.05,-1)", ["critical region", "alpha"])
     require("binomial critical region n 20 p 0.4 alpha 0.05 lower", ["critical region", "alpha"])
     require("hypbinom(20,0.4,4,0.05,-1)", ["H0", "Compare", "context"])
+    require("binomial hypothesis test n 20 p 0.4 x 4 alpha 0.05 lower", ["H0", "Compare", "context"])
     require("normalprob(40,60,50,10)", ["standardise", "NormalCD"])
     require("normal distribution between 40 and 60 mean 50 sd 10", ["standardise", "NormalCD"])
     require("cond(0.18,0.3)", ["P(A|B)", "0.6"])
@@ -73,6 +74,7 @@ def main():
     require("probor(0.4,0.5,0.2)", ["P(A or B)", "0.7"])
     require("union probability pa 0.4 pb 0.5 intersection 0.2", ["P(A or B)", "0.7"])
     require("poisson(3,2)", ["Po(lambda)", "P(X=2)"])
+    require("poisson mean 3 exactly 2", ["Po(lambda)", "P(X=2)"])
     require("regress(2,0.5,10)", ["regression line", "y=7"])
     print("OK p3 engine")
 
