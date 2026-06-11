@@ -320,6 +320,17 @@ static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     n = add(out, n, tail == 2 ? "P(X>%d)" : tail == 1 ? "P(X>=%d)" : tail == -2 ? "P(X<%d)" : "P(X<=%d)", r);
     return add(out, n, "sum from %d to %d = %.10g", lo, hi, ans);
   }
+  if (starts3(s, "binomnorm(", "normalapproxbinom(", "binomnormal(") && na >= 4) {
+    int N=(int)num(a[0]); double p=num(a[1]), lo=num(a[2]), hi=num(a[3]);
+    double mu=N*p, sig=root(N*p*(1-p)), clo=lo-0.5, chi=hi+0.5;
+    int n = add(out, 0, "Use normal approximation to X ~ B(%d, %.6g).", N, p);
+    n = add(out, n, "mu = np = %.6g, sigma = sqrt(np(1-p)) = %.6g", mu, sig);
+    n = add(out, n, "continuity correction: P(%.6g<=X<=%.6g)", lo, hi);
+    n = add(out, n, "use %.6g < Y < %.6g", clo, chi);
+    n = add(out, n, "z1=(%.6g-%.6g)/%.6g = %.6g", clo, mu, sig, (clo-mu)/sig);
+    n = add(out, n, "z2=(%.6g-%.6g)/%.6g = %.6g", chi, mu, sig, (chi-mu)/sig);
+    return add(out, n, "NormalCD(lower=%.6g, upper=%.6g, sigma=%.6g, mu=%.6g)", clo, chi, sig, mu);
+  }
   if (starts3(s, "critbinom(", "criticalbinom(", "criticalregion(") && na >= 4) {
     int N=(int)num(a[0]); double p=num(a[1]), alpha=num(a[2]), tail=num(a[3]);
     double cum = 0, bestp = 0; int crit = tail < 0 ? -1 : N + 1;
@@ -513,6 +524,13 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if ((has(t, "varacc") || has(t, "variableacceleration") || (has(t, "acceleration") && has(t, "integrate"))) && nv >= 4) {
     sprintf(cmd, "varacc(%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3]); return eval_mech(cmd, out);
   }
+  if ((has(t, "critical") || has(t, "criticalregion")) && has(t, "binom") && nv >= 3) {
+    double tail = has(t, "upper") ? 1 : -1;
+    sprintf(cmd, "critbinom(%d,%.10g,%.10g,%.0f)", (int)v[0], v[1], v[2], tail); return eval_stats(cmd, out);
+  }
+  if (has(t, "binom") && has(t, "normal") && (has(t, "approx") || has(t, "approximation")) && nv >= 4) {
+    sprintf(cmd, "binomnorm(%d,%.10g,%.10g,%.10g)", (int)v[0], v[1], v[2], v[3]); return eval_stats(cmd, out);
+  }
   if ((has(t, "normaldistribution") || has(t, "normalcdf") || (has(t, "normal") && has(t, "between"))) && nv >= 4) {
     sprintf(cmd, "normalprob(%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3]); return eval_stats(cmd, out);
   }
@@ -529,10 +547,6 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if ((has(t, "standardise") || has(t, "standardize") || has(t, "zscore")) && nv >= 3) {
     sprintf(cmd, "normal(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_stats(cmd, out);
-  }
-  if ((has(t, "critical") || has(t, "criticalregion")) && has(t, "binom") && nv >= 3) {
-    double tail = has(t, "upper") ? 1 : -1;
-    sprintf(cmd, "critbinom(%d,%.10g,%.10g,%.0f)", (int)v[0], v[1], v[2], tail); return eval_stats(cmd, out);
   }
   if ((has(t, "hypothesis") || has(t, "significance") || has(t, "binomtest")) && has(t, "binom") && nv >= 4) {
     double tail = has(t, "upper") || has(t, "greater") || has(t, "more") ? 1 : -1;

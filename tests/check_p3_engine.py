@@ -69,6 +69,8 @@ def main():
     require("binomial n 10 p 0.3 at least 4", ["P(X>=4)", "sum from 4 to 10"])
     require("binomial n 10 p 0.3 more than 4", ["P(X>4)", "sum from 5 to 10"])
     require("binomial n 10 p 0.3 less than 4", ["P(X<4)", "sum from 0 to 3"])
+    require("binomnorm(100,0.4,35,45)", ["normal approximation", "mu = np = 40", "continuity correction", "34.5 < Y < 45.5", "NormalCD"])
+    require("normal approximation to binomial n 100 p 0.4 between 35 and 45", ["normal approximation", "continuity correction", "NormalCD"])
     require("critbinom(20,0.4,0.05,-1)", ["critical region", "alpha"])
     require("binomial critical region n 20 p 0.4 alpha 0.05 lower", ["critical region", "alpha"])
     require("hypbinom(20,0.4,4,0.05,-1)", ["H0", "Compare", "context"])

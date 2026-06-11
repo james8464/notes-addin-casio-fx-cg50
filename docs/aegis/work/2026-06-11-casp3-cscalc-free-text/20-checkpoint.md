@@ -217,3 +217,22 @@ Evidence:
 Drift check:
 - Still inside CSCALC AQA Paper 2 floating-point calculation support.
 - Did not touch CAS Pure, CASP3, NOTES, UI/menu/status code.
+
+## 2026-06-11 CASP3 Binomial Normal Approx Slice
+
+Completed:
+- Added `binomnorm(n,p,lower,upper)` / `normalapproxbinom` / `binomnormal`.
+- Added mean, standard deviation, continuity-correction, z-value, and NormalCD setup working.
+- Added free-text parsing for normal approximation to binomial prompts.
+- Ordered dispatch so normal-between prompts do not steal binomial-normal approximation prompts.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CASP3 Edexcel Paper 3 statistics support.
+- Did not touch CAS Pure, CSCALC, NOTES, UI/menu/status code.
