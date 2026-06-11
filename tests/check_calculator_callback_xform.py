@@ -37,9 +37,14 @@ int main(){
       return 2;
     std::cout << out << "\n";
     std::string s=out.c_str();
-    if (s.find("Parameter isolation:")==std::string::npos ||
+    if (s.find("Isolate param:")==std::string::npos ||
         s.find("k = 2")==std::string::npos ||
-        s.find("Verified by substitution")==std::string::npos ||
+        s.find("Substitute:")==std::string::npos ||
+        s.find("Verified")!=std::string::npos ||
+        s.find("Warning")!=std::string::npos ||
+        s.find("syntax error")!=std::string::npos ||
+        s.find("Bad Argument")!=std::string::npos ||
+        s.find("//")!=std::string::npos ||
         s.find("not equivalent")!=std::string::npos ||
         s.find("k = 1")!=std::string::npos ||
         s.find("not verified")!=std::string::npos)
@@ -50,8 +55,13 @@ int main(){
   if (!cascas::eval_with_working("xform((cos(x)+sin(x))*(cosec(x)-sec(x))=k*cot(2x),k)",out))
     return 3;
   std::string s=out.c_str();
-  if (s.find("Parameter isolation:")==std::string::npos ||
+  if (s.find("Isolate param:")==std::string::npos ||
       s.find("k = 2")==std::string::npos ||
+      s.find("Verified")!=std::string::npos ||
+      s.find("Warning")!=std::string::npos ||
+      s.find("syntax error")!=std::string::npos ||
+      s.find("Bad Argument")!=std::string::npos ||
+      s.find("//")!=std::string::npos ||
       s.find("not equivalent")!=std::string::npos ||
       s.find("not verified")!=std::string::npos)
     return 4;

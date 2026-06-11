@@ -33,6 +33,14 @@ CASES = [
             "2*cot(2*x)",
         ],
     ),
+    (
+        "xform((sin(x)-1)^2=2,cos(x)^2=(8*sin(x)^2-6*sin(x)))",
+        [
+            "Search:",
+            "Target form:",
+            "cos(x)^2=(8*sin(x)^2-6*sin(x))",
+        ],
+    ),
 ]
 
 FORBIDDEN = [
@@ -41,6 +49,11 @@ FORBIDDEN = [
     "not equivalent",
     "not verified",
     "Verified",
+    "Warning adding",
+    "syntax error",
+    "Bad Argument",
+    "//",
+    "Error:",
 ]
 
 

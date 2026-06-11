@@ -58,10 +58,6 @@ static working_string compact(const working_string &s){
   return normalize_input_aliases(r);
 }
 
-static bool production_exact_command(const working_string &expr,working_string &out){
-  return g_khicas_eval && g_khicas_eval(expr.c_str(),out);
-}
-
 static bool exact_approx_double(const working_string &expr,double &v);
 
 static bool bad_exact_output(const working_string &s){
@@ -70,14 +66,28 @@ static bool bad_exact_output(const working_string &s){
     return true;
   return t.find("error")!=working_string::npos ||
          t.find("bad argument")!=working_string::npos ||
+         t.find("warning")!=working_string::npos ||
+         t.find("syntax")!=working_string::npos ||
+         t.find("invalid")!=working_string::npos ||
+         t.find("too few")!=working_string::npos ||
          t.find("//")!=working_string::npos;
+}
+
+static bool production_exact_command(const working_string &expr,working_string &out){
+  if (!g_khicas_eval || !g_khicas_eval(expr.c_str(),out))
+    return false;
+  out=trim(out);
+  if (bad_exact_output(out)){
+    out.clear();
+    return false;
+  }
+  return true;
 }
 
 static bool exact_command_clean(const working_string &expr,working_string &out){
   if (!production_exact_command(expr,out))
     return false;
-  out=trim(out);
-  return !bad_exact_output(out);
+  return true;
 }
 
 static bool exact_rewrite_clean(const working_string &expr,int i,working_string &out){
