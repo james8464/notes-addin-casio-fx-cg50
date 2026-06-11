@@ -203,7 +203,9 @@ static int eval_twos(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN])
     int w = (int)strlen(a[0]), x = twos_decode(a[0]), y = twos_decode(a[1]); char b[65]; to_bin(x+y, w, b);
     int n = add(out, 0, "Decode/add in fixed width, discard carry beyond %d bits.", w);
     n = add(out, n, "%s=%d, %s=%d", a[0], x, a[1], y);
-    return add(out, n, "%d+%d=%d -> %s", x, y, x+y, b);
+    n = add(out, n, "%d+%d=%d -> %s", x, y, x+y, b);
+    bool ov = (x >= 0 && y >= 0 && b[0] == '1') || (x < 0 && y < 0 && b[0] == '0');
+    return add(out, n, ov ? "overflow: same signs gave opposite sign bit." : "no two's complement overflow.");
   }
   if ((starts(s, "twossub(") || starts(s, "tcsub(") || starts(s, "twossubtract(")) && na == 2) {
     int w = (int)strlen(a[0]), x = twos_decode(a[0]), y = twos_decode(a[1]); char b[65]; to_bin(x-y, w, b);
@@ -317,6 +319,18 @@ static int eval_float(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]
     n = add(out, n, "%.10g = %.10g * 2^%d", value, m, e);
     n = add(out, n, "mantissa (%d bits) = %s", mb, mant);
     return add(out, n, "exponent (%d bits) = %s", eb, expb);
+  }
+  if (starts3(s, "floatrange(", "fprange(", "realrange(") && na >= 2) {
+    int mb = (int)parse_int(a[0]), eb = (int)parse_int(a[1]);
+    int emin = -(1 << (eb - 1)), emax = (1 << (eb - 1)) - 1;
+    double step = pow2(-(mb - 1));
+    double minpos = 0.5 * pow2(emin);
+    double maxpos = (1.0 - step) * pow2(emax);
+    int n = add(out, 0, "Exponent is %d-bit two's complement.", eb);
+    n = add(out, n, "exponent range = %d to %d", emin, emax);
+    n = add(out, n, "mantissa step = 2^-(%d) = %.10g", mb - 1, step);
+    n = add(out, n, "smallest positive normal = 0.5*2^%d = %.10g", emin, minpos);
+    return add(out, n, "largest positive = (1-step)*2^%d = %.10g", emax, maxpos);
   }
   return 0;
 }
@@ -507,6 +521,6 @@ int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
   n = eval_bool(s, out); if (n) return n;
   n = add(out, 0, "Supported:");
   n = add(out, n, "bin hex den convert twos twosdec fixed");
-  n = add(out, n, "floatdec normal image sound bitrate");
+  n = add(out, n, "floatdec floatrange normal image sound bitrate");
   return add(out, n, "compress chars bool truth");
 }

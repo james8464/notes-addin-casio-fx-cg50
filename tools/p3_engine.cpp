@@ -201,6 +201,19 @@ static int eval_mech(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     int n = add(out, 0, "Power = work done / time.");
     return add(out, n, "P = %.6g/%.6g = %.6g W", w, t, w/t);
   }
+  if (starts3(s, "restitution(", "impact(", "collision(") && na >= 4) {
+    double u1=num(a[0]), u2=num(a[1]), v1=num(a[2]), v2=num(a[3]);
+    int n = add(out, 0, "Use Newton's experimental law of restitution.");
+    n = add(out, n, "e = speed of separation / speed of approach");
+    return add(out, n, "e = (%.6g-%.6g)/(%.6g-%.6g) = %.6g", v2, v1, u1, u2, (v2-v1)/(u1-u2));
+  }
+  if (starts3(s, "vector(", "resultant(", "components(") && na >= 2) {
+    double x=num(a[0]), y=num(a[1]), mag=root(x*x+y*y);
+    int n = add(out, 0, "Resolve into perpendicular components.");
+    n = add(out, n, "|R| = sqrt(x^2+y^2)");
+    n = add(out, n, "|R| = sqrt(%.6g^2+%.6g^2) = %.6g", x, y, mag);
+    return add(out, n, "direction: use tan(theta)=y/x on calculator.");
+  }
   if (starts3(s, "varacc(", "variableacc(", "variableacceleration(") && na >= 4) {
     double c=num(a[0]), k=num(a[1]), u=num(a[2]), t=num(a[3]);
     int n = add(out, 0, "Given a(t)=c+kt, integrate to get velocity.");
@@ -231,6 +244,21 @@ static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     n = add(out, n, "P(X<=%d) = sum P(X=r), r=0..%d.", r, r);
     return add(out, n, "= %.10g", ans);
   }
+  if (starts3(s, "critbinom(", "criticalbinom(", "criticalregion(") && na >= 4) {
+    int N=(int)num(a[0]); double p=num(a[1]), alpha=num(a[2]), tail=num(a[3]);
+    double cum = 0, bestp = 0; int crit = tail < 0 ? -1 : N + 1;
+    if (tail < 0) {
+      for (int k=0;k<=N;++k) { cum += binomp(N,p,k); if (cum <= alpha) { crit = k; bestp = cum; } else break; }
+    } else {
+      cum = 0;
+      for (int k=N;k>=0;--k) { cum += binomp(N,p,k); if (cum <= alpha) { crit = k; bestp = cum; } else break; }
+    }
+    int n = add(out, 0, "Let X ~ B(%d, %.6g).", N, p);
+    n = add(out, n, tail < 0 ? "Lower tail: find largest c with P(X<=c)<=alpha." : "Upper tail: find smallest c with P(X>=c)<=alpha.");
+    n = add(out, n, "alpha = %.6g, tail probability = %.10g", alpha, bestp);
+    if ((tail < 0 && crit < 0) || (tail >= 0 && crit > N)) return add(out, n, "no critical value at this alpha.");
+    return add(out, n, tail < 0 ? "critical region: X <= %d" : "critical region: X >= %d", crit);
+  }
   if (starts3(s, "hypbinom(", "binomtest(", "hypothesistest(") && na >= 5) {
     int N=(int)num(a[0]), x=(int)num(a[2]); double p=num(a[1]), alpha=num(a[3]), tail=num(a[4]), prob=0;
     if (tail < 0) for (int k=0;k<=x;++k) prob += binomp(N,p,k);
@@ -239,6 +267,14 @@ static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     n = add(out, n, "tail probability = %.10g", prob);
     n = add(out, n, "Compare with alpha = %.6g.", alpha);
     return add(out, n, prob <= alpha ? "Reject H0 in context." : "Do not reject H0 in context.");
+  }
+  if (starts3(s, "normalprob(", "normalcdf(", "normint(") && na >= 4) {
+    double lo=num(a[0]), hi=num(a[1]), mu=num(a[2]), sig=num(a[3]);
+    int n = add(out, 0, "For X~N(mu,sigma^2), standardise both bounds.");
+    n = add(out, n, "z1=(%.6g-%.6g)/%.6g = %.6g", lo, mu, sig, (lo-mu)/sig);
+    n = add(out, n, "z2=(%.6g-%.6g)/%.6g = %.6g", hi, mu, sig, (hi-mu)/sig);
+    n = add(out, n, "Use fx-CG50 Normal CDF with lower, upper, sigma, mu.");
+    return add(out, n, "NormalCD(lower=%.6g, upper=%.6g, sigma=%.6g, mu=%.6g)", lo, hi, sig, mu);
   }
   if (starts3(s, "cond(", "conditional(", "given(") && na >= 2) {
     double pab=num(a[0]), pb=num(a[1]);
@@ -274,6 +310,6 @@ int p3_eval(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   n = eval_stats(s, out); if (n) return n;
   n = add(out, 0, "Supported:");
   n = add(out, n, "suvat projectile force weight friction moment incline");
-  n = add(out, n, "connected pulley impulse work power varacc");
-  return add(out, n, "normal binom binomcdf hypbinom cond probor poisson regress");
+  n = add(out, n, "connected pulley impulse work power restitution vector varacc");
+  return add(out, n, "normal normalprob binom binomcdf critbinom hypbinom cond probor poisson regress");
 }
