@@ -398,3 +398,28 @@ Evidence:
 Drift check:
 - Still inside CASP3 Edexcel Paper 3 statistics support.
 - Did not touch CAS Pure, CSCALC behavior, NOTES, menus, or status/UI code.
+
+## 2026-06-11 CASP3 Poisson Hypothesis Slice
+
+Completed:
+- Added shared stable Poisson probability helper using scaled `e^-lambda` and recurrence, replacing the weak short alternating exponential series.
+- Added `critpoisson(lambda,alpha,tail)` / `criticalpoisson(...)` / `poissoncrit(...)`.
+- Added `hyppoisson(lambda,x,alpha,tail)` / `poissontest(...)` / `poissonhyp(...)`.
+- Added free-text routes for Poisson critical-region and hypothesis-test prompts.
+- Added regression coverage for large-lambda Poisson probability output.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py && python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 81736 bytes`
+  - `CSCALC.g3a: 81984 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Still inside CASP3 Edexcel Paper 3 statistics support.
+- Did not touch CAS Pure, CSCALC behavior, NOTES, menus, or status/UI code.

@@ -155,10 +155,32 @@ static double binomp(int n, double p, int r) {
   return choose(n, r) * pwr(p, r) * pwr(1 - p, n - r);
 }
 
+static double expneg(double x) {
+  if (x < 0) return 1 / expneg(-x);
+  int m = (int)x + 1;
+  double y = x / m, term = 1, sum = 1;
+  for (int i = 1; i < 28; ++i) { term *= -y / i; sum += term; }
+  return pwr(sum, m);
+}
+
 static double poissonp(double lam, int r) {
-  double fact=1; for(int i=2;i<=r;++i) fact*=i;
-  double e = 1.0, term = 1.0; for(int i=1;i<18;++i){ term *= -lam/i; e += term; }
-  return e*pwr(lam,r)/fact;
+  if (r < 0 || lam < 0) return 0;
+  double p = expneg(lam);
+  for (int k = 1; k <= r; ++k) p *= lam / k;
+  return p;
+}
+
+static double poissoncdf(double lam, int r) {
+  if (r < 0) return 0;
+  double ans = 0;
+  for (int k = 0; k <= r; ++k) ans += poissonp(lam, k);
+  return ans;
+}
+
+static double poissontailprob(double lam, int r, int tail) {
+  if (tail < 0) return poissoncdf(lam, tail == -2 ? r - 1 : r);
+  int lo = tail == 2 ? r + 1 : r;
+  return 1 - poissoncdf(lam, lo - 1);
 }
 
 static int eval_suvat(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
@@ -334,8 +356,7 @@ static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   if (starts3(s, "poissonapprox(", "poissonapproxbinom(", "binompoisson(") && na >= 3) {
     int N=(int)num(a[0]), r=(int)num(a[2]), tail=na>3?(int)num(a[3]):0; double p=num(a[1]), lam=N*p, ans=0;
     if (tail == 0) ans = poissonp(lam, r);
-    else if (tail < 0) { int hi = tail == -2 ? r - 1 : r; for (int k=0;k<=hi;++k) ans += poissonp(lam,k); }
-    else { int lo = tail == 2 ? r + 1 : r; double below=0; for (int k=0;k<lo;++k) below += poissonp(lam,k); ans = 1 - below; }
+    else ans = poissontailprob(lam, r, tail);
     int n = add(out, 0, "Use Poisson approximation to X ~ B(%d, %.6g).", N, p);
     n = add(out, n, "lambda = np = %d*%.6g = %.6g", N, p, lam);
     n = add(out, n, "Let Y ~ Po(%.6g).", lam);
@@ -357,11 +378,34 @@ static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     if ((tail < 0 && crit < 0) || (tail >= 0 && crit > N)) return add(out, n, "no critical value at this alpha.");
     return add(out, n, tail < 0 ? "critical region: X <= %d" : "critical region: X >= %d", crit);
   }
+  if (starts3(s, "critpoisson(", "criticalpoisson(", "poissoncrit(") && na >= 3) {
+    double lam=num(a[0]), alpha=num(a[1]), tail=num(a[2]);
+    double bestp = 0; int crit = tail < 0 ? -1 : 999;
+    if (tail < 0) {
+      for (int k=0;k<80;++k) { double p = poissoncdf(lam, k); if (p <= alpha) { crit = k; bestp = p; } else break; }
+    } else {
+      for (int k=79;k>=0;--k) { double p = poissontailprob(lam, k, 1); if (p <= alpha) { crit = k; bestp = p; } }
+    }
+    int n = add(out, 0, "Let X ~ Po(%.6g).", lam);
+    n = add(out, n, tail < 0 ? "Lower tail: find largest c with P(X<=c)<=alpha." : "Upper tail: find smallest c with P(X>=c)<=alpha.");
+    n = add(out, n, "alpha = %.6g, tail probability = %.10g", alpha, bestp);
+    if ((tail < 0 && crit < 0) || (tail >= 0 && crit == 999)) return add(out, n, "no critical value at this alpha.");
+    return add(out, n, tail < 0 ? "critical region: X <= %d" : "critical region: X >= %d", crit);
+  }
   if (starts3(s, "hypbinom(", "binomtest(", "hypothesistest(") && na >= 5) {
     int N=(int)num(a[0]), x=(int)num(a[2]); double p=num(a[1]), alpha=num(a[3]), tail=num(a[4]), prob=0;
     if (tail < 0) for (int k=0;k<=x;++k) prob += binomp(N,p,k);
     else for (int k=x;k<=N;++k) prob += binomp(N,p,k);
     int n = add(out, 0, "H0: p = %.6g. H1 uses the stated tail.", p);
+    n = add(out, n, "tail probability = %.10g", prob);
+    n = add(out, n, "Compare with alpha = %.6g.", alpha);
+    return add(out, n, prob <= alpha ? "Reject H0 in context." : "Do not reject H0 in context.");
+  }
+  if (starts3(s, "hyppoisson(", "poissontest(", "poissonhyp(") && na >= 4) {
+    double lam=num(a[0]), alpha=num(a[2]), tail=num(a[3]); int x=(int)num(a[1]);
+    double prob = poissontailprob(lam, x, tail < 0 ? -1 : 1);
+    int n = add(out, 0, "H0: lambda = %.6g. H1 uses the stated tail.", lam);
+    n = add(out, n, tail < 0 ? "Use P(X<=%d)." : "Use P(X>=%d).", x);
     n = add(out, n, "tail probability = %.10g", prob);
     n = add(out, n, "Compare with alpha = %.6g.", alpha);
     return add(out, n, prob <= alpha ? "Reject H0 in context." : "Do not reject H0 in context.");
@@ -416,8 +460,8 @@ static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     double lam=num(a[0]); int r=(int)num(a[1]), tail=na>2?(int)num(a[2]):-1; double ans=0;
     int lo = tail == 2 ? r + 1 : tail == 1 ? r : 0;
     int hi = tail == -2 ? r - 1 : tail == -1 ? r : r + 40;
-    if (tail < 0) for (int k=lo;k<=hi;++k) ans += poissonp(lam,k);
-    else { double below=0; for (int k=0;k<lo;++k) below += poissonp(lam,k); ans = 1 - below; }
+    if (tail < 0) ans = poissoncdf(lam, hi) - poissoncdf(lam, lo - 1);
+    else ans = 1 - poissoncdf(lam, lo - 1);
     int n = add(out, 0, "For X~Po(%.6g), use cumulative probabilities.", lam);
     n = add(out, n, tail == 2 ? "P(X>%d)=1-P(X<=%d)" : tail == 1 ? "P(X>=%d)=1-P(X<=%d)" : tail == -2 ? "P(X<%d)" : "P(X<=%d)", r, lo-1);
     return add(out, n, "= %.10g", ans);
@@ -614,6 +658,14 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     if (has(t, "normal") && (has(t, "approx") || has(t, "approximation")) && nv >= 3) {
       sprintf(cmd, "poissonnorm(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_stats(cmd, out);
     }
+    if ((has(t, "critical") || has(t, "criticalregion")) && nv >= 2) {
+      double tail = has(t, "upper") || has(t, "greater") || has(t, "more") ? 1 : -1;
+      sprintf(cmd, "critpoisson(%.10g,%.10g,%.0f)", v[0], v[1], tail); return eval_stats(cmd, out);
+    }
+    if ((has(t, "hypothesis") || has(t, "significance") || has(t, "test")) && nv >= 3) {
+      double tail = has(t, "upper") || has(t, "greater") || has(t, "more") ? 1 : -1;
+      sprintf(cmd, "hyppoisson(%.10g,%d,%.10g,%.0f)", v[0], (int)v[1], v[2], tail); return eval_stats(cmd, out);
+    }
     int tail = 0;
     if (has(c, "morethan")) tail = 2;
     else if (has(c, "atleast") || has(c, "greaterthanorequal")) tail = 1;
@@ -670,5 +722,5 @@ int p3_eval(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   n = add(out, 0, "Supported:");
   n = add(out, n, "suvat projectile force weight friction moment incline");
   n = add(out, n, "connected pulley impulse work power energy restitution vector varacc");
-  return add(out, n, "normal normalprob invnormal binom binomtail critbinom hypbinom cond probor poisson poissontail poissonnorm regress pmcc meanvar code");
+  return add(out, n, "normal normalprob invnormal binom binomtail critbinom hypbinom cond probor poisson poissontail poissonnorm critpoisson hyppoisson regress pmcc meanvar code");
 }
