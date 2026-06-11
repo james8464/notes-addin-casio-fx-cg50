@@ -1,5 +1,24 @@
 # Checkpoint
 
+## 2026-06-12 CSCALC Bitwise Operation Slice
+
+Completed:
+- Added `xorbits(...)`, `andbits(...)`, `orbits(...)`, `notbits(...)` / `invertbits(...)`.
+- Added free-text dispatch for bitwise XOR/AND/OR/NOT while avoiding broad `and` matches in ordinary wording.
+- Added tests for direct commands and natural XOR/NOT prompts.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CSCALC AQA Paper 2 calculation support.
+- Did not touch CAS Pure, CASP3 behavior, NOTES, UI/menu/status code.
+
 ## 2026-06-12 CASP3 Setup Formula Slice
 
 Completed:

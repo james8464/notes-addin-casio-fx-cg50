@@ -383,6 +383,26 @@ static int eval_binary_arith(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LI
     n = add(out, n, "%s has %d one-bits.", a[0], ones);
     return add(out, n, "parity bit = %d, transmitted bits = %s%d", bit, a[0], bit);
   }
+  if (starts3(s, "xorbits(", "andbits(", "orbits(") && na >= 2) {
+    int len = (int)strlen(a[0]); if ((int)strlen(a[1]) < len) len = (int)strlen(a[1]);
+    char b[65]; bool isxor=starts(s,"xorbits("), isand=starts(s,"andbits(");
+    for (int i = 0; i < len && i < 64; ++i) {
+      int x=a[0][i]=='1', y=a[1][i]=='1';
+      b[i] = (isxor ? (x^y) : isand ? (x&y) : (x|y)) ? '1' : '0';
+    }
+    b[len] = 0;
+    int n = add(out, 0, isxor ? "XOR gives 1 when the bits are different." : isand ? "AND gives 1 only when both bits are 1." : "OR gives 1 when either bit is 1.");
+    n = add(out, n, "%s", a[0]);
+    n = add(out, n, "%s", a[1]);
+    return add(out, n, "result = %s", b);
+  }
+  if (starts2(s, "notbits(", "invertbits(") && na >= 1) {
+    int len = (int)strlen(a[0]); char b[65];
+    for (int i = 0; i < len && i < 64; ++i) b[i] = a[0][i] == '1' ? '0' : '1';
+    b[len] = 0;
+    int n = add(out, 0, "NOT flips each bit.");
+    return add(out, n, "%s -> %s", a[0], b);
+  }
   if (starts3(s, "hamming(", "hammingdistance(", "bitdiff(") && na >= 2) {
     int len = (int)strlen(a[0]), d = 0; char pos[80] = ""; int pp = 0;
     if ((int)strlen(a[1]) < len) len = (int)strlen(a[1]);
@@ -1108,6 +1128,18 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if (tc && nv >= 2 && nb == 0) {
     sprintf(cmd, "twos(%lld,%lld)", (long long)v[0], (long long)v[1]); return eval_twos(cmd, out);
   }
+  if ((has(t, "xor") || has(t, "exclusiveor")) && nb >= 2) {
+    sprintf(cmd, "xorbits(%s,%s)", bits[0], bits[1]); return eval_binary_arith(cmd, out);
+  }
+  if ((has(t, "bitwiseand") || has(t, "andbits") || starts(t, "and,")) && nb >= 2) {
+    sprintf(cmd, "andbits(%s,%s)", bits[0], bits[1]); return eval_binary_arith(cmd, out);
+  }
+  if ((has(t, "bitwiseor") || has(t, "orbits") || has(t, ",or,") || starts(t, "or,")) && nb >= 2) {
+    sprintf(cmd, "orbits(%s,%s)", bits[0], bits[1]); return eval_binary_arith(cmd, out);
+  }
+  if ((has(t, "not") || has(t, "invert")) && nb >= 1) {
+    sprintf(cmd, "notbits(%s)", bits[0]); return eval_binary_arith(cmd, out);
+  }
   if ((has(t, "hamming") || has(t, "bitdiff")) && nb >= 2) {
     sprintf(cmd, "hamming(%s,%s)", bits[0], bits[1]); return eval_binary_arith(cmd, out);
   }
@@ -1246,7 +1278,7 @@ int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
   n = eval_bool(s, out); if (n) return n;
   n = eval_free_text(input, s, out); if (n) return n;
   n = add(out, 0, "Supported:");
-  n = add(out, n, "bin hex den convert twos twosdec fixed fixedenc parity hamming checksum checkdigit");
+  n = add(out, n, "bin hex den convert twos twosdec fixed fixedenc parity xorbits andbits orbits notbits hamming checksum checkdigit");
   n = add(out, n, "floatdec floatrange normal image sound bitrate transfer transfermb");
   return add(out, n, "compress rle records chars bool truth nandform norform");
 }
