@@ -375,6 +375,14 @@ static int eval_binary_arith(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LI
     n = add(out, n, "%s shifted %s by %d = %s", a[0], left ? "left" : "right", k, b);
     return add(out, n, left ? "This multiplies unsigned value by 2^%d if no overflow." : "This divides unsigned value by 2^%d, discarding remainder.", k);
   }
+  if (starts2(s, "parity(", "paritybit(") && na >= 1) {
+    int ones = 0; for (int i = 0; a[0][i]; ++i) if (a[0][i] == '1') ones++;
+    bool odd = na > 1 && a[1][0] == 'o';
+    int bit = odd ? (ones % 2 ? 0 : 1) : (ones % 2 ? 1 : 0);
+    int n = add(out, 0, odd ? "Odd parity means total number of 1s is odd." : "Even parity means total number of 1s is even.");
+    n = add(out, n, "%s has %d one-bits.", a[0], ones);
+    return add(out, n, "parity bit = %d, transmitted bits = %s%d", bit, a[0], bit);
+  }
   return 0;
 }
 
@@ -1064,6 +1072,9 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if (has(t, "shift") && nb >= 1 && nv >= 1) {
     sprintf(cmd, "shift(%s,%s,%lld)", bits[0], has(t, "right") ? "right" : "left", (long long)v[nv-1]); return eval_binary_arith(cmd, out);
   }
+  if (has(t, "parity") && nb >= 1) {
+    sprintf(cmd, "parity(%s,%s)", bits[0], has(t, "odd") ? "odd" : "even"); return eval_binary_arith(cmd, out);
+  }
   char fixed[48];
   if (has(t, "fixed") && (has(t, "encode") || has(t, "represent") || has(t, "convert")) && nv >= 3) {
     sprintf(cmd, (tc || has(t, "signed") || has(t, "negative")) ? "fixedtcenc(%.10g,%lld,%lld)" : "fixedenc(%.10g,%lld,%lld)", v[0], (long long)v[1], (long long)v[2]);
@@ -1178,7 +1189,7 @@ int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
   n = eval_bool(s, out); if (n) return n;
   n = eval_free_text(input, s, out); if (n) return n;
   n = add(out, 0, "Supported:");
-  n = add(out, n, "bin hex den convert twos twosdec fixed fixedenc");
+  n = add(out, n, "bin hex den convert twos twosdec fixed fixedenc parity");
   n = add(out, n, "floatdec floatrange normal image sound bitrate transfer transfermb");
   return add(out, n, "compress rle records chars bool truth nandform norform");
 }

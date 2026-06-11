@@ -46,6 +46,8 @@ def main():
     require("twossub(00000101,00000011)", ["Subtraction", "5-3=2"])
     require("binadd(1011,0110,4)", ["carrying", "0001", "overflow"])
     require("shift(00101100,left,2)", ["left shift", "10110000"])
+    require("parity(1011001,even)", ["Even parity", "has 4 one-bits", "parity bit = 0"])
+    require("odd parity bit for 1011001", ["Odd parity", "has 4 one-bits", "parity bit = 1"])
     require("fixed(101.101)", ["place values", "5.625"])
     require("fixed point 101.101", ["place values", "5.625"])
     require("fixedtc(111.01)", ["two's complement", "-0.75"])
