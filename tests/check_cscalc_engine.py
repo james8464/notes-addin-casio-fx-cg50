@@ -78,6 +78,11 @@ def main():
     require("simplify A and not B", ["truth table", "simplified = AB'"])
     require("simplify boolean expression A and not B", ["truth table", "simplified = AB'"])
     require("bool(A nand B)", ["truth table", "simplified = A'+B'"])
+    require("nandform(A+B)", ["Use NAND", "NAND form", "A NAND A"])
+    require("nand form A or B", ["Use NAND", "NAND form", "A NAND A"])
+    require("norform(A*B)", ["Use NOR", "NOR form", "A NOR A"])
+    require("nor form A and B", ["Use NOR", "NOR form", "A NOR A"])
+    require("boolprove(A+B,B+A)", ["truth tables", "LHS output-1 rows", "Same output rows"])
     print("OK cscalc engine")
 
 

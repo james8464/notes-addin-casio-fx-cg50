@@ -358,6 +358,21 @@ static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     n = add(out, n, "y = %.6g + %.6g x", a0, b);
     return add(out, n, "when x=%.6g, y=%.6g", x, a0+b*x);
   }
+  if (starts3(s, "pmcc(", "correlation(", "productmoment(") && na >= 6) {
+    double n0=num(a[0]), sx=num(a[1]), sy=num(a[2]), sxy=num(a[3]), sx2=num(a[4]), sy2=num(a[5]);
+    double top = n0*sxy - sx*sy, bx = n0*sx2 - sx*sx, by = n0*sy2 - sy*sy;
+    int n = add(out, 0, "Use product moment correlation coefficient.");
+    n = add(out, n, "r=(nSxy-SxSy)/sqrt((nSx2-Sx^2)(nSy2-Sy^2))");
+    n = add(out, n, "top = %.6g*%.6g - %.6g*%.6g = %.6g", n0, sxy, sx, sy, top);
+    return add(out, n, "r = %.10g", top / root(bx * by));
+  }
+  if (starts3(s, "meanvar(", "variance(", "summary(") && na >= 3) {
+    double n0=num(a[0]), sx=num(a[1]), sx2=num(a[2]), mean=sx/n0, var=sx2/n0-mean*mean;
+    int n = add(out, 0, "Use summary statistics formulae.");
+    n = add(out, n, "mean = Sx/n = %.6g/%.6g = %.6g", sx, n0, mean);
+    n = add(out, n, "variance = Sx2/n - mean^2");
+    return add(out, n, "variance = %.10g, sd = %.10g", var, root(var));
+  }
   return 0;
 }
 
@@ -441,6 +456,12 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if (has(t, "poisson") && nv >= 2) {
     sprintf(cmd, "poisson(%.10g,%d)", v[0], (int)v[1]); return eval_stats(cmd, out);
   }
+  if ((has(t, "pmcc") || has(t, "correlation")) && nv >= 6) {
+    sprintf(cmd, "pmcc(%.10g,%.10g,%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3], v[4], v[5]); return eval_stats(cmd, out);
+  }
+  if ((has(t, "mean") || has(t, "variance") || has(t, "standarddeviation")) && nv >= 3) {
+    sprintf(cmd, "meanvar(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_stats(cmd, out);
+  }
   return 0;
 }
 
@@ -455,5 +476,5 @@ int p3_eval(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   n = add(out, 0, "Supported:");
   n = add(out, n, "suvat projectile force weight friction moment incline");
   n = add(out, n, "connected pulley impulse work power energy restitution vector varacc");
-  return add(out, n, "normal normalprob binom binomcdf critbinom hypbinom cond probor poisson regress");
+  return add(out, n, "normal normalprob binom binomcdf critbinom hypbinom cond probor poisson regress pmcc meanvar");
 }

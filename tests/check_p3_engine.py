@@ -76,6 +76,10 @@ def main():
     require("poisson(3,2)", ["Po(lambda)", "P(X=2)"])
     require("poisson mean 3 exactly 2", ["Po(lambda)", "P(X=2)"])
     require("regress(2,0.5,10)", ["regression line", "y=7"])
+    require("pmcc(5,20,30,140,90,220)", ["product moment", "top =", "r ="])
+    require("correlation n 5 sx 20 sy 30 sxy 140 sx2 90 sy2 220", ["product moment", "r ="])
+    require("meanvar(5,20,90)", ["mean = Sx/n", "variance"])
+    require("mean variance n 5 sx 20 sx2 90", ["mean = Sx/n", "variance"])
     print("OK p3 engine")
 
 

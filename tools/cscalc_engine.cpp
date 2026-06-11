@@ -626,6 +626,121 @@ static int eval_bool(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN])
   return add(out, n, "simplified = %s", sim);
 }
 
+struct GNode { char op, v; int l, r; };
+
+struct GParser {
+  const char *s; int pos; GNode *nodes; int nc;
+  bool eat(char c) { if (s[pos] == c) { pos++; return true; } return false; }
+  int node(char op, char v, int l, int r) {
+    if (nc >= 63) return 0;
+    nodes[nc] = { op, v, l, r };
+    return nc++;
+  }
+  int factor() {
+    if (eat('!') || eat('~')) return node('!', 0, factor(), -1);
+    int id = 0;
+    if (eat('(')) { id = expr(); eat(')'); }
+    else if (isalpha((unsigned char)s[pos])) id = node('v', (char)toupper((unsigned char)s[pos++]), -1, -1);
+    else id = node('v', '?', -1, -1);
+    while (eat('\'')) id = node('!', 0, id, -1);
+    return id;
+  }
+  int term() {
+    int id = factor();
+    while (s[pos] == '&' || s[pos] == '*' || s[pos] == '.') { pos++; id = node('&', 0, id, factor()); }
+    return id;
+  }
+  int expr() {
+    int id = term();
+    while (s[pos] == '+' || s[pos] == '|' || s[pos] == '^' || s[pos] == '@' || s[pos] == '#') {
+      char op = s[pos++]; if (op == '|') op = '+';
+      id = node(op, 0, id, term());
+    }
+    return id;
+  }
+};
+
+static void gate_app(char *b, int *p, int cap, const char *s) {
+  for (int i = 0; s[i] && *p + 1 < cap; ++i) b[(*p)++] = s[i];
+  b[*p] = 0;
+}
+
+static void gate_nand(GNode *n, int id, char *b, int *p, int cap);
+static void gate_nor(GNode *n, int id, char *b, int *p, int cap);
+
+static void gate_nand_not(GNode *n, int id, char *b, int *p, int cap) {
+  gate_app(b, p, cap, "("); gate_nand(n, id, b, p, cap); gate_app(b, p, cap, " NAND "); gate_nand(n, id, b, p, cap); gate_app(b, p, cap, ")");
+}
+
+static void gate_nor_not(GNode *n, int id, char *b, int *p, int cap) {
+  gate_app(b, p, cap, "("); gate_nor(n, id, b, p, cap); gate_app(b, p, cap, " NOR "); gate_nor(n, id, b, p, cap); gate_app(b, p, cap, ")");
+}
+
+static void gate_nand(GNode *n, int id, char *b, int *p, int cap) {
+  GNode &x = n[id];
+  if (x.op == 'v') { char t[2] = { x.v, 0 }; gate_app(b, p, cap, t); return; }
+  if (x.op == '!') { gate_nand_not(n, x.l, b, p, cap); return; }
+  if (x.op == '@') { gate_app(b, p, cap, "("); gate_nand(n, x.l, b, p, cap); gate_app(b, p, cap, " NAND "); gate_nand(n, x.r, b, p, cap); gate_app(b, p, cap, ")"); return; }
+  if (x.op == '&') { gate_app(b, p, cap, "("); gate_nand(n, x.l, b, p, cap); gate_app(b, p, cap, " NAND "); gate_nand(n, x.r, b, p, cap); gate_app(b, p, cap, ") NAND ("); gate_nand(n, x.l, b, p, cap); gate_app(b, p, cap, " NAND "); gate_nand(n, x.r, b, p, cap); gate_app(b, p, cap, ")"); return; }
+  if (x.op == '+') { gate_app(b, p, cap, "("); gate_nand_not(n, x.l, b, p, cap); gate_app(b, p, cap, " NAND "); gate_nand_not(n, x.r, b, p, cap); gate_app(b, p, cap, ")"); return; }
+  if (x.op == '^') { gate_app(b, p, cap, "(A NAND (A NAND B)) NAND (B NAND (A NAND B))"); return; }
+  gate_nand_not(n, id, b, p, cap);
+}
+
+static void gate_nor(GNode *n, int id, char *b, int *p, int cap) {
+  GNode &x = n[id];
+  if (x.op == 'v') { char t[2] = { x.v, 0 }; gate_app(b, p, cap, t); return; }
+  if (x.op == '!') { gate_nor_not(n, x.l, b, p, cap); return; }
+  if (x.op == '#') { gate_app(b, p, cap, "("); gate_nor(n, x.l, b, p, cap); gate_app(b, p, cap, " NOR "); gate_nor(n, x.r, b, p, cap); gate_app(b, p, cap, ")"); return; }
+  if (x.op == '+') { gate_app(b, p, cap, "("); gate_nor(n, x.l, b, p, cap); gate_app(b, p, cap, " NOR "); gate_nor(n, x.r, b, p, cap); gate_app(b, p, cap, ") NOR ("); gate_nor(n, x.l, b, p, cap); gate_app(b, p, cap, " NOR "); gate_nor(n, x.r, b, p, cap); gate_app(b, p, cap, ")"); return; }
+  if (x.op == '&') { gate_app(b, p, cap, "("); gate_nor_not(n, x.l, b, p, cap); gate_app(b, p, cap, " NOR "); gate_nor_not(n, x.r, b, p, cap); gate_app(b, p, cap, ")"); return; }
+  if (x.op == '^') { gate_app(b, p, cap, "(A NOR B) NOR ((A NOR A) NOR (B NOR B))"); return; }
+  gate_nor_not(n, id, b, p, cap);
+}
+
+static int eval_gate_form(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
+  char a[2][48]; int na = args(s, a, 2);
+  bool want_nand = starts2(s, "nandform(", "onlynand(");
+  bool want_nor = starts2(s, "norform(", "onlynor(");
+  if ((!want_nand && !want_nor) || na < 1) return 0;
+  char e[96]; bool_norm(a[0], e, sizeof(e));
+  GNode nodes[64]; GParser p = { e, 0, nodes, 0 };
+  int root = p.expr();
+  char form[192] = ""; int fp = 0;
+  if (want_nand) gate_nand(nodes, root, form, &fp, sizeof(form));
+  else gate_nor(nodes, root, form, &fp, sizeof(form));
+  int n = add(out, 0, want_nand ? "Use NAND as a universal gate." : "Use NOR as a universal gate.");
+  n = add(out, n, want_nand ? "NOT A = A NAND A; A+B = A' NAND B'." : "NOT A = A NOR A; AB = A' NOR B'.");
+  return add(out, n, "%s form: %s", want_nand ? "NAND" : "NOR", form);
+}
+
+static int eval_bool_prove(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
+  char a[2][48]; int na = args(s, a, 2);
+  if (!starts3(s, "boolprove(", "provebool(", "logicprove(") || na < 2) return 0;
+  char lbuf[96], rbuf[96], both[192];
+  bool_norm(a[0], lbuf, sizeof(lbuf));
+  bool_norm(a[1], rbuf, sizeof(rbuf));
+  sprintf(both, "%s%s", lbuf, rbuf);
+  char vars[8]; int vc; collect_vars(both, vars, &vc);
+  if (vc == 0 || vc > 6) return add(out, 0, "Use up to 6 Boolean variables.");
+  int rows = 1 << vc, ml[64], mr[64], lc = 0, rc = 0; bool same_rows = true;
+  for (int m = 0; m < rows; ++m) {
+    BParser lp = { lbuf, 0, m, {0}, vc }, rp = { rbuf, 0, m, {0}, vc };
+    for (int i = 0; i < vc; ++i) lp.vars[i] = rp.vars[i] = vars[i];
+    int lv = lp.expr(), rv = rp.expr();
+    if (lv) ml[lc++] = m;
+    if (rv) mr[rc++] = m;
+    if (lv != rv) same_rows = false;
+  }
+  char ls[80] = "", rs[80] = ""; int lp = 0, rp = 0;
+  for (int i = 0; i < lc; ++i) { if (i) app_ch(ls, &lp, 80, ','); app_int(ls, &lp, 80, ml[i]); }
+  for (int i = 0; i < rc; ++i) { if (i) app_ch(rs, &rp, 80, ','); app_int(rs, &rp, 80, mr[i]); }
+  int n = add(out, 0, "Make truth tables for LHS and RHS.");
+  n = add(out, n, "LHS output-1 rows: %s", lc ? ls : "none");
+  n = add(out, n, "RHS output-1 rows: %s", rc ? rs : "none");
+  return add(out, n, same_rows ? "Same output rows, so LHS = RHS." : "Different output rows, so not identical.");
+}
+
 static int eval_free_text(const char *input, const char *compact, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
   char t[192]; raw_clean(input, t, sizeof(t));
   double v[8]; int nv = scan_nums(t, v, 8);
@@ -700,6 +815,18 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if ((has(t, "character") || has(t, "text")) && nv >= 2) {
     sprintf(cmd, "chars(%lld,%lld)", (long long)v[0], (long long)v[1]); return eval_storage(cmd, out);
   }
+  if (nv == 0 && starts(compact, "nandform")) {
+    sprintf(cmd, "nandform(%s)", compact + 8); return eval_gate_form(cmd, out);
+  }
+  if (nv == 0 && starts(compact, "norform")) {
+    sprintf(cmd, "norform(%s)", compact + 7); return eval_gate_form(cmd, out);
+  }
+  if (nv == 0 && starts(compact, "onlynand")) {
+    sprintf(cmd, "nandform(%s)", compact + 8); return eval_gate_form(cmd, out);
+  }
+  if (nv == 0 && starts(compact, "onlynor")) {
+    sprintf(cmd, "norform(%s)", compact + 7); return eval_gate_form(cmd, out);
+  }
   if (nv == 0 && (has(compact, "nand") || has(compact, "nor") || has(compact, "xor") || has(compact, "and") || has(compact, "or") || has(compact, "'"))) {
     const char *e = compact;
     bool moved = true;
@@ -728,10 +855,12 @@ int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
   n = eval_binary_arith(s, out); if (n) return n;
   n = eval_float(s, out); if (n) return n;
   n = eval_storage(s, out); if (n) return n;
+  n = eval_gate_form(s, out); if (n) return n;
+  n = eval_bool_prove(s, out); if (n) return n;
   n = eval_bool(s, out); if (n) return n;
   n = eval_free_text(input, s, out); if (n) return n;
   n = add(out, 0, "Supported:");
   n = add(out, n, "bin hex den convert twos twosdec fixed");
   n = add(out, n, "floatdec floatrange normal image sound bitrate transfer");
-  return add(out, n, "compress rle records chars bool truth");
+  return add(out, n, "compress rle records chars bool truth nandform norform");
 }
