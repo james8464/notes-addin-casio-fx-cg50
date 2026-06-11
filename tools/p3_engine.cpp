@@ -331,6 +331,17 @@ static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     n = add(out, n, "z2=(%.6g-%.6g)/%.6g = %.6g", chi, mu, sig, (chi-mu)/sig);
     return add(out, n, "NormalCD(lower=%.6g, upper=%.6g, sigma=%.6g, mu=%.6g)", clo, chi, sig, mu);
   }
+  if (starts3(s, "poissonapprox(", "poissonapproxbinom(", "binompoisson(") && na >= 3) {
+    int N=(int)num(a[0]), r=(int)num(a[2]), tail=na>3?(int)num(a[3]):0; double p=num(a[1]), lam=N*p, ans=0;
+    if (tail == 0) ans = poissonp(lam, r);
+    else if (tail < 0) { int hi = tail == -2 ? r - 1 : r; for (int k=0;k<=hi;++k) ans += poissonp(lam,k); }
+    else { int lo = tail == 2 ? r + 1 : r; double below=0; for (int k=0;k<lo;++k) below += poissonp(lam,k); ans = 1 - below; }
+    int n = add(out, 0, "Use Poisson approximation to X ~ B(%d, %.6g).", N, p);
+    n = add(out, n, "lambda = np = %d*%.6g = %.6g", N, p, lam);
+    n = add(out, n, "Let Y ~ Po(%.6g).", lam);
+    n = add(out, n, tail == 2 ? "Use P(Y>%d)" : tail == 1 ? "Use P(Y>=%d)" : tail == -2 ? "Use P(Y<%d)" : tail == -1 ? "Use P(Y<=%d)" : "Use P(Y=%d)", r);
+    return add(out, n, "approx probability = %.10g", ans);
+  }
   if (starts3(s, "critbinom(", "criticalbinom(", "criticalregion(") && na >= 4) {
     int N=(int)num(a[0]); double p=num(a[1]), alpha=num(a[2]), tail=num(a[3]);
     double cum = 0, bestp = 0; int crit = tail < 0 ? -1 : N + 1;
@@ -530,6 +541,14 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if (has(t, "binom") && has(t, "normal") && (has(t, "approx") || has(t, "approximation")) && nv >= 4) {
     sprintf(cmd, "binomnorm(%d,%.10g,%.10g,%.10g)", (int)v[0], v[1], v[2], v[3]); return eval_stats(cmd, out);
+  }
+  if (has(t, "binom") && has(t, "poisson") && (has(t, "approx") || has(t, "approximation")) && nv >= 3) {
+    int tail = 0;
+    if (has(c, "morethan")) tail = 2;
+    else if (has(c, "atleast") || has(c, "greaterthanorequal")) tail = 1;
+    else if (has(c, "lessthan")) tail = -2;
+    else if (has(c, "atmost") || has(t, "cdf")) tail = -1;
+    sprintf(cmd, "poissonapprox(%d,%.10g,%d,%d)", (int)v[0], v[1], (int)v[2], tail); return eval_stats(cmd, out);
   }
   if ((has(t, "normaldistribution") || has(t, "normalcdf") || (has(t, "normal") && has(t, "between"))) && nv >= 4) {
     sprintf(cmd, "normalprob(%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3]); return eval_stats(cmd, out);

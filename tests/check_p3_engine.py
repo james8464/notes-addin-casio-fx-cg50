@@ -71,6 +71,8 @@ def main():
     require("binomial n 10 p 0.3 less than 4", ["P(X<4)", "sum from 0 to 3"])
     require("binomnorm(100,0.4,35,45)", ["normal approximation", "mu = np = 40", "continuity correction", "34.5 < Y < 45.5", "NormalCD"])
     require("normal approximation to binomial n 100 p 0.4 between 35 and 45", ["normal approximation", "continuity correction", "NormalCD"])
+    require("poissonapprox(200,0.01,3,-1)", ["Poisson approximation", "lambda = np = 200*0.01 = 2", "Use P(Y<=3)", "approx probability"])
+    require("poisson approximation to binomial n 200 p 0.01 at most 3", ["Poisson approximation", "lambda = np", "Use P(Y<=3)"])
     require("critbinom(20,0.4,0.05,-1)", ["critical region", "alpha"])
     require("binomial critical region n 20 p 0.4 alpha 0.05 lower", ["critical region", "alpha"])
     require("hypbinom(20,0.4,4,0.05,-1)", ["H0", "Compare", "context"])

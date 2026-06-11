@@ -231,6 +231,15 @@ static void to_bin(long long v, int width, char *buf) {
   buf[width] = 0;
 }
 
+static void insert_point(const char *bits, int whole, char *buf) {
+  int j = 0;
+  for (int i = 0; bits[i] && j < 63; ++i) {
+    if (i == whole) buf[j++] = '.';
+    buf[j++] = bits[i];
+  }
+  buf[j] = 0;
+}
+
 static double fixed_decode(const char *s) {
   const char *dot = strchr(s, '.');
   double v = 0.0;
@@ -471,6 +480,24 @@ static int eval_float(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]
     double v = fixed_tc_decode(a[0]);
     int n = add(out, 0, "Decode the whole part as two's complement, then add fractional places.");
     return add(out, n, "%s_2 = %.10g_10", a[0], v);
+  }
+  if (starts3(s, "fixedenc(", "fixedencode(", "fixedpointenc(") && na >= 3) {
+    double value = num(a[0]); int whole = (int)parse_int(a[1]), frac = (int)parse_int(a[2]), total = whole + frac;
+    long long scaled = (long long)round_nearest(value * pow2(frac));
+    char bits[65], fixed[65]; to_bin(scaled, total, bits); insert_point(bits, whole, fixed);
+    int n = add(out, 0, "Encode fixed point by scaling by 2^fraction bits.");
+    n = add(out, n, "scaled integer = %.10g * 2^%d = %lld", value, frac, scaled);
+    n = add(out, n, "%d whole bits and %d fractional bits.", whole, frac);
+    return add(out, n, "fixed point = %s", fixed);
+  }
+  if (starts3(s, "fixedtcenc(", "fixedtwosenc(", "fixedtwosencode(") && na >= 3) {
+    double value = num(a[0]); int whole = (int)parse_int(a[1]), frac = (int)parse_int(a[2]), total = whole + frac;
+    long long scaled = (long long)round_nearest(value * pow2(frac));
+    char bits[65], fixed[65]; to_bin(scaled, total, bits); insert_point(bits, whole, fixed);
+    int n = add(out, 0, "Encode signed fixed point as a two's-complement scaled integer.");
+    n = add(out, n, "scaled integer = %.10g * 2^%d = %lld", value, frac, scaled);
+    n = add(out, n, "write %lld in %d-bit two's complement.", scaled, total);
+    return add(out, n, "fixed point = %s", fixed);
   }
   if ((starts(s, "floatdec(") || starts(s, "fpdec(") || starts(s, "floatdecode(")) && na >= 2) {
     double m = mantissa_decode(a[0]);
@@ -1011,6 +1038,10 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     sprintf(cmd, "shift(%s,%s,%lld)", bits[0], has(t, "right") ? "right" : "left", (long long)v[nv-1]); return eval_binary_arith(cmd, out);
   }
   char fixed[48];
+  if (has(t, "fixed") && (has(t, "encode") || has(t, "represent") || has(t, "convert")) && nv >= 3) {
+    sprintf(cmd, (tc || has(t, "signed") || has(t, "negative")) ? "fixedtcenc(%.10g,%lld,%lld)" : "fixedenc(%.10g,%lld,%lld)", v[0], (long long)v[1], (long long)v[2]);
+    return eval_float(cmd, out);
+  }
   if (has(t, "fixed") && scan_fixed_bits(t, fixed, sizeof(fixed))) {
     sprintf(cmd, (tc || has(t, "complement")) ? "fixedtc(%s)" : "fixed(%s)", fixed); return eval_float(cmd, out);
   }
@@ -1114,7 +1145,7 @@ int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
   n = eval_bool(s, out); if (n) return n;
   n = eval_free_text(input, s, out); if (n) return n;
   n = add(out, 0, "Supported:");
-  n = add(out, n, "bin hex den convert twos twosdec fixed");
+  n = add(out, n, "bin hex den convert twos twosdec fixed fixedenc");
   n = add(out, n, "floatdec floatrange normal image sound bitrate transfer");
   return add(out, n, "compress rle records chars bool truth nandform norform");
 }
