@@ -73,6 +73,8 @@ def main():
     require("compress(1200,300)", ["ratio = 4", "saving = 75"])
     require("rle(12,8,4)", ["Run-length bits", "144 bits"])
     require("run length encoding 12 runs 8 symbol bits 4 count bits", ["Run-length bits", "144 bits"])
+    require("rletext(aaabcccc,8,4)", ["consecutive repeated", "runs: ax3,bx1,cx4", "original bits = 8*8", "encoded bits = 3*(8+4)"])
+    require("run length encode aaabcccc with 8 symbol bits and 4 count bits", ["consecutive repeated", "runs: ax3,bx1,cx4", "encoded bits = 3*(8+4)"])
     require("records(120,32)", ["records * bytes", "3840 bytes"])
     require("database file 120 records 32 bytes per record", ["records * bytes", "3840 bytes"])
     require("chars(120,8)", ["characters", "960 bits", "MB"])

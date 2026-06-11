@@ -141,3 +141,23 @@ Evidence:
 Drift check:
 - Still inside CASP3/CSCALC free-text arbitrary-input hardening.
 - Did not touch CAS Pure, NOTES, UI/menu/status code.
+
+## 2026-06-11 CSCALC RLE Sequence Slice
+
+Completed:
+- Added `rletext(sequence,symbolBits,countBits)` / `rlestring` / `runencode`.
+- Added run summary output from raw sequence, original bits, and encoded bits.
+- Added free-text extraction for run-length encoding questions containing a repeated-symbol sequence.
+- Preserved existing numeric `rle(runs,symbolBits,countBits)` route.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CSCALC AQA Paper 2 calculation support.
+- Did not touch CAS Pure, CASP3 behavior, NOTES, UI/menu/status code.

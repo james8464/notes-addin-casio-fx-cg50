@@ -172,6 +172,29 @@ static int ceil_log2_ll(long long x) {
   return b;
 }
 
+static bool word_is(const char *w, const char *k) { return strcmp(w, k) == 0; }
+
+static bool rle_skip_word(const char *w) {
+  return word_is(w, "run") || word_is(w, "length") || word_is(w, "encoding") ||
+         word_is(w, "encode") || word_is(w, "rle") || word_is(w, "runs") || word_is(w, "text") ||
+         word_is(w, "string") || word_is(w, "symbol") || word_is(w, "bits") ||
+         word_is(w, "count") || word_is(w, "with") || word_is(w, "using");
+}
+
+static bool find_rle_sequence(const char *in, char *seq, int cap) {
+  int best = 0; seq[0] = 0;
+  for (int i = 0; in && in[i];) {
+    while (in[i] && !isalpha((unsigned char)in[i])) ++i;
+    char w[48]; int j = 0;
+    while (isalpha((unsigned char)in[i]) && j + 1 < (int)sizeof(w)) w[j++] = (char)tolower((unsigned char)in[i++]);
+    w[j] = 0;
+    if (j <= 1 || rle_skip_word(w)) continue;
+    bool repeated = false; for (int k = 1; k < j; ++k) if (w[k] == w[k-1]) repeated = true;
+    if (repeated && j < cap && j > best) { strcpy(seq, w); best = j; }
+  }
+  return best > 0;
+}
+
 static int is_bits(const char *s) {
   if (!s || !*s) return 0;
   for (int i = 0; s[i]; ++i) if (s[i] != '0' && s[i] != '1' && s[i] != '.') return 0;
@@ -398,6 +421,22 @@ static int eval_storage(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LE
     long long bits = parse_int(a[0]) * (parse_int(a[1]) + parse_int(a[2]));
     int n = add(out, 0, "Run-length bits = runs * (symbol bits + count bits).");
     return add(out, n, "%s*(%s+%s) = %lld bits = %.6g bytes", a[0], a[1], a[2], bits, bits / 8.0);
+  }
+  if (starts3(s, "rletext(", "rlestring(", "runencode(") && na >= 3) {
+    int runs = 0, len = (int)strlen(a[0]);
+    char summary[72] = ""; int sp = 0;
+    for (int i = 0; i < len;) {
+      int j = i + 1; while (j < len && a[0][j] == a[0][i]) ++j;
+      if (runs && sp + 1 < 72) summary[sp++] = ',';
+      if (sp + 8 < 72) { summary[sp++] = a[0][i]; summary[sp++] = 'x'; int c = j - i; if (c >= 10) summary[sp++] = (char)('0' + c / 10); summary[sp++] = (char)('0' + c % 10); summary[sp] = 0; }
+      runs++; i = j;
+    }
+    long long orig = (long long)len * parse_int(a[1]);
+    long long enc = (long long)runs * (parse_int(a[1]) + parse_int(a[2]));
+    int n = add(out, 0, "Run-length encode consecutive repeated symbols.");
+    n = add(out, n, "runs: %s", summary);
+    n = add(out, n, "original bits = %d*%s = %lld", len, a[1], orig);
+    return add(out, n, "encoded bits = %d*(%s+%s) = %lld", runs, a[1], a[2], enc);
   }
   if (starts3(s, "records(", "recordsize(", "database(") && na >= 2) {
     double bytes = num(a[0]) * num(a[1]);
@@ -954,6 +993,12 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   if ((has(t, "compress") || has(t, "compression")) && nv >= 2) {
     sprintf(cmd, "compress(%.10g,%.10g)", v[0], v[1]); return eval_storage(cmd, out);
+  }
+  if ((has(t, "runlength") || has(t, "rle") || (has(t, "run") && has(t, "length"))) && nv >= 2) {
+    char seq[48];
+    if (find_rle_sequence(input, seq, sizeof(seq))) {
+      sprintf(cmd, "rletext(%s,%lld,%lld)", seq, (long long)v[0], (long long)v[1]); return eval_storage(cmd, out);
+    }
   }
   if ((has(t, "runlength") || has(t, "rle") || (has(t, "run") && has(t, "length"))) && nv >= 3) {
     sprintf(cmd, "rle(%lld,%lld,%lld)", (long long)v[0], (long long)v[1], (long long)v[2]); return eval_storage(cmd, out);
