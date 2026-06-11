@@ -254,6 +254,13 @@ static int eval_mech(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     int n = add(out, 0, "Power = work done / time.");
     return add(out, n, "P = %.6g/%.6g = %.6g W", w, t, w/t);
   }
+  if (starts3(s, "energy(", "kepe(", "workenergy(") && na >= 2) {
+    double m=num(a[0]), v=num(a[1]), h=na>2?num(a[2]):0, g=na>3?num(a[3]):9.8;
+    int n = add(out, 0, "Use mechanical energy formulae.");
+    n = add(out, n, "KE = 1/2 mv^2 = 1/2*%.6g*%.6g^2 = %.6g J", m, v, 0.5*m*v*v);
+    if (na > 2) return add(out, n, "GPE = mgh = %.6g*%.6g*%.6g = %.6g J", m, g, h, m*g*h);
+    return n;
+  }
   if (starts3(s, "restitution(", "impact(", "collision(") && na >= 4) {
     double u1=num(a[0]), u2=num(a[1]), v1=num(a[2]), v2=num(a[3]);
     int n = add(out, 0, "Use Newton's experimental law of restitution.");
@@ -396,6 +403,9 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if (has(t, "power") && nv >= 2) {
     sprintf(cmd, "power(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
   }
+  if ((has(t, "kinetic") || has(t, "energy") || has(t, "workenergy")) && nv >= 2) {
+    sprintf(cmd, nv > 2 ? "energy(%.10g,%.10g,%.10g)" : "energy(%.10g,%.10g)", v[0], v[1], nv > 2 ? v[2] : 0); return eval_mech(cmd, out);
+  }
   if ((has(t, "workdone") || has(t, "work")) && nv >= 2) {
     sprintf(cmd, "work(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
   }
@@ -437,6 +447,6 @@ int p3_eval(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   n = eval_free_text(input, out); if (n) return n;
   n = add(out, 0, "Supported:");
   n = add(out, n, "suvat projectile force weight friction moment incline");
-  n = add(out, n, "connected pulley impulse work power restitution vector varacc");
+  n = add(out, n, "connected pulley impulse work power energy restitution vector varacc");
   return add(out, n, "normal normalprob binom binomcdf critbinom hypbinom cond probor poisson regress");
 }

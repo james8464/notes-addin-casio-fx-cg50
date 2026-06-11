@@ -382,6 +382,17 @@ static int eval_storage(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LE
     n = add(out, n, "ratio = %.10g : 1", oldv / newv);
     return add(out, n, "saving = %.6g%%", (oldv - newv) * 100.0 / oldv);
   }
+  if (starts3(s, "rle(", "runlength(", "runlengthencoding(") && na >= 3) {
+    long long bits = parse_int(a[0]) * (parse_int(a[1]) + parse_int(a[2]));
+    int n = add(out, 0, "Run-length bits = runs * (symbol bits + count bits).");
+    return add(out, n, "%s*(%s+%s) = %lld bits = %.6g bytes", a[0], a[1], a[2], bits, bits / 8.0);
+  }
+  if (starts3(s, "records(", "recordsize(", "database(") && na >= 2) {
+    double bytes = num(a[0]) * num(a[1]);
+    int n = add(out, 0, "File size = records * bytes per record.");
+    n = add(out, n, "%s*%s = %.10g bytes", a[0], a[1], bytes);
+    return add(out, n, "= %.10g MB", bytes / 1000000.0);
+  }
   return 0;
 }
 
@@ -680,6 +691,12 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if ((has(t, "compress") || has(t, "compression")) && nv >= 2) {
     sprintf(cmd, "compress(%.10g,%.10g)", v[0], v[1]); return eval_storage(cmd, out);
   }
+  if ((has(t, "runlength") || has(t, "rle") || (has(t, "run") && has(t, "length"))) && nv >= 3) {
+    sprintf(cmd, "rle(%lld,%lld,%lld)", (long long)v[0], (long long)v[1], (long long)v[2]); return eval_storage(cmd, out);
+  }
+  if ((has(t, "record") || has(t, "database")) && nv >= 2) {
+    sprintf(cmd, "records(%.10g,%.10g)", v[0], v[1]); return eval_storage(cmd, out);
+  }
   if ((has(t, "character") || has(t, "text")) && nv >= 2) {
     sprintf(cmd, "chars(%lld,%lld)", (long long)v[0], (long long)v[1]); return eval_storage(cmd, out);
   }
@@ -711,5 +728,5 @@ int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
   n = add(out, 0, "Supported:");
   n = add(out, n, "bin hex den convert twos twosdec fixed");
   n = add(out, n, "floatdec floatrange normal image sound bitrate transfer");
-  return add(out, n, "compress chars bool truth");
+  return add(out, n, "compress rle records chars bool truth");
 }

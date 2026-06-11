@@ -51,6 +51,8 @@ def main():
     require("work(12,5)", ["Work done", "60 J"])
     require("power(120,3)", ["Power", "40 W"])
     require("power when work done is 120 and time is 3", ["Power", "40 W"])
+    require("energy(2,5,3)", ["KE = 1/2", "25 J", "GPE"])
+    require("kinetic energy mass 2 speed 5 height 3", ["KE = 1/2", "25 J", "GPE"])
     require("restitution(5,-2,1,3)", ["restitution", "speed of separation"])
     require("collision restitution u1 5 u2 -2 v1 1 v2 3", ["restitution", "speed of separation"])
     require("vector(3,4)", ["sqrt", "|R|", "5"])
