@@ -183,6 +183,15 @@ static double poissontailprob(double lam, int r, int tail) {
   return 1 - poissoncdf(lam, lo - 1);
 }
 
+static void add_term(char *buf, int cap, const char *fmt, double x, double p, bool first) {
+  int len = (int)strlen(buf);
+  if (len >= cap - 32) return;
+  if (!first) sprintf(buf + len, "+");
+  len = (int)strlen(buf);
+  if (len >= cap - 32) return;
+  sprintf(buf + len, fmt, x, p);
+}
+
 static int eval_suvat(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   char a[8][48]; int na = args(s, a, 8);
   if (!starts(s, "suvat(")) return 0;
@@ -536,6 +545,20 @@ static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     n = add(out, n, "variance = Sx2/n - mean^2");
     return add(out, n, "variance = %.10g, sd = %.10g", var, root(var));
   }
+  if (starts3(s, "discrete(", "expectation(", "randomvar(") && na >= 4) {
+    int m = na / 2; double sp = 0, ex = 0, ex2 = 0; char l1[128] = "", l2[128] = "";
+    for (int i = 0; i < m; ++i) {
+      double x = num(a[2*i]), p = num(a[2*i+1]);
+      sp += p; ex += x*p; ex2 += x*x*p;
+      add_term(l1, sizeof(l1), "%.6g*%.6g", x, p, i == 0);
+      add_term(l2, sizeof(l2), "(%.6g)^2*%.6g", x, p, i == 0);
+    }
+    int n = add(out, 0, "For a discrete random variable, use E(X)=sum xp.");
+    n = add(out, n, "Check probabilities: sum p = %.10g", sp);
+    n = add(out, n, "E(X) = %s = %.10g", l1, ex);
+    n = add(out, n, "E(X^2) = %s = %.10g", l2, ex2);
+    return add(out, n, "Var(X)=E(X^2)-E(X)^2 = %.10g", ex2 - ex*ex);
+  }
   if (starts3(s, "groupmedian(", "groupedmedian(", "interpolatemedian(") && na >= 5) {
     double L=num(a[0]), cf=num(a[1]), f=num(a[2]), w=num(a[3]), n0=num(a[4]), pos=n0/2.0;
     int n = add(out, 0, "Use linear interpolation in the median class.");
@@ -750,6 +773,18 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if ((has(t, "mean") || has(t, "variance") || has(t, "standarddeviation")) && nv >= 3) {
     sprintf(cmd, "meanvar(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_stats(cmd, out);
   }
+  if ((has(t, "discrete") || has(t, "randomvariable") || has(t, "expectation")) && has(t, "prob") && nv >= 4) {
+    int p = sprintf(cmd, "discrete(");
+    if ((has(t, "values") || has(t, "xvalues")) && (has(t, "probabilities") || has(t, "probs")) && nv % 2 == 0) {
+      int m = nv / 2;
+      for (int i = 0; i < m; ++i) p += sprintf(cmd+p, "%s%.10g,%.10g", i ? "," : "", v[i], v[i+m]);
+    } else {
+      int m = nv / 2;
+      for (int i = 0; i < m; ++i) p += sprintf(cmd+p, "%s%.10g,%.10g", i ? "," : "", v[2*i], v[2*i+1]);
+    }
+    sprintf(cmd+p, ")");
+    return eval_stats(cmd, out);
+  }
   if ((has(t, "grouped") || has(t, "interpolate") || has(t, "interpolation")) && has(t, "median") && nv >= 5) {
     sprintf(cmd, "groupmedian(%.10g,%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3], v[4]); return eval_stats(cmd, out);
   }
@@ -775,5 +810,5 @@ int p3_eval(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   n = add(out, 0, "Supported:");
   n = add(out, n, "suvat projectile force weight friction moment incline");
   n = add(out, n, "connected pulley impulse work power energy restitution vector varacc");
-  return add(out, n, "normal normalprob invnormal binom binomtail critbinom hypbinom cond probor bayes independent poisson poissontail poissonnorm critpoisson hyppoisson regress pmcc meanvar groupmedian histdensity code");
+  return add(out, n, "normal normalprob invnormal binom binomtail critbinom hypbinom cond probor bayes independent poisson poissontail poissonnorm critpoisson hyppoisson regress pmcc meanvar discrete groupmedian histdensity code");
 }

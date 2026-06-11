@@ -115,6 +115,8 @@ def main():
     require("pmcc sxx=10 syy=40 sxy=18", ["PMCC from summary", "Sxy/sqrt"])
     require("meanvar(5,20,90)", ["mean = Sx/n", "variance"])
     require("mean variance n 5 sx 20 sx2 90", ["mean = Sx/n", "variance"])
+    require("discrete(0,0.2,1,0.5,2,0.3)", ["discrete random variable", "sum p = 1", "E(X) = 0*0.2+1*0.5+2*0.3 = 1.1", "Var(X)"])
+    require("discrete random variable values 0 1 2 probabilities 0.2 0.5 0.3", ["E(X)", "1.1", "E(X^2)", "Var(X)"])
     require("groupmedian(20,15,10,5,50)", ["linear interpolation", "position = n/2", "median = 20 + ((25-15)/10)*5 = 25"])
     require("grouped median 20 cf before 15 frequency 10 class width 5 n 50", ["linear interpolation", "position = n/2", "median = 20"])
     require("groupquantile(20,15,10,5,50,0.75)", ["linear interpolation", "position = 0.75*n", "value ="])

@@ -1,5 +1,24 @@
 # Checkpoint
 
+## 2026-06-12 CASP3 Discrete Random Variable Slice
+
+Completed:
+- Added `discrete(...)` / `expectation(...)` / `randomvar(...)` working from `(x,p)` pairs.
+- Added free-text parsing for value/probability rows, e.g. `values 0 1 2 probabilities 0.2 0.5 0.3`.
+- Output now shows probability sum, `E(X)`, `E(X^2)`, and `Var(X)` lines.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CASP3 Paper 3 stats support.
+- Did not touch CAS Pure, CSCALC, NOTES, UI/menu/status code.
+
 ## 2026-06-11 CASP3 Bayes / Independence Slice
 
 Completed:
