@@ -562,6 +562,98 @@ static void imp_text(const Imp &p, const char *vars, int vc, char *buf) {
   buf[j] = 0;
 }
 
+static void strip_outer(const char *s, char *b, int cap) {
+  int len = (int)strlen(s);
+  if (len > 1 && s[0] == '(' && s[len-1] == ')') {
+    int d = 0; bool outer = true;
+    for (int i = 0; i < len - 1; ++i) {
+      if (s[i] == '(') d++;
+      if (s[i] == ')') d--;
+      if (d == 0 && i < len - 2) outer = false;
+    }
+    if (outer) {
+      int n = len - 2; if (n >= cap) n = cap - 1;
+      memcpy(b, s + 1, n); b[n] = 0; return;
+    }
+  }
+  strncpy(b, s, cap - 1); b[cap - 1] = 0;
+}
+
+static int top_op(const char *s, char op) {
+  int d = 0;
+  for (int i = 0; s[i]; ++i) {
+    if (s[i] == '(') d++;
+    else if (s[i] == ')') d--;
+    else if (d == 0 && s[i] == op) return i;
+  }
+  return -1;
+}
+
+static bool is_comp_pair(const char *a, const char *b) {
+  int la = (int)strlen(a), lb = (int)strlen(b);
+  return (la == lb + 1 && a[la-1] == '\'' && strncmp(a, b, lb) == 0) ||
+         (lb == la + 1 && b[lb-1] == '\'' && strncmp(b, a, la) == 0);
+}
+
+static bool bool_law_once(const char *expr, char *res, char *law) {
+  char e[96]; strip_outer(expr, e, sizeof(e));
+  if (e[0] == '!' && e[1] == '!') {
+    strcpy(law, "Double complement"); strcpy(res, e + 2); return true;
+  }
+  if (e[0] == '!' && e[1] == '(') {
+    char inner[80]; strip_outer(e + 1, inner, sizeof(inner));
+    int p = top_op(inner, '&');
+    if (p < 0) p = top_op(inner, '+');
+    if (p > 0) {
+      char a[40], b[40]; int op = inner[p];
+      memcpy(a, inner, p); a[p] = 0; strcpy(b, inner + p + 1);
+      int rp = 0; app_str(res, &rp, 80, a); app_ch(res, &rp, 80, '\'');
+      app_ch(res, &rp, 80, op == '&' ? '+' : '&');
+      app_str(res, &rp, 80, b); app_ch(res, &rp, 80, '\'');
+      strcpy(law, "De Morgan's law"); return true;
+    }
+  }
+  for (int oi = 0; oi < 2; ++oi) {
+    char op = oi ? '&' : '+';
+    int p = top_op(e, op);
+    if (p <= 0) continue;
+    char a[40], b[40]; memcpy(a, e, p); a[p] = 0; strcpy(b, e + p + 1);
+    char aa[40], bb[40]; strip_outer(a, aa, sizeof(aa)); strip_outer(b, bb, sizeof(bb));
+    if (strcmp(aa, bb) == 0) { strcpy(res, aa); strcpy(law, "Idempotent law"); return true; }
+    if (is_comp_pair(aa, bb)) { strcpy(res, op == '+' ? "1" : "0"); strcpy(law, "Complement law"); return true; }
+    if (op == '+') {
+      if (strcmp(aa, "0") == 0) { strcpy(res, bb); strcpy(law, "Identity law"); return true; }
+      if (strcmp(bb, "0") == 0) { strcpy(res, aa); strcpy(law, "Identity law"); return true; }
+      if (strcmp(aa, "1") == 0 || strcmp(bb, "1") == 0) { strcpy(res, "1"); strcpy(law, "Dominance law"); return true; }
+      int q = top_op(bb, '&');
+      if (q > 0) {
+        char l[40], r[40]; memcpy(l, bb, q); l[q] = 0; strcpy(r, bb + q + 1);
+        if (strcmp(aa, l) == 0 || strcmp(aa, r) == 0) { strcpy(res, aa); strcpy(law, "Absorption law"); return true; }
+      }
+      q = top_op(aa, '&');
+      if (q > 0) {
+        char l[40], r[40]; memcpy(l, aa, q); l[q] = 0; strcpy(r, aa + q + 1);
+        if (strcmp(bb, l) == 0 || strcmp(bb, r) == 0) { strcpy(res, bb); strcpy(law, "Absorption law"); return true; }
+      }
+    } else {
+      if (strcmp(aa, "1") == 0) { strcpy(res, bb); strcpy(law, "Identity law"); return true; }
+      if (strcmp(bb, "1") == 0) { strcpy(res, aa); strcpy(law, "Identity law"); return true; }
+      if (strcmp(aa, "0") == 0 || strcmp(bb, "0") == 0) { strcpy(res, "0"); strcpy(law, "Dominance law"); return true; }
+      int q = top_op(bb, '+');
+      if (q > 0) {
+        char l[40], r[40]; memcpy(l, bb, q); l[q] = 0; strcpy(r, bb + q + 1);
+        if (strcmp(aa, l) == 0 || strcmp(aa, r) == 0) { strcpy(res, aa); strcpy(law, "Absorption law"); return true; }
+      }
+      q = top_op(aa, '+');
+      if (q > 0) {
+        char l[40], r[40]; memcpy(l, aa, q); l[q] = 0; strcpy(r, aa + q + 1);
+        if (strcmp(bb, l) == 0 || strcmp(bb, r) == 0) { strcpy(res, bb); strcpy(law, "Absorption law"); return true; }
+      }
+    }
+  }
+  return false;
+}
+
 static int eval_bool(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
   char a[2][48]; int na = args(s, a, 2);
   char exprbuf[96];
@@ -577,7 +669,13 @@ static int eval_bool(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN])
     for (int i = 0; i < vc; ++i) p.vars[i] = vars[i];
     if (p.expr()) mins[mc++] = m;
   }
-  int n = add(out, 0, "Make truth table, list rows where output is 1.");
+  int n = 0;
+  char lawres[80], law[32];
+  if (bool_law_once(expr, lawres, law)) {
+    n = add(out, n, "Simplify by Boolean algebra.");
+    n = add(out, n, "%s -> %s (%s)", expr, lawres, law);
+  }
+  n = add(out, n, "Make truth table, list rows where output is 1.");
   char ml[80] = ""; int pos = 0;
   for (int i = 0; i < mc; ++i) {
     if (i) app_ch(ml, &pos, 80, ',');
@@ -855,7 +953,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       sprintf(cmd, "boolprove(%s,%s)", lhs, rhs); return eval_bool_prove(cmd, out);
     }
   }
-  if (nv == 0 && (has(compact, "nand") || has(compact, "nor") || has(compact, "xor") || has(compact, "and") || has(compact, "or") || has(compact, "'"))) {
+  if (nv == 0 && (has(compact, "nand") || has(compact, "nor") || has(compact, "xor") || has(compact, "and") || has(compact, "or") || has(compact, "+") || has(compact, "*") || has(compact, "'"))) {
     const char *e = skip_bool_words(compact);
     sprintf(cmd, "bool(%s)", e); return eval_bool(cmd, out);
   }

@@ -61,3 +61,23 @@ Evidence:
 Drift check:
 - Still inside CASP3 stats free-text/method support.
 - No UI/menu/status changes.
+
+## 2026-06-11 Boolean Law Step Slice
+
+Completed:
+- Read the old Python Boolean program from git history.
+- Added compact Boolean algebra step output before truth-table/minterm simplification for common laws:
+  idempotent, complement, identity, dominance, absorption, double complement, and De Morgan.
+- Broadened free-text Boolean dispatch so symbolic `+` / `*` expressions route correctly.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CSCALC Boolean algebra/free-text goal.
+- Did not touch UI/menu/status code.
