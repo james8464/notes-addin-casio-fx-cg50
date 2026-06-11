@@ -6530,17 +6530,17 @@ static bool integrate_trig_product_to_sum(const working_string &expr,char v,work
   working_string ans;
   out="Product-to-sum:\n";
   if ((s1 && c2) || (c1 && s2)){
-    out += "sin A cos B = 1/2[sin(A+B)+sin(A-B)]\n";
+    out += "sinAcosB=1/2[sin(A+B)+sin(A-B)]\n";
     add_integral_sin_term(ans,rat(1,2),rat_add(k1,k2));
     add_integral_sin_term(ans,rat(1,2),rat_sub(k1,k2));
   }
   else if (s1 && s2){
-    out += "sin A sin B = 1/2[cos(A-B)-cos(A+B)]\n";
+    out += "sinAsinB=1/2[cos(A-B)-cos(A+B)]\n";
     add_integral_cos_term(ans,rat(1,2),rat_sub(k1,k2));
     add_integral_cos_term(ans,rat(-1,2),rat_add(k1,k2));
   }
   else {
-    out += "cos A cos B = 1/2[cos(A+B)+cos(A-B)]\n";
+    out += "cosAcosB=1/2[cos(A+B)+cos(A-B)]\n";
     add_integral_cos_term(ans,rat(1,2),rat_add(k1,k2));
     add_integral_cos_term(ans,rat(1,2),rat_sub(k1,k2));
   }
@@ -6570,9 +6570,9 @@ static bool integrate_x_trig_square_identity(const working_string &expr,char v,w
   if (arg!="x")
     return false;
   if (iscos)
-    out="cos^2 half-angle\n1/4*x^2+1/4*x*sin(2*x)+1/8*cos(2*x)+C";
+    out="cos^2 half-angle\nx^2/4+x*sin(2*x)/4+cos(2*x)/8+C";
   else
-    out="sin^2 half-angle\n1/4*x^2-1/4*x*sin(2*x)-1/8*cos(2*x)+C";
+    out="sin^2 half-angle\nx^2/4-x*sin(2*x)/4-cos(2*x)/8+C";
   return true;
 }
 
@@ -7271,8 +7271,8 @@ static bool try_definite_trig_sub_linear_over_quad(const working_string &expr,co
   out += "(4-x^2)^(3/2)=8cos(u)^3\n";
   out += two_first?"(2+3x)dx/(4-x^2)^(3/2)\n":"(3x+2)dx/(4-x^2)^(3/2)\n";
   out += two_first?"= (2+6sin(u))*2cos(u)/(8cos(u)^3) du\n":"= (6sin(u)+2)*2cos(u)/(8cos(u)^3) du\n";
-  out += "= 3/2*sec(u)*tan(u)+1/2*sec(u)^2 du\n";
-  out += "Integral = 3/2*sec(u)+1/2*tan(u)\n";
+  out += "=3/2sec(u)tan(u)+1/2sec(u)^2 du\n";
+  out += "Int=3/2sec(u)+1/2tan(u)\n";
   out += "[3/2*sec(u)+1/2*tan(u)]_0^(pi/6)\n";
   out += "= 7sqrt(3)/6 - 3/2";
   return true;
@@ -15120,6 +15120,7 @@ static bool same_rat(Rat a,Rat b){
   return rat_cmp(a,b)==0;
 }
 
+#if 0
 struct RewriteTarget {
   working_string label,value,log_base,log_arg;
   bool assigned,is_log;
@@ -15130,6 +15131,7 @@ struct RewriteAcc {
   Rat k;
   working_string work;
 };
+#endif
 
 static int find_top_equal_rewrite(const working_string &s){
   int depth=0;
@@ -15207,6 +15209,7 @@ static bool parse_scaled_log_call_ws(const working_string &src,Rat &coef,working
   return false;
 }
 
+#if 0
 static int parse_rewrite_targets(const working_string &raw,RewriteTarget *targets,int maxn){
   working_string s=trim(raw);
   int begin=0,end=s.size();
@@ -15250,6 +15253,7 @@ static int rewrite_log_target_index(const working_string &base,const working_str
       return i;
   return -1;
 }
+#endif
 
 static bool working_route_too_large(const working_string &s){
   working_string cs=compact(s);
@@ -15334,6 +15338,7 @@ static bool nested_function_expr(const working_string &s,int limit){
   return false;
 }
 
+#if 0
 static void rewrite_acc_init(RewriteAcc &acc){
   acc.k=rat(0,1);
   acc.work="";
@@ -15345,6 +15350,7 @@ static void rewrite_add_coeff(RewriteAcc &acc,int idx,Rat q){
   if (idx>=0 && idx<12)
     acc.c[idx]=rat_add(acc.c[idx],q);
 }
+#endif
 
 static bool parse_top_power(const working_string &src,working_string &base,working_string &exp){
   working_string s=strip_outer_parens(nospace_lower(src));
@@ -15403,6 +15409,7 @@ static working_string rewrite_term_abs(Rat q,const working_string &label){
   return "("+rat_s(q)+")*"+label;
 }
 
+#if 0
 static working_string format_rewrite_result(RewriteTarget *targets,int n,const RewriteAcc &acc){
   working_string out;
   if (acc.k.n)
@@ -15423,6 +15430,7 @@ static working_string format_rewrite_result(RewriteTarget *targets,int n,const R
   }
   return out.empty()?working_string("0"):out;
 }
+#endif
 
 static working_string log_expr_ws(const working_string &base,const working_string &arg){
   return "log("+base+","+arg+")";
@@ -15594,6 +15602,7 @@ static bool try_xform_log_cancel_surd_factor(const working_string &a,const worki
   return true;
 }
 
+#if 0
 static bool decompose_log_arg(const working_string &base,const working_string &arg,Rat scale,
                               RewriteTarget *targets,int n,RewriteAcc &acc);
 
@@ -15835,6 +15844,7 @@ static bool rewrite_exact_large(working_string &expr,RewriteTarget *targets,int 
   }
   return changed;
 }
+#endif
 
 static bool try_rewrite(const char *input,working_string &out){
   working_string args[6];
@@ -17170,9 +17180,9 @@ static bool try_xform_rewrite_planner(const working_string &start,const working_
 }
 
 static working_string xform_failure_report(const working_string &start,const working_string &target){
-  working_string out="Try:\n";
+  working_string out="Search:\n";
   out += insert_coeff_stars(start)+"\n";
-  out += "Target:\n";
+  out += "Target form:\n";
   out += insert_coeff_stars(target);
   return out;
 }

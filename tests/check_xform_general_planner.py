@@ -19,6 +19,13 @@ CASES = [
         ],
     ),
     (
+        "xform((x+1)^2,x^2+2*x+1)",
+        [
+            "texpand:",
+            "x^2+2*x+1",
+        ],
+    ),
+    (
         "xform(((cos(3*x)/sin(x))+((sin(3*x))/cos(x))),2*cot(2*x))",
         [
             "t=tan(x/2)",

@@ -49,8 +49,8 @@ CASES = [
     (
         "xform(sin(x),cos(x)+7)",
         [
-            "Try:",
-            "Target:",
+            "Search:",
+            "Target form:",
         ],
     ),
     (
