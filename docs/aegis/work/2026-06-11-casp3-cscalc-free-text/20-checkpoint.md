@@ -280,3 +280,26 @@ Evidence:
 Drift check:
 - Still inside CASP3/CSCALC free-text arbitrary-input hardening.
 - Did not touch CAS Pure behavior, NOTES, menus, or status/UI code.
+
+## 2026-06-11 CSCALC Transfer Unit Slice
+
+Completed:
+- Added explicit `transfermb(sizeMB,rateMbitPerSecond)` and `transferkb(sizeKB,rateKbitPerSecond)` routes.
+- Added free-text handling for megabyte/megabit and kilobyte/kilobit transfer-time prompts.
+- Added tests that catch the common wrong `10/2=5s` route for `10 megabytes at 2 megabits per second`; expected method converts to `80 Mbit`, then `40s`.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py && python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 78048 bytes`
+  - `CSCALC.g3a: 81264 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Still inside CSCALC AQA Paper 2 calculation support.
+- Did not touch CAS Pure, CASP3 behavior, NOTES, menus, or status/UI code.

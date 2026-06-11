@@ -76,6 +76,8 @@ def main():
     require("bitmap image width=100 height=50 colours=16", ["ceil(log2(16)) = 4", "20000 bits"])
     require("sound(44100,60,16,2)", ["sample rate", "84672000 bits", "MB"])
     require("transfer time for 8000 bits at 2000 bit/s", ["Transfer time", "4 s"])
+    require("transfermb(10,2)", ["10 MB = 80 Mbit", "time = 80/2 = 40 s"])
+    require("download time for 10 megabytes at 2 megabits per second", ["Convert megabytes", "10 MB = 80 Mbit", "40 s"])
     require("compress(1200,300)", ["ratio = 4", "saving = 75"])
     require("rle(12,8,4)", ["Run-length bits", "144 bits"])
     require("run length encoding 12 runs 8 symbol bits 4 count bits", ["Run-length bits", "144 bits"])

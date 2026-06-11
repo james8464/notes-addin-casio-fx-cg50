@@ -417,6 +417,18 @@ static int eval_storage(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LE
     int n = add(out, 0, "Transfer time = file size / bit rate.");
     return add(out, n, "%s/%s = %.10g s", a[0], a[1], t);
   }
+  if (starts3(s, "transfermb(", "megabytetransfer(", "mbtombit(") && na >= 2) {
+    double mb = num(a[0]), rate = num(a[1]), megabits = mb * 8.0, t = megabits / rate;
+    int n = add(out, 0, "Convert megabytes to megabits before dividing by Mbit/s.");
+    n = add(out, n, "%.10g MB = %.10g Mbit", mb, megabits);
+    return add(out, n, "time = %.10g/%.10g = %.10g s", megabits, rate, t);
+  }
+  if (starts3(s, "transferkb(", "kilobytetransfer(", "kbtokbit(") && na >= 2) {
+    double kb = num(a[0]), rate = num(a[1]), kilobits = kb * 8.0, t = kilobits / rate;
+    int n = add(out, 0, "Convert kilobytes to kilobits before dividing by kbit/s.");
+    n = add(out, n, "%.10g KB = %.10g kbit", kb, kilobits);
+    return add(out, n, "time = %.10g/%.10g = %.10g s", kilobits, rate, t);
+  }
   if (starts3(s, "chars(", "textsize(", "characters(") && na >= 2) {
     long long bits = parse_int(a[0]) * parse_int(a[1]);
     double bytes = bits / 8.0;
@@ -1073,6 +1085,12 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     sprintf(cmd, "sound(%lld,%lld,%lld,%lld)", (long long)v[0], (long long)v[1], (long long)v[2], nv > 3 ? (long long)v[3] : 1); return eval_storage(cmd, out);
   }
   if ((has(t, "transfer") || has(t, "download") || has(t, "transmit")) && (has(t, "time") || has(t, "seconds")) && nv >= 2) {
+    if ((has(t, "megabyte") || has(t, "mbyte")) && (has(t, "megabit") || has(t, "mbit"))) {
+      sprintf(cmd, "transfermb(%.10g,%.10g)", v[0], v[1]); return eval_storage(cmd, out);
+    }
+    if ((has(t, "kilobyte") || has(t, "kbyte")) && (has(t, "kilobit") || has(t, "kbit"))) {
+      sprintf(cmd, "transferkb(%.10g,%.10g)", v[0], v[1]); return eval_storage(cmd, out);
+    }
     sprintf(cmd, "transfer(%.10g,%.10g)", v[0], v[1]); return eval_storage(cmd, out);
   }
   if ((has(t, "compress") || has(t, "compression")) && nv >= 2) {
@@ -1146,6 +1164,6 @@ int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
   n = eval_free_text(input, s, out); if (n) return n;
   n = add(out, 0, "Supported:");
   n = add(out, n, "bin hex den convert twos twosdec fixed fixedenc");
-  n = add(out, n, "floatdec floatrange normal image sound bitrate transfer");
+  n = add(out, n, "floatdec floatrange normal image sound bitrate transfer transfermb");
   return add(out, n, "compress rle records chars bool truth nandform norform");
 }
