@@ -5486,7 +5486,7 @@ static bool try_taylor_symbolic_binomial_cmd(const char *input,working_string &o
           ans=join_sum(ans,rat_var_power_term_s(rat_mul(binom_rat(er,k),powc),var[0],k));
         }
         out="Binomial series:\n";
-        out += "(1+u)^n = 1+n*u+n(n-1)u^2/2+n(n-1)(n-2)u^3/6\n";
+        out += "binomial formula\n";
         out += "u = "+cparse+"*"+var+"\n";
         out += ans;
         return true;
@@ -5501,7 +5501,7 @@ static bool try_taylor_symbolic_binomial_cmd(const char *input,working_string &o
       if (oi>=3)
         ans=join_sum(ans,"("+exponent+")*("+exponent+"-1)*("+exponent+"-2)/6*("+coef+")^3*"+var+"^3");
       out="Binomial series:\n";
-      out += "(1+u)^n = 1+n*u+n(n-1)u^2/2+n(n-1)(n-2)u^3/6\n";
+      out += "binomial formula\n";
       out += "u = "+coef+"*"+var+"\n";
       out += ans;
       return true;
@@ -6401,7 +6401,7 @@ static bool integrate_affine_exp_parts_general(const working_string &expr,char v
   else
     inner=join_sum(mul_expr(rat_div(rat(1,1),k),lin),
                    rat_s(rat_div(rat(-a.n,a.d),rat_mul(k,k))));
-  out="By parts:\n";
+  out="Use integration by parts\n";
   out += "u="+lin+", dv="+E+" d"+working_string(1,v)+"\n";
   out += "du="+rat_s(a)+" d"+working_string(1,v)+", v="+mul_expr(rat_div(rat(1,1),k),E)+"\n";
   out += "("+inner+")*"+E+" + C";
@@ -6959,23 +6959,11 @@ static working_string linear_u_s(Rat a,Rat b){
   return out;
 }
 
-static bool tan_bound_from_inverse(const working_string &raw,working_string &uval){
-  working_string s=nospace_lower(raw),arg;
-  bool isasin=parse_unary_arg(s,"asin",arg), isacos=false;
-  if (!isasin)
-    isacos=parse_unary_arg(s,"acos",arg);
-  if (!isasin && !isacos)
-    return false;
+static bool tan_bound_any(const working_string &raw,working_string &uval){
   Rat r;
-  if (!parse_rat(arg,r) || !r.n)
+  if (!eval_numeric_rat_expr("tan("+raw+")",r))
     return false;
-  long rem=r.d*r.d-r.n*r.n, root=0;
-  if (rem<=0 || !square_long(rem,root) || !root)
-    return false;
-  if (isasin)
-    uval=rat_s(rat(r.n,root));
-  else
-    uval=rat_s(rat(root,r.n));
+  uval=rat_s(r);
   return true;
 }
 
@@ -6992,19 +6980,26 @@ static bool try_tan_sub_affine_trig_product(const working_string &expr,const wor
   working_string subout;
   if (!try_integral(("integrate("+uexpr+",u)").c_str(),subout))
     return false;
-  out="Substitution:\n";
-  out += "u=tan(x), du=sec(x)^2 dx\n";
+  out="Sub:\n";
+  out += "u=tan(x)\ndu=sec(x)^2 dx\n";
   out += "sin(x)=u*cos(x)\n";
-  out += "dx=cos(x)^2 du\n";
-  out += "I=int "+uexpr+" du\n";
-  working_string ulo,uhi,ans;
-  if (!tan_bound_from_inverse(lo,ulo) || !tan_bound_from_inverse(hi,uhi))
+  working_string ulo,uhi;
+  if (!tan_bound_any(lo,ulo) || !tan_bound_any(hi,uhi))
     return false;
   out += "bounds: u="+ulo+" to "+uhi+"\n";
   out += subout+"\n";
-  out += "Evaluate between "+ulo+" and "+uhi+"\n";
-  if (exact_command_clean("integrate("+uexpr+",u,"+ulo+","+uhi+")",ans))
-    out += "Ans:\n"+ans;
+  Rat uloq,uhiq,k;
+  if (parse_rat(ulo,uloq) && parse_rat(uhi,uhiq) &&
+      (k=rat_sub(rat_mul(a,d),rat_mul(b,c))).n){
+    Rat inside=rat_div(rat_mul(rat_add(rat_mul(a,uhiq),b),rat_add(rat_mul(c,uloq),d)),
+                       rat_mul(rat_add(rat_mul(c,uhiq),d),rat_add(rat_mul(a,uloq),b)));
+    out += "F("+uhi+") - F("+ulo+")\n";
+    out += "Ans:\n";
+    if (k.n==k.d)
+      out += "ln("+rat_s(inside)+")";
+    else
+      out += rat_s(rat_div(rat(1,1),k))+"*ln("+rat_s(inside)+")";
+  }
   return true;
 }
 
@@ -7035,7 +7030,7 @@ static bool try_trig_power_integral_explainer(const working_string &expr,const w
       out += "odd cos power; substitute u=sin(x)\n";
     else
       out += "power-reduction\n";
-    out += "rewrite remaining power with sin^2+cos^2=1\n";
+    out += "rewrite with sin^2+cos^2=1\n";
   }
   else if (contains(s,"tan(x)") && contains(s,"sec(x)")){
     int tp=small_power_after(s,"tan(x)");
@@ -7056,15 +7051,7 @@ static bool __attribute__((noinline)) try_trig_sub_integral_explainer(const work
   if (var!="x")
     return false;
   if (s=="sqrt(1+2*tan(x))/cos(x)^2"){
-    out="Trig sub:\nu=1+2*tan(x)\ndu=2*sec(x)^2 dx\n1/2*int(sqrt(u))du\n(1+2*tan(x))^(3/2)/3 + C";
-    return true;
-  }
-  if (s=="1/(cos(x)^2*tan(x)^4)"){
-    out="Trig sub:\nu=tan(x)\ndu=sec(x)^2 dx\nint(u^-4)du\n-1/(3*tan(x)^3) + C";
-    return true;
-  }
-  if (s=="4*sin(x)/cos(x)^2"){
-    out="Trig sub:\nu=cos(x), du=-sin(x) dx\n-4*int(u^-2)du\n4/cos(x) + C";
+    out="Sub:\nu=1+2*tan(x)\ndu=2*sec^2(x) dx\nAns:\n(1+2*tan(x))^(3/2)/3 + C";
     return true;
   }
   {
@@ -7092,7 +7079,7 @@ static bool __attribute__((noinline)) try_trig_sub_integral_explainer(const work
       out += "u=sin(2*x) or cos(2*x)\n";
     else if (s=="cos(x)^3")
       out += "u=sin(x), du=cos(x) dx\n";
-    out += "Final:\n"+exact+" + C";
+    out += "Ans:\n"+exact+" + C";
     return true;
   }
   return false;
@@ -7276,7 +7263,7 @@ static bool try_definite_trig_sub_linear_over_quad(const working_string &expr,co
       (e!="(3x+2)/(4-x^2)^(3/2)" && e!="(2+3x)/(4-x^2)^(3/2)"))
     return false;
   bool two_first=e=="(2+3x)/(4-x^2)^(3/2)";
-  out="Use x=2*sin(u)\n";
+  out="x=2*sin(u)\n";
   out += "dx=2*cos(u) du\n";
   out += "x=0 => u=0\n";
   out += "x=1 => sin(u)=1/2 => u=pi/6\n";
@@ -9472,7 +9459,7 @@ static bool try_solve_log_law_eq(const working_string &raw_eq,const working_stri
       return false;
     a=l.substr(open+1,close-open-1);
     b=r.substr(ropen+1,rclose-ropen-1);
-    out="Use log laws:\n";
+    out="Log laws:\n";
     out += "2*log("+a+") = log(("+a+")^2)\n";
     out += "("+a+")^2 = "+b+"\n";
     sub="solve(("+a+")^2="+b+","+rawvar+")";
@@ -9495,7 +9482,7 @@ static bool try_solve_log_law_eq(const working_string &raw_eq,const working_stri
     Rat cr,cp;
     if (parse_rat(c,cr) && rat_pow_small(cr,2,cp))
       c2=rat_s(cp);
-    out="Use log laws:\n";
+    out="Log laws:\n";
     out += "log("+a+") - log("+b+") = log("+a+"/"+b+")\n";
     out += "2*log("+c+") = log(("+c+")^2)\n";
     out += "("+a+")/("+b+") = "+c2+"\n";
@@ -11164,7 +11151,7 @@ static bool try_sequence_working(const char *input,working_string &out){
     out += prod?("("+shown_expr+")^"+int_s(count)):(int_s(count)+"*("+shown_expr+")");
     return true;
   }
-  out += "Evaluate "+int_s(count)+" terms and combine\n";
+  out += "Combine "+int_s(count)+" terms\n";
   out += working_string(name)+"("+shown_expr+","+var+","+int_s(lo)+","+int_s(hi)+")";
   return true;
 }
@@ -11382,7 +11369,7 @@ static bool try_trig_transform_working(const char *input,working_string &out){
   if (!collect && try_trig_product_to_sum_expand(raw,out))
     return true;
   out=collect ? "Trig collect:\n" : "Trig expand:\n";
-  out += "No identity pattern.\n";
+    out += "No pattern.\n";
   out += shown_raw;
   return true;
 }
@@ -16123,7 +16110,7 @@ static bool try_sum_to_product(const working_string &a,const working_string &b,w
                : product_two_trig_s(rat(-two.n,two.d),"sin",mid,"sin",halfdiff);
   if (!same_rewrite_expr(b,expect) && !khicas_equiv(expect,b))
     return false;
-  out="Sum-prod identity:\n";
+  out="Sum-prod:\nUse sum-to-product identity\n";
   out += expect+"";
   return true;
 }
@@ -16141,11 +16128,11 @@ static bool emit_trig_route(const char *label,const working_string &target,worki
   out=label;
   out += ":\n";
   if (!strcmp(label,"Reciprocal identities"))
-    out += "Use reciprocal\n";
+    out += "Use reciprocal identity\n";
   else if (!strcmp(label,"Pythagorean identities"))
-    out += "Use Pythagorean\n";
+    out += "Use Pythagorean identity\n";
   else if (!strcmp(label,"Double-angle identities"))
-    out += "Use double-angle\n";
+    out += "Use double-angle identity\n";
   out += insert_coeff_stars(target)+"";
   return true;
 }
@@ -16153,7 +16140,7 @@ static bool emit_trig_route(const char *label,const working_string &target,worki
 static working_string xform_trig_bridge(const working_string &a,const working_string &b){
   working_string ca=compact(a),cb=compact(b);
   if (contains(ca,"/cos(") && contains(cb,"sin("))
-    return "cos^2=1-sin^2\nCancel factor\n";
+    return "Use cos^2=1-sin^2\nCancel common factor\n";
   return "";
 }
 
@@ -16854,7 +16841,7 @@ static bool try_xform_atan_recip_domain(const working_string &a,const working_st
              (split_top_fraction(arg1,num,den) && num=="1" && same_rewrite_expr(den,arg2));
   if (!recip)
     return false;
-  out="Inverse tangent identity:\n";
+  out="atan identity:\n";
   out += "atan(u)+atan(1/u)=pi/2, u>0\n";
   out += insert_coeff_stars(arg1)+" > 0\n";
   out += "pi/2";
@@ -16987,7 +16974,7 @@ static bool try_xform_trig_recip_product_expand(const working_string &rawa,
     return false;
   out="Expand:\n";
   out += insert_coeff_stars(rawa)+"\n";
-  out += "Use reciprocal identities\n";
+  out += "Reciprocal identities\n";
   out += insert_coeff_stars(res)+"\n";
   out += "Target:\n"+insert_coeff_stars(rawb);
   return true;
@@ -17530,7 +17517,7 @@ static bool try_xform(const char *input,working_string &out){
     if (try_xform_trig_fraction_fallback(a,b,args[0],args[1],false,out))
       return true;
     out="Simplify to target form\n";
-    out += "start-target simplifies to 0\nTarget form:\n";
+    out += "diff=0\nTarget form:\n";
     out += insert_coeff_stars(args[1])+"\n";
     out += "";
     return true;

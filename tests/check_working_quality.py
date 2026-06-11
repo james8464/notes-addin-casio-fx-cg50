@@ -90,6 +90,15 @@ CASES = [
         ],
     ),
     (
+        "defint(1/((sin(x)+2*cos(x))*(sin(x)+3*cos(x))),x,pi/4,atan(2))",
+        [
+            "u=tan(x)",
+            "bounds: u=1 to 2",
+            "A/(u + 2)+B/(u + 3)",
+            "ln(16/15)",
+        ],
+    ),
+    (
         "integrate(sin(log(14,log(tan(sqrt(abs(1676*u^52-1314*u^51+2509*u^50-3057*u^49+6241*u^48-7626*u^47+1772*u^46-6044*u^45+7219*u^44-9404*u^43+7302*u^42+352*u^41)))+8,((v)+(((939/834)*sqrt(571))))))))",
         [
             "Err: complexity guard",
