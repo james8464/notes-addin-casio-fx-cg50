@@ -1,5 +1,25 @@
 # Checkpoint
 
+## 2026-06-12 CASP3 Normal Variance Slice
+
+Completed:
+- Added `normalvar(...)` / `normalzvar(...)` / `zscorevar(...)`.
+- Added interval, tail, and inverse-normal variance variants.
+- Added free-text dispatch so prompts with `variance` convert to `sigma=sqrt(variance)` before using NormalCD/InvNorm working.
+- Added regression tests covering standardising, interval, tail, and inverse-normal prompts with variance.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CASP3 Paper 3 statistics support.
+- Did not touch CAS Pure, CSCALC behavior, NOTES, UI/menu/status code.
+
 ## 2026-06-12 CASP3 Projectile Height Slice
 
 Completed:

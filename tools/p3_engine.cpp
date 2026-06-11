@@ -358,6 +358,13 @@ static int eval_mech(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
 
 static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   char a[8][48]; int na = args(s, a, 8);
+  if (starts3(s, "normalvar(", "normalzvar(", "zscorevar(") && na >= 3) {
+    double x=num(a[0]), mu=num(a[1]), var=num(a[2]), sig=root(var);
+    int n = add(out, 0, "Convert variance to standard deviation first.");
+    n = add(out, n, "sigma = sqrt(%.6g) = %.6g", var, sig);
+    n = add(out, n, "Standardise using Z=(X-mu)/sigma.");
+    return add(out, n, "z = (%.6g-%.6g)/%.6g = %.6g", x, mu, sig, (x-mu)/sig);
+  }
   if (starts3(s, "normal(", "normalz(", "zscore(") && na >= 3) {
     double x=num(a[0]), mu=num(a[1]), sig=num(a[2]);
     int n = add(out, 0, "Standardise using Z=(X-mu)/sigma.");
@@ -461,9 +468,25 @@ static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     n = add(out, n, "Use fx-CG50 Normal CDF with lower, upper, sigma, mu.");
     return add(out, n, "NormalCD(lower=%.6g, upper=%.6g, sigma=%.6g, mu=%.6g)", lo, hi, sig, mu);
   }
+  if (starts3(s, "normalprobvar(", "normalcdfvar(", "normintvar(") && na >= 4) {
+    double lo=num(a[0]), hi=num(a[1]), mu=num(a[2]), var=num(a[3]), sig=root(var);
+    int n = add(out, 0, "Convert variance to standard deviation first.");
+    n = add(out, n, "sigma = sqrt(%.6g) = %.6g", var, sig);
+    n = add(out, n, "z1=(%.6g-%.6g)/%.6g = %.6g", lo, mu, sig, (lo-mu)/sig);
+    n = add(out, n, "z2=(%.6g-%.6g)/%.6g = %.6g", hi, mu, sig, (hi-mu)/sig);
+    return add(out, n, "NormalCD(lower=%.6g, upper=%.6g, sigma=%.6g, mu=%.6g)", lo, hi, sig, mu);
+  }
   if (starts3(s, "normaltail(", "normalupper(", "normaltp(") && na >= 4) {
     double x=num(a[0]), mu=num(a[1]), sig=num(a[2]), tail=num(a[3]);
     int n = add(out, 0, "For X~N(mu,sigma^2), choose the correct tail.");
+    n = add(out, n, "z=(%.6g-%.6g)/%.6g = %.6g", x, mu, sig, (x-mu)/sig);
+    n = add(out, n, tail >= 0 ? "Required probability is P(X>=%.6g)." : "Required probability is P(X<=%.6g).", x);
+    return add(out, n, tail >= 0 ? "Use NormalCD(lower=%.6g, upper=1E99, sigma=%.6g, mu=%.6g)" : "Use NormalCD(lower=-1E99, upper=%.6g, sigma=%.6g, mu=%.6g)", x, sig, mu);
+  }
+  if (starts3(s, "normaltailvar(", "normaluppervar(", "normaltpvar(") && na >= 4) {
+    double x=num(a[0]), mu=num(a[1]), var=num(a[2]), sig=root(var), tail=num(a[3]);
+    int n = add(out, 0, "Convert variance to standard deviation first.");
+    n = add(out, n, "sigma = sqrt(%.6g) = %.6g", var, sig);
     n = add(out, n, "z=(%.6g-%.6g)/%.6g = %.6g", x, mu, sig, (x-mu)/sig);
     n = add(out, n, tail >= 0 ? "Required probability is P(X>=%.6g)." : "Required probability is P(X<=%.6g).", x);
     return add(out, n, tail >= 0 ? "Use NormalCD(lower=%.6g, upper=1E99, sigma=%.6g, mu=%.6g)" : "Use NormalCD(lower=-1E99, upper=%.6g, sigma=%.6g, mu=%.6g)", x, sig, mu);
@@ -473,6 +496,13 @@ static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     int n = add(out, 0, "For X~N(mu,sigma^2), use inverse normal for a critical value.");
     n = add(out, n, "Area to the left = %.6g.", area);
     n = add(out, n, "Use fx-CG50 InvNorm(area, sigma, mu).");
+    return add(out, n, "InvNorm(%.6g, %.6g, %.6g)", area, sig, mu);
+  }
+  if (starts3(s, "invnormalvar(", "inversenormalvar(", "normalinvvar(") && na >= 3) {
+    double area=num(a[0]), mu=num(a[1]), var=num(a[2]), sig=root(var);
+    int n = add(out, 0, "Convert variance to standard deviation first.");
+    n = add(out, n, "sigma = sqrt(%.6g) = %.6g", var, sig);
+    n = add(out, n, "Area to the left = %.6g.", area);
     return add(out, n, "InvNorm(%.6g, %.6g, %.6g)", area, sig, mu);
   }
   if (starts3(s, "hypnormal(", "normaltest(", "hypmean(") && na >= 6) {
@@ -734,12 +764,22 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     else if (has(c, "atmost") || has(t, "cdf")) tail = -1;
     sprintf(cmd, "poissonapprox(%d,%.10g,%d,%d)", (int)v[0], v[1], (int)v[2], tail); return eval_stats(cmd, out);
   }
+  if ((has(t, "normaldistribution") || has(t, "normalcdf") || (has(t, "normal") && has(t, "between"))) && has(t, "variance") && nv >= 4) {
+    sprintf(cmd, "normalprobvar(%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3]); return eval_stats(cmd, out);
+  }
   if ((has(t, "normaldistribution") || has(t, "normalcdf") || (has(t, "normal") && has(t, "between"))) && nv >= 4) {
     sprintf(cmd, "normalprob(%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3]); return eval_stats(cmd, out);
+  }
+  if (has(t, "normal") && has(t, "variance") && (has(c, "morethan") || has(c, "greaterthan") || has(c, "atleast") || has(c, "lessthan") || has(c, "atmost")) && nv >= 3) {
+    double tail = (has(c, "morethan") || has(c, "greaterthan") || has(c, "atleast")) ? 1 : -1;
+    sprintf(cmd, "normaltailvar(%.10g,%.10g,%.10g,%.0f)", v[0], v[1], v[2], tail); return eval_stats(cmd, out);
   }
   if (has(t, "normal") && (has(c, "morethan") || has(c, "greaterthan") || has(c, "atleast") || has(c, "lessthan") || has(c, "atmost")) && nv >= 3) {
     double tail = (has(c, "morethan") || has(c, "greaterthan") || has(c, "atleast")) ? 1 : -1;
     sprintf(cmd, "normaltail(%.10g,%.10g,%.10g,%.0f)", v[0], v[1], v[2], tail); return eval_stats(cmd, out);
+  }
+  if ((has(c, "invnormal") || has(c, "inversenormal") || (has(c, "normal") && (has(c, "critical") || has(c, "percentile")))) && has(t, "variance") && nv >= 3) {
+    sprintf(cmd, "invnormalvar(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_stats(cmd, out);
   }
   if ((has(c, "invnormal") || has(c, "inversenormal") || (has(c, "normal") && (has(c, "critical") || has(c, "percentile")))) && nv >= 3) {
     sprintf(cmd, "invnormal(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_stats(cmd, out);
@@ -747,6 +787,9 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if (has(t, "normal") && (has(t, "hypothesis") || has(t, "test")) && nv >= 5) {
     double tail = has(t, "upper") || has(t, "greater") || has(t, "more") ? 1 : -1;
     sprintf(cmd, "hypnormal(%.10g,%.10g,%.10g,%.10g,%.10g,%.0f)", v[0], v[1], v[2], v[3], v[4], tail); return eval_stats(cmd, out);
+  }
+  if ((has(t, "standardise") || has(t, "standardize") || has(t, "zscore")) && has(t, "variance") && nv >= 3) {
+    sprintf(cmd, "normalvar(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_stats(cmd, out);
   }
   if ((has(t, "standardise") || has(t, "standardize") || has(t, "zscore")) && nv >= 3) {
     sprintf(cmd, "normal(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_stats(cmd, out);
@@ -871,5 +914,5 @@ int p3_eval(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   n = add(out, 0, "Supported:");
   n = add(out, n, "suvat projectile projectileh force weight friction moment incline");
   n = add(out, n, "connected pulley impulse momentum work power energy restitution vector resolve varacc");
-  return add(out, n, "normal normalprob invnormal binom binomtail critbinom hypbinom cond probor bayes independent poisson poissontail poissonnorm critpoisson hyppoisson regress pmcc meanvar discrete stratified groupmedian histdensity code");
+  return add(out, n, "normal normalvar normalprob invnormal binom binomtail critbinom hypbinom cond probor bayes independent poisson poissontail poissonnorm critpoisson hyppoisson regress pmcc meanvar discrete stratified groupmedian histdensity code");
 }
