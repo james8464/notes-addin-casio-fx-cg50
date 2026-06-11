@@ -29,6 +29,14 @@ static void clean(const char *in, char *out, int cap) {
 
 static bool starts(const char *s, const char *p) { return strncmp(s, p, strlen(p)) == 0; }
 
+static bool starts2(const char *s, const char *a, const char *b) {
+  return starts(s, a) || starts(s, b);
+}
+
+static bool starts3(const char *s, const char *a, const char *b, const char *c) {
+  return starts(s, a) || starts(s, b) || starts(s, c);
+}
+
 static double num(const char *s) {
   double sign = 1, v = 0, scale = 1;
   if (*s == '-') { sign = -1; ++s; }
@@ -126,7 +134,7 @@ static int eval_suvat(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
 
 static int eval_mech(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   char a[8][48]; int na = args(s, a, 8);
-  if (starts(s, "projectile(") && na >= 2) {
+  if (starts3(s, "projectile(", "proj(", "projectiles(") && na >= 2) {
     double u = num(a[0]), th = num(a[1]) * M_PI / 180.0, g = na > 2 ? num(a[2]) : 9.8;
     double ux = u*cosine(th), uy = u*sine(th), T = 2*uy/g, R = ux*T, H = uy*uy/(2*g);
     int n = add(out, 0, "Resolve velocity into horizontal and vertical components.");
@@ -136,27 +144,27 @@ static int eval_mech(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     n = add(out, n, "range = u_x t = %.6g", R);
     return add(out, n, "max height = u_y^2/(2g) = %.6g", H);
   }
-  if (starts(s, "force(") && na >= 2) {
+  if (starts3(s, "force(", "newton(", "fma(") && na >= 2) {
     double m=num(a[0]), acc=num(a[1]);
     int n = add(out, 0, "Use Newton's second law in the direction of motion.");
     return add(out, n, "F = ma = %.6g*%.6g = %.6g N", m, acc, m*acc);
   }
-  if (starts(s, "weight(") && na >= 1) {
+  if (starts2(s, "weight(", "mg(") && na >= 1) {
     double m=num(a[0]), g=na>1?num(a[1]):9.8;
     int n = add(out, 0, "Weight acts vertically downwards.");
     return add(out, n, "W = mg = %.6g*%.6g = %.6g N", m, g, m*g);
   }
-  if (starts(s, "friction(") && na >= 2) {
+  if (starts2(s, "friction(", "limitingfriction(") && na >= 2) {
     double mu=num(a[0]), r=num(a[1]);
     int n = add(out, 0, "Limiting friction is F = mu R.");
     return add(out, n, "F = %.6g*%.6g = %.6g N", mu, r, mu*r);
   }
-  if (starts(s, "moment(") && na >= 2) {
+  if (starts2(s, "moment(", "moments(") && na >= 2) {
     double f=num(a[0]), d=num(a[1]);
     int n = add(out, 0, "Moment = force * perpendicular distance.");
     return add(out, n, "M = %.6g*%.6g = %.6g Nm", f, d, f*d);
   }
-  if (starts(s, "incline(") && na >= 2) {
+  if (starts3(s, "incline(", "slope(", "plane(") && na >= 2) {
     double m=num(a[0]), th=num(a[1])*M_PI/180.0, g=na>3?num(a[3]):9.8, mu=na>2?num(a[2]):0;
     double parallel=m*g*sine(th), reaction=m*g*cosine(th), fr=mu*reaction;
     int n = add(out, 0, "Resolve weight parallel and perpendicular to the plane.");
@@ -165,35 +173,35 @@ static int eval_mech(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     if (na > 2) n = add(out, n, "friction = mu R = %.6g N", fr);
     return add(out, n, "net down plane = %.6g N", parallel - fr);
   }
-  if (starts(s, "connected(") && na >= 3) {
+  if (starts3(s, "connected(", "connectedparticles(", "twoparticles(") && na >= 3) {
     double m1=num(a[0]), m2=num(a[1]), f=num(a[2]), ares=f/(m1+m2), T=m1*ares;
     int n = add(out, 0, "Treat connected particles as one system for acceleration.");
     n = add(out, n, "a = F/(m1+m2) = %.6g/(%.6g+%.6g)", f, m1, m2);
     n = add(out, n, "a = %.6g m/s^2", ares);
     return add(out, n, "tension on m1: T = m1*a = %.6g N", T);
   }
-  if (starts(s, "pulley(") && na >= 2) {
+  if (starts2(s, "pulley(", "pulleys(") && na >= 2) {
     double m1=num(a[0]), m2=num(a[1]), g=na>2?num(a[2]):9.8, ares=(m2-m1)*g/(m1+m2), T=m1*(g+ares);
     int n = add(out, 0, "For a light inextensible string, both masses have the same acceleration.");
     n = add(out, n, "a = (m2-m1)g/(m1+m2) = %.6g", ares);
     return add(out, n, "T = m1(g+a) = %.6g N", T);
   }
-  if (starts(s, "impulse(") && na >= 3) {
+  if (starts2(s, "impulse(", "momentumchange(") && na >= 3) {
     double m=num(a[0]), u=num(a[1]), v=num(a[2]);
     int n = add(out, 0, "Impulse equals change in momentum.");
     return add(out, n, "I = m(v-u) = %.6g(%.6g-%.6g) = %.6g Ns", m, v, u, m*(v-u));
   }
-  if (starts(s, "work(") && na >= 2) {
+  if (starts2(s, "work(", "workdone(") && na >= 2) {
     double f=num(a[0]), d=num(a[1]);
     int n = add(out, 0, "Work done = force * distance in the direction of motion.");
     return add(out, n, "W = %.6g*%.6g = %.6g J", f, d, f*d);
   }
-  if (starts(s, "power(") && na >= 2) {
+  if (starts2(s, "power(", "powerrate(") && na >= 2) {
     double w=num(a[0]), t=num(a[1]);
     int n = add(out, 0, "Power = work done / time.");
     return add(out, n, "P = %.6g/%.6g = %.6g W", w, t, w/t);
   }
-  if (starts(s, "varacc(") && na >= 4) {
+  if (starts3(s, "varacc(", "variableacc(", "variableacceleration(") && na >= 4) {
     double c=num(a[0]), k=num(a[1]), u=num(a[2]), t=num(a[3]);
     int n = add(out, 0, "Given a(t)=c+kt, integrate to get velocity.");
     n = add(out, n, "v = u + ct + 1/2 kt^2");
@@ -205,25 +213,25 @@ static int eval_mech(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
 
 static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   char a[8][48]; int na = args(s, a, 8);
-  if (starts(s, "normal(") && na >= 3) {
+  if (starts3(s, "normal(", "normalz(", "zscore(") && na >= 3) {
     double x=num(a[0]), mu=num(a[1]), sig=num(a[2]);
     int n = add(out, 0, "Standardise using Z=(X-mu)/sigma.");
     return add(out, n, "z = (%.6g-%.6g)/%.6g = %.6g", x, mu, sig, (x-mu)/sig);
   }
-  if (starts(s, "binom(") && na >= 3) {
+  if (starts3(s, "binom(", "binomial(", "binompdf(") && na >= 3) {
     int N=(int)num(a[0]), r=(int)num(a[2]); double p=num(a[1]), ans=binomp(N,p,r);
     int n = add(out, 0, "Let X ~ B(%d, %.6g).", N, p);
     n = add(out, n, "P(X=%d) = nCr p^r(1-p)^(n-r)", r);
     return add(out, n, "= %dC%d*%.6g^%d*%.6g^%d = %.10g", N, r, p, r, 1-p, N-r, ans);
   }
-  if (starts(s, "binomcdf(") && na >= 3) {
+  if (starts3(s, "binomcdf(", "binomialcdf(", "bincdf(") && na >= 3) {
     int N=(int)num(a[0]), r=(int)num(a[2]); double p=num(a[1]), ans=0;
     for (int k=0;k<=r;++k) ans += binomp(N,p,k);
     int n = add(out, 0, "Let X ~ B(%d, %.6g).", N, p);
     n = add(out, n, "P(X<=%d) = sum P(X=r), r=0..%d.", r, r);
     return add(out, n, "= %.10g", ans);
   }
-  if (starts(s, "hypbinom(") && na >= 5) {
+  if (starts3(s, "hypbinom(", "binomtest(", "hypothesistest(") && na >= 5) {
     int N=(int)num(a[0]), x=(int)num(a[2]); double p=num(a[1]), alpha=num(a[3]), tail=num(a[4]), prob=0;
     if (tail < 0) for (int k=0;k<=x;++k) prob += binomp(N,p,k);
     else for (int k=x;k<=N;++k) prob += binomp(N,p,k);
@@ -232,23 +240,23 @@ static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     n = add(out, n, "Compare with alpha = %.6g.", alpha);
     return add(out, n, prob <= alpha ? "Reject H0 in context." : "Do not reject H0 in context.");
   }
-  if (starts(s, "cond(") && na >= 2) {
+  if (starts3(s, "cond(", "conditional(", "given(") && na >= 2) {
     double pab=num(a[0]), pb=num(a[1]);
     int n = add(out, 0, "Use P(A|B)=P(A and B)/P(B).");
     return add(out, n, "P(A|B)=%.6g/%.6g=%.6g", pab, pb, pab/pb);
   }
-  if (starts(s, "probor(") && na >= 3) {
+  if (starts3(s, "probor(", "union(", "aorb(") && na >= 3) {
     double pa=num(a[0]), pb=num(a[1]), pab=num(a[2]);
     int n = add(out, 0, "Use P(A or B)=P(A)+P(B)-P(A and B).");
     return add(out, n, "%.6g+%.6g-%.6g=%.6g", pa, pb, pab, pa+pb-pab);
   }
-  if (starts(s, "poisson(") && na >= 2) {
+  if (starts2(s, "poisson(", "poissonpdf(") && na >= 2) {
     double lam=num(a[0]); int r=(int)num(a[1]); double fact=1; for(int i=2;i<=r;++i) fact*=i;
     double e = 1.0, term = 1.0; for(int i=1;i<18;++i){ term *= -lam/i; e += term; }
     int n = add(out, 0, "For X~Po(lambda), P(X=r)=e^-lambda lambda^r/r!.");
     return add(out, n, "P(X=%d)=e^-%.6g*%.6g^%d/%d! = %.10g", r, lam, lam, r, r, e*pwr(lam,r)/fact);
   }
-  if (starts(s, "regress(") && na >= 3) {
+  if (starts3(s, "regress(", "regression(", "predict(") && na >= 3) {
     double a0=num(a[0]), b=num(a[1]), x=num(a[2]);
     int n = add(out, 0, "Use the regression line y = a + bx.");
     n = add(out, n, "y = %.6g + %.6g x", a0, b);

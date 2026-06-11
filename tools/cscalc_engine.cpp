@@ -28,6 +28,14 @@ static bool starts(const char *s, const char *p) {
   return strncmp(s, p, strlen(p)) == 0;
 }
 
+static bool starts2(const char *s, const char *a, const char *b) {
+  return starts(s, a) || starts(s, b);
+}
+
+static bool starts3(const char *s, const char *a, const char *b, const char *c) {
+  return starts(s, a) || starts(s, b) || starts(s, c);
+}
+
 static int args(const char *s, char a[][48], int maxa) {
   const char *l = strchr(s, '('), *r = strrchr(s, ')');
   if (!l || !r || r <= l) return 0;
@@ -144,23 +152,23 @@ static int conv(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN], char a[][48], int n
 
 static int eval_base(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
   char a[4][48]; int na = args(s, a, 4);
-  if (starts(s, "bin(") && na == 1) {
+  if (starts3(s, "bin(", "binary(", "tobin(") && na == 1) {
     long long v = parse_int(a[0]); char b[65]; int w = v < 256 ? 8 : 16; to_bin(v, w, b);
     int n = add(out, 0, "Repeated division by 2, read remainders upwards.");
     return add(out, n, "%lld_10 = %s_2", v, b);
   }
-  if (starts(s, "hex(") && na == 1) {
+  if (starts3(s, "hex(", "hexadecimal(", "tohex(") && na == 1) {
     long long v = parse_int(a[0]);
     int n = add(out, 0, "Convert denary to hex by repeated division by 16.");
     return add(out, n, "%lld_10 = %llX_16", v, v);
   }
-  if (starts(s, "den(") && na >= 1) {
+  if (starts3(s, "den(", "denary(", "decimal(") && na >= 1) {
     int base = na > 1 ? (int)parse_int(a[1]) : (is_bits(a[0]) ? 2 : 16);
     long long v = parse_base(a[0], base);
     int n = add(out, 0, "Multiply each digit by its base place value.");
     return add(out, n, "%s_%d = %lld_10", a[0], base, v);
   }
-  if (starts(s, "convert(") && na == 3) {
+  if (starts2(s, "convert(", "base(") && na == 3) {
     long long v = parse_base(a[0], (int)parse_int(a[1]));
     if (parse_int(a[2]) == 2) { char b[65]; to_bin(v, v < 256 ? 8 : 16, b); return add(out, add(out, 0, "%s_%s = %lld_10", a[0], a[1], v), "%lld_10 = %s_2", v, b); }
     if (parse_int(a[2]) == 16) return add(out, add(out, 0, "%s_%s = %lld_10", a[0], a[1], v), "%lld_10 = %llX_16", v, v);
@@ -171,33 +179,33 @@ static int eval_base(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN])
 
 static int eval_twos(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
   char a[4][48]; int na = args(s, a, 4);
-  if (starts(s, "unsignedrange(") && na == 1) {
+  if (starts2(s, "unsignedrange(", "urange(") && na == 1) {
     int w = (int)parse_int(a[0]);
     return add(out, add(out, 0, "n-bit unsigned range:"), "0 to 2^%d-1 = 0 to %d", w, (1<<w)-1);
   }
-  if (starts(s, "twosrange(") && na == 1) {
+  if (starts3(s, "twosrange(", "tcrange(", "twoscomprange(") && na == 1) {
     int w = (int)parse_int(a[0]);
     return add(out, add(out, 0, "n-bit two's complement range:"), "-2^(%d) to 2^(%d)-1 = %d to %d", w-1, w-1, -(1<<(w-1)), (1<<(w-1))-1);
   }
-  if ((starts(s, "twosdec(") || starts(s, "tcdec(")) && na == 1) {
+  if ((starts(s, "twosdec(") || starts(s, "tcdec(") || starts(s, "twosdecode(")) && na == 1) {
     int n = add(out, 0, "MSB is sign bit.");
     if (a[0][0] == '0') n = add(out, n, "MSB=0, so use unsigned place values.");
     else n = add(out, n, "MSB=1, so subtract 2^%d from unsigned value.", (int)strlen(a[0]));
     return add(out, n, "%s = %d", a[0], twos_decode(a[0]));
   }
-  if ((starts(s, "twos(") || starts(s, "tc(")) && na >= 2) {
+  if ((starts(s, "twos(") || starts(s, "tc(") || starts(s, "twoscomp(")) && na >= 2) {
     long long v = parse_int(a[0]); int w = (int)parse_int(a[1]); char b[65]; to_bin(v, w, b);
     int n = add(out, 0, "%d-bit two's complement.", w);
     if (v < 0) n = add(out, n, "Encode negative: add 2^%d to %lld.", w, v);
     return add(out, n, "%lld -> %s", v, b);
   }
-  if (starts(s, "twosadd(") && na == 2) {
+  if (starts2(s, "twosadd(", "tcadd(") && na == 2) {
     int w = (int)strlen(a[0]), x = twos_decode(a[0]), y = twos_decode(a[1]); char b[65]; to_bin(x+y, w, b);
     int n = add(out, 0, "Decode/add in fixed width, discard carry beyond %d bits.", w);
     n = add(out, n, "%s=%d, %s=%d", a[0], x, a[1], y);
     return add(out, n, "%d+%d=%d -> %s", x, y, x+y, b);
   }
-  if ((starts(s, "twossub(") || starts(s, "tcsub(")) && na == 2) {
+  if ((starts(s, "twossub(") || starts(s, "tcsub(") || starts(s, "twossubtract(")) && na == 2) {
     int w = (int)strlen(a[0]), x = twos_decode(a[0]), y = twos_decode(a[1]); char b[65]; to_bin(x-y, w, b);
     int n = add(out, 0, "Subtraction: add the two's complement of the second value.");
     n = add(out, n, "%s=%d, %s=%d", a[0], x, a[1], y);
@@ -208,7 +216,7 @@ static int eval_twos(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN])
 
 static int eval_binary_arith(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
   char a[4][48]; int na = args(s, a, 4);
-  if (starts(s, "binadd(") && na >= 2) {
+  if (starts3(s, "binadd(", "binaryadd(", "addbits(") && na >= 2) {
     int w = na > 2 ? (int)parse_int(a[2]) : (int)((strlen(a[0]) > strlen(a[1])) ? strlen(a[0]) : strlen(a[1]));
     char b[65]; int carry = 0; add_bits(a[0], a[1], w, b, &carry);
     int n = add(out, 0, "Add from the right, carrying 1 when a column totals 2 or 3.");
@@ -216,7 +224,7 @@ static int eval_binary_arith(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LI
     if (carry) n = add(out, n, "carry beyond %d bits is overflow if width is fixed.", w);
     return n;
   }
-  if (starts(s, "shift(") && na >= 3) {
+  if (starts2(s, "shift(", "binshift(") && na >= 3) {
     int k = (int)parse_int(a[2]); char b[65]; int len = (int)strlen(a[0]);
     for (int i = 0; i < len && i < 64; ++i) b[i] = a[0][i]; b[len] = 0;
     bool left = a[1][0] == 'l' || a[1][0] == '+';
@@ -233,30 +241,30 @@ static int eval_binary_arith(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LI
 
 static int eval_storage(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
   char a[5][48]; int na = args(s, a, 5);
-  if (starts(s, "image(") && na >= 3) {
+  if (starts3(s, "image(", "bitmap(", "imagesize(") && na >= 3) {
     long long bits = parse_int(a[0]) * parse_int(a[1]) * parse_int(a[2]);
     int n = add(out, 0, "Image bits = width * height * colour depth.");
     n = add(out, n, "%s*%s*%s = %lld bits", a[0], a[1], a[2], bits);
     return add(out, n, "= %.6g bytes", bits / 8.0);
   }
-  if (starts(s, "sound(") && na >= 3) {
+  if (starts3(s, "sound(", "audio(", "soundsize(") && na >= 3) {
     long long chans = na > 3 ? parse_int(a[3]) : 1;
     double bits = num(a[0]) * num(a[1]) * num(a[2]) * chans;
     int n = add(out, 0, "Sound bits = sample rate * seconds * resolution * channels.");
     n = add(out, n, "%s*%s*%s*%lld = %.10g bits", a[0], a[1], a[2], chans, bits);
     return add(out, n, "= %.10g bytes", bits / 8.0);
   }
-  if (starts(s, "bitrate(") && na >= 2) {
+  if (starts3(s, "bitrate(", "datarate(", "rate(") && na >= 2) {
     double rate = num(a[0]) / num(a[1]);
     int n = add(out, 0, "Bit rate = bits / seconds.");
     return add(out, n, "%s/%s = %.10g bit/s", a[0], a[1], rate);
   }
-  if (starts(s, "chars(") && na >= 2) {
+  if (starts3(s, "chars(", "textsize(", "characters(") && na >= 2) {
     long long bits = parse_int(a[0]) * parse_int(a[1]);
     int n = add(out, 0, "Text bits = characters * bits per character.");
     return add(out, n, "%s*%s = %lld bits = %.6g bytes", a[0], a[1], bits, bits / 8.0);
   }
-  if (starts(s, "compress(") && na >= 2) {
+  if (starts3(s, "compress(", "compression(", "ratio(") && na >= 2) {
     double oldv = num(a[0]), newv = num(a[1]);
     int n = add(out, 0, "Compression ratio = original / compressed.");
     n = add(out, n, "ratio = %.10g : 1", oldv / newv);
@@ -267,17 +275,17 @@ static int eval_storage(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LE
 
 static int eval_float(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
   char a[4][48]; int na = args(s, a, 4);
-  if (starts(s, "fixed(") && na == 1) {
+  if (starts2(s, "fixed(", "fixeddec(") && na == 1) {
     double v = fixed_decode(a[0]);
     int n = add(out, 0, "Add binary fixed-point place values.");
     return add(out, n, "%s_2 = %.10g_10", a[0], v);
   }
-  if (starts(s, "fixedtc(") && na == 1) {
+  if (starts3(s, "fixedtc(", "fixedtwos(", "fixedtwosdec(") && na == 1) {
     double v = fixed_tc_decode(a[0]);
     int n = add(out, 0, "Decode the whole part as two's complement, then add fractional places.");
     return add(out, n, "%s_2 = %.10g_10", a[0], v);
   }
-  if ((starts(s, "floatdec(") || starts(s, "fpdec(")) && na >= 2) {
+  if ((starts(s, "floatdec(") || starts(s, "fpdec(") || starts(s, "floatdecode(")) && na >= 2) {
     double m = mantissa_decode(a[0]);
     int e = twos_decode(a[1]);
     int n = add(out, 0, "Mantissa uses two's complement with point after sign bit.");
@@ -290,7 +298,7 @@ static int eval_float(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]
     bool ok = (a[0][0] == '0' && a[0][1] == '1') || (a[0][0] == '1' && a[0][1] == '0');
     return add(out, n, "%s is %snormalised", a[0], ok ? "" : "not ");
   }
-  if ((starts(s, "floatenc(") || starts(s, "fpenc(")) && na >= 3) {
+  if ((starts(s, "floatenc(") || starts(s, "fpenc(") || starts(s, "floatencode(")) && na >= 3) {
     double value = num(a[0]); int mb = (int)parse_int(a[1]), eb = (int)parse_int(a[2]);
     int e = 0; double m = value;
     if (m != 0) {
@@ -422,7 +430,7 @@ static void imp_text(const Imp &p, const char *vars, int vc, char *buf) {
 static int eval_bool(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
   char a[2][48]; int na = args(s, a, 2);
   char exprbuf[96];
-  const char *expr = (starts(s, "bool(") || starts(s, "truth(")) && na ? a[0] : 0;
+  const char *expr = (starts(s, "bool(") || starts(s, "truth(") || starts(s, "boolean(") || starts(s, "logic(")) && na ? a[0] : 0;
   if (!expr) return 0;
   bool_norm(expr, exprbuf, sizeof(exprbuf));
   expr = exprbuf;
@@ -487,6 +495,10 @@ int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
   for (int i = 0; i < CSCALC_MAX_LINES; ++i) out[i][0] = 0;
   char s[192]; clean(input, s, sizeof(s));
   if (!s[0]) return add(out, 0, "Enter a CS calculation command.");
+  if (is_bits(s) && !strchr(s, '.')) {
+    int n2 = add(out, 0, "Bare 0/1 input treated as unsigned binary.");
+    return add(out, n2, "%s_2 = %d_10", s, bin_unsigned(s));
+  }
   int n = eval_base(s, out); if (n) return n;
   n = eval_twos(s, out); if (n) return n;
   n = eval_binary_arith(s, out); if (n) return n;
