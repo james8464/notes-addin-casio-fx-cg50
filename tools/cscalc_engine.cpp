@@ -86,6 +86,19 @@ static int twos_decode(const char *s) {
   return u - (1 << n);
 }
 
+static void add_bits(const char *a, const char *b, int width, char *buf, int *carry_out) {
+  int carry = 0;
+  for (int i = 0; i < width; ++i) {
+    int ai = (int)strlen(a) - 1 - i, bi = (int)strlen(b) - 1 - i;
+    int av = ai >= 0 && a[ai] == '1', bv = bi >= 0 && b[bi] == '1';
+    int sum = av + bv + carry;
+    buf[width - 1 - i] = (sum & 1) ? '1' : '0';
+    carry = sum >> 1;
+  }
+  buf[width] = 0;
+  if (carry_out) *carry_out = carry;
+}
+
 static void to_bin(long long v, int width, char *buf) {
   unsigned long long mask = width >= 63 ? ~0ULL : ((1ULL << width) - 1);
   unsigned long long u = ((unsigned long long)v) & mask;
@@ -99,6 +112,17 @@ static double fixed_decode(const char *s) {
   int int_len = dot ? (int)(dot - s) : (int)strlen(s);
   for (int i = 0; i < int_len; ++i) if (s[i] == '1') v += pow2(int_len - 1 - i);
   if (dot) for (int i = 1; dot[i]; ++i) if (dot[i] == '1') v += pow2(-i);
+  return v;
+}
+
+static double fixed_tc_decode(const char *s) {
+  const char *dot = strchr(s, '.');
+  if (!dot) return (double)twos_decode(s);
+  char whole[48]; int wi = 0;
+  for (int i = 0; s[i] && s[i] != '.' && wi < 47; ++i) whole[wi++] = s[i];
+  whole[wi] = 0;
+  double v = (double)twos_decode(whole);
+  for (int i = 1; dot[i]; ++i) if (dot[i] == '1') v += pow2(-i);
   return v;
 }
 
@@ -147,6 +171,10 @@ static int eval_base(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN])
 
 static int eval_twos(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
   char a[4][48]; int na = args(s, a, 4);
+  if (starts(s, "unsignedrange(") && na == 1) {
+    int w = (int)parse_int(a[0]);
+    return add(out, add(out, 0, "n-bit unsigned range:"), "0 to 2^%d-1 = 0 to %d", w, (1<<w)-1);
+  }
   if (starts(s, "twosrange(") && na == 1) {
     int w = (int)parse_int(a[0]);
     return add(out, add(out, 0, "n-bit two's complement range:"), "-2^(%d) to 2^(%d)-1 = %d to %d", w-1, w-1, -(1<<(w-1)), (1<<(w-1))-1);
@@ -168,6 +196,37 @@ static int eval_twos(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN])
     int n = add(out, 0, "Decode/add in fixed width, discard carry beyond %d bits.", w);
     n = add(out, n, "%s=%d, %s=%d", a[0], x, a[1], y);
     return add(out, n, "%d+%d=%d -> %s", x, y, x+y, b);
+  }
+  if ((starts(s, "twossub(") || starts(s, "tcsub(")) && na == 2) {
+    int w = (int)strlen(a[0]), x = twos_decode(a[0]), y = twos_decode(a[1]); char b[65]; to_bin(x-y, w, b);
+    int n = add(out, 0, "Subtraction: add the two's complement of the second value.");
+    n = add(out, n, "%s=%d, %s=%d", a[0], x, a[1], y);
+    return add(out, n, "%d-%d=%d -> %s", x, y, x-y, b);
+  }
+  return 0;
+}
+
+static int eval_binary_arith(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
+  char a[4][48]; int na = args(s, a, 4);
+  if (starts(s, "binadd(") && na >= 2) {
+    int w = na > 2 ? (int)parse_int(a[2]) : (int)((strlen(a[0]) > strlen(a[1])) ? strlen(a[0]) : strlen(a[1]));
+    char b[65]; int carry = 0; add_bits(a[0], a[1], w, b, &carry);
+    int n = add(out, 0, "Add from the right, carrying 1 when a column totals 2 or 3.");
+    n = add(out, n, "%s + %s = %s", a[0], a[1], b);
+    if (carry) n = add(out, n, "carry beyond %d bits is overflow if width is fixed.", w);
+    return n;
+  }
+  if (starts(s, "shift(") && na >= 3) {
+    int k = (int)parse_int(a[2]); char b[65]; int len = (int)strlen(a[0]);
+    for (int i = 0; i < len && i < 64; ++i) b[i] = a[0][i]; b[len] = 0;
+    bool left = a[1][0] == 'l' || a[1][0] == '+';
+    for (int step = 0; step < k; ++step) {
+      if (left) { for (int i = 0; i < len - 1; ++i) b[i] = b[i+1]; b[len-1] = '0'; }
+      else { for (int i = len - 1; i > 0; --i) b[i] = b[i-1]; b[0] = '0'; }
+    }
+    int n = add(out, 0, left ? "Logical left shift: move bits left, fill right with 0." : "Logical right shift: move bits right, fill left with 0.");
+    n = add(out, n, "%s shifted %s by %d = %s", a[0], left ? "left" : "right", k, b);
+    return add(out, n, left ? "This multiplies unsigned value by 2^%d if no overflow." : "This divides unsigned value by 2^%d, discarding remainder.", k);
   }
   return 0;
 }
@@ -213,6 +272,11 @@ static int eval_float(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]
     int n = add(out, 0, "Add binary fixed-point place values.");
     return add(out, n, "%s_2 = %.10g_10", a[0], v);
   }
+  if (starts(s, "fixedtc(") && na == 1) {
+    double v = fixed_tc_decode(a[0]);
+    int n = add(out, 0, "Decode the whole part as two's complement, then add fractional places.");
+    return add(out, n, "%s_2 = %.10g_10", a[0], v);
+  }
   if ((starts(s, "floatdec(") || starts(s, "fpdec(")) && na >= 2) {
     double m = mantissa_decode(a[0]);
     int e = twos_decode(a[1]);
@@ -225,6 +289,26 @@ static int eval_float(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]
     int n = add(out, 0, "Normalised AQA mantissa starts 01 if positive, 10 if negative.");
     bool ok = (a[0][0] == '0' && a[0][1] == '1') || (a[0][0] == '1' && a[0][1] == '0');
     return add(out, n, "%s is %snormalised", a[0], ok ? "" : "not ");
+  }
+  if ((starts(s, "floatenc(") || starts(s, "fpenc(")) && na >= 3) {
+    double value = num(a[0]); int mb = (int)parse_int(a[1]), eb = (int)parse_int(a[2]);
+    int e = 0; double m = value;
+    if (m != 0) {
+      while (m >= 1.0 || m < -1.0) { m /= 2.0; ++e; }
+      while (m > -0.5 && m < 0.5) { m *= 2.0; --e; }
+    }
+    char mant[65], expb[65]; mant[0] = m < 0 ? '1' : '0';
+    double rem = m < 0 ? m + 1.0 : m;
+    for (int i = 1; i < mb; ++i) {
+      double bitv = pow2(-i);
+      if (rem >= bitv) { mant[i] = '1'; rem -= bitv; }
+      else mant[i] = '0';
+    }
+    mant[mb] = 0; to_bin(e, eb, expb);
+    int n = add(out, 0, "Normalise so mantissa starts 01 for positive or 10 for negative.");
+    n = add(out, n, "%.10g = %.10g * 2^%d", value, m, e);
+    n = add(out, n, "mantissa (%d bits) = %s", mb, mant);
+    return add(out, n, "exponent (%d bits) = %s", eb, expb);
   }
   return 0;
 }
@@ -252,9 +336,12 @@ struct BParser {
   }
   int expr() {
     int v = term();
-    while (s[pos] == '+' || s[pos] == '|' || s[pos] == '^') {
+    while (s[pos] == '+' || s[pos] == '|' || s[pos] == '^' || s[pos] == '@' || s[pos] == '#') {
       char op = s[pos++]; int r = term();
-      v = op == '^' ? (v != r) : (v || r);
+      if (op == '^') v = v != r;
+      else if (op == '@') v = !(v && r);
+      else if (op == '#') v = !(v || r);
+      else v = v || r;
     }
     return v;
   }
@@ -268,6 +355,33 @@ static void collect_vars(const char *e, char *vars, int *vc) {
     bool seen = false; for (int j = 0; j < *vc; ++j) if (vars[j] == c) seen = true;
     if (!seen && *vc < 6) vars[(*vc)++] = c;
   }
+}
+
+static void app_ch(char *s, int *pos, int cap, char c);
+static void app_str(char *s, int *pos, int cap, const char *t);
+
+static void bool_norm(const char *src, char *dst, int cap) {
+  int j = 0;
+  for (int i = 0; src[i] && j + 2 < cap;) {
+    if (strncmp(src + i, "nand", 4) == 0) { dst[j++] = '@'; i += 4; continue; }
+    if (strncmp(src + i, "nor", 3) == 0) { dst[j++] = '#'; i += 3; continue; }
+    if (strncmp(src + i, "xor", 3) == 0) { dst[j++] = '^'; i += 3; continue; }
+    if (strncmp(src + i, "and", 3) == 0) { dst[j++] = '&'; i += 3; continue; }
+    if (strncmp(src + i, "not", 3) == 0) { dst[j++] = '!'; i += 3; continue; }
+    if (strncmp(src + i, "or", 2) == 0) { dst[j++] = '+'; i += 2; continue; }
+    dst[j++] = src[i++];
+  }
+  dst[j] = 0;
+  char tmp[96]; int k = 0;
+  for (int i = 0; dst[i] && k + 2 < (int)sizeof(tmp); ++i) {
+    char c = dst[i], n = dst[i+1];
+    tmp[k++] = c;
+    bool left = isalpha((unsigned char)c) || c == ')' || c == '\'';
+    bool right = isalpha((unsigned char)n) || n == '(' || n == '!';
+    if (left && right) tmp[k++] = '&';
+  }
+  tmp[k] = 0;
+  int p = 0; app_str(dst, &p, cap, tmp);
 }
 
 struct Imp { int bits, mask, used; };
@@ -307,8 +421,11 @@ static void imp_text(const Imp &p, const char *vars, int vc, char *buf) {
 
 static int eval_bool(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
   char a[2][48]; int na = args(s, a, 2);
+  char exprbuf[96];
   const char *expr = (starts(s, "bool(") || starts(s, "truth(")) && na ? a[0] : 0;
   if (!expr) return 0;
+  bool_norm(expr, exprbuf, sizeof(exprbuf));
+  expr = exprbuf;
   char vars[8]; int vc; collect_vars(expr, vars, &vc);
   if (vc == 0 || vc > 6) return add(out, 0, "Use up to 6 Boolean variables.");
   int mins[64], mc = 0, rows = 1 << vc;
@@ -372,6 +489,7 @@ int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
   if (!s[0]) return add(out, 0, "Enter a CS calculation command.");
   int n = eval_base(s, out); if (n) return n;
   n = eval_twos(s, out); if (n) return n;
+  n = eval_binary_arith(s, out); if (n) return n;
   n = eval_float(s, out); if (n) return n;
   n = eval_storage(s, out); if (n) return n;
   n = eval_bool(s, out); if (n) return n;

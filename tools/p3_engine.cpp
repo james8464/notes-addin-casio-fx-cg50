@@ -156,6 +156,50 @@ static int eval_mech(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     int n = add(out, 0, "Moment = force * perpendicular distance.");
     return add(out, n, "M = %.6g*%.6g = %.6g Nm", f, d, f*d);
   }
+  if (starts(s, "incline(") && na >= 2) {
+    double m=num(a[0]), th=num(a[1])*M_PI/180.0, g=na>3?num(a[3]):9.8, mu=na>2?num(a[2]):0;
+    double parallel=m*g*sine(th), reaction=m*g*cosine(th), fr=mu*reaction;
+    int n = add(out, 0, "Resolve weight parallel and perpendicular to the plane.");
+    n = add(out, n, "parallel = mg sin theta = %.6g N", parallel);
+    n = add(out, n, "R = mg cos theta = %.6g N", reaction);
+    if (na > 2) n = add(out, n, "friction = mu R = %.6g N", fr);
+    return add(out, n, "net down plane = %.6g N", parallel - fr);
+  }
+  if (starts(s, "connected(") && na >= 3) {
+    double m1=num(a[0]), m2=num(a[1]), f=num(a[2]), ares=f/(m1+m2), T=m1*ares;
+    int n = add(out, 0, "Treat connected particles as one system for acceleration.");
+    n = add(out, n, "a = F/(m1+m2) = %.6g/(%.6g+%.6g)", f, m1, m2);
+    n = add(out, n, "a = %.6g m/s^2", ares);
+    return add(out, n, "tension on m1: T = m1*a = %.6g N", T);
+  }
+  if (starts(s, "pulley(") && na >= 2) {
+    double m1=num(a[0]), m2=num(a[1]), g=na>2?num(a[2]):9.8, ares=(m2-m1)*g/(m1+m2), T=m1*(g+ares);
+    int n = add(out, 0, "For a light inextensible string, both masses have the same acceleration.");
+    n = add(out, n, "a = (m2-m1)g/(m1+m2) = %.6g", ares);
+    return add(out, n, "T = m1(g+a) = %.6g N", T);
+  }
+  if (starts(s, "impulse(") && na >= 3) {
+    double m=num(a[0]), u=num(a[1]), v=num(a[2]);
+    int n = add(out, 0, "Impulse equals change in momentum.");
+    return add(out, n, "I = m(v-u) = %.6g(%.6g-%.6g) = %.6g Ns", m, v, u, m*(v-u));
+  }
+  if (starts(s, "work(") && na >= 2) {
+    double f=num(a[0]), d=num(a[1]);
+    int n = add(out, 0, "Work done = force * distance in the direction of motion.");
+    return add(out, n, "W = %.6g*%.6g = %.6g J", f, d, f*d);
+  }
+  if (starts(s, "power(") && na >= 2) {
+    double w=num(a[0]), t=num(a[1]);
+    int n = add(out, 0, "Power = work done / time.");
+    return add(out, n, "P = %.6g/%.6g = %.6g W", w, t, w/t);
+  }
+  if (starts(s, "varacc(") && na >= 4) {
+    double c=num(a[0]), k=num(a[1]), u=num(a[2]), t=num(a[3]);
+    int n = add(out, 0, "Given a(t)=c+kt, integrate to get velocity.");
+    n = add(out, n, "v = u + ct + 1/2 kt^2");
+    n = add(out, n, "v = %.6g + %.6g*%.6g + 1/2*%.6g*%.6g^2 = %.6g", u, c, t, k, t, u+c*t+0.5*k*t*t);
+    return add(out, n, "s = ut + 1/2ct^2 + 1/6kt^3 = %.6g", u*t+0.5*c*t*t+k*t*t*t/6.0);
+  }
   return 0;
 }
 
@@ -188,6 +232,28 @@ static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     n = add(out, n, "Compare with alpha = %.6g.", alpha);
     return add(out, n, prob <= alpha ? "Reject H0 in context." : "Do not reject H0 in context.");
   }
+  if (starts(s, "cond(") && na >= 2) {
+    double pab=num(a[0]), pb=num(a[1]);
+    int n = add(out, 0, "Use P(A|B)=P(A and B)/P(B).");
+    return add(out, n, "P(A|B)=%.6g/%.6g=%.6g", pab, pb, pab/pb);
+  }
+  if (starts(s, "probor(") && na >= 3) {
+    double pa=num(a[0]), pb=num(a[1]), pab=num(a[2]);
+    int n = add(out, 0, "Use P(A or B)=P(A)+P(B)-P(A and B).");
+    return add(out, n, "%.6g+%.6g-%.6g=%.6g", pa, pb, pab, pa+pb-pab);
+  }
+  if (starts(s, "poisson(") && na >= 2) {
+    double lam=num(a[0]); int r=(int)num(a[1]); double fact=1; for(int i=2;i<=r;++i) fact*=i;
+    double e = 1.0, term = 1.0; for(int i=1;i<18;++i){ term *= -lam/i; e += term; }
+    int n = add(out, 0, "For X~Po(lambda), P(X=r)=e^-lambda lambda^r/r!.");
+    return add(out, n, "P(X=%d)=e^-%.6g*%.6g^%d/%d! = %.10g", r, lam, lam, r, r, e*pwr(lam,r)/fact);
+  }
+  if (starts(s, "regress(") && na >= 3) {
+    double a0=num(a[0]), b=num(a[1]), x=num(a[2]);
+    int n = add(out, 0, "Use the regression line y = a + bx.");
+    n = add(out, n, "y = %.6g + %.6g x", a0, b);
+    return add(out, n, "when x=%.6g, y=%.6g", x, a0+b*x);
+  }
   return 0;
 }
 
@@ -199,6 +265,7 @@ int p3_eval(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   n = eval_mech(s, out); if (n) return n;
   n = eval_stats(s, out); if (n) return n;
   n = add(out, 0, "Supported:");
-  n = add(out, n, "suvat projectile force weight friction moment");
-  return add(out, n, "normal binom binomcdf hypbinom");
+  n = add(out, n, "suvat projectile force weight friction moment incline");
+  n = add(out, n, "connected pulley impulse work power varacc");
+  return add(out, n, "normal binom binomcdf hypbinom cond probor poisson regress");
 }
