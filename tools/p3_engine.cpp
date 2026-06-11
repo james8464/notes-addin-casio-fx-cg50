@@ -351,6 +351,13 @@ static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     n = add(out, n, "Use fx-CG50 Normal CDF with lower, upper, sigma, mu.");
     return add(out, n, "NormalCD(lower=%.6g, upper=%.6g, sigma=%.6g, mu=%.6g)", lo, hi, sig, mu);
   }
+  if (starts3(s, "invnormal(", "inversenormal(", "normalinv(") && na >= 3) {
+    double area=num(a[0]), mu=num(a[1]), sig=num(a[2]);
+    int n = add(out, 0, "For X~N(mu,sigma^2), use inverse normal for a critical value.");
+    n = add(out, n, "Area to the left = %.6g.", area);
+    n = add(out, n, "Use fx-CG50 InvNorm(area, sigma, mu).");
+    return add(out, n, "InvNorm(%.6g, %.6g, %.6g)", area, sig, mu);
+  }
   if (starts3(s, "cond(", "conditional(", "given(") && na >= 2) {
     double pab=num(a[0]), pb=num(a[1]);
     int n = add(out, 0, "Use P(A|B)=P(A and B)/P(B).");
@@ -464,6 +471,9 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if ((has(t, "normaldistribution") || has(t, "normalcdf") || (has(t, "normal") && has(t, "between"))) && nv >= 4) {
     sprintf(cmd, "normalprob(%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3]); return eval_stats(cmd, out);
   }
+  if ((has(c, "invnormal") || has(c, "inversenormal") || (has(c, "normal") && (has(c, "critical") || has(c, "percentile")))) && nv >= 3) {
+    sprintf(cmd, "invnormal(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_stats(cmd, out);
+  }
   if ((has(t, "standardise") || has(t, "standardize") || has(t, "zscore")) && nv >= 3) {
     sprintf(cmd, "normal(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_stats(cmd, out);
   }
@@ -529,5 +539,5 @@ int p3_eval(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   n = add(out, 0, "Supported:");
   n = add(out, n, "suvat projectile force weight friction moment incline");
   n = add(out, n, "connected pulley impulse work power energy restitution vector varacc");
-  return add(out, n, "normal normalprob binom binomtail critbinom hypbinom cond probor poisson poissontail regress pmcc meanvar");
+  return add(out, n, "normal normalprob invnormal binom binomtail critbinom hypbinom cond probor poisson poissontail regress pmcc meanvar");
 }

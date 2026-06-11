@@ -72,6 +72,8 @@ def main():
     require("binomial hypothesis test n 20 p 0.4 x 4 alpha 0.05 lower", ["H0", "Compare", "context"])
     require("normalprob(40,60,50,10)", ["standardise", "NormalCD"])
     require("normal distribution between 40 and 60 mean 50 sd 10", ["standardise", "NormalCD"])
+    require("invnormal(0.95,100,15)", ["inverse normal", "InvNorm(0.95, 15, 100)"])
+    require("normal critical value area 0.95 mean 100 sd 15", ["inverse normal", "InvNorm(0.95, 15, 100)"])
     require("cond(0.18,0.3)", ["P(A|B)", "0.6"])
     require("conditional probability with p intersection 0.18 given p b 0.3", ["P(A|B)", "0.6"])
     require("probor(0.4,0.5,0.2)", ["P(A or B)", "0.7"])

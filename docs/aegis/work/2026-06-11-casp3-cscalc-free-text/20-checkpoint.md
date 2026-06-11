@@ -42,3 +42,22 @@ Evidence:
 Drift check:
 - Still inside CASP3 stats free-text hardening.
 - No CAS pure/menu/UI change.
+
+## 2026-06-11 Inverse Normal Slice
+
+Completed:
+- Added `invnormal(area,mu,sigma)` / `normalinv` / `inversenormal` setup route.
+- Added free-text parsing for normal critical-value / percentile phrasing.
+- Output gives exam setup and fx-CG50 `InvNorm(area, sigma, mu)` input.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CASP3 stats free-text/method support.
+- No UI/menu/status changes.
