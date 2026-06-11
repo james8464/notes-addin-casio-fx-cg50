@@ -179,3 +179,22 @@ Evidence:
 Drift check:
 - Still inside CSCALC AQA Paper 2 storage-calculation support.
 - Did not touch CAS Pure, CASP3, NOTES, UI/menu/status code.
+
+## 2026-06-11 CASP3 Mechanics Free-Text Slice
+
+Completed:
+- Added free-text dispatch for impulse/momentum-change questions.
+- Added free-text dispatch for variable-acceleration integration questions.
+- Hardened connected-particles parsing when the prompt contains spaced words.
+- Prevented generic force parsing from stealing connected-particle prompts.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CASP3 Edexcel Paper 3 mechanics support.
+- Did not touch CAS Pure, CSCALC, NOTES, UI/menu/status code.

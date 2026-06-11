@@ -474,7 +474,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if ((has(t, "projectile") || has(t, "projectiles")) && nv >= 2) {
     sprintf(cmd, "projectile(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
   }
-  if ((has(t, "force") || has(t, "newton")) && (has(t, "mass") || has(t, "accel")) && nv >= 2) {
+  if ((has(t, "force") || has(t, "newton")) && (has(t, "mass") || has(t, "accel")) && !has(t, "connected") && !has(t, "pulley") && nv >= 2) {
     sprintf(cmd, "force(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
   }
   if (has(t, "weight") && nv >= 1) {
@@ -489,8 +489,11 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if ((has(t, "incline") || has(t, "slope") || has(t, "plane")) && nv >= 2) {
     sprintf(cmd, "incline(%.10g,%.10g,%.10g)", v[0], v[1], nv > 2 ? v[2] : 0); return eval_mech(cmd, out);
   }
-  if ((has(t, "pulley") || has(t, "connectedparticles")) && nv >= 2) {
+  if ((has(t, "pulley") || has(t, "connectedparticles") || (has(t, "connected") && has(t, "particle"))) && nv >= 2) {
     sprintf(cmd, has(t, "pulley") ? "pulley(%.10g,%.10g)" : "connected(%.10g,%.10g,%.10g)", v[0], v[1], nv > 2 ? v[2] : 0); return eval_mech(cmd, out);
+  }
+  if ((has(t, "impulse") || has(t, "momentumchange")) && nv >= 3) {
+    sprintf(cmd, "impulse(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_mech(cmd, out);
   }
   if (has(t, "power") && nv >= 2) {
     sprintf(cmd, "power(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
@@ -506,6 +509,9 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if ((has(t, "resultant") || has(t, "vector")) && nv >= 2) {
     sprintf(cmd, "vector(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
+  }
+  if ((has(t, "varacc") || has(t, "variableacceleration") || (has(t, "acceleration") && has(t, "integrate"))) && nv >= 4) {
+    sprintf(cmd, "varacc(%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3]); return eval_mech(cmd, out);
   }
   if ((has(t, "normaldistribution") || has(t, "normalcdf") || (has(t, "normal") && has(t, "between"))) && nv >= 4) {
     sprintf(cmd, "normalprob(%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3]); return eval_stats(cmd, out);
