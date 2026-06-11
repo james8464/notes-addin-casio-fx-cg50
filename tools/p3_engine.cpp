@@ -422,6 +422,15 @@ static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     n = add(out, n, tail == 2 ? "P(X>%d)=1-P(X<=%d)" : tail == 1 ? "P(X>=%d)=1-P(X<=%d)" : tail == -2 ? "P(X<%d)" : "P(X<=%d)", r, lo-1);
     return add(out, n, "= %.10g", ans);
   }
+  if (starts3(s, "poissonnorm(", "normalapproxpoisson(", "poissonnormal(") && na >= 3) {
+    double lam=num(a[0]), lo=num(a[1]), hi=num(a[2]), sig=root(lam), clo=lo-0.5, chi=hi+0.5;
+    int n = add(out, 0, "Use normal approximation to X ~ Po(%.6g).", lam);
+    n = add(out, n, "mu = lambda = %.6g, sigma = sqrt(lambda) = %.6g", lam, sig);
+    n = add(out, n, "continuity correction: use %.6g < Y < %.6g", clo, chi);
+    n = add(out, n, "z1=(%.6g-%.6g)/%.6g = %.6g", clo, lam, sig, (clo-lam)/sig);
+    n = add(out, n, "z2=(%.6g-%.6g)/%.6g = %.6g", chi, lam, sig, (chi-lam)/sig);
+    return add(out, n, "NormalCD(lower=%.6g, upper=%.6g, sigma=%.6g, mu=%.6g)", clo, chi, sig, lam);
+  }
   if (starts3(s, "regress(", "regression(", "predict(") && na >= 3) {
     double a0=num(a[0]), b=num(a[1]), x=num(a[2]);
     int n = add(out, 0, "Use the regression line y = a + bx.");
@@ -602,6 +611,9 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     return eval_stats(cmd, out);
   }
   if (has(t, "poisson") && nv >= 2) {
+    if (has(t, "normal") && (has(t, "approx") || has(t, "approximation")) && nv >= 3) {
+      sprintf(cmd, "poissonnorm(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_stats(cmd, out);
+    }
     int tail = 0;
     if (has(c, "morethan")) tail = 2;
     else if (has(c, "atleast") || has(c, "greaterthanorequal")) tail = 1;
@@ -658,5 +670,5 @@ int p3_eval(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   n = add(out, 0, "Supported:");
   n = add(out, n, "suvat projectile force weight friction moment incline");
   n = add(out, n, "connected pulley impulse work power energy restitution vector varacc");
-  return add(out, n, "normal normalprob invnormal binom binomtail critbinom hypbinom cond probor poisson poissontail regress pmcc meanvar code");
+  return add(out, n, "normal normalprob invnormal binom binomtail critbinom hypbinom cond probor poisson poissontail poissonnorm regress pmcc meanvar code");
 }

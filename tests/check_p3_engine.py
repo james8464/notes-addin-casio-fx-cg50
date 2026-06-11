@@ -93,6 +93,8 @@ def main():
     require("poisson mean 3 exactly 2", ["Po(lambda)", "P(X=2)"])
     require("poisson mean 3 at most 2", ["cumulative", "P(X<=2)"])
     require("poisson mean 3 at least 2", ["cumulative", "P(X>=2)"])
+    require("poissonnorm(64,55,70)", ["normal approximation", "mu = lambda = 64", "continuity correction", "NormalCD"])
+    require("normal approximation to poisson mean 64 between 55 and 70", ["normal approximation", "sigma = sqrt(lambda)", "NormalCD"])
     require("regress(2,0.5,10)", ["regression line", "y=7"])
     require("regresscalc(5,20,30,10,18,8)", ["least-squares", "xbar", "b = Sxy/Sxx", "regression line", "when x=8"])
     require("regression n=5 sx=20 sy=30 sxx=10 sxy=18 x=8", ["least-squares", "xbar = Sx/n", "regression line", "when x=8"])
