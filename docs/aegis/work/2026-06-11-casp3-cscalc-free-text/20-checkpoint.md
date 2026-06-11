@@ -198,3 +198,22 @@ Evidence:
 Drift check:
 - Still inside CASP3 Edexcel Paper 3 mechanics support.
 - Did not touch CAS Pure, CSCALC, NOTES, UI/menu/status code.
+
+## 2026-06-11 CSCALC Closest Float Slice
+
+Completed:
+- Added `floatnearest(value,mantissaBits,exponentBits)` / `fpnearest` / `closestfloat`.
+- Added working for normalising the value, finding the step at that exponent, rounding to nearest representable multiple, and emitting mantissa/exponent bits.
+- Added free-text parsing for closest/nearest representable floating-point questions.
+- Ordered free-text dispatch so `representable` does not get stolen by floating-point encode.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CSCALC AQA Paper 2 floating-point calculation support.
+- Did not touch CAS Pure, CASP3, NOTES, UI/menu/status code.

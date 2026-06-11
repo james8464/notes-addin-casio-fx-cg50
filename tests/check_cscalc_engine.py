@@ -59,6 +59,8 @@ def main():
     require("floating point encode -608 with 7 bit mantissa and 5 bit exponent", ["Normalise", "mantissa (7 bits)", "exponent (5 bits)"])
     require("floatprecision(8,4)", ["last mantissa bit", "2^(4-(8-1))", "0.125"])
     require("floating point precision mantissa 8 exponent 4", ["last mantissa bit", "0.125"])
+    require("floatnearest(12.7,8,4)", ["closest representable", "step at this exponent", "nearest multiple = 12.75", "mantissa (8 bits)", "exponent (4 bits)"])
+    require("closest representable floating point value 12.7 with 8 bit mantissa and 4 bit exponent", ["closest representable", "nearest multiple = 12.75"])
     require("floatrange(8,4)", ["exponent range", "mantissa step", "largest positive"])
     require("floating point range with 8 bit mantissa and 4 bit exponent", ["exponent range", "largest positive"])
     require("normal(0101100)", ["Normalised", "is normalised"])

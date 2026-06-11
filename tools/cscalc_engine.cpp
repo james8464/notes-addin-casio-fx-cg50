@@ -159,6 +159,10 @@ static double pow2(int e) {
   return e < 0 ? 1 / r : r;
 }
 
+static double round_nearest(double x) {
+  return x >= 0 ? (long long)(x + 0.5) : (long long)(x - 0.5);
+}
+
 static int bin_unsigned(const char *s) {
   int v = 0;
   for (int i = 0; s[i]; ++i) if (s[i] == '0' || s[i] == '1') v = v * 2 + (s[i] - '0');
@@ -514,6 +518,28 @@ static int eval_float(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]
     int n = add(out, 0, "Precision is the value of the last mantissa bit after scaling.");
     n = add(out, n, "step = 2^(exponent-(mantissa bits-1))");
     return add(out, n, "step = 2^(%d-(%d-1)) = %.10g", e, mb, step);
+  }
+  if (starts3(s, "floatnearest(", "fpnearest(", "closestfloat(") && na >= 3) {
+    double value = num(a[0]); int mb = (int)parse_int(a[1]), eb = (int)parse_int(a[2]);
+    int e = 0; double m = value;
+    if (m != 0) {
+      while (m >= 1.0 || m < -1.0) { m /= 2.0; ++e; }
+      while (m > -0.5 && m < 0.5) { m *= 2.0; --e; }
+    }
+    double step = pow2(e - (mb - 1));
+    double rounded = round_nearest(value / step) * step;
+    double rm = rounded; int re = 0;
+    if (rm != 0) {
+      while (rm >= 1.0 || rm < -1.0) { rm /= 2.0; ++re; }
+      while (rm > -0.5 && rm < 0.5) { rm *= 2.0; --re; }
+    }
+    char mant[65], expb[65]; mantissa_encode(rm, mb, mant); to_bin(re, eb, expb);
+    int n = add(out, 0, "Find the closest representable floating-point value.");
+    n = add(out, n, "%.10g = %.10g * 2^%d", value, m, e);
+    n = add(out, n, "step at this exponent = 2^(%d-(%d-1)) = %.10g", e, mb, step);
+    n = add(out, n, "nearest multiple = %.10g", rounded);
+    n = add(out, n, "mantissa (%d bits) = %s", mb, mant);
+    return add(out, n, "exponent (%d bits) = %s", eb, expb);
   }
   if (starts3(s, "floatrange(", "fprange(", "realrange(") && na >= 2) {
     int mb = (int)parse_int(a[0]), eb = (int)parse_int(a[1]);
@@ -975,6 +1001,9 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   if ((has(t, "normalise") || has(t, "normalize")) && nb >= 2) {
     sprintf(cmd, "floatnorm(%s,%s)", bits[0], bits[1]); return eval_float(cmd, out);
+  }
+  if ((has(t, "closest") || has(t, "nearest")) && (has(t, "float") || has(t, "floating") || has(t, "representable")) && nv >= 3) {
+    sprintf(cmd, "floatnearest(%.10g,%lld,%lld)", v[0], (long long)v[1], (long long)v[2]); return eval_float(cmd, out);
   }
   if ((has(t, "float") || has(t, "floating")) && (has(t, "encode") || has(t, "represent") || has(t, "convert")) && nv >= 3) {
     sprintf(cmd, "floatenc(%.10g,%lld,%lld)", v[0], (long long)v[1], (long long)v[2]); return eval_float(cmd, out);
