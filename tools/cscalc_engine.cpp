@@ -1515,7 +1515,7 @@ static int eval_storage(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LE
     double oldv = num(a[0]), newv = num(a[1]);
     int n = add(out, 0, "Compression ratio = original / compressed.");
     n = add(out, n, "ratio = %.10g : 1", oldv / newv);
-    return add(out, n, "saving = %.6g%%", (oldv - newv) * 100.0 / oldv);
+    return add(out, n, "percentage reduction = %.6g%%", (oldv - newv) * 100.0 / oldv);
   }
   if (starts3(s, "dictcompress(", "dictionary(", "lzdict(") && na >= 4) {
     double orig = num(a[0]), dict = num(a[1]), refs = num(a[2]), rb = num(a[3]);
@@ -1524,7 +1524,7 @@ static int eval_storage(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LE
     n = add(out, n, "reference bits = %s*%s = %.10g", a[2], a[3], refs * rb);
     n = add(out, n, "compressed bits = %s + %.10g = %.10g", a[1], refs * rb, enc);
     n = add(out, n, "ratio = %.10g : 1", orig / enc);
-    return add(out, n, "saving = %.6g%%", (orig - enc) * 100.0 / orig);
+    return add(out, n, "percentage reduction = %.6g%%", (orig - enc) * 100.0 / orig);
   }
   if (starts3(s, "rle(", "runlength(", "runlengthencoding(") && na >= 3) {
     long long bits = parse_int(a[0]) * (parse_int(a[1]) + parse_int(a[2]));
@@ -2851,6 +2851,7 @@ static const char *skip_bool_words(const char *e) {
   while (moved) {
     moved = false;
     if (starts(e, "simplify")) { e += 8; moved = true; }
+    if (starts(e, "the")) { e += 3; moved = true; }
     if (starts(e, "using")) { e += 5; moved = true; }
     if (starts(e, "algebra")) { e += 7; moved = true; }
     if (starts(e, "prove")) { e += 5; moved = true; }
@@ -3071,6 +3072,9 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     sprintf(cmd + p, ")");
     return eval_trace(cmd, out);
   }
+  if ((has(t, "image") || has(t, "bitmap")) && (has(t, "colours") || has(t, "colors")) && nv >= 3) {
+    sprintf(cmd, "imagecolors(%lld,%lld,%lld)", (long long)v[0], (long long)v[1], (long long)v[2]); return eval_storage(cmd, out);
+  }
   if ((has(t, "image") || has(t, "bitmap")) && label_num(input,"width",&width) && label_num(input,"height",&height) && (label_num(input,"depth",&depth) || label_num(input,"bits",&depth))) {
     if (image_depth_is_bytes(t)) return add_image_byte_depth_lines(out, (long long)width, (long long)height, (long long)depth);
     sprintf(cmd, "image(%lld,%lld,%lld)", (long long)width, (long long)height, (long long)depth); return eval_storage(cmd, out);
@@ -3168,8 +3172,8 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       int un = add_bitrate_unit_lines(out, size, seconds, t);
       if (un) return un;
     }
-    if (has(t, "megabyte") || has(t, "mbyte")) sprintf(cmd, "bitratemb(%.10g,%.10g)", size, seconds);
-    else if (has(t, "kilobyte") || has(t, "kbyte")) sprintf(cmd, "bitratekb(%.10g,%.10g)", size, seconds);
+    if (has(t, "megabyte") || has(t, "mbyte") || has(t, "mb")) sprintf(cmd, "bitratemb(%.10g,%.10g)", size, seconds);
+    else if (has(t, "kilobyte") || has(t, "kbyte") || has(t, "kb")) sprintf(cmd, "bitratekb(%.10g,%.10g)", size, seconds);
     else sprintf(cmd, "bitrate(%.10g,%.10g)", size, seconds);
     return eval_storage(cmd, out);
   }
