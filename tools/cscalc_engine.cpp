@@ -1321,6 +1321,26 @@ static int eval_storage(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LE
     n = add(out, n, "%s*%s*%d = %lld bits = %.6g bytes", a[0], a[1], depth, bits, bytes);
     return add(out, n, "= %.6g MB", bytes / 1000000.0);
   }
+  if (starts3(s, "colourdepth(", "colordepth(", "bitsperpixel(") && na >= 1) {
+    int colours = (int)parse_int(a[0]);
+    int depth = ceil_log2_ll(colours);
+    int n = add(out, 0, "Colour depth = ceil(log2(number of colours)).");
+    n = add(out, n, "Need 2^b >= %d colours.", colours);
+    return add(out, n, "ceil(log2(%d)) = %d bits per pixel", colours, depth);
+  }
+  if (starts3(s, "colourcount(", "colorcount(", "pixelcolours(") && na >= 1) {
+    int depth = (int)parse_int(a[0]);
+    long long colours = depth >= 62 ? 0 : (1LL << depth);
+    int n = add(out, 0, "Number of colours = 2^(bits per pixel).");
+    return add(out, n, "2^%d = %lld colours", depth, colours);
+  }
+  if (starts3(s, "symbolbits(", "symbolsbits(", "bitsforsymbols(") && na >= 1) {
+    int symbols = (int)parse_int(a[0]);
+    int bits = ceil_log2_ll(symbols);
+    int n = add(out, 0, "Bits per symbol = ceil(log2(number of symbols)).");
+    n = add(out, n, "Need 2^b >= %d symbols.", symbols);
+    return add(out, n, "ceil(log2(%d)) = %d bits", symbols, bits);
+  }
   if (starts3(s, "sound(", "audio(", "soundsize(") && na >= 3) {
     long long chans = na > 3 ? parse_int(a[3]) : 1;
     double bits = num(a[0]) * num(a[1]) * num(a[2]) * chans;
@@ -2779,6 +2799,13 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   char hex_tok[32]; bool has_hex_tok = scan_hex_token(t, hex_tok, sizeof(hex_tok));
   char cmd[160];
   double width=0, height=0, depth=0;
+  if ((has(t, "ascii") || has(t, "unicode")) &&
+      (has(t, "storage") || has(t, "store") || has(t, "size") || has(t, "encoded") || has(t, "characters") || has(t, "text")) &&
+      nv >= 1) {
+    int bpc = has(t, "unicode") ? 16 : 8;
+    sprintf(cmd, "chars(%lld,%d)", (long long)v[0], bpc);
+    return eval_storage(cmd, out);
+  }
   if (has(t, "ascii") || has(t, "unicode") || has(t, "codepoint") || has(t, "charactercode")) {
     int ch = -1;
     bool uni = has(t, "unicode") || has(t, "codepoint");
@@ -2854,6 +2881,17 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   if ((has(t, "image") || has(t, "bitmap")) && label_num(input,"width",&width) && label_num(input,"height",&height) && (label_num(input,"colours",&depth) || label_num(input,"colors",&depth))) {
     sprintf(cmd, "imagecolors(%lld,%lld,%lld)", (long long)width, (long long)height, (long long)depth); return eval_storage(cmd, out);
+  }
+  if ((has(t, "symbol") || has(t, "symbols")) && (has(t, "bits") || has(t, "bit")) && (has(t, "needed") || has(t, "need") || has(t, "represent")) && nv >= 1) {
+    sprintf(cmd, "symbolbits(%lld)", (long long)v[0]); return eval_storage(cmd, out);
+  }
+  if ((has(t, "colour") || has(t, "color")) &&
+      (has(t, "bitsperpixel") || has(t, "bitperpixel") || has(t, "bits,per,pixel") ||
+       has(t, "bit,per,pixel") || has(t, "depth") || has(t, "represented")) && nv >= 1) {
+    if ((has(t, "bits") && (has(t, "needed") || has(t, "need"))) || has(t, "bitsneeded") || has(t, "depth")) {
+      sprintf(cmd, "colourdepth(%lld)", (long long)v[0]); return eval_storage(cmd, out);
+    }
+    sprintf(cmd, "colourcount(%lld)", (long long)v[0]); return eval_storage(cmd, out);
   }
   if (has(t, "sound") || has(t, "audio")) {
     double rate=0, seconds=0, res=0, channels=1;
@@ -3112,6 +3150,11 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   if ((has(t, "normalise") || has(t, "normalize")) && nb >= 2) {
     sprintf(cmd, "floatnorm(%s,%s)", bits[0], bits[1]); return eval_float(cmd, out);
+  }
+  if ((has(t, "float") || has(t, "floating") || has(t, "normalised") || has(t, "normalized") || (has(t, "mantissa") && has(t, "exponent"))) &&
+      (has(t, "range") || has(t, "largest") || has(t, "smallest")) &&
+      !(has(t, "added") || has(t, "add") || has(t, "need") || has(t, "needed") || has(t, "exact")) && nv >= 2) {
+    sprintf(cmd, "floatrange(%lld,%lld)", (long long)v[0], (long long)v[1]); return eval_float(cmd, out);
   }
   if ((has(t, "closest") || has(t, "nearest")) && (has(t, "float") || has(t, "floating") || has(t, "representable")) && nv >= 3) {
     sprintf(cmd, "floatnearest(%.10g,%lld,%lld)", v[0], (long long)v[1], (long long)v[2]); return eval_float(cmd, out);

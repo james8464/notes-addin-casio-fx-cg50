@@ -1,5 +1,26 @@
 # Checkpoint
 
+## 2026-06-12 CSCALC Storage And Float Range Wording Slice
+
+Completed:
+- Added generic colour-depth inverse working: colours from bits per pixel, and bits per pixel from colour count.
+- Added generic symbol-bit working for prompts like `257 different symbols`.
+- Fixed ASCII/Unicode storage prose so it routes to text-size working instead of code-point conversion.
+- Broadened floating-point range wording so `largest positive`/`smallest positive` mantissa-exponent prompts show range working.
+- Tightened the float-range route so it does not steal `extra mantissa bits needed` prompts.
+- Added regression tests and rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CSCALC AQA Paper 2 free-text calculation support.
+- Did not touch CAS Pure behavior, CASP3 logic, NOTES, menus, or shared UI/status code.
+
 ## 2026-06-12 CSCALC Boolean Old-Syntax Slice
 
 Completed:
