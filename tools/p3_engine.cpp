@@ -869,6 +869,17 @@ static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     n = add(out, n, "r_s = 1 - 6*%.6g/(%.6g(%.6g^2-1))", sd2, n0, n0);
     return add(out, n, "r_s = %.10g", r);
   }
+  if (starts3(s, "corrtest(", "correlationtest(", "pmcctest(") && na >= 2) {
+    double r=num(a[0]), crit=num(a[1]), tail=na>2?num(a[2]):0;
+    double ar = r < 0 ? -r : r;
+    bool reject = tail > 0 ? r > crit : (tail < 0 ? r < -crit : ar > crit);
+    int n = add(out, 0, "Test for correlation using the critical value.");
+    n = add(out, n, "H0: rho = 0, H1: %s", tail > 0 ? "rho > 0" : (tail < 0 ? "rho < 0" : "rho != 0"));
+    if (tail == 0) n = add(out, n, "Compare |r| with critical value: |%.6g| = %.6g", r, ar);
+    else n = add(out, n, "Compare r with critical value in the %s tail.", tail > 0 ? "positive" : "negative");
+    n = add(out, n, "%s critical value %.6g", reject ? "Reject H0 because test statistic passes" : "Do not reject H0 because test statistic does not pass", crit);
+    return add(out, n, reject ? "There is evidence of correlation in context." : "There is insufficient evidence of correlation in context.");
+  }
   if (starts3(s, "meanvar(", "variance(", "summary(") && na >= 3) {
     double n0=num(a[0]), sx=num(a[1]), sx2=num(a[2]), mean=sx/n0, var=sx2/n0-mean*mean;
     int n = add(out, 0, "Use summary statistics formulae.");
@@ -1243,6 +1254,12 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if (has(t, "poisson") && (has(t, "mean") || has(t, "variance") || has(t, "standarddeviation") || has(t, "sd")) && nv >= 1) {
     sprintf(cmd, "poissonstats(%.10g)", v[0]); return eval_stats(cmd, out);
+  }
+  if ((has(t, "pmcc") || has(t, "correlation") || has(t, "spearman")) &&
+      (has(t, "critical") || has(t, "cv")) && (has(t, "test") || has(t, "hypothesis") || has(t, "significant")) && nv >= 2) {
+    double r=0, crit=0; bool hr=label_num(input,"r",&r), hc=label_num(input,"critical",&crit) || label_num(input,"cv",&crit);
+    int tail = has(t, "positive") || has(t, "upper") ? 1 : (has(t, "negative") || has(t, "lower") ? -1 : 0);
+    sprintf(cmd, "corrtest(%.10g,%.10g,%d)", hr ? r : v[0], hc ? crit : v[1], tail); return eval_stats(cmd, out);
   }
   if (has(t, "pmcc") || has(t, "correlation")) {
     double n0=0, sx=0, sy=0, sxy=0, sx2=0, sy2=0, sxx=0, syy=0;
