@@ -472,6 +472,9 @@ def main():
     require("bool(A+B+C+D+E+F)", ["simplified = F+E+D+C+B+A"])
     require("How many bits are needed for the address bus to address 8 GiB of byte addressable memory?", ["locations = 8589934592*8/8 = 8589934592", "ceil(log2(8589934592)) = 33 bits"])
     require("A file of 48 MiB is downloaded in 12 seconds. Calculate the bit rate in Mbit/s.", ["48 MiB = 402653184 bits", "bit rate = 402653184/12 = 33554432 bit/s", "= 33.554432 Mbit/s"])
+    require("Convert denary -45 to 8 bit twos complement and add 19.", ["11010011=-45, 00010011=19", "-45+19=-26 -> 11100110"])
+    require("Using 10 bit mantissa and 6 bit exponent floating point, decode 0101000000 111110.", ["mantissa 0101000000 = 0.625", "exponent 111110 = -2", "value = 0.625 * 2^-2 = 0.15625"])
+    require("A sound sample uses 48 kHz sample rate, 24 bit resolution, stereo, for 2 minutes. Calculate storage in MiB.", ["48000*120*24*2 = 276480000 bits", "= 32.95898438 MiB"])
     print("OK cscalc engine")
 
 

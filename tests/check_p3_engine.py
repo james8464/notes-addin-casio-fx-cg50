@@ -523,6 +523,11 @@ def main():
     require("A particle of mass 3kg is pulled up a rough plane angle 20 degrees by a force 25N parallel to the plane. It accelerates at 1.2 m/s^2. Find coefficient of friction.", ["Use F=ma along the plane and friction = mu R.", "25 - 10.05539221 - mu*27.62647834 = 3*1.2", "mu = 0.410642"])
     require("A car of mass 900 kg moves up a slope at constant speed 12 m/s. Engine power is 18 kW and resistance is 300 N. Find the angle of the slope.", ["driving force = P/v = 18000/12 = 1500", "sin(theta) = (1500-300)/(900*9.8)", "theta = 7.819596"])
     require("A normal random variable X has mean 30 and standard deviation 4. Given X is greater than 26, find P(X<34).", ["A and B gives 26<X<34.", "P(B)=0.8413447404", "conditional probability = 0.81142657"])
+    require("A cyclist travels along a straight road with velocity v=4t^3-3t+2. Find the acceleration when t=2 and displacement from t=0 to 3.", ["a = dv/dt = 12 t^2", "a(2) = 45", "displacement = 73.5 - 0 = 73.5"])
+    require("Events A and B are independent. P(A)=0.2 and P(A or B)=0.68. Find P(B).", ["P(A or B)=P(A)+P(B)-P(A)P(B).", "P(B) = (0.68-0.2)/(1-0.2) = 0.6"])
+    require("A car mass 1000kg travels up a hill at 15 m/s. Engine works at 30 kW against resistance 500N. Find slope angle.", ["driving force = P/v = 30000/15 = 2000", "sin(theta) = (2000-500)/(1000*9.8)", "theta = 8.804370"])
+    require("A ladder length 6m weight 80N rests against a smooth vertical wall at 70 degrees to the horizontal. Find reaction at wall and ground friction.", ["Ladder in equilibrium", "S = 14.5590648 N, so F = 14.5590648 N", "Vertical equilibrium: R = 80 + 0 = 80 N"])
+    require("A random variable X has pdf f(x)=k(4-x) for 0<x<4. Find k and P(X>1).", ["k = 2/4^2 = 0.125", "P(X>1)=integral from 1 to 4", "P(X>1) = 0.5625"])
     print("OK p3 engine")
 
 

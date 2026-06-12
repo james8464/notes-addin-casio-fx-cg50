@@ -4324,8 +4324,8 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
         return add(out, n, "samples = %.10g", rate * seconds);
       }
       if (nv >= 3) {
-        if (!(scan_near_after_word_num(t, "resolution", &res) || scan_near_after_word_num(t, "depth", &res) ||
-              scan_before_word_num(t, "bits", &res) || scan_before_word_num(t, "bit", &res))) {
+        if (!(scan_before_word_num(t, "bits", &res) || scan_before_word_num(t, "bit", &res) ||
+              scan_near_after_word_num(t, "resolution", &res) || scan_near_after_word_num(t, "depth", &res))) {
           for (int i = 0; i < nv; ++i)
             if (v[i] != dur && v[i] != rawRate && v[i] > 1 && v[i] <= 64) { res = v[i]; break; }
         }
@@ -4677,6 +4677,23 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   bool tc = has(t, "twos") || (has(t, "two") && has(t, "complement"));
   bool sm = has(t, "signmagnitude") || (has(t, "sign") && has(t, "magnitude"));
+  if (tc && (has(t, "add") || has(t, "sum") || has(t, "plus")) &&
+      (has(t, "denary") || has(t, "decimal") || has(t, "convert")) && nv >= 3) {
+    double bitsw = 0;
+    bool hb = scan_before_word_num(t, "bit", &bitsw) || scan_before_word_num(t, "bits", &bitsw);
+    if (!hb) bitsw = v[1];
+    long long x = 0, y = 0; bool hx = false;
+    for (int i = 0; i < nv; ++i) {
+      if (near_num(v[i], bitsw)) continue;
+      if (!hx) { x = (long long)v[i]; hx = true; }
+      else { y = (long long)v[i]; break; }
+    }
+    char a[65], b[65];
+    to_bin(x, (int)bitsw, a);
+    to_bin(y, (int)bitsw, b);
+    sprintf(cmd, "twosadd(%s,%s)", a, b);
+    return eval_twos(cmd, out);
+  }
   if ((has(t, "encode") || has(t, "convert") || (has(t, "represent") && !has(t, "representable") && !has(t, "represented") && !has(t, "closest") && !has(t, "explain"))) && (has(t, "floating") || has(t, "mantissa")) &&
       (has(t, "mantissa") && has(t, "exponent")) && nv >= 3) {
     double mb=0, eb=0, tmp=0, value=v[0];
@@ -4721,6 +4738,15 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   if ((has(t, "float") || has(t, "floating") || (has(t, "mantissa") && has(t, "exponent"))) &&
       (has(t, "decode") || has(t, "denary") || has(t, "decimal") || has(t, "number")) && nb >= 2) {
+    double mbw=0, ebw=0, tmp=0;
+    bool hM = scan_bit_width_before_label(t, "mantissa", &tmp) || scan_before_word_num(t, "mantissa", &tmp); if (hM) mbw = tmp;
+    bool hE = scan_bit_width_before_label(t, "exponent", &tmp) || scan_before_word_num(t, "exponent", &tmp); if (hE) ebw = tmp;
+    if (hM && hE) {
+      int mi = -1, ei = -1;
+      for (int i = 0; i < nb; ++i) if ((int)strlen(bits[i]) == (int)mbw) { mi = i; break; }
+      for (int i = 0; i < nb; ++i) if (i != mi && (int)strlen(bits[i]) == (int)ebw) { ei = i; break; }
+      if (mi >= 0 && ei >= 0) { sprintf(cmd, "floatdec(%s,%s)", bits[mi], bits[ei]); return eval_float(cmd, out); }
+    }
     sprintf(cmd, "floatdec(%s,%s)", bits[0], bits[1]); return eval_float(cmd, out);
   }
   if ((has(t, "arithmeticshift") || (has(t, "arithmetic") && has(t, "shift")) || (has(t, "signed") && has(t, "shift"))) && nb >= 1 && nv >= 1) {

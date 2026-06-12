@@ -2843,6 +2843,14 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       double F2=A*t2*t2*t2*t2/4.0 + B*t2*t2*t2/3.0 + C*t2*t2/2.0 + D0*t2;
       int n = add(out, 0, "Displacement is the integral of velocity.");
       n = add(out, n, "v = %.6g t^3 %+.6g t^2 %+.6g t %+.6g", A, B, C, D0);
+      if (has(t, "acceleration")) {
+        double ta = 0; const char *tp = strstr(c, "t=");
+        if (tp) ta = read_num(tp + 2);
+        else first_num_after_word(input, "when", &ta);
+        double acc = 3*A*ta*ta + 2*B*ta + C;
+        n = add(out, n, "a = dv/dt = %.6g t^2 %+.6g t %+.6g", 3*A, 2*B, C);
+        n = add(out, n, "a(%.6g) = %.10g", ta, acc);
+      }
       n = add(out, n, "s = integral(v) dt = %.6g t^4 %+.6g t^3 %+.6g t^2 %+.6g t", A/4.0, B/3.0, C/2.0, D0);
       n = add(out, n, "displacement = [s] from t=%.6g to t=%.6g", t1, t2);
       return add(out, n, "displacement = %.10g - %.10g = %.10g", F2, F1, F2-F1);
@@ -3765,7 +3773,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     sprintf(cmd+p, ")");
     return eval_mech(cmd, out);
   }
-  if ((has(t, "beam") || has(t, "support") || has(t, "reaction")) && (has(t, "load") || has(t, "weight")) && nv >= 3) {
+  if ((has(t, "beam") || has(t, "support") || has(t, "reaction")) && (has(t, "load") || has(t, "weight")) &&
+      !has(t, "ladder") && nv >= 3) {
     if ((has(t, "rod") || has(t, "uniform") || has(t, "beam")) && has(t, "reaction") &&
         (has(t, "distance") || has(c, "xfrom") || has(t, "findx")) && nv >= 5) {
       double L = v[0], bw = v[1], load = v[2], RB = v[nv-1];
@@ -3958,7 +3967,28 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "v^2 = mu*g*r = %.6g*9.8*%.6g", mu, r);
     return add(out, n, "maximum speed = %.10g m/s", vmax);
   }
-  if ((has(t, "hill") || has(t, "hump") || has(t, "top")) && (has(t, "radius") || has(t, "speed")) && nv >= 3) {
+  if ((has(t, "hill") || has(t, "hump") || has(t, "top")) &&
+      (has(t, "radius") || has(t, "speed") || has(t, "m/s") || has(t, "power") || has(t, "kw")) && nv >= 3) {
+    if (has(t, "power") || has(t, "kw") || has(t, "kilowatt")) {
+      double m=0, P=0, spd=0, res=0;
+      bool hm=word_num(input,"mass",&m) || label_num(input,"mass",&m);
+      bool hP=word_num(input,"power",&P) || label_num(input,"power",&P) || prev_word_num(input,"kw",&P) || prev_word_num(input,"kilowatt",&P);
+      bool hs=word_num(input,"speed",&spd) || word_num(input,"velocity",&spd) || prev_word_num(input,"m/s",&spd);
+      bool hR=word_num(input,"resistance",&res) || label_num(input,"resistance",&res);
+      if (!hm) m = v[0];
+      if (!hP) P = v[1];
+      if (has(t, "kw") || has(t, "kilowatt")) P *= 1000.0;
+      if (!hs) for (int i = 0; i < nv; ++i)
+        if (!near_num(v[i], m) && !near_num(v[i], P) && !near_num(v[i]*1000.0, P) && !near_num(v[i], res)) { spd = v[i]; break; }
+      if (!hR) for (int i = nv - 1; i >= 0; --i)
+        if (!near_num(v[i], m) && !near_num(v[i], spd) && !near_num(v[i], P) && !near_num(v[i]*1000.0, P)) { res = v[i]; break; }
+      double drive = spd ? P / spd : 0;
+      double s = (drive - res) / (m * 9.8);
+      int n = add(out, 0, "At constant speed uphill, driving force balances resistance and mg sin(theta).");
+      n = add(out, n, "driving force = P/v = %.10g/%.10g = %.10g N", P, spd, drive);
+      n = add(out, n, "sin(theta) = (%.10g-%.10g)/(%.10g*9.8) = %.10g", drive, res, m, s);
+      return add(out, n, "theta = %.10g degrees", deg_arcsine(s));
+    }
     double m=0,r=0,u=0;
     bool hm=word_num(input,"mass",&m) || label_num(input,"mass",&m);
     bool hr=word_num(input,"radius",&r) || label_num(input,"radius",&r);
@@ -5717,6 +5747,18 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     return add(out, n, "P(A and B)=P(A)P(B)=%.10g*%.10g=%.10g", pa, pb, pab);
   }
   if ((has(t, "independent") || has(t, "independence")) &&
+      has(c, "p(aorb)=") &&
+      !has(c, "p(b)=") && (has(c, "p(b)") || has(c, "findp(b)") || has(t, "find")) && nv >= 2 && nv < 3) {
+    double pa = v[0], por = v[1];
+    double pb = (1 - pa) ? (por - pa) / (1 - pa) : 0;
+    double pab = pa * pb;
+    int n = add(out, 0, "For independent events, P(A and B)=P(A)P(B).");
+    n = add(out, n, "P(A or B)=P(A)+P(B)-P(A)P(B).");
+    n = add(out, n, "%.10g = %.10g + P(B) - %.10g*P(B)", por, pa, pa);
+    n = add(out, n, "P(B) = (%.10g-%.10g)/(1-%.10g) = %.10g", por, pa, pa, pb);
+    return add(out, n, "P(A and B)=%.10g*%.10g=%.10g", pa, pb, pab);
+  }
+  if ((has(t, "independent") || has(t, "independence")) &&
       (has(t, "union") || has(t, "either") || has(c, "p(aorb)") || has(c, "p(aor b)") || has(t, " or ") || has(c, "p(aandb)")) && nv >= 2 && nv < 3) {
     double pa = v[0], pb = v[1], pab = pa * pb, por = pa + pb - pab;
     int n = add(out, 0, "For independent events, P(A and B)=P(A)P(B).");
@@ -6299,6 +6341,16 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       double prob = k * (upper*(hi-lo) - (hi*hi-lo*lo)/2.0);
       n = add(out, n, "P(%.6g<X<%.6g)=integral from %.6g to %.6g of %.10g(%.6g-x) dx", lo, hi, lo, hi, k, upper);
       return add(out, n, "= %.10g", prob);
+    }
+    const char *gt = strstr(c, "p(x>");
+    const char *lt = strstr(c, "p(x<");
+    if (gt || lt) {
+      double bound = read_num((gt ? gt : lt) + 4);
+      double a = gt ? bound : 0, b = gt ? upper : bound;
+      double prob = k * (upper*(b-a) - (b*b-a*a)/2.0);
+      n = add(out, n, gt ? "P(X>%.6g)=integral from %.6g to %.6g of %.10g(%.6g-x) dx" :
+                           "P(X<%.6g)=integral from %.6g to %.6g of %.10g(%.6g-x) dx", bound, a, b, k, upper);
+      return add(out, n, gt ? "P(X>%.6g) = %.10g" : "P(X<%.6g) = %.10g", bound, prob);
     }
     return n;
   }
