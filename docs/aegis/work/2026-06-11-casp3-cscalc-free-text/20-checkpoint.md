@@ -1,5 +1,38 @@
 # Checkpoint
 
+## 2026-06-12 CS Boolean Named-Function And Implication Slice
+
+Completed:
+- Recovered the old Python Boolean implementation from git history and compared it with the current CSCALC C++ Boolean engine.
+- Confirmed the current C++ engine already carries the old core idea plus truth tables, K-map/minterms/maxterms, POS, NAND/NOR forms, proof checks, and Boolean-law traces.
+- Fixed free-text extraction gaps found by probes:
+  - `F(A,B,C)=...` simplification now simplifies the RHS instead of proving against the function label.
+  - `F(A,B)=...` POS/CNF prompts now use the RHS expression.
+  - `A implies B` is accepted in simplify/truth-table free text and normalized to implication.
+  - `to truth table` sentence tails no longer become fake variables.
+  - `variables X Y Z` in K-map prompts no longer treats `X` as a don't-care marker.
+- Added regressions and rebuilt calculator-ready files.
+
+Evidence:
+- Targeted probes for named Boolean functions, implication truth tables, POS named functions, and K-map variables: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 394132 bytes`
+  - `CSCALC.g3a: 230584 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Stayed inside CSCALC free-text Boolean parsing and generated calculator output.
+- Did not touch Pure CAS, CASP3 source, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for further unseen-case hardening.
+
 ## 2026-06-12 Incline Resistance, Beam Mass, Colour Count, Float Range, And De Morgan Slice
 
 Completed:
