@@ -1756,6 +1756,17 @@ static void join_terms(char terms[][40], int count, int skip, char *res) {
   }
 }
 
+static void join_bool_parts(char parts[][40], int count, char op, char *res, int cap) {
+  int p = 0; res[0] = 0;
+  for (int i = 0; i < count; ++i) {
+    if (i) app_ch(res, &p, cap, op);
+    bool wrap = op == '&' && top_op(parts[i], '+') > 0;
+    if (wrap) app_ch(res, &p, cap, '(');
+    app_str(res, &p, cap, parts[i]);
+    if (wrap) app_ch(res, &p, cap, ')');
+  }
+}
+
 static bool bool_law_once(const char *expr, char *res, char *law) {
   char e[96]; strip_outer(expr, e, sizeof(e));
   if (e[0] == '!' && e[1] == '!') {
@@ -1780,6 +1791,21 @@ static bool bool_law_once(const char *expr, char *res, char *law) {
       char a[40], b[40]; memcpy(a, e, p); a[p] = 0; strcpy(b, e + p + 1);
       sprintf(res, "%s'&%s+%s&%s'", a, b, a, b);
       strcpy(law, "XOR identity"); return true;
+    }
+  }
+  for (int oi = 0; oi < 2; ++oi) {
+    char op = oi ? '&' : '+';
+    if (op == '&' && top_op(e, '+') > 0) continue;
+    char parts[6][40]; int pc = split_top_parts(e, op, parts, 6);
+    if (pc < 2) continue;
+    for (int i = 0; i < pc; ++i) {
+      char child[80], childlaw[32];
+      if (bool_law_once(parts[i], child, childlaw) && strcmp(parts[i], child) != 0 && bool_equiv_expr(parts[i], child)) {
+        strncpy(parts[i], child, sizeof(parts[i]) - 1); parts[i][sizeof(parts[i]) - 1] = 0;
+        join_bool_parts(parts, pc, op, res, 80);
+        strncpy(law, childlaw, 31); law[31] = 0;
+        return true;
+      }
     }
   }
   for (int oi = 0; oi < 2; ++oi) {
@@ -1833,6 +1859,15 @@ static bool bool_law_once(const char *expr, char *res, char *law) {
         char l[40], r[40]; memcpy(l, aa, q); l[q] = 0; strcpy(r, aa + q + 1);
         if (strcmp(bb, l) == 0 || strcmp(bb, r) == 0) { strcpy(res, bb); strcpy(law, "Absorption law"); return true; }
       }
+      char pa[6][40], pb[6][40];
+      int na = split_top_parts(aa, '+', pa, 6), nb = split_top_parts(bb, '+', pb, 6);
+      if (na > 1 && nb > 1) {
+        bool a_in_b = true, b_in_a = true;
+        for (int i = 0; i < na; ++i) if (!has_lit(pb, nb, pa[i])) a_in_b = false;
+        for (int i = 0; i < nb; ++i) if (!has_lit(pa, na, pb[i])) b_in_a = false;
+        if (a_in_b) { strcpy(res, aa); strcpy(law, "Absorption law"); return true; }
+        if (b_in_a) { strcpy(res, bb); strcpy(law, "Absorption law"); return true; }
+      }
       int qa = top_op(aa, '+'), qb = top_op(bb, '+');
       if (qa > 0 && qb > 0) {
         char al[40], ar[40], bl[40], br[40], common[40], ao[40], bo[40];
@@ -1878,7 +1913,7 @@ static bool bool_law_once(const char *expr, char *res, char *law) {
 static int add_bool_law_trace(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN], int n, const char *expr) {
   char cur[96], next[96], law[32];
   strncpy(cur, expr, sizeof(cur) - 1); cur[sizeof(cur) - 1] = 0;
-  for (int step = 0; step < 5; ++step) {
+  for (int step = 0; step < 10; ++step) {
     if (!bool_law_once(cur, next, law)) break;
     if (strcmp(cur, next) == 0) break;
     if (strcmp(law, "XOR identity") != 0 && !bool_equiv_expr(cur, next)) break;

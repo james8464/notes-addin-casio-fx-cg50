@@ -1,5 +1,25 @@
 # Checkpoint
 
+## 2026-06-12 CSCALC Boolean Algebra Trace Hardening Slice
+
+Completed:
+- Added recursive inner-expression Boolean law simplification, with whole-expression equivalence checking still guarding displayed steps.
+- Fixed precedence handling so product rewrites are not attempted across outer sums such as `A+A&B`.
+- Added set-based absorption for multi-term sum factors such as `(A+B)(A+B+C)`.
+- Added regression tests for nested complement/identity/dominance and multi-term absorption traces.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CSCALC AQA Paper 2 Boolean calculation support.
+- Did not touch CAS Pure behavior, CASP3 behavior, NOTES, or shared UI/status code.
+
 ## 2026-06-12 CSCALC Floating-Point Exact Mantissa Bits Slice
 
 Completed:
