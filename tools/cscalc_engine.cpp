@@ -3734,6 +3734,25 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     return add(out, n, "big-endian order = %s", bytes);
   }
   if ((has(t, "addressbus") || (has(t, "address") && has(t, "bus"))) &&
+      !(has(t, "databus") || (has(t, "data") && has(t, "bus"))) &&
+      (has(t, "capacity") || has(t, "maximum") || has(t, "max") || has(t, "memory") || has(t, "ram") || has(t, "byteaddressable")) &&
+      nv >= 1) {
+    double ab=0, bytes_per_address=1;
+    bool ha = scan_before_word_num(t, "address", &ab) || scan_before_word_num(t, "addressbus", &ab);
+    if (!ha) ab = v[0];
+    if (has(t, "word") && nv >= 2) bytes_per_address = v[1] / 8.0;
+    double addresses = pow2((int)ab);
+    double bytes = addresses * bytes_per_address;
+    int n = add(out, 0, "Memory capacity = number of addresses * bytes per address.");
+    n = add(out, n, "address bus %.0f bits gives 2^%.0f = %.10g addresses", ab, ab, addresses);
+    n = add(out, n, has(t, "word") ? "word addressable: bytes per address = %.10g" : "byte addressable: bytes per address = 1", bytes_per_address);
+    n = add(out, n, "capacity = %.10g*%.10g = %.10g bytes", addresses, bytes_per_address, bytes);
+    if (bytes >= 1073741824.0) return add(out, n, "= %.10g GiB", bytes / 1073741824.0);
+    if (bytes >= 1048576.0) return add(out, n, "= %.10g MiB", bytes / 1048576.0);
+    if (bytes >= 1024.0) return add(out, n, "= %.10g KiB", bytes / 1024.0);
+    return n;
+  }
+  if ((has(t, "addressbus") || (has(t, "address") && has(t, "bus"))) &&
       (has(t, "databus") || (has(t, "data") && has(t, "bus"))) && nv >= 2) {
     double ab=0, db=0, locations=0;
     bool ha = scan_before_word_num(t, "address", &ab) || scan_before_word_num(t, "addressbus", &ab);
@@ -3987,6 +4006,32 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     for (int i = 1; i < nv && p < (int)sizeof(cmd) - 24; ++i) p += sprintf(cmd + p, ",%lld", (long long)v[i]);
     sprintf(cmd + p, ")");
     return eval_trace(cmd, out);
+  }
+  if ((has(t, "image") || has(t, "bitmap")) &&
+      (has(t, "colours") || has(t, "colors")) &&
+      (has(t, "file") || has(t, "size")) &&
+      (has(t, "bits") || has(t, "bit")) &&
+      (has(t, "pixel") || has(t, "resolution")) && nv >= 3) {
+    double file_bits = 0;
+    bool hb = scan_before_word_num(t, "bits", &file_bits) || scan_before_word_num(t, "bit", &file_bits);
+    if (hb && file_bits > 0) {
+      double dims[2]; int nd = 0;
+      for (int i = 0; i < nv && nd < 2; ++i) {
+        if (near_num(v[i], file_bits)) continue;
+        dims[nd++] = v[i];
+      }
+      if (nd >= 2) {
+        double pixels = dims[0] * dims[1];
+        double depth = pixels ? file_bits / pixels : 0;
+        int whole = (int)depth;
+        double colours = pow2(whole);
+        int n = add(out, 0, "Colours depend on colour depth: colours = 2^bits.");
+        n = add(out, n, "pixels = %.10g*%.10g = %.10g", dims[0], dims[1], pixels);
+        n = add(out, n, "bits per pixel = %.10g/%.10g = %.10g", file_bits, pixels, depth);
+        if (!near_num(depth, whole)) n = add(out, n, "whole-bit colour depth is %.0f bits.", (double)whole);
+        return add(out, n, "colours = 2^%d = %.10g", whole, colours);
+      }
+    }
   }
   if ((has(t, "image") || has(t, "bitmap")) &&
       (has(t, "colours") || has(t, "colors")) &&

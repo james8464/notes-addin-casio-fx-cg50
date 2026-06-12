@@ -1161,6 +1161,29 @@ static bool given_tail_bound(const char *c, double *bound, int *tail) {
   return false;
 }
 
+static bool prose_count_interval(const char *c, int N, int *lo, int *hi) {
+  bool has_lo = false, has_hi = false, lo_strict = false, hi_strict = false;
+  double l = 0, h = 0;
+  const char *p = strstr(c, "atleast");
+  if (p) { has_lo = true; l = read_num(p + 7); }
+  if (!p && (p = strstr(c, "greaterthanorequal"))) { has_lo = true; l = read_num(p + 18); }
+  if (!p && (p = strstr(c, "morethan"))) { has_lo = true; lo_strict = true; l = read_num(p + 8); }
+  if (!p && (p = strstr(c, "greaterthan"))) { has_lo = true; lo_strict = true; l = read_num(p + 11); }
+  p = strstr(c, "fewerthan");
+  if (p) { has_hi = true; hi_strict = true; h = read_num(p + 9); }
+  if (!p && (p = strstr(c, "lessthanorequal"))) { has_hi = true; h = read_num(p + 15); }
+  if (!p && (p = strstr(c, "lessthan"))) { has_hi = true; hi_strict = true; h = read_num(p + 8); }
+  if (!p && (p = strstr(c, "atmost"))) { has_hi = true; h = read_num(p + 6); }
+  if (!p && (p = strstr(c, "nomorethan"))) { has_hi = true; h = read_num(p + 10); }
+  if (!has_lo || !has_hi) return false;
+  int a = lo_strict ? (int)floor_num(l) + 1 : (int)ceil_num(l);
+  int b = hi_strict ? (int)ceil_num(h) - 1 : (int)floor_num(h);
+  if (a < 0) a = 0;
+  if (b > N) b = N;
+  *lo = a; *hi = b;
+  return b >= a;
+}
+
 static int add_binom_range_lines(char out[P3_MAX_LINES][P3_LINE_LEN], int N, double p, int lo, int hi, const char *label) {
   if (lo < 0) lo = 0;
   if (hi > N) hi = N;
@@ -4190,12 +4213,14 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     double down = m*9.8*deg_sine(theta);
     double R = m*9.8*deg_cosine(theta);
     double fr = mu * R;
-    double net = F - down - fr;
+    bool pulled_down = has(c, "pulleddown") || has(c, "forcedown") || has(c, "downtheplane") || has(c, "downplane");
+    double net = pulled_down ? F + down - fr : F - down - fr;
     int n = add(out, 0, "Resolve parallel and perpendicular to the rough inclined plane.");
     n = add(out, n, "Down-plane weight component = mg sin(theta) = %.6g*9.8 sin(%.6g) = %.10g N", m, theta, down);
     n = add(out, n, "Normal reaction R = mg cos(theta) = %.6g*9.8 cos(%.6g) = %.10g N", m, theta, R);
     n = add(out, n, "friction = mu R = %.6g*%.10g = %.10g N", mu, R, fr);
-    n = add(out, n, "resultant up the plane = %.10g - %.10g - %.10g = %.10g N", F, down, fr, net);
+    if (pulled_down) n = add(out, n, "resultant down the plane = %.10g + %.10g - %.10g = %.10g N", F, down, fr, net);
+    else n = add(out, n, "resultant up the plane = %.10g - %.10g - %.10g = %.10g N", F, down, fr, net);
     return add(out, n, "a = F/m = %.10g/%.6g = %.10g m/s^2", net, m, net/m);
   }
   if ((has(t, "smooth") || !has(t, "rough")) &&
@@ -4529,6 +4554,9 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     for (int i = 0; i < nv; ++i) if (!near_num(v[i], pv) && v[i] > N) N = v[i];
     for (int i = 0; i < nv; ++i) if (!near_num(v[i], pv) && !near_num(v[i], N)) { x = v[i]; break; }
     if (pv > 0 && N >= 1 && x >= 0) {
+      int lo = 0, hi = 0;
+      if (prose_count_interval(c, (int)N, &lo, &hi))
+        return add_binom_range_lines(out, (int)N, pv, lo, hi, "Required probability");
       int tail = 0;
       if (has(c, "morethan")) tail = 2;
       else if (has(c, "atleast") || has(c, "greaterthanorequal")) tail = 1;
@@ -4546,6 +4574,9 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     for (int i = 0; i < nv; ++i) if (v[i] > N) N = v[i];
     for (int i = 0; i < nv; ++i) if (!near_num(v[i], N)) { x = v[i]; break; }
     if (N >= 1 && x >= 0) {
+      int lo = 0, hi = 0;
+      if (prose_count_interval(c, (int)N, &lo, &hi))
+        return add_binom_range_lines(out, (int)N, 0.5, lo, hi, "Required probability");
       int tail = 0;
       if (has(c, "morethan")) tail = 2;
       else if (has(c, "atleast") || has(c, "greaterthanorequal")) tail = 1;
@@ -5529,7 +5560,23 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     double pa = v[0], pb = v[1], por = pa + pb;
     int n = add(out, 0, "For mutually exclusive events, P(A and B)=0.");
     n = add(out, n, "P(A or B)=P(A)+P(B)");
-    return add(out, n, "P(A or B)=%.6g+%.6g=%.10g", pa, pb, por);
+    n = add(out, n, "P(A or B)=%.6g+%.6g=%.10g", pa, pb, por);
+    if (has(t, "neither")) return add(out, n, "P(neither)=1-P(A or B)=1-%.10g=%.10g", por, 1 - por);
+    return n;
+  }
+  if ((has(c, "bgivena") || has(c, "p(b|a)")) &&
+      (has(c, "bgivennota") || has(c, "p(b|a')") || has(c, "p(b|nota)")) &&
+      (has(c, "agivenb") || has(c, "p(a|b)") || has(t, "bayes") || has(t, "given")) && nv >= 3) {
+    double pa = v[0], pba = v[1], pbna = v[2];
+    double pna = 1 - pa;
+    double pab = pa * pba;
+    double pnb = pna * pbna;
+    double pb = pab + pnb;
+    int n = add(out, 0, "Use total probability, then Bayes' theorem.");
+    n = add(out, n, "P(A and B)=P(A)P(B|A)=%.6g*%.6g=%.10g", pa, pba, pab);
+    n = add(out, n, "P(A' and B)=P(A')P(B|A')=(1-%.6g)*%.6g=%.10g", pa, pbna, pnb);
+    n = add(out, n, "P(B)=%.10g+%.10g=%.10g", pab, pnb, pb);
+    return add(out, n, "P(A|B)=P(A and B)/P(B)=%.10g/%.10g=%.10g", pab, pb, pb ? pab/pb : 0);
   }
   if ((has(c, "p(aandb)=") || has(t, "intersection")) &&
       (has(c, "p(a|b)") || has(c, "agivenb") || has(t, "conditional") || has(t, "union")) && nv >= 3) {
@@ -5581,7 +5628,9 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     int n = add(out, 0, "For independent events, P(A and B)=P(A)P(B).");
     n = add(out, n, "P(A and B)=%.6g*%.6g=%.10g", pa, pb, pab);
     n = add(out, n, "P(A or B)=P(A)+P(B)-P(A and B)");
-    return add(out, n, "P(A or B)=%.6g+%.6g-%.10g=%.10g", pa, pb, pab, por);
+    n = add(out, n, "P(A or B)=%.6g+%.6g-%.10g=%.10g", pa, pb, pab, por);
+    if (has(t, "neither")) return add(out, n, "P(neither)=1-P(A or B)=1-%.10g=%.10g", por, 1 - por);
+    return n;
   }
   if ((has(t, "independent") || has(t, "independence")) &&
       (has(t, "union") || has(t, "either") || has(c, "p(aorb)") || has(c, "p(aor b)") || has(t, " or ")) && nv >= 3) {
@@ -6713,6 +6762,19 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
 	      double variance = new_count ? new_sx2/new_count - new_mean*new_mean : 0;
 	      n = add(out, n, adding ? "new sum x^2 = %.10g + %.10g^2 = %.10g" : "new sum x^2 = %.10g - %.10g^2 = %.10g", old_sx2, value, new_sx2);
 	      n = add(out, n, "variance = sum x^2/n - mean^2");
+	      n = add(out, n, "variance = %.10g/%.10g - %.10g^2 = %.10g", new_sx2, new_count, new_mean, variance);
+	      if (has(t, "standarddeviation") || has(t, "sd")) return add(out, n, "sd = sqrt(variance) = %.10g", root(variance));
+	      return n;
+	    }
+	    if ((has(t, "variance") || has(t, "standarddeviation") || has(t, "sd")) && nv >= 4) {
+	      double old_var = v[2];
+	      if (has(t, "standarddeviation") || has(t, "sd")) old_var *= old_var;
+	      double old_sx2 = count * (old_var + mean*mean);
+	      double new_sx2 = adding ? old_sx2 + value*value : old_sx2 - value*value;
+	      double variance = new_count ? new_sx2/new_count - new_mean*new_mean : 0;
+	      n = add(out, n, "Use variance = sum x^2/n - mean^2, so sum x^2 = n(variance+mean^2).");
+	      n = add(out, n, "old sum x^2 = %.10g*(%.10g+%.10g^2) = %.10g", count, old_var, mean, old_sx2);
+	      n = add(out, n, adding ? "new sum x^2 = %.10g + %.10g^2 = %.10g" : "new sum x^2 = %.10g - %.10g^2 = %.10g", old_sx2, value, new_sx2);
 	      n = add(out, n, "variance = %.10g/%.10g - %.10g^2 = %.10g", new_sx2, new_count, new_mean, variance);
 	      if (has(t, "standarddeviation") || has(t, "sd")) return add(out, n, "sd = sqrt(variance) = %.10g", root(variance));
 	      return n;

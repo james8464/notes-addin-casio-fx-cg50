@@ -4396,3 +4396,36 @@ Evidence:
 Drift check:
 - Kept changes to CASP3/CSCALC general free-text handling, regressions, generated app outputs, and this checkpoint.
 - Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.
+
+## 2026-06-12 Bayes, Interval, Variance, Address, and Image Slice
+
+Completed:
+- Added CASP3 total-probability/Bayes routing for prompts with `P(B|A)` and `P(B|not A)`.
+- Added shared CASP3 prose interval bounds for binomial count wording such as `at least ... but fewer than ...`.
+- Extended CASP3 add/remove-one-value mean updates to also update variance from known variance.
+- Fixed CASP3 rough-plane force direction wording/sign for forces explicitly down the plane.
+- Added CASP3 `P(neither)` output for independent/mutually-exclusive union prompts.
+- Added CSCALC address-bus capacity routing before broad address-bits fallback.
+- Added CSCALC image colour-count routing from file size in bits and pixel dimensions.
+- Added regression tests and rebuilt calculator files.
+
+Evidence:
+- Fresh probes fixed: Bayes total probability, bounded binomial coin interval, mean+variance after adding a value, down-plane rough force, independent `neither`, address-bus capacity, image colours from file bits.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 385028 bytes`
+  - `CSCALC.g3a: 227416 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CASP3.g3a sha256: d6ce4211203d4a6a2e186fb6c2f9eca3b140a2f60e6316bc6380d0189f43b175`
+  - `CSCALC.g3a sha256: ee94c519d742a5d6690d0a2faad839114f83107c81aa61bc1c1c9c8579e8d338`
+
+Drift check:
+- Kept changes to CASP3/CSCALC general free-text handling, regressions, generated app outputs, and this checkpoint.
+- Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.

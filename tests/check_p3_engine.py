@@ -513,6 +513,11 @@ def main():
     require("A fair coin is tossed 12 times. Use a binomial distribution to find the probability of exactly 7 heads.", ["Let X ~ B(12, 0.5)", "P(X=7)", "0.193359375"])
     require("A body of mass 3 kg is acted on by force (4t+2)N for 5 seconds from rest. Find its speed.", ["Impulse from a variable force", "impulse = 60 Ns", "v = 0 + 60/3 = 20"])
     require("A train slows from 30 m/s to 10 m/s while travelling 400 m. Find its acceleration and time.", ["Use SUVAT for constant deceleration.", "(10^2-30^2)/(2*400) = -1", "2*400/(30+10) = 20"])
+    require("Given P(A)=0.4, P(B given A)=0.7 and P(B given not A)=0.2, find P(A given B).", ["Use total probability", "P(B)=0.28+0.12=0.4", "P(A|B)=P(A and B)/P(B)=0.28/0.4=0.7"])
+    require("A biased coin has probability 0.4 of heads. It is tossed 10 times. Find the probability of at least 3 but fewer than 8 heads.", ["Let X ~ B(10, 0.4)", "r=3..7", "0.8204156928"])
+    require("A sample of 10 values has mean 8 and variance 5. A new value 12 is added. Find the new mean and variance.", ["old sum x^2 = 10*(5+8^2) = 690", "new mean = 92/11", "variance = 834/11"])
+    require("A particle of mass 4kg is pulled down a rough plane angle 25 degrees by force 30N parallel to the plane coefficient friction 0.3 find acceleration.", ["resultant down the plane", "30 + 16.5666358 - 10.65807988", "a = F/m"])
+    require("Events A and B are independent. P(A)=0.35 and P(B)=0.25. Find P(A or B) and P(neither A nor B).", ["P(A and B)=0.35*0.25=0.0875", "P(A or B)=0.35+0.25-0.0875=0.5125", "P(neither)=1-P(A or B)=1-0.5125=0.4875"])
     print("OK p3 engine")
 
 
