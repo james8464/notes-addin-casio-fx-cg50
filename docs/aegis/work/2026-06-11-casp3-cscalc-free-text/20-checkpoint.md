@@ -1,5 +1,37 @@
 # Checkpoint
 
+## 2026-06-12 Distance, Probability Target, Projectile Angle, And De Morgan Slice
+
+Completed:
+- Added CASP3 total-distance working for velocity prompts phrased as `in the first n seconds`.
+- Added CASP3 two-without-replacement different-colour probability via complement of same colour.
+- Fixed CASP3 first-target-without-replacement target inference for prompts like `blue is first obtained on the fourth draw`.
+- Added CASP3 same-level projectile range-to-angle handling for `lands x m away, find possible angles`.
+- Added CSCALC explicit 3-variable De Morgan rewrite for `not(A or B or C)`.
+- Added regressions and rebuilt calculator-ready outputs.
+
+Evidence:
+- New hard probe batch: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 406544 bytes`
+  - `CSCALC.g3a: 231728 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: 18178 bytes`
+
+Drift check:
+- Stayed inside CASP3/CSCALC free-text working engines, tests, checkpoint, and generated calculator files.
+- Did not alter Pure CAS, menus, NOTES, or shared UI.
+- Active goal remains open for further source/probe-driven hardening.
+
 ## 2026-06-12 Final Route-Priority Hardening Slice
 
 Completed:

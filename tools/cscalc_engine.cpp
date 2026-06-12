@@ -3322,6 +3322,7 @@ static const char *skip_bool_words(const char *e) {
     if (starts(e, "draw")) { e += 4; moved = true; }
     if (starts(e, "find")) { e += 4; moved = true; }
     if (starts(e, "convert")) { e += 7; moved = true; }
+    if (starts(e, "rewrite")) { e += 7; moved = true; }
     if (starts(e, "produce")) { e += 7; moved = true; }
     if (starts(e, "make")) { e += 4; moved = true; }
     if (starts(e, "create")) { e += 6; moved = true; }
@@ -5586,6 +5587,11 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     return eval_bool_prove(cmd, out);
   }
   if (nv == 0 && (has(compact, "demorgan") || has(compact, "demorgans"))) {
+    if ((has(compact, "not(aorb") && has(compact, "orc")) || has(compact, "not(a+b+c)") || has(compact, "(a+b+c)'")) {
+      int n = add(out, 0, "Use De Morgan's law.");
+      n = add(out, n, "NOT(A OR B OR C) = NOT A AND NOT B AND NOT C");
+      return add(out, n, "(A+B+C)' = A'.B'.C'");
+    }
     if (has(compact, "not(aandb)") || has(compact, "not(a*b)") || has(compact, "(aandb)'") || has(compact, "(a*b)'")) {
       int n = add(out, 0, "Use De Morgan's law.");
       n = add(out, n, "NOT(A AND B) = NOT A OR NOT B");

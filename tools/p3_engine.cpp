@@ -2655,7 +2655,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       return eval_mech(cmd, out);
     }
   }
-  if (has(t, "velocity") && has(t, "total") && has(t, "distance") && has(t, "from")) {
+  if (has(t, "velocity") && (has(t, "total") || has(t, "travelled") || has(t, "traveled")) &&
+      has(t, "distance") && (has(t, "from") || has(t, "first"))) {
     double CA=0, CB=0, CC=0, CD=0, ct1=0, ct2=0;
     if (parse_cubic_poly_after_word(input, "velocity", &CA, &CB, &CC, &CD) &&
         !near_num(CA, 0) &&
@@ -2696,8 +2697,11 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       return add(out, n, "total distance = %.10g", total);
     }
     double A=0, B=0, C=0, t1=0, t2=0;
-    if (!parse_velocity_quad(input, &A, &B, &C) ||
-        !word_num_with_t(input, "from", &t1) || !word_num_with_t(input, "to", &t2)) return 0;
+    if (!parse_velocity_quad(input, &A, &B, &C)) return 0;
+    if (!word_num_with_t(input, "from", &t1) || !word_num_with_t(input, "to", &t2)) {
+      if (has(t, "first") && prev_word_num(input, "seconds", &t2)) t1 = 0;
+      else return 0;
+    }
     double pts[4]; int np = 0; pts[np++] = t1;
     double D = B*B - 4*A*C;
     if (near_num(A, 0) && !near_num(B, 0)) {
@@ -3642,7 +3646,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     }
     sprintf(cmd, nv >= 4 ? "projectileangle(%.10g,%.10g,%.10g,%.10g)" : "projectileangle(%.10g,%.10g,%.10g)", v[0], v[1], v[2], nv >= 4 ? v[3] : 0); return eval_mech(cmd, out);
   }
-  if (is_projectile_text(t) && (has(c, "findangle") || has(c, "findtheangle") || has(t, "launchangle")) && nv >= 2) {
+  if (is_projectile_text(t) && (has(c, "findangle") || has(c, "findtheangle") || has(t, "launchangle") || has(t, "angles")) && nv >= 2) {
     double u=0,x=0,y=0,h0=0,g=0;
     bool hU=label_num(input,"speed",&u) || label_num(input,"u",&u) || label_num(input,"initialspeed",&u) || label_num(input,"initialvelocity",&u);
     bool hX=label_num(input,"x",&x) || label_num(input,"distance",&x) || label_num(input,"range",&x) || label_num(input,"horizontaldistance",&x);
@@ -5730,18 +5734,25 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if ((has(t, "withoutreplacement") || (has(t, "without") && has(t, "replacement")) || has(t, "chosen") || has(t, "selected")) &&
       (has(t, "until") || has(t, "obtained") || has(t, "first")) && nv >= 2) {
     double target = 0, other = 0, r = 0;
-    bool htgt = prev_word_num(input, "red", &target) || prev_word_num(input, "success", &target);
-    bool hoth = prev_word_num(input, "blue", &other) || prev_word_num(input, "notred", &other) || prev_word_num(input, "other", &other);
+    bool blue_target = has(c, "blueisfirst") || has(c, "blueisobtained") || has(c, "blueobtained") ||
+                       has(c, "firstblue") || has(c, "untilablue") || has(c, "probabilityblue");
+    bool red_target = has(c, "redisfirst") || has(c, "redisobtained") || has(c, "redobtained") ||
+                      has(c, "firstred") || has(c, "untilared") || has(c, "probabilityred");
+    bool htgt = blue_target ? prev_word_num(input, "blue", &target) :
+                (prev_word_num(input, "red", &target) || prev_word_num(input, "success", &target));
+    bool hoth = blue_target ? prev_word_num(input, "red", &other) :
+                (prev_word_num(input, "blue", &other) || prev_word_num(input, "notred", &other) || prev_word_num(input, "other", &other));
+    if (red_target && !htgt) htgt = prev_word_num(input, "red", &target);
     if (!htgt) target = v[0];
     if (!hoth) other = v[1];
     for (int i = nv - 1; i >= 0; --i) if (!near_num(v[i], target) && !near_num(v[i], other) && v[i] >= 1) { r = v[i]; break; }
     if (r == 0) {
-      if (has(t, "first")) r = 1;
-      else if (has(t, "second")) r = 2;
-      else if (has(t, "third")) r = 3;
-      else if (has(t, "fourth")) r = 4;
+      if (has(t, "sixth")) r = 6;
       else if (has(t, "fifth")) r = 5;
-      else if (has(t, "sixth")) r = 6;
+      else if (has(t, "fourth")) r = 4;
+      else if (has(t, "third")) r = 3;
+      else if (has(t, "second")) r = 2;
+      else if (has(t, "first")) r = 1;
     }
     if (target > 0 && other > 0 && r >= 1) {
       double total = target + other, prob = 1.0;
@@ -5768,6 +5779,27 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "P(first target) = %.10g/%.10g", a, total);
     n = add(out, n, "P(second target | first target) = %.10g/%.10g", a-1, total-1);
     return add(out, n, "P(both target) = %.10g/%.10g * %.10g/%.10g = %.10g", a, total, a-1, total-1, prob);
+  }
+  if ((has(t, "withoutreplacement") || (has(t, "without") && has(t, "replacement")) || has(t, "chosen") || has(t, "selected")) &&
+      (has(t, "differentcolour") || has(t, "differentcolor") || (has(t, "different") && (has(t, "colour") || has(t, "color")))) &&
+      nv >= 2) {
+    double counts[8]; int cc = 0;
+    const char *cols[] = {"red","blue","green","yellow","white","black","orange","purple"};
+    for (int i = 0; i < 8; ++i) {
+      double q = 0;
+      if (prev_word_num(input, cols[i], &q) && q > 0) counts[cc++] = q;
+    }
+    if (cc < 2) {
+      cc = 0;
+      for (int i = 0; i < nv && cc < 8; ++i) if (v[i] > 0) counts[cc++] = v[i];
+    }
+    double total = 0, same = 0;
+    for (int i = 0; i < cc; ++i) { total += counts[i]; same += choose((int)counts[i], 2); }
+    double all = choose((int)total, 2), diff = all - same;
+    int n = add(out, 0, "For two without replacement, different colour is the complement of same colour.");
+    n = add(out, n, "same-colour ways = sum C(group size,2) = %.10g", same);
+    n = add(out, n, "total ways = C(%.0f,2) = %.10g", total, all);
+    return add(out, n, "P(different colour)=%.10g/%.10g=%.10g", diff, all, all ? diff/all : 0);
   }
   if ((has(t, "withoutreplacement") || (has(t, "without") && has(t, "replacement")) || has(t, "chosen")) &&
       (has(t, "allthree") || (has(t, "all") && has(t, "three")) || has(t, "three")) && nv >= 2) {

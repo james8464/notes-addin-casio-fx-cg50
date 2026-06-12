@@ -541,6 +541,10 @@ def main():
     require("The cdf is F(x)=0 for x<0, F(x)=kx^2 for 0<=x<=3, and F(x)=1 for x>3. Find k and the median.", ["k*3^2 = 1", "k = 0.1111111111", "m = 2.121320344"])
     require("A projectile is fired at 18m/s at 40 degrees from a cliff 12m high. Find time to hit ground and range.", ["u_x = 18 cos 40", "h=12", "positive time", "range = u_x t = 43.3099314"])
     require("A car of mass 1000kg moves up a 6 degree slope with resistance 250N and driving force 2000N. Find acceleration.", ["F = 2000 - 1024.37894 - 250", "a = F/m = 725.62106/1000 = 0.72562106"])
+    require("A particle has velocity v=t^2-5t+6. Find the distance travelled in the first 5 seconds.", ["Solve v=0 inside the interval", "distance on 2 to 3", "total distance = 9.5"])
+    require("A bag has 3 red, 4 blue and 5 green counters. Two are selected without replacement. Find the probability they are different colours.", ["different colour is the complement", "same-colour ways = sum C(group size,2) = 19", "P(different colour)=47/66=0.7121212121"])
+    require("A box contains 6 red and 4 blue balls. Balls are drawn without replacement until a blue is obtained. Find probability blue is first obtained on the fourth draw.", ["P(non-target on draw 1) = 6/10", "P(target on draw 4) = 4/7", "P(first target on draw 4) = 0.09523809524"])
+    require("A projectile is launched from ground at 20m/s and lands 30m away. Find possible angles.", ["Use trajectory equation", "tan(theta) = 2.283084498 or 0.4380039377", "theta = 66.34647451 deg or 23.65352549 deg"])
     print("OK p3 engine")
 
 

@@ -483,6 +483,10 @@ def main():
     require("Add 01101101 and 10110110 as 8-bit two's complement and state overflow.", ["01101101=109, 10110110=-74", "109+-74=35 -> 00100011", "no two's complement overflow"])
     require("Decode floating point number 10110110 with 5 bit mantissa and 3 bit exponent in two's complement.", ["mantissa 10110 = -0.625", "exponent 110 = -2", "value = -0.625 * 2^-2 = -0.15625"])
     require("A network sends 12 MiB in 8 seconds. Calculate bit rate in Mbps.", ["12 MiB = 100663296 bits", "bit rate = 100663296/8 = 12582912 bit/s", "= 12.582912 Mbit/s"])
+    require("Decode floating point 011010001101 with 8 bit mantissa and 4 bit exponent.", ["mantissa 01101000 = 0.8125", "exponent 1101 = -3", "value = 0.8125 * 2^-3 = 0.1015625"])
+    require("Use De Morgan to rewrite not(A or B or C).", ["Use De Morgan's law", "NOT(A OR B OR C) = NOT A AND NOT B AND NOT C", "(A+B+C)' = A'.B'.C'"])
+    require("An image is 1280 by 720 with 12 bits per pixel. Calculate file size in MiB.", ["1280*720*12 = 11059200 bits", "= 1.31836 MiB"])
+    require("A sound file is 5 MiB, mono, 8 bit resolution, sampled at 22.05 kHz. Find duration.", ["5 MiB = 41943040 bits", "duration = 41943040/(22050*8*1)", "= 237.7723356 s"])
     print("OK cscalc engine")
 
 
