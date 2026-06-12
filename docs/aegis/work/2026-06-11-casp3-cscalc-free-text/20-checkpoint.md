@@ -87,6 +87,42 @@ Drift check:
 - Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
 - Active goal remains open for future source/probe-driven hardening.
 
+## 2026-06-12 P3 Method Coverage and CS Parser Guard Slice
+
+Completed:
+- Added CASP3 confidence-interval working for sample mean prompts.
+- Added CASP3 linear interpolation working from two points.
+- Added CASP3 angular-speed circular-motion working and hill normal-reaction working.
+- Narrowed CASP3 circular route guards so `radius` no longer triggers angular-speed handling.
+- Added CASP3 rough-wall/rough-floor ladder equilibrium equations with an underdetermined-contact warning instead of wrong smooth-wall working.
+- Added CASP3 `kx(a-x)` continuous pdf normalisation/mean route.
+- Added CSCALC SQL parser support for schema-style prompts without explicit `FROM`.
+- Added CSCALC multi-field `SELECT` handling without splitting selected fields into condition arguments.
+- Added CSCALC `Mbps/Kbps/Gbps` transfer-rate parsing and `MiB` transfer-time conversion.
+- Added CSCALC decimal fixed-point conversion with only fractional-bit count.
+- Added CSCALC Boolean simplification for prose prompts containing constants `0` and `1`.
+- Added regressions and rebuilt calculator files.
+
+Evidence:
+- Fresh probe batch exposed the gaps above; patched cases now pass.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 274908 bytes`
+  - `CSCALC.g3a: 189820 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Still inside CASP3/CSCALC free-text working support and generated calculator outputs.
+- Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for future source/probe-driven hardening.
+
 ## 2026-06-12 Probability, Circular Motion, SQL, And Float Guard Slice
 
 Completed:

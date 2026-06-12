@@ -2773,9 +2773,23 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if (has(t, "ladder") && (has(t, "wall") || has(t, "floor") || has(t, "rough") || has(t, "smooth")) && nv >= 2) {
     double L=0,W=0,ang=0,P=0,d=0;
-    bool hL=label_num(input,"length",&L), hW=label_num(input,"weight",&W), ha=label_num(input,"angle",&ang);
+    bool hL=label_num(input,"length",&L) || word_num(input,"length",&L);
+    bool hW=label_num(input,"weight",&W) || word_num(input,"weight",&W);
+    bool ha=label_num(input,"angle",&ang) || word_num(input,"angle",&ang) || prev_word_num(input,"degrees",&ang);
     bool hP=label_num(input,"load",&P) || label_num(input,"person",&P);
     bool hd=label_num(input,"distance",&d);
+    if (has(c, "roughwall") && (has(c, "roughfloor") || has(c, "floorrough"))) {
+      if (!hL && nv > 0) L = v[0];
+      if (!hW && nv > 1) W = v[1];
+      if (!ha && nv > 2) ang = v[2];
+      int n = add(out, 0, "Rough wall and rough floor: include friction at both contacts.");
+      n = add(out, n, "At the floor: normal R, friction F. At the wall: normal S, friction G.");
+      n = add(out, n, "Vertical equilibrium: R + G = W.");
+      n = add(out, n, "Horizontal equilibrium: F = S.");
+      n = add(out, n, "Moments about the foot: S*L sin(theta) + G*L cos(theta) = W*(L/2)cos(theta).");
+      if (has(t, "coefficient") || has(t, "mu")) n = add(out, n, "Use limiting friction only at contacts stated to be limiting, e.g. F=mu R.");
+      return add(out, n, "A second contact condition is needed to find a unique wall friction.");
+    }
     if (!ha && (has(t, "limiting") || has(t, "minimum")) && (has(t, "coefficient") || has(t, "mu")) && nv >= 2) {
       double mu = v[1], theta = arctan(1.0/(2.0*mu))*180.0/M_PI;
       int n = add(out, 0, "Ladder in limiting equilibrium: smooth wall, rough ground.");
@@ -2805,6 +2819,31 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     if (hL && hW && ha) sprintf(cmd, "ladder(%.10g,%.10g,%.10g,%.10g,%.10g)", L, W, ang, hP ? P : 0, hd ? d : L/2);
     else sprintf(cmd, nv > 4 ? "ladder(%.10g,%.10g,%.10g,%.10g,%.10g)" : "ladder(%.10g,%.10g,%.10g)", v[0], v[1], v[2], nv > 3 ? v[3] : 0, nv > 4 ? v[4] : v[0]/2);
     return eval_mech(cmd, out);
+  }
+  if ((has(t, "circular") || has(t, "centripetal") || has(t, "bend") || has(t, "round")) &&
+      (has(t, "angularspeed") || has(t, "omega") || has(t, "rads") || has(c, "rad/s")) && nv >= 2) {
+    double r=0,w=0;
+    bool hr=word_num(input,"radius",&r) || label_num(input,"radius",&r);
+    bool hw=word_num(input,"angularspeed",&w) || label_num(input,"omega",&w);
+    if (!hr) r = v[0];
+    if (!hw) w = v[1];
+    int n = add(out, 0, "For circular motion, v = r*omega and a = r*omega^2.");
+    n = add(out, n, "v = %.6g*%.6g = %.10g m/s", r, w, r*w);
+    return add(out, n, "centripetal acceleration = %.6g*%.6g^2 = %.10g m/s^2", r, w, r*w*w);
+  }
+  if ((has(t, "hill") || has(t, "hump") || has(t, "top")) && (has(t, "radius") || has(t, "speed")) && nv >= 3) {
+    double m=0,r=0,u=0;
+    bool hm=word_num(input,"mass",&m) || label_num(input,"mass",&m);
+    bool hr=word_num(input,"radius",&r) || label_num(input,"radius",&r);
+    bool hu=word_num(input,"speed",&u) || label_num(input,"speed",&u) || word_num(input,"velocity",&u);
+    if (!hm) m = v[0];
+    if (!hr) r = v[1];
+    if (!hu) u = v[2];
+    double R = m*9.8 - (r ? m*u*u/r : 0);
+    int n = add(out, 0, "At the top of a circular hill, resultant force towards the centre is mg - R.");
+    n = add(out, n, "mg - R = mv^2/r");
+    n = add(out, n, "R = mg - mv^2/r");
+    return add(out, n, "R = %.6g*9.8 - %.6g*%.6g^2/%.6g = %.10g N", m, m, u, r, R);
   }
   if ((has(t, "circular") || has(t, "centripetal") || has(t, "bend") || has(t, "round")) &&
       (has(t, "radius") || has(t, "speed") || has(t, "force")) && nv >= 3) {
@@ -4297,6 +4336,50 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       n = add(out, n, "E(X)=integral x*f(x) dx");
       return add(out, n, "mean = %.10g", mean);
     }
+  }
+  if ((has(t, "pdf") || has(t, "density") || has(t, "continuous")) &&
+      (has(c, "kx(") || has(c, "k*x(") || has(c, "k*x*(")) &&
+      (has(t, "mean") || has(c, "e(x)") || has(t, "normalise") || has(t, "normalize") || has(t, "findk"))) {
+    double upper = 0;
+    if (!extract_0_x_bound(c, &upper)) for (int i = 0; i < nv; ++i) if (v[i] > upper) upper = v[i];
+    if (upper > 0) {
+      double k = 6.0 / (upper * upper * upper);
+      double mean = upper / 2.0;
+      int n = add(out, 0, "For a pdf, total area under f(x) is 1.");
+      n = add(out, n, "f(x)=k*x*(%.6g-x), 0<x<%.6g", upper, upper);
+      n = add(out, n, "integral from 0 to %.6g of k*x*(%.6g-x) dx = 1", upper, upper);
+      n = add(out, n, "k*[%.6g*x^2/2 - x^3/3] from 0 to %.6g = 1", upper, upper);
+      n = add(out, n, "k = %.10g", k);
+      n = add(out, n, "E(X)=integral x*f(x) dx");
+      return add(out, n, "mean = %.10g", mean);
+    }
+  }
+  if ((has(t, "confidenceinterval") || (has(t, "confidence") && has(t, "interval"))) &&
+      (has(t, "mean") || has(t, "sample")) && nv >= 3) {
+    double n0=0, mean=0, sd=0, level=95;
+    bool hn=word_num(input,"sample",&n0) || word_num(input,"samplesize",&n0) || label_num(input,"n",&n0);
+    bool hm=word_num(input,"mean",&mean) || label_num(input,"mean",&mean);
+    bool hs=word_num(input,"standarddeviation",&sd) || word_num(input,"sd",&sd) || label_num(input,"sd",&sd);
+    if (!hn) n0 = v[0];
+    if (!hm) mean = hn ? v[1] : v[0];
+    if (!hs) sd = hn ? v[2] : v[1];
+    for (int i = 0; i < nv; ++i) if (!near_num(v[i], n0) && !near_num(v[i], mean) && !near_num(v[i], sd) && v[i] > 50) level = v[i];
+    double z = level >= 99 ? 2.576 : (level >= 95 ? 1.96 : (level >= 90 ? 1.645 : 1.96));
+    double se = sd / root(n0), m = z * se;
+    int n = add(out, 0, "For a confidence interval for a mean, use xbar +/- z*s/sqrt(n).");
+    n = add(out, n, "standard error = %.6g/sqrt(%.6g) = %.10g", sd, n0, se);
+    n = add(out, n, "%.6g%% gives z = %.6g", level, z);
+    n = add(out, n, "margin = %.6g*%.10g = %.10g", z, se, m);
+    return add(out, n, "CI = %.10g to %.10g", mean - m, mean + m);
+  }
+  if ((has(t, "interpolation") || has(t, "interpolate") || has(t, "estimate")) &&
+      (has(t, "whenx") || has(t, "x=") || has(t, "values")) && nv >= 5) {
+    double x1=v[0], y1=v[1], x2=v[2], y2=v[3], x=v[4];
+    double y = y1 + (x - x1) * (y2 - y1) / (x2 - x1);
+    int n = add(out, 0, "Use linear interpolation between the two surrounding points.");
+    n = add(out, n, "gradient = (%.6g-%.6g)/(%.6g-%.6g)", y2, y1, x2, x1);
+    n = add(out, n, "y = %.6g + (%.6g-%.6g)*(%.6g-%.6g)/(%.6g-%.6g)", y1, x, x1, y2, y1, x2, x1);
+    return add(out, n, "y = %.10g", y);
   }
   if ((has(t, "mean") || has(t, "variance") || has(t, "standarddeviation")) && nv >= 3 &&
       !has(t, "normal") && !has(t, "binom") && !has(t, "poisson") &&

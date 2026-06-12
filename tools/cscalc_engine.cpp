@@ -683,10 +683,10 @@ static bool make_fsm_cmd(const char *in, char *cmd, int cap) {
 }
 
 static const char *sql_op_text(const char *op) {
-  if (strcmp(op, ">") == 0 || word_is(op, "gt") || word_is(op, "greater") || word_is(op, "more") || word_is(op, "above")) return ">";
   if (strcmp(op, ">=") == 0 || word_is(op, "gte") || word_is(op, "atleast")) return ">=";
-  if (strcmp(op, "<") == 0 || word_is(op, "lt") || word_is(op, "less") || word_is(op, "below") || word_is(op, "under")) return "<";
+  if (strcmp(op, ">") == 0 || word_is(op, "gt") || word_is(op, "greater") || word_is(op, "more") || word_is(op, "above")) return ">";
   if (strcmp(op, "<=") == 0 || word_is(op, "lte") || word_is(op, "atmost")) return "<=";
+  if (strcmp(op, "<") == 0 || word_is(op, "lt") || word_is(op, "less") || word_is(op, "below") || word_is(op, "under")) return "<";
   if (strcmp(op, "!=") == 0 || word_is(op, "ne") || word_is(op, "not")) return "<>";
   return "=";
 }
@@ -701,20 +701,46 @@ static bool make_sql_cmd(const char *in, char *cmd, int cap) {
     w[j] = 0;
     if (w[0]) strcpy(tok[nt++], w);
   }
-  int sel = -1, from = -1, where = -1;
+  int sel = -1, from = -1, where = -1, table_word = -1;
   for (int i = 0; i < nt; ++i) {
     if (word_is(tok[i], "select")) sel = i;
     if (word_is(tok[i], "from")) from = i;
     if (word_is(tok[i], "where")) where = i;
+    if (word_is(tok[i], "table")) table_word = i;
   }
   bool count = false;
   for (int i = 0; i < nt; ++i) if (word_is(tok[i], "count") || word_is(tok[i], "countrows") || word_is(tok[i], "countrecords")) count = true;
-  if (from < 0 || where < 0 || where + 3 >= nt) return false;
-  const char *show = count ? "*" : (sel >= 0 && sel + 1 < nt ? tok[sel + 1] : "*");
-  const char *table = tok[from + 1];
+  if (where < 0 || where + 2 >= nt) return false;
+  if (from < 0 && (table_word < 0 || table_word + 1 >= nt)) return false;
+  char showbuf[96] = "*";
+  if (!count && sel >= 0 && sel + 1 < nt) {
+    int end = from >= 0 ? from : where, p = 0;
+    showbuf[0] = 0;
+    for (int i = sel + 1; i < end && p < (int)sizeof(showbuf) - 4; ++i) {
+      if (word_is(tok[i], "and") || word_is(tok[i], ",")) continue;
+      p += sprintf(showbuf + p, "%s%s", p ? "," : "", tok[i]);
+    }
+    if (!showbuf[0]) strcpy(showbuf, tok[sel + 1]);
+  }
+  const char *show = count ? "*" : showbuf;
+  const char *table = from >= 0 ? tok[from + 1] : tok[table_word + 1];
   const char *field = tok[where + 1];
   const char *op = tok[where + 2];
   const char *value = tok[where + 3];
+  const char *where_text = strstr(in, "where");
+  if (!where_text) where_text = strstr(in, "WHERE");
+  char opbuf[3] = "";
+  if (where_text) {
+    if (strstr(where_text, ">=")) strcpy(opbuf, ">=");
+    else if (strstr(where_text, "<=")) strcpy(opbuf, "<=");
+    else if (strstr(where_text, "!=") || strstr(where_text, "<>")) strcpy(opbuf, "!=");
+    else if (strstr(where_text, ">")) strcpy(opbuf, ">");
+    else if (strstr(where_text, "<")) strcpy(opbuf, "<");
+  }
+  if (opbuf[0] && where + 2 < nt) {
+    op = opbuf;
+    value = tok[where + 2];
+  }
   if ((word_is(op, "greater") || word_is(op, "less") || word_is(op, "more")) && word_is(value, "than") && where + 4 < nt) value = tok[where + 4];
   if (word_is(op, "at") && word_is(value, "least") && where + 4 < nt) { op = "gte"; value = tok[where + 4]; }
   if (word_is(op, "at") && word_is(value, "most") && where + 4 < nt) { op = "lte"; value = tok[where + 4]; }
@@ -1708,12 +1734,17 @@ static int eval_storage(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LE
     return add(out, n, "fixed length = %lld*%d = %lld bits", total, fixed, total * fixed);
   }
   if (starts3(s, "sqlselect(", "selectwhere(", "sqlquery(") && na >= 5) {
-    const char *op = sql_op_text(a[3]);
+    int ci = na - 3;
+    char fields[96] = "";
+    int p = 0;
+    for (int i = 1; i < ci && p < (int)sizeof(fields) - 8; ++i)
+      p += sprintf(fields + p, "%s%s", p ? "," : "", a[i]);
+    const char *op = sql_op_text(a[ci + 1]);
     int n = add(out, 0, "SQL SELECT: choose fields, choose table, then apply WHERE.");
-    n = add(out, n, "SELECT %s", a[1]);
+    n = add(out, n, "SELECT %s", fields);
     n = add(out, n, "FROM %s", a[0]);
-    n = add(out, n, "WHERE %s %s %s", a[2], op, a[4]);
-    return add(out, n, "query = SELECT %s FROM %s WHERE %s %s %s", a[1], a[0], a[2], op, a[4]);
+    n = add(out, n, "WHERE %s %s %s", a[ci], op, a[ci + 2]);
+    return add(out, n, "query = SELECT %s FROM %s WHERE %s %s %s", fields, a[0], a[ci], op, a[ci + 2]);
   }
   if (starts3(s, "sqlcount(", "countwhere(", "countrecords(") && na >= 4) {
     const char *op = sql_op_text(a[2]);
@@ -1848,8 +1879,11 @@ static int add_compression_unit_lines(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN
 
 static bool storage_rate_bits(const char *t, double rate, double *bps, const char **unit) {
   if (has(t, "gbit") || has(t, "gigabit")) { *bps = rate * 1000000000.0; *unit = "Gbit/s"; return true; }
+  if (has(t, "gbps")) { *bps = rate * 1000000000.0; *unit = "Gbit/s"; return true; }
   if (has(t, "mbit") || has(t, "megabit")) { *bps = rate * 1000000.0; *unit = "Mbit/s"; return true; }
+  if (has(t, "mbps")) { *bps = rate * 1000000.0; *unit = "Mbit/s"; return true; }
   if (has(t, "kbit") || has(t, "kilobit")) { *bps = rate * 1000.0; *unit = "kbit/s"; return true; }
+  if (has(t, "kbps")) { *bps = rate * 1000.0; *unit = "kbit/s"; return true; }
   if (has(t, "bit")) { *bps = rate; *unit = "bit/s"; return true; }
   return false;
 }
@@ -3054,6 +3088,7 @@ static const char *skip_bool_words(const char *e) {
     if (starts(e, "that")) { e += 4; moved = true; }
     if (starts(e, "identity")) { e += 8; moved = true; }
     if (starts(e, "boolean")) { e += 7; moved = true; }
+    if (starts(e, "expression")) { e += 10; moved = true; }
     if (starts(e, "logic")) { e += 5; moved = true; }
     if (starts(e, "productofsums")) { e += 13; moved = true; }
     if (starts(e, "posform")) { e += 7; moved = true; }
@@ -3862,6 +3897,12 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     sprintf(cmd, "den(%s,16)", hex_tok); return eval_base(cmd, out);
   }
   char fixed_early[48];
+  if (has(t, "fixed") && (has(t, "encode") || has(t, "represent") || has(t, "convert")) &&
+      (has(t, "decimal") || has(t, "denary")) && (has(t, "fractional") || has(t, "fraction") || has(t, "after")) &&
+      nv >= 2 && !has(t, "before") && !has(t, "whole") && !has(t, "integer")) {
+    sprintf(cmd, (tc || has(t, "signed") || has(t, "negative") || v[0] < 0) ? "fixedtcenc(%.10g,1,%lld)" : "fixedfrac(%.10g,%lld)", v[0], (long long)v[1]);
+    return eval_float(cmd, out);
+  }
   if (has(t, "fixed") && (has(t, "encode") || has(t, "represent") || has(t, "convert")) && nv >= 3) {
     long long whole = (long long)v[1], frac = (long long)v[2];
     double wi=0, fb=0;
@@ -4275,32 +4316,6 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if ((has(t, "runlength") || has(t, "rle") || (has(t, "run") && has(t, "length"))) && nv >= 3) {
     sprintf(cmd, "rle(%lld,%lld,%lld)", (long long)v[0], (long long)v[1], (long long)v[2]); return eval_storage(cmd, out);
   }
-  if ((has(compact, "select") && has(compact, "where")) && (has(compact, "sql") || has(compact, "table"))) {
-    const char *tp = strstr(compact, "table");
-    const char *sp = strstr(compact, "select");
-    const char *wp = strstr(compact, "where");
-    if (tp && sp && wp && sp < wp) {
-      char table[24]="table", show[24]="field", field[24]="field", value[24]="";
-      int j = 0; const char *p = tp + 5;
-      while (*p && !isalpha((unsigned char)*p)) ++p;
-      while (isalpha((unsigned char)*p) && j < 23) table[j++] = *p++;
-      table[j] = 0; j = 0;
-      p = sp + 6;
-      while (p < wp && isalpha((unsigned char)*p) && j < 23) show[j++] = *p++;
-      show[j] = 0; j = 0;
-      p = wp + 5;
-      while (*p && isalpha((unsigned char)*p) && j < 23) field[j++] = *p++;
-      field[j] = 0;
-      char op[3] = "=";
-      if (*p == '>' || *p == '<' || *p == '=') { op[0] = *p; op[1] = 0; ++p; }
-      while (*p && !isalnum((unsigned char)*p)) ++p;
-      j = 0;
-      while (*p && (isalnum((unsigned char)*p) || *p == '.') && j < 23) value[j++] = *p++;
-      value[j] = 0;
-      int n = add(out, 0, "Build SQL as SELECT field FROM table WHERE condition.");
-      return add(out, n, "SELECT %s FROM %s WHERE %s %s %s", show, table, field, op, value[0] ? value : "?");
-    }
-  }
   if ((has(t, "sql") || has(t, "select") || has(t, "where") || has(t, "count")) && make_sql_cmd(input, cmd, sizeof(cmd))) {
     return eval_storage(cmd, out);
   }
@@ -4388,7 +4403,8 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     bool_clean_tail(e, ce, sizeof(ce));
     sprintf(cmd, "posform(%s)", ce); return eval_posform(cmd, out);
   }
-  if (nv == 0 && !has(compact, "prove") && !has(compact, "show") &&
+  if ((nv == 0 || has(compact, "simplify") || has(compact, "boolean") || has(compact, "logic")) &&
+      !has(compact, "prove") && !has(compact, "show") &&
       (has(compact, "simplify") || has(compact, "truth") || has(compact, "boolean") || has(compact, "logic")) &&
       make_named_bool_rhs_cmd(compact, has(compact, "truth") ? "truth" : "bool", cmd, sizeof(cmd))) {
     return eval_bool(cmd, out);
@@ -4449,7 +4465,8 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       sprintf(cmd, "boolprove(%s,%s)", nlhs, nrhs); return eval_bool_prove(cmd, out);
     }
   }
-  if (nv == 0 && (has(compact, "nand") || has(compact, "nor") || has(compact, "xor") || has(compact, "and") || has(compact, "or") || has(compact, "not") || has(compact, "+") || has(compact, "*") || has(compact, "'") || has(compact, ","))) {
+  if ((nv == 0 || has(compact, "simplify") || has(compact, "boolean") || has(compact, "logic")) &&
+      (has(compact, "nand") || has(compact, "nor") || has(compact, "xor") || has(compact, "and") || has(compact, "or") || has(compact, "not") || has(compact, "+") || has(compact, "*") || has(compact, "'") || has(compact, ","))) {
     const char *e = skip_bool_words(compact); char ce[96], ne[96];
     bool_clean_tail(e, ce, sizeof(ce));
     bool_arg_for_cmd(ce, ne, sizeof(ne));

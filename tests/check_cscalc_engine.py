@@ -392,10 +392,14 @@ def main():
     require("A 10-bit address bus and 8-bit data bus memory has 1024 addresses. Calculate memory size in bytes.", ["address bus 10 bits", "memory size = 1024*8", "= 1024 bytes"])
     require("A cache has 32 KiB capacity, 64 byte blocks and 4-way associativity. Find offset, index and tag bits for a 32 bit address.", ["sets = blocks/ways", "index bits = log2(128) = 7", "tag bits = 32 - 7 - 6 = 19"])
     require("Calculate Big O for nested loops for i from 1 to n and j from 1 to n.", ["Outer loop runs n times", "n*n = n^2", "Big O = O(n^2)"])
-    require("A database table STUDENT(id,name,grade). Write SQL to select name where grade > 70.", ["Build SQL", "SELECT name FROM student WHERE grade > 70"])
+    require("A database table STUDENT(id,name,grade). Write SQL to select name where grade > 70.", ["SQL SELECT", "SELECT name", "WHERE grade > 70"])
+    require("Write SQL to select name and age from STUDENT where grade >= 70 order by age.", ["SELECT name,age", "FROM student", "WHERE grade >= 70"])
     require("Using a 6 bit mantissa and 4 bit exponent, encode 0.1875 in normalised floating point.", ["0.1875 = 0.75 * 2^-2", "mantissa (6 bits)", "exponent (4 bits)"])
     require("Determine whether 01111111 + 00000001 overflows in unsigned binary.", ["carrying", "01111111 + 00000001 = 10000000"])
     require("Use a truth table to prove De Morgan not(A and B)=not A or not B.", ["LHS simplifies to A'+B'", "RHS simplifies to A'+B'", "Same output rows"])
+    require("Convert decimal 0.1 into binary fixed point with 8 fractional bits.", ["scaled integer = 0.1 * 2^8 = 26", "fixed point = 0.00011010"])
+    require("Calculate the transmission time for a 12 MiB file over a 24 Mbps link.", ["12 MiB = 100663296 bits", "24 Mbit/s = 24000000 bit/s", "4.194304 s"])
+    require("Simplify Boolean expression A and 1 or A and 0.", ["a&1+a&0 -> a+a&0", "simplified = A"])
     print("OK cscalc engine")
 
 
