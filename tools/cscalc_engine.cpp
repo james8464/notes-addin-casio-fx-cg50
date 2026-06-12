@@ -415,6 +415,56 @@ static bool make_rpn_cmd(const char *in, char *cmd, int cap) {
   return true;
 }
 
+static int add_infix_postfix_lines(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
+  char expr[96]; int ep = 0;
+  bool seen = false;
+  for (int i = 0; input[i] && ep + 1 < (int)sizeof(expr); ++i) {
+    unsigned char c = (unsigned char)input[i];
+    if (isalnum(c) || c == '+' || c == '-' || c == '*' || c == '/' || c == '(' || c == ')') {
+      if (isalpha(c)) {
+        char w[12]; int j = 0, k = i;
+        while (isalpha((unsigned char)input[k]) && j + 1 < (int)sizeof(w)) w[j++] = (char)tolower((unsigned char)input[k++]);
+        w[j] = 0;
+        if (seen && (word_is(w, "to") || word_is(w, "reverse") || word_is(w, "polish") ||
+                     word_is(w, "notation") || word_is(w, "postfix"))) break;
+        if (word_is(w, "convert") || word_is(w, "infix") || word_is(w, "expression") ||
+            word_is(w, "reverse") || word_is(w, "polish") || word_is(w, "notation") ||
+            word_is(w, "to") || word_is(w, "postfix")) { i = k - 1; continue; }
+      }
+      seen = true;
+      expr[ep++] = (char)c;
+    } else if (seen && !isspace(c)) {
+      break;
+    }
+  }
+  expr[ep] = 0;
+  if (!expr[0]) return 0;
+  char outp[96]; int op = 0;
+  char st[32]; int sp = 0;
+  for (int i = 0; expr[i] && op + 2 < (int)sizeof(outp); ++i) {
+    char c = expr[i];
+    if (isalnum((unsigned char)c)) outp[op++] = c;
+    else if (c == '(') st[sp++] = c;
+    else if (c == ')') {
+      while (sp && st[sp-1] != '(') outp[op++] = st[--sp];
+      if (sp && st[sp-1] == '(') --sp;
+    } else if (c == '+' || c == '-' || c == '*' || c == '/') {
+      int pc = (c == '*' || c == '/') ? 2 : 1;
+      while (sp && st[sp-1] != '(') {
+        int ps = (st[sp-1] == '*' || st[sp-1] == '/') ? 2 : 1;
+        if (ps < pc) break;
+        outp[op++] = st[--sp];
+      }
+      st[sp++] = c;
+    }
+  }
+  while (sp && op + 1 < (int)sizeof(outp)) if (st[sp-1] != '(') outp[op++] = st[--sp]; else --sp;
+  outp[op] = 0;
+  int n = add(out, 0, "Use operator precedence and a stack to convert infix to postfix.");
+  n = add(out, n, "infix = %s", expr);
+  return add(out, n, "postfix = %s", outp);
+}
+
 static bool make_ds_cmd(const char *in, const char *name, char *cmd, int cap) {
   char t[192]; raw_clean(in, t, sizeof(t));
   int p = sprintf(cmd, "%s(", name), count = 0;
@@ -1492,7 +1542,7 @@ static int eval_storage(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LE
     int n = add(out, 0, "Run-length encode consecutive repeated symbols.");
     n = add(out, n, "runs: %s", summary);
     n = add(out, n, "original bits = %d*%s = %lld", len, a[1], orig);
-    return add(out, n, "encoded bits = %d*(%s+%s) = %lld", runs, a[1], a[2], enc);
+    return add(out, n, "compressed bits = encoded bits = %d*(%s+%s) = %lld", runs, a[1], a[2], enc);
   }
   if (starts3(s, "huffman(", "huff(", "huffmancode(") && na >= 2) {
     char leaf[10]; long long lw[10]; int depth[10] = {0};
@@ -2813,6 +2863,7 @@ static const char *skip_bool_words(const char *e) {
     if (starts(e, "pos")) { e += 3; moved = true; }
     if (starts(e, "form")) { e += 4; moved = true; }
     if (starts(e, "truthtable")) { e += 10; moved = true; }
+    if (starts(e, "build")) { e += 5; moved = true; }
     if (starts(e, "truth")) { e += 5; moved = true; }
     if (starts(e, "table")) { e += 5; moved = true; }
     if (starts(e, "output")) { e += 6; moved = true; }
@@ -2961,6 +3012,11 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if ((has(t, "tree") || has(t, "traversal") || has(t, "traverse")) &&
       (has(t, "postorder") || has(t, "post,order") || has(t, "post"))) {
     if (make_tree_cmd(input, "postorder", cmd, sizeof(cmd))) return eval_trace(cmd, out);
+  }
+  if ((has(t, "infix") || has(t, "expression")) &&
+      (has(t, "postfix") || has(t, "reversepolish") || (has(t, "reverse") && has(t, "polish")))) {
+    int n = add_infix_postfix_lines(input, out);
+    if (n) return n;
   }
   if (has(t, "stack") && (has(t, "push") || has(t, "pop"))) {
     if (make_ds_cmd(input, "stack", cmd, sizeof(cmd))) return eval_trace(cmd, out);
@@ -3345,6 +3401,19 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if ((has(t, "hamming") || has(t, "bitdiff")) && nb >= 2) {
     sprintf(cmd, "hamming(%s,%s)", bits[0], bits[1]); return eval_binary_arith(cmd, out);
   }
+  if (has(t, "hamming") && (has(t, "decode") || has(t, "code")) && nb >= 1 && strlen(bits[0]) == 7) {
+    const char *b = bits[0];
+    int s1 = (b[0]-'0') ^ (b[2]-'0') ^ (b[4]-'0') ^ (b[6]-'0');
+    int s2 = (b[1]-'0') ^ (b[2]-'0') ^ (b[5]-'0') ^ (b[6]-'0');
+    int s4 = (b[3]-'0') ^ (b[4]-'0') ^ (b[5]-'0') ^ (b[6]-'0');
+    int pos = s1 + 2*s2 + 4*s4;
+    int n = add(out, 0, "For Hamming(7,4), calculate the parity syndrome.");
+    n = add(out, n, "s1=%d, s2=%d, s4=%d", s1, s2, s4);
+    if (!pos) return add(out, n, "syndrome = 0, no single-bit error detected.");
+    char corr[8]; strncpy(corr, b, 8); corr[pos-1] = corr[pos-1] == '1' ? '0' : '1';
+    n = add(out, n, "syndrome = %d, so bit %d is wrong.", pos, pos);
+    return add(out, n, "corrected code = %s", corr);
+  }
   if (has(t, "checksum") && nb >= 1) {
     int p = sprintf(cmd, "checksum(%d", (int)strlen(bits[0]));
     for (int i = 0; i < nb && p < (int)sizeof(cmd) - 50; ++i) p += sprintf(cmd + p, ",%s", bits[i]);
@@ -3366,8 +3435,12 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     sprintf(cmd, "parity(%s,%s)", bits[0], has(t, "odd") ? "odd" : "even"); return eval_binary_arith(cmd, out);
   }
   if ((has(t, "checkdigit") || (has(t, "check") && has(t, "digit"))) && nv >= 3) {
-    int p = sprintf(cmd, "checkdigit(%lld,%lld", (long long)v[0], (long long)v[nv-1]);
-    for (int i = 1; i < nv - 1 && p < (int)sizeof(cmd) - 20; ++i) p += sprintf(cmd + p, ",%lld", (long long)v[i]);
+    double av[32]; int nav = scan_nums(t, av, 32); double mod = nav > 1 ? av[nav-1] : v[nv-1];
+    scan_after_word_num(t, "modulo", &mod); scan_after_word_num(t, "mod", &mod);
+    int p = sprintf(cmd, "checkdigit(%lld,%lld", (long long)av[0], (long long)mod);
+    int end = nav;
+    if (nav > 1 && (long long)av[nav-1] == (long long)mod) end = nav - 1;
+    for (int i = 1; i < end && p < (int)sizeof(cmd) - 20; ++i) p += sprintf(cmd + p, ",%lld", (long long)av[i]);
     sprintf(cmd + p, ")");
     return eval_binary_arith(cmd, out);
   }
@@ -3461,10 +3534,22 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     sprintf(cmd + p, ")");
     return eval_storage(cmd, out);
   }
-  if ((has(t, "runlength") || has(t, "rle") || (has(t, "run") && has(t, "length"))) && nv >= 2) {
+  if ((has(t, "runlength") || has(t, "rle") || (has(t, "run") && has(t, "length")))) {
     char seq[48];
     if (find_rle_sequence(input, seq, sizeof(seq))) {
-      sprintf(cmd, "rletext(%s,%lld,%lld)", seq, (long long)v[0], (long long)v[1]); return eval_storage(cmd, out);
+      if (nv >= 2) {
+        sprintf(cmd, "rletext(%s,%lld,%lld)", seq, (long long)v[0], (long long)v[1]); return eval_storage(cmd, out);
+      }
+      char summary[72] = ""; int sp = 0, runs = 0, len = (int)strlen(seq);
+      for (int i = 0; i < len;) {
+        int j = i + 1; while (j < len && seq[j] == seq[i]) ++j;
+        if (runs && sp + 1 < 72) summary[sp++] = ',';
+        if (sp + 8 < 72) { summary[sp++] = (char)toupper((unsigned char)seq[i]); summary[sp++] = 'x'; int c0 = j - i; if (c0 >= 10) summary[sp++] = (char)('0' + c0 / 10); summary[sp++] = (char)('0' + c0 % 10); summary[sp] = 0; }
+        runs++; i = j;
+      }
+      int n = add(out, 0, "Run-length encode consecutive repeated symbols.");
+      n = add(out, n, "runs: %s", summary);
+      return add(out, n, "compressed form uses %d runs.", runs);
     }
   }
   if ((has(t, "runlength") || has(t, "rle") || (has(t, "run") && has(t, "length"))) && nv >= 3) {

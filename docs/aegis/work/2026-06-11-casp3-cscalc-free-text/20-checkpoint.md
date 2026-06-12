@@ -2201,6 +2201,41 @@ Drift check:
 - Still inside CSCALC AQA Paper 2 Boolean algebra support.
 - Did not touch CAS Pure, CASP3 behavior, NOTES, menus, or status/UI code.
 
+## 2026-06-12 P3/CS Free-Text Hardening Slice
+
+Completed:
+- Added generic number-before-keyword parsing for CASP3 free text.
+- Fixed beam/rod reaction prose such as `20N load is 2m from...`.
+- Added safer velocity-polynomial parsing for displacement from `v = at^2+bt+c`.
+- Fixed ladder limiting-angle prose with smooth wall/rough ground.
+- Added coin/toss two-tailed critical-region working before generic hypothesis routing.
+- Fixed `B(n,p)` normal/Poisson approximation prose with one bound or exact point.
+- Improved coded-data wording to avoid abbreviated/confusing `sd` output.
+- Added CSCALC RLE text output when bit widths are not supplied.
+- Rebuilt all calculator files.
+
+Evidence:
+- Broad free-text probe batch: 23/23 passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 169388 bytes`
+  - `CSCALC.g3a: 158720 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CAS.PAK: 18178 bytes`
+
+Drift check:
+- Still inside CASP3/CSCALC free-text working support and generated calculator outputs.
+- Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for future probe-driven hardening; this slice is verified.
+
 ## 2026-06-12 P3/CS Prose Coverage Slice
 
 Completed:

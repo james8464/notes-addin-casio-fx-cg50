@@ -200,11 +200,123 @@ static bool word_num(const char *s, const char *name, double *v) {
       q += 2;
       while (s[q] == ' ' || s[q] == '\t' || s[q] == '=' || s[q] == ':' || s[q] == ',') ++q;
     }
+    if (tolower((unsigned char)s[q]) == 'h' && tolower((unsigned char)s[q+1]) == 'a' &&
+        tolower((unsigned char)s[q+2]) == 's' && !isalnum((unsigned char)s[q+3])) {
+      q += 3;
+      while (s[q] == ' ' || s[q] == '\t' || s[q] == '=' || s[q] == ':' || s[q] == ',') ++q;
+    }
     if (s[q] != '-' && !isdigit((unsigned char)s[q])) continue;
     *v = read_num(s + q);
     return true;
   }
   return false;
+}
+
+static bool word_num_with_t(const char *s, const char *name, double *v) {
+  int nl = (int)strlen(name);
+  for (int i = 0; s && s[i]; ++i) {
+    if (i > 0 && isalnum((unsigned char)s[i-1])) continue;
+    int j = 0, q = i;
+    while (j < nl && s[q]) {
+      while (s[q] == ' ' || s[q] == '\t' || s[q] == '_' || s[q] == '-') ++q;
+      if (tolower((unsigned char)s[q]) != name[j]) break;
+      ++j; ++q;
+    }
+    if (j != nl || isalnum((unsigned char)s[q])) continue;
+    while (s[q] == ' ' || s[q] == '\t' || s[q] == '=' || s[q] == ':' || s[q] == ',') ++q;
+    if ((tolower((unsigned char)s[q]) == 't' && !isalnum((unsigned char)s[q+1])) ||
+        (tolower((unsigned char)s[q]) == 't' && tolower((unsigned char)s[q+1]) == 'i' &&
+         tolower((unsigned char)s[q+2]) == 'm' && tolower((unsigned char)s[q+3]) == 'e' &&
+         !isalnum((unsigned char)s[q+4]))) {
+      q += tolower((unsigned char)s[q+1]) == 'i' ? 4 : 1;
+      while (s[q] == ' ' || s[q] == '\t' || s[q] == '=' || s[q] == ':' || s[q] == ',') ++q;
+    }
+    if (s[q] != '-' && !isdigit((unsigned char)s[q])) continue;
+    *v = read_num(s + q);
+    return true;
+  }
+  return false;
+}
+
+static bool prev_word_num(const char *s, const char *name, double *v) {
+  int nl = (int)strlen(name);
+  for (int i = 0; s && s[i]; ++i) {
+    if (i > 0 && isalnum((unsigned char)s[i-1])) continue;
+    int j = 0, q = i;
+    while (j < nl && s[q]) {
+      while (s[q] == ' ' || s[q] == '\t' || s[q] == '_' || s[q] == '-') ++q;
+      if (tolower((unsigned char)s[q]) != name[j]) break;
+      ++j; ++q;
+    }
+    if (j != nl || isalnum((unsigned char)s[q])) continue;
+    int k = i - 1;
+    while (k >= 0 && (s[k] == ' ' || s[k] == '\t')) --k;
+    while (k >= 0 && isalpha((unsigned char)s[k])) --k;
+    while (k >= 0 && (s[k] == ' ' || s[k] == '\t')) --k;
+    int end = k;
+    while (k >= 0 && (isdigit((unsigned char)s[k]) || s[k] == '.')) --k;
+    if (end <= k) continue;
+    if (k >= 0 && s[k] == '-') --k;
+    char b[32]; int len = end - k;
+    if (len <= 0 || len >= (int)sizeof(b)) continue;
+    memcpy(b, s + k + 1, len); b[len] = 0;
+    *v = read_num(b);
+    return true;
+  }
+  return false;
+}
+
+static double term_coeff(const char *term, int len) {
+  char b[32]; int n = 0;
+  for (int i = 0; i < len && n + 1 < (int)sizeof(b); ++i) {
+    if (term[i] == '*') break;
+    b[n++] = term[i];
+  }
+  b[n] = 0;
+  if (!b[0]) return 1;
+  return read_num(b);
+}
+
+static bool parse_velocity_quad(const char *input, double *A, double *B, double *C) {
+  const char *p = strchr(input, '=');
+  p = p ? p + 1 : input;
+  char e[160]; int k = 0;
+  for (int i = 0; p[i] && k + 1 < (int)sizeof(e); ++i) {
+    unsigned char ch = (unsigned char)p[i];
+    if (isspace(ch)) continue;
+    e[k++] = (char)tolower(ch);
+  }
+  e[k] = 0;
+  char *stop = strstr(e, "find");
+  if (stop) *stop = 0;
+  stop = strchr(e, '.');
+  if (stop) *stop = 0;
+  *A = *B = *C = 0;
+  bool any = false;
+  for (int i = 0; e[i]; ) {
+    int sign = 1;
+    if (e[i] == '+') ++i;
+    else if (e[i] == '-') { sign = -1; ++i; }
+    int start = i;
+    while (e[i] && e[i] != '+' && e[i] != '-') ++i;
+    int len = i - start;
+    if (len <= 0) continue;
+    const char *t = e + start;
+    const char *tp = strchr(t, 't');
+    if (tp && tp < t + len) {
+      int pre = (int)(tp - t);
+      double cf = sign * term_coeff(t, pre);
+      if (tp + 2 < t + len && tp[1] == '^' && tp[2] == '2') *A += cf;
+      else *B += cf;
+      any = true;
+    } else if (isdigit((unsigned char)t[0]) || t[0] == '.') {
+      char tmp[32]; int n = len < 31 ? len : 31;
+      memcpy(tmp, t, n); tmp[n] = 0;
+      *C += sign * read_num(tmp);
+      any = true;
+    }
+  }
+  return any;
 }
 
 static bool is_projectile_text(const char *t) {
@@ -1153,7 +1265,7 @@ static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     int n = add(out, 0, "For coded data Y=(X-a)/b, rearrange to X=a+bY.");
     n = add(out, n, "mean X = a + b*mean Y");
     n = add(out, n, "mean X = %.6g + %.6g*%.6g = %.6g", A, B, my, A+B*my);
-    return add(out, n, "sd X = |b|*sd Y = %.6g*%.6g = %.6g", ab, sy, ab*sy);
+    return add(out, n, "standard deviation X = |b|*standard deviation Y = %.6g*%.6g = %.6g", ab, sy, ab*sy);
   }
   if (starts3(s, "code(", "codex(", "xtocoded(") && na >= 4) {
     double mx=num(a[0]), sx=num(a[1]), A=num(a[2]), B=num(a[3]), ab=B < 0 ? -B : B;
@@ -1210,6 +1322,18 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       sprintf(cmd, "varaccx(%.10g,%.10g,%.10g,%.10g,%.10g,%.10g)", u, c0, c1, c2, x, hx0 ? x0 : 0);
       return eval_mech(cmd, out);
     }
+  }
+  if (has(t, "velocity") && has(t, "displacement") && has(t, "from")) {
+    double A=0, B=0, C=0, t1=0, t2=0;
+    if (!parse_velocity_quad(input, &A, &B, &C) ||
+        !word_num_with_t(input, "from", &t1) || !word_num_with_t(input, "to", &t2)) return 0;
+    double F1=A*t1*t1*t1/3.0 + B*t1*t1/2.0 + C*t1;
+    double F2=A*t2*t2*t2/3.0 + B*t2*t2/2.0 + C*t2;
+    int n = add(out, 0, "Displacement is the integral of velocity.");
+    n = add(out, n, "v = %.6g t^2 %+.6g t %+.6g", A, B, C);
+    n = add(out, n, "s = integral(v) dt = %.6g t^3 %+.6g t^2 %+.6g t", A/3.0, B/2.0, C);
+    n = add(out, n, "displacement = [s] from t=%.6g to t=%.6g", t1, t2);
+    return add(out, n, "displacement = %.10g - %.10g = %.10g", F2, F1, F2-F1);
   }
   if ((has(t, "acceleration") || has(t, "accn")) && has(t, "t") &&
       (has(t, "initial") || has(t, "initially")) && (has(c, "findv") || has(c, "findvelocity") || has(c, "findvand")) &&
@@ -1566,17 +1690,28 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if ((has(t, "beam") || has(t, "support") || has(t, "reaction")) && (has(t, "load") || has(t, "weight")) && nv >= 3) {
     double L=0,W=0,x=0,bw=0;
-    bool hL=label_num(input,"length",&L), hW=label_num(input,"load",&W), hx=label_num(input,"distance",&x);
-    bool hb=label_num(input,"beamweight",&bw) || label_num(input,"bw",&bw);
+    bool hL=label_num(input,"length",&L) || word_num(input,"length",&L);
+    bool hW=label_num(input,"load",&W) || prev_word_num(input,"load",&W) || word_num(input,"load",&W);
+    bool hx=label_num(input,"distance",&x) || word_num(input,"from",&x) || prev_word_num(input,"from",&x);
+    bool hb=label_num(input,"beamweight",&bw) || label_num(input,"bw",&bw) ||
+            ((has(t, "uniform") || has(t, "rod") || has(t, "beam")) && (word_num(input,"weight",&bw) || prev_word_num(input,"weight",&bw)));
     if (hL && hW && hx) sprintf(cmd, "beam(%.10g,%.10g,%.10g,%.10g)", L, W, x, hb ? bw : 0);
     else sprintf(cmd, nv > 3 ? "beam(%.10g,%.10g,%.10g,%.10g)" : "beam(%.10g,%.10g,%.10g)", v[0], v[1], v[2], nv > 3 ? v[3] : 0);
     return eval_mech(cmd, out);
   }
-  if (has(t, "ladder") && (has(t, "wall") || has(t, "floor") || has(t, "rough") || has(t, "smooth")) && nv >= 3) {
+  if (has(t, "ladder") && (has(t, "wall") || has(t, "floor") || has(t, "rough") || has(t, "smooth")) && nv >= 2) {
     double L=0,W=0,ang=0,P=0,d=0;
     bool hL=label_num(input,"length",&L), hW=label_num(input,"weight",&W), ha=label_num(input,"angle",&ang);
     bool hP=label_num(input,"load",&P) || label_num(input,"person",&P);
     bool hd=label_num(input,"distance",&d);
+    if (!ha && (has(t, "limiting") || has(t, "minimum")) && (has(t, "coefficient") || has(t, "mu")) && nv >= 2) {
+      double mu = v[1], theta = arctan(1.0/(2.0*mu))*180.0/M_PI;
+      int n = add(out, 0, "Ladder in limiting equilibrium: smooth wall, rough ground.");
+      n = add(out, n, "For a uniform ladder with no extra load, mu = 1/(2 tan theta).");
+      n = add(out, n, "tan theta = 1/(2mu) = 1/(2*%.6g)", mu);
+      return add(out, n, "angle theta = %.10g degrees", theta);
+    }
+    if (nv < 3) return 0;
     if (hL && hW && ha) sprintf(cmd, "ladder(%.10g,%.10g,%.10g,%.10g,%.10g)", L, W, ang, hP ? P : 0, hd ? d : L/2);
     else sprintf(cmd, nv > 4 ? "ladder(%.10g,%.10g,%.10g,%.10g,%.10g)" : "ladder(%.10g,%.10g,%.10g)", v[0], v[1], v[2], nv > 3 ? v[3] : 0, nv > 4 ? v[4] : v[0]/2);
     return eval_mech(cmd, out);
@@ -1644,7 +1779,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     else sprintf(cmd, "incline(%.10g,%.10g,%.10g)", v[0], v[1], nv > 2 ? v[2] : 0);
     return eval_mech(cmd, out);
   }
-  if ((has(t, "friction") || has(t, "coefficientoffriction")) && nv >= 2) {
+  if ((has(t, "friction") || has(t, "coefficientoffriction")) && !has(t, "ladder") && nv >= 2) {
     sprintf(cmd, "friction(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
   }
   if (has(t, "moment") && !has(t, "momentum") && !has(t, "correlation") && !has(t, "productmoment") && nv >= 2) {
@@ -1712,6 +1847,29 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if ((has(t, "varacc") || has(t, "variableacceleration") || (has(t, "acceleration") && has(t, "integrate"))) && nv >= 4) {
     sprintf(cmd, "varacc(%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3]); return eval_mech(cmd, out);
   }
+  if ((has(t, "coin") || has(t, "heads") || has(t, "tails") || has(t, "tosses") || has(t, "tossed")) &&
+      (has(t, "critical") || has(t, "criticalregion")) && nv >= 1) {
+    int N = (int)v[0];
+    double alpha = 0.05;
+    for (int i = 1; i < nv; ++i) if (v[i] > 0 && v[i] <= 10) { alpha = v[i] / 100.0; break; }
+    if (has(t, "twotailed") || has(t, "twosided") || (has(t, "two") && (has(t, "tailed") || has(t, "sided")))) {
+      double a2 = alpha / 2.0, cum = 0, lowerp = 0, upperp = 0;
+      int loCrit = -1, hiCrit = N + 1;
+      for (int k=0;k<=N;++k) { cum += binomp(N,0.5,k); if (cum <= a2) { loCrit = k; lowerp = cum; } else break; }
+      cum = 0;
+      for (int k=N;k>=0;--k) { cum += binomp(N,0.5,k); if (cum <= a2) { hiCrit = k; upperp = cum; } else break; }
+      int n = add(out, 0, "Let X ~ B(%d, 0.5) for the number of heads.", N);
+      n = add(out, n, "Two-tailed critical region: split alpha between both tails.");
+      n = add(out, n, "alpha/2 = %.6g", a2);
+      n = add(out, n, "Lower tail probability = %.10g, upper tail probability = %.10g", lowerp, upperp);
+      if (loCrit < 0 && hiCrit > N) return add(out, n, "no critical value at this alpha.");
+      if (loCrit < 0) return add(out, n, "critical region: X >= %d", hiCrit);
+      if (hiCrit > N) return add(out, n, "critical region: X <= %d", loCrit);
+      return add(out, n, "critical region: X <= %d or X >= %d", loCrit, hiCrit);
+    }
+    sprintf(cmd, "critbinom(%d,0.5,%.10g,%.0f)", N, alpha, (has(t, "upper") || has(t, "more")) ? 1.0 : -1.0);
+    return eval_stats(cmd, out);
+  }
   if ((has(t, "hypothesis") || has(t, "significance") || has(t, "test")) &&
       (has(t, "coin") || has(t, "heads") || has(t, "tails")) && nv >= 2) {
     int ai = -1; double alpha = 0.05;
@@ -1741,6 +1899,33 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       else if (has(c, "lessthan")) tail = -2;
       if (tail) sprintf(cmd, "binomtail(%d,%.10g,%d,%d)", (int)N, pv, (int)x, tail);
       else sprintf(cmd, "binom(%d,%.10g,%d)", (int)N, pv, (int)x);
+      return eval_stats(cmd, out);
+    }
+  }
+  if ((has(c, "b(") || has(c, "~b(") || has(c, "followsb(")) && (has(t, "approx") || has(t, "approximation")) && nv >= 3) {
+    double Nd=0, pv=0;
+    if (!dist2(c, "b(", &Nd, &pv)) { Nd = v[0]; pv = v[1]; }
+    double u[3]; int nu = 0;
+    for (int i = 0; i < nv && nu < 3; ++i) {
+      if (near_num(v[i], Nd) || near_num(v[i], pv)) continue;
+      u[nu++] = v[i];
+    }
+    int tail = prob_tail(c, t);
+    if (has(t, "normal") && nu >= 1) {
+      double lo = u[0], hi = u[0];
+      if (nu >= 2) {
+        lo = u[0] < u[1] ? u[0] : u[1];
+        hi = u[0] < u[1] ? u[1] : u[0];
+      } else if (tail < 0) {
+        lo = 0; hi = u[0];
+      } else if (tail > 0) {
+        lo = u[0]; hi = Nd;
+      }
+      sprintf(cmd, "binomnorm(%d,%.10g,%.10g,%.10g)", (int)Nd, pv, lo, hi);
+      return eval_stats(cmd, out);
+    }
+    if (has(t, "poisson") && nu >= 1) {
+      sprintf(cmd, "poissonapprox(%d,%.10g,%d,%d)", (int)Nd, pv, (int)u[0], tail);
       return eval_stats(cmd, out);
     }
   }
@@ -2074,7 +2259,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       return eval_stats(cmd, out);
     }
   }
-  if ((has(t, "coded") || has(t, "coding")) && has(t, "mean") && (has(t, "sd") || has(t, "standarddeviation")) && nv >= 4) {
+  if ((has(t, "coded") || has(t, "coding")) && has(t, "mean") &&
+      (has(t, "sd") || has(t, "standarddeviation") || (has(t, "standard") && has(t, "deviation"))) && nv >= 4) {
     if (has(c, "y=(x-") || has(c, "y=(x+")) sprintf(cmd, "uncode(%.10g,%.10g,%.10g,%.10g)", v[2], v[3], -v[0], v[1]);
     else sprintf(cmd, "code(%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3]);
     return eval_stats(cmd, out);
@@ -2132,7 +2318,12 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     sprintf(cmd, "meanvar(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_stats(cmd, out);
   }
   if ((has(t, "stratified") || has(t, "stratum")) && nv >= 3) {
-    sprintf(cmd, "stratified(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_stats(cmd, out);
+    double pop=0, group=0, sample=0;
+    bool hPop=word_num(input,"population",&pop), hGroup=word_num(input,"stratum",&group) || word_num(input,"group",&group);
+    bool hSample=word_num(input,"sample",&sample);
+    if (hPop && hGroup && hSample) sprintf(cmd, "stratified(%.10g,%.10g,%.10g)", pop, group, sample);
+    else sprintf(cmd, "stratified(%.10g,%.10g,%.10g)", v[0], v[1], v[2]);
+    return eval_stats(cmd, out);
   }
   if ((has(t, "grouped") || has(t, "interpolate") || has(t, "interpolation")) && has(t, "median") && nv >= 5) {
     sprintf(cmd, "groupmedian(%.10g,%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3], v[4]); return eval_stats(cmd, out);
