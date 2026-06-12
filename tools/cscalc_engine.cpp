@@ -942,6 +942,12 @@ static bool make_minterm_cmd(const char *in, char *cmd, int cap) {
       varpart = true;
       continue;
     }
+    if (varpart && j == 1 && isalpha((unsigned char)w[0])) {
+      char c = (char)toupper((unsigned char)w[0]);
+      bool seen = false; for (int q = 0; q < vc; ++q) if (vars[q] == c) seen = true;
+      if (!seen && vc < 6) { vars[vc++] = c; vars[vc] = 0; }
+      continue;
+    }
     if (minterm_dc_word(w)) { dcpart = true; continue; }
     if (!w[0] || (!varpart && minterm_skip_word(w))) continue;
     if ((w[0] == '-' && isdigit((unsigned char)w[1])) || isdigit((unsigned char)w[0])) {
@@ -3314,6 +3320,9 @@ static const char *skip_bool_words(const char *e) {
     moved = false;
     if (starts(e, "simplify")) { e += 8; moved = true; }
     if (starts(e, "draw")) { e += 4; moved = true; }
+    if (starts(e, "find")) { e += 4; moved = true; }
+    if (starts(e, "convert")) { e += 7; moved = true; }
+    if (starts(e, "produce")) { e += 7; moved = true; }
     if (starts(e, "make")) { e += 4; moved = true; }
     if (starts(e, "create")) { e += 6; moved = true; }
     if (starts(e, "construct")) { e += 9; moved = true; }
@@ -3355,6 +3364,7 @@ static void bool_arg_for_cmd(const char *src, char *dst, int cap) {
   int p = 0;
   for (int i = 0; src[i] && p + 1 < cap;) {
     if (starts(src + i, "nand")) { dst[p++] = '@'; i += 4; continue; }
+    if (starts(src + i, "implies")) { dst[p++] = '>'; i += 7; continue; }
     if (starts(src + i, "nor")) { dst[p++] = '#'; i += 3; continue; }
     if (starts(src + i, "xor")) { dst[p++] = '^'; i += 3; continue; }
     if (starts(src + i, "not")) { dst[p++] = '!'; i += 3; continue; }
@@ -3371,10 +3381,11 @@ static void bool_clean_tail(const char *src, char *dst, int cap) {
   strncpy(dst, src, cap - 1); dst[cap - 1] = 0;
   const char *cut[] = {
     "using", "bydemorgan", "demorgan", "demorgans", "law", "method",
+    "totruthtable", "totruth", "totable",
     "toatruthtable", "truth", "table", "astruthtable", "intoatruthtable",
     "tokmap", "karnaugh", "map", "tosop", "topos", "tonand", "tonor"
   };
-  for (int i = 0; i < 16; ++i) {
+  for (int i = 0; i < (int)(sizeof(cut) / sizeof(cut[0])); ++i) {
     char *p = strstr(dst, cut[i]);
     if (p) *p = 0;
   }
@@ -5479,6 +5490,11 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   if (nv == 0 && (starts(compact, "posform") || starts(compact, "cnf") || has(compact, "productofsums"))) {
     const char *e = skip_bool_words(compact); char ce[96];
+    const char *eq = strchr(e, '=');
+    if (eq && eq > e && eq[1] && isalpha((unsigned char)e[0]) && e[1] == '(') {
+      bool_clean_tail(eq + 1, ce, sizeof(ce));
+      sprintf(cmd, "posform(%s)", ce); return eval_posform(cmd, out);
+    }
     bool_clean_tail(e, ce, sizeof(ce));
     sprintf(cmd, "posform(%s)", ce); return eval_posform(cmd, out);
   }
@@ -5510,6 +5526,20 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
         for (int i = 0; i < tn && n < CSCALC_MAX_LINES; ++i) n = add(out, n, "%s", tmp[i]);
         return n;
       }
+    }
+  }
+  if (nv == 0 && !has(compact, "prove") && !has(compact, "show") && has(compact, "=") &&
+      (has(compact, "simplify") || has(compact, "truth") || has(compact, "boolean") || has(compact, "logic"))) {
+    const char *e = skip_bool_words(compact);
+    const char *eq = strchr(e, '=');
+    if (eq && eq > e && eq[1] && isalpha((unsigned char)e[0]) && e[1] == '(') {
+      char rhs[96], clean[96], norm[96]; int rp = 0;
+      for (const char *p = eq + 1; *p && rp + 1 < (int)sizeof(rhs); ++p) rhs[rp++] = *p;
+      rhs[rp] = 0;
+      bool_clean_tail(rhs, clean, sizeof(clean));
+      bool_arg_for_cmd(clean, norm, sizeof(norm));
+      sprintf(cmd, "%s(%s)", has(compact, "truth") ? "truth" : "bool", norm);
+      return eval_bool(cmd, out);
     }
   }
   if ((nv == 0 || has(compact, "simplify") || has(compact, "boolean") || has(compact, "logic")) &&
@@ -5603,7 +5633,8 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     sprintf(cmd, "truth(%c^%c)", a, b); return eval_bool(cmd, out);
   }
   if ((nv == 0 || has(compact, "simplify") || has(compact, "boolean") || has(compact, "logic")) &&
-      (has(compact, "nand") || has(compact, "nor") || has(compact, "xor") || has(compact, "and") || has(compact, "or") || has(compact, "not") || has(compact, "+") || has(compact, "*") || has(compact, "'") || has(compact, ","))) {
+      (has(compact, "nand") || has(compact, "nor") || has(compact, "xor") || has(compact, "implies") ||
+       has(compact, "and") || has(compact, "or") || has(compact, "not") || has(compact, "+") || has(compact, "*") || has(compact, "'") || has(compact, ","))) {
     const char *e = skip_bool_words(compact); char ce[96], ne[96];
     bool_clean_tail(e, ce, sizeof(ce));
     bool_arg_for_cmd(ce, ne, sizeof(ne));
