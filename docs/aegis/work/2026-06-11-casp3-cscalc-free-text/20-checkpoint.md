@@ -2577,6 +2577,39 @@ Drift check:
 - Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
 - Active goal remains open for future source/probe-driven hardening.
 
+## 2026-06-12 Grouped Classes, Normal Intervals, Units, Records Slice
+
+Completed:
+- Added CASP3 grouped class-range parsing so `0-10 10-20 ... frequencies ...` becomes midpoint/frequency working instead of negative-number noise.
+- Narrowed CASP3 generic summary-statistics fallback so normal distribution prompts with mean/variance stay in the normal engine.
+- Added CASP3 limiting-equilibrium inclined-plane coefficient route using `mu R = mg sin(theta)` and `mu = tan(theta)`.
+- Fixed CSCALC K-map/minterm prose parsing so words like `draw`, `and`, and `or` are not mistaken for variables.
+- Fixed CSCALC megapixel image prompts with `bytes per pixel`.
+- Fixed CSCALC sound prompts with explicit `2 channels`.
+- Fixed CSCALC `transmission time` wording and MiB/Mbit unit route.
+- Fixed CSCALC two's-complement addition from signed denary operands with a stated bit width.
+- Added CSCALC record-field file-size working where per-record size is the sum of field byte sizes.
+- Added regression tests and rebuilt calculator files.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 192900 bytes`
+  - `CSCALC.g3a: 166052 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Still inside CASP3/CSCALC free-text parser hardening and generated calculator outputs.
+- Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for future source/probe-driven hardening.
+
 ## 2026-06-12 Stats, Vectors, Colour Depth, Truth Extraction Slice
 
 Completed:

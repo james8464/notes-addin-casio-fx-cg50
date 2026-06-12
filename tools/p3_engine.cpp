@@ -156,6 +156,35 @@ static double read_num(const char *s) {
   return sign * v;
 }
 
+static bool grouped_class_freq_cmd(const char *t, char *cmd, int cap) {
+  double mid[12], freq[12]; int mc = 0, fc = 0;
+  bool after_freq = false;
+  for (int i = 0; t[i];) {
+    while (t[i] == ',') ++i;
+    char w[32]; int j = 0;
+    while (t[i] && t[i] != ',' && j + 1 < (int)sizeof(w)) w[j++] = t[i++];
+    w[j] = 0;
+    if (!w[0]) continue;
+    if (strstr(w, "frequenc")) { after_freq = true; continue; }
+    char *dash = strchr(w, '-');
+    if (dash && dash != w && isdigit((unsigned char)dash[1]) && mc < 12) {
+      *dash = 0;
+      mid[mc++] = (read_num(w) + read_num(dash + 1)) / 2.0;
+      continue;
+    }
+    if (after_freq && (isdigit((unsigned char)w[0]) || w[0] == '-') && fc < 12) {
+      freq[fc++] = read_num(w);
+    }
+  }
+  if (mc < 1 || fc < mc) return false;
+  int p = sprintf(cmd, "groupmean(");
+  for (int i = 0; i < mc && p < cap - 32; ++i)
+    p += sprintf(cmd + p, "%s%.10g,%.10g", i ? "," : "", mid[i], freq[i]);
+  if (p >= cap - 2) return false;
+  cmd[p++] = ')'; cmd[p] = 0;
+  return true;
+}
+
 static bool label_num(const char *s, const char *name, double *v) {
   int nl = (int)strlen(name);
   for (int i = 0; s && s[i]; ++i) {
@@ -1962,6 +1991,21 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     if (fr >= 0) return add(out, n, "friction = %.10g - %.10g = %.10g N up the plane", down, F, fr);
     return add(out, n, "friction = %.10g - %.10g = %.10g N down the plane", F, down, -fr);
   }
+  if ((has(t, "rough") || has(t, "friction")) && (has(t, "plane") || has(t, "inclined") || has(t, "incline")) &&
+      (has(t, "coefficient") || has(t, "mu")) && (has(t, "equilibrium") || has(t, "rest") || has(t, "rests") || has(t, "limiting") || has(t, "least")) &&
+      !has(t, "force") && nv >= 2) {
+    double m=0, ang=0;
+    bool hm = label_num(input,"mass",&m) || word_num(input,"mass",&m);
+    bool hA = label_num(input,"angle",&ang) || word_num(input,"angle",&ang) || prev_word_num(input,"degrees",&ang);
+    if (!hm) m = v[0];
+    if (!hA) ang = nv > 1 ? v[1] : v[0];
+    double down = m*9.8*deg_sine(ang), R = m*9.8*deg_cosine(ang), mu = R == 0 ? 0 : down / R;
+    int n = add(out, 0, "For limiting equilibrium on a rough inclined plane, friction = mu R.");
+    n = add(out, n, "Resolve perpendicular: R = mg cos(theta) = %.6g*9.8 cos(%.6g) = %.10g N", m, ang, R);
+    n = add(out, n, "Resolve parallel: friction = mg sin(theta) = %.6g*9.8 sin(%.6g) = %.10g N", m, ang, down);
+    n = add(out, n, "mu R = mg sin(theta)");
+    return add(out, n, "least mu = tan(theta) = tan(%.6g) = %.10g", ang, mu);
+  }
   if (has(t, "horizontal") && (has(t, "plane") || has(t, "rough") || has(t, "smooth")) &&
       (has(t, "acceleration") || has(t, "accelerate")) && nv >= 2) {
     double m = 0, F = 0, mu = 0, ang = 0;
@@ -2450,7 +2494,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       sprintf(cmd, hSig ? "invnormal(%.10g,%.10g,%.10g)" : "invnormalvar(%.10g,%.10g,%.10g)", area, mu, hSig ? sig : var);
       return eval_stats(cmd, out);
     }
-    if (hMu && (hSig || hVar) && nv >= 2 && (has(t, "between") || has(c, "lessthan"))) {
+    if (hMu && (hSig || hVar) && nv >= 2 && (has(t, "between") || has(c, "lessthan") || has(c, "<x<"))) {
       double u[4]; int nu = 0;
       for (int i = 0; i < nv && nu < 4; ++i) {
         if (near_num(v[i], mu) || (hSig && near_num(v[i], sig)) || (hVar && near_num(v[i], var))) continue;
@@ -2671,7 +2715,10 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       (has(t, "mean") || has(t, "standarddeviation") || has(t, "sd")) && nv >= 4 && nv % 2 == 0) {
     int p = sprintf(cmd, "groupmean(");
     int m = nv / 2;
-    if ((has(t, "midpoint") || has(t, "midpoints")) && (has(t, "frequency") || has(t, "frequencies"))) {
+    if ((has(t, "class") || has(t, "classes")) && (has(t, "frequency") || has(t, "frequencies")) &&
+        grouped_class_freq_cmd(t, cmd, sizeof(cmd))) {
+      return eval_stats(cmd, out);
+    } else if ((has(t, "midpoint") || has(t, "midpoints")) && (has(t, "frequency") || has(t, "frequencies"))) {
       for (int i = 0; i < m; ++i) p += sprintf(cmd+p, "%s%.10g,%.10g", i ? "," : "", v[i], v[i+m]);
     } else {
       for (int i = 0; i < m; ++i) p += sprintf(cmd+p, "%s%.10g,%.10g", i ? "," : "", v[2*i], v[2*i+1]);
@@ -2717,7 +2764,9 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     sprintf(cmd, "hypnormal(%.10g,%.10g,%.10g,%.10g,%.10g,%.0f)", xb, mu, sig, n0, alpha, tail);
     return eval_stats(cmd, out);
   }
-  if ((has(t, "mean") || has(t, "variance") || has(t, "standarddeviation")) && nv >= 3) {
+  if ((has(t, "mean") || has(t, "variance") || has(t, "standarddeviation")) && nv >= 3 &&
+      !has(t, "normal") && !has(t, "binom") && !has(t, "poisson") &&
+      !has(t, "discrete") && !has(t, "randomvariable") && !has(t, "grouped")) {
     sprintf(cmd, "meanvar(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_stats(cmd, out);
   }
   if ((has(t, "stratified") || has(t, "stratum")) && nv >= 3) {

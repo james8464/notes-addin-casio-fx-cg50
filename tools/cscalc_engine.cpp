@@ -647,6 +647,7 @@ static bool make_sql_cmd(const char *in, char *cmd, int cap) {
 
 static bool minterm_skip_word(const char *w) {
   return word_is(w, "kmap") || word_is(w, "karnaugh") || word_is(w, "map") ||
+         word_is(w, "draw") || word_is(w, "make") || word_is(w, "create") ||
          word_is(w, "minterm") || word_is(w, "minterms") || word_is(w, "ones") ||
          word_is(w, "maxterm") || word_is(w, "maxterms") || word_is(w, "zeros") ||
          word_is(w, "dc") || word_is(w, "dont") || word_is(w, "don't") ||
@@ -654,7 +655,8 @@ static bool minterm_skip_word(const char *w) {
          word_is(w, "cells") || word_is(w, "cell") || word_is(w, "for") ||
          word_is(w, "variables") || word_is(w, "variable") || word_is(w, "vars") ||
          word_is(w, "with") || word_is(w, "simplify") || word_is(w, "boolean") ||
-         word_is(w, "logic") || word_is(w, "output") || word_is(w, "is") ||
+         word_is(w, "logic") || word_is(w, "output") || word_is(w, "and") ||
+         word_is(w, "or") || word_is(w, "is") ||
          word_is(w, "are") || word_is(w, "at");
 }
 
@@ -3103,10 +3105,12 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     double pixels = v[0] * 1000000.0, depth = v[1];
     int colour_depth = 0;
     if (has(t, "colours") || has(t, "colors")) { colour_depth = ceil_log2_ll((long long)v[1]); depth = colour_depth; }
+    if (image_depth_is_bytes(t)) depth *= 8.0;
     double bits_total = pixels * depth, bytes = bits_total / 8.0;
     int n = add(out, 0, "Image bits = pixels * colour depth.");
     n = add(out, n, "%.10g megapixels = %.10g pixels", v[0], pixels);
     if (colour_depth) n = add(out, n, "ceil(log2(%.10g)) = %d bits per pixel", v[1], colour_depth);
+    else if (image_depth_is_bytes(t)) n = add(out, n, "%.10g bytes per pixel = %.10g bits per pixel", v[1], depth);
     n = add(out, n, "%.10g*%.10g = %.10g bits", pixels, depth, bits_total);
     n = add(out, n, "= %.10g bytes", bytes);
     n = add(out, n, "= %.10g MB", bytes / 1000000.0);
@@ -3191,7 +3195,8 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
         for (int i = 0; i < nv; ++i)
           if (v[i] != dur && v[i] != rawRate && v[i] > 1 && v[i] <= 64) { res = v[i]; break; }
         if (res <= 0) res = v[2];
-        channels = has(t, "stereo") ? 2 : 1;
+        if (!(scan_before_word_num(t, "channels", &channels) || scan_before_word_num(t, "channel", &channels)))
+          channels = has(t, "stereo") ? 2 : 1;
         sprintf(cmd, "sound(%lld,%lld,%lld,%lld)", (long long)rate, (long long)seconds, (long long)res, (long long)channels);
         return eval_storage(cmd, out);
       }
@@ -3237,7 +3242,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     else sprintf(cmd, "bitrate(%.10g,%.10g)", size, seconds);
     return eval_storage(cmd, out);
   }
-  if (has(t, "transfer") || has(t, "download") || has(t, "transmit") || has_word(t, "sent")) {
+  if (has(t, "transfer") || has(t, "download") || has(t, "transmit") || has(t, "transmission") || has_word(t, "sent")) {
     double size=0, rate=0;
     bool hSize=label_num(input,"size",&size) || label_num(input,"filesize",&size) || label_num(input,"file",&size);
     bool hRate=label_num(input,"rate",&rate) || label_num(input,"bitrate",&rate) || label_num(input,"speed",&rate);
@@ -3294,9 +3299,23 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       return eval_storage(cmd, out);
     }
   }
-  if ((has(t, "record") || has(t, "database")) && (label_num(input,"records",&width) || label_num(input,"rows",&width)) &&
+  if ((has(t, "record") || has(t, "database")) && !has(t, "field") &&
+      (label_num(input,"records",&width) || label_num(input,"rows",&width)) &&
       (label_num(input,"bytes",&height) || label_num(input,"recordsize",&height) || label_num(input,"bytesperrecord",&height))) {
     sprintf(cmd, "records(%.10g,%.10g)", width, height); return eval_storage(cmd, out);
+  }
+  if ((has(t, "record") || has(t, "database") || has(t, "relation")) && has(t, "field") && nv >= 3) {
+    double recs=0;
+    bool hr = label_num(input,"records",&recs) || label_num(input,"rows",&recs) ||
+              scan_before_word_num(t, "records", &recs) || scan_before_word_num(t, "rows", &recs);
+    if (hr) {
+      double bytes_per_record = 0;
+      for (int i = 0; i < nv; ++i) if ((long long)v[i] != (long long)recs) bytes_per_record += v[i];
+      int n = add(out, 0, "Record size = sum of field sizes.");
+      n = add(out, n, "bytes per record = %.10g", bytes_per_record);
+      n = add(out, n, "file size = records * bytes per record");
+      return add(out, n, "%.10g*%.10g = %.10g bytes", recs, bytes_per_record, recs * bytes_per_record);
+    }
   }
   if ((has(t, "character") || has(t, "text")) && (label_num(input,"characters",&width) || label_num(input,"chars",&width)) &&
       (label_num(input,"bits",&height) || label_num(input,"bitspercharacter",&height))) {
@@ -3418,6 +3437,20 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   if (tc && nbg >= 2 && (has(t, "add") || has(t, "sum") || has(t, "plus"))) {
     sprintf(cmd, "twosadd(%s,%s)", bitgrp[0], bitgrp[1]); return eval_twos(cmd, out);
+  }
+  if (tc && nv >= 3 && (has(t, "add") || has(t, "sum") || has(t, "plus"))) {
+    double bw=0; long long bitsw = 0, vals[2]; int got = 0;
+    if (scan_before_word_num(t, "bit", &bw) || scan_before_word_num(t, "bits", &bw)) bitsw = (long long)bw;
+    if (bitsw > 0) {
+      for (int i = 0; i < nv && got < 2; ++i) {
+        if ((long long)v[i] == bitsw) continue;
+        vals[got++] = (long long)v[i];
+      }
+      if (got == 2) {
+        char a[65], b[65]; to_bin(vals[0], (int)bitsw, a); to_bin(vals[1], (int)bitsw, b);
+        sprintf(cmd, "twosadd(%s,%s)", a, b); return eval_twos(cmd, out);
+      }
+    }
   }
   if ((has(t, "add") || has(t, "sum") || has(t, "plus")) && nbg >= 2 && (has(t, "binary") || has(t, "bits"))) {
     sprintf(cmd, "binadd(%s,%s,%d)", bitgrp[0], bitgrp[1], (int)strlen(bitgrp[0])); return eval_binary_arith(cmd, out);
