@@ -82,6 +82,19 @@ static double sine(double x) {
 
 static double cosine(double x) { return sine(M_PI / 2 - x); }
 
+static double arctan(double z) {
+  if (z < 0) return -arctan(-z);
+  if (z > 1) return M_PI / 2 - arctan(1 / z);
+  if (z > 0.5) return M_PI / 4 + arctan((z - 1) / (z + 1));
+  double z2 = z * z, p = z, r = z;
+  p *= z2; r -= p / 3;
+  p *= z2; r += p / 5;
+  p *= z2; r -= p / 7;
+  p *= z2; r += p / 9;
+  p *= z2; r -= p / 11;
+  return r;
+}
+
 static double deg_sine(double deg) {
   while (deg < 0) deg += 360;
   while (deg >= 360) deg -= 360;
@@ -286,6 +299,20 @@ static int eval_mech(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     n = add(out, n, "Vertical: y = h + u_y t - 1/2 gt^2");
     n = add(out, n, "y = %.6g + %.6g*%.10g - 1/2*%.6g*%.10g^2", h0, uy, t, g, t);
     return add(out, n, "height at x=%.6g is %.10g", x, y);
+  }
+  if (starts3(s, "projectileangle(", "projangle(", "targetangle(") && na >= 3) {
+    double u = num(a[0]), x = num(a[1]), y = num(a[2]), h0 = na > 3 ? num(a[3]) : 0, g = na > 4 ? num(a[4]) : 9.8;
+    double A = g*x*x/(2*u*u), C = A + y - h0, D = x*x - 4*A*C;
+    int n = add(out, 0, "Use trajectory equation to find the launch angle.");
+    n = add(out, n, "y = h + x tan(theta) - gx^2/(2u^2 cos^2(theta))");
+    n = add(out, n, "Let T=tan(theta), so 1/cos^2(theta)=1+T^2.");
+    n = add(out, n, "%.10g T^2 - %.10g T + %.10g = 0", A, x, C);
+    if (D < 0) return add(out, n, "No real launch angle for this speed and target point.");
+    double T1 = (x + root(D))/(2*A), T2 = (x - root(D))/(2*A);
+    double a1 = arctan(T1)*180.0/M_PI, a2 = arctan(T2)*180.0/M_PI;
+    n = add(out, n, "T = (x +- sqrt(discriminant))/(2A)");
+    n = add(out, n, "tan(theta) = %.10g or %.10g", T1, T2);
+    return add(out, n, "theta = %.10g deg or %.10g deg", a1, a2);
   }
   if (starts3(s, "projectile(", "proj(", "projectiles(") && na >= 2) {
     double u = num(a[0]), th = num(a[1]) * M_PI / 180.0, g = na > 2 ? num(a[2]) : 9.8;
@@ -987,6 +1014,10 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       return eval_suvat(cmd, out);
     }
   }
+  if ((has(t, "projectile") || has(t, "projectiles")) && (has(t, "angle") || has(t, "angles")) &&
+      (has(t, "target") || has(t, "point") || has(t, "through") || has(t, "pass")) && nv >= 3) {
+    sprintf(cmd, nv >= 4 ? "projectileangle(%.10g,%.10g,%.10g,%.10g)" : "projectileangle(%.10g,%.10g,%.10g)", v[0], v[1], v[2], nv >= 4 ? v[3] : 0); return eval_mech(cmd, out);
+  }
   if ((has(t, "projectile") || has(t, "projectiles")) && (has(t, "distance") || has(t, "metresaway") || has(t, "away")) && nv >= 3) {
     sprintf(cmd, nv >= 4 ? "projectileat(%.10g,%.10g,%.10g,%.10g)" : "projectileat(%.10g,%.10g,%.10g)", v[0], v[1], v[2], nv >= 4 ? v[3] : 0); return eval_mech(cmd, out);
   }
@@ -1304,7 +1335,7 @@ int p3_eval(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   n = eval_stats(s, out); if (n) return n;
   n = eval_free_text(input, out); if (n) return n;
   n = add(out, 0, "Supported:");
-  n = add(out, n, "suvat projectile projectileh projectileat force weight friction moment incline inclineacc");
+  n = add(out, n, "suvat projectile projectileh projectileat projectileangle force weight friction moment incline inclineacc");
   n = add(out, n, "beam ladder connected pulley impulse momentum work power energy workenergyforce restitution vector resolve vectorkin varacc");
   return add(out, n, "normal normalvar normalprob normaltail normalcond invnormal normalparams binom binomstats binomtail critbinom hypbinom cond probor bayes independent poisson poissonstats poissontail poissonnorm critpoisson hyppoisson regress pmcc spearman meanvar discrete stratified groupmedian histdensity code");
 }
