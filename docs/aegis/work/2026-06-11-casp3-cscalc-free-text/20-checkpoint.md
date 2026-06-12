@@ -1,5 +1,24 @@
 # Checkpoint
 
+## 2026-06-12 CSCALC Spaced Truth-Column Slice
+
+Completed:
+- Fixed Boolean truth-table free text where output columns are written as separated bits, e.g. `0 1 1 0`.
+- Added generic spaced-bit-column scanning and routed truth/output column wording through `truthbits(...)`.
+- Preserved existing contiguous output-bit handling such as `0110`.
+- Added regression tests and rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CSCALC AQA Paper 2 Boolean/free-text support.
+- Did not touch CAS Pure behavior, CASP3 logic, NOTES, or shared UI/status code.
+
 ## 2026-06-12 CSCALC Hex Token Base-Conversion Slice
 
 Completed:

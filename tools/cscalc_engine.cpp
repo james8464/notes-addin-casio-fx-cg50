@@ -93,6 +93,21 @@ static int scan_bits(const char *s, char b[][48], int maxb) {
   return n;
 }
 
+static bool scan_spaced_bit_column(const char *s, char *buf, int cap) {
+  int k = 0;
+  for (int i = 0; s[i] && k + 1 < cap;) {
+    while (s[i] == ',') ++i;
+    if ((s[i] == '0' || s[i] == '1') && (s[i+1] == 0 || s[i+1] == ',')) {
+      buf[k++] = s[i++];
+      while (s[i] == ',') ++i;
+    } else {
+      while (s[i] && s[i] != ',') ++i;
+    }
+  }
+  buf[k] = 0;
+  return k >= 2;
+}
+
 static bool scan_hex_token(const char *s, char *buf, int cap) {
   for (int i = 0; s[i];) {
     if (!isxdigit((unsigned char)s[i])) { ++i; continue; }
@@ -2625,6 +2640,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   char t[192]; raw_clean(input, t, sizeof(t));
   double v[8]; int nv = scan_nums(t, v, 8);
   char bits[4][48]; int nb = scan_bits(t, bits, 4);
+  char bitcol[65]; bool has_bitcol = scan_spaced_bit_column(t, bitcol, sizeof(bitcol));
   char hex_tok[32]; bool has_hex_tok = scan_hex_token(t, hex_tok, sizeof(hex_tok));
   char cmd[160];
   double width=0, height=0, depth=0;
@@ -3024,6 +3040,10 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     char tmp[160]; sprintf(tmp, "maxterms(%s", cmd + 9);
     strcpy(cmd, tmp);
     return eval_minterms(cmd, out);
+  }
+  if (has_bitcol && (has(t, "truth") || has(t, "output")) &&
+      (has(t, "column") || has(t, "outputs") || has(t, "bits") || has(t, "table"))) {
+    sprintf(cmd, "truthbits(%s)", bitcol); return eval_truthbits(cmd, out);
   }
   if (nb >= 1 && (has(t, "truth") || has(t, "output")) && has(t, "bits")) {
     sprintf(cmd, "truthbits(%s)", bits[0]); return eval_truthbits(cmd, out);
