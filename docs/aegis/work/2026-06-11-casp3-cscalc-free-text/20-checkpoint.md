@@ -1,5 +1,25 @@
 # Checkpoint
 
+## 2026-06-12 CSCALC RPN Slice
+
+Completed:
+- Added `rpn(...)` / `postfix(...)` / `reversepolish(...)` working for Reverse Polish notation.
+- Output shows stack pushes, each operation, and final answer.
+- Added free-text parsing for prompts such as `evaluate RPN 3 4 + 5 *` and word operators such as `divide` / `plus`.
+- Added regression tests for direct and free-text RPN inputs.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CSCALC AQA Paper 2 calculation support.
+- Did not touch CAS Pure behavior, CASP3 behavior, NOTES, UI/menu/status code.
+
 ## 2026-06-12 CSCALC Huffman Slice
 
 Completed:

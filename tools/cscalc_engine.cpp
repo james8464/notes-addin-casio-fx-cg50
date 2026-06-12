@@ -199,6 +199,48 @@ static bool find_rle_sequence(const char *in, char *seq, int cap) {
   return best > 0;
 }
 
+static bool rpn_op_token(const char *s, char *op);
+
+static bool make_rpn_cmd(const char *in, char *cmd, int cap) {
+  int p = 0, count = 0;
+  p += sprintf(cmd + p, "rpn(");
+  for (int i = 0; in && in[i] && p < cap - 16;) {
+    unsigned char c = (unsigned char)in[i];
+    if (isspace(c) || c == ',' || c == '(' || c == ')') { ++i; continue; }
+    if ((c == '-' && isdigit((unsigned char)in[i+1])) || isdigit(c)) {
+      if (count++) cmd[p++] = ',';
+      if (c == '-') cmd[p++] = in[i++];
+      while ((isdigit((unsigned char)in[i]) || in[i] == '.') && p < cap - 2) cmd[p++] = in[i++];
+      cmd[p] = 0;
+      continue;
+    }
+    if (c == '+' || c == '*' || c == '/') {
+      if (count++) cmd[p++] = ',';
+      cmd[p++] = (char)c; cmd[p] = 0; ++i; continue;
+    }
+    if (c == '-') {
+      if (count++) cmd[p++] = ',';
+      cmd[p++] = '-'; cmd[p] = 0; ++i; continue;
+    }
+    if (isalpha(c)) {
+      char w[16]; int j = 0;
+      while (isalpha((unsigned char)in[i]) && j + 1 < (int)sizeof(w)) w[j++] = (char)tolower((unsigned char)in[i++]);
+      w[j] = 0;
+      char op = 0;
+      if (strcmp(w, "rpn") == 0 || strcmp(w, "postfix") == 0 || strcmp(w, "evaluate") == 0 || strcmp(w, "reverse") == 0 || strcmp(w, "polish") == 0) continue;
+      if (rpn_op_token(w, &op)) {
+        if (count++) cmd[p++] = ',';
+        cmd[p++] = op; cmd[p] = 0;
+      }
+      continue;
+    }
+    ++i;
+  }
+  if (count < 3 || p >= cap - 2) return false;
+  cmd[p++] = ')'; cmd[p] = 0;
+  return true;
+}
+
 static int is_bits(const char *s) {
   if (!s || !*s) return 0;
   for (int i = 0; s[i]; ++i) if (s[i] != '0' && s[i] != '1' && s[i] != '.') return 0;
@@ -438,6 +480,43 @@ static int eval_binary_arith(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LI
     return add(out, n, "check digit = (%d-%d) mod %d = %d", mod, rem, mod, digit);
   }
   return 0;
+}
+
+static bool rpn_op_token(const char *s, char *op) {
+  if (!s || !s[0]) return false;
+  if (s[1] == 0 && (s[0] == '+' || s[0] == '-' || s[0] == '*' || s[0] == '/')) { *op = s[0]; return true; }
+  if (strcmp(s, "plus") == 0 || strcmp(s, "add") == 0) { *op = '+'; return true; }
+  if (strcmp(s, "minus") == 0 || strcmp(s, "subtract") == 0) { *op = '-'; return true; }
+  if (strcmp(s, "times") == 0 || strcmp(s, "multiply") == 0 || strcmp(s, "mul") == 0) { *op = '*'; return true; }
+  if (strcmp(s, "divide") == 0 || strcmp(s, "div") == 0) { *op = '/'; return true; }
+  return false;
+}
+
+static int eval_rpn(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
+  char a[20][48]; int na = args(s, a, 20);
+  if (!starts3(s, "rpn(", "postfix(", "reversepolish(") || na < 1) return 0;
+  double st[20]; int sp = 0;
+  int n = add(out, 0, "Evaluate postfix/RPN with a stack.");
+  for (int i = 0; i < na; ++i) {
+    char op = 0;
+    if (rpn_op_token(a[i], &op)) {
+      if (sp < 2) return add(out, n, "Need two stack values before operator %c.", op);
+      double b = st[--sp], aa = st[--sp], r = 0;
+      if (op == '+') r = aa + b;
+      else if (op == '-') r = aa - b;
+      else if (op == '*') r = aa * b;
+      else r = aa / b;
+      st[sp++] = r;
+      n = add(out, n, "%.10g %c %.10g = %.10g; push %.10g", aa, op, b, r, r);
+    } else {
+      if (sp >= 20) return add(out, n, "Stack full.");
+      st[sp++] = num(a[i]);
+      n = add(out, n, "read %s, push %.10g", a[i], st[sp-1]);
+    }
+  }
+  if (sp != 1) n = add(out, n, "Stack has %d values, so expression is incomplete.", sp);
+  else n = add(out, n, "answer = %.10g", st[0]);
+  return n;
 }
 
 static void app_ch(char *s, int *pos, int cap, char c);
@@ -1199,6 +1278,9 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   char bits[4][48]; int nb = scan_bits(t, bits, 4);
   char cmd[160];
   double width=0, height=0, depth=0;
+  if (has(t, "rpn") || has(t, "postfix") || (has(t, "reverse") && has(t, "polish"))) {
+    if (make_rpn_cmd(input, cmd, sizeof(cmd))) return eval_rpn(cmd, out);
+  }
   if ((has(t, "image") || has(t, "bitmap")) && label_num(input,"width",&width) && label_num(input,"height",&height) && (label_num(input,"depth",&depth) || label_num(input,"bits",&depth))) {
     sprintf(cmd, "image(%lld,%lld,%lld)", (long long)width, (long long)height, (long long)depth); return eval_storage(cmd, out);
   }
@@ -1388,6 +1470,7 @@ int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
   int n = eval_base(s, out); if (n) return n;
   n = eval_twos(s, out); if (n) return n;
   n = eval_binary_arith(s, out); if (n) return n;
+  n = eval_rpn(s, out); if (n) return n;
   n = eval_float(s, out); if (n) return n;
   n = eval_storage(s, out); if (n) return n;
   n = eval_gate_form(s, out); if (n) return n;
@@ -1395,7 +1478,7 @@ int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
   n = eval_bool(s, out); if (n) return n;
   n = eval_free_text(input, s, out); if (n) return n;
   n = add(out, 0, "Supported:");
-  n = add(out, n, "bin hex den convert twos twosdec fixed fixedenc parity xorbits andbits orbits notbits hamming checksum checkdigit");
+  n = add(out, n, "bin hex den convert twos twosdec fixed fixedenc parity xorbits andbits orbits notbits hamming checksum checkdigit rpn");
   n = add(out, n, "floatdec floatrange normal image sound bitrate transfer transfermb");
   return add(out, n, "compress huffman rle records hashmod addressspace chars bool truth nandform norform");
 }
