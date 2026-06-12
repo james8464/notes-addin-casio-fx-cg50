@@ -3622,17 +3622,17 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     sprintf(cmd+p, ")");
     return eval_mech(cmd, out);
   }
-	  if ((has(t, "beam") || has(t, "support") || has(t, "reaction")) && (has(t, "load") || has(t, "weight")) && nv >= 3) {
-	    if ((has(t, "rod") || has(t, "uniform") || has(t, "beam")) && has(t, "reaction") &&
-	        (has(t, "distance") || has(c, "xfrom") || has(t, "findx")) && nv >= 5) {
-	      double L = v[0], bw = v[1], load = v[2], RB = v[nv-1];
-	      double x = load ? (RB*L - bw*(L/2.0)) / load : 0;
-	      int n = add(out, 0, "Take moments about A, including the uniform rod weight at its midpoint.");
-	      n = add(out, n, "R_B*L = W*(L/2) + load*x");
-	      n = add(out, n, "%.10g*%.10g = %.10g*(%.10g/2) + %.10g*x", RB, L, bw, L, load);
-	      return add(out, n, "x = %.10g m", x);
-	    }
-	    const char *loads_p = strstr(t, "loads");
+  if ((has(t, "beam") || has(t, "support") || has(t, "reaction")) && (has(t, "load") || has(t, "weight")) && nv >= 3) {
+    if ((has(t, "rod") || has(t, "uniform") || has(t, "beam")) && has(t, "reaction") &&
+        (has(t, "distance") || has(c, "xfrom") || has(t, "findx")) && nv >= 5) {
+      double L = v[0], bw = v[1], load = v[2], RB = v[nv-1];
+      double x = load ? (RB*L - bw*(L/2.0)) / load : 0;
+      int n = add(out, 0, "Take moments about A, including the uniform rod weight at its midpoint.");
+      n = add(out, n, "R_B*L = W*(L/2) + load*x");
+      n = add(out, n, "%.10g*%.10g = %.10g*(%.10g/2) + %.10g*x", RB, L, bw, L, load);
+      return add(out, n, "x = %.10g m", x);
+    }
+    const char *loads_p = strstr(t, "loads");
     const char *act_p = loads_p ? strstr(loads_p, "act") : 0;
     if (loads_p && act_p) {
       char load_seg[160], pos_seg[160];
@@ -3642,9 +3642,14 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       strncpy(pos_seg, act_p, sizeof(pos_seg) - 1); pos_seg[sizeof(pos_seg) - 1] = 0;
       double loads[8], pos[8];
       int nl = scan_nums(load_seg, loads, 8), np = scan_nums(pos_seg, pos, 8);
-      double L = 0, bw = 0;
+      double L = 0, bw = 0, bm = 0;
       bool hL = label_num(input, "length", &L) || word_num(input, "length", &L);
       bool hb = word_num(input, "weight", &bw) || prev_word_num(input, "weight", &bw);
+      if (!hb && (has(t, "rod") || has(t, "uniform") || has(t, "beam")) &&
+          (word_num(input, "mass", &bm) || prev_word_num(input, "mass", &bm))) {
+        bw = bm * 9.8;
+        hb = true;
+      }
       if (hL && nl > 0 && np >= nl) {
         double sumW = hb ? bw : 0, moment = hb ? bw * L / 2.0 : 0;
         int n = add(out, 0, "For a horizontal beam in equilibrium, use moments and vertical forces.");
@@ -3707,6 +3712,13 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     bool hx=label_num(input,"distance",&x) || word_num(input,"from",&x) || prev_word_num(input,"from",&x);
     bool hb=label_num(input,"beamweight",&bw) || label_num(input,"bw",&bw) ||
             ((has(t, "uniform") || has(t, "rod") || has(t, "beam")) && (word_num(input,"weight",&bw) || prev_word_num(input,"weight",&bw)));
+    if (!hb && (has(t, "uniform") || has(t, "rod") || has(t, "beam"))) {
+      double bm = 0;
+      if (word_num(input, "mass", &bm) || prev_word_num(input, "mass", &bm)) {
+        bw = bm * 9.8;
+        hb = true;
+      }
+    }
     if (hL && hW && hx) sprintf(cmd, "beam(%.10g,%.10g,%.10g,%.10g)", L, W, x, hb ? bw : 0);
     else sprintf(cmd, nv > 3 ? "beam(%.10g,%.10g,%.10g,%.10g)" : "beam(%.10g,%.10g,%.10g)", v[0], v[1], v[2], nv > 3 ? v[3] : 0);
     return eval_mech(cmd, out);
@@ -4064,6 +4076,37 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "Down-plane weight component = mg sin(theta) = %.6g*9.8 sin(%.6g) = %.10g N", m, theta, down);
     n = add(out, n, "Resultant up the plane = %.10g - %.10g = %.10g N", F, down, net);
     return add(out, n, "a = F/m = %.10g/%.6g = %.10g m/s^2", net, m, net/m);
+  }
+  if ((has(t, "incline") || has(t, "slope") || has(t, "plane")) &&
+      (has(t, "resistance") || has(t, "resistive")) &&
+      (has(t, "driving") || has(t, "drive") || has(t, "force") || has(t, "constant") || has(t, "speed")) &&
+      nv >= 3) {
+    double m=0, ang=0, r=0, a=0;
+    bool hm=label_num(input,"mass",&m) || word_num(input,"mass",&m);
+    bool ha=label_num(input,"angle",&ang) || word_num(input,"angle",&ang) || prev_word_num(input,"degrees",&ang);
+    bool hr=word_num(input,"resistance",&r) || label_num(input,"resistance",&r);
+    bool hacc=label_num(input,"acceleration",&a) || word_num(input,"acceleration",&a) || word_num(input,"accelerates",&a);
+    if (!hm) m = v[0];
+    if (!ha) {
+      for (int i = 0; i < nv; ++i)
+        if (!near_num(v[i], m) && !near_num(v[i], r) && v[i] > 0 && v[i] <= 90) { ang = v[i]; break; }
+    }
+    if (!hr) {
+      for (int i = nv - 1; i >= 0; --i)
+        if (!near_num(v[i], m) && !near_num(v[i], ang) && !near_num(v[i], a)) { r = v[i]; break; }
+    }
+    double down = m * 9.8 * deg_sine(ang);
+    double drive = down + r + (hacc ? m * a : 0);
+    int n = add(out, 0, "Resolve along the inclined plane.");
+    n = add(out, n, "Down-plane weight component = mg sin(theta) = %.6g*9.8 sin(%.6g) = %.10g N", m, ang, down);
+    n = add(out, n, "Resistance acts down the plane: %.10g N", r);
+    if (hacc) {
+      n = add(out, n, "Driving force - %.10g - %.10g = ma = %.6g*%.6g", down, r, m, a);
+    } else {
+      n = add(out, n, "Constant speed means resultant force is zero.");
+      n = add(out, n, "Driving force = mg sin(theta) + resistance");
+    }
+    return add(out, n, "Driving force = %.10g N", drive);
   }
   if ((has(t, "incline") || has(t, "slope") || has(t, "plane")) && (has(t, "acceleration") || has(t, "accelerate") || has(t, "rough")) && nv >= 3) {
     double m=0, ang=0, mu=0;

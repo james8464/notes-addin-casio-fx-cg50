@@ -4111,6 +4111,13 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     sprintf(cmd, "symbolbits(%lld)", (long long)v[0]); return eval_storage(cmd, out);
   }
   if ((has(t, "colour") || has(t, "color")) &&
+      (has(t, "bitsperpixel") || has(t, "bitperpixel") || has(t, "bits,per,pixel") ||
+       has(t, "bit,per,pixel") || has(t, "represented")) &&
+      (has(t, "howmany") || has(t, "numberof") || has(t, "represented") || has(t, "different")) &&
+      !(has(t, "needed") || has(t, "need") || has(t, "minimum")) && nv >= 1) {
+    sprintf(cmd, "colourcount(%lld)", (long long)v[0]); return eval_storage(cmd, out);
+  }
+  if ((has(t, "colour") || has(t, "color")) &&
       (has(t, "needed") || has(t, "need") || has(t, "bits") || has(t, "bit") || has(t, "per,pixel") || has(t, "perpixel")) &&
       !(has(t, "howmanycolours") || has(t, "how,many,colours") || has(t, "howmanycolors") ||
         has(t, "how,many,colors") || has(t, "numberofcolours") || has(t, "numberofcolors")) &&
@@ -5064,14 +5071,14 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     }
     sprintf(cmd, "floatcanrepresent(%.10g,%lld,%lld)", value, (long long)mb, (long long)eb); return eval_float(cmd, out);
   }
-  if ((has(t, "normalised") || has(t, "normalized") || has(t, "normalise") || has(t, "normalize")) &&
-      (has(t, "float") || has(t, "floating") || has(t, "mantissa")) && nb >= 1) {
-    sprintf(cmd, "normal(%s)", bits[0]); return eval_float(cmd, out);
-  }
   if ((has(t, "float") || has(t, "floating") || has(t, "normalised") || has(t, "normalized") || (has(t, "mantissa") && has(t, "exponent"))) &&
       (has(t, "range") || has(t, "largest") || has(t, "smallest")) &&
       !(has(t, "added") || has(t, "add") || has(t, "need") || has(t, "needed") || has(t, "exact")) && nv >= 2) {
     sprintf(cmd, "floatrange(%lld,%lld)", (long long)v[0], (long long)v[1]); return eval_float(cmd, out);
+  }
+  if ((has(t, "normalised") || has(t, "normalized") || has(t, "normalise") || has(t, "normalize")) &&
+      (has(t, "float") || has(t, "floating") || has(t, "mantissa")) && nb >= 1) {
+    sprintf(cmd, "normal(%s)", bits[0]); return eval_float(cmd, out);
   }
   if (has(t, "exponent") && has(t, "range") && nv >= 1) {
     int eb = (int)v[0], emin = -(1 << (eb - 1)), emax = (1 << (eb - 1)) - 1;
@@ -5309,6 +5316,18 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       (has(compact, "notaorb") || has(compact, "notaornotb") || has(compact, "="))) {
     sprintf(cmd, "boolprove((A&B)',A'+B')");
     return eval_bool_prove(cmd, out);
+  }
+  if (nv == 0 && (has(compact, "demorgan") || has(compact, "demorgans"))) {
+    if (has(compact, "not(aandb)") || has(compact, "not(a*b)") || has(compact, "(aandb)'") || has(compact, "(a*b)'")) {
+      int n = add(out, 0, "Use De Morgan's law.");
+      n = add(out, n, "NOT(A AND B) = NOT A OR NOT B");
+      return add(out, n, "(A.B)' = A' + B'");
+    }
+    if (has(compact, "not(aorb)") || has(compact, "not(a+b)") || has(compact, "(aorb)'") || has(compact, "(a+b)'")) {
+      int n = add(out, 0, "Use De Morgan's law.");
+      n = add(out, n, "NOT(A OR B) = NOT A AND NOT B");
+      return add(out, n, "(A+B)' = A'.B'");
+    }
   }
   if (nv == 0 && (has(compact, "equals") || has(compact, "isequalto") || has(compact, "isequivalentto") || has(compact, "equivalentto"))) {
     const char *e = skip_bool_words(compact);

@@ -1,5 +1,35 @@
 # Checkpoint
 
+## 2026-06-12 Incline Resistance, Beam Mass, Colour Count, Float Range, And De Morgan Slice
+
+Completed:
+- Added CASP3 free-text working for vehicles on an inclined plane at constant speed/acceleration with resistance, avoiding false `mu R` friction parsing.
+- Added CASP3 uniform beam/rod mass handling by converting mass to weight at the midpoint.
+- Added CSCALC direct colour-count handling from bits per pixel.
+- Fixed CSCALC floating-point range prose so largest/smallest normalised value is handled before bit-pattern normalisation checks.
+- Added direct CSCALC De Morgan rewrite working when the prompt asks to rewrite without giving a target RHS.
+- Rebuilt calculator-ready outputs.
+
+Evidence:
+- Targeted probes for incline resistance, beam mass, colour count, floating range, and De Morgan rewrite: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 364076 bytes`
+  - `CSCALC.g3a: 220044 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Stayed inside CASP3/CSCALC generic free-text working support and generated calculator outputs.
+- Did not touch Pure CAS, menus, NOTES source, or shared UI/status code.
+- Active goal remains open for further unseen-case hardening.
+
 ## 2026-06-12 DAC Resolution And Coded Variance Slice
 
 Completed:
