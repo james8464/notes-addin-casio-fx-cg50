@@ -35,6 +35,7 @@ def main():
     require("constant acceleration u=2 a=3 t=4 find final velocity", ["SUVAT", "v = u + at", "v = 14"])
     require("constant acceleration initial velocity=2 acceleration=3 time=4 find final velocity", ["SUVAT", "v = u + at", "v = 14"])
     require("a particle starts from rest and accelerates at 3 for 4 seconds find distance travelled", ["From rest gives u = 0", "s = ut + 1/2 at^2", "s = 24"])
+    require("A car starts from rest and accelerates uniformly at 2.4 m s^-2 for 8 seconds. Find the final speed and distance travelled.", ["v = u + at", "v = 0 + 2.4*8 = 19.2", "s = 76.8"])
     require("a car starts from rest reaches speed 20 in 5 seconds find acceleration and distance", ["a = (20-0)/5 = 4", "s = 50"])
     require("A car accelerates from rest to 30 m/s in 12 seconds find acceleration and distance", ["a = (30-0)/12 = 2.5", "s = 1/2(0+30)*12", "s = 180"])
     require("train accelerates uniformly from 10 to 30 m/s over 200 m find acceleration and time", ["Use SUVAT", "a = (v^2-u^2)/(2s)", "t = 2s/(u+v)"])

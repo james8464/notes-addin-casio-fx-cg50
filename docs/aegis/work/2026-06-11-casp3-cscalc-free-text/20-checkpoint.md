@@ -2577,6 +2577,40 @@ Drift check:
 - Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
 - Active goal remains open for future source/probe-driven hardening.
 
+## 2026-06-12 SUVAT, Fixed-Point Width, and Sound Sample Wording Slice
+
+Completed:
+- Fixed CASP3 SUVAT prose parsing so `accelerates uniformly at N for T seconds` is read as acceleration/time, not final velocity.
+- Added combined final-speed and distance working when both are requested.
+- Preserved `from rest to V in T seconds` acceleration/distance route by requiring an `at` marker before treating post-accelerates numbers as acceleration.
+- Fixed CSCALC fixed-point wording where `8 bits with 4 bits after the point` means 8 total bits, 4 fractional bits.
+- Fixed CSCALC negative fixed-point encoding to use signed two's-complement output by default.
+- Fixed CSCALC sound storage wording so `16 bit samples` does not route to sample-count output unless the prompt asks for number/how many samples.
+- Added regression tests and rebuilt calculator files.
+
+Evidence:
+- Fresh focused probes:
+  - `A car starts from rest and accelerates uniformly at 2.4 m s^-2 for 8 seconds. Find the final speed and distance travelled.` now gives `v = 19.2`, `s = 76.8`.
+  - `Represent -5.75 in fixed point binary using 8 bits with 4 bits after the binary point.` now gives `write -92 in 8-bit two's complement`, `fixed point = 1010.0100`.
+  - `A sound file is sampled at 44.1 kHz with 16 bit samples in stereo for 3 minutes...` now gives `44100*180*16*2 = 254016000 bits`.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 184596 bytes`
+  - `CSCALC.g3a: 161752 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Still inside CASP3/CSCALC free-text parser hardening and generated calculator outputs.
+- Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for future source/probe-driven hardening.
+
 ## 2026-06-12 Vector Impulse, Horizontal Work-Energy, Poisson Wording Slice
 
 Completed:

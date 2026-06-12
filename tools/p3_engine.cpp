@@ -238,6 +238,33 @@ static bool word_num_with_t(const char *s, const char *name, double *v) {
   return false;
 }
 
+static bool first_num_after_word(const char *s, const char *name, double *v) {
+  int nl = (int)strlen(name);
+  for (int i = 0; s && s[i]; ++i) {
+    if (i > 0 && isalnum((unsigned char)s[i-1])) continue;
+    int j = 0, q = i;
+    while (j < nl && s[q]) {
+      while (s[q] == ' ' || s[q] == '\t' || s[q] == '_' || s[q] == '-') ++q;
+      if (tolower((unsigned char)s[q]) != name[j]) break;
+      ++j; ++q;
+    }
+    if (j != nl || isalnum((unsigned char)s[q])) continue;
+    int limit = q + 40;
+    bool saw_at = false;
+    for (; s[q] && q < limit; ++q) {
+      if ((q == 0 || !isalnum((unsigned char)s[q-1])) &&
+          tolower((unsigned char)s[q]) == 'a' && tolower((unsigned char)s[q+1]) == 't' &&
+          !isalnum((unsigned char)s[q+2])) saw_at = true;
+      if (s[q] == '-' || isdigit((unsigned char)s[q])) {
+        if (!saw_at) return false;
+        *v = read_num(s + q);
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 static bool prev_word_num(const char *s, const char *name, double *v) {
   int nl = (int)strlen(name);
   for (int i = 0; s && s[i]; ++i) {
@@ -1685,21 +1712,29 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     bool hv=label_num(input,"v",&vv) || label_num(input,"finalvelocity",&vv) || label_num(input,"finalspeed",&vv) ||
             word_num(input,"finalvelocity",&vv) || word_num(input,"finalspeed",&vv) || word_num(input,"reachesspeed",&vv);
     bool ha=label_num(input,"a",&acc) || label_num(input,"acceleration",&acc) ||
-            word_num(input,"acceleration",&acc) || word_num(input,"acceleratesat",&acc) || word_num(input,"acceleratedat",&acc);
+            word_num(input,"acceleration",&acc) || word_num(input,"acceleratesat",&acc) || word_num(input,"acceleratedat",&acc) ||
+            first_num_after_word(input,"accelerates",&acc) || first_num_after_word(input,"accelerated",&acc) ||
+            first_num_after_word(input,"accelerating",&acc);
     bool hs=label_num(input,"s",&dist) || label_num(input,"displacement",&dist) || label_num(input,"distance",&dist) ||
             word_num(input,"displacement",&dist) || word_num(input,"distance",&dist);
     bool ht=label_num(input,"t",&time) || label_num(input,"time",&time) ||
             word_num(input,"time",&time) || word_num(input,"for",&time) || word_num(input,"in",&time);
     bool rest = has(c, "fromrest");
     if (!hu && rest) { u = 0; hu = true; }
-    if (!hv && rest && nv >= 1 && (has(c, "fromrestto") || has(t, "speed") || has(t, "velocity") || has(t, "m,s"))) { vv = v[0]; hv = true; }
+    if (!hv && rest && nv >= 1 && (has(c, "fromrestto") || has(c, "reachesspeed") || has(c, "reachesaspeed") ||
+        has(c, "finalspeed") || has(c, "finalvelocity"))) { vv = v[0]; hv = true; }
     if (ht && (has(t, "minute") || has(t, "minutes"))) time *= 60.0;
     if (ht && (has(t, "hour") || has(t, "hours"))) time *= 3600.0;
     int known = (hu?1:0) + (hv?1:0) + (ha?1:0) + (hs?1:0) + (ht?1:0);
     bool wants_dist = has(t, "distance") || has(t, "displacement") || has(t, "travelled") || has(t, "traveled");
+    bool wants_v = has(c, "finalspeed") || has(c, "finalvelocity") || has(c, "speedanddistance") || has(c, "velocityanddistance");
     if (!hs && hu && ha && ht && wants_dist) {
       int n = add(out, 0, "List known values and choose a SUVAT equation.");
       if (rest) n = add(out, n, "From rest gives u = 0.");
+      if (wants_v) {
+        n = add(out, n, "v = u + at");
+        n = add(out, n, "v = %.6g + %.6g*%.6g = %.10g", u, acc, time, u + acc*time);
+      }
       n = add(out, n, "s = ut + 1/2 at^2");
       n = add(out, n, "s = %.6g*%.6g + 1/2*%.6g*%.6g^2", u, time, acc, time);
       return add(out, n, "s = %.10g", u*time + 0.5*acc*time*time);

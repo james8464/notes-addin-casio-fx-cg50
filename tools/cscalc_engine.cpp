@@ -3143,7 +3143,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       seconds = dur;
       scale_frequency_unit(t, &rate);
       scale_time_unit(t, &seconds);
-      if (has(t, "samples") || has(t, "sample,count") || has(t, "how,many,samples")) {
+      if (has(t, "number,of,samples") || has(t, "sample,count") || has(t, "how,many,samples")) {
         int n = add(out, 0, "Number of samples = sample rate * seconds.");
         n = add(out, n, "%.10g samples/s * %.10g s", rate, seconds);
         return add(out, n, "samples = %.10g", rate * seconds);
@@ -3351,7 +3351,12 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   char fixed_early[48];
   if (has(t, "fixed") && (has(t, "encode") || has(t, "represent") || has(t, "convert")) && nv >= 3) {
-    sprintf(cmd, (tc || has(t, "signed") || has(t, "negative")) ? "fixedtcenc(%.10g,%lld,%lld)" : "fixedenc(%.10g,%lld,%lld)", v[0], (long long)v[1], (long long)v[2]);
+    long long whole = (long long)v[1], frac = (long long)v[2];
+    if ((has(t, "after") || has(t, "afterthepoint") || has(t, "fractional")) && !has(t, "before") && !has(t, "whole")) {
+      whole = (long long)v[1] - (long long)v[2];
+      if (whole < 1) whole = 1;
+    }
+    sprintf(cmd, (tc || has(t, "signed") || has(t, "negative") || v[0] < 0) ? "fixedtcenc(%.10g,%lld,%lld)" : "fixedenc(%.10g,%lld,%lld)", v[0], whole, frac);
     return eval_float(cmd, out);
   }
   if (has(t, "fixed") && scan_fixed_bits(t, fixed_early, sizeof(fixed_early))) {
@@ -3502,12 +3507,21 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   char fixed[48];
   if (has(t, "fixed") && (has(t, "encode") || has(t, "represent") || has(t, "convert")) &&
+      (has(t, "after") || has(t, "afterthepoint") || has(t, "fractional")) &&
+      !has(t, "before") && !has(t, "whole") && nv >= 3) {
+    long long total = (long long)v[1], frac = (long long)v[2], whole = total - frac;
+    if (whole < 1) whole = 1;
+    sprintf(cmd, (tc || has(t, "signed") || v[0] < 0) ? "fixedtcenc(%.10g,%lld,%lld)" : "fixedenc(%.10g,%lld,%lld)",
+            v[0], whole, frac);
+    return eval_float(cmd, out);
+  }
+  if (has(t, "fixed") && (has(t, "encode") || has(t, "represent") || has(t, "convert")) &&
       (has(t, "fractional") || has(t, "fraction")) && nv >= 2 && !has(t, "whole")) {
     sprintf(cmd, "fixedfrac(%.10g,%lld)", v[0], (long long)v[1]);
     return eval_float(cmd, out);
   }
   if (has(t, "fixed") && (has(t, "encode") || has(t, "represent") || has(t, "convert")) && nv >= 3) {
-    sprintf(cmd, (tc || has(t, "signed") || has(t, "negative")) ? "fixedtcenc(%.10g,%lld,%lld)" : "fixedenc(%.10g,%lld,%lld)", v[0], (long long)v[1], (long long)v[2]);
+    sprintf(cmd, (tc || has(t, "signed") || has(t, "negative") || v[0] < 0) ? "fixedtcenc(%.10g,%lld,%lld)" : "fixedenc(%.10g,%lld,%lld)", v[0], (long long)v[1], (long long)v[2]);
     return eval_float(cmd, out);
   }
   if (has(t, "fixed") && scan_fixed_bits(t, fixed, sizeof(fixed))) {
