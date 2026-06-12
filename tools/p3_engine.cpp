@@ -718,6 +718,48 @@ static bool extract_xy_lists_after_words(const char *input, double *xs, double *
   return true;
 }
 
+static bool parse_linear_den_power(const char *c, char var, double *b, double *d, int *pow) {
+  const char *p = strstr(c, "/(");
+  if (!p) return false;
+  p += 2;
+  *b = 1; *d = 0; *pow = 1;
+  if (*p == var) {
+    *b = 1; ++p;
+  } else if (*p == '-' || *p == '.' || isdigit((unsigned char)*p)) {
+    *b = read_num(p);
+    while (*p == '-' || *p == '.' || isdigit((unsigned char)*p)) ++p;
+    if (*p == '*') ++p;
+    if (*p != var) return false;
+    ++p;
+  } else return false;
+  if (*p == '+' || *p == '-') {
+    bool neg = *p == '-';
+    ++p;
+    *d = read_num(p);
+    if (neg) *d = -*d;
+    while (*p == '.' || isdigit((unsigned char)*p)) ++p;
+  }
+  if (*p != ')') return false;
+  ++p;
+  if (*p == '^') *pow = (int)read_num(p + 1);
+  return *pow >= 1 && *b != 0;
+}
+
+static double linear_den_antideriv(double k, double b, double d, int pow, double x) {
+  if (pow == 1) return 0;
+  return k * pwr(b*x + d, 1 - pow) / (b * (1 - pow));
+}
+
+static void fmt_linear_var(char *buf, int cap, double b, char var, double d) {
+  (void)cap;
+  char lhs[32];
+  if (fabs(b - 1.0) < 1e-9) sprintf(lhs, "%c", var);
+  else if (fabs(b + 1.0) < 1e-9) sprintf(lhs, "-%c", var);
+  else sprintf(lhs, "%.10g%c", b, var);
+  if (fabs(d) < 1e-9) sprintf(buf, "%s", lhs);
+  else sprintf(buf, "%s%+.10g", lhs, d);
+}
+
 static void average_ranks(const double *vals, int n, double *ranks) {
   for (int i = 0; i < n; ++i) {
     int less = 0, equal = 0;
@@ -2412,6 +2454,21 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     }
   }
   if (has(t, "velocity") && has(t, "displacement") && has(t, "from")) {
+    double rb=0, rd=0; int rpow=0;
+    if (has(c, "/(") && parse_linear_den_power(c, 't', &rb, &rd, &rpow) && rpow >= 2) {
+      double k = nv > 0 ? v[0] : 1;
+      double t1 = 0, t2 = 0;
+      word_num_with_t(input, "from", &t1); word_num_with_t(input, "to", &t2);
+      if (t2 < t1) { double q = t1; t1 = t2; t2 = q; }
+      double F1 = linear_den_antideriv(k, rb, rd, rpow, t1);
+      double F2 = linear_den_antideriv(k, rb, rd, rpow, t2);
+      char den[48]; fmt_linear_var(den, sizeof(den), rb, 't', rd);
+      int n = add(out, 0, "Displacement is the integral of velocity.");
+      n = add(out, n, "v = %.10g/(%s)^%d", k, den, rpow);
+      n = add(out, n, "integral v dt = %.10g(%s)^%d/(%.10g*(%d))", k, den, 1-rpow, rb, 1-rpow);
+      n = add(out, n, "displacement = [s] from t=%.6g to t=%.6g", t1, t2);
+      return add(out, n, "displacement = %.10g - %.10g = %.10g", F2, F1, F2-F1);
+    }
     if (has(c, "/") && has(c, "t+") && (has(c, ")^2") || has(c, "^2"))) {
       double k = nv > 0 ? v[0] : 1, b = 1, d = 1;
       const char *tp = strstr(c, "t+");
@@ -3470,6 +3527,20 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if ((has(t, "workdone") || has(t, "work")) && nv >= 2) {
     double A=0, B=0, C=0, D=0, lo=0, hi=0;
+    double rb=0, rd=0; int rpow=0;
+    if (has(c, "/(") && parse_linear_den_power(c, 'x', &rb, &rd, &rpow) && rpow >= 2 &&
+        ((word_num_with_t(input, "from", &lo) || word_num(input, "from", &lo) || (nv >= 2 && (lo = v[nv-2], true))) &&
+         (word_num_with_t(input, "to", &hi) || word_num(input, "to", &hi) || (nv >= 2 && (hi = v[nv-1], true))))) {
+      double k = v[0];
+      double F1 = linear_den_antideriv(k, rb, rd, rpow, lo);
+      double F2 = linear_den_antideriv(k, rb, rd, rpow, hi);
+      char den[48]; fmt_linear_var(den, sizeof(den), rb, 'x', rd);
+      int n = add(out, 0, "Work done by a variable force is the integral of force.");
+      n = add(out, n, "F(x) = %.10g/(%s)^%d", k, den, rpow);
+      n = add(out, n, "W = integral from %.6g to %.6g of F(x) dx", lo, hi);
+      n = add(out, n, "integral = %.10g(%s)^%d/(%.10g*(%d))", k, den, 1-rpow, rb, 1-rpow);
+      return add(out, n, "W = %.10g J", F2 - F1);
+    }
     if ((has(c, "/x^") || has(c, "x^-")) &&
         ((word_num_with_t(input, "from", &lo) || word_num(input, "from", &lo) || (nv >= 2 && (lo = v[nv-2], true))) &&
          (word_num_with_t(input, "to", &hi) || word_num(input, "to", &hi) || (nv >= 2 && (hi = v[nv-1], true))))) {
@@ -4662,6 +4733,35 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   double pdf_lo = 0, pdf_hi = 0;
   if ((has(t, "pdf") || has(t, "density") || has(t, "continuous")) &&
+      has(c, "k/(") && extract_x_interval(c, &pdf_lo, &pdf_hi)) {
+    double rb=0, rd=0; int rpow=0;
+    if (parse_linear_den_power(c, 'x', &rb, &rd, &rpow) && rpow >= 2) {
+      double raw_area = linear_den_antideriv(1.0, rb, rd, rpow, pdf_hi) -
+                        linear_den_antideriv(1.0, rb, rd, rpow, pdf_lo);
+      double k = raw_area ? 1.0 / raw_area : 0;
+      double a = pdf_lo, b = pdf_hi, bound = 0;
+      const char *gt = strstr(c, "p(x>");
+      const char *lt = strstr(c, "p(x<");
+      if (gt) { bound = read_num(gt + (gt[4] == '=' ? 5 : 4)); a = bound; }
+      if (lt) { bound = read_num(lt + (lt[4] == '=' ? 5 : 4)); b = bound; }
+      double prob = linear_den_antideriv(k, rb, rd, rpow, b) -
+                    linear_den_antideriv(k, rb, rd, rpow, a);
+      char den[48]; fmt_linear_var(den, sizeof(den), rb, 'x', rd);
+      int n = add(out, 0, "For a pdf, total area under f(x) is 1.");
+      n = add(out, n, "integral from %.6g to %.6g of k/(%s)^%d dx = 1", pdf_lo, pdf_hi, den, rpow);
+      n = add(out, n, "k = %.10g", k);
+      if (gt) {
+        n = add(out, n, "P(X>%.6g)=integral from %.6g to %.6g of %.10g/(%s)^%d dx", bound, a, b, k, den, rpow);
+        return add(out, n, "P(X>%.6g) = %.10g", bound, prob);
+      }
+      if (lt) {
+        n = add(out, n, "P(X<%.6g)=integral from %.6g to %.6g of %.10g/(%s)^%d dx", bound, a, b, k, den, rpow);
+        return add(out, n, "P(X<%.6g) = %.10g", bound, prob);
+      }
+      return n;
+    }
+  }
+  if ((has(t, "pdf") || has(t, "density") || has(t, "continuous")) &&
       (has(c, "k/(x+") || has(c, "k/(x-")) && has(c, ")^2") &&
       extract_x_interval(c, &pdf_lo, &pdf_hi)) {
     const char *xp = strstr(c, "x+");
@@ -4983,6 +5083,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       !has(t, "hypothesis") && !has(t, "test") && nv >= 4) {
     double mu = v[0], sig = v[1], n0 = v[2], bound = v[3];
     double tmp = 0;
+    if (word_num(input, "mean", &tmp) || word_num(input, "mu", &tmp)) mu = tmp;
     if (word_num(input, "standarddeviation", &tmp) || word_num(input, "sd", &tmp)) sig = tmp;
     if (word_num(input, "size", &tmp) || word_num(input, "samplesize", &tmp)) n0 = tmp;
     for (int i = 0; i < nv; ++i) {

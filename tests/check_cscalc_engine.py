@@ -417,6 +417,7 @@ def main():
     require("Decrypt RSA ciphertext 14 using n=55 and d=27.", ["RSA decryption", "14^27 mod 55 = 9"])
     require("Convert binary fixed point 101.101 to denary and hexadecimal.", ["101.101_2 = 5.625_10", "101.101_2 = 5.A_16"])
     require("Using 8-bit two's complement, what is -13 shifted left by 2?", ["11110011 = -13", "shifted left by 2 = 11001100", "11001100 = -52"])
+    require("Using 8-bit two complement, subtract -12 from 35.", ["00100011=35", "11110100=-12", "35--12=47 -> 00101111"])
     require("Calculate subnet mask for /26 and number of usable hosts.", ["subnet mask = 255.255.255.192", "usable host addresses = 62"])
     require("A bitmap image has 1024 by 768 pixels and 10-bit colour depth. Find file size in KiB.", ["1024*768*10 = 7864320 bits", "= 960 KiB"])
     require("Construct a truth table for A xor B.", ["Truth table for a^b", "A B | F", "simplified = A'B+AB'"])

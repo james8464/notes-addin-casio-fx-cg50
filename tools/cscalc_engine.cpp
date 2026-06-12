@@ -4314,6 +4314,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
         vals[got++] = (long long)v[i];
       }
       if (got == 2) {
+        if (has(compact, "from")) { long long q = vals[0]; vals[0] = vals[1]; vals[1] = q; }
         char a[65], b[65]; to_bin(vals[0], (int)bitsw, a); to_bin(vals[1], (int)bitsw, b);
         sprintf(cmd, "twossub(%s,%s)", a, b); return eval_twos(cmd, out);
       }

@@ -1,5 +1,34 @@
 # Checkpoint
 
+## 2026-06-12 Rational Denominator And Subtract-From Slice
+
+Completed:
+- Added a shared CASP3 parser and antiderivative helper for linear-power denominators `(ax+b)^n`.
+- Generalised CASP3 pdf, displacement, and work routes for `k/(ax+b)^n`, including normalisation and probability working.
+- Fixed CASP3 sample-mean free-text parsing so sample size is not mistaken for population mean.
+- Fixed CSCALC two's-complement wording for `subtract X from Y` so operands are handled in exam order.
+- Added regressions and rebuilt calculator files.
+
+Evidence:
+- Fresh unseen probes for the patched P3/CS cases: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 306556 bytes`
+  - `CSCALC.g3a: 201608 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Still inside CASP3/CSCALC free-text working support and generated calculator outputs.
+- Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for further source/probe-driven hardening.
+
 ## 2026-06-12 CDF, Normal Inverse, Projectile, And Fixed Decode Slice
 
 Completed:
