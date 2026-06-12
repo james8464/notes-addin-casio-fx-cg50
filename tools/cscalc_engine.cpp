@@ -2753,6 +2753,7 @@ static const char *skip_bool_words(const char *e) {
     if (starts(e, "truthtable")) { e += 10; moved = true; }
     if (starts(e, "truth")) { e += 5; moved = true; }
     if (starts(e, "table")) { e += 5; moved = true; }
+    if (starts(e, "output")) { e += 6; moved = true; }
     if (starts(e, "expression")) { e += 10; moved = true; }
     if (starts(e, "for")) { e += 3; moved = true; }
   }
@@ -3288,7 +3289,8 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       (has(t, "column") || has(t, "outputs") || has(t, "bits") || has(t, "table"))) {
     sprintf(cmd, "truthbits(%s)", bitcol); return eval_truthbits(cmd, out);
   }
-  if (nb >= 1 && (has(t, "truth") || has(t, "output")) && has(t, "bits")) {
+  if (nb >= 1 && (has(t, "truth") || has(t, "output") || has(t, "column")) &&
+      (has(t, "bits") || has(t, "column") || has(t, "derive") || has(t, "expression"))) {
     sprintf(cmd, "truthbits(%s)", bits[0]); return eval_truthbits(cmd, out);
   }
   if ((has(t, "kmap") || has(t, "karnaugh") || has(t, "minterm") || has(t, "minterms") ||

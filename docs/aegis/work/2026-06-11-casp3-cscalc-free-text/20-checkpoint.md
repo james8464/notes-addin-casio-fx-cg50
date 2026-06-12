@@ -1,5 +1,26 @@
 # Checkpoint
 
+## 2026-06-12 CSCALC Boolean Output And CASP3 Stats Intent Slice
+
+Completed:
+- Fixed CSCALC Boolean prompts written as `simplify output F = ...`.
+- Fixed CSCALC output-column prompts such as `derive boolean expression for output column 0110 variables A B`.
+- Fixed CASP3 discrete random variable prompts with `values ... probabilities ... find mean and variance` so they route to E(X)/Var(X) working instead of summary-statistics working.
+- Fixed CASP3 histogram prompts asking to find frequency from frequency density and class width.
+- Added regression tests and rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CASP3/CSCALC free-text routing and working-quality support.
+- Did not touch CAS Pure behavior, NOTES, menus, or shared UI/status code.
+
 ## 2026-06-12 CSCALC Boolean Assignment Notation Slice
 
 Completed:

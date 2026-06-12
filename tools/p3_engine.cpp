@@ -1787,9 +1787,6 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     sprintf(cmd+p, ")");
     return eval_stats(cmd, out);
   }
-  if ((has(t, "mean") || has(t, "variance") || has(t, "standarddeviation")) && nv >= 3) {
-    sprintf(cmd, "meanvar(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_stats(cmd, out);
-  }
   if ((has(t, "discrete") || has(t, "randomvariable") || has(t, "expectation")) && has(t, "prob") && nv >= 4) {
     int p = sprintf(cmd, "discrete(");
     if ((has(t, "values") || has(t, "xvalues")) && (has(t, "probabilities") || has(t, "probs")) && nv % 2 == 0) {
@@ -1802,6 +1799,9 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     sprintf(cmd+p, ")");
     return eval_stats(cmd, out);
   }
+  if ((has(t, "mean") || has(t, "variance") || has(t, "standarddeviation")) && nv >= 3) {
+    sprintf(cmd, "meanvar(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_stats(cmd, out);
+  }
   if ((has(t, "stratified") || has(t, "stratum")) && nv >= 3) {
     sprintf(cmd, "stratified(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_stats(cmd, out);
   }
@@ -1812,7 +1812,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     sprintf(cmd, "groupquantile(%.10g,%.10g,%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3], v[4], v[5]); return eval_stats(cmd, out);
   }
   if ((has(t, "histogram") || has(t, "frequencydensity")) && (has(t, "density") || has(t, "frequencydensity")) && has(t, "width") && nv >= 2) {
-    if (has(t, "findfrequency") || has(t, "frequencyfromdensity")) sprintf(cmd, "histfreq(%.10g,%.10g)", v[0], v[1]);
+    if (has(c, "findfrequency") && !has(c, "findfrequencydensity")) sprintf(cmd, "histfreq(%.10g,%.10g)", v[0], v[1]);
+    else if (has(t, "frequencyfromdensity")) sprintf(cmd, "histfreq(%.10g,%.10g)", v[0], v[1]);
     else sprintf(cmd, "histdensity(%.10g,%.10g)", v[0], v[1]);
     return eval_stats(cmd, out);
   }
