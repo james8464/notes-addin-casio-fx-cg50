@@ -160,10 +160,14 @@ static bool label_num(const char *s, const char *name, double *v) {
   int nl = (int)strlen(name);
   for (int i = 0; s && s[i]; ++i) {
     if (i > 0 && isalnum((unsigned char)s[i-1])) continue;
-    int j = 0;
-    while (j < nl && s[i+j] && tolower((unsigned char)s[i+j]) == name[j]) ++j;
+    int j = 0, q = i;
+    while (j < nl && s[q]) {
+      while (s[q] == ' ' || s[q] == '\t' || s[q] == '_' || s[q] == '-') ++q;
+      if (tolower((unsigned char)s[q]) != name[j]) break;
+      ++j; ++q;
+    }
     if (j != nl) continue;
-    int k = i + j;
+    int k = q;
     while (s[k] == ' ' || s[k] == '\t') ++k;
     if (s[k] != '=') continue;
     ++k;
@@ -1099,8 +1103,14 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     }
   }
   if (has(t, "suvat") || has(t, "velocity") || has(t, "acceleration") || has(t, "distance") || has(t, "displacement") || has(t, "time")) {
-    double u=0, vv=0, acc=0, dist=0, time=0; bool hu=label_num(input,"u",&u), hv=label_num(input,"v",&vv), ha=label_num(input,"a",&acc), hs=label_num(input,"s",&dist), ht=label_num(input,"t",&time);
-    if (hu || hv || ha || hs || ht) {
+    double u=0, vv=0, acc=0, dist=0, time=0;
+    bool hu=label_num(input,"u",&u) || label_num(input,"initialvelocity",&u) || label_num(input,"initialspeed",&u);
+    bool hv=label_num(input,"v",&vv) || label_num(input,"finalvelocity",&vv) || label_num(input,"finalspeed",&vv);
+    bool ha=label_num(input,"a",&acc) || label_num(input,"acceleration",&acc);
+    bool hs=label_num(input,"s",&dist) || label_num(input,"displacement",&dist) || label_num(input,"distance",&dist);
+    bool ht=label_num(input,"t",&time) || label_num(input,"time",&time);
+    int known = (hu?1:0) + (hv?1:0) + (ha?1:0) + (hs?1:0) + (ht?1:0);
+    if (known >= 3) {
       int p = sprintf(cmd, "suvat(");
       bool any = false;
       if (hu) { p += sprintf(cmd+p, "u=%.10g", u); any = true; }
