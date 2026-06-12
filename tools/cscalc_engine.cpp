@@ -3916,6 +3916,28 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     n = add(out, n, "= %.10g MB", bytes / 1000000.0);
     return add(out, n, "= %.10g MiB", bytes / 1048576.0);
   }
+  if ((has(t, "image") || has(t, "bitmap")) &&
+      (has(compact, "findcolourdepth") || has(compact, "findcolordepth") ||
+       has(compact, "calculatecolourdepth") || has(compact, "calculatecolordepth") ||
+       has(compact, "findbitsperpixel") || has(compact, "calculatebitsperpixel")) &&
+      (has(compact, "colourdepth") || has(compact, "colordepth") || has(compact, "bitsperpixel") ||
+       (has(t, "bits") && has(t, "pixel")) || has(t, "bpp")) &&
+      (has(t, "filesize") || has(t, "file") || has(t, "size")) && nv >= 3) {
+    double file_bits = 0; const char *unit = "";
+    if (has(t, "mib")) { file_bits = v[0] * 1048576.0 * 8.0; unit = "MiB"; }
+    else if (has(t, "mb")) { file_bits = v[0] * 1000000.0 * 8.0; unit = "MB"; }
+    else if (has(t, "kib")) { file_bits = v[0] * 1024.0 * 8.0; unit = "KiB"; }
+    else if (has(t, "kb")) { file_bits = v[0] * 1000.0 * 8.0; unit = "KB"; }
+    else if (has(t, "bytes")) { file_bits = v[0] * 8.0; unit = "bytes"; }
+    if (file_bits > 0) {
+      double w = v[nv-2], h = v[nv-1];
+      double depth = (w*h) ? file_bits/(w*h) : 0;
+      int n = add(out, 0, "Colour depth = file size in bits / pixels.");
+      n = add(out, n, "%.10g %s = %.10g bits", v[0], unit, file_bits);
+      n = add(out, n, "pixels = %.10g*%.10g = %.10g", w, h, w*h);
+      return add(out, n, "colour depth = %.10g/%.10g = %.10g bits per pixel", file_bits, w*h, depth);
+    }
+  }
   if ((has(t, "image") || has(t, "bitmap")) && image_depth_is_bytes(t) && nv >= 3) {
     return add_image_byte_depth_lines(out, (long long)v[0], (long long)v[1], (long long)v[2]);
   }

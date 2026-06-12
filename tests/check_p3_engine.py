@@ -468,6 +468,8 @@ def main():
     require("A box contains 5 red and 3 blue balls. Two are chosen without replacement. Find P(same colour).", ["same colour ways = C(5,2)+C(3,2)", "P(same colour)=13/28=0.4642857143"])
     require("Use trapezium rule with y values 1,4,9,16,25 and width 0.5.", ["Use the trapezium rule", "Area = 0.5/2 * 84 = 21"])
     require("Use the trapezium rule with x values 0 1 2 3 and y values 1 2 5 10.", ["h = x2 - x1 = 1 - 0 = 1", "Area = 1/2 * 25 = 12.5"])
+    require("Use the trapezium rule with 4 strips to estimate the integral of x^2 from 0 to 4.", ["Use the trapezium rule with 4 strips", "h = (4-0)/4 = 1", "Area = 1/2*(0+16+2*14) = 22"])
+    require("For X~N(20,3^2), find P(|X-20|<4).", ["P(|X-20|<4) means 16 < X < 24", "sigma = 3", "probability = 0.8175774363"])
     require("A particle moves with acceleration a=3t^2-4t+5. Its velocity is 2 when t=0 and displacement is 1 when t=0. Find displacement at t=3.", ["Variable acceleration: integrate a(t)", "a = 3 t^2 -4 t +5", "v(0)=2 gives C = 2", "s(0)=1 gives C = 1", "at t=3, s = 31.75"])
     require("A particle moves with acceleration a=6t-4. When t=2 velocity is 5 and displacement is 7. Find displacement at t=4.", ["Variable acceleration: integrate a(t)", "v(2)=5 gives C = 1", "s(2)=7 gives C = 5", "at t=4, s = 41"])
     require("A particle is projected from a height of 20m with speed 15m/s at 30 degrees above the horizontal. Find the time when it hits the ground and the horizontal distance travelled.", ["u_x = 15 cos 30", "h=20", "positive time", "range = u_x t = 38.005"])

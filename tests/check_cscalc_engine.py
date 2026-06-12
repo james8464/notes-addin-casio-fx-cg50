@@ -436,6 +436,7 @@ def main():
     require("Using 8-bit two complement, subtract -12 from 35.", ["00100011=35", "11110100=-12", "35--12=47 -> 00101111"])
     require("Calculate subnet mask for /26 and number of usable hosts.", ["subnet mask = 255.255.255.192", "usable host addresses = 62"])
     require("A bitmap image has 1024 by 768 pixels and 10-bit colour depth. Find file size in KiB.", ["1024*768*10 = 7864320 bits", "= 960 KiB"])
+    require("A bitmap image file is 3 MiB, has resolution 1024 by 768. Find colour depth bits per pixel.", ["3 MiB = 25165824 bits", "pixels = 1024*768 = 786432", "colour depth = 25165824/786432 = 32 bits per pixel"])
     require("Construct a truth table for A xor B.", ["Truth table for a^b", "A B | F", "simplified = A'B+AB'"])
     require("Construct a truth table for A implies B.", ["Truth table for a>b", "minterms: 0,1,3", "simplified = A'+B"])
     require("Using fixed point with 5 bits before the point and 3 bits after, convert -6.375 to two's complement binary.", ["scaled integer = -6.375 * 2^3 = -51", "write -51 in 8-bit two's complement", "fixed point = 11001.101"])

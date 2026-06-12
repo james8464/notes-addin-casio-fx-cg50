@@ -3002,18 +3002,40 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       sprintf(cmd, "invnormalvar(%.10g,%.10g,%.10g)", area, mu, var);
       return eval_stats(cmd, out);
     }
-    if ((has(c, "p(") && has(c, "<x<")) || (nu >= 2 && (has(c, "between") || has(c, "<x<")))) {
-      if (nu < 2) return 0;
-      double lo = u[0], hi = u[1];
-      if (lo > hi) { double tmp = lo; lo = hi; hi = tmp; }
-      sprintf(cmd, "normalprobvar(%.10g,%.10g,%.10g,%.10g)", lo, hi, mu, var);
-      return eval_stats(cmd, out);
-    }
-    if (tail && nu >= 1) {
-      sprintf(cmd, "normaltailvar(%.10g,%.10g,%.10g,%d)", u[0], mu, var, tail > 0 ? 1 : -1);
-      return eval_stats(cmd, out);
-    }
-  }
+	    if ((has(c, "p(") && has(c, "<x<")) || (nu >= 2 && (has(c, "between") || has(c, "<x<")))) {
+	      if (nu < 2) return 0;
+	      double lo = u[0], hi = u[1];
+	      if (lo > hi) { double tmp = lo; lo = hi; hi = tmp; }
+	      sprintf(cmd, "normalprobvar(%.10g,%.10g,%.10g,%.10g)", lo, hi, mu, var);
+	      return eval_stats(cmd, out);
+	    }
+	    const char *bar = strstr(c, "|x");
+	    if (bar) {
+	      double centre = mu, radius = 0;
+	      const char *xm = strstr(bar, "x-");
+	      const char *xp = strstr(bar, "x+");
+	      if (xm) centre = read_num(xm + 2);
+	      else if (xp) centre = -read_num(xp + 2);
+	      const char *rp = strstr(bar + 2, "|<=");
+	      int rskip = 3;
+	      if (!rp) { rp = strstr(bar + 2, "|<"); rskip = 2; }
+	      if (rp) radius = read_num(rp + rskip);
+	      if (radius > 0) {
+	        double sd = root(var), lo = centre - radius, hi = centre + radius;
+	        double z1 = (lo - mu) / sd, z2 = (hi - mu) / sd;
+	        double ans = normal_cdf(z2) - normal_cdf(z1);
+	        int n = add(out, 0, "P(|X-%.6g|<%.6g) means %.6g < X < %.6g.", centre, radius, lo, hi);
+	        n = add(out, n, "X~N(%.6g, %.6g), so sigma = %.10g", mu, var, sd);
+	        n = add(out, n, "z1=(%.10g-%.6g)/%.10g = %.10g", lo, mu, sd, z1);
+	        n = add(out, n, "z2=(%.10g-%.6g)/%.10g = %.10g", hi, mu, sd, z2);
+	        return add(out, n, "probability = %.10g", ans);
+	      }
+	    }
+	    if (tail && nu >= 1) {
+	      sprintf(cmd, "normaltailvar(%.10g,%.10g,%.10g,%d)", u[0], mu, var, tail > 0 ? 1 : -1);
+	      return eval_stats(cmd, out);
+	    }
+	  }
   if ((has(c, "~po(") || has(c, "~poisson(") || has(c, "followspo(") || has(c, "followspoisson(") ||
        has(c, "xpo(") || has(c, "xpoisson(")) && nv >= 2) {
     double lam = 0;
@@ -4880,8 +4902,31 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if ((has(t, "bayes") || has(t, "reverseconditional")) && nv >= 3) {
     sprintf(cmd, "bayes(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_stats(cmd, out);
   }
-  if ((has(t, "trapezium") || has(t, "trapezoid") || has(t, "trapezoidal")) && nv >= 3) {
-    if (has(c, "xvalues") && has(c, "yvalues") && nv >= 4 && nv % 2 == 0) {
+	  if ((has(t, "trapezium") || has(t, "trapezoid") || has(t, "trapezoidal")) && nv >= 3) {
+	    if ((has(c, "x^2") || has(c, "x^3") || has(c, "ofx")) &&
+	        (has(t, "strip") || has(t, "strips")) && (has(t, "from") && has(t, "to"))) {
+	      double lo=0, hi=0, strips=0;
+	      bool hLo = word_num(input, "from", &lo);
+	      bool hHi = word_num(input, "to", &hi);
+	      bool hN = prev_word_num(input, "strips", &strips) || word_num(input, "strips", &strips);
+	      if (hLo && hHi && hN && strips > 0) {
+	        int pwrx = has(c, "x^3") ? 3 : (has(c, "x^2") ? 2 : 1);
+	        double h = (hi - lo) / strips, first = 0, last = 0, middle = 0;
+	        for (int i = 0; i <= (int)strips; ++i) {
+	          double x = lo + i*h;
+	          double y = pwrx == 3 ? x*x*x : (pwrx == 2 ? x*x : x);
+	          if (i == 0) first = y;
+	          else if (i == (int)strips) last = y;
+	          else middle += y;
+	        }
+	        double area = h/2.0*(first + last + 2*middle);
+	        int n = add(out, 0, "Use the trapezium rule with %d strips.", (int)strips);
+	        n = add(out, n, "h = (%.10g-%.10g)/%d = %.10g", hi, lo, (int)strips, h);
+	        n = add(out, n, "For y=x^%d, first y = %.10g, last y = %.10g, middle sum = %.10g", pwrx, first, last, middle);
+	        return add(out, n, "Area = %.10g/2*(%.10g+%.10g+2*%.10g) = %.10g", h, first, last, middle, area);
+	      }
+	    }
+	    if (has(c, "xvalues") && has(c, "yvalues") && nv >= 4 && nv % 2 == 0) {
       int m = nv / 2;
       double h = v[1] - v[0];
       if (h < 0) h = -h;
