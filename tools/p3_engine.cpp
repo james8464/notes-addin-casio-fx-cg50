@@ -349,6 +349,29 @@ static bool word_num_with_t(const char *s, const char *name, double *v) {
   return false;
 }
 
+static int scan_t_values(const char *s, double vals[], int maxv) {
+  int n = 0;
+  for (int i = 0; s && s[i] && n < maxv; ++i) {
+    if (i > 0 && isalnum((unsigned char)s[i-1])) continue;
+    char ch = (char)tolower((unsigned char)s[i]);
+    int q = i;
+    if (ch == 't' && !isalpha((unsigned char)s[i+1])) {
+      q = i + 1;
+    } else if (ch == 't' && tolower((unsigned char)s[i+1]) == 'i' &&
+               tolower((unsigned char)s[i+2]) == 'm' &&
+               tolower((unsigned char)s[i+3]) == 'e' &&
+               !isalpha((unsigned char)s[i+4])) {
+      q = i + 4;
+    } else {
+      continue;
+    }
+    while (s[q] == ' ' || s[q] == '\t' || s[q] == '=' || s[q] == ':' || s[q] == ',') ++q;
+    if (s[q] != '-' && !isdigit((unsigned char)s[q])) continue;
+    vals[n++] = read_num(s + q);
+  }
+  return n;
+}
+
 static bool first_num_after_word(const char *s, const char *name, double *v) {
   int nl = (int)strlen(name);
   for (int i = 0; s && s[i]; ++i) {
@@ -389,6 +412,29 @@ static bool prev_word_num(const char *s, const char *name, double *v) {
     if (j != nl || isalnum((unsigned char)s[q])) continue;
     int k = i - 1;
     while (k >= 0 && (s[k] == ' ' || s[k] == '\t')) --k;
+    while (k >= 0 && isalpha((unsigned char)s[k])) --k;
+    while (k >= 0 && (s[k] == ' ' || s[k] == '\t')) --k;
+    int end = k;
+    while (k >= 0 && (isdigit((unsigned char)s[k]) || s[k] == '.')) --k;
+    if (end <= k) continue;
+    if (k >= 0 && s[k] == '-') --k;
+    char b[32]; int len = end - k;
+    if (len <= 0 || len >= (int)sizeof(b)) continue;
+    memcpy(b, s + k + 1, len); b[len] = 0;
+    if (b[0] != '-' && !isdigit((unsigned char)b[0])) continue;
+    *v = read_num(b);
+    return true;
+  }
+  return false;
+}
+
+static bool num_before_unit(const char *s, const char *unit, double *v) {
+  int ul = (int)strlen(unit);
+  for (int i = 0; s && s[i]; ++i) {
+    int j = 0;
+    while (j < ul && s[i+j] && tolower((unsigned char)s[i+j]) == tolower((unsigned char)unit[j])) ++j;
+    if (j != ul) continue;
+    int k = i - 1;
     while (k >= 0 && isalpha((unsigned char)s[k])) --k;
     while (k >= 0 && (s[k] == ' ' || s[k] == '\t')) --k;
     int end = k;
@@ -536,7 +582,9 @@ static bool parse_poly_after_word(const char *input, const char *word, double *A
     while (j < wl && input[q] && tolower((unsigned char)input[q]) == word[j]) { ++j; ++q; }
     if (j != wl) continue;
     while (input[q] && input[q] != '-' && input[q] != '+' && input[q] != '.' &&
-           !isdigit((unsigned char)input[q]) && tolower((unsigned char)input[q]) != 't') ++q;
+           !isdigit((unsigned char)input[q]) &&
+           !((tolower((unsigned char)input[q]) == 't' || tolower((unsigned char)input[q]) == 'x') &&
+             !isalpha((unsigned char)input[q+1]))) ++q;
     if (!input[q]) continue;
     char expr[96]; int k = 0;
     while (input[q] && k + 1 < (int)sizeof(expr)) {
@@ -2557,15 +2605,20 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     }
   }
   if ((has(t, "acceleration") || has(t, "accn") || has(c, "a=")) &&
-      has(t, "velocity") && has(t, "displacement") &&
+      (has(t, "velocity") || has(c, "v=") || has(c, "u=")) &&
+      (has(t, "displacement") || has(t, "distance") || has(t, "position") || has(c, "s=")) &&
       (has(c, "finddisplacement") || has(c, "finds") || has(c, "findposition") || has(t, "at"))) {
     double A=0, B=0, C=0, u=0, s0=0, time=0, t0=0;
     bool parsed_acc = parse_poly_after_word(input, "acceleration", &A, &B, &C);
     if (!parsed_acc && has(c, "a=")) parsed_acc = parse_velocity_quad(input, &A, &B, &C);
     bool hu = word_num(input, "velocity", &u) || label_num(input, "v", &u) || label_num(input, "u", &u);
-    bool hs0 = word_num(input, "displacement", &s0) || label_num(input, "s", &s0) || label_num(input, "s0", &s0);
-    bool ht = word_num_with_t(input, "at", &time) || word_num(input, "after", &time) || label_num(input, "t", &time);
+    bool hs0 = word_num(input, "displacement", &s0) || word_num(input, "position", &s0) ||
+               label_num(input, "s", &s0) || label_num(input, "s0", &s0);
+    double tv[6]; int ntv = scan_t_values(input, tv, 6);
+    bool ht = last_label_num(input, "t", &time) || word_num(input, "after", &time);
     bool ht0 = word_num_with_t(input, "when", &t0) || word_num_with_t(input, "initially", &t0);
+    if (ntv >= 2 && !ht0) { t0 = tv[0]; ht0 = true; }
+    if (ntv >= 2) { time = tv[ntv-1]; ht = true; }
     if (!ht0) t0 = 0;
     if (parsed_acc && hu && hs0 && ht) {
       double vbase0 = A*t0*t0*t0/3.0 + B*t0*t0/2.0 + C*t0;
@@ -3610,11 +3663,14 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       (has(t, "time") || has(t, "when") || has(t, "distance")) && nv >= 3) {
     double u=0, ang=0, h0=0, g=9.8;
     bool hU=label_num(input,"speed",&u) || label_num(input,"u",&u) || label_num(input,"initialspeed",&u) || label_num(input,"initialvelocity",&u) ||
-            word_num(input,"speed",&u) || word_num(input,"velocity",&u);
+            word_num(input,"speed",&u) || word_num(input,"velocity",&u) ||
+            num_before_unit(input,"m/s",&u) || num_before_unit(input,"ms^-1",&u) ||
+            prev_word_num(input,"metrespersecond",&u);
     bool hA=label_num(input,"angle",&ang) || label_num(input,"theta",&ang) || label_num(input,"launchangle",&ang) ||
             word_num(input,"angle",&ang) || word_num(input,"theta",&ang) || prev_word_num(input,"degrees",&ang);
     bool hH=label_num(input,"height",&h0) || label_num(input,"initialheight",&h0) || label_num(input,"launchheight",&h0) ||
-            word_num(input,"height",&h0) || word_num(input,"from",&h0) || word_num(input,"above",&h0);
+            word_num(input,"height",&h0) || word_num(input,"from",&h0) || word_num(input,"above",&h0) ||
+            prev_word_num(input,"above",&h0);
     label_num(input,"g",&g) || label_num(input,"gravity",&g);
     if (!hU && nv >= 1) u = v[0];
     if (!hA && nv >= 2) ang = v[1];
@@ -3874,6 +3930,37 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     if (hL && hW && hx) sprintf(cmd, "beam(%.10g,%.10g,%.10g,%.10g)", L, W, x, hb ? bw : 0);
     else sprintf(cmd, nv > 3 ? "beam(%.10g,%.10g,%.10g,%.10g)" : "beam(%.10g,%.10g,%.10g)", v[0], v[1], v[2], nv > 3 ? v[3] : 0);
     return eval_mech(cmd, out);
+  }
+  if (has(t, "ladder") && (has(t, "wall") || has(t, "floor") || has(t, "rough") || has(t, "smooth")) &&
+      (has(t, "person") || has(t, "man") || has(t, "load")) && nv >= 5) {
+    double L=0, W=0, P=0, d=0, ang=0;
+    bool hL=word_num(input,"length",&L) || label_num(input,"length",&L);
+    bool hW=word_num(input,"weighs",&W) || word_num(input,"weight",&W) || label_num(input,"weight",&W);
+    bool hA=word_num(input,"angle",&ang) || label_num(input,"angle",&ang) || prev_word_num(input,"degrees",&ang);
+    if (!hL) L = v[0];
+    if (!hA) for (int i = 0; i < nv; ++i)
+      if (!near_num(v[i], L) && v[i] > 0 && v[i] <= 90) { ang = v[i]; hA = true; break; }
+    if (!hW) for (int i = 0; i < nv; ++i)
+      if (!near_num(v[i], L) && !near_num(v[i], ang) && v[i] > 10) { W = v[i]; hW = true; break; }
+    for (int i = 0; i < nv; ++i) {
+      if (near_num(v[i], L) || near_num(v[i], W) || near_num(v[i], ang)) continue;
+      if (v[i] > 10 && (!P || v[i] > P)) P = v[i];
+    }
+    for (int i = 0; i < nv; ++i) {
+      if (near_num(v[i], L) || near_num(v[i], W) || near_num(v[i], P) || near_num(v[i], ang)) continue;
+      if (v[i] > 0 && v[i] <= L) { d = v[i]; break; }
+    }
+    if (P > 0 && d > 0 && L > 0) {
+      double R = W + P;
+      double S = (W*(L/2.0)*deg_cosine(ang) + P*d*deg_cosine(ang)) / (L*deg_sine(ang));
+      double mu = R ? S/R : 0;
+      int n = add(out, 0, "For a ladder at a smooth wall and rough ground, take moments about the foot.");
+      n = add(out, n, "Vertical equilibrium: R = %.10g + %.10g = %.10g N", W, P, R);
+      n = add(out, n, "Horizontal equilibrium: friction F = wall reaction S.");
+      n = add(out, n, "S*(%.6g sin %.6g) = %.10g*(%.6g/2 cos %.6g) + %.10g*(%.6g cos %.6g)", L, ang, W, L, ang, P, d, ang);
+      n = add(out, n, "S = %.10g N, so friction = %.10g N", S, S);
+      return add(out, n, "If limiting, mu = F/R = %.10g/%.10g = %.10g", S, R, mu);
+    }
   }
   if (has(t, "ladder") && (has(t, "wall") || has(t, "floor") || has(t, "rough") || has(t, "smooth")) && nv >= 2) {
     double L=0,W=0,ang=0,P=0,d=0;
@@ -4158,7 +4245,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if ((has(t, "driving") || has(t, "drive")) && has(t, "force") &&
       (has(t, "resistance") || has(t, "resistive")) &&
-      (has(t, "acceleration") || has(t, "accelerate")) && nv >= 3) {
+      (has(t, "acceleration") || has(t, "accelerate")) &&
+      !has(t, "incline") && !has(t, "slope") && !has(t, "plane") && nv >= 3) {
     double m = 0, drive = 0, r = 0;
     bool hm = label_num(input, "mass", &m) || word_num(input, "mass", &m);
     bool hd = word_num(input, "drivingforce", &drive) || label_num(input, "drivingforce", &drive) ||
@@ -4296,7 +4384,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       (has(t, "plane") || has(t, "inclined") || has(t, "incline") || has(t, "slope")) &&
       (has(t, "pull") || has(t, "force")) &&
       (has(t, "acceleration") || has(t, "accelerate")) && nv >= 3 &&
-      !has(t, "coefficient") && !has(t, "friction")) {
+      !has(t, "coefficient") && !has(t, "friction") &&
+      !has(t, "resistance") && !has(t, "resistive") && !has(t, "braking")) {
     double m=0, theta=0, F=0;
     bool hm=word_num(input,"mass",&m) || label_num(input,"mass",&m);
     bool hF=word_num(input,"force",&F) || label_num(input,"force",&F);
@@ -4338,6 +4427,34 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "mg sin(theta) = %.10g - %.10g = %.10g", drive, r, drive-r);
     n = add(out, n, "sin(theta) = (%.10g-%.10g)/(%.10g*9.8) = %.10g", drive, r, m, s);
     return add(out, n, "theta = %.10g degrees", theta);
+  }
+  if ((has(t, "incline") || has(t, "slope") || has(t, "plane")) &&
+      (has(t, "resistance") || has(t, "resistive") || has(t, "braking") || has(t, "brake")) &&
+      (has(t, "acceleration") || has(t, "accelerate") || has(c, "findacceleration")) &&
+      !has(t, "driving") && !has(t, "drive") && nv >= 4) {
+    double m=0, ang=0, r=0, brake=0;
+    bool hm=label_num(input,"mass",&m) || word_num(input,"mass",&m);
+    bool ha=label_num(input,"angle",&ang) || word_num(input,"angle",&ang) || prev_word_num(input,"degrees",&ang);
+    bool hr=word_num(input,"resistance",&r) || label_num(input,"resistance",&r);
+    bool hb=word_num(input,"brakingforce",&brake) || word_num(input,"braking",&brake) ||
+            word_num(input,"brake",&brake) || label_num(input,"brake",&brake);
+    if (!hm) m = v[0];
+    if (!ha) for (int i = 0; i < nv; ++i)
+      if (!near_num(v[i], m) && v[i] > 0 && v[i] <= 90) { ang = v[i]; ha = true; break; }
+    if (!hr) for (int i = 0; i < nv; ++i)
+      if (!near_num(v[i], m) && !near_num(v[i], ang) && !near_num(v[i], brake) && v[i] > 90) { r = v[i]; hr = true; break; }
+    if (!hb) for (int i = nv - 1; i >= 0; --i)
+      if (!near_num(v[i], m) && !near_num(v[i], ang) && !near_num(v[i], r)) { brake = v[i]; hb = true; break; }
+    double down = m * 9.8 * deg_sine(ang);
+    double net = (has(t, "down") ? down - r - brake : -down - r - brake);
+    int n = add(out, 0, "Resolve along the inclined plane.");
+    n = add(out, n, "Down-plane weight component = mg sin(theta) = %.6g*9.8 sin(%.6g) = %.10g N", m, ang, down);
+    if (has(t, "down")) {
+      n = add(out, n, "Taking down the plane as positive, resultant = %.10g - %.10g - %.10g", down, r, brake);
+    } else {
+      n = add(out, n, "Taking up the plane as positive, resultant = -%.10g - %.10g - %.10g", down, r, brake);
+    }
+    return add(out, n, "a = F/m = %.10g/%.6g = %.10g m/s^2", net, m, net/m);
   }
   if ((has(t, "incline") || has(t, "slope") || has(t, "plane")) &&
       (has(t, "resistance") || has(t, "resistive")) &&
@@ -5494,11 +5611,12 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
 	      bool hHi = word_num(input, "to", &hi);
 	      bool hN = prev_word_num(input, "strips", &strips) || word_num(input, "strips", &strips);
 	      if (hLo && hHi && hN && strips > 0) {
-	        int pwrx = has(c, "x^3") ? 3 : (has(c, "x^2") ? 2 : 1);
+	        bool recip_quad = has(c, "1/(1+x^2)") || has(c, "1/(x^2+1)");
+	        int pwrx = has(c, "x^3") ? 3 : (has(c, "x^2") && !recip_quad ? 2 : 1);
 	        double h = (hi - lo) / strips, first = 0, last = 0, middle = 0;
 	        for (int i = 0; i <= (int)strips; ++i) {
 	          double x = lo + i*h;
-	          double y = pwrx == 3 ? x*x*x : (pwrx == 2 ? x*x : x);
+	          double y = recip_quad ? 1.0/(1.0+x*x) : (pwrx == 3 ? x*x*x : (pwrx == 2 ? x*x : x));
 	          if (i == 0) first = y;
 	          else if (i == (int)strips) last = y;
 	          else middle += y;
@@ -5506,7 +5624,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
 	        double area = h/2.0*(first + last + 2*middle);
 	        int n = add(out, 0, "Use the trapezium rule with %d strips.", (int)strips);
 	        n = add(out, n, "h = (%.10g-%.10g)/%d = %.10g", hi, lo, (int)strips, h);
-	        n = add(out, n, "For y=x^%d, first y = %.10g, last y = %.10g, middle sum = %.10g", pwrx, first, last, middle);
+	        if (recip_quad) n = add(out, n, "For y=1/(1+x^2), first y = %.10g, last y = %.10g, middle sum = %.10g", first, last, middle);
+	        else n = add(out, n, "For y=x^%d, first y = %.10g, last y = %.10g, middle sum = %.10g", pwrx, first, last, middle);
 	        return add(out, n, "Area = %.10g/2*(%.10g+%.10g+2*%.10g) = %.10g", h, first, last, middle, area);
 	      }
 	    }

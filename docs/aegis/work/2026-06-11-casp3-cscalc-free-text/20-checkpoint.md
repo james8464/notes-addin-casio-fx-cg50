@@ -4430,6 +4430,37 @@ Drift check:
 - Kept changes to CASP3/CSCALC general free-text handling, regressions, generated app outputs, and this checkpoint.
 - Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.
 
+## 2026-06-12 P3 Route Finalisation Slice
+
+Completed:
+- Hardened CASP3 prose parsing for variable acceleration with labelled initial/target times.
+- Fixed polynomial extraction so words like `particle` do not start a fake `t` expression.
+- Added compact-unit projectile speed parsing for forms like `20m/s`.
+- Added loaded-ladder equilibrium working with person/load distance parsing.
+- Stopped horizontal driving-force routing from stealing slope resistance questions.
+- Added inclined-plane resistance/braking acceleration handling.
+- Added reciprocal-quadratic trapezium rule support for `1/(1+x^2)`.
+- Checked maintained app tooling for obvious TODO/FIXME/placeholder clutter; no app-engine clutter found.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 399460 bytes`
+  - `CSCALC.g3a: 230584 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CASP3.g3a sha256: 453555d832e1c6fc8d9314d03331c1ad387f1c41faf2435eaa344a7251506e7a`
+
+Drift check:
+- Kept changes to CASP3 general free-text handling, regressions, generated CASP3 output, and this checkpoint.
+- Did not touch CAS Pure behavior, menus, NOTES source, shared UI/status code, or CSCALC source in this slice.
+
 ## 2026-06-12 Bayes, Interval, Variance, Address, and Image Slice
 
 Completed:
