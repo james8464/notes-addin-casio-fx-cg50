@@ -399,6 +399,17 @@ static int prob_tail(const char *c, const char *t) {
   return 0;
 }
 
+static int add_binom_range_lines(char out[P3_MAX_LINES][P3_LINE_LEN], int N, double p, int lo, int hi, const char *label) {
+  if (lo < 0) lo = 0;
+  if (hi > N) hi = N;
+  if (hi < lo) hi = lo;
+  double ans = 0;
+  for (int k = lo; k <= hi; ++k) ans += binomp(N, p, k);
+  int n = add(out, 0, "Let X ~ B(%d, %.6g).", N, p);
+  n = add(out, n, "%s = sum P(X=r), r=%d..%d.", label, lo, hi);
+  return add(out, n, "= %.10g", ans);
+}
+
 static bool dist1(const char *c, const char *name, double *a) {
   const char *p = strstr(c, name);
   if (!p) return false;
@@ -1347,7 +1358,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "initial position gives C = %.6g", s0);
     return add(out, n, "s = %.6g*t^3 %+.6g*t^2 %+.6g*t %+.6g", k/6.0, 0.5*c0, u, s0);
   }
-  if ((has(c, "followsb(") || has(c, "~b(") || has(c, "xb(")) && nv >= 2) {
+  if ((has(c, "followsb(") || has(c, "~b(") || has(c, "xb(") || has(c, "distributionb(") || has(c, "b(")) && nv >= 2) {
     double Nd=0, pv=0;
     if (!dist2(c, "b(", &Nd, &pv)) { Nd = v[0]; pv = v[1]; }
     int N = (int)Nd;
@@ -1383,10 +1394,15 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       sprintf(cmd, "critbinom(%d,%.10g,%.10g,%.0f)", N, pv, alpha, ctail);
       return eval_stats(cmd, out);
     }
-    bool hx = false;
+    bool hx = false; double ux[3]; int nux = 0;
     for (int i = 0; i < nv; ++i) {
       if (near_num(v[i], Nd) || near_num(v[i], pv)) continue;
-      x = (int)v[i]; hx = true; break;
+      if (nux < 3) ux[nux++] = v[i];
+      if (!hx) { x = (int)v[i]; hx = true; }
+    }
+    if (nux >= 2 && (has(c, "<x<") || has(c, "<x<=") || has(c, "x<="))) {
+      int lo = (int)ux[0] + (has(c, "<x") ? 1 : 0), hi = (int)ux[1];
+      return add_binom_range_lines(out, N, pv, lo, hi, "Required probability");
     }
     if (!hx && nv >= 3) x = (int)v[2];
     if (has(t, "normal") && (has(t, "approx") || has(t, "approximation")) && hx) {
@@ -1902,6 +1918,48 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       return eval_stats(cmd, out);
     }
   }
+  if ((has(t, "approx") || has(t, "approximation") || has(t, "distributional")) && nv >= 2) {
+    double pv = -1, rawp = -1, N = -1;
+    if (word_num(input, "probability", &pv) || word_num(input, "proportion", &pv) || word_num(input, "chance", &pv)) rawp = pv;
+    if (pv < 0 && (has(t, "percent") || has(c, "%") || has(t, "distributional"))) {
+      for (int i = 0; i < nv; ++i) if (v[i] > 0 && v[i] < 100) { rawp = v[i]; pv = v[i] / 100.0; break; }
+    }
+    if (pv > 0 && pv < 1 && rawp < 0) rawp = pv;
+    if (pv > 1) pv /= 100.0;
+    for (int i = 0; i < nv; ++i) {
+      if ((rawp >= 0 && near_num(v[i], rawp)) || near_num(v[i], pv)) continue;
+      if (v[i] > N && v[i] > 1) N = v[i];
+    }
+    if (pv > 0 && pv < 1 && N >= 1) {
+      double u[4]; int nu = 0;
+      for (int i = 0; i < nv && nu < 4; ++i) {
+        if (near_num(v[i], N) || near_num(v[i], pv) || (rawp >= 0 && near_num(v[i], rawp))) continue;
+        u[nu++] = v[i];
+      }
+      int tail = prob_tail(c, t);
+      if (has(t, "half")) { u[0] = (int)(N / 2); nu = 1; tail = 2; }
+      bool poisson = (pv <= 0.15 && N >= 50 && N * pv <= 15) || has(t, "poisson") || has(t, "suitable");
+      if (nu >= 2 && !poisson) {
+        double lo = -1, hi = -1;
+        for (int i = 0; i < nu; ++i) if (u[i] > hi) { lo = hi; hi = u[i]; } else if (u[i] > lo) lo = u[i];
+        if (lo < 0) lo = u[nu-2];
+        if (has(c, "morethan") || has(c, "x>")) lo += 1;
+        sprintf(cmd, "binomnorm(%d,%.10g,%.10g,%.10g)", (int)N, pv, lo, hi);
+        return eval_stats(cmd, out);
+      }
+      if (nu >= 1) {
+        int x = (int)u[nu-1];
+        if (poisson) {
+          sprintf(cmd, "poissonapprox(%d,%.10g,%d,%d)", (int)N, pv, x, tail);
+        } else {
+          double lo = tail > 0 ? (tail == 2 ? x + 1 : x) : 0;
+          double hi = tail < 0 ? (tail == -2 ? x - 1 : x) : N;
+          sprintf(cmd, "binomnorm(%d,%.10g,%.10g,%.10g)", (int)N, pv, lo, hi);
+        }
+        return eval_stats(cmd, out);
+      }
+    }
+  }
   if ((has(c, "b(") || has(c, "~b(") || has(c, "followsb(")) && (has(t, "approx") || has(t, "approximation")) && nv >= 3) {
     double Nd=0, pv=0;
     if (!dist2(c, "b(", &Nd, &pv)) { Nd = v[0]; pv = v[1]; }
@@ -2028,13 +2086,34 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     bool hVar=label_num(input,"variance",&var) || label_num(input,"var",&var) ||
               word_num(input,"variance",&var) || word_num(input,"var",&var) ||
               word_num(input,"standarddeviationsquared",&var) || word_num(input,"sigmasquared",&var);
-    bool hN=label_num(input,"n",&n0), hA=label_num(input,"alpha",&alpha) || label_num(input,"significance",&alpha);
+    bool hN=label_num(input,"n",&n0) || word_num(input,"n",&n0) || word_num(input,"sample",&n0) || word_num(input,"sample size",&n0);
+    bool hA=label_num(input,"alpha",&alpha) || label_num(input,"significance",&alpha);
     bool hLo=label_num(input,"lower",&lo) || label_num(input,"lo",&lo);
     bool hHi=label_num(input,"upper",&hi) || label_num(input,"hi",&hi);
     bool hArea=label_num(input,"area",&area) || label_num(input,"probability",&area) ||
                (!has(t, "percentile") && label_num(input,"p",&area));
     double tail = (has(t, "twotailed") || has(t, "twosided") || (has(t, "two") && (has(t, "tailed") || has(t, "sided"))) || has(t, "different") || has(t, "notequal")) ? 0 :
                   (has(t, "upper") || has(t, "greater") || has(t, "more") ? 1 : -1);
+    if (has(t, "sample") && has(t, "mean") && hMu && hSig && hN &&
+        (has(t, "probability") || has(t, "find")) && !has(t, "hypothesis") && !has(t, "test")) {
+      double bound = 0; bool hb = false;
+      for (int i = 0; i < nv; ++i) {
+        if (near_num(v[i], mu) || near_num(v[i], sig) || near_num(v[i], n0)) continue;
+        bound = v[i]; hb = true;
+      }
+      if (hb) {
+        double se = sig / root(n0);
+        int n = add(out, 0, "For a sample mean, Xbar ~ N(mu, (sigma/sqrt(n))^2).");
+        n = add(out, n, "standard error = %.6g/sqrt(%.6g) = %.10g", sig, n0, se);
+        n = add(out, n, "z = (%.6g-%.6g)/%.10g = %.10g", bound, mu, se, (bound-mu)/se);
+        if (tail > 0) {
+          n = add(out, n, "Required probability is P(Xbar>=%.6g).", bound);
+          return add(out, n, "Use NormalCD(lower=%.6g, upper=1E99, sigma=%.10g, mu=%.6g)", bound, se, mu);
+        }
+        n = add(out, n, "Required probability is P(Xbar<=%.6g).", bound);
+        return add(out, n, "Use NormalCD(lower=-1E99, upper=%.6g, sigma=%.10g, mu=%.6g)", bound, se, mu);
+      }
+    }
     if (hArea && has(t, "percentile") && area > 1 && area <= 100) area /= 100.0;
     if (!hArea && hMu && (hSig || hVar) &&
         (has(c, "findk") || has(c, "findx") || has(c, "suchthat") || has(t, "percentile"))) {

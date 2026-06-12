@@ -1982,6 +1982,7 @@ static void bool_norm(const char *src, char *dst, int cap) {
     if (strncmp(src + i, "and", 3) == 0) { dst[j++] = '&'; i += 3; continue; }
     if (strncmp(src + i, "not", 3) == 0) { dst[j++] = '!'; i += 3; continue; }
     if (strncmp(src + i, "or", 2) == 0) { dst[j++] = '+'; i += 2; continue; }
+    if (src[i] == '.' || src[i] == '*') { dst[j++] = '&'; ++i; continue; }
     if (src[i] == ',') { dst[j++] = '\''; ++i; continue; }
     dst[j++] = src[i++];
   }
@@ -2983,7 +2984,12 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       (has(t, "storage") || has(t, "store") || has(t, "size") || has(t, "encoded") || has(t, "characters") || has(t, "text")) &&
       nv >= 1) {
     int bpc = has(t, "unicode") ? 16 : 8;
-    sprintf(cmd, "chars(%lld,%d)", (long long)v[0], bpc);
+    long long chars = (long long)v[0];
+    if (has(t, "bit") && nv >= 2 && v[0] > 0 && v[0] <= 64) {
+      bpc = (int)v[0];
+      chars = (long long)v[1];
+    }
+    sprintf(cmd, "chars(%lld,%d)", chars, bpc);
     return eval_storage(cmd, out);
   }
   if (has(t, "ascii") || has(t, "unicode") || has(t, "codepoint") || has(t, "charactercode")) {
@@ -3631,6 +3637,8 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     if (eq2 && (!eq || eq2 < eq)) { eq = eq2; elen = 14; }
     if (!eq) { eq = strstr(e, "equivalentto"); elen = 12; }
     if (!eq) { eq = strstr(e, "equals"); elen = 6; }
+    const char *that = strstr(e, "that");
+    if (eq && that && that < eq) e = that + 4;
     if (eq && eq > e && eq[elen]) {
       char lhs[48], rhs[48], nlhs[48], nrhs[48]; int li = 0, ri = 0;
       for (const char *p = e; p < eq && li < 47; ++p) lhs[li++] = *p;
@@ -3645,6 +3653,8 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if (nv == 0 && has(compact, "=")) {
     const char *e = skip_bool_words(compact);
     const char *eq = strchr(e, '=');
+    const char *that = strstr(e, "that");
+    if (eq && that && that < eq) e = that + 4;
     if (eq && eq > e && eq[1]) {
       char lhs[48], rhs[48], nlhs[48], nrhs[48]; int li = 0, ri = 0;
       for (const char *p = e; p < eq && li < 47; ++p) lhs[li++] = *p;

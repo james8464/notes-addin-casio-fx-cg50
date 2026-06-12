@@ -2546,3 +2546,33 @@ Evidence:
 Drift check:
 - Still inside CSCALC AQA Paper 2 Boolean algebra support.
 - Did not touch CAS Pure, CASP3 behavior, NOTES, menus, or status/UI code.
+
+## 2026-06-12 Distributional Approximation and Boolean Proof Slice
+
+Completed:
+- Added CASP3 exact interval working for `distribution B(n,p)` prompts such as `P(3<X<=8)`.
+- Added generic CASP3 distributional-approximation prose handling for percent/probability wording, including automatic Poisson vs normal approximation choice and contextual-number filtering.
+- Added CASP3 sample-mean normal probability working with standard error lines.
+- Fixed CSCALC explicit bit-width ASCII storage prompts.
+- Fixed CSCALC Boolean proof extraction after leading prose and normalised `.`/`*` as AND for Boolean law traces.
+- Added regression tests and rebuilt calculator files.
+
+Evidence:
+- Fresh focused probe batch: 9/9 passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 173340 bytes`
+  - `CSCALC.g3a: 158912 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Still inside CASP3/CSCALC free-text working support and generated calculator outputs.
+- Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for future source/probe-driven hardening.
