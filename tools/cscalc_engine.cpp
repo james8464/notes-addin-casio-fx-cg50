@@ -794,7 +794,14 @@ static bool make_dijkstra_cmd(const char *in, char *cmd, int cap) {
       continue;
     }
     if (word_is(w, "edges") || word_is(w, "edge")) { in_edges = true; continue; }
-    if (in_edges && !dijkstra_skip_word(w)) strcpy(edge[ne++], w);
+    if (in_edges && !dijkstra_skip_word(w)) {
+      if (isalpha((unsigned char)w[0]) && isalpha((unsigned char)w[1]) && !w[2] && ne + 2 < 30) {
+        edge[ne][0] = w[0]; edge[ne++][1] = 0;
+        edge[ne][0] = w[1]; edge[ne++][1] = 0;
+      } else {
+        strcpy(edge[ne++], w);
+      }
+    }
   }
   if (start[0] && end[0] && ne >= 3 && ne % 3 == 0) {
     int p = sprintf(cmd, "dijkstra(%s,%s", start, end);
@@ -1385,6 +1392,28 @@ static int eval_binary_arith(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LI
     n = add(out, n, "%s", a[1]);
     return add(out, n, "result = %s", b);
   }
+  if (starts2(s, "grayenc(", "binarytogray(") && na >= 1) {
+    int len = (int)strlen(a[0]); char b[65];
+    if (len > 64) len = 64;
+    if (len <= 0) return 0;
+    b[0] = a[0][0];
+    for (int i = 1; i < len; ++i) b[i] = ((a[0][i-1] == '1') ^ (a[0][i] == '1')) ? '1' : '0';
+    b[len] = 0;
+    int n = add(out, 0, "Gray code: keep the first bit, then XOR adjacent binary bits.");
+    n = add(out, n, "binary = %s", a[0]);
+    return add(out, n, "gray = %s", b);
+  }
+  if (starts2(s, "graydec(", "graytobin(") && na >= 1) {
+    int len = (int)strlen(a[0]); char b[65];
+    if (len > 64) len = 64;
+    if (len <= 0) return 0;
+    b[0] = a[0][0];
+    for (int i = 1; i < len; ++i) b[i] = ((b[i-1] == '1') ^ (a[0][i] == '1')) ? '1' : '0';
+    b[len] = 0;
+    int n = add(out, 0, "Gray to binary: keep first bit, then XOR previous binary bit with current Gray bit.");
+    n = add(out, n, "gray = %s", a[0]);
+    return add(out, n, "binary = %s", b);
+  }
   if (starts2(s, "notbits(", "invertbits(") && na >= 1) {
     int len = (int)strlen(a[0]); char b[65];
     for (int i = 0; i < len && i < 64; ++i) b[i] = a[0][i] == '1' ? '0' : '1';
@@ -1402,6 +1431,22 @@ static int eval_binary_arith(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LI
     n = add(out, n, "%s", a[0]);
     n = add(out, n, "%s", a[1]);
     return add(out, n, "different positions: %s, distance = %d", d ? pos : "none", d);
+  }
+  if (starts3(s, "hammingenc(", "hammingencode(", "hamming74(") && na >= 1 && strlen(a[0]) >= 4) {
+    int b[8] = {0};
+    b[3] = a[0][0] == '1'; b[5] = a[0][1] == '1'; b[6] = a[0][2] == '1'; b[7] = a[0][3] == '1';
+    b[1] = (b[3] + b[5] + b[7]) % 2;
+    b[2] = (b[3] + b[6] + b[7]) % 2;
+    b[4] = (b[5] + b[6] + b[7]) % 2;
+    char code[8];
+    for (int i = 1; i <= 7; ++i) code[i-1] = (char)('0' + b[i]);
+    code[7] = 0;
+    int n = add(out, 0, "Hamming(7,4): parity bits are positions 1, 2 and 4.");
+    n = add(out, n, "place data bits %c%c%c%c in positions 3,5,6,7", a[0][0], a[0][1], a[0][2], a[0][3]);
+    n = add(out, n, "p1 covers 1,3,5,7: p1=%d", b[1]);
+    n = add(out, n, "p2 covers 2,3,6,7: p2=%d", b[2]);
+    n = add(out, n, "p4 covers 4,5,6,7: p4=%d", b[4]);
+    return add(out, n, "code word = %s", code);
   }
   if (starts3(s, "checksum(", "checksummod(", "binarychecksum(") && na >= 2) {
     int w = (int)parse_int(a[0]), sum = 0; char b[65];
@@ -2034,6 +2079,27 @@ static int eval_storage(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LE
       used[slot] = 1;
       if (probes == 0) n = add(out, n, "%lld mod %lld = %d, place at %d", key, size, home, slot);
       else n = add(out, n, "%lld mod %lld = %d occupied; probe %d, place at %d", key, size, home, probes, slot);
+    }
+    return n;
+  }
+  if (starts3(s, "hashquadratic(", "quadraticprobe(", "quadprobe(") && na >= 2) {
+    long long size = parse_int(a[0]);
+    if (size <= 0 || size > 64) return add(out, 0, "Use table size 1 to 64.");
+    int used[64] = {0};
+    int n = add(out, 0, "Insert using hash address = key mod table size.");
+    n = add(out, n, "If occupied, use quadratic probing: try h+i^2.");
+    for (int i = 1; i < na; ++i) {
+      long long key = parse_int(a[i]);
+      int home = (int)(key % size); if (home < 0) home += (int)size;
+      int slot = home, step = 0;
+      while (used[slot] && step < size) {
+        ++step;
+        slot = (home + step * step) % (int)size;
+      }
+      if (step >= size) return add(out, n, "Table full before inserting %lld.", key);
+      used[slot] = 1;
+      if (step == 0) n = add(out, n, "%lld mod %lld = %d, place at %d", key, size, home, slot);
+      else n = add(out, n, "%lld mod %lld = %d occupied; probe i=%d gives %d, place at %d", key, size, home, step, slot, slot);
     }
     return n;
   }
@@ -3490,6 +3556,63 @@ static bool ipv4_from_text(const char *input, unsigned long *addr, int oct[4]) {
   return false;
 }
 
+static int ipv4_all_from_text(const char *input, unsigned long addr[4], int oct[4][4]) {
+  int count = 0;
+  for (int i = 0; input && input[i] && count < 4; ++i) {
+    if (!isdigit((unsigned char)input[i])) continue;
+    int a=-1,b=-1,c=-1,d=-1,n=0;
+    if (sscanf(input + i, "%d.%d.%d.%d%n", &a, &b, &c, &d, &n) == 4 &&
+        a >= 0 && a <= 255 && b >= 0 && b <= 255 && c >= 0 && c <= 255 && d >= 0 && d <= 255) {
+      oct[count][0]=a; oct[count][1]=b; oct[count][2]=c; oct[count][3]=d;
+      addr[count] = ((unsigned long)a << 24) | ((unsigned long)b << 16) | ((unsigned long)c << 8) | (unsigned long)d;
+      ++count;
+      i += n - 1;
+    }
+  }
+  return count;
+}
+
+static bool finite_binary_fraction(double value) {
+  double x = value;
+  if (x < 0) x = -x;
+  x -= (long long)x;
+  for (int i = 0; i < 64; ++i) {
+    double r = round_nearest(x), diff = x - r;
+    if (diff < 0) diff = -diff;
+    if (diff < 1e-12) return true;
+    x *= 2.0;
+    x -= (long long)x;
+  }
+  return false;
+}
+
+static long long gcd_small(long long a, long long b) {
+  if (a < 0) a = -a;
+  if (b < 0) b = -b;
+  while (b) { long long r = a % b; a = b; b = r; }
+  return a ? a : 1;
+}
+
+static bool decimal_token_finite_binary(const char *input, bool *finite) {
+  for (int i = 0; input && input[i]; ++i) {
+    if (!isdigit((unsigned char)input[i]) || input[i+1] != '.') continue;
+    long long num = input[i] - '0', den = 1;
+    int j = i + 2, digits = 0;
+    while (isdigit((unsigned char)input[j]) && digits < 12) {
+      num = num * 10 + (input[j] - '0');
+      den *= 10;
+      ++j; ++digits;
+    }
+    if (!digits) continue;
+    long long g = gcd_small(num, den);
+    den /= g;
+    while (den % 2 == 0) den /= 2;
+    *finite = den == 1;
+    return true;
+  }
+  return false;
+}
+
 static bool make_gate_form_cmd(const char *input, bool nand, char *cmd, int cap) {
   char expr[96] = ""; int p = 0;
   for (int i = 0; input[i] && p + 1 < (int)sizeof(expr);) {
@@ -3602,6 +3725,19 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     n = add(out, n, "1 0 1 | 0");
     n = add(out, n, "1 1 0 | 1");
     return add(out, n, "1 1 1 | 0");
+  }
+  if ((has(t, "exact") || has(t, "exactly")) &&
+      (has(t, "binary") || has(t, "mantissa") || has(t, "floating")) &&
+      !(has(t, "added") || has(t, "add") || has(t, "extra") || has(t, "smallest")) && nv >= 1) {
+    double value = v[0];
+    for (int i = 0; i < nv; ++i) if (v[i] > -1 && v[i] < 1 && v[i] != 0) { value = v[i]; break; }
+    bool finite = finite_binary_fraction(value), token_finite = finite;
+    if (decimal_token_finite_binary(input, &token_finite)) finite = token_finite;
+    int n = add(out, 0, "A decimal fraction is finite in binary only if repeated *2 terminates.");
+    n = add(out, n, "test value = %.10g", value);
+    if (finite) return add(out, n, "%.10g can be represented exactly with finite binary places.", value);
+    n = add(out, n, "the binary digits repeat, so no finite mantissa can be exact.");
+    return add(out, n, "%.10g cannot be represented exactly in binary.", value);
   }
   if (has(t, "fixed") && (has(t, "error") || has(t, "relativeerror")) &&
       (has(t, "fractional") || has(t, "fraction") || has(t, "after")) && nv >= 2) {
@@ -3898,6 +4034,20 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     int n = add(out, 0, "CIDR /%d leaves %d host bits.", prefix, host_bits);
     n = add(out, n, "total addresses = 2^%d = %.10g", host_bits, total);
     return add(out, n, "usable host addresses = %.10g", usable);
+  }
+  if ((has(t, "subnet") || has(t, "ipv4") || has(t, "network") || has(t, "broadcast")) && has(t, "mask")) {
+    unsigned long ipm[4]; int octs[4][4];
+    if (ipv4_all_from_text(input, ipm, octs) >= 2) {
+      unsigned long ip = ipm[0], mask = ipm[1];
+      unsigned long net = ip & mask;
+      unsigned long bcast = net | (~mask & 0xffffffffUL);
+      int n = add(out, 0, "Use the dotted subnet mask directly.");
+      n = add(out, n, "IP address = %d.%d.%d.%d", octs[0][0], octs[0][1], octs[0][2], octs[0][3]);
+      n = add(out, n, "subnet mask = %d.%d.%d.%d", octs[1][0], octs[1][1], octs[1][2], octs[1][3]);
+      n = add(out, n, "network address = IP AND mask");
+      n = add(out, n, "%lu.%lu.%lu.%lu", (net>>24)&255, (net>>16)&255, (net>>8)&255, net&255);
+      return add(out, n, "broadcast address = %lu.%lu.%lu.%lu", (bcast>>24)&255, (bcast>>16)&255, (bcast>>8)&255, bcast&255);
+    }
   }
   if ((has(t, "subnet") || has(t, "host")) && (has(t, "hostbits") || (has(t, "host") && has(t, "bits")) ||
       has(t, "hosts")) && (has(t, "needed") || has(t, "need") || has(t, "atleast") || has(t, "at,least") || has(t, "minimum")) && nv >= 1) {
@@ -5455,13 +5605,26 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     sprintf(cmd, "%s(%s,%s,%s,%s)", op, bits[0], bits[1], bits[2], bits[3]);
     return eval_float(cmd, out);
   }
+  if (has(t, "gray") && nb >= 1) {
+    const char *pg = strstr(t, "gray");
+    const char *pb = strstr(t, "binary");
+    if (pb && pg && pg < pb) sprintf(cmd, "graydec(%s)", bits[0]);
+    else if (has(t, "decode") && !(has(t, "encode") || has(t, "to,gray"))) sprintf(cmd, "graydec(%s)", bits[0]);
+    else sprintf(cmd, "grayenc(%s)", bits[0]);
+    return eval_binary_arith(cmd, out);
+  }
+  if (has(t, "hamming") && (has(t, "encode") || has(t, "code")) && nb >= 1 && strlen(bits[0]) == 4) {
+    sprintf(cmd, "hammingenc(%s)", bits[0]); return eval_binary_arith(cmd, out);
+  }
   if ((has(t, "xor") || has(t, "exclusiveor")) && nb >= 2) {
     sprintf(cmd, "xorbits(%s,%s)", bits[0], bits[1]); return eval_binary_arith(cmd, out);
   }
-  if ((has(t, "bitwiseand") || has(t, "andbits") || starts(t, "and,")) && nb >= 2) {
+  if ((has(t, "bitwiseand") || has(t, "andbits") || starts(t, "and,") ||
+       ((has(t, "mask") || has(t, "bitmask") || has(t, "bit,mask")) && has(t, "and"))) && nb >= 2) {
     sprintf(cmd, "andbits(%s,%s)", bits[0], bits[1]); return eval_binary_arith(cmd, out);
   }
-  if ((has(t, "bitwiseor") || has(t, "orbits") || has(t, ",or,") || starts(t, "or,")) && nb >= 2) {
+  if ((has(t, "bitwiseor") || has(t, "orbits") || has(t, ",or,") || starts(t, "or,") ||
+       ((has(t, "mask") || has(t, "bitmask") || has(t, "bit,mask")) && has(t, "or"))) && nb >= 2) {
     sprintf(cmd, "orbits(%s,%s)", bits[0], bits[1]); return eval_binary_arith(cmd, out);
   }
   if ((has(t, "not") || has(t, "invert")) && nb >= 1) {
@@ -5796,7 +5959,8 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     double size = v[0];
     bool hs = label_num(input, "size", &size) || scan_after_word_num(t, "size", &size);
     int p = sprintf(cmd, "hashmod(%lld", (long long)size);
-    if (has(t, "linear") || has(t, "probe") || has(t, "probing")) p = sprintf(cmd, "hashlinear(%lld", (long long)size);
+    if (has(t, "quadratic")) p = sprintf(cmd, "hashquadratic(%lld", (long long)size);
+    else if (has(t, "linear") || has(t, "probe") || has(t, "probing")) p = sprintf(cmd, "hashlinear(%lld", (long long)size);
     for (int i = 0; i < nv && p < (int)sizeof(cmd) - 24; ++i) {
       if (hs && (long long)v[i] == (long long)size) continue;
       if (!hs && i == 0) continue;
@@ -6108,7 +6272,7 @@ int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
   n = eval_bool(s, out); if (n) return n;
   n = eval_free_text(input, s, out); if (n) return n;
   n = add(out, 0, "Supported:");
-  n = add(out, n, "bin hex den convert twos twosdec twosadd twossub signmag signmagdec fixed fixedenc parity repeatenc repeatdec shift arithshift xorbits andbits orbits notbits hamming checksum checkdigit rpn");
+  n = add(out, n, "bin hex den convert twos twosdec twosadd twossub signmag signmagdec fixed fixedenc parity repeatenc repeatdec shift arithshift xorbits andbits orbits notbits grayenc graydec hamming hammingenc checksum checkdigit rpn");
   n = add(out, n, "floatdec floatadd floatsub floatmul floatdiv floatrange floatbitsadd normal image sound bitrate transfer");
-  return add(out, n, "compress dictcompress huffman rle records sqlselect sqlcount hashmod hashlinear addressspace addressbits chars ascii unicode stack queue preorder inorder postorder dijkstra fsm fsmout binarysearch bubblesort selectionsort mergesort bool truth truthbits minterms maxterms kmap kmapdc posform nandform norform");
+  return add(out, n, "compress dictcompress huffman rle records sqlselect sqlcount hashmod hashlinear hashquadratic addressspace addressbits chars ascii unicode stack queue preorder inorder postorder dijkstra fsm fsmout binarysearch bubblesort selectionsort mergesort bool truth truthbits minterms maxterms kmap kmapdc posform nandform norform");
 }

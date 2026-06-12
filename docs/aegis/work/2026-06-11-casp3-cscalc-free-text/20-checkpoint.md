@@ -1,5 +1,39 @@
 # Checkpoint
 
+## 2026-06-13 CS Coding, Subnet, Hashing, And Graph Wording Slice
+
+Completed:
+- Added CSCALC Gray-code encode/decode commands and free-text routing.
+- Added Hamming(7,4) even-parity encode working for 4-bit data.
+- Added quadratic probing hash-table working, distinct from linear probing.
+- Added dotted subnet-mask network/broadcast working, not only CIDR `/n`.
+- Added bit-mask prose routing for AND/OR bit operations.
+- Added deterministic exact-binary-fraction reasoning for decimal fractions such as `0.1`.
+- Extended Dijkstra free-text parsing so compact edge notation like `AB 4` is accepted.
+- Added regressions and rebuilt calculator-ready output.
+
+Evidence:
+- Hard host probes for Gray, Hamming encode, quadratic probing, dotted subnet mask, bit mask, exact `0.1`, and compact Dijkstra: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 438640 bytes`
+  - `CSCALC.g3a: 249776 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: 18178 bytes`
+
+Drift check:
+- Stayed inside CSCALC route/engine hardening, tests, checkpoint, and generated CSCALC artifact.
+- Did not alter Pure CAS, CASP3 source, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for more unseen-case hardening.
+
 ## 2026-06-12 Boolean Gate Output Wrapping Slice
 
 Completed:
