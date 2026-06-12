@@ -1,5 +1,37 @@
 # Checkpoint
 
+## 2026-06-12 CS Bit Width And P3 Inverse Stats Slice
+
+Completed:
+- Added CSCALC free-text handling for `how many bits are needed...` two's-complement prompts, including values below the current range such as `-129`.
+- Fixed CSCALC sign-and-magnitude free text where wording gives the bit width before the negative value.
+- Added CSCALC character-set bit-width working for prompts like `300 different characters`.
+- Added CASP3 mean update working for `n values have mean m; another value is added and the mean becomes M`.
+- Added CASP3 Poisson mean inference from `P(X=0)=q`.
+- Rebuilt calculator-ready outputs.
+
+Evidence:
+- Targeted probes for the above cases: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 433464 bytes`
+  - `CSCALC.g3a: 241336 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: 18178 bytes`
+
+Drift check:
+- Stayed inside CASP3/CSCALC free-text working engines, tests, checkpoint, and generated calculator files.
+- Did not alter Pure CAS, menus, NOTES source, or shared UI/status code.
+- Active goal remains open for further source/probe-driven hardening.
+
 ## 2026-06-12 Distance, Probability Target, Projectile Angle, And De Morgan Slice
 
 Completed:

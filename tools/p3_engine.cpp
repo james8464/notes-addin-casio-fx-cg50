@@ -6458,6 +6458,18 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     else sprintf(cmd, "binom(%d,%.10g,%d)", (int)v[0], v[1], (int)v[2]);
     return eval_stats(cmd, out);
   }
+  if (has(t, "poisson") && (has(c, "p(x=0)=") || has(c, "p(x=0)")) &&
+      (has(t, "mean") || has(t, "lambda") || has(t, "find")) && nv >= 1) {
+    double q = -1;
+    for (int i = 0; i < nv; ++i) if (v[i] > 0 && v[i] < 1) { q = v[i]; break; }
+    if (q > 0 && q < 1) {
+      double lam = -ln_approx(q);
+      int n = add(out, 0, "For X~Po(lambda), P(X=0)=e^(-lambda).");
+      n = add(out, n, "e^(-lambda) = %.10g", q);
+      n = add(out, n, "-lambda = ln(%.10g)", q);
+      return add(out, n, "lambda = -ln(%.10g) = %.10g", q, lam);
+    }
+  }
   if (has(t, "poisson") && nv >= 2) {
     if (has(t, "normal") && (has(t, "approx") || has(t, "approximation")) && nv >= 3) {
       sprintf(cmd, "poissonnorm(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_stats(cmd, out);
@@ -7571,6 +7583,19 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
         return add(out, n, "sd = sqrt(variance) = %.10g", root(var));
       return n;
     }
+  }
+  if (has(t, "mean") && nv >= 3 &&
+      (has(t, "added") || has(t, "add") || has(t, "another")) &&
+      (has(t, "becomes") || has(t, "newmean") || has(c, "meanbecomes")) &&
+      !has(t, "normal") && !has(t, "binom") && !has(t, "poisson")) {
+    double count = v[0], old_mean = v[1], new_mean = v[2];
+    double old_total = count * old_mean;
+    double new_total = (count + 1) * new_mean;
+    int n = add(out, 0, "Use total = number of values * mean.");
+    n = add(out, n, "old total = %.10g*%.10g = %.10g", count, old_mean, old_total);
+    n = add(out, n, "new number of values = %.10g + 1 = %.10g", count, count + 1);
+    n = add(out, n, "new total = %.10g*%.10g = %.10g", count + 1, new_mean, new_total);
+    return add(out, n, "added value = %.10g - %.10g = %.10g", new_total, old_total, new_total - old_total);
   }
 	  if (has(t, "mean") && nv >= 3 &&
 	      (has(t, "removed") || has(t, "remove") || has(t, "added") || has(t, "add")) &&

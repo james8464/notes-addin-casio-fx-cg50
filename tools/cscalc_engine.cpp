@@ -5220,8 +5220,12 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     sprintf(cmd, "signmagrange(%lld)", (long long)v[0]); return eval_twos(cmd, out);
   }
   if (!has(t, "mantissa") && !has(t, "exponent") &&
+      !has(t, "address") && !has(t, "memory") && !has(t, "ram") &&
+      !has(t, "character") && !has(t, "symbol") && !has(t, "alphabet") &&
       (has(t, "bitsneeded") || has(t, "bitwidth") || (has(t, "minimum") && has(t, "bits")) ||
-       (has(t, "fewest") && has(t, "bits")) || (has(t, "smallest") && has(t, "bits"))) && nv >= 1) {
+       (has(t, "fewest") && has(t, "bits")) || (has(t, "smallest") && has(t, "bits")) ||
+       has(t, "bits,are,needed") || has(t, "bits,needed,to") ||
+       (has(t, "how,many") && has(t, "bits") && has(t, "needed"))) && nv >= 1) {
     if (tc) sprintf(cmd, "bitsneeded(%lld,twos)", (long long)v[0]);
     else if (sm) sprintf(cmd, "bitsneeded(%lld,signmag)", (long long)v[0]);
     else sprintf(cmd, "bitsneeded(%lld,unsigned)", (long long)v[0]);
@@ -5229,6 +5233,17 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   if (sm && nb >= 1 && (has(t, "decode") || has(t, "denary") || has(t, "decimal"))) {
     sprintf(cmd, "signmagdec(%s)", bits[0]); return eval_twos(cmd, out);
+  }
+  if (sm && nv >= 2 && nb == 0 &&
+      (has(t, "represent") || has(t, "encode") || has(t, "convert")) &&
+      (has(t, "bit") || has(t, "bits"))) {
+    double bw = 0; long long bitsw = (long long)v[0], val = (long long)v[1];
+    if ((scan_before_word_num(t, "bit", &bw) || scan_before_word_num(t, "bits", &bw)) && bw > 0) {
+      bitsw = (long long)bw;
+      for (int i = 0; i < nv; ++i) if ((long long)v[i] != bitsw) { val = (long long)v[i]; break; }
+    }
+    if ((has(t, "minus") || has(t, "negative")) && val > 0) val = -val;
+    sprintf(cmd, "signmag(%lld,%lld)", val, bitsw); return eval_twos(cmd, out);
   }
   if (sm && nv >= 2 && nb == 0) {
     sprintf(cmd, "signmag(%lld,%lld)", (long long)v[0], (long long)v[1]); return eval_twos(cmd, out);
@@ -5643,6 +5658,15 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     }
     sprintf(cmd + p, ")");
     return eval_storage(cmd, out);
+  }
+  if ((has(t, "character") || has(t, "text") || has(t, "symbol") || has(t, "alphabet")) &&
+      (has(t, "characterset") || has(t, "character,set") || has(t, "charactersetsize") ||
+       has(t, "symbols") || has(t, "alphabet") || (has(t, "different") && has(t, "characters"))) &&
+      (has(t, "bits") && (has(t, "needed") || has(t, "need") || has(t, "required") || has(t, "represent"))) && nv >= 1) {
+    int bits = ceil_log2_ll((long long)v[0]);
+    int n = add(out, 0, "Bits per character = ceil(log2(character set size)).");
+    n = add(out, n, "Need 2^b >= %.0f symbols.", v[0]);
+    return add(out, n, "b = ceil(log2(%.0f)) = %d bits", v[0], bits);
   }
   if ((has(t, "character") || has(t, "text")) && nv >= 2) {
     if (has(t, "characterset") || has(t, "symbols") || has(t, "alphabet")) {
