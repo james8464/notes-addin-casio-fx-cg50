@@ -1,5 +1,28 @@
 # Checkpoint
 
+## 2026-06-12 CASP3 Distribution And Horizontal Mechanics Slice
+
+Completed:
+- Added `B(n,p)` distribution notation parsing for binomial probability prompts.
+- Added word-number handling for `at least one` in `B(n,p)` binomial tails.
+- Fixed inverse-normal quantile wording like `find k such that P(X<k)=0.95`.
+- Fixed upper-tail inverse-normal wording like `P(X>k)=0.05` by converting to left-tail area.
+- Added horizontal force-component wording.
+- Added smooth/rough horizontal-plane acceleration working, including friction on rough horizontal planes.
+- Guarded the new horizontal-plane route so it does not steal inclined-plane questions.
+- Added regression tests and rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CASP3 Paper 3 free-text support.
+- Did not touch CAS Pure behavior, CSCALC logic, NOTES, menus, or shared UI/status code.
+
 ## 2026-06-12 CSCALC Storage And Float Range Wording Slice
 
 Completed:

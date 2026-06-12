@@ -1182,6 +1182,19 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "initial position gives C = %.6g", s0);
     return add(out, n, "s = %.6g*t^3 %+.6g*t^2 %+.6g*t %+.6g", k/6.0, 0.5*c0, u, s0);
   }
+  if ((has(c, "followsb(") || has(c, "~b(") || has(c, "xb(")) && nv >= 2) {
+    int N = (int)v[0];
+    double pv = v[1];
+    int x = nv >= 3 ? (int)v[2] : (has(c, "one") ? 1 : 0);
+    int tail = 0;
+    if (has(c, "morethan")) tail = 2;
+    else if (has(c, "atleast") || has(c, "greaterthanorequal")) tail = 1;
+    else if (has(c, "lessthanorequal") || has(c, "atmost")) tail = -1;
+    else if (has(c, "lessthan") || has(t, "fewer")) tail = -2;
+    if (tail) sprintf(cmd, "binomtail(%d,%.10g,%d,%d)", N, pv, x, tail);
+    else sprintf(cmd, "binom(%d,%.10g,%d)", N, pv, x);
+    return eval_stats(cmd, out);
+  }
   if (!has(t, "variable") && (has(t, "suvat") || has(t, "velocity") || has(t, "acceleration") || has(t, "accelerates") || has(t, "accelerated") || has(t, "distance") || has(t, "displacement") || has(t, "time"))) {
     double u=0, vv=0, acc=0, dist=0, time=0;
     bool hu=label_num(input,"u",&u) || label_num(input,"initialvelocity",&u) || label_num(input,"initialspeed",&u) ||
@@ -1324,6 +1337,26 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     if (hL && hW && ha) sprintf(cmd, "ladder(%.10g,%.10g,%.10g,%.10g,%.10g)", L, W, ang, hP ? P : 0, hd ? d : L/2);
     else sprintf(cmd, nv > 4 ? "ladder(%.10g,%.10g,%.10g,%.10g,%.10g)" : "ladder(%.10g,%.10g,%.10g)", v[0], v[1], v[2], nv > 3 ? v[3] : 0, nv > 4 ? v[4] : v[0]/2);
     return eval_mech(cmd, out);
+  }
+  if (has(t, "force") && !has(t, "plane") && (has(t, "horizontal") || has(t, "vertical") || has(t, "component")) && nv >= 2) {
+    sprintf(cmd, "resolve(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
+  }
+  if (has(t, "horizontal") && has(t, "plane") &&
+      (has(t, "acceleration") || has(t, "accelerate")) && nv >= 2) {
+    double m = 0, F = 0, mu = 0;
+    bool hm = label_num(input,"mass",&m) || word_num(input,"mass",&m) || label_num(input,"m",&m);
+    bool hF = label_num(input,"force",&F) || word_num(input,"force",&F) || label_num(input,"pull",&F) || word_num(input,"pull",&F);
+    bool hmu = label_num(input,"mu",&mu) || label_num(input,"coefficient",&mu) || word_num(input,"coefficient",&mu);
+    if (!hm) m = v[0];
+    if (!hF) F = v[nv-1];
+    if (!hmu) for (int i = 0; i < nv; ++i) if (v[i] > 0 && v[i] < 1 && !near_num(v[i], m)) { mu = v[i]; hmu = true; break; }
+    int n = add(out, 0, has(t, "rough") || hmu ? "Rough horizontal plane: resolve vertically, then use F=ma horizontally." : "Smooth horizontal plane: use F=ma horizontally.");
+    n = add(out, n, "Vertical equilibrium gives R = mg = %.6g*9.8 = %.10g N", m, m*9.8);
+    double friction = hmu ? mu*m*9.8 : 0;
+    if (hmu) n = add(out, n, "friction = mu R = %.6g*%.10g = %.10g N", mu, m*9.8, friction);
+    double net = F - friction;
+    n = add(out, n, "resultant horizontal force = %.6g - %.10g = %.10g N", F, friction, net);
+    return add(out, n, "a = F/m = %.10g/%.6g = %.10g m/s^2", net, m, net/m);
   }
   if ((has(t, "force") || has(t, "newton")) && (has(t, "mass") || has(t, "accel")) && !has(t, "connected") && !has(t, "pulley") && nv >= 2) {
     sprintf(cmd, "force(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
@@ -1518,6 +1551,20 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     bool hArea=label_num(input,"area",&area) || label_num(input,"probability",&area) || label_num(input,"p",&area);
     double tail = (has(t, "twotailed") || has(t, "twosided") || (has(t, "two") && (has(t, "tailed") || has(t, "sided"))) || has(t, "different") || has(t, "notequal")) ? 0 :
                   (has(t, "upper") || has(t, "greater") || has(t, "more") ? 1 : -1);
+    if (!hArea && hMu && (hSig || hVar) &&
+        (has(c, "findk") || has(c, "findx") || has(c, "suchthat") || has(t, "percentile"))) {
+      for (int i = 0; i < nv; ++i) {
+        if (near_num(v[i], mu) || (hSig && near_num(v[i], sig)) || (hVar && near_num(v[i], var))) continue;
+        if (v[i] > 0 && v[i] < 1) { area = v[i]; hArea = true; break; }
+      }
+      if (hArea && (has(c, "morethank") || has(c, "greaterthank") || has(c, "p(x>k") || has(c, "p(x>=k"))) area = 1 - area;
+    }
+    if (hArea && hMu && (hSig || hVar) &&
+        (has(c, "findk") || has(c, "findx") || has(c, "suchthat") || has(t, "percentile") ||
+         has(c, "invnormal") || has(c, "inversenormal") || has(t, "critical"))) {
+      sprintf(cmd, hSig ? "invnormal(%.10g,%.10g,%.10g)" : "invnormalvar(%.10g,%.10g,%.10g)", area, mu, hSig ? sig : var);
+      return eval_stats(cmd, out);
+    }
     if (hMu && (hSig || hVar) && nv >= 2 && (has(t, "between") || has(c, "lessthan"))) {
       double u[4]; int nu = 0;
       for (int i = 0; i < nv && nu < 4; ++i) {
