@@ -4083,7 +4083,12 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       (has(t, "howmanypixels") || has(t, "how,many,pixels") || has(t, "pixelsstored") ||
        (has(t, "pixels") && (has(t, "file") || has(t, "size"))) || has(t, "resolution")) &&
       (has(t, "file") || has(t, "size")) && (has(t, "depth") || has(t, "bits")) &&
-      !has(t, "metadata") && nv >= 2) {
+      !has(t, "metadata") &&
+      !has(compact, "howmanybitsperpixel") && !has(compact, "howmanybitperpixel") &&
+      !has(compact, "findbitsperpixel") && !has(compact, "calculatebitsperpixel") &&
+      !has(compact, "findcolourdepth") && !has(compact, "findcolordepth") &&
+      !has(compact, "calculatecolourdepth") && !has(compact, "calculatecolordepth") &&
+      nv >= 2) {
     double file_bytes = 0, shown = 0; const char *unit = "";
     if (bytes_before_unit(t, "gib", 1073741824.0, &file_bytes, &shown)) unit = "GiB";
     else if (bytes_before_unit(t, "gb", 1000000000.0, &file_bytes, &shown)) unit = "GB";
@@ -4123,7 +4128,8 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if ((has(t, "image") || has(t, "bitmap")) &&
       (has(compact, "findcolourdepth") || has(compact, "findcolordepth") ||
        has(compact, "calculatecolourdepth") || has(compact, "calculatecolordepth") ||
-       has(compact, "findbitsperpixel") || has(compact, "calculatebitsperpixel")) &&
+       has(compact, "findbitsperpixel") || has(compact, "calculatebitsperpixel") ||
+       has(compact, "howmanybitsperpixel") || has(compact, "howmanybitperpixel")) &&
       (has(compact, "colourdepth") || has(compact, "colordepth") || has(compact, "bitsperpixel") ||
        (has(t, "bits") && has(t, "pixel")) || has(t, "bpp")) &&
       (has(t, "filesize") || has(t, "file") || has(t, "size")) && nv >= 3) {
@@ -5645,6 +5651,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     }
   }
   if (nv == 0 && (has(compact, "truthtable") || has(compact, "truth")) &&
+      !has(compact, "and") && !has(compact, "or") &&
       (has(compact, "xor") || has(compact, "exclusiveor"))) {
     const char *xp = strstr(compact, "xor");
     if (!xp) xp = strstr(compact, "exclusiveor");

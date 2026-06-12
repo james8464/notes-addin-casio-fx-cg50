@@ -4267,6 +4267,29 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if ((has(t, "driving") || has(t, "drive")) && has(t, "force") &&
       (has(t, "resistance") || has(t, "resistive")) &&
       (has(t, "acceleration") || has(t, "accelerate")) &&
+      (has(t, "tow") || has(t, "trailer")) &&
+      !has(t, "incline") && !has(t, "slope") && !has(t, "plane") && nv >= 5) {
+    double m1 = v[0], m2 = v[1], drive = v[2], r1 = v[3], r2 = v[4];
+    double m = 0, d = 0, r = 0;
+    if (label_num(input, "mass", &m) || word_num(input, "mass", &m)) m1 = m;
+    if (word_num(input, "trailermass", &m) || label_num(input, "trailermass", &m)) m2 = m;
+    if (word_num(input, "drivingforce", &d) || label_num(input, "drivingforce", &d) || word_num(input, "force", &d)) drive = d;
+    if (word_num(input, "resistance", &r) || label_num(input, "resistance", &r)) r1 = r;
+    double net = drive - r1 - r2;
+    double total = m1 + m2;
+    double a = total ? net / total : 0;
+    double tension = m2 * a + r2;
+    int n = add(out, 0, "Treat the car and trailer as one system to find acceleration.");
+    n = add(out, n, "total mass = %.10g + %.10g = %.10g kg", m1, m2, total);
+    n = add(out, n, "external resultant = driving force - total resistance");
+    n = add(out, n, "F = %.10g - %.10g - %.10g = %.10g N", drive, r1, r2, net);
+    n = add(out, n, "a = F/(total mass) = %.10g/%.10g = %.10g m/s^2", net, total, a);
+    n = add(out, n, "For the trailer alone: T - %.10g = %.10g*%.10g", r2, m2, a);
+    return add(out, n, "T = %.10g N", tension);
+  }
+  if ((has(t, "driving") || has(t, "drive")) && has(t, "force") &&
+      (has(t, "resistance") || has(t, "resistive")) &&
+      (has(t, "acceleration") || has(t, "accelerate")) &&
       !has(t, "incline") && !has(t, "slope") && !has(t, "plane") && nv >= 3) {
     double m = 0, drive = 0, r = 0;
     bool hm = label_num(input, "mass", &m) || word_num(input, "mass", &m);
@@ -5832,6 +5855,42 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "total ways = C(%.0f,2) = %.10g", total, all);
     return add(out, n, "P(different colour)=%.10g/%.10g=%.10g", diff, all, all ? diff/all : 0);
   }
+  if ((has(t, "withoutreplacement") || (has(t, "without") && has(t, "replacement")) || has(t, "chosen") || has(t, "selected")) &&
+      (has(c, "exactlytwo") || has(c, "exactly2") || (has(t, "exactly") && has(t, "two"))) && nv >= 2) {
+    double counts[8]; int cc = 0; const char *target_name = "target"; double target = 0;
+    const char *cols[] = {"red","blue","green","yellow","white","black","orange","purple"};
+    int requested = -1;
+    for (int i = 0; i < 8; ++i) {
+      char key1[48], key2[48];
+      sprintf(key1, "exactlytwo%s", cols[i]);
+      sprintf(key2, "exactly2%s", cols[i]);
+      if (has(c, key1) || has(c, key2)) { requested = i; break; }
+    }
+    for (int i = 0; i < 8; ++i) {
+      double q = 0;
+      if (prev_word_num(input, cols[i], &q) && q > 0) {
+        counts[cc++] = q;
+        if (!target && (requested == i || (requested < 0 && i == 0))) {
+          target = q; target_name = cols[i];
+        }
+      }
+    }
+    if (cc < 2) {
+      cc = 0;
+      for (int i = 0; i < nv && cc < 8; ++i) if (v[i] > 0) counts[cc++] = v[i];
+      if (!target && cc) target = counts[0];
+    }
+    double total = 0;
+    for (int i = 0; i < cc; ++i) total += counts[i];
+    if (!target && cc) target = counts[0];
+    double other = total - target;
+    double ways = choose((int)target, 2) * other;
+    double all = choose((int)total, 3);
+    int n = add(out, 0, "Without replacement and order not specified, use combinations.");
+    n = add(out, n, "exactly two %s ways = C(%.0f,2)*%.0f = %.10g", target_name, target, other, ways);
+    n = add(out, n, "total ways = C(%.0f,3) = %.10g", total, all);
+    return add(out, n, "P(exactly two %s)=%.10g/%.10g=%.10g", target_name, ways, all, all ? ways/all : 0);
+  }
   if ((has(t, "withoutreplacement") || (has(t, "without") && has(t, "replacement")) || has(t, "chosen")) &&
       (has(t, "allthree") || (has(t, "all") && has(t, "three")) || has(t, "three")) && nv >= 2) {
     double counts[8]; int cc = 0; const char *target_name = "target";
@@ -7210,6 +7269,29 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
 	    }
 	    return n;
 	  }
+  if ((has(t, "summarystatistics") || has(t, "summary") || has(t, "sumx") || has(t, "sumofsquares")) &&
+      (has(t, "mean") || has(t, "variance") || has(t, "standarddeviation") || has(t, "sd")) &&
+      !has(t, "normal") && !has(t, "binom") && !has(t, "poisson")) {
+    double n0 = 0, sx = 0, sx2 = 0;
+    bool hn = label_num(input, "n", &n0) || word_num(input, "n", &n0);
+    bool hsx = label_num(input, "sumx", &sx) || label_num(input, "sx", &sx) || word_num(input, "sumx", &sx);
+    bool hsx2 = label_num(input, "sumx2", &sx2) || label_num(input, "sx2", &sx2) ||
+                label_num(input, "sumxsquared", &sx2) || label_num(input, "sumofsquares", &sx2);
+    if (!hn && nv >= 1) n0 = v[0];
+    if (!hsx && nv >= 2) sx = v[1];
+    if (!hsx2 && nv >= 3) sx2 = v[2];
+    if (n0 > 0 && sx2 > 0) {
+      double mean = sx / n0;
+      double var = sx2 / n0 - mean * mean;
+      int n = add(out, 0, "Use summary statistics formulae.");
+      n = add(out, n, "mean = Sx/n = %.10g/%.10g = %.10g", sx, n0, mean);
+      n = add(out, n, "variance = Sx2/n - mean^2");
+      n = add(out, n, "variance = %.10g/%.10g - %.10g^2 = %.10g", sx2, n0, mean, var);
+      if (has(t, "standarddeviation") || (has(t, "standard") && has(t, "deviation")) || has(t, "sd"))
+        return add(out, n, "sd = sqrt(variance) = %.10g", root(var));
+      return n;
+    }
+  }
   if ((has(t, "combinedmean") || (has(t, "combined") && has(t, "mean")) ||
        ((has(t, "another") || has(t, "second")) && has(t, "sample") && has(t, "mean"))) &&
       nv >= 4 && !has(t, "normal") && !has(t, "binom") && !has(t, "poisson")) {

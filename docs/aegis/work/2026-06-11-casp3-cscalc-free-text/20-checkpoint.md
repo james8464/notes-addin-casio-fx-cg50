@@ -4501,6 +4501,40 @@ Drift check:
 - Kept changes to CASP3/CSCALC general free-text handling, regressions, generated app outputs, and this checkpoint.
 - Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.
 
+## 2026-06-12 Final Generalisation Cleanup Slice
+
+Completed:
+- Added CASP3 towing/trailer system handling with one-system acceleration and trailer-alone tension lines.
+- Added CASP3 exact-two-without-replacement combination handling before broader all-three routing.
+- Hardened exact-two selection so the requested colour is used, including `exactly 2` digit wording.
+- Added CASP3 summary-statistics `n`, `Sx`, `Sx2` mean/variance routing before loose total-from-mean routing.
+- Fixed CSCALC reverse image colour-depth/bits-per-pixel routing for file-size plus resolution prompts.
+- Fixed CSCALC compound XOR truth-table routing so trailing `AND`/`OR` expressions stay intact.
+- Checked maintained app sources for obvious TODO/FIXME/placeholder/stub clutter.
+
+Evidence:
+- Fresh probes fixed: trailer acceleration/tension, exactly-two red/blue without replacement, summary-statistics variance, image bits-per-pixel, compound XOR truth table.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 411928 bytes`
+  - `CSCALC.g3a: 232124 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: records=48 bytes=18178`
+  - `CASP3.g3a sha256: 6050a3ee1f43214ccd8ab8c1b772f44f61871ea60995f356c473c9ddc13d37d5`
+  - `CSCALC.g3a sha256: e592b2cc7f1d460707c190469b15b0192c114350d1c729180edfc2d6aee1a49f`
+
+Drift check:
+- Kept changes to CASP3/CSCALC general free-text handling, regressions, generated app outputs, and this checkpoint.
+- Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.
+
 ## 2026-06-12 Poisson Union, Inverse Coin, Reciprocal Median, and POS Slice
 
 Completed:
