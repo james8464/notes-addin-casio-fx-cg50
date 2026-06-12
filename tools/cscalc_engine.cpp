@@ -1447,6 +1447,24 @@ static int eval_storage(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LE
   return 0;
 }
 
+static bool image_depth_is_bytes(const char *t) {
+  bool bit_word = has(t, "bits") || has(t, "bit,") || has(t, "bit.") || has(t, "bitperpixel");
+  return has(t, "bytesperpixel") || has(t, "byteperpixel") ||
+         has(t, "bytes,per,pixel") || has(t, "byte,per,pixel") ||
+         ((has(t, "bytes") || has(t, "byte")) && !bit_word);
+}
+
+static int add_image_byte_depth_lines(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN], long long w, long long h, long long bytes_per_pixel) {
+  long long depth = bytes_per_pixel * 8;
+  long long bits = w * h * depth;
+  double bytes = bits / 8.0;
+  int n = add(out, 0, "%lld bytes per pixel = %lld bits per pixel.", bytes_per_pixel, depth);
+  n = add(out, n, "Image bits = width * height * colour depth.");
+  n = add(out, n, "%lld*%lld*%lld = %lld bits", w, h, depth, bits);
+  n = add(out, n, "= %.6g bytes", bytes);
+  return add(out, n, "= %.6g MB", bytes / 1000000.0);
+}
+
 static int eval_float(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
   char a[4][48]; int na = args(s, a, 4);
   if (starts2(s, "fixed(", "fixeddec(") && na == 1) {
@@ -2662,6 +2680,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     return eval_trace(cmd, out);
   }
   if ((has(t, "image") || has(t, "bitmap")) && label_num(input,"width",&width) && label_num(input,"height",&height) && (label_num(input,"depth",&depth) || label_num(input,"bits",&depth))) {
+    if (image_depth_is_bytes(t)) return add_image_byte_depth_lines(out, (long long)width, (long long)height, (long long)depth);
     sprintf(cmd, "image(%lld,%lld,%lld)", (long long)width, (long long)height, (long long)depth); return eval_storage(cmd, out);
   }
   if ((has(t, "image") || has(t, "bitmap")) && label_num(input,"width",&width) && label_num(input,"height",&height) && (label_num(input,"colours",&depth) || label_num(input,"colors",&depth))) {
@@ -2900,6 +2919,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     if (has(t, "colours") || has(t, "colors")) {
       sprintf(cmd, "imagecolors(%lld,%lld,%lld)", (long long)v[0], (long long)v[1], (long long)v[2]); return eval_storage(cmd, out);
     }
+    if (image_depth_is_bytes(t)) return add_image_byte_depth_lines(out, (long long)v[0], (long long)v[1], (long long)v[2]);
     sprintf(cmd, "image(%lld,%lld,%lld)", (long long)v[0], (long long)v[1], (long long)v[2]); return eval_storage(cmd, out);
   }
   if ((has(t, "sound") || has(t, "audio")) && nv >= 3) {

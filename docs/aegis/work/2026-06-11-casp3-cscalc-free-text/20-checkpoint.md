@@ -1,5 +1,25 @@
 # Checkpoint
 
+## 2026-06-12 CSCALC Image Byte-Depth Slice
+
+Completed:
+- Fixed free-text bitmap/image size prompts where colour depth is given as bytes per pixel.
+- Added a visible method line converting bytes per pixel to bits per pixel before applying the image-size formula.
+- Kept normal bit-depth prompts unchanged, including `24 bit colour`.
+- Added regression tests for plain and labelled byte-depth image prompts.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CSCALC AQA Paper 2 image/storage free-text support.
+- Did not touch CAS Pure behavior, CASP3 logic, NOTES, or shared UI/status code.
+
 ## 2026-06-12 CSCALC Storage Unit Scaling Slice
 
 Completed:
