@@ -1,5 +1,24 @@
 # Checkpoint
 
+## 2026-06-12 CSCALC Labelled Storage Free-Text Slice
+
+Completed:
+- Hardened CSCALC labelled-number parsing so labels may contain spaces, hyphens, or underscores.
+- Added labelled free-text routing for sound/audio storage, transfer/download time, compression ratio, dictionary compression, RLE size, database record size, character storage, and character-set storage.
+- Added regression tests for reordered labelled Paper 2 storage/data-rate prompts.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CSCALC AQA Paper 2 calculation/free-text support.
+- Did not touch CAS Pure behavior, CASP3 behavior, NOTES, or shared UI/status code.
+
 ## 2026-06-12 CASP3 Projectile Labelled Free-Text Slice
 
 Completed:

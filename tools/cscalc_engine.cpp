@@ -120,10 +120,14 @@ static bool label_num(const char *s, const char *name, double *v) {
   int nl = (int)strlen(name);
   for (int i = 0; s && s[i]; ++i) {
     if (i > 0 && isalnum((unsigned char)s[i-1])) continue;
-    int j = 0;
-    while (j < nl && s[i+j] && tolower((unsigned char)s[i+j]) == name[j]) ++j;
+    int j = 0, q = i;
+    while (j < nl && s[q]) {
+      while (s[q] == ' ' || s[q] == '\t' || s[q] == '_' || s[q] == '-') ++q;
+      if (tolower((unsigned char)s[q]) != name[j]) break;
+      ++j; ++q;
+    }
     if (j != nl) continue;
-    int k = i + j;
+    int k = q;
     while (s[k] == ' ' || s[k] == '\t') ++k;
     if (s[k] != '=') continue;
     ++k;
@@ -2458,6 +2462,70 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   if ((has(t, "image") || has(t, "bitmap")) && label_num(input,"width",&width) && label_num(input,"height",&height) && (label_num(input,"colours",&depth) || label_num(input,"colors",&depth))) {
     sprintf(cmd, "imagecolors(%lld,%lld,%lld)", (long long)width, (long long)height, (long long)depth); return eval_storage(cmd, out);
+  }
+  if (has(t, "sound") || has(t, "audio")) {
+    double rate=0, seconds=0, res=0, channels=1;
+    bool hR=label_num(input,"samplerate",&rate) || label_num(input,"rate",&rate) || label_num(input,"frequency",&rate);
+    bool hS=label_num(input,"seconds",&seconds) || label_num(input,"duration",&seconds) || label_num(input,"time",&seconds);
+    bool hB=label_num(input,"resolution",&res) || label_num(input,"depth",&res) || label_num(input,"bits",&res);
+    bool hC=label_num(input,"channels",&channels) || label_num(input,"channel",&channels);
+    if (hR && hS && hB) {
+      sprintf(cmd, "sound(%lld,%lld,%lld,%lld)", (long long)rate, (long long)seconds, (long long)res, hC ? (long long)channels : 1);
+      return eval_storage(cmd, out);
+    }
+  }
+  if (has(t, "transfer") || has(t, "download") || has(t, "transmit")) {
+    double size=0, rate=0;
+    bool hSize=label_num(input,"size",&size) || label_num(input,"filesize",&size) || label_num(input,"file",&size);
+    bool hRate=label_num(input,"rate",&rate) || label_num(input,"bitrate",&rate) || label_num(input,"speed",&rate);
+    if (hSize && hRate) {
+      if ((has(t, "megabyte") || has(t, "mbyte") || has(t, "mb,")) && (has(t, "megabit") || has(t, "mbit"))) sprintf(cmd, "transfermb(%.10g,%.10g)", size, rate);
+      else if ((has(t, "kilobyte") || has(t, "kbyte") || has(t, "kb,")) && (has(t, "kilobit") || has(t, "kbit"))) sprintf(cmd, "transferkb(%.10g,%.10g)", size, rate);
+      else sprintf(cmd, "transfer(%.10g,%.10g)", size, rate);
+      return eval_storage(cmd, out);
+    }
+  }
+  if (has(t, "dictionary") || has(t, "dict") || has(t, "lz")) {
+    double orig=0, dict=0, refs=0, rb=0;
+    bool hO=label_num(input,"original",&orig) || label_num(input,"old",&orig);
+    bool hD=label_num(input,"dictionary",&dict) || label_num(input,"dict",&dict);
+    bool hRefs=label_num(input,"references",&refs) || label_num(input,"refs",&refs);
+    bool hRb=label_num(input,"referencebits",&rb) || label_num(input,"refbits",&rb);
+    if (hO && hD && hRefs && hRb) {
+      sprintf(cmd, "dictcompress(%.10g,%.10g,%.10g,%.10g)", orig, dict, refs, rb);
+      return eval_storage(cmd, out);
+    }
+  }
+  if (has(t, "compress") || has(t, "compression")) {
+    double oldv=0, newv=0;
+    bool hO=label_num(input,"original",&oldv) || label_num(input,"before",&oldv) || label_num(input,"old",&oldv);
+    bool hN=label_num(input,"compressed",&newv) || label_num(input,"after",&newv) || label_num(input,"new",&newv);
+    if (hO && hN) {
+      sprintf(cmd, "compress(%.10g,%.10g)", oldv, newv);
+      return eval_storage(cmd, out);
+    }
+  }
+  if (has(t, "runlength") || has(t, "rle") || (has(t, "run") && has(t, "length"))) {
+    double runs=0, sb=0, cb=0;
+    bool hRuns=label_num(input,"runs",&runs);
+    bool hSb=label_num(input,"symbolbits",&sb) || label_num(input,"symbol",&sb);
+    bool hCb=label_num(input,"countbits",&cb) || label_num(input,"count",&cb);
+    if (hRuns && hSb && hCb) {
+      sprintf(cmd, "rle(%lld,%lld,%lld)", (long long)runs, (long long)sb, (long long)cb);
+      return eval_storage(cmd, out);
+    }
+  }
+  if ((has(t, "record") || has(t, "database")) && (label_num(input,"records",&width) || label_num(input,"rows",&width)) &&
+      (label_num(input,"bytes",&height) || label_num(input,"recordsize",&height) || label_num(input,"bytesperrecord",&height))) {
+    sprintf(cmd, "records(%.10g,%.10g)", width, height); return eval_storage(cmd, out);
+  }
+  if ((has(t, "character") || has(t, "text")) && (label_num(input,"characters",&width) || label_num(input,"chars",&width)) &&
+      (label_num(input,"bits",&height) || label_num(input,"bitspercharacter",&height))) {
+    sprintf(cmd, "chars(%lld,%lld)", (long long)width, (long long)height); return eval_storage(cmd, out);
+  }
+  if ((has(t, "character") || has(t, "text")) && (label_num(input,"characters",&width) || label_num(input,"chars",&width)) &&
+      (label_num(input,"characterset",&height) || label_num(input,"symbols",&height) || label_num(input,"alphabet",&height))) {
+    sprintf(cmd, "charset(%lld,%lld)", (long long)width, (long long)height); return eval_storage(cmd, out);
   }
   if ((has(t, "denary") || has(t, "decimal")) && nb >= 1) {
     sprintf(cmd, "den(%s,2)", bits[0]); return eval_base(cmd, out);
