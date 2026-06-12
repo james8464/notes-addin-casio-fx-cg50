@@ -659,6 +659,23 @@ static int eval_binary_arith(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LI
     n = add(out, n, "%s shifted %s by %d = %s", a[0], left ? "left" : "right", k, b);
     return add(out, n, left ? "This multiplies unsigned value by 2^%d if no overflow." : "This divides unsigned value by 2^%d, discarding remainder.", k);
   }
+  if (starts3(s, "arithshift(", "arithmeticshift(", "signedshift(") && na >= 3) {
+    int k = (int)parse_int(a[2]); char b[65]; int len = (int)strlen(a[0]);
+    for (int i = 0; i < len && i < 64; ++i) b[i] = a[0][i]; b[len] = 0;
+    bool left = a[1][0] == 'l' || a[1][0] == '+';
+    char sign = b[0];
+    for (int step = 0; step < k; ++step) {
+      if (left) { for (int i = 0; i < len - 1; ++i) b[i] = b[i+1]; b[len-1] = '0'; }
+      else { for (int i = len - 1; i > 0; --i) b[i] = b[i-1]; b[0] = sign; }
+    }
+    int before = twos_decode(a[0]), after = twos_decode(b);
+    int n = add(out, 0, left ? "Arithmetic left shift: move bits left and fill right with 0." : "Arithmetic right shift: preserve the sign bit and move bits right.");
+    n = add(out, n, "%s = %d in two's complement.", a[0], before);
+    n = add(out, n, "%s shifted %s by %d = %s", a[0], left ? "left" : "right", k, b);
+    n = add(out, n, "%s = %d in two's complement.", b, after);
+    if (left && b[0] != sign) return add(out, n, "overflow risk: sign bit changed.");
+    return add(out, n, left ? "value is multiplied by 2^%d if no overflow." : "value is divided by 2^%d, rounding toward negative infinity.", k);
+  }
   if (starts2(s, "parity(", "paritybit(") && na >= 1) {
     int ones = 0; for (int i = 0; a[0][i]; ++i) if (a[0][i] == '1') ones++;
     bool odd = na > 1 && a[1][0] == 'o';
@@ -2198,6 +2215,9 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if (has(t, "add") && nb >= 2) {
     sprintf(cmd, "binadd(%s,%s,%d)", bits[0], bits[1], (int)strlen(bits[0])); return eval_binary_arith(cmd, out);
   }
+  if ((has(t, "arithmeticshift") || (has(t, "arithmetic") && has(t, "shift")) || (has(t, "signed") && has(t, "shift"))) && nb >= 1 && nv >= 1) {
+    sprintf(cmd, "arithshift(%s,%s,%lld)", bits[0], has(t, "right") ? "right" : "left", (long long)v[nv-1]); return eval_binary_arith(cmd, out);
+  }
   if (has(t, "shift") && nb >= 1 && nv >= 1) {
     sprintf(cmd, "shift(%s,%s,%lld)", bits[0], has(t, "right") ? "right" : "left", (long long)v[nv-1]); return eval_binary_arith(cmd, out);
   }
@@ -2352,7 +2372,7 @@ int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
   n = eval_bool(s, out); if (n) return n;
   n = eval_free_text(input, s, out); if (n) return n;
   n = add(out, 0, "Supported:");
-  n = add(out, n, "bin hex den convert twos twosdec twosadd twossub fixed fixedenc parity repeatenc repeatdec xorbits andbits orbits notbits hamming checksum checkdigit rpn");
+  n = add(out, n, "bin hex den convert twos twosdec twosadd twossub fixed fixedenc parity repeatenc repeatdec shift arithshift xorbits andbits orbits notbits hamming checksum checkdigit rpn");
   n = add(out, n, "floatdec floatadd floatsub floatmul floatdiv floatrange normal image sound bitrate transfer transfermb");
   return add(out, n, "compress huffman rle records sqlselect sqlcount hashmod hashlinear addressspace chars ascii unicode stack queue preorder inorder postorder dijkstra fsm fsmout binarysearch bubblesort selectionsort mergesort bool truth minterms kmap nandform norform");
 }

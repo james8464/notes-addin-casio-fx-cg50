@@ -1,5 +1,25 @@
 # Checkpoint
 
+## 2026-06-12 CSCALC Arithmetic Shift Slice
+
+Completed:
+- Added `arithshift(...)`, `arithmeticshift(...)`, and `signedshift(...)`.
+- Added free-text routing for arithmetic/signed shift prompts before the existing logical shift fallback.
+- Output decodes the input and shifted result as two's complement, preserves the sign bit on right shifts, and flags left-shift sign-change overflow risk.
+- Added direct and free-text regression tests.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CSCALC AQA Paper 2 binary arithmetic/representation support.
+- Did not touch CAS Pure behavior, CASP3 behavior, NOTES, or shared UI/status code.
+
 ## 2026-06-12 CSCALC Repetition Code Majority Vote Slice
 
 Completed:
