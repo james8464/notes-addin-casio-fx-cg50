@@ -1629,6 +1629,14 @@ static int add_transfer_unit_lines(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN], 
   return add(out, n, "time = %.10g/%.10g = %.10g s", bits, bps, bits / bps);
 }
 
+static int add_bitrate_unit_lines(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN], double size, double seconds, const char *t) {
+  double bits=0; const char *su="";
+  if (!storage_size_bits(t, size, &bits, &su) || seconds == 0) return 0;
+  int n = add(out, 0, "Bit rate = file size in bits / seconds.");
+  n = add(out, n, "%.10g %s = %.10g bits", size, su, bits);
+  return add(out, n, "bit rate = %.10g/%.10g = %.10g bit/s", bits, seconds, bits / seconds);
+}
+
 static int eval_float(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
   char a[4][48]; int na = args(s, a, 4);
   if (starts2(s, "fixed(", "fixeddec(") && na == 1) {
@@ -2942,9 +2950,23 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if ((has(t, "image") || has(t, "bitmap")) && label_num(input,"width",&width) && label_num(input,"height",&height) && (label_num(input,"colours",&depth) || label_num(input,"colors",&depth))) {
     sprintf(cmd, "imagecolors(%lld,%lld,%lld)", (long long)width, (long long)height, (long long)depth); return eval_storage(cmd, out);
   }
+  if ((has(t, "image") || has(t, "bitmap")) && nv >= 3) {
+    if (has(t, "colour") || has(t, "color")) {
+      if (has(t, "colourdepth") || has(t, "colordepth") || has(t, "depth") ||
+          has(t, "bitcolour") || has(t, "bitcolor") || has(t, "bits") || has_word(t, "bit")) {
+        sprintf(cmd, "image(%lld,%lld,%lld)", (long long)v[0], (long long)v[1], (long long)v[2]); return eval_storage(cmd, out);
+      }
+      sprintf(cmd, "imagecolors(%lld,%lld,%lld)", (long long)v[0], (long long)v[1], (long long)v[2]); return eval_storage(cmd, out);
+    }
+  }
   if ((has(t, "symbol") || has(t, "symbols")) && (has(t, "bits") || has(t, "bit")) &&
       (has(t, "needed") || has(t, "need") || has(t, "represent") || has(t, "howmany") || has(t, "how,many")) && nv >= 1) {
     sprintf(cmd, "symbolbits(%lld)", (long long)v[0]); return eval_storage(cmd, out);
+  }
+  if ((has(t, "colour") || has(t, "color")) && (has(t, "howmanycolours") || has(t, "how,many,colours") ||
+      has(t, "howmanycolors") || has(t, "how,many,colors") || has(t, "numberofcolours") || has(t, "numberofcolors")) &&
+      (has(t, "depth") || has(t, "bits") || has(t, "bit")) && nv >= 1) {
+    sprintf(cmd, "colourcount(%lld)", (long long)v[0]); return eval_storage(cmd, out);
   }
   if ((has(t, "colour") || has(t, "color")) &&
       (has(t, "bitsperpixel") || has(t, "bitperpixel") || has(t, "bits,per,pixel") ||
@@ -2988,6 +3010,10 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     if (!hSize) size = v[0];
     if (!hSec) seconds = v[1];
     scale_time_unit(t, &seconds);
+    if (has(t, "gib") || has(t, "mib") || has(t, "kib")) {
+      int un = add_bitrate_unit_lines(out, size, seconds, t);
+      if (un) return un;
+    }
     if (has(t, "megabyte") || has(t, "mbyte")) sprintf(cmd, "bitratemb(%.10g,%.10g)", size, seconds);
     else if (has(t, "kilobyte") || has(t, "kbyte")) sprintf(cmd, "bitratekb(%.10g,%.10g)", size, seconds);
     else sprintf(cmd, "bitrate(%.10g,%.10g)", size, seconds);
@@ -3091,6 +3117,10 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   char fixed_early[48];
   if (has(t, "fixed") && scan_fixed_bits(t, fixed_early, sizeof(fixed_early))) {
     sprintf(cmd, (tc || has(t, "complement")) ? "fixedtc(%s)" : "fixed(%s)", fixed_early); return eval_float(cmd, out);
+  }
+  if (has(t, "fixed") && (has(t, "encode") || has(t, "represent") || has(t, "convert")) && nv >= 3) {
+    sprintf(cmd, (tc || has(t, "signed") || has(t, "negative")) ? "fixedtcenc(%.10g,%lld,%lld)" : "fixedenc(%.10g,%lld,%lld)", v[0], (long long)v[1], (long long)v[2]);
+    return eval_float(cmd, out);
   }
   if (has(t, "binary") && nb >= 1 && (has(t, "hex") || has(t, "hexadecimal")) &&
       !(has(t, "add") || has(t, "sum") || has(t, "plus") || has(t, "subtract") || has(t, "minus"))) {

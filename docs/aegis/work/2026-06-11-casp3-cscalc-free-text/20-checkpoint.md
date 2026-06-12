@@ -1,5 +1,32 @@
 # Checkpoint
 
+## 2026-06-12 Mechanics And Storage Precedence Slice
+
+Completed:
+- Added CASP3 vertical upward SUVAT working for maximum height and return time prompts.
+- Added CASP3 `from u to v over s` constant-acceleration working for acceleration and time.
+- Added CASP3 Poisson distribution notation routing for hypothesis tests before exact-probability fallback.
+- Added CASP3 normal mean-test free-text routing before generic summary-statistics fallback.
+- Added CASP3 rough-horizontal force-at-angle working, including vertical reaction adjustment and friction.
+- Added a tolerance for polar-force equilibrium checks where common-angle trig approximation leaves a tiny residual.
+- Added CSCALC image-size precedence for `bit colour depth` phrasing.
+- Added CSCALC colour-count wording for `how many colours with colour depth ...`.
+- Added CSCALC MiB/KiB/GiB bitrate scaling without changing existing MB/KB wording.
+- Added CSCALC signed fixed-point encode routing before integer two's-complement fallback.
+- Added regression tests and rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CASP3/CSCALC free-text routing and working-quality support.
+- Did not touch CAS Pure behavior, NOTES, menus, or shared UI/status code.
+
 ## 2026-06-12 Generic Routing Precedence Slice
 
 Completed:

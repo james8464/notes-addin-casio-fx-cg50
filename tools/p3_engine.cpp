@@ -667,7 +667,7 @@ static int eval_mech(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
       n = add(out, n, "force %d components: (%.6g, %.6g)", i/2+1, x, y);
     }
     n = add(out, n, "sum Fx = %.10g, sum Fy = %.10g", sx, sy);
-    if (sx*sx + sy*sy < 1e-12) return add(out, n, "result: equilibrium");
+    if (sx*sx + sy*sy < 1e-8) return add(out, n, "result: equilibrium");
     return add(out, n, "resultant imbalance = sqrt(Fx^2+Fy^2) = %.10g N", root(sx*sx+sy*sy));
   }
   if (starts3(s, "equilpolar(", "forcepolar(", "balancepolar(") && na >= 4) {
@@ -679,7 +679,7 @@ static int eval_mech(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
       n = add(out, n, "%.6g at %.6g deg: Fx=F cos theta=%.6g, Fy=F sin theta=%.6g", F, deg, x, y);
     }
     n = add(out, n, "sum Fx = %.10g, sum Fy = %.10g", sx, sy);
-    if (sx*sx + sy*sy < 1e-12) return add(out, n, "result: equilibrium");
+    if (sx*sx + sy*sy < 0.25) return add(out, n, "result: equilibrium");
     return add(out, n, "resultant imbalance = %.10g N", root(sx*sx+sy*sy));
   }
   if (starts3(s, "varacc(", "variableacc(", "variableacceleration(") && na >= 4) {
@@ -1283,14 +1283,49 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
        has(c, "xpo(") || has(c, "xpoisson(")) && nv >= 2) {
     double lam = 0;
     if (!dist1(c, "po(", &lam) && !dist1(c, "poisson(", &lam)) lam = v[0];
-    int x = 0;
-    for (int i = 0; i < nv; ++i) if (!near_num(v[i], lam)) { x = (int)v[i]; break; }
+    double xd = 0; bool hx = label_num(input, "x", &xd) || word_num(input, "x", &xd);
+    int x = hx ? (int)xd : 0;
+    for (int i = 0; !hx && i < nv; ++i) {
+      if (near_num(v[i], lam)) continue;
+      if ((has(t, "percent") || has(t, "significance")) && v[i] > 0 && v[i] <= 10) continue;
+      x = (int)v[i]; hx = true; break;
+    }
     int tail = prob_tail(c, t);
+    if ((has(t, "hypothesis") || has(t, "test") || has(t, "significance")) && hx) {
+      double alpha = 0.05;
+      for (int i = 0; i < nv; ++i) {
+        if (near_num(v[i], lam) || near_num(v[i], x)) continue;
+        if (v[i] > 0 && v[i] <= 10) { alpha = v[i] / 100.0; break; }
+        if (v[i] > 0 && v[i] <= 1) { alpha = v[i]; break; }
+      }
+      double htail = (tail > 0 || has(t, "upper") || has(t, "increased") || has(t, "increase")) ? 1 : -1;
+      sprintf(cmd, "hyppoisson(%.10g,%d,%.10g,%.0f)", lam, x, alpha, htail);
+      return eval_stats(cmd, out);
+    }
     if (tail) sprintf(cmd, "poissontail(%.10g,%d,%d)", lam, x, tail);
     else sprintf(cmd, "poisson(%.10g,%d)", lam, x);
     return eval_stats(cmd, out);
   }
   if (!has(t, "variable") && (has(t, "suvat") || has(t, "velocity") || has(t, "acceleration") || has(t, "accelerates") || has(t, "accelerated") || has(t, "distance") || has(t, "displacement") || has(t, "time"))) {
+    if ((has(t, "vertical") || has(t, "vertically")) && (has(t, "upward") || has(t, "upwards") || has(t, "thrown")) && nv >= 1) {
+      double u0 = v[0], g = nv > 1 ? v[1] : 9.8;
+      int n = add(out, 0, "Use vertical SUVAT with upward positive.");
+      n = add(out, n, "At maximum height, v = 0 and a = -g.");
+      n = add(out, n, "0 = u^2 - 2gs, so s = u^2/(2g)");
+      n = add(out, n, "s = %.6g^2/(2*%.6g) = %.10g", u0, g, u0*u0/(2*g));
+      n = add(out, n, "time to maximum height: 0 = u - gt, so t = u/g = %.10g", u0/g);
+      return add(out, n, "time to return to launch height = 2u/g = %.10g", 2*u0/g);
+    }
+    if ((has(t, "uniform") || has(t, "uniformly") || has(t, "accelerates")) && has(t, "from") && has(t, "to") &&
+        (has(t, "over") || has(t, "distance")) && nv >= 3) {
+      double u0 = v[0], v0 = v[1], s0 = v[2];
+      double a0 = (v0*v0-u0*u0)/(2*s0), t0 = 2*s0/(u0+v0);
+      int n = add(out, 0, "Use SUVAT for constant acceleration.");
+      n = add(out, n, "v^2 = u^2 + 2as");
+      n = add(out, n, "a = (v^2-u^2)/(2s) = (%.6g^2-%.6g^2)/(2*%.6g) = %.10g", v0, u0, s0, a0);
+      n = add(out, n, "s = 1/2(u+v)t");
+      return add(out, n, "t = 2s/(u+v) = 2*%.6g/(%.6g+%.6g) = %.10g", s0, u0, v0, t0);
+    }
     double u=0, vv=0, acc=0, dist=0, time=0;
     bool hu=label_num(input,"u",&u) || label_num(input,"initialvelocity",&u) || label_num(input,"initialspeed",&u) ||
             word_num(input,"initialvelocity",&u) || word_num(input,"initialspeed",&u);
@@ -1433,24 +1468,41 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     else sprintf(cmd, nv > 4 ? "ladder(%.10g,%.10g,%.10g,%.10g,%.10g)" : "ladder(%.10g,%.10g,%.10g)", v[0], v[1], v[2], nv > 3 ? v[3] : 0, nv > 4 ? v[4] : v[0]/2);
     return eval_mech(cmd, out);
   }
-  if (has(t, "force") && !has(t, "plane") && (has(t, "horizontal") || has(t, "vertical") || has(t, "component")) && nv >= 2) {
+  if (has(t, "force") && !has(t, "plane") && !has(t, "rough") && !has(t, "acceleration") &&
+      (has(t, "horizontal") || has(t, "vertical") || has(t, "component")) && nv >= 2) {
     sprintf(cmd, "resolve(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
   }
-  if (has(t, "horizontal") && has(t, "plane") &&
+  if (has(t, "horizontal") && (has(t, "plane") || has(t, "rough") || has(t, "smooth")) &&
       (has(t, "acceleration") || has(t, "accelerate")) && nv >= 2) {
-    double m = 0, F = 0, mu = 0;
+    double m = 0, F = 0, mu = 0, ang = 0;
     bool hm = label_num(input,"mass",&m) || word_num(input,"mass",&m) || label_num(input,"m",&m);
     bool hF = label_num(input,"force",&F) || word_num(input,"force",&F) || label_num(input,"pull",&F) || word_num(input,"pull",&F);
     bool hmu = label_num(input,"mu",&mu) || label_num(input,"coefficient",&mu) || word_num(input,"coefficient",&mu);
+    bool hAng = label_num(input,"angle",&ang) || word_num(input,"angle",&ang) || word_num(input,"degrees",&ang);
     if (!hm) m = v[0];
     if (!hF) F = v[nv-1];
     if (!hmu) for (int i = 0; i < nv; ++i) if (v[i] > 0 && v[i] < 1 && !near_num(v[i], m)) { mu = v[i]; hmu = true; break; }
+    if (!hAng && has(t, "degree")) {
+      for (int i = 0; i < nv; ++i) {
+        if (near_num(v[i], m) || near_num(v[i], F) || (hmu && near_num(v[i], mu))) continue;
+        if (v[i] > 0 && v[i] <= 90) { ang = v[i]; hAng = true; break; }
+      }
+    }
     int n = add(out, 0, has(t, "rough") || hmu ? "Rough horizontal plane: resolve vertically, then use F=ma horizontally." : "Smooth horizontal plane: use F=ma horizontally.");
-    n = add(out, n, "Vertical equilibrium gives R = mg = %.6g*9.8 = %.10g N", m, m*9.8);
-    double friction = hmu ? mu*m*9.8 : 0;
-    if (hmu) n = add(out, n, "friction = mu R = %.6g*%.10g = %.10g N", mu, m*9.8, friction);
-    double net = F - friction;
-    n = add(out, n, "resultant horizontal force = %.6g - %.10g = %.10g N", F, friction, net);
+    double drive = F, R = m*9.8;
+    if (hAng) {
+      drive = F*deg_cosine(ang);
+      R = m*9.8 - F*deg_sine(ang);
+      n = add(out, n, "Resolve the pull: horizontal component = F cos(theta) = %.6g cos(%.6g) = %.10g N", F, ang, drive);
+      n = add(out, n, "Vertical equilibrium gives R + F sin(theta) = mg.");
+      n = add(out, n, "R = %.6g*9.8 - %.6g sin(%.6g) = %.10g N", m, F, ang, R);
+    } else {
+      n = add(out, n, "Vertical equilibrium gives R = mg = %.6g*9.8 = %.10g N", m, R);
+    }
+    double friction = hmu ? mu*R : 0;
+    if (hmu) n = add(out, n, "friction = mu R = %.6g*%.10g = %.10g N", mu, R, friction);
+    double net = drive - friction;
+    n = add(out, n, "resultant horizontal force = %.10g - %.10g = %.10g N", drive, friction, net);
     return add(out, n, "a = F/m = %.10g/%.6g = %.10g m/s^2", net, m, net/m);
   }
   if ((has(t, "force") || has(t, "newton")) && (has(t, "mass") || has(t, "accel")) && !has(t, "connected") && !has(t, "pulley") && nv >= 2) {
@@ -1904,6 +1956,30 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       for (int i = 0; i < m; ++i) p += sprintf(cmd+p, "%s%.10g,%.10g", i ? "," : "", v[2*i], v[2*i+1]);
     }
     sprintf(cmd+p, ")");
+    return eval_stats(cmd, out);
+  }
+  if ((has(t, "hypothesis") || has(t, "test")) &&
+      (has(t, "samplemean") || (has(t, "sample") && has(t, "mean")) || has(t, "xbar")) &&
+      (has(t, "populationmean") || has(t, "mu") || has(t, "mean")) &&
+      (has(t, "sd") || has(t, "standarddeviation") || has(t, "sigma")) && nv >= 4) {
+    double xb = 0, mu = 0, sig = 0, n0 = 0, alpha = 0.05;
+    bool hXb = label_num(input,"xbar",&xb) || label_num(input,"samplemean",&xb) || word_num(input,"samplemean",&xb);
+    bool hMu = label_num(input,"mu",&mu) || label_num(input,"populationmean",&mu) || word_num(input,"populationmean",&mu);
+    bool hSig = label_num(input,"sd",&sig) || label_num(input,"sigma",&sig) || label_num(input,"standarddeviation",&sig) ||
+                word_num(input,"sd",&sig) || word_num(input,"sigma",&sig) || word_num(input,"standarddeviation",&sig);
+    bool hN = label_num(input,"n",&n0) || word_num(input,"n",&n0);
+    if (!hXb) xb = v[0];
+    if (!hMu) mu = v[1];
+    if (!hSig) sig = v[2];
+    if (!hN) n0 = v[3];
+    for (int i = 0; i < nv; ++i) {
+      if (near_num(v[i], xb) || near_num(v[i], mu) || near_num(v[i], sig) || near_num(v[i], n0)) continue;
+      if (v[i] > 0 && v[i] <= 10) { alpha = v[i] / 100.0; break; }
+      if (v[i] > 0 && v[i] <= 1) { alpha = v[i]; break; }
+    }
+    double tail = (has(t, "increased") || has(t, "increase") || has(t, "greater") || has(t, "upper")) ? 1 :
+                  (has(t, "decreased") || has(t, "decrease") || has(t, "less") || has(t, "lower")) ? -1 : 0;
+    sprintf(cmd, "hypnormal(%.10g,%.10g,%.10g,%.10g,%.10g,%.0f)", xb, mu, sig, n0, alpha, tail);
     return eval_stats(cmd, out);
   }
   if ((has(t, "mean") || has(t, "variance") || has(t, "standarddeviation")) && nv >= 3) {
