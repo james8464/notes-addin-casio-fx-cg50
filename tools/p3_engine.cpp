@@ -1038,6 +1038,36 @@ static bool prob_x_interval(const char *c, double *lo, double *hi) {
   return true;
 }
 
+static bool given_tail_bound(const char *c, double *bound, int *tail) {
+  const char *g = strstr(c, "given");
+  if (!g) return false;
+  const char *p = strstr(g, "x<=");
+  if (p) { *tail = -1; *bound = read_num(p + 3); return true; }
+  p = strstr(g, "x<");
+  if (p) { *tail = -2; *bound = read_num(p + 2); return true; }
+  p = strstr(g, "x>=");
+  if (p) { *tail = 1; *bound = read_num(p + 3); return true; }
+  p = strstr(g, "x>");
+  if (p) { *tail = 2; *bound = read_num(p + 2); return true; }
+  p = strstr(g, "atleast");
+  if (p) { *tail = 1; *bound = read_num(p + 7); return true; }
+  p = strstr(g, "greaterthanorequal");
+  if (p) { *tail = 1; *bound = read_num(p + 18); return true; }
+  p = strstr(g, "morethan");
+  if (p) { *tail = 2; *bound = read_num(p + 8); return true; }
+  p = strstr(g, "greaterthan");
+  if (p) { *tail = 2; *bound = read_num(p + 11); return true; }
+  p = strstr(g, "atmost");
+  if (p) { *tail = -1; *bound = read_num(p + 6); return true; }
+  p = strstr(g, "lessthanorequal");
+  if (p) { *tail = -1; *bound = read_num(p + 15); return true; }
+  p = strstr(g, "nomorethan");
+  if (p) { *tail = -1; *bound = read_num(p + 10); return true; }
+  p = strstr(g, "lessthan");
+  if (p) { *tail = -2; *bound = read_num(p + 8); return true; }
+  return false;
+}
+
 static int add_binom_range_lines(char out[P3_MAX_LINES][P3_LINE_LEN], int N, double p, int lo, int hi, const char *label) {
   if (lo < 0) lo = 0;
   if (hi > N) hi = N;
@@ -2888,6 +2918,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       else if ((gp = strstr(c, "givenx<"))) { gtail = -2; given = read_num(gp + 7); }
       else if ((gp = strstr(c, "givenx>="))) { gtail = 1; given = read_num(gp + 8); }
       else if ((gp = strstr(c, "givenx>"))) { gtail = 2; given = read_num(gp + 7); }
+      else given_tail_bound(c, &given, &gtail);
       if (gtail) {
         int atail = tail;
         const char *ap = strstr(c, "p(x>=");
@@ -2931,6 +2962,11 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       }
       double htail = (tail > 0 || has(t, "upper") || has(t, "increased") || has(t, "increase")) ? 1 : -1;
       sprintf(cmd, "hyppoisson(%.10g,%d,%.10g,%.0f)", lam, x, alpha, htail);
+      return eval_stats(cmd, out);
+    }
+    double lo = 0, hi = 0;
+    if (prob_x_interval(c, &lo, &hi)) {
+      sprintf(cmd, "poissonrange(%.10g,%d,%d)", lam, (int)lo, (int)hi);
       return eval_stats(cmd, out);
     }
     if (tail) sprintf(cmd, "poissontail(%.10g,%d,%d)", lam, x, tail);
@@ -4663,6 +4699,16 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     int n = add(out, 0, "For mutually exclusive events, P(A and B)=0.");
     n = add(out, n, "P(A or B)=P(A)+P(B)");
     return add(out, n, "P(A or B)=%.6g+%.6g=%.10g", pa, pb, por);
+  }
+  if ((has(c, "p(agivenb)=") || has(c, "p(a|b)=")) &&
+      (has(c, "p(aandb)") || has(c, "p(aorb)") || has(t, "intersection") || has(t, "union") || has(t, "or")) &&
+      nv >= 3) {
+    double pa = v[0], pb = v[1], pagb = v[2];
+    double pab = pagb * pb, por = pa + pb - pab;
+    int n = add(out, 0, "Use P(A|B)=P(A and B)/P(B).");
+    n = add(out, n, "P(A and B)=P(A|B)P(B)=%.6g*%.6g=%.10g", pagb, pb, pab);
+    n = add(out, n, "Then use P(A or B)=P(A)+P(B)-P(A and B).");
+    return add(out, n, "P(A or B)=%.6g+%.6g-%.10g=%.10g", pa, pb, pab, por);
   }
   if ((has(c, "p(aorb)") || has(t, "union")) &&
       (has(c, "agivenb") || has(c, "p(a|b)") || has(t, "conditional")) && nv >= 3) {

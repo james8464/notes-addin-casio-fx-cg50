@@ -1,5 +1,36 @@
 # Checkpoint
 
+## 2026-06-12 Free-Text Gate, Poisson Interval, And Conditional Probability Slice
+
+Completed:
+- Fixed CSCALC free-text NAND/NOR gate conversion so instruction words are not treated as Boolean variables.
+- Added XOR recognition in free-text gate conversion.
+- Shortened generic NAND/NOR conversion by simplifying negated AND/OR and double negation, avoiding truncated calculator lines.
+- Fixed CASP3 Poisson interval parsing so `a <= X <= b` routes to range probability before single-tail fallback.
+- Fixed CASP3 natural Poisson conditional wording such as `given X is at least 2`.
+- Fixed CASP3 probability wording where `P(A|B)` is given and `P(A and B)`/`P(A or B)` are requested.
+- Added regressions and rebuilt calculator files.
+
+Evidence:
+- Targeted probes for free-text gate forms, Poisson intervals, Poisson conditional wording, and conditional probability wording: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 325628 bytes`
+  - `CSCALC.g3a: 204772 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Stayed inside CASP3/CSCALC free-text working support and generated calculator outputs.
+- Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for further source/probe-driven hardening.
+
 ## 2026-06-12 Boolean Minimiser And Gate-Form Hardening Slice
 
 Completed:

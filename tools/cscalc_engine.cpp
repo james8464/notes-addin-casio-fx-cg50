@@ -3058,10 +3058,28 @@ static void gate_nand(GNode *n, int id, char *b, int *p, int cap);
 static void gate_nor(GNode *n, int id, char *b, int *p, int cap);
 
 static void gate_nand_not(GNode *n, int id, char *b, int *p, int cap) {
+  if (n[id].op == '!') { gate_nand(n, n[id].l, b, p, cap); return; }
+  if (n[id].op == '&') {
+    gate_app(b, p, cap, "(");
+    gate_nand(n, n[id].l, b, p, cap);
+    gate_app(b, p, cap, " NAND ");
+    gate_nand(n, n[id].r, b, p, cap);
+    gate_app(b, p, cap, ")");
+    return;
+  }
   gate_app(b, p, cap, "("); gate_nand(n, id, b, p, cap); gate_app(b, p, cap, " NAND "); gate_nand(n, id, b, p, cap); gate_app(b, p, cap, ")");
 }
 
 static void gate_nor_not(GNode *n, int id, char *b, int *p, int cap) {
+  if (n[id].op == '!') { gate_nor(n, n[id].l, b, p, cap); return; }
+  if (n[id].op == '+') {
+    gate_app(b, p, cap, "(");
+    gate_nor(n, n[id].l, b, p, cap);
+    gate_app(b, p, cap, " NOR ");
+    gate_nor(n, n[id].r, b, p, cap);
+    gate_app(b, p, cap, ")");
+    return;
+  }
   gate_app(b, p, cap, "("); gate_nor(n, id, b, p, cap); gate_app(b, p, cap, " NOR "); gate_nor(n, id, b, p, cap); gate_app(b, p, cap, ")");
 }
 
@@ -3292,15 +3310,17 @@ static bool make_gate_form_cmd(const char *input, bool nand, char *cmd, int cap)
       w[j] = 0;
       if (word_is(w, "or")) { expr[p++] = '+'; continue; }
       if (word_is(w, "and")) { expr[p++] = '*'; continue; }
+      if (word_is(w, "xor")) { expr[p++] = '^'; continue; }
       if (word_is(w, "not")) { expr[p++] = '!'; continue; }
       if (word_is(w, "find") || word_is(w, "the") || word_is(w, "write") ||
           word_is(w, "convert") || word_is(w, "to") || word_is(w, "using") || word_is(w, "use") ||
           word_is(w, "only") || word_is(w, "form") || word_is(w, "for") || word_is(w, "expression") ||
+          word_is(w, "express") || word_is(w, "make") || word_is(w, "implement") || word_is(w, "with") ||
           word_is(w, "gate") || word_is(w, "gates") ||
           word_is(w, "boolean") || word_is(w, "logic") || word_is(w, nand ? "nand" : "nor")) continue;
-      for (int k = 0; w[k] && p + 1 < (int)sizeof(expr); ++k) expr[p++] = w[k];
+      if (w[0] && !w[1]) expr[p++] = w[0];
     } else {
-      if (input[i] == '+' || input[i] == '*' || input[i] == '&' || input[i] == '|' || input[i] == '\'' ||
+      if (input[i] == '+' || input[i] == '*' || input[i] == '&' || input[i] == '|' || input[i] == '^' || input[i] == '\'' ||
           input[i] == ',' || input[i] == '(' || input[i] == ')') expr[p++] = input[i] == ',' ? '\'' : input[i];
       ++i;
     }
