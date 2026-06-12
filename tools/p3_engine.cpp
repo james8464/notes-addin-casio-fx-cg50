@@ -178,6 +178,34 @@ static bool label_num(const char *s, const char *name, double *v) {
   return false;
 }
 
+static bool word_num(const char *s, const char *name, double *v) {
+  int nl = (int)strlen(name);
+  for (int i = 0; s && s[i]; ++i) {
+    if (i > 0 && isalnum((unsigned char)s[i-1])) continue;
+    int j = 0, q = i;
+    while (j < nl && s[q]) {
+      while (s[q] == ' ' || s[q] == '\t' || s[q] == '_' || s[q] == '-') ++q;
+      if (tolower((unsigned char)s[q]) != name[j]) break;
+      ++j; ++q;
+    }
+    if (j != nl || isalnum((unsigned char)s[q])) continue;
+    while (s[q] == ' ' || s[q] == '\t' || s[q] == '=') ++q;
+    if (s[q] != '-' && !isdigit((unsigned char)s[q])) continue;
+    *v = read_num(s + q);
+    return true;
+  }
+  return false;
+}
+
+static bool is_projectile_text(const char *t) {
+  return has(t, "projectile") || has(t, "projectiles") || has(t, "projected") || has(t, "projection");
+}
+
+static bool near_num(double a, double b) {
+  double d = a > b ? a - b : b - a;
+  return d < 1e-9;
+}
+
 static double choose(int n, int r) {
   if (r < 0 || r > n) return 0;
   if (r > n - r) r = n - r;
@@ -1154,7 +1182,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       return eval_suvat(cmd, out);
     }
   }
-  if ((has(t, "projectile") || has(t, "projectiles")) && (has(t, "angle") || has(t, "angles") || (has(t, "find") && has(t, "angle"))) &&
+  if (is_projectile_text(t) && (has(t, "angle") || has(t, "angles") || (has(t, "find") && has(t, "angle"))) &&
       (has(t, "target") || has(t, "point") || has(t, "through") || has(t, "pass")) && nv >= 3) {
     double u=0,x=0,y=0,h0=0,g=0;
     bool hU=label_num(input,"speed",&u) || label_num(input,"u",&u) || label_num(input,"initialspeed",&u) || label_num(input,"initialvelocity",&u);
@@ -1168,7 +1196,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     }
     sprintf(cmd, nv >= 4 ? "projectileangle(%.10g,%.10g,%.10g,%.10g)" : "projectileangle(%.10g,%.10g,%.10g)", v[0], v[1], v[2], nv >= 4 ? v[3] : 0); return eval_mech(cmd, out);
   }
-  if ((has(t, "projectile") || has(t, "projectiles")) && ((has(t, "find") && has(t, "angle")) || has(t, "launchangle")) && nv >= 3) {
+  if (is_projectile_text(t) && ((has(t, "find") && has(t, "angle")) || has(t, "launchangle")) && nv >= 3) {
     double u=0,x=0,y=0,h0=0,g=0;
     bool hU=label_num(input,"speed",&u) || label_num(input,"u",&u) || label_num(input,"initialspeed",&u) || label_num(input,"initialvelocity",&u);
     bool hX=label_num(input,"x",&x) || label_num(input,"distance",&x) || label_num(input,"range",&x) || label_num(input,"horizontaldistance",&x);
@@ -1180,7 +1208,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       return eval_mech(cmd, out);
     }
   }
-  if ((has(t, "projectile") || has(t, "projectiles")) && (has(t, "distance") || has(t, "metresaway") || has(t, "away")) && nv >= 3) {
+  if (is_projectile_text(t) && (has(t, "distance") || has(t, "metresaway") || has(t, "away")) && nv >= 3) {
     double u=0,ang=0,x=0,h0=0,g=0;
     bool hU=label_num(input,"speed",&u) || label_num(input,"u",&u) || label_num(input,"initialspeed",&u) || label_num(input,"initialvelocity",&u);
     bool hA=label_num(input,"angle",&ang) || label_num(input,"theta",&ang) || label_num(input,"launchangle",&ang);
@@ -1193,7 +1221,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     }
     sprintf(cmd, nv >= 4 ? "projectileat(%.10g,%.10g,%.10g,%.10g)" : "projectileat(%.10g,%.10g,%.10g)", v[0], v[1], v[2], nv >= 4 ? v[3] : 0); return eval_mech(cmd, out);
   }
-  if ((has(t, "projectile") || has(t, "projectiles")) && (has(t, "height") || has(t, "above")) && nv >= 3) {
+  if (is_projectile_text(t) && (has(t, "height") || has(t, "above")) && nv >= 3) {
     double u=0,ang=0,h=0,g=0;
     bool hU=label_num(input,"speed",&u) || label_num(input,"u",&u) || label_num(input,"initialspeed",&u) || label_num(input,"initialvelocity",&u);
     bool hA=label_num(input,"angle",&ang) || label_num(input,"theta",&ang) || label_num(input,"launchangle",&ang);
@@ -1205,7 +1233,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     }
     sprintf(cmd, "projectileh(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_mech(cmd, out);
   }
-  if ((has(t, "projectile") || has(t, "projectiles")) && nv >= 2) {
+  if (is_projectile_text(t) && nv >= 2) {
     double u=0,ang=0,g=0;
     bool hU=label_num(input,"speed",&u) || label_num(input,"u",&u) || label_num(input,"initialspeed",&u) || label_num(input,"initialvelocity",&u);
     bool hA=label_num(input,"angle",&ang) || label_num(input,"theta",&ang) || label_num(input,"launchangle",&ang);
@@ -1311,6 +1339,14 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if ((has(t, "varacc") || has(t, "variableacceleration") || (has(t, "acceleration") && has(t, "integrate"))) && nv >= 4) {
     sprintf(cmd, "varacc(%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3]); return eval_mech(cmd, out);
   }
+  if ((has(t, "hypothesis") || has(t, "significance") || has(t, "test")) &&
+      (has(t, "coin") || has(t, "heads") || has(t, "tails")) && nv >= 2) {
+    double alpha = nv >= 3 ? v[nv - 1] : 0.05;
+    if (alpha > 1) alpha /= 100.0;
+    double tail = (has(t, "less") || has(t, "fewer") || has(t, "lower") || v[1] < v[0] * 0.5) ? -1 : 1;
+    sprintf(cmd, "hypbinom(%d,0.5,%d,%.10g,%.0f)", (int)v[0], (int)v[1], alpha, tail);
+    return eval_stats(cmd, out);
+  }
   if (has(t, "binom")) {
     double N=0,pv=0,x=0,alpha=0,lo=0,hi=0;
     bool hN=label_num(input,"n",&N), hP=label_num(input,"p",&pv) || label_num(input,"probability",&pv);
@@ -1351,17 +1387,25 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if (has(t, "normal")) {
     double x=0, xb=0, mu=0, sig=0, var=0, n0=0, alpha=0, lo=0, hi=0, area=0;
-    bool hX=label_num(input,"x",&x) || label_num(input,"value",&x);
+    bool hX=label_num(input,"x",&x) || label_num(input,"value",&x) || word_num(input,"x",&x) || word_num(input,"value",&x);
     bool hXb=label_num(input,"xbar",&xb) || label_num(input,"samplemean",&xb);
-    bool hMu=label_num(input,"mu",&mu) || label_num(input,"mean",&mu);
-    bool hSig=label_num(input,"sigma",&sig) || label_num(input,"sd",&sig) || label_num(input,"standarddeviation",&sig);
-    bool hVar=label_num(input,"variance",&var) || label_num(input,"var",&var);
+    bool hMu=label_num(input,"mu",&mu) || label_num(input,"mean",&mu) || word_num(input,"mu",&mu) || word_num(input,"mean",&mu);
+    bool hSig=label_num(input,"sigma",&sig) || label_num(input,"sd",&sig) || label_num(input,"standarddeviation",&sig) || word_num(input,"sigma",&sig) || word_num(input,"sd",&sig) || word_num(input,"standarddeviation",&sig);
+    bool hVar=label_num(input,"variance",&var) || label_num(input,"var",&var) || word_num(input,"variance",&var) || word_num(input,"var",&var);
     bool hN=label_num(input,"n",&n0), hA=label_num(input,"alpha",&alpha) || label_num(input,"significance",&alpha);
     bool hLo=label_num(input,"lower",&lo) || label_num(input,"lo",&lo);
     bool hHi=label_num(input,"upper",&hi) || label_num(input,"hi",&hi);
     bool hArea=label_num(input,"area",&area) || label_num(input,"probability",&area) || label_num(input,"p",&area);
     double tail = (has(t, "twotailed") || has(t, "twosided") || (has(t, "two") && (has(t, "tailed") || has(t, "sided"))) || has(t, "different") || has(t, "notequal")) ? 0 :
                   (has(t, "upper") || has(t, "greater") || has(t, "more") ? 1 : -1);
+    if (!hX && hMu && (hSig || hVar) && nv >= 1 &&
+        (has(c, "morethan") || has(c, "greaterthan") || has(c, "atleast") || has(c, "lessthan") || has(c, "atmost"))) {
+      for (int i = 0; i < nv; ++i) {
+        if (near_num(v[i], mu) || (hSig && near_num(v[i], sig)) || (hVar && near_num(v[i], var))) continue;
+        x = v[i]; hX = true; break;
+      }
+      if (!hX) { x = v[0]; hX = true; }
+    }
     if (hXb && hMu && (hSig || hVar) && hN && hA && (has(t, "hypothesis") || has(t, "test"))) {
       sprintf(cmd, "hypnormal(%.10g,%.10g,%.10g,%.10g,%.10g,%.0f)", xb, mu, hSig ? sig : root(var), n0, alpha, tail);
       return eval_stats(cmd, out);
@@ -1370,7 +1414,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       sprintf(cmd, hSig ? "normalprob(%.10g,%.10g,%.10g,%.10g)" : "normalprobvar(%.10g,%.10g,%.10g,%.10g)", lo, hi, mu, hSig ? sig : var);
       return eval_stats(cmd, out);
     }
-    if (hX && hMu && (hSig || hVar) && (has(c, "morethan") || has(c, "greaterthan") || has(c, "atleast") || has(c, "lessthan") || has(c, "atmost"))) {
+    if (hX && hMu && (hSig || hVar) && !(has(t, "conditional") || has(t, "given")) &&
+        (has(c, "morethan") || has(c, "greaterthan") || has(c, "atleast") || has(c, "lessthan") || has(c, "atmost"))) {
       double ttail = (has(c, "morethan") || has(c, "greaterthan") || has(c, "atleast")) ? 1 : -1;
       sprintf(cmd, hSig ? "normaltail(%.10g,%.10g,%.10g,%.0f)" : "normaltailvar(%.10g,%.10g,%.10g,%.0f)", x, mu, hSig ? sig : var, ttail);
       return eval_stats(cmd, out);

@@ -1,5 +1,26 @@
 # Checkpoint
 
+## 2026-06-12 CASP3 Free-Text Routing Slice
+
+Completed:
+- Added `projected` / `projection` as projectile wording, so common exam phrasing routes to projectile working.
+- Added spaced word-number parsing for stats phrases such as `mean 50 standard deviation 8`.
+- Fixed normal-tail inference to choose the unused threshold number instead of the last number.
+- Guarded conditional normal probability so it still reaches `normalcond`.
+- Added coin-test inference for hypothesis-test wording with default `p=0.5` and percent significance conversion.
+- Added regression tests and rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CASP3 Edexcel Paper 3 free-text working support.
+- Did not touch CAS Pure behavior, CSCALC logic, NOTES, or shared UI/status code.
+
 ## 2026-06-12 CSCALC Storage Representation Free-Text Slice
 
 Completed:
