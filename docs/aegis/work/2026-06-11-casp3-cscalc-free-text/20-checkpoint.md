@@ -2576,3 +2576,37 @@ Drift check:
 - Still inside CASP3/CSCALC free-text working support and generated calculator outputs.
 - Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
 - Active goal remains open for future source/probe-driven hardening.
+
+## 2026-06-12 Mechanics, Normal Totals, Units, and Boolean Parser Slice
+
+Completed:
+- Added CASP3 free-text variable-acceleration integration for symbolic `a = kt + c` style prompts with initial velocity and time.
+- Fixed vertical-upwards-from-height wording so speed and launch height are not swapped.
+- Added rough inclined-plane equilibrium working for friction and normal reaction when no coefficient is supplied.
+- Added proportion/percentage binomial hypothesis-test routing with explicit `H1` wording.
+- Added normal total/sum distribution working for totals of independent normal variables.
+- Fixed CSCALC arithmetic-shift prose so it routes before two's-complement decode.
+- Added MiB output lines for image and sound storage calculations.
+- Fixed fixed-point denary-to-binary free-text routing before binary fixed-point decode.
+- Improved Boolean free-text parsing for `using Boolean algebra simplify ...` prompts.
+- Added regression tests and rebuilt calculator files.
+
+Evidence:
+- Fresh focused probe batch: 10/10 passed after expectation correction.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 179456 bytes`
+  - `CSCALC.g3a: 159276 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Still inside CASP3/CSCALC free-text working support and generated calculator outputs.
+- Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for future source/probe-driven hardening.

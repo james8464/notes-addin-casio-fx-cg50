@@ -1409,7 +1409,8 @@ static int eval_storage(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LE
     int n = add(out, 0, "Image bits = width * height * colour depth.");
     n = add(out, n, "%s*%s*%s = %lld bits", a[0], a[1], a[2], bits);
     n = add(out, n, "= %.6g bytes", bytes);
-    return add(out, n, "= %.6g MB", bytes / 1000000.0);
+    n = add(out, n, "= %.6g MB", bytes / 1000000.0);
+    return add(out, n, "= %.6g MiB", bytes / 1048576.0);
   }
   if (starts3(s, "imagecolors(", "bitmapcolors(", "colours(") && na >= 3) {
     int depth = ceil_log2_ll(parse_int(a[2]));
@@ -1419,7 +1420,8 @@ static int eval_storage(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LE
     n = add(out, n, "ceil(log2(%s)) = %d bits per pixel", a[2], depth);
     n = add(out, n, "Image bits = width * height * colour depth.");
     n = add(out, n, "%s*%s*%d = %lld bits = %.6g bytes", a[0], a[1], depth, bits, bytes);
-    return add(out, n, "= %.6g MB", bytes / 1000000.0);
+    n = add(out, n, "= %.6g MB", bytes / 1000000.0);
+    return add(out, n, "= %.6g MiB", bytes / 1048576.0);
   }
   if (starts3(s, "colourdepth(", "colordepth(", "bitsperpixel(") && na >= 1) {
     int colours = (int)parse_int(a[0]);
@@ -1448,7 +1450,8 @@ static int eval_storage(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LE
     int n = add(out, 0, "Sound bits = sample rate * seconds * resolution * channels.");
     n = add(out, n, "%s*%s*%s*%lld = %.10g bits", a[0], a[1], a[2], chans, bits);
     n = add(out, n, "= %.10g bytes", bytes);
-    return add(out, n, "= %.10g MB", bytes / 1000000.0);
+    n = add(out, n, "= %.10g MB", bytes / 1000000.0);
+    return add(out, n, "= %.10g MiB", bytes / 1048576.0);
   }
   if (starts3(s, "bitrate(", "datarate(", "rate(") && na >= 2) {
     double rate = num(a[0]) / num(a[1]);
@@ -2848,6 +2851,8 @@ static const char *skip_bool_words(const char *e) {
   while (moved) {
     moved = false;
     if (starts(e, "simplify")) { e += 8; moved = true; }
+    if (starts(e, "using")) { e += 5; moved = true; }
+    if (starts(e, "algebra")) { e += 7; moved = true; }
     if (starts(e, "prove")) { e += 5; moved = true; }
     if (starts(e, "bydemorgan")) { e += 10; moved = true; }
     if (starts(e, "demorgans")) { e += 9; moved = true; }
@@ -3236,6 +3241,10 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if ((has(t, "normalise") || has(t, "normalize")) && nb >= 2) {
     sprintf(cmd, "floatnorm(%s,%s)", bits[0], bits[1]); return eval_float(cmd, out);
   }
+  if ((has(t, "arithmeticshift") || (has(t, "arithmetic") && has(t, "shift")) || (has(t, "signed") && has(t, "shift"))) && nb >= 1 && nv >= 1) {
+    double sh = v[nv-1]; scan_after_word_num(t, "by", &sh);
+    sprintf(cmd, "arithshift(%s,%s,%lld)", bits[0], has(t, "right") ? "right" : "left", (long long)sh); return eval_binary_arith(cmd, out);
+  }
   if (tc && nb >= 1 && (has(t, "decode") || has(t, "denary") || has(t, "decimal") || has(t, "value"))) {
     sprintf(cmd, "twosdec(%s)", bits[0]); return eval_twos(cmd, out);
   }
@@ -3307,12 +3316,12 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     sprintf(cmd, "den(%s,16)", hex_tok); return eval_base(cmd, out);
   }
   char fixed_early[48];
-  if (has(t, "fixed") && scan_fixed_bits(t, fixed_early, sizeof(fixed_early))) {
-    sprintf(cmd, (tc || has(t, "complement")) ? "fixedtc(%s)" : "fixed(%s)", fixed_early); return eval_float(cmd, out);
-  }
   if (has(t, "fixed") && (has(t, "encode") || has(t, "represent") || has(t, "convert")) && nv >= 3) {
     sprintf(cmd, (tc || has(t, "signed") || has(t, "negative")) ? "fixedtcenc(%.10g,%lld,%lld)" : "fixedenc(%.10g,%lld,%lld)", v[0], (long long)v[1], (long long)v[2]);
     return eval_float(cmd, out);
+  }
+  if (has(t, "fixed") && scan_fixed_bits(t, fixed_early, sizeof(fixed_early))) {
+    sprintf(cmd, (tc || has(t, "complement")) ? "fixedtc(%s)" : "fixed(%s)", fixed_early); return eval_float(cmd, out);
   }
   if ((has(t, "denary") || has(t, "decimal")) && nb >= 1 &&
       !(has(t, "add") || has(t, "sum") || has(t, "plus") || has(t, "subtract") || has(t, "minus"))) {

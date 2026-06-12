@@ -973,7 +973,8 @@ static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
       prob = 2 * (lo < hi ? lo : hi);
       if (prob > 1) prob = 1;
     }
-    int n = add(out, 0, "H0: p = %.6g. H1 uses the stated tail.", p);
+    int n = add(out, 0, "H0: p = %.6g.", p);
+    n = add(out, n, tail == 0 ? "H1: p is different." : tail > 0 ? "H1: p is greater." : "H1: p is smaller.");
     n = add(out, n, tail == 0 ? "two-tailed probability = %.10g" : "tail probability = %.10g", prob);
     n = add(out, n, "Compare with alpha = %.6g.", alpha);
     return add(out, n, prob <= alpha ? "Reject H0 in context." : "Do not reject H0 in context.");
@@ -1347,6 +1348,31 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     return add(out, n, "displacement = %.10g - %.10g = %.10g", F2, F1, F2-F1);
   }
   if ((has(t, "acceleration") || has(t, "accn")) && has(t, "t") &&
+      (has(c, "accelerationa=") || has(c, "a=") || has(c, "accelerationis")) &&
+      (has(t, "initial") || has(t, "initially")) && nv >= 3) {
+    double A=0, B=0, C=0, u=0, s0=0, time=0;
+    if (parse_velocity_quad(input, &A, &B, &C) &&
+        (word_num(input, "velocity", &u) || word_num(input, "speed", &u) || word_num(input, "u", &u)) &&
+        (word_num(input, "after", &time) || word_num(input, "time", &time) || word_num(input, "at", &time))) {
+      double vv = A*time*time*time/3.0 + B*time*time/2.0 + C*time + u;
+      double ss = A*time*time*time*time/12.0 + B*time*time*time/6.0 + C*time*time/2.0 + u*time + s0;
+      int n = add(out, 0, "Variable acceleration: integrate a(t) to get v(t), then integrate v(t) to get s(t).");
+      if (near_num(A, 0)) {
+        n = add(out, n, "a = %.6g t %+.6g", B, C);
+        n = add(out, n, "v = integral(a) dt = (%.6g/2)t^2 + %.6g t + C", B, C);
+      } else {
+        n = add(out, n, "a = %.6g t^2 %+.6g t %+.6g", A, B, C);
+        n = add(out, n, "v = integral(a) dt = (%.6g/3)t^3 + (%.6g/2)t^2 + %.6g t + C", A, B, C);
+      }
+      n = add(out, n, "initial velocity gives C = %.6g", u);
+      n = add(out, n, "at t=%.6g, v = %.10g", time, vv);
+      if (near_num(A, 0)) n = add(out, n, "s = integral(v) dt = (%.6g/6)t^3 + (%.6g/2)t^2 + %.6g t + C", B, C, u);
+      else n = add(out, n, "s = integral(v) dt = (%.6g/12)t^4 + (%.6g/6)t^3 + (%.6g/2)t^2 + %.6g t + C", A, B, C, u);
+      n = add(out, n, "initial position at O gives C = 0.");
+      return add(out, n, "at t=%.6g, s = %.10g", time, ss);
+    }
+  }
+  if ((has(t, "acceleration") || has(t, "accn")) && has(t, "t") &&
       (has(t, "initial") || has(t, "initially")) && (has(c, "findv") || has(c, "findvelocity") || has(c, "findvand")) &&
       nv >= 3) {
     double k = v[0], c0 = v[1], u = v[2], s0 = nv > 3 ? v[3] : 0;
@@ -1496,10 +1522,17 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       (has(t, "upward") || has(t, "upwards") || has(t, "projected") || has(t, "thrown")) && nv >= 1) {
     double pos[4]; int np = 0;
     for (int i = 0; i < nv && np < 4; ++i) if (v[i] > 0) pos[np++] = v[i];
-    double u0 = pos[0], g = 9.8, target = 0;
-    bool hTarget = word_num(input, "height", &target) || word_num(input, "above", &target);
+    double u0 = pos[0], g = 9.8, target = 0, h0 = 0;
+    bool hU = word_num(input, "speed", &u0) || word_num(input, "velocity", &u0) || word_num(input, "initialspeed", &u0);
+    bool hHeight = word_num(input, "above", &h0) || word_num(input, "height", &h0);
+    bool hTarget = hHeight;
+    if (hTarget) target = h0;
     if (!hTarget && np >= 2 && (has(t, "height") || has(t, "metres") || has(t, "meters"))) { target = pos[1]; hTarget = true; }
-    if (np >= 2 && (has(t, "ground") || has(c, "hitsground") || has(c, "hitstheground"))) { target = -pos[1]; hTarget = true; }
+    if ((has(t, "ground") || has(c, "hitsground") || has(c, "hitstheground"))) {
+      if (hHeight) target = -h0;
+      else if (np >= 2) target = hU ? -pos[0] : -pos[1];
+      hTarget = true;
+    }
     if (hTarget && !near_num(target, u0)) {
       double disc = u0*u0 - 2*g*target;
       int n = add(out, 0, "Use vertical SUVAT with upward positive.");
@@ -1537,9 +1570,17 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       return add(out, n, "t = 2s/(u+v) = 2*%.6g/(%.6g+0) = %.10g", s0, u0, t0);
     }
     if ((has(t, "vertical") || has(t, "vertically")) && (has(t, "upward") || has(t, "upwards") || has(t, "thrown")) && nv >= 1) {
-      double u0 = v[0], g = 9.8, target = 0;
-      bool hTarget = word_num(input, "height", &target) || word_num(input, "above", &target);
+      double u0 = v[0], g = 9.8, target = 0, h0 = 0;
+      bool hU = word_num(input, "speed", &u0) || word_num(input, "velocity", &u0) || word_num(input, "initialspeed", &u0);
+      bool hHeight = word_num(input, "above", &h0) || word_num(input, "height", &h0);
+      bool hTarget = hHeight;
+      if (hTarget) target = h0;
       if (!hTarget && (has(t, "above") || has(t, "height")) && nv >= 2) { target = v[1]; hTarget = true; }
+      if (has(t, "ground") || has(c, "hitsground") || has(c, "hitstheground")) {
+        if (hHeight) target = -h0;
+        else if (nv >= 2) target = hU ? -v[0] : -v[1];
+        hTarget = true;
+      }
       if (hTarget && !near_num(target, u0)) {
         double disc = u0*u0 - 2*g*target;
         int n = add(out, 0, "Use vertical SUVAT with upward positive.");
@@ -1735,6 +1776,23 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if (has(t, "force") && !has(t, "plane") && !has(t, "rough") && !has(t, "acceleration") &&
       (has(t, "horizontal") || has(t, "vertical") || has(t, "component")) && nv >= 2) {
     sprintf(cmd, "resolve(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
+  }
+  if ((has(t, "rough") || has(t, "friction")) && (has(t, "plane") || has(t, "inclined") || has(t, "incline")) &&
+      (has(t, "equilibrium") || has(t, "held")) && (has(t, "reaction") || has(t, "normal") || has(t, "friction")) && nv >= 3) {
+    double m=0, F=0, ang=0;
+    bool hm = label_num(input,"mass",&m) || word_num(input,"mass",&m);
+    bool hF = label_num(input,"force",&F) || word_num(input,"force",&F);
+    bool hA = label_num(input,"angle",&ang) || word_num(input,"angle",&ang) || prev_word_num(input,"degrees",&ang);
+    if (!hm) m = v[0];
+    if (!hF) F = nv > 2 ? v[2] : 0;
+    if (!hA) ang = nv > 1 ? v[1] : 0;
+    double down = m*9.8*deg_sine(ang), R = m*9.8*deg_cosine(ang), fr = down - F;
+    int n = add(out, 0, "Resolve parallel and perpendicular to the inclined plane.");
+    n = add(out, n, "Normal reaction: R = mg cos(theta) = %.6g*9.8 cos(%.6g) = %.10g N", m, ang, R);
+    n = add(out, n, "Down-slope component: mg sin(theta) = %.6g*9.8 sin(%.6g) = %.10g N", m, ang, down);
+    n = add(out, n, "Equilibrium along the plane: force + friction = mg sin(theta).");
+    if (fr >= 0) return add(out, n, "friction = %.10g - %.10g = %.10g N up the plane", down, F, fr);
+    return add(out, n, "friction = %.10g - %.10g = %.10g N down the plane", F, down, -fr);
   }
   if (has(t, "horizontal") && (has(t, "plane") || has(t, "rough") || has(t, "smooth")) &&
       (has(t, "acceleration") || has(t, "accelerate")) && nv >= 2) {
@@ -2060,6 +2118,29 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       return eval_stats(cmd, out);
     }
   }
+  if ((has(t, "hypothesis") || has(t, "significance") || has(t, "test")) &&
+      (has(t, "percent") || has(t, "proportion") || has(t, "percentage")) &&
+      (has(t, "proportion") || has(t, "percentage") || has(t, "prefer") || has(t, "customers") || has(t, "success")) &&
+      (has(t, "sample") || has(t, "customers") || has(t, "people") || has(t, "students")) && nv >= 4) {
+    double rawp = -1, alpha = 0.05, N = -1, x = -1;
+    prev_word_num(input, "percent", &rawp);
+    if (rawp < 0) for (int i = 0; i < nv; ++i) if (v[i] > 0 && v[i] < 100) { rawp = v[i]; break; }
+    for (int i = 0; i < nv; ++i) if (v[i] > 0 && v[i] <= 10) alpha = v[i] / 100.0;
+    for (int i = 0; i < nv; ++i) {
+      if (near_num(v[i], rawp) || near_num(v[i], alpha*100)) continue;
+      if (v[i] > N) N = v[i];
+    }
+    for (int i = 0; i < nv; ++i) {
+      if (near_num(v[i], rawp) || near_num(v[i], alpha*100) || near_num(v[i], N)) continue;
+      x = v[i]; break;
+    }
+    if (rawp > 0 && rawp < 100 && N >= 1 && x >= 0) {
+      double pv = rawp / 100.0;
+      double htail = (has(t, "increase") || has(t, "increased") || has(t, "greater") || has(t, "more") || x > N*pv) ? 1.0 : -1.0;
+      sprintf(cmd, "hypbinom(%d,%.10g,%d,%.10g,%.0f)", (int)N, pv, (int)x, alpha, htail);
+      return eval_stats(cmd, out);
+    }
+  }
   if ((has(t, "probability") || has(t, "chance")) && nv >= 3 &&
       (has(t, "sample") || has(t, "trials") || has(t, "success") || has(t, "faulty"))) {
     double pv=-1, N=-1, x=-1;
@@ -2094,6 +2175,26 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
                (!has(t, "percentile") && label_num(input,"p",&area));
     double tail = (has(t, "twotailed") || has(t, "twosided") || (has(t, "two") && (has(t, "tailed") || has(t, "sided"))) || has(t, "different") || has(t, "notequal")) ? 0 :
                   (has(t, "upper") || has(t, "greater") || has(t, "more") ? 1 : -1);
+    if ((has(t, "total") || has(t, "sum")) && hMu && hSig &&
+        (has(t, "probability") || has(t, "find"))) {
+      double count=0, bound=0;
+      bool hCount = prev_word_num(input, "bags", &count) || prev_word_num(input, "items", &count) ||
+                    prev_word_num(input, "values", &count) || word_num(input, "n", &count);
+      for (int i = 0; i < nv; ++i) {
+        if (near_num(v[i], mu) || near_num(v[i], sig) || (hCount && near_num(v[i], count))) continue;
+        bound = v[i];
+      }
+      if (hCount && bound != 0) {
+        double smu = count * mu, ssig = sig * root(count);
+        int n = add(out, 0, "For a total of independent normal variables, add means and variances.");
+        n = add(out, n, "T ~ N(n*mu, n*sigma^2).");
+        n = add(out, n, "mean = %.6g*%.6g = %.10g", count, mu, smu);
+        n = add(out, n, "sd = sqrt(%.6g)*%.6g = %.10g", count, sig, ssig);
+        n = add(out, n, "z = (%.6g-%.10g)/%.10g = %.10g", bound, smu, ssig, (bound-smu)/ssig);
+        if (tail > 0) return add(out, n, "Use NormalCD(lower=%.6g, upper=1E99, sigma=%.10g, mu=%.10g)", bound, ssig, smu);
+        return add(out, n, "Use NormalCD(lower=-1E99, upper=%.6g, sigma=%.10g, mu=%.10g)", bound, ssig, smu);
+      }
+    }
     if (has(t, "sample") && has(t, "mean") && hMu && hSig && hN &&
         (has(t, "probability") || has(t, "find")) && !has(t, "hypothesis") && !has(t, "test")) {
       double bound = 0; bool hb = false;
