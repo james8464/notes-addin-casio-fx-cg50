@@ -1,5 +1,32 @@
 # Checkpoint
 
+## 2026-06-12 Fair-Die Normal Approximation Slice
+
+Completed:
+- Added CASP3 free-text support for fair six-sided die normal-approximation prompts.
+- The parser now infers `X~B(n,1/6)` from die/dice wording, applies the requested tail, and emits continuity-correction working.
+- Added regression and rebuilt calculator files.
+
+Evidence:
+- Targeted probe `A fair six sided die is rolled 60 times... P(X >= 18)`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 350168 bytes`
+  - `CSCALC.g3a: 213020 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Stayed inside CASP3 free-text working support and generated calculator outputs.
+- Did not touch CAS Pure behavior, CSCALC source, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for further source/probe-driven hardening.
+
 ## 2026-06-12 Beam Lists, Histogram Triples, Image Depth, And Latency Slice
 
 Completed:

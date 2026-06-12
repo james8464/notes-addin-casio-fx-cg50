@@ -4219,6 +4219,28 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       return eval_stats(cmd, out);
     }
   }
+  if ((has(t, "die") || has(t, "dice")) &&
+      (has(t, "approx") || has(t, "approximation") || has(t, "distributional") || has(t, "normal")) &&
+      nv >= 2) {
+    double N = 0, x = -1, pv = 1.0 / 6.0;
+    bool hN = prev_word_num(input, "times", &N) || prev_word_num(input, "rolls", &N) ||
+              prev_word_num(input, "rolled", &N);
+    if (!hN) {
+      for (int i = 0; i < nv; ++i) if (v[i] > N && !near_num(v[i], 6)) N = v[i];
+    }
+    for (int i = 0; i < nv; ++i) {
+      if (near_num(v[i], N) || near_num(v[i], 6)) continue;
+      x = v[i];
+    }
+    if (N >= 1 && x >= 0) {
+      int tail = prob_tail(c, t);
+      double lo = tail < 0 ? 0 : x, hi = tail < 0 ? x : N;
+      if (tail == 2) lo = x + 1;
+      if (tail == -2) hi = x - 1;
+      sprintf(cmd, "binomnorm(%d,%.10g,%.10g,%.10g)", (int)N, pv, lo, hi);
+      return eval_stats(cmd, out);
+    }
+  }
   if ((has(t, "approx") || has(t, "approximation") || has(t, "distributional")) && nv >= 2) {
     double pv = -1, rawp = -1, N = -1;
     if (label_num(input, "p", &pv) || label_num(input, "probability", &pv) ||

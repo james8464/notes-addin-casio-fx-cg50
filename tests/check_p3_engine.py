@@ -214,6 +214,7 @@ def main():
     require("Find the critical region for X~B(30,0.25) at 1 percent significance, upper tail.", ["alpha = 0.01", "critical region: X >= 14"])
     require("normal approximation X~B(200,0.1) find P(X<=25)", ["Use normal approximation", "25.5", "NormalCD"])
     require("Normal approximation to B(80,0.35), find P(25<=X<=35)", ["Use normal approximation", "24.5 < Y < 35.5", "NormalCD"])
+    require("A fair six sided die is rolled 60 times. Use a normal approximation to estimate P(X >= 18) where X is number of sixes.", ["Use normal approximation to X ~ B(60, 0.166667)", "mu = np = 10", "use 17.5 < Y < 60.5"])
     require("A shop owner knows 12% of customers buy ready salted crisps. On a day 65 customers bought crisps. Using a distributional approximation find the probability that more than 9 bought ready salted.", ["Poisson approximation", "lambda = np", "Use P(Y>9)"])
     require("60 rose bushes are planted and probability 0.25 exceeds 2 metres. Using a distributional approximation find the probability that more than 13 but no more than 18 exceed 2 metres.", ["Use normal approximation", "13.5 < Y < 18.5"])
     require("In a university 39% of students are female. A random sample of 80 is selected. Use a distributional approximation to find the probability that more than half are female.", ["Use normal approximation", "40.5 < Y < 80.5"])
