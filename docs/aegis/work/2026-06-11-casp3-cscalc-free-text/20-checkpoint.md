@@ -1,5 +1,32 @@
 # Checkpoint
 
+## 2026-06-12 DAC Resolution And Coded Variance Slice
+
+Completed:
+- Added CSCALC DAC voltage-resolution free-text support by sharing the generic ADC quantisation route.
+- Added CASP3 coded-data variance working for both X-from-Y and Y-from-X prompts.
+- Kept the changes minimal: no Pure CAS, menu, UI, or NOTES changes.
+- Rebuilt calculator-ready outputs.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 362140 bytes`
+  - `CSCALC.g3a: 219064 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Stayed inside CASP3/CSCALC free-text working support and generated calculator outputs.
+- Avoided broad deletion/refactor at finalisation stage because the tested breadth depends on the current generic route set.
+- Active goal remains open for future unseen-case hardening.
+
 ## 2026-06-12 Final PMCC, Mean Update, Boolean, And CPU Timing Slice
 
 Completed:

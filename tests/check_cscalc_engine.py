@@ -255,6 +255,7 @@ def main():
     require("What is the subnet mask for /27?", ["27 network bits", "subnet mask = 255.255.255.224"])
     require("Calculate the average memory access time if cache hit rate is 0.92 cache time 5 ns and main memory time 80 ns.", ["miss rate = 1 - 0.92 = 0.08", "AMAT = 0.92*5 + 0.08*80", "= 11 ns"])
     require("A 12 bit ADC records values from 0 to 5V. What is the resolution in volts?", ["number of levels = 2^12 = 4096", "resolution = 5/4096 = 0.001220703125 V"])
+    require("A 4-bit DAC has output range 0 to 5 volts. Calculate the resolution.", ["DAC resolution = output voltage range", "number of levels = 2^4 = 16", "resolution = 5/16 = 0.3125 V"])
     require("compress(1200,300)", ["ratio = 4", "percentage reduction = 75"])
     require("compression compressed=300 original=1200", ["ratio = 4", "percentage reduction = 75"])
     require("A file is compressed from 80 MB to 25 MB. Calculate the compression ratio and percentage reduction.", ["Compression ratio", "percentage reduction = 68.75"])

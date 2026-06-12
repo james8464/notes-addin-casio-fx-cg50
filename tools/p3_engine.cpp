@@ -5203,6 +5203,32 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     return add(out, n, "P(same colour)=%.10g/%.10g=%.10g", ways_same, ways_all, ways_all ? ways_same/ways_all : 0);
   }
   if ((has(t, "coded") || has(t, "coding") || has(c, "y=(x")) && has(t, "mean") &&
+      has(t, "variance") && nv >= 4) {
+    const char *p = strstr(c, "y=(x");
+    if (p) {
+      p += 4;
+      double A = 0, B = 1;
+      if (*p == '-') A = strtod(p + 1, (char **)&p);
+      else if (*p == '+') A = -strtod(p + 1, (char **)&p);
+      const char *div = strstr(p, ")/");
+      if (div) B = strtod(div + 2, 0);
+      double mean = v[nv - 2], var = v[nv - 1];
+      bool wants_y = strstr(c, "findmeanofy") || strstr(c, "findthemeanofy") ||
+                     strstr(c, "findmeanandvarianceofy") || strstr(c, "findthemeanandvarianceofy") ||
+                     strstr(c, "meanandvarianceofy") || strstr(c, "meanofthecoded") ||
+                     strstr(c, "codedmean");
+      int n = add(out, 0, "For coded data Y=(X-a)/b, transform mean linearly and variance by b^2.");
+      if (wants_y) {
+        n = add(out, n, "mean Y = (mean X - a)/b");
+        n = add(out, n, "mean Y = (%.6g-%.6g)/%.6g = %.10g", mean, A, B, B ? (mean-A)/B : 0);
+        return add(out, n, "variance Y = variance X / b^2 = %.6g/%.6g^2 = %.10g", var, B, B ? var/(B*B) : 0);
+      }
+      n = add(out, n, "X = a + bY");
+      n = add(out, n, "mean X = %.6g + %.6g*%.6g = %.10g", A, B, mean, A+B*mean);
+      return add(out, n, "variance X = b^2*variance Y = %.6g^2*%.6g = %.10g", B, var, B*B*var);
+    }
+  }
+  if ((has(t, "coded") || has(t, "coding") || has(c, "y=(x")) && has(t, "mean") &&
       (has(t, "sd") || has(t, "standarddeviation") || (has(t, "standard") && has(t, "deviation"))) && nv >= 4) {
     if (!coded_cmd_from_text(c, v, nv, cmd, sizeof(cmd))) {
       if (has(c, "y=(x-") || has(c, "y=(x+")) sprintf(cmd, "uncode(%.10g,%.10g,%.10g,%.10g)", v[2], v[3], -v[0], v[1]);

@@ -3822,7 +3822,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       return add(out, n, "= %.10g ns", ans);
     }
   }
-  if (has(t, "adc") && (has(t, "resolution") || has(t, "volts") || has(t, "voltage")) && nv >= 2) {
+  if ((has(t, "adc") || has(t, "dac")) && (has(t, "resolution") || has(t, "volts") || has(t, "voltage")) && nv >= 2) {
     double bitsw=0; bool hb = scan_before_word_num(t, "bit", &bitsw) || scan_before_word_num(t, "bits", &bitsw);
     if (!hb) bitsw = v[0];
     double lo = 0, hi = 0;
@@ -3830,7 +3830,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     if (nv >= 3 && d0 < 1e-9) { lo = v[1]; hi = v[2]; }
     else { hi = v[nv-1]; }
     double levels = pow2((int)bitsw), res = (hi - lo) / levels;
-    int n = add(out, 0, "ADC resolution = input voltage range / number of levels.");
+    int n = add(out, 0, has(t, "dac") ? "DAC resolution = output voltage range / number of levels." : "ADC resolution = input voltage range / number of levels.");
     n = add(out, n, "number of levels = 2^%d = %.10g", (int)bitsw, levels);
     n = add(out, n, "voltage range = %.10g - %.10g = %.10g V", hi, lo, hi-lo);
     return add(out, n, "resolution = %.10g/%.10g = %.10g V", hi-lo, levels, res);

@@ -413,6 +413,8 @@ def main():
     require("Given coded data y=(x-20)/5 has mean 3 and standard deviation 2. Find the mean and sd of x.", ["Y=(X-a)/b", "mean X = 20 + 5*3 = 35", "standard deviation X"])
     require("A random sample of 50 has coded variable y=(x-12)/3. The mean of y is 4 and standard deviation of y is 1.5. Find mean and standard deviation of x.", ["Y=(X-a)/b", "mean X = 12 + 3*4 = 24", "standard deviation X = |b|*standard deviation Y = 3*1.5 = 4.5"])
     require("Find the mean and sd of y when y=(x-10)/2, mean of x is 30 and standard deviation of x is 6.", ["For coded data Y=(X-a)/b", "mean Y = (30-10)/2 = 10", "sd Y = sd X/|b| = 6/2 = 3"])
+    require("Given y=(x-20)/5 has mean 3 and variance 4. Find the mean and variance of x.", ["transform mean linearly and variance by b^2", "mean X = 20 + 5*3 = 35", "variance X = b^2*variance Y = 5^2*4 = 100"])
+    require("Find the mean and variance of y when y=(x-10)/2, mean of x is 30 and variance of x is 36.", ["mean Y = (30-10)/2 = 10", "variance Y = variance X / b^2 = 36/2^2 = 9"])
     require("The mean of 10 values is 23. One value 18 is removed. Find the new mean.", ["old total = 10*23 = 230", "new total = 230 - 18 = 212", "new mean = 212/9 = 23.55555556"])
     require("code(35,10,20,5)", ["For coded data Y=(X-a)/b", "mean Y = (35-20)/5 = 3", "sd Y = sd X/|b| = 10/5 = 2"])
     require("A particle of mass 3kg is pulled up a smooth plane inclined at 20 degrees by a force 30N parallel to the plane. Find acceleration.", ["Smooth inclined plane", "Resultant up the plane", "6.648"])
