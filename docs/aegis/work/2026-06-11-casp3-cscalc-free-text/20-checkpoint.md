@@ -1,5 +1,26 @@
 # Checkpoint
 
+## 2026-06-12 CSCALC Explicit Tree Traversal Slice
+
+Completed:
+- Added explicit binary-tree traversal commands using `root,node,left,right` triples.
+- Supports `preordertree(...)`, `inordertree(...)`, and `postordertree(...)`.
+- Free-text tree prompts with root/left/right/triple wording now route to explicit child-link traversal instead of assuming complete level order.
+- Kept existing complete-tree level-order traversal unchanged.
+- Added regression tests for direct and free-text diagram-style inputs.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CSCALC AQA Paper 2 algorithm/trace working support.
+- Did not touch CAS Pure behavior, CASP3 behavior, NOTES, or shared UI/status code.
+
 ## 2026-06-12 CSCALC FSM Trace Slice
 
 Completed:

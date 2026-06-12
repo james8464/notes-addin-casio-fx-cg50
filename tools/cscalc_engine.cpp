@@ -278,7 +278,7 @@ static bool make_rpn_cmd(const char *in, char *cmd, int cap) {
 static bool make_ds_cmd(const char *in, const char *name, char *cmd, int cap) {
   char t[192]; raw_clean(in, t, sizeof(t));
   int p = sprintf(cmd, "%s(", name), count = 0;
-  for (int i = 0; t[i] && p < cap - 16;) {
+  for (int i = 0; t[i] && count < 32;) {
     while (t[i] == ',') ++i;
     char w[20]; int j = 0;
     while (t[i] && t[i] != ',' && j + 1 < (int)sizeof(w)) w[j++] = t[i++];
@@ -299,22 +299,33 @@ static bool tree_skip_word(const char *w) {
          word_is(w, "nodes") || word_is(w, "node") || word_is(w, "level") ||
          word_is(w, "order") || word_is(w, "preorder") || word_is(w, "pre") ||
          word_is(w, "inorder") || word_is(w, "in") || word_is(w, "postorder") ||
-         word_is(w, "post") || word_is(w, "binary");
+         word_is(w, "post") || word_is(w, "binary") || word_is(w, "root") ||
+         word_is(w, "left") || word_is(w, "right") || word_is(w, "child") ||
+         word_is(w, "children") || word_is(w, "edge") || word_is(w, "edges") ||
+         word_is(w, "triple") || word_is(w, "triples");
 }
 
 static bool make_tree_cmd(const char *in, const char *name, char *cmd, int cap) {
   char t[192]; raw_clean(in, t, sizeof(t));
-  int p = sprintf(cmd, "%s(", name), count = 0;
-  for (int i = 0; t[i] && p < cap - 16;) {
+  char tok[32][16]; int count = 0;
+  for (int i = 0; t[i] && count < 32;) {
     while (t[i] == ',') ++i;
     char w[16]; int j = 0;
     while (t[i] && t[i] != ',' && j + 1 < (int)sizeof(w)) w[j++] = t[i++];
     w[j] = 0;
     if (!w[0] || tree_skip_word(w)) continue;
-    if (count++) cmd[p++] = ',';
-    p += sprintf(cmd + p, "%s", w);
+    if (count < 32) strcpy(tok[count++], w);
   }
-  if (count < 1 || p >= cap - 2) return false;
+  if (count < 1) return false;
+  bool explicit_shape = has(t, "root") || has(t, "left") || has(t, "right") ||
+                        has(t, "child") || has(t, "children") || has(t, "edge");
+  int p = explicit_shape && count >= 4 && ((count - 1) % 3) == 0 ?
+          sprintf(cmd, "%stree(", name) : sprintf(cmd, "%s(", name);
+  for (int i = 0; i < count && p < cap - 16; ++i) {
+    if (i) cmd[p++] = ',';
+    p += sprintf(cmd + p, "%s", tok[i]);
+  }
+  if (p >= cap - 2) return false;
   cmd[p++] = ')'; cmd[p] = 0;
   return true;
 }
@@ -683,6 +694,24 @@ static void tree_walk(char a[][48], int n, int i, int mode, char *buf, int *p, i
   if (mode == 2) token_add(buf, p, cap, a[i]);
 }
 
+static bool tree_null(const char *s) {
+  return !s[0] || word_is(s, "none") || word_is(s, "nil") || word_is(s, "null") || word_is(s, "-");
+}
+
+static int tree_find(char node[][48], int n, const char *s) {
+  for (int i = 0; i < n; ++i) if (strcmp(node[i], s) == 0) return i;
+  return -1;
+}
+
+static void tree_walk_links(char node[][48], int left[], int right[], int n, int i, int mode, char *buf, int *p, int cap) {
+  if (i < 0 || i >= n) return;
+  if (mode == 0) token_add(buf, p, cap, node[i]);
+  tree_walk_links(node, left, right, n, left[i], mode, buf, p, cap);
+  if (mode == 1) token_add(buf, p, cap, node[i]);
+  tree_walk_links(node, left, right, n, right[i], mode, buf, p, cap);
+  if (mode == 2) token_add(buf, p, cap, node[i]);
+}
+
 static int graph_node(char nodes[], int *nn, const char *s) {
   char c = 0;
   for (int i = 0; s[i]; ++i) if (isalnum((unsigned char)s[i])) { c = (char)tolower((unsigned char)s[i]); break; }
@@ -773,6 +802,34 @@ static int eval_trace(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]
     char path[40] = ""; path_text(nodes, prev, target, path, sizeof(path));
     n = add(out, n, "shortest path: %s", path);
     return add(out, n, "distance = %lld", dist[target]);
+  }
+  if ((starts3(s, "preordertree(", "treeprelinks(", "prelinks(") ||
+       starts3(s, "inordertree(", "treeinlinks(", "inlinks(") ||
+       starts3(s, "postordertree(", "treepostlinks(", "postlinks(")) && na >= 4) {
+    int mode = 2;
+    if (starts3(s, "preordertree(", "treeprelinks(", "prelinks(")) mode = 0;
+    else if (starts3(s, "inordertree(", "treeinlinks(", "inlinks(")) mode = 1;
+    const char *name = mode == 0 ? "Pre-order" : mode == 1 ? "In-order" : "Post-order";
+    const char *rule = mode == 0 ? "root, left, right" : mode == 1 ? "left, root, right" : "left, right, root";
+    if ((na - 1) % 3 != 0) return add(out, 0, "Use root,node,left,right triples.");
+    char node[12][48]; int left[12], right[12], nc = 0;
+    for (int i = 1; i + 2 < na && nc < 12; i += 3) {
+      strcpy(node[nc], a[i]); left[nc] = right[nc] = -1; ++nc;
+    }
+    for (int i = 1, j = 0; i + 2 < na && j < nc; i += 3, ++j) {
+      if (!tree_null(a[i + 1])) left[j] = tree_find(node, nc, a[i + 1]);
+      if (!tree_null(a[i + 2])) right[j] = tree_find(node, nc, a[i + 2]);
+      if ((!tree_null(a[i + 1]) && left[j] < 0) || (!tree_null(a[i + 2]) && right[j] < 0)) {
+        return add(out, 0, "Every child must also have a node triple.");
+      }
+    }
+    int root = tree_find(node, nc, a[0]);
+    if (root < 0) return add(out, 0, "Root must match one node triple.");
+    char result[96] = ""; int p = 0; tree_walk_links(node, left, right, nc, root, mode, result, &p, sizeof(result));
+    int n = add(out, 0, "Use explicit binary-tree links: node,left,right.");
+    n = add(out, n, "root = %s", a[0]);
+    n = add(out, n, "%s traversal uses %s.", name, rule);
+    return add(out, n, "%s: %s", name, result);
   }
   if ((starts3(s, "preorder(", "treepre(", "pretraverse(") ||
        starts3(s, "inorder(", "treein(", "intraverse(") ||
