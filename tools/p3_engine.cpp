@@ -319,6 +319,29 @@ static int eval_mech(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     int n = add(out, 0, "Power = work done / time.");
     return add(out, n, "P = %.6g/%.6g = %.6g W", w, t, w/t);
   }
+  if (starts3(s, "varacct(", "varacctpoly(", "variableacct(") && na >= 5) {
+    double u=num(a[0]), c0=num(a[1]), c1=num(a[2]), c2=num(a[3]), t=num(a[4]), s0=na>5?num(a[5]):0;
+    double v = u + c0*t + c1*t*t/2 + c2*t*t*t/3;
+    double dist = s0 + u*t + c0*t*t/2 + c1*t*t*t/6 + c2*t*t*t*t/12;
+    int n = add(out, 0, "Variable acceleration with a(t)=c0+c1t+c2t^2.");
+    n = add(out, n, "v = u + integral a(t) dt");
+    n = add(out, n, "v = %.6g + %.6g t + (%.6g/2)t^2 + (%.6g/3)t^3", u, c0, c1, c2);
+    n = add(out, n, "at t=%.6g, v = %.10g", t, v);
+    n = add(out, n, "s = s0 + integral v(t) dt");
+    n = add(out, n, "s = %.6g + %.6g t + (%.6g/2)t^2 + (%.6g/6)t^3 + (%.6g/12)t^4", s0, u, c0, c1, c2);
+    return add(out, n, "at t=%.6g, s = %.10g", t, dist);
+  }
+  if (starts3(s, "varaccx(", "varaccxpoly(", "variableaccx(") && na >= 5) {
+    double u=num(a[0]), c0=num(a[1]), c1=num(a[2]), c2=num(a[3]), x=num(a[4]), x0=na>5?num(a[5]):0;
+    double F = c0*(x-x0) + c1*(x*x-x0*x0)/2 + c2*(x*x*x-x0*x0*x0)/3;
+    double vv = u*u + 2*F, v = vv >= 0 ? root(vv) : 0;
+    int n = add(out, 0, "Variable acceleration with a(x)=c0+c1x+c2x^2.");
+    n = add(out, n, "Use a = v dv/dx, so integrate v dv = integrate a(x) dx.");
+    n = add(out, n, "1/2(v^2-u^2) = integral from %.6g to %.6g of a(x) dx", x0, x);
+    n = add(out, n, "integral = %.6g(x-x0)+(%.6g/2)(x^2-x0^2)+(%.6g/3)(x^3-x0^3)", c0, c1, c2);
+    n = add(out, n, "v^2 = %.6g^2 + 2*(%.10g)", u, F);
+    return add(out, n, "v = %.10g", v);
+  }
   if (starts3(s, "energy(", "kepe(", "workenergy(") && na >= 2) {
     double m=num(a[0]), v=num(a[1]), h=na>2?num(a[2]):0, g=na>3?num(a[3]):9.8;
     int n = add(out, 0, "Use mechanical energy formulae.");
@@ -711,6 +734,20 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   char c[192]; clean(input, c, sizeof(c));
   double v[8]; int nv = scan_nums(t, v, 8);
   char cmd[160];
+  if (has(t, "variable") && has(t, "acceleration")) {
+    double u=0,c0=0,c1=0,c2=0,time=0,x=0,x0=0,s0=0;
+    bool hu=label_num(input,"u",&u), h0=label_num(input,"c0",&c0), h1=label_num(input,"c1",&c1), h2=label_num(input,"c2",&c2);
+    if (hu && h0 && h1 && h2 && label_num(input,"t",&time)) {
+      bool hs0 = label_num(input,"s0",&s0);
+      sprintf(cmd, "varacct(%.10g,%.10g,%.10g,%.10g,%.10g,%.10g)", u, c0, c1, c2, time, hs0 ? s0 : 0);
+      return eval_mech(cmd, out);
+    }
+    if (hu && h0 && h1 && h2 && label_num(input,"x",&x)) {
+      bool hx0 = label_num(input,"x0",&x0);
+      sprintf(cmd, "varaccx(%.10g,%.10g,%.10g,%.10g,%.10g,%.10g)", u, c0, c1, c2, x, hx0 ? x0 : 0);
+      return eval_mech(cmd, out);
+    }
+  }
   if (has(t, "suvat") || has(t, "velocity") || has(t, "acceleration") || has(t, "distance") || has(t, "displacement") || has(t, "time")) {
     double u=0, vv=0, acc=0, dist=0, time=0; bool hu=label_num(input,"u",&u), hv=label_num(input,"v",&vv), ha=label_num(input,"a",&acc), hs=label_num(input,"s",&dist), ht=label_num(input,"t",&time);
     if (hu || hv || ha || hs || ht) {
