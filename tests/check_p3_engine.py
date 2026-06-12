@@ -81,6 +81,8 @@ def main():
     require("plane(5,30,0.2)", ["parallel = mg sin", "friction"])
     require("inclineacc(5,30,0.2)", ["Resolve along and perpendicular", "F=ma", "friction = mu R", "a = F/m"])
     require("rough plane acceleration mass 5 angle 30 mu 0.2", ["Resolve along and perpendicular", "net force down plane", "m/s^2"])
+    require("particle on rough inclined plane mass 5 coefficient friction 0.2 angle 30 find acceleration", ["Resolve along and perpendicular", "friction = mu R", "a = F/m"])
+    require("rough plane mass 5 coefficient friction 0.2 angle 30", ["Resolve along and perpendicular", "friction = mu R", "a = F/m"])
     require("connected(2,3,10)", ["one system", "a = 2", "tension"])
     require("connected particles mass 2 mass 3 force 10", ["one system", "a = 2", "tension"])
     require("pulley(2,3)", ["same acceleration", "T ="])

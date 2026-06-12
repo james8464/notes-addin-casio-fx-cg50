@@ -1305,17 +1305,31 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if (has(t, "weight") && nv >= 1) {
     sprintf(cmd, "weight(%.10g)", v[0]); return eval_mech(cmd, out);
   }
+  if ((has(t, "incline") || has(t, "slope") || has(t, "plane")) && (has(t, "acceleration") || has(t, "accelerate") || has(t, "rough")) && nv >= 3) {
+    double m=0, ang=0, mu=0;
+    bool hm=label_num(input,"mass",&m) || word_num(input,"mass",&m) || label_num(input,"m",&m);
+    bool ha=label_num(input,"angle",&ang) || word_num(input,"angle",&ang) || label_num(input,"theta",&ang);
+    bool hmu=label_num(input,"mu",&mu) || word_num(input,"mu",&mu) || word_num(input,"friction",&mu) || label_num(input,"coefficient",&mu);
+    if (hm && ha && hmu) sprintf(cmd, "inclineacc(%.10g,%.10g,%.10g)", m, ang, mu);
+    else if (nv >= 3 && v[1] > 0 && v[1] < 1.5 && v[2] > 1.5) sprintf(cmd, "inclineacc(%.10g,%.10g,%.10g)", v[0], v[2], v[1]);
+    else sprintf(cmd, "inclineacc(%.10g,%.10g,%.10g)", v[0], v[1], v[2]);
+    return eval_mech(cmd, out);
+  }
+  if ((has(t, "incline") || has(t, "slope") || has(t, "plane")) && nv >= 2) {
+    double m=0, ang=0, mu=0;
+    bool hm=label_num(input,"mass",&m) || word_num(input,"mass",&m) || label_num(input,"m",&m);
+    bool ha=label_num(input,"angle",&ang) || word_num(input,"angle",&ang) || label_num(input,"theta",&ang);
+    bool hmu=label_num(input,"mu",&mu) || word_num(input,"mu",&mu) || word_num(input,"friction",&mu) || label_num(input,"coefficient",&mu);
+    if (hm && ha) sprintf(cmd, "incline(%.10g,%.10g,%.10g)", m, ang, hmu ? mu : 0);
+    else if (nv >= 3 && v[1] > 0 && v[1] < 1.5 && v[2] > 1.5) sprintf(cmd, "incline(%.10g,%.10g,%.10g)", v[0], v[2], v[1]);
+    else sprintf(cmd, "incline(%.10g,%.10g,%.10g)", v[0], v[1], nv > 2 ? v[2] : 0);
+    return eval_mech(cmd, out);
+  }
   if ((has(t, "friction") || has(t, "coefficientoffriction")) && nv >= 2) {
     sprintf(cmd, "friction(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
   }
   if (has(t, "moment") && !has(t, "momentum") && nv >= 2) {
     sprintf(cmd, "moment(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
-  }
-  if ((has(t, "incline") || has(t, "slope") || has(t, "plane")) && (has(t, "acceleration") || has(t, "accelerate") || has(t, "rough")) && nv >= 3) {
-    sprintf(cmd, "inclineacc(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_mech(cmd, out);
-  }
-  if ((has(t, "incline") || has(t, "slope") || has(t, "plane")) && nv >= 2) {
-    sprintf(cmd, "incline(%.10g,%.10g,%.10g)", v[0], v[1], nv > 2 ? v[2] : 0); return eval_mech(cmd, out);
   }
   if ((has(t, "pulley") || has(t, "connectedparticles") || (has(t, "connected") && has(t, "particle"))) && nv >= 2) {
     sprintf(cmd, has(t, "pulley") ? "pulley(%.10g,%.10g)" : "connected(%.10g,%.10g,%.10g)", v[0], v[1], nv > 2 ? v[2] : 0); return eval_mech(cmd, out);

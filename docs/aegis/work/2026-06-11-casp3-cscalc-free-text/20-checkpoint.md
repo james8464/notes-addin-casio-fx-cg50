@@ -1,5 +1,24 @@
 # Checkpoint
 
+## 2026-06-12 CASP3 Rough Plane Free-Text Slice
+
+Completed:
+- Fixed rough inclined-plane prompts being stolen by the generic friction route.
+- Added label/word parsing for `mass`, `angle`, `mu`, and coefficient/friction wording.
+- Added a fallback for common exam wording where coefficient appears before angle.
+- Added regression tests and rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CASP3 Edexcel Paper 3 mechanics free-text support.
+- Did not touch CAS Pure behavior, CSCALC logic, NOTES, or shared UI/status code.
+
 ## 2026-06-12 CSCALC BCD And Spaced Binary Arithmetic Slice
 
 Completed:
