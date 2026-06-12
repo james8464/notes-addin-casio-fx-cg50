@@ -1,5 +1,24 @@
 # Checkpoint
 
+## 2026-06-12 CASP3 Mechanics And Binomial Prose Slice
+
+Completed:
+- Fixed SUVAT prose like `accelerates from rest to 30 m/s in 12 seconds` by inferring final speed from `from rest to`.
+- Added symbolic variable-acceleration working for prompts like `a=6t-4 ... find v and s` with initial velocity and position.
+- Fixed binomial `less than or equal to` tail parsing so it routes to `P(X<=r)`, not `P(X<r)`.
+- Added regression tests and rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CASP3 Paper 3 free-text support.
+- Did not touch CAS Pure behavior, CSCALC logic beyond previous committed slice, NOTES, menus, or shared UI/status code.
+
 ## 2026-06-12 CSCALC Storage Routing Hardening Slice
 
 Completed:

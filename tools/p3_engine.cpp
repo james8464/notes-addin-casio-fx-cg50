@@ -1170,7 +1170,19 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       return eval_mech(cmd, out);
     }
   }
-  if (!has(t, "variable") && (has(t, "suvat") || has(t, "velocity") || has(t, "acceleration") || has(t, "distance") || has(t, "displacement") || has(t, "time"))) {
+  if ((has(t, "acceleration") || has(t, "accn")) && has(t, "t") &&
+      (has(t, "initial") || has(t, "initially")) && (has(c, "findv") || has(c, "findvelocity") || has(c, "findvand")) &&
+      nv >= 3) {
+    double k = v[0], c0 = v[1], u = v[2], s0 = nv > 3 ? v[3] : 0;
+    int n = add(out, 0, "Given a = %.6g t %+.6g, integrate to get velocity.", k, c0);
+    n = add(out, n, "v = integral(a) dt = 1/2*%.6g*t^2 %+.6g*t + C", k, c0);
+    n = add(out, n, "initial velocity gives C = %.6g", u);
+    n = add(out, n, "v = %.6g*t^2 %+.6g*t %+.6g", 0.5*k, c0, u);
+    n = add(out, n, "s = integral(v) dt = %.6g*t^3 %+.6g*t^2 %+.6g*t + C", k/6.0, 0.5*c0, u);
+    n = add(out, n, "initial position gives C = %.6g", s0);
+    return add(out, n, "s = %.6g*t^3 %+.6g*t^2 %+.6g*t %+.6g", k/6.0, 0.5*c0, u, s0);
+  }
+  if (!has(t, "variable") && (has(t, "suvat") || has(t, "velocity") || has(t, "acceleration") || has(t, "accelerates") || has(t, "accelerated") || has(t, "distance") || has(t, "displacement") || has(t, "time"))) {
     double u=0, vv=0, acc=0, dist=0, time=0;
     bool hu=label_num(input,"u",&u) || label_num(input,"initialvelocity",&u) || label_num(input,"initialspeed",&u) ||
             word_num(input,"initialvelocity",&u) || word_num(input,"initialspeed",&u);
@@ -1184,6 +1196,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
             word_num(input,"time",&time) || word_num(input,"for",&time) || word_num(input,"in",&time);
     bool rest = has(c, "fromrest");
     if (!hu && rest) { u = 0; hu = true; }
+    if (!hv && rest && nv >= 1 && (has(c, "fromrestto") || has(t, "speed") || has(t, "velocity") || has(t, "m,s"))) { vv = v[0]; hv = true; }
     if (ht && (has(t, "minute") || has(t, "minutes"))) time *= 60.0;
     if (ht && (has(t, "hour") || has(t, "hours"))) time *= 3600.0;
     int known = (hu?1:0) + (hv?1:0) + (ha?1:0) + (hs?1:0) + (ht?1:0);
@@ -1417,8 +1430,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       int tail = 0;
       if (has(c, "morethan")) tail = 2;
       else if (has(c, "atleast") || has(c, "greaterthanorequal")) tail = 1;
+      else if (has(c, "lessthanorequal") || has(c, "atmost")) tail = -1;
       else if (has(c, "lessthan")) tail = -2;
-      else if (has(c, "atmost")) tail = -1;
       if (tail) sprintf(cmd, "binomtail(%d,%.10g,%d,%d)", (int)N, pv, (int)x, tail);
       else sprintf(cmd, "binom(%d,%.10g,%d)", (int)N, pv, (int)x);
       return eval_stats(cmd, out);
@@ -1436,8 +1449,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     int tail = 0;
     if (has(c, "morethan")) tail = 2;
     else if (has(c, "atleast") || has(c, "greaterthanorequal")) tail = 1;
+    else if (has(c, "lessthanorequal") || has(c, "atmost") || has(t, "cdf")) tail = -1;
     else if (has(c, "lessthan")) tail = -2;
-    else if (has(c, "atmost") || has(t, "cdf")) tail = -1;
     if (hN && hP && !hX) {
       for (int i = 0; i < nv; ++i) {
         if (near_num(v[i], N) || near_num(v[i], pv)) continue;
@@ -1485,8 +1498,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       int tail = 0;
       if (has(c, "morethan")) tail = 2;
       else if (has(c, "atleast") || has(c, "greaterthanorequal")) tail = 1;
+      else if (has(c, "lessthanorequal") || has(c, "atmost")) tail = -1;
       else if (has(c, "lessthan") || has(t, "fewer")) tail = -2;
-      else if (has(c, "atmost")) tail = -1;
       if (tail) sprintf(cmd, "binomtail(%d,%.10g,%d,%d)", (int)N, pv, (int)x, tail);
       else sprintf(cmd, "binom(%d,%.10g,%d)", (int)N, pv, (int)x);
       return eval_stats(cmd, out);
