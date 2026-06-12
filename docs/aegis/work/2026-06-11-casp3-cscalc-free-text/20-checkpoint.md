@@ -1,5 +1,27 @@
 # Checkpoint
 
+## 2026-06-12 CSCALC K-map Don't-Care Slice
+
+Completed:
+- Added `kmapdc(...)`, `mintermsdc(...)`, `dcminterms(...)`, and `dontcare(...)` style parsing.
+- Added free-text parsing for K-map/minterm prompts with `dc`, `x`, `dont care`, and `don't care` rows.
+- Added shared minimisation using real 1-cells plus don't-care rows for grouping, while only requiring real 1-cells to be covered.
+- Added POS/maxterm don't-care support for zero-row grouping.
+- Output now shows 1-cell terms, don't-care rows, method guidance, and the simplified expression/POS result.
+- Added direct and free-text regression tests.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CSCALC AQA Paper 2 Boolean algebra/free-text support.
+- Did not touch CAS Pure behavior, CASP3 behavior, NOTES, or shared UI/status code.
+
 ## 2026-06-12 CSCALC Maxterm POS Slice
 
 Completed:

@@ -435,6 +435,8 @@ static bool minterm_skip_word(const char *w) {
   return word_is(w, "kmap") || word_is(w, "karnaugh") || word_is(w, "map") ||
          word_is(w, "minterm") || word_is(w, "minterms") || word_is(w, "ones") ||
          word_is(w, "maxterm") || word_is(w, "maxterms") || word_is(w, "zeros") ||
+         word_is(w, "dc") || word_is(w, "dont") || word_is(w, "don't") ||
+         word_is(w, "care") || word_is(w, "cares") ||
          word_is(w, "cells") || word_is(w, "cell") || word_is(w, "for") ||
          word_is(w, "variables") || word_is(w, "variable") || word_is(w, "vars") ||
          word_is(w, "with") || word_is(w, "simplify") || word_is(w, "boolean") ||
@@ -442,17 +444,27 @@ static bool minterm_skip_word(const char *w) {
          word_is(w, "are") || word_is(w, "at");
 }
 
+static bool minterm_dc_word(const char *w) {
+  return word_is(w, "dc") || word_is(w, "x") || word_is(w, "dont") ||
+         word_is(w, "don't") || word_is(w, "dontcare") ||
+         word_is(w, "dontcares") || word_is(w, "don'tcare") ||
+         word_is(w, "don'tcares");
+}
+
 static bool make_minterm_cmd(const char *in, char *cmd, int cap) {
   char t[192]; raw_clean(in, t, sizeof(t));
-  char vars[8] = ""; int vc = 0, mins[32], mc = 0;
+  char vars[8] = ""; int vc = 0, mins[32], mc = 0, dcs[32], dc = 0;
+  bool dcpart = false;
   for (int i = 0; t[i];) {
     while (t[i] == ',') ++i;
     char w[32]; int j = 0;
     while (t[i] && t[i] != ',' && j + 1 < (int)sizeof(w)) w[j++] = t[i++];
     w[j] = 0;
+    if (minterm_dc_word(w)) { dcpart = true; continue; }
     if (!w[0] || minterm_skip_word(w)) continue;
     if ((w[0] == '-' && isdigit((unsigned char)w[1])) || isdigit((unsigned char)w[0])) {
-      if (mc < 32) mins[mc++] = (int)parse_int(w);
+      if (dcpart) { if (dc < 32) dcs[dc++] = (int)parse_int(w); }
+      else if (mc < 32) mins[mc++] = (int)parse_int(w);
       continue;
     }
     if (j <= 6) {
@@ -477,6 +489,10 @@ static bool make_minterm_cmd(const char *in, char *cmd, int cap) {
     cmd[p++] = vars[i]; cmd[p] = 0;
   }
   for (int i = 0; i < mc && p < cap - 24; ++i) p += sprintf(cmd + p, ",%d", mins[i]);
+  if (dc && p < cap - 24) {
+    p += sprintf(cmd + p, ",dc");
+    for (int i = 0; i < dc && p < cap - 24; ++i) p += sprintf(cmd + p, ",%d", dcs[i]);
+  }
   if (p >= cap - 2) return false;
   cmd[p++] = ')'; cmd[p] = 0;
   return true;
@@ -1837,6 +1853,81 @@ static int add_bool_law_trace(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN], int n
   return n;
 }
 
+static bool int_seen(const int *v, int n, int x) {
+  for (int i = 0; i < n; ++i) if (v[i] == x) return true;
+  return false;
+}
+
+static int minimise_rows(const int *ones, int oc, const int *dcs, int dc, Imp *chosen, int maxchosen) {
+  Imp cur[128], next[128], primes[128]; int cc = 0, pc = 0;
+  for (int i = 0; i < oc && cc < 128; ++i)
+    if (!int_seen(ones, i, ones[i])) cur[cc++] = { ones[i], 0, 0 };
+  for (int i = 0; i < dc && cc < 128; ++i)
+    if (!int_seen(ones, oc, dcs[i]) && !int_seen(dcs, i, dcs[i])) cur[cc++] = { dcs[i], 0, 0 };
+  if (!oc) return 0;
+  for (;;) {
+    int nc = 0; for (int i = 0; i < cc; ++i) cur[i].used = 0;
+    for (int i = 0; i < cc; ++i) for (int j = i + 1; j < cc; ++j) {
+      if (cur[i].mask != cur[j].mask) continue;
+      int d = (cur[i].bits ^ cur[j].bits) & ~cur[i].mask;
+      if (d && (d & (d - 1)) == 0) {
+        cur[i].used = cur[j].used = 1;
+        Imp q = { cur[i].bits & ~d, cur[i].mask | d, 0 };
+        bool seen = false; for (int k = 0; k < nc; ++k) if (next[k].bits == q.bits && next[k].mask == q.mask) seen = true;
+        if (!seen && nc < 128) next[nc++] = q;
+      }
+    }
+    for (int i = 0; i < cc && pc < 128; ++i) if (!cur[i].used) primes[pc++] = cur[i];
+    if (!nc) break;
+    for (int i = 0; i < nc; ++i) cur[i] = next[i];
+    cc = nc;
+  }
+  bool covered[64] = {0}; int chc = 0;
+  while (true) {
+    int best = -1, bestc = -1;
+    for (int i = 0; i < pc; ++i) {
+      int c = 0; for (int j = 0; j < oc; ++j) if (!covered[j] && covers(primes[i], ones[j])) c++;
+      if (c > bestc || (c == bestc && best >= 0 && bitcount(primes[i].mask) > bitcount(primes[best].mask))) { bestc = c; best = i; }
+    }
+    if (bestc <= 0 || chc >= maxchosen) break;
+    chosen[chc++] = primes[best];
+    for (int j = 0; j < oc; ++j) if (covers(primes[best], ones[j])) covered[j] = true;
+  }
+  return chc;
+}
+
+static void imp_sop_list(const Imp *chosen, int chc, const char *vars, int vc, char *buf, int cap) {
+  int p = 0; buf[0] = 0;
+  for (int i = 0; i < chc; ++i) {
+    char t[32]; imp_text(chosen[i], vars, vc, t);
+    if (i) app_ch(buf, &p, cap, '+');
+    app_str(buf, &p, cap, t);
+  }
+}
+
+static void imp_pos_text(const Imp &p, const char *vars, int vc, char *buf, int cap) {
+  int pos = 0, parts = 0;
+  app_ch(buf, &pos, cap, '(');
+  for (int i = 0; i < vc; ++i) {
+    int bit = 1 << (vc - 1 - i);
+    if (p.mask & bit) continue;
+    if (parts++) app_ch(buf, &pos, cap, '+');
+    app_ch(buf, &pos, cap, vars[i]);
+    if (p.bits & bit) app_ch(buf, &pos, cap, '\'');
+  }
+  if (!parts) app_ch(buf, &pos, cap, '0');
+  app_ch(buf, &pos, cap, ')');
+}
+
+static void imp_pos_list(const Imp *chosen, int chc, const char *vars, int vc, char *buf, int cap) {
+  int p = 0; buf[0] = 0;
+  for (int i = 0; i < chc; ++i) {
+    char t[32]; imp_pos_text(chosen[i], vars, vc, t, sizeof(t));
+    if (i) app_ch(buf, &p, cap, '&');
+    app_str(buf, &p, cap, t);
+  }
+}
+
 static int eval_bool(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
   char a[2][48]; int na = args(s, a, 2);
   char exprbuf[96];
@@ -1929,15 +2020,20 @@ static void maxterm_expr(int m, const char *vars, int vc, char *buf, int cap) {
 static int eval_minterms(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
   char a[40][48]; int na = args(s, a, 40);
   bool maxmode = starts3(s, "maxterms(", "pos(", "zeros(");
-  if (!(starts3(s, "minterms(", "kmap(", "karnaugh(") || maxmode) || na < 1) return 0;
-  char vars[8] = ""; int vc = 0, mins[32], mc = 0;
+  bool dcmode = starts2(s, "kmapdc(", "mintermsdc(") || starts2(s, "dcminterms(", "dontcare(");
+  if (!(starts3(s, "minterms(", "kmap(", "karnaugh(") || maxmode || dcmode) || na < 1) return 0;
+  char vars[8] = ""; int vc = 0, mins[32], mc = 0, dcs[32], dc = 0;
+  bool dcpart = false;
   for (int i = 0; i < na; ++i) {
+    if (minterm_dc_word(a[i])) { dcpart = true; continue; }
     if (isalpha((unsigned char)a[i][0])) {
       for (int j = 0; a[i][j] && vc < 6; ++j) if (isalpha((unsigned char)a[i][j])) {
         char c = (char)toupper((unsigned char)a[i][j]);
         bool seen = false; for (int k = 0; k < vc; ++k) if (vars[k] == c) seen = true;
         if (!seen) { vars[vc++] = c; vars[vc] = 0; }
       }
+    } else if (dcpart) {
+      if (dc < 32) dcs[dc++] = (int)parse_int(a[i]);
     } else if (mc < 32) mins[mc++] = (int)parse_int(a[i]);
   }
   if (!mc) return add(out, 0, "Give minterm numbers, e.g. minterms(A,B,1,2).");
@@ -1963,6 +2059,19 @@ static int eval_minterms(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_L
       if (n < CSCALC_MAX_LINES - 6) n = add(out, n, "M%d = %s", mins[i], term);
     }
     n = add(out, n, "POS = %s", pos);
+    if (dc) {
+      char dl[80] = ""; int dp = 0;
+      for (int i = 0; i < dc; ++i) {
+        if (dcs[i] < 0 || dcs[i] >= rows) return add(out, n, "don't-care row %d is outside 0 to %d.", dcs[i], rows - 1);
+        if (i) app_ch(dl, &dp, sizeof(dl), ',');
+        app_int(dl, &dp, sizeof(dl), dcs[i]);
+      }
+      n = add(out, n, "don't-care rows: %s", dl);
+      n = add(out, n, "Use don't-cares only if they make larger zero groups.");
+      Imp chosen[32]; int chc = minimise_rows(mins, mc, dcs, dc, chosen, 32);
+      char sim[96]; imp_pos_list(chosen, chc, vars, vc, sim, sizeof(sim));
+      return add(out, n, "simplified POS = %s", chc ? sim : "1");
+    }
     char cmd[128]; sprintf(cmd, "bool(%s)", pos);
     char tmp[CSCALC_MAX_LINES][CSCALC_LINE_LEN]; int tn = eval_bool(cmd, tmp);
     for (int i = 0; i < tn && n < CSCALC_MAX_LINES; ++i) {
@@ -1984,6 +2093,20 @@ static int eval_minterms(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_L
     if (n < CSCALC_MAX_LINES - 6) n = add(out, n, "m%d = %s", mins[i], term);
   }
   n = add(out, n, "SOP = %s", sop);
+  if (dc) {
+    char dl[80] = ""; int dp = 0;
+    for (int i = 0; i < dc; ++i) {
+      if (dcs[i] < 0 || dcs[i] >= rows) return add(out, n, "don't-care row %d is outside 0 to %d.", dcs[i], rows - 1);
+      if (int_seen(mins, mc, dcs[i])) return add(out, n, "row %d cannot be both 1 and don't-care.", dcs[i]);
+      if (i) app_ch(dl, &dp, sizeof(dl), ',');
+      app_int(dl, &dp, sizeof(dl), dcs[i]);
+    }
+    n = add(out, n, "don't-care rows: %s", dl);
+    n = add(out, n, "Use don't-cares only if they make larger groups.");
+    Imp chosen[32]; int chc = minimise_rows(mins, mc, dcs, dc, chosen, 32);
+    char sim[96]; imp_sop_list(chosen, chc, vars, vc, sim, sizeof(sim));
+    return add(out, n, "simplified = %s", chc ? sim : "0");
+  }
   char cmd[112]; sprintf(cmd, "bool(%s)", sop);
   char tmp[CSCALC_MAX_LINES][CSCALC_LINE_LEN]; int tn = eval_bool(cmd, tmp);
   for (int i = 0; i < tn && n < CSCALC_MAX_LINES; ++i) {
@@ -2393,7 +2516,8 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     strcpy(cmd, tmp);
     return eval_minterms(cmd, out);
   }
-  if ((has(t, "kmap") || has(t, "karnaugh") || has(t, "minterm") || has(t, "minterms")) && make_minterm_cmd(input, cmd, sizeof(cmd))) {
+  if ((has(t, "kmap") || has(t, "karnaugh") || has(t, "minterm") || has(t, "minterms") ||
+       has(t, "dontcare") || has(t, "don'tcare") || has(t, "dc")) && make_minterm_cmd(input, cmd, sizeof(cmd))) {
     return eval_minterms(cmd, out);
   }
   if (nv == 0 && starts(compact, "nandform")) {
@@ -2450,5 +2574,5 @@ int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
   n = add(out, 0, "Supported:");
   n = add(out, n, "bin hex den convert twos twosdec twosadd twossub signmag signmagdec fixed fixedenc parity repeatenc repeatdec shift arithshift xorbits andbits orbits notbits hamming checksum checkdigit rpn");
   n = add(out, n, "floatdec floatadd floatsub floatmul floatdiv floatrange normal image sound bitrate transfer transfermb");
-  return add(out, n, "compress huffman rle records sqlselect sqlcount hashmod hashlinear addressspace chars ascii unicode stack queue preorder inorder postorder dijkstra fsm fsmout binarysearch bubblesort selectionsort mergesort bool truth minterms maxterms kmap nandform norform");
+  return add(out, n, "compress huffman rle records sqlselect sqlcount hashmod hashlinear addressspace chars ascii unicode stack queue preorder inorder postorder dijkstra fsm fsmout binarysearch bubblesort selectionsort mergesort bool truth minterms maxterms kmap kmapdc nandform norform");
 }

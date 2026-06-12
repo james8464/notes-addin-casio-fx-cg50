@@ -191,9 +191,13 @@ def main():
     require("minterms(A,B,1,2)", ["K-map/minterm method", "variables: A,B", "m1 = A'&B", "m2 = A&B'", "simplified = A'B+AB'"])
     require("kmap(A,B,C,1,3,5,7)", ["K-map/minterm method", "m1 = A'&B'&C", "simplified = C"])
     require("maxterms(A,B,0,3)", ["Maxterm/POS method", "M0 = (A+B)", "M3 = (A'+B')", "POS = (A+B)&(A'+B')", "simplified = A'B+AB'"])
+    require("kmapdc(A,B,C,1,3,dc,5,7)", ["K-map/minterm method", "m1 = A'&B'&C", "don't-care rows: 5,7", "Use don't-cares only if they make larger groups", "simplified = C"])
+    require("maxterms(A,B,C,0,2,dc,4,6)", ["Maxterm/POS method", "don't-care rows: 4,6", "Use don't-cares only if they make larger zero groups", "simplified POS = (C)"])
     require("simplify minterms 1 2 for A B", ["K-map/minterm method", "variables: A,B", "SOP = A'&B+A&B'", "simplified = A'B+AB'"])
     require("Karnaugh map ones 1 3 5 7 variables A B C", ["K-map/minterm method", "variables: A,B,C", "simplified = C"])
     require("maxterms zeros 0 3 for A B", ["Maxterm/POS method", "variables: A,B", "POS = (A+B)&(A'+B')"])
+    require("Karnaugh map ones 1 3 dont cares 5 7 variables A B C", ["K-map/minterm method", "variables: A,B,C", "don't-care rows: 5,7", "simplified = C"])
+    require("maxterms zeros 0 2 dc 4 6 for A B C", ["Maxterm/POS method", "variables: A,B,C", "simplified POS = (C)"])
     require("minterms(1,2)", ["K-map/minterm method", "variables: A,B", "simplified = A'B+AB'"])
     out = require("bool(not(A and B)+A)", ["truth table", "simplified = 1"])
     if "(a&b)'&a'" in out:
