@@ -732,6 +732,20 @@ static void collect_vars(const char *e, char *vars, int *vc) {
   }
 }
 
+static bool bool_equiv_expr(const char *a, const char *b) {
+  char both[192];
+  sprintf(both, "%s%s", a, b);
+  char vars[8]; int vc; collect_vars(both, vars, &vc);
+  if (vc > 6) return false;
+  int rows = 1 << vc;
+  for (int m = 0; m < rows; ++m) {
+    BParser pa = { a, 0, m, {0}, vc }, pb = { b, 0, m, {0}, vc };
+    for (int i = 0; i < vc; ++i) pa.vars[i] = pb.vars[i] = vars[i];
+    if (pa.expr() != pb.expr()) return false;
+  }
+  return true;
+}
+
 static void app_ch(char *s, int *pos, int cap, char c);
 static void app_str(char *s, int *pos, int cap, const char *t);
 
@@ -924,6 +938,20 @@ static bool bool_law_once(const char *expr, char *res, char *law) {
   return false;
 }
 
+static int add_bool_law_trace(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN], int n, const char *expr) {
+  char cur[96], next[96], law[32];
+  strncpy(cur, expr, sizeof(cur) - 1); cur[sizeof(cur) - 1] = 0;
+  for (int step = 0; step < 5; ++step) {
+    if (!bool_law_once(cur, next, law)) break;
+    if (strcmp(cur, next) == 0) break;
+    if (strcmp(law, "XOR identity") != 0 && !bool_equiv_expr(cur, next)) break;
+    if (step == 0) n = add(out, n, "Simplify by Boolean algebra.");
+    n = add(out, n, "%s -> %s (%s)", cur, next, law);
+    strncpy(cur, next, sizeof(cur) - 1); cur[sizeof(cur) - 1] = 0;
+  }
+  return n;
+}
+
 static int eval_bool(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
   char a[2][48]; int na = args(s, a, 2);
   char exprbuf[96];
@@ -940,11 +968,7 @@ static int eval_bool(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN])
     if (p.expr()) mins[mc++] = m;
   }
   int n = 0;
-  char lawres[80], law[32];
-  if (bool_law_once(expr, lawres, law)) {
-    n = add(out, n, "Simplify by Boolean algebra.");
-    n = add(out, n, "%s -> %s (%s)", expr, lawres, law);
-  }
+  n = add_bool_law_trace(out, n, expr);
   n = add(out, n, "Make truth table, list rows where output is 1.");
   char ml[80] = ""; int pos = 0;
   for (int i = 0; i < mc; ++i) {

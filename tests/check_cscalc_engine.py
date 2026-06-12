@@ -27,6 +27,7 @@ def require(expr, needles):
     for bad in banned:
         if bad in out:
             raise SystemExit(f"{expr!r} contains banned {bad!r}\n{out}")
+    return out
 
 
 def main():
@@ -123,6 +124,9 @@ def main():
     require("bool(A xor B)", ["Boolean algebra", "XOR identity", "a'&b+a&b'", "simplified"])
     require("bool(A^B)", ["Boolean algebra", "XOR identity", "a'&b+a&b'", "simplified"])
     require("bool(A nand B)", ["truth table", "simplified = A'+B'"])
+    out = require("bool(not(A and B)+A)", ["truth table", "simplified = 1"])
+    if "(a&b)'&a'" in out:
+        raise SystemExit(f"non-equivalent Boolean law step shown\n{out}")
     require("nandform(A+B)", ["Use NAND", "NAND form", "A NAND A"])
     require("nand form A or B", ["Use NAND", "NAND form", "A NAND A"])
     require("norform(A*B)", ["Use NOR", "NOR form", "A NOR A"])

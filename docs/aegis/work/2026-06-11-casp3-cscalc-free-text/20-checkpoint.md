@@ -1,5 +1,26 @@
 # Checkpoint
 
+## 2026-06-12 CSCALC Boolean Law Guard Slice
+
+Completed:
+- Compared the old Boolean helper with current `CSCALC` support.
+- Added a truth-table equivalence guard before Boolean algebra law steps are displayed.
+- Added bounded repeated Boolean-law trace output instead of a single unchecked line.
+- Fixed a class of bad output where De Morgan's law could be shown for only part of a larger expression.
+- Added regression coverage for `bool(not(A and B)+A)` so non-equivalent law fragments are rejected.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CSCALC AQA Paper 2 Boolean algebra support.
+- Did not touch CAS Pure behavior, CASP3 behavior, NOTES, UI/menu/status code.
+
 ## 2026-06-12 CASP3 Impact Solve Slice
 
 Completed:
