@@ -577,9 +577,11 @@ static int eval_twos(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN])
     return add(out, n, ov ? "overflow: same signs gave opposite sign bit." : "no two's complement overflow.");
   }
   if ((starts(s, "twossub(") || starts(s, "tcsub(") || starts(s, "twossubtract(")) && na == 2) {
-    int w = (int)strlen(a[0]), x = twos_decode(a[0]), y = twos_decode(a[1]); char b[65]; to_bin(x-y, w, b);
+    int w = (int)strlen(a[0]), x = twos_decode(a[0]), y = twos_decode(a[1]); char b[65], neg[65]; to_bin(x-y, w, b); to_bin(-y, w, neg);
     int n = add(out, 0, "Subtraction: add the two's complement of the second value.");
     n = add(out, n, "%s=%d, %s=%d", a[0], x, a[1], y);
+    n = add(out, n, "two's complement of second value = %s", neg);
+    n = add(out, n, "%s + %s = %s in %d bits", a[0], neg, b, w);
     return add(out, n, "%d-%d=%d -> %s", x, y, x-y, b);
   }
   return 0;
@@ -1958,6 +1960,14 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if (tc && nb >= 1 && (has(t, "decode") || has(t, "denary") || has(t, "decimal"))) {
     sprintf(cmd, "twosdec(%s)", bits[0]); return eval_twos(cmd, out);
   }
+  if (tc && nb >= 2 && (has(t, "subtract") || has(t, "minus") || has(t, "takeaway"))) {
+    if (has(compact, "from")) sprintf(cmd, "twossub(%s,%s)", bits[1], bits[0]);
+    else sprintf(cmd, "twossub(%s,%s)", bits[0], bits[1]);
+    return eval_twos(cmd, out);
+  }
+  if (tc && nb >= 2 && (has(t, "add") || has(t, "sum") || has(t, "plus"))) {
+    sprintf(cmd, "twosadd(%s,%s)", bits[0], bits[1]); return eval_twos(cmd, out);
+  }
   if (tc && nv >= 2 && nb == 0) {
     sprintf(cmd, "twos(%lld,%lld)", (long long)v[0], (long long)v[1]); return eval_twos(cmd, out);
   }
@@ -2135,7 +2145,7 @@ int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
   n = eval_bool(s, out); if (n) return n;
   n = eval_free_text(input, s, out); if (n) return n;
   n = add(out, 0, "Supported:");
-  n = add(out, n, "bin hex den convert twos twosdec fixed fixedenc parity xorbits andbits orbits notbits hamming checksum checkdigit rpn");
+  n = add(out, n, "bin hex den convert twos twosdec twosadd twossub fixed fixedenc parity xorbits andbits orbits notbits hamming checksum checkdigit rpn");
   n = add(out, n, "floatdec floatrange normal image sound bitrate transfer transfermb");
   return add(out, n, "compress huffman rle records sqlselect sqlcount hashmod hashlinear addressspace chars ascii unicode stack queue preorder inorder postorder dijkstra fsm fsmout binarysearch bubblesort selectionsort mergesort bool truth nandform norform");
 }

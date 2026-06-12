@@ -1,5 +1,26 @@
 # Checkpoint
 
+## 2026-06-12 CSCALC Two's Complement Subtract Slice
+
+Completed:
+- Improved `twossub(...)`, `tcsub(...)`, and `twossubtract(...)` working.
+- Output now shows the decoded values, the two's-complement form of the second value, fixed-width addition, and final denary result.
+- Added free-text routing for two's-complement add/subtract prompts.
+- Handled "subtract A from B" by reversing operands.
+- Added direct and free-text regression tests.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CSCALC AQA Paper 2 binary arithmetic working support.
+- Did not touch CAS Pure behavior, CASP3 behavior, NOTES, or shared UI/status code.
+
 ## 2026-06-12 CASP3 Beam Reactions Slice
 
 Completed:
