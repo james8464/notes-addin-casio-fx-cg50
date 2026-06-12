@@ -2201,6 +2201,37 @@ Drift check:
 - Still inside CSCALC AQA Paper 2 Boolean algebra support.
 - Did not touch CAS Pure, CASP3 behavior, NOTES, menus, or status/UI code.
 
+## 2026-06-12 P3/CS Prose Coverage Slice
+
+Completed:
+- CASP3: strengthened vertical/upward projectile parsing so `upwards`, ground hits, and launch heights from `cliff/high/height` prose are handled before generic projectile routes.
+- CASP3: added two-tailed binomial critical-region working for generic `binomial distribution` prose and moved critical-region handling before accidental point-probability inference.
+- CASP3: fixed normal percentile parsing so `90th percentile` becomes area `0.9`, not a misplaced mean/probability label.
+- CASP3: allowed grouped upper/lower quartile prompts without an explicit numeric `q`, deriving `0.75`/`0.25`.
+- CSCALC: routed floating-point mantissa/exponent decode/normalise prompts before generic two's-complement bit decoding.
+- CSCALC: added denary/decimal to octal free-text conversion.
+- CSCALC: cleaned Boolean free-text proofs/simplifications with leading De Morgan wording and terminal punctuation.
+- Rebuilt all calculator files.
+
+Evidence:
+- Fresh unseen probe set: 31/31 passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 165100 bytes`
+  - `CSCALC.g3a: 156380 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Still inside CASP3/CSCALC free-text exam-calculation support.
+- Did not change CAS Pure source, NOTES source, menus, or shared UI/status behavior.
+
 ## 2026-06-12 P3/CS Free Text Hardening Slice
 
 Completed:

@@ -2798,6 +2798,9 @@ static const char *skip_bool_words(const char *e) {
     moved = false;
     if (starts(e, "simplify")) { e += 8; moved = true; }
     if (starts(e, "prove")) { e += 5; moved = true; }
+    if (starts(e, "bydemorgan")) { e += 10; moved = true; }
+    if (starts(e, "demorgans")) { e += 9; moved = true; }
+    if (starts(e, "demorgan")) { e += 8; moved = true; }
     if (starts(e, "showthat")) { e += 8; moved = true; }
     if (starts(e, "show")) { e += 4; moved = true; }
     if (starts(e, "that")) { e += 4; moved = true; }
@@ -2842,6 +2845,8 @@ static void bool_clean_tail(const char *src, char *dst, int cap) {
     char *p = strstr(dst, cut[i]);
     if (p) *p = 0;
   }
+  int n = (int)strlen(dst);
+  while (n > 0 && (dst[n-1] == '.' || dst[n-1] == '?' || dst[n-1] == '!')) dst[--n] = 0;
 }
 
 static void truthbits_cmd_from_text(const char *t, const char *bits, char *cmd, int cap) {
@@ -3162,6 +3167,13 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   bool tc = has(t, "twos") || (has(t, "two") && has(t, "complement"));
   bool sm = has(t, "signmagnitude") || (has(t, "sign") && has(t, "magnitude"));
+  if ((has(t, "float") || has(t, "floating") || (has(t, "mantissa") && has(t, "exponent"))) &&
+      (has(t, "decode") || has(t, "denary") || has(t, "decimal") || has(t, "number")) && nb >= 2) {
+    sprintf(cmd, "floatdec(%s,%s)", bits[0], bits[1]); return eval_float(cmd, out);
+  }
+  if ((has(t, "normalise") || has(t, "normalize")) && nb >= 2) {
+    sprintf(cmd, "floatnorm(%s,%s)", bits[0], bits[1]); return eval_float(cmd, out);
+  }
   if (tc && nb >= 1 && (has(t, "decode") || has(t, "denary") || has(t, "decimal") || has(t, "value"))) {
     sprintf(cmd, "twosdec(%s)", bits[0]); return eval_twos(cmd, out);
   }
@@ -3205,6 +3217,9 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   if (has(t, "base") && has(t, "to") && has(t, "base,10,to,base,2") && nv >= 1) {
     sprintf(cmd, "convert(%lld,10,2)", (long long)v[0]); return eval_base(cmd, out);
+  }
+  if ((has(t, "denary") || has(t, "decimal") || has(t, "base,10")) && (has(t, "octal") || has(t, "base,8") || has(t, "base8")) && nv >= 1) {
+    sprintf(cmd, "convert(%lld,10,8)", (long long)v[0]); return eval_base(cmd, out);
   }
   if ((has(t, "octal") || has(t, "base,8") || has(t, "base8")) && has(t, "binary")) {
     const char *bp = strstr(t, "binary");
@@ -3557,9 +3572,10 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     }
   }
   if (nv == 0 && (has(compact, "nand") || has(compact, "nor") || has(compact, "xor") || has(compact, "and") || has(compact, "or") || has(compact, "not") || has(compact, "+") || has(compact, "*") || has(compact, "'") || has(compact, ","))) {
-    const char *e = skip_bool_words(compact); char ce[96];
+    const char *e = skip_bool_words(compact); char ce[96], ne[96];
     bool_clean_tail(e, ce, sizeof(ce));
-    sprintf(cmd, "%s(%s)", has(compact, "truth") ? "truth" : "bool", ce); return eval_bool(cmd, out);
+    bool_arg_for_cmd(ce, ne, sizeof(ne));
+    sprintf(cmd, "%s(%s)", has(compact, "truth") ? "truth" : "bool", ne); return eval_bool(cmd, out);
   }
   return 0;
 }

@@ -1133,7 +1133,7 @@ static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   }
   if (starts3(s, "groupquantile(", "groupedq(", "interpolateq(") && na >= 6) {
     double L=num(a[0]), cf=num(a[1]), f=num(a[2]), w=num(a[3]), n0=num(a[4]), q=num(a[5]), pos=q*n0;
-    int n = add(out, 0, "Use linear interpolation in the required class.");
+    int n = add(out, 0, "Use linear interpolation in the required quartile/quantile class.");
     n = add(out, n, "position = %.6g*n = %.6g*%.6g = %.6g", q, q, n0, pos);
     n = add(out, n, "value = L + ((position-CF before)/f)*class width");
     return add(out, n, "value = %.6g + ((%.6g-%.6g)/%.6g)*%.6g = %.10g", L, pos, cf, f, w, L + ((pos-cf)/f)*w);
@@ -1229,17 +1229,42 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     int N = (int)Nd;
     int tail = prob_tail(c, t);
     int x = has(c, "one") ? 1 : 0;
-    bool hx = false;
-    for (int i = 0; i < nv; ++i) {
-      if (near_num(v[i], Nd) || near_num(v[i], pv)) continue;
-      if ((has(t, "critical") || has(t, "significance")) && v[i] > 0 && v[i] <= 10) continue;
-      x = (int)v[i]; hx = true; break;
-    }
-    if (!hx && nv >= 3) x = (int)v[2];
     if (has(c, "morethan")) tail = 2;
     else if (has(c, "atleast") || has(c, "greaterthanorequal")) tail = 1;
     else if (has(c, "lessthanorequal") || has(c, "atmost")) tail = -1;
     else if (has(c, "lessthan") || has(t, "fewer")) tail = -2;
+    if ((has(t, "critical") || has(t, "criticalregion") || has(t, "significance")) && nv >= 3) {
+      double alpha = 0.05;
+      for (int i = 0; i < nv; ++i) {
+        if (near_num(v[i], Nd) || near_num(v[i], pv)) continue;
+        alpha = v[i] > 1 ? v[i] / 100.0 : v[i];
+        break;
+      }
+      if (has(t, "twotailed") || has(t, "twosided") || (has(t, "two") && (has(t, "tailed") || has(t, "sided")))) {
+        double a2 = alpha / 2.0, cum = 0, lowerp = 0, upperp = 0;
+        int loCrit = -1, hiCrit = N + 1;
+        for (int k=0;k<=N;++k) { cum += binomp(N,pv,k); if (cum <= a2) { loCrit = k; lowerp = cum; } else break; }
+        cum = 0;
+        for (int k=N;k>=0;--k) { cum += binomp(N,pv,k); if (cum <= a2) { hiCrit = k; upperp = cum; } else break; }
+        int n = add(out, 0, "Let X ~ B(%d, %.6g).", N, pv);
+        n = add(out, n, "Two-tailed test: split alpha equally between both tails.");
+        n = add(out, n, "alpha/2 = %.6g", a2);
+        n = add(out, n, "Lower tail probability = %.10g, upper tail probability = %.10g", lowerp, upperp);
+        if (loCrit < 0 && hiCrit > N) return add(out, n, "no critical value at this alpha.");
+        if (loCrit < 0) return add(out, n, "critical region: X >= %d", hiCrit);
+        if (hiCrit > N) return add(out, n, "critical region: X <= %d", loCrit);
+        return add(out, n, "critical region: X <= %d or X >= %d", loCrit, hiCrit);
+      }
+      double ctail = (tail > 0 || has(t, "upper") || has(c, "righttail")) ? 1 : -1;
+      sprintf(cmd, "critbinom(%d,%.10g,%.10g,%.0f)", N, pv, alpha, ctail);
+      return eval_stats(cmd, out);
+    }
+    bool hx = false;
+    for (int i = 0; i < nv; ++i) {
+      if (near_num(v[i], Nd) || near_num(v[i], pv)) continue;
+      x = (int)v[i]; hx = true; break;
+    }
+    if (!hx && nv >= 3) x = (int)v[2];
     if (has(t, "normal") && (has(t, "approx") || has(t, "approximation")) && hx) {
       double lo = tail < 0 ? 0 : x, hi = tail < 0 ? x : N;
       sprintf(cmd, "binomnorm(%d,%.10g,%.10g,%.10g)", N, pv, lo, hi);
@@ -1254,12 +1279,6 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       }
       double htail = (tail > 0 || has(t, "upper") || has(c, "righttail")) ? 1 : -1;
       sprintf(cmd, "hypbinom(%d,%.10g,%d,%.10g,%.0f)", N, pv, x, alpha, htail);
-      return eval_stats(cmd, out);
-    }
-    if ((has(t, "critical") || has(t, "criticalregion") || has(t, "significance")) && nv >= 3) {
-      double alpha = v[2] > 1 ? v[2] / 100.0 : v[2];
-      double ctail = (tail > 0 || has(t, "upper") || has(c, "righttail")) ? 1 : -1;
-      sprintf(cmd, "critbinom(%d,%.10g,%.10g,%.0f)", N, pv, alpha, ctail);
       return eval_stats(cmd, out);
     }
     if (tail) sprintf(cmd, "binomtail(%d,%.10g,%d,%d)", N, pv, x, tail);
@@ -1333,12 +1352,14 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     else sprintf(cmd, "poisson(%.10g,%d)", lam, x);
     return eval_stats(cmd, out);
   }
-  if ((has(t, "vertical") || has(t, "vertically")) && (has(t, "upward") || has(t, "upwards") || has(t, "projected") || has(t, "thrown")) && nv >= 1) {
+  if (((has(t, "vertical") || has(t, "vertically")) || ((has(t, "upward") || has(t, "upwards")) && !has(t, "angle") && !has(t, "degrees"))) &&
+      (has(t, "upward") || has(t, "upwards") || has(t, "projected") || has(t, "thrown")) && nv >= 1) {
     double pos[4]; int np = 0;
     for (int i = 0; i < nv && np < 4; ++i) if (v[i] > 0) pos[np++] = v[i];
     double u0 = pos[0], g = 9.8, target = 0;
     bool hTarget = word_num(input, "height", &target) || word_num(input, "above", &target);
     if (!hTarget && np >= 2 && (has(t, "height") || has(t, "metres") || has(t, "meters"))) { target = pos[1]; hTarget = true; }
+    if (np >= 2 && (has(t, "ground") || has(c, "hitsground") || has(c, "hitstheground"))) { target = -pos[1]; hTarget = true; }
     if (hTarget && !near_num(target, u0)) {
       double disc = u0*u0 - 2*g*target;
       int n = add(out, 0, "Use vertical SUVAT with upward positive.");
@@ -1460,6 +1481,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     bool hY=label_num(input,"y",&y) || label_num(input,"height",&y) || label_num(input,"targetheight",&y);
     bool hH=label_num(input,"initialheight",&h0) || label_num(input,"launchheight",&h0) || label_num(input,"h0",&h0);
     bool hG=label_num(input,"g",&g) || label_num(input,"gravity",&g);
+    if (!hH && nv >= 3 && (has(t, "cliff") || has(t, "height") || has(t, "high"))) { h0 = v[2]; hH = true; }
     if (hU && hX && hY) {
       sprintf(cmd, hG ? "projectileangle(%.10g,%.10g,%.10g,%.10g,%.10g)" : "projectileangle(%.10g,%.10g,%.10g,%.10g)", u, x, y, hH ? h0 : 0, hG ? g : 9.8);
       return eval_mech(cmd, out);
@@ -1473,6 +1495,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     bool hY=label_num(input,"y",&y) || label_num(input,"height",&y) || label_num(input,"targetheight",&y);
     bool hH=label_num(input,"initialheight",&h0) || label_num(input,"launchheight",&h0) || label_num(input,"h0",&h0);
     bool hG=label_num(input,"g",&g) || label_num(input,"gravity",&g);
+    if (!hH && nv >= 3 && (has(t, "cliff") || has(t, "height") || has(t, "high"))) { h0 = v[2]; hH = true; }
     if (hU && hX && hY) {
       sprintf(cmd, hG ? "projectileangle(%.10g,%.10g,%.10g,%.10g,%.10g)" : "projectileangle(%.10g,%.10g,%.10g,%.10g)", u, x, y, hH ? h0 : 0, hG ? g : 9.8);
       return eval_mech(cmd, out);
@@ -1485,6 +1508,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     bool hX=label_num(input,"x",&x) || label_num(input,"distance",&x) || label_num(input,"range",&x) || label_num(input,"horizontaldistance",&x);
     bool hH=label_num(input,"initialheight",&h0) || label_num(input,"height",&h0) || label_num(input,"h0",&h0);
     bool hG=label_num(input,"g",&g) || label_num(input,"gravity",&g);
+    if (!hH && nv >= 4 && (has(t, "cliff") || has(t, "height") || has(t, "high"))) { h0 = v[3]; hH = true; }
     if (hU && hA && hX) {
       sprintf(cmd, hG ? "projectileat(%.10g,%.10g,%.10g,%.10g,%.10g)" : "projectileat(%.10g,%.10g,%.10g,%.10g)", u, ang, x, hH ? h0 : 0, hG ? g : 9.8);
       return eval_mech(cmd, out);
@@ -1500,6 +1524,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     bool hH=label_num(input,"height",&h) || label_num(input,"h",&h) || label_num(input,"initialheight",&h) || label_num(input,"launchheight",&h) ||
             word_num(input,"height",&h) || word_num(input,"from",&h) || word_num(input,"above",&h);
     bool hG=label_num(input,"g",&g) || label_num(input,"gravity",&g);
+    if (!hH && nv >= 3 && (has(t, "cliff") || has(t, "height") || has(t, "high"))) { h = v[2]; hH = true; }
     if (hU && hA && hH && !has(t, "findheight")) {
       sprintf(cmd, hG ? "projectileh(%.10g,%.10g,%.10g,%.10g)" : "projectileh(%.10g,%.10g,%.10g)", u, ang, h, hG ? g : 9.8);
       return eval_mech(cmd, out);
@@ -1507,13 +1532,21 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     sprintf(cmd, "projectileh(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_mech(cmd, out);
   }
   if (is_projectile_text(t) && nv >= 2) {
-    double u=0,ang=0,g=0;
+    double u=0,ang=0,h0=0,g=0;
     bool hU=label_num(input,"speed",&u) || label_num(input,"u",&u) || label_num(input,"initialspeed",&u) || label_num(input,"initialvelocity",&u) ||
             word_num(input,"speed",&u) || word_num(input,"initialspeed",&u) || word_num(input,"velocity",&u);
     bool hA=label_num(input,"angle",&ang) || label_num(input,"theta",&ang) || label_num(input,"launchangle",&ang) ||
             word_num(input,"angle",&ang) || word_num(input,"theta",&ang);
     bool hG=label_num(input,"g",&g) || label_num(input,"gravity",&g);
+    bool hH=label_num(input,"height",&h0) || label_num(input,"initialheight",&h0) || label_num(input,"launchheight",&h0) || word_num(input,"height",&h0);
+    if (!hA && nv >= 2 && (has(t, "angle") || has(t, "degrees"))) { ang = v[1]; hA = true; }
+    if (!hU && nv >= 1) { u = v[0]; hU = true; }
+    if (!hH && nv >= 3 && (has(t, "cliff") || has(t, "height") || has(t, "high"))) { h0 = v[2]; hH = true; }
     if (hU && hA) {
+      if (hH) {
+        sprintf(cmd, hG ? "projectileh(%.10g,%.10g,%.10g,%.10g)" : "projectileh(%.10g,%.10g,%.10g)", u, ang, h0, hG ? g : 9.8);
+        return eval_mech(cmd, out);
+      }
       sprintf(cmd, hG ? "projectile(%.10g,%.10g,%.10g)" : "projectile(%.10g,%.10g)", u, ang, hG ? g : 9.8);
       return eval_mech(cmd, out);
     }
@@ -1725,15 +1758,37 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     else if (has(c, "atleast") || has(c, "greaterthanorequal")) tail = 1;
     else if (has(c, "lessthanorequal") || has(c, "atmost") || has(t, "cdf")) tail = -1;
     else if (has(c, "lessthan")) tail = -2;
+    if (hN && hP && !hA && (has(t, "critical") || has(t, "criticalregion") || has(t, "significance"))) {
+      for (int i = 0; i < nv; ++i) {
+        if (near_num(v[i], N) || near_num(v[i], pv)) continue;
+        if (v[i] > 0 && v[i] <= 10) { alpha = v[i] / 100.0; hA = true; break; }
+        if (v[i] > 0 && v[i] <= 1) { alpha = v[i]; hA = true; break; }
+      }
+    }
+    if (hN && hP && hA && (has(t, "critical") || has(t, "criticalregion"))) {
+      if (has(t, "twotailed") || has(t, "twosided") || (has(t, "two") && (has(t, "tailed") || has(t, "sided")))) {
+        double a2 = alpha / 2.0, cum = 0, lowerp = 0, upperp = 0;
+        int loCrit = -1, hiCrit = (int)N + 1;
+        for (int k=0;k<=(int)N;++k) { cum += binomp((int)N,pv,k); if (cum <= a2) { loCrit = k; lowerp = cum; } else break; }
+        cum = 0;
+        for (int k=(int)N;k>=0;--k) { cum += binomp((int)N,pv,k); if (cum <= a2) { hiCrit = k; upperp = cum; } else break; }
+        int n = add(out, 0, "Let X ~ B(%d, %.6g).", (int)N, pv);
+        n = add(out, n, "Two-tailed test: split alpha equally between both tails.");
+        n = add(out, n, "alpha/2 = %.6g", a2);
+        n = add(out, n, "Lower tail probability = %.10g, upper tail probability = %.10g", lowerp, upperp);
+        if (loCrit < 0 && hiCrit > (int)N) return add(out, n, "no critical value at this alpha.");
+        if (loCrit < 0) return add(out, n, "critical region: X >= %d", hiCrit);
+        if (hiCrit > (int)N) return add(out, n, "critical region: X <= %d", loCrit);
+        return add(out, n, "critical region: X <= %d or X >= %d", loCrit, hiCrit);
+      }
+      sprintf(cmd, "critbinom(%d,%.10g,%.10g,%.0f)", (int)N, pv, alpha, (has(t, "upper") || has(t, "greater") || has(t, "more")) ? 1.0 : -1.0);
+      return eval_stats(cmd, out);
+    }
     if (hN && hP && !hX) {
       for (int i = 0; i < nv; ++i) {
         if (near_num(v[i], N) || near_num(v[i], pv)) continue;
         x = v[i]; hX = true; break;
       }
-    }
-    if (hN && hP && hA && (has(t, "critical") || has(t, "criticalregion"))) {
-      sprintf(cmd, "critbinom(%d,%.10g,%.10g,%.0f)", (int)N, pv, alpha, (has(t, "upper") || has(t, "greater") || has(t, "more")) ? 1.0 : -1.0);
-      return eval_stats(cmd, out);
     }
     if (hN && hP && hX && hA && (has(t, "hypothesis") || has(t, "test"))) {
       sprintf(cmd, "hypbinom(%d,%.10g,%d,%.10g,%.0f)", (int)N, pv, (int)x, alpha, (tail > 0 || has(t, "upper")) ? 1.0 : -1.0);
@@ -1791,14 +1846,20 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     bool hN=label_num(input,"n",&n0), hA=label_num(input,"alpha",&alpha) || label_num(input,"significance",&alpha);
     bool hLo=label_num(input,"lower",&lo) || label_num(input,"lo",&lo);
     bool hHi=label_num(input,"upper",&hi) || label_num(input,"hi",&hi);
-    bool hArea=label_num(input,"area",&area) || label_num(input,"probability",&area) || label_num(input,"p",&area);
+    bool hArea=label_num(input,"area",&area) || label_num(input,"probability",&area) ||
+               (!has(t, "percentile") && label_num(input,"p",&area));
     double tail = (has(t, "twotailed") || has(t, "twosided") || (has(t, "two") && (has(t, "tailed") || has(t, "sided"))) || has(t, "different") || has(t, "notequal")) ? 0 :
                   (has(t, "upper") || has(t, "greater") || has(t, "more") ? 1 : -1);
+    if (hArea && has(t, "percentile") && area > 1 && area <= 100) area /= 100.0;
     if (!hArea && hMu && (hSig || hVar) &&
         (has(c, "findk") || has(c, "findx") || has(c, "suchthat") || has(t, "percentile"))) {
       for (int i = 0; i < nv; ++i) {
         if (near_num(v[i], mu) || (hSig && near_num(v[i], sig)) || (hVar && near_num(v[i], var))) continue;
-        if (v[i] > 0 && v[i] < 1) { area = v[i]; hArea = true; break; }
+        if (v[i] > 0 && (v[i] < 1 || has(t, "percentile"))) {
+          area = (has(t, "percentile") && v[i] > 1) ? v[i] / 100.0 : v[i];
+          hArea = true;
+          break;
+        }
       }
       if (hArea && (has(c, "morethank") || has(c, "greaterthank") || has(c, "p(x>k") || has(c, "p(x>=k"))) area = 1 - area;
     }
@@ -2076,8 +2137,9 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if ((has(t, "grouped") || has(t, "interpolate") || has(t, "interpolation")) && has(t, "median") && nv >= 5) {
     sprintf(cmd, "groupmedian(%.10g,%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3], v[4]); return eval_stats(cmd, out);
   }
-  if ((has(t, "grouped") || has(t, "interpolate") || has(t, "interpolation")) && (has(t, "quartile") || has(t, "quantile")) && nv >= 6) {
-    sprintf(cmd, "groupquantile(%.10g,%.10g,%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3], v[4], v[5]); return eval_stats(cmd, out);
+  if ((has(t, "grouped") || has(t, "interpolate") || has(t, "interpolation")) && (has(t, "quartile") || has(t, "quantile")) && nv >= 5) {
+    double q = nv >= 6 ? v[5] : (has(t, "upper") || has(t, "q3") ? 0.75 : (has(t, "lower") || has(t, "q1") ? 0.25 : 0.5));
+    sprintf(cmd, "groupquantile(%.10g,%.10g,%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3], v[4], q); return eval_stats(cmd, out);
   }
   if ((has(t, "histogram") || has(t, "frequencydensity") || has(t, "classwidth")) && (has(t, "density") || has(t, "frequencydensity") || has(t, "width")) && nv >= 2) {
     double freq=0, dens=0, width0=0;
