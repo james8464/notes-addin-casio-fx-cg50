@@ -303,6 +303,17 @@ static int eval_mech(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     if (na > 2) n = add(out, n, "friction = mu R = %.6g N", fr);
     return add(out, n, "net down plane = %.6g N", parallel - fr);
   }
+  if (starts3(s, "inclineacc(", "roughplaneacc(", "planeacc(") && na >= 3) {
+    double m=num(a[0]), deg=num(a[1]), mu=num(a[2]), g=na>3?num(a[3]):9.8;
+    double th=deg*M_PI/180.0, parallel=m*g*sine(th), reaction=m*g*cosine(th), fr=mu*reaction;
+    double net=parallel-fr, acc=net/m;
+    int n = add(out, 0, "Resolve along and perpendicular to the plane, then use F=ma.");
+    n = add(out, n, "down-slope component = mg sin(theta) = %.6g*%.6g sin(%.6g) = %.10g N", m, g, deg, parallel);
+    n = add(out, n, "R = mg cos(theta) = %.6g*%.6g cos(%.6g) = %.10g N", m, g, deg, reaction);
+    n = add(out, n, "friction = mu R = %.6g*%.10g = %.10g N", mu, reaction, fr);
+    n = add(out, n, "net force down plane = %.10g - %.10g = %.10g N", parallel, fr, net);
+    return add(out, n, "a = F/m = %.10g/%.6g = %.10g m/s^2", net, m, acc);
+  }
   if (starts3(s, "connected(", "connectedparticles(", "twoparticles(") && na >= 3) {
     double m1=num(a[0]), m2=num(a[1]), f=num(a[2]), ares=f/(m1+m2), T=m1*ares;
     int n = add(out, 0, "Treat connected particles as one system for acceleration.");
@@ -892,6 +903,9 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if (has(t, "moment") && !has(t, "momentum") && nv >= 2) {
     sprintf(cmd, "moment(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
   }
+  if ((has(t, "incline") || has(t, "slope") || has(t, "plane")) && (has(t, "acceleration") || has(t, "accelerate") || has(t, "rough")) && nv >= 3) {
+    sprintf(cmd, "inclineacc(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_mech(cmd, out);
+  }
   if ((has(t, "incline") || has(t, "slope") || has(t, "plane")) && nv >= 2) {
     sprintf(cmd, "incline(%.10g,%.10g,%.10g)", v[0], v[1], nv > 2 ? v[2] : 0); return eval_mech(cmd, out);
   }
@@ -1131,7 +1145,7 @@ int p3_eval(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   n = eval_stats(s, out); if (n) return n;
   n = eval_free_text(input, out); if (n) return n;
   n = add(out, 0, "Supported:");
-  n = add(out, n, "suvat projectile projectileh force weight friction moment incline");
+  n = add(out, n, "suvat projectile projectileh force weight friction moment incline inclineacc");
   n = add(out, n, "beam connected pulley impulse momentum work power energy restitution vector resolve vectorkin varacc");
   return add(out, n, "normal normalvar normalprob invnormal binom binomstats binomtail critbinom hypbinom cond probor bayes independent poisson poissonstats poissontail poissonnorm critpoisson hyppoisson regress pmcc spearman meanvar discrete stratified groupmedian histdensity code");
 }

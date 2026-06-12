@@ -52,6 +52,8 @@ def main():
     require("beam support reactions length=10 load=30 distance=4 beamweight=20", ["moments about the left support", "R_B = 22", "R_A = 28"])
     require("incline(5,30,0.2)", ["parallel = mg sin", "friction", "net down plane"])
     require("plane(5,30,0.2)", ["parallel = mg sin", "friction"])
+    require("inclineacc(5,30,0.2)", ["Resolve along and perpendicular", "F=ma", "friction = mu R", "a = F/m"])
+    require("rough plane acceleration mass 5 angle 30 mu 0.2", ["Resolve along and perpendicular", "net force down plane", "m/s^2"])
     require("connected(2,3,10)", ["one system", "a = 2", "tension"])
     require("connected particles mass 2 mass 3 force 10", ["one system", "a = 2", "tension"])
     require("pulley(2,3)", ["same acceleration", "T ="])
