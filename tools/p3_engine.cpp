@@ -1279,6 +1279,79 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if ((has(t, "varacc") || has(t, "variableacceleration") || (has(t, "acceleration") && has(t, "integrate"))) && nv >= 4) {
     sprintf(cmd, "varacc(%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3]); return eval_mech(cmd, out);
   }
+  if (has(t, "binom")) {
+    double N=0,pv=0,x=0,alpha=0,lo=0,hi=0;
+    bool hN=label_num(input,"n",&N), hP=label_num(input,"p",&pv) || label_num(input,"probability",&pv);
+    bool hX=label_num(input,"x",&x) || label_num(input,"r",&x);
+    bool hA=label_num(input,"alpha",&alpha) || label_num(input,"significance",&alpha);
+    bool hLo=label_num(input,"lower",&lo) || label_num(input,"lo",&lo);
+    bool hHi=label_num(input,"upper",&hi) || label_num(input,"hi",&hi);
+    int tail = 0;
+    if (has(c, "morethan")) tail = 2;
+    else if (has(c, "atleast") || has(c, "greaterthanorequal")) tail = 1;
+    else if (has(c, "lessthan")) tail = -2;
+    else if (has(c, "atmost") || has(t, "cdf")) tail = -1;
+    if (hN && hP && hA && (has(t, "critical") || has(t, "criticalregion"))) {
+      sprintf(cmd, "critbinom(%d,%.10g,%.10g,%.0f)", (int)N, pv, alpha, (has(t, "upper") || has(t, "greater") || has(t, "more")) ? 1.0 : -1.0);
+      return eval_stats(cmd, out);
+    }
+    if (hN && hP && hX && hA && (has(t, "hypothesis") || has(t, "test"))) {
+      sprintf(cmd, "hypbinom(%d,%.10g,%d,%.10g,%.0f)", (int)N, pv, (int)x, alpha, (tail > 0 || has(t, "upper")) ? 1.0 : -1.0);
+      return eval_stats(cmd, out);
+    }
+    if (hN && hP && hLo && hHi && has(t, "normal") && (has(t, "approx") || has(t, "approximation"))) {
+      sprintf(cmd, "binomnorm(%d,%.10g,%.10g,%.10g)", (int)N, pv, lo, hi);
+      return eval_stats(cmd, out);
+    }
+    if (hN && hP && hX && has(t, "poisson") && (has(t, "approx") || has(t, "approximation"))) {
+      sprintf(cmd, "poissonapprox(%d,%.10g,%d,%d)", (int)N, pv, (int)x, tail);
+      return eval_stats(cmd, out);
+    }
+    if (hN && hP && (has(t, "mean") || has(t, "variance") || has(t, "sd") || has(t, "standarddeviation"))) {
+      sprintf(cmd, "binomstats(%d,%.10g)", (int)N, pv);
+      return eval_stats(cmd, out);
+    }
+    if (hN && hP && hX) {
+      if (tail) sprintf(cmd, "binomtail(%d,%.10g,%d,%d)", (int)N, pv, (int)x, tail);
+      else sprintf(cmd, "binom(%d,%.10g,%d)", (int)N, pv, (int)x);
+      return eval_stats(cmd, out);
+    }
+  }
+  if (has(t, "normal")) {
+    double x=0, xb=0, mu=0, sig=0, var=0, n0=0, alpha=0, lo=0, hi=0, area=0;
+    bool hX=label_num(input,"x",&x) || label_num(input,"value",&x);
+    bool hXb=label_num(input,"xbar",&xb) || label_num(input,"samplemean",&xb);
+    bool hMu=label_num(input,"mu",&mu) || label_num(input,"mean",&mu);
+    bool hSig=label_num(input,"sigma",&sig) || label_num(input,"sd",&sig) || label_num(input,"standarddeviation",&sig);
+    bool hVar=label_num(input,"variance",&var) || label_num(input,"var",&var);
+    bool hN=label_num(input,"n",&n0), hA=label_num(input,"alpha",&alpha) || label_num(input,"significance",&alpha);
+    bool hLo=label_num(input,"lower",&lo) || label_num(input,"lo",&lo);
+    bool hHi=label_num(input,"upper",&hi) || label_num(input,"hi",&hi);
+    bool hArea=label_num(input,"area",&area) || label_num(input,"probability",&area) || label_num(input,"p",&area);
+    double tail = (has(t, "twotailed") || has(t, "twosided") || (has(t, "two") && (has(t, "tailed") || has(t, "sided"))) || has(t, "different") || has(t, "notequal")) ? 0 :
+                  (has(t, "upper") || has(t, "greater") || has(t, "more") ? 1 : -1);
+    if (hXb && hMu && (hSig || hVar) && hN && hA && (has(t, "hypothesis") || has(t, "test"))) {
+      sprintf(cmd, "hypnormal(%.10g,%.10g,%.10g,%.10g,%.10g,%.0f)", xb, mu, hSig ? sig : root(var), n0, alpha, tail);
+      return eval_stats(cmd, out);
+    }
+    if (hLo && hHi && hMu && (hSig || hVar)) {
+      sprintf(cmd, hSig ? "normalprob(%.10g,%.10g,%.10g,%.10g)" : "normalprobvar(%.10g,%.10g,%.10g,%.10g)", lo, hi, mu, hSig ? sig : var);
+      return eval_stats(cmd, out);
+    }
+    if (hX && hMu && (hSig || hVar) && (has(c, "morethan") || has(c, "greaterthan") || has(c, "atleast") || has(c, "lessthan") || has(c, "atmost"))) {
+      double ttail = (has(c, "morethan") || has(c, "greaterthan") || has(c, "atleast")) ? 1 : -1;
+      sprintf(cmd, hSig ? "normaltail(%.10g,%.10g,%.10g,%.0f)" : "normaltailvar(%.10g,%.10g,%.10g,%.0f)", x, mu, hSig ? sig : var, ttail);
+      return eval_stats(cmd, out);
+    }
+    if (hX && hMu && (hSig || hVar) && (has(t, "standardise") || has(t, "standardize") || has(t, "zscore"))) {
+      sprintf(cmd, hSig ? "normal(%.10g,%.10g,%.10g)" : "normalvar(%.10g,%.10g,%.10g)", x, mu, hSig ? sig : var);
+      return eval_stats(cmd, out);
+    }
+    if (hArea && hMu && (hSig || hVar) && (has(c, "invnormal") || has(c, "inversenormal") || has(t, "critical") || has(t, "percentile"))) {
+      sprintf(cmd, hSig ? "invnormal(%.10g,%.10g,%.10g)" : "invnormalvar(%.10g,%.10g,%.10g)", area, mu, hSig ? sig : var);
+      return eval_stats(cmd, out);
+    }
+  }
   if ((has(t, "critical") || has(t, "criticalregion")) && has(t, "binom") && nv >= 3) {
     double tail = has(t, "upper") ? 1 : -1;
     sprintf(cmd, "critbinom(%d,%.10g,%.10g,%.0f)", (int)v[0], v[1], v[2], tail); return eval_stats(cmd, out);

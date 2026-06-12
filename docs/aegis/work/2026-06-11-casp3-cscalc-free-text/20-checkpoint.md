@@ -1,5 +1,24 @@
 # Checkpoint
 
+## 2026-06-12 CASP3 Stats Labelled Free-Text Slice
+
+Completed:
+- Added labelled free-text routing for binomial probability/tails, binomial summaries, normal approximation, Poisson approximation, binomial critical regions, and binomial hypothesis tests.
+- Added labelled free-text routing for normal distribution intervals, normal tails, z-scores, inverse normal, and normal mean hypothesis tests.
+- Added regression tests for reordered `n=`, `p=`, `x=`, `alpha=`, `lower=`, `upper=`, `mean=`, `sd=`, `variance=`, `xbar=`, and `sigma=` prompts.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CASP3 Edexcel Paper 3 statistics/free-text support.
+- Did not touch CAS Pure behavior, CSCALC behavior, NOTES, or shared UI/status code.
+
 ## 2026-06-12 CSCALC Labelled Storage Free-Text Slice
 
 Completed:
