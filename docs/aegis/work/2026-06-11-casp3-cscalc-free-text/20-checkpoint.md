@@ -1,5 +1,27 @@
 # Checkpoint
 
+## 2026-06-12 CSCALC Sign-Magnitude Slice
+
+Completed:
+- Added `signmag(...)`, `signmagnitude(...)`, and `sm(...)`.
+- Added `signmagdec(...)`, `signmagnitudedec(...)`, and `smdec(...)`.
+- Added `signmagrange(...)`, `signmagnituderange(...)`, and `smrange(...)`.
+- Added free-text routing for sign-and-magnitude range, decode, and encode prompts before generic binary decode.
+- Output shows sign bit, magnitude bits, range, and the duplicate zero representation.
+- Added direct and free-text regression tests.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CSCALC AQA Paper 2 binary representation working support.
+- Did not touch CAS Pure behavior, CASP3 behavior, NOTES, or shared UI/status code.
+
 ## 2026-06-12 CASP3 Outlier Fence Slice
 
 Completed:

@@ -602,15 +602,40 @@ static int eval_twos(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN])
     int w = (int)parse_int(a[0]);
     return add(out, add(out, 0, "n-bit unsigned range:"), "0 to 2^%d-1 = 0 to %d", w, (1<<w)-1);
   }
+  if (starts3(s, "signmagrange(", "signmagnituderange(", "smrange(") && na == 1) {
+    int w = (int)parse_int(a[0]), m = (1 << (w - 1)) - 1;
+    int n = add(out, 0, "n-bit sign-and-magnitude range:");
+    n = add(out, n, "1 sign bit and %d magnitude bits.", w - 1);
+    return add(out, n, "-(2^%d-1) to +(2^%d-1) = -%d to %d, with +0 and -0.", w - 1, w - 1, m, m);
+  }
   if (starts3(s, "twosrange(", "tcrange(", "twoscomprange(") && na == 1) {
     int w = (int)parse_int(a[0]);
     return add(out, add(out, 0, "n-bit two's complement range:"), "-2^(%d) to 2^(%d)-1 = %d to %d", w-1, w-1, -(1<<(w-1)), (1<<(w-1))-1);
+  }
+  if (starts3(s, "signmagdec(", "signmagnitudedec(", "smdec(") && na == 1) {
+    int mag = bin_unsigned(a[0] + 1);
+    int val = a[0][0] == '1' ? -mag : mag;
+    int n = add(out, 0, "Sign-and-magnitude: first bit is sign, remaining bits are magnitude.");
+    n = add(out, n, "sign bit %c means %s.", a[0][0], a[0][0] == '1' ? "negative" : "positive");
+    n = add(out, n, "magnitude bits %s = %d.", a[0] + 1, mag);
+    return add(out, n, "%s = %d", a[0], val);
   }
   if ((starts(s, "twosdec(") || starts(s, "tcdec(") || starts(s, "twosdecode(")) && na == 1) {
     int n = add(out, 0, "MSB is sign bit.");
     if (a[0][0] == '0') n = add(out, n, "MSB=0, so use unsigned place values.");
     else n = add(out, n, "MSB=1, so subtract 2^%d from unsigned value.", (int)strlen(a[0]));
     return add(out, n, "%s = %d", a[0], twos_decode(a[0]));
+  }
+  if (starts3(s, "signmag(", "signmagnitude(", "sm(") && na >= 2) {
+    long long v = parse_int(a[0]); int w = (int)parse_int(a[1]);
+    long long mag = v < 0 ? -v : v; char mb[65], b[66];
+    to_bin(mag, w - 1, mb);
+    b[0] = v < 0 ? '1' : '0';
+    strcpy(b + 1, mb);
+    int n = add(out, 0, "%d-bit sign-and-magnitude.", w);
+    n = add(out, n, "sign bit = %d because the value is %s.", v < 0 ? 1 : 0, v < 0 ? "negative" : "positive");
+    n = add(out, n, "magnitude = |%lld| = %lld -> %s", v, mag, mb);
+    return add(out, n, "%lld -> %s", v, b);
   }
   if ((starts(s, "twos(") || starts(s, "tc(") || starts(s, "twoscomp(")) && na >= 2) {
     long long v = parse_int(a[0]); int w = (int)parse_int(a[1]); char b[65]; to_bin(v, w, b);
@@ -2154,8 +2179,18 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     sprintf(cmd, "hex(%lld)", (long long)v[0]); return eval_base(cmd, out);
   }
   bool tc = has(t, "twos") || (has(t, "two") && has(t, "complement"));
+  bool sm = has(t, "signmagnitude") || (has(t, "sign") && has(t, "magnitude"));
   if (has(t, "unsigned") && has(t, "range") && nv >= 1) {
     sprintf(cmd, "unsignedrange(%lld)", (long long)v[0]); return eval_twos(cmd, out);
+  }
+  if (sm && has(t, "range") && nv >= 1) {
+    sprintf(cmd, "signmagrange(%lld)", (long long)v[0]); return eval_twos(cmd, out);
+  }
+  if (sm && nb >= 1 && (has(t, "decode") || has(t, "denary") || has(t, "decimal"))) {
+    sprintf(cmd, "signmagdec(%s)", bits[0]); return eval_twos(cmd, out);
+  }
+  if (sm && nv >= 2 && nb == 0) {
+    sprintf(cmd, "signmag(%lld,%lld)", (long long)v[0], (long long)v[1]); return eval_twos(cmd, out);
   }
   if (tc && has(t, "range") && nv >= 1) {
     sprintf(cmd, "twosrange(%lld)", (long long)v[0]); return eval_twos(cmd, out);
@@ -2372,7 +2407,7 @@ int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
   n = eval_bool(s, out); if (n) return n;
   n = eval_free_text(input, s, out); if (n) return n;
   n = add(out, 0, "Supported:");
-  n = add(out, n, "bin hex den convert twos twosdec twosadd twossub fixed fixedenc parity repeatenc repeatdec shift arithshift xorbits andbits orbits notbits hamming checksum checkdigit rpn");
+  n = add(out, n, "bin hex den convert twos twosdec twosadd twossub signmag signmagdec fixed fixedenc parity repeatenc repeatdec shift arithshift xorbits andbits orbits notbits hamming checksum checkdigit rpn");
   n = add(out, n, "floatdec floatadd floatsub floatmul floatdiv floatrange normal image sound bitrate transfer transfermb");
   return add(out, n, "compress huffman rle records sqlselect sqlcount hashmod hashlinear addressspace chars ascii unicode stack queue preorder inorder postorder dijkstra fsm fsmout binarysearch bubblesort selectionsort mergesort bool truth minterms kmap nandform norform");
 }
