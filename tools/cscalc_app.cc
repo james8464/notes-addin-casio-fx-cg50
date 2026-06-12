@@ -122,6 +122,8 @@ static const char *const chars[] = {
   "bits = characters * bits per char.",
   "ASCII commonly 7 or 8 bits.",
   "Unicode uses more bits per char.",
+  "ascii(65): code to char/binary/hex.",
+  "ASCII code for A: preserves case.",
   "More bits allow more symbols:",
   "2^bits possible codes.",
   "Include metadata only if stated."

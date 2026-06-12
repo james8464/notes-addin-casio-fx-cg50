@@ -176,6 +176,40 @@ static int ceil_log2_ll(long long x) {
   return b;
 }
 
+static void to_bin(long long v, int width, char *buf);
+
+static bool printable_ascii(int c) { return c >= 32 && c <= 126; }
+
+static int add_code_lines(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN], int code, bool unicode, int ch) {
+  char bits[65]; to_bin(code, code < 256 ? 8 : 16, bits);
+  int n = add(out, 0, unicode ? "Unicode code point conversion." : "ASCII code conversion.");
+  if (ch >= 0) n = add(out, n, "'%c' has denary code %d.", ch, code);
+  else if (!unicode && printable_ascii(code)) n = add(out, n, "ASCII code %d represents '%c'.", code, code);
+  else if (unicode) n = add(out, n, "Unicode code point = U+%04X = %d_10.", code, code);
+  else n = add(out, n, "Code = %d_10.", code);
+  return add(out, n, "%d_10 = %s_2 = %X_16", code, bits, code);
+}
+
+static bool find_code_char(const char *in, int *ch) {
+  for (int i = 0; in && in[i]; ++i) {
+    if ((in[i] == '\'' || in[i] == '"') && in[i+1] && in[i+2] == in[i]) {
+      *ch = (unsigned char)in[i+1]; return true;
+    }
+  }
+  for (int i = 0; in && in[i]; ++i) {
+    if ((i == 0 || !isalnum((unsigned char)in[i-1])) && isalpha((unsigned char)in[i]) &&
+        !isalnum((unsigned char)in[i+1])) {
+      if (in[i] >= 'A' && in[i] <= 'Z') { *ch = (unsigned char)in[i]; return true; }
+    }
+  }
+  const char *p = strstr(in ? in : "", " for ");
+  if (p) {
+    p += 5; while (*p == ' ' || *p == '\t') ++p;
+    if (*p && !isalnum((unsigned char)p[1])) { *ch = (unsigned char)*p; return true; }
+  }
+  return false;
+}
+
 static bool word_is(const char *w, const char *k) { return strcmp(w, k) == 0; }
 
 static bool rle_skip_word(const char *w) {
@@ -572,6 +606,14 @@ static int eval_storage(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LE
     int n = add(out, 0, "Convert kilobytes to kilobits before dividing by kbit/s.");
     n = add(out, n, "%.10g KB = %.10g kbit", kb, kilobits);
     return add(out, n, "time = %.10g/%.10g = %.10g s", kilobits, rate, t);
+  }
+  if (starts3(s, "ascii(", "charcode(", "codepoint(") && na >= 1) {
+    if (isdigit((unsigned char)a[0][0])) return add_code_lines(out, (int)parse_int(a[0]), false, -1);
+    if (a[0][0] && !a[0][1]) return add_code_lines(out, (unsigned char)a[0][0], false, (unsigned char)a[0][0]);
+  }
+  if (starts3(s, "unicode(", "unicodepoint(", "ucode(") && na >= 1) {
+    if (isdigit((unsigned char)a[0][0])) return add_code_lines(out, (int)parse_int(a[0]), true, -1);
+    if (a[0][0] && !a[0][1]) return add_code_lines(out, (unsigned char)a[0][0], true, (unsigned char)a[0][0]);
   }
   if (starts3(s, "chars(", "textsize(", "characters(") && na >= 2) {
     long long bits = parse_int(a[0]) * parse_int(a[1]);
@@ -1296,6 +1338,12 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   char bits[4][48]; int nb = scan_bits(t, bits, 4);
   char cmd[160];
   double width=0, height=0, depth=0;
+  if (has(t, "ascii") || has(t, "unicode") || has(t, "codepoint") || has(t, "charactercode")) {
+    int ch = -1;
+    bool uni = has(t, "unicode") || has(t, "codepoint");
+    if (find_code_char(input, &ch)) return add_code_lines(out, ch, uni, ch);
+    if (nv >= 1) return add_code_lines(out, (int)v[0], uni, -1);
+  }
   if (has(t, "rpn") || has(t, "postfix") || (has(t, "reverse") && has(t, "polish"))) {
     if (make_rpn_cmd(input, cmd, sizeof(cmd))) return eval_rpn(cmd, out);
   }
@@ -1499,5 +1547,5 @@ int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
   n = add(out, 0, "Supported:");
   n = add(out, n, "bin hex den convert twos twosdec fixed fixedenc parity xorbits andbits orbits notbits hamming checksum checkdigit rpn");
   n = add(out, n, "floatdec floatrange normal image sound bitrate transfer transfermb");
-  return add(out, n, "compress huffman rle records hashmod hashlinear addressspace chars bool truth nandform norform");
+  return add(out, n, "compress huffman rle records hashmod hashlinear addressspace chars ascii unicode bool truth nandform norform");
 }

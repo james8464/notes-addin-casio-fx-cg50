@@ -1,5 +1,26 @@
 # Checkpoint
 
+## 2026-06-12 CSCALC ASCII Unicode Slice
+
+Completed:
+- Added ASCII/Unicode code conversion working for `ascii(...)`, `charcode(...)`, `unicode(...)`, and free-text prompts.
+- Numeric code inputs show character/code point, denary, binary, and hex.
+- Free-text prompts such as `ASCII code for A` preserve uppercase case.
+- Added character-storage menu help for ASCII code conversion.
+- Added regression tests for ASCII numeric, ASCII free-text, and Unicode code point conversion.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CSCALC AQA Paper 2 character/data representation support.
+- Did not touch CAS Pure behavior, CASP3 behavior, NOTES, or shared UI/status code.
+
 ## 2026-06-12 CSCALC Hash Linear Probe Slice
 
 Completed:
