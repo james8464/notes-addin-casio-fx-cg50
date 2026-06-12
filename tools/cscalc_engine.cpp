@@ -3870,6 +3870,22 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     else sprintf(cmd, "bitrate(%.10g,%.10g)", size, seconds);
     return eval_storage(cmd, out);
   }
+  if ((has(t, "transfer") || has(t, "download") || has(t, "transmit") || has(t, "transmission") || has_word(t, "sent")) &&
+      has(t, "overhead") && has(t, "percent") && nv >= 3) {
+    double size = v[0], overhead = v[1], rate = v[2];
+    double bits=0, bps=0; const char *su="", *ru="";
+    if (storage_size_bits(t, size, &bits, &su) && storage_rate_bits(t, rate, &bps, &ru) && bps != 0) {
+      double tx = bits * (1.0 + overhead / 100.0);
+      double seconds = tx / bps;
+      int n = add(out, 0, "Transmission time uses payload bits plus packet overhead.");
+      n = add(out, n, "%.10g %s = %.10g bits", size, su, bits);
+      n = add(out, n, "include %.10g%% overhead: transmitted bits = %.10g*%.10g = %.10g", overhead, bits, 1.0 + overhead/100.0, tx);
+      n = add(out, n, "%.10g %s = %.10g bit/s", rate, ru, bps);
+      n = add(out, n, "time = %.10g/%.10g = %.10g s", tx, bps, seconds);
+      if (has(t, "minute")) return add(out, n, "= %.10g minutes", seconds / 60.0);
+      return n;
+    }
+  }
   if ((has(t, "overhead") || (has(t, "header") && has(t, "payload"))) && has(t, "percent") && nv >= 2) {
     double payload=0, header=0;
     bool hp=scan_before_word_num(t, "payload", &payload) || label_num(input, "payload", &payload);

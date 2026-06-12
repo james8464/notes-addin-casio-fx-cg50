@@ -242,6 +242,7 @@ def main():
     require("A 700 MB file downloads at 56 megabits per second find transfer time", ["700 MB = 5600000000 bits", "time = 5600000000/56000000 = 100 s"])
     require("A 4 GiB file is downloaded over 80 megabits per second find the time", ["4 GiB = 3.435973837e+10 bits", "80 Mbit/s = 80000000 bit/s", "429.4967296 s"])
     require("A file of 3.5 GiB is transferred at 100 Mbit/s. Calculate the time in minutes.", ["3.5 GiB =", "100 Mbit/s =", "= 5.010795179 minutes"])
+    require("A 10 MiB file is sent with 12 percent packet overhead over a 5 Mbit/s link. Calculate transmission time.", ["payload bits plus packet overhead", "transmitted bits = 83886080*1.12 = 93952409.6", "time = 93952409.6/5000000 = 18.79048192 s"])
     require("A packet has payload 1500 bytes and header 40 bytes. Calculate overhead percentage.", ["Overhead percentage", "total = payload + header = 1500 + 40 = 1540", "2.597402597%"])
     require("A 32 KiB cache has blocks of 64 bytes. How many offset bits and index bits are needed?", ["number of blocks = 32768/64 = 512", "offset bits = log2(64) = 6", "index bits = log2(512) = 9"])
     require("How many usable host addresses are there in a /26 IPv4 subnet?", ["CIDR /26 leaves 6 host bits", "usable host addresses = 62"])

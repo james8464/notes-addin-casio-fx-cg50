@@ -746,8 +746,16 @@ static bool parse_linear_den_power(const char *c, char var, double *b, double *d
 }
 
 static double linear_den_antideriv(double k, double b, double d, int pow, double x) {
-  if (pow == 1) return 0;
+  if (pow == 1) {
+    double z = b*x + d;
+    if (z < 0) z = -z;
+    return (k / b) * ln_approx(z);
+  }
   return k * pwr(b*x + d, 1 - pow) / (b * (1 - pow));
+}
+
+static double linear_power_antideriv(double k, double b, double d, int pow, double x) {
+  return k * pwr(b*x + d, pow + 1) / (b * (pow + 1));
 }
 
 static double trailing_constant_after_linear_den(const char *c, char var, int pow) {
@@ -1998,7 +2006,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if ((has(t, "acceleration") || has(t, "accn")) && has(c, "/(") &&
       (has(t, "velocity") || has(t, "speed")) && (has(t, "att") || has(t, "at") || has(t, "time"))) {
     double rb=0, rd=0; int rpow=0;
-    if (parse_linear_den_power(c, 't', &rb, &rd, &rpow) && rpow >= 2) {
+    if (parse_linear_den_power(c, 't', &rb, &rd, &rpow) && rpow >= 1) {
       double A = nv > 0 ? v[0] : 1;
       double u0 = 0, tf = 0;
       bool hu = word_num(input, "initialvelocity", &u0) || word_num(input, "velocity", &u0) ||
@@ -2012,7 +2020,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       char den[48]; fmt_linear_var(den, sizeof(den), rb, 't', rd);
       int n = add(out, 0, "Variable acceleration: integrate a(t) to get v(t).");
       n = add(out, n, "a = %.10g/(%s)^%d", A, den, rpow);
-      n = add(out, n, "v = integral a dt = %.10g(%s)^%d/(%.10g*(%d)) + C", A, den, 1-rpow, rb, 1-rpow);
+      if (rpow == 1) n = add(out, n, "v = integral a dt = (%.10g/%.10g)ln|%s| + C", A, rb, den);
+      else n = add(out, n, "v = integral a dt = %.10g(%s)^%d/(%.10g*(%d)) + C", A, den, 1-rpow, rb, 1-rpow);
       n = add(out, n, "initial velocity gives C = %.10g", C);
       return add(out, n, "v(%.6g) = %.10g", tf, Ft + C);
     }
@@ -3611,7 +3620,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if ((has(t, "workdone") || has(t, "work")) && nv >= 2) {
     double A=0, B=0, C=0, D=0, lo=0, hi=0;
     double rb=0, rd=0; int rpow=0;
-    if (has(c, "/(") && parse_linear_den_power(c, 'x', &rb, &rd, &rpow) && rpow >= 2 &&
+    if (has(c, "/(") && parse_linear_den_power(c, 'x', &rb, &rd, &rpow) && rpow >= 1 &&
         ((word_num_with_t(input, "from", &lo) || word_num(input, "from", &lo) || (nv >= 2 && (lo = v[nv-2], true))) &&
          (word_num_with_t(input, "to", &hi) || word_num(input, "to", &hi) || (nv >= 2 && (hi = v[nv-1], true))))) {
       double k = v[0];
@@ -3621,7 +3630,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       int n = add(out, 0, "Work done by a variable force is the integral of force.");
       n = add(out, n, "F(x) = %.10g/(%s)^%d", k, den, rpow);
       n = add(out, n, "W = integral from %.6g to %.6g of F(x) dx", lo, hi);
-      n = add(out, n, "integral = %.10g(%s)^%d/(%.10g*(%d))", k, den, 1-rpow, rb, 1-rpow);
+      if (rpow == 1) n = add(out, n, "integral = (%.10g/%.10g)ln|%s|", k, rb, den);
+      else n = add(out, n, "integral = %.10g(%s)^%d/(%.10g*(%d))", k, den, 1-rpow, rb, 1-rpow);
       return add(out, n, "W = %.10g J", F2 - F1);
     }
     if ((has(c, "/x^") || has(c, "x^-")) &&
@@ -4178,6 +4188,25 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     }
     if (hMu && (hSig || hVar) && (has(t, "given") || has(t, "conditional")) && nv >= 4) {
       double sd = hSig ? sig : root(var), u[3]; int nu = 0;
+      const char *given = strstr(c, "given");
+      const char *ltp = strstr(c, "p(x<");
+      const char *gtp = strstr(c, "p(x>");
+      if (given) {
+        if (ltp && strstr(given, "x>")) {
+          double upper = read_num(ltp + (ltp[4] == '=' ? 5 : 4));
+          const char *gp = strstr(given, "x>");
+          double lower = read_num(gp + (gp[2] == '=' ? 3 : 2));
+          sprintf(cmd, "normalcondbetween(%.10g,%.10g,%.10g,%.10g,%.10g,1)", lower, upper, lower, mu, sd);
+          return eval_stats(cmd, out);
+        }
+        if (gtp && strstr(given, "x<")) {
+          double lower = read_num(gtp + (gtp[4] == '=' ? 5 : 4));
+          const char *gp = strstr(given, "x<");
+          double upper = read_num(gp + (gp[2] == '=' ? 3 : 2));
+          sprintf(cmd, "normalcondbetween(%.10g,%.10g,%.10g,%.10g,%.10g,-1)", lower, upper, upper, mu, sd);
+          return eval_stats(cmd, out);
+        }
+      }
       for (int i = 0; i < nv && nu < 3; ++i) {
         if (near_num(v[i], mu) || (hSig && near_num(v[i], sig)) || (hVar && near_num(v[i], var))) continue;
         u[nu++] = v[i];
@@ -4694,6 +4723,35 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     return eval_stats(cmd, out);
   }
   double cdf_lo = 0, cdf_hi = 0;
+  if ((has(t, "cdf") || has(t, "cumulative")) && has(c, ")/") &&
+      extract_x_interval(c, &cdf_lo, &cdf_hi) &&
+      (has(c, "p(x<") || has(c, "p(x<=") || has(c, "p(x>") || has(c, "p(x>="))) {
+    const char *xp = strstr(c, "x^");
+    const char *slash = strstr(c, ")/");
+    if (xp && slash) {
+      int pow = isdigit((unsigned char)xp[2]) ? xp[2] - '0' : 1;
+      double sh = 0;
+      const char *after = xp + 3;
+      if (*after == '-' || *after == '+') sh = read_num(after);
+      double den = read_num(slash + 2);
+      double lower_base = pwr(cdf_lo, pow) + sh;
+      double upper_base = pwr(cdf_hi, pow) + sh;
+      double bound = 0; int btail = 0;
+      const char *bp = strstr(c, "p(x<");
+      if (bp) { btail = -1; bound = read_num(bp + (bp[4] == '=' ? 5 : 4)); }
+      else if ((bp = strstr(c, "p(x>"))) { btail = 1; bound = read_num(bp + (bp[4] == '=' ? 5 : 4)); }
+      if (pow >= 1 && den != 0 && near_num(lower_base, 0) && near_num(upper_base / den, 1) && btail != 0) {
+        double Fb = (pwr(bound, pow) + sh) / den;
+        if (Fb < 0) Fb = 0;
+        if (Fb > 1) Fb = 1;
+        int n = add(out, 0, "For a CDF, use endpoint values and then substitute the bound.");
+        n = add(out, n, "F(x)=(x^%d%+.10g)/%.10g on %.6g<=x<=%.6g.", pow, sh, den, cdf_lo, cdf_hi);
+        n = add(out, n, "F(%.6g)=0 and F(%.6g)=1.", cdf_lo, cdf_hi);
+        n = add(out, n, "F(%.6g)=%.10g", bound, Fb);
+        return add(out, n, btail > 0 ? "P(X>%.6g)=1-F(%.6g)=%.10g" : "P(X<%.6g)=F(%.6g)=%.10g", bound, bound, btail > 0 ? 1 - Fb : Fb);
+      }
+    }
+  }
   if ((has(t, "cdf") || has(t, "cumulative")) &&
       (has(c, "+k)/") || has(c, "-k)/")) && extract_x_interval(c, &cdf_lo, &cdf_hi) &&
       (has(c, "p(x<") || has(c, "p(x<=") || has(c, "p(x>") || has(c, "p(x>=") || has(t, "findk"))) {
@@ -4872,7 +4930,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if ((has(t, "pdf") || has(t, "density") || has(t, "continuous")) &&
       has(c, "k/(") && extract_x_interval(c, &pdf_lo, &pdf_hi)) {
     double rb=0, rd=0; int rpow=0;
-    if (parse_linear_den_power(c, 'x', &rb, &rd, &rpow) && rpow >= 2) {
+    if (parse_linear_den_power(c, 'x', &rb, &rd, &rpow) && rpow >= 1) {
       double raw_area = linear_den_antideriv(1.0, rb, rd, rpow, pdf_hi) -
                         linear_den_antideriv(1.0, rb, rd, rpow, pdf_lo);
       double k = raw_area ? 1.0 / raw_area : 0;
@@ -4886,6 +4944,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       char den[48]; fmt_linear_var(den, sizeof(den), rb, 'x', rd);
       int n = add(out, 0, "For a pdf, total area under f(x) is 1.");
       n = add(out, n, "integral from %.6g to %.6g of k/(%s)^%d dx = 1", pdf_lo, pdf_hi, den, rpow);
+      if (rpow == 1) n = add(out, n, "integral of 1/(%s) is (1/%.10g)ln|%s|", den, rb, den);
       n = add(out, n, "k = %.10g", k);
       if (gt) {
         n = add(out, n, "P(X>%.6g)=integral from %.6g to %.6g of %.10g/(%s)^%d dx", bound, a, b, k, den, rpow);
@@ -4896,6 +4955,64 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
         return add(out, n, "P(X<%.6g) = %.10g", bound, prob);
       }
       return n;
+    }
+  }
+  if ((has(t, "pdf") || has(t, "density") || has(t, "continuous")) &&
+      (has(c, "k(") || has(c, "k*(")) && extract_x_interval(c, &pdf_lo, &pdf_hi)) {
+    const char *kp = strstr(c, "k(");
+    if (!kp) kp = strstr(c, "k*(");
+    const char *p = strchr(kp, '(');
+    double rb=0, rd=0; int rpow=1;
+    if (p) {
+      ++p;
+      if (*p == 'x') { rb = 1; ++p; }
+      else if (*p == '-' || *p == '.' || isdigit((unsigned char)*p)) {
+        rb = read_num(p);
+        if (*p == '-' || *p == '+') ++p;
+        while (*p == '.' || isdigit((unsigned char)*p)) ++p;
+        if (*p == '*') ++p;
+        if (*p == 'x') ++p; else rb = 0;
+      }
+      if (rb != 0 && (*p == '+' || *p == '-')) {
+        rd = read_num(p);
+        while (*p == '+' || *p == '-' || *p == '.' || isdigit((unsigned char)*p)) ++p;
+      }
+      if (rb != 0 && *p == ')') {
+        ++p;
+        if (*p == '^') rpow = (int)read_num(p + 1);
+        if (rpow < 1) rpow = 1;
+        double raw_area = linear_power_antideriv(1.0, rb, rd, rpow, pdf_hi) -
+                          linear_power_antideriv(1.0, rb, rd, rpow, pdf_lo);
+        double k = raw_area ? 1.0 / raw_area : 0;
+        double a = pdf_lo, b = pdf_hi, bound = 0;
+        const char *gt = strstr(c, "p(x>");
+        const char *lt = strstr(c, "p(x<");
+        if (gt) { bound = read_num(gt + (gt[4] == '=' ? 5 : 4)); a = bound; }
+        if (lt) { bound = read_num(lt + (lt[4] == '=' ? 5 : 4)); b = bound; }
+        double prob = linear_power_antideriv(k, rb, rd, rpow, b) -
+                      linear_power_antideriv(k, rb, rd, rpow, a);
+        char den[48]; fmt_linear_var(den, sizeof(den), rb, 'x', rd);
+        int n = add(out, 0, "For a pdf, first normalise: total area under f(x) is 1.");
+        n = add(out, n, "integral from %.6g to %.6g of k(%s)^%d dx = 1", pdf_lo, pdf_hi, den, rpow);
+        n = add(out, n, "k = %.10g", k);
+        if (has(t, "mean") || has(c, "e(x)")) {
+          double uh = rb*pdf_hi + rd, ul = rb*pdf_lo + rd;
+          double raw_mean = (pwr(uh, rpow + 2) - pwr(ul, rpow + 2)) / (rpow + 2) -
+                            rd * (pwr(uh, rpow + 1) - pwr(ul, rpow + 1)) / (rpow + 1);
+          double mean = k * raw_mean / (rb * rb);
+          n = add(out, n, "E(X)=integral from %.6g to %.6g of x*f(x) dx", pdf_lo, pdf_hi);
+          return add(out, n, "mean = %.10g", mean);
+        }
+        if (gt) {
+          n = add(out, n, "P(X>%.6g)=integral from %.6g to %.6g of %.10g(%s)^%d dx", bound, a, b, k, den, rpow);
+          return add(out, n, "P(X>%.6g) = %.10g", bound, prob);
+        }
+        if (lt) {
+          n = add(out, n, "P(X<%.6g)=integral from %.6g to %.6g of %.10g(%s)^%d dx", bound, a, b, k, den, rpow);
+          return add(out, n, "P(X<%.6g) = %.10g", bound, prob);
+        }
+        return n;
+      }
     }
   }
   if ((has(t, "pdf") || has(t, "density") || has(t, "continuous")) &&

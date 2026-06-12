@@ -1,5 +1,36 @@
 # Checkpoint
 
+## 2026-06-12 Linear-Power Pdf, Log Antiderivative, Mixed Conditional, And Transfer Overhead Slice
+
+Completed:
+- Added CASP3 generic CDF handling for endpoint-normalised fixed-denominator powers such as `(x^3-1)/26`.
+- Added CASP3 generic pdf handling for `k(ax+b)^n`, including normalisation, tail probabilities, and `E(X)`.
+- Extended CASP3 reciprocal-linear antiderivatives so `k/(ax+b)` works for pdfs, acceleration integration, and variable-force work.
+- Fixed CASP3 parser scanning so `k(5-x)` is not misread as `k(5x)`.
+- Added CASP3 mixed normal conditional handling for cases such as `P(X<a given X>b)` by using the intersection interval.
+- Added CSCALC transfer-time handling where packet overhead is a percentage added to payload bits.
+- Added regressions and rebuilt calculator files.
+
+Evidence:
+- Fresh hard probes for the patched P3/CS cases: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 315464 bytes`
+  - `CSCALC.g3a: 202576 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Still inside CASP3/CSCALC free-text working support and generated calculator outputs.
+- Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for further source/probe-driven hardening.
+
 ## 2026-06-12 CDF, Rational Acceleration, Conditional Probability, And Float Width Slice
 
 Completed:
