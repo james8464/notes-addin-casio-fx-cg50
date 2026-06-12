@@ -2050,6 +2050,40 @@ static void maxterm_expr(int m, const char *vars, int vc, char *buf, int cap) {
   app_ch(buf, &p, cap, ')');
 }
 
+static int eval_posform(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
+  char a[2][48]; int na = args(s, a, 2);
+  if (!(starts3(s, "posform(", "cnf(", "productofsums(") && na >= 1)) return 0;
+  char exprbuf[96]; bool_norm(a[0], exprbuf, sizeof(exprbuf));
+  char vars[8]; int vc; collect_vars(exprbuf, vars, &vc);
+  if (vc == 0 || vc > 6) return add(out, 0, "Use up to 6 Boolean variables.");
+  int rows = 1 << vc, zeros[64], zc = 0;
+  for (int m = 0; m < rows; ++m) {
+    BParser p = { exprbuf, 0, m, {0}, vc };
+    for (int i = 0; i < vc; ++i) p.vars[i] = vars[i];
+    if (!p.expr()) zeros[zc++] = m;
+  }
+  int n = add(out, 0, "Product-of-sums method: make a truth table and list 0-cells.");
+  char vl[32] = ""; int vp = 0;
+  for (int i = 0; i < vc; ++i) { if (i) app_ch(vl, &vp, sizeof(vl), ','); app_ch(vl, &vp, sizeof(vl), vars[i]); }
+  n = add(out, n, "variables: %s", vl);
+  char zl[96] = ""; int zp = 0;
+  for (int i = 0; i < zc; ++i) { if (i) app_ch(zl, &zp, sizeof(zl), ','); app_int(zl, &zp, sizeof(zl), zeros[i]); }
+  n = add(out, n, "zero rows: %s", zc ? zl : "none");
+  if (!zc) return add(out, n, "POS = 1");
+  if (zc == rows) return add(out, n, "POS = 0");
+  char pos[112] = ""; int pp = 0;
+  for (int i = 0; i < zc; ++i) {
+    char term[32]; maxterm_expr(zeros[i], vars, vc, term, sizeof(term));
+    if (i) app_ch(pos, &pp, sizeof(pos), '&');
+    app_str(pos, &pp, sizeof(pos), term);
+    if (n < CSCALC_MAX_LINES - 5) n = add(out, n, "M%d = %s", zeros[i], term);
+  }
+  n = add(out, n, "POS = %s", pos);
+  Imp chosen[32]; int chc = minimise_rows(zeros, zc, 0, 0, chosen, 32);
+  char sim[96]; imp_pos_list(chosen, chc, vars, vc, sim, sizeof(sim));
+  return add(out, n, "simplified POS = %s", chc ? sim : "1");
+}
+
 static int eval_minterms(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
   char a[40][48]; int na = args(s, a, 40);
   bool maxmode = starts3(s, "maxterms(", "pos(", "zeros(");
@@ -2275,6 +2309,11 @@ static const char *skip_bool_words(const char *e) {
     if (starts(e, "identity")) { e += 8; moved = true; }
     if (starts(e, "boolean")) { e += 7; moved = true; }
     if (starts(e, "logic")) { e += 5; moved = true; }
+    if (starts(e, "productofsums")) { e += 13; moved = true; }
+    if (starts(e, "posform")) { e += 7; moved = true; }
+    if (starts(e, "cnf")) { e += 3; moved = true; }
+    if (starts(e, "pos")) { e += 3; moved = true; }
+    if (starts(e, "form")) { e += 4; moved = true; }
     if (starts(e, "truthtable")) { e += 10; moved = true; }
     if (starts(e, "truth")) { e += 5; moved = true; }
     if (starts(e, "table")) { e += 5; moved = true; }
@@ -2572,6 +2611,10 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if (nv == 0 && starts(compact, "onlynor")) {
     sprintf(cmd, "norform(%s)", compact + 7); return eval_gate_form(cmd, out);
   }
+  if (nv == 0 && (starts(compact, "posform") || starts(compact, "cnf") || has(compact, "productofsums"))) {
+    const char *e = skip_bool_words(compact);
+    sprintf(cmd, "posform(%s)", e); return eval_posform(cmd, out);
+  }
   if (nv == 0 && has(compact, "=")) {
     const char *e = skip_bool_words(compact);
     const char *eq = strchr(e, '=');
@@ -2607,6 +2650,7 @@ int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
   n = eval_float(s, out); if (n) return n;
   n = eval_storage(s, out); if (n) return n;
   n = eval_gate_form(s, out); if (n) return n;
+  n = eval_posform(s, out); if (n) return n;
   n = eval_minterms(s, out); if (n) return n;
   n = eval_bool_prove(s, out); if (n) return n;
   n = eval_bool(s, out); if (n) return n;
@@ -2614,5 +2658,5 @@ int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
   n = add(out, 0, "Supported:");
   n = add(out, n, "bin hex den convert twos twosdec twosadd twossub signmag signmagdec fixed fixedenc parity repeatenc repeatdec shift arithshift xorbits andbits orbits notbits hamming checksum checkdigit rpn");
   n = add(out, n, "floatdec floatadd floatsub floatmul floatdiv floatrange normal image sound bitrate transfer transfermb");
-  return add(out, n, "compress dictcompress huffman rle records sqlselect sqlcount hashmod hashlinear addressspace chars ascii unicode stack queue preorder inorder postorder dijkstra fsm fsmout binarysearch bubblesort selectionsort mergesort bool truth minterms maxterms kmap kmapdc nandform norform");
+  return add(out, n, "compress dictcompress huffman rle records sqlselect sqlcount hashmod hashlinear addressspace chars ascii unicode stack queue preorder inorder postorder dijkstra fsm fsmout binarysearch bubblesort selectionsort mergesort bool truth minterms maxterms kmap kmapdc posform nandform norform");
 }

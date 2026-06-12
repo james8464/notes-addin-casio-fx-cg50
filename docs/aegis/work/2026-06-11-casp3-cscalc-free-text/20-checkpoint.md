@@ -1,5 +1,25 @@
 # Checkpoint
 
+## 2026-06-12 CSCALC POS From Expression Slice
+
+Completed:
+- Added `posform(...)`, `cnf(...)`, and `productofsums(...)`.
+- Output now builds a truth table from an arbitrary Boolean expression, lists zero rows, writes maxterms, gives canonical POS, and gives simplified POS.
+- Added free-text routing for prompts such as `product of sums form for A or B` and `CNF A and not B`.
+- Added regression tests for direct and natural-language POS expression inputs.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CSCALC AQA Paper 2 Boolean calculation support.
+- Did not touch CAS Pure behavior, CASP3 behavior, NOTES, or shared UI/status code.
+
 ## 2026-06-12 CASP3 Normal Hypothesis P-Value Slice
 
 Completed:
