@@ -1,5 +1,26 @@
 # Checkpoint
 
+## 2026-06-12 CASP3 Binomial Stats Prose Slice
+
+Completed:
+- Fixed binomial prose without the word `binomial`, e.g. faulty-component/sample questions.
+- Fixed `n 500 p 0.02` word-number parsing for binomial/normal-approx prompts.
+- Routed normal-approximation binomial tail prompts before generic normal routes.
+- Fixed coin hypothesis test parsing so `5 percent` is alpha and not the trial count.
+- Added simple two-tailed handling for `hypbinom(..., tail=0)`.
+- Added regression tests and rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CASP3 free-text hardening for Paper 3 stats.
+- Did not touch CAS Pure behavior, CSCALC logic, NOTES, menus, or shared UI/status code.
+
 ## 2026-06-12 CSCALC Spaced Binary And CASP3 Projectile Wording Slice
 
 Completed:

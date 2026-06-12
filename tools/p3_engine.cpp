@@ -801,9 +801,16 @@ static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   if (starts3(s, "hypbinom(", "binomtest(", "hypothesistest(") && na >= 5) {
     int N=(int)num(a[0]), x=(int)num(a[2]); double p=num(a[1]), alpha=num(a[3]), tail=num(a[4]), prob=0;
     if (tail < 0) for (int k=0;k<=x;++k) prob += binomp(N,p,k);
-    else for (int k=x;k<=N;++k) prob += binomp(N,p,k);
+    else if (tail > 0) for (int k=x;k<=N;++k) prob += binomp(N,p,k);
+    else {
+      double lo=0, hi=0;
+      for (int k=0;k<=x;++k) lo += binomp(N,p,k);
+      for (int k=x;k<=N;++k) hi += binomp(N,p,k);
+      prob = 2 * (lo < hi ? lo : hi);
+      if (prob > 1) prob = 1;
+    }
     int n = add(out, 0, "H0: p = %.6g. H1 uses the stated tail.", p);
-    n = add(out, n, "tail probability = %.10g", prob);
+    n = add(out, n, tail == 0 ? "two-tailed probability = %.10g" : "tail probability = %.10g", prob);
     n = add(out, n, "Compare with alpha = %.6g.", alpha);
     return add(out, n, prob <= alpha ? "Reject H0 in context." : "Do not reject H0 in context.");
   }
@@ -1387,10 +1394,17 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if ((has(t, "hypothesis") || has(t, "significance") || has(t, "test")) &&
       (has(t, "coin") || has(t, "heads") || has(t, "tails")) && nv >= 2) {
-    double alpha = nv >= 3 ? v[nv - 1] : 0.05;
-    if (alpha > 1) alpha /= 100.0;
-    double tail = (has(t, "less") || has(t, "fewer") || has(t, "lower") || v[1] < v[0] * 0.5) ? -1 : 1;
-    sprintf(cmd, "hypbinom(%d,0.5,%d,%.10g,%.0f)", (int)v[0], (int)v[1], alpha, tail);
+    int ai = -1; double alpha = 0.05;
+    if (has(t, "percent") || has(t, "%") || has(t, "significance")) {
+      for (int i = 0; i < nv; ++i) if (v[i] > 0 && v[i] <= 10) { alpha = v[i] / 100.0; ai = i; break; }
+    } else if (nv >= 3 && v[nv - 1] > 0 && v[nv - 1] <= 1) { alpha = v[nv - 1]; ai = nv - 1; }
+    double N = -1, x = -1;
+    for (int i = 0; i < nv; ++i) if (i != ai && v[i] > N) N = v[i];
+    for (int i = 0; i < nv; ++i) if (i != ai && !near_num(v[i], N)) { x = v[i]; break; }
+    if (x < 0 && nv >= 2) x = v[1];
+    double tail = (has(t, "biased") || has(t, "twotailed") || has(t, "twosided")) ? 0 :
+                  ((has(t, "less") || has(t, "fewer") || has(t, "lower") || x < N * 0.5) ? -1 : 1);
+    sprintf(cmd, "hypbinom(%d,0.5,%d,%.10g,%.0f)", (int)N, (int)x, alpha, tail);
     return eval_stats(cmd, out);
   }
   if ((has(t, "coin") || has(t, "heads") || has(t, "tails") || has(t, "tosses") || has(t, "tossed")) &&
@@ -1412,9 +1426,11 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if (has(t, "binom")) {
     double N=0,pv=0,x=0,alpha=0,lo=0,hi=0;
-    bool hN=label_num(input,"n",&N), hP=label_num(input,"p",&pv) || label_num(input,"probability",&pv);
-    bool hX=label_num(input,"x",&x) || label_num(input,"r",&x);
-    bool hA=label_num(input,"alpha",&alpha) || label_num(input,"significance",&alpha);
+    bool hN=label_num(input,"n",&N) || word_num(input,"n",&N);
+    bool hP=label_num(input,"p",&pv) || label_num(input,"probability",&pv) || word_num(input,"p",&pv);
+    bool hX=label_num(input,"x",&x) || label_num(input,"r",&x) || word_num(input,"x",&x) || word_num(input,"r",&x);
+    bool hA=label_num(input,"alpha",&alpha) || label_num(input,"significance",&alpha) ||
+            word_num(input,"alpha",&alpha) || word_num(input,"significance",&alpha);
     bool hLo=label_num(input,"lower",&lo) || label_num(input,"lo",&lo);
     bool hHi=label_num(input,"upper",&hi) || label_num(input,"hi",&hi);
     int tail = 0;
@@ -1422,6 +1438,12 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     else if (has(c, "atleast") || has(c, "greaterthanorequal")) tail = 1;
     else if (has(c, "lessthan")) tail = -2;
     else if (has(c, "atmost") || has(t, "cdf")) tail = -1;
+    if (hN && hP && !hX) {
+      for (int i = 0; i < nv; ++i) {
+        if (near_num(v[i], N) || near_num(v[i], pv)) continue;
+        x = v[i]; hX = true; break;
+      }
+    }
     if (hN && hP && hA && (has(t, "critical") || has(t, "criticalregion"))) {
       sprintf(cmd, "critbinom(%d,%.10g,%.10g,%.0f)", (int)N, pv, alpha, (has(t, "upper") || has(t, "greater") || has(t, "more")) ? 1.0 : -1.0);
       return eval_stats(cmd, out);
@@ -1434,6 +1456,11 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       sprintf(cmd, "binomnorm(%d,%.10g,%.10g,%.10g)", (int)N, pv, lo, hi);
       return eval_stats(cmd, out);
     }
+    if (hN && hP && hX && has(t, "normal") && (has(t, "approx") || has(t, "approximation"))) {
+      double lower = tail < 0 ? 0 : x, upper = tail < 0 ? x : N;
+      sprintf(cmd, "binomnorm(%d,%.10g,%.10g,%.10g)", (int)N, pv, lower, upper);
+      return eval_stats(cmd, out);
+    }
     if (hN && hP && hX && has(t, "poisson") && (has(t, "approx") || has(t, "approximation"))) {
       sprintf(cmd, "poissonapprox(%d,%.10g,%d,%d)", (int)N, pv, (int)x, tail);
       return eval_stats(cmd, out);
@@ -1443,6 +1470,23 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       return eval_stats(cmd, out);
     }
     if (hN && hP && hX) {
+      if (tail) sprintf(cmd, "binomtail(%d,%.10g,%d,%d)", (int)N, pv, (int)x, tail);
+      else sprintf(cmd, "binom(%d,%.10g,%d)", (int)N, pv, (int)x);
+      return eval_stats(cmd, out);
+    }
+  }
+  if ((has(t, "probability") || has(t, "chance")) && nv >= 3 &&
+      (has(t, "sample") || has(t, "trials") || has(t, "success") || has(t, "faulty"))) {
+    double pv=-1, N=-1, x=-1;
+    for (int i = 0; i < nv; ++i) if (v[i] > 0 && v[i] < 1 && pv < 0) pv = v[i];
+    for (int i = 0; i < nv; ++i) if (!near_num(v[i], pv) && v[i] > N) N = v[i];
+    for (int i = 0; i < nv; ++i) if (!near_num(v[i], pv) && !near_num(v[i], N)) { x = v[i]; break; }
+    if (pv > 0 && N >= 1 && x >= 0) {
+      int tail = 0;
+      if (has(c, "morethan")) tail = 2;
+      else if (has(c, "atleast") || has(c, "greaterthanorequal")) tail = 1;
+      else if (has(c, "lessthan") || has(t, "fewer")) tail = -2;
+      else if (has(c, "atmost")) tail = -1;
       if (tail) sprintf(cmd, "binomtail(%d,%.10g,%d,%d)", (int)N, pv, (int)x, tail);
       else sprintf(cmd, "binom(%d,%.10g,%d)", (int)N, pv, (int)x);
       return eval_stats(cmd, out);
