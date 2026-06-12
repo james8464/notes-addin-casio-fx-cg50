@@ -1,5 +1,26 @@
 # Checkpoint
 
+## 2026-06-12 CSCALC Floating-Point Multiply Divide Slice
+
+Completed:
+- Added `floatmul(...)`, `fpmul(...)`, and `floatingmul(...)`.
+- Added `floatdiv(...)`, `fpdiv(...)`, and `floatingdiv(...)`.
+- Added free-text routing for floating-point multiply/divide prompts with two mantissa/exponent pairs.
+- Output decodes both operands, multiplies or divides mantissas, adds or subtracts exponents, normalises, and re-encodes with the original bit widths.
+- Added direct and free-text regression tests.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CSCALC AQA Paper 2 floating-point working support.
+- Did not touch CAS Pure behavior, CASP3 behavior, NOTES, or shared UI/status code.
+
 ## 2026-06-12 CSCALC Floating-Point Arithmetic Slice
 
 Completed:
