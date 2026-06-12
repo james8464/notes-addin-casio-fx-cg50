@@ -1,5 +1,34 @@
 # Checkpoint
 
+## 2026-06-12 Boolean Minimiser And Gate-Form Hardening Slice
+
+Completed:
+- Compared current CSCALC Boolean behavior against the legacy Python Boolean program in git history.
+- Fixed CSCALC Boolean minimisation buffer caps so 6-variable simplifications do not silently drop a variable.
+- Fixed XOR conversion to NAND-only and NOR-only forms so it uses the actual operands, not hard-coded `A` and `B`.
+- Added regression coverage and rebuilt calculator files.
+
+Evidence:
+- Legacy reference found at `d9a86d0f173a39411a40dd4f150ee874aa251cd1:python/src/ComputerScience/booleanProgram.py`.
+- Direct probes for XOR NAND/NOR conversion and 6-variable Boolean simplification: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 324432 bytes`
+  - `CSCALC.g3a: 204504 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Only CSCALC Boolean source/tests and generated `CSCALC.g3a` changed.
+- Did not touch CAS Pure behavior, P3 logic, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for further source/probe-driven hardening.
+
 ## 2026-06-12 Route-Order Hardening For Shifted P3 And CS Parser Cases
 
 Completed:

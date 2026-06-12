@@ -370,8 +370,10 @@ def main():
     require("nandform(A+B)", ["Use NAND", "NAND form", "A NAND A"])
     require("nand form A or B", ["Use NAND", "NAND form", "A NAND A"])
     require("Write A OR B using NAND gates only.", ["Use NAND", "((A NAND A) NAND (B NAND B))"])
+    require("convert C xor D to NAND only", ["C NAND (C NAND D)", "D NAND (C NAND D)"])
     require("norform(A*B)", ["Use NOR", "NOR form", "A NOR A"])
     require("nor form A and B", ["Use NOR", "NOR form", "A NOR A"])
+    require("convert C xor D to NOR only", ["C NOR D", "C NOR C", "D NOR D"])
     require("boolprove(A+B,B+A)", ["Simplify both sides", "LHS simplifies to", "RHS simplifies to", "truth tables", "Same output rows"])
     require("Prove using Boolean algebra that A + A.B = A", ["LHS: a+a&b -> a (Absorption law)", "LHS simplifies to A", "Same output rows"])
     require("Use Boolean algebra to prove A + A B = A.", ["Absorption law", "LHS simplifies to A", "Same output rows"])
@@ -423,6 +425,7 @@ def main():
     require("Calculate subnet mask for /26 and number of usable hosts.", ["subnet mask = 255.255.255.192", "usable host addresses = 62"])
     require("A bitmap image has 1024 by 768 pixels and 10-bit colour depth. Find file size in KiB.", ["1024*768*10 = 7864320 bits", "= 960 KiB"])
     require("Construct a truth table for A xor B.", ["Truth table for a^b", "A B | F", "simplified = A'B+AB'"])
+    require("bool(A+B+C+D+E+F)", ["simplified = F+E+D+C+B+A"])
     print("OK cscalc engine")
 
 

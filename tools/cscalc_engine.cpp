@@ -2630,10 +2630,10 @@ static bool int_seen(const int *v, int n, int x) {
 }
 
 static int minimise_rows(const int *ones, int oc, const int *dcs, int dc, Imp *chosen, int maxchosen) {
-  Imp cur[128], next[128], primes[128]; int cc = 0, pc = 0;
-  for (int i = 0; i < oc && cc < 128; ++i)
+  Imp cur[256], next[256], primes[256]; int cc = 0, pc = 0;
+  for (int i = 0; i < oc && cc < 256; ++i)
     if (!int_seen(ones, i, ones[i])) cur[cc++] = { ones[i], 0, 0 };
-  for (int i = 0; i < dc && cc < 128; ++i)
+  for (int i = 0; i < dc && cc < 256; ++i)
     if (!int_seen(ones, oc, dcs[i]) && !int_seen(dcs, i, dcs[i])) cur[cc++] = { dcs[i], 0, 0 };
   if (!oc) return 0;
   for (;;) {
@@ -2645,10 +2645,10 @@ static int minimise_rows(const int *ones, int oc, const int *dcs, int dc, Imp *c
         cur[i].used = cur[j].used = 1;
         Imp q = { cur[i].bits & ~d, cur[i].mask | d, 0 };
         bool seen = false; for (int k = 0; k < nc; ++k) if (next[k].bits == q.bits && next[k].mask == q.mask) seen = true;
-        if (!seen && nc < 128) next[nc++] = q;
+        if (!seen && nc < 256) next[nc++] = q;
       }
     }
-    for (int i = 0; i < cc && pc < 128; ++i) if (!cur[i].used) primes[pc++] = cur[i];
+    for (int i = 0; i < cc && pc < 256; ++i) if (!cur[i].used) primes[pc++] = cur[i];
     if (!nc) break;
     for (int i = 0; i < nc; ++i) cur[i] = next[i];
     cc = nc;
@@ -2765,7 +2765,7 @@ static int eval_bool(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN])
   if (mc == 0) return add(out, n, "simplified = 0");
   if (mc == rows) return add(out, n, "simplified = 1");
 
-  Imp cur[128], next[128], primes[128]; int cc = 0, pc = 0;
+  Imp cur[256], next[256], primes[256]; int cc = 0, pc = 0;
   for (int i = 0; i < mc; ++i) cur[cc++] = { mins[i], 0, 0 };
   for (;;) {
     int nc = 0; for (int i = 0; i < cc; ++i) cur[i].used = 0;
@@ -2776,10 +2776,10 @@ static int eval_bool(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN])
         cur[i].used = cur[j].used = 1;
         Imp q = { cur[i].bits & ~d, cur[i].mask | d, 0 };
         bool seen = false; for (int k = 0; k < nc; ++k) if (next[k].bits == q.bits && next[k].mask == q.mask) seen = true;
-        if (!seen && nc < 128) next[nc++] = q;
+        if (!seen && nc < 256) next[nc++] = q;
       }
     }
-    for (int i = 0; i < cc && pc < 128; ++i) if (!cur[i].used) primes[pc++] = cur[i];
+    for (int i = 0; i < cc && pc < 256; ++i) if (!cur[i].used) primes[pc++] = cur[i];
     if (!nc) break;
     for (int i = 0; i < nc; ++i) cur[i] = next[i];
     cc = nc;
@@ -3072,7 +3072,22 @@ static void gate_nand(GNode *n, int id, char *b, int *p, int cap) {
   if (x.op == '@') { gate_app(b, p, cap, "("); gate_nand(n, x.l, b, p, cap); gate_app(b, p, cap, " NAND "); gate_nand(n, x.r, b, p, cap); gate_app(b, p, cap, ")"); return; }
   if (x.op == '&') { gate_app(b, p, cap, "("); gate_nand(n, x.l, b, p, cap); gate_app(b, p, cap, " NAND "); gate_nand(n, x.r, b, p, cap); gate_app(b, p, cap, ") NAND ("); gate_nand(n, x.l, b, p, cap); gate_app(b, p, cap, " NAND "); gate_nand(n, x.r, b, p, cap); gate_app(b, p, cap, ")"); return; }
   if (x.op == '+') { gate_app(b, p, cap, "("); gate_nand_not(n, x.l, b, p, cap); gate_app(b, p, cap, " NAND "); gate_nand_not(n, x.r, b, p, cap); gate_app(b, p, cap, ")"); return; }
-  if (x.op == '^') { gate_app(b, p, cap, "(A NAND (A NAND B)) NAND (B NAND (A NAND B))"); return; }
+  if (x.op == '^') {
+    gate_app(b, p, cap, "(");
+    gate_nand(n, x.l, b, p, cap);
+    gate_app(b, p, cap, " NAND (");
+    gate_nand(n, x.l, b, p, cap);
+    gate_app(b, p, cap, " NAND ");
+    gate_nand(n, x.r, b, p, cap);
+    gate_app(b, p, cap, ")) NAND (");
+    gate_nand(n, x.r, b, p, cap);
+    gate_app(b, p, cap, " NAND (");
+    gate_nand(n, x.l, b, p, cap);
+    gate_app(b, p, cap, " NAND ");
+    gate_nand(n, x.r, b, p, cap);
+    gate_app(b, p, cap, "))");
+    return;
+  }
   gate_nand_not(n, id, b, p, cap);
 }
 
@@ -3083,7 +3098,22 @@ static void gate_nor(GNode *n, int id, char *b, int *p, int cap) {
   if (x.op == '#') { gate_app(b, p, cap, "("); gate_nor(n, x.l, b, p, cap); gate_app(b, p, cap, " NOR "); gate_nor(n, x.r, b, p, cap); gate_app(b, p, cap, ")"); return; }
   if (x.op == '+') { gate_app(b, p, cap, "("); gate_nor(n, x.l, b, p, cap); gate_app(b, p, cap, " NOR "); gate_nor(n, x.r, b, p, cap); gate_app(b, p, cap, ") NOR ("); gate_nor(n, x.l, b, p, cap); gate_app(b, p, cap, " NOR "); gate_nor(n, x.r, b, p, cap); gate_app(b, p, cap, ")"); return; }
   if (x.op == '&') { gate_app(b, p, cap, "("); gate_nor_not(n, x.l, b, p, cap); gate_app(b, p, cap, " NOR "); gate_nor_not(n, x.r, b, p, cap); gate_app(b, p, cap, ")"); return; }
-  if (x.op == '^') { gate_app(b, p, cap, "(A NOR B) NOR ((A NOR A) NOR (B NOR B))"); return; }
+  if (x.op == '^') {
+    gate_app(b, p, cap, "(");
+    gate_nor(n, x.l, b, p, cap);
+    gate_app(b, p, cap, " NOR ");
+    gate_nor(n, x.r, b, p, cap);
+    gate_app(b, p, cap, ") NOR ((");
+    gate_nor(n, x.l, b, p, cap);
+    gate_app(b, p, cap, " NOR ");
+    gate_nor(n, x.l, b, p, cap);
+    gate_app(b, p, cap, ") NOR (");
+    gate_nor(n, x.r, b, p, cap);
+    gate_app(b, p, cap, " NOR ");
+    gate_nor(n, x.r, b, p, cap);
+    gate_app(b, p, cap, "))");
+    return;
+  }
   gate_nor_not(n, id, b, p, cap);
 }
 
