@@ -190,8 +190,10 @@ def main():
     require("simplify A B + A' C + B C", ["Consensus theorem", "simplified"])
     require("minterms(A,B,1,2)", ["K-map/minterm method", "variables: A,B", "m1 = A'&B", "m2 = A&B'", "simplified = A'B+AB'"])
     require("kmap(A,B,C,1,3,5,7)", ["K-map/minterm method", "m1 = A'&B'&C", "simplified = C"])
+    require("maxterms(A,B,0,3)", ["Maxterm/POS method", "M0 = (A+B)", "M3 = (A'+B')", "POS = (A+B)&(A'+B')", "simplified = A'B+AB'"])
     require("simplify minterms 1 2 for A B", ["K-map/minterm method", "variables: A,B", "SOP = A'&B+A&B'", "simplified = A'B+AB'"])
     require("Karnaugh map ones 1 3 5 7 variables A B C", ["K-map/minterm method", "variables: A,B,C", "simplified = C"])
+    require("maxterms zeros 0 3 for A B", ["Maxterm/POS method", "variables: A,B", "POS = (A+B)&(A'+B')"])
     require("minterms(1,2)", ["K-map/minterm method", "variables: A,B", "simplified = A'B+AB'"])
     out = require("bool(not(A and B)+A)", ["truth table", "simplified = 1"])
     if "(a&b)'&a'" in out:

@@ -434,6 +434,7 @@ static bool make_sql_cmd(const char *in, char *cmd, int cap) {
 static bool minterm_skip_word(const char *w) {
   return word_is(w, "kmap") || word_is(w, "karnaugh") || word_is(w, "map") ||
          word_is(w, "minterm") || word_is(w, "minterms") || word_is(w, "ones") ||
+         word_is(w, "maxterm") || word_is(w, "maxterms") || word_is(w, "zeros") ||
          word_is(w, "cells") || word_is(w, "cell") || word_is(w, "for") ||
          word_is(w, "variables") || word_is(w, "variable") || word_is(w, "vars") ||
          word_is(w, "with") || word_is(w, "simplify") || word_is(w, "boolean") ||
@@ -1913,9 +1914,22 @@ static void minterm_expr(int m, const char *vars, int vc, char *buf, int cap) {
   if (!p) app_ch(buf, &p, cap, '1');
 }
 
+static void maxterm_expr(int m, const char *vars, int vc, char *buf, int cap) {
+  int p = 0;
+  app_ch(buf, &p, cap, '(');
+  for (int i = 0; i < vc; ++i) {
+    if (i) app_ch(buf, &p, cap, '+');
+    int bit = 1 << (vc - 1 - i);
+    app_ch(buf, &p, cap, vars[i]);
+    if (m & bit) app_ch(buf, &p, cap, '\'');
+  }
+  app_ch(buf, &p, cap, ')');
+}
+
 static int eval_minterms(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
   char a[40][48]; int na = args(s, a, 40);
-  if (!starts3(s, "minterms(", "kmap(", "karnaugh(") || na < 1) return 0;
+  bool maxmode = starts3(s, "maxterms(", "pos(", "zeros(");
+  if (!(starts3(s, "minterms(", "kmap(", "karnaugh(") || maxmode) || na < 1) return 0;
   char vars[8] = ""; int vc = 0, mins[32], mc = 0;
   for (int i = 0; i < na; ++i) {
     if (isalpha((unsigned char)a[i][0])) {
@@ -1935,6 +1949,28 @@ static int eval_minterms(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_L
     vars[vc] = 0;
   }
   int rows = 1 << vc;
+  if (maxmode) {
+    char pos[112] = ""; int pp = 0;
+    int n = add(out, 0, "Maxterm/POS method: write 0-cells as sum factors.");
+    char vl[32] = ""; int vp = 0;
+    for (int i = 0; i < vc; ++i) { if (i) app_ch(vl, &vp, sizeof(vl), ','); app_ch(vl, &vp, sizeof(vl), vars[i]); }
+    n = add(out, n, "variables: %s", vl);
+    for (int i = 0; i < mc; ++i) {
+      if (mins[i] < 0 || mins[i] >= rows) return add(out, n, "maxterm %d is outside 0 to %d.", mins[i], rows - 1);
+      char term[32]; maxterm_expr(mins[i], vars, vc, term, sizeof(term));
+      if (i) app_ch(pos, &pp, sizeof(pos), '&');
+      app_str(pos, &pp, sizeof(pos), term);
+      if (n < CSCALC_MAX_LINES - 6) n = add(out, n, "M%d = %s", mins[i], term);
+    }
+    n = add(out, n, "POS = %s", pos);
+    char cmd[128]; sprintf(cmd, "bool(%s)", pos);
+    char tmp[CSCALC_MAX_LINES][CSCALC_LINE_LEN]; int tn = eval_bool(cmd, tmp);
+    for (int i = 0; i < tn && n < CSCALC_MAX_LINES; ++i) {
+      if (starts(tmp[i], "Make truth table")) continue;
+      n = add(out, n, "%s", tmp[i]);
+    }
+    return n;
+  }
   char sop[96] = ""; int sp = 0;
   int n = add(out, 0, "K-map/minterm method: write 1-cells as SOP terms.");
   char vl[32] = ""; int vp = 0;
@@ -2352,6 +2388,11 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     }
     sprintf(cmd, "chars(%lld,%lld)", (long long)v[0], (long long)v[1]); return eval_storage(cmd, out);
   }
+  if ((has(t, "maxterm") || has(t, "maxterms") || has(t, "zeros")) && make_minterm_cmd(input, cmd, sizeof(cmd))) {
+    char tmp[160]; sprintf(tmp, "maxterms(%s", cmd + 9);
+    strcpy(cmd, tmp);
+    return eval_minterms(cmd, out);
+  }
   if ((has(t, "kmap") || has(t, "karnaugh") || has(t, "minterm") || has(t, "minterms")) && make_minterm_cmd(input, cmd, sizeof(cmd))) {
     return eval_minterms(cmd, out);
   }
@@ -2409,5 +2450,5 @@ int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
   n = add(out, 0, "Supported:");
   n = add(out, n, "bin hex den convert twos twosdec twosadd twossub signmag signmagdec fixed fixedenc parity repeatenc repeatdec shift arithshift xorbits andbits orbits notbits hamming checksum checkdigit rpn");
   n = add(out, n, "floatdec floatadd floatsub floatmul floatdiv floatrange normal image sound bitrate transfer transfermb");
-  return add(out, n, "compress huffman rle records sqlselect sqlcount hashmod hashlinear addressspace chars ascii unicode stack queue preorder inorder postorder dijkstra fsm fsmout binarysearch bubblesort selectionsort mergesort bool truth minterms kmap nandform norform");
+  return add(out, n, "compress huffman rle records sqlselect sqlcount hashmod hashlinear addressspace chars ascii unicode stack queue preorder inorder postorder dijkstra fsm fsmout binarysearch bubblesort selectionsort mergesort bool truth minterms maxterms kmap nandform norform");
 }
