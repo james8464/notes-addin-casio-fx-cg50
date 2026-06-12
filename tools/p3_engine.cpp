@@ -759,11 +759,19 @@ static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   if (starts3(s, "hypnormal(", "normaltest(", "hypmean(") && na >= 6) {
     double xb=num(a[0]), mu=num(a[1]), sig=num(a[2]), nn=num(a[3]), alpha=num(a[4]), tail=num(a[5]);
     double se = sig/root(nn), z = (xb-mu)/se;
-    int n = add(out, 0, "H0: mu = %.6g. H1 uses the stated tail.", mu);
+    double left = normal_cdf(z), right = 1 - left;
+    double small = left < right ? left : right;
+    double pval = tail > 0 ? right : (tail < 0 ? left : 2 * small);
+    if (pval > 1) pval = 1;
+    bool reject = pval <= alpha;
+    int n = add(out, 0, "H0: mu = %.6g. H1: %s.", mu, tail > 0 ? "mu is greater" : (tail < 0 ? "mu is less" : "mu is different"));
     n = add(out, n, "standard error = sigma/sqrt(n) = %.6g/sqrt(%.6g) = %.6g", sig, nn, se);
     n = add(out, n, "z = (xbar-mu)/SE = (%.6g-%.6g)/%.6g = %.6g", xb, mu, se, z);
-    n = add(out, n, tail >= 0 ? "Find P(Z>=%.6g) and compare with alpha %.6g." : "Find P(Z<=%.6g) and compare with alpha %.6g.", z, alpha);
-    return add(out, n, "Reject H0 if tail probability <= %.6g; conclude in context.", alpha);
+    if (tail > 0) n = add(out, n, "p = P(Z>=%.6g) = %.10g", z, pval);
+    else if (tail < 0) n = add(out, n, "p = P(Z<=%.6g) = %.10g", z, pval);
+    else n = add(out, n, "two-tailed p = 2*min(P(Z<=z),P(Z>=z)) = %.10g", pval);
+    n = add(out, n, "Reject H0 if p <= alpha %.6g.", alpha);
+    return add(out, n, reject ? "Reject H0; conclude there is evidence in context." : "Do not reject H0; insufficient evidence in context.");
   }
   if (starts3(s, "cond(", "conditional(", "given(") && na >= 2) {
     double pab=num(a[0]), pb=num(a[1]);
@@ -1190,7 +1198,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     return eval_stats(cmd, out);
   }
   if (has(t, "normal") && (has(t, "hypothesis") || has(t, "test")) && nv >= 5) {
-    double tail = has(t, "upper") || has(t, "greater") || has(t, "more") ? 1 : -1;
+    double tail = (has(t, "twotailed") || has(t, "twosided") || (has(t, "two") && (has(t, "tailed") || has(t, "sided"))) || has(t, "different") || has(t, "notequal")) ? 0 :
+                  (has(t, "upper") || has(t, "greater") || has(t, "more") ? 1 : -1);
     sprintf(cmd, "hypnormal(%.10g,%.10g,%.10g,%.10g,%.10g,%.0f)", v[0], v[1], v[2], v[3], v[4], tail); return eval_stats(cmd, out);
   }
   if ((has(t, "standardise") || has(t, "standardize") || has(t, "zscore")) && has(t, "variance") && nv >= 3) {

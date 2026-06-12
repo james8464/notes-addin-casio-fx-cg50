@@ -1,5 +1,25 @@
 # Checkpoint
 
+## 2026-06-12 CASP3 Normal Hypothesis P-Value Slice
+
+Completed:
+- Improved `hypnormal(...)`, `normaltest(...)`, and `hypmean(...)`.
+- Output now computes the z statistic, p-value, rejection rule, and reject/not-reject conclusion.
+- Added two-tailed/two-sided free-text routing for normal hypothesis tests.
+- Added regression tests for upper-tail and two-tailed prompts.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CASP3 Edexcel Paper 3 statistics/free-text support.
+- Did not touch CAS Pure behavior, CSCALC behavior, NOTES, or shared UI/status code.
+
 ## 2026-06-12 CASP3 Correlation Test Slice
 
 Completed:
