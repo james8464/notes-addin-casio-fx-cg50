@@ -3512,6 +3512,32 @@ static bool make_named_bool_rhs_cmd(const char *compact, const char *fn, char *c
   return true;
 }
 
+static int add_half_adder_lines(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
+  int n = add(out, 0, "Half adder: sum is XOR, carry is AND.");
+  n = add(out, n, "S = A xor B = A'B + AB'");
+  n = add(out, n, "C = AB");
+  n = add(out, n, "A B | S C");
+  n = add(out, n, "0 0 | 0 0");
+  n = add(out, n, "0 1 | 1 0");
+  n = add(out, n, "1 0 | 1 0");
+  return add(out, n, "1 1 | 0 1");
+}
+
+static int add_full_adder_lines(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
+  int n = add(out, 0, "Full adder: include carry-in Cin.");
+  n = add(out, n, "S = A xor B xor Cin");
+  n = add(out, n, "Cout = AB + A Cin + B Cin");
+  n = add(out, n, "A B Cin | S Cout");
+  n = add(out, n, "0 0 0 | 0 0");
+  n = add(out, n, "0 0 1 | 1 0");
+  n = add(out, n, "0 1 0 | 1 0");
+  n = add(out, n, "0 1 1 | 0 1");
+  n = add(out, n, "1 0 0 | 1 0");
+  n = add(out, n, "1 0 1 | 0 1");
+  n = add(out, n, "1 1 0 | 0 1");
+  return add(out, n, "1 1 1 | 1 1");
+}
+
 static int eval_free_text(const char *input, const char *compact, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
   char t[192]; raw_clean(input, t, sizeof(t));
   double v[8]; int nv = scan_nums(t, v, 8);
@@ -3527,6 +3553,23 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   char cmd[160];
   double width=0, height=0, depth=0;
   int prefix = 0;
+  if (has(t, "halfadder") || (has(t, "half") && has(t, "adder"))) return add_half_adder_lines(out);
+  if (has(t, "fulladder") || (has(t, "full") && has(t, "adder"))) return add_full_adder_lines(out);
+  if ((has(t, "overflow") || has(t, "overflowbit")) && has(t, "sign") &&
+      (has(t, "truth") || has(t, "table"))) {
+    int n = add(out, 0, "Signed-addition overflow occurs when the inputs have the same sign and the result has the opposite sign.");
+    n = add(out, n, "Let A and B be input sign bits and S be the result sign bit.");
+    n = add(out, n, "Overflow = A'B'S + ABS'");
+    n = add(out, n, "A B S | Overflow");
+    n = add(out, n, "0 0 0 | 0");
+    n = add(out, n, "0 0 1 | 1");
+    n = add(out, n, "0 1 0 | 0");
+    n = add(out, n, "0 1 1 | 0");
+    n = add(out, n, "1 0 0 | 0");
+    n = add(out, n, "1 0 1 | 0");
+    n = add(out, n, "1 1 0 | 1");
+    return add(out, n, "1 1 1 | 0");
+  }
   if (!has(t, "fixed") && (has(t, "binary") || has(t, "base,2")) &&
       (has(t, "denary") || has(t, "decimal")) &&
       (has(t, "fraction") || has(t, "fractional") || has(t, "point")) && nv >= 1) {
@@ -5577,6 +5620,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     truthbits_cmd_from_text(t, bits[0], cmd, sizeof(cmd)); return eval_truthbits(cmd, out);
   }
   if ((has(t, "kmap") || has(t, "karnaugh") || has(t, "minterm") || has(t, "minterms") ||
+       strstr(input, "Σm") || strstr(input, "∑m") ||
        has(t, "dontcare") || has(t, "don'tcare") || (has(t, "dont") && has(t, "care")) ||
        (has(t, "don't") && has(t, "care")) || has(t, "dc")) && make_minterm_cmd(input, cmd, sizeof(cmd))) {
     return eval_minterms(cmd, out);

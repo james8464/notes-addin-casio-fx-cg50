@@ -1395,7 +1395,7 @@ static int eval_mech(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     double u = num(a[0]), deg = num(a[1]), h = num(a[2]), g = na > 3 ? num(a[3]) : 9.8;
     double th = deg * M_PI / 180.0, ux = u*cosine(th), uy = u*sine(th);
     double t = (uy + root(uy*uy + 2*g*h)) / g, r = ux*t;
-    double maxh = h + uy*uy/(2*g);
+    double maxh = uy > 0 ? h + uy*uy/(2*g) : h;
     int n = add(out, 0, "Resolve, then use vertical motion to find time.");
     n = add(out, n, "u_x = %.6g cos %.6g = %.6g", u, deg, ux);
     n = add(out, n, "u_y = %.6g sin %.6g = %.6g", u, deg, uy);
@@ -2610,20 +2610,21 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if ((has(t, "acceleration") || has(t, "accn") || has(c, "a=")) &&
       (has(t, "velocity") || has(c, "v=") || has(c, "u=")) &&
       (has(t, "displacement") || has(t, "distance") || has(t, "position") || has(c, "s=")) &&
-      (has(c, "finddisplacement") || has(c, "finds") || has(c, "findposition") || has(t, "at"))) {
+      (has(c, "finddisplacement") || has(c, "finds") || has(c, "findposition") || has(t, "at")) &&
+      !(has(c, "displacementfrom") && has(t, "to"))) {
     double A=0, B=0, C=0, u=0, s0=0, time=0, t0=0;
     bool parsed_acc = parse_poly_after_word(input, "acceleration", &A, &B, &C);
     if (!parsed_acc && has(c, "a=")) parsed_acc = parse_velocity_quad(input, &A, &B, &C);
     bool hu = word_num(input, "velocity", &u) || label_num(input, "v", &u) || label_num(input, "u", &u);
-    bool hs0 = word_num(input, "displacement", &s0) || word_num(input, "position", &s0) ||
-               label_num(input, "s", &s0) || label_num(input, "s0", &s0);
+    word_num(input, "displacement", &s0) || word_num(input, "position", &s0) ||
+    label_num(input, "s", &s0) || label_num(input, "s0", &s0);
     double tv[6]; int ntv = scan_t_values(input, tv, 6);
     bool ht = last_label_num(input, "t", &time) || word_num(input, "after", &time);
     bool ht0 = word_num_with_t(input, "when", &t0) || word_num_with_t(input, "initially", &t0);
     if (ntv >= 2 && !ht0) { t0 = tv[0]; ht0 = true; }
     if (ntv >= 2) { time = tv[ntv-1]; ht = true; }
     if (!ht0) t0 = 0;
-    if (parsed_acc && hu && hs0 && ht) {
+    if (parsed_acc && hu && ht) {
       double vbase0 = A*t0*t0*t0/3.0 + B*t0*t0/2.0 + C*t0;
       double k1 = u - vbase0;
       double vv = A*time*time*time/3.0 + B*time*time/2.0 + C*time + k1;
@@ -3816,6 +3817,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     bool hG=label_num(input,"g",&g) || label_num(input,"gravity",&g);
     if (!hH && nv >= 3 && (has(t, "cliff") || has(t, "height") || has(t, "high"))) { h = v[2]; hH = true; }
     if (hU && hA && hH && !has(t, "findheight")) {
+      if ((has(t, "belowhorizontal") || (has(t, "below") && has(t, "horizontal")) ||
+           has(t, "downward") || has(t, "downwards")) && ang > 0) ang = -ang;
       sprintf(cmd, hG ? "projectileh(%.10g,%.10g,%.10g,%.10g)" : "projectileh(%.10g,%.10g,%.10g)", u, ang, h, hG ? g : 9.8);
       return eval_mech(cmd, out);
     }
@@ -3836,6 +3839,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     if (!hU && nv >= 1) { u = v[0]; hU = true; }
     if (!hH && nv >= 3 && (has(t, "cliff") || has(t, "height") || has(t, "high"))) { h0 = v[2]; hH = true; }
     if (hU && hA) {
+      if ((has(t, "belowhorizontal") || (has(t, "below") && has(t, "horizontal")) ||
+           has(t, "downward") || has(t, "downwards")) && ang > 0) ang = -ang;
       if (hH) {
         sprintf(cmd, hG ? "projectileh(%.10g,%.10g,%.10g,%.10g)" : "projectileh(%.10g,%.10g,%.10g)", u, ang, h0, hG ? g : 9.8);
         return eval_mech(cmd, out);
@@ -4621,6 +4626,15 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
         if (!near_num(v[i], m) && !near_num(v[i], ang) && !near_num(v[i], a)) { r = v[i]; break; }
     }
     double down = m * 9.8 * deg_sine(ang);
+    if ((has(t, "brake") || has(t, "braking")) && has(t, "down") &&
+        (has(t, "constant") || has(t, "speed")) && !hacc) {
+      double brake = down - r;
+      int n = add(out, 0, "At constant speed down the slope, resultant force along the plane is zero.");
+      n = add(out, n, "Down-plane weight component = mg sin(theta) = %.6g*9.8 sin(%.6g) = %.10g N", m, ang, down);
+      n = add(out, n, "Resistance and braking force act up the plane.");
+      n = add(out, n, "mg sin(theta) = resistance + braking force");
+      return add(out, n, "braking force = %.10g - %.10g = %.10g N", down, r, brake);
+    }
     if (hdrive && (has(t, "acceleration") || has(t, "accelerat")) && !hacc) {
       double net = known_drive - down - r;
       int n = add(out, 0, "Resolve along the inclined plane.");
@@ -4696,6 +4710,25 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if ((has(t, "pulley") || has(t, "connectedparticles") || (has(t, "connected") && has(t, "particle"))) && nv >= 2) {
     sprintf(cmd, has(t, "pulley") ? "pulley(%.10g,%.10g)" : "connected(%.10g,%.10g,%.10g)", v[0], v[1], nv > 2 ? v[2] : 0); return eval_mech(cmd, out);
+  }
+  if ((has(t, "impulse") || has(t, "impulsive")) &&
+      (has(t, "speed") || has(t, "velocity")) &&
+      (has(t, "before") || has(t, "initial")) &&
+      (has(t, "after") || has(t, "find")) &&
+      !has(t, "finalvelocity") && !has(t, "finalspeed") && nv >= 3) {
+    double m=0, I=0, u=0;
+    bool hm=label_num(input,"mass",&m) || word_num(input,"mass",&m);
+    bool hI=word_num(input,"impulse",&I) || word_num(input,"magnitude",&I);
+    bool hu=word_num(input,"before",&u) || word_num(input,"initialspeed",&u) || word_num(input,"initialvelocity",&u);
+    if (!hm) m = v[0];
+    if (!hI) I = hm ? v[1] : v[0];
+    if (!hu) u = v[nv-1];
+    if (has(t, "opposite") && I > 0) I = -I;
+    double vf = m ? u + I/m : u;
+    int n = add(out, 0, "Impulse equals change in momentum.");
+    n = add(out, n, "I = m(v-u)");
+    n = add(out, n, "%.10g = %.10g(v-%.10g)", I, m, u);
+    return add(out, n, "v = %.10g + %.10g/%.10g = %.10g m/s", u, I, m, vf);
   }
   if ((has(t, "impulse") || has(t, "momentumchange")) && nv >= 3) {
     sprintf(cmd, "impulse(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_mech(cmd, out);
@@ -4874,14 +4907,14 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "resultant force = %.10g - %.10g = %.10g N", drive, R, net);
     return add(out, n, "a = F/m = %.10g/%.10g = %.10g m/s^2", net, m, net/m);
   }
-  if (has(t, "lift") && has(t, "accelerat") && (has(t, "tension") || has(t, "cable")) && nv >= 2) {
+  if (has(t, "lift") && (has(t, "accelerat") || has(t, "decelerat")) && (has(t, "tension") || has(t, "cable")) && nv >= 2) {
     double m = 0, a0 = 0, g = 9.8;
     bool hm = label_num(input, "mass", &m) || word_num(input, "mass", &m);
     bool ha = label_num(input, "acceleration", &a0) || word_num(input, "acceleration", &a0);
     if (!hm) for (int i = 0; i < nv; ++i) if (v[i] > m) m = v[i];
     if (!ha) for (int i = 0; i < nv; ++i) if (!near_num(v[i], m)) { a0 = v[i]; break; }
     int n = add(out, 0, "For the lift, apply Newton's second law vertically.");
-    if (has(t, "down") || has(t, "descend")) {
+    if (has(t, "down") || has(t, "descend") || (has(t, "decelerat") && (has(t, "upward") || has(t, "upwards"))) ) {
       n = add(out, n, "Taking upward positive: T - mg = -ma.");
       return add(out, n, "T = m(g-a) = %.6g(%.6g-%.6g) = %.10g N", m, g, a0, m*(g-a0));
     }
@@ -7378,6 +7411,32 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "y = %.6g + (%.6g-%.6g)*(%.6g-%.6g)/(%.6g-%.6g)", y1, x, x1, y2, y1, x2, x1);
     return add(out, n, "y = %.10g", y);
   }
+  if ((has(t, "summarystatistics") || has(t, "summary") || has(t, "sumx") || has(t, "sumofsquares") ||
+       (has(t, "sum") && (has(t, "squared") || has(t, "squares")))) &&
+      (has(t, "mean") || has(t, "variance") || has(t, "standarddeviation") || has(t, "sd")) &&
+      !has(t, "added") && !has(t, "add") && !has(t, "removed") && !has(t, "remove") &&
+      !has(t, "normal") && !has(t, "binom") && !has(t, "poisson")) {
+    double n0 = 0, sx = 0, sx2 = 0;
+    bool hn = label_num(input, "n", &n0) || word_num(input, "n", &n0) || word_num(input, "sample", &n0);
+    bool hsx = label_num(input, "sumx", &sx) || label_num(input, "sx", &sx) || word_num(input, "sumx", &sx);
+    bool hsx2 = label_num(input, "sumx2", &sx2) || label_num(input, "sx2", &sx2) ||
+                label_num(input, "sumxsquared", &sx2) || label_num(input, "sumofsquares", &sx2) ||
+                word_num(input, "sumxsquared", &sx2) || word_num(input, "sumofsquares", &sx2);
+    if (!hn && nv >= 1) n0 = v[0];
+    if (!hsx && nv >= 2) sx = v[1];
+    if (!hsx2 && nv >= 3) sx2 = v[2];
+    if (n0 > 0 && sx2 > 0) {
+      double mean = sx / n0;
+      double var = sx2 / n0 - mean * mean;
+      int n = add(out, 0, "Use summary statistics formulae.");
+      n = add(out, n, "mean = Sx/n = %.10g/%.10g = %.10g", sx, n0, mean);
+      n = add(out, n, "variance = Sx2/n - mean^2");
+      n = add(out, n, "variance = %.10g/%.10g - %.10g^2 = %.10g", sx2, n0, mean, var);
+      if (has(t, "standarddeviation") || (has(t, "standard") && has(t, "deviation")) || has(t, "sd"))
+        return add(out, n, "sd = sqrt(variance) = %.10g", root(var));
+      return n;
+    }
+  }
 	  if (has(t, "mean") && nv >= 3 &&
 	      (has(t, "removed") || has(t, "remove") || has(t, "added") || has(t, "add")) &&
 	      !has(t, "normal") && !has(t, "binom") && !has(t, "poisson")) {
@@ -7418,29 +7477,6 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
 	    }
 	    return n;
 	  }
-  if ((has(t, "summarystatistics") || has(t, "summary") || has(t, "sumx") || has(t, "sumofsquares")) &&
-      (has(t, "mean") || has(t, "variance") || has(t, "standarddeviation") || has(t, "sd")) &&
-      !has(t, "normal") && !has(t, "binom") && !has(t, "poisson")) {
-    double n0 = 0, sx = 0, sx2 = 0;
-    bool hn = label_num(input, "n", &n0) || word_num(input, "n", &n0);
-    bool hsx = label_num(input, "sumx", &sx) || label_num(input, "sx", &sx) || word_num(input, "sumx", &sx);
-    bool hsx2 = label_num(input, "sumx2", &sx2) || label_num(input, "sx2", &sx2) ||
-                label_num(input, "sumxsquared", &sx2) || label_num(input, "sumofsquares", &sx2);
-    if (!hn && nv >= 1) n0 = v[0];
-    if (!hsx && nv >= 2) sx = v[1];
-    if (!hsx2 && nv >= 3) sx2 = v[2];
-    if (n0 > 0 && sx2 > 0) {
-      double mean = sx / n0;
-      double var = sx2 / n0 - mean * mean;
-      int n = add(out, 0, "Use summary statistics formulae.");
-      n = add(out, n, "mean = Sx/n = %.10g/%.10g = %.10g", sx, n0, mean);
-      n = add(out, n, "variance = Sx2/n - mean^2");
-      n = add(out, n, "variance = %.10g/%.10g - %.10g^2 = %.10g", sx2, n0, mean, var);
-      if (has(t, "standarddeviation") || (has(t, "standard") && has(t, "deviation")) || has(t, "sd"))
-        return add(out, n, "sd = sqrt(variance) = %.10g", root(var));
-      return n;
-    }
-  }
   if ((has(t, "combinedmean") || (has(t, "combined") && has(t, "mean")) ||
        ((has(t, "another") || has(t, "second")) && has(t, "sample") && has(t, "mean"))) &&
       nv >= 4 && !has(t, "normal") && !has(t, "binom") && !has(t, "poisson")) {

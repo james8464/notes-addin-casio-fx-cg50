@@ -4598,6 +4598,37 @@ Drift check:
 - Kept changes to CASP3/CSCALC general free-text handling, regressions, generated app outputs, and this checkpoint.
 - Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.
 
+## 2026-06-12 Final Simplification and Generic Route Slice
+
+Completed:
+- Removed a duplicate CASP3 summary-statistics branch so summary routes have one owner.
+- Made CASP3 variable-acceleration prose assume `s(0)=0` when displacement is requested but no initial displacement is given.
+- Preserved interval displacement wording for the existing dedicated interval route.
+- Added CASP3 constant-speed down-slope braking equilibrium working.
+- Added CSCALC half-adder, full-adder, signed-overflow truth-table, and sigma-minterm free-text handling before generic Boolean parsing.
+- Rebuilt calculator-ready CASP3 and CSCALC add-ins.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 423852 bytes`
+  - `CSCALC.g3a: 238516 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a sha256: 1e0da61652d3664ad335dd66669658df5ef8dd7072623cb144d99b72b5c39f76`
+  - `CSCALC.g3a sha256: f1a6027bafd3d2bf456770acaf77538af8f561826460b9994c1b0c67b382a5a2`
+
+Drift check:
+- Kept changes limited to CASP3/CSCALC engines, regressions, generated app outputs, and this checkpoint.
+- Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.
+
 ## 2026-06-12 Final Generalisation Cleanup Slice
 
 Completed:
