@@ -506,6 +506,9 @@ def main():
     require("A particle of mass 0.5 kg has velocity 3i+4j before impact and -i+6j after impact. Find impulse magnitude.", ["I = -2 i + 1 j Ns", "magnitude = sqrt((-2)^2+(1)^2) = 2.236067977 Ns"])
     require("A cyclist of mass 70 kg rides at 8 m/s. Braking force 140 N acts until rest. Find stopping distance using work-energy.", ["initial KE = 1/2*m*u^2 = 1/2*70*8^2 = 2240 J", "stopping distance s = 2240/140 = 16 m"])
     require("A sample of 50 has mean 12 and standard deviation 3. Estimate the total of the sample.", ["Use total = number of values * mean.", "total = 50*12 = 600"])
+    require("A particle of mass 2 kg moving at 3 m/s collides directly with a particle of mass 4 kg moving at -1 m/s. They coalesce. Find their common speed.", ["Particles move together", "2*3 + 4*-1 = (2+4)v", "v = 0.3333333333"])
+    require("A box contains 4 red, 5 blue and 3 green counters. Two counters are chosen without replacement. Find probability same colour.", ["same colour ways = C(4,2)+C(5,2)+C(3,2) = 19", "total ways = C(12,2)", "19/66"])
+    require("A particle P of mass 0.3 kg moving with speed 6 m/s collides with Q of mass 0.2 kg at rest. After collision P has speed 2 m/s. Find speed of Q.", ["Use conservation of linear momentum.", "0.3*6 + 0.2*0 = 0.3*2 + 0.2*v2", "v2 = (1.8 - 0.3*2)/0.2 = 6"])
     print("OK p3 engine")
 
 

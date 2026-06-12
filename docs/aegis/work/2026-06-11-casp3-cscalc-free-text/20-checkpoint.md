@@ -4336,3 +4336,31 @@ Evidence:
 Drift check:
 - Kept changes to CASP3/CSCALC general free-text handling, regressions, generated calculator outputs, and this checkpoint.
 - Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.
+
+## 2026-06-12 Momentum and Multi-Colour Probability Slice
+
+Completed:
+- Added CASP3 natural-language coalescence/stick-together collision routing to common-velocity conservation of momentum.
+- Added CASP3 direct-collision routing where one particle is initially at rest and one final speed is given.
+- Generalised CASP3 same-colour without-replacement probability from two colours to all detected colour groups.
+- Preserved explicit combination working line shape for old two-colour outputs.
+- Added regression tests and rebuilt calculator files.
+
+Evidence:
+- Fresh probes fixed: coalescing particles, 3-colour same-colour probability, and collision with one particle initially at rest.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed after replacing calculator-unsupported `snprintf` with `sprintf`.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 379080 bytes`
+  - `CSCALC.g3a: 224832 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Kept changes to CASP3 general free-text handling, regressions, generated CASP3 output, and this checkpoint.
+- Did not touch CAS Pure behavior, menus, NOTES source, shared UI/status code, or CSCALC source.

@@ -4297,6 +4297,19 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if ((has(t, "impulse") || has(t, "momentumchange")) && nv >= 3) {
     sprintf(cmd, "impulse(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_mech(cmd, out);
   }
+  if ((has(t, "collision") || has(t, "collide") || has(t, "collides") || has(t, "impact")) &&
+      (has(t, "together") || has(t, "coalesce") || has(t, "coalesces") || has(t, "stick") || has(t, "sticks")) &&
+      nv >= 4) {
+    sprintf(cmd, "commonvelocity(%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3]);
+    return eval_mech(cmd, out);
+  }
+  if ((has(t, "collision") || has(t, "collide") || has(t, "collides") || has(t, "impact")) &&
+      has(t, "rest") && (has(t, "after") || has(t, "aftercollision") || has(t, "afterimpact")) &&
+      nv >= 4) {
+    double m1 = v[0], u1 = v[1], m2 = v[2], u2 = 0, v1 = v[3];
+    sprintf(cmd, "momentum(%.10g,%.10g,%.10g,%.10g,%.10g)", m1, u1, m2, u2, v1);
+    return eval_mech(cmd, out);
+  }
   if ((has(t, "momentum") || has(t, "collision") || has(t, "collide")) && (has(t, "conserve") || has(t, "conservation") || has(t, "mom")) ) {
     double m1=0,u1=0,m2=0,u2=0,v1=0;
     if (label_num(input,"m1",&m1) && label_num(input,"u1",&u1) && label_num(input,"m2",&m2) && label_num(input,"u2",&u2) && label_num(input,"v1",&v1)) {
@@ -5402,10 +5415,31 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if ((has(t, "withoutreplacement") || (has(t, "without") && has(t, "replacement")) || has(t, "chosen")) &&
       (has(t, "samecolour") || has(t, "samecolor") || (has(t, "same") && (has(t, "colour") || has(t, "color")))) &&
       nv >= 2) {
-    double a = v[0], b = v[1], total = a + b;
-    double ways_same = choose((int)a, 2) + choose((int)b, 2), ways_all = choose((int)total, 2);
+    double counts[8]; int cc = 0;
+    const char *cols[] = {"red","blue","green","yellow","white","black","orange","purple"};
+    for (int i = 0; i < 8; ++i) {
+      double q = 0;
+      if (prev_word_num(input, cols[i], &q) && q > 0) counts[cc++] = q;
+    }
+    if (cc < 2) {
+      cc = 0;
+      for (int i = 0; i < nv && cc < 8; ++i) if (v[i] > 0) counts[cc++] = v[i];
+    }
+    double total = 0, ways_same = 0;
+    char ways_line[80]; ways_line[0] = 0; int wp = 0;
+    for (int i = 0; i < cc; ++i) {
+      total += counts[i];
+      ways_same += choose((int)counts[i], 2);
+      if (wp < 70) {
+        char term[18];
+        sprintf(term, "%sC(%.0f,2)", i ? "+" : "", counts[i]);
+        for (int j = 0; term[j] && wp < 78; ++j) ways_line[wp++] = term[j];
+        ways_line[wp] = 0;
+      }
+    }
+    double ways_all = choose((int)total, 2);
     int n = add(out, 0, "Without replacement, use combinations.");
-    n = add(out, n, "same colour ways = C(%.0f,2)+C(%.0f,2)", a, b);
+    n = add(out, n, "same colour ways = %s = %.10g", ways_line, ways_same);
     n = add(out, n, "total ways = C(%.0f,2)", total);
     return add(out, n, "P(same colour)=%.10g/%.10g=%.10g", ways_same, ways_all, ways_all ? ways_same/ways_all : 0);
   }
