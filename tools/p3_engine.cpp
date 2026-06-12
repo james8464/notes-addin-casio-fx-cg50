@@ -2326,7 +2326,18 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     bool hArea=label_num(input,"area",&area) || label_num(input,"probability",&area) ||
                (!has(t, "percentile") && label_num(input,"p",&area));
     double tail = (has(t, "twotailed") || has(t, "twosided") || (has(t, "two") && (has(t, "tailed") || has(t, "sided"))) || has(t, "different") || has(t, "notequal")) ? 0 :
-                  (has(t, "upper") || has(t, "greater") || has(t, "more") ? 1 : -1);
+                  (has(t, "upper") || has(t, "greater") || has(t, "more") || has(c, "x>") || has(c, "x>=") ? 1 : -1);
+    if (hMu && (hSig || hVar) && (has(t, "given") || has(t, "conditional")) && nv >= 4) {
+      double sd = hSig ? sig : root(var), u[3]; int nu = 0;
+      for (int i = 0; i < nv && nu < 3; ++i) {
+        if (near_num(v[i], mu) || (hSig && near_num(v[i], sig)) || (hVar && near_num(v[i], var))) continue;
+        u[nu++] = v[i];
+      }
+      if (nu >= 2) {
+        sprintf(cmd, "normalcond(%.10g,%.10g,%.10g,%.10g,%.0f)", u[0], u[1], mu, sd, tail);
+        return eval_stats(cmd, out);
+      }
+    }
     if (hMu && (hSig || hVar) && (has(c, "interquartilerange") || has(t, "iqr"))) {
       double sd = hSig ? sig : root(var);
       double z = 0.67448975;
@@ -2656,6 +2667,9 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     double pop=0, group=0, sample=0;
     bool hPop=word_num(input,"population",&pop), hGroup=word_num(input,"stratum",&group) || word_num(input,"group",&group);
     bool hSample=word_num(input,"sample",&sample);
+    if (hPop && hSample && !hGroup) {
+      for (int i = 0; i < nv; ++i) if (!near_num(v[i], pop) && !near_num(v[i], sample)) { group = v[i]; hGroup = true; break; }
+    }
     if (hPop && hGroup && hSample) sprintf(cmd, "stratified(%.10g,%.10g,%.10g)", pop, group, sample);
     else sprintf(cmd, "stratified(%.10g,%.10g,%.10g)", v[0], v[1], v[2]);
     return eval_stats(cmd, out);
@@ -2673,10 +2687,14 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     bool hD = word_num(input,"frequencydensity",&dens) || word_num(input,"density",&dens);
     bool hF = word_num(input,"frequency",&freq);
     if ((has(c, "findfrequency") || has(c, "calculatefrequency") || (has(t, "calculate") && has(t, "frequency"))) &&
-        !has(c, "findfrequencydensity") && !has(c, "calculatefrequencydensity") && hD && hW)
-      sprintf(cmd, "histfreq(%.10g,%.10g)", dens, width0);
+        !has(c, "findfrequencydensity") && !has(c, "calculatefrequencydensity") && hW && (hD || hF))
+      sprintf(cmd, "histfreq(%.10g,%.10g)", hD ? dens : freq, width0);
     else if (hF && hW) sprintf(cmd, "histdensity(%.10g,%.10g)", freq, width0);
-    else if (has(c, "findfrequency") && !has(c, "findfrequencydensity")) sprintf(cmd, "histfreq(%.10g,%.10g)", v[0], v[1]);
+    else if ((has(c, "findfrequency") || has(c, "findthefrequency")) && !has(c, "findfrequencydensity")) {
+      if (has(t, "class") && has(t, "width") && (has(t, "density") || has(t, "frequencydensity")))
+        sprintf(cmd, "histfreq(%.10g,%.10g)", v[1], v[0]);
+      else sprintf(cmd, "histfreq(%.10g,%.10g)", v[0], v[1]);
+    }
     else if (has(t, "frequencyfromdensity")) sprintf(cmd, "histfreq(%.10g,%.10g)", v[0], v[1]);
     else sprintf(cmd, "histdensity(%.10g,%.10g)", v[0], v[1]);
     return eval_stats(cmd, out);

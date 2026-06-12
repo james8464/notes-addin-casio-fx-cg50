@@ -2577,6 +2577,42 @@ Drift check:
 - Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
 - Active goal remains open for future source/probe-driven hardening.
 
+## 2026-06-12 Conditional Normal, Histogram, Stratified, Normalise, Megapixel Slice
+
+Completed:
+- Fixed CASP3 labelled conditional normal probability so mean/sigma are not mistaken for thresholds.
+- Fixed CASP3 `X>... given X>...` symbol wording to choose the upper-tail conditional route.
+- Fixed CASP3 stratified sampling prose where sample size, population, and stratum group are given in sentence form.
+- Fixed CASP3 histogram prose where class width appears before frequency density.
+- Fixed CSCALC normalise-vs-normalised routing so `normalise ...` transforms mantissa/exponent while `normalised ... decode` still decodes.
+- Fixed CSCALC megapixel image storage when colour count is supplied, converting colours to colour depth first.
+- Added regression tests and rebuilt calculator files.
+
+Evidence:
+- Fresh focused probes:
+  - `X is normally distributed with mean 60 and standard deviation 8. Find P(X>70 given X>55).` now uses `X~N(60, 8^2)` and upper-tail conditional probability.
+  - `A histogram has class width 5 and frequency density 3.2. Find the frequency.` now gives `3.2*5 = 16`.
+  - `A sample of 80 ... population of 500 ... stratum contains 125` now gives `125/500 * 80 = 20`.
+  - `Normalise ... mantissa 00101100 exponent 0101` now gives `mantissa = 01011000`, `exponent = 0100`.
+  - `2 megapixels and 4096 colours` now gives `ceil(log2(4096)) = 12` and `2000000*12`.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 186768 bytes`
+  - `CSCALC.g3a: 162384 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Still inside CASP3/CSCALC free-text parser hardening and generated calculator outputs.
+- Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for future source/probe-driven hardening.
+
 ## 2026-06-12 SUVAT, Fixed-Point Width, and Sound Sample Wording Slice
 
 Completed:

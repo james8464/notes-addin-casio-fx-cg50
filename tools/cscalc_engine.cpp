@@ -3094,9 +3094,13 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     return eval_trace(cmd, out);
   }
   if ((has(t, "image") || has(t, "bitmap")) && (has(t, "megapixel") || has(t, "megapixels")) && nv >= 2) {
-    double pixels = v[0] * 1000000.0, depth = v[1], bits_total = pixels * depth, bytes = bits_total / 8.0;
+    double pixels = v[0] * 1000000.0, depth = v[1];
+    int colour_depth = 0;
+    if (has(t, "colours") || has(t, "colors")) { colour_depth = ceil_log2_ll((long long)v[1]); depth = colour_depth; }
+    double bits_total = pixels * depth, bytes = bits_total / 8.0;
     int n = add(out, 0, "Image bits = pixels * colour depth.");
     n = add(out, n, "%.10g megapixels = %.10g pixels", v[0], pixels);
+    if (colour_depth) n = add(out, n, "ceil(log2(%.10g)) = %d bits per pixel", v[1], colour_depth);
     n = add(out, n, "%.10g*%.10g = %.10g bits", pixels, depth, bits_total);
     n = add(out, n, "= %.10g bytes", bytes);
     n = add(out, n, "= %.10g MB", bytes / 1000000.0);
@@ -3268,12 +3272,12 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   bool tc = has(t, "twos") || (has(t, "two") && has(t, "complement"));
   bool sm = has(t, "signmagnitude") || (has(t, "sign") && has(t, "magnitude"));
+  if ((has(t, "normalise") || has(t, "normalize")) && !has(t, "normalised") && !has(t, "normalized") && nb >= 2) {
+    sprintf(cmd, "floatnorm(%s,%s)", bits[0], bits[1]); return eval_float(cmd, out);
+  }
   if ((has(t, "float") || has(t, "floating") || (has(t, "mantissa") && has(t, "exponent"))) &&
       (has(t, "decode") || has(t, "denary") || has(t, "decimal") || has(t, "number")) && nb >= 2) {
     sprintf(cmd, "floatdec(%s,%s)", bits[0], bits[1]); return eval_float(cmd, out);
-  }
-  if ((has(t, "normalise") || has(t, "normalize")) && nb >= 2) {
-    sprintf(cmd, "floatnorm(%s,%s)", bits[0], bits[1]); return eval_float(cmd, out);
   }
   if ((has(t, "arithmeticshift") || (has(t, "arithmetic") && has(t, "shift")) || (has(t, "signed") && has(t, "shift"))) && nb >= 1 && nv >= 1) {
     double sh = v[nv-1]; scan_after_word_num(t, "by", &sh);
