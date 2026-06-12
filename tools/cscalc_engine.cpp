@@ -2790,6 +2790,24 @@ static bool make_gate_form_cmd(const char *input, bool nand, char *cmd, int cap)
   return true;
 }
 
+static bool make_named_bool_rhs_cmd(const char *compact, const char *fn, char *cmd, int cap) {
+  const char *e = skip_bool_words(compact);
+  const char *eq = strchr(e, '='); int elen = 1;
+  const char *eq2 = strstr(e, "isequalto");
+  if (eq2 && (!eq || eq2 < eq)) { eq = eq2; elen = 9; }
+  eq2 = strstr(e, "equals");
+  if (eq2 && (!eq || eq2 < eq)) { eq = eq2; elen = 6; }
+  if (!eq || eq <= e || !eq[elen]) return false;
+  if (eq != e + 1 || !isalpha((unsigned char)e[0])) return false;
+  char rhs[96], nrhs[96]; int ri = 0;
+  for (const char *p = eq + elen; *p && ri + 1 < (int)sizeof(rhs); ++p) rhs[ri++] = *p;
+  rhs[ri] = 0;
+  bool_arg_for_cmd(rhs, nrhs, sizeof(nrhs));
+  if (cap < (int)strlen(fn) + (int)strlen(nrhs) + 3) return false;
+  sprintf(cmd, "%s(%s)", fn, nrhs);
+  return true;
+}
+
 static int eval_free_text(const char *input, const char *compact, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
   char t[192]; raw_clean(input, t, sizeof(t));
   double v[8]; int nv = scan_nums(t, v, 8);
@@ -3286,6 +3304,11 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if (nv == 0 && (starts(compact, "posform") || starts(compact, "cnf") || has(compact, "productofsums"))) {
     const char *e = skip_bool_words(compact);
     sprintf(cmd, "posform(%s)", e); return eval_posform(cmd, out);
+  }
+  if (nv == 0 && !has(compact, "prove") && !has(compact, "show") &&
+      (has(compact, "simplify") || has(compact, "truth") || has(compact, "boolean") || has(compact, "logic")) &&
+      make_named_bool_rhs_cmd(compact, has(compact, "truth") ? "truth" : "bool", cmd, sizeof(cmd))) {
+    return eval_bool(cmd, out);
   }
   if (nv == 0 && (has(compact, "equals") || has(compact, "isequalto") || has(compact, "equivalentto"))) {
     const char *e = skip_bool_words(compact);

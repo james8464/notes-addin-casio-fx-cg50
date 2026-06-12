@@ -1,5 +1,26 @@
 # Checkpoint
 
+## 2026-06-12 CSCALC Boolean Assignment Notation Slice
+
+Completed:
+- Fixed assignment-style Boolean prompts like `simplify F = A and B or A and not B`.
+- Fixed worded assignment prompts like `simplify Q equals A B + A C`.
+- Fixed truth-table prompts written as `truth table for F = ...`.
+- Kept genuine identity/proof prompts on `boolprove(...)`, so `prove A+B = B+A` still compares both sides.
+- Avoided target-only `_snprintf` link failure by using the existing calculator-safe `sprintf` style.
+- Added regression tests and rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CSCALC AQA Paper 2 Boolean/free-text support.
+- Did not touch CAS Pure behavior, CASP3 logic, NOTES, menus, or shared UI/status code.
+
 ## 2026-06-12 CASP3 Distribution And Horizontal Mechanics Slice
 
 Completed:
