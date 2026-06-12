@@ -1,5 +1,27 @@
 # Checkpoint
 
+## 2026-06-12 CSCALC Stack Queue Trace Slice
+
+Completed:
+- Added `stack(...)` / `stacktrace(...)` / `pushpop(...)` working traces.
+- Added `queue(...)` / `queuetrace(...)` / `enqueue(...)` working traces.
+- Added free-text dispatch for stack push/pop and queue enqueue/dequeue prompts.
+- Output shows LIFO/FIFO rule, each operation, current state, and underflow/overflow guards.
+- Added stack/queue commands to the Algorithms help page and supported-command summary.
+- Added regression tests for direct and free-text forms.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed after replacing calculator-incompatible `snprintf` with `sprintf`.
+
+Drift check:
+- Still inside CSCALC AQA Paper 2 data structure trace support.
+- Did not touch CAS Pure behavior, CASP3 behavior, NOTES, or shared UI/status code.
+
 ## 2026-06-12 CSCALC Search Sort Trace Slice
 
 Completed:

@@ -146,6 +146,8 @@ static const char *const algos[] = {
   "linearsearch(target,list...)",
   "bubblesort(list...)",
   "insertionsort(list...)",
+  "stack(3,4,pop,5)",
+  "queue(3,4,pop,5)",
   "Binary search needs sorted data.",
   "Outputs each comparison/pass."
 };
