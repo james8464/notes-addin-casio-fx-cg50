@@ -1,5 +1,33 @@
 # Checkpoint
 
+## 2026-06-12 Geometric Cumulative And Rough Incline Pull Slice
+
+Completed:
+- Added CASP3 cumulative geometric working for prompts such as first defective item on or before a trial.
+- Added CASP3 rough inclined-plane acceleration for an applied force parallel to the plane.
+- Kept existing angled rough-plane pull handling intact.
+- Added regressions and rebuilt calculator files.
+
+Evidence:
+- Targeted probes for first defective on/before 5 and rough incline parallel pull: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 336400 bytes`
+  - `CSCALC.g3a: 207564 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Stayed inside CASP3 free-text working support and generated calculator outputs.
+- Did not touch CAS Pure behavior, CSCALC source, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for further source/probe-driven hardening.
+
 ## 2026-06-12 Mixed Binomial Intervals, Normal Absolute Deviation, And Attribute Storage Slice
 
 Completed:

@@ -3769,6 +3769,36 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "resultant up the plane = %.10g - %.10g - %.10g = %.10g N", up, down, fr, net);
     return add(out, n, "a = F/m = %.10g/%.6g = %.10g m/s^2", net, m, net/m);
   }
+  if ((has(t, "rough") || has(t, "friction") || has(t, "coefficient")) &&
+      (has(t, "plane") || has(t, "inclined") || has(t, "incline") || has(t, "slope")) &&
+      (has(t, "pull") || has(t, "force")) &&
+      (has(t, "acceleration") || has(t, "accelerate")) && nv >= 4) {
+    double m=0, theta=0, F=0, mu=0;
+    bool hm=word_num(input,"mass",&m) || label_num(input,"mass",&m);
+    bool hF=word_num(input,"force",&F) || label_num(input,"force",&F) || word_num(input,"pull",&F);
+    bool hA=word_num(input,"angle",&theta) || label_num(input,"angle",&theta) || prev_word_num(input,"degrees",&theta);
+    bool hmu=word_num(input,"coefficient",&mu) || label_num(input,"mu",&mu) || label_num(input,"coefficient",&mu);
+    if (!hm) m = v[0];
+    if (!hmu) for (int i = 0; i < nv; ++i) if (v[i] > 0 && v[i] < 1) { mu = v[i]; hmu = true; break; }
+    if (!hA) {
+      for (int i = 0; i < nv; ++i)
+        if (!near_num(v[i], m) && !near_num(v[i], F) && !near_num(v[i], mu) && v[i] > 1 && v[i] <= 90) { theta = v[i]; hA = true; break; }
+    }
+    if (!hF) {
+      for (int i = nv - 1; i >= 0; --i)
+        if (!near_num(v[i], m) && !near_num(v[i], theta) && !near_num(v[i], mu)) { F = v[i]; hF = true; break; }
+    }
+    double down = m*9.8*deg_sine(theta);
+    double R = m*9.8*deg_cosine(theta);
+    double fr = mu * R;
+    double net = F - down - fr;
+    int n = add(out, 0, "Resolve parallel and perpendicular to the rough inclined plane.");
+    n = add(out, n, "Down-plane weight component = mg sin(theta) = %.6g*9.8 sin(%.6g) = %.10g N", m, theta, down);
+    n = add(out, n, "Normal reaction R = mg cos(theta) = %.6g*9.8 cos(%.6g) = %.10g N", m, theta, R);
+    n = add(out, n, "friction = mu R = %.6g*%.10g = %.10g N", mu, R, fr);
+    n = add(out, n, "resultant up the plane = %.10g - %.10g - %.10g = %.10g N", F, down, fr, net);
+    return add(out, n, "a = F/m = %.10g/%.6g = %.10g m/s^2", net, m, net/m);
+  }
   if ((has(t, "smooth") || !has(t, "rough")) &&
       (has(t, "plane") || has(t, "inclined") || has(t, "incline") || has(t, "slope")) &&
       (has(t, "pull") || has(t, "force")) &&
@@ -4785,6 +4815,16 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     int n = add(out, 0, "For a geometric distribution, first success after r attempts means no success in the first r attempts.");
     n = add(out, n, "P(X>r)=(1-p)^r");
     return add(out, n, "P(X>%.0f)=(1-%.6g)^%.0f = %.10g", r, p, r, prob);
+  }
+  if (((has(t, "first") && (has(t, "success") || has(t, "defective") || has(t, "failure") || has(t, "win") || has(t, "head"))) || has(t, "geometric")) &&
+      (has(t, "before") || has(t, "within") || has(t, "by") || has(c, "onorbefore") || has(c, "onbefore")) && nv >= 2) {
+    double p = 0, r = 0;
+    for (int i = 0; i < nv; ++i) if (v[i] > 0 && v[i] < 1) { p = v[i]; break; }
+    for (int i = nv - 1; i >= 0; --i) if (!near_num(v[i], p) && v[i] >= 1) { r = v[i]; break; }
+    double prob = 1 - pwr(1 - p, (int)r);
+    int n = add(out, 0, "For a geometric distribution, first success on or before r means at least one success.");
+    n = add(out, n, "P(X<=r)=1-P(no success in first r trials)");
+    return add(out, n, "P(X<=%.0f)=1-(1-%.6g)^%.0f = %.10g", r, p, r, prob);
   }
   if ((has(t, "firsthead") || (has(t, "first") && (has(t, "head") || has(t, "win") || has(t, "success"))) || has(t, "geometric")) &&
       (has(t, "coin") || has(t, "toss") || has(t, "success") || has(t, "win") || has(t, "attempt")) && nv >= 2) {
