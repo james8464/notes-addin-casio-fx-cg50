@@ -535,6 +535,12 @@ def main():
     require("A car mass 1000kg travels up a hill at 15 m/s. Engine works at 30 kW against resistance 500N. Find slope angle.", ["driving force = P/v = 30000/15 = 2000", "sin(theta) = (2000-500)/(1000*9.8)", "theta = 8.804370"])
     require("A ladder length 6m weight 80N rests against a smooth vertical wall at 70 degrees to the horizontal. Find reaction at wall and ground friction.", ["Ladder in equilibrium", "S = 14.5590648 N, so F = 14.5590648 N", "Vertical equilibrium: R = 80 + 0 = 80 N"])
     require("A random variable X has pdf f(x)=k(4-x) for 0<x<4. Find k and P(X>1).", ["k = 2/4^2 = 0.125", "P(X>1)=integral from 1 to 4", "P(X>1) = 0.5625"])
+    require("A bag contains 4 red, 5 blue and 6 green counters. Three counters are selected without replacement. Find the probability they are all different colours.", ["all-different ways", "P(all different)=120/455=0.2637362637"])
+    require("A bag contains 4 red and 5 blue counters. Counters are selected without replacement until a red is obtained. Find P(red on third draw).", ["first r-1 draws are non-target", "P(non-target on draw 2) = 4/8", "P(first target on draw 3) = 0.1587301587"])
+    require("A continuous random variable has pdf f(x)=kx(4-x) for 0<x<4. Find k and P(X>2).", ["f(x)=k*x*(4-x)", "k = 0.09375", "P(X>2) = 0.5"])
+    require("The cdf is F(x)=0 for x<0, F(x)=kx^2 for 0<=x<=3, and F(x)=1 for x>3. Find k and the median.", ["k*3^2 = 1", "k = 0.1111111111", "m = 2.121320344"])
+    require("A projectile is fired at 18m/s at 40 degrees from a cliff 12m high. Find time to hit ground and range.", ["u_x = 18 cos 40", "h=12", "positive time", "range = u_x t = 43.3099314"])
+    require("A car of mass 1000kg moves up a 6 degree slope with resistance 250N and driving force 2000N. Find acceleration.", ["F = 2000 - 1024.37894 - 250", "a = F/m = 725.62106/1000 = 0.72562106"])
     print("OK p3 engine")
 
 

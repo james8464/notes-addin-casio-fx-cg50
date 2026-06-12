@@ -2101,7 +2101,7 @@ static int add_bitrate_unit_lines(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN], d
   n = add(out, n, "%.10g %s = %.10g bits", size, su, bits);
   double bps = bits / seconds;
   n = add(out, n, "bit rate = %.10g/%.10g = %.10g bit/s", bits, seconds, bps);
-  if (has(t, "mbit") || has(t, "megabit")) return add(out, n, "= %.10g Mbit/s", bps / 1000000.0);
+  if (has(t, "mbit") || has(t, "megabit") || has(t, "mbps")) return add(out, n, "= %.10g Mbit/s", bps / 1000000.0);
   if (has(t, "kbit") || has(t, "kilobit")) return add(out, n, "= %.10g kbit/s", bps / 1000.0);
   if (has(t, "gbit") || has(t, "gigabit")) return add(out, n, "= %.10g Gbit/s", bps / 1000000000.0);
   return n;
@@ -4689,6 +4689,11 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   bool tc = has(t, "twos") || (has(t, "two") && has(t, "complement"));
   bool sm = has(t, "signmagnitude") || (has(t, "sign") && has(t, "magnitude"));
   if (tc && (has(t, "add") || has(t, "sum") || has(t, "plus")) &&
+      !has(t, "subtract") && !has(t, "minus") && nb >= 2) {
+    sprintf(cmd, "twosadd(%s,%s)", bits[0], bits[1]);
+    return eval_twos(cmd, out);
+  }
+  if (tc && (has(t, "add") || has(t, "sum") || has(t, "plus")) &&
       (has(t, "denary") || has(t, "decimal") || has(t, "convert")) && nv >= 3) {
     double bitsw = 0;
     bool hb = scan_before_word_num(t, "bit", &bitsw) || scan_before_word_num(t, "bits", &bitsw);
@@ -4759,6 +4764,21 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       if (mi >= 0 && ei >= 0) { sprintf(cmd, "floatdec(%s,%s)", bits[mi], bits[ei]); return eval_float(cmd, out); }
     }
     sprintf(cmd, "floatdec(%s,%s)", bits[0], bits[1]); return eval_float(cmd, out);
+  }
+  if ((has(t, "float") || has(t, "floating") || (has(t, "mantissa") && has(t, "exponent"))) &&
+      (has(t, "decode") || has(t, "denary") || has(t, "decimal") || has(t, "number")) && nb == 1) {
+    double mbw=0, ebw=0, tmp=0;
+    bool hM = scan_bit_width_before_label(t, "mantissa", &tmp) || scan_before_word_num(t, "mantissa", &tmp); if (hM) mbw = tmp;
+    bool hE = scan_bit_width_before_label(t, "exponent", &tmp) || scan_before_word_num(t, "exponent", &tmp); if (hE) ebw = tmp;
+    int len = (int)strlen(bits[0]);
+    if (hM && hE && (int)(mbw + ebw) == len && mbw > 0 && ebw > 0 && mbw < 48 && ebw < 48) {
+      char mant[48], exp[48];
+      int mi = (int)mbw, ei = (int)ebw;
+      memcpy(mant, bits[0], mi); mant[mi] = 0;
+      memcpy(exp, bits[0] + mi, ei); exp[ei] = 0;
+      sprintf(cmd, "floatdec(%s,%s)", mant, exp);
+      return eval_float(cmd, out);
+    }
   }
   if ((has(t, "arithmeticshift") || (has(t, "arithmetic") && has(t, "shift")) || (has(t, "signed") && has(t, "shift"))) && nb >= 1 && nv >= 1) {
     double sh = v[nv-1]; scan_after_word_num(t, "by", &sh);

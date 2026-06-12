@@ -1,5 +1,44 @@
 # Checkpoint
 
+## 2026-06-12 Final Route-Priority Hardening Slice
+
+Completed:
+- Kept the final pass small and general: no menu churn, no Pure CAS edits, no broad refactor.
+- Hardened CASP3 route priority for:
+  - all-different without-replacement colour counters
+  - first target on ordinal draws such as `third draw`
+  - `kx(a-x)` pdf probability prompts, not only mean prompts
+  - quadratic CDF median prompts
+  - projectile `hit ground` from a height
+  - acceleration on an incline when driving force and resistance are already given
+- Hardened CSCALC route priority for:
+  - binary two's-complement addition prompts that also say `two's complement`
+  - combined floating-point bit strings split by stated mantissa/exponent widths
+  - Mbps bit-rate output wording
+- Added regressions and rebuilt calculator-ready outputs.
+
+Evidence:
+- Targeted hard probes for the above cases: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 404176 bytes`
+  - `CSCALC.g3a: 231456 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: 18178 bytes`
+
+Drift check:
+- Stayed inside final CASP3/CSCALC free-text parsing and generated calculator outputs.
+- Removed no tested capability; broad code deletion was avoided because current route breadth is what protects unseen inputs.
+- Active goal remains open for future source-driven hardening, but this checkpoint is built and usable.
+
 ## 2026-06-12 CS Boolean Named-Function And Implication Slice
 
 Completed:

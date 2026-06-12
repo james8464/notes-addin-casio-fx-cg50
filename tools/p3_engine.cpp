@@ -3586,7 +3586,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
 	    return add(out, n, "u = %.10g m/s", u);
 	  }
 	  if (is_projectile_text(t) && (has(t, "time") || has(t, "when") || has(t, "times")) &&
-	      (has(t, "high") || has(t, "above") || has(t, "height")) && nv >= 3 && !has(t, "hits")) {
+	      (has(t, "high") || has(t, "above") || has(t, "height")) && nv >= 3 && !has(t, "hits") && !has(t, "hit")) {
 	    double u=0, ang=0, y=0, h0=0, g=0;
 	    bool hU=label_num(input,"speed",&u) || label_num(input,"u",&u) || label_num(input,"initialspeed",&u) || label_num(input,"initialvelocity",&u) ||
 	            word_num(input,"speed",&u) || word_num(input,"initialspeed",&u) || word_num(input,"velocity",&u);
@@ -3702,7 +3702,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     sprintf(cmd, nv >= 4 ? "projectileat(%.10g,%.10g,%.10g,%.10g)" : "projectileat(%.10g,%.10g,%.10g)", v[0], v[1], v[2], nv >= 4 ? v[3] : 0); return eval_mech(cmd, out);
   }
 	  if (is_projectile_text(t) && (has(t, "time") || has(t, "when") || has(t, "times")) &&
-	      (has(t, "high") || has(t, "above") || has(t, "height")) && nv >= 3 && !has(t, "hits")) {
+	      (has(t, "high") || has(t, "above") || has(t, "height")) && nv >= 3 && !has(t, "hits") && !has(t, "hit")) {
     double u=0, ang=0, y=0, h0=0, g=0;
     bool hU=label_num(input,"speed",&u) || label_num(input,"u",&u) || label_num(input,"initialspeed",&u) || label_num(input,"initialvelocity",&u) ||
             word_num(input,"speed",&u) || word_num(input,"initialspeed",&u) || word_num(input,"velocity",&u);
@@ -4460,11 +4460,16 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       (has(t, "resistance") || has(t, "resistive")) &&
       (has(t, "driving") || has(t, "drive") || has(t, "force") || has(t, "constant") || has(t, "speed")) &&
       nv >= 3) {
-    double m=0, ang=0, r=0, a=0;
+    double m=0, ang=0, r=0, a=0, known_drive=0;
     bool hm=label_num(input,"mass",&m) || word_num(input,"mass",&m);
     bool ha=label_num(input,"angle",&ang) || word_num(input,"angle",&ang) || prev_word_num(input,"degrees",&ang);
     bool hr=word_num(input,"resistance",&r) || label_num(input,"resistance",&r);
     bool hacc=label_num(input,"acceleration",&a) || word_num(input,"acceleration",&a) || word_num(input,"accelerates",&a);
+    bool hdrive=word_num(input,"drivingforce",&known_drive) || label_num(input,"drivingforce",&known_drive);
+    if (!hdrive && has(t, "driving") && has(t, "force")) {
+      for (int i = nv - 1; i >= 0; --i)
+        if (!near_num(v[i], m) && !near_num(v[i], ang) && !near_num(v[i], r) && !near_num(v[i], a) && v[i] > 90) { known_drive = v[i]; hdrive = true; break; }
+    }
     if (!hm) m = v[0];
     if (!ha) {
       for (int i = 0; i < nv; ++i)
@@ -4475,6 +4480,14 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
         if (!near_num(v[i], m) && !near_num(v[i], ang) && !near_num(v[i], a)) { r = v[i]; break; }
     }
     double down = m * 9.8 * deg_sine(ang);
+    if (hdrive && (has(t, "acceleration") || has(t, "accelerat")) && !hacc) {
+      double net = known_drive - down - r;
+      int n = add(out, 0, "Resolve along the inclined plane.");
+      n = add(out, n, "Down-plane weight component = mg sin(theta) = %.6g*9.8 sin(%.6g) = %.10g N", m, ang, down);
+      n = add(out, n, "Taking up the plane as positive: F = driving force - weight component - resistance.");
+      n = add(out, n, "F = %.10g - %.10g - %.10g = %.10g N", known_drive, down, r, net);
+      return add(out, n, "a = F/m = %.10g/%.6g = %.10g m/s^2", net, m, net/m);
+    }
     double drive = down + r + (hacc ? m * a : 0);
     int n = add(out, 0, "Resolve along the inclined plane.");
     n = add(out, n, "Down-plane weight component = mg sin(theta) = %.6g*9.8 sin(%.6g) = %.10g N", m, ang, down);
@@ -5691,6 +5704,58 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     return add(out, n, "P(X=%.0f)=(1-%.6g)^%.0f*%.6g = %.10g", r, p, r - 1, p, prob);
   }
   if ((has(t, "withoutreplacement") || (has(t, "without") && has(t, "replacement")) || has(t, "chosen")) &&
+      (has(t, "alldifferent") || (has(t, "all") && has(t, "different"))) && nv >= 3) {
+    double counts[8]; int cc = 0;
+    const char *cols[] = {"red","blue","green","yellow","white","black","orange","purple"};
+    for (int i = 0; i < 8; ++i) {
+      double q = 0;
+      if (prev_word_num(input, cols[i], &q) && q > 0) counts[cc++] = q;
+    }
+    if (cc < 3) {
+      cc = 0;
+      for (int i = 0; i < nv && cc < 8; ++i) if (v[i] > 0) counts[cc++] = v[i];
+    }
+    double total = 0, ways = 0;
+    for (int i = 0; i < cc; ++i) total += counts[i];
+    if (cc >= 3) {
+      for (int i = 0; i < cc; ++i) for (int j = i + 1; j < cc; ++j) for (int k = j + 1; k < cc; ++k)
+        ways += counts[i] * counts[j] * counts[k];
+      double all = choose((int)total, 3);
+      int n = add(out, 0, "Without replacement, use combinations for unordered selections.");
+      n = add(out, n, "all-different ways = sum of products from different colour groups = %.10g", ways);
+      n = add(out, n, "total ways = C(%.0f,3) = %.10g", total, all);
+      return add(out, n, "P(all different)=%.10g/%.10g=%.10g", ways, all, all ? ways/all : 0);
+    }
+  }
+  if ((has(t, "withoutreplacement") || (has(t, "without") && has(t, "replacement")) || has(t, "chosen") || has(t, "selected")) &&
+      (has(t, "until") || has(t, "obtained") || has(t, "first")) && nv >= 2) {
+    double target = 0, other = 0, r = 0;
+    bool htgt = prev_word_num(input, "red", &target) || prev_word_num(input, "success", &target);
+    bool hoth = prev_word_num(input, "blue", &other) || prev_word_num(input, "notred", &other) || prev_word_num(input, "other", &other);
+    if (!htgt) target = v[0];
+    if (!hoth) other = v[1];
+    for (int i = nv - 1; i >= 0; --i) if (!near_num(v[i], target) && !near_num(v[i], other) && v[i] >= 1) { r = v[i]; break; }
+    if (r == 0) {
+      if (has(t, "first")) r = 1;
+      else if (has(t, "second")) r = 2;
+      else if (has(t, "third")) r = 3;
+      else if (has(t, "fourth")) r = 4;
+      else if (has(t, "fifth")) r = 5;
+      else if (has(t, "sixth")) r = 6;
+    }
+    if (target > 0 && other > 0 && r >= 1) {
+      double total = target + other, prob = 1.0;
+      int n = add(out, 0, "Without replacement until first target: first r-1 draws are non-target, then target.");
+      for (int i = 0; i < (int)r - 1; ++i) {
+        n = add(out, n, "P(non-target on draw %d) = %.10g/%.10g", i + 1, other - i, total - i);
+        prob *= (other - i) / (total - i);
+      }
+      n = add(out, n, "P(target on draw %.0f) = %.10g/%.10g", r, target, total - r + 1);
+      prob *= target / (total - r + 1);
+      return add(out, n, "P(first target on draw %.0f) = %.10g", r, prob);
+    }
+  }
+  if ((has(t, "withoutreplacement") || (has(t, "without") && has(t, "replacement")) || has(t, "chosen")) &&
       has(t, "both") && nv >= 2) {
     double a = 0, b = 0;
     bool ha = prev_word_num(input, "red", &a) || prev_word_num(input, "success", &a);
@@ -6290,6 +6355,22 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     }
   }
   if ((has(t, "cdf") || has(t, "cumulative")) && has(t, "median") &&
+      (has(c, "f(x)=kx^") || has(c, "f(x)=k*x^") || has(c, "kx^")) &&
+      extract_x_interval(c, &cdf_lo, &cdf_hi)) {
+    const char *kp = strstr(c, "x^");
+    int pow = kp && isdigit((unsigned char)kp[2]) ? kp[2] - '0' : 1;
+    double top = pwr(cdf_hi, pow);
+    if (pow >= 1 && top != 0) {
+      double k = 1.0 / top;
+      double med = nth_root(0.5 / k, pow);
+      int n = add(out, 0, "Use F(upper)=1 to find k, then solve F(m)=0.5.");
+      n = add(out, n, "F(x)=kx^%d on %.6g<=x<=%.6g", pow, cdf_lo, cdf_hi);
+      n = add(out, n, "k*%.6g^%d = 1, so k = %.10g", cdf_hi, pow, k);
+      n = add(out, n, "k*m^%d = 0.5", pow);
+      return add(out, n, "m = %.10g", med);
+    }
+  }
+  if ((has(t, "cdf") || has(t, "cumulative")) && has(t, "median") &&
       has(c, "ln") && has(c, "-ln") && extract_x_interval(c, &cdf_lo, &cdf_hi) &&
       cdf_lo > 0 && cdf_hi > cdf_lo) {
     double k = 1.0 / ln_approx(cdf_hi / cdf_lo);
@@ -6476,7 +6557,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   double pdf_lo = 0, pdf_hi = 0;
   if ((has(t, "pdf") || has(t, "density") || has(t, "continuous") || has(t, "randomvariable")) &&
       (has(c, "kx(") || has(c, "k*x(") || has(c, "k*x*(")) &&
-      (has(t, "mean") || has(c, "e(x)") || has(t, "normalise") || has(t, "normalize") || has(t, "findk")) &&
+      (has(t, "mean") || has(c, "e(x)") || has(t, "normalise") || has(t, "normalize") ||
+       has(t, "findk") || has(t, "probability") || has(c, "p(x>") || has(c, "p(x<")) &&
       extract_x_interval(c, &pdf_lo, &pdf_hi)) {
     double upper = pdf_hi;
     const char *kp = strstr(c, "kx(");
@@ -6495,6 +6577,16 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     if (has(t, "mean") || has(c, "e(x)")) {
       n = add(out, n, "E(X)=integral from %.6g to %.6g of x*k*x*(%.6g-x) dx", pdf_lo, pdf_hi, upper);
       return add(out, n, "mean = %.10g", mean);
+    }
+    const char *gt = strstr(c, "p(x>");
+    const char *lt = strstr(c, "p(x<");
+    if (gt || lt) {
+      double bound = read_num((gt ? gt : lt) + 4);
+      double a = gt ? bound : pdf_lo, b = gt ? pdf_hi : bound;
+      double prob = k * (upper*(b*b-a*a)/2.0 - (pwr(b, 3)-pwr(a, 3))/3.0);
+      n = add(out, n, gt ? "P(X>%.6g)=integral from %.6g to %.6g of k*x*(%.6g-x) dx" :
+                           "P(X<%.6g)=integral from %.6g to %.6g of k*x*(%.6g-x) dx", bound, a, b, upper);
+      return add(out, n, gt ? "P(X>%.6g) = %.10g" : "P(X<%.6g) = %.10g", bound, prob);
     }
     return n;
   }
