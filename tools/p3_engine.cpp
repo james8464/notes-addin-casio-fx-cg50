@@ -70,6 +70,16 @@ static double root(double x) {
   return r;
 }
 
+static double floor_num(double x) {
+  long long i = (long long)x;
+  return (x < 0 && (double)i != x) ? (double)(i - 1) : (double)i;
+}
+
+static double ceil_num(double x) {
+  long long i = (long long)x;
+  return (x > 0 && (double)i != x) ? (double)(i + 1) : (double)i;
+}
+
 static double sine(double x) {
   while (x > M_PI) x -= 2 * M_PI;
   while (x < -M_PI) x += 2 * M_PI;
@@ -492,6 +502,56 @@ static bool parse_cubic_poly_after_word(const char *input, const char *word, dou
   return false;
 }
 
+static bool parse_quartic_poly_after_word(const char *input, const char *word, double *A, double *B, double *C, double *D, double *E) {
+  int wl = (int)strlen(word);
+  for (int i = 0; input && input[i]; ++i) {
+    int j = 0, q = i;
+    while (j < wl && input[q] && tolower((unsigned char)input[q]) == word[j]) { ++j; ++q; }
+    if (j != wl) continue;
+    while (input[q] && input[q] != '-' && input[q] != '+' && input[q] != '.' &&
+           !isdigit((unsigned char)input[q]) && tolower((unsigned char)input[q]) != 't') ++q;
+    if (!input[q]) continue;
+    char expr[144]; int k = 0;
+    while (input[q] && k + 1 < (int)sizeof(expr)) {
+      unsigned char ch = (unsigned char)input[q];
+      if (isspace(ch)) { ++q; continue; }
+      char lc = (char)tolower(ch);
+      if (lc == 't' && isalpha((unsigned char)input[q+1])) break;
+      if (!(isdigit(ch) || lc == 't' || lc == '+' || lc == '-' || lc == '.' || lc == '^' || lc == '*')) break;
+      expr[k++] = lc; ++q;
+    }
+    expr[k] = 0; *A = *B = *C = *D = *E = 0;
+    for (int p = 0; expr[p];) {
+      double sign = 1;
+      if (expr[p] == '+') ++p;
+      else if (expr[p] == '-') { sign = -1; ++p; }
+      double coef = 0; bool hc = false;
+      while (isdigit((unsigned char)expr[p]) || expr[p] == '.') {
+        hc = true; coef = read_num(expr + p);
+        while (isdigit((unsigned char)expr[p]) || expr[p] == '.') ++p;
+        break;
+      }
+      while (expr[p] == '*') ++p;
+      int power = 0;
+      if (expr[p] == 't') {
+        ++p; power = 1;
+        if (expr[p] == '^' && isdigit((unsigned char)expr[p+1])) { ++p; power = expr[p++] - '0'; }
+      }
+      if (!hc && power > 0) coef = 1;
+      coef *= sign;
+      if (power == 4) *A += coef;
+      else if (power == 3) *B += coef;
+      else if (power == 2) *C += coef;
+      else if (power == 1) *D += coef;
+      else *E += coef;
+    }
+    if ((*A > 1e-9 || *A < -1e-9) || (*B > 1e-9 || *B < -1e-9) ||
+        (*C > 1e-9 || *C < -1e-9) || (*D > 1e-9 || *D < -1e-9) ||
+        (*E > 1e-9 || *E < -1e-9)) return true;
+  }
+  return false;
+}
+
 static bool parse_regression_line(const char *compact, double *m, double *b) {
   const char *p = 0;
   const char *isy = strstr(compact, "isy=");
@@ -736,10 +796,11 @@ static bool prob_x_bound(const char *c, double *x, int *tail) {
 }
 
 static bool prob_x_interval(const char *c, double *lo, double *hi) {
+  bool ls = false, rs = false;
   const char *p = strstr(c, "<=x<=");
-  if (!p) p = strstr(c, "<x<");
-  if (!p) p = strstr(c, "<=x<");
-  if (!p) p = strstr(c, "<x<=");
+  if (!p) { p = strstr(c, "<x<"); ls = true; rs = true; }
+  if (!p) { p = strstr(c, "<=x<"); ls = false; rs = true; }
+  if (!p) { p = strstr(c, "<x<="); ls = true; rs = false; }
   if (!p) return false;
   const char *a = p;
   while (a > c && (isdigit((unsigned char)a[-1]) || a[-1] == '.' || a[-1] == '-')) --a;
@@ -754,8 +815,9 @@ static bool prob_x_interval(const char *c, double *lo, double *hi) {
   char *end = 0;
   double l = strtod(left, 0), h = strtod(b, &end);
   if (end == b) return false;
-  if (l > h) { double q = l; l = h; h = q; }
-  *lo = l; *hi = h;
+  if (l > h) { double q = l; l = h; h = q; bool b = ls; ls = rs; rs = b; }
+  *lo = ls ? floor_num(l) + 1 : ceil_num(l);
+  *hi = rs ? ceil_num(h) - 1 : floor_num(h);
   return true;
 }
 
@@ -1982,6 +2044,42 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     return add(out, n, "at t=%.10g, maximum displacement = %.10g", bestt, bests);
   }
   if (has(t, "displacement") && has(t, "stationary")) {
+    double A4=0, A3=0, A2=0, A1=0, A0=0, t1=0, t2=0;
+    if (parse_quartic_poly_after_word(input, "displacement", &A4, &A3, &A2, &A1, &A0) && !near_num(A4, 0)) {
+      bool ht1 = word_num_with_t(input, "from", &t1) || word_num_with_t(input, "between", &t1);
+      bool ht2 = word_num_with_t(input, "to", &t2) || word_num_with_t(input, "and", &t2);
+      if (!ht1) t1 = 0;
+      if (!ht2) t2 = 10;
+      if (t2 < t1) { double q = t1; t1 = t2; t2 = q; }
+      double roots[8]; int nr = 0;
+      double prevt = t1, prev = ((4*A4*prevt + 3*A3)*prevt + 2*A2)*prevt + A1;
+      if (near_num(prev, 0)) roots[nr++] = prevt;
+      for (int i = 1; i <= 800 && nr < 8; ++i) {
+        double cur = t1 + (t2 - t1) * i / 800.0;
+        double f = ((4*A4*cur + 3*A3)*cur + 2*A2)*cur + A1;
+        if (near_num(f, 0) || prev * f < 0) {
+          double lo = prevt, hi = cur, flo = prev;
+          for (int k = 0; k < 45; ++k) {
+            double mid = (lo + hi) / 2.0;
+            double fm = ((4*A4*mid + 3*A3)*mid + 2*A2)*mid + A1;
+            if (near_num(fm, 0)) { lo = hi = mid; break; }
+            if (flo * fm <= 0) { hi = mid; }
+            else { lo = mid; flo = fm; }
+          }
+          double r = (lo + hi) / 2.0;
+          bool dup = false; for (int q = 0; q < nr; ++q) if (abs_num(roots[q] - r) < 1e-6) dup = true;
+          if (!dup) roots[nr++] = r;
+        }
+        prevt = cur; prev = f;
+      }
+      int n = add(out, 0, "Stationary points occur when velocity ds/dt is zero.");
+      n = add(out, n, "s = %.6g t^4 %+.6g t^3 %+.6g t^2 %+.6g t %+.6g", A4, A3, A2, A1, A0);
+      n = add(out, n, "v = ds/dt = %.6g t^3 %+.6g t^2 %+.6g t %+.6g", 4*A4, 3*A3, 2*A2, A1);
+      n = add(out, n, "Solve v=0 on %.6g <= t <= %.6g.", t1, t2);
+      if (!nr) return add(out, n, "No stationary time found in the interval.");
+      for (int i = 0; i < nr; ++i) n = add(out, n, "t = %.10g", roots[i]);
+      return n;
+    }
     double A=0, B=0, C=0, D0=0;
     if (parse_cubic_poly_after_word(input, "displacement", &A, &B, &C, &D0)) {
       double qa = 3*A, qb = 2*B, qc = C, disc = qb*qb - 4*qa*qc;
@@ -2034,11 +2132,14 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     double A=0, B=0, C=0, u=0, s0=0, time=0;
     bool parsed_acc = parse_poly_after_word(input, "acceleration", &A, &B, &C);
     if (!parsed_acc && has(c, "a=")) parsed_acc = parse_velocity_quad(input, &A, &B, &C);
-    bool has_u = word_num(input, "velocity", &u) || word_num(input, "speed", &u) || word_num(input, "u", &u);
+    bool has_u = label_num(input, "v", &u) || label_num(input, "u", &u) ||
+                 word_num(input, "velocity", &u) || word_num(input, "speed", &u) || word_num(input, "u", &u);
+    label_num(input, "s", &s0);
     if (!has_u && has(t, "rest")) { u = 0; has_u = true; }
     if (parsed_acc && (!near_num(A, 0) || !near_num(B, 0)) &&
         has_u &&
-        (word_num(input, "after", &time) || word_num(input, "time", &time) || word_num(input, "at", &time))) {
+        (label_num(input, "t", &time) || word_num(input, "after", &time) ||
+         word_num(input, "time", &time) || word_num(input, "at", &time))) {
       double vv = A*time*time*time/3.0 + B*time*time/2.0 + C*time + u;
       double ss = A*time*time*time*time/12.0 + B*time*time*time/6.0 + C*time*time/2.0 + u*time + s0;
       int n = add(out, 0, "Variable acceleration: integrate a(t) to get v(t), then integrate v(t) to get s(t).");
@@ -2053,7 +2154,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       n = add(out, n, "at t=%.6g, v = %.10g", time, vv);
       if (near_num(A, 0)) n = add(out, n, "s = integral(v) dt = (%.6g/6)t^3 + (%.6g/2)t^2 + %.6g t + C", B, C, u);
       else n = add(out, n, "s = integral(v) dt = (%.6g/12)t^4 + (%.6g/6)t^3 + (%.6g/2)t^2 + %.6g t + C", A, B, C, u);
-      n = add(out, n, "initial position at O gives C = 0.");
+      n = add(out, n, "initial position gives C = %.6g", s0);
       return add(out, n, "at t=%.6g, s = %.10g", time, ss);
     }
     if (parsed_acc && has_u && (has(t, "comestorest") || has(t, "comes") || has(t, "rest"))) {
@@ -3600,6 +3701,11 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     if ((has(t, "hypothesis") || has(t, "significance") || has(t, "test")) && nv >= 3) {
       double tail = has(t, "upper") || has(t, "greater") || has(t, "more") ? 1 : -1;
       sprintf(cmd, "hyppoisson(%.10g,%d,%.10g,%.0f)", v[0], (int)v[1], v[2], tail); return eval_stats(cmd, out);
+    }
+    double lo=0, hi=0;
+    if (prob_x_interval(c, &lo, &hi)) {
+      sprintf(cmd, "poissonrange(%.10g,%d,%d)", v[0], (int)lo, (int)hi);
+      return eval_stats(cmd, out);
     }
     int tail = prob_tail(c, t);
     if (has(c, "nomorethan") || has(t, "cdf")) tail = -1;

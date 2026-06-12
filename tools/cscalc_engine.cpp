@@ -242,6 +242,24 @@ static bool scan_before_word_num(const char *s, const char *word, double *v) {
   return false;
 }
 
+static bool scan_scaled_before_word_num(const char *s, const char *word, double *v) {
+  if (scan_before_word_num(s, word, v)) return true;
+  char pat[40]; sprintf(pat, "million,%s", word);
+  const char *p = strstr(s, pat);
+  if (!p) return false;
+  int j = (int)(p - s) - 1;
+  while (j >= 0 && s[j] == ',') --j;
+  int e = j + 1;
+  while (j >= 0 && (isdigit((unsigned char)s[j]) || s[j] == '.' || s[j] == '-')) --j;
+  if (e <= j + 1) return false;
+  *v = read_num(s + j + 1) * 1000000.0;
+  return true;
+}
+
+static double scaled_colour_count(const char *t, double v) {
+  return (has(t, "million,colours") || has(t, "million,colors")) && v < 1000 ? v * 1000000.0 : v;
+}
+
 static bool scan_bit_width_before_label(const char *s, const char *label, double *v) {
   const char *p = strstr(s, label);
   if (!p) return false;
@@ -588,6 +606,34 @@ static bool dijkstra_skip_word(const char *w) {
 
 static bool make_dijkstra_cmd(const char *in, char *cmd, int cap) {
   char t[192]; raw_clean(in, t, sizeof(t));
+  char start[16] = "", end[16] = "";
+  char edge[30][16]; int ne = 0; bool in_edges = false;
+  for (int i = 0; t[i] && ne < 30;) {
+    while (t[i] == ',') ++i;
+    char w[16]; int j = 0;
+    while (t[i] && t[i] != ',' && j + 1 < (int)sizeof(w)) w[j++] = t[i++];
+    w[j] = 0;
+    if (!w[0]) continue;
+    if (word_is(w, "from")) {
+      while (t[i] == ',') ++i;
+      j = 0; while (t[i] && t[i] != ',' && j + 1 < (int)sizeof(start)) start[j++] = t[i++]; start[j] = 0;
+      continue;
+    }
+    if (word_is(w, "to")) {
+      while (t[i] == ',') ++i;
+      j = 0; while (t[i] && t[i] != ',' && j + 1 < (int)sizeof(end)) end[j++] = t[i++]; end[j] = 0;
+      continue;
+    }
+    if (word_is(w, "edges") || word_is(w, "edge")) { in_edges = true; continue; }
+    if (in_edges && !dijkstra_skip_word(w)) strcpy(edge[ne++], w);
+  }
+  if (start[0] && end[0] && ne >= 3 && ne % 3 == 0) {
+    int p = sprintf(cmd, "dijkstra(%s,%s", start, end);
+    for (int i = 0; i < ne && p < cap - 20; ++i) p += sprintf(cmd + p, ",%s", edge[i]);
+    if (p >= cap - 2) return false;
+    cmd[p++] = ')'; cmd[p] = 0;
+    return true;
+  }
   char tok[32][16]; int nt = 0;
   for (int i = 0; t[i] && nt < 32;) {
     while (t[i] == ',') ++i;
@@ -1772,6 +1818,32 @@ static bool storage_size_bits(const char *t, double size, double *bits, const ch
   if (has(t, "byte")) { *bits = size * 8.0; *unit = "bytes"; return true; }
   if (has(t, "bit")) { *bits = size; *unit = "bits"; return true; }
   return false;
+}
+
+static bool bytes_before_unit(const char *t, const char *unit, double mult, double *bytes, double *shown) {
+  double v = 0;
+  if (!scan_before_word_num(t, unit, &v)) return false;
+  *shown = v; *bytes = v * mult;
+  return true;
+}
+
+static int add_compression_unit_lines(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN], const char *t) {
+  const char *names[] = {"GiB","GB","MiB","MB","KiB","KB","bytes"};
+  const char *keys[] = {"gib","gb","mib","mb","kib","kb","bytes"};
+  double mult[] = {1073741824.0,1000000000.0,1048576.0,1000000.0,1024.0,1000.0,1.0};
+  double b[4], shown[4]; const char *unit[4]; int nb = 0;
+  for (int i = 0; i < 7 && nb < 4; ++i) {
+    if (bytes_before_unit(t, keys[i], mult[i], &b[nb], &shown[nb])) { unit[nb] = names[i]; ++nb; }
+  }
+  if (nb < 2) return 0;
+  int oi = b[0] >= b[1] ? 0 : 1, ni = oi ? 0 : 1;
+  double oldb = b[oi], newb = b[ni];
+  if (oldb <= 0 || newb <= 0) return 0;
+  int n = add(out, 0, "Compression ratio = original / compressed.");
+  n = add(out, n, "%.10g %s = %.10g bytes", shown[oi], unit[oi], oldb);
+  n = add(out, n, "%.10g %s = %.10g bytes", shown[ni], unit[ni], newb);
+  n = add(out, n, "ratio = %.10g : 1", oldb / newb);
+  return add(out, n, "percentage reduction = %.6g%%", (oldb - newb) * 100.0 / oldb);
 }
 
 static bool storage_rate_bits(const char *t, double rate, double *bps, const char **unit) {
@@ -3372,12 +3444,12 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if ((has(t, "image") || has(t, "bitmap")) && (has(t, "megapixel") || has(t, "megapixels")) && nv >= 2) {
     double pixels = v[0] * 1000000.0, depth = v[1];
     int colour_depth = 0;
-    if (has(t, "colours") || has(t, "colors")) { colour_depth = ceil_log2_ll((long long)v[1]); depth = colour_depth; }
+    if (has(t, "colours") || has(t, "colors")) { double cv = scaled_colour_count(t, v[1]); colour_depth = ceil_log2_ll((long long)cv); depth = colour_depth; }
     if (image_depth_is_bytes(t)) depth *= 8.0;
     double bits_total = pixels * depth, bytes = bits_total / 8.0;
     int n = add(out, 0, "Image bits = pixels * colour depth.");
     n = add(out, n, "%.10g megapixels = %.10g pixels", v[0], pixels);
-    if (colour_depth) n = add(out, n, "ceil(log2(%.10g)) = %d bits per pixel", v[1], colour_depth);
+    if (colour_depth) n = add(out, n, "ceil(log2(%.10g)) = %d bits per pixel", scaled_colour_count(t, v[1]), colour_depth);
     else if (image_depth_is_bytes(t)) n = add(out, n, "%.10g bytes per pixel = %.10g bits per pixel", v[1], depth);
     n = add(out, n, "%.10g*%.10g = %.10g bits", pixels, depth, bits_total);
     n = add(out, n, "= %.10g bytes", bytes);
@@ -3386,7 +3458,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   if ((has(t, "image") || has(t, "bitmap")) && (has(t, "colours") || has(t, "colors")) && nv >= 3) {
     double colours=0; bool hc = label_num(input, "colours", &colours) || label_num(input, "colors", &colours) ||
-                                scan_before_word_num(t, "colours", &colours) || scan_before_word_num(t, "colors", &colours);
+                                scan_scaled_before_word_num(t, "colours", &colours) || scan_scaled_before_word_num(t, "colors", &colours);
     if (hc) {
       double wh[2]; int nw = 0;
       for (int i = 0; i < nv && nw < 2; ++i) if ((long long)v[i] != (long long)colours) wh[nw++] = v[i];
@@ -3395,13 +3467,14 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
         return eval_storage(cmd, out);
       }
     }
-    sprintf(cmd, "imagecolors(%lld,%lld,%lld)", (long long)v[0], (long long)v[1], (long long)v[2]); return eval_storage(cmd, out);
+    sprintf(cmd, "imagecolors(%lld,%lld,%lld)", (long long)v[0], (long long)v[1], (long long)scaled_colour_count(t, v[2])); return eval_storage(cmd, out);
   }
   if ((has(t, "image") || has(t, "bitmap")) && label_num(input,"width",&width) && label_num(input,"height",&height) && (label_num(input,"depth",&depth) || label_num(input,"bits",&depth))) {
     if (image_depth_is_bytes(t)) return add_image_byte_depth_lines(out, (long long)width, (long long)height, (long long)depth);
     sprintf(cmd, "image(%lld,%lld,%lld)", (long long)width, (long long)height, (long long)depth); return eval_storage(cmd, out);
   }
   if ((has(t, "image") || has(t, "bitmap")) && label_num(input,"width",&width) && label_num(input,"height",&height) && (label_num(input,"colours",&depth) || label_num(input,"colors",&depth))) {
+    depth = scaled_colour_count(t, depth);
     sprintf(cmd, "imagecolors(%lld,%lld,%lld)", (long long)width, (long long)height, (long long)depth); return eval_storage(cmd, out);
   }
   if ((has(t, "image") || has(t, "bitmap")) && nv >= 3) {
@@ -3410,7 +3483,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
           has(t, "bitcolour") || has(t, "bitcolor") || has(t, "bits") || has_word(t, "bit")) {
         sprintf(cmd, "image(%lld,%lld,%lld)", (long long)v[0], (long long)v[1], (long long)v[2]); return eval_storage(cmd, out);
       }
-      sprintf(cmd, "imagecolors(%lld,%lld,%lld)", (long long)v[0], (long long)v[1], (long long)v[2]); return eval_storage(cmd, out);
+      sprintf(cmd, "imagecolors(%lld,%lld,%lld)", (long long)v[0], (long long)v[1], (long long)scaled_colour_count(t, v[2])); return eval_storage(cmd, out);
     }
   }
   if ((has(t, "symbol") || has(t, "symbols")) && (has(t, "bits") || has(t, "bit")) &&
@@ -3428,7 +3501,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       nv >= 1 && !(has(t, "width") || has(t, "height") || has(t, "resolution"))) {
     double colours=0;
     if (!(label_num(input, "colours", &colours) || label_num(input, "colors", &colours) ||
-          scan_before_word_num(t, "colours", &colours) || scan_before_word_num(t, "colors", &colours))) colours = v[0];
+          scan_scaled_before_word_num(t, "colours", &colours) || scan_scaled_before_word_num(t, "colors", &colours))) colours = scaled_colour_count(t, v[0]);
     sprintf(cmd, "colourdepth(%lld)", (long long)colours); return eval_storage(cmd, out);
   }
   if ((has(t, "colour") || has(t, "color")) && (has(t, "howmanycolours") || has(t, "how,many,colours") ||
@@ -3557,6 +3630,8 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     }
   }
   if (has(t, "compress") || has(t, "compression")) {
+    int un = add_compression_unit_lines(out, t);
+    if (un) return un;
     double oldv=0, newv=0;
     bool hO=label_num(input,"original",&oldv) || label_num(input,"before",&oldv) || label_num(input,"old",&oldv);
     bool hN=label_num(input,"compressed",&newv) || label_num(input,"after",&newv) || label_num(input,"new",&newv);
@@ -4042,7 +4117,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if ((has(t, "image") || has(t, "bitmap")) && nv >= 3) {
     if (has(t, "colours") || has(t, "colors")) {
       double colours=0; bool hc = label_num(input, "colours", &colours) || label_num(input, "colors", &colours) ||
-                                  scan_before_word_num(t, "colours", &colours) || scan_before_word_num(t, "colors", &colours);
+                                  scan_scaled_before_word_num(t, "colours", &colours) || scan_scaled_before_word_num(t, "colors", &colours);
       if (hc) {
         double wh[2]; int nw = 0;
         for (int i = 0; i < nv && nw < 2; ++i) if ((long long)v[i] != (long long)colours) wh[nw++] = v[i];
@@ -4051,7 +4126,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
           return eval_storage(cmd, out);
         }
       }
-      sprintf(cmd, "imagecolors(%lld,%lld,%lld)", (long long)v[0], (long long)v[1], (long long)v[2]); return eval_storage(cmd, out);
+      sprintf(cmd, "imagecolors(%lld,%lld,%lld)", (long long)v[0], (long long)v[1], (long long)scaled_colour_count(t, v[2])); return eval_storage(cmd, out);
     }
     if (image_depth_is_bytes(t)) return add_image_byte_depth_lines(out, (long long)v[0], (long long)v[1], (long long)v[2]);
     sprintf(cmd, "image(%lld,%lld,%lld)", (long long)v[0], (long long)v[1], (long long)v[2]); return eval_storage(cmd, out);
@@ -4078,6 +4153,8 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     sprintf(cmd, "dictcompress(%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3]); return eval_storage(cmd, out);
   }
   if ((has(t, "compress") || has(t, "compression")) && nv >= 2) {
+    int un = add_compression_unit_lines(out, t);
+    if (un) return un;
     double mb=0, kb=0;
     if ((scan_before_word_num(t, "mb", &mb) || scan_before_word_num(t, "megabytes", &mb) || scan_before_word_num(t, "megabyte", &mb)) &&
         (scan_before_word_num(t, "kb", &kb) || scan_before_word_num(t, "kilobytes", &kb) || scan_before_word_num(t, "kilobyte", &kb))) {

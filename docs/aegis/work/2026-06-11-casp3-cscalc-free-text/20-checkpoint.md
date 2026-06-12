@@ -1,5 +1,30 @@
 # Checkpoint
 
+## 2026-06-12 Polynomial Motion, Poisson Interval, And CS Unit Slice
+
+Completed:
+- Fixed CASP3 variable-acceleration prompts with labelled `v=`, `u=`, `s=`, and `t=` values so initial conditions are not guessed from number order.
+- Added CASP3 quartic-displacement stationary-time working instead of misreading quartics as cubics.
+- Fixed CASP3 strict discrete probability intervals so `P(2<X<7)` becomes `P(3<=X<=6)`.
+- Hardened CSCALC image colour-count parsing for wording such as `16 million colours`.
+- Hardened CSCALC compression working for mixed units such as `3 MiB` to `750 KiB`.
+- Added CSCALC Dijkstra prose parsing for `from A to E with edges A B 2 ...`.
+- Added regression tests and rebuilt calculator files.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CASP3/CSCALC free-text working support and generated calculator outputs.
+- No menu/catalog/UI/status changes.
+- Active goal remains open for continued hardening.
+
 ## 2026-06-12 Parser Precedence And Network Slice
 
 Completed:
