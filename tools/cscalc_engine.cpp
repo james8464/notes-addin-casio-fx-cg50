@@ -247,6 +247,35 @@ static bool scan_after_word_num(const char *s, const char *word, double *v) {
   return false;
 }
 
+static bool scan_near_after_word_num(const char *s, const char *word, double *v) {
+  int wl = (int)strlen(word);
+  for (int i = 0; s && s[i]; ++i) {
+    if (i > 0 && isalnum((unsigned char)s[i-1])) continue;
+    if (strncmp(s + i, word, wl) != 0 || isalnum((unsigned char)s[i + wl])) continue;
+    int q = i + wl, limit = q + 36;
+    for (; s[q] && q < limit; ++q) {
+      if (s[q] == '-' || isdigit((unsigned char)s[q])) {
+        *v = read_num(s + q);
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+static bool scan_after_label_compact(const char *s, const char *label, double *v) {
+  const char *p = strstr(s, label);
+  if (!p) return false;
+  p += strlen(label);
+  for (int i = 0; p[i] && i < 36; ++i) {
+    if (p[i] == '-' || isdigit((unsigned char)p[i])) {
+      *v = read_num(p + i);
+      return true;
+    }
+  }
+  return false;
+}
+
 static bool scan_before_word_num(const char *s, const char *word, double *v) {
   int wl = (int)strlen(word);
   for (int i = 0; s && s[i]; ++i) {
@@ -3502,7 +3531,15 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       n = add(out, n, "IP address = %d.%d.%d.%d", oct[0], oct[1], oct[2], oct[3]);
       n = add(out, n, "network address = IP AND mask");
       n = add(out, n, "%lu.%lu.%lu.%lu", (net>>24)&255, (net>>16)&255, (net>>8)&255, net&255);
-      return add(out, n, "broadcast address = %lu.%lu.%lu.%lu", (bcast>>24)&255, (bcast>>16)&255, (bcast>>8)&255, bcast&255);
+      n = add(out, n, "broadcast address = %lu.%lu.%lu.%lu", (bcast>>24)&255, (bcast>>16)&255, (bcast>>8)&255, bcast&255);
+      if (has(t, "usable") || has(t, "hostrange") || (has(t, "host") && has(t, "range"))) {
+        unsigned long first = prefix >= 31 ? net : net + 1;
+        unsigned long last = prefix >= 31 ? bcast : bcast - 1;
+        return add(out, n, "usable host range = %lu.%lu.%lu.%lu to %lu.%lu.%lu.%lu",
+                   (first>>24)&255, (first>>16)&255, (first>>8)&255, first&255,
+                   (last>>24)&255, (last>>16)&255, (last>>8)&255, last&255);
+      }
+      return n;
     }
     if (has(t, "mask")) {
       unsigned long mask = prefix == 0 ? 0UL : (0xffffffffUL << (32 - prefix)) & 0xffffffffUL;
@@ -3904,12 +3941,29 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if (has(t, "sound") || has(t, "audio")) {
     double rate=0, seconds=0, res=0, channels=1;
     double dur=0;
+    if ((scan_after_label_compact(compact, "samplerate", &rate) || scan_after_label_compact(compact, "rate", &rate)) &&
+        scan_after_label_compact(compact, "duration", &dur) &&
+        (scan_after_label_compact(compact, "sampleresolution", &res) || scan_after_label_compact(compact, "resolution", &res))) {
+      seconds = dur;
+      scale_frequency_unit(t, &rate);
+      scale_time_unit(t, &seconds);
+      if (!(scan_after_label_compact(compact, "channels", &channels) || scan_after_label_compact(compact, "channel", &channels) ||
+            label_num(input, "channels", &channels) || label_num(input, "channel", &channels)))
+        channels = has(t, "stereo") ? 2 : 1;
+      sprintf(cmd, "sound(%lld,%lld,%lld,%lld)", (long long)rate, (long long)seconds, (long long)res, (long long)channels);
+      return eval_storage(cmd, out);
+    }
     bool wordRate = scan_before_word_num(t, "khz", &rate) || scan_before_word_num(t, "kilohertz", &rate) ||
                     scan_before_word_num(t, "hz", &rate) || scan_before_word_num(t, "hertz", &rate);
     bool wordDur = scan_before_word_num(t, "minutes", &dur) || scan_before_word_num(t, "minute", &dur) ||
                    scan_before_word_num(t, "mins", &dur) || scan_before_word_num(t, "seconds", &dur) ||
                    scan_before_word_num(t, "second", &dur) || scan_before_word_num(t, "hours", &dur) ||
                    scan_before_word_num(t, "hour", &dur);
+    double labelled = 0;
+    if (scan_near_after_word_num(t, "duration", &labelled) || scan_near_after_word_num(t, "time", &labelled)) {
+      dur = labelled;
+      wordDur = true;
+    }
     if (wordRate && wordDur) {
       double rawRate = rate;
       seconds = dur;
@@ -3921,8 +3975,11 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
         return add(out, n, "samples = %.10g", rate * seconds);
       }
       if (nv >= 3) {
-        for (int i = 0; i < nv; ++i)
-          if (v[i] != dur && v[i] != rawRate && v[i] > 1 && v[i] <= 64) { res = v[i]; break; }
+        if (!(scan_near_after_word_num(t, "resolution", &res) || scan_near_after_word_num(t, "depth", &res) ||
+              scan_before_word_num(t, "bits", &res) || scan_before_word_num(t, "bit", &res))) {
+          for (int i = 0; i < nv; ++i)
+            if (v[i] != dur && v[i] != rawRate && v[i] > 1 && v[i] <= 64) { res = v[i]; break; }
+        }
         if (res <= 0) res = v[2];
         if (!(scan_before_word_num(t, "channels", &channels) || scan_before_word_num(t, "channel", &channels)))
           channels = has(t, "stereo") ? 2 : 1;

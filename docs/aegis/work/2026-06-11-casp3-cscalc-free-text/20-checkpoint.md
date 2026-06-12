@@ -1,5 +1,36 @@
 # Checkpoint
 
+## 2026-06-12 Exponential Tail, Poisson Test, Motion Split, Histogram, Sound, And CIDR Slice
+
+Completed:
+- Added CASP3 exponential pdf tail working for `f(x)=lambda exp(-lambda x)` prompts.
+- Fixed free-text Poisson hypothesis parsing so labelled `lambda`, observed value, percent alpha, and increased-tail wording are respected.
+- Added CASP3 two-stage acceleration/deceleration total-distance working while ignoring unit exponents such as `m/s^2`.
+- Added multi-class histogram frequency-from-density working.
+- Fixed CSCALC labelled sound storage parsing so duration/resolution/channels are not swapped.
+- Added CSCALC usable host range output for CIDR prompts requesting it.
+- Added regressions and rebuilt calculator files.
+
+Evidence:
+- Targeted probes for exponential tail, Poisson hypothesis test, two-stage motion, histogram frequencies, sound storage, and CIDR host range: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 342100 bytes`
+  - `CSCALC.g3a: 208092 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Stayed inside CASP3/CSCALC free-text working support and generated calculator outputs.
+- Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for further source/probe-driven hardening.
+
 ## 2026-06-12 Rough Table Pulley And Exponential CDF Slice
 
 Completed:

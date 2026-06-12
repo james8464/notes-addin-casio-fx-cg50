@@ -1802,8 +1802,10 @@ static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   }
   if (starts3(s, "hyppoisson(", "poissontest(", "poissonhyp(") && na >= 4) {
     double lam=num(a[0]), alpha=num(a[2]), tail=num(a[3]); int x=(int)num(a[1]);
+    if (alpha > 1 && alpha <= 100) alpha /= 100.0;
     double prob = poissontailprob(lam, x, tail < 0 ? -1 : 1);
-    int n = add(out, 0, "H0: lambda = %.6g. H1 uses the stated tail.", lam);
+    int n = add(out, 0, "H0: lambda = %.6g.", lam);
+    n = add(out, n, tail < 0 ? "H1: lambda is smaller." : "H1: lambda is greater.");
     n = add(out, n, tail < 0 ? "Use P(X<=%d)." : "Use P(X>=%d).", x);
     n = add(out, n, "tail probability = %.10g", prob);
     n = add(out, n, "Compare with alpha = %.6g.", alpha);
@@ -3078,6 +3080,26 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       if (disc < 0) return add(out, n, "discriminant < 0, so this height is not reached.");
       return add(out, n, "t = %.10g or %.10g", (u0 - root(disc)) / g, (u0 + root(disc)) / g);
     }
+  }
+  if ((has(t, "accelerating") || has(t, "accelerates") || has(t, "accelerated")) &&
+      (has(t, "decelerating") || has(t, "decelerates") || has(t, "decelerated")) &&
+      (has(c, "torest") || has(t, "rest")) && (has(t, "totaldistance") || (has(t, "total") && has(t, "distance"))) &&
+      nv >= 3) {
+    double pos[6]; int np = 0;
+    for (int i = 0; i < nv && np < 6; ++i) if (v[i] > 0) pos[np++] = v[i];
+    if (np < 3) return 0;
+    double a0 = pos[0], t1 = pos[1], t2 = pos[2], u0 = has(t, "rest") ? 0 : pos[0];
+    if (has(c, "m/s^2") && np >= 4 && near_num(pos[1], 2)) { t1 = pos[2]; t2 = pos[3]; }
+    if (!has(t, "rest") && np >= 4) { a0 = pos[1]; t1 = pos[2]; t2 = pos[3]; }
+    double vmax = u0 + a0*t1;
+    double s1 = u0*t1 + 0.5*a0*t1*t1;
+    double s2 = 0.5*(vmax + 0)*t2;
+    int n = add(out, 0, "Split the motion into acceleration and deceleration stages.");
+    n = add(out, n, "Stage 1: v = u + at = %.6g + %.6g*%.6g = %.10g", u0, a0, t1, vmax);
+    n = add(out, n, "s1 = ut + 1/2 at^2 = %.10g", s1);
+    n = add(out, n, "Stage 2: average speed = (%.10g+0)/2", vmax);
+    n = add(out, n, "s2 = %.10g*%.6g = %.10g", 0.5*vmax, t2, s2);
+    return add(out, n, "total distance = %.10g", s1 + s2);
   }
   if ((has(t, "accelerating") || has(t, "accelerates") || has(t, "accelerated")) &&
       (has(t, "decelerating") || has(t, "decelerates") || has(t, "decelerated")) &&
@@ -4981,8 +5003,24 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       sprintf(cmd, "critpoisson(%.10g,%.10g,%.0f)", v[0], v[1], tail); return eval_stats(cmd, out);
     }
     if ((has(t, "hypothesis") || has(t, "significance") || has(t, "test")) && nv >= 3) {
-      double tail = has(t, "upper") || has(t, "greater") || has(t, "more") ? 1 : -1;
-      sprintf(cmd, "hyppoisson(%.10g,%d,%.10g,%.0f)", v[0], (int)v[1], v[2], tail); return eval_stats(cmd, out);
+      double lam = 0, obs = 0, alpha = 0.05;
+      bool hLam = word_num(input, "lambda", &lam) || word_num(input, "mean", &lam) || label_num(input, "lambda", &lam);
+      bool hObs = word_num(input, "observed", &obs) || word_num(input, "value", &obs) || label_num(input, "x", &obs);
+      bool hA = word_num(input, "alpha", &alpha) || word_num(input, "significance", &alpha) || word_num(input, "percent", &alpha);
+      if (!hLam) lam = v[0];
+      if (!hObs) {
+        for (int i = 0; i < nv; ++i) if (!near_num(v[i], lam) && v[i] > 0) { obs = v[i]; break; }
+      }
+      if (!hA) {
+        for (int i = 0; i < nv; ++i) {
+          if (near_num(v[i], lam) || near_num(v[i], obs)) continue;
+          if (v[i] > 0 && v[i] <= 10) { alpha = v[i]; break; }
+          if (v[i] > 0 && v[i] <= 1) { alpha = v[i]; break; }
+        }
+      }
+      if (alpha > 1 && alpha <= 100) alpha /= 100.0;
+      double tail = has(t, "upper") || has(t, "greater") || has(t, "more") || has(t, "increased") || has(t, "increase") ? 1 : -1;
+      sprintf(cmd, "hyppoisson(%.10g,%d,%.10g,%.0f)", lam, (int)obs, alpha, tail); return eval_stats(cmd, out);
     }
     double lo=0, hi=0;
     if (prob_x_interval(c, &lo, &hi)) {
@@ -5409,6 +5447,27 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     return n;
   }
   double pdf_lo = 0, pdf_hi = 0;
+  if ((has(t, "pdf") || has(t, "density") || has(t, "continuous") || has(t, "randomvariable")) &&
+      has(c, "exp(-") && (has(c, "p(x>") || has(c, "p(x<"))) {
+    const char *ep = strstr(c, "exp(-");
+    double lam = ep ? read_num(ep + 5) : 0;
+    if (lam <= 0 && nv > 0) lam = v[0] > 0 ? v[0] : -v[0];
+    const char *gt = strstr(c, "p(x>");
+    const char *lt = strstr(c, "p(x<");
+    double bound = 0, ans = 0;
+    if (gt) { bound = read_num(gt + (gt[4] == '=' ? 5 : 4)); ans = exp_approx(-lam * bound); }
+    if (lt) { bound = read_num(lt + (lt[4] == '=' ? 5 : 4)); ans = 1.0 - exp_approx(-lam * bound); }
+    if (lam > 0 && bound >= 0) {
+      int n = add(out, 0, "For exponential pdf f(x)=lambda exp(-lambda x).");
+      n = add(out, n, "lambda = %.10g", lam);
+      if (gt) {
+        n = add(out, n, "P(X>%.6g)=exp(-%.10g*%.6g)", bound, lam, bound);
+        return add(out, n, "P(X>%.6g) = %.10g", bound, ans);
+      }
+      n = add(out, n, "P(X<%.6g)=1-exp(-%.10g*%.6g)", bound, lam, bound);
+      return add(out, n, "P(X<%.6g) = %.10g", bound, ans);
+    }
+  }
   if ((has(t, "pdf") || has(t, "density") || has(t, "continuous")) &&
       has(c, "k/(") && extract_x_interval(c, &pdf_lo, &pdf_hi)) {
     double rb=0, rd=0; int rpow=0;
@@ -5921,6 +5980,20 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     sprintf(cmd, "groupquantile(%.10g,%.10g,%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3], v[4], q); return eval_stats(cmd, out);
   }
   if ((has(t, "histogram") || has(t, "frequencydensity") || has(t, "classwidth")) && (has(t, "density") || has(t, "densities") || has(t, "frequencydensity") || has(t, "width")) && nv >= 2) {
+    if ((has(t, "classinterval") || (has(t, "class") && has(t, "interval"))) &&
+        (has(t, "densities") || has(t, "frequencydensities")) &&
+        (has(t, "frequencies") || has(c, "findthefrequencies") || has(c, "findfrequencies")) &&
+        nv >= 6 && nv % 3 == 0) {
+      int m = nv / 3;
+      int n = add(out, 0, "For each histogram class, frequency = frequency density * class width.");
+      for (int i = 0; i < m && n < P3_MAX_LINES; ++i) {
+        double lo = abs_num(v[2*i]), hi = abs_num(v[2*i + 1]), dens = v[2*m + i];
+        if (hi < lo) { double q = lo; lo = hi; hi = q; }
+        double w = hi - lo;
+        n = add(out, n, "class %.10g-%.10g: frequency = %.10g*%.10g = %.10g", lo, hi, dens, w, dens*w);
+      }
+      return n;
+    }
     if (has(t, "classes") && (has(t, "frequencies") || has(t, "frequency")) && nv >= 6 && nv % 3 == 0) {
       int m = nv / 3;
       int n = add(out, 0, "For each histogram class, frequency density = frequency / class width.");
