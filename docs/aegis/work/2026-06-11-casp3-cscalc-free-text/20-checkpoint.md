@@ -1,5 +1,36 @@
 # Checkpoint
 
+## 2026-06-12 Raw Paired Data And SQL Aggregate Slice
+
+Completed:
+- Added CASP3 raw paired-list handling for PMCC from `x values ... y values ...`.
+- Added CASP3 raw paired-list handling for Spearman rank correlation, including average ranks for ties.
+- Added CASP3 raw paired-list regression working and summary-statistic regression for `x on y`.
+- Tightened route order so regression prompts are not intercepted by interpolation and Spearman prompts are not swallowed by PMCC.
+- Fixed CSCALC SQL free-text aggregates: AVG, SUM, MIN, MAX.
+- Fixed CSCALC record-size wording for `n fields each m bytes` plus extra per-record bytes.
+- Added regressions and rebuilt calculator files.
+
+Evidence:
+- Targeted probes for raw PMCC, raw Spearman, raw regression, `x on y` regression, SQL AVG/SUM, and record-field storage: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 330396 bytes`
+  - `CSCALC.g3a: 206452 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Stayed inside CASP3/CSCALC free-text working support and generated calculator outputs.
+- Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for further source/probe-driven hardening.
+
 ## 2026-06-12 Storage, Histogram, Trapezium, And Complement Route Slice
 
 Completed:

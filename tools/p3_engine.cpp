@@ -692,11 +692,20 @@ static bool parse_force_x_poly(const char *input, double *A, double *B, double *
 
 static bool extract_xy_lists_after_words(const char *input, double *xs, double *ys, int *n) {
   char t[220]; raw_clean(input, t, sizeof(t));
-  const char *xp = strstr(t, "x,");
-  const char *yp = strstr(t, ",y,");
+  const char *xp = strstr(t, "x,values,");
+  int xskip = 9;
+  if (!xp) { xp = strstr(t, "x,value,"); xskip = 8; }
+  const char *yp = xp ? strstr(xp + xskip, "y,values,") : 0;
+  int yskip = 9;
+  if (!yp && xp) { yp = strstr(xp + xskip, "y,value,"); yskip = 8; }
+  if (!xp || !yp) {
+    xp = strstr(t, "x,");
+    yp = strstr(t, ",y,");
+    xskip = 2; yskip = 3;
+  }
   if (!xp || !yp || yp <= xp) return false;
   double xv[16], yv[16]; int nx = 0, ny = 0;
-  const char *p = xp + 2;
+  const char *p = xp + xskip;
   while (p < yp && nx < 16) {
     if (*p == '-' || *p == '.' || isdigit((unsigned char)*p)) {
       char *e = 0; double val = strtod(p, &e);
@@ -704,7 +713,7 @@ static bool extract_xy_lists_after_words(const char *input, double *xs, double *
     }
     ++p;
   }
-  p = yp + 3;
+  p = yp + yskip;
   while (*p && ny < 16) {
     if (*p == '-' || *p == '.' || isdigit((unsigned char)*p)) {
       char *e = 0; double val = strtod(p, &e);
@@ -712,7 +721,7 @@ static bool extract_xy_lists_after_words(const char *input, double *xs, double *
     }
     ++p;
   }
-  if (nx < 2 || nx != ny) return false;
+  if (nx < 2 || ny < nx) return false;
   for (int i = 0; i < nx; ++i) { xs[i] = xv[i]; ys[i] = yv[i]; }
   *n = nx;
   return true;
@@ -829,6 +838,67 @@ static void average_ranks(const double *vals, int n, double *ranks) {
     }
     ranks[i] = less + (equal + 1) / 2.0;
   }
+}
+
+static void paired_sums(const double *xs, const double *ys, int n,
+                        double *sx, double *sy, double *sx2, double *sy2, double *sxy) {
+  *sx = *sy = *sx2 = *sy2 = *sxy = 0;
+  for (int i = 0; i < n; ++i) {
+    *sx += xs[i]; *sy += ys[i];
+    *sx2 += xs[i]*xs[i]; *sy2 += ys[i]*ys[i];
+    *sxy += xs[i]*ys[i];
+  }
+}
+
+static int add_raw_pmcc_lines(char out[P3_MAX_LINES][P3_LINE_LEN], const double *xs, const double *ys, int count) {
+  double sx, sy, sx2, sy2, sxy;
+  paired_sums(xs, ys, count, &sx, &sy, &sx2, &sy2, &sxy);
+  double top = count*sxy - sx*sy;
+  double bx = count*sx2 - sx*sx, by = count*sy2 - sy*sy;
+  int n = add(out, 0, "Use PMCC from the paired raw data.");
+  n = add(out, n, "n=%d, Sx=%.10g, Sy=%.10g", count, sx, sy);
+  n = add(out, n, "Sx2=%.10g, Sy2=%.10g, Sxy=%.10g", sx2, sy2, sxy);
+  n = add(out, n, "r=(nSxy-SxSy)/sqrt((nSx2-Sx^2)(nSy2-Sy^2))");
+  return add(out, n, "r = %.10g", top / root(bx * by));
+}
+
+static int add_raw_spearman_lines(char out[P3_MAX_LINES][P3_LINE_LEN], const double *xs, const double *ys, int count) {
+  double rx[16], ry[16], sd2 = 0;
+  average_ranks(xs, count, rx);
+  average_ranks(ys, count, ry);
+  for (int i = 0; i < count; ++i) {
+    double d = rx[i] - ry[i];
+    sd2 += d*d;
+  }
+  double den = count * (count*count - 1.0);
+  int n = add(out, 0, "Rank both variables, using average ranks for ties.");
+  n = add(out, n, "n = %d, sum d^2 = %.10g", count, sd2);
+  n = add(out, n, "r_s = 1 - 6*sum(d^2)/(n(n^2-1))");
+  return add(out, n, "r_s = %.10g", 1 - 6*sd2/den);
+}
+
+static int add_raw_regression_lines(char out[P3_MAX_LINES][P3_LINE_LEN], const double *xs, const double *ys, int count, bool x_on_y, bool have_target, double target) {
+  double sx, sy, sx2, sy2, sxy;
+  paired_sums(xs, ys, count, &sx, &sy, &sx2, &sy2, &sxy);
+  double xb = sx/count, yb = sy/count;
+  double Sxx = sx2 - sx*sx/count, Syy = sy2 - sy*sy/count, Sxy = sxy - sx*sy/count;
+  int n = add(out, 0, x_on_y ? "Find least-squares regression line x = a + by." : "Find least-squares regression line y = a + bx.");
+  n = add(out, n, "xbar = %.10g/%d = %.10g", sx, count, xb);
+  n = add(out, n, "ybar = %.10g/%d = %.10g", sy, count, yb);
+  if (x_on_y) {
+    double b = Sxy/Syy, a = xb - b*yb;
+    n = add(out, n, "b = Sxy/Syy = %.10g/%.10g = %.10g", Sxy, Syy, b);
+    n = add(out, n, "a = xbar - b*ybar = %.10g", a);
+    n = add(out, n, "regression line: x = %.6g + %.6g y", a, b);
+    if (have_target) n = add(out, n, "when y=%.6g, x=%.6g", target, a + b*target);
+  } else {
+    double b = Sxy/Sxx, a = yb - b*xb;
+    n = add(out, n, "b = Sxy/Sxx = %.10g/%.10g = %.10g", Sxy, Sxx, b);
+    n = add(out, n, "a = ybar - b*xbar = %.10g", a);
+    n = add(out, n, "regression line: y = %.6g + %.6g x", a, b);
+    if (have_target) n = add(out, n, "when x=%.6g, y=%.6g", target, a + b*target);
+  }
+  return n;
 }
 
 static void sort_doubles(double *a, int n) {
@@ -4848,7 +4918,22 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     int tail = has(t, "positive") || has(t, "upper") ? 1 : (has(t, "negative") || has(t, "lower") ? -1 : 0);
     sprintf(cmd, "corrtest(%.10g,%.10g,%d)", hr ? r : v[0], hc ? crit : v[1], tail); return eval_stats(cmd, out);
   }
-  if (has(t, "pmcc") || has(t, "correlation")) {
+  if (has(t, "spearman") && nv >= 2) {
+    double xs[16], ys[16]; int count = 0;
+    if (extract_xy_lists_after_words(input, xs, ys, &count)) {
+      return add_raw_spearman_lines(out, xs, ys, count);
+    }
+    double n0=0, sd2=0;
+    if (label_num(input,"n",&n0) && (label_num(input,"sumd2",&sd2) || label_num(input,"d2",&sd2))) {
+      sprintf(cmd, "spearman(%.10g,%.10g)", n0, sd2); return eval_stats(cmd, out);
+    }
+    sprintf(cmd, "spearman(%.10g,%.10g)", v[0], v[1]); return eval_stats(cmd, out);
+  }
+  if ((has(t, "pmcc") || has(t, "correlation")) && !has(t, "spearman")) {
+    double xs[16], ys[16]; int count = 0;
+    if (extract_xy_lists_after_words(input, xs, ys, &count)) {
+      return add_raw_pmcc_lines(out, xs, ys, count);
+    }
     double n0=0, sx=0, sy=0, sxy=0, sx2=0, sy2=0, sxx=0, syy=0;
     if (label_num(input,"sxx",&sxx) && label_num(input,"syy",&syy) && label_num(input,"sxy",&sxy)) {
       sprintf(cmd, "pmccs(%.10g,%.10g,%.10g)", sxx, syy, sxy); return eval_stats(cmd, out);
@@ -4857,40 +4942,36 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       sprintf(cmd, "pmcc(%.10g,%.10g,%.10g,%.10g,%.10g,%.10g)", n0, sx, sy, sxy, sx2, sy2); return eval_stats(cmd, out);
     }
   }
-  if ((has(t, "pmcc") || has(t, "correlation")) && nv >= 6) {
+  if ((has(t, "pmcc") || has(t, "correlation")) && !has(t, "spearman") && nv >= 6) {
     sprintf(cmd, "pmcc(%.10g,%.10g,%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3], v[4], v[5]); return eval_stats(cmd, out);
   }
-  if (has(t, "spearman") && nv >= 2) {
+  if (has(t, "regression") || has(t, "leastsquares") || has(t, "lineofbestfit")) {
+    double n0=0, sx=0, sy=0, sxx=0, syy=0, sxy=0, xb=0, yb=0, x=0, y=0;
+    bool hx = last_label_num(input,"x",&x);
+    bool hy = last_label_num(input,"y",&y);
+    bool x_on_y = has(c, "xony") || has(c, "xonthey") || has(c, "regressionlineofx");
     double xs[16], ys[16]; int count = 0;
     if (extract_xy_lists_after_words(input, xs, ys, &count)) {
-      double rx[16], ry[16], sd2 = 0;
-      average_ranks(xs, count, rx);
-      average_ranks(ys, count, ry);
-      for (int i = 0; i < count; ++i) {
-        double d = rx[i] - ry[i];
-        sd2 += d*d;
-      }
-      double den = count * (count*count - 1.0);
-      double r = 1 - 6*sd2/den;
-      int n = add(out, 0, "Rank both variables, using average ranks for ties.");
-      n = add(out, n, "n = %d, sum d^2 = %.10g", count, sd2);
-      n = add(out, n, "r_s = 1 - 6*sum(d^2)/(n(n^2-1))");
-      return add(out, n, "r_s = %.10g", r);
+      return add_raw_regression_lines(out, xs, ys, count, x_on_y, x_on_y ? hy : hx, x_on_y ? y : x);
     }
-    double n0=0, sd2=0;
-    if (label_num(input,"n",&n0) && (label_num(input,"sumd2",&sd2) || label_num(input,"d2",&sd2))) {
-      sprintf(cmd, "spearman(%.10g,%.10g)", n0, sd2); return eval_stats(cmd, out);
-    }
-    sprintf(cmd, "spearman(%.10g,%.10g)", v[0], v[1]); return eval_stats(cmd, out);
-  }
-  if (has(t, "regression") || has(t, "leastsquares") || has(t, "lineofbestfit")) {
-    double n0=0, sx=0, sy=0, sxx=0, sxy=0, xb=0, yb=0, x=0;
-    bool hx = label_num(input,"x",&x);
-    if (has(c, "sumx=")) hx = false;
     double m=0, b=0;
     if (hx && parse_regression_line(c, &m, &b)) {
       sprintf(cmd, "regress(%.10g,%.10g,%.10g)", b, m, x);
       return eval_stats(cmd, out);
+    }
+    if (x_on_y && (label_num(input,"n",&n0) || word_num(input,"n",&n0)) &&
+        (label_num(input,"sx",&sx) || word_num(input,"sumx",&sx)) &&
+        (label_num(input,"sy",&sy) || word_num(input,"sumy",&sy)) &&
+        label_num(input,"syy",&syy) && label_num(input,"sxy",&sxy)) {
+      double xb0 = sx/n0, yb0 = sy/n0, bb = sxy/syy, aa = xb0 - bb*yb0;
+      int n = add(out, 0, "Find least-squares regression line x = a + by.");
+      n = add(out, n, "xbar = Sx/n = %.6g/%.6g = %.6g", sx, n0, xb0);
+      n = add(out, n, "ybar = Sy/n = %.6g/%.6g = %.6g", sy, n0, yb0);
+      n = add(out, n, "b = Sxy/Syy = %.6g/%.6g = %.6g", sxy, syy, bb);
+      n = add(out, n, "a = xbar - b*ybar = %.6g", aa);
+      n = add(out, n, "regression line: x = %.6g + %.6g y", aa, bb);
+      if (hy) n = add(out, n, "when y=%.6g, x=%.6g", y, aa+bb*y);
+      return n;
     }
     if ((label_num(input,"n",&n0) || word_num(input,"n",&n0)) &&
         (label_num(input,"sx",&sx) || word_num(input,"sumx",&sx)) &&
@@ -5646,6 +5727,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     return add(out, n, "P(Xbar%s%.6g) = %.10g", upper ? ">" : "<", bound, prob);
   }
   if ((has(t, "interpolation") || has(t, "interpolate") || has(t, "estimate")) &&
+      !(has(t, "regression") || has(t, "leastsquares") || has(t, "lineofbestfit")) &&
       (has(t, "whenx") || has(t, "x=") || has(t, "values")) && nv >= 5) {
     double x1=v[0], y1=v[1], x2=v[2], y2=v[3], x=v[4];
     double y = y1 + (x - x1) * (y2 - y1) / (x2 - x1);

@@ -771,6 +771,17 @@ static bool make_sql_cmd(const char *in, char *cmd, int cap) {
     showbuf[0] = 0;
     for (int i = sel + 1; i < end && p < (int)sizeof(showbuf) - 4; ++i) {
       if (word_is(tok[i], "and") || word_is(tok[i], ",")) continue;
+      if ((word_is(tok[i], "average") || word_is(tok[i], "avg") || word_is(tok[i], "mean") ||
+           word_is(tok[i], "sum") || word_is(tok[i], "total") || word_is(tok[i], "maximum") ||
+           word_is(tok[i], "max") || word_is(tok[i], "minimum") || word_is(tok[i], "min")) &&
+          i + 1 < end) {
+        const char *fn = word_is(tok[i], "average") || word_is(tok[i], "avg") || word_is(tok[i], "mean") ? "AVG" :
+                         (word_is(tok[i], "sum") || word_is(tok[i], "total") ? "SUM" :
+                         (word_is(tok[i], "maximum") || word_is(tok[i], "max") ? "MAX" : "MIN"));
+        p += sprintf(showbuf + p, "%s%s(%s)", p ? "," : "", fn, tok[i + 1]);
+        ++i;
+        continue;
+      }
       p += sprintf(showbuf + p, "%s%s", p ? "," : "", tok[i]);
     }
     if (!showbuf[0]) strcpy(showbuf, tok[sel + 1]);
@@ -4089,8 +4100,10 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       double bytes_per_record = 0;
       double fcount = 0, fsize = 0;
       const char *fp = strstr(t, "fields,of,");
+      int skip = 10;
+      if (!fp) { fp = strstr(t, "fields,each,"); skip = 12; }
       bool counted_fields = scan_before_word_num(t, "fields", &fcount) && fp;
-      if (counted_fields) fsize = read_num(fp + 10);
+      if (counted_fields) fsize = read_num(fp + skip);
       if (counted_fields && fcount > 1 && fsize > 0) {
         bytes_per_record = fcount * fsize;
         for (int i = 0; i < nv; ++i) {
