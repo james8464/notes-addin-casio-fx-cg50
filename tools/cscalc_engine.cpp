@@ -327,6 +327,25 @@ static bool num_before_ptr(const char *base, const char *p, double *v) {
   return true;
 }
 
+static bool fixed_total_frac_words(const char *compact, long long *whole, long long *frac) {
+  double total = 0, fb = 0;
+  const char *tp = strstr(compact, "bitfixed");
+  if (!tp) tp = strstr(compact, "bitsfixed");
+  if (!tp) tp = strstr(compact, "bit,fixed");
+  if (!tp) tp = strstr(compact, "bits,fixed");
+  const char *fp = strstr(compact, "bitsafter");
+  if (!fp) fp = strstr(compact, "bitafter");
+  if (!fp) fp = strstr(compact, "bits,after");
+  if (!fp) fp = strstr(compact, "bit,after");
+  if (!tp || !fp) return false;
+  if (!num_before_ptr(compact, tp, &total) || !num_before_ptr(compact, fp, &fb)) return false;
+  if (total <= fb || fb < 0) return false;
+  *whole = (long long)(total - fb);
+  *frac = (long long)fb;
+  if (*whole < 1) *whole = 1;
+  return true;
+}
+
 static int scan_binary_fraction_tokens(const char *s, char out[][48], int maxn) {
   int n = 0;
   for (int i = 0; s && s[i] && n < maxn; ++i) {
@@ -3508,6 +3527,22 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   char cmd[160];
   double width=0, height=0, depth=0;
   int prefix = 0;
+  if (has(t, "fixed") && (has(t, "encode") || has(t, "represent") || has(t, "convert")) &&
+      (has(t, "denary") || has(t, "decimal") || strstr(input, "denary") || strstr(input, "decimal")) &&
+      (has(t, "after") || has(t, "afterthepoint") || has(t, "fractional"))) {
+    long long whole = 0, frac = 0;
+    if (fixed_total_frac_words(compact, &whole, &frac) || fixed_total_frac_words(t, &whole, &frac)) {
+      double value = v[0];
+      for (int i = 0; i < nv; ++i) {
+        if (v[i] < 0 || v[i] != round_nearest(v[i])) { value = v[i]; break; }
+      }
+      sprintf(cmd, (has(t, "twos") || (has(t, "two") && has(t, "complement")) ||
+              has(t, "signed") || has(t, "negative") || value < 0) ?
+              "fixedtcenc(%.10g,%lld,%lld)" : "fixedenc(%.10g,%lld,%lld)",
+              value, whole, frac);
+      return eval_float(cmd, out);
+    }
+  }
   if (has(t, "fixed") && has(t, "binary") &&
       (has(t, "denary") || has(t, "decimal") || strstr(input, "denary") || strstr(input, "decimal")) &&
       (has(t, "before") || strstr(input, "before")) && (has(t, "after") || strstr(input, "after")) && nv >= 3) {
@@ -3540,6 +3575,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
         if (nw == 2) { whole = widths[0]; frac = widths[1]; }
       }
     }
+    fixed_total_frac_words(compact, &whole, &frac);
     sprintf(cmd, (early_tc || has(t, "signed") || has(t, "negative") || value < 0) ?
             "fixedtcenc(%.10g,%lld,%lld)" : "fixedenc(%.10g,%lld,%lld)",
             value, whole, frac);
@@ -5010,6 +5046,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       whole = (long long)v[1] - (long long)v[2];
       if (whole < 1) whole = 1;
     }
+    fixed_total_frac_words(compact, &whole, &frac);
     sprintf(cmd, (tc || has(t, "signed") || has(t, "negative") || value < 0) ? "fixedtcenc(%.10g,%lld,%lld)" : "fixedenc(%.10g,%lld,%lld)", value, whole, frac);
     return eval_float(cmd, out);
   }
@@ -5260,6 +5297,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       !has(t, "before") && !has(t, "whole") && nv >= 3) {
     long long total = (long long)v[1], frac = (long long)v[2], whole = total - frac;
     if (whole < 1) whole = 1;
+    fixed_total_frac_words(compact, &whole, &frac);
     sprintf(cmd, (tc || has(t, "signed") || v[0] < 0) ? "fixedtcenc(%.10g,%lld,%lld)" : "fixedenc(%.10g,%lld,%lld)",
             v[0], whole, frac);
     return eval_float(cmd, out);

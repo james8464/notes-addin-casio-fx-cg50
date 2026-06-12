@@ -4501,6 +4501,39 @@ Drift check:
 - Kept changes to CASP3/CSCALC general free-text handling, regressions, generated app outputs, and this checkpoint.
 - Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.
 
+## 2026-06-12 Final Probe Hardening Slice 2
+
+Completed:
+- Added CASP3 limiting-force route for rough inclined planes, so least-force prompts produce equilibrium working instead of acceleration.
+- Added CASP3 flat constant-speed power route using `P=Fv`, avoiding the generic work/time fallback.
+- Hardened CASP3 binomial hypothesis routing so one-tailed tests with no stated direction use the observed side of `np`.
+- Improved `hypbinom` working lines to explicitly state `P(X>=x)` or `P(X<=x)`.
+- Added CSCALC shared fixed-point width parsing for `N-bit fixed point with F bits after the point`.
+- Added CSCALC regression coverage for POS output-column prompts.
+
+Evidence:
+- Fresh probes fixed: rough plane least force, flat resistance power, `X~B(20,0.5)` observed-side one-tailed test, signed fixed point total/fractional bit wording, POS truthbits output.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 416780 bytes`
+  - `CSCALC.g3a: 233840 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: records=48 bytes=18178`
+  - `CASP3.g3a sha256: 46b560b6ae80d0f235e5bb800f2aa9309d7c3ade858861b4eaa79c7b32c56d60`
+  - `CSCALC.g3a sha256: 68cb3c3a0840b770fa48ac7147be6375c308861e2e9932f285383dffb4923402`
+
+Drift check:
+- Kept changes to CASP3/CSCALC general free-text handling, regressions, generated app outputs, and this checkpoint.
+- Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.
+
 ## 2026-06-12 Final Generalisation Cleanup Slice
 
 Completed:

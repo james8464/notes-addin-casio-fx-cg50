@@ -1896,6 +1896,7 @@ static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     }
     int n = add(out, 0, "H0: p = %.6g.", p);
     n = add(out, n, tail == 0 ? "H1: p is different." : tail > 0 ? "H1: p is greater." : "H1: p is smaller.");
+    if (tail != 0) n = add(out, n, tail > 0 ? "Use P(X>=%d)." : "Use P(X<=%d).", x);
     n = add(out, n, tail == 0 ? "two-tailed probability = %.10g" : "tail probability = %.10g", prob);
     n = add(out, n, "Compare with alpha = %.6g.", alpha);
     return add(out, n, prob <= alpha ? "Reject H0 in context." : "Do not reject H0 in context.");
@@ -3075,6 +3076,28 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     else if (has(c, "atleast") || has(c, "greaterthanorequal")) tail = 1;
     else if (has(c, "lessthanorequal") || has(c, "atmost")) tail = -1;
     else if (has(c, "lessthan") || has(t, "fewer")) tail = -2;
+    if ((has(t, "hypothesis") || has(t, "test")) && (has(t, "observed") || has(c, "x="))) {
+      double obs = 0, alpha = 0.05;
+      bool ho = word_num(input, "observed", &obs) || label_num(input, "x", &obs);
+      if (!ho) {
+        for (int i = 0; i < nv; ++i) {
+          if (near_num(v[i], Nd) || near_num(v[i], pv)) continue;
+          obs = v[i]; ho = true; break;
+        }
+      }
+      for (int i = 0; i < nv; ++i) {
+        if (near_num(v[i], Nd) || near_num(v[i], pv) || near_num(v[i], obs)) continue;
+        if (v[i] > 0 && v[i] <= 10) { alpha = v[i] / 100.0; break; }
+        if (v[i] > 0 && v[i] <= 1) { alpha = v[i]; break; }
+      }
+      if (ho) {
+        double htail = (tail > 0 || has(t, "upper") || has(t, "greater") || has(t, "more") || has(c, "righttail")) ? 1 :
+                       ((tail < 0 || has(t, "lower") || has(t, "less") || has(t, "fewer") || has(t, "smaller")) ? -1 :
+                        (obs > N * pv ? 1 : -1));
+        sprintf(cmd, "hypbinom(%d,%.10g,%d,%.10g,%.0f)", N, pv, (int)obs, alpha, htail);
+        return eval_stats(cmd, out);
+      }
+    }
     if ((has(t, "critical") || has(t, "criticalregion") || has(t, "significance")) && nv >= 3) {
       double alpha = 0.05;
       for (int i = 0; i < nv; ++i) {
@@ -3151,7 +3174,9 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
         if (v[i] > 0 && v[i] <= 10) { alpha = v[i] / 100.0; break; }
         if (v[i] > 0 && v[i] <= 1) { alpha = v[i]; break; }
       }
-      double htail = (tail > 0 || has(t, "upper") || has(c, "righttail")) ? 1 : -1;
+      double htail = (tail > 0 || has(t, "upper") || has(t, "greater") || has(t, "more") || has(c, "righttail")) ? 1 :
+                     ((tail < 0 || has(t, "lower") || has(t, "less") || has(t, "fewer") || has(t, "smaller")) ? -1 :
+                      (x > N * pv ? 1 : -1));
       sprintf(cmd, "hypbinom(%d,%.10g,%d,%.10g,%.0f)", N, pv, x, alpha, htail);
       return eval_stats(cmd, out);
     }
@@ -4186,6 +4211,32 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "mu R = mg sin(theta)");
     return add(out, n, "least mu = tan(theta) = tan(%.6g) = %.10g", ang, mu);
   }
+  if ((has(t, "rough") || has(t, "friction")) && (has(t, "plane") || has(t, "inclined") || has(t, "incline")) &&
+      (has(t, "coefficient") || has(t, "mu")) && has(t, "force") &&
+      (has(t, "least") || has(t, "minimum") || has(t, "smallest")) &&
+      (has(t, "move") || has(t, "motion") || has(t, "pointofmoving")) && nv >= 3) {
+    double m=0, ang=0, mu=0;
+    bool hm=label_num(input,"mass",&m) || word_num(input,"mass",&m) || label_num(input,"m",&m);
+    bool ha=label_num(input,"angle",&ang) || word_num(input,"angle",&ang) || label_num(input,"theta",&ang) || prev_word_num(input,"degrees",&ang);
+    bool hmu=label_num(input,"mu",&mu) || label_num(input,"coefficient",&mu) || word_num(input,"coefficient",&mu);
+    if (!hm) m = v[0];
+    if (!hmu) for (int i = 0; i < nv; ++i) if (v[i] > 0 && v[i] < 1.5) { mu = v[i]; hmu = true; break; }
+    if (!ha) {
+      for (int i = 0; i < nv; ++i)
+        if (!near_num(v[i], m) && !near_num(v[i], mu) && v[i] > 1.5 && v[i] <= 90) { ang = v[i]; break; }
+    }
+    double down = m*9.8*deg_sine(ang), R = m*9.8*deg_cosine(ang), fr = mu*R;
+    bool up = has(t, "up") || has(t, "upwards") || has(t, "up,plane") || !has(t, "down");
+    double F = up ? down + fr : down - fr;
+    int n = add(out, 0, "At limiting equilibrium, friction is at its maximum: F_f = mu R.");
+    n = add(out, n, "Resolve perpendicular: R = mg cos(theta) = %.6g*9.8 cos(%.6g) = %.10g N", m, ang, R);
+    n = add(out, n, "friction = mu R = %.6g*%.10g = %.10g N", mu, R, fr);
+    n = add(out, n, "down-plane weight component = mg sin(theta) = %.6g*9.8 sin(%.6g) = %.10g N", m, ang, down);
+    if (up) n = add(out, n, "For impending upward motion, friction acts down the plane.");
+    else n = add(out, n, "For impending downward motion, friction acts up the plane.");
+    return add(out, n, up ? "least force up the plane = %.10g + %.10g = %.10g N" :
+               "least force down the plane = %.10g - %.10g = %.10g N", down, fr, F);
+  }
 	  if ((has(t, "pulley") || has(t, "connected")) &&
 	      (has(t, "rough") || has(t, "friction") || has(t, "coefficient")) &&
 	      (has(t, "horizontal") || has(t, "table")) &&
@@ -4628,6 +4679,25 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       sprintf(cmd, "momentum(%.10g,%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3], v[4]); return eval_mech(cmd, out);
     }
   }
+  if (has(t, "power") && (has(t, "resistance") || has(t, "resistive")) &&
+      (has(t, "constant") || has(t, "speed") || has(t, "velocity") || has(t, "travels") || has(t, "travelling")) &&
+      !(has(t, "acceleration") || has(t, "accelerate")) &&
+      !has(t, "incline") && !has(t, "slope") && !has(t, "plane") && nv >= 2) {
+    double spd=0, r=0;
+    bool hs=word_num(input,"speed",&spd) || word_num(input,"velocity",&spd);
+    bool hr=word_num(input,"resistance",&r) || word_num(input,"resistive",&r);
+    if (!hs) {
+      for (int i = 0; i < nv; ++i)
+        if (v[i] > 0 && v[i] <= 100 && !near_num(v[i], r)) { spd = v[i]; break; }
+    }
+    if (!hr) {
+      for (int i = nv - 1; i >= 0; --i)
+        if (!near_num(v[i], spd)) { r = v[i]; break; }
+    }
+    int n = add(out, 0, "At constant speed, the driving force balances the resistance.");
+    n = add(out, n, "driving force = resistance = %.10g N", r);
+    return add(out, n, "Power = Fv = %.10g*%.10g = %.10g W", r, spd, r*spd);
+  }
   if (has(t, "power") && !(has(t, "resistance") && (has(t, "acceleration") || has(t, "accelerate")) && (has(t, "speed") || has(t, "velocity") || has(t, "travels") || has(t, "travelling"))) && nv >= 2) {
     sprintf(cmd, "power(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
   }
@@ -4773,7 +4843,9 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       if (v[i] > 0 && v[i] <= 10) { alpha = v[i]/100.0; break; }
       if (v[i] > 0 && v[i] <= 1) { alpha = v[i]; break; }
     }
-    double tail = (has(t, "increased") || has(t, "increase") || has(t, "greater") || has(t, "more")) ? 1.0 : -1.0;
+    double tail = (has(t, "increased") || has(t, "increase") || has(t, "greater") || has(t, "more")) ? 1.0 :
+                  ((has(t, "decreased") || has(t, "decrease") || has(t, "less") || has(t, "fewer") || has(t, "smaller")) ? -1.0 :
+                   (hx && hp && x > N * pv ? 1.0 : -1.0));
     sprintf(cmd, "hypbinom(%d,%.10g,%d,%.10g,%.0f)", (int)N, pv, (int)x, alpha, tail);
     return eval_stats(cmd, out);
   }
@@ -5021,7 +5093,10 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       }
     }
     if (hN && hP && hX && hA && (has(t, "hypothesis") || has(t, "test"))) {
-      sprintf(cmd, "hypbinom(%d,%.10g,%d,%.10g,%.0f)", (int)N, pv, (int)x, alpha, (tail > 0 || has(t, "upper")) ? 1.0 : -1.0);
+      double htail = (tail > 0 || has(t, "upper") || has(t, "greater") || has(t, "more")) ? 1.0 :
+                     ((tail < 0 || has(t, "lower") || has(t, "less") || has(t, "fewer") || has(t, "smaller")) ? -1.0 :
+                      (x > N * pv ? 1.0 : -1.0));
+      sprintf(cmd, "hypbinom(%d,%.10g,%d,%.10g,%.0f)", (int)N, pv, (int)x, alpha, htail);
       return eval_stats(cmd, out);
     }
     if (hN && hP && hLo && hHi && has(t, "normal") && (has(t, "approx") || has(t, "approximation"))) {
@@ -5651,7 +5726,9 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     sprintf(cmd, "normal(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_stats(cmd, out);
   }
   if ((has(t, "hypothesis") || has(t, "significance") || has(t, "binomtest")) && has(t, "binom") && nv >= 4) {
-    double tail = has(t, "upper") || has(t, "greater") || has(t, "more") ? 1 : -1;
+    double tail = has(t, "upper") || has(t, "greater") || has(t, "more") ? 1 :
+                  ((has(t, "lower") || has(t, "less") || has(t, "fewer") || has(t, "smaller")) ? -1 :
+                   (v[2] > v[0] * v[1] ? 1 : -1));
     sprintf(cmd, "hypbinom(%d,%.10g,%d,%.10g,%.0f)", (int)v[0], v[1], (int)v[2], v[3], tail); return eval_stats(cmd, out);
   }
   if (has(t, "binom") && (has(t, "mean") || has(t, "variance") || has(t, "standarddeviation") || has(t, "sd")) && nv >= 2) {
