@@ -612,6 +612,15 @@ static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     n = add(out, n, "r = Sxy/sqrt(Sxx*Syy)");
     return add(out, n, "r = %.6g/sqrt(%.6g*%.6g) = %.10g", sxy, sxx, syy, sxy/root(sxx*syy));
   }
+  if (starts3(s, "spearman(", "spearmanrank(", "rankcorr(") && na >= 2) {
+    double n0=num(a[0]), sd2=num(a[1]);
+    double den = n0 * (n0*n0 - 1);
+    double r = 1 - 6*sd2/den;
+    int n = add(out, 0, "Use Spearman's rank correlation coefficient.");
+    n = add(out, n, "r_s = 1 - 6*sum(d^2)/(n(n^2-1))");
+    n = add(out, n, "r_s = 1 - 6*%.6g/(%.6g(%.6g^2-1))", sd2, n0, n0);
+    return add(out, n, "r_s = %.10g", r);
+  }
   if (starts3(s, "meanvar(", "variance(", "summary(") && na >= 3) {
     double n0=num(a[0]), sx=num(a[1]), sx2=num(a[2]), mean=sx/n0, var=sx2/n0-mean*mean;
     int n = add(out, 0, "Use summary statistics formulae.");
@@ -871,6 +880,13 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if ((has(t, "pmcc") || has(t, "correlation")) && nv >= 6) {
     sprintf(cmd, "pmcc(%.10g,%.10g,%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3], v[4], v[5]); return eval_stats(cmd, out);
   }
+  if (has(t, "spearman") && nv >= 2) {
+    double n0=0, sd2=0;
+    if (label_num(input,"n",&n0) && (label_num(input,"sumd2",&sd2) || label_num(input,"d2",&sd2))) {
+      sprintf(cmd, "spearman(%.10g,%.10g)", n0, sd2); return eval_stats(cmd, out);
+    }
+    sprintf(cmd, "spearman(%.10g,%.10g)", v[0], v[1]); return eval_stats(cmd, out);
+  }
   if (has(t, "regression") || has(t, "leastsquares") || has(t, "lineofbestfit")) {
     double n0=0, sx=0, sy=0, sxx=0, sxy=0, xb=0, yb=0, x=0;
     bool hx = label_num(input,"x",&x);
@@ -933,5 +949,5 @@ int p3_eval(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   n = add(out, 0, "Supported:");
   n = add(out, n, "suvat projectile projectileh force weight friction moment incline");
   n = add(out, n, "connected pulley impulse momentum work power energy restitution vector resolve varacc");
-  return add(out, n, "normal normalvar normalprob invnormal binom binomtail critbinom hypbinom cond probor bayes independent poisson poissontail poissonnorm critpoisson hyppoisson regress pmcc meanvar discrete stratified groupmedian histdensity code");
+  return add(out, n, "normal normalvar normalprob invnormal binom binomtail critbinom hypbinom cond probor bayes independent poisson poissontail poissonnorm critpoisson hyppoisson regress pmcc spearman meanvar discrete stratified groupmedian histdensity code");
 }

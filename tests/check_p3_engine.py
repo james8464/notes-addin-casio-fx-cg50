@@ -130,6 +130,8 @@ def main():
     require("correlation n 5 sx 20 sy 30 sxy 140 sx2 90 sy2 220", ["product moment", "r ="])
     require("correlation n=5 sx=20 sy=30 sxy=140 sx2=90 sy2=220", ["product moment", "top =", "r ="])
     require("pmcc sxx=10 syy=40 sxy=18", ["PMCC from summary", "Sxy/sqrt"])
+    require("spearman(8,12)", ["Spearman", "r_s = 1 - 6*sum(d^2)/(n(n^2-1))", "0.857142"])
+    require("spearman rank correlation n=8 sumd2=12", ["Spearman", "r_s = 0.857142"])
     require("meanvar(5,20,90)", ["mean = Sx/n", "variance"])
     require("mean variance n 5 sx 20 sx2 90", ["mean = Sx/n", "variance"])
     require("discrete(0,0.2,1,0.5,2,0.3)", ["discrete random variable", "sum p = 1", "E(X) = 0*0.2+1*0.5+2*0.3 = 1.1", "Var(X)"])

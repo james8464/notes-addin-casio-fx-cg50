@@ -1,5 +1,25 @@
 # Checkpoint
 
+## 2026-06-12 CASP3 Spearman Slice
+
+Completed:
+- Added `spearman(...)` / `spearmanrank(...)` / `rankcorr(...)` working.
+- Added free-text/labeled dispatch for Spearman rank correlation using `n` and `sumd2`.
+- Output shows the formula, substitution, and final `r_s`.
+- Added regression tests for direct and free-text forms.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CASP3 Paper 3 statistics support.
+- Did not touch CAS Pure behavior, CSCALC behavior, NOTES, or shared UI/status code.
+
 ## 2026-06-12 CSCALC Stack Queue Trace Slice
 
 Completed:
