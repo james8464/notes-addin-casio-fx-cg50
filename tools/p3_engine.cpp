@@ -456,6 +456,13 @@ static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     int n = add(out, 0, "Standardise using Z=(X-mu)/sigma.");
     return add(out, n, "z = (%.6g-%.6g)/%.6g = %.6g", x, mu, sig, (x-mu)/sig);
   }
+  if (starts3(s, "binomstats(", "binommeanvar(", "binomialstats(") && na >= 2) {
+    int N=(int)num(a[0]); double p=num(a[1]), mean=N*p, var=N*p*(1-p);
+    int n = add(out, 0, "For X ~ B(n,p), use E(X)=np and Var(X)=np(1-p).");
+    n = add(out, n, "E(X) = %.6g*%.6g = %.10g", (double)N, p, mean);
+    n = add(out, n, "Var(X) = %.6g*%.6g*(1-%.6g) = %.10g", (double)N, p, p, var);
+    return add(out, n, "sd = sqrt(Var(X)) = %.10g", root(var));
+  }
   if (starts3(s, "binom(", "binomial(", "binompdf(") && na >= 3) {
     int N=(int)num(a[0]), r=(int)num(a[2]); double p=num(a[1]), ans=binomp(N,p,r);
     int n = add(out, 0, "Let X ~ B(%d, %.6g).", N, p);
@@ -626,6 +633,13 @@ static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     double lam=num(a[0]); int r=(int)num(a[1]);
     int n = add(out, 0, "For X~Po(lambda), P(X=r)=e^-lambda lambda^r/r!.");
     return add(out, n, "P(X=%d)=e^-%.6g*%.6g^%d/%d! = %.10g", r, lam, lam, r, r, poissonp(lam,r));
+  }
+  if (starts3(s, "poissonstats(", "poissonmeanvar(", "postats(") && na >= 1) {
+    double lam=num(a[0]);
+    int n = add(out, 0, "For X ~ Po(lambda), E(X)=lambda and Var(X)=lambda.");
+    n = add(out, n, "E(X) = %.10g", lam);
+    n = add(out, n, "Var(X) = %.10g", lam);
+    return add(out, n, "sd = sqrt(lambda) = %.10g", root(lam));
   }
   if (starts3(s, "poissoncdf(", "poissonle(", "poissontail(") && na >= 2) {
     double lam=num(a[0]); int r=(int)num(a[1]), tail=na>2?(int)num(a[2]):-1; double ans=0;
@@ -960,6 +974,9 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     double tail = has(t, "upper") || has(t, "greater") || has(t, "more") ? 1 : -1;
     sprintf(cmd, "hypbinom(%d,%.10g,%d,%.10g,%.0f)", (int)v[0], v[1], (int)v[2], v[3], tail); return eval_stats(cmd, out);
   }
+  if (has(t, "binom") && (has(t, "mean") || has(t, "variance") || has(t, "standarddeviation") || has(t, "sd")) && nv >= 2) {
+    sprintf(cmd, "binomstats(%d,%.10g)", (int)v[0], v[1]); return eval_stats(cmd, out);
+  }
   if ((has(t, "bayes") || has(t, "reverseconditional")) && nv >= 3) {
     sprintf(cmd, "bayes(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_stats(cmd, out);
   }
@@ -1001,6 +1018,9 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     else if (has(c, "atmost") || has(t, "cdf")) tail = -1;
     if (tail) { sprintf(cmd, "poissontail(%.10g,%d,%d)", v[0], (int)v[1], tail); return eval_stats(cmd, out); }
     sprintf(cmd, "poisson(%.10g,%d)", v[0], (int)v[1]); return eval_stats(cmd, out);
+  }
+  if (has(t, "poisson") && (has(t, "mean") || has(t, "variance") || has(t, "standarddeviation") || has(t, "sd")) && nv >= 1) {
+    sprintf(cmd, "poissonstats(%.10g)", v[0]); return eval_stats(cmd, out);
   }
   if (has(t, "pmcc") || has(t, "correlation")) {
     double n0=0, sx=0, sy=0, sxy=0, sx2=0, sy2=0, sxx=0, syy=0;
@@ -1095,5 +1115,5 @@ int p3_eval(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   n = add(out, 0, "Supported:");
   n = add(out, n, "suvat projectile projectileh force weight friction moment incline");
   n = add(out, n, "connected pulley impulse momentum work power energy restitution vector resolve vectorkin varacc");
-  return add(out, n, "normal normalvar normalprob invnormal binom binomtail critbinom hypbinom cond probor bayes independent poisson poissontail poissonnorm critpoisson hyppoisson regress pmcc spearman meanvar discrete stratified groupmedian histdensity code");
+  return add(out, n, "normal normalvar normalprob invnormal binom binomstats binomtail critbinom hypbinom cond probor bayes independent poisson poissonstats poissontail poissonnorm critpoisson hyppoisson regress pmcc spearman meanvar discrete stratified groupmedian histdensity code");
 }
