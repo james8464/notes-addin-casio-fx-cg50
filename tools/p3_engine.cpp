@@ -82,6 +82,24 @@ static double sine(double x) {
 
 static double cosine(double x) { return sine(M_PI / 2 - x); }
 
+static double deg_sine(double deg) {
+  while (deg < 0) deg += 360;
+  while (deg >= 360) deg -= 360;
+  if (deg < 1e-9 || deg > 360-1e-9 || (deg > 180-1e-9 && deg < 180+1e-9)) return 0;
+  if (deg > 90-1e-9 && deg < 90+1e-9) return 1;
+  if (deg > 270-1e-9 && deg < 270+1e-9) return -1;
+  return sine(deg*M_PI/180.0);
+}
+
+static double deg_cosine(double deg) {
+  while (deg < 0) deg += 360;
+  while (deg >= 360) deg -= 360;
+  if (deg < 1e-9 || deg > 360-1e-9) return 1;
+  if (deg > 180-1e-9 && deg < 180+1e-9) return -1;
+  if ((deg > 90-1e-9 && deg < 90+1e-9) || (deg > 270-1e-9 && deg < 270+1e-9)) return 0;
+  return cosine(deg*M_PI/180.0);
+}
+
 static int args(const char *s, char a[][48], int maxa) {
   const char *l = strchr(s, '('), *r = strrchr(s, ')');
   if (!l || !r || r <= l) return 0;
@@ -373,11 +391,34 @@ static int eval_mech(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     return add(out, n, "direction: use tan(theta)=y/x on calculator.");
   }
   if (starts3(s, "resolve(", "componentsfromforce(", "forcecomponents(") && na >= 2) {
-    double F=num(a[0]), deg=num(a[1]), th=deg*M_PI/180.0;
+    double F=num(a[0]), deg=num(a[1]);
     int n = add(out, 0, "Resolve the force into perpendicular components.");
     n = add(out, n, "horizontal = F cos(theta) = %.6g cos(%.6g)", F, deg);
     n = add(out, n, "vertical = F sin(theta) = %.6g sin(%.6g)", F, deg);
-    return add(out, n, "components = %.10g, %.10g", F*cosine(th), F*sine(th));
+    return add(out, n, "components = %.10g, %.10g", F*deg_cosine(deg), F*deg_sine(deg));
+  }
+  if (starts3(s, "equilibrium(", "forcebalance(", "balanceforces(") && na >= 4) {
+    double sx=0, sy=0;
+    int n = add(out, 0, "For equilibrium, resolve forces and set sum Fx = 0, sum Fy = 0.");
+    for (int i=0;i+1<na;i+=2) {
+      double x=num(a[i]), y=num(a[i+1]); sx += x; sy += y;
+      n = add(out, n, "force %d components: (%.6g, %.6g)", i/2+1, x, y);
+    }
+    n = add(out, n, "sum Fx = %.10g, sum Fy = %.10g", sx, sy);
+    if (sx*sx + sy*sy < 1e-12) return add(out, n, "result: equilibrium");
+    return add(out, n, "resultant imbalance = sqrt(Fx^2+Fy^2) = %.10g N", root(sx*sx+sy*sy));
+  }
+  if (starts3(s, "equilpolar(", "forcepolar(", "balancepolar(") && na >= 4) {
+    double sx=0, sy=0;
+    int n = add(out, 0, "Resolve each force into horizontal and vertical components.");
+    for (int i=0;i+1<na;i+=2) {
+      double F=num(a[i]), deg=num(a[i+1]), x=F*deg_cosine(deg), y=F*deg_sine(deg);
+      sx += x; sy += y;
+      n = add(out, n, "%.6g at %.6g deg: Fx=F cos theta=%.6g, Fy=F sin theta=%.6g", F, deg, x, y);
+    }
+    n = add(out, n, "sum Fx = %.10g, sum Fy = %.10g", sx, sy);
+    if (sx*sx + sy*sy < 1e-12) return add(out, n, "result: equilibrium");
+    return add(out, n, "resultant imbalance = %.10g N", root(sx*sx+sy*sy));
   }
   if (starts3(s, "varacc(", "variableacc(", "variableacceleration(") && na >= 4) {
     double c=num(a[0]), k=num(a[1]), u=num(a[2]), t=num(a[3]);
@@ -767,6 +808,18 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if ((has(t, "projectile") || has(t, "projectiles")) && nv >= 2) {
     sprintf(cmd, "projectile(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
+  }
+  if ((has(t, "equilibrium") || has(t, "balance")) && (has(t, "component") || has(t, "components")) && nv >= 4) {
+    int p = sprintf(cmd, "equilibrium(%.10g", v[0]);
+    for (int i=1;i<nv && p < (int)sizeof(cmd)-24;++i) p += sprintf(cmd+p, ",%.10g", v[i]);
+    sprintf(cmd+p, ")");
+    return eval_mech(cmd, out);
+  }
+  if ((has(t, "equilibrium") || has(t, "balance")) && (has(t, "angle") || has(t, "bearing") || has(t, "degree")) && nv >= 4) {
+    int p = sprintf(cmd, "equilpolar(%.10g", v[0]);
+    for (int i=1;i<nv && p < (int)sizeof(cmd)-24;++i) p += sprintf(cmd+p, ",%.10g", v[i]);
+    sprintf(cmd+p, ")");
+    return eval_mech(cmd, out);
   }
   if ((has(t, "force") || has(t, "newton")) && (has(t, "mass") || has(t, "accel")) && !has(t, "connected") && !has(t, "pulley") && nv >= 2) {
     sprintf(cmd, "force(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);

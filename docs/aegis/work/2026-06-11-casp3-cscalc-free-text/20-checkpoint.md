@@ -1,5 +1,26 @@
 # Checkpoint
 
+## 2026-06-12 CASP3 Equilibrium Components Slice
+
+Completed:
+- Added `equilibrium(...)`, `forcebalance(...)`, and `balanceforces(...)` for forces supplied as component pairs.
+- Added `equilpolar(...)`, `forcepolar(...)`, and `balancepolar(...)` for forces supplied as magnitude/angle pairs.
+- Added free-text routing for equilibrium/balance prompts with component or angle wording.
+- Added degree-angle snapping for common force resolution angles so 0, 90, 180, and 270 degrees do not suffer from polynomial trig approximation drift.
+- Added direct and free-text regression tests.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CASP3 Edexcel Paper 3 mechanics working support.
+- Did not touch CAS Pure behavior, CSCALC behavior, NOTES, or shared UI/status code.
+
 ## 2026-06-12 CASP3 Variable Acceleration Slice
 
 Completed:
