@@ -1854,6 +1854,7 @@ static void bool_norm(const char *src, char *dst, int cap) {
     if (strncmp(src + i, "and", 3) == 0) { dst[j++] = '&'; i += 3; continue; }
     if (strncmp(src + i, "not", 3) == 0) { dst[j++] = '!'; i += 3; continue; }
     if (strncmp(src + i, "or", 2) == 0) { dst[j++] = '+'; i += 2; continue; }
+    if (src[i] == ',') { dst[j++] = '\''; ++i; continue; }
     dst[j++] = src[i++];
   }
   dst[j] = 0;
@@ -2283,9 +2284,17 @@ static void imp_pos_list(const Imp *chosen, int chc, const char *vars, int vc, c
 
 static int eval_bool(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
   char a[2][48]; int na = args(s, a, 2);
-  char exprbuf[96];
+  char exprbuf[96], inner[96];
   bool truthmode = starts(s, "truth(") || starts(s, "truthtable(") || starts(s, "truthrows(");
   const char *expr = (starts(s, "bool(") || truthmode || starts(s, "boolean(") || starts(s, "logic(")) && na ? a[0] : 0;
+  if ((starts(s, "bool(") || truthmode || starts(s, "boolean(") || starts(s, "logic(")) &&
+      strchr(s, '(') && strrchr(s, ')')) {
+    const char *l = strchr(s, '('), *r = strrchr(s, ')');
+    int p = 0;
+    for (const char *q = l + 1; q < r && p + 1 < (int)sizeof(inner); ++q) inner[p++] = *q;
+    inner[p] = 0;
+    expr = inner;
+  }
   if (!expr) return 0;
   bool_norm(expr, exprbuf, sizeof(exprbuf));
   expr = exprbuf;
@@ -2728,6 +2737,37 @@ static const char *skip_bool_words(const char *e) {
     if (starts(e, "for")) { e += 3; moved = true; }
   }
   return e;
+}
+
+static void bool_arg_for_cmd(const char *src, char *dst, int cap) {
+  int p = 0;
+  for (int i = 0; src[i] && p + 1 < cap; ++i) dst[p++] = src[i] == ',' ? '\'' : src[i];
+  dst[p] = 0;
+}
+
+static bool make_gate_form_cmd(const char *input, bool nand, char *cmd, int cap) {
+  char expr[96] = ""; int p = 0;
+  for (int i = 0; input[i] && p + 1 < (int)sizeof(expr);) {
+    unsigned char c = (unsigned char)input[i];
+    if (isalpha(c)) {
+      char w[24]; int j = 0;
+      while (isalpha((unsigned char)input[i]) && j + 1 < (int)sizeof(w)) w[j++] = (char)tolower((unsigned char)input[i++]);
+      w[j] = 0;
+      if (word_is(w, "convert") || word_is(w, "to") || word_is(w, "using") || word_is(w, "use") ||
+          word_is(w, "only") || word_is(w, "form") || word_is(w, "for") || word_is(w, "expression") ||
+          word_is(w, "boolean") || word_is(w, "logic") || word_is(w, nand ? "nand" : "nor")) continue;
+      for (int k = 0; w[k] && p + 1 < (int)sizeof(expr); ++k) expr[p++] = w[k];
+    } else {
+      if (input[i] == '+' || input[i] == '*' || input[i] == '&' || input[i] == '|' || input[i] == '\'' ||
+          input[i] == ',' || input[i] == '(' || input[i] == ')') expr[p++] = input[i] == ',' ? '\'' : input[i];
+      ++i;
+    }
+  }
+  expr[p] = 0;
+  if (!expr[0]) return false;
+  if (cap < 12) return false;
+  sprintf(cmd, "%sform(%s)", nand ? "nand" : "nor", expr);
+  return true;
 }
 
 static int eval_free_text(const char *input, const char *compact, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
@@ -3194,17 +3234,11 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
        has(t, "dontcare") || has(t, "don'tcare") || has(t, "dc")) && make_minterm_cmd(input, cmd, sizeof(cmd))) {
     return eval_minterms(cmd, out);
   }
-  if (nv == 0 && starts(compact, "nandform")) {
-    sprintf(cmd, "nandform(%s)", compact + 8); return eval_gate_form(cmd, out);
+  if (nv == 0 && ((has(compact, "nand") && (has(compact, "only") || has(compact, "form") || has(compact, "convert"))) || starts(compact, "nandform") || starts(compact, "onlynand"))) {
+    if (make_gate_form_cmd(input, true, cmd, sizeof(cmd))) return eval_gate_form(cmd, out);
   }
-  if (nv == 0 && starts(compact, "norform")) {
-    sprintf(cmd, "norform(%s)", compact + 7); return eval_gate_form(cmd, out);
-  }
-  if (nv == 0 && starts(compact, "onlynand")) {
-    sprintf(cmd, "nandform(%s)", compact + 8); return eval_gate_form(cmd, out);
-  }
-  if (nv == 0 && starts(compact, "onlynor")) {
-    sprintf(cmd, "norform(%s)", compact + 7); return eval_gate_form(cmd, out);
+  if (nv == 0 && ((has(compact, "nor") && (has(compact, "only") || has(compact, "form") || has(compact, "convert"))) || starts(compact, "norform") || starts(compact, "onlynor"))) {
+    if (make_gate_form_cmd(input, false, cmd, sizeof(cmd))) return eval_gate_form(cmd, out);
   }
   if (nv == 0 && (starts(compact, "posform") || starts(compact, "cnf") || has(compact, "productofsums"))) {
     const char *e = skip_bool_words(compact);
@@ -3216,27 +3250,31 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     if (!eq) { eq = strstr(e, "equivalentto"); elen = 12; }
     if (!eq) { eq = strstr(e, "equals"); elen = 6; }
     if (eq && eq > e && eq[elen]) {
-      char lhs[48], rhs[48]; int li = 0, ri = 0;
+      char lhs[48], rhs[48], nlhs[48], nrhs[48]; int li = 0, ri = 0;
       for (const char *p = e; p < eq && li < 47; ++p) lhs[li++] = *p;
       lhs[li] = 0;
       for (const char *p = eq + elen; *p && ri < 47; ++p) rhs[ri++] = *p;
       rhs[ri] = 0;
-      sprintf(cmd, "boolprove(%s,%s)", lhs, rhs); return eval_bool_prove(cmd, out);
+      bool_arg_for_cmd(lhs, nlhs, sizeof(nlhs));
+      bool_arg_for_cmd(rhs, nrhs, sizeof(nrhs));
+      sprintf(cmd, "boolprove(%s,%s)", nlhs, nrhs); return eval_bool_prove(cmd, out);
     }
   }
   if (nv == 0 && has(compact, "=")) {
     const char *e = skip_bool_words(compact);
     const char *eq = strchr(e, '=');
     if (eq && eq > e && eq[1]) {
-      char lhs[48], rhs[48]; int li = 0, ri = 0;
+      char lhs[48], rhs[48], nlhs[48], nrhs[48]; int li = 0, ri = 0;
       for (const char *p = e; p < eq && li < 47; ++p) lhs[li++] = *p;
       lhs[li] = 0;
       for (const char *p = eq + 1; *p && ri < 47; ++p) rhs[ri++] = *p;
       rhs[ri] = 0;
-      sprintf(cmd, "boolprove(%s,%s)", lhs, rhs); return eval_bool_prove(cmd, out);
+      bool_arg_for_cmd(lhs, nlhs, sizeof(nlhs));
+      bool_arg_for_cmd(rhs, nrhs, sizeof(nrhs));
+      sprintf(cmd, "boolprove(%s,%s)", nlhs, nrhs); return eval_bool_prove(cmd, out);
     }
   }
-  if (nv == 0 && (has(compact, "nand") || has(compact, "nor") || has(compact, "xor") || has(compact, "and") || has(compact, "or") || has(compact, "+") || has(compact, "*") || has(compact, "'"))) {
+  if (nv == 0 && (has(compact, "nand") || has(compact, "nor") || has(compact, "xor") || has(compact, "and") || has(compact, "or") || has(compact, "not") || has(compact, "+") || has(compact, "*") || has(compact, "'") || has(compact, ","))) {
     const char *e = skip_bool_words(compact);
     sprintf(cmd, "%s(%s)", has(compact, "truth") ? "truth" : "bool", e); return eval_bool(cmd, out);
   }

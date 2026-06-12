@@ -218,6 +218,9 @@ def main():
     require("ASCII code for A", ["ASCII code conversion", "'A' has denary code 65", "01000001_2 = 41_16"])
     require("unicode code point 8364", ["Unicode code point conversion", "U+20AC = 8364_10", "0010000010101100_2"])
     require("bool(A+B')", ["truth table", "minterms", "simplified"])
+    require("bool(A,)", ["minterms: 0", "simplified = A'"])
+    require("simplify A,", ["minterms: 0", "simplified = A'"])
+    require("bool(A,.B + A.B)", ["minterms: 1,3", "simplified = B"])
     require("truth(A and not B)", ["Truth table for a&!b", "A B | F", "0 0 | 0", "1 0 | 1", "minterms: 2"])
     require("truth table for A and not B", ["Truth table for a&!b", "A B | F", "1 0 | 1", "simplified = AB'"])
     require("boolean(AB+C)", ["truth table", "simplified"])
@@ -277,6 +280,12 @@ def main():
     require("show A xor B equivalent to A and not B or not A and B", ["XOR identity", "LHS simplifies to A'B+AB'", "RHS simplifies to A'B+AB'", "Same output rows"])
     require("prove A(A'+B)=AB", ["LHS: a&(a'+b) -> a&b (Covering law)", "LHS simplifies to AB", "RHS simplifies to AB", "Same output rows"])
     require("show that A and not B = A*B'", ["truth tables", "Same output rows"])
+    require("show A,(B+C) is equal to A,B + A,C", ["LHS simplifies to A'C+A'B", "RHS simplifies to A'C+A'B", "Same output rows"])
+    require("simplify not not A", ["Double complement", "simplified = A"])
+    require("convert A and B to NAND only", ["Use NAND as a universal gate", "NAND form: (A NAND B) NAND (A NAND B)"])
+    require("NAND form for A and B", ["Use NAND as a universal gate", "NAND form: (A NAND B) NAND (A NAND B)"])
+    require("convert A or B to NOR only", ["Use NOR as a universal gate", "NOR form: (A NOR B) NOR (A NOR B)"])
+    require("NOR form for A or B", ["Use NOR as a universal gate", "NOR form: (A NOR B) NOR (A NOR B)"])
     print("OK cscalc engine")
 
 

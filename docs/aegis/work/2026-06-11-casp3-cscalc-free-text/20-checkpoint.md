@@ -1,5 +1,26 @@
 # Checkpoint
 
+## 2026-06-12 CSCALC Boolean Old-Syntax Slice
+
+Completed:
+- Located the earlier Python Boolean algebra implementation in git history (`src/ComputerScience/booleanProgram.py`).
+- Restored old comma-as-NOT input syntax for Boolean expressions.
+- Fixed `bool(...)`/`truth(...)` parsing so commas inside one Boolean expression are not treated as separate command parameters.
+- Fixed free-text NAND/NOR conversion phrases like `convert A and B to NAND only` and `NAND form for A and B`.
+- Fixed free-text `not not` and comma-NOT proof phrases.
+- Added regression tests and rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CSCALC AQA Paper 2 Boolean algebra/free-text support.
+- Did not touch CAS Pure behavior, CASP3 logic, NOTES, menus, or shared UI/status code.
+
 ## 2026-06-12 CASP3 Mechanics And Binomial Prose Slice
 
 Completed:
