@@ -491,6 +491,18 @@ static int eval_mech(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
 
 static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   char a[8][48]; int na = args(s, a, 8);
+  if (starts3(s, "outliers(", "iqrfences(", "outlierfences(") && na >= 2) {
+    double q1=num(a[0]), q3=num(a[1]), iqr=q3-q1, lo=q1-1.5*iqr, hi=q3+1.5*iqr;
+    int n = add(out, 0, "Use the 1.5*IQR rule for outliers.");
+    n = add(out, n, "IQR = Q3 - Q1 = %.6g - %.6g = %.10g", q3, q1, iqr);
+    n = add(out, n, "lower fence = %.10g", lo);
+    n = add(out, n, "upper fence = %.10g", hi);
+    for (int i = 2; i < na && n < P3_MAX_LINES; ++i) {
+      double x = num(a[i]);
+      n = add(out, n, "%.6g is %s", x, (x < lo || x > hi) ? "an outlier" : "not an outlier");
+    }
+    return n;
+  }
   if (starts3(s, "normalvar(", "normalzvar(", "zscorevar(") && na >= 3) {
     double x=num(a[0]), mu=num(a[1]), var=num(a[2]), sig=root(var);
     int n = add(out, 0, "Convert variance to standard deviation first.");
@@ -1038,6 +1050,17 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if ((has(c, "invnormal") || has(c, "inversenormal") || (has(c, "normal") && (has(c, "critical") || has(c, "percentile")))) && nv >= 3) {
     sprintf(cmd, "invnormal(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_stats(cmd, out);
+  }
+  if ((has(t, "outlier") || has(t, "iqr") || has(t, "fence")) && nv >= 2) {
+    double q1=0, q3=0; bool hq1=label_num(input,"q1",&q1), hq3=label_num(input,"q3",&q3);
+    int p = sprintf(cmd, "outliers(%.10g,%.10g", hq1 ? q1 : v[0], hq3 ? q3 : v[1]);
+    int start = (hq1 && hq3) ? 0 : 2;
+    for (int i = start; i < nv && p < (int)sizeof(cmd)-24; ++i) {
+      if ((hq1 && v[i] == q1) || (hq3 && v[i] == q3)) continue;
+      p += sprintf(cmd+p, ",%.10g", v[i]);
+    }
+    sprintf(cmd+p, ")");
+    return eval_stats(cmd, out);
   }
   if (has(t, "normal") && (has(t, "hypothesis") || has(t, "test")) && nv >= 5) {
     double tail = has(t, "upper") || has(t, "greater") || has(t, "more") ? 1 : -1;

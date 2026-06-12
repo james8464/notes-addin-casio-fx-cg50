@@ -1,5 +1,25 @@
 # Checkpoint
 
+## 2026-06-12 CASP3 Outlier Fence Slice
+
+Completed:
+- Added `outliers(...)`, `iqrfences(...)`, and `outlierfences(...)`.
+- Added free-text routing for outlier/IQR/fence prompts with labelled `q1` and `q3`.
+- Output shows IQR, lower fence, upper fence, and classifies supplied values.
+- Added direct and labelled free-text regression tests.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CASP3 Edexcel Paper 3 statistics working support.
+- Did not touch CAS Pure behavior, CSCALC behavior, NOTES, or shared UI/status code.
+
 ## 2026-06-12 CASP3 Work-Energy Force Slice
 
 Completed:

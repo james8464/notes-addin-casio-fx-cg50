@@ -172,6 +172,8 @@ def main():
     require("histdensity(12,4)", ["frequency density = frequency / class width", "12/4 = 3"])
     require("histfreq(3,4)", ["frequency = frequency density * class width", "3*4 = 12"])
     require("histogram frequency density 12 width 4", ["frequency density", "12/4 = 3"])
+    require("outliers(10,20,0,15,40)", ["1.5*IQR", "IQR = Q3 - Q1 = 20 - 10 = 10", "lower fence = -5", "upper fence = 35", "40 is an outlier"])
+    require("outlier check q1=10 q3=20 values 0 15 40", ["lower fence = -5", "15 is not an outlier", "40 is an outlier"])
     require("uncode(3,2,20,5)", ["Y=(X-a)/b", "mean X = 20 + 5*3 = 35", "sd X = |b|*sd Y = 5*2 = 10"])
     require("coded data y=(x-20)/5 mean 3 sd 2", ["Y=(X-a)/b", "mean X = 20 + 5*3 = 35", "sd X"])
     require("code(35,10,20,5)", ["For coded data Y=(X-a)/b", "mean Y = (35-20)/5 = 3", "sd Y = sd X/|b| = 10/5 = 2"])
