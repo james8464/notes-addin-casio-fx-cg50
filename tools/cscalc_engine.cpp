@@ -3527,6 +3527,23 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   char cmd[160];
   double width=0, height=0, depth=0;
   int prefix = 0;
+  if (!has(t, "fixed") && (has(t, "binary") || has(t, "base,2")) &&
+      (has(t, "denary") || has(t, "decimal")) &&
+      (has(t, "fraction") || has(t, "fractional") || has(t, "point")) && nv >= 1) {
+    double bw = 0, value = v[0];
+    bool hb = scan_before_word_num(t, "bit", &bw) || scan_before_word_num(t, "bits", &bw);
+    if (!hb && nv >= 2) bw = v[nv - 1];
+    for (int i = 0; i < nv; ++i) {
+      if (v[i] >= 0 && v[i] < 1) { value = v[i]; break; }
+    }
+    int bitsw = bw > 0 ? (int)bw : 8;
+    long long scaled = (long long)round_nearest(value * pow2(bitsw));
+    char frac_bits[65]; to_bin(scaled, bitsw, frac_bits);
+    int n = add(out, 0, "Convert the denary fraction by scaling to the requested number of binary places.");
+    n = add(out, n, "scale by 2^%d: %.10g*2^%d = %.10g", bitsw, value, bitsw, value * pow2(bitsw));
+    n = add(out, n, "%.10g rounds to integer %lld, written in %d bits as %s", value * pow2(bitsw), scaled, bitsw, frac_bits);
+    return add(out, n, "%.10g_10 = 0.%s_2", value, frac_bits);
+  }
   if (has(t, "fixed") && (has(t, "encode") || has(t, "represent") || has(t, "convert")) &&
       (has(t, "denary") || has(t, "decimal") || strstr(input, "denary") || strstr(input, "decimal")) &&
       (has(t, "after") || has(t, "afterthepoint") || has(t, "fractional"))) {
@@ -5426,6 +5443,10 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     }
     sprintf(cmd, "transfer(%.10g,%.10g)", v[0], v[1]); return eval_storage(cmd, out);
   }
+  if ((has(t, "runlength") || has(t, "rle") || (has(t, "run") && has(t, "length"))) && nv >= 3) {
+    sprintf(cmd, "rle(%lld,%lld,%lld)", (long long)v[0], (long long)v[1], (long long)v[2]);
+    return eval_storage(cmd, out);
+  }
   if ((has(t, "dictionary") || has(t, "dict") || has(t, "lz")) && (has(t, "compress") || has(t, "compression")) && nv >= 4) {
     sprintf(cmd, "dictcompress(%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3]); return eval_storage(cmd, out);
   }
@@ -5467,9 +5488,6 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       n = add(out, n, "runs: %s", summary);
       return add(out, n, "compressed form uses %d runs.", runs);
     }
-  }
-  if ((has(t, "runlength") || has(t, "rle") || (has(t, "run") && has(t, "length"))) && nv >= 3) {
-    sprintf(cmd, "rle(%lld,%lld,%lld)", (long long)v[0], (long long)v[1], (long long)v[2]); return eval_storage(cmd, out);
   }
   if ((has(t, "sql") || has(t, "select") || has(t, "where") || has(t, "count")) && make_sql_cmd(input, cmd, sizeof(cmd))) {
     return eval_storage(cmd, out);
@@ -5648,6 +5666,24 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       return add(out, n, "(A+B)' = A'.B'");
     }
   }
+  if (nv == 0 &&
+      (has(compact, "not(aorb)") || has(compact, "not(a+b)") || has(compact, "(aorb)'") || has(compact, "(a+b)'")) &&
+      (has(compact, "notaandnotb") || has(compact, "a'andb'") || has(compact, "a'*b'") || has(compact, "a'.b'"))) {
+    int n = add(out, 0, "Use De Morgan's law.");
+    n = add(out, n, "not(A or B) = not A and not B");
+    n = add(out, n, "LHS = A'B'");
+    n = add(out, n, "RHS = A'B'");
+    return add(out, n, "Same output rows, so LHS = RHS.");
+  }
+  if (nv == 0 &&
+      (has(compact, "not(aandb)") || has(compact, "not(a*b)") || has(compact, "(aandb)'") || has(compact, "(a*b)'")) &&
+      (has(compact, "notaornotb") || has(compact, "a'orb'") || has(compact, "a'+b'"))) {
+    int n = add(out, 0, "Use De Morgan's law.");
+    n = add(out, n, "not(A and B) = not A or not B");
+    n = add(out, n, "LHS = A'+B'");
+    n = add(out, n, "RHS = A'+B'");
+    return add(out, n, "Same output rows, so LHS = RHS.");
+  }
   if (nv == 0 && (has(compact, "equals") || has(compact, "isequalto") || has(compact, "isequivalentto") || has(compact, "equivalentto"))) {
     const char *e = skip_bool_words(compact);
     const char *eq = strstr(e, "isequalto"); int elen = 9;
@@ -5738,6 +5774,25 @@ int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
   for (int i = 0; i < CSCALC_MAX_LINES; ++i) out[i][0] = 0;
   char s[192]; clean(input, s, sizeof(s));
   if (!s[0]) return add(out, 0, "Enter a CS calculation command.");
+  {
+    char rt[192]; raw_clean(input, rt, sizeof(rt));
+    if ((has(rt, "float") || has(rt, "floating") || has(rt, "normalised") || has(rt, "normalized") || (has(rt, "mantissa") && has(rt, "exponent"))) &&
+        (has(rt, "decode") || has(rt, "denary") || has(rt, "decimal") || has(rt, "number") || has(rt, "value"))) {
+      char rb[4][48]; int rnb = scan_bits(rt, rb, 4);
+      double mbw=0, ebw=0, tmp=0;
+      bool hM = (scan_bit_width_before_label(rt, "mantissa", &tmp) || scan_before_word_num(rt, "mantissa", &tmp) || scan_after_word_num(rt, "mantissa", &tmp)) && tmp > 0; if (!hM) { const char *p = strstr(rt, "mantissa,is,"); if (p) { tmp = read_num(p + 12); hM = tmp > 0; } } if (hM) mbw = tmp;
+      bool hE = (scan_bit_width_before_label(rt, "exponent", &tmp) || scan_before_word_num(rt, "exponent", &tmp) || scan_after_word_num(rt, "exponent", &tmp)) && tmp > 0; if (!hE) { const char *p = strstr(rt, "exponent,is,"); if (p) { tmp = read_num(p + 12); hE = tmp > 0; } } if (hE) ebw = tmp;
+      if (rnb == 1 && hM && hE && (int)(mbw + ebw) == (int)strlen(rb[0]) && mbw > 0 && ebw > 0 && mbw < 48 && ebw < 48) {
+        char mant[48], exp[48], fcmd[120];
+        int mi = (int)mbw, ei = (int)ebw;
+        memcpy(mant, rb[0], mi); mant[mi] = 0;
+        memcpy(exp, rb[0] + mi, ei); exp[ei] = 0;
+        sprintf(fcmd, "floatdec(%s,%s)", mant, exp);
+        int fn = eval_float(fcmd, out);
+        if (fn) return fn;
+      }
+    }
+  }
   if ((has(s, "float") || has(s, "floating") || has(s, "normalised") || has(s, "normalized") ||
        (has(s, "mantissa") && has(s, "exponent"))) &&
       (has(s, "range") || has(s, "largest") || has(s, "maximum") || has(s, "smallest")) &&
@@ -5765,6 +5820,15 @@ int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
   n = eval_posform(s, out); if (n) return n;
   n = eval_truthbits(s, out); if (n) return n;
   n = eval_minterms(s, out); if (n) return n;
+  if ((has(s, "demorgan") || has(s, "demorgans") || has(s, "demorgan's")) &&
+      (has(s, "not(aorb)") || has(s, "not(a+b)") || has(s, "(aorb)'") || has(s, "(a+b)'")) &&
+      (has(s, "notaandnotb") || has(s, "a'andb'") || has(s, "a'*b'") || has(s, "a'.b'"))) {
+    int dn = add(out, 0, "Use De Morgan's law.");
+    dn = add(out, dn, "not(A or B) = not A and not B");
+    dn = add(out, dn, "LHS = A'B'");
+    dn = add(out, dn, "RHS = A'B'");
+    return add(out, dn, "Same output rows, so LHS = RHS.");
+  }
   n = eval_bool_prove(s, out); if (n) return n;
   n = eval_bool(s, out); if (n) return n;
   n = eval_free_text(input, s, out); if (n) return n;

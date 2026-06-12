@@ -4501,6 +4501,41 @@ Drift check:
 - Kept changes to CASP3/CSCALC general free-text handling, regressions, generated app outputs, and this checkpoint.
 - Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.
 
+## 2026-06-12 Final Precedence Hardening Slice
+
+Completed:
+- Fixed CASP3 rough inclined-plane projection-to-rest prompts so they route to inclined-plane SUVAT, not projectile motion.
+- Fixed CASP3 maximum-speed power/resistance prompts so `v=P/R` is used instead of treating power as a speed.
+- Fixed CASP3 uniform rod/beam load-at-end support reactions with midpoint rod weight.
+- Stopped CASP3 conditional-probability fallback from stealing regression estimate wording with `given`.
+- Fixed CSCALC denary binary-fraction conversion with requested bit width.
+- Fixed CSCALC combined floating-point bit-string decode before normalisation checks.
+- Moved CSCALC RLE size routing before generic compression-ratio fallback.
+- Added De Morgan law wording before generic Boolean truth-table proof.
+
+Evidence:
+- Fresh probes fixed: rough plane projected-up stopping distance, max speed from power/resistance, supported rod load at end, regression estimate with `given`, 8-bit binary fraction, combined float decode, RLE compressed size, De Morgan proof wording.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 420704 bytes`
+  - `CSCALC.g3a: 236196 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: records=48 bytes=18178`
+  - `CASP3.g3a sha256: d14adcc6a4ff18d0c8dcc1413b83578d7aa13cb53ee8e648b9d09038ad7f52bf`
+  - `CSCALC.g3a sha256: f87f35d86d084043edfdd2a3b840df76f4a1b552c6870510007866dcbc085a14`
+
+Drift check:
+- Kept changes to CASP3/CSCALC general precedence parsing, regressions, generated app outputs, and this checkpoint.
+- Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.
+
 ## 2026-06-12 Final Probe Hardening Slice 2
 
 Completed:

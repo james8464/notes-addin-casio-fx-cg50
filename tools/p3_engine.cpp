@@ -3598,6 +3598,28 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       return eval_suvat(cmd, out);
     }
   }
+  if ((has(t, "incline") || has(t, "slope") || has(t, "plane")) &&
+      (has(t, "rough") || has(t, "friction") || has(t, "coefficient") || has(t, "mu")) &&
+      (has(t, "projected") || has(t, "projection")) &&
+      (has(t, "rest") || has(t, "stop") || has(t, "stops")) && nv >= 3) {
+    double m=0, ang=0, mu=0, u=0;
+    bool hm=label_num(input,"mass",&m) || word_num(input,"mass",&m);
+    bool ha=label_num(input,"angle",&ang) || word_num(input,"angle",&ang) || prev_word_num(input,"degrees",&ang);
+    bool hmu=label_num(input,"mu",&mu) || label_num(input,"coefficient",&mu) || word_num(input,"coefficient",&mu) || word_num(input,"friction",&mu);
+    bool hu=label_num(input,"speed",&u) || label_num(input,"u",&u) || word_num(input,"speed",&u) || prev_word_num(input,"m/s",&u);
+    if (!hm) m = v[0];
+    if (!ha) for (int i = 0; i < nv; ++i) if (!near_num(v[i], m) && v[i] > 1.5 && v[i] <= 90) { ang = v[i]; break; }
+    if (!hmu) for (int i = 0; i < nv; ++i) if (!near_num(v[i], m) && !near_num(v[i], ang) && v[i] > 0 && v[i] < 1.5) { mu = v[i]; break; }
+    if (!hu) for (int i = nv - 1; i >= 0; --i) if (!near_num(v[i], m) && !near_num(v[i], ang) && !near_num(v[i], mu)) { u = v[i]; break; }
+    double decel = 9.8 * (deg_sine(ang) + mu * deg_cosine(ang));
+    double s = decel ? u*u/(2.0*decel) : 0;
+    int n = add(out, 0, "Motion is up a rough inclined plane, so weight component and friction both oppose the motion.");
+    n = add(out, n, "R = mg cos(theta), friction = mu R.");
+    n = add(out, n, "deceleration = g(sin(theta)+mu cos(theta))");
+    n = add(out, n, "deceleration = 9.8*(sin(%.6g)+%.6g*cos(%.6g)) = %.10g", ang, mu, ang, decel);
+    n = add(out, n, "Use v^2 = u^2 + 2as with v=0 and a=-%.10g.", decel);
+    return add(out, n, "distance = u^2/(2*deceleration) = %.6g^2/(2*%.10g) = %.10g m", u, decel, s);
+  }
   if (is_projectile_text(t) && has(c, "maximumheight") && (has(c, "timeofflight") || (has(t, "time") && has(t, "flight"))) &&
       (has(t, "speed") || has(t, "projection")) && nv >= 2) {
     double u=0, ang=0, g=9.8;
@@ -3877,6 +3899,24 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if ((has(t, "beam") || has(t, "support") || has(t, "reaction")) && (has(t, "load") || has(t, "weight")) &&
       !has(t, "ladder") && nv >= 3) {
+    if ((has(t, "rod") || has(t, "beam") || has(t, "uniform")) &&
+        has(t, "supported") && has(t, "end") && !has(t, "from") && nv >= 3) {
+      double L=0, bw=0, load=0;
+      bool hL = label_num(input, "length", &L) || word_num(input, "length", &L);
+      bool hb = word_num(input, "weight", &bw) || prev_word_num(input, "weight", &bw);
+      bool hl = word_num(input, "load", &load) || prev_word_num(input, "load", &load);
+      if (!hL) L = v[0];
+      if (!hb) bw = v[1];
+      if (!hl) load = v[2];
+      double RB = bw / 2.0 + load;
+      double RA = bw + load - RB;
+      int n = add(out, 0, "For a uniform horizontal rod, its weight acts at the midpoint.");
+      n = add(out, n, "Take moments about A.");
+      n = add(out, n, "R_B*%.10g = %.10g*(%.10g/2) + %.10g*%.10g", L, bw, L, load, L);
+      n = add(out, n, "R_B = %.10g N", RB);
+      n = add(out, n, "Vertical equilibrium: R_A + R_B = %.10g", bw + load);
+      return add(out, n, "R_A = %.10g N", RA);
+    }
     if ((has(t, "rod") || has(t, "uniform") || has(t, "beam")) && has(t, "reaction") &&
         (has(t, "distance") || has(c, "xfrom") || has(t, "findx")) && nv >= 5) {
       double L = v[0], bw = v[1], load = v[2], RB = v[nv-1];
@@ -4678,6 +4718,21 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     if (nv >= 5) {
       sprintf(cmd, "momentum(%.10g,%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3], v[4]); return eval_mech(cmd, out);
     }
+  }
+  if (has(t, "power") && (has(t, "resistance") || has(t, "resistive")) &&
+      (has(t, "maximumspeed") || has(t, "maxspeed") || (has(t, "maximum") && has(t, "speed"))) &&
+      !has(t, "incline") && !has(t, "slope") && !has(t, "plane") && nv >= 2) {
+    double P=0, r=0;
+    bool hP=word_num(input,"power",&P) || label_num(input,"power",&P) || prev_word_num(input,"kw",&P) || prev_word_num(input,"kilowatt",&P);
+    bool hr=word_num(input,"resistance",&r) || label_num(input,"resistance",&r) || word_num(input,"resistive",&r);
+    if (!hP) P = v[0];
+    if (has(t, "kw") || has(t, "kilowatt")) P *= 1000.0;
+    if (!hr) for (int i = nv - 1; i >= 0; --i) if (!near_num(v[i], P) && !near_num(v[i]*1000.0, P)) { r = v[i]; break; }
+    double vmax = r ? P / r : 0;
+    int n = add(out, 0, "At maximum speed on level ground, acceleration is zero.");
+    n = add(out, n, "Driving force equals resistance.");
+    n = add(out, n, "P = Fv, so v = P/F.");
+    return add(out, n, "maximum speed = %.10g/%.10g = %.10g m/s", P, r, vmax);
   }
   if (has(t, "power") && (has(t, "resistance") || has(t, "resistive")) &&
       (has(t, "constant") || has(t, "speed") || has(t, "velocity") || has(t, "travels") || has(t, "travelling")) &&
@@ -6201,6 +6256,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     sprintf(cmd, "pmccs(%.10g,%.10g,%.10g)", fsxx, fsyy, fsxy); return eval_stats(cmd, out);
   }
   if ((has(t, "conditional") || has(t, "given")) && nv >= 2 &&
+      !(has(t, "regression") || has(t, "leastsquares") || has(t, "lineofbestfit") || has(t, "estimate")) &&
       !has(t, "sxx") && !has(t, "sxy") && !has(t, "syy")) {
     sprintf(cmd, "cond(%.10g,%.10g)", v[0], v[1]); return eval_stats(cmd, out);
   }
