@@ -4102,6 +4102,33 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       (label_num(input,"bytes",&height) || label_num(input,"recordsize",&height) || label_num(input,"bytesperrecord",&height))) {
     sprintf(cmd, "records(%.10g,%.10g)", width, height); return eval_storage(cmd, out);
   }
+  if ((has(t, "table") || has(t, "database") || has(t, "relation")) &&
+      (has(t, "attribute") || has(t, "attributes")) && nv >= 4) {
+    double rows = 0, acount = 0, asize = 0, key = 0;
+    bool hr = label_num(input,"records",&rows) || label_num(input,"rows",&rows) ||
+              scan_before_word_num(t, "records", &rows) || scan_before_word_num(t, "rows", &rows);
+    const char *ap = strstr(t, "attributes,of,");
+    int skip = 14;
+    if (!ap) { ap = strstr(t, "attributes,each,"); skip = 16; }
+    if (!ap) { ap = strstr(t, "attribute,of,"); skip = 13; }
+    if (!ap) { ap = strstr(t, "attribute,each,"); skip = 15; }
+    bool ha = (scan_before_word_num(t, "attributes", &acount) || scan_before_word_num(t, "attribute", &acount)) && ap;
+    if (ha) asize = read_num(ap + skip);
+    bool hk = scan_before_word_num(t, "key", &key) || label_num(input,"key",&key);
+    if (!hk) {
+      const char *kp = strstr(t, "key,");
+      if (kp) { key = read_num(kp + 4); hk = key > 0; }
+    }
+    if (hr && ha && asize > 0) {
+      double attr_bytes = acount * asize;
+      double row_bytes = attr_bytes + (hk ? key : 0);
+      int n = add(out, 0, "Row size = repeated attributes plus key.");
+      n = add(out, n, "%.10g attributes of %.10g bytes = %.10g bytes", acount, asize, attr_bytes);
+      if (hk) n = add(out, n, "primary key = %.10g bytes", key);
+      n = add(out, n, "bytes per row = %.10g", row_bytes);
+      return add(out, n, "%.10g*%.10g = %.10g bytes", rows, row_bytes, rows * row_bytes);
+    }
+  }
   if ((has(t, "record") || has(t, "database") || has(t, "relation")) && has(t, "field") && nv >= 3) {
     double recs=0;
     bool hr = label_num(input,"records",&recs) || label_num(input,"rows",&recs) ||

@@ -276,6 +276,7 @@ def main():
     require("Calculate storage for 500 records each has 3 fields of 12 bytes and 2 fields of 4 bytes.", ["3 fields of 12 bytes = 36 bytes", "2 fields of 4 bytes = 8 bytes", "500*44 = 22000 bytes"])
     require("A relation has 250 records. Each record has fields of 4 bytes, 20 bytes and 2 bytes. Calculate file size.", ["Record size = sum of field sizes", "bytes per record = 26", "250*26 = 6500 bytes"])
     require("How many bytes are needed for 1000 records, each record has 6 fields of 20 bytes plus a 4 byte key?", ["6 fields of 20 bytes = 120 bytes", "bytes per record = 124", "1000*124 = 124000 bytes"])
+    require("A table has primary key 4 bytes, 8 attributes each 20 bytes, and 10000 rows. Calculate storage.", ["8 attributes of 20 bytes = 160 bytes", "primary key = 4 bytes", "10000*164 = 1640000 bytes"])
     require("sqlselect(students,name,age,>,16)", ["SQL SELECT", "SELECT name", "FROM students", "WHERE age > 16"])
     require("sql select name from students where age greater than 16", ["SQL SELECT", "SELECT name", "WHERE age > 16"])
     require("Write SQL to select average salary from employee where department equals Sales.", ["SQL SELECT", "SELECT AVG(salary)", "WHERE department = sales"])

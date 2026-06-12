@@ -1,5 +1,34 @@
 # Checkpoint
 
+## 2026-06-12 Mixed Binomial Intervals, Normal Absolute Deviation, And Attribute Storage Slice
+
+Completed:
+- Added CASP3 symbolic mixed inclusive/exclusive binomial interval handling, e.g. `5 <= X < 12` and `3 < X <= 8`.
+- Fixed CASP3 interval matcher order so `X <= upper` is not treated as strict `< upper`.
+- Added CASP3 normal absolute-deviation probability handling, e.g. `P(abs(X-mu)<a)`.
+- Added CSCALC table/attribute/key storage parsing for database table wording.
+- Added regressions and rebuilt calculator files.
+
+Evidence:
+- Targeted probes for `P(5 <= X < 12)`, `P(abs(X-40)<7)`, and table attribute/key storage: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 333764 bytes`
+  - `CSCALC.g3a: 207564 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Stayed inside CASP3/CSCALC free-text working support and generated calculator outputs.
+- Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for further source/probe-driven hardening.
+
 ## 2026-06-12 Cumulative Frequency, Stratified Lists, And Multi-Field Records Slice
 
 Completed:

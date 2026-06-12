@@ -1085,9 +1085,9 @@ static bool prob_x_bound(const char *c, double *x, int *tail) {
 static bool prob_x_interval(const char *c, double *lo, double *hi) {
   bool ls = false, rs = false;
   const char *p = strstr(c, "<=x<=");
-  if (!p) { p = strstr(c, "<x<"); ls = true; rs = true; }
   if (!p) { p = strstr(c, "<=x<"); ls = false; rs = true; }
   if (!p) { p = strstr(c, "<x<="); ls = true; rs = false; }
+  if (!p) { p = strstr(c, "<x<"); ls = true; rs = true; }
   if (!p) return false;
   const char *a = p;
   while (a > c && (isdigit((unsigned char)a[-1]) || a[-1] == '.' || a[-1] == '-')) --a;
@@ -2898,6 +2898,9 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       sprintf(cmd, "binomnorm(%d,%.10g,%.10g,%.10g)", N, pv, lo, hi);
       return eval_stats(cmd, out);
     }
+    double ilo=0, ihi=0;
+    if (prob_x_interval(c, &ilo, &ihi))
+      return add_binom_range_lines(out, N, pv, (int)ilo, (int)ihi, "Required probability");
     if (nux >= 2 && has(t, "between")) {
       int lo = (int)(ux[0] < ux[1] ? ux[0] : ux[1]);
       int hi = (int)(ux[0] < ux[1] ? ux[1] : ux[0]);
@@ -4158,6 +4161,9 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       sprintf(cmd, "critbinom(%d,%.10g,%.10g,%.0f)", (int)N, pv, alpha, (has(t, "upper") || has(t, "greater") || has(t, "more")) ? 1.0 : -1.0);
       return eval_stats(cmd, out);
     }
+    double ilo=0, ihi=0;
+    if (hN && hP && prob_x_interval(c, &ilo, &ihi))
+      return add_binom_range_lines(out, (int)N, pv, (int)ilo, (int)ihi, "Required probability");
     if (hN && hP && has(t, "between")) {
       double bnd[2]; int bc = 0;
       for (int i = 0; i < nv && bc < 2; ++i) {
@@ -4352,6 +4358,30 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
                (!has(t, "percentile") && label_num(input,"p",&area));
     double tail = (has(t, "twotailed") || has(t, "twosided") || (has(t, "two") && (has(t, "tailed") || has(t, "sided"))) || has(t, "different") || has(t, "notequal")) ? 0 :
                   (has(t, "upper") || has(t, "greater") || has(t, "more") || has(c, "x>") || has(c, "x>=") ? 1 : -1);
+    const char *absx = strstr(c, "abs(x");
+    if (absx && hMu && (hSig || hVar)) {
+      double centre = mu, radius = 0;
+      const char *xm = strstr(absx, "x-");
+      const char *xp = strstr(absx, "x+");
+      if (xm) centre = read_num(xm + 2);
+      else if (xp) centre = -read_num(xp + 2);
+      const char *rp = strstr(absx, ")<=");
+      int rskip = 3;
+      if (!rp) { rp = strstr(absx, ")<"); rskip = 2; }
+      if (rp) radius = read_num(rp + rskip);
+      if (radius > 0) {
+        double sd = hSig ? sig : root(var);
+        double lo2 = centre - radius, hi2 = centre + radius;
+        double z1 = (lo2 - mu) / sd, z2 = (hi2 - mu) / sd;
+        double ans = normal_cdf(z2) - normal_cdf(z1);
+        int n = add(out, 0, "P(|X-%.6g|<%.6g) means %.6g-%.6g < X < %.6g+%.6g.", centre, radius, centre, radius, centre, radius);
+        if (hVar) n = add(out, n, "sigma = sqrt(%.6g) = %.10g", var, sd);
+        n = add(out, n, "So %.10g < X < %.10g.", lo2, hi2);
+        n = add(out, n, "z1=(%.10g-%.6g)/%.10g = %.10g", lo2, mu, sd, z1);
+        n = add(out, n, "z2=(%.10g-%.6g)/%.10g = %.10g", hi2, mu, sd, z2);
+        return add(out, n, "probability = %.10g", ans);
+      }
+    }
     if (hMu && !hSig && !hVar &&
         (has(t, "standarddeviation") || (has(t, "standard") && has(t, "deviation")) || has(t, "sd") || has(t, "sigma")) &&
         (has(t, "find") || has(t, "unknown") || has(t, "calculate"))) {
