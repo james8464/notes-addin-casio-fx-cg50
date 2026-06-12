@@ -187,6 +187,8 @@ def main():
     require("Use a normal approximation for X binomial n 500 p 0.02 find probability X is at least 15", ["normal approximation", "mu = np = 10", "14.5 < Y < 500.5", "NormalCD"])
     require("poissonapprox(200,0.01,3,-1)", ["Poisson approximation", "lambda = np = 200*0.01 = 2", "Use P(Y<=3)", "approx probability"])
     require("poisson approximation to binomial n 200 p 0.01 at most 3", ["Poisson approximation", "lambda = np", "Use P(Y<=3)"])
+    require("Using a distributional approximation, X is binomial n 1000 p 0.003. Find P(X at most 5).", ["Poisson approximation", "X ~ B(1000, 0.003)", "lambda = np = 1000*0.003 = 3", "Use P(Y<=5)"])
+    require("Using a distributional approximation, X is binomial n 1000 p=0.003. Find P(X at most 5).", ["Poisson approximation", "X ~ B(1000, 0.003)", "lambda = np = 1000*0.003 = 3", "Use P(Y<=5)"])
     require("A component has probability 0.02 of being defective. In 300 components use a suitable approximation to find P(X=4).", ["Poisson approximation", "Use P(Y=4)"])
     require("Calls arrive at mean rate 4 per hour. Find probability exactly 2 calls in an hour.", ["For X~Po(lambda)", "P(X=2)=e^-4*4^2/2!"])
     require("critbinom(20,0.4,0.05,-1)", ["critical region", "alpha"])
@@ -313,6 +315,7 @@ def main():
     require("uncode(3,2,20,5)", ["Y=(X-a)/b", "mean X = 20 + 5*3 = 35", "standard deviation X = |b|*standard deviation Y = 5*2 = 10"])
     require("coded data y=(x-20)/5 mean 3 sd 2", ["Y=(X-a)/b", "mean X = 20 + 5*3 = 35", "standard deviation X"])
     require("Given coded data y=(x-20)/5 has mean 3 and standard deviation 2. Find the mean and sd of x.", ["Y=(X-a)/b", "mean X = 20 + 5*3 = 35", "standard deviation X"])
+    require("A random sample of 50 has coded variable y=(x-12)/3. The mean of y is 4 and standard deviation of y is 1.5. Find mean and standard deviation of x.", ["Y=(X-a)/b", "mean X = 12 + 3*4 = 24", "standard deviation X = |b|*standard deviation Y = 3*1.5 = 4.5"])
     require("code(35,10,20,5)", ["For coded data Y=(X-a)/b", "mean Y = (35-20)/5 = 3", "sd Y = sd X/|b| = 10/5 = 2"])
     print("OK p3 engine")
 

@@ -3,6 +3,7 @@
 #include <ctype.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #ifdef __clang__
@@ -53,11 +54,7 @@ static bool starts3(const char *s, const char *a, const char *b, const char *c) 
 }
 
 static double num(const char *s) {
-  double sign = 1, v = 0, scale = 1;
-  if (*s == '-') { sign = -1; ++s; }
-  for (; *s && *s != '.'; ++s) if (*s >= '0' && *s <= '9') v = v * 10 + (*s - '0');
-  if (*s == '.') for (++s; *s; ++s) if (*s >= '0' && *s <= '9') { scale *= 10; v += (*s - '0') / scale; }
-  return sign * v;
+  return strtod(s, 0);
 }
 
 static double pwr(double a, int e) {
@@ -149,11 +146,27 @@ static bool kv(char a[][48], int na, const char *name, double *v) {
 }
 
 static double read_num(const char *s) {
-  double sign = 1, v = 0, scale = 1;
-  if (*s == '-') { sign = -1; ++s; }
-  while (*s >= '0' && *s <= '9') v = v * 10 + (*s++ - '0');
-  if (*s == '.') for (++s; *s >= '0' && *s <= '9'; ++s) { scale *= 10; v += (*s - '0') / scale; }
-  return sign * v;
+  return strtod(s, 0);
+}
+
+static bool coded_cmd_from_text(const char *compact, const double v[], int nv, char *cmd, int cap) {
+  const char *p = strstr(compact, "y=(x");
+  if (!p || nv < 2) return false;
+  p += 4;
+  double a = 0, b = 1;
+  if (*p == '-') { a = strtod(p + 1, (char **)&p); }
+  else if (*p == '+') { a = -strtod(p + 1, (char **)&p); }
+  const char *div = strstr(p, ")/");
+  if (!div) return false;
+  b = strtod(div + 2, 0);
+  if (b == 0) return false;
+  double mean = v[nv - 2], sd = v[nv - 1];
+  bool wants_y = strstr(compact, "findmeanofy") || strstr(compact, "findthemeanofy") ||
+                 strstr(compact, "meanofthecoded") || strstr(compact, "codedmean");
+  (void)cap;
+  sprintf(cmd, wants_y ? "code(%.10g,%.10g,%.10g,%.10g)" : "uncode(%.10g,%.10g,%.10g,%.10g)",
+          mean, sd, a, b);
+  return true;
 }
 
 static bool grouped_class_freq_cmd(const char *t, char *cmd, int cap) {
@@ -2192,7 +2205,10 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if ((has(t, "approx") || has(t, "approximation") || has(t, "distributional")) && nv >= 2) {
     double pv = -1, rawp = -1, N = -1;
-    if (word_num(input, "probability", &pv) || word_num(input, "proportion", &pv) || word_num(input, "chance", &pv)) rawp = pv;
+    if (label_num(input, "p", &pv) || label_num(input, "probability", &pv) ||
+        word_num(input, "p", &pv) ||
+        word_num(input, "probability", &pv) || word_num(input, "proportion", &pv) ||
+        word_num(input, "chance", &pv)) rawp = pv;
     if (pv < 0 && (has(t, "percent") || has(c, "%") || has(t, "distributional"))) {
       for (int i = 0; i < nv; ++i) if (v[i] > 0 && v[i] < 100) { rawp = v[i]; pv = v[i] / 100.0; break; }
     }
@@ -2210,7 +2226,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       }
       int tail = prob_tail(c, t);
       if (has(t, "half")) { u[0] = (int)(N / 2); nu = 1; tail = 2; }
-      bool poisson = (pv <= 0.15 && N >= 50 && N * pv <= 15) || has(t, "poisson") || has(t, "suitable");
+      bool poisson = !has(t, "normal") &&
+                     ((pv <= 0.15 && N >= 50 && N * pv <= 15) || has(t, "poisson") || has(t, "suitable"));
       if (nu >= 2 && !poisson) {
         double lo = -1, hi = -1;
         for (int i = 0; i < nu; ++i) if (u[i] > hi) { lo = hi; hi = u[i]; } else if (u[i] > lo) lo = u[i];
@@ -2615,8 +2632,10 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if ((has(t, "coded") || has(t, "coding")) && has(t, "mean") &&
       (has(t, "sd") || has(t, "standarddeviation") || (has(t, "standard") && has(t, "deviation"))) && nv >= 4) {
-    if (has(c, "y=(x-") || has(c, "y=(x+")) sprintf(cmd, "uncode(%.10g,%.10g,%.10g,%.10g)", v[2], v[3], -v[0], v[1]);
-    else sprintf(cmd, "code(%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3]);
+    if (!coded_cmd_from_text(c, v, nv, cmd, sizeof(cmd))) {
+      if (has(c, "y=(x-") || has(c, "y=(x+")) sprintf(cmd, "uncode(%.10g,%.10g,%.10g,%.10g)", v[2], v[3], -v[0], v[1]);
+      else sprintf(cmd, "code(%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3]);
+    }
     return eval_stats(cmd, out);
   }
   if ((has(t, "independent") || has(t, "independence")) && (has(t, "given") || has(t, "conditional")) && nv >= 3) {
@@ -2715,8 +2734,10 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if ((has(t, "coded") || has(t, "coding")) && has(t, "mean") &&
       (has(t, "sd") || has(t, "standarddeviation") || (has(t, "standard") && has(t, "deviation"))) && nv >= 4) {
-    if (has(c, "y=(x-") || has(c, "y=(x+")) sprintf(cmd, "uncode(%.10g,%.10g,%.10g,%.10g)", v[2], v[3], -v[0], v[1]);
-    else sprintf(cmd, "code(%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3]);
+    if (!coded_cmd_from_text(c, v, nv, cmd, sizeof(cmd))) {
+      if (has(c, "y=(x-") || has(c, "y=(x+")) sprintf(cmd, "uncode(%.10g,%.10g,%.10g,%.10g)", v[2], v[3], -v[0], v[1]);
+      else sprintf(cmd, "code(%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3]);
+    }
     return eval_stats(cmd, out);
   }
   if ((has(t, "grouped") || has(t, "group") || has(t, "midpoint") || has(t, "midpoints")) &&

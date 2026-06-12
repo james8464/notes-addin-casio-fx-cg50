@@ -2577,6 +2577,35 @@ Drift check:
 - Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
 - Active goal remains open for future source/probe-driven hardening.
 
+## 2026-06-12 Coded Data and Probability Parser Slice
+
+Completed:
+- Fixed CASP3 coded-data prose for transforms like `y=(x-12)/3` so constants, mean, and standard deviation are read from the transform and final stated stats rather than incidental sample-size numbers.
+- Fixed CASP3 numeric parser so generated commands containing scientific notation are not misread as large integers.
+- Fixed CASP3 distributional approximation parsing so explicit `p 0.003` and `p=0.003` stay as probabilities, not percentages.
+- Fixed CASP3 automatic Poisson approximation so explicit `normal approximation` continues to use the normal route.
+- Added regression tests and rebuilt calculator files.
+
+Evidence:
+- Fresh focused probe batch found coded-data and small-probability approximation misses; fixed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 193352 bytes`
+  - `CSCALC.g3a: 166896 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Still inside CASP3 free-text parser hardening and generated calculator outputs.
+- Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for future source/probe-driven hardening.
+
 ## 2026-06-12 Grouped Classes, Normal Intervals, Units, Records Slice
 
 Completed:
