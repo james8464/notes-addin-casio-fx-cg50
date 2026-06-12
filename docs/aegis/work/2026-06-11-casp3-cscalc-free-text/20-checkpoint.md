@@ -2201,6 +2201,35 @@ Drift check:
 - Still inside CSCALC AQA Paper 2 Boolean algebra support.
 - Did not touch CAS Pure, CASP3 behavior, NOTES, menus, or status/UI code.
 
+## 2026-06-12 P3/CS Free Text Hardening Slice
+
+Completed:
+- CASP3: made prose number extraction accept "is/of" label phrasing.
+- CASP3: routed vertical projected-motion and final-rest braking prompts before projectile/generic SUVAT fallbacks.
+- CASP3: accepted `distributed N(...)` notation, natural histogram density/frequency prompts, product-moment correlation wording, and sample mean hypothesis wording with spaced `standard deviation`.
+- CSCALC: accepted base names and `in base` phrasing for base 2/base 8 conversions.
+- CSCALC: prioritised explicit binary-to-hex wording over accidental hex word tokens.
+- CSCALC: handled worded negative two's-complement encoding.
+- CSCALC: fixed large address-space prompts by avoiding scientific notation inside the generated command.
+- CSCALC: normalised Boolean word operators in free text and ignored terminal punctuation in Boolean proofs.
+- Rebuilt all calculator files.
+
+Evidence:
+- Targeted fresh probe set: 25/25 passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 161412 bytes`
+  - `CSCALC.g3a: 155680 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Still inside CASP3/CSCALC free-text exam-calculation support.
+- Did not change CAS Pure source, NOTES source, menus, or shared UI/status behavior.
+
 ## 2026-06-12 Free-Text Hardening Slice
 
 Completed:

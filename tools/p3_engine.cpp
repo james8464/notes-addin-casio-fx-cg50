@@ -189,7 +189,17 @@ static bool word_num(const char *s, const char *name, double *v) {
       ++j; ++q;
     }
     if (j != nl || isalnum((unsigned char)s[q])) continue;
-    while (s[q] == ' ' || s[q] == '\t' || s[q] == '=') ++q;
+    while (s[q] == ' ' || s[q] == '\t' || s[q] == '=' || s[q] == ':' || s[q] == ',') ++q;
+    if (tolower((unsigned char)s[q]) == 'i' && tolower((unsigned char)s[q+1]) == 's' &&
+        !isalnum((unsigned char)s[q+2])) {
+      q += 2;
+      while (s[q] == ' ' || s[q] == '\t' || s[q] == '=' || s[q] == ':' || s[q] == ',') ++q;
+    }
+    if (tolower((unsigned char)s[q]) == 'o' && tolower((unsigned char)s[q+1]) == 'f' &&
+        !isalnum((unsigned char)s[q+2])) {
+      q += 2;
+      while (s[q] == ' ' || s[q] == '\t' || s[q] == '=' || s[q] == ':' || s[q] == ',') ++q;
+    }
     if (s[q] != '-' && !isdigit((unsigned char)s[q])) continue;
     *v = read_num(s + q);
     return true;
@@ -1256,7 +1266,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     else sprintf(cmd, "binom(%d,%.10g,%d)", N, pv, x);
     return eval_stats(cmd, out);
   }
-  if ((has(c, "~n(") || has(c, "followsn(") || has(c, "xn(")) && nv >= 3) {
+  if ((has(c, "~n(") || has(c, "followsn(") || has(c, "distributedn(") || has(c, "xn(")) && nv >= 3) {
     double mu=0, second=0;
     if (!dist2(c, "n(", &mu, &second)) { mu = v[0]; second = v[1]; }
     double var = has(c, "^2") ? second * second : second;
@@ -1322,6 +1332,37 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     if (tail) sprintf(cmd, "poissontail(%.10g,%d,%d)", lam, x, tail);
     else sprintf(cmd, "poisson(%.10g,%d)", lam, x);
     return eval_stats(cmd, out);
+  }
+  if ((has(t, "vertical") || has(t, "vertically")) && (has(t, "upward") || has(t, "upwards") || has(t, "projected") || has(t, "thrown")) && nv >= 1) {
+    double pos[4]; int np = 0;
+    for (int i = 0; i < nv && np < 4; ++i) if (v[i] > 0) pos[np++] = v[i];
+    double u0 = pos[0], g = 9.8, target = 0;
+    bool hTarget = word_num(input, "height", &target) || word_num(input, "above", &target);
+    if (!hTarget && np >= 2 && (has(t, "height") || has(t, "metres") || has(t, "meters"))) { target = pos[1]; hTarget = true; }
+    if (hTarget && !near_num(target, u0)) {
+      double disc = u0*u0 - 2*g*target;
+      int n = add(out, 0, "Use vertical SUVAT with upward positive.");
+      n = add(out, n, "s = ut - 1/2 gt^2");
+      n = add(out, n, "%.6g = %.6g t - 1/2*%.6g t^2", target, u0, g);
+      n = add(out, n, "%.6g t^2 - %.6g t + %.6g = 0", 0.5*g, u0, target);
+      if (disc < 0) return add(out, n, "discriminant < 0, so this height is not reached.");
+      return add(out, n, "t = %.10g or %.10g", (u0 - root(disc)) / g, (u0 + root(disc)) / g);
+    }
+  }
+  if ((has(c, "torest") || has(c, "comestorest") || has(c, "broughttorest") ||
+       has(t, "retardation") || has(t, "deceleration") || has(t, "braking") || has(t, "brake")) &&
+      (has(t, "distance") || has(t, "travelling") || has(t, "travels") || has(t, "travelling") || has(t, "travelled") || has(t, "metres") || has(t, "meters")) && nv >= 2) {
+    double pos[4]; int np = 0;
+    for (int i = 0; i < nv && np < 4; ++i) if (v[i] > 0) pos[np++] = v[i];
+    if (np >= 2) {
+      double u0 = pos[0], s0 = pos[1], a0 = -u0*u0/(2*s0), t0 = 2*s0/u0;
+      int n = add(out, 0, "Use SUVAT for uniform deceleration.");
+      n = add(out, n, "final velocity is 0 because it comes to rest.");
+      n = add(out, n, "v^2 = u^2 + 2as");
+      n = add(out, n, "a = (0^2-%.6g^2)/(2*%.6g) = %.10g", u0, s0, a0);
+      n = add(out, n, "deceleration = %.10g", -a0);
+      return add(out, n, "t = 2s/(u+v) = 2*%.6g/(%.6g+0) = %.10g", s0, u0, t0);
+    }
   }
   if (!has(t, "variable") && (has(t, "suvat") || has(t, "velocity") || has(t, "acceleration") || has(t, "accelerates") || has(t, "accelerated") || has(t, "distance") || has(t, "displacement") || has(t, "time"))) {
     if ((has(t, "brake") || has(t, "brakes") || has(t, "deceleration") || has(t, "decelerates")) && nv >= 2) {
@@ -1573,7 +1614,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if ((has(t, "friction") || has(t, "coefficientoffriction")) && nv >= 2) {
     sprintf(cmd, "friction(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
   }
-  if (has(t, "moment") && !has(t, "momentum") && nv >= 2) {
+  if (has(t, "moment") && !has(t, "momentum") && !has(t, "correlation") && !has(t, "productmoment") && nv >= 2) {
     sprintf(cmd, "moment(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
   }
   if ((has(t, "pulley") || has(t, "connectedparticles") || (has(t, "connected") && has(t, "particle"))) && nv >= 2) {
@@ -2004,13 +2045,14 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if ((has(t, "hypothesis") || has(t, "test")) &&
       (has(t, "samplemean") || (has(t, "sample") && has(t, "mean")) || has(t, "xbar")) &&
       (has(t, "populationmean") || has(t, "mu") || has(t, "mean")) &&
-      (has(t, "sd") || has(t, "standarddeviation") || has(t, "sigma")) && nv >= 4) {
+      (has(t, "sd") || has(t, "standarddeviation") || (has(t, "standard") && has(t, "deviation")) || has(t, "sigma")) && nv >= 4) {
     double xb = 0, mu = 0, sig = 0, n0 = 0, alpha = 0.05;
-    bool hXb = label_num(input,"xbar",&xb) || label_num(input,"samplemean",&xb) || word_num(input,"samplemean",&xb);
+    bool hXb = label_num(input,"xbar",&xb) || label_num(input,"samplemean",&xb) ||
+               word_num(input,"samplemean",&xb) || ((has(t, "sample") || has(t, "xbar")) && word_num(input,"mean",&xb));
     bool hMu = label_num(input,"mu",&mu) || label_num(input,"populationmean",&mu) || word_num(input,"populationmean",&mu);
     bool hSig = label_num(input,"sd",&sig) || label_num(input,"sigma",&sig) || label_num(input,"standarddeviation",&sig) ||
                 word_num(input,"sd",&sig) || word_num(input,"sigma",&sig) || word_num(input,"standarddeviation",&sig);
-    bool hN = label_num(input,"n",&n0) || word_num(input,"n",&n0);
+    bool hN = label_num(input,"n",&n0) || word_num(input,"samplesize",&n0) || word_num(input,"size",&n0) || word_num(input,"n",&n0);
     if (!hXb) xb = v[0];
     if (!hMu) mu = v[1];
     if (!hSig) sig = v[2];
@@ -2037,8 +2079,16 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if ((has(t, "grouped") || has(t, "interpolate") || has(t, "interpolation")) && (has(t, "quartile") || has(t, "quantile")) && nv >= 6) {
     sprintf(cmd, "groupquantile(%.10g,%.10g,%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3], v[4], v[5]); return eval_stats(cmd, out);
   }
-  if ((has(t, "histogram") || has(t, "frequencydensity")) && (has(t, "density") || has(t, "frequencydensity")) && has(t, "width") && nv >= 2) {
-    if (has(c, "findfrequency") && !has(c, "findfrequencydensity")) sprintf(cmd, "histfreq(%.10g,%.10g)", v[0], v[1]);
+  if ((has(t, "histogram") || has(t, "frequencydensity") || has(t, "classwidth")) && (has(t, "density") || has(t, "frequencydensity") || has(t, "width")) && nv >= 2) {
+    double freq=0, dens=0, width0=0;
+    bool hW = word_num(input,"classwidth",&width0) || word_num(input,"width",&width0);
+    bool hD = word_num(input,"frequencydensity",&dens) || word_num(input,"density",&dens);
+    bool hF = word_num(input,"frequency",&freq);
+    if ((has(c, "findfrequency") || has(c, "calculatefrequency") || (has(t, "calculate") && has(t, "frequency"))) &&
+        !has(c, "findfrequencydensity") && !has(c, "calculatefrequencydensity") && hD && hW)
+      sprintf(cmd, "histfreq(%.10g,%.10g)", dens, width0);
+    else if (hF && hW) sprintf(cmd, "histdensity(%.10g,%.10g)", freq, width0);
+    else if (has(c, "findfrequency") && !has(c, "findfrequencydensity")) sprintf(cmd, "histfreq(%.10g,%.10g)", v[0], v[1]);
     else if (has(t, "frequencyfromdensity")) sprintf(cmd, "histfreq(%.10g,%.10g)", v[0], v[1]);
     else sprintf(cmd, "histdensity(%.10g,%.10g)", v[0], v[1]);
     return eval_stats(cmd, out);

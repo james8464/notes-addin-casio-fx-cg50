@@ -2800,6 +2800,7 @@ static const char *skip_bool_words(const char *e) {
     if (starts(e, "prove")) { e += 5; moved = true; }
     if (starts(e, "showthat")) { e += 8; moved = true; }
     if (starts(e, "show")) { e += 4; moved = true; }
+    if (starts(e, "that")) { e += 4; moved = true; }
     if (starts(e, "identity")) { e += 8; moved = true; }
     if (starts(e, "boolean")) { e += 7; moved = true; }
     if (starts(e, "logic")) { e += 5; moved = true; }
@@ -2820,7 +2821,17 @@ static const char *skip_bool_words(const char *e) {
 
 static void bool_arg_for_cmd(const char *src, char *dst, int cap) {
   int p = 0;
-  for (int i = 0; src[i] && p + 1 < cap; ++i) dst[p++] = src[i] == ',' ? '\'' : src[i];
+  for (int i = 0; src[i] && p + 1 < cap;) {
+    if (starts(src + i, "nand")) { dst[p++] = '@'; i += 4; continue; }
+    if (starts(src + i, "nor")) { dst[p++] = '#'; i += 3; continue; }
+    if (starts(src + i, "xor")) { dst[p++] = '^'; i += 3; continue; }
+    if (starts(src + i, "not")) { dst[p++] = '!'; i += 3; continue; }
+    if (starts(src + i, "and")) { dst[p++] = '&'; i += 3; continue; }
+    if (starts(src + i, "or")) { dst[p++] = '+'; i += 2; continue; }
+    if ((src[i] == '.' || src[i] == '?' || src[i] == '!') && src[i+1] == 0) { ++i; continue; }
+    dst[p++] = src[i] == ',' ? '\'' : src[i];
+    ++i;
+  }
   dst[p] = 0;
 }
 
@@ -2883,6 +2894,8 @@ static bool make_named_bool_rhs_cmd(const char *compact, const char *fn, char *c
   const char *eq = strchr(e, '='); int elen = 1;
   const char *eq2 = strstr(e, "isequalto");
   if (eq2 && (!eq || eq2 < eq)) { eq = eq2; elen = 9; }
+  eq2 = strstr(e, "isequivalentto");
+  if (eq2 && (!eq || eq2 < eq)) { eq = eq2; elen = 14; }
   eq2 = strstr(e, "equals");
   if (eq2 && (!eq || eq2 < eq)) { eq = eq2; elen = 6; }
   if (!eq || eq <= e || !eq[elen]) return false;
@@ -2890,7 +2903,9 @@ static bool make_named_bool_rhs_cmd(const char *compact, const char *fn, char *c
   char rhs[96], nrhs[96]; int ri = 0;
   for (const char *p = eq + elen; *p && ri + 1 < (int)sizeof(rhs); ++p) rhs[ri++] = *p;
   rhs[ri] = 0;
-  bool_arg_for_cmd(rhs, nrhs, sizeof(nrhs));
+  char clean[96];
+  bool_clean_tail(rhs, clean, sizeof(clean));
+  bool_arg_for_cmd(clean, nrhs, sizeof(nrhs));
   if (cap < (int)strlen(fn) + (int)strlen(nrhs) + 3) return false;
   sprintf(cmd, "%s(%s)", fn, nrhs);
   return true;
@@ -3160,6 +3175,16 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if (has(t, "bcd") && nv >= 1) {
     sprintf(cmd, "bcd(%lld)", (long long)v[0]); return eval_base(cmd, out);
   }
+  if (has(t, "base") && ((has(t, "base,2") || has(t, "base,two")) && (has(t, "base,8") || has(t, "base,eight")))) {
+    const char *p2 = strstr(t, "base,2"); if (!p2) p2 = strstr(t, "base,two");
+    const char *p8 = strstr(t, "base,8"); if (!p8) p8 = strstr(t, "base,eight");
+    if (p2 && p8 && p2 < p8 && nb >= 1) {
+      sprintf(cmd, "convert(%s,2,8)", bits[0]); return eval_base(cmd, out);
+    }
+    if (p8 && p2 && p8 < p2 && nv >= 1) {
+      sprintf(cmd, "convert(%lld,8,2)", (long long)v[0]); return eval_base(cmd, out);
+    }
+  }
   if (has(t, "base") && has(t, "to") && has(t, "16") && has(t, "10") && has_hex_tok && has(t, "to,base,10")) {
     sprintf(cmd, "den(%s,16)", hex_tok); return eval_base(cmd, out);
   }
@@ -3193,6 +3218,11 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       sprintf(cmd, "convert(%lld,8,2)", (long long)v[0]); return eval_base(cmd, out);
     }
   }
+  if (has(t, "binary") && nb >= 1 && (has(t, "hex") || has(t, "hexadecimal")) &&
+      !(has(t, "add") || has(t, "sum") || has(t, "plus") || has(t, "subtract") || has(t, "minus"))) {
+    char all[96]; join_bits(bits, nb, all, sizeof(all));
+    sprintf(cmd, "convert(%s,2,16)", all); return eval_base(cmd, out);
+  }
   if ((has(t, "hex") || has(t, "hexadecimal")) && has_hex_tok && has(t, "binary")) {
     sprintf(cmd, "convert(%s,16,2)", hex_tok); return eval_base(cmd, out);
   }
@@ -3206,11 +3236,6 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if (has(t, "fixed") && (has(t, "encode") || has(t, "represent") || has(t, "convert")) && nv >= 3) {
     sprintf(cmd, (tc || has(t, "signed") || has(t, "negative")) ? "fixedtcenc(%.10g,%lld,%lld)" : "fixedenc(%.10g,%lld,%lld)", v[0], (long long)v[1], (long long)v[2]);
     return eval_float(cmd, out);
-  }
-  if (has(t, "binary") && nb >= 1 && (has(t, "hex") || has(t, "hexadecimal")) &&
-      !(has(t, "add") || has(t, "sum") || has(t, "plus") || has(t, "subtract") || has(t, "minus"))) {
-    char all[96]; join_bits(bits, nb, all, sizeof(all));
-    sprintf(cmd, "convert(%s,2,16)", all); return eval_base(cmd, out);
   }
   if ((has(t, "denary") || has(t, "decimal")) && nb >= 1 &&
       !(has(t, "add") || has(t, "sum") || has(t, "plus") || has(t, "subtract") || has(t, "minus"))) {
@@ -3266,7 +3291,9 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     sprintf(cmd, "twosadd(%s,%s)", bits[0], bits[1]); return eval_twos(cmd, out);
   }
   if (tc && nv >= 2 && nb == 0) {
-    sprintf(cmd, "twos(%lld,%lld)", (long long)v[0], (long long)v[1]); return eval_twos(cmd, out);
+    long long val = (long long)v[0], bitsw = (long long)v[1];
+    if ((has(t, "minus") || has(t, "negative")) && !has(t, "subtract") && val > 0) val = -val;
+    sprintf(cmd, "twos(%lld,%lld)", val, bitsw); return eval_twos(cmd, out);
   }
   if ((has(t, "add") || has(t, "sum") || has(t, "plus")) && nbg >= 2 && (has(t, "binary") || has(t, "bits"))) {
     sprintf(cmd, "binadd(%s,%s,%d)", bitgrp[0], bitgrp[1], (int)strlen(bitgrp[0])); return eval_binary_arith(cmd, out);
@@ -3441,7 +3468,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     else if (has(t, "kb") || has(t, "kib")) bytes *= 1024.0;
     if (label_num(input, "wordbits", &wbits) || label_num(input, "word", &wbits)) {}
     else if (has(t, "word") && nv >= 2) wbits = v[1];
-    sprintf(cmd, "addressbits(%.10g,%.10g)", bytes, wbits);
+    sprintf(cmd, "addressbits(%.0f,%.10g)", bytes, wbits);
     return eval_storage(cmd, out);
   }
   if (has(t, "address") && (has(t, "bus") || has(t, "space") || has(t, "locations")) && nv >= 1) {
@@ -3497,9 +3524,11 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       make_named_bool_rhs_cmd(compact, has(compact, "truth") ? "truth" : "bool", cmd, sizeof(cmd))) {
     return eval_bool(cmd, out);
   }
-  if (nv == 0 && (has(compact, "equals") || has(compact, "isequalto") || has(compact, "equivalentto"))) {
+  if (nv == 0 && (has(compact, "equals") || has(compact, "isequalto") || has(compact, "isequivalentto") || has(compact, "equivalentto"))) {
     const char *e = skip_bool_words(compact);
     const char *eq = strstr(e, "isequalto"); int elen = 9;
+    const char *eq2 = strstr(e, "isequivalentto");
+    if (eq2 && (!eq || eq2 < eq)) { eq = eq2; elen = 14; }
     if (!eq) { eq = strstr(e, "equivalentto"); elen = 12; }
     if (!eq) { eq = strstr(e, "equals"); elen = 6; }
     if (eq && eq > e && eq[elen]) {
