@@ -1,5 +1,24 @@
 # Checkpoint
 
+## 2026-06-12 CSCALC Minimum Bit-Width Slice
+
+Completed:
+- Added `bitsneeded(...)` / `minbits(...)` / `bitwidth(...)` for unsigned, two's-complement, and sign-and-magnitude representation widths.
+- Added free-text routing for “minimum/fewest/smallest bits needed” prompts without intercepting floating-point mantissa precision questions.
+- Added regression tests for unsigned `150`, two's-complement `-45`, and sign-and-magnitude `-45`.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CSCALC AQA Paper 2 representation calculation support.
+- Did not touch CAS Pure behavior, CASP3 behavior, NOTES, or shared UI/status code.
+
 ## 2026-06-12 CASP3 Planned Command Alias Slice
 
 Completed:

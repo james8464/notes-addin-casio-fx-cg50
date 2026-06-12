@@ -619,6 +619,33 @@ static int eval_base(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN])
 
 static int eval_twos(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
   char a[4][48]; int na = args(s, a, 4);
+  if (starts3(s, "bitsneeded(", "minbits(", "bitwidth(") && na >= 1) {
+    long long v = parse_int(a[0]);
+    bool tc = na > 1 && (starts(a[1], "twos") || starts(a[1], "tc") || starts(a[1], "signed"));
+    bool sm = na > 1 && (starts(a[1], "sign") || starts(a[1], "sm"));
+    if (tc) {
+      int w = 1;
+      while (w < 62 && (v < -(1LL << (w - 1)) || v > ((1LL << (w - 1)) - 1))) ++w;
+      int n = add(out, 0, "Find the minimum two's-complement width.");
+      n = add(out, n, "Need -2^(n-1) <= %lld <= 2^(n-1)-1.", v);
+      return add(out, n, "n = %d gives range %lld to %lld, so %d bits are needed.", w, -(1LL << (w - 1)), (1LL << (w - 1)) - 1, w);
+    }
+    if (sm) {
+      long long mag = v < 0 ? -v : v;
+      int m = 1;
+      while (m < 62 && mag > ((1LL << m) - 1)) ++m;
+      int w = m + 1;
+      int n = add(out, 0, "Find the minimum sign-and-magnitude width.");
+      n = add(out, n, "Need 1 sign bit and m magnitude bits with |%lld| <= 2^m-1.", v);
+      return add(out, n, "m = %d gives magnitude range 0 to %lld, so total bits = %d.", m, (1LL << m) - 1, w);
+    }
+    if (v < 0) return add(out, 0, "Unsigned binary cannot represent a negative value.");
+    int w = 1;
+    while (w < 63 && v > ((1LL << w) - 1)) ++w;
+    int n = add(out, 0, "Find the minimum unsigned binary width.");
+    n = add(out, n, "Need 0 <= %lld <= 2^n-1.", v);
+    return add(out, n, "n = %d gives range 0 to %lld, so %d bits are needed.", w, (1LL << w) - 1, w);
+  }
   if (starts2(s, "unsignedrange(", "urange(") && na == 1) {
     int w = (int)parse_int(a[0]);
     return add(out, add(out, 0, "n-bit unsigned range:"), "0 to 2^%d-1 = 0 to %d", w, (1<<w)-1);
@@ -2659,7 +2686,9 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if ((has(t, "denary") || has(t, "decimal")) && nb >= 1) {
     sprintf(cmd, "den(%s,2)", bits[0]); return eval_base(cmd, out);
   }
-  if (has(t, "binary") && nv >= 1 && nb == 0) {
+  if (has(t, "binary") && nv >= 1 && nb == 0 &&
+      !(has(t, "bitsneeded") || has(t, "bitwidth") || (has(t, "minimum") && has(t, "bits")) ||
+        (has(t, "fewest") && has(t, "bits")) || (has(t, "smallest") && has(t, "bits")))) {
     sprintf(cmd, "bin(%lld)", (long long)v[0]); return eval_base(cmd, out);
   }
   if ((has(t, "hex") || has(t, "hexadecimal")) && nv >= 1) {
@@ -2672,6 +2701,14 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   if (sm && has(t, "range") && nv >= 1) {
     sprintf(cmd, "signmagrange(%lld)", (long long)v[0]); return eval_twos(cmd, out);
+  }
+  if (!has(t, "mantissa") && !has(t, "exponent") &&
+      (has(t, "bitsneeded") || has(t, "bitwidth") || (has(t, "minimum") && has(t, "bits")) ||
+       (has(t, "fewest") && has(t, "bits")) || (has(t, "smallest") && has(t, "bits"))) && nv >= 1) {
+    if (tc) sprintf(cmd, "bitsneeded(%lld,twos)", (long long)v[0]);
+    else if (sm) sprintf(cmd, "bitsneeded(%lld,signmag)", (long long)v[0]);
+    else sprintf(cmd, "bitsneeded(%lld,unsigned)", (long long)v[0]);
+    return eval_twos(cmd, out);
   }
   if (sm && nb >= 1 && (has(t, "decode") || has(t, "denary") || has(t, "decimal"))) {
     sprintf(cmd, "signmagdec(%s)", bits[0]); return eval_twos(cmd, out);
