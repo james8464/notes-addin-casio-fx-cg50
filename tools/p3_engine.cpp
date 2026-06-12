@@ -3548,6 +3548,38 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     return eval_mech(cmd, out);
   }
   if ((has(t, "beam") || has(t, "support") || has(t, "reaction")) && (has(t, "load") || has(t, "weight")) && nv >= 3) {
+    const char *loads_p = strstr(t, "loads");
+    const char *act_p = loads_p ? strstr(loads_p, "act") : 0;
+    if (loads_p && act_p) {
+      char load_seg[160], pos_seg[160];
+      int llen = (int)(act_p - loads_p);
+      if (llen >= (int)sizeof(load_seg)) llen = (int)sizeof(load_seg) - 1;
+      memcpy(load_seg, loads_p, llen); load_seg[llen] = 0;
+      strncpy(pos_seg, act_p, sizeof(pos_seg) - 1); pos_seg[sizeof(pos_seg) - 1] = 0;
+      double loads[8], pos[8];
+      int nl = scan_nums(load_seg, loads, 8), np = scan_nums(pos_seg, pos, 8);
+      double L = 0, bw = 0;
+      bool hL = label_num(input, "length", &L) || word_num(input, "length", &L);
+      bool hb = word_num(input, "weight", &bw) || prev_word_num(input, "weight", &bw);
+      if (hL && nl > 0 && np >= nl) {
+        double sumW = hb ? bw : 0, moment = hb ? bw * L / 2.0 : 0;
+        int n = add(out, 0, "For a horizontal beam in equilibrium, use moments and vertical forces.");
+        n = add(out, n, "Take moments about the left support A.");
+        if (hb) n = add(out, n, "beam weight moment = %.10g*(%.10g/2)", bw, L);
+        char rhs[160]; rhs[0] = 0; int p = 0;
+        if (hb) p += sprintf(rhs+p, "%.10g*(%.10g/2)", bw, L);
+        for (int i = 0; i < nl && i < np; ++i) {
+          double W = loads[i], x = abs_num(pos[i]);
+          sumW += W; moment += W*x;
+          if (p < (int)sizeof(rhs) - 36) p += sprintf(rhs+p, "%s%.10g*%.10g", p ? " + " : "", W, x);
+        }
+        double RB = L ? moment / L : 0, RA = sumW - RB;
+        n = add(out, n, "R_B*%.10g = %s", L, rhs);
+        n = add(out, n, "R_B = %.10g N", RB);
+        n = add(out, n, "Vertical equilibrium: R_A + R_B = %.10g", sumW);
+        return add(out, n, "R_A = %.10g N", RA);
+      }
+    }
     if ((has(t, "rod") || has(t, "uniform")) && has(t, "force") && nv >= 6) {
       double L = 0, bw = 0;
       bool hL = label_num(input, "length", &L) || word_num(input, "length", &L);
@@ -6082,6 +6114,19 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     sprintf(cmd, "groupquantile(%.10g,%.10g,%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3], v[4], q); return eval_stats(cmd, out);
   }
   if ((has(t, "histogram") || has(t, "frequencydensity") || has(t, "classwidth")) && (has(t, "density") || has(t, "densities") || has(t, "frequencydensity") || has(t, "width")) && nv >= 2) {
+    if (has(t, "class") && has(t, "density") &&
+        !has(c, "findfrequencydensity") && !has(c, "calculatefrequencydensity") &&
+        (has(c, "findfrequencies") || has(c, "findthefrequencies") || has(c, "findfrequency")) &&
+        nv >= 6 && nv % 3 == 0) {
+      int n = add(out, 0, "For each histogram class, frequency = frequency density * class width.");
+      for (int i = 0; i + 2 < nv && n < P3_MAX_LINES; i += 3) {
+        double lo = abs_num(v[i]), hi = abs_num(v[i + 1]), dens = v[i + 2];
+        if (hi < lo) { double q = lo; lo = hi; hi = q; }
+        double w = hi - lo;
+        n = add(out, n, "class %.10g-%.10g: frequency = %.10g*%.10g = %.10g", lo, hi, dens, w, dens*w);
+      }
+      return n;
+    }
     if ((has(t, "classinterval") || (has(t, "class") && has(t, "interval"))) &&
         (has(t, "densities") || has(t, "frequencydensities")) &&
         (has(t, "frequencies") || has(c, "findthefrequencies") || has(c, "findfrequencies")) &&

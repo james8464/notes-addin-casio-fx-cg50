@@ -1,5 +1,34 @@
 # Checkpoint
 
+## 2026-06-12 Beam Lists, Histogram Triples, Image Depth, And Latency Slice
+
+Completed:
+- Fixed CASP3 beam prose where load magnitudes are listed before positions, e.g. `Loads of 20N and 30N act 2m and 7m from A`.
+- Fixed CASP3 histogram prose with repeated `class a-b density d` triples.
+- Fixed CSCALC reverse bitmap colour-depth parsing so the number beside `MiB`/`MB`/etc is used as file size, not the first number in the prompt.
+- Added CSCALC latency working for distance/speed prompts, including scientific notation such as `2.0e8 m/s`.
+- Added regressions and rebuilt calculator files.
+
+Evidence:
+- Targeted probes for beam load-list reactions, histogram class-density frequencies, reverse bitmap colour depth, and propagation latency: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 349264 bytes`
+  - `CSCALC.g3a: 213020 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Stayed inside CASP3/CSCALC free-text working support and generated calculator outputs.
+- Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for further source/probe-driven hardening.
+
 ## 2026-06-12 Function Trapezium, Normal Absolute, And Image Depth Slice
 
 Completed:

@@ -3,6 +3,7 @@
 #include <ctype.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #ifdef __clang__
@@ -228,11 +229,7 @@ static int scan_fixed_bit_tokens(const char *s, char out[][48], int maxn) {
 }
 
 static double read_num(const char *s) {
-  double sign = 1, v = 0, scale = 1;
-  if (*s == '-') { sign = -1; ++s; }
-  while (*s >= '0' && *s <= '9') v = v * 10 + (*s++ - '0');
-  if (*s == '.') for (++s; *s >= '0' && *s <= '9'; ++s) { scale *= 10; v += (*s - '0') / scale; }
-  return sign * v;
+  return strtod(s, 0);
 }
 
 static bool scan_after_word_num(const char *s, const char *word, double *v) {
@@ -284,7 +281,7 @@ static bool scan_before_word_num(const char *s, const char *word, double *v) {
     int j = i - 1;
     while (j >= 0 && s[j] == ',') --j;
     int e = j + 1;
-    while (j >= 0 && (isdigit((unsigned char)s[j]) || s[j] == '.' || s[j] == '-')) --j;
+    while (j >= 0 && (isdigit((unsigned char)s[j]) || s[j] == '.' || s[j] == '-' || s[j] == 'e' || s[j] == 'E' || s[j] == '+')) --j;
     if (e > j + 1) { *v = read_num(s + j + 1); return true; }
   }
   return false;
@@ -294,7 +291,7 @@ static bool num_before_ptr(const char *base, const char *p, double *v) {
   int j = (int)(p - base) - 1;
   while (j >= 0 && base[j] == ',') --j;
   int e = j + 1;
-  while (j >= 0 && (isdigit((unsigned char)base[j]) || base[j] == '.' || base[j] == '-')) --j;
+  while (j >= 0 && (isdigit((unsigned char)base[j]) || base[j] == '.' || base[j] == '-' || base[j] == 'e' || base[j] == 'E' || base[j] == '+')) --j;
   if (e <= j + 1) return false;
   *v = read_num(base + j + 1);
   return true;
@@ -325,7 +322,7 @@ static bool scan_scaled_before_word_num(const char *s, const char *word, double 
   int j = (int)(p - s) - 1;
   while (j >= 0 && s[j] == ',') --j;
   int e = j + 1;
-  while (j >= 0 && (isdigit((unsigned char)s[j]) || s[j] == '.' || s[j] == '-')) --j;
+  while (j >= 0 && (isdigit((unsigned char)s[j]) || s[j] == '.' || s[j] == '-' || s[j] == 'e' || s[j] == 'E' || s[j] == '+')) --j;
   if (e <= j + 1) return false;
   *v = read_num(s + j + 1) * 1000000.0;
   return true;
@@ -3923,17 +3920,26 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       (has(compact, "colourdepth") || has(compact, "colordepth") || has(compact, "bitsperpixel") ||
        (has(t, "bits") && has(t, "pixel")) || has(t, "bpp")) &&
       (has(t, "filesize") || has(t, "file") || has(t, "size")) && nv >= 3) {
-    double file_bits = 0; const char *unit = "";
-    if (has(t, "mib")) { file_bits = v[0] * 1048576.0 * 8.0; unit = "MiB"; }
-    else if (has(t, "mb")) { file_bits = v[0] * 1000000.0 * 8.0; unit = "MB"; }
-    else if (has(t, "kib")) { file_bits = v[0] * 1024.0 * 8.0; unit = "KiB"; }
-    else if (has(t, "kb")) { file_bits = v[0] * 1000.0 * 8.0; unit = "KB"; }
-    else if (has(t, "bytes")) { file_bits = v[0] * 8.0; unit = "bytes"; }
+    double file_bytes = 0, shown = 0; const char *unit = "";
+    if (bytes_before_unit(t, "gib", 1073741824.0, &file_bytes, &shown)) unit = "GiB";
+    else if (bytes_before_unit(t, "gb", 1000000000.0, &file_bytes, &shown)) unit = "GB";
+    else if (bytes_before_unit(t, "mib", 1048576.0, &file_bytes, &shown)) unit = "MiB";
+    else if (bytes_before_unit(t, "mb", 1000000.0, &file_bytes, &shown)) unit = "MB";
+    else if (bytes_before_unit(t, "kib", 1024.0, &file_bytes, &shown)) unit = "KiB";
+    else if (bytes_before_unit(t, "kb", 1000.0, &file_bytes, &shown)) unit = "KB";
+    else if (bytes_before_unit(t, "bytes", 1.0, &file_bytes, &shown)) unit = "bytes";
+    double file_bits = file_bytes * 8.0;
     if (file_bits > 0) {
-      double w = v[nv-2], h = v[nv-1];
+      double dims[2]; int nd = 0;
+      for (int i = 0; i < nv && nd < 2; ++i) {
+        if (v[i] == shown) continue;
+        dims[nd++] = v[i];
+      }
+      if (nd < 2) { dims[0] = v[nv-2]; dims[1] = v[nv-1]; }
+      double w = dims[0], h = dims[1];
       double depth = (w*h) ? file_bits/(w*h) : 0;
       int n = add(out, 0, "Colour depth = file size in bits / pixels.");
-      n = add(out, n, "%.10g %s = %.10g bits", v[0], unit, file_bits);
+      n = add(out, n, "%.10g %s = %.10g bits", shown, unit, file_bits);
       n = add(out, n, "pixels = %.10g*%.10g = %.10g", w, h, w*h);
       return add(out, n, "colour depth = %.10g/%.10g = %.10g bits per pixel", file_bits, w*h, depth);
     }
@@ -4106,6 +4112,28 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     else if (has(t, "kilobyte") || has(t, "kbyte") || has(t, "kb")) sprintf(cmd, "bitratekb(%.10g,%.10g)", size, seconds);
     else sprintf(cmd, "bitrate(%.10g,%.10g)", size, seconds);
     return eval_storage(cmd, out);
+  }
+  if ((has(t, "latency") || has(t, "delay") || has(t, "propagation")) &&
+      (has(t, "distance") || has(t, "travel") || has(t, "travels")) && nv >= 2) {
+    double dist = 0, speed = 0, metres = 0, mps = 0; const char *du = "", *su = "";
+    if (scan_before_word_num(t, "km", &dist) || scan_before_word_num(t, "kilometres", &dist) || scan_before_word_num(t, "kilometers", &dist)) {
+      metres = dist * 1000.0; du = "km";
+    } else if (scan_before_word_num(t, "m", &dist) || scan_before_word_num(t, "metres", &dist) || scan_before_word_num(t, "meters", &dist)) {
+      metres = dist; du = "m";
+    }
+    if (scan_before_word_num(t, "m", &speed) || scan_before_word_num(t, "metres", &speed) || scan_before_word_num(t, "meters", &speed)) {
+      mps = speed; su = "m/s";
+    } else if (scan_before_word_num(t, "km", &speed)) {
+      mps = speed * 1000.0; su = "km/s";
+    }
+    if (metres > 0 && mps > 0) {
+      double seconds = metres / mps;
+      int n = add(out, 0, "Latency = distance / propagation speed.");
+      n = add(out, n, "%.10g %s = %.10g m", dist, du, metres);
+      n = add(out, n, "speed = %.10g %s = %.10g m/s", speed, su, mps);
+      n = add(out, n, "latency = %.10g/%.10g = %.10g s", metres, mps, seconds);
+      return add(out, n, "= %.10g ms", seconds * 1000.0);
+    }
   }
   if ((has(t, "packet") || has(t, "packets")) && has(t, "payload") && has(t, "header") &&
       (has(t, "total") || has(t, "transmitted") || has(t, "transmit")) && nv >= 3) {
