@@ -294,6 +294,20 @@ static int eval_mech(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     n = add(out, n, "Vertical equilibrium: R_A + R_B = %.6g + %.6g", W, bw);
     return add(out, n, "R_A = %.10g N", ra);
   }
+  if (starts3(s, "ladder(", "ladderwall(", "ladderrough(") && na >= 3) {
+    double L=num(a[0]), W=num(a[1]), deg=num(a[2]), P=na>3?num(a[3]):0, d=na>4?num(a[4]):L/2;
+    double s=deg_sine(deg), c=deg_cosine(deg);
+    double wall = s == 0 ? 0 : (W*(L/2)*c + P*d*c)/(L*s);
+    double floor = W + P, fr = wall, mu = floor == 0 ? 0 : fr/floor;
+    int n = add(out, 0, "Ladder in equilibrium: smooth wall, rough floor.");
+    n = add(out, n, "Forces: floor reaction R, floor friction F, wall reaction S.");
+    n = add(out, n, "Vertical equilibrium: R = %.6g + %.6g = %.10g N", W, P, floor);
+    n = add(out, n, "Horizontal equilibrium: F = S.");
+    n = add(out, n, "Take moments about the foot of the ladder.");
+    n = add(out, n, "S*(%.6g sin %.6g) = %.6g*(%.6g/2 cos %.6g) + %.6g*(%.6g cos %.6g)", L, deg, W, L, deg, P, d, deg);
+    n = add(out, n, "S = %.10g N, so F = %.10g N", wall, fr);
+    return add(out, n, "limiting friction: mu = F/R = %.10g/%.10g = %.10g", fr, floor, mu);
+  }
   if (starts3(s, "incline(", "slope(", "plane(") && na >= 2) {
     double m=num(a[0]), th=num(a[1])*M_PI/180.0, g=na>3?num(a[3]):9.8, mu=na>2?num(a[2]):0;
     double parallel=m*g*sine(th), reaction=m*g*cosine(th), fr=mu*reaction;
@@ -891,6 +905,15 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     else sprintf(cmd, nv > 3 ? "beam(%.10g,%.10g,%.10g,%.10g)" : "beam(%.10g,%.10g,%.10g)", v[0], v[1], v[2], nv > 3 ? v[3] : 0);
     return eval_mech(cmd, out);
   }
+  if (has(t, "ladder") && (has(t, "wall") || has(t, "floor") || has(t, "rough") || has(t, "smooth")) && nv >= 3) {
+    double L=0,W=0,ang=0,P=0,d=0;
+    bool hL=label_num(input,"length",&L), hW=label_num(input,"weight",&W), ha=label_num(input,"angle",&ang);
+    bool hP=label_num(input,"load",&P) || label_num(input,"person",&P);
+    bool hd=label_num(input,"distance",&d);
+    if (hL && hW && ha) sprintf(cmd, "ladder(%.10g,%.10g,%.10g,%.10g,%.10g)", L, W, ang, hP ? P : 0, hd ? d : L/2);
+    else sprintf(cmd, nv > 4 ? "ladder(%.10g,%.10g,%.10g,%.10g,%.10g)" : "ladder(%.10g,%.10g,%.10g)", v[0], v[1], v[2], nv > 3 ? v[3] : 0, nv > 4 ? v[4] : v[0]/2);
+    return eval_mech(cmd, out);
+  }
   if ((has(t, "force") || has(t, "newton")) && (has(t, "mass") || has(t, "accel")) && !has(t, "connected") && !has(t, "pulley") && nv >= 2) {
     sprintf(cmd, "force(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
   }
@@ -1146,6 +1169,6 @@ int p3_eval(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   n = eval_free_text(input, out); if (n) return n;
   n = add(out, 0, "Supported:");
   n = add(out, n, "suvat projectile projectileh force weight friction moment incline inclineacc");
-  n = add(out, n, "beam connected pulley impulse momentum work power energy restitution vector resolve vectorkin varacc");
+  n = add(out, n, "beam ladder connected pulley impulse momentum work power energy restitution vector resolve vectorkin varacc");
   return add(out, n, "normal normalvar normalprob invnormal binom binomstats binomtail critbinom hypbinom cond probor bayes independent poisson poissonstats poissontail poissonnorm critpoisson hyppoisson regress pmcc spearman meanvar discrete stratified groupmedian histdensity code");
 }

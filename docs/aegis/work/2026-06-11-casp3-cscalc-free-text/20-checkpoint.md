@@ -1,5 +1,26 @@
 # Checkpoint
 
+## 2026-06-12 CASP3 Ladder Equilibrium Slice
+
+Completed:
+- Added `ladder(...)`, `ladderwall(...)`, and `ladderrough(...)`.
+- Added free-text routing for ladder/wall/floor/rough/smooth prompts.
+- Output shows a force model, vertical equilibrium, horizontal equilibrium, moments about the foot, wall reaction, friction, and limiting friction coefficient.
+- Supports optional point load/person/load at a distance along the ladder.
+- Added direct and free-text regression tests.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CASP3 Edexcel Paper 3 mechanics/free-text support.
+- Did not touch CAS Pure behavior, CSCALC behavior, NOTES, or shared UI/status code.
+
 ## 2026-06-12 CSCALC K-map Minterm Slice
 
 Completed:
