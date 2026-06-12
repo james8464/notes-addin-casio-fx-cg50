@@ -401,8 +401,12 @@ static bool parse_velocity_quad(const char *input, double *A, double *B, double 
     if (tp && tp < t + len) {
       int pre = (int)(tp - t);
       double cf = sign * term_coeff(t, pre);
-      if (tp + 2 < t + len && tp[1] == '^' && tp[2] == '2') *A += cf;
-      else *B += cf;
+      if (tp + 1 < t + len && tp[1] == '^') {
+        if (tp + 2 >= t + len) return false;
+        if (tp[2] == '2') *A += cf;
+        else if (tp[2] == '1') *B += cf;
+        else return false;
+      } else *B += cf;
       any = true;
     } else if (isdigit((unsigned char)t[0]) || t[0] == '.') {
       char tmp[32]; int n = len < 31 ? len : 31;
@@ -512,6 +516,43 @@ static bool parse_regression_line(const char *compact, double *m, double *b) {
   if (*p == '+' || *p == '-') intercept = strtod(p, &endp);
   *m = slope; *b = intercept;
   return true;
+}
+
+static bool parse_force_x_poly(const char *input, double *A, double *B, double *C, double *D) {
+  const char *p = strchr(input, '=');
+  if (!p) return false;
+  char expr[128]; int k = 0; ++p;
+  while (*p && *p != ')' && *p != ',' && k + 1 < (int)sizeof(expr)) {
+    unsigned char ch = (unsigned char)*p++;
+    if (isspace(ch) || ch == '(') continue;
+    char lc = (char)tolower(ch);
+    if (!(isdigit(ch) || lc == 'x' || lc == '+' || lc == '-' || lc == '.' || lc == '^' || lc == '*')) break;
+    expr[k++] = lc;
+  }
+  expr[k] = 0; *A = *B = *C = *D = 0;
+  for (int i = 0; expr[i];) {
+    double sign = 1; if (expr[i] == '+') ++i; else if (expr[i] == '-') { sign = -1; ++i; }
+    double coef = 0; bool hc = false;
+    while (isdigit((unsigned char)expr[i]) || expr[i] == '.') {
+      hc = true; coef = read_num(expr + i);
+      while (isdigit((unsigned char)expr[i]) || expr[i] == '.') ++i;
+      break;
+    }
+    while (expr[i] == '*') ++i;
+    int power = 0;
+    if (expr[i] == 'x') {
+      ++i; power = 1;
+      if (expr[i] == '^' && isdigit((unsigned char)expr[i+1])) { ++i; power = expr[i++] - '0'; }
+    }
+    if (!hc && power > 0) coef = 1;
+    coef *= sign;
+    if (power == 3) *A += coef;
+    else if (power == 2) *B += coef;
+    else if (power == 1) *C += coef;
+    else *D += coef;
+  }
+  return (*A > 1e-9 || *A < -1e-9) || (*B > 1e-9 || *B < -1e-9) ||
+         (*C > 1e-9 || *C < -1e-9) || (*D > 1e-9 || *D < -1e-9);
 }
 
 static bool is_projectile_text(const char *t) {
@@ -958,6 +999,18 @@ static int eval_mech(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     n = add(out, n, "m1u1 + m2u2 = (m1+m2)v");
     n = add(out, n, "%.6g*%.6g + %.6g*%.6g = (%.6g+%.6g)v", m1, u1, m2, u2, m1, m2);
     return add(out, n, "v = %.10g m/s", v);
+  }
+  if ((has(s, "variableforce") || (has(s, "force") && has(s, "x^"))) && (has(s, "work") || has(s, "workdone"))) {
+    double A=0, B=0, C=0, D=0, nums[8]; int nn = scan_nums(s, nums, 8);
+    if (parse_force_x_poly(s, &A, &B, &C, &D) && nn >= 2) {
+      double lo = nums[nn-2], hi = nums[nn-1];
+      double W = A*(hi*hi*hi*hi - lo*lo*lo*lo)/4.0 + B*(hi*hi*hi - lo*lo*lo)/3.0 +
+                 C*(hi*hi - lo*lo)/2.0 + D*(hi - lo);
+      int n = add(out, 0, "Work done by a variable force is the integral of force.");
+      n = add(out, n, "F(x) = %.6g x^3 %+.6g x^2 %+.6g x %+.6g", A, B, C, D);
+      n = add(out, n, "W = integral from %.6g to %.6g of F(x) dx", lo, hi);
+      return add(out, n, "W = %.10g J", W);
+    }
   }
   if (starts2(s, "work(", "workdone(") && na >= 2) {
     double f=num(a[0]), d=num(a[1]);
@@ -1620,6 +1673,23 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "%.6g*%.6g*%.6g - %.6g*%.6g = 1/2*%.6g*v^2 - %.10g", m, g, d, r, d, m, ke0);
     return add(out, n, "v = %.10g m/s", ans);
   }
+  if ((has(t, "resistance") || has(t, "resistive")) &&
+      (has(t, "finalspeed") || has(t, "finalvelocity") || (has(t, "find") && has(t, "speed"))) && nv >= 4) {
+    double m=0,u0=0,r=0,d=0;
+    bool hm=word_num(input,"mass",&m) || label_num(input,"mass",&m);
+    bool hu=word_num(input,"at",&u0) || word_num(input,"speed",&u0) || word_num(input,"velocity",&u0);
+    bool hr=word_num(input,"resistance",&r) || label_num(input,"resistance",&r);
+    bool hd=word_num(input,"for",&d) || word_num(input,"distance",&d);
+    if (!hm) m = v[0];
+    if (!hu) u0 = v[1];
+    if (!hr) r = v[2];
+    if (!hd) d = v[3];
+    double start = 0.5*m*u0*u0, end = start - r*d, vv = end > 0 ? 2*end/m : 0;
+    int n = add(out, 0, "Use work-energy with resistance doing negative work.");
+    n = add(out, n, "initial KE - work against resistance = final KE");
+    n = add(out, n, "1/2*%.6g*%.6g^2 - %.6g*%.6g = 1/2*%.6g*v^2", m, u0, r, d, m);
+    return add(out, n, "v = %.10g m/s", root(vv));
+  }
   if ((has(t, "impulse") || has(t, "impulsive")) && (has(t, "velocity") || has(t, "speed")) &&
       (has(t, "i") || has(t, "j"))) {
     double m=0, ux=0, uy=0, ix=0, iy=0;
@@ -1772,6 +1842,20 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     }
   }
   if (has(t, "velocity") && has(t, "displacement") && has(t, "from")) {
+    double A=0, B=0, C=0, D0=0, t1=0, t2=0;
+    if (parse_cubic_poly_after_word(input, "velocity", &A, &B, &C, &D0) &&
+        (!near_num(A, 0)) &&
+        word_num_with_t(input, "from", &t1) && word_num_with_t(input, "to", &t2)) {
+      double F1=A*t1*t1*t1*t1/4.0 + B*t1*t1*t1/3.0 + C*t1*t1/2.0 + D0*t1;
+      double F2=A*t2*t2*t2*t2/4.0 + B*t2*t2*t2/3.0 + C*t2*t2/2.0 + D0*t2;
+      int n = add(out, 0, "Displacement is the integral of velocity.");
+      n = add(out, n, "v = %.6g t^3 %+.6g t^2 %+.6g t %+.6g", A, B, C, D0);
+      n = add(out, n, "s = integral(v) dt = %.6g t^4 %+.6g t^3 %+.6g t^2 %+.6g t", A/4.0, B/3.0, C/2.0, D0);
+      n = add(out, n, "displacement = [s] from t=%.6g to t=%.6g", t1, t2);
+      return add(out, n, "displacement = %.10g - %.10g = %.10g", F2, F1, F2-F1);
+    }
+  }
+  if (has(t, "velocity") && has(t, "displacement") && has(t, "from")) {
     double A=0, B=0, C=0, t1=0, t2=0;
     if (!parse_velocity_quad(input, &A, &B, &C) ||
         !word_num_with_t(input, "from", &t1) || !word_num_with_t(input, "to", &t2)) return 0;
@@ -1854,6 +1938,12 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if ((has(c, "followsb(") || has(c, "~b(") || has(c, "xb(") || has(c, "distributionb(") || has(c, "b(")) && nv >= 2) {
     double Nd=0, pv=0;
     if (!dist2(c, "b(", &Nd, &pv)) { Nd = v[0]; pv = v[1]; }
+    if ((pv <= 0 || pv >= 1) && has(c, "p)")) {
+      double pword = 0;
+      if (word_num(input, "greaterthan", &pword) || word_num(input, "morethan", &pword) ||
+          word_num(input, "lessthan", &pword) || word_num(input, "p", &pword)) pv = pword;
+      else for (int i = 0; i < nv; ++i) if (v[i] > 0 && v[i] < 1) { pv = v[i]; break; }
+    }
     int N = (int)Nd;
     int tail = prob_tail(c, t);
     int x = has(c, "one") ? 1 : 0;
@@ -1887,9 +1977,10 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       sprintf(cmd, "critbinom(%d,%.10g,%.10g,%.0f)", N, pv, alpha, ctail);
       return eval_stats(cmd, out);
     }
-    bool hx = false; double ux[3]; int nux = 0;
+    bool hx = false; double ux[3], obs = 0; int nux = 0;
+    if (word_num(input, "observed", &obs)) { x = (int)obs; hx = true; }
     for (int i = 0; i < nv; ++i) {
-      if (near_num(v[i], Nd) || near_num(v[i], pv)) continue;
+      if (near_num(v[i], N) || near_num(v[i], pv) || (hx && near_num(v[i], x))) continue;
       if (nux < 3) ux[nux++] = v[i];
       if (!hx) { x = (int)v[i]; hx = true; }
     }
@@ -2978,7 +3069,18 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     sprintf(cmd, "invnormal(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_stats(cmd, out);
   }
   if ((has(t, "outlier") || has(t, "iqr") || has(t, "fence")) && nv >= 2) {
-    double q1=0, q3=0; bool hq1=label_num(input,"q1",&q1), hq3=label_num(input,"q3",&q3);
+    double q1=0, q3=0, mn=0, mx=0;
+    bool hq1=label_num(input,"q1",&q1) || word_num(input,"q1",&q1);
+    bool hq3=label_num(input,"q3",&q3) || word_num(input,"q3",&q3);
+    bool hmn=label_num(input,"min",&mn) || label_num(input,"minimum",&mn) || word_num(input,"min",&mn);
+    bool hmx=label_num(input,"max",&mx) || label_num(input,"maximum",&mx) || word_num(input,"max",&mx);
+    if (hq1 && hq3 && (hmn || hmx)) {
+      int p2 = sprintf(cmd, "outliers(%.10g,%.10g", q1, q3);
+      if (hmn) p2 += sprintf(cmd+p2, ",%.10g", mn);
+      if (hmx) p2 += sprintf(cmd+p2, ",%.10g", mx);
+      sprintf(cmd+p2, ")");
+      return eval_stats(cmd, out);
+    }
     int p = sprintf(cmd, "outliers(%.10g,%.10g", hq1 ? q1 : v[0], hq3 ? q3 : v[1]);
     int start = (hq1 && hq3) ? 0 : 2;
     for (int i = start; i < nv && p < (int)sizeof(cmd)-24; ++i) {
@@ -3115,9 +3217,18 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if (has(t, "regression") || has(t, "leastsquares") || has(t, "lineofbestfit")) {
     double n0=0, sx=0, sy=0, sxx=0, sxy=0, xb=0, yb=0, x=0;
     bool hx = label_num(input,"x",&x);
+    if (has(c, "sumx=")) hx = false;
     double m=0, b=0;
     if (hx && parse_regression_line(c, &m, &b)) {
       sprintf(cmd, "regress(%.10g,%.10g,%.10g)", b, m, x);
+      return eval_stats(cmd, out);
+    }
+    if ((label_num(input,"n",&n0) || word_num(input,"n",&n0)) &&
+        (label_num(input,"sx",&sx) || word_num(input,"sumx",&sx)) &&
+        (label_num(input,"sy",&sy) || word_num(input,"sumy",&sy)) &&
+        label_num(input,"sxx",&sxx) && label_num(input,"sxy",&sxy)) {
+      if (hx) sprintf(cmd, "regresscalc(%.10g,%.10g,%.10g,%.10g,%.10g,%.10g)", n0, sx, sy, sxx, sxy, x);
+      else sprintf(cmd, "regresscalc(%.10g,%.10g,%.10g,%.10g,%.10g)", n0, sx, sy, sxx, sxy);
       return eval_stats(cmd, out);
     }
     if (label_num(input,"n",&n0) && label_num(input,"sx",&sx) && label_num(input,"sy",&sy) && label_num(input,"sxx",&sxx) && label_num(input,"sxy",&sxy)) {
@@ -3178,6 +3289,40 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       n = add(out, n, "m^2/%.10g = 0.5", denom);
       return add(out, n, "m = sqrt(%.10g/2) = %.10g", denom, root(denom/2.0));
     }
+  }
+  if ((has(t, "pdf") || has(t, "density") || has(t, "continuous")) && has(c, "kx^") && (has(t, "mean") || has(c, "e(x)")) && nv >= 2) {
+    const char *kp = strstr(c, "kx^");
+    int pow = kp && isdigit((unsigned char)kp[3]) ? kp[3] - '0' : 1;
+    double upper = 0;
+    const char *bp = strstr(c, "0<x<"); if (bp) upper = read_num(bp + 4);
+    if (upper <= 0) for (int i = 0; i < nv; ++i) if (v[i] > upper) upper = v[i];
+    if (upper > 0 && pow >= 1) {
+      double k = (pow + 1) / pwr(upper, pow + 1);
+      double mean = k * pwr(upper, pow + 2) / (pow + 2);
+      int n = add(out, 0, "For a pdf, total area under f(x) is 1.");
+      n = add(out, n, "integral from 0 to %.6g of kx^%d dx = 1", upper, pow);
+      n = add(out, n, "k*x^%d/%d from 0 to %.6g = 1", pow + 1, pow + 1, upper);
+      n = add(out, n, "k = %.10g", k);
+      n = add(out, n, "E(X) = integral x*f(x) dx = integral %.10g*x^%d dx", k, pow + 1);
+      return add(out, n, "mean = %.10g", mean);
+    }
+  }
+  if ((has(t, "pdf") || has(t, "density") || has(t, "continuous")) &&
+      (has(c, "p(") && has(c, "<x<")) && !has(c, "x^2") && nv >= 4) {
+    double coef = v[0], denom = 1, lo = 0, hi = 0;
+    const char *xp = strstr(c, "x/");
+    if (xp) denom = read_num(xp + 2);
+    const char *pp = strstr(c, "p(");
+    if (pp) {
+      const char *mid = strstr(pp, "<x<");
+      if (mid) { lo = read_num(pp + 2); hi = read_num(mid + 3); }
+    }
+    if (hi <= lo) { lo = v[nv-2]; hi = v[nv-1]; }
+    double ans = (coef/denom)*(hi*hi - lo*lo)/2.0;
+    int n = add(out, 0, "Use the pdf and integrate over the requested interval.");
+    n = add(out, n, "P(%.6g<X<%.6g) = integral from %.6g to %.6g of (%.6g/%.6g)x dx", lo, hi, lo, hi, coef, denom);
+    n = add(out, n, "= (%.6g/%.6g)[x^2/2] from %.6g to %.6g", coef, denom, lo, hi);
+    return add(out, n, "P(%.6g<X<%.6g) = %.10g", lo, hi, ans);
   }
   if ((has(t, "pdf") || has(t, "density") || has(t, "continuous")) && has(c, "kx") && has(t, "mean") && nv >= 2) {
     double upper = 0;

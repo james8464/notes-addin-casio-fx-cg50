@@ -3562,7 +3562,13 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   char fixed_early[48];
   if (has(t, "fixed") && (has(t, "encode") || has(t, "represent") || has(t, "convert")) && nv >= 3) {
     long long whole = (long long)v[1], frac = (long long)v[2];
-    if ((has(t, "after") || has(t, "afterthepoint") || has(t, "fractional")) && !has(t, "before") && !has(t, "whole")) {
+    double wi=0, fb=0;
+    bool explicit_widths = (scan_before_word_num(t, "integer", &wi) || scan_before_word_num(t, "whole", &wi)) &&
+        (scan_before_word_num(t, "fractional", &fb) || scan_before_word_num(t, "fraction", &fb));
+    if (explicit_widths) {
+      whole = (long long)wi; frac = (long long)fb;
+    }
+    if (!explicit_widths && (has(t, "after") || has(t, "afterthepoint") || has(t, "fractional")) && !has(t, "before") && !has(t, "whole")) {
       whole = (long long)v[1] - (long long)v[2];
       if (whole < 1) whole = 1;
     }
@@ -3644,6 +3650,18 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
         sprintf(cmd, "twossub(%s,%s)", a, b); return eval_twos(cmd, out);
       }
     }
+  }
+  if (has(t, "booth") && (has(t, "multiply") || has(t, "multiplication")) && nv >= 3) {
+    long long a0 = (long long)v[0], b0 = (long long)v[1], bitsw = (long long)v[2];
+    char ab[65], bb[65], rb[65];
+    to_bin(a0, (int)bitsw, ab);
+    to_bin(b0, (int)bitsw, bb);
+    to_bin(a0*b0, (int)(2*bitsw), rb);
+    int n = add(out, 0, "Booth multiplication uses signed two's-complement operands.");
+    n = add(out, n, "multiplicand = %lld -> %s, multiplier = %lld -> %s", a0, ab, b0, bb);
+    n = add(out, n, "Use pairs Q0,Q-1: 01 add M, 10 subtract M, 00/11 shift only.");
+    n = add(out, n, "product = %lld * %lld = %lld", a0, b0, a0*b0);
+    return add(out, n, "%lld-bit product = %s", 2*bitsw, rb);
   }
   if (tc && nb >= 2 && (has(t, "subtract") || has(t, "minus") || has(t, "takeaway"))) {
     if (has(compact, "from")) sprintf(cmd, "twossub(%s,%s)", bits[1], bits[0]);
@@ -3901,10 +3919,18 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if ((has(t, "sql") || has(t, "select") || has(t, "where") || has(t, "count")) && make_sql_cmd(input, cmd, sizeof(cmd))) {
     return eval_storage(cmd, out);
   }
+  if ((has(t, "record") || has(t, "database")) && (has(t, "overhead") || has(t, "extra")) && nv >= 3) {
+    double recs = v[0], bytes = v[1], overhead = v[2];
+    double total = recs * (bytes + overhead);
+    int n = add(out, 0, "Total storage = records * (record size + overhead per record).");
+    n = add(out, n, "per record = %.10g + %.10g = %.10g bytes", bytes, overhead, bytes + overhead);
+    n = add(out, n, "total = %.10g * %.10g", recs, bytes + overhead);
+    return add(out, n, "= %.10g bytes", total);
+  }
   if ((has(t, "record") || has(t, "database")) && nv >= 2) {
     sprintf(cmd, "records(%.10g,%.10g)", v[0], v[1]); return eval_storage(cmd, out);
   }
-  if (has(t, "address") && has(t, "memory") && (has(t, "bits") || has(t, "lines")) && nv >= 1) {
+  if (has(t, "address") && (has(t, "memory") || has(t, "ram")) && (has(t, "bits") || has(t, "lines") || has(t, "addressable")) && nv >= 1) {
     double bytes = v[0], wbits = 8;
     if (has(t, "gb") || has(t, "gib")) bytes *= 1073741824.0;
     else if (has(t, "mb") || has(t, "mib")) bytes *= 1048576.0;

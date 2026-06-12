@@ -1,5 +1,36 @@
 # Checkpoint
 
+## 2026-06-12 Variable Force, Pdf Power, Fixed-Point, And Storage Slice
+
+Completed:
+- Fixed CASP3 variable-force work prompts so `F=(3x^2+2x)` integrates force over displacement instead of using the constant-force route.
+- Added CASP3 work-energy with resistance prompts for final speed.
+- Fixed CASP3 cubic velocity prompts so they integrate cubic velocity instead of being misread as quadratic SUVAT-style input.
+- Added CASP3 generic `kx^n` pdf normalisation/mean working.
+- Added CASP3 linear-pdf interval probability working.
+- Fixed CASP3 `X~B(n,p)` hypothesis tests where the null probability is given in prose.
+- Added CASP3 regression-summary working from `sum x`, `sum y`, `sum x^2`, `sum xy` prompts.
+- Added CASP3 labelled box-plot outlier working from Q1/Q3/min/max prompts.
+- Fixed CSCALC fixed-point prompts with separate integer/fractional bit counts.
+- Added CSCALC record-overhead storage working.
+- Added CSCALC byte-addressable RAM address-bit working.
+- Added compact CSCALC Booth multiplication working.
+- Added regression tests and rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CASP3/CSCALC free-text working support and generated calculator outputs.
+- Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for future source/probe-driven hardening.
+
 ## 2026-06-12 Mechanics And Storage Precedence Slice
 
 Completed:
