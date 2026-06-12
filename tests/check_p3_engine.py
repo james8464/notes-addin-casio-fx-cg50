@@ -121,6 +121,8 @@ def main():
     require("normaltail(65,50,10,1)", ["correct tail", "P(X>=65)", "NormalCD(lower=65"])
     require("normal more than 65 mean 50 sd 10", ["correct tail", "P(X>=65)", "NormalCD(lower=65"])
     require("normal less than 65 mean 50 variance 100", ["Convert variance", "sigma = sqrt(100) = 10", "P(X<=65)"])
+    require("normalcond(65,60,50,10,1)", ["P(A|B)=P(A and B)/P(B)", "A: X>=65, B: X>=60", "P(B)=P(X>=60)", "P(A|B)="])
+    require("normal conditional probability more than 65 given more than 60 mean 50 sd 10", ["P(A|B)=P(A and B)/P(B)", "A: X>=65, B: X>=60", "conditional probability"])
     require("hypnormal(53,50,12,36,0.05,1)", ["H0: mu = 50", "standard error", "Reject H0 if"])
     require("normal hypothesis test xbar 53 mu 50 sigma 12 n 36 alpha 0.05 upper", ["H0: mu = 50", "standard error", "compare with alpha"])
     require("invnormal(0.95,100,15)", ["inverse normal", "InvNorm(0.95, 15, 100)"])

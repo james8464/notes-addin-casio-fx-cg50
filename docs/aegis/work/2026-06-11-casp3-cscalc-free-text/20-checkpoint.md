@@ -1,5 +1,25 @@
 # Checkpoint
 
+## 2026-06-12 CASP3 Normal Conditional Slice
+
+Completed:
+- Added `normalcond(...)`, `normalgiven(...)`, and `normalconditional(...)`.
+- Added free-text routing for normal conditional prompts such as `more than ... given more than ... mean ... sd ...`.
+- Output shows `P(A|B)=P(A and B)/P(B)`, identifies the combined event, standardises denominator and numerator bounds, gives fx-CG50 NormalCD guidance, and computes the conditional probability.
+- Added direct and free-text regression tests.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CASP3 Edexcel Paper 3 statistics/free-text support.
+- Did not touch CAS Pure behavior, CSCALC behavior, NOTES, or shared UI/status code.
+
 ## 2026-06-12 CASP3 Normal Parameter Slice
 
 Completed:

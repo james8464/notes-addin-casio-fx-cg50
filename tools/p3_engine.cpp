@@ -663,6 +663,31 @@ static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     n = add(out, n, tail >= 0 ? "Required probability is P(X>=%.6g)." : "Required probability is P(X<=%.6g).", x);
     return add(out, n, tail >= 0 ? "Use NormalCD(lower=%.6g, upper=1E99, sigma=%.6g, mu=%.6g)" : "Use NormalCD(lower=-1E99, upper=%.6g, sigma=%.6g, mu=%.6g)", x, sig, mu);
   }
+  if (starts3(s, "normalcond(", "normalgiven(", "normalconditional(") && na >= 5) {
+    double x=num(a[0]), g=num(a[1]), mu=num(a[2]), sig=num(a[3]), tail=num(a[4]);
+    double den, nume, bound;
+    int n = add(out, 0, "Use conditional probability P(A|B)=P(A and B)/P(B).");
+    n = add(out, n, "X~N(%.6g, %.6g^2).", mu, sig);
+    if (tail >= 0) {
+      bound = x > g ? x : g;
+      den = 1 - normal_cdf((g - mu) / sig);
+      nume = 1 - normal_cdf((bound - mu) / sig);
+      n = add(out, n, "A: X>=%.6g, B: X>=%.6g, so A and B is X>=%.6g.", x, g, bound);
+      n = add(out, n, "P(B)=P(X>=%.6g): z=(%.6g-%.6g)/%.6g=%.6g", g, g, mu, sig, (g-mu)/sig);
+      n = add(out, n, "P(A and B)=P(X>=%.6g): z=%.6g", bound, (bound-mu)/sig);
+      n = add(out, n, "Use NormalCD(lower=%.6g, upper=1E99, sigma=%.6g, mu=%.6g)", g, sig, mu);
+    } else {
+      bound = x < g ? x : g;
+      den = normal_cdf((g - mu) / sig);
+      nume = normal_cdf((bound - mu) / sig);
+      n = add(out, n, "A: X<=%.6g, B: X<=%.6g, so A and B is X<=%.6g.", x, g, bound);
+      n = add(out, n, "P(B)=P(X<=%.6g): z=(%.6g-%.6g)/%.6g=%.6g", g, g, mu, sig, (g-mu)/sig);
+      n = add(out, n, "P(A and B)=P(X<=%.6g): z=%.6g", bound, (bound-mu)/sig);
+      n = add(out, n, "Use NormalCD(lower=-1E99, upper=%.6g, sigma=%.6g, mu=%.6g)", g, sig, mu);
+    }
+    n = add(out, n, "P(A|B)=%.10g/%.10g", nume, den);
+    return add(out, n, "conditional probability = %.10g", den ? nume/den : 0);
+  }
   if (starts3(s, "invnormal(", "inversenormal(", "normalinv(") && na >= 3) {
     double area=num(a[0]), mu=num(a[1]), sig=num(a[2]);
     int n = add(out, 0, "For X~N(mu,sigma^2), use inverse normal for a critical value.");
@@ -1065,6 +1090,10 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     else if (has(c, "atmost") || has(t, "cdf")) tail = -1;
     sprintf(cmd, "poissonapprox(%d,%.10g,%d,%d)", (int)v[0], v[1], (int)v[2], tail); return eval_stats(cmd, out);
   }
+  if (has(t, "normal") && (has(t, "conditional") || has(t, "given")) && nv >= 4) {
+    double tail = (has(c, "lessthan") || has(c, "atmost") || has(c, "<")) ? -1 : 1;
+    sprintf(cmd, "normalcond(%.10g,%.10g,%.10g,%.10g,%.0f)", v[0], v[1], v[2], v[3], tail); return eval_stats(cmd, out);
+  }
   if (has(t, "normal") && (has(t, "find") || has(t, "given") || has(t, "parameters")) &&
       (has(t, "meansd") || has(t, "meanandsd") ||
       (has(t, "mean") && (has(t, "standarddeviation") || has(t, "sd"))) ||
@@ -1124,6 +1153,10 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if ((has(t, "independent") || has(t, "independence")) && nv >= 3) {
     sprintf(cmd, "independent(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_stats(cmd, out);
+  }
+  if (has(t, "normal") && (has(t, "conditional") || has(t, "given")) && nv >= 4) {
+    double tail = (has(c, "lessthan") || has(c, "atmost") || has(c, "<")) ? -1 : 1;
+    sprintf(cmd, "normalcond(%.10g,%.10g,%.10g,%.10g,%.0f)", v[0], v[1], v[2], v[3], tail); return eval_stats(cmd, out);
   }
   if ((has(t, "conditional") || has(t, "given")) && nv >= 2) {
     sprintf(cmd, "cond(%.10g,%.10g)", v[0], v[1]); return eval_stats(cmd, out);
@@ -1257,5 +1290,5 @@ int p3_eval(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   n = add(out, 0, "Supported:");
   n = add(out, n, "suvat projectile projectileh force weight friction moment incline inclineacc");
   n = add(out, n, "beam ladder connected pulley impulse momentum work power energy workenergyforce restitution vector resolve vectorkin varacc");
-  return add(out, n, "normal normalvar normalprob invnormal normalparams binom binomstats binomtail critbinom hypbinom cond probor bayes independent poisson poissonstats poissontail poissonnorm critpoisson hyppoisson regress pmcc spearman meanvar discrete stratified groupmedian histdensity code");
+  return add(out, n, "normal normalvar normalprob normaltail normalcond invnormal normalparams binom binomstats binomtail critbinom hypbinom cond probor bayes independent poisson poissonstats poissontail poissonnorm critpoisson hyppoisson regress pmcc spearman meanvar discrete stratified groupmedian histdensity code");
 }
