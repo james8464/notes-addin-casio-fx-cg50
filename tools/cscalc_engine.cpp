@@ -1751,10 +1751,14 @@ static bool storage_rate_bits(const char *t, double rate, double *bps, const cha
 static int add_transfer_unit_lines(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN], double size, double rate, const char *t) {
   double bits=0, bps=0; const char *su="", *ru="";
   if (!storage_size_bits(t, size, &bits, &su) || !storage_rate_bits(t, rate, &bps, &ru) || bps == 0) return 0;
+  double seconds = bits / bps;
   int n = add(out, 0, "Transfer time = file size in bits / bit rate.");
   n = add(out, n, "%.10g %s = %.10g bits", size, su, bits);
   n = add(out, n, "%.10g %s = %.10g bit/s", rate, ru, bps);
-  return add(out, n, "time = %.10g/%.10g = %.10g s", bits, bps, bits / bps);
+  n = add(out, n, "time = %.10g/%.10g = %.10g s", bits, bps, seconds);
+  if (has(t, "minute")) return add(out, n, "= %.10g minutes", seconds / 60.0);
+  if (has(t, "hour")) return add(out, n, "= %.10g hours", seconds / 3600.0);
+  return n;
 }
 
 static int add_bitrate_unit_lines(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN], double size, double seconds, const char *t) {
@@ -2897,6 +2901,9 @@ static const char *skip_bool_words(const char *e) {
     if (starts(e, "draw")) { e += 4; moved = true; }
     if (starts(e, "make")) { e += 4; moved = true; }
     if (starts(e, "create")) { e += 6; moved = true; }
+    if (starts(e, "write")) { e += 5; moved = true; }
+    if (starts(e, "use")) { e += 3; moved = true; }
+    if (starts(e, "to")) { e += 2; moved = true; }
     if (starts(e, "the")) { e += 3; moved = true; }
     if (starts(e, "using")) { e += 5; moved = true; }
     if (starts(e, "algebra")) { e += 7; moved = true; }
@@ -2981,9 +2988,13 @@ static bool make_gate_form_cmd(const char *input, bool nand, char *cmd, int cap)
       char w[24]; int j = 0;
       while (isalpha((unsigned char)input[i]) && j + 1 < (int)sizeof(w)) w[j++] = (char)tolower((unsigned char)input[i++]);
       w[j] = 0;
-      if (word_is(w, "find") || word_is(w, "the") ||
+      if (word_is(w, "or")) { expr[p++] = '+'; continue; }
+      if (word_is(w, "and")) { expr[p++] = '*'; continue; }
+      if (word_is(w, "not")) { expr[p++] = '!'; continue; }
+      if (word_is(w, "find") || word_is(w, "the") || word_is(w, "write") ||
           word_is(w, "convert") || word_is(w, "to") || word_is(w, "using") || word_is(w, "use") ||
           word_is(w, "only") || word_is(w, "form") || word_is(w, "for") || word_is(w, "expression") ||
+          word_is(w, "gate") || word_is(w, "gates") ||
           word_is(w, "boolean") || word_is(w, "logic") || word_is(w, nand ? "nand" : "nor")) continue;
       for (int k = 0; w[k] && p + 1 < (int)sizeof(expr); ++k) expr[p++] = w[k];
     } else {
@@ -3594,6 +3605,14 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     char corr[8]; strncpy(corr, b, 8); corr[pos-1] = corr[pos-1] == '1' ? '0' : '1';
     n = add(out, n, "syndrome = %d, so bit %d is wrong.", pos, pos);
     return add(out, n, "corrected code = %s", corr);
+  }
+  if (has(t, "checksum") && (has(t, "modulo") || has(t, "mod")) && nv >= 2) {
+    int mod = (int)v[0], sum = 0;
+    for (int i = 1; i < nv; ++i) sum += (int)v[i];
+    int rem = mod ? sum % mod : sum;
+    int n = add(out, 0, "Modulo checksum: add the decimal digits/blocks, then take the remainder.");
+    n = add(out, n, "sum = %d", sum);
+    return add(out, n, "checksum = %d mod %d = %d", sum, mod, rem);
   }
   if (has(t, "checksum") && nb >= 1) {
     int p = sprintf(cmd, "checksum(%d", (int)strlen(bits[0]));

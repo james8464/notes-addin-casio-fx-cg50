@@ -815,6 +815,16 @@ static int eval_mech(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     n = add(out, n, "a = (m2-m1)g/(m1+m2) = %.6g", ares);
     return add(out, n, "T = m1(g+a) = %.6g N", T);
   }
+  if (starts3(s, "inclinepulley(", "pulleyincline(", "connectedincline(") && na >= 3) {
+    double m1=num(a[0]), m2=num(a[1]), ang=num(a[2]), g=na>3?num(a[3]):9.8;
+    double down=m1*g*deg_sine(ang), hang=m2*g, ares=(hang-down)/(m1+m2), T=down+m1*ares;
+    int n = add(out, 0, "Smooth inclined-plane pulley: resolve along the string.");
+    n = add(out, n, "For mass on plane: T - m1 g sin(theta) = m1 a.");
+    n = add(out, n, "For hanging mass: m2 g - T = m2 a.");
+    n = add(out, n, "Add equations: m2 g - m1 g sin(theta) = (m1+m2)a.");
+    n = add(out, n, "a = (%.6g*%.6g - %.6g*%.6g sin(%.6g))/(%.6g+%.6g) = %.10g", m2, g, m1, g, ang, m1, m2, ares);
+    return add(out, n, "T = m1 g sin(theta) + m1 a = %.10g N", T);
+  }
   if (starts2(s, "impulse(", "momentumchange(") && na >= 3) {
     double m=num(a[0]), u=num(a[1]), v=num(a[2]);
     int n = add(out, 0, "Impulse equals change in momentum.");
@@ -1545,6 +1555,13 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     double F2=A*t2*t2*t2/3.0 + B*t2*t2/2.0 + C*t2;
     int n = add(out, 0, "Displacement is the integral of velocity.");
     n = add(out, n, "v = %.6g t^2 %+.6g t %+.6g", A, B, C);
+    if (has(t, "acceleration")) {
+      double ta = 0;
+      if (word_num_with_t(input, "at", &ta) || first_num_after_word(input, "acceleration", &ta)) {
+        n = add(out, n, "a = dv/dt = %.6g t %+.6g", 2*A, B);
+        n = add(out, n, "at t=%.6g, a = %.10g", ta, 2*A*ta + B);
+      }
+    }
     n = add(out, n, "s = integral(v) dt = %.6g t^3 %+.6g t^2 %+.6g t", A/3.0, B/2.0, C);
     n = add(out, n, "displacement = [s] from t=%.6g to t=%.6g", t1, t2);
     return add(out, n, "displacement = %.10g - %.10g = %.10g", F2, F1, F2-F1);
@@ -2081,6 +2098,20 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if (has(t, "weight") && nv >= 1) {
     sprintf(cmd, "weight(%.10g)", v[0]); return eval_mech(cmd, out);
   }
+  if ((has(t, "pulley") || has(t, "connected")) && (has(t, "incline") || has(t, "inclined") || has(t, "plane")) && nv >= 3) {
+    double m1=0,m2=0,ang=0;
+    bool hM=word_num(input,"mass",&m1) || label_num(input,"m1",&m1);
+    bool hH=word_num(input,"hangingmass",&m2) || label_num(input,"m2",&m2);
+    bool hA=word_num(input,"angle",&ang) || label_num(input,"angle",&ang) || word_num(input,"degrees",&ang);
+    if (!hM) m1 = v[0];
+    if (!hH) m2 = v[1];
+    if (!hA) {
+      for (int i = 0; i < nv; ++i) if (!near_num(v[i], m1) && !near_num(v[i], m2)) { ang = v[i]; break; }
+      if (ang == 0) ang = v[2];
+    }
+    sprintf(cmd, "inclinepulley(%.10g,%.10g,%.10g)", m1, m2, ang);
+    return eval_mech(cmd, out);
+  }
   if ((has(t, "incline") || has(t, "slope") || has(t, "plane")) && (has(t, "acceleration") || has(t, "accelerate") || has(t, "rough")) && nv >= 3) {
     double m=0, ang=0, mu=0;
     bool hm=label_num(input,"mass",&m) || word_num(input,"mass",&m) || label_num(input,"m",&m);
@@ -2452,6 +2483,29 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
                (!has(t, "percentile") && label_num(input,"p",&area));
     double tail = (has(t, "twotailed") || has(t, "twosided") || (has(t, "two") && (has(t, "tailed") || has(t, "sided"))) || has(t, "different") || has(t, "notequal")) ? 0 :
                   (has(t, "upper") || has(t, "greater") || has(t, "more") || has(c, "x>") || has(c, "x>=") ? 1 : -1);
+    if ((has(t, "hypothesis") || has(t, "test")) &&
+        (has(t, "samplemean") || (has(t, "sample") && has(t, "mean")) || has(t, "xbar")) &&
+        (has(t, "standarddeviation") || (has(t, "standard") && has(t, "deviation")) || has(t, "sigma") || has(t, "sd"))) {
+      double xb2=0, mu2=0, sig2=0, n2=0, alpha2=0.05;
+      bool hXb2=label_num(input,"xbar",&xb2) || label_num(input,"samplemean",&xb2) || word_num(input,"samplemean",&xb2) ||
+                 ((has(t, "sample") || has(t, "xbar")) && word_num(input,"mean",&xb2));
+      bool hMu2=label_num(input,"mu",&mu2) || label_num(input,"populationmean",&mu2) || word_num(input,"populationmean",&mu2);
+      if (!hMu2 && (word_num(input,"greaterthan",&mu2) || word_num(input,"morethan",&mu2) || word_num(input,"lessthan",&mu2))) hMu2 = true;
+      bool hSig2=label_num(input,"sd",&sig2) || label_num(input,"sigma",&sig2) || label_num(input,"standarddeviation",&sig2) ||
+                 word_num(input,"sd",&sig2) || word_num(input,"sigma",&sig2) || word_num(input,"standarddeviation",&sig2);
+      bool hN2=label_num(input,"n",&n2) || word_num(input,"samplesize",&n2) || word_num(input,"sample",&n2) || word_num(input,"n",&n2);
+      bool hA2=label_num(input,"alpha",&alpha2) || label_num(input,"significance",&alpha2) || word_num(input,"significance",&alpha2);
+      if (hA2 && alpha2 > 1 && alpha2 <= 100) alpha2 /= 100.0;
+      if (hXb2 && hMu2 && hSig2 && hN2) {
+        for (int i = 0; i < nv; ++i) {
+          if (near_num(v[i], xb2) || near_num(v[i], mu2) || near_num(v[i], sig2) || near_num(v[i], n2)) continue;
+          if (v[i] > 0 && v[i] <= 10) { alpha2 = v[i] / 100.0; break; }
+          if (v[i] > 0 && v[i] <= 1) { alpha2 = v[i]; break; }
+        }
+        sprintf(cmd, "hypnormal(%.10g,%.10g,%.10g,%.10g,%.10g,%.0f)", xb2, mu2, sig2, n2, alpha2, tail);
+        return eval_stats(cmd, out);
+      }
+    }
     if (hMu && (hSig || hVar) && (has(t, "given") || has(t, "conditional")) && nv >= 4) {
       double sd = hSig ? sig : root(var), u[3]; int nu = 0;
       for (int i = 0; i < nv && nu < 3; ++i) {
@@ -2792,9 +2846,10 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     sprintf(cmd+p, ")");
     return eval_stats(cmd, out);
   }
-  if ((has(t, "discrete") || has(t, "randomvariable") || has(t, "expectation")) && has(t, "prob") && nv >= 4) {
+  if ((has(t, "discrete") || has(t, "randomvariable") || has(t, "expectation") || has(t, "distribution")) &&
+      ((has(t, "prob") || has(t, "probabilities") || has(c, "p(x=")) && nv >= 4)) {
     int p = sprintf(cmd, "discrete(");
-    if ((has(t, "values") || has(t, "xvalues")) && (has(t, "probabilities") || has(t, "probs")) && nv % 2 == 0) {
+    if ((has(t, "values") || has(t, "xvalues") || has(t, "probabilities") || has(t, "probs")) && nv % 2 == 0) {
       int m = nv / 2;
       for (int i = 0; i < m; ++i) p += sprintf(cmd+p, "%s%.10g,%.10g", i ? "," : "", v[i], v[i+m]);
     } else {

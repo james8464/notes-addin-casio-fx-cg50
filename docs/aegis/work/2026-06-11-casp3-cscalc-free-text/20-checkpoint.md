@@ -2577,6 +2577,40 @@ Drift check:
 - Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
 - Active goal remains open for future source/probe-driven hardening.
 
+## 2026-06-12 Discrete, Normal Test, Pulley, Boolean, Transfer Slice
+
+Completed:
+- Added CASP3 smooth inclined-plane pulley working from free-text connected-particle prompts.
+- Added acceleration lines to velocity-polynomial displacement prompts when acceleration is requested.
+- Fixed CASP3 normal sample-mean hypothesis-test prose so it does not route as a normal tail probability.
+- Hardened CASP3 discrete-distribution parsing for split value/probability lists and `P(X=...)` wording.
+- Fixed CSCALC Boolean proof parsing for `Use Boolean algebra to prove ...` wording.
+- Fixed CSCALC NAND-form parsing for `Write A OR B using NAND gates only`.
+- Added CSCALC modulo checksum prose route.
+- Added minutes/hours conversion lines to CSCALC transfer-time output when requested.
+- Added regression tests and rebuilt calculator files.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 199056 bytes`
+  - `CSCALC.g3a: 167556 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CASP3 sha256: 0bb30acb1d0c02f7992e01d0c4eab29c9fa1f52a4dff40987c2c9eb3e37e8c7b`
+  - `CSCALC sha256: 308c00ccf1da342880894b84a2ccb714f08aaa497b8af9ea8ad4700b388dad42`
+
+Drift check:
+- Still inside CASP3/CSCALC free-text working support and generated calculator outputs.
+- Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for future source/probe-driven hardening.
+
 ## 2026-06-12 Coded Data and Probability Parser Slice
 
 Completed:
