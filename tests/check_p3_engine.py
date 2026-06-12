@@ -41,6 +41,8 @@ def main():
     require("projectile speed 20 angle 30", ["Resolve", "u_x", "range"])
     require("projectileh(20,30,5)", ["vertical motion", "-h = u_y t", "range = u_x t"])
     require("projectile speed 20 angle 30 from height 5", ["vertical motion", "h=5", "range"])
+    require("projectileat(20,30,10)", ["horizontal motion to find time", "Horizontal: x = u_x t", "Vertical: y = h + u_y t", "height at x=10"])
+    require("projectile speed 20 angle 30 distance 10 find height", ["horizontal motion to find time", "height at x=10"])
     require("force(12,3)", ["Newton", "36 N"])
     require("newton(12,3)", ["Newton", "36 N"])
     require("force mass 12 acceleration 3", ["Newton", "36 N"])

@@ -274,6 +274,19 @@ static int eval_mech(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     n = add(out, n, "t = (u_y+sqrt(u_y^2+2gh))/g = %.10g", t);
     return add(out, n, "range = u_x t = %.10g", r);
   }
+  if (starts3(s, "projectileat(", "projectilepoint(", "projat(") && na >= 3) {
+    double u = num(a[0]), deg = num(a[1]), x = num(a[2]), h0 = na > 3 ? num(a[3]) : 0, g = na > 4 ? num(a[4]) : 9.8;
+    double th = deg * M_PI / 180.0, ux = u*cosine(th), uy = u*sine(th);
+    double t = ux == 0 ? 0 : x / ux;
+    double y = h0 + uy*t - 0.5*g*t*t;
+    int n = add(out, 0, "Resolve velocity, then use horizontal motion to find time.");
+    n = add(out, n, "u_x = %.6g cos %.6g = %.6g", u, deg, ux);
+    n = add(out, n, "u_y = %.6g sin %.6g = %.6g", u, deg, uy);
+    n = add(out, n, "Horizontal: x = u_x t, so t = %.6g/%.6g = %.10g", x, ux, t);
+    n = add(out, n, "Vertical: y = h + u_y t - 1/2 gt^2");
+    n = add(out, n, "y = %.6g + %.6g*%.10g - 1/2*%.6g*%.10g^2", h0, uy, t, g, t);
+    return add(out, n, "height at x=%.6g is %.10g", x, y);
+  }
   if (starts3(s, "projectile(", "proj(", "projectiles(") && na >= 2) {
     double u = num(a[0]), th = num(a[1]) * M_PI / 180.0, g = na > 2 ? num(a[2]) : 9.8;
     double ux = u*cosine(th), uy = u*sine(th), T = 2*uy/g, R = ux*T, H = uy*uy/(2*g);
@@ -974,6 +987,9 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       return eval_suvat(cmd, out);
     }
   }
+  if ((has(t, "projectile") || has(t, "projectiles")) && (has(t, "distance") || has(t, "metresaway") || has(t, "away")) && nv >= 3) {
+    sprintf(cmd, nv >= 4 ? "projectileat(%.10g,%.10g,%.10g,%.10g)" : "projectileat(%.10g,%.10g,%.10g)", v[0], v[1], v[2], nv >= 4 ? v[3] : 0); return eval_mech(cmd, out);
+  }
   if ((has(t, "projectile") || has(t, "projectiles")) && (has(t, "height") || has(t, "above")) && nv >= 3) {
     sprintf(cmd, "projectileh(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_mech(cmd, out);
   }
@@ -1288,7 +1304,7 @@ int p3_eval(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   n = eval_stats(s, out); if (n) return n;
   n = eval_free_text(input, out); if (n) return n;
   n = add(out, 0, "Supported:");
-  n = add(out, n, "suvat projectile projectileh force weight friction moment incline inclineacc");
+  n = add(out, n, "suvat projectile projectileh projectileat force weight friction moment incline inclineacc");
   n = add(out, n, "beam ladder connected pulley impulse momentum work power energy workenergyforce restitution vector resolve vectorkin varacc");
   return add(out, n, "normal normalvar normalprob normaltail normalcond invnormal normalparams binom binomstats binomtail critbinom hypbinom cond probor bayes independent poisson poissonstats poissontail poissonnorm critpoisson hyppoisson regress pmcc spearman meanvar discrete stratified groupmedian histdensity code");
 }

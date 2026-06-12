@@ -1,5 +1,26 @@
 # Checkpoint
 
+## 2026-06-12 CASP3 Projectile At Distance Slice
+
+Completed:
+- Added `projectileat(...)`, `projectilepoint(...)`, and `projat(...)`.
+- Added free-text routing for projectile prompts asking for height at a horizontal distance.
+- Output shows horizontal and vertical resolving, time from horizontal motion, vertical substitution, and final height.
+- Preserved existing `projectileh(...)` launch-height-to-range behaviour.
+- Added direct and free-text regression tests.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CASP3 Edexcel Paper 3 mechanics/free-text support.
+- Did not touch CAS Pure behavior, CSCALC behavior, NOTES, or shared UI/status code.
+
 ## 2026-06-12 CASP3 Normal Conditional Slice
 
 Completed:
