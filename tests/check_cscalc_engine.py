@@ -470,6 +470,8 @@ def main():
     require("A 32 bit address bus addresses byte addressable memory. What is the maximum memory in GiB?", ["address bus 32 bits gives 2^32", "byte addressable", "= 4 GiB"])
     require("A bitmap has 800 by 600 pixels and file size 1920000 bits. How many colours can be represented?", ["bits per pixel = 1920000/480000 = 4", "colours = 2^4 = 16"])
     require("bool(A+B+C+D+E+F)", ["simplified = F+E+D+C+B+A"])
+    require("How many bits are needed for the address bus to address 8 GiB of byte addressable memory?", ["locations = 8589934592*8/8 = 8589934592", "ceil(log2(8589934592)) = 33 bits"])
+    require("A file of 48 MiB is downloaded in 12 seconds. Calculate the bit rate in Mbit/s.", ["48 MiB = 402653184 bits", "bit rate = 402653184/12 = 33554432 bit/s", "= 33.554432 Mbit/s"])
     print("OK cscalc engine")
 
 

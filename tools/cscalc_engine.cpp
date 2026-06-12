@@ -3736,6 +3736,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if ((has(t, "addressbus") || (has(t, "address") && has(t, "bus"))) &&
       !(has(t, "databus") || (has(t, "data") && has(t, "bus"))) &&
       (has(t, "capacity") || has(t, "maximum") || has(t, "max") || has(t, "memory") || has(t, "ram") || has(t, "byteaddressable")) &&
+      !(has(t, "needed") || has(t, "need") || has(t, "howmany") || (has(t, "how") && has(t, "many")) || has(t, "lines")) &&
       nv >= 1) {
     double ab=0, bytes_per_address=1;
     bool ha = scan_before_word_num(t, "address", &ab) || scan_before_word_num(t, "addressbus", &ab);
@@ -4356,6 +4357,21 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       sprintf(cmd, "sound(%lld,%lld,%lld,%d)", (long long)rate, (long long)seconds, (long long)v[2], ch);
       return eval_storage(cmd, out);
     }
+  }
+  if ((has(compact, "bitrate") || has(compact, "datarate") || (has(t, "bit") && has(t, "rate")) || (has(t, "network") && (has(t, "sends") || has_word(t, "sent")))) &&
+      (has(t, "calculate") || has(t, "find") || has(t, "what")) &&
+      !has(compact, "filesize") &&
+      (has(t, "file") || has(t, "downloaded") || has(t, "size")) &&
+      (has(t, "second") || has(t, "minute") || has(t, "hour")) &&
+      (has(t, "gib") || has(t, "mib") || has(t, "kib") || has(t, "gbit") || has(t, "mbit") || has(t, "kbit")) && nv >= 2) {
+    double size = v[0], seconds = 0;
+    bool hSec = scan_before_word_num(t, "minutes", &seconds) || scan_before_word_num(t, "minute", &seconds) ||
+                scan_before_word_num(t, "hours", &seconds) || scan_before_word_num(t, "hour", &seconds) ||
+                scan_before_word_num(t, "seconds", &seconds) || scan_before_word_num(t, "second", &seconds);
+    if (!hSec) seconds = v[1];
+    scale_time_unit(t, &seconds);
+    int un = add_bitrate_unit_lines(out, size, seconds, t);
+    if (un) return un;
   }
   if ((has(compact, "bitrate") || has(compact, "datarate") || (has(t, "bit") && has(t, "rate")) || (has(t, "network") && (has(t, "sends") || has_word(t, "sent")))) &&
       (has(t, "duration") || has(t, "minute") || has(t, "second") || has(t, "hour")) &&

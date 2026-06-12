@@ -518,6 +518,11 @@ def main():
     require("A sample of 10 values has mean 8 and variance 5. A new value 12 is added. Find the new mean and variance.", ["old sum x^2 = 10*(5+8^2) = 690", "new mean = 92/11", "variance = 834/11"])
     require("A particle of mass 4kg is pulled down a rough plane angle 25 degrees by force 30N parallel to the plane coefficient friction 0.3 find acceleration.", ["resultant down the plane", "30 + 16.5666358 - 10.65807988", "a = F/m"])
     require("Events A and B are independent. P(A)=0.35 and P(B)=0.25. Find P(A or B) and P(neither A nor B).", ["P(A and B)=0.35*0.25=0.0875", "P(A or B)=0.35+0.25-0.0875=0.5125", "P(neither)=1-P(A or B)=1-0.5125=0.4875"])
+    require("Events A and B are independent with P(A)=0.45 and P(neither)=0.22. Find P(B).", ["P(neither) = P(A')P(B')", "P(B) = 1 - 0.22/(1-0.45) = 0.6"])
+    require("A sample of 12 observations has mean 7 and standard deviation 2. One observation 10 is removed. Find new mean and standard deviation.", ["old sum x^2 = 12*(4+7^2) = 636", "new mean = 74/11 = 6.727272727", "sd = sqrt(variance) = 1.863081957"])
+    require("A particle of mass 3kg is pulled up a rough plane angle 20 degrees by a force 25N parallel to the plane. It accelerates at 1.2 m/s^2. Find coefficient of friction.", ["Use F=ma along the plane and friction = mu R.", "25 - 10.05539221 - mu*27.62647834 = 3*1.2", "mu = 0.410642"])
+    require("A car of mass 900 kg moves up a slope at constant speed 12 m/s. Engine power is 18 kW and resistance is 300 N. Find the angle of the slope.", ["driving force = P/v = 18000/12 = 1500", "sin(theta) = (1500-300)/(900*9.8)", "theta = 7.819596"])
+    require("A normal random variable X has mean 30 and standard deviation 4. Given X is greater than 26, find P(X<34).", ["A and B gives 26<X<34.", "P(B)=0.8413447404", "conditional probability = 0.81142657"])
     print("OK p3 engine")
 
 

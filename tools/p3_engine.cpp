@@ -148,6 +148,12 @@ static double deg_cosine(double deg) {
   return cosine(deg*M_PI/180.0);
 }
 
+static double deg_arcsine(double x) {
+  if (x >= 1) return 90;
+  if (x <= -1) return -90;
+  return arctan(x/root(1-x*x))*180.0/M_PI;
+}
+
 static int args(const char *s, char a[][48], int maxa) {
   const char *l = strchr(s, '('), *r = strrchr(s, ')');
   if (!l || !r || r <= l) return 0;
@@ -4194,6 +4200,39 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if ((has(t, "rough") || has(t, "friction") || has(t, "coefficient")) &&
       (has(t, "plane") || has(t, "inclined") || has(t, "incline") || has(t, "slope")) &&
       (has(t, "pull") || has(t, "force")) &&
+      (has(c, "findcoefficient") || has(c, "findmu")) &&
+      (has(t, "acceleration") || has(t, "accelerates") || has(t, "accelerate")) &&
+      nv >= 4) {
+    double m=0, theta=0, F=0, a0=0;
+    bool hm=word_num(input,"mass",&m) || label_num(input,"mass",&m);
+    bool hF=word_num(input,"force",&F) || label_num(input,"force",&F) || word_num(input,"pull",&F);
+    bool hA=word_num(input,"angle",&theta) || label_num(input,"angle",&theta) || prev_word_num(input,"degrees",&theta);
+    bool ha0=word_num(input,"acceleration",&a0) || word_num(input,"accelerates",&a0) ||
+              first_num_after_word(input,"accelerates",&a0) || label_num(input,"acceleration",&a0);
+    if (!hm) m = v[0];
+    if (!hA) for (int i = 0; i < nv; ++i)
+      if (!near_num(v[i], m) && !near_num(v[i], F) && !near_num(v[i], a0) && v[i] > 1 && v[i] <= 90) { theta = v[i]; hA = true; break; }
+    if (!hF) for (int i = 0; i < nv; ++i)
+      if (!near_num(v[i], m) && !near_num(v[i], theta) && !near_num(v[i], a0) && v[i] > 1) { F = v[i]; hF = true; break; }
+    if (!ha0) for (int i = nv - 1; i >= 0; --i)
+      if (!near_num(v[i], m) && !near_num(v[i], theta) && !near_num(v[i], F)) { a0 = v[i]; ha0 = true; break; }
+    if (hm || hF || hA || ha0) {
+      double down = m*9.8*deg_sine(theta);
+      double R = m*9.8*deg_cosine(theta);
+      bool pulled_down = has(c, "pulleddown") || has(c, "forcedown") || has(c, "downtheplane") || has(c, "downplane");
+      double mu = pulled_down ? (F + down - m*a0) / R : (F - down - m*a0) / R;
+      int n = add(out, 0, "Resolve parallel and perpendicular to the rough inclined plane.");
+      n = add(out, n, "Down-plane weight component = mg sin(theta) = %.6g*9.8 sin(%.6g) = %.10g N", m, theta, down);
+      n = add(out, n, "Normal reaction R = mg cos(theta) = %.6g*9.8 cos(%.6g) = %.10g N", m, theta, R);
+      n = add(out, n, "Use F=ma along the plane and friction = mu R.");
+      if (pulled_down) n = add(out, n, "%.10g + %.10g - mu*%.10g = %.6g*%.6g", F, down, R, m, a0);
+      else n = add(out, n, "%.10g - %.10g - mu*%.10g = %.6g*%.6g", F, down, R, m, a0);
+      return add(out, n, "mu = %.10g", mu);
+    }
+  }
+  if ((has(t, "rough") || has(t, "friction") || has(t, "coefficient")) &&
+      (has(t, "plane") || has(t, "inclined") || has(t, "incline") || has(t, "slope")) &&
+      (has(t, "pull") || has(t, "force")) &&
       (has(t, "acceleration") || has(t, "accelerate")) && nv >= 4) {
     double m=0, theta=0, F=0, mu=0;
     bool hm=word_num(input,"mass",&m) || label_num(input,"mass",&m);
@@ -4244,6 +4283,31 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "Down-plane weight component = mg sin(theta) = %.6g*9.8 sin(%.6g) = %.10g N", m, theta, down);
     n = add(out, n, "Resultant up the plane = %.10g - %.10g = %.10g N", F, down, net);
     return add(out, n, "a = F/m = %.10g/%.6g = %.10g m/s^2", net, m, net/m);
+  }
+  if ((has(t, "incline") || has(t, "slope") || has(t, "plane")) &&
+      has(t, "power") && (has(t, "angle") || has(t, "find")) &&
+      (has(t, "resistance") || has(t, "resistive")) &&
+      (has(t, "constant") || has(t, "speed")) && !has(t, "degrees") && nv >= 4) {
+    double m=0, P=0, spd=0, r=0;
+    bool hm=label_num(input,"mass",&m) || word_num(input,"mass",&m);
+    bool hP=label_num(input,"power",&P) || word_num(input,"power",&P);
+    bool hs=word_num(input,"speed",&spd) || word_num(input,"velocity",&spd);
+    bool hr=word_num(input,"resistance",&r) || label_num(input,"resistance",&r);
+    if (!hm) m = v[0];
+    if (!hP) P = v[2];
+    if (has(t, "kw") || has(t, "kilowatt")) P *= 1000.0;
+    if (!hs) for (int i = 0; i < nv; ++i)
+      if (!near_num(v[i], m) && !near_num(v[i], P) && !near_num(v[i]*1000.0, P) && !near_num(v[i], r)) { spd = v[i]; hs = true; break; }
+    if (!hr) for (int i = nv - 1; i >= 0; --i)
+      if (!near_num(v[i], m) && !near_num(v[i], spd) && !near_num(v[i], P) && !near_num(v[i]*1000.0, P)) { r = v[i]; hr = true; break; }
+    double drive = spd ? P / spd : 0;
+    double s = (drive - r) / (m * 9.8);
+    double theta = deg_arcsine(s);
+    int n = add(out, 0, "At constant speed, driving force balances resistance and mg sin(theta).");
+    n = add(out, n, "driving force = P/v = %.10g/%.10g = %.10g N", P, spd, drive);
+    n = add(out, n, "mg sin(theta) = %.10g - %.10g = %.10g", drive, r, drive-r);
+    n = add(out, n, "sin(theta) = (%.10g-%.10g)/(%.10g*9.8) = %.10g", drive, r, m, s);
+    return add(out, n, "theta = %.10g degrees", theta);
   }
   if ((has(t, "incline") || has(t, "slope") || has(t, "plane")) &&
       (has(t, "resistance") || has(t, "resistive")) &&
@@ -4978,6 +5042,24 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     }
     double tail = (has(t, "twotailed") || has(t, "twosided") || (has(t, "two") && (has(t, "tailed") || has(t, "sided"))) || has(t, "different") || has(t, "notequal")) ? 0 :
                   (has(t, "upper") || has(t, "greater") || has(t, "more") || has(c, "x>") || has(c, "x>=") ? 1 : -1);
+    if (hMu && (hSig || hVar) && has(t, "given") && nv >= 4) {
+      double sd = hSig ? sig : root(var), lower = 0, upper = 0;
+      bool hLower = false, hUpper = false;
+      const char *gp = strstr(c, "givenxisgreaterthan");
+      if (!gp) gp = strstr(c, "givenxgreaterthan");
+      if (!gp) gp = strstr(c, "givenx>");
+      if (gp) { const char *num = strchr(gp, '>'); lower = num ? read_num(num + 1) : read_num(gp + 19); hLower = true; }
+      const char *up = strstr(c, "p(x<");
+      if (up) { upper = read_num(up + (up[4] == '=' ? 5 : 4)); hUpper = true; }
+      if (!hUpper) {
+        up = strstr(c, "findxlessthan");
+        if (up) { upper = read_num(up + 13); hUpper = true; }
+      }
+      if (hLower && hUpper && upper > lower) {
+        sprintf(cmd, "normalcondbetween(%.10g,%.10g,%.10g,%.10g,%.10g,1)", lower, upper, lower, mu, sd);
+        return eval_stats(cmd, out);
+      }
+    }
     const char *absx = strstr(c, "abs(x");
     if (absx && hMu && (hSig || hVar)) {
       double centre = mu, radius = 0;
@@ -5621,6 +5703,18 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "P(A and B')=%.6g-%.6g=%.10g", pa, pab, nume);
     n = add(out, n, "P(B')=1-P(B)=1-%.6g=%.10g", pb, den);
     return add(out, n, "P(A|B')=%.10g/%.10g=%.10g", nume, den, den ? nume/den : 0);
+  }
+  if ((has(t, "independent") || has(t, "independence")) &&
+      (has(c, "p(neither)=") || has(c, "p(neitheranorb)=") || has(c, "pneither=")) &&
+      (has(c, "p(b)") || has(c, "findp(b)") || has(t, "find")) && nv >= 2) {
+    double pa = v[0], pneither = v[1];
+    double pb = 1 - pneither / (1 - pa);
+    double pab = pa * pb;
+    int n = add(out, 0, "For independent events, complements also multiply.");
+    n = add(out, n, "P(neither) = P(A')P(B') = (1-P(A))(1-P(B)).");
+    n = add(out, n, "%.10g = (1-%.10g)(1-P(B))", pneither, pa);
+    n = add(out, n, "P(B) = 1 - %.10g/(1-%.10g) = %.10g", pneither, pa, pb);
+    return add(out, n, "P(A and B)=P(A)P(B)=%.10g*%.10g=%.10g", pa, pb, pab);
   }
   if ((has(t, "independent") || has(t, "independence")) &&
       (has(t, "union") || has(t, "either") || has(c, "p(aorb)") || has(c, "p(aor b)") || has(t, " or ") || has(c, "p(aandb)")) && nv >= 2 && nv < 3) {
@@ -6755,7 +6849,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
 	    n = add(out, n, adding ? "new number of values = %.10g + 1 = %.10g" : "new number of values = %.10g - 1 = %.10g", count, new_count);
 	    double new_mean = new_count ? new_total/new_count : 0;
 	    n = add(out, n, "new mean = %.10g/%.10g = %.10g", new_total, new_count, new_mean);
-	    if ((has(t, "variance") || has(t, "standarddeviation") || has(t, "sd")) &&
+	    if ((has(t, "variance") || has(t, "standarddeviation") || (has(t, "standard") && has(t, "deviation")) || has(t, "sd")) &&
 	        (has(c, "sumofsquares") || (has(t, "sum") && has(t, "squares"))) && nv >= 4) {
 	      double old_sx2 = v[2];
 	      double new_sx2 = adding ? old_sx2 + value*value : old_sx2 - value*value;
@@ -6763,12 +6857,12 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
 	      n = add(out, n, adding ? "new sum x^2 = %.10g + %.10g^2 = %.10g" : "new sum x^2 = %.10g - %.10g^2 = %.10g", old_sx2, value, new_sx2);
 	      n = add(out, n, "variance = sum x^2/n - mean^2");
 	      n = add(out, n, "variance = %.10g/%.10g - %.10g^2 = %.10g", new_sx2, new_count, new_mean, variance);
-	      if (has(t, "standarddeviation") || has(t, "sd")) return add(out, n, "sd = sqrt(variance) = %.10g", root(variance));
+	      if (has(t, "standarddeviation") || (has(t, "standard") && has(t, "deviation")) || has(t, "sd")) return add(out, n, "sd = sqrt(variance) = %.10g", root(variance));
 	      return n;
 	    }
-	    if ((has(t, "variance") || has(t, "standarddeviation") || has(t, "sd")) && nv >= 4) {
+	    if ((has(t, "variance") || has(t, "standarddeviation") || (has(t, "standard") && has(t, "deviation")) || has(t, "sd")) && nv >= 4) {
 	      double old_var = v[2];
-	      if (has(t, "standarddeviation") || has(t, "sd")) old_var *= old_var;
+	      if (has(t, "standarddeviation") || (has(t, "standard") && has(t, "deviation")) || has(t, "sd")) old_var *= old_var;
 	      double old_sx2 = count * (old_var + mean*mean);
 	      double new_sx2 = adding ? old_sx2 + value*value : old_sx2 - value*value;
 	      double variance = new_count ? new_sx2/new_count - new_mean*new_mean : 0;
@@ -6776,7 +6870,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
 	      n = add(out, n, "old sum x^2 = %.10g*(%.10g+%.10g^2) = %.10g", count, old_var, mean, old_sx2);
 	      n = add(out, n, adding ? "new sum x^2 = %.10g + %.10g^2 = %.10g" : "new sum x^2 = %.10g - %.10g^2 = %.10g", old_sx2, value, new_sx2);
 	      n = add(out, n, "variance = %.10g/%.10g - %.10g^2 = %.10g", new_sx2, new_count, new_mean, variance);
-	      if (has(t, "standarddeviation") || has(t, "sd")) return add(out, n, "sd = sqrt(variance) = %.10g", root(variance));
+	      if (has(t, "standarddeviation") || (has(t, "standard") && has(t, "deviation")) || has(t, "sd")) return add(out, n, "sd = sqrt(variance) = %.10g", root(variance));
 	      return n;
 	    }
 	    return n;
