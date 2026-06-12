@@ -465,6 +465,7 @@ def main():
     require("An image has 800 by 600 pixels and file size 300 KiB. How many colours are possible?", ["bits per pixel = 2457600/480000 = 5.12", "whole-bit colour depth is 5 bits", "colours = 2^5 = 32"])
     require("A file contains 1200 records. Each record has 32 bytes. Calculate file size in KiB.", ["1200*32 = 38400 bytes", "= 37.5 KiB"])
     require("A database table has 1000 records. Each record has fields of 4 bytes, 20 bytes and 1 byte. Calculate storage in KiB.", ["bytes per record = 25", "1000*25 = 25000 bytes", "= 24.4140625 KiB"])
+    require("Calculate the maximum positive value with 8 bit two's complement mantissa and 4 bit exponent.", ["Exponent is 4-bit two's complement.", "largest positive = (1-step)*2^7 = 127"])
     require("bool(A+B+C+D+E+F)", ["simplified = F+E+D+C+B+A"])
     print("OK cscalc engine")
 

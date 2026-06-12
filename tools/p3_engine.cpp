@@ -2171,6 +2171,22 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   char c[192]; clean(input, c, sizeof(c));
   double v[12]; int nv = scan_nums(t, v, 12);
   char cmd[160];
+  if ((has(t, "workenergy") || (has(t, "work") && has(t, "energy"))) &&
+      (has(t, "braking") || has(t, "brake") || has(t, "stopping")) &&
+      (has(t, "force") || has(t, "resistance")) && (has(t, "rest") || has(t, "stopping")) && nv >= 3) {
+    double m=0, u=0, F=0;
+    bool hm=word_num(input,"mass",&m) || label_num(input,"mass",&m);
+    bool hu=word_num(input,"speed",&u) || word_num(input,"velocity",&u) || word_num(input,"at",&u);
+    bool hF=word_num(input,"force",&F) || word_num(input,"brakingforce",&F) || label_num(input,"force",&F);
+    if (!hm) m = v[0];
+    if (!hu) u = v[1];
+    if (!hF) F = v[2];
+    double ke = 0.5*m*u*u, s = F ? ke/F : 0;
+    int n = add(out, 0, "Use work-energy: work done by braking force removes kinetic energy.");
+    n = add(out, n, "initial KE = 1/2*m*u^2 = 1/2*%.6g*%.6g^2 = %.10g J", m, u, ke);
+    n = add(out, n, "braking work = F*s = %.10g*s", F);
+    return add(out, n, "stopping distance s = %.10g/%.10g = %.10g m", ke, F, s);
+  }
   if ((has(t, "acceleration") || has(t, "accn")) && has(c, "/") && has(c, "t+") &&
       (has(c, ")^3") || has(c, "^3")) && nv >= 7) {
     double A = v[0], b = v[1], d = v[2], u = v[4], t0 = v[5], tf = v[6];
@@ -2402,6 +2418,19 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if ((has(t, "impulse") || has(t, "impulsive")) && (has(t, "velocity") || has(t, "speed")) &&
       (has(t, "i") || has(t, "j"))) {
+    double xs[4], ys[4]; int vc = scan_ij_vectors(input, xs, ys, 4);
+    double m0 = 0;
+    if ((word_num(input,"mass",&m0) || label_num(input,"mass",&m0)) && vc >= 2 &&
+        (has(t, "before") || has(t, "beforeimpact") || has(t, "afterimpact") || has(t, "changeinvelocity"))) {
+      double ix = m0*(xs[1]-xs[0]), iy = m0*(ys[1]-ys[0]);
+      double mag = root(ix*ix + iy*iy);
+      int n = add(out, 0, "Impulse equals change in momentum, component by component.");
+      n = add(out, n, "u = %.6g i + %.6g j, v = %.6g i + %.6g j", xs[0], ys[0], xs[1], ys[1]);
+      n = add(out, n, "I = m(v-u)");
+      n = add(out, n, "I = %.6g((%.6g-%.6g)i + (%.6g-%.6g)j)", m0, xs[1], xs[0], ys[1], ys[0]);
+      n = add(out, n, "I = %.10g i + %.10g j Ns", ix, iy);
+      return add(out, n, "magnitude = sqrt((%.10g)^2+(%.10g)^2) = %.10g Ns", ix, iy, mag);
+    }
     double m=0, ux=0, uy=0, ix=0, iy=0;
     bool hm=word_num(input,"mass",&m) || label_num(input,"mass",&m);
     if (hm && vector_after_word(t, "velocity", &ux, &uy) && vector_after_word(t, "impulse", &ix, &iy)) {
@@ -5357,6 +5386,20 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     return add(out, n, "P(X=%.0f)=(1-%.6g)^%.0f*%.6g = %.10g", r, p, r - 1, p, prob);
   }
   if ((has(t, "withoutreplacement") || (has(t, "without") && has(t, "replacement")) || has(t, "chosen")) &&
+      has(t, "both") && nv >= 2) {
+    double a = 0, b = 0;
+    bool ha = prev_word_num(input, "red", &a) || prev_word_num(input, "success", &a);
+    bool hb = prev_word_num(input, "blue", &b) || prev_word_num(input, "other", &b);
+    if (!ha) a = v[0];
+    if (!hb) b = v[1];
+    double total = a + b;
+    double prob = total > 1 ? (a/total) * ((a-1)/(total-1)) : 0;
+    int n = add(out, 0, "Without replacement, probabilities change after each draw.");
+    n = add(out, n, "P(first target) = %.10g/%.10g", a, total);
+    n = add(out, n, "P(second target | first target) = %.10g/%.10g", a-1, total-1);
+    return add(out, n, "P(both target) = %.10g/%.10g * %.10g/%.10g = %.10g", a, total, a-1, total-1, prob);
+  }
+  if ((has(t, "withoutreplacement") || (has(t, "without") && has(t, "replacement")) || has(t, "chosen")) &&
       (has(t, "samecolour") || has(t, "samecolor") || (has(t, "same") && (has(t, "colour") || has(t, "color")))) &&
       nv >= 2) {
     double a = v[0], b = v[1], total = a + b;
@@ -5406,6 +5449,23 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "P(A or B)=P(A)+P(B)");
     return add(out, n, "P(A or B)=%.6g+%.6g=%.10g", pa, pb, por);
   }
+  if ((has(c, "p(aandb)=") || has(t, "intersection")) &&
+      (has(c, "p(a|b)") || has(c, "agivenb") || has(t, "conditional") || has(t, "union")) && nv >= 3) {
+    double pa = v[0], pb = v[1], pab = v[2];
+    double cond = pb ? pab / pb : 0;
+    double por = pa + pb - pab;
+    int n = add(out, 0, "Use P(A|B)=P(A and B)/P(B).");
+    n = add(out, n, "P(A|B)=%.6g/%.6g=%.10g", pab, pb, cond);
+    n = add(out, n, "Use P(A or B)=P(A)+P(B)-P(A and B).");
+    n = add(out, n, "P(A or B)=%.6g+%.6g-%.6g=%.10g", pa, pb, pab, por);
+    if (has(t, "independent") || has(t, "independence")) {
+      double prod = pa * pb;
+      n = add(out, n, "For independence, compare P(A and B) with P(A)P(B).");
+      n = add(out, n, "P(A)P(B)=%.6g*%.6g=%.10g", pa, pb, prod);
+      return add(out, n, abs_num(pab - prod) < 1e-9 ? "A and B are independent." : "A and B are not independent.");
+    }
+    return n;
+  }
   if ((has(c, "p(agivenb)=") || has(c, "p(a|b)=")) &&
       (has(c, "p(aandb)") || has(c, "p(aorb)") || has(t, "intersection") || has(t, "union") || has(t, "or")) &&
       nv >= 3) {
@@ -5432,6 +5492,14 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "P(A and B')=%.6g-%.6g=%.10g", pa, pab, nume);
     n = add(out, n, "P(B')=1-P(B)=1-%.6g=%.10g", pb, den);
     return add(out, n, "P(A|B')=%.10g/%.10g=%.10g", nume, den, den ? nume/den : 0);
+  }
+  if ((has(t, "independent") || has(t, "independence")) &&
+      (has(t, "union") || has(t, "either") || has(c, "p(aorb)") || has(c, "p(aor b)") || has(t, " or ") || has(c, "p(aandb)")) && nv >= 2 && nv < 3) {
+    double pa = v[0], pb = v[1], pab = pa * pb, por = pa + pb - pab;
+    int n = add(out, 0, "For independent events, P(A and B)=P(A)P(B).");
+    n = add(out, n, "P(A and B)=%.6g*%.6g=%.10g", pa, pb, pab);
+    n = add(out, n, "P(A or B)=P(A)+P(B)-P(A and B)");
+    return add(out, n, "P(A or B)=%.6g+%.6g-%.10g=%.10g", pa, pb, pab, por);
   }
   if ((has(t, "independent") || has(t, "independence")) &&
       (has(t, "union") || has(t, "either") || has(c, "p(aorb)") || has(c, "p(aor b)") || has(t, " or ")) && nv >= 3) {
@@ -6579,6 +6647,16 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "second total = %.10g*%.10g = %.10g", n2, m2, total2);
     n = add(out, n, "combined total = %.10g + %.10g = %.10g", total1, total2, total1 + total2);
     return add(out, n, "combined mean = %.10g/%.10g = %.10g", total1 + total2, n1 + n2, combined);
+  }
+  if ((has(t, "total") || has(t, "sum")) && has(t, "sample") && has(t, "mean") &&
+      nv >= 2 && !has(t, "normal") && !has(t, "binom") && !has(t, "poisson")) {
+    double count = 0, mean = 0;
+    bool hc = word_num(input, "sampleof", &count) || word_num(input, "sample", &count) || label_num(input, "n", &count);
+    bool hm = word_num(input, "mean", &mean) || label_num(input, "mean", &mean);
+    if (!hc) count = v[0];
+    if (!hm) mean = v[1];
+    int n = add(out, 0, "Use total = number of values * mean.");
+    return add(out, n, "total = %.10g*%.10g = %.10g", count, mean, count * mean);
   }
   if ((has(t, "mean") || has(t, "variance") || has(t, "standarddeviation")) && nv >= 3 &&
       !has(t, "normal") && !has(t, "binom") && !has(t, "poisson") &&

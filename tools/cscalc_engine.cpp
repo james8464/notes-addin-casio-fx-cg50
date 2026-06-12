@@ -5518,6 +5518,18 @@ int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
   for (int i = 0; i < CSCALC_MAX_LINES; ++i) out[i][0] = 0;
   char s[192]; clean(input, s, sizeof(s));
   if (!s[0]) return add(out, 0, "Enter a CS calculation command.");
+  if ((has(s, "float") || has(s, "floating") || has(s, "normalised") || has(s, "normalized") ||
+       (has(s, "mantissa") && has(s, "exponent"))) &&
+      (has(s, "range") || has(s, "largest") || has(s, "maximum") || has(s, "smallest")) &&
+      !(has(s, "added") || has(s, "add") || has(s, "need") || has(s, "needed") || has(s, "exact"))) {
+    double fv[8]; int fn = scan_nums(s, fv, 8);
+    if (fn >= 2) {
+      char fcmd[48];
+      sprintf(fcmd, "floatrange(%lld,%lld)", (long long)fv[0], (long long)fv[1]);
+      int fr = eval_float(fcmd, out);
+      if (fr) return fr;
+    }
+  }
   if (is_bits(s) && !strchr(s, '.')) {
     int n2 = add(out, 0, "Bare 0/1 input treated as unsigned binary.");
     return add(out, n2, "%s_2 = %d_10", s, bin_unsigned(s));

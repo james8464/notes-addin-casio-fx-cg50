@@ -4304,3 +4304,35 @@ Drift check:
 - Still inside CASP3/CSCALC free-text working support and generated calculator outputs.
 - Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
 - Active goal remains open for future source/probe-driven hardening.
+
+## 2026-06-12 Final Probability, Mechanics, and Float-Range Slice
+
+Completed:
+- Fixed CASP3 exact conditional-probability parsing when `P(A and B)` is given, including union and independence comparison.
+- Added CASP3 independent-events free-text working from `P(A)` and `P(B)`.
+- Added CASP3 without-replacement "both target" working for bag/ball prompts.
+- Added CASP3 vector impulse from before/after velocity vectors.
+- Added CASP3 work-energy braking stopping-distance working.
+- Added CASP3 sample total from sample size and mean.
+- Added CSCALC floating-point range pre-dispatch before broad two's-complement parsing.
+- Checked app engines for obvious TODO/stub/placeholder clutter; none found outside legitimate runtime messages.
+- Added regression tests and rebuilt calculator files.
+
+Evidence:
+- Fresh probes fixed: conditional/union, independent events, without replacement, vector impulse, braking work-energy, sample total, max floating-point range.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 378100 bytes`
+  - `CSCALC.g3a: 224832 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Kept changes to CASP3/CSCALC general free-text handling, regressions, generated calculator outputs, and this checkpoint.
+- Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.

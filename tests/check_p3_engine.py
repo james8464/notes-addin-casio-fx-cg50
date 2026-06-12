@@ -500,6 +500,12 @@ def main():
     require("One end of a light elastic string natural length 2m modulus 30N is fixed. A 3kg mass hangs in equilibrium. Find extension.", ["T = mg = 3*9.8 = 29.4 N", "x = Tl/lambda = 29.4*2/30 = 1.96 m"])
     require("A random variable X has cumulative distribution function F(x)=kx^2 for 0<x<2. Find k and P(X>1).", ["F(x)=kx^2 on 0<x<2", "k=0.25", "P(X>1)=1-F(1)=0.75"])
     require("A car of mass 800 kg travels at constant speed 20 m/s up a slope angle 5 degrees against resistance 300 N. Find power of the engine.", ["Driving force = 983.3010231 N", "Power = Fv = 983.3010231*20 = 19666.02046 W"])
+    require("Given P(A)=0.6, P(B)=0.5 and P(A and B)=0.2, find P(A|B) and P(A union B).", ["P(A|B)=0.2/0.5=0.4", "P(A or B)=0.6+0.5-0.2=0.9"])
+    require("Events A and B are independent with P(A)=0.3 and P(B)=0.4. Find P(A and B) and P(A union B).", ["P(A and B)=0.3*0.4=0.12", "P(A or B)=0.3+0.4-0.12=0.58"])
+    require("A bag contains 5 red and 3 blue balls. Two are chosen without replacement. Find probability both are red.", ["Without replacement", "P(both target) = 5/8 * 4/7 = 0.3571428571"])
+    require("A particle of mass 0.5 kg has velocity 3i+4j before impact and -i+6j after impact. Find impulse magnitude.", ["I = -2 i + 1 j Ns", "magnitude = sqrt((-2)^2+(1)^2) = 2.236067977 Ns"])
+    require("A cyclist of mass 70 kg rides at 8 m/s. Braking force 140 N acts until rest. Find stopping distance using work-energy.", ["initial KE = 1/2*m*u^2 = 1/2*70*8^2 = 2240 J", "stopping distance s = 2240/140 = 16 m"])
+    require("A sample of 50 has mean 12 and standard deviation 3. Estimate the total of the sample.", ["Use total = number of values * mean.", "total = 50*12 = 600"])
     print("OK p3 engine")
 
 
