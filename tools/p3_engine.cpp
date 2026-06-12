@@ -266,6 +266,29 @@ static bool prev_word_num(const char *s, const char *name, double *v) {
   return false;
 }
 
+static double vec_coeff_before(const char *base, const char *p) {
+  const char *q = p - 1;
+  while (q >= base && (*q == ' ' || *q == '\t' || *q == ',')) --q;
+  const char *end = q + 1;
+  while (q >= base && (isdigit((unsigned char)*q) || *q == '.' || *q == '-')) --q;
+  const char *start = q + 1;
+  if (start >= end) return 1;
+  if (start + 1 == end && *start == '-') return -1;
+  return read_num(start);
+}
+
+static bool vector_after_word(const char *s, const char *word, double *x, double *y) {
+  const char *p = strstr(s, word);
+  if (!p) return false;
+  p += strlen(word);
+  const char *pi = strchr(p, 'i');
+  const char *pj = strchr(p, 'j');
+  if (!pi || !pj || pj < pi) return false;
+  *x = vec_coeff_before(p, pi);
+  *y = vec_coeff_before(p, pj);
+  return true;
+}
+
 static double term_coeff(const char *term, int len) {
   char b[32]; int n = 0;
   for (int i = 0; i < len && n + 1 < (int)sizeof(b); ++i) {
@@ -1308,7 +1331,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if ((has(t, "drivingforce") || (has(t, "driving") && has(t, "force"))) &&
       (has(t, "resistance") || has(t, "resistive")) && (has(t, "speed") || has(t, "velocity")) &&
-      (has(t, "rise") || has(t, "rises") || has(t, "height")) && nv >= 5) {
+      nv >= 5) {
     double m=0,u0=0,v0=0,h=0,d=0,r=0;
     bool hm=word_num(input,"mass",&m) || label_num(input,"mass",&m);
     bool hr=word_num(input,"resistance",&r) || label_num(input,"resistance",&r);
@@ -1316,9 +1339,24 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     bool hv=word_num(input,"to",&v0);
     bool hd=word_num(input,"over",&d) || word_num(input,"distance",&d);
     bool hh=word_num(input,"rises",&h) || word_num(input,"rise",&h) || word_num(input,"height",&h);
+    if (!hh && (has(t, "horizontal") || has(t, "level") || !has(t, "rise"))) { h = 0; hh = true; }
     if (hm && hr && hu && hv && hd && hh) {
       sprintf(cmd, "workenergyforce(%.10g,%.10g,%.10g,%.10g,%.10g,%.10g)", m, u0, v0, h, d, r);
       return eval_mech(cmd, out);
+    }
+  }
+  if ((has(t, "impulse") || has(t, "impulsive")) && (has(t, "velocity") || has(t, "speed")) &&
+      (has(t, "i") || has(t, "j"))) {
+    double m=0, ux=0, uy=0, ix=0, iy=0;
+    bool hm=word_num(input,"mass",&m) || label_num(input,"mass",&m);
+    if (hm && vector_after_word(t, "velocity", &ux, &uy) && vector_after_word(t, "impulse", &ix, &iy)) {
+      double vx = ux + ix/m, vy = uy + iy/m;
+      int n = add(out, 0, "Impulse equals change in momentum, component by component.");
+      n = add(out, n, "I = m(v-u), so v = u + I/m.");
+      n = add(out, n, "u = %.6g i + %.6g j, I = %.6g i + %.6g j", ux, uy, ix, iy);
+      n = add(out, n, "v = (%.6g + %.6g/%.6g)i + (%.6g + %.6g/%.6g)j", ux, ix, m, uy, iy, m);
+      n = add(out, n, "v = %.10g i + %.10g j", vx, vy);
+      return add(out, n, "speed = sqrt(%.10g^2 + %.10g^2) = %.10g m/s", vx, vy, root(vx*vx + vy*vy));
     }
   }
   if ((has(t, "impulse") || has(t, "impulsive")) && has(t, "opposite") &&
@@ -2150,23 +2188,23 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       return eval_stats(cmd, out);
     }
   }
-  if ((has(t, "calls") || has(t, "arrive") || has(t, "arrivals") || has(t, "rate")) &&
-      (has(t, "perminute") || has(t, "per,minute") || has(t, "minute")) &&
-      (has(t, "poisson") || has(t, "probability") || has(t, "calls")) && nv >= 3) {
+  if ((has(t, "calls") || has(t, "arrive") || has(t, "arrivals") || has(t, "rate") || has(t, "defect") || has(t, "occur")) &&
+      (has(t, "per") || has(t, "minute") || has(t, "metre") || has(t, "meter")) &&
+      (has(t, "poisson") || has(t, "probability") || has(t, "calls") || has(t, "defect")) && nv >= 3) {
     double rate=0, minutes=0, x=0;
-    bool hr = word_num(input,"rate",&rate);
+    bool hr = word_num(input,"rate",&rate) || word_num(input,"mean",&rate) || word_num(input,"average",&rate);
     if (!hr) rate = v[0];
-    bool hm = word_num(input,"in",&minutes) || prev_word_num(input,"minutes",&minutes) || prev_word_num(input,"minute",&minutes);
-    bool hx = word_num(input,"atleast",&x) || word_num(input,"morethan",&x) || word_num(input,"atmost",&x) || word_num(input,"lessthan",&x);
+    bool hm = word_num(input,"in",&minutes) || prev_word_num(input,"minutes",&minutes) || prev_word_num(input,"minute",&minutes) ||
+              prev_word_num(input,"metres",&minutes) || prev_word_num(input,"metre",&minutes) ||
+              prev_word_num(input,"meters",&minutes) || prev_word_num(input,"meter",&minutes);
+    bool hx = word_num(input,"atleast",&x) || word_num(input,"morethan",&x) || word_num(input,"atmost",&x) ||
+              word_num(input,"nomorethan",&x) || word_num(input,"lessthan",&x) || word_num(input,"fewerthan",&x);
     if (!hm) for (int i = 0; i < nv; ++i) if (!near_num(v[i], rate) && v[i] > minutes) minutes = v[i];
     if (!hx) for (int i = 0; i < nv; ++i) if (!near_num(v[i], rate) && !near_num(v[i], minutes)) { x = v[i]; break; }
     if (x == 0) x = v[nv-1];
     double lam = rate * minutes;
-    int tail = 0;
-    if (has(c, "morethan")) tail = 2;
-    else if (has(c, "atleast") || has(c, "greaterthanorequal")) tail = 1;
-    else if (has(c, "lessthan")) tail = -2;
-    else if (has(c, "atmost") || has(c, "nomorethan")) tail = -1;
+    int tail = prob_tail(c, t);
+    if (has(c, "nomorethan")) tail = -1;
     sprintf(cmd, tail ? "poissontail(%.10g,%d,%d)" : "poisson(%.10g,%d)", lam, (int)x, tail);
     return eval_stats(cmd, out);
   }
@@ -2338,11 +2376,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     sprintf(cmd, "binomnorm(%d,%.10g,%.10g,%.10g)", (int)v[0], v[1], v[2], v[3]); return eval_stats(cmd, out);
   }
   if (has(t, "binom") && has(t, "poisson") && (has(t, "approx") || has(t, "approximation")) && nv >= 3) {
-    int tail = 0;
-    if (has(c, "morethan")) tail = 2;
-    else if (has(c, "atleast") || has(c, "greaterthanorequal")) tail = 1;
-    else if (has(c, "lessthan")) tail = -2;
-    else if (has(c, "atmost") || has(t, "cdf")) tail = -1;
+    int tail = prob_tail(c, t);
+    if (has(c, "nomorethan") || has(t, "cdf")) tail = -1;
     sprintf(cmd, "poissonapprox(%d,%.10g,%d,%d)", (int)v[0], v[1], (int)v[2], tail); return eval_stats(cmd, out);
   }
   if (has(t, "normal") && (has(t, "conditional") || has(t, "given")) && nv >= 4) {
@@ -2421,11 +2456,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     sprintf(cmd, "probor(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_stats(cmd, out);
   }
   if (has(t, "binom") && nv >= 3) {
-    int tail = 0;
-    if (has(c, "morethan")) tail = 2;
-    else if (has(c, "atleast") || has(c, "greaterthanorequal")) tail = 1;
-    else if (has(c, "lessthan")) tail = -2;
-    else if (has(c, "atmost") || has(t, "cdf")) tail = -1;
+    int tail = prob_tail(c, t);
+    if (has(c, "nomorethan") || has(t, "cdf")) tail = -1;
     if (tail) sprintf(cmd, "binomtail(%d,%.10g,%d,%d)", (int)v[0], v[1], (int)v[2], tail);
     else sprintf(cmd, "binom(%d,%.10g,%d)", (int)v[0], v[1], (int)v[2]);
     return eval_stats(cmd, out);
@@ -2442,11 +2474,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       double tail = has(t, "upper") || has(t, "greater") || has(t, "more") ? 1 : -1;
       sprintf(cmd, "hyppoisson(%.10g,%d,%.10g,%.0f)", v[0], (int)v[1], v[2], tail); return eval_stats(cmd, out);
     }
-    int tail = 0;
-    if (has(c, "morethan")) tail = 2;
-    else if (has(c, "atleast") || has(c, "greaterthanorequal")) tail = 1;
-    else if (has(c, "lessthan")) tail = -2;
-    else if (has(c, "atmost") || has(t, "cdf")) tail = -1;
+    int tail = prob_tail(c, t);
+    if (has(c, "nomorethan") || has(t, "cdf")) tail = -1;
     if (tail) { sprintf(cmd, "poissontail(%.10g,%d,%d)", v[0], (int)v[1], tail); return eval_stats(cmd, out); }
     sprintf(cmd, "poisson(%.10g,%d)", v[0], (int)v[1]); return eval_stats(cmd, out);
   }

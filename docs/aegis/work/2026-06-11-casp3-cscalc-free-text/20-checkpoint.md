@@ -2577,6 +2577,35 @@ Drift check:
 - Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
 - Active goal remains open for future source/probe-driven hardening.
 
+## 2026-06-12 Vector Impulse, Horizontal Work-Energy, Poisson Wording Slice
+
+Completed:
+- Added CASP3 vector impulse free-text working for `i/j` velocity and impulse prompts.
+- Broadened driving-force work-energy routing to horizontal/level cases with `height=0`.
+- Generalised Poisson rate-over-exposure routing beyond calls/minutes to defect/metre style wording.
+- Fixed plain-English Poisson `fewer than` routing to use cumulative working.
+- Added regression tests and rebuilt calculator files.
+
+Evidence:
+- Fresh probes passed for vector impulse, horizontal driving force, Poisson fewer-than, and defects-per-metre prompts.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 183404 bytes`
+  - `CSCALC.g3a: 159520 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Still inside CASP3 free-text working support and generated calculator outputs.
+- Did not touch CAS Pure behavior, CSCALC source, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for future source/probe-driven hardening.
+
 ## 2026-06-12 Impulse, Work-Energy, Poisson Rate, Storage Wording Slice
 
 Completed:
