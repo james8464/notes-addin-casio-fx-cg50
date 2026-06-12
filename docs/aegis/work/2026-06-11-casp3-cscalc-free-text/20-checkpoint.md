@@ -1,5 +1,25 @@
 # Checkpoint
 
+## 2026-06-12 CSCALC Huffman Slice
+
+Completed:
+- Added `huffman(...)` / `huff(...)` / `huffmancode(...)` working for frequency tables.
+- Output shows lowest-weight merges, code lengths, encoded bit total, and fixed-length comparison.
+- Added free-text dispatch for prompts such as `huffman frequencies 45 13 12 16 9 5`.
+- Added regression tests for direct command and free-text forms.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CSCALC AQA Paper 2 compression calculation support.
+- Did not touch CAS Pure behavior, CASP3 behavior, NOTES, UI/menu/status code.
+
 ## 2026-06-12 CSCALC Boolean Parser Slice
 
 Completed:

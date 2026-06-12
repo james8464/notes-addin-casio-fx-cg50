@@ -94,6 +94,8 @@ def main():
     require("transfermb(10,2)", ["10 MB = 80 Mbit", "time = 80/2 = 40 s"])
     require("download time for 10 megabytes at 2 megabits per second", ["Convert megabytes", "10 MB = 80 Mbit", "40 s"])
     require("compress(1200,300)", ["ratio = 4", "saving = 75"])
+    require("huffman(a45,b13,c12,d16,e9,f5)", ["combine two smallest", "F(5)+E(9)=14", "code lengths", "encoded bits = sum(freq*length) = 224", "fixed length = 100*3 = 300 bits"])
+    require("huffman frequencies 45 13 12 16 9 5", ["combine two smallest", "encoded bits = sum(freq*length) = 224"])
     require("rle(12,8,4)", ["Run-length bits", "144 bits"])
     require("run length encoding 12 runs 8 symbol bits 4 count bits", ["Run-length bits", "144 bits"])
     require("rletext(aaabcccc,8,4)", ["consecutive repeated", "runs: ax3,bx1,cx4", "original bits = 8*8", "encoded bits = 3*(8+4)"])

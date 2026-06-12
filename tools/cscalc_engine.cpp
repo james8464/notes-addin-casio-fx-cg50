@@ -440,6 +440,9 @@ static int eval_binary_arith(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LI
   return 0;
 }
 
+static void app_ch(char *s, int *pos, int cap, char c);
+static void app_int(char *s, int *pos, int cap, int v);
+
 static int eval_storage(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
   char a[10][48]; int na = args(s, a, 10);
   if (starts3(s, "image(", "bitmap(", "imagesize(") && na >= 3) {
@@ -533,6 +536,43 @@ static int eval_storage(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LE
     n = add(out, n, "runs: %s", summary);
     n = add(out, n, "original bits = %d*%s = %lld", len, a[1], orig);
     return add(out, n, "encoded bits = %d*(%s+%s) = %lld", runs, a[1], a[2], enc);
+  }
+  if (starts3(s, "huffman(", "huff(", "huffmancode(") && na >= 2) {
+    char leaf[10]; long long lw[10]; int depth[10] = {0};
+    char nsym[20][32]; long long nw[20]; int active[20];
+    int lc = 0, nc = 0;
+    for (int i = 0; i < na && lc < 10; ++i) {
+      char c = 0;
+      for (int j = 0; a[i][j]; ++j) if (isalpha((unsigned char)a[i][j])) { c = (char)toupper((unsigned char)a[i][j]); break; }
+      if (!c) c = (char)('A' + lc);
+      leaf[lc] = c; lw[lc] = parse_int(a[i]);
+      nsym[nc][0] = c; nsym[nc][1] = 0; nw[nc] = lw[lc]; active[nc] = 1;
+      ++lc; ++nc;
+    }
+    if (lc < 2) return add(out, 0, "Huffman needs at least 2 symbols.");
+    int n = add(out, 0, "Build Huffman tree: combine two smallest weights.");
+    while (true) {
+      int a1 = -1, a2 = -1;
+      for (int i = 0; i < nc; ++i) if (active[i]) {
+        if (a1 < 0 || nw[i] < nw[a1]) { a2 = a1; a1 = i; }
+        else if (a2 < 0 || nw[i] < nw[a2]) a2 = i;
+      }
+      if (a2 < 0 || nc >= 20) break;
+      if (n < CSCALC_MAX_LINES - 3) n = add(out, n, "%s(%lld)+%s(%lld)=%lld", nsym[a1], nw[a1], nsym[a2], nw[a2], nw[a1] + nw[a2]);
+      for (int k = 0; k < lc; ++k) if (strchr(nsym[a1], leaf[k]) || strchr(nsym[a2], leaf[k])) depth[k]++;
+      sprintf(nsym[nc], "%s%s", nsym[a1], nsym[a2]);
+      nw[nc] = nw[a1] + nw[a2]; active[nc] = 1; active[a1] = active[a2] = 0; ++nc;
+    }
+    char ls[80] = ""; int p = 0; long long bits = 0, total = 0;
+    for (int i = 0; i < lc; ++i) {
+      if (i) app_ch(ls, &p, 80, ',');
+      app_ch(ls, &p, 80, leaf[i]); app_ch(ls, &p, 80, ':'); app_int(ls, &p, 80, depth[i]);
+      bits += lw[i] * depth[i]; total += lw[i];
+    }
+    int fixed = ceil_log2_ll(lc);
+    n = add(out, n, "code lengths: %s", ls);
+    n = add(out, n, "encoded bits = sum(freq*length) = %lld", bits);
+    return add(out, n, "fixed length = %lld*%d = %lld bits", total, fixed, total * fixed);
   }
   if (starts3(s, "records(", "recordsize(", "database(") && na >= 2) {
     double bytes = num(a[0]) * num(a[1]);
@@ -1270,6 +1310,12 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if ((has(t, "compress") || has(t, "compression")) && nv >= 2) {
     sprintf(cmd, "compress(%.10g,%.10g)", v[0], v[1]); return eval_storage(cmd, out);
   }
+  if ((has(t, "huffman") || has(t, "huffmancode")) && nv >= 2) {
+    int p = sprintf(cmd, "huffman(%.10g", v[0]);
+    for (int i = 1; i < nv && p < (int)sizeof(cmd) - 24; ++i) p += sprintf(cmd + p, ",%.10g", v[i]);
+    sprintf(cmd + p, ")");
+    return eval_storage(cmd, out);
+  }
   if ((has(t, "runlength") || has(t, "rle") || (has(t, "run") && has(t, "length"))) && nv >= 2) {
     char seq[48];
     if (find_rle_sequence(input, seq, sizeof(seq))) {
@@ -1351,5 +1397,5 @@ int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
   n = add(out, 0, "Supported:");
   n = add(out, n, "bin hex den convert twos twosdec fixed fixedenc parity xorbits andbits orbits notbits hamming checksum checkdigit");
   n = add(out, n, "floatdec floatrange normal image sound bitrate transfer transfermb");
-  return add(out, n, "compress rle records hashmod addressspace chars bool truth nandform norform");
+  return add(out, n, "compress huffman rle records hashmod addressspace chars bool truth nandform norform");
 }
