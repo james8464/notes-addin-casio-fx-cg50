@@ -294,6 +294,31 @@ static bool make_ds_cmd(const char *in, const char *name, char *cmd, int cap) {
   return true;
 }
 
+static bool tree_skip_word(const char *w) {
+  return word_is(w, "tree") || word_is(w, "traversal") || word_is(w, "traverse") ||
+         word_is(w, "nodes") || word_is(w, "node") || word_is(w, "level") ||
+         word_is(w, "order") || word_is(w, "preorder") || word_is(w, "pre") ||
+         word_is(w, "inorder") || word_is(w, "in") || word_is(w, "postorder") ||
+         word_is(w, "post") || word_is(w, "binary");
+}
+
+static bool make_tree_cmd(const char *in, const char *name, char *cmd, int cap) {
+  char t[192]; raw_clean(in, t, sizeof(t));
+  int p = sprintf(cmd, "%s(", name), count = 0;
+  for (int i = 0; t[i] && p < cap - 16;) {
+    while (t[i] == ',') ++i;
+    char w[16]; int j = 0;
+    while (t[i] && t[i] != ',' && j + 1 < (int)sizeof(w)) w[j++] = t[i++];
+    w[j] = 0;
+    if (!w[0] || tree_skip_word(w)) continue;
+    if (count++) cmd[p++] = ',';
+    p += sprintf(cmd + p, "%s", w);
+  }
+  if (count < 1 || p >= cap - 2) return false;
+  cmd[p++] = ')'; cmd[p] = 0;
+  return true;
+}
+
 static int is_bits(const char *s) {
   if (!s || !*s) return 0;
   for (int i = 0; s[i]; ++i) if (s[i] != '0' && s[i] != '1' && s[i] != '.') return 0;
@@ -584,8 +609,35 @@ static void list_text(long long v[], int n, char *buf, int cap) {
   app_ch(buf, &p, cap, ']');
 }
 
+static void token_add(char *buf, int *p, int cap, const char *tok) {
+  if (*p > 0) app_ch(buf, p, cap, ',');
+  for (int i = 0; tok[i] && *p + 1 < cap; ++i) app_ch(buf, p, cap, tok[i]);
+}
+
+static void tree_walk(char a[][48], int n, int i, int mode, char *buf, int *p, int cap) {
+  if (i >= n || !a[i][0]) return;
+  if (mode == 0) token_add(buf, p, cap, a[i]);
+  tree_walk(a, n, 2*i + 1, mode, buf, p, cap);
+  if (mode == 1) token_add(buf, p, cap, a[i]);
+  tree_walk(a, n, 2*i + 2, mode, buf, p, cap);
+  if (mode == 2) token_add(buf, p, cap, a[i]);
+}
+
 static int eval_trace(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
   char a[16][48]; int na = args(s, a, 16);
+  if ((starts3(s, "preorder(", "treepre(", "pretraverse(") ||
+       starts3(s, "inorder(", "treein(", "intraverse(") ||
+       starts3(s, "postorder(", "treepost(", "posttraverse(")) && na >= 1) {
+    int mode = 2;
+    if (starts3(s, "preorder(", "treepre(", "pretraverse(")) mode = 0;
+    else if (starts3(s, "inorder(", "treein(", "intraverse(")) mode = 1;
+    const char *name = mode == 0 ? "Pre-order" : mode == 1 ? "In-order" : "Post-order";
+    const char *rule = mode == 0 ? "root, left, right" : mode == 1 ? "left, root, right" : "left, right, root";
+    char result[96] = ""; int p = 0; tree_walk(a, na, 0, mode, result, &p, sizeof(result));
+    int n = add(out, 0, "Use level-order input: node i has left 2i+1 and right 2i+2.");
+    n = add(out, n, "%s traversal uses %s.", name, rule);
+    return add(out, n, "%s: %s", name, result);
+  }
   if (starts3(s, "stack(", "stacktrace(", "pushpop(") && na >= 1) {
     long long st[16]; int sp = 0;
     char buf[80]; int n = add(out, 0, "Stack is LIFO: last in, first out.");
@@ -1464,6 +1516,18 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if (has(t, "rpn") || has(t, "postfix") || (has(t, "reverse") && has(t, "polish"))) {
     if (make_rpn_cmd(input, cmd, sizeof(cmd))) return eval_rpn(cmd, out);
   }
+  if ((has(t, "tree") || has(t, "traversal") || has(t, "traverse")) &&
+      (has(t, "preorder") || has(t, "pre,order") || has(t, "pre"))) {
+    if (make_tree_cmd(input, "preorder", cmd, sizeof(cmd))) return eval_trace(cmd, out);
+  }
+  if ((has(t, "tree") || has(t, "traversal") || has(t, "traverse")) &&
+      (has(t, "inorder") || has(t, "in,order"))) {
+    if (make_tree_cmd(input, "inorder", cmd, sizeof(cmd))) return eval_trace(cmd, out);
+  }
+  if ((has(t, "tree") || has(t, "traversal") || has(t, "traverse")) &&
+      (has(t, "postorder") || has(t, "post,order") || has(t, "post"))) {
+    if (make_tree_cmd(input, "postorder", cmd, sizeof(cmd))) return eval_trace(cmd, out);
+  }
   if (has(t, "stack") && (has(t, "push") || has(t, "pop"))) {
     if (make_ds_cmd(input, "stack", cmd, sizeof(cmd))) return eval_trace(cmd, out);
   }
@@ -1695,5 +1759,5 @@ int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
   n = add(out, 0, "Supported:");
   n = add(out, n, "bin hex den convert twos twosdec fixed fixedenc parity xorbits andbits orbits notbits hamming checksum checkdigit rpn");
   n = add(out, n, "floatdec floatrange normal image sound bitrate transfer transfermb");
-  return add(out, n, "compress huffman rle records hashmod hashlinear addressspace chars ascii unicode stack queue binarysearch bubblesort bool truth nandform norform");
+  return add(out, n, "compress huffman rle records hashmod hashlinear addressspace chars ascii unicode stack queue preorder inorder postorder binarysearch bubblesort bool truth nandform norform");
 }

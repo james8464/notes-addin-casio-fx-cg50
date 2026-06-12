@@ -1,5 +1,27 @@
 # Checkpoint
 
+## 2026-06-12 CSCALC Tree Traversal Slice
+
+Completed:
+- Added `preorder(...)`, `inorder(...)`, and `postorder(...)` working traces for complete binary trees supplied in level order.
+- Added aliases `treepre(...)`, `treein(...)`, `treepost(...)`, `pretraverse(...)`, `intraverse(...)`, and `posttraverse(...)`.
+- Added free-text dispatch for tree traversal prompts.
+- Output states the level-order assumption, traversal rule, and final visit order.
+- Added tree traversal lines to the Algorithms help page and supported-command summary.
+- Added regression tests for direct and free-text forms.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CSCALC AQA Paper 2 data structure traversal support.
+- Did not touch CAS Pure behavior, CASP3 behavior, NOTES, or shared UI/status code.
+
 ## 2026-06-12 CASP3 Spearman Slice
 
 Completed:

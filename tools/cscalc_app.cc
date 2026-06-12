@@ -148,6 +148,8 @@ static const char *const algos[] = {
   "insertionsort(list...)",
   "stack(3,4,pop,5)",
   "queue(3,4,pop,5)",
+  "preorder(a,b,c,d,e)",
+  "inorder/postorder use same nodes.",
   "Binary search needs sorted data.",
   "Outputs each comparison/pass."
 };
