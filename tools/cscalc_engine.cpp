@@ -180,6 +180,13 @@ static int ceil_log2_ll(long long x) {
   return b;
 }
 
+static int whole_bits_for(double value) {
+  double x = value < 0 ? -value : value;
+  int bits = 1;
+  while (pow2(bits) <= x && bits < 62) bits++;
+  return bits;
+}
+
 static void to_bin(long long v, int width, char *buf);
 
 static bool printable_ascii(int c) { return c >= 32 && c <= 126; }
@@ -1374,6 +1381,15 @@ static int eval_storage(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LE
     int n = add(out, 0, "Addressable locations = 2^(address bits).");
     return add(out, n, "2^%d = %.10g addresses", bits, addresses);
   }
+  if (starts3(s, "addressbits(", "minaddressbits(", "addresslines(") && na >= 1) {
+    double bytes = num(a[0]);
+    int wbits = na > 1 ? (int)parse_int(a[1]) : 8;
+    double locations = bytes * 8.0 / wbits;
+    int bits = ceil_log2_ll((long long)(locations + 0.999999));
+    int n = add(out, 0, "Address bits = ceil(log2(addressable locations)).");
+    n = add(out, n, "locations = %.10g*8/%d = %.10g", bytes, wbits, locations);
+    return add(out, n, "ceil(log2(%.10g)) = %d bits", locations, bits);
+  }
   if (starts3(s, "memorycapacity(", "addresscapacity(", "memorybus(") && na >= 2) {
     int abits = (int)parse_int(a[0]), wbits = (int)parse_int(a[1]);
     double addresses = pow2(abits), bits = addresses * wbits, bytes = bits / 8.0;
@@ -1439,6 +1455,15 @@ static int eval_float(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]
     int n = add(out, 0, "Encode fixed point by scaling by 2^fraction bits.");
     n = add(out, n, "scaled integer = %.10g * 2^%d = %lld", value, frac, scaled);
     n = add(out, n, "%d whole bits and %d fractional bits.", whole, frac);
+    return add(out, n, "fixed point = %s", fixed);
+  }
+  if (starts3(s, "fixedfrac(", "fixedfraction(", "fixedfracenc(") && na >= 2) {
+    double value = num(a[0]); int frac = (int)parse_int(a[1]), whole = whole_bits_for(value), total = whole + frac;
+    long long scaled = (long long)round_nearest(value * pow2(frac));
+    char bits[65], fixed[65]; to_bin(scaled, total, bits); insert_point(bits, whole, fixed);
+    int n = add(out, 0, "Choose enough whole bits, then scale by 2^fraction bits.");
+    n = add(out, n, "whole bits needed for %.10g = %d", value, whole);
+    n = add(out, n, "scaled integer = %.10g * 2^%d = %lld", value, frac, scaled);
     return add(out, n, "fixed point = %s", fixed);
   }
   if (starts3(s, "fixedtcenc(", "fixedtwosenc(", "fixedtwosencode(") && na >= 3) {
@@ -2637,6 +2662,8 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     bool hS=label_num(input,"seconds",&seconds) || label_num(input,"duration",&seconds) || label_num(input,"time",&seconds);
     bool hB=label_num(input,"resolution",&res) || label_num(input,"depth",&res) || label_num(input,"bits",&res);
     bool hC=label_num(input,"channels",&channels) || label_num(input,"channel",&channels);
+    if (!hC && has(t, "stereo")) { channels = 2; hC = true; }
+    if (!hC && has(t, "mono")) { channels = 1; hC = true; }
     if (hR && hS && hB) {
       sprintf(cmd, "sound(%lld,%lld,%lld,%lld)", (long long)rate, (long long)seconds, (long long)res, hC ? (long long)channels : 1);
       return eval_storage(cmd, out);
@@ -2712,7 +2739,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if ((has(t, "denary") || has(t, "decimal")) && nb >= 1) {
     sprintf(cmd, "den(%s,2)", bits[0]); return eval_base(cmd, out);
   }
-  if (has(t, "binary") && nv >= 1 && nb == 0 &&
+  if (has(t, "binary") && !has(t, "fixed") && nv >= 1 && nb == 0 &&
       !(has(t, "bitsneeded") || has(t, "bitwidth") || (has(t, "minimum") && has(t, "bits")) ||
         (has(t, "fewest") && has(t, "bits")) || (has(t, "smallest") && has(t, "bits")))) {
     sprintf(cmd, "bin(%lld)", (long long)v[0]); return eval_base(cmd, out);
@@ -2816,6 +2843,11 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     return eval_binary_arith(cmd, out);
   }
   char fixed[48];
+  if (has(t, "fixed") && (has(t, "encode") || has(t, "represent") || has(t, "convert")) &&
+      (has(t, "fractional") || has(t, "fraction")) && nv >= 2 && !has(t, "whole")) {
+    sprintf(cmd, "fixedfrac(%.10g,%lld)", v[0], (long long)v[1]);
+    return eval_float(cmd, out);
+  }
   if (has(t, "fixed") && (has(t, "encode") || has(t, "represent") || has(t, "convert")) && nv >= 3) {
     sprintf(cmd, (tc || has(t, "signed") || has(t, "negative")) ? "fixedtcenc(%.10g,%lld,%lld)" : "fixedenc(%.10g,%lld,%lld)", v[0], (long long)v[1], (long long)v[2]);
     return eval_float(cmd, out);
@@ -2857,7 +2889,8 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     sprintf(cmd, "image(%lld,%lld,%lld)", (long long)v[0], (long long)v[1], (long long)v[2]); return eval_storage(cmd, out);
   }
   if ((has(t, "sound") || has(t, "audio")) && nv >= 3) {
-    sprintf(cmd, "sound(%lld,%lld,%lld,%lld)", (long long)v[0], (long long)v[1], (long long)v[2], nv > 3 ? (long long)v[3] : 1); return eval_storage(cmd, out);
+    int ch = nv > 3 ? (int)v[3] : has(t, "stereo") ? 2 : 1;
+    sprintf(cmd, "sound(%lld,%lld,%lld,%d)", (long long)v[0], (long long)v[1], (long long)v[2], ch); return eval_storage(cmd, out);
   }
   if ((has(t, "transfer") || has(t, "download") || has(t, "transmit")) && (has(t, "time") || has(t, "seconds")) && nv >= 2) {
     if ((has(t, "megabyte") || has(t, "mbyte")) && (has(t, "megabit") || has(t, "mbit"))) {
@@ -2894,6 +2927,15 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   if ((has(t, "record") || has(t, "database")) && nv >= 2) {
     sprintf(cmd, "records(%.10g,%.10g)", v[0], v[1]); return eval_storage(cmd, out);
+  }
+  if (has(t, "address") && has(t, "memory") && (has(t, "bits") || has(t, "lines")) && nv >= 1) {
+    double bytes = v[0], wbits = 8;
+    if (has(t, "gb") || has(t, "gib")) bytes *= 1073741824.0;
+    else if (has(t, "mb") || has(t, "mib")) bytes *= 1048576.0;
+    else if (has(t, "kb") || has(t, "kib")) bytes *= 1024.0;
+    if (label_num(input, "wordbits", &wbits) || label_num(input, "word", &wbits)) {}
+    sprintf(cmd, "addressbits(%.10g,%.10g)", bytes, wbits);
+    return eval_storage(cmd, out);
   }
   if (has(t, "address") && (has(t, "bus") || has(t, "space") || has(t, "locations")) && nv >= 1) {
     if ((has(t, "word") || has(t, "capacity") || has(t, "memory")) && nv >= 2) {
@@ -2986,5 +3028,5 @@ int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
   n = add(out, 0, "Supported:");
   n = add(out, n, "bin hex den convert twos twosdec twosadd twossub signmag signmagdec fixed fixedenc parity repeatenc repeatdec shift arithshift xorbits andbits orbits notbits hamming checksum checkdigit rpn");
   n = add(out, n, "floatdec floatadd floatsub floatmul floatdiv floatrange floatbitsadd normal image sound bitrate transfer");
-  return add(out, n, "compress dictcompress huffman rle records sqlselect sqlcount hashmod hashlinear addressspace chars ascii unicode stack queue preorder inorder postorder dijkstra fsm fsmout binarysearch bubblesort selectionsort mergesort bool truth truthbits minterms maxterms kmap kmapdc posform nandform norform");
+  return add(out, n, "compress dictcompress huffman rle records sqlselect sqlcount hashmod hashlinear addressspace addressbits chars ascii unicode stack queue preorder inorder postorder dijkstra fsm fsmout binarysearch bubblesort selectionsort mergesort bool truth truthbits minterms maxterms kmap kmapdc posform nandform norform");
 }

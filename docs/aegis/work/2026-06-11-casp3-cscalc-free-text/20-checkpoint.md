@@ -1,5 +1,26 @@
 # Checkpoint
 
+## 2026-06-12 CSCALC Storage Representation Free-Text Slice
+
+Completed:
+- Fixed sound-file free text so `stereo` implies 2 channels and `mono` implies 1 channel.
+- Added `fixedfrac(...)` for fixed-point encoding when a prompt gives only the decimal value and fractional-bit count.
+- Prevented generic binary conversion from stealing fixed-point conversion prompts.
+- Added `addressbits(...)` / `minaddressbits(...)` / `addresslines(...)` for inverse memory-address sizing.
+- Added free-text routing for prompts such as “how many address bits are needed to address 4 GB of memory”.
+- Added regression tests and rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CSCALC AQA Paper 2 storage/representation calculation support.
+- Did not touch CAS Pure behavior, CASP3 behavior, NOTES, or shared UI/status code.
+
 ## 2026-06-12 CSCALC Bitrate File-Size Slice
 
 Completed:
