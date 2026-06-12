@@ -1523,6 +1523,29 @@ static int eval_float(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]
     n = add(out, n, "mantissa (%d bits) = %s", mb, mant);
     return add(out, n, "exponent (%d bits) = %s", eb, expb);
   }
+  if (starts3(s, "floatbitsadd(", "mantissabitsadd(", "exactfloatbits(") && na >= 3) {
+    double value = num(a[0]); int mb = (int)parse_int(a[1]);
+    int e = 0; double m = value;
+    if (m != 0) {
+      while (m >= 1.0 || m < -1.0) { m /= 2.0; ++e; }
+      while (m > -0.5 && m < 0.5) { m *= 2.0; --e; }
+    }
+    int addbits = 0;
+    for (; addbits <= 32; ++addbits) {
+      double step = pow2(e - ((mb + addbits) - 1));
+      double q = value / step, rq = round_nearest(q);
+      double diff = q > rq ? q - rq : rq - q;
+      if (diff < 1e-9) break;
+    }
+    double oldstep = pow2(e - (mb - 1));
+    int n = add(out, 0, "Find the mantissa precision needed for an exact value.");
+    n = add(out, n, "%.10g = %.10g * 2^%d", value, m, e);
+    n = add(out, n, "current step = 2^(%d-(%d-1)) = %.10g", e, mb, oldstep);
+    if (addbits > 32) return add(out, n, "More than 32 extra mantissa bits needed in this search.");
+    double newstep = pow2(e - ((mb + addbits) - 1));
+    n = add(out, n, "exact step = 2^(%d-(%d-1)) = %.10g", e, mb + addbits, newstep);
+    return add(out, n, "extra mantissa bits needed = %d", addbits);
+  }
   if (starts3(s, "floatrange(", "fprange(", "realrange(") && na >= 2) {
     int mb = (int)parse_int(a[0]), eb = (int)parse_int(a[1]);
     int emin = -(1 << (eb - 1)), emax = (1 << (eb - 1)) - 1;
@@ -2637,6 +2660,15 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if ((has(t, "closest") || has(t, "nearest")) && (has(t, "float") || has(t, "floating") || has(t, "representable")) && nv >= 3) {
     sprintf(cmd, "floatnearest(%.10g,%lld,%lld)", v[0], (long long)v[1], (long long)v[2]); return eval_float(cmd, out);
   }
+  if ((has(t, "bits") || has(t, "bit")) && has(t, "mantissa") &&
+      (has(t, "add") || has(t, "added") || has(t, "need") || has(t, "needed") || has(t, "exact")) && nv >= 3) {
+    double value=0, mb=0, eb=0;
+    bool hV=label_num(input,"value",&value) || label_num(input,"decimal",&value) || label_num(input,"number",&value);
+    bool hM=label_num(input,"mantissabits",&mb) || label_num(input,"mantissa",&mb);
+    bool hE=label_num(input,"exponentbits",&eb) || label_num(input,"exponent",&eb);
+    sprintf(cmd, "floatbitsadd(%.10g,%lld,%lld)", hV ? value : v[0], (long long)(hM ? mb : v[1]), (long long)(hE ? eb : v[2]));
+    return eval_float(cmd, out);
+  }
   if ((has(t, "float") || has(t, "floating")) && (has(t, "encode") || has(t, "represent") || has(t, "convert")) && nv >= 3) {
     sprintf(cmd, "floatenc(%.10g,%lld,%lld)", v[0], (long long)v[1], (long long)v[2]); return eval_float(cmd, out);
   }
@@ -2784,6 +2816,6 @@ int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
   n = eval_free_text(input, s, out); if (n) return n;
   n = add(out, 0, "Supported:");
   n = add(out, n, "bin hex den convert twos twosdec twosadd twossub signmag signmagdec fixed fixedenc parity repeatenc repeatdec shift arithshift xorbits andbits orbits notbits hamming checksum checkdigit rpn");
-  n = add(out, n, "floatdec floatadd floatsub floatmul floatdiv floatrange normal image sound bitrate transfer transfermb");
+  n = add(out, n, "floatdec floatadd floatsub floatmul floatdiv floatrange floatbitsadd normal image sound bitrate transfer");
   return add(out, n, "compress dictcompress huffman rle records sqlselect sqlcount hashmod hashlinear addressspace chars ascii unicode stack queue preorder inorder postorder dijkstra fsm fsmout binarysearch bubblesort selectionsort mergesort bool truth truthbits minterms maxterms kmap kmapdc posform nandform norform");
 }

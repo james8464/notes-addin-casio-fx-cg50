@@ -1,5 +1,24 @@
 # Checkpoint
 
+## 2026-06-12 CSCALC Floating-Point Exact Mantissa Bits Slice
+
+Completed:
+- Added `floatbitsadd(...)` / `mantissabitsadd(...)` / `exactfloatbits(...)`.
+- Added free-text routing for AQA-style questions asking how many extra mantissa bits are needed to represent a decimal exactly.
+- Added regression tests for the 2024-style `12.765625` with 8-bit mantissa and 4-bit exponent case.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CSCALC AQA Paper 2 floating-point calculation support.
+- Did not touch CAS Pure behavior, CASP3 behavior, NOTES, or shared UI/status code.
+
 ## 2026-06-12 CASP3 Stats Labelled Free-Text Slice
 
 Completed:

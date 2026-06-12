@@ -129,6 +129,8 @@ def main():
     require("floating point precision mantissa 8 exponent 4", ["last mantissa bit", "0.125"])
     require("floatnearest(12.7,8,4)", ["closest representable", "step at this exponent", "nearest multiple = 12.75", "mantissa (8 bits)", "exponent (4 bits)"])
     require("closest representable floating point value 12.7 with 8 bit mantissa and 4 bit exponent", ["closest representable", "nearest multiple = 12.75"])
+    require("floatbitsadd(12.765625,8,4)", ["mantissa precision", "current step", "exact step", "extra mantissa bits needed = 3"])
+    require("smallest number of bits added to mantissa so decimal 12.765625 is exact with 8 bit mantissa and 4 bit exponent", ["mantissa precision", "extra mantissa bits needed = 3"])
     require("floatrange(8,4)", ["exponent range", "mantissa step", "largest positive"])
     require("floating point range with 8 bit mantissa and 4 bit exponent", ["exponent range", "largest positive"])
     require("normal(0101100)", ["Normalised", "is normalised"])
