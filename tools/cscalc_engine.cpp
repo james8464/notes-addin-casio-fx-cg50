@@ -209,6 +209,20 @@ static bool scan_after_word_num(const char *s, const char *word, double *v) {
   return false;
 }
 
+static bool scan_before_word_num(const char *s, const char *word, double *v) {
+  int wl = (int)strlen(word);
+  for (int i = 0; s && s[i]; ++i) {
+    if (i > 0 && isalnum((unsigned char)s[i-1])) continue;
+    if (strncmp(s + i, word, wl) != 0 || isalnum((unsigned char)s[i + wl])) continue;
+    int j = i - 1;
+    while (j >= 0 && s[j] == ',') --j;
+    int e = j + 1;
+    while (j >= 0 && (isdigit((unsigned char)s[j]) || s[j] == '.' || s[j] == '-')) --j;
+    if (e > j + 1) { *v = read_num(s + j + 1); return true; }
+  }
+  return false;
+}
+
 static bool label_num(const char *s, const char *name, double *v) {
   int nl = (int)strlen(name);
   for (int i = 0; s && s[i]; ++i) {
@@ -259,6 +273,17 @@ static long long parse_base(const char *s, int base) {
     if (d >= 0 && d < base) v = v * base + d;
   }
   return v;
+}
+
+static void to_base(long long v, int base, char *buf, int cap) {
+  const char *dig = "0123456789ABCDEF";
+  char tmp[65]; int n = 0;
+  if (base < 2 || base > 16 || cap < 2) { buf[0] = 0; return; }
+  if (v == 0) tmp[n++] = '0';
+  while (v && n < (int)sizeof(tmp) - 1) { tmp[n++] = dig[v % base]; v /= base; }
+  int p = 0;
+  while (n && p + 1 < cap) buf[p++] = tmp[--n];
+  buf[p] = 0;
 }
 
 static double pow2(int e) {
@@ -745,7 +770,8 @@ static int eval_base(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN])
     long long v = parse_base(a[0], (int)parse_int(a[1]));
     if (parse_int(a[2]) == 2) { char b[65]; to_bin(v, v < 256 ? 8 : 16, b); return add(out, add(out, 0, "%s_%s = %lld_10", a[0], a[1], v), "%lld_10 = %s_2", v, b); }
     if (parse_int(a[2]) == 16) return add(out, add(out, 0, "%s_%s = %lld_10", a[0], a[1], v), "%lld_10 = %llX_16", v, v);
-    return add(out, 0, "%s_%s = %lld_10", a[0], a[1], v);
+    char b[65]; to_base(v, (int)parse_int(a[2]), b, sizeof(b));
+    return add(out, add(out, 0, "%s_%s = %lld_10", a[0], a[1], v), "%lld_10 = %s_%s", v, b, a[2]);
   }
   return conv(out, a, na);
 }
@@ -2792,6 +2818,15 @@ static void bool_arg_for_cmd(const char *src, char *dst, int cap) {
   dst[p] = 0;
 }
 
+static void bool_clean_tail(const char *src, char *dst, int cap) {
+  strncpy(dst, src, cap - 1); dst[cap - 1] = 0;
+  const char *cut[] = {"using", "bydemorgan", "demorgan", "demorgans", "law", "method"};
+  for (int i = 0; i < 6; ++i) {
+    char *p = strstr(dst, cut[i]);
+    if (p) *p = 0;
+  }
+}
+
 static void truthbits_cmd_from_text(const char *t, const char *bits, char *cmd, int cap) {
   char vars[8] = ""; int vc = 0;
   const char *p = strstr(t, "variables");
@@ -2978,6 +3013,32 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   if (has(t, "sound") || has(t, "audio")) {
     double rate=0, seconds=0, res=0, channels=1;
+    double dur=0;
+    bool wordRate = scan_before_word_num(t, "khz", &rate) || scan_before_word_num(t, "kilohertz", &rate) ||
+                    scan_before_word_num(t, "hz", &rate) || scan_before_word_num(t, "hertz", &rate);
+    bool wordDur = scan_before_word_num(t, "minutes", &dur) || scan_before_word_num(t, "minute", &dur) ||
+                   scan_before_word_num(t, "mins", &dur) || scan_before_word_num(t, "seconds", &dur) ||
+                   scan_before_word_num(t, "second", &dur) || scan_before_word_num(t, "hours", &dur) ||
+                   scan_before_word_num(t, "hour", &dur);
+    if (wordRate && wordDur) {
+      double rawRate = rate;
+      seconds = dur;
+      scale_frequency_unit(t, &rate);
+      scale_time_unit(t, &seconds);
+      if (has(t, "samples") || has(t, "sample,count") || has(t, "how,many,samples")) {
+        int n = add(out, 0, "Number of samples = sample rate * seconds.");
+        n = add(out, n, "%.10g samples/s * %.10g s", rate, seconds);
+        return add(out, n, "samples = %.10g", rate * seconds);
+      }
+      if (nv >= 3) {
+        for (int i = 0; i < nv; ++i)
+          if (v[i] != dur && v[i] != rawRate && v[i] > 1 && v[i] <= 64) { res = v[i]; break; }
+        if (res <= 0) res = v[2];
+        channels = has(t, "stereo") ? 2 : 1;
+        sprintf(cmd, "sound(%lld,%lld,%lld,%lld)", (long long)rate, (long long)seconds, (long long)res, (long long)channels);
+        return eval_storage(cmd, out);
+      }
+    }
     bool hR=label_num(input,"samplerate",&rate) || label_num(input,"rate",&rate) || label_num(input,"frequency",&rate);
     bool hS=label_num(input,"seconds",&seconds) || label_num(input,"duration",&seconds) || label_num(input,"time",&seconds);
     bool hB=label_num(input,"resolution",&res) || label_num(input,"depth",&res) || label_num(input,"bits",&res);
@@ -3107,6 +3168,18 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   if (has(t, "base") && has(t, "to") && has(t, "base,10,to,base,2") && nv >= 1) {
     sprintf(cmd, "convert(%lld,10,2)", (long long)v[0]); return eval_base(cmd, out);
+  }
+  if ((has(t, "octal") || has(t, "base,8") || has(t, "base8")) && has(t, "binary")) {
+    const char *bp = strstr(t, "binary");
+    const char *op = strstr(t, "octal");
+    if (!op) op = strstr(t, "base,8");
+    if (!op) op = strstr(t, "base8");
+    if (bp && op && bp < op && nb >= 1) {
+      sprintf(cmd, "convert(%s,2,8)", bits[0]); return eval_base(cmd, out);
+    }
+    if (op && bp && op < bp && nv >= 1) {
+      sprintf(cmd, "convert(%lld,8,2)", (long long)v[0]); return eval_base(cmd, out);
+    }
   }
   if ((has(t, "hex") || has(t, "hexadecimal")) && has_hex_tok && has(t, "binary")) {
     sprintf(cmd, "convert(%s,16,2)", hex_tok); return eval_base(cmd, out);
@@ -3388,7 +3461,8 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     truthbits_cmd_from_text(t, bitcol, cmd, sizeof(cmd)); return eval_truthbits(cmd, out);
   }
   if (nb >= 1 && (has(t, "truth") || has(t, "output") || has(t, "column")) &&
-      (has(t, "bits") || has(t, "column") || has(t, "derive") || has(t, "expression"))) {
+      (has(t, "bits") || has(t, "column") || has(t, "derive") || has(t, "expression") ||
+       has(t, "variables") || has(t, "vars"))) {
     truthbits_cmd_from_text(t, bits[0], cmd, sizeof(cmd)); return eval_truthbits(cmd, out);
   }
   if ((has(t, "kmap") || has(t, "karnaugh") || has(t, "minterm") || has(t, "minterms") ||
@@ -3402,8 +3476,9 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     if (make_gate_form_cmd(input, false, cmd, sizeof(cmd))) return eval_gate_form(cmd, out);
   }
   if (nv == 0 && (starts(compact, "posform") || starts(compact, "cnf") || has(compact, "productofsums"))) {
-    const char *e = skip_bool_words(compact);
-    sprintf(cmd, "posform(%s)", e); return eval_posform(cmd, out);
+    const char *e = skip_bool_words(compact); char ce[96];
+    bool_clean_tail(e, ce, sizeof(ce));
+    sprintf(cmd, "posform(%s)", ce); return eval_posform(cmd, out);
   }
   if (nv == 0 && !has(compact, "prove") && !has(compact, "show") &&
       (has(compact, "simplify") || has(compact, "truth") || has(compact, "boolean") || has(compact, "logic")) &&
@@ -3441,8 +3516,9 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     }
   }
   if (nv == 0 && (has(compact, "nand") || has(compact, "nor") || has(compact, "xor") || has(compact, "and") || has(compact, "or") || has(compact, "not") || has(compact, "+") || has(compact, "*") || has(compact, "'") || has(compact, ","))) {
-    const char *e = skip_bool_words(compact);
-    sprintf(cmd, "%s(%s)", has(compact, "truth") ? "truth" : "bool", e); return eval_bool(cmd, out);
+    const char *e = skip_bool_words(compact); char ce[96];
+    bool_clean_tail(e, ce, sizeof(ce));
+    sprintf(cmd, "%s(%s)", has(compact, "truth") ? "truth" : "bool", ce); return eval_bool(cmd, out);
   }
   return 0;
 }

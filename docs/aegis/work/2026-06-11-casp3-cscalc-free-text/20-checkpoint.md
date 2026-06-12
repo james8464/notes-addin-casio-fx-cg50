@@ -2201,6 +2201,40 @@ Drift check:
 - Still inside CSCALC AQA Paper 2 Boolean algebra support.
 - Did not touch CAS Pure, CASP3 behavior, NOTES, menus, or status/UI code.
 
+## 2026-06-12 Free-Text Hardening Slice
+
+Completed:
+- Hardened CASP3 notation routing:
+  - `X~N(mu,sigma^2)` inverse-normal prompts such as `find k such that P(X<k)=...`.
+  - `X~Po(lambda)` critical-region prompts before plain `P(X=r)` routing.
+- Hardened CASP3 mechanics free text:
+  - vertical projection to a stated height/above point solves the quadratic instead of using maximum-height route.
+  - braking/deceleration prompts infer final velocity 0 and show SUVAT working.
+  - lift tension now parses mass/acceleration in either order and handles descending/downward acceleration.
+- Hardened CSCALC free text:
+  - generic `convert(...,from,to)` now prints final output for bases beyond 2/16, including octal.
+  - binary-to-octal and octal-to-binary worded prompts route by word order.
+  - sound storage/sample prompts parse values attached to `kHz` and `minute/hour/second`.
+  - output-column truth-table prompts accept `variables`.
+  - Boolean simplification strips trailing method words such as `using De Morgan`.
+- Rebuilt calculator files.
+
+Evidence:
+- Targeted P3/CS free-text probe suite: passed, 22/22.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `./compile`: passed.
+- Size evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 158964 bytes`
+  - `CSCALC.g3a: 154748 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Still inside CASP3/CSCALC arbitrary free-text calculation support.
+- Did not touch CAS Pure source, NOTES source, menus, or shared status/UI code.
+
 ## 2026-06-11 CASP3 Coded Statistics Slice
 
 Completed:

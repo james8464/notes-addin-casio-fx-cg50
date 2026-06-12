@@ -1267,6 +1267,12 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       if (has(c, "^2") && near_num(v[i], 2)) continue;
       u[nu++] = v[i];
     }
+    if ((has(c, "findk") || has(c, "findx") || has(c, "suchthat") || has(t, "percentile")) && nu >= 1) {
+      double area = u[0];
+      if (has(c, "p(x>k") || has(c, "p(x>=k") || has(c, "morethank") || has(c, "greaterthank")) area = 1 - area;
+      sprintf(cmd, "invnormalvar(%.10g,%.10g,%.10g)", area, mu, var);
+      return eval_stats(cmd, out);
+    }
     if ((has(c, "p(") && has(c, "<x<")) || (nu >= 2 && (has(c, "between") || has(c, "<x<")))) {
       if (nu < 2) return 0;
       double lo = u[0], hi = u[1];
@@ -1291,6 +1297,17 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       x = (int)v[i]; hx = true; break;
     }
     int tail = prob_tail(c, t);
+    if ((has(t, "critical") || has(t, "criticalregion")) && nv >= 2) {
+      double alpha = 0.05;
+      for (int i = 0; i < nv; ++i) {
+        if (near_num(v[i], lam)) continue;
+        if (v[i] > 0 && v[i] <= 10) { alpha = v[i] / 100.0; break; }
+        if (v[i] > 0 && v[i] <= 1) { alpha = v[i]; break; }
+      }
+      double ctail = (tail > 0 || has(t, "upper") || has(t, "right")) ? 1 : -1;
+      sprintf(cmd, "critpoisson(%.10g,%.10g,%.0f)", lam, alpha, ctail);
+      return eval_stats(cmd, out);
+    }
     if ((has(t, "hypothesis") || has(t, "test") || has(t, "significance")) && hx) {
       double alpha = 0.05;
       for (int i = 0; i < nv; ++i) {
@@ -1307,8 +1324,30 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     return eval_stats(cmd, out);
   }
   if (!has(t, "variable") && (has(t, "suvat") || has(t, "velocity") || has(t, "acceleration") || has(t, "accelerates") || has(t, "accelerated") || has(t, "distance") || has(t, "displacement") || has(t, "time"))) {
+    if ((has(t, "brake") || has(t, "brakes") || has(t, "deceleration") || has(t, "decelerates")) && nv >= 2) {
+      double u0 = v[0], s0 = v[1], v0 = 0;
+      double a0 = (v0*v0-u0*u0)/(2*s0), t0 = 2*s0/(u0+v0);
+      int n = add(out, 0, "Use SUVAT for uniform deceleration.");
+      n = add(out, n, "final velocity is 0 because it comes to rest.");
+      n = add(out, n, "v^2 = u^2 + 2as");
+      n = add(out, n, "a = (0^2-%.6g^2)/(2*%.6g) = %.10g", u0, s0, a0);
+      n = add(out, n, "deceleration = %.10g", a0 < 0 ? -a0 : a0);
+      return add(out, n, "t = 2s/(u+v) = 2*%.6g/(%.6g+0) = %.10g", s0, u0, t0);
+    }
     if ((has(t, "vertical") || has(t, "vertically")) && (has(t, "upward") || has(t, "upwards") || has(t, "thrown")) && nv >= 1) {
-      double u0 = v[0], g = nv > 1 ? v[1] : 9.8;
+      double u0 = v[0], g = 9.8, target = 0;
+      bool hTarget = word_num(input, "height", &target) || word_num(input, "above", &target);
+      if (!hTarget && (has(t, "above") || has(t, "height")) && nv >= 2) { target = v[1]; hTarget = true; }
+      if (hTarget && !near_num(target, u0)) {
+        double disc = u0*u0 - 2*g*target;
+        int n = add(out, 0, "Use vertical SUVAT with upward positive.");
+        n = add(out, n, "s = ut - 1/2 gt^2");
+        n = add(out, n, "%.6g = %.6g t - 1/2*%.6g t^2", target, u0, g);
+        n = add(out, n, "%.6g t^2 - %.6g t + %.6g = 0", 0.5*g, u0, target);
+        if (disc < 0) return add(out, n, "discriminant < 0, so this height is not reached.");
+        double t1 = (u0 - root(disc)) / g, t2 = (u0 + root(disc)) / g;
+        return add(out, n, "t = %.10g or %.10g", t1, t2);
+      }
       int n = add(out, 0, "Use vertical SUVAT with upward positive.");
       n = add(out, n, "At maximum height, v = 0 and a = -g.");
       n = add(out, n, "0 = u^2 - 2gs, so s = u^2/(2g)");
@@ -1583,9 +1622,13 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     sprintf(cmd, "resolve(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
   }
   if (has(t, "lift") && has(t, "accelerat") && (has(t, "tension") || has(t, "cable")) && nv >= 2) {
-    double m = v[0], a0 = v[1], g = nv > 2 ? v[2] : 9.8;
+    double m = 0, a0 = 0, g = 9.8;
+    bool hm = label_num(input, "mass", &m) || word_num(input, "mass", &m);
+    bool ha = label_num(input, "acceleration", &a0) || word_num(input, "acceleration", &a0);
+    if (!hm) for (int i = 0; i < nv; ++i) if (v[i] > m) m = v[i];
+    if (!ha) for (int i = 0; i < nv; ++i) if (!near_num(v[i], m)) { a0 = v[i]; break; }
     int n = add(out, 0, "For the lift, apply Newton's second law vertically.");
-    if (has(t, "down")) {
+    if (has(t, "down") || has(t, "descend")) {
       n = add(out, n, "Taking upward positive: T - mg = -ma.");
       return add(out, n, "T = m(g-a) = %.6g(%.6g-%.6g) = %.10g N", m, g, a0, m*(g-a0));
     }
