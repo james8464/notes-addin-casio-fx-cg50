@@ -199,6 +199,8 @@ def main():
     require("maxterms(A,B,C,0,2,dc,4,6)", ["Maxterm/POS method", "don't-care rows: 4,6", "Use don't-cares only if they make larger zero groups", "simplified POS = (C)"])
     require("posform(A+B)", ["Product-of-sums method", "zero rows: 0", "M0 = (A+B)", "simplified POS = (A+B)"])
     require("posform(A&B')", ["Product-of-sums method", "zero rows:", "POS =", "simplified POS"])
+    require("truthbits(A,B,0110)", ["Truth-table output-column method", "variables: A,B", "1-cells/minterms: 1,2", "SOP = A'&B+A&B'", "simplified SOP = A'B+AB'", "simplified POS"])
+    require("truth table output bits 0110", ["Truth-table output-column method", "variables: A,B", "simplified SOP = A'B+AB'"])
     require("simplify minterms 1 2 for A B", ["K-map/minterm method", "variables: A,B", "SOP = A'&B+A&B'", "simplified = A'B+AB'"])
     require("Karnaugh map ones 1 3 5 7 variables A B C", ["K-map/minterm method", "variables: A,B,C", "simplified = C"])
     require("maxterms zeros 0 3 for A B", ["Maxterm/POS method", "variables: A,B", "POS = (A+B)&(A'+B')"])

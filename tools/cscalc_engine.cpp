@@ -2084,6 +2084,61 @@ static int eval_posform(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LE
   return add(out, n, "simplified POS = %s", chc ? sim : "1");
 }
 
+static int eval_truthbits(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
+  char a[10][48]; int na = args(s, a, 10);
+  if (!(starts3(s, "truthbits(", "truthout(", "outputbits(") && na >= 1)) return 0;
+  const char *bits = a[na - 1];
+  if (!is_bits(bits) || strchr(bits, '.')) return add(out, 0, "Give output bits, e.g. truthbits(A,B,0110).");
+  int rows = (int)strlen(bits), vc = 0;
+  while ((1 << vc) < rows && vc < 6) ++vc;
+  if ((1 << vc) != rows || vc == 0) return add(out, 0, "Output bit count must be 2^variables.");
+  char vars[8] = "";
+  for (int i = 0; i < na - 1 && vc < 6; ++i) {
+    for (int j = 0; a[i][j] && (int)strlen(vars) < vc; ++j) if (isalpha((unsigned char)a[i][j])) {
+      char c = (char)toupper((unsigned char)a[i][j]);
+      if (!strchr(vars, c)) { int l = (int)strlen(vars); vars[l] = c; vars[l+1] = 0; }
+    }
+  }
+  while ((int)strlen(vars) < vc) { int l = (int)strlen(vars); vars[l] = (char)('A' + l); vars[l+1] = 0; }
+  int mins[64], zeros[64], mc = 0, zc = 0;
+  for (int i = 0; i < rows; ++i) (bits[i] == '1' ? mins[mc++] : zeros[zc++]) = i;
+  int n = add(out, 0, "Truth-table output-column method.");
+  char vl[32] = ""; int vp = 0;
+  for (int i = 0; i < vc; ++i) { if (i) app_ch(vl, &vp, sizeof(vl), ','); app_ch(vl, &vp, sizeof(vl), vars[i]); }
+  n = add(out, n, "variables: %s", vl);
+  n = add(out, n, "output bits: %s", bits);
+  char ml[96] = "", zl[96] = ""; int mp = 0, zp = 0;
+  for (int i = 0; i < mc; ++i) { if (i) app_ch(ml, &mp, sizeof(ml), ','); app_int(ml, &mp, sizeof(ml), mins[i]); }
+  for (int i = 0; i < zc; ++i) { if (i) app_ch(zl, &zp, sizeof(zl), ','); app_int(zl, &zp, sizeof(zl), zeros[i]); }
+  n = add(out, n, "1-cells/minterms: %s", mc ? ml : "none");
+  n = add(out, n, "0-cells/maxterms: %s", zc ? zl : "none");
+  if (!mc) return add(out, n, "simplified = 0");
+  if (mc == rows) return add(out, n, "simplified = 1");
+  char sop[112] = ""; int sp = 0;
+  for (int i = 0; i < mc; ++i) {
+    char term[32]; minterm_expr(mins[i], vars, vc, term, sizeof(term));
+    if (i) app_ch(sop, &sp, sizeof(sop), '+');
+    app_str(sop, &sp, sizeof(sop), term);
+  }
+  n = add(out, n, "SOP = %s", sop);
+  Imp chosen[32]; int chc = minimise_rows(mins, mc, 0, 0, chosen, 32);
+  char sim[96]; imp_sop_list(chosen, chc, vars, vc, sim, sizeof(sim));
+  n = add(out, n, "simplified SOP = %s", chc ? sim : "0");
+  if (zc) {
+    char pos[112] = ""; int pp = 0;
+    for (int i = 0; i < zc; ++i) {
+      char term[32]; maxterm_expr(zeros[i], vars, vc, term, sizeof(term));
+      if (i) app_ch(pos, &pp, sizeof(pos), '&');
+      app_str(pos, &pp, sizeof(pos), term);
+    }
+    n = add(out, n, "POS = %s", pos);
+    Imp pchosen[32]; int pc = minimise_rows(zeros, zc, 0, 0, pchosen, 32);
+    char psim[96]; imp_pos_list(pchosen, pc, vars, vc, psim, sizeof(psim));
+    n = add(out, n, "simplified POS = %s", pc ? psim : "1");
+  }
+  return n;
+}
+
 static int eval_minterms(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
   char a[40][48]; int na = args(s, a, 40);
   bool maxmode = starts3(s, "maxterms(", "pos(", "zeros(");
@@ -2595,6 +2650,9 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     strcpy(cmd, tmp);
     return eval_minterms(cmd, out);
   }
+  if (nb >= 1 && (has(t, "truth") || has(t, "output")) && has(t, "bits")) {
+    sprintf(cmd, "truthbits(%s)", bits[0]); return eval_truthbits(cmd, out);
+  }
   if ((has(t, "kmap") || has(t, "karnaugh") || has(t, "minterm") || has(t, "minterms") ||
        has(t, "dontcare") || has(t, "don'tcare") || has(t, "dc")) && make_minterm_cmd(input, cmd, sizeof(cmd))) {
     return eval_minterms(cmd, out);
@@ -2651,6 +2709,7 @@ int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
   n = eval_storage(s, out); if (n) return n;
   n = eval_gate_form(s, out); if (n) return n;
   n = eval_posform(s, out); if (n) return n;
+  n = eval_truthbits(s, out); if (n) return n;
   n = eval_minterms(s, out); if (n) return n;
   n = eval_bool_prove(s, out); if (n) return n;
   n = eval_bool(s, out); if (n) return n;
@@ -2658,5 +2717,5 @@ int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
   n = add(out, 0, "Supported:");
   n = add(out, n, "bin hex den convert twos twosdec twosadd twossub signmag signmagdec fixed fixedenc parity repeatenc repeatdec shift arithshift xorbits andbits orbits notbits hamming checksum checkdigit rpn");
   n = add(out, n, "floatdec floatadd floatsub floatmul floatdiv floatrange normal image sound bitrate transfer transfermb");
-  return add(out, n, "compress dictcompress huffman rle records sqlselect sqlcount hashmod hashlinear addressspace chars ascii unicode stack queue preorder inorder postorder dijkstra fsm fsmout binarysearch bubblesort selectionsort mergesort bool truth minterms maxterms kmap kmapdc posform nandform norform");
+  return add(out, n, "compress dictcompress huffman rle records sqlselect sqlcount hashmod hashlinear addressspace chars ascii unicode stack queue preorder inorder postorder dijkstra fsm fsmout binarysearch bubblesort selectionsort mergesort bool truth truthbits minterms maxterms kmap kmapdc posform nandform norform");
 }
