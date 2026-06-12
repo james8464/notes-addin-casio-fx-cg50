@@ -1,5 +1,24 @@
 # Checkpoint
 
+## 2026-06-12 CASP3 Impact Solve Slice
+
+Completed:
+- Added `impactsolve(...)` / `collisionsolve(...)` / `restitutionsolve(...)` for final velocities from masses, initial velocities, and coefficient of restitution.
+- Output shows conservation of momentum, restitution equation, substitution, and final velocities.
+- Added labelled free-text dispatch for `m1=... u1=... m2=... u2=... e=...`.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CASP3 Paper 3 mechanics support.
+- Did not touch CAS Pure, CSCALC behavior, NOTES, UI/menu/status code.
+
 ## 2026-06-12 CSCALC Address Space Slice
 
 Completed:

@@ -332,6 +332,16 @@ static int eval_mech(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     n = add(out, n, "e = speed of separation / speed of approach");
     return add(out, n, "e = (%.6g-%.6g)/(%.6g-%.6g) = %.6g", v2, v1, u1, u2, (v2-v1)/(u1-u2));
   }
+  if (starts3(s, "impactsolve(", "collisionsolve(", "restitutionsolve(") && na >= 5) {
+    double m1=num(a[0]), u1=num(a[1]), m2=num(a[2]), u2=num(a[3]), e=num(a[4]);
+    double sep = e*(u1-u2), before = m1*u1 + m2*u2;
+    double v1 = (before - m2*sep)/(m1+m2), v2 = v1 + sep;
+    int n = add(out, 0, "Use momentum and Newton's law of restitution.");
+    n = add(out, n, "m1u1 + m2u2 = m1v1 + m2v2");
+    n = add(out, n, "v2 - v1 = e(u1-u2) = %.6g", sep);
+    n = add(out, n, "substitute into momentum: %.6g = %.6g v1 + %.6g(v1+%.6g)", before, m1, m2, sep);
+    return add(out, n, "v1 = %.10g, v2 = %.10g", v1, v2);
+  }
   if (starts3(s, "vector(", "resultant(", "components(") && na >= 2) {
     double x=num(a[0]), y=num(a[1]), mag=root(x*x+y*y);
     int n = add(out, 0, "Resolve into perpendicular components.");
@@ -736,6 +746,15 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if ((has(t, "workdone") || has(t, "work")) && nv >= 2) {
     sprintf(cmd, "work(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
+  }
+  if ((has(t, "restitution") || has(t, "collision") || has(t, "impact")) && nv >= 5) {
+    double m1=0,u1=0,m2=0,u2=0,e=0;
+    if (label_num(input,"m1",&m1) && label_num(input,"u1",&u1) && label_num(input,"m2",&m2) && label_num(input,"u2",&u2) && label_num(input,"e",&e)) {
+      sprintf(cmd, "impactsolve(%.10g,%.10g,%.10g,%.10g,%.10g)", m1, u1, m2, u2, e); return eval_mech(cmd, out);
+    }
+    if (has(t, "coefficient") || has(t, "given") || has(t, "find")) {
+      sprintf(cmd, "impactsolve(%.10g,%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3], v[4]); return eval_mech(cmd, out);
+    }
   }
   if ((has(t, "restitution") || has(t, "collision") || has(t, "impact")) && nv >= 4) {
     sprintf(cmd, "restitution(%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3]); return eval_mech(cmd, out);

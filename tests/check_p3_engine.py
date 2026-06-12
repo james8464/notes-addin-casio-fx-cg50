@@ -65,6 +65,8 @@ def main():
     require("kinetic energy mass 2 speed 5 height 3", ["KE = 1/2", "25 J", "GPE"])
     require("restitution(5,-2,1,3)", ["restitution", "speed of separation"])
     require("collision restitution u1 5 u2 -2 v1 1 v2 3", ["restitution", "speed of separation"])
+    require("impactsolve(2,5,3,1,0.5)", ["momentum and Newton", "v2 - v1 = e(u1-u2) = 2", "v1 = 1.4, v2 = 3.4"])
+    require("collision find velocities m1=2 u1=5 m2=3 u2=1 e=0.5", ["momentum and Newton", "substitute into momentum", "v1 = 1.4"])
     require("vector(3,4)", ["sqrt", "|R|", "5"])
     require("resolve(20,30)", ["Resolve the force", "20 cos(30)", "20 sin(30)", "components"])
     require("resolve force 20 angle 30 into components", ["Resolve the force", "20 cos(30)", "20 sin(30)"])
