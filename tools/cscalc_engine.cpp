@@ -223,6 +223,27 @@ static bool scan_before_word_num(const char *s, const char *word, double *v) {
   return false;
 }
 
+static bool scan_bit_width_before_label(const char *s, const char *label, double *v) {
+  const char *p = strstr(s, label);
+  if (!p) return false;
+  const char *q = p - 1;
+  while (q >= s && *q == ',') --q;
+  const char *endword = q + 1;
+  while (q >= s && isalpha((unsigned char)*q)) --q;
+  const char *word = q + 1;
+  if (!((endword - word == 3 && strncmp(word, "bit", 3) == 0) ||
+        (endword - word == 4 && strncmp(word, "bits", 4) == 0))) return false;
+  while (q >= s && (*q == ',' || *q == '-')) --q;
+  const char *endnum = q + 1;
+  while (q >= s && (isdigit((unsigned char)*q) || *q == '.')) --q;
+  if (endnum <= q + 1) return false;
+  char b[32]; int len = (int)(endnum - (q + 1));
+  if (len <= 0 || len >= (int)sizeof(b)) return false;
+  memcpy(b, q + 1, len); b[len] = 0;
+  *v = read_num(b);
+  return true;
+}
+
 static bool label_num(const char *s, const char *name, double *v) {
   int nl = (int)strlen(name);
   for (int i = 0; s && s[i]; ++i) {
@@ -3249,6 +3270,15 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     double sh = v[nv-1]; scan_after_word_num(t, "by", &sh);
     sprintf(cmd, "arithshift(%s,%s,%lld)", bits[0], has(t, "right") ? "right" : "left", (long long)sh); return eval_binary_arith(cmd, out);
   }
+  if (tc && !has(t, "fixed") && nv >= 2 && (has(t, "encode") || has(t, "convert")) && (has(t, "binary") || has(t, "bit"))) {
+    double bw = 0; long long bitsw = (long long)v[1], val = (long long)v[0];
+    if ((scan_before_word_num(t, "bit", &bw) || scan_before_word_num(t, "bits", &bw)) && bw > 0) {
+      bitsw = (long long)bw;
+      for (int i = 0; i < nv; ++i) if ((long long)v[i] != bitsw) { val = (long long)v[i]; break; }
+    }
+    if ((has(t, "minus") || has(t, "negative")) && val > 0) val = -val;
+    sprintf(cmd, "twos(%lld,%lld)", val, bitsw); return eval_twos(cmd, out);
+  }
   if (tc && nb >= 1 && (has(t, "decode") || has(t, "denary") || has(t, "decimal") || has(t, "value"))) {
     sprintf(cmd, "twosdec(%s)", bits[0]); return eval_twos(cmd, out);
   }
@@ -3380,8 +3410,15 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if (tc && nb >= 2 && (has(t, "add") || has(t, "sum") || has(t, "plus"))) {
     sprintf(cmd, "twosadd(%s,%s)", bits[0], bits[1]); return eval_twos(cmd, out);
   }
-  if (tc && nv >= 2 && nb == 0) {
+  if (tc && nv >= 2 && !(has(t, "decode") || has(t, "denary") || has(t, "decimal") ||
+                          has(t, "add") || has(t, "sum") || has(t, "plus") ||
+                          has(t, "subtract") || has(t, "minus,") || has(t, "takeaway"))) {
     long long val = (long long)v[0], bitsw = (long long)v[1];
+    double bw = 0;
+    if ((scan_before_word_num(t, "bit", &bw) || scan_before_word_num(t, "bits", &bw)) && bw > 0) {
+      bitsw = (long long)bw;
+      for (int i = 0; i < nv; ++i) if ((long long)v[i] != bitsw) { val = (long long)v[i]; break; }
+    }
     if ((has(t, "minus") || has(t, "negative")) && !has(t, "subtract") && val > 0) val = -val;
     sprintf(cmd, "twos(%lld,%lld)", val, bitsw); return eval_twos(cmd, out);
   }
@@ -3493,7 +3530,14 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     sprintf(cmd, "floatrange(%lld,%lld)", (long long)v[0], (long long)v[1]); return eval_float(cmd, out);
   }
   if ((has(t, "closest") || has(t, "nearest")) && (has(t, "float") || has(t, "floating") || has(t, "representable")) && nv >= 3) {
-    sprintf(cmd, "floatnearest(%.10g,%lld,%lld)", v[0], (long long)v[1], (long long)v[2]); return eval_float(cmd, out);
+    double value=v[0], mb=v[1], eb=v[2], tmp=0;
+    bool hM=scan_bit_width_before_label(t, "mantissa", &tmp) || scan_before_word_num(t, "mantissa", &tmp); if (hM) mb = tmp;
+    bool hE=scan_bit_width_before_label(t, "exponent", &tmp) || scan_before_word_num(t, "exponent", &tmp); if (hE) eb = tmp;
+    if (hM || hE) for (int i=0; i<nv; ++i) {
+      if ((hM && (long long)v[i] == (long long)mb) || (hE && (long long)v[i] == (long long)eb)) continue;
+      value = v[i];
+    }
+    sprintf(cmd, "floatnearest(%.10g,%lld,%lld)", value, (long long)mb, (long long)eb); return eval_float(cmd, out);
   }
   if ((has(t, "bits") || has(t, "bit")) && has(t, "mantissa") &&
       (has(t, "add") || has(t, "added") || has(t, "need") || has(t, "needed") || has(t, "exact")) && nv >= 3) {

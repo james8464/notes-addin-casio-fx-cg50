@@ -260,6 +260,7 @@ static bool prev_word_num(const char *s, const char *name, double *v) {
     char b[32]; int len = end - k;
     if (len <= 0 || len >= (int)sizeof(b)) continue;
     memcpy(b, s + k + 1, len); b[len] = 0;
+    if (b[0] != '-' && !isdigit((unsigned char)b[0])) continue;
     *v = read_num(b);
     return true;
   }
@@ -2386,7 +2387,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if (has(t, "normal") && (has(t, "find") || has(t, "given") || has(t, "parameters")) &&
       (has(t, "meansd") || has(t, "meanandsd") ||
-      (has(t, "mean") && (has(t, "standarddeviation") || has(t, "sd"))) ||
+      (has(t, "mean") && (has(t, "standarddeviation") || (has(t, "standard") && has(t, "deviation")) || has(t, "sd"))) ||
       has(t, "parameters")) && nv >= 4) {
     sprintf(cmd, "normalparams(%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3]); return eval_stats(cmd, out);
   }

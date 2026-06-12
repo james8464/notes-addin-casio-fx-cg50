@@ -2606,6 +2606,36 @@ Drift check:
 - Did not touch CAS Pure behavior, CSCALC source, NOTES source, menus, or shared UI/status code.
 - Active goal remains open for future source/probe-driven hardening.
 
+## 2026-06-12 Beam, Normal Parameter, Float Width Slice
+
+Completed:
+- Fixed CASP3 preceding-number parser so non-numeric prose before keywords cannot become `0`.
+- Fixed CASP3 beam reaction wording for `A load of ... placed ... from A`.
+- Broadened CASP3 normal-parameter free-text routing for separated `standard deviation` wording.
+- Fixed CSCALC `N-bit mantissa` / `N-bit exponent` parsing for nearest-representable floating-point prompts.
+- Fixed CSCALC two's-complement encode routing for `convert denary -13 to 8 bit ... binary` and similar bit-width wording without stealing fixed-point prompts.
+- Added regression tests and rebuilt calculator files.
+
+Evidence:
+- Fresh probes passed for uniform beam reactions, normal mean/sd from two probabilities, nearest representable float with bit-width prose, and two's-complement encode with bit-width prose.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 183464 bytes`
+  - `CSCALC.g3a: 160960 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Still inside CASP3/CSCALC free-text parser hardening and generated calculator outputs.
+- Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for future source/probe-driven hardening.
+
 ## 2026-06-12 Impulse, Work-Energy, Poisson Rate, Storage Wording Slice
 
 Completed:
