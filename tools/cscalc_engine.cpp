@@ -3745,6 +3745,14 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     else sprintf(cmd, "%s(%s,%s,%s,%s)", op, bits[0], bits[1], bits[2], bits[3]);
     return eval_float(cmd, out);
   }
+  if ((has(t, "normalised") || has(t, "normalized") || has(t, "normalise") || has(t, "normalize")) &&
+      (has(t, "float") || has(t, "floating") || has(t, "mantissa") || nb >= 2) &&
+      nb >= 1 && !(has(t, "decode") || has(t, "denary") || has(t, "decimal") ||
+                   has(t, "represent") || has(t, "representable"))) {
+    if (starts(t, "is") || has(t, "check") || has(t, "?")) sprintf(cmd, "normal(%s)", bits[0]);
+    else sprintf(cmd, "floatnorm(%s,%s)", bits[0], nb >= 2 ? bits[1] : "0");
+    return eval_float(cmd, out);
+  }
   if ((has(t, "subnet") || has(t, "ipv4") || has(t, "cidr") || strchr(input, '/')) && cidr_prefix_from_text(input, &prefix)) {
     unsigned long ip = 0; int oct[4];
     if ((has(t, "network") || has(t, "broadcast")) && ipv4_from_text(input, &ip, oct)) {
@@ -3920,13 +3928,15 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     if (hr) rate *= 1000000000.0;
     else if (scan_before_word_num(t, "mhz", &rate)) { hr = true; rate *= 1000000.0; }
     else if (scan_before_word_num(t, "hz", &rate)) { hr = true; }
-    bool hi = scan_before_word_num(t, "million", &instr);
-    if (hi) instr *= 1000000.0;
+    bool hi = scan_before_word_num(t, "billion", &instr);
+    if (hi) instr *= 1000000000.0;
+    else if (scan_before_word_num(t, "million", &instr)) { hi = true; instr *= 1000000.0; }
+    else if (scan_before_word_num(t, "thousand", &instr)) { hi = true; instr *= 1000.0; }
     else hi = scan_before_word_num(t, "instructions", &instr) || scan_before_word_num(t, "instruction", &instr);
     bool hc = scan_before_word_num(t, "cycles", &cpi) || scan_before_word_num(t, "cycle", &cpi) ||
               scan_after_word_num(t, "cpi", &cpi) || scan_near_after_word_num(t, "cpi", &cpi);
     if (!hr) rate = v[0] * (has(t, "ghz") ? 1000000000.0 : has(t, "mhz") ? 1000000.0 : 1.0);
-    if (!hi) instr = v[1] * (has(t, "million") ? 1000000.0 : 1.0);
+    if (!hi) instr = v[1] * (has(t, "billion") ? 1000000000.0 : has(t, "million") ? 1000000.0 : has(t, "thousand") ? 1000.0 : 1.0);
     if (!hc) cpi = v[2];
     double cycles = instr * cpi, time = rate ? cycles / rate : 0;
     int n = add(out, 0, "Execution time = instructions * cycles per instruction / clock rate.");
@@ -5372,6 +5382,34 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     int n = add(out, 0, "Modulo checksum: add the decimal digits/blocks, then take the remainder.");
     n = add(out, n, "sum = %d", sum);
     return add(out, n, "checksum = %d mod %d = %d", sum, mod, rem);
+  }
+  if ((has(t, "checkdigit") || (has(t, "check") && has(t, "digit"))) &&
+      (has(t, "modulo") || has(t, "mod")) && nv >= 2) {
+    int mod = 11; double md = 0;
+    if (scan_after_word_num(t, "modulo", &md) || scan_after_word_num(t, "mod", &md)) mod = (int)md;
+    char digits[40]; digits[0] = 0; int best = 0;
+    for (int i = 0; input[i]; ++i) {
+      if (!isdigit((unsigned char)input[i])) continue;
+      int j = i, k = 0; char tmp[40];
+      while (isdigit((unsigned char)input[j]) && k + 1 < (int)sizeof(tmp)) tmp[k++] = input[j++];
+      tmp[k] = 0;
+      long long val = 0;
+      for (int q = 0; tmp[q]; ++q) val = val * 10 + (tmp[q] - '0');
+      if (k > best && val != mod) { strcpy(digits, tmp); best = k; }
+      i = j;
+    }
+    if (best > 0) {
+      int sum = 0, n = add(out, 0, "Use weighted modulo check digit.");
+      n = add(out, n, "Use weights %d down to 2 for the existing digits.", best + 1);
+      for (int i = 0; i < best; ++i) {
+        int d = digits[i] - '0', w = best + 1 - i;
+        sum += d * w;
+      }
+      int rem = mod ? sum % mod : 0;
+      int digit = mod ? (mod - rem) % mod : 0;
+      n = add(out, n, "weighted sum = %d, remainder on division by %d is %d", sum, mod, rem);
+      return add(out, n, "check digit = (%d-%d) mod %d = %d", mod, rem, mod, digit);
+    }
   }
   if (has(t, "checksum") && nb >= 1) {
     int p = sprintf(cmd, "checksum(%d", (int)strlen(bits[0]));

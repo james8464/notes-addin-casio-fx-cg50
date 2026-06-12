@@ -1,5 +1,40 @@
 # Checkpoint
 
+## 2026-06-12 Normal Notation, Inverse Binomial, Varacc, And CS Timing Slice
+
+Completed:
+- Added CASP3 direct `X~N(mu,sigma^2)` probability parsing, including intervals and central intervals where a bound can equal the variance numerically.
+- Added CASP3 inverse cumulative binomial working for prompts such as `smallest k such that P(X<=k)>0.95`.
+- Fixed CASP3 variable-acceleration wording with `at time n`, while keeping plain constant-acceleration prompts on SUVAT.
+- Added `was` as a general P3 numeric connector, fixing prompts such as `variance was 9`.
+- Added CASP3 variance-after-removal working when the removed value and old variance are described in prose.
+- Added CSCALC CPU timing support for `billion` and `thousand` instruction magnitude words.
+- Added CSCALC free-text modulo check-digit working.
+- Fixed CSCALC normalised floating-point questions so `Is ... normalised?` gives a yes/no normalisation check instead of a renormalisation trace.
+- Rebuilt calculator-ready outputs.
+
+Evidence:
+- Targeted probes for the above cases: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 438328 bytes`
+  - `CSCALC.g3a: 242296 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: 18178 bytes`
+
+Drift check:
+- Stayed inside CASP3/CSCALC free-text engines, tests, checkpoint, and generated calculator files.
+- Did not alter Pure CAS, menus, NOTES source, or shared UI/status code.
+- Active goal remains open for more unseen-case hardening.
+
 ## 2026-06-12 CS Bit Width And P3 Inverse Stats Slice
 
 Completed:

@@ -324,6 +324,11 @@ static bool word_num(const char *s, const char *name, double *v) {
       q += 3;
       while (s[q] == ' ' || s[q] == '\t' || s[q] == '=' || s[q] == ':' || s[q] == ',') ++q;
     }
+    if (tolower((unsigned char)s[q]) == 'w' && tolower((unsigned char)s[q+1]) == 'a' &&
+        tolower((unsigned char)s[q+2]) == 's' && !isalnum((unsigned char)s[q+3])) {
+      q += 3;
+      while (s[q] == ' ' || s[q] == '\t' || s[q] == '=' || s[q] == ':' || s[q] == ',') ++q;
+    }
     if (s[q] != '-' && !isdigit((unsigned char)s[q])) continue;
     *v = read_num(s + q);
     return true;
@@ -2259,6 +2264,45 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   char c[192]; clean(input, c, sizeof(c));
   double v[12]; int nv = scan_nums(t, v, 12);
   char cmd[160];
+
+  if ((has(c, "~n(") || has(c, "x~n(") || has(c, "n(") || has(c, "followsn(") || has(c, "distributedn(")) &&
+      !has(c, "poisson") && !has(t, "poisson") &&
+      (has(c, "p(") || has(t, "probability") || has(c, "<x<")) && nv >= 3) {
+    double mu=0, second=0;
+    if (!dist2(c, "n(", &mu, &second)) { mu = v[0]; second = v[1]; }
+    double var = has(c, "^2") ? second * second : second;
+    double u[3]; int nu = 0;
+    for (int i = 0; i < nv && nu < 3; ++i) {
+      if (near_num(v[i], mu) || near_num(v[i], second)) continue;
+      if (has(c, "^2") && near_num(v[i], 2)) continue;
+      u[nu++] = v[i];
+    }
+    if ((has(c, "-a<x<") || has(c, "+a") || has(c, "central")) && nu >= 1) {
+      double prob = 0;
+      for (int i = 0; i < nu; ++i) if (u[i] > 0 && u[i] < 1) { prob = u[i]; break; }
+      if (prob > 0) {
+        double sd = root(var);
+        double left = (1 + prob) / 2.0;
+        double z = inv_norm_left(left);
+        int n = add(out, 0, "For a central normal interval, split the outside probability equally.");
+        n = add(out, n, "P(mu-a<X<mu+a)=%.10g", prob);
+        n = add(out, n, "area to the left of mu+a = (1+%.10g)/2 = %.10g", prob, left);
+        n = add(out, n, "z = InvNorm(%.10g) = %.10g", left, z);
+        return add(out, n, "a = z*sigma = %.10g*%.10g = %.10g", z, sd, z*sd);
+      }
+    }
+    if (((has(c, "p(") && (has(c, "<x<") || has(c, "x<"))) || has(c, "between")) && nu >= 2) {
+      double lo = u[0], hi = u[1];
+      if (lo > hi) { double tmp = lo; lo = hi; hi = tmp; }
+      sprintf(cmd, "normalprobvar(%.10g,%.10g,%.10g,%.10g)", lo, hi, mu, var);
+      return eval_stats(cmd, out);
+    }
+    int tail = prob_tail(c, t);
+    if (tail && nu >= 1) {
+      sprintf(cmd, "normaltailvar(%.10g,%.10g,%.10g,%d)", u[0], mu, var, tail > 0 ? 1 : -1);
+      return eval_stats(cmd, out);
+    }
+  }
   if ((has(t, "workenergy") || (has(t, "work") && has(t, "energy"))) &&
       (has(t, "braking") || has(t, "brake") || has(t, "stopping")) &&
       (has(t, "force") || has(t, "resistance")) && (has(t, "rest") || has(t, "stopping")) && nv >= 3) {
@@ -2623,11 +2667,13 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     double A=0, B=0, C=0, u=0, s0=0, time=0, t0=0;
     bool parsed_acc = parse_poly_after_word(input, "acceleration", &A, &B, &C);
     if (!parsed_acc && has(c, "a=")) parsed_acc = parse_velocity_quad(input, &A, &B, &C);
+    if (parsed_acc && near_num(A, 0) && near_num(B, 0) && !has(c, "a=")) parsed_acc = false;
     bool hu = word_num(input, "velocity", &u) || label_num(input, "v", &u) || label_num(input, "u", &u);
     word_num(input, "displacement", &s0) || word_num(input, "position", &s0) ||
     label_num(input, "s", &s0) || label_num(input, "s0", &s0);
     double tv[6]; int ntv = scan_t_values(input, tv, 6);
-    bool ht = last_label_num(input, "t", &time) || word_num(input, "after", &time);
+    bool ht = last_label_num(input, "t", &time) || word_num(input, "after", &time) ||
+              word_num(input, "time", &time) || word_num_with_t(input, "at", &time);
     bool ht0 = word_num_with_t(input, "when", &t0) || word_num_with_t(input, "initially", &t0);
     if (ntv >= 2 && !ht0) { t0 = tv[0]; ht0 = true; }
     if (ntv >= 2) { time = tv[ntv-1]; ht = true; }
@@ -3087,6 +3133,41 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     else if (has(c, "atleast") || has(c, "greaterthanorequal")) tail = 1;
     else if (has(c, "lessthanorequal") || has(c, "atmost")) tail = -1;
     else if (has(c, "lessthan") || has(t, "fewer")) tail = -2;
+    if ((has(t, "smallest") || has(t, "least") || has(t, "minimum") ||
+         has(t, "largest") || has(t, "greatest") || has(t, "maximum")) &&
+        (has(c, "p(") || has(t, "probability") || has(t, "such")) && nv >= 3) {
+      double q = -1;
+      for (int i = 0; i < nv; ++i) {
+        if (near_num(v[i], Nd) || near_num(v[i], pv)) continue;
+        if (v[i] > 0 && v[i] < 1) q = v[i];
+      }
+      if (q > 0) {
+        bool upper = has(c, "p(x>=k") || has(c, "p(x>k") || has(t, "upper") || has(t, "atleast");
+        bool ge = has(c, ">=") || has(c, ">") || has(t, "exceeds") || has(t, "greater");
+        int best = upper ? N : 0; double prob = 0;
+        if (!upper) {
+          double cum = 0;
+          for (int k = 0; k <= N; ++k) {
+            cum += binomp(N, pv, k);
+            if ((ge && cum > q) || (!ge && cum >= q)) { best = k; prob = cum; break; }
+          }
+          int n = add(out, 0, "Let X ~ B(%d, %.6g).", N, pv);
+          n = add(out, n, "Find the first k where the cumulative probability passes %.10g.", q);
+          n = add(out, n, "P(X<=%d) = %.10g", best, prob);
+          return add(out, n, "k = %d", best);
+        } else {
+          double cum = 0;
+          for (int k = N; k >= 0; --k) {
+            cum += binomp(N, pv, k);
+            if ((ge && cum > q) || (!ge && cum >= q)) { best = k; prob = cum; break; }
+          }
+          int n = add(out, 0, "Let X ~ B(%d, %.6g).", N, pv);
+          n = add(out, n, "Find the boundary where the upper-tail probability passes %.10g.", q);
+          n = add(out, n, "P(X>=%d) = %.10g", best, prob);
+          return add(out, n, "k = %d", best);
+        }
+      }
+    }
     if ((has(t, "hypothesis") || has(t, "test")) && (has(t, "observed") || has(c, "x="))) {
       double obs = 0, alpha = 0.05;
       bool ho = word_num(input, "observed", &obs) || label_num(input, "x", &obs);
@@ -3214,7 +3295,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
 	    int tail = prob_tail(c, t);
     double u[3]; int nu = 0;
     for (int i = 0; i < nv && nu < 3; ++i) {
-      if (near_num(v[i], mu) || near_num(v[i], second) || near_num(v[i], var)) continue;
+      if (near_num(v[i], mu) || near_num(v[i], second)) continue;
 	      if (has(c, "^2") && near_num(v[i], 2)) continue;
 	      u[nu++] = v[i];
 	    }
@@ -7602,6 +7683,34 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
 	      !has(t, "normal") && !has(t, "binom") && !has(t, "poisson")) {
 	    double count = v[0], mean = v[1], value = v[nv-1];
 	    bool adding = has(t, "added") || has(t, "add");
+	    if ((has(t, "variance") || has(t, "standarddeviation") || (has(t, "standard") && has(t, "deviation")) || has(t, "sd")) && nv >= 4) {
+	      double old_var = 0, labelled_value = 0;
+	      bool hv = word_num(input, "variance", &old_var) || word_num(input, "sd", &old_var) ||
+	                word_num(input, "standarddeviation", &old_var);
+	      bool hval = word_num(input, "value", &labelled_value);
+	      if (hval) value = labelled_value;
+	      if (hv && !near_num(old_var, value)) {
+	        double old_total = count * mean;
+	        double new_total = adding ? old_total + value : old_total - value;
+	        double new_count = adding ? count + 1 : count - 1;
+	        double new_mean = new_count ? new_total/new_count : 0;
+	        if (has(t, "standarddeviation") || (has(t, "standard") && has(t, "deviation")) || has(t, "sd")) old_var *= old_var;
+	        double old_sx2 = count * (old_var + mean*mean);
+	        double new_sx2 = adding ? old_sx2 + value*value : old_sx2 - value*value;
+	        double variance = new_count ? new_sx2/new_count - new_mean*new_mean : 0;
+	        int n = add(out, 0, "Use total = number of values * mean.");
+	        n = add(out, n, "old total = %.10g*%.10g = %.10g", count, mean, old_total);
+	        n = add(out, n, adding ? "new total = %.10g + %.10g = %.10g" : "new total = %.10g - %.10g = %.10g", old_total, value, new_total);
+	        n = add(out, n, adding ? "new number of values = %.10g + 1 = %.10g" : "new number of values = %.10g - 1 = %.10g", count, new_count);
+	        n = add(out, n, "new mean = %.10g/%.10g = %.10g", new_total, new_count, new_mean);
+	        n = add(out, n, "Use variance = sum x^2/n - mean^2, so sum x^2 = n(variance+mean^2).");
+	        n = add(out, n, "old sum x^2 = %.10g*(%.10g+%.10g^2) = %.10g", count, old_var, mean, old_sx2);
+	        n = add(out, n, adding ? "new sum x^2 = %.10g + %.10g^2 = %.10g" : "new sum x^2 = %.10g - %.10g^2 = %.10g", old_sx2, value, new_sx2);
+	        n = add(out, n, "variance = %.10g/%.10g - %.10g^2 = %.10g", new_sx2, new_count, new_mean, variance);
+	        if (has(t, "standarddeviation") || (has(t, "standard") && has(t, "deviation")) || has(t, "sd")) return add(out, n, "sd = sqrt(variance) = %.10g", root(variance));
+	        return n;
+	      }
+	    }
 	    double old_total = count * mean;
 	    double new_total = adding ? old_total + value : old_total - value;
 	    double new_count = adding ? count + 1 : count - 1;
