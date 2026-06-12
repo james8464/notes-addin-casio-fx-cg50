@@ -108,6 +108,28 @@ static bool scan_spaced_bit_column(const char *s, char *buf, int cap) {
   return k >= 2;
 }
 
+static int scan_spaced_bit_groups(const char *s, char g[][48], int maxg) {
+  int n = 0, k = 0;
+  for (int i = 0; s[i] && n < maxg;) {
+    while (s[i] == ',') ++i;
+    if ((s[i] == '0' || s[i] == '1') && (s[i+1] == 0 || s[i+1] == ',')) {
+      if (k < 47) g[n][k++] = s[i];
+      ++i;
+    } else {
+      if (k > 1) { g[n][k] = 0; ++n; }
+      k = 0;
+      while (s[i] && s[i] != ',') ++i;
+    }
+  }
+  if (k > 1 && n < maxg) { g[n][k] = 0; ++n; }
+  return n;
+}
+
+static void join_bits(char b[][48], int n, char *out, int cap) {
+  out[0] = 0;
+  for (int i = 0; i < n && (int)strlen(out) + (int)strlen(b[i]) + 1 < cap; ++i) strcat(out, b[i]);
+}
+
 static bool scan_hex_token(const char *s, char *buf, int cap) {
   for (int i = 0; s[i];) {
     if (!isxdigit((unsigned char)s[i])) { ++i; continue; }
@@ -642,6 +664,28 @@ static int conv(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN], char a[][48], int n
 
 static int eval_base(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
   char a[4][48]; int na = args(s, a, 4);
+  if (starts2(s, "bcd(", "bcdenc(") && na == 1) {
+    int n = add(out, 0, "BCD encodes each denary digit using 4 bits.");
+    char all[96]; all[0] = 0;
+    for (int i = 0; a[0][i]; ++i) if (isdigit((unsigned char)a[0][i])) {
+      char b[8]; to_bin(a[0][i] - '0', 4, b);
+      n = add(out, n, "%c -> %s", a[0][i], b);
+      if (strlen(all) + 5 < sizeof(all)) strcat(all, b);
+    }
+    return add(out, n, "BCD = %s", all);
+  }
+  if (starts3(s, "bcddec(", "bcddecode(", "denbcd(") && na == 1) {
+    int n = add(out, 0, "Decode BCD in groups of 4 bits.");
+    char dec[32]; int d = 0;
+    for (int i = 0; a[0][i] && a[0][i+3] && d + 1 < (int)sizeof(dec); i += 4) {
+      char q[5]; memcpy(q, a[0] + i, 4); q[4] = 0;
+      int v = bin_unsigned(q);
+      n = add(out, n, "%s -> %d", q, v);
+      dec[d++] = (char)('0' + v);
+    }
+    dec[d] = 0;
+    return add(out, n, "denary = %s", dec);
+  }
   if (starts3(s, "bin(", "binary(", "tobin(") && na == 1) {
     long long v = parse_int(a[0]); char b[65]; int w = v < 256 ? 8 : 16; to_bin(v, w, b);
     int n = add(out, 0, "Repeated division by 2, read remainders upwards.");
@@ -2641,6 +2685,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   double v[8]; int nv = scan_nums(t, v, 8);
   char bits[4][48]; int nb = scan_bits(t, bits, 4);
   char bitcol[65]; bool has_bitcol = scan_spaced_bit_column(t, bitcol, sizeof(bitcol));
+  char bitgrp[4][48]; int nbg = scan_spaced_bit_groups(t, bitgrp, 4);
   char hex_tok[32]; bool has_hex_tok = scan_hex_token(t, hex_tok, sizeof(hex_tok));
   char cmd[160];
   double width=0, height=0, depth=0;
@@ -2805,6 +2850,16 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   bool tc = has(t, "twos") || (has(t, "two") && has(t, "complement"));
   bool sm = has(t, "signmagnitude") || (has(t, "sign") && has(t, "magnitude"));
+  if (has(t, "bcd") && (has(t, "decode") || has(t, "denary") || has(t, "decimal")) && (nb >= 1 || nbg >= 1)) {
+    char all[96];
+    if (nb >= 1) join_bits(bits, nb, all, sizeof(all));
+    else join_bits(bitgrp, nbg, all, sizeof(all));
+    sprintf(cmd, "bcddec(%s)", all);
+    return eval_base(cmd, out);
+  }
+  if (has(t, "bcd") && nv >= 1) {
+    sprintf(cmd, "bcd(%lld)", (long long)v[0]); return eval_base(cmd, out);
+  }
   if ((has(t, "hex") || has(t, "hexadecimal")) && has_hex_tok && has(t, "binary")) {
     sprintf(cmd, "convert(%s,16,2)", hex_tok); return eval_base(cmd, out);
   }
@@ -2816,6 +2871,12 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   if ((has(t, "denary") || has(t, "decimal")) && nb >= 1) {
     sprintf(cmd, "den(%s,2)", bits[0]); return eval_base(cmd, out);
+  }
+  if (tc && nbg >= 2 && (has(t, "add") || has(t, "sum") || has(t, "plus"))) {
+    sprintf(cmd, "twosadd(%s,%s)", bitgrp[0], bitgrp[1]); return eval_twos(cmd, out);
+  }
+  if ((has(t, "add") || has(t, "sum") || has(t, "plus")) && nbg >= 2 && (has(t, "binary") || has(t, "bits"))) {
+    sprintf(cmd, "binadd(%s,%s,%d)", bitgrp[0], bitgrp[1], (int)strlen(bitgrp[0])); return eval_binary_arith(cmd, out);
   }
   if (has(t, "binary") && !has(t, "fixed") && !tc && !sm && nv >= 1 && nb == 0 &&
       !(has(t, "bitsneeded") || has(t, "bitwidth") || (has(t, "minimum") && has(t, "bits")) ||
@@ -2861,6 +2922,9 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   if (tc && nv >= 2 && nb == 0) {
     sprintf(cmd, "twos(%lld,%lld)", (long long)v[0], (long long)v[1]); return eval_twos(cmd, out);
+  }
+  if ((has(t, "add") || has(t, "sum") || has(t, "plus")) && nbg >= 2 && (has(t, "binary") || has(t, "bits"))) {
+    sprintf(cmd, "binadd(%s,%s,%d)", bitgrp[0], bitgrp[1], (int)strlen(bitgrp[0])); return eval_binary_arith(cmd, out);
   }
   if ((has(t, "repetition") || has(t, "repeat") || has(t, "majorityvote") || has(t, "majority")) && nb >= 1) {
     int group = 3;

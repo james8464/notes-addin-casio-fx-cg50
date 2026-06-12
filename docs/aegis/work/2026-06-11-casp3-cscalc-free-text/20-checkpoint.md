@@ -1,5 +1,24 @@
 # Checkpoint
 
+## 2026-06-12 CSCALC BCD And Spaced Binary Arithmetic Slice
+
+Completed:
+- Added BCD encode/decode working lines via `bcd(...)` and `bcddec(...)`.
+- Routed free-text prompts like `convert 39 to BCD` and `decode BCD 0011 1001`.
+- Fixed spaced binary addition prompts like `add 1 0 1 1 and 0 1 1 0 in binary`.
+- Added regression tests and rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CSCALC AQA Paper 2 number-system/free-text support.
+- Did not touch CAS Pure behavior, CASP3 logic, NOTES, or shared UI/status code.
+
 ## 2026-06-12 CSCALC Spaced Truth-Column Slice
 
 Completed:
