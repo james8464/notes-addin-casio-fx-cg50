@@ -1,5 +1,35 @@
 # Checkpoint
 
+## 2026-06-12 Final PMCC, Mean Update, Boolean, And CPU Timing Slice
+
+Completed:
+- Added CASP3 generic PMCC significance-test fallback when prose gives `n`, `r`, alpha, and tail but no critical value.
+- Added CASP3 mean-after-removal/addition working so these prompts no longer fall into generic `meanvar`.
+- Hardened CSCALC Boolean free-text RHS trimming so prose such as `to a truth table` is not parsed as variables.
+- Fixed CSCALC Boolean XOR law trace to use bounded string construction on host and calculator target.
+- Added CSCALC CPU execution-time working from clock rate, instruction count, and cycles per instruction.
+- Added CSCALC address/data bus memory output in KiB/MiB where relevant.
+- Rebuilt all calculator-ready files.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 352920 bytes`
+  - `CSCALC.g3a: 214456 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Kept Pure CAS stable; this slice only touched CASP3/CSCALC engines, their tests, checkpoint, and generated calculator outputs.
+- Avoided broad code deletion/refactor at finalisation stage because the tested free-text breadth depends on the existing generic route set.
+- Active goal remains open for future unseen-case hardening; current calculator outputs are freshly built and usable.
+
 ## 2026-06-12 Fair-Die Normal Approximation Slice
 
 Completed:

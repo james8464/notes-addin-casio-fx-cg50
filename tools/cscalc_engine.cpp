@@ -2515,7 +2515,12 @@ static bool bool_law_once(const char *expr, char *res, char *law) {
     int p = top_op(e, '^');
     if (p > 0) {
       char a[40], b[40]; memcpy(a, e, p); a[p] = 0; strcpy(b, e + p + 1);
-      sprintf(res, "%s'&%s+%s&%s'", a, b, a, b);
+      int rp = 0; res[0] = 0;
+      app_str(res, &rp, 80, a); app_ch(res, &rp, 80, '\'');
+      app_ch(res, &rp, 80, '&'); app_str(res, &rp, 80, b);
+      app_ch(res, &rp, 80, '+'); app_str(res, &rp, 80, a);
+      app_ch(res, &rp, 80, '&'); app_str(res, &rp, 80, b);
+      app_ch(res, &rp, 80, '\'');
       strcpy(law, "XOR identity"); return true;
     }
   }
@@ -3320,8 +3325,12 @@ static void bool_arg_for_cmd(const char *src, char *dst, int cap) {
 
 static void bool_clean_tail(const char *src, char *dst, int cap) {
   strncpy(dst, src, cap - 1); dst[cap - 1] = 0;
-  const char *cut[] = {"using", "bydemorgan", "demorgan", "demorgans", "law", "method"};
-  for (int i = 0; i < 6; ++i) {
+  const char *cut[] = {
+    "using", "bydemorgan", "demorgan", "demorgans", "law", "method",
+    "toatruthtable", "truth", "table", "astruthtable", "intoatruthtable",
+    "tokmap", "karnaugh", "map", "tosop", "topos", "tonand", "tonor"
+  };
+  for (int i = 0; i < 16; ++i) {
     char *p = strstr(dst, cut[i]);
     if (p) *p = 0;
   }
@@ -3685,7 +3694,32 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     n = add(out, n, "address bus %.0f bits gives 2^%.0f = %.10g addresses", ab, ab, pow2((int)ab));
     n = add(out, n, "data bus width = %.10g bits", db);
     n = add(out, n, "memory size = %.10g*%.10g = %.10g bits", locations, db, bits);
-    return add(out, n, "= %.10g bytes", bytes);
+    n = add(out, n, "= %.10g bytes", bytes);
+    if (bytes >= 1048576.0) return add(out, n, "= %.10g MiB", bytes / 1048576.0);
+    if (bytes >= 1024.0) return add(out, n, "= %.10g KiB", bytes / 1024.0);
+    return n;
+  }
+  if ((has(t, "cpu") || has(t, "processor") || has(t, "clock") || has(t, "ghz") || has(t, "mhz")) &&
+      (has(t, "instruction") || has(t, "instructions")) &&
+      (has(t, "cycle") || has(t, "cycles")) && nv >= 3) {
+    double rate = 0, instr = 0, cpi = 0;
+    bool hr = scan_before_word_num(t, "ghz", &rate);
+    if (hr) rate *= 1000000000.0;
+    else if (scan_before_word_num(t, "mhz", &rate)) { hr = true; rate *= 1000000.0; }
+    else if (scan_before_word_num(t, "hz", &rate)) { hr = true; }
+    bool hi = scan_before_word_num(t, "million", &instr);
+    if (hi) instr *= 1000000.0;
+    else hi = scan_before_word_num(t, "instructions", &instr) || scan_before_word_num(t, "instruction", &instr);
+    bool hc = scan_before_word_num(t, "cycles", &cpi) || scan_before_word_num(t, "cycle", &cpi);
+    if (!hr) rate = v[0] * (has(t, "ghz") ? 1000000000.0 : has(t, "mhz") ? 1000000.0 : 1.0);
+    if (!hi) instr = v[1] * (has(t, "million") ? 1000000.0 : 1.0);
+    if (!hc) cpi = v[2];
+    double cycles = instr * cpi, time = rate ? cycles / rate : 0;
+    int n = add(out, 0, "Execution time = instructions * cycles per instruction / clock rate.");
+    n = add(out, n, "clock rate = %.10g cycles/s", rate);
+    n = add(out, n, "instructions = %.10g", instr);
+    n = add(out, n, "cycles = %.10g*%.10g = %.10g", instr, cpi, cycles);
+    return add(out, n, "time = %.10g/%.10g = %.10g s", cycles, rate, time);
   }
   if (has(t, "cache") && has(t, "block") && nv >= 2) {
     double cache = 0, block = 0, ways = 1, addr = 0;

@@ -441,9 +441,12 @@ def main():
     require("A bitmap image has resolution 1920 x 1080 and file size 6 MiB. Calculate colour depth.", ["6 MiB = 50331648 bits", "pixels = 1920*1080 = 2073600", "colour depth = 50331648/2073600 = 24.27259259 bits per pixel"])
     require("Construct a truth table for A xor B.", ["Truth table for a^b", "A B | F", "simplified = A'B+AB'"])
     require("Construct a truth table for A implies B.", ["Truth table for a>b", "minterms: 0,1,3", "simplified = A'+B"])
+    require("Convert F = A xor B xor C to a truth table.", ["Truth table for a^b^c", "A B C | F", "minterms: 1,2,4,7"])
     require("Using fixed point with 5 bits before the point and 3 bits after, convert -6.375 to two's complement binary.", ["scaled integer = -6.375 * 2^3 = -51", "write -51 in 8-bit two's complement", "fixed point = 11001.101"])
     require("A 20 MB file is compressed by 35 percent. Find the compressed file size.", ["Compressed by 35% means keep 65%", "compressed size = 20*(1-35/100)", "compressed size = 13"])
     require("A file of size 800 KiB is transmitted at 2 Mib/s. Find the time taken.", ["800 KiB = 6553600 bits", "2 Mbit/s = 2000000 bit/s", "time = 6553600/2000000 = 3.2768 s"])
+    require("A 24-bit address bus and 16-bit data bus memory has word addressed memory. Calculate addressable memory in MiB.", ["address bus 24 bits", "memory size = 16777216*16", "= 33554432 bytes", "= 32 MiB"])
+    require("A 3 GHz CPU executes 120 million instructions at 2 cycles per instruction. Calculate execution time.", ["Execution time = instructions * cycles per instruction / clock rate.", "cycles = 120000000*2 = 240000000", "time = 240000000/3000000000 = 0.08 s"])
     require("bool(A+B+C+D+E+F)", ["simplified = F+E+D+C+B+A"])
     print("OK cscalc engine")
 

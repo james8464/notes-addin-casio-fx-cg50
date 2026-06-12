@@ -5199,6 +5199,32 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     int tail = has(t, "positive") || has(t, "upper") ? 1 : (has(t, "negative") || has(t, "lower") ? -1 : 0);
     sprintf(cmd, "corrtest(%.10g,%.10g,%d)", hr ? r : v[0], hc ? crit : v[1], tail); return eval_stats(cmd, out);
   }
+  if ((has(t, "pmcc") || has(t, "correlation") || has(t, "association")) &&
+      (has(t, "test") || has(t, "significant") || has(t, "evidence")) && !has(t, "spearman") && nv >= 2) {
+    double n0=0, r=0, alpha=0.05;
+    bool hn = word_num(input,"sample",&n0) || word_num(input,"sampleof",&n0) || label_num(input,"n",&n0);
+    bool hr = label_num(input,"r",&r);
+    if (!hn) for (int i = 0; i < nv; ++i) if (v[i] > n0 && v[i] >= 3) n0 = v[i];
+    if (!hr) for (int i = 0; i < nv; ++i) if (v[i] >= -1 && v[i] <= 1) { r = v[i]; hr = true; break; }
+    if (word_num(input,"percent",&alpha) || word_num(input,"significance",&alpha)) {
+      if (alpha > 1) alpha /= 100.0;
+    } else {
+      for (int i = 0; i < nv; ++i) if (!near_num(v[i], n0) && !near_num(v[i], r) && v[i] > 1 && v[i] <= 10) { alpha = v[i]/100.0; break; }
+    }
+    int tail = has(t, "positive") || has(t, "greater") || has(t, "upper") ? 1 :
+               has(t, "negative") || has(t, "less") || has(t, "lower") ? -1 : 0;
+    double den = root(1-r*r);
+    double tv = den ? r * root(n0-2) / den : 0;
+    double crit = tail ? (alpha <= 0.01 ? 2.326 : (alpha <= 0.025 ? 1.96 : 1.645))
+                       : (alpha <= 0.01 ? 2.576 : 1.96);
+    bool reject = tail > 0 ? tv > crit : tail < 0 ? tv < -crit : abs_num(tv) > crit;
+    int n = add(out, 0, "H0: rho = 0.");
+    n = add(out, n, tail > 0 ? "H1: rho > 0." : tail < 0 ? "H1: rho < 0." : "H1: rho != 0.");
+    n = add(out, n, "Use t = r*sqrt(n-2)/sqrt(1-r^2).");
+    n = add(out, n, "t = %.6g*sqrt(%.0f-2)/sqrt(1-%.6g^2) = %.10g", r, n0, r, tv);
+    n = add(out, n, "At alpha = %.6g, compare with critical value %.6g.", alpha, crit);
+    return add(out, n, reject ? "Reject H0: there is evidence of correlation." : "Do not reject H0: insufficient evidence of correlation.");
+  }
   if (has(t, "spearman") && nv >= 2) {
     double xs[16], ys[16]; int count = 0;
     if (extract_xy_lists_after_words(input, xs, ys, &count)) {
@@ -6082,6 +6108,20 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "gradient = (%.6g-%.6g)/(%.6g-%.6g)", y2, y1, x2, x1);
     n = add(out, n, "y = %.6g + (%.6g-%.6g)*(%.6g-%.6g)/(%.6g-%.6g)", y1, x, x1, y2, y1, x2, x1);
     return add(out, n, "y = %.10g", y);
+  }
+  if (has(t, "mean") && nv >= 3 &&
+      (has(t, "removed") || has(t, "remove") || has(t, "added") || has(t, "add")) &&
+      !has(t, "normal") && !has(t, "binom") && !has(t, "poisson")) {
+    double count = v[0], mean = v[1], value = v[nv-1];
+    bool adding = has(t, "added") || has(t, "add");
+    double old_total = count * mean;
+    double new_total = adding ? old_total + value : old_total - value;
+    double new_count = adding ? count + 1 : count - 1;
+    int n = add(out, 0, "Use total = number of values * mean.");
+    n = add(out, n, "old total = %.10g*%.10g = %.10g", count, mean, old_total);
+    n = add(out, n, adding ? "new total = %.10g + %.10g = %.10g" : "new total = %.10g - %.10g = %.10g", old_total, value, new_total);
+    n = add(out, n, adding ? "new number of values = %.10g + 1 = %.10g" : "new number of values = %.10g - 1 = %.10g", count, new_count);
+    return add(out, n, "new mean = %.10g/%.10g = %.10g", new_total, new_count, new_count ? new_total/new_count : 0);
   }
   if ((has(t, "mean") || has(t, "variance") || has(t, "standarddeviation")) && nv >= 3 &&
       !has(t, "normal") && !has(t, "binom") && !has(t, "poisson") &&
