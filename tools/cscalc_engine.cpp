@@ -4217,13 +4217,28 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     double bits_total = v[0] * v[1] * v[2];
     double image_bytes = bits_total / 8.0;
     double extra = (has(t, "percent") || has(t, "percentage")) ? image_bytes * v[3] / 100.0 : v[3];
+    double shown_extra = extra;
+    const char *extra_unit = "bytes";
+    if (!(has(t, "percent") || has(t, "percentage"))) {
+      double b = 0, shown = 0;
+      if (bytes_before_unit(t, "gib", 1073741824.0, &b, &shown)) { extra = b; shown_extra = shown; extra_unit = "GiB"; }
+      else if (bytes_before_unit(t, "gb", 1000000000.0, &b, &shown)) { extra = b; shown_extra = shown; extra_unit = "GB"; }
+      else if (bytes_before_unit(t, "mib", 1048576.0, &b, &shown)) { extra = b; shown_extra = shown; extra_unit = "MiB"; }
+      else if (bytes_before_unit(t, "mb", 1000000.0, &b, &shown)) { extra = b; shown_extra = shown; extra_unit = "MB"; }
+      else if (bytes_before_unit(t, "kib", 1024.0, &b, &shown)) { extra = b; shown_extra = shown; extra_unit = "KiB"; }
+      else if (bytes_before_unit(t, "kb", 1000.0, &b, &shown)) { extra = b; shown_extra = shown; extra_unit = "KB"; }
+      else if (bytes_before_unit(t, "bytes", 1.0, &b, &shown)) { extra = b; shown_extra = shown; extra_unit = "bytes"; }
+    }
     double total = image_bytes + extra;
     int n = add(out, 0, "Image file size = pixel data + metadata/header.");
     n = add(out, n, "pixel bits = %.10g*%.10g*%.10g = %.10g bits", v[0], v[1], v[2], bits_total);
     n = add(out, n, "pixel bytes = %.10g/8 = %.10g", bits_total, image_bytes);
     if (has(t, "percent") || has(t, "percentage")) n = add(out, n, "metadata/header = %.10g%% of %.10g = %.10g bytes", v[3], image_bytes, extra);
-    else n = add(out, n, "metadata/header = %.10g bytes", extra);
+    else if (!strcmp(extra_unit, "bytes")) n = add(out, n, "metadata/header = %.10g bytes", extra);
+    else n = add(out, n, "metadata/header = %.10g %s = %.10g bytes", shown_extra, extra_unit, extra);
     n = add(out, n, "total bytes = %.10g + %.10g = %.10g", image_bytes, extra, total);
+    if (has(t, "mib")) return add(out, n, "= %.10g MiB", total / 1048576.0);
+    if (has(t, "mb")) return add(out, n, "= %.10g MB", total / 1000000.0);
     return add(out, n, "= %.10g KiB", total / 1024.0);
   }
   if ((has(t, "image") || has(t, "bitmap")) && (has(t, "colours") || has(t, "colors")) && nv >= 3) {

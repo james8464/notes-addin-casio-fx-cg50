@@ -224,6 +224,7 @@ def main():
     require("how many bits per pixel are needed for 256 colours", ["Need 2^b >= 256 colours", "ceil(log2(256)) = 8 bits per pixel"])
     require("A bitmap uses 1024 colours. How many bits are needed per pixel?", ["Need 2^b >= 1024 colours", "ceil(log2(1024)) = 10 bits per pixel"])
     require("An image is 1920 pixels by 1080 pixels, 24 bits per pixel, and metadata is 54 bytes. Find file size.", ["pixel bits = 1920*1080*24 = 49766400 bits", "metadata/header = 54 bytes", "total bytes = 6220800 + 54 = 6220854"])
+    require("A bitmap is 4096 by 2160 with 10 bit colour depth and 2 MiB metadata. Find total file size in MiB.", ["pixel bits = 4096*2160*10 = 88473600 bits", "metadata/header = 2 MiB = 2097152 bytes", "= 12.546875 MiB"])
     require("sound(44100,60,16,2)", ["sample rate", "84672000 bits", "MB"])
     require("audio duration=60 channels=2 resolution=16 sample rate=44100", ["Sound bits", "84672000 bits", "MB"])
     require("calculate file size for a sound sample sampled at 44100 Hz for 30 seconds using 16 bit resolution stereo", ["44100*30*16*2", "42336000 bits"])

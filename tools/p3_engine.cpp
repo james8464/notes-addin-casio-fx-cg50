@@ -1395,11 +1395,13 @@ static int eval_mech(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     double u = num(a[0]), deg = num(a[1]), h = num(a[2]), g = na > 3 ? num(a[3]) : 9.8;
     double th = deg * M_PI / 180.0, ux = u*cosine(th), uy = u*sine(th);
     double t = (uy + root(uy*uy + 2*g*h)) / g, r = ux*t;
+    double maxh = h + uy*uy/(2*g);
     int n = add(out, 0, "Resolve, then use vertical motion to find time.");
     n = add(out, n, "u_x = %.6g cos %.6g = %.6g", u, deg, ux);
     n = add(out, n, "u_y = %.6g sin %.6g = %.6g", u, deg, uy);
     n = add(out, n, "-h = u_y t - 1/2 g t^2, so h=%.6g", h);
     n = add(out, n, "t = (u_y+sqrt(u_y^2+2gh))/g = %.10g", t);
+    n = add(out, n, "greatest height above ground = h + u_y^2/(2g) = %.10g", maxh);
     return add(out, n, "range = u_x t = %.10g", r);
   }
   if (starts3(s, "projectiley(", "projectilelevel(", "projlevel(") && na >= 3) {
@@ -3775,7 +3777,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     bool hU=label_num(input,"speed",&u) || label_num(input,"u",&u) || label_num(input,"initialspeed",&u) || label_num(input,"initialvelocity",&u) ||
             word_num(input,"speed",&u) || word_num(input,"initialspeed",&u) || word_num(input,"velocity",&u);
     bool hA=label_num(input,"angle",&ang) || label_num(input,"theta",&ang) || label_num(input,"launchangle",&ang) ||
-            word_num(input,"angle",&ang) || word_num(input,"theta",&ang);
+            word_num(input,"angle",&ang) || word_num(input,"theta",&ang) || prev_word_num(input,"degrees",&ang);
     bool hY=label_num(input,"height",&y) || label_num(input,"y",&y) || word_num(input,"height",&y) || word_num(input,"above",&y) || word_num(input,"high",&y) ||
             prev_word_num(input,"high",&y) || prev_word_num(input,"above",&y);
     bool hH=label_num(input,"initialheight",&h0) || label_num(input,"launchheight",&h0) || label_num(input,"h0",&h0);
@@ -3809,23 +3811,27 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     bool hA=label_num(input,"angle",&ang) || label_num(input,"theta",&ang) || label_num(input,"launchangle",&ang) ||
             word_num(input,"angle",&ang) || word_num(input,"theta",&ang);
     bool hH=label_num(input,"height",&h) || label_num(input,"h",&h) || label_num(input,"initialheight",&h) || label_num(input,"launchheight",&h) ||
-            word_num(input,"height",&h) || word_num(input,"from",&h) || word_num(input,"above",&h);
+            word_num(input,"height",&h) || word_num(input,"from",&h) || word_num(input,"above",&h) ||
+            prev_word_num(input,"above",&h) || prev_word_num(input,"high",&h);
     bool hG=label_num(input,"g",&g) || label_num(input,"gravity",&g);
     if (!hH && nv >= 3 && (has(t, "cliff") || has(t, "height") || has(t, "high"))) { h = v[2]; hH = true; }
     if (hU && hA && hH && !has(t, "findheight")) {
       sprintf(cmd, hG ? "projectileh(%.10g,%.10g,%.10g,%.10g)" : "projectileh(%.10g,%.10g,%.10g)", u, ang, h, hG ? g : 9.8);
       return eval_mech(cmd, out);
     }
-    sprintf(cmd, "projectileh(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_mech(cmd, out);
+    if (!hU && !hA && !hH) {
+      sprintf(cmd, "projectileh(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_mech(cmd, out);
+    }
   }
   if (is_projectile_text(t) && nv >= 2) {
     double u=0,ang=0,h0=0,g=0;
     bool hU=label_num(input,"speed",&u) || label_num(input,"u",&u) || label_num(input,"initialspeed",&u) || label_num(input,"initialvelocity",&u) ||
             word_num(input,"speed",&u) || word_num(input,"initialspeed",&u) || word_num(input,"velocity",&u);
     bool hA=label_num(input,"angle",&ang) || label_num(input,"theta",&ang) || label_num(input,"launchangle",&ang) ||
-            word_num(input,"angle",&ang) || word_num(input,"theta",&ang);
+            word_num(input,"angle",&ang) || word_num(input,"theta",&ang) || prev_word_num(input,"degrees",&ang);
     bool hG=label_num(input,"g",&g) || label_num(input,"gravity",&g);
-    bool hH=label_num(input,"height",&h0) || label_num(input,"initialheight",&h0) || label_num(input,"launchheight",&h0) || word_num(input,"height",&h0);
+    bool hH=label_num(input,"height",&h0) || label_num(input,"initialheight",&h0) || label_num(input,"launchheight",&h0) ||
+            word_num(input,"height",&h0) || prev_word_num(input,"above",&h0) || prev_word_num(input,"high",&h0);
     if (!hA && nv >= 2 && (has(t, "angle") || has(t, "degrees"))) { ang = v[1]; hA = true; }
     if (!hU && nv >= 1) { u = v[0]; hU = true; }
     if (!hH && nv >= 3 && (has(t, "cliff") || has(t, "height") || has(t, "high"))) { h0 = v[2]; hH = true; }
@@ -4707,6 +4713,14 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     sprintf(cmd, "momentum(%.10g,%.10g,%.10g,%.10g,%.10g)", m1, u1, m2, u2, v1);
     return eval_mech(cmd, out);
   }
+  if ((has(t, "collision") || has(t, "collide") || has(t, "collides") || has(t, "impact")) &&
+      (has(t, "after") || has(t, "aftercollision") || has(t, "afterimpact")) &&
+      (has(t, "find") || has(t, "velocity") || has(t, "speed")) &&
+      !has(t, "restitution") && !has(t, "coefficient") && nv >= 5) {
+    double m1 = v[0], m2 = v[1], u1 = v[2], u2 = v[3], v1 = v[nv - 1];
+    sprintf(cmd, "momentum(%.10g,%.10g,%.10g,%.10g,%.10g)", m1, u1, m2, u2, v1);
+    return eval_mech(cmd, out);
+  }
   if ((has(t, "momentum") || has(t, "collision") || has(t, "collide")) && (has(t, "conserve") || has(t, "conservation") || has(t, "mom")) ) {
     double m1=0,u1=0,m2=0,u2=0,v1=0;
     if (label_num(input,"m1",&m1) && label_num(input,"u1",&u1) && label_num(input,"m2",&m2) && label_num(input,"u2",&u2) && label_num(input,"v1",&v1)) {
@@ -5494,7 +5508,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       bool hXb2=label_num(input,"xbar",&xb2) || label_num(input,"samplemean",&xb2) || word_num(input,"samplemean",&xb2) ||
                  ((has(t, "sample") || has(t, "xbar")) && word_num(input,"mean",&xb2));
       bool hMu2=label_num(input,"mu",&mu2) || label_num(input,"populationmean",&mu2) || word_num(input,"populationmean",&mu2);
-      if (!hMu2 && (word_num(input,"greaterthan",&mu2) || word_num(input,"morethan",&mu2) || word_num(input,"lessthan",&mu2))) hMu2 = true;
+      if (!hMu2 && (word_num(input,"greaterthan",&mu2) || word_num(input,"morethan",&mu2) || word_num(input,"lessthan",&mu2) ||
+                    word_num(input,"exceeds",&mu2) || word_num(input,"exceed",&mu2) || word_num(input,"below",&mu2))) hMu2 = true;
       bool hSig2=label_num(input,"sd",&sig2) || label_num(input,"sigma",&sig2) || label_num(input,"standarddeviation",&sig2) ||
                  word_num(input,"sd",&sig2) || word_num(input,"sigma",&sig2) || word_num(input,"standarddeviation",&sig2);
       bool hN2=label_num(input,"n",&n2) || word_num(input,"samplesize",&n2) || word_num(input,"sample",&n2) || word_num(input,"n",&n2);
@@ -7239,7 +7254,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     bool hN = label_num(input,"n",&n0) || word_num(input,"samplesize",&n0) ||
               word_num(input,"sample",&n0) || word_num(input,"size",&n0) || word_num(input,"n",&n0);
     if (!hXb) xb = v[0];
-    if (!hMu && (word_num(input,"lessthan",&mu) || word_num(input,"greaterthan",&mu) || word_num(input,"morethan",&mu))) hMu = true;
+    if (!hMu && (word_num(input,"lessthan",&mu) || word_num(input,"greaterthan",&mu) || word_num(input,"morethan",&mu) ||
+                 word_num(input,"exceeds",&mu) || word_num(input,"exceed",&mu) || word_num(input,"below",&mu))) hMu = true;
     if (!hMu) mu = v[1];
     if (!hSig) sig = v[2];
     if (!hN) n0 = v[3];
@@ -7248,8 +7264,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       if (v[i] > 0 && v[i] <= 10) { alpha = v[i] / 100.0; break; }
       if (v[i] > 0 && v[i] <= 1) { alpha = v[i]; break; }
     }
-    double tail = (has(t, "increased") || has(t, "increase") || has(t, "greater") || has(t, "upper")) ? 1 :
-                  (has(t, "decreased") || has(t, "decrease") || has(t, "less") || has(t, "lower")) ? -1 : 0;
+    double tail = (has(t, "increased") || has(t, "increase") || has(t, "greater") || has(t, "upper") || has(t, "exceeds") || has(t, "exceed")) ? 1 :
+                  (has(t, "decreased") || has(t, "decrease") || has(t, "less") || has(t, "lower") || has(t, "below")) ? -1 : 0;
     sprintf(cmd, "hypnormal(%.10g,%.10g,%.10g,%.10g,%.10g,%.0f)", xb, mu, sig, n0, alpha, tail);
     return eval_stats(cmd, out);
   }

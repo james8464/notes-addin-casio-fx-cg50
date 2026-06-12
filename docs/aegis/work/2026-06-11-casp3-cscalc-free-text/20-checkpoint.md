@@ -4501,6 +4501,35 @@ Drift check:
 - Kept changes to CASP3/CSCALC general free-text handling, regressions, generated app outputs, and this checkpoint.
 - Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.
 
+## 2026-06-12 Final Parser Simplification Slice
+
+Completed:
+- Fixed CASP3 normal mean-test prose so `sample mean ... exceeds 40` uses the sample mean as `xbar`, the comparison value as `mu`, and an upper-tail test.
+- Fixed CASP3 projectile prose with launch height before speed/angle, including range and greatest-height working from the same route.
+- Added CASP3 momentum-only collision routing when one final velocity is given and no restitution coefficient is supplied.
+- Fixed CSCALC image metadata/header units so `2 MiB metadata` is converted to bytes and reported in MiB when requested.
+- Added regressions for each route and rebuilt calculator outputs.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 421800 bytes`
+  - `CSCALC.g3a: 236900 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CASP3.g3a sha256: 96138b96aa524014c3c71862d94a54c25dde331baa4473fd877528c16b7449b1`
+  - `CSCALC.g3a sha256: 74840567dafe0f36c7dc12bb449c3360b01346819b6a64c26672e160db62547b`
+
+Drift check:
+- Kept changes to parser hardening, regressions, generated CASP3/CSCALC outputs, and this checkpoint.
+- Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.
+
 ## 2026-06-12 Final Precedence Hardening Slice
 
 Completed:
