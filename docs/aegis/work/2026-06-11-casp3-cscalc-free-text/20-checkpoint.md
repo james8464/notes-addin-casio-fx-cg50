@@ -31,6 +31,41 @@ Drift check:
 - Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
 - Active goal remains open for future source/probe-driven hardening.
 
+## 2026-06-12 Percentile, Poisson, CIDR, and Endian Slice
+
+Completed:
+- Added CASP3 inverse-normal free text for “value exceeded by x percent”.
+- Hardened CASP3 unknown-normal-mean prompts from `P(X<k)=p` style wording.
+- Added CASP3 Poisson interval routing and fixed “per minute/hour” default-duration parsing.
+- Added CASP3 binomial `mean + variance -> n,p` working.
+- Fixed CASP3 variable-force work for implicit multiplication like `F=5x-2` and `from x=... to x=...`.
+- Added CASP3 connected rough-horizontal system working before single-particle rough-plane fallback.
+- Added CSCALC CIDR subnet host-count and subnet-mask working.
+- Added CSCALC endian byte-order working for hex words with all-digit hex values.
+- Added CSCALC binary fractional decode from plain `binary ... to denary` wording.
+- Added CSCALC floating-point representability/range check for normalised formats.
+- Added CSCALC truth-table SOP routing for “sum of products for output ...” phrasing.
+- Added regressions and rebuilt calculator files.
+
+Evidence:
+- Fresh focused probe batch: all new failing cases now produce working lines.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 238084 bytes`
+  - `CSCALC.g3a: 178388 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Still inside CASP3/CSCALC free-text working support and generated calculator outputs.
+- Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for future source/probe-driven hardening.
+
 ## 2026-06-12 Free-Text Stats Pdf, Mechanics, and CS Subtraction Slice
 
 Completed:

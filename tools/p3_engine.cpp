@@ -731,6 +731,30 @@ static bool prob_x_bound(const char *c, double *x, int *tail) {
   return false;
 }
 
+static bool prob_x_interval(const char *c, double *lo, double *hi) {
+  const char *p = strstr(c, "<=x<=");
+  if (!p) p = strstr(c, "<x<");
+  if (!p) p = strstr(c, "<=x<");
+  if (!p) p = strstr(c, "<x<=");
+  if (!p) return false;
+  const char *a = p;
+  while (a > c && (isdigit((unsigned char)a[-1]) || a[-1] == '.' || a[-1] == '-')) --a;
+  char left[32]; int n = (int)(p - a);
+  if (n <= 0 || n >= (int)sizeof(left)) return false;
+  memcpy(left, a, n); left[n] = 0;
+  const char *b = strchr(p, 'x');
+  if (!b) return false;
+  b = strchr(b, '<');
+  if (!b) return false;
+  while (*b == '<' || *b == '=') ++b;
+  char *end = 0;
+  double l = strtod(left, 0), h = strtod(b, &end);
+  if (end == b) return false;
+  if (l > h) { double q = l; l = h; h = q; }
+  *lo = l; *hi = h;
+  return true;
+}
+
 static int add_binom_range_lines(char out[P3_MAX_LINES][P3_LINE_LEN], int N, double p, int lo, int hi, const char *label) {
   if (lo < 0) lo = 0;
   if (hi > N) hi = N;
@@ -1271,6 +1295,19 @@ static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     n = add(out, n, "Var(X) = %.6g*%.6g*(1-%.6g) = %.10g", (double)N, p, p, var);
     return add(out, n, "sd = sqrt(Var(X)) = %.10g", root(var));
   }
+  if (starts3(s, "binomparams(", "binomfrommeanvar(", "binomialparams(") && na >= 2) {
+    double mean=num(a[0]), var=num(a[1]);
+    if (mean == 0) return add(out, 0, "Need non-zero mean.");
+    double one_minus_p = var / mean;
+    double p = 1.0 - one_minus_p;
+    double N = p == 0 ? 0 : mean / p;
+    int n = add(out, 0, "For X~B(n,p), use E(X)=np and Var(X)=np(1-p).");
+    n = add(out, n, "mean = np = %.10g", mean);
+    n = add(out, n, "variance = np(1-p) = %.10g", var);
+    n = add(out, n, "1-p = variance/mean = %.10g/%.10g = %.10g", var, mean, one_minus_p);
+    n = add(out, n, "p = 1 - %.10g = %.10g", one_minus_p, p);
+    return add(out, n, "n = mean/p = %.10g/%.10g = %.10g", mean, p, N);
+  }
   if (starts3(s, "binom(", "binomial(", "binompdf(") && na >= 3) {
     int N=(int)num(a[0]), r=(int)num(a[2]); double p=num(a[1]), ans=binomp(N,p,r);
     int n = add(out, 0, "Let X ~ B(%d, %.6g).", N, p);
@@ -1528,6 +1565,14 @@ static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     else ans = 1 - poissoncdf(lam, lo - 1);
     int n = add(out, 0, "For X~Po(%.6g), use cumulative probabilities.", lam);
     n = add(out, n, tail == 2 ? "P(X>%d)=1-P(X<=%d)" : tail == 1 ? "P(X>=%d)=1-P(X<=%d)" : tail == -2 ? "P(X<%d)" : "P(X<=%d)", r, lo-1);
+    return add(out, n, "= %.10g", ans);
+  }
+  if (starts3(s, "poissonrange(", "poissonbetween(", "porange(") && na >= 3) {
+    double lam=num(a[0]); int lo=(int)num(a[1]), hi=(int)num(a[2]);
+    if (lo > hi) { int q = lo; lo = hi; hi = q; }
+    double ans = poissoncdf(lam, hi) - poissoncdf(lam, lo - 1);
+    int n = add(out, 0, "For X~Po(%.6g), use cumulative probabilities.", lam);
+    n = add(out, n, "P(%d<=X<=%d)=P(X<=%d)-P(X<=%d)", lo, hi, hi, lo - 1);
     return add(out, n, "= %.10g", ans);
   }
   if (starts3(s, "poissonnorm(", "normalapproxpoisson(", "poissonnormal(") && na >= 3) {
@@ -2532,6 +2577,18 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if (has(t, "horizontal") && (has(t, "plane") || has(t, "rough") || has(t, "smooth")) &&
       (has(t, "acceleration") || has(t, "accelerate")) && nv >= 2) {
+    if ((has(t, "connected") || has(t, "two") || has(t, "particles")) && (has(t, "coefficient") || has(t, "mu")) && nv >= 4) {
+      double m1 = v[0], m2 = v[1], mu = 0, F = v[nv-1];
+      for (int i = 0; i < nv; ++i) if (v[i] > 0 && v[i] < 1) { mu = v[i]; break; }
+      double friction = mu * m1 * 9.8;
+      double ares = (F - friction) / (m1 + m2);
+      double T = m2 * ares;
+      int n = add(out, 0, "Treat the connected particles as one system, including friction on the rough plane.");
+      n = add(out, n, "friction = mu R = %.6g*%.6g*9.8 = %.10g N", mu, m1, friction);
+      n = add(out, n, "F - friction = (m1+m2)a");
+      n = add(out, n, "a = (%.6g - %.10g)/(%.6g+%.6g) = %.10g m/s^2", F, friction, m1, m2, ares);
+      return add(out, n, "For the second particle, T = m2*a = %.6g*%.10g = %.10g N", m2, ares, T);
+    }
     double m = 0, F = 0, mu = 0, ang = 0;
     bool hm = label_num(input,"mass",&m) || word_num(input,"mass",&m) || label_num(input,"m",&m);
     bool hF = label_num(input,"force",&F) || word_num(input,"force",&F) || label_num(input,"pull",&F) || word_num(input,"pull",&F);
@@ -2657,6 +2714,20 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     sprintf(cmd, nv > 2 ? "energy(%.10g,%.10g,%.10g)" : "energy(%.10g,%.10g)", v[0], v[1], nv > 2 ? v[2] : 0); return eval_mech(cmd, out);
   }
   if ((has(t, "workdone") || has(t, "work")) && nv >= 2) {
+    double A=0, B=0, C=0, D=0, lo=0, hi=0;
+    if ((has(t, "variable") || has(t, "force") || has(c, "f=") || has(c, "f(")) &&
+        parse_force_x_poly(input, &A, &B, &C, &D) &&
+        ((word_num_with_t(input, "from", &lo) || word_num(input, "from", &lo) ||
+          (nv >= 2 && (lo = v[nv-2], true))) &&
+         (word_num_with_t(input, "to", &hi) || word_num(input, "to", &hi) ||
+          (nv >= 2 && (hi = v[nv-1], true))))) {
+      double W = A*(hi*hi*hi*hi - lo*lo*lo*lo)/4.0 + B*(hi*hi*hi - lo*lo*lo)/3.0 +
+                 C*(hi*hi - lo*lo)/2.0 + D*(hi - lo);
+      int n = add(out, 0, "Work done by a variable force is the integral of force.");
+      n = add(out, n, "F(x) = %.6g x^3 %+.6g x^2 %+.6g x %+.6g", A, B, C, D);
+      n = add(out, n, "W = integral from %.6g to %.6g of F(x) dx", lo, hi);
+      return add(out, n, "W = %.10g J", W);
+    }
     sprintf(cmd, "work(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
   }
   if ((has(t, "restitution") || has(t, "collision") || has(t, "impact")) && nv >= 5) {
@@ -2836,6 +2907,15 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     else if (has(c, "atleast") || has(c, "greaterthanorequal")) tail = 1;
     else if (has(c, "lessthanorequal") || has(c, "atmost") || has(t, "cdf")) tail = -1;
     else if (has(c, "lessthan")) tail = -2;
+    if ((has(t, "find") || has(t, "deduce")) && has(t, "mean") && has(t, "variance") && nv >= 2 &&
+        !(hN && hP)) {
+      double mean = 0, var = 0;
+      bool hm = word_num(input, "mean", &mean), hv = word_num(input, "variance", &var);
+      if (!hm) mean = v[0];
+      if (!hv) var = v[1];
+      sprintf(cmd, "binomparams(%.10g,%.10g)", mean, var);
+      return eval_stats(cmd, out);
+    }
     if (hN && hP && !hA && (has(t, "critical") || has(t, "criticalregion") || has(t, "significance"))) {
       for (int i = 0; i < nv; ++i) {
         if (near_num(v[i], N) || near_num(v[i], pv)) continue;
@@ -2898,18 +2978,27 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if ((has(t, "calls") || has(t, "arrive") || has(t, "arrivals") || has(t, "rate") || has(t, "defect") || has(t, "occur")) &&
       (has(t, "per") || has(t, "minute") || has(t, "metre") || has(t, "meter")) &&
       (has(t, "poisson") || has(t, "probability") || has(t, "calls") || has(t, "defect")) && nv >= 2) {
-    double rate=0, minutes=1, x=0;
+    double rate=0, minutes=1, x=0, lo=0, hi=0;
     bool hr = word_num(input,"rate",&rate) || word_num(input,"mean",&rate) || word_num(input,"average",&rate);
     if (!hr) rate = v[0];
-    bool hm = word_num(input,"in",&minutes) || prev_word_num(input,"minutes",&minutes) || prev_word_num(input,"minute",&minutes) ||
-              prev_word_num(input,"metres",&minutes) || prev_word_num(input,"metre",&minutes) ||
-              prev_word_num(input,"meters",&minutes) || prev_word_num(input,"meter",&minutes);
+    bool hm = word_num(input,"in",&minutes);
+    if (!hm && (has(c, "in1hour") || has(c, "inanhour") || has(c, "inahour") ||
+                has(c, "in1minute") || has(c, "inaminute"))) { minutes = 1; hm = true; }
+    if (!hm && !has(c, "perminute") && !has(c, "perhour")) {
+      hm = prev_word_num(input,"minutes",&minutes) || prev_word_num(input,"minute",&minutes) ||
+           prev_word_num(input,"metres",&minutes) || prev_word_num(input,"metre",&minutes) ||
+           prev_word_num(input,"meters",&minutes) || prev_word_num(input,"meter",&minutes);
+    }
     bool hx = word_num(input,"atleast",&x) || word_num(input,"morethan",&x) || word_num(input,"atmost",&x) ||
               word_num(input,"nomorethan",&x) || word_num(input,"lessthan",&x) || word_num(input,"fewerthan",&x);
     if (!hm && nv >= 3) for (int i = 0; i < nv; ++i) if (!near_num(v[i], rate) && v[i] > minutes) minutes = v[i];
     if (!hx) for (int i = 0; i < nv; ++i) if (!near_num(v[i], rate) && !near_num(v[i], minutes)) { x = v[i]; break; }
     if (x == 0) x = v[nv-1];
     double lam = rate * minutes;
+    if (prob_x_interval(c, &lo, &hi)) {
+      sprintf(cmd, "poissonrange(%.10g,%d,%d)", lam, (int)lo, (int)hi);
+      return eval_stats(cmd, out);
+    }
     int tail = prob_tail(c, t);
     if (has(c, "nomorethan")) tail = -1;
     sprintf(cmd, tail ? "poissontail(%.10g,%d,%d)" : "poisson(%.10g,%d)", lam, (int)x, tail);
@@ -2977,6 +3066,38 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
                (!has(t, "percentile") && label_num(input,"p",&area));
     double tail = (has(t, "twotailed") || has(t, "twosided") || (has(t, "two") && (has(t, "tailed") || has(t, "sided"))) || has(t, "different") || has(t, "notequal")) ? 0 :
                   (has(t, "upper") || has(t, "greater") || has(t, "more") || has(c, "x>") || has(c, "x>=") ? 1 : -1);
+    if ((has(c, "findmean") || has(c, "findthemean")) && (hSig || hVar) && nv >= 3) {
+      double bound=0; int ptail=0;
+      bool hb = prob_x_bound(c, &bound, &ptail);
+      double prob = 0;
+      for (int i = 0; i < nv; ++i) {
+        if ((hSig && near_num(v[i], sig)) || (hVar && near_num(v[i], var)) || near_num(v[i], bound)) continue;
+        if (v[i] > 0 && v[i] < 1) { prob = v[i]; break; }
+      }
+      if (hb && prob > 0) {
+        double sd = hSig ? sig : root(var);
+        double left_area = (ptail > 0 || has(c, "x>") || has(t, "greater")) ? 1 - prob : prob;
+        double z = inv_norm_left(left_area);
+        double mean = bound - z * sd;
+        int n = add(out, 0, "Let X~N(mu,sigma^2). Use z=(x-mu)/sigma.");
+        n = add(out, n, "sigma = %.6g, x = %.6g", sd, bound);
+        n = add(out, n, "area to the left = %.10g, so z = InvNorm(%.10g) = %.10g", left_area, left_area, z);
+        n = add(out, n, "(%.6g-mu)/%.6g = %.10g", bound, sd, z);
+        return add(out, n, "mu = %.10g", mean);
+      }
+    }
+    if ((has(t, "exceeded") || has(c, "exceededby")) && has(t, "percent") && hMu && (hSig || hVar) && nv >= 3) {
+      double pct = 0;
+      for (int i = 0; i < nv; ++i) {
+        if (near_num(v[i], mu) || (hSig && near_num(v[i], sig)) || (hVar && near_num(v[i], var))) continue;
+        if (v[i] > 0 && v[i] <= 100) { pct = v[i]; break; }
+      }
+      if (pct > 0) {
+        double left_area = 1.0 - pct/100.0;
+        sprintf(cmd, hSig ? "invnormal(%.10g,%.10g,%.10g)" : "invnormalvar(%.10g,%.10g,%.10g)", left_area, mu, hSig ? sig : var);
+        return eval_stats(cmd, out);
+      }
+    }
     if ((has(t, "unknown") || has(t, "findthemean") || has(c, "findmean")) && (hSig || hVar) && nv >= 2) {
       double bound=0; int ptail=0;
       bool hb = prob_x_bound(c, &bound, &ptail) || word_num(input, "less than", &bound) || word_num(input, "greater than", &bound);

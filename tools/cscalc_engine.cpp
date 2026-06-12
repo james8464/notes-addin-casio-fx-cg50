@@ -2004,6 +2004,20 @@ static int eval_float(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]
     n = add(out, n, "smallest positive normal = 0.5*2^%d = %.10g", emin, minpos);
     return add(out, n, "largest positive = (1-step)*2^%d = %.10g", emax, maxpos);
   }
+  if (starts3(s, "floatcanrepresent(", "floatrepresentable(", "fpcan(") && na >= 3) {
+    double value = num(a[0]); int mb = (int)parse_int(a[1]), eb = (int)parse_int(a[2]);
+    int emin = -(1 << (eb - 1)), emax = (1 << (eb - 1)) - 1;
+    double step = pow2(-(mb - 1));
+    double minpos = 0.5 * pow2(emin);
+    double maxpos = (1.0 - step) * pow2(emax);
+    int n = add(out, 0, "Check representability using the normalised floating-point range.");
+    n = add(out, n, "exponent range = %d to %d", emin, emax);
+    n = add(out, n, "smallest positive normal = 0.5*2^%d = %.10g", emin, minpos);
+    n = add(out, n, "largest positive = (1-step)*2^%d = %.10g", emax, maxpos);
+    if (value > 0 && value < minpos) return add(out, n, "%.10g is too small for a normalised value.", value);
+    if (value > maxpos) return add(out, n, "%.10g is too large for this format.", value);
+    return add(out, n, "%.10g is within range; use closest-representable rounding if it is not exact.", value);
+  }
   return 0;
 }
 
@@ -3029,6 +3043,16 @@ static void truthbits_cmd_from_text(const char *t, const char *bits, char *cmd, 
   sprintf(cmd + outp, "%s)", bits);
 }
 
+static bool cidr_prefix_from_text(const char *input, int *prefix) {
+  const char *p = strchr(input, '/');
+  if (!p || !isdigit((unsigned char)p[1])) return false;
+  int v = 0; ++p;
+  while (isdigit((unsigned char)*p)) v = v*10 + (*p++ - '0');
+  if (v < 0 || v > 32) return false;
+  *prefix = v;
+  return true;
+}
+
 static bool make_gate_form_cmd(const char *input, bool nand, char *cmd, int cap) {
   char expr[96] = ""; int p = 0;
   for (int i = 0; input[i] && p + 1 < (int)sizeof(expr);) {
@@ -3093,6 +3117,68 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   char cmd[160];
   double width=0, height=0, depth=0;
+  int prefix = 0;
+  if ((has(t, "subnet") || has(t, "ipv4") || has(t, "cidr")) && cidr_prefix_from_text(input, &prefix)) {
+    if (has(t, "mask")) {
+      unsigned long mask = prefix == 0 ? 0UL : (0xffffffffUL << (32 - prefix)) & 0xffffffffUL;
+      int n = add(out, 0, "CIDR /%d means %d network bits and %d host bits.", prefix, prefix, 32-prefix);
+      return add(out, n, "subnet mask = %lu.%lu.%lu.%lu", (mask>>24)&255, (mask>>16)&255, (mask>>8)&255, mask&255);
+    }
+    int host_bits = 32 - prefix;
+    double total = pow2(host_bits), usable = host_bits >= 2 ? total - 2 : total;
+    int n = add(out, 0, "CIDR /%d leaves %d host bits.", prefix, host_bits);
+    n = add(out, n, "total addresses = 2^%d = %.10g", host_bits, total);
+    return add(out, n, "usable host addresses = %.10g", usable);
+  }
+  if (has(t, "littleendian") || (has(t, "little") && has(t, "endian")) ||
+      has(t, "bigendian") || (has(t, "big") && has(t, "endian"))) {
+    char endian_hex[32] = "";
+    if (has_hex_tok) strncpy(endian_hex, hex_tok, sizeof(endian_hex)-1);
+    if (!endian_hex[0]) {
+      const char *hp = strstr(t, "hexadecimal,");
+      if (!hp) hp = strstr(t, "hex,");
+      if (hp) {
+        hp = strchr(hp, ',');
+        if (hp) {
+          ++hp; int j = 0;
+          while (isxdigit((unsigned char)hp[j]) && j + 1 < (int)sizeof(endian_hex)) {
+            endian_hex[j] = hp[j]; ++j;
+          }
+          endian_hex[j] = 0;
+        }
+      }
+    }
+    if (!endian_hex[0]) {
+      for (int i = 0; input[i] && !endian_hex[0];) {
+        while (input[i] && !isxdigit((unsigned char)input[i])) ++i;
+        int j = 0; char tok[32];
+        while (isxdigit((unsigned char)input[i]) && j + 1 < (int)sizeof(tok)) tok[j++] = input[i++];
+        tok[j] = 0;
+        if (j >= 4 && !strstr("abcdefABCDEF", tok)) strncpy(endian_hex, tok, sizeof(endian_hex)-1);
+      }
+    }
+    if (!endian_hex[0]) return add(out, 0, "Give the hexadecimal bytes to order.");
+    char bytes[48] = ""; int len = (int)strlen(endian_hex), bp = 0;
+    if (len % 2 && bp + 2 < (int)sizeof(bytes)) { bytes[bp++] = '0'; bytes[bp++] = (char)toupper((unsigned char)endian_hex[0]); }
+    for (int i = len % 2; i + 1 < len && bp + 3 < (int)sizeof(bytes); i += 2) {
+      if (bp) bytes[bp++] = ' ';
+      bytes[bp++] = (char)toupper((unsigned char)endian_hex[i]);
+      bytes[bp++] = (char)toupper((unsigned char)endian_hex[i+1]);
+    }
+    bytes[bp] = 0;
+    int n = add(out, 0, "Split the hexadecimal value into bytes.");
+    n = add(out, n, "%s -> %s", endian_hex, bytes);
+    if (has(t, "little")) {
+      char rev[48] = ""; int rp = 0;
+      for (int i = bp - 2; i >= 0; i -= 3) {
+        if (rp) rev[rp++] = ' ';
+        rev[rp++] = bytes[i]; rev[rp++] = bytes[i+1];
+      }
+      rev[rp] = 0;
+      return add(out, n, "little-endian order = %s", rev);
+    }
+    return add(out, n, "big-endian order = %s", bytes);
+  }
   if (has(t, "cache") && has(t, "block") && nv >= 2) {
     double cache = 0, block = 0;
     bool hc = scan_before_word_num(t, "kib", &cache) || scan_before_word_num(t, "kb", &cache) ||
@@ -3590,6 +3676,10 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if (has(t, "fixed") && scan_fixed_bits(t, fixed_early, sizeof(fixed_early))) {
     sprintf(cmd, (tc || has(t, "complement")) ? "fixedtc(%s)" : "fixed(%s)", fixed_early); return eval_float(cmd, out);
   }
+  if (has(t, "binary") && (has(t, "denary") || has(t, "decimal")) && scan_fixed_bits(t, fixed_early, sizeof(fixed_early)) &&
+      !(has(t, "add") || has(t, "sum") || has(t, "plus") || has(t, "subtract") || has(t, "minus"))) {
+    sprintf(cmd, "fixed(%s)", fixed_early); return eval_float(cmd, out);
+  }
   if ((has(t, "denary") || has(t, "decimal")) && nb >= 1 &&
       !(has(t, "add") || has(t, "sum") || has(t, "plus") || has(t, "subtract") || has(t, "minus"))) {
     char all[96]; join_bits(bits, nb, all, sizeof(all));
@@ -3840,6 +3930,19 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if ((has(t, "normalise") || has(t, "normalize")) && nb >= 2) {
     sprintf(cmd, "floatnorm(%s,%s)", bits[0], bits[1]); return eval_float(cmd, out);
   }
+  if ((has(t, "represent") || has(t, "representable")) &&
+      (has(t, "float") || has(t, "floating") || has(t, "normalised") || has(t, "normalized") || (has(t, "mantissa") && has(t, "exponent"))) &&
+      !(has(t, "closest") || has(t, "nearest")) &&
+      nv >= 3) {
+    double value = v[0], mb = v[1], eb = v[2], tmp = 0;
+    bool hM = scan_bit_width_before_label(t, "mantissa", &tmp) || scan_before_word_num(t, "mantissa", &tmp); if (hM) mb = tmp;
+    bool hE = scan_bit_width_before_label(t, "exponent", &tmp) || scan_before_word_num(t, "exponent", &tmp); if (hE) eb = tmp;
+    if (hM || hE) for (int i = 0; i < nv; ++i) {
+      if ((hM && (long long)v[i] == (long long)mb) || (hE && (long long)v[i] == (long long)eb)) continue;
+      value = v[i];
+    }
+    sprintf(cmd, "floatcanrepresent(%.10g,%lld,%lld)", value, (long long)mb, (long long)eb); return eval_float(cmd, out);
+  }
   if ((has(t, "normalised") || has(t, "normalized") || has(t, "normalise") || has(t, "normalize")) &&
       (has(t, "float") || has(t, "floating") || has(t, "mantissa")) && nb >= 1) {
     sprintf(cmd, "normal(%s)", bits[0]); return eval_float(cmd, out);
@@ -4026,7 +4129,8 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   if (nb >= 1 && (has(t, "truth") || has(t, "output") || has(t, "column")) &&
       (has(t, "bits") || has(t, "column") || has(t, "derive") || has(t, "expression") ||
-       has(t, "variables") || has(t, "vars"))) {
+       has(t, "variables") || has(t, "vars") || has(t, "table") ||
+       has(t, "sumofproducts") || has(t, "sop"))) {
     truthbits_cmd_from_text(t, bits[0], cmd, sizeof(cmd)); return eval_truthbits(cmd, out);
   }
   if ((has(t, "kmap") || has(t, "karnaugh") || has(t, "minterm") || has(t, "minterms") ||
