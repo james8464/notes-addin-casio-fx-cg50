@@ -1,5 +1,24 @@
 # Checkpoint
 
+## 2026-06-12 CSCALC Boolean Parser Slice
+
+Completed:
+- Fixed Boolean expression evaluation so `AND` parsing always consumes the RHS factor.
+- This fixes direct SOP forms such as `A&B'+A'&B` and implicit forms such as `A'B+AB'`.
+- Added regression coverage for both explicit and implicit XOR/SOP expressions.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CSCALC AQA Paper 2 Boolean algebra support.
+- Did not touch CAS Pure behavior, CASP3 behavior, NOTES, UI/menu/status code.
+
 ## 2026-06-12 CSCALC Boolean Law Guard Slice
 
 Completed:

@@ -706,7 +706,11 @@ struct BParser {
   }
   int term() {
     int v = factor();
-    while (s[pos] == '&' || s[pos] == '*' || s[pos] == '.') { pos++; v = v && factor(); }
+    while (s[pos] == '&' || s[pos] == '*' || s[pos] == '.') {
+      pos++;
+      int r = factor();
+      v = v && r;
+    }
     return v;
   }
   int expr() {
