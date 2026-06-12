@@ -1,5 +1,24 @@
 # Checkpoint
 
+## 2026-06-12 CSCALC Transfer Unit Free-Text Slice
+
+Completed:
+- Fixed free-text transfer/download/sent prompts with byte units and bit-rate units.
+- Added generic conversion to bits and bit/s for KB/KiB/MB/MiB/GB/GiB and kbit/Mbit/Gbit rates.
+- Token-matched `sent` so words like `representable` no longer trigger transfer-time handling.
+- Added regression tests and rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CSCALC AQA Paper 2 storage/data-rate free-text support.
+- Did not touch CAS Pure behavior, CASP3 logic, NOTES, menus, or shared UI/status code.
+
 ## 2026-06-12 CASP3 Binomial Stats Prose Slice
 
 Completed:

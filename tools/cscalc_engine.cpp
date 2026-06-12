@@ -44,6 +44,15 @@ static bool starts(const char *s, const char *p) {
 
 static bool has(const char *s, const char *p) { return strstr(s, p) != 0; }
 
+static bool has_word(const char *s, const char *w) {
+  int wl = (int)strlen(w);
+  for (int i = 0; s && s[i]; ++i) {
+    if (i > 0 && isalnum((unsigned char)s[i-1])) continue;
+    if (strncmp(s + i, w, wl) == 0 && !isalnum((unsigned char)s[i + wl])) return true;
+  }
+  return false;
+}
+
 static bool starts2(const char *s, const char *a, const char *b) {
   return starts(s, a) || starts(s, b);
 }
@@ -1553,6 +1562,35 @@ static int add_image_byte_depth_lines(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN
   return add(out, n, "= %.6g MB", bytes / 1000000.0);
 }
 
+static bool storage_size_bits(const char *t, double size, double *bits, const char **unit) {
+  if (has(t, "gib")) { *bits = size * 1073741824.0 * 8.0; *unit = "GiB"; return true; }
+  if (has(t, "gb") || has(t, "gigabyte")) { *bits = size * 1000000000.0 * 8.0; *unit = "GB"; return true; }
+  if (has(t, "mib")) { *bits = size * 1048576.0 * 8.0; *unit = "MiB"; return true; }
+  if (has(t, "mb") || has(t, "megabyte")) { *bits = size * 1000000.0 * 8.0; *unit = "MB"; return true; }
+  if (has(t, "kib")) { *bits = size * 1024.0 * 8.0; *unit = "KiB"; return true; }
+  if (has(t, "kb") || has(t, "kilobyte")) { *bits = size * 1000.0 * 8.0; *unit = "KB"; return true; }
+  if (has(t, "byte")) { *bits = size * 8.0; *unit = "bytes"; return true; }
+  if (has(t, "bit")) { *bits = size; *unit = "bits"; return true; }
+  return false;
+}
+
+static bool storage_rate_bits(const char *t, double rate, double *bps, const char **unit) {
+  if (has(t, "gbit") || has(t, "gigabit")) { *bps = rate * 1000000000.0; *unit = "Gbit/s"; return true; }
+  if (has(t, "mbit") || has(t, "megabit")) { *bps = rate * 1000000.0; *unit = "Mbit/s"; return true; }
+  if (has(t, "kbit") || has(t, "kilobit")) { *bps = rate * 1000.0; *unit = "kbit/s"; return true; }
+  if (has(t, "bit")) { *bps = rate; *unit = "bit/s"; return true; }
+  return false;
+}
+
+static int add_transfer_unit_lines(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN], double size, double rate, const char *t) {
+  double bits=0, bps=0; const char *su="", *ru="";
+  if (!storage_size_bits(t, size, &bits, &su) || !storage_rate_bits(t, rate, &bps, &ru) || bps == 0) return 0;
+  int n = add(out, 0, "Transfer time = file size in bits / bit rate.");
+  n = add(out, n, "%.10g %s = %.10g bits", size, su, bits);
+  n = add(out, n, "%.10g %s = %.10g bit/s", rate, ru, bps);
+  return add(out, n, "time = %.10g/%.10g = %.10g s", bits, bps, bits / bps);
+}
+
 static int eval_float(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
   char a[4][48]; int na = args(s, a, 4);
   if (starts2(s, "fixed(", "fixeddec(") && na == 1) {
@@ -2793,7 +2831,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     }
   }
   if ((has(compact, "bitrate") || has(compact, "datarate") || (has(t, "bit") && has(t, "rate"))) &&
-      (has(t, "file") || has(t, "size") || has(t, "transmit") || has(t, "sent")) &&
+      (has(t, "file") || has(t, "size") || has(t, "transmit") || has_word(t, "sent")) &&
       (has(t, "second") || has(t, "minute") || has(t, "hour") || has(t, "time") || has(t, "duration")) &&
       !has(compact, "downloadtime") && !has(compact, "transfertime") && nv >= 2) {
     double size=0, seconds=0;
@@ -2807,10 +2845,16 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     else sprintf(cmd, "bitrate(%.10g,%.10g)", size, seconds);
     return eval_storage(cmd, out);
   }
-  if (has(t, "transfer") || has(t, "download") || has(t, "transmit")) {
+  if (has(t, "transfer") || has(t, "download") || has(t, "transmit") || has_word(t, "sent")) {
     double size=0, rate=0;
     bool hSize=label_num(input,"size",&size) || label_num(input,"filesize",&size) || label_num(input,"file",&size);
     bool hRate=label_num(input,"rate",&rate) || label_num(input,"bitrate",&rate) || label_num(input,"speed",&rate);
+    if (!hSize && nv >= 1) { size = v[0]; hSize = true; }
+    if (!hRate && nv >= 2) { rate = v[1]; hRate = true; }
+    if (hSize && hRate) {
+      int rn = add_transfer_unit_lines(out, size, rate, t);
+      if (rn) return rn;
+    }
     if (hSize && hRate) {
       if ((has(t, "megabyte") || has(t, "mbyte") || has(t, "mb,")) && (has(t, "megabit") || has(t, "mbit"))) sprintf(cmd, "transfermb(%.10g,%.10g)", size, rate);
       else if ((has(t, "kilobyte") || has(t, "kbyte") || has(t, "kb,")) && (has(t, "kilobit") || has(t, "kbit"))) sprintf(cmd, "transferkb(%.10g,%.10g)", size, rate);
@@ -3054,7 +3098,9 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     scale_time_unit(t, &seconds);
     sprintf(cmd, "sound(%lld,%lld,%lld,%d)", (long long)rate, (long long)seconds, (long long)v[2], ch); return eval_storage(cmd, out);
   }
-  if ((has(t, "transfer") || has(t, "download") || has(t, "transmit")) && (has(t, "time") || has(t, "second") || has(t, "minute") || has(t, "hour")) && nv >= 2) {
+  if ((has(t, "transfer") || has(t, "download") || has(t, "transmit") || has_word(t, "sent")) && (has(t, "time") || has(t, "second") || has(t, "minute") || has(t, "hour")) && nv >= 2) {
+    int rn = add_transfer_unit_lines(out, v[0], v[1], t);
+    if (rn) return rn;
     if ((has(t, "megabyte") || has(t, "mbyte")) && (has(t, "megabit") || has(t, "mbit"))) {
       sprintf(cmd, "transfermb(%.10g,%.10g)", v[0], v[1]); return eval_storage(cmd, out);
     }
