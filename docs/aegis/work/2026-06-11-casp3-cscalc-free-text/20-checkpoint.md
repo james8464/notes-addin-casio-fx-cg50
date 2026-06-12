@@ -1,5 +1,25 @@
 # Checkpoint
 
+## 2026-06-12 CASP3 SUVAT Rearrangement Slice
+
+Completed:
+- Hardened `suvat(...)` to cover the standard constant-acceleration rearrangements rather than only a few target variables.
+- Fixed the previous `a=0` truthiness weakness in the time branch.
+- Added branches for missing `u`, `v`, `a`, `s`, and `t`, including quadratic time solving and cases where `s,a,t` or `u,a,s` imply more than one useful unknown.
+- Added regression tests for the new rearrangements and zero-acceleration time case.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CASP3 Edexcel Paper 3 mechanics/free-text support.
+- Did not touch CAS Pure behavior, CSCALC behavior, NOTES, or shared UI/status code.
+
 ## 2026-06-12 CSCALC Truth Output Column Slice
 
 Completed:

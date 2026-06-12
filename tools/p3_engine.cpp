@@ -253,23 +253,102 @@ static int eval_suvat(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     n = add(out, n, "v = %.6g + %.6g*%.6g", u, acc, t);
     return add(out, n, "v = %.6g", u + acc * t);
   }
+  if (!hu && hv && ha && ht) {
+    n = add(out, n, "v = u + at, so u = v - at");
+    return add(out, n, "u = %.6g - %.6g*%.6g = %.10g", v, acc, t, v - acc*t);
+  }
   if (!hs && hu && ha && ht) {
     n = add(out, n, "s = ut + 1/2 at^2");
     n = add(out, n, "s = %.6g*%.6g + 1/2*%.6g*%.6g^2", u, t, acc, t);
     return add(out, n, "s = %.6g", u*t + 0.5*acc*t*t);
+  }
+  if (!hs && hu && hv && ht) {
+    n = add(out, n, "s = 1/2(u+v)t");
+    n = add(out, n, "s = 1/2(%.6g+%.6g)*%.6g", u, v, t);
+    return add(out, n, "s = %.10g", 0.5*(u+v)*t);
+  }
+  if (!hv && hu && hs && ht) {
+    n = add(out, n, "s = 1/2(u+v)t, so v = 2s/t - u");
+    return add(out, n, "v = 2*%.6g/%.6g - %.6g = %.10g", dist, t, u, 2*dist/t - u);
+  }
+  if (!hu && hv && hs && ht) {
+    n = add(out, n, "s = 1/2(u+v)t, so u = 2s/t - v");
+    return add(out, n, "u = 2*%.6g/%.6g - %.6g = %.10g", dist, t, v, 2*dist/t - v);
+  }
+  if (!hv && !ht && hu && ha && hs) {
+    n = add(out, n, "Use v^2 = u^2 + 2as, then s = ut + 1/2at^2 for time.");
+    double vv = u*u + 2*acc*dist, vpos = root(vv);
+    n = add(out, n, "v^2 = %.6g^2 + 2*%.6g*%.6g", u, acc, dist);
+    n = add(out, n, "v = %.10g", vpos);
+    double A = 0.5*acc, B = u, C = -dist, D = B*B - 4*A*C;
+    if (A*A < 1e-18) {
+      n = add(out, n, "Here a=0, so s = ut.");
+      return add(out, n, "t = s/u = %.6g/%.6g = %.10g", dist, u, dist/u);
+    }
+    n = add(out, n, "s = ut + 1/2at^2 gives a quadratic in t.");
+    double rD = root(D), t1 = (-B + rD)/(2*A), t2 = (-B - rD)/(2*A);
+    return add(out, n, "t = %.10g or %.10g", t1, t2);
   }
   if (!hv && hu && ha && hs) {
     n = add(out, n, "v^2 = u^2 + 2as");
     n = add(out, n, "v^2 = %.6g^2 + 2*%.6g*%.6g", u, acc, dist);
     return add(out, n, "v = %.6g", root(u*u + 2*acc*dist));
   }
+  if (!hu && hv && ha && hs) {
+    n = add(out, n, "v^2 = u^2 + 2as, so u^2 = v^2 - 2as");
+    n = add(out, n, "u^2 = %.6g^2 - 2*%.6g*%.6g", v, acc, dist);
+    return add(out, n, "u = %.10g", root(v*v - 2*acc*dist));
+  }
   if (!ha && hu && hv && ht) {
     n = add(out, n, "v = u + at, so a=(v-u)/t");
     return add(out, n, "a = (%.6g-%.6g)/%.6g = %.6g", v, u, t, (v-u)/t);
   }
-  if (!ht && hu && hv && acc) {
+  if (!ha && hu && hv && hs) {
+    n = add(out, n, "v^2 = u^2 + 2as, so a=(v^2-u^2)/(2s)");
+    return add(out, n, "a = (%.6g^2-%.6g^2)/(2*%.6g) = %.10g", v, u, dist, (v*v-u*u)/(2*dist));
+  }
+  if (!ha && hu && hs && ht) {
+    n = add(out, n, "s = ut + 1/2 at^2, so a = 2(s-ut)/t^2");
+    return add(out, n, "a = 2(%.6g-%.6g*%.6g)/%.6g^2 = %.10g", dist, u, t, t, 2*(dist-u*t)/(t*t));
+  }
+  if (!ha && hv && hs && ht) {
+    n = add(out, n, "s = vt - 1/2 at^2, so a = 2(vt-s)/t^2");
+    return add(out, n, "a = 2(%.6g*%.6g-%.6g)/%.6g^2 = %.10g", v, t, dist, t, 2*(v*t-dist)/(t*t));
+  }
+  if (!ht && hu && hv && ha) {
     n = add(out, n, "v = u + at, so t=(v-u)/a");
     return add(out, n, "t = (%.6g-%.6g)/%.6g = %.6g", v, u, acc, (v-u)/acc);
+  }
+  if (!ht && hu && hv && hs) {
+    n = add(out, n, "s = 1/2(u+v)t, so t = 2s/(u+v)");
+    return add(out, n, "t = 2*%.6g/(%.6g+%.6g) = %.10g", dist, u, v, 2*dist/(u+v));
+  }
+  if (!ht && hu && ha && hs) {
+    n = add(out, n, "s = ut + 1/2 at^2 gives a quadratic in t.");
+    double A = 0.5*acc, B = u, C = -dist, D = B*B - 4*A*C;
+    if (A*A < 1e-18) {
+      n = add(out, n, "Here a=0, so s = ut.");
+      return add(out, n, "t = %.6g/%.6g = %.10g", dist, u, dist/u);
+    }
+    n = add(out, n, "%.10g t^2 + %.10g t - %.10g = 0", A, B, dist);
+    if (D < 0) return add(out, n, "No real time from these values.");
+    double rD = root(D), t1 = (-B + rD)/(2*A), t2 = (-B - rD)/(2*A);
+    return add(out, n, "t = %.10g or %.10g", t1, t2);
+  }
+  if (!hu && !hv && hs && ha && ht) {
+    n = add(out, n, "Use s = 1/2(u+v)t and v = u + at.");
+    double u0 = dist/t - 0.5*acc*t, v0 = dist/t + 0.5*acc*t;
+    n = add(out, n, "u = s/t - 1/2at = %.6g/%.6g - 1/2*%.6g*%.6g", dist, t, acc, t);
+    n = add(out, n, "v = s/t + 1/2at = %.6g/%.6g + 1/2*%.6g*%.6g", dist, t, acc, t);
+    return add(out, n, "u = %.10g, v = %.10g", u0, v0);
+  }
+  if (!hu && hs && ha && ht) {
+    n = add(out, n, "s = ut + 1/2 at^2, so u = (s - 1/2at^2)/t");
+    return add(out, n, "u = (%.6g - 1/2*%.6g*%.6g^2)/%.6g = %.10g", dist, acc, t, t, (dist-0.5*acc*t*t)/t);
+  }
+  if (!hv && hs && ha && ht) {
+    n = add(out, n, "s = vt - 1/2 at^2, so v = (s + 1/2at^2)/t");
+    return add(out, n, "v = (%.6g + 1/2*%.6g*%.6g^2)/%.6g = %.10g", dist, acc, t, t, (dist+0.5*acc*t*t)/t);
   }
   return add(out, n, "Need any suitable 3 known values, e.g. suvat(u=2,a=3,t=4).");
 }
