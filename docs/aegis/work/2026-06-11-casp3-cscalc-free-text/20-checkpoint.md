@@ -87,6 +87,40 @@ Drift check:
 - Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
 - Active goal remains open for future source/probe-driven hardening.
 
+## 2026-06-12 P3/CScalc Free-Text Route-Order Hardening Slice
+
+Completed:
+- Added CASP3 smooth inclined-plane pull working so pull force is not mistaken for friction coefficient.
+- Added CASP3 ladder equilibrium check with coefficient of friction before generic polar-equilibrium routing.
+- Added CASP3 CDF `F(x)=kx^n` interval working.
+- Added CASP3 descending linear pdf `k(a-x)` normalisation/mean/interval working.
+- Added CASP3 combined `P(A or B)` plus independence working for probability prompts asking both.
+- Added CASP3 two-number Poisson normal-approximation tail working.
+- Added CSCALC memory address/data bus free-text working before binary-add fallback.
+- Fixed CSCALC set-associative cache working to use sets, index bits, and tag bits.
+- Added CSCALC Big-O working for common nested-loop prose.
+- Added regression tests and rebuilt calculator files.
+
+Evidence:
+- Fresh focused probes for all above cases: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 263388 bytes`
+  - `CSCALC.g3a: 187440 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Still inside CASP3/CSCALC free-text working support and generated calculator outputs.
+- Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for future source/probe-driven hardening.
+
 ## 2026-06-12 Quartic Motion, K-Distributions, And CS Bit-String Slice
 
 Completed:

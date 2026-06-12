@@ -3289,22 +3289,60 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     }
     return add(out, n, "big-endian order = %s", bytes);
   }
+  if ((has(t, "addressbus") || (has(t, "address") && has(t, "bus"))) &&
+      (has(t, "databus") || (has(t, "data") && has(t, "bus"))) && nv >= 2) {
+    double ab=0, db=0, locations=0;
+    bool ha = scan_before_word_num(t, "address", &ab) || scan_before_word_num(t, "addressbus", &ab);
+    bool hd = scan_before_word_num(t, "data", &db) || scan_before_word_num(t, "databus", &db);
+    if (!ha) ab = v[0];
+    if (!hd) db = v[1];
+    locations = pow2((int)ab);
+    if (nv >= 3) {
+      for (int i = 0; i < nv; ++i) if (v[i] > locations / 2 && v[i] <= locations * 2) { locations = v[i]; break; }
+    }
+    double bits = locations * db, bytes = bits / 8.0;
+    int n = add(out, 0, "Memory size = number of addresses * data bus width.");
+    n = add(out, n, "address bus %.0f bits gives 2^%.0f = %.10g addresses", ab, ab, pow2((int)ab));
+    n = add(out, n, "data bus width = %.10g bits", db);
+    n = add(out, n, "memory size = %.10g*%.10g = %.10g bits", locations, db, bits);
+    return add(out, n, "= %.10g bytes", bytes);
+  }
   if (has(t, "cache") && has(t, "block") && nv >= 2) {
-    double cache = 0, block = 0;
+    double cache = 0, block = 0, ways = 1, addr = 0;
     bool hc = scan_before_word_num(t, "kib", &cache) || scan_before_word_num(t, "kb", &cache) ||
               scan_before_word_num(t, "bytes", &cache);
     bool hb = scan_before_word_num(t, "block", &block) || scan_before_word_num(t, "bytes", &block);
+    bool hw = scan_before_word_num(t, "way", &ways) || scan_before_word_num(t, "associativity", &ways);
+    bool ha = scan_before_word_num(t, "bitaddress", &addr) || scan_before_word_num(t, "address", &addr);
     if (!hc) cache = v[0];
     if (!hb) block = v[1];
+    if (!hw) {
+      for (int i = 0; i < nv; ++i) {
+        double dc = v[i] > cache ? v[i] - cache : cache - v[i];
+        double db = v[i] > block ? v[i] - block : block - v[i];
+        if (dc > 1e-9 && db > 1e-9 && v[i] > 1 && v[i] <= 64) { ways = v[i]; break; }
+      }
+    }
+    if (!ha && has(t, "address")) {
+      for (int i = nv - 1; i >= 0; --i) {
+        double db = v[i] > block ? v[i] - block : block - v[i];
+        double dw = v[i] > ways ? v[i] - ways : ways - v[i];
+        if (db > 1e-9 && dw > 1e-9 && v[i] >= 8 && v[i] <= 64) { addr = v[i]; ha = true; break; }
+      }
+    }
     if (has(t, "kib") || has(t, "kb")) cache *= 1024.0;
     double blocks = block ? cache / block : 0;
+    double sets = ways ? blocks / ways : blocks;
     int off = ceil_log2_ll((long long)(block + 0.5));
-    int idx = ceil_log2_ll((long long)(blocks + 0.5));
+    int idx = ceil_log2_ll((long long)(sets + 0.5));
     int n = add(out, 0, "Cache address fields use powers of 2.");
     n = add(out, n, "cache size = %.10g bytes, block size = %.10g bytes", cache, block);
     n = add(out, n, "number of blocks = %.10g/%.10g = %.10g", cache, block, blocks);
+    if (ways > 1) n = add(out, n, "sets = blocks/ways = %.10g/%.10g = %.10g", blocks, ways, sets);
     n = add(out, n, "offset bits = log2(%.10g) = %d", block, off);
-    return add(out, n, "index bits = log2(%.10g) = %d", blocks, idx);
+    n = add(out, n, "index bits = log2(%.10g) = %d", sets, idx);
+    if (ha && addr > off + idx) return add(out, n, "tag bits = %.0f - %d - %d = %.0f", addr, idx, off, addr - idx - off);
+    return n;
   }
   if ((has(t, "average") && has(t, "memory") && has(t, "access") && has(t, "time")) || has(t, "amat")) {
     if (nv >= 3) {
@@ -4362,6 +4400,25 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     bool_clean_tail(e, ce, sizeof(ce));
     bool_arg_for_cmd(ce, ne, sizeof(ne));
     sprintf(cmd, "%s(%s)", has(compact, "truth") ? "truth" : "bool", ne); return eval_bool(cmd, out);
+  }
+  if (has(compact, "bigo") || has(compact, "big-o") || has(compact, "complexity") || has(compact, "timecomplexity")) {
+    int n = add(out, 0, "Count how the number of operations grows with input size n.");
+    if ((has(compact, "nested") || has(compact, "inner") || has(compact, "fori")) && has(compact, "loop") &&
+        (has(compact, "from1ton") || has(compact, "1ton") || has(compact, "n")) && has(compact, "j")) {
+      n = add(out, n, "Outer loop runs n times.");
+      n = add(out, n, "Inner loop runs n times for each outer iteration.");
+      n = add(out, n, "total operations proportional to n*n = n^2");
+      return add(out, n, "Big O = O(n^2)");
+    }
+    if (has(compact, "binarysearch") || (has(compact, "halve") || has(compact, "halves") || has(compact, "divideandconquer"))) {
+      n = add(out, n, "The problem size is halved each step.");
+      return add(out, n, "Big O = O(log n)");
+    }
+    if (has(compact, "single") && has(compact, "loop")) {
+      n = add(out, n, "A single loop over n items grows linearly.");
+      return add(out, n, "Big O = O(n)");
+    }
+    if (has(compact, "constant")) return add(out, n, "Big O = O(1)");
   }
   return 0;
 }

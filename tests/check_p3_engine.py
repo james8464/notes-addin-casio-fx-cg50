@@ -353,6 +353,8 @@ def main():
     require("For a continuous random variable with pdf f(x)=3x^2/8 for 0<x<2 find P(X>1).", ["integral from 1 to 2", "P(X>1) = 0.875"])
     require("A continuous random variable has pdf f(x)=kx^2 for 0<x<3. Find k and P(X<1).", ["kx^2", "k = 0.111111", "P(X<1) = 0.037037"])
     require("A random variable X has pdf f(x)=kx^2 for 0<x<3. Find k and P(1<X<2).", ["k = 0.1111111111", "P(1<X<2)", "0.2592592593"])
+    require("A random variable X has cdf F(x)=kx^2 for 0<x<2. Find k and P(0.5<X<1.5).", ["For a CDF", "k = 0.25", "= 0.5"])
+    require("The lifetime X has pdf f(x)=k(4-x) for 0<x<4. Find k and E(X).", ["integral from 0 to 4 of k(4-x)", "k = 2/4^2", "mean = 1.333"])
     require("A random variable has distribution P(X=x)=kx for x=1,2,3,4. Find k and E(X).", ["k(10) = 1", "E(X)=sum xP(X=x)", "= 3"])
     require("stratified(200,50,40)", ["stratified sampling", "50/200 * 40", "10"])
     require("stratified sample population 200 group 50 sample 40", ["stratified sampling", "10"])
@@ -378,6 +380,10 @@ def main():
     require("A random sample of 50 has coded variable y=(x-12)/3. The mean of y is 4 and standard deviation of y is 1.5. Find mean and standard deviation of x.", ["Y=(X-a)/b", "mean X = 12 + 3*4 = 24", "standard deviation X = |b|*standard deviation Y = 3*1.5 = 4.5"])
     require("Find the mean and sd of y when y=(x-10)/2, mean of x is 30 and standard deviation of x is 6.", ["For coded data Y=(X-a)/b", "mean Y = (30-10)/2 = 10", "sd Y = sd X/|b| = 6/2 = 3"])
     require("code(35,10,20,5)", ["For coded data Y=(X-a)/b", "mean Y = (35-20)/5 = 3", "sd Y = sd X/|b| = 10/5 = 2"])
+    require("A particle of mass 3kg is pulled up a smooth plane inclined at 20 degrees by a force 30N parallel to the plane. Find acceleration.", ["Smooth inclined plane", "Resultant up the plane", "6.648"])
+    require("A ladder of length 5m and weight 100N rests against a smooth wall at 60 degrees. The coefficient of friction at the ground is 0.4. Find whether it is in equilibrium.", ["smooth wall and rough ground", "Maximum friction", "can be in equilibrium"])
+    require("Given P(A)=0.6, P(B)=0.5 and P(A and B)=0.2, find P(A or B) and say whether A and B are independent.", ["P(A or B)=0.6+0.5-0.2=0.9", "A and B are not independent"])
+    require("Use a normal approximation to the Poisson distribution with mean 80 to find P(X>90).", ["normal approximation to X ~ Po(80)", "continuity correction P(Y>90.5)", "z ="])
     print("OK p3 engine")
 
 

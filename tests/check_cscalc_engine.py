@@ -389,6 +389,9 @@ def main():
     require("convert A or B to NOR only", ["Use NOR as a universal gate", "NOR form: (A NOR B) NOR (A NOR B)"])
     require("Find the NOR only form for expression A+B.", ["Use NOR as a universal gate", "NOR form: (A NOR B) NOR (A NOR B)"])
     require("NOR form for A or B", ["Use NOR as a universal gate", "NOR form: (A NOR B) NOR (A NOR B)"])
+    require("A 10-bit address bus and 8-bit data bus memory has 1024 addresses. Calculate memory size in bytes.", ["address bus 10 bits", "memory size = 1024*8", "= 1024 bytes"])
+    require("A cache has 32 KiB capacity, 64 byte blocks and 4-way associativity. Find offset, index and tag bits for a 32 bit address.", ["sets = blocks/ways", "index bits = log2(128) = 7", "tag bits = 32 - 7 - 6 = 19"])
+    require("Calculate Big O for nested loops for i from 1 to n and j from 1 to n.", ["Outer loop runs n times", "n*n = n^2", "Big O = O(n^2)"])
     print("OK cscalc engine")
 
 

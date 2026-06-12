@@ -2687,7 +2687,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       (has(t, "magnitude") || has(t, "direction") || has(t, "resultant")) && nv >= 2) {
     sprintf(cmd, "vector(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
   }
-  if ((has(t, "equilibrium") || has(t, "balance")) && (has(t, "angle") || has(t, "bearing") || has(t, "degree")) && nv >= 4) {
+  if ((has(t, "equilibrium") || has(t, "balance")) && (has(t, "angle") || has(t, "bearing") || has(t, "degree")) &&
+      !has(t, "ladder") && nv >= 4) {
     int p = sprintf(cmd, "equilpolar(%.10g", v[0]);
     for (int i=1;i<nv && p < (int)sizeof(cmd)-24;++i) p += sprintf(cmd+p, ",%.10g", v[i]);
     sprintf(cmd+p, ")");
@@ -2752,6 +2753,24 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       n = add(out, n, "For a uniform ladder with no extra load, mu = 1/(2 tan theta).");
       n = add(out, n, "tan theta = 1/(2mu) = 1/(2*%.6g)", mu);
       return add(out, n, "angle theta = %.10g degrees", theta);
+    }
+    if ((has(t, "whether") || has(t, "check") || has(t, "equilibrium")) &&
+        (has(t, "coefficient") || has(t, "mu")) && nv >= 4) {
+      if (!hL) L = v[0];
+      if (!hW) W = v[1];
+      if (!ha) ang = v[2];
+      double mu = 0;
+      if (!label_num(input, "mu", &mu) && !label_num(input, "coefficient", &mu)) {
+        for (int i = 0; i < nv; ++i) if (!near_num(v[i], L) && !near_num(v[i], W) && !near_num(v[i], ang) && v[i] > 0 && v[i] < 1) { mu = v[i]; break; }
+      }
+      double S = W * deg_cosine(ang) / (2.0 * deg_sine(ang));
+      double maxF = mu * W;
+      int n = add(out, 0, "For a ladder at a smooth wall and rough ground, take moments about the foot.");
+      n = add(out, n, "S*L sin(theta) = W*(L/2) cos(theta)");
+      n = add(out, n, "wall reaction S = W/(2 tan(theta)) = %.10g N", S);
+      n = add(out, n, "Required floor friction F = S = %.10g N", S);
+      n = add(out, n, "Maximum friction = mu R = %.6g*%.6g = %.10g N", mu, W, maxF);
+      return add(out, n, maxF + 1e-9 >= S ? "Since maximum friction is enough, the ladder can be in equilibrium." : "Since maximum friction is too small, the ladder cannot be in equilibrium.");
     }
     if (nv < 3) return 0;
     if (hL && hW && ha) sprintf(cmd, "ladder(%.10g,%.10g,%.10g,%.10g,%.10g)", L, W, ang, hP ? P : 0, hd ? d : L/2);
@@ -2908,6 +2927,28 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "R = mg cos(theta) - F sin(phi) = %.10g N", R);
     n = add(out, n, "friction = mu R = %.6g*%.10g = %.10g N", mu, R, fr);
     n = add(out, n, "resultant up the plane = %.10g - %.10g - %.10g = %.10g N", up, down, fr, net);
+    return add(out, n, "a = F/m = %.10g/%.6g = %.10g m/s^2", net, m, net/m);
+  }
+  if ((has(t, "smooth") || !has(t, "rough")) &&
+      (has(t, "plane") || has(t, "inclined") || has(t, "incline") || has(t, "slope")) &&
+      (has(t, "pull") || has(t, "force")) &&
+      (has(t, "acceleration") || has(t, "accelerate")) && nv >= 3 &&
+      !has(t, "coefficient") && !has(t, "friction")) {
+    double m=0, theta=0, F=0;
+    bool hm=word_num(input,"mass",&m) || label_num(input,"mass",&m);
+    bool hF=word_num(input,"force",&F) || label_num(input,"force",&F);
+    bool hA=word_num(input,"angle",&theta) || label_num(input,"angle",&theta) || prev_word_num(input,"degrees",&theta);
+    if (!hm) m = v[0];
+    if (!hA) {
+      for (int i = 0; i < nv; ++i) if (!near_num(v[i], m) && !near_num(v[i], F) && v[i] > 0 && v[i] <= 90) { theta = v[i]; hA = true; break; }
+    }
+    if (!hF) {
+      for (int i = nv - 1; i >= 0; --i) if (!near_num(v[i], m) && !near_num(v[i], theta)) { F = v[i]; hF = true; break; }
+    }
+    double down = m*9.8*deg_sine(theta), net = F - down;
+    int n = add(out, 0, "Smooth inclined plane: resolve along the plane and use F=ma.");
+    n = add(out, n, "Down-plane weight component = mg sin(theta) = %.6g*9.8 sin(%.6g) = %.10g N", m, theta, down);
+    n = add(out, n, "Resultant up the plane = %.10g - %.10g = %.10g N", F, down, net);
     return add(out, n, "a = F/m = %.10g/%.6g = %.10g m/s^2", net, m, net/m);
   }
   if ((has(t, "incline") || has(t, "slope") || has(t, "plane")) && (has(t, "acceleration") || has(t, "accelerate") || has(t, "rough")) && nv >= 3) {
@@ -3240,6 +3281,23 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       else sprintf(cmd, "binom(%d,%.10g,%d)", (int)N, pv, (int)x);
       return eval_stats(cmd, out);
     }
+  }
+  if (has(t, "poisson") && has(t, "normal") && (has(t, "approx") || has(t, "approximation")) && nv >= 2) {
+    double lam = v[0], x = v[1], sig = root(lam);
+    int n = add(out, 0, "Use normal approximation to X ~ Po(%.6g).", lam);
+    n = add(out, n, "mu = lambda = %.6g, sigma = sqrt(lambda) = %.6g", lam, sig);
+    if (has(c, "x>") || has(t, "greater") || has(t, "more")) {
+      double cc = x + 0.5, z = sig ? (cc - lam) / sig : 0;
+      n = add(out, n, "For P(X>%.6g), use continuity correction P(Y>%.6g).", x, cc);
+      return add(out, n, "z = (%.6g-%.6g)/%.6g = %.10g", cc, lam, sig, z);
+    }
+    if (has(c, "x<") || has(t, "less") || has(t, "fewer")) {
+      double cc = x - 0.5, z = sig ? (cc - lam) / sig : 0;
+      n = add(out, n, "For P(X<%.6g), use continuity correction P(Y<%.6g).", x, cc);
+      return add(out, n, "z = (%.6g-%.6g)/%.6g = %.10g", cc, lam, sig, z);
+    }
+    sprintf(cmd, "poissonnorm(%.10g,%.10g,%.10g)", lam, x, x);
+    return eval_stats(cmd, out);
   }
   if ((has(t, "calls") || has(t, "arrive") || has(t, "arrivals") || has(t, "rate") || has(t, "defect") || has(t, "occur")) &&
       (has(t, "per") || has(t, "minute") || has(t, "metre") || has(t, "meter")) &&
@@ -3694,6 +3752,16 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     }
     return eval_stats(cmd, out);
   }
+  if ((has(t, "independent") || has(t, "independence")) &&
+      (has(t, "union") || has(t, "either") || has(c, "p(aorb)") || has(c, "p(aor b)") || has(t, " or ")) && nv >= 3) {
+    double pa = v[0], pb = v[1], pab = v[2];
+    double por = pa + pb - pab, prod = pa * pb;
+    int n = add(out, 0, "Use P(A or B)=P(A)+P(B)-P(A and B).");
+    n = add(out, n, "P(A or B)=%.6g+%.6g-%.6g=%.10g", pa, pb, pab, por);
+    n = add(out, n, "For independence, compare P(A and B) with P(A)P(B).");
+    n = add(out, n, "P(A)P(B)=%.6g*%.6g=%.10g", pa, pb, prod);
+    return add(out, n, abs_num(pab - prod) < 1e-9 ? "A and B are independent." : "A and B are not independent.");
+  }
   if ((has(t, "independent") || has(t, "independence")) && (has(t, "given") || has(t, "conditional")) && nv >= 3) {
     int n = add(out, 0, "Use P(A|B)=P(A and B)/P(B).");
     n = add(out, n, "P(A|B)=%.6g/%.6g=%.10g", v[2], v[1], v[1] ? v[2]/v[1] : 0);
@@ -3894,6 +3962,63 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       n = add(out, n, "m^2/%.10g = 0.5", denom);
       return add(out, n, "m = sqrt(%.10g/2) = %.10g", denom, root(denom/2.0));
     }
+  }
+  if ((has(t, "cdf") || has(t, "cumulative")) && has(c, "f(x)=kx^") && has(c, "<x<")) {
+    const char *kp = strstr(c, "kx^");
+    int pow = kp && isdigit((unsigned char)kp[3]) ? kp[3] - '0' : 1;
+    double upper = 0, lo = 0, hi = 0;
+    const char *bp = strstr(c, "0<x<"); if (bp) upper = read_num(bp + 4);
+    const char *xp = strstr(c, "p(");
+    if (xp) {
+      const char *mid = strstr(xp, "<x<");
+      if (mid) {
+        const char *a0 = mid;
+        while (a0 > xp && (isdigit((unsigned char)a0[-1]) || a0[-1] == '.' || a0[-1] == '-')) --a0;
+        char left[32]; int len = (int)(mid - a0);
+        if (len > 0 && len < (int)sizeof(left)) { memcpy(left, a0, len); left[len] = 0; lo = read_num(left); hi = read_num(mid + 3); }
+      }
+    }
+    if (upper <= 0) for (int i = 0; i < nv; ++i) if (v[i] > upper) upper = v[i];
+    if (upper > 0 && hi > lo) {
+      double k = 1.0 / pwr(upper, pow);
+      double prob = k * (pwr(hi, pow) - pwr(lo, pow));
+      int n = add(out, 0, "For a CDF, use F(upper)=1 to find k.");
+      n = add(out, n, "F(%.6g)=k*%.6g^%d=1", upper, upper, pow);
+      n = add(out, n, "k = %.10g", k);
+      n = add(out, n, "P(%.6g<X<%.6g)=F(%.6g)-F(%.6g)", lo, hi, hi, lo);
+      return add(out, n, "= %.10g", prob);
+    }
+  }
+  if ((has(t, "pdf") || has(t, "density") || has(t, "continuous")) &&
+      (has(c, "k(") || has(c, "k*(")) && has(c, "-x)") && has(c, "0<x<")) {
+    double upper = 0, lo = 0, hi = 0;
+    const char *bp = strstr(c, "0<x<"); if (bp) upper = read_num(bp + 4);
+    const char *xp = strstr(c, "p(");
+    if (xp) {
+      const char *mid = strstr(xp, "<x<");
+      if (mid) {
+        const char *a0 = mid;
+        while (a0 > xp && (isdigit((unsigned char)a0[-1]) || a0[-1] == '.' || a0[-1] == '-')) --a0;
+        char left[32]; int len = (int)(mid - a0);
+        if (len > 0 && len < (int)sizeof(left)) { memcpy(left, a0, len); left[len] = 0; lo = read_num(left); hi = read_num(mid + 3); }
+      }
+    }
+    if (upper <= 0) for (int i = 0; i < nv; ++i) if (v[i] > upper) upper = v[i];
+    if (hi <= lo) hi = 0;
+    double k = upper ? 2.0/(upper*upper) : 0;
+    int n = add(out, 0, "For a pdf, total area under f(x) is 1.");
+    n = add(out, n, "integral from 0 to %.6g of k(%.6g-x) dx = 1", upper, upper);
+    n = add(out, n, "k = 2/%.6g^2 = %.10g", upper, k);
+    if (has(t, "mean") || has(c, "e(x)")) {
+      n = add(out, n, "E(X)=integral x*f(x) dx");
+      return add(out, n, "mean = %.10g", upper/3.0);
+    }
+    if (hi > lo) {
+      double prob = k * (upper*(hi-lo) - (hi*hi-lo*lo)/2.0);
+      n = add(out, n, "P(%.6g<X<%.6g)=integral from %.6g to %.6g of %.10g(%.6g-x) dx", lo, hi, lo, hi, k, upper);
+      return add(out, n, "= %.10g", prob);
+    }
+    return n;
   }
   if ((has(t, "pdf") || has(t, "density") || has(t, "continuous")) && has(c, "kx^") && has(c, "p(x<")) {
     const char *kp = strstr(c, "kx^");
