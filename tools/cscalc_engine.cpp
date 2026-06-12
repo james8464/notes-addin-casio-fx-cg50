@@ -2111,6 +2111,7 @@ static int eval_float(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]
     n = add(out, n, "exponent range = %d to %d", emin, emax);
     n = add(out, n, "mantissa step = 2^-(%d) = %.10g", mb - 1, step);
     n = add(out, n, "smallest positive normal = 0.5*2^%d = %.10g", emin, minpos);
+    n = add(out, n, "most negative normal = -1*2^%d = %.10g", emax, -pow2(emax));
     return add(out, n, "largest positive = (1-step)*2^%d = %.10g", emax, maxpos);
   }
   if (starts3(s, "floatcanrepresent(", "floatrepresentable(", "fpcan(") && na >= 3) {
@@ -3073,6 +3074,7 @@ static const char *skip_bool_words(const char *e) {
     if (starts(e, "draw")) { e += 4; moved = true; }
     if (starts(e, "make")) { e += 4; moved = true; }
     if (starts(e, "create")) { e += 6; moved = true; }
+    if (starts(e, "construct")) { e += 9; moved = true; }
     if (starts(e, "write")) { e += 5; moved = true; }
     if (starts(e, "use")) { e += 3; moved = true; }
     if (starts(e, "to")) { e += 2; moved = true; }
@@ -3693,6 +3695,21 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     int n = add(out, 0, "Overhead percentage = overhead / total packet size * 100.");
     n = add(out, n, "total = payload + header = %.10g + %.10g = %.10g bytes", payload, header, total);
     return add(out, n, "overhead = %.10g/%.10g * 100 = %.10g%%", header, total, total ? header/total*100.0 : 0);
+  }
+  if ((has(t, "serial") || has(t, "character") || has(t, "characters")) &&
+      (has(t, "bitpercharacter") || has(t, "bitspercharacter") || (has(t, "bits") && has(t, "character"))) &&
+      (has(t, "bit/s") || has(t, "bitspersecond") || has(t, "rate") || has(t, "over")) && nv >= 3) {
+    double bits_per_char = v[0], chars = v[1], rate = v[2];
+    double tmp = 0;
+    if (scan_before_word_num(t, "bitspercharacter", &tmp) || scan_before_word_num(t, "bitpercharacter", &tmp) ||
+        scan_before_word_num(t, "bits", &tmp)) bits_per_char = tmp;
+    if (scan_before_word_num(t, "characters", &tmp) || scan_before_word_num(t, "character", &tmp)) chars = tmp;
+    if (scan_before_word_num(t, "bitspersecond", &tmp) || scan_before_word_num(t, "bit/s", &tmp) ||
+        scan_before_word_num(t, "bits/s", &tmp)) rate = tmp;
+    double total = bits_per_char * chars;
+    int n = add(out, 0, "Transmission time = total bits / bit rate.");
+    n = add(out, n, "total bits = %.10g characters * %.10g bits = %.10g bits", chars, bits_per_char, total);
+    return add(out, n, "time = %.10g/%.10g = %.10g s", total, rate, rate ? total / rate : 0);
   }
   if (has(t, "transfer") || has(t, "download") || has(t, "transmit") || has(t, "transmission") || has_word(t, "sent")) {
     double size=0, rate=0;

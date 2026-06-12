@@ -70,6 +70,16 @@ static double root(double x) {
   return r;
 }
 
+static double nth_root(double x, int n) {
+  if (x <= 0 || n <= 0) return 0;
+  double lo = 0, hi = x > 1 ? x : 1;
+  for (int i = 0; i < 48; ++i) {
+    double mid = (lo + hi) / 2.0;
+    if (pwr(mid, n) < x) lo = mid; else hi = mid;
+  }
+  return (lo + hi) / 2.0;
+}
+
 static double floor_num(double x) {
   long long i = (long long)x;
   return (x < 0 && (double)i != x) ? (double)(i - 1) : (double)i;
@@ -704,6 +714,30 @@ static bool extract_0_x_bound(const char *compact, double *upper) {
   while (*p == '<' || *p == '=') ++p;
   *upper = read_num(p);
   return *upper > 0;
+}
+
+static bool extract_x_interval(const char *compact, double *lower, double *upper) {
+  const char *p = strstr(compact, "<x<");
+  if (!p) p = strstr(compact, "<=x<=");
+  if (!p) p = strstr(compact, "<=x<");
+  if (!p) p = strstr(compact, "<x<=");
+  if (!p) return false;
+  const char *a = p;
+  while (a > compact && (isdigit((unsigned char)a[-1]) || a[-1] == '.' || a[-1] == '-')) --a;
+  char left[32]; int n = (int)(p - a);
+  if (n <= 0 || n >= (int)sizeof(left)) return false;
+  memcpy(left, a, n); left[n] = 0;
+  const char *b = strchr(p, 'x');
+  if (!b) return false;
+  b = strchr(b, '<');
+  if (!b) return false;
+  while (*b == '<' || *b == '=') ++b;
+  char *end = 0;
+  double lo = strtod(left, 0), hi = strtod(b, &end);
+  if (end == b) return false;
+  if (hi < lo) { double q = lo; lo = hi; hi = q; }
+  *lower = lo; *upper = hi;
+  return true;
 }
 
 static double choose(int n, int r) {
@@ -2179,6 +2213,27 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     return add(out, n, "displacement = %.10g - %.10g = %.10g", F2, F1, F2-F1);
   }
   if ((has(t, "acceleration") || has(t, "accn")) && has(t, "t") &&
+      has(t, "velocity") && (has(t, "att") || has(t, "at")) &&
+      (has(c, "findvatt") || has(c, "findvelocityatt") || has(c, "findv") || has(c, "findvelocity")) &&
+      !has(t, "positionvector") && !(has(t, "position") && has(t, "vector")) &&
+      nv >= 5) {
+    double A=0, B=0, C=0;
+    bool parsed_acc = parse_poly_after_word(input, "acceleration", &A, &B, &C);
+    if (!parsed_acc && has(c, "a=")) parsed_acc = parse_velocity_quad(input, &A, &B, &C);
+    if (parsed_acc) {
+      double v0 = v[nv-3], t0 = v[nv-2], tfind = v[nv-1];
+      double ant0 = A*t0*t0*t0/3.0 + B*t0*t0/2.0 + C*t0;
+      double K = v0 - ant0;
+      double ans = A*tfind*tfind*tfind/3.0 + B*tfind*tfind/2.0 + C*tfind + K;
+      int n = add(out, 0, "Variable acceleration: integrate a(t) to get v(t).");
+      if (near_num(A, 0)) n = add(out, n, "a = %.6g t %+.6g", B, C);
+      else n = add(out, n, "a = %.6g t^2 %+.6g t %+.6g", A, B, C);
+      n = add(out, n, "v = integral(a) dt + C");
+      n = add(out, n, "v(%.6g)=%.6g gives C = %.10g", t0, v0, K);
+      return add(out, n, "v(%.6g) = %.10g", tfind, ans);
+    }
+  }
+  if ((has(t, "acceleration") || has(t, "accn")) && has(t, "t") &&
       (has(t, "initial") || has(t, "initially") || has(t, "starts") || has(t, "rest")) && nv >= 3) {
     double A=0, B=0, C=0, u=0, s0=0, time=0;
     bool parsed_acc = parse_poly_after_word(input, "acceleration", &A, &B, &C);
@@ -2716,6 +2771,23 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       (has(t, "magnitude") || has(t, "direction") || has(t, "resultant")) && nv >= 2) {
     sprintf(cmd, "vector(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
   }
+  if ((has(t, "positionvector") || (has(t, "position") && has(t, "vector"))) &&
+      (has(t, "velocity") || has(t, "acceleration")) && has(t, "i") && has(t, "j") && nv >= 5) {
+    double ax = v[0], bx = v[1], ay = 1, by = v[3], tt = v[nv-1];
+    const char *yp = strstr(c, "t^2");
+    if (yp && yp > c && isdigit((unsigned char)yp[-1])) {
+      const char *a = yp - 1;
+      while (a > c && (isdigit((unsigned char)a[-1]) || a[-1] == '.')) --a;
+      ay = read_num(a);
+    }
+    double vx = ax, vy = 2*ay*tt + by, axn = 0, ayn = 2*ay;
+    int n = add(out, 0, "Differentiate the position vector component by component.");
+    n = add(out, n, "r = (%.6g t %+.6g)i + (%.6g t^2 %+.6g t)j", ax, bx, ay, by);
+    n = add(out, n, "v = dr/dt = %.6g i + (%.6g t %+.6g)j", vx, 2*ay, by);
+    n = add(out, n, "a = dv/dt = %.6g i + %.6g j", axn, ayn);
+    n = add(out, n, "at t=%.6g, v = %.10g i + %.10g j", tt, vx, vy);
+    return add(out, n, "at t=%.6g, a = %.10g i + %.10g j", tt, axn, ayn);
+  }
   if ((has(t, "equilibrium") || has(t, "balance")) && (has(t, "angle") || has(t, "bearing") || has(t, "degree")) &&
       !has(t, "ladder") && nv >= 4) {
     int p = sprintf(cmd, "equilpolar(%.10g", v[0]);
@@ -2830,6 +2902,22 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     int n = add(out, 0, "For circular motion, v = r*omega and a = r*omega^2.");
     n = add(out, n, "v = %.6g*%.6g = %.10g m/s", r, w, r*w);
     return add(out, n, "centripetal acceleration = %.6g*%.6g^2 = %.10g m/s^2", r, w, r*w*w);
+  }
+  if ((has(t, "unbanked") || has(t, "curve") || has(t, "bend")) &&
+      (has(t, "coefficient") || has(t, "friction") || has(t, "mu")) &&
+      (has(t, "maximumspeed") || has(t, "maxspeed") || (has(t, "maximum") && has(t, "speed"))) && nv >= 2) {
+    double r=0, mu=0;
+    bool hr=word_num(input,"radius",&r) || label_num(input,"radius",&r);
+    bool hmu=word_num(input,"coefficient",&mu) || label_num(input,"coefficient",&mu) || word_num(input,"mu",&mu);
+    if (!hr) r = v[0];
+    if (!hmu) {
+      for (int i = 0; i < nv; ++i) if (!near_num(v[i], r) && v[i] > 0 && v[i] < 1.5) { mu = v[i]; break; }
+    }
+    double vmax = root(mu * 9.8 * r);
+    int n = add(out, 0, "On an unbanked curve, friction provides the centripetal force.");
+    n = add(out, n, "mu R = mv^2/r and R=mg");
+    n = add(out, n, "v^2 = mu*g*r = %.6g*9.8*%.6g", mu, r);
+    return add(out, n, "maximum speed = %.10g m/s", vmax);
   }
   if ((has(t, "hill") || has(t, "hump") || has(t, "top")) && (has(t, "radius") || has(t, "speed")) && nv >= 3) {
     double m=0,r=0,u=0;
@@ -4096,6 +4184,23 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     sprintf(cmd+p, ")");
     return eval_stats(cmd, out);
   }
+  double cdf_lo = 0, cdf_hi = 0;
+  if ((has(t, "cdf") || has(t, "cumulative")) && has(t, "median") &&
+      (has(c, "k(x^") || has(c, "k*(x^")) && extract_x_interval(c, &cdf_lo, &cdf_hi)) {
+    const char *kp = strstr(c, "x^");
+    int pow = kp && isdigit((unsigned char)kp[2]) ? kp[2] - '0' : 1;
+    double base = pwr(cdf_lo, pow), top = pwr(cdf_hi, pow);
+    if (pow >= 1 && top != base) {
+      double k = 1.0 / (top - base);
+      double med_base = 0.5/k + base;
+      double med = nth_root(med_base, pow);
+      int n = add(out, 0, "For the median m, solve F(m)=0.5.");
+      n = add(out, n, "Use F(%.6g)=1 to find k.", cdf_hi);
+      n = add(out, n, "k(%.6g^%d-%.6g^%d)=1, so k = %.10g", cdf_hi, pow, cdf_lo, pow, k);
+      n = add(out, n, "k(m^%d-%.6g^%d)=0.5", pow, cdf_lo, pow);
+      return add(out, n, "m = %.10g", med);
+    }
+  }
   if ((has(t, "cumulative") || has(t, "cdf")) && has(t, "median") && nv >= 1) {
     double denom = 0;
     for (int i = 0; i < nv; ++i) if (v[i] > denom) denom = v[i];
@@ -4159,6 +4264,44 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     if (hi > lo) {
       double prob = k * (upper*(hi-lo) - (hi*hi-lo*lo)/2.0);
       n = add(out, n, "P(%.6g<X<%.6g)=integral from %.6g to %.6g of %.10g(%.6g-x) dx", lo, hi, lo, hi, k, upper);
+      return add(out, n, "= %.10g", prob);
+    }
+    return n;
+  }
+  double pdf_lo = 0, pdf_hi = 0;
+  if ((has(t, "pdf") || has(t, "density") || has(t, "continuous")) &&
+      has(c, "kx^") && extract_x_interval(c, &pdf_lo, &pdf_hi)) {
+    const char *kp = strstr(c, "kx^");
+    int pow = kp && isdigit((unsigned char)kp[3]) ? kp[3] - '0' : 1;
+    double area = (pwr(pdf_hi, pow + 1) - pwr(pdf_lo, pow + 1)) / (pow + 1);
+    double k = area ? 1.0 / area : 0;
+    int n = add(out, 0, "For a pdf, total area under f(x) is 1.");
+    n = add(out, n, "integral from %.6g to %.6g of kx^%d dx = 1", pdf_lo, pdf_hi, pow);
+    n = add(out, n, "k = %.10g", k);
+    if (has(t, "mean") || has(c, "e(x)")) {
+      double mean = k * (pwr(pdf_hi, pow + 2) - pwr(pdf_lo, pow + 2)) / (pow + 2);
+      n = add(out, n, "E(X)=integral from %.6g to %.6g of x*f(x) dx", pdf_lo, pdf_hi);
+      return add(out, n, "mean = %.10g", mean);
+    }
+    double a = pdf_lo, b = pdf_hi, bound = 0;
+    const char *gt = strstr(c, "p(x>");
+    const char *lt = strstr(c, "p(x<");
+    const char *pp = strstr(c, "p(");
+    const char *mid = pp ? strstr(pp, "<x<") : 0;
+    if (gt) { bound = read_num(gt + 4); a = bound; }
+    else if (lt) { bound = read_num(lt + 4); b = bound; }
+    else if (mid) {
+      const char *a0 = mid;
+      while (a0 > c && (isdigit((unsigned char)a0[-1]) || a0[-1] == '.' || a0[-1] == '-')) --a0;
+      char left[32]; int len = (int)(mid - a0);
+      if (len > 0 && len < (int)sizeof(left)) { memcpy(left, a0, len); left[len] = 0; a = read_num(left); b = read_num(mid + 3); }
+    }
+    if (a > b) { double q = a; a = b; b = q; }
+    if (b > a) {
+      double prob = k * (pwr(b, pow + 1) - pwr(a, pow + 1)) / (pow + 1);
+      n = add(out, n, "P(%.6g<X<%.6g)=integral from %.6g to %.6g of %.10g*x^%d dx", a, b, a, b, k, pow);
+      if (gt) return add(out, n, "P(X>%.6g) = %.10g", bound, prob);
+      if (lt) return add(out, n, "P(X<%.6g) = %.10g", bound, prob);
       return add(out, n, "= %.10g", prob);
     }
     return n;
@@ -4372,6 +4515,29 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "margin = %.6g*%.10g = %.10g", z, se, m);
     return add(out, n, "CI = %.10g to %.10g", mean - m, mean + m);
   }
+  if ((has(t, "samplemean") || (has(t, "sample") && has(t, "mean"))) &&
+      (has(t, "probability") || has(c, "p(") || has(t, "morethan") || has(t, "greaterthan") || has(t, "lessthan")) &&
+      !has(t, "hypothesis") && !has(t, "test") && nv >= 4) {
+    double mu = v[0], sig = v[1], n0 = v[2], bound = v[3];
+    double tmp = 0;
+    if (word_num(input, "standarddeviation", &tmp) || word_num(input, "sd", &tmp)) sig = tmp;
+    if (word_num(input, "size", &tmp) || word_num(input, "samplesize", &tmp)) n0 = tmp;
+    for (int i = 0; i < nv; ++i) {
+      if (near_num(v[i], sig) || near_num(v[i], n0)) continue;
+      if (near_num(v[i], mu)) continue;
+      bound = v[i];
+    }
+    double se = sig / root(n0);
+    double z = se ? (bound - mu) / se : 0;
+    bool upper = has(t, "morethan") || has(t, "greaterthan") || (has(t, "more") && has(t, "than")) ||
+                 (has(t, "greater") && has(t, "than")) || has(c, "xbar>") || has(c, "mean>");
+    double prob = upper ? 1 - normal_cdf(z) : normal_cdf(z);
+    int n = add(out, 0, "For a sample mean, use the sampling distribution.");
+    n = add(out, n, "Xbar ~ N(%.6g, (%.6g/sqrt(%.6g))^2)", mu, sig, n0);
+    n = add(out, n, "standard error = %.6g/sqrt(%.6g) = %.10g", sig, n0, se);
+    n = add(out, n, "z = (%.6g-%.6g)/%.10g = %.10g", bound, mu, se, z);
+    return add(out, n, "P(Xbar%s%.6g) = %.10g", upper ? ">" : "<", bound, prob);
+  }
   if ((has(t, "interpolation") || has(t, "interpolate") || has(t, "estimate")) &&
       (has(t, "whenx") || has(t, "x=") || has(t, "values")) && nv >= 5) {
     double x1=v[0], y1=v[1], x2=v[2], y2=v[3], x=v[4];
@@ -4428,6 +4594,17 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     bool hW = word_num(input,"classwidth",&width0) || word_num(input,"width",&width0);
     bool hD = word_num(input,"frequencydensity",&dens) || word_num(input,"density",&dens);
     bool hF = word_num(input,"frequency",&freq);
+    if ((has(t, "classinterval") || (has(t, "class") && has(t, "interval"))) &&
+        has(t, "frequency") && hD && nv >= 3 &&
+        !has(c, "findfrequencydensity") &&
+        (has(c, "findfrequency") || has(c, "calculatefrequency") || !hF)) {
+      double lo = v[0], hi = v[1] < 0 ? -v[1] : v[1];
+      if (hi < lo) { double q = lo; lo = hi; hi = q; }
+      width0 = hi - lo;
+      int n = add(out, 0, "For a histogram, frequency = frequency density * class width.");
+      n = add(out, n, "class width = %.10g - %.10g = %.10g", hi, lo, width0);
+      return add(out, n, "frequency = %.10g*%.10g = %.10g", dens, width0, dens * width0);
+    }
     if ((has(t, "classinterval") || (has(t, "class") && has(t, "interval"))) &&
         has(t, "frequency") && nv >= 3 && !hD) {
       double lo = v[0], hi = v[1];

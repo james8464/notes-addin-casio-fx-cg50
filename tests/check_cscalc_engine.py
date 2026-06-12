@@ -399,7 +399,10 @@ def main():
     require("Use a truth table to prove De Morgan not(A and B)=not A or not B.", ["LHS simplifies to A'+B'", "RHS simplifies to A'+B'", "Same output rows"])
     require("Convert decimal 0.1 into binary fixed point with 8 fractional bits.", ["scaled integer = 0.1 * 2^8 = 26", "fixed point = 0.00011010"])
     require("Calculate the transmission time for a 12 MiB file over a 24 Mbps link.", ["12 MiB = 100663296 bits", "24 Mbit/s = 24000000 bit/s", "4.194304 s"])
+    require("A serial transmission sends 10 bits per character for 1000 characters over 2000 bit/s. Find time.", ["total bits = 1000 characters * 10 bits = 10000 bits", "time = 10000/2000 = 5 s"])
     require("Simplify Boolean expression A and 1 or A and 0.", ["a&1+a&0 -> a+a&0", "simplified = A"])
+    require("Construct truth table for not(A or B).", ["Truth table for !(a+b)", "A B | F", "simplified = A'B'"])
+    require("Using 8 bit mantissa and 4 bit exponent, what is the smallest negative normalised number?", ["most negative normal = -1*2^7 = -128", "largest positive = (1-step)*2^7 = 127"])
     print("OK cscalc engine")
 
 
