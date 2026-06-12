@@ -5090,6 +5090,40 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     sprintf(cmd, "hypbinom(%d,0.5,%d,%.10g,%.0f)", (int)N, (int)x, alpha, tail);
     return eval_stats(cmd, out);
   }
+  if ((has(t, "coin") || has(t, "heads") || has(t, "head") || has(t, "tosses") || has(t, "tossed")) &&
+      has(t, "find") && (has(c, "findp") || has(c, "probabilityp") || has(c, "pofheads")) &&
+      (has(t, "exactly") || has(c, "p(exactly")) && nv >= 3) {
+    double q = -1, N = -1, r = -1;
+    for (int i = 0; i < nv; ++i) if (v[i] > 0 && v[i] < 1) { q = v[i]; break; }
+    for (int i = 0; i < nv; ++i) if (!near_num(v[i], q) && v[i] >= 1 && v[i] == floor_num(v[i]) && v[i] > N) N = v[i];
+    for (int i = 0; i < nv; ++i) if (!near_num(v[i], q) && !near_num(v[i], N) && v[i] >= 0 && v[i] == floor_num(v[i])) { r = v[i]; break; }
+    if (q > 0 && q < 1 && N >= 1 && r >= 0 && r <= N) {
+      double C = choose((int)N, (int)r), roots[4]; int rc = 0;
+      double prevx = 0, prevf = C*pwr(0, (int)r)*pwr(1, (int)(N-r)) - q;
+      for (int step = 1; step <= 100 && rc < 4; ++step) {
+        double x0 = step / 100.0;
+        double fx = C*pwr(x0, (int)r)*pwr(1-x0, (int)(N-r)) - q;
+        if (prevf == 0) roots[rc++] = prevx;
+        else if ((prevf < 0 && fx > 0) || (prevf > 0 && fx < 0)) {
+          double lo = prevx, hi = x0, flo = prevf;
+          for (int it = 0; it < 40; ++it) {
+            double mid = (lo + hi) / 2.0;
+            double fm = C*pwr(mid, (int)r)*pwr(1-mid, (int)(N-r)) - q;
+            if ((flo < 0 && fm < 0) || (flo > 0 && fm > 0)) { lo = mid; flo = fm; } else hi = mid;
+          }
+          roots[rc++] = (lo + hi) / 2.0;
+        }
+        prevx = x0; prevf = fx;
+      }
+      int n = add(out, 0, "Let X ~ B(%.0f, p) for the number of heads.", N);
+      n = add(out, n, "P(X=%.0f) = %.0fC%.0f p^%.0f(1-p)^%.0f", r, N, r, r, N-r);
+      n = add(out, n, "%.0fC%.0f p^%.0f(1-p)^%.0f = %.10g", N, r, r, N-r, q);
+      if (!rc) return add(out, n, "No solution with 0 <= p <= 1.");
+      char buf[96]; int bp = sprintf(buf, "p = ");
+      for (int i = 0; i < rc && bp < 80; ++i) bp += sprintf(buf + bp, "%s%.10g", i ? " or " : "", roots[i]);
+      return add(out, n, "%s", buf);
+    }
+  }
   if ((has(t, "coin") || has(t, "heads") || has(t, "tails") || has(t, "tosses") || has(t, "tossed")) &&
       (has(t, "probability") || has(t, "prob") || has(t, "chance")) && nv >= 3) {
     double pv = -1, N = -1, x = -1;

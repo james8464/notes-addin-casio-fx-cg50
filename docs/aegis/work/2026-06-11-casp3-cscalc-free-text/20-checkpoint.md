@@ -4501,6 +4501,35 @@ Drift check:
 - Kept changes to CASP3/CSCALC general free-text handling, regressions, generated app outputs, and this checkpoint.
 - Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.
 
+## 2026-06-12 Two's Complement, Word Addressing, and Inverse Binomial Slice
+
+Completed:
+- Added CSCALC free-text two's-complement negative encoding for wording like `Represent -37 in 8 bit two's complement`.
+- Fixed CSCALC word-addressed capacity parsing so `4 byte words` means 4 bytes per address, not 4 bits.
+- Added CASP3 inverse-binomial coin route for unknown `p` from `P(exactly r heads)=...`, including multiple valid roots.
+- Added regressions and rebuilt calculator files.
+
+Evidence:
+- Fresh probes fixed: negative two's-complement representation, byte-word address capacity, inverse binomial unknown `p`.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 432416 bytes`
+  - `CSCALC.g3a: 240204 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CASP3.g3a sha256: ef382909711e49315e6048534474fe0f7197ddea202bca119fe71166194294d7`
+  - `CSCALC.g3a sha256: be003739e3c7744b3ba7907df0bfe9bd69976daa3526f6f61cac47d8a93a9feb`
+
+Drift check:
+- Kept changes to CASP3/CSCALC free-text handling, regressions, generated app outputs, and this checkpoint.
+- Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.
+
 ## 2026-06-12 Powered Slope, Vertical Height, and Vector Slice
 
 Completed:

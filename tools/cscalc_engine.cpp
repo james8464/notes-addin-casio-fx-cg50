@@ -3850,7 +3850,11 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     double ab=0, bytes_per_address=1;
     bool ha = scan_before_word_num(t, "address", &ab) || scan_before_word_num(t, "addressbus", &ab);
     if (!ha) ab = v[0];
-    if (has(t, "word") && nv >= 2) bytes_per_address = v[1] / 8.0;
+    if (has(t, "word") && nv >= 2) {
+      double wb = 0;
+      if (scan_before_word_num(t, "byte", &wb) || scan_before_word_num(t, "bytes", &wb)) bytes_per_address = wb;
+      else bytes_per_address = v[1] / 8.0;
+    }
     double addresses = pow2((int)ab);
     double bytes = addresses * bytes_per_address;
     int n = add(out, 0, "Memory capacity = number of addresses * bytes per address.");
@@ -4943,7 +4947,9 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     sprintf(cmd, "arithshift(%s,%s,%lld)", enc, has(t, "right") ? "right" : "left", (long long)sh);
     return eval_binary_arith(cmd, out);
   }
-  if (tc && !has(t, "fixed") && nv >= 2 && (has(t, "encode") || has(t, "convert")) && (has(t, "binary") || has(t, "bit"))) {
+  if (tc && !has(t, "fixed") && nv >= 2 &&
+      (has(t, "encode") || has(t, "convert") || has(t, "represent")) &&
+      (has(t, "binary") || has(t, "bit"))) {
     double bw = 0; long long bitsw = (long long)v[1], val = (long long)v[0];
     if ((scan_before_word_num(t, "bit", &bw) || scan_before_word_num(t, "bits", &bw)) && bw > 0) {
       bitsw = (long long)bw;
@@ -5285,6 +5291,17 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     if ((has(t, "minus") || has(t, "negative")) && !has(t, "subtract") && val > 0) val = -val;
     sprintf(cmd, "twos(%lld,%lld)", val, bitsw); return eval_twos(cmd, out);
   }
+  if (tc && !has(t, "fixed") && nv >= 2 &&
+      (has(t, "represent") || has(t, "encode") || has(t, "convert")) &&
+      (has(t, "bit") || has(t, "bits"))) {
+    double bw = 0; long long bitsw = (long long)v[0], val = (long long)v[1];
+    if ((scan_before_word_num(t, "bit", &bw) || scan_before_word_num(t, "bits", &bw)) && bw > 0) {
+      bitsw = (long long)bw;
+      for (int i = 0; i < nv; ++i) if ((long long)v[i] != bitsw) { val = (long long)v[i]; break; }
+    }
+    if ((has(t, "minus") || has(t, "negative")) && val > 0) val = -val;
+    sprintf(cmd, "twos(%lld,%lld)", val, bitsw); return eval_twos(cmd, out);
+  }
   if ((has(t, "add") || has(t, "sum") || has(t, "plus")) && nbg >= 2 && (has(t, "binary") || has(t, "bits"))) {
     sprintf(cmd, "binadd(%s,%s,%d)", bitgrp[0], bitgrp[1], (int)strlen(bitgrp[0])); return eval_binary_arith(cmd, out);
   }
@@ -5606,7 +5623,11 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   if (has(t, "address") && (has(t, "bus") || has(t, "space") || has(t, "locations")) && nv >= 1) {
     if ((has(t, "word") || has(t, "capacity") || has(t, "memory")) && nv >= 2) {
-      sprintf(cmd, "memorycapacity(%lld,%lld)", (long long)v[0], (long long)v[1]); return eval_storage(cmd, out);
+      double bytes_per_word = 0;
+      long long word_bits = (long long)v[1];
+      if (scan_before_word_num(t, "byte", &bytes_per_word) || scan_before_word_num(t, "bytes", &bytes_per_word))
+        word_bits = (long long)(bytes_per_word * 8.0);
+      sprintf(cmd, "memorycapacity(%lld,%lld)", (long long)v[0], word_bits); return eval_storage(cmd, out);
     }
     sprintf(cmd, "addressspace(%lld)", (long long)v[0]); return eval_storage(cmd, out);
   }

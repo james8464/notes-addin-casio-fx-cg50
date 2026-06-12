@@ -572,6 +572,7 @@ def main():
     require("For X~Poisson(2.8), find P(X is fewer than 4 or greater than 7).", ["Split the disjoint Poisson tails", "P(X<4 or X>7)=P(X<=3)+P(X>=8)", "= 0.7000681746"])
     require("For X~B(50,0.2), use a Poisson approximation to find P(X<=8).", ["Use Poisson approximation to X ~ B(50, 0.2).", "lambda = np = 50*0.2 = 10", "approx probability = 0.3328196788"])
     require("A biased coin has probability p of heads. It is tossed 5 times and P(no heads)=0.16807. Find p.", ["P(no heads) = (1-p)^n", "(1-p)^5 = 0.16807", "p = 0.3"])
+    require("A biased coin has probability p of heads. It is tossed 6 times and P(exactly 2 heads)=0.2401. Find p.", ["Let X ~ B(6, p)", "6C2 p^2(1-p)^4 = 0.2401", "p = 0.1954576134 or 0.4938536932"])
     require("A random variable has pdf f(x)=k/(x+2) for 0<x<4. Find k and the median.", ["k = 0.9102392266", "integral from 0 to m", "median = 1.464101615"])
     print("OK p3 engine")
 
