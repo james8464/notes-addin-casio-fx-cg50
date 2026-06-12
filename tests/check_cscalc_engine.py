@@ -403,6 +403,9 @@ def main():
     require("Simplify Boolean expression A and 1 or A and 0.", ["a&1+a&0 -> a+a&0", "simplified = A"])
     require("Construct truth table for not(A or B).", ["Truth table for !(a+b)", "A B | F", "simplified = A'B'"])
     require("Using 8 bit mantissa and 4 bit exponent, what is the smallest negative normalised number?", ["most negative normal = -1*2^7 = -128", "largest positive = (1-step)*2^7 = 127"])
+    require("Which is largest: binary 101101001, hexadecimal 30A, decimal 396?", ["101101001_2 = 361_10", "30A_16 = 778_10", "largest value is hexadecimal = 778"])
+    require("Add the normalised floating point numbers 0.101000 exponent 0011 and 0.110000 exponent 0010.", ["mantissa 0101000 = 0.625", "mantissas: 0.625 + 0.375 = 1", "exponent (4 bits) = 0100"])
+    require("Use RSA with p=5 q=11 e=3 message=9. Find n phi d and ciphertext.", ["n = 5*11 = 55", "phi(n) = (p-1)(q-1) = 40", "9^3 mod 55 = 14"])
     print("OK cscalc engine")
 
 

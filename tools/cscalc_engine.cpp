@@ -242,6 +242,23 @@ static bool scan_before_word_num(const char *s, const char *word, double *v) {
   return false;
 }
 
+static int scan_binary_fraction_tokens(const char *s, char out[][48], int maxn) {
+  int n = 0;
+  for (int i = 0; s && s[i] && n < maxn; ++i) {
+    if ((s[i] != '0' && s[i] != '1') || s[i+1] != '.' || (s[i+2] != '0' && s[i+2] != '1')) continue;
+    int p = 0, j = i; bool dot = false;
+    while ((s[j] == '0' || s[j] == '1' || s[j] == '.') && p + 1 < 48) {
+      if (s[j] == '.') dot = true;
+      else out[n][p++] = s[j];
+      ++j;
+    }
+    out[n][p] = 0;
+    if (dot && p > 1) ++n;
+    i = j;
+  }
+  return n;
+}
+
 static bool scan_scaled_before_word_num(const char *s, const char *word, double *v) {
   if (scan_before_word_num(s, word, v)) return true;
   char pat[40]; sprintf(pat, "million,%s", word);
@@ -331,6 +348,22 @@ static long long parse_base(const char *s, int base) {
     if (d >= 0 && d < base) v = v * base + d;
   }
   return v;
+}
+
+static long long mod_pow_ll(long long a, long long e, long long m) {
+  long long r = 1 % m;
+  a %= m;
+  while (e > 0) {
+    if (e & 1) r = (r * a) % m;
+    a = (a * a) % m;
+    e >>= 1;
+  }
+  return r;
+}
+
+static long long mod_inverse_small(long long e, long long phi) {
+  for (long long d = 1; d < phi; ++d) if ((d * e) % phi == 1) return d;
+  return 0;
 }
 
 static void to_base(long long v, int base, char *buf, int cap) {
@@ -3235,6 +3268,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   char t[192]; raw_clean(input, t, sizeof(t));
   double v[8]; int nv = scan_nums(t, v, 8);
   char bits[4][48]; int nb = scan_bits(t, bits, 4);
+  char fbits[4][48]; int nfb = scan_binary_fraction_tokens(input, fbits, 4);
   char bitcol[65]; bool has_bitcol = scan_spaced_bit_column(t, bitcol, sizeof(bitcol));
   char bitgrp[4][48]; int nbg = scan_spaced_bit_groups(t, bitgrp, 4);
   char hex_tok[32]; bool has_hex_tok = scan_hex_token(t, hex_tok, sizeof(hex_tok));
@@ -3244,6 +3278,56 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   char cmd[160];
   double width=0, height=0, depth=0;
   int prefix = 0;
+  if (has(t, "rsa") && nv >= 4) {
+    double pd=0, qd=0, ed=0, md=0;
+    bool hp = label_num(input, "p", &pd);
+    bool hq = label_num(input, "q", &qd);
+    bool he = label_num(input, "e", &ed);
+    bool hm = label_num(input, "message", &md) || label_num(input, "plaintext", &md) || label_num(input, "m", &md);
+    if (!hp) pd = v[0];
+    if (!hq) qd = v[1];
+    if (!he) ed = v[2];
+    if (!hm) md = v[3];
+    long long p = (long long)pd, q = (long long)qd, e = (long long)ed, msg = (long long)md;
+    long long nval = p * q, phi = (p - 1) * (q - 1);
+    long long d = mod_inverse_small(e, phi);
+    long long ciph = nval ? mod_pow_ll(msg, e, nval) : 0;
+    int n = add(out, 0, "RSA modulus n = p*q.");
+    n = add(out, n, "n = %lld*%lld = %lld", p, q, nval);
+    n = add(out, n, "phi(n) = (p-1)(q-1) = %lld", phi);
+    n = add(out, n, "private key d satisfies ed = 1 mod phi(n).");
+    n = add(out, n, "d = %lld", d);
+    n = add(out, n, "ciphertext = message^e mod n");
+    return add(out, n, "%lld^%lld mod %lld = %lld", msg, e, nval, ciph);
+  }
+  if ((has(t, "largest") || has(t, "smallest") || has(t, "compare")) &&
+      (has(t, "binary") || has(t, "base,2") || has(t, "base2")) &&
+      (has(t, "hex") || has(t, "hexadecimal") || has(t, "base,16") || has(t, "base16")) &&
+      (has(t, "decimal") || has(t, "denary")) && nb >= 1 && has_hex_tok && nv >= 1) {
+    double dec = v[nv - 1];
+    scan_after_word_num(t, "decimal", &dec);
+    scan_after_word_num(t, "denary", &dec);
+    long long bv = bin_unsigned(bits[0]), hv = parse_base(hex_tok, 16), dv = (long long)dec;
+    long long best = bv; const char *best_name = "binary";
+    if ((has(t, "largest") && hv > best) || (has(t, "smallest") && hv < best)) { best = hv; best_name = "hexadecimal"; }
+    if ((has(t, "largest") && dv > best) || (has(t, "smallest") && dv < best)) { best = dv; best_name = "decimal"; }
+    int n = add(out, 0, "Convert all values to denary before comparing.");
+    n = add(out, n, "%s_2 = %lld_10", bits[0], bv);
+    n = add(out, n, "%s_16 = %lld_10", hex_tok, hv);
+    n = add(out, n, "%lld_10 = %lld_10", dv, dv);
+    return add(out, n, "%s value is %s = %lld", has(t, "smallest") ? "smallest" : "largest", best_name, best);
+  }
+  if ((has(t, "float") || has(t, "floating") || has(t, "normalised") || has(t, "normalized")) && nb >= 4 &&
+      (has(t, "add") || has(t, "sum") || has(t, "plus") || has(t, "subtract") || has(t, "minus") ||
+       has(t, "multiply") || has(t, "times") || has(t, "product") || has(t, "divide"))) {
+    const char *op = "floatadd";
+    if (has(t, "subtract") || has(t, "minus")) op = "floatsub";
+    else if (has(t, "multiply") || has(t, "times") || has(t, "product")) op = "floatmul";
+    else if (has(t, "divide")) op = "floatdiv";
+    if (nfb >= 2) sprintf(cmd, "%s(%s,%s,%s,%s)", op, fbits[0], bits[1], fbits[1], bits[3]);
+    else sprintf(cmd, "%s(%s,%s,%s,%s)", op, bits[0], bits[1], bits[2], bits[3]);
+    return eval_float(cmd, out);
+  }
   if ((has(t, "subnet") || has(t, "ipv4") || has(t, "cidr") || strchr(input, '/')) && cidr_prefix_from_text(input, &prefix)) {
     unsigned long ip = 0; int oct[4];
     if ((has(t, "network") || has(t, "broadcast")) && ipv4_from_text(input, &ip, oct)) {

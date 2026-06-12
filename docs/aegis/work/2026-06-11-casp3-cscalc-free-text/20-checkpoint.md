@@ -1,5 +1,37 @@
 # Checkpoint
 
+## 2026-06-12 Vector, Distribution, Floating Mantissa, And RSA Slice
+
+Completed:
+- Added CASP3 vector constant-acceleration working for unknown initial velocity from two position vectors.
+- Added CASP3 vector `r=r0+ut+1/2at^2` position working from acceleration, initial velocity, and initial position.
+- Added CASP3 vector-velocity differentiation/integration working for acceleration at a time and displacement over an interval.
+- Fixed CASP3 `i`/`j` vector scanning so letters inside ordinary words are not treated as vector components.
+- Added CASP3 reciprocal pdf `k/x^2`, logarithmic CDF median, geometric first-success, and without-replacement same-colour working.
+- Added CSCALC mixed binary/hex/decimal comparison working before generic conversion routes.
+- Added CSCALC RSA modulus/phi/private-key/ciphertext working.
+- Fixed CSCALC dotted floating mantissas like `0.101000` so the leading sign bit is kept before float add/sub/mul/div routing.
+- Added regression tests and rebuilt calculator files.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 291300 bytes`
+  - `CSCALC.g3a: 193304 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Still inside CASP3/CSCALC free-text working support and generated calculator outputs.
+- Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for future source/probe-driven hardening.
+
 ## 2026-06-12 Polynomial Motion, Poisson Interval, And CS Unit Slice
 
 Completed:

@@ -80,6 +80,12 @@ static double nth_root(double x, int n) {
   return (lo + hi) / 2.0;
 }
 
+static double exp_approx(double x) {
+  double term = 1, sum = 1;
+  for (int i = 1; i <= 18; ++i) { term *= x / i; sum += term; }
+  return sum;
+}
+
 static double floor_num(double x) {
   long long i = (long long)x;
   return (x < 0 && (double)i != x) ? (double)(i - 1) : (double)i;
@@ -379,6 +385,50 @@ static bool vector_after_word(const char *s, const char *word, double *x, double
   *x = vec_coeff_before(p, pi);
   *y = vec_coeff_before(p, pj);
   return true;
+}
+
+static int scan_ij_vectors(const char *s, double xs[], double ys[], int maxv) {
+  int n = 0;
+  const char *seg = s;
+  for (const char *p = s; p && *p && n < maxv; ++p) {
+    if (tolower((unsigned char)*p) != 'i') continue;
+    if ((p > s && isalpha((unsigned char)p[-1])) || isalpha((unsigned char)p[1])) continue;
+    const char *pi = p, *pj = 0;
+    for (const char *q = pi + 1; *q && q - pi < 32; ++q) {
+      if (tolower((unsigned char)*q) != 'j') continue;
+      if ((q > s && isalpha((unsigned char)q[-1])) || isalpha((unsigned char)q[1])) continue;
+      pj = q;
+      break;
+    }
+    if (!pj) continue;
+    xs[n] = vec_coeff_before(seg, pi);
+    ys[n] = vec_coeff_before(pi, pj);
+    ++n;
+    p = pj;
+    seg = pj + 1;
+  }
+  return n;
+}
+
+static bool last_label_num(const char *s, const char *name, double *v) {
+  int nl = (int)strlen(name);
+  bool ok = false;
+  for (int i = 0; s && s[i]; ++i) {
+    if (i > 0 && isalnum((unsigned char)s[i-1])) continue;
+    int j = 0, q = i;
+    while (j < nl && s[q]) {
+      while (s[q] == ' ' || s[q] == '\t' || s[q] == '_' || s[q] == '-') ++q;
+      if (tolower((unsigned char)s[q]) != name[j]) break;
+      ++j; ++q;
+    }
+    if (j != nl) continue;
+    while (s[q] == ' ' || s[q] == '\t') ++q;
+    if (s[q] != '=') continue;
+    ++q;
+    while (s[q] == ' ' || s[q] == '\t') ++q;
+    if (s[q] == '-' || isdigit((unsigned char)s[q])) { *v = read_num(s + q); ok = true; }
+  }
+  return ok;
 }
 
 static double term_coeff(const char *term, int len) {
@@ -1837,6 +1887,42 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   char c[192]; clean(input, c, sizeof(c));
   double v[12]; int nv = scan_nums(t, v, 12);
   char cmd[160];
+  if (has(t, "power") && (has(t, "resistance") || has(t, "resistive")) &&
+      (has(t, "acceleration") || has(t, "accelerate")) && (has(t, "speed") || has(t, "velocity")) && nv >= 4) {
+    double m=0, P=0, sp=0, R=0;
+    bool hm=word_num(input,"mass",&m) || label_num(input,"mass",&m);
+    bool hP=word_num(input,"power",&P) || label_num(input,"power",&P);
+    bool hs=word_num(input,"speed",&sp) || word_num(input,"velocity",&sp);
+    bool hR=word_num(input,"resistance",&R) || label_num(input,"resistance",&R);
+    if (!hm) m = v[0];
+    if (!hP) P = v[1];
+    if (!hR) R = v[2];
+    if (!hs) sp = v[3];
+    if (has(t, "kw") || has(t, "kilowatt")) P *= 1000.0;
+    double drive = sp ? P / sp : 0, net = drive - R;
+    int n = add(out, 0, "Use P = Fv to convert engine power into driving force.");
+    n = add(out, n, "driving force = P/v = %.10g/%.10g = %.10g N", P, sp, drive);
+    n = add(out, n, "resultant force = %.10g - %.10g = %.10g N", drive, R, net);
+    return add(out, n, "a = F/m = %.10g/%.10g = %.10g m/s^2", net, m, net/m);
+  }
+  if ((has(t, "impulse") || has(t, "momentum")) && has(t, "force") && (has(t, "acts") || has(t, "for")) &&
+      (has(t, "finalspeed") || has(t, "final") || has(t, "speed")) && nv >= 4) {
+    double m=0,u0=0,F=0,time=0;
+    bool hm=word_num(input,"mass",&m) || label_num(input,"mass",&m);
+    bool hu=word_num(input,"movingat",&u0) || word_num(input,"speed",&u0) || word_num(input,"velocity",&u0);
+    bool hF=word_num(input,"force",&F) || label_num(input,"force",&F);
+    bool ht=word_num(input,"for",&time) || word_num(input,"time",&time);
+    if (!hm) m = v[0];
+    if (!hu) u0 = v[1];
+    if (!hF) F = v[2];
+    if (!ht) time = v[3];
+    double I = F * time, vf = u0 + I / m;
+    int n = add(out, 0, "Impulse equals force multiplied by time.");
+    n = add(out, n, "I = Ft = %.6g*%.6g = %.10g Ns", F, time, I);
+    n = add(out, n, "I = m(v-u)");
+    n = add(out, n, "%.10g = %.6g(v-%.6g)", I, m, u0);
+    return add(out, n, "final speed v = %.10g m/s", vf);
+  }
   if ((has(t, "workenergy") || (has(t, "work") && has(t, "energy")) || (has(t, "energy") && has(t, "driving") && has(t, "force"))) && nv >= 5) {
     double m=0,u0=0,v0=0,h=0,d=0,r=0;
     bool hm=label_num(input,"mass",&m) || label_num(input,"m",&m);
@@ -1886,6 +1972,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     return add(out, n, "v = %.10g m/s", ans);
   }
   if ((has(t, "resistance") || has(t, "resistive")) &&
+      !has(t, "power") &&
       (has(t, "finalspeed") || has(t, "finalvelocity") || (has(t, "find") && has(t, "speed"))) && nv >= 4) {
     double m=0,u0=0,r=0,d=0;
     bool hm=word_num(input,"mass",&m) || label_num(input,"mass",&m);
@@ -1932,6 +2019,56 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "I = m(v-u)");
     n = add(out, n, "-%.6g = %.6g(v-%.6g)", I, m, u0);
     return add(out, n, "v = %.10g m/s", vv);
+  }
+  if ((has(t, "constantacceleration") || (has(t, "constant") && has(t, "acceleration"))) &&
+      (has(t, "positionvector") || (has(t, "position") && has(t, "vector"))) &&
+      (has(t, "findu") || has(t, "velocityisu") || has(t, "velocity") || has(t, "find"))) {
+    double xs[6], ys[6], time = 0;
+    int vc = scan_ij_vectors(input, xs, ys, 6);
+    last_label_num(input, "t", &time);
+    if (vc >= 3 && time > 0) {
+      double ax = xs[0], ay = ys[0], r0x = xs[1], r0y = ys[1], r1x = xs[2], r1y = ys[2];
+      double ux = (r1x - r0x - 0.5*ax*time*time) / time;
+      double uy = (r1y - r0y - 0.5*ay*time*time) / time;
+      int n = add(out, 0, "Use vector constant-acceleration formulae component by component.");
+      n = add(out, n, "r = r0 + ut + 1/2 at^2");
+      n = add(out, n, "(%.6g,%.6g) = (%.6g,%.6g) + u*%.6g + 1/2(%.6g,%.6g)*%.6g^2", r1x, r1y, r0x, r0y, time, ax, ay, time);
+      n = add(out, n, "u = (r-r0-1/2 at^2)/t");
+      return add(out, n, "u = %.10g i %+.10g j", ux, uy);
+    }
+  }
+  if ((has(t, "accelerationvector") || ((has(t, "acceleration") || has(t, "a=(")) && has(t, "vector"))) &&
+      (has(t, "initially") || has(t, "initial")) && has(t, "position") && has(t, "velocity") &&
+      (has(t, "findposition") || (has(t, "find") && has(t, "position"))) && nv >= 1) {
+    double xs[6], ys[6], time = 0;
+    int vc = scan_ij_vectors(input, xs, ys, 6);
+    last_label_num(input, "t", &time);
+    if (vc >= 3 && time > 0) {
+      double ax = xs[0], ay = ys[0], ux = xs[1], uy = ys[1], r0x = xs[2], r0y = ys[2];
+      double x = r0x + ux*time + 0.5*ax*time*time;
+      double y = r0y + uy*time + 0.5*ay*time*time;
+      int n = add(out, 0, "Use r = r0 + ut + 1/2 at^2 component by component.");
+      n = add(out, n, "a = %.6g i %+.6g j, u = %.6g i %+.6g j, r0 = %.6g i %+.6g j", ax, ay, ux, uy, r0x, r0y);
+      n = add(out, n, "r(%.6g) = r0 + u*%.6g + 1/2*a*%.6g^2", time, time, time);
+      return add(out, n, "r = %.10g i %+.10g j", x, y);
+    }
+  }
+  if ((has(t, "velocityvector") || (has(t, "velocity") && has(t, "vector"))) &&
+      (has(t, "displacement") || has(t, "acceleration")) &&
+      (has(c, "t^2i") || has(c, "t^2*i")) && nv >= 5) {
+    double Ax = v[0], By = v[2], Cy = v[3], t0 = v[nv-2], t1 = v[nv-1];
+    double ta = t1;
+    word_num_with_t(input, "at", &ta);
+    if (t1 < t0) { double q = t0; t0 = t1; t1 = q; }
+    double ax = 2*Ax*ta, ay = By;
+    double sx = Ax*(t1*t1*t1 - t0*t0*t0)/3.0;
+    double sy = By*(t1*t1 - t0*t0)/2.0 + Cy*(t1 - t0);
+    int n = add(out, 0, "For vector velocity, differentiate for acceleration and integrate for displacement.");
+    n = add(out, n, "v = %.6g t^2 i + (%.6g t %+.6g)j", Ax, By, Cy);
+    n = add(out, n, "a = dv/dt = %.6g t i + %.6g j", 2*Ax, By);
+    n = add(out, n, "at t=%.6g, a = %.10g i %+.10g j", ta, ax, ay);
+    n = add(out, n, "displacement = integral v dt from %.6g to %.6g", t0, t1);
+    return add(out, n, "displacement = %.10g i %+.10g j", sx, sy);
   }
   if ((has(t, "vector") || has(t, "positionvector") || has(t, "ij")) &&
       (has(t, "velocity") || has(t, "acceleration") || has(t, "motion"))) {
@@ -3952,6 +4089,26 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if ((has(t, "bayes") || has(t, "reverseconditional")) && nv >= 3) {
     sprintf(cmd, "bayes(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_stats(cmd, out);
   }
+  if ((has(t, "firsthead") || (has(t, "first") && has(t, "head")) || has(t, "geometric")) &&
+      (has(t, "coin") || has(t, "toss") || has(t, "success")) && nv >= 2) {
+    double p = 0, r = 0;
+    for (int i = 0; i < nv; ++i) if (v[i] > 0 && v[i] < 1) { p = v[i]; break; }
+    for (int i = nv - 1; i >= 0; --i) if (!near_num(v[i], p) && v[i] >= 1) { r = v[i]; break; }
+    double prob = pwr(1 - p, (int)r - 1) * p;
+    int n = add(out, 0, "For the first success on trial r, use the geometric distribution.");
+    n = add(out, n, "P(X=r)=(1-p)^(r-1)p");
+    return add(out, n, "P(X=%.0f)=(1-%.6g)^%.0f*%.6g = %.10g", r, p, r - 1, p, prob);
+  }
+  if ((has(t, "withoutreplacement") || (has(t, "without") && has(t, "replacement")) || has(t, "chosen")) &&
+      (has(t, "samecolour") || has(t, "samecolor") || (has(t, "same") && (has(t, "colour") || has(t, "color")))) &&
+      nv >= 2) {
+    double a = v[0], b = v[1], total = a + b;
+    double ways_same = choose((int)a, 2) + choose((int)b, 2), ways_all = choose((int)total, 2);
+    int n = add(out, 0, "Without replacement, use combinations.");
+    n = add(out, n, "same colour ways = C(%.0f,2)+C(%.0f,2)", a, b);
+    n = add(out, n, "total ways = C(%.0f,2)", total);
+    return add(out, n, "P(same colour)=%.10g/%.10g=%.10g", ways_same, ways_all, ways_all ? ways_same/ways_all : 0);
+  }
   if ((has(t, "coded") || has(t, "coding") || has(c, "y=(x")) && has(t, "mean") &&
       (has(t, "sd") || has(t, "standarddeviation") || (has(t, "standard") && has(t, "deviation"))) && nv >= 4) {
     if (!coded_cmd_from_text(c, v, nv, cmd, sizeof(cmd))) {
@@ -4186,6 +4343,24 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   double cdf_lo = 0, cdf_hi = 0;
   if ((has(t, "cdf") || has(t, "cumulative")) && has(t, "median") &&
+      (has(c, "kln(x)") || has(c, "k*ln(x)") || has(c, "klog(x)")) &&
+      (extract_x_interval(c, &cdf_lo, &cdf_hi) || has(c, "<=x<=e^") || has(c, "<x<e^"))) {
+    if (cdf_lo <= 0) cdf_lo = 1;
+    double upper_log = 0;
+    const char *ep = strstr(c, "e^");
+    if (ep) upper_log = read_num(ep + 2);
+    if (upper_log <= 0) upper_log = 1;
+    double k = 1.0 / upper_log;
+    double med_log = 0.5 / k;
+    double med = exp_approx(med_log);
+    int n = add(out, 0, "For the median m, solve F(m)=0.5.");
+    n = add(out, n, "Use F(e^%.6g)=1 to find k.", upper_log);
+    n = add(out, n, "k ln(e^%.6g)=1, so k = %.10g", upper_log, k);
+    n = add(out, n, "k ln(m)=0.5");
+    n = add(out, n, "ln(m)=%.10g", med_log);
+    return add(out, n, "m = e^%.10g = %.10g", med_log, med);
+  }
+  if ((has(t, "cdf") || has(t, "cumulative")) && has(t, "median") &&
       (has(c, "k(x^") || has(c, "k*(x^")) && extract_x_interval(c, &cdf_lo, &cdf_hi)) {
     const char *kp = strstr(c, "x^");
     int pow = kp && isdigit((unsigned char)kp[2]) ? kp[2] - '0' : 1;
@@ -4269,6 +4444,26 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     return n;
   }
   double pdf_lo = 0, pdf_hi = 0;
+  if ((has(t, "pdf") || has(t, "density") || has(t, "continuous")) &&
+      (has(c, "k/x^2") || has(c, "k/(x^2)") || has(c, "kx^-2")) &&
+      extract_x_interval(c, &pdf_lo, &pdf_hi)) {
+    double area = 1.0/pdf_lo - 1.0/pdf_hi;
+    double k = area ? 1.0 / area : 0;
+    double a = pdf_lo, b = pdf_hi, bound = 0;
+    const char *gt = strstr(c, "p(x>");
+    const char *lt = strstr(c, "p(x<");
+    if (gt) { bound = read_num(gt + 4); a = bound; }
+    if (lt) { bound = read_num(lt + 4); b = bound; }
+    double prob = k * (1.0/a - 1.0/b);
+    int n = add(out, 0, "For a pdf, total area under f(x) is 1.");
+    n = add(out, n, "integral from %.6g to %.6g of k/x^2 dx = 1", pdf_lo, pdf_hi);
+    n = add(out, n, "k[-1/x] from %.6g to %.6g = 1", pdf_lo, pdf_hi);
+    n = add(out, n, "k = %.10g", k);
+    n = add(out, n, "P(%.6g<X<%.6g)=integral from %.6g to %.6g of %.10g/x^2 dx", a, b, a, b, k);
+    if (gt) return add(out, n, "P(X>%.6g) = %.10g", bound, prob);
+    if (lt) return add(out, n, "P(X<%.6g) = %.10g", bound, prob);
+    return add(out, n, "= %.10g", prob);
+  }
   if ((has(t, "pdf") || has(t, "density") || has(t, "continuous")) &&
       has(c, "kx^") && extract_x_interval(c, &pdf_lo, &pdf_hi)) {
     const char *kp = strstr(c, "kx^");
