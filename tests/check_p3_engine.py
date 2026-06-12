@@ -498,6 +498,8 @@ def main():
     require("A fair die is rolled until a six occurs. Find the probability that the first six occurs after 4 throws.", ["p=1/6", "P(X>4)=(5/6)^4"])
     require("Forces 6N at 20 degrees, 8N at 140 degrees, and 10N at 260 degrees act on a particle. Find resultant.", ["Resolve each force", "sum Fx", "resultant = sqrt(Fx^2+Fy^2)"])
     require("One end of a light elastic string natural length 2m modulus 30N is fixed. A 3kg mass hangs in equilibrium. Find extension.", ["T = mg = 3*9.8 = 29.4 N", "x = Tl/lambda = 29.4*2/30 = 1.96 m"])
+    require("A random variable X has cumulative distribution function F(x)=kx^2 for 0<x<2. Find k and P(X>1).", ["F(x)=kx^2 on 0<x<2", "k=0.25", "P(X>1)=1-F(1)=0.75"])
+    require("A car of mass 800 kg travels at constant speed 20 m/s up a slope angle 5 degrees against resistance 300 N. Find power of the engine.", ["Driving force = 983.3010231 N", "Power = Fv = 983.3010231*20 = 19666.02046 W"])
     print("OK p3 engine")
 
 

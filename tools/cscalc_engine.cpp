@@ -1918,7 +1918,9 @@ static int eval_storage(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LE
     double bytes = num(a[0]) * num(a[1]);
     int n = add(out, 0, "File size = records * bytes per record.");
     n = add(out, n, "%s*%s = %.10g bytes", a[0], a[1], bytes);
-    return add(out, n, "= %.10g MB", bytes / 1000000.0);
+    n = add(out, n, "= %.10g KiB", bytes / 1024.0);
+    n = add(out, n, "= %.10g MB", bytes / 1000000.0);
+    return add(out, n, "= %.10g MiB", bytes / 1048576.0);
   }
   if (starts3(s, "addressspace(", "addresses(", "addressbus(") && na >= 1) {
     int bits = (int)parse_int(a[0]);
@@ -4540,7 +4542,9 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       n = add(out, n, "%.10g attributes of %.10g bytes = %.10g bytes", acount, asize, attr_bytes);
       if (hk) n = add(out, n, "primary key = %.10g bytes", key);
       n = add(out, n, "bytes per row = %.10g", row_bytes);
-      return add(out, n, "%.10g*%.10g = %.10g bytes", rows, row_bytes, rows * row_bytes);
+      double bytes = rows * row_bytes;
+      n = add(out, n, "%.10g*%.10g = %.10g bytes", rows, row_bytes, bytes);
+      return add(out, n, "= %.10g KiB", bytes / 1024.0);
     }
   }
   if ((has(t, "record") || has(t, "database") || has(t, "relation")) && has(t, "field") && nv >= 3) {
@@ -4574,7 +4578,9 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
         for (int i = 0; i < nv; ++i) if (!used[i]) bytes_per_record += v[i];
         n = add(out, n, "bytes per record = %.10g", bytes_per_record);
         n = add(out, n, "file size = records * bytes per record");
-        return add(out, n, "%.10g*%.10g = %.10g bytes", recs, bytes_per_record, recs * bytes_per_record);
+        double bytes = recs * bytes_per_record;
+        n = add(out, n, "%.10g*%.10g = %.10g bytes", recs, bytes_per_record, bytes);
+        return add(out, n, "= %.10g KiB", bytes / 1024.0);
       }
       double fcount = 0, fsize = 0;
       const char *fp = strstr(t, "fields,of,");
@@ -4595,7 +4601,9 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       if (counted_fields && fcount > 1 && fsize > 0) n = add(out, n, "%.10g fields of %.10g bytes = %.10g bytes", fcount, fsize, fcount * fsize);
       n = add(out, n, "bytes per record = %.10g", bytes_per_record);
       n = add(out, n, "file size = records * bytes per record");
-      return add(out, n, "%.10g*%.10g = %.10g bytes", recs, bytes_per_record, recs * bytes_per_record);
+      double bytes = recs * bytes_per_record;
+      n = add(out, n, "%.10g*%.10g = %.10g bytes", recs, bytes_per_record, bytes);
+      return add(out, n, "= %.10g KiB", bytes / 1024.0);
     }
   }
   if ((has(t, "character") || has(t, "text")) && (label_num(input,"characters",&width) || label_num(input,"chars",&width)) &&

@@ -463,6 +463,8 @@ def main():
     require("Calculate the minimum sampling frequency for an audio signal with maximum frequency 18 kHz.", ["Nyquist", "minimum sampling frequency = 2*18000 = 36000 Hz", "= 36 kHz"])
     require("A sound file has bit rate 256 kbit/s and duration 3 minutes. Find file size in MiB.", ["File size = bit rate * duration.", "size = 256000*180 = 46080000 bits", "= 5.493164062 MiB"])
     require("An image has 800 by 600 pixels and file size 300 KiB. How many colours are possible?", ["bits per pixel = 2457600/480000 = 5.12", "whole-bit colour depth is 5 bits", "colours = 2^5 = 32"])
+    require("A file contains 1200 records. Each record has 32 bytes. Calculate file size in KiB.", ["1200*32 = 38400 bytes", "= 37.5 KiB"])
+    require("A database table has 1000 records. Each record has fields of 4 bytes, 20 bytes and 1 byte. Calculate storage in KiB.", ["bytes per record = 25", "1000*25 = 25000 bytes", "= 24.4140625 KiB"])
     require("bool(A+B+C+D+E+F)", ["simplified = F+E+D+C+B+A"])
     print("OK cscalc engine")
 

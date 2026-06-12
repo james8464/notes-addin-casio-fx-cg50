@@ -777,6 +777,38 @@ Drift check:
 - Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
 - Active goal remains open for future source/probe-driven hardening.
 
+## 2026-06-12 CDF, Slope Power, and Record Units Slice
+
+Completed:
+- Added CASP3 generic free-text CDF route for `F(x)=kx^n` on `0<x<a`, including `P(X>...)` and `P(X<...)` tails.
+- Preserved existing interval CDF handling by keeping `P(a<X<b)` ahead of tail fallback.
+- Added CASP3 power output for constant-speed slope/resistance prompts after finding driving force.
+- Added CSCALC KiB/MiB unit lines for record and database storage calculations.
+- Added regression tests and rebuilt calculator files.
+
+Evidence:
+- Fresh probes fixed:
+  - `F(x)=kx^2 for 0<x<2 ... P(X>1)` now gives `k=0.25`, `P(X>1)=0.75`.
+  - constant-speed slope power now gives `Power = Fv`.
+  - record/database storage now includes KiB output.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 374556 bytes`
+  - `CSCALC.g3a: 224492 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Still inside CASP3/CSCALC free-text working support and generated calculator outputs.
+- Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for future source/probe-driven hardening.
+
 ## 2026-06-12 Discrete Tables, Geometric Dice, Nyquist, and File-Size Slice
 
 Completed:

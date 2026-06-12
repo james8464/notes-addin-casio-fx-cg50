@@ -4207,7 +4207,17 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       n = add(out, n, "Constant speed means resultant force is zero.");
       n = add(out, n, "Driving force = mg sin(theta) + resistance");
     }
-    return add(out, n, "Driving force = %.10g N", drive);
+    n = add(out, n, "Driving force = %.10g N", drive);
+    if (has(t, "power")) {
+      double spd = 0;
+      bool hs = word_num(input, "speed", &spd) || word_num(input, "velocity", &spd);
+      if (!hs) {
+        for (int i = 0; i < nv; ++i)
+          if (!near_num(v[i], m) && !near_num(v[i], ang) && !near_num(v[i], r) && !near_num(v[i], a)) { spd = v[i]; break; }
+      }
+      return add(out, n, "Power = Fv = %.10g*%.10g = %.10g W", drive, spd, drive * spd);
+    }
+    return n;
   }
   if ((has(t, "incline") || has(t, "slope") || has(t, "plane")) && (has(t, "acceleration") || has(t, "accelerate") || has(t, "rough")) && nv >= 3) {
     double m=0, ang=0, mu=0;
@@ -5942,6 +5952,22 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       }
     }
     if (upper <= 0) for (int i = 0; i < nv; ++i) if (v[i] > upper) upper = v[i];
+    int tail = 0; double bound = 0;
+    const char *req = strstr(c, "p(x>");
+    if (req) { tail = 1; bound = read_num(req + (req[4] == '=' ? 5 : 4)); }
+    else if ((req = strstr(c, "p(x<"))) { tail = -1; bound = read_num(req + (req[4] == '=' ? 5 : 4)); }
+    else if (!(hi > lo)) prob_x_bound(c, &bound, &tail);
+    if (tail && upper > 0) {
+      double k = 1.0 / pwr(upper, pow);
+      double Fb = k * pwr(bound, pow);
+      if (Fb < 0) Fb = 0;
+      if (Fb > 1) Fb = 1;
+      int n = add(out, 0, "For a CDF, use F(upper)=1 to find k.");
+      n = add(out, n, "F(x)=kx^%d on 0<x<%.6g", pow, upper);
+      n = add(out, n, "F(%.6g)=k*%.6g^%d=1, so k=%.10g", upper, upper, pow, k);
+      n = add(out, n, "F(%.6g)=%.10g", bound, Fb);
+      return add(out, n, tail > 0 ? "P(X>%.6g)=1-F(%.6g)=%.10g" : "P(X<%.6g)=F(%.6g)=%.10g", bound, bound, tail > 0 ? 1 - Fb : Fb);
+    }
     if (upper > 0 && hi > lo) {
       double k = 1.0 / pwr(upper, pow);
       double prob = k * (pwr(hi, pow) - pwr(lo, pow));
