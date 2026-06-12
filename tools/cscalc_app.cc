@@ -150,6 +150,7 @@ static const char *const algos[] = {
   "queue(3,4,pop,5)",
   "preorder(a,b,c,d,e)",
   "inorder/postorder use same nodes.",
+  "dijkstra(a,d,a,b,4,...)",
   "Binary search needs sorted data.",
   "Outputs each comparison/pass."
 };

@@ -77,6 +77,8 @@ def main():
     require("inorder(a,b,c,d,e,f,g)", ["In-order traversal uses left, root, right", "In-order: d,b,e,a,f,c,g"])
     require("postorder(a,b,c,d,e,f,g)", ["Post-order traversal uses left, right, root", "Post-order: d,e,b,f,g,c,a"])
     require("preorder tree traversal nodes A B C D E F G", ["Pre-order", "a,b,d,e,c,f,g"])
+    require("dijkstra(a,d,a,b,4,a,c,2,c,b,1,b,d,5,c,d,8)", ["Dijkstra", "fix a at 0", "a->c: 0+2=2, update", "shortest path: a->c->b->d", "distance = 8"])
+    require("shortest path from A to D edges A B 4 A C 2 C B 1 B D 5 C D 8", ["Dijkstra", "shortest path: a->c->b->d", "distance = 8"])
     require("fixed(101.101)", ["place values", "5.625"])
     require("fixed point 101.101", ["place values", "5.625"])
     require("fixedtc(111.01)", ["two's complement", "-0.75"])

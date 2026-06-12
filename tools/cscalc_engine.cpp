@@ -319,6 +319,34 @@ static bool make_tree_cmd(const char *in, const char *name, char *cmd, int cap) 
   return true;
 }
 
+static bool dijkstra_skip_word(const char *w) {
+  return word_is(w, "dijkstra") || word_is(w, "shortest") || word_is(w, "path") ||
+         word_is(w, "route") || word_is(w, "graph") || word_is(w, "from") ||
+         word_is(w, "to") || word_is(w, "edge") || word_is(w, "edges") ||
+         word_is(w, "node") || word_is(w, "nodes") || word_is(w, "using") ||
+         word_is(w, "with") || word_is(w, "weight") || word_is(w, "weights") ||
+         word_is(w, "distance") || word_is(w, "find") || word_is(w, "calculate");
+}
+
+static bool make_dijkstra_cmd(const char *in, char *cmd, int cap) {
+  char t[192]; raw_clean(in, t, sizeof(t));
+  char tok[32][16]; int nt = 0;
+  for (int i = 0; t[i] && nt < 32;) {
+    while (t[i] == ',') ++i;
+    char w[16]; int j = 0;
+    while (t[i] && t[i] != ',' && j + 1 < (int)sizeof(w)) w[j++] = t[i++];
+    w[j] = 0;
+    if (!w[0] || dijkstra_skip_word(w)) continue;
+    strcpy(tok[nt++], w);
+  }
+  if (nt < 5) return false;
+  int p = sprintf(cmd, "dijkstra(%s,%s", tok[0], tok[1]);
+  for (int i = 2; i < nt && p < cap - 20; ++i) p += sprintf(cmd + p, ",%s", tok[i]);
+  if (((nt - 2) % 3) != 0 || p >= cap - 2) return false;
+  cmd[p++] = ')'; cmd[p] = 0;
+  return true;
+}
+
 static int is_bits(const char *s) {
   if (!s || !*s) return 0;
   for (int i = 0; s[i]; ++i) if (s[i] != '0' && s[i] != '1' && s[i] != '.') return 0;
@@ -598,6 +626,7 @@ static int eval_rpn(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
 }
 
 static void app_ch(char *s, int *pos, int cap, char c);
+static void app_str(char *s, int *pos, int cap, const char *t);
 static void app_int(char *s, int *pos, int cap, int v);
 
 static void list_text(long long v[], int n, char *buf, int cap) {
@@ -623,8 +652,66 @@ static void tree_walk(char a[][48], int n, int i, int mode, char *buf, int *p, i
   if (mode == 2) token_add(buf, p, cap, a[i]);
 }
 
+static int graph_node(char nodes[], int *nn, const char *s) {
+  char c = 0;
+  for (int i = 0; s[i]; ++i) if (isalnum((unsigned char)s[i])) { c = (char)tolower((unsigned char)s[i]); break; }
+  if (!c) return -1;
+  for (int i = 0; i < *nn; ++i) if (nodes[i] == c) return i;
+  if (*nn >= 8) return -1;
+  nodes[*nn] = c;
+  return (*nn)++;
+}
+
+static void path_text(char nodes[], int prev[], int at, char *buf, int cap) {
+  char rev[8]; int rc = 0;
+  while (at >= 0 && rc < 8) { rev[rc++] = nodes[at]; at = prev[at]; }
+  int p = 0;
+  for (int i = rc - 1; i >= 0; --i) {
+    if (p) app_str(buf, &p, cap, "->");
+    app_ch(buf, &p, cap, rev[i]);
+  }
+}
+
 static int eval_trace(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
-  char a[16][48]; int na = args(s, a, 16);
+  char a[32][48]; int na = args(s, a, 32);
+  if (starts3(s, "dijkstra(", "shortestpath(", "shortpath(") && na >= 5) {
+    char nodes[8]; int nn = 0;
+    int start = graph_node(nodes, &nn, a[0]), target = graph_node(nodes, &nn, a[1]);
+    int eu[12], ev[12]; long long ew[12]; int ne = 0;
+    for (int i = 2; i + 2 < na && ne < 12; i += 3) {
+      int u = graph_node(nodes, &nn, a[i]), v = graph_node(nodes, &nn, a[i+1]);
+      if (u < 0 || v < 0) return add(out, 0, "Use edge triples: from,to,weight.");
+      eu[ne] = u; ev[ne] = v; ew[ne] = parse_int(a[i+2]); ++ne;
+    }
+    if (start < 0 || target < 0 || ne < 1) return add(out, 0, "Use dijkstra(start,end,from,to,weight,...).");
+    const long long INF = 9000000000LL;
+    long long dist[8]; int prev[8]; bool used[8];
+    for (int i = 0; i < nn; ++i) { dist[i] = INF; prev[i] = -1; used[i] = false; }
+    dist[start] = 0;
+    int n = add(out, 0, "Dijkstra: fix the unvisited node with smallest distance.");
+    n = add(out, n, "Edges are treated as undirected.");
+    while (n < CSCALC_MAX_LINES - 2) {
+      int u = -1;
+      for (int i = 0; i < nn; ++i) if (!used[i] && dist[i] < INF && (u < 0 || dist[i] < dist[u])) u = i;
+      if (u < 0) break;
+      used[u] = true;
+      n = add(out, n, "fix %c at %lld", nodes[u], dist[u]);
+      if (u == target) break;
+      for (int e = 0; e < ne && n < CSCALC_MAX_LINES - 2; ++e) {
+        int v = eu[e] == u ? ev[e] : ev[e] == u ? eu[e] : -1;
+        if (v < 0 || used[v]) continue;
+        long long cand = dist[u] + ew[e];
+        if (cand < dist[v]) {
+          n = add(out, n, "%c->%c: %lld+%lld=%lld, update", nodes[u], nodes[v], dist[u], ew[e], cand);
+          dist[v] = cand; prev[v] = u;
+        }
+      }
+    }
+    if (dist[target] >= INF) return add(out, n, "No route found from %c to %c.", nodes[start], nodes[target]);
+    char path[40] = ""; path_text(nodes, prev, target, path, sizeof(path));
+    n = add(out, n, "shortest path: %s", path);
+    return add(out, n, "distance = %lld", dist[target]);
+  }
   if ((starts3(s, "preorder(", "treepre(", "pretraverse(") ||
        starts3(s, "inorder(", "treein(", "intraverse(") ||
        starts3(s, "postorder(", "treepost(", "posttraverse(")) && na >= 1) {
@@ -1516,6 +1603,9 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if (has(t, "rpn") || has(t, "postfix") || (has(t, "reverse") && has(t, "polish"))) {
     if (make_rpn_cmd(input, cmd, sizeof(cmd))) return eval_rpn(cmd, out);
   }
+  if (has(t, "dijkstra") || (has(t, "shortest") && (has(t, "path") || has(t, "route")))) {
+    if (make_dijkstra_cmd(input, cmd, sizeof(cmd))) return eval_trace(cmd, out);
+  }
   if ((has(t, "tree") || has(t, "traversal") || has(t, "traverse")) &&
       (has(t, "preorder") || has(t, "pre,order") || has(t, "pre"))) {
     if (make_tree_cmd(input, "preorder", cmd, sizeof(cmd))) return eval_trace(cmd, out);
@@ -1759,5 +1849,5 @@ int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
   n = add(out, 0, "Supported:");
   n = add(out, n, "bin hex den convert twos twosdec fixed fixedenc parity xorbits andbits orbits notbits hamming checksum checkdigit rpn");
   n = add(out, n, "floatdec floatrange normal image sound bitrate transfer transfermb");
-  return add(out, n, "compress huffman rle records hashmod hashlinear addressspace chars ascii unicode stack queue preorder inorder postorder binarysearch bubblesort bool truth nandform norform");
+  return add(out, n, "compress huffman rle records hashmod hashlinear addressspace chars ascii unicode stack queue preorder inorder postorder dijkstra binarysearch bubblesort bool truth nandform norform");
 }
