@@ -4501,6 +4501,33 @@ Drift check:
 - Kept changes to CASP3/CSCALC general free-text handling, regressions, generated app outputs, and this checkpoint.
 - Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.
 
+## 2026-06-12 Powered Slope, Vertical Height, and Vector Slice
+
+Completed:
+- Fixed CASP3 powered slope acceleration so `5 degrees at 15 m/s` uses angle and speed correctly.
+- Added CASP3 vertical greatest/maximum-height working from launch height above ground.
+- Added CASP3 polar resultant force resolution by resolving each force into components.
+- Rechecked current CSCALC Boolean simplification/proof/NAND/NOR behavior against the old Python reference logic; no source change needed.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 430220 bytes`
+  - `CSCALC.g3a: 239612 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CASP3.g3a sha256: b25c8ce537119b2327f4a86a1ffd128202f5c665ebd83495d72bc1840aa415dc`
+
+Drift check:
+- Kept changes to CASP3 general free-text handling, regressions, generated CASP3 output, and this checkpoint.
+- Did not touch CAS Pure behavior, menus, NOTES source, shared UI/status code, or CSCALC source in this slice.
+
 ## 2026-06-12 Final Parser Simplification Slice
 
 Completed:

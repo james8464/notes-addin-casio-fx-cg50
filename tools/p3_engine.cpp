@@ -154,6 +154,14 @@ static double deg_arcsine(double x) {
   return arctan(x/root(1-x*x))*180.0/M_PI;
 }
 
+static double deg_atan2_approx(double y, double x) {
+  if (x > -1e-9 && x < 1e-9) return y >= 0 ? 90 : -90;
+  double a = arctan(y / x) * 180.0 / M_PI;
+  if (x < 0 && y >= 0) a += 180;
+  if (x < 0 && y < 0) a -= 180;
+  return a;
+}
+
 static int args(const char *s, char a[][48], int maxa) {
   const char *l = strchr(s, '('), *r = strrchr(s, ')');
   if (!l || !r || r <= l) return 0;
@@ -3392,7 +3400,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     for (int i = 0; i < nv && np < 4; ++i) if (v[i] > 0) pos[np++] = v[i];
     double u0 = pos[0], g = 9.8, target = 0, h0 = 0;
     bool hU = word_num(input, "speed", &u0) || word_num(input, "velocity", &u0) || word_num(input, "initialspeed", &u0);
-    bool hHeight = word_num(input, "above", &h0) || word_num(input, "height", &h0);
+    bool hHeight = word_num(input, "height", &h0);
+    if (!hHeight && np >= 2 && (has(t, "aboveground") || (has(t, "above") && has(t, "ground")))) { h0 = pos[0]; hHeight = true; }
     bool hTarget = hHeight;
     if (hTarget) target = h0;
     if (!hTarget && np >= 2 && (has(t, "height") || has(t, "metres") || has(t, "meters"))) { target = pos[1]; hTarget = true; }
@@ -3400,6 +3409,14 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       if (hHeight) target = -h0;
       else if (np >= 2) target = hU ? -pos[0] : -pos[1];
       hTarget = true;
+    }
+    if (has(t, "greatestheight") || has(t, "maximumheight") || (has(t, "greatest") && has(t, "height")) ||
+        ((has(t, "maximum") && has(t, "height")) && !(has(t, "time") || has(t, "return")))) {
+      double maxh = h0 + u0*u0/(2*g);
+      int n = add(out, 0, "At greatest height, vertical velocity is zero.");
+      n = add(out, n, "v^2 = u^2 - 2g(s-h)");
+      n = add(out, n, "s-h = u^2/(2g) = %.6g^2/(2*%.6g) = %.10g", u0, g, u0*u0/(2*g));
+      return add(out, n, "greatest height above ground = %.10g + %.10g = %.10g m", h0, u0*u0/(2*g), maxh);
     }
     if (hTarget && !near_num(target, u0)) {
       double disc = u0*u0 - 2*g*target;
@@ -3504,7 +3521,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     if ((has(t, "vertical") || has(t, "vertically")) && (has(t, "upward") || has(t, "upwards") || has(t, "thrown")) && nv >= 1) {
       double u0 = v[0], g = 9.8, target = 0, h0 = 0;
       bool hU = word_num(input, "speed", &u0) || word_num(input, "velocity", &u0) || word_num(input, "initialspeed", &u0);
-      bool hHeight = word_num(input, "above", &h0) || word_num(input, "height", &h0);
+      bool hHeight = word_num(input, "height", &h0);
+      if (!hHeight && nv >= 2 && (has(t, "aboveground") || (has(t, "above") && has(t, "ground")))) { h0 = v[0]; hHeight = true; }
       bool hTarget = hHeight;
       if (hTarget) target = h0;
       if (!hTarget && (has(t, "above") || has(t, "height")) && nv >= 2) { target = v[1]; hTarget = true; }
@@ -3512,6 +3530,14 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
         if (hHeight) target = -h0;
         else if (nv >= 2) target = hU ? -v[0] : -v[1];
         hTarget = true;
+      }
+      if (has(t, "greatestheight") || has(t, "maximumheight") || (has(t, "greatest") && has(t, "height")) ||
+          ((has(t, "maximum") && has(t, "height")) && !(has(t, "time") || has(t, "return")))) {
+        double maxh = h0 + u0*u0/(2*g);
+        int n = add(out, 0, "At greatest height, vertical velocity is zero.");
+        n = add(out, n, "v^2 = u^2 - 2g(s-h)");
+        n = add(out, n, "s-h = u^2/(2g) = %.6g^2/(2*%.6g) = %.10g", u0, g, u0*u0/(2*g));
+        return add(out, n, "greatest height above ground = %.10g + %.10g = %.10g m", h0, u0*u0/(2*g), maxh);
       }
       if (hTarget && !near_num(target, u0)) {
         double disc = u0*u0 - 2*g*target;
@@ -3878,6 +3904,20 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if ((has(t, "force") || has(t, "forces") || has(t, "vector") || has(t, "vectors")) &&
       (has(t, "resultant") || has(t, "magnitude")) && (has(t, "angle") || has(t, "degrees")) &&
       !has(t, "component") && !has(t, "equilibrium") && nv >= 3) {
+    if (nv >= 4) {
+      double sx = 0, sy = 0;
+      int n = add(out, 0, "Resolve each force into horizontal and vertical components.");
+      for (int i = 0; i + 1 < nv && n < P3_MAX_LINES - 4; i += 2) {
+        double F = v[i], a = v[i + 1];
+        double fx = F * deg_cosine(a), fy = F * deg_sine(a);
+        sx += fx; sy += fy;
+        n = add(out, n, "%.6g N at %.6g deg: Fx=%.10g, Fy=%.10g", F, a, fx, fy);
+      }
+      double R = root(sx*sx + sy*sy), dir = deg_atan2_approx(sy, sx);
+      n = add(out, n, "sum Fx = %.10g, sum Fy = %.10g", sx, sy);
+      n = add(out, n, "resultant = sqrt(Fx^2+Fy^2) = %.10g N", R);
+      return add(out, n, "direction = atan(Fy/Fx) = %.10g degrees", dir);
+    }
     double F1 = v[0], F2 = v[1], ang = v[2];
     double R = root(F1*F1 + F2*F2 + 2*F1*F2*deg_cosine(ang));
     int n = add(out, 0, "Use the cosine rule with the included angle.");
@@ -4587,7 +4627,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     double m=0, P=0, spd=0, r=0;
     bool hm=label_num(input,"mass",&m) || word_num(input,"mass",&m);
     bool hP=label_num(input,"power",&P) || word_num(input,"power",&P);
-    bool hs=word_num(input,"speed",&spd) || word_num(input,"velocity",&spd);
+    bool hs=num_before_unit(input,"m/s",&spd) || num_before_unit(input,"ms^-1",&spd) ||
+            word_num(input,"speed",&spd) || word_num(input,"velocity",&spd);
     bool hr=word_num(input,"resistance",&r) || label_num(input,"resistance",&r);
     if (!hm) m = v[0];
     if (!hP) P = v[2];
@@ -4604,6 +4645,35 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "mg sin(theta) = %.10g - %.10g = %.10g", drive, r, drive-r);
     n = add(out, n, "sin(theta) = (%.10g-%.10g)/(%.10g*9.8) = %.10g", drive, r, m, s);
     return add(out, n, "theta = %.10g degrees", theta);
+  }
+  if ((has(t, "incline") || has(t, "slope") || has(t, "plane")) &&
+      has(t, "power") && (has(t, "resistance") || has(t, "resistive")) &&
+      (has(t, "speed") || has(t, "velocity") || has(t, "travels")) &&
+      (has(t, "acceleration") || has(t, "accelerate") || has(c, "findacceleration")) && nv >= 5) {
+    double m=0, P=0, spd=0, r=0, ang=0;
+    bool hm=label_num(input,"mass",&m) || word_num(input,"mass",&m);
+    bool hP=label_num(input,"power",&P) || word_num(input,"power",&P) || prev_word_num(input,"kw",&P) || prev_word_num(input,"kilowatt",&P);
+    bool hs=num_before_unit(input,"m/s",&spd) || num_before_unit(input,"ms^-1",&spd) ||
+            word_num(input,"speed",&spd) || word_num(input,"velocity",&spd);
+    bool hr=word_num(input,"resistance",&r) || label_num(input,"resistance",&r);
+    bool ha=label_num(input,"angle",&ang) || word_num(input,"angle",&ang) || prev_word_num(input,"degrees",&ang);
+    if (!hm) m = v[0];
+    if (!hP) P = v[2];
+    if (has(t, "kw") || has(t, "kilowatt")) P *= 1000.0;
+    if (!ha) for (int i = 0; i < nv; ++i)
+      if (!near_num(v[i], m) && !near_num(v[i], spd) && !near_num(v[i], P) && !near_num(v[i]*1000.0, P) && !near_num(v[i], r) && v[i] > 0 && v[i] <= 90) { ang = v[i]; ha = true; break; }
+    if (!hs) for (int i = 0; i < nv; ++i)
+      if (!near_num(v[i], m) && !near_num(v[i], P) && !near_num(v[i]*1000.0, P) && !near_num(v[i], r) && !near_num(v[i], ang) && v[i] > 0) { spd = v[i]; hs = true; break; }
+    if (!hr) for (int i = nv - 1; i >= 0; --i)
+      if (!near_num(v[i], m) && !near_num(v[i], spd) && !near_num(v[i], P) && !near_num(v[i]*1000.0, P) && !near_num(v[i], ang)) { r = v[i]; hr = true; break; }
+    double drive = spd ? P / spd : 0;
+    double down = m * 9.8 * deg_sine(ang);
+    double net = drive - r - down;
+    int n = add(out, 0, "Use P = Fv to convert engine power into driving force.");
+    n = add(out, n, "driving force = P/v = %.10g/%.10g = %.10g N", P, spd, drive);
+    n = add(out, n, "Down-slope weight component = mg sin(theta) = %.6g*9.8 sin(%.6g) = %.10g N", m, ang, down);
+    n = add(out, n, "Taking up the slope as positive: resultant = %.10g - %.10g - %.10g = %.10g N", drive, r, down, net);
+    return add(out, n, "a = F/m = %.10g/%.10g = %.10g m/s^2", net, m, net/m);
   }
   if ((has(t, "incline") || has(t, "slope") || has(t, "plane")) &&
       (has(t, "resistance") || has(t, "resistive") || has(t, "braking") || has(t, "brake")) &&
