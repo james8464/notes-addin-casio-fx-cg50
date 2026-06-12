@@ -2,6 +2,7 @@
 
 #include <ctype.h>
 #include <stdarg.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -84,6 +85,17 @@ static double exp_approx(double x) {
   double term = 1, sum = 1;
   for (int i = 1; i <= 18; ++i) { term *= x / i; sum += term; }
   return sum;
+}
+
+static double ln_approx(double x) {
+  if (x <= 0) return 0;
+  double y = x > 1 ? 1 : -1;
+  for (int i = 0; i < 14; ++i) {
+    double e = exp_approx(y);
+    if (e == 0) break;
+    y += (x - e) / e;
+  }
+  return y;
 }
 
 static double floor_num(double x) {
@@ -507,6 +519,7 @@ static bool parse_poly_after_word(const char *input, const char *word, double *A
       expr[k++] = lc; ++q;
     }
     expr[k] = 0;
+    if (input[q] == '/' || input[q] == '(') return false;
     if (k > 0 && parse_velocity_quad(expr, A, B, C)) return true;
   }
   return false;
@@ -643,13 +656,15 @@ static bool parse_force_x_poly(const char *input, double *A, double *B, double *
   if (!p) return false;
   char expr[128]; int k = 0; ++p;
   while (*p && *p != ')' && *p != ',' && k + 1 < (int)sizeof(expr)) {
-    unsigned char ch = (unsigned char)*p++;
-    if (isspace(ch) || ch == '(') continue;
+    unsigned char ch = (unsigned char)*p;
+    if (isspace(ch) || ch == '(') { ++p; continue; }
     char lc = (char)tolower(ch);
     if (!(isdigit(ch) || lc == 'x' || lc == '+' || lc == '-' || lc == '.' || lc == '^' || lc == '*')) break;
-    expr[k++] = lc;
+    expr[k++] = lc; ++p;
   }
-  expr[k] = 0; *A = *B = *C = *D = 0;
+  expr[k] = 0;
+  if (*p == '/' || *p == '(') return false;
+  *A = *B = *C = *D = 0;
   for (int i = 0; expr[i];) {
     double sign = 1; if (expr[i] == '+') ++i; else if (expr[i] == '-') { sign = -1; ++i; }
     double coef = 0; bool hc = false;
@@ -788,6 +803,23 @@ static bool extract_x_interval(const char *compact, double *lower, double *upper
   if (hi < lo) { double q = lo; lo = hi; hi = q; }
   *lower = lo; *upper = hi;
   return true;
+}
+
+static bool parse_y_values(const char *input, double *ys, int *count) {
+  const char *p = strstr(input, "values");
+  if (!p) p = strstr(input, "ordinates");
+  if (!p) return false;
+  int n = 0;
+  for (; *p && n < 16; ++p) {
+    if (n >= 3 && (tolower((unsigned char)p[0]) == 'h' ||
+        strncmp(p, "width", 5) == 0 || strncmp(p, "step", 4) == 0)) break;
+    if (*p == '-' || *p == '.' || isdigit((unsigned char)*p)) {
+      char *e = 0; double val = strtod(p, &e);
+      if (e != p) { ys[n++] = val; p = e - 1; }
+    }
+  }
+  *count = n;
+  return n >= 3;
 }
 
 static double choose(int n, int r) {
@@ -1887,6 +1919,34 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   char c[192]; clean(input, c, sizeof(c));
   double v[12]; int nv = scan_nums(t, v, 12);
   char cmd[160];
+  if ((has(t, "acceleration") || has(t, "accn")) && has(c, "/") && has(c, "t+") &&
+      (has(c, ")^3") || has(c, "^3")) && nv >= 7) {
+    double A = v[0], b = v[1], d = v[2], u = v[4], t0 = v[5], tf = v[6];
+    double ant0 = -A / (2.0 * b * (b*t0 + d) * (b*t0 + d));
+    double K = u - ant0;
+    double antf = -A / (2.0 * b * (b*tf + d) * (b*tf + d));
+    double ans = antf + K;
+    int n = add(out, 0, "Variable acceleration: integrate a(t) to get v(t).");
+    n = add(out, n, "a = %.10g/(%.10g t%+.10g)^3", A, b, d);
+    n = add(out, n, "v = integral a dt = -%.10g/(2*%.10g(%.10g t%+.10g)^2) + C", A, b, b, d);
+    n = add(out, n, "v(%.6g)=%.10g gives C = %.10g", t0, u, K);
+    return add(out, n, "v(%.6g) = %.10g", tf, ans);
+  }
+  if ((has(t, "simpson") || has(t, "simpsons")) && (has(t, "values") || has(t, "ordinates")) && nv >= 2) {
+    double ys[16]; int m = 0; double h = 0;
+    if (parse_y_values(input, ys, &m) && (label_num(input, "h", &h) || word_num(input, "width", &h) || word_num(input, "step", &h))) {
+      if (m % 2 == 0) return add(out, 0, "Simpson's rule needs an odd number of ordinates.");
+      double odd = 0, even = 0;
+      for (int i = 1; i < m - 1; ++i) {
+        if (i % 2) odd += ys[i]; else even += ys[i];
+      }
+      double ans = h / 3.0 * (ys[0] + ys[m-1] + 4*odd + 2*even);
+      int n = add(out, 0, "Use Simpson's rule with equally spaced ordinates.");
+      n = add(out, n, "area = h/3[y0+yn+4(odd ordinates)+2(even ordinates)]");
+      n = add(out, n, "odd sum = %.10g, even sum = %.10g", odd, even);
+      return add(out, n, "area = %.10g/3*(%.10g+%.10g+4*%.10g+2*%.10g) = %.10g", h, ys[0], ys[m-1], odd, even, ans);
+    }
+  }
   if (has(t, "power") && (has(t, "resistance") || has(t, "resistive")) &&
       (has(t, "acceleration") || has(t, "accelerate")) && (has(t, "speed") || has(t, "velocity")) && nv >= 4) {
     double m=0, P=0, sp=0, R=0;
@@ -2782,7 +2842,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "u sin(%.6g) = sqrt(2*9.8*%.6g)", ang, H);
     return add(out, n, "u = %.10g m/s", u);
   }
-  if (is_projectile_text(t) && has(t, "speed") &&
+  if (is_projectile_text(t) && (has(t, "speed") || has(t, "direction")) &&
       (has(t, "after") || has(t, "seconds")) &&
       !has(t, "high") && !has(t, "height") && !has(t, "above") && !has(t, "times") && nv >= 3) {
     double u=0, ang=0, time=0, g=9.8;
@@ -2798,7 +2858,10 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     int n = add(out, 0, "Resolve the initial velocity, then use vertical acceleration -g.");
     n = add(out, n, "v_x = u cos(theta) = %.6g cos(%.6g) = %.10g", u, ang, vx);
     n = add(out, n, "v_y = u sin(theta) - gt = %.6g sin(%.6g) - %.6g*%.6g = %.10g", u, ang, g, time, vy);
-    return add(out, n, "speed = sqrt(v_x^2+v_y^2) = %.10g m/s", root(vx*vx + vy*vy));
+    double dir = arctan(vy / vx) * 180.0 / M_PI;
+    n = add(out, n, "speed = sqrt(v_x^2+v_y^2) = %.10g m/s", root(vx*vx + vy*vy));
+    if (has(t, "direction") || has(t, "angle")) return add(out, n, "direction = arctan(v_y/v_x) = %.10g degrees", dir);
+    return n;
   }
   if (is_projectile_text(t) && (has(t, "angle") || has(t, "angles") || (has(t, "find") && has(t, "angle"))) &&
       (has(t, "target") || has(t, "point") || has(t, "through") || has(t, "pass")) && nv >= 3) {
@@ -3347,6 +3410,16 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if ((has(t, "workdone") || has(t, "work")) && nv >= 2) {
     double A=0, B=0, C=0, D=0, lo=0, hi=0;
+    if ((has(c, "/x^2") || has(c, "x^-2")) &&
+        ((word_num_with_t(input, "from", &lo) || word_num(input, "from", &lo) || (nv >= 2 && (lo = v[nv-2], true))) &&
+         (word_num_with_t(input, "to", &hi) || word_num(input, "to", &hi) || (nv >= 2 && (hi = v[nv-1], true))))) {
+      double k = v[0], W = k * (1.0/lo - 1.0/hi);
+      int n = add(out, 0, "Work done by a variable force is the integral of force.");
+      n = add(out, n, "F(x) = %.10g/x^2", k);
+      n = add(out, n, "W = integral from %.6g to %.6g of %.10g/x^2 dx", lo, hi, k);
+      n = add(out, n, "integral of %.10g/x^2 is -%.10g/x", k, k);
+      return add(out, n, "W = [-%.10g/x] from %.6g to %.6g = %.10g J", k, lo, hi, W);
+    }
     if ((has(t, "variable") || has(t, "force") || has(c, "f=") || has(c, "f(")) &&
         parse_force_x_poly(input, &A, &B, &C, &D) &&
         ((word_num_with_t(input, "from", &lo) || word_num(input, "from", &lo) ||
@@ -4387,6 +4460,18 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   double cdf_lo = 0, cdf_hi = 0;
   if ((has(t, "cdf") || has(t, "cumulative")) && has(t, "median") &&
+      has(c, "ln") && has(c, "-ln") && extract_x_interval(c, &cdf_lo, &cdf_hi) &&
+      cdf_lo > 0 && cdf_hi > cdf_lo) {
+    double k = 1.0 / ln_approx(cdf_hi / cdf_lo);
+    double med = root(cdf_lo * cdf_hi);
+    int n = add(out, 0, "For the median m, solve F(m)=0.5.");
+    n = add(out, n, "Use F(%.6g)=1 to find k.", cdf_hi);
+    n = add(out, n, "k(ln %.6g - ln %.6g)=1, so k = %.10g", cdf_hi, cdf_lo, k);
+    n = add(out, n, "k(ln m - ln %.6g)=0.5", cdf_lo);
+    n = add(out, n, "ln(m/%.6g)=%.10g", cdf_lo, 0.5/k);
+    return add(out, n, "m = %.10g", med);
+  }
+  if ((has(t, "cdf") || has(t, "cumulative")) && has(t, "median") &&
       (has(c, "kln(x)") || has(c, "k*ln(x)") || has(c, "klog(x)")) &&
       (extract_x_interval(c, &cdf_lo, &cdf_hi) || has(c, "<=x<=e^") || has(c, "<x<e^"))) {
     if (cdf_lo <= 0) cdf_lo = 1;
@@ -4623,22 +4708,24 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if ((has(t, "pdf") || has(t, "density") || has(t, "continuous")) &&
       (has(c, "k(x+") || has(c, "k*(x+") || has(c, "kx+") || has(c, "k*x+"))) {
     double upper = 0, lower = 0, shift = 1;
-    extract_0_x_bound(c, &upper);
+    bool got_interval = extract_x_interval(c, &lower, &upper);
+    if (!got_interval) extract_0_x_bound(c, &upper);
     const char *kp = strstr(c, "x+");
     if (kp) shift = read_num(kp + 2);
     const char *gt = strstr(c, "p(x>");
-    if (gt) lower = read_num(gt + 4);
+    double prob_lo = lower;
+    if (gt) prob_lo = read_num(gt + 4);
     if (upper <= 0) for (int i = 0; i < nv; ++i) if (v[i] > upper) upper = v[i];
-    if (!gt && upper > 0) for (int i = 0; i < nv; ++i) if (v[i] > 0 && v[i] < upper) lower = v[i];
+    if (!got_interval && !gt && upper > 0) for (int i = 0; i < nv; ++i) if (v[i] > 0 && v[i] < upper) lower = v[i];
     if (upper > lower) {
-      double area = upper*upper/2.0 + shift*upper;
+      double area = (upper*upper - lower*lower)/2.0 + shift*(upper - lower);
       double k = 1.0 / area;
-      double prob = k * ((upper*upper - lower*lower)/2.0 + shift*(upper - lower));
+      double prob = k * ((upper*upper - prob_lo*prob_lo)/2.0 + shift*(upper - prob_lo));
       int n = add(out, 0, "For a pdf, first normalise f(x).");
-      n = add(out, n, "integral from 0 to %.6g of k(x+%.6g) dx = 1", upper, shift);
+      n = add(out, n, "integral from %.6g to %.6g of k(x+%.6g) dx = 1", lower, upper, shift);
       n = add(out, n, "k = %.10g", k);
-      n = add(out, n, "P(X>%.6g)=integral from %.6g to %.6g of %.10g(x+%.6g) dx", lower, lower, upper, k, shift);
-      return add(out, n, "P(X>%.6g) = %.10g", lower, prob);
+      n = add(out, n, "P(X>%.6g)=integral from %.6g to %.6g of %.10g(x+%.6g) dx", prob_lo, prob_lo, upper, k, shift);
+      return add(out, n, "P(X>%.6g) = %.10g", prob_lo, prob);
     }
   }
   if ((has(t, "pdf") || has(t, "density") || has(t, "continuous")) &&
@@ -4900,6 +4987,9 @@ int p3_eval(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   for (int i=0;i<P3_MAX_LINES;++i) out[i][0]=0;
   char s[192]; clean(input, s, sizeof(s));
   if (!s[0]) return add(out, 0, "Enter a Paper 3 command.");
+  if ((has(s, "acceleration") || has(s, "accn")) && has(s, "/")) {
+    int nf = eval_free_text(input, out); if (nf) return nf;
+  }
   int n = eval_suvat(s, out); if (n) return n;
   n = eval_mech(s, out); if (n) return n;
   n = eval_stats(s, out); if (n) return n;

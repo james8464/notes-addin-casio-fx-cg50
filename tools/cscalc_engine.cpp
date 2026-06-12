@@ -208,6 +208,25 @@ static bool scan_fixed_bits(const char *s, char *buf, int cap) {
   return false;
 }
 
+static int scan_fixed_bit_tokens(const char *s, char out[][48], int maxn) {
+  int n = 0;
+  for (int i = 0; s[i] && n < maxn; ++i) {
+    if (s[i] != '0' && s[i] != '1') continue;
+    int j = i, k = 0; bool dot = false;
+    while ((s[j] == '0' || s[j] == '1' || s[j] == '.') && k + 1 < 48) {
+      if (s[j] == '.') {
+        if (dot) break;
+        dot = true;
+      }
+      out[n][k++] = s[j++];
+    }
+    out[n][k] = 0;
+    if (dot && k > 2) ++n;
+    i = j;
+  }
+  return n;
+}
+
 static double read_num(const char *s) {
   double sign = 1, v = 0, scale = 1;
   if (*s == '-') { sign = -1; ++s; }
@@ -3269,6 +3288,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   double v[8]; int nv = scan_nums(t, v, 8);
   char bits[4][48]; int nb = scan_bits(t, bits, 4);
   char fbits[4][48]; int nfb = scan_binary_fraction_tokens(input, fbits, 4);
+  char fixed_tokens[4][48]; int nfixed = scan_fixed_bit_tokens(input, fixed_tokens, 4);
   char bitcol[65]; bool has_bitcol = scan_spaced_bit_column(t, bitcol, sizeof(bitcol));
   char bitgrp[4][48]; int nbg = scan_spaced_bit_groups(t, bitgrp, 4);
   char hex_tok[32]; bool has_hex_tok = scan_hex_token(t, hex_tok, sizeof(hex_tok));
@@ -3548,6 +3568,25 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   if (has(t, "rpn") || has(t, "postfix") || (has(t, "reverse") && has(t, "polish"))) {
     if (make_rpn_cmd(input, cmd, sizeof(cmd))) return eval_rpn(cmd, out);
+  }
+  if (has(compact, "bigo") || has(compact, "big-o") || has(compact, "complexity") || has(compact, "timecomplexity")) {
+    int n = add(out, 0, "Count how the number of operations grows with input size n.");
+    if ((has(compact, "nested") || has(compact, "inner") || has(compact, "fori")) && has(compact, "loop") &&
+        (has(compact, "from1ton") || has(compact, "1ton") || has(compact, "n")) && has(compact, "j")) {
+      n = add(out, n, "Outer loop runs n times.");
+      n = add(out, n, "Inner loop runs n times for each outer iteration.");
+      n = add(out, n, "total operations proportional to n*n = n^2");
+      return add(out, n, "Big O = O(n^2)");
+    }
+    if (has(compact, "binarysearch") || (has(compact, "halve") || has(compact, "halves") || has(compact, "divideandconquer"))) {
+      n = add(out, n, "Binary search halves the search space each comparison.");
+      return add(out, n, "Big O = O(log n)");
+    }
+    if (has(compact, "single") && has(compact, "loop")) {
+      n = add(out, n, "A single loop over n items grows linearly.");
+      return add(out, n, "Big O = O(n)");
+    }
+    if (has(compact, "constant")) return add(out, n, "Big O = O(1)");
   }
   if (has(t, "dijkstra") || (has(t, "shortest") && (has(t, "path") || has(t, "route")))) {
     if (make_dijkstra_cmd(input, cmd, sizeof(cmd))) return eval_trace(cmd, out);
@@ -4014,6 +4053,44 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     sprintf(cmd, "den(%s,16)", hex_tok); return eval_base(cmd, out);
   }
   char fixed_early[48];
+  if (has(t, "fixed") && (has(t, "add") || has(t, "sum") || has(t, "plus")) && nfixed >= 2) {
+    double a0 = fixed_decode(fixed_tokens[0]), b0 = fixed_decode(fixed_tokens[1]), sum = a0 + b0;
+    const char *d0 = strchr(fixed_tokens[0], '.');
+    const char *d1 = strchr(fixed_tokens[1], '.');
+    int frac0 = d0 ? (int)strlen(d0 + 1) : 0, frac1 = d1 ? (int)strlen(d1 + 1) : 0;
+    int whole0 = d0 ? (int)(d0 - fixed_tokens[0]) : (int)strlen(fixed_tokens[0]);
+    int whole1 = d1 ? (int)(d1 - fixed_tokens[1]) : (int)strlen(fixed_tokens[1]);
+    int frac = frac0 > frac1 ? frac0 : frac1, whole = whole0 > whole1 ? whole0 : whole1;
+    while (sum >= pow2(whole) && whole < 62) ++whole;
+    long long scaled = (long long)round_nearest(sum * pow2(frac));
+    char bits_out[65], fixed_out[65]; to_bin(scaled, whole + frac, bits_out); insert_point(bits_out, whole, fixed_out);
+    int n = add(out, 0, "Add binary fixed-point values by place value.");
+    n = add(out, n, "%s_2 = %.10g_10", fixed_tokens[0], a0);
+    n = add(out, n, "%s_2 = %.10g_10", fixed_tokens[1], b0);
+    n = add(out, n, "%.10g + %.10g = %.10g", a0, b0, sum);
+    return add(out, n, "using %d fractional bits, result = %s", frac, fixed_out);
+  }
+  if (has(t, "fixed") && (has(t, "convert") || has(t, "encode") || has(t, "represent")) &&
+      (has(t, "denary") || has(t, "decimal")) && nfixed == 0 && nv >= 1 &&
+      !has(t, "after") && !has(t, "fractional") && !has(t, "before") && !has(t, "whole") && !has(t, "integer")) {
+    double value = v[0];
+    long long whole = (long long)value;
+    double rem = value - whole;
+    if (rem < 0) rem = -rem;
+    char whole_bits[65]; to_bin(whole, whole_bits_for(value), whole_bits);
+    char frac_bits[33]; int fp = 0;
+    int n = add(out, 0, "Convert the fractional part by repeated multiplication by 2.");
+    n = add(out, n, "whole part %.0f gives %s", (double)whole, whole_bits);
+    while (rem > 1e-10 && fp < 16 && n < CSCALC_MAX_LINES - 2) {
+      rem *= 2.0;
+      int bit = rem >= 1.0 ? 1 : 0;
+      if (bit) rem -= 1.0;
+      frac_bits[fp++] = (char)('0' + bit);
+      n = add(out, n, "multiply by 2 -> bit %d, remainder %.10g", bit, rem);
+    }
+    frac_bits[fp] = 0;
+    return add(out, n, "%.10g_10 = %s.%s_2", value, whole_bits, fp ? frac_bits : "0");
+  }
   if (has(t, "fixed") && (has(t, "encode") || has(t, "represent") || has(t, "convert")) &&
       (has(t, "decimal") || has(t, "denary")) && (has(t, "fractional") || has(t, "fraction") || has(t, "after")) &&
       nv >= 2 && !has(t, "before") && !has(t, "whole") && !has(t, "integer")) {
@@ -4321,6 +4398,12 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       (has(t, "range") || has(t, "largest") || has(t, "smallest")) &&
       !(has(t, "added") || has(t, "add") || has(t, "need") || has(t, "needed") || has(t, "exact")) && nv >= 2) {
     sprintf(cmd, "floatrange(%lld,%lld)", (long long)v[0], (long long)v[1]); return eval_float(cmd, out);
+  }
+  if (has(t, "exponent") && has(t, "range") && nv >= 1) {
+    int eb = (int)v[0], emin = -(1 << (eb - 1)), emax = (1 << (eb - 1)) - 1;
+    int n = add(out, 0, "Exponent is stored as %d-bit two's complement.", eb);
+    n = add(out, n, "minimum exponent = -2^(%d-1) = %d", eb, emin);
+    return add(out, n, "maximum exponent = 2^(%d-1)-1 = %d", eb, emax);
   }
   if ((has(t, "closest") || has(t, "nearest")) && (has(t, "float") || has(t, "floating") || has(t, "representable")) && nv >= 3) {
     double value=v[0], mb=v[1], eb=v[2], tmp=0;

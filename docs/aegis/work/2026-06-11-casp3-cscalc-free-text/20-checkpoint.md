@@ -1,5 +1,37 @@
 # Checkpoint
 
+## 2026-06-12 Rational Motion, Simpson, Fixed-Point, And Complexity Slice
+
+Completed:
+- Added CASP3 rational variable-acceleration working for forms like `a=12/(2t+1)^3` with an initial velocity condition.
+- Hardened CASP3 polynomial-only parsers so rational force/acceleration expressions are not silently treated as constants.
+- Added CASP3 inverse-square variable-force work integration.
+- Added CASP3 Simpson's-rule working from ordinate lists and `h`.
+- Added CASP3 projectile direction-after-time working from resolved velocity components.
+- Fixed CASP3 shifted linear pdf normalisation for nonzero lower bounds and shifted log CDF median working.
+- Added CSCALC decimal-to-binary fixed-point fraction working, binary fixed-point addition, exponent-only range working, and Big-O route ordering before Boolean fallback.
+- Added regressions and rebuilt calculator files.
+
+Evidence:
+- Fresh unseen probes for the patched P3/CS cases: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 298540 bytes`
+  - `CSCALC.g3a: 197628 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Still inside CASP3/CSCALC free-text working support and generated calculator outputs.
+- Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for further source/probe-driven hardening.
+
 ## 2026-06-12 Projectile, Geometric Tail, RSA Decrypt, And Packet Slice
 
 Completed:
