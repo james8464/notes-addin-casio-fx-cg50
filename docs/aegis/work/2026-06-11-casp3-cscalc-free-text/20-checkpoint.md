@@ -1,5 +1,38 @@
 # Checkpoint
 
+## 2026-06-12 Route-Order Hardening For Shifted P3 And CS Parser Cases
+
+Completed:
+- Fixed CASP3 linear denominator parsing so missing explicit `^1` defaults correctly for `(ax+b)` routes.
+- Added CASP3 reciprocal-linear pdf mean working via `E(X)=integral x*f(x) dx`.
+- Moved rational velocity displacement above polynomial fallbacks so `v=k/(at+b)+c` gives log working, not a false polynomial route.
+- Added shifted linear-power force work handling in both free-text and mechanics paths, e.g. `F=(2x+1)^3`.
+- Fixed CASP3 sample-mean interval wording such as `sample of 36 ... between a and b`.
+- Fixed shorthand binomial interval wording such as `X~B(n,p) between a and b inclusive`.
+- Hardened CSCALC minterm/K-map parsing for `for variables A B C`, punctuation, `don't cares`, and article words.
+- Fixed CSCALC image storage wording for byte-per-pixel colour depth and added KiB output.
+- Rebuilt calculator files.
+
+Evidence:
+- Fresh adversarial probes for the patched P3/CS cases: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 324432 bytes`
+  - `CSCALC.g3a: 204320 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Still inside CASP3/CSCALC free-text working support and generated calculator outputs.
+- Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for further source/probe-driven hardening.
+
 ## 2026-06-12 Linear-Power Pdf, Log Antiderivative, Mixed Conditional, And Transfer Overhead Slice
 
 Completed:

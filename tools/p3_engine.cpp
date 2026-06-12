@@ -718,29 +718,56 @@ static bool extract_xy_lists_after_words(const char *input, double *xs, double *
   return true;
 }
 
+static bool parse_linear_inside(const char *p, char var, double *b, double *d, const char **endp) {
+  *b = 1; *d = 0;
+  if (*p == var) {
+    *b = 1; ++p;
+    if (*p == '+' || *p == '-') {
+      *d = read_num(p);
+      if (*p == '+' || *p == '-') ++p;
+      while (*p == '.' || isdigit((unsigned char)*p)) ++p;
+    }
+  } else if (*p == '-' || *p == '.' || isdigit((unsigned char)*p)) {
+    double first = read_num(p);
+    if (*p == '-' || *p == '+') ++p;
+    while (*p == '.' || isdigit((unsigned char)*p)) ++p;
+    if (*p == '*') ++p;
+    if (*p == var) {
+      *b = first; ++p;
+      if (*p == '+' || *p == '-') {
+        *d = read_num(p);
+        if (*p == '+' || *p == '-') ++p;
+        while (*p == '.' || isdigit((unsigned char)*p)) ++p;
+      }
+    } else if (*p == '+' || *p == '-') {
+      *d = first;
+      bool neg = *p == '-';
+      ++p;
+      double coef = 1;
+      if (*p == '.' || isdigit((unsigned char)*p)) {
+        coef = read_num(p);
+        while (*p == '.' || isdigit((unsigned char)*p)) ++p;
+        if (*p == '*') ++p;
+      }
+      if (*p != var) return false;
+      *b = neg ? -coef : coef;
+      ++p;
+    } else return false;
+  } else return false;
+  if (endp) *endp = p;
+  return *b != 0;
+}
+
 static bool parse_linear_den_power(const char *c, char var, double *b, double *d, int *pow) {
   const char *p = strstr(c, "/(");
   if (!p) return false;
   p += 2;
-  *b = 1; *d = 0; *pow = 1;
-  if (*p == var) {
-    *b = 1; ++p;
-  } else if (*p == '-' || *p == '.' || isdigit((unsigned char)*p)) {
-    *b = read_num(p);
-    while (*p == '-' || *p == '.' || isdigit((unsigned char)*p)) ++p;
-    if (*p == '*') ++p;
-    if (*p != var) return false;
-    ++p;
-  } else return false;
-  if (*p == '+' || *p == '-') {
-    bool neg = *p == '-';
-    ++p;
-    *d = read_num(p);
-    if (neg) *d = -*d;
-    while (*p == '.' || isdigit((unsigned char)*p)) ++p;
-  }
+  const char *e = 0;
+  if (!parse_linear_inside(p, var, b, d, &e)) return false;
+  p = e;
   if (*p != ')') return false;
   ++p;
+  *pow = 1;
   if (*p == '^') *pow = (int)read_num(p + 1);
   return *pow >= 1 && *b != 0;
 }
@@ -752,6 +779,15 @@ static double linear_den_antideriv(double k, double b, double d, int pow, double
     return (k / b) * ln_approx(z);
   }
   return k * pwr(b*x + d, 1 - pow) / (b * (1 - pow));
+}
+
+static double linear_den_x_antideriv(double k, double b, double d, int pow, double x) {
+  double u = b*x + d, ab = u < 0 ? -u : u;
+  if (pow == 1) return k * (u - d * ln_approx(ab)) / (b*b);
+  if (pow == 2) return k * (ln_approx(ab) + d/u) / (b*b);
+  double a = pwr(u, 2 - pow) / (2 - pow);
+  double q = pwr(u, 1 - pow) / (1 - pow);
+  return k * (a - d*q) / (b*b);
 }
 
 static double linear_power_antideriv(double k, double b, double d, int pow, double x) {
@@ -1340,6 +1376,26 @@ static int eval_mech(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   }
   if ((has(s, "variableforce") || (has(s, "force") && has(s, "x^"))) && (has(s, "work") || has(s, "workdone"))) {
     double A=0, B=0, C=0, D=0, nums[8]; int nn = scan_nums(s, nums, 8);
+    if (!has(s, "/(") && (has(s, "f=(") || has(s, ")^")) && nn >= 2) {
+      const char *p = strstr(s, "f=(");
+      if (p) p += 3;
+      else if ((p = strchr(s, '('))) ++p;
+      double rb=0, rd=0; const char *e=0;
+      if (p && parse_linear_inside(p, 'x', &rb, &rd, &e) && *e == ')') {
+        int pow = e[1] == '^' ? (int)read_num(e + 2) : 1;
+        if (pow >= 1) {
+          double lo = nums[nn-2], hi = nums[nn-1];
+          double F1 = linear_power_antideriv(1.0, rb, rd, pow, lo);
+          double F2 = linear_power_antideriv(1.0, rb, rd, pow, hi);
+          char lin[48]; fmt_linear_var(lin, sizeof(lin), rb, 'x', rd);
+          int n = add(out, 0, "Work done by a variable force is the integral of force.");
+          n = add(out, n, "F(x) = (%s)^%d", lin, pow);
+          n = add(out, n, "W = integral from %.6g to %.6g of (%s)^%d dx", lo, hi, lin, pow);
+          n = add(out, n, "integral = (%s)^%d/(%.10g*%d)", lin, pow+1, rb, pow+1);
+          return add(out, n, "W = %.10g J", F2 - F1);
+        }
+      }
+    }
     if (parse_force_x_poly(s, &A, &B, &C, &D) && nn >= 2) {
       double lo = nums[nn-2], hi = nums[nn-1];
       double W = A*(hi*hi*hi*hi - lo*lo*lo*lo)/4.0 + B*(hi*hi*hi - lo*lo*lo)/3.0 +
@@ -2026,6 +2082,48 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       return add(out, n, "v(%.6g) = %.10g", tf, Ft + C);
     }
   }
+  if (has(t, "velocity") && has(t, "displacement") && has(t, "from") && has(c, "/(")) {
+    double rb=0, rd=0; int rpow=0;
+    if (parse_linear_den_power(c, 't', &rb, &rd, &rpow) && rpow >= 1) {
+      double k = nv > 0 ? v[0] : 1;
+      double c0 = trailing_constant_after_linear_den(c, 't', rpow);
+      double t1 = 0, t2 = 0;
+      word_num_with_t(input, "from", &t1); word_num_with_t(input, "to", &t2);
+      if (t2 < t1) { double q = t1; t1 = t2; t2 = q; }
+      double F1 = linear_den_antideriv(k, rb, rd, rpow, t1) + c0*t1;
+      double F2 = linear_den_antideriv(k, rb, rd, rpow, t2) + c0*t2;
+      char den[48]; fmt_linear_var(den, sizeof(den), rb, 't', rd);
+      int n = add(out, 0, "Displacement is the integral of velocity.");
+      n = add(out, n, "v = %.10g/(%s)^%d%+.10g", k, den, rpow, c0);
+      if (rpow == 1) n = add(out, n, "integral v dt = (%.10g/%.10g)ln|%s|%+.10g t", k, rb, den, c0);
+      else n = add(out, n, "integral v dt = %.10g(%s)^%d/(%.10g*(%d))%+.10g t", k, den, 1-rpow, rb, 1-rpow, c0);
+      n = add(out, n, "displacement = [s] from t=%.6g to t=%.6g", t1, t2);
+      return add(out, n, "displacement = %.10g - %.10g = %.10g", F2, F1, F2-F1);
+    }
+  }
+  if ((has(t, "workdone") || has(t, "work")) && !has(c, "/(") && (has(c, "f=(") || has(c, ")^")) && has(c, "x")) {
+    double lo=0, hi=0;
+    if ((word_num_with_t(input, "from", &lo) || word_num(input, "from", &lo) || (nv >= 2 && (lo = v[nv-2], true))) &&
+        (word_num_with_t(input, "to", &hi) || word_num(input, "to", &hi) || (nv >= 2 && (hi = v[nv-1], true)))) {
+      const char *p = strstr(c, "f=(");
+      if (p) p += 3;
+      else if ((p = strchr(c, '('))) ++p;
+      double rb=0, rd=0; const char *e=0;
+      if (p && parse_linear_inside(p, 'x', &rb, &rd, &e) && *e == ')') {
+        int pow = e[1] == '^' ? (int)read_num(e + 2) : 1;
+        if (pow >= 1) {
+          double F1 = linear_power_antideriv(1.0, rb, rd, pow, lo);
+          double F2 = linear_power_antideriv(1.0, rb, rd, pow, hi);
+          char lin[48]; fmt_linear_var(lin, sizeof(lin), rb, 'x', rd);
+          int n = add(out, 0, "Work done by a variable force is the integral of force.");
+          n = add(out, n, "F(x) = (%s)^%d", lin, pow);
+          n = add(out, n, "W = integral from %.6g to %.6g of (%s)^%d dx", lo, hi, lin, pow);
+          n = add(out, n, "integral = (%s)^%d/(%.10g*%d)", lin, pow+1, rb, pow+1);
+          return add(out, n, "W = %.10g J", F2 - F1);
+        }
+      }
+    }
+  }
   if ((has(t, "simpson") || has(t, "simpsons")) && (has(t, "values") || has(t, "ordinates")) && nv >= 2) {
     double ys[16]; int m = 0; double h = 0;
     if (parse_y_values(input, ys, &m) && (label_num(input, "h", &h) || word_num(input, "width", &h) || word_num(input, "step", &h))) {
@@ -2501,7 +2599,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if (has(t, "velocity") && has(t, "displacement") && has(t, "from")) {
     double rb=0, rd=0; int rpow=0;
-    if (has(c, "/(") && parse_linear_den_power(c, 't', &rb, &rd, &rpow) && rpow >= 2) {
+    if (has(c, "/(") && parse_linear_den_power(c, 't', &rb, &rd, &rpow) && rpow >= 1) {
       double k = nv > 0 ? v[0] : 1;
       double c0 = trailing_constant_after_linear_den(c, 't', rpow);
       double t1 = 0, t2 = 0;
@@ -2513,10 +2611,12 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       int n = add(out, 0, "Displacement is the integral of velocity.");
       if (near_num(c0, 0)) {
         n = add(out, n, "v = %.10g/(%s)^%d", k, den, rpow);
-        n = add(out, n, "integral v dt = %.10g(%s)^%d/(%.10g*(%d))", k, den, 1-rpow, rb, 1-rpow);
+        if (rpow == 1) n = add(out, n, "integral v dt = (%.10g/%.10g)ln|%s|", k, rb, den);
+        else n = add(out, n, "integral v dt = %.10g(%s)^%d/(%.10g*(%d))", k, den, 1-rpow, rb, 1-rpow);
       } else {
         n = add(out, n, "v = %.10g/(%s)^%d%+.10g", k, den, rpow, c0);
-        n = add(out, n, "integral v dt = %.10g(%s)^%d/(%.10g*(%d))%+.10g t", k, den, 1-rpow, rb, 1-rpow, c0);
+        if (rpow == 1) n = add(out, n, "integral v dt = (%.10g/%.10g)ln|%s|%+.10g t", k, rb, den, c0);
+        else n = add(out, n, "integral v dt = %.10g(%s)^%d/(%.10g*(%d))%+.10g t", k, den, 1-rpow, rb, 1-rpow, c0);
       }
       n = add(out, n, "displacement = [s] from t=%.6g to t=%.6g", t1, t2);
       return add(out, n, "displacement = %.10g - %.10g = %.10g", F2, F1, F2-F1);
@@ -2697,6 +2797,13 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       double hi = ux[0] < ux[1] ? ux[1] : ux[0];
       sprintf(cmd, "binomnorm(%d,%.10g,%.10g,%.10g)", N, pv, lo, hi);
       return eval_stats(cmd, out);
+    }
+    if (nux >= 2 && has(t, "between")) {
+      int lo = (int)(ux[0] < ux[1] ? ux[0] : ux[1]);
+      int hi = (int)(ux[0] < ux[1] ? ux[1] : ux[0]);
+      if ((has(t, "inclusive") || has(t, "included")) && lo <= hi)
+        return add_binom_range_lines(out, N, pv, lo, hi, "Required probability");
+      return add_binom_range_lines(out, N, pv, lo + 1, hi - 1, "Required probability");
     }
     double blo=0, bhi=0;
     bool has_lower = word_num(input, "atleast", &blo) || word_num(input, "greaterthanorequal", &blo) || word_num(input, "morethan", &blo);
@@ -3647,6 +3754,25 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       n = add(out, n, "integral = %.10g*x^%d/%d", k, 1-pow, 1-pow);
       return add(out, n, "W = %.10g J", W);
     }
+    if ((has(c, ")^") || has(c, ")**")) && has(c, "x") &&
+        ((word_num_with_t(input, "from", &lo) || word_num(input, "from", &lo) || (nv >= 2 && (lo = v[nv-2], true))) &&
+         (word_num_with_t(input, "to", &hi) || word_num(input, "to", &hi) || (nv >= 2 && (hi = v[nv-1], true))))) {
+      const char *p = strchr(c, '(');
+      double rb=0, rd=0; const char *e=0;
+      if (p && parse_linear_inside(p + 1, 'x', &rb, &rd, &e) && *e == ')') {
+        int pow = e[1] == '^' ? (int)read_num(e + 2) : 1;
+        if (pow >= 1) {
+          double F1 = linear_power_antideriv(1.0, rb, rd, pow, lo);
+          double F2 = linear_power_antideriv(1.0, rb, rd, pow, hi);
+          char lin[48]; fmt_linear_var(lin, sizeof(lin), rb, 'x', rd);
+          int n = add(out, 0, "Work done by a variable force is the integral of force.");
+          n = add(out, n, "F(x) = (%s)^%d", lin, pow);
+          n = add(out, n, "W = integral from %.6g to %.6g of (%s)^%d dx", lo, hi, lin, pow);
+          n = add(out, n, "integral = (%s)^%d/(%.10g*%d)", lin, pow+1, rb, pow+1);
+          return add(out, n, "W = %.10g J", F2 - F1);
+        }
+      }
+    }
     if ((has(t, "variable") || has(t, "force") || has(c, "f=") || has(c, "f(")) &&
         parse_force_x_poly(input, &A, &B, &C, &D) &&
         ((word_num_with_t(input, "from", &lo) || word_num(input, "from", &lo) ||
@@ -3918,6 +4044,18 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       sprintf(cmd, "critbinom(%d,%.10g,%.10g,%.0f)", (int)N, pv, alpha, (has(t, "upper") || has(t, "greater") || has(t, "more")) ? 1.0 : -1.0);
       return eval_stats(cmd, out);
     }
+    if (hN && hP && has(t, "between")) {
+      double bnd[2]; int bc = 0;
+      for (int i = 0; i < nv && bc < 2; ++i) {
+        if (near_num(v[i], N) || near_num(v[i], pv)) continue;
+        bnd[bc++] = v[i];
+      }
+      if (bc >= 2) {
+        int lo_i = (int)(bnd[0] < bnd[1] ? bnd[0] : bnd[1]);
+        int hi_i = (int)(bnd[0] < bnd[1] ? bnd[1] : bnd[0]);
+        return add_binom_range_lines(out, (int)N, pv, lo_i, hi_i, "Required probability");
+      }
+    }
     if (hN && hP && !hX) {
       for (int i = 0; i < nv; ++i) {
         if (near_num(v[i], N) || near_num(v[i], pv)) continue;
@@ -4087,6 +4225,12 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
               word_num(input,"variance",&var) || word_num(input,"var",&var) ||
               word_num(input,"standarddeviationsquared",&var) || word_num(input,"sigmasquared",&var);
     bool hN=label_num(input,"n",&n0) || word_num(input,"n",&n0) || word_num(input,"sample",&n0) || word_num(input,"sample size",&n0);
+    double nfix = 0;
+    if (word_num(input, "sampleofsize", &nfix) || word_num(input, "sampleof", &nfix) || word_num(input, "samplesize", &nfix)) {
+      n0 = nfix; hN = true;
+    }
+    const char *sof = strstr(c, "sampleof");
+    if (sof && isdigit((unsigned char)sof[8])) { n0 = read_num(sof + 8); hN = true; }
     bool hA=label_num(input,"alpha",&alpha) || label_num(input,"significance",&alpha);
     bool hLo=label_num(input,"lower",&lo) || label_num(input,"lo",&lo);
     bool hHi=label_num(input,"upper",&hi) || label_num(input,"hi",&hi);
@@ -4250,6 +4394,22 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     }
     if (has(t, "sample") && has(t, "mean") && hMu && hSig && hN &&
         (has(t, "probability") || has(t, "find")) && !has(t, "hypothesis") && !has(t, "test")) {
+      if (has(t, "between")) {
+        double bounds[2]; int bc = 0;
+        for (int i = 0; i < nv && bc < 2; ++i) {
+          if (near_num(v[i], mu) || near_num(v[i], sig) || near_num(v[i], n0)) continue;
+          bounds[bc++] = v[i];
+        }
+        if (bc >= 2) {
+          double lo2 = bounds[0] < bounds[1] ? bounds[0] : bounds[1];
+          double hi2 = bounds[0] < bounds[1] ? bounds[1] : bounds[0];
+          double se = sig / root(n0);
+          int n = add(out, 0, "For a sample mean, Xbar ~ N(mu, (sigma/sqrt(n))^2).");
+          n = add(out, n, "standard error = %.6g/sqrt(%.6g) = %.10g", sig, n0, se);
+          n = add(out, n, "standardise both bounds: z1=(%.6g-%.6g)/%.10g, z2=(%.6g-%.6g)/%.10g", lo2, mu, se, hi2, mu, se);
+          return add(out, n, "Use NormalCD(lower=%.6g, upper=%.6g, sigma=%.10g, mu=%.6g)", lo2, hi2, se, mu);
+        }
+      }
       double bound = 0; bool hb = false;
       for (int i = 0; i < nv; ++i) {
         if (near_num(v[i], mu) || near_num(v[i], sig) || near_num(v[i], n0)) continue;
@@ -4753,6 +4913,39 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     }
   }
   if ((has(t, "cdf") || has(t, "cumulative")) &&
+      (has(c, "k((") || has(c, "k*((")) && extract_x_interval(c, &cdf_lo, &cdf_hi) &&
+      (has(c, "p(x<") || has(c, "p(x<=") || has(c, "p(x>") || has(c, "p(x>="))) {
+    const char *kp = strstr(c, "k((");
+    if (!kp) kp = strstr(c, "k*((");
+    const char *p = kp ? strstr(kp, "((") : 0;
+    if (p) {
+      p += 2;
+      double rb=0, rd=0; const char *e=0;
+      if (parse_linear_inside(p, 'x', &rb, &rd, &e) && *e == ')' && e[1] == '^') {
+        int pow = (int)read_num(e + 2);
+        const char *after = strchr(e + 2, ')');
+        double sh = 0;
+        if (after && (after[1] == '-' || after[1] == '+')) sh = read_num(after + 1);
+        double lowv = pwr(rb*cdf_lo + rd, pow) + sh;
+        double hiv = pwr(rb*cdf_hi + rd, pow) + sh;
+        double k = (hiv - lowv) ? 1.0 / (hiv - lowv) : 0;
+        double bound = 0; int btail = 0;
+        const char *bp = strstr(c, "p(x<");
+        if (bp) { btail = -1; bound = read_num(bp + (bp[4] == '=' ? 5 : 4)); }
+        else if ((bp = strstr(c, "p(x>"))) { btail = 1; bound = read_num(bp + (bp[4] == '=' ? 5 : 4)); }
+        double Fb = k * (pwr(rb*bound + rd, pow) + sh - lowv);
+        if (Fb < 0) Fb = 0;
+        if (Fb > 1) Fb = 1;
+        char lin[48]; fmt_linear_var(lin, sizeof(lin), rb, 'x', rd);
+        int n = add(out, 0, "For a CDF, use F(lower)=0 and F(upper)=1.");
+        n = add(out, n, "F(x)=k((%s)^%d%+.10g) on %.6g<=x<=%.6g.", lin, pow, sh, cdf_lo, cdf_hi);
+        n = add(out, n, "k = 1/(%.10g - %.10g) = %.10g", hiv, lowv, k);
+        n = add(out, n, "F(%.6g)=%.10g", bound, Fb);
+        return add(out, n, btail > 0 ? "P(X>%.6g)=1-F(%.6g)=%.10g" : "P(X<%.6g)=F(%.6g)=%.10g", bound, bound, btail > 0 ? 1 - Fb : Fb);
+      }
+    }
+  }
+  if ((has(t, "cdf") || has(t, "cumulative")) &&
       (has(c, "+k)/") || has(c, "-k)/")) && extract_x_interval(c, &cdf_lo, &cdf_hi) &&
       (has(c, "p(x<") || has(c, "p(x<=") || has(c, "p(x>") || has(c, "p(x>=") || has(t, "findk"))) {
     const char *x2 = strstr(c, "x^2");
@@ -4954,6 +5147,12 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
         n = add(out, n, "P(X<%.6g)=integral from %.6g to %.6g of %.10g/(%s)^%d dx", bound, a, b, k, den, rpow);
         return add(out, n, "P(X<%.6g) = %.10g", bound, prob);
       }
+      if (has(t, "mean") || has(c, "e(x)")) {
+        double mean = linear_den_x_antideriv(k, rb, rd, rpow, pdf_hi) -
+                      linear_den_x_antideriv(k, rb, rd, rpow, pdf_lo);
+        n = add(out, n, "E(X)=integral from %.6g to %.6g of x*f(x) dx", pdf_lo, pdf_hi);
+        return add(out, n, "mean = %.10g", mean);
+      }
       return n;
     }
   }
@@ -4965,18 +5164,9 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     double rb=0, rd=0; int rpow=1;
     if (p) {
       ++p;
-      if (*p == 'x') { rb = 1; ++p; }
-      else if (*p == '-' || *p == '.' || isdigit((unsigned char)*p)) {
-        rb = read_num(p);
-        if (*p == '-' || *p == '+') ++p;
-        while (*p == '.' || isdigit((unsigned char)*p)) ++p;
-        if (*p == '*') ++p;
-        if (*p == 'x') ++p; else rb = 0;
-      }
-      if (rb != 0 && (*p == '+' || *p == '-')) {
-        rd = read_num(p);
-        while (*p == '+' || *p == '-' || *p == '.' || isdigit((unsigned char)*p)) ++p;
-      }
+      const char *e = 0;
+      if (!parse_linear_inside(p, 'x', &rb, &rd, &e)) rb = 0;
+      else p = e;
       if (rb != 0 && *p == ')') {
         ++p;
         if (*p == '^') rpow = (int)read_num(p + 1);
@@ -5339,7 +5529,30 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     double tmp = 0;
     if (word_num(input, "mean", &tmp) || word_num(input, "mu", &tmp)) mu = tmp;
     if (word_num(input, "standarddeviation", &tmp) || word_num(input, "sd", &tmp)) sig = tmp;
-    if (word_num(input, "size", &tmp) || word_num(input, "samplesize", &tmp)) n0 = tmp;
+    if (word_num(input, "sampleofsize", &tmp) || word_num(input, "sampleof", &tmp) ||
+        word_num(input, "samplesize", &tmp) || word_num(input, "size", &tmp)) n0 = tmp;
+    const char *sof2 = strstr(c, "sampleof");
+    if (sof2 && isdigit((unsigned char)sof2[8])) n0 = read_num(sof2 + 8);
+    if (has(t, "between")) {
+      double bounds[2]; int bc = 0;
+      for (int i = 0; i < nv && bc < 2; ++i) {
+        if (near_num(v[i], mu) || near_num(v[i], sig) || near_num(v[i], n0)) continue;
+        bounds[bc++] = v[i];
+      }
+      if (bc == 2) {
+        double lo = bounds[0] < bounds[1] ? bounds[0] : bounds[1];
+        double hi = bounds[0] < bounds[1] ? bounds[1] : bounds[0];
+        double se = sig / root(n0);
+        double z1 = se ? (lo - mu) / se : 0, z2 = se ? (hi - mu) / se : 0;
+        double prob = normal_cdf(z2) - normal_cdf(z1);
+        int n = add(out, 0, "For a sample mean, use the sampling distribution.");
+        n = add(out, n, "Xbar ~ N(%.6g, (%.6g/sqrt(%.6g))^2)", mu, sig, n0);
+        n = add(out, n, "standard error = %.6g/sqrt(%.6g) = %.10g", sig, n0, se);
+        n = add(out, n, "z1 = (%.6g-%.6g)/%.10g = %.10g", lo, mu, se, z1);
+        n = add(out, n, "z2 = (%.6g-%.6g)/%.10g = %.10g", hi, mu, se, z2);
+        return add(out, n, "P(%.6g<Xbar<%.6g) = %.10g", lo, hi, prob);
+      }
+    }
     for (int i = 0; i < nv; ++i) {
       if (near_num(v[i], sig) || near_num(v[i], n0)) continue;
       if (near_num(v[i], mu)) continue;
@@ -5367,7 +5580,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if ((has(t, "mean") || has(t, "variance") || has(t, "standarddeviation")) && nv >= 3 &&
       !has(t, "normal") && !has(t, "binom") && !has(t, "poisson") &&
-      !has(t, "discrete") && !has(t, "randomvariable") && !has(t, "grouped")) {
+      !has(t, "discrete") && !has(t, "randomvariable") && !has(t, "grouped") &&
+      !has(t, "pdf") && !has(t, "density") && !has(t, "continuous")) {
     sprintf(cmd, "meanvar(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_stats(cmd, out);
   }
   if ((has(t, "stratified") || has(t, "stratum")) && nv >= 3) {

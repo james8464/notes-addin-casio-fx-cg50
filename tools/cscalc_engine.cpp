@@ -751,6 +751,7 @@ static bool make_sql_cmd(const char *in, char *cmd, int cap) {
     char w[32]; int j = 0;
     while (t[i] && t[i] != ',' && j + 1 < (int)sizeof(w)) w[j++] = t[i++];
     w[j] = 0;
+    while (j > 0 && !isalnum((unsigned char)w[j-1])) w[--j] = 0;
     if (w[0]) strcpy(tok[nt++], w);
   }
   int sel = -1, from = -1, where = -1, table_word = -1;
@@ -818,7 +819,8 @@ static bool minterm_skip_word(const char *w) {
          word_is(w, "logic") || word_is(w, "output") || word_is(w, "and") ||
          word_is(w, "or") || word_is(w, "is") ||
          word_is(w, "are") || word_is(w, "at") || word_is(w, "use") ||
-         word_is(w, "using") || word_is(w, "to") || word_is(w, "the");
+         word_is(w, "using") || word_is(w, "to") || word_is(w, "the") ||
+         word_is(w, "a") || word_is(w, "an");
 }
 
 static bool minterm_dc_word(const char *w) {
@@ -831,20 +833,35 @@ static bool minterm_dc_word(const char *w) {
 static bool make_minterm_cmd(const char *in, char *cmd, int cap) {
   char t[192]; raw_clean(in, t, sizeof(t));
   char vars[8] = ""; int vc = 0, mins[32], mc = 0, dcs[32], dc = 0;
-  bool dcpart = false;
+  bool dcpart = false, varpart = false;
   for (int i = 0; t[i];) {
     while (t[i] == ',') ++i;
     char w[32]; int j = 0;
     while (t[i] && t[i] != ',' && j + 1 < (int)sizeof(w)) w[j++] = t[i++];
     w[j] = 0;
+    while (j > 0 && !isalnum((unsigned char)w[j-1])) w[--j] = 0;
+    if (word_is(w, "minterm") || word_is(w, "minterms") || word_is(w, "ones")) {
+      dcpart = false;
+      varpart = false;
+      continue;
+    }
+    if (word_is(w, "variable") || word_is(w, "variables") || word_is(w, "vars")) {
+      varpart = true;
+      continue;
+    }
+    if (word_is(w, "for") && mc > 0) {
+      varpart = true;
+      continue;
+    }
     if (minterm_dc_word(w)) { dcpart = true; continue; }
-    if (!w[0] || minterm_skip_word(w)) continue;
+    if (!w[0] || (!varpart && minterm_skip_word(w))) continue;
     if ((w[0] == '-' && isdigit((unsigned char)w[1])) || isdigit((unsigned char)w[0])) {
       if (dcpart) { if (dc < 32) dcs[dc++] = (int)parse_int(w); }
       else if (mc < 32) mins[mc++] = (int)parse_int(w);
       continue;
     }
-    if (j <= 6) {
+    if (varpart && !(j == 1 && isalpha((unsigned char)w[0]))) continue;
+    if ((varpart && j == 1 && isalpha((unsigned char)w[0])) || (!varpart && j <= 6)) {
       for (int k = 0; w[k] && vc < 6; ++k) if (isalpha((unsigned char)w[k])) {
         char c = (char)toupper((unsigned char)w[k]);
         bool seen = false; for (int q = 0; q < vc; ++q) if (vars[q] == c) seen = true;
@@ -1890,6 +1907,7 @@ static int add_image_byte_depth_lines(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN
   n = add(out, n, "Image bits = width * height * colour depth.");
   n = add(out, n, "%lld*%lld*%lld = %lld bits", w, h, depth, bits);
   n = add(out, n, "= %.6g bytes", bytes);
+  n = add(out, n, "= %.6g KiB", bytes / 1024.0);
   return add(out, n, "= %.6g MB", bytes / 1000000.0);
 }
 
@@ -3736,6 +3754,9 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     n = add(out, n, "= %.10g MB", bytes / 1000000.0);
     return add(out, n, "= %.10g MiB", bytes / 1048576.0);
   }
+  if ((has(t, "image") || has(t, "bitmap")) && image_depth_is_bytes(t) && nv >= 3) {
+    return add_image_byte_depth_lines(out, (long long)v[0], (long long)v[1], (long long)v[2]);
+  }
   if ((has(t, "image") || has(t, "bitmap")) && (has(t, "colours") || has(t, "colors")) && nv >= 3) {
     double colours=0; bool hc = label_num(input, "colours", &colours) || label_num(input, "colors", &colours) ||
                                 scan_scaled_before_word_num(t, "colours", &colours) || scan_scaled_before_word_num(t, "colors", &colours);
@@ -3869,6 +3890,26 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     else if (has(t, "kilobyte") || has(t, "kbyte") || has(t, "kb")) sprintf(cmd, "bitratekb(%.10g,%.10g)", size, seconds);
     else sprintf(cmd, "bitrate(%.10g,%.10g)", size, seconds);
     return eval_storage(cmd, out);
+  }
+  if ((has(t, "packet") || has(t, "packets")) && has(t, "payload") && has(t, "header") &&
+      (has(t, "total") || has(t, "transmitted") || has(t, "transmit")) && nv >= 3) {
+    double size = v[0], payload = 0, header = 0;
+    bool hp = scan_before_word_num(t, "payload", &payload) || label_num(input, "payload", &payload);
+    bool hh = scan_before_word_num(t, "header", &header) || label_num(input, "header", &header);
+    if (!hp) payload = v[1];
+    if (!hh) header = v[2];
+    double bits = 0; const char *su = "";
+    if (payload > 0 && storage_size_bits(t, size, &bits, &su)) {
+      double bytes = bits / 8.0;
+      long long packets = (long long)((bytes + payload - 1) / payload);
+      double total = packets * (payload + header);
+      int n = add(out, 0, "Total transmitted size includes payload plus header for each packet.");
+      n = add(out, n, "%.10g %s = %.10g bytes", size, su, bytes);
+      n = add(out, n, "number of packets = ceil(%.10g/%.10g) = %lld", bytes, payload, packets);
+      n = add(out, n, "bytes per packet sent = payload + header = %.10g + %.10g = %.10g", payload, header, payload + header);
+      n = add(out, n, "total transmitted = %lld*%.10g = %.10g bytes", packets, payload + header, total);
+      return add(out, n, "= %.10g KiB", total / 1024.0);
+    }
   }
   if ((has(t, "transfer") || has(t, "download") || has(t, "transmit") || has(t, "transmission") || has_word(t, "sent")) &&
       has(t, "overhead") && has(t, "percent") && nv >= 3) {
@@ -4729,7 +4770,8 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     truthbits_cmd_from_text(t, bits[0], cmd, sizeof(cmd)); return eval_truthbits(cmd, out);
   }
   if ((has(t, "kmap") || has(t, "karnaugh") || has(t, "minterm") || has(t, "minterms") ||
-       has(t, "dontcare") || has(t, "don'tcare") || has(t, "dc")) && make_minterm_cmd(input, cmd, sizeof(cmd))) {
+       has(t, "dontcare") || has(t, "don'tcare") || (has(t, "dont") && has(t, "care")) ||
+       (has(t, "don't") && has(t, "care")) || has(t, "dc")) && make_minterm_cmd(input, cmd, sizeof(cmd))) {
     return eval_minterms(cmd, out);
   }
   if (nv == 0 && ((has(compact, "nand") && (has(compact, "only") || has(compact, "form") || has(compact, "convert"))) || starts(compact, "nandform") || starts(compact, "onlynand"))) {
@@ -4760,7 +4802,8 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       return eval_bool(cmd, out);
     }
   }
-  if (nv == 0 && (has(compact, "demorgan") || has(compact, "not(aandb)") || has(compact, "not(a*b)")) &&
+  if (nv == 0 && !has(compact, "orc") && !has(compact, "+c") &&
+      (has(compact, "demorgan") || has(compact, "not(aandb)") || has(compact, "not(a*b)")) &&
       (has(compact, "notaorb") || has(compact, "notaornotb") || has(compact, "="))) {
     sprintf(cmd, "boolprove((A&B)',A'+B')");
     return eval_bool_prove(cmd, out);
