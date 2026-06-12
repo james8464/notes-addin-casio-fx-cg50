@@ -667,6 +667,44 @@ static int eval_binary_arith(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LI
     n = add(out, n, "%s has %d one-bits.", a[0], ones);
     return add(out, n, "parity bit = %d, transmitted bits = %s%d", bit, a[0], bit);
   }
+  if (starts3(s, "repeatenc(", "repetitionenc(", "repeatencode(") && na >= 1) {
+    int group = na > 1 ? (int)parse_int(a[1]) : 3;
+    if (group < 2) group = 3;
+    char enc[96]; int p = 0;
+    for (int i = 0; a[0][i] && p + group + 1 < (int)sizeof(enc); ++i) {
+      if (a[0][i] != '0' && a[0][i] != '1') continue;
+      for (int j = 0; j < group; ++j) enc[p++] = a[0][i];
+    }
+    enc[p] = 0;
+    int n = add(out, 0, "Repetition code: repeat each data bit %d times.", group);
+    n = add(out, n, "data bits = %s", a[0]);
+    return add(out, n, "transmitted bits = %s", enc);
+  }
+  if (starts3(s, "repeatdec(", "repetitiondec(", "majority(") && na >= 1) {
+    int group = na > 1 ? (int)parse_int(a[1]) : 3;
+    if (group < 2) group = 3;
+    char dec[65], corr[96]; int dp = 0, cp = 0, errors = 0;
+    int n = add(out, 0, "Repetition code: split into groups of %d and use majority voting.", group);
+    for (int i = 0; a[0][i] && dp < 64; i += group) {
+      int ones = 0, zeros = 0; char chunk[16]; int k = 0;
+      for (int j = 0; j < group && a[0][i+j] && k + 1 < (int)sizeof(chunk); ++j) {
+        chunk[k++] = a[0][i+j];
+        if (a[0][i+j] == '1') ones++;
+        else if (a[0][i+j] == '0') zeros++;
+      }
+      chunk[k] = 0;
+      if (k < group) break;
+      char bit = ones >= zeros ? '1' : '0';
+      dec[dp++] = bit;
+      for (int j = 0; j < group && cp + 1 < (int)sizeof(corr); ++j) corr[cp++] = bit;
+      if ((bit == '1' && zeros) || (bit == '0' && ones)) errors++;
+      n = add(out, n, "%s: %d ones, %d zeros -> %c", chunk, ones, zeros, bit);
+    }
+    dec[dp] = 0; corr[cp] = 0;
+    n = add(out, n, "corrected transmitted bits = %s", corr);
+    n = add(out, n, "decoded data bits = %s", dec);
+    return add(out, n, errors ? "errors corrected by majority vote: %d group(s)." : "no group needed correction.", errors);
+  }
   if (starts3(s, "xorbits(", "andbits(", "orbits(") && na >= 2) {
     int len = (int)strlen(a[0]); if ((int)strlen(a[1]) < len) len = (int)strlen(a[1]);
     char b[65]; bool isxor=starts(s,"xorbits("), isand=starts(s,"andbits(");
@@ -2119,6 +2157,13 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if (tc && nv >= 2 && nb == 0) {
     sprintf(cmd, "twos(%lld,%lld)", (long long)v[0], (long long)v[1]); return eval_twos(cmd, out);
   }
+  if ((has(t, "repetition") || has(t, "repeat") || has(t, "majorityvote") || has(t, "majority")) && nb >= 1) {
+    int group = 3;
+    if (nv >= 2 && v[nv - 1] >= 2 && v[nv - 1] <= 15) group = (int)v[nv - 1];
+    const char *op = (has(t, "encode") || has(t, "transmit")) ? "repeatenc" : "repeatdec";
+    sprintf(cmd, "%s(%s,%d)", op, bits[0], group);
+    return eval_binary_arith(cmd, out);
+  }
   if ((has(t, "float") || has(t, "floating")) && nb >= 4 &&
       (has(t, "add") || has(t, "sum") || has(t, "plus") || has(t, "subtract") || has(t, "minus") ||
        has(t, "multiply") || has(t, "times") || has(t, "product") || has(t, "divide"))) {
@@ -2307,7 +2352,7 @@ int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
   n = eval_bool(s, out); if (n) return n;
   n = eval_free_text(input, s, out); if (n) return n;
   n = add(out, 0, "Supported:");
-  n = add(out, n, "bin hex den convert twos twosdec twosadd twossub fixed fixedenc parity xorbits andbits orbits notbits hamming checksum checkdigit rpn");
+  n = add(out, n, "bin hex den convert twos twosdec twosadd twossub fixed fixedenc parity repeatenc repeatdec xorbits andbits orbits notbits hamming checksum checkdigit rpn");
   n = add(out, n, "floatdec floatadd floatsub floatmul floatdiv floatrange normal image sound bitrate transfer transfermb");
   return add(out, n, "compress huffman rle records sqlselect sqlcount hashmod hashlinear addressspace chars ascii unicode stack queue preorder inorder postorder dijkstra fsm fsmout binarysearch bubblesort selectionsort mergesort bool truth minterms kmap nandform norform");
 }

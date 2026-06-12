@@ -1,5 +1,26 @@
 # Checkpoint
 
+## 2026-06-12 CSCALC Repetition Code Majority Vote Slice
+
+Completed:
+- Added `repeatenc(...)`, `repetitionenc(...)`, and `repeatencode(...)`.
+- Added `repeatdec(...)`, `repetitiondec(...)`, and `majority(...)`.
+- Added free-text routing for repetition-code encode/decode and majority-vote prompts.
+- Output shows grouping, per-group one/zero counts, corrected transmitted bits, decoded data bits, and correction count.
+- Added direct and free-text regression tests.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CSCALC AQA Paper 2 error-detection/correction calculation support.
+- Did not touch CAS Pure behavior, CASP3 behavior, NOTES, or shared UI/status code.
+
 ## 2026-06-12 CSCALC Floating-Point Multiply Divide Slice
 
 Completed:
