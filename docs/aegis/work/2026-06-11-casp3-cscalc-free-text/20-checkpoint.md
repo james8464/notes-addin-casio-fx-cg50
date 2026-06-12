@@ -1,5 +1,24 @@
 # Checkpoint
 
+## 2026-06-12 CSCALC Hex Token Base-Conversion Slice
+
+Completed:
+- Fixed free-text base-conversion prompts containing hexadecimal tokens with letters, e.g. `3F`.
+- Added real hex-token detection so `convert hexadecimal 3F to binary` no longer degrades to `3`.
+- Routed hex-to-binary, hex-to-denary, and binary-to-hex wording through the existing base conversion working engine.
+- Added regression tests and rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CSCALC AQA Paper 2 number-system free-text support.
+- Did not touch CAS Pure behavior, CASP3 logic, NOTES, or shared UI/status code.
+
 ## 2026-06-12 CASP3 SUVAT Natural Wording Slice
 
 Completed:

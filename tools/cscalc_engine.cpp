@@ -93,6 +93,23 @@ static int scan_bits(const char *s, char b[][48], int maxb) {
   return n;
 }
 
+static bool scan_hex_token(const char *s, char *buf, int cap) {
+  for (int i = 0; s[i];) {
+    if (!isxdigit((unsigned char)s[i])) { ++i; continue; }
+    int j = i, k = 0; bool has_alpha = false, has_digit = false;
+    while (isxdigit((unsigned char)s[j]) && k + 1 < cap) {
+      char c = (char)toupper((unsigned char)s[j]);
+      if (c >= 'A' && c <= 'F') has_alpha = true;
+      if (c >= '0' && c <= '9') has_digit = true;
+      buf[k++] = c; ++j;
+    }
+    buf[k] = 0;
+    if (has_alpha && has_digit) return true;
+    i = j;
+  }
+  return false;
+}
+
 static bool scan_fixed_bits(const char *s, char *buf, int cap) {
   for (int i = 0; s[i]; ++i) {
     if (s[i] != '0' && s[i] != '1') continue;
@@ -2608,6 +2625,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   char t[192]; raw_clean(input, t, sizeof(t));
   double v[8]; int nv = scan_nums(t, v, 8);
   char bits[4][48]; int nb = scan_bits(t, bits, 4);
+  char hex_tok[32]; bool has_hex_tok = scan_hex_token(t, hex_tok, sizeof(hex_tok));
   char cmd[160];
   double width=0, height=0, depth=0;
   if (has(t, "ascii") || has(t, "unicode") || has(t, "codepoint") || has(t, "charactercode")) {
@@ -2771,6 +2789,15 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   bool tc = has(t, "twos") || (has(t, "two") && has(t, "complement"));
   bool sm = has(t, "signmagnitude") || (has(t, "sign") && has(t, "magnitude"));
+  if ((has(t, "hex") || has(t, "hexadecimal")) && has_hex_tok && has(t, "binary")) {
+    sprintf(cmd, "convert(%s,16,2)", hex_tok); return eval_base(cmd, out);
+  }
+  if ((has(t, "hex") || has(t, "hexadecimal")) && has_hex_tok && (has(t, "denary") || has(t, "decimal"))) {
+    sprintf(cmd, "den(%s,16)", hex_tok); return eval_base(cmd, out);
+  }
+  if (has(t, "binary") && nb >= 1 && (has(t, "hex") || has(t, "hexadecimal"))) {
+    sprintf(cmd, "convert(%s,2,16)", bits[0]); return eval_base(cmd, out);
+  }
   if ((has(t, "denary") || has(t, "decimal")) && nb >= 1) {
     sprintf(cmd, "den(%s,2)", bits[0]); return eval_base(cmd, out);
   }
