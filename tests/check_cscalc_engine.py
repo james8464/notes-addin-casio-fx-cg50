@@ -456,6 +456,10 @@ def main():
     require("A file of size 800 KiB is transmitted at 2 Mib/s. Find the time taken.", ["800 KiB = 6553600 bits", "2 Mbit/s = 2000000 bit/s", "time = 6553600/2000000 = 3.2768 s"])
     require("A 24-bit address bus and 16-bit data bus memory has word addressed memory. Calculate addressable memory in MiB.", ["address bus 24 bits", "memory size = 16777216*16", "= 33554432 bytes", "= 32 MiB"])
     require("A 3 GHz CPU executes 120 million instructions at 2 cycles per instruction. Calculate execution time.", ["Execution time = instructions * cycles per instruction / clock rate.", "cycles = 120000000*2 = 240000000", "time = 240000000/3000000000 = 0.08 s"])
+    require("A processor executes 2 million instructions with CPI 3 at clock speed 1.5 GHz. Calculate execution time.", ["clock rate = 1500000000 cycles/s", "cycles = 2000000*3 = 6000000", "time = 6000000/1500000000 = 0.004 s"])
+    require("Calculate the number of bytes in a 1920 by 1080 image with 24 bits per pixel and 10 percent metadata overhead.", ["metadata/header = 10% of 6220800 = 622080 bytes", "total bytes = 6220800 + 622080 = 6842880"])
+    require("A sensor samples at 200 Hz for 1 hour with 12 bit samples. Calculate storage in KiB.", ["Storage = sample rate", "bits = 200*3600*12 = 8640000 bits", "= 1054.6875 KiB"])
+    require("Find the truth table for A XOR B.", ["Truth table for a^b.", "A B | F", "simplified = A'B+AB'"])
     require("bool(A+B+C+D+E+F)", ["simplified = F+E+D+C+B+A"])
     print("OK cscalc engine")
 

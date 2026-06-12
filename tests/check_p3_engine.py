@@ -488,6 +488,11 @@ def main():
     require("A particle moves with acceleration a=3t^2-4t+5. Its velocity is 2 when t=0 and displacement is 1 when t=0. Find displacement at t=3.", ["Variable acceleration: integrate a(t)", "a = 3 t^2 -4 t +5", "v(0)=2 gives C = 2", "s(0)=1 gives C = 1", "at t=3, s = 31.75"])
     require("A particle moves with acceleration a=6t-4. When t=2 velocity is 5 and displacement is 7. Find displacement at t=4.", ["Variable acceleration: integrate a(t)", "v(2)=5 gives C = 1", "s(2)=7 gives C = 5", "at t=4, s = 41"])
     require("A particle is projected from a height of 20m with speed 15m/s at 30 degrees above the horizontal. Find the time when it hits the ground and the horizontal distance travelled.", ["u_x = 15 cos 30", "h=20", "positive time", "range = u_x t = 38.005"])
+    require("A random variable X has pdf f(x)=3/8*x^2 for 0<x<2. Find E(X) and Var(X).", ["E(X)=integral", "E(X^2)=integral", "Var(X)=E(X^2)-E(X)^2 = 0.15"])
+    require("The probability density function is f(x)=kx(3-x) for 0<x<3. Find k and the mean.", ["integral from 0 to 3 of k*x*(3-x) dx = 1", "k = 0.2222222222", "mean = 1.5"])
+    require("A sample of 12 observations has mean 8.5. Another sample of 18 observations has mean 10. Find the combined mean.", ["combined total = 102 + 180 = 282", "combined mean = 282/30 = 9.4"])
+    require("A particle of mass 2kg is moving under force F=(3t+4)N. Initially at rest. Find speed after 5 seconds.", ["Impulse from a variable force", "impulse = 57.5 Ns", "v = 0 + 57.5/2 = 28.75"])
+    require("A car travels at 20 m/s round a banked curve radius 50m with no friction. Find angle of banking.", ["tan(theta) = v^2/(rg)", "tan(theta) = 20^2/(50*9.8)", "theta = 39.225"])
     print("OK p3 engine")
 
 

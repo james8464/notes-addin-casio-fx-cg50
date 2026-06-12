@@ -777,6 +777,37 @@ Drift check:
 - Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
 - Active goal remains open for future source/probe-driven hardening.
 
+## 2026-06-12 Final Generic Cleanup Slice
+
+Completed:
+- Hardened CASP3 variable-force impulse parsing so `F=(at+b)` gives impulse and speed working.
+- Added smooth banked-curve working before broader circular/friction routes.
+- Added generic continuous pdf working for `k*x*(a-x)` and numeric `c*x^n` moment/variance cases.
+- Added combined-mean free-text handling before the generic `meanvar` fallback.
+- Hardened CSCALC CPU execution-time parsing for `CPI` wording.
+- Fixed image metadata overhead so percent overhead is not treated as bytes.
+- Added sensor sample-storage working without stealing sound/audio sample routes.
+- Fixed free-text XOR truth-table parsing so prompt words are not treated as variables.
+- Added regression tests and rebuilt calculator files.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 369840 bytes`
+  - `CSCALC.g3a: 221392 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Still inside CASP3/CSCALC free-text working support and generated calculator outputs.
+- Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for future source/probe-driven hardening.
+
 ## 2026-06-12 Polynomial Motion, Poisson Interval, And CS Unit Slice
 
 Completed:

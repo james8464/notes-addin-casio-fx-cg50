@@ -3754,7 +3754,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   if ((has(t, "cpu") || has(t, "processor") || has(t, "clock") || has(t, "ghz") || has(t, "mhz")) &&
       (has(t, "instruction") || has(t, "instructions")) &&
-      (has(t, "cycle") || has(t, "cycles")) && nv >= 3) {
+      (has(t, "cycle") || has(t, "cycles") || has(t, "cpi")) && nv >= 3) {
     double rate = 0, instr = 0, cpi = 0;
     bool hr = scan_before_word_num(t, "ghz", &rate);
     if (hr) rate *= 1000000000.0;
@@ -3763,7 +3763,8 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     bool hi = scan_before_word_num(t, "million", &instr);
     if (hi) instr *= 1000000.0;
     else hi = scan_before_word_num(t, "instructions", &instr) || scan_before_word_num(t, "instruction", &instr);
-    bool hc = scan_before_word_num(t, "cycles", &cpi) || scan_before_word_num(t, "cycle", &cpi);
+    bool hc = scan_before_word_num(t, "cycles", &cpi) || scan_before_word_num(t, "cycle", &cpi) ||
+              scan_after_word_num(t, "cpi", &cpi) || scan_near_after_word_num(t, "cpi", &cpi);
     if (!hr) rate = v[0] * (has(t, "ghz") ? 1000000000.0 : has(t, "mhz") ? 1000000.0 : 1.0);
     if (!hi) instr = v[1] * (has(t, "million") ? 1000000.0 : 1.0);
     if (!hc) cpi = v[2];
@@ -4063,12 +4064,13 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if ((has(t, "image") || has(t, "bitmap")) && (has(t, "metadata") || has(t, "header") || has(t, "overhead")) && nv >= 4) {
     double bits_total = v[0] * v[1] * v[2];
     double image_bytes = bits_total / 8.0;
-    double extra = v[3];
+    double extra = (has(t, "percent") || has(t, "percentage")) ? image_bytes * v[3] / 100.0 : v[3];
     double total = image_bytes + extra;
     int n = add(out, 0, "Image file size = pixel data + metadata/header.");
     n = add(out, n, "pixel bits = %.10g*%.10g*%.10g = %.10g bits", v[0], v[1], v[2], bits_total);
     n = add(out, n, "pixel bytes = %.10g/8 = %.10g", bits_total, image_bytes);
-    n = add(out, n, "metadata/header = %.10g bytes", extra);
+    if (has(t, "percent") || has(t, "percentage")) n = add(out, n, "metadata/header = %.10g%% of %.10g = %.10g bytes", v[3], image_bytes, extra);
+    else n = add(out, n, "metadata/header = %.10g bytes", extra);
     n = add(out, n, "total bytes = %.10g + %.10g = %.10g", image_bytes, extra, total);
     return add(out, n, "= %.10g KiB", total / 1024.0);
   }
@@ -4139,6 +4141,30 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       sprintf(cmd, "colourdepth(%lld)", (long long)v[0]); return eval_storage(cmd, out);
     }
     sprintf(cmd, "colourcount(%lld)", (long long)v[0]); return eval_storage(cmd, out);
+  }
+  if ((has(t, "sensor") || has(t, "sampling") || has(t, "sample")) &&
+      (has(t, "hz") || has(t, "hertz")) &&
+      (has(t, "storage") || has(t, "size") || has(t, "kib") || has(t, "bytes")) &&
+      !has(t, "sound") && !has(t, "audio") && nv >= 3) {
+    double rate = 0, seconds = 0, bits = 0;
+    bool hr = scan_before_word_num(t, "khz", &rate) || scan_before_word_num(t, "kilohertz", &rate) ||
+              scan_before_word_num(t, "hz", &rate) || scan_before_word_num(t, "hertz", &rate);
+    bool ht = scan_before_word_num(t, "hours", &seconds) || scan_before_word_num(t, "hour", &seconds) ||
+              scan_before_word_num(t, "minutes", &seconds) || scan_before_word_num(t, "minute", &seconds) ||
+              scan_before_word_num(t, "seconds", &seconds) || scan_before_word_num(t, "second", &seconds);
+    bool hb = scan_before_word_num(t, "bits", &bits) || scan_before_word_num(t, "bit", &bits);
+    if (!hr) rate = v[0];
+    if (!ht) seconds = v[1];
+    if (!hb) bits = v[2];
+    scale_frequency_unit(t, &rate);
+    scale_time_unit(t, &seconds);
+    double total_bits = rate * seconds * bits;
+    double bytes = total_bits / 8.0;
+    int n = add(out, 0, "Storage = sample rate * duration * bits per sample.");
+    n = add(out, n, "duration = %.10g s", seconds);
+    n = add(out, n, "bits = %.10g*%.10g*%.10g = %.10g bits", rate, seconds, bits, total_bits);
+    n = add(out, n, "bytes = %.10g/8 = %.10g", total_bits, bytes);
+    return add(out, n, "= %.10g KiB", bytes / 1024.0);
   }
   if (has(t, "sound") || has(t, "audio")) {
     double rate=0, seconds=0, res=0, channels=1;
@@ -5368,6 +5394,21 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       bool_arg_for_cmd(crhs, nrhs, sizeof(nrhs));
       sprintf(cmd, "boolprove(%s,%s)", nlhs, nrhs); return eval_bool_prove(cmd, out);
     }
+  }
+  if (nv == 0 && (has(compact, "truthtable") || has(compact, "truth")) &&
+      (has(compact, "xor") || has(compact, "exclusiveor"))) {
+    const char *xp = strstr(compact, "xor");
+    if (!xp) xp = strstr(compact, "exclusiveor");
+    char a = 'a', b = 'b';
+    if (xp) {
+      const char *p = xp;
+      while (p > compact && !isalpha((unsigned char)p[-1])) --p;
+      if (p > compact) a = (char)tolower((unsigned char)p[-1]);
+      p = xp + (starts(xp, "exclusiveor") ? 11 : 3);
+      while (*p && !isalpha((unsigned char)*p)) ++p;
+      if (*p) b = (char)tolower((unsigned char)*p);
+    }
+    sprintf(cmd, "truth(%c^%c)", a, b); return eval_bool(cmd, out);
   }
   if ((nv == 0 || has(compact, "simplify") || has(compact, "boolean") || has(compact, "logic")) &&
       (has(compact, "nand") || has(compact, "nor") || has(compact, "xor") || has(compact, "and") || has(compact, "or") || has(compact, "not") || has(compact, "+") || has(compact, "*") || has(compact, "'") || has(compact, ","))) {

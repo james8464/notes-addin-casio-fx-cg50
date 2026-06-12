@@ -2259,6 +2259,40 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "resultant force = %.10g - %.10g = %.10g N", drive, R, net);
     return add(out, n, "a = F/m = %.10g/%.10g = %.10g m/s^2", net, m, net/m);
   }
+  if ((has(t, "force") || has(c, "f=(") || has(c, "f=")) && has(t, "mass") &&
+      (has(c, "t+") || has(c, "t-") || has(c, "*t+")) &&
+      (has(t, "speed") || has(t, "velocity")) && nv >= 3) {
+    double m=0, u0=0, tt=0;
+    bool hm=word_num(input,"mass",&m) || label_num(input,"mass",&m);
+    bool hu=word_num(input,"initialvelocity",&u0) || word_num(input,"initialspeed",&u0) ||
+            word_num(input,"speed",&u0) || word_num(input,"velocity",&u0);
+    bool ht=word_num(input,"after",&tt) || word_num(input,"time",&tt);
+    if (!hm) m = v[0];
+    if (!hu && has(t, "rest")) u0 = 0;
+    if (!ht) tt = v[nv-1];
+    double A = 0, B = 0;
+    const char *fp = strstr(c, "f=(");
+    if (!fp) fp = strstr(c, "f=");
+    const char *tp = fp ? strchr(fp, 't') : 0;
+    if (tp) {
+      const char *a0 = tp - 1;
+      while (a0 > c && (isdigit((unsigned char)a0[-1]) || a0[-1] == '.' || a0[-1] == '-')) --a0;
+      A = read_num(a0);
+      if (A == 0 && a0 == tp) A = 1;
+      if (tp[1] == '+') B = read_num(tp + 2);
+      else if (tp[1] == '-') B = -read_num(tp + 2);
+    }
+    if (A != 0 || B != 0) {
+      double impulse = A*tt*tt/2.0 + B*tt;
+      double vfinal = u0 + (m ? impulse/m : 0);
+      int n = add(out, 0, "Impulse from a variable force is integral F(t) dt.");
+      n = add(out, n, "F(t) = %.10g t %+.10g", A, B);
+      n = add(out, n, "impulse = integral from 0 to %.6g of (%.10g t %+.10g) dt", tt, A, B);
+      n = add(out, n, "impulse = %.10g Ns", impulse);
+      n = add(out, n, "impulse = m(v-u)");
+      return add(out, n, "v = %.10g + %.10g/%.10g = %.10g m/s", u0, impulse, m, vfinal);
+    }
+  }
   if ((has(t, "impulse") || has(t, "momentum")) && has(t, "force") && (has(t, "acts") || has(t, "for")) &&
       (has(t, "finalspeed") || has(t, "final") || has(t, "speed")) && nv >= 4) {
     double m=0,u0=0,F=0,time=0;
@@ -3771,6 +3805,22 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     if (hL && hW && ha) sprintf(cmd, "ladder(%.10g,%.10g,%.10g,%.10g,%.10g)", L, W, ang, hP ? P : 0, hd ? d : L/2);
     else sprintf(cmd, nv > 4 ? "ladder(%.10g,%.10g,%.10g,%.10g,%.10g)" : "ladder(%.10g,%.10g,%.10g)", v[0], v[1], v[2], nv > 3 ? v[3] : 0, nv > 4 ? v[4] : v[0]/2);
     return eval_mech(cmd, out);
+  }
+  if ((has(t, "banked") || has(t, "banking")) && (has(t, "curve") || has(t, "bend") || has(t, "round")) &&
+      (has(t, "nofriction") || (has(t, "no") && has(t, "friction")) || has(t, "smooth")) && nv >= 2) {
+    double u=0, r=0;
+    bool hu=word_num(input,"speed",&u) || word_num(input,"velocity",&u);
+    bool hr=word_num(input,"radius",&r) || label_num(input,"radius",&r);
+    if (!hu) u = v[0];
+    if (!hr) {
+      for (int i = 0; i < nv; ++i) if (!near_num(v[i], u) && v[i] > 0) { r = v[i]; break; }
+    }
+    double tanth = r ? u*u/(9.8*r) : 0;
+    double theta = arctan(tanth) * 180.0 / M_PI;
+    int n = add(out, 0, "For a smooth banked curve, resolve R to give centripetal force.");
+    n = add(out, n, "tan(theta) = v^2/(rg)");
+    n = add(out, n, "tan(theta) = %.10g^2/(%.10g*9.8) = %.10g", u, r, tanth);
+    return add(out, n, "theta = %.10g degrees", theta);
   }
   if ((has(t, "circular") || has(t, "centripetal") || has(t, "bend") || has(t, "round")) &&
       (has(t, "angularspeed") || has(t, "omega") || has(t, "rads") || has(c, "rad/s")) && nv >= 2) {
@@ -5860,6 +5910,58 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   double pdf_lo = 0, pdf_hi = 0;
   if ((has(t, "pdf") || has(t, "density") || has(t, "continuous") || has(t, "randomvariable")) &&
+      (has(c, "kx(") || has(c, "k*x(") || has(c, "k*x*(")) &&
+      (has(t, "mean") || has(c, "e(x)") || has(t, "normalise") || has(t, "normalize") || has(t, "findk")) &&
+      extract_x_interval(c, &pdf_lo, &pdf_hi)) {
+    double upper = pdf_hi;
+    const char *kp = strstr(c, "kx(");
+    if (!kp) kp = strstr(c, "k*x(");
+    if (!kp) kp = strstr(c, "k*x*(");
+    const char *op = kp ? strchr(kp, '(') : 0;
+    if (op && (isdigit((unsigned char)op[1]) || op[1] == '.')) upper = read_num(op + 1);
+    double area = upper*(pdf_hi*pdf_hi - pdf_lo*pdf_lo)/2.0 - (pwr(pdf_hi, 3)-pwr(pdf_lo, 3))/3.0;
+    double k = area ? 1.0 / area : 0;
+    double mean = k * (upper*(pwr(pdf_hi, 3)-pwr(pdf_lo, 3))/3.0 - (pwr(pdf_hi, 4)-pwr(pdf_lo, 4))/4.0);
+    int n = add(out, 0, "For a pdf, total area under f(x) is 1.");
+    n = add(out, n, "f(x)=k*x*(%.6g-x), %.6g<x<%.6g", upper, pdf_lo, pdf_hi);
+    n = add(out, n, "integral from %.6g to %.6g of k*x*(%.6g-x) dx = 1", pdf_lo, pdf_hi, upper);
+    n = add(out, n, "k[%.6g*x^2/2 - x^3/3] from %.6g to %.6g = 1", upper, pdf_lo, pdf_hi);
+    n = add(out, n, "k = %.10g", k);
+    if (has(t, "mean") || has(c, "e(x)")) {
+      n = add(out, n, "E(X)=integral from %.6g to %.6g of x*k*x*(%.6g-x) dx", pdf_lo, pdf_hi, upper);
+      return add(out, n, "mean = %.10g", mean);
+    }
+    return n;
+  }
+  if ((has(t, "pdf") || has(t, "density") || has(t, "continuous") || has(t, "randomvariable")) &&
+      (has(t, "mean") || has(t, "variance") || has(c, "var(x)") || has(c, "varx")) &&
+      !has(c, "p(x>") && !has(c, "p(x<") && has(c, "f(x)=") && has(c, "x^") &&
+      !has(c, "kx^") && !has(c, "k*x^") && extract_x_interval(c, &pdf_lo, &pdf_hi)) {
+    const char *fx = strstr(c, "f(x)=");
+    const char *xp = fx ? strstr(fx, "x^") : 0;
+    if (fx && xp && xp > fx + 5) {
+      char cb[32]; int len = (int)(xp - (fx + 5));
+      if (len > 0 && len < (int)sizeof(cb)) {
+        memcpy(cb, fx + 5, len); cb[len] = 0;
+        double coef = 1.0;
+        char *slash = strchr(cb, '/');
+        if (slash) { *slash = 0; coef = read_num(cb) / read_num(slash + 1); }
+        else coef = read_num(cb);
+        int pow = (int)read_num(xp + 2);
+        if (coef != 0 && pow >= 1) {
+          double mean = coef * (pwr(pdf_hi, pow + 2) - pwr(pdf_lo, pow + 2)) / (pow + 2);
+          double ex2 = coef * (pwr(pdf_hi, pow + 3) - pwr(pdf_lo, pow + 3)) / (pow + 3);
+          double var = ex2 - mean * mean;
+          int n = add(out, 0, "Use E(X)=integral x f(x) dx and E(X^2)=integral x^2 f(x) dx.");
+          n = add(out, n, "f(x) = %.10g*x^%d on %.6g<x<%.6g", coef, pow, pdf_lo, pdf_hi);
+          n = add(out, n, "E(X)=integral from %.6g to %.6g of %.10g*x^%d dx = %.10g", pdf_lo, pdf_hi, coef, pow + 1, mean);
+          n = add(out, n, "E(X^2)=integral from %.6g to %.6g of %.10g*x^%d dx = %.10g", pdf_lo, pdf_hi, coef, pow + 2, ex2);
+          return add(out, n, "Var(X)=E(X^2)-E(X)^2 = %.10g", var);
+        }
+      }
+    }
+  }
+  if ((has(t, "pdf") || has(t, "density") || has(t, "continuous") || has(t, "randomvariable")) &&
       has(c, "exp(-") && (has(c, "p(x>") || has(c, "p(x<"))) {
     const char *ep = strstr(c, "exp(-");
     double lam = ep ? read_num(ep + 5) : 0;
@@ -6366,6 +6468,17 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
 	    }
 	    return n;
 	  }
+  if ((has(t, "combinedmean") || (has(t, "combined") && has(t, "mean")) ||
+       ((has(t, "another") || has(t, "second")) && has(t, "sample") && has(t, "mean"))) &&
+      nv >= 4 && !has(t, "normal") && !has(t, "binom") && !has(t, "poisson")) {
+    double n1 = v[0], m1 = v[1], n2 = v[2], m2 = v[3];
+    double total1 = n1*m1, total2 = n2*m2, combined = (total1 + total2) / (n1 + n2);
+    int n = add(out, 0, "Use total = number of values * mean.");
+    n = add(out, n, "first total = %.10g*%.10g = %.10g", n1, m1, total1);
+    n = add(out, n, "second total = %.10g*%.10g = %.10g", n2, m2, total2);
+    n = add(out, n, "combined total = %.10g + %.10g = %.10g", total1, total2, total1 + total2);
+    return add(out, n, "combined mean = %.10g/%.10g = %.10g", total1 + total2, n1 + n2, combined);
+  }
   if ((has(t, "mean") || has(t, "variance") || has(t, "standarddeviation")) && nv >= 3 &&
       !has(t, "normal") && !has(t, "binom") && !has(t, "poisson") &&
       !has(t, "discrete") && !has(t, "randomvariable") && !has(t, "grouped") &&
