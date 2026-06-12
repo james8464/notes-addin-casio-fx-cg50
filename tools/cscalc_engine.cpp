@@ -2829,6 +2829,15 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       sprintf(cmd, "sound(%lld,%lld,%lld,%lld)", (long long)rate, (long long)seconds, (long long)res, hC ? (long long)channels : 1);
       return eval_storage(cmd, out);
     }
+    if (nv >= 3) {
+      int ch = nv > 3 ? (int)v[3] : has(t, "stereo") ? 2 : 1;
+      rate = v[0];
+      seconds = v[1];
+      scale_frequency_unit(t, &rate);
+      scale_time_unit(t, &seconds);
+      sprintf(cmd, "sound(%lld,%lld,%lld,%d)", (long long)rate, (long long)seconds, (long long)v[2], ch);
+      return eval_storage(cmd, out);
+    }
   }
   if ((has(compact, "bitrate") || has(compact, "datarate") || (has(t, "bit") && has(t, "rate"))) &&
       (has(t, "file") || has(t, "size") || has(t, "transmit") || has_word(t, "sent")) &&
@@ -2921,6 +2930,10 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   if ((has(t, "hex") || has(t, "hexadecimal")) && has_hex_tok && (has(t, "denary") || has(t, "decimal"))) {
     sprintf(cmd, "den(%s,16)", hex_tok); return eval_base(cmd, out);
+  }
+  char fixed_early[48];
+  if (has(t, "fixed") && scan_fixed_bits(t, fixed_early, sizeof(fixed_early))) {
+    sprintf(cmd, (tc || has(t, "complement")) ? "fixedtc(%s)" : "fixed(%s)", fixed_early); return eval_float(cmd, out);
   }
   if (has(t, "binary") && nb >= 1 && (has(t, "hex") || has(t, "hexadecimal")) &&
       !(has(t, "add") || has(t, "sum") || has(t, "plus") || has(t, "subtract") || has(t, "minus"))) {
@@ -3142,6 +3155,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     else if (has(t, "mb") || has(t, "mib")) bytes *= 1048576.0;
     else if (has(t, "kb") || has(t, "kib")) bytes *= 1024.0;
     if (label_num(input, "wordbits", &wbits) || label_num(input, "word", &wbits)) {}
+    else if (has(t, "word") && nv >= 2) wbits = v[1];
     sprintf(cmd, "addressbits(%.10g,%.10g)", bytes, wbits);
     return eval_storage(cmd, out);
   }

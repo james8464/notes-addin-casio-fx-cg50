@@ -1,5 +1,24 @@
 # Checkpoint
 
+## 2026-06-12 CSCALC Storage Routing Hardening Slice
+
+Completed:
+- Fixed sound-file prose so sample rate/duration/resolution/channel prompts route to sound-size working, not bit-rate working.
+- Fixed dotted fixed-point binary free text so `1011.011` is decoded as fixed point, not plain binary.
+- Fixed memory address prose with word size, e.g. `2 GB ... 32 bits`, by using the second numeric value as word bits when labelled parsing is absent.
+- Added regression tests and rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CSCALC AQA Paper 2 storage/number-system free-text support.
+- Did not touch CAS Pure behavior, CASP3 logic, NOTES, menus, or shared UI/status code.
+
 ## 2026-06-12 CSCALC Transfer Unit Free-Text Slice
 
 Completed:
