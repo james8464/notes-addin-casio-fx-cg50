@@ -1,5 +1,37 @@
 # Checkpoint
 
+## 2026-06-12 Projectile, Geometric Tail, RSA Decrypt, And Packet Slice
+
+Completed:
+- Added CASP3 projectile speed-after-time working using resolved velocity components.
+- Fixed CASP3 rough-horizontal pull-at-angle working to distinguish forces above vs below the horizontal when finding the normal reaction and friction.
+- Added CASP3 geometric tail working for first success after `r` attempts.
+- Added CASP3 shifted reciprocal pdf normalisation for forms such as `k/(x+1)^2`.
+- Added CASP3 trapezium-rule working from ordinate lists and width.
+- Added CSCALC RSA decryption working from ciphertext, `n`, and private exponent `d`.
+- Extended CSCALC packet-overhead working to include efficiency when requested.
+- Added regression tests and rebuilt calculator files.
+
+Evidence:
+- Fresh probes for the new P3/CS cases: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 295036 bytes`
+  - `CSCALC.g3a: 194292 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Still inside CASP3/CSCALC free-text working support and generated calculator outputs.
+- Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for further source/probe-driven hardening.
+
 ## 2026-06-12 Vector, Distribution, Floating Mantissa, And RSA Slice
 
 Completed:

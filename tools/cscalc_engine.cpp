@@ -3278,6 +3278,20 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   char cmd[160];
   double width=0, height=0, depth=0;
   int prefix = 0;
+  if (has(t, "rsa") && (has(t, "decrypt") || has(t, "plaintext")) && nv >= 3) {
+    double cv=0, nv0=0, dv=0;
+    bool hc = label_num(input, "ciphertext", &cv) || label_num(input, "c", &cv) || scan_after_word_num(t, "ciphertext", &cv);
+    bool hn = label_num(input, "n", &nv0) || scan_after_word_num(t, "n", &nv0);
+    bool hd = label_num(input, "d", &dv) || scan_after_word_num(t, "d", &dv);
+    if (!hc) cv = v[0];
+    if (!hn) nv0 = v[1];
+    if (!hd) dv = v[2];
+    long long ciph = (long long)cv, nval = (long long)nv0, d = (long long)dv;
+    long long plain = nval ? mod_pow_ll(ciph, d, nval) : 0;
+    int n = add(out, 0, "RSA decryption uses plaintext = ciphertext^d mod n.");
+    n = add(out, n, "ciphertext = %lld, d = %lld, n = %lld", ciph, d, nval);
+    return add(out, n, "%lld^%lld mod %lld = %lld", ciph, d, nval, plain);
+  }
   if (has(t, "rsa") && nv >= 4) {
     double pd=0, qd=0, ed=0, md=0;
     bool hp = label_num(input, "p", &pd);
@@ -3778,7 +3792,9 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     double total = payload + header;
     int n = add(out, 0, "Overhead percentage = overhead / total packet size * 100.");
     n = add(out, n, "total = payload + header = %.10g + %.10g = %.10g bytes", payload, header, total);
-    return add(out, n, "overhead = %.10g/%.10g * 100 = %.10g%%", header, total, total ? header/total*100.0 : 0);
+    n = add(out, n, "overhead = %.10g/%.10g * 100 = %.10g%%", header, total, total ? header/total*100.0 : 0);
+    if (has(t, "efficiency") || has(t, "efficient")) return add(out, n, "efficiency = payload/total * 100 = %.10g%%", total ? payload/total*100.0 : 0);
+    return n;
   }
   if ((has(t, "serial") || has(t, "character") || has(t, "characters")) &&
       (has(t, "bitpercharacter") || has(t, "bitspercharacter") || (has(t, "bits") && has(t, "character"))) &&

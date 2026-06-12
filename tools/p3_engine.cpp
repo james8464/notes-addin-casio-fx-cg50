@@ -2782,6 +2782,24 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "u sin(%.6g) = sqrt(2*9.8*%.6g)", ang, H);
     return add(out, n, "u = %.10g m/s", u);
   }
+  if (is_projectile_text(t) && has(t, "speed") &&
+      (has(t, "after") || has(t, "seconds")) &&
+      !has(t, "high") && !has(t, "height") && !has(t, "above") && !has(t, "times") && nv >= 3) {
+    double u=0, ang=0, time=0, g=9.8;
+    bool hU=label_num(input,"speed",&u) || label_num(input,"u",&u) || word_num(input,"speed",&u);
+    bool hA=label_num(input,"angle",&ang) || label_num(input,"theta",&ang) || word_num(input,"angle",&ang) || prev_word_num(input,"degrees",&ang);
+    bool hT=label_num(input,"t",&time) || label_num(input,"time",&time) || word_num(input,"after",&time);
+    label_num(input,"g",&g);
+    if (!hU) u = v[0];
+    if (!hA) ang = v[1];
+    if (!hT) time = v[2];
+    double vx = u * deg_cosine(ang);
+    double vy = u * deg_sine(ang) - g * time;
+    int n = add(out, 0, "Resolve the initial velocity, then use vertical acceleration -g.");
+    n = add(out, n, "v_x = u cos(theta) = %.6g cos(%.6g) = %.10g", u, ang, vx);
+    n = add(out, n, "v_y = u sin(theta) - gt = %.6g sin(%.6g) - %.6g*%.6g = %.10g", u, ang, g, time, vy);
+    return add(out, n, "speed = sqrt(v_x^2+v_y^2) = %.10g m/s", root(vx*vx + vy*vy));
+  }
   if (is_projectile_text(t) && (has(t, "angle") || has(t, "angles") || (has(t, "find") && has(t, "angle"))) &&
       (has(t, "target") || has(t, "point") || has(t, "through") || has(t, "pass")) && nv >= 3) {
     double u=0,x=0,y=0,h0=0,g=0;
@@ -3164,11 +3182,17 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     int n = add(out, 0, has(t, "rough") || hmu ? "Rough horizontal plane: resolve vertically, then use F=ma horizontally." : "Smooth horizontal plane: use F=ma horizontally.");
     double drive = F, R = m*9.8;
     if (hAng) {
+      bool below = has(t, "below") || has(t, "downward") || has(t, "downwards");
       drive = F*deg_cosine(ang);
-      R = m*9.8 - F*deg_sine(ang);
+      R = below ? m*9.8 + F*deg_sine(ang) : m*9.8 - F*deg_sine(ang);
       n = add(out, n, "Resolve the pull: horizontal component = F cos(theta) = %.6g cos(%.6g) = %.10g N", F, ang, drive);
-      n = add(out, n, "Vertical equilibrium gives R + F sin(theta) = mg.");
-      n = add(out, n, "R = %.6g*9.8 - %.6g sin(%.6g) = %.10g N", m, F, ang, R);
+      if (below) {
+        n = add(out, n, "Force is below the horizontal, so vertical equilibrium gives R = mg + F sin(theta).");
+        n = add(out, n, "R = %.6g*9.8 + %.6g sin(%.6g) = %.10g N", m, F, ang, R);
+      } else {
+        n = add(out, n, "Force is above the horizontal, so vertical equilibrium gives R + F sin(theta) = mg.");
+        n = add(out, n, "R = %.6g*9.8 - %.6g sin(%.6g) = %.10g N", m, F, ang, R);
+      }
     } else {
       n = add(out, n, "Vertical equilibrium gives R = mg = %.6g*9.8 = %.10g N", m, R);
     }
@@ -4089,8 +4113,28 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if ((has(t, "bayes") || has(t, "reverseconditional")) && nv >= 3) {
     sprintf(cmd, "bayes(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_stats(cmd, out);
   }
-  if ((has(t, "firsthead") || (has(t, "first") && has(t, "head")) || has(t, "geometric")) &&
-      (has(t, "coin") || has(t, "toss") || has(t, "success")) && nv >= 2) {
+  if ((has(t, "trapezium") || has(t, "trapezoid") || has(t, "trapezoidal")) && nv >= 3) {
+    double h = v[nv - 1], sum = v[0] + v[nv - 2];
+    for (int i = 1; i < nv - 2; ++i) sum += 2 * v[i];
+    double area = h * sum / 2.0;
+    int n = add(out, 0, "Use the trapezium rule.");
+    n = add(out, n, "Area = h/2*(first + last + 2*sum of middle ordinates)");
+    n = add(out, n, "h = %.10g", h);
+    return add(out, n, "Area = %.10g/2 * %.10g = %.10g", h, sum, area);
+  }
+  if ((has(t, "firsthead") || (has(t, "first") && (has(t, "head") || has(t, "win") || has(t, "success"))) || has(t, "geometric")) &&
+      (has(t, "coin") || has(t, "toss") || has(t, "success") || has(t, "win") || has(t, "attempt")) &&
+      (has(t, "after") || has(t, "morethan")) && nv >= 2) {
+    double p = 0, r = 0;
+    for (int i = 0; i < nv; ++i) if (v[i] > 0 && v[i] < 1) { p = v[i]; break; }
+    for (int i = nv - 1; i >= 0; --i) if (!near_num(v[i], p) && v[i] >= 1) { r = v[i]; break; }
+    double prob = pwr(1 - p, (int)r);
+    int n = add(out, 0, "For a geometric distribution, first success after r attempts means no success in the first r attempts.");
+    n = add(out, n, "P(X>r)=(1-p)^r");
+    return add(out, n, "P(X>%.0f)=(1-%.6g)^%.0f = %.10g", r, p, r, prob);
+  }
+  if ((has(t, "firsthead") || (has(t, "first") && (has(t, "head") || has(t, "win") || has(t, "success"))) || has(t, "geometric")) &&
+      (has(t, "coin") || has(t, "toss") || has(t, "success") || has(t, "win") || has(t, "attempt")) && nv >= 2) {
     double p = 0, r = 0;
     for (int i = 0; i < nv; ++i) if (v[i] > 0 && v[i] < 1) { p = v[i]; break; }
     for (int i = nv - 1; i >= 0; --i) if (!near_num(v[i], p) && v[i] >= 1) { r = v[i]; break; }
@@ -4444,6 +4488,20 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     return n;
   }
   double pdf_lo = 0, pdf_hi = 0;
+  if ((has(t, "pdf") || has(t, "density") || has(t, "continuous")) &&
+      (has(c, "k/(x+") || has(c, "k/(x-")) && has(c, ")^2") &&
+      extract_x_interval(c, &pdf_lo, &pdf_hi)) {
+    const char *xp = strstr(c, "x+");
+    double sh = 0;
+    if (xp) sh = read_num(xp + 2);
+    else if ((xp = strstr(c, "x-"))) sh = -read_num(xp + 2);
+    double area = 1.0/(pdf_lo + sh) - 1.0/(pdf_hi + sh);
+    double k = area ? 1.0 / area : 0;
+    int n = add(out, 0, "For a pdf, total area under f(x) is 1.");
+    n = add(out, n, "integral from %.6g to %.6g of k/(x%+.6g)^2 dx = 1", pdf_lo, pdf_hi, sh);
+    n = add(out, n, "k[-1/(x%+.6g)] from %.6g to %.6g = 1", sh, pdf_lo, pdf_hi);
+    return add(out, n, "k = %.10g", k);
+  }
   if ((has(t, "pdf") || has(t, "density") || has(t, "continuous")) &&
       (has(c, "k/x^2") || has(c, "k/(x^2)") || has(c, "kx^-2")) &&
       extract_x_interval(c, &pdf_lo, &pdf_hi)) {

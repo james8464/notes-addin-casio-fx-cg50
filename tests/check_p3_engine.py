@@ -71,6 +71,7 @@ def main():
     require("projectile speed 20 angle 30 distance 10 find height", ["horizontal motion to find time", "height at x=10"])
     require("projectile find height distance=10 angle=30 speed=20", ["horizontal motion to find time", "height at x=10"])
     require("A projectile is fired with speed 20 at 30 degrees. Find the two times when it is 4 metres high.", ["requested height", "4 = 0 + 10 t", "times ="])
+    require("A particle is projected at 20 m/s at 35 degrees. Find the speed after 2 seconds.", ["Resolve the initial velocity", "v_y = u sin(theta) - gt", "speed = sqrt(v_x^2+v_y^2) = 18.288"])
     require("projectileangle(20,20,5)", ["trajectory equation", "Let T=tan(theta)", "tan(theta)", "theta ="])
     require("projectile speed 20 find angle to pass through point 20 5", ["trajectory equation", "Let T=tan(theta)", "theta ="])
     require("projectile find angle speed=20 x=20 y=5", ["trajectory equation", "Let T=tan(theta)", "theta ="])
@@ -85,6 +86,7 @@ def main():
     require("a box mass 5 on rough horizontal plane coefficient friction 0.3 pulled by 20N find acceleration", ["Rough horizontal plane", "friction = mu R = 0.3*49 = 14.7 N", "a = F/m = 5.3/5 = 1.06"])
     require("A particle mass 2kg is pulled along rough horizontal by force 10N at 30 degrees above horizontal mu 0.2 find acceleration", ["Rough horizontal plane", "horizontal component", "friction = mu R"])
     require("A box of mass 10kg is pulled by force 50N at 30 degrees above the horizontal. Coefficient of friction is 0.2. Find acceleration.", ["Rough horizontal plane", "horizontal component", "a = F/m = 28.701"])
+    require("A particle of mass 8 kg is pulled by a force of 50N at 30 degrees below the horizontal on a rough horizontal plane, coefficient of friction 0.25. Find acceleration.", ["Force is below the horizontal", "R = 8*9.8 + 50 sin(30)", "a = F/m = 17.451"])
     require("weight(5)", ["Weight", "49 N"])
     require("friction(0.4,25)", ["F = mu R", "10 N"])
     require("moment(30,2.5)", ["perpendicular", "75 Nm"])
@@ -408,9 +410,12 @@ def main():
     require("A histogram bar has class interval 20 to 35 and frequency 60. Find frequency density.", ["class width = 35 - 20 = 15", "frequency density = 60/15 = 4"])
     require("A histogram bar has class interval 5-9 and frequency density 2.5. Find frequency.", ["class width = 9 - 5 = 4", "frequency = 2.5*4 = 10"])
     require("A random variable has pdf f(x)=k/x^2 for 1<x<4. Find k and P(X>2).", ["integral from 1 to 4 of k/x^2 dx = 1", "k = 1.333333333", "P(X>2) = 0.3333333333"])
+    require("A random variable has pdf f(x)=k/(x+1)^2 for 0<x<3. Find k.", ["integral from 0 to 3 of k/(x+1)^2 dx = 1", "k = 1.333333333"])
     require("The cdf is F(x)=k ln(x) for 1<=x<=e^2. Find k and median.", ["k ln(e^2)=1", "ln(m)=1", "m = e^1 = 2.718281828"])
     require("A biased coin is tossed until the first head. Given p=0.3 find P(first head on 5th toss).", ["geometric distribution", "P(X=5)=(1-0.3)^4*0.3 = 0.07203"])
+    require("In a game, probability of winning is 0.2. Find the probability the first win is after the 6th attempt.", ["first success after r attempts", "P(X>6)=(1-0.2)^6 = 0.262144"])
     require("A box contains 5 red and 3 blue balls. Two are chosen without replacement. Find P(same colour).", ["same colour ways = C(5,2)+C(3,2)", "P(same colour)=13/28=0.4642857143"])
+    require("Use trapezium rule with y values 1,4,9,16,25 and width 0.5.", ["Use the trapezium rule", "Area = 0.5/2 * 84 = 21"])
     print("OK p3 engine")
 
 
