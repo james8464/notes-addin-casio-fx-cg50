@@ -4629,6 +4629,35 @@ Drift check:
 - Kept changes limited to CASP3/CSCALC engines, regressions, generated app outputs, and this checkpoint.
 - Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.
 
+## 2026-06-12 Urgent Generic Gap Slice
+
+Completed:
+- Fixed CASP3 offset-support rod reactions using signed moments about support A.
+- Fixed `X~B(...)` prose so explicit Poisson approximation requests do not fall through to exact binomial output.
+- Added CSCALC unused address-line working from address bus width and memory size.
+- Added regressions and rebuilt calculator-ready outputs.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 425348 bytes`
+  - `CSCALC.g3a: 239612 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a sha256: 066caa1c32a6e48d81f9187bde1041b67ee89db24bde746d1ed4d032f55324a6`
+  - `CSCALC.g3a sha256: eb6468dac2ed2892f70d6640725fd8697ad30ceb15d3e51876888aac303feb9b`
+
+Drift check:
+- Kept changes limited to CASP3/CSCALC generic route hardening, regressions, generated app outputs, and this checkpoint.
+- Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.
+
 ## 2026-06-12 Final Generalisation Cleanup Slice
 
 Completed:

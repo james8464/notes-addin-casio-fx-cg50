@@ -3183,6 +3183,10 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       sprintf(cmd, "hypbinom(%d,%.10g,%d,%.10g,%.0f)", N, pv, x, alpha, htail);
       return eval_stats(cmd, out);
     }
+    if (has(t, "poisson") && (has(t, "approx") || has(t, "approximation")) && hx) {
+      sprintf(cmd, "poissonapprox(%d,%.10g,%d,%d)", N, pv, x, tail);
+      return eval_stats(cmd, out);
+    }
     if (hx && (has(c, "notequal") || has(c, "not=") || has(c, "!="))) {
       double px = binomp(N, pv, x), ans = 1 - px;
       int n = add(out, 0, "Use the complement for not equal.");
@@ -3910,6 +3914,33 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if ((has(t, "beam") || has(t, "support") || has(t, "reaction")) && (has(t, "load") || has(t, "weight")) &&
       !has(t, "ladder") && nv >= 3) {
+    if ((has(t, "rod") || has(t, "uniform") || has(t, "beam")) &&
+        has(t, "support") && (has(t, "leftend") || (has(t, "left") && has(t, "end"))) && nv >= 5) {
+      double L = 0, bw = 0, a_pos = 0, b_pos = 0, load = 0;
+      bool hL = label_num(input, "length", &L) || word_num(input, "length", &L);
+      bool hb = word_num(input, "weight", &bw) || prev_word_num(input, "weight", &bw);
+      bool hl = word_num(input, "load", &load) || prev_word_num(input, "load", &load);
+      if (!hL) L = v[0];
+      if (!hb) bw = v[1];
+      if (nv >= 4) { a_pos = v[2]; b_pos = v[3]; }
+      if (!hl) load = v[nv - 1];
+      if (L > 0 && bw > 0 && b_pos > a_pos) {
+        double rod_arm = L / 2.0 - a_pos;
+        double load_x = has(t, "rightend") ? L : 0;
+        double load_arm = load_x - a_pos;
+        double support_gap = b_pos - a_pos;
+        double RB = (bw * rod_arm + load * load_arm) / support_gap;
+        double RA = bw + load - RB;
+        int n = add(out, 0, "For a horizontal rod in equilibrium, take moments about support A.");
+        n = add(out, n, "A is %.10g m from the left end and B is %.10g m from the left end.", a_pos, b_pos);
+        n = add(out, n, "rod weight acts at %.10g m from the left end, so its arm about A is %.10g m", L/2.0, rod_arm);
+        n = add(out, n, "load arm about A = %.10g - %.10g = %.10g m", load_x, a_pos, load_arm);
+        n = add(out, n, "R_B*(%.10g-%.10g) = %.10g*%.10g + %.10g*%.10g", b_pos, a_pos, bw, rod_arm, load, load_arm);
+        n = add(out, n, "R_B = %.10g N", RB);
+        n = add(out, n, "Vertical equilibrium: R_A + R_B = %.10g", bw + load);
+        return add(out, n, "R_A = %.10g N", RA);
+      }
+    }
     if ((has(t, "rod") || has(t, "beam") || has(t, "uniform")) &&
         has(t, "supported") && has(t, "end") && !has(t, "from") && nv >= 3) {
       double L=0, bw=0, load=0;

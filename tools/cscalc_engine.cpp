@@ -3862,6 +3862,31 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     if (bytes >= 1024.0) return add(out, n, "= %.10g KiB", bytes / 1024.0);
     return n;
   }
+  if ((has(t, "unused") || has(t, "spare") || has(t, "wasted")) &&
+      (has(t, "addressbus") || (has(t, "address") && has(t, "bus"))) &&
+      (has(t, "memory") || has(t, "ram") || has(t, "byteaddressable")) &&
+      (has(t, "line") || has(t, "lines") || has(t, "bit") || has(t, "bits")) && nv >= 2) {
+    double ab=0, size=0, bytes=0;
+    bool ha = scan_before_word_num(t, "addressbus", &ab) || scan_before_word_num(t, "address", &ab);
+    if (!ha) ab = v[0];
+    if (scan_before_word_num(t, "gib", &size)) bytes = size * 1073741824.0;
+    else if (scan_before_word_num(t, "gb", &size)) bytes = size * 1000000000.0;
+    else if (scan_before_word_num(t, "mib", &size)) bytes = size * 1048576.0;
+    else if (scan_before_word_num(t, "mb", &size)) bytes = size * 1000000.0;
+    else if (scan_before_word_num(t, "kib", &size)) bytes = size * 1024.0;
+    else if (scan_before_word_num(t, "kb", &size)) bytes = size * 1000.0;
+    else if (scan_before_word_num(t, "bytes", &size) || scan_before_word_num(t, "byte", &size)) bytes = size;
+    if (bytes <= 0 && nv >= 2) bytes = v[1];
+    double bytes_per_address = has(t, "word") && nv >= 3 ? v[2] / 8.0 : 1.0;
+    double addresses_needed = bytes / bytes_per_address;
+    int required = ceil_log2_ll((long long)(addresses_needed + 0.999999));
+    int unused = (int)ab - required;
+    int n = add(out, 0, "For byte-addressable memory, address bits select memory addresses.");
+    n = add(out, n, "memory size = %.10g bytes", bytes);
+    n = add(out, n, "addresses needed = %.10g/%.10g = %.10g", bytes, bytes_per_address, addresses_needed);
+    n = add(out, n, "required address lines = ceil(log2(%.10g)) = %d", addresses_needed, required);
+    return add(out, n, "unused address lines = %.0f - %d = %d", ab, required, unused < 0 ? 0 : unused);
+  }
   if ((has(t, "addressbus") || (has(t, "address") && has(t, "bus"))) &&
       (has(t, "databus") || (has(t, "data") && has(t, "bus"))) && nv >= 2) {
     double ab=0, db=0, locations=0;

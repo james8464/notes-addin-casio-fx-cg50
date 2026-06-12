@@ -428,6 +428,7 @@ def main():
     require("Find the NOR only form for expression A+B.", ["Use NOR as a universal gate", "NOR form: (A NOR B) NOR (A NOR B)"])
     require("NOR form for A or B", ["Use NOR as a universal gate", "NOR form: (A NOR B) NOR (A NOR B)"])
     require("A 10-bit address bus and 8-bit data bus memory has 1024 addresses. Calculate memory size in bytes.", ["address bus 10 bits", "memory size = 1024*8", "= 1024 bytes"])
+    require("How many unused address lines are there for a 16 bit address bus with 8 KiB byte addressable memory?", ["memory size = 8192 bytes", "required address lines = ceil(log2(8192)) = 13", "unused address lines = 16 - 13 = 3"])
     require("A cache has 32 KiB capacity, 64 byte blocks and 4-way associativity. Find offset, index and tag bits for a 32 bit address.", ["sets = blocks/ways", "index bits = log2(128) = 7", "tag bits = 32 - 7 - 6 = 19"])
     require("Calculate Big O for nested loops for i from 1 to n and j from 1 to n.", ["Outer loop runs n times", "n*n = n^2", "Big O = O(n^2)"])
     require("Find Big O for binary search on n items.", ["Binary search halves", "Big O = O(log n)"])
