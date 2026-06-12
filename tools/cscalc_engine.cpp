@@ -89,6 +89,22 @@ static int scan_nums(const char *s, double v[], int maxv) {
   return n;
 }
 
+static int alpha_token_len_after(const char *t, const char *word) {
+  int wl = (int)strlen(word);
+  for (int i = 0; t[i];) {
+    while (t[i] == ',') ++i;
+    int start = i;
+    while (t[i] && t[i] != ',') ++i;
+    if (i - start == wl && strncmp(t + start, word, wl) == 0) {
+      while (t[i] == ',') ++i;
+      int n = 0;
+      while (isalpha((unsigned char)t[i])) { ++n; ++i; }
+      return n;
+    }
+  }
+  return 0;
+}
+
 static int scan_bits(const char *s, char b[][48], int maxb) {
   int n = 0;
   for (int i = 0; s[i] && n < maxb;) {
@@ -657,7 +673,8 @@ static bool minterm_skip_word(const char *w) {
          word_is(w, "with") || word_is(w, "simplify") || word_is(w, "boolean") ||
          word_is(w, "logic") || word_is(w, "output") || word_is(w, "and") ||
          word_is(w, "or") || word_is(w, "is") ||
-         word_is(w, "are") || word_is(w, "at");
+         word_is(w, "are") || word_is(w, "at") || word_is(w, "use") ||
+         word_is(w, "using") || word_is(w, "to") || word_is(w, "the");
 }
 
 static bool minterm_dc_word(const char *w) {
@@ -2964,7 +2981,8 @@ static bool make_gate_form_cmd(const char *input, bool nand, char *cmd, int cap)
       char w[24]; int j = 0;
       while (isalpha((unsigned char)input[i]) && j + 1 < (int)sizeof(w)) w[j++] = (char)tolower((unsigned char)input[i++]);
       w[j] = 0;
-      if (word_is(w, "convert") || word_is(w, "to") || word_is(w, "using") || word_is(w, "use") ||
+      if (word_is(w, "find") || word_is(w, "the") ||
+          word_is(w, "convert") || word_is(w, "to") || word_is(w, "using") || word_is(w, "use") ||
           word_is(w, "only") || word_is(w, "form") || word_is(w, "for") || word_is(w, "expression") ||
           word_is(w, "boolean") || word_is(w, "logic") || word_is(w, nand ? "nand" : "nor")) continue;
       for (int k = 0; w[k] && p + 1 < (int)sizeof(expr); ++k) expr[p++] = w[k];
@@ -3020,10 +3038,12 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       nv >= 1) {
     int bpc = has(t, "unicode") ? 16 : 8;
     long long chars = (long long)v[0];
+    int slen = alpha_token_len_after(t, "string");
     if (has(t, "bit") && nv >= 2 && v[0] > 0 && v[0] <= 64) {
       bpc = (int)v[0];
       chars = (long long)v[1];
     }
+    if (slen > 0) chars = slen;
     sprintf(cmd, "chars(%lld,%d)", chars, bpc);
     return eval_storage(cmd, out);
   }
@@ -3147,6 +3167,10 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   if ((has(t, "symbol") || has(t, "symbols")) && (has(t, "bits") || has(t, "bit")) &&
       (has(t, "needed") || has(t, "need") || has(t, "represent") || has(t, "howmany") || has(t, "how,many")) && nv >= 1) {
+    if ((has(t, "character") || has(t, "characters") || has(t, "text")) &&
+        (has(t, "characterset") || has(t, "character,set")) && nv >= 2) {
+      sprintf(cmd, "charset(%lld,%lld)", (long long)v[0], (long long)v[1]); return eval_storage(cmd, out);
+    }
     sprintf(cmd, "symbolbits(%lld)", (long long)v[0]); return eval_storage(cmd, out);
   }
   if ((has(t, "colour") || has(t, "color")) &&
@@ -3763,6 +3787,14 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     else if (has(t, "word") && nv >= 2) wbits = v[1];
     sprintf(cmd, "addressbits(%.0f,%.10g)", bytes, wbits);
     return eval_storage(cmd, out);
+  }
+  if (has(t, "address") && (has(t, "stores") || has(t, "store") || has(t, "each")) &&
+      (has(t, "byte") || has(t, "bytes")) && nv >= 2) {
+    double bytes_per_address = v[1];
+    int n = add(out, 0, "Memory capacity = addressable locations * bytes per address.");
+    n = add(out, n, "locations = 2^%lld", (long long)v[0]);
+    n = add(out, n, "bytes = 2^%lld * %.10g", (long long)v[0], bytes_per_address);
+    return add(out, n, "= %.10g bytes", pow2((int)v[0]) * bytes_per_address);
   }
   if (has(t, "address") && (has(t, "bus") || has(t, "space") || has(t, "locations")) && nv >= 1) {
     if ((has(t, "word") || has(t, "capacity") || has(t, "memory")) && nv >= 2) {

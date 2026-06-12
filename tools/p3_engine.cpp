@@ -1516,12 +1516,14 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     return add(out, n, "displacement = %.10g - %.10g = %.10g", F2, F1, F2-F1);
   }
   if ((has(t, "acceleration") || has(t, "accn")) && has(t, "t") &&
-      (has(t, "initial") || has(t, "initially")) && nv >= 3) {
+      (has(t, "initial") || has(t, "initially") || has(t, "starts") || has(t, "rest")) && nv >= 3) {
     double A=0, B=0, C=0, u=0, s0=0, time=0;
     bool parsed_acc = parse_poly_after_word(input, "acceleration", &A, &B, &C);
     if (!parsed_acc && has(c, "a=")) parsed_acc = parse_velocity_quad(input, &A, &B, &C);
+    bool has_u = word_num(input, "velocity", &u) || word_num(input, "speed", &u) || word_num(input, "u", &u);
+    if (!has_u && has(t, "rest")) { u = 0; has_u = true; }
     if (parsed_acc && (!near_num(A, 0) || !near_num(B, 0)) &&
-        (word_num(input, "velocity", &u) || word_num(input, "speed", &u) || word_num(input, "u", &u)) &&
+        has_u &&
         (word_num(input, "after", &time) || word_num(input, "time", &time) || word_num(input, "at", &time))) {
       double vv = A*time*time*time/3.0 + B*time*time/2.0 + C*time + u;
       double ss = A*time*time*time*time/12.0 + B*time*time*time/6.0 + C*time*time/2.0 + u*time + s0;
@@ -2610,6 +2612,12 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if ((has(t, "bayes") || has(t, "reverseconditional")) && nv >= 3) {
     sprintf(cmd, "bayes(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_stats(cmd, out);
+  }
+  if ((has(t, "coded") || has(t, "coding")) && has(t, "mean") &&
+      (has(t, "sd") || has(t, "standarddeviation") || (has(t, "standard") && has(t, "deviation"))) && nv >= 4) {
+    if (has(c, "y=(x-") || has(c, "y=(x+")) sprintf(cmd, "uncode(%.10g,%.10g,%.10g,%.10g)", v[2], v[3], -v[0], v[1]);
+    else sprintf(cmd, "code(%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3]);
+    return eval_stats(cmd, out);
   }
   if ((has(t, "independent") || has(t, "independence")) && (has(t, "given") || has(t, "conditional")) && nv >= 3) {
     int n = add(out, 0, "Use P(A|B)=P(A and B)/P(B).");

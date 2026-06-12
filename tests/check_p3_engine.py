@@ -106,6 +106,7 @@ def main():
     require("variable acceleration u=3 c0=2 c1=4 c2=6 t=2", ["Variable acceleration with a(t)", "at t=2, v = 31", "s = 23.333"])
     require("A particle moves in a straight line with acceleration a = 6t + 4. Initially it is at O and has velocity 3. Find its velocity and displacement after 5 seconds.", ["Variable acceleration", "a = 6 t +4", "initial velocity gives C = 3", "at t=5, v = 98", "at t=5, s = 190"])
     require("A particle moves with acceleration 4-2t. Initially its velocity is 5. Find the velocity and displacement after 3 seconds.", ["Variable acceleration", "a = -2 t +4", "at t=3, v = 8", "at t=3, s = 24"])
+    require("A particle moves with acceleration a = 12t^2 - 6t. It starts from rest. Find velocity after 3 seconds.", ["Variable acceleration", "a = 12 t^2 -6 t", "initial velocity gives C = 0", "at t=3, v = 81"])
     require("varaccx(4,3,2,0,5)", ["a = v dv/dx", "v^2 = 4^2", "v = 9.797"])
     require("variable acceleration u=4 c0=3 c1=2 c2=0 x=5", ["a = v dv/dx", "v = 9.797"])
     require("impulse(0.5,4,-2)", ["change in momentum", "-3 Ns"])
@@ -311,6 +312,7 @@ def main():
     require("outlier check q1=10 q3=20 values 0 15 40", ["lower fence = -5", "15 is not an outlier", "40 is an outlier"])
     require("uncode(3,2,20,5)", ["Y=(X-a)/b", "mean X = 20 + 5*3 = 35", "standard deviation X = |b|*standard deviation Y = 5*2 = 10"])
     require("coded data y=(x-20)/5 mean 3 sd 2", ["Y=(X-a)/b", "mean X = 20 + 5*3 = 35", "standard deviation X"])
+    require("Given coded data y=(x-20)/5 has mean 3 and standard deviation 2. Find the mean and sd of x.", ["Y=(X-a)/b", "mean X = 20 + 5*3 = 35", "standard deviation X"])
     require("code(35,10,20,5)", ["For coded data Y=(X-a)/b", "mean Y = (35-20)/5 = 3", "sd Y = sd X/|b| = 10/5 = 2"])
     print("OK p3 engine")
 

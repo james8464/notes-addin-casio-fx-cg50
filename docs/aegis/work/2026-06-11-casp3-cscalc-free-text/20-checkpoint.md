@@ -2610,6 +2610,38 @@ Drift check:
 - Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
 - Active goal remains open for future source/probe-driven hardening.
 
+## 2026-06-12 Coded Data, Variable Acceleration, Boolean Prose, Memory Slice
+
+Completed:
+- Moved CASP3 coded-data free-text handling before generic conditional probability so `Given coded data...` routes to coding working.
+- Broadened CASP3 variable-acceleration parsing to infer initial velocity `0` from `starts from rest`.
+- Fixed CSCALC maxterm/K-map prose parsing by ignoring `use`, `using`, `to`, and `the`.
+- Fixed CSCALC NOR/NAND-form extraction by ignoring leading `find` / `the` wording.
+- Added CSCALC ASCII string storage counting for prompts such as `string HELLO`.
+- Added CSCALC character-set storage precedence so `300 characters ... set of 1000 symbols` computes total storage, not only bits per symbol.
+- Added CSCALC memory-capacity working for address-width plus bytes-per-address wording.
+- Added regression tests and rebuilt calculator files.
+
+Evidence:
+- Fresh probe batch passed for coded data, rest-start variable acceleration, maxterm K-map, NOR-only form, ASCII string storage, address capacity, and character-set storage.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 193380 bytes`
+  - `CSCALC.g3a: 166896 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Still inside CASP3/CSCALC free-text parser hardening and generated calculator outputs.
+- Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for future source/probe-driven hardening.
+
 ## 2026-06-12 Stats, Vectors, Colour Depth, Truth Extraction Slice
 
 Completed:
