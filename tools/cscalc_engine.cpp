@@ -138,6 +138,17 @@ static bool label_num(const char *s, const char *name, double *v) {
   return false;
 }
 
+static void scale_time_unit(const char *t, double *seconds) {
+  if (has(t, "millisecond") || has(t, "ms")) *seconds /= 1000.0;
+  else if (has(t, "minute") || has(t, "mins")) *seconds *= 60.0;
+  else if (has(t, "hour")) *seconds *= 3600.0;
+}
+
+static void scale_frequency_unit(const char *t, double *rate) {
+  if (has(t, "khz") || has(t, "kilohertz")) *rate *= 1000.0;
+  else if (has(t, "mhz") || has(t, "megahertz")) *rate *= 1000000.0;
+}
+
 static double num(const char *s) {
   double sign = 1, v = 0, scale = 1;
   if (*s == '-') { sign = -1; ++s; }
@@ -2665,19 +2676,22 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     if (!hC && has(t, "stereo")) { channels = 2; hC = true; }
     if (!hC && has(t, "mono")) { channels = 1; hC = true; }
     if (hR && hS && hB) {
+      scale_frequency_unit(t, &rate);
+      scale_time_unit(t, &seconds);
       sprintf(cmd, "sound(%lld,%lld,%lld,%lld)", (long long)rate, (long long)seconds, (long long)res, hC ? (long long)channels : 1);
       return eval_storage(cmd, out);
     }
   }
   if ((has(compact, "bitrate") || has(compact, "datarate") || (has(t, "bit") && has(t, "rate"))) &&
       (has(t, "file") || has(t, "size") || has(t, "transmit") || has(t, "sent")) &&
-      (has(t, "second") || has(t, "time") || has(t, "duration")) &&
+      (has(t, "second") || has(t, "minute") || has(t, "hour") || has(t, "time") || has(t, "duration")) &&
       !has(compact, "downloadtime") && !has(compact, "transfertime") && nv >= 2) {
     double size=0, seconds=0;
     bool hSize=label_num(input,"size",&size) || label_num(input,"filesize",&size) || label_num(input,"file",&size);
     bool hSec=label_num(input,"seconds",&seconds) || label_num(input,"time",&seconds) || label_num(input,"duration",&seconds);
     if (!hSize) size = v[0];
     if (!hSec) seconds = v[1];
+    scale_time_unit(t, &seconds);
     if (has(t, "megabyte") || has(t, "mbyte")) sprintf(cmd, "bitratemb(%.10g,%.10g)", size, seconds);
     else if (has(t, "kilobyte") || has(t, "kbyte")) sprintf(cmd, "bitratekb(%.10g,%.10g)", size, seconds);
     else sprintf(cmd, "bitrate(%.10g,%.10g)", size, seconds);
@@ -2890,9 +2904,12 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   if ((has(t, "sound") || has(t, "audio")) && nv >= 3) {
     int ch = nv > 3 ? (int)v[3] : has(t, "stereo") ? 2 : 1;
-    sprintf(cmd, "sound(%lld,%lld,%lld,%d)", (long long)v[0], (long long)v[1], (long long)v[2], ch); return eval_storage(cmd, out);
+    double rate = v[0], seconds = v[1];
+    scale_frequency_unit(t, &rate);
+    scale_time_unit(t, &seconds);
+    sprintf(cmd, "sound(%lld,%lld,%lld,%d)", (long long)rate, (long long)seconds, (long long)v[2], ch); return eval_storage(cmd, out);
   }
-  if ((has(t, "transfer") || has(t, "download") || has(t, "transmit")) && (has(t, "time") || has(t, "seconds")) && nv >= 2) {
+  if ((has(t, "transfer") || has(t, "download") || has(t, "transmit")) && (has(t, "time") || has(t, "second") || has(t, "minute") || has(t, "hour")) && nv >= 2) {
     if ((has(t, "megabyte") || has(t, "mbyte")) && (has(t, "megabit") || has(t, "mbit"))) {
       sprintf(cmd, "transfermb(%.10g,%.10g)", v[0], v[1]); return eval_storage(cmd, out);
     }

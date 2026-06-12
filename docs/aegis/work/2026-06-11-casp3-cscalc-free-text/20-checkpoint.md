@@ -1,5 +1,25 @@
 # Checkpoint
 
+## 2026-06-12 CSCALC Storage Unit Scaling Slice
+
+Completed:
+- Fixed free-text sound/storage routing so sample rates written as `kHz` / `MHz` are converted to Hz before file-size working.
+- Fixed duration phrases using minutes, hours, or milliseconds so they are converted to seconds before sound and bit-rate working.
+- Added regression tests for AQA-style sound file size with `44.1 kHz` and `2 minutes`.
+- Added regression coverage for bit-rate prompts using minutes.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CSCALC AQA Paper 2 storage/data-rate free-text support.
+- Did not touch CAS Pure behavior, CASP3 logic, NOTES, or shared UI/status code.
+
 ## 2026-06-12 CSCALC Boolean Proof Phrase Slice
 
 Completed:
