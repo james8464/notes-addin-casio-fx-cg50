@@ -191,6 +191,24 @@ static bool scan_hex_word_token(const char *s, char *buf, int cap) {
   return false;
 }
 
+static int scan_hex_tokens_all(const char *s, char out[][32], int maxn) {
+  int n = 0;
+  for (int i = 0; s && s[i] && n < maxn;) {
+    if (!isxdigit((unsigned char)s[i])) { ++i; continue; }
+    int j = i, k = 0; bool has_alpha = false, has_digit = false;
+    while (isxdigit((unsigned char)s[j]) && k + 1 < 32) {
+      char c = (char)toupper((unsigned char)s[j]);
+      if (c >= 'A' && c <= 'F') has_alpha = true;
+      if (c >= '0' && c <= '9') has_digit = true;
+      out[n][k++] = c; ++j;
+    }
+    out[n][k] = 0;
+    if (has_alpha && has_digit) ++n;
+    i = j;
+  }
+  return n;
+}
+
 static bool scan_fixed_bits(const char *s, char *buf, int cap) {
   for (int i = 0; s[i]; ++i) {
     if (s[i] != '0' && s[i] != '1') continue;
@@ -230,6 +248,18 @@ static int scan_fixed_bit_tokens(const char *s, char out[][48], int maxn) {
 
 static double read_num(const char *s) {
   return strtod(s, 0);
+}
+
+static bool near_num(double a, double b) {
+  double d = a > b ? a - b : b - a;
+  return d < 1e-9;
+}
+
+static double pow2i(int e) {
+  double r = 1.0;
+  if (e >= 0) while (e--) r *= 2.0;
+  else while (e++) r /= 2.0;
+  return r;
 }
 
 static bool scan_after_word_num(const char *s, const char *word, double *v) {
@@ -881,6 +911,18 @@ static bool make_minterm_cmd(const char *in, char *cmd, int cap) {
   char t[192]; raw_clean(in, t, sizeof(t));
   char vars[8] = ""; int vc = 0, mins[32], mc = 0, dcs[32], dc = 0;
   bool dcpart = false, varpart = false;
+  const char *fp = strchr(in, '(');
+  const char *fq = fp ? strchr(fp, ')') : 0;
+  if (fp && fq && fq > fp) {
+    for (const char *p = fp + 1; p < fq && vc < 6; ++p) {
+      if (isalpha((unsigned char)*p) && (p == fp + 1 || p[-1] == ',' || p[-1] == ' ')) {
+        char c = (char)toupper((unsigned char)*p);
+        bool seen = false; for (int q = 0; q < vc; ++q) if (vars[q] == c) seen = true;
+        if (!seen) { vars[vc++] = c; vars[vc] = 0; }
+      }
+    }
+  }
+  bool explicit_vars = vc > 0;
   for (int i = 0; t[i];) {
     while (t[i] == ',') ++i;
     char w[32]; int j = 0;
@@ -908,7 +950,7 @@ static bool make_minterm_cmd(const char *in, char *cmd, int cap) {
       continue;
     }
     if (varpart && !(j == 1 && isalpha((unsigned char)w[0]))) continue;
-    if ((varpart && j == 1 && isalpha((unsigned char)w[0])) || (!varpart && j <= 6)) {
+    if ((varpart && j == 1 && isalpha((unsigned char)w[0])) || (!explicit_vars && !varpart && j <= 6)) {
       for (int k = 0; w[k] && vc < 6; ++k) if (isalpha((unsigned char)w[k])) {
         char c = (char)toupper((unsigned char)w[k]);
         bool seen = false; for (int q = 0; q < vc; ++q) if (vars[q] == c) seen = true;
@@ -3570,6 +3612,17 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     n = add(out, n, "%lld_10 = %lld_10", dv, dv);
     return add(out, n, "%s value is %s = %lld", has(t, "smallest") ? "smallest" : "largest", best_name, best);
   }
+  if ((has(t, "hex") || has(t, "hexadecimal")) && (has(t, "add") || has(t, "sum") || has(t, "plus"))) {
+    char hx[4][32]; int hc = scan_hex_tokens_all(input, hx, 4);
+    if (hc >= 2) {
+      long long a = parse_base(hx[0], 16), b = parse_base(hx[1], 16), ssum = a + b;
+      int n = add(out, 0, "Add hexadecimal values by converting to denary, then back to hex.");
+      n = add(out, n, "%s_16 = %lld_10", hx[0], a);
+      n = add(out, n, "%s_16 = %lld_10", hx[1], b);
+      n = add(out, n, "%lld + %lld = %lld", a, b, ssum);
+      return add(out, n, "%lld_10 = %llX_16", ssum, ssum);
+    }
+  }
   if ((has(t, "float") || has(t, "floating") || has(t, "normalised") || has(t, "normalized")) && nb >= 4 &&
       (has(t, "add") || has(t, "sum") || has(t, "plus") || has(t, "subtract") || has(t, "minus") ||
        has(t, "multiply") || has(t, "times") || has(t, "product") || has(t, "divide"))) {
@@ -3932,6 +3985,32 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     sprintf(cmd + p, ")");
     return eval_trace(cmd, out);
   }
+  if ((has(t, "image") || has(t, "bitmap")) &&
+      (has(t, "howmanypixels") || has(t, "how,many,pixels") || has(t, "pixelsstored") ||
+       (has(t, "pixels") && (has(t, "file") || has(t, "size"))) || has(t, "resolution")) &&
+      (has(t, "file") || has(t, "size")) && (has(t, "depth") || has(t, "bits")) &&
+      !has(t, "metadata") && nv >= 2) {
+    double file_bytes = 0, shown = 0; const char *unit = "";
+    if (bytes_before_unit(t, "gib", 1073741824.0, &file_bytes, &shown)) unit = "GiB";
+    else if (bytes_before_unit(t, "gb", 1000000000.0, &file_bytes, &shown)) unit = "GB";
+    else if (bytes_before_unit(t, "mib", 1048576.0, &file_bytes, &shown)) unit = "MiB";
+    else if (bytes_before_unit(t, "mb", 1000000.0, &file_bytes, &shown)) unit = "MB";
+    else if (bytes_before_unit(t, "kib", 1024.0, &file_bytes, &shown)) unit = "KiB";
+    else if (bytes_before_unit(t, "kb", 1000.0, &file_bytes, &shown)) unit = "KB";
+    else if (bytes_before_unit(t, "bytes", 1.0, &file_bytes, &shown)) unit = "bytes";
+    double depth_bits = 0;
+    if (!(scan_before_word_num(t, "bits", &depth_bits) || scan_before_word_num(t, "bit", &depth_bits) ||
+          scan_before_word_num(t, "depth", &depth_bits))) {
+      for (int i = 0; i < nv; ++i) if (!near_num(v[i], shown) && v[i] > 0 && v[i] <= 64) { depth_bits = v[i]; break; }
+    }
+    if (file_bytes > 0 && depth_bits > 0) {
+      double bits_total = file_bytes * 8.0, pixels = bits_total / depth_bits;
+      int n = add(out, 0, "Pixels = file size in bits / colour depth.");
+      n = add(out, n, "%.10g %s = %.10g bits", shown, unit, bits_total);
+      n = add(out, n, "colour depth = %.10g bits per pixel", depth_bits);
+      return add(out, n, "pixels = %.10g/%.10g = %.10g", bits_total, depth_bits, pixels);
+    }
+  }
   if ((has(t, "image") || has(t, "bitmap")) && (has(t, "megapixel") || has(t, "megapixels")) && nv >= 2) {
     double pixels = v[0] * 1000000.0, depth = v[1];
     int colour_depth = 0;
@@ -4057,6 +4136,33 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if (has(t, "sound") || has(t, "audio")) {
     double rate=0, seconds=0, res=0, channels=1;
     double dur=0;
+    if ((has(t, "file") || has(t, "size")) && (has(t, "duration") || has(t, "time") || has(t, "find")) && nv >= 3) {
+      double file_bytes = 0, shown = 0; const char *unit = "";
+      if (bytes_before_unit(t, "gib", 1073741824.0, &file_bytes, &shown)) unit = "GiB";
+      else if (bytes_before_unit(t, "gb", 1000000000.0, &file_bytes, &shown)) unit = "GB";
+      else if (bytes_before_unit(t, "mib", 1048576.0, &file_bytes, &shown)) unit = "MiB";
+      else if (bytes_before_unit(t, "mb", 1000000.0, &file_bytes, &shown)) unit = "MB";
+      else if (bytes_before_unit(t, "kib", 1024.0, &file_bytes, &shown)) unit = "KiB";
+      else if (bytes_before_unit(t, "kb", 1000.0, &file_bytes, &shown)) unit = "KB";
+      else if (bytes_before_unit(t, "bytes", 1.0, &file_bytes, &shown)) unit = "bytes";
+      bool hr0 = scan_before_word_num(t, "khz", &rate) || scan_before_word_num(t, "kilohertz", &rate) ||
+                 scan_before_word_num(t, "hz", &rate) || scan_before_word_num(t, "hertz", &rate);
+      if (hr0) scale_frequency_unit(t, &rate);
+      bool hb0 = scan_before_word_num(t, "bits", &res) || scan_before_word_num(t, "bit", &res) ||
+                 scan_before_word_num(t, "resolution", &res);
+      if (!hb0) for (int i = 0; i < nv; ++i) if (!near_num(v[i], shown) && !near_num(v[i], rate) && v[i] > 1 && v[i] <= 64) { res = v[i]; hb0 = true; break; }
+      if (!(scan_before_word_num(t, "channels", &channels) || scan_before_word_num(t, "channel", &channels)))
+        channels = has(t, "stereo") ? 2 : 1;
+      if (file_bytes > 0 && rate > 0 && res > 0 && channels > 0) {
+        double bits_total = file_bytes * 8.0;
+        seconds = bits_total / (rate * res * channels);
+        int n = add(out, 0, "Duration = file size in bits / (sample rate * resolution * channels).");
+        n = add(out, n, "%.10g %s = %.10g bits", shown, unit, bits_total);
+        n = add(out, n, "sample rate = %.10g samples/s, resolution = %.10g bits, channels = %.10g", rate, res, channels);
+        n = add(out, n, "duration = %.10g/(%.10g*%.10g*%.10g)", bits_total, rate, res, channels);
+        return add(out, n, "= %.10g s", seconds);
+      }
+    }
     if ((scan_after_label_compact(compact, "samplerate", &rate) || scan_after_label_compact(compact, "rate", &rate)) &&
         scan_after_label_compact(compact, "duration", &dur) &&
         (scan_after_label_compact(compact, "sampleresolution", &res) || scan_after_label_compact(compact, "resolution", &res))) {
@@ -4429,6 +4535,20 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   if ((has(t, "normalise") || has(t, "normalize")) && !has(t, "normalised") && !has(t, "normalized") && nb >= 2) {
     sprintf(cmd, "floatnorm(%s,%s)", bits[0], bits[1]); return eval_float(cmd, out);
+  }
+  if ((has(t, "float") || has(t, "floating") || (has(t, "mantissa") && has(t, "exponent"))) &&
+      (has(t, "error") || has(t, "absoluteerror")) && (has(t, "actual") || has(t, "true")) && nb >= 2 && nv >= 1) {
+    double m = mantissa_decode(bits[0]);
+    int e = twos_decode(bits[1]);
+    double stored = m * pow2i(e);
+    double actual = v[nv - 1];
+    double err = stored > actual ? stored - actual : actual - stored;
+    int n = add(out, 0, "Decode the stored floating-point value first.");
+    n = add(out, n, "mantissa %s = %.10g", bits[0], m);
+    n = add(out, n, "exponent %s = %d", bits[1], e);
+    n = add(out, n, "stored value = %.10g * 2^%d = %.10g", m, e, stored);
+    n = add(out, n, "absolute error = |actual - stored|");
+    return add(out, n, "|%.10g - %.10g| = %.10g", actual, stored, err);
   }
   if ((has(t, "float") || has(t, "floating") || (has(t, "mantissa") && has(t, "exponent"))) &&
       (has(t, "decode") || has(t, "denary") || has(t, "decimal") || has(t, "number")) && nb >= 2) {

@@ -2985,22 +2985,37 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     else sprintf(cmd, "binom(%d,%.10g,%d)", N, pv, x);
     return eval_stats(cmd, out);
   }
-  if ((has(c, "~n(") || has(c, "followsn(") || has(c, "distributedn(") || has(c, "xn(")) && nv >= 3) {
-    double mu=0, second=0;
-    if (!dist2(c, "n(", &mu, &second)) { mu = v[0]; second = v[1]; }
-    double var = has(c, "^2") ? second * second : second;
-    int tail = prob_tail(c, t);
+	  if ((has(c, "~n(") || has(c, "followsn(") || has(c, "distributedn(") || has(c, "xn(")) && nv >= 3) {
+	    double mu=0, second=0;
+	    if (!dist2(c, "n(", &mu, &second)) { mu = v[0]; second = v[1]; }
+	    double var = has(c, "^2") ? second * second : second;
+	    int tail = prob_tail(c, t);
     double u[3]; int nu = 0;
     for (int i = 0; i < nv && nu < 3; ++i) {
       if (near_num(v[i], mu) || near_num(v[i], second) || near_num(v[i], var)) continue;
-      if (has(c, "^2") && near_num(v[i], 2)) continue;
-      u[nu++] = v[i];
-    }
-    if ((has(c, "findk") || has(c, "findx") || has(c, "suchthat") || has(t, "percentile")) && nu >= 1) {
-      double area = u[0];
-      if (has(c, "p(x>k") || has(c, "p(x>=k") || has(c, "morethank") || has(c, "greaterthank")) area = 1 - area;
-      sprintf(cmd, "invnormalvar(%.10g,%.10g,%.10g)", area, mu, var);
-      return eval_stats(cmd, out);
+	      if (has(c, "^2") && near_num(v[i], 2)) continue;
+	      u[nu++] = v[i];
+	    }
+	    if ((has(c, "-a<x<") || has(c, "-k<x<") || has(c, "betweenmu") || has(c, "central")) &&
+	        (has(t, "find") || has(t, "such")) && nu >= 1) {
+	      double prob = 0;
+	      for (int i = 0; i < nu; ++i) if (u[i] > 0 && u[i] < 1) { prob = u[i]; break; }
+	      if (prob > 0) {
+	        double sd = root(var);
+	        double left = (1 + prob) / 2.0;
+	        double z = inv_norm_left(left);
+	        int n = add(out, 0, "For a central normal interval, split the outside probability equally.");
+	        n = add(out, n, "P(mu-a<X<mu+a)=%.10g", prob);
+	        n = add(out, n, "area to the left of mu+a = (1+%.10g)/2 = %.10g", prob, left);
+	        n = add(out, n, "z = InvNorm(%.10g) = %.10g", left, z);
+	        return add(out, n, "a = z*sigma = %.10g*%.10g = %.10g", z, sd, z*sd);
+	      }
+	    }
+	    if ((has(c, "findk") || has(c, "findx") || has(c, "suchthat") || has(t, "percentile")) && nu >= 1) {
+	      double area = u[0];
+	      if (has(c, "p(x>k") || has(c, "p(x>=k") || has(c, "morethank") || has(c, "greaterthank")) area = 1 - area;
+	      sprintf(cmd, "invnormalvar(%.10g,%.10g,%.10g)", area, mu, var);
+	      return eval_stats(cmd, out);
     }
 	    if ((has(c, "p(") && has(c, "<x<")) || (nu >= 2 && (has(c, "between") || has(c, "<x<")))) {
 	      if (nu < 2) return 0;
@@ -3036,18 +3051,48 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
 	      return eval_stats(cmd, out);
 	    }
 	  }
-  if ((has(c, "~po(") || has(c, "~poisson(") || has(c, "followspo(") || has(c, "followspoisson(") ||
-       has(c, "xpo(") || has(c, "xpoisson(")) && nv >= 2) {
-    double lam = 0;
-    if (!dist1(c, "po(", &lam) && !dist1(c, "poisson(", &lam)) lam = v[0];
-    double xd = 0; bool hx = label_num(input, "x", &xd) || word_num(input, "x", &xd);
-    int x = hx ? (int)xd : 0;
+	  if ((has(c, "~po(") || has(c, "~poisson(") || has(c, "followspo(") || has(c, "followspoisson(") ||
+	       has(c, "xpo(") || has(c, "xpoisson(")) && nv >= 2) {
+    if ((has(c, "lambda") || has(c, "poisson(lambda") || has(c, "po(lambda")) &&
+        (has(c, "p(x=0)=") || has(c, "p(x=0)")) && nv >= 1) {
+      double p0 = v[nv - 1];
+      if (p0 > 0 && p0 < 1) {
+        double lam0 = -ln_approx(p0);
+        int n = add(out, 0, "For X~Po(lambda), P(X=0)=e^-lambda.");
+        n = add(out, n, "e^-lambda = %.10g", p0);
+        n = add(out, n, "-lambda = ln(%.10g)", p0);
+        return add(out, n, "lambda = -ln(%.10g) = %.10g", p0, lam0);
+      }
+    }
+	    double lam = 0;
+	    if (!dist1(c, "po(", &lam) && !dist1(c, "poisson(", &lam)) lam = v[0];
+	    double xd = 0; bool hx = label_num(input, "x", &xd) || word_num(input, "x", &xd);
+	    int x = hx ? (int)xd : 0;
     for (int i = 0; !hx && i < nv; ++i) {
       if (near_num(v[i], lam)) continue;
-      if ((has(t, "percent") || has(t, "significance")) && v[i] > 0 && v[i] <= 10) continue;
-      x = (int)v[i]; hx = true; break;
-    }
-    int tail = prob_tail(c, t);
+	      if ((has(t, "percent") || has(t, "significance")) && v[i] > 0 && v[i] <= 10) continue;
+	      x = (int)v[i]; hx = true; break;
+	    }
+	    if (has(t, "normal") && (has(t, "approx") || has(t, "approximation")) && hx) {
+	      double sig = root(lam);
+	      int n = add(out, 0, "Use normal approximation to X ~ Po(%.6g).", lam);
+	      n = add(out, n, "mu = lambda = %.6g, sigma = sqrt(lambda) = %.6g", lam, sig);
+	      if (has(c, "x>") || has(t, "greater") || has(t, "more")) {
+	        double cc = x + 0.5, z = sig ? (cc - lam) / sig : 0;
+	        n = add(out, n, "For P(X>%.6g), use continuity correction P(Y>%.6g).", (double)x, cc);
+	        n = add(out, n, "z = (%.6g-%.6g)/%.6g = %.10g", cc, lam, sig, z);
+	        return add(out, n, "P(Y>%.6g) = %.10g", cc, 1 - normal_cdf(z));
+	      }
+	      if (has(c, "x<") || has(t, "less") || has(t, "fewer")) {
+	        double cc = x - 0.5, z = sig ? (cc - lam) / sig : 0;
+	        n = add(out, n, "For P(X<%.6g), use continuity correction P(Y<%.6g).", (double)x, cc);
+	        n = add(out, n, "z = (%.6g-%.6g)/%.6g = %.10g", cc, lam, sig, z);
+	        return add(out, n, "P(Y<%.6g) = %.10g", cc, normal_cdf(z));
+	      }
+	      sprintf(cmd, "poissonnorm(%.10g,%.10g,%.10g)", lam, (double)x, (double)x);
+	      return eval_stats(cmd, out);
+	    }
+	    int tail = prob_tail(c, t);
     if ((has(t, "given") || has(t, "conditional")) && hx) {
       double given = 0; int gtail = 0;
       const char *gp = strstr(c, "givenx<=");
@@ -3338,8 +3383,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "maximum height uses v_y=0.");
     return add(out, n, "H = u_y^2/(2g) = %.10g m", H);
   }
-  if (is_projectile_text(t) && has(c, "maximumheight") &&
-      (has(t, "speed") || has(t, "projection") || has(c, "speedofprojection")) && nv >= 2) {
+	  if (is_projectile_text(t) && has(c, "maximumheight") &&
+	      (has(t, "speed") || has(t, "projection") || has(c, "speedofprojection")) && nv >= 2) {
     double H=0, ang=0;
     bool hH=word_num(input,"height",&H) || label_num(input,"height",&H);
     bool hA=word_num(input,"angle",&ang) || label_num(input,"angle",&ang) || prev_word_num(input,"degrees",&ang);
@@ -3347,13 +3392,34 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     if (!hA) ang = v[1];
     double s = deg_sine(ang), u = s ? root(2.0*9.8*H)/s : 0;
     int n = add(out, 0, "At maximum height, vertical velocity is zero.");
-    n = add(out, n, "H = (u sin(theta))^2/(2g)");
-    n = add(out, n, "u sin(%.6g) = sqrt(2*9.8*%.6g)", ang, H);
-    return add(out, n, "u = %.10g m/s", u);
-  }
-  if (is_projectile_text(t) && (has(t, "speed") || has(t, "direction")) &&
-      (has(t, "after") || has(t, "seconds")) &&
-      !has(t, "high") && !has(t, "height") && !has(t, "above") && !has(t, "times") && nv >= 3) {
+	    n = add(out, n, "H = (u sin(theta))^2/(2g)");
+	    n = add(out, n, "u sin(%.6g) = sqrt(2*9.8*%.6g)", ang, H);
+	    return add(out, n, "u = %.10g m/s", u);
+	  }
+	  if (is_projectile_text(t) && (has(t, "time") || has(t, "when") || has(t, "times")) &&
+	      (has(t, "high") || has(t, "above") || has(t, "height")) && nv >= 3 && !has(t, "hits")) {
+	    double u=0, ang=0, y=0, h0=0, g=0;
+	    bool hU=label_num(input,"speed",&u) || label_num(input,"u",&u) || label_num(input,"initialspeed",&u) || label_num(input,"initialvelocity",&u) ||
+	            word_num(input,"speed",&u) || word_num(input,"initialspeed",&u) || word_num(input,"velocity",&u);
+	    bool hA=label_num(input,"angle",&ang) || label_num(input,"theta",&ang) || label_num(input,"launchangle",&ang) ||
+	            word_num(input,"angle",&ang) || word_num(input,"theta",&ang) || prev_word_num(input,"degrees",&ang);
+	    bool hY=label_num(input,"height",&y) || label_num(input,"y",&y) || word_num(input,"height",&y) || word_num(input,"above",&y) || word_num(input,"high",&y) ||
+	            prev_word_num(input,"high",&y) || prev_word_num(input,"above",&y);
+	    bool hH=label_num(input,"initialheight",&h0) || label_num(input,"launchheight",&h0) || label_num(input,"h0",&h0);
+	    bool hG=label_num(input,"g",&g) || label_num(input,"gravity",&g);
+	    if (!hU && nv >= 1) { u = v[0]; hU = true; }
+	    if (!hA && nv >= 2) { ang = v[1]; hA = true; }
+	    if (hU && hA && !hY) {
+	      for (int i = 0; i < nv; ++i) if (!near_num(v[i], u) && !near_num(v[i], ang)) { y = v[i]; hY = true; break; }
+	    }
+	    if (hU && hA && hY) {
+	      sprintf(cmd, hG ? "projectiley(%.10g,%.10g,%.10g,%.10g,%.10g)" : "projectiley(%.10g,%.10g,%.10g,%.10g)", u, ang, y, hH ? h0 : 0, hG ? g : 9.8);
+	      return eval_mech(cmd, out);
+	    }
+	  }
+	  if (is_projectile_text(t) && (has(t, "speed") || has(t, "direction")) &&
+	      (has(t, "after") || has(t, "seconds")) &&
+	      !has(t, "high") && !has(t, "height") && !has(t, "above") && !has(t, "times") && nv >= 3) {
     double u=0, ang=0, time=0, g=9.8;
     bool hU=label_num(input,"speed",&u) || label_num(input,"u",&u) || word_num(input,"speed",&u);
     bool hA=label_num(input,"angle",&ang) || label_num(input,"theta",&ang) || word_num(input,"angle",&ang) || prev_word_num(input,"degrees",&ang);
@@ -3443,14 +3509,14 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     }
     sprintf(cmd, nv >= 4 ? "projectileat(%.10g,%.10g,%.10g,%.10g)" : "projectileat(%.10g,%.10g,%.10g)", v[0], v[1], v[2], nv >= 4 ? v[3] : 0); return eval_mech(cmd, out);
   }
-  if (is_projectile_text(t) && (has(t, "time") || has(t, "when") || has(t, "times")) &&
-      (has(t, "high") || has(t, "above")) && nv >= 3 && !has(t, "hits") && !has(t, "ground")) {
+	  if (is_projectile_text(t) && (has(t, "time") || has(t, "when") || has(t, "times")) &&
+	      (has(t, "high") || has(t, "above") || has(t, "height")) && nv >= 3 && !has(t, "hits")) {
     double u=0, ang=0, y=0, h0=0, g=0;
     bool hU=label_num(input,"speed",&u) || label_num(input,"u",&u) || label_num(input,"initialspeed",&u) || label_num(input,"initialvelocity",&u) ||
             word_num(input,"speed",&u) || word_num(input,"initialspeed",&u) || word_num(input,"velocity",&u);
     bool hA=label_num(input,"angle",&ang) || label_num(input,"theta",&ang) || label_num(input,"launchangle",&ang) ||
             word_num(input,"angle",&ang) || word_num(input,"theta",&ang);
-    bool hY=label_num(input,"height",&y) || label_num(input,"y",&y) || word_num(input,"above",&y) || word_num(input,"high",&y) ||
+    bool hY=label_num(input,"height",&y) || label_num(input,"y",&y) || word_num(input,"height",&y) || word_num(input,"above",&y) || word_num(input,"high",&y) ||
             prev_word_num(input,"high",&y) || prev_word_num(input,"above",&y);
     bool hH=label_num(input,"initialheight",&h0) || label_num(input,"launchheight",&h0) || label_num(input,"h0",&h0);
     bool hG=label_num(input,"g",&g) || label_num(input,"gravity",&g);
@@ -3513,16 +3579,25 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     }
     sprintf(cmd, "projectile(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
   }
-  if ((has(t, "equilibrium") || has(t, "balance")) && (has(t, "component") || has(t, "components")) && nv >= 4) {
-    int p = sprintf(cmd, "equilibrium(%.10g", v[0]);
-    for (int i=1;i<nv && p < (int)sizeof(cmd)-24;++i) p += sprintf(cmd+p, ",%.10g", v[i]);
-    sprintf(cmd+p, ")");
-    return eval_mech(cmd, out);
-  }
-  if ((has(t, "force") || has(t, "vector")) && has(t, "i") && has(t, "j") &&
-      (has(t, "magnitude") || has(t, "direction") || has(t, "resultant")) && nv >= 2) {
-    sprintf(cmd, "vector(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
-  }
+	  if ((has(t, "equilibrium") || has(t, "balance")) && (has(t, "component") || has(t, "components")) && nv >= 4) {
+	    int p = sprintf(cmd, "equilibrium(%.10g", v[0]);
+	    for (int i=1;i<nv && p < (int)sizeof(cmd)-24;++i) p += sprintf(cmd+p, ",%.10g", v[i]);
+	    sprintf(cmd+p, ")");
+	    return eval_mech(cmd, out);
+	  }
+	  if ((has(t, "force") || has(t, "forces") || has(t, "vector") || has(t, "vectors")) &&
+	      (has(t, "resultant") || has(t, "magnitude")) && (has(t, "angle") || has(t, "degrees")) &&
+	      !has(t, "component") && !has(t, "equilibrium") && nv >= 3) {
+	    double F1 = v[0], F2 = v[1], ang = v[2];
+	    double R = root(F1*F1 + F2*F2 + 2*F1*F2*deg_cosine(ang));
+	    int n = add(out, 0, "Use the cosine rule with the included angle.");
+	    n = add(out, n, "R^2 = %.6g^2 + %.6g^2 + 2*%.6g*%.6g*cos(%.6g)", F1, F2, F1, F2, ang);
+	    return add(out, n, "R = %.10g N", R);
+	  }
+	  if ((has(t, "force") || has(t, "vector")) && has(t, "i") && has(t, "j") &&
+	      (has(t, "magnitude") || has(t, "direction") || has(t, "resultant")) && nv >= 2) {
+	    sprintf(cmd, "vector(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
+	  }
   if ((has(t, "positionvector") || (has(t, "position") && has(t, "vector"))) &&
       (has(t, "velocity") || has(t, "acceleration")) && has(t, "i") && has(t, "j") && nv >= 5) {
     double ax = v[0], bx = v[1], ay = 1, by = v[3], tt = v[nv-1];
@@ -3547,8 +3622,17 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     sprintf(cmd+p, ")");
     return eval_mech(cmd, out);
   }
-  if ((has(t, "beam") || has(t, "support") || has(t, "reaction")) && (has(t, "load") || has(t, "weight")) && nv >= 3) {
-    const char *loads_p = strstr(t, "loads");
+	  if ((has(t, "beam") || has(t, "support") || has(t, "reaction")) && (has(t, "load") || has(t, "weight")) && nv >= 3) {
+	    if ((has(t, "rod") || has(t, "uniform") || has(t, "beam")) && has(t, "reaction") &&
+	        (has(t, "distance") || has(c, "xfrom") || has(t, "findx")) && nv >= 5) {
+	      double L = v[0], bw = v[1], load = v[2], RB = v[nv-1];
+	      double x = load ? (RB*L - bw*(L/2.0)) / load : 0;
+	      int n = add(out, 0, "Take moments about A, including the uniform rod weight at its midpoint.");
+	      n = add(out, n, "R_B*L = W*(L/2) + load*x");
+	      n = add(out, n, "%.10g*%.10g = %.10g*(%.10g/2) + %.10g*x", RB, L, bw, L, load);
+	      return add(out, n, "x = %.10g m", x);
+	    }
+	    const char *loads_p = strstr(t, "loads");
     const char *act_p = loads_p ? strstr(loads_p, "act") : 0;
     if (loads_p && act_p) {
       char load_seg[160], pos_seg[160];
@@ -3779,6 +3863,33 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "Resolve parallel: friction = mg sin(theta) = %.6g*9.8 sin(%.6g) = %.10g N", m, ang, down);
     n = add(out, n, "mu R = mg sin(theta)");
     return add(out, n, "least mu = tan(theta) = tan(%.6g) = %.10g", ang, mu);
+  }
+	  if ((has(t, "pulley") || has(t, "connected")) &&
+	      (has(t, "rough") || has(t, "friction") || has(t, "coefficient")) &&
+	      (has(t, "horizontal") || has(t, "table")) &&
+	      (has(t, "hang") || has(t, "hanging") || has(t, "freely")) && nv >= 3) {
+	    double mu = 0, masses[8]; int mc = 0;
+	    for (int i = 0; i < nv; ++i) {
+	      if (v[i] > 0 && v[i] < 1) { mu = v[i]; continue; }
+	      if (v[i] > 1 && mc < 8) masses[mc++] = v[i];
+	    }
+	    double m1 = mc > 0 ? masses[0] : v[0];
+	    double m2 = mc > 1 ? masses[mc-1] : v[1];
+	    if (!(word_num(input, "hanging", &m2) || word_num(input, "hangs", &m2) ||
+	          prev_word_num(input, "hanging", &m2) || prev_word_num(input, "hangs", &m2) ||
+	          prev_word_num(input, "hang", &m2) || prev_word_num(input, "freely", &m2))) {
+	      for (int i = 1; i < mc; ++i) if (masses[i] > m2) m2 = masses[i];
+	    }
+	    double fr = mu * m1 * 9.8;
+    double drive = m2 * 9.8;
+    double acc = (drive - fr) / (m1 + m2);
+    double T = m1 * acc + fr;
+    int n = add(out, 0, "Treat both particles as one system, including friction on the table.");
+    n = add(out, n, "friction on table particle = mu R = %.6g*%.6g*9.8 = %.10g N", mu, m1, fr);
+    n = add(out, n, "driving force = hanging weight = %.6g*9.8 = %.10g N", m2, drive);
+    n = add(out, n, "a = (%.10g-%.10g)/(%.6g+%.6g) = %.10g m/s^2", drive, fr, m1, m2, acc);
+    n = add(out, n, "For table particle: T - friction = m a.");
+    return add(out, n, "T = %.6g*%.10g + %.10g = %.10g N", m1, acc, fr, T);
   }
   if (has(t, "horizontal") && (has(t, "plane") || has(t, "rough") || has(t, "smooth") || has(t, "pulled") || has(t, "pull")) &&
       (has(t, "acceleration") || has(t, "accelerate")) && nv >= 2) {
@@ -4428,20 +4539,22 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       return eval_stats(cmd, out);
     }
   }
-  if (has(t, "poisson") && has(t, "normal") && (has(t, "approx") || has(t, "approximation")) && nv >= 2) {
-    double lam = v[0], x = v[1], sig = root(lam);
-    int n = add(out, 0, "Use normal approximation to X ~ Po(%.6g).", lam);
-    n = add(out, n, "mu = lambda = %.6g, sigma = sqrt(lambda) = %.6g", lam, sig);
-    if (has(c, "x>") || has(t, "greater") || has(t, "more")) {
-      double cc = x + 0.5, z = sig ? (cc - lam) / sig : 0;
-      n = add(out, n, "For P(X>%.6g), use continuity correction P(Y>%.6g).", x, cc);
-      return add(out, n, "z = (%.6g-%.6g)/%.6g = %.10g", cc, lam, sig, z);
-    }
-    if (has(c, "x<") || has(t, "less") || has(t, "fewer")) {
-      double cc = x - 0.5, z = sig ? (cc - lam) / sig : 0;
-      n = add(out, n, "For P(X<%.6g), use continuity correction P(Y<%.6g).", x, cc);
-      return add(out, n, "z = (%.6g-%.6g)/%.6g = %.10g", cc, lam, sig, z);
-    }
+	  if (has(t, "poisson") && has(t, "normal") && (has(t, "approx") || has(t, "approximation")) && nv >= 2) {
+	    double lam = v[0], x = v[1], sig = root(lam);
+	    int n = add(out, 0, "Use normal approximation to X ~ Po(%.6g).", lam);
+	    n = add(out, n, "mu = lambda = %.6g, sigma = sqrt(lambda) = %.6g", lam, sig);
+	    if (has(c, "x>") || has(t, "greater") || has(t, "more")) {
+	      double cc = x + 0.5, z = sig ? (cc - lam) / sig : 0;
+	      n = add(out, n, "For P(X>%.6g), use continuity correction P(Y>%.6g).", x, cc);
+	      n = add(out, n, "z = (%.6g-%.6g)/%.6g = %.10g", cc, lam, sig, z);
+	      return add(out, n, "P(Y>%.6g) = %.10g", cc, 1 - normal_cdf(z));
+	    }
+	    if (has(c, "x<") || has(t, "less") || has(t, "fewer")) {
+	      double cc = x - 0.5, z = sig ? (cc - lam) / sig : 0;
+	      n = add(out, n, "For P(X<%.6g), use continuity correction P(Y<%.6g).", x, cc);
+	      n = add(out, n, "z = (%.6g-%.6g)/%.6g = %.10g", cc, lam, sig, z);
+	      return add(out, n, "P(Y<%.6g) = %.10g", cc, normal_cdf(z));
+	    }
     sprintf(cmd, "poissonnorm(%.10g,%.10g,%.10g)", lam, x, x);
     return eval_stats(cmd, out);
   }
@@ -4492,10 +4605,10 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     sprintf(cmd, tail ? "poissontail(%.10g,%d,%d)" : "poisson(%.10g,%d)", lam, (int)x, tail);
     return eval_stats(cmd, out);
   }
-  if ((has(t, "hypothesis") || has(t, "significance") || has(t, "test")) &&
-      (has(t, "percent") || has(t, "proportion") || has(t, "percentage")) &&
-      (has(t, "proportion") || has(t, "percentage") || has(t, "prefer") || has(t, "customers") || has(t, "success")) &&
-      (has(t, "sample") || has(t, "customers") || has(t, "people") || has(t, "students")) && nv >= 4) {
+	  if ((has(t, "hypothesis") || has(t, "significance") || has(t, "test")) &&
+	      (has(t, "percent") || has(t, "proportion") || has(t, "percentage")) &&
+	      (has(t, "proportion") || has(t, "percentage") || has(t, "prefer") || has(t, "customers") || has(t, "success")) &&
+	      (has(t, "sample") || has(t, "customers") || has(t, "people") || has(t, "students")) && nv >= 4) {
     double rawp = -1, alpha = 0.05, N = -1, x = -1;
     prev_word_num(input, "percent", &rawp);
     if (rawp < 0) for (int i = 0; i < nv; ++i) if (v[i] > 0 && v[i] < 100) { rawp = v[i]; break; }
@@ -4512,12 +4625,45 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       double pv = rawp / 100.0;
       double htail = (has(t, "increase") || has(t, "increased") || has(t, "greater") || has(t, "more") || x > N*pv) ? 1.0 : -1.0;
       sprintf(cmd, "hypbinom(%d,%.10g,%d,%.10g,%.0f)", (int)N, pv, (int)x, alpha, htail);
-      return eval_stats(cmd, out);
+	      return eval_stats(cmd, out);
+	    }
+	  }
+	  if ((has(t, "least") || has(t, "minimum") || has(c, "smallestn")) &&
+	      (has(c, "atleastone") || has(c, "atleast1")) && (has(t, "greater") || has(t, "more")) &&
+	      (has(t, "probability") || has(t, "chance") || has(t, "fail") || has(t, "failure") || has(t, "defect")) && nv >= 2) {
+	    double pv = -1, target = -1;
+	    for (int i = 0; i < nv; ++i) if (v[i] > 0 && v[i] < 1 && pv < 0) pv = v[i];
+	    for (int i = nv - 1; i >= 0; --i) if (v[i] > 0 && v[i] < 1 && !near_num(v[i], pv)) { target = v[i]; break; }
+	    if (pv > 0 && target > 0 && target < 1) {
+	      int N = 1;
+	      while (N < 100000 && 1 - pwr(1 - pv, N) <= target) ++N;
+	      int n = add(out, 0, "Use the complement for at least one success.");
+	      n = add(out, n, "P(at least one)=1-(1-p)^n");
+	      n = add(out, n, "Need 1-(1-%.10g)^n > %.10g", pv, target);
+	      n = add(out, n, "(1-%.10g)^n < %.10g", pv, 1-target);
+	      n = add(out, n, "n > ln(%.10g)/ln(%.10g)", 1-target, 1-pv);
+	      return add(out, n, "least n = %d", N);
+	    }
+	  }
+	  if ((has(t, "probability") || has(t, "chance")) && nv >= 2 &&
+	      (has(t, "sample") || has(t, "trials") || has(t, "success") || has(t, "faulty") || has(t, "seed") ||
+	       has(t, "germinate") || has(t, "plants") || has(t, "affected") || has(t, "disease"))) {
+    if ((has(t, "least") || has(t, "minimum") || has(c, "smallestn")) &&
+        (has(c, "atleastone") || has(c, "atleast1")) && (has(t, "greater") || has(t, "more")) && nv >= 2) {
+      double pv = -1, target = -1;
+      for (int i = 0; i < nv; ++i) if (v[i] > 0 && v[i] < 1 && pv < 0) pv = v[i];
+      for (int i = nv - 1; i >= 0; --i) if (v[i] > 0 && v[i] < 1 && !near_num(v[i], pv)) { target = v[i]; break; }
+      if (pv > 0 && target > 0 && target < 1) {
+        int N = 1;
+        while (N < 100000 && 1 - pwr(1 - pv, N) <= target) ++N;
+        int n = add(out, 0, "Use the complement for at least one success.");
+        n = add(out, n, "P(at least one)=1-(1-p)^n");
+        n = add(out, n, "Need 1-(1-%.10g)^n > %.10g", pv, target);
+        n = add(out, n, "(1-%.10g)^n < %.10g", pv, 1-target);
+        n = add(out, n, "n > ln(%.10g)/ln(%.10g)", 1-target, 1-pv);
+        return add(out, n, "least n = %d", N);
+      }
     }
-  }
-  if ((has(t, "probability") || has(t, "chance")) && nv >= 2 &&
-      (has(t, "sample") || has(t, "trials") || has(t, "success") || has(t, "faulty") || has(t, "seed") ||
-       has(t, "germinate") || has(t, "plants") || has(t, "affected") || has(t, "disease"))) {
     double pv=-1, rawp=-1, N=-1, x=-1;
     for (int i = 0; i < nv; ++i) if (v[i] > 0 && v[i] < 1 && pv < 0) pv = v[i];
     if (pv < 0 && (has(t, "percent") || has(c, "%"))) for (int i = 0; i < nv; ++i)
@@ -4558,6 +4704,21 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     bool hHi=label_num(input,"upper",&hi) || label_num(input,"hi",&hi);
     bool hArea=label_num(input,"area",&area) || label_num(input,"probability",&area) ||
                (!has(t, "percentile") && label_num(input,"p",&area));
+    if ((has(c, "-a<x<") || has(c, "-k<x<") || has(c, "between")) &&
+        (has(t, "find") || has(t, "such")) && hMu && (hSig || hVar) && nv >= 3) {
+      double prob = 0;
+      for (int i = 0; i < nv; ++i) if (!near_num(v[i], mu) && (!hSig || !near_num(v[i], sig)) && (!hVar || !near_num(v[i], var)) && v[i] > 0 && v[i] < 1) { prob = v[i]; break; }
+      if (prob > 0) {
+        double sd = hSig ? sig : root(var);
+        double left = (1 + prob) / 2.0;
+        double z = inv_norm_left(left);
+        int n = add(out, 0, "For a central normal interval, split the outside probability equally.");
+        n = add(out, n, "P(mu-a<X<mu+a)=%.10g", prob);
+        n = add(out, n, "area to the left of mu+a = (1+%.10g)/2 = %.10g", prob, left);
+        n = add(out, n, "z = InvNorm(%.10g) = %.10g", left, z);
+        return add(out, n, "a = z*sigma = %.10g*%.10g = %.10g", z, sd, z*sd);
+      }
+    }
     double tail = (has(t, "twotailed") || has(t, "twosided") || (has(t, "two") && (has(t, "tailed") || has(t, "sided"))) || has(t, "different") || has(t, "notequal")) ? 0 :
                   (has(t, "upper") || has(t, "greater") || has(t, "more") || has(c, "x>") || has(c, "x>=") ? 1 : -1);
     const char *absx = strstr(c, "abs(x");
@@ -6109,20 +6270,33 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "y = %.6g + (%.6g-%.6g)*(%.6g-%.6g)/(%.6g-%.6g)", y1, x, x1, y2, y1, x2, x1);
     return add(out, n, "y = %.10g", y);
   }
-  if (has(t, "mean") && nv >= 3 &&
-      (has(t, "removed") || has(t, "remove") || has(t, "added") || has(t, "add")) &&
-      !has(t, "normal") && !has(t, "binom") && !has(t, "poisson")) {
-    double count = v[0], mean = v[1], value = v[nv-1];
-    bool adding = has(t, "added") || has(t, "add");
-    double old_total = count * mean;
-    double new_total = adding ? old_total + value : old_total - value;
-    double new_count = adding ? count + 1 : count - 1;
-    int n = add(out, 0, "Use total = number of values * mean.");
-    n = add(out, n, "old total = %.10g*%.10g = %.10g", count, mean, old_total);
-    n = add(out, n, adding ? "new total = %.10g + %.10g = %.10g" : "new total = %.10g - %.10g = %.10g", old_total, value, new_total);
-    n = add(out, n, adding ? "new number of values = %.10g + 1 = %.10g" : "new number of values = %.10g - 1 = %.10g", count, new_count);
-    return add(out, n, "new mean = %.10g/%.10g = %.10g", new_total, new_count, new_count ? new_total/new_count : 0);
-  }
+	  if (has(t, "mean") && nv >= 3 &&
+	      (has(t, "removed") || has(t, "remove") || has(t, "added") || has(t, "add")) &&
+	      !has(t, "normal") && !has(t, "binom") && !has(t, "poisson")) {
+	    double count = v[0], mean = v[1], value = v[nv-1];
+	    bool adding = has(t, "added") || has(t, "add");
+	    double old_total = count * mean;
+	    double new_total = adding ? old_total + value : old_total - value;
+	    double new_count = adding ? count + 1 : count - 1;
+	    int n = add(out, 0, "Use total = number of values * mean.");
+	    n = add(out, n, "old total = %.10g*%.10g = %.10g", count, mean, old_total);
+	    n = add(out, n, adding ? "new total = %.10g + %.10g = %.10g" : "new total = %.10g - %.10g = %.10g", old_total, value, new_total);
+	    n = add(out, n, adding ? "new number of values = %.10g + 1 = %.10g" : "new number of values = %.10g - 1 = %.10g", count, new_count);
+	    double new_mean = new_count ? new_total/new_count : 0;
+	    n = add(out, n, "new mean = %.10g/%.10g = %.10g", new_total, new_count, new_mean);
+	    if ((has(t, "variance") || has(t, "standarddeviation") || has(t, "sd")) &&
+	        (has(c, "sumofsquares") || (has(t, "sum") && has(t, "squares"))) && nv >= 4) {
+	      double old_sx2 = v[2];
+	      double new_sx2 = adding ? old_sx2 + value*value : old_sx2 - value*value;
+	      double variance = new_count ? new_sx2/new_count - new_mean*new_mean : 0;
+	      n = add(out, n, adding ? "new sum x^2 = %.10g + %.10g^2 = %.10g" : "new sum x^2 = %.10g - %.10g^2 = %.10g", old_sx2, value, new_sx2);
+	      n = add(out, n, "variance = sum x^2/n - mean^2");
+	      n = add(out, n, "variance = %.10g/%.10g - %.10g^2 = %.10g", new_sx2, new_count, new_mean, variance);
+	      if (has(t, "standarddeviation") || has(t, "sd")) return add(out, n, "sd = sqrt(variance) = %.10g", root(variance));
+	      return n;
+	    }
+	    return n;
+	  }
   if ((has(t, "mean") || has(t, "variance") || has(t, "standarddeviation")) && nv >= 3 &&
       !has(t, "normal") && !has(t, "binom") && !has(t, "poisson") &&
       !has(t, "discrete") && !has(t, "randomvariable") && !has(t, "grouped") &&
