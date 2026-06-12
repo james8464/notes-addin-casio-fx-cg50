@@ -2267,7 +2267,9 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
 
   if ((has(c, "~n(") || has(c, "x~n(") || has(c, "n(") || has(c, "followsn(") || has(c, "distributedn(")) &&
       !has(c, "poisson") && !has(t, "poisson") &&
-      (has(c, "p(") || has(t, "probability") || has(c, "<x<")) && nv >= 3) {
+      (has(c, "p(") || has(t, "probability") || has(c, "<x<") ||
+       has(t, "percentile") || has(c, "findk") || has(c, "findx") ||
+       has(c, "suchthat")) && nv >= 3) {
     double mu=0, second=0;
     if (!dist2(c, "n(", &mu, &second)) { mu = v[0]; second = v[1]; }
     double var = has(c, "^2") ? second * second : second;
@@ -2276,6 +2278,27 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       if (near_num(v[i], mu) || near_num(v[i], second)) continue;
       if (has(c, "^2") && near_num(v[i], 2)) continue;
       u[nu++] = v[i];
+    }
+    if ((has(t, "percentile") || has(c, "findk") || has(c, "findx") || has(c, "suchthat")) && nu >= 1 &&
+        !(has(c, "-a<x<") || has(c, "+a") || has(c, "-k<x<") || has(c, "betweenmu") || has(c, "central"))) {
+      double area = 0;
+      for (int i = 0; i < nu; ++i) {
+        if (u[i] > 0 && u[i] < 1) { area = u[i]; break; }
+        if (u[i] > 1 && u[i] <= 100 && area == 0) area = u[i] / 100.0;
+      }
+      if (area > 0) {
+        if (has(c, "p(x>k") || has(c, "p(x>=k") || has(c, "morethank") ||
+            has(c, "greaterthank") || has(t, "exceeded") || has(t, "above")) {
+          int n = 0;
+          if (area < 1) n = add(out, 0, "Area to the left = 1 - %.10g = %.10g", area, 1 - area);
+          area = 1 - area;
+          sprintf(cmd, "invnormalvar(%.10g,%.10g,%.10g)", area, mu, var);
+          int m = eval_stats(cmd, out + n);
+          return n + m;
+        }
+        sprintf(cmd, "invnormalvar(%.10g,%.10g,%.10g)", area, mu, var);
+        return eval_stats(cmd, out);
+      }
     }
     if ((has(c, "-a<x<") || has(c, "+a") || has(c, "central")) && nu >= 1) {
       double prob = 0;
@@ -3314,9 +3337,22 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
 	        return add(out, n, "a = z*sigma = %.10g*%.10g = %.10g", z, sd, z*sd);
 	      }
 	    }
-	    if ((has(c, "findk") || has(c, "findx") || has(c, "suchthat") || has(t, "percentile")) && nu >= 1) {
-	      double area = u[0];
-	      if (has(c, "p(x>k") || has(c, "p(x>=k") || has(c, "morethank") || has(c, "greaterthank")) area = 1 - area;
+	    if ((has(c, "findk") || has(c, "findx") || has(c, "suchthat") || has(t, "percentile")) && nu >= 1 &&
+	        !(has(c, "-a<x<") || has(c, "-k<x<") || has(c, "betweenmu") || has(c, "central"))) {
+	      double area = 0;
+	      for (int i = 0; i < nu; ++i) {
+	        if (u[i] > 0 && u[i] < 1) { area = u[i]; break; }
+	        if (u[i] > 1 && u[i] <= 100 && area == 0) area = u[i] / 100.0;
+	      }
+	      if (area <= 0) area = u[0];
+	      if (has(c, "p(x>k") || has(c, "p(x>=k") || has(c, "morethank") ||
+	          has(c, "greaterthank") || has(t, "exceeded") || has(t, "above")) {
+	        int n = add(out, 0, "Area to the left = 1 - %.10g = %.10g", area, 1 - area);
+	        area = 1 - area;
+	        sprintf(cmd, "invnormalvar(%.10g,%.10g,%.10g)", area, mu, var);
+	        int m = eval_stats(cmd, out + n);
+	        return n + m;
+	      }
 	      sprintf(cmd, "invnormalvar(%.10g,%.10g,%.10g)", area, mu, var);
 	      return eval_stats(cmd, out);
     }

@@ -3551,6 +3551,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     has_hex_tok = scan_hex_word_token(t, hex_tok, sizeof(hex_tok));
   }
   char cmd[160];
+  bool tc_hint = has(t, "twos") || (has(t, "two") && has(t, "complement"));
   double width=0, height=0, depth=0;
   int prefix = 0;
   if (has(t, "halfadder") || (has(t, "half") && has(t, "adder"))) return add_half_adder_lines(out);
@@ -3569,6 +3570,81 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     n = add(out, n, "1 0 1 | 0");
     n = add(out, n, "1 1 0 | 1");
     return add(out, n, "1 1 1 | 0");
+  }
+  if (has(t, "fixed") && (has(t, "error") || has(t, "relativeerror")) &&
+      (has(t, "fractional") || has(t, "fraction") || has(t, "after")) && nv >= 2) {
+    double bw = 0, value = v[0];
+    bool hb = scan_before_word_num(t, "bit", &bw) || scan_before_word_num(t, "bits", &bw) ||
+              scan_before_word_num(t, "fractional", &bw) || scan_before_word_num(t, "fraction", &bw);
+    if (!hb) bw = v[nv - 1];
+    for (int i = 0; i < nv; ++i) {
+      if (v[i] > -1 && v[i] < 1 && !near_num(v[i], bw)) { value = v[i]; break; }
+    }
+    int frac = bw > 0 ? (int)bw : 8;
+    double scale = pow2(frac);
+    long long stored_int = (long long)round_nearest(value * scale);
+    double stored = stored_int / scale;
+    double abs_err = stored > value ? stored - value : value - stored;
+    double rel = value ? abs_err / (value > 0 ? value : -value) : 0;
+    int n = add(out, 0, "Store by rounding to the nearest %d-bit fractional fixed-point value.", frac);
+    n = add(out, n, "%.10g * 2^%d = %.10g", value, frac, value * scale);
+    n = add(out, n, "store nearest integer %lld", stored_int);
+    n = add(out, n, "stored value = %lld/2^%d = %.10g", stored_int, frac, stored);
+    n = add(out, n, "absolute error = |%.10g - %.10g| = %.10g", stored, value, abs_err);
+    return add(out, n, "relative error = %.10g/%.10g = %.10g", abs_err, value > 0 ? value : -value, rel);
+  }
+  if (tc_hint && has_hex_tok && (has(t, "hex") || has(t, "hexadecimal")) &&
+      (has(t, "add") || has(t, "sum") || has(t, "plus"))) {
+    char hx[4][32]; int hc = scan_hex_tokens_all(input, hx, 4);
+    if (hc >= 2) {
+      double bw = 0;
+      int w = (scan_before_word_num(t, "bit", &bw) || scan_before_word_num(t, "bits", &bw)) && bw > 0
+        ? (int)bw : (int)((strlen(hx[0]) > strlen(hx[1]) ? strlen(hx[0]) : strlen(hx[1])) * 4);
+      char a_bits[65], b_bits[65], r_bits[65], hres[32];
+      to_bin(parse_base(hx[0], 16), w, a_bits);
+      to_bin(parse_base(hx[1], 16), w, b_bits);
+      int av = twos_decode(a_bits), bv = twos_decode(b_bits), sum = av + bv;
+      to_bin(sum, w, r_bits);
+      unsigned long long code = (unsigned long long)sum;
+      if (w > 0 && w < 63) code &= ((1ULL << w) - 1ULL);
+      sprintf(hres, "%0*llX", (w + 3) / 4, code);
+      int n = add(out, 0, "Convert each hexadecimal value to %d-bit two's complement.", w);
+      n = add(out, n, "%s_16 = %s_2 = %d", hx[0], a_bits, av);
+      n = add(out, n, "%s_16 = %s_2 = %d", hx[1], b_bits, bv);
+      n = add(out, n, "%d + %d = %d", av, bv, sum);
+      n = add(out, n, "%d -> %s_2 = %s_16", sum, r_bits, hres);
+      bool ov = (av >= 0 && bv >= 0 && r_bits[0] == '1') || (av < 0 && bv < 0 && r_bits[0] == '0');
+      return add(out, n, ov ? "overflow: same signs gave opposite sign bit." : "no two's complement overflow.");
+    }
+  }
+  if (tc_hint && has_hex_tok && (has(t, "hex") || has(t, "hexadecimal")) &&
+      (has(t, "decode") || has(t, "denary") || has(t, "decimal") || has(t, "value"))) {
+    double bw = 0;
+    int w = (scan_before_word_num(t, "bit", &bw) || scan_before_word_num(t, "bits", &bw)) && bw > 0
+      ? (int)bw : (int)strlen(hex_tok) * 4;
+    char b[65]; to_bin(parse_base(hex_tok, 16), w, b);
+    int val = twos_decode(b);
+    int n = add(out, 0, "Convert hexadecimal to fixed-width binary first.");
+    n = add(out, n, "%s_16 = %s_2", hex_tok, b);
+    if (b[0] == '1') n = add(out, n, "MSB=1, so subtract 2^%d.", w);
+    else n = add(out, n, "MSB=0, so use unsigned place values.");
+    return add(out, n, "%s = %d", b, val);
+  }
+  if (tc_hint && (has(t, "hex") || has(t, "hexadecimal")) && nv >= 2 &&
+      (has(t, "encode") || has(t, "convert") || has(t, "represent"))) {
+    double bw = 0;
+    int w = (scan_before_word_num(t, "bit", &bw) || scan_before_word_num(t, "bits", &bw)) && bw > 0 ? (int)bw : (int)v[1];
+    long long val = (long long)v[0];
+    if ((has(t, "minus") || has(t, "negative")) && val > 0) val = -val;
+    if (val == w && nv > 1) val = (long long)v[1];
+    char b[65], hx[32]; to_bin(val, w, b);
+    unsigned long long code = (unsigned long long)val;
+    if (w > 0 && w < 63) code &= ((1ULL << w) - 1ULL);
+    sprintf(hx, "%0*llX", (w + 3) / 4, code);
+    int n = add(out, 0, "%d-bit two's complement.", w);
+    if (val < 0) n = add(out, n, "Encode negative: add 2^%d to %lld.", w, val);
+    n = add(out, n, "%lld -> %s_2", val, b);
+    return add(out, n, "%s_2 = %s_16", b, hx);
   }
   if (!has(t, "fixed") && (has(t, "binary") || has(t, "base,2")) &&
       (has(t, "denary") || has(t, "decimal")) &&
@@ -4844,7 +4920,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       (label_num(input,"characterset",&height) || label_num(input,"symbols",&height) || label_num(input,"alphabet",&height))) {
     sprintf(cmd, "charset(%lld,%lld)", (long long)width, (long long)height); return eval_storage(cmd, out);
   }
-  bool tc = has(t, "twos") || (has(t, "two") && has(t, "complement"));
+  bool tc = tc_hint;
   bool sm = has(t, "signmagnitude") || (has(t, "sign") && has(t, "magnitude"));
   if (tc && (has(t, "add") || has(t, "sum") || has(t, "plus")) &&
       !has(t, "subtract") && !has(t, "minus") && nb >= 2) {

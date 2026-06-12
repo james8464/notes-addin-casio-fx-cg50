@@ -309,6 +309,8 @@ def main():
     require("normal critical value area=0.95 sd=15 mean=100", ["inverse normal", "InvNorm(0.95, 15, 100)"])
     require("normal critical value area 0.95 mean 100 variance 225", ["Convert variance", "sigma = sqrt(225) = 15", "InvNorm(0.95, 15, 100)"])
     require("A normal variable has mean 30 and standard deviation 4. Find the value exceeded by 10 percent of observations.", ["Area to the left = 0.9", "InvNorm(0.9, 4, 30)"])
+    require("For X~N(100,15^2), find the 90th percentile.", ["sigma = sqrt(225) = 15", "Area to the left = 0.9", "x = 100 + 15*1.281551"])
+    require("For X~N(60,8^2), find k such that P(X>k)=0.1.", ["Area to the left = 1 - 0.1 = 0.9", "sigma = sqrt(64) = 8", "x = 60 + 8*1.281551"])
     require("A normal variable has mean 50 and P(X>70)=0.2. Find the standard deviation.", ["Use z=(x-mu)/sigma", "area to the left = 0.8", "sigma = 23.763"])
     require("find k such that P(X less than k)=0.95 for X normal mean 100 sd 15", ["inverse normal", "Area to the left = 0.95", "InvNorm(0.95, 15, 100)"])
     require("find k such that P(X greater than k)=0.05 for X normal mean 100 sd 15", ["inverse normal", "Area to the left = 0.95", "InvNorm(0.95, 15, 100)"])

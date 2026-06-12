@@ -1,5 +1,35 @@
 # Checkpoint
 
+## 2026-06-12 Inverse Normal And Hex Two's-Complement Slice
+
+Completed:
+- Fixed CASP3 free-text normal routing so percentile/unknown-k prompts use inverse normal before tail CDF.
+- Kept central normal interval prompts on the central-interval route.
+- Added CSCALC fixed-point relative-error working for stored rounded fractional values.
+- Added CSCALC two's-complement hexadecimal encode/decode/addition routes so signed intent wins over unsigned hex conversion.
+- Added regressions and rebuilt calculator-ready outputs.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 438640 bytes`
+  - `CSCALC.g3a: 245456 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: 18178 bytes`
+
+Drift check:
+- Stayed inside CASP3/CSCALC free-text engines, tests, checkpoint, and generated calculator files.
+- Did not alter Pure CAS menus, NOTES source, or shared UI/status code.
+- Active goal remains open for more unseen-case hardening.
+
 ## 2026-06-12 Normal Notation, Inverse Binomial, Varacc, And CS Timing Slice
 
 Completed:
