@@ -1,5 +1,36 @@
 # Checkpoint
 
+## 2026-06-12 Parser Precedence And Network Slice
+
+Completed:
+- Fixed CASP3 two-stage acceleration/deceleration total-time working so total distance/final braking distance are not treated as a single SUVAT route.
+- Added CASP3 cubic-velocity total-distance working and regression coverage.
+- Fixed CASP3 Poisson rate scaling for `per day/hour/minute` plus separate durations such as `in 6 hours`.
+- Added CASP3 unknown normal standard-deviation working from probability statements.
+- Added CASP3 `kx^n` pdf probability working for `P(X<...)` after normalising.
+- Fixed CASP3 histogram class-interval prompts such as `class 10 to 20` with frequency density.
+- Added CASP3 rough-incline pull-at-angle acceleration working.
+- Fixed CASP3 engine-power/resistance acceleration prompts via `P=Fv`.
+- Fixed CSCALC slash-CIDR IPv4 network/broadcast parsing and host-bit sizing.
+- Added CSCALC denary-value normalised floating-point encoding route.
+- Hardened CSCALC minterm prose and Boolean equality tail cleanup.
+- Added CSCALC Hamming parity-bit count working.
+- Added regression tests and rebuilt calculator files.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CASP3/CSCALC free-text working support and generated calculator outputs.
+- No menu/catalog/UI/status changes.
+- Active goal remains open for continued hardening.
+
 ## 2026-06-12 Variable Force, Pdf Power, Fixed-Point, And Storage Slice
 
 Completed:

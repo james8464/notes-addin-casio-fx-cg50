@@ -687,6 +687,9 @@ static bool minterm_skip_word(const char *w) {
          word_is(w, "care") || word_is(w, "cares") ||
          word_is(w, "cells") || word_is(w, "cell") || word_is(w, "for") ||
          word_is(w, "variables") || word_is(w, "variable") || word_is(w, "vars") ||
+         word_is(w, "find") || word_is(w, "sum") || word_is(w, "sums") ||
+         word_is(w, "product") || word_is(w, "products") || word_is(w, "from") ||
+         word_is(w, "of") || word_is(w, "sop") || word_is(w, "pos") ||
          word_is(w, "with") || word_is(w, "simplify") || word_is(w, "boolean") ||
          word_is(w, "logic") || word_is(w, "output") || word_is(w, "and") ||
          word_is(w, "or") || word_is(w, "is") ||
@@ -3053,6 +3056,20 @@ static bool cidr_prefix_from_text(const char *input, int *prefix) {
   return true;
 }
 
+static bool ipv4_from_text(const char *input, unsigned long *addr, int oct[4]) {
+  for (int i = 0; input && input[i]; ++i) {
+    if (!isdigit((unsigned char)input[i])) continue;
+    int a=-1,b=-1,c=-1,d=-1,n=0;
+    if (sscanf(input + i, "%d.%d.%d.%d%n", &a, &b, &c, &d, &n) == 4 &&
+        a >= 0 && a <= 255 && b >= 0 && b <= 255 && c >= 0 && c <= 255 && d >= 0 && d <= 255) {
+      oct[0]=a; oct[1]=b; oct[2]=c; oct[3]=d;
+      *addr = ((unsigned long)a << 24) | ((unsigned long)b << 16) | ((unsigned long)c << 8) | (unsigned long)d;
+      return true;
+    }
+  }
+  return false;
+}
+
 static bool make_gate_form_cmd(const char *input, bool nand, char *cmd, int cap) {
   char expr[96] = ""; int p = 0;
   for (int i = 0; input[i] && p + 1 < (int)sizeof(expr);) {
@@ -3118,7 +3135,18 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   char cmd[160];
   double width=0, height=0, depth=0;
   int prefix = 0;
-  if ((has(t, "subnet") || has(t, "ipv4") || has(t, "cidr")) && cidr_prefix_from_text(input, &prefix)) {
+  if ((has(t, "subnet") || has(t, "ipv4") || has(t, "cidr") || strchr(input, '/')) && cidr_prefix_from_text(input, &prefix)) {
+    unsigned long ip = 0; int oct[4];
+    if ((has(t, "network") || has(t, "broadcast")) && ipv4_from_text(input, &ip, oct)) {
+      unsigned long mask = prefix == 0 ? 0UL : (0xffffffffUL << (32 - prefix)) & 0xffffffffUL;
+      unsigned long net = ip & mask;
+      unsigned long bcast = net | (~mask & 0xffffffffUL);
+      int n = add(out, 0, "CIDR /%d gives subnet mask %lu.%lu.%lu.%lu.", prefix, (mask>>24)&255, (mask>>16)&255, (mask>>8)&255, mask&255);
+      n = add(out, n, "IP address = %d.%d.%d.%d", oct[0], oct[1], oct[2], oct[3]);
+      n = add(out, n, "network address = IP AND mask");
+      n = add(out, n, "%lu.%lu.%lu.%lu", (net>>24)&255, (net>>16)&255, (net>>8)&255, net&255);
+      return add(out, n, "broadcast address = %lu.%lu.%lu.%lu", (bcast>>24)&255, (bcast>>16)&255, (bcast>>8)&255, bcast&255);
+    }
     if (has(t, "mask")) {
       unsigned long mask = prefix == 0 ? 0UL : (0xffffffffUL << (32 - prefix)) & 0xffffffffUL;
       int n = add(out, 0, "CIDR /%d means %d network bits and %d host bits.", prefix, prefix, 32-prefix);
@@ -3129,6 +3157,16 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     int n = add(out, 0, "CIDR /%d leaves %d host bits.", prefix, host_bits);
     n = add(out, n, "total addresses = 2^%d = %.10g", host_bits, total);
     return add(out, n, "usable host addresses = %.10g", usable);
+  }
+  if ((has(t, "subnet") || has(t, "host")) && (has(t, "hostbits") || (has(t, "host") && has(t, "bits")) ||
+      has(t, "hosts")) && (has(t, "needed") || has(t, "need") || has(t, "atleast") || has(t, "at,least") || has(t, "minimum")) && nv >= 1) {
+    double hosts = v[0];
+    int h = 0;
+    while (h < 32 && pow2(h) - 2 < hosts) ++h;
+    int n = add(out, 0, "For IPv4 subnet hosts, usable hosts = 2^h - 2.");
+    n = add(out, n, "Need 2^h - 2 >= %.10g", hosts);
+    n = add(out, n, "h = %d host bits gives %.10g usable hosts", h, pow2(h) - 2);
+    return add(out, n, "CIDR prefix would be /%d", 32 - h);
   }
   if (has(t, "littleendian") || (has(t, "little") && has(t, "endian")) ||
       has(t, "bigendian") || (has(t, "big") && has(t, "endian"))) {
@@ -3234,6 +3272,14 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       dec[dp] = 0;
       return add(out, n, "decoded string = %s", dec);
     }
+  }
+  if (has(t, "hamming") && has(t, "parity") && (has(t, "bits") || has(t, "bit")) &&
+      (has(t, "required") || has(t, "needed") || has(t, "need") || has(t, "howmany") || has(t, "how,many")) && nv >= 1) {
+    int data = (int)v[0], r = 0;
+    while (r < 16 && pow2(r) < data + r + 1) ++r;
+    int n = add(out, 0, "For Hamming code parity bits, choose r so 2^r >= data bits + r + 1.");
+    n = add(out, n, "Need 2^r >= %d + r + 1", data);
+    return add(out, n, "r = %d parity bits", r);
   }
   if ((has(t, "ascii") || has(t, "unicode")) &&
       (has(t, "storage") || has(t, "store") || has(t, "size") || has(t, "encoded") || has(t, "characters") || has(t, "text")) &&
@@ -3567,6 +3613,16 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   bool tc = has(t, "twos") || (has(t, "two") && has(t, "complement"));
   bool sm = has(t, "signmagnitude") || (has(t, "sign") && has(t, "magnitude"));
+  if ((has(t, "normalise") || has(t, "normalize")) && (has(t, "denary") || has(t, "decimal") || has(t, "value")) &&
+      (has(t, "mantissa") || has(t, "exponent") || has(t, "floating")) && nv >= 3) {
+    double mb=0, eb=0, tmp=0;
+    bool hM = scan_bit_width_before_label(t, "mantissa", &tmp) || scan_before_word_num(t, "mantissa", &tmp); if (hM) mb = tmp;
+    bool hE = scan_bit_width_before_label(t, "exponent", &tmp) || scan_before_word_num(t, "exponent", &tmp); if (hE) eb = tmp;
+    if (!hM) mb = v[1];
+    if (!hE) eb = v[2];
+    sprintf(cmd, "floatenc(%.10g,%lld,%lld)", v[0], (long long)mb, (long long)eb);
+    return eval_float(cmd, out);
+  }
   if ((has(t, "normalise") || has(t, "normalize")) && !has(t, "normalised") && !has(t, "normalized") && nb >= 2) {
     sprintf(cmd, "floatnorm(%s,%s)", bits[0], bits[1]); return eval_float(cmd, out);
   }
@@ -4174,13 +4230,15 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     const char *that = strstr(e, "that");
     if (eq && that && that < eq) e = that + 4;
     if (eq && eq > e && eq[elen]) {
-      char lhs[48], rhs[48], nlhs[48], nrhs[48]; int li = 0, ri = 0;
+      char lhs[48], rhs[48], clhs[48], crhs[48], nlhs[48], nrhs[48]; int li = 0, ri = 0;
       for (const char *p = e; p < eq && li < 47; ++p) lhs[li++] = *p;
       lhs[li] = 0;
       for (const char *p = eq + elen; *p && ri < 47; ++p) rhs[ri++] = *p;
       rhs[ri] = 0;
-      bool_arg_for_cmd(lhs, nlhs, sizeof(nlhs));
-      bool_arg_for_cmd(rhs, nrhs, sizeof(nrhs));
+      bool_clean_tail(lhs, clhs, sizeof(clhs));
+      bool_clean_tail(rhs, crhs, sizeof(crhs));
+      bool_arg_for_cmd(clhs, nlhs, sizeof(nlhs));
+      bool_arg_for_cmd(crhs, nrhs, sizeof(nrhs));
       sprintf(cmd, "boolprove(%s,%s)", nlhs, nrhs); return eval_bool_prove(cmd, out);
     }
   }
@@ -4190,13 +4248,15 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     const char *that = strstr(e, "that");
     if (eq && that && that < eq) e = that + 4;
     if (eq && eq > e && eq[1]) {
-      char lhs[48], rhs[48], nlhs[48], nrhs[48]; int li = 0, ri = 0;
+      char lhs[48], rhs[48], clhs[48], crhs[48], nlhs[48], nrhs[48]; int li = 0, ri = 0;
       for (const char *p = e; p < eq && li < 47; ++p) lhs[li++] = *p;
       lhs[li] = 0;
       for (const char *p = eq + 1; *p && ri < 47; ++p) rhs[ri++] = *p;
       rhs[ri] = 0;
-      bool_arg_for_cmd(lhs, nlhs, sizeof(nlhs));
-      bool_arg_for_cmd(rhs, nrhs, sizeof(nrhs));
+      bool_clean_tail(lhs, clhs, sizeof(clhs));
+      bool_clean_tail(rhs, crhs, sizeof(crhs));
+      bool_arg_for_cmd(clhs, nlhs, sizeof(nlhs));
+      bool_arg_for_cmd(crhs, nrhs, sizeof(nrhs));
       sprintf(cmd, "boolprove(%s,%s)", nlhs, nrhs); return eval_bool_prove(cmd, out);
     }
   }

@@ -629,6 +629,10 @@ static double quad_int_val(double A, double B, double C, double t) {
   return A*t*t*t/3.0 + B*t*t/2.0 + C*t;
 }
 
+static double cubic_int_val(double A, double B, double C, double D, double t) {
+  return A*t*t*t*t/4.0 + B*t*t*t/3.0 + C*t*t/2.0 + D*t;
+}
+
 static bool extract_0_x_bound(const char *compact, double *upper) {
   const char *bp = strstr(compact, "0<x<");
   if (!bp) bp = strstr(compact, "0<=x<=");
@@ -1863,6 +1867,45 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     }
   }
   if (has(t, "velocity") && has(t, "total") && has(t, "distance") && has(t, "from")) {
+    double CA=0, CB=0, CC=0, CD=0, ct1=0, ct2=0;
+    if (parse_cubic_poly_after_word(input, "velocity", &CA, &CB, &CC, &CD) &&
+        !near_num(CA, 0) &&
+        word_num_with_t(input, "from", &ct1) && word_num_with_t(input, "to", &ct2)) {
+      double pts[8]; int np = 0; pts[np++] = ct1;
+      for (int step = 0; step < 400 && np < 7; ++step) {
+        double a0 = ct1 + (ct2 - ct1) * step / 400.0;
+        double b0 = ct1 + (ct2 - ct1) * (step + 1) / 400.0;
+        double fa = ((CA*a0 + CB)*a0 + CC)*a0 + CD;
+        double fb = ((CA*b0 + CB)*b0 + CC)*b0 + CD;
+        if (near_num(fa, 0) && a0 > ct1 && a0 < ct2) pts[np++] = a0;
+        if (fa * fb < 0) {
+          double lo = a0, hi = b0;
+          for (int it = 0; it < 40; ++it) {
+            double mid = 0.5*(lo+hi);
+            double fm = ((CA*mid + CB)*mid + CC)*mid + CD;
+            if (fa * fm <= 0) { hi = mid; fb = fm; }
+            else { lo = mid; fa = fm; }
+          }
+          double r = 0.5*(lo+hi);
+          bool dup = false; for (int q = 0; q < np; ++q) if (near_num(pts[q], r)) dup = true;
+          if (!dup && r > ct1 && r < ct2) pts[np++] = r;
+        }
+      }
+      pts[np++] = ct2;
+      for (int i = 0; i < np; ++i) for (int j = i + 1; j < np; ++j) if (pts[j] < pts[i]) { double q = pts[i]; pts[i] = pts[j]; pts[j] = q; }
+      int n = add(out, 0, "Total distance is found by splitting where velocity changes sign.");
+      n = add(out, n, "v = %.6g t^3 %+.6g t^2 %+.6g t %+.6g", CA, CB, CC, CD);
+      if (np > 2) n = add(out, n, "Solve v=0 inside the interval to split the motion.");
+      double total = 0;
+      for (int i = 0; i + 1 < np; ++i) {
+        double a0 = pts[i], b0 = pts[i+1];
+        double F1 = cubic_int_val(CA, CB, CC, CD, a0);
+        double F2 = cubic_int_val(CA, CB, CC, CD, b0);
+        double d = abs_num(F2 - F1); total += d;
+        n = add(out, n, "distance on %.6g to %.6g = |%.10g - %.10g| = %.10g", a0, b0, F2, F1, d);
+      }
+      return add(out, n, "total distance = %.10g", total);
+    }
     double A=0, B=0, C=0, t1=0, t2=0;
     if (!parse_velocity_quad(input, &A, &B, &C) ||
         !word_num_with_t(input, "from", &t1) || !word_num_with_t(input, "to", &t2)) return 0;
@@ -2217,6 +2260,29 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       n = add(out, n, "%.6g t^2 - %.6g t + %.6g = 0", 0.5*g, u0, target);
       if (disc < 0) return add(out, n, "discriminant < 0, so this height is not reached.");
       return add(out, n, "t = %.10g or %.10g", (u0 - root(disc)) / g, (u0 + root(disc)) / g);
+    }
+  }
+  if ((has(t, "accelerating") || has(t, "accelerates") || has(t, "accelerated")) &&
+      (has(t, "decelerating") || has(t, "decelerates") || has(t, "decelerated")) &&
+      (has(c, "torest") || has(t, "rest")) && (has(t, "totaltime") || (has(t, "total") && has(t, "time"))) &&
+      nv >= 4) {
+    double u0=0, v0=0, total_s=0, final_s=0;
+    bool hu = word_num(input, "from", &u0);
+    bool hv = word_num(input, "to", &v0);
+    total_s = v[0];
+    final_s = v[nv-1];
+    if (!hu) u0 = v[1];
+    if (!hv) v0 = v[2];
+    double first_s = total_s - final_s;
+    if (first_s > 0 && v0 > 0) {
+      double t1 = 2*first_s/(u0+v0);
+      double t2 = 2*final_s/(v0+0);
+      int n = add(out, 0, "Split the journey into the accelerating part and the decelerating part.");
+      n = add(out, n, "first distance = %.6g - %.6g = %.10g m", total_s, final_s, first_s);
+      n = add(out, n, "For constant acceleration, s = 1/2(u+v)t.");
+      n = add(out, n, "t1 = 2*%.10g/(%.6g+%.6g) = %.10g s", first_s, u0, v0, t1);
+      n = add(out, n, "For deceleration to rest, t2 = 2*%.6g/(%.6g+0) = %.10g s", final_s, v0, t2);
+      return add(out, n, "total time = %.10g s", t1 + t2);
     }
   }
   if ((has(c, "torest") || has(c, "comestorest") || has(c, "broughttorest") ||
@@ -2637,7 +2703,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "F = %.10g - %.10g = %.10g N", drive, r, net);
     return add(out, n, "a = F/m = %.10g/%.10g = %.10g m/s^2", net, m, net / m);
   }
-  if ((has(t, "force") || has(t, "newton")) && (has(t, "mass") || has(t, "accel")) && !has(t, "connected") && !has(t, "pulley") && nv >= 2) {
+  if ((has(t, "force") || has(t, "newton")) && (has(t, "mass") || has(t, "accel")) &&
+      !has(t, "connected") && !has(t, "pulley") && !has(t, "plane") && !has(t, "rough") && !has(t, "incline") && !has(t, "slope") && nv >= 2) {
     sprintf(cmd, "force(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
   }
   if (has(t, "weight") && nv >= 1) {
@@ -2662,6 +2729,33 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     if (hMu || has(t, "rough")) sprintf(cmd, "roughinclinepulley(%.10g,%.10g,%.10g,%.10g)", m1, m2, ang, hMu ? mu : 0);
     else sprintf(cmd, "inclinepulley(%.10g,%.10g,%.10g)", m1, m2, ang);
     return eval_mech(cmd, out);
+  }
+  if ((has(t, "rough") || has(t, "friction") || has(t, "coefficient")) &&
+      (has(t, "plane") || has(t, "inclined") || has(t, "incline") || has(t, "slope")) &&
+      (has(t, "pull") || has(t, "force")) && (has(t, "above") || has(t, "below")) &&
+      (has(t, "acceleration") || has(t, "accelerate")) && nv >= 5) {
+    double m=0, theta=0, F=0, phi=0, mu=0;
+    bool hm=word_num(input,"mass",&m) || label_num(input,"mass",&m);
+    bool hF=word_num(input,"force",&F) || label_num(input,"force",&F);
+    bool hmu=word_num(input,"coefficient",&mu) || label_num(input,"mu",&mu) || label_num(input,"coefficient",&mu);
+    if (!hm) m = v[0];
+    if (!hF) F = v[2];
+    if (!hmu) for (int i = 0; i < nv; ++i) if (v[i] > 0 && v[i] < 1) { mu = v[i]; hmu = true; break; }
+    theta = v[1];
+    if (!prev_word_num(input, "above", &phi) && !prev_word_num(input, "below", &phi)) {
+      for (int i = 0; i < nv; ++i) if (!near_num(v[i], m) && !near_num(v[i], theta) && !near_num(v[i], F) && !near_num(v[i], mu) && v[i] > 1) { phi = v[i]; break; }
+    }
+    double R = m*9.8*deg_cosine(theta) - (has(t, "below") ? -1 : 1)*F*deg_sine(phi);
+    double fr = mu * R;
+    double up = F*deg_cosine(phi), down = m*9.8*deg_sine(theta);
+    double net = up - down - fr;
+    int n = add(out, 0, "Resolve parallel and perpendicular to the rough inclined plane.");
+    n = add(out, n, "Up-plane pull component = %.6g cos(%.6g) = %.10g N", F, phi, up);
+    n = add(out, n, "Down-plane weight component = mg sin(theta) = %.6g*9.8 sin(%.6g) = %.10g N", m, theta, down);
+    n = add(out, n, "R = mg cos(theta) - F sin(phi) = %.10g N", R);
+    n = add(out, n, "friction = mu R = %.6g*%.10g = %.10g N", mu, R, fr);
+    n = add(out, n, "resultant up the plane = %.10g - %.10g - %.10g = %.10g N", up, down, fr, net);
+    return add(out, n, "a = F/m = %.10g/%.6g = %.10g m/s^2", net, m, net/m);
   }
   if ((has(t, "incline") || has(t, "slope") || has(t, "plane")) && (has(t, "acceleration") || has(t, "accelerate") || has(t, "rough")) && nv >= 3) {
     double m=0, ang=0, mu=0;
@@ -2707,7 +2801,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       sprintf(cmd, "momentum(%.10g,%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3], v[4]); return eval_mech(cmd, out);
     }
   }
-  if (has(t, "power") && nv >= 2) {
+  if (has(t, "power") && !(has(t, "resistance") && (has(t, "acceleration") || has(t, "accelerate")) && (has(t, "speed") || has(t, "velocity") || has(t, "travels") || has(t, "travelling"))) && nv >= 2) {
     sprintf(cmd, "power(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
   }
   if ((has(t, "kinetic") || has(t, "energy") || has(t, "workenergy")) && nv >= 2) {
@@ -2747,6 +2841,25 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if ((has(t, "resolve") || has(t, "components")) && has(t, "force") && nv >= 2) {
     sprintf(cmd, "resolve(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
+  }
+  if (has(t, "power") && (has(t, "resistance") || has(t, "resistive")) &&
+      (has(t, "acceleration") || has(t, "accelerate")) && (has(t, "speed") || has(t, "velocity") || has(t, "travels") || has(t, "travelling")) && nv >= 4) {
+    double m=0, P=0, sp=0, R=0;
+    bool hm=word_num(input,"mass",&m) || label_num(input,"mass",&m);
+    bool hP=word_num(input,"power",&P) || label_num(input,"power",&P);
+    bool hs=word_num(input,"speed",&sp) || word_num(input,"velocity",&sp) || word_num(input,"at",&sp);
+    bool hR=word_num(input,"resistance",&R) || label_num(input,"resistance",&R);
+    if (!hm) m = v[0];
+    if (!hP) P = v[1];
+    if (!hs) sp = v[2];
+    if (!hR) R = v[3];
+    if (has(t, "kw") || has(t, "kilowatt")) P *= 1000.0;
+    double drive = sp ? P / sp : 0;
+    double net = drive - R;
+    int n = add(out, 0, "Use P = Fv to convert engine power into driving force.");
+    n = add(out, n, "driving force = P/v = %.10g/%.10g = %.10g N", P, sp, drive);
+    n = add(out, n, "resultant force = %.10g - %.10g = %.10g N", drive, R, net);
+    return add(out, n, "a = F/m = %.10g/%.10g = %.10g m/s^2", net, m, net/m);
   }
   if (has(t, "lift") && has(t, "accelerat") && (has(t, "tension") || has(t, "cable")) && nv >= 2) {
     double m = 0, a0 = 0, g = 9.8;
@@ -2989,12 +3102,30 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
            prev_word_num(input,"metres",&minutes) || prev_word_num(input,"metre",&minutes) ||
            prev_word_num(input,"meters",&minutes) || prev_word_num(input,"meter",&minutes);
     }
+    double period = 1.0, duration = minutes;
+    if (has(c, "perday") || has(c, "per24hours")) period = 24*60;
+    else if (has(c, "perhour")) period = 60;
+    else if (has(c, "perminute")) period = 1;
+    else if (has(c, "perweek")) period = 7*24*60;
+    if ((has(c, "perday") || has(c, "perhour") || has(c, "perminute") || has(c, "perweek")) && !has(c, "in")) {
+      duration = period;
+      hm = true;
+    }
+    if (has(c, "in1hour") || has(c, "inanhour") || has(c, "inahour")) { duration = 60; hm = true; }
+    else if (has(c, "in1minute") || has(c, "inaminute")) { duration = 1; hm = true; }
+    else if (prev_word_num(input, "hours", &duration) || prev_word_num(input, "hour", &duration)) { duration *= 60; hm = true; }
+    else if (prev_word_num(input, "days", &duration) || prev_word_num(input, "day", &duration)) { duration *= 24*60; hm = true; }
+    else if (prev_word_num(input, "minutes", &duration) || prev_word_num(input, "minute", &duration)) { hm = true; }
+    else if (hm) {
+      if (has(c, "hours") || has(c, "hour")) duration *= 60;
+      else if (has(c, "days") || has(c, "day")) duration *= 24*60;
+    }
     bool hx = word_num(input,"atleast",&x) || word_num(input,"morethan",&x) || word_num(input,"atmost",&x) ||
               word_num(input,"nomorethan",&x) || word_num(input,"lessthan",&x) || word_num(input,"fewerthan",&x);
-    if (!hm && nv >= 3) for (int i = 0; i < nv; ++i) if (!near_num(v[i], rate) && v[i] > minutes) minutes = v[i];
-    if (!hx) for (int i = 0; i < nv; ++i) if (!near_num(v[i], rate) && !near_num(v[i], minutes)) { x = v[i]; break; }
+    if (!hm && nv >= 3) for (int i = 0; i < nv; ++i) if (!near_num(v[i], rate) && v[i] > minutes) { minutes = v[i]; duration = minutes; }
+    if (!hx) for (int i = 0; i < nv; ++i) if (!near_num(v[i], rate) && !near_num(v[i], minutes) && !near_num(v[i], duration)) { x = v[i]; break; }
     if (x == 0) x = v[nv-1];
-    double lam = rate * minutes;
+    double lam = rate * duration / period;
     if (prob_x_interval(c, &lo, &hi)) {
       sprintf(cmd, "poissonrange(%.10g,%d,%d)", lam, (int)lo, (int)hi);
       return eval_stats(cmd, out);
@@ -3066,6 +3197,26 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
                (!has(t, "percentile") && label_num(input,"p",&area));
     double tail = (has(t, "twotailed") || has(t, "twosided") || (has(t, "two") && (has(t, "tailed") || has(t, "sided"))) || has(t, "different") || has(t, "notequal")) ? 0 :
                   (has(t, "upper") || has(t, "greater") || has(t, "more") || has(c, "x>") || has(c, "x>=") ? 1 : -1);
+    if (hMu && !hSig && !hVar &&
+        (has(t, "standarddeviation") || (has(t, "standard") && has(t, "deviation")) || has(t, "sd") || has(t, "sigma")) &&
+        (has(t, "find") || has(t, "unknown") || has(t, "calculate"))) {
+      double bound=0; int ptail=0;
+      if (prob_x_bound(c, &bound, &ptail)) {
+        double prob = 0;
+        for (int i = 0; i < nv; ++i) if (!near_num(v[i], mu) && !near_num(v[i], bound) && v[i] > 0 && v[i] < 1) { prob = v[i]; break; }
+        if (prob > 0) {
+          double left_area = (ptail > 0 || has(c, "x>") || has(t, "greater")) ? 1 - prob : prob;
+          double z = inv_norm_left(left_area);
+          double sd = z ? (bound - mu) / z : 0;
+          if (sd < 0) sd = -sd;
+          int n = add(out, 0, "Let X~N(mu,sigma^2). Use z=(x-mu)/sigma.");
+          n = add(out, n, "mu = %.6g, x = %.6g", mu, bound);
+          n = add(out, n, "area to the left = %.10g, so z = InvNorm(%.10g) = %.10g", left_area, left_area, z);
+          n = add(out, n, "(%.6g-%.6g)/sigma = %.10g", bound, mu, z);
+          return add(out, n, "sigma = %.10g", sd);
+        }
+      }
+    }
     if ((has(c, "findmean") || has(c, "findthemean")) && (hSig || hVar) && nv >= 3) {
       double bound=0; int ptail=0;
       bool hb = prob_x_bound(c, &bound, &ptail);
@@ -3577,6 +3728,24 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       return add(out, n, "m = sqrt(%.10g/2) = %.10g", denom, root(denom/2.0));
     }
   }
+  if ((has(t, "pdf") || has(t, "density") || has(t, "continuous")) && has(c, "kx^") && has(c, "p(x<")) {
+    const char *kp = strstr(c, "kx^");
+    int pow = kp && isdigit((unsigned char)kp[3]) ? kp[3] - '0' : 1;
+    double upper = 0, bound = 0;
+    const char *bp = strstr(c, "0<x<"); if (bp) upper = read_num(bp + 4);
+    const char *pp = strstr(c, "p(x<"); if (pp) bound = read_num(pp + 4);
+    if (upper <= 0) for (int i = 0; i < nv; ++i) if (v[i] > upper) upper = v[i];
+    if (bound <= 0) for (int i = 0; i < nv; ++i) if (v[i] > 0 && v[i] < upper) bound = v[i];
+    if (upper > 0 && bound > 0 && pow >= 1) {
+      double k = (pow + 1) / pwr(upper, pow + 1);
+      double prob = k * pwr(bound, pow + 1) / (pow + 1);
+      int n = add(out, 0, "For a pdf, total area under f(x) is 1.");
+      n = add(out, n, "integral from 0 to %.6g of kx^%d dx = 1", upper, pow);
+      n = add(out, n, "k = %.10g", k);
+      n = add(out, n, "P(X<%.6g)=integral from 0 to %.6g of %.10g*x^%d dx", bound, bound, k, pow);
+      return add(out, n, "P(X<%.6g) = %.10g", bound, prob);
+    }
+  }
   if ((has(t, "pdf") || has(t, "density") || has(t, "continuous")) && has(c, "kx^") && (has(t, "mean") || has(c, "e(x)")) && nv >= 2) {
     const char *kp = strstr(c, "kx^");
     int pow = kp && isdigit((unsigned char)kp[3]) ? kp[3] - '0' : 1;
@@ -3754,6 +3923,13 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     bool hW = word_num(input,"classwidth",&width0) || word_num(input,"width",&width0);
     bool hD = word_num(input,"frequencydensity",&dens) || word_num(input,"density",&dens);
     bool hF = word_num(input,"frequency",&freq);
+    if (!hW && has(t, "class") && has(t, "to")) {
+      double lo=0, hi=0;
+      if (word_num(input, "class", &lo) && word_num(input, "to", &hi) && hi > lo) {
+        width0 = hi - lo;
+        hW = true;
+      }
+    }
     if ((has(c, "findclasswidth") || has(c, "findwidth") || (has(t, "calculate") && has(t, "width"))) && hF && hD) {
       int n = add(out, 0, "For a histogram, frequency density = frequency / class width.");
       n = add(out, n, "class width = frequency / frequency density");
