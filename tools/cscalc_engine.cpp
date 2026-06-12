@@ -19,6 +19,38 @@ static int add(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN], int n, const char *f
   return n + 1;
 }
 
+static int add_wrapped(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN], int n, const char *prefix, const char *text) {
+  int room = CSCALC_LINE_LEN - 1;
+  int plen = (int)strlen(prefix);
+  int len = (int)strlen(text);
+  if (plen + len < room) return add(out, n, "%s%s", prefix, text);
+  char head[CSCALC_LINE_LEN];
+  int hcopy = plen < CSCALC_LINE_LEN - 1 ? plen : CSCALC_LINE_LEN - 1;
+  memcpy(head, prefix, hcopy);
+  head[hcopy] = 0;
+  int hp = (int)strlen(head);
+  while (hp > 0 && head[hp - 1] == ' ') head[--hp] = 0;
+  n = add(out, n, "%s", head);
+  for (int i = 0; text[i] && n < CSCALC_MAX_LINES; ) {
+    int take = room - 2;
+    int rem = (int)strlen(text + i);
+    if (rem <= take) {
+      n = add(out, n, "  %s", text + i);
+      break;
+    }
+    int cut = take;
+    while (cut > 20 && text[i + cut] != ' ') --cut;
+    if (cut <= 20) cut = take;
+    char part[CSCALC_LINE_LEN];
+    memcpy(part, text + i, cut);
+    part[cut] = 0;
+    n = add(out, n, "  %s", part);
+    i += cut;
+    while (text[i] == ' ') ++i;
+  }
+  return n;
+}
+
 static void clean(const char *in, char *out, int cap) {
   int j = 0;
   for (int i = 0; in && in[i] && j + 1 < cap; ++i) {
@@ -3295,7 +3327,7 @@ static int eval_gate_form(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_
   else gate_nor(nodes, root, form, &fp, sizeof(form));
   int n = add(out, 0, want_nand ? "Use NAND as a universal gate." : "Use NOR as a universal gate.");
   n = add(out, n, want_nand ? "NOT A = A NAND A; A+B = A' NAND B'." : "NOT A = A NOR A; AB = A' NOR B'.");
-  return add(out, n, "%s form: %s", want_nand ? "NAND" : "NOR", form);
+  return add_wrapped(out, n, want_nand ? "NAND form: " : "NOR form: ", form);
 }
 
 static int eval_bool_prove(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {

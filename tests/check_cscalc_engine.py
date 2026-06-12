@@ -405,6 +405,7 @@ def main():
     require("nor form A and B", ["Use NOR", "NOR form", "A NOR A"])
     require("convert C xor D to NOR only", ["C NOR D", "C NOR C", "D NOR D"])
     require("Use NOR gates only to make (A+B).C", ["Use NOR", "NOR form: ((A NOR B) NOR (C NOR C))"])
+    require("Find NOR only form for (A xor B) or C.", ["Use NOR", "NOR form:", "NOR (B NOR B)) NOR C)"])
     require("boolprove(A+B,B+A)", ["Simplify both sides", "LHS simplifies to", "RHS simplifies to", "truth tables", "Same output rows"])
     require("Prove using Boolean algebra that A + A.B = A", ["LHS: a+a&b -> a (Absorption law)", "LHS simplifies to A", "Same output rows"])
     require("Use Boolean algebra to prove A + A B = A.", ["Absorption law", "LHS simplifies to A", "Same output rows"])

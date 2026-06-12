@@ -1,5 +1,37 @@
 # Checkpoint
 
+## 2026-06-12 Boolean Gate Output Wrapping Slice
+
+Completed:
+- Compared current CSCALC Boolean engine against the old Python `booleanProgram.py` history.
+- Probed harder Boolean, NAND/NOR, minterm, truth-column, two's-complement hex, and P3 mechanics/stats free-text cases.
+- Found a quality issue where long NAND/NOR-only formulas could be truncated by the 80-character calculator line buffer.
+- Added shared wrapped output for long CSCALC lines and applied it to NAND/NOR universal-gate formulas.
+- Added a regression for long NOR-only output.
+- Rebuilt calculator-ready outputs.
+
+Evidence:
+- Hard host probe batch: passed, except the long gate output quality issue that this slice fixed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 438640 bytes`
+  - `CSCALC.g3a: 245716 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: 18178 bytes`
+
+Drift check:
+- Stayed inside CSCALC output quality, tests, checkpoint, and generated calculator files.
+- Did not alter Pure CAS, CASP3 source, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for more unseen-case hardening.
+
 ## 2026-06-12 Inverse Normal And Hex Two's-Complement Slice
 
 Completed:
