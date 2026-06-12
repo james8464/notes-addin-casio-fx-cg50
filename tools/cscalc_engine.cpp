@@ -1931,20 +1931,44 @@ static void imp_pos_list(const Imp *chosen, int chc, const char *vars, int vc, c
 static int eval_bool(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
   char a[2][48]; int na = args(s, a, 2);
   char exprbuf[96];
-  const char *expr = (starts(s, "bool(") || starts(s, "truth(") || starts(s, "boolean(") || starts(s, "logic(")) && na ? a[0] : 0;
+  bool truthmode = starts(s, "truth(") || starts(s, "truthtable(") || starts(s, "truthrows(");
+  const char *expr = (starts(s, "bool(") || truthmode || starts(s, "boolean(") || starts(s, "logic(")) && na ? a[0] : 0;
   if (!expr) return 0;
   bool_norm(expr, exprbuf, sizeof(exprbuf));
   expr = exprbuf;
   char vars[8]; int vc; collect_vars(expr, vars, &vc);
   if (vc == 0 || vc > 6) return add(out, 0, "Use up to 6 Boolean variables.");
   int mins[64], mc = 0, rows = 1 << vc;
+  int vals[64];
   for (int m = 0; m < rows; ++m) {
     BParser p = { expr, 0, m, {0}, vc };
     for (int i = 0; i < vc; ++i) p.vars[i] = vars[i];
-    if (p.expr()) mins[mc++] = m;
+    vals[m] = p.expr() ? 1 : 0;
+    if (vals[m]) mins[mc++] = m;
   }
   int n = 0;
   n = add_bool_law_trace(out, n, expr);
+  if (truthmode) {
+    char head[48] = ""; int hp = 0;
+    for (int i = 0; i < vc; ++i) {
+      if (i) app_ch(head, &hp, sizeof(head), ' ');
+      app_ch(head, &hp, sizeof(head), vars[i]);
+    }
+    n = add(out, n, "Truth table for %s.", expr);
+    n = add(out, n, "%s | F", head);
+    if (vc <= 4) {
+      for (int m = 0; m < rows && n < CSCALC_MAX_LINES - 4; ++m) {
+        char row[48] = ""; int rp = 0;
+        for (int i = 0; i < vc; ++i) {
+          if (i) app_ch(row, &rp, sizeof(row), ' ');
+          app_ch(row, &rp, sizeof(row), ((m >> (vc - 1 - i)) & 1) ? '1' : '0');
+        }
+        n = add(out, n, "%s | %d", row, vals[m]);
+      }
+    } else {
+      n = add(out, n, "%d rows; use minterms for compact working.", rows);
+    }
+  }
   n = add(out, n, "Make truth table, list rows where output is 1.");
   char ml[80] = ""; int pos = 0;
   for (int i = 0; i < mc; ++i) {
@@ -2242,7 +2266,11 @@ static const char *skip_bool_words(const char *e) {
     if (starts(e, "identity")) { e += 8; moved = true; }
     if (starts(e, "boolean")) { e += 7; moved = true; }
     if (starts(e, "logic")) { e += 5; moved = true; }
+    if (starts(e, "truthtable")) { e += 10; moved = true; }
+    if (starts(e, "truth")) { e += 5; moved = true; }
+    if (starts(e, "table")) { e += 5; moved = true; }
     if (starts(e, "expression")) { e += 10; moved = true; }
+    if (starts(e, "for")) { e += 3; moved = true; }
   }
   return e;
 }
@@ -2546,7 +2574,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   if (nv == 0 && (has(compact, "nand") || has(compact, "nor") || has(compact, "xor") || has(compact, "and") || has(compact, "or") || has(compact, "+") || has(compact, "*") || has(compact, "'"))) {
     const char *e = skip_bool_words(compact);
-    sprintf(cmd, "bool(%s)", e); return eval_bool(cmd, out);
+    sprintf(cmd, "%s(%s)", has(compact, "truth") ? "truth" : "bool", e); return eval_bool(cmd, out);
   }
   return 0;
 }

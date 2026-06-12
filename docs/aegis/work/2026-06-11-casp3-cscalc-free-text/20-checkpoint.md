@@ -1,5 +1,25 @@
 # Checkpoint
 
+## 2026-06-12 CSCALC Truth Table Rows Slice
+
+Completed:
+- Added row-by-row truth-table output for `truth(...)`, `truthtable(...)`, and `truthrows(...)`.
+- Added free-text routing for prompts like `truth table for A and not B`.
+- Kept ordinary `bool(...)` compact, while truth mode shows variable headers, all rows up to 4 variables, minterms, and simplified expression.
+- Added direct and free-text regression tests.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CSCALC AQA Paper 2 Boolean algebra/free-text support.
+- Did not touch CAS Pure behavior, CASP3 behavior, NOTES, or shared UI/status code.
+
 ## 2026-06-12 CSCALC K-map Don't-Care Slice
 
 Completed:

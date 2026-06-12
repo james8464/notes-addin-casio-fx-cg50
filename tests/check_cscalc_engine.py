@@ -170,6 +170,8 @@ def main():
     require("ASCII code for A", ["ASCII code conversion", "'A' has denary code 65", "01000001_2 = 41_16"])
     require("unicode code point 8364", ["Unicode code point conversion", "U+20AC = 8364_10", "0010000010101100_2"])
     require("bool(A+B')", ["truth table", "minterms", "simplified"])
+    require("truth(A and not B)", ["Truth table for a&!b", "A B | F", "0 0 | 0", "1 0 | 1", "minterms: 2"])
+    require("truth table for A and not B", ["Truth table for a&!b", "A B | F", "1 0 | 1", "simplified = AB'"])
     require("boolean(AB+C)", ["truth table", "simplified"])
     require("bool(A and not B)", ["truth table", "simplified = AB'"])
     require("A and not B", ["truth table", "simplified = AB'"])
