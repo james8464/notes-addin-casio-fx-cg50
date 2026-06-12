@@ -111,6 +111,8 @@ def main():
     require("16 bit address bus with 8 bit words memory capacity", ["Memory capacity", "65536 bytes"])
     require("hashmod(10,27,18,29,37)", ["Hash address = key mod table size", "27 mod 10 = 7", "37 mod 10 = 7, collision"])
     require("hash table size 10 keys 27 18 29 37", ["Hash address = key mod table size", "29 mod 10 = 9", "collision"])
+    require("hashlinear(10,27,18,29,37)", ["linear probing", "27 mod 10 = 7, place at 7", "37 mod 10 = 7 occupied; probe 3, place at 0"])
+    require("hash table size 10 linear probing keys 27 18 29 37", ["linear probing", "place at 0"])
     require("chars(120,8)", ["characters", "960 bits", "MB"])
     require("charset(120,128)", ["ceil(log2(128)) = 7", "text bits = 120*7"])
     require("store 120 characters from character set of 128 symbols", ["ceil(log2(128)) = 7", "840 bits"])
