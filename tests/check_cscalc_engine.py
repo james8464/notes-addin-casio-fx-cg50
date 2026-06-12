@@ -273,6 +273,7 @@ def main():
     require("database records=120 bytes per record=32", ["records * bytes", "3840 bytes"])
     require("A database has 250 records each 64 bytes and 4 bytes overhead per record. Calculate total storage.", ["record size + overhead", "per record = 64 + 4 = 68 bytes", "17000 bytes"])
     require("Calculate storage for 120 records with 5 fields each 16 bytes and 2 byte deleted flag.", ["5 fields of 16 bytes = 80 bytes", "bytes per record = 82", "120*82 = 9840 bytes"])
+    require("Calculate storage for 500 records each has 3 fields of 12 bytes and 2 fields of 4 bytes.", ["3 fields of 12 bytes = 36 bytes", "2 fields of 4 bytes = 8 bytes", "500*44 = 22000 bytes"])
     require("A relation has 250 records. Each record has fields of 4 bytes, 20 bytes and 2 bytes. Calculate file size.", ["Record size = sum of field sizes", "bytes per record = 26", "250*26 = 6500 bytes"])
     require("How many bytes are needed for 1000 records, each record has 6 fields of 20 bytes plus a 4 byte key?", ["6 fields of 20 bytes = 120 bytes", "bytes per record = 124", "1000*124 = 124000 bytes"])
     require("sqlselect(students,name,age,>,16)", ["SQL SELECT", "SELECT name", "FROM students", "WHERE age > 16"])

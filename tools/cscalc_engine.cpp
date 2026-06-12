@@ -261,6 +261,16 @@ static bool scan_before_word_num(const char *s, const char *word, double *v) {
   return false;
 }
 
+static bool num_before_ptr(const char *base, const char *p, double *v) {
+  int j = (int)(p - base) - 1;
+  while (j >= 0 && base[j] == ',') --j;
+  int e = j + 1;
+  while (j >= 0 && (isdigit((unsigned char)base[j]) || base[j] == '.' || base[j] == '-')) --j;
+  if (e <= j + 1) return false;
+  *v = read_num(base + j + 1);
+  return true;
+}
+
 static int scan_binary_fraction_tokens(const char *s, char out[][48], int maxn) {
   int n = 0;
   for (int i = 0; s && s[i] && n < maxn; ++i) {
@@ -4098,6 +4108,33 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
               scan_before_word_num(t, "records", &recs) || scan_before_word_num(t, "rows", &recs);
     if (hr) {
       double bytes_per_record = 0;
+      double gcount[6], gsize[6]; int gc = 0;
+      for (const char *gp = t; (gp = strstr(gp, "fields,")) != 0 && gc < 6; gp += 7) {
+        double fc = 0, fs = 0;
+        const char *after = gp + 7;
+        int skip = 0;
+        if (strncmp(after, "of,", 3) == 0) skip = 3;
+        else if (strncmp(after, "each,", 5) == 0) skip = 5;
+        if (skip && num_before_ptr(t, gp, &fc)) {
+          fs = read_num(after + skip);
+          if (fc > 0 && fs > 0) { gcount[gc] = fc; gsize[gc] = fs; ++gc; }
+        }
+      }
+      if (gc >= 2) {
+        bool used[32]; for (int i = 0; i < 32; ++i) used[i] = false;
+        for (int i = 0; i < nv; ++i) if (!used[i] && (long long)v[i] == (long long)recs) { used[i] = true; break; }
+        int n = add(out, 0, "Record size = sum of repeated field groups.");
+        for (int g = 0; g < gc; ++g) {
+          bytes_per_record += gcount[g] * gsize[g];
+          n = add(out, n, "%.10g fields of %.10g bytes = %.10g bytes", gcount[g], gsize[g], gcount[g] * gsize[g]);
+          for (int i = 0; i < nv; ++i) if (!used[i] && (long long)v[i] == (long long)gcount[g]) { used[i] = true; break; }
+          for (int i = 0; i < nv; ++i) if (!used[i] && (long long)v[i] == (long long)gsize[g]) { used[i] = true; break; }
+        }
+        for (int i = 0; i < nv; ++i) if (!used[i]) bytes_per_record += v[i];
+        n = add(out, n, "bytes per record = %.10g", bytes_per_record);
+        n = add(out, n, "file size = records * bytes per record");
+        return add(out, n, "%.10g*%.10g = %.10g bytes", recs, bytes_per_record, recs * bytes_per_record);
+      }
       double fcount = 0, fsize = 0;
       const char *fp = strstr(t, "fields,of,");
       int skip = 10;

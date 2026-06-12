@@ -1,5 +1,34 @@
 # Checkpoint
 
+## 2026-06-12 Cumulative Frequency, Stratified Lists, And Multi-Field Records Slice
+
+Completed:
+- Added CASP3 cumulative-frequency table interpolation from boundary and cumulative-frequency lists.
+- Added CASP3 multi-stratum sampling from population-size lists and total sample size.
+- Prevented cumulative-frequency prompts from being treated as algebraic CDF prompts.
+- Added CSCALC repeated field-group parsing such as `3 fields of 12 bytes and 2 fields of 4 bytes`.
+- Added regressions and rebuilt calculator files.
+
+Evidence:
+- Targeted probes for cumulative-frequency median/IQR, multi-stratum sampling, and multi-field record storage: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 332292 bytes`
+  - `CSCALC.g3a: 206692 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Stayed inside CASP3/CSCALC free-text working support and generated calculator outputs.
+- Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for further source/probe-driven hardening.
+
 ## 2026-06-12 Raw Paired Data And SQL Aggregate Slice
 
 Completed:

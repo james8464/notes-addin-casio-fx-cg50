@@ -5209,7 +5209,37 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       return add(out, n, "m = %.10g", med);
     }
   }
-  if ((has(t, "cumulative") || has(t, "cdf")) && has(t, "median") && nv >= 1) {
+  if (has(t, "cumulative") && (has(t, "frequency") || has(t, "frequencies")) &&
+      (has(t, "boundary") || has(t, "boundaries") || has(t, "class")) && nv >= 6 && nv % 2 == 0) {
+    int m = nv / 2;
+    double *b = v, *cf = v + m;
+    double total = cf[m - 1];
+    int n = add(out, 0, "Use linear interpolation on the cumulative-frequency table.");
+    n = add(out, n, "total frequency n = %.10g", total);
+    double qs[3], vals[3]; const char *names[3]; int qc = 0;
+    if (has(t, "lowerquartile") || has(t, "q1") || has(t, "interquartile") || has(t, "iqr")) { qs[qc] = 0.25; names[qc++] = "Q1"; }
+    if (has(t, "median")) { qs[qc] = 0.5; names[qc++] = "median"; }
+    if (has(t, "upperquartile") || has(t, "q3") || has(t, "interquartile") || has(t, "iqr")) { qs[qc] = 0.75; names[qc++] = "Q3"; }
+    if (qc == 0) { qs[qc] = 0.5; names[qc++] = "median"; }
+    for (int q = 0; q < qc && n < P3_MAX_LINES - 2; ++q) {
+      double pos = qs[q] * total, prev = cf[0], ans = b[0];
+      for (int i = 1; i < m; ++i) {
+        if (cf[i] >= pos) {
+          double f = cf[i] - prev, w = b[i] - b[i-1];
+          ans = b[i-1] + ((pos - prev) / f) * w;
+          n = add(out, n, "%s position = %.6g*n = %.10g", names[q], qs[q], pos);
+          n = add(out, n, "%s class %.6g to %.6g: %.10g", names[q], b[i-1], b[i], ans);
+          break;
+        }
+        prev = cf[i];
+      }
+      vals[q] = ans;
+    }
+    if (has(t, "iqr") || has(t, "interquartile")) return add(out, n, "IQR = Q3 - Q1 = %.10g", vals[qc-1] - vals[0]);
+    return n;
+  }
+  if ((has(t, "cumulative") || has(t, "cdf")) && has(t, "median") &&
+      !has(t, "frequency") && !has(t, "frequencies") && !has(t, "table") && !has(t, "class") && nv >= 1) {
     double denom = 0;
     for (int i = 0; i < nv; ++i) if (v[i] > denom) denom = v[i];
     if (denom > 0) {
@@ -5743,6 +5773,15 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     sprintf(cmd, "meanvar(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_stats(cmd, out);
   }
   if ((has(t, "stratified") || has(t, "stratum")) && nv >= 3) {
+    if ((has(t, "sizes") || has(t, "strata") || has(t, "stratums")) && nv >= 4) {
+      double sample = v[nv - 1], total = 0;
+      for (int i = 0; i < nv - 1; ++i) total += v[i];
+      int n = add(out, 0, "For stratified sampling, use stratum size / total population * sample size.");
+      n = add(out, n, "total population = %.10g", total);
+      for (int i = 0; i < nv - 1 && n < P3_MAX_LINES - 1; ++i)
+        n = add(out, n, "stratum %d: %.6g/%.6g * %.6g = %.10g", i + 1, v[i], total, sample, total ? v[i]/total*sample : 0);
+      return add(out, n, "round sensibly so the samples add to %.10g.", sample);
+    }
     double pop=0, group=0, sample=0;
     bool hPop=word_num(input,"population",&pop), hGroup=word_num(input,"stratum",&group) || word_num(input,"group",&group);
     bool hSample=word_num(input,"sample",&sample);
