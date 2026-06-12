@@ -1,5 +1,36 @@
 # Checkpoint
 
+## 2026-06-12 CDF, Normal Inverse, Projectile, And Fixed Decode Slice
+
+Completed:
+- Added CASP3 shifted power-CDF probability working for forms like `F(x)=k(x^2-a)` with `P(X<...)`/`P(X>...)`.
+- Extended CASP3 inverse-normal output to include the numeric `z` value and substituted critical value, while keeping fx-CG50 menu guidance.
+- Fixed CASP3 displacement-polynomial derivative working so `s(t)` questions return `v=ds/dt` and `a=dv/dt` without stealing velocity/displacement integration questions.
+- Added CASP3 combined projectile time-of-flight plus maximum-height working from speed and angle.
+- Hardened CSCALC fixed-point routing so denary decimals are not misread as binary fixed-point tokens.
+- Added CSCALC fixed binary-to-denary/hex working, signed two's-complement shift from denary input, combined subnet mask plus usable-host output, KiB image-size output, and truth-table prompt stripping.
+- Added regressions and rebuilt calculator files.
+
+Evidence:
+- Fresh unseen probes for the patched P3/CS cases: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 303644 bytes`
+  - `CSCALC.g3a: 201568 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Still inside CASP3/CSCALC free-text working support and generated calculator outputs.
+- Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for further source/probe-driven hardening.
+
 ## 2026-06-12 Shifted Pdf, Power Work, Fixed Subtract, And Address Bits Slice
 
 Completed:

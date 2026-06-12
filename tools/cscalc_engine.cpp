@@ -1608,6 +1608,7 @@ static int eval_storage(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LE
     int n = add(out, 0, "Image bits = width * height * colour depth.");
     n = add(out, n, "%s*%s*%s = %lld bits", a[0], a[1], a[2], bits);
     n = add(out, n, "= %.6g bytes", bytes);
+    n = add(out, n, "= %.6g KiB", bytes / 1024.0);
     n = add(out, n, "= %.6g MB", bytes / 1000000.0);
     return add(out, n, "= %.6g MiB", bytes / 1048576.0);
   }
@@ -1619,6 +1620,7 @@ static int eval_storage(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LE
     n = add(out, n, "ceil(log2(%s)) = %d bits per pixel", a[2], depth);
     n = add(out, n, "Image bits = width * height * colour depth.");
     n = add(out, n, "%s*%s*%d = %lld bits = %.6g bytes", a[0], a[1], depth, bits, bytes);
+    n = add(out, n, "= %.6g KiB", bytes / 1024.0);
     n = add(out, n, "= %.6g MB", bytes / 1000000.0);
     return add(out, n, "= %.6g MiB", bytes / 1048576.0);
   }
@@ -1996,7 +1998,7 @@ static int eval_float(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]
     long long scaled = (long long)round_nearest(value * pow2(frac));
     char bits[65], fixed[65]; to_bin(scaled, total, bits); insert_point(bits, whole, fixed);
     int n = add(out, 0, "Encode fixed point by scaling by 2^fraction bits.");
-    n = add(out, n, "scaled integer = %.10g * 2^%d = %lld", value, frac, scaled);
+    n = add(out, n, "scaled integer: %.10g * 2^%d = %.10g, so store nearest integer %lld", value, frac, value * pow2(frac), scaled);
     n = add(out, n, "%d whole bits and %d fractional bits.", whole, frac);
     return add(out, n, "fixed point = %s", fixed);
   }
@@ -2006,7 +2008,7 @@ static int eval_float(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]
     char bits[65], fixed[65]; to_bin(scaled, total, bits); insert_point(bits, whole, fixed);
     int n = add(out, 0, "Choose enough whole bits, then scale by 2^fraction bits.");
     n = add(out, n, "whole bits needed for %.10g = %d", value, whole);
-    n = add(out, n, "scaled integer = %.10g * 2^%d = %lld", value, frac, scaled);
+    n = add(out, n, "scaled integer: %.10g * 2^%d = %.10g, so store nearest integer %lld", value, frac, value * pow2(frac), scaled);
     return add(out, n, "fixed point = %s", fixed);
   }
   if (starts3(s, "fixedtcenc(", "fixedtwosenc(", "fixedtwosencode(") && na >= 3) {
@@ -3127,6 +3129,7 @@ static const char *skip_bool_words(const char *e) {
     if (starts(e, "make")) { e += 4; moved = true; }
     if (starts(e, "create")) { e += 6; moved = true; }
     if (starts(e, "construct")) { e += 9; moved = true; }
+    if (starts(e, "atruthtable") || starts(e, "aboolean") || starts(e, "anexpression")) { e += 1; moved = true; }
     if (starts(e, "write")) { e += 5; moved = true; }
     if (starts(e, "use")) { e += 3; moved = true; }
     if (starts(e, "to")) { e += 2; moved = true; }
@@ -3298,6 +3301,44 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   char cmd[160];
   double width=0, height=0, depth=0;
   int prefix = 0;
+  if (has(t, "fixed") && has(t, "binary") &&
+      (has(t, "denary") || has(t, "decimal") || strstr(input, "denary") || strstr(input, "decimal")) &&
+      (has(t, "before") || strstr(input, "before")) && (has(t, "after") || strstr(input, "after")) && nv >= 3) {
+    bool early_tc = has(t, "twos") || (has(t, "two") && has(t, "complement"));
+    sprintf(cmd, (early_tc || has(t, "signed") || has(t, "negative") || v[0] < 0) ?
+            "fixedtcenc(%.10g,%lld,%lld)" : "fixedenc(%.10g,%lld,%lld)",
+            v[0], (long long)v[nv-2], (long long)v[nv-1]);
+    return eval_float(cmd, out);
+  }
+  if (has(t, "fixed") && has(t, "binary") &&
+      (has(t, "denary") || has(t, "decimal") || strstr(input, "denary") || strstr(input, "decimal")) &&
+      !(has(t, "to,denary") || has(t, "to,decimal") || strstr(input, "to denary") || strstr(input, "to decimal")) &&
+      (has(t, "fractional") || has(t, "fraction") || has(t, "after")) && nv >= 2) {
+    sprintf(cmd, "fixedfrac(%.10g,%lld)", v[0], (long long)v[nv-1]);
+    return eval_float(cmd, out);
+  }
+  if (has(t, "fixed") && has(t, "binary") &&
+      (has(t, "denary") || has(t, "decimal") || strstr(input, "denary") || strstr(input, "decimal")) &&
+      !(has(t, "to,denary") || has(t, "to,decimal") || strstr(input, "to denary") || strstr(input, "to decimal")) &&
+      !(has(t, "before") || has(t, "after") || has(t, "fractional") || has(t, "whole") || has(t, "integer")) && nv >= 1) {
+    double value = v[0];
+    long long whole = (long long)value;
+    double rem = value - whole;
+    if (rem < 0) rem = -rem;
+    char whole_bits[65]; to_bin(whole, whole_bits_for(value), whole_bits);
+    char frac_bits[33]; int fp = 0;
+    int n = add(out, 0, "Convert the fractional part by repeated multiplication by 2.");
+    n = add(out, n, "whole part %.0f gives %s", (double)whole, whole_bits);
+    while (rem > 1e-10 && fp < 16 && n < CSCALC_MAX_LINES - 2) {
+      rem *= 2.0;
+      int bit = rem >= 1.0 ? 1 : 0;
+      if (bit) rem -= 1.0;
+      frac_bits[fp++] = (char)('0' + bit);
+      n = add(out, n, "multiply by 2 -> bit %d, remainder %.10g", bit, rem);
+    }
+    frac_bits[fp] = 0;
+    return add(out, n, "%.10g_10 = %s.%s_2", value, whole_bits, fp ? frac_bits : "0");
+  }
   if (has(t, "rsa") && (has(t, "decrypt") || has(t, "plaintext")) && nv >= 3) {
     double cv=0, nv0=0, dv=0;
     bool hc = label_num(input, "ciphertext", &cv) || label_num(input, "c", &cv) || scan_after_word_num(t, "ciphertext", &cv);
@@ -3377,7 +3418,14 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     if (has(t, "mask")) {
       unsigned long mask = prefix == 0 ? 0UL : (0xffffffffUL << (32 - prefix)) & 0xffffffffUL;
       int n = add(out, 0, "CIDR /%d means %d network bits and %d host bits.", prefix, prefix, 32-prefix);
-      return add(out, n, "subnet mask = %lu.%lu.%lu.%lu", (mask>>24)&255, (mask>>16)&255, (mask>>8)&255, mask&255);
+      n = add(out, n, "subnet mask = %lu.%lu.%lu.%lu", (mask>>24)&255, (mask>>16)&255, (mask>>8)&255, mask&255);
+      if (has(t, "host")) {
+        int host_bits = 32 - prefix;
+        double total = pow2(host_bits), usable = host_bits >= 2 ? total - 2 : total;
+        n = add(out, n, "host bits = %d, usable hosts = 2^%d - 2", host_bits, host_bits);
+        return add(out, n, "usable host addresses = %.10g", usable);
+      }
+      return n;
     }
     int host_bits = 32 - prefix;
     double total = pow2(host_bits), usable = host_bits >= 2 ? total - 2 : total;
@@ -3973,6 +4021,21 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     double sh = v[nv-1]; scan_after_word_num(t, "by", &sh);
     sprintf(cmd, "arithshift(%s,%s,%lld)", bits[0], has(t, "right") ? "right" : "left", (long long)sh); return eval_binary_arith(cmd, out);
   }
+  if (tc && has(t, "shift") && nb == 0 && nv >= 3) {
+    double bw = 0, sh = v[nv-1];
+    long long bitsw = (long long)v[0], val = (long long)v[1];
+    if ((scan_before_word_num(t, "bit", &bw) || scan_before_word_num(t, "bits", &bw)) && bw > 0) {
+      bitsw = (long long)bw;
+      for (int i = 0; i < nv; ++i) {
+        if ((long long)v[i] == bitsw || (long long)v[i] == (long long)sh) continue;
+        val = (long long)v[i]; break;
+      }
+    }
+    scan_after_word_num(t, "by", &sh);
+    char enc[65]; to_bin(val, (int)bitsw, enc);
+    sprintf(cmd, "arithshift(%s,%s,%lld)", enc, has(t, "right") ? "right" : "left", (long long)sh);
+    return eval_binary_arith(cmd, out);
+  }
   if (tc && !has(t, "fixed") && nv >= 2 && (has(t, "encode") || has(t, "convert")) && (has(t, "binary") || has(t, "bit"))) {
     double bw = 0; long long bitsw = (long long)v[1], val = (long long)v[0];
     if ((scan_before_word_num(t, "bit", &bw) || scan_before_word_num(t, "bits", &bw)) && bw > 0) {
@@ -4041,6 +4104,26 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       sprintf(cmd, "convert(%lld,8,2)", (long long)v[0]); return eval_base(cmd, out);
     }
   }
+  if (has(t, "fixed") && nfixed >= 1 && (has(t, "hex") || has(t, "hexadecimal")) &&
+      (has(t, "binary") || (!has(t, "denary") && !has(t, "decimal")))) {
+    double val = fixed_decode(fixed_tokens[0]);
+    const char *dot = strchr(fixed_tokens[0], '.');
+    char hx[48]; long long whole = (long long)val; sprintf(hx, "%llX", whole);
+    int hp = (int)strlen(hx);
+    if (dot && dot[1] && hp + 2 < (int)sizeof(hx)) {
+      int flen = (int)strlen(dot + 1);
+      hx[hp++] = '.';
+      for (int off = 0; off < flen && hp + 1 < (int)sizeof(hx); off += 4) {
+        int nib = 0;
+        for (int j = 0; j < 4; ++j) nib = nib * 2 + (off + j < flen && dot[1+off+j] == '1' ? 1 : 0);
+        hx[hp++] = (char)(nib < 10 ? '0' + nib : 'A' + nib - 10);
+      }
+      hx[hp] = 0;
+    }
+    int n = add(out, 0, "Add binary fixed-point place values.");
+    n = add(out, n, "%s_2 = %.10g_10", fixed_tokens[0], val);
+    return add(out, n, "%s_2 = %s_16", fixed_tokens[0], hx);
+  }
   if (has(t, "binary") && nb >= 1 && (has(t, "hex") || has(t, "hexadecimal")) &&
       !(has(t, "add") || has(t, "sum") || has(t, "plus") || has(t, "subtract") || has(t, "minus"))) {
     char all[96]; join_bits(bits, nb, all, sizeof(all));
@@ -4071,6 +4154,31 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     n = add(out, n, "%s_2 = %.10g_10", fixed_tokens[1], b0);
     n = add(out, n, sub ? "%.10g - %.10g = %.10g" : "%.10g + %.10g = %.10g", a0, b0, sum);
     return add(out, n, "using %d fractional bits, result = %s", frac, fixed_out);
+  }
+  if (has(t, "fixed") && nfixed >= 1 && (has(t, "binary") || (!has(t, "denary") && !has(t, "decimal"))) &&
+      (has(t, "denary") || has(t, "decimal") || has(t, "hex") || has(t, "hexadecimal"))) {
+    double val = fixed_decode(fixed_tokens[0]);
+    int n = add(out, 0, "Add binary fixed-point place values.");
+    n = add(out, n, "%s_2 = %.10g_10", fixed_tokens[0], val);
+    if (has(t, "hex") || has(t, "hexadecimal")) {
+      const char *dot = strchr(fixed_tokens[0], '.');
+      char hx[48]; int hp = 0;
+      long long whole = (long long)fixed_decode(fixed_tokens[0]);
+      sprintf(hx, "%llX", whole);
+      hp = (int)strlen(hx);
+      if (dot && dot[1] && hp + 2 < (int)sizeof(hx)) {
+        int flen = (int)strlen(dot + 1);
+        hx[hp++] = '.';
+        for (int off = 0; off < flen && hp + 1 < (int)sizeof(hx); off += 4) {
+          int nib = 0;
+          for (int j = 0; j < 4; ++j) nib = nib * 2 + (off + j < flen && dot[1+off+j] == '1' ? 1 : 0);
+          hx[hp++] = (char)(nib < 10 ? '0' + nib : 'A' + nib - 10);
+        }
+        hx[hp] = 0;
+      }
+      return add(out, n, "%s_2 = %s_16", fixed_tokens[0], hx);
+    }
+    return n;
   }
   if (has(t, "fixed") && (has(t, "convert") || has(t, "encode") || has(t, "represent")) &&
       (has(t, "denary") || has(t, "decimal")) && !has(t, "to,denary") && !has(t, "to,decimal") && nv >= 1 &&
@@ -4114,10 +4222,14 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     sprintf(cmd, (tc || has(t, "signed") || has(t, "negative") || v[0] < 0) ? "fixedtcenc(%.10g,%lld,%lld)" : "fixedenc(%.10g,%lld,%lld)", v[0], whole, frac);
     return eval_float(cmd, out);
   }
-  if (has(t, "fixed") && scan_fixed_bits(t, fixed_early, sizeof(fixed_early))) {
+  if (has(t, "fixed") && (has(t, "to,denary") || has(t, "to,decimal") ||
+      (!has(t, "denary") && !has(t, "decimal") && !strstr(input, "denary") && !strstr(input, "decimal"))) &&
+      scan_fixed_bits(t, fixed_early, sizeof(fixed_early))) {
     sprintf(cmd, (tc || has(t, "complement")) ? "fixedtc(%s)" : "fixed(%s)", fixed_early); return eval_float(cmd, out);
   }
-  if (has(t, "binary") && (has(t, "denary") || has(t, "decimal")) && scan_fixed_bits(t, fixed_early, sizeof(fixed_early)) &&
+  if (has(t, "binary") && !strstr(input, "denary value") && !strstr(input, "decimal value") &&
+      (has(t, "to,denary") || has(t, "to,decimal") || strstr(input, "to denary") || strstr(input, "to decimal")) &&
+      scan_fixed_bits(t, fixed_early, sizeof(fixed_early)) &&
       !(has(t, "add") || has(t, "sum") || has(t, "plus") || has(t, "subtract") || has(t, "minus"))) {
     sprintf(cmd, "fixed(%s)", fixed_early); return eval_float(cmd, out);
   }
@@ -4369,7 +4481,9 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     sprintf(cmd, (tc || has(t, "signed") || has(t, "negative") || v[0] < 0) ? "fixedtcenc(%.10g,%lld,%lld)" : "fixedenc(%.10g,%lld,%lld)", v[0], (long long)v[1], (long long)v[2]);
     return eval_float(cmd, out);
   }
-  if (has(t, "fixed") && scan_fixed_bits(t, fixed, sizeof(fixed))) {
+  if (has(t, "fixed") && (has(t, "to,denary") || has(t, "to,decimal") ||
+      (!has(t, "denary") && !has(t, "decimal") && !strstr(input, "denary") && !strstr(input, "decimal"))) &&
+      scan_fixed_bits(t, fixed, sizeof(fixed))) {
     sprintf(cmd, (tc || has(t, "complement")) ? "fixedtc(%s)" : "fixed(%s)", fixed); return eval_float(cmd, out);
   }
   if ((has(t, "float") || has(t, "floating") || has(t, "real")) &&

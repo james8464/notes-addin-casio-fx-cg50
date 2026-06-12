@@ -404,7 +404,7 @@ def main():
     require("Using a 6 bit mantissa and 4 bit exponent, encode 0.1875 in normalised floating point.", ["0.1875 = 0.75 * 2^-2", "mantissa (6 bits)", "exponent (4 bits)"])
     require("Determine whether 01111111 + 00000001 overflows in unsigned binary.", ["carrying", "01111111 + 00000001 = 10000000"])
     require("Use a truth table to prove De Morgan not(A and B)=not A or not B.", ["LHS simplifies to A'+B'", "RHS simplifies to A'+B'", "Same output rows"])
-    require("Convert decimal 0.1 into binary fixed point with 8 fractional bits.", ["scaled integer = 0.1 * 2^8 = 26", "fixed point = 0.00011010"])
+    require("Convert decimal 0.1 into binary fixed point with 8 fractional bits.", ["0.1 * 2^8 = 25.6", "store nearest integer 26", "fixed point = 0.00011010"])
     require("Calculate the transmission time for a 12 MiB file over a 24 Mbps link.", ["12 MiB = 100663296 bits", "24 Mbit/s = 24000000 bit/s", "4.194304 s"])
     require("A serial transmission sends 10 bits per character for 1000 characters over 2000 bit/s. Find time.", ["total bits = 1000 characters * 10 bits = 10000 bits", "time = 10000/2000 = 5 s"])
     require("A packet has payload 1200 bytes and header 40 bytes. Find overhead percentage and efficiency.", ["overhead = 40/1240 * 100 = 3.225806452%", "efficiency = payload/total * 100 = 96.77419355%"])
@@ -415,6 +415,11 @@ def main():
     require("Add the normalised floating point numbers 0.101000 exponent 0011 and 0.110000 exponent 0010.", ["mantissa 0101000 = 0.625", "mantissas: 0.625 + 0.375 = 1", "exponent (4 bits) = 0100"])
     require("Use RSA with p=5 q=11 e=3 message=9. Find n phi d and ciphertext.", ["n = 5*11 = 55", "phi(n) = (p-1)(q-1) = 40", "9^3 mod 55 = 14"])
     require("Decrypt RSA ciphertext 14 using n=55 and d=27.", ["RSA decryption", "14^27 mod 55 = 9"])
+    require("Convert binary fixed point 101.101 to denary and hexadecimal.", ["101.101_2 = 5.625_10", "101.101_2 = 5.A_16"])
+    require("Using 8-bit two's complement, what is -13 shifted left by 2?", ["11110011 = -13", "shifted left by 2 = 11001100", "11001100 = -52"])
+    require("Calculate subnet mask for /26 and number of usable hosts.", ["subnet mask = 255.255.255.192", "usable host addresses = 62"])
+    require("A bitmap image has 1024 by 768 pixels and 10-bit colour depth. Find file size in KiB.", ["1024*768*10 = 7864320 bits", "= 960 KiB"])
+    require("Construct a truth table for A xor B.", ["Truth table for a^b", "A B | F", "simplified = A'B+AB'"])
     print("OK cscalc engine")
 
 

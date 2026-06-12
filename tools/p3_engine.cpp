@@ -1662,17 +1662,23 @@ static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   }
   if (starts3(s, "invnormal(", "inversenormal(", "normalinv(") && na >= 3) {
     double area=num(a[0]), mu=num(a[1]), sig=num(a[2]);
+    double z = inv_norm_left(area);
     int n = add(out, 0, "For X~N(mu,sigma^2), use inverse normal for a critical value.");
     n = add(out, n, "Area to the left = %.6g.", area);
     n = add(out, n, "Use fx-CG50 InvNorm(area, sigma, mu).");
-    return add(out, n, "InvNorm(%.6g, %.6g, %.6g)", area, sig, mu);
+    n = add(out, n, "InvNorm(%.6g, %.6g, %.6g)", area, sig, mu);
+    n = add(out, n, "z = InvNorm(%.6g) = %.10g", area, z);
+    return add(out, n, "x = %.6g + %.6g*%.10g = %.10g", mu, sig, z, mu + sig*z);
   }
   if (starts3(s, "invnormalvar(", "inversenormalvar(", "normalinvvar(") && na >= 3) {
     double area=num(a[0]), mu=num(a[1]), var=num(a[2]), sig=root(var);
+    double z = inv_norm_left(area);
     int n = add(out, 0, "Convert variance to standard deviation first.");
     n = add(out, n, "sigma = sqrt(%.6g) = %.6g", var, sig);
     n = add(out, n, "Area to the left = %.6g.", area);
-    return add(out, n, "InvNorm(%.6g, %.6g, %.6g)", area, sig, mu);
+    n = add(out, n, "InvNorm(%.6g, %.6g, %.6g)", area, sig, mu);
+    n = add(out, n, "z = InvNorm(%.6g) = %.10g", area, z);
+    return add(out, n, "x = %.6g + %.6g*%.10g = %.10g", mu, sig, z, mu + sig*z);
   }
   if (starts3(s, "normalparams(", "normalparameters(", "normalmeansd(") && na >= 4) {
     double x1=num(a[0]), p1=num(a[1]), x2=num(a[2]), p2=num(a[3]);
@@ -2365,6 +2371,21 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       return add(out, n, "at t=%.10g, a = %.10g", r2, 2*qa*r2 + qb);
     }
   }
+  if (has(t, "displacement") && has(t, "velocity") && has(t, "acceleration") &&
+      (has(t, "att") || has(t, "at")) && !has(t, "from")) {
+    double A=0, B=0, C=0, time=0;
+    if (parse_poly_after_word(input, "displacement", &A, &B, &C) &&
+        (word_num_with_t(input, "at", &time) || first_num_after_word(input, "at", &time))) {
+      double vv = 2*A*time + B;
+      double aa = 2*A;
+      int n = add(out, 0, "Velocity is ds/dt and acceleration is dv/dt.");
+      n = add(out, n, "s = %.6g t^2 %+.6g t %+.6g", A, B, C);
+      n = add(out, n, "v = ds/dt = %.6g t %+.6g", 2*A, B);
+      n = add(out, n, "a = dv/dt = %.6g", aa);
+      n = add(out, n, "v(%.6g) = %.10g", time, vv);
+      return add(out, n, "a(%.6g) = %.10g", time, aa);
+    }
+  }
   if (has(t, "velocity") && has(t, "displacement") && has(t, "from")) {
     double A4=0, A3=0, A2=0, A1=0, A0=0, qt1=0, qt2=0;
     if (parse_quartic_poly_after_word(input, "velocity", &A4, &A3, &A2, &A1, &A0) &&
@@ -2847,6 +2868,26 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       sprintf(cmd+p, ")");
       return eval_suvat(cmd, out);
     }
+  }
+  if (is_projectile_text(t) && has(c, "maximumheight") && (has(c, "timeofflight") || (has(t, "time") && has(t, "flight"))) &&
+      (has(t, "speed") || has(t, "projection")) && nv >= 2) {
+    double u=0, ang=0, g=9.8;
+    bool hU=label_num(input,"speed",&u) || label_num(input,"u",&u) || label_num(input,"initialspeed",&u) ||
+            word_num(input,"speed",&u) || word_num(input,"velocity",&u);
+    bool hA=label_num(input,"angle",&ang) || label_num(input,"theta",&ang) || word_num(input,"angle",&ang) ||
+            prev_word_num(input,"degrees",&ang);
+    label_num(input,"g",&g);
+    if (!hU) u = v[0];
+    if (!hA) ang = v[1];
+    double uy = u * deg_sine(ang);
+    double tof = 2 * uy / g;
+    double H = uy * uy / (2 * g);
+    int n = add(out, 0, "Resolve vertically, then use vertical motion.");
+    n = add(out, n, "u_y = u sin(theta) = %.6g sin %.6g = %.10g", u, ang, uy);
+    n = add(out, n, "time of flight: 0 = u_y t - 0.5gt^2");
+    n = add(out, n, "t = 2u_y/g = %.10g s", tof);
+    n = add(out, n, "maximum height uses v_y=0.");
+    return add(out, n, "H = u_y^2/(2g) = %.10g m", H);
   }
   if (is_projectile_text(t) && has(c, "maximumheight") &&
       (has(t, "speed") || has(t, "projection") || has(c, "speedofprojection")) && nv >= 2) {
@@ -4039,6 +4080,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
         }
       }
       if (hArea && (has(c, "morethank") || has(c, "greaterthank") || has(c, "p(x>k") || has(c, "p(x>=k"))) area = 1 - area;
+      if (hArea && (has(c, "p(x>a") || has(c, "p(x>=a") || has(c, "p(x>q") || has(c, "p(x>=q"))) area = 1 - area;
     }
     if (hArea && hMu && (hSig || hVar) &&
         (has(c, "findk") || has(c, "findx") || has(c, "suchthat") || has(t, "percentile") ||
@@ -4481,6 +4523,30 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     return eval_stats(cmd, out);
   }
   double cdf_lo = 0, cdf_hi = 0;
+  if ((has(t, "cdf") || has(t, "cumulative")) &&
+      (has(c, "k(x^") || has(c, "k*(x^")) && extract_x_interval(c, &cdf_lo, &cdf_hi) &&
+      (has(c, "p(x<") || has(c, "p(x<=") || has(c, "p(x>") || has(c, "p(x>="))) {
+    const char *kp = strstr(c, "x^");
+    int pow = kp && isdigit((unsigned char)kp[2]) ? kp[2] - '0' : 1;
+    double base = pwr(cdf_lo, pow), top = pwr(cdf_hi, pow);
+    double bx = 0; int btail = 0;
+    const char *bp = strstr(c, "p(x<");
+    if (bp) { btail = -1; bx = read_num(bp + (bp[4] == '=' ? 5 : 4)); }
+    else if ((bp = strstr(c, "p(x>"))) { btail = 1; bx = read_num(bp + (bp[4] == '=' ? 5 : 4)); }
+    else prob_x_bound(c, &bx, &btail);
+    if (pow >= 1 && top != base && btail != 0) {
+      double k = 1.0 / (top - base);
+      double Fb = k * (pwr(bx, pow) - base);
+      if (Fb < 0) Fb = 0;
+      if (Fb > 1) Fb = 1;
+      double prob = btail > 0 ? 1.0 - Fb : Fb;
+      int n = add(out, 0, "For a CDF, use F(upper)=1 to find k.");
+      n = add(out, n, "F(x)=k(x^%d-%.10g) on %.6g<=x<=%.6g.", pow, base, cdf_lo, cdf_hi);
+      n = add(out, n, "k(%.6g^%d-%.6g^%d)=1, so k = %.10g", cdf_hi, pow, cdf_lo, pow, k);
+      n = add(out, n, "F(%.6g)=%.10g", bx, Fb);
+      return add(out, n, btail > 0 ? "P(X>%.6g)=1-F(%.6g)=%.10g" : "P(X<%.6g)=F(%.6g)=%.10g", bx, bx, prob);
+    }
+  }
   if ((has(t, "cdf") || has(t, "cumulative")) && has(t, "median") &&
       has(c, "ln") && has(c, "-ln") && extract_x_interval(c, &cdf_lo, &cdf_hi) &&
       cdf_lo > 0 && cdf_hi > cdf_lo) {
