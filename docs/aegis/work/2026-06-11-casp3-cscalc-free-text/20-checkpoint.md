@@ -1,5 +1,24 @@
 # Checkpoint
 
+## 2026-06-12 CASP3 Projectile Labelled Free-Text Slice
+
+Completed:
+- Improved projectile free-text routing so labelled values are preferred over raw number order.
+- Added support for `speed=`, `u=`, `angle=`, `theta=`, `distance=`, `x=`, `y=`, `height=`, `initialheight=`, and `g=` across projectile range, launch-height, point-height, and angle-to-target routes.
+- Added regression tests for reordered labelled projectile prompts.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CASP3 Edexcel Paper 3 mechanics/free-text support.
+- Did not touch CAS Pure behavior, CSCALC behavior, NOTES, or shared UI/status code.
+
 ## 2026-06-12 CASP3 SUVAT Free-Text Label Slice
 
 Completed:

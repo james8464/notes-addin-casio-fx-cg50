@@ -1122,17 +1122,66 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       return eval_suvat(cmd, out);
     }
   }
-  if ((has(t, "projectile") || has(t, "projectiles")) && (has(t, "angle") || has(t, "angles")) &&
+  if ((has(t, "projectile") || has(t, "projectiles")) && (has(t, "angle") || has(t, "angles") || (has(t, "find") && has(t, "angle"))) &&
       (has(t, "target") || has(t, "point") || has(t, "through") || has(t, "pass")) && nv >= 3) {
+    double u=0,x=0,y=0,h0=0,g=0;
+    bool hU=label_num(input,"speed",&u) || label_num(input,"u",&u) || label_num(input,"initialspeed",&u) || label_num(input,"initialvelocity",&u);
+    bool hX=label_num(input,"x",&x) || label_num(input,"distance",&x) || label_num(input,"range",&x) || label_num(input,"horizontaldistance",&x);
+    bool hY=label_num(input,"y",&y) || label_num(input,"height",&y) || label_num(input,"targetheight",&y);
+    bool hH=label_num(input,"initialheight",&h0) || label_num(input,"launchheight",&h0) || label_num(input,"h0",&h0);
+    bool hG=label_num(input,"g",&g) || label_num(input,"gravity",&g);
+    if (hU && hX && hY) {
+      sprintf(cmd, hG ? "projectileangle(%.10g,%.10g,%.10g,%.10g,%.10g)" : "projectileangle(%.10g,%.10g,%.10g,%.10g)", u, x, y, hH ? h0 : 0, hG ? g : 9.8);
+      return eval_mech(cmd, out);
+    }
     sprintf(cmd, nv >= 4 ? "projectileangle(%.10g,%.10g,%.10g,%.10g)" : "projectileangle(%.10g,%.10g,%.10g)", v[0], v[1], v[2], nv >= 4 ? v[3] : 0); return eval_mech(cmd, out);
   }
+  if ((has(t, "projectile") || has(t, "projectiles")) && ((has(t, "find") && has(t, "angle")) || has(t, "launchangle")) && nv >= 3) {
+    double u=0,x=0,y=0,h0=0,g=0;
+    bool hU=label_num(input,"speed",&u) || label_num(input,"u",&u) || label_num(input,"initialspeed",&u) || label_num(input,"initialvelocity",&u);
+    bool hX=label_num(input,"x",&x) || label_num(input,"distance",&x) || label_num(input,"range",&x) || label_num(input,"horizontaldistance",&x);
+    bool hY=label_num(input,"y",&y) || label_num(input,"height",&y) || label_num(input,"targetheight",&y);
+    bool hH=label_num(input,"initialheight",&h0) || label_num(input,"launchheight",&h0) || label_num(input,"h0",&h0);
+    bool hG=label_num(input,"g",&g) || label_num(input,"gravity",&g);
+    if (hU && hX && hY) {
+      sprintf(cmd, hG ? "projectileangle(%.10g,%.10g,%.10g,%.10g,%.10g)" : "projectileangle(%.10g,%.10g,%.10g,%.10g)", u, x, y, hH ? h0 : 0, hG ? g : 9.8);
+      return eval_mech(cmd, out);
+    }
+  }
   if ((has(t, "projectile") || has(t, "projectiles")) && (has(t, "distance") || has(t, "metresaway") || has(t, "away")) && nv >= 3) {
+    double u=0,ang=0,x=0,h0=0,g=0;
+    bool hU=label_num(input,"speed",&u) || label_num(input,"u",&u) || label_num(input,"initialspeed",&u) || label_num(input,"initialvelocity",&u);
+    bool hA=label_num(input,"angle",&ang) || label_num(input,"theta",&ang) || label_num(input,"launchangle",&ang);
+    bool hX=label_num(input,"x",&x) || label_num(input,"distance",&x) || label_num(input,"range",&x) || label_num(input,"horizontaldistance",&x);
+    bool hH=label_num(input,"initialheight",&h0) || label_num(input,"height",&h0) || label_num(input,"h0",&h0);
+    bool hG=label_num(input,"g",&g) || label_num(input,"gravity",&g);
+    if (hU && hA && hX) {
+      sprintf(cmd, hG ? "projectileat(%.10g,%.10g,%.10g,%.10g,%.10g)" : "projectileat(%.10g,%.10g,%.10g,%.10g)", u, ang, x, hH ? h0 : 0, hG ? g : 9.8);
+      return eval_mech(cmd, out);
+    }
     sprintf(cmd, nv >= 4 ? "projectileat(%.10g,%.10g,%.10g,%.10g)" : "projectileat(%.10g,%.10g,%.10g)", v[0], v[1], v[2], nv >= 4 ? v[3] : 0); return eval_mech(cmd, out);
   }
   if ((has(t, "projectile") || has(t, "projectiles")) && (has(t, "height") || has(t, "above")) && nv >= 3) {
+    double u=0,ang=0,h=0,g=0;
+    bool hU=label_num(input,"speed",&u) || label_num(input,"u",&u) || label_num(input,"initialspeed",&u) || label_num(input,"initialvelocity",&u);
+    bool hA=label_num(input,"angle",&ang) || label_num(input,"theta",&ang) || label_num(input,"launchangle",&ang);
+    bool hH=label_num(input,"height",&h) || label_num(input,"h",&h) || label_num(input,"initialheight",&h) || label_num(input,"launchheight",&h);
+    bool hG=label_num(input,"g",&g) || label_num(input,"gravity",&g);
+    if (hU && hA && hH && !has(t, "findheight")) {
+      sprintf(cmd, hG ? "projectileh(%.10g,%.10g,%.10g,%.10g)" : "projectileh(%.10g,%.10g,%.10g)", u, ang, h, hG ? g : 9.8);
+      return eval_mech(cmd, out);
+    }
     sprintf(cmd, "projectileh(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_mech(cmd, out);
   }
   if ((has(t, "projectile") || has(t, "projectiles")) && nv >= 2) {
+    double u=0,ang=0,g=0;
+    bool hU=label_num(input,"speed",&u) || label_num(input,"u",&u) || label_num(input,"initialspeed",&u) || label_num(input,"initialvelocity",&u);
+    bool hA=label_num(input,"angle",&ang) || label_num(input,"theta",&ang) || label_num(input,"launchangle",&ang);
+    bool hG=label_num(input,"g",&g) || label_num(input,"gravity",&g);
+    if (hU && hA) {
+      sprintf(cmd, hG ? "projectile(%.10g,%.10g,%.10g)" : "projectile(%.10g,%.10g)", u, ang, hG ? g : 9.8);
+      return eval_mech(cmd, out);
+    }
     sprintf(cmd, "projectile(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
   }
   if ((has(t, "equilibrium") || has(t, "balance")) && (has(t, "component") || has(t, "components")) && nv >= 4) {
