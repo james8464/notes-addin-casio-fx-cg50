@@ -75,6 +75,8 @@ def main():
     require("power when work done is 120 and time is 3", ["Power", "40 W"])
     require("energy(2,5,3)", ["KE = 1/2", "25 J", "GPE"])
     require("kinetic energy mass 2 speed 5 height 3", ["KE = 1/2", "25 J", "GPE"])
+    require("workenergyforce(0.8,10,15,0,20)", ["work-energy", "gain in KE", "50 J", "F*20", "F = 2.5 N"])
+    require("work energy driving force mass=5 u=0 v=4 height=2 distance=10 resistance=3", ["gain in KE", "gain in GPE", "work against resistance", "F = 16.8 N"])
     require("restitution(5,-2,1,3)", ["restitution", "speed of separation"])
     require("collision restitution u1 5 u2 -2 v1 1 v2 3", ["restitution", "speed of separation"])
     require("impactsolve(2,5,3,1,0.5)", ["momentum and Newton", "v2 - v1 = e(u1-u2) = 2", "v1 = 1.4, v2 = 3.4"])

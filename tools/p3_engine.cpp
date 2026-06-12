@@ -395,6 +395,18 @@ static int eval_mech(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     n = add(out, n, "v^2 = %.6g^2 + 2*(%.10g)", u, F);
     return add(out, n, "v = %.10g", v);
   }
+  if (starts3(s, "workenergyforce(", "energyforce(", "driveforce(") && na >= 5) {
+    double m=num(a[0]), u=num(a[1]), v=num(a[2]), h=num(a[3]), d=num(a[4]);
+    double r=na>5?num(a[5]):0, g=na>6?num(a[6]):9.8;
+    double dk=0.5*m*(v*v-u*u), dg=m*g*h, wr=r*d, total=dk+dg+wr, f=d==0?0:total/d;
+    int n = add(out, 0, "Use work-energy, taking motion in the direction of travel.");
+    n = add(out, n, "work by driving force = gain in KE + gain in GPE + work against resistance.");
+    n = add(out, n, "gain in KE = 1/2*m*(v^2-u^2) = 1/2*%.6g*(%.6g^2-%.6g^2) = %.10g J", m, v, u, dk);
+    n = add(out, n, "gain in GPE = mgh = %.6g*%.6g*%.6g = %.10g J", m, g, h, dg);
+    n = add(out, n, "work against resistance = R*d = %.6g*%.6g = %.10g J", r, d, wr);
+    n = add(out, n, "F*%.6g = %.10g + %.10g + %.10g = %.10g", d, dk, dg, wr, total);
+    return add(out, n, "F = %.10g N", f);
+  }
   if (starts3(s, "energy(", "kepe(", "workenergy(") && na >= 2) {
     double m=num(a[0]), v=num(a[1]), h=na>2?num(a[2]):0, g=na>3?num(a[3]):9.8;
     int n = add(out, 0, "Use mechanical energy formulae.");
@@ -836,6 +848,18 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   char c[192]; clean(input, c, sizeof(c));
   double v[8]; int nv = scan_nums(t, v, 8);
   char cmd[160];
+  if ((has(t, "workenergy") || (has(t, "work") && has(t, "energy")) || (has(t, "energy") && has(t, "driving") && has(t, "force"))) && nv >= 5) {
+    double m=0,u0=0,v0=0,h=0,d=0,r=0;
+    bool hm=label_num(input,"mass",&m) || label_num(input,"m",&m);
+    bool hu=label_num(input,"u",&u0);
+    bool hv=label_num(input,"v",&v0);
+    bool hh=label_num(input,"height",&h) || label_num(input,"h",&h);
+    bool hd=label_num(input,"distance",&d) || label_num(input,"d",&d);
+    bool hr=label_num(input,"resistance",&r) || label_num(input,"r",&r);
+    if (hm && hu && hv && hh && hd) sprintf(cmd, "workenergyforce(%.10g,%.10g,%.10g,%.10g,%.10g,%.10g)", m, u0, v0, h, d, hr ? r : 0);
+    else sprintf(cmd, nv > 5 ? "workenergyforce(%.10g,%.10g,%.10g,%.10g,%.10g,%.10g)" : "workenergyforce(%.10g,%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3], v[4], nv > 5 ? v[5] : 0);
+    return eval_mech(cmd, out);
+  }
   if ((has(t, "vector") || has(t, "positionvector") || has(t, "ij")) &&
       (has(t, "velocity") || has(t, "acceleration") || has(t, "motion"))) {
     double x0=0,y0=0,ux=0,uy=0,ax=0,ay=0,time=0;
@@ -1169,6 +1193,6 @@ int p3_eval(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   n = eval_free_text(input, out); if (n) return n;
   n = add(out, 0, "Supported:");
   n = add(out, n, "suvat projectile projectileh force weight friction moment incline inclineacc");
-  n = add(out, n, "beam ladder connected pulley impulse momentum work power energy restitution vector resolve vectorkin varacc");
+  n = add(out, n, "beam ladder connected pulley impulse momentum work power energy workenergyforce restitution vector resolve vectorkin varacc");
   return add(out, n, "normal normalvar normalprob invnormal binom binomstats binomtail critbinom hypbinom cond probor bayes independent poisson poissonstats poissontail poissonnorm critpoisson hyppoisson regress pmcc spearman meanvar discrete stratified groupmedian histdensity code");
 }
