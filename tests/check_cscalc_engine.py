@@ -69,6 +69,8 @@ def main():
     require("linearsearch(5,8,3,5,2)", ["Linear search", "position 3: 5 = target", "found at position 3"])
     require("bubblesort(5,1,4,2)", ["Bubble sort", "start [5,1,4,2]", "pass 1: [1,4,2,5]", "pass 3: [1,2,4,5]"])
     require("insertion sort 5 1 4 2", ["Insertion sort", "insert 1: [1,5,4,2]", "insert 2: [1,2,4,5]"])
+    require("selectionsort(5,1,4,2)", ["Selection sort", "place 1 at position 1: [1,5,4,2]", "place 2 at position 2: [1,2,4,5]"])
+    require("merge sort 5 1 4 2", ["Merge sort", "merge runs of 1: [1,5,2,4]", "merge runs of 2: [1,2,4,5]"])
     require("stack(3,4,pop,5)", ["Stack is LIFO", "push 3 -> stack [3]", "pop 4 -> stack [3]", "push 5 -> stack [3,5]"])
     require("stack push 3 push 4 pop push 5", ["Stack is LIFO", "pop 4 -> stack [3]", "push 5 -> stack [3,5]"])
     require("queue(3,4,pop,5)", ["Queue is FIFO", "enqueue 3 -> queue [3]", "dequeue 3 -> queue [4]", "enqueue 5 -> queue [4,5]"])

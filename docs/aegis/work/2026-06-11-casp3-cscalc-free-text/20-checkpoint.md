@@ -1,5 +1,27 @@
 # Checkpoint
 
+## 2026-06-12 CSCALC Sort Trace Slice
+
+Completed:
+- Added `selectionsort(...)` / `selection(...)` working traces.
+- Added `mergesort(...)` / `merge(...)` working traces.
+- Added free-text dispatch for selection-sort and merge-sort prompts.
+- Output shows the sorting rule and intermediate list states.
+- Added sort commands to the Algorithms help page and supported-command summary.
+- Added regression tests for direct and free-text forms.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CSCALC AQA Paper 2 algorithm trace support.
+- Did not touch CAS Pure behavior, CASP3 behavior, NOTES, or shared UI/status code.
+
 ## 2026-06-12 CSCALC Dijkstra Slice
 
 Completed:

@@ -146,6 +146,7 @@ static const char *const algos[] = {
   "linearsearch(target,list...)",
   "bubblesort(list...)",
   "insertionsort(list...)",
+  "selectionsort/mergesort",
   "stack(3,4,pop,5)",
   "queue(3,4,pop,5)",
   "preorder(a,b,c,d,e)",
