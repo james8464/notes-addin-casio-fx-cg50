@@ -468,6 +468,7 @@ def main():
     require("A box contains 5 red and 3 blue balls. Two are chosen without replacement. Find P(same colour).", ["same colour ways = C(5,2)+C(3,2)", "P(same colour)=13/28=0.4642857143"])
     require("Use trapezium rule with y values 1,4,9,16,25 and width 0.5.", ["Use the trapezium rule", "Area = 0.5/2 * 84 = 21"])
     require("Use the trapezium rule with x values 0 1 2 3 and y values 1 2 5 10.", ["h = x2 - x1 = 1 - 0 = 1", "Area = 1/2 * 25 = 12.5"])
+    require("A particle moves with acceleration a=3t^2-4t+5. Its velocity is 2 when t=0 and displacement is 1 when t=0. Find displacement at t=3.", ["Variable acceleration: integrate a(t)", "a = 3 t^2 -4 t +5", "v(0)=2 gives C = 2", "s(0)=1 gives C = 1", "at t=3, s = 31.75"])
     print("OK p3 engine")
 
 

@@ -437,6 +437,9 @@ def main():
     require("Calculate subnet mask for /26 and number of usable hosts.", ["subnet mask = 255.255.255.192", "usable host addresses = 62"])
     require("A bitmap image has 1024 by 768 pixels and 10-bit colour depth. Find file size in KiB.", ["1024*768*10 = 7864320 bits", "= 960 KiB"])
     require("Construct a truth table for A xor B.", ["Truth table for a^b", "A B | F", "simplified = A'B+AB'"])
+    require("Construct a truth table for A implies B.", ["Truth table for a>b", "minterms: 0,1,3", "simplified = A'+B"])
+    require("Using fixed point with 5 bits before the point and 3 bits after, convert -6.375 to two's complement binary.", ["scaled integer = -6.375 * 2^3 = -51", "write -51 in 8-bit two's complement", "fixed point = 11001.101"])
+    require("A 20 MB file is compressed by 35 percent. Find the compressed file size.", ["Compressed by 35% means keep 65%", "compressed size = 20*(1-35/100)", "compressed size = 13"])
     require("bool(A+B+C+D+E+F)", ["simplified = F+E+D+C+B+A"])
     print("OK cscalc engine")
 

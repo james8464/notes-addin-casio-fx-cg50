@@ -2280,11 +2280,12 @@ struct BParser {
   }
   int expr() {
     int v = term();
-    while (s[pos] == '+' || s[pos] == '|' || s[pos] == '^' || s[pos] == '@' || s[pos] == '#') {
+    while (s[pos] == '+' || s[pos] == '|' || s[pos] == '^' || s[pos] == '@' || s[pos] == '#' || s[pos] == '>') {
       char op = s[pos++]; int r = term();
       if (op == '^') v = v != r;
       else if (op == '@') v = !(v && r);
       else if (op == '#') v = !(v || r);
+      else if (op == '>') v = (!v) || r;
       else v = v || r;
     }
     return v;
@@ -2322,6 +2323,7 @@ static void bool_norm(const char *src, char *dst, int cap) {
   int j = 0;
   for (int i = 0; src[i] && j + 2 < cap;) {
     if (strncmp(src + i, "nand", 4) == 0) { dst[j++] = '@'; i += 4; continue; }
+    if (strncmp(src + i, "implies", 7) == 0) { dst[j++] = '>'; i += 7; continue; }
     if (strncmp(src + i, "nor", 3) == 0) { dst[j++] = '#'; i += 3; continue; }
     if (strncmp(src + i, "xor", 3) == 0) { dst[j++] = '^'; i += 3; continue; }
     if (strncmp(src + i, "and", 3) == 0) { dst[j++] = '&'; i += 3; continue; }
@@ -3423,9 +3425,37 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       (has(t, "denary") || has(t, "decimal") || strstr(input, "denary") || strstr(input, "decimal")) &&
       (has(t, "before") || strstr(input, "before")) && (has(t, "after") || strstr(input, "after")) && nv >= 3) {
     bool early_tc = has(t, "twos") || (has(t, "two") && has(t, "complement"));
-    sprintf(cmd, (early_tc || has(t, "signed") || has(t, "negative") || v[0] < 0) ?
+    double value = v[0], wi = 0, fb = 0;
+    long long whole = (long long)v[nv-2], frac = (long long)v[nv-1];
+    bool explicit_widths = (scan_before_word_num(t, "before", &wi) ||
+                            scan_before_word_num(t, "whole", &wi) ||
+                            scan_before_word_num(t, "integer", &wi)) &&
+        (scan_before_word_num(t, "after", &fb) ||
+         scan_before_word_num(t, "fractional", &fb) ||
+         scan_before_word_num(t, "fraction", &fb));
+    if (explicit_widths) {
+      whole = (long long)wi; frac = (long long)fb;
+      for (int i = nv - 1; i >= 0; --i) {
+        if (v[i] != wi && v[i] != fb) { value = v[i]; break; }
+      }
+    } else {
+      int vi = -1;
+      for (int i = 0; i < nv; ++i) {
+        if (v[i] < 0 || v[i] != round_nearest(v[i])) { vi = i; break; }
+      }
+      if (vi >= 0) {
+        value = v[vi];
+        long long widths[2]; int nw = 0;
+        for (int i = 0; i < nv && nw < 2; ++i) {
+          if (i == vi) continue;
+          if (v[i] > 0 && v[i] == round_nearest(v[i])) widths[nw++] = (long long)v[i];
+        }
+        if (nw == 2) { whole = widths[0]; frac = widths[1]; }
+      }
+    }
+    sprintf(cmd, (early_tc || has(t, "signed") || has(t, "negative") || value < 0) ?
             "fixedtcenc(%.10g,%lld,%lld)" : "fixedenc(%.10g,%lld,%lld)",
-            v[0], (long long)v[nv-2], (long long)v[nv-1]);
+            value, whole, frac);
     return eval_float(cmd, out);
   }
   if (has(t, "fixed") && has(t, "binary") &&
@@ -4124,6 +4154,17 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     }
   }
   if (has(t, "compress") || has(t, "compression")) {
+    double pct=0, oldsize=0;
+    if ((has(t, "percent") && (has(t, "compress") || has(t, "reduc") || has(t, "smaller"))) &&
+        scan_before_word_num(t, "percent", &pct) &&
+        (scan_before_word_num(t, "mb", &oldsize) || scan_before_word_num(t, "megabytes", &oldsize) ||
+         scan_before_word_num(t, "megabyte", &oldsize) || scan_before_word_num(t, "kib", &oldsize) ||
+         scan_before_word_num(t, "kb", &oldsize) || scan_before_word_num(t, "bytes", &oldsize))) {
+      double comp = oldsize * (1.0 - pct/100.0);
+      int n = add(out, 0, "Compressed by %.10g%% means keep %.10g%% of the original.", pct, 100.0 - pct);
+      n = add(out, n, "compressed size = %.10g*(1-%.10g/100)", oldsize, pct);
+      return add(out, n, "compressed size = %.10g", comp);
+    }
     int un = add_compression_unit_lines(out, t);
     if (un) return un;
     double oldv=0, newv=0;
@@ -4475,17 +4516,37 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   if (has(t, "fixed") && (has(t, "encode") || has(t, "represent") || has(t, "convert")) && nv >= 3) {
     long long whole = (long long)v[1], frac = (long long)v[2];
+    double value = v[0];
     double wi=0, fb=0;
-    bool explicit_widths = (scan_before_word_num(t, "integer", &wi) || scan_before_word_num(t, "whole", &wi)) &&
-        (scan_before_word_num(t, "fractional", &fb) || scan_before_word_num(t, "fraction", &fb));
+    bool explicit_widths = (scan_before_word_num(t, "integer", &wi) || scan_before_word_num(t, "whole", &wi) ||
+                            scan_before_word_num(t, "before", &wi)) &&
+        (scan_before_word_num(t, "fractional", &fb) || scan_before_word_num(t, "fraction", &fb) ||
+         scan_before_word_num(t, "after", &fb));
     if (explicit_widths) {
       whole = (long long)wi; frac = (long long)fb;
+      for (int i = nv - 1; i >= 0; --i) {
+        if (v[i] != wi && v[i] != fb) { value = v[i]; break; }
+      }
+    } else {
+      int vi = -1;
+      for (int i = 0; i < nv; ++i) {
+        if (v[i] < 0 || v[i] != round_nearest(v[i])) { vi = i; break; }
+      }
+      if (vi >= 0) {
+        value = v[vi];
+        long long widths[2]; int nw = 0;
+        for (int i = 0; i < nv && nw < 2; ++i) {
+          if (i == vi) continue;
+          if (v[i] > 0 && v[i] == round_nearest(v[i])) widths[nw++] = (long long)v[i];
+        }
+        if (nw == 2) { whole = widths[0]; frac = widths[1]; }
+      }
     }
     if (!explicit_widths && (has(t, "after") || has(t, "afterthepoint") || has(t, "fractional")) && !has(t, "before") && !has(t, "whole")) {
       whole = (long long)v[1] - (long long)v[2];
       if (whole < 1) whole = 1;
     }
-    sprintf(cmd, (tc || has(t, "signed") || has(t, "negative") || v[0] < 0) ? "fixedtcenc(%.10g,%lld,%lld)" : "fixedenc(%.10g,%lld,%lld)", v[0], whole, frac);
+    sprintf(cmd, (tc || has(t, "signed") || has(t, "negative") || value < 0) ? "fixedtcenc(%.10g,%lld,%lld)" : "fixedenc(%.10g,%lld,%lld)", value, whole, frac);
     return eval_float(cmd, out);
   }
   if (has(t, "fixed") && (has(t, "to,denary") || has(t, "to,decimal") ||

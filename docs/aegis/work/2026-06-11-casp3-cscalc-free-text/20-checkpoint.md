@@ -1,5 +1,34 @@
 # Checkpoint
 
+## 2026-06-12 Boolean Implication, Fixed-Point Widths, Compression Percent, And Variable Acceleration Slice
+
+Completed:
+- Added CSCALC Boolean implication parsing so free-text truth tables for `A implies B` use `A>B`, not the letters in `implies`.
+- Fixed fixed-point free-text encoding where width wording appears before the value, e.g. `5 bits before ... 3 bits after ... -6.375`.
+- Fixed compression percent-reduction prompts so `compressed by 35 percent` gives the compressed size, not a bogus ratio.
+- Added CASP3 variable-acceleration displacement working from `a(t)`, initial velocity, initial displacement, and target time.
+- Added regressions and rebuilt calculator files.
+
+Evidence:
+- Targeted probes for Boolean implication, fixed-point two's-complement encoding, compression by percent, and variable acceleration: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 343324 bytes`
+  - `CSCALC.g3a: 209940 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Stayed inside CASP3/CSCALC free-text working support and generated calculator outputs.
+- Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for further source/probe-driven hardening.
+
 ## 2026-06-12 Exponential Tail, Poisson Test, Motion Split, Histogram, Sound, And CIDR Slice
 
 Completed:

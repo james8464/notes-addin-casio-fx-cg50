@@ -2439,6 +2439,32 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       return eval_mech(cmd, out);
     }
   }
+  if ((has(t, "acceleration") || has(t, "accn") || has(c, "a=")) &&
+      has(t, "velocity") && has(t, "displacement") &&
+      (has(c, "finddisplacement") || has(c, "finds") || has(c, "findposition") || has(t, "at"))) {
+    double A=0, B=0, C=0, u=0, s0=0, time=0;
+    bool parsed_acc = parse_poly_after_word(input, "acceleration", &A, &B, &C);
+    if (!parsed_acc && has(c, "a=")) parsed_acc = parse_velocity_quad(input, &A, &B, &C);
+    bool hu = word_num(input, "velocity", &u) || label_num(input, "v", &u) || label_num(input, "u", &u);
+    bool hs0 = word_num(input, "displacement", &s0) || label_num(input, "s", &s0) || label_num(input, "s0", &s0);
+    bool ht = word_num_with_t(input, "at", &time) || word_num(input, "after", &time) || label_num(input, "t", &time);
+    if (parsed_acc && hu && hs0 && ht) {
+      double vv = A*time*time*time/3.0 + B*time*time/2.0 + C*time + u;
+      double ss = A*time*time*time*time/12.0 + B*time*time*time/6.0 + C*time*time/2.0 + u*time + s0;
+      int n = add(out, 0, "Variable acceleration: integrate a(t) to get v(t), then integrate v(t) to get s(t).");
+      if (near_num(A, 0)) {
+        n = add(out, n, "a = %.6g t %+.6g", B, C);
+        n = add(out, n, "v = (%.6g/2)t^2 + %.6g t + C", B, C);
+      } else {
+        n = add(out, n, "a = %.6g t^2 %+.6g t %+.6g", A, B, C);
+        n = add(out, n, "v = (%.6g/3)t^3 + (%.6g/2)t^2 + %.6g t + C", A, B, C);
+      }
+      n = add(out, n, "v(0)=%.6g gives C = %.6g", u, u);
+      n = add(out, n, "s(0)=%.6g gives C = %.6g", s0, s0);
+      n = add(out, n, "at t=%.6g, v = %.10g", time, vv);
+      return add(out, n, "at t=%.6g, s = %.10g", time, ss);
+    }
+  }
   if (has(t, "variable") && has(t, "acceleration")) {
     double u=0,c0=0,c1=0,c2=0,time=0,x=0,x0=0,s0=0;
     bool hu=label_num(input,"u",&u), h0=label_num(input,"c0",&c0), h1=label_num(input,"c1",&c1), h2=label_num(input,"c2",&c2);
