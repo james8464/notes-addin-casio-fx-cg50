@@ -1,5 +1,26 @@
 # Checkpoint
 
+## 2026-06-12 CASP3 Normal Parameter Slice
+
+Completed:
+- Added a lightweight normal CDF and inverse-normal helper inside `p3_engine.cpp`.
+- Added `normalparams(...)`, `normalparameters(...)`, and `normalmeansd(...)`.
+- Added free-text routing for normal prompts that ask to find mean/standard deviation from two percentile equations.
+- Output shows the two z-equations, substitution into `(x-mu)/sigma`, solving for sigma, then solving for mu.
+- Added direct and free-text regression tests.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CASP3 Edexcel Paper 3 statistics/free-text support.
+- Did not touch CAS Pure behavior, CSCALC behavior, NOTES, or shared UI/status code.
+
 ## 2026-06-12 CSCALC Truth Table Rows Slice
 
 Completed:

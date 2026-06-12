@@ -126,6 +126,8 @@ def main():
     require("invnormal(0.95,100,15)", ["inverse normal", "InvNorm(0.95, 15, 100)"])
     require("normal critical value area 0.95 mean 100 sd 15", ["inverse normal", "InvNorm(0.95, 15, 100)"])
     require("normal critical value area 0.95 mean 100 variance 225", ["Convert variance", "sigma = sqrt(225) = 15", "InvNorm(0.95, 15, 100)"])
+    require("normalparams(40,0.1,70,0.9)", ["Use z=(x-mu)/sigma", "P(X<=40)=0.1", "(40-mu)/sigma", "sigma = (70-40)", "mean = 55"])
+    require("normal find mean and sd P X less than 40 is 0.1 and P X less than 70 is 0.9", ["Use z=(x-mu)/sigma", "P(X<=40)=0.1", "P(X<=70)=0.9", "mean = 55"])
     require("cond(0.18,0.3)", ["P(A|B)", "0.6"])
     require("conditional probability with p intersection 0.18 given p b 0.3", ["P(A|B)", "0.6"])
     require("probor(0.4,0.5,0.2)", ["P(A or B)", "0.7"])

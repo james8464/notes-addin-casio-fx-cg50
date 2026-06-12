@@ -181,6 +181,26 @@ static double expneg(double x) {
   return pwr(sum, m);
 }
 
+static double normal_cdf(double z) {
+  double x = z < 0 ? -z : z;
+  double t = 1 / (1 + 0.2316419 * x);
+  double poly = (((((1.330274429 * t - 1.821255978) * t) + 1.781477937) * t - 0.356563782) * t + 0.319381530) * t;
+  double tail = 0.3989422804014327 * expneg(0.5 * x * x) * poly;
+  double ans = 1 - tail;
+  return z < 0 ? 1 - ans : ans;
+}
+
+static double inv_norm_left(double p) {
+  if (p <= 0) return -8;
+  if (p >= 1) return 8;
+  double lo = -8, hi = 8;
+  for (int i = 0; i < 50; ++i) {
+    double mid = (lo + hi) / 2;
+    if (normal_cdf(mid) < p) lo = mid; else hi = mid;
+  }
+  return (lo + hi) / 2;
+}
+
 static double poissonp(double lam, int r) {
   if (r < 0 || lam < 0) return 0;
   double p = expneg(lam);
@@ -657,6 +677,20 @@ static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     n = add(out, n, "Area to the left = %.6g.", area);
     return add(out, n, "InvNorm(%.6g, %.6g, %.6g)", area, sig, mu);
   }
+  if (starts3(s, "normalparams(", "normalparameters(", "normalmeansd(") && na >= 4) {
+    double x1=num(a[0]), p1=num(a[1]), x2=num(a[2]), p2=num(a[3]);
+    double z1=inv_norm_left(p1), z2=inv_norm_left(p2);
+    int n = add(out, 0, "Let X~N(mu,sigma^2). Use z=(x-mu)/sigma.");
+    n = add(out, n, "P(X<=%.6g)=%.6g -> z1=InvNorm(%.6g)=%.6g", x1, p1, p1, z1);
+    n = add(out, n, "(%.6g-mu)/sigma = %.6g", x1, z1);
+    n = add(out, n, "P(X<=%.6g)=%.6g -> z2=InvNorm(%.6g)=%.6g", x2, p2, p2, z2);
+    n = add(out, n, "(%.6g-mu)/sigma = %.6g", x2, z2);
+    if (z2 == z1) return add(out, n, "Need two different probabilities.");
+    double sig=(x2-x1)/(z2-z1), mu=x1-z1*sig;
+    n = add(out, n, "sigma = (%.6g-%.6g)/(%.6g-%.6g) = %.10g", x2, x1, z2, z1, sig);
+    n = add(out, n, "mu = %.6g - %.6g*sigma = %.10g", x1, z1, mu);
+    return add(out, n, "mean = %.10g, sd = %.10g", mu, sig);
+  }
   if (starts3(s, "hypnormal(", "normaltest(", "hypmean(") && na >= 6) {
     double xb=num(a[0]), mu=num(a[1]), sig=num(a[2]), nn=num(a[3]), alpha=num(a[4]), tail=num(a[5]);
     double se = sig/root(nn), z = (xb-mu)/se;
@@ -1031,6 +1065,12 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     else if (has(c, "atmost") || has(t, "cdf")) tail = -1;
     sprintf(cmd, "poissonapprox(%d,%.10g,%d,%d)", (int)v[0], v[1], (int)v[2], tail); return eval_stats(cmd, out);
   }
+  if (has(t, "normal") && (has(t, "find") || has(t, "given") || has(t, "parameters")) &&
+      (has(t, "meansd") || has(t, "meanandsd") ||
+      (has(t, "mean") && (has(t, "standarddeviation") || has(t, "sd"))) ||
+      has(t, "parameters")) && nv >= 4) {
+    sprintf(cmd, "normalparams(%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3]); return eval_stats(cmd, out);
+  }
   if ((has(t, "normaldistribution") || has(t, "normalcdf") || (has(t, "normal") && has(t, "between"))) && has(t, "variance") && nv >= 4) {
     sprintf(cmd, "normalprobvar(%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3]); return eval_stats(cmd, out);
   }
@@ -1217,5 +1257,5 @@ int p3_eval(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   n = add(out, 0, "Supported:");
   n = add(out, n, "suvat projectile projectileh force weight friction moment incline inclineacc");
   n = add(out, n, "beam ladder connected pulley impulse momentum work power energy workenergyforce restitution vector resolve vectorkin varacc");
-  return add(out, n, "normal normalvar normalprob invnormal binom binomstats binomtail critbinom hypbinom cond probor bayes independent poisson poissonstats poissontail poissonnorm critpoisson hyppoisson regress pmcc spearman meanvar discrete stratified groupmedian histdensity code");
+  return add(out, n, "normal normalvar normalprob invnormal normalparams binom binomstats binomtail critbinom hypbinom cond probor bayes independent poisson poissonstats poissontail poissonnorm critpoisson hyppoisson regress pmcc spearman meanvar discrete stratified groupmedian histdensity code");
 }
