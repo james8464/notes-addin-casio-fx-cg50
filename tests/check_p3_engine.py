@@ -545,6 +545,9 @@ def main():
     require("A bag has 3 red, 4 blue and 5 green counters. Two are selected without replacement. Find the probability they are different colours.", ["different colour is the complement", "same-colour ways = sum C(group size,2) = 19", "P(different colour)=47/66=0.7121212121"])
     require("A box contains 6 red and 4 blue balls. Balls are drawn without replacement until a blue is obtained. Find probability blue is first obtained on the fourth draw.", ["P(non-target on draw 1) = 6/10", "P(target on draw 4) = 4/7", "P(first target on draw 4) = 0.09523809524"])
     require("A projectile is launched from ground at 20m/s and lands 30m away. Find possible angles.", ["Use trajectory equation", "tan(theta) = 2.283084498 or 0.4380039377", "theta = 66.34647451 deg or 23.65352549 deg"])
+    require("For X~Poisson(2.8), find P(X is fewer than 4 or greater than 7).", ["Split the disjoint Poisson tails", "P(X<4 or X>7)=P(X<=3)+P(X>=8)", "= 0.7000681746"])
+    require("A biased coin has probability p of heads. It is tossed 5 times and P(no heads)=0.16807. Find p.", ["P(no heads) = (1-p)^n", "(1-p)^5 = 0.16807", "p = 0.3"])
+    require("A random variable has pdf f(x)=k/(x+2) for 0<x<4. Find k and the median.", ["k = 0.9102392266", "integral from 0 to m", "median = 1.464101615"])
     print("OK p3 engine")
 
 

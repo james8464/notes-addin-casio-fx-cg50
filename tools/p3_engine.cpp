@@ -3333,6 +3333,23 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       sprintf(cmd, "poissonrange(%.10g,%d,%d)", lam, (int)lo, (int)hi);
       return eval_stats(cmd, out);
     }
+    if ((has(c, "fewerthan") || has(c, "lessthan")) && (has(c, "greaterthan") || has(c, "morethan"))) {
+      double lowb = 0, highb = 0;
+      const char *fp = strstr(c, "fewerthan");
+      if (!fp) fp = strstr(c, "lessthan");
+      const char *gp = strstr(c, "greaterthan");
+      if (!gp) gp = strstr(c, "morethan");
+      if (fp) lowb = read_num(fp + (starts(fp, "fewerthan") ? 9 : 8));
+      if (gp) highb = read_num(gp + (starts(gp, "greaterthan") ? 11 : 8));
+      if (lowb > 0 && highb > lowb) {
+        int lhi = (int)lowb - 1, glo = (int)highb + 1;
+        double ans = poissoncdf(lam, lhi) + (1.0 - poissoncdf(lam, glo - 1));
+        int n = add(out, 0, "Split the disjoint Poisson tails and add their probabilities.");
+        n = add(out, n, "Let X ~ Po(%.6g).", lam);
+        n = add(out, n, "P(X<%.0f or X>%.0f)=P(X<=%d)+P(X>=%d)", lowb, highb, lhi, glo);
+        return add(out, n, "= %.10g", ans);
+      }
+    }
     if (tail) sprintf(cmd, "poissontail(%.10g,%d,%d)", lam, x, tail);
     else sprintf(cmd, "poisson(%.10g,%d)", lam, x);
     return eval_stats(cmd, out);
@@ -5666,6 +5683,20 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "h = %.10g", h);
     return add(out, n, "Area = %.10g/2 * %.10g = %.10g", h, sum, area);
   }
+  if ((has(t, "coin") || has(t, "heads") || has(t, "head")) &&
+      (has(c, "p(noheads)=") || has(c, "p(nohead)=")) && has(t, "find") && nv >= 2) {
+    double q = v[nv - 1], trials = 0;
+    for (int i = 0; i < nv - 1; ++i) if (v[i] >= 1 && !near_num(v[i], q)) { trials = v[i]; break; }
+    if (trials > 0 && q > 0 && q < 1) {
+      double fail = exp_approx(ln_approx(q) / trials);
+      double p = 1.0 - fail;
+      int n = add(out, 0, "If p is the probability of heads, then no heads means all tosses are tails.");
+      n = add(out, n, "P(no heads) = (1-p)^n");
+      n = add(out, n, "(1-p)^%.0f = %.10g", trials, q);
+      n = add(out, n, "1-p = %.10g^(1/%.0f) = %.10g", q, trials, fail);
+      return add(out, n, "p = %.10g", p);
+    }
+  }
   if ((has(t, "firsthead") || (has(t, "first") && (has(t, "head") || has(t, "win") || has(t, "success"))) || has(t, "geometric")) &&
       (has(t, "coin") || has(t, "toss") || has(t, "success") || has(t, "win") || has(t, "attempt")) &&
       (has(t, "after") || has(t, "morethan")) && nv >= 2) {
@@ -6703,6 +6734,15 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
                       linear_den_x_antideriv(k, rb, rd, rpow, pdf_lo);
         n = add(out, n, "E(X)=integral from %.6g to %.6g of x*f(x) dx", pdf_lo, pdf_hi);
         return add(out, n, "mean = %.10g", mean);
+      }
+      if (has(t, "median") && rpow == 1 && rb != 0) {
+        double loarg = rb * pdf_lo + rd, hiarg = rb * pdf_hi + rd;
+        if (loarg > 0 && hiarg > 0) {
+          double med = (exp_approx((ln_approx(loarg) + ln_approx(hiarg)) / 2.0) - rd) / rb;
+          n = add(out, n, "For the median m, integral from %.6g to m of f(x) dx = 0.5.", pdf_lo);
+          n = add(out, n, "ln|%.10g*m%+.10g| is halfway between the endpoint log values.", rb, rd);
+          return add(out, n, "median = %.10g", med);
+        }
       }
       return n;
     }

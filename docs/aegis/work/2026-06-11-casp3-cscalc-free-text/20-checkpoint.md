@@ -4501,6 +4501,38 @@ Drift check:
 - Kept changes to CASP3/CSCALC general free-text handling, regressions, generated app outputs, and this checkpoint.
 - Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.
 
+## 2026-06-12 Poisson Union, Inverse Coin, Reciprocal Median, and POS Slice
+
+Completed:
+- Added CASP3 disjoint Poisson tail-union working for prompts like fewer than one bound or greater than another.
+- Added CASP3 inverse no-heads coin/binomial parameter working from `P(no heads)`.
+- Added CASP3 reciprocal-pdf median working for `k/(x+a)` style densities after finding `k`.
+- Fixed CSCALC Boolean product-of-sums tail cleanup so `product of sums` wording is not parsed as variables.
+- Added regression tests and rebuilt calculator files.
+
+Evidence:
+- Fresh probes fixed: Poisson split tails, inverse biased coin probability, reciprocal pdf median, Boolean POS conversion.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 407888 bytes`
+  - `CSCALC.g3a: 231752 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: records=48 bytes=18178`
+  - `CASP3.g3a sha256: 1295ec8896cc35b1fd9ca197f483573d9abac78f93a52165f904a0859d3b628a`
+  - `CSCALC.g3a sha256: ae202d90fe199b056f83deed9d5fdee50bbed3bea050f4cfb946d2925e4caf4f`
+
+Drift check:
+- Kept changes to CASP3/CSCALC general free-text handling, regressions, generated app outputs, and this checkpoint.
+- Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.
+
 ## 2026-06-12 P3 Route Finalisation Slice
 
 Completed:

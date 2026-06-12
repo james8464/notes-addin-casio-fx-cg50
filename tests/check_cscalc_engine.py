@@ -487,6 +487,7 @@ def main():
     require("Use De Morgan to rewrite not(A or B or C).", ["Use De Morgan's law", "NOT(A OR B OR C) = NOT A AND NOT B AND NOT C", "(A+B+C)' = A'.B'.C'"])
     require("An image is 1280 by 720 with 12 bits per pixel. Calculate file size in MiB.", ["1280*720*12 = 11059200 bits", "= 1.31836 MiB"])
     require("A sound file is 5 MiB, mono, 8 bit resolution, sampled at 22.05 kHz. Find duration.", ["5 MiB = 41943040 bits", "duration = 41943040/(22050*8*1)", "= 237.7723356 s"])
+    require("Convert Boolean expression A.B + A.C to product of sums.", ["variables: A,B,C", "simplified POS = (A)&(B+C)"])
     print("OK cscalc engine")
 
 
