@@ -267,6 +267,37 @@ static double poissontailprob(double lam, int r, int tail) {
   return 1 - poissoncdf(lam, lo - 1);
 }
 
+static int prob_tail(const char *c, const char *t) {
+  if (has(c, "p(x<=") || has(c, "p(x=<") || has(c, "x<=") ||
+      has(c, "lessthanorequal") || has(c, "atmost")) return -1;
+  if (has(c, "p(x<") || has(c, "x<") || has(c, "lessthan") || has(t, "fewer")) return -2;
+  if (has(c, "p(x>=") || has(c, "p(x=>") || has(c, "x>=") ||
+      has(c, "greaterthanorequal") || has(c, "atleast")) return 1;
+  if (has(c, "p(x>") || has(c, "x>") || has(c, "greaterthan") || has(c, "morethan")) return 2;
+  return 0;
+}
+
+static bool dist1(const char *c, const char *name, double *a) {
+  const char *p = strstr(c, name);
+  if (!p) return false;
+  p = strchr(p, '(');
+  if (!p) return false;
+  *a = read_num(p + 1);
+  return true;
+}
+
+static bool dist2(const char *c, const char *name, double *a, double *b) {
+  const char *p = strstr(c, name);
+  if (!p) return false;
+  p = strchr(p, '(');
+  if (!p) return false;
+  const char *q = strchr(p, ',');
+  if (!q) return false;
+  *a = read_num(p + 1);
+  *b = read_num(q + 1);
+  return true;
+}
+
 static void add_term(char *buf, int cap, const char *fmt, double x, double p, bool first) {
   int len = (int)strlen(buf);
   if (len >= cap - 32) return;
@@ -1183,16 +1214,64 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     return add(out, n, "s = %.6g*t^3 %+.6g*t^2 %+.6g*t %+.6g", k/6.0, 0.5*c0, u, s0);
   }
   if ((has(c, "followsb(") || has(c, "~b(") || has(c, "xb(")) && nv >= 2) {
-    int N = (int)v[0];
-    double pv = v[1];
-    int x = nv >= 3 ? (int)v[2] : (has(c, "one") ? 1 : 0);
-    int tail = 0;
+    double Nd=0, pv=0;
+    if (!dist2(c, "b(", &Nd, &pv)) { Nd = v[0]; pv = v[1]; }
+    int N = (int)Nd;
+    int tail = prob_tail(c, t);
+    int x = has(c, "one") ? 1 : 0;
+    bool hx = false;
+    for (int i = 0; i < nv; ++i) {
+      if (near_num(v[i], Nd) || near_num(v[i], pv)) continue;
+      if ((has(t, "critical") || has(t, "significance")) && v[i] > 0 && v[i] <= 10) continue;
+      x = (int)v[i]; hx = true; break;
+    }
+    if (!hx && nv >= 3) x = (int)v[2];
     if (has(c, "morethan")) tail = 2;
     else if (has(c, "atleast") || has(c, "greaterthanorequal")) tail = 1;
     else if (has(c, "lessthanorequal") || has(c, "atmost")) tail = -1;
     else if (has(c, "lessthan") || has(t, "fewer")) tail = -2;
+    if ((has(t, "critical") || has(t, "criticalregion") || has(t, "significance")) && nv >= 3) {
+      double alpha = v[2] > 1 ? v[2] / 100.0 : v[2];
+      double ctail = (tail > 0 || has(t, "upper") || has(c, "righttail")) ? 1 : -1;
+      sprintf(cmd, "critbinom(%d,%.10g,%.10g,%.0f)", N, pv, alpha, ctail);
+      return eval_stats(cmd, out);
+    }
     if (tail) sprintf(cmd, "binomtail(%d,%.10g,%d,%d)", N, pv, x, tail);
     else sprintf(cmd, "binom(%d,%.10g,%d)", N, pv, x);
+    return eval_stats(cmd, out);
+  }
+  if ((has(c, "~n(") || has(c, "followsn(") || has(c, "xn(")) && nv >= 3) {
+    double mu=0, second=0;
+    if (!dist2(c, "n(", &mu, &second)) { mu = v[0]; second = v[1]; }
+    double var = has(c, "^2") ? second * second : second;
+    int tail = prob_tail(c, t);
+    double u[3]; int nu = 0;
+    for (int i = 0; i < nv && nu < 3; ++i) {
+      if (near_num(v[i], mu) || near_num(v[i], second) || near_num(v[i], var)) continue;
+      if (has(c, "^2") && near_num(v[i], 2)) continue;
+      u[nu++] = v[i];
+    }
+    if ((has(c, "p(") && has(c, "<x<")) || (nu >= 2 && (has(c, "between") || has(c, "<x<")))) {
+      if (nu < 2) return 0;
+      double lo = u[0], hi = u[1];
+      if (lo > hi) { double tmp = lo; lo = hi; hi = tmp; }
+      sprintf(cmd, "normalprobvar(%.10g,%.10g,%.10g,%.10g)", lo, hi, mu, var);
+      return eval_stats(cmd, out);
+    }
+    if (tail && nu >= 1) {
+      sprintf(cmd, "normaltailvar(%.10g,%.10g,%.10g,%d)", u[0], mu, var, tail > 0 ? 1 : -1);
+      return eval_stats(cmd, out);
+    }
+  }
+  if ((has(c, "~po(") || has(c, "~poisson(") || has(c, "followspo(") || has(c, "followspoisson(") ||
+       has(c, "xpo(") || has(c, "xpoisson(")) && nv >= 2) {
+    double lam = 0;
+    if (!dist1(c, "po(", &lam) && !dist1(c, "poisson(", &lam)) lam = v[0];
+    int x = 0;
+    for (int i = 0; i < nv; ++i) if (!near_num(v[i], lam)) { x = (int)v[i]; break; }
+    int tail = prob_tail(c, t);
+    if (tail) sprintf(cmd, "poissontail(%.10g,%d,%d)", lam, x, tail);
+    else sprintf(cmd, "poisson(%.10g,%d)", lam, x);
     return eval_stats(cmd, out);
   }
   if (!has(t, "variable") && (has(t, "suvat") || has(t, "velocity") || has(t, "acceleration") || has(t, "accelerates") || has(t, "accelerated") || has(t, "distance") || has(t, "displacement") || has(t, "time"))) {
@@ -1544,7 +1623,9 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     bool hXb=label_num(input,"xbar",&xb) || label_num(input,"samplemean",&xb);
     bool hMu=label_num(input,"mu",&mu) || label_num(input,"mean",&mu) || word_num(input,"mu",&mu) || word_num(input,"mean",&mu);
     bool hSig=label_num(input,"sigma",&sig) || label_num(input,"sd",&sig) || label_num(input,"standarddeviation",&sig) || word_num(input,"sigma",&sig) || word_num(input,"sd",&sig) || word_num(input,"standarddeviation",&sig);
-    bool hVar=label_num(input,"variance",&var) || label_num(input,"var",&var) || word_num(input,"variance",&var) || word_num(input,"var",&var);
+    bool hVar=label_num(input,"variance",&var) || label_num(input,"var",&var) ||
+              word_num(input,"variance",&var) || word_num(input,"var",&var) ||
+              word_num(input,"standarddeviationsquared",&var) || word_num(input,"sigmasquared",&var);
     bool hN=label_num(input,"n",&n0), hA=label_num(input,"alpha",&alpha) || label_num(input,"significance",&alpha);
     bool hLo=label_num(input,"lower",&lo) || label_num(input,"lo",&lo);
     bool hHi=label_num(input,"upper",&hi) || label_num(input,"hi",&hi);

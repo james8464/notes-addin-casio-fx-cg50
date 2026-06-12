@@ -2766,6 +2766,26 @@ static void bool_arg_for_cmd(const char *src, char *dst, int cap) {
   dst[p] = 0;
 }
 
+static void truthbits_cmd_from_text(const char *t, const char *bits, char *cmd, int cap) {
+  char vars[8] = ""; int vc = 0;
+  const char *p = strstr(t, "variables");
+  if (!p) p = strstr(t, "vars");
+  if (p) {
+    while (*p && *p != ',') ++p;
+    while (*p && vc < 6) {
+      while (*p == ',') ++p;
+      if (isalpha((unsigned char)*p) && (p[1] == 0 || p[1] == ',')) {
+        char c = (char)toupper((unsigned char)*p);
+        if (!strchr(vars, c)) { vars[vc++] = c; vars[vc] = 0; }
+      }
+      while (*p && *p != ',') ++p;
+    }
+  }
+  int outp = sprintf(cmd, "truthbits(");
+  for (int i = 0; i < vc && outp < cap - 8; ++i) outp += sprintf(cmd + outp, "%c,", vars[i]);
+  sprintf(cmd + outp, "%s)", bits);
+}
+
 static bool make_gate_form_cmd(const char *input, bool nand, char *cmd, int cap) {
   char expr[96] = ""; int p = 0;
   for (int i = 0; input[i] && p + 1 < (int)sizeof(expr);) {
@@ -2901,7 +2921,8 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if ((has(t, "image") || has(t, "bitmap")) && label_num(input,"width",&width) && label_num(input,"height",&height) && (label_num(input,"colours",&depth) || label_num(input,"colors",&depth))) {
     sprintf(cmd, "imagecolors(%lld,%lld,%lld)", (long long)width, (long long)height, (long long)depth); return eval_storage(cmd, out);
   }
-  if ((has(t, "symbol") || has(t, "symbols")) && (has(t, "bits") || has(t, "bit")) && (has(t, "needed") || has(t, "need") || has(t, "represent")) && nv >= 1) {
+  if ((has(t, "symbol") || has(t, "symbols")) && (has(t, "bits") || has(t, "bit")) &&
+      (has(t, "needed") || has(t, "need") || has(t, "represent") || has(t, "howmany") || has(t, "how,many")) && nv >= 1) {
     sprintf(cmd, "symbolbits(%lld)", (long long)v[0]); return eval_storage(cmd, out);
   }
   if ((has(t, "colour") || has(t, "color")) &&
@@ -3021,6 +3042,15 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   if (has(t, "bcd") && nv >= 1) {
     sprintf(cmd, "bcd(%lld)", (long long)v[0]); return eval_base(cmd, out);
+  }
+  if (has(t, "base") && has(t, "to") && has(t, "16") && has(t, "10") && has_hex_tok && has(t, "to,base,10")) {
+    sprintf(cmd, "den(%s,16)", hex_tok); return eval_base(cmd, out);
+  }
+  if (has(t, "base") && has(t, "to") && has(t, "base,10,to,base,16") && nv >= 1) {
+    sprintf(cmd, "convert(%lld,10,16)", (long long)v[0]); return eval_base(cmd, out);
+  }
+  if (has(t, "base") && has(t, "to") && has(t, "base,10,to,base,2") && nv >= 1) {
+    sprintf(cmd, "convert(%lld,10,2)", (long long)v[0]); return eval_base(cmd, out);
   }
   if ((has(t, "hex") || has(t, "hexadecimal")) && has_hex_tok && has(t, "binary")) {
     sprintf(cmd, "convert(%s,16,2)", hex_tok); return eval_base(cmd, out);
@@ -3167,6 +3197,10 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if (has(t, "fixed") && scan_fixed_bits(t, fixed, sizeof(fixed))) {
     sprintf(cmd, (tc || has(t, "complement")) ? "fixedtc(%s)" : "fixed(%s)", fixed); return eval_float(cmd, out);
   }
+  if ((has(t, "float") || has(t, "floating") || has(t, "real")) &&
+      (has(t, "decode") || has(t, "denary") || has(t, "decimal") || has(t, "number")) && nb >= 2) {
+    sprintf(cmd, "floatdec(%s,%s)", bits[0], bits[1]); return eval_float(cmd, out);
+  }
   if ((has(t, "normalise") || has(t, "normalize")) && nb >= 2) {
     sprintf(cmd, "floatnorm(%s,%s)", bits[0], bits[1]); return eval_float(cmd, out);
   }
@@ -3287,11 +3321,11 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   if (has_bitcol && (has(t, "truth") || has(t, "output")) &&
       (has(t, "column") || has(t, "outputs") || has(t, "bits") || has(t, "table"))) {
-    sprintf(cmd, "truthbits(%s)", bitcol); return eval_truthbits(cmd, out);
+    truthbits_cmd_from_text(t, bitcol, cmd, sizeof(cmd)); return eval_truthbits(cmd, out);
   }
   if (nb >= 1 && (has(t, "truth") || has(t, "output") || has(t, "column")) &&
       (has(t, "bits") || has(t, "column") || has(t, "derive") || has(t, "expression"))) {
-    sprintf(cmd, "truthbits(%s)", bits[0]); return eval_truthbits(cmd, out);
+    truthbits_cmd_from_text(t, bits[0], cmd, sizeof(cmd)); return eval_truthbits(cmd, out);
   }
   if ((has(t, "kmap") || has(t, "karnaugh") || has(t, "minterm") || has(t, "minterms") ||
        has(t, "dontcare") || has(t, "don'tcare") || has(t, "dc")) && make_minterm_cmd(input, cmd, sizeof(cmd))) {

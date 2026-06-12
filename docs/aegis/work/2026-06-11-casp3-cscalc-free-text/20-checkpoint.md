@@ -1,5 +1,29 @@
 # Checkpoint
 
+## 2026-06-12 Distribution Notation And CS Wording Slice
+
+Completed:
+- Added CASP3 notation parsing for `X~N(...)`, `X~B(...)`, and `X~Po(...)` independent of number order.
+- Added symbolic probability tail parsing such as `P(X<=r)`, `P(X>=r)`, and interval `P(a<X<b)`.
+- Added CASP3 handling for `standard deviation squared` / `sigma squared` as variance.
+- Added CSCALC base-N wording like `base 10 to base 16` and `base 16 to base 10`.
+- Added CSCALC symbol-bit wording for `how many bits for ... symbols`.
+- Added CSCALC floating-point decode wording when mantissa/exponent bit strings are given without labels.
+- Preserved truth-table variable names from prose such as `variables X Y`.
+- Added regression tests and rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CASP3/CSCALC free-text routing and working-quality support.
+- Did not touch CAS Pure behavior, NOTES, menus, or shared UI/status code.
+
 ## 2026-06-12 CSCALC Boolean Output And CASP3 Stats Intent Slice
 
 Completed:
