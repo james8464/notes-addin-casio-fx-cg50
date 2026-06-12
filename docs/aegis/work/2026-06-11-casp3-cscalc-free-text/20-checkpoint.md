@@ -2636,6 +2636,34 @@ Drift check:
 - Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
 - Active goal remains open for future source/probe-driven hardening.
 
+## 2026-06-12 Correlation, Hash, Infix Extraction Slice
+
+Completed:
+- Fixed CASP3 correlation-test free-text extraction so sample size/significance are ignored and `r`/critical value are selected correctly.
+- Fixed CSCALC hash free-text routing so `table size` is used as modulus and excluded from keys.
+- Fixed CSCALC infix-to-postfix extraction so leading prose like `the` is not included in the expression.
+- Added regression tests and rebuilt calculator files.
+
+Evidence:
+- Fresh probes passed for PMCC positive-tail test, modulo hash with linear probing, and infix-to-RPN conversion.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 183848 bytes`
+  - `CSCALC.g3a: 161116 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Still inside CASP3/CSCALC free-text parser hardening and generated calculator outputs.
+- Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for future source/probe-driven hardening.
+
 ## 2026-06-12 Impulse, Work-Energy, Poisson Rate, Storage Wording Slice
 
 Completed:

@@ -271,6 +271,7 @@ def main():
     require("spearman rank correlation n=8 sumd2=12", ["Spearman", "r_s = 0.857142"])
     require("corrtest(0.65,0.549,0)", ["H0: rho = 0", "Compare |r|", "Reject H0", "evidence of correlation"])
     require("correlation hypothesis test r=0.65 critical=0.549", ["H0: rho = 0", "Compare |r|", "Reject H0"])
+    require("The product moment correlation coefficient for a sample of 12 is r=0.62. The critical value at 5 percent is 0.497. Test whether there is positive correlation.", ["H1: rho > 0", "critical value 0.497", "Reject H0"])
     require("spearman rank correlation test r=-0.72 critical value 0.648 negative", ["H1: rho < 0", "negative tail", "Reject H0"])
     require("meanvar(5,20,90)", ["mean = Sx/n", "variance"])
     require("mean variance n 5 sx 20 sx2 90", ["mean = Sx/n", "variance"])

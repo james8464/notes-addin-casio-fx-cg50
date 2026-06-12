@@ -450,7 +450,7 @@ static int add_infix_postfix_lines(const char *input, char out[CSCALC_MAX_LINES]
                      word_is(w, "notation") || word_is(w, "postfix"))) break;
         if (word_is(w, "convert") || word_is(w, "infix") || word_is(w, "expression") ||
             word_is(w, "reverse") || word_is(w, "polish") || word_is(w, "notation") ||
-            word_is(w, "to") || word_is(w, "postfix")) { i = k - 1; continue; }
+            word_is(w, "to") || word_is(w, "postfix") || word_is(w, "the")) { i = k - 1; continue; }
       }
       seen = true;
       expr[ep++] = (char)c;
@@ -3641,9 +3641,15 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     sprintf(cmd, "addressspace(%lld)", (long long)v[0]); return eval_storage(cmd, out);
   }
   if ((has(t, "hash") || has(t, "hashtable")) && nv >= 2) {
-    int p = sprintf(cmd, "hashmod(%lld", (long long)v[0]);
-    if (has(t, "linear") || has(t, "probe") || has(t, "probing")) p = sprintf(cmd, "hashlinear(%lld", (long long)v[0]);
-    for (int i = 1; i < nv && p < (int)sizeof(cmd) - 24; ++i) p += sprintf(cmd + p, ",%lld", (long long)v[i]);
+    double size = v[0];
+    bool hs = label_num(input, "size", &size) || scan_after_word_num(t, "size", &size);
+    int p = sprintf(cmd, "hashmod(%lld", (long long)size);
+    if (has(t, "linear") || has(t, "probe") || has(t, "probing")) p = sprintf(cmd, "hashlinear(%lld", (long long)size);
+    for (int i = 0; i < nv && p < (int)sizeof(cmd) - 24; ++i) {
+      if (hs && (long long)v[i] == (long long)size) continue;
+      if (!hs && i == 0) continue;
+      p += sprintf(cmd + p, ",%lld", (long long)v[i]);
+    }
     sprintf(cmd + p, ")");
     return eval_storage(cmd, out);
   }

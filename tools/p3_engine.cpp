@@ -2486,6 +2486,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if ((has(t, "pmcc") || has(t, "correlation") || has(t, "spearman")) &&
       (has(t, "critical") || has(t, "cv")) && (has(t, "test") || has(t, "hypothesis") || has(t, "significant")) && nv >= 2) {
     double r=0, crit=0; bool hr=label_num(input,"r",&r), hc=label_num(input,"critical",&crit) || label_num(input,"cv",&crit);
+    if (!hr) for (int i = 0; i < nv; ++i) if (v[i] >= -1 && v[i] <= 1) { r = v[i]; hr = true; break; }
+    if (!hc) for (int i = nv - 1; i >= 0; --i) if (v[i] > 0 && v[i] <= 1 && (!hr || !near_num(v[i], r))) { crit = v[i]; hc = true; break; }
     int tail = has(t, "positive") || has(t, "upper") ? 1 : (has(t, "negative") || has(t, "lower") ? -1 : 0);
     sprintf(cmd, "corrtest(%.10g,%.10g,%d)", hr ? r : v[0], hc ? crit : v[1], tail); return eval_stats(cmd, out);
   }
