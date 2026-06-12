@@ -1236,6 +1236,15 @@ static int eval_storage(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LE
     n = add(out, n, "ratio = %.10g : 1", oldv / newv);
     return add(out, n, "saving = %.6g%%", (oldv - newv) * 100.0 / oldv);
   }
+  if (starts3(s, "dictcompress(", "dictionary(", "lzdict(") && na >= 4) {
+    double orig = num(a[0]), dict = num(a[1]), refs = num(a[2]), rb = num(a[3]);
+    double enc = dict + refs * rb;
+    int n = add(out, 0, "Dictionary compression size = dictionary bits + reference bits.");
+    n = add(out, n, "reference bits = %s*%s = %.10g", a[2], a[3], refs * rb);
+    n = add(out, n, "compressed bits = %s + %.10g = %.10g", a[1], refs * rb, enc);
+    n = add(out, n, "ratio = %.10g : 1", orig / enc);
+    return add(out, n, "saving = %.6g%%", (orig - enc) * 100.0 / orig);
+  }
   if (starts3(s, "rle(", "runlength(", "runlengthencoding(") && na >= 3) {
     long long bits = parse_int(a[0]) * (parse_int(a[1]) + parse_int(a[2]));
     int n = add(out, 0, "Run-length bits = runs * (symbol bits + count bits).");
@@ -2496,6 +2505,9 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     }
     sprintf(cmd, "transfer(%.10g,%.10g)", v[0], v[1]); return eval_storage(cmd, out);
   }
+  if ((has(t, "dictionary") || has(t, "dict") || has(t, "lz")) && (has(t, "compress") || has(t, "compression")) && nv >= 4) {
+    sprintf(cmd, "dictcompress(%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3]); return eval_storage(cmd, out);
+  }
   if ((has(t, "compress") || has(t, "compression")) && nv >= 2) {
     sprintf(cmd, "compress(%.10g,%.10g)", v[0], v[1]); return eval_storage(cmd, out);
   }
@@ -2602,5 +2614,5 @@ int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
   n = add(out, 0, "Supported:");
   n = add(out, n, "bin hex den convert twos twosdec twosadd twossub signmag signmagdec fixed fixedenc parity repeatenc repeatdec shift arithshift xorbits andbits orbits notbits hamming checksum checkdigit rpn");
   n = add(out, n, "floatdec floatadd floatsub floatmul floatdiv floatrange normal image sound bitrate transfer transfermb");
-  return add(out, n, "compress huffman rle records sqlselect sqlcount hashmod hashlinear addressspace chars ascii unicode stack queue preorder inorder postorder dijkstra fsm fsmout binarysearch bubblesort selectionsort mergesort bool truth minterms maxterms kmap kmapdc nandform norform");
+  return add(out, n, "compress dictcompress huffman rle records sqlselect sqlcount hashmod hashlinear addressspace chars ascii unicode stack queue preorder inorder postorder dijkstra fsm fsmout binarysearch bubblesort selectionsort mergesort bool truth minterms maxterms kmap kmapdc nandform norform");
 }

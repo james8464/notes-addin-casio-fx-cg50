@@ -1,5 +1,25 @@
 # Checkpoint
 
+## 2026-06-12 CSCALC Dictionary Compression Slice
+
+Completed:
+- Added `dictcompress(...)`, `dictionary(...)`, and `lzdict(...)`.
+- Added free-text routing for dictionary/LZ-style compression prompts.
+- Output shows dictionary bits, reference-token bits, compressed size, compression ratio, and percentage saving.
+- Added direct and free-text regression tests.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CSCALC AQA Paper 2 calculation support.
+- Did not touch CAS Pure behavior, CASP3 behavior, NOTES, or shared UI/status code.
+
 ## 2026-06-12 CASP3 Projectile Target Angle Slice
 
 Completed:

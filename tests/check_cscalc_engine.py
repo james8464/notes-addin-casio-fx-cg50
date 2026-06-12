@@ -143,6 +143,8 @@ def main():
     require("transfermb(10,2)", ["10 MB = 80 Mbit", "time = 80/2 = 40 s"])
     require("download time for 10 megabytes at 2 megabits per second", ["Convert megabytes", "10 MB = 80 Mbit", "40 s"])
     require("compress(1200,300)", ["ratio = 4", "saving = 75"])
+    require("dictcompress(1200,200,50,8)", ["Dictionary compression size", "reference bits = 50*8 = 400", "compressed bits = 200 + 400 = 600", "saving = 50"])
+    require("dictionary compression original 1200 dictionary 200 references 50 reference bits 8", ["Dictionary compression size", "compressed bits = 200 + 400 = 600"])
     require("huffman(a45,b13,c12,d16,e9,f5)", ["combine two smallest", "F(5)+E(9)=14", "code lengths", "encoded bits = sum(freq*length) = 224", "fixed length = 100*3 = 300 bits"])
     require("huffman frequencies 45 13 12 16 9 5", ["combine two smallest", "encoded bits = sum(freq*length) = 224"])
     require("rle(12,8,4)", ["Run-length bits", "144 bits"])
