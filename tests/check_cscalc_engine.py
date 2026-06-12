@@ -41,6 +41,7 @@ def main():
     require("bitsneeded(150,unsigned)", ["minimum unsigned binary width", "Need 0 <= 150 <= 2^n-1", "8 bits are needed"])
     require("minimum bits needed to represent denary 150 unsigned binary", ["minimum unsigned binary width", "range 0 to 255", "8 bits are needed"])
     require("twos(-5,8)", ["8-bit", "11111011"])
+    require("convert denary -13 to 8 bit two complement binary", ["8-bit two's complement", "-13 -> 11110011"])
     require("twosdec(11111011)", ["subtract 2^8", "-5"])
     require("bitsneeded(-45,twos)", ["minimum two's-complement width", "-2^(n-1) <= -45", "7 bits are needed"])
     require("minimum bits needed to represent -45 in two's complement", ["minimum two's-complement width", "range -64 to 63", "7 bits are needed"])

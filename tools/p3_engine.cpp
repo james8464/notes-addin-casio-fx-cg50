@@ -1347,6 +1347,23 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     sprintf(cmd, "hypbinom(%d,0.5,%d,%.10g,%.0f)", (int)v[0], (int)v[1], alpha, tail);
     return eval_stats(cmd, out);
   }
+  if ((has(t, "coin") || has(t, "heads") || has(t, "tails") || has(t, "tosses") || has(t, "tossed")) &&
+      (has(t, "probability") || has(t, "prob") || has(t, "chance")) && nv >= 3) {
+    double pv = -1, N = -1, x = -1;
+    for (int i = 0; i < nv; ++i) if (v[i] > 0 && v[i] < 1 && pv < 0) pv = v[i];
+    for (int i = 0; i < nv; ++i) if (!near_num(v[i], pv) && v[i] > N) N = v[i];
+    for (int i = 0; i < nv; ++i) if (!near_num(v[i], pv) && !near_num(v[i], N)) { x = v[i]; break; }
+    if (pv > 0 && N >= 1 && x >= 0) {
+      int tail = 0;
+      if (has(c, "morethan")) tail = 2;
+      else if (has(c, "atleast") || has(c, "greaterthanorequal")) tail = 1;
+      else if (has(c, "lessthan")) tail = -2;
+      else if (has(c, "atmost")) tail = -1;
+      if (tail) sprintf(cmd, "binomtail(%d,%.10g,%d,%d)", (int)N, pv, (int)x, tail);
+      else sprintf(cmd, "binom(%d,%.10g,%d)", (int)N, pv, (int)x);
+      return eval_stats(cmd, out);
+    }
+  }
   if (has(t, "binom")) {
     double N=0,pv=0,x=0,alpha=0,lo=0,hi=0;
     bool hN=label_num(input,"n",&N), hP=label_num(input,"p",&pv) || label_num(input,"probability",&pv);
@@ -1398,6 +1415,18 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     bool hArea=label_num(input,"area",&area) || label_num(input,"probability",&area) || label_num(input,"p",&area);
     double tail = (has(t, "twotailed") || has(t, "twosided") || (has(t, "two") && (has(t, "tailed") || has(t, "sided"))) || has(t, "different") || has(t, "notequal")) ? 0 :
                   (has(t, "upper") || has(t, "greater") || has(t, "more") ? 1 : -1);
+    if (hMu && (hSig || hVar) && nv >= 2 && (has(t, "between") || has(c, "lessthan"))) {
+      double u[4]; int nu = 0;
+      for (int i = 0; i < nv && nu < 4; ++i) {
+        if (near_num(v[i], mu) || (hSig && near_num(v[i], sig)) || (hVar && near_num(v[i], var))) continue;
+        u[nu++] = v[i];
+      }
+      if (nu >= 2) {
+        double lo2 = u[0] < u[1] ? u[0] : u[1], hi2 = u[0] < u[1] ? u[1] : u[0];
+        sprintf(cmd, hSig ? "normalprob(%.10g,%.10g,%.10g,%.10g)" : "normalprobvar(%.10g,%.10g,%.10g,%.10g)", lo2, hi2, mu, hSig ? sig : var);
+        return eval_stats(cmd, out);
+      }
+    }
     if (!hX && hMu && (hSig || hVar) && nv >= 1 &&
         (has(c, "morethan") || has(c, "greaterthan") || has(c, "atleast") || has(c, "lessthan") || has(c, "atmost"))) {
       for (int i = 0; i < nv; ++i) {

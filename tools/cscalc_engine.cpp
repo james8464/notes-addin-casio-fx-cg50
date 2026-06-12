@@ -2736,10 +2736,12 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       (label_num(input,"characterset",&height) || label_num(input,"symbols",&height) || label_num(input,"alphabet",&height))) {
     sprintf(cmd, "charset(%lld,%lld)", (long long)width, (long long)height); return eval_storage(cmd, out);
   }
+  bool tc = has(t, "twos") || (has(t, "two") && has(t, "complement"));
+  bool sm = has(t, "signmagnitude") || (has(t, "sign") && has(t, "magnitude"));
   if ((has(t, "denary") || has(t, "decimal")) && nb >= 1) {
     sprintf(cmd, "den(%s,2)", bits[0]); return eval_base(cmd, out);
   }
-  if (has(t, "binary") && !has(t, "fixed") && nv >= 1 && nb == 0 &&
+  if (has(t, "binary") && !has(t, "fixed") && !tc && !sm && nv >= 1 && nb == 0 &&
       !(has(t, "bitsneeded") || has(t, "bitwidth") || (has(t, "minimum") && has(t, "bits")) ||
         (has(t, "fewest") && has(t, "bits")) || (has(t, "smallest") && has(t, "bits")))) {
     sprintf(cmd, "bin(%lld)", (long long)v[0]); return eval_base(cmd, out);
@@ -2747,8 +2749,6 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if ((has(t, "hex") || has(t, "hexadecimal")) && nv >= 1) {
     sprintf(cmd, "hex(%lld)", (long long)v[0]); return eval_base(cmd, out);
   }
-  bool tc = has(t, "twos") || (has(t, "two") && has(t, "complement"));
-  bool sm = has(t, "signmagnitude") || (has(t, "sign") && has(t, "magnitude"));
   if (has(t, "unsigned") && has(t, "range") && nv >= 1) {
     sprintf(cmd, "unsignedrange(%lld)", (long long)v[0]); return eval_twos(cmd, out);
   }

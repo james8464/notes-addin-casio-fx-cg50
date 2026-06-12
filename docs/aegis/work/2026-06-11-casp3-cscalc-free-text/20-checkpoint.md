@@ -1,5 +1,24 @@
 # Checkpoint
 
+## 2026-06-12 CASP3/CSCALC Exam Phrase Routing Slice
+
+Completed:
+- Fixed CASP3 normal probability phrasing like `70 less than X less than 95` so it routes to two-bound `normalprob` working.
+- Added CASP3 biased-coin probability inference without requiring the word `binomial`.
+- Fixed CSCALC two's-complement encode prompts containing `binary` so they are not stolen by plain binary conversion.
+- Added regression tests and rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CASP3/CSCALC free-text working support.
+- Did not touch CAS Pure behavior, NOTES, or shared UI/status code.
+
 ## 2026-06-12 CASP3 Free-Text Routing Slice
 
 Completed:
