@@ -3807,6 +3807,18 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if ((has(t, "image") || has(t, "bitmap")) && image_depth_is_bytes(t) && nv >= 3) {
     return add_image_byte_depth_lines(out, (long long)v[0], (long long)v[1], (long long)v[2]);
   }
+  if ((has(t, "image") || has(t, "bitmap")) && (has(t, "metadata") || has(t, "header") || has(t, "overhead")) && nv >= 4) {
+    double bits_total = v[0] * v[1] * v[2];
+    double image_bytes = bits_total / 8.0;
+    double extra = v[3];
+    double total = image_bytes + extra;
+    int n = add(out, 0, "Image file size = pixel data + metadata/header.");
+    n = add(out, n, "pixel bits = %.10g*%.10g*%.10g = %.10g bits", v[0], v[1], v[2], bits_total);
+    n = add(out, n, "pixel bytes = %.10g/8 = %.10g", bits_total, image_bytes);
+    n = add(out, n, "metadata/header = %.10g bytes", extra);
+    n = add(out, n, "total bytes = %.10g + %.10g = %.10g", image_bytes, extra, total);
+    return add(out, n, "= %.10g KiB", total / 1024.0);
+  }
   if ((has(t, "image") || has(t, "bitmap")) && (has(t, "colours") || has(t, "colors")) && nv >= 3) {
     double colours=0; bool hc = label_num(input, "colours", &colours) || label_num(input, "colors", &colours) ||
                                 scan_scaled_before_word_num(t, "colours", &colours) || scan_scaled_before_word_num(t, "colors", &colours);
@@ -4075,8 +4087,21 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
               scan_before_word_num(t, "records", &recs) || scan_before_word_num(t, "rows", &recs);
     if (hr) {
       double bytes_per_record = 0;
-      for (int i = 0; i < nv; ++i) if ((long long)v[i] != (long long)recs) bytes_per_record += v[i];
+      double fcount = 0, fsize = 0;
+      const char *fp = strstr(t, "fields,of,");
+      bool counted_fields = scan_before_word_num(t, "fields", &fcount) && fp;
+      if (counted_fields) fsize = read_num(fp + 10);
+      if (counted_fields && fcount > 1 && fsize > 0) {
+        bytes_per_record = fcount * fsize;
+        for (int i = 0; i < nv; ++i) {
+          if ((long long)v[i] == (long long)recs || (long long)v[i] == (long long)fcount || (long long)v[i] == (long long)fsize) continue;
+          bytes_per_record += v[i];
+        }
+      } else {
+        for (int i = 0; i < nv; ++i) if ((long long)v[i] != (long long)recs) bytes_per_record += v[i];
+      }
       int n = add(out, 0, "Record size = sum of field sizes.");
+      if (counted_fields && fcount > 1 && fsize > 0) n = add(out, n, "%.10g fields of %.10g bytes = %.10g bytes", fcount, fsize, fcount * fsize);
       n = add(out, n, "bytes per record = %.10g", bytes_per_record);
       n = add(out, n, "file size = records * bytes per record");
       return add(out, n, "%.10g*%.10g = %.10g bytes", recs, bytes_per_record, recs * bytes_per_record);

@@ -2866,6 +2866,14 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       sprintf(cmd, "hypbinom(%d,%.10g,%d,%.10g,%.0f)", N, pv, x, alpha, htail);
       return eval_stats(cmd, out);
     }
+    if (hx && (has(c, "notequal") || has(c, "not=") || has(c, "!="))) {
+      double px = binomp(N, pv, x), ans = 1 - px;
+      int n = add(out, 0, "Use the complement for not equal.");
+      n = add(out, n, "Let X ~ B(%d, %.6g).", N, pv);
+      n = add(out, n, "P(X!=%d)=1-P(X=%d)", x, x);
+      n = add(out, n, "P(X=%d) = %.10g", x, px);
+      return add(out, n, "P(X!=%d) = %.10g", x, ans);
+    }
     if (tail) sprintf(cmd, "binomtail(%d,%.10g,%d,%d)", N, pv, x, tail);
     else sprintf(cmd, "binom(%d,%.10g,%d)", N, pv, x);
     return eval_stats(cmd, out);
@@ -4647,6 +4655,18 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     sprintf(cmd, "bayes(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_stats(cmd, out);
   }
   if ((has(t, "trapezium") || has(t, "trapezoid") || has(t, "trapezoidal")) && nv >= 3) {
+    if (has(c, "xvalues") && has(c, "yvalues") && nv >= 4 && nv % 2 == 0) {
+      int m = nv / 2;
+      double h = v[1] - v[0];
+      if (h < 0) h = -h;
+      double sum = v[m] + v[nv - 1];
+      for (int i = m + 1; i < nv - 1; ++i) sum += 2 * v[i];
+      double area = h * sum / 2.0;
+      int n = add(out, 0, "Use the trapezium rule with the y-values.");
+      n = add(out, n, "h = x2 - x1 = %.10g - %.10g = %.10g", v[1], v[0], h);
+      n = add(out, n, "Area = h/2*(first y + last y + 2*sum of middle y-values)");
+      return add(out, n, "Area = %.10g/2 * %.10g = %.10g", h, sum, area);
+    }
     double h = v[nv - 1], sum = v[0] + v[nv - 2];
     for (int i = 1; i < nv - 2; ++i) sum += 2 * v[i];
     double area = h * sum / 2.0;
@@ -4733,6 +4753,16 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     double por = pa + pb - pab, prod = pa * pb;
     int n = add(out, 0, "Use P(A or B)=P(A)+P(B)-P(A and B).");
     n = add(out, n, "P(A or B)=%.6g+%.6g-%.6g=%.10g", pa, pb, pab, por);
+    n = add(out, n, "For independence, compare P(A and B) with P(A)P(B).");
+    n = add(out, n, "P(A)P(B)=%.6g*%.6g=%.10g", pa, pb, prod);
+    return add(out, n, abs_num(pab - prod) < 1e-9 ? "A and B are independent." : "A and B are not independent.");
+  }
+  if ((has(t, "independent") || has(t, "independence")) &&
+      (has(c, "p(agivenb)=") || has(c, "p(a|b)=")) && nv >= 3) {
+    double pa = v[0], pb = v[1], pagb = v[2];
+    double pab = pagb * pb, prod = pa * pb;
+    int n = add(out, 0, "Use P(A|B)=P(A and B)/P(B).");
+    n = add(out, n, "P(A and B)=P(A|B)P(B)=%.6g*%.6g=%.10g", pagb, pb, pab);
     n = add(out, n, "For independence, compare P(A and B) with P(A)P(B).");
     n = add(out, n, "P(A)P(B)=%.6g*%.6g=%.10g", pa, pb, prod);
     return add(out, n, abs_num(pab - prod) < 1e-9 ? "A and B are independent." : "A and B are not independent.");
@@ -5667,7 +5697,18 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     double q = nv >= 6 ? v[5] : (has(t, "upper") || has(t, "q3") ? 0.75 : (has(t, "lower") || has(t, "q1") ? 0.25 : 0.5));
     sprintf(cmd, "groupquantile(%.10g,%.10g,%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3], v[4], q); return eval_stats(cmd, out);
   }
-  if ((has(t, "histogram") || has(t, "frequencydensity") || has(t, "classwidth")) && (has(t, "density") || has(t, "frequencydensity") || has(t, "width")) && nv >= 2) {
+  if ((has(t, "histogram") || has(t, "frequencydensity") || has(t, "classwidth")) && (has(t, "density") || has(t, "densities") || has(t, "frequencydensity") || has(t, "width")) && nv >= 2) {
+    if (has(t, "classes") && (has(t, "frequencies") || has(t, "frequency")) && nv >= 6 && nv % 3 == 0) {
+      int m = nv / 3;
+      int n = add(out, 0, "For each histogram class, frequency density = frequency / class width.");
+      for (int i = 0; i < m && n < P3_MAX_LINES; ++i) {
+        double lo = abs_num(v[2*i]), hi = abs_num(v[2*i + 1]), f = v[2*m + i];
+        if (hi < lo) { double q = lo; lo = hi; hi = q; }
+        double w = hi - lo;
+        n = add(out, n, "class %.10g-%.10g: density = %.10g/%.10g = %.10g", lo, hi, f, w, w ? f / w : 0);
+      }
+      return n;
+    }
     double freq=0, dens=0, width0=0;
     bool hW = word_num(input,"classwidth",&width0) || word_num(input,"width",&width0);
     bool hD = word_num(input,"frequencydensity",&dens) || word_num(input,"density",&dens);

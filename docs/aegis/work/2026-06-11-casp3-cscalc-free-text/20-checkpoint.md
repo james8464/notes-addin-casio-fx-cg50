@@ -1,5 +1,36 @@
 # Checkpoint
 
+## 2026-06-12 Storage, Histogram, Trapezium, And Complement Route Slice
+
+Completed:
+- Fixed CSCALC image storage wording with explicit metadata/header bytes.
+- Fixed CSCALC record-size wording with repeated fields plus key bytes.
+- Fixed CASP3 trapezium wording with separate `x values` and `y values`.
+- Added CASP3 multi-class histogram density working.
+- Added CASP3 independence testing when a conditional probability is given.
+- Fixed CASP3 binomial `not equal` wording to use the complement route.
+- Added regressions and rebuilt calculator files.
+
+Evidence:
+- Targeted probes for image metadata, record fields, trapezium x/y values, histogram densities, conditional independence, and binomial complement: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 327520 bytes`
+  - `CSCALC.g3a: 205892 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Stayed inside CASP3/CSCALC free-text working support and generated calculator outputs.
+- Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for further source/probe-driven hardening.
+
 ## 2026-06-12 Free-Text Gate, Poisson Interval, And Conditional Probability Slice
 
 Completed:

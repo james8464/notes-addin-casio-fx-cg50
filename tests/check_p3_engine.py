@@ -382,6 +382,7 @@ def main():
     require("A histogram has class width 5 and frequency density 3.2. Find the frequency.", ["frequency = frequency density * class width", "3.2*5 = 16"])
     require("A histogram class 10 to 20 has frequency density 3.5. Find frequency.", ["frequency = frequency density * class width", "3.5*10 = 35"])
     require("In a histogram, frequency density is 2.4 and frequency is 36 find class width", ["class width = frequency / frequency density", "36/2.4 = 15"])
+    require("A histogram has classes 0-5 5-15 15-20 with frequencies 10 30 20 find densities.", ["class 0-5: density = 10/5 = 2", "class 5-15: density = 30/10 = 3", "class 15-20: density = 20/5 = 4"])
     require("outliers(10,20,0,15,40)", ["1.5*IQR", "IQR = Q3 - Q1 = 20 - 10 = 10", "lower fence = -5", "upper fence = 35", "40 is an outlier"])
     require("outlier check q1=10 q3=20 values 0 15 40", ["lower fence = -5", "15 is not an outlier", "40 is an outlier"])
     require("A box plot has Q1=12 median=18 Q3=30 min=5 max=50. Check for outliers using 1.5 IQR.", ["IQR = Q3 - Q1 = 30 - 12 = 18", "5 is not an outlier", "50 is not an outlier"])
@@ -398,6 +399,7 @@ def main():
     require("A particle of mass 3kg is pulled up a smooth plane inclined at 20 degrees by a force 30N parallel to the plane. Find acceleration.", ["Smooth inclined plane", "Resultant up the plane", "6.648"])
     require("A ladder of length 5m and weight 100N rests against a smooth wall at 60 degrees. The coefficient of friction at the ground is 0.4. Find whether it is in equilibrium.", ["smooth wall and rough ground", "Maximum friction", "can be in equilibrium"])
     require("Given P(A)=0.6, P(B)=0.5 and P(A and B)=0.2, find P(A or B) and say whether A and B are independent.", ["P(A or B)=0.6+0.5-0.2=0.9", "A and B are not independent"])
+    require("Given P(A)=0.7 P(B)=0.4 P(A given B)=0.5 test independence.", ["P(A and B)=P(A|B)P(B)=0.5*0.4=0.2", "P(A)P(B)=0.7*0.4=0.28", "A and B are not independent"])
     require("Use a normal approximation to the Poisson distribution with mean 80 to find P(X>90).", ["normal approximation to X ~ Po(80)", "continuity correction P(Y>90.5)", "z ="])
     require("Events A and B have P(A)=0.7, P(B)=0.4 and P(A or B)=0.85. Find P(A and B) and P(A given B).", ["P(A and B)=0.7+0.4-0.85=0.25", "P(A|B)=0.25/0.4=0.625"])
     require("Events A and B have P(A)=0.8 P(B)=0.6 P(A given B)=0.5 find P(A and B) and P(A or B).", ["P(A and B)=P(A|B)P(B)=0.5*0.6=0.3", "P(A or B)=0.8+0.6-0.3=1.1"])
@@ -435,6 +437,7 @@ def main():
     require("A particle moves with acceleration a=6/(3t+1) and initial velocity 2. Find velocity at t=3.", ["a = 6/(3t+1)^1", "(6/3)ln|3t+1| + C", "v(3) = 6.605170186"])
     require("A particle has velocity v=2/(t+1)^2 - 3. Find displacement from t=0 to t=2.", ["v = 2/(t+1)^2-3", "integral v dt = 2(t+1)^-1/(1*(-1))-3 t", "displacement = -6.666666667 - -2 = -4.666666667"])
     require("For X~B(20,0.3), find P(X is at least 4 and less than 8).", ["Required probability = sum P(X=r), r=4..7", "= 0.6651849929"])
+    require("X~B(15,0.2). Find P(X is not equal to 3).", ["P(X!=3)=1-P(X=3)", "P(X=3) = 0.2501388953", "P(X!=3) = 0.7498611047"])
     require("Find P(X>2) for X~Poisson(3.4) given X<6.", ["P(A|B)=P(A and B)/P(B)", "A and B gives r=3..5", "0.6097376762"])
     require("For X~Poisson(4.2), find P(2 <= X <= 6).", ["P(2<=X<=6)=P(X<=6)-P(X<=1)", "0.7894869965"])
     require("Find P(X is at most 6 given X is at least 2) for X~Poisson(4.2).", ["P(A|B)=P(A and B)/P(B)", "A and B gives r=2..6", "0.8562552084"])
@@ -448,6 +451,7 @@ def main():
     require("In a game, probability of winning is 0.2. Find the probability the first win is after the 6th attempt.", ["first success after r attempts", "P(X>6)=(1-0.2)^6 = 0.262144"])
     require("A box contains 5 red and 3 blue balls. Two are chosen without replacement. Find P(same colour).", ["same colour ways = C(5,2)+C(3,2)", "P(same colour)=13/28=0.4642857143"])
     require("Use trapezium rule with y values 1,4,9,16,25 and width 0.5.", ["Use the trapezium rule", "Area = 0.5/2 * 84 = 21"])
+    require("Use the trapezium rule with x values 0 1 2 3 and y values 1 2 5 10.", ["h = x2 - x1 = 1 - 0 = 1", "Area = 1/2 * 25 = 12.5"])
     print("OK p3 engine")
 
 
