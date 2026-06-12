@@ -1,5 +1,26 @@
 # Checkpoint
 
+## 2026-06-12 CSCALC Boolean Consensus Slice
+
+Completed:
+- Located the archived Python Boolean algebra implementation in `python/src/ComputerScience/booleanProgram.py` from commit `d9a86d0f173a39411a40dd4f150ee874aa251cd1`.
+- Compared its documented law coverage with current CSCALC Boolean support.
+- Added the missing consensus theorem route for expressions such as `AB + A'C + BC`.
+- Kept the existing truth-table equivalence guard before displaying the law step.
+- Added direct and free-text regression tests.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CSCALC AQA Paper 2 Boolean algebra working support.
+- Did not touch CAS Pure behavior, CASP3 behavior, NOTES, or shared UI/status code.
+
 ## 2026-06-12 CASP3 Grouped Data Slice
 
 Completed:

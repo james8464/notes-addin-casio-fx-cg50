@@ -153,6 +153,8 @@ def main():
     require("bool(A nand B)", ["truth table", "simplified = A'+B'"])
     require("bool(A&B'+A'&B)", ["minterms: 1,2", "simplified = A'B+AB'"])
     require("bool(A'B+AB')", ["minterms: 1,2", "simplified = A'B+AB'"])
+    require("bool(A&B+A'&C+B&C)", ["Boolean algebra", "Consensus theorem", "a&b+a'&c", "simplified"])
+    require("simplify A B + A' C + B C", ["Consensus theorem", "simplified"])
     out = require("bool(not(A and B)+A)", ["truth table", "simplified = 1"])
     if "(a&b)'&a'" in out:
         raise SystemExit(f"non-equivalent Boolean law step shown\n{out}")

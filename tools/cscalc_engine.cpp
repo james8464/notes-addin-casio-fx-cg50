@@ -1313,6 +1313,44 @@ static bool is_comp_pair(const char *a, const char *b) {
          (lb == la + 1 && b[lb-1] == '\'' && strncmp(b, a, la) == 0);
 }
 
+static int split_top_parts(const char *s, char op, char parts[][40], int maxp) {
+  int d = 0, start = 0, n = 0;
+  for (int i = 0; ; ++i) {
+    char c = s[i];
+    if (c == '(') d++;
+    else if (c == ')') d--;
+    if ((c == op && d == 0) || c == 0) {
+      if (n >= maxp) return n;
+      char tmp[40]; int len = i - start;
+      if (len > 39) len = 39;
+      memcpy(tmp, s + start, len); tmp[len] = 0;
+      strip_outer(tmp, parts[n], 40);
+      ++n;
+      start = i + 1;
+      if (c == 0) return n;
+    }
+  }
+}
+
+static bool has_lit(char parts[][40], int n, const char *lit) {
+  for (int i = 0; i < n; ++i) if (strcmp(parts[i], lit) == 0) return true;
+  return false;
+}
+
+static bool same_lit_set(char a[][40], int na, char b[][40], int nb) {
+  if (na != nb) return false;
+  for (int i = 0; i < na; ++i) if (!has_lit(b, nb, a[i])) return false;
+  return true;
+}
+
+static void join_terms(char terms[][40], int count, int skip, char *res) {
+  int p = 0; res[0] = 0;
+  for (int i = 0; i < count; ++i) if (i != skip) {
+    if (p) app_ch(res, &p, 80, '+');
+    app_str(res, &p, 80, terms[i]);
+  }
+}
+
 static bool bool_law_once(const char *expr, char *res, char *law) {
   char e[96]; strip_outer(expr, e, sizeof(e));
   if (e[0] == '!' && e[1] == '!') {
@@ -1403,6 +1441,28 @@ static bool bool_law_once(const char *expr, char *res, char *law) {
         if (common[0]) {
           sprintf(res, "%s+%s&%s", common, ao, bo);
           strcpy(law, "Distributive law"); return true;
+        }
+      }
+    }
+  }
+  {
+    char terms[6][40]; int tc = split_top_parts(e, '+', terms, 6);
+    if (tc >= 3) {
+      for (int i = 0; i < tc; ++i) for (int j = i + 1; j < tc; ++j) {
+        char li[6][40], lj[6][40], rest[10][40];
+        int ni = split_top_parts(terms[i], '&', li, 6), nj = split_top_parts(terms[j], '&', lj, 6);
+        for (int a0 = 0; a0 < ni; ++a0) for (int b0 = 0; b0 < nj; ++b0) if (is_comp_pair(li[a0], lj[b0])) {
+          int rc = 0;
+          for (int r = 0; r < ni; ++r) if (r != a0 && rc < 10) strcpy(rest[rc++], li[r]);
+          for (int r = 0; r < nj; ++r) if (r != b0 && !has_lit(rest, rc, lj[r]) && rc < 10) strcpy(rest[rc++], lj[r]);
+          if (!rc) continue;
+          for (int k = 0; k < tc; ++k) if (k != i && k != j) {
+            char lk[10][40]; int nk = split_top_parts(terms[k], '&', lk, 10);
+            if (same_lit_set(rest, rc, lk, nk)) {
+              join_terms(terms, tc, k, res);
+              strcpy(law, "Consensus theorem"); return true;
+            }
+          }
         }
       }
     }
