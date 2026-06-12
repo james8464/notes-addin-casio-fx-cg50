@@ -2391,6 +2391,25 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     }
   }
   if (has(t, "velocity") && has(t, "displacement") && has(t, "from")) {
+    if (has(c, "/") && has(c, "t+") && (has(c, ")^2") || has(c, "^2"))) {
+      double k = nv > 0 ? v[0] : 1, b = 1, d = 1;
+      const char *tp = strstr(c, "t+");
+      if (tp) {
+        d = read_num(tp + 2);
+        const char *q = tp - 1;
+        while (q > c && isdigit((unsigned char)q[-1])) --q;
+        if (q < tp && isdigit((unsigned char)*q)) b = read_num(q);
+      }
+      double t1 = nv > 3 ? v[nv-2] : 0, t2 = nv > 4 ? v[nv-1] : 0;
+      if (t2 < t1) { double q = t1; t1 = t2; t2 = q; }
+      double F1 = -k / (b * (b*t1 + d));
+      double F2 = -k / (b * (b*t2 + d));
+      int n = add(out, 0, "Displacement is the integral of velocity.");
+      n = add(out, n, "v = %.10g/(%.10g t%+.10g)^2", k, b, d);
+      n = add(out, n, "integral v dt = -%.10g/(%.10g(%.10g t%+.10g))", k, b, b, d);
+      n = add(out, n, "displacement = [s] from t=%.6g to t=%.6g", t1, t2);
+      return add(out, n, "displacement = %.10g - %.10g = %.10g", F2, F1, F2-F1);
+    }
     double A=0, B=0, C=0, t1=0, t2=0;
     if (!parse_velocity_quad(input, &A, &B, &C) ||
         !word_num_with_t(input, "from", &t1) || !word_num_with_t(input, "to", &t2)) return 0;
@@ -3410,15 +3429,18 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if ((has(t, "workdone") || has(t, "work")) && nv >= 2) {
     double A=0, B=0, C=0, D=0, lo=0, hi=0;
-    if ((has(c, "/x^2") || has(c, "x^-2")) &&
+    if ((has(c, "/x^") || has(c, "x^-")) &&
         ((word_num_with_t(input, "from", &lo) || word_num(input, "from", &lo) || (nv >= 2 && (lo = v[nv-2], true))) &&
          (word_num_with_t(input, "to", &hi) || word_num(input, "to", &hi) || (nv >= 2 && (hi = v[nv-1], true))))) {
-      double k = v[0], W = k * (1.0/lo - 1.0/hi);
+      const char *pp = strstr(c, "/x^");
+      int pow = pp && isdigit((unsigned char)pp[3]) ? pp[3] - '0' : 2;
+      if (!pp && (pp = strstr(c, "x^-")) && isdigit((unsigned char)pp[3])) pow = pp[3] - '0';
+      double k = v[0], W = pow == 1 ? 0 : k * (pwr(hi, 1-pow) - pwr(lo, 1-pow)) / (1-pow);
       int n = add(out, 0, "Work done by a variable force is the integral of force.");
-      n = add(out, n, "F(x) = %.10g/x^2", k);
-      n = add(out, n, "W = integral from %.6g to %.6g of %.10g/x^2 dx", lo, hi, k);
-      n = add(out, n, "integral of %.10g/x^2 is -%.10g/x", k, k);
-      return add(out, n, "W = [-%.10g/x] from %.6g to %.6g = %.10g J", k, lo, hi, W);
+      n = add(out, n, "F(x) = %.10g/x^%d", k, pow);
+      n = add(out, n, "W = integral from %.6g to %.6g of %.10g/x^%d dx", lo, hi, k, pow);
+      n = add(out, n, "integral = %.10g*x^%d/%d", k, 1-pow, 1-pow);
+      return add(out, n, "W = %.10g J", W);
     }
     if ((has(t, "variable") || has(t, "force") || has(c, "f=") || has(c, "f(")) &&
         parse_force_x_poly(input, &A, &B, &C, &D) &&
@@ -4727,6 +4749,41 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       n = add(out, n, "P(X>%.6g)=integral from %.6g to %.6g of %.10g(x+%.6g) dx", prob_lo, prob_lo, upper, k, shift);
       return add(out, n, "P(X>%.6g) = %.10g", prob_lo, prob);
     }
+  }
+  if ((has(t, "pdf") || has(t, "density") || has(t, "continuous")) &&
+      (has(c, "k(") || has(c, "k*(")) && (has(c, "-x)") || has(c, "x-")) &&
+      extract_x_interval(c, &pdf_lo, &pdf_hi)) {
+    double a = 0, b = 1;
+    bool descending = has(c, "-x)");
+    if (descending) {
+      const char *kp = strstr(c, "k(");
+      a = kp ? read_num(kp + 2) : 0;
+      b = -1;
+    } else {
+      const char *xp = strstr(c, "x-");
+      a = xp ? -read_num(xp + 2) : 0;
+      b = 1;
+    }
+    double area = b*(pdf_hi*pdf_hi - pdf_lo*pdf_lo)/2.0 + a*(pdf_hi - pdf_lo);
+    double k = area ? 1.0 / area : 0;
+    double prob_lo = pdf_lo, prob_hi = pdf_hi;
+    const char *gt = strstr(c, "p(x>");
+    const char *lt = strstr(c, "p(x<");
+    if (gt) prob_lo = read_num(gt + 4);
+    if (lt) prob_hi = read_num(lt + 4);
+    double prob = k * (b*(prob_hi*prob_hi - prob_lo*prob_lo)/2.0 + a*(prob_hi - prob_lo));
+    int n = add(out, 0, "For a pdf, first normalise f(x).");
+    n = add(out, n, "integral from %.6g to %.6g of k(%.6g%+.6gx) dx = 1", pdf_lo, pdf_hi, a, b);
+    n = add(out, n, "k = %.10g", k);
+    if (has(t, "mean") || has(c, "e(x)")) {
+      double mean = k * (b*(pwr(pdf_hi,3)-pwr(pdf_lo,3))/3.0 + a*(pdf_hi*pdf_hi-pdf_lo*pdf_lo)/2.0);
+      n = add(out, n, "E(X)=integral from %.6g to %.6g of x*f(x) dx", pdf_lo, pdf_hi);
+      return add(out, n, "mean = %.10g", mean);
+    }
+    n = add(out, n, "P(%.6g<X<%.6g)=integral from %.6g to %.6g of %.10g(%.6g%+.6gx) dx", prob_lo, prob_hi, prob_lo, prob_hi, k, a, b);
+    if (gt) return add(out, n, "P(X>%.6g) = %.10g", prob_lo, prob);
+    if (lt) return add(out, n, "P(X<%.6g) = %.10g", prob_hi, prob);
+    return add(out, n, "= %.10g", prob);
   }
   if ((has(t, "pdf") || has(t, "density") || has(t, "continuous")) &&
       (has(c, "p(") && has(c, "<x<")) && !has(c, "x^2") && nv >= 4) {

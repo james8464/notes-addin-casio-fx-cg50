@@ -4053,8 +4053,10 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     sprintf(cmd, "den(%s,16)", hex_tok); return eval_base(cmd, out);
   }
   char fixed_early[48];
-  if (has(t, "fixed") && (has(t, "add") || has(t, "sum") || has(t, "plus")) && nfixed >= 2) {
-    double a0 = fixed_decode(fixed_tokens[0]), b0 = fixed_decode(fixed_tokens[1]), sum = a0 + b0;
+  if (has(t, "fixed") && (has(t, "add") || has(t, "sum") || has(t, "plus") ||
+      has(t, "subtract") || has(t, "minus")) && nfixed >= 2) {
+    bool sub = has(t, "subtract") || has(t, "minus");
+    double a0 = fixed_decode(fixed_tokens[0]), b0 = fixed_decode(fixed_tokens[1]), sum = sub ? a0 - b0 : a0 + b0;
     const char *d0 = strchr(fixed_tokens[0], '.');
     const char *d1 = strchr(fixed_tokens[1], '.');
     int frac0 = d0 ? (int)strlen(d0 + 1) : 0, frac1 = d1 ? (int)strlen(d1 + 1) : 0;
@@ -4064,14 +4066,14 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     while (sum >= pow2(whole) && whole < 62) ++whole;
     long long scaled = (long long)round_nearest(sum * pow2(frac));
     char bits_out[65], fixed_out[65]; to_bin(scaled, whole + frac, bits_out); insert_point(bits_out, whole, fixed_out);
-    int n = add(out, 0, "Add binary fixed-point values by place value.");
+    int n = add(out, 0, sub ? "Subtract binary fixed-point values by place value." : "Add binary fixed-point values by place value.");
     n = add(out, n, "%s_2 = %.10g_10", fixed_tokens[0], a0);
     n = add(out, n, "%s_2 = %.10g_10", fixed_tokens[1], b0);
-    n = add(out, n, "%.10g + %.10g = %.10g", a0, b0, sum);
+    n = add(out, n, sub ? "%.10g - %.10g = %.10g" : "%.10g + %.10g = %.10g", a0, b0, sum);
     return add(out, n, "using %d fractional bits, result = %s", frac, fixed_out);
   }
   if (has(t, "fixed") && (has(t, "convert") || has(t, "encode") || has(t, "represent")) &&
-      (has(t, "denary") || has(t, "decimal")) && nfixed == 0 && nv >= 1 &&
+      (has(t, "denary") || has(t, "decimal")) && !has(t, "to,denary") && !has(t, "to,decimal") && nv >= 1 &&
       !has(t, "after") && !has(t, "fractional") && !has(t, "before") && !has(t, "whole") && !has(t, "integer")) {
     double value = v[0];
     long long whole = (long long)value;
@@ -4435,6 +4437,13 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   if ((has(t, "float") || has(t, "real")) && has(t, "range") && nv >= 2) {
     sprintf(cmd, "floatrange(%lld,%lld)", (long long)v[0], (long long)v[1]); return eval_float(cmd, out);
+  }
+  if (has(t, "address") && (has(t, "bits") || has(t, "lines")) &&
+      (has(t, "locations") || has(t, "addresses")) && nv >= 1) {
+    int bitsw = ceil_log2_ll((long long)(v[0] + 0.999999));
+    int n = add(out, 0, "Address bits = ceil(log2(addressable locations)).");
+    n = add(out, n, "Need 2^b >= %.10g", v[0]);
+    return add(out, n, "b = %d address bits", bitsw);
   }
   if ((has(t, "image") || has(t, "bitmap")) && nv >= 3) {
     if (has(t, "colours") || has(t, "colors")) {

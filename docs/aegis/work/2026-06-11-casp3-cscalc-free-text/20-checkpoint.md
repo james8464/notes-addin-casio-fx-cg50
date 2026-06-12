@@ -1,5 +1,36 @@
 # Checkpoint
 
+## 2026-06-12 Shifted Pdf, Power Work, Fixed Subtract, And Address Bits Slice
+
+Completed:
+- Added CASP3 shifted linear pdf support for `k(a-x)` and `k(x-a)` over nonzero intervals, including probability and mean working.
+- Added CASP3 rational velocity displacement working for forms like `v=1/(t+1)^2`.
+- Generalised CASP3 variable-force work for `k/x^n` instead of only `x^-2`.
+- Added CSCALC binary fixed-point subtraction working.
+- Fixed CSCALC decimal-to-binary fixed-point routing so denary decimals such as `0.1` are not misread as binary fixed-point inputs.
+- Fixed CSCALC address-bit free-text route for memory-location counts such as `4096 memory locations`.
+- Added regressions and rebuilt calculator files.
+
+Evidence:
+- Fresh unseen probes for the patched P3/CS cases: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 301052 bytes`
+  - `CSCALC.g3a: 198208 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Still inside CASP3/CSCALC free-text working support and generated calculator outputs.
+- Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for further source/probe-driven hardening.
+
 ## 2026-06-12 Rational Motion, Simpson, Fixed-Point, And Complexity Slice
 
 Completed:
