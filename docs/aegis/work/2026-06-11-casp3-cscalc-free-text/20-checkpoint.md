@@ -1,5 +1,26 @@
 # Checkpoint
 
+## 2026-06-12 CSCALC K-map Minterm Slice
+
+Completed:
+- Added `minterms(...)`, `kmap(...)`, and `karnaugh(...)`.
+- Added free-text routing for K-map/minterm prompts such as `simplify minterms 1 2 for A B`.
+- The route converts minterms into canonical SOP terms, then reuses the existing Boolean simplifier instead of adding a second simplification engine.
+- Output shows variables, minterm terms, SOP, minterm rows, and simplified expression.
+- Added direct, inferred-variable, and free-text regression tests.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CSCALC AQA Paper 2 Boolean algebra/free-text support.
+- Did not touch CAS Pure behavior, CASP3 behavior, NOTES, or shared UI/status code.
+
 ## 2026-06-12 CASP3 Rough Incline Acceleration Slice
 
 Completed:

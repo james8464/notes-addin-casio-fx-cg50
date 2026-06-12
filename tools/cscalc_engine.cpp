@@ -431,6 +431,56 @@ static bool make_sql_cmd(const char *in, char *cmd, int cap) {
   return true;
 }
 
+static bool minterm_skip_word(const char *w) {
+  return word_is(w, "kmap") || word_is(w, "karnaugh") || word_is(w, "map") ||
+         word_is(w, "minterm") || word_is(w, "minterms") || word_is(w, "ones") ||
+         word_is(w, "cells") || word_is(w, "cell") || word_is(w, "for") ||
+         word_is(w, "variables") || word_is(w, "variable") || word_is(w, "vars") ||
+         word_is(w, "with") || word_is(w, "simplify") || word_is(w, "boolean") ||
+         word_is(w, "logic") || word_is(w, "output") || word_is(w, "is") ||
+         word_is(w, "are") || word_is(w, "at");
+}
+
+static bool make_minterm_cmd(const char *in, char *cmd, int cap) {
+  char t[192]; raw_clean(in, t, sizeof(t));
+  char vars[8] = ""; int vc = 0, mins[32], mc = 0;
+  for (int i = 0; t[i];) {
+    while (t[i] == ',') ++i;
+    char w[32]; int j = 0;
+    while (t[i] && t[i] != ',' && j + 1 < (int)sizeof(w)) w[j++] = t[i++];
+    w[j] = 0;
+    if (!w[0] || minterm_skip_word(w)) continue;
+    if ((w[0] == '-' && isdigit((unsigned char)w[1])) || isdigit((unsigned char)w[0])) {
+      if (mc < 32) mins[mc++] = (int)parse_int(w);
+      continue;
+    }
+    if (j <= 6) {
+      for (int k = 0; w[k] && vc < 6; ++k) if (isalpha((unsigned char)w[k])) {
+        char c = (char)toupper((unsigned char)w[k]);
+        bool seen = false; for (int q = 0; q < vc; ++q) if (vars[q] == c) seen = true;
+        if (!seen) { vars[vc++] = c; vars[vc] = 0; }
+      }
+    }
+  }
+  if (!mc) return false;
+  if (!vc) {
+    int maxm = 0; for (int i = 0; i < mc; ++i) if (mins[i] > maxm) maxm = mins[i];
+    while ((1 << vc) <= maxm && vc < 6) ++vc;
+    if (vc < 1) vc = 1;
+    for (int i = 0; i < vc; ++i) vars[i] = (char)('A' + i);
+    vars[vc] = 0;
+  }
+  int p = sprintf(cmd, "minterms(");
+  for (int i = 0; i < vc && p < cap - 24; ++i) {
+    if (i) cmd[p++] = ',';
+    cmd[p++] = vars[i]; cmd[p] = 0;
+  }
+  for (int i = 0; i < mc && p < cap - 24; ++i) p += sprintf(cmd + p, ",%d", mins[i]);
+  if (p >= cap - 2) return false;
+  cmd[p++] = ')'; cmd[p] = 0;
+  return true;
+}
+
 static int is_bits(const char *s) {
   if (!s || !*s) return 0;
   for (int i = 0; s[i]; ++i) if (s[i] != '0' && s[i] != '1' && s[i] != '.') return 0;
@@ -1729,6 +1779,61 @@ static int eval_bool(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN])
   return add(out, n, "simplified = %s", sim);
 }
 
+static void minterm_expr(int m, const char *vars, int vc, char *buf, int cap) {
+  int p = 0;
+  for (int i = 0; i < vc; ++i) {
+    if (i) app_ch(buf, &p, cap, '&');
+    int bit = 1 << (vc - 1 - i);
+    app_ch(buf, &p, cap, vars[i]);
+    if (!(m & bit)) app_ch(buf, &p, cap, '\'');
+  }
+  if (!p) app_ch(buf, &p, cap, '1');
+}
+
+static int eval_minterms(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
+  char a[40][48]; int na = args(s, a, 40);
+  if (!starts3(s, "minterms(", "kmap(", "karnaugh(") || na < 1) return 0;
+  char vars[8] = ""; int vc = 0, mins[32], mc = 0;
+  for (int i = 0; i < na; ++i) {
+    if (isalpha((unsigned char)a[i][0])) {
+      for (int j = 0; a[i][j] && vc < 6; ++j) if (isalpha((unsigned char)a[i][j])) {
+        char c = (char)toupper((unsigned char)a[i][j]);
+        bool seen = false; for (int k = 0; k < vc; ++k) if (vars[k] == c) seen = true;
+        if (!seen) { vars[vc++] = c; vars[vc] = 0; }
+      }
+    } else if (mc < 32) mins[mc++] = (int)parse_int(a[i]);
+  }
+  if (!mc) return add(out, 0, "Give minterm numbers, e.g. minterms(A,B,1,2).");
+  if (!vc) {
+    int maxm = 0; for (int i = 0; i < mc; ++i) if (mins[i] > maxm) maxm = mins[i];
+    while ((1 << vc) <= maxm && vc < 6) ++vc;
+    if (vc < 1) vc = 1;
+    for (int i = 0; i < vc; ++i) vars[i] = (char)('A' + i);
+    vars[vc] = 0;
+  }
+  int rows = 1 << vc;
+  char sop[96] = ""; int sp = 0;
+  int n = add(out, 0, "K-map/minterm method: write 1-cells as SOP terms.");
+  char vl[32] = ""; int vp = 0;
+  for (int i = 0; i < vc; ++i) { if (i) app_ch(vl, &vp, sizeof(vl), ','); app_ch(vl, &vp, sizeof(vl), vars[i]); }
+  n = add(out, n, "variables: %s", vl);
+  for (int i = 0; i < mc; ++i) {
+    if (mins[i] < 0 || mins[i] >= rows) return add(out, n, "minterm %d is outside 0 to %d.", mins[i], rows - 1);
+    char term[32]; minterm_expr(mins[i], vars, vc, term, sizeof(term));
+    if (i) app_ch(sop, &sp, sizeof(sop), '+');
+    app_str(sop, &sp, sizeof(sop), term);
+    if (n < CSCALC_MAX_LINES - 6) n = add(out, n, "m%d = %s", mins[i], term);
+  }
+  n = add(out, n, "SOP = %s", sop);
+  char cmd[112]; sprintf(cmd, "bool(%s)", sop);
+  char tmp[CSCALC_MAX_LINES][CSCALC_LINE_LEN]; int tn = eval_bool(cmd, tmp);
+  for (int i = 0; i < tn && n < CSCALC_MAX_LINES; ++i) {
+    if (starts(tmp[i], "Make truth table")) continue;
+    n = add(out, n, "%s", tmp[i]);
+  }
+  return n;
+}
+
 struct GNode { char op, v; int l, r; };
 
 struct GParser {
@@ -2094,6 +2199,9 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     }
     sprintf(cmd, "chars(%lld,%lld)", (long long)v[0], (long long)v[1]); return eval_storage(cmd, out);
   }
+  if ((has(t, "kmap") || has(t, "karnaugh") || has(t, "minterm") || has(t, "minterms")) && make_minterm_cmd(input, cmd, sizeof(cmd))) {
+    return eval_minterms(cmd, out);
+  }
   if (nv == 0 && starts(compact, "nandform")) {
     sprintf(cmd, "nandform(%s)", compact + 8); return eval_gate_form(cmd, out);
   }
@@ -2141,11 +2249,12 @@ int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
   n = eval_float(s, out); if (n) return n;
   n = eval_storage(s, out); if (n) return n;
   n = eval_gate_form(s, out); if (n) return n;
+  n = eval_minterms(s, out); if (n) return n;
   n = eval_bool_prove(s, out); if (n) return n;
   n = eval_bool(s, out); if (n) return n;
   n = eval_free_text(input, s, out); if (n) return n;
   n = add(out, 0, "Supported:");
   n = add(out, n, "bin hex den convert twos twosdec twosadd twossub fixed fixedenc parity xorbits andbits orbits notbits hamming checksum checkdigit rpn");
   n = add(out, n, "floatdec floatrange normal image sound bitrate transfer transfermb");
-  return add(out, n, "compress huffman rle records sqlselect sqlcount hashmod hashlinear addressspace chars ascii unicode stack queue preorder inorder postorder dijkstra fsm fsmout binarysearch bubblesort selectionsort mergesort bool truth nandform norform");
+  return add(out, n, "compress huffman rle records sqlselect sqlcount hashmod hashlinear addressspace chars ascii unicode stack queue preorder inorder postorder dijkstra fsm fsmout binarysearch bubblesort selectionsort mergesort bool truth minterms kmap nandform norform");
 }
