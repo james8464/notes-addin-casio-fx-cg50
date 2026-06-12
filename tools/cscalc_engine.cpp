@@ -1341,6 +1341,28 @@ static int eval_float(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]
     n = add(out, n, "mantissa (%d bits) = %s", mb, mant);
     return add(out, n, "exponent (%d bits) = %s", eb, expb);
   }
+  if ((starts3(s, "floatadd(", "fpadd(", "floatingadd(") || starts3(s, "floatsub(", "fpsub(", "floatingsub(")) && na >= 4) {
+    bool sub = starts3(s, "floatsub(", "fpsub(", "floatingsub(");
+    double m1 = mantissa_decode(a[0]), m2 = mantissa_decode(a[2]);
+    int e1 = twos_decode(a[1]), e2 = twos_decode(a[3]);
+    int mb = (int)strlen(a[0]), eb = (int)strlen(a[1]), common = e1 > e2 ? e1 : e2;
+    double am1 = m1 * pow2(e1 - common), am2 = m2 * pow2(e2 - common);
+    double rm = sub ? am1 - am2 : am1 + am2;
+    int re = common;
+    while (rm != 0 && (rm >= 1.0 || rm < -1.0)) { rm /= 2.0; ++re; }
+    while (rm != 0 && rm > -0.5 && rm < 0.5) { rm *= 2.0; --re; }
+    char mant[65], expb[65]; mantissa_encode(rm, mb, mant); to_bin(re, eb, expb);
+    int n = add(out, 0, sub ? "Subtract floating-point numbers by aligning exponents." : "Add floating-point numbers by aligning exponents.");
+    n = add(out, n, "first: mantissa %s = %.10g, exponent %s = %d", a[0], m1, a[1], e1);
+    n = add(out, n, "second: mantissa %s = %.10g, exponent %s = %d", a[2], m2, a[3], e2);
+    n = add(out, n, "use common exponent %d.", common);
+    n = add(out, n, "%.10g*2^%d = %.10g*2^%d", m1, e1, am1, common);
+    n = add(out, n, "%.10g*2^%d = %.10g*2^%d", m2, e2, am2, common);
+    n = add(out, n, sub ? "mantissas: %.10g - %.10g = %.10g" : "mantissas: %.10g + %.10g = %.10g", am1, am2, sub ? am1-am2 : am1+am2);
+    n = add(out, n, "normalise: %.10g * 2^%d", rm, re);
+    n = add(out, n, "mantissa (%d bits) = %s", mb, mant);
+    return add(out, n, "exponent (%d bits) = %s", eb, expb);
+  }
   if (starts3(s, "floatprecision(", "fpprecision(", "floatstep(") && na >= 2) {
     int mb = (int)parse_int(a[0]), e = (int)parse_int(a[1]);
     double step = pow2(e - (mb - 1));
@@ -2076,6 +2098,11 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if (tc && nv >= 2 && nb == 0) {
     sprintf(cmd, "twos(%lld,%lld)", (long long)v[0], (long long)v[1]); return eval_twos(cmd, out);
   }
+  if ((has(t, "float") || has(t, "floating")) && nb >= 4 &&
+      (has(t, "add") || has(t, "sum") || has(t, "plus") || has(t, "subtract") || has(t, "minus"))) {
+    sprintf(cmd, (has(t, "subtract") || has(t, "minus")) ? "floatsub(%s,%s,%s,%s)" : "floatadd(%s,%s,%s,%s)", bits[0], bits[1], bits[2], bits[3]);
+    return eval_float(cmd, out);
+  }
   if ((has(t, "xor") || has(t, "exclusiveor")) && nb >= 2) {
     sprintf(cmd, "xorbits(%s,%s)", bits[0], bits[1]); return eval_binary_arith(cmd, out);
   }
@@ -2255,6 +2282,6 @@ int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
   n = eval_free_text(input, s, out); if (n) return n;
   n = add(out, 0, "Supported:");
   n = add(out, n, "bin hex den convert twos twosdec twosadd twossub fixed fixedenc parity xorbits andbits orbits notbits hamming checksum checkdigit rpn");
-  n = add(out, n, "floatdec floatrange normal image sound bitrate transfer transfermb");
+  n = add(out, n, "floatdec floatadd floatsub floatrange normal image sound bitrate transfer transfermb");
   return add(out, n, "compress huffman rle records sqlselect sqlcount hashmod hashlinear addressspace chars ascii unicode stack queue preorder inorder postorder dijkstra fsm fsmout binarysearch bubblesort selectionsort mergesort bool truth minterms kmap nandform norform");
 }
