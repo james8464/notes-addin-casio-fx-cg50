@@ -383,6 +383,18 @@ static int eval_mech(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     n = add(out, n, "substitute into momentum: %.6g = %.6g v1 + %.6g(v1+%.6g)", before, m1, m2, sep);
     return add(out, n, "v1 = %.10g, v2 = %.10g", v1, v2);
   }
+  if (starts3(s, "vectorkin(", "vectormotion(", "vectorsuvat(") && na >= 7) {
+    double x0=num(a[0]), y0=num(a[1]), ux=num(a[2]), uy=num(a[3]), ax=num(a[4]), ay=num(a[5]), t=num(a[6]);
+    double x=x0+ux*t+0.5*ax*t*t, y=y0+uy*t+0.5*ay*t*t;
+    double vx=ux+ax*t, vy=uy+ay*t, speed=root(vx*vx+vy*vy);
+    int n = add(out, 0, "Use vector constant-acceleration formulae component by component.");
+    n = add(out, n, "r = r0 + ut + 1/2 at^2");
+    n = add(out, n, "r = (%.6g,%.6g) + (%.6g,%.6g)*%.6g + 1/2(%.6g,%.6g)*%.6g^2", x0, y0, ux, uy, t, ax, ay, t);
+    n = add(out, n, "position = (%.10g, %.10g)", x, y);
+    n = add(out, n, "v = u + at = (%.6g,%.6g) + (%.6g,%.6g)*%.6g", ux, uy, ax, ay, t);
+    n = add(out, n, "velocity = (%.10g, %.10g)", vx, vy);
+    return add(out, n, "speed = sqrt(vx^2+vy^2) = %.10g", speed);
+  }
   if (starts3(s, "vector(", "resultant(", "components(") && na >= 2) {
     double x=num(a[0]), y=num(a[1]), mag=root(x*x+y*y);
     int n = add(out, 0, "Resolve into perpendicular components.");
@@ -775,6 +787,21 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   char c[192]; clean(input, c, sizeof(c));
   double v[8]; int nv = scan_nums(t, v, 8);
   char cmd[160];
+  if ((has(t, "vector") || has(t, "positionvector") || has(t, "ij")) &&
+      (has(t, "velocity") || has(t, "acceleration") || has(t, "motion"))) {
+    double x0=0,y0=0,ux=0,uy=0,ax=0,ay=0,time=0;
+    if (label_num(input,"x0",&x0) && label_num(input,"y0",&y0) &&
+        label_num(input,"ux",&ux) && label_num(input,"uy",&uy) &&
+        label_num(input,"ax",&ax) && label_num(input,"ay",&ay) &&
+        label_num(input,"t",&time)) {
+      sprintf(cmd, "vectorkin(%.10g,%.10g,%.10g,%.10g,%.10g,%.10g,%.10g)", x0, y0, ux, uy, ax, ay, time);
+      return eval_mech(cmd, out);
+    }
+    if (nv >= 7) {
+      sprintf(cmd, "vectorkin(%.10g,%.10g,%.10g,%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3], v[4], v[5], v[6]);
+      return eval_mech(cmd, out);
+    }
+  }
   if (has(t, "variable") && has(t, "acceleration")) {
     double u=0,c0=0,c1=0,c2=0,time=0,x=0,x0=0,s0=0;
     bool hu=label_num(input,"u",&u), h0=label_num(input,"c0",&c0), h1=label_num(input,"c1",&c1), h2=label_num(input,"c2",&c2);
@@ -1067,6 +1094,6 @@ int p3_eval(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   n = eval_free_text(input, out); if (n) return n;
   n = add(out, 0, "Supported:");
   n = add(out, n, "suvat projectile projectileh force weight friction moment incline");
-  n = add(out, n, "connected pulley impulse momentum work power energy restitution vector resolve varacc");
+  n = add(out, n, "connected pulley impulse momentum work power energy restitution vector resolve vectorkin varacc");
   return add(out, n, "normal normalvar normalprob invnormal binom binomtail critbinom hypbinom cond probor bayes independent poisson poissontail poissonnorm critpoisson hyppoisson regress pmcc spearman meanvar discrete stratified groupmedian histdensity code");
 }

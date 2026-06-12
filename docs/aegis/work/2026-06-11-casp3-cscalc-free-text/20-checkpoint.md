@@ -1,5 +1,25 @@
 # Checkpoint
 
+## 2026-06-12 CASP3 Vector Kinematics Slice
+
+Completed:
+- Added `vectorkin(...)`, `vectormotion(...)`, and `vectorsuvat(...)`.
+- Added free-text routing for vector position/velocity/acceleration motion prompts.
+- Output shows vector SUVAT formula, substitution, final position, final velocity, and speed.
+- Added direct, labelled free-text, and plain-number free-text regression tests.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CASP3 Edexcel Paper 3 mechanics working support.
+- Did not touch CAS Pure behavior, CSCALC behavior, NOTES, or shared UI/status code.
+
 ## 2026-06-12 CSCALC SQL Query Trace Slice
 
 Completed:
