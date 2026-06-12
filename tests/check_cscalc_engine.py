@@ -402,6 +402,7 @@ def main():
     require("A database table STUDENT(id,name,grade). Write SQL to select name where grade > 70.", ["SQL SELECT", "SELECT name", "WHERE grade > 70"])
     require("Write SQL to select name and age from STUDENT where grade >= 70 order by age.", ["SELECT name,age", "FROM student", "WHERE grade >= 70"])
     require("Using a 6 bit mantissa and 4 bit exponent, encode 0.1875 in normalised floating point.", ["0.1875 = 0.75 * 2^-2", "mantissa (6 bits)", "exponent (4 bits)"])
+    require("Convert 0.625 to 8 bit normalised floating point with 5 bit mantissa and 3 bit exponent.", ["0.625 = 0.625 * 2^0", "mantissa (5 bits) = 01010", "exponent (3 bits) = 000"])
     require("Determine whether 01111111 + 00000001 overflows in unsigned binary.", ["carrying", "01111111 + 00000001 = 10000000"])
     require("Use a truth table to prove De Morgan not(A and B)=not A or not B.", ["LHS simplifies to A'+B'", "RHS simplifies to A'+B'", "Same output rows"])
     require("Convert decimal 0.1 into binary fixed point with 8 fractional bits.", ["0.1 * 2^8 = 25.6", "store nearest integer 26", "fixed point = 0.00011010"])

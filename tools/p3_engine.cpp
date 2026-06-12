@@ -750,6 +750,21 @@ static double linear_den_antideriv(double k, double b, double d, int pow, double
   return k * pwr(b*x + d, 1 - pow) / (b * (1 - pow));
 }
 
+static double trailing_constant_after_linear_den(const char *c, char var, int pow) {
+  const char *p = strstr(c, "/(");
+  if (!p) return 0;
+  p = strchr(p + 2, ')');
+  if (!p) return 0;
+  ++p;
+  if (*p == '^') {
+    ++p;
+    while (isdigit((unsigned char)*p)) ++p;
+  } else if (pow != 1) return 0;
+  (void)var;
+  if (*p == '+' || *p == '-') return read_num(p);
+  return 0;
+}
+
 static void fmt_linear_var(char *buf, int cap, double b, char var, double d) {
   (void)cap;
   char lhs[32];
@@ -1980,6 +1995,28 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "v(%.6g)=%.10g gives C = %.10g", t0, u, K);
     return add(out, n, "v(%.6g) = %.10g", tf, ans);
   }
+  if ((has(t, "acceleration") || has(t, "accn")) && has(c, "/(") &&
+      (has(t, "velocity") || has(t, "speed")) && (has(t, "att") || has(t, "at") || has(t, "time"))) {
+    double rb=0, rd=0; int rpow=0;
+    if (parse_linear_den_power(c, 't', &rb, &rd, &rpow) && rpow >= 2) {
+      double A = nv > 0 ? v[0] : 1;
+      double u0 = 0, tf = 0;
+      bool hu = word_num(input, "initialvelocity", &u0) || word_num(input, "velocity", &u0) ||
+                word_num(input, "speed", &u0);
+      bool ht = word_num_with_t(input, "at", &tf) || word_num_with_t(input, "time", &tf);
+      if (!hu && nv >= 2) u0 = v[nv-2];
+      if (!ht && nv >= 1) tf = v[nv-1];
+      double F0 = linear_den_antideriv(A, rb, rd, rpow, 0);
+      double C = u0 - F0;
+      double Ft = linear_den_antideriv(A, rb, rd, rpow, tf);
+      char den[48]; fmt_linear_var(den, sizeof(den), rb, 't', rd);
+      int n = add(out, 0, "Variable acceleration: integrate a(t) to get v(t).");
+      n = add(out, n, "a = %.10g/(%s)^%d", A, den, rpow);
+      n = add(out, n, "v = integral a dt = %.10g(%s)^%d/(%.10g*(%d)) + C", A, den, 1-rpow, rb, 1-rpow);
+      n = add(out, n, "initial velocity gives C = %.10g", C);
+      return add(out, n, "v(%.6g) = %.10g", tf, Ft + C);
+    }
+  }
   if ((has(t, "simpson") || has(t, "simpsons")) && (has(t, "values") || has(t, "ordinates")) && nv >= 2) {
     double ys[16]; int m = 0; double h = 0;
     if (parse_y_values(input, ys, &m) && (label_num(input, "h", &h) || word_num(input, "width", &h) || word_num(input, "step", &h))) {
@@ -2457,15 +2494,21 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     double rb=0, rd=0; int rpow=0;
     if (has(c, "/(") && parse_linear_den_power(c, 't', &rb, &rd, &rpow) && rpow >= 2) {
       double k = nv > 0 ? v[0] : 1;
+      double c0 = trailing_constant_after_linear_den(c, 't', rpow);
       double t1 = 0, t2 = 0;
       word_num_with_t(input, "from", &t1); word_num_with_t(input, "to", &t2);
       if (t2 < t1) { double q = t1; t1 = t2; t2 = q; }
-      double F1 = linear_den_antideriv(k, rb, rd, rpow, t1);
-      double F2 = linear_den_antideriv(k, rb, rd, rpow, t2);
+      double F1 = linear_den_antideriv(k, rb, rd, rpow, t1) + c0*t1;
+      double F2 = linear_den_antideriv(k, rb, rd, rpow, t2) + c0*t2;
       char den[48]; fmt_linear_var(den, sizeof(den), rb, 't', rd);
       int n = add(out, 0, "Displacement is the integral of velocity.");
-      n = add(out, n, "v = %.10g/(%s)^%d", k, den, rpow);
-      n = add(out, n, "integral v dt = %.10g(%s)^%d/(%.10g*(%d))", k, den, 1-rpow, rb, 1-rpow);
+      if (near_num(c0, 0)) {
+        n = add(out, n, "v = %.10g/(%s)^%d", k, den, rpow);
+        n = add(out, n, "integral v dt = %.10g(%s)^%d/(%.10g*(%d))", k, den, 1-rpow, rb, 1-rpow);
+      } else {
+        n = add(out, n, "v = %.10g/(%s)^%d%+.10g", k, den, rpow, c0);
+        n = add(out, n, "integral v dt = %.10g(%s)^%d/(%.10g*(%d))%+.10g t", k, den, 1-rpow, rb, 1-rpow, c0);
+      }
       n = add(out, n, "displacement = [s] from t=%.6g to t=%.6g", t1, t2);
       return add(out, n, "displacement = %.10g - %.10g = %.10g", F2, F1, F2-F1);
     }
@@ -2646,6 +2689,16 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       sprintf(cmd, "binomnorm(%d,%.10g,%.10g,%.10g)", N, pv, lo, hi);
       return eval_stats(cmd, out);
     }
+    double blo=0, bhi=0;
+    bool has_lower = word_num(input, "atleast", &blo) || word_num(input, "greaterthanorequal", &blo) || word_num(input, "morethan", &blo);
+    bool lower_strict = has(c, "morethan") || has(c, "greaterthan");
+    bool has_upper = word_num(input, "lessthan", &bhi) || word_num(input, "atmost", &bhi) || word_num(input, "nomorethan", &bhi) || word_num(input, "lessthanorequal", &bhi);
+    bool upper_strict = has(c, "lessthan") && !has(c, "lessthanorequal");
+    if (has_lower && has_upper) {
+      int lo = (int)blo + (lower_strict ? 1 : 0);
+      int hi = (int)bhi - (upper_strict ? 1 : 0);
+      return add_binom_range_lines(out, N, pv, lo, hi, "Required probability");
+    }
     if (nux >= 2 && (has(c, "<x<") || has(c, "<x<=") || has(c, "x<="))) {
       int lo = (int)ux[0] + (has(c, "<x") ? 1 : 0), hi = (int)ux[1];
       return add_binom_range_lines(out, N, pv, lo, hi, "Required probability");
@@ -2712,6 +2765,36 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       x = (int)v[i]; hx = true; break;
     }
     int tail = prob_tail(c, t);
+    if ((has(t, "given") || has(t, "conditional")) && hx) {
+      double given = 0; int gtail = 0;
+      const char *gp = strstr(c, "givenx<=");
+      if (gp) { gtail = -1; given = read_num(gp + 8); }
+      else if ((gp = strstr(c, "givenx<"))) { gtail = -2; given = read_num(gp + 7); }
+      else if ((gp = strstr(c, "givenx>="))) { gtail = 1; given = read_num(gp + 8); }
+      else if ((gp = strstr(c, "givenx>"))) { gtail = 2; given = read_num(gp + 7); }
+      if (gtail) {
+        int atail = tail;
+        const char *ap = strstr(c, "p(x>=");
+        if (ap) { atail = 1; x = (int)read_num(ap + 5); }
+        else if ((ap = strstr(c, "p(x>"))) { atail = 2; x = (int)read_num(ap + 4); }
+        else if ((ap = strstr(c, "p(x<="))) { atail = -1; x = (int)read_num(ap + 5); }
+        else if ((ap = strstr(c, "p(x<"))) { atail = -2; x = (int)read_num(ap + 4); }
+        int alo = atail > 0 ? (atail == 2 ? x + 1 : x) : 0;
+        int ahi = atail < 0 ? (atail == -2 ? x - 1 : x) : 80;
+        int blo = gtail > 0 ? (gtail == 2 ? (int)given + 1 : (int)given) : 0;
+        int bhi = gtail < 0 ? (gtail == -2 ? (int)given - 1 : (int)given) : 80;
+        int lo = alo > blo ? alo : blo;
+        int hi = ahi < bhi ? ahi : bhi;
+        double nump = 0, denp = 0;
+        for (int k = lo; k <= hi; ++k) nump += poissonp(lam, k);
+        for (int k = blo; k <= bhi; ++k) denp += poissonp(lam, k);
+        int n = add(out, 0, "Use conditional probability P(A|B)=P(A and B)/P(B).");
+        n = add(out, n, "Let X ~ Po(%.6g).", lam);
+        n = add(out, n, "A gives r=%d..%d, B gives r=%d..%d.", alo, ahi, blo, bhi);
+        n = add(out, n, "A and B gives r=%d..%d.", lo, hi);
+        return add(out, n, "P(A|B)=%.10g/%.10g = %.10g", nump, denp, denp ? nump / denp : 0);
+      }
+    }
     if ((has(t, "critical") || has(t, "criticalregion")) && nv >= 2) {
       double alpha = 0.05;
       for (int i = 0; i < nv; ++i) {
@@ -3852,6 +3935,23 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       sprintf(cmd, "binomstats(%d,%.10g)", (int)N, pv);
       return eval_stats(cmd, out);
     }
+    double blo=0, bhi=0;
+    bool has_lower = word_num(input, "atleast", &blo) || word_num(input, "greaterthanorequal", &blo) || word_num(input, "morethan", &blo);
+    bool lower_strict = has(c, "morethan") || has(c, "greaterthan");
+    bool has_upper = word_num(input, "lessthan", &bhi) || word_num(input, "atmost", &bhi) || word_num(input, "nomorethan", &bhi) || word_num(input, "lessthanorequal", &bhi);
+    bool upper_strict = has(c, "lessthan") && !has(c, "lessthanorequal");
+    if (hN && hP && has_lower && has_upper) {
+      int lo_i = (int)blo + (lower_strict ? 1 : 0);
+      int hi_i = (int)bhi - (upper_strict ? 1 : 0);
+      if (lo_i < 0) lo_i = 0;
+      if (hi_i > (int)N) hi_i = (int)N;
+      double ans = 0;
+      for (int k = lo_i; k <= hi_i; ++k) ans += binomp((int)N, pv, k);
+      int n = add(out, 0, "Let X ~ B(%d, %.6g).", (int)N, pv);
+      n = add(out, n, "Use the integer bounds from the wording.");
+      n = add(out, n, "sum P(X=r) for r=%d..%d", lo_i, hi_i);
+      return add(out, n, "probability = %.10g", ans);
+    }
     if (hN && hP && hX) {
       if (tail) sprintf(cmd, "binomtail(%d,%.10g,%d,%d)", (int)N, pv, (int)x, tail);
       else sprintf(cmd, "binom(%d,%.10g,%d)", (int)N, pv, (int)x);
@@ -4594,6 +4694,43 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     return eval_stats(cmd, out);
   }
   double cdf_lo = 0, cdf_hi = 0;
+  if ((has(t, "cdf") || has(t, "cumulative")) &&
+      (has(c, "+k)/") || has(c, "-k)/")) && extract_x_interval(c, &cdf_lo, &cdf_hi) &&
+      (has(c, "p(x<") || has(c, "p(x<=") || has(c, "p(x>") || has(c, "p(x>=") || has(t, "findk"))) {
+    const char *x2 = strstr(c, "x^2");
+    const char *kp = strstr(c, "+k)/");
+    double signk = 1;
+    if (!kp) { kp = strstr(c, "-k)/"); signk = -1; }
+    double bx = 0;
+    if (x2) {
+      const char *q = x2 + 3;
+      if (*q == '+' || *q == '-') {
+        double sg = *q == '-' ? -1 : 1;
+        ++q;
+        bx = (*q == 'x') ? sg : sg * read_num(q);
+      }
+    }
+    double den = kp ? read_num(kp + 4) : 0;
+    if (den <= 0) den = cdf_hi*cdf_hi + bx*cdf_hi - (cdf_lo*cdf_lo + bx*cdf_lo);
+    double kval = -signk * (cdf_lo*cdf_lo + bx*cdf_lo);
+    if (near_num(kval, 0)) kval = 0;
+    double bound = 0; int btail = 0;
+    const char *bp = strstr(c, "p(x<");
+    if (bp) { btail = -1; bound = read_num(bp + (bp[4] == '=' ? 5 : 4)); }
+    else if ((bp = strstr(c, "p(x>"))) { btail = 1; bound = read_num(bp + (bp[4] == '=' ? 5 : 4)); }
+    double Fb = (bound*bound + bx*bound + signk*kval) / den;
+    if (Fb < 0) Fb = 0;
+    if (Fb > 1) Fb = 1;
+    double Fhi = (cdf_hi*cdf_hi + bx*cdf_hi + signk*kval) / den;
+    int n = add(out, 0, "For a CDF, use F(lower)=0 and F(upper)=1.");
+    n = add(out, n, "F(x)=(x^2%+.10gx%s)/%.10g on %.6g<=x<=%.6g.", bx, signk > 0 ? "+k" : "-k", den, cdf_lo, cdf_hi);
+    n = add(out, n, "F(%.6g)=0 gives k = %.10g", cdf_lo, kval);
+    n = add(out, n, "F(%.6g)=%.10g", cdf_hi, Fhi);
+    if (abs_num(Fhi - 1) > 1e-6) return add(out, n, "These endpoint conditions are inconsistent; check the CDF or interval.");
+    if (btail > 0) return add(out, n, "P(X>%.6g)=1-F(%.6g)=%.10g", bound, bound, 1 - Fb);
+    if (btail < 0) return add(out, n, "P(X<%.6g)=F(%.6g)=%.10g", bound, bound, Fb);
+    return n;
+  }
   if ((has(t, "cdf") || has(t, "cumulative")) &&
       (has(c, "k(x^") || has(c, "k*(x^")) && extract_x_interval(c, &cdf_lo, &cdf_hi) &&
       (has(c, "p(x<") || has(c, "p(x<=") || has(c, "p(x>") || has(c, "p(x>="))) {

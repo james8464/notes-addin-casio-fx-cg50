@@ -1,5 +1,36 @@
 # Checkpoint
 
+## 2026-06-12 CDF, Rational Acceleration, Conditional Probability, And Float Width Slice
+
+Completed:
+- Added CASP3 additive-constant CDF handling for forms like `(x^2+ax+k)/d`, including endpoint consistency checks.
+- Added CASP3 rational acceleration integration for `a=k/(bt+d)^n` with an initial velocity condition.
+- Extended CASP3 rational velocity displacement to include an added constant term.
+- Fixed exact binomial interval wording such as `at least a and less than b` for shorthand `X~B(n,p)`.
+- Fixed Poisson conditional free text so the main event is read from `P(...)` and the condition from `given ...`.
+- Fixed CSCALC floating-point free text so `convert ... with m bit mantissa and e bit exponent` uses the explicit mantissa/exponent widths.
+- Added regressions and rebuilt calculator files.
+
+Evidence:
+- Fresh hard probes for the patched P3/CS cases: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 312184 bytes`
+  - `CSCALC.g3a: 201624 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Still inside CASP3/CSCALC free-text working support and generated calculator outputs.
+- Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for further source/probe-driven hardening.
+
 ## 2026-06-12 Rational Denominator And Subtract-From Slice
 
 Completed:
