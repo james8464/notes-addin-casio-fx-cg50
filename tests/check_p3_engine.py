@@ -384,6 +384,15 @@ def main():
     require("A ladder of length 5m and weight 100N rests against a smooth wall at 60 degrees. The coefficient of friction at the ground is 0.4. Find whether it is in equilibrium.", ["smooth wall and rough ground", "Maximum friction", "can be in equilibrium"])
     require("Given P(A)=0.6, P(B)=0.5 and P(A and B)=0.2, find P(A or B) and say whether A and B are independent.", ["P(A or B)=0.6+0.5-0.2=0.9", "A and B are not independent"])
     require("Use a normal approximation to the Poisson distribution with mean 80 to find P(X>90).", ["normal approximation to X ~ Po(80)", "continuity correction P(Y>90.5)", "z ="])
+    require("Events A and B have P(A)=0.7, P(B)=0.4 and P(A or B)=0.85. Find P(A and B) and P(A given B).", ["P(A and B)=0.7+0.4-0.85=0.25", "P(A|B)=0.25/0.4=0.625"])
+    require("Events A and B are mutually exclusive with P(A)=0.3 and P(B)=0.45. Find P(A or B).", ["mutually exclusive", "P(A or B)=0.3+0.45=0.75"])
+    require("Given P(A)=0.6, P(B)=0.5, P(A and B)=0.2, find P(A given not B).", ["P(A and B')=0.6-0.2=0.4", "P(A|B')=0.4/0.5=0.8"])
+    require("A random sample of 80 from a population with p=0.35 has 36 successes. Test at 5 percent if p has increased.", ["H0: p = 0.35", "tail probability", "Reject H0"])
+    require("A particle moves with velocity v = 5 - 2t. Find when it stops and total distance from t=0 to t=5.", ["Solve v=0", "total distance = 12.5"])
+    require("A car of mass 1200kg travels round a bend radius 50m at speed 10m/s. Find centripetal force.", ["centripetal force is mv^2/r", "2400 N"])
+    require("A particle of mass 2kg is attached to a light elastic string with natural length 1m and modulus 20N. Find tension when extension is 0.3m.", ["Hooke's law", "T = 20*0.3/1 = 6 N"])
+    require("A projectiles maximum height is 20m when fired at 30 degrees. Find its speed of projection.", ["At maximum height", "u = 39.597"])
+    require("A histogram bar has class interval 20 to 35 and frequency 60. Find frequency density.", ["class width = 35 - 20 = 15", "frequency density = 60/15 = 4"])
     print("OK p3 engine")
 
 

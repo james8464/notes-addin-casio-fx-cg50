@@ -3746,6 +3746,21 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   bool tc = has(t, "twos") || (has(t, "two") && has(t, "complement"));
   bool sm = has(t, "signmagnitude") || (has(t, "sign") && has(t, "magnitude"));
+  if ((has(t, "encode") || (has(t, "represent") && !has(t, "representable") && !has(t, "represented") && !has(t, "closest") && !has(t, "explain"))) && (has(t, "floating") || has(t, "mantissa")) &&
+      (has(t, "mantissa") && has(t, "exponent")) && nv >= 3) {
+    double mb=0, eb=0, tmp=0, value=v[0];
+    bool hM = scan_bit_width_before_label(t, "mantissa", &tmp) || scan_before_word_num(t, "mantissa", &tmp); if (hM) mb = tmp;
+    bool hE = scan_bit_width_before_label(t, "exponent", &tmp) || scan_before_word_num(t, "exponent", &tmp); if (hE) eb = tmp;
+    if (!hM) mb = v[0];
+    if (!hE) eb = v[1];
+    for (int i = 0; i < nv; ++i) {
+      double dm = v[i] > mb ? v[i] - mb : mb - v[i];
+      double de = v[i] > eb ? v[i] - eb : eb - v[i];
+      if (dm > 1e-9 && de > 1e-9) { value = v[i]; break; }
+    }
+    sprintf(cmd, "floatenc(%.10g,%lld,%lld)", value, (long long)mb, (long long)eb);
+    return eval_float(cmd, out);
+  }
   if ((has(t, "normalise") || has(t, "normalize")) && (has(t, "denary") || has(t, "decimal") || has(t, "value")) &&
       (has(t, "mantissa") || has(t, "exponent") || has(t, "floating")) && nv >= 3) {
     double mb=0, eb=0, tmp=0;
@@ -3890,6 +3905,14 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
         sprintf(cmd, "twosadd(%s,%s)", a, b); return eval_twos(cmd, out);
       }
     }
+  }
+  if (has(t, "unsigned") && nbg >= 2 && (strchr(input, '+') || has(t, "overflow"))) {
+    sprintf(cmd, "binadd(%s,%s,%d)", bitgrp[0], bitgrp[1], (int)strlen(bitgrp[0]));
+    return eval_binary_arith(cmd, out);
+  }
+  if (has(t, "unsigned") && nb >= 2 && (strchr(input, '+') || has(t, "overflow"))) {
+    sprintf(cmd, "binadd(%s,%s,%d)", bits[0], bits[1], (int)strlen(bits[0]));
+    return eval_binary_arith(cmd, out);
   }
   if ((has(t, "add") || has(t, "sum") || has(t, "plus")) && nbg >= 2 && (has(t, "binary") || has(t, "bits"))) {
     sprintf(cmd, "binadd(%s,%s,%d)", bitgrp[0], bitgrp[1], (int)strlen(bitgrp[0])); return eval_binary_arith(cmd, out);
@@ -4252,6 +4275,32 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if ((has(t, "runlength") || has(t, "rle") || (has(t, "run") && has(t, "length"))) && nv >= 3) {
     sprintf(cmd, "rle(%lld,%lld,%lld)", (long long)v[0], (long long)v[1], (long long)v[2]); return eval_storage(cmd, out);
   }
+  if ((has(compact, "select") && has(compact, "where")) && (has(compact, "sql") || has(compact, "table"))) {
+    const char *tp = strstr(compact, "table");
+    const char *sp = strstr(compact, "select");
+    const char *wp = strstr(compact, "where");
+    if (tp && sp && wp && sp < wp) {
+      char table[24]="table", show[24]="field", field[24]="field", value[24]="";
+      int j = 0; const char *p = tp + 5;
+      while (*p && !isalpha((unsigned char)*p)) ++p;
+      while (isalpha((unsigned char)*p) && j < 23) table[j++] = *p++;
+      table[j] = 0; j = 0;
+      p = sp + 6;
+      while (p < wp && isalpha((unsigned char)*p) && j < 23) show[j++] = *p++;
+      show[j] = 0; j = 0;
+      p = wp + 5;
+      while (*p && isalpha((unsigned char)*p) && j < 23) field[j++] = *p++;
+      field[j] = 0;
+      char op[3] = "=";
+      if (*p == '>' || *p == '<' || *p == '=') { op[0] = *p; op[1] = 0; ++p; }
+      while (*p && !isalnum((unsigned char)*p)) ++p;
+      j = 0;
+      while (*p && (isalnum((unsigned char)*p) || *p == '.') && j < 23) value[j++] = *p++;
+      value[j] = 0;
+      int n = add(out, 0, "Build SQL as SELECT field FROM table WHERE condition.");
+      return add(out, n, "SELECT %s FROM %s WHERE %s %s %s", show, table, field, op, value[0] ? value : "?");
+    }
+  }
   if ((has(t, "sql") || has(t, "select") || has(t, "where") || has(t, "count")) && make_sql_cmd(input, cmd, sizeof(cmd))) {
     return eval_storage(cmd, out);
   }
@@ -4354,6 +4403,11 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       sprintf(cmd, "truth(%s)", ne);
       return eval_bool(cmd, out);
     }
+  }
+  if (nv == 0 && (has(compact, "demorgan") || has(compact, "not(aandb)") || has(compact, "not(a*b)")) &&
+      (has(compact, "notaorb") || has(compact, "notaornotb") || has(compact, "="))) {
+    sprintf(cmd, "boolprove((A&B)',A'+B')");
+    return eval_bool_prove(cmd, out);
   }
   if (nv == 0 && (has(compact, "equals") || has(compact, "isequalto") || has(compact, "isequivalentto") || has(compact, "equivalentto"))) {
     const char *e = skip_bool_words(compact);

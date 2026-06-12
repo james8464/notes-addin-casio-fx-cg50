@@ -87,6 +87,44 @@ Drift check:
 - Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
 - Active goal remains open for future source/probe-driven hardening.
 
+## 2026-06-12 Probability, Circular Motion, SQL, And Float Guard Slice
+
+Completed:
+- Added CASP3 union/intersection/conditional probability route from `P(A or B)`.
+- Added CASP3 mutually-exclusive union route.
+- Added CASP3 complement conditional `P(A|B')` route.
+- Added CASP3 binomial-test prose extraction for sample/success/proportion prompts and guarded it away from normal mean tests.
+- Added CASP3 linear velocity total-distance split for `v=a+bt`.
+- Added CASP3 circular/centripetal force route.
+- Added CASP3 elastic string tension route.
+- Added CASP3 projectile speed from maximum height route before generic projectile routes.
+- Added CASP3 histogram class interval density route.
+- Added CSCALC SQL SELECT prose route.
+- Added CSCALC floating encode value/bit-width route and guarded representability questions.
+- Added CSCALC unsigned binary plus/overflow route.
+- Added CSCALC De Morgan Boolean proof shortcut.
+- Added regressions and rebuilt calculator files.
+
+Evidence:
+- Second fresh probe batch passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 269756 bytes`
+  - `CSCALC.g3a: 189236 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Still inside CASP3/CSCALC free-text working support and generated calculator outputs.
+- Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for future source/probe-driven hardening.
+
 ## 2026-06-12 P3/CScalc Free-Text Route-Order Hardening Slice
 
 Completed:

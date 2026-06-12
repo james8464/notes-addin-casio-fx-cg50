@@ -1973,7 +1973,10 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
         !word_num_with_t(input, "from", &t1) || !word_num_with_t(input, "to", &t2)) return 0;
     double pts[4]; int np = 0; pts[np++] = t1;
     double D = B*B - 4*A*C;
-    if (D >= 0 && !near_num(A, 0)) {
+    if (near_num(A, 0) && !near_num(B, 0)) {
+      double r = -C / B;
+      if (r > t1 && r < t2) pts[np++] = r;
+    } else if (D >= 0 && !near_num(A, 0)) {
       double r1 = (-B - root(D))/(2*A), r2 = (-B + root(D))/(2*A);
       if (r1 > t1 && r1 < t2) pts[np++] = r1;
       if (r2 > t1 && r2 < t2 && !near_num(r2, r1)) pts[np++] = r2;
@@ -2574,6 +2577,19 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       return eval_suvat(cmd, out);
     }
   }
+  if (is_projectile_text(t) && has(c, "maximumheight") &&
+      (has(t, "speed") || has(t, "projection") || has(c, "speedofprojection")) && nv >= 2) {
+    double H=0, ang=0;
+    bool hH=word_num(input,"height",&H) || label_num(input,"height",&H);
+    bool hA=word_num(input,"angle",&ang) || label_num(input,"angle",&ang) || prev_word_num(input,"degrees",&ang);
+    if (!hH) H = v[0];
+    if (!hA) ang = v[1];
+    double s = deg_sine(ang), u = s ? root(2.0*9.8*H)/s : 0;
+    int n = add(out, 0, "At maximum height, vertical velocity is zero.");
+    n = add(out, n, "H = (u sin(theta))^2/(2g)");
+    n = add(out, n, "u sin(%.6g) = sqrt(2*9.8*%.6g)", ang, H);
+    return add(out, n, "u = %.10g m/s", u);
+  }
   if (is_projectile_text(t) && (has(t, "angle") || has(t, "angles") || (has(t, "find") && has(t, "angle"))) &&
       (has(t, "target") || has(t, "point") || has(t, "through") || has(t, "pass")) && nv >= 3) {
     double u=0,x=0,y=0,h0=0,g=0;
@@ -2639,6 +2655,19 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       sprintf(cmd, hG ? "projectiley(%.10g,%.10g,%.10g,%.10g,%.10g)" : "projectiley(%.10g,%.10g,%.10g,%.10g)", u, ang, y, hH ? h0 : 0, hG ? g : 9.8);
       return eval_mech(cmd, out);
     }
+  }
+  if (is_projectile_text(t) && has(c, "maximumheight") &&
+      (has(t, "speed") || has(t, "projection") || has(c, "speedofprojection")) && nv >= 2) {
+    double H=0, ang=0;
+    bool hH=word_num(input,"height",&H) || label_num(input,"height",&H);
+    bool hA=word_num(input,"angle",&ang) || label_num(input,"angle",&ang) || prev_word_num(input,"degrees",&ang);
+    if (!hH) H = v[0];
+    if (!hA) ang = v[1];
+    double s = deg_sine(ang), u = s ? root(2.0*9.8*H)/s : 0;
+    int n = add(out, 0, "At maximum height, vertical velocity is zero.");
+    n = add(out, n, "H = (u sin(theta))^2/(2g)");
+    n = add(out, n, "u sin(%.6g) = sqrt(2*9.8*%.6g)", ang, H);
+    return add(out, n, "u = %.10g m/s", u);
   }
   if (is_projectile_text(t) && (has(t, "height") || has(t, "above")) && nv >= 3) {
     double u=0,ang=0,h=0,g=0;
@@ -2776,6 +2805,33 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     if (hL && hW && ha) sprintf(cmd, "ladder(%.10g,%.10g,%.10g,%.10g,%.10g)", L, W, ang, hP ? P : 0, hd ? d : L/2);
     else sprintf(cmd, nv > 4 ? "ladder(%.10g,%.10g,%.10g,%.10g,%.10g)" : "ladder(%.10g,%.10g,%.10g)", v[0], v[1], v[2], nv > 3 ? v[3] : 0, nv > 4 ? v[4] : v[0]/2);
     return eval_mech(cmd, out);
+  }
+  if ((has(t, "circular") || has(t, "centripetal") || has(t, "bend") || has(t, "round")) &&
+      (has(t, "radius") || has(t, "speed") || has(t, "force")) && nv >= 3) {
+    double m=0, r=0, u=0;
+    bool hm=word_num(input,"mass",&m) || label_num(input,"mass",&m);
+    bool hr=word_num(input,"radius",&r) || label_num(input,"radius",&r);
+    bool hu=word_num(input,"speed",&u) || label_num(input,"speed",&u) || word_num(input,"velocity",&u);
+    if (!hm) m = v[0];
+    if (!hr) r = v[1];
+    if (!hu) u = v[2];
+    double F = r ? m*u*u/r : 0;
+    int n = add(out, 0, "For motion in a circle, centripetal force is mv^2/r.");
+    n = add(out, n, "F = %.6g*%.6g^2/%.6g", m, u, r);
+    return add(out, n, "centripetal force = %.10g N", F);
+  }
+  if ((has(t, "elastic") || has(t, "string")) && (has(t, "modulus") || has(t, "extension") || has(t, "tension")) && nv >= 3) {
+    double l=0, lam=0, x=0;
+    bool hl=word_num(input,"naturallength",&l) || word_num(input,"length",&l) || label_num(input,"length",&l);
+    bool hla=word_num(input,"modulus",&lam) || label_num(input,"modulus",&lam) || word_num(input,"lambda",&lam);
+    bool hx=word_num(input,"extension",&x) || label_num(input,"extension",&x);
+    if (!hl) l = v[1];
+    if (!hla) lam = v[2];
+    if (!hx) x = v[nv-1];
+    double T = l ? lam*x/l : 0;
+    int n = add(out, 0, "For an elastic string, Hooke's law gives T = lambda*x/l.");
+    n = add(out, n, "lambda = %.10g, extension = %.10g, natural length = %.10g", lam, x, l);
+    return add(out, n, "T = %.10g*%.10g/%.10g = %.10g N", lam, x, l, T);
   }
   if (has(t, "force") && !has(t, "plane") && !has(t, "rough") && !has(t, "acceleration") &&
       (has(t, "horizontal") || has(t, "vertical") || has(t, "component")) && nv >= 2) {
@@ -3071,6 +3127,31 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if ((has(t, "varacc") || has(t, "variableacceleration") || (has(t, "acceleration") && has(t, "integrate"))) && nv >= 4) {
     sprintf(cmd, "varacc(%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3]); return eval_mech(cmd, out);
+  }
+  if ((has(t, "successes") || has(t, "success") || has(t, "prefer") || has(t, "proportion") || has(c, "p=")) &&
+      (has(t, "test") || has(t, "increased") || has(t, "decreased")) &&
+      !has(t, "samplemean") && !has(t, "populationmean") && !has(t, "sd") && !has(t, "standarddeviation") && nv >= 4) {
+    double N=0, x=0, pv=0, alpha=0.05;
+    bool hN=word_num(input,"sample",&N) || word_num(input,"sampleof",&N) || label_num(input,"n",&N);
+    bool hx=word_num(input,"successes",&x) || word_num(input,"success",&x) || label_num(input,"x",&x);
+    bool hp=label_num(input,"p",&pv) || word_num(input,"p",&pv) || word_num(input,"proportion",&pv);
+    if (!hN) N = v[0];
+    if (!hp) for (int i = 0; i < nv; ++i) if (v[i] > 0 && v[i] < 1) { pv = v[i]; hp = true; break; }
+    if (!hp && has(t, "percent")) {
+      for (int i = 0; i < nv; ++i) {
+        if (near_num(v[i], N) || near_num(v[i], x) || near_num(v[i], alpha*100.0)) continue;
+        if (v[i] > 0 && v[i] <= 100) { pv = v[i] / 100.0; hp = true; break; }
+      }
+    }
+    if (!hx) for (int i = 0; i < nv; ++i) if (!near_num(v[i], N) && !near_num(v[i], pv) && v[i] >= 0 && v[i] <= N) { x = v[i]; hx = true; break; }
+    for (int i = 0; i < nv; ++i) {
+      if (near_num(v[i], N) || near_num(v[i], x) || near_num(v[i], pv)) continue;
+      if (v[i] > 0 && v[i] <= 10) { alpha = v[i]/100.0; break; }
+      if (v[i] > 0 && v[i] <= 1) { alpha = v[i]; break; }
+    }
+    double tail = (has(t, "increased") || has(t, "increase") || has(t, "greater") || has(t, "more")) ? 1.0 : -1.0;
+    sprintf(cmd, "hypbinom(%d,%.10g,%d,%.10g,%.0f)", (int)N, pv, (int)x, alpha, tail);
+    return eval_stats(cmd, out);
   }
   if ((has(t, "coin") || has(t, "heads") || has(t, "tails") || has(t, "tosses") || has(t, "tossed")) &&
       (has(t, "critical") || has(t, "criticalregion")) && nv >= 1) {
@@ -3752,6 +3833,29 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     }
     return eval_stats(cmd, out);
   }
+  if ((has(t, "mutuallyexclusive") || has(t, "exclusive")) && (has(t, "or") || has(t, "union") || has(c, "p(aorb)")) && nv >= 2) {
+    double pa = v[0], pb = v[1], por = pa + pb;
+    int n = add(out, 0, "For mutually exclusive events, P(A and B)=0.");
+    n = add(out, n, "P(A or B)=P(A)+P(B)");
+    return add(out, n, "P(A or B)=%.6g+%.6g=%.10g", pa, pb, por);
+  }
+  if ((has(c, "p(aorb)") || has(t, "union")) &&
+      (has(c, "agivenb") || has(c, "p(a|b)") || has(t, "conditional")) && nv >= 3) {
+    double pa = v[0], pb = v[1], por = v[2];
+    double pab = pa + pb - por;
+    int n = add(out, 0, "Use P(A or B)=P(A)+P(B)-P(A and B).");
+    n = add(out, n, "P(A and B)=%.6g+%.6g-%.6g=%.10g", pa, pb, por, pab);
+    n = add(out, n, "Then use P(A|B)=P(A and B)/P(B).");
+    return add(out, n, "P(A|B)=%.10g/%.6g=%.10g", pab, pb, pb ? pab/pb : 0);
+  }
+  if ((has(c, "givennotb") || has(c, "|b'") || has(c, "bcomplement")) && nv >= 3) {
+    double pa = v[0], pb = v[1], pab = v[2];
+    double nume = pa - pab, den = 1 - pb;
+    int n = add(out, 0, "Use complements: P(A and B')=P(A)-P(A and B).");
+    n = add(out, n, "P(A and B')=%.6g-%.6g=%.10g", pa, pab, nume);
+    n = add(out, n, "P(B')=1-P(B)=1-%.6g=%.10g", pb, den);
+    return add(out, n, "P(A|B')=%.10g/%.10g=%.10g", nume, den, den ? nume/den : 0);
+  }
   if ((has(t, "independent") || has(t, "independence")) &&
       (has(t, "union") || has(t, "either") || has(c, "p(aorb)") || has(c, "p(aor b)") || has(t, " or ")) && nv >= 3) {
     double pa = v[0], pb = v[1], pab = v[2];
@@ -4241,6 +4345,16 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     bool hW = word_num(input,"classwidth",&width0) || word_num(input,"width",&width0);
     bool hD = word_num(input,"frequencydensity",&dens) || word_num(input,"density",&dens);
     bool hF = word_num(input,"frequency",&freq);
+    if ((has(t, "classinterval") || (has(t, "class") && has(t, "interval"))) &&
+        has(t, "frequency") && nv >= 3 && !hD) {
+      double lo = v[0], hi = v[1];
+      if (hi < lo) { double q = lo; lo = hi; hi = q; }
+      freq = hF ? freq : v[2];
+      width0 = hi - lo;
+      int n = add(out, 0, "For a histogram, frequency density = frequency / class width.");
+      n = add(out, n, "class width = %.10g - %.10g = %.10g", hi, lo, width0);
+      return add(out, n, "frequency density = %.10g/%.10g = %.10g", freq, width0, width0 ? freq/width0 : 0);
+    }
     if (!hW && has(t, "class") && has(t, "to")) {
       double lo=0, hi=0;
       if (word_num(input, "class", &lo) && word_num(input, "to", &hi) && hi > lo) {
