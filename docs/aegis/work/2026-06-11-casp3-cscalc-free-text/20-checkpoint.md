@@ -1,5 +1,25 @@
 # Checkpoint
 
+## 2026-06-12 CASP3 Beam Reactions Slice
+
+Completed:
+- Added `beam(...)`, `beamreactions(...)`, and `supportreactions(...)`.
+- Added free-text routing for beam/support/reaction prompts with load, distance, and optional beam weight.
+- Output shows moments about the left support, right reaction, vertical equilibrium, and left reaction.
+- Added direct and labelled free-text regression tests.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CASP3 Edexcel Paper 3 mechanics working support.
+- Did not touch CAS Pure behavior, CSCALC behavior, NOTES, or shared UI/status code.
+
 ## 2026-06-12 CASP3 Distribution Mean Variance Slice
 
 Completed:

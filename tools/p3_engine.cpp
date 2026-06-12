@@ -284,6 +284,16 @@ static int eval_mech(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     int n = add(out, 0, "Moment = force * perpendicular distance.");
     return add(out, n, "M = %.6g*%.6g = %.6g Nm", f, d, f*d);
   }
+  if (starts3(s, "beam(", "beamreactions(", "supportreactions(") && na >= 3) {
+    double L=num(a[0]), W=num(a[1]), x=num(a[2]), bw=na>3?num(a[3]):0;
+    double rb=(W*x + bw*L/2)/L, ra=W+bw-rb;
+    int n = add(out, 0, "For a horizontal beam in equilibrium, use moments and vertical forces.");
+    n = add(out, n, "Take moments about the left support A.");
+    n = add(out, n, "R_B*%.6g = %.6g*%.6g + %.6g*(%.6g/2)", L, W, x, bw, L);
+    n = add(out, n, "R_B = %.10g N", rb);
+    n = add(out, n, "Vertical equilibrium: R_A + R_B = %.6g + %.6g", W, bw);
+    return add(out, n, "R_A = %.10g N", ra);
+  }
   if (starts3(s, "incline(", "slope(", "plane(") && na >= 2) {
     double m=num(a[0]), th=num(a[1])*M_PI/180.0, g=na>3?num(a[3]):9.8, mu=na>2?num(a[2]):0;
     double parallel=m*g*sine(th), reaction=m*g*cosine(th), fr=mu*reaction;
@@ -862,6 +872,14 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     sprintf(cmd+p, ")");
     return eval_mech(cmd, out);
   }
+  if ((has(t, "beam") || has(t, "support") || has(t, "reaction")) && (has(t, "load") || has(t, "weight")) && nv >= 3) {
+    double L=0,W=0,x=0,bw=0;
+    bool hL=label_num(input,"length",&L), hW=label_num(input,"load",&W), hx=label_num(input,"distance",&x);
+    bool hb=label_num(input,"beamweight",&bw) || label_num(input,"bw",&bw);
+    if (hL && hW && hx) sprintf(cmd, "beam(%.10g,%.10g,%.10g,%.10g)", L, W, x, hb ? bw : 0);
+    else sprintf(cmd, nv > 3 ? "beam(%.10g,%.10g,%.10g,%.10g)" : "beam(%.10g,%.10g,%.10g)", v[0], v[1], v[2], nv > 3 ? v[3] : 0);
+    return eval_mech(cmd, out);
+  }
   if ((has(t, "force") || has(t, "newton")) && (has(t, "mass") || has(t, "accel")) && !has(t, "connected") && !has(t, "pulley") && nv >= 2) {
     sprintf(cmd, "force(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
   }
@@ -1114,6 +1132,6 @@ int p3_eval(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   n = eval_free_text(input, out); if (n) return n;
   n = add(out, 0, "Supported:");
   n = add(out, n, "suvat projectile projectileh force weight friction moment incline");
-  n = add(out, n, "connected pulley impulse momentum work power energy restitution vector resolve vectorkin varacc");
+  n = add(out, n, "beam connected pulley impulse momentum work power energy restitution vector resolve vectorkin varacc");
   return add(out, n, "normal normalvar normalprob invnormal binom binomstats binomtail critbinom hypbinom cond probor bayes independent poisson poissonstats poissontail poissonnorm critpoisson hyppoisson regress pmcc spearman meanvar discrete stratified groupmedian histdensity code");
 }
