@@ -370,6 +370,30 @@ static bool parse_velocity_quad(const char *input, double *A, double *B, double 
   return any;
 }
 
+static bool parse_poly_after_word(const char *input, const char *word, double *A, double *B, double *C) {
+  int wl = (int)strlen(word);
+  for (int i = 0; input && input[i]; ++i) {
+    int j = 0, q = i;
+    while (j < wl && input[q] && tolower((unsigned char)input[q]) == word[j]) { ++j; ++q; }
+    if (j != wl) continue;
+    while (input[q] && input[q] != '-' && input[q] != '+' && input[q] != '.' &&
+           !isdigit((unsigned char)input[q]) && tolower((unsigned char)input[q]) != 't') ++q;
+    if (!input[q]) continue;
+    char expr[96]; int k = 0;
+    while (input[q] && k + 1 < (int)sizeof(expr)) {
+      unsigned char ch = (unsigned char)input[q];
+      if (isspace(ch)) { ++q; continue; }
+      char lc = (char)tolower(ch);
+      if ((lc == 't' || lc == 'x') && isalpha((unsigned char)input[q+1])) break;
+      if (!(isdigit(ch) || lc == 't' || lc == 'x' || lc == '+' || lc == '-' || lc == '.' || lc == '^' || lc == '*')) break;
+      expr[k++] = lc; ++q;
+    }
+    expr[k] = 0;
+    if (k > 0 && parse_velocity_quad(expr, A, B, C)) return true;
+  }
+  return false;
+}
+
 static bool is_projectile_text(const char *t) {
   return has(t, "projectile") || has(t, "projectiles") || has(t, "projected") || has(t, "projection") ||
          has(t, "thrown") || has(t, "fired") || has(t, "launched");
@@ -1446,10 +1470,11 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     return add(out, n, "displacement = %.10g - %.10g = %.10g", F2, F1, F2-F1);
   }
   if ((has(t, "acceleration") || has(t, "accn")) && has(t, "t") &&
-      (has(c, "accelerationa=") || has(c, "a=") || has(c, "accelerationis")) &&
       (has(t, "initial") || has(t, "initially")) && nv >= 3) {
     double A=0, B=0, C=0, u=0, s0=0, time=0;
-    if (parse_velocity_quad(input, &A, &B, &C) &&
+    bool parsed_acc = parse_poly_after_word(input, "acceleration", &A, &B, &C);
+    if (!parsed_acc && has(c, "a=")) parsed_acc = parse_velocity_quad(input, &A, &B, &C);
+    if (parsed_acc && (!near_num(A, 0) || !near_num(B, 0)) &&
         (word_num(input, "velocity", &u) || word_num(input, "speed", &u) || word_num(input, "u", &u)) &&
         (word_num(input, "after", &time) || word_num(input, "time", &time) || word_num(input, "at", &time))) {
       double vv = A*time*time*time/3.0 + B*time*time/2.0 + C*time + u;
@@ -2076,7 +2101,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       if (has(c, "morethan")) tail = 2;
       else if (has(c, "atleast") || has(c, "greaterthanorequal")) tail = 1;
       else if (has(c, "lessthanorequal") || has(c, "atmost")) tail = -1;
-      else if (has(c, "lessthan")) tail = -2;
+      else if (has(c, "lessthan") || has(t, "fewer")) tail = -2;
       if (tail) sprintf(cmd, "binomtail(%d,%.10g,%d,%d)", (int)N, pv, (int)x, tail);
       else sprintf(cmd, "binom(%d,%.10g,%d)", (int)N, pv, (int)x);
       return eval_stats(cmd, out);
@@ -2302,6 +2327,15 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
                (!has(t, "percentile") && label_num(input,"p",&area));
     double tail = (has(t, "twotailed") || has(t, "twosided") || (has(t, "two") && (has(t, "tailed") || has(t, "sided"))) || has(t, "different") || has(t, "notequal")) ? 0 :
                   (has(t, "upper") || has(t, "greater") || has(t, "more") ? 1 : -1);
+    if (hMu && (hSig || hVar) && (has(c, "interquartilerange") || has(t, "iqr"))) {
+      double sd = hSig ? sig : root(var);
+      double z = 0.67448975;
+      int n = add(out, 0, "For a normal distribution, quartiles use z = +/-0.67448975.");
+      if (hVar) n = add(out, n, "sigma = sqrt(%.6g) = %.10g", var, sd);
+      n = add(out, n, "Q1 = mu - 0.67448975*sigma = %.6g - 0.67448975*%.10g = %.10g", mu, sd, mu - z*sd);
+      n = add(out, n, "Q3 = mu + 0.67448975*sigma = %.6g + 0.67448975*%.10g = %.10g", mu, sd, mu + z*sd);
+      return add(out, n, "IQR = Q3 - Q1 = %.10g", 2*z*sd);
+    }
     if ((has(t, "total") || has(t, "sum")) && hMu && hSig &&
         (has(t, "probability") || has(t, "find"))) {
       double count=0, bound=0;

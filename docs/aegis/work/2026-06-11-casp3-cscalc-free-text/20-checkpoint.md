@@ -2611,6 +2611,40 @@ Drift check:
 - Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
 - Active goal remains open for future source/probe-driven hardening.
 
+## 2026-06-12 Variable Acceleration, Normal IQR, Coin Tail, Megapixel Slice
+
+Completed:
+- Added CASP3 variable-acceleration prose parsing for `acceleration 4-2t` style inputs.
+- Guarded the variable-acceleration route so constant acceleration prompts still use SUVAT.
+- Added CASP3 normal-distribution interquartile range working from mean and standard deviation/variance.
+- Fixed CASP3 biased coin `fewer than` wording to route to the strict lower binomial tail.
+- Added CSCALC megapixel image-storage route so megapixels are treated as pixel count, not colour count.
+- Added regression tests and rebuilt calculator files.
+
+Evidence:
+- Fresh focused probes:
+  - `A particle moves with acceleration 4-2t... after 3 seconds` now gives `v = 8`, `s = 24`.
+  - `normal ... mean 100 ... standard deviation 15 ... interquartile range` now gives quartile lines and `IQR = 20.2346925`.
+  - `biased coin ... fewer than 10 heads` now gives `P(X<10)` and `sum from 0 to 9`.
+  - `5 megapixel image with 12 bit colour depth` now gives `5000000*12 = 60000000 bits`.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 185768 bytes`
+  - `CSCALC.g3a: 162188 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Still inside CASP3/CSCALC free-text parser hardening and generated calculator outputs.
+- Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for future source/probe-driven hardening.
+
 ## 2026-06-12 Vector Impulse, Horizontal Work-Energy, Poisson Wording Slice
 
 Completed:

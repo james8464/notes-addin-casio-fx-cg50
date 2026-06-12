@@ -179,6 +179,7 @@ def main():
     require("bitmap image 1920 x 1080 with 24 bit colour", ["width * height", "49766400 bits"])
     require("bitmap image width=1920 height=1080 depth=24", ["width * height", "49766400 bits"])
     require("calculate image size 640 x 480 16 bit colour depth", ["Image bits = width * height * colour depth", "640*480*16 = 4915200 bits"])
+    require("Calculate the storage required for a 5 megapixel image with 12 bit colour depth.", ["5 megapixels = 5000000 pixels", "5000000*12 = 60000000 bits", "7.152557373 MiB"])
     require("bitmap image 1024 by 768 with 3 bytes per pixel", ["3 bytes per pixel = 24 bits per pixel", "1024*768*24 = 18874368 bits"])
     require("image resolution width=1024 height=768 depth=3 bytes", ["3 bytes per pixel = 24 bits per pixel", "2.3593e+06 bytes"])
     require("imagecolors(100,50,16)", ["ceil(log2(16)) = 4", "20000 bits"])

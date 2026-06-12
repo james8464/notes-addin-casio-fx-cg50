@@ -3093,6 +3093,15 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     sprintf(cmd + p, ")");
     return eval_trace(cmd, out);
   }
+  if ((has(t, "image") || has(t, "bitmap")) && (has(t, "megapixel") || has(t, "megapixels")) && nv >= 2) {
+    double pixels = v[0] * 1000000.0, depth = v[1], bits_total = pixels * depth, bytes = bits_total / 8.0;
+    int n = add(out, 0, "Image bits = pixels * colour depth.");
+    n = add(out, n, "%.10g megapixels = %.10g pixels", v[0], pixels);
+    n = add(out, n, "%.10g*%.10g = %.10g bits", pixels, depth, bits_total);
+    n = add(out, n, "= %.10g bytes", bytes);
+    n = add(out, n, "= %.10g MB", bytes / 1000000.0);
+    return add(out, n, "= %.10g MiB", bytes / 1048576.0);
+  }
   if ((has(t, "image") || has(t, "bitmap")) && (has(t, "colours") || has(t, "colors")) && nv >= 3) {
     sprintf(cmd, "imagecolors(%lld,%lld,%lld)", (long long)v[0], (long long)v[1], (long long)v[2]); return eval_storage(cmd, out);
   }
