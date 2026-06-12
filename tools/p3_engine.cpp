@@ -1317,6 +1317,7 @@ static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     n = add(out, n, "sum fx = %s = %.10g", l1, sfx);
     n = add(out, n, "mean = sum fx / sum f = %.10g", mean);
     n = add(out, n, "sum fx^2 = %s = %.10g", l2, sfx2);
+    n = add(out, n, "variance = sum fx^2/sum f - mean^2 = %.10g", var);
     return add(out, n, "sd = sqrt(sum fx^2/sum f - mean^2) = %.10g", root(var));
   }
   if (starts3(s, "discrete(", "expectation(", "randomvar(") && na >= 4) {
@@ -1537,7 +1538,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       double alpha = 0.05;
       for (int i = 0; i < nv; ++i) {
         if (near_num(v[i], Nd) || near_num(v[i], pv)) continue;
-        alpha = v[i] > 1 ? v[i] / 100.0 : v[i];
+        alpha = (has(t, "percent") || has(c, "%")) && v[i] >= 1 && v[i] <= 100 ? v[i] / 100.0 : (v[i] > 1 ? v[i] / 100.0 : v[i]);
         break;
       }
       if (has(t, "twotailed") || has(t, "twosided") || (has(t, "two") && (has(t, "tailed") || has(t, "sided")))) {
@@ -1885,6 +1886,10 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     for (int i=1;i<nv && p < (int)sizeof(cmd)-24;++i) p += sprintf(cmd+p, ",%.10g", v[i]);
     sprintf(cmd+p, ")");
     return eval_mech(cmd, out);
+  }
+  if ((has(t, "force") || has(t, "vector")) && has(t, "i") && has(t, "j") &&
+      (has(t, "magnitude") || has(t, "direction") || has(t, "resultant")) && nv >= 2) {
+    sprintf(cmd, "vector(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
   }
   if ((has(t, "equilibrium") || has(t, "balance")) && (has(t, "angle") || has(t, "bearing") || has(t, "degree")) && nv >= 4) {
     int p = sprintf(cmd, "equilpolar(%.10g", v[0]);
@@ -2324,12 +2329,16 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       return eval_stats(cmd, out);
     }
   }
-  if ((has(t, "probability") || has(t, "chance")) && nv >= 3 &&
-      (has(t, "sample") || has(t, "trials") || has(t, "success") || has(t, "faulty") || has(t, "seed") || has(t, "germinate"))) {
-    double pv=-1, N=-1, x=-1;
+  if ((has(t, "probability") || has(t, "chance")) && nv >= 2 &&
+      (has(t, "sample") || has(t, "trials") || has(t, "success") || has(t, "faulty") || has(t, "seed") ||
+       has(t, "germinate") || has(t, "plants") || has(t, "affected") || has(t, "disease"))) {
+    double pv=-1, rawp=-1, N=-1, x=-1;
     for (int i = 0; i < nv; ++i) if (v[i] > 0 && v[i] < 1 && pv < 0) pv = v[i];
-    for (int i = 0; i < nv; ++i) if (!near_num(v[i], pv) && v[i] > N) N = v[i];
-    for (int i = 0; i < nv; ++i) if (!near_num(v[i], pv) && !near_num(v[i], N)) { x = v[i]; break; }
+    if (pv < 0 && (has(t, "percent") || has(c, "%"))) for (int i = 0; i < nv; ++i)
+      if (v[i] > 0 && v[i] < 100) { rawp = v[i]; pv = v[i] / 100.0; break; }
+    for (int i = 0; i < nv; ++i) if (!near_num(v[i], pv) && (rawp < 0 || !near_num(v[i], rawp)) && v[i] > N) N = v[i];
+    for (int i = 0; i < nv; ++i) if (!near_num(v[i], pv) && (rawp < 0 || !near_num(v[i], rawp)) && !near_num(v[i], N)) { x = v[i]; break; }
+    if (x < 0 && (has(c, "atleastone") || has(c, "atleast1"))) x = 1;
     if (pv > 0 && N >= 1 && x >= 0) {
       int tail = 0;
       if (has(c, "nomorethan")) tail = -1;
@@ -2558,6 +2567,14 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if ((has(t, "bayes") || has(t, "reverseconditional")) && nv >= 3) {
     sprintf(cmd, "bayes(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_stats(cmd, out);
   }
+  if ((has(t, "independent") || has(t, "independence")) && (has(t, "given") || has(t, "conditional")) && nv >= 3) {
+    int n = add(out, 0, "Use P(A|B)=P(A and B)/P(B).");
+    n = add(out, n, "P(A|B)=%.6g/%.6g=%.10g", v[2], v[1], v[1] ? v[2]/v[1] : 0);
+    double prod = v[0]*v[1], diff = prod > v[2] ? prod - v[2] : v[2] - prod;
+    n = add(out, n, "For independence, compare P(A and B) with P(A)P(B).");
+    n = add(out, n, "P(A)P(B)=%.6g*%.6g=%.10g", v[0], v[1], prod);
+    return add(out, n, diff < 1e-9 ? "A and B are independent." : "A and B are not independent.");
+  }
   if ((has(t, "independent") || has(t, "independence")) && nv >= 3) {
     sprintf(cmd, "independent(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_stats(cmd, out);
   }
@@ -2574,7 +2591,12 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if (has(t, "binom") && nv >= 3) {
     int tail = prob_tail(c, t);
     if (has(c, "nomorethan") || has(t, "cdf")) tail = -1;
-    if (tail) sprintf(cmd, "binomtail(%d,%.10g,%d,%d)", (int)v[0], v[1], (int)v[2], tail);
+    double third = v[2];
+    if ((has(t, "critical") || has(t, "criticalregion") || has(t, "significance")) &&
+        (has(t, "percent") || has(c, "%")) && third > 0 && third <= 100) third /= 100.0;
+    if ((has(t, "critical") || has(t, "criticalregion") || has(t, "significance")))
+      sprintf(cmd, "critbinom(%d,%.10g,%.10g,%.0f)", (int)v[0], v[1], third, (has(t, "upper") || has(t, "greater") || has(t, "more")) ? 1.0 : -1.0);
+    else if (tail) sprintf(cmd, "binomtail(%d,%.10g,%d,%d)", (int)v[0], v[1], (int)v[2], tail);
     else sprintf(cmd, "binom(%d,%.10g,%d)", (int)v[0], v[1], (int)v[2]);
     return eval_stats(cmd, out);
   }

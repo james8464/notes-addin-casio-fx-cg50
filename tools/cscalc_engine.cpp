@@ -2875,6 +2875,9 @@ static const char *skip_bool_words(const char *e) {
   while (moved) {
     moved = false;
     if (starts(e, "simplify")) { e += 8; moved = true; }
+    if (starts(e, "draw")) { e += 4; moved = true; }
+    if (starts(e, "make")) { e += 4; moved = true; }
+    if (starts(e, "create")) { e += 6; moved = true; }
     if (starts(e, "the")) { e += 3; moved = true; }
     if (starts(e, "using")) { e += 5; moved = true; }
     if (starts(e, "algebra")) { e += 7; moved = true; }
@@ -3141,6 +3144,16 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if ((has(t, "symbol") || has(t, "symbols")) && (has(t, "bits") || has(t, "bit")) &&
       (has(t, "needed") || has(t, "need") || has(t, "represent") || has(t, "howmany") || has(t, "how,many")) && nv >= 1) {
     sprintf(cmd, "symbolbits(%lld)", (long long)v[0]); return eval_storage(cmd, out);
+  }
+  if ((has(t, "colour") || has(t, "color")) &&
+      (has(t, "needed") || has(t, "need") || has(t, "bits") || has(t, "bit") || has(t, "per,pixel") || has(t, "perpixel")) &&
+      !(has(t, "howmanycolours") || has(t, "how,many,colours") || has(t, "howmanycolors") ||
+        has(t, "how,many,colors") || has(t, "numberofcolours") || has(t, "numberofcolors")) &&
+      nv >= 1 && !(has(t, "width") || has(t, "height") || has(t, "resolution"))) {
+    double colours=0;
+    if (!(label_num(input, "colours", &colours) || label_num(input, "colors", &colours) ||
+          scan_before_word_num(t, "colours", &colours) || scan_before_word_num(t, "colors", &colours))) colours = v[0];
+    sprintf(cmd, "colourdepth(%lld)", (long long)colours); return eval_storage(cmd, out);
   }
   if ((has(t, "colour") || has(t, "color")) && (has(t, "howmanycolours") || has(t, "how,many,colours") ||
       has(t, "howmanycolors") || has(t, "how,many,colors") || has(t, "numberofcolours") || has(t, "numberofcolors")) &&

@@ -2577,6 +2577,40 @@ Drift check:
 - Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
 - Active goal remains open for future source/probe-driven hardening.
 
+## 2026-06-12 Stats, Vectors, Colour Depth, Truth Extraction Slice
+
+Completed:
+- Added grouped-data variance line before standard deviation.
+- Added combined conditional-probability and independence working for prompts asking both.
+- Fixed binomial percent probability parsing for `2 percent` style prompts and inferred `at least one`.
+- Fixed binomial critical-region parsing when significance is written as `1 percent`.
+- Added natural vector-component force magnitude routing for `7i-24j` style wording.
+- Added CSCALC colour-depth-only routing when only colours and bits-per-pixel are requested.
+- Fixed Boolean truth-table free-text extraction for `Draw the truth table for ...` prompts.
+- Added regression tests and rebuilt calculator files.
+
+Evidence:
+- Fresh focused probe batch exposed 6 parser/output gaps; all were fixed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 190576 bytes`
+  - `CSCALC.g3a: 164848 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CASP3.g3a sha256 0e07665584385a98273ed84a0f92a1d26cdde2537f6b857a638ad07ac287f014`
+  - `CSCALC.g3a sha256 6d4f0f9ac765a88d00a4d508a72226661f9c89a0296f5f13626d73e2ced36c84`
+
+Drift check:
+- Still inside CASP3/CSCALC parser hardening and generated calculator outputs.
+- Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for future source/probe-driven hardening.
+
 ## 2026-06-12 Conditional/Poisson/Beam and CS Unit Parser Slice
 
 Completed:
