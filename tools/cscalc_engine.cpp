@@ -389,6 +389,48 @@ static bool make_fsm_cmd(const char *in, char *cmd, int cap) {
   return true;
 }
 
+static const char *sql_op_text(const char *op) {
+  if (strcmp(op, ">") == 0 || word_is(op, "gt") || word_is(op, "greater") || word_is(op, "more") || word_is(op, "above")) return ">";
+  if (strcmp(op, ">=") == 0 || word_is(op, "gte") || word_is(op, "atleast")) return ">=";
+  if (strcmp(op, "<") == 0 || word_is(op, "lt") || word_is(op, "less") || word_is(op, "below") || word_is(op, "under")) return "<";
+  if (strcmp(op, "<=") == 0 || word_is(op, "lte") || word_is(op, "atmost")) return "<=";
+  if (strcmp(op, "!=") == 0 || word_is(op, "ne") || word_is(op, "not")) return "<>";
+  return "=";
+}
+
+static bool make_sql_cmd(const char *in, char *cmd, int cap) {
+  char t[192]; raw_clean(in, t, sizeof(t));
+  char tok[24][32]; int nt = 0;
+  for (int i = 0; t[i] && nt < 24;) {
+    while (t[i] == ',') ++i;
+    char w[32]; int j = 0;
+    while (t[i] && t[i] != ',' && j + 1 < (int)sizeof(w)) w[j++] = t[i++];
+    w[j] = 0;
+    if (w[0]) strcpy(tok[nt++], w);
+  }
+  int sel = -1, from = -1, where = -1;
+  for (int i = 0; i < nt; ++i) {
+    if (word_is(tok[i], "select")) sel = i;
+    if (word_is(tok[i], "from")) from = i;
+    if (word_is(tok[i], "where")) where = i;
+  }
+  bool count = false;
+  for (int i = 0; i < nt; ++i) if (word_is(tok[i], "count") || word_is(tok[i], "countrows") || word_is(tok[i], "countrecords")) count = true;
+  if (from < 0 || where < 0 || where + 3 >= nt) return false;
+  const char *show = count ? "*" : (sel >= 0 && sel + 1 < nt ? tok[sel + 1] : "*");
+  const char *table = tok[from + 1];
+  const char *field = tok[where + 1];
+  const char *op = tok[where + 2];
+  const char *value = tok[where + 3];
+  if ((word_is(op, "greater") || word_is(op, "less") || word_is(op, "more")) && word_is(value, "than") && where + 4 < nt) value = tok[where + 4];
+  if (word_is(op, "at") && word_is(value, "least") && where + 4 < nt) { op = "gte"; value = tok[where + 4]; }
+  if (word_is(op, "at") && word_is(value, "most") && where + 4 < nt) { op = "lte"; value = tok[where + 4]; }
+  (void)cap;
+  if (count) sprintf(cmd, "sqlcount(%s,%s,%s,%s)", table, field, sql_op_text(op), value);
+  else sprintf(cmd, "sqlselect(%s,%s,%s,%s,%s)", table, show, field, sql_op_text(op), value);
+  return true;
+}
+
 static int is_bits(const char *s) {
   if (!s || !*s) return 0;
   for (int i = 0; s[i]; ++i) if (s[i] != '0' && s[i] != '1' && s[i] != '.') return 0;
@@ -1102,6 +1144,22 @@ static int eval_storage(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LE
     n = add(out, n, "code lengths: %s", ls);
     n = add(out, n, "encoded bits = sum(freq*length) = %lld", bits);
     return add(out, n, "fixed length = %lld*%d = %lld bits", total, fixed, total * fixed);
+  }
+  if (starts3(s, "sqlselect(", "selectwhere(", "sqlquery(") && na >= 5) {
+    const char *op = sql_op_text(a[3]);
+    int n = add(out, 0, "SQL SELECT: choose fields, choose table, then apply WHERE.");
+    n = add(out, n, "SELECT %s", a[1]);
+    n = add(out, n, "FROM %s", a[0]);
+    n = add(out, n, "WHERE %s %s %s", a[2], op, a[4]);
+    return add(out, n, "query = SELECT %s FROM %s WHERE %s %s %s", a[1], a[0], a[2], op, a[4]);
+  }
+  if (starts3(s, "sqlcount(", "countwhere(", "countrecords(") && na >= 4) {
+    const char *op = sql_op_text(a[2]);
+    int n = add(out, 0, "SQL COUNT: filter rows with WHERE, then count matching records.");
+    n = add(out, n, "SELECT COUNT(*)");
+    n = add(out, n, "FROM %s", a[0]);
+    n = add(out, n, "WHERE %s %s %s", a[1], op, a[3]);
+    return add(out, n, "query = SELECT COUNT(*) FROM %s WHERE %s %s %s", a[0], a[1], op, a[3]);
   }
   if (starts3(s, "records(", "recordsize(", "database(") && na >= 2) {
     double bytes = num(a[0]) * num(a[1]);
@@ -2001,6 +2059,9 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if ((has(t, "runlength") || has(t, "rle") || (has(t, "run") && has(t, "length"))) && nv >= 3) {
     sprintf(cmd, "rle(%lld,%lld,%lld)", (long long)v[0], (long long)v[1], (long long)v[2]); return eval_storage(cmd, out);
   }
+  if ((has(t, "sql") || has(t, "select") || has(t, "where") || has(t, "count")) && make_sql_cmd(input, cmd, sizeof(cmd))) {
+    return eval_storage(cmd, out);
+  }
   if ((has(t, "record") || has(t, "database")) && nv >= 2) {
     sprintf(cmd, "records(%.10g,%.10g)", v[0], v[1]); return eval_storage(cmd, out);
   }
@@ -2076,5 +2137,5 @@ int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
   n = add(out, 0, "Supported:");
   n = add(out, n, "bin hex den convert twos twosdec fixed fixedenc parity xorbits andbits orbits notbits hamming checksum checkdigit rpn");
   n = add(out, n, "floatdec floatrange normal image sound bitrate transfer transfermb");
-  return add(out, n, "compress huffman rle records hashmod hashlinear addressspace chars ascii unicode stack queue preorder inorder postorder dijkstra fsm fsmout binarysearch bubblesort selectionsort mergesort bool truth nandform norform");
+  return add(out, n, "compress huffman rle records sqlselect sqlcount hashmod hashlinear addressspace chars ascii unicode stack queue preorder inorder postorder dijkstra fsm fsmout binarysearch bubblesort selectionsort mergesort bool truth nandform norform");
 }

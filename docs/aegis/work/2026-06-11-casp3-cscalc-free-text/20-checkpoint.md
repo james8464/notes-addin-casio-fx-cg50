@@ -1,5 +1,26 @@
 # Checkpoint
 
+## 2026-06-12 CSCALC SQL Query Trace Slice
+
+Completed:
+- Added `sqlselect(...)`, `selectwhere(...)`, and `sqlquery(...)` for SELECT/FROM/WHERE working.
+- Added `sqlcount(...)`, `countwhere(...)`, and `countrecords(...)` for COUNT(*) query working.
+- Added free-text routing for SQL select/count/where prompts, including "greater than" and "at least" wording.
+- Output shows clause order and the final query.
+- Added direct and free-text regression tests.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CSCALC AQA Paper 2 database/query working support.
+- Did not touch CAS Pure behavior, CASP3 behavior, NOTES, or shared UI/status code.
+
 ## 2026-06-12 CASP3 Equilibrium Components Slice
 
 Completed:
