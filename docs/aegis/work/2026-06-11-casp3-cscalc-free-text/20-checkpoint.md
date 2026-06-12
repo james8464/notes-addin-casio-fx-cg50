@@ -1,5 +1,26 @@
 # Checkpoint
 
+## 2026-06-12 CSCALC FSM Trace Slice
+
+Completed:
+- Added direct finite state machine tracing with `fsm(start,input,state,symbol,next,...)`.
+- Added Mealy-style output tracing with `fsmout(start,input,state,symbol,next,output,...)`.
+- Added free-text routing for finite-state-machine prompts.
+- Output shows start state, each consumed input symbol, each transition, final state, and output stream where supplied.
+- Added direct and free-text regression tests.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CSCALC AQA Paper 2 trace-working support.
+- Did not touch CAS Pure behavior, CASP3 behavior, NOTES, or shared UI/status code.
+
 ## 2026-06-12 CSCALC Boolean Consensus Slice
 
 Completed:

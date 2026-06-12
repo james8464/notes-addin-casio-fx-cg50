@@ -347,6 +347,37 @@ static bool make_dijkstra_cmd(const char *in, char *cmd, int cap) {
   return true;
 }
 
+static bool fsm_skip_word(const char *w) {
+  return word_is(w, "fsm") || word_is(w, "finite") || word_is(w, "state") ||
+         word_is(w, "machine") || word_is(w, "trace") || word_is(w, "start") ||
+         word_is(w, "input") || word_is(w, "string") || word_is(w, "transition") ||
+         word_is(w, "transitions") || word_is(w, "table") || word_is(w, "read") ||
+         word_is(w, "with") || word_is(w, "output") || word_is(w, "outputs") ||
+         word_is(w, "mealy");
+}
+
+static bool make_fsm_cmd(const char *in, char *cmd, int cap) {
+  char t[192]; raw_clean(in, t, sizeof(t));
+  char tok[32][48]; int nt = 0;
+  for (int i = 0; t[i] && nt < 32;) {
+    while (t[i] == ',') ++i;
+    char w[48]; int j = 0;
+    while (t[i] && t[i] != ',' && j + 1 < (int)sizeof(w)) w[j++] = t[i++];
+    w[j] = 0;
+    if (!w[0] || fsm_skip_word(w)) continue;
+    strcpy(tok[nt++], w);
+  }
+  if (nt < 5) return false;
+  bool out = has(t, "mealy") || has(t, "output");
+  int group = out ? 4 : 3;
+  if (((nt - 2) % group) != 0) return false;
+  int p = sprintf(cmd, out ? "fsmout(%s,%s" : "fsm(%s,%s", tok[0], tok[1]);
+  for (int i = 2; i < nt && p < cap - 50; ++i) p += sprintf(cmd + p, ",%s", tok[i]);
+  if (p >= cap - 2) return false;
+  cmd[p++] = ')'; cmd[p] = 0;
+  return true;
+}
+
 static int is_bits(const char *s) {
   if (!s || !*s) return 0;
   for (int i = 0; s[i]; ++i) if (s[i] != '0' && s[i] != '1' && s[i] != '.') return 0;
@@ -674,6 +705,37 @@ static void path_text(char nodes[], int prev[], int at, char *buf, int cap) {
 
 static int eval_trace(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
   char a[32][48]; int na = args(s, a, 32);
+  if ((starts2(s, "fsm(", "dfa(") || starts2(s, "fsmout(", "mealy(")) && na >= 5) {
+    bool with_out = starts2(s, "fsmout(", "mealy(");
+    int group = with_out ? 4 : 3;
+    if ((na - 2) % group != 0) {
+      return add(out, 0, with_out ? "Use fsmout(start,input,state,symbol,next,output,...)." :
+                                    "Use fsm(start,input,state,symbol,next,...).");
+    }
+    char state[48], outputs[80] = ""; strcpy(state, a[0]);
+    int n = add(out, 0, with_out ? "Trace finite state machine with outputs." :
+                                   "Trace finite state machine transitions.");
+    n = add(out, n, "start state = %s, input = %s", state, a[1]);
+    for (int pos = 0; a[1][pos] && n < CSCALC_MAX_LINES - 2; ++pos) {
+      char sym[2] = { a[1][pos], 0 };
+      int found = -1;
+      for (int i = 2; i + group - 1 < na; i += group) {
+        if (strcmp(a[i], state) == 0 && strcmp(a[i + 1], sym) == 0) { found = i; break; }
+      }
+      if (found < 0) return add(out, n, "no transition for state %s on %s", state, sym);
+      if (with_out) {
+        int op = (int)strlen(outputs);
+        if (op + (int)strlen(a[found + 3]) < (int)sizeof(outputs) - 1) strcat(outputs, a[found + 3]);
+        n = add(out, n, "read %s: %s --%s/%s--> %s", sym, state, sym, a[found + 3], a[found + 2]);
+      } else {
+        n = add(out, n, "read %s: %s --%s--> %s", sym, state, sym, a[found + 2]);
+      }
+      strcpy(state, a[found + 2]);
+    }
+    n = add(out, n, "final state = %s", state);
+    if (with_out) n = add(out, n, "output = %s", outputs);
+    return n;
+  }
   if (starts3(s, "dijkstra(", "shortestpath(", "shortpath(") && na >= 5) {
     char nodes[8]; int nn = 0;
     int start = graph_node(nodes, &nn, a[0]), target = graph_node(nodes, &nn, a[1]);
@@ -1699,6 +1761,9 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if (has(t, "dijkstra") || (has(t, "shortest") && (has(t, "path") || has(t, "route")))) {
     if (make_dijkstra_cmd(input, cmd, sizeof(cmd))) return eval_trace(cmd, out);
   }
+  if (has(t, "fsm") || (has(t, "finite") && has(t, "state") && has(t, "machine"))) {
+    if (make_fsm_cmd(input, cmd, sizeof(cmd))) return eval_trace(cmd, out);
+  }
   if ((has(t, "tree") || has(t, "traversal") || has(t, "traverse")) &&
       (has(t, "preorder") || has(t, "pre,order") || has(t, "pre"))) {
     if (make_tree_cmd(input, "preorder", cmd, sizeof(cmd))) return eval_trace(cmd, out);
@@ -1954,5 +2019,5 @@ int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
   n = add(out, 0, "Supported:");
   n = add(out, n, "bin hex den convert twos twosdec fixed fixedenc parity xorbits andbits orbits notbits hamming checksum checkdigit rpn");
   n = add(out, n, "floatdec floatrange normal image sound bitrate transfer transfermb");
-  return add(out, n, "compress huffman rle records hashmod hashlinear addressspace chars ascii unicode stack queue preorder inorder postorder dijkstra binarysearch bubblesort selectionsort mergesort bool truth nandform norform");
+  return add(out, n, "compress huffman rle records hashmod hashlinear addressspace chars ascii unicode stack queue preorder inorder postorder dijkstra fsm fsmout binarysearch bubblesort selectionsort mergesort bool truth nandform norform");
 }
