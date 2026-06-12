@@ -1,5 +1,27 @@
 # Checkpoint
 
+## 2026-06-12 CASP3 Grouped Data Slice
+
+Completed:
+- Added `groupmean(...)`, `groupedmean(...)`, and `groupstats(...)`.
+- Supports grouped mean and standard deviation from midpoint/frequency pairs.
+- Added free-text dispatch for grouped-data prompts with midpoints and frequencies.
+- Output shows `sum f`, `sum fx`, mean, `sum fx^2`, and standard deviation formula.
+- Added a Grouped data help page in CASP3.
+- Added regression tests for direct and free-text forms.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CASP3 Edexcel Paper 3 statistics working support.
+- Did not touch CAS Pure behavior, CSCALC behavior, NOTES, or shared UI/status code.
+
 ## 2026-06-12 CSCALC Sort Trace Slice
 
 Completed:

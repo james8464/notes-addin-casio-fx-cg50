@@ -628,6 +628,23 @@ static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     n = add(out, n, "variance = Sx2/n - mean^2");
     return add(out, n, "variance = %.10g, sd = %.10g", var, root(var));
   }
+  if (starts3(s, "groupmean(", "groupedmean(", "groupstats(") && na >= 4) {
+    int m = na / 2; double sf = 0, sfx = 0, sfx2 = 0;
+    char l1[128] = "", l2[128] = "";
+    for (int i = 0; i < m; ++i) {
+      double x = num(a[2*i]), f = num(a[2*i+1]);
+      sf += f; sfx += f*x; sfx2 += f*x*x;
+      add_term(l1, sizeof(l1), "%.6g*%.6g", f, x, i == 0);
+      add_term(l2, sizeof(l2), "%.6g*(%.6g)^2", f, x, i == 0);
+    }
+    double mean = sfx / sf, var = sfx2 / sf - mean * mean;
+    int n = add(out, 0, "For grouped data, use class midpoints with frequencies.");
+    n = add(out, n, "sum f = %.10g", sf);
+    n = add(out, n, "sum fx = %s = %.10g", l1, sfx);
+    n = add(out, n, "mean = sum fx / sum f = %.10g", mean);
+    n = add(out, n, "sum fx^2 = %s = %.10g", l2, sfx2);
+    return add(out, n, "sd = sqrt(sum fx^2/sum f - mean^2) = %.10g", root(var));
+  }
   if (starts3(s, "discrete(", "expectation(", "randomvar(") && na >= 4) {
     int m = na / 2; double sp = 0, ex = 0, ex2 = 0; char l1[128] = "", l2[128] = "";
     for (int i = 0; i < m; ++i) {
@@ -904,6 +921,18 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if ((has(t, "coded") || has(t, "coding")) && has(t, "mean") && (has(t, "sd") || has(t, "standarddeviation")) && nv >= 4) {
     if (has(c, "y=(x-") || has(c, "y=(x+")) sprintf(cmd, "uncode(%.10g,%.10g,%.10g,%.10g)", v[2], v[3], -v[0], v[1]);
     else sprintf(cmd, "code(%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3]);
+    return eval_stats(cmd, out);
+  }
+  if ((has(t, "grouped") || has(t, "group") || has(t, "midpoint") || has(t, "midpoints")) &&
+      (has(t, "mean") || has(t, "standarddeviation") || has(t, "sd")) && nv >= 4 && nv % 2 == 0) {
+    int p = sprintf(cmd, "groupmean(");
+    int m = nv / 2;
+    if ((has(t, "midpoint") || has(t, "midpoints")) && (has(t, "frequency") || has(t, "frequencies"))) {
+      for (int i = 0; i < m; ++i) p += sprintf(cmd+p, "%s%.10g,%.10g", i ? "," : "", v[i], v[i+m]);
+    } else {
+      for (int i = 0; i < m; ++i) p += sprintf(cmd+p, "%s%.10g,%.10g", i ? "," : "", v[2*i], v[2*i+1]);
+    }
+    sprintf(cmd+p, ")");
     return eval_stats(cmd, out);
   }
   if ((has(t, "mean") || has(t, "variance") || has(t, "standarddeviation")) && nv >= 3) {

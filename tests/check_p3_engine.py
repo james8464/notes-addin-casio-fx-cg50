@@ -134,6 +134,8 @@ def main():
     require("spearman rank correlation n=8 sumd2=12", ["Spearman", "r_s = 0.857142"])
     require("meanvar(5,20,90)", ["mean = Sx/n", "variance"])
     require("mean variance n 5 sx 20 sx2 90", ["mean = Sx/n", "variance"])
+    require("groupmean(10,2,20,3,30,5)", ["grouped data", "sum f = 10", "sum fx", "mean = sum fx / sum f = 23", "sd ="])
+    require("grouped data mean sd midpoints 10 20 30 frequencies 2 3 5", ["grouped data", "sum f = 10", "mean = sum fx / sum f = 23"])
     require("discrete(0,0.2,1,0.5,2,0.3)", ["discrete random variable", "sum p = 1", "E(X) = 0*0.2+1*0.5+2*0.3 = 1.1", "Var(X)"])
     require("discrete random variable values 0 1 2 probabilities 0.2 0.5 0.3", ["E(X)", "1.1", "E(X^2)", "Var(X)"])
     require("stratified(200,50,40)", ["stratified sampling", "50/200 * 40", "10"])

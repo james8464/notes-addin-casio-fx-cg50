@@ -14,7 +14,8 @@ static const char *const menu_items[] = {
   "Normal dist",
   "Binomial dist",
   "Probability",
-  "Regression"
+  "Regression",
+  "Grouped data"
 };
 
 static const char *const suvat[] = {
@@ -120,6 +121,16 @@ static const char *const reg[] = {
   "Product moment r near +/-1 is stronger."
 };
 
+static const char *const grouped[] = {
+  "Use class midpoints.",
+  "Mean = sum fx / sum f.",
+  "Variance = sum fx^2/sum f - mean^2.",
+  "SD = sqrt(variance).",
+  "groupmean(mid,f,mid,f,...)",
+  "For median/quartiles use interpolation.",
+  "Histogram density = f / class width."
+};
+
 static void run_input(unsigned *tick) {
   char input[96] = "suvat(u=2,a=3,t=4)";
   if (!ui_input("CASP3 input", input, sizeof(input), tick)) return;
@@ -141,7 +152,8 @@ static void open_item(int sel, unsigned *tick) {
   else if (sel == 9) ui_wait_page("Normal", norm, sizeof(norm)/sizeof(norm[0]), tick);
   else if (sel == 10) ui_wait_page("Binomial", binom, sizeof(binom)/sizeof(binom[0]), tick);
   else if (sel == 11) ui_wait_page("Probability", prob, sizeof(prob)/sizeof(prob[0]), tick);
-  else ui_wait_page("Regression", reg, sizeof(reg)/sizeof(reg[0]), tick);
+  else if (sel == 12) ui_wait_page("Regression", reg, sizeof(reg)/sizeof(reg[0]), tick);
+  else ui_wait_page("Grouped data", grouped, sizeof(grouped)/sizeof(grouped[0]), tick);
 }
 
 int main() {
