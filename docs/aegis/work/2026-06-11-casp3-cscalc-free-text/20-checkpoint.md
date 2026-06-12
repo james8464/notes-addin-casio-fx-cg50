@@ -2577,6 +2577,40 @@ Drift check:
 - Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
 - Active goal remains open for future source/probe-driven hardening.
 
+## 2026-06-12 Conditional/Poisson/Beam and CS Unit Parser Slice
+
+Completed:
+- Added CASP3 normal conditional interval working for prompts like `45<X<55 given X<60`.
+- Added CASP3 one-period Poisson rate wording for prompts like calls arriving at a mean rate per hour.
+- Added CASP3 multi-load beam reaction working using repeated load-distance pairs.
+- Fixed CSCALC image colour-count extraction when the colour count appears before the resolution.
+- Fixed CSCALC compression ratio for mixed `MB before` / `KB after` wording.
+- Fixed CSCALC signed fixed-point decode so fixed-point tokens are not intercepted by integer two's-complement decode.
+- Added CSCALC natural decimal two's-complement subtraction routing with bit width.
+- Added regression tests and rebuilt calculator files.
+
+Evidence:
+- Fresh focused probe batch exposed 7 parser/output gaps; all were fixed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 188676 bytes`
+  - `CSCALC.g3a: 164252 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CASP3.g3a sha256 b028fd8db2f7d38d814efbd5e9202165753eb52e0d37137759717c4da2571013`
+  - `CSCALC.g3a sha256 821686a85757ec5a408805c77f557bcfc9afe2bb3b7fdb9e4c386c096b43000b`
+
+Drift check:
+- Still inside CASP3/CSCALC parser hardening and generated calculator outputs.
+- Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for future source/probe-driven hardening.
+
 ## 2026-06-12 Conditional Normal, Histogram, Stratified, Normalise, Megapixel Slice
 
 Completed:

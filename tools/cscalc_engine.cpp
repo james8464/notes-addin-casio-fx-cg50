@@ -179,7 +179,10 @@ static bool scan_fixed_bits(const char *s, char *buf, int cap) {
     if (s[i] != '0' && s[i] != '1') continue;
     int j = i, k = 0; bool dot = false;
     while ((s[j] == '0' || s[j] == '1' || s[j] == '.') && k + 1 < cap) {
-      if (s[j] == '.') dot = true;
+      if (s[j] == '.') {
+        if (dot) break;
+        dot = true;
+      }
       buf[k++] = s[j++];
     }
     buf[k] = 0;
@@ -3107,6 +3110,16 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     return add(out, n, "= %.10g MiB", bytes / 1048576.0);
   }
   if ((has(t, "image") || has(t, "bitmap")) && (has(t, "colours") || has(t, "colors")) && nv >= 3) {
+    double colours=0; bool hc = label_num(input, "colours", &colours) || label_num(input, "colors", &colours) ||
+                                scan_before_word_num(t, "colours", &colours) || scan_before_word_num(t, "colors", &colours);
+    if (hc) {
+      double wh[2]; int nw = 0;
+      for (int i = 0; i < nv && nw < 2; ++i) if ((long long)v[i] != (long long)colours) wh[nw++] = v[i];
+      if (nw == 2) {
+        sprintf(cmd, "imagecolors(%lld,%lld,%lld)", (long long)wh[0], (long long)wh[1], (long long)colours);
+        return eval_storage(cmd, out);
+      }
+    }
     sprintf(cmd, "imagecolors(%lld,%lld,%lld)", (long long)v[0], (long long)v[1], (long long)v[2]); return eval_storage(cmd, out);
   }
   if ((has(t, "image") || has(t, "bitmap")) && label_num(input,"width",&width) && label_num(input,"height",&height) && (label_num(input,"depth",&depth) || label_num(input,"bits",&depth))) {
@@ -3247,6 +3260,16 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       sprintf(cmd, "compress(%.10g,%.10g)", oldv, newv);
       return eval_storage(cmd, out);
     }
+    double mb=0, kb=0;
+    if ((scan_before_word_num(t, "mb", &mb) || scan_before_word_num(t, "megabytes", &mb) || scan_before_word_num(t, "megabyte", &mb)) &&
+        (scan_before_word_num(t, "kb", &kb) || scan_before_word_num(t, "kilobytes", &kb) || scan_before_word_num(t, "kilobyte", &kb))) {
+      double oldb = mb * 1000000.0, newb = kb * 1000.0;
+      int n = add(out, 0, "Compression ratio = original / compressed.");
+      n = add(out, n, "%.10g MB = %.10g bytes", mb, oldb);
+      n = add(out, n, "%.10g KB = %.10g bytes", kb, newb);
+      n = add(out, n, "ratio = %.10g : 1", oldb / newb);
+      return add(out, n, "percentage reduction = %.6g%%", (oldb - newb) * 100.0 / oldb);
+    }
   }
   if (has(t, "runlength") || has(t, "rle") || (has(t, "run") && has(t, "length"))) {
     double runs=0, sb=0, cb=0;
@@ -3292,7 +3315,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     if ((has(t, "minus") || has(t, "negative")) && val > 0) val = -val;
     sprintf(cmd, "twos(%lld,%lld)", val, bitsw); return eval_twos(cmd, out);
   }
-  if (tc && nb >= 1 && (has(t, "decode") || has(t, "denary") || has(t, "decimal") || has(t, "value"))) {
+  if (tc && !has(t, "fixed") && nb >= 1 && (has(t, "decode") || has(t, "denary") || has(t, "decimal") || has(t, "value"))) {
     sprintf(cmd, "twosdec(%s)", bits[0]); return eval_twos(cmd, out);
   }
   if (has(t, "bcd") && (has(t, "decode") || has(t, "denary") || has(t, "decimal")) && (nb >= 1 || nbg >= 1)) {
@@ -3417,8 +3440,22 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if (tc && has(t, "range") && nv >= 1) {
     sprintf(cmd, "twosrange(%lld)", (long long)v[0]); return eval_twos(cmd, out);
   }
-  if (tc && nb >= 1 && (has(t, "decode") || has(t, "denary") || has(t, "decimal"))) {
+  if (tc && !has(t, "fixed") && nb >= 1 && (has(t, "decode") || has(t, "denary") || has(t, "decimal"))) {
     sprintf(cmd, "twosdec(%s)", bits[0]); return eval_twos(cmd, out);
+  }
+  if (tc && nv >= 3 && (has(t, "subtract") || has(t, "minus") || has(t, "takeaway"))) {
+    double bw=0; long long bitsw = 0, vals[2]; int got = 0;
+    if (scan_before_word_num(t, "bit", &bw) || scan_before_word_num(t, "bits", &bw)) bitsw = (long long)bw;
+    if (bitsw > 0) {
+      for (int i = 0; i < nv && got < 2; ++i) {
+        if ((long long)v[i] == bitsw) continue;
+        vals[got++] = (long long)v[i];
+      }
+      if (got == 2) {
+        char a[65], b[65]; to_bin(vals[0], (int)bitsw, a); to_bin(vals[1], (int)bitsw, b);
+        sprintf(cmd, "twossub(%s,%s)", a, b); return eval_twos(cmd, out);
+      }
+    }
   }
   if (tc && nb >= 2 && (has(t, "subtract") || has(t, "minus") || has(t, "takeaway"))) {
     if (has(compact, "from")) sprintf(cmd, "twossub(%s,%s)", bits[1], bits[0]);
@@ -3589,6 +3626,16 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   if ((has(t, "image") || has(t, "bitmap")) && nv >= 3) {
     if (has(t, "colours") || has(t, "colors")) {
+      double colours=0; bool hc = label_num(input, "colours", &colours) || label_num(input, "colors", &colours) ||
+                                  scan_before_word_num(t, "colours", &colours) || scan_before_word_num(t, "colors", &colours);
+      if (hc) {
+        double wh[2]; int nw = 0;
+        for (int i = 0; i < nv && nw < 2; ++i) if ((long long)v[i] != (long long)colours) wh[nw++] = v[i];
+        if (nw == 2) {
+          sprintf(cmd, "imagecolors(%lld,%lld,%lld)", (long long)wh[0], (long long)wh[1], (long long)colours);
+          return eval_storage(cmd, out);
+        }
+      }
       sprintf(cmd, "imagecolors(%lld,%lld,%lld)", (long long)v[0], (long long)v[1], (long long)v[2]); return eval_storage(cmd, out);
     }
     if (image_depth_is_bytes(t)) return add_image_byte_depth_lines(out, (long long)v[0], (long long)v[1], (long long)v[2]);
@@ -3616,6 +3663,16 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     sprintf(cmd, "dictcompress(%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3]); return eval_storage(cmd, out);
   }
   if ((has(t, "compress") || has(t, "compression")) && nv >= 2) {
+    double mb=0, kb=0;
+    if ((scan_before_word_num(t, "mb", &mb) || scan_before_word_num(t, "megabytes", &mb) || scan_before_word_num(t, "megabyte", &mb)) &&
+        (scan_before_word_num(t, "kb", &kb) || scan_before_word_num(t, "kilobytes", &kb) || scan_before_word_num(t, "kilobyte", &kb))) {
+      double oldb = mb * 1000000.0, newb = kb * 1000.0;
+      int n = add(out, 0, "Compression ratio = original / compressed.");
+      n = add(out, n, "%.10g MB = %.10g bytes", mb, oldb);
+      n = add(out, n, "%.10g KB = %.10g bytes", kb, newb);
+      n = add(out, n, "ratio = %.10g : 1", oldb / newb);
+      return add(out, n, "percentage reduction = %.6g%%", (oldb - newb) * 100.0 / oldb);
+    }
     sprintf(cmd, "compress(%.10g,%.10g)", v[0], v[1]); return eval_storage(cmd, out);
   }
   if ((has(t, "huffman") || has(t, "huffmancode")) && nv >= 2) {

@@ -1119,6 +1119,22 @@ static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     n = add(out, n, "P(A|B)=%.10g/%.10g", nume, den);
     return add(out, n, "conditional probability = %.10g", den ? nume/den : 0);
   }
+  if (starts3(s, "normalcondbetween(", "normalgivencap(", "normalconditionalbetween(") && na >= 6) {
+    double lo=num(a[0]), hi=num(a[1]), g=num(a[2]), mu=num(a[3]), sig=num(a[4]), tail=num(a[5]);
+    double den = tail >= 0 ? 1 - normal_cdf((g - mu) / sig) : normal_cdf((g - mu) / sig);
+    double alo = lo, ahi = hi;
+    if (tail >= 0 && alo < g) alo = g;
+    if (tail < 0 && ahi > g) ahi = g;
+    double nume = ahi > alo ? normal_cdf((ahi - mu) / sig) - normal_cdf((alo - mu) / sig) : 0;
+    int n = add(out, 0, "Use conditional probability P(A|B)=P(A and B)/P(B).");
+    n = add(out, n, "X~N(%.6g, %.6g^2).", mu, sig);
+    n = add(out, n, "A: %.6g<X<%.6g, B: %s %.6g.", lo, hi, tail >= 0 ? "X>=" : "X<=", g);
+    n = add(out, n, "A and B gives %.6g<X<%.6g.", alo, ahi);
+    n = add(out, n, "P(B)=%.10g", den);
+    n = add(out, n, "P(A and B)=NormalCD(lower=%.6g, upper=%.6g, sigma=%.6g, mu=%.6g)", alo, ahi, sig, mu);
+    n = add(out, n, "P(A|B)=%.10g/%.10g", nume, den);
+    return add(out, n, "conditional probability = %.10g", den ? nume/den : 0);
+  }
   if (starts3(s, "invnormal(", "inversenormal(", "normalinv(") && na >= 3) {
     double area=num(a[0]), mu=num(a[1]), sig=num(a[2]);
     int n = add(out, 0, "For X~N(mu,sigma^2), use inverse normal for a critical value.");
@@ -1877,6 +1893,22 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     return eval_mech(cmd, out);
   }
   if ((has(t, "beam") || has(t, "support") || has(t, "reaction")) && (has(t, "load") || has(t, "weight")) && nv >= 3) {
+    if (nv >= 5 && !has(t, "uniform")) {
+      double L = v[0], sumW = 0, moment = 0;
+      int n = add(out, 0, "For a horizontal beam in equilibrium, use moments and vertical forces.");
+      n = add(out, n, "Take moments about the left support A.");
+      char rhs[160]; rhs[0] = 0; int p = 0;
+      for (int i = 1; i + 1 < nv; i += 2) {
+        double W = v[i], x = v[i+1];
+        sumW += W; moment += W*x;
+        if (p < (int)sizeof(rhs) - 32) p += sprintf(rhs+p, "%s%.10g*%.10g", i == 1 ? "" : " + ", W, x);
+      }
+      double RB = L ? moment/L : 0, RA = sumW - RB;
+      n = add(out, n, "R_B*%.10g = %s", L, rhs);
+      n = add(out, n, "R_B = %.10g N", RB);
+      n = add(out, n, "Vertical equilibrium: R_A + R_B = %.10g", sumW);
+      return add(out, n, "R_A = %.10g N", RA);
+    }
     double L=0,W=0,x=0,bw=0;
     bool hL=label_num(input,"length",&L) || word_num(input,"length",&L);
     bool hW=label_num(input,"load",&W) || prev_word_num(input,"load",&W) || word_num(input,"load",&W);
@@ -2251,8 +2283,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if ((has(t, "calls") || has(t, "arrive") || has(t, "arrivals") || has(t, "rate") || has(t, "defect") || has(t, "occur")) &&
       (has(t, "per") || has(t, "minute") || has(t, "metre") || has(t, "meter")) &&
-      (has(t, "poisson") || has(t, "probability") || has(t, "calls") || has(t, "defect")) && nv >= 3) {
-    double rate=0, minutes=0, x=0;
+      (has(t, "poisson") || has(t, "probability") || has(t, "calls") || has(t, "defect")) && nv >= 2) {
+    double rate=0, minutes=1, x=0;
     bool hr = word_num(input,"rate",&rate) || word_num(input,"mean",&rate) || word_num(input,"average",&rate);
     if (!hr) rate = v[0];
     bool hm = word_num(input,"in",&minutes) || prev_word_num(input,"minutes",&minutes) || prev_word_num(input,"minute",&minutes) ||
@@ -2260,7 +2292,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
               prev_word_num(input,"meters",&minutes) || prev_word_num(input,"meter",&minutes);
     bool hx = word_num(input,"atleast",&x) || word_num(input,"morethan",&x) || word_num(input,"atmost",&x) ||
               word_num(input,"nomorethan",&x) || word_num(input,"lessthan",&x) || word_num(input,"fewerthan",&x);
-    if (!hm) for (int i = 0; i < nv; ++i) if (!near_num(v[i], rate) && v[i] > minutes) minutes = v[i];
+    if (!hm && nv >= 3) for (int i = 0; i < nv; ++i) if (!near_num(v[i], rate) && v[i] > minutes) minutes = v[i];
     if (!hx) for (int i = 0; i < nv; ++i) if (!near_num(v[i], rate) && !near_num(v[i], minutes)) { x = v[i]; break; }
     if (x == 0) x = v[nv-1];
     double lam = rate * minutes;
@@ -2334,7 +2366,10 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
         u[nu++] = v[i];
       }
       if (nu >= 2) {
-        sprintf(cmd, "normalcond(%.10g,%.10g,%.10g,%.10g,%.0f)", u[0], u[1], mu, sd, tail);
+        if ((has(t, "between") || has(c, "<x<")) && nu >= 3)
+          sprintf(cmd, "normalcondbetween(%.10g,%.10g,%.10g,%.10g,%.10g,%.0f)", u[0], u[1], u[2], mu, sd, tail);
+        else
+          sprintf(cmd, "normalcond(%.10g,%.10g,%.10g,%.10g,%.0f)", u[0], u[1], mu, sd, tail);
         return eval_stats(cmd, out);
       }
     }
