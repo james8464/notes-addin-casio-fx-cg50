@@ -170,6 +170,18 @@ static double read_num(const char *s) {
   return sign * v;
 }
 
+static bool scan_after_word_num(const char *s, const char *word, double *v) {
+  int wl = (int)strlen(word);
+  for (int i = 0; s && s[i]; ++i) {
+    if (i > 0 && isalnum((unsigned char)s[i-1])) continue;
+    if (strncmp(s + i, word, wl) != 0 || isalnum((unsigned char)s[i + wl])) continue;
+    int j = i + wl;
+    while (s[j] == ',') ++j;
+    if (s[j] == '-' || isdigit((unsigned char)s[j])) { *v = read_num(s + j); return true; }
+  }
+  return false;
+}
+
 static bool label_num(const char *s, const char *name, double *v) {
   int nl = (int)strlen(name);
   for (int i = 0; s && s[i]; ++i) {
@@ -2866,11 +2878,15 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if ((has(t, "hex") || has(t, "hexadecimal")) && has_hex_tok && (has(t, "denary") || has(t, "decimal"))) {
     sprintf(cmd, "den(%s,16)", hex_tok); return eval_base(cmd, out);
   }
-  if (has(t, "binary") && nb >= 1 && (has(t, "hex") || has(t, "hexadecimal"))) {
-    sprintf(cmd, "convert(%s,2,16)", bits[0]); return eval_base(cmd, out);
+  if (has(t, "binary") && nb >= 1 && (has(t, "hex") || has(t, "hexadecimal")) &&
+      !(has(t, "add") || has(t, "sum") || has(t, "plus") || has(t, "subtract") || has(t, "minus"))) {
+    char all[96]; join_bits(bits, nb, all, sizeof(all));
+    sprintf(cmd, "convert(%s,2,16)", all); return eval_base(cmd, out);
   }
-  if ((has(t, "denary") || has(t, "decimal")) && nb >= 1) {
-    sprintf(cmd, "den(%s,2)", bits[0]); return eval_base(cmd, out);
+  if ((has(t, "denary") || has(t, "decimal")) && nb >= 1 &&
+      !(has(t, "add") || has(t, "sum") || has(t, "plus") || has(t, "subtract") || has(t, "minus"))) {
+    char all[96]; join_bits(bits, nb, all, sizeof(all));
+    sprintf(cmd, "den(%s,2)", all); return eval_base(cmd, out);
   }
   if (tc && nbg >= 2 && (has(t, "add") || has(t, "sum") || has(t, "plus"))) {
     sprintf(cmd, "twosadd(%s,%s)", bitgrp[0], bitgrp[1]); return eval_twos(cmd, out);
@@ -2968,10 +2984,12 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     sprintf(cmd, "binadd(%s,%s,%d)", bits[0], bits[1], (int)strlen(bits[0])); return eval_binary_arith(cmd, out);
   }
   if ((has(t, "arithmeticshift") || (has(t, "arithmetic") && has(t, "shift")) || (has(t, "signed") && has(t, "shift"))) && nb >= 1 && nv >= 1) {
-    sprintf(cmd, "arithshift(%s,%s,%lld)", bits[0], has(t, "right") ? "right" : "left", (long long)v[nv-1]); return eval_binary_arith(cmd, out);
+    double sh = v[nv-1]; scan_after_word_num(t, "by", &sh);
+    sprintf(cmd, "arithshift(%s,%s,%lld)", bits[0], has(t, "right") ? "right" : "left", (long long)sh); return eval_binary_arith(cmd, out);
   }
   if (has(t, "shift") && nb >= 1 && nv >= 1) {
-    sprintf(cmd, "shift(%s,%s,%lld)", bits[0], has(t, "right") ? "right" : "left", (long long)v[nv-1]); return eval_binary_arith(cmd, out);
+    double sh = v[nv-1]; scan_after_word_num(t, "by", &sh);
+    sprintf(cmd, "shift(%s,%s,%lld)", bits[0], has(t, "right") ? "right" : "left", (long long)sh); return eval_binary_arith(cmd, out);
   }
   if (has(t, "parity") && nb >= 1) {
     sprintf(cmd, "parity(%s,%s)", bits[0], has(t, "odd") ? "odd" : "even"); return eval_binary_arith(cmd, out);

@@ -59,6 +59,8 @@ def main():
     require("projectileh(20,30,5)", ["vertical motion", "-h = u_y t", "range = u_x t"])
     require("projectile speed 20 angle 30 from height 5", ["vertical motion", "h=5", "range"])
     require("projectile from height=5 speed=20 angle=30", ["vertical motion", "h=5", "range"])
+    require("A ball is thrown from 2 metres above the ground with speed 18 at angle 35 find when it hits the ground and range", ["vertical motion", "h=2", "range = u_x t"])
+    require("A particle is fired with speed 25 metres per second at 40 degrees to the horizontal. Find the greatest height and horizontal range.", ["Resolve", "u_x = 25 cos 40", "max height"])
     require("projectileat(20,30,10)", ["horizontal motion to find time", "Horizontal: x = u_x t", "Vertical: y = h + u_y t", "height at x=10"])
     require("projectile speed 20 angle 30 distance 10 find height", ["horizontal motion to find time", "height at x=10"])
     require("projectile find height distance=10 angle=30 speed=20", ["horizontal motion to find time", "height at x=10"])

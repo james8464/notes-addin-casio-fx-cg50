@@ -198,7 +198,8 @@ static bool word_num(const char *s, const char *name, double *v) {
 }
 
 static bool is_projectile_text(const char *t) {
-  return has(t, "projectile") || has(t, "projectiles") || has(t, "projected") || has(t, "projection");
+  return has(t, "projectile") || has(t, "projectiles") || has(t, "projected") || has(t, "projection") ||
+         has(t, "thrown") || has(t, "fired") || has(t, "launched");
 }
 
 static bool near_num(double a, double b) {
@@ -1249,9 +1250,12 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if (is_projectile_text(t) && (has(t, "height") || has(t, "above")) && nv >= 3) {
     double u=0,ang=0,h=0,g=0;
-    bool hU=label_num(input,"speed",&u) || label_num(input,"u",&u) || label_num(input,"initialspeed",&u) || label_num(input,"initialvelocity",&u);
-    bool hA=label_num(input,"angle",&ang) || label_num(input,"theta",&ang) || label_num(input,"launchangle",&ang);
-    bool hH=label_num(input,"height",&h) || label_num(input,"h",&h) || label_num(input,"initialheight",&h) || label_num(input,"launchheight",&h);
+    bool hU=label_num(input,"speed",&u) || label_num(input,"u",&u) || label_num(input,"initialspeed",&u) || label_num(input,"initialvelocity",&u) ||
+            word_num(input,"speed",&u) || word_num(input,"initialspeed",&u) || word_num(input,"velocity",&u);
+    bool hA=label_num(input,"angle",&ang) || label_num(input,"theta",&ang) || label_num(input,"launchangle",&ang) ||
+            word_num(input,"angle",&ang) || word_num(input,"theta",&ang);
+    bool hH=label_num(input,"height",&h) || label_num(input,"h",&h) || label_num(input,"initialheight",&h) || label_num(input,"launchheight",&h) ||
+            word_num(input,"height",&h) || word_num(input,"from",&h) || word_num(input,"above",&h);
     bool hG=label_num(input,"g",&g) || label_num(input,"gravity",&g);
     if (hU && hA && hH && !has(t, "findheight")) {
       sprintf(cmd, hG ? "projectileh(%.10g,%.10g,%.10g,%.10g)" : "projectileh(%.10g,%.10g,%.10g)", u, ang, h, hG ? g : 9.8);
@@ -1261,8 +1265,10 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if (is_projectile_text(t) && nv >= 2) {
     double u=0,ang=0,g=0;
-    bool hU=label_num(input,"speed",&u) || label_num(input,"u",&u) || label_num(input,"initialspeed",&u) || label_num(input,"initialvelocity",&u);
-    bool hA=label_num(input,"angle",&ang) || label_num(input,"theta",&ang) || label_num(input,"launchangle",&ang);
+    bool hU=label_num(input,"speed",&u) || label_num(input,"u",&u) || label_num(input,"initialspeed",&u) || label_num(input,"initialvelocity",&u) ||
+            word_num(input,"speed",&u) || word_num(input,"initialspeed",&u) || word_num(input,"velocity",&u);
+    bool hA=label_num(input,"angle",&ang) || label_num(input,"theta",&ang) || label_num(input,"launchangle",&ang) ||
+            word_num(input,"angle",&ang) || word_num(input,"theta",&ang);
     bool hG=label_num(input,"g",&g) || label_num(input,"gravity",&g);
     if (hU && hA) {
       sprintf(cmd, hG ? "projectile(%.10g,%.10g,%.10g)" : "projectile(%.10g,%.10g)", u, ang, hG ? g : 9.8);

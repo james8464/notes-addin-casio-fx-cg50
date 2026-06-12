@@ -1,5 +1,26 @@
 # Checkpoint
 
+## 2026-06-12 CSCALC Spaced Binary And CASP3 Projectile Wording Slice
+
+Completed:
+- Fixed CSCALC base conversion for spaced binary groups, e.g. `1010 1100` now converts as one byte.
+- Fixed CSCALC logical/arithmetic shift prompts where the bit pattern was being mistaken for the shift count.
+- Added explicit shift-count parsing from `by N`.
+- Added CASP3 projectile synonyms for `thrown`, `fired`, and `launched`.
+- Added CASP3 word-number parsing for projectile speed, angle, and launch height/from-above wording.
+- Added regression tests and rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CASP3/CSCALC free-text hardening.
+- Did not touch CAS Pure behavior, NOTES, menus, or shared UI/status code.
+
 ## 2026-06-12 CASP3 Rough Plane Free-Text Slice
 
 Completed:
