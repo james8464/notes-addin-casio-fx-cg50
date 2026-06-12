@@ -777,6 +777,39 @@ Drift check:
 - Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
 - Active goal remains open for future source/probe-driven hardening.
 
+## 2026-06-12 Discrete Tables, Geometric Dice, Nyquist, and File-Size Slice
+
+Completed:
+- Added CASP3 labelled discrete probability-table parsing for `x: ... p: ...` prompts.
+- Added CASP3 proportional discrete distribution working for `P(X=x)` proportional to `x`.
+- Added CASP3 geometric die working for first-six-after prompts.
+- Added CASP3 multi-force polar resultant working by resolving all force components.
+- Added CASP3 hanging elastic-string extension working using `T=mg` and Hooke's law.
+- Added CSCALC Nyquist minimum sampling-frequency working.
+- Added CSCALC file-size-from-bitrate-duration working.
+- Added CSCALC image colours-from-file-size working.
+- Added regression tests and rebuilt calculator files.
+
+Evidence:
+- Fresh focused probe batch: all newly targeted P3/CS cases produced working lines.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 372648 bytes`
+  - `CSCALC.g3a: 224276 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Still inside CASP3/CSCALC free-text working support and generated calculator outputs.
+- Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for future source/probe-driven hardening.
+
 ## 2026-06-12 Final Generic Cleanup Slice
 
 Completed:

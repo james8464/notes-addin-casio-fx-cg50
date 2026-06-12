@@ -3987,6 +3987,38 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     return eval_trace(cmd, out);
   }
   if ((has(t, "image") || has(t, "bitmap")) &&
+      (has(t, "colours") || has(t, "colors")) &&
+      (has(t, "file") || has(t, "size")) &&
+      (has(t, "pixel") || has(t, "resolution")) && nv >= 3) {
+    double file_bytes = 0, shown = 0; const char *unit = "";
+    if (bytes_before_unit(t, "gib", 1073741824.0, &file_bytes, &shown)) unit = "GiB";
+    else if (bytes_before_unit(t, "gb", 1000000000.0, &file_bytes, &shown)) unit = "GB";
+    else if (bytes_before_unit(t, "mib", 1048576.0, &file_bytes, &shown)) unit = "MiB";
+    else if (bytes_before_unit(t, "mb", 1000000.0, &file_bytes, &shown)) unit = "MB";
+    else if (bytes_before_unit(t, "kib", 1024.0, &file_bytes, &shown)) unit = "KiB";
+    else if (bytes_before_unit(t, "kb", 1000.0, &file_bytes, &shown)) unit = "KB";
+    else if (bytes_before_unit(t, "bytes", 1.0, &file_bytes, &shown)) unit = "bytes";
+    if (file_bytes > 0) {
+      double dims[2]; int nd = 0;
+      for (int i = 0; i < nv && nd < 2; ++i) {
+        if (near_num(v[i], shown)) continue;
+        dims[nd++] = v[i];
+      }
+      if (nd >= 2) {
+        double pixels = dims[0] * dims[1];
+        double depth = pixels ? (file_bytes * 8.0) / pixels : 0;
+        int whole = (int)depth;
+        double colours = pow2(whole);
+        int n = add(out, 0, "Colours depend on colour depth: colours = 2^bits.");
+        n = add(out, n, "%.10g %s = %.10g bits", shown, unit, file_bytes * 8.0);
+        n = add(out, n, "pixels = %.10g*%.10g = %.10g", dims[0], dims[1], pixels);
+        n = add(out, n, "bits per pixel = %.10g/%.10g = %.10g", file_bytes * 8.0, pixels, depth);
+        if (!near_num(depth, whole)) n = add(out, n, "whole-bit colour depth is %.0f bits.", (double)whole);
+        return add(out, n, "colours = 2^%d = %.10g", whole, colours);
+      }
+    }
+  }
+  if ((has(t, "image") || has(t, "bitmap")) &&
       (has(t, "howmanypixels") || has(t, "how,many,pixels") || has(t, "pixelsstored") ||
        (has(t, "pixels") && (has(t, "file") || has(t, "size"))) || has(t, "resolution")) &&
       (has(t, "file") || has(t, "size")) && (has(t, "depth") || has(t, "bits")) &&
@@ -4166,6 +4198,20 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     n = add(out, n, "bytes = %.10g/8 = %.10g", total_bits, bytes);
     return add(out, n, "= %.10g KiB", bytes / 1024.0);
   }
+  if ((has(t, "nyquist") || (has(t, "minimum") && has(t, "sampling")) ||
+       (has(t, "sample") && has(t, "frequency") && has(t, "maximum"))) &&
+      (has(t, "audio") || has(t, "signal") || has(t, "sound")) && nv >= 1) {
+    double f = 0;
+    bool hf = scan_before_word_num(t, "khz", &f) || scan_before_word_num(t, "kilohertz", &f) ||
+              scan_before_word_num(t, "hz", &f) || scan_before_word_num(t, "hertz", &f);
+    if (!hf) f = v[0];
+    scale_frequency_unit(t, &f);
+    double fs = 2 * f;
+    int n = add(out, 0, "Nyquist: sample at least twice the maximum signal frequency.");
+    n = add(out, n, "maximum frequency = %.10g Hz", f);
+    n = add(out, n, "minimum sampling frequency = 2*%.10g = %.10g Hz", f, fs);
+    return add(out, n, "= %.10g kHz", fs / 1000.0);
+  }
   if (has(t, "sound") || has(t, "audio")) {
     double rate=0, seconds=0, res=0, channels=1;
     double dur=0;
@@ -4263,6 +4309,27 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       sprintf(cmd, "sound(%lld,%lld,%lld,%d)", (long long)rate, (long long)seconds, (long long)v[2], ch);
       return eval_storage(cmd, out);
     }
+  }
+  if ((has(compact, "bitrate") || has(compact, "datarate") || (has(t, "bit") && has(t, "rate")) || (has(t, "network") && (has(t, "sends") || has_word(t, "sent")))) &&
+      (has(t, "duration") || has(t, "minute") || has(t, "second") || has(t, "hour")) &&
+      (has(t, "filesize") || has(t, "file") || has(t, "size")) &&
+      (has(t, "kbit") || has(t, "kbps") || has(t, "mbit") || has(t, "mbps") || has(t, "gbit") || has(t, "gbps")) && nv >= 2) {
+    double rate = 0, seconds = 0;
+    const char *ru = "bit/s";
+    if (scan_before_word_num(t, "gbit", &rate) || scan_before_word_num(t, "gbps", &rate)) { rate *= 1000000000.0; ru = "Gbit/s"; }
+    else if (scan_before_word_num(t, "mbit", &rate) || scan_before_word_num(t, "mbps", &rate)) { rate *= 1000000.0; ru = "Mbit/s"; }
+    else if (scan_before_word_num(t, "kbit", &rate) || scan_before_word_num(t, "kbps", &rate)) { rate *= 1000.0; ru = "kbit/s"; }
+    if (!(scan_before_word_num(t, "minutes", &seconds) || scan_before_word_num(t, "minute", &seconds) ||
+          scan_before_word_num(t, "seconds", &seconds) || scan_before_word_num(t, "second", &seconds) ||
+          scan_before_word_num(t, "hours", &seconds) || scan_before_word_num(t, "hour", &seconds))) seconds = v[1];
+    scale_time_unit(t, &seconds);
+    double bits = rate * seconds, bytes = bits / 8.0;
+    int n = add(out, 0, "File size = bit rate * duration.");
+    n = add(out, n, "bit rate = %.10g bit/s (%s)", rate, ru);
+    n = add(out, n, "duration = %.10g s", seconds);
+    n = add(out, n, "size = %.10g*%.10g = %.10g bits", rate, seconds, bits);
+    n = add(out, n, "= %.10g bytes", bytes);
+    return add(out, n, "= %.10g MiB", bytes / 1048576.0);
   }
   if ((has(compact, "bitrate") || has(compact, "datarate") || (has(t, "bit") && has(t, "rate")) || (has(t, "network") && (has(t, "sends") || has_word(t, "sent")))) &&
       (has(t, "file") || has(t, "size") || has(t, "transmit") || has_word(t, "sent") || has(t, "sends") || has(t, "network")) &&

@@ -460,6 +460,9 @@ def main():
     require("Calculate the number of bytes in a 1920 by 1080 image with 24 bits per pixel and 10 percent metadata overhead.", ["metadata/header = 10% of 6220800 = 622080 bytes", "total bytes = 6220800 + 622080 = 6842880"])
     require("A sensor samples at 200 Hz for 1 hour with 12 bit samples. Calculate storage in KiB.", ["Storage = sample rate", "bits = 200*3600*12 = 8640000 bits", "= 1054.6875 KiB"])
     require("Find the truth table for A XOR B.", ["Truth table for a^b.", "A B | F", "simplified = A'B+AB'"])
+    require("Calculate the minimum sampling frequency for an audio signal with maximum frequency 18 kHz.", ["Nyquist", "minimum sampling frequency = 2*18000 = 36000 Hz", "= 36 kHz"])
+    require("A sound file has bit rate 256 kbit/s and duration 3 minutes. Find file size in MiB.", ["File size = bit rate * duration.", "size = 256000*180 = 46080000 bits", "= 5.493164062 MiB"])
+    require("An image has 800 by 600 pixels and file size 300 KiB. How many colours are possible?", ["bits per pixel = 2457600/480000 = 5.12", "whole-bit colour depth is 5 bits", "colours = 2^5 = 32"])
     require("bool(A+B+C+D+E+F)", ["simplified = F+E+D+C+B+A"])
     print("OK cscalc engine")
 

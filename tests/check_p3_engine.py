@@ -493,6 +493,11 @@ def main():
     require("A sample of 12 observations has mean 8.5. Another sample of 18 observations has mean 10. Find the combined mean.", ["combined total = 102 + 180 = 282", "combined mean = 282/30 = 9.4"])
     require("A particle of mass 2kg is moving under force F=(3t+4)N. Initially at rest. Find speed after 5 seconds.", ["Impulse from a variable force", "impulse = 57.5 Ns", "v = 0 + 57.5/2 = 28.75"])
     require("A car travels at 20 m/s round a banked curve radius 50m with no friction. Find angle of banking.", ["tan(theta) = v^2/(rg)", "tan(theta) = 20^2/(50*9.8)", "theta = 39.225"])
+    require("X has probability distribution x: 0 1 2 3 and p: 0.1 0.2 0.3 0.4. Find E(X) and Var(X).", ["Check probabilities: sum p = 1", "E(X) = 0*0.1+1*0.2+2*0.3+3*0.4 = 2", "Var(X)=E(X^2)-E(X)^2 = 1"])
+    require("For the discrete random variable X with P(X=x) proportional to x for x=1,2,3,4. Find k and E(X).", ["write P(X=x)=kx", "sum x = 10, so k = 0.1", "E(X)=sum x*kx = k sum x^2 = 0.1*30 = 3"])
+    require("A fair die is rolled until a six occurs. Find the probability that the first six occurs after 4 throws.", ["p=1/6", "P(X>4)=(5/6)^4"])
+    require("Forces 6N at 20 degrees, 8N at 140 degrees, and 10N at 260 degrees act on a particle. Find resultant.", ["Resolve each force", "sum Fx", "resultant = sqrt(Fx^2+Fy^2)"])
+    require("One end of a light elastic string natural length 2m modulus 30N is fixed. A 3kg mass hangs in equilibrium. Find extension.", ["T = mg = 3*9.8 = 29.4 N", "x = Tl/lambda = 29.4*2/30 = 1.96 m"])
     print("OK p3 engine")
 
 

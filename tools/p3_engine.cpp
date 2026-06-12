@@ -238,6 +238,29 @@ static bool grouped_class_freq_cmd(const char *t, char *cmd, int cap) {
   return true;
 }
 
+static bool discrete_table_cmd(const char *t, char *cmd, int cap) {
+  double xs[10], ps[10]; int nx = 0, np = 0, mode = 0;
+  for (int i = 0; t[i];) {
+    while (t[i] == ',') ++i;
+    char w[32]; int j = 0;
+    while (t[i] && t[i] != ',' && j + 1 < (int)sizeof(w)) w[j++] = t[i++];
+    w[j] = 0;
+    if (!w[0]) continue;
+    if (!strcmp(w, "x") || !strcmp(w, "values") || !strcmp(w, "value")) { mode = 1; continue; }
+    if (!strcmp(w, "p") || !strcmp(w, "prob") || !strcmp(w, "probability") || !strcmp(w, "probabilities")) { mode = 2; continue; }
+    if ((w[0] == '-' || isdigit((unsigned char)w[0])) && mode == 1 && nx < 10) xs[nx++] = read_num(w);
+    else if ((w[0] == '-' || isdigit((unsigned char)w[0])) && mode == 2 && np < 10) ps[np++] = read_num(w);
+  }
+  int m = nx < np ? nx : np;
+  if (m < 2) return false;
+  int p = sprintf(cmd, "discrete(");
+  for (int i = 0; i < m && p < cap - 32; ++i)
+    p += sprintf(cmd + p, "%s%.10g,%.10g", i ? "," : "", xs[i], ps[i]);
+  if (p >= cap - 2) return false;
+  cmd[p++] = ')'; cmd[p] = 0;
+  return true;
+}
+
 static bool label_num(const char *s, const char *name, double *v) {
   int nl = (int)strlen(name);
   for (int i = 0; s && s[i]; ++i) {
@@ -3613,25 +3636,40 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     }
     sprintf(cmd, "projectile(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
   }
-	  if ((has(t, "equilibrium") || has(t, "balance")) && (has(t, "component") || has(t, "components")) && nv >= 4) {
-	    int p = sprintf(cmd, "equilibrium(%.10g", v[0]);
-	    for (int i=1;i<nv && p < (int)sizeof(cmd)-24;++i) p += sprintf(cmd+p, ",%.10g", v[i]);
-	    sprintf(cmd+p, ")");
-	    return eval_mech(cmd, out);
-	  }
-	  if ((has(t, "force") || has(t, "forces") || has(t, "vector") || has(t, "vectors")) &&
-	      (has(t, "resultant") || has(t, "magnitude")) && (has(t, "angle") || has(t, "degrees")) &&
-	      !has(t, "component") && !has(t, "equilibrium") && nv >= 3) {
-	    double F1 = v[0], F2 = v[1], ang = v[2];
-	    double R = root(F1*F1 + F2*F2 + 2*F1*F2*deg_cosine(ang));
-	    int n = add(out, 0, "Use the cosine rule with the included angle.");
-	    n = add(out, n, "R^2 = %.6g^2 + %.6g^2 + 2*%.6g*%.6g*cos(%.6g)", F1, F2, F1, F2, ang);
-	    return add(out, n, "R = %.10g N", R);
-	  }
-	  if ((has(t, "force") || has(t, "vector")) && has(t, "i") && has(t, "j") &&
-	      (has(t, "magnitude") || has(t, "direction") || has(t, "resultant")) && nv >= 2) {
-	    sprintf(cmd, "vector(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
-	  }
+  if ((has(t, "equilibrium") || has(t, "balance")) && (has(t, "component") || has(t, "components")) && nv >= 4) {
+    int p = sprintf(cmd, "equilibrium(%.10g", v[0]);
+    for (int i=1;i<nv && p < (int)sizeof(cmd)-24;++i) p += sprintf(cmd+p, ",%.10g", v[i]);
+    sprintf(cmd+p, ")");
+    return eval_mech(cmd, out);
+  }
+  if ((has(t, "force") || has(t, "forces") || has(t, "vector") || has(t, "vectors")) &&
+      (has(t, "resultant") || has(t, "magnitude")) && (has(t, "angle") || has(t, "degrees")) &&
+      !has(t, "component") && !has(t, "equilibrium") && nv >= 6) {
+    double sx = 0, sy = 0;
+    int n = add(out, 0, "Resolve each force into horizontal and vertical components.");
+    for (int i = 0; i + 1 < nv && n < P3_MAX_LINES - 3; i += 2) {
+      double F = v[i], a = v[i + 1];
+      double fx = F * deg_cosine(a), fy = F * deg_sine(a);
+      sx += fx; sy += fy;
+      n = add(out, n, "%.6g N at %.6g deg: Fx=%.10g, Fy=%.10g", F, a, fx, fy);
+    }
+    double R = root(sx*sx + sy*sy);
+    n = add(out, n, "sum Fx = %.10g, sum Fy = %.10g", sx, sy);
+    return add(out, n, "resultant = sqrt(Fx^2+Fy^2) = %.10g N", R);
+  }
+  if ((has(t, "force") || has(t, "forces") || has(t, "vector") || has(t, "vectors")) &&
+      (has(t, "resultant") || has(t, "magnitude")) && (has(t, "angle") || has(t, "degrees")) &&
+      !has(t, "component") && !has(t, "equilibrium") && nv >= 3) {
+    double F1 = v[0], F2 = v[1], ang = v[2];
+    double R = root(F1*F1 + F2*F2 + 2*F1*F2*deg_cosine(ang));
+    int n = add(out, 0, "Use the cosine rule with the included angle.");
+    n = add(out, n, "R^2 = %.6g^2 + %.6g^2 + 2*%.6g*%.6g*cos(%.6g)", F1, F2, F1, F2, ang);
+    return add(out, n, "R = %.10g N", R);
+  }
+  if ((has(t, "force") || has(t, "vector")) && has(t, "i") && has(t, "j") &&
+      (has(t, "magnitude") || has(t, "direction") || has(t, "resultant")) && nv >= 2) {
+    sprintf(cmd, "vector(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
+  }
   if ((has(t, "positionvector") || (has(t, "position") && has(t, "vector"))) &&
       (has(t, "velocity") || has(t, "acceleration")) && has(t, "i") && has(t, "j") && nv >= 5) {
     double ax = v[0], bx = v[1], ay = 1, by = v[3], tt = v[nv-1];
@@ -3882,6 +3920,19 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     bool hl=word_num(input,"naturallength",&l) || word_num(input,"length",&l) || label_num(input,"length",&l);
     bool hla=word_num(input,"modulus",&lam) || label_num(input,"modulus",&lam) || word_num(input,"lambda",&lam);
     bool hx=word_num(input,"extension",&x) || label_num(input,"extension",&x);
+    if ((has(t, "hang") || has(t, "hanging") || has(t, "equilibrium")) && !hx && nv >= 3) {
+      double m = 0;
+      bool hm = word_num(input, "mass", &m) || label_num(input, "mass", &m);
+      if (!hl) l = v[0];
+      if (!hla) lam = v[1];
+      if (!hm) m = v[2];
+      double T = m * 9.8;
+      x = lam ? T * l / lam : 0;
+      int n = add(out, 0, "In equilibrium, string tension balances weight.");
+      n = add(out, n, "T = mg = %.10g*9.8 = %.10g N", m, T);
+      n = add(out, n, "Hooke's law: T = lambda*x/l");
+      return add(out, n, "x = Tl/lambda = %.10g*%.10g/%.10g = %.10g m", T, l, lam, x);
+    }
     if (!hl) l = v[1];
     if (!hla) lam = v[2];
     if (!hx) x = v[nv-1];
@@ -5265,6 +5316,16 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "P(X>r)=(1-p)^r");
     return add(out, n, "P(X>%.0f)=(1-%.6g)^%.0f = %.10g", r, p, r, prob);
   }
+  if ((has(t, "die") || has(t, "dice")) && has(t, "six") && has(t, "first") &&
+      (has(t, "after") || has(t, "morethan")) && nv >= 1) {
+    double r = 0;
+    for (int i = nv - 1; i >= 0; --i) if (!near_num(v[i], 6) && v[i] >= 1) { r = v[i]; break; }
+    double p = 1.0 / 6.0;
+    double prob = pwr(1 - p, (int)r);
+    int n = add(out, 0, "For a die, success means rolling a six, so p=1/6.");
+    n = add(out, n, "First six after r throws means no six in the first r throws.");
+    return add(out, n, "P(X>%.0f)=(5/6)^%.0f = %.10g", r, r, prob);
+  }
   if (((has(t, "first") && (has(t, "success") || has(t, "defective") || has(t, "failure") || has(t, "win") || has(t, "head"))) || has(t, "geometric")) &&
       (has(t, "before") || has(t, "within") || has(t, "by") || has(c, "onorbefore") || has(c, "onbefore")) && nv >= 2) {
     double p = 0, r = 0;
@@ -5587,6 +5648,10 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     }
     return eval_stats(cmd, out);
   }
+  if ((has(t, "discrete") || has(t, "randomvariable") || has(t, "expectation") || has(t, "distribution")) &&
+      discrete_table_cmd(t, cmd, sizeof(cmd))) {
+    return eval_stats(cmd, out);
+  }
   if ((has(t, "class") || has(t, "classes")) && (has(t, "frequency") || has(t, "frequencies")) &&
       (has(t, "mean") || has(t, "standarddeviation") || has(t, "sd")) &&
       grouped_class_freq_cmd(t, cmd, sizeof(cmd))) {
@@ -5612,6 +5677,16 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     int n = add(out, 0, "For P(X=x)=kx, first use sum P(X=x)=1.");
     n = add(out, n, "k(%.10g) = 1, so k = %.10g", sx, k);
     return add(out, n, "E(X)=sum xP(X=x)=k sum x^2 = %.10g*%.10g = %.10g", k, sx2, k*sx2);
+  }
+  if ((has(t, "discrete") || has(t, "randomvariable") || has(t, "expectation") || has(t, "distribution")) &&
+      has(t, "proportional") && (has(t, "tox") || has(t, "to,x") || has(c, "tox")) && nv >= 2) {
+    double sx = 0, sx2 = 0;
+    for (int i = 0; i < nv; ++i) { sx += v[i]; sx2 += v[i]*v[i]; }
+    double k = sx == 0 ? 0 : 1 / sx;
+    int n = add(out, 0, "If P(X=x) is proportional to x, write P(X=x)=kx.");
+    n = add(out, n, "sum P(X=x)=1 gives k*sum x = 1");
+    n = add(out, n, "sum x = %.10g, so k = %.10g", sx, k);
+    return add(out, n, "E(X)=sum x*kx = k sum x^2 = %.10g*%.10g = %.10g", k, sx2, k*sx2);
   }
   if ((has(t, "discrete") || has(t, "randomvariable") || has(t, "expectation") || has(t, "distribution")) &&
       ((has(t, "prob") || has(t, "probabilities") || has(c, "p(x=")) && nv >= 4)) {
