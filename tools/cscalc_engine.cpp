@@ -1220,6 +1220,18 @@ static int eval_storage(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LE
     int n = add(out, 0, "Bit rate = bits / seconds.");
     return add(out, n, "%s/%s = %.10g bit/s", a[0], a[1], rate);
   }
+  if (starts3(s, "bitratemb(", "datemb(", "mbyterate(") && na >= 2) {
+    double mb = num(a[0]), seconds = num(a[1]), megabits = mb * 8.0, rate = megabits / seconds;
+    int n = add(out, 0, "Convert megabytes to megabits before finding bit rate.");
+    n = add(out, n, "%.10g MB = %.10g Mbit", mb, megabits);
+    return add(out, n, "bit rate = %.10g/%.10g = %.10g Mbit/s", megabits, seconds, rate);
+  }
+  if (starts3(s, "bitratekb(", "datekb(", "kbyterate(") && na >= 2) {
+    double kb = num(a[0]), seconds = num(a[1]), kilobits = kb * 8.0, rate = kilobits / seconds;
+    int n = add(out, 0, "Convert kilobytes to kilobits before finding bit rate.");
+    n = add(out, n, "%.10g KB = %.10g kbit", kb, kilobits);
+    return add(out, n, "bit rate = %.10g/%.10g = %.10g kbit/s", kilobits, seconds, rate);
+  }
   if (starts3(s, "transfer(", "transfertime(", "time(") && na >= 2) {
     double t = num(a[0]) / num(a[1]);
     int n = add(out, 0, "Transfer time = file size / bit rate.");
@@ -2629,6 +2641,20 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       sprintf(cmd, "sound(%lld,%lld,%lld,%lld)", (long long)rate, (long long)seconds, (long long)res, hC ? (long long)channels : 1);
       return eval_storage(cmd, out);
     }
+  }
+  if ((has(compact, "bitrate") || has(compact, "datarate") || (has(t, "bit") && has(t, "rate"))) &&
+      (has(t, "file") || has(t, "size") || has(t, "transmit") || has(t, "sent")) &&
+      (has(t, "second") || has(t, "time") || has(t, "duration")) &&
+      !has(compact, "downloadtime") && !has(compact, "transfertime") && nv >= 2) {
+    double size=0, seconds=0;
+    bool hSize=label_num(input,"size",&size) || label_num(input,"filesize",&size) || label_num(input,"file",&size);
+    bool hSec=label_num(input,"seconds",&seconds) || label_num(input,"time",&seconds) || label_num(input,"duration",&seconds);
+    if (!hSize) size = v[0];
+    if (!hSec) seconds = v[1];
+    if (has(t, "megabyte") || has(t, "mbyte")) sprintf(cmd, "bitratemb(%.10g,%.10g)", size, seconds);
+    else if (has(t, "kilobyte") || has(t, "kbyte")) sprintf(cmd, "bitratekb(%.10g,%.10g)", size, seconds);
+    else sprintf(cmd, "bitrate(%.10g,%.10g)", size, seconds);
+    return eval_storage(cmd, out);
   }
   if (has(t, "transfer") || has(t, "download") || has(t, "transmit")) {
     double size=0, rate=0;

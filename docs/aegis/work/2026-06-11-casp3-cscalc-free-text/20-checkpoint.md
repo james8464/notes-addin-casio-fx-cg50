@@ -1,5 +1,25 @@
 # Checkpoint
 
+## 2026-06-12 CSCALC Bitrate File-Size Slice
+
+Completed:
+- Added `bitratemb(...)` and `bitratekb(...)` so file-size/time questions convert bytes to bits before computing data rate.
+- Added free-text routing for prompts such as “bit rate for file size 12 megabytes transmitted in 6 seconds”.
+- Preserved explicit download/transfer-time routing when a prompt asks for time with a given bitrate.
+- Added regression tests for MB and KB bitrate working.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CSCALC AQA Paper 2 storage/data-rate calculation support.
+- Did not touch CAS Pure behavior, CASP3 behavior, NOTES, or shared UI/status code.
+
 ## 2026-06-12 CSCALC Minimum Bit-Width Slice
 
 Completed:
