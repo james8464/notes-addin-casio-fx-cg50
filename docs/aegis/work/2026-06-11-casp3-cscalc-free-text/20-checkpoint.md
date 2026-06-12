@@ -87,6 +87,39 @@ Drift check:
 - Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
 - Active goal remains open for future source/probe-driven hardening.
 
+## 2026-06-12 Quartic Motion, K-Distributions, And CS Bit-String Slice
+
+Completed:
+- Added CASP3 quartic velocity displacement working.
+- Added CASP3 quartic displacement total-distance working with stationary split points.
+- Added CASP3 same-level projectile angle working from speed and range.
+- Broadened CASP3 rough horizontal pull-at-angle routing without weakening existing projectile routes.
+- Added CASP3 continuous `kx^n` pdf interval working for `P(a<X<b)`.
+- Added CASP3 discrete `P(X=x)=kx` normalisation and expectation working.
+- Fixed CSCALC bit-string two's-complement add/sub precedence over decimal fallback.
+- Added CSCALC Caesar shift encrypt/decrypt working.
+- Added regression tests and rebuilt calculator files.
+
+Evidence:
+- Focused fresh probes for the new P3/CS cases: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 257304 bytes`
+  - `CSCALC.g3a: 184248 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Still inside CASP3/CSCALC free-text working support and generated calculator outputs.
+- Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for future source/probe-driven hardening.
+
 ## 2026-06-12 Percentile, Poisson, CIDR, and Endian Slice
 
 Completed:

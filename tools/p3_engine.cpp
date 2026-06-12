@@ -1995,6 +1995,43 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     return add(out, n, "total distance = %.10g", total);
   }
   if (has(t, "displacement") && has(t, "total") && has(t, "distance")) {
+    double A4=0, A3=0, A2=0, A1=0, A0=0, qt1=0, qt2=0;
+    if (parse_quartic_poly_after_word(input, "displacement", &A4, &A3, &A2, &A1, &A0) && !near_num(A4, 0) &&
+        (word_num_with_t(input, "from", &qt1) || word_num_with_t(input, "between", &qt1)) &&
+        (word_num_with_t(input, "to", &qt2) || word_num_with_t(input, "and", &qt2))) {
+      double pts[10]; int np = 0; pts[np++] = qt1;
+      double prevt = qt1, prev = ((4*A4*prevt + 3*A3)*prevt + 2*A2)*prevt + A1;
+      for (int i = 1; i <= 800 && np < 9; ++i) {
+        double cur = qt1 + (qt2 - qt1) * i / 800.0;
+        double f = ((4*A4*cur + 3*A3)*cur + 2*A2)*cur + A1;
+        if ((near_num(prev, 0) && prevt > qt1 && prevt < qt2) || prev * f < 0) {
+          double lo = prevt, hi = cur, flo = prev;
+          for (int k = 0; k < 40; ++k) {
+            double mid = (lo + hi) / 2.0;
+            double fm = ((4*A4*mid + 3*A3)*mid + 2*A2)*mid + A1;
+            if (flo * fm <= 0) hi = mid; else { lo = mid; flo = fm; }
+          }
+          double r = (lo + hi) / 2.0;
+          bool dup = false; for (int q = 0; q < np; ++q) if (abs_num(pts[q] - r) < 1e-6) dup = true;
+          if (!dup && r > qt1 && r < qt2) pts[np++] = r;
+        }
+        prevt = cur; prev = f;
+      }
+      pts[np++] = qt2;
+      for (int i = 0; i < np; ++i) for (int j = i + 1; j < np; ++j) if (pts[j] < pts[i]) { double q = pts[i]; pts[i] = pts[j]; pts[j] = q; }
+      int n = add(out, 0, "Total distance is found by splitting where velocity changes sign.");
+      n = add(out, n, "s = %.6g t^4 %+.6g t^3 %+.6g t^2 %+.6g t %+.6g", A4, A3, A2, A1, A0);
+      n = add(out, n, "v = ds/dt = %.6g t^3 %+.6g t^2 %+.6g t %+.6g", 4*A4, 3*A3, 2*A2, A1);
+      double total = 0;
+      for (int i = 0; i + 1 < np; ++i) {
+        double a0 = pts[i], b0 = pts[i+1];
+        double s1 = (((A4*a0 + A3)*a0 + A2)*a0 + A1)*a0 + A0;
+        double s2 = (((A4*b0 + A3)*b0 + A2)*b0 + A1)*b0 + A0;
+        double d = abs_num(s2 - s1); total += d;
+        n = add(out, n, "distance on %.6g to %.6g = |%.10g - %.10g| = %.10g", a0, b0, s2, s1, d);
+      }
+      return add(out, n, "total distance = %.10g", total);
+    }
     double A=0, B=0, C=0, D0=0, t1=0, t2=0;
     if (!parse_cubic_poly_after_word(input, "displacement", &A, &B, &C, &D0)) return 0;
     bool ht1 = word_num_with_t(input, "from", &t1) || word_num_with_t(input, "between", &t1);
@@ -2095,6 +2132,17 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     }
   }
   if (has(t, "velocity") && has(t, "displacement") && has(t, "from")) {
+    double A4=0, A3=0, A2=0, A1=0, A0=0, qt1=0, qt2=0;
+    if (parse_quartic_poly_after_word(input, "velocity", &A4, &A3, &A2, &A1, &A0) &&
+        !near_num(A4, 0) && word_num_with_t(input, "from", &qt1) && word_num_with_t(input, "to", &qt2)) {
+      double F1=A4*qt1*qt1*qt1*qt1*qt1/5.0 + A3*qt1*qt1*qt1*qt1/4.0 + A2*qt1*qt1*qt1/3.0 + A1*qt1*qt1/2.0 + A0*qt1;
+      double F2=A4*qt2*qt2*qt2*qt2*qt2/5.0 + A3*qt2*qt2*qt2*qt2/4.0 + A2*qt2*qt2*qt2/3.0 + A1*qt2*qt2/2.0 + A0*qt2;
+      int n = add(out, 0, "Displacement is the integral of velocity.");
+      n = add(out, n, "v = %.6g t^4 %+.6g t^3 %+.6g t^2 %+.6g t %+.6g", A4, A3, A2, A1, A0);
+      n = add(out, n, "s = integral(v) dt = %.6g t^5 %+.6g t^4 %+.6g t^3 %+.6g t^2 %+.6g t", A4/5.0, A3/4.0, A2/3.0, A1/2.0, A0);
+      n = add(out, n, "displacement = [s] from t=%.6g to t=%.6g", qt1, qt2);
+      return add(out, n, "displacement = %.10g - %.10g = %.10g", F2, F1, F2-F1);
+    }
     double A=0, B=0, C=0, D0=0, t1=0, t2=0;
     if (parse_cubic_poly_after_word(input, "velocity", &A, &B, &C, &D0) &&
         (!near_num(A, 0)) &&
@@ -2541,7 +2589,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     }
     sprintf(cmd, nv >= 4 ? "projectileangle(%.10g,%.10g,%.10g,%.10g)" : "projectileangle(%.10g,%.10g,%.10g)", v[0], v[1], v[2], nv >= 4 ? v[3] : 0); return eval_mech(cmd, out);
   }
-  if (is_projectile_text(t) && ((has(t, "find") && has(t, "angle")) || has(t, "launchangle")) && nv >= 3) {
+  if (is_projectile_text(t) && (has(c, "findangle") || has(c, "findtheangle") || has(t, "launchangle")) && nv >= 2) {
     double u=0,x=0,y=0,h0=0,g=0;
     bool hU=label_num(input,"speed",&u) || label_num(input,"u",&u) || label_num(input,"initialspeed",&u) || label_num(input,"initialvelocity",&u);
     bool hX=label_num(input,"x",&x) || label_num(input,"distance",&x) || label_num(input,"range",&x) || label_num(input,"horizontaldistance",&x);
@@ -2551,6 +2599,10 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     if (!hH && nv >= 3 && (has(t, "cliff") || has(t, "height") || has(t, "high"))) { h0 = v[2]; hH = true; }
     if (hU && hX && hY) {
       sprintf(cmd, hG ? "projectileangle(%.10g,%.10g,%.10g,%.10g,%.10g)" : "projectileangle(%.10g,%.10g,%.10g,%.10g)", u, x, y, hH ? h0 : 0, hG ? g : 9.8);
+      return eval_mech(cmd, out);
+    }
+    if (nv >= 2 && (has(t, "samelevel") || has(t, "ground") || has(t, "range") || has(t, "away"))) {
+      sprintf(cmd, "projectileangle(%.10g,%.10g,0,0)", v[0], v[1]);
       return eval_mech(cmd, out);
     }
   }
@@ -2742,7 +2794,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "mu R = mg sin(theta)");
     return add(out, n, "least mu = tan(theta) = tan(%.6g) = %.10g", ang, mu);
   }
-  if (has(t, "horizontal") && (has(t, "plane") || has(t, "rough") || has(t, "smooth")) &&
+  if (has(t, "horizontal") && (has(t, "plane") || has(t, "rough") || has(t, "smooth") || has(t, "pulled") || has(t, "pull")) &&
       (has(t, "acceleration") || has(t, "accelerate")) && nv >= 2) {
     if ((has(t, "connected") || has(t, "two") || has(t, "particles")) && (has(t, "coefficient") || has(t, "mu")) && nv >= 4) {
       double m1 = v[0], m2 = v[1], mu = 0, F = v[nv-1];
@@ -3812,6 +3864,15 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     return eval_stats(cmd, out);
   }
   if ((has(t, "discrete") || has(t, "randomvariable") || has(t, "expectation") || has(t, "distribution")) &&
+      has(c, "p(x=x)=kx") && nv >= 2) {
+    double sx = 0, sx2 = 0;
+    for (int i = 0; i < nv; ++i) { sx += v[i]; sx2 += v[i]*v[i]; }
+    double k = sx == 0 ? 0 : 1 / sx;
+    int n = add(out, 0, "For P(X=x)=kx, first use sum P(X=x)=1.");
+    n = add(out, n, "k(%.10g) = 1, so k = %.10g", sx, k);
+    return add(out, n, "E(X)=sum xP(X=x)=k sum x^2 = %.10g*%.10g = %.10g", k, sx2, k*sx2);
+  }
+  if ((has(t, "discrete") || has(t, "randomvariable") || has(t, "expectation") || has(t, "distribution")) &&
       ((has(t, "prob") || has(t, "probabilities") || has(c, "p(x=")) && nv >= 4)) {
     int p = sprintf(cmd, "discrete(");
     if ((has(t, "values") || has(t, "xvalues") || has(t, "probabilities") || has(t, "probs")) && nv % 2 == 0) {
@@ -3850,6 +3911,32 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       n = add(out, n, "k = %.10g", k);
       n = add(out, n, "P(X<%.6g)=integral from 0 to %.6g of %.10g*x^%d dx", bound, bound, k, pow);
       return add(out, n, "P(X<%.6g) = %.10g", bound, prob);
+    }
+  }
+  if ((has(t, "pdf") || has(t, "density") || has(t, "continuous")) && has(c, "kx^") && has(c, "<x<")) {
+    const char *kp = strstr(c, "kx^");
+    int pow = kp && isdigit((unsigned char)kp[3]) ? kp[3] - '0' : 1;
+    double upper = 0, lo = 0, hi = 0;
+    const char *bp = strstr(c, "0<x<"); if (bp) upper = read_num(bp + 4);
+    const char *xp = strstr(c, "p(");
+    if (xp) {
+      const char *mid = strstr(xp, "<x<");
+      if (mid) {
+        const char *a0 = mid;
+        while (a0 > xp && (isdigit((unsigned char)a0[-1]) || a0[-1] == '.' || a0[-1] == '-')) --a0;
+        char left[32]; int len = (int)(mid - a0);
+        if (len > 0 && len < (int)sizeof(left)) { memcpy(left, a0, len); left[len] = 0; lo = read_num(left); hi = read_num(mid + 3); }
+      }
+    }
+    if (upper <= 0) for (int i = 0; i < nv; ++i) if (v[i] > upper) upper = v[i];
+    if (upper > 0 && hi > lo && pow >= 1) {
+      double k = (pow + 1) / pwr(upper, pow + 1);
+      double prob = k * (pwr(hi, pow + 1) - pwr(lo, pow + 1)) / (pow + 1);
+      int n = add(out, 0, "For a pdf, total area under f(x) is 1.");
+      n = add(out, n, "integral from 0 to %.6g of kx^%d dx = 1", upper, pow);
+      n = add(out, n, "k = %.10g", k);
+      n = add(out, n, "P(%.6g<X<%.6g)=integral from %.6g to %.6g of %.10g*x^%d dx", lo, hi, lo, hi, k, pow);
+      return add(out, n, "= %.10g", prob);
     }
   }
   if ((has(t, "pdf") || has(t, "density") || has(t, "continuous")) && has(c, "kx^") && (has(t, "mean") || has(c, "e(x)")) && nv >= 2) {

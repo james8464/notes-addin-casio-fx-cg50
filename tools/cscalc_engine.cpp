@@ -3379,6 +3379,26 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if (has(t, "dijkstra") || (has(t, "shortest") && (has(t, "path") || has(t, "route")))) {
     if (make_dijkstra_cmd(input, cmd, sizeof(cmd))) return eval_trace(cmd, out);
   }
+  if (has(t, "caesar") && (has(t, "encrypt") || has(t, "decrypt")) && nv >= 1) {
+    char word[40] = "";
+    for (int i = 0; input[i];) {
+      while (input[i] && !isalpha((unsigned char)input[i])) ++i;
+      char tmp[40]; int j = 0;
+      while (isalpha((unsigned char)input[i]) && j + 1 < (int)sizeof(tmp)) tmp[j++] = (char)tolower((unsigned char)input[i++]);
+      tmp[j] = 0;
+      if (j > 1 && !word_is(tmp, "caesar") && !word_is(tmp, "shift") && !word_is(tmp, "encrypt") &&
+          !word_is(tmp, "decrypt") && !word_is(tmp, "using") && !word_is(tmp, "with") && !word_is(tmp, "the")) strcpy(word, tmp);
+    }
+    if (word[0]) {
+      int sh = (int)v[0] % 26; if (has(t, "decrypt")) sh = -sh;
+      char enc[40]; int i = 0;
+      for (; word[i] && i + 1 < (int)sizeof(enc); ++i) enc[i] = (char)('A' + (word[i] - 'a' + sh + 26) % 26);
+      enc[i] = 0;
+      int n = add(out, 0, "Caesar shift moves each letter by %d places.", sh < 0 ? -sh : sh);
+      n = add(out, n, "%s -> %s", word, enc);
+      return add(out, n, "%s text = %s", has(t, "decrypt") ? "decrypted" : "encrypted", enc);
+    }
+  }
   if (has(t, "fsm") || (has(t, "finite") && has(t, "state") && has(t, "machine"))) {
     if (make_fsm_cmd(input, cmd, sizeof(cmd))) return eval_trace(cmd, out);
   }
@@ -3819,7 +3839,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if (tc && nbg >= 2 && (has(t, "add") || has(t, "sum") || has(t, "plus"))) {
     sprintf(cmd, "twosadd(%s,%s)", bitgrp[0], bitgrp[1]); return eval_twos(cmd, out);
   }
-  if (tc && nv >= 3 && (has(t, "add") || has(t, "sum") || has(t, "plus"))) {
+  if (tc && nv >= 3 && nb < 2 && nbg < 2 && (has(t, "add") || has(t, "sum") || has(t, "plus"))) {
     double bw=0; long long bitsw = 0, vals[2]; int got = 0;
     if (scan_before_word_num(t, "bit", &bw) || scan_before_word_num(t, "bits", &bw)) bitsw = (long long)bw;
     if (bitsw > 0) {
@@ -3875,7 +3895,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if (tc && !has(t, "fixed") && nb >= 1 && (has(t, "decode") || has(t, "denary") || has(t, "decimal"))) {
     sprintf(cmd, "twosdec(%s)", bits[0]); return eval_twos(cmd, out);
   }
-  if (tc && nv >= 3 && (has(t, "subtract") || has(t, "minus") || has(t, "takeaway") || strchr(input, '-'))) {
+  if (tc && nv >= 3 && nb < 2 && nbg < 2 && (has(t, "subtract") || has(t, "minus") || has(t, "takeaway") || strchr(input, '-'))) {
     double bw=0; long long bitsw = 0, vals[2]; int got = 0;
     if (scan_before_word_num(t, "bit", &bw) || scan_before_word_num(t, "bits", &bw)) bitsw = (long long)bw;
     if (bitsw > 0) {
