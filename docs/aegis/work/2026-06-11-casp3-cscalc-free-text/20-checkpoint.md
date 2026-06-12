@@ -1,5 +1,24 @@
 # Checkpoint
 
+## 2026-06-12 CSCALC Boolean Proof Phrase Slice
+
+Completed:
+- Located the old Boolean Python work in git history/current legacy paths (`ComputerScience/booleanProgram.py`, `src/calc_files/boolean.py`, legacy copies).
+- Fixed Boolean proof free text so `equals`, `is equal to`, and `equivalent to` split LHS/RHS instead of being parsed as variables.
+- Added regression tests for distributive, commutative, and XOR identity proof phrases.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CSCALC Boolean algebra free-text working support.
+- Did not touch CAS Pure behavior, CASP3 logic, NOTES, or shared UI/status code.
+
 ## 2026-06-12 CASP3/CSCALC Exam Phrase Routing Slice
 
 Completed:

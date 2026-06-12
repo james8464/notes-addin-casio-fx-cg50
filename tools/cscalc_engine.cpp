@@ -2984,6 +2984,20 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     const char *e = skip_bool_words(compact);
     sprintf(cmd, "posform(%s)", e); return eval_posform(cmd, out);
   }
+  if (nv == 0 && (has(compact, "equals") || has(compact, "isequalto") || has(compact, "equivalentto"))) {
+    const char *e = skip_bool_words(compact);
+    const char *eq = strstr(e, "isequalto"); int elen = 9;
+    if (!eq) { eq = strstr(e, "equivalentto"); elen = 12; }
+    if (!eq) { eq = strstr(e, "equals"); elen = 6; }
+    if (eq && eq > e && eq[elen]) {
+      char lhs[48], rhs[48]; int li = 0, ri = 0;
+      for (const char *p = e; p < eq && li < 47; ++p) lhs[li++] = *p;
+      lhs[li] = 0;
+      for (const char *p = eq + elen; *p && ri < 47; ++p) rhs[ri++] = *p;
+      rhs[ri] = 0;
+      sprintf(cmd, "boolprove(%s,%s)", lhs, rhs); return eval_bool_prove(cmd, out);
+    }
+  }
   if (nv == 0 && has(compact, "=")) {
     const char *e = skip_bool_words(compact);
     const char *eq = strchr(e, '=');
