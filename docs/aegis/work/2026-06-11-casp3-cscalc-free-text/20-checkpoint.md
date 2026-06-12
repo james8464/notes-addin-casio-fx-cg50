@@ -1,5 +1,25 @@
 # Checkpoint
 
+## 2026-06-12 CSCALC Boolean Proof Working Slice
+
+Completed:
+- Added generic Boolean covering-law simplification for `A + A'B -> A+B` and the dual `A(A'+B) -> AB`.
+- Added side-by-side algebra trace lines for `boolprove(...)` / free-text `prove ... = ...`.
+- Added simplified LHS/RHS lines before truth-row comparison, so proofs no longer jump straight to row matching.
+- Added regression tests for covering-law simplification and proof outputs.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CSCALC AQA Paper 2 Boolean calculation support.
+- Did not touch CAS Pure behavior, CASP3 behavior, NOTES, or shared UI/status code.
+
 ## 2026-06-12 CSCALC Boolean Algebra Trace Hardening Slice
 
 Completed:

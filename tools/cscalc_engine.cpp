@@ -1767,6 +1767,15 @@ static void join_bool_parts(char parts[][40], int count, char op, char *res, int
   }
 }
 
+static void join_except(char parts[][40], int count, int skip, char op, char *res, int cap) {
+  int p = 0; res[0] = 0;
+  for (int i = 0; i < count; ++i) if (i != skip) {
+    if (p) app_ch(res, &p, cap, op);
+    app_str(res, &p, cap, parts[i]);
+  }
+  if (!p) app_ch(res, &p, cap, '1');
+}
+
 static bool bool_law_once(const char *expr, char *res, char *law) {
   char e[96]; strip_outer(expr, e, sizeof(e));
   if (e[0] == '!' && e[1] == '!') {
@@ -1830,6 +1839,24 @@ static bool bool_law_once(const char *expr, char *res, char *law) {
         char l[40], r[40]; memcpy(l, aa, q); l[q] = 0; strcpy(r, aa + q + 1);
         if (strcmp(bb, l) == 0 || strcmp(bb, r) == 0) { strcpy(res, bb); strcpy(law, "Absorption law"); return true; }
       }
+      char pa[6][40], pb[6][40];
+      int na = split_top_parts(aa, '&', pa, 6), nb = split_top_parts(bb, '&', pb, 6);
+      if (nb > 1) {
+        for (int i = 0; i < nb; ++i) if (is_comp_pair(aa, pb[i])) {
+          char rem[80]; join_except(pb, nb, i, '&', rem, sizeof(rem));
+          if (strcmp(rem, "1") == 0) strcpy(res, "1");
+          else sprintf(res, "%s+%s", aa, rem);
+          strcpy(law, "Covering law"); return true;
+        }
+      }
+      if (na > 1) {
+        for (int i = 0; i < na; ++i) if (is_comp_pair(bb, pa[i])) {
+          char rem[80]; join_except(pa, na, i, '&', rem, sizeof(rem));
+          if (strcmp(rem, "1") == 0) strcpy(res, "1");
+          else sprintf(res, "%s+%s", bb, rem);
+          strcpy(law, "Covering law"); return true;
+        }
+      }
       int qa = top_op(aa, '&'), qb = top_op(bb, '&');
       if (qa > 0 && qb > 0) {
         char al[40], ar[40], bl[40], br[40], common[40], ao[40], bo[40];
@@ -1867,6 +1894,22 @@ static bool bool_law_once(const char *expr, char *res, char *law) {
         for (int i = 0; i < nb; ++i) if (!has_lit(pa, na, pb[i])) b_in_a = false;
         if (a_in_b) { strcpy(res, aa); strcpy(law, "Absorption law"); return true; }
         if (b_in_a) { strcpy(res, bb); strcpy(law, "Absorption law"); return true; }
+      }
+      if (nb > 1) {
+        for (int i = 0; i < nb; ++i) if (is_comp_pair(aa, pb[i])) {
+          char rem[80]; join_except(pb, nb, i, '+', rem, sizeof(rem));
+          if (strcmp(rem, "1") == 0) strcpy(res, "0");
+          else sprintf(res, "%s&%s", aa, rem);
+          strcpy(law, "Covering law"); return true;
+        }
+      }
+      if (na > 1) {
+        for (int i = 0; i < na; ++i) if (is_comp_pair(bb, pa[i])) {
+          char rem[80]; join_except(pa, na, i, '+', rem, sizeof(rem));
+          if (strcmp(rem, "1") == 0) strcpy(res, "0");
+          else sprintf(res, "%s&%s", bb, rem);
+          strcpy(law, "Covering law"); return true;
+        }
       }
       int qa = top_op(aa, '+'), qb = top_op(bb, '+');
       if (qa > 0 && qb > 0) {
@@ -1924,6 +1967,19 @@ static int add_bool_law_trace(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN], int n
   return n;
 }
 
+static int add_named_bool_law_trace(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN], int n, const char *name, const char *expr) {
+  char cur[96], next[96], law[32];
+  strncpy(cur, expr, sizeof(cur) - 1); cur[sizeof(cur) - 1] = 0;
+  for (int step = 0; step < 10; ++step) {
+    if (!bool_law_once(cur, next, law)) break;
+    if (strcmp(cur, next) == 0) break;
+    if (strcmp(law, "XOR identity") != 0 && !bool_equiv_expr(cur, next)) break;
+    n = add(out, n, "%s: %s -> %s (%s)", name, cur, next, law);
+    strncpy(cur, next, sizeof(cur) - 1); cur[sizeof(cur) - 1] = 0;
+  }
+  return n;
+}
+
 static bool int_seen(const int *v, int n, int x) {
   for (int i = 0; i < n; ++i) if (v[i] == x) return true;
   return false;
@@ -1974,6 +2030,13 @@ static void imp_sop_list(const Imp *chosen, int chc, const char *vars, int vc, c
     if (i) app_ch(buf, &p, cap, '+');
     app_str(buf, &p, cap, t);
   }
+}
+
+static void bool_simplified_from_rows(const int *mins, int mc, int rows, const char *vars, int vc, char *buf, int cap) {
+  if (mc == 0) { strncpy(buf, "0", cap - 1); buf[cap - 1] = 0; return; }
+  if (mc == rows) { strncpy(buf, "1", cap - 1); buf[cap - 1] = 0; return; }
+  Imp chosen[32]; int chc = minimise_rows(mins, mc, 0, 0, chosen, 32);
+  imp_sop_list(chosen, chc, vars, vc, buf, cap);
 }
 
 static void imp_pos_text(const Imp &p, const char *vars, int vc, char *buf, int cap) {
@@ -2409,7 +2472,15 @@ static int eval_bool_prove(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE
   char ls[80] = "", rs[80] = ""; int lp = 0, rp = 0;
   for (int i = 0; i < lc; ++i) { if (i) app_ch(ls, &lp, 80, ','); app_int(ls, &lp, 80, ml[i]); }
   for (int i = 0; i < rc; ++i) { if (i) app_ch(rs, &rp, 80, ','); app_int(rs, &rp, 80, mr[i]); }
-  int n = add(out, 0, "Make truth tables for LHS and RHS.");
+  char lsim[80], rsim[80];
+  bool_simplified_from_rows(ml, lc, rows, vars, vc, lsim, sizeof(lsim));
+  bool_simplified_from_rows(mr, rc, rows, vars, vc, rsim, sizeof(rsim));
+  int n = add(out, 0, "Simplify both sides, then compare output rows.");
+  n = add_named_bool_law_trace(out, n, "LHS", lbuf);
+  n = add_named_bool_law_trace(out, n, "RHS", rbuf);
+  n = add(out, n, "LHS simplifies to %s", lsim);
+  n = add(out, n, "RHS simplifies to %s", rsim);
+  n = add(out, n, "Make truth tables for LHS and RHS.");
   n = add(out, n, "LHS output-1 rows: %s", lc ? ls : "none");
   n = add(out, n, "RHS output-1 rows: %s", rc ? rs : "none");
   return add(out, n, same_rows ? "Same output rows, so LHS = RHS." : "Different output rows, so not identical.");
