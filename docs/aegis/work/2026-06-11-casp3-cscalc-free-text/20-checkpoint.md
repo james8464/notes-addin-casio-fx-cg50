@@ -2235,6 +2235,27 @@ Drift check:
 - Still inside CASP3/CSCALC arbitrary free-text calculation support.
 - Did not touch CAS Pure source, NOTES source, menus, or shared status/UI code.
 
+## 2026-06-12 CSCALC Base Wording Follow-Up
+
+Completed:
+- Added free-text routing for `base 2 to base 8 ...` and `base 8 to base 2 ...` wording.
+- Changed `convert(...,*,2)` output to preserve source grouping width for hex/octal without adding unrelated 16-bit padding.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- Base adjacency probes for base-2/base-8/octal/hex-to-binary: passed.
+- `python3 tests/check_p3_engine.py && python3 tests/check_multi_app_suite.py`: passed.
+- `./compile`: passed.
+- Size evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 158964 bytes`
+  - `CSCALC.g3a: 155020 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Still inside CSCALC AQA Paper 2 free-text conversion support.
+- Did not touch CAS Pure, CASP3 source, NOTES source, menus, or shared status/UI code.
+
 ## 2026-06-11 CASP3 Coded Statistics Slice
 
 Completed:

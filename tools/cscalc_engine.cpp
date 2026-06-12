@@ -767,8 +767,14 @@ static int eval_base(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN])
     return add(out, n, "%s_%d = %lld_10", a[0], base, v);
   }
   if (starts2(s, "convert(", "base(") && na == 3) {
-    long long v = parse_base(a[0], (int)parse_int(a[1]));
-    if (parse_int(a[2]) == 2) { char b[65]; to_bin(v, v < 256 ? 8 : 16, b); return add(out, add(out, 0, "%s_%s = %lld_10", a[0], a[1], v), "%lld_10 = %s_2", v, b); }
+    int from = (int)parse_int(a[1]), to = (int)parse_int(a[2]);
+    long long v = parse_base(a[0], from);
+    if (to == 2) {
+      char b[65];
+      int w = from == 16 ? (int)strlen(a[0]) * 4 : from == 8 ? (int)strlen(a[0]) * 3 : 0;
+      if (w > 0 && w < 65) to_bin(v, w, b); else to_base(v, 2, b, sizeof(b));
+      return add(out, add(out, 0, "%s_%s = %lld_10", a[0], a[1], v), "%lld_10 = %s_2", v, b);
+    }
     if (parse_int(a[2]) == 16) return add(out, add(out, 0, "%s_%s = %lld_10", a[0], a[1], v), "%lld_10 = %llX_16", v, v);
     char b[65]; to_base(v, (int)parse_int(a[2]), b, sizeof(b));
     return add(out, add(out, 0, "%s_%s = %lld_10", a[0], a[1], v), "%lld_10 = %s_%s", v, b, a[2]);
@@ -3162,6 +3168,12 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   if (has(t, "base") && has(t, "to") && (has(t, "base,2,to,base,16") || has(t, "base2,to,base16")) && nb >= 1) {
     sprintf(cmd, "convert(%s,2,16)", bits[0]); return eval_base(cmd, out);
+  }
+  if (has(t, "base") && has(t, "to") && (has(t, "base,2,to,base,8") || has(t, "base2,to,base8")) && nb >= 1) {
+    sprintf(cmd, "convert(%s,2,8)", bits[0]); return eval_base(cmd, out);
+  }
+  if (has(t, "base") && has(t, "to") && (has(t, "base,8,to,base,2") || has(t, "base8,to,base2")) && nv >= 1) {
+    sprintf(cmd, "convert(%lld,8,2)", (long long)v[0]); return eval_base(cmd, out);
   }
   if (has(t, "base") && has(t, "to") && has(t, "base,10,to,base,16") && nv >= 1) {
     sprintf(cmd, "convert(%lld,10,16)", (long long)v[0]); return eval_base(cmd, out);
