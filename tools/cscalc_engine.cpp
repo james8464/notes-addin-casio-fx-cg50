@@ -156,6 +156,24 @@ static bool scan_hex_token(const char *s, char *buf, int cap) {
   return false;
 }
 
+static bool scan_hex_word_token(const char *s, char *buf, int cap) {
+  for (int i = 0; s[i];) {
+    while (s[i] && !isalnum((unsigned char)s[i])) ++i;
+    int j = i, k = 0; bool has_alpha = false, ok = true;
+    while (isalnum((unsigned char)s[j])) {
+      if (!isxdigit((unsigned char)s[j])) ok = false;
+      char c = (char)toupper((unsigned char)s[j]);
+      if (c >= 'A' && c <= 'F') has_alpha = true;
+      if (k + 1 < cap) buf[k++] = c;
+      ++j;
+    }
+    buf[k] = 0;
+    if (ok && has_alpha && k > 0) return true;
+    i = j;
+  }
+  return false;
+}
+
 static bool scan_fixed_bits(const char *s, char *buf, int cap) {
   for (int i = 0; s[i]; ++i) {
     if (s[i] != '0' && s[i] != '1') continue;
@@ -2836,6 +2854,9 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   char bitcol[65]; bool has_bitcol = scan_spaced_bit_column(t, bitcol, sizeof(bitcol));
   char bitgrp[4][48]; int nbg = scan_spaced_bit_groups(t, bitgrp, 4);
   char hex_tok[32]; bool has_hex_tok = scan_hex_token(t, hex_tok, sizeof(hex_tok));
+  if (!has_hex_tok && (has(t, "hex") || has(t, "hexadecimal") || has(t, "base,16") || has(t, "base16"))) {
+    has_hex_tok = scan_hex_word_token(t, hex_tok, sizeof(hex_tok));
+  }
   char cmd[160];
   double width=0, height=0, depth=0;
   if ((has(t, "ascii") || has(t, "unicode")) &&
@@ -3033,6 +3054,9 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   bool tc = has(t, "twos") || (has(t, "two") && has(t, "complement"));
   bool sm = has(t, "signmagnitude") || (has(t, "sign") && has(t, "magnitude"));
+  if (tc && nb >= 1 && (has(t, "decode") || has(t, "denary") || has(t, "decimal") || has(t, "value"))) {
+    sprintf(cmd, "twosdec(%s)", bits[0]); return eval_twos(cmd, out);
+  }
   if (has(t, "bcd") && (has(t, "decode") || has(t, "denary") || has(t, "decimal")) && (nb >= 1 || nbg >= 1)) {
     char all[96];
     if (nb >= 1) join_bits(bits, nb, all, sizeof(all));
@@ -3045,6 +3069,12 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   if (has(t, "base") && has(t, "to") && has(t, "16") && has(t, "10") && has_hex_tok && has(t, "to,base,10")) {
     sprintf(cmd, "den(%s,16)", hex_tok); return eval_base(cmd, out);
+  }
+  if (has(t, "base") && has(t, "to") && (has(t, "base,16,to,base,2") || has(t, "base16,to,base2")) && has_hex_tok) {
+    sprintf(cmd, "convert(%s,16,2)", hex_tok); return eval_base(cmd, out);
+  }
+  if (has(t, "base") && has(t, "to") && (has(t, "base,2,to,base,16") || has(t, "base2,to,base16")) && nb >= 1) {
+    sprintf(cmd, "convert(%s,2,16)", bits[0]); return eval_base(cmd, out);
   }
   if (has(t, "base") && has(t, "to") && has(t, "base,10,to,base,16") && nv >= 1) {
     sprintf(cmd, "convert(%lld,10,16)", (long long)v[0]); return eval_base(cmd, out);
@@ -3203,6 +3233,10 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   if ((has(t, "normalise") || has(t, "normalize")) && nb >= 2) {
     sprintf(cmd, "floatnorm(%s,%s)", bits[0], bits[1]); return eval_float(cmd, out);
+  }
+  if ((has(t, "normalised") || has(t, "normalized") || has(t, "normalise") || has(t, "normalize")) &&
+      (has(t, "float") || has(t, "floating") || has(t, "mantissa")) && nb >= 1) {
+    sprintf(cmd, "normal(%s)", bits[0]); return eval_float(cmd, out);
   }
   if ((has(t, "float") || has(t, "floating") || has(t, "normalised") || has(t, "normalized") || (has(t, "mantissa") && has(t, "exponent"))) &&
       (has(t, "range") || has(t, "largest") || has(t, "smallest")) &&

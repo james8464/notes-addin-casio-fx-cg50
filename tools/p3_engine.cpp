@@ -1230,6 +1230,22 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     else if (has(c, "atleast") || has(c, "greaterthanorequal")) tail = 1;
     else if (has(c, "lessthanorequal") || has(c, "atmost")) tail = -1;
     else if (has(c, "lessthan") || has(t, "fewer")) tail = -2;
+    if (has(t, "normal") && (has(t, "approx") || has(t, "approximation")) && hx) {
+      double lo = tail < 0 ? 0 : x, hi = tail < 0 ? x : N;
+      sprintf(cmd, "binomnorm(%d,%.10g,%.10g,%.10g)", N, pv, lo, hi);
+      return eval_stats(cmd, out);
+    }
+    if ((has(t, "hypothesis") || has(t, "test")) && hx && nv >= 3) {
+      double alpha = 0.05;
+      for (int i = 0; i < nv; ++i) {
+        if (near_num(v[i], Nd) || near_num(v[i], pv) || near_num(v[i], x)) continue;
+        if (v[i] > 0 && v[i] <= 10) { alpha = v[i] / 100.0; break; }
+        if (v[i] > 0 && v[i] <= 1) { alpha = v[i]; break; }
+      }
+      double htail = (tail > 0 || has(t, "upper") || has(c, "righttail")) ? 1 : -1;
+      sprintf(cmd, "hypbinom(%d,%.10g,%d,%.10g,%.0f)", N, pv, x, alpha, htail);
+      return eval_stats(cmd, out);
+    }
     if ((has(t, "critical") || has(t, "criticalregion") || has(t, "significance")) && nv >= 3) {
       double alpha = v[2] > 1 ? v[2] / 100.0 : v[2];
       double ctail = (tail > 0 || has(t, "upper") || has(c, "righttail")) ? 1 : -1;
@@ -1513,6 +1529,16 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if ((has(t, "resolve") || has(t, "components")) && has(t, "force") && nv >= 2) {
     sprintf(cmd, "resolve(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
+  }
+  if (has(t, "lift") && has(t, "accelerat") && (has(t, "tension") || has(t, "cable")) && nv >= 2) {
+    double m = v[0], a0 = v[1], g = nv > 2 ? v[2] : 9.8;
+    int n = add(out, 0, "For the lift, apply Newton's second law vertically.");
+    if (has(t, "down")) {
+      n = add(out, n, "Taking upward positive: T - mg = -ma.");
+      return add(out, n, "T = m(g-a) = %.6g(%.6g-%.6g) = %.10g N", m, g, a0, m*(g-a0));
+    }
+    n = add(out, n, "Taking upward positive: T - mg = ma.");
+    return add(out, n, "T = m(g+a) = %.6g(%.6g+%.6g) = %.10g N", m, g, a0, m*(g+a0));
   }
   if ((has(t, "varacc") || has(t, "variableacceleration") || (has(t, "acceleration") && has(t, "integrate"))) && nv >= 4) {
     sprintf(cmd, "varacc(%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3]); return eval_mech(cmd, out);

@@ -1,5 +1,28 @@
 # Checkpoint
 
+## 2026-06-12 Generic Routing Precedence Slice
+
+Completed:
+- Added CASP3 `X~B(...)` precedence for normal-approximation prompts before exact binomial fallback.
+- Added CASP3 `X~B(...)` precedence for hypothesis-test prompts before exact binomial fallback.
+- Added CASP3 lift-tension free-text working for upward/downward acceleration.
+- Added CSCALC base-16/base-2 phrase routing, including alpha-only hex values such as `FF`.
+- Moved two's-complement decode/value prompts ahead of generic binary-to-denary fallback.
+- Added CSCALC normalised-floating-point single-mantissa wording.
+- Added regression tests and rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CASP3/CSCALC free-text routing and working-quality support.
+- Did not touch CAS Pure behavior, NOTES, menus, or shared UI/status code.
+
 ## 2026-06-12 Distribution Notation And CS Wording Slice
 
 Completed:
