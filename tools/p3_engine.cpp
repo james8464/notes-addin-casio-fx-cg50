@@ -438,6 +438,82 @@ static bool parse_poly_after_word(const char *input, const char *word, double *A
   return false;
 }
 
+static bool parse_cubic_poly_after_word(const char *input, const char *word, double *A, double *B, double *C, double *D) {
+  int wl = (int)strlen(word);
+  for (int i = 0; input && input[i]; ++i) {
+    int j = 0, q = i;
+    while (j < wl && input[q] && tolower((unsigned char)input[q]) == word[j]) { ++j; ++q; }
+    if (j != wl) continue;
+    while (input[q] && input[q] != '-' && input[q] != '+' && input[q] != '.' &&
+           !isdigit((unsigned char)input[q]) && tolower((unsigned char)input[q]) != 't') ++q;
+    if (!input[q]) continue;
+    char expr[128]; int k = 0;
+    while (input[q] && k + 1 < (int)sizeof(expr)) {
+      unsigned char ch = (unsigned char)input[q];
+      if (isspace(ch)) { ++q; continue; }
+      char lc = (char)tolower(ch);
+      if (lc == 't' && isalpha((unsigned char)input[q+1])) break;
+      if (!(isdigit(ch) || lc == 't' || lc == '+' || lc == '-' || lc == '.' || lc == '^' || lc == '*')) break;
+      expr[k++] = lc; ++q;
+    }
+    expr[k] = 0;
+    *A = *B = *C = *D = 0;
+    for (int p = 0; expr[p];) {
+      double sign = 1;
+      if (expr[p] == '+') ++p;
+      else if (expr[p] == '-') { sign = -1; ++p; }
+      double coef = 0; bool hc = false;
+      while (isdigit((unsigned char)expr[p]) || expr[p] == '.') {
+        hc = true;
+        coef = read_num(expr + p);
+        while (isdigit((unsigned char)expr[p]) || expr[p] == '.') ++p;
+        break;
+      }
+      while (expr[p] == '*') ++p;
+      int power = 0;
+      if (expr[p] == 't') {
+        ++p; power = 1;
+        if (expr[p] == '^' && isdigit((unsigned char)expr[p+1])) { ++p; power = expr[p++] - '0'; }
+      }
+      if (!hc && power > 0) coef = 1;
+      coef *= sign;
+      if (power == 3) *A += coef;
+      else if (power == 2) *B += coef;
+      else if (power == 1) *C += coef;
+      else *D += coef;
+    }
+    if ((*A > 1e-9 || *A < -1e-9) || (*B > 1e-9 || *B < -1e-9) ||
+        (*C > 1e-9 || *C < -1e-9) || (*D > 1e-9 || *D < -1e-9)) return true;
+  }
+  return false;
+}
+
+static bool parse_regression_line(const char *compact, double *m, double *b) {
+  const char *p = 0;
+  const char *isy = strstr(compact, "isy=");
+  if (isy) p = isy + 2;
+  for (const char *q = compact; (q = strstr(q, "y=")) != 0; ++q) {
+    if (p) break;
+    if (q == compact || !isalpha((unsigned char)q[-1])) { p = q; break; }
+  }
+  if (!p) return false;
+  p += 2;
+  char *endp = 0;
+  double slope = strtod(p, &endp);
+  if (endp == p) {
+    if (*p == 'x') slope = 1;
+    else return false;
+  }
+  p = endp;
+  while (*p == '*') ++p;
+  if (*p != 'x') return false;
+  ++p;
+  double intercept = 0;
+  if (*p == '+' || *p == '-') intercept = strtod(p, &endp);
+  *m = slope; *b = intercept;
+  return true;
+}
+
 static bool is_projectile_text(const char *t) {
   return has(t, "projectile") || has(t, "projectiles") || has(t, "projected") || has(t, "projection") ||
          has(t, "thrown") || has(t, "fired") || has(t, "launched");
@@ -701,6 +777,21 @@ static int eval_mech(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     n = add(out, n, "t = (u_y+sqrt(u_y^2+2gh))/g = %.10g", t);
     return add(out, n, "range = u_x t = %.10g", r);
   }
+  if (starts3(s, "projectiley(", "projectilelevel(", "projlevel(") && na >= 3) {
+    double u = num(a[0]), deg = num(a[1]), y = num(a[2]), h0 = na > 3 ? num(a[3]) : 0, g = na > 4 ? num(a[4]) : 9.8;
+    double th = deg * M_PI / 180.0, ux = u*cosine(th), uy = u*sine(th);
+    double A = 0.5 * g, B = -uy, C = y - h0, D = B*B - 4*A*C;
+    int n = add(out, 0, "Resolve, then solve vertical motion for the requested height.");
+    n = add(out, n, "u_x = %.6g cos %.6g = %.6g", u, deg, ux);
+    n = add(out, n, "u_y = %.6g sin %.6g = %.6g", u, deg, uy);
+    n = add(out, n, "y = h0 + u_y t - 1/2 g t^2");
+    n = add(out, n, "%.6g = %.6g + %.6g t - 1/2*%.6g t^2", y, h0, uy, g);
+    if (D < 0) return add(out, n, "No real time reaches this height.");
+    double t1 = (-B - root(D))/(2*A), t2 = (-B + root(D))/(2*A);
+    if (t1 < 0 && t2 >= 0) return add(out, n, "time = %.10g s", t2);
+    if (t2 < 0 && t1 >= 0) return add(out, n, "time = %.10g s", t1);
+    return add(out, n, "times = %.10g s and %.10g s", t1, t2);
+  }
   if (starts3(s, "projectileat(", "projectilepoint(", "projat(") && na >= 3) {
     double u = num(a[0]), deg = num(a[1]), x = num(a[2]), h0 = na > 3 ? num(a[3]) : 0, g = na > 4 ? num(a[4]) : 9.8;
     double th = deg * M_PI / 180.0, ux = u*cosine(th), uy = u*sine(th);
@@ -824,6 +915,18 @@ static int eval_mech(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     n = add(out, n, "Add equations: m2 g - m1 g sin(theta) = (m1+m2)a.");
     n = add(out, n, "a = (%.6g*%.6g - %.6g*%.6g sin(%.6g))/(%.6g+%.6g) = %.10g", m2, g, m1, g, ang, m1, m2, ares);
     return add(out, n, "T = m1 g sin(theta) + m1 a = %.10g N", T);
+  }
+  if (starts3(s, "roughinclinepulley(", "roughpulleyincline(", "roughconnectedincline(") && na >= 4) {
+    double m1=num(a[0]), m2=num(a[1]), ang=num(a[2]), mu=num(a[3]), g=na>4?num(a[4]):9.8;
+    double down=m1*g*deg_sine(ang), R=m1*g*deg_cosine(ang), fr=mu*R, hang=m2*g;
+    double ares=(hang-down-fr)/(m1+m2), T=down+fr+m1*ares;
+    int n = add(out, 0, "Rough inclined-plane pulley: resolve along the string and include friction.");
+    n = add(out, n, "For mass on plane: T - m1 g sin(theta) - mu R = m1 a.");
+    n = add(out, n, "R = m1 g cos(theta), so friction = mu R.");
+    n = add(out, n, "For hanging mass: m2 g - T = m2 a.");
+    n = add(out, n, "Add equations: m2 g - m1 g sin(theta) - mu m1 g cos(theta) = (m1+m2)a.");
+    n = add(out, n, "a = %.10g", ares);
+    return add(out, n, "T = m1 g sin(theta) + mu R + m1 a = %.10g N", T);
   }
   if (starts2(s, "impulse(", "momentumchange(") && na >= 3) {
     double m=num(a[0]), u=num(a[1]), v=num(a[2]);
@@ -1547,6 +1650,48 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       return eval_mech(cmd, out);
     }
   }
+  if (has(t, "velocity") && has(t, "total") && has(t, "distance") && has(t, "from")) {
+    double A=0, B=0, C=0, t1=0, t2=0;
+    if (!parse_velocity_quad(input, &A, &B, &C) ||
+        !word_num_with_t(input, "from", &t1) || !word_num_with_t(input, "to", &t2)) return 0;
+    double pts[4]; int np = 0; pts[np++] = t1;
+    double D = B*B - 4*A*C;
+    if (D >= 0 && !near_num(A, 0)) {
+      double r1 = (-B - root(D))/(2*A), r2 = (-B + root(D))/(2*A);
+      if (r1 > t1 && r1 < t2) pts[np++] = r1;
+      if (r2 > t1 && r2 < t2 && !near_num(r2, r1)) pts[np++] = r2;
+    }
+    pts[np++] = t2;
+    for (int i = 0; i < np; ++i) for (int j = i + 1; j < np; ++j) if (pts[j] < pts[i]) { double q = pts[i]; pts[i] = pts[j]; pts[j] = q; }
+    int n = add(out, 0, "Total distance is found by splitting where velocity changes sign.");
+    n = add(out, n, "v = %.6g t^2 %+.6g t %+.6g", A, B, C);
+    if (np > 2) n = add(out, n, "Solve v=0 inside the interval to split the motion.");
+    double total = 0;
+    for (int i = 0; i + 1 < np; ++i) {
+      double a0 = pts[i], b0 = pts[i+1];
+      double F1=A*a0*a0*a0/3.0 + B*a0*a0/2.0 + C*a0;
+      double F2=A*b0*b0*b0/3.0 + B*b0*b0/2.0 + C*b0;
+      double d = F2 - F1; if (d < 0) d = -d;
+      total += d;
+      n = add(out, n, "distance on %.6g to %.6g = |%.10g - %.10g| = %.10g", a0, b0, F2, F1, d);
+    }
+    return add(out, n, "total distance = %.10g", total);
+  }
+  if (has(t, "displacement") && has(t, "stationary")) {
+    double A=0, B=0, C=0, D0=0;
+    if (parse_cubic_poly_after_word(input, "displacement", &A, &B, &C, &D0)) {
+      double qa = 3*A, qb = 2*B, qc = C, disc = qb*qb - 4*qa*qc;
+      int n = add(out, 0, "Stationary points occur when velocity ds/dt is zero.");
+      n = add(out, n, "s = %.6g t^3 %+.6g t^2 %+.6g t %+.6g", A, B, C, D0);
+      n = add(out, n, "v = ds/dt = %.6g t^2 %+.6g t %+.6g", qa, qb, qc);
+      if (disc < 0 || near_num(qa, 0)) return add(out, n, "No real stationary time from this quadratic velocity.");
+      double r1 = (-qb - root(disc))/(2*qa), r2 = (-qb + root(disc))/(2*qa);
+      n = add(out, n, "v=0 gives t = %.10g or %.10g", r1, r2);
+      n = add(out, n, "a = dv/dt = %.6g t %+.6g", 2*qa, qb);
+      n = add(out, n, "at t=%.10g, a = %.10g", r1, 2*qa*r1 + qb);
+      return add(out, n, "at t=%.10g, a = %.10g", r2, 2*qa*r2 + qb);
+    }
+  }
   if (has(t, "velocity") && has(t, "displacement") && has(t, "from")) {
     double A=0, B=0, C=0, t1=0, t2=0;
     if (!parse_velocity_quad(input, &A, &B, &C) ||
@@ -1926,6 +2071,26 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     }
     sprintf(cmd, nv >= 4 ? "projectileat(%.10g,%.10g,%.10g,%.10g)" : "projectileat(%.10g,%.10g,%.10g)", v[0], v[1], v[2], nv >= 4 ? v[3] : 0); return eval_mech(cmd, out);
   }
+  if (is_projectile_text(t) && (has(t, "time") || has(t, "when") || has(t, "times")) &&
+      (has(t, "high") || has(t, "above")) && nv >= 3 && !has(t, "hits") && !has(t, "ground")) {
+    double u=0, ang=0, y=0, h0=0, g=0;
+    bool hU=label_num(input,"speed",&u) || label_num(input,"u",&u) || label_num(input,"initialspeed",&u) || label_num(input,"initialvelocity",&u) ||
+            word_num(input,"speed",&u) || word_num(input,"initialspeed",&u) || word_num(input,"velocity",&u);
+    bool hA=label_num(input,"angle",&ang) || label_num(input,"theta",&ang) || label_num(input,"launchangle",&ang) ||
+            word_num(input,"angle",&ang) || word_num(input,"theta",&ang);
+    bool hY=label_num(input,"height",&y) || label_num(input,"y",&y) || word_num(input,"above",&y) || word_num(input,"high",&y) ||
+            prev_word_num(input,"high",&y) || prev_word_num(input,"above",&y);
+    bool hH=label_num(input,"initialheight",&h0) || label_num(input,"launchheight",&h0) || label_num(input,"h0",&h0);
+    bool hG=label_num(input,"g",&g) || label_num(input,"gravity",&g);
+    if (hU && !hA && nv >= 2) { ang = v[1]; hA = true; }
+    if (hU && hA && !hY) {
+      for (int i = 0; i < nv; ++i) if (!near_num(v[i], u) && !near_num(v[i], ang)) { y = v[i]; hY = true; break; }
+    }
+    if (hU && hA && hY) {
+      sprintf(cmd, hG ? "projectiley(%.10g,%.10g,%.10g,%.10g,%.10g)" : "projectiley(%.10g,%.10g,%.10g,%.10g)", u, ang, y, hH ? h0 : 0, hG ? g : 9.8);
+      return eval_mech(cmd, out);
+    }
+  }
   if (is_projectile_text(t) && (has(t, "height") || has(t, "above")) && nv >= 3) {
     double u=0,ang=0,h=0,g=0;
     bool hU=label_num(input,"speed",&u) || label_num(input,"u",&u) || label_num(input,"initialspeed",&u) || label_num(input,"initialvelocity",&u) ||
@@ -2099,17 +2264,23 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     sprintf(cmd, "weight(%.10g)", v[0]); return eval_mech(cmd, out);
   }
   if ((has(t, "pulley") || has(t, "connected")) && (has(t, "incline") || has(t, "inclined") || has(t, "plane")) && nv >= 3) {
-    double m1=0,m2=0,ang=0;
+    double m1=0,m2=0,ang=0,mu=0;
     bool hM=word_num(input,"mass",&m1) || label_num(input,"m1",&m1);
     bool hH=word_num(input,"hangingmass",&m2) || label_num(input,"m2",&m2);
     bool hA=word_num(input,"angle",&ang) || label_num(input,"angle",&ang) || word_num(input,"degrees",&ang);
+    bool hMu=label_num(input,"mu",&mu) || label_num(input,"coefficient",&mu) || word_num(input,"coefficient",&mu) ||
+             first_num_after_word(input,"coefficient",&mu) || first_num_after_word(input,"friction",&mu);
     if (!hM) m1 = v[0];
     if (!hH) m2 = v[1];
     if (!hA) {
       for (int i = 0; i < nv; ++i) if (!near_num(v[i], m1) && !near_num(v[i], m2)) { ang = v[i]; break; }
       if (ang == 0) ang = v[2];
     }
-    sprintf(cmd, "inclinepulley(%.10g,%.10g,%.10g)", m1, m2, ang);
+    if (!hMu && (has(t, "coefficient") || has(t, "mu") || has(t, "rough"))) {
+      for (int i = 0; i < nv; ++i) if (!near_num(v[i], m1) && !near_num(v[i], m2) && !near_num(v[i], ang) && v[i] >= 0 && v[i] <= 1) { mu = v[i]; hMu = true; break; }
+    }
+    if (hMu || has(t, "rough")) sprintf(cmd, "roughinclinepulley(%.10g,%.10g,%.10g,%.10g)", m1, m2, ang, hMu ? mu : 0);
+    else sprintf(cmd, "inclinepulley(%.10g,%.10g,%.10g)", m1, m2, ang);
     return eval_mech(cmd, out);
   }
   if ((has(t, "incline") || has(t, "slope") || has(t, "plane")) && (has(t, "acceleration") || has(t, "accelerate") || has(t, "rough")) && nv >= 3) {
@@ -2483,6 +2654,23 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
                (!has(t, "percentile") && label_num(input,"p",&area));
     double tail = (has(t, "twotailed") || has(t, "twosided") || (has(t, "two") && (has(t, "tailed") || has(t, "sided"))) || has(t, "different") || has(t, "notequal")) ? 0 :
                   (has(t, "upper") || has(t, "greater") || has(t, "more") || has(c, "x>") || has(c, "x>=") ? 1 : -1);
+    if ((has(t, "unknown") || has(t, "findthemean") || has(c, "findmean")) && (hSig || hVar) && nv >= 2) {
+      double bound=0; int ptail=0;
+      bool hb = prob_x_bound(c, &bound, &ptail) || word_num(input, "less than", &bound) || word_num(input, "greater than", &bound);
+      double prob = 0;
+      for (int i = 0; i < nv; ++i) if (!near_num(v[i], bound) && (!hSig || !near_num(v[i], sig)) && (!hVar || !near_num(v[i], var)) && v[i] > 0 && v[i] < 1) { prob = v[i]; break; }
+      if (hb && prob > 0) {
+        double sd = hSig ? sig : root(var);
+        double left_area = (ptail > 0 || has(t, "greater")) ? 1 - prob : prob;
+        double z = inv_norm_left(left_area);
+        double mean = bound - z * sd;
+        int n = add(out, 0, "Let X~N(mu,sigma^2). Use z=(x-mu)/sigma.");
+        n = add(out, n, "sigma = %.6g, x = %.6g", sd, bound);
+        n = add(out, n, "area to the left = %.10g, so z = InvNorm(%.10g) = %.10g", left_area, left_area, z);
+        n = add(out, n, "(%.6g-mu)/%.6g = %.10g", bound, sd, z);
+        return add(out, n, "mu = %.10g", mean);
+      }
+    }
     if ((has(t, "hypothesis") || has(t, "test")) &&
         (has(t, "samplemean") || (has(t, "sample") && has(t, "mean")) || has(t, "xbar")) &&
         (has(t, "standarddeviation") || (has(t, "standard") && has(t, "deviation")) || has(t, "sigma") || has(t, "sd"))) {
@@ -2812,6 +3000,11 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if (has(t, "regression") || has(t, "leastsquares") || has(t, "lineofbestfit")) {
     double n0=0, sx=0, sy=0, sxx=0, sxy=0, xb=0, yb=0, x=0;
     bool hx = label_num(input,"x",&x);
+    double m=0, b=0;
+    if (hx && parse_regression_line(c, &m, &b)) {
+      sprintf(cmd, "regress(%.10g,%.10g,%.10g)", b, m, x);
+      return eval_stats(cmd, out);
+    }
     if (label_num(input,"n",&n0) && label_num(input,"sx",&sx) && label_num(input,"sy",&sy) && label_num(input,"sxx",&sxx) && label_num(input,"sxy",&sxy)) {
       if (hx) sprintf(cmd, "regresscalc(%.10g,%.10g,%.10g,%.10g,%.10g,%.10g)", n0, sx, sy, sxx, sxy, x);
       else sprintf(cmd, "regresscalc(%.10g,%.10g,%.10g,%.10g,%.10g)", n0, sx, sy, sxx, sxy);
@@ -2858,6 +3051,16 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     }
     sprintf(cmd+p, ")");
     return eval_stats(cmd, out);
+  }
+  if ((has(t, "cumulative") || has(t, "cdf")) && has(t, "median") && nv >= 1) {
+    double denom = 0;
+    for (int i = 0; i < nv; ++i) if (v[i] > denom) denom = v[i];
+    if (denom > 0) {
+      int n = add(out, 0, "For the median m, solve F(m)=0.5.");
+      n = add(out, n, "Here F(x)=x^2/%.10g on the middle interval.", denom);
+      n = add(out, n, "m^2/%.10g = 0.5", denom);
+      return add(out, n, "m = sqrt(%.10g/2) = %.10g", denom, root(denom/2.0));
+    }
   }
   if ((has(t, "hypothesis") || has(t, "test")) &&
       (has(t, "samplemean") || (has(t, "sample") && has(t, "mean")) || has(t, "xbar")) &&

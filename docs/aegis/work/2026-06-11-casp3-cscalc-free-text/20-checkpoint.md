@@ -2577,6 +2577,45 @@ Drift check:
 - Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
 - Active goal remains open for future source/probe-driven hardening.
 
+## 2026-06-12 Polynomial Motion, CDF, Regression, and CS Rate Slice
+
+Completed:
+- Ran a fresh unseen probe batch across CASP3 mechanics/stats and CSCALC data/Boolean/storage prompts.
+- Added CASP3 rough inclined-plane pulley working with coefficient-of-friction extraction.
+- Added CASP3 projectile requested-height time solving with two roots where relevant.
+- Added CASP3 polynomial-motion total-distance splitting at velocity sign changes.
+- Added CASP3 cubic displacement stationary-point working with acceleration values.
+- Added CASP3 inverse normal mean-from-probability working for unknown mean.
+- Added CASP3 simple CDF median inversion for `F(x)=x^2/a` style prompts.
+- Added CASP3 direct regression-line prediction from prose `y = mx + c`.
+- Improved CSCALC signed fixed-point decode working detail.
+- Added CSCALC decimal two's-complement subtraction from hyphenated prose.
+- Added CSCALC network/file bit-rate parsing for GiB over minutes with Mbit/s display.
+- Added CSCALC packet overhead percentage working.
+- Added regression tests and rebuilt calculator files.
+
+Evidence:
+- Fresh probe failures from this slice now produce detailed working lines.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 208724 bytes`
+  - `CSCALC.g3a: 169436 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CASP3 sha256: 0b0c105a38dd3f6af13c31c2b8658b4728f8a6789dd5991ee895a3b64149b696`
+  - `CSCALC sha256: fa18c545087fce6f0f8a282ddc39bf0f4ff5fc50bd0479ddbd2cddcf58b52401`
+
+Drift check:
+- Still inside CASP3/CSCALC free-text working support and generated calculator outputs.
+- Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for future source/probe-driven hardening.
+
 ## 2026-06-12 Discrete, Normal Test, Pulley, Boolean, Transfer Slice
 
 Completed:

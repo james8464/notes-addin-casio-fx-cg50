@@ -1766,7 +1766,12 @@ static int add_bitrate_unit_lines(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN], d
   if (!storage_size_bits(t, size, &bits, &su) || seconds == 0) return 0;
   int n = add(out, 0, "Bit rate = file size in bits / seconds.");
   n = add(out, n, "%.10g %s = %.10g bits", size, su, bits);
-  return add(out, n, "bit rate = %.10g/%.10g = %.10g bit/s", bits, seconds, bits / seconds);
+  double bps = bits / seconds;
+  n = add(out, n, "bit rate = %.10g/%.10g = %.10g bit/s", bits, seconds, bps);
+  if (has(t, "mbit") || has(t, "megabit")) return add(out, n, "= %.10g Mbit/s", bps / 1000000.0);
+  if (has(t, "kbit") || has(t, "kilobit")) return add(out, n, "= %.10g kbit/s", bps / 1000.0);
+  if (has(t, "gbit") || has(t, "gigabit")) return add(out, n, "= %.10g Gbit/s", bps / 1000000000.0);
+  return n;
 }
 
 static int eval_float(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
@@ -1779,6 +1784,19 @@ static int eval_float(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]
   if (starts3(s, "fixedtc(", "fixedtwos(", "fixedtwosdec(") && na == 1) {
     double v = fixed_tc_decode(a[0]);
     int n = add(out, 0, "Decode the whole part as two's complement, then add fractional places.");
+    const char *dot = strchr(a[0], '.');
+    if (dot) {
+      char whole[48]; int wi = 0;
+      for (int i = 0; a[0][i] && a[0][i] != '.' && wi + 1 < (int)sizeof(whole); ++i) whole[wi++] = a[0][i];
+      whole[wi] = 0;
+      n = add(out, n, "whole part %s is %d in two's complement.", whole, twos_decode(whole));
+      double frac = 0;
+      for (int i = 1; dot[i]; ++i) if (dot[i] == '1') {
+        frac += pow2(-i);
+        n = add(out, n, "fraction bit %d contributes 2^-%d = %.10g", i, i, pow2(-i));
+      }
+      n = add(out, n, "value = %d + %.10g", twos_decode(whole), frac);
+    }
     return add(out, n, "%s_2 = %.10g_10", a[0], v);
   }
   if (starts3(s, "fixedenc(", "fixedencode(", "fixedpointenc(") && na >= 3) {
@@ -3258,13 +3276,16 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       return eval_storage(cmd, out);
     }
   }
-  if ((has(compact, "bitrate") || has(compact, "datarate") || (has(t, "bit") && has(t, "rate"))) &&
-      (has(t, "file") || has(t, "size") || has(t, "transmit") || has_word(t, "sent")) &&
+  if ((has(compact, "bitrate") || has(compact, "datarate") || (has(t, "bit") && has(t, "rate")) || (has(t, "network") && (has(t, "sends") || has_word(t, "sent")))) &&
+      (has(t, "file") || has(t, "size") || has(t, "transmit") || has_word(t, "sent") || has(t, "sends") || has(t, "network")) &&
       (has(t, "second") || has(t, "minute") || has(t, "hour") || has(t, "time") || has(t, "duration")) &&
       !has(compact, "downloadtime") && !has(compact, "transfertime") && nv >= 2) {
     double size=0, seconds=0;
     bool hSize=label_num(input,"size",&size) || label_num(input,"filesize",&size) || label_num(input,"file",&size);
     bool hSec=label_num(input,"seconds",&seconds) || label_num(input,"time",&seconds) || label_num(input,"duration",&seconds);
+    if (!hSec) hSec = scan_before_word_num(t, "minutes", &seconds) || scan_before_word_num(t, "minute", &seconds) ||
+                     scan_before_word_num(t, "hours", &seconds) || scan_before_word_num(t, "hour", &seconds) ||
+                     scan_before_word_num(t, "seconds", &seconds) || scan_before_word_num(t, "second", &seconds);
     if (!hSize) size = v[0];
     if (!hSec) seconds = v[1];
     scale_time_unit(t, &seconds);
@@ -3276,6 +3297,17 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     else if (has(t, "kilobyte") || has(t, "kbyte") || has(t, "kb")) sprintf(cmd, "bitratekb(%.10g,%.10g)", size, seconds);
     else sprintf(cmd, "bitrate(%.10g,%.10g)", size, seconds);
     return eval_storage(cmd, out);
+  }
+  if ((has(t, "overhead") || (has(t, "header") && has(t, "payload"))) && has(t, "percent") && nv >= 2) {
+    double payload=0, header=0;
+    bool hp=scan_before_word_num(t, "payload", &payload) || label_num(input, "payload", &payload);
+    bool hh=scan_before_word_num(t, "header", &header) || label_num(input, "header", &header);
+    if (!hp) payload = v[0];
+    if (!hh) header = v[1];
+    double total = payload + header;
+    int n = add(out, 0, "Overhead percentage = overhead / total packet size * 100.");
+    n = add(out, n, "total = payload + header = %.10g + %.10g = %.10g bytes", payload, header, total);
+    return add(out, n, "overhead = %.10g/%.10g * 100 = %.10g%%", header, total, total ? header/total*100.0 : 0);
   }
   if (has(t, "transfer") || has(t, "download") || has(t, "transmit") || has(t, "transmission") || has_word(t, "sent")) {
     double size=0, rate=0;
@@ -3524,7 +3556,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if (tc && !has(t, "fixed") && nb >= 1 && (has(t, "decode") || has(t, "denary") || has(t, "decimal"))) {
     sprintf(cmd, "twosdec(%s)", bits[0]); return eval_twos(cmd, out);
   }
-  if (tc && nv >= 3 && (has(t, "subtract") || has(t, "minus") || has(t, "takeaway"))) {
+  if (tc && nv >= 3 && (has(t, "subtract") || has(t, "minus") || has(t, "takeaway") || strchr(input, '-'))) {
     double bw=0; long long bitsw = 0, vals[2]; int got = 0;
     if (scan_before_word_num(t, "bit", &bw) || scan_before_word_num(t, "bits", &bw)) bitsw = (long long)bw;
     if (bitsw > 0) {
