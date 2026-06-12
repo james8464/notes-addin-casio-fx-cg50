@@ -774,6 +774,8 @@ static void add_bits(const char *a, const char *b, int width, char *buf, int *ca
 }
 
 static void to_bin(long long v, int width, char *buf) {
+  if (width < 1) width = 1;
+  if (width > 64) width = 64;
   unsigned long long mask = width >= 63 ? ~0ULL : ((1ULL << width) - 1);
   unsigned long long u = ((unsigned long long)v) & mask;
   for (int i = width - 1, j = 0; i >= 0; --i, ++j) buf[j] = ((u >> i) & 1) ? '1' : '0';
@@ -994,6 +996,16 @@ static int eval_binary_arith(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LI
     n = add(out, n, "%s + %s = %s", a[0], a[1], b);
     if (carry) n = add(out, n, "carry beyond %d bits is overflow if width is fixed.", w);
     return n;
+  }
+  if (starts3(s, "binsub(", "binarysub(", "subtractbits(") && na >= 2) {
+    int w = na > 2 ? (int)parse_int(a[2]) : (int)((strlen(a[0]) > strlen(a[1])) ? strlen(a[0]) : strlen(a[1]));
+    long long x = bin_unsigned(a[0]), y = bin_unsigned(a[1]), diff = x - y;
+    char b[65]; to_bin(diff, w, b);
+    int n = add(out, 0, "For binary subtraction, subtract place values or add the two's complement of the subtrahend.");
+    n = add(out, n, "%s_2 = %lld, %s_2 = %lld", a[0], x, a[1], y);
+    n = add(out, n, "%lld - %lld = %lld", x, y, diff);
+    if (diff < 0) n = add(out, n, "negative result shown modulo 2^%d in fixed width.", w);
+    return add(out, n, "result = %s", b);
   }
   if (starts2(s, "shift(", "binshift(") && na >= 3) {
     int k = (int)parse_int(a[2]); char b[65]; int len = (int)strlen(a[0]);
@@ -3603,6 +3615,11 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if ((has(t, "add") || has(t, "sum") || has(t, "plus")) && nbg >= 2 && (has(t, "binary") || has(t, "bits"))) {
     sprintf(cmd, "binadd(%s,%s,%d)", bitgrp[0], bitgrp[1], (int)strlen(bitgrp[0])); return eval_binary_arith(cmd, out);
   }
+  if ((has(t, "subtract") || has(t, "minus") || strchr(input, '-')) && nbg >= 2 &&
+      (has(t, "binary") || has(t, "bits") || !tc)) {
+    sprintf(cmd, "binsub(%s,%s,%d)", bitgrp[0], bitgrp[1], (int)strlen(bitgrp[0]));
+    return eval_binary_arith(cmd, out);
+  }
   if (has(t, "binary") && !has(t, "fixed") && !tc && !sm && nv >= 1 && nb == 0 &&
       !(has(t, "bitsneeded") || has(t, "bitwidth") || (has(t, "minimum") && has(t, "bits")) ||
         (has(t, "fewest") && has(t, "bits")) || (has(t, "smallest") && has(t, "bits")))) {
@@ -3663,9 +3680,14 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     n = add(out, n, "product = %lld * %lld = %lld", a0, b0, a0*b0);
     return add(out, n, "%lld-bit product = %s", 2*bitsw, rb);
   }
-  if (tc && nb >= 2 && (has(t, "subtract") || has(t, "minus") || has(t, "takeaway"))) {
+  if (tc && nb >= 2 && (has(t, "subtract") || has(t, "minus") || has(t, "takeaway") || strchr(input, '-'))) {
     if (has(compact, "from")) sprintf(cmd, "twossub(%s,%s)", bits[1], bits[0]);
     else sprintf(cmd, "twossub(%s,%s)", bits[0], bits[1]);
+    return eval_twos(cmd, out);
+  }
+  if (tc && nbg >= 2 && (has(t, "subtract") || has(t, "minus") || has(t, "takeaway") || strchr(input, '-'))) {
+    if (has(compact, "from")) sprintf(cmd, "twossub(%s,%s)", bitgrp[1], bitgrp[0]);
+    else sprintf(cmd, "twossub(%s,%s)", bitgrp[0], bitgrp[1]);
     return eval_twos(cmd, out);
   }
   if (tc && nb >= 2 && (has(t, "add") || has(t, "sum") || has(t, "plus"))) {
@@ -3673,7 +3695,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   if (tc && nv >= 2 && !(has(t, "decode") || has(t, "denary") || has(t, "decimal") ||
                           has(t, "add") || has(t, "sum") || has(t, "plus") ||
-                          has(t, "subtract") || has(t, "minus,") || has(t, "takeaway"))) {
+                          has(t, "subtract") || has(t, "minus") || has(t, "takeaway") || strchr(input, '-'))) {
     long long val = (long long)v[0], bitsw = (long long)v[1];
     double bw = 0;
     if ((scan_before_word_num(t, "bit", &bw) || scan_before_word_num(t, "bits", &bw)) && bw > 0) {
@@ -3748,6 +3770,10 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if (has(t, "add") && nb >= 2) {
     sprintf(cmd, "binadd(%s,%s,%d)", bits[0], bits[1], (int)strlen(bits[0])); return eval_binary_arith(cmd, out);
   }
+  if ((has(t, "subtract") || has(t, "minus") || strchr(input, '-')) && nb >= 2 && !tc) {
+    sprintf(cmd, "binsub(%s,%s,%d)", bits[0], bits[1], (int)strlen(bits[0]));
+    return eval_binary_arith(cmd, out);
+  }
   if ((has(t, "arithmeticshift") || (has(t, "arithmetic") && has(t, "shift")) || (has(t, "signed") && has(t, "shift"))) && nb >= 1 && nv >= 1) {
     double sh = v[nv-1]; scan_after_word_num(t, "by", &sh);
     sprintf(cmd, "arithshift(%s,%s,%lld)", bits[0], has(t, "right") ? "right" : "left", (long long)sh); return eval_binary_arith(cmd, out);
@@ -3758,6 +3784,22 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   if (has(t, "parity") && nb >= 1) {
     sprintf(cmd, "parity(%s,%s)", bits[0], has(t, "odd") ? "odd" : "even"); return eval_binary_arith(cmd, out);
+  }
+  if ((has(t, "isbn") || has(t, "ean")) && (has(t, "checkdigit") || (has(t, "check") && has(t, "digit"))) && nv >= 1) {
+    char digits[20]; sprintf(digits, "%lld", (long long)v[0]);
+    int len = (int)strlen(digits), sum = 0;
+    if (len == 12 || len == 13) {
+      int upto = len == 13 ? 12 : len;
+      int n = add(out, 0, "ISBN-13/EAN check digit uses alternating weights 1 and 3.");
+      for (int i = 0; i < upto; ++i) {
+        int d = digits[i] - '0', w = (i % 2) ? 3 : 1;
+        sum += d * w;
+      }
+      int rem = sum % 10, check = (10 - rem) % 10;
+      n = add(out, n, "weighted sum of first %d digits = %d", upto, sum);
+      n = add(out, n, "check digit = (10 - %d) mod 10", rem);
+      return add(out, n, "check digit = %d", check);
+    }
   }
   if ((has(t, "checkdigit") || (has(t, "check") && has(t, "digit"))) && nv >= 3) {
     double av[32]; int nav = scan_nums(t, av, 32); double mod = nav > 1 ? av[nav-1] : v[nv-1];
@@ -4006,6 +4048,17 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       (has(compact, "simplify") || has(compact, "truth") || has(compact, "boolean") || has(compact, "logic")) &&
       make_named_bool_rhs_cmd(compact, has(compact, "truth") ? "truth" : "bool", cmd, sizeof(cmd))) {
     return eval_bool(cmd, out);
+  }
+  if (nv == 0 && has(compact, "truth") && has(compact, "=") &&
+      !has(compact, "prove") && !has(compact, "show")) {
+    const char *eq = strchr(compact, '=');
+    if (eq && eq[1]) {
+      char ce[96], ne[96];
+      bool_clean_tail(eq + 1, ce, sizeof(ce));
+      bool_arg_for_cmd(ce, ne, sizeof(ne));
+      sprintf(cmd, "truth(%s)", ne);
+      return eval_bool(cmd, out);
+    }
   }
   if (nv == 0 && (has(compact, "equals") || has(compact, "isequalto") || has(compact, "isequivalentto") || has(compact, "equivalentto"))) {
     const char *e = skip_bool_words(compact);

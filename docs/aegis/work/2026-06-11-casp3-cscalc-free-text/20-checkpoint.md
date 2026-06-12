@@ -31,6 +31,40 @@ Drift check:
 - Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
 - Active goal remains open for future source/probe-driven hardening.
 
+## 2026-06-12 Free-Text Stats Pdf, Mechanics, and CS Subtraction Slice
+
+Completed:
+- Added CASP3 variable-acceleration shorthand from `a=...`, `v=...`, and interval wording.
+- Added CASP3 driving-force/resistance acceleration working.
+- Added CASP3 uniform rod/beam reactions with self-weight plus multiple extra forces.
+- Fixed CASP3 normal-approximation-to-binomial interval precedence before exact binomial summation.
+- Added CASP3 continuous pdf normalisation/probability routes for `c*x*(a-x)` and `k(x+b)`.
+- Added CASP3 raw Spearman rank working with average ranks for ties.
+- Added CASP3 histogram class-width inverse working from frequency and density.
+- Added CASP3 raw data quartile/IQR/fence/outlier working before older quartile fallbacks.
+- Added CSCALC binary subtraction, two's-complement subtraction routing, and defensive bit-width clamping.
+- Added CSCALC ISBN-13/EAN check digit working.
+- Added CSCALC truth-table routing for `F = ...` assignment phrasing.
+- Added regression tests and rebuilt calculator files.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 232792 bytes`
+  - `CSCALC.g3a: 174916 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Still inside CASP3/CSCALC free-text working support and generated calculator outputs.
+- Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for future source/probe-driven hardening.
+
 ## 2026-06-12 Mechanics And Storage Precedence Slice
 
 Completed:
