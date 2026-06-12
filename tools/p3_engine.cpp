@@ -2442,15 +2442,21 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if ((has(t, "acceleration") || has(t, "accn") || has(c, "a=")) &&
       has(t, "velocity") && has(t, "displacement") &&
       (has(c, "finddisplacement") || has(c, "finds") || has(c, "findposition") || has(t, "at"))) {
-    double A=0, B=0, C=0, u=0, s0=0, time=0;
+    double A=0, B=0, C=0, u=0, s0=0, time=0, t0=0;
     bool parsed_acc = parse_poly_after_word(input, "acceleration", &A, &B, &C);
     if (!parsed_acc && has(c, "a=")) parsed_acc = parse_velocity_quad(input, &A, &B, &C);
     bool hu = word_num(input, "velocity", &u) || label_num(input, "v", &u) || label_num(input, "u", &u);
     bool hs0 = word_num(input, "displacement", &s0) || label_num(input, "s", &s0) || label_num(input, "s0", &s0);
     bool ht = word_num_with_t(input, "at", &time) || word_num(input, "after", &time) || label_num(input, "t", &time);
+    bool ht0 = word_num_with_t(input, "when", &t0) || word_num_with_t(input, "initially", &t0);
+    if (!ht0) t0 = 0;
     if (parsed_acc && hu && hs0 && ht) {
-      double vv = A*time*time*time/3.0 + B*time*time/2.0 + C*time + u;
-      double ss = A*time*time*time*time/12.0 + B*time*time*time/6.0 + C*time*time/2.0 + u*time + s0;
+      double vbase0 = A*t0*t0*t0/3.0 + B*t0*t0/2.0 + C*t0;
+      double k1 = u - vbase0;
+      double vv = A*time*time*time/3.0 + B*time*time/2.0 + C*time + k1;
+      double sbase0 = A*t0*t0*t0*t0/12.0 + B*t0*t0*t0/6.0 + C*t0*t0/2.0 + k1*t0;
+      double k2 = s0 - sbase0;
+      double ss = A*time*time*time*time/12.0 + B*time*time*time/6.0 + C*time*time/2.0 + k1*time + k2;
       int n = add(out, 0, "Variable acceleration: integrate a(t) to get v(t), then integrate v(t) to get s(t).");
       if (near_num(A, 0)) {
         n = add(out, n, "a = %.6g t %+.6g", B, C);
@@ -2459,8 +2465,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
         n = add(out, n, "a = %.6g t^2 %+.6g t %+.6g", A, B, C);
         n = add(out, n, "v = (%.6g/3)t^3 + (%.6g/2)t^2 + %.6g t + C", A, B, C);
       }
-      n = add(out, n, "v(0)=%.6g gives C = %.6g", u, u);
-      n = add(out, n, "s(0)=%.6g gives C = %.6g", s0, s0);
+      n = add(out, n, "v(%.6g)=%.6g gives C = %.10g", t0, u, k1);
+      n = add(out, n, "s(%.6g)=%.6g gives C = %.10g", t0, s0, k2);
       n = add(out, n, "at t=%.6g, v = %.10g", time, vv);
       return add(out, n, "at t=%.6g, s = %.10g", time, ss);
     }
@@ -3375,6 +3381,31 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       sprintf(cmd, "projectileangle(%.10g,%.10g,0,0)", v[0], v[1]);
       return eval_mech(cmd, out);
     }
+  }
+  if (is_projectile_text(t) && (has(t, "ground") || has(c, "hitsground") || has(c, "hitstheground")) &&
+      (has(t, "time") || has(t, "when") || has(t, "distance")) && nv >= 3) {
+    double u=0, ang=0, h0=0, g=9.8;
+    bool hU=label_num(input,"speed",&u) || label_num(input,"u",&u) || label_num(input,"initialspeed",&u) || label_num(input,"initialvelocity",&u) ||
+            word_num(input,"speed",&u) || word_num(input,"velocity",&u);
+    bool hA=label_num(input,"angle",&ang) || label_num(input,"theta",&ang) || label_num(input,"launchangle",&ang) ||
+            word_num(input,"angle",&ang) || word_num(input,"theta",&ang) || prev_word_num(input,"degrees",&ang);
+    bool hH=label_num(input,"height",&h0) || label_num(input,"initialheight",&h0) || label_num(input,"launchheight",&h0) ||
+            word_num(input,"height",&h0) || word_num(input,"from",&h0) || word_num(input,"above",&h0);
+    label_num(input,"g",&g) || label_num(input,"gravity",&g);
+    if (!hU && nv >= 1) u = v[0];
+    if (!hA && nv >= 2) ang = v[1];
+    if (!hH && nv >= 3 && (has(t, "height") || has(t, "above") || has(t, "cliff"))) h0 = v[2];
+    double ux = u * deg_cosine(ang), uy = u * deg_sine(ang);
+    double disc = uy*uy + 2*g*h0;
+    int n = add(out, 0, "Resolve the velocity, then use vertical motion to hit the ground.");
+    n = add(out, n, "u_x = %.6g cos %.6g = %.10g", u, ang, ux);
+    n = add(out, n, "u_y = %.6g sin %.6g = %.10g", u, ang, uy);
+    n = add(out, n, "h=%.6g", h0);
+    n = add(out, n, "0 = %.6g + %.10g t - 1/2*%.6g t^2", h0, uy, g);
+    if (disc < 0) return add(out, n, "No real time reaches the ground.");
+    double time = (uy + root(disc)) / g;
+    n = add(out, n, "positive time t = %.10g s", time);
+    return add(out, n, "range = u_x t = %.10g m", ux*time);
   }
   if (is_projectile_text(t) && (has(t, "distance") || has(t, "metresaway") || has(t, "away")) && nv >= 3) {
     double u=0,ang=0,x=0,h0=0,g=0;

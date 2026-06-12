@@ -440,6 +440,7 @@ def main():
     require("Construct a truth table for A implies B.", ["Truth table for a>b", "minterms: 0,1,3", "simplified = A'+B"])
     require("Using fixed point with 5 bits before the point and 3 bits after, convert -6.375 to two's complement binary.", ["scaled integer = -6.375 * 2^3 = -51", "write -51 in 8-bit two's complement", "fixed point = 11001.101"])
     require("A 20 MB file is compressed by 35 percent. Find the compressed file size.", ["Compressed by 35% means keep 65%", "compressed size = 20*(1-35/100)", "compressed size = 13"])
+    require("A file of size 800 KiB is transmitted at 2 Mib/s. Find the time taken.", ["800 KiB = 6553600 bits", "2 Mbit/s = 2000000 bit/s", "time = 6553600/2000000 = 3.2768 s"])
     require("bool(A+B+C+D+E+F)", ["simplified = F+E+D+C+B+A"])
     print("OK cscalc engine")
 

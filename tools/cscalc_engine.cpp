@@ -2023,6 +2023,30 @@ static int add_transfer_unit_lines(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN], 
   return n;
 }
 
+static int add_transfer_scanned_unit_lines(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN], const char *t) {
+  double size=0, rate=0, bits=0, bps=0; const char *su="", *ru="";
+  if (scan_before_word_num(t, "bytes", &size)) { bits = size * 8.0; su = "bytes"; }
+  else if (scan_before_word_num(t, "kib", &size)) { bits = size * 1024.0 * 8.0; su = "KiB"; }
+  else if (scan_before_word_num(t, "kb", &size)) { bits = size * 1000.0 * 8.0; su = "KB"; }
+  else if (scan_before_word_num(t, "mib", &size)) { bits = size * 1048576.0 * 8.0; su = "MiB"; }
+  else if (scan_before_word_num(t, "mb", &size)) { bits = size * 1000000.0 * 8.0; su = "MB"; }
+  else if (scan_before_word_num(t, "gib", &size)) { bits = size * 1073741824.0 * 8.0; su = "GiB"; }
+  else if (scan_before_word_num(t, "gb", &size)) { bits = size * 1000000000.0 * 8.0; su = "GB"; }
+  if (scan_before_word_num(t, "gbit", &rate) || scan_before_word_num(t, "gbps", &rate)) { bps = rate * 1000000000.0; ru = "Gbit/s"; }
+  else if (scan_before_word_num(t, "mbit", &rate) || scan_before_word_num(t, "mbps", &rate) || scan_before_word_num(t, "mib", &rate)) { bps = rate * 1000000.0; ru = "Mbit/s"; }
+  else if (scan_before_word_num(t, "kbit", &rate) || scan_before_word_num(t, "kbps", &rate)) { bps = rate * 1000.0; ru = "kbit/s"; }
+  else if (scan_before_word_num(t, "bit", &rate)) { bps = rate; ru = "bit/s"; }
+  if (bits <= 0 || bps <= 0) return 0;
+  double seconds = bits / bps;
+  int n = add(out, 0, "Transfer time = file size in bits / bit rate.");
+  n = add(out, n, "%.10g %s = %.10g bits", size, su, bits);
+  n = add(out, n, "%.10g %s = %.10g bit/s", rate, ru, bps);
+  n = add(out, n, "time = %.10g/%.10g = %.10g s", bits, bps, seconds);
+  if (has(t, "minute")) return add(out, n, "= %.10g minutes", seconds / 60.0);
+  if (has(t, "hour")) return add(out, n, "= %.10g hours", seconds / 3600.0);
+  return n;
+}
+
 static int add_bitrate_unit_lines(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN], double size, double seconds, const char *t) {
   double bits=0; const char *su="";
   if (!storage_size_bits(t, size, &bits, &su) || seconds == 0) return 0;
@@ -4126,6 +4150,8 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     return add(out, n, "time = %.10g/%.10g = %.10g s", total, rate, rate ? total / rate : 0);
   }
   if (has(t, "transfer") || has(t, "download") || has(t, "transmit") || has(t, "transmission") || has_word(t, "sent")) {
+    int scanned = add_transfer_scanned_unit_lines(out, t);
+    if (scanned) return scanned;
     double size=0, rate=0;
     bool hSize=label_num(input,"size",&size) || label_num(input,"filesize",&size) || label_num(input,"file",&size);
     bool hRate=label_num(input,"rate",&rate) || label_num(input,"bitrate",&rate) || label_num(input,"speed",&rate);
@@ -4912,6 +4938,8 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     sprintf(cmd, "sound(%lld,%lld,%lld,%d)", (long long)rate, (long long)seconds, (long long)v[2], ch); return eval_storage(cmd, out);
   }
   if ((has(t, "transfer") || has(t, "download") || has(t, "transmit") || has_word(t, "sent")) && (has(t, "time") || has(t, "second") || has(t, "minute") || has(t, "hour")) && nv >= 2) {
+    int scanned = add_transfer_scanned_unit_lines(out, t);
+    if (scanned) return scanned;
     int rn = add_transfer_unit_lines(out, v[0], v[1], t);
     if (rn) return rn;
     if ((has(t, "megabyte") || has(t, "mbyte")) && (has(t, "megabit") || has(t, "mbit"))) {
