@@ -2606,6 +2606,38 @@ Drift check:
 - Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
 - Active goal remains open for future source/probe-driven hardening.
 
+## 2026-06-12 Tail Wording and Normal Bound Slice
+
+Completed:
+- Added shared `P(X<...)` / `P(X>...)` bound extraction for normal tail prompts.
+- Fixed `no more than` tail detection so it no longer matches the embedded `more than`.
+- Broadened coded-transform routing so prompts using `y=(x-a)/b` work even without the word `coded`.
+- Added coded-transform direction detection for `find mean and sd of y`.
+- Added regression tests and rebuilt calculator files.
+
+Evidence:
+- Fresh final probe batch found three misses; all fixed:
+  - coded transform without `coded`
+  - `no more than` Poisson-approx tail
+  - normal tail written as `P(X<93)`
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 194904 bytes`
+  - `CSCALC.g3a: 166896 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Still inside CASP3 free-text parser hardening and generated calculator outputs.
+- Did not touch CAS Pure behavior, CSCALC source, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for future source/probe-driven hardening.
+
 ## 2026-06-12 Grouped Classes, Normal Intervals, Units, Records Slice
 
 Completed:

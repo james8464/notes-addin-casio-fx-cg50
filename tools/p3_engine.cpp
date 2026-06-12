@@ -162,6 +162,8 @@ static bool coded_cmd_from_text(const char *compact, const double v[], int nv, c
   if (b == 0) return false;
   double mean = v[nv - 2], sd = v[nv - 1];
   bool wants_y = strstr(compact, "findmeanofy") || strstr(compact, "findthemeanofy") ||
+                 strstr(compact, "findmeanandsdofy") || strstr(compact, "findthemeanandsdofy") ||
+                 strstr(compact, "findmeanandstandarddeviationofy") ||
                  strstr(compact, "meanofthecoded") || strstr(compact, "codedmean");
   (void)cap;
   sprintf(cmd, wants_y ? "code(%.10g,%.10g,%.10g,%.10g)" : "uncode(%.10g,%.10g,%.10g,%.10g)",
@@ -507,6 +509,7 @@ static double poissontailprob(double lam, int r, int tail) {
 }
 
 static int prob_tail(const char *c, const char *t) {
+  if (has(c, "nomorethan") || has(c, "notmorethan")) return -1;
   if (has(c, "p(x<=") || has(c, "p(x=<") || has(c, "x<=") ||
       has(c, "lessthanorequal") || has(c, "atmost")) return -1;
   if (has(c, "p(x<") || has(c, "x<") || has(c, "lessthan") || has(t, "fewer")) return -2;
@@ -514,6 +517,24 @@ static int prob_tail(const char *c, const char *t) {
       has(c, "greaterthanorequal") || has(c, "atleast")) return 1;
   if (has(c, "p(x>") || has(c, "x>") || has(c, "greaterthan") || has(c, "morethan")) return 2;
   return 0;
+}
+
+static bool prob_x_bound(const char *c, double *x, int *tail) {
+  const char *ops[] = {"p(x<=", "p(x=<", "x<=", "p(x>=", "p(x=>", "x>=", "p(x<", "x<", "p(x>", "x>"};
+  const int tails[] = {-1, -1, -1, 1, 1, 1, -2, -2, 2, 2};
+  for (int i = 0; i < 10; ++i) {
+    const char *p = strstr(c, ops[i]);
+    if (!p) continue;
+    p += strlen(ops[i]);
+    char *end = 0;
+    double val = strtod(p, &end);
+    if (end != p) {
+      *x = val;
+      *tail = tails[i];
+      return true;
+    }
+  }
+  return false;
 }
 
 static int add_binom_range_lines(char out[P3_MAX_LINES][P3_LINE_LEN], int N, double p, int lo, int hi, const char *label) {
@@ -2584,13 +2605,29 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if ((has(t, "normaldistribution") || has(t, "normalcdf") || (has(t, "normal") && has(t, "between"))) && nv >= 4) {
     sprintf(cmd, "normalprob(%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3]); return eval_stats(cmd, out);
   }
-  if (has(t, "normal") && has(t, "variance") && (has(c, "morethan") || has(c, "greaterthan") || has(c, "atleast") || has(c, "lessthan") || has(c, "atmost")) && nv >= 3) {
-    double tail = (has(c, "morethan") || has(c, "greaterthan") || has(c, "atleast")) ? 1 : -1;
-    sprintf(cmd, "normaltailvar(%.10g,%.10g,%.10g,%.0f)", v[0], v[1], v[2], tail); return eval_stats(cmd, out);
+  double bx = 0; int btail = 0; bool hBound = prob_x_bound(c, &bx, &btail);
+  if (has(t, "normal") && has(t, "variance") &&
+      (hBound || has(c, "morethan") || has(c, "greaterthan") || has(c, "atleast") || has(c, "lessthan") || has(c, "atmost")) && nv >= 3) {
+    double x = hBound ? bx : v[0], mu = 0, var = 0;
+    bool hMu = label_num(input, "mean", &mu) || word_num(input, "mean", &mu);
+    bool hVar = label_num(input, "variance", &var) || word_num(input, "variance", &var);
+    if (!hMu) mu = hBound ? v[0] : v[1];
+    if (!hVar) var = hBound ? v[1] : v[2];
+    if (!hBound) for (int i = 0; i < nv; ++i) if (!near_num(v[i], mu) && !near_num(v[i], var)) { x = v[i]; break; }
+    double tail = hBound ? btail : ((has(c, "morethan") || has(c, "greaterthan") || has(c, "atleast")) ? 1 : -1);
+    sprintf(cmd, "normaltailvar(%.10g,%.10g,%.10g,%.0f)", x, mu, var, tail); return eval_stats(cmd, out);
   }
-  if (has(t, "normal") && (has(c, "morethan") || has(c, "greaterthan") || has(c, "atleast") || has(c, "lessthan") || has(c, "atmost")) && nv >= 3) {
-    double tail = (has(c, "morethan") || has(c, "greaterthan") || has(c, "atleast")) ? 1 : -1;
-    sprintf(cmd, "normaltail(%.10g,%.10g,%.10g,%.0f)", v[0], v[1], v[2], tail); return eval_stats(cmd, out);
+  if (has(t, "normal") &&
+      (hBound || has(c, "morethan") || has(c, "greaterthan") || has(c, "atleast") || has(c, "lessthan") || has(c, "atmost")) && nv >= 3) {
+    double x = hBound ? bx : v[0], mu = 0, sig = 0;
+    bool hMu = label_num(input, "mean", &mu) || word_num(input, "mean", &mu);
+    bool hSig = label_num(input, "sd", &sig) || label_num(input, "sigma", &sig) || label_num(input, "standarddeviation", &sig) ||
+                word_num(input, "sd", &sig) || word_num(input, "sigma", &sig) || word_num(input, "standarddeviation", &sig);
+    if (!hMu) mu = hBound ? v[0] : v[1];
+    if (!hSig) sig = hBound ? v[1] : v[2];
+    if (!hBound) for (int i = 0; i < nv; ++i) if (!near_num(v[i], mu) && !near_num(v[i], sig)) { x = v[i]; break; }
+    double tail = hBound ? btail : ((has(c, "morethan") || has(c, "greaterthan") || has(c, "atleast")) ? 1 : -1);
+    sprintf(cmd, "normaltail(%.10g,%.10g,%.10g,%.0f)", x, mu, sig, tail); return eval_stats(cmd, out);
   }
   if ((has(c, "invnormal") || has(c, "inversenormal") || (has(c, "normal") && (has(c, "critical") || has(c, "percentile")))) && has(t, "variance") && nv >= 3) {
     sprintf(cmd, "invnormalvar(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_stats(cmd, out);
@@ -2630,7 +2667,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if ((has(t, "bayes") || has(t, "reverseconditional")) && nv >= 3) {
     sprintf(cmd, "bayes(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_stats(cmd, out);
   }
-  if ((has(t, "coded") || has(t, "coding")) && has(t, "mean") &&
+  if ((has(t, "coded") || has(t, "coding") || has(c, "y=(x")) && has(t, "mean") &&
       (has(t, "sd") || has(t, "standarddeviation") || (has(t, "standard") && has(t, "deviation"))) && nv >= 4) {
     if (!coded_cmd_from_text(c, v, nv, cmd, sizeof(cmd))) {
       if (has(c, "y=(x-") || has(c, "y=(x+")) sprintf(cmd, "uncode(%.10g,%.10g,%.10g,%.10g)", v[2], v[3], -v[0], v[1]);
@@ -2732,7 +2769,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       return eval_stats(cmd, out);
     }
   }
-  if ((has(t, "coded") || has(t, "coding")) && has(t, "mean") &&
+  if ((has(t, "coded") || has(t, "coding") || has(c, "y=(x")) && has(t, "mean") &&
       (has(t, "sd") || has(t, "standarddeviation") || (has(t, "standard") && has(t, "deviation"))) && nv >= 4) {
     if (!coded_cmd_from_text(c, v, nv, cmd, sizeof(cmd))) {
       if (has(c, "y=(x-") || has(c, "y=(x+")) sprintf(cmd, "uncode(%.10g,%.10g,%.10g,%.10g)", v[2], v[3], -v[0], v[1]);

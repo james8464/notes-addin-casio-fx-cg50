@@ -189,6 +189,7 @@ def main():
     require("poisson approximation to binomial n 200 p 0.01 at most 3", ["Poisson approximation", "lambda = np", "Use P(Y<=3)"])
     require("Using a distributional approximation, X is binomial n 1000 p 0.003. Find P(X at most 5).", ["Poisson approximation", "X ~ B(1000, 0.003)", "lambda = np = 1000*0.003 = 3", "Use P(Y<=5)"])
     require("Using a distributional approximation, X is binomial n 1000 p=0.003. Find P(X at most 5).", ["Poisson approximation", "X ~ B(1000, 0.003)", "lambda = np = 1000*0.003 = 3", "Use P(Y<=5)"])
+    require("For X binomial n=80 p=0.04 use a suitable approximation to find P(X no more than 6).", ["Poisson approximation", "X ~ B(80, 0.04)", "lambda = np = 80*0.04 = 3.2", "Use P(Y<=6)"])
     require("A component has probability 0.02 of being defective. In 300 components use a suitable approximation to find P(X=4).", ["Poisson approximation", "Use P(Y=4)"])
     require("Calls arrive at mean rate 4 per hour. Find probability exactly 2 calls in an hour.", ["For X~Po(lambda)", "P(X=2)=e^-4*4^2/2!"])
     require("critbinom(20,0.4,0.05,-1)", ["critical region", "alpha"])
@@ -211,6 +212,7 @@ def main():
     require("find P(40<X<60) for X~N(50,100)", ["sigma = sqrt(100) = 10", "NormalCD(lower=40, upper=60, sigma=10, mu=50)"])
     require("normal distribution mean 50 standard deviation squared 100 find P(X less than 65)", ["sigma = sqrt(100) = 10", "P(X<=65)"])
     require("A normal random variable has mean 20 and variance 9. Find P(18<X<25).", ["Convert variance", "sigma = sqrt(9) = 3", "NormalCD(lower=18, upper=25"])
+    require("A random variable is normal with mean 100 and variance 25. Find P(X<93).", ["Convert variance", "sigma = sqrt(25) = 5", "P(X<=93)", "NormalCD(lower=-1E99, upper=93, sigma=5, mu=100)"])
     require("sample mean 52 population mean 50 sd 8 n 25 test if mean increased at 5 percent", ["H0: mu = 50", "standard error", "Reject H0 if p <= alpha 0.05"])
     require("A large sample has mean 24, standard deviation 5 and n 64. Test at 1 percent whether population mean is less than 25.", ["H0: mu = 25", "standard error", "Reject H0 if p <= alpha 0.01"])
     require("The lifetime of batteries is normally distributed with mean 18 hours and standard deviation 2.5 hours. Find the probability that the mean lifetime of a sample of 16 is more than 19 hours.", ["sample mean", "standard error", "P(Xbar>=19)"])
@@ -316,6 +318,7 @@ def main():
     require("coded data y=(x-20)/5 mean 3 sd 2", ["Y=(X-a)/b", "mean X = 20 + 5*3 = 35", "standard deviation X"])
     require("Given coded data y=(x-20)/5 has mean 3 and standard deviation 2. Find the mean and sd of x.", ["Y=(X-a)/b", "mean X = 20 + 5*3 = 35", "standard deviation X"])
     require("A random sample of 50 has coded variable y=(x-12)/3. The mean of y is 4 and standard deviation of y is 1.5. Find mean and standard deviation of x.", ["Y=(X-a)/b", "mean X = 12 + 3*4 = 24", "standard deviation X = |b|*standard deviation Y = 3*1.5 = 4.5"])
+    require("Find the mean and sd of y when y=(x-10)/2, mean of x is 30 and standard deviation of x is 6.", ["For coded data Y=(X-a)/b", "mean Y = (30-10)/2 = 10", "sd Y = sd X/|b| = 6/2 = 3"])
     require("code(35,10,20,5)", ["For coded data Y=(X-a)/b", "mean Y = (35-20)/5 = 3", "sd Y = sd X/|b| = 10/5 = 2"])
     print("OK p3 engine")
 
