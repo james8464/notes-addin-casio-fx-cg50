@@ -2312,6 +2312,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     double A = 0, B = 0;
     const char *fp = strstr(c, "f=(");
     if (!fp) fp = strstr(c, "f=");
+    if (!fp) fp = strstr(c, "force(");
+    if (!fp) fp = strstr(c, "force");
     const char *tp = fp ? strchr(fp, 't') : 0;
     if (tp) {
       const char *a0 = tp - 1;
@@ -3390,6 +3392,17 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       double u0 = v[0], v0 = v[1], s0 = v[2];
       double a0 = (v0*v0-u0*u0)/(2*s0), t0 = 2*s0/(u0+v0);
       int n = add(out, 0, "Use SUVAT for constant acceleration.");
+      n = add(out, n, "v^2 = u^2 + 2as");
+      n = add(out, n, "a = (v^2-u^2)/(2s) = (%.6g^2-%.6g^2)/(2*%.6g) = %.10g", v0, u0, s0, a0);
+      n = add(out, n, "s = 1/2(u+v)t");
+      return add(out, n, "t = 2s/(u+v) = 2*%.6g/(%.6g+%.6g) = %.10g", s0, u0, v0, t0);
+    }
+    if ((has(t, "slows") || has(t, "slowing") || has(t, "decelerates") || has(t, "decelerating")) &&
+        has(t, "from") && has(t, "to") && (has(t, "travelling") || has(t, "traveling") || has(t, "over") || has(t, "distance")) &&
+        nv >= 3) {
+      double u0 = v[0], v0 = v[1], s0 = v[2];
+      double a0 = (v0*v0-u0*u0)/(2*s0), t0 = 2*s0/(u0+v0);
+      int n = add(out, 0, "Use SUVAT for constant deceleration.");
       n = add(out, n, "v^2 = u^2 + 2as");
       n = add(out, n, "a = (v^2-u^2)/(2s) = (%.6g^2-%.6g^2)/(2*%.6g) = %.10g", v0, u0, s0, a0);
       n = add(out, n, "s = 1/2(u+v)t");
@@ -4526,6 +4539,23 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       return eval_stats(cmd, out);
     }
   }
+  if ((has(t, "coin") || has(t, "heads") || has(t, "tails") || has(t, "tosses") || has(t, "tossed")) &&
+      (has(t, "fair") || has(t, "unbiased")) &&
+      (has(t, "probability") || has(t, "prob") || has(t, "chance")) && nv >= 2) {
+    double N = -1, x = -1;
+    for (int i = 0; i < nv; ++i) if (v[i] > N) N = v[i];
+    for (int i = 0; i < nv; ++i) if (!near_num(v[i], N)) { x = v[i]; break; }
+    if (N >= 1 && x >= 0) {
+      int tail = 0;
+      if (has(c, "morethan")) tail = 2;
+      else if (has(c, "atleast") || has(c, "greaterthanorequal")) tail = 1;
+      else if (has(c, "lessthanorequal") || has(c, "atmost")) tail = -1;
+      else if (has(c, "lessthan") || has(t, "fewer")) tail = -2;
+      if (tail) sprintf(cmd, "binomtail(%d,0.5,%d,%d)", (int)N, (int)x, tail);
+      else sprintf(cmd, "binom(%d,0.5,%d)", (int)N, (int)x);
+      return eval_stats(cmd, out);
+    }
+  }
   if ((has(t, "die") || has(t, "dice")) &&
       (has(t, "approx") || has(t, "approximation") || has(t, "distributional") || has(t, "normal")) &&
       nv >= 2) {
@@ -5411,6 +5441,24 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "P(first target) = %.10g/%.10g", a, total);
     n = add(out, n, "P(second target | first target) = %.10g/%.10g", a-1, total-1);
     return add(out, n, "P(both target) = %.10g/%.10g * %.10g/%.10g = %.10g", a, total, a-1, total-1, prob);
+  }
+  if ((has(t, "withoutreplacement") || (has(t, "without") && has(t, "replacement")) || has(t, "chosen")) &&
+      (has(t, "allthree") || (has(t, "all") && has(t, "three")) || has(t, "three")) && nv >= 2) {
+    double counts[8]; int cc = 0; const char *target_name = "target";
+    const char *cols[] = {"red","blue","green","yellow","white","black","orange","purple"};
+    for (int i = 0; i < 8; ++i) {
+      double q = 0;
+      if (prev_word_num(input, cols[i], &q) && q > 0) { if (cc == 0) target_name = cols[i]; counts[cc++] = q; }
+    }
+    if (cc < 1) for (int i = 0; i < nv && cc < 8; ++i) if (v[i] > 0) counts[cc++] = v[i];
+    double target = counts[0], total = 0;
+    for (int i = 0; i < cc; ++i) total += counts[i];
+    double prob = (total > 2) ? (target/total)*((target-1)/(total-1))*((target-2)/(total-2)) : 0;
+    int n = add(out, 0, "Without replacement, probabilities change after each draw.");
+    n = add(out, n, "P(first %s) = %.10g/%.10g", target_name, target, total);
+    n = add(out, n, "P(second %s | first %s) = %.10g/%.10g", target_name, target_name, target-1, total-1);
+    n = add(out, n, "P(third %s | first two %s) = %.10g/%.10g", target_name, target_name, target-2, total-2);
+    return add(out, n, "P(all three %s) = %.10g", target_name, prob);
   }
   if ((has(t, "withoutreplacement") || (has(t, "without") && has(t, "replacement")) || has(t, "chosen")) &&
       (has(t, "samecolour") || has(t, "samecolor") || (has(t, "same") && (has(t, "colour") || has(t, "color")))) &&

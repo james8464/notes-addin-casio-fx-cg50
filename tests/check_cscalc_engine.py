@@ -466,6 +466,7 @@ def main():
     require("A file contains 1200 records. Each record has 32 bytes. Calculate file size in KiB.", ["1200*32 = 38400 bytes", "= 37.5 KiB"])
     require("A database table has 1000 records. Each record has fields of 4 bytes, 20 bytes and 1 byte. Calculate storage in KiB.", ["bytes per record = 25", "1000*25 = 25000 bytes", "= 24.4140625 KiB"])
     require("Calculate the maximum positive value with 8 bit two's complement mantissa and 4 bit exponent.", ["Exponent is 4-bit two's complement.", "largest positive = (1-step)*2^7 = 127"])
+    require("Simplify Boolean algebra expression A.B + A.C + B.C when A=1.", ["Substitute A=1", "new expression = 1&b+1&c+b&c", "simplified = C+B"])
     require("bool(A+B+C+D+E+F)", ["simplified = F+E+D+C+B+A"])
     print("OK cscalc engine")
 

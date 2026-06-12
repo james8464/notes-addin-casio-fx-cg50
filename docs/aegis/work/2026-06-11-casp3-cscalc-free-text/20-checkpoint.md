@@ -4364,3 +4364,35 @@ Evidence:
 Drift check:
 - Kept changes to CASP3 general free-text handling, regressions, generated CASP3 output, and this checkpoint.
 - Did not touch CAS Pure behavior, menus, NOTES source, shared UI/status code, or CSCALC source.
+
+## 2026-06-12 Final Free-Text Cleanup Slice
+
+Completed:
+- Added CASP3 fair/unbiased coin free-text binomial probability working.
+- Added CASP3 three-target without-replacement probability working with detected colour wording.
+- Broadened CASP3 variable-force-over-time routing to natural `force (at+b)` wording.
+- Added CASP3 slowing/deceleration over distance SUVAT working.
+- Added CSCALC Boolean substitution route for prompts like `when A=1`.
+- Kept the implementation narrow: no CAS Pure/menu/UI changes, no new app framework, no broad clutter.
+- Added regression tests and rebuilt calculator files.
+
+Evidence:
+- Fresh probes fixed: fair coin exact binomial, all-three red without replacement, variable force speed from rest, train slowing over distance, Boolean substitution.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 381204 bytes`
+  - `CSCALC.g3a: 225528 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CASP3.g3a sha256: 1324456e5fca6e925d5919c11c372dffde6ac061515b74c2a9c28adb11014ebe`
+  - `CSCALC.g3a sha256: d32222e75ec16cab11840e48b94b9be77c0daf4cabcb8e687118f590098f5868`
+
+Drift check:
+- Kept changes to CASP3/CSCALC general free-text handling, regressions, generated app outputs, and this checkpoint.
+- Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.

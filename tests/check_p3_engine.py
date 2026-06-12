@@ -509,6 +509,10 @@ def main():
     require("A particle of mass 2 kg moving at 3 m/s collides directly with a particle of mass 4 kg moving at -1 m/s. They coalesce. Find their common speed.", ["Particles move together", "2*3 + 4*-1 = (2+4)v", "v = 0.3333333333"])
     require("A box contains 4 red, 5 blue and 3 green counters. Two counters are chosen without replacement. Find probability same colour.", ["same colour ways = C(4,2)+C(5,2)+C(3,2) = 19", "total ways = C(12,2)", "19/66"])
     require("A particle P of mass 0.3 kg moving with speed 6 m/s collides with Q of mass 0.2 kg at rest. After collision P has speed 2 m/s. Find speed of Q.", ["Use conservation of linear momentum.", "0.3*6 + 0.2*0 = 0.3*2 + 0.2*v2", "v2 = (1.8 - 0.3*2)/0.2 = 6"])
+    require("A bag contains 6 red, 4 blue and 5 green balls. Three balls are chosen without replacement. Find probability all three are red.", ["P(first red) = 6/15", "P(third red | first two red) = 4/13", "P(all three red) = 0.04395604396"])
+    require("A fair coin is tossed 12 times. Use a binomial distribution to find the probability of exactly 7 heads.", ["Let X ~ B(12, 0.5)", "P(X=7)", "0.193359375"])
+    require("A body of mass 3 kg is acted on by force (4t+2)N for 5 seconds from rest. Find its speed.", ["Impulse from a variable force", "impulse = 60 Ns", "v = 0 + 60/3 = 20"])
+    require("A train slows from 30 m/s to 10 m/s while travelling 400 m. Find its acceleration and time.", ["Use SUVAT for constant deceleration.", "(10^2-30^2)/(2*400) = -1", "2*400/(30+10) = 20"])
     print("OK p3 engine")
 
 

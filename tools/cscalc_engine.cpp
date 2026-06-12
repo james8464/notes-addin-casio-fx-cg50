@@ -5395,6 +5395,36 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     bool_clean_tail(e, ce, sizeof(ce));
     sprintf(cmd, "posform(%s)", ce); return eval_posform(cmd, out);
   }
+  if ((has(compact, "simplify") || has(compact, "boolean") || has(compact, "logic")) &&
+      has(compact, "when") && has(compact, "=")) {
+    const char *e = skip_bool_words(compact);
+    const char *wp = strstr(e, "when");
+    if (wp && wp > e) {
+      char lhs[80]; int lp = 0;
+      for (const char *p = e; p < wp && lp < 79; ++p) lhs[lp++] = *p;
+      lhs[lp] = 0;
+      char var = 0, val = 0;
+      const char *eq = strchr(wp, '=');
+      for (const char *p = wp + 4; p && *p && p < eq; ++p) if (isalpha((unsigned char)*p)) { var = (char)tolower((unsigned char)*p); break; }
+      if (eq && (eq[1] == '0' || eq[1] == '1')) val = eq[1];
+      if (var && val) {
+        char clean[80], expr[80], sub[80], norm[80];
+        bool_clean_tail(lhs, clean, sizeof(clean));
+        bool_arg_for_cmd(clean, expr, sizeof(expr));
+        int sp = 0;
+        for (int i = 0; expr[i] && sp < 79; ++i) sub[sp++] = (tolower((unsigned char)expr[i]) == var) ? val : expr[i];
+        sub[sp] = 0;
+        bool_norm(sub, norm, sizeof(norm));
+        char bcmd[96]; sprintf(bcmd, "bool(%s)", norm);
+        char tmp[CSCALC_MAX_LINES][CSCALC_LINE_LEN];
+        int tn = eval_bool(bcmd, tmp);
+        int n = add(out, 0, "Substitute %c=%c into the Boolean expression.", (char)toupper((unsigned char)var), val);
+        n = add(out, n, "new expression = %s", norm);
+        for (int i = 0; i < tn && n < CSCALC_MAX_LINES; ++i) n = add(out, n, "%s", tmp[i]);
+        return n;
+      }
+    }
+  }
   if ((nv == 0 || has(compact, "simplify") || has(compact, "boolean") || has(compact, "logic")) &&
       !has(compact, "prove") && !has(compact, "show") &&
       (has(compact, "simplify") || has(compact, "truth") || has(compact, "boolean") || has(compact, "logic")) &&
