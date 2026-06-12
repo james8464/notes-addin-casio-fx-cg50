@@ -524,6 +524,16 @@ static bool near_num(double a, double b) {
   return d < 1e-9;
 }
 
+static double abs_num(double x) { return x < 0 ? -x : x; }
+
+static double cubic_val(double A, double B, double C, double D, double t) {
+  return ((A*t + B)*t + C)*t + D;
+}
+
+static double quad_int_val(double A, double B, double C, double t) {
+  return A*t*t*t/3.0 + B*t*t/2.0 + C*t;
+}
+
 static double choose(int n, int r) {
   if (r < 0 || r > n) return 0;
   if (r > n - r) r = n - r;
@@ -1560,7 +1570,7 @@ static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
 static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   char t[192]; raw_clean(input, t, sizeof(t));
   char c[192]; clean(input, c, sizeof(c));
-  double v[8]; int nv = scan_nums(t, v, 8);
+  double v[12]; int nv = scan_nums(t, v, 12);
   char cmd[160];
   if ((has(t, "workenergy") || (has(t, "work") && has(t, "energy")) || (has(t, "energy") && has(t, "driving") && has(t, "force"))) && nv >= 5) {
     double m=0,u0=0,v0=0,h=0,d=0,r=0;
@@ -1589,6 +1599,26 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       sprintf(cmd, "workenergyforce(%.10g,%.10g,%.10g,%.10g,%.10g,%.10g)", m, u0, v0, h, d, r);
       return eval_mech(cmd, out);
     }
+  }
+  if ((has(t, "fall") || has(t, "falls") || has(t, "falling")) &&
+      (has(t, "resistance") || has(t, "resistive") || has(t, "againstair")) &&
+      (has(t, "speed") || has(t, "velocity")) && nv >= 3) {
+    double m=0, d=0, r=0, u0=0, g=9.8;
+    bool hm=word_num(input,"mass",&m) || label_num(input,"mass",&m);
+    bool hd=word_num(input,"through",&d) || word_num(input,"distance",&d) || word_num(input,"over",&d);
+    bool hr=word_num(input,"resistance",&r) || label_num(input,"resistance",&r);
+    if (!hm) m = v[0];
+    if (!hd) d = v[1];
+    if (!hr) r = v[2];
+    if (has(t, "fromrest")) u0 = 0;
+    double work_g = m*g*d, work_r = r*d, ke0 = 0.5*m*u0*u0;
+    double vv = (2*(ke0 + work_g - work_r))/m;
+    double ans = vv > 0 ? root(vv) : 0;
+    int n = add(out, 0, "Use work-energy, taking downward motion as positive.");
+    n = add(out, n, "loss of GPE - work against resistance = gain in KE.");
+    n = add(out, n, "mgh - Rd = 1/2*m*v^2 - 1/2*m*u^2");
+    n = add(out, n, "%.6g*%.6g*%.6g - %.6g*%.6g = 1/2*%.6g*v^2 - %.10g", m, g, d, r, d, m, ke0);
+    return add(out, n, "v = %.10g m/s", ans);
   }
   if ((has(t, "impulse") || has(t, "impulsive")) && (has(t, "velocity") || has(t, "speed")) &&
       (has(t, "i") || has(t, "j"))) {
@@ -1677,6 +1707,55 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     }
     return add(out, n, "total distance = %.10g", total);
   }
+  if (has(t, "displacement") && has(t, "total") && has(t, "distance")) {
+    double A=0, B=0, C=0, D0=0, t1=0, t2=0;
+    if (!parse_cubic_poly_after_word(input, "displacement", &A, &B, &C, &D0)) return 0;
+    bool ht1 = word_num_with_t(input, "from", &t1) || word_num_with_t(input, "between", &t1);
+    bool ht2 = word_num_with_t(input, "to", &t2) || word_num_with_t(input, "and", &t2);
+    if (!ht1 || !ht2) return 0;
+    double qa = 3*A, qb = 2*B, qc = C;
+    double pts[4]; int np = 0; pts[np++] = t1;
+    double disc = qb*qb - 4*qa*qc;
+    if (disc >= 0 && !near_num(qa, 0)) {
+      double r1 = (-qb - root(disc))/(2*qa), r2 = (-qb + root(disc))/(2*qa);
+      if (r1 > t1 && r1 < t2) pts[np++] = r1;
+      if (r2 > t1 && r2 < t2 && !near_num(r2, r1)) pts[np++] = r2;
+    } else if (!near_num(qb, 0)) {
+      double r = -qc/qb; if (r > t1 && r < t2) pts[np++] = r;
+    }
+    pts[np++] = t2;
+    for (int i = 0; i < np; ++i) for (int j = i + 1; j < np; ++j) if (pts[j] < pts[i]) { double q = pts[i]; pts[i] = pts[j]; pts[j] = q; }
+    int n = add(out, 0, "Total distance is found by splitting where velocity changes sign.");
+    n = add(out, n, "s = %.6g t^3 %+.6g t^2 %+.6g t %+.6g", A, B, C, D0);
+    n = add(out, n, "v = ds/dt = %.6g t^2 %+.6g t %+.6g", qa, qb, qc);
+    if (np > 2) n = add(out, n, "Use the stationary times inside the interval as split points.");
+    double total = 0;
+    for (int i = 0; i + 1 < np; ++i) {
+      double a0 = pts[i], b0 = pts[i+1];
+      double s1 = cubic_val(A, B, C, D0, a0), s2 = cubic_val(A, B, C, D0, b0);
+      double d = abs_num(s2 - s1); total += d;
+      n = add(out, n, "distance on %.6g to %.6g = |%.10g - %.10g| = %.10g", a0, b0, s2, s1, d);
+    }
+    return add(out, n, "total distance = %.10g", total);
+  }
+  if (has(t, "velocity") && has(t, "maximum") && has(t, "displacement")) {
+    double A=0, B=0, C=0;
+    if (!parse_velocity_quad(input, &A, &B, &C)) return 0;
+    double bestt = 0, bests = 0;
+    double disc = B*B - 4*A*C;
+    if (disc >= 0 && !near_num(A, 0)) {
+      double r1 = (-B - root(disc))/(2*A), r2 = (-B + root(disc))/(2*A);
+      if (r1 > 0) { double s1 = quad_int_val(A, B, C, r1); if (s1 > bests) { bests = s1; bestt = r1; } }
+      if (r2 > 0) { double s2 = quad_int_val(A, B, C, r2); if (s2 > bests) { bests = s2; bestt = r2; } }
+    } else if (!near_num(B, 0)) {
+      double r = -C/B; if (r > 0) { bestt = r; bests = quad_int_val(A, B, C, r); }
+    }
+    int n = add(out, 0, "Maximum displacement occurs when velocity changes from positive to negative.");
+    n = add(out, n, "v = %.6g t^2 %+.6g t %+.6g", A, B, C);
+    n = add(out, n, "Solve v=0 to find the stationary time.");
+    n = add(out, n, "s = integral(v) dt = %.6g t^3 %+.6g t^2 %+.6g t", A/3.0, B/2.0, C);
+    return add(out, n, "at t=%.10g, maximum displacement = %.10g", bestt, bests);
+  }
   if (has(t, "displacement") && has(t, "stationary")) {
     double A=0, B=0, C=0, D0=0;
     if (parse_cubic_poly_after_word(input, "displacement", &A, &B, &C, &D0)) {
@@ -1737,6 +1816,27 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       else n = add(out, n, "s = integral(v) dt = (%.6g/12)t^4 + (%.6g/6)t^3 + (%.6g/2)t^2 + %.6g t + C", A, B, C, u);
       n = add(out, n, "initial position at O gives C = 0.");
       return add(out, n, "at t=%.6g, s = %.10g", time, ss);
+    }
+    if (parsed_acc && has_u && (has(t, "comestorest") || has(t, "comes") || has(t, "rest"))) {
+      double aa = B/2.0, bb = C, cc = u;
+      double rt = 0, disc = bb*bb - 4*aa*cc;
+      if (!near_num(aa, 0) && disc >= 0) {
+        double r1 = (-bb - root(disc))/(2*aa), r2 = (-bb + root(disc))/(2*aa);
+        if (r1 > 0 && (rt == 0 || r1 < rt)) rt = r1;
+        if (r2 > 0 && (rt == 0 || r2 < rt)) rt = r2;
+      } else if (!near_num(bb, 0)) rt = -cc/bb;
+      double ss = A*rt*rt*rt*rt/12.0 + B*rt*rt*rt/6.0 + C*rt*rt/2.0 + u*rt;
+      int n = add(out, 0, "Variable acceleration: integrate a(t) to get v(t).");
+      if (near_num(A, 0)) {
+        n = add(out, n, "a = %.6g t %+.6g", B, C);
+        n = add(out, n, "v = (%.6g/2)t^2 + %.6g t + %.6g", B, C, u);
+      } else {
+        n = add(out, n, "a = %.6g t^2 %+.6g t %+.6g", A, B, C);
+        n = add(out, n, "v = (%.6g/3)t^3 + (%.6g/2)t^2 + %.6g t + %.6g", A, B, C, u);
+      }
+      n = add(out, n, "comes to rest when v=0, so t = %.10g", rt);
+      n = add(out, n, "distance = integral(v) from 0 to %.10g", rt);
+      return add(out, n, "distance = %.10g", ss < 0 ? -ss : ss);
     }
   }
   if ((has(t, "acceleration") || has(t, "accn")) && has(t, "t") &&
@@ -2932,7 +3032,22 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     double tail = (has(c, "lessthan") || has(c, "atmost") || has(c, "<")) ? -1 : 1;
     sprintf(cmd, "normalcond(%.10g,%.10g,%.10g,%.10g,%.0f)", v[0], v[1], v[2], v[3], tail); return eval_stats(cmd, out);
   }
-  if ((has(t, "conditional") || has(t, "given")) && nv >= 2) {
+  double fsxx=0, fsyy=0, fsxy=0;
+  if ((has(t, "pmcc") || has(t, "correlation") || has(t, "significant")) &&
+      label_num(input,"sxx",&fsxx) && label_num(input,"syy",&fsyy) && label_num(input,"sxy",&fsxy)) {
+    double crit=0; bool hc=label_num(input,"critical",&crit) || label_num(input,"cv",&crit);
+    if (!hc) for (int i = nv - 1; i >= 0; --i) if (v[i] > 0 && v[i] < 1) { crit = v[i]; hc = true; break; }
+    double r = fsxy/root(fsxx*fsyy);
+    if (hc) {
+      int n = add(out, 0, "Use r = Sxy / sqrt(Sxx*Syy).");
+      n = add(out, n, "r = %.6g / sqrt(%.6g*%.6g) = %.10g", fsxy, fsxx, fsyy, r);
+      n = add(out, n, "Compare |r| with the critical value %.6g.", crit);
+      return add(out, n, abs_num(r) > crit ? "Reject H0: there is evidence of correlation." : "Do not reject H0: insufficient evidence of correlation.");
+    }
+    sprintf(cmd, "pmccs(%.10g,%.10g,%.10g)", fsxx, fsyy, fsxy); return eval_stats(cmd, out);
+  }
+  if ((has(t, "conditional") || has(t, "given")) && nv >= 2 &&
+      !has(t, "sxx") && !has(t, "sxy") && !has(t, "syy")) {
     sprintf(cmd, "cond(%.10g,%.10g)", v[0], v[1]); return eval_stats(cmd, out);
   }
   if ((has(t, "union") || has(t, "either") || has(t, "orprobability")) && nv >= 3) {
@@ -3024,14 +3139,16 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     }
     return eval_stats(cmd, out);
   }
+  if ((has(t, "class") || has(t, "classes")) && (has(t, "frequency") || has(t, "frequencies")) &&
+      (has(t, "mean") || has(t, "standarddeviation") || has(t, "sd")) &&
+      grouped_class_freq_cmd(t, cmd, sizeof(cmd))) {
+    return eval_stats(cmd, out);
+  }
   if ((has(t, "grouped") || has(t, "group") || has(t, "midpoint") || has(t, "midpoints")) &&
       (has(t, "mean") || has(t, "standarddeviation") || has(t, "sd")) && nv >= 4 && nv % 2 == 0) {
     int p = sprintf(cmd, "groupmean(");
     int m = nv / 2;
-    if ((has(t, "class") || has(t, "classes")) && (has(t, "frequency") || has(t, "frequencies")) &&
-        grouped_class_freq_cmd(t, cmd, sizeof(cmd))) {
-      return eval_stats(cmd, out);
-    } else if ((has(t, "midpoint") || has(t, "midpoints")) && (has(t, "frequency") || has(t, "frequencies"))) {
+    if ((has(t, "midpoint") || has(t, "midpoints")) && (has(t, "frequency") || has(t, "frequencies"))) {
       for (int i = 0; i < m; ++i) p += sprintf(cmd+p, "%s%.10g,%.10g", i ? "," : "", v[i], v[i+m]);
     } else {
       for (int i = 0; i < m; ++i) p += sprintf(cmd+p, "%s%.10g,%.10g", i ? "," : "", v[2*i], v[2*i+1]);
@@ -3061,6 +3178,37 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       n = add(out, n, "m^2/%.10g = 0.5", denom);
       return add(out, n, "m = sqrt(%.10g/2) = %.10g", denom, root(denom/2.0));
     }
+  }
+  if ((has(t, "pdf") || has(t, "density") || has(t, "continuous")) && has(c, "kx") && has(t, "mean") && nv >= 2) {
+    double upper = 0;
+    for (int i = 0; i < nv; ++i) if (v[i] > upper) upper = v[i];
+    if (upper > 0) {
+      double k = 2.0/(upper*upper), mean = k*upper*upper*upper/3.0;
+      int n = add(out, 0, "For a pdf, total area under f(x) is 1.");
+      n = add(out, n, "integral from 0 to %.6g of kx dx = 1", upper);
+      n = add(out, n, "k*x^2/2 from 0 to %.6g gives k*%.6g/2 = 1", upper, upper*upper);
+      n = add(out, n, "k = %.10g", k);
+      n = add(out, n, "E(X) = integral x*f(x) dx = integral %.10g*x^2 dx", k);
+      return add(out, n, "mean = %.10g", mean);
+    }
+  }
+  if ((has(t, "pdf") || has(t, "density") || has(t, "continuous")) &&
+      (has(c, "x^2") || has(c, "xsquared")) && (has(c, "p(x>") || has(t, "greater")) && nv >= 3) {
+    double coef = v[0], denom = 1, upper = 0, lower = 0;
+    const char *xp = strstr(c, "x^2/");
+    if (xp) denom = read_num(xp + 4);
+    else if (nv >= 2) denom = v[1];
+    const char *bp = strstr(c, "0<x<");
+    if (bp) upper = read_num(bp + 4);
+    if (upper <= 0) for (int i = 0; i < nv; ++i) if (v[i] > upper && !near_num(v[i], denom)) upper = v[i];
+    const char *pp = strstr(c, "p(x>");
+    if (pp) lower = read_num(pp + 4);
+    else for (int i = 0; i < nv; ++i) if (v[i] > 0 && v[i] < upper) lower = v[i];
+    double ans = (coef/denom)*(upper*upper*upper - lower*lower*lower)/3.0;
+    int n = add(out, 0, "Use the pdf and integrate over the requested interval.");
+    n = add(out, n, "P(X>%.6g) = integral from %.6g to %.6g of (%.6g/%.6g)x^2 dx", lower, lower, upper, coef, denom);
+    n = add(out, n, "= (%.6g/%.6g)[x^3/3] from %.6g to %.6g", coef, denom, lower, upper);
+    return add(out, n, "P(X>%.6g) = %.10g", lower, ans);
   }
   if ((has(t, "hypothesis") || has(t, "test")) &&
       (has(t, "samplemean") || (has(t, "sample") && has(t, "mean")) || has(t, "xbar")) &&
@@ -3103,6 +3251,25 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     if (hPop && hGroup && hSample) sprintf(cmd, "stratified(%.10g,%.10g,%.10g)", pop, group, sample);
     else sprintf(cmd, "stratified(%.10g,%.10g,%.10g)", v[0], v[1], v[2]);
     return eval_stats(cmd, out);
+  }
+  if ((has(t, "grouped") || has(t, "group") || has(t, "classes")) && has(t, "median") &&
+      (has(t, "frequency") || has(t, "frequencies")) && nv >= 6 && nv % 3 == 0) {
+    int m = nv / 3, fs = 2*m;
+    double total = 0; for (int i = 0; i < m; ++i) total += v[fs+i];
+    double pos = total/2.0, cf = 0;
+    for (int i = 0; i < m; ++i) {
+      double f = v[fs+i], lo = abs_num(v[2*i]), hi = abs_num(v[2*i+1]);
+      if (hi < lo) { double q = lo; lo = hi; hi = q; }
+      if (cf + f >= pos) {
+        double w = hi - lo, med = lo + ((pos - cf)/f)*w;
+        int n = add(out, 0, "Use linear interpolation in the median class.");
+        n = add(out, n, "total frequency n = %.10g, so position = n/2 = %.10g", total, pos);
+        n = add(out, n, "median class is %.6g to %.6g; CF before = %.6g, f = %.6g", lo, hi, cf, f);
+        n = add(out, n, "median = L + ((position-CF before)/f)*class width");
+        return add(out, n, "median = %.6g + ((%.6g-%.6g)/%.6g)*%.6g = %.10g", lo, pos, cf, f, w, med);
+      }
+      cf += f;
+    }
   }
   if ((has(t, "grouped") || has(t, "interpolate") || has(t, "interpolation")) && has(t, "median") && nv >= 5) {
     sprintf(cmd, "groupmedian(%.10g,%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3], v[4]); return eval_stats(cmd, out);

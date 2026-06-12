@@ -3100,3 +3100,37 @@ Drift check:
 - Still inside CASP3/CSCALC free-text working support and generated calculator outputs.
 - Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
 - Active goal remains open for future source/probe-driven hardening.
+
+## 2026-06-12 P3 Continuous Stats and CS Memory Parser Slice
+
+Completed:
+- Added CASP3 total-distance working from cubic displacement, including stationary split points.
+- Added CASP3 maximum-displacement working from quadratic velocity by solving `v=0` and integrating.
+- Added CASP3 variable-acceleration-to-rest working with distance to rest.
+- Added CASP3 falling-against-resistance work-energy working.
+- Added CASP3 continuous pdf handling for `kx` normalisation/mean and power-pdf tail probabilities.
+- Fixed CASP3 grouped class median parsing for hyphenated intervals and restored grouped class mean routing after widening numeric scans.
+- Added CASP3 PMCC summary-significance route using `Sxy/sqrt(Sxx*Syy)` before conditional-probability fallback.
+- Added CSCALC cache block/index/offset bit working, AMAT working, ADC resolution working, and RLE decode working.
+- Added KiB lines to CSCALC text/character storage output.
+- Added regression tests and rebuilt calculator files.
+
+Evidence:
+- Fresh focused probe batch: all previously failing P3/CS cases now produced working lines.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 218352 bytes`
+  - `CSCALC.g3a: 172292 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Still inside CASP3/CSCALC free-text working support and generated calculator outputs.
+- Did not touch CAS Pure behavior, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for future source/probe-driven hardening.

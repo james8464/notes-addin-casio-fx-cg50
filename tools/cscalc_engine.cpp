@@ -413,6 +413,23 @@ static bool find_rle_sequence(const char *in, char *seq, int cap) {
   return best > 0;
 }
 
+static bool find_rle_encoded_sequence(const char *in, char *seq, int cap) {
+  int best = 0; seq[0] = 0;
+  for (int i = 0; in && in[i]; ++i) {
+    if (!isdigit((unsigned char)in[i])) continue;
+    char tmp[48]; int j = i, k = 0, pairs = 0;
+    while (isdigit((unsigned char)in[j]) && k + 2 < (int)sizeof(tmp)) {
+      while (isdigit((unsigned char)in[j]) && k + 1 < (int)sizeof(tmp)) tmp[k++] = in[j++];
+      if (!isalpha((unsigned char)in[j])) break;
+      tmp[k++] = (char)toupper((unsigned char)in[j++]);
+      ++pairs;
+    }
+    tmp[k] = 0;
+    if (pairs >= 2 && k > best && k < cap) { strcpy(seq, tmp); best = k; i = j; }
+  }
+  return best > 0;
+}
+
 static bool rpn_op_token(const char *s, char *op);
 
 static bool make_rpn_cmd(const char *in, char *cmd, int cap) {
@@ -1543,6 +1560,7 @@ static int eval_storage(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LE
     double bytes = bits / 8.0;
     int n = add(out, 0, "Text bits = characters * bits per character.");
     n = add(out, n, "%s*%s = %lld bits = %.6g bytes", a[0], a[1], bits, bytes);
+    n = add(out, n, "= %.6g KiB", bytes / 1024.0);
     return add(out, n, "= %.6g MB", bytes / 1000000.0);
   }
   if (starts3(s, "charset(", "charsetsize(", "textsymbols(") && na >= 2) {
@@ -1552,7 +1570,8 @@ static int eval_storage(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LE
     int n = add(out, 0, "Bits per character = ceil(log2(character set size)).");
     n = add(out, n, "ceil(log2(%s)) = %d bits per character", a[1], bpc);
     n = add(out, n, "text bits = %s*%d = %lld bits", a[0], bpc, bits);
-    return add(out, n, "= %.6g bytes", bytes);
+    n = add(out, n, "= %.6g bytes", bytes);
+    return add(out, n, "= %.6g KiB", bytes / 1024.0);
   }
   if (starts3(s, "compress(", "compression(", "ratio(") && na >= 2) {
     double oldv = num(a[0]), newv = num(a[1]);
@@ -3062,6 +3081,62 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   char cmd[160];
   double width=0, height=0, depth=0;
+  if (has(t, "cache") && has(t, "block") && nv >= 2) {
+    double cache = 0, block = 0;
+    bool hc = scan_before_word_num(t, "kib", &cache) || scan_before_word_num(t, "kb", &cache) ||
+              scan_before_word_num(t, "bytes", &cache);
+    bool hb = scan_before_word_num(t, "block", &block) || scan_before_word_num(t, "bytes", &block);
+    if (!hc) cache = v[0];
+    if (!hb) block = v[1];
+    if (has(t, "kib") || has(t, "kb")) cache *= 1024.0;
+    double blocks = block ? cache / block : 0;
+    int off = ceil_log2_ll((long long)(block + 0.5));
+    int idx = ceil_log2_ll((long long)(blocks + 0.5));
+    int n = add(out, 0, "Cache address fields use powers of 2.");
+    n = add(out, n, "cache size = %.10g bytes, block size = %.10g bytes", cache, block);
+    n = add(out, n, "number of blocks = %.10g/%.10g = %.10g", cache, block, blocks);
+    n = add(out, n, "offset bits = log2(%.10g) = %d", block, off);
+    return add(out, n, "index bits = log2(%.10g) = %d", blocks, idx);
+  }
+  if ((has(t, "average") && has(t, "memory") && has(t, "access") && has(t, "time")) || has(t, "amat")) {
+    if (nv >= 3) {
+      double hit = v[0], cachet = v[1], maint = v[2];
+      if (hit > 1) hit /= 100.0;
+      double miss = 1.0 - hit, ans = hit*cachet + miss*maint;
+      int n = add(out, 0, "Average access time = hit part + miss part.");
+      n = add(out, n, "miss rate = 1 - %.10g = %.10g", hit, miss);
+      n = add(out, n, "AMAT = %.10g*%.10g + %.10g*%.10g", hit, cachet, miss, maint);
+      return add(out, n, "= %.10g ns", ans);
+    }
+  }
+  if (has(t, "adc") && (has(t, "resolution") || has(t, "volts") || has(t, "voltage")) && nv >= 2) {
+    double bitsw=0; bool hb = scan_before_word_num(t, "bit", &bitsw) || scan_before_word_num(t, "bits", &bitsw);
+    if (!hb) bitsw = v[0];
+    double lo = 0, hi = 0;
+    double d0 = v[0] > bitsw ? v[0] - bitsw : bitsw - v[0];
+    if (nv >= 3 && d0 < 1e-9) { lo = v[1]; hi = v[2]; }
+    else { hi = v[nv-1]; }
+    double levels = pow2((int)bitsw), res = (hi - lo) / levels;
+    int n = add(out, 0, "ADC resolution = input voltage range / number of levels.");
+    n = add(out, n, "number of levels = 2^%d = %.10g", (int)bitsw, levels);
+    n = add(out, n, "voltage range = %.10g - %.10g = %.10g V", hi, lo, hi-lo);
+    return add(out, n, "resolution = %.10g/%.10g = %.10g V", hi-lo, levels, res);
+  }
+  if ((has(t, "decode") || has(t, "decompress")) && (has(t, "rle") || has(t, "runlength") || (has(t, "run") && has(t, "length")))) {
+    char enc[48];
+    if (find_rle_encoded_sequence(input, enc, sizeof(enc))) {
+      char dec[72] = ""; int dp = 0, n = add(out, 0, "Decode RLE by repeating each symbol by its count.");
+      for (int i = 0; enc[i] && n < CSCALC_MAX_LINES - 1;) {
+        int count = 0;
+        while (isdigit((unsigned char)enc[i])) count = count*10 + (enc[i++] - '0');
+        char sym = enc[i++];
+        n = add(out, n, "%d%c -> repeat %c %d times", count, sym, sym, count);
+        while (count-- > 0 && dp + 1 < (int)sizeof(dec)) dec[dp++] = sym;
+      }
+      dec[dp] = 0;
+      return add(out, n, "decoded string = %s", dec);
+    }
+  }
   if ((has(t, "ascii") || has(t, "unicode")) &&
       (has(t, "storage") || has(t, "store") || has(t, "size") || has(t, "encoded") || has(t, "characters") || has(t, "text")) &&
       nv >= 1) {
