@@ -1162,14 +1162,40 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       return eval_mech(cmd, out);
     }
   }
-  if (has(t, "suvat") || has(t, "velocity") || has(t, "acceleration") || has(t, "distance") || has(t, "displacement") || has(t, "time")) {
+  if (!has(t, "variable") && (has(t, "suvat") || has(t, "velocity") || has(t, "acceleration") || has(t, "distance") || has(t, "displacement") || has(t, "time"))) {
     double u=0, vv=0, acc=0, dist=0, time=0;
-    bool hu=label_num(input,"u",&u) || label_num(input,"initialvelocity",&u) || label_num(input,"initialspeed",&u);
-    bool hv=label_num(input,"v",&vv) || label_num(input,"finalvelocity",&vv) || label_num(input,"finalspeed",&vv);
-    bool ha=label_num(input,"a",&acc) || label_num(input,"acceleration",&acc);
-    bool hs=label_num(input,"s",&dist) || label_num(input,"displacement",&dist) || label_num(input,"distance",&dist);
-    bool ht=label_num(input,"t",&time) || label_num(input,"time",&time);
+    bool hu=label_num(input,"u",&u) || label_num(input,"initialvelocity",&u) || label_num(input,"initialspeed",&u) ||
+            word_num(input,"initialvelocity",&u) || word_num(input,"initialspeed",&u);
+    bool hv=label_num(input,"v",&vv) || label_num(input,"finalvelocity",&vv) || label_num(input,"finalspeed",&vv) ||
+            word_num(input,"finalvelocity",&vv) || word_num(input,"finalspeed",&vv) || word_num(input,"reachesspeed",&vv);
+    bool ha=label_num(input,"a",&acc) || label_num(input,"acceleration",&acc) ||
+            word_num(input,"acceleration",&acc) || word_num(input,"acceleratesat",&acc) || word_num(input,"acceleratedat",&acc);
+    bool hs=label_num(input,"s",&dist) || label_num(input,"displacement",&dist) || label_num(input,"distance",&dist) ||
+            word_num(input,"displacement",&dist) || word_num(input,"distance",&dist);
+    bool ht=label_num(input,"t",&time) || label_num(input,"time",&time) ||
+            word_num(input,"time",&time) || word_num(input,"for",&time) || word_num(input,"in",&time);
+    bool rest = has(c, "fromrest");
+    if (!hu && rest) { u = 0; hu = true; }
+    if (ht && (has(t, "minute") || has(t, "minutes"))) time *= 60.0;
+    if (ht && (has(t, "hour") || has(t, "hours"))) time *= 3600.0;
     int known = (hu?1:0) + (hv?1:0) + (ha?1:0) + (hs?1:0) + (ht?1:0);
+    bool wants_dist = has(t, "distance") || has(t, "displacement") || has(t, "travelled") || has(t, "traveled");
+    if (!hs && hu && ha && ht && wants_dist) {
+      int n = add(out, 0, "List known values and choose a SUVAT equation.");
+      if (rest) n = add(out, n, "From rest gives u = 0.");
+      n = add(out, n, "s = ut + 1/2 at^2");
+      n = add(out, n, "s = %.6g*%.6g + 1/2*%.6g*%.6g^2", u, time, acc, time);
+      return add(out, n, "s = %.10g", u*time + 0.5*acc*time*time);
+    }
+    if (!ha && !hs && hu && hv && ht && has(t, "acceleration") && wants_dist) {
+      int n = add(out, 0, "List known values and choose SUVAT equations.");
+      if (rest) n = add(out, n, "From rest gives u = 0.");
+      n = add(out, n, "v = u + at, so a = (v-u)/t");
+      n = add(out, n, "a = (%.6g-%.6g)/%.6g = %.10g", vv, u, time, (vv-u)/time);
+      n = add(out, n, "s = 1/2(u+v)t");
+      n = add(out, n, "s = 1/2(%.6g+%.6g)*%.6g", u, vv, time);
+      return add(out, n, "s = %.10g", 0.5*(u+vv)*time);
+    }
     if (known >= 3) {
       int p = sprintf(cmd, "suvat(");
       bool any = false;

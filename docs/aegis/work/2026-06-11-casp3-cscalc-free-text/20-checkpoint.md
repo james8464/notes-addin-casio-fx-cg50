@@ -1,5 +1,25 @@
 # Checkpoint
 
+## 2026-06-12 CASP3 SUVAT Natural Wording Slice
+
+Completed:
+- Fixed CASP3 SUVAT free-text prompts using exam wording such as `starts from rest`, `accelerates at`, `reaches speed`, `for ... seconds`, and `in ... seconds`.
+- Added requested-output handling so distance prompts with `u,a,t` show `s = ut + 1/2at^2` instead of defaulting to final velocity.
+- Added combined acceleration-and-distance working for `u,v,t` prompts.
+- Guarded the broader SUVAT route so it does not steal variable-acceleration prompts.
+- Added regression tests and rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CASP3 Edexcel Paper 3 mechanics free-text support.
+- Did not touch CAS Pure behavior, CSCALC logic, NOTES, or shared UI/status code.
+
 ## 2026-06-12 CSCALC Image Byte-Depth Slice
 
 Completed:
