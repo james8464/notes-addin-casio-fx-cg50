@@ -646,6 +646,38 @@ static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     }
     return n;
   }
+  if (starts2(s, "normal_work(", "normalwork(") && na >= 3) {
+    char cmd[160];
+    if (na >= 4) sprintf(cmd, "normalprob(%s,%s,%s,%s)", a[0], a[1], a[2], a[3]);
+    else sprintf(cmd, "normal(%s,%s,%s)", a[0], a[1], a[2]);
+    return eval_stats(cmd, out);
+  }
+  if (starts2(s, "binom_work(", "binomwork(") && na >= 3) {
+    char cmd[160];
+    if (na >= 4) sprintf(cmd, "binomtail(%s,%s,%s,%s)", a[0], a[1], a[2], a[3]);
+    else sprintf(cmd, "binom(%s,%s,%s)", a[0], a[1], a[2]);
+    return eval_stats(cmd, out);
+  }
+  if (starts2(s, "prob_work(", "probwork(") && na >= 2) {
+    char cmd[160];
+    if (na >= 3) sprintf(cmd, "probor(%s,%s,%s)", a[0], a[1], a[2]);
+    else sprintf(cmd, "cond(%s,%s)", a[0], a[1]);
+    return eval_stats(cmd, out);
+  }
+  if (starts2(s, "regress_work(", "regresswork(") && na >= 3) {
+    char cmd[192];
+    if (na >= 5) {
+      if (na >= 6) sprintf(cmd, "regresscalc(%s,%s,%s,%s,%s,%s)", a[0], a[1], a[2], a[3], a[4], a[5]);
+      else sprintf(cmd, "regresscalc(%s,%s,%s,%s,%s)", a[0], a[1], a[2], a[3], a[4]);
+    } else sprintf(cmd, "regress(%s,%s,%s)", a[0], a[1], a[2]);
+    return eval_stats(cmd, out);
+  }
+  if (starts2(s, "hyp_test(", "hyptest(") && na >= 5) {
+    char cmd[192];
+    if (na >= 6) sprintf(cmd, "hypnormal(%s,%s,%s,%s,%s,%s)", a[0], a[1], a[2], a[3], a[4], a[5]);
+    else sprintf(cmd, "hypbinom(%s,%s,%s,%s,%s)", a[0], a[1], a[2], a[3], a[4]);
+    return eval_stats(cmd, out);
+  }
   if (starts3(s, "normalvar(", "normalzvar(", "zscorevar(") && na >= 3) {
     double x=num(a[0]), mu=num(a[1]), var=num(a[2]), sig=root(var);
     int n = add(out, 0, "Convert variance to standard deviation first.");
@@ -1574,5 +1606,5 @@ int p3_eval(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   n = add(out, 0, "Supported:");
   n = add(out, n, "suvat projectile projectileh projectileat projectileangle force weight friction moment incline inclineacc");
   n = add(out, n, "beam ladder connected pulley impulse momentum work power energy workenergyforce restitution vector resolve vectorkin varacc");
-  return add(out, n, "normal normalvar normalprob normaltail normalcond invnormal normalparams binom binomstats binomtail critbinom hypbinom cond probor bayes independent poisson poissonstats poissontail poissonnorm critpoisson hyppoisson regress pmcc spearman meanvar discrete stratified groupmedian histdensity code");
+  return add(out, n, "normal normal_work normalvar normalprob normaltail normalcond invnormal normalparams binom binom_work binomstats binomtail critbinom hypbinom hyp_test cond prob_work probor bayes independent poisson poissonstats poissontail poissonnorm critpoisson hyppoisson regress regress_work pmcc spearman meanvar discrete stratified groupmedian histdensity code");
 }

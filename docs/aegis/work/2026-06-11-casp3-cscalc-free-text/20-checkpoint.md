@@ -1,5 +1,25 @@
 # Checkpoint
 
+## 2026-06-12 CASP3 Planned Command Alias Slice
+
+Completed:
+- Added first-class aliases from the multi-app plan: `normal_work`, `binom_work`, `prob_work`, `regress_work`, and `hyp_test`.
+- Routed aliases through the existing generic stats engines, preserving the same working lines and avoiding duplicated logic.
+- Added help-surface entries for the aliases.
+- Added regression tests for direct alias commands.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CASP3 Edexcel Paper 3 command coverage.
+- Did not touch CAS Pure behavior, CSCALC behavior, NOTES, or shared UI/status code.
+
 ## 2026-06-12 CSCALC Boolean Proof Working Slice
 
 Completed:
