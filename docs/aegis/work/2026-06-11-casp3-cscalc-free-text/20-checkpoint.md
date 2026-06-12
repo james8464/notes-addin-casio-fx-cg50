@@ -1,5 +1,26 @@
 # Checkpoint
 
+## 2026-06-12 CSCALC Search Sort Trace Slice
+
+Completed:
+- Added `binarysearch(...)`, `linearsearch(...)`, `bubblesort(...)`, and `insertionsort(...)` working traces.
+- Added free-text dispatch for binary/linear search and bubble/insertion sort prompts.
+- Output shows comparisons, found position, sort passes, or insertion steps.
+- Added an Algorithms help page in the CSCALC menu.
+- Added regression tests for direct and free-text forms.
+- Rebuilt all calculator files.
+
+Evidence:
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py && python3 tools/check_removed_features.py && git diff --check`: passed.
+- `./compile`: passed.
+
+Drift check:
+- Still inside CSCALC AQA Paper 2 algorithm trace support.
+- Did not touch CAS Pure behavior, CASP3 behavior, NOTES, or shared UI/status code.
+
 ## 2026-06-12 CSCALC ASCII Unicode Slice
 
 Completed:

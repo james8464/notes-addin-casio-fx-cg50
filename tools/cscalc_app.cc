@@ -16,7 +16,8 @@ static const char *const menu_items[] = {
   "Bit rate",
   "Compression",
   "Char storage",
-  "Databases"
+  "Databases",
+  "Algorithms"
 };
 
 static const char *const baseconv[] = {
@@ -139,6 +140,16 @@ static const char *const db[] = {
   "Normalisation reduces duplication."
 };
 
+static const char *const algos[] = {
+  "Trace commands:",
+  "binarysearch(target,list...)",
+  "linearsearch(target,list...)",
+  "bubblesort(list...)",
+  "insertionsort(list...)",
+  "Binary search needs sorted data.",
+  "Outputs each comparison/pass."
+};
+
 static void run_input(unsigned *tick) {
   char input[96] = "floatdec(0101100,11101)";
   if (!ui_input("CSCalc input", input, sizeof(input), tick)) return;
@@ -161,7 +172,8 @@ static void open_item(int sel, unsigned *tick) {
   else if (sel >= 9 && sel <= 11) ui_wait_page(menu_items[sel], storage, sizeof(storage)/sizeof(storage[0]), tick);
   else if (sel == 12) ui_wait_page("Compression", compress, sizeof(compress)/sizeof(compress[0]), tick);
   else if (sel == 13) ui_wait_page("Char storage", chars, sizeof(chars)/sizeof(chars[0]), tick);
-  else ui_wait_page("Databases", db, sizeof(db)/sizeof(db[0]), tick);
+  else if (sel == 14) ui_wait_page("Databases", db, sizeof(db)/sizeof(db[0]), tick);
+  else ui_wait_page("Algorithms", algos, sizeof(algos)/sizeof(algos[0]), tick);
 }
 
 int main() {

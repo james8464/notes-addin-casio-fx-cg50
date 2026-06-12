@@ -556,6 +556,71 @@ static int eval_rpn(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
 static void app_ch(char *s, int *pos, int cap, char c);
 static void app_int(char *s, int *pos, int cap, int v);
 
+static void list_text(long long v[], int n, char *buf, int cap) {
+  int p = 0; app_ch(buf, &p, cap, '[');
+  for (int i = 0; i < n; ++i) {
+    if (i) app_ch(buf, &p, cap, ',');
+    app_int(buf, &p, cap, (int)v[i]);
+  }
+  app_ch(buf, &p, cap, ']');
+}
+
+static int eval_trace(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
+  char a[16][48]; int na = args(s, a, 16);
+  if (starts3(s, "binarysearch(", "binsearch(", "bsearch(") && na >= 2) {
+    long long target = parse_int(a[0]), v[15]; int nvals = na - 1;
+    for (int i = 0; i < nvals; ++i) v[i] = parse_int(a[i+1]);
+    int n = add(out, 0, "Binary search: compare middle item of sorted list.");
+    n = add(out, n, "target = %lld", target);
+    int lo = 0, hi = nvals - 1;
+    while (lo <= hi && n < CSCALC_MAX_LINES - 1) {
+      int mid = (lo + hi) / 2;
+      if (v[mid] == target) return add(out, add(out, n, "low=%d high=%d mid=%d value=%lld", lo+1, hi+1, mid+1, v[mid]), "found at position %d", mid+1);
+      n = add(out, n, "low=%d high=%d mid=%d value=%lld -> %s", lo+1, hi+1, mid+1, v[mid], target < v[mid] ? "left" : "right");
+      if (target < v[mid]) hi = mid - 1; else lo = mid + 1;
+    }
+    return add(out, n, "not found");
+  }
+  if (starts3(s, "linearsearch(", "linsearch(", "seqsearch(") && na >= 2) {
+    long long target = parse_int(a[0]);
+    int n = add(out, 0, "Linear search: check each item in order.");
+    for (int i = 1; i < na && n < CSCALC_MAX_LINES - 1; ++i) {
+      long long x = parse_int(a[i]);
+      if (x == target) return add(out, add(out, n, "position %d: %lld = target", i, x), "found at position %d", i);
+      n = add(out, n, "position %d: %lld != target", i, x);
+    }
+    return add(out, n, "not found");
+  }
+  if (starts2(s, "bubblesort(", "bubble(") && na >= 2) {
+    long long v[16]; for (int i = 0; i < na; ++i) v[i] = parse_int(a[i]);
+    char buf[80]; list_text(v, na, buf, sizeof(buf));
+    int n = add(out, 0, "Bubble sort: swap adjacent items if left > right.");
+    n = add(out, n, "start %s", buf);
+    for (int pass = 0; pass < na - 1 && n < CSCALC_MAX_LINES - 1; ++pass) {
+      bool swapped = false;
+      for (int i = 0; i < na - 1 - pass; ++i) if (v[i] > v[i+1]) { long long t = v[i]; v[i] = v[i+1]; v[i+1] = t; swapped = true; }
+      list_text(v, na, buf, sizeof(buf));
+      n = add(out, n, "pass %d: %s", pass + 1, buf);
+      if (!swapped) break;
+    }
+    return n;
+  }
+  if (starts2(s, "insertionsort(", "insertion(") && na >= 2) {
+    long long v[16]; for (int i = 0; i < na; ++i) v[i] = parse_int(a[i]);
+    char buf[80]; list_text(v, na, buf, sizeof(buf));
+    int n = add(out, 0, "Insertion sort: insert next item into sorted left part.");
+    n = add(out, n, "start %s", buf);
+    for (int i = 1; i < na && n < CSCALC_MAX_LINES - 1; ++i) {
+      long long key = v[i]; int j = i - 1;
+      while (j >= 0 && v[j] > key) { v[j+1] = v[j]; --j; }
+      v[j+1] = key; list_text(v, na, buf, sizeof(buf));
+      n = add(out, n, "insert %lld: %s", key, buf);
+    }
+    return n;
+  }
+  return 0;
+}
+
 static int eval_storage(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
   char a[10][48]; int na = args(s, a, 10);
   if (starts3(s, "image(", "bitmap(", "imagesize(") && na >= 3) {
@@ -1347,6 +1412,30 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if (has(t, "rpn") || has(t, "postfix") || (has(t, "reverse") && has(t, "polish"))) {
     if (make_rpn_cmd(input, cmd, sizeof(cmd))) return eval_rpn(cmd, out);
   }
+  if ((has(t, "binarysearch") || (has(t, "binary") && has(t, "search"))) && nv >= 2) {
+    int p = sprintf(cmd, "binarysearch(%lld", (long long)v[0]);
+    for (int i = 1; i < nv && p < (int)sizeof(cmd) - 24; ++i) p += sprintf(cmd + p, ",%lld", (long long)v[i]);
+    sprintf(cmd + p, ")");
+    return eval_trace(cmd, out);
+  }
+  if ((has(t, "linearsearch") || has(t, "sequentialsearch") || (has(t, "linear") && has(t, "search"))) && nv >= 2) {
+    int p = sprintf(cmd, "linearsearch(%lld", (long long)v[0]);
+    for (int i = 1; i < nv && p < (int)sizeof(cmd) - 24; ++i) p += sprintf(cmd + p, ",%lld", (long long)v[i]);
+    sprintf(cmd + p, ")");
+    return eval_trace(cmd, out);
+  }
+  if ((has(t, "bubblesort") || (has(t, "bubble") && has(t, "sort"))) && nv >= 2) {
+    int p = sprintf(cmd, "bubblesort(%lld", (long long)v[0]);
+    for (int i = 1; i < nv && p < (int)sizeof(cmd) - 24; ++i) p += sprintf(cmd + p, ",%lld", (long long)v[i]);
+    sprintf(cmd + p, ")");
+    return eval_trace(cmd, out);
+  }
+  if ((has(t, "insertionsort") || (has(t, "insertion") && has(t, "sort"))) && nv >= 2) {
+    int p = sprintf(cmd, "insertionsort(%lld", (long long)v[0]);
+    for (int i = 1; i < nv && p < (int)sizeof(cmd) - 24; ++i) p += sprintf(cmd + p, ",%lld", (long long)v[i]);
+    sprintf(cmd + p, ")");
+    return eval_trace(cmd, out);
+  }
   if ((has(t, "image") || has(t, "bitmap")) && label_num(input,"width",&width) && label_num(input,"height",&height) && (label_num(input,"depth",&depth) || label_num(input,"bits",&depth))) {
     sprintf(cmd, "image(%lld,%lld,%lld)", (long long)width, (long long)height, (long long)depth); return eval_storage(cmd, out);
   }
@@ -1538,6 +1627,7 @@ int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
   n = eval_twos(s, out); if (n) return n;
   n = eval_binary_arith(s, out); if (n) return n;
   n = eval_rpn(s, out); if (n) return n;
+  n = eval_trace(s, out); if (n) return n;
   n = eval_float(s, out); if (n) return n;
   n = eval_storage(s, out); if (n) return n;
   n = eval_gate_form(s, out); if (n) return n;
@@ -1547,5 +1637,5 @@ int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
   n = add(out, 0, "Supported:");
   n = add(out, n, "bin hex den convert twos twosdec fixed fixedenc parity xorbits andbits orbits notbits hamming checksum checkdigit rpn");
   n = add(out, n, "floatdec floatrange normal image sound bitrate transfer transfermb");
-  return add(out, n, "compress huffman rle records hashmod hashlinear addressspace chars ascii unicode bool truth nandform norform");
+  return add(out, n, "compress huffman rle records hashmod hashlinear addressspace chars ascii unicode binarysearch bubblesort bool truth nandform norform");
 }
