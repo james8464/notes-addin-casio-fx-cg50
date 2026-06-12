@@ -1,5 +1,33 @@
 # Checkpoint
 
+## 2026-06-12 Rough Table Pulley And Exponential CDF Slice
+
+Completed:
+- Added CASP3 rough-horizontal-table pulley working before the plain friction fallback.
+- Added acceleration and tension lines for table particle plus hanging particle systems.
+- Added CASP3 exponential CDF median route for `F(x)=1-exp(-lambda*x)` before the loose power-CDF fallback.
+- Added regressions and rebuilt calculator files.
+
+Evidence:
+- Targeted probes for rough table pulley and exponential CDF median: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2097100 bytes`
+  - `CASP3.g3a: 337996 bytes`
+  - `CSCALC.g3a: 207564 bytes`
+  - `NOTES.g3a: 46952 bytes`
+
+Drift check:
+- Stayed inside CASP3 free-text working support and generated calculator outputs.
+- Did not touch CAS Pure behavior, CSCALC source, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for further source/probe-driven hardening.
+
 ## 2026-06-12 Geometric Cumulative And Rough Incline Pull Slice
 
 Completed:

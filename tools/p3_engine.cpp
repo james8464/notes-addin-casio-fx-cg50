@@ -3841,6 +3841,23 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     else sprintf(cmd, "incline(%.10g,%.10g,%.10g)", v[0], v[1], nv > 2 ? v[2] : 0);
     return eval_mech(cmd, out);
   }
+  if ((has(t, "pulley") || has(t, "connected")) &&
+      (has(t, "rough") || has(t, "friction") || has(t, "coefficient")) &&
+      (has(t, "horizontal") || has(t, "table")) &&
+      (has(t, "hang") || has(t, "hanging") || has(t, "freely")) && nv >= 3) {
+    double m1 = v[0], m2 = v[1], mu = 0;
+    for (int i = 0; i < nv; ++i) if (v[i] > 0 && v[i] < 1) { mu = v[i]; break; }
+    double fr = mu * m1 * 9.8;
+    double drive = m2 * 9.8;
+    double acc = (drive - fr) / (m1 + m2);
+    double T = m1 * acc + fr;
+    int n = add(out, 0, "Treat both particles as one system, including friction on the table.");
+    n = add(out, n, "friction on table particle = mu R = %.6g*%.6g*9.8 = %.10g N", mu, m1, fr);
+    n = add(out, n, "driving force = hanging weight = %.6g*9.8 = %.10g N", m2, drive);
+    n = add(out, n, "a = (%.10g-%.10g)/(%.6g+%.6g) = %.10g m/s^2", drive, fr, m1, m2, acc);
+    n = add(out, n, "For table particle: T - friction = m a.");
+    return add(out, n, "T = %.6g*%.10g + %.10g = %.10g N", m1, acc, fr, T);
+  }
   if ((has(t, "friction") || has(t, "coefficientoffriction")) && !has(t, "ladder") && nv >= 2) {
     sprintf(cmd, "friction(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
   }
@@ -5307,6 +5324,21 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     }
     if (has(t, "iqr") || has(t, "interquartile")) return add(out, n, "IQR = Q3 - Q1 = %.10g", vals[qc-1] - vals[0]);
     return n;
+  }
+  if ((has(t, "cumulative") || has(t, "cdf")) && has(t, "median") &&
+      (has(c, "1-exp(-") || has(c, "1-e^(-"))) {
+    const char *ep = strstr(c, "exp(-");
+    int skip = 5;
+    if (!ep) { ep = strstr(c, "e^(-"); skip = 4; }
+    double lam = ep ? read_num(ep + skip) : 0;
+    if (lam > 0) {
+      double med = ln_approx(2.0) / lam;
+      int n = add(out, 0, "For the median m, solve F(m)=0.5.");
+      n = add(out, n, "1-exp(-%.10g m)=0.5", lam);
+      n = add(out, n, "exp(-%.10g m)=0.5", lam);
+      n = add(out, n, "%.10g m = ln(2)", lam);
+      return add(out, n, "m = ln(2)/%.10g = %.10g", lam, med);
+    }
   }
   if ((has(t, "cumulative") || has(t, "cdf")) && has(t, "median") &&
       !has(t, "frequency") && !has(t, "frequencies") && !has(t, "table") && !has(t, "class") && nv >= 1) {
