@@ -5549,6 +5549,39 @@ Drift check:
 - Kept changes to CASP3/CSCALC free-text handling, regressions, generated app outputs, and this checkpoint.
 - Did not touch CAS Pure source, menus, NOTES source, or shared UI/status code.
 
+## 2026-06-13 CSCALC Attached Size/Rate Unit Slice
+
+Completed:
+- Added bounded raw unit scanning for attached file-size units such as `1.5GB`, `40MiB`, and `750KB`.
+- Reused that scanner in generic storage/bitrate/compression helpers instead of one-off command routes.
+- Added attached-rate scanning for `Mbps/Gbps/Kbps` style prose in file-size-from-rate and transfer paths.
+- Preserved exam-style conversion lines such as `12 MB = 96 Mbit` and compact `Mbit/s` substitution.
+- Added regressions for attached `GB` bitrate and attached `Mbps` stream-size prompts.
+
+Evidence:
+- Fresh probes fixed:
+  - `A network sends 1.5GB in 2 minutes. Find bitrate in Mbps.`
+  - `A video stream has bitrate 5Mbps for 45 seconds. Find file size in MB.`
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `git diff --check`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 500796 bytes`
+  - `CSCALC.g3a: 277456 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: records=48 bytes=18178`
+  - `CSCALC.g3a sha256: 80ed2f1cf52713948dabd0284534f82dd1006fd3552dc02692cf15054f16b210`
+
+Drift check:
+- Kept changes to CSCALC free-text unit handling, regressions, generated CSCALC output, and this checkpoint.
+- Did not touch CAS Pure source, CASP3 source, menus, NOTES source, or shared UI/status code.
+
 ## 2026-06-13 Transfer-Time and Rough-Pulley Slice
 
 Completed:

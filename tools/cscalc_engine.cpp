@@ -377,6 +377,29 @@ static bool num_before_unit_raw(const char *s, const char *unit, double *v) {
   return false;
 }
 
+static bool num_before_unit_bound(const char *s, const char *unit, double *v) {
+  int ul = (int)strlen(unit);
+  for (int i = 0; s && s[i]; ++i) {
+    int j = 0;
+    while (j < ul && s[i+j] && tolower((unsigned char)s[i+j]) == tolower((unsigned char)unit[j])) ++j;
+    if (j != ul) continue;
+    unsigned char after = (unsigned char)s[i + ul];
+    if (isalnum(after)) continue;
+    int k = i - 1;
+    while (k >= 0 && (s[k] == ' ' || s[k] == '\t' || s[k] == ',')) --k;
+    int end = k;
+    while (k >= 0 && (isdigit((unsigned char)s[k]) || s[k] == '.' || s[k] == '-' || s[k] == '+' || s[k] == 'e' || s[k] == 'E')) --k;
+    if (end <= k) continue;
+    char b[32]; int len = end - k;
+    if (len <= 0 || len >= (int)sizeof(b)) continue;
+    memcpy(b, s + k + 1, len); b[len] = 0;
+    if (b[0] != '-' && b[0] != '+' && b[0] != '.' && !isdigit((unsigned char)b[0])) continue;
+    *v = read_num(b);
+    return true;
+  }
+  return false;
+}
+
 static bool num_before_ptr(const char *base, const char *p, double *v) {
   int j = (int)(p - base) - 1;
   while (j >= 0 && base[j] == ',') --j;
@@ -2271,12 +2294,12 @@ static int add_image_byte_depth_lines(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN
 
 static bool storage_size_bits(const char *t, double size, double *bits, const char **unit) {
   double shown = 0;
-  if (scan_before_word_num(t, "gib", &shown) && near_num(shown, size)) { *bits = size * 1073741824.0 * 8.0; *unit = "GiB"; return true; }
-  if ((scan_before_word_num(t, "gb", &shown) || scan_before_word_num(t, "gigabyte", &shown)) && near_num(shown, size)) { *bits = size * 1000000000.0 * 8.0; *unit = "GB"; return true; }
-  if (scan_before_word_num(t, "mib", &shown) && near_num(shown, size)) { *bits = size * 1048576.0 * 8.0; *unit = "MiB"; return true; }
-  if ((scan_before_word_num(t, "mb", &shown) || scan_before_word_num(t, "megabyte", &shown)) && near_num(shown, size)) { *bits = size * 1000000.0 * 8.0; *unit = "MB"; return true; }
-  if (scan_before_word_num(t, "kib", &shown) && near_num(shown, size)) { *bits = size * 1024.0 * 8.0; *unit = "KiB"; return true; }
-  if ((scan_before_word_num(t, "kb", &shown) || scan_before_word_num(t, "kilobyte", &shown)) && near_num(shown, size)) { *bits = size * 1000.0 * 8.0; *unit = "KB"; return true; }
+  if ((scan_before_word_num(t, "gib", &shown) || num_before_unit_bound(t, "gib", &shown)) && near_num(shown, size)) { *bits = size * 1073741824.0 * 8.0; *unit = "GiB"; return true; }
+  if ((scan_before_word_num(t, "gb", &shown) || num_before_unit_bound(t, "gb", &shown) || scan_before_word_num(t, "gigabyte", &shown)) && near_num(shown, size)) { *bits = size * 1000000000.0 * 8.0; *unit = "GB"; return true; }
+  if ((scan_before_word_num(t, "mib", &shown) || num_before_unit_bound(t, "mib", &shown)) && near_num(shown, size)) { *bits = size * 1048576.0 * 8.0; *unit = "MiB"; return true; }
+  if ((scan_before_word_num(t, "mb", &shown) || num_before_unit_bound(t, "mb", &shown) || scan_before_word_num(t, "megabyte", &shown)) && near_num(shown, size)) { *bits = size * 1000000.0 * 8.0; *unit = "MB"; return true; }
+  if ((scan_before_word_num(t, "kib", &shown) || num_before_unit_bound(t, "kib", &shown)) && near_num(shown, size)) { *bits = size * 1024.0 * 8.0; *unit = "KiB"; return true; }
+  if ((scan_before_word_num(t, "kb", &shown) || num_before_unit_bound(t, "kb", &shown) || scan_before_word_num(t, "kilobyte", &shown)) && near_num(shown, size)) { *bits = size * 1000.0 * 8.0; *unit = "KB"; return true; }
   if ((scan_before_word_num(t, "bytes", &shown) || scan_before_word_num(t, "byte", &shown)) && near_num(shown, size)) { *bits = size * 8.0; *unit = "bytes"; return true; }
   if (has(t, "gib")) { *bits = size * 1073741824.0 * 8.0; *unit = "GiB"; return true; }
   if (has(t, "gb") || has(t, "gigabyte")) { *bits = size * 1000000000.0 * 8.0; *unit = "GB"; return true; }
@@ -2291,7 +2314,7 @@ static bool storage_size_bits(const char *t, double size, double *bits, const ch
 
 static bool bytes_before_unit(const char *t, const char *unit, double mult, double *bytes, double *shown) {
   double v = 0;
-  if (!scan_before_word_num(t, unit, &v)) return false;
+  if (!scan_before_word_num(t, unit, &v) && !num_before_unit_bound(t, unit, &v)) return false;
   *shown = v; *bytes = v * mult;
   return true;
 }
@@ -2326,6 +2349,10 @@ static bool storage_rate_bits(const char *t, double rate, double *bps, const cha
   return false;
 }
 
+static bool rate_before_unit(const char *t, const char *unit, double *rate) {
+  return scan_before_word_num(t, unit, rate) || num_before_unit_bound(t, unit, rate);
+}
+
 static int add_transfer_unit_lines(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN], double size, double rate, const char *t) {
   double bits=0, bps=0; const char *su="", *ru="";
   if (!storage_size_bits(t, size, &bits, &su) || !storage_rate_bits(t, rate, &bps, &ru) || bps == 0) return 0;
@@ -2348,10 +2375,10 @@ static int add_transfer_scanned_unit_lines(char out[CSCALC_MAX_LINES][CSCALC_LIN
   else if (scan_before_word_num(t, "mb", &size)) { bits = size * 1000000.0 * 8.0; su = "MB"; }
   else if (scan_before_word_num(t, "gib", &size)) { bits = size * 1073741824.0 * 8.0; su = "GiB"; }
   else if (scan_before_word_num(t, "gb", &size)) { bits = size * 1000000000.0 * 8.0; su = "GB"; }
-  if (scan_before_word_num(t, "gbit", &rate) || scan_before_word_num(t, "gbps", &rate)) { bps = rate * 1000000000.0; ru = "Gbit/s"; }
-  else if (scan_before_word_num(t, "mbit", &rate) || scan_before_word_num(t, "mbps", &rate) || scan_before_word_num(t, "mib", &rate)) { bps = rate * 1000000.0; ru = "Mbit/s"; }
-  else if (scan_before_word_num(t, "kbit", &rate) || scan_before_word_num(t, "kbps", &rate)) { bps = rate * 1000.0; ru = "kbit/s"; }
-  else if (scan_before_word_num(t, "bit", &rate)) { bps = rate; ru = "bit/s"; }
+  if (rate_before_unit(t, "gbit", &rate) || rate_before_unit(t, "gbps", &rate)) { bps = rate * 1000000000.0; ru = "Gbit/s"; }
+  else if (rate_before_unit(t, "mbit", &rate) || rate_before_unit(t, "mbps", &rate) || rate_before_unit(t, "mib", &rate)) { bps = rate * 1000000.0; ru = "Mbit/s"; }
+  else if (rate_before_unit(t, "kbit", &rate) || rate_before_unit(t, "kbps", &rate)) { bps = rate * 1000.0; ru = "kbit/s"; }
+  else if (rate_before_unit(t, "bit", &rate)) { bps = rate; ru = "bit/s"; }
   if (bits <= 0 || bps <= 0) return 0;
   double seconds = bits / bps;
   int n = add(out, 0, "Transfer time = file size in bits / bit rate.");
@@ -2368,11 +2395,20 @@ static int add_bitrate_unit_lines(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN], d
   if (!storage_size_bits(t, size, &bits, &su) || seconds == 0) return 0;
   int n = add(out, 0, "Bit rate = file size in bits / seconds.");
   n = add(out, n, "%.10g %s = %.10g bits", size, su, bits);
+  if (!strcmp(su, "GB")) n = add(out, n, "%.10g GB = %.10g Gbit", size, size * 8.0);
+  else if (!strcmp(su, "MB")) n = add(out, n, "%.10g MB = %.10g Mbit", size, size * 8.0);
+  else if (!strcmp(su, "KB")) n = add(out, n, "%.10g KB = %.10g kbit", size, size * 8.0);
   double bps = bits / seconds;
   n = add(out, n, "bit rate = %.10g/%.10g = %.10g bit/s", bits, seconds, bps);
+  if (!strcmp(su, "GB")) n = add(out, n, "bit rate = %.10g/%.10g = %.10g Gbit/s", size * 8.0, seconds, bps / 1000000000.0);
+  else if (!strcmp(su, "MB")) n = add(out, n, "bit rate = %.10g/%.10g = %.10g Mbit/s", size * 8.0, seconds, bps / 1000000.0);
+  else if (!strcmp(su, "KB")) n = add(out, n, "bit rate = %.10g/%.10g = %.10g kbit/s", size * 8.0, seconds, bps / 1000.0);
   if (has(t, "mbit") || has(t, "megabit") || has(t, "mbps")) return add(out, n, "= %.10g Mbit/s", bps / 1000000.0);
   if (has(t, "kbit") || has(t, "kilobit")) return add(out, n, "= %.10g kbit/s", bps / 1000.0);
   if (has(t, "gbit") || has(t, "gigabit")) return add(out, n, "= %.10g Gbit/s", bps / 1000000000.0);
+  if (!strcmp(su, "GB")) return add(out, n, "= %.10g Gbit/s", bps / 1000000000.0);
+  if (!strcmp(su, "MB")) return add(out, n, "= %.10g Mbit/s", bps / 1000000.0);
+  if (!strcmp(su, "KB")) return add(out, n, "= %.10g kbit/s", bps / 1000.0);
   return n;
 }
 
@@ -5358,9 +5394,9 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       (has(t, "kbit") || has(t, "kbps") || has(t, "mbit") || has(t, "mbps") || has(t, "gbit") || has(t, "gbps")) && nv >= 2) {
     double rate = 0, seconds = 0;
     const char *ru = "bit/s";
-    if (scan_before_word_num(t, "gbit", &rate) || scan_before_word_num(t, "gbps", &rate)) { rate *= 1000000000.0; ru = "Gbit/s"; }
-    else if (scan_before_word_num(t, "mbit", &rate) || scan_before_word_num(t, "mbps", &rate)) { rate *= 1000000.0; ru = "Mbit/s"; }
-    else if (scan_before_word_num(t, "kbit", &rate) || scan_before_word_num(t, "kbps", &rate)) { rate *= 1000.0; ru = "kbit/s"; }
+    if (rate_before_unit(t, "gbit", &rate) || rate_before_unit(t, "gbps", &rate)) { rate *= 1000000000.0; ru = "Gbit/s"; }
+    else if (rate_before_unit(t, "mbit", &rate) || rate_before_unit(t, "mbps", &rate)) { rate *= 1000000.0; ru = "Mbit/s"; }
+    else if (rate_before_unit(t, "kbit", &rate) || rate_before_unit(t, "kbps", &rate)) { rate *= 1000.0; ru = "kbit/s"; }
     if (!(scan_before_word_num(t, "minutes", &seconds) || scan_before_word_num(t, "minute", &seconds) ||
           scan_before_word_num(t, "seconds", &seconds) || scan_before_word_num(t, "second", &seconds) ||
           scan_before_word_num(t, "hours", &seconds) || scan_before_word_num(t, "hour", &seconds))) seconds = v[1];
@@ -5386,10 +5422,8 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     if (!hSize) size = v[0];
     if (!hSec) seconds = v[1];
     scale_time_unit(t, &seconds);
-    if (has(t, "gib") || has(t, "mib") || has(t, "kib")) {
-      int un = add_bitrate_unit_lines(out, size, seconds, t);
-      if (un) return un;
-    }
+    int un = add_bitrate_unit_lines(out, size, seconds, t);
+    if (un) return un;
     if (has(t, "megabyte") || has(t, "mbyte") || has(t, "mb")) sprintf(cmd, "bitratemb(%.10g,%.10g)", size, seconds);
     else if (has(t, "kilobyte") || has(t, "kbyte") || has(t, "kb")) sprintf(cmd, "bitratekb(%.10g,%.10g)", size, seconds);
     else sprintf(cmd, "bitrate(%.10g,%.10g)", size, seconds);
@@ -5443,10 +5477,10 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     double size = v[0], overhead = v[1], rate = v[2];
     double tmp = 0;
     if (scan_before_word_num(t, "percent", &tmp)) overhead = tmp;
-    if (scan_before_word_num(t, "gbps", &tmp) || scan_before_word_num(t, "gbit", &tmp) ||
-        scan_before_word_num(t, "mbps", &tmp) || scan_before_word_num(t, "mbit", &tmp) ||
-        scan_before_word_num(t, "kbps", &tmp) || scan_before_word_num(t, "kbit", &tmp) ||
-        scan_before_word_num(t, "bps", &tmp) || scan_before_word_num(t, "bit/s", &tmp)) rate = tmp;
+    if (rate_before_unit(t, "gbps", &tmp) || rate_before_unit(t, "gbit", &tmp) ||
+        rate_before_unit(t, "mbps", &tmp) || rate_before_unit(t, "mbit", &tmp) ||
+        rate_before_unit(t, "kbps", &tmp) || rate_before_unit(t, "kbit", &tmp) ||
+        rate_before_unit(t, "bps", &tmp) || rate_before_unit(t, "bit/s", &tmp)) rate = tmp;
     double bits=0, bps=0; const char *su="", *ru="";
     if (storage_size_bits(t, size, &bits, &su) && storage_rate_bits(t, rate, &bps, &ru) && bps != 0) {
       double tx = bits * (1.0 + overhead / 100.0);
