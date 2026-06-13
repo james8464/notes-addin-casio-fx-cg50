@@ -1,5 +1,33 @@
 # Checkpoint
 
+## 2026-06-13 CSCALC Unicode Maxterm Notation Slice
+
+Completed:
+- Fixed Boolean set-notation parsing so Unicode product/maxterm forms `ΠM(...)` and `∏M(...)` route like existing `pi M(...)`.
+- Added regression for `F(A,B,C)=ΠM(0,2,4,6)`.
+
+Evidence:
+- Direct probe now gives `Maxterm/POS method`, maxterm factors, and `simplified = C`.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 489784 bytes`
+  - `CSCALC.g3a: 275084 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: 18178 bytes`
+
+Drift check:
+- Stayed inside CSCALC Boolean free-text parsing and tests.
+- No Pure CAS, CASP3, NOTES, menu/UI/session, or shared status-bar source changed.
+- Active goal remains open for further unseen-case hardening.
+
 ## 2026-06-13 CSCALC Explicit Check Digit Weights Slice
 
 Completed:

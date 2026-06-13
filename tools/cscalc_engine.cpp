@@ -1104,6 +1104,8 @@ static bool make_bool_set_notation_cmd(const char *in, char *cmd, int cap) {
   if (!mp) mp = strstr(c, "sigmam(");
   bool maxterm = false;
   const char *xp = strstr(c, "πm(");
+  if (!xp) xp = strstr(c, "Πm(");
+  if (!xp) xp = strstr(c, "∏m(");
   if (!xp) xp = strstr(c, "pim(");
   if (!xp) xp = strstr(c, "productm(");
   if (xp && (!mp || xp < mp)) { mp = xp; maxterm = true; }
