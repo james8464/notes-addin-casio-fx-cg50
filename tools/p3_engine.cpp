@@ -840,8 +840,15 @@ static bool extract_point_pairs_after_word(const char *input, double *xs, double
   if (!p) p = strstr(t, "pairs,");
   if (!p) p = strstr(t, "data,");
   if (!p) return false;
+  char seg[220];
+  strncpy(seg, p, sizeof(seg) - 1); seg[sizeof(seg) - 1] = 0;
+  const char *stops[] = { ",estimate,", ",predict,", ",when,", ",find," };
+  for (int i = 0; i < 4; ++i) {
+    char *q = strstr(seg + 6, stops[i]);
+    if (q) *q = 0;
+  }
   double vals[32];
-  int nv = scan_nums(p, vals, 32);
+  int nv = scan_nums(seg, vals, 32);
   if (nv < 4 || (nv & 1)) return false;
   int count = nv / 2;
   if (count > 16) count = 16;
@@ -1022,6 +1029,21 @@ static int add_raw_regression_lines(char out[P3_MAX_LINES][P3_LINE_LEN], const d
     if (have_target) n = add(out, n, "when x=%.6g, y=%.6g", target, a + b*target);
   }
   return n;
+}
+
+static int add_raw_paired_summary_lines(char out[P3_MAX_LINES][P3_LINE_LEN], const double *xs, const double *ys, int count) {
+  double sx, sy, sx2, sy2, sxy;
+  paired_sums(xs, ys, count, &sx, &sy, &sx2, &sy2, &sxy);
+  double xb = sx/count, yb = sy/count;
+  double Sxx = sx2 - sx*sx/count, Syy = sy2 - sy*sy/count, Sxy = sxy - sx*sy/count;
+  int n = add(out, 0, "Use paired-data summary statistics.");
+  n = add(out, n, "n=%d, Sx=%.10g, Sy=%.10g", count, sx, sy);
+  n = add(out, n, "Sx2=%.10g, Sy2=%.10g, Sxy(raw)=%.10g", sx2, sy2, sxy);
+  n = add(out, n, "xbar=%.10g, ybar=%.10g", xb, yb);
+  n = add(out, n, "Sxx=Sx2-Sx^2/n = %.10g", Sxx);
+  n = add(out, n, "Syy=Sy2-Sy^2/n = %.10g", Syy);
+  n = add(out, n, "Sxy=Sxy(raw)-SxSy/n = %.10g", Sxy);
+  return add(out, n, "covariance = Sxy/n = %.10g", Sxy/count);
 }
 
 static void sort_doubles(double *a, int n) {
@@ -6588,6 +6610,16 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     }
     sprintf(cmd, "pmccs(%.10g,%.10g,%.10g)", fsxx, fsyy, fsxy); return eval_stats(cmd, out);
   }
+  if ((has(t, "covariance") || has(t, "sxx") || has(t, "syy") || has(t, "sxy") ||
+       (has(t, "summary") && (has(t, "paired") || has(t, "bivariate")))) &&
+      !(has(t, "pmcc") || has(t, "correlation") || has(t, "spearman") || has(t, "regression"))) {
+    double xs[16], ys[16]; int count = 0;
+    if (extract_xy_lists_after_words(input, xs, ys, &count) ||
+        extract_point_pairs_after_word(input, xs, ys, &count) ||
+        extract_two_lists_around_and(input, xs, ys, &count)) {
+      return add_raw_paired_summary_lines(out, xs, ys, count);
+    }
+  }
   if ((has(t, "conditional") || has(t, "given")) && nv >= 2 &&
       !(has(t, "regression") || has(t, "leastsquares") || has(t, "lineofbestfit") || has(t, "estimate")) &&
       !has(t, "sxx") && !has(t, "sxy") && !has(t, "syy")) {
@@ -6700,6 +6732,9 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     if (extract_xy_lists_after_words(input, xs, ys, &count)) {
       return add_raw_spearman_lines(out, xs, ys, count);
     }
+    if (extract_point_pairs_after_word(input, xs, ys, &count)) {
+      return add_raw_spearman_lines(out, xs, ys, count);
+    }
     if (extract_two_lists_around_and(input, xs, ys, &count)) {
       return add_raw_spearman_lines(out, xs, ys, count);
     }
@@ -6714,6 +6749,9 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     if (extract_xy_lists_after_words(input, xs, ys, &count)) {
       return add_raw_pmcc_lines(out, xs, ys, count);
     }
+    if (extract_point_pairs_after_word(input, xs, ys, &count)) {
+      return add_raw_pmcc_lines(out, xs, ys, count);
+    }
     double n0=0, sx=0, sy=0, sxy=0, sx2=0, sy2=0, sxx=0, syy=0;
     if (label_num(input,"sxx",&sxx) && label_num(input,"syy",&syy) && label_num(input,"sxy",&sxy)) {
       sprintf(cmd, "pmccs(%.10g,%.10g,%.10g)", sxx, syy, sxy); return eval_stats(cmd, out);
@@ -6725,7 +6763,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if ((has(t, "pmcc") || has(t, "correlation")) && !has(t, "spearman") && nv >= 6) {
     sprintf(cmd, "pmcc(%.10g,%.10g,%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3], v[4], v[5]); return eval_stats(cmd, out);
   }
-  if (has(t, "regression") || has(t, "leastsquares") || has(t, "lineofbestfit")) {
+  if (has(t, "regression") || has(c, "leastsquares") || has(c, "lineofbestfit") || has(c, "lineofbestfit")) {
     double n0=0, sx=0, sy=0, sxx=0, syy=0, sxy=0, xb=0, yb=0, x=0, y=0;
     bool hx = last_label_num(input,"x",&x);
     bool hy = last_label_num(input,"y",&y);

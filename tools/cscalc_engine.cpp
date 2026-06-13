@@ -5774,6 +5774,21 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       (has(t, "decode") || has(t, "denary") || has(t, "decimal") || has(t, "number")) && nb >= 2) {
     sprintf(cmd, "floatdec(%s,%s)", bits[0], bits[1]); return eval_float(cmd, out);
   }
+  if ((has(t, "normalise") || has(t, "normalize")) &&
+      (has(t, "float") || has(t, "floating") || (has(t, "mantissa") && has(t, "exponent"))) &&
+      nv >= 3 && nb < 2 &&
+      !(has(t, "represent") || has(t, "represented") || has(t, "representable") || has(t, "explain") || has(t, "canbe"))) {
+    double mb = v[1], eb = v[2], value = v[0], tmp = 0;
+    bool hM = scan_bit_width_before_label(t, "mantissa", &tmp) || scan_before_word_num(t, "mantissa", &tmp); if (hM) mb = tmp;
+    bool hE = scan_bit_width_before_label(t, "exponent", &tmp) || scan_before_word_num(t, "exponent", &tmp); if (hE) eb = tmp;
+    if (hM || hE) for (int i = 0; i < nv; ++i) {
+      if ((hM && (long long)v[i] == (long long)mb) || (hE && (long long)v[i] == (long long)eb)) continue;
+      value = v[i];
+      break;
+    }
+    sprintf(cmd, "floatenc(%.10g,%lld,%lld)", value, (long long)mb, (long long)eb);
+    return eval_float(cmd, out);
+  }
   if ((has(t, "normalise") || has(t, "normalize")) && nb >= 2) {
     sprintf(cmd, "floatnorm(%s,%s)", bits[0], bits[1]); return eval_float(cmd, out);
   }
