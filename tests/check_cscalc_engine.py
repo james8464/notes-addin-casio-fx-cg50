@@ -612,6 +612,12 @@ def main():
     require("What is the value of A XOR B when A=1 and B=0", ["new expression = 1^0", "output = 1"])
     require("Convert A + BC to NAND only", ["Use NAND as a universal gate", "NAND form:", "B NAND C"])
     require("Find NAND only implementation of A.B + C.", ["Use NAND as a universal gate", "NAND form:", "A NAND B", "C NAND C"])
+    require("¬(A∨B)", ["De Morgan's law", "minterms: 0", "simplified = A'B'"])
+    require("Simplify Boolean expression ¬(A∨B).", ["De Morgan's law", "simplified = A'B'"])
+    require("Construct truth table for A⊕B.", ["Truth table for a^b.", "minterms: 1,2", "simplified = A'B+AB'"])
+    require("Prove A∧(B∨C)=A∧B∨A∧C", ["LHS simplifies to AC+AB", "RHS simplifies to AC+AB", "Same output rows"])
+    require("A∧B ⇒ A", ["minterms: 0,1,2,3", "simplified = 1"])
+    require("convert A∨B to NAND only", ["Use NAND as a universal gate", "NAND form: ((A NAND A) NAND (B NAND B))"])
     print("OK cscalc engine")
 
 

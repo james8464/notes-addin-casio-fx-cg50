@@ -5513,6 +5513,50 @@ Drift check:
 - Kept changes to CASP3/CSCALC general free-text handling, regressions, generated app outputs, and this checkpoint.
 - Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.
 
+## 2026-06-13 CSCALC Boolean Paste-Notation Slice
+
+Completed:
+- Compared current CSCALC Boolean engine against the archived Python Boolean program.
+- Kept current engine: it already supports more operators, truth tables, K-map/minterms, POS, NAND/NOR, proofs, and law traces than the old Python script.
+- Added generic Boolean UTF-8 operator normalisation for pasted exam/notes notation:
+  - `¬` -> NOT
+  - `∧`, `·`, `⋅`, `×` -> AND
+  - `∨` -> OR
+  - `⊕` -> XOR
+  - `→`, `⇒` -> implication
+- Applied the same normalisation to command forms, free-text forms, and NAND/NOR conversion parsing.
+- Added regression coverage for bare pasted Boolean expressions, truth tables, proofs, implication, and NAND conversion.
+
+Evidence:
+- Fresh probes fixed:
+  - `¬(A∨B)`
+  - `Simplify Boolean expression ¬(A∨B).`
+  - `Construct truth table for A⊕B.`
+  - `Prove A∧(B∨C)=A∧B∨A∧C`
+  - `A∧B ⇒ A`
+  - `convert A∨B to NAND only`
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 503264 bytes`
+  - `CSCALC.g3a: 277832 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: records=48 bytes=18178`
+  - `CAS.g3a sha256: 15f3aa342df2f8e9f3608032a17e116254df92d19141c271e45553de0b01a39e`
+  - `CASP3.g3a sha256: ed2e4fa9a06c17dc36d00c52ef2426ccddb0266bbad1e4b2e9b9aa4fdf68896e`
+  - `CSCALC.g3a sha256: a3682994f094c39985c520dcd18fc9725235847bd993497f3c727f877413229b`
+
+Drift check:
+- Kept changes to CSCALC Boolean input normalisation, regressions, generated CSCALC output, and this checkpoint.
+- Did not touch CAS Pure source, menus, CASP3 source, NOTES source, or shared UI/status code.
+
 ## 2026-06-13 Rough Plane, Linear PDF, and Sound Unit Slice
 
 Completed:

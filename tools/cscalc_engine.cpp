@@ -2695,9 +2695,33 @@ static bool bool_equiv_expr(const char *a, const char *b) {
 static void app_ch(char *s, int *pos, int cap, char c);
 static void app_str(char *s, int *pos, int cap, const char *t);
 
+static bool bool_utf_op(const char *s, char *op, int *len) {
+  unsigned char a = (unsigned char)s[0], b = (unsigned char)s[1], c = (unsigned char)s[2];
+  if (a == 0xc2 && b == 0xac) { *op = '!'; *len = 2; return true; } // not
+  if (a == 0xc2 && b == 0xb7) { *op = '&'; *len = 2; return true; } // dot
+  if (a == 0xc3 && b == 0x97) { *op = '&'; *len = 2; return true; } // times
+  if (a == 0xe2 && b == 0x88 && c == 0xa7) { *op = '&'; *len = 3; return true; } // and
+  if (a == 0xe2 && b == 0x88 && c == 0xa8) { *op = '+'; *len = 3; return true; } // or
+  if (a == 0xe2 && b == 0x8a && c == 0x95) { *op = '^'; *len = 3; return true; } // xor
+  if (a == 0xe2 && b == 0x86 && c == 0x92) { *op = '>'; *len = 3; return true; } // implies
+  if (a == 0xe2 && b == 0x87 && c == 0x92) { *op = '>'; *len = 3; return true; } // implies
+  if (a == 0xe2 && b == 0x8b && c == 0x85) { *op = '&'; *len = 3; return true; } // dot
+  return false;
+}
+
+static bool has_bool_utf_op(const char *s) {
+  for (int i = 0; s && s[i]; ++i) {
+    char op; int len;
+    if (bool_utf_op(s + i, &op, &len)) return true;
+  }
+  return false;
+}
+
 static void bool_norm(const char *src, char *dst, int cap) {
   int j = 0;
   for (int i = 0; src[i] && j + 2 < cap;) {
+    char op; int oplen;
+    if (bool_utf_op(src + i, &op, &oplen)) { dst[j++] = op; i += oplen; continue; }
     if (strncmp(src + i, "nand", 4) == 0) { dst[j++] = '@'; i += 4; continue; }
     if (strncmp(src + i, "implies", 7) == 0) { dst[j++] = '>'; i += 7; continue; }
     if (strncmp(src + i, "nor", 3) == 0) { dst[j++] = '#'; i += 3; continue; }
@@ -3706,6 +3730,8 @@ static const char *skip_bool_words(const char *e) {
 static void bool_arg_for_cmd(const char *src, char *dst, int cap) {
   int p = 0;
   for (int i = 0; src[i] && p + 1 < cap;) {
+    char op; int oplen;
+    if (bool_utf_op(src + i, &op, &oplen)) { dst[p++] = op; i += oplen; continue; }
     if (starts(src + i, "nand")) { dst[p++] = '@'; i += 4; continue; }
     if (starts(src + i, "implies")) { dst[p++] = '>'; i += 7; continue; }
     if (starts(src + i, "nor")) { dst[p++] = '#'; i += 3; continue; }
@@ -3895,6 +3921,8 @@ static bool make_gate_form_cmd(const char *input, bool nand, char *cmd, int cap)
         expr[p++] = w[k];
       }
     } else {
+      char op; int oplen;
+      if (bool_utf_op(input + i, &op, &oplen)) { expr[p++] = op; i += oplen; continue; }
       if (input[i] == '+' || input[i] == '*' || input[i] == '&' || input[i] == '|' || input[i] == '^' || input[i] == '\'' ||
           input[i] == ',' || input[i] == '(' || input[i] == ')') expr[p++] = input[i] == ',' ? '\'' : input[i];
       ++i;
@@ -7012,7 +7040,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     sprintf(cmd, "truth(%c^%c)", a, b); return eval_bool(cmd, out);
   }
   if ((nv == 0 || has(compact, "simplify") || has(compact, "boolean") || has(compact, "logic")) &&
-      (has(compact, "nand") || has(compact, "nor") || has(compact, "xor") || has(compact, "implies") ||
+      (has_bool_utf_op(compact) || has(compact, "nand") || has(compact, "nor") || has(compact, "xor") || has(compact, "implies") ||
        has(compact, "and") || has(compact, "or") || has(compact, "not") || has(compact, "+") || has(compact, "*") || has(compact, "'") || has(compact, ","))) {
     const char *e = skip_bool_words(compact); char ce[96], ne[96];
     bool_clean_tail(e, ce, sizeof(ce));
