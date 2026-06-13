@@ -485,6 +485,36 @@ static bool num_before_unit(const char *s, const char *unit, double *v) {
   return false;
 }
 
+static int scan_load_at_pairs(const char *s, double loads[], double pos[], int maxp) {
+  int n = 0;
+  for (int i = 0; s && s[i] && n < maxp; ++i) {
+    if (tolower((unsigned char)s[i]) != 'n') continue;
+    if (i > 0 && isalpha((unsigned char)s[i-1])) continue;
+    if (isalpha((unsigned char)s[i+1])) continue;
+    int k = i - 1;
+    while (k >= 0 && (s[k] == ' ' || s[k] == '\t')) --k;
+    int end = k;
+    while (k >= 0 && (isdigit((unsigned char)s[k]) || s[k] == '.')) --k;
+    if (end <= k) continue;
+    char wb[32]; int wlen = end - k;
+    if (wlen <= 0 || wlen >= (int)sizeof(wb)) continue;
+    memcpy(wb, s + k + 1, wlen); wb[wlen] = 0;
+    const char *at = 0;
+    for (int q = i + 1; s[q] && q < i + 45; ++q) {
+      if (tolower((unsigned char)s[q]) == 'a' && tolower((unsigned char)s[q+1]) == 't' &&
+          !isalpha((unsigned char)s[q+2])) { at = s + q + 2; break; }
+      if (tolower((unsigned char)s[q]) == 'n') break;
+    }
+    if (!at) continue;
+    while (*at && !isdigit((unsigned char)*at) && *at != '-' && at < s + i + 60) ++at;
+    if (!*at || at >= s + i + 60) continue;
+    loads[n] = read_num(wb);
+    pos[n] = read_num(at);
+    ++n;
+  }
+  return n;
+}
+
 static double vec_coeff_before(const char *base, const char *p) {
   const char *q = p - 1;
   while (q >= base && (*q == ' ' || *q == '\t' || *q == ',')) --q;
@@ -1852,6 +1882,44 @@ static int eval_mech(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
 
 static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   char a[8][48]; int na = args(s, a, 8);
+  if (has(s, "given") && has(s, "n(") && (has(s, "p(x>") || has(s, "p(x<"))) {
+    double mu = 0, second = 0;
+    bool hd = dist2(s, "~n", &mu, &second) || dist2(s, "fromn", &mu, &second) ||
+              (starts(s, "n(") && dist2(s, "n", &mu, &second));
+    if (hd) {
+      double sig = has(s, "^2") ? second : root(second);
+      const char *given = strstr(s, "given");
+      const char *gtp = strstr(s, "p(x>");
+      const char *ltp = strstr(s, "p(x<");
+      const char *gxgt = given ? strstr(given, "x>") : 0;
+      const char *gxlt = given ? strstr(given, "x<") : 0;
+      char cmd[120];
+      if (gtp && gxgt) {
+        double x = read_num(gtp + (gtp[4] == '=' ? 5 : 4));
+        double g = read_num(gxgt + (gxgt[2] == '=' ? 3 : 2));
+        sprintf(cmd, "normalcond(%.10g,%.10g,%.10g,%.10g,1)", x, g, mu, sig);
+        return eval_stats(cmd, out);
+      }
+      if (ltp && gxlt) {
+        double x = read_num(ltp + (ltp[4] == '=' ? 5 : 4));
+        double g = read_num(gxlt + (gxlt[2] == '=' ? 3 : 2));
+        sprintf(cmd, "normalcond(%.10g,%.10g,%.10g,%.10g,-1)", x, g, mu, sig);
+        return eval_stats(cmd, out);
+      }
+      if (ltp && gxgt) {
+        double upper = read_num(ltp + (ltp[4] == '=' ? 5 : 4));
+        double lower = read_num(gxgt + (gxgt[2] == '=' ? 3 : 2));
+        sprintf(cmd, "normalcondbetween(%.10g,%.10g,%.10g,%.10g,%.10g,1)", lower, upper, lower, mu, sig);
+        return eval_stats(cmd, out);
+      }
+      if (gtp && gxlt) {
+        double lower = read_num(gtp + (gtp[4] == '=' ? 5 : 4));
+        double upper = read_num(gxlt + (gxlt[2] == '=' ? 3 : 2));
+        sprintf(cmd, "normalcondbetween(%.10g,%.10g,%.10g,%.10g,%.10g,-1)", lower, upper, upper, mu, sig);
+        return eval_stats(cmd, out);
+      }
+    }
+  }
   if (starts3(s, "outliers(", "iqrfences(", "outlierfences(") && na >= 2) {
     double q1=num(a[0]), q3=num(a[1]), iqr=q3-q1, lo=q1-1.5*iqr, hi=q3+1.5*iqr;
     int n = add(out, 0, "Use the 1.5*IQR rule for outliers.");
@@ -4396,6 +4464,35 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if ((has(t, "beam") || has(t, "support") || has(t, "reaction")) && (has(t, "load") || has(t, "weight")) &&
       !has(t, "ladder") && nv >= 3) {
+    double pairW[8], pairX[8];
+    int pairN = scan_load_at_pairs(input, pairW, pairX, 8);
+    if (pairN > 0 && !has(c, "distancex") && !has(c, "findx")) {
+      double L = 0, bw = 0, bm = 0;
+      bool hL = label_num(input, "length", &L) || word_num(input, "length", &L);
+      bool hb = word_num(input, "weight", &bw) || prev_word_num(input, "weight", &bw);
+      if (!hb && (word_num(input, "mass", &bm) || prev_word_num(input, "mass", &bm))) { bw = 9.8*bm; hb = true; }
+      if (!hL) L = v[0];
+      if (L > 0) {
+        double sumW = hb ? bw : 0, moment = hb ? bw * L / 2.0 : 0;
+        int n = add(out, 0, "For a horizontal beam in equilibrium, use moments and vertical forces.");
+        n = add(out, n, "Take moments about the left support A.");
+        if (hb) {
+          n = add(out, n, "For a uniform rod/beam, include its weight at the midpoint.");
+          n = add(out, n, "rod weight moment = %.10g*(%.10g/2)", bw, L);
+        }
+        char rhs[180]; rhs[0] = 0; int p = 0;
+        if (hb) p += sprintf(rhs+p, "%.10g*(%.10g/2)", bw, L);
+        for (int i = 0; i < pairN; ++i) {
+          sumW += pairW[i]; moment += pairW[i] * pairX[i];
+          if (p < (int)sizeof(rhs) - 36) p += sprintf(rhs+p, "%s%.10g*%.10g", p ? " + " : "", pairW[i], pairX[i]);
+        }
+        double RB = moment / L, RA = sumW - RB;
+        n = add(out, n, "R_B*%.10g = %s", L, rhs);
+        n = add(out, n, "R_B = %.10g N", RB);
+        n = add(out, n, "Vertical equilibrium: R_A + R_B = %.10g", sumW);
+        return add(out, n, "R_A = %.10g N", RA);
+      }
+    }
     if ((has(t, "rod") || has(t, "uniform") || has(t, "beam")) &&
         has(t, "support") && (has(t, "leftend") || (has(t, "left") && has(t, "end"))) && nv >= 5) {
       double L = 0, bw = 0, a_pos = 0, b_pos = 0, load = 0;
@@ -4991,6 +5088,14 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       F = read_num(pb + 10);
       hF = true;
     }
+    if (!hF && (has(t, "pulled") || has(t, "pull"))) {
+      const char *by = strstr(t, ",by,");
+      while (by && !hF) {
+        double q = read_num(by + 4);
+        if (q > 1) { F = q; hF = true; break; }
+        by = strstr(by + 4, ",by,");
+      }
+    }
     bool hmu = label_num(input,"mu",&mu) || label_num(input,"coefficient",&mu) || word_num(input,"coefficient",&mu);
     bool hAng = label_num(input,"angle",&ang) || word_num(input,"angle",&ang) || word_num(input,"degrees",&ang);
     if (!hm) m = v[0];
@@ -5260,7 +5365,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       (has(t, "constant") || has(t, "speed")) && !has(t, "degrees") && nv >= 4) {
     double m=0, P=0, spd=0, r=0;
     bool hm=label_num(input,"mass",&m) || word_num(input,"mass",&m);
-    bool hP=label_num(input,"power",&P) || word_num(input,"power",&P);
+    bool hP=label_num(input,"power",&P) || word_num(input,"power",&P) ||
+            num_before_unit(input,"kw",&P) || num_before_unit(input,"kilowatt",&P);
     bool hs=num_before_unit(input,"m/s",&spd) || num_before_unit(input,"ms^-1",&spd) ||
             word_num(input,"speed",&spd) || word_num(input,"velocity",&spd);
     bool hr=word_num(input,"resistance",&r) || label_num(input,"resistance",&r);
@@ -5282,11 +5388,13 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if ((has(t, "incline") || has(t, "slope") || has(t, "plane")) &&
       has(t, "power") && (has(t, "resistance") || has(t, "resistive")) &&
-      (has(t, "speed") || has(t, "velocity") || has(t, "travels")) &&
+      (has(t, "speed") || has(t, "velocity") || has(t, "travels") || has(c, "m/s") || has(t, "m,s")) &&
       (has(t, "acceleration") || has(t, "accelerate") || has(c, "findacceleration")) && nv >= 5) {
     double m=0, P=0, spd=0, r=0, ang=0;
     bool hm=label_num(input,"mass",&m) || word_num(input,"mass",&m);
-    bool hP=label_num(input,"power",&P) || word_num(input,"power",&P) || prev_word_num(input,"kw",&P) || prev_word_num(input,"kilowatt",&P);
+    bool hP=label_num(input,"power",&P) || word_num(input,"power",&P) ||
+            prev_word_num(input,"kw",&P) || prev_word_num(input,"kilowatt",&P) ||
+            num_before_unit(input,"kw",&P) || num_before_unit(input,"kilowatt",&P);
     bool hs=num_before_unit(input,"m/s",&spd) || num_before_unit(input,"ms^-1",&spd) ||
             word_num(input,"speed",&spd) || word_num(input,"velocity",&spd);
     bool hr=word_num(input,"resistance",&r) || label_num(input,"resistance",&r);
@@ -6294,7 +6402,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       return eval_stats(cmd, out);
     }
   }
-  if (has(t, "normal")) {
+  if (has(t, "normal") || has(c, "~n(") || has(c, "x~n(") || has(c, "fromn(")) {
     double x=0, xb=0, mu=0, sig=0, var=0, n0=0, alpha=0, lo=0, hi=0, area=0;
     bool hX=label_num(input,"x",&x) || label_num(input,"value",&x) || word_num(input,"x",&x) || word_num(input,"value",&x);
     bool hXb=label_num(input,"xbar",&xb) || label_num(input,"samplemean",&xb);
@@ -6315,6 +6423,20 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     bool hHi=label_num(input,"upper",&hi) || label_num(input,"hi",&hi);
     bool hArea=label_num(input,"area",&area) || label_num(input,"probability",&area) ||
                (!has(t, "percentile") && label_num(input,"p",&area));
+    double dmu = 0, dsecond = 0;
+    bool hDist = dist2(c, "~n", &dmu, &dsecond) || dist2(c, "fromn", &dmu, &dsecond) ||
+                 (starts(c, "n(") && dist2(c, "n", &dmu, &dsecond));
+    if (hDist) {
+      mu = dmu;
+      sig = has(c, "^2") ? dsecond : root(dsecond);
+      hMu = hSig = true;
+      hVar = false;
+    }
+    if (!hN) {
+      double qn = 0;
+      if (prev_word_num(input, "observations", &qn) || prev_word_num(input, "observation", &qn) ||
+          prev_word_num(input, "values", &qn)) { n0 = qn; hN = true; }
+    }
     if ((has(c, "-a<x<") || has(c, "-k<x<") || has(c, "between")) &&
         (has(t, "find") || has(t, "such")) && hMu && (hSig || hVar) && nv >= 3) {
       double prob = 0;
@@ -6501,9 +6623,28 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
           sprintf(cmd, "normalcondbetween(%.10g,%.10g,%.10g,%.10g,%.10g,-1)", lower, upper, upper, mu, sd);
           return eval_stats(cmd, out);
         }
+        if (gtp && (gxgt || gphrasegt)) {
+          double x0 = read_num(gtp + (gtp[4] == '=' ? 5 : 4));
+          int skip = starts(gphrasegt ? gphrasegt : "", "xisgreaterthan") ? 14 :
+                     starts(gphrasegt ? gphrasegt : "", "xgreaterthan") ? 12 :
+                     starts(gphrasegt ? gphrasegt : "", "xismorethan") ? 11 : 9;
+          double g0 = gxgt ? read_num(gxgt + (gxgt[2] == '=' ? 3 : 2)) : read_num(gphrasegt + skip);
+          sprintf(cmd, "normalcond(%.10g,%.10g,%.10g,%.10g,1)", x0, g0, mu, sd);
+          return eval_stats(cmd, out);
+        }
+        if (ltp && (gxlt || gphraselt)) {
+          double x0 = read_num(ltp + (ltp[4] == '=' ? 5 : 4));
+          int skip = starts(gphraselt ? gphraselt : "", "xislessthan") ? 11 :
+                     starts(gphraselt ? gphraselt : "", "xlessthan") ? 9 :
+                     starts(gphraselt ? gphraselt : "", "xisbelow") ? 8 : 6;
+          double g0 = gxlt ? read_num(gxlt + (gxlt[2] == '=' ? 3 : 2)) : read_num(gphraselt + skip);
+          sprintf(cmd, "normalcond(%.10g,%.10g,%.10g,%.10g,-1)", x0, g0, mu, sd);
+          return eval_stats(cmd, out);
+        }
       }
       for (int i = 0; i < nv && nu < 3; ++i) {
-        if (near_num(v[i], mu) || (hSig && near_num(v[i], sig)) || (hVar && near_num(v[i], var))) continue;
+        if (near_num(v[i], mu) || (hDist && near_num(v[i], dsecond)) ||
+            (hSig && near_num(v[i], sig)) || (hVar && near_num(v[i], var))) continue;
         u[nu++] = v[i];
       }
       if (nu >= 2) {
@@ -6545,9 +6686,10 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     }
     if (has(t, "sample") && has(t, "mean") && hMu && hSig && hN &&
         (has(t, "probability") || has(t, "find")) && !has(t, "hypothesis") && !has(t, "test")) {
-      if (has(t, "between")) {
+      if (has(t, "between") || has(c, "<xbar<") || has(c, "<samplemean<")) {
         double bounds[2]; int bc = 0;
         for (int i = 0; i < nv && bc < 2; ++i) {
+          if (has(c, "^2") && near_num(v[i], 2)) continue;
           if (near_num(v[i], mu) || near_num(v[i], sig) || near_num(v[i], n0)) continue;
           bounds[bc++] = v[i];
         }
@@ -6563,6 +6705,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       }
       double bound = 0; bool hb = false;
       for (int i = 0; i < nv; ++i) {
+        if (has(c, "^2") && near_num(v[i], 2)) continue;
         if (near_num(v[i], mu) || near_num(v[i], sig) || near_num(v[i], n0)) continue;
         bound = v[i]; hb = true;
       }
@@ -8395,9 +8538,10 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
         word_num(input, "samplesize", &tmp) || word_num(input, "size", &tmp)) n0 = tmp;
     const char *sof2 = strstr(c, "sampleof");
     if (sof2 && isdigit((unsigned char)sof2[8])) n0 = read_num(sof2 + 8);
-    if (has(t, "between")) {
+    if (has(t, "between") || has(c, "<xbar<") || has(c, "<samplemean<")) {
       double bounds[2]; int bc = 0;
       for (int i = 0; i < nv && bc < 2; ++i) {
+        if (has(c, "^2") && near_num(v[i], 2)) continue;
         if (near_num(v[i], mu) || near_num(v[i], sig) || near_num(v[i], n0)) continue;
         bounds[bc++] = v[i];
       }
@@ -8416,6 +8560,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       }
     }
     for (int i = 0; i < nv; ++i) {
+      if (has(c, "^2") && near_num(v[i], 2)) continue;
       if (near_num(v[i], sig) || near_num(v[i], n0)) continue;
       if (near_num(v[i], mu)) continue;
       bound = v[i];
@@ -8760,6 +8905,10 @@ int p3_eval(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   char s[192]; clean(input, s, sizeof(s));
   if (!s[0]) return add(out, 0, "Enter a Paper 3 command.");
   if ((has(s, "acceleration") || has(s, "accn")) && has(s, "/")) {
+    int nf = eval_free_text(input, out); if (nf) return nf;
+  }
+  if (has(s, "given") && has(s, "n(")) {
+    int ns = eval_stats(s, out); if (ns) return ns;
     int nf = eval_free_text(input, out); if (nf) return nf;
   }
   int n = eval_suvat(s, out); if (n) return n;

@@ -3653,7 +3653,8 @@ static void bool_clean_tail(const char *src, char *dst, int cap) {
     "toatruthtable", "truth", "table", "astruthtable", "intoatruthtable",
     "tokmap", "karnaugh", "map", "intosumofproducts", "tosumofproducts",
     "intosop", "tosop", "intoproductofsums", "toproductofsums", "topos",
-    "productofsums", "tonand", "tonor"
+    "productofsums", "tonand", "tonor", "withvariables", "withvars",
+    "variables", "vars"
   };
   for (int i = 0; i < (int)(sizeof(cut) / sizeof(cut[0])); ++i) {
     char *p = strstr(dst, cut[i]);
@@ -3666,16 +3667,20 @@ static void bool_clean_tail(const char *src, char *dst, int cap) {
 static void truthbits_cmd_from_text(const char *t, const char *bits, char *cmd, int cap) {
   char vars[8] = ""; int vc = 0;
   const char *p = strstr(t, "variables");
-  if (!p) p = strstr(t, "vars");
+  int skip = 9;
+  if (!p) { p = strstr(t, "vars"); skip = 4; }
   if (p) {
-    while (*p && *p != ',') ++p;
+    p += skip;
     while (*p && vc < 6) {
       while (*p == ',') ++p;
-      if (isalpha((unsigned char)*p) && (p[1] == 0 || p[1] == ',')) {
-        char c = (char)toupper((unsigned char)*p);
+      char tok[12]; int tp = 0;
+      while (*p && *p != ',' && tp + 1 < (int)sizeof(tok)) tok[tp++] = *p++;
+      tok[tp] = 0;
+      while (tp > 0 && !isalpha((unsigned char)tok[tp-1])) tok[--tp] = 0;
+      if (tp == 1 && isalpha((unsigned char)tok[0])) {
+        char c = (char)toupper((unsigned char)tok[0]);
         if (!strchr(vars, c)) { vars[vc++] = c; vars[vc] = 0; }
       }
-      while (*p && *p != ',') ++p;
     }
   }
   int outp = sprintf(cmd, "truthbits(");

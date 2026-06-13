@@ -1,5 +1,39 @@
 # Checkpoint
 
+## 2026-06-13 Boolean And Paper 3 Prose Hardening Slice
+
+Completed:
+- Fixed CSCALC Boolean expression cleanup so prose tails like `with variables A B C` are removed before parsing the expression.
+- Fixed CSCALC truth-table output-column variable parsing so punctuation in `variables X Y.` does not drop the final variable.
+- Fixed CASP3 rough-horizontal pulls written as `pulled ... by 40N at 25 degrees`.
+- Fixed CASP3 slope-power acceleration prompts using attached units like `36kW` and `18m/s`.
+- Added generic CASP3 beam/rod parsing for repeated `<load>N at <distance>m` loads, including rod mass converted to weight.
+- Fixed CASP3 `X~N(mu,var)` conditional normal prompts before the plain upper-tail route can consume them.
+- Fixed CASP3 sample-mean prompts from `N(100,15^2)` with symbolic bounds such as `96<Xbar<104`.
+- Added regressions and rebuilt calculator-ready outputs.
+
+Evidence:
+- Targeted probes for Boolean truth tables, output columns, rough horizontal pulls, slope power acceleration, beam load pairs, conditional normal, and sample means: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 483844 bytes`
+  - `CSCALC.g3a: 273156 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: 18178 bytes`
+
+Drift check:
+- Stayed inside CASP3/CSCALC generic free-text parsing, tests, checkpoint, and generated calculator files.
+- No Pure CAS, menu/UI/session, NOTES source, or shared status-bar behavior changed.
+- Active goal remains open for further unseen-case hardening.
+
 ## 2026-06-13 Bits Float Power And Pull Wording Slice
 
 Completed:
