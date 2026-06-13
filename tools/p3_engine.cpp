@@ -2530,7 +2530,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       else n = add(out, n, "v = %.6g t^2 %+.6g t %+.6g", A, B, C);
       if (has(t, "acceleration")) {
         double ta = 0;
-        if (!(word_num_with_t(input, "at", &ta) || word_num(input, "at", &ta))) ta = t1;
+        if (!(word_num_with_t(input, "at", &ta) || word_num(input, "at", &ta) ||
+              word_num_with_t(input, "when", &ta) || word_num(input, "when", &ta))) ta = t1;
         n = add(out, n, "a = dv/dt = %.6g t %+.6g", 2*A, B);
         n = add(out, n, "at t=%.6g, a = %.10g", ta, 2*A*ta + B);
       }
@@ -2583,7 +2584,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if (has(t, "power") && (has(t, "resistance") || has(t, "resistive")) &&
       (has(t, "acceleration") || has(t, "accelerate")) &&
       !has(t, "incline") && !has(t, "slope") && !has(t, "plane") &&
-      (has(t, "speed") || has(t, "velocity") || has(t, "m/s") || has(t, "ms^-1") || has(t, "moves") || has(t, "moving") || has(t, "travels")) && nv >= 4) {
+      (has(t, "speed") || has(t, "velocity") || has(t, "m/s") || has(t, "m,s") || has(t, "ms^-1") || has(t, "moves") || has(t, "moving") || has(t, "travels")) && nv >= 4) {
     double m=0, P=0, sp=0, R=0;
     bool hm=word_num(input,"mass",&m) || label_num(input,"mass",&m);
     bool hP=word_num(input,"power",&P) || label_num(input,"power",&P) || prev_word_num(input,"kw",&P) || prev_word_num(input,"kilowatt",&P);
@@ -4612,7 +4613,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "tan(theta) = %.10g^2/(%.10g*9.8) = %.10g", u, r, tanth);
     return add(out, n, "theta = %.10g degrees", theta);
   }
-  if ((has(t, "circular") || has(t, "centripetal") || has(t, "bend") || has(t, "round")) &&
+  if ((has(t, "circular") || has(t, "circle") || has(t, "centripetal") || has(t, "bend") || has(t, "round")) &&
       (has(t, "angularspeed") || has(t, "omega") || has(t, "rads") || has(c, "rad/s")) && nv >= 2) {
     double r=0,w=0;
     bool hr=word_num(input,"radius",&r) || label_num(input,"radius",&r);
@@ -4638,6 +4639,18 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "mu R = mv^2/r and R=mg");
     n = add(out, n, "v^2 = mu*g*r = %.6g*9.8*%.6g", mu, r);
     return add(out, n, "maximum speed = %.10g m/s", vmax);
+  }
+  if ((has(t, "circular") || has(t, "circle") || has(t, "centripetal") || has(t, "bend") || has(t, "round")) &&
+      (has(t, "acceleration") || has(t, "accelerate")) &&
+      (has(t, "radius") || has(t, "speed") || has(t, "velocity") || has(t, "m,s")) && nv >= 2) {
+    double r=0,u=0;
+    bool hr=word_num(input,"radius",&r) || label_num(input,"radius",&r);
+    bool hu=word_num(input,"speed",&u) || label_num(input,"speed",&u) || word_num(input,"velocity",&u) || num_before_unit(input,"m/s",&u);
+    if (!hr) r = v[0];
+    if (!hu) for (int i = 0; i < nv; ++i) if (!near_num(v[i], r) && v[i] > 0) { u = v[i]; break; }
+    int n = add(out, 0, "For motion in a circle, centripetal acceleration is v^2/r.");
+    n = add(out, n, "a = v^2/r");
+    return add(out, n, "a = %.10g^2/%.10g = %.10g m/s^2", u, r, r ? u*u/r : 0);
   }
   if ((has(t, "hill") || has(t, "hump") || has(t, "top")) &&
       (has(t, "radius") || has(t, "speed") || has(t, "m/s") || has(t, "power") || has(t, "kw")) && nv >= 3) {
@@ -4674,7 +4687,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "R = mg - mv^2/r");
     return add(out, n, "R = %.6g*9.8 - %.6g*%.6g^2/%.6g = %.10g N", m, m, u, r, R);
   }
-  if ((has(t, "circular") || has(t, "centripetal") || has(t, "bend") || has(t, "round")) &&
+  if ((has(t, "circular") || has(t, "circle") || has(t, "centripetal") || has(t, "bend") || has(t, "round")) &&
       (has(t, "radius") || has(t, "speed") || has(t, "force")) && nv >= 3) {
     double m=0, r=0, u=0;
     bool hm=word_num(input,"mass",&m) || label_num(input,"mass",&m);

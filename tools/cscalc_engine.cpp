@@ -5615,6 +5615,14 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     sprintf(cmd, "binsub(%s,%s,%d)", bitgrp[0], bitgrp[1], (int)strlen(bitgrp[0]));
     return eval_binary_arith(cmd, out);
   }
+  if ((has(t, "denary") || has(t, "decimal")) && has(t, "binary") &&
+      (has(t, "hex") || has(t, "hexadecimal")) && nv >= 1 && nb == 0) {
+    long long q = (long long)v[0];
+    char b[65]; int w = q < 256 ? 8 : 16; to_bin(q, w, b);
+    int n = add(out, 0, "Convert denary to each requested base.");
+    n = add(out, n, "%lld_10 = %s_2", q, b);
+    return add(out, n, "%lld_10 = %llX_16", q, q);
+  }
   if (has(t, "binary") && !has(t, "fixed") && !tc && !sm && nv >= 1 && nb == 0 &&
       !(has(t, "bitsneeded") || has(t, "bitwidth") || (has(t, "minimum") && has(t, "bits")) ||
         (has(t, "fewest") && has(t, "bits")) || (has(t, "smallest") && has(t, "bits")))) {
@@ -6285,7 +6293,8 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     }
   }
   if (nv == 0 && !has(compact, "orc") && !has(compact, "+c") &&
-      (has(compact, "demorgan") || has(compact, "not(aandb)") || has(compact, "not(a*b)")) &&
+      (has(compact, "not(aandb)") || has(compact, "not(a*b)") ||
+       has(compact, "(aandb)'") || has(compact, "(a*b)'")) &&
       (has(compact, "notaorb") || has(compact, "notaornotb") || has(compact, "="))) {
     sprintf(cmd, "boolprove((A&B)',A'+B')");
     return eval_bool_prove(cmd, out);
