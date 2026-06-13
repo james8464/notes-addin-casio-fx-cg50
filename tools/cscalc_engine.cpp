@@ -2225,6 +2225,13 @@ static bool image_depth_is_bytes(const char *t) {
          ((has(t, "bytes") || has(t, "byte")) && !bit_word);
 }
 
+static bool image_depth_bytes_applies(const char *t, double depth_value) {
+  if (has(t, "bytesperpixel") || has(t, "byteperpixel") ||
+      has(t, "bytes,per,pixel") || has(t, "byte,per,pixel")) return true;
+  if ((has(t, "colours") || has(t, "colors"))) return false;
+  return image_depth_is_bytes(t) && depth_value > 0 && depth_value <= 8;
+}
+
 static int add_image_byte_depth_lines(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN], long long w, long long h, long long bytes_per_pixel) {
   long long depth = bytes_per_pixel * 8;
   long long bits = w * h * depth;
@@ -5004,12 +5011,13 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     double pixels = v[0] * 1000000.0, depth = v[1];
     int colour_depth = 0;
     if (has(t, "colours") || has(t, "colors")) { double cv = scaled_colour_count(t, v[1]); colour_depth = ceil_log2_ll((long long)cv); depth = colour_depth; }
-    if (image_depth_is_bytes(t)) depth *= 8.0;
+    bool byte_depth = image_depth_bytes_applies(t, v[1]);
+    if (byte_depth) depth *= 8.0;
     double bits_total = pixels * depth, bytes = bits_total / 8.0;
     int n = add(out, 0, "Image bits = pixels * colour depth.");
     n = add(out, n, "%.10g megapixels = %.10g pixels", v[0], pixels);
     if (colour_depth) n = add(out, n, "ceil(log2(%.10g)) = %d bits per pixel", scaled_colour_count(t, v[1]), colour_depth);
-    else if (image_depth_is_bytes(t)) n = add(out, n, "%.10g bytes per pixel = %.10g bits per pixel", v[1], depth);
+    else if (byte_depth) n = add(out, n, "%.10g bytes per pixel = %.10g bits per pixel", v[1], depth);
     n = add(out, n, "%.10g*%.10g = %.10g bits", pixels, depth, bits_total);
     n = add(out, n, "= %.10g bytes", bytes);
     n = add(out, n, "= %.10g MB", bytes / 1000000.0);
@@ -5047,7 +5055,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       return add(out, n, "colour depth = %.10g/%.10g = %.10g bits per pixel", file_bits, w*h, depth);
     }
   }
-  if ((has(t, "image") || has(t, "bitmap")) && image_depth_is_bytes(t) && nv >= 3) {
+  if ((has(t, "image") || has(t, "bitmap")) && nv >= 3 && image_depth_bytes_applies(t, v[2])) {
     return add_image_byte_depth_lines(out, (long long)v[0], (long long)v[1], (long long)v[2]);
   }
   if ((has(t, "image") || has(t, "bitmap")) && (has(t, "metadata") || has(t, "header") || has(t, "overhead")) && nv >= 4) {
@@ -5092,7 +5100,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     sprintf(cmd, "imagecolors(%lld,%lld,%lld)", (long long)v[0], (long long)v[1], (long long)scaled_colour_count(t, v[2])); return eval_storage(cmd, out);
   }
   if ((has(t, "image") || has(t, "bitmap")) && label_num(input,"width",&width) && label_num(input,"height",&height) && (label_num(input,"depth",&depth) || label_num(input,"bits",&depth))) {
-    if (image_depth_is_bytes(t)) return add_image_byte_depth_lines(out, (long long)width, (long long)height, (long long)depth);
+    if (image_depth_bytes_applies(t, depth)) return add_image_byte_depth_lines(out, (long long)width, (long long)height, (long long)depth);
     sprintf(cmd, "image(%lld,%lld,%lld)", (long long)width, (long long)height, (long long)depth); return eval_storage(cmd, out);
   }
   if ((has(t, "image") || has(t, "bitmap")) && label_num(input,"width",&width) && label_num(input,"height",&height) && (label_num(input,"colours",&depth) || label_num(input,"colors",&depth))) {
@@ -6499,7 +6507,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       }
       sprintf(cmd, "imagecolors(%lld,%lld,%lld)", (long long)v[0], (long long)v[1], (long long)scaled_colour_count(t, v[2])); return eval_storage(cmd, out);
     }
-    if (image_depth_is_bytes(t)) return add_image_byte_depth_lines(out, (long long)v[0], (long long)v[1], (long long)v[2]);
+    if (image_depth_bytes_applies(t, v[2])) return add_image_byte_depth_lines(out, (long long)v[0], (long long)v[1], (long long)v[2]);
     sprintf(cmd, "image(%lld,%lld,%lld)", (long long)v[0], (long long)v[1], (long long)v[2]); return eval_storage(cmd, out);
   }
   if ((has(t, "sound") || has(t, "audio")) && nv >= 3) {

@@ -241,6 +241,8 @@ def main():
     require("A bitmap image has resolution 1280 x 720 and 16 million colours. Calculate file size in MiB.", ["ceil(log2(16000000)) = 24 bits per pixel", "2.63672 MiB"])
     require("bitmap image 1024 by 768 with 3 bytes per pixel", ["3 bytes per pixel = 24 bits per pixel", "1024*768*24 = 18874368 bits"])
     require("image resolution width=1024 height=768 depth=3 bytes", ["3 bytes per pixel = 24 bits per pixel", "2.3593e+06 bytes"])
+    require("A bitmap uses resolution 800x600 and 256 colours. Calculate storage in bytes.", ["ceil(log2(256)) = 8 bits per pixel", "800*600*8 = 3840000 bits", "480000 bytes"])
+    require("image 1920 by 1080 depth 24 calculate bytes", ["Image bits = width * height * colour depth", "1920*1080*24 = 49766400 bits", "6.2208e+06 bytes"])
     require("imagecolors(100,50,16)", ["ceil(log2(16)) = 4", "20000 bits"])
     require("bitmap image 100 x 50 with 16 colours", ["ceil(log2(16)) = 4", "20000 bits"])
     require("bitmap image width=100 height=50 colours=16", ["ceil(log2(16)) = 4", "20000 bits"])

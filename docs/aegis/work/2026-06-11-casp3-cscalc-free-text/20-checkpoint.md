@@ -1,5 +1,36 @@
 # Checkpoint
 
+## 2026-06-13 CSCALC Image Depth Parser Slice
+
+Completed:
+- Fixed generic image/bitmap storage parsing so answer-unit wording like `in bytes` does not make palette size or bit depth get treated as bytes per pixel.
+- Kept explicit `bytes per pixel` and small labelled byte-depth prompts working.
+- Added regressions and rebuilt calculator-ready outputs.
+
+Evidence:
+- `256 colours` image prompts now use `ceil(log2(256)) = 8 bits per pixel`.
+- `depth 24 calculate bytes` now uses 24 bits per pixel, not 24 bytes per pixel.
+- `depth=3 bytes` and `3 bytes per pixel` prompts still use 24 bits per pixel.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 489492 bytes`
+  - `CSCALC.g3a: 273564 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: 18178 bytes`
+
+Drift check:
+- Stayed inside CSCALC image storage parsing, CS tests, checkpoint, and rebuilt CSCALC artifact.
+- No Pure CAS source, CASP3 source, menu/UI/session, NOTES source, or shared status-bar behavior changed.
+- Active goal remains open for further unseen-case hardening.
+
 ## 2026-06-13 P3 Braking Route Precedence Slice
 
 Completed:
