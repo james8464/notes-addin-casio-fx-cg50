@@ -5528,7 +5528,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if ((has(t, "incline") || has(t, "slope") || has(t, "plane")) &&
       has(t, "power") && (has(t, "angle") || has(t, "find")) &&
       (has(t, "resistance") || has(t, "resistive")) &&
-      (has(t, "constant") || has(t, "speed")) && !has(t, "degrees") && nv >= 4) {
+      (has(t, "constant") || has(t, "speed")) && !has(c, "findpower") &&
+      !has(c, "findenginepower") && !has(t, "degrees") && nv >= 4) {
     double m=0, P=0, spd=0, r=0;
     bool hm=label_num(input,"mass",&m) || word_num(input,"mass",&m);
     bool hP=label_num(input,"power",&P) || word_num(input,"power",&P) ||

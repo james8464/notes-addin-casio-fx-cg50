@@ -5546,6 +5546,37 @@ Drift check:
 - Kept changes to CASP3/CSCALC generic free-text routing, regressions, generated app outputs, and this checkpoint.
 - Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.
 
+## 2026-06-13 Uphill Power Routing Slice
+
+Completed:
+- Fixed CASP3 incline/slope power routing so `Find power` with mass, slope angle, resistance, and speed computes `Power = Fv`.
+- Preserved the separate route for finding slope angle from known engine power.
+- Added regression coverage and rebuilt changed calculator files.
+
+Evidence:
+- Fresh probes fixed:
+  - `A car of mass 1200kg moves up a 5 degree slope with resistance 400N at speed 12m/s. Find power.`
+  - Existing angle-from-power wording still routes correctly.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 499512 bytes`
+  - `CSCALC.g3a: 275836 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CASP3.g3a sha256: c4c7cfc9c8ab003eecd58ebf46551ec24a9b12c54fff7980bf0a3868478b3c0c`
+  - `CSCALC.g3a sha256: 60ac097070ff264d9ac1c123232f5f955a6859e09d2290e82beecc8adf697a04`
+
+Drift check:
+- Kept changes to CASP3 free-text routing, regression, generated CASP3 output, and this checkpoint.
+- Did not touch CAS Pure behavior, menus, NOTES source, CSCALC source, or shared UI/status code.
+
 ## 2026-06-12 Two's Complement, Word Addressing, and Inverse Binomial Slice
 
 Completed:
