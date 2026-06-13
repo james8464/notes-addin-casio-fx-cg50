@@ -2456,13 +2456,16 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       return eval_stats(cmd, out);
     }
   }
-  if ((has(t, "workenergy") || (has(t, "work") && has(t, "energy"))) &&
+  if ((has(t, "workenergy") || (has(t, "work") && has(t, "energy")) ||
+       has(t, "stoppingdistance") || (has(t, "stopping") && has(t, "distance"))) &&
       (has(t, "braking") || has(t, "brake") || has(t, "stopping")) &&
       (has(t, "force") || has(t, "resistance")) && (has(t, "rest") || has(t, "stopping")) && nv >= 3) {
     double m=0, u=0, F=0;
     bool hm=word_num(input,"mass",&m) || label_num(input,"mass",&m);
     bool hu=word_num(input,"speed",&u) || word_num(input,"velocity",&u) || word_num(input,"at",&u);
-    bool hF=word_num(input,"force",&F) || word_num(input,"brakingforce",&F) || label_num(input,"force",&F);
+    bool hF=word_num(input,"force",&F) || word_num(input,"brakingforce",&F) ||
+            word_num(input,"resistance",&F) || label_num(input,"force",&F) ||
+            label_num(input,"resistance",&F);
     if (!hm) m = v[0];
     if (!hu) u = v[1];
     if (!hF) F = v[2];
@@ -6758,6 +6761,30 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       n = add(out, n, "(1-p)^%.0f = %.10g", trials, q);
       n = add(out, n, "1-p = %.10g^(1/%.0f) = %.10g", q, trials, fail);
       return add(out, n, "p = %.10g", p);
+    }
+  }
+  if (has(t, "geometric") && nv >= 2) {
+    double p = 0, r = 0;
+    bool hp = label_num(input, "p", &p) || word_num(input, "p", &p) ||
+              word_num(input, "probability", &p);
+    if (!hp) for (int i = 0; i < nv; ++i) if (v[i] > 0 && v[i] < 1) { p = v[i]; hp = true; break; }
+    int tail = prob_tail(c, t);
+    if (!prob_x_bound(c, &r, &tail)) {
+      for (int i = nv - 1; i >= 0; --i) if (!near_num(v[i], p) && v[i] >= 1) { r = v[i]; break; }
+    }
+    if (p > 0 && p < 1 && r >= 1) {
+      int n = add(out, 0, "For X geometric, X is the trial number of the first success.");
+      n = add(out, n, "P(X=r)=(1-p)^(r-1)p and P(X>r)=(1-p)^r.");
+      if (tail > 0) {
+        double prob = tail == 2 ? pwr(1 - p, (int)r) : pwr(1 - p, (int)r - 1);
+        return add(out, n, "P(X%s%.0f)=(1-%.6g)^%d = %.10g", tail == 2 ? ">" : ">=", r, p, tail == 2 ? (int)r : (int)r - 1, prob);
+      }
+      if (tail < 0) {
+        double prob = tail == -2 ? 1 - pwr(1 - p, (int)r - 1) : 1 - pwr(1 - p, (int)r);
+        return add(out, n, "P(X%s%.0f)=1-(1-%.6g)^%d = %.10g", tail == -2 ? "<" : "<=", r, p, tail == -2 ? (int)r - 1 : (int)r, prob);
+      }
+      double prob = pwr(1 - p, (int)r - 1) * p;
+      return add(out, n, "P(X=%.0f)=(1-%.6g)^%.0f*%.6g = %.10g", r, p, r - 1, p, prob);
     }
   }
   if ((has(t, "firsthead") || (has(t, "first") && (has(t, "head") || has(t, "win") || has(t, "success"))) || has(t, "geometric")) &&

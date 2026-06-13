@@ -958,7 +958,8 @@ static bool make_sql_cmd(const char *in, char *cmd, int cap) {
 }
 
 static bool minterm_skip_word(const char *w) {
-  return word_is(w, "kmap") || word_is(w, "karnaugh") || word_is(w, "map") ||
+  return word_is(w, "kmap") || word_is(w, "k-map") ||
+         word_is(w, "karnaugh") || word_is(w, "karnaugh-map") || word_is(w, "map") ||
          word_is(w, "draw") || word_is(w, "make") || word_is(w, "create") ||
          word_is(w, "minterm") || word_is(w, "minterms") || word_is(w, "ones") ||
          word_is(w, "maxterm") || word_is(w, "maxterms") || word_is(w, "zeros") ||

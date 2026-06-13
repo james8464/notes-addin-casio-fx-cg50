@@ -410,6 +410,7 @@ def main():
     require("Find POS form for truth table variables A B outputs 1000.", ["0-cells/maxterms: 1,2,3", "POS = (A+B')&(A'+B)&(A'+B')", "simplified POS = (B')&(A')"])
     require("simplify minterms 1 2 for A B", ["K-map/minterm method", "variables: A,B", "SOP = A'&B+A&B'", "simplified = A'B+AB'"])
     require("Karnaugh map ones 1 3 5 7 variables A B C", ["K-map/minterm method", "variables: A,B,C", "simplified = C"])
+    require("K-map variables A B C minterms 1 3 7 dont cares 0 2", ["K-map/minterm method", "variables: A,B,C", "don't-care rows: 0,2", "simplified = A'+BC"])
     require("kmap ones 0,2,5,7 dc 1,3 variables X Y Z", ["variables: X,Y,Z", "don't-care rows: 1,3", "simplified = X'+Z"])
     require("Draw a Karnaugh map for minterms 1 3 7 with variables A B C and simplify.", ["K-map/minterm method", "variables: A,B,C", "simplified = A'C+BC"])
     require("Find sum of products from minterms 1,3,7 for variables A B C.", ["variables: A,B,C", "m1 = A'&B'&C", "simplified = A'C+BC"])

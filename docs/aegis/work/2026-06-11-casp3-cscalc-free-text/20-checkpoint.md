@@ -1,5 +1,36 @@
 # Checkpoint
 
+## 2026-06-13 Geometric, Braking, And K-Map Wording Slice
+
+Completed:
+- Compared current CSCALC Boolean engine with the legacy Python Boolean parser idea for implicit products and K-map parsing.
+- Fixed CSCALC K-map/minterm free-text parsing so hyphenated `K-map` is treated as a command word, not variables `K,M,A,P`.
+- Added CASP3 direct geometric-distribution working for arbitrary `X~Geometric` tail/exact prompts using stated `p`.
+- Broadened CASP3 braking/stopping-distance work-energy routing so it works without explicitly saying `work-energy`.
+- Added regressions and rebuilt calculator-ready outputs.
+
+Evidence:
+- Targeted probes for `K-map variables A B C...`, `X has geometric distribution... P(X>5)`, and mass/speed/resistance stopping-distance wording: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 472572 bytes`
+  - `CSCALC.g3a: 267824 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: 18178 bytes`
+
+Drift check:
+- Stayed inside CASP3/CSCALC free-text route hardening, tests, checkpoint, and generated calculator files.
+- Did not alter Pure CAS, NOTES source, menus, or shared UI/status code.
+- Active goal remains open for more unseen-case hardening.
+
 ## 2026-06-13 CS Coding, Subnet, Hashing, And Graph Wording Slice
 
 Completed:
