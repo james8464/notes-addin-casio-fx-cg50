@@ -2365,6 +2365,32 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   double v[12]; int nv = scan_nums(t, v, 12);
   char cmd[160];
 
+  if (!has(t, "variable") && !has(c, "v=(") && !has(t, "projected") && !has(t, "projectile") &&
+      (has(t, "velocity") || has(t, "speed")) &&
+      (has(t, "increasesfrom") || has(t, "decreasesfrom") || has(t, "from")) &&
+      (has(t, "over") || has(t, "distance") || has(t, "metre") || has(t, "meter")) &&
+      (has(t, "acceleration") || has(t, "time")) && nv >= 3) {
+    double u=0, vv=0, sdist=0;
+    bool hu = word_num(input, "from", &u);
+    bool hv = word_num(input, "to", &vv);
+    bool hs = word_num(input, "over", &sdist) || word_num(input, "distance", &sdist) ||
+              prev_word_num(input, "m", &sdist) || prev_word_num(input, "metres", &sdist) ||
+              prev_word_num(input, "meters", &sdist);
+    if (!hu || !hv || !hs) {
+      int start = nv >= 4 && (has(t, "mass") || has(t, "kg")) ? 1 : 0;
+      if (!hu) u = v[start];
+      if (!hv) vv = v[start+1];
+      if (!hs) sdist = v[start+2];
+    }
+    double acc = (vv*vv - u*u) / (2*sdist);
+    double tm = (u + vv) ? 2*sdist/(u+vv) : 0;
+    int n = add(out, 0, "Use SUVAT with u, v and s.");
+    n = add(out, n, "v^2 = u^2 + 2as");
+    n = add(out, n, "a = (%.10g^2-%.10g^2)/(2*%.10g) = %.10g m/s^2", vv, u, sdist, acc);
+    n = add(out, n, "s = 1/2(u+v)t");
+    return add(out, n, "t = 2*%.10g/(%.10g+%.10g) = %.10g s", sdist, u, vv, tm);
+  }
+
   if ((has(c, "~n(") || has(c, "x~n(") || has(c, "n(") || has(c, "followsn(") || has(c, "distributedn(")) &&
       !has(c, "poisson") && !has(t, "poisson") &&
       (has(c, "p(") || has(t, "probability") || has(c, "<x<") ||
@@ -3339,7 +3365,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if ((has(c, "followsb(") || has(c, "~b(") || has(c, "xb(") || has(c, "distributionb(") || has(c, "b(")) && nv >= 2) {
     double Nd=0, pv=0;
     if (!dist2(c, "b(", &Nd, &pv)) { Nd = v[0]; pv = v[1]; }
-    if ((pv <= 0 || pv >= 1) && (has(t, "mean") || has(t, "expected")) && has(t, "variance")) {
+    if ((pv <= 0 || pv >= 1) && (has(t, "mean") || has(t, "expected") || has(c, "e(x)")) &&
+        (has(t, "variance") || has(t, "standarddeviation") || has(c, "standarddeviation") || has(t, "sd"))) {
       double mean = 0;
       bool hm = word_num(input, "mean", &mean) || word_num(input, "expected", &mean);
       if (!hm) mean = v[1];
@@ -3348,8 +3375,11 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
         pv = mean / Nd;
         int n = add(out, 0, "For X ~ B(n,p), mean = np.");
         n = add(out, n, "p = mean/n = %.10g/%.10g = %.10g", mean, Nd, pv);
+        double var = Nd*pv*(1-pv);
         n = add(out, n, "variance = np(1-p)");
-        return add(out, n, "= %.10g*%.10g*(1-%.10g) = %.10g", Nd, pv, pv, Nd*pv*(1-pv));
+        n = add(out, n, "= %.10g*%.10g*(1-%.10g) = %.10g", Nd, pv, pv, var);
+        if (has(t, "standarddeviation") || has(c, "standarddeviation") || has(t, "sd")) return add(out, n, "sd = sqrt(%.10g) = %.10g", var, root(var));
+        return n;
       }
     }
     if ((pv <= 0 || pv >= 1) && has(c, "p)")) {
@@ -4412,6 +4442,28 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     const char *loads_p = strstr(t, "loads");
     const char *act_p = loads_p ? strstr(loads_p, "act") : 0;
     const char *at_p = loads_p ? strstr(loads_p, "at") : 0;
+    if (loads_p && at_p && strstr(loads_p, "n,at") && nv >= 5) {
+      double L = 0, bw = 0, bm = 0;
+      bool hL = label_num(input, "length", &L) || word_num(input, "length", &L);
+      bool hb = word_num(input, "weight", &bw) || prev_word_num(input, "weight", &bw);
+      if (!hb && (word_num(input, "mass", &bm) || prev_word_num(input, "mass", &bm))) { bw = 9.8*bm; hb = true; }
+      if (!hL) L = v[0];
+      double sumW = hb ? bw : 0, moment = hb ? bw * L / 2.0 : 0;
+      int n = add(out, 0, "For a horizontal beam in equilibrium, use moments and vertical forces.");
+      n = add(out, n, "Take moments about the left support A.");
+      char rhs[180]; rhs[0] = 0; int p = 0;
+      if (hb) p += sprintf(rhs+p, "%.10g*(%.10g/2)", bw, L);
+      for (int i = 1; i + 1 < nv; i += 2) {
+        double W = v[i], x = abs_num(v[i+1]);
+        sumW += W; moment += W*x;
+        if (p < (int)sizeof(rhs) - 36) p += sprintf(rhs+p, "%s%.10g*%.10g", p ? " + " : "", W, x);
+      }
+      double RB = L ? moment/L : 0, RA = sumW - RB;
+      n = add(out, n, "R_B*%.10g = %s", L, rhs);
+      n = add(out, n, "R_B = %.10g N", RB);
+      n = add(out, n, "Vertical equilibrium: R_A + R_B = %.10g", sumW);
+      return add(out, n, "R_A = %.10g N", RA);
+    }
     if (loads_p && at_p && (!act_p || at_p < act_p)) {
       char rt[260]; raw_clean(input, rt, sizeof(rt));
       char *rl = strstr(rt, "loads,");
@@ -4970,6 +5022,23 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "resultant force = driving force - resistance");
     n = add(out, n, "F = %.10g - %.10g = %.10g N", drive, r, net);
     return add(out, n, "a = F/m = %.10g/%.10g = %.10g m/s^2", net, m, net / m);
+  }
+  if ((has(t, "pulled") || has(t, "pull") || has(t, "force")) &&
+      (has(t, "resistance") || has(t, "resistive")) &&
+      (has(t, "acceleration") || has(t, "accelerate")) &&
+      !has(t, "incline") && !has(t, "slope") && !has(t, "plane") && nv >= 3) {
+    double m=0, F=0, r=0;
+    bool hm = label_num(input, "mass", &m) || word_num(input, "mass", &m) || prev_word_num(input, "kg", &m);
+    bool hF = word_num(input, "force", &F) || prev_word_num(input, "n", &F);
+    bool hr = word_num(input, "resistance", &r) || label_num(input, "resistance", &r);
+    if (!hm) m = v[0];
+    if (!hF) F = v[1];
+    if (!hr) r = v[2];
+    double net = F - r;
+    int n = add(out, 0, "Use Newton's second law with the resultant force.");
+    n = add(out, n, "resultant force = pull - resistance");
+    n = add(out, n, "F = %.10g - %.10g = %.10g N", F, r, net);
+    return add(out, n, "a = F/m = %.10g/%.10g = %.10g m/s^2", net, m, net/m);
   }
   if ((has(t, "force") || has(t, "newton")) && (has(t, "mass") || has(t, "accel")) &&
       !has(t, "connected") && !has(t, "pulley") && !has(t, "plane") && !has(t, "rough") && !has(t, "incline") && !has(t, "slope") && nv >= 2) {
@@ -5861,7 +5930,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       sprintf(cmd, "binomparams(%.10g,%.10g)", mean, var);
       return eval_stats(cmd, out);
     }
-    if ((has(t, "mean") || has(t, "expected")) && has(t, "variance") &&
+    if ((has(t, "mean") || has(t, "expected") || has(c, "e(x)")) &&
+        (has(t, "variance") || has(t, "standarddeviation") || has(c, "standarddeviation") || has(t, "sd")) &&
         (has(c, ",p,") || has(c, ",p)") || has(c, "b(") || (has(t, "p") && (!hP || pv == 0))) && nv >= 2) {
       double mean = 0;
       bool hm = word_num(input, "mean", &mean) || word_num(input, "expected", &mean);
@@ -5871,8 +5941,11 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
         pv = mean / N;
         int n = add(out, 0, "For X ~ B(n,p), mean = np.");
         n = add(out, n, "p = mean/n = %.10g/%.10g = %.10g", mean, N, pv);
+        double var = N*pv*(1-pv);
         n = add(out, n, "variance = np(1-p)");
-        return add(out, n, "= %.10g*%.10g*(1-%.10g) = %.10g", N, pv, pv, N*pv*(1-pv));
+        n = add(out, n, "= %.10g*%.10g*(1-%.10g) = %.10g", N, pv, pv, var);
+        if (has(t, "standarddeviation") || has(c, "standarddeviation") || has(t, "sd")) return add(out, n, "sd = sqrt(%.10g) = %.10g", var, root(var));
+        return n;
       }
     }
     if (hN && hP && !hA && (has(t, "critical") || has(t, "criticalregion") || has(t, "significance"))) {
@@ -8163,6 +8236,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     double tmp = 0;
     if (word_num(input, "mean", &tmp) || word_num(input, "mu", &tmp)) mu = tmp;
     if (word_num(input, "standarddeviation", &tmp) || word_num(input, "sd", &tmp)) sig = tmp;
+    if (label_num(input, "n", &tmp)) n0 = tmp;
     if (word_num(input, "sampleofsize", &tmp) || word_num(input, "sampleof", &tmp) ||
         word_num(input, "samplesize", &tmp) || word_num(input, "size", &tmp)) n0 = tmp;
     const char *sof2 = strstr(c, "sampleof");

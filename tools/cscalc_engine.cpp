@@ -4370,6 +4370,51 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     n = add(out, n, "instructions = %.10g, time = %.10g s", instr, tm);
     return add(out, n, "MIPS = %.10g/(%.10g*10^6) = %.10g", instr, tm, tm ? instr / (tm * 1000000.0) : 0);
   }
+  if ((has(compact, "calculateclockspeed") || has(compact, "findclockspeed") || has(compact, "clockspeedin")) &&
+      !has(compact, "executiontime") &&
+      (has(t, "instruction") || has(t, "instructions")) &&
+      (has(t, "cpi") || has(t, "cycle") || has(t, "cycles")) &&
+      (has(t, "time") || has(t, "seconds") || has(t, "second")) && nv >= 3) {
+    double instr = 0, cpi = 0, tm = 0;
+    bool hi = scan_before_word_num(t, "billion", &instr);
+    if (hi) instr *= 1000000000.0;
+    else if (scan_before_word_num(t, "million", &instr)) { hi = true; instr *= 1000000.0; }
+    else if (scan_before_word_num(t, "thousand", &instr)) { hi = true; instr *= 1000.0; }
+    else hi = scan_before_word_num(t, "instructions", &instr) || scan_before_word_num(t, "instruction", &instr);
+    bool hc = scan_after_word_num(t, "cpi", &cpi) || scan_near_after_word_num(t, "cpi", &cpi) ||
+              scan_before_word_num(t, "cycles", &cpi) || scan_before_word_num(t, "cycle", &cpi);
+    bool ht = scan_before_word_num(t, "seconds", &tm) || scan_before_word_num(t, "second", &tm);
+    if (!hi) instr = v[0] * (has(t, "billion") ? 1000000000.0 : has(t, "million") ? 1000000.0 : has(t, "thousand") ? 1000.0 : 1.0);
+    if (!hc) cpi = v[1];
+    if (!ht) tm = v[2];
+    double cycles = instr*cpi, rate = tm ? cycles/tm : 0;
+    int n = add(out, 0, "Clock speed = total cycles / time.");
+    n = add(out, n, "total cycles = instructions*CPI = %.10g*%.10g = %.10g", instr, cpi, cycles);
+    n = add(out, n, "clock speed = %.10g/%.10g = %.10g Hz", cycles, tm, rate);
+    return add(out, n, "= %.10g GHz", rate/1000000000.0);
+  }
+  if ((has(compact, "calculatecpi") || has(compact, "findcpi")) &&
+      (has(t, "instruction") || has(t, "instructions")) &&
+      (has(t, "ghz") || has(t, "mhz") || has(t, "clock")) &&
+      (has(t, "time") || has(t, "seconds") || has(t, "second") || has(t, "taking")) && nv >= 3) {
+    double rate = 0, instr = 0, tm = 0;
+    bool hr = scan_before_word_num(t, "ghz", &rate);
+    if (hr) rate *= 1000000000.0;
+    else if (scan_before_word_num(t, "mhz", &rate)) { hr = true; rate *= 1000000.0; }
+    bool hi = scan_before_word_num(t, "billion", &instr);
+    if (hi) instr *= 1000000000.0;
+    else if (scan_before_word_num(t, "million", &instr)) { hi = true; instr *= 1000000.0; }
+    else if (scan_before_word_num(t, "thousand", &instr)) { hi = true; instr *= 1000.0; }
+    else hi = scan_before_word_num(t, "instructions", &instr) || scan_before_word_num(t, "instruction", &instr);
+    bool ht = scan_before_word_num(t, "seconds", &tm) || scan_before_word_num(t, "second", &tm);
+    if (!hi) instr = v[0] * (has(t, "billion") ? 1000000000.0 : has(t, "million") ? 1000000.0 : has(t, "thousand") ? 1000.0 : 1.0);
+    if (!hr) rate = v[1] * (has(t, "ghz") ? 1000000000.0 : has(t, "mhz") ? 1000000.0 : 1.0);
+    if (!ht) tm = v[2];
+    double total = rate*tm, cpi = instr ? total/instr : 0;
+    int n = add(out, 0, "CPI = total cycles / instructions.");
+    n = add(out, n, "total cycles = clock rate*time = %.10g*%.10g = %.10g", rate, tm, total);
+    return add(out, n, "CPI = %.10g/%.10g = %.10g", total, instr, cpi);
+  }
   if ((has(t, "cpu") || has(t, "processor") || has(t, "clock") || has(t, "ghz") || has(t, "mhz")) &&
       (has(t, "instruction") || has(t, "instructions")) &&
       (has(t, "cycle") || has(t, "cycles") || has(t, "cpi")) && nv >= 3) {
@@ -4499,6 +4544,39 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
           pp += sprintf(pairs + pp, "%s%c -> %d", count ? ", " : "", isprint(ch) ? ch : '?', (int)ch);
       }
       int n = add(out, 0, "ASCII encodes each URL character separately.");
+      n = add_wrapped(out, n, "first characters: ", pairs);
+      return add_wrapped(out, n, "ASCII codes = ", codes);
+    }
+  }
+  if ((has(t, "ascii") || has(t, "codes")) && has(t, "text") && nv >= 1 &&
+      (has(t, "totext") || has(t, "to,text") || has(t, "codes"))) {
+    char txt[CSCALC_LINE_LEN] = ""; int p = 0;
+    for (int i = 0; i < nv && p + 2 < (int)sizeof(txt); ++i) {
+      int code = (int)v[i];
+      if (printable_ascii(code)) txt[p++] = (char)code;
+    }
+    txt[p] = 0;
+    int n = add(out, 0, "ASCII codes map each number to one character.");
+    for (int i = 0; i < nv && i < 8; ++i)
+      if (printable_ascii((int)v[i])) n = add(out, n, "%d -> %c", (int)v[i], (char)((int)v[i]));
+    return add(out, n, "text = %s", txt);
+  }
+  if ((has(t, "ascii") || has(t, "codes")) && has(t, "text") && nv == 0) {
+    const char *p = strstr(input, "text");
+    if (!p) p = strstr(input, "Text");
+    if (p) {
+      p += 4;
+      while (*p == ' ' || *p == ':' || *p == '=') ++p;
+      char codes[CSCALC_LINE_LEN * 2] = "";
+      char pairs[CSCALC_LINE_LEN * 2] = "";
+      int cp = 0, pp = 0, count = 0;
+      for (int i = 0; p[i] && !isspace((unsigned char)p[i]) && count < 24; ++i, ++count) {
+        unsigned char ch = (unsigned char)p[i];
+        if (cp < (int)sizeof(codes) - 8) cp += sprintf(codes + cp, "%s%d", count ? "," : "", (int)ch);
+        if (count < 8 && pp < (int)sizeof(pairs) - 16)
+          pp += sprintf(pairs + pp, "%s%c -> %d", count ? ", " : "", isprint(ch) ? ch : '?', (int)ch);
+      }
+      int n = add(out, 0, "ASCII encodes each text character separately.");
       n = add_wrapped(out, n, "first characters: ", pairs);
       return add_wrapped(out, n, "ASCII codes = ", codes);
     }
@@ -5560,8 +5638,10 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     const char *op = strstr(t, "octal");
     if (!op) op = strstr(t, "base,8");
     if (!op) op = strstr(t, "base8");
-    if (op && dp && op < dp) sprintf(cmd, "convert(%lld,8,10)", (long long)v[0]);
-    else sprintf(cmd, "convert(%lld,10,8)", (long long)v[0]);
+    long long val = (long long)v[0];
+    if (op && dp && op < dp && strstr(t, "base,8") && nv >= 2 && (long long)v[0] == 8) val = (long long)v[1];
+    if (op && dp && op < dp) sprintf(cmd, "convert(%lld,8,10)", val);
+    else sprintf(cmd, "convert(%lld,10,8)", val);
     return eval_base(cmd, out);
   }
   if ((has(t, "octal") || has(t, "base,8") || has(t, "base8")) && has(t, "binary")) {
@@ -5955,6 +6035,31 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     int n = add(out, 0, "Modulo checksum: add the decimal digits/blocks, then take the remainder.");
     n = add(out, n, "sum = %d", sum);
     return add(out, n, "checksum = %d mod %d = %d", sum, mod, rem);
+  }
+  if (has(t, "luhn") && (has(t, "valid") || has(t, "validate") || has(t, "checkwhether")) && nv >= 1) {
+    char digits[48]; digits[0] = 0; int best = 0;
+    for (int i = 0; input[i]; ++i) {
+      if (!isdigit((unsigned char)input[i])) continue;
+      int j = i, k = 0; char tmp[48];
+      while (isdigit((unsigned char)input[j]) && k + 1 < (int)sizeof(tmp)) tmp[k++] = input[j++];
+      tmp[k] = 0;
+      if (k > best) { strcpy(digits, tmp); best = k; }
+      i = j;
+    }
+    if (best > 0) {
+      int sum = 0, n = add(out, 0, "Luhn validation includes the final check digit.");
+      for (int i = best - 1, pos = 0; i >= 0; --i, ++pos) {
+        int d = digits[i] - '0';
+        if ((pos % 2) == 1) {
+          d *= 2;
+          if (d > 9) d -= 9;
+        }
+        sum += d;
+      }
+      n = add(out, n, "processed sum = %d", sum);
+      n = add(out, n, "valid when sum mod 10 = 0");
+      return add(out, n, "%s is %svalid", digits, (sum % 10) ? "not " : "");
+    }
   }
   if (has(t, "luhn") && (has(t, "checkdigit") || has(t, "check") || has(t, "digit")) && nv >= 1) {
     char digits[40]; digits[0] = 0; int best = 0;
