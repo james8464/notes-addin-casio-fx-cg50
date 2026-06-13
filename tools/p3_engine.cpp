@@ -201,6 +201,27 @@ static double read_num(const char *s) {
   return strtod(s, 0);
 }
 
+static bool coeff_of_t_power_before(const char *start, const char *end, int pow, double *coef) {
+  bool found = false;
+  *coef = 0;
+  for (const char *p = start; p && p < end && *p; ++p) {
+    if (*p != 't') continue;
+    int got = 1;
+    if (p[1] == '^') got = (int)read_num(p + 2);
+    if (got != pow) continue;
+    const char *q = p - 1;
+    if (q >= start && *q == '*') --q;
+    const char *e = q + 1;
+    while (q >= start && (isdigit((unsigned char)*q) || *q == '.')) --q;
+    const char *b = q + 1;
+    double c = b < e ? read_num(b) : 1;
+    if (q >= start && *q == '-') c = -c;
+    *coef += c;
+    found = true;
+  }
+  return found;
+}
+
 static bool coded_cmd_from_text(const char *compact, const double v[], int nv, char *cmd, int cap) {
   const char *p = strstr(compact, "y=(x");
   if (!p || nv < 2) return false;
@@ -2289,7 +2310,7 @@ static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     n = add(out, n, "Check probabilities: sum p = %.10g", sp);
     n = add(out, n, "E(X) = %s = %.10g", l1, ex);
     n = add(out, n, "E(X^2) = %s = %.10g", l2, ex2);
-    return add(out, n, "Var(X)=E(X^2)-E(X)^2 = %.10g", ex2 - ex*ex);
+    return add(out, n, "variance = Var(X)=E(X^2)-E(X)^2 = %.10g", ex2 - ex*ex);
   }
   if (starts3(s, "stratified(", "stratifiedsample(", "stratum(") && na >= 3) {
     double pop=num(a[0]), group=num(a[1]), sample=num(a[2]), ans=group/pop*sample;
@@ -2792,6 +2813,31 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "at t=%.6g, a = %.10g i %+.10g j", ta, ax, ay);
     n = add(out, n, "displacement = integral v dt from %.6g to %.6g", t0, t1);
     return add(out, n, "displacement = %.10g i %+.10g j", sx, sy);
+  }
+  if ((has(t, "velocityvector") || (has(t, "velocity") && has(t, "vector"))) &&
+      !has(t, "positionvector") && !(has(t, "position") && has(t, "vector")) &&
+      has(t, "acceleration") && has(c, "t") && has(t, "i") && has(t, "j")) {
+    const char *base = strstr(c, "v=");
+    if (!base) base = strstr(c, "velocityvector");
+    if (!base) base = c;
+    const char *ip = strchr(base, 'i'), *jp = ip ? strchr(ip, 'j') : 0;
+    double x2 = 0, x1 = 0, y2 = 0, y1 = 0, ta = 0;
+    if (ip && jp && ip < jp) {
+      bool got = false;
+      got = coeff_of_t_power_before(base, ip, 2, &x2) || got;
+      got = coeff_of_t_power_before(base, ip, 1, &x1) || got;
+      got = coeff_of_t_power_before(ip, jp, 2, &y2) || got;
+      got = coeff_of_t_power_before(ip, jp, 1, &y1) || got;
+      if (got) {
+        if (!(word_num_with_t(input, "at", &ta) || last_label_num(input, "t", &ta) ||
+              word_num(input, "time", &ta))) ta = nv > 0 ? v[nv-1] : 0;
+        double ax = 2*x2*ta + x1, ay = 2*y2*ta + y1;
+        int n = add(out, 0, "Differentiate the velocity vector component by component.");
+        n = add(out, n, "v = (%.6g t^2 %+.6g t)i + (%.6g t^2 %+.6g t)j", x2, x1, y2, y1);
+        n = add(out, n, "a = dv/dt = (%.6g t %+.6g)i + (%.6g t %+.6g)j", 2*x2, x1, 2*y2, y1);
+        return add(out, n, "at t=%.6g, a = %.10g i %+.10g j", ta, ax, ay);
+      }
+    }
   }
   if ((has(t, "vector") || has(t, "positionvector") || has(t, "ij")) &&
       (has(t, "velocity") || has(t, "acceleration") || has(t, "motion"))) {
@@ -4011,7 +4057,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
 	    return add(out, n, "u = %.10g m/s", u);
 	  }
 	  if (is_projectile_text(t) && (has(t, "time") || has(t, "when") || has(t, "times")) &&
-	      (has(t, "high") || has(t, "above") || has(t, "height")) && nv >= 3 && !has(t, "hits") && !has(t, "hit")) {
+	      (has(t, "high") || has(t, "above") || has(t, "height")) && nv >= 3 &&
+	      !has(t, "ground") && !has(t, "flight") && !has(t, "hits") && !has(t, "hit")) {
 	    double u=0, ang=0, y=0, h0=0, g=0;
 	    bool hU=label_num(input,"speed",&u) || label_num(input,"u",&u) || label_num(input,"initialspeed",&u) || label_num(input,"initialvelocity",&u) ||
 	            word_num(input,"speed",&u) || word_num(input,"initialspeed",&u) || word_num(input,"velocity",&u);
@@ -4053,7 +4100,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     return n;
   }
   if (is_projectile_text(t) && (has(t, "angle") || has(t, "angles") || (has(t, "find") && has(t, "angle"))) &&
-      (has(t, "target") || has(t, "point") || has(t, "through") || has(t, "pass")) && nv >= 3) {
+      (has(t, "target") || has(t, "point") || has(t, "through") || has(t, "pass")) &&
+      !has(t, "ground") && !has(t, "flight") && nv >= 3) {
     double u=0,x=0,y=0,h0=0,g=0;
     bool hU=label_num(input,"speed",&u) || label_num(input,"u",&u) || label_num(input,"initialspeed",&u) || label_num(input,"initialvelocity",&u);
     bool hX=label_num(input,"x",&x) || label_num(input,"distance",&x) || label_num(input,"range",&x) || label_num(input,"horizontaldistance",&x);
@@ -4094,12 +4142,13 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     bool hA=label_num(input,"angle",&ang) || label_num(input,"theta",&ang) || label_num(input,"launchangle",&ang) ||
             word_num(input,"angle",&ang) || word_num(input,"theta",&ang) || prev_word_num(input,"degrees",&ang);
     bool hH=label_num(input,"height",&h0) || label_num(input,"initialheight",&h0) || label_num(input,"launchheight",&h0) ||
-            word_num(input,"height",&h0) || word_num(input,"from",&h0) || word_num(input,"above",&h0) ||
-            prev_word_num(input,"above",&h0);
+            word_num(input,"height",&h0) || word_num(input,"from",&h0) || word_num(input,"above",&h0);
     label_num(input,"g",&g) || label_num(input,"gravity",&g);
     if (!hU && nv >= 1) u = v[0];
     if (!hA && nv >= 2) ang = v[1];
-    if (!hH && nv >= 3 && (has(t, "height") || has(t, "above") || has(t, "cliff"))) h0 = v[2];
+    if (!hH && nv >= 3 && (has(t, "height") || has(t, "above") || has(t, "cliff") || has(t, "ground"))) {
+      for (int i = 0; i < nv; ++i) if (!near_num(v[i], u) && !near_num(v[i], ang)) { h0 = v[i]; hH = true; break; }
+    }
     double ux = u * deg_cosine(ang), uy = u * deg_sine(ang);
     double disc = uy*uy + 2*g*h0;
     int n = add(out, 0, "Resolve the velocity, then use vertical motion to hit the ground.");
@@ -4130,7 +4179,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     sprintf(cmd, nv >= 4 ? "projectileat(%.10g,%.10g,%.10g,%.10g)" : "projectileat(%.10g,%.10g,%.10g)", v[0], v[1], v[2], nv >= 4 ? v[3] : 0); return eval_mech(cmd, out);
   }
 	  if (is_projectile_text(t) && (has(t, "time") || has(t, "when") || has(t, "times")) &&
-	      (has(t, "high") || has(t, "above") || has(t, "height")) && nv >= 3 && !has(t, "hits") && !has(t, "hit")) {
+	      (has(t, "high") || has(t, "above") || has(t, "height")) && nv >= 3 &&
+	      !has(t, "ground") && !has(t, "flight") && !has(t, "hits") && !has(t, "hit")) {
     double u=0, ang=0, y=0, h0=0, g=0;
     bool hU=label_num(input,"speed",&u) || label_num(input,"u",&u) || label_num(input,"initialspeed",&u) || label_num(input,"initialvelocity",&u) ||
             word_num(input,"speed",&u) || word_num(input,"initialspeed",&u) || word_num(input,"velocity",&u);
@@ -7462,7 +7512,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
           n = add(out, n, "f(x) = %.10g*x^%d on %.6g<x<%.6g", coef, pow, pdf_lo, pdf_hi);
           n = add(out, n, "E(X)=integral from %.6g to %.6g of %.10g*x^%d dx = %.10g", pdf_lo, pdf_hi, coef, pow + 1, mean);
           n = add(out, n, "E(X^2)=integral from %.6g to %.6g of %.10g*x^%d dx = %.10g", pdf_lo, pdf_hi, coef, pow + 2, ex2);
-          return add(out, n, "Var(X)=E(X^2)-E(X)^2 = %.10g", var);
+          return add(out, n, "variance = Var(X)=E(X^2)-E(X)^2 = %.10g", var);
         }
       }
     }
