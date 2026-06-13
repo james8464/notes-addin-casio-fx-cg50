@@ -1614,14 +1614,14 @@ static int eval_mech(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   }
   if (starts3(s, "connected(", "connectedparticles(", "twoparticles(") && na >= 3) {
     double m1=num(a[0]), m2=num(a[1]), f=num(a[2]), ares=f/(m1+m2), T=m1*ares;
-    int n = add(out, 0, "Treat connected particles as one system for acceleration.");
+    int n = add(out, 0, "Connected particles: treat the particles as one system for acceleration.");
     n = add(out, n, "a = F/(m1+m2) = %.6g/(%.6g+%.6g)", f, m1, m2);
     n = add(out, n, "a = %.6g m/s^2", ares);
     return add(out, n, "tension on m1: T = m1*a = %.6g N", T);
   }
   if (starts2(s, "pulley(", "pulleys(") && na >= 2) {
     double m1=num(a[0]), m2=num(a[1]), g=na>2?num(a[2]):9.8, ares=(m2-m1)*g/(m1+m2), T=m1*(g+ares);
-    int n = add(out, 0, "For a light inextensible string, both masses have the same acceleration.");
+    int n = add(out, 0, "Connected particles: same acceleration in the light string.");
     n = add(out, n, "a = (m2-m1)g/(m1+m2) = %.6g", ares);
     return add(out, n, "T = m1(g+a) = %.6g N", T);
   }
@@ -2543,7 +2543,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if (has(t, "power") && (has(t, "resistance") || has(t, "resistive")) &&
       (has(t, "acceleration") || has(t, "accelerate")) &&
       !has(t, "incline") && !has(t, "slope") && !has(t, "plane") &&
-      (has(t, "speed") || has(t, "velocity") || has(t, "m/s") || has(t, "ms^-1") || has(t, "moves") || has(t, "travels")) && nv >= 4) {
+      (has(t, "speed") || has(t, "velocity") || has(t, "m/s") || has(t, "ms^-1") || has(t, "moves") || has(t, "moving") || has(t, "travels")) && nv >= 4) {
     double m=0, P=0, sp=0, R=0;
     bool hm=word_num(input,"mass",&m) || label_num(input,"mass",&m);
     bool hP=word_num(input,"power",&P) || label_num(input,"power",&P) || prev_word_num(input,"kw",&P) || prev_word_num(input,"kilowatt",&P);
@@ -4076,7 +4076,10 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "positive time t = %.10g s", time);
     return add(out, n, "range = u_x t = %.10g m", ux*time);
   }
-  if (is_projectile_text(t) && (has(t, "distance") || has(t, "metresaway") || has(t, "away")) && nv >= 3) {
+  if (is_projectile_text(t) &&
+      ((has(t, "distance") || has(t, "metresaway") || has(t, "away")) ||
+       ((has(t, "horizontal") || has(t, "horizontally")) && (has(t, "height") || has(t, "high")) && !has(t, "range"))) &&
+      nv >= 3) {
     double u=0,ang=0,x=0,h0=0,g=0;
     bool hU=label_num(input,"speed",&u) || label_num(input,"u",&u) || label_num(input,"initialspeed",&u) || label_num(input,"initialvelocity",&u);
     bool hA=label_num(input,"angle",&ang) || label_num(input,"theta",&ang) || label_num(input,"launchangle",&ang);

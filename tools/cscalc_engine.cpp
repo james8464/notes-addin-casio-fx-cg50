@@ -4923,7 +4923,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if ((has(compact, "bitrate") || has(compact, "datarate") || (has(t, "bit") && has(t, "rate")) || (has(t, "network") && (has(t, "sends") || has_word(t, "sent")))) &&
       (has(t, "calculate") || has(t, "find") || has(t, "what")) &&
       !has(compact, "filesize") &&
-      (has(t, "file") || has(t, "downloaded") || has(t, "size")) &&
+      (has(t, "file") || has(t, "video") || has(t, "stream") || has(t, "streaming") || has(t, "downloaded") || has(t, "size")) &&
       (has(t, "second") || has(t, "minute") || has(t, "hour")) &&
       (has(t, "gib") || has(t, "mib") || has(t, "kib") || has(t, "gbit") || has(t, "mbit") || has(t, "kbit")) && nv >= 2) {
     double size = v[0], seconds = 0;
@@ -4957,7 +4957,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     return add(out, n, "= %.10g MiB", bytes / 1048576.0);
   }
   if ((has(compact, "bitrate") || has(compact, "datarate") || (has(t, "bit") && has(t, "rate")) || (has(t, "network") && (has(t, "sends") || has_word(t, "sent")))) &&
-      (has(t, "file") || has(t, "size") || has(t, "transmit") || has_word(t, "sent") || has(t, "sends") || has(t, "network")) &&
+      (has(t, "file") || has(t, "video") || has(t, "stream") || has(t, "streaming") || has(t, "size") || has(t, "transmit") || has_word(t, "sent") || has(t, "sends") || has(t, "network")) &&
       (has(t, "second") || has(t, "minute") || has(t, "hour") || has(t, "time") || has(t, "duration")) &&
       !has(compact, "downloadtime") && !has(compact, "transfertime") && nv >= 2) {
     double size=0, seconds=0;
