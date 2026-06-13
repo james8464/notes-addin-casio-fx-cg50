@@ -6450,6 +6450,23 @@ int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
     int n2 = add(out, 0, "Bare 0/1 input treated as unsigned binary.");
     return add(out, n2, "%s_2 = %d_10", s, bin_unsigned(s));
   }
+  if (!strchr(s, '(') && (starts(s, "floatdecode") || starts(s, "floatdec")) &&
+      has(s, "mantissa") && has(s, "exponent")) {
+    char fb[2][48]; int fnb = scan_bits(s, fb, 2);
+    double fv[6]; int fnv = scan_nums(s, fv, 6);
+    if (fnb == 1 && fnv >= 3) {
+      int mb = (int)fv[fnv - 2], eb = (int)fv[fnv - 1], len = (int)strlen(fb[0]);
+      if (mb > 0 && eb > 0 && mb + eb == len && mb < 48 && eb < 48) {
+        char mant[48], exp[48];
+        memcpy(mant, fb[0], mb); mant[mb] = 0;
+        memcpy(exp, fb[0] + mb, eb); exp[eb] = 0;
+        char fcmd[120];
+        sprintf(fcmd, "floatdec(%s,%s)", mant, exp);
+        int fn = eval_float(fcmd, out);
+        if (fn) return fn;
+      }
+    }
+  }
   int n = eval_base(s, out); if (n) return n;
   n = eval_twos(s, out); if (n) return n;
   n = eval_binary_arith(s, out); if (n) return n;

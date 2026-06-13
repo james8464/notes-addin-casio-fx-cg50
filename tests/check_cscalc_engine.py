@@ -187,6 +187,7 @@ def main():
     require("floating point number 0101100 11101 decode", ["mantissa 0101100 = 0.6875", "exponent 11101 = -3", "0.0859375"])
     require("normalised floating point mantissa 0101100 exponent 11101 decode", ["mantissa 0101100 = 0.6875", "exponent 11101 = -3"])
     require("Decode normalised floating point 01101011 where mantissa is 5 bits and exponent is 3 bits.", ["mantissa 01101 = 0.8125", "exponent 011 = 3", "value = 0.8125 * 2^3 = 6.5"])
+    require("float decode 01001101 mantissa 5 exponent 3", ["mantissa 01001 = 0.5625", "exponent 101 = -3", "value = 0.5625 * 2^-3"])
     require("floating point encode -608 with 7 bit mantissa and 5 bit exponent", ["Normalise", "mantissa (7 bits)", "exponent (5 bits)"])
     require("floatadd(01000000,0010,00100000,0010)", ["aligning exponents", "use common exponent 2", "mantissas: 0.5 + 0.25 = 0.75", "mantissa (8 bits) = 01100000", "exponent (4 bits) = 0010"])
     require("floatsub(01000000,0010,00100000,0010)", ["aligning exponents", "mantissas: 0.5 - 0.25 = 0.25", "normalise: 0.5 * 2^1", "exponent (4 bits) = 0001"])
