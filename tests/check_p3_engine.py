@@ -38,6 +38,7 @@ def main():
     require("A car starts from rest and accelerates uniformly at 2.4 m s^-2 for 8 seconds. Find the final speed and distance travelled.", ["v = u + at", "v = 0 + 2.4*8 = 19.2", "s = 76.8"])
     require("a car starts from rest reaches speed 20 in 5 seconds find acceleration and distance", ["a = (20-0)/5 = 4", "s = 50"])
     require("A car accelerates from rest to 30 m/s in 12 seconds find acceleration and distance", ["a = (30-0)/12 = 2.5", "s = 1/2(0+30)*12", "s = 180"])
+    require("A car accelerates uniformly from 8 to 20 in 6 seconds find distance", ["a = (20-8)/6 = 2", "s = 1/2(8+20)*6", "s = 84"])
     require("train accelerates uniformly from 10 to 30 m/s over 200 m find acceleration and time", ["Use SUVAT", "a = (v^2-u^2)/(2s)", "t = 2s/(u+v)"])
     require("A train travels 300 m accelerating uniformly from 4 m/s to 20 m/s, then decelerates uniformly to rest over the final 100 m. Find the total time.", ["Split the journey", "t1 = 2*200/(4+20)", "total time = 26.666"])
     require("A car starts from rest and accelerates at 2 m/s^2 for 5 seconds then decelerates uniformly to rest in 4 seconds. Find total distance.", ["Split the motion", "Stage 1: v = u + at = 0 + 2*5 = 10", "s1 = ut + 1/2 at^2 = 25", "s2 = 5*4 = 20", "total distance = 45"])

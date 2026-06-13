@@ -500,6 +500,8 @@ def main():
     require("Draw truth table for (A xor B) and C.", ["Truth table for (a^b)&c", "A B C | F", "minterms: 3,5", "simplified = A'BC+AB'C"])
     require("Find minterms for A+B'C", ["minterms: 1,4,5,6,7", "simplified = A+B'C"])
     require("Find maxterms for A+B'C", ["zero rows: 0,2,3", "simplified POS = (A+C)&(A+B')"])
+    require("Simplify boolean expression A not B plus C", ["minterms: 1,3,4,5,7", "simplified = C+AB'"])
+    require("Use a Karnaugh map to simplify A'B + AB'", ["minterms: 1,2", "simplified = A'B+AB'"])
     require("Calculate the minimum sampling frequency for an audio signal with maximum frequency 18 kHz.", ["Nyquist", "minimum sampling frequency = 2*18000 = 36000 Hz", "= 36 kHz"])
     require("A sound file has bit rate 256 kbit/s and duration 3 minutes. Find file size in MiB.", ["File size = bit rate * duration.", "size = 256000*180 = 46080000 bits", "= 5.493164062 MiB"])
     require("An image has 800 by 600 pixels and file size 300 KiB. How many colours are possible?", ["bits per pixel = 2457600/480000 = 5.12", "whole-bit colour depth is 5 bits", "colours = 2^5 = 32"])

@@ -2587,6 +2587,7 @@ static void bool_norm(const char *src, char *dst, int cap) {
     if (strncmp(src + i, "implies", 7) == 0) { dst[j++] = '>'; i += 7; continue; }
     if (strncmp(src + i, "nor", 3) == 0) { dst[j++] = '#'; i += 3; continue; }
     if (strncmp(src + i, "xor", 3) == 0) { dst[j++] = '^'; i += 3; continue; }
+    if (strncmp(src + i, "plus", 4) == 0) { dst[j++] = '+'; i += 4; continue; }
     if (strncmp(src + i, "and", 3) == 0) { dst[j++] = '&'; i += 3; continue; }
     if (strncmp(src + i, "not", 3) == 0) { dst[j++] = '!'; i += 3; continue; }
     if (strncmp(src + i, "or", 2) == 0) { dst[j++] = '+'; i += 2; continue; }
@@ -3536,6 +3537,8 @@ static const char *skip_bool_words(const char *e) {
     if (starts(e, "create")) { e += 6; moved = true; }
     if (starts(e, "construct")) { e += 9; moved = true; }
     if (starts(e, "atruthtable") || starts(e, "aboolean") || starts(e, "anexpression")) { e += 1; moved = true; }
+    if (starts(e, "akarnaugh")) { e += 1; moved = true; }
+    if (starts(e, "akmap")) { e += 1; moved = true; }
     if (starts(e, "write")) { e += 5; moved = true; }
     if (starts(e, "use")) { e += 3; moved = true; }
     if (starts(e, "to")) { e += 2; moved = true; }
@@ -3554,6 +3557,9 @@ static const char *skip_bool_words(const char *e) {
     if (starts(e, "expression")) { e += 10; moved = true; }
     if (starts(e, "logic")) { e += 5; moved = true; }
     if (starts(e, "productofsums")) { e += 13; moved = true; }
+    if (starts(e, "karnaugh")) { e += 8; moved = true; }
+    if (starts(e, "kmap")) { e += 4; moved = true; }
+    if (starts(e, "map")) { e += 3; moved = true; }
     if (starts(e, "posform")) { e += 7; moved = true; }
     if (starts(e, "cnf")) { e += 3; moved = true; }
     if (starts(e, "pos")) { e += 3; moved = true; }
@@ -3576,6 +3582,7 @@ static void bool_arg_for_cmd(const char *src, char *dst, int cap) {
     if (starts(src + i, "implies")) { dst[p++] = '>'; i += 7; continue; }
     if (starts(src + i, "nor")) { dst[p++] = '#'; i += 3; continue; }
     if (starts(src + i, "xor")) { dst[p++] = '^'; i += 3; continue; }
+    if (starts(src + i, "plus")) { dst[p++] = '+'; i += 4; continue; }
     if (starts(src + i, "not")) { dst[p++] = '!'; i += 3; continue; }
     if (starts(src + i, "and")) { dst[p++] = '&'; i += 3; continue; }
     if (starts(src + i, "or")) { dst[p++] = '+'; i += 2; continue; }
