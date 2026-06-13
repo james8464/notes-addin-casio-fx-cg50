@@ -5543,6 +5543,34 @@ Drift check:
 - Kept changes to CASP3/CSCALC general free-text handling, regressions, generated CASP3/CSCALC outputs, and this checkpoint.
 - Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.
 
+## 2026-06-13 Mechanics Parser Finalisation Slice
+
+Completed:
+- Hardened generic ladder parsing so `5m long ... 60 degrees ... weight 200N` uses length, angle, and weight correctly instead of raw number order.
+- Added downhill constant-speed power-angle working with downhill equilibrium wording.
+- Added regression tests and rebuilt calculator-ready outputs.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 505924 bytes`
+  - `CSCALC.g3a: 280756 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: records=48 bytes=18178`
+  - `CASP3.g3a sha256: 90ae77f02d6b2e83a8a7f50c174405076da9e1aff4e95db3432a64895850cbe4`
+
+Drift check:
+- Kept changes to CASP3 general free-text mechanics parsing, regressions, generated CASP3 output, and this checkpoint.
+- Did not touch CAS Pure behavior, menus, NOTES source, shared UI/status code, or CSCALC source in this slice.
+
 ## 2026-06-13 Superscript, Not-Equal, Minute, and Gate Assignment Slice
 
 Completed:

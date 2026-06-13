@@ -5002,8 +5002,13 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       n = add(out, n, "Maximum friction = mu R = %.6g*%.6g = %.10g N", mu, W, maxF);
       return add(out, n, maxF + 1e-9 >= S ? "Since maximum friction is enough, the ladder can be in equilibrium." : "Since maximum friction is too small, the ladder cannot be in equilibrium.");
     }
+    if (!hL && nv > 0) L = v[0];
+    if (!ha) for (int i = 0; i < nv; ++i)
+      if (!near_num(v[i], L) && v[i] > 0 && v[i] <= 90) { ang = v[i]; ha = true; break; }
+    if (!hW) for (int i = 0; i < nv; ++i)
+      if (!near_num(v[i], L) && !near_num(v[i], ang) && v[i] > 10) { W = v[i]; hW = true; break; }
     if (nv < 3) return 0;
-    if (hL && hW && ha) sprintf(cmd, "ladder(%.10g,%.10g,%.10g,%.10g,%.10g)", L, W, ang, hP ? P : 0, hd ? d : L/2);
+    if (L > 0 && W > 0 && ang > 0) sprintf(cmd, "ladder(%.10g,%.10g,%.10g,%.10g,%.10g)", L, W, ang, hP ? P : 0, hd ? d : L/2);
     else sprintf(cmd, nv > 4 ? "ladder(%.10g,%.10g,%.10g,%.10g,%.10g)" : "ladder(%.10g,%.10g,%.10g)", v[0], v[1], v[2], nv > 3 ? v[3] : 0, nv > 4 ? v[4] : v[0]/2);
     return eval_mech(cmd, out);
   }
@@ -5134,6 +5139,14 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       if (!hR) for (int i = nv - 1; i >= 0; --i)
         if (!near_num(v[i], m) && !near_num(v[i], spd) && !near_num(v[i], P) && !near_num(v[i]*1000.0, P)) { res = v[i]; break; }
       double drive = spd ? P / spd : 0;
+      if (has(t, "down") || has(t, "downhill")) {
+        double sdown = (drive + res) / (m * 9.8);
+        int n = add(out, 0, "At constant speed downhill, resistance and braking power act up the slope.");
+        n = add(out, n, "braking force from power = P/v = %.10g/%.10g = %.10g N", P, spd, drive);
+        n = add(out, n, "mg sin(theta) = resistance + braking force");
+        n = add(out, n, "sin(theta) = (%.10g+%.10g)/(%.10g*9.8) = %.10g", res, drive, m, sdown);
+        return add(out, n, "theta = %.10g degrees", deg_arcsine(sdown));
+      }
       double s = (drive - res) / (m * 9.8);
       int n = add(out, 0, "At constant speed uphill, driving force balances resistance and mg sin(theta).");
       n = add(out, n, "driving force = P/v = %.10g/%.10g = %.10g N", P, spd, drive);
