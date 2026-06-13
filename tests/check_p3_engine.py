@@ -762,6 +762,9 @@ def main():
     require("normal mean unknown sd 8 P(X less than 40)=0.2 find mean", ["Use z=(x-mu)/sigma", "area to the left = 0.2", "mu = 46.73296833"])
     require("histogram class 15-25 frequency 40 find density", ["frequency density = frequency / class width", "40/10 = 4"])
     require("histogram class 0 to 10 frequency 12 class 10 to 25 frequency 30 find densities", ["class 0-10: density = 12/10 = 1.2", "class 10-25: density = 30/15 = 2"])
+    require("A particle of mass 2kg is held in equilibrium on a rough plane inclined at 25 degrees by a force P acting up the plane. The coefficient of friction is 0.4. Find the least value of P.", ["At limiting equilibrium", "friction = mu R = 0.4*17.76346646", "least force up the plane = 8.283317899 - 7.105386584 = 1.177931315 N"])
+    require("A particle of mass 0.5kg is attached to an elastic string of natural length 0.8m and modulus 12N. It is stretched to length 1.1m. Find the elastic potential energy.", ["extension = 1.1 - 0.8 = 0.3 m", "elastic potential energy is lambda*x^2/(2l)", "EPE = 12*0.3^2/(2*0.8) = 0.675 J"])
+    require("A random variable X has pdf f(x)=kx^2 for 0<x<3. Find k and the median.", ["integral from 0 to 3 of kx^2 dx = 1", "k = 0.1111111111", "For the median m", "m = 2.381101578"])
     print("OK p3 engine")
 
 

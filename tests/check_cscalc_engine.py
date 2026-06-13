@@ -666,6 +666,7 @@ def main():
     require("Prove A∧(B∨C)=A∧B∨A∧C", ["LHS simplifies to AC+AB", "RHS simplifies to AC+AB", "Same output rows"])
     require("A∧B ⇒ A", ["minterms: 0,1,2,3", "simplified = 1"])
     require("convert A∨B to NAND only", ["Use NAND as a universal gate", "NAND form: ((A NAND A) NAND (B NAND B))"])
+    require("Convert the hexadecimal floating point bytes C8 03 where mantissa is 8 bits and exponent is 8 bits.", ["C8 03 -> 11001000 00000011", "mantissa 11001000 = -0.4375", "exponent 00000011 = 3", "value = -0.4375 * 2^3 = -3.5"])
     print("OK cscalc engine")
 
 

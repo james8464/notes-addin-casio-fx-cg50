@@ -6571,6 +6571,41 @@ Drift check:
 - Kept changes to CASP3/CSCALC parser/working logic, regressions, generated app outputs, and this checkpoint.
 - Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.
 
+## 2026-06-13 Late Finalization Probe Slice
+
+Completed:
+- Fixed CASP3 rough-plane least-force routing so coefficient-of-friction equilibrium prompts are not stolen by the older friction route.
+- Fixed CASP3 elastic-string energy prompts to use extension from final length minus natural length and output EPE working.
+- Added CASP3 median working for polynomial pdfs `kx^n` on bounded intervals.
+- Added CSCALC hexadecimal floating-point byte decode before generic floating-point encode routes.
+- Added regressions for all four late failures and rebuilt calculator outputs.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 556780 bytes`
+  - `CSCALC.g3a: 297392 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: records=48 bytes=18178`
+  - `CAS.g3a sha256: 15f3aa342df2f8e9f3608032a17e116254df92d19141c271e45553de0b01a39e`
+  - `RUNMAT.g3a sha256: 084e197a81a047efbabaff2d2c051c5fab4c2180667967074f7075665ad39d70`
+  - `CASP3.g3a sha256: d18a4377c94c891b728f4d14f965ec05a7e89ffdd932089ac81f9e0130ad9c61`
+  - `CSCALC.g3a sha256: abf67b9a1a689e6c2ee4134c2571e934f1491839add6ea44dbc6825f2c9e2ac7`
+  - `NOTES.g3a sha256: 203cf9cf42777fdab91639e9791b5ce202478fc54471e0addf68add34b5745e6`
+  - `CAS.PAK sha256: 4cf970de9480f9f3b06c80e60afe4b69f4d864067a068071cd974474a57f24d2`
+
+Drift check:
+- Kept changes to CASP3/CSCALC parser/working logic, regressions, generated app outputs, and this checkpoint.
+- Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.
+
 ## 2026-06-13 Finalization Edge Probe Slice
 
 Completed:

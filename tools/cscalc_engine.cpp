@@ -283,6 +283,24 @@ static int scan_hex_tokens_all(const char *s, char out[][32], int maxn) {
   return n;
 }
 
+static int scan_hex_words_all(const char *s, char out[][32], int maxn) {
+  int n = 0;
+  for (int i = 0; s && s[i] && n < maxn;) {
+    while (s[i] && !isalnum((unsigned char)s[i])) ++i;
+    int j = i, k = 0; bool ok = true, has_hex_alpha = false;
+    while (isalnum((unsigned char)s[j]) && k + 1 < 32) {
+      char c = (char)toupper((unsigned char)s[j]);
+      if (!isxdigit((unsigned char)c)) ok = false;
+      if (c >= 'A' && c <= 'F') has_hex_alpha = true;
+      out[n][k++] = c; ++j;
+    }
+    out[n][k] = 0;
+    if (ok && k >= 2 && (has_hex_alpha || k == 2)) ++n;
+    i = j;
+  }
+  return n;
+}
+
 static bool scan_fixed_bits(const char *s, char *buf, int cap) {
   for (int i = 0; s[i]; ++i) {
     if (s[i] != '0' && s[i] != '1') continue;
@@ -6231,6 +6249,41 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     to_bin(y, (int)bitsw, b);
     sprintf(cmd, "twosadd(%s,%s,%lld)", a, b, (long long)bitsw);
     return eval_twos(cmd, out);
+  }
+  if ((has(t, "float") || has(t, "floating") || (has(t, "mantissa") && has(t, "exponent"))) &&
+      (has(t, "hex") || has(t, "hexadecimal") || has(t, "bytes")) &&
+      (has(t, "decode") || has(t, "convert") || has(t, "denary") || has(t, "decimal") || has(t, "number"))) {
+    char hx[8][32]; int hc = scan_hex_words_all(input, hx, 8);
+    double mbw=0, ebw=0, tmp=0;
+    bool hM = scan_bit_width_before_label(t, "mantissa", &tmp) || scan_before_word_num(t, "mantissa", &tmp) ||
+              scan_after_word_num(t, "mantissa", &tmp) || scan_near_after_word_num(t, "mantissa", &tmp); if (hM) mbw = tmp;
+    bool hE = scan_bit_width_before_label(t, "exponent", &tmp) || scan_before_word_num(t, "exponent", &tmp) ||
+              scan_after_word_num(t, "exponent", &tmp) || scan_near_after_word_num(t, "exponent", &tmp); if (hE) ebw = tmp;
+    if (hc >= 1) {
+      char allbits[96] = "", spaced[128] = "", bytes_line[96] = "";
+      for (int i = 0; i < hc; ++i) {
+        char b[65]; int w = (int)strlen(hx[i]) * 4;
+        to_bin(parse_base(hx[i], 16), w, b);
+        if ((int)strlen(allbits) + w + 1 < (int)sizeof(allbits)) strcat(allbits, b);
+        if ((int)strlen(spaced) + w + 2 < (int)sizeof(spaced)) { if (i) strcat(spaced, " "); strcat(spaced, b); }
+        if ((int)strlen(bytes_line) + (int)strlen(hx[i]) + 2 < (int)sizeof(bytes_line)) { if (i) strcat(bytes_line, " "); strcat(bytes_line, hx[i]); }
+      }
+      int mi = hM ? (int)mbw : (hc >= 2 ? (int)strlen(hx[0]) * 4 : 0);
+      int ei = hE ? (int)ebw : (hc >= 2 ? (int)strlen(hx[1]) * 4 : 0);
+      int total = (int)strlen(allbits);
+      if (mi > 0 && ei > 0 && mi + ei <= total && mi < 48 && ei < 48) {
+        char mant[48], exp[48];
+        memcpy(mant, allbits, mi); mant[mi] = 0;
+        memcpy(exp, allbits + mi, ei); exp[ei] = 0;
+        double m = mantissa_decode(mant);
+        int e = twos_decode(exp);
+        int n = add(out, 0, "Convert the hexadecimal bytes to binary first.");
+        n = add(out, n, "%s -> %s", bytes_line, spaced);
+        n = add(out, n, "mantissa %s = %.10g", mant, m);
+        n = add(out, n, "exponent %s = %d", exp, e);
+        return add(out, n, "value = %.10g * 2^%d = %.10g", m, e, m * pow2(e));
+      }
+    }
   }
   if ((has(t, "encode") || has(t, "convert") || has(t, "round") || (has(t, "represent") && !has(t, "representable") && !has(t, "represented") && !has(t, "closest") && !has(t, "explain"))) && (has(t, "floating") || has(t, "mantissa")) &&
       (has(t, "mantissa") && has(t, "exponent")) && nv >= 3) {

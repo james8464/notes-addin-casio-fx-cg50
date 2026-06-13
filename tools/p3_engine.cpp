@@ -5754,9 +5754,20 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       n = add(out, n, "Hooke's law: T = lambda*x/l");
       return add(out, n, "x = Tl/lambda = %.10g*%.10g/%.10g = %.10g m", T, l, lam, x);
     }
+    double final_len = 0;
+    bool hfinal = word_num(input,"stretchedtolength",&final_len) || word_num(input,"extendedtolength",&final_len) ||
+                  word_num(input,"finallength",&final_len);
     if (!hl) l = v[1];
     if (!hla) lam = v[2];
+    if (hfinal && hl) { x = final_len - l; hx = true; }
     if (!hx) x = v[nv-1];
+    if ((has(t, "elasticpotential") || has(t, "potentialenergy") || has(t, "energy") || has(t, "epe")) && l != 0) {
+      double epe = lam*x*x/(2*l);
+      int n = add(out, 0, "For an elastic string, elastic potential energy is lambda*x^2/(2l).");
+      if (hfinal) n = add(out, n, "extension = %.10g - %.10g = %.10g m", final_len, l, x);
+      n = add(out, n, "lambda = %.10g, extension = %.10g, natural length = %.10g", lam, x, l);
+      return add(out, n, "EPE = %.10g*%.10g^2/(2*%.10g) = %.10g J", lam, x, l, epe);
+    }
     double T = l ? lam*x/l : 0;
     int n = add(out, 0, "For an elastic string, Hooke's law gives T = lambda*x/l.");
     n = add(out, n, "lambda = %.10g, extension = %.10g, natural length = %.10g", lam, x, l);
@@ -5767,7 +5778,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     sprintf(cmd, "resolve(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
   }
   if ((has(t, "rough") || has(t, "friction")) && (has(t, "plane") || has(t, "inclined") || has(t, "incline")) &&
-      (has(t, "equilibrium") || has(t, "held")) && (has(t, "reaction") || has(t, "normal") || has(t, "friction")) && nv >= 3) {
+      (has(t, "equilibrium") || has(t, "held")) && (has(t, "reaction") || has(t, "normal") || has(t, "friction")) &&
+      !(has(t, "coefficient") || has(t, "mu")) && nv >= 3) {
     double m=0, F=0, ang=0;
     bool hm = label_num(input,"mass",&m) || word_num(input,"mass",&m);
     bool hF = label_num(input,"force",&F) || word_num(input,"force",&F);
@@ -5810,7 +5822,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if ((has(t, "rough") || has(t, "friction")) && (has(t, "plane") || has(t, "inclined") || has(t, "incline")) &&
       (has(t, "coefficient") || has(t, "mu")) && has(t, "force") &&
       (has(t, "least") || has(t, "minimum") || has(t, "smallest")) &&
-      (has(t, "move") || has(t, "motion") || has(t, "pointofmoving")) && nv >= 3) {
+      (has(t, "move") || has(t, "motion") || has(t, "pointofmoving") ||
+       has(t, "equilibrium") || has(t, "held") || has(t, "rest") || has(t, "rests")) && nv >= 3) {
     double m=0, ang=0, mu=0;
     bool hm=label_num(input,"mass",&m) || word_num(input,"mass",&m) || label_num(input,"m",&m);
     bool ha=label_num(input,"angle",&ang) || word_num(input,"angle",&ang) || label_num(input,"theta",&ang) || prev_word_num(input,"degrees",&ang);
@@ -5822,16 +5835,19 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
         if (!near_num(v[i], m) && !near_num(v[i], mu) && v[i] > 1.5 && v[i] <= 90) { ang = v[i]; break; }
     }
     double down = m*9.8*deg_sine(ang), R = m*9.8*deg_cosine(ang), fr = mu*R;
-    bool up = has(t, "up") || has(t, "upwards") || has(t, "up,plane") || !has(t, "down");
-    double F = up ? down + fr : down - fr;
+    bool moving_up = has(t, "pointofmovingup") || has(t, "movingup") || has(t, "moveup") || has(t, "pulledup");
+    bool force_up = has(t, "up") || has(t, "upwards") || has(t, "uptheplane") || has(c, "actingup");
+    bool support_up = force_up && (has(t, "equilibrium") || has(t, "held") || has(t, "rest") || has(t, "rests"));
+    bool prevent_down = support_up || (!moving_up && force_up);
+    double F = prevent_down ? down - fr : down + fr;
     int n = add(out, 0, "At limiting equilibrium, friction is at its maximum: F_f = mu R.");
     n = add(out, n, "Resolve perpendicular: R = mg cos(theta) = %.6g*9.8 cos(%.6g) = %.10g N", m, ang, R);
     n = add(out, n, "friction = mu R = %.6g*%.10g = %.10g N", mu, R, fr);
     n = add(out, n, "down-plane weight component = mg sin(theta) = %.6g*9.8 sin(%.6g) = %.10g N", m, ang, down);
-    if (up) n = add(out, n, "For impending upward motion, friction acts down the plane.");
-    else n = add(out, n, "For impending downward motion, friction acts up the plane.");
-    return add(out, n, up ? "least force up the plane = %.10g + %.10g = %.10g N" :
-               "least force down the plane = %.10g - %.10g = %.10g N", down, fr, F);
+    if (prevent_down) n = add(out, n, "For impending downward motion, friction acts up the plane.");
+    else n = add(out, n, "For impending upward motion, friction acts down the plane.");
+    return add(out, n, prevent_down ? "least force up the plane = %.10g - %.10g = %.10g N" :
+               "least force up the plane = %.10g + %.10g = %.10g N", down, fr, F);
   }
 	  if ((has(t, "pulley") || ((has(t, "connected") || has(t, "connectedparticles")) &&
                               (has(t, "hang") || has(t, "hanging") || has(t, "freely")))) &&
@@ -9693,6 +9709,13 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       double mean = k * (pwr(pdf_hi, pow + 2) - pwr(pdf_lo, pow + 2)) / (pow + 2);
       n = add(out, n, "E(X)=integral from %.6g to %.6g of x*f(x) dx", pdf_lo, pdf_hi);
       return add(out, n, "mean = %.10g", mean);
+    }
+    if (has(t, "median")) {
+      double rhs = 0.5 * (pwr(pdf_hi, pow + 1) - pwr(pdf_lo, pow + 1)) + pwr(pdf_lo, pow + 1);
+      double med = nth_root(rhs, pow + 1);
+      n = add(out, n, "For the median m, integral from %.6g to m of f(x) dx = 0.5.", pdf_lo);
+      n = add(out, n, "%.10g*m^%d/%d = 0.5", k, pow + 1, pow + 1);
+      return add(out, n, "m = %.10g", med);
     }
     double a = pdf_lo, b = pdf_hi, bound = 0;
     const char *gt = strstr(c, "p(x>");
