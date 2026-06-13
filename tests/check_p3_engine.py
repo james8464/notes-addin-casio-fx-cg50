@@ -366,6 +366,7 @@ def main():
     require("A normal random variable has mean unknown and sd 4. Given P(X<10)=0.2 find the mean.", ["Use z=(x-mu)/sigma", "area to the left = 0.2", "mu = 13.366"])
     require("normalparams(40,0.1,70,0.9)", ["Use z=(x-mu)/sigma", "P(X<=40)=0.1", "(40-mu)/sigma", "sigma = (70-40)", "mean = 55"])
     require("normal find mean and sd P X less than 40 is 0.1 and P X less than 70 is 0.9", ["Use z=(x-mu)/sigma", "P(X<=40)=0.1", "P(X<=70)=0.9", "mean = 55"])
+    require("Given P(X<20)=0.1 and P(X<50)=0.9 for normal X, find mean and sd.", ["Use z=(x-mu)/sigma", "P(X<=20)=0.1", "P(X<=50)=0.9", "mean = 35"])
     require("For a normal distribution, P(X<30)=0.2 and P(X<70)=0.9. Find the mean and standard deviation.", ["Use z=(x-mu)/sigma", "P(X<=30)=0.2", "mean = 45.855"])
     require("cond(0.18,0.3)", ["P(A|B)", "0.6"])
     require("conditional probability with p intersection 0.18 given p b 0.3", ["P(A|B)", "0.6"])

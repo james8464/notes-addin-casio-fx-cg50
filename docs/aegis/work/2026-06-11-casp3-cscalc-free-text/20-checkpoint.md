@@ -1,5 +1,36 @@
 # Checkpoint
 
+## 2026-06-13 CASP3 Normal Parameter Routing Slice
+
+Completed:
+- Fixed compact normal-parameter prompts like `Given P(X<20)=0.1 and P(X<50)=0.9 for normal X, find mean and sd`.
+- Added a stricter parameter-request guard before the generic conditional-normal fallback.
+- Confirmed genuine conditional-normal prompts still route to `normalcond`.
+- Added regression and rebuilt calculator-ready outputs.
+
+Evidence:
+- Direct probe now shows `P(X<=20)=0.1`, `P(X<=50)=0.9`, `mean = 35`, `sd = 11.70455878`.
+- Conditional probe `P(X>70 given X>55)` still shows `Use conditional probability P(A|B)=P(A and B)/P(B)`.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 496096 bytes`
+  - `CSCALC.g3a: 275252 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: 18178 bytes`
+
+Drift check:
+- Stayed inside CASP3 normal free-text routing/tests/checkpoint and rebuilt CASP3 artifact.
+- No Pure CAS source, CSCALC logic, NOTES source, menus, or shared UI/status code changed.
+- Active goal remains open.
+
 ## 2026-06-13 CSCALC Boolean Free-Text Cleanup Slice
 
 Completed:

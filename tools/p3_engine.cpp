@@ -7022,6 +7022,12 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     if (has(c, "nomorethan") || has(t, "cdf")) tail = -1;
     sprintf(cmd, "poissonapprox(%d,%.10g,%d,%d)", (int)v[0], v[1], (int)v[2], tail); return eval_stats(cmd, out);
   }
+  bool ask_normal_params = has(t, "parameters") || has(t, "meansd") || has(t, "meanandsd") ||
+    has(c, "findmeanandsd") || has(c, "findthemeanandsd") ||
+    has(c, "findmeanandstandarddeviation") || has(c, "findthemeanandstandarddeviation");
+  if (has(t, "normal") && ask_normal_params && nv >= 4) {
+    sprintf(cmd, "normalparams(%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3]); return eval_stats(cmd, out);
+  }
   if (has(t, "normal") && (has(t, "conditional") || has(t, "given")) && nv >= 4) {
     double tail = (has(c, "lessthan") || has(c, "atmost") || has(c, "<")) ? -1 : 1;
     sprintf(cmd, "normalcond(%.10g,%.10g,%.10g,%.10g,%.0f)", v[0], v[1], v[2], v[3], tail); return eval_stats(cmd, out);
