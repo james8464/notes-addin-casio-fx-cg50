@@ -4473,7 +4473,9 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     double cache = 0, block = 0, ways = 1, addr = 0;
     bool hc = scan_before_word_num(t, "kib", &cache) || scan_before_word_num(t, "kb", &cache) ||
               scan_before_word_num(t, "bytes", &cache);
-    bool hb = scan_before_word_num(t, "block", &block) || scan_before_word_num(t, "bytes", &block);
+    bool hb = scan_before_word_num(t, "block", &block) || scan_before_word_num(t, "bytes", &block) ||
+              scan_before_word_num(t, "byte", &block) ||
+              scan_near_after_word_num(t, "block", &block) || scan_near_after_word_num(t, "blocks", &block);
     bool hw = scan_before_word_num(t, "way", &ways) || scan_before_word_num(t, "associativity", &ways);
     bool ha = scan_bit_width_before_label(t, "address", &addr) || scan_before_word_num(t, "bitaddress", &addr);
     if (!hc) cache = v[0];

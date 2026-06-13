@@ -468,6 +468,7 @@ def main():
     require("How many unused address lines are there for a 16 bit address bus with 8 KiB byte addressable memory?", ["memory size = 8192 bytes", "required address lines = ceil(log2(8192)) = 13", "unused address lines = 16 - 13 = 3"])
     require("A cache has 32 KiB capacity, 64 byte blocks and 4-way associativity. Find offset, index and tag bits for a 32 bit address.", ["sets = blocks/ways", "index bits = log2(128) = 7", "tag bits = 32 - 7 - 6 = 19"])
     require("Cache capacity 64 KiB block size 32 bytes 2 way set associative 32 bit address find tag index offset bits.", ["sets = blocks/ways = 2048/2 = 1024", "tag bits = 32 - 10 - 5 = 17"])
+    require("A 256 KiB 4 way cache has 64 byte blocks and 48 bit addresses. Find tag index offset.", ["block size = 64 bytes", "sets = blocks/ways = 4096/4 = 1024", "tag bits = 48 - 10 - 6 = 32"])
     require("Calculate Big O for nested loops for i from 1 to n and j from 1 to n.", ["Outer loop runs n times", "n*n = n^2", "Big O = O(n^2)"])
     require("Find Big O for binary search on n items.", ["Binary search halves", "Big O = O(log n)"])
     require("A database table STUDENT(id,name,grade). Write SQL to select name where grade > 70.", ["SQL SELECT", "SELECT name", "WHERE grade > 70"])

@@ -1,5 +1,35 @@
 # Checkpoint
 
+## 2026-06-13 Cache Byte-Block Wording Slice
+
+Completed:
+- Probed another free-text CS/P3 batch after the previous commit.
+- Found CSCALC cache prompts like `64 byte blocks` could fall back to the associativity value as block size.
+- Fixed cache block-size extraction to accept singular `byte` and nearby `block(s)` wording before positional fallback.
+- Added a regression and rebuilt calculator-ready outputs.
+
+Evidence:
+- Targeted host probe for `256 KiB 4 way cache ... 64 byte blocks ... 48 bit addresses`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 473668 bytes`
+  - `CSCALC.g3a: 268500 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: 18178 bytes`
+
+Drift check:
+- Stayed inside CSCALC cache free-text parsing, tests, checkpoint, and generated calculator files.
+- No Pure CAS, menu/UI/session, CASP3 source, NOTES source, or shared status-bar behavior changed.
+- Active goal remains open for further unseen-case hardening.
+
 ## 2026-06-13 Cache Transfer Normal Conditional Stratified Slice
 
 Completed:
