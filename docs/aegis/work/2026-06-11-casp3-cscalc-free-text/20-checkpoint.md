@@ -293,6 +293,42 @@ Drift check:
 - No Pure CAS source, NOTES source, menu/UI/session, or shared status-bar code changed.
 - Active goal remains open for further unseen-case hardening.
 
+## 2026-06-13 Final Free-Text Parser Sweep Slice
+
+Completed:
+- Fixed CASP3 absolute-normal bar notation such as `P(|X-30|<6)` using the existing interval/z-score method.
+- Fixed CASP3 total-distance prompts with compact bounds like `find total distance 0 to 4` while avoiding accidental capture of `initial velocity` in acceleration questions.
+- Fixed CASP3 repeated histogram class wording so `class ... frequency ... class ... frequency ...` gives every density.
+- Fixed CASP3 grouped median interpolation with labelled `lower`, `upper`, `CF before`, `frequency`, and `total` values.
+- Cleaned PMCC test display for negative `r` so the working line prints `1-0.72^2`, not `1--0.72^2`.
+- Fixed CSCALC Boolean `F(A,B,C)=...` minterm/POS free text so declared variables are preserved.
+- Fixed CSCALC plain text `sum m 1 3 5 7` routing to the existing minterm engine.
+- Preserved existing `bool(A,)` comma-not behavior and mixed-expression comma parsing.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 530260 bytes`
+  - `CSCALC.g3a: 291280 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: 18178 bytes`
+- Artifact hashes:
+  - `CASP3.g3a: 9e69a919b2a3ee783cd73483efda2ab45c6f775325ce5abcd814f1ae94d5fd8c`
+  - `CSCALC.g3a: 94c773ff8496a92b5cf62010eb164bbc328edbead5e0aa145b6f646f731fd49a`
+
+Drift check:
+- Stayed inside CASP3/CSCALC parser hardening, tests, checkpoint, and rebuilt app artifacts.
+- No Pure CAS source, NOTES source, menu/UI/session, or shared status-bar code changed.
+- Active goal remains open for further unseen-case hardening if more time is available.
+
 ## 2026-06-13 CSCALC Explicit Check Digit Weights Slice
 
 Completed:

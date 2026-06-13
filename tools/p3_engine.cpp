@@ -3300,13 +3300,15 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     }
   }
   if (has(t, "velocity") && (has(t, "total") || has(t, "travelled") || has(t, "traveled")) &&
-      has(t, "distance") && (has(t, "from") || has(t, "between") || has(t, "first") || has(c, "<t<") || has(c, "<=t"))) {
+      has(t, "distance") && (!has(t, "acceleration") || has(c, "v="))) {
     double CA=0, CB=0, CC=0, CD=0, ct1=0, ct2=0;
+    bool cubic_interval =
+        ((word_num_with_t(input, "from", &ct1) || word_num_with_t(input, "between", &ct1)) &&
+         (word_num_with_t(input, "to", &ct2) || word_num_with_t(input, "and", &ct2))) ||
+        extract_t_interval(c, &ct1, &ct2);
+    if (!cubic_interval && nv >= 2) { ct1 = v[nv-2]; ct2 = v[nv-1]; cubic_interval = true; }
     if (parse_cubic_poly_after_word(input, "velocity", &CA, &CB, &CC, &CD) &&
-        !near_num(CA, 0) &&
-        (((word_num_with_t(input, "from", &ct1) || word_num_with_t(input, "between", &ct1)) &&
-          (word_num_with_t(input, "to", &ct2) || word_num_with_t(input, "and", &ct2))) ||
-         extract_t_interval(c, &ct1, &ct2))) {
+        !near_num(CA, 0) && cubic_interval) {
       double pts[8]; int np = 0; pts[np++] = ct1;
       for (int step = 0; step < 400 && np < 7; ++step) {
         double a0 = ct1 + (ct2 - ct1) * step / 400.0;
@@ -3343,11 +3345,14 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       return add(out, n, "total distance = %.10g", total);
     }
     double A=0, B=0, C=0, t1=0, t2=0;
-    if (!parse_velocity_quad(input, &A, &B, &C)) return 0;
+    bool qok = parse_poly_after_word(input, "velocity", &A, &B, &C);
+    if (!qok && has(c, "v=")) qok = parse_velocity_quad(input, &A, &B, &C);
+    if (!qok) return 0;
     if (!word_num_with_t(input, "from", &t1) || !word_num_with_t(input, "to", &t2)) {
       if (word_num_with_t(input, "between", &t1) && word_num_with_t(input, "and", &t2)) {}
       else if (has(t, "first") && prev_word_num(input, "seconds", &t2)) t1 = 0;
       else if (extract_t_interval(c, &t1, &t2)) {}
+      else if (nv >= 2) { t1 = v[nv-2]; t2 = v[nv-1]; }
       else return 0;
     }
     double pts[4]; int np = 0; pts[np++] = t1;
@@ -7295,6 +7300,31 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       }
     }
     const char *absx = strstr(c, "abs(x");
+    const char *barx = strchr(input, '|');
+    if (!absx && barx && hMu && (hSig || hVar)) {
+      const char *xpos = strchr(barx, 'X');
+      if (!xpos) xpos = strchr(barx, 'x');
+      const char *bar2 = xpos ? strchr(xpos, '|') : 0;
+      const char *lt = bar2 ? strchr(bar2, '<') : 0;
+      if (xpos && bar2 && lt) {
+        double centre = mu, radius = read_num(lt + 1);
+        const char *minus = strchr(xpos, '-');
+        const char *plus = strchr(xpos, '+');
+        if (minus && minus < bar2) centre = read_num(minus + 1);
+        else if (plus && plus < bar2) centre = -read_num(plus + 1);
+        if (radius > 0) {
+          double sd = hSig ? sig : root(var);
+          double lo2 = centre - radius, hi2 = centre + radius;
+          double z1 = (lo2 - mu) / sd, z2 = (hi2 - mu) / sd;
+          double ans = normal_cdf(z2) - normal_cdf(z1);
+          int n = add(out, 0, "P(|X-%.6g|<%.6g) means %.6g < X < %.6g.", centre, radius, lo2, hi2);
+          if (hVar) n = add(out, n, "sigma = sqrt(%.6g) = %.10g", var, sd);
+          n = add(out, n, "z1=(%.10g-%.6g)/%.10g = %.10g", lo2, mu, sd, z1);
+          n = add(out, n, "z2=(%.10g-%.6g)/%.10g = %.10g", hi2, mu, sd, z2);
+          return add(out, n, "probability = %.10g", ans);
+        }
+      }
+    }
     if (absx && hMu && (hSig || hVar)) {
       double centre = mu, radius = 0;
       const char *xm = strstr(absx, "x-");
@@ -8468,7 +8498,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     int n = add(out, 0, "H0: rho = 0.");
     n = add(out, n, tail > 0 ? "H1: rho > 0." : tail < 0 ? "H1: rho < 0." : "H1: rho != 0.");
     n = add(out, n, "Use t = r*sqrt(n-2)/sqrt(1-r^2).");
-    n = add(out, n, "t = %.6g*sqrt(%.0f-2)/sqrt(1-%.6g^2) = %.10g", r, n0, r, tv);
+    n = add(out, n, "t = %.6g*sqrt(%.0f-2)/sqrt(1-%.6g^2) = %.10g", r, n0, abs_num(r), tv);
     n = add(out, n, "At alpha = %.6g, compare with critical value %.6g.", alpha, crit);
     return add(out, n, reject ? "Reject H0: there is evidence of correlation." : "Do not reject H0: insufficient evidence of correlation.");
   }
@@ -9835,6 +9865,16 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     }
   }
   if ((has(t, "grouped") || has(t, "interpolate") || has(t, "interpolation")) && has(t, "median") && nv >= 5) {
+    double L=0, U=0, cf=0, f=0, total=0;
+    bool hL = word_num(input, "lower", &L) || word_num(input, "class", &L);
+    bool hU = word_num(input, "upper", &U) || word_num(input, "to", &U);
+    bool hC = word_num(input, "before", &cf) || word_num(input, "cfbefore", &cf) || word_num(input, "cumulativebefore", &cf);
+    bool hF = word_num(input, "frequency", &f);
+    bool hT = word_num(input, "total", &total) || word_num(input, "n", &total);
+    if (hL && hU && hC && hF && hT) {
+      sprintf(cmd, "groupmedian(%.10g,%.10g,%.10g,%.10g,%.10g)", L, cf, f, U-L, total);
+      return eval_stats(cmd, out);
+    }
     sprintf(cmd, "groupmedian(%.10g,%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3], v[4]); return eval_stats(cmd, out);
   }
   if ((has(t, "grouped") || has(t, "interpolate") || has(t, "interpolation")) && (has(t, "quartile") || has(t, "quantile")) && nv >= 5) {
@@ -9895,6 +9935,16 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       int n = add(out, 0, "For each histogram class, frequency density = frequency / class width.");
       for (int i = 0; i < m && n < P3_MAX_LINES; ++i) {
         double lo = abs_num(v[2*i]), hi = abs_num(v[2*i + 1]), f = v[2*m + i];
+        if (hi < lo) { double q = lo; lo = hi; hi = q; }
+        double w = hi - lo;
+        n = add(out, n, "class %.10g-%.10g: density = %.10g/%.10g = %.10g", lo, hi, f, w, w ? f / w : 0);
+      }
+      return n;
+    }
+    if (has(t, "class") && (has(t, "frequencies") || has(t, "frequency")) && nv >= 6 && nv % 3 == 0) {
+      int n = add(out, 0, "For each histogram class, frequency density = frequency / class width.");
+      for (int i = 0; i + 2 < nv && n < P3_MAX_LINES; i += 3) {
+        double lo = abs_num(v[i]), hi = abs_num(v[i + 1]), f = v[i + 2];
         if (hi < lo) { double q = lo; lo = hi; hi = q; }
         double w = hi - lo;
         n = add(out, n, "class %.10g-%.10g: density = %.10g/%.10g = %.10g", lo, hi, f, w, w ? f / w : 0);

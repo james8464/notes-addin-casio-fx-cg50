@@ -182,6 +182,7 @@ def main():
     require("A particle moves with velocity v=1/(t+1)^2. Find displacement from t=0 to t=3.", ["v = 1/(t+1)^2", "displacement = -0.25 - -1 = 0.75"])
     require("A particle moves with velocity v = t^4 - 2t^3 - 3t^2. Find the displacement from t=0 to t=3.", ["v = 1 t^4 -2 t^3 -3 t^2", "s = integral(v)", "displacement = -18.9"])
     require("A particle has velocity v = 2t^3 - 9t^2 + 12t. Find the total distance from t=0 to t=4.", ["v = 2 t^3 -9 t^2 +12 t", "total distance = 32"])
+    require("variable acceleration velocity v=t^3-6t^2+9t find total distance 0 to 4", ["Solve v=0 inside the interval", "distance on 0 to 3", "total distance = 8"])
     require("A particle moves with displacement s = 2t^3 - 15t^2 + 36t. Find the total distance travelled between t=0 and t=4.", ["v = ds/dt", "distance on 0 to 2", "total distance = 34"])
     require("A particle has displacement s = t^4 - 8t^2. Find the total distance travelled between t=0 and t=3.", ["v = ds/dt = 4 t^3", "distance on 0 to 2", "total distance = 41"])
     require("A particle has velocity v = 12t - 3t^2. Find the maximum displacement from the origin.", ["Maximum displacement", "Solve v=0", "maximum displacement = 32"])
@@ -377,6 +378,7 @@ def main():
     require("A random sample of 25 from a normal population has sample mean 102, population standard deviation 15. Test at 5 percent whether the population mean is greater than 100.", ["H0: mu = 100", "standard error = sigma/sqrt(n) = 15/sqrt(25) = 3", "Do not reject H0"])
     require("invnormal(0.95,100,15)", ["inverse normal", "InvNorm(0.95, 15, 100)"])
     require("A random variable X is normally distributed with mean 100 and standard deviation 15. Find the interquartile range.", ["Q1 = mu - 0.67448975*sigma", "Q3 = mu + 0.67448975*sigma", "IQR = Q3 - Q1"])
+    require("normal X mean 30 sd 5 find P(|X-30|<6)", ["P(|X-30|<6) means 24 < X < 36", "probability = 0.7698605368"])
     require("normal critical value area 0.95 mean 100 sd 15", ["inverse normal", "InvNorm(0.95, 15, 100)"])
     require("normal critical value area=0.95 sd=15 mean=100", ["inverse normal", "InvNorm(0.95, 15, 100)"])
     require("normal critical value area 0.95 mean 100 variance 225", ["Convert variance", "sigma = sqrt(225) = 15", "InvNorm(0.95, 15, 100)"])
@@ -501,6 +503,7 @@ def main():
     require("groupmedian(20,15,10,5,50)", ["linear interpolation", "position = n/2", "median = 20 + ((25-15)/10)*5 = 25"])
     require("A cumulative frequency table has class boundaries 0 10 20 30 and cumulative frequencies 0 5 17 25. Estimate the median and interquartile range.", ["cumulative-frequency table", "median class 10 to 20: 16.25", "Q3 class 20 to 30: 22.1875", "IQR = Q3 - Q1 = 11.14583333"])
     require("grouped median 20 cf before 15 frequency 10 class width 5 n 50", ["linear interpolation", "position = n/2", "median = 20"])
+    require("interpolate median grouped data lower 20 upper 30 cf before 45 frequency 20 total 100", ["median = 20 + ((50-45)/20)*10 = 22.5"])
     require("Use linear interpolation to estimate the lower quartile from grouped data total 80 class 20-30 cumulative before 16 frequency 24", ["position = 0.25*n = 0.25*80 = 20", "value = 20 + ((20-16)/24)*10"])
     require("For grouped data with classes 0-20 20-40 40-60 and frequencies 5 12 3 estimate the median.", ["total frequency n = 20", "median class is 20 to 40", "28.333"])
     require("groupquantile(20,15,10,5,50,0.75)", ["linear interpolation", "position = 0.75*n", "value ="])
@@ -735,6 +738,7 @@ def main():
     require("two particles masses 3kg and 5kg connected over pulley coefficient friction 0.2 find acceleration", ["connected particles over a pulley", "friction on rough contact", "a = (49-5.88)/(3+5) = 5.39"])
     require("normal mean unknown sd 8 P(X less than 40)=0.2 find mean", ["Use z=(x-mu)/sigma", "area to the left = 0.2", "mu = 46.73296833"])
     require("histogram class 15-25 frequency 40 find density", ["frequency density = frequency / class width", "40/10 = 4"])
+    require("histogram class 0 to 10 frequency 12 class 10 to 25 frequency 30 find densities", ["class 0-10: density = 12/10 = 1.2", "class 10-25: density = 30/15 = 2"])
     print("OK p3 engine")
 
 

@@ -3326,6 +3326,17 @@ static void bool_simplified_from_rows(const int *mins, int mc, int rows, const c
   imp_sop_list(chosen, chc, vars, vc, buf, cap);
 }
 
+static bool bool_arg_is_varlist(const char *s) {
+  bool any = false;
+  for (int i = 0; s && s[i]; ++i) {
+    unsigned char ch = (unsigned char)s[i];
+    if (isalpha(ch)) { any = true; continue; }
+    if (ch == ',' || ch == ' ' || ch == '\t') continue;
+    return false;
+  }
+  return any;
+}
+
 static void imp_pos_text(const Imp &p, const char *vars, int vc, char *buf, int cap) {
   int pos = 0, parts = 0;
   app_ch(buf, &pos, cap, '(');
@@ -3353,8 +3364,10 @@ static int eval_bool(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN])
   char a[2][48]; int na = args(s, a, 2);
   char exprbuf[96], inner[96];
   bool truthmode = starts(s, "truth(") || starts(s, "truthtable(") || starts(s, "truthrows(");
+  bool has_var_arg = na >= 2 && bool_arg_is_varlist(a[1]);
   const char *expr = (starts(s, "bool(") || truthmode || starts(s, "boolean(") || starts(s, "logic(")) && na ? a[0] : 0;
-  if ((starts(s, "bool(") || truthmode || starts(s, "boolean(") || starts(s, "logic(")) &&
+  if ((na <= 1 || !has_var_arg) &&
+      (starts(s, "bool(") || truthmode || starts(s, "boolean(") || starts(s, "logic(")) &&
       strchr(s, '(') && strrchr(s, ')')) {
     const char *l = strchr(s, '('), *r = strrchr(s, ')');
     int p = 0;
@@ -3365,7 +3378,17 @@ static int eval_bool(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN])
   if (!expr) return 0;
   bool_norm(expr, exprbuf, sizeof(exprbuf));
   expr = exprbuf;
-  char vars[8]; int vc; collect_vars(expr, vars, &vc);
+  char vars[8]; int vc = 0;
+  if (has_var_arg) {
+    for (int i = 0; a[1][i] && vc < 6; ++i) {
+      if (!isalpha((unsigned char)a[1][i])) continue;
+      char v = (char)toupper((unsigned char)a[1][i]);
+      bool seen = false; for (int j = 0; j < vc; ++j) if (vars[j] == v) seen = true;
+      if (!seen) vars[vc++] = v;
+    }
+    vars[vc] = 0;
+  }
+  if (!vc) collect_vars(expr, vars, &vc);
   if (vc == 0) {
     BParser p = { expr, 0, 0, {0}, 0 };
     int v = p.expr() ? 1 : 0;
@@ -7249,7 +7272,8 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
         else sprintf(cmd, "posform(%s)", ne);
         return eval_posform(cmd, out);
       }
-      sprintf(cmd, "bool(%s)", ne);
+      if (bool_header_vars(input, hv, sizeof(hv))) sprintf(cmd, "bool(%s,%s)", ne, hv);
+      else sprintf(cmd, "bool(%s)", ne);
       return eval_bool(cmd, out);
     }
   }
@@ -7264,6 +7288,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     truthbits_cmd_from_text(t, bits[0], cmd, sizeof(cmd)); return eval_truthbits(cmd, out);
   }
   if ((has(t, "kmap") || has(t, "karnaugh") || has(t, "minterm") || has(t, "minterms") ||
+       (has(t, "sum") && has(t, "m")) ||
        strstr(input, "Σm") || strstr(input, "∑m") ||
        has(t, "dontcare") || has(t, "don'tcare") || (has(t, "dont") && has(t, "care")) ||
        (has(t, "don't") && has(t, "care")) || has(t, "dc")) && make_minterm_cmd(input, cmd, sizeof(cmd))) {
@@ -7285,19 +7310,30 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     const char *e = skip_bool_words(compact); char ce[96];
     const char *eq = strchr(e, '=');
     if (eq && eq > e && eq[1] && isalpha((unsigned char)e[0]) && (e[1] == '(' || e[1] == '=')) {
+      char hv[8], ne[96];
       bool_clean_tail(eq + 1, ce, sizeof(ce));
-      sprintf(cmd, "posform(%s)", ce); return eval_posform(cmd, out);
+      bool_arg_for_cmd(ce, ne, sizeof(ne));
+      if (bool_header_vars(input, hv, sizeof(hv))) sprintf(cmd, "posform(%s,%s)", ne, hv);
+      else sprintf(cmd, "posform(%s)", ne);
+      return eval_posform(cmd, out);
     }
+    char ne[96], hv[8];
     bool_clean_tail(e, ce, sizeof(ce));
-    sprintf(cmd, "posform(%s)", ce); return eval_posform(cmd, out);
+    bool_arg_for_cmd(ce, ne, sizeof(ne));
+    if (bool_header_vars(input, hv, sizeof(hv))) sprintf(cmd, "posform(%s,%s)", ne, hv);
+    else sprintf(cmd, "posform(%s)", ne);
+    return eval_posform(cmd, out);
   }
   if (nv == 0 && (has(compact, "sumofproducts") || has(compact, "sopform") || has(compact, "sop"))) {
     const char *e = skip_bool_words(compact); char ce[96], ne[96];
+    char hv[8];
     const char *eq = strchr(e, '=');
     if (eq && eq > e && eq[1] && isalpha((unsigned char)e[0]) && (e[1] == '(' || e[1] == '=')) e = eq + 1;
     bool_clean_tail(e, ce, sizeof(ce));
     bool_arg_for_cmd(ce, ne, sizeof(ne));
-    sprintf(cmd, "bool(%s)", ne); return eval_bool(cmd, out);
+    if (bool_header_vars(input, hv, sizeof(hv))) sprintf(cmd, "bool(%s,%s)", ne, hv);
+    else sprintf(cmd, "bool(%s)", ne);
+    return eval_bool(cmd, out);
   }
   if ((has(compact, "simplify") || has(compact, "boolean") || has(compact, "logic") || has(compact, "output") ||
        has(compact, "evaluate") || has(compact, "value")) &&
