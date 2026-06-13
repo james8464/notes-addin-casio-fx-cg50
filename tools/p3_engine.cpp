@@ -5058,6 +5058,30 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if (has(t, "weight") && nv >= 1) {
     sprintf(cmd, "weight(%.10g)", v[0]); return eval_mech(cmd, out);
   }
+  if ((has(t, "incline") || has(t, "inclined") || has(t, "slope") || has(t, "plane")) &&
+      (has(t, "resistance") || has(t, "resistive")) &&
+      (has(t, "acceleration") || has(t, "accelerate") || has(c, "findacceleration")) &&
+      !has(t, "coefficient") && !has(t, "friction") && !has(t, "power") &&
+      !has(t, "driving") && !has(t, "drive") && !has(t, "engine") &&
+      !has(t, "pull") && !has(t, "force") && nv >= 3) {
+    double m = 0, theta = 0, r = 0;
+    bool hm = word_num(input, "mass", &m) || label_num(input, "mass", &m) || prev_word_num(input, "kg", &m);
+    bool hA = word_num(input, "angle", &theta) || label_num(input, "angle", &theta) || prev_word_num(input, "degrees", &theta);
+    bool hr = word_num(input, "resistance", &r) || label_num(input, "resistance", &r);
+    if (!hm) m = v[0];
+    if (!hA) for (int i = 0; i < nv; ++i)
+      if (!near_num(v[i], m) && !near_num(v[i], r) && v[i] > 0 && v[i] <= 90) { theta = v[i]; hA = true; break; }
+    if (!hr) for (int i = nv - 1; i >= 0; --i)
+      if (!near_num(v[i], m) && !near_num(v[i], theta)) { r = v[i]; hr = true; break; }
+    double down = m * 9.8 * deg_sine(theta);
+    bool moving_up = has(t, "up") || has(t, "uphill");
+    double net = moving_up ? -down - r : down - r;
+    int n = add(out, 0, "Resolve along the slope and treat resistance as a force opposing motion.");
+    n = add(out, n, "down-slope component = mg sin(theta) = %.6g*9.8 sin(%.6g) = %.10g N", m, theta, down);
+    if (moving_up) n = add(out, n, "resultant up the slope = -%.10g - %.10g = %.10g N", down, r, net);
+    else n = add(out, n, "resultant down the slope = %.10g - %.10g = %.10g N", down, r, net);
+    return add(out, n, "a = F/m = %.10g/%.6g = %.10g m/s^2", net, m, net/m);
+  }
   if ((has(t, "pulley") || has(t, "connected")) && (has(t, "incline") || has(t, "inclined") || has(t, "plane")) && nv >= 3) {
     double m1=0,m2=0,ang=0,mu=0;
     bool hM=word_num(input,"mass",&m1) || label_num(input,"m1",&m1);

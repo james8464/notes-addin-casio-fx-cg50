@@ -1,5 +1,36 @@
 # Checkpoint
 
+## 2026-06-13 Adjacent Units And Slope Resistance Slice
+
+Completed:
+- Ran another compact CS/P3 free-text probe pass.
+- Fixed CSCALC storage-size units so `KiB` file sizes are not confused by nearby `Mbit/s` rate units.
+- Fixed CSCALC direct-mapped cache wording and `byte block size` ordering.
+- Fixed CASP3 slope resistance prompts so a stated resistance force is not treated as a coefficient of friction.
+- Added regressions and rebuilt calculator-ready outputs.
+
+Evidence:
+- Targeted host probes for direct-mapped cache, KiB/Mbit transfer, and slope resistance acceleration: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 475764 bytes`
+  - `CSCALC.g3a: 269500 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: 18178 bytes`
+
+Drift check:
+- Stayed inside CASP3/CSCALC free-text parser hardening, tests, checkpoint, and generated calculator files.
+- No Pure CAS, menu/UI/session, NOTES source, or shared status-bar behavior changed.
+- Active goal remains open for further unseen-case hardening.
+
 ## 2026-06-13 Cache Byte-Block Wording Slice
 
 Completed:

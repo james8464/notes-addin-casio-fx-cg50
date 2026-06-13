@@ -2226,6 +2226,14 @@ static int add_image_byte_depth_lines(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN
 }
 
 static bool storage_size_bits(const char *t, double size, double *bits, const char **unit) {
+  double shown = 0;
+  if (scan_before_word_num(t, "gib", &shown) && near_num(shown, size)) { *bits = size * 1073741824.0 * 8.0; *unit = "GiB"; return true; }
+  if ((scan_before_word_num(t, "gb", &shown) || scan_before_word_num(t, "gigabyte", &shown)) && near_num(shown, size)) { *bits = size * 1000000000.0 * 8.0; *unit = "GB"; return true; }
+  if (scan_before_word_num(t, "mib", &shown) && near_num(shown, size)) { *bits = size * 1048576.0 * 8.0; *unit = "MiB"; return true; }
+  if ((scan_before_word_num(t, "mb", &shown) || scan_before_word_num(t, "megabyte", &shown)) && near_num(shown, size)) { *bits = size * 1000000.0 * 8.0; *unit = "MB"; return true; }
+  if (scan_before_word_num(t, "kib", &shown) && near_num(shown, size)) { *bits = size * 1024.0 * 8.0; *unit = "KiB"; return true; }
+  if ((scan_before_word_num(t, "kb", &shown) || scan_before_word_num(t, "kilobyte", &shown)) && near_num(shown, size)) { *bits = size * 1000.0 * 8.0; *unit = "KB"; return true; }
+  if ((scan_before_word_num(t, "bytes", &shown) || scan_before_word_num(t, "byte", &shown)) && near_num(shown, size)) { *bits = size * 8.0; *unit = "bytes"; return true; }
   if (has(t, "gib")) { *bits = size * 1073741824.0 * 8.0; *unit = "GiB"; return true; }
   if (has(t, "gb") || has(t, "gigabyte")) { *bits = size * 1000000000.0 * 8.0; *unit = "GB"; return true; }
   if (has(t, "mib")) { *bits = size * 1048576.0 * 8.0; *unit = "MiB"; return true; }
@@ -4477,7 +4485,12 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
               scan_before_word_num(t, "byte", &block) ||
               scan_near_after_word_num(t, "block", &block) || scan_near_after_word_num(t, "blocks", &block);
     bool hw = scan_before_word_num(t, "way", &ways) || scan_before_word_num(t, "associativity", &ways);
+    if (!hw && has(t, "direct") && has(t, "mapped")) { ways = 1; hw = true; }
     bool ha = scan_bit_width_before_label(t, "address", &addr) || scan_before_word_num(t, "bitaddress", &addr);
+    if ((!hb || block <= 0) && strstr(t, "byte,block")) {
+      const char *bp = strstr(t, "byte,block");
+      if (num_before_ptr(t, bp, &block)) hb = true;
+    }
     if (!hc) cache = v[0];
     if (!hb) block = v[1];
     if (!hw) {
