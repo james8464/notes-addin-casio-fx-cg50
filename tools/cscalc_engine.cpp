@@ -344,7 +344,12 @@ static bool scan_before_word_num(const char *s, const char *word, double *v) {
     while (j >= 0 && s[j] == ',') --j;
     int e = j + 1;
     while (j >= 0 && (isdigit((unsigned char)s[j]) || s[j] == '.' || s[j] == '-' || s[j] == 'e' || s[j] == 'E' || s[j] == '+')) --j;
-    if (e > j + 1) { *v = read_num(s + j + 1); return true; }
+    if (e > j + 1) {
+      const char *st = s + j + 1;
+      if (*st != '-' && *st != '+' && *st != '.' && !isdigit((unsigned char)*st)) continue;
+      *v = read_num(st);
+      return true;
+    }
   }
   return false;
 }
@@ -355,7 +360,9 @@ static bool num_before_ptr(const char *base, const char *p, double *v) {
   int e = j + 1;
   while (j >= 0 && (isdigit((unsigned char)base[j]) || base[j] == '.' || base[j] == '-' || base[j] == 'e' || base[j] == 'E' || base[j] == '+')) --j;
   if (e <= j + 1) return false;
-  *v = read_num(base + j + 1);
+  const char *st = base + j + 1;
+  if (*st != '-' && *st != '+' && *st != '.' && !isdigit((unsigned char)*st)) return false;
+  *v = read_num(st);
   return true;
 }
 
@@ -414,24 +421,25 @@ static double scaled_colour_count(const char *t, double v) {
 }
 
 static bool scan_bit_width_before_label(const char *s, const char *label, double *v) {
-  const char *p = strstr(s, label);
-  if (!p) return false;
-  const char *q = p - 1;
-  while (q >= s && *q == ',') --q;
-  const char *endword = q + 1;
-  while (q >= s && isalpha((unsigned char)*q)) --q;
-  const char *word = q + 1;
-  if (!((endword - word == 3 && strncmp(word, "bit", 3) == 0) ||
-        (endword - word == 4 && strncmp(word, "bits", 4) == 0))) return false;
-  while (q >= s && (*q == ',' || *q == '-')) --q;
-  const char *endnum = q + 1;
-  while (q >= s && (isdigit((unsigned char)*q) || *q == '.')) --q;
-  if (endnum <= q + 1) return false;
-  char b[32]; int len = (int)(endnum - (q + 1));
-  if (len <= 0 || len >= (int)sizeof(b)) return false;
-  memcpy(b, q + 1, len); b[len] = 0;
-  *v = read_num(b);
-  return true;
+  for (const char *p = strstr(s, label); p; p = strstr(p + 1, label)) {
+    const char *q = p - 1;
+    while (q >= s && *q == ',') --q;
+    const char *endword = q + 1;
+    while (q >= s && isalpha((unsigned char)*q)) --q;
+    const char *word = q + 1;
+    if (!((endword - word == 3 && strncmp(word, "bit", 3) == 0) ||
+          (endword - word == 4 && strncmp(word, "bits", 4) == 0))) continue;
+    while (q >= s && (*q == ',' || *q == '-')) --q;
+    const char *endnum = q + 1;
+    while (q >= s && (isdigit((unsigned char)*q) || *q == '.')) --q;
+    if (endnum <= q + 1) continue;
+    char b[32]; int len = (int)(endnum - (q + 1));
+    if (len <= 0 || len >= (int)sizeof(b)) continue;
+    memcpy(b, q + 1, len); b[len] = 0;
+    *v = read_num(b);
+    return true;
+  }
+  return false;
 }
 
 static bool label_num(const char *s, const char *name, double *v) {
@@ -4498,6 +4506,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
               scan_before_word_num(t, "associativity", &ways);
     bool hs = scan_before_word_num(t, "sets", &sets_given);
     bool hl = !hs && scan_before_word_num(t, "lines", &line_count);
+    if (!hl && !hs && has(t, "lines") && scan_before_word_num(t, "cache", &line_count)) hl = true;
     if (!hw && has(t, "direct") && has(t, "mapped")) { ways = 1; hw = true; }
     bool ha = scan_bit_width_before_label(t, "address", &addr) || scan_before_word_num(t, "bitaddress", &addr);
     if ((!hb || block <= 0) && strstr(t, "byte,block")) {

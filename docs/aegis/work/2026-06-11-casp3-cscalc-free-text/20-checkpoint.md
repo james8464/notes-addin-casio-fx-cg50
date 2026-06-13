@@ -1,5 +1,37 @@
 # Checkpoint
 
+## 2026-06-13 CSCALC Cache Scanner Slice
+
+Completed:
+- Ran another 30-case unseen CS/P3 wording probe batch.
+- Fixed CSCALC cache address parsing when `address fields` appears before `32 bit addresses`.
+- Fixed CSCALC `N cache lines` parsing for direct-mapped cache prompts.
+- Tightened the shared number-before-word scanner so a bare word ending in `e` is not accepted as scientific-notation input.
+- Added regressions and rebuilt calculator-ready outputs.
+
+Evidence:
+- Targeted `256 sets ... 32 bit addresses` prompt now gives `tag bits = 32 - 8 - 5 = 19`.
+- Targeted `512 cache lines of 8 bytes ... 20 bits` prompt now gives `cache size = lines*line size = 512*8 = 4096 bytes` and `tag bits = 20 - 9 - 3 = 8`.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 484016 bytes`
+  - `CSCALC.g3a: 273872 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: 18178 bytes`
+
+Drift check:
+- Stayed inside CSCALC shared scanners/cache parsing, tests, checkpoint, and rebuilt CSCALC calculator file.
+- No Pure CAS, CASP3 source, menu/UI/session, NOTES source, or shared status-bar behavior changed.
+- Active goal remains open for further unseen-case hardening.
+
 ## 2026-06-13 Route Guard And Cache Lines Slice
 
 Completed:
