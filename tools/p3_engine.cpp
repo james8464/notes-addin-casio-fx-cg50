@@ -5339,6 +5339,9 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       }
     }
     bool hmu = label_num(input,"mu",&mu) || label_num(input,"coefficient",&mu) || word_num(input,"coefficient",&mu);
+    double res = 0;
+    bool hRes = word_num(input, "resistance", &res) || word_num(input, "resistive", &res) ||
+                label_num(input, "resistance", &res);
     bool hAng = label_num(input,"angle",&ang) || word_num(input,"angle",&ang) || word_num(input,"degrees",&ang);
     if (!hm) m = v[0];
     if (!hF) F = v[nv-1];
@@ -5366,8 +5369,9 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     } else {
       n = add(out, n, "Vertical equilibrium gives R = mg = %.6g*9.8 = %.10g N", m, R);
     }
-    double friction = hmu ? mu*R : 0;
+    double friction = hmu ? mu*R : (hRes ? res : 0);
     if (hmu) n = add(out, n, "friction = mu R = %.6g*%.10g = %.10g N", mu, R, friction);
+    else if (hRes) n = add(out, n, "resistance = %.10g N", friction);
     double net = drive - friction;
     n = add(out, n, "resultant horizontal force = %.10g - %.10g = %.10g N", drive, friction, net);
     return add(out, n, "a = F/m = %.10g/%.6g = %.10g m/s^2", net, m, net/m);
@@ -5890,11 +5894,13 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     return add(out, n, "maximum speed = %.10g/%.10g = %.10g m/s", P, r, vmax);
   }
   if (has(t, "power") && (has(t, "resistance") || has(t, "resistive")) &&
-      (has(t, "constant") || has(t, "speed") || has(t, "velocity") || has(t, "travels") || has(t, "travelling")) &&
+      (has(t, "constant") || has(t, "speed") || has(t, "velocity") || has(t, "travels") || has(t, "travelling") ||
+       has(t, "moves") || has(t, "moving")) &&
       !(has(t, "acceleration") || has(t, "accelerate")) &&
       !has(t, "incline") && !has(t, "slope") && !has(t, "plane") && nv >= 2) {
     double spd=0, r=0;
-    bool hs=word_num(input,"speed",&spd) || word_num(input,"velocity",&spd);
+    bool hs=num_before_unit(input, "m/s", &spd) || num_before_unit(input, "ms^-1", &spd) ||
+            word_num(input,"speed",&spd) || word_num(input,"velocity",&spd) || word_num(input,"at",&spd);
     bool hr=word_num(input,"resistance",&r) || word_num(input,"resistive",&r);
     if (!hs) {
       for (int i = 0; i < nv; ++i)

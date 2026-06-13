@@ -55,6 +55,10 @@ static bool cs_utf_token(const char *s, const char **tok, int *len) {
   unsigned char a = (unsigned char)s[0], b = (unsigned char)s[1], c = (unsigned char)s[2];
   if (a == 0xe2 && b == 0x88 && c == 0x92) { *tok = "-"; *len = 3; return true; }
   if (a == 0xe2 && b == 0x80 && (c == 0x93 || c == 0x94)) { *tok = "-"; *len = 3; return true; }
+  if (a == 0xe2 && b == 0x82 && c >= 0x80 && c <= 0x89) {
+    static const char *d[] = {"0","1","2","3","4","5","6","7","8","9"};
+    *tok = d[c - 0x80]; *len = 3; return true;
+  }
   return false;
 }
 
@@ -98,6 +102,13 @@ static bool has_word(const char *s, const char *w) {
     if (i > 0 && isalnum((unsigned char)s[i-1])) continue;
     if (strncmp(s + i, w, wl) == 0 && !isalnum((unsigned char)s[i + wl])) return true;
   }
+  return false;
+}
+
+static bool has_utf_subscript_digit(const char *s) {
+  for (int i = 0; s && s[i]; ++i)
+    if ((unsigned char)s[i] == 0xe2 && (unsigned char)s[i+1] == 0x82 &&
+        (unsigned char)s[i+2] >= 0x80 && (unsigned char)s[i+2] <= 0x89) return true;
   return false;
 }
 
@@ -4010,6 +4021,16 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if (!has_hex_tok && (has(t, "hex") || has(t, "hexadecimal") || has(t, "base,16") || has(t, "base16"))) {
     has_hex_tok = scan_hex_word_token(t, hex_tok, sizeof(hex_tok));
   }
+  bool subscript_base16 = false;
+  if (has_hex_tok && has_utf_subscript_digit(input)) {
+    int hl = (int)strlen(hex_tok);
+    bool alpha = false;
+    for (int i = 0; i < hl - 2; ++i) if (hex_tok[i] >= 'A' && hex_tok[i] <= 'F') alpha = true;
+    if (alpha && hl > 2 && hex_tok[hl - 2] == '1' && hex_tok[hl - 1] == '6') {
+      hex_tok[hl - 2] = 0;
+      subscript_base16 = true;
+    }
+  }
   char cmd[160];
   bool tc_hint = has(t, "twos") || (has(t, "two") && has(t, "complement"));
   double width=0, height=0, depth=0;
@@ -5877,6 +5898,12 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   if (has(t, "bcd") && nv >= 1) {
     sprintf(cmd, "bcd(%lld)", (long long)v[0]); return eval_base(cmd, out);
+  }
+  if (subscript_base16 && has_hex_tok && (has(t, "binary") || has(t, "base,2") || has(t, "base2"))) {
+    sprintf(cmd, "convert(%s,16,2)", hex_tok); return eval_base(cmd, out);
+  }
+  if (subscript_base16 && has_hex_tok && (has(t, "denary") || has(t, "decimal") || has(t, "base,10") || has(t, "base10"))) {
+    sprintf(cmd, "den(%s,16)", hex_tok); return eval_base(cmd, out);
   }
   if (has(t, "base") && ((has(t, "base,2") || has(t, "base,two")) && (has(t, "base,8") || has(t, "base,eight")))) {
     const char *p2 = strstr(t, "base,2"); if (!p2) p2 = strstr(t, "base,two");

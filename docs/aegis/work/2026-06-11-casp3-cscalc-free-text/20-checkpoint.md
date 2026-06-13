@@ -5544,6 +5544,35 @@ Drift check:
 - Kept changes to CASP3/CSCALC parser generalisation, regressions, generated app outputs, and this checkpoint.
 - Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.
 
+## 2026-06-13 Resistance, Power, and Subscript Base Slice
+
+Completed:
+- Fixed CASP3 rough-horizontal force parsing so explicit resistance is used when no coefficient of friction is supplied.
+- Fixed CASP3 constant-speed power prompts phrased as `moves at ... m/s against resistance ...`.
+- Added CSCALC Unicode subscript digit normalization and base-16 suffix handling for prompts like `AF₁₆`.
+- Added regression tests and rebuilt calculator files.
+
+Evidence:
+- Fresh probes fixed: rough horizontal `force 20N, resistance 5N`, constant-speed power `12 m/s against resistance 300N`, and `AF₁₆ to binary`.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `CASP3.g3a: 504280 bytes`
+  - `CSCALC.g3a: 278536 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CASP3.g3a sha256: 4a6acccf8363a4ca28fa79b6e585dbcf8b889ff6b52fc5614fc200c077c01bc4`
+  - `CSCALC.g3a sha256: 3ab8e240c8d0de706675ca615a6687461222d8c65089ec14337cb7958b614c8c`
+
+Drift check:
+- Kept changes to CASP3/CSCALC parser generalisation, regressions, generated app outputs, and this checkpoint.
+- Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.
+
 ## 2026-06-13 Pasted Symbol and Boolean Truth Slice
 
 Completed:

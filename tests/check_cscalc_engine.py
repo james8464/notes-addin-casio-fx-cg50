@@ -38,6 +38,7 @@ def main():
     require("den(101101,2)", ["place value", "45_10"])
     require("convert 101101 binary to denary", ["place value", "45_10"])
     require("convert hexadecimal 3F to binary", ["3F_16 = 63_10", "63_10 = 00111111_2"])
+    require("Convert AF₁₆ to binary.", ["AF_16 = 175_10", "175_10 = 10101111_2"])
     require("Convert decimal 173 to hexadecimal and binary.", ["173_10 = 10101101_2", "173_10 = AD_16"])
     require("Store hexadecimal 12345678 in little endian order.", ["12345678 -> 12 34 56 78", "little-endian order = 78 56 34 12"])
     require("convert binary 111111 to hexadecimal", ["111111_2 = 63_10", "63_10 = 3F_16"])
