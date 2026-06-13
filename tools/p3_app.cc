@@ -2,7 +2,7 @@
 #include "p3_engine.hpp"
 
 static const char *const menu_items[] = {
-  "Free input",
+  "Command input",
   "SUVAT",
   "Projectiles",
   "Forces",
@@ -18,7 +18,25 @@ static const char *const menu_items[] = {
   "Grouped data"
 };
 
+static const char *const command_templates[] = {
+  "suvat(u=2,a=3,t=4)",
+  "suvat(u=2,a=3,t=4)",
+  "projectile(20,30)",
+  "force(12,3)",
+  "incline(5,30,0.2)",
+  "pulley(3,5)",
+  "beam(10,30,4,20)",
+  "varacct(6,-4,0,3,5)",
+  "hypbinom(20,0.4,4,0.05,-1)",
+  "normalprob(40,60,50,10)",
+  "binom(10,0.4,3)",
+  "cond(0.2,0.5)",
+  "regresscalc(5,20,30,10,18,8)",
+  "groupmean(5,12,15,30,25,18)"
+};
+
 static const char *const suvat[] = {
+  "EXE inserts: suvat(u=2,a=3,t=4)",
   "Choose sign direction first.",
   "List known u,v,a,s,t.",
   "Pick equation without missing value.",
@@ -31,6 +49,7 @@ static const char *const suvat[] = {
 };
 
 static const char *const projectile[] = {
+  "EXE inserts: projectile(20,30)",
   "Resolve initial velocity.",
   "u_x = u cos(theta)",
   "u_y = u sin(theta)",
@@ -42,6 +61,7 @@ static const char *const projectile[] = {
 };
 
 static const char *const forces[] = {
+  "EXE inserts: force(12,3)",
   "Draw force diagram.",
   "Resolve parallel/perpendicular.",
   "Use F=ma in direction of motion.",
@@ -53,6 +73,7 @@ static const char *const forces[] = {
 };
 
 static const char *const moments[] = {
+  "EXE inserts: beam(10,30,4,20)",
   "Moment = force * perpendicular distance.",
   "Clockwise moments = anticlockwise moments.",
   "Resolve angled force before moment.",
@@ -63,6 +84,7 @@ static const char *const moments[] = {
 };
 
 static const char *const varacc[] = {
+  "EXE inserts: varacct(6,-4,0,3,5)",
   "If a=f(t): integrate for v.",
   "v = integral a dt + c",
   "Use initial velocity to find c.",
@@ -73,6 +95,7 @@ static const char *const varacc[] = {
 };
 
 static const char *const hyp[] = {
+  "EXE inserts: hypbinom(20,0.4,4,0.05,-1)",
   "Define X and distribution.",
   "H0: parameter = stated value.",
   "H1: parameter <, >, or != value.",
@@ -85,6 +108,7 @@ static const char *const hyp[] = {
 };
 
 static const char *const norm[] = {
+  "EXE inserts: normalprob(40,60,50,10)",
   "X ~ N(mu, sigma^2).",
   "Standardise: Z=(X-mu)/sigma.",
   "Sketch tail and inequality.",
@@ -94,6 +118,7 @@ static const char *const norm[] = {
 };
 
 static const char *const binom[] = {
+  "EXE inserts: binom(10,0.4,3)",
   "X ~ B(n,p).",
   "P(X=r)=nCr p^r(1-p)^(n-r).",
   "For <= use cumulative binomial.",
@@ -103,6 +128,7 @@ static const char *const binom[] = {
 };
 
 static const char *const prob[] = {
+  "EXE inserts: cond(0.2,0.5)",
   "Use tree/table/Venn first.",
   "P(A|B)=P(A and B)/P(B).",
   "Independent: P(A and B)=P(A)P(B).",
@@ -112,6 +138,7 @@ static const char *const prob[] = {
 };
 
 static const char *const reg[] = {
+  "EXE inserts: regresscalc(5,20,30,10,18,8)",
   "Use calculator for regression line.",
   "State variables and units.",
   "Interpret gradient in context.",
@@ -122,6 +149,7 @@ static const char *const reg[] = {
 };
 
 static const char *const grouped[] = {
+  "EXE inserts: groupmean(5,12,15,30,25,18)",
   "Use class midpoints.",
   "Mean = sum fx / sum f.",
   "Variance = sum fx^2/sum f - mean^2.",
@@ -131,8 +159,16 @@ static const char *const grouped[] = {
   "Histogram density = f / class width."
 };
 
-static void run_input(unsigned *tick) {
-  char input[96] = "suvat(u=2,a=3,t=4)";
+static void copy_initial(char *dst, int dst_len, const char *src) {
+  int i = 0;
+  if (!src) src = "";
+  for (; i + 1 < dst_len && src[i]; ++i) dst[i] = src[i];
+  dst[i] = 0;
+}
+
+static void run_input(const char *initial, unsigned *tick) {
+  char input[96];
+  copy_initial(input, sizeof(input), initial);
   if (!ui_input("CASP3 input", input, sizeof(input), tick)) return;
   char lines[P3_MAX_LINES][P3_LINE_LEN];
   int count = p3_eval(input, lines);
@@ -141,8 +177,12 @@ static void run_input(unsigned *tick) {
   ui_wait_page("Working", ptrs, count, tick);
 }
 
-static void open_item(int sel, unsigned *tick) {
-  if (sel == 0) run_input(tick);
+static void open_item(int sel, bool help, unsigned *tick) {
+  if (!help) {
+    run_input(command_templates[sel], tick);
+    return;
+  }
+  if (sel == 0) ui_wait_page("Command input", suvat, sizeof(suvat)/sizeof(suvat[0]), tick);
   else if (sel == 1) ui_wait_page("SUVAT", suvat, sizeof(suvat)/sizeof(suvat[0]), tick);
   else if (sel == 2) ui_wait_page("Projectiles", projectile, sizeof(projectile)/sizeof(projectile[0]), tick);
   else if (sel == 3 || sel == 4 || sel == 5) ui_wait_page(menu_items[sel], forces, sizeof(forces)/sizeof(forces[0]), tick);
@@ -169,7 +209,8 @@ int main() {
     if (key == KEY_CTRL_EXIT || key == KEY_CTRL_AC || key == KEY_CTRL_MENU) return 0;
     if (key == KEY_CTRL_UP && sel > 0) { --sel; if (sel < top) --top; ui_menu("CASP3 Paper 3", menu_items, count, top, sel, rv); }
     if (key == KEY_CTRL_DOWN && sel + 1 < count) { ++sel; if (sel >= top + 7) ++top; ui_menu("CASP3 Paper 3", menu_items, count, top, sel, rv); }
-    if (key == KEY_CTRL_EXE || key == KEY_CTRL_F1) { open_item(sel, &tick); rv = ui_r_visible(tick); ui_menu("CASP3 Paper 3", menu_items, count, top, sel, rv); }
+    if (key == KEY_CTRL_EXE) { open_item(sel, false, &tick); rv = ui_r_visible(tick); ui_menu("CASP3 Paper 3", menu_items, count, top, sel, rv); }
+    if (key == KEY_CTRL_F1) { open_item(sel, true, &tick); rv = ui_r_visible(tick); ui_menu("CASP3 Paper 3", menu_items, count, top, sel, rv); }
     OS_InnerWait_ms(35);
   }
 }

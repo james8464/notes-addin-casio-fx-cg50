@@ -2,7 +2,7 @@
 #include "cscalc_engine.hpp"
 
 static const char *const menu_items[] = {
-  "Free input",
+  "Command input",
   "Base conversions",
   "Two's complement",
   "Binary arithmetic",
@@ -20,7 +20,27 @@ static const char *const menu_items[] = {
   "Algorithms"
 };
 
+static const char *const command_templates[] = {
+  "floatdec(0101100,11101)",
+  "convert(45,10,16)",
+  "twos(-5,8)",
+  "binadd(1011,0110,4)",
+  "fixedenc(5.625,3,3)",
+  "floatdec(0101100,11101)",
+  "floatenc(12.75,8,4)",
+  "floatnorm(00011010,0110)",
+  "floatrange(8,4)",
+  "image(800,600,24)",
+  "sound(44100,60,16,2)",
+  "bitrate(48000000,12)",
+  "compress(1000,250)",
+  "chars(120,8)",
+  "records(1200,32)",
+  "binarysearch(7,1,3,5,7,9)"
+};
+
 static const char *const baseconv[] = {
+  "EXE inserts: convert(45,10,16)",
   "AQA 7517 Paper 2 data rep.",
   "Binary to denary:",
   "sum bit * 2^position.",
@@ -33,6 +53,7 @@ static const char *const baseconv[] = {
 };
 
 static const char *const twos[] = {
+  "EXE inserts: twos(-5,8)",
   "n-bit range:",
   "-2^(n-1) to 2^(n-1)-1.",
   "Decode if MSB=0: unsigned value.",
@@ -45,6 +66,7 @@ static const char *const twos[] = {
 };
 
 static const char *const binaryarith[] = {
+  "EXE inserts: binadd(1011,0110,4)",
   "Addition:",
   "0+0=0, 0+1=1, 1+1=10.",
   "1+1+1=11.",
@@ -55,6 +77,7 @@ static const char *const binaryarith[] = {
 };
 
 static const char *const fixedp[] = {
+  "EXE inserts: fixedenc(5.625,3,3)",
   "Fixed point:",
   "binary point has fixed position.",
   "Left side weights: 2^0,2^1,...",
@@ -65,6 +88,7 @@ static const char *const fixedp[] = {
 };
 
 static const char *const floatdec[] = {
+  "EXE inserts: floatdec(0101100,11101)",
   "AQA floating point:",
   "mantissa and exponent use two's comp.",
   "Decode exponent as signed integer e.",
@@ -75,6 +99,7 @@ static const char *const floatdec[] = {
 };
 
 static const char *const floatenc[] = {
+  "EXE inserts: floatenc(12.75,8,4)",
   "Encode decimal:",
   "convert magnitude to binary.",
   "Move point to normalised mantissa.",
@@ -86,6 +111,7 @@ static const char *const floatenc[] = {
 };
 
 static const char *const normalise[] = {
+  "EXE inserts: floatnorm(00011010,0110)",
   "Normalised AQA form:",
   "positive mantissa begins 01.",
   "negative mantissa begins 10.",
@@ -96,6 +122,7 @@ static const char *const normalise[] = {
 };
 
 static const char *const storage[] = {
+  "EXE inserts: image(800,600,24)",
   "Image size:",
   "width * height * colour_depth bits.",
   "Sound size:",
@@ -108,6 +135,7 @@ static const char *const storage[] = {
 };
 
 static const char *const compress[] = {
+  "EXE inserts: compress(1000,250)",
   "Compression ratio:",
   "original size / compressed size.",
   "Saving:",
@@ -119,6 +147,7 @@ static const char *const compress[] = {
 };
 
 static const char *const chars[] = {
+  "EXE inserts: chars(120,8)",
   "Character storage:",
   "bits = characters * bits per char.",
   "ASCII commonly 7 or 8 bits.",
@@ -131,6 +160,7 @@ static const char *const chars[] = {
 };
 
 static const char *const db[] = {
+  "EXE inserts: records(1200,32)",
   "Database calculation checks:",
   "Records * fields * field size.",
   "Primary key uniquely identifies record.",
@@ -142,6 +172,7 @@ static const char *const db[] = {
 
 static const char *const algos[] = {
   "Trace commands:",
+  "EXE inserts: binarysearch(7,1,3,5,7,9)",
   "binarysearch(target,list...)",
   "linearsearch(target,list...)",
   "bubblesort(list...)",
@@ -156,8 +187,16 @@ static const char *const algos[] = {
   "Outputs each comparison/pass."
 };
 
-static void run_input(unsigned *tick) {
-  char input[96] = "floatdec(0101100,11101)";
+static void copy_initial(char *dst, int dst_len, const char *src) {
+  int i = 0;
+  if (!src) src = "";
+  for (; i + 1 < dst_len && src[i]; ++i) dst[i] = src[i];
+  dst[i] = 0;
+}
+
+static void run_input(const char *initial, unsigned *tick) {
+  char input[96];
+  copy_initial(input, sizeof(input), initial);
   if (!ui_input("CSCalc input", input, sizeof(input), tick)) return;
   char lines[CSCALC_MAX_LINES][CSCALC_LINE_LEN];
   int count = cscalc_eval(input, lines);
@@ -166,8 +205,12 @@ static void run_input(unsigned *tick) {
   ui_wait_page("Working", ptrs, count, tick);
 }
 
-static void open_item(int sel, unsigned *tick) {
-  if (sel == 0) run_input(tick);
+static void open_item(int sel, bool help, unsigned *tick) {
+  if (!help) {
+    run_input(command_templates[sel], tick);
+    return;
+  }
+  if (sel == 0) ui_wait_page("Command input", baseconv, sizeof(baseconv)/sizeof(baseconv[0]), tick);
   else if (sel == 1) ui_wait_page("Base conversions", baseconv, sizeof(baseconv)/sizeof(baseconv[0]), tick);
   else if (sel == 2) ui_wait_page("Two's complement", twos, sizeof(twos)/sizeof(twos[0]), tick);
   else if (sel == 3) ui_wait_page("Binary arithmetic", binaryarith, sizeof(binaryarith)/sizeof(binaryarith[0]), tick);
@@ -195,7 +238,8 @@ int main() {
     if (key == KEY_CTRL_EXIT || key == KEY_CTRL_AC || key == KEY_CTRL_MENU) return 0;
     if (key == KEY_CTRL_UP && sel > 0) { --sel; if (sel < top) --top; ui_menu("AQA CS Calc", menu_items, count, top, sel, rv); }
     if (key == KEY_CTRL_DOWN && sel + 1 < count) { ++sel; if (sel >= top + 7) ++top; ui_menu("AQA CS Calc", menu_items, count, top, sel, rv); }
-    if (key == KEY_CTRL_EXE || key == KEY_CTRL_F1) { open_item(sel, &tick); rv = ui_r_visible(tick); ui_menu("AQA CS Calc", menu_items, count, top, sel, rv); }
+    if (key == KEY_CTRL_EXE) { open_item(sel, false, &tick); rv = ui_r_visible(tick); ui_menu("AQA CS Calc", menu_items, count, top, sel, rv); }
+    if (key == KEY_CTRL_F1) { open_item(sel, true, &tick); rv = ui_r_visible(tick); ui_menu("AQA CS Calc", menu_items, count, top, sel, rv); }
     OS_InnerWait_ms(35);
   }
 }
