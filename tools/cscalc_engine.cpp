@@ -1870,6 +1870,43 @@ static int eval_rpn(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
   return n;
 }
 
+static int eval_bool_postfix_text(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
+  int assign[26]; for (int i = 0; i < 26; ++i) assign[i] = -1;
+  for (int i = 0; input[i]; ++i) {
+    if (isalpha((unsigned char)input[i]) && input[i+1] == '=' && (input[i+2] == '0' || input[i+2] == '1'))
+      assign[toupper((unsigned char)input[i]) - 'A'] = input[i+2] - '0';
+  }
+  int st[24], sp = 0;
+  int n = add(out, 0, "Evaluate Boolean postfix/RPN with a stack.");
+  for (int i = 0; input[i] && n < CSCALC_MAX_LINES - 2;) {
+    while (input[i] && !isalpha((unsigned char)input[i])) ++i;
+    if (!input[i]) break;
+    char w[16]; int j = 0;
+    while (isalpha((unsigned char)input[i]) && j + 1 < (int)sizeof(w)) w[j++] = (char)toupper((unsigned char)input[i++]);
+    w[j] = 0;
+    if (word_is(w, "WITH")) break;
+    if (word_is(w, "EVALUATE") || word_is(w, "POSTFIX") || word_is(w, "RPN") ||
+        word_is(w, "REVERSE") || word_is(w, "POLISH")) continue;
+    if (word_is(w, "NOT")) {
+      if (sp < 1) return add(out, n, "Need one stack value before NOT.");
+      int a = st[--sp], r = !a; st[sp++] = r;
+      n = add(out, n, "NOT %d = %d; push %d", a, r, r);
+    } else if (word_is(w, "AND") || word_is(w, "OR") || word_is(w, "XOR")) {
+      if (sp < 2) return add(out, n, "Need two stack values before %s.", w);
+      int b = st[--sp], a = st[--sp], r = word_is(w, "AND") ? (a && b) : word_is(w, "OR") ? (a || b) : (!!a != !!b);
+      st[sp++] = r;
+      n = add(out, n, "%d %s %d = %d; push %d", a, w, b, r, r);
+    } else if (j == 1 && w[0] >= 'A' && w[0] <= 'Z' && assign[w[0] - 'A'] >= 0) {
+      int v = assign[w[0] - 'A'];
+      if (sp >= 24) return add(out, n, "Stack full.");
+      st[sp++] = v;
+      n = add(out, n, "read %c=%d, push %d", w[0], v, v);
+    }
+  }
+  if (sp == 1) return add(out, n, "answer = %d", st[0]);
+  return add(out, n, "Stack has %d values, so expression is incomplete.", sp);
+}
+
 static void app_ch(char *s, int *pos, int cap, char c);
 static void app_str(char *s, int *pos, int cap, const char *t);
 static void app_int(char *s, int *pos, int cap, int v);
@@ -5140,6 +5177,33 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     }
   }
   if ((has(t, "ascii") || has(t, "unicode")) &&
+      (has(t, "characters") || has(t, "text") || has(t, "decode") || has(t, "convert"))) {
+    char groups[8][9]; int gc = 0;
+    for (int i = 0; input[i] && gc < 8;) {
+      while (input[i] && (input[i] != '0' && input[i] != '1')) ++i;
+      int start = i, len = 0;
+      while ((input[i] == '0' || input[i] == '1') && len < 16) { ++i; ++len; }
+      if (len == 8) {
+        memcpy(groups[gc], input + start, 8);
+        groups[gc][8] = 0;
+        ++gc;
+      }
+    }
+    if (gc > 0) {
+      char txt[16]; int tp = 0;
+      int n = add(out, 0, "ASCII bytes map each 8-bit group to one character.");
+      for (int i = 0; i < gc && n < CSCALC_MAX_LINES - 2; ++i) {
+        int val = 0;
+        for (int j = 0; j < 8; ++j) val = val*2 + (groups[i][j] - '0');
+        char ch = printable_ascii(val) ? (char)val : '?';
+        if (tp + 1 < (int)sizeof(txt)) txt[tp++] = ch;
+        n = add(out, n, "%s = %d -> %c", groups[i], val, ch);
+      }
+      txt[tp] = 0;
+      return add(out, n, "text = %s", txt);
+    }
+  }
+  if ((has(t, "ascii") || has(t, "unicode")) &&
       (has(t, "storage") || has(t, "store") || has(t, "size") || has(t, "encoded") || has(t, "characters") || has(t, "text")) &&
       nv >= 1) {
     int bpc = has(t, "unicode") ? 16 : 8;
@@ -5160,6 +5224,8 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     if (nv >= 1) return add_code_lines(out, (int)v[0], uni, -1);
   }
   if (has(t, "rpn") || has(t, "postfix") || (has(t, "reverse") && has(t, "polish"))) {
+    if (strchr(input, '=') && (has(t, "and") || has(t, "or") || has(t, "not") || has(t, "xor")))
+      return eval_bool_postfix_text(input, out);
     if (make_rpn_cmd(input, cmd, sizeof(cmd))) return eval_rpn(cmd, out);
   }
   if (has(compact, "bigo") || has(compact, "big-o") || has(compact, "complexity") || has(compact, "timecomplexity")) {
@@ -5219,18 +5285,24 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     }
   }
   if (has(t, "caesar") && (has(t, "encrypt") || has(t, "decrypt") || has(t, "apply") || has(t, "shift")) && nv >= 1) {
-    char word[40] = "";
+    char word[64] = "";
     for (int i = 0; input[i];) {
       while (input[i] && !isalpha((unsigned char)input[i])) ++i;
       char tmp[40]; int j = 0;
       while (isalpha((unsigned char)input[i]) && j + 1 < (int)sizeof(tmp)) tmp[j++] = (char)tolower((unsigned char)input[i++]);
       tmp[j] = 0;
       if (j > 1 && !word_is(tmp, "caesar") && !word_is(tmp, "shift") && !word_is(tmp, "encrypt") &&
-          !word_is(tmp, "decrypt") && !word_is(tmp, "apply") && !word_is(tmp, "using") && !word_is(tmp, "with") && !word_is(tmp, "the") && !word_is(tmp, "to")) strcpy(word, tmp);
+          !word_is(tmp, "decrypt") && !word_is(tmp, "apply") && !word_is(tmp, "using") && !word_is(tmp, "with") &&
+          !word_is(tmp, "cipher") && !word_is(tmp, "the") && !word_is(tmp, "to") &&
+          !word_is(tmp, "use") && !word_is(tmp, "of")) {
+        int p = (int)strlen(word);
+        for (int k = 0; tmp[k] && p + 1 < (int)sizeof(word); ++k) word[p++] = tmp[k];
+        word[p] = 0;
+      }
     }
     if (word[0]) {
       int sh = (int)v[0] % 26; if (has(t, "decrypt")) sh = -sh;
-      char enc[40]; int i = 0;
+      char enc[64]; int i = 0;
       for (; word[i] && i + 1 < (int)sizeof(enc); ++i) enc[i] = (char)('A' + (word[i] - 'a' + sh + 26) % 26);
       enc[i] = 0;
       int n = add(out, 0, "Caesar shift moves each letter by %d places.", sh < 0 ? -sh : sh);
@@ -7261,7 +7333,9 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   if ((has(t, "hash") || has(t, "hashtable")) && nv >= 2) {
     double size = v[0];
-    bool hs = label_num(input, "size", &size) || scan_after_word_num(t, "size", &size);
+    bool hs = label_num(input, "size", &size) || scan_after_word_num(t, "size", &size) ||
+              scan_after_word_num(t, "slots", &size) || scan_after_word_num(t, "slot", &size) ||
+              scan_before_word_num(t, "slots", &size) || scan_before_word_num(t, "slot", &size);
     int p = sprintf(cmd, "hashmod(%lld", (long long)size);
     if (has(t, "quadratic")) p = sprintf(cmd, "hashquadratic(%lld", (long long)size);
     else if (has(t, "linear") || has(t, "probe") || has(t, "probing")) p = sprintf(cmd, "hashlinear(%lld", (long long)size);
@@ -7500,6 +7574,27 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     n = add(out, n, "LHS = A'+B'");
     n = add(out, n, "RHS = A'+B'");
     return add(out, n, "Same output rows, so LHS = RHS.");
+  }
+  if (nv == 0 && (has(compact, "simplifiesto") || has(compact, "simplifyto"))) {
+    const char *e = skip_bool_words(compact);
+    const char *sep = strstr(e, "simplifiesto"); int slen = 12;
+    if (!sep) { sep = strstr(e, "simplifyto"); slen = 10; }
+    const char *that = strstr(e, "that");
+    if (sep && that && that < sep) e = that + 4;
+    if (sep && sep > e && sep[slen]) {
+      char lhs[48], rhs[48], clhs[48], crhs[48], nlhs[48], nrhs[48];
+      int li = 0, ri = 0;
+      for (const char *p = e; p < sep && li < 47; ++p) lhs[li++] = *p;
+      lhs[li] = 0;
+      for (const char *p = sep + slen; *p && ri < 47; ++p) rhs[ri++] = *p;
+      rhs[ri] = 0;
+      bool_clean_tail(lhs, clhs, sizeof(clhs));
+      bool_clean_tail(rhs, crhs, sizeof(crhs));
+      bool_arg_for_cmd(clhs, nlhs, sizeof(nlhs));
+      bool_arg_for_cmd(crhs, nrhs, sizeof(nrhs));
+      sprintf(cmd, "boolprove(%s,%s)", nlhs, nrhs);
+      return eval_bool_prove(cmd, out);
+    }
   }
   if (nv == 0 && (has(compact, "equals") || has(compact, "isequalto") || has(compact, "isequivalentto") || has(compact, "equivalentto"))) {
     const char *e = skip_bool_words(compact);

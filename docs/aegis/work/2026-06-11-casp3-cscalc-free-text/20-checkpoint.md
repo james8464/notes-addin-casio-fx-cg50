@@ -198,6 +198,41 @@ Drift check:
 - No Pure CAS source, CASP3 logic, NOTES source, menus, or shared UI/status code changed.
 - Active goal remains open.
 
+## 2026-06-13 P3/CS Parser Hardening Slice
+
+Completed:
+- Fixed CASP3 support-reaction wording where beam/rod self-weight, load value, and load position were being confused by repeated numbers.
+- Fixed CASP3 opposite-direction collision wording so repeated post-collision mass labels are not treated as speeds.
+- Added CASP3 combined circular-motion acceleration+force output when both are requested.
+- Fixed CASP3 mutually-exclusive `P(A union B)` unknown-probability rearrangement.
+- Added CASP3 discrete `P(X=x)=kx^2` expectation route without stealing CDF/PDF prompts.
+- Added CASP3 regression interpolation/extrapolation wording for explicit data ranges.
+- Fixed CSCALC Boolean `simplifies to` proof extraction.
+- Added CSCALC ASCII 8-bit byte decoding, Boolean postfix evaluation with assignments, Caesar multi-word messages, and hash-table slot-size parsing.
+- Rebuilt calculator-ready app files.
+
+Evidence:
+- Direct probes passed for loaded rod reactions, opposite-direction collision, discrete `kx^2`, Boolean `simplifies to`, ASCII byte decode, Boolean postfix, Caesar `HELLO WORLD`, and hash-table slots.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 547828 bytes`
+  - `CSCALC.g3a: 295148 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: 18178 bytes`
+
+Drift check:
+- Stayed inside CASP3/CSCALC parser hardening, tests, checkpoint, and rebuilt artifacts.
+- No Pure CAS source, NOTES source, menus, or shared UI/status code changed.
+- Active goal remains open for further unseen-case hardening.
+
 ## 2026-06-13 CASP3 Free-Text Stats Hardening Slice
 
 Completed:

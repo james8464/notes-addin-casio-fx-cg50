@@ -5067,6 +5067,30 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if ((has(t, "beam") || has(t, "support") || has(t, "reaction")) && (has(t, "load") || has(t, "weight")) &&
       !has(t, "ladder") && nv >= 3) {
+    if ((has(t, "uniform") || has(t, "rod") || has(t, "beam")) &&
+        has(t, "supported") && has(t, "load") && has(t, "from") &&
+        (has(t, "reaction") || has(t, "reactions")) && nv >= 4) {
+      double L = 0, bw = 0, load = 0, x = 0;
+      bool hL = label_num(input, "length", &L) || word_num(input, "length", &L);
+      bool hb = word_num(input, "weight", &bw) || prev_word_num(input, "weight", &bw);
+      bool hl = prev_word_num(input, "load", &load) || word_num(input, "load", &load);
+      bool hx = prev_word_num(input, "from", &x) || word_num(input, "from", &x);
+      if (!hL) L = v[0];
+      if (!hb) bw = v[1];
+      if (!hl) load = v[2];
+      if (!hx) x = v[nv - 1];
+      if (L > 0 && bw > 0 && load > 0 && x >= 0) {
+        double RB = (bw * L / 2.0 + load * x) / L;
+        double RA = bw + load - RB;
+        int n = add(out, 0, "For a horizontal beam in equilibrium, use moments and vertical forces.");
+        n = add(out, n, "For a uniform rod/beam, include its weight at the midpoint.");
+        n = add(out, n, "Take moments about A.");
+        n = add(out, n, "R_B*%.10g = %.10g*(%.10g/2) + %.10g*%.10g", L, bw, L, load, x);
+        n = add(out, n, "R_B = %.10g N", RB);
+        n = add(out, n, "Vertical equilibrium: R_A + R_B = %.10g", bw + load);
+        return add(out, n, "R_A = %.10g N", RA);
+      }
+    }
     double pairW[8], pairX[8];
     int pairN = scan_load_at_pairs(input, pairW, pairX, 8);
     if (pairN > 0 && !has(c, "distancex") && !has(c, "findx")) {
@@ -5488,6 +5512,24 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "mu R = mv^2/r and R=mg");
     n = add(out, n, "v^2 = mu*g*r = %.6g*9.8*%.6g", mu, r);
     return add(out, n, "maximum speed = %.10g m/s", vmax);
+  }
+  if ((has(t, "circular") || has(t, "circle") || has(t, "centripetal") || has(t, "bend")) &&
+      (has(t, "acceleration") || has(t, "accelerate")) && has(t, "force") &&
+      (has(t, "mass") || has(t, "kg")) &&
+      (has(t, "radius") || has(t, "speed") || has(t, "velocity") || has(t, "m,s")) && nv >= 3) {
+    double m=0, r=0, u=0;
+    bool hm=word_num(input,"mass",&m) || label_num(input,"mass",&m) || num_before_unit(input,"kg",&m);
+    bool hr=word_num(input,"radius",&r) || label_num(input,"radius",&r);
+    bool hu=word_num(input,"speed",&u) || label_num(input,"speed",&u) || word_num(input,"velocity",&u) || num_before_unit(input,"m/s",&u);
+    if (!hr) r = v[0];
+    if (!hu) for (int i = 0; i < nv; ++i) if (!near_num(v[i], r) && !near_num(v[i], m) && v[i] > 0) { u = v[i]; break; }
+    if (!hm) for (int i = nv - 1; i >= 0; --i) if (!near_num(v[i], r) && !near_num(v[i], u) && v[i] > 0) { m = v[i]; break; }
+    double acc = r ? u*u/r : 0, F = m*acc;
+    int n = add(out, 0, "For motion in a circle, centripetal acceleration is v^2/r.");
+    n = add(out, n, "a = v^2/r");
+    n = add(out, n, "a = %.10g^2/%.10g = %.10g m/s^2", u, r, acc);
+    n = add(out, n, "Centripetal force is F = ma.");
+    return add(out, n, "F = ma = %.10g*%.10g = %.10g N", m, acc, F);
   }
   if ((has(t, "circular") || has(t, "circle") || has(t, "centripetal") || has(t, "bend")) &&
       (has(t, "acceleration") || has(t, "accelerate")) &&
@@ -6312,6 +6354,23 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       sprintf(cmd, "commonvelocity(%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3]);
     }
     return eval_mech(cmd, out);
+  }
+  if ((has(t, "collision") || has(t, "collide") || has(t, "collides") || has(t, "impact")) &&
+      has(t, "opposite") &&
+      (has(t, "after") || has(t, "aftercollision") || has(t, "afterimpact")) &&
+      (has(t, "find") || has(t, "velocity") || has(t, "speed")) &&
+      !has(t, "restitution") && !has(t, "coefficient") && nv >= 5) {
+    double m1 = v[0], u1 = v[1], m2 = v[2], u2 = -abs_num(v[3]), v1 = 0;
+    const char *ap = strstr(input, "After");
+    if (!ap) ap = strstr(input, "after");
+    if (!(ap && word_num(ap, "speed", &v1))) v1 = v[nv - 1];
+    if (ap && (strstr(ap, "opposite direction") || strstr(ap, "opposite"))) v1 = -abs_num(v1);
+    double before = m1*u1 + m2*u2;
+    double v2 = m2 ? (before - m1*v1) / m2 : 0;
+    int n = add(out, 0, "Use conservation of linear momentum.");
+    n = add(out, n, "Take the first particle's initial direction as positive.");
+    n = add(out, n, "%.10g*%.10g + %.10g*%.10g = %.10g*%.10g + %.10g*v2", m1, u1, m2, u2, m1, v1, m2);
+    return add(out, n, "v2 = %.10g", v2);
   }
   if ((has(t, "collision") || has(t, "collide") || has(t, "collides") || has(t, "impact")) &&
       (has(c, "atrest") || has(c, "fromrest") || has(c, "initiallyatrest") || has(c, "startsfromrest")) &&
@@ -8354,6 +8413,14 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     return eval_stats(cmd, out);
   }
   if ((has(t, "mutuallyexclusive") || has(t, "exclusive")) && (has(t, "or") || has(t, "union") || has(c, "p(aorb)")) && nv >= 2) {
+    if ((has(c, "p(aunionb)=") || has(c, "p(aorb)=") || has(t, "union")) &&
+        (has(c, "findp(b)") || has(c, "findpb") || has(c, "p(b)")) && nv >= 2) {
+      double pa = v[0], por = v[1], pb = por - pa;
+      int n = add(out, 0, "For mutually exclusive events, P(A and B)=0.");
+      n = add(out, n, "P(A or B)=P(A)+P(B)");
+      n = add(out, n, "P(B)=P(A or B)-P(A)");
+      return add(out, n, "P(B)=%.10g-%.10g=%.10g", por, pa, pb);
+    }
     double pa = v[0], pb = v[1], por = pa + pb;
     int n = add(out, 0, "For mutually exclusive events, P(A and B)=0.");
     n = add(out, n, "P(A or B)=P(A)+P(B)");
@@ -8740,8 +8807,17 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     }
     double m=0, b=0;
     if (hx && parse_regression_line(c, &m, &b)) {
-      sprintf(cmd, "regress(%.10g,%.10g,%.10g)", b, m, x);
-      return eval_stats(cmd, out);
+      double yhat = b + m*x;
+      int n = add(out, 0, "Use the regression line y = a + bx.");
+      n = add(out, n, "y = %.10g + %.10g x", b, m);
+      n = add(out, n, "when x=%.10g, y=%.10g", x, yhat);
+      if (has(t, "range") && nv >= 5) {
+        double lo = v[nv - 2], hi = v[nv - 1];
+        if (lo > hi) { double tmp = lo; lo = hi; hi = tmp; }
+        if (x < lo || x > hi) n = add(out, n, "x=%.10g is outside %.10g to %.10g, so this is extrapolation.", x, lo, hi);
+        else n = add(out, n, "x=%.10g is inside %.10g to %.10g, so this is interpolation.", x, lo, hi);
+      }
+      return n;
     }
     if (x_on_y && (label_num(input,"n",&n0) || word_num(input,"n",&n0)) &&
         (label_num(input,"sx",&sx) || word_num(input,"sumx",&sx)) &&
@@ -8819,6 +8895,23 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "k*sum(1/x) = 1");
     n = add(out, n, "sum(1/x) = %.10g, so k = %.10g", sh, k);
     return add(out, n, "E(X)=sum x*(k/x) = %.10g*%d = %.10g", k, cnt, k*cnt);
+  }
+  if ((has(t, "discrete") || has(c, "p(x=x)") || (has(t, "distribution") && !has(t, "cumulative") && !has(t, "cdf") && !has(t, "pdf"))) &&
+      (has(c, "p(x=x)=kx^2") || has(c, "p(x=x)=k*x^2") || has(c, "kx^2")) && nv >= 2) {
+    double xs[16]; int nx = 0;
+    const char *xp = strstr(c, "forx=");
+    if (xp) nx = scan_nums(xp + 5, xs, 16);
+    if (nx <= 0) {
+      for (int i = 0; i < nv && nx < 16; ++i)
+        if (!(i == 0 && near_num(v[i], 2))) xs[nx++] = v[i];
+    }
+    double sx2 = 0, sx3 = 0;
+    for (int i = 0; i < nx; ++i) { sx2 += xs[i]*xs[i]; sx3 += xs[i]*xs[i]*xs[i]; }
+    double k = sx2 == 0 ? 0 : 1 / sx2;
+    int n = add(out, 0, "For P(X=x)=kx^2, first use sum P(X=x)=1.");
+    n = add(out, n, "k sum x^2 = 1");
+    n = add(out, n, "sum x^2 = %.10g, so k = %.10g", sx2, k);
+    return add(out, n, "E(X)=sum x*kx^2 = k sum x^3 = %.10g*%.10g = %.10g", k, sx3, k*sx3);
   }
   if ((has(t, "discrete") || has(t, "randomvariable") || has(t, "expectation") || has(t, "distribution")) &&
       has(c, "p(x=x)=kx") && nv >= 2) {
