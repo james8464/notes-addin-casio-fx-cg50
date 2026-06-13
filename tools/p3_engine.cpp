@@ -3088,6 +3088,33 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "%.6g*%.6g*%.6g - %.6g*%.6g = 1/2*%.6g*v^2 - %.10g", m, g, d, r, d, m, ke0);
     return add(out, n, "v = %.10g m/s", ans);
   }
+  if ((has(t, "incline") || has(t, "inclined") || has(t, "slope") || has(t, "plane")) &&
+      (has(t, "power") || has(t, "kw") || has(t, "kilowatt")) && (has(t, "constant") || has(t, "speed")) &&
+      (has(c, "findresistance") || (has(t, "find") && !has(c, "findenginepower") && !has(c, "findpower"))) &&
+      !has(c, "findangle") && !has(c, "findtheangle") && !has(c, "findtheta") &&
+      (has(t, "resistance") || has(t, "resistive")) && nv >= 4) {
+    double m=0, P=0, spd=0, ang=0;
+    bool hm=word_num(input,"mass",&m) || label_num(input,"mass",&m) || num_before_unit(input,"kg",&m);
+    bool hP=num_before_unit(input,"kw",&P) || num_before_unit(input,"kilowatt",&P) ||
+            word_num(input,"power",&P) || label_num(input,"power",&P);
+    bool hs=num_before_unit(input,"m/s",&spd) || num_before_unit(input,"ms^-1",&spd) ||
+            word_num(input,"speed",&spd) || word_num(input,"velocity",&spd);
+    bool ha=word_num(input,"angle",&ang) || prev_word_num(input,"degrees",&ang) ||
+            word_num(input,"inclined",&ang) || label_num(input,"angle",&ang);
+    if (!hm) m = v[0];
+    if (!ha) for (int i = 0; i < nv; ++i) if (!near_num(v[i], m) && v[i] > 0 && v[i] <= 90) { ang = v[i]; break; }
+    if (!hs) for (int i = 0; i < nv; ++i) if (!near_num(v[i], m) && !near_num(v[i], ang) && v[i] > 0) { spd = v[i]; break; }
+    if (!hP) for (int i = nv - 1; i >= 0; --i) if (!near_num(v[i], m) && !near_num(v[i], ang) && !near_num(v[i], spd)) { P = v[i]; break; }
+    if (has(t, "kw") || has(t, "kilowatt")) P *= 1000.0;
+    double drive = spd ? P / spd : 0;
+    double weight = m * 9.8 * deg_sine(ang);
+    double r = drive - weight;
+    int n = add(out, 0, "At constant speed uphill, driving force balances resistance and mg sin(theta).");
+    n = add(out, n, "driving force = P/v = %.10g/%.10g = %.10g N", P, spd, drive);
+    n = add(out, n, "P/v = R + mg sin(theta)");
+    n = add(out, n, "R = %.10g - %.10g*9.8 sin(%.10g)", drive, m, ang);
+    return add(out, n, "resistance = %.10g N", r);
+  }
   if ((has(t, "resistance") || has(t, "resistive")) &&
       !has(t, "power") &&
       (has(t, "finalspeed") || has(t, "finalvelocity") || (has(t, "find") && has(t, "speed"))) && nv >= 4) {
@@ -3159,7 +3186,13 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     double xs[6], ys[6], time = 0;
     int vc = scan_ij_vectors(input, xs, ys, 6);
     last_label_num(input, "t", &time);
-    if (vc >= 3 && time > 0) {
+    const char *ap = strstr(c, "acceleration");
+    if (!ap) ap = strstr(c, "a=");
+    const char *as = ap ? strchr(ap, '(') : 0;
+    const char *aj = as ? strchr(as, 'j') : 0;
+    bool variable_acc = false;
+    for (const char *p = as; p && aj && p <= aj; ++p) if (*p == 't') variable_acc = true;
+    if (vc >= 3 && time > 0 && !variable_acc) {
       double ax = xs[0], ay = ys[0], r0x = xs[1], r0y = ys[1], r1x = xs[2], r1y = ys[2];
       double ux = (r1x - r0x - 0.5*ax*time*time) / time;
       double uy = (r1y - r0y - 0.5*ay*time*time) / time;
@@ -3176,7 +3209,13 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     double xs[6], ys[6], time = 0;
     int vc = scan_ij_vectors(input, xs, ys, 6);
     last_label_num(input, "t", &time);
-    if (vc >= 3 && time > 0) {
+    const char *ap = strstr(c, "acceleration");
+    if (!ap) ap = strstr(c, "a=");
+    const char *as = ap ? strchr(ap, '(') : 0;
+    const char *aj = as ? strchr(as, 'j') : 0;
+    bool variable_acc = false;
+    for (const char *p = as; p && aj && p <= aj; ++p) if (*p == 't') variable_acc = true;
+    if (vc >= 3 && time > 0 && !variable_acc) {
       double ax = xs[0], ay = ys[0], ux = xs[1], uy = ys[1], r0x = xs[2], r0y = ys[2];
       double x = r0x + ux*time + 0.5*ax*time*time;
       double y = r0y + uy*time + 0.5*ay*time*time;
@@ -3198,10 +3237,20 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     const char *jp = ip ? strchr(ip, 'j') : 0;
     double ax2=0, ax1=0, ax0=0, ay2=0, ay1=0, ay0=0;
     double ux=0, uy=0, x0=0, y0=0, tt=0;
+    bool got_u = numeric_pair_after_word(input, "velocity", &ux, &uy);
+    bool got_r = numeric_pair_after_word(input, "position", &x0, &y0);
+    if (!got_u || !got_r) {
+      double xs[6], ys[6];
+      int vc = scan_ij_vectors(input, xs, ys, 6);
+      if (vc >= 3) {
+        ux = xs[vc-2]; uy = ys[vc-2];
+        x0 = xs[vc-1]; y0 = ys[vc-1];
+        got_u = got_r = true;
+      }
+    }
     if (base && ip && jp && parse_poly_segment(base, ip, &ax2, &ax1, &ax0) &&
         parse_poly_segment(ip + 1, jp, &ay2, &ay1, &ay0) &&
-        numeric_pair_after_word(input, "velocity", &ux, &uy) &&
-        numeric_pair_after_word(input, "position", &x0, &y0) &&
+        got_u && got_r &&
         (last_label_num(input, "t", &tt) || word_num_with_t(input, "at", &tt) ||
          word_num(input, "time", &tt) || nv > 0)) {
       if (tt == 0 && nv > 0) tt = v[nv-1];
@@ -3293,7 +3342,13 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       sprintf(cmd, "vectorkin(%.10g,%.10g,%.10g,%.10g,%.10g,%.10g,%.10g)", x0, y0, ux, uy, ax, ay, time);
       return eval_mech(cmd, out);
     }
-    if (nv >= 7) {
+    const char *ap = strstr(c, "acceleration");
+    if (!ap) ap = strstr(c, "a=");
+    const char *as = ap ? strchr(ap, '(') : 0;
+    const char *aj = as ? strchr(as, 'j') : 0;
+    bool variable_acc = false;
+    for (const char *p = as; p && aj && p <= aj; ++p) if (*p == 't') variable_acc = true;
+    if (nv >= 7 && !variable_acc) {
       sprintf(cmd, "vectorkin(%.10g,%.10g,%.10g,%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3], v[4], v[5], v[6]);
       return eval_mech(cmd, out);
     }
@@ -4936,6 +4991,38 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       return add(out, n, "missing force = %.10g i %+.10g j", -sx, -sy);
     }
   }
+  if ((has(t, "acceleration") || has(c, "a=")) && has(t, "i") && has(t, "j") &&
+      has(c, "t") && (has(t, "velocity") || has(t, "position")) &&
+      (has(t, "initial") || has(t, "initially"))) {
+    const char *base = strstr(c, "a=");
+    if (!base) base = strstr(c, "acceleration");
+    const char *ip = base ? strchr(base, 'i') : 0;
+    const char *jp = ip ? strchr(ip, 'j') : 0;
+    double ax3=0, ax2=0, ax1=0, ax0=0, ay3=0, ay2=0, ay1=0, ay0=0;
+    double xs[6], ys[6], tt = nv ? v[nv-1] : 0;
+    int vc = scan_ij_vectors(input, xs, ys, 6);
+    last_label_num(input, "t", &tt); word_num_with_t(input, "at", &tt); word_num(input, "time", &tt);
+    if (ip && jp && vc >= 3 &&
+        parse_poly_segment_cubic(base, ip, &ax3, &ax2, &ax1, &ax0) &&
+        parse_poly_segment_cubic(ip + 1, jp, &ay3, &ay2, &ay1, &ay0)) {
+      double ux = xs[vc-2], uy = ys[vc-2], rx = xs[vc-1], ry = ys[vc-1];
+      double vx4 = ax3/4.0, vx3 = ax2/3.0, vx2 = ax1/2.0, vx1 = ax0, vx0 = ux;
+      double vy4 = ay3/4.0, vy3 = ay2/3.0, vy2 = ay1/2.0, vy1 = ay0, vy0 = uy;
+      double sx5 = vx4/5.0, sx4 = vx3/4.0, sx3 = vx2/3.0, sx2 = vx1/2.0, sx1 = vx0, sx0 = rx;
+      double sy5 = vy4/5.0, sy4 = vy3/4.0, sy3 = vy2/3.0, sy2 = vy1/2.0, sy1 = vy0, sy0 = ry;
+      double vx = vx4*tt*tt*tt*tt + vx3*tt*tt*tt + vx2*tt*tt + vx1*tt + vx0;
+      double vy = vy4*tt*tt*tt*tt + vy3*tt*tt*tt + vy2*tt*tt + vy1*tt + vy0;
+      double px = sx5*tt*tt*tt*tt*tt + sx4*tt*tt*tt*tt + sx3*tt*tt*tt + sx2*tt*tt + sx1*tt + sx0;
+      double py = sy5*tt*tt*tt*tt*tt + sy4*tt*tt*tt*tt + sy3*tt*tt*tt + sy2*tt*tt + sy1*tt + sy0;
+      int n = add(out, 0, "Integrate the acceleration vector component by component.");
+      n = add(out, n, "using v(0) = %.10g i %+.10g j", ux, uy);
+      n = add(out, n, "v = (%.6g t^2 %+.6g t %+.6g)i + (%.6g t^3 %+.6g t^2 %+.6g t %+.6g)j", vx2, vx1, vx0, vy3, vy2, vy1, vy0);
+      n = add(out, n, "at t=%.10g, v = %.10g i %+.10g j", tt, vx, vy);
+      n = add(out, n, "using r(0) = %.10g i %+.10g j", rx, ry);
+      n = add(out, n, "r = (%.6g t^3 %+.6g t^2 %+.6g t %+.6g)i + (%.6g t^4 %+.6g t^3 %+.6g t^2 %+.6g t %+.6g)j", sx3, sx2, sx1, sx0, sy4, sy3, sy2, sy1, sy0);
+      return add(out, n, "at t=%.10g, r = %.10g i %+.10g j", tt, px, py);
+    }
+  }
   if ((has(t, "force") || has(t, "forces") || has(t, "vector") || has(t, "vectors")) &&
       (has(t, "resultant") || has(t, "magnitude")) && (has(t, "angle") || has(t, "degrees")) &&
       !has(t, "component") && !has(t, "equilibrium") && nv >= 6) {
@@ -6364,7 +6451,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     const char *ap = strstr(input, "After");
     if (!ap) ap = strstr(input, "after");
     if (!(ap && word_num(ap, "speed", &v1))) v1 = v[nv - 1];
-    if (ap && (strstr(ap, "opposite direction") || strstr(ap, "opposite"))) v1 = -abs_num(v1);
+    if (ap && (strstr(ap, "opposite direction") || strstr(ap, "opposite") ||
+               strstr(ap, "rebounds") || strstr(ap, "rebound"))) v1 = -abs_num(v1);
     double before = m1*u1 + m2*u2;
     double v2 = m2 ? (before - m1*v1) / m2 : 0;
     int n = add(out, 0, "Use conservation of linear momentum.");

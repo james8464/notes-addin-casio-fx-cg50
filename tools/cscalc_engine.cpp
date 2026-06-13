@@ -4310,10 +4310,10 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     if (scan_fixed_bits(t, fx, sizeof(fx))) {
       double mb=0, eb=0, tmp=0;
       bool hM = false, hE = false;
-      if (scan_after_word_num(t, "mantissa", &tmp) && tmp > 0) { mb = tmp; hM = true; }
-      if (!hM && scan_near_after_word_num(t, "mantissa", &tmp) && tmp > 0) { mb = tmp; hM = true; }
-      if (!hM && scan_bit_width_before_label(t, "mantissa", &tmp) && tmp > 0) { mb = tmp; hM = true; }
+      if (scan_bit_width_before_label(t, "mantissa", &tmp) && tmp > 0) { mb = tmp; hM = true; }
       if (!hM && scan_before_word_num(t, "mantissa", &tmp) && tmp > 0) { mb = tmp; hM = true; }
+      if (!hM && scan_after_word_num(t, "mantissa", &tmp) && tmp > 0) { mb = tmp; hM = true; }
+      if (!hM && scan_near_after_word_num(t, "mantissa", &tmp) && tmp > 0) { mb = tmp; hM = true; }
       if (scan_after_word_num(t, "exponent", &tmp) && tmp > 0) { eb = tmp; hE = true; }
       if (!hE && scan_near_after_word_num(t, "exponent", &tmp) && tmp > 0) { eb = tmp; hE = true; }
       if (!hE && scan_bit_width_before_label(t, "exponent", &tmp) && tmp > 0) { eb = tmp; hE = true; }
@@ -4781,16 +4781,20 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     double ab=0, bytes_per_address=1;
     bool ha = scan_before_word_num(t, "address", &ab) || scan_before_word_num(t, "addressbus", &ab);
     if (!ha) ab = v[0];
+    double explicit_bytes = 0;
+    bool has_explicit_bytes = scan_before_word_num(t, "byte", &explicit_bytes) ||
+                              scan_before_word_num(t, "bytes", &explicit_bytes);
+    if (has_explicit_bytes) bytes_per_address = explicit_bytes;
     if (has(t, "word") && nv >= 2) {
-      double wb = 0;
-      if (scan_before_word_num(t, "byte", &wb) || scan_before_word_num(t, "bytes", &wb)) bytes_per_address = wb;
-      else bytes_per_address = v[1] / 8.0;
+      if (!has_explicit_bytes) bytes_per_address = v[1] / 8.0;
     }
     double addresses = pow2((int)ab);
     double bytes = addresses * bytes_per_address;
     int n = add(out, 0, "Memory capacity = number of addresses * bytes per address.");
     n = add(out, n, "address bus %.0f bits gives 2^%.0f = %.10g addresses", ab, ab, addresses);
-    n = add(out, n, has(t, "word") ? "word addressable: bytes per address = %.10g" : "byte addressable: bytes per address = 1", bytes_per_address);
+    if (has(t, "word")) n = add(out, n, "word addressable: bytes per address = %.10g", bytes_per_address);
+    else if (has_explicit_bytes) n = add(out, n, "bytes per address = %.10g", bytes_per_address);
+    else n = add(out, n, "byte addressable: bytes per address = 1", bytes_per_address);
     n = add(out, n, "capacity = %.10g*%.10g = %.10g bytes", addresses, bytes_per_address, bytes);
     if (bytes >= 1073741824.0) return add(out, n, "= %.10g GiB", bytes / 1073741824.0);
     if (bytes >= 1048576.0) return add(out, n, "= %.10g MiB", bytes / 1048576.0);
