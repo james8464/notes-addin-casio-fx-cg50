@@ -5513,6 +5513,43 @@ Drift check:
 - Kept changes to CASP3/CSCALC general free-text handling, regressions, generated app outputs, and this checkpoint.
 - Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.
 
+## 2026-06-13 Pasted Symbol and Boolean Truth Slice
+
+Completed:
+- Added CASP3 parser-boundary handling for pasted projectile notation:
+  - Unicode minus/dash in unit exponents such as `m s−1`.
+  - Degree symbol `°`, including direct `30°` parsing through existing `degrees` routes.
+- Added CSCALC parser-boundary handling for Unicode minus/dash in negative values.
+- Cleaned CSCALC Boolean truth-table mode so it no longer prints algebra-law simplification noise before truth tables.
+- Removed the narrow XOR truth-table shortcut; all truth-table Boolean expressions now use the general Boolean parser.
+- Added regressions for pasted projectile notation, Unicode negative two's complement, and 3-variable Unicode XOR truth table.
+
+Evidence:
+- Fresh probes fixed:
+  - `A particle is projected with speed 20 m s−1 at 30° above the horizontal. Find range.` now uses `u_x = 20 cos 30` and `range = 35.3478`.
+  - `Convert −13 to 8-bit two’s complement.` now encodes `-13 -> 11110011`.
+  - `Truth table for A ⊕ B ⊕ C.` now starts with the truth table, not noisy simplification expansion.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 503972 bytes`
+  - `CSCALC.g3a: 277756 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: records=48 bytes=18178`
+  - `CASP3.g3a sha256: 281f41a228a9c97216706933ef6cc40c707b2acb275320b0ab3aa2c3b1754cd7`
+  - `CSCALC.g3a sha256: c9deb8e96e965cca322fe11ceb1d9679e6ff94fe8134c528cd698febefecde4e`
+
+Drift check:
+- Kept changes to CASP3/CSCALC parser generalisation, regressions, generated app outputs, and this checkpoint.
+- Did not touch CAS Pure source, menus, NOTES source, or shared UI/status code.
+
 ## 2026-06-13 CASP3 Pasted Maths Notation Slice
 
 Completed:

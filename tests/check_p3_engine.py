@@ -66,6 +66,7 @@ def main():
     require("proj(20,30)", ["Resolve", "u_x", "range"])
     require("projectile speed 20 angle 30", ["Resolve", "u_x", "range"])
     require("a particle is projected with speed 20 at 30 degrees find the range", ["Resolve", "u_x = 20 cos 30", "range"])
+    require("A particle is projected with speed 20 m s−1 at 30° above the horizontal. Find range.", ["u_x = 20 cos 30", "range = u_x t = 35.347"])
     require("projectile angle=30 speed=20 g=9.8", ["Resolve", "u_x = 20 cos 30", "range"])
     require("projectileh(20,30,5)", ["vertical motion", "-h = u_y t", "range = u_x t"])
     require("projectile speed 20 angle 30 from height 5", ["vertical motion", "h=5", "range"])

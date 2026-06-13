@@ -27,6 +27,9 @@ static bool p3_utf_token(const char *s, const char **tok, int *len) {
   unsigned char a = (unsigned char)s[0], b = (unsigned char)s[1], c = (unsigned char)s[2];
   if (a == 0xe2 && b == 0x89 && c == 0xa4) { *tok = "<="; *len = 3; return true; }
   if (a == 0xe2 && b == 0x89 && c == 0xa5) { *tok = ">="; *len = 3; return true; }
+  if (a == 0xe2 && b == 0x88 && c == 0x92) { *tok = "-"; *len = 3; return true; }
+  if (a == 0xe2 && b == 0x80 && (c == 0x93 || c == 0x94)) { *tok = "-"; *len = 3; return true; }
+  if (a == 0xc2 && b == 0xb0) { *tok = " degrees "; *len = 2; return true; }
   if (a == 0xce && b == 0xbc) { *tok = "mu"; *len = 2; return true; }
   if (a == 0xc2 && b == 0xb5) { *tok = "mu"; *len = 2; return true; }
   if (a == 0xcf && b == 0x83) { *tok = "sigma"; *len = 2; return true; }
@@ -471,6 +474,24 @@ static bool first_num_after_word(const char *s, const char *name, double *v) {
 
 static bool prev_word_num(const char *s, const char *name, double *v) {
   int nl = (int)strlen(name);
+  if (!strcmp(name, "degrees")) {
+    for (int i = 0; s && s[i]; ++i) {
+      unsigned char a = (unsigned char)s[i], b = (unsigned char)s[i+1];
+      if (!(a == 0xc2 && b == 0xb0)) continue;
+      int k = i - 1;
+      while (k >= 0 && (s[k] == ' ' || s[k] == '\t')) --k;
+      int end = k;
+      while (k >= 0 && (isdigit((unsigned char)s[k]) || s[k] == '.')) --k;
+      if (end <= k) continue;
+      if (k >= 0 && s[k] == '-') --k;
+      char bnum[32]; int len = end - k;
+      if (len <= 0 || len >= (int)sizeof(bnum)) continue;
+      memcpy(bnum, s + k + 1, len); bnum[len] = 0;
+      if (bnum[0] != '-' && !isdigit((unsigned char)bnum[0])) continue;
+      *v = read_num(bnum);
+      return true;
+    }
+  }
   for (int i = 0; s && s[i]; ++i) {
     if (i > 0 && isalnum((unsigned char)s[i-1])) continue;
     int j = 0, q = i;

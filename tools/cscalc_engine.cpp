@@ -51,9 +51,22 @@ static int add_wrapped(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN], int n, const
   return n;
 }
 
+static bool cs_utf_token(const char *s, const char **tok, int *len) {
+  unsigned char a = (unsigned char)s[0], b = (unsigned char)s[1], c = (unsigned char)s[2];
+  if (a == 0xe2 && b == 0x88 && c == 0x92) { *tok = "-"; *len = 3; return true; }
+  if (a == 0xe2 && b == 0x80 && (c == 0x93 || c == 0x94)) { *tok = "-"; *len = 3; return true; }
+  return false;
+}
+
+static void append_tok(char *out, int *j, int cap, const char *tok) {
+  for (int k = 0; tok[k] && *j + 1 < cap; ++k) out[(*j)++] = tok[k];
+}
+
 static void clean(const char *in, char *out, int cap) {
   int j = 0;
   for (int i = 0; in && in[i] && j + 1 < cap; ++i) {
+    const char *tok = 0; int len = 0;
+    if (cs_utf_token(in + i, &tok, &len)) { append_tok(out, &j, cap, tok); i += len - 1; continue; }
     unsigned char c = (unsigned char)in[i];
     if (isspace(c)) continue;
     out[j++] = (char)tolower(c);
@@ -64,6 +77,8 @@ static void clean(const char *in, char *out, int cap) {
 static void raw_clean(const char *in, char *out, int cap) {
   int j = 0;
   for (int i = 0; in && in[i] && j + 1 < cap; ++i) {
+    const char *tok = 0; int len = 0;
+    if (cs_utf_token(in + i, &tok, &len)) { append_tok(out, &j, cap, tok); i += len - 1; continue; }
     unsigned char c = (unsigned char)in[i];
     if (isalnum(c) || c == '.' || c == '-' || c == '\'') out[j++] = (char)tolower(c);
     else out[j++] = ',';
@@ -3205,7 +3220,7 @@ static int eval_bool(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN])
     if (vals[m]) mins[mc++] = m;
   }
   int n = 0;
-  n = add_bool_law_trace(out, n, expr);
+  if (!truthmode) n = add_bool_law_trace(out, n, expr);
   if (truthmode) {
     char head[48] = ""; int hp = 0;
     for (int i = 0; i < vc; ++i) {
@@ -7022,22 +7037,6 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       bool_arg_for_cmd(crhs, nrhs, sizeof(nrhs));
       sprintf(cmd, "boolprove(%s,%s)", nlhs, nrhs); return eval_bool_prove(cmd, out);
     }
-  }
-  if (nv == 0 && (has(compact, "truthtable") || has(compact, "truth")) &&
-      !has(compact, "and") && !has(compact, "or") &&
-      (has(compact, "xor") || has(compact, "exclusiveor"))) {
-    const char *xp = strstr(compact, "xor");
-    if (!xp) xp = strstr(compact, "exclusiveor");
-    char a = 'a', b = 'b';
-    if (xp) {
-      const char *p = xp;
-      while (p > compact && !isalpha((unsigned char)p[-1])) --p;
-      if (p > compact) a = (char)tolower((unsigned char)p[-1]);
-      p = xp + (starts(xp, "exclusiveor") ? 11 : 3);
-      while (*p && !isalpha((unsigned char)*p)) ++p;
-      if (*p) b = (char)tolower((unsigned char)*p);
-    }
-    sprintf(cmd, "truth(%c^%c)", a, b); return eval_bool(cmd, out);
   }
   if ((nv == 0 || has(compact, "simplify") || has(compact, "boolean") || has(compact, "logic")) &&
       (has_bool_utf_op(compact) || has(compact, "nand") || has(compact, "nor") || has(compact, "xor") || has(compact, "implies") ||
