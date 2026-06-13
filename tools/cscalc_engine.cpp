@@ -3524,6 +3524,11 @@ static const char *skip_bool_words(const char *e) {
     if (starts(e, "simplify")) { e += 8; moved = true; }
     if (starts(e, "draw")) { e += 4; moved = true; }
     if (starts(e, "find")) { e += 4; moved = true; }
+    if (starts(e, "list")) { e += 4; moved = true; }
+    if (starts(e, "minterms")) { e += 8; moved = true; }
+    if (starts(e, "minterm")) { e += 7; moved = true; }
+    if (starts(e, "maxterms")) { e += 8; moved = true; }
+    if (starts(e, "maxterm")) { e += 7; moved = true; }
     if (starts(e, "convert")) { e += 7; moved = true; }
     if (starts(e, "rewrite")) { e += 7; moved = true; }
     if (starts(e, "produce")) { e += 7; moved = true; }
@@ -6096,6 +6101,17 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     char tmp[160]; sprintf(tmp, "maxterms(%s", cmd + 9);
     strcpy(cmd, tmp);
     return eval_minterms(cmd, out);
+  }
+  if (nv == 0 && (has(t, "minterm") || has(t, "minterms") || has(t, "maxterm") || has(t, "maxterms"))) {
+    const char *e = skip_bool_words(compact);
+    if (e && *e) {
+      char ce[96], ne[96];
+      bool_clean_tail(e, ce, sizeof(ce));
+      bool_arg_for_cmd(ce, ne, sizeof(ne));
+      sprintf(cmd, "%s(%s)", (has(t, "maxterm") || has(t, "maxterms")) ? "posform" : "bool", ne);
+      if (has(t, "maxterm") || has(t, "maxterms")) return eval_posform(cmd, out);
+      return eval_bool(cmd, out);
+    }
   }
   if (has_bitcol && (has(t, "truth") || has(t, "output")) &&
       (has(t, "column") || has(t, "outputs") || has(t, "bits") || has(t, "table"))) {

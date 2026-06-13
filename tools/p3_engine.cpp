@@ -2477,7 +2477,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     }
   }
   if (has(t, "velocity") && (has(t, "displacement") || (has(t, "distance") && !has(t, "total"))) &&
-      ((has(t, "from") && has(t, "to")) || has(t, "between") || has(c, "<t<") || has(c, "<=t")) && !has(t, "vector")) {
+      ((has(t, "from") && has(t, "to")) || has(t, "between") || has(c, "<t<") || has(c, "<=t")) &&
+      !has(t, "vector") && !(has(c, "a=") || has(c, "hasacceleration") || has(c, "withacceleration"))) {
     double A=0, B=0, C=0, t1=0, t2=0;
     if (parse_poly_after_word(input, "velocity", &A, &B, &C) &&
         ((word_num_with_t(input, "from", &t1) || word_num(input, "from", &t1) || word_num_with_t(input, "between", &t1) || extract_t_interval(c, &t1, &t2) || (nv >= 2 && (t1 = v[nv-2], true)))) &&
@@ -3071,7 +3072,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       return add(out, n, "a(%.6g) = %.10g", time, aa);
     }
   }
-  if (has(t, "velocity") && has(t, "displacement") && has(t, "from")) {
+  if (has(t, "velocity") && has(t, "displacement") && has(t, "from") &&
+      !(has(c, "a=") || has(c, "hasacceleration") || has(c, "withacceleration"))) {
     double A4=0, A3=0, A2=0, A1=0, A0=0, qt1=0, qt2=0;
     if (parse_quartic_poly_after_word(input, "velocity", &A4, &A3, &A2, &A1, &A0) &&
         !near_num(A4, 0) && word_num_with_t(input, "from", &qt1) && word_num_with_t(input, "to", &qt2)) {
@@ -3104,7 +3106,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       return add(out, n, "displacement = %.10g - %.10g = %.10g", F2, F1, F2-F1);
     }
   }
-  if (has(t, "velocity") && has(t, "displacement") && has(t, "from")) {
+  if (has(t, "velocity") && has(t, "displacement") && has(t, "from") &&
+      !(has(c, "a=") || has(c, "hasacceleration") || has(c, "withacceleration"))) {
     double rb=0, rd=0; int rpow=0;
     if (has(c, "/(") && parse_linear_den_power(c, 't', &rb, &rd, &rpow) && rpow >= 1) {
       double k = nv > 0 ? v[0] : 1;
@@ -3729,16 +3732,24 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     if (!parsed_acc && has(c, "a=")) parsed_acc = parse_velocity_quad(input, &A, &B, &C);
     bool has_u = word_num(input, "velocity", &u) || word_num(input, "speed", &u) || label_num(input, "v", &u) || label_num(input, "u", &u);
     if (!has_u && has(t, "rest")) { u = 0; has_u = true; }
+    double tv0 = 0;
+    bool htv0 = word_num_with_t(input, "at", &tv0);
+    if (!htv0 && has(t, "rest")) { tv0 = 0; htv0 = true; }
     bool ht1 = word_num_with_t(input, "from", &t1) || word_num_with_t(input, "between", &t1);
     bool ht2 = word_num_with_t(input, "to", &t2) || word_num_with_t(input, "and", &t2);
     if (parsed_acc && has_u && ht1 && ht2) {
-      double s1=A*t1*t1*t1*t1/12.0 + B*t1*t1*t1/6.0 + C*t1*t1/2.0 + u*t1;
-      double s2=A*t2*t2*t2*t2/12.0 + B*t2*t2*t2/6.0 + C*t2*t2/2.0 + u*t2;
+      double ant0 = A*tv0*tv0*tv0/3.0 + B*tv0*tv0/2.0 + C*tv0;
+      double K = u - ant0;
+      double v2 = A*t2*t2*t2/3.0 + B*t2*t2/2.0 + C*t2 + K;
+      double s1=A*t1*t1*t1*t1/12.0 + B*t1*t1*t1/6.0 + C*t1*t1/2.0 + K*t1;
+      double s2=A*t2*t2*t2*t2/12.0 + B*t2*t2*t2/6.0 + C*t2*t2/2.0 + K*t2;
       int n = add(out, 0, "Variable acceleration: integrate a(t) to get v(t), then integrate v(t).");
       if (near_num(A, 0)) n = add(out, n, "a = %.6g t %+.6g", B, C);
       else n = add(out, n, "a = %.6g t^2 %+.6g t %+.6g", A, B, C);
-      n = add(out, n, "initial velocity gives constant %.6g", u);
-      n = add(out, n, "s(t) = %.6g t^4 %+.6g t^3 %+.6g t^2 %+.6g t", A/12.0, B/6.0, C/2.0, u);
+      n = add(out, n, "v(t) = %.6g t^3 %+.6g t^2 %+.6g t + C", A/3.0, B/2.0, C);
+      n = add(out, n, "v(%.6g)=%.10g gives C = %.10g", tv0, u, K);
+      n = add(out, n, "v(%.6g) = %.10g", t2, v2);
+      n = add(out, n, "s(t) = %.6g t^4 %+.6g t^3 %+.6g t^2 %+.6g t", A/12.0, B/6.0, C/2.0, K);
       return add(out, n, "displacement = s(%.6g)-s(%.6g) = %.10g", t2, t1, s2 - s1);
     }
   }

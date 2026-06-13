@@ -140,6 +140,7 @@ def main():
     require("A particle moves with acceleration a = 12t^2 - 6t. It starts from rest. Find velocity after 3 seconds.", ["Variable acceleration", "a = 12 t^2 -6 t", "initial velocity gives C = 0", "at t=3, v = 81"])
     require("A particle moves with acceleration a = 3t^2 + 2t - 1. Initially v=4 and s=2. Find v and s at t=3.", ["a = 3 t^2 +2 t -1", "v(0)=4 gives C = 4", "s(0)=2 gives C = 2", "at t=3, s = 38.75"])
     require("A particle has acceleration a=12*t^2-6*t and v=5 at t=0 find displacement from 0 to 2", ["Variable acceleration", "s(t) = 1 t^4 -1 t^3", "displacement = s(2)-s(0) = 18"])
+    require("A particle has acceleration a=4t-3 and velocity 2 at t=1 find displacement from t=1 to t=4", ["Variable acceleration", "v(1)=2 gives C = 3", "v(4) = 23", "displacement = s(4)-s(1) = 28.5"])
     require("A particle moves in a straight line. Its acceleration is 12/(2t+1)^3, v=3 at t=0. Find v at t=2.", ["Variable acceleration", "12/(2 t+1)^3", "v(2) = 5.88"])
     require("A particle moves along a line with velocity v = 9t^2 - 4t. Find acceleration at t=2 and displacement from t=1 to t=3.", ["a = dv/dt = 18 t -4", "at t=2, a = 32", "displacement = 63 - 1 = 62"])
     require("A particle moves with velocity v = 3t^2 - 12t + 5. Find the total distance travelled from t=0 to t=5.", ["Total distance", "Solve v=0", "total distance = 28.513"])
