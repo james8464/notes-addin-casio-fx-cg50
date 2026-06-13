@@ -1544,7 +1544,7 @@ static int eval_mech(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     int n = add(out, 0, "Resolve velocity into horizontal and vertical components.");
     n = add(out, n, "u_x = %.6g cos %.6g = %.6g", u, num(a[1]), ux);
     n = add(out, n, "u_y = %.6g sin %.6g = %.6g", u, num(a[1]), uy);
-    n = add(out, n, "same height: t = 2u_y/g = %.6g", T);
+    n = add(out, n, "time of flight: t = 2u_y/g = %.6g", T);
     n = add(out, n, "range = u_x t = %.6g", R);
     return add(out, n, "max height = u_y^2/(2g) = %.6g", H);
   }
