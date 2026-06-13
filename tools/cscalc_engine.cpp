@@ -3677,6 +3677,7 @@ static void bool_clean_tail(const char *src, char *dst, int cap) {
     "toatruthtable", "truth", "table", "astruthtable", "intoatruthtable",
     "tokmap", "karnaugh", "map", "intosumofproducts", "tosumofproducts",
     "intosop", "tosop", "intoproductofsums", "toproductofsums", "topos",
+    "tominterms", "tominterm", "tosimplify", "andsimplify", "simplify",
     "productofsums", "tonand", "tonor", "withvariables", "withvars",
     "variables", "vars"
   };
@@ -3823,6 +3824,7 @@ static bool make_gate_form_cmd(const char *input, bool nand, char *cmd, int cap)
       if (word_is(w, "find") || word_is(w, "the") || word_is(w, "write") ||
           word_is(w, "convert") || word_is(w, "to") || word_is(w, "using") || word_is(w, "use") ||
           word_is(w, "produce") ||
+          word_is(w, "show") || word_is(w, "that") ||
           word_is(w, "only") || word_is(w, "form") || word_is(w, "for") || word_is(w, "of") || word_is(w, "expression") ||
           word_is(w, "express") || word_is(w, "make") || word_is(w, "implement") ||
           word_is(w, "implementation") || word_is(w, "with") ||
@@ -6703,6 +6705,8 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     const char *e = skip_bool_words(compact);
     if (e && *e) {
       char ce[96], ne[96];
+      const char *eq = strchr(e, '=');
+      if (eq && eq > e && eq[1] && isalpha((unsigned char)e[0]) && (e[1] == '(' || e[1] == '=')) e = eq + 1;
       bool_clean_tail(e, ce, sizeof(ce));
       bool_arg_for_cmd(ce, ne, sizeof(ne));
       sprintf(cmd, "%s(%s)", (has(t, "maxterm") || has(t, "maxterms")) ? "posform" : "bool", ne);

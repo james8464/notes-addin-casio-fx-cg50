@@ -1,5 +1,35 @@
 # Checkpoint
 
+## 2026-06-13 CSCALC Boolean Free-Text Cleanup Slice
+
+Completed:
+- Fixed Boolean free-text command cleanup so `Show NAND only form of A+B` parses only `A+B`.
+- Fixed `F(A,B,C)=... to minterms/simplify` routing so the function header and trailing instruction words are stripped before Boolean parsing.
+- Added regressions for both forms.
+
+Evidence:
+- Direct probe gives `minterms: 3,5,7` and `simplified = BC+AC`.
+- Direct probe gives `NAND form: ((A NAND A) NAND (B NAND B))`.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 495972 bytes`
+  - `CSCALC.g3a: 275252 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: 18178 bytes`
+
+Drift check:
+- Stayed inside CSCALC Boolean free-text parsing/tests/checkpoint and rebuilt CSCALC artifact.
+- No Pure CAS source, CASP3 logic, NOTES source, menus, or shared UI/status code changed.
+- Active goal remains open.
+
 ## 2026-06-13 CASP3 Free-Text Stats Hardening Slice
 
 Completed:
