@@ -2477,11 +2477,11 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     }
   }
   if (has(t, "velocity") && (has(t, "displacement") || (has(t, "distance") && !has(t, "total"))) &&
-      has(t, "from") && has(t, "to") && !has(t, "vector")) {
+      ((has(t, "from") && has(t, "to")) || has(t, "between") || has(c, "<t<") || has(c, "<=t")) && !has(t, "vector")) {
     double A=0, B=0, C=0, t1=0, t2=0;
     if (parse_poly_after_word(input, "velocity", &A, &B, &C) &&
-        (word_num_with_t(input, "from", &t1) || word_num(input, "from", &t1) || (nv >= 2 && (t1 = v[nv-2], true))) &&
-        (word_num_with_t(input, "to", &t2) || word_num(input, "to", &t2) || (nv >= 2 && (t2 = v[nv-1], true)))) {
+        ((word_num_with_t(input, "from", &t1) || word_num(input, "from", &t1) || word_num_with_t(input, "between", &t1) || extract_t_interval(c, &t1, &t2) || (nv >= 2 && (t1 = v[nv-2], true)))) &&
+        ((t2 != 0 || has(c, "<t<") || has(c, "<=t")) || word_num_with_t(input, "to", &t2) || word_num(input, "to", &t2) || word_num_with_t(input, "and", &t2) || (nv >= 2 && (t2 = v[nv-1], true)))) {
       double F1 = A*t1*t1*t1/3.0 + B*t1*t1/2.0 + C*t1;
       double F2 = A*t2*t2*t2/3.0 + B*t2*t2/2.0 + C*t2;
       int n = add(out, 0, "Displacement is the integral of velocity.");
@@ -2843,11 +2843,12 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     }
   }
   if (has(t, "velocity") && (has(t, "total") || has(t, "travelled") || has(t, "traveled")) &&
-      has(t, "distance") && (has(t, "from") || has(t, "first") || has(c, "<t<") || has(c, "<=t"))) {
+      has(t, "distance") && (has(t, "from") || has(t, "between") || has(t, "first") || has(c, "<t<") || has(c, "<=t"))) {
     double CA=0, CB=0, CC=0, CD=0, ct1=0, ct2=0;
     if (parse_cubic_poly_after_word(input, "velocity", &CA, &CB, &CC, &CD) &&
         !near_num(CA, 0) &&
-        ((word_num_with_t(input, "from", &ct1) && word_num_with_t(input, "to", &ct2)) ||
+        (((word_num_with_t(input, "from", &ct1) || word_num_with_t(input, "between", &ct1)) &&
+          (word_num_with_t(input, "to", &ct2) || word_num_with_t(input, "and", &ct2))) ||
          extract_t_interval(c, &ct1, &ct2))) {
       double pts[8]; int np = 0; pts[np++] = ct1;
       for (int step = 0; step < 400 && np < 7; ++step) {
@@ -2887,7 +2888,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     double A=0, B=0, C=0, t1=0, t2=0;
     if (!parse_velocity_quad(input, &A, &B, &C)) return 0;
     if (!word_num_with_t(input, "from", &t1) || !word_num_with_t(input, "to", &t2)) {
-      if (has(t, "first") && prev_word_num(input, "seconds", &t2)) t1 = 0;
+      if (word_num_with_t(input, "between", &t1) && word_num_with_t(input, "and", &t2)) {}
+      else if (has(t, "first") && prev_word_num(input, "seconds", &t2)) t1 = 0;
       else if (extract_t_interval(c, &t1, &t2)) {}
       else return 0;
     }
@@ -3824,6 +3826,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     bool ht=label_num(input,"t",&time) || label_num(input,"time",&time) ||
             word_num(input,"time",&time) || word_num(input,"for",&time) || word_num(input,"in",&time);
     bool rest = has(c, "fromrest");
+    if (!rest && !hu && has(t, "from") && word_num(input, "speed", &u)) hu = true;
+    if (!rest && !hu && has(t, "from") && word_num(input, "velocity", &u)) hu = true;
     if (!hu && rest) { u = 0; hu = true; }
     if (!hv && rest && nv >= 1 && (has(c, "fromrestto") || has(c, "reachesspeed") || has(c, "reachesaspeed") ||
         has(c, "finalspeed") || has(c, "finalvelocity"))) { vv = v[0]; hv = true; }

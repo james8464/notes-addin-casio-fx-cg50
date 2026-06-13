@@ -3518,6 +3518,9 @@ static const char *skip_bool_words(const char *e) {
     if (starts(e, "whatis")) { e += 6; moved = true; }
     if (starts(e, "what")) { e += 4; moved = true; }
     if (starts(e, "calculate")) { e += 9; moved = true; }
+    if (starts(e, "evaluate")) { e += 8; moved = true; }
+    if (starts(e, "value")) { e += 5; moved = true; }
+    if (starts(e, "of")) { e += 2; moved = true; }
     if (starts(e, "simplify")) { e += 8; moved = true; }
     if (starts(e, "draw")) { e += 4; moved = true; }
     if (starts(e, "find")) { e += 4; moved = true; }
@@ -6126,10 +6129,14 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     bool_clean_tail(e, ce, sizeof(ce));
     sprintf(cmd, "posform(%s)", ce); return eval_posform(cmd, out);
   }
-  if ((has(compact, "simplify") || has(compact, "boolean") || has(compact, "logic") || has(compact, "output")) &&
-      has(compact, "when") && has(compact, "=")) {
+  if ((has(compact, "simplify") || has(compact, "boolean") || has(compact, "logic") || has(compact, "output") ||
+       has(compact, "evaluate") || has(compact, "value")) &&
+      (has(compact, "when") || has(compact, "where") || has(compact, "given")) && has(compact, "=")) {
     const char *e = skip_bool_words(compact);
     const char *wp = strstr(e, "when");
+    int wlen = 4;
+    if (!wp) { wp = strstr(e, "where"); wlen = 5; }
+    if (!wp) { wp = strstr(e, "given"); wlen = 5; }
     const char *fp = wp ? strstr(wp, "for") : 0;
     if (wp && (wp > e || fp)) {
       char lhs[80]; int lp = 0;
@@ -6141,7 +6148,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       lhs[lp] = 0;
       int assign[26]; for (int i = 0; i < 26; ++i) assign[i] = -1;
       const char *end = (wp == e && fp) ? fp : e + strlen(e);
-      for (const char *p = wp + 4; p && *p && p < end; ++p)
+      for (const char *p = wp + wlen; p && *p && p < end; ++p)
         if (isalpha((unsigned char)p[0]) && p[1] == '=' && (p[2] == '0' || p[2] == '1'))
           assign[tolower((unsigned char)p[0]) - 'a'] = p[2] - '0';
       bool any = false; for (int i = 0; i < 26; ++i) if (assign[i] >= 0) any = true;

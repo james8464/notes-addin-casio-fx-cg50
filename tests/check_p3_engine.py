@@ -204,6 +204,8 @@ def main():
     require("A particle moves with acceleration a=6t-4 velocity initially 3 and position initially 2 find v and s", ["v = 3*t^2 -4*t +3", "s = 1*t^3 -2*t^2 +3*t +2"])
     require("A particle starts at rest and has acceleration a=3t^2-4t+5 find velocity after 2 seconds", ["v(0)=0 gives C = 0", "v(2) = 10"])
     require("A particle has velocity v=3t^2-4t+5 find distance from t=1 to t=3", ["Displacement is the integral of velocity", "distance = |24 - 4|", "distance = 20"])
+    require("A particle has velocity v=2t^2-8t+6 find total distance between t=0 and t=5", ["Total distance", "v = 2 t^2 -8 t +6", "total distance = 18"])
+    require("A particle has velocity v=2t^2-8t+6 find displacement for 0<=t<=5", ["Displacement is the integral of velocity", "displacement = [s] from t=0 to t=5", "displacement = 13.333"])
     require("normal(65,50,10)", ["Standardise", "1.5"])
     require("zscore(65,50,10)", ["Standardise", "1.5"])
     require("standardise 65 mean 50 sd 10", ["Standardise", "1.5"])
