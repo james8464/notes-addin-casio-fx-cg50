@@ -1,5 +1,34 @@
 # Checkpoint
 
+## 2026-06-13 P3 Incline Label Parser Slice
+
+Completed:
+- Fixed rough/smooth incline fallback parsing so `kg`, `degrees`, and `inclined at` wording are used before raw number order.
+- Prevented angle-before-mass prompts from swapping mass and angle.
+- Added regression and rebuilt calculator-ready outputs.
+
+Evidence:
+- `slides down a rough plane inclined at 25 degrees ... mass 3kg` now uses `3*9.8 sin(25)`.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 489752 bytes`
+  - `CSCALC.g3a: 273564 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: 18178 bytes`
+
+Drift check:
+- Stayed inside CASP3 incline free-text parsing, P3 tests, checkpoint, and rebuilt CASP3 artifact.
+- No Pure CAS source, CSCALC source, menu/UI/session, NOTES source, or shared status-bar behavior changed.
+- Active goal remains open for further unseen-case hardening.
+
 ## 2026-06-13 CSCALC Image Depth Parser Slice
 
 Completed:

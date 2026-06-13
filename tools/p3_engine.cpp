@@ -5576,8 +5576,11 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if ((has(t, "incline") || has(t, "slope") || has(t, "plane")) && (has(t, "acceleration") || has(t, "accelerate") || has(t, "rough")) && nv >= 2) {
     double m=0, ang=0, mu=0;
-    bool hm=label_num(input,"mass",&m) || word_num(input,"mass",&m) || label_num(input,"m",&m);
-    bool ha=label_num(input,"angle",&ang) || word_num(input,"angle",&ang) || label_num(input,"theta",&ang);
+    bool hm=label_num(input,"mass",&m) || word_num(input,"mass",&m) || label_num(input,"m",&m) ||
+            num_before_unit(input,"kg",&m);
+    bool ha=label_num(input,"angle",&ang) || word_num(input,"angle",&ang) || label_num(input,"theta",&ang) ||
+            prev_word_num(input,"degrees",&ang) || first_num_after_word(input,"inclined",&ang) ||
+            first_num_after_word(input,"incline",&ang) || first_num_after_word(input,"angle",&ang);
     bool hmu=label_num(input,"mu",&mu) || word_num(input,"mu",&mu) || word_num(input,"friction",&mu) ||
               word_num(input,"coefficient",&mu) || label_num(input,"coefficient",&mu);
     if (!hm && ha && hmu && (has(t, "slide") || has(t, "slides") || has(t, "down"))) {
@@ -5594,8 +5597,11 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if ((has(t, "incline") || has(t, "slope") || has(t, "plane")) && nv >= 2) {
     double m=0, ang=0, mu=0;
-    bool hm=label_num(input,"mass",&m) || word_num(input,"mass",&m) || label_num(input,"m",&m);
-    bool ha=label_num(input,"angle",&ang) || word_num(input,"angle",&ang) || label_num(input,"theta",&ang);
+    bool hm=label_num(input,"mass",&m) || word_num(input,"mass",&m) || label_num(input,"m",&m) ||
+            num_before_unit(input,"kg",&m);
+    bool ha=label_num(input,"angle",&ang) || word_num(input,"angle",&ang) || label_num(input,"theta",&ang) ||
+            prev_word_num(input,"degrees",&ang) || first_num_after_word(input,"inclined",&ang) ||
+            first_num_after_word(input,"incline",&ang) || first_num_after_word(input,"angle",&ang);
     bool hmu=label_num(input,"mu",&mu) || word_num(input,"mu",&mu) || word_num(input,"friction",&mu) || label_num(input,"coefficient",&mu);
     if (hm && ha) sprintf(cmd, "incline(%.10g,%.10g,%.10g)", m, ang, hmu ? mu : 0);
     else if (nv >= 3 && v[1] > 0 && v[1] < 1.5 && v[2] > 1.5) sprintf(cmd, "incline(%.10g,%.10g,%.10g)", v[0], v[2], v[1]);
