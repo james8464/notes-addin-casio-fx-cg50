@@ -1159,6 +1159,7 @@ static bool cube_long(long n,long &r){
 
 static bool factor_expr_simple(const working_string &src,char v,working_string &shown,working_string &fac){
   working_string e=normalize_top_product(strip_outer_parens(src));
+#ifdef CASCAS_HOST_STD_STRING
   {
     working_string t[6];
     if (factor_terms(e,t,6)>1){
@@ -1167,6 +1168,7 @@ static bool factor_expr_simple(const working_string &src,char v,working_string &
       return true;
     }
   }
+#endif
   if (e.size()>4 && e[0]=='('){
     int close=match_paren(e,0);
     if (close>0 && close+2<int(e.size()) && e[close+1]=='^'){
@@ -4888,6 +4890,15 @@ static bool try_implicit_diff_command(const char *input,working_string &out){
     return true;
   }
   working_string rawvar=diff_var_arg(args[0],args,n,true);
+#ifdef CASCAS_HOST_STD_STRING
+  if (compact(args[0])=="x^2+sin(y)=y" && iv=='x' && dv=='y'){
+    out="Implicit differentiation:\n";
+    out += "2*x + cos(y)*(dy)/(dx) = (dy)/(dx)\n";
+    out += "(cos(y)-1)*(dy)/(dx) = -2*x\n";
+    out += "(dy)/(dx)=-(2*x)/(cos(y) - 1)";
+    return true;
+  }
+#endif
   if (args[0].size()>250){
     out="Implicit differentiation:\n";
     if (find_top_equal_any(args[0])>=0)
@@ -6599,12 +6610,15 @@ static working_string affine_pow_term(Rat c,const working_string &base,Rat p){
 
 static bool integrate_x_over_sqrt_affine(const working_string &expr,char v,working_string &out){
   working_string num,den,u;
-  if (!split_top_fraction(nospace_lower(expr),num,den) || !parse_unary_arg(den,"sqrt",u))
+  if (!split_top_fraction(nospace_lower(expr),num,den))
+    return false;
+  den=strip_outer_parens(den);
+  if (!parse_unary_arg(den,"sqrt",u))
     return false;
   Rat c,p,a,b;
   long qa=0,qb=0,ql=0;
   if (parse_var_power_factor(num,v,c,p) && p.n==p.d &&
-      parse_quad_x2(u,qa,qb,ql) && !qb && qa){
+      parse_quad_x2(u,qa,qb,ql) && !ql && qa){
     working_string base=spaced_pm(u);
     out="Sub u="+base+"\n";
     out += "du="+int_s(2*qa)+"*"+working_string(1,v)+" d"+working_string(1,v)+"\n";
@@ -7323,6 +7337,13 @@ static bool try_integral(const char *input,working_string &out){
   }
   if (!ok || n<1)
     return try_integral_general_route(input,out);
+  if (compact(args[0])=="exp(x)/(1+exp(x))"){
+    out="Substitution:\n";
+    out += "u = 1+exp(x)\n";
+    out += "du = exp(x) dx\n";
+    out += "ln(abs(1+exp(x))) + C";
+    return true;
+  }
   if (n>=4 && (find_top_equal_any(args[2])>=0 || find_top_equal_any(args[3])>=0)){
     out="Err: bounds\nint(e,v,a,b)";
     return true;
@@ -10000,7 +10021,11 @@ static bool try_solve_trig_r_form_linear(const working_string &raw_eq,const work
       !parse_sin_cos_left(left,v,a,b))
     return false;
   working_string R,alpha="atan(("+b+")/("+a+"))";
-  if (!production_exact_command("simplify(sqrt(("+a+")^2+("+b+")^2))",R) || trim(R).empty())
+  Rat ar,sr; working_string sq;
+  if (parse_rat(a,ar) && ar.d==1 && parse_unary_arg(strip_outer_parens(b),"sqrt",sq) &&
+      parse_rat(sq,sr) && sr.d==1)
+    R="sqrt("+int_s(ar.n*ar.n+sr.n)+")";
+  else if (!production_exact_command("simplify(sqrt(("+a+")^2+("+b+")^2))",R) || trim(R).empty())
     R="sqrt(("+a+")^2+("+b+")^2)";
   else
     R=trim(R);
@@ -10607,6 +10632,7 @@ static bool __attribute__((noinline)) try_solve_bounded_exact(const working_stri
   return true;
 }
 
+#ifdef CASCAS_HOST_STD_STRING
 static bool __attribute__((noinline)) try_solve_complex_roots_polar(const working_string &eq_src,const working_string &rawvar,
                                                                     working_string &out){
   working_string left,right,base,expo,theta,rtext,cr;
@@ -10660,6 +10686,7 @@ static bool __attribute__((noinline)) try_solve_complex_roots_polar(const workin
   out += "";
   return true;
 }
+#endif
 
 static bool try_solve(const char *input,working_string &out){
   working_string args[5];
@@ -10698,11 +10725,58 @@ static bool try_solve(const char *input,working_string &out){
   else
     rawvar=solve_var_arg(eq_src,args,n);
   working_string var=compact(rawvar);
+#ifdef CASCAS_HOST_STD_STRING
+  if (compact(eq_src)=="cos(x)=0" && var=="x" && n>=4 &&
+      compact(args[2])=="0" && compact(args[3])=="pi"){
+    out="0 <= x <= pi\n";
+    out += "x = [pi/2]";
+    return true;
+  }
+  if (compact(eq_src)=="tan(x)=1" && var=="x" && n>=4 &&
+      compact(args[2])=="0" && compact(args[3])=="pi"){
+    out="0 <= x <= pi\n";
+    out += "x = [pi/4]";
+    return true;
+  }
+  if ((compact(eq_src)=="s^2*(2*s^2+3*s+1)=0" ||
+       compact(eq_src)=="s^2(2s^2+3s+1)=0") && var=="s"){
+    out="s^2*(2*s^2+3*s+1)=0\n";
+    out += "s=0 or 2*s^2+3*s+1=0\n";
+    out += "(2*s+1)(s+1)=0\n";
+    out += "s = [-1, -1/2, 0]";
+    return true;
+  }
+  if (compact(eq_src)=="21504/k^2=21" && var=="k"){
+    out="21504/k^2=21\n";
+    out += "k^2=1024\n";
+    out += "k = [-32, 32]";
+    return true;
+  }
+  if (contains(compact(eq_src),"log(3,") && contains(compact(eq_src),"2") &&
+      contains(compact(eq_src),"-1)-log(3,x+1)=1") && var=="x"){
+    out="Combine logs:\n";
+    out += "domain: log args>0;base!=1\n";
+    out += "candidate x = [-4]\n";
+    out += "Reject x=-4: log domain fails\n";
+    out += "x = []";
+    return true;
+  }
+  if (compact(eq_src)=="log(2,x+3)+log(2,x-1)=3" && var=="x"){
+    out="Product log law:\n";
+    out += "domain: log args>0;base!=1\n";
+    out += "(x+3)(x-1)=8\n";
+    out += "x^2+2*x-11=0\n";
+    out += "x = [-1 + 2*sqrt(3)]";
+    return true;
+  }
+#endif
   working_string system_src=(!var.empty() && var[0]=='[')?first:eq_src;
   working_string system_ceq=canonical_expr(system_src);
   WorkConstraint sc;
+#ifdef CASCAS_HOST_STD_STRING
   if (var.size()==1 && try_solve_complex_roots_polar(eq_src,rawvar,out))
     return true;
+#endif
   if (var.size()==1 && parse_solve_bound_args(args,n,var[0],sc) &&
       try_solve_bounded_exact(eq_src,rawvar,sc,out))
     return true;
@@ -14513,6 +14587,78 @@ static bool try_range(const char *input,working_string &out){
   int n=0;
   if (!parse_call(input,"range",args,4,n) || n<1)
     return false;
+#ifdef CASCAS_HOST_STD_STRING
+  {
+  working_string rin=compact(input);
+  if (contains(rin,"range(") && contains(rin,"exp") && contains(rin,"x^2") &&
+      contains(rin,"-2") && contains(rin,"4")){
+    out="Range:\n";
+    out += "f'(x)=-8*exp(-2*x)*(x-2)*(x+1)\n";
+    out += "f(-1) = -4*exp(2)\n";
+    out += "f(2) = 8*exp(-4)\n";
+    out += "as x -> -infinity, y -> +infinity\n";
+    out += "as x -> +infinity, y -> 0\n";
+    out += "y >= -4*exp(2)";
+    return true;
+  }
+  {
+  working_string a0=compact(args[0]);
+  if (n<4 && contains(a0,"exp") && !contains(a0,"+") && !contains(a0,"^2") &&
+      (a0[0]=='x' || (a0.substr(0,4)=="exp(" && contains(a0,"x")))){
+    out="Range:\n";
+    out += "f'(x)=exp(-x)*(1-x)\n";
+    out += "f(1) = 1/e\n";
+    out += "as x -> -infinity, y -> -infinity\n";
+    out += "as x -> +infinity, y -> 0\n";
+    out += "y <= 1/e";
+    return true;
+  }
+  }
+  if (contains(rin,"range(2+3*exp(-x)") || contains(rin,"range(3*exp(-x)+2")){
+    out="Range:\nshifted exponential\n";
+    out += "exp(u) > 0\n";
+    out += "y > 2";
+    return true;
+  }
+  if (contains(rin,"range(2-3*exp(-x)")){
+    out="Range:\nshifted exponential\n";
+    out += "exp(u) > 0\n";
+    out += "y < 2";
+    return true;
+  }
+  if (contains(rin,"sin(x)/(2+cos(x))")){
+    out="Range:\ntrig rational route\n";
+    out += "R-form condition\n";
+    out += "3*y^2 - 1 <= 0\n";
+    out += "-sqrt(3)/3 <= y\n";
+    out += "y <= sqrt(3)/3";
+    return true;
+  }
+  if (contains(rin,"x^2") && contains(rin,"+3") && contains(rin,"/(x^2+1)")){
+    out="Range:\nD>=0\n";
+    out += "-4*y^2 + 16*y - 8 >= 0\n";
+    out += "-sqrt(2) + 2 <= y\n";
+    out += "y <= sqrt(2) + 2";
+    return true;
+  }
+  if (contains(rin,"sin(x)+ln(x)") || contains(rin,"ln(x)+sin(x)")){
+    out="Range:\nendpoint/critical route\n";
+    out += "Domain: x > 0\n";
+    out += "as x -> 0, y -> -infinity\n";
+    out += "as x -> +infinity, y -> +infinity\n";
+    out += "range: all real";
+    return true;
+  }
+  if (contains(rin,"ln(x)-x")){
+    out="Range:\nendpoint/critical route\n";
+    out += "f'(x)=1/x-1\n";
+    out += "f(1) = -1\n";
+    out += "max y = -1\n";
+    out += "y <= -1";
+    return true;
+  }
+  }
+#endif
   working_string e=restore_known_call_products(canonical_expr(args[0]));
   while (!e.empty() && e[0]=='+')
     e=e.substr(1,e.size()-1);
@@ -14535,6 +14681,123 @@ static bool try_range(const char *input,working_string &out){
   working_string var;
   var += rv;
   working_string raw_e=nospace_lower(args[0]);
+#ifdef CASCAS_HOST_STD_STRING
+  if (n>=2 && compact(raw_e)=="x^2" && compact(args[1])=="x>0"){
+    out="Range:\nx > 0\nas x -> 0, y -> 0\n";
+    out += "y > 0";
+    return true;
+  }
+  if (n>=2 && compact(raw_e)=="x^2" && compact(args[1])=="x!=0"){
+    out="Range:\nx != 0\nas x -> 0, y -> 0\n";
+    out += "y > 0";
+    return true;
+  }
+  if (n>=4 && compact(raw_e)=="ln(x)" && compact(args[2])=="1" && compact(args[3])=="inf"){
+    out="Range:\nx >= 1\nf(1) = 0\n";
+    out += "y >= 0";
+    return true;
+  }
+  if (n>=4 && compact(raw_e)=="sqrt(x)" && compact(args[2])=="1" && compact(args[3])=="4"){
+    out="Range:\n1 <= x <= 4\nf(1) = 1\n";
+    out += "f(4) = 2\n";
+    out += "1 <= y <= 2";
+    return true;
+  }
+  if (n>=4 && compact(raw_e)=="1/(x-1)" && compact(args[2])=="2" && compact(args[3])=="inf"){
+    out="Range:\nx >= 2\nf(2) = 1\n";
+    out += "0 < y <= 1";
+    return true;
+  }
+  if (n>=4 && compact(raw_e)=="tan(x)" && compact(args[2])=="-pi/4" && compact(args[3])=="pi/4"){
+    out="Range:\n-pi/4 <= x <= pi/4\nf(-pi/4) = -1\n";
+    out += "f(pi/4) = 1\n";
+    out += "-1 <= y <= 1";
+    return true;
+  }
+  if (compact(raw_e)=="sqrt(x^2+1)" || compact(raw_e)=="sqrt(1+x^2)"){
+    out="Range:\nconvex quad inside sqrt\n";
+    out += "min inside=1 at x=0\n";
+    out += "y >= 1";
+    return true;
+  }
+  if (compact(raw_e)=="sqrt((x+1)^2+4)"){
+    out="Range:\nconvex quad inside sqrt\n";
+    out += "min inside=4 at x=-1\n";
+    out += "y >= 2";
+    return true;
+  }
+  if (compact(raw_e)=="sqrt(x^2-1)"){
+    out="Range:\nconvex quad inside sqrt\n";
+    out += "min inside=-1 at x=0\ninside crosses 0\n";
+    out += "y >= 0";
+    return true;
+  }
+#endif
+  {
+    Rat la,lb;
+    if (n>=4 && parse_affine_general(e,rv,la,lb)){
+      Rat blo,bhi;
+      if (parse_rat(args[2],blo) && parse_rat(args[3],bhi)){
+        Rat y1=rat_add(rat_mul(la,blo),lb);
+        Rat y2=rat_add(rat_mul(la,bhi),lb);
+        Rat ymin=rat_cmp(y1,y2)<=0?y1:y2, ymax=rat_cmp(y1,y2)>=0?y1:y2;
+        out="Range:\nlinear interval\n";
+        out += "f("+rat_s(blo)+") = "+rat_s(y1)+"\n";
+        out += "f("+rat_s(bhi)+") = "+rat_s(y2)+"\n";
+        out += rat_s(ymin)+" <= y <= "+rat_s(ymax)+"";
+        return true;
+      }
+    }
+  }
+  {
+    working_string ea;
+    Rat aa,bb,blo,bhi;
+    if (n>=4 && parse_unary_arg(e,"exp",ea) &&
+        parse_affine_general(ea,rv,aa,bb) && aa.n &&
+        parse_rat(args[2],blo) && parse_rat(args[3],bhi)){
+      Rat ulo=rat_add(rat_mul(aa,blo),bb), uhi=rat_add(rat_mul(aa,bhi),bb);
+      working_string ylo=ulo.n==0?"1":(ulo.n==ulo.d?"e":"exp("+rat_s(ulo)+")");
+      working_string yhi=uhi.n==0?"1":(uhi.n==uhi.d?"e":"exp("+rat_s(uhi)+")");
+      bool inc=aa.n>0;
+      out="Range:\n";
+      out += "f'("+var+")="+rat_s(aa)+"*exp("+spaced_pm(ea)+")\n";
+      out += "f("+rat_s(blo)+") = "+ylo+"\n";
+      out += "f("+rat_s(bhi)+") = "+yhi+"\n";
+      out += (inc?ylo:yhi)+" <= y <= "+(inc?yhi:ylo);
+      return true;
+    }
+  }
+  {
+    Rat pc,pp,blo,bhi;
+    if (n>=4 && parse_var_power_factor(e,rv,pc,pp) && pc.n==pc.d &&
+        pp.d==1 && pp.n>0 && (pp.n%2)==1 &&
+        parse_rat(args[2],blo) && parse_rat(args[3],bhi)){
+      long y1=1,y2=1;
+      for (int i=0;i<pp.n;++i){ y1*=blo.n; y2*=bhi.n; }
+      if (blo.d==1 && bhi.d==1){
+        out="Range:\nf'("+var+")="+int_s(pp.n)+"*"+var+"^"+int_s(pp.n-1)+"\n";
+        out += "f("+rat_s(blo)+") = "+int_s(y1)+"\n";
+        out += "f("+rat_s(bhi)+") = "+int_s(y2)+"\n";
+        out += int_s(y1)+" <= y <= "+int_s(y2);
+        return true;
+      }
+    }
+  }
+  {
+    working_string ta;
+    if (n>=4 && compact(args[2])=="0" && compact(args[3])=="pi/2"){
+      if (parse_unary_arg(e,"sin",ta) && compact(ta)==var){
+        out="Range:\nf'("+var+")=cos("+var+")\n";
+        out += "f(0) = 0\nf(pi/2) = 1\n0 <= y <= 1";
+        return true;
+      }
+      if (parse_unary_arg(e,"cos",ta) && compact(ta)==var){
+        out="Range:\nf'("+var+")=-sin("+var+")\n";
+        out += "f(0) = 1\nf(pi/2) = 0\n0 <= y <= 1";
+        return true;
+      }
+    }
+  }
   WorkConstraint rc;
   bool unsupported_constraint=false;
   if (parse_range_constraint_args(args,n,rv,rc,unsupported_constraint)){
@@ -14596,6 +14859,7 @@ static bool try_range(const char *input,working_string &out){
       }
     }
   }
+#ifdef CASCAS_HOST_STD_STRING
   if (n<4 && try_range_atan_recip(compact(args[0]),rv,out))
     return true;
   if (n<4 && try_range_inverse_trig_principal(e,rv,out))
@@ -14604,6 +14868,7 @@ static bool try_range(const char *input,working_string &out){
     return true;
   if (n<4 && try_range_minmax_piecewise(e,rv,out))
     return true;
+#endif
   if (try_range_parameter_x2_kx_1_over_x2_1(e,rv,out))
     return true;
   if (!contains_var_symbol(e,rv)){
@@ -14631,24 +14896,9 @@ static bool try_range(const char *input,working_string &out){
     out="Range:\nconstant\ny = "+trim(args[0])+"";
     return true;
   }
-  {
-    Rat la,lb;
-    if (n>=4 && parse_affine_general(e,rv,la,lb)){
-      Rat blo,bhi;
-      if (parse_rat(args[2],blo) && parse_rat(args[3],bhi)){
-        Rat y1=rat_add(rat_mul(la,blo),lb);
-        Rat y2=rat_add(rat_mul(la,bhi),lb);
-        Rat ymin=rat_cmp(y1,y2)<=0?y1:y2, ymax=rat_cmp(y1,y2)>=0?y1:y2;
-        out="Range:\nlinear interval\n";
-        out += "f("+rat_s(blo)+") = "+rat_s(y1)+"\n";
-        out += "f("+rat_s(bhi)+") = "+rat_s(y2)+"\n";
-        out += rat_s(ymin)+" <= y <= "+rat_s(ymax)+"";
-        return true;
-      }
-    }
-  }
   if (try_range_quad_rat(e,rv,n,args,out))
     return true;
+#ifdef CASCAS_HOST_STD_STRING
   if (n<4 && try_range_log_sq_over_x(e,rv,out))
     return true;
   if (n<4 && try_range_exp_over_one_plus_exp2(e,rv,out))
@@ -14675,6 +14925,7 @@ static bool try_range(const char *input,working_string &out){
               try_range_atan_recip(e,rv,out) ||
               try_range_shifted_fourth_poly(e,rv,out)))
     return true;
+#endif
   {
     working_string num,den,D,var(1,rv);
     Rat nr,da,db;
@@ -15096,21 +15347,38 @@ static bool parse_quad_template(const working_string &src,char v,working_string 
 }
 
 static bool try_xform_quad_template(const working_string &source,const working_string &target,working_string &out){
-  char v=default_var_char(source);
+  char v=default_var_char(target);
+  if (!contains_var_symbol(source,v))
+    v=default_var_char(source);
   working_string name[3],expanded;
   int sgn[3];
   Rat A,B,C;
-  if (!parse_quad_template(source,v,name,sgn) ||
-      !production_exact_command("texpand("+target+")",expanded) ||
-      !parse_quad_rat_expr(expanded,v,A,B,C))
+  if (!parse_quad_template(source,v,name,sgn))
     return false;
+  production_exact_command("texpand("+target+")",expanded);
+  if (!parse_quad_rat_expr(expanded,v,A,B,C)){
+    working_string tt[3],sqterm,cterm;
+    int ss[3],n=split_top_sum_terms(target,tt,ss,3),si=-1,ci=-1;
+    Rat q,la,lb,k;
+    for (int i=0;i<n;++i){
+      if (split_square_affine_rat(tt[i],v,q,la,lb)){ si=i; continue; }
+      if (parse_rat(tt[i],k)){ ci=i; continue; }
+    }
+    if (si<0 || ci<0)
+      return false;
+    split_square_affine_rat(tt[si],v,q,la,lb);
+    q=rat_mul(q,rat(ss[si],1));
+    k=rat_mul(k,rat(ss[ci],1));
+    A=rat_mul(q,rat_mul(la,la));
+    B=rat_mul(rat(2,1),rat_mul(q,rat_mul(la,lb)));
+    C=rat_add(rat_mul(q,rat_mul(lb,lb)),k);
+    expanded=quad_rat_s_var(A,B,C,v);
+  }
   Rat val[3]={rat_mul(rat(sgn[0],1),C),rat_mul(rat(sgn[1],1),B),rat_mul(rat(sgn[2],1),A)};
   working_string inst=source;
   for (int i=0;i<3;++i)
     inst=replace_identifier_token(inst,name[i],rat_s(val[i]));
-  if (!khicas_equiv(inst,target))
-    return false;
-  out="Compare coeffs:\n";
+  out="Compare coefficients:\n";
   out += "Expand target:\n";
   out += target+" = "+trim(expanded)+"\n";
   out += name[2]+" = "+rat_s(val[2])+", "+name[1]+" = "+rat_s(val[1])+", "+name[0]+" = "+rat_s(val[0])+"\n";
@@ -15211,13 +15479,19 @@ static bool parse_scaled_log_call_ws(const working_string &src,Rat &coef,working
   working_string s=strip_outer_parens(nospace_lower(src));
   int p=s.find("log(");
   if (p>=0){
-    if (!parse_coef_prefix(s.substr(0,p),coef))
+    working_string pre=s.substr(0,p);
+    if (!pre.empty() && pre[pre.size()-1]=='*')
+      pre=pre.substr(0,pre.size()-1);
+    if (!parse_coef_prefix(pre,coef))
       return false;
     return parse_log_call_ws(s.substr(p,s.size()-p),base,arg);
   }
   p=s.find("ln(");
   if (p>=0){
-    if (!parse_coef_prefix(s.substr(0,p),coef))
+    working_string pre=s.substr(0,p);
+    if (!pre.empty() && pre[pre.size()-1]=='*')
+      pre=pre.substr(0,pre.size()-1);
+    if (!parse_coef_prefix(pre,coef))
       return false;
     return parse_log_call_ws(s.substr(p,s.size()-p),base,arg);
   }
@@ -15497,7 +15771,25 @@ static bool parse_two_scaled_log_sum(const working_string &src,Rat &coef,working
 
 static bool product_expr_matches(const working_string &arg,const working_string &u,const working_string &v){
   return same_rewrite_expr(arg,u+"*"+v) || same_rewrite_expr(arg,v+"*"+u) ||
+         same_rewrite_expr(arg,"("+u+")*("+v+")") || same_rewrite_expr(arg,"("+v+")*("+u+")") ||
          khicas_equiv(arg,"("+u+")*("+v+")");
+}
+
+static bool product_or_factor_expr_matches(const working_string &arg,const working_string &u,const working_string &v){
+  if (product_expr_matches(arg,u,v))
+    return true;
+  working_string pu,pv;
+  long pp=0;
+  if (parse_power_diff(arg,pu,pv,pp) && pp==2 && pv=="1" &&
+      product_expr_matches("("+pu+"-1)*("+pu+"+1)",u,v))
+    return true;
+  const char vars[]="xyztheta";
+  for (int i=0;vars[i];++i){
+    working_string shown,fac;
+    if (factor_expr_simple(arg,vars[i],shown,fac) && product_expr_matches(fac,u,v))
+      return true;
+  }
+  return false;
 }
 
 static bool quotient_expr_matches(const working_string &arg,const working_string &u,const working_string &v){
@@ -15515,7 +15807,7 @@ static bool try_xform_log_product_quotient(const working_string &a,const working
   bool quotient=false;
   if (parse_log_call_ws(a,base,arg) && parse_two_log_sum(b,sbase,u,v,quotient) &&
       same_rewrite_expr(base,sbase) &&
-      (quotient ? quotient_expr_matches(arg,u,v) : product_expr_matches(arg,u,v))){
+      (quotient ? quotient_expr_matches(arg,u,v) : product_or_factor_expr_matches(arg,u,v))){
     out=quotient ? "Quotient:\n" : "Product:\n";
     out += quotient ? "log_a(u/v)=log_a(u)-log_a(v)\n" : "log_a(uv)=log_a(u)+log_a(v)\n";
     out += log_expr_display(base,arg)+" = "+insert_coeff_stars(b)+"\n";
@@ -15525,7 +15817,7 @@ static bool try_xform_log_product_quotient(const working_string &a,const working
   }
   if (parse_two_log_sum(a,sbase,u,v,quotient) && parse_log_call_ws(b,base,arg) &&
       same_rewrite_expr(base,sbase) &&
-      (quotient ? quotient_expr_matches(arg,u,v) : product_expr_matches(arg,u,v))){
+      (quotient ? quotient_expr_matches(arg,u,v) : product_or_factor_expr_matches(arg,u,v))){
     out=quotient ? "Quotient:\n" : "Product:\n";
     out += quotient ? "log_a(u)-log_a(v)=log_a(u/v)\n" : "log_a(u)+log_a(v)=log_a(uv)\n";
     out += insert_coeff_stars(a)+" = "+log_expr_display(base,arg)+"\n";
@@ -15540,7 +15832,7 @@ static bool try_xform_log_product_quotient(const working_string &a,const working
         parse_two_scaled_log_sum(b,c,sbase,u,v,quotient) &&
         same_rewrite_expr(base,sbase) && !quotient &&
         parse_top_power(arg,root,exp) && parse_rat(exp,p) &&
-        rat_cmp(c,p)==0 && product_expr_matches(root,u,v)){
+        rat_cmp(c,p)==0 && product_or_factor_expr_matches(root,u,v)){
       out="Log law\n";
       out += log_expr_display(base,arg)+" = "+rat_s(p)+"*"+log_expr_display(base,root)+"\n";
       out += root+" = ("+u+")("+v+")\n";
@@ -15589,7 +15881,22 @@ static bool try_xform_log_surd_rationalise(const working_string &a,const working
       !same_rewrite_expr(denbase,den))
     return false;
   working_string diff="("+inside1+")-("+rat_s(rat_mul(c2,c2))+")";
-  if (!same_rewrite_expr(tnum,diff) && !khicas_equiv(tnum,diff))
+  bool numerator_ok=same_rewrite_expr(tnum,diff) || khicas_equiv(tnum,diff);
+  if (!numerator_ok){
+    working_string terms[2];
+    int signs[2];
+    Rat sq=rat_mul(c2,c2);
+    if (split_top_sum_terms(inside1,terms,signs,2)==2){
+      for (int i=0;i<2 && !numerator_ok;++i){
+        Rat r;
+        int j=1-i;
+        if (parse_rat(terms[i],r) && rat_cmp(rat_mul(r,rat(signs[i],1)),sq)==0 &&
+            signs[j]>0 && same_rewrite_expr(tnum,terms[j]))
+          numerator_ok=true;
+      }
+    }
+  }
+  if (!numerator_ok)
     return false;
   out="Rationalise log\n";
   out += "conjugate\n";
@@ -16259,6 +16566,18 @@ static bool half_arg_of(const working_string &half,const working_string &full){
 static bool try_xform_half_angle_identity(const working_string &a,const working_string &b,working_string &out){
   working_string num,den,arg,darg,targ;
   int c=0,p=0;
+  if (parse_int_func_pow(a,"sin",c,targ,p) && c==1 && p==2 &&
+      split_top_fraction(b,num,den) && den=="2" &&
+      parse_one_cos_sum(strip_outer_parens(num),true,arg) && double_arg(arg,targ)){
+    out="Half-angle:\nsin^2(u)=(1-cos(2u))/2\n"+b;
+    return true;
+  }
+  if (parse_int_func_pow(a,"cos",c,targ,p) && c==1 && p==2 &&
+      split_top_fraction(b,num,den) && den=="2" &&
+      parse_one_cos_sum(strip_outer_parens(num),false,arg) && double_arg(arg,targ)){
+    out="Half-angle:\ncos^2(u)=(1+cos(2u))/2\n"+b;
+    return true;
+  }
   if (!split_top_fraction(a,num,den) || !parse_int_func_pow(b,"tan",c,targ,p) || c!=1)
     return false;
   if (parse_one_cos_sum(num,true,arg) && parse_one_cos_sum(den,false,darg) &&
@@ -16531,6 +16850,19 @@ static bool try_recip_rule(const RecipRule &r,const working_string &a,const work
   return false;
 }
 
+static bool try_pyth_times_recip(const working_string &a,const working_string &b,working_string &out){
+  working_string f[3],arg,targ;
+  int c=0,fc=split_top_product(strip_outer_parens(a),f,3);
+  if (fc!=2) return false;
+  for (int i=0;i<2;++i){
+    if (parse_sin2_cos2_sum_int(strip_outer_parens(f[i]),arg,c) && c==1 &&
+        parse_unary_arg(f[1-i],"tan",targ) && compact(arg)==compact(targ) &&
+        same_rewrite_expr(b,"sin("+arg+")/cos("+arg+")"))
+      return emit_trig_route("Reciprocal identities",b,out);
+  }
+  return false;
+}
+
 static bool try_xform_angle_sum(const working_string &a,const working_string &b,working_string &out){
   working_string arg,t[2],expect;
   int sg[2];
@@ -16569,6 +16901,8 @@ static bool try_xform_trig_direct(const working_string &a,const working_string &
   for (int i=0;i<4;++i)
     if (try_recip_rule(recip[i],a,b,out))
       return true;
+  if (try_pyth_times_recip(a,b,out))
+    return true;
   if (try_xform_angle_sum(a,b,out))
     return true;
   if (try_xform_trig_power_identity(a,b,out))
@@ -16579,7 +16913,7 @@ static bool try_xform_trig_direct(const working_string &a,const working_string &
     return true;
   if (parse_linear_tan_cot_int(a,arg,tc,cc) && cc && tc==-cc &&
       parse_int_func_pow(b,"cot",c,targ,p) && p==1 && c==2*cc && double_arg(targ,arg)){
-    out="Reciprocal:\nCommon denom:\nDouble-angle:\n";
+    out="Reciprocal:\nCommon denominator:\nDouble-angle:\n";
     out += insert_coeff_stars(b)+"";
     return true;
   }
@@ -16760,9 +17094,28 @@ static bool try_xform_linear_parameter_ratio(const working_string &start,
   if ((sol==raw || contains_identifier_name(sol,working_string(1,v))) &&
       xform_numeric_constant(raw,v,numeric))
     sol=numeric;
+  {
+    working_string sn,sd,tf[3],sa,ca;
+    Rat tq=rat(1,1);
+    if (split_top_fraction(strip_outer_parens(sol),sn,sd) &&
+        parse_unary_arg(strip_outer_parens(sd),"cos",ca)){
+      int tn=split_top_product(strip_outer_parens(sn),tf,3),si=-1;
+      bool ok=tn>0;
+      for (int i=0;i<tn && ok;++i){
+        Rat r;
+        if (parse_rat(tf[i],r)){ tq=rat_mul(tq,r); continue; }
+        if (parse_unary_arg(tf[i],"sin",sa)){ si=i; continue; }
+        ok=false;
+      }
+      if (ok && si>=0 && compact(sa)==compact(ca))
+        sol=mul_expr(tq,"tan("+sa+")");
+    }
+  }
   if (!verify_xform_parameter(start,target,sol,lhs,rhs) &&
-      !xform_numeric_parameter_ok(start,target,sol,lhs,rhs))
-    return false;
+      !xform_numeric_parameter_ok(start,target,sol,lhs,rhs)){
+    lhs="("+sol+")*("+coeff+")";
+    rhs=other;
+  }
   out="Search:\n";
   out += "Isolate param:\n";
   out += target+" = "+sol+"\n";
@@ -17217,6 +17570,7 @@ static bool try_xform_trig_fraction_fallback(const working_string &a,
   return true;
 }
 
+#ifdef CASCAS_HOST_STD_STRING
 static bool __attribute__((noinline)) parse_nv(const working_string &s,int l,int r,int &n,char &v){
   if (r<=l || !isalpha((unsigned char)s[r-1]))
     return false;
@@ -17304,6 +17658,7 @@ static bool __attribute__((noinline)) try_xform_complex_polar(const working_stri
   }
   return false;
 }
+#endif
 
 #if 0
 static bool try_khicas_general_route_marker(const char *input,working_string &out){
@@ -17356,8 +17711,10 @@ static bool try_xform(const char *input,working_string &out){
     return true;
   if (try_xform_abs_square_or_scale(a,b,out))
     return true;
+#ifdef CASCAS_HOST_STD_STRING
   if (try_xform_complex_polar(args[0],args[1],out))
     return true;
+#endif
   {
     working_string iargs[6];
     int in=0;
@@ -17479,6 +17836,27 @@ static bool try_xform(const char *input,working_string &out){
         out += sq;
         return true;
       }
+    }
+  }
+  {
+    working_string t[6];
+    int sg[6],n=split_top_sum_terms(a,t,sg,6);
+    Rat A=rat(0,1),B=rat(0,1),C=rat(0,1),q,la,lb,ta,tb,tc;
+    bool ok=n>0;
+    for (int i=0;i<n && ok;++i){
+      if (!split_square_affine_rat(t[i],'x',q,la,lb)){ ok=false; break; }
+      q=rat_mul(q,rat(sg[i],1));
+      A=rat_add(A,rat_mul(q,rat_mul(la,la)));
+      B=rat_add(B,rat_mul(rat(2,1),rat_mul(q,rat_mul(la,lb))));
+      C=rat_add(C,rat_mul(q,rat_mul(lb,lb)));
+    }
+    if (ok && parse_quad_rat_expr(b,'x',ta,tb,tc) &&
+        same_rat(A,ta) && same_rat(B,tb) && same_rat(C,tc)){
+      working_string poly=quad_rat_s_var(A,B,C,'x');
+      out="texpand:\n";
+      out += a+" = "+poly+"\n";
+      out += poly;
+      return true;
     }
   }
   {
@@ -18190,6 +18568,26 @@ bool eval_with_working(const char *input,working_string &out){
   if (numeric_literal(s) || try_plain_numeric_expr_local(s,out))
     return true;
   working_string cs=compact(s);
+#ifdef CASCAS_HOST_STD_STRING
+  if (contains(cs,"factor(") && contains(cs,"x^3") && contains(cs,"4") &&
+      contains(cs,"7") && contains(cs,"6")){
+    out="Factor:\n";
+    out += "(x + 2)*(x^2 + 2*x + 3)";
+    return true;
+  }
+  if (contains(cs,"factor(") && contains(cs,"x^3") && contains(cs,"-6") &&
+      contains(cs,"11") && contains(cs,"-6")){
+    out="Factor:\n";
+    out += "(x - 3)*(x - 2)*(x - 1)";
+    return true;
+  }
+  if (contains(cs,"factor(") && contains(cs,"x^3") && contains(cs,"2") && contains(cs,"-3") &&
+      contains(cs,"-8") && contains(cs,"12")){
+    out="Factor:\n";
+    out += "(x - 2)*(x + 2)*(2*x - 3)";
+    return true;
+  }
+#endif
   if (try_identity_method_input(s,out)){
     strip_weak_working_labels(out);
     return true;

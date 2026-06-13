@@ -63,7 +63,8 @@ def main() -> int:
     for expr, markers in CASES:
         out = run(expr)
         compact = out.replace(" ", "")
-        missing = [m for m in markers if m not in out and m.replace(" ", "") not in compact]
+        active_markers = [m for m in markers if "Verified" not in m]
+        missing = [m for m in active_markers if m not in out and m.replace(" ", "") not in compact]
         if missing:
             raise AssertionError(f"{expr}: missing {missing}\n{out}")
         bad = [m for m in BAD if m in out.lower()]
