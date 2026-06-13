@@ -6377,6 +6377,12 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     if ((has(t, "minus") || has(t, "negative")) && val > 0) val = -val;
     sprintf(cmd, "twos(%lld,%lld)", val, bitsw); return eval_twos(cmd, out);
   }
+  if (tc && has(t, "range") && nv >= 1) {
+    double bw = 0;
+    long long bitsw = (scan_before_word_num(t, "bit", &bw) || scan_before_word_num(t, "bits", &bw)) && bw > 0
+      ? (long long)bw : (long long)v[0];
+    sprintf(cmd, "twosrange(%lld)", bitsw); return eval_twos(cmd, out);
+  }
   if (tc && !has(t, "fixed") && nb >= 1 && (has(t, "decode") || has(t, "denary") || has(t, "decimal") || has(t, "value"))) {
     sprintf(cmd, "twosdec(%s)", bits[0]); return eval_twos(cmd, out);
   }

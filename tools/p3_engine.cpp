@@ -3531,6 +3531,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     if (!parse_cubic_poly_after_word(input, "displacement", &A, &B, &C, &D0)) return 0;
     bool ht1 = word_num_with_t(input, "from", &t1) || word_num_with_t(input, "between", &t1);
     bool ht2 = word_num_with_t(input, "to", &t2) || word_num_with_t(input, "and", &t2);
+    if ((!ht1 || !ht2) && has(t, "first") && prev_word_num(input, "seconds", &t2)) { t1 = 0; ht1 = ht2 = true; }
     if (!ht1 || !ht2) return 0;
     double qa = 3*A, qb = 2*B, qc = C;
     double pts[4]; int np = 0; pts[np++] = t1;
@@ -3547,7 +3548,10 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     int n = add(out, 0, "Total distance is found by splitting where velocity changes sign.");
     n = add(out, n, "s = %.6g t^3 %+.6g t^2 %+.6g t %+.6g", A, B, C, D0);
     n = add(out, n, "v = ds/dt = %.6g t^2 %+.6g t %+.6g", qa, qb, qc);
-    if (np > 2) n = add(out, n, "Use the stationary times inside the interval as split points.");
+    if (np > 2) {
+      n = add(out, n, "At rest when v=0.");
+      n = add(out, n, "Use the stationary times inside the interval as split points.");
+    }
     double total = 0;
     for (int i = 0; i + 1 < np; ++i) {
       double a0 = pts[i], b0 = pts[i+1];
@@ -4721,12 +4725,25 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     if (!ha) for (int i = 0; i < nv; ++i) if (!near_num(v[i], m) && v[i] > 1.5 && v[i] <= 90) { ang = v[i]; break; }
     if (!hmu) for (int i = 0; i < nv; ++i) if (!near_num(v[i], m) && !near_num(v[i], ang) && v[i] > 0 && v[i] < 1.5) { mu = v[i]; break; }
     if (!hu) for (int i = nv - 1; i >= 0; --i) if (!near_num(v[i], m) && !near_num(v[i], ang) && !near_num(v[i], mu)) { u = v[i]; break; }
-    double decel = 9.8 * (deg_sine(ang) + mu * deg_cosine(ang));
+    bool down = has(t, "down") || has(t, "downward") || has(t, "downwards") ||
+                has(c, "projecteddown") || has(c, "downtheplane");
+    double decel = down ? 9.8 * (mu * deg_cosine(ang) - deg_sine(ang))
+                        : 9.8 * (deg_sine(ang) + mu * deg_cosine(ang));
     double s = decel ? u*u/(2.0*decel) : 0;
-    int n = add(out, 0, "Up a rough plane, weight component and friction oppose motion.");
+    int n = add(out, 0, down ? "Projected down: weight acts down the plane and friction acts up the plane."
+                              : "Up a rough plane, weight component and friction oppose motion.");
     n = add(out, n, "R = mg cos(theta), friction = mu R.");
-    n = add(out, n, "deceleration = g(sin(theta)+mu cos(theta))");
-    n = add(out, n, "deceleration = 9.8*(sin(%.6g)+%.6g*cos(%.6g)) = %.10g", ang, mu, ang, decel);
+    if (down) {
+      double acc_down = 9.8 * (deg_sine(ang) - mu * deg_cosine(ang));
+      n = add(out, n, "acceleration down the plane = g(sin(theta)-mu cos(theta))");
+      n = add(out, n, "acceleration down the plane = 9.8*(sin(%.6g)-%.6g*cos(%.6g)) = %.10g", ang, mu, ang, acc_down);
+      if (acc_down >= 0) return add(out, n, "Since acceleration is down the plane, it does not stop.");
+      decel = -acc_down;
+    } else {
+      n = add(out, n, "deceleration = g(sin(theta)+mu cos(theta))");
+      n = add(out, n, "deceleration = 9.8*(sin(%.6g)+%.6g*cos(%.6g)) = %.10g", ang, mu, ang, decel);
+    }
+    s = decel ? u*u/(2.0*decel) : 0;
     n = add(out, n, "Use v^2 = u^2 + 2as with v=0 and a=-%.10g.", decel);
     n = add(out, n, "distance = u^2/(2*deceleration) = %.6g^2/(2*%.10g) = %.10g m", u, decel, s);
     if (has(t, "return") || has(t, "startingpoint") || has(t, "start")) {
@@ -4741,25 +4758,37 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     }
     return n;
   }
-  if (is_projectile_text(t) && has(c, "maximumheight") && (has(c, "timeofflight") || (has(t, "time") && has(t, "flight"))) &&
-      (has(t, "speed") || has(t, "projection")) && nv >= 2) {
-    double u=0, ang=0, g=9.8;
+  if (is_projectile_text(t) &&
+      (has(c, "maximumheight") || has(c, "greatestheight") || (has(t, "maximum") && has(t, "height")) ||
+       (has(t, "greatest") && has(t, "height"))) &&
+      (has(c, "timeofflight") || (has(t, "time") && has(t, "flight"))) &&
+      (has(t, "speed") || has(t, "projection") || has(t, "projected") ||
+       has(t, "fired") || has(t, "launched") || has(c, "m/s")) && nv >= 2) {
+    double u=0, ang=0, h0=0, g=9.8;
     bool hU=label_num(input,"speed",&u) || label_num(input,"u",&u) || label_num(input,"initialspeed",&u) ||
             word_num(input,"speed",&u) || word_num(input,"velocity",&u);
     bool hA=label_num(input,"angle",&ang) || label_num(input,"theta",&ang) || word_num(input,"angle",&ang) ||
             prev_word_num(input,"degrees",&ang);
+    bool hH=label_num(input,"height",&h0) || label_num(input,"initialheight",&h0) ||
+            label_num(input,"launchheight",&h0) || word_num(input,"height",&h0) ||
+            word_num(input,"from",&h0) || word_num(input,"above",&h0);
     label_num(input,"g",&g);
     if (!hU) u = v[0];
     if (!hA) ang = v[1];
+    if (!hH && nv >= 3 && (has(t, "height") || has(t, "above") || has(t, "ground"))) {
+      for (int i = 0; i < nv; ++i) if (!near_num(v[i], u) && !near_num(v[i], ang)) { h0 = v[i]; break; }
+    }
     double uy = u * deg_sine(ang);
-    double tof = 2 * uy / g;
-    double H = uy * uy / (2 * g);
+    double disc = uy*uy + 2*g*h0;
+    double tof = disc >= 0 ? (uy + root(disc)) / g : 0;
+    double H = h0 + (uy > 0 ? uy * uy / (2 * g) : 0);
     int n = add(out, 0, "Resolve vertically, then use vertical motion.");
     n = add(out, n, "u_y = u sin(theta) = %.6g sin %.6g = %.10g", u, ang, uy);
-    n = add(out, n, "time of flight: 0 = u_y t - 0.5gt^2");
-    n = add(out, n, "t = 2u_y/g = %.10g s", tof);
-    n = add(out, n, "maximum height uses v_y=0.");
-    return add(out, n, "H = u_y^2/(2g) = %.10g m", H);
+    n = add(out, n, "time of flight: 0 = %.10g + u_y t - 0.5gt^2", h0);
+    if (disc < 0) return add(out, n, "No real time reaches the ground.");
+    n = add(out, n, "positive time t = %.10g s", tof);
+    n = add(out, n, "maximum height/greatest height uses v_y=0.");
+    return add(out, n, "greatest height above ground = %.10g m", H);
   }
   if (is_projectile_text(t) && has(c, "maximumheight") && has(t, "range") &&
       (has(t, "speed") || has(t, "projection")) && nv >= 2) {
@@ -6028,6 +6057,44 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "a = F/(total mass) = %.10g/%.10g = %.10g m/s^2", net, total, a);
     n = add(out, n, "For the trailer alone: T - %.10g = %.10g*%.10g", r2, m2, a);
     return add(out, n, "T = %.10g N", tension);
+  }
+  if ((has(t, "driving") || has(t, "drive") || has(t, "engine")) && has(t, "force") &&
+      (has(t, "resistance") || has(t, "resistive")) &&
+      (has(t, "acceleration") || has(t, "accelerate")) &&
+      (has(t, "tow") || has(t, "trailer")) &&
+      (has(t, "incline") || has(t, "slope") || has(t, "plane")) && nv >= 6) {
+    double m1 = 0, m2 = 0, theta = 0, drive = 0, r1 = 0, r2 = 0;
+    bool hA = word_num(input, "angle", &theta) || label_num(input, "angle", &theta) ||
+              prev_word_num(input, "degrees", &theta);
+    if (!hA) for (int i = 0; i < nv; ++i) if (v[i] > 0 && v[i] <= 45) { theta = v[i]; break; }
+    double masses[2]; int nm = 0;
+    for (int i = 0; i < nv && nm < 2; ++i)
+      if (!near_num(v[i], theta) && v[i] >= 50) masses[nm++] = v[i];
+    if (nm >= 2) { m1 = masses[0]; m2 = masses[1]; }
+    else { m1 = v[0]; m2 = v[1]; }
+    bool hd = word_num(input, "engineforce", &drive) || word_num(input, "drivingforce", &drive) ||
+              label_num(input, "engineforce", &drive) || label_num(input, "drivingforce", &drive);
+    if (!hd) for (int i = 0; i < nv; ++i)
+      if (!near_num(v[i], m1) && !near_num(v[i], m2) && !near_num(v[i], theta) && v[i] > m1 && v[i] > m2) { drive = v[i]; break; }
+    double res[2]; int nr = 0;
+    for (int i = nv - 1; i >= 0 && nr < 2; --i)
+      if (!near_num(v[i], m1) && !near_num(v[i], m2) && !near_num(v[i], theta) && !near_num(v[i], drive) && v[i] > 0) res[nr++] = v[i];
+    if (nr >= 2) { r2 = res[0]; r1 = res[1]; }
+    else if (nr == 1) { r1 = res[0]; r2 = 0; }
+    double total = m1 + m2;
+    double down = total * 9.8 * deg_sine(theta);
+    double net = drive - r1 - r2 - down;
+    double a = total ? net / total : 0;
+    double trailer_down = m2 * 9.8 * deg_sine(theta);
+    double tension = m2 * a + r2 + trailer_down;
+    int n = add(out, 0, "Treat truck and trailer as one system to find acceleration.");
+    n = add(out, n, "total mass = %.10g + %.10g = %.10g kg", m1, m2, total);
+    n = add(out, n, "Down-slope weight component = %.10g*9.8 sin(%.6g) = %.10g N", total, theta, down);
+    n = add(out, n, "F = drive - resistances - down-slope weight");
+    n = add(out, n, "F = %.10g - %.10g - %.10g - %.10g = %.10g N", drive, r1, r2, down, net);
+    n = add(out, n, "a = F/(total mass) = %.10g/%.10g = %.10g m/s^2", net, total, a);
+    n = add(out, n, "For the trailer: T - %.10g - %.10g = %.10g*%.10g", r2, trailer_down, m2, a);
+    return add(out, n, "towbar tension T = %.10g N", tension);
   }
   if ((has(t, "driving") || has(t, "drive")) && has(t, "force") &&
       (has(t, "resistance") || has(t, "resistive")) &&
@@ -10203,6 +10270,27 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       if (has(t, "standarddeviation") || (has(t, "standard") && has(t, "deviation")) || has(t, "sd"))
         return add(out, n, "sd = sqrt(variance) = %.10g", root(var));
       return n;
+    }
+  }
+  if (has(t, "mean") && nv >= 3 &&
+      (has(t, "another") || has(t, "second") || has(t, "combined") || has(t, "added")) &&
+      (has(t, "values") || has(t, "observations") || has(t, "sample")) &&
+      !has(t, "becomes") && !has(t, "newmean") &&
+      !has(t, "variance") && !has(t, "standarddeviation") && !has(t, "sd") &&
+      !has(t, "normal") && !has(t, "binom") && !has(t, "poisson")) {
+    double n1 = 0, m1 = 0, n2 = 0, m2 = 0;
+    if (nv >= 4) { n1 = v[0]; m1 = v[1]; n2 = v[2]; m2 = v[3]; }
+    bool hn1 = word_num(input, "sample", &n1) || word_num(input, "of", &n1);
+    bool hm1 = word_num(input, "mean", &m1);
+    (void)hn1; (void)hm1;
+    double total1 = n1 * m1, total2 = n2 * m2;
+    double nsum = n1 + n2, total = total1 + total2;
+    if (n1 > 0 && n2 > 0 && nsum > 0) {
+      int n = add(out, 0, "Use total = number of values * mean for each group.");
+      n = add(out, n, "first total = %.10g*%.10g = %.10g", n1, m1, total1);
+      n = add(out, n, "second total = %.10g*%.10g = %.10g", n2, m2, total2);
+      n = add(out, n, "combined total = %.10g + %.10g = %.10g", total1, total2, total);
+      return add(out, n, "combined mean = %.10g/%.10g = %.10g", total, nsum, total/nsum);
     }
   }
   if (has(t, "mean") && nv >= 3 &&

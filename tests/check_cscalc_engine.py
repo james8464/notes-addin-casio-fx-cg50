@@ -72,6 +72,7 @@ def main():
     require("How many bits are needed to represent -129 in two's complement?", ["minimum two's-complement width", "range -256 to 255", "9 bits are needed"])
     require("unsignedrange(8)", ["unsigned range", "0 to 255"])
     require("8-bit two's complement range", ["two's complement range", "-128 to 127"])
+    require("Find the range of values for 10 bit two complement.", ["two's complement range", "-512 to 511"])
     require("decode 11111011 as two's complement", ["subtract 2^8", "-5"])
     require("what is the denary value of twos complement 10000000", ["MSB=1", "10000000 = -128"])
     require("signmag(-5,8)", ["8-bit sign-and-magnitude", "sign bit = 1", "magnitude = |-5| = 5", "10000101"])

@@ -1,5 +1,41 @@
 # Checkpoint
 
+## 2026-06-13 Late P3/CS Route Hardening Slice
+
+Completed:
+- Fixed CASP3 displacement total-distance prompts using `s=...` plus `first n seconds`, including rest/stationary split lines.
+- Fixed CASP3 projectile greatest/maximum-height plus time-of-flight prompts when speed is written as `25m/s` and an initial height is supplied.
+- Fixed CASP3 rough-plane projected-down prompts so it does not invent a stopping distance when gravity still accelerates the particle down the plane.
+- Added CASP3 truck/trailer up-slope acceleration and towbar-tension working before generic incline fallbacks.
+- Fixed CASP3 grouped mean wording like `Another 5 values with mean 16 are added`, while keeping variance-update routes separate.
+- Fixed CSCALC two's-complement range routing so `10 bit` is treated as a width, not binary `10`.
+- Added regressions and rebuilt calculator-ready app files.
+
+Evidence:
+- Direct probes passed for displacement/rest total distance, projectile from height, projected-down rough plane, trailer on slope, grouped mean, and 10-bit two's-complement range.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 565216 bytes`
+  - `CSCALC.g3a: 297548 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: 18178 bytes`
+- Artifact hashes:
+  - `CASP3.g3a: 18850597364cd470a53db6462a3675a9cc585ae6841c4461d358321c5fa22881`
+  - `CSCALC.g3a: e52b6e8f25a2ad92048a6e537ef7ccdc60f565a3fbefc96d5335f3f2d0c098a9`
+
+Drift check:
+- Stayed inside CASP3/CSCALC parser hardening, tests, checkpoint, and rebuilt app artifacts.
+- No Pure CAS source, NOTES source, menus, session sharing, or shared UI/status code changed.
+- Arbitrary unseen input is still not mathematically provable, but this slice closes all currently reproduced failures.
+
 ## 2026-06-13 P3 Unseen Prompt Sweep Slice
 
 Completed:
