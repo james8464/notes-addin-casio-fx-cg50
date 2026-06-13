@@ -105,10 +105,26 @@ static bool has_word(const char *s, const char *w) {
   return false;
 }
 
-static bool has_utf_subscript_digit(const char *s) {
-  for (int i = 0; s && s[i]; ++i)
-    if ((unsigned char)s[i] == 0xe2 && (unsigned char)s[i+1] == 0x82 &&
-        (unsigned char)s[i+2] >= 0x80 && (unsigned char)s[i+2] <= 0x89) return true;
+static bool scan_subscript_number(const char *s, char *val, int cap, int *base) {
+  for (int i = 0; s && s[i]; ++i) {
+    if (!((unsigned char)s[i] == 0xe2 && (unsigned char)s[i+1] == 0x82 &&
+          (unsigned char)s[i+2] >= 0x80 && (unsigned char)s[i+2] <= 0x89)) continue;
+    int k = i - 1;
+    while (k >= 0 && isalnum((unsigned char)s[k])) --k;
+    int start = k + 1, len = i - start;
+    if (len <= 0 || len >= cap) continue;
+    int b = 0, q = i;
+    while ((unsigned char)s[q] == 0xe2 && (unsigned char)s[q+1] == 0x82 &&
+           (unsigned char)s[q+2] >= 0x80 && (unsigned char)s[q+2] <= 0x89) {
+      b = b * 10 + ((unsigned char)s[q+2] - 0x80);
+      q += 3;
+    }
+    if (!(b == 2 || b == 8 || b == 10 || b == 16)) continue;
+    for (int j = 0; j < len; ++j) val[j] = (char)toupper((unsigned char)s[start + j]);
+    val[len] = 0;
+    *base = b;
+    return true;
+  }
   return false;
 }
 
@@ -4017,20 +4033,13 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   char fixed_tokens[4][48]; int nfixed = scan_fixed_bit_tokens(input, fixed_tokens, 4);
   char bitcol[65]; bool has_bitcol = scan_spaced_bit_column(t, bitcol, sizeof(bitcol));
   char bitgrp[4][48]; int nbg = scan_spaced_bit_groups(t, bitgrp, 4);
+  char sub_val[48] = ""; int sub_base = 0;
+  bool has_sub_value = scan_subscript_number(input, sub_val, sizeof(sub_val), &sub_base);
   char hex_tok[32]; bool has_hex_tok = scan_hex_token(t, hex_tok, sizeof(hex_tok));
   if (!has_hex_tok && (has(t, "hex") || has(t, "hexadecimal") || has(t, "base,16") || has(t, "base16"))) {
     has_hex_tok = scan_hex_word_token(t, hex_tok, sizeof(hex_tok));
   }
-  bool subscript_base16 = false;
-  if (has_hex_tok && has_utf_subscript_digit(input)) {
-    int hl = (int)strlen(hex_tok);
-    bool alpha = false;
-    for (int i = 0; i < hl - 2; ++i) if (hex_tok[i] >= 'A' && hex_tok[i] <= 'F') alpha = true;
-    if (alpha && hl > 2 && hex_tok[hl - 2] == '1' && hex_tok[hl - 1] == '6') {
-      hex_tok[hl - 2] = 0;
-      subscript_base16 = true;
-    }
-  }
+  if (has_sub_value && sub_base == 16) { strncpy(hex_tok, sub_val, sizeof(hex_tok) - 1); hex_tok[sizeof(hex_tok)-1] = 0; has_hex_tok = true; }
   char cmd[160];
   bool tc_hint = has(t, "twos") || (has(t, "two") && has(t, "complement"));
   double width=0, height=0, depth=0;
@@ -5899,11 +5908,29 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if (has(t, "bcd") && nv >= 1) {
     sprintf(cmd, "bcd(%lld)", (long long)v[0]); return eval_base(cmd, out);
   }
-  if (subscript_base16 && has_hex_tok && (has(t, "binary") || has(t, "base,2") || has(t, "base2"))) {
-    sprintf(cmd, "convert(%s,16,2)", hex_tok); return eval_base(cmd, out);
+  if (tc_hint && has_sub_value && sub_base == 16 &&
+      (has(t, "decode") || has(t, "denary") || has(t, "decimal") || has(t, "value"))) {
+    double bw = 0;
+    int w = (scan_before_word_num(t, "bit", &bw) || scan_before_word_num(t, "bits", &bw)) && bw > 0
+      ? (int)bw : (int)strlen(sub_val) * 4;
+    char b[65]; to_bin(parse_base(sub_val, 16), w, b);
+    int val = twos_decode(b);
+    int n = add(out, 0, "Convert hexadecimal to fixed-width binary first.");
+    n = add(out, n, "%s_16 = %s_2", sub_val, b);
+    n = add(out, n, "Decode %s as %d-bit two's complement.", b, w);
+    return add(out, n, "%s = %d", b, val);
   }
-  if (subscript_base16 && has_hex_tok && (has(t, "denary") || has(t, "decimal") || has(t, "base,10") || has(t, "base10"))) {
-    sprintf(cmd, "den(%s,16)", hex_tok); return eval_base(cmd, out);
+  if (has_sub_value && (has(t, "binary") || has(t, "base,2") || has(t, "base2"))) {
+    sprintf(cmd, "convert(%s,%d,2)", sub_val, sub_base); return eval_base(cmd, out);
+  }
+  if (has_sub_value && (has(t, "hex") || has(t, "hexadecimal") || has(t, "base,16") || has(t, "base16"))) {
+    sprintf(cmd, "convert(%s,%d,16)", sub_val, sub_base); return eval_base(cmd, out);
+  }
+  if (has_sub_value && (has(t, "denary") || has(t, "decimal") || has(t, "base,10") || has(t, "base10"))) {
+    sprintf(cmd, "den(%s,%d)", sub_val, sub_base); return eval_base(cmd, out);
+  }
+  if (has_sub_value && (has(t, "octal") || has(t, "base,8") || has(t, "base8"))) {
+    sprintf(cmd, "convert(%s,%d,8)", sub_val, sub_base); return eval_base(cmd, out);
   }
   if (has(t, "base") && ((has(t, "base,2") || has(t, "base,two")) && (has(t, "base,8") || has(t, "base,eight")))) {
     const char *p2 = strstr(t, "base,2"); if (!p2) p2 = strstr(t, "base,two");

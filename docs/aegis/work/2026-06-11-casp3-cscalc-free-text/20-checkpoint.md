@@ -5544,6 +5544,37 @@ Drift check:
 - Kept changes to CASP3/CSCALC parser generalisation, regressions, generated app outputs, and this checkpoint.
 - Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.
 
+## 2026-06-13 Subscript Base and Variable-Acceleration Slice
+
+Completed:
+- Found old Boolean Python scripts in git history: `boolean.py`, `ComputerScience/boolean.py`, and `ComputerScience/booleanProgram.py`; current CSCALC already has the Boolean core in C++.
+- Added generic CSCALC subscript-base token parsing for pasted `...₂`, `...₈`, `...₁₀`, and `...₁₆` values.
+- Routed subscript-base values through existing base-conversion and two's-complement decode engines.
+- Fixed CASP3 variable-acceleration fallback so `initial velocity ...` is not confused with `at t=...`.
+- Prevented that older velocity-only fallback from stealing displacement prompts that need both `v` and `s`.
+- Added regression tests and rebuilt calculator files.
+
+Evidence:
+- Fresh probes fixed: `10101111₂ to hexadecimal`, `255₁₀ to hex`, `377₈ to binary`, `F3₁₆ as 8-bit two's complement`, and variable acceleration with `initial velocity 5 ... at t=3`.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `CASP3.g3a: 504800 bytes`
+  - `CSCALC.g3a: 279956 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CASP3.g3a sha256: 11e6c018cf02cfaa8db6f8ce3409c16a4eec58a5b1b1f61cc9cba5969067f3e9`
+  - `CSCALC.g3a sha256: d9a02351c5bfb2411d1567e3797dfaee24232b75e11671e34db7e5ba3d98161e`
+
+Drift check:
+- Kept changes to CASP3/CSCALC parser generalisation, regressions, generated app outputs, and this checkpoint.
+- Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.
+
 ## 2026-06-13 Resistance, Power, and Subscript Base Slice
 
 Completed:

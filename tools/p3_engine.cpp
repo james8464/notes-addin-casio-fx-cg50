@@ -3487,8 +3487,13 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     double A=0, B=0, C=0;
     bool parsed_acc = parse_poly_after_word(input, "acceleration", &A, &B, &C);
     if (!parsed_acc && has(c, "a=")) parsed_acc = parse_velocity_quad(input, &A, &B, &C);
-    if (parsed_acc) {
+    if (parsed_acc && !(has(t, "displacement") || has(t, "distance"))) {
       double v0 = v[nv-3], t0 = v[nv-2], tfind = v[nv-1];
+      double q = 0;
+      if ((word_num(input, "initialvelocity", &q) || word_num(input, "velocity", &q)) &&
+          (has(t, "initial") || has(t, "initially"))) { v0 = q; t0 = 0; }
+      if (label_num(input, "t", &q) || word_num_with_t(input, "at", &q) ||
+          word_num(input, "after", &q) || word_num(input, "time", &q)) tfind = q;
       if ((has(t, "starts") || has(t, "initially")) && has(t, "rest")) {
         v0 = 0; t0 = 0;
         word_num(input, "after", &tfind) || word_num_with_t(input, "at", &tfind) || word_num(input, "time", &tfind);
