@@ -5783,7 +5783,10 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   if (has(t, "checksum") && (has(t, "modulo") || has(t, "mod")) && nv >= 2) {
     int mod = (int)v[0], sum = 0;
-    for (int i = 1; i < nv; ++i) sum += (int)v[i];
+    double md = 0;
+    bool hmod = scan_after_word_num(t, "modulo", &md) || scan_after_word_num(t, "mod", &md);
+    if (hmod) mod = (int)md;
+    for (int i = 0; i < nv; ++i) if (!hmod || (int)v[i] != mod) sum += (int)v[i];
     int rem = mod ? sum % mod : sum;
     int n = add(out, 0, "Modulo checksum: add the decimal digits/blocks, then take the remainder.");
     n = add(out, n, "sum = %d", sum);
@@ -6175,7 +6178,11 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if (nv == 0 && ((has(compact, "nor") && (has(compact, "only") || has(compact, "form") || has(compact, "convert"))) || starts(compact, "norform") || starts(compact, "onlynor"))) {
     if (make_gate_form_cmd(input, false, cmd, sizeof(cmd))) return eval_gate_form(cmd, out);
   }
-  if (nv == 0 && (starts(compact, "posform") || starts(compact, "cnf") || has(compact, "productofsums"))) {
+  if (nv == 0 && (starts(compact, "posform") || starts(compact, "cnf") ||
+                  has(compact, "productofsums") ||
+                  (has(compact, "pos") && (has(compact, "xor") || has(compact, "and") ||
+                                           has(compact, "or") || has(compact, "&") ||
+                                           has(compact, "+") || has(compact, "^"))))) {
     const char *e = skip_bool_words(compact); char ce[96];
     const char *eq = strchr(e, '=');
     if (eq && eq > e && eq[1] && isalpha((unsigned char)e[0]) && e[1] == '(') {

@@ -2476,6 +2476,25 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       return add(out, n, "displacement = %.10g - %.10g = %.10g", F2, F1, F2-F1);
     }
   }
+  if (has(t, "velocity") && has(t, "acceleration") &&
+      (has(t, "at") || has(t, "att") || has(t, "time")) &&
+      (has(c, "findacceleration") || has(c, "findaccn") || has(c, "accelerationat")) &&
+      !has(t, "vector") && !has(t, "displacement") && !has(t, "distance")) {
+    double A=0, B=0, C=0, ta=0;
+    bool ok = parse_poly_after_word(input, "velocity", &A, &B, &C);
+    if (!ok && has(c, "v=")) ok = parse_velocity_quad(input, &A, &B, &C);
+    if (ok) {
+      if (!(word_num_with_t(input, "at", &ta) || word_num(input, "at", &ta) ||
+            word_num_with_t(input, "time", &ta) || word_num(input, "time", &ta))) {
+        ta = nv > 0 ? v[nv-1] : 0;
+      }
+      int n = add(out, 0, "Differentiate velocity to get acceleration.");
+      if (near_num(A, 0)) n = add(out, n, "v = %.6g t %+.6g", B, C);
+      else n = add(out, n, "v = %.6g t^2 %+.6g t %+.6g", A, B, C);
+      n = add(out, n, "a = dv/dt = %.6g t %+.6g", 2*A, B);
+      return add(out, n, "at t=%.6g, a = %.10g", ta, 2*A*ta + B);
+    }
+  }
   if (has(t, "velocity") && (has(t, "displacement") || (has(t, "distance") && !has(t, "total"))) &&
       ((has(t, "from") && has(t, "to")) || has(t, "between") || has(c, "<t<") || has(c, "<=t")) &&
       !has(t, "vector") && !(has(c, "a=") || has(c, "hasacceleration") || has(c, "withacceleration"))) {
@@ -3382,8 +3401,10 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     double blo=0, bhi=0;
     bool has_lower = word_num(input, "atleast", &blo) || word_num(input, "greaterthanorequal", &blo) || word_num(input, "morethan", &blo);
     bool lower_strict = has(c, "morethan") || has(c, "greaterthan");
-    bool has_upper = word_num(input, "lessthan", &bhi) || word_num(input, "atmost", &bhi) || word_num(input, "nomorethan", &bhi) || word_num(input, "lessthanorequal", &bhi);
-    bool upper_strict = has(c, "lessthan") && !has(c, "lessthanorequal");
+    bool has_upper = word_num(input, "lessthan", &bhi) || word_num(input, "fewerthan", &bhi) ||
+                     word_num(input, "fewer", &bhi) || word_num(input, "atmost", &bhi) ||
+                     word_num(input, "nomorethan", &bhi) || word_num(input, "lessthanorequal", &bhi);
+    bool upper_strict = (has(c, "lessthan") || has(c, "fewerthan") || has(t, "fewer")) && !has(c, "lessthanorequal");
     if (has_lower && has_upper) {
       int lo = (int)blo + (lower_strict ? 1 : 0);
       int hi = (int)bhi - (upper_strict ? 1 : 0);
@@ -5605,7 +5626,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     if (has(c, "morethan")) tail = 2;
     else if (has(c, "atleast") || has(c, "greaterthanorequal")) tail = 1;
     else if (has(c, "lessthanorequal") || has(c, "atmost") || has(t, "cdf")) tail = -1;
-    else if (has(c, "lessthan")) tail = -2;
+    else if (has(c, "lessthan") || has(c, "fewerthan") || has(t, "fewer")) tail = -2;
     if ((has(t, "find") || has(t, "deduce")) && has(t, "mean") && has(t, "variance") && nv >= 2 &&
         !(hN && hP)) {
       double mean = 0, var = 0;
