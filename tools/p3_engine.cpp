@@ -4585,6 +4585,22 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "R^2 = %.6g^2 + %.6g^2 + 2*%.6g*%.6g*cos(%.6g)", F1, F2, F1, F2, ang);
     return add(out, n, "R = %.10g N", R);
   }
+  if ((has(t, "positionvector") || (has(t, "position") && has(t, "vector"))) &&
+      has(t, "i") && has(t, "j") && has(c, "t") &&
+      (has(t, "position") || has(t, "speed") || has(t, "velocity")) && nv >= 3) {
+    double xs[4], ys[4], tt = 0;
+    int vc = scan_ij_vectors(input, xs, ys, 4);
+    if (vc >= 2 && (last_label_num(input, "t", &tt) || word_num_with_t(input, "at", &tt) || word_num(input, "time", &tt) || nv > 0)) {
+      if (tt == 0 && nv > 0) tt = v[nv-1];
+      double x = xs[0] + tt*xs[1], y = ys[0] + tt*ys[1];
+      double sp = root(xs[1]*xs[1] + ys[1]*ys[1]);
+      int n = add(out, 0, "Use the position vector r = r0 + t v.");
+      n = add(out, n, "r0 = %.10g i %+.10g j, v = %.10g i %+.10g j", xs[0], ys[0], xs[1], ys[1]);
+      n = add(out, n, "r(%.10g) = r0 + %.10g v", tt, tt);
+      n = add(out, n, "position = %.10g i %+.10g j", x, y);
+      return add(out, n, "speed = |v| = sqrt(%.10g^2 + %.10g^2) = %.10g", xs[1], ys[1], sp);
+    }
+  }
   if ((has(t, "force") || has(t, "vector")) && has(t, "i") && has(t, "j") &&
       (has(t, "magnitude") || has(t, "direction") || has(t, "resultant")) && nv >= 2) {
     sprintf(cmd, "vector(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
@@ -5775,7 +5791,9 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     return eval_mech(cmd, out);
   }
   if ((has(t, "collision") || has(t, "collide") || has(t, "collides") || has(t, "impact")) &&
-      has(t, "rest") && (has(t, "after") || has(t, "aftercollision") || has(t, "afterimpact")) &&
+      (has(c, "atrest") || has(c, "fromrest") || has(c, "initiallyatrest") || has(c, "startsfromrest")) &&
+      !has(t, "restitution") && !has(t, "coefficient") &&
+      (has(t, "after") || has(t, "aftercollision") || has(t, "afterimpact")) &&
       nv >= 4) {
     double m1 = v[0], u1 = v[1], m2 = v[2], u2 = 0, v1 = v[3];
     sprintf(cmd, "momentum(%.10g,%.10g,%.10g,%.10g,%.10g)", m1, u1, m2, u2, v1);
@@ -5935,6 +5953,10 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       sprintf(cmd, "impactsolve(%.10g,%.10g,%.10g,%.10g,%.10g)", m1, u1, m2, u2, e); return eval_mech(cmd, out);
     }
     if (has(t, "coefficient") || has(t, "given") || has(t, "find")) {
+      if ((has(t, "masses") || has(t, "massesoftwo") || has(t, "massesof")) &&
+          (has(t, "speed") || has(t, "speeds") || has(t, "velocity") || has(t, "velocities"))) {
+        sprintf(cmd, "impactsolve(%.10g,%.10g,%.10g,%.10g,%.10g)", v[0], v[2], v[1], v[3], v[4]); return eval_mech(cmd, out);
+      }
       sprintf(cmd, "impactsolve(%.10g,%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3], v[4]); return eval_mech(cmd, out);
     }
   }
@@ -8071,6 +8093,39 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "sum P(X=x)=1 gives k*sum x = 1");
     n = add(out, n, "sum x = %.10g, so k = %.10g", sx, k);
     return add(out, n, "E(X)=sum x*kx = k sum x^2 = %.10g*%.10g = %.10g", k, sx2, k*sx2);
+  }
+  if ((has(t, "cumulative") || has(t, "cdf")) && has(t, "probabilities") &&
+      !has(t, "frequency") && !has(t, "frequencies") && nv >= 4) {
+    int table_nv = nv;
+    if ((table_nv % 2) && strstr(c, "p(x=")) --table_nv;
+    if (table_nv < 4 || (table_nv % 2)) return 0;
+    int m = table_nv / 2;
+    double mean = 0, ex2 = 0, prev = 0;
+    int n = add(out, 0, "Convert cumulative probabilities into probabilities by subtraction.");
+    for (int i = 0; i < m && n < P3_MAX_LINES - 4; ++i) {
+      double x = v[i], cf = v[i + m], p = cf - prev;
+      prev = cf;
+      mean += x*p;
+      ex2 += x*x*p;
+      n = add(out, n, "P(X=%.10g) = %.10g", x, p);
+    }
+    const char *px = strstr(c, "p(x=");
+    if (px) {
+      double q = read_num(px + 4), prob = 0;
+      for (int i = 0; i < m; ++i) {
+        double p = v[i + m] - (i ? v[i + m - 1] : 0);
+        if (near_num(v[i], q)) prob = p;
+      }
+      n = add(out, n, "requested P(X=%.10g) = %.10g", q, prob);
+    }
+    if (has(c, "e(x)") || has(t, "mean") || has(t, "expectation") || has(t, "find")) {
+      n = add(out, n, "E(X)=sum xP(X=x) = %.10g", mean);
+    }
+    if (has(t, "variance") || has(c, "var(x)")) {
+      n = add(out, n, "E(X^2)=sum x^2P(X=x) = %.10g", ex2);
+      return add(out, n, "Var(X)=E(X^2)-E(X)^2 = %.10g", ex2 - mean*mean);
+    }
+    return n;
   }
   if ((has(t, "discrete") || has(t, "randomvariable") || has(t, "expectation") || has(t, "distribution")) &&
       ((has(t, "prob") || has(t, "probabilities") || has(c, "p(x=")) && nv >= 4)) {

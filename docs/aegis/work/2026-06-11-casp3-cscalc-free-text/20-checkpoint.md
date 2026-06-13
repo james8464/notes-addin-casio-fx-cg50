@@ -5582,6 +5582,40 @@ Drift check:
 - Kept changes to CSCALC free-text unit handling, regressions, generated CSCALC output, and this checkpoint.
 - Did not touch CAS Pure source, CASP3 source, menus, NOTES source, or shared UI/status code.
 
+## 2026-06-13 P3 Vector, Collision, and Cumulative Table Slice
+
+Completed:
+- Stopped `rest` inside `restitution` from triggering the wrong collision-at-rest route.
+- Added prose mapping for collision questions where masses are listed first and speeds second.
+- Added linear position-vector working for `r=r0+t v`, including position at a time and speed.
+- Added cumulative-probability table handling by differencing successive cumulative probabilities.
+- Added regressions for restitution collisions, position vectors, and cumulative probability tables.
+
+Evidence:
+- Fresh probes fixed:
+  - direct collision with coefficient of restitution and masses/speeds prose
+  - `r=(2i+3j)+t(4i-j)` position/speed
+  - cumulative probability table with `P(X=2)` and `E(X)`
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `git diff --check`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 503264 bytes`
+  - `CSCALC.g3a: 277456 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: records=48 bytes=18178`
+  - `CASP3.g3a sha256: ed2e4fa9a06c17dc36d00c52ef2426ccddb0266bbad1e4b2e9b9aa4fdf68896e`
+
+Drift check:
+- Kept changes to CASP3 free-text handling, regressions, generated CASP3 output, and this checkpoint.
+- Did not touch CAS Pure source, CSCALC source, menus, NOTES source, or shared UI/status code.
+
 ## 2026-06-13 Transfer-Time and Rough-Pulley Slice
 
 Completed:
