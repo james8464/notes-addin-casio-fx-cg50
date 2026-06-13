@@ -2664,8 +2664,9 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if ((has(t, "chi") || has(t, "chisquared") || has(t, "chi-squared") || has(t, "goodnessoffit") ||
        has(t, "contingency")) && (has(t, "test") || has(t, "expected") || has(t, "observed") ||
        has(t, "independence") || has(t, "association"))) {
-    double alpha = has(t, "1percent") ? 0.01 : (has(t, "10percent") ? 0.10 : 0.05);
-    for (int i = 0; i < nv; ++i) if (v[i] > 0 && v[i] <= 10 && (has(t, "percent") || has(c, "%"))) { alpha = v[i] / 100.0; break; }
+    double alpha = 0.05, pct = 0;
+    if (prev_word_num(input, "percent", &pct) || word_num(input, "significance", &pct) || word_num(input, "level", &pct))
+      alpha = pct > 1 ? pct / 100.0 : pct;
     const char *op = strstr(t, "observed");
     const char *ep = strstr(t, "expected");
     if (op && ep && ep > op) {

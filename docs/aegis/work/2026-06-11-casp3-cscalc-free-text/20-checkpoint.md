@@ -6367,10 +6367,11 @@ Completed:
 - Added CASP3 2x2 contingency chi-squared independence working before probability-independence fallback.
 - Fixed CSCALC Vigenere free-text parsing so `with key ...` treats the following word as the keyword.
 - Added CSCALC parity validation when a received parity bit is supplied.
+- Fixed chi-square significance parsing so table cells like `10` are not mistaken for `10 percent`.
 - Added regressions and rebuilt calculator outputs.
 
 Evidence:
-- Probe-fixed cases: CASP3 chi-squared goodness-of-fit, CASP3 contingency table independence, CSCALC odd parity validation, CSCALC Vigenere decrypt/encrypt.
+- Probe-fixed cases: CASP3 chi-squared goodness-of-fit, CASP3 contingency table independence at 5 percent, CSCALC odd parity validation, CSCALC Vigenere decrypt/encrypt.
 - `python3 tests/check_p3_engine.py`: passed.
 - `python3 tests/check_cscalc_engine.py`: passed.
 - `python3 tests/check_multi_app_suite.py`: passed.
@@ -6381,13 +6382,13 @@ Evidence:
 - Size/hash evidence:
   - `CAS.g3a: 2087936 bytes`
   - `RUNMAT.g3a: 30216 bytes`
-  - `CASP3.g3a: 516208 bytes`
+  - `CASP3.g3a: 517948 bytes`
   - `CSCALC.g3a: 285276 bytes`
   - `NOTES.g3a: 46952 bytes`
   - `CAS.PAK: records=48 bytes=18178`
   - `CAS.g3a sha256: 15f3aa342df2f8e9f3608032a17e116254df92d19141c271e45553de0b01a39e`
   - `RUNMAT.g3a sha256: 084e197a81a047efbabaff2d2c051c5fab4c2180667967074f7075665ad39d70`
-  - `CASP3.g3a sha256: 4c75b5050ae5c2e97b7a048f95f97fafc5e3af214d5a56b0da5840c875c51bbf`
+  - `CASP3.g3a sha256: d3f49078700ebafe983776251fab8dabc09e849a843dca6aec9dab789f3917f6`
   - `CSCALC.g3a sha256: 26c5dec8e97ef5de746d32e4a451f806aa208e404e8a062a7f5544fb6291402a`
   - `NOTES.g3a sha256: 203cf9cf42777fdab91639e9791b5ce202478fc54471e0addf68add34b5745e6`
   - `CAS.PAK sha256: 4cf970de9480f9f3b06c80e60afe4b69f4d864067a068071cd974474a57f24d2`
