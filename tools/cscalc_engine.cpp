@@ -819,6 +819,25 @@ static bool make_dijkstra_cmd(const char *in, char *cmd, int cap) {
     if (!w[0] || dijkstra_skip_word(w)) continue;
     strcpy(tok[nt++], w);
   }
+  if (start[0] && end[0] && nt >= 3) {
+    int p = sprintf(cmd, "dijkstra(%s,%s", start, end);
+    int ec = 0;
+    for (int i = 0; i < nt && p < cap - 20; ++i) {
+      if ((word_is(tok[i], start) || word_is(tok[i], end)) &&
+          (i == nt - 1 || word_is(tok[i+1], start) || word_is(tok[i+1], end))) continue;
+      if (isalpha((unsigned char)tok[i][0]) && isalpha((unsigned char)tok[i][1]) && !tok[i][2]) {
+        p += sprintf(cmd + p, ",%c,%c", tok[i][0], tok[i][1]);
+        ec += 2;
+      } else {
+        p += sprintf(cmd + p, ",%s", tok[i]);
+        ++ec;
+      }
+    }
+    if (ec >= 3 && ec % 3 == 0 && p < cap - 2) {
+      cmd[p++] = ')'; cmd[p] = 0;
+      return true;
+    }
+  }
   if (nt < 5) return false;
   int p = sprintf(cmd, "dijkstra(%s,%s", tok[0], tok[1]);
   for (int i = 2; i < nt && p < cap - 20; ++i) p += sprintf(cmd + p, ",%s", tok[i]);
@@ -2589,7 +2608,14 @@ static void bool_norm(const char *src, char *dst, int cap) {
     if (strncmp(src + i, "xor", 3) == 0) { dst[j++] = '^'; i += 3; continue; }
     if (strncmp(src + i, "plus", 4) == 0) { dst[j++] = '+'; i += 4; continue; }
     if (strncmp(src + i, "and", 3) == 0) { dst[j++] = '&'; i += 3; continue; }
-    if (strncmp(src + i, "not", 3) == 0) { dst[j++] = '!'; i += 3; continue; }
+    if (strncmp(src + i, "not", 3) == 0) {
+      char prev = j > 0 ? dst[j-1] : 0;
+      char next = src[i+3];
+      if ((prev == ')' || prev == '\'' || isalpha((unsigned char)prev)) &&
+          (next == 0 || next == ')' || next == '+' || next == '&' || next == '*' || next == '.')) dst[j++] = '\'';
+      else dst[j++] = '!';
+      i += 3; continue;
+    }
     if (strncmp(src + i, "or", 2) == 0) { dst[j++] = '+'; i += 2; continue; }
     if (src[i] == '.' || src[i] == '*') { dst[j++] = '&'; ++i; continue; }
     if (src[i] == ',') { dst[j++] = '\''; ++i; continue; }
@@ -3583,7 +3609,14 @@ static void bool_arg_for_cmd(const char *src, char *dst, int cap) {
     if (starts(src + i, "nor")) { dst[p++] = '#'; i += 3; continue; }
     if (starts(src + i, "xor")) { dst[p++] = '^'; i += 3; continue; }
     if (starts(src + i, "plus")) { dst[p++] = '+'; i += 4; continue; }
-    if (starts(src + i, "not")) { dst[p++] = '!'; i += 3; continue; }
+    if (starts(src + i, "not")) {
+      char prev = p > 0 ? dst[p-1] : 0;
+      char next = src[i+3];
+      if ((prev == ')' || prev == '\'' || isalpha((unsigned char)prev)) &&
+          (next == 0 || next == ')' || next == '+' || next == '&' || next == '*' || next == '.')) dst[p++] = '\'';
+      else dst[p++] = '!';
+      i += 3; continue;
+    }
     if (starts(src + i, "and")) { dst[p++] = '&'; i += 3; continue; }
     if (starts(src + i, "or")) { dst[p++] = '+'; i += 2; continue; }
     if ((src[i] == '.' || src[i] == '?' || src[i] == '!') && src[i+1] == 0) { ++i; continue; }

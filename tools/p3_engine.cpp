@@ -3709,7 +3709,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       return add(out, n, "total time = %.10g s", t1 + t2);
     }
   }
-  if ((has(c, "torest") || has(c, "comestorest") || has(c, "broughttorest") ||
+    if ((has(c, "torest") || has(c, "comestorest") || has(c, "broughttorest") ||
        has(t, "retardation") || has(t, "deceleration") || has(t, "braking") || has(t, "brake")) &&
       (has(t, "distance") || has(t, "travelling") || has(t, "travels") || has(t, "travelling") || has(t, "travelled") || has(t, "metres") || has(t, "meters")) && nv >= 2) {
     double pos[4]; int np = 0;
@@ -3754,6 +3754,21 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     }
   }
   if (!has(t, "variable") && (has(t, "suvat") || has(t, "velocity") || has(t, "acceleration") || has(t, "accelerates") || has(t, "accelerated") || has(t, "distance") || has(t, "displacement") || has(t, "time"))) {
+    if ((has(t, "slows") || has(t, "slowing") || has(t, "decelerates") || has(t, "decelerating")) &&
+        has(t, "from") && has(t, "to") &&
+        (has(t, "second") || has(t, "seconds") || has(t, "time") || has(t, "for") || has(t, "in")) &&
+        (has(t, "distance") || has(t, "displacement") || has(t, "travelled") || has(t, "traveled")) && nv >= 3) {
+      double u0 = v[0], v0 = v[1], t0 = v[2];
+      prev_word_num(input, "seconds", &t0) || prev_word_num(input, "second", &t0) ||
+        word_num(input, "time", &t0) || word_num(input, "for", &t0) || word_num(input, "in", &t0);
+      double a0 = (v0 - u0) / t0, s0 = 0.5 * (u0 + v0) * t0;
+      int n = add(out, 0, "Use SUVAT for constant deceleration.");
+      n = add(out, n, "v = u + at, so a=(v-u)/t");
+      n = add(out, n, "a = (%.6g-%.6g)/%.6g = %.10g", v0, u0, t0, a0);
+      n = add(out, n, "s = 1/2(u+v)t");
+      n = add(out, n, "s = 1/2(%.6g+%.6g)*%.6g", u0, v0, t0);
+      return add(out, n, "s = %.10g", s0);
+    }
     if ((has(t, "brake") || has(t, "brakes") || has(t, "deceleration") || has(t, "decelerates")) && nv >= 2) {
       double u0 = v[0], s0 = v[1], v0 = 0;
       double a0 = (v0*v0-u0*u0)/(2*s0), t0 = 2*s0/(u0+v0);
@@ -3801,6 +3816,17 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       n = add(out, n, "s = %.6g^2/(2*%.6g) = %.10g", u0, g, u0*u0/(2*g));
       n = add(out, n, "time to maximum height: 0 = u - gt, so t = u/g = %.10g", u0/g);
       return add(out, n, "time to return to launch height = 2u/g = %.10g", 2*u0/g);
+    }
+    if ((has(t, "uniform") || has(t, "uniformly") || has(t, "accelerates")) && has(t, "from") && has(t, "to") &&
+        (has(t, "travels") || has(t, "travelled") || has(t, "traveled") || has(t, "distance")) &&
+        nv >= 3 && v[0] > v[1] && v[0] > v[2]) {
+      double s0 = v[0], u0 = v[1], v0 = v[2];
+      double a0 = (v0*v0-u0*u0)/(2*s0), t0 = 2*s0/(u0+v0);
+      int n = add(out, 0, "Use SUVAT for constant acceleration.");
+      n = add(out, n, "v^2 = u^2 + 2as");
+      n = add(out, n, "a = (v^2-u^2)/(2s) = (%.6g^2-%.6g^2)/(2*%.6g) = %.10g", v0, u0, s0, a0);
+      n = add(out, n, "s = 1/2(u+v)t");
+      return add(out, n, "t = 2s/(u+v) = 2*%.6g/(%.6g+%.6g) = %.10g", s0, u0, v0, t0);
     }
     if ((has(t, "uniform") || has(t, "uniformly") || has(t, "accelerates")) && has(t, "from") && has(t, "to") &&
         (has(t, "second") || has(t, "seconds") || has(t, "time") || has(t, "for") || has(t, "in")) &&
