@@ -1,5 +1,37 @@
 # Checkpoint
 
+## 2026-06-13 Sets Fixed-Point And Stratified Wording Slice
+
+Completed:
+- Ran another free-text probe batch across CS transfer/cache/fixed-point/storage and P3 mechanics/stats phrasing.
+- Fixed CSCALC cache prompts that give `sets`, `ways`, and `line size` but no explicit capacity; capacity is derived as sets*ways*line size.
+- Tightened cache set parsing so `set associative` and `blocks and sets` are not mistaken for a set count.
+- Fixed CSCALC signed fixed-point decode when the bitstring has no binary point but the prompt says how many bits are after the point.
+- Fixed CASP3 stratified sampling prompts where sample size and population are labelled, with group sizes listed between them.
+- Added regressions and rebuilt calculator-ready outputs.
+
+Evidence:
+- Targeted host probes for sets/ways/line cache, integer signed fixed-point decode, and labelled stratified sampling: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 477256 bytes`
+  - `CSCALC.g3a: 270340 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: 18178 bytes`
+
+Drift check:
+- Stayed inside CASP3/CSCALC free-text parser hardening, tests, checkpoint, and generated calculator files.
+- No Pure CAS, menu/UI/session, NOTES source, or shared status-bar behavior changed.
+- Active goal remains open for further unseen-case hardening.
+
 ## 2026-06-13 Send Line-Size And Plane Unit Wording Slice
 
 Completed:

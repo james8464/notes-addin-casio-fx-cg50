@@ -445,6 +445,7 @@ def main():
     require("stratified(200,50,40)", ["stratified sampling", "50/200 * 40", "10"])
     require("stratified sample population 200 group 50 sample 40", ["stratified sampling", "10"])
     require("Use stratified sampling: population sizes 120 80 200 and total sample size 40. Find sample from each stratum.", ["total population = 400", "stratum 1: 120/400 * 40 = 12", "stratum 2: 80/400 * 40 = 8", "stratum 3: 200/400 * 40 = 20"])
+    require("A sample of 60 is stratified from groups of sizes 120, 80 and 40 from a population of 240. Find sample from each group.", ["total population = 240", "stratum 1: 120/240 * 60 = 30", "stratum 3: 40/240 * 60 = 10"])
     require("Stratified sample total population 500 total sample 50 group sizes 120 180 200.", ["total population = 500", "120/500 * 50 = 12", "180/500 * 50 = 18", "200/500 * 50 = 20"])
     require("A sample of 80 is taken from a population of 500. A stratum contains 125 people. How many should be sampled from this stratum?", ["125/500 * 80", "= 20"])
     require("groupmedian(20,15,10,5,50)", ["linear interpolation", "position = n/2", "median = 20 + ((25-15)/10)*5 = 25"])

@@ -8566,6 +8566,19 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     sprintf(cmd, "meanvar(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_stats(cmd, out);
   }
   if ((has(t, "stratified") || has(t, "stratum")) && nv >= 3) {
+    double pop=0, group=0, sample=0;
+    bool hPop=word_num(input,"population",&pop), hGroup=word_num(input,"stratum",&group) || word_num(input,"group",&group);
+    bool hSample=word_num(input,"sample",&sample);
+    if (hPop && hSample && nv >= 4 && (has(t, "groups") || has(t, "group") || has(t, "sizes") || has(t, "strata"))) {
+      int n = add(out, 0, "For stratified sampling, use stratum size / total population * sample size.");
+      n = add(out, n, "total population = %.10g", pop);
+      int si = 1;
+      for (int i = 0; i < nv && n < P3_MAX_LINES - 1; ++i) {
+        if (near_num(v[i], pop) || near_num(v[i], sample)) continue;
+        n = add(out, n, "stratum %d: %.6g/%.6g * %.6g = %.10g", si++, v[i], pop, sample, pop ? v[i]/pop*sample : 0);
+      }
+      return add(out, n, "round sensibly so the samples add to %.10g.", sample);
+    }
     if ((has(c, "groupsizes") || (has(t, "group") && has(t, "sizes"))) &&
         (has(c, "totalpopulation") || (has(t, "total") && has(t, "population"))) &&
         (has(c, "totalsample") || (has(t, "total") && has(t, "sample"))) && nv >= 4) {
@@ -8585,9 +8598,6 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
         n = add(out, n, "stratum %d: %.6g/%.6g * %.6g = %.10g", i + 1, v[i], total, sample, total ? v[i]/total*sample : 0);
       return add(out, n, "round sensibly so the samples add to %.10g.", sample);
     }
-    double pop=0, group=0, sample=0;
-    bool hPop=word_num(input,"population",&pop), hGroup=word_num(input,"stratum",&group) || word_num(input,"group",&group);
-    bool hSample=word_num(input,"sample",&sample);
     if (hPop && hSample && !hGroup) {
       for (int i = 0; i < nv; ++i) if (!near_num(v[i], pop) && !near_num(v[i], sample)) { group = v[i]; hGroup = true; break; }
     }

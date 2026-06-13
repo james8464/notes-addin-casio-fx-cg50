@@ -4478,7 +4478,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     return add(out, n, "time = %.10g/%.10g = %.10g s", cycles, rate, time);
   }
   if (has(t, "cache") && (has(t, "block") || has(t, "line")) && nv >= 2) {
-    double cache = 0, block = 0, ways = 1, addr = 0;
+    double cache = 0, block = 0, ways = 1, addr = 0, sets_given = 0;
     bool hc = scan_before_word_num(t, "mib", &cache) || scan_before_word_num(t, "mb", &cache) ||
               scan_before_word_num(t, "kib", &cache) || scan_before_word_num(t, "kb", &cache) ||
               scan_before_word_num(t, "bytes", &cache);
@@ -4487,11 +4487,20 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
               scan_near_after_word_num(t, "block", &block) || scan_near_after_word_num(t, "blocks", &block) ||
               scan_near_after_word_num(t, "line", &block) || scan_near_after_word_num(t, "lines", &block);
     bool hw = scan_before_word_num(t, "way", &ways) || scan_before_word_num(t, "associativity", &ways);
+    bool hs = scan_before_word_num(t, "sets", &sets_given);
     if (!hw && has(t, "direct") && has(t, "mapped")) { ways = 1; hw = true; }
     bool ha = scan_bit_width_before_label(t, "address", &addr) || scan_before_word_num(t, "bitaddress", &addr);
     if ((!hb || block <= 0) && strstr(t, "byte,block")) {
       const char *bp = strstr(t, "byte,block");
       if (num_before_ptr(t, bp, &block)) hb = true;
+    }
+    if ((!hb || block <= 0) && strstr(t, "byte,line")) {
+      const char *bp = strstr(t, "byte,line");
+      if (num_before_ptr(t, bp, &block)) hb = true;
+    }
+    if (hs && hb && (!hc || cache <= block)) {
+      cache = sets_given * ways * block;
+      hc = true;
     }
     if (!hc) cache = v[0];
     if (!hb) block = v[1];
@@ -4513,7 +4522,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     else if (has(t, "mb")) cache *= 1000000.0;
     else if (has(t, "kib") || has(t, "kb")) cache *= 1024.0;
     double blocks = block ? cache / block : 0;
-    double sets = ways ? blocks / ways : blocks;
+    double sets = hs ? sets_given : (ways ? blocks / ways : blocks);
     int off = ceil_log2_ll((long long)(block + 0.5));
     int idx = ceil_log2_ll((long long)(sets + 0.5));
     int n = add(out, 0, "Cache address fields use powers of 2.");
@@ -5887,6 +5896,23 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       (!has(t, "denary") && !has(t, "decimal") && !strstr(input, "denary") && !strstr(input, "decimal"))) &&
       scan_fixed_bits(t, fixed_early, sizeof(fixed_early))) {
     sprintf(cmd, (tc || has(t, "complement")) ? "fixedtc(%s)" : "fixed(%s)", fixed_early); return eval_float(cmd, out);
+  }
+  if (has(t, "fixed") && nb >= 1 && (tc || has(t, "complement") || has(t, "signed")) &&
+      (has(t, "after") || has(t, "fractional") || has(t, "fraction"))) {
+    double fracd = 0;
+    bool hf = scan_before_word_num(t, "bits", &fracd) || scan_before_word_num(t, "bit", &fracd) ||
+              scan_near_after_word_num(t, "after", &fracd) || scan_near_after_word_num(t, "fractional", &fracd);
+    int frac = hf ? (int)(fracd + 0.5) : 0;
+    int len = (int)strlen(bits[0]);
+    if (frac > 0 && frac < len) {
+      char fp[64];
+      int whole = len - frac;
+      memcpy(fp, bits[0], whole);
+      fp[whole] = '.';
+      strcpy(fp + whole + 1, bits[0] + whole);
+      sprintf(cmd, "fixedtc(%s)", fp);
+      return eval_float(cmd, out);
+    }
   }
   if (has(t, "binary") && !strstr(input, "denary value") && !strstr(input, "decimal value") &&
       (has(t, "to,denary") || has(t, "to,decimal") || strstr(input, "to denary") || strstr(input, "to decimal")) &&
