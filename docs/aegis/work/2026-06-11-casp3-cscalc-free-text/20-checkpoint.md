@@ -1,5 +1,36 @@
 # Checkpoint
 
+## 2026-06-13 Cache Ways Prose Slice
+
+Completed:
+- Ran another unseen CS/P3 probe batch with source-like cache, floating-point, Boolean, mechanics, and statistics wording.
+- Fixed CSCALC cache parsing for plural `ways`, e.g. `64 sets, 4 ways and line size 32 bytes`.
+- Added a derivation line when cache size is inferred from `sets*ways*line size`.
+- Added regression and rebuilt calculator-ready outputs.
+
+Evidence:
+- Probe case `A cache has 64 sets, 4 ways and line size 32 bytes. Find total cache capacity.`: passed with `8192 bytes`.
+- Unseen probe batch after the fix: `failures 0`.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 483844 bytes`
+  - `CSCALC.g3a: 273428 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: 18178 bytes`
+
+Drift check:
+- Stayed inside CSCALC cache prose parsing, tests, checkpoint, and rebuilt CSCALC calculator file.
+- No Pure CAS, CASP3 source, menu/UI/session, NOTES source, or shared status-bar behavior changed.
+- Active goal remains open for further unseen-case hardening.
+
 ## 2026-06-13 Boolean Prefix Cleanup Slice
 
 Completed:

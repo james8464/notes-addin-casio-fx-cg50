@@ -4494,7 +4494,8 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
               scan_before_word_num(t, "byte", &block) ||
               scan_near_after_word_num(t, "block", &block) || scan_near_after_word_num(t, "blocks", &block) ||
               scan_near_after_word_num(t, "line", &block) || scan_near_after_word_num(t, "lines", &block);
-    bool hw = scan_before_word_num(t, "way", &ways) || scan_before_word_num(t, "associativity", &ways);
+    bool hw = scan_before_word_num(t, "ways", &ways) || scan_before_word_num(t, "way", &ways) ||
+              scan_before_word_num(t, "associativity", &ways);
     bool hs = scan_before_word_num(t, "sets", &sets_given);
     if (!hw && has(t, "direct") && has(t, "mapped")) { ways = 1; hw = true; }
     bool ha = scan_bit_width_before_label(t, "address", &addr) || scan_before_word_num(t, "bitaddress", &addr);
@@ -4506,9 +4507,11 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       const char *bp = strstr(t, "byte,line");
       if (num_before_ptr(t, bp, &block)) hb = true;
     }
+    bool derived_cache = false;
     if (hs && hb && (!hc || cache <= block)) {
       cache = sets_given * ways * block;
       hc = true;
+      derived_cache = true;
     }
     if (!hc) cache = v[0];
     if (!hb) block = v[1];
@@ -4534,6 +4537,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     int off = ceil_log2_ll((long long)(block + 0.5));
     int idx = ceil_log2_ll((long long)(sets + 0.5));
     int n = add(out, 0, "Cache address fields use powers of 2.");
+    if (derived_cache) n = add(out, n, "cache size = sets*ways*line size = %.10g*%.10g*%.10g = %.10g bytes", sets_given, ways, block, cache);
     n = add(out, n, "cache size = %.10g bytes, block size = %.10g bytes", cache, block);
     n = add(out, n, "number of blocks = %.10g/%.10g = %.10g", cache, block, blocks);
     if (ways > 1) n = add(out, n, "sets = blocks/ways = %.10g/%.10g = %.10g", blocks, ways, sets);
