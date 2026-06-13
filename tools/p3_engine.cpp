@@ -4294,6 +4294,34 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     }
   }
   if ((has(t, "accelerating") || has(t, "accelerates") || has(t, "accelerated")) &&
+      (has(t, "decelerating") || has(t, "decelerates") || has(t, "decelerated") || has(t, "brakes") || has(t, "braking")) &&
+      (has(t, "constantspeed") || has(c, "travelsat") || has(c, "movesat")) &&
+      (has(c, "torest") || has(t, "rest") || has(t, "stops")) &&
+      (has(t, "totaldistance") || (has(t, "total") && has(t, "distance"))) && nv >= 4) {
+    double vmax=0, t1=0, tc=0, t3=0, a1=0, a3=0;
+    bool by_acc = (has(c, "m/s^2") || has(t, "acceleration") || has(t, "deceleration")) && nv >= 4 && !has(t, "fromrestto");
+    if (by_acc) {
+      if (has(c, "m/s^2") && nv >= 6) { a1 = v[0]; t1 = v[2]; tc = v[3]; a3 = v[4]; }
+      else { a1 = v[0]; t1 = v[1]; tc = v[2]; a3 = v[3]; }
+      vmax = a1 * t1;
+      t3 = a3 != 0 ? vmax / a3 : 0;
+    } else if (nv >= 5) {
+      vmax = v[0]; t1 = v[1]; tc = v[3]; t3 = v[4];
+    }
+    if (vmax > 0 && t1 > 0 && tc >= 0 && t3 > 0) {
+      double s1 = 0.5 * vmax * t1;
+      double s2 = vmax * tc;
+      double s3 = 0.5 * vmax * t3;
+      int n = add(out, 0, "Split the journey into acceleration, constant-speed, and braking stages.");
+      if (by_acc) n = add(out, n, "Stage 1: v = at = %.6g*%.6g = %.10g", a1, t1, vmax);
+      n = add(out, n, "Stage 1 distance = 1/2*%.10g*%.6g = %.10g", vmax, t1, s1);
+      n = add(out, n, "Stage 2 distance = vt = %.10g*%.6g = %.10g", vmax, tc, s2);
+      if (by_acc) n = add(out, n, "Braking time = %.10g/%.6g = %.10g", vmax, a3, t3);
+      n = add(out, n, "Stage 3 distance = 1/2*%.10g*%.6g = %.10g", vmax, t3, s3);
+      return add(out, n, "total distance = %.10g", s1 + s2 + s3);
+    }
+  }
+  if ((has(t, "accelerating") || has(t, "accelerates") || has(t, "accelerated")) &&
       (has(t, "decelerating") || has(t, "decelerates") || has(t, "decelerated")) &&
       (has(c, "torest") || has(t, "rest")) && (has(t, "totaldistance") || (has(t, "total") && has(t, "distance"))) &&
       nv >= 3) {
@@ -8504,6 +8532,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if ((has(t, "conditional") || has(t, "given")) && nv >= 2 &&
       !(has(t, "regression") || has(t, "leastsquares") || has(t, "lineofbestfit") || has(t, "estimate")) &&
+      !(has(t, "pmcc") || has(t, "correlation") || has(t, "productmoment")) &&
       !has(t, "sxx") && !has(t, "sxy") && !has(t, "syy")) {
     sprintf(cmd, "cond(%.10g,%.10g)", v[0], v[1]); return eval_stats(cmd, out);
   }
@@ -8669,7 +8698,12 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     if (label_num(input,"sxx",&sxx) && label_num(input,"syy",&syy) && label_num(input,"sxy",&sxy)) {
       sprintf(cmd, "pmccs(%.10g,%.10g,%.10g)", sxx, syy, sxy); return eval_stats(cmd, out);
     }
-    if (label_num(input,"n",&n0) && label_num(input,"sx",&sx) && label_num(input,"sy",&sy) && label_num(input,"sxy",&sxy) && (label_num(input,"sx2",&sx2) || label_num(input,"sx^2",&sx2)) && (label_num(input,"sy2",&sy2) || label_num(input,"sy^2",&sy2))) {
+    if (label_num(input,"n",&n0) &&
+        (label_num(input,"sx",&sx) || label_num(input,"sumx",&sx)) &&
+        (label_num(input,"sy",&sy) || label_num(input,"sumy",&sy)) &&
+        (label_num(input,"sxy",&sxy) || label_num(input,"sumxy",&sxy)) &&
+        (label_num(input,"sx2",&sx2) || label_num(input,"sx^2",&sx2) || label_num(input,"sumx2",&sx2) || label_num(input,"sumx^2",&sx2)) &&
+        (label_num(input,"sy2",&sy2) || label_num(input,"sy^2",&sy2) || label_num(input,"sumy2",&sy2) || label_num(input,"sumy^2",&sy2))) {
       sprintf(cmd, "pmcc(%.10g,%.10g,%.10g,%.10g,%.10g,%.10g)", n0, sx, sy, sxy, sx2, sy2); return eval_stats(cmd, out);
     }
   }

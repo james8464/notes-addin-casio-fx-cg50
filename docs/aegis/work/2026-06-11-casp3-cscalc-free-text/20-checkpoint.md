@@ -6573,6 +6573,43 @@ Drift check:
 - Kept changes to CASP3 parser/working logic, regressions, generated app outputs, and this checkpoint.
 - Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.
 
+## 2026-06-13 CASP3/CSCALC Reference Probe Hardening Slice
+
+Completed:
+- Added CASP3 three-stage acceleration, constant-speed, and braking journey working.
+- Stopped `Given ... product moment correlation` prompts from being stolen by conditional-probability parsing.
+- Extended CASP3 PMCC summary parsing to accept `sumx`, `sumy`, `sumx2`, `sumy2`, and `sumxy` labels.
+- Extended CSCALC two's-complement add/sub commands to accept explicit bit width and wired free text `8 bit` into those routes.
+- Improved CSCALC infix-to-postfix conversion for Boolean words `and`, `or`, and `not`.
+- Added regressions and rebuilt calculator outputs.
+
+Evidence:
+- Probe-fixed cases: three-stage train/particle distance, PMCC summary statistics, 8-bit two's-complement add with short operands, Boolean-word infix-to-postfix.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 542716 bytes`
+  - `CSCALC.g3a: 293040 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: records=48 bytes=18178`
+  - `CAS.g3a sha256: 15f3aa342df2f8e9f3608032a17e116254df92d19141c271e45553de0b01a39e`
+  - `RUNMAT.g3a sha256: 084e197a81a047efbabaff2d2c051c5fab4c2180667967074f7075665ad39d70`
+  - `CASP3.g3a sha256: 7ec538f36007602fcd100aafad6bc383824ebf7736d976babaed1293ecb1ba3b`
+  - `CSCALC.g3a sha256: fcd2b0d92bfa5abf9a17f51b3464322790cc062b88feaa3cb399b4d38a56245c`
+  - `NOTES.g3a sha256: 203cf9cf42777fdab91639e9791b5ce202478fc54471e0addf68add34b5745e6`
+  - `CAS.PAK sha256: 4cf970de9480f9f3b06c80e60afe4b69f4d864067a068071cd974474a57f24d2`
+
+Drift check:
+- Kept changes to CASP3/CSCALC parser/working logic, regressions, generated app outputs, and this checkpoint.
+- Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.
+
 ## 2026-06-13 CASP3 Cubic Vector and CF Tail Hardening Slice
 
 Completed:

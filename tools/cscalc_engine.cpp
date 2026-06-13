@@ -799,6 +799,9 @@ static int add_infix_postfix_lines(const char *input, char out[CSCALC_MAX_LINES]
         w[j] = 0;
         if (seen && (word_is(w, "to") || word_is(w, "reverse") || word_is(w, "polish") ||
                      word_is(w, "notation") || word_is(w, "postfix"))) break;
+        if (word_is(w, "and")) { seen = true; expr[ep++] = '*'; i = k - 1; continue; }
+        if (word_is(w, "or")) { seen = true; expr[ep++] = '+'; i = k - 1; continue; }
+        if (word_is(w, "not")) { seen = true; expr[ep++] = '!'; i = k - 1; continue; }
         if (word_is(w, "convert") || word_is(w, "infix") || word_is(w, "expression") ||
             word_is(w, "reverse") || word_is(w, "polish") || word_is(w, "notation") ||
             word_is(w, "to") || word_is(w, "postfix") || word_is(w, "the")) { i = k - 1; continue; }
@@ -815,15 +818,19 @@ static int add_infix_postfix_lines(const char *input, char out[CSCALC_MAX_LINES]
   char st[32]; int sp = 0;
   for (int i = 0; expr[i] && op + 2 < (int)sizeof(outp); ++i) {
     char c = expr[i];
-    if (isalnum((unsigned char)c)) outp[op++] = c;
+    if (isalnum((unsigned char)c)) {
+      outp[op++] = c;
+      while (sp && st[sp-1] == '!') outp[op++] = st[--sp];
+    } else if (c == '!') st[sp++] = c;
     else if (c == '(') st[sp++] = c;
     else if (c == ')') {
       while (sp && st[sp-1] != '(') outp[op++] = st[--sp];
       if (sp && st[sp-1] == '(') --sp;
-    } else if (c == '+' || c == '-' || c == '*' || c == '/') {
-      int pc = (c == '*' || c == '/') ? 2 : 1;
+      while (sp && st[sp-1] == '!') outp[op++] = st[--sp];
+    } else if (c == '+' || c == '-' || c == '*' || c == '/' || c == '&' || c == '|') {
+      int pc = (c == '*' || c == '/' || c == '&') ? 2 : 1;
       while (sp && st[sp-1] != '(') {
-        int ps = (st[sp-1] == '*' || st[sp-1] == '/') ? 2 : 1;
+        int ps = st[sp-1] == '!' ? 3 : (st[sp-1] == '*' || st[sp-1] == '/' || st[sp-1] == '&') ? 2 : 1;
         if (ps < pc) break;
         outp[op++] = st[--sp];
       }
@@ -1293,6 +1300,16 @@ static int twos_decode(const char *s) {
   return u - (1 << n);
 }
 
+static int twos_decode_width(const char *s, int w) {
+  int n = (int)strlen(s);
+  if (w <= n) return twos_decode(s);
+  char b[65]; int p = 0;
+  while (p < w - n && p + 1 < (int)sizeof(b)) b[p++] = '0';
+  for (int i = 0; s[i] && p + 1 < (int)sizeof(b); ++i) b[p++] = s[i];
+  b[p] = 0;
+  return twos_decode(b);
+}
+
 static void add_bits(const char *a, const char *b, int width, char *buf, int *carry_out) {
   int carry = 0;
   for (int i = 0; i < width; ++i) {
@@ -1594,20 +1611,26 @@ static int eval_twos(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN])
     if (v < 0) n = add(out, n, "Encode negative: add 2^%d to %lld.", w, v);
     return add(out, n, "%lld -> %s", v, b);
   }
-  if (starts2(s, "twosadd(", "tcadd(") && na == 2) {
-    int w = (int)strlen(a[0]), x = twos_decode(a[0]), y = twos_decode(a[1]); char b[65]; to_bin(x+y, w, b);
+  if (starts2(s, "twosadd(", "tcadd(") && na >= 2) {
+    int w = na >= 3 ? (int)parse_int(a[2]) : (int)strlen(a[0]);
+    int x = na >= 3 ? twos_decode_width(a[0], w) : twos_decode(a[0]);
+    int y = na >= 3 ? twos_decode_width(a[1], w) : twos_decode(a[1]);
+    char b[65], ax[65], ay[65]; to_bin(x+y, w, b); to_bin(x, w, ax); to_bin(y, w, ay);
     int n = add(out, 0, "Decode/add in fixed width, discard carry beyond %d bits.", w);
-    n = add(out, n, "%s=%d, %s=%d", a[0], x, a[1], y);
+    n = add(out, n, "%s=%d, %s=%d", ax, x, ay, y);
     n = add(out, n, "%d+%d=%d -> %s", x, y, x+y, b);
     bool ov = (x >= 0 && y >= 0 && b[0] == '1') || (x < 0 && y < 0 && b[0] == '0');
     return add(out, n, ov ? "overflow: same signs gave opposite sign bit." : "no two's complement overflow.");
   }
-  if ((starts(s, "twossub(") || starts(s, "tcsub(") || starts(s, "twossubtract(")) && na == 2) {
-    int w = (int)strlen(a[0]), x = twos_decode(a[0]), y = twos_decode(a[1]); char b[65], neg[65]; to_bin(x-y, w, b); to_bin(-y, w, neg);
+  if ((starts(s, "twossub(") || starts(s, "tcsub(") || starts(s, "twossubtract(")) && na >= 2) {
+    int w = na >= 3 ? (int)parse_int(a[2]) : (int)strlen(a[0]);
+    int x = na >= 3 ? twos_decode_width(a[0], w) : twos_decode(a[0]);
+    int y = na >= 3 ? twos_decode_width(a[1], w) : twos_decode(a[1]);
+    char b[65], neg[65], ax[65], ay[65]; to_bin(x-y, w, b); to_bin(-y, w, neg); to_bin(x, w, ax); to_bin(y, w, ay);
     int n = add(out, 0, "Subtraction: add the two's complement of the second value.");
-    n = add(out, n, "%s=%d, %s=%d", a[0], x, a[1], y);
+    n = add(out, n, "%s=%d, %s=%d", ax, x, ay, y);
     n = add(out, n, "two's complement of second value = %s", neg);
-    n = add(out, n, "%s + %s = %s in %d bits", a[0], neg, b, w);
+    n = add(out, n, "%s + %s = %s in %d bits", ax, neg, b, w);
     return add(out, n, "%d-%d=%d -> %s", x, y, x-y, b);
   }
   return 0;
@@ -6106,7 +6129,10 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
             (has(t, "one") && has(t, "complement")) || has(t, "1scomplement");
   if (tc && (has(t, "add") || has(t, "sum") || has(t, "plus")) &&
       !has(t, "subtract") && !has(t, "minus") && nb >= 2) {
-    sprintf(cmd, "twosadd(%s,%s)", bits[0], bits[1]);
+    double bitsw = 0;
+    bool hb = scan_before_word_num(t, "bit", &bitsw) || scan_before_word_num(t, "bits", &bitsw);
+    if (hb) sprintf(cmd, "twosadd(%s,%s,%lld)", bits[0], bits[1], (long long)bitsw);
+    else sprintf(cmd, "twosadd(%s,%s)", bits[0], bits[1]);
     return eval_twos(cmd, out);
   }
   if (tc && (has(t, "add") || has(t, "sum") || has(t, "plus")) &&
@@ -6123,7 +6149,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     char a[65], b[65];
     to_bin(x, (int)bitsw, a);
     to_bin(y, (int)bitsw, b);
-    sprintf(cmd, "twosadd(%s,%s)", a, b);
+    sprintf(cmd, "twosadd(%s,%s,%lld)", a, b, (long long)bitsw);
     return eval_twos(cmd, out);
   }
   if ((has(t, "encode") || has(t, "convert") || has(t, "round") || (has(t, "represent") && !has(t, "representable") && !has(t, "represented") && !has(t, "closest") && !has(t, "explain"))) && (has(t, "floating") || has(t, "mantissa")) &&
@@ -6630,17 +6656,20 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     return add(out, n, "%lld-bit product = %s", 2*bitsw, rb);
   }
   if (tc && nb >= 2 && (has(t, "subtract") || has(t, "minus") || has(t, "takeaway") || strchr(input, '-'))) {
-    if (has(compact, "from")) sprintf(cmd, "twossub(%s,%s)", bits[1], bits[0]);
-    else sprintf(cmd, "twossub(%s,%s)", bits[0], bits[1]);
+    double bw = 0; bool hb = scan_before_word_num(t, "bit", &bw) || scan_before_word_num(t, "bits", &bw);
+    if (has(compact, "from")) sprintf(cmd, hb ? "twossub(%s,%s,%lld)" : "twossub(%s,%s)", bits[1], bits[0], (long long)bw);
+    else sprintf(cmd, hb ? "twossub(%s,%s,%lld)" : "twossub(%s,%s)", bits[0], bits[1], (long long)bw);
     return eval_twos(cmd, out);
   }
   if (tc && nbg >= 2 && (has(t, "subtract") || has(t, "minus") || has(t, "takeaway") || strchr(input, '-'))) {
-    if (has(compact, "from")) sprintf(cmd, "twossub(%s,%s)", bitgrp[1], bitgrp[0]);
-    else sprintf(cmd, "twossub(%s,%s)", bitgrp[0], bitgrp[1]);
+    double bw = 0; bool hb = scan_before_word_num(t, "bit", &bw) || scan_before_word_num(t, "bits", &bw);
+    if (has(compact, "from")) sprintf(cmd, hb ? "twossub(%s,%s,%lld)" : "twossub(%s,%s)", bitgrp[1], bitgrp[0], (long long)bw);
+    else sprintf(cmd, hb ? "twossub(%s,%s,%lld)" : "twossub(%s,%s)", bitgrp[0], bitgrp[1], (long long)bw);
     return eval_twos(cmd, out);
   }
   if (tc && nb >= 2 && (has(t, "add") || has(t, "sum") || has(t, "plus"))) {
-    sprintf(cmd, "twosadd(%s,%s)", bits[0], bits[1]); return eval_twos(cmd, out);
+    double bw = 0; bool hb = scan_before_word_num(t, "bit", &bw) || scan_before_word_num(t, "bits", &bw);
+    sprintf(cmd, hb ? "twosadd(%s,%s,%lld)" : "twosadd(%s,%s)", bits[0], bits[1], (long long)bw); return eval_twos(cmd, out);
   }
   if (tc && nv >= 2 && !(has(t, "decode") || has(t, "denary") || has(t, "decimal") ||
                           has(t, "add") || has(t, "sum") || has(t, "plus") ||
