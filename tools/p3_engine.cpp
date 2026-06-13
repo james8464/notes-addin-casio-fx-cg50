@@ -2700,6 +2700,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     int n = add(out, 0, "Use P = Fv to convert engine power into driving force.");
     n = add(out, n, "driving force = P/v = %.10g/%.10g = %.10g N", P, sp, drive);
     n = add(out, n, "resultant force = %.10g - %.10g = %.10g N", drive, R, net);
+    n = add(out, n, "Use F=ma with the resultant force.");
     return add(out, n, "a = F/m = %.10g/%.10g = %.10g m/s^2", net, m, net/m);
   }
   if ((has(t, "force") || has(c, "f=(") || has(c, "f=")) && has(t, "mass") &&
@@ -5415,6 +5416,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "driving force = P/v = %.10g/%.10g = %.10g N", P, spd, drive);
     n = add(out, n, "Down-slope weight component = mg sin(theta) = %.6g*9.8 sin(%.6g) = %.10g N", m, ang, down);
     n = add(out, n, "Taking up the slope as positive: resultant = %.10g - %.10g - %.10g = %.10g N", drive, r, down, net);
+    n = add(out, n, "Use F=ma with the resultant force.");
     return add(out, n, "a = F/m = %.10g/%.10g = %.10g m/s^2", net, m, net/m);
   }
   if ((has(t, "incline") || has(t, "slope") || has(t, "plane")) &&
@@ -5658,6 +5660,21 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if (has(t, "power") && !(has(t, "resistance") && (has(t, "acceleration") || has(t, "accelerate"))) && nv >= 2) {
     sprintf(cmd, "power(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
   }
+  if (has(t, "momentum") && (has(t, "velocity") || has(t, "speed")) && (has(t, "i") || has(t, "j"))) {
+    double xs[4], ys[4]; int vc = scan_ij_vectors(input, xs, ys, 4);
+    double m = 0;
+    bool hm = word_num(input,"mass",&m) || label_num(input,"mass",&m) || num_before_unit(input, "kg", &m);
+    if (!hm && nv >= 1) m = v[0];
+    if (m > 0 && vc >= 1) {
+      double px = m*xs[0], py = m*ys[0], sp2 = xs[0]*xs[0] + ys[0]*ys[0], ke = 0.5*m*sp2;
+      int n = add(out, 0, "Momentum is mass times velocity, component by component.");
+      n = add(out, n, "v = %.10g i %+.10g j", xs[0], ys[0]);
+      n = add(out, n, "p = mv = %.10g(%.10g i %+.10g j)", m, xs[0], ys[0]);
+      n = add(out, n, "momentum = %.10g i %+.10g j kg m/s", px, py);
+      if (has(t, "kinetic") || has(t, "energy")) return add(out, n, "KE = 1/2*m*|v|^2 = 1/2*%.10g*(%.10g^2+%.10g^2) = %.10g J", m, xs[0], ys[0], ke);
+      return n;
+    }
+  }
   if ((has(t, "kinetic") || has(t, "energy") || has(t, "workenergy")) && nv >= 2) {
     sprintf(cmd, nv > 2 ? "energy(%.10g,%.10g,%.10g)" : "energy(%.10g,%.10g)", v[0], v[1], nv > 2 ? v[2] : 0); return eval_mech(cmd, out);
   }
@@ -5841,6 +5858,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     int n = add(out, 0, "Use P = Fv to convert engine power into driving force.");
     n = add(out, n, "driving force = P/v = %.10g/%.10g = %.10g N", P, sp, drive);
     n = add(out, n, "resultant force = %.10g - %.10g = %.10g N", drive, R, net);
+    n = add(out, n, "Use F=ma with the resultant force.");
     return add(out, n, "a = F/m = %.10g/%.10g = %.10g m/s^2", net, m, net/m);
   }
   if (has(t, "lift") && (has(t, "accelerat") || has(t, "decelerat")) && (has(t, "tension") || has(t, "cable")) && nv >= 2) {
@@ -6431,6 +6449,23 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       sig = has(c, "^2") ? dsecond : root(dsecond);
       hMu = hSig = true;
       hVar = false;
+    }
+    if (has(t, "within") &&
+        (has(t, "standarddeviation") || (has(t, "standard") && has(t, "deviation")) || has(t, "sd") || has(t, "sigma")) &&
+        hMu && (hSig || hVar)) {
+      double k = 0;
+      if (!word_num(input, "within", &k)) {
+        for (int i = 0; i < nv; ++i)
+          if (!near_num(v[i], mu) && (!hSig || !near_num(v[i], sig)) && (!hVar || !near_num(v[i], var))) { k = v[i]; break; }
+      }
+      if (k > 0) {
+        double sd = hSig ? sig : root(var), lo0 = mu - k*sd, hi0 = mu + k*sd;
+        int n = add(out, 0, "Within %.10g standard deviations means mu - %.10g*sigma < X < mu + %.10g*sigma.", k, k, k);
+        n = add(out, n, "lower = %.10g - %.10g*%.10g = %.10g", mu, k, sd, lo0);
+        n = add(out, n, "upper = %.10g + %.10g*%.10g = %.10g", mu, k, sd, hi0);
+        n = add(out, n, "NormalCD(lower=%.6g, upper=%.6g, sigma=%.6g, mu=%.6g)", lo0, hi0, sd, mu);
+        return add(out, n, "probability = %.10g", normal_cdf(k) - normal_cdf(-k));
+      }
     }
     if (!hN) {
       double qn = 0;

@@ -1,5 +1,38 @@
 # Checkpoint
 
+## 2026-06-13 P3 Normal Vector Power Slice
+
+Completed:
+- Ran another 25-case CS/P3 unseen wording probe batch.
+- Added P3 normal `within k standard deviations` handling using `mu +/- k*sigma` and `NormalCD`.
+- Added P3 vector momentum route before scalar kinetic-energy fallback.
+- Added explicit `F=ma` method line to power/resistance acceleration outputs.
+- Added regressions and rebuilt calculator-ready outputs.
+
+Evidence:
+- Targeted normal-within prompt now gives `NormalCD(lower=9, upper=15, sigma=2, mu=12)`.
+- Targeted vector momentum prompt now gives `momentum = 12 i +6 j` and vector KE.
+- Targeted power prompt now includes `Use F=ma with the resultant force.`
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 486152 bytes`
+  - `CSCALC.g3a: 273872 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: 18178 bytes`
+
+Drift check:
+- Stayed inside CASP3 free-text/stat/mechanics routes, tests, checkpoint, and rebuilt CASP3 file.
+- No Pure CAS, CSCALC source, menu/UI/session, NOTES source, or shared status-bar behavior changed.
+- Active goal remains open for further unseen-case hardening.
+
 ## 2026-06-13 CSCALC Cache Scanner Slice
 
 Completed:
