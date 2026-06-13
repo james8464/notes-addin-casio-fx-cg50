@@ -1,7 +1,6 @@
 #include "casio_suite_ui.hpp"
 #include <fxcg/file.h>
 #include <string.h>
-#include <stdio.h>
 
 typedef struct {
   unsigned short id, type;
@@ -23,7 +22,6 @@ static char cwd_path[280] = "\\\\fls0\\";
 static char file_buf[8192];
 static const char *view_lines[128];
 static char line_store[128][48];
-static unsigned char bmp_row[1280];
 
 static int lower_char(int c) {
   if (c >= 'A' && c <= 'Z') return c + 32;
@@ -59,6 +57,28 @@ static void name_only(const char *path, char *out) {
   out[63] = 0;
 }
 
+static void copy_str(char *dst, int cap, const char *src) {
+  if (!src) src = "";
+  int i = 0;
+  while (i + 1 < cap && src[i]) {
+    dst[i] = src[i];
+    ++i;
+  }
+  dst[i] = 0;
+}
+
+static void append_str(char *dst, int cap, const char *src) {
+  if (!src) return;
+  int n = strlen(dst), i = 0;
+  while (n + 1 < cap && src[i]) dst[n++] = src[i++];
+  dst[n] = 0;
+}
+
+static void join_str(char *dst, int cap, const char *a, const char *b) {
+  copy_str(dst, cap, a);
+  append_str(dst, cap, b);
+}
+
 static void up_folder() {
   int n = strlen(cwd_path);
   if (n <= 7) return;
@@ -82,7 +102,7 @@ static int scan_dir() {
     Bfile_NameToStr_ncpy((unsigned char *)name, found, 300);
     if (strcmp(name, ".") && strcmp(name, "..") && strcmp(name, "@MainMem")) {
       int is_folder = info.fsize == 0;
-      if (is_folder || ends_with(name, ".txt") || ends_with(name, ".bmp")) {
+      if (is_folder || ends_with(name, ".txt")) {
         strncpy(entries[entry_count].name, name, 63);
         entries[entry_count].name[63] = 0;
         strcpy(entries[entry_count].path, cwd_path);
@@ -129,102 +149,6 @@ static int load_text(const char *path) {
     ++line;
   }
   return line;
-}
-
-static unsigned read_u16(const unsigned char *p) {
-  return (unsigned)p[0] | ((unsigned)p[1] << 8);
-}
-
-static unsigned read_u32(const unsigned char *p) {
-  return (unsigned)p[0] | ((unsigned)p[1] << 8) | ((unsigned)p[2] << 16) | ((unsigned)p[3] << 24);
-}
-
-static int read_s32(const unsigned char *p) {
-  return (int)read_u32(p);
-}
-
-static void wait_for_back(unsigned *tick) {
-  bool rv = ui_r_visible(*tick);
-  for (;;) {
-    int key = ui_key_poll();
-    bool nr = ui_r_visible(*tick);
-    if (nr != rv) {
-      rv = nr;
-      ui_status(rv);
-      ui_flush();
-    }
-    if (key == KEY_CTRL_EXIT || key == KEY_CTRL_AC) return;
-    OS_InnerWait_ms(35);
-  }
-}
-
-static void show_bmp(NoteEntry *e, unsigned *tick) {
-  unsigned short p[300];
-  Bfile_StrToName_ncpy(p, (const unsigned char *)e->path, 300);
-  int h = Bfile_OpenFile_OS(p, READWRITE);
-  if (h < 0) {
-    static const char *const err[] = {"Could not open BMP file."};
-    ui_wait_page("NOTES", err, 1, tick);
-    return;
-  }
-
-  unsigned char head[54];
-  int got = Bfile_ReadFile_OS(h, head, 54, 0);
-  if (got < 54 || head[0] != 'B' || head[1] != 'M') {
-    Bfile_CloseFile_OS(h);
-    static const char *const err[] = {"Unsupported BMP file."};
-    ui_wait_page("NOTES", err, 1, tick);
-    return;
-  }
-
-  int off = (int)read_u32(head + 10);
-  int w = read_s32(head + 18);
-  int raw_h = read_s32(head + 22);
-  int bpp = (int)read_u16(head + 28);
-  int comp = (int)read_u32(head + 30);
-  int top_down = raw_h < 0;
-  int hh = top_down ? -raw_h : raw_h;
-  if (w <= 0 || hh <= 0 || w > 384 || hh > 192 || bpp != 24 || comp != 0) {
-    Bfile_CloseFile_OS(h);
-    static const char *const err[] = {
-      "Use 24-bit uncompressed BMP.",
-      "Run tools/prepare_notes_assets.py",
-      "then copy the converted file."
-    };
-    ui_wait_page("BMP", err, sizeof(err)/sizeof(err[0]), tick);
-    return;
-  }
-
-  int stride = ((w * 3 + 3) / 4) * 4;
-  if (stride > (int)sizeof(bmp_row)) {
-    Bfile_CloseFile_OS(h);
-    static const char *const err[] = {"BMP row too wide."};
-    ui_wait_page("BMP", err, 1, tick);
-    return;
-  }
-
-  Bdisp_AllClr_VRAM();
-  ui_fill(0, 0, LCD_WIDTH_PX, LCD_HEIGHT_PX, UI_WHITE);
-  ui_status(ui_r_visible(*tick));
-  Bdisp_MMPrint(10, 28, e->name, 0x40, 0xffffffff, 0, 0, UI_BLACK, UI_WHITE, 1, 0);
-  ui_text_fkey(1, "BACK");
-  int x0 = (LCD_WIDTH_PX - w) / 2;
-  int y0 = 48 + (168 - hh) / 2;
-  if (y0 < 48) y0 = 48;
-  for (int y = 0; y < hh; ++y) {
-    int src_y = top_down ? y : (hh - 1 - y);
-    int row_off = off + src_y * stride;
-    if (Bfile_ReadFile_OS(h, bmp_row, stride, row_off) < stride) break;
-    for (int x = 0; x < w; ++x) {
-      int b = bmp_row[x * 3 + 0];
-      int g = bmp_row[x * 3 + 1];
-      int r = bmp_row[x * 3 + 2];
-      ui_pixel(x0 + x, y0 + y, RGB565(r, g, b));
-    }
-  }
-  Bfile_CloseFile_OS(h);
-  ui_flush();
-  wait_for_back(tick);
 }
 
 static void notes_menu(const char *title, const char *const *items, int count, int top, int sel, bool rv) {
@@ -287,25 +211,96 @@ static void wait_text_page(const char *title, const char *const *lines, int coun
   }
 }
 
-static void search_names(int *sel, int *top, unsigned *tick) {
-  char q[32] = "";
-  if (!ui_input("Find file", q, sizeof(q), tick) || !q[0]) return;
-  for (int i = 0; i < entry_count; ++i) {
-    if (contains_ci(entries[i].name, q)) {
-      *sel = i;
-      *top = i > 6 ? i - 6 : 0;
-      return;
+static int file_contains_text(const char *path, const char *q) {
+  int qlen = strlen(q);
+  if (!qlen) return 1;
+  unsigned short p[300];
+  Bfile_StrToName_ncpy(p, (const unsigned char *)path, 300);
+  int h = Bfile_OpenFile_OS(p, READWRITE);
+  if (h < 0) return 0;
+  int sz = Bfile_GetFileSize_OS(h);
+  char tail[32];
+  int tail_len = 0;
+  int off = 0;
+  while (off < sz) {
+    for (int i = 0; i < tail_len; ++i) file_buf[i] = tail[i];
+    int want = (int)sizeof(file_buf) - tail_len - 1;
+    if (want > sz - off) want = sz - off;
+    int got = Bfile_ReadFile_OS(h, file_buf + tail_len, want, off);
+    if (got <= 0) break;
+    int total = tail_len + got;
+    file_buf[total] = 0;
+    if (contains_ci(file_buf, q)) {
+      Bfile_CloseFile_OS(h);
+      return 1;
     }
+    tail_len = qlen - 1;
+    if (tail_len > 31) tail_len = 31;
+    if (tail_len > total) tail_len = total;
+    for (int i = 0; i < tail_len; ++i) tail[i] = file_buf[total - tail_len + i];
+    off += got;
   }
-  static const char *const none[] = {"No matching file."};
-  ui_wait_page("Find file", none, 1, tick);
+  Bfile_CloseFile_OS(h);
+  return 0;
+}
+
+static int add_search_result(int n, const char *path, const char *why) {
+  if (n >= 126) return n;
+  char name[64];
+  name_only(path, name);
+  copy_str(line_store[n], sizeof(line_store[n]), why);
+  append_str(line_store[n], sizeof(line_store[n]), ": ");
+  append_str(line_store[n], sizeof(line_store[n]), name);
+  view_lines[n] = line_store[n];
+  ++n;
+  copy_str(line_store[n], sizeof(line_store[n]), path);
+  view_lines[n] = line_store[n];
+  return n + 1;
+}
+
+static int search_all_rec(const char *dir, const char *q, int depth, int n) {
+  if (depth > 8 || n >= 126) return n;
+  unsigned short path[300], found[300];
+  char query[300], name[300], full[300];
+  join_str(query, sizeof(query), dir, "*");
+  Bfile_StrToName_ncpy(path, (const unsigned char *)query, 300);
+  int handle = 0;
+  file_type_t info;
+  int ret = Bfile_FindFirst_NON_SMEM(path, &handle, found, &info);
+  while (!ret && n < 126) {
+    Bfile_NameToStr_ncpy((unsigned char *)name, found, 300);
+    if (strcmp(name, ".") && strcmp(name, "..") && strcmp(name, "@MainMem")) {
+      int is_folder = info.fsize == 0;
+      join_str(full, sizeof(full), dir, name);
+      if (is_folder) {
+        char child[300];
+        join_str(child, sizeof(child), full, "\\");
+        n = search_all_rec(child, q, depth + 1, n);
+      } else if (ends_with(name, ".txt")) {
+        int by_name = contains_ci(name, q) || contains_ci(full, q);
+        int by_text = file_contains_text(full, q);
+        if (by_name || by_text) n = add_search_result(n, full, by_text ? "text" : "name");
+      }
+    }
+    ret = Bfile_FindNext_NON_SMEM(handle, found, (char *)&info);
+  }
+  Bfile_FindClose(handle);
+  return n;
+}
+
+static void search_all_notes(unsigned *tick) {
+  char q[32] = "";
+  if (!ui_input("Find all text", q, sizeof(q), tick) || !q[0]) return;
+  int n = search_all_rec("\\\\fls0\\", q, 0, 0);
+  if (!n) {
+    static const char *const none[] = {"No matching text file."};
+    ui_wait_page("Find all", none, 1, tick);
+    return;
+  }
+  ui_wait_page("Find all", view_lines, n, tick);
 }
 
 static void show_file(NoteEntry *e, unsigned *tick) {
-  if (ends_with(e->name, ".bmp")) {
-    show_bmp(e, tick);
-    return;
-  }
   int lines = load_text(e->path);
   if (!lines) {
     static const char *const err[] = {"Could not open text file."};
@@ -332,7 +327,7 @@ int main() {
     if (key == KEY_CTRL_EXIT) { up_folder(); sel = top = 0; scan_dir(); }
     if (key == KEY_CTRL_UP && sel > 0) { --sel; if (sel < top) --top; }
     if (key == KEY_CTRL_DOWN && sel + 1 < entry_count) { ++sel; if (sel >= top + 7) ++top; }
-    if (key == KEY_CTRL_F2 && entry_count) search_names(&sel, &top, &tick);
+    if (key == KEY_CTRL_F2) search_all_notes(&tick);
     if ((key == KEY_CTRL_EXE || key == KEY_CTRL_F1) && entry_count) {
       if (entries[sel].is_folder) { strcpy(cwd_path, entries[sel].path); sel = top = 0; scan_dir(); }
       else show_file(&entries[sel], &tick);
