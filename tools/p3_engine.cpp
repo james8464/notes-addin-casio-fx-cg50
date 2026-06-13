@@ -5129,7 +5129,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "For table particle: T - friction = m a.");
     return add(out, n, "T = %.6g*%.10g + %.10g = %.10g N", m1, acc, fr, T);
   }
-  if (has(t, "horizontal") && (has(t, "plane") || has(t, "rough") || has(t, "smooth") || has(t, "pulled") || has(t, "pull")) &&
+  if (has(t, "horizontal") && !has(t, "inclined") && !has(t, "incline") && !has(t, "slope") &&
+      (has(t, "plane") || has(t, "rough") || has(t, "smooth") || has(t, "pulled") || has(t, "pull")) &&
       (has(t, "acceleration") || has(t, "accelerate")) && nv >= 2) {
     if ((has(t, "connected") || has(t, "two") || has(t, "particles")) && (has(t, "coefficient") || has(t, "mu")) && nv >= 4) {
       double m1 = v[0], m2 = v[1], mu = 0, F = v[nv-1];

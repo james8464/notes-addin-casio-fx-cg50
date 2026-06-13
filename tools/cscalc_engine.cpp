@@ -5007,10 +5007,10 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       return add(out, n, "pixels = %.10g/%.10g = %.10g", bits_total, depth_bits, pixels);
     }
   }
-  if ((has(t, "image") || has(t, "bitmap")) && (has(t, "megapixel") || has(t, "megapixels")) && nv >= 2) {
+  if ((has(t, "image") || has(t, "bitmap") || has(t, "photo")) && (has(t, "megapixel") || has(t, "megapixels")) && nv >= 2) {
     double pixels = v[0] * 1000000.0, depth = v[1];
     int colour_depth = 0;
-    if (has(t, "colours") || has(t, "colors")) { double cv = scaled_colour_count(t, v[1]); colour_depth = ceil_log2_ll((long long)cv); depth = colour_depth; }
+    if (has(t, "colours") || has(t, "colors") || has(t, "shades")) { double cv = scaled_colour_count(t, v[1]); colour_depth = ceil_log2_ll((long long)cv); depth = colour_depth; }
     bool byte_depth = image_depth_bytes_applies(t, v[1]);
     if (byte_depth) depth *= 8.0;
     double bits_total = pixels * depth, bytes = bits_total / 8.0;
@@ -5055,10 +5055,10 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       return add(out, n, "colour depth = %.10g/%.10g = %.10g bits per pixel", file_bits, w*h, depth);
     }
   }
-  if ((has(t, "image") || has(t, "bitmap")) && nv >= 3 && image_depth_bytes_applies(t, v[2])) {
+  if ((has(t, "image") || has(t, "bitmap") || has(t, "photo")) && nv >= 3 && image_depth_bytes_applies(t, v[2])) {
     return add_image_byte_depth_lines(out, (long long)v[0], (long long)v[1], (long long)v[2]);
   }
-  if ((has(t, "image") || has(t, "bitmap")) && (has(t, "metadata") || has(t, "header") || has(t, "overhead")) && nv >= 4) {
+  if ((has(t, "image") || has(t, "bitmap") || has(t, "photo")) && (has(t, "metadata") || has(t, "header") || has(t, "overhead")) && nv >= 4) {
     double bits_total = v[0] * v[1] * v[2];
     double image_bytes = bits_total / 8.0;
     double extra = (has(t, "percent") || has(t, "percentage")) ? image_bytes * v[3] / 100.0 : v[3];
@@ -5086,9 +5086,10 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     if (has(t, "mb")) return add(out, n, "= %.10g MB", total / 1000000.0);
     return add(out, n, "= %.10g KiB", total / 1024.0);
   }
-  if ((has(t, "image") || has(t, "bitmap")) && (has(t, "colours") || has(t, "colors")) && nv >= 3) {
+  if ((has(t, "image") || has(t, "bitmap") || has(t, "photo")) && (has(t, "colours") || has(t, "colors") || has(t, "shades")) && nv >= 3) {
     double colours=0; bool hc = label_num(input, "colours", &colours) || label_num(input, "colors", &colours) ||
-                                scan_scaled_before_word_num(t, "colours", &colours) || scan_scaled_before_word_num(t, "colors", &colours);
+                                scan_scaled_before_word_num(t, "colours", &colours) || scan_scaled_before_word_num(t, "colors", &colours) ||
+                                scan_scaled_before_word_num(t, "shades", &colours);
     if (hc) {
       double wh[2]; int nw = 0;
       for (int i = 0; i < nv && nw < 2; ++i) if ((long long)v[i] != (long long)colours) wh[nw++] = v[i];
@@ -5099,16 +5100,16 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     }
     sprintf(cmd, "imagecolors(%lld,%lld,%lld)", (long long)v[0], (long long)v[1], (long long)scaled_colour_count(t, v[2])); return eval_storage(cmd, out);
   }
-  if ((has(t, "image") || has(t, "bitmap")) && label_num(input,"width",&width) && label_num(input,"height",&height) && (label_num(input,"depth",&depth) || label_num(input,"bits",&depth))) {
+  if ((has(t, "image") || has(t, "bitmap") || has(t, "photo")) && label_num(input,"width",&width) && label_num(input,"height",&height) && (label_num(input,"depth",&depth) || label_num(input,"bits",&depth))) {
     if (image_depth_bytes_applies(t, depth)) return add_image_byte_depth_lines(out, (long long)width, (long long)height, (long long)depth);
     sprintf(cmd, "image(%lld,%lld,%lld)", (long long)width, (long long)height, (long long)depth); return eval_storage(cmd, out);
   }
-  if ((has(t, "image") || has(t, "bitmap")) && label_num(input,"width",&width) && label_num(input,"height",&height) && (label_num(input,"colours",&depth) || label_num(input,"colors",&depth))) {
+  if ((has(t, "image") || has(t, "bitmap") || has(t, "photo")) && label_num(input,"width",&width) && label_num(input,"height",&height) && (label_num(input,"colours",&depth) || label_num(input,"colors",&depth))) {
     depth = scaled_colour_count(t, depth);
     sprintf(cmd, "imagecolors(%lld,%lld,%lld)", (long long)width, (long long)height, (long long)depth); return eval_storage(cmd, out);
   }
-  if ((has(t, "image") || has(t, "bitmap")) && nv >= 3) {
-    if (has(t, "colour") || has(t, "color")) {
+  if ((has(t, "image") || has(t, "bitmap") || has(t, "photo")) && nv >= 3) {
+    if (has(t, "colour") || has(t, "color") || has(t, "shade")) {
       if (has(t, "colourdepth") || has(t, "colordepth") || has(t, "depth") ||
           has(t, "bitcolour") || has(t, "bitcolor") || has(t, "bits") || has_word(t, "bit")) {
         sprintf(cmd, "image(%lld,%lld,%lld)", (long long)v[0], (long long)v[1], (long long)v[2]); return eval_storage(cmd, out);
@@ -5135,7 +5136,8 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       (has(t, "needed") || has(t, "need") || has(t, "bits") || has(t, "bit") || has(t, "per,pixel") || has(t, "perpixel")) &&
       !(has(t, "howmanycolours") || has(t, "how,many,colours") || has(t, "howmanycolors") ||
         has(t, "how,many,colors") || has(t, "numberofcolours") || has(t, "numberofcolors")) &&
-      nv >= 1 && !(has(t, "width") || has(t, "height") || has(t, "resolution"))) {
+      nv >= 1 && !(has(t, "width") || has(t, "height") || has(t, "resolution") ||
+                   has(t, "file") || has(t, "size") || has(t, "storage") || has(t, "stored"))) {
     double colours=0;
     if (!(label_num(input, "colours", &colours) || label_num(input, "colors", &colours) ||
           scan_scaled_before_word_num(t, "colours", &colours) || scan_scaled_before_word_num(t, "colors", &colours))) colours = scaled_colour_count(t, v[0]);
@@ -5915,6 +5917,14 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     sprintf(cmd, (tc || has(t, "signed") || has(t, "negative") || v[0] < 0) ? "fixedtcenc(%.10g,1,%lld)" : "fixedfrac(%.10g,%lld)", v[0], (long long)v[1]);
     return eval_float(cmd, out);
   }
+  if (has(t, "fixed") && (has(t, "encode") || has(t, "represent") || has(t, "convert")) &&
+      (has(t, "after") || has(t, "afterthepoint") || has(t, "fractional")) &&
+      nv == 2 && !has(t, "before") && !has(t, "whole") && !has(t, "integer")) {
+    double value = (v[0] < 0 || v[0] != round_nearest(v[0])) ? v[0] : v[1];
+    long long frac = (long long)((near_num(value, v[0]) ? v[1] : v[0]) + 0.5);
+    sprintf(cmd, (tc || has(t, "signed") || has(t, "negative") || value < 0) ? "fixedtcenc(%.10g,1,%lld)" : "fixedfrac(%.10g,%lld)", value, frac);
+    return eval_float(cmd, out);
+  }
   if (has(t, "fixed") && (has(t, "encode") || has(t, "represent") || has(t, "convert")) && nv >= 3) {
     long long whole = (long long)v[1], frac = (long long)v[2];
     double value = v[0];
@@ -6493,10 +6503,11 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     n = add(out, n, "Need 2^b >= %.10g", v[0]);
     return add(out, n, "b = %d address bits", bitsw);
   }
-  if ((has(t, "image") || has(t, "bitmap")) && nv >= 3) {
-    if (has(t, "colours") || has(t, "colors")) {
+  if ((has(t, "image") || has(t, "bitmap") || has(t, "photo")) && nv >= 3) {
+    if (has(t, "colours") || has(t, "colors") || has(t, "shades")) {
       double colours=0; bool hc = label_num(input, "colours", &colours) || label_num(input, "colors", &colours) ||
-                                  scan_scaled_before_word_num(t, "colours", &colours) || scan_scaled_before_word_num(t, "colors", &colours);
+                                  scan_scaled_before_word_num(t, "colours", &colours) || scan_scaled_before_word_num(t, "colors", &colours) ||
+                                  scan_scaled_before_word_num(t, "shades", &colours);
       if (hc) {
         double wh[2]; int nw = 0;
         for (int i = 0; i < nv && nw < 2; ++i) if ((long long)v[i] != (long long)colours) wh[nw++] = v[i];

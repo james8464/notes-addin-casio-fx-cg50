@@ -1,5 +1,39 @@
 # Checkpoint
 
+## 2026-06-13 Parser Guard Sweep Slice
+
+Completed:
+- Fixed rough-plane prompts containing `to the horizontal` so they do not route as horizontal-plane force questions.
+- Extended CSCALC image storage parsing for `photo` and `shades` wording.
+- Prevented standalone colour-depth parsing from stealing photo/file-size prompts.
+- Added fixed-point free-text route for two-number `bits after point` prompts.
+- Added regressions and rebuilt calculator-ready outputs.
+
+Evidence:
+- Rough inclined plane prompt now uses `5*9.8 sin(30)` and friction along the plane.
+- Greyscale `256 shades` prompt now uses `ceil(log2(256)) = 8 bits per pixel`.
+- `3 megapixel photo ... colour depth 24 ... bytes` now uses `3000000*24`.
+- Widthless fixed-point prompt now gives scaled-integer working instead of help fallback.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 489784 bytes`
+  - `CSCALC.g3a: 274540 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: 18178 bytes`
+
+Drift check:
+- Stayed inside CASP3/CSCALC free-text parser guards, tests, checkpoint, and rebuilt CASP3/CSCALC artifacts.
+- No Pure CAS source, menu/UI/session, NOTES source, or shared status-bar behavior changed.
+- Active goal remains open for further unseen-case hardening.
+
 ## 2026-06-13 P3 Incline Label Parser Slice
 
 Completed:

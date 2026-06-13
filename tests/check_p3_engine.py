@@ -105,6 +105,7 @@ def main():
     require("A particle mass 2kg is pulled along rough horizontal by force 10N at 30 degrees above horizontal mu 0.2 find acceleration", ["Rough horizontal plane", "horizontal component", "friction = mu R"])
     require("A particle of mass 4 kg rests on a rough plane inclined at 20 degrees with coefficient friction 0.25. Find the least force parallel to plane needed to move it up the plane.", ["At limiting equilibrium", "friction = mu R", "least force up the plane ="])
     require("A particle slides down a rough plane inclined at 25 degrees coefficient of friction 0.2 mass 3kg find acceleration.", ["3*9.8 sin(25)", "0.2", "a ="])
+    require("A particle moves on a rough plane inclined at 30 degrees to the horizontal. Coefficient of friction is 0.4 and mass is 5kg. Find acceleration down the plane.", ["5*9.8 sin(30)", "friction = mu R", "a ="])
     require("A box of mass 10kg is pulled by force 50N at 30 degrees above the horizontal. Coefficient of friction is 0.2. Find acceleration.", ["Rough horizontal plane", "horizontal component", "a = F/m = 28.701"])
     require("A particle of mass 8 kg is pulled by a force of 50N at 30 degrees below the horizontal on a rough horizontal plane, coefficient of friction 0.25. Find acceleration.", ["Force is below the horizontal", "R = 8*9.8 + 50 sin(30)", "a = F/m = 17.451"])
     require("A particle mass 4kg on rough horizontal plane is pulled by 30N at 20 degrees above horizontal, mu=0.15. Find acceleration.", ["30 cos(20)", "friction = mu R", "a = F/m = 23.849"])
