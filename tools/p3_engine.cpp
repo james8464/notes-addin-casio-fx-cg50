@@ -4264,6 +4264,16 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     sprintf(cmd+p, ")");
     return eval_mech(cmd, out);
   }
+  if ((has(t, "equilibrium") || has(t, "balance")) && has(t, "i") && has(t, "j")) {
+    double xs[8], ys[8]; int vc = scan_ij_vectors(input, xs, ys, 8);
+    if (vc >= 2) {
+      double sx = 0, sy = 0;
+      for (int i = 0; i < vc; ++i) { sx += xs[i]; sy += ys[i]; }
+      int n = add(out, 0, "For equilibrium, the vector sum of forces is zero.");
+      n = add(out, n, "sum of known forces = %.10g i %+.10g j", sx, sy);
+      return add(out, n, "missing force = %.10g i %+.10g j", -sx, -sy);
+    }
+  }
   if ((has(t, "force") || has(t, "forces") || has(t, "vector") || has(t, "vectors")) &&
       (has(t, "resultant") || has(t, "magnitude")) && (has(t, "angle") || has(t, "degrees")) &&
       !has(t, "component") && !has(t, "equilibrium") && nv >= 6) {
@@ -4623,6 +4633,19 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     int n = add(out, 0, "For circular motion, v = r*omega and a = r*omega^2.");
     n = add(out, n, "v = %.6g*%.6g = %.10g m/s", r, w, r*w);
     return add(out, n, "centripetal acceleration = %.6g*%.6g^2 = %.10g m/s^2", r, w, r*w*w);
+  }
+  if ((has(t, "shm") || has(t, "simpleharmonic") || (has(t, "simple") && has(t, "harmonic"))) &&
+      (has(t, "amplitude") || has(t, "angularspeed") || has(t, "omega") || has(t, "maximum")) && nv >= 2) {
+    double A=0,w=0;
+    bool hA=word_num(input,"amplitude",&A) || label_num(input,"amplitude",&A) || label_num(input,"a",&A);
+    bool hw=word_num(input,"angularspeed",&w) || label_num(input,"omega",&w);
+    if (!hA) A = v[0];
+    if (!hw) {
+      for (int i = 0; i < nv; ++i) if (!near_num(v[i], A)) { w = v[i]; break; }
+    }
+    int n = add(out, 0, "For SHM, maximum speed is A*omega and maximum acceleration is A*omega^2.");
+    n = add(out, n, "maximum speed = %.10g*%.10g = %.10g", A, w, A*w);
+    return add(out, n, "maximum acceleration = %.10g*%.10g^2 = %.10g", A, w, A*w*w);
   }
   if ((has(t, "conical") || (has(t, "pendulum") && has(t, "circle"))) &&
       (has(t, "length") || has(t, "angle")) && (has(t, "speed") || has(t, "velocity")) && nv >= 2) {
@@ -5457,6 +5480,18 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if ((has(t, "restitution") || has(t, "collision") || has(t, "impact")) && nv >= 4) {
     sprintf(cmd, "restitution(%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3]); return eval_mech(cmd, out);
+  }
+  if ((has(t, "centreofmass") || has(t, "centerofmass") || ((has(t, "centre") || has(t, "center")) && has(t, "mass"))) &&
+      (has(t, "lamina") || has(t, "rectangle") || has(t, "square")) && has(t, "removed") && nv >= 4) {
+    double W=v[0], H=v[1], w=v[2], h=v[3];
+    double A0=W*H, A1=w*h, A=A0-A1;
+    double xbar = A ? (A0*(W/2.0) - A1*(w/2.0))/A : 0;
+    double ybar = A ? (A0*(H/2.0) - A1*(h/2.0))/A : 0;
+    int n = add(out, 0, "Treat the missing part as negative area.");
+    n = add(out, n, "area = %.10g*%.10g - %.10g*%.10g = %.10g", W, H, w, h, A);
+    n = add(out, n, "xbar = (%.10g*%.10g - %.10g*%.10g)/%.10g", A0, W/2.0, A1, w/2.0, A);
+    n = add(out, n, "ybar = (%.10g*%.10g - %.10g*%.10g)/%.10g", A0, H/2.0, A1, h/2.0, A);
+    return add(out, n, "centre of mass = (%.10g, %.10g)", xbar, ybar);
   }
   if ((has(t, "centreofmass") || has(t, "centerofmass") || ((has(t, "centre") || has(t, "center")) && has(t, "mass"))) &&
       has(t, "particle") && nv >= 4) {
@@ -6445,6 +6480,21 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     }
     sprintf(cmd+p, ")");
     return eval_stats(cmd, out);
+  }
+  if ((has(t, "median") || has(t, "quartile") || has(t, "interquartile") || has(t, "iqr")) &&
+      (has(t, "data") || has(t, "values")) &&
+      !has(t, "grouped") && !has(t, "group") && !has(t, "class") && !has(t, "classes") &&
+      !has(t, "frequency") && !has(t, "frequencies") && !has(t, "cumulative") && nv >= 3) {
+    double a[32]; int m = nv < 32 ? nv : 32;
+    for (int i = 0; i < m; ++i) a[i] = v[i];
+    sort_doubles(a, m);
+    double med = median_slice(a, 0, m);
+    double q1 = median_slice(a, 0, m / 2);
+    double q3 = median_slice(a, (m + 1) / 2, m);
+    int n = add(out, 0, "Sort the raw data, then read the required positions.");
+    n = add(out, n, "median = %.10g", med);
+    n = add(out, n, "Q1 = %.10g, Q3 = %.10g", q1, q3);
+    return add(out, n, "IQR = Q3 - Q1 = %.10g", q3 - q1);
   }
   if (has(t, "normal") && (has(t, "hypothesis") || has(t, "test")) && nv >= 5) {
     double tail = (has(t, "twotailed") || has(t, "twosided") || (has(t, "two") && (has(t, "tailed") || has(t, "sided"))) || has(t, "different") || has(t, "notequal")) ? 0 :

@@ -3672,8 +3672,23 @@ static void truthbits_cmd_from_text(const char *t, const char *bits, char *cmd, 
 
 static bool cidr_prefix_from_text(const char *input, int *prefix) {
   const char *p = strchr(input, '/');
-  if (!p || !isdigit((unsigned char)p[1])) return false;
-  int v = 0; ++p;
+  if (!p) {
+    for (int i = 0; input[i]; ++i) {
+      if (tolower((unsigned char)input[i]) == 's' &&
+          tolower((unsigned char)input[i+1]) == 'l' &&
+          tolower((unsigned char)input[i+2]) == 'a' &&
+          tolower((unsigned char)input[i+3]) == 's' &&
+          tolower((unsigned char)input[i+4]) == 'h') {
+        p = input + i + 5;
+        while (*p && !isdigit((unsigned char)*p)) ++p;
+        break;
+      }
+    }
+  } else {
+    ++p;
+  }
+  if (!p || !isdigit((unsigned char)*p)) return false;
+  int v = 0;
   while (isdigit((unsigned char)*p)) v = v*10 + (*p++ - '0');
   if (v < 0 || v > 32) return false;
   *prefix = v;
@@ -4495,6 +4510,33 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       return add(out, n, "%s text = %s", has(t, "decrypt") ? "decrypted" : "encrypted", enc);
     }
   }
+  if (has(t, "affine") && (has(t, "encrypt") || has(t, "decrypt")) && nv >= 2) {
+    char word[40] = "";
+    for (int i = 0; input[i];) {
+      while (input[i] && !isalpha((unsigned char)input[i])) ++i;
+      char tmp[40]; int j = 0;
+      while (isalpha((unsigned char)input[i]) && j + 1 < (int)sizeof(tmp)) tmp[j++] = (char)tolower((unsigned char)input[i++]);
+      tmp[j] = 0;
+      if (j > 1 && !word_is(tmp, "affine") && !word_is(tmp, "cipher") && !word_is(tmp, "encrypt") &&
+          !word_is(tmp, "decrypt") && !word_is(tmp, "using") && !word_is(tmp, "with") && !word_is(tmp, "the")) strcpy(word, tmp);
+    }
+    if (word[0]) {
+      int a = (int)v[0], b = (int)v[1], inv = 0;
+      for (int k = 1; k < 26; ++k) if ((a*k) % 26 == 1) { inv = k; break; }
+      char enc[40]; int i = 0;
+      for (; word[i] && i + 1 < (int)sizeof(enc); ++i) {
+        int x = word[i] - 'a';
+        int y = has(t, "decrypt") ? (inv * (x - b + 26)) % 26 : (a*x + b) % 26;
+        enc[i] = (char)('A' + y);
+      }
+      enc[i] = 0;
+      int n = add(out, 0, "Affine cipher uses E(x)=(ax+b) mod 26.");
+      n = add(out, n, "E(x)=(%dx+%d) mod 26", a, b);
+      if (has(t, "decrypt")) n = add(out, n, "inverse of %d mod 26 is %d", a, inv);
+      n = add(out, n, "%s -> %s", word, enc);
+      return add(out, n, "%s text = %s", has(t, "decrypt") ? "decrypted" : "encrypted", enc);
+    }
+  }
   if (has(t, "fsm") || (has(t, "finite") && has(t, "state") && has(t, "machine"))) {
     if (make_fsm_cmd(input, cmd, sizeof(cmd))) return eval_trace(cmd, out);
   }
@@ -4519,6 +4561,44 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     if (make_ds_cmd(input, "stack", cmd, sizeof(cmd))) return eval_trace(cmd, out);
   }
   if (has(t, "queue") && (has(t, "enqueue") || has(t, "dequeue") || has(t, "remove"))) {
+    char q[16][24]; int len = 0, n = 0;
+    bool used_words = false, word_items = false;
+    for (int i = 0; input[i] && n < CSCALC_MAX_LINES - 1;) {
+      while (input[i] && !isalpha((unsigned char)input[i])) ++i;
+      char w[24]; int j = 0;
+      while (isalpha((unsigned char)input[i]) && j + 1 < (int)sizeof(w)) w[j++] = (char)tolower((unsigned char)input[i++]);
+      w[j] = 0;
+      if (word_is(w, "enqueue")) {
+        while (input[i] && (input[i] == ' ' || input[i] == '\t' || input[i] == ',' || input[i] == '(' || input[i] == ')')) ++i;
+        if (!isalpha((unsigned char)input[i])) continue;
+        char item[24]; int k = 0;
+        while (isalpha((unsigned char)input[i]) && k + 1 < (int)sizeof(item)) item[k++] = (char)toupper((unsigned char)input[i++]);
+        item[k] = 0;
+        if (k > 0 && len < 16) {
+          if (!used_words) { n = add(out, 0, "Queue is FIFO: first item in is first item out."); used_words = true; }
+          word_items = true;
+          strcpy(q[len++], item);
+          char buf[128]; int p = sprintf(buf, "[");
+          for (int z = 0; z < len && p < (int)sizeof(buf)-4; ++z) p += sprintf(buf+p, "%s%s", z ? "," : "", q[z]);
+          sprintf(buf+p, "]");
+          n = add(out, n, "enqueue %s -> queue %s", item, buf);
+        }
+      } else if (word_is(w, "dequeue") || word_is(w, "remove")) {
+        if (!word_items && !used_words) continue;
+        if (!used_words) { n = add(out, 0, "Queue is FIFO: first item in is first item out."); used_words = true; }
+        if (len <= 0) n = add(out, n, "dequeue from empty queue: underflow");
+        else {
+          char item[24]; strcpy(item, q[0]);
+          for (int z = 1; z < len; ++z) strcpy(q[z-1], q[z]);
+          --len;
+          char buf[128]; int p = sprintf(buf, "[");
+          for (int z = 0; z < len && p < (int)sizeof(buf)-4; ++z) p += sprintf(buf+p, "%s%s", z ? "," : "", q[z]);
+          sprintf(buf+p, "]");
+          n = add(out, n, "dequeue %s -> queue %s", item, buf);
+        }
+      }
+    }
+    if (word_items) return n;
     if (make_ds_cmd(input, "queue", cmd, sizeof(cmd))) return eval_trace(cmd, out);
   }
   if ((has(t, "binarysearch") || (has(t, "binary") && has(t, "search"))) && nv >= 2) {
@@ -5269,7 +5349,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     sprintf(cmd, "twosadd(%s,%s)", a, b);
     return eval_twos(cmd, out);
   }
-  if ((has(t, "encode") || has(t, "convert") || (has(t, "represent") && !has(t, "representable") && !has(t, "represented") && !has(t, "closest") && !has(t, "explain"))) && (has(t, "floating") || has(t, "mantissa")) &&
+  if ((has(t, "encode") || has(t, "convert") || has(t, "round") || (has(t, "represent") && !has(t, "representable") && !has(t, "represented") && !has(t, "closest") && !has(t, "explain"))) && (has(t, "floating") || has(t, "mantissa")) &&
       (has(t, "mantissa") && has(t, "exponent")) && nv >= 3) {
     double mb=0, eb=0, tmp=0, value=v[0];
     bool hM = scan_bit_width_before_label(t, "mantissa", &tmp) || scan_before_word_num(t, "mantissa", &tmp); if (hM) mb = tmp;
@@ -5890,6 +5970,23 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     for (int i = 1; i < end && p < (int)sizeof(cmd) - 20; ++i) p += sprintf(cmd + p, ",%lld", (long long)av[i]);
     sprintf(cmd + p, ")");
     return eval_binary_arith(cmd, out);
+  }
+  if ((has(t, "fixed") || has(t, "fixedpoint")) &&
+      (has(t, "range") || has(t, "precision")) && nv >= 2) {
+    double total=0, frac=0, tmp=0;
+    bool ht = scan_before_word_num(t, "bit", &tmp) || scan_before_word_num(t, "bits", &tmp);
+    if (ht) total = tmp; else total = v[0];
+    bool hf = scan_before_word_num(t, "fractional", &tmp) || scan_before_word_num(t, "fraction", &tmp) ||
+              scan_before_word_num(t, "frac", &tmp);
+    if (hf) frac = tmp; else frac = v[1];
+    int ib = (int)(total - frac);
+    double step = pow2i(-(int)frac);
+    double minv = has(t, "unsigned") ? 0 : -pow2i(ib - 1);
+    double maxv = (has(t, "unsigned") ? pow2i(ib) : pow2i(ib - 1)) - step;
+    int n = add(out, 0, has(t, "unsigned") ? "Unsigned fixed-point range uses the place values." : "Signed fixed-point range uses two's-complement place values.");
+    n = add(out, n, "precision = 2^-%.0f = %.10g", frac, step);
+    n = add(out, n, "integer bits = %.0f - %.0f = %d", total, frac, ib);
+    return add(out, n, "range = %.10g to %.10g", minv, maxv);
   }
   char fixed[48];
   if (has(t, "fixed") && (has(t, "encode") || has(t, "represent") || has(t, "convert")) &&
