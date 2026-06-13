@@ -483,6 +483,7 @@ def main():
     require("Find cache fields for a byte-addressable 2 MiB cache, line size 64 bytes, 16 way, 48 bit address.", ["cache size = 2097152 bytes", "sets = blocks/ways = 32768/16 = 2048", "tag bits = 48 - 11 - 6 = 31"])
     require("A cache has 4096 sets, 4-way associativity and 64 byte line size. How many cache bytes?", ["cache size = 1048576 bytes", "sets = blocks/ways = 16384/4 = 4096"])
     require("A cache has 64 sets, 4 ways and line size 32 bytes. Find total cache capacity.", ["cache size = sets*ways*line size = 64*4*32 = 8192 bytes", "sets = blocks/ways = 256/4 = 64"])
+    require("A cache has 128 lines, each line is 16 bytes, direct mapped, and addresses are 24 bits. Find tag index offset.", ["cache size = lines*line size = 128*16 = 2048 bytes", "index bits = log2(128) = 7", "tag bits = 24 - 7 - 4 = 13"])
     require("Calculate Big O for nested loops for i from 1 to n and j from 1 to n.", ["Outer loop runs n times", "n*n = n^2", "Big O = O(n^2)"])
     require("Find Big O for binary search on n items.", ["Binary search halves", "Big O = O(log n)"])
     require("A database table STUDENT(id,name,grade). Write SQL to select name where grade > 70.", ["SQL SELECT", "SELECT name", "WHERE grade > 70"])

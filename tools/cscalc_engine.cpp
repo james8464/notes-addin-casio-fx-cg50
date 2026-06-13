@@ -4486,7 +4486,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     return add(out, n, "time = %.10g/%.10g = %.10g s", cycles, rate, time);
   }
   if (has(t, "cache") && (has(t, "block") || has(t, "line")) && nv >= 2) {
-    double cache = 0, block = 0, ways = 1, addr = 0, sets_given = 0;
+    double cache = 0, block = 0, ways = 1, addr = 0, sets_given = 0, line_count = 0;
     bool hc = scan_before_word_num(t, "mib", &cache) || scan_before_word_num(t, "mb", &cache) ||
               scan_before_word_num(t, "kib", &cache) || scan_before_word_num(t, "kb", &cache) ||
               scan_before_word_num(t, "bytes", &cache);
@@ -4497,6 +4497,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     bool hw = scan_before_word_num(t, "ways", &ways) || scan_before_word_num(t, "way", &ways) ||
               scan_before_word_num(t, "associativity", &ways);
     bool hs = scan_before_word_num(t, "sets", &sets_given);
+    bool hl = !hs && scan_before_word_num(t, "lines", &line_count);
     if (!hw && has(t, "direct") && has(t, "mapped")) { ways = 1; hw = true; }
     bool ha = scan_bit_width_before_label(t, "address", &addr) || scan_before_word_num(t, "bitaddress", &addr);
     if ((!hb || block <= 0) && strstr(t, "byte,block")) {
@@ -4508,10 +4509,16 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       if (num_before_ptr(t, bp, &block)) hb = true;
     }
     bool derived_cache = false;
+    bool derived_lines = false;
     if (hs && hb && (!hc || cache <= block)) {
       cache = sets_given * ways * block;
       hc = true;
       derived_cache = true;
+    } else if (hl && hb && (!hc || cache <= block)) {
+      cache = line_count * block;
+      hc = true;
+      derived_cache = true;
+      derived_lines = true;
     }
     if (!hc) cache = v[0];
     if (!hb) block = v[1];
@@ -4537,7 +4544,8 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     int off = ceil_log2_ll((long long)(block + 0.5));
     int idx = ceil_log2_ll((long long)(sets + 0.5));
     int n = add(out, 0, "Cache address fields use powers of 2.");
-    if (derived_cache) n = add(out, n, "cache size = sets*ways*line size = %.10g*%.10g*%.10g = %.10g bytes", sets_given, ways, block, cache);
+    if (derived_cache && derived_lines) n = add(out, n, "cache size = lines*line size = %.10g*%.10g = %.10g bytes", line_count, block, cache);
+    else if (derived_cache) n = add(out, n, "cache size = sets*ways*line size = %.10g*%.10g*%.10g = %.10g bytes", sets_given, ways, block, cache);
     n = add(out, n, "cache size = %.10g bytes, block size = %.10g bytes", cache, block);
     n = add(out, n, "number of blocks = %.10g/%.10g = %.10g", cache, block, blocks);
     if (ways > 1) n = add(out, n, "sets = blocks/ways = %.10g/%.10g = %.10g", blocks, ways, sets);

@@ -1,5 +1,39 @@
 # Checkpoint
 
+## 2026-06-13 Route Guard And Cache Lines Slice
+
+Completed:
+- Ran another unseen CS/P3 batch with cache line-count wording, rough horizontal force wording, projectile angle wording, Boolean, floating-point, storage, mechanics, and stats prompts.
+- Fixed CSCALC cache prompts where `<n> lines, line size <b>` means `<n>` cache lines/blocks, not total cache bytes.
+- Fixed P3 circular-motion route stealing caused by matching `round` inside `ground`.
+- Fixed P3 projectile route reading `degrees above horizontal` as initial height.
+- Added regressions and rebuilt calculator-ready outputs.
+
+Evidence:
+- Targeted cache prompt now gives `cache size = lines*line size = 128*16 = 2048 bytes` and `tag bits = 24 - 7 - 4 = 13`.
+- Targeted rough-horizontal prompt now gives rough-plane resolving/friction/F=ma lines.
+- Targeted projectile prompt now gives time of flight and range, without false height.
+- Unseen probe batch after fixes: `cases 19 failures 0`.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 484016 bytes`
+  - `CSCALC.g3a: 273728 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: 18178 bytes`
+
+Drift check:
+- Stayed inside CASP3/CSCALC generic prose parsing, tests, checkpoint, and rebuilt generated files.
+- No Pure CAS, menu/UI/session, NOTES source, or shared status-bar behavior changed.
+- Active goal remains open for further unseen-case hardening.
+
 ## 2026-06-13 Cache Ways Prose Slice
 
 Completed:

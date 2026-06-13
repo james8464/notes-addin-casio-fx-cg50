@@ -4343,7 +4343,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
             word_num(input,"angle",&ang) || word_num(input,"theta",&ang);
     bool hH=label_num(input,"height",&h) || label_num(input,"h",&h) || label_num(input,"initialheight",&h) || label_num(input,"launchheight",&h) ||
             word_num(input,"height",&h) || word_num(input,"from",&h) || word_num(input,"above",&h) ||
-            prev_word_num(input,"above",&h) || prev_word_num(input,"high",&h);
+            (!has(t, "horizontal") && prev_word_num(input,"above",&h)) || prev_word_num(input,"high",&h);
     bool hG=label_num(input,"g",&g) || label_num(input,"gravity",&g);
     if (!hH && nv >= 3 && (has(t, "cliff") || has(t, "height") || has(t, "high"))) { h = v[2]; hH = true; }
     if (hU && hA && hH && !has(t, "findheight")) {
@@ -4364,7 +4364,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
             word_num(input,"angle",&ang) || word_num(input,"theta",&ang) || prev_word_num(input,"degrees",&ang);
     bool hG=label_num(input,"g",&g) || label_num(input,"gravity",&g);
     bool hH=label_num(input,"height",&h0) || label_num(input,"initialheight",&h0) || label_num(input,"launchheight",&h0) ||
-            word_num(input,"height",&h0) || prev_word_num(input,"above",&h0) || prev_word_num(input,"high",&h0);
+            word_num(input,"height",&h0) || (!has(t, "horizontal") && prev_word_num(input,"above",&h0)) || prev_word_num(input,"high",&h0);
     if (!hA && nv >= 2 && (has(t, "angle") || has(t, "degrees"))) { ang = v[1]; hA = true; }
     if (!hU && nv >= 1) { u = v[0]; hU = true; }
     if (!hH && nv >= 3 && (has(t, "cliff") || has(t, "height") || has(t, "high"))) { h0 = v[2]; hH = true; }
@@ -4796,7 +4796,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "tan(theta) = %.10g^2/(%.10g*9.8) = %.10g", u, r, tanth);
     return add(out, n, "theta = %.10g degrees", theta);
   }
-  if ((has(t, "circular") || has(t, "circle") || has(t, "centripetal") || has(t, "bend") || has(t, "round")) &&
+  if ((has(t, "circular") || has(t, "circle") || has(t, "centripetal") || has(t, "bend")) &&
       (has(t, "angularspeed") || has(t, "omega") || has(t, "rads") || has(c, "rad/s")) && nv >= 2) {
     double r=0,w=0;
     bool hr=word_num(input,"radius",&r) || label_num(input,"radius",&r);
@@ -4854,7 +4854,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "v^2 = mu*g*r = %.6g*9.8*%.6g", mu, r);
     return add(out, n, "maximum speed = %.10g m/s", vmax);
   }
-  if ((has(t, "circular") || has(t, "circle") || has(t, "centripetal") || has(t, "bend") || has(t, "round")) &&
+  if ((has(t, "circular") || has(t, "circle") || has(t, "centripetal") || has(t, "bend")) &&
       (has(t, "acceleration") || has(t, "accelerate")) &&
       (has(t, "radius") || has(t, "speed") || has(t, "velocity") || has(t, "m,s")) && nv >= 2) {
     double r=0,u=0;
@@ -4926,7 +4926,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "R = mg - mv^2/r");
     return add(out, n, "R = %.6g*9.8 - %.6g*%.6g^2/%.6g = %.10g N", m, m, u, r, R);
   }
-  if ((has(t, "circular") || has(t, "circle") || has(t, "centripetal") || has(t, "bend") || has(t, "round")) &&
+  if ((has(t, "circular") || has(t, "circle") || has(t, "centripetal") || has(t, "bend")) &&
       (has(t, "radius") || has(t, "speed") || has(t, "force")) && nv >= 3) {
     double m=0, r=0, u=0;
     bool hm=word_num(input,"mass",&m) || label_num(input,"mass",&m);
