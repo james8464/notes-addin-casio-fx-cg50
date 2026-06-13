@@ -357,6 +357,22 @@ static bool word_num(const char *s, const char *name, double *v) {
   return false;
 }
 
+static double alpha_from_text(const char *input, const char *t, const char *c, const double *v, int nv, double skip1, double skip2) {
+  double alpha = 0;
+  if (word_num(input,"percent",&alpha) || word_num(input,"significance",&alpha) || word_num(input,"level",&alpha)) {
+    return alpha > 1 ? alpha / 100.0 : alpha;
+  }
+  for (int i = 0; i < nv; ++i) {
+    double d1 = v[i] - skip1, d2 = v[i] - skip2;
+    if (d1 < 0) d1 = -d1;
+    if (d2 < 0) d2 = -d2;
+    if (d1 < 1e-9 || d2 < 1e-9) continue;
+    if ((has(c, "%") || has(t, "percent") || has(t, "level")) && v[i] >= 1 && v[i] <= 10) return v[i] / 100.0;
+    if (v[i] > 0 && v[i] < 1) return v[i];
+  }
+  return 0.05;
+}
+
 static bool word_num_with_t(const char *s, const char *name, double *v) {
   int nl = (int)strlen(name);
   for (int i = 0; s && s[i]; ++i) {
@@ -2450,6 +2466,28 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   char c[192]; clean(input, c, sizeof(c));
   double v[12]; int nv = scan_nums(t, v, 12);
   char cmd[160];
+
+  if ((has(c, "~n(") || has(c, "x~n(")) && has(c, "|")) {
+    double mu0 = 0, second0 = 0;
+    if (dist2(c, "~n", &mu0, &second0)) {
+      double sd0 = has(c, "^2") ? second0 : root(second0), x0 = 0, g0 = 0;
+      const char *bar = strchr(c, '|');
+      const char *lp = strstr(c, "x>"), *rp = bar ? strstr(bar, "x>") : 0;
+      if (lp && rp && lp < bar) {
+        x0 = read_num(lp + (lp[2] == '=' ? 3 : 2));
+        g0 = read_num(rp + (rp[2] == '=' ? 3 : 2));
+        sprintf(cmd, "normalcond(%.10g,%.10g,%.10g,%.10g,1)", x0, g0, mu0, sd0);
+        return eval_stats(cmd, out);
+      }
+      lp = strstr(c, "x<"); rp = bar ? strstr(bar, "x<") : 0;
+      if (lp && rp && lp < bar) {
+        x0 = read_num(lp + (lp[2] == '=' ? 3 : 2));
+        g0 = read_num(rp + (rp[2] == '=' ? 3 : 2));
+        sprintf(cmd, "normalcond(%.10g,%.10g,%.10g,%.10g,-1)", x0, g0, mu0, sd0);
+        return eval_stats(cmd, out);
+      }
+    }
+  }
 
   if (!has(t, "variable") && !has(c, "v=(") && !has(t, "projected") && !has(t, "projectile") &&
       (has(t, "velocity") || has(t, "speed")) &&
@@ -6507,7 +6545,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     bool hVar=label_num(input,"variance",&var) || label_num(input,"var",&var) ||
               word_num(input,"variance",&var) || word_num(input,"var",&var) ||
               word_num(input,"standarddeviationsquared",&var) || word_num(input,"sigmasquared",&var);
-    bool hN=label_num(input,"n",&n0) || word_num(input,"n",&n0) || word_num(input,"sample",&n0) || word_num(input,"sample size",&n0);
+    bool hN=label_num(input,"n",&n0) || word_num(input,"n",&n0) || word_num(input,"sample",&n0) || word_num(input,"samplesize",&n0) || word_num(input,"size",&n0);
     double nfix = 0;
     if (word_num(input, "sampleofsize", &nfix) || word_num(input, "sampleof", &nfix) || word_num(input, "samplesize", &nfix)) {
       n0 = nfix; hN = true;
@@ -6527,6 +6565,56 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       sig = has(c, "^2") ? dsecond : root(dsecond);
       hMu = hSig = true;
       hVar = false;
+    }
+    if ((has(t, "samplemean") || (has(t, "sample") && has(t, "mean")) || has(t, "xbar")) &&
+        (has(t, "probability") || has(c, "p(") || has(t, "more") || has(t, "greater") || has(t, "less")) &&
+        hMu && (hSig || hVar) && hN && !has(t, "hypothesis") && !has(t, "test")) {
+      double sd = hSig ? sig : root(var), bound = 0;
+      const char *bp = strstr(c, "samplemean>");
+      bool upper = true, hb = false;
+      if (bp) { bound = read_num(bp + 11); hb = true; upper = true; }
+      if (!hb) { bp = strstr(c, "xbar>"); if (bp) { bound = read_num(bp + 5); hb = true; upper = true; } }
+      if (!hb) { bp = strstr(c, "mean>"); if (bp) { bound = read_num(bp + 5); hb = true; upper = true; } }
+      if (!hb) { bp = strstr(c, "samplemean<"); if (bp) { bound = read_num(bp + 11); hb = true; upper = false; } }
+      if (!hb) { bp = strstr(c, "xbar<"); if (bp) { bound = read_num(bp + 5); hb = true; upper = false; } }
+      if (!hb) { bp = strstr(c, "mean<"); if (bp) { bound = read_num(bp + 5); hb = true; upper = false; } }
+      if (!hb) {
+        for (int i = 0; i < nv; ++i) {
+          if (has(c, "^2") && near_num(v[i], 2)) continue;
+          if (near_num(v[i], mu) || near_num(v[i], sd) || near_num(v[i], n0)) continue;
+          bound = v[i]; hb = true;
+        }
+        upper = has(t, "more") || has(t, "greater") || has(c, ">") || has(t, "above");
+      }
+      if (hb) {
+        double se = sd / root(n0);
+        double z = se ? (bound - mu) / se : 0;
+        double prob = upper ? 1 - normal_cdf(z) : normal_cdf(z);
+        int n = add(out, 0, "For a sample mean, use the sampling distribution.");
+        n = add(out, n, "Xbar ~ N(%.6g, (%.6g/sqrt(%.6g))^2)", mu, sd, n0);
+        n = add(out, n, "standard error = %.6g/sqrt(%.6g) = %.10g", sd, n0, se);
+        n = add(out, n, "z = (%.6g-%.6g)/%.10g = %.10g", bound, mu, se, z);
+        return add(out, n, "P(Xbar%s%.6g) = %.10g", upper ? ">=" : "<=", bound, prob);
+      }
+    }
+    if (hMu && (hSig || hVar) && strchr(input, '|')) {
+      double sd = hSig ? sig : root(var), x0 = 0, g0 = 0;
+      char rawbar[160]; clean(input, rawbar, sizeof(rawbar));
+      const char *bar = strchr(rawbar, '|');
+      const char *lp = strstr(rawbar, "x>"), *rp = bar ? strstr(bar, "x>") : 0;
+      if (lp && rp && lp < bar) {
+        x0 = read_num(lp + (lp[2] == '=' ? 3 : 2));
+        g0 = read_num(rp + (rp[2] == '=' ? 3 : 2));
+        sprintf(cmd, "normalcond(%.10g,%.10g,%.10g,%.10g,1)", x0, g0, mu, sd);
+        return eval_stats(cmd, out);
+      }
+      lp = strstr(rawbar, "x<"); rp = bar ? strstr(bar, "x<") : 0;
+      if (lp && rp && lp < bar) {
+        x0 = read_num(lp + (lp[2] == '=' ? 3 : 2));
+        g0 = read_num(rp + (rp[2] == '=' ? 3 : 2));
+        sprintf(cmd, "normalcond(%.10g,%.10g,%.10g,%.10g,-1)", x0, g0, mu, sd);
+        return eval_stats(cmd, out);
+      }
     }
     if (has(t, "within") &&
         (has(t, "standarddeviation") || (has(t, "standard") && has(t, "deviation")) || has(t, "sd") || has(t, "sigma")) &&
@@ -6884,6 +6972,25 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     if (hLo && hHi && hMu && (hSig || hVar)) {
       sprintf(cmd, hSig ? "normalprob(%.10g,%.10g,%.10g,%.10g)" : "normalprobvar(%.10g,%.10g,%.10g,%.10g)", lo, hi, mu, hSig ? sig : var);
       return eval_stats(cmd, out);
+    }
+    if (hMu && (hSig || hVar) && strchr(input, '|')) {
+      double sd = hSig ? sig : root(var), x0 = 0, g0 = 0;
+      char rawbar[160]; clean(input, rawbar, sizeof(rawbar));
+      const char *bar = strchr(rawbar, '|');
+      const char *lp = strstr(rawbar, "x>"), *rp = bar ? strstr(bar, "x>") : 0;
+      if (lp && rp && lp < bar) {
+        x0 = read_num(lp + (lp[2] == '=' ? 3 : 2));
+        g0 = read_num(rp + (rp[2] == '=' ? 3 : 2));
+        sprintf(cmd, "normalcond(%.10g,%.10g,%.10g,%.10g,1)", x0, g0, mu, sd);
+        return eval_stats(cmd, out);
+      }
+      lp = strstr(rawbar, "x<"); rp = bar ? strstr(bar, "x<") : 0;
+      if (lp && rp && lp < bar) {
+        x0 = read_num(lp + (lp[2] == '=' ? 3 : 2));
+        g0 = read_num(rp + (rp[2] == '=' ? 3 : 2));
+        sprintf(cmd, "normalcond(%.10g,%.10g,%.10g,%.10g,-1)", x0, g0, mu, sd);
+        return eval_stats(cmd, out);
+      }
     }
     if (hX && hMu && (hSig || hVar) && !(has(t, "conditional") || has(t, "given")) &&
         (has(c, "morethan") || has(c, "greaterthan") || has(c, "exceeds") || has(c, "exceed") ||
@@ -7661,11 +7768,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     bool hr = label_num(input,"r",&r);
     if (!hn) for (int i = 0; i < nv; ++i) if (v[i] > n0 && v[i] >= 3) n0 = v[i];
     if (!hr) for (int i = 0; i < nv; ++i) if (v[i] >= -1 && v[i] <= 1) { r = v[i]; hr = true; break; }
-    if (word_num(input,"percent",&alpha) || word_num(input,"significance",&alpha)) {
-      if (alpha > 1) alpha /= 100.0;
-    } else {
-      for (int i = 0; i < nv; ++i) if (!near_num(v[i], n0) && !near_num(v[i], r) && v[i] > 1 && v[i] <= 10) { alpha = v[i]/100.0; break; }
-    }
+    alpha = alpha_from_text(input, t, c, v, nv, n0, r);
     int tail = has(t, "positive") || has(t, "greater") || has(t, "upper") ? 1 :
                has(t, "negative") || has(t, "less") || has(t, "lower") ? -1 : 0;
     double den = root(1-r*r);
@@ -7679,6 +7782,27 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "t = %.6g*sqrt(%.0f-2)/sqrt(1-%.6g^2) = %.10g", r, n0, r, tv);
     n = add(out, n, "At alpha = %.6g, compare with critical value %.6g.", alpha, crit);
     return add(out, n, reject ? "Reject H0: there is evidence of correlation." : "Do not reject H0: insufficient evidence of correlation.");
+  }
+  if (has(t, "spearman") && (has(t, "test") || has(t, "significant") || has(t, "association")) && nv >= 2) {
+    double n0=0, r=0;
+    bool hn = word_num(input,"sample",&n0) || word_num(input,"sampleof",&n0) || label_num(input,"n",&n0);
+    bool hr = label_num(input,"rs",&r) || label_num(input,"r_s",&r) || label_num(input,"r",&r);
+    if (!hr) for (int i = 0; i < nv; ++i) if (v[i] >= -1 && v[i] <= 1) { r = v[i]; hr = true; break; }
+    if (!hn) for (int i = 0; i < nv; ++i) if (!near_num(v[i], r) && v[i] >= 3) { n0 = v[i]; hn = true; break; }
+    double alpha = alpha_from_text(input, t, c, v, nv, n0, r);
+    int tail = has(t, "positive") || has(t, "greater") || has(t, "upper") ? 1 :
+               has(t, "negative") || has(t, "less") || has(t, "lower") ? -1 : 0;
+    double den = root(1-r*r);
+    double tv = den ? r * root(n0-2) / den : 0;
+    double crit = tail ? (alpha <= 0.01 ? 2.326 : (alpha <= 0.025 ? 1.96 : 1.645))
+                       : (alpha <= 0.01 ? 2.576 : 1.96);
+    bool reject = tail > 0 ? tv > crit : tail < 0 ? tv < -crit : abs_num(tv) > crit;
+    int n = add(out, 0, "H0: rho_s = 0.");
+    n = add(out, n, tail > 0 ? "H1: rho_s > 0." : tail < 0 ? "H1: rho_s < 0." : "H1: rho_s != 0.");
+    n = add(out, n, "Use the large-sample t check: t = r_s*sqrt(n-2)/sqrt(1-r_s^2).");
+    n = add(out, n, "t = %.6g*sqrt(%.0f-2)/sqrt(1-%.6g^2) = %.10g", r, n0, r, tv);
+    n = add(out, n, "At alpha = %.6g, compare with critical value %.6g.", alpha, crit);
+    return add(out, n, reject ? "Reject H0: there is evidence of rank correlation." : "Do not reject H0: insufficient evidence of rank correlation.");
   }
   if (has(t, "spearman") && nv >= 2) {
     double xs[16], ys[16]; int count = 0;
@@ -7721,6 +7845,22 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     bool hx = last_label_num(input,"x",&x);
     bool hy = last_label_num(input,"y",&y);
     bool x_on_y = has(c, "xony") || has(c, "xonthey") || has(c, "regressionlineofx");
+    double grad = 0;
+    bool hxb = word_num(input,"meanx",&xb) || label_num(input,"xbar",&xb);
+    bool hyb = word_num(input,"meany",&yb) || label_num(input,"ybar",&yb);
+    bool hg = word_num(input,"gradient",&grad) || word_num(input,"slope",&grad) || label_num(input,"gradient",&grad);
+    if (!hg && !hxb && !hyb && nv >= 3 && has(t, "gradient") && has(t, "mean")) {
+      xb = v[0]; yb = v[1]; grad = v[2]; hxb = hyb = hg = true;
+    }
+    if (!x_on_y && hxb && hyb && hg) {
+      double a0 = yb - grad * xb;
+      int n = add(out, 0, "Use y-ybar = b(x-xbar).");
+      n = add(out, n, "xbar = %.10g, ybar = %.10g, b = %.10g", xb, yb, grad);
+      n = add(out, n, "a = ybar - b*xbar = %.10g - %.10g*%.10g = %.10g", yb, grad, xb, a0);
+      n = add(out, n, "regression line: y = %.10g + %.10g x", a0, grad);
+      if (hx) n = add(out, n, "when x=%.10g, y=%.10g", x, a0 + grad*x);
+      return n;
+    }
     double xs[16], ys[16]; int count = 0;
     if (extract_xy_lists_after_words(input, xs, ys, &count)) {
       return add_raw_regression_lines(out, xs, ys, count, x_on_y, x_on_y ? hy : hx, x_on_y ? y : x);
@@ -8700,7 +8840,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if ((has(t, "interpolation") || has(t, "interpolate") || has(t, "estimate")) &&
       !(has(t, "regression") || has(t, "leastsquares") || has(t, "lineofbestfit")) &&
-      (has(t, "whenx") || has(t, "x=") || has(t, "values")) && nv >= 5) {
+      (has(t, "whenx") || has(c, "atx") || has(c, "x=") || has(t, "values") || has(t, "points")) && nv >= 5) {
     double x1=v[0], y1=v[1], x2=v[2], y2=v[3], x=v[4];
     double y = y1 + (x - x1) * (y2 - y1) / (x2 - x1);
     int n = add(out, 0, "Use linear interpolation between the two surrounding points.");
@@ -9031,6 +9171,13 @@ int p3_eval(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   }
   if (has(s, "given") && has(s, "n(")) {
     int ns = eval_stats(s, out); if (ns) return ns;
+    int nf = eval_free_text(input, out); if (nf) return nf;
+  }
+  if (has(s, "|") && (has(s, "~n(") || has(s, "normal"))) {
+    int nf = eval_free_text(input, out); if (nf) return nf;
+  }
+  if ((has(s, "samplemean") || (has(s, "sample") && has(s, "mean"))) &&
+      (has(s, "normal") || has(s, "~n(") || has(s, "populationmean"))) {
     int nf = eval_free_text(input, out); if (nf) return nf;
   }
   int n = eval_suvat(s, out); if (n) return n;

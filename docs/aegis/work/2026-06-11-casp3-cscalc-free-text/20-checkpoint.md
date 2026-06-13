@@ -1,5 +1,37 @@
 # Checkpoint
 
+## 2026-06-13 CASP3 Free-Text Stats Hardening Slice
+
+Completed:
+- Fixed correlation-test alpha parsing so `1% level` is treated as `alpha = 0.01`.
+- Added Spearman rank-correlation test routing for `rs=... with n=...` wording.
+- Added regression-line routing for mean/gradient wording, e.g. `mean x`, `mean y`, `gradient`.
+- Added normal conditional probability routing for compact `P(X>... | X>...)` syntax.
+- Added sample-mean normal probability routing before inverse-normal fallback.
+- Broadened interpolation wording to accept `at x=...` and `points`.
+
+Evidence:
+- New regressions cover PMCC, Spearman, regression line from means, interpolation, conditional normal, and sample-mean probability.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 495972 bytes`
+  - `CSCALC.g3a: 275084 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: 18178 bytes`
+
+Drift check:
+- Stayed inside CASP3 free-text stats parsing, P3 tests, checkpoint, and rebuilt CASP3 artifact.
+- No Pure CAS source, menu/UI/session, NOTES source, or shared status-bar behavior changed.
+- Active goal remains open for further unseen-case hardening.
+
 ## 2026-06-13 CSCALC Unicode Maxterm Notation Slice
 
 Completed:

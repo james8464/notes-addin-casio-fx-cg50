@@ -671,6 +671,12 @@ def main():
     require("A biased coin has probability p of heads. It is tossed 5 times and P(no heads)=0.16807. Find p.", ["P(no heads) = (1-p)^n", "(1-p)^5 = 0.16807", "p = 0.3"])
     require("A biased coin has probability p of heads. It is tossed 6 times and P(exactly 2 heads)=0.2401. Find p.", ["Let X ~ B(6, p)", "6C2 p^2(1-p)^4 = 0.2401", "p = 0.1954576134 or 0.4938536932"])
     require("A random variable has pdf f(x)=k/(x+2) for 0<x<4. Find k and the median.", ["k = 0.9102392266", "integral from 0 to m", "median = 1.464101615"])
+    require("For n=15 and r=-0.55 test at 1% level if there is negative correlation.", ["H1: rho < 0.", "At alpha = 0.01"])
+    require("Spearman rank correlation coefficient rs=0.71 with n=10. Test for positive association at 5 percent.", ["H0: rho_s = 0.", "H1: rho_s > 0.", "At alpha = 0.05"])
+    require("The regression line y on x has mean x 10 mean y 25 and gradient 1.8. Find equation.", ["Use y-ybar = b(x-xbar).", "a = ybar - b*xbar = 25 - 1.8*10 = 7", "regression line: y = 7 + 1.8 x"])
+    require("Use linear interpolation with points (2,5) and (8,17) estimate y at x=5.", ["Use linear interpolation", "gradient = (17-5)/(8-2)", "y = 11"])
+    require("X~N(50,16). Find P(X>60 | X>45).", ["Use conditional probability", "A: X>=60, B: X>=45", "conditional probability"])
+    require("A sample mean of size 36 from normal population mean 100 sd 12. Find P(sample mean > 103).", ["For a sample mean", "standard error = 12/sqrt(36) = 2", "P(Xbar>=103)"])
     print("OK p3 engine")
 
 
