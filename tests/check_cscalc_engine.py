@@ -391,6 +391,7 @@ def main():
     require("Convert (A+B)(A+C) into sum of products.", ["Distributive law", "simplified = A+BC"])
     require("SOP form for (A+B)(A+C)", ["Distributive law", "simplified = A+BC"])
     require("bool((A+B)(A+B+C))", ["Boolean algebra", "Absorption law", "a+b", "simplified"])
+    require("Simplify using Boolean algebra: (P+Q)(P+Q')", ["minterms: 2,3", "simplified = P"])
     require("bool(A xor B)", ["Boolean algebra", "XOR identity", "a'&b+a&b'", "simplified"])
     require("Using Boolean algebra simplify (A and B) or (A and not B).", ["Simplify by Boolean algebra", "simplified = A"])
     require("bool(A^B)", ["Boolean algebra", "XOR identity", "a'&b+a&b'", "simplified"])

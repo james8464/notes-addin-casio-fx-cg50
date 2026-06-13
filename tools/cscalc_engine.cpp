@@ -3558,6 +3558,7 @@ static const char *skip_bool_words(const char *e) {
   bool moved = true;
   while (moved) {
     moved = false;
+    while (*e == ':' || *e == ',' || *e == '.' || *e == '-' || *e == ';') { ++e; moved = true; }
     if (starts(e, "whatis")) { e += 6; moved = true; }
     if (starts(e, "what")) { e += 4; moved = true; }
     if (starts(e, "calculate")) { e += 9; moved = true; }
@@ -3598,6 +3599,8 @@ static const char *skip_bool_words(const char *e) {
     if (starts(e, "boolean")) { e += 7; moved = true; }
     if (starts(e, "expression")) { e += 10; moved = true; }
     if (starts(e, "logic")) { e += 5; moved = true; }
+    if (starts(e, "using")) { e += 5; moved = true; }
+    if (starts(e, "booleanalgebra")) { e += 14; moved = true; }
     if (starts(e, "sumofproducts")) { e += 13; moved = true; }
     if (starts(e, "sopform")) { e += 7; moved = true; }
     if (starts(e, "sop")) { e += 3; moved = true; }

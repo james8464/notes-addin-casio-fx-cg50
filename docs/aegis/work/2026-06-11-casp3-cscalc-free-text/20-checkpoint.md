@@ -1,5 +1,33 @@
 # Checkpoint
 
+## 2026-06-13 Boolean Prefix Cleanup Slice
+
+Completed:
+- Ran a compact unseen CS/P3 probe batch after the prior commit.
+- Fixed CSCALC Boolean simplification prompts with prose prefixes and punctuation, e.g. `Simplify using Boolean algebra: (P+Q)(P+Q')`.
+- Added regression and rebuilt calculator-ready outputs.
+
+Evidence:
+- Probe case `Simplify using Boolean algebra: (P+Q)(P+Q')`: passed with `simplified = P`.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 483844 bytes`
+  - `CSCALC.g3a: 273260 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: 18178 bytes`
+
+Drift check:
+- Stayed inside CSCALC Boolean prefix parsing, tests, checkpoint, and rebuilt calculator files.
+- No Pure CAS, CASP3 source, menu/UI/session, NOTES source, or shared status-bar behavior changed.
+- Active goal remains open for further unseen-case hardening.
+
 ## 2026-06-13 Boolean And Paper 3 Prose Hardening Slice
 
 Completed:
