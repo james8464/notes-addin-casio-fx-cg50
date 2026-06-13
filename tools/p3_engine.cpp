@@ -23,9 +23,27 @@ static int add(char out[P3_MAX_LINES][P3_LINE_LEN], int n, const char *fmt, ...)
   return n + 1;
 }
 
+static bool p3_utf_token(const char *s, const char **tok, int *len) {
+  unsigned char a = (unsigned char)s[0], b = (unsigned char)s[1], c = (unsigned char)s[2];
+  if (a == 0xe2 && b == 0x89 && c == 0xa4) { *tok = "<="; *len = 3; return true; }
+  if (a == 0xe2 && b == 0x89 && c == 0xa5) { *tok = ">="; *len = 3; return true; }
+  if (a == 0xce && b == 0xbc) { *tok = "mu"; *len = 2; return true; }
+  if (a == 0xc2 && b == 0xb5) { *tok = "mu"; *len = 2; return true; }
+  if (a == 0xcf && b == 0x83) { *tok = "sigma"; *len = 2; return true; }
+  if (a == 0xce && b == 0xbb) { *tok = "lambda"; *len = 2; return true; }
+  if (a == 0xe2 && b == 0x88 && c == 0x9a) { *tok = "sqrt"; *len = 3; return true; }
+  return false;
+}
+
+static void append_tok(char *out, int *j, int cap, const char *tok) {
+  for (int k = 0; tok[k] && *j + 1 < cap; ++k) out[(*j)++] = tok[k];
+}
+
 static void clean(const char *in, char *out, int cap) {
   int j = 0;
   for (int i = 0; in && in[i] && j + 1 < cap; ++i) {
+    const char *tok = 0; int len = 0;
+    if (p3_utf_token(in + i, &tok, &len)) { append_tok(out, &j, cap, tok); i += len - 1; continue; }
     unsigned char c = (unsigned char)in[i];
     if (isspace(c)) continue;
     out[j++] = (char)tolower(c);
@@ -36,6 +54,8 @@ static void clean(const char *in, char *out, int cap) {
 static void raw_clean(const char *in, char *out, int cap) {
   int j = 0;
   for (int i = 0; in && in[i] && j + 1 < cap; ++i) {
+    const char *tok = 0; int len = 0;
+    if (p3_utf_token(in + i, &tok, &len)) { append_tok(out, &j, cap, tok); i += len - 1; continue; }
     unsigned char c = (unsigned char)in[i];
     if (isalnum(c) || c == '.' || c == '-') out[j++] = (char)tolower(c);
     else out[j++] = ',';

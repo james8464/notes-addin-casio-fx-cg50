@@ -5513,6 +5513,42 @@ Drift check:
 - Kept changes to CASP3/CSCALC general free-text handling, regressions, generated app outputs, and this checkpoint.
 - Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.
 
+## 2026-06-13 CASP3 Pasted Maths Notation Slice
+
+Completed:
+- Added CASP3 parser-boundary UTF-8 normalisation for pasted exam notation:
+  - `<=`/`>=` equivalents from `≤`/`≥`.
+  - Greek parameter labels: `μ`/`µ`, `σ`, `λ`.
+  - `sqrt` equivalent from `√`.
+- Fixed cumulative/tail routing for binomial, Poisson, and normal prompts using pasted symbols.
+- Added regression coverage for exact binomial tails, Poisson tails, normal tails, Greek labels, and mixed interval notation.
+
+Evidence:
+- Fresh probes fixed:
+  - `For X~B(20,0.35), find P(X≤6).` gives cumulative `P(X<=6)` and `sum from 0 to 6`.
+  - `For X~B(20,0.35), find P(X≥6).` gives tail `P(X>=6)` and `sum from 6 to 20`.
+  - `For X~Po(3.2), find P(X≤5).` gives cumulative Poisson working.
+  - `Normal μ=50 σ=10 find P(X≤65).` gives normal standardisation and `NormalCD` setup.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 503672 bytes`
+  - `CSCALC.g3a: 277832 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: records=48 bytes=18178`
+  - `CASP3.g3a sha256: 4740d35a578bdb31d748f3843b38ef3efdb6aec68bf1d634f958f1fad9677e79`
+
+Drift check:
+- Kept changes to CASP3 input normalisation, regressions, generated CASP3 output, and this checkpoint.
+- Did not touch CAS Pure source, menus, CSCALC source, NOTES source, or shared UI/status code.
+
 ## 2026-06-13 CSCALC Boolean Paste-Notation Slice
 
 Completed:
