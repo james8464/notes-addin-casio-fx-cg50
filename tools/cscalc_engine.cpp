@@ -3481,7 +3481,17 @@ static int eval_posform(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LE
   char a[2][48]; int na = args(s, a, 2);
   if (!(starts3(s, "posform(", "cnf(", "productofsums(") && na >= 1)) return 0;
   char exprbuf[96]; bool_norm(a[0], exprbuf, sizeof(exprbuf));
-  char vars[8]; int vc; collect_vars(exprbuf, vars, &vc);
+  char vars[8]; int vc = 0;
+  if (na >= 2) {
+    for (int i = 0; a[1][i] && vc < 6; ++i) {
+      if (!isalpha((unsigned char)a[1][i])) continue;
+      char v = (char)toupper((unsigned char)a[1][i]);
+      bool seen = false; for (int j = 0; j < vc; ++j) if (vars[j] == v) seen = true;
+      if (!seen) vars[vc++] = v;
+    }
+    vars[vc] = 0;
+  }
+  if (!vc) collect_vars(exprbuf, vars, &vc);
   if (vc == 0 || vc > 6) return add(out, 0, "Use up to 6 Boolean variables.");
   int rows = 1 << vc, zeros[64], zc = 0;
   for (int m = 0; m < rows; ++m) {
@@ -3950,6 +3960,26 @@ static void bool_clean_tail(const char *src, char *dst, int cap) {
   }
   int n = (int)strlen(dst);
   while (n > 0 && (dst[n-1] == '.' || dst[n-1] == '?' || dst[n-1] == '!')) dst[--n] = 0;
+}
+
+static bool bool_header_vars(const char *src, char *vars, int cap) {
+  vars[0] = 0;
+  const char *lp = strchr(src, '(');
+  if (!lp) return false;
+  const char *rp = strchr(lp, ')');
+  if (!rp) return false;
+  const char *eq = strchr(rp, '=');
+  if (!eq) return false;
+  int p = 0;
+  for (const char *q = lp + 1; q < rp && p + 1 < cap; ++q) {
+    if (!isalpha((unsigned char)*q)) continue;
+    char v = (char)toupper((unsigned char)*q);
+    bool seen = false;
+    for (int i = 0; i < p; ++i) if (vars[i] == v) seen = true;
+    if (!seen) vars[p++] = v;
+  }
+  vars[p] = 0;
+  return p > 0;
 }
 
 static void truthbits_cmd_from_text(const char *t, const char *bits, char *cmd, int cap) {
@@ -7209,12 +7239,17 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     const char *e = skip_bool_words(compact);
     if (e && *e) {
       char ce[96], ne[96];
+      char hv[8];
       const char *eq = strchr(e, '=');
       if (eq && eq > e && eq[1] && isalpha((unsigned char)e[0]) && (e[1] == '(' || e[1] == '=')) e = eq + 1;
       bool_clean_tail(e, ce, sizeof(ce));
       bool_arg_for_cmd(ce, ne, sizeof(ne));
-      sprintf(cmd, "%s(%s)", (has(t, "maxterm") || has(t, "maxterms")) ? "posform" : "bool", ne);
-      if (has(t, "maxterm") || has(t, "maxterms")) return eval_posform(cmd, out);
+      if (has(t, "maxterm") || has(t, "maxterms")) {
+        if (bool_header_vars(input, hv, sizeof(hv))) sprintf(cmd, "posform(%s,%s)", ne, hv);
+        else sprintf(cmd, "posform(%s)", ne);
+        return eval_posform(cmd, out);
+      }
+      sprintf(cmd, "bool(%s)", ne);
       return eval_bool(cmd, out);
     }
   }

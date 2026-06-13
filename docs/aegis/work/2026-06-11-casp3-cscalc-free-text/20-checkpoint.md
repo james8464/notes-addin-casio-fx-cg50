@@ -258,6 +258,41 @@ Drift check:
 - No Pure CAS, CASP3, NOTES, menu/UI/session, or shared status-bar source changed.
 - Active goal remains open for further unseen-case hardening.
 
+## 2026-06-13 P3/CS Unseen Routing Cleanup Slice
+
+Completed:
+- Fixed CASP3 projectile prompts that ask for both maximum height and range from known speed/angle, so they no longer route to the inverse "find projection speed from max height" method.
+- Narrowed CASP3 loaded rod/beam reaction parsing so weighted uniform rods with multiple loads include the rod weight, while no-weight multi-load beams still use the existing load-only route.
+- Fixed CSCALC product-of-sums/maxterm free text with headers like `F(A,B,C)=A and not C` so declared variables are preserved even if one variable is absent from the expression.
+- Added regressions and rebuilt calculator-ready CASP3/CSCALC artifacts.
+
+Evidence:
+- Direct probe `projectile speed 25 angle 35 find maximum height and range` now shows resolved components, maximum height, time of flight, and range.
+- Direct probe `rod length 6 weight 20 load 30 at 2m from A load 40 at 5m from A find reactions` now gives `R_B = 53.33333333 N` and `R_A = 36.66666667 N`.
+- Direct probe `Find maxterms for F(A,B,C)=A and not C` now uses `variables: A,B,C`.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 528312 bytes`
+  - `CSCALC.g3a: 290788 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: 18178 bytes`
+- Artifact hashes:
+  - `CASP3.g3a: 2977019ba5fb34043c2e2d4e9096bbba62f38d3b160f4bf9e5af6ac0813a62ea`
+  - `CSCALC.g3a: edf91ae2802286da28ca3f8a5d232601e3d5c33bb5c00513501f8747f272ab8c`
+
+Drift check:
+- Stayed inside CASP3/CSCALC parser hardening, tests, checkpoint, and rebuilt app artifacts.
+- No Pure CAS source, NOTES source, menu/UI/session, or shared status-bar code changed.
+- Active goal remains open for further unseen-case hardening.
+
 ## 2026-06-13 CSCALC Explicit Check Digit Weights Slice
 
 Completed:

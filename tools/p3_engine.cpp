@@ -4596,6 +4596,25 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "maximum height uses v_y=0.");
     return add(out, n, "H = u_y^2/(2g) = %.10g m", H);
   }
+  if (is_projectile_text(t) && has(c, "maximumheight") && has(t, "range") &&
+      (has(t, "speed") || has(t, "projection")) && nv >= 2) {
+    double u=0, ang=0, g=9.8;
+    bool hU=label_num(input,"speed",&u) || label_num(input,"u",&u) || label_num(input,"initialspeed",&u) ||
+            word_num(input,"speed",&u) || word_num(input,"velocity",&u);
+    bool hA=label_num(input,"angle",&ang) || label_num(input,"theta",&ang) || word_num(input,"angle",&ang) ||
+            prev_word_num(input,"degrees",&ang);
+    label_num(input,"g",&g);
+    if (!hU) u = v[0];
+    if (!hA) ang = v[1];
+    double ux = u * deg_cosine(ang), uy = u * deg_sine(ang);
+    double tof = 2 * uy / g, H = uy * uy / (2 * g), R = ux * tof;
+    int n = add(out, 0, "Resolve the initial velocity into horizontal and vertical components.");
+    n = add(out, n, "u_x = %.6g cos %.6g = %.10g", u, ang, ux);
+    n = add(out, n, "u_y = %.6g sin %.6g = %.10g", u, ang, uy);
+    n = add(out, n, "maximum height uses v_y=0: H = u_y^2/(2g) = %.10g", H);
+    n = add(out, n, "time of flight = 2u_y/g = %.10g", tof);
+    return add(out, n, "range = u_x*t = %.10g", R);
+  }
 	  if (is_projectile_text(t) && has(c, "maximumheight") &&
 	      (has(t, "speed") || has(t, "projection") || has(c, "speedofprojection")) && nv >= 2) {
     double H=0, ang=0;
@@ -4947,6 +4966,33 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
         n = add(out, n, "Vertical equilibrium: R_A + R_B = %.10g", sumW);
         return add(out, n, "R_A = %.10g N", RA);
       }
+    }
+    if ((has(t, "rod") || has(t, "beam") || has(t, "uniform")) &&
+        has(t, "load") && has(t, "at") && (has(t, "weight") || has(t, "uniform")) && nv >= 6) {
+      double L = 0, bw = 0;
+      bool hL = label_num(input, "length", &L) || word_num(input, "length", &L);
+      bool hb = word_num(input, "weight", &bw) || prev_word_num(input, "weight", &bw);
+      if (!hL) L = v[0];
+      if (!hb) bw = hL ? v[0] : v[1];
+      int start = 0;
+      for (int i = 0; i < nv; ++i) {
+        if (near_num(v[i], L) || near_num(v[i], bw)) start = i + 1;
+      }
+      if (start < 2) start = 2;
+      double sumW = bw, moment = bw * L / 2.0;
+      int n = add(out, 0, "For a horizontal beam in equilibrium, use moments and vertical forces.");
+      n = add(out, n, "Take moments about the left support A.");
+      char rhs[180]; rhs[0] = 0; int p = sprintf(rhs, "%.10g*(%.10g/2)", bw, L);
+      for (int i = start; i + 1 < nv; i += 2) {
+        double W = v[i], x = abs_num(v[i+1]);
+        sumW += W; moment += W*x;
+        if (p < (int)sizeof(rhs) - 36) p += sprintf(rhs+p, " + %.10g*%.10g", W, x);
+      }
+      double RB = L ? moment / L : 0, RA = sumW - RB;
+      n = add(out, n, "R_B*%.10g = %s", L, rhs);
+      n = add(out, n, "R_B = %.10g N", RB);
+      n = add(out, n, "Vertical equilibrium: R_A + R_B = %.10g", sumW);
+      return add(out, n, "R_A = %.10g N", RA);
     }
     if ((has(t, "rod") || has(t, "uniform") || has(t, "beam")) &&
         has(t, "support") && (has(t, "leftend") || (has(t, "left") && has(t, "end"))) && nv >= 5) {

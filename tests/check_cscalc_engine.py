@@ -593,6 +593,7 @@ def main():
     require("Draw truth table for (A xor B) and C.", ["Truth table for (a^b)&c", "A B C | F", "minterms: 3,5", "simplified = A'BC+AB'C"])
     require("Find minterms for A+B'C", ["minterms: 1,4,5,6,7", "simplified = A+B'C"])
     require("Find maxterms for A+B'C", ["zero rows: 0,2,3", "simplified POS = (A+C)&(A+B')"])
+    require("Find maxterms for F(A,B,C)=A and not C", ["variables: A,B,C", "zero rows: 0,1,2,3,5,7", "simplified POS = (A)&(C')"])
     require("Simplify boolean expression A not B plus C", ["minterms: 1,3,4,5,7", "simplified = C+AB'"])
     require("Use a Karnaugh map to simplify A'B + AB'", ["minterms: 1,2", "simplified = A'B+AB'"])
     require("Simplify (A plus B) not", ["minterms: 0", "simplified = A'B'"])
