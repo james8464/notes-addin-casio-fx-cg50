@@ -5434,8 +5434,42 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       sprintf(cmd, "impactsolve(%.10g,%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3], v[4]); return eval_mech(cmd, out);
     }
   }
+  if ((has(t, "wall") || has(t, "barrier")) && (has(t, "restitution") || has(t, "impact") || has(t, "hits")) &&
+      (has(t, "angle") || has(t, "degrees")) && nv >= 3) {
+    double u=0, ang=0, e=0;
+    bool hu=word_num(input,"speed",&u) || word_num(input,"velocity",&u);
+    bool ha=word_num(input,"angle",&ang) || label_num(input,"angle",&ang) || prev_word_num(input,"degrees",&ang);
+    bool he=word_num(input,"restitution",&e) || label_num(input,"e",&e) || word_num(input,"coefficient",&e);
+    if (!hu) u = v[0];
+    if (!ha) for (int i=0;i<nv;++i) if (!near_num(v[i], u) && v[i] > 1.5 && v[i] <= 90) { ang = v[i]; break; }
+    if (!he) for (int i=0;i<nv;++i) if (!near_num(v[i], u) && !near_num(v[i], ang) && v[i] > 0 && v[i] <= 1.5) { e = v[i]; break; }
+    bool to_normal = has(t, "normal");
+    double parallel = to_normal ? u * deg_sine(ang) : u * deg_cosine(ang);
+    double perp = to_normal ? u * deg_cosine(ang) : u * deg_sine(ang);
+    double after_perp = e * perp;
+    double sp = root(parallel*parallel + after_perp*after_perp);
+    int n = add(out, 0, "Resolve velocity into components parallel and perpendicular to the smooth wall.");
+    if (to_normal) n = add(out, n, "Angle is to the normal: parallel = u sin(theta), perpendicular = u cos(theta).");
+    else n = add(out, n, "Angle is to the wall: parallel = u cos(theta), perpendicular = u sin(theta).");
+    n = add(out, n, "parallel component is unchanged: %.10g", parallel);
+    n = add(out, n, "perpendicular component after impact = e*%.10g = %.10g", perp, after_perp);
+    return add(out, n, "speed after impact = sqrt(%.10g^2+%.10g^2) = %.10g m/s", parallel, after_perp, sp);
+  }
   if ((has(t, "restitution") || has(t, "collision") || has(t, "impact")) && nv >= 4) {
     sprintf(cmd, "restitution(%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3]); return eval_mech(cmd, out);
+  }
+  if ((has(t, "centreofmass") || has(t, "centerofmass") || ((has(t, "centre") || has(t, "center")) && has(t, "mass"))) &&
+      has(t, "particle") && nv >= 4) {
+    double msum = 0, mx = 0;
+    for (int i = 0; i + 1 < nv; i += 2) {
+      double m = v[i], x = v[i+1];
+      msum += m;
+      mx += m*x;
+    }
+    int n = add(out, 0, "For particles on a line, use xbar = sum(mx)/sum(m).");
+    n = add(out, n, "sum(m) = %.10g", msum);
+    n = add(out, n, "sum(mx) = %.10g", mx);
+    return add(out, n, "xbar = %.10g/%.10g = %.10g", mx, msum, msum ? mx/msum : 0);
   }
   if ((has(t, "resultant") || has(t, "vector")) && nv >= 2) {
     sprintf(cmd, "vector(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
@@ -6755,6 +6789,24 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "P(A or B)=P(A)+P(B)");
     n = add(out, n, "P(A or B)=%.6g+%.6g=%.10g", pa, pb, por);
     if (has(t, "neither")) return add(out, n, "P(neither)=1-P(A or B)=1-%.10g=%.10g", por, 1 - por);
+    return n;
+  }
+  if ((has(t, "probability") || has(c, "p(a)") || has(c, "p(b)")) &&
+      (has(t, "union") || has(c, "aorb") || has(c, "p(aorb)")) &&
+      !has(c, "p(aorb)=") &&
+      !has(c, "agivenb") && !has(c, "p(a|b)") && !has(t, "conditional") &&
+      (has(c, "aandb") || has(t, "and")) && nv >= 3) {
+    double pa = v[0], pb = v[1], pab = v[2];
+    double por = pa + pb - pab;
+    int n = add(out, 0, "Use the addition rule for probabilities.");
+    n = add(out, n, "P(A or B)=P(A)+P(B)-P(A and B)");
+    n = add(out, n, "P(A or B)=%.6g+%.6g-%.6g=%.10g", pa, pb, pab, por);
+    if (has(t, "independent") || has(t, "independence")) {
+      double prod = pa * pb;
+      n = add(out, n, "For independence, compare P(A and B) with P(A)P(B).");
+      n = add(out, n, "P(A)P(B)=%.6g*%.6g=%.10g", pa, pb, prod);
+      return add(out, n, abs_num(pab - prod) < 1e-9 ? "A and B are independent." : "A and B are not independent.");
+    }
     return n;
   }
   if ((has(c, "bgivena") || has(c, "p(b|a)")) &&
