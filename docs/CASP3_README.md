@@ -270,6 +270,28 @@ Examples:
 - `poissontail(3,2,1)`
 - `poissonstats(4.5)`
 
-## Natural Text
+## Command-Only Input
 
-Some short worded inputs are recognised, but command syntax is the reliable path. The app is designed for calculator-style command entry, not long natural-language extraction.
+This app is command-only. Use the menu templates or type one of the command forms below.
+
+## Full Command / Alias Index
+
+Aliases call the same feature as their primary command.
+
+- SUVAT: `suvat`
+- Projectiles: `projectile`, `proj`, `projectiles`, `projectileh`, `projectileheight`, `projheight`, `projectiley`, `projectilelevel`, `projlevel`, `projectileat`, `projectilepoint`, `projat`, `projectileangle`, `projangle`, `targetangle`
+- Basic mechanics: `force`, `newton`, `fma`, `weight`, `mg`, `friction`, `limitingfriction`, `moment`, `moments`
+- Moments/statics: `beam`, `beamreactions`, `supportreactions`, `ladder`, `ladderwall`, `ladderrough`, `equilibrium`, `forcebalance`, `balanceforces`, `equilpolar`, `forcepolar`, `balancepolar`
+- Inclines/pulleys: `incline`, `slope`, `plane`, `inclineacc`, `roughplaneacc`, `planeacc`, `connected`, `connectedparticles`, `twoparticles`, `pulley`, `pulleys`, `inclinepulley`, `pulleyincline`, `connectedincline`, `roughinclinepulley`, `roughpulleyincline`, `roughconnectedincline`
+- Momentum/energy: `impulse`, `momentumchange`, `momentum`, `momcons`, `consmomentum`, `commonvelocity`, `coalesce`, `stick`, `work`, `workdone`, `power`, `powerrate`, `energy`, `kepe`, `workenergy`, `workenergyforce`, `energyforce`, `driveforce`, `restitution`, `impact`, `collision`, `impactsolve`, `collisionsolve`, `restitutionsolve`
+- Variable/vector motion: `varacct`, `varacctpoly`, `variableacct`, `varaccx`, `varaccxpoly`, `variableaccx`, `varacc`, `variableacc`, `variableacceleration`, `vectorkin`, `vectormotion`, `vectorsuvat`, `vector`, `resultant`, `components`, `resolve`, `componentsfromforce`, `forcecomponents`
+- Normal distribution: `normal`, `normalz`, `zscore`, `normalvar`, `normalzvar`, `zscorevar`, `normalprob`, `normalcdf`, `normint`, `normalprobvar`, `normalcdfvar`, `normintvar`, `normaltail`, `normalupper`, `normaltp`, `normaltailvar`, `normaluppervar`, `normaltpvar`, `normalcond`, `normalgiven`, `normalconditional`, `normalcondbetween`, `normalgivencap`, `normalconditionalbetween`, `invnormal`, `inversenormal`, `normalinv`, `normalcrit`, `invnormalvar`, `inversenormalvar`, `normalinvvar`, `normalparams`, `normalparameters`, `normalmeansd`
+- Sample mean: `samplemean`, `xbarprob`, `samplemeanprob`, `samplemeantail`, `xbartail`, `sampletail`
+- Binomial: `binom`, `binomial`, `binompdf`, `binomcdf`, `binomialcdf`, `bincdf`, `binomtail`, `binomialtail`, `bintail`, `binomstats`, `binommeanvar`, `binomialstats`, `binomparams`, `binomfrommeanvar`, `binomialparams`, `binomnorm`, `normalapproxbinom`, `binomnormal`, `largebinomnormal`, `binomapprox`, `poissonapprox`, `poissonapproxbinom`, `binompoisson`
+- Hypothesis/critical regions: `critbinom`, `criticalbinom`, `criticalregion`, `binomcrit`, `hypbinom`, `binomtest`, `hypothesistest`, `hypnormal`, `normaltest`, `hypmean`, `critpoisson`, `criticalpoisson`, `poissoncrit`, `hyppoisson`, `poissontest`, `poissonhyp`
+- Probability: `cond`, `conditional`, `given`, `probor`, `union`, `aorb`, `bayes`, `bayestheorem`, `reverseconditional`, `independent`, `independence`, `testindependent`, `prob_work`, `probwork`
+- Poisson: `poisson`, `poissonpdf`, `poissoncdf`, `poissonle`, `poissontail`, `poissonrange`, `poissonbetween`, `porange`, `poissonstats`, `poissonmeanvar`, `postats`, `poissonnorm`, `normalapproxpoisson`, `poissonnormal`
+- Regression/correlation: `regress`, `regression`, `predict`, `regresscalc`, `regressionline`, `lobf`, `regresss`, `regresssummary`, `regsummary`, `pmcc`, `correlation`, `productmoment`, `pmccs`, `correlations`, `productmoments`, `spearman`, `spearmanrank`, `rankcorr`, `corrtest`, `correlationtest`, `pmcctest`, `regress_work`, `regresswork`
+- Data: `meanvar`, `variance`, `summary`, `groupmean`, `groupedmean`, `groupstats`, `discrete`, `expectation`, `randomvar`, `stratified`, `stratifiedsample`, `stratum`, `groupmedian`, `groupedmedian`, `interpolatemedian`, `groupquantile`, `groupedq`, `interpolateq`, `histdensity`, `frequencydensity`, `freqdensity`, `histfreq`, `histfrequency`, `frequencyfromdensity`, `outliers`, `iqrfences`, `outlierfences`
+- Coding transforms: `code`, `codex`, `xtocoded`, `uncode`, `decodecoded`, `codedtox`
+- Topic wrappers: `normal_work`, `normalwork`, `binom_work`, `binomwork`, `hyp_test`, `hyptest`

@@ -4298,7 +4298,8 @@ static int add_full_adder_lines(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
   return add(out, n, "1 1 1 | 1 1");
 }
 
-static int eval_free_text(const char *input, const char *compact, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
+#if 0
+static int disabled_sentence_routes(const char *input, const char *compact, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
   char t[192]; raw_clean(input, t, sizeof(t));
   double v[8]; int nv = scan_nums(t, v, 8);
   char bits[4][48]; int nb = scan_bits(t, bits, 4);
@@ -7744,6 +7745,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   return 0;
 }
+#endif
 
 int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
   for (int i = 0; i < CSCALC_MAX_LINES; ++i) out[i][0] = 0;
@@ -7873,7 +7875,6 @@ int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
   }
   n = eval_bool_prove(s, out); if (n) return n;
   n = eval_bool(s, out); if (n) return n;
-  n = eval_free_text(input, s, out); if (n) return n;
   n = add(out, 0, "Supported:");
   n = add(out, n, "bin hex den convert twos twosdec twosadd twossub signmag signmagdec fixed fixedenc parity repeatenc repeatdec shift arithshift xorbits andbits orbits notbits grayenc graydec hamming hammingenc checksum checkdigit rpn");
   n = add(out, n, "floatdec floatadd floatsub floatmul floatdiv floatrange floatbitsadd normal image sound bitrate transfer");

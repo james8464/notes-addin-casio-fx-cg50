@@ -405,6 +405,21 @@ Examples:
 - `rpn(A B and not)`
 - `fsm(A,010,A,0,B,A,1,A,B,0,A,B,1,B)`
 
-## Natural Text
+## Command-Only Input
 
-Some short question-like inputs are recognised, but command syntax is the reliable path.
+This app is command-only. Use the menu templates or type one of the command forms below.
+
+## Full Command / Alias Index
+
+Aliases call the same feature as their primary command.
+
+- Base conversion: `bcd`, `bcdenc`, `bcddec`, `bcddecode`, `denbcd`, `bin`, `binary`, `tobin`, `hex`, `hexadecimal`, `tohex`, `den`, `denary`, `decimal`, `convert`, `base`
+- Bit width/ranges: `bitsneeded`, `minbits`, `bitwidth`, `unsignedrange`, `urange`, `signmagrange`, `signmagnituderange`, `smrange`, `twosrange`, `tcrange`, `twoscomprange`, `onesrange`, `onescomprange`, `onescomplementrange`
+- Signed binary: `signmag`, `signmagnitude`, `sm`, `signmagdec`, `signmagnitudedec`, `smdec`, `ones`, `onescomp`, `onescomplement`, `onesdec`, `onescompdec`, `onescomplementdec`, `twos`, `tc`, `twoscomp`, `twosdec`, `tcdec`, `twosdecode`, `twosadd`, `tcadd`, `twossub`, `tcsub`, `twossubtract`
+- Binary arithmetic/bits: `binadd`, `binaryadd`, `addbits`, `binsub`, `binarysub`, `subtractbits`, `shift`, `binshift`, `arithshift`, `arithmeticshift`, `signedshift`, `parity`, `paritybit`, `repeatenc`, `repetitionenc`, `repeatencode`, `repeatdec`, `repetitiondec`, `majority`, `xorbits`, `andbits`, `orbits`, `notbits`, `invertbits`, `grayenc`, `binarytogray`, `graydec`, `graytobin`, `hamming`, `hammingdistance`, `bitdiff`, `hammingenc`, `hammingencode`, `hamming74`, `checksum`, `checksummod`, `binarychecksum`, `checkdigit`, `modcheck`, `weightedcheck`
+- Fixed/floating point: `fixed`, `fixeddec`, `fixedtc`, `fixedtwos`, `fixedtwosdec`, `fixedenc`, `fixedencode`, `fixedpointenc`, `fixedfrac`, `fixedfraction`, `fixedfracenc`, `fixedtcenc`, `fixedtwosenc`, `fixedtwosencode`, `floatdec`, `fpdec`, `floatdecode`, `floatnorm`, `fpnorm`, `normalise`, `normalize`, `normal`, `floatenc`, `fpenc`, `floatencode`, `floatadd`, `fpadd`, `floatingadd`, `floatsub`, `fpsub`, `floatingsub`, `floatmul`, `fpmul`, `floatingmul`, `floatdiv`, `fpdiv`, `floatingdiv`, `floatprecision`, `fpprecision`, `floatstep`, `floatnearest`, `fpnearest`, `closestfloat`, `floatbitsadd`, `mantissabitsadd`, `exactfloatbits`, `floatrange`, `fprange`, `realrange`, `floatcanrepresent`, `floatrepresentable`, `fpcan`
+- Storage/transfer: `image`, `bitmap`, `imagesize`, `imagecolors`, `bitmapcolors`, `colours`, `colourdepth`, `colordepth`, `bitsperpixel`, `colourcount`, `colorcount`, `pixelcolours`, `symbolbits`, `symbolsbits`, `bitsforsymbols`, `sound`, `audio`, `soundsize`, `bitrate`, `datarate`, `rate`, `bitratemb`, `datemb`, `mbyterate`, `bitratekb`, `datekb`, `kbyterate`, `transfer`, `transfertime`, `time`, `transfermb`, `megabytetransfer`, `mbtombit`, `transferkb`, `kilobytetransfer`, `kbtokbit`
+- Text/compression: `ascii`, `charcode`, `codepoint`, `unicode`, `unicodepoint`, `ucode`, `chars`, `textsize`, `characters`, `charset`, `charsetsize`, `textsymbols`, `compress`, `compression`, `ratio`, `dictcompress`, `dictionary`, `lzdict`, `rle`, `runlength`, `runlengthencoding`, `rletext`, `rlestring`, `runencode`, `huffman`, `huff`, `huffmancode`
+- Data/memory/hash: `sqlselect`, `selectwhere`, `sqlquery`, `sqlcount`, `countwhere`, `countrecords`, `records`, `recordsize`, `database`, `addressspace`, `addresses`, `addressbus`, `addressbits`, `minaddressbits`, `addresslines`, `memorycapacity`, `addresscapacity`, `memorybus`, `hashmod`, `hashtable`, `modhash`, `hashlinear`, `linearprobe`, `hashprobe`, `hashquadratic`, `quadraticprobe`, `quadprobe`
+- Algorithms/tracing: `rpn`, `postfix`, `reversepolish`, `fsm`, `dfa`, `fsmout`, `mealy`, `dijkstra`, `shortestpath`, `shortpath`, `preordertree`, `treeprelinks`, `prelinks`, `inordertree`, `treeinlinks`, `inlinks`, `postordertree`, `treepostlinks`, `postlinks`, `preorder`, `treepre`, `pretraverse`, `inorder`, `treein`, `intraverse`, `postorder`, `treepost`, `posttraverse`, `stack`, `stacktrace`, `pushpop`, `queue`, `queuetrace`, `enqueue`, `binarysearch`, `binsearch`, `bsearch`, `linearsearch`, `linsearch`, `seqsearch`, `bubblesort`, `bubble`, `insertionsort`, `insertion`, `selectionsort`, `selection`, `mergesort`, `merge`
+- Boolean/logic: `truth`, `truthtable`, `truthrows`, `bool`, `boolean`, `logic`, `posform`, `cnf`, `productofsums`, `truthbits`, `truthout`, `outputbits`, `maxterms`, `pos`, `zeros`, `minterms`, `kmap`, `karnaugh`, `kmapdc`, `mintermsdc`, `dcminterms`, `dontcare`, `nandform`, `onlynand`, `norform`, `onlynor`, `boolprove`, `provebool`, `logicprove`

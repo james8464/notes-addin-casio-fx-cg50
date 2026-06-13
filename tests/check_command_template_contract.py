@@ -45,11 +45,11 @@ BANNED = ["Verified", "not checked", "syntax error", "Bad Argument", "Unsupporte
 
 def build() -> None:
     subprocess.check_call([
-        "g++", "-std=c++11", "-Wall", "-Wextra", "-Itools",
+        "g++", "-std=c++11", "-Wall", "-Wextra", "-Wno-unused-function", "-Itools",
         "tools/p3_engine.cpp", "tools/p3_engine_host.cpp", "-o", str(P3_HOST),
     ], cwd=ROOT)
     subprocess.check_call([
-        "g++", "-std=c++11", "-Wall", "-Wextra", "-Itools",
+        "g++", "-std=c++11", "-Wall", "-Wextra", "-Wno-unused-function", "-Itools",
         "tools/cscalc_engine.cpp", "tools/cscalc_engine_host.cpp", "-o", str(CS_HOST),
     ], cwd=ROOT)
 

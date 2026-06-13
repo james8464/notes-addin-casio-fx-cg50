@@ -2680,7 +2680,8 @@ static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   return 0;
 }
 
-static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]) {
+#if 0
+static int disabled_sentence_routes(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   char t[192]; raw_clean(input, t, sizeof(t));
   char c[192]; clean(input, c, sizeof(c));
   double v[12]; int nv = scan_nums(t, v, 12);
@@ -10651,30 +10652,18 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   return 0;
 }
+#endif
 
 int p3_eval(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   for (int i=0;i<P3_MAX_LINES;++i) out[i][0]=0;
   char s[192]; clean(input, s, sizeof(s));
-  char h[384]; normalize_text(input, h, sizeof(h));
   if (!s[0]) return add(out, 0, "Enter a Paper 3 command.");
-  if ((has(s, "acceleration") || has(s, "accn")) && has(s, "/")) {
-    int nf = eval_free_text(h, out); if (nf) return nf;
-  }
   if (has(s, "given") && has(s, "n(")) {
     int ns = eval_stats(s, out); if (ns) return ns;
-    int nf = eval_free_text(h, out); if (nf) return nf;
-  }
-  if (has(s, "|") && (has(s, "~n(") || has(s, "normal"))) {
-    int nf = eval_free_text(h, out); if (nf) return nf;
-  }
-  if ((has(s, "samplemean") || (has(s, "sample") && has(s, "mean"))) &&
-      (has(s, "normal") || has(s, "~n(") || has(s, "populationmean"))) {
-    int nf = eval_free_text(h, out); if (nf) return nf;
   }
   int n = eval_suvat(s, out); if (n) return n;
   n = eval_mech(s, out); if (n) return n;
   n = eval_stats(s, out); if (n) return n;
-  n = eval_free_text(h, out); if (n) return n;
   n = add(out, 0, "Supported:");
   n = add(out, n, "suvat projectile projectileh projectileat projectileangle force weight friction moment incline inclineacc");
   n = add(out, n, "beam ladder connected pulley impulse momentum work power energy workenergyforce restitution vector resolve vectorkin varacc");
