@@ -1121,6 +1121,30 @@ static bool extract_x_interval(const char *compact, double *lower, double *upper
   return true;
 }
 
+static bool extract_t_interval(const char *compact, double *lower, double *upper) {
+  const char *p = strstr(compact, "<t<");
+  if (!p) p = strstr(compact, "<=t<=");
+  if (!p) p = strstr(compact, "<=t<");
+  if (!p) p = strstr(compact, "<t<=");
+  if (!p) return false;
+  const char *a = p;
+  while (a > compact && (isdigit((unsigned char)a[-1]) || a[-1] == '.' || a[-1] == '-')) --a;
+  char left[32]; int n = (int)(p - a);
+  if (n <= 0 || n >= (int)sizeof(left)) return false;
+  memcpy(left, a, n); left[n] = 0;
+  const char *b = strchr(p, 't');
+  if (!b) return false;
+  b = strchr(b, '<');
+  if (!b) return false;
+  while (*b == '<' || *b == '=') ++b;
+  char *end = 0;
+  double lo = strtod(left, 0), hi = strtod(b, &end);
+  if (end == b) return false;
+  if (hi < lo) { double q = lo; lo = hi; hi = q; }
+  *lower = lo; *upper = hi;
+  return true;
+}
+
 static bool parse_y_values(const char *input, double *ys, int *count) {
   const char *p = strstr(input, "values");
   if (!p) p = strstr(input, "ordinates");
@@ -2819,11 +2843,12 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     }
   }
   if (has(t, "velocity") && (has(t, "total") || has(t, "travelled") || has(t, "traveled")) &&
-      has(t, "distance") && (has(t, "from") || has(t, "first"))) {
+      has(t, "distance") && (has(t, "from") || has(t, "first") || has(c, "<t<") || has(c, "<=t"))) {
     double CA=0, CB=0, CC=0, CD=0, ct1=0, ct2=0;
     if (parse_cubic_poly_after_word(input, "velocity", &CA, &CB, &CC, &CD) &&
         !near_num(CA, 0) &&
-        word_num_with_t(input, "from", &ct1) && word_num_with_t(input, "to", &ct2)) {
+        ((word_num_with_t(input, "from", &ct1) && word_num_with_t(input, "to", &ct2)) ||
+         extract_t_interval(c, &ct1, &ct2))) {
       double pts[8]; int np = 0; pts[np++] = ct1;
       for (int step = 0; step < 400 && np < 7; ++step) {
         double a0 = ct1 + (ct2 - ct1) * step / 400.0;
@@ -2863,6 +2888,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     if (!parse_velocity_quad(input, &A, &B, &C)) return 0;
     if (!word_num_with_t(input, "from", &t1) || !word_num_with_t(input, "to", &t2)) {
       if (has(t, "first") && prev_word_num(input, "seconds", &t2)) t1 = 0;
+      else if (extract_t_interval(c, &t1, &t2)) {}
       else return 0;
     }
     double pts[4]; int np = 0; pts[np++] = t1;

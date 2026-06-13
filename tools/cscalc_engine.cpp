@@ -3041,7 +3041,14 @@ static int eval_bool(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN])
   bool_norm(expr, exprbuf, sizeof(exprbuf));
   expr = exprbuf;
   char vars[8]; int vc; collect_vars(expr, vars, &vc);
-  if (vc == 0 || vc > 6) return add(out, 0, "Use up to 6 Boolean variables.");
+  if (vc == 0) {
+    BParser p = { expr, 0, 0, {0}, 0 };
+    int v = p.expr() ? 1 : 0;
+    int n = add(out, 0, "Evaluate the Boolean expression.");
+    n = add(out, n, "%s = %d", expr, v);
+    return add(out, n, "output = %d", v);
+  }
+  if (vc > 6) return add(out, 0, "Use up to 6 Boolean variables.");
   int mins[64], mc = 0, rows = 1 << vc;
   int vals[64];
   for (int m = 0; m < rows; ++m) {
@@ -3708,6 +3715,10 @@ static bool make_gate_form_cmd(const char *input, bool nand, char *cmd, int cap)
           word_is(w, "gate") || word_is(w, "gates") ||
           word_is(w, "boolean") || word_is(w, "logic") || word_is(w, nand ? "nand" : "nor")) continue;
       if (w[0] && !w[1]) expr[p++] = w[0];
+      else for (int k = 0; w[k] && p + 2 < (int)sizeof(expr); ++k) {
+        if (k) expr[p++] = '*';
+        expr[p++] = w[k];
+      }
     } else {
       if (input[i] == '+' || input[i] == '*' || input[i] == '&' || input[i] == '|' || input[i] == '^' || input[i] == '\'' ||
           input[i] == ',' || input[i] == '(' || input[i] == ')') expr[p++] = input[i] == ',' ? '\'' : input[i];
@@ -6115,30 +6126,45 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     bool_clean_tail(e, ce, sizeof(ce));
     sprintf(cmd, "posform(%s)", ce); return eval_posform(cmd, out);
   }
-  if ((has(compact, "simplify") || has(compact, "boolean") || has(compact, "logic")) &&
+  if ((has(compact, "simplify") || has(compact, "boolean") || has(compact, "logic") || has(compact, "output")) &&
       has(compact, "when") && has(compact, "=")) {
     const char *e = skip_bool_words(compact);
     const char *wp = strstr(e, "when");
-    if (wp && wp > e) {
+    const char *fp = wp ? strstr(wp, "for") : 0;
+    if (wp && (wp > e || fp)) {
       char lhs[80]; int lp = 0;
-      for (const char *p = e; p < wp && lp < 79; ++p) lhs[lp++] = *p;
+      if (wp > e) {
+        for (const char *p = e; p < wp && lp < 79; ++p) lhs[lp++] = *p;
+      } else {
+        for (const char *p = fp + 3; p && *p && lp < 79; ++p) lhs[lp++] = *p;
+      }
       lhs[lp] = 0;
-      char var = 0, val = 0;
-      const char *eq = strchr(wp, '=');
-      for (const char *p = wp + 4; p && *p && p < eq; ++p) if (isalpha((unsigned char)*p)) { var = (char)tolower((unsigned char)*p); break; }
-      if (eq && (eq[1] == '0' || eq[1] == '1')) val = eq[1];
-      if (var && val) {
+      int assign[26]; for (int i = 0; i < 26; ++i) assign[i] = -1;
+      const char *end = (wp == e && fp) ? fp : e + strlen(e);
+      for (const char *p = wp + 4; p && *p && p < end; ++p)
+        if (isalpha((unsigned char)p[0]) && p[1] == '=' && (p[2] == '0' || p[2] == '1'))
+          assign[tolower((unsigned char)p[0]) - 'a'] = p[2] - '0';
+      bool any = false; for (int i = 0; i < 26; ++i) if (assign[i] >= 0) any = true;
+      if (lhs[0] && any) {
+        int ac = 0, only = -1; for (int i = 0; i < 26; ++i) if (assign[i] >= 0) { ac++; only = i; }
         char clean[80], expr[80], sub[80], norm[80];
         bool_clean_tail(lhs, clean, sizeof(clean));
         bool_arg_for_cmd(clean, expr, sizeof(expr));
         int sp = 0;
-        for (int i = 0; expr[i] && sp < 79; ++i) sub[sp++] = (tolower((unsigned char)expr[i]) == var) ? val : expr[i];
+        for (int i = 0; expr[i] && sp < 79; ++i) {
+          if (isalpha((unsigned char)expr[i]) && assign[tolower((unsigned char)expr[i]) - 'a'] >= 0) {
+            int v = assign[tolower((unsigned char)expr[i]) - 'a'];
+            if (expr[i+1] == '\'') { v = 1 - v; ++i; }
+            sub[sp++] = (char)('0' + v);
+          } else sub[sp++] = expr[i];
+        }
         sub[sp] = 0;
         bool_norm(sub, norm, sizeof(norm));
         char bcmd[96]; sprintf(bcmd, "bool(%s)", norm);
         char tmp[CSCALC_MAX_LINES][CSCALC_LINE_LEN];
         int tn = eval_bool(bcmd, tmp);
-        int n = add(out, 0, "Substitute %c=%c into the Boolean expression.", (char)toupper((unsigned char)var), val);
+        int n = ac == 1 ? add(out, 0, "Substitute %c=%d into the Boolean expression.", (char)('A' + only), assign[only])
+                        : add(out, 0, "Substitute the given values into the Boolean expression.");
         n = add(out, n, "new expression = %s", norm);
         for (int i = 0; i < tn && n < CSCALC_MAX_LINES; ++i) n = add(out, n, "%s", tmp[i]);
         return n;

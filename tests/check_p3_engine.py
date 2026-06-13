@@ -143,6 +143,7 @@ def main():
     require("A particle moves in a straight line. Its acceleration is 12/(2t+1)^3, v=3 at t=0. Find v at t=2.", ["Variable acceleration", "12/(2 t+1)^3", "v(2) = 5.88"])
     require("A particle moves along a line with velocity v = 9t^2 - 4t. Find acceleration at t=2 and displacement from t=1 to t=3.", ["a = dv/dt = 18 t -4", "at t=2, a = 32", "displacement = 63 - 1 = 62"])
     require("A particle moves with velocity v = 3t^2 - 12t + 5. Find the total distance travelled from t=0 to t=5.", ["Total distance", "Solve v=0", "total distance = 28.513"])
+    require("A particle moves with velocity v=t^2-4t+3 find total distance for 0<=t<=5", ["Total distance", "v = 1 t^2 -4 t +3", "total distance = 9.333"])
     require("A particle moves with velocity v = 4t^3 - 12t^2 + 9t. Find the displacement from t=0 to t=3.", ["v = 4 t^3", "s = integral(v)", "displacement = 13.5"])
     require("A particle moves with velocity v=1/(t+1)^2. Find displacement from t=0 to t=3.", ["v = 1/(t+1)^2", "displacement = -0.25 - -1 = 0.75"])
     require("A particle moves with velocity v = t^4 - 2t^3 - 3t^2. Find the displacement from t=0 to t=3.", ["v = 1 t^4 -2 t^3 -3 t^2", "s = integral(v)", "displacement = -18.9"])

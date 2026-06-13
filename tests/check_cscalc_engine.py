@@ -530,6 +530,8 @@ def main():
     require("What is NOT A AND B OR C", ["minterms: 1,2,3,5,7", "simplified = C+A'B"])
     require("Simplify F(A,B,C)=pi M(0,2,4,6)", ["Maxterm/POS method", "M0 = (A+B+C)", "simplified = C"])
     require("Use a Karnaugh map for F(A,B,C)=Σm(1,3,7)+d(5)", ["don't-care rows: 5", "simplified = C"])
+    require("Find the output when A=1 B=0 C=1 for (A+B).C'", ["Substitute the given values", "new expression = (1+0)&0", "output = 0"])
+    require("Convert A + BC to NAND only", ["Use NAND as a universal gate", "NAND form:", "B NAND C"])
     print("OK cscalc engine")
 
 
