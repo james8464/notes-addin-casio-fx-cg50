@@ -568,6 +568,8 @@ def main():
     require("A particle has acceleration vector a=(2i-3j). Initially velocity is (4i+j) and position is (i-2j). Find position at t=5.", ["Use r = r0 + ut + 1/2 at^2", "a = 2 i -3 j", "r = 46 i -34.5 j"])
     require("A particle moves with velocity vector v=(3t^2 i + (4t-1)j). Find acceleration at t=2 and displacement from t=0 to t=3.", ["differentiate for acceleration", "at t=2, a = 12 i +4 j", "displacement = 27 i +15 j"])
     require("A particle has velocity vector v=(4t i + (3t^2-2)j). Find acceleration at t=2", ["Differentiate the velocity vector", "a = dv/dt", "at t=2, a = 4 i +12 j"])
+    require("A particle has velocity v=(6t^2+1)i+(2t)j find acceleration at t=2", ["Differentiate the velocity vector", "at t=2, a = 24 i +2 j"])
+    require("A particle moves with acceleration a=6t i + 2 j, initial velocity (1,3), initial position (0,2). Find position at t=4", ["Integrate the acceleration vector", "using v(0) = 1 i +3 j", "r(4) = 68 i +30 j"])
     require("A car of mass 1000kg travels over top of a hill radius 40m at 12m/s. Find normal reaction.", ["mg - R = mv^2/r", "R = 1000*9.8 - 1000*12^2/40 = 6200 N"])
     require("A ladder length 5m rests against a rough wall and rough floor angle 60 weight 100 coefficient at floor 0.4 find wall friction.", ["Rough wall and rough floor", "Vertical equilibrium: R + G = W", "A second contact condition is needed"])
     require("A particle of mass 2kg is attached to a light elastic string with natural length 1m and modulus 20N. Find tension when extension is 0.3m.", ["Hooke's law", "T = 20*0.3/1 = 6 N"])

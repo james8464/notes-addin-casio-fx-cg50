@@ -6536,6 +6536,43 @@ Drift check:
 - Kept changes to CASP3/CSCALC parser/working logic, regressions, generated app outputs, and this checkpoint.
 - Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.
 
+## 2026-06-13 CASP3 Vector Integration Quality Slice
+
+Completed:
+- Added generic CASP3 vector acceleration integration from `a=(...)i+(...)j`, initial velocity pair, initial position pair, and target time.
+- Widened velocity-vector differentiation so free text with isolated `i`/`j` no longer falls into scalar velocity calculus.
+- Preserved displayed constant terms in vector velocity working.
+- Fixed labelled boxplot/outlier prompts so `Q1/Q3/min/max` labels do not become stray values to check.
+- Removed a dead coefficient helper after replacing it with the shared polynomial segment parser.
+- Added regressions for unseen vector mechanics and rebuilt calculator outputs.
+
+Evidence:
+- Probe-fixed cases: variable vector acceleration to position, vector velocity to acceleration without the word `vector`, labelled boxplot outlier fences.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 540968 bytes`
+  - `CSCALC.g3a: 291940 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: records=48 bytes=18178`
+  - `CAS.g3a sha256: 15f3aa342df2f8e9f3608032a17e116254df92d19141c271e45553de0b01a39e`
+  - `RUNMAT.g3a sha256: 084e197a81a047efbabaff2d2c051c5fab4c2180667967074f7075665ad39d70`
+  - `CASP3.g3a sha256: 743cbc6448c6d2264ef2a35fd96c5154ff7819bedec4c8576aaf2a51a4c78923`
+  - `CSCALC.g3a sha256: 7c730bdb2e3760d0e0ecefe9aec3ede2d1f257a07011b138e354cdf26665d8e8`
+  - `NOTES.g3a sha256: 203cf9cf42777fdab91639e9791b5ce202478fc54471e0addf68add34b5745e6`
+  - `CAS.PAK sha256: 4cf970de9480f9f3b06c80e60afe4b69f4d864067a068071cd974474a57f24d2`
+
+Drift check:
+- Kept changes to CASP3 parser/working logic, regressions, generated app outputs, and this checkpoint.
+- Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.
+
 ## 2026-06-13 CASP3 Cubic Vector and CF Tail Hardening Slice
 
 Completed:

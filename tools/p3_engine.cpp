@@ -286,27 +286,6 @@ static double read_num(const char *s) {
   return strtod(s, 0);
 }
 
-static bool coeff_of_t_power_before(const char *start, const char *end, int pow, double *coef) {
-  bool found = false;
-  *coef = 0;
-  for (const char *p = start; p && p < end && *p; ++p) {
-    if (*p != 't') continue;
-    int got = 1;
-    if (p[1] == '^') got = (int)read_num(p + 2);
-    if (got != pow) continue;
-    const char *q = p - 1;
-    if (q >= start && *q == '*') --q;
-    const char *e = q + 1;
-    while (q >= start && (isdigit((unsigned char)*q) || *q == '.')) --q;
-    const char *b = q + 1;
-    double c = b < e ? read_num(b) : 1;
-    if (q >= start && *q == '-') c = -c;
-    *coef += c;
-    found = true;
-  }
-  return found;
-}
-
 static bool coded_cmd_from_text(const char *compact, const double v[], int nv, char *cmd, int cap) {
   const char *p = strstr(compact, "y=(x");
   if (!p || nv < 2) return false;
@@ -2899,10 +2878,13 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       return add(out, n, "displacement = %.10g - %.10g = %.10g", F2, F1, F2-F1);
     }
   }
+  double vel_probe_x[2], vel_probe_y[2];
+  bool has_velocity_basis_vector = scan_ij_vectors(input, vel_probe_x, vel_probe_y, 2) > 0;
   if (has(t, "velocity") && has(t, "acceleration") &&
       (has(t, "at") || has(t, "att") || has(t, "time")) &&
       (has(c, "findacceleration") || has(c, "findaccn") || has(c, "accelerationat")) &&
-      !has(t, "vector") && !has(t, "displacement") && !has(t, "distance")) {
+      !has(t, "vector") && !has_velocity_basis_vector &&
+      !has(t, "displacement") && !has(t, "distance")) {
     double A=0, B=0, C=0, ta=0;
     bool ok = parse_poly_after_word(input, "velocity", &A, &B, &C);
     if (!ok && has(c, "v=")) ok = parse_velocity_quad(input, &A, &B, &C);
@@ -3204,6 +3186,39 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       return add(out, n, "r = %.10g i %+.10g j", x, y);
     }
   }
+  if ((has(t, "acceleration") || has(t, "accn") || has(c, "a=")) &&
+      (has(t, "velocity") || has(c, "u=") || has(c, "v=")) &&
+      has(t, "position") &&
+      (has(t, "findposition") || (has(t, "find") && has(t, "position")) || has(t, "positionat")) &&
+      has(t, "i") && has(t, "j")) {
+    const char *base = strstr(c, "a=");
+    if (!base) base = strstr(c, "acceleration");
+    if (!base) base = strstr(c, "accn");
+    const char *ip = base ? strchr(base, 'i') : 0;
+    const char *jp = ip ? strchr(ip, 'j') : 0;
+    double ax2=0, ax1=0, ax0=0, ay2=0, ay1=0, ay0=0;
+    double ux=0, uy=0, x0=0, y0=0, tt=0;
+    if (base && ip && jp && parse_poly_segment(base, ip, &ax2, &ax1, &ax0) &&
+        parse_poly_segment(ip + 1, jp, &ay2, &ay1, &ay0) &&
+        numeric_pair_after_word(input, "velocity", &ux, &uy) &&
+        numeric_pair_after_word(input, "position", &x0, &y0) &&
+        (last_label_num(input, "t", &tt) || word_num_with_t(input, "at", &tt) ||
+         word_num(input, "time", &tt) || nv > 0)) {
+      if (tt == 0 && nv > 0) tt = v[nv-1];
+      double vx = ax2*tt*tt*tt/3.0 + ax1*tt*tt/2.0 + ax0*tt + ux;
+      double vy = ay2*tt*tt*tt/3.0 + ay1*tt*tt/2.0 + ay0*tt + uy;
+      double x = ax2*tt*tt*tt*tt/12.0 + ax1*tt*tt*tt/6.0 + ax0*tt*tt/2.0 + ux*tt + x0;
+      double y = ay2*tt*tt*tt*tt/12.0 + ay1*tt*tt*tt/6.0 + ay0*tt*tt/2.0 + uy*tt + y0;
+      int n = add(out, 0, "Integrate the acceleration vector component by component.");
+      n = add(out, n, "a = (%.6g t^2 %+.6g t %+.6g)i + (%.6g t^2 %+.6g t %+.6g)j", ax2, ax1, ax0, ay2, ay1, ay0);
+      n = add(out, n, "v = integral a dt + constant vector");
+      n = add(out, n, "using v(0) = %.6g i %+.6g j", ux, uy);
+      n = add(out, n, "v(%.6g) = %.10g i %+.10g j", tt, vx, vy);
+      n = add(out, n, "r = integral v dt + constant vector");
+      n = add(out, n, "using r(0) = %.6g i %+.6g j", x0, y0);
+      return add(out, n, "r(%.6g) = %.10g i %+.10g j", tt, x, y);
+    }
+  }
   if ((has(t, "velocityvector") || has(c, "v=") || (has(t, "velocity") && has(t, "i") && has(t, "j"))) &&
       (has(t, "findposition") || (has(t, "find") && has(t, "position")) || has(t, "positionat")) &&
       has(t, "i") && has(t, "j")) {
@@ -3246,26 +3261,23 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "displacement = integral v dt from %.6g to %.6g", t0, t1);
     return add(out, n, "displacement = %.10g i %+.10g j", sx, sy);
   }
-  if ((has(t, "velocityvector") || (has(t, "velocity") && has(t, "vector"))) &&
+  if ((has(t, "velocityvector") || has(c, "v=") || (has(t, "velocity") && has(t, "i") && has(t, "j"))) &&
       !has(t, "positionvector") && !(has(t, "position") && has(t, "vector")) &&
       has(t, "acceleration") && has(c, "t") && has(t, "i") && has(t, "j")) {
     const char *base = strstr(c, "v=");
     if (!base) base = strstr(c, "velocityvector");
     if (!base) base = c;
     const char *ip = strchr(base, 'i'), *jp = ip ? strchr(ip, 'j') : 0;
-    double x2 = 0, x1 = 0, y2 = 0, y1 = 0, ta = 0;
+    double x2 = 0, x1 = 0, x0 = 0, y2 = 0, y1 = 0, y0 = 0, ta = 0;
     if (ip && jp && ip < jp) {
-      bool got = false;
-      got = coeff_of_t_power_before(base, ip, 2, &x2) || got;
-      got = coeff_of_t_power_before(base, ip, 1, &x1) || got;
-      got = coeff_of_t_power_before(ip, jp, 2, &y2) || got;
-      got = coeff_of_t_power_before(ip, jp, 1, &y1) || got;
+      bool got = parse_poly_segment(base, ip, &x2, &x1, &x0) &&
+                 parse_poly_segment(ip + 1, jp, &y2, &y1, &y0);
       if (got) {
         if (!(word_num_with_t(input, "at", &ta) || last_label_num(input, "t", &ta) ||
               word_num(input, "time", &ta))) ta = nv > 0 ? v[nv-1] : 0;
         double ax = 2*x2*ta + x1, ay = 2*y2*ta + y1;
         int n = add(out, 0, "Differentiate the velocity vector component by component.");
-        n = add(out, n, "v = (%.6g t^2 %+.6g t)i + (%.6g t^2 %+.6g t)j", x2, x1, y2, y1);
+        n = add(out, n, "v = (%.6g t^2 %+.6g t %+.6g)i + (%.6g t^2 %+.6g t %+.6g)j", x2, x1, x0, y2, y1, y0);
         n = add(out, n, "a = dv/dt = (%.6g t %+.6g)i + (%.6g t %+.6g)j", 2*x2, x1, 2*y2, y1);
         return add(out, n, "at t=%.6g, a = %.10g i %+.10g j", ta, ax, ay);
       }
@@ -7916,12 +7928,17 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     bool hq3=label_num(input,"q3",&q3) || word_num(input,"q3",&q3);
     bool hmn=label_num(input,"min",&mn) || label_num(input,"minimum",&mn) || word_num(input,"min",&mn);
     bool hmx=label_num(input,"max",&mx) || label_num(input,"maximum",&mx) || word_num(input,"max",&mx);
+    if (!hmn) { const char *pm = strstr(c, "minimum"); if (pm) { mn = read_num(pm + 7); hmn = true; } }
+    if (!hmx) { const char *pm = strstr(c, "maximum"); if (pm) { mx = read_num(pm + 7); hmx = true; } }
     if (hq1 && hq3 && (hmn || hmx)) {
-      int p2 = sprintf(cmd, "outliers(%.10g,%.10g", q1, q3);
-      if (hmn) p2 += sprintf(cmd+p2, ",%.10g", mn);
-      if (hmx) p2 += sprintf(cmd+p2, ",%.10g", mx);
-      sprintf(cmd+p2, ")");
-      return eval_stats(cmd, out);
+      double iqr = q3 - q1, lo = q1 - 1.5 * iqr, hi = q3 + 1.5 * iqr;
+      int n = add(out, 0, "Use the 1.5*IQR rule for outliers.");
+      n = add(out, n, "IQR = Q3 - Q1 = %.10g - %.10g = %.10g", q3, q1, iqr);
+      n = add(out, n, "lower fence = %.10g", lo);
+      n = add(out, n, "upper fence = %.10g", hi);
+      if (hmn) n = add(out, n, "%.10g is %s", mn, (mn < lo || mn > hi) ? "an outlier" : "not an outlier");
+      if (hmx) n = add(out, n, "%.10g is %s", mx, (mx < lo || mx > hi) ? "an outlier" : "not an outlier");
+      return n;
     }
     int p = sprintf(cmd, "outliers(%.10g,%.10g", hq1 ? q1 : v[0], hq3 ? q3 : v[1]);
     int start = (hq1 && hq3) ? 0 : 2;
