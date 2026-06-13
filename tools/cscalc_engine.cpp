@@ -3881,7 +3881,8 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     n = add(out, n, "the binary digits repeat, so no finite mantissa can be exact.");
     return add(out, n, "%.10g cannot be represented exactly in binary.", value);
   }
-  if (has(t, "fixed") && (has(t, "error") || has(t, "relativeerror")) &&
+  if ((has(t, "fixed") || has(t, "fractional") || has(t, "fraction")) &&
+      (has(t, "error") || has(t, "relativeerror") || has(t, "absoluteerror")) &&
       (has(t, "fractional") || has(t, "fraction") || has(t, "after")) && nv >= 2) {
     double bw = 0, value = v[0];
     bool hb = scan_before_word_num(t, "bit", &bw) || scan_before_word_num(t, "bits", &bw) ||

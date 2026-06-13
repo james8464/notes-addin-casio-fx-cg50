@@ -4624,6 +4624,21 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "v = %.6g*%.6g = %.10g m/s", r, w, r*w);
     return add(out, n, "centripetal acceleration = %.6g*%.6g^2 = %.10g m/s^2", r, w, r*w*w);
   }
+  if ((has(t, "conical") || (has(t, "pendulum") && has(t, "circle"))) &&
+      (has(t, "length") || has(t, "angle")) && (has(t, "speed") || has(t, "velocity")) && nv >= 2) {
+    double L=0, ang=0;
+    bool hL=word_num(input,"length",&L) || label_num(input,"length",&L);
+    bool ha=word_num(input,"angle",&ang) || label_num(input,"angle",&ang) || prev_word_num(input,"degrees",&ang);
+    if (!hL) L = v[0];
+    if (!ha) for (int i = 0; i < nv; ++i) if (!near_num(v[i], L)) { ang = v[i]; break; }
+    double r = L * deg_sine(ang);
+    double sp = root(r * 9.8 * deg_sine(ang) / deg_cosine(ang));
+    int n = add(out, 0, "For a conical pendulum, resolve tension vertically and horizontally.");
+    n = add(out, n, "T cos(theta)=mg and T sin(theta)=mv^2/r");
+    n = add(out, n, "so tan(theta)=v^2/(rg), with r=L sin(theta)");
+    n = add(out, n, "r = %.10g sin(%.10g) = %.10g m", L, ang, r);
+    return add(out, n, "v = sqrt(rg tan(theta)) = %.10g m/s", sp);
+  }
   if ((has(t, "unbanked") || has(t, "curve") || has(t, "bend")) &&
       (has(t, "coefficient") || has(t, "friction") || has(t, "mu")) &&
       (has(t, "maximumspeed") || has(t, "maxspeed") || (has(t, "maximum") && has(t, "speed"))) && nv >= 2) {
@@ -4750,10 +4765,19 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if ((has(t, "rough") || has(t, "friction")) && (has(t, "plane") || has(t, "inclined") || has(t, "incline")) &&
       (has(t, "coefficient") || has(t, "mu")) && (has(t, "equilibrium") || has(t, "rest") || has(t, "rests") || has(t, "limiting") || has(t, "least")) &&
-      !has(t, "force") && nv >= 2) {
+      !has(t, "force") && nv >= 1) {
     double m=0, ang=0;
     bool hm = label_num(input,"mass",&m) || word_num(input,"mass",&m);
     bool hA = label_num(input,"angle",&ang) || word_num(input,"angle",&ang) || prev_word_num(input,"degrees",&ang);
+    if (!hm) {
+      if (!hA) ang = v[0];
+      double mu = deg_cosine(ang) == 0 ? 0 : deg_sine(ang) / deg_cosine(ang);
+      int n = add(out, 0, "For limiting equilibrium on a rough inclined plane, friction = mu R.");
+      n = add(out, n, "Resolve perpendicular: R = mg cos(theta)");
+      n = add(out, n, "Resolve parallel: friction = mg sin(theta)");
+      n = add(out, n, "mu mg cos(theta) = mg sin(theta)");
+      return add(out, n, "least mu = tan(theta) = tan(%.6g) = %.10g", ang, mu);
+    }
     if (!hm) m = v[0];
     if (!hA) ang = nv > 1 ? v[1] : v[0];
     double down = m*9.8*deg_sine(ang), R = m*9.8*deg_cosine(ang), mu = R == 0 ? 0 : down / R;

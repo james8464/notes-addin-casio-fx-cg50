@@ -460,6 +460,7 @@ def main():
     require("Prove (A+B)' = A'B' using De Morgan.", ["Use De Morgan's law", "(A+B)' = A'.B'"])
     require("Convert decimal 0.1 into binary fixed point with 8 fractional bits.", ["0.1 * 2^8 = 25.6", "store nearest integer 26", "fixed point = 0.00011010"])
     require("Calculate the relative error when 0.1 is stored with 8 fractional bits fixed point.", ["store nearest integer 26", "stored value = 26/2^8 = 0.1015625", "relative error = 0.0015625/0.1 = 0.015625"])
+    require("Find the absolute and relative error storing 0.1 with 10 fractional bits.", ["store nearest integer 102", "absolute error = |0.099609375 - 0.1|", "relative error = 0.000390625/0.1 = 0.00390625"])
     require("Calculate the transmission time for a 12 MiB file over a 24 Mbps link.", ["12 MiB = 100663296 bits", "24 Mbit/s = 24000000 bit/s", "4.194304 s"])
     require("A serial transmission sends 10 bits per character for 1000 characters over 2000 bit/s. Find time.", ["total bits = 1000 characters * 10 bits = 10000 bits", "time = 10000/2000 = 5 s"])
     require("A packet has payload 1200 bytes and header 40 bytes. Find overhead percentage and efficiency.", ["overhead = 40/1240 * 100 = 3.225806452%", "efficiency = payload/total * 100 = 96.77419355%"])

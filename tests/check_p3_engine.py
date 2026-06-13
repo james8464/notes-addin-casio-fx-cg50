@@ -542,6 +542,8 @@ def main():
     require("A particle of mass 2kg is moving under force F=(3t+4)N. Initially at rest. Find speed after 5 seconds.", ["Impulse from a variable force", "impulse = 57.5 Ns", "v = 0 + 57.5/2 = 28.75"])
     require("A car travels at 20 m/s round a banked curve radius 50m with no friction. Find angle of banking.", ["tan(theta) = v^2/(rg)", "tan(theta) = 20^2/(50*9.8)", "theta = 39.225"])
     require("A particle is moving in a circle radius 2m speed 6m/s. Find centripetal acceleration.", ["centripetal acceleration is v^2/r", "a = 6^2/2 = 18"])
+    require("A conical pendulum length 2m angle 30 degrees find speed.", ["For a conical pendulum", "r=L sin(theta)", "v = sqrt(rg tan(theta))"])
+    require("Find coefficient of friction if a block on a plane angle 30 degrees is in limiting equilibrium.", ["friction = mu R", "mu mg cos(theta) = mg sin(theta)", "least mu = tan(theta)"])
     require("X has probability distribution x: 0 1 2 3 and p: 0.1 0.2 0.3 0.4. Find E(X) and Var(X).", ["Check probabilities: sum p = 1", "E(X) = 0*0.1+1*0.2+2*0.3+3*0.4 = 2", "Var(X)=E(X^2)-E(X)^2 = 1"])
     require("For the discrete random variable X with P(X=x) proportional to x for x=1,2,3,4. Find k and E(X).", ["write P(X=x)=kx", "sum x = 10, so k = 0.1", "E(X)=sum x*kx = k sum x^2 = 0.1*30 = 3"])
     require("A fair die is rolled until a six occurs. Find the probability that the first six occurs after 4 throws.", ["p=1/6", "P(X>4)=(5/6)^4"])
