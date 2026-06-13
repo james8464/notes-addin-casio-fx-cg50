@@ -88,6 +88,7 @@ def main():
     require("convert 39 to BCD", ["BCD encodes each denary digit", "BCD = 00111001"])
     require("decode BCD 0011 1001", ["Decode BCD", "0011 -> 3", "1001 -> 9", "denary = 39"])
     require("shift(00101100,left,2)", ["left shift", "10110000"])
+    require("Shift binary 101101 left by 3 bits", ["101101 shifted left by 3 = 101101000"])
     require("perform logical left shift by 3 places on 00101101", ["left shift", "00101101 shifted left by 3 = 01101000"])
     require("arithshift(11110000,right,2)", ["preserve the sign bit", "11110000 = -16", "11111100 = -4"])
     require("arithmetic right shift 11110000 by 2", ["preserve the sign bit", "11111100 = -4"])

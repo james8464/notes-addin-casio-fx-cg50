@@ -3076,11 +3076,24 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       return add(out, n, "at t=%.10g, a = %.10g", r2, 2*qa*r2 + qb);
     }
   }
-  if (has(t, "displacement") && has(t, "velocity") && has(t, "acceleration") &&
-      (has(t, "att") || has(t, "at")) && !has(t, "from")) {
+  if (has(t, "displacement") && has(t, "acceleration") &&
+      (has(t, "att") || has(t, "at")) && has(c, "t") && !has(t, "from")) {
     double A=0, B=0, C=0, time=0;
+    if (!(word_num_with_t(input, "at", &time) || first_num_after_word(input, "at", &time))) time = nv > 0 ? v[nv-1] : 0;
+    double CA=0, CB=0, CC=0, CD=0;
+    if (parse_cubic_poly_after_word(input, "displacement", &CA, &CB, &CC, &CD) &&
+        (!near_num(CA, 0) || !near_num(CB, 0) || !near_num(CC, 0))) {
+      double vv = (3*CA*time + 2*CB)*time + CC;
+      double aa = 6*CA*time + 2*CB;
+      int n = add(out, 0, "Velocity is ds/dt and acceleration is dv/dt.");
+      n = add(out, n, "s = %.6g t^3 %+.6g t^2 %+.6g t %+.6g", CA, CB, CC, CD);
+      n = add(out, n, "v = ds/dt = %.6g t^2 %+.6g t %+.6g", 3*CA, 2*CB, CC);
+      n = add(out, n, "a = dv/dt = %.6g t %+.6g", 6*CA, 2*CB);
+      if (has(t, "velocity")) n = add(out, n, "v(%.6g) = %.10g", time, vv);
+      return add(out, n, "a(%.6g) = %.10g", time, aa);
+    }
     if (parse_poly_after_word(input, "displacement", &A, &B, &C) &&
-        (word_num_with_t(input, "at", &time) || first_num_after_word(input, "at", &time))) {
+        (!near_num(A, 0) || !near_num(B, 0))) {
       double vv = 2*A*time + B;
       double aa = 2*A;
       int n = add(out, 0, "Velocity is ds/dt and acceleration is dv/dt.");
@@ -3288,7 +3301,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     int N = (int)Nd;
     int tail = prob_tail(c, t);
     int x = has(c, "one") ? 1 : 0;
-    if (has(c, "morethan")) tail = 2;
+    if (has(c, "nomorethan")) tail = -1;
+    else if (has(c, "morethan")) tail = 2;
     else if (has(c, "atleast") || has(c, "greaterthanorequal")) tail = 1;
     else if (has(c, "lessthanorequal") || has(c, "atmost")) tail = -1;
     else if (has(c, "lessthan") || has(t, "fewer")) tail = -2;
@@ -3399,8 +3413,9 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       return add_binom_range_lines(out, N, pv, lo + 1, hi - 1, "Required probability");
     }
     double blo=0, bhi=0;
-    bool has_lower = word_num(input, "atleast", &blo) || word_num(input, "greaterthanorequal", &blo) || word_num(input, "morethan", &blo);
-    bool lower_strict = has(c, "morethan") || has(c, "greaterthan");
+    bool no_more = has(c, "nomorethan");
+    bool has_lower = !no_more && (word_num(input, "atleast", &blo) || word_num(input, "greaterthanorequal", &blo) || word_num(input, "morethan", &blo));
+    bool lower_strict = !no_more && ((has(c, "morethan") && !has(c, "nomorethan")) || (has(c, "greaterthan") && !has(c, "greaterthanorequal")));
     bool has_upper = word_num(input, "lessthan", &bhi) || word_num(input, "fewerthan", &bhi) ||
                      word_num(input, "fewer", &bhi) || word_num(input, "atmost", &bhi) ||
                      word_num(input, "nomorethan", &bhi) || word_num(input, "lessthanorequal", &bhi);
@@ -5623,7 +5638,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     bool hLo=label_num(input,"lower",&lo) || label_num(input,"lo",&lo);
     bool hHi=label_num(input,"upper",&hi) || label_num(input,"hi",&hi);
     int tail = 0;
-    if (has(c, "morethan")) tail = 2;
+    if (has(c, "nomorethan")) tail = -1;
+    else if (has(c, "morethan")) tail = 2;
     else if (has(c, "atleast") || has(c, "greaterthanorequal")) tail = 1;
     else if (has(c, "lessthanorequal") || has(c, "atmost") || has(t, "cdf")) tail = -1;
     else if (has(c, "lessthan") || has(c, "fewerthan") || has(t, "fewer")) tail = -2;
@@ -5708,10 +5724,13 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       return eval_stats(cmd, out);
     }
     double blo=0, bhi=0;
-    bool has_lower = word_num(input, "atleast", &blo) || word_num(input, "greaterthanorequal", &blo) || word_num(input, "morethan", &blo);
-    bool lower_strict = has(c, "morethan") || has(c, "greaterthan");
-    bool has_upper = word_num(input, "lessthan", &bhi) || word_num(input, "atmost", &bhi) || word_num(input, "nomorethan", &bhi) || word_num(input, "lessthanorequal", &bhi);
-    bool upper_strict = has(c, "lessthan") && !has(c, "lessthanorequal");
+    bool no_more = has(c, "nomorethan");
+    bool has_lower = !no_more && (word_num(input, "atleast", &blo) || word_num(input, "greaterthanorequal", &blo) || word_num(input, "morethan", &blo));
+    bool lower_strict = !no_more && ((has(c, "morethan") && !has(c, "nomorethan")) || (has(c, "greaterthan") && !has(c, "greaterthanorequal")));
+    bool has_upper = word_num(input, "lessthan", &bhi) || word_num(input, "fewerthan", &bhi) ||
+                     word_num(input, "fewer", &bhi) || word_num(input, "atmost", &bhi) ||
+                     word_num(input, "nomorethan", &bhi) || word_num(input, "lessthanorequal", &bhi);
+    bool upper_strict = (has(c, "lessthan") || has(c, "fewerthan") || has(t, "fewer")) && !has(c, "lessthanorequal");
     if (hN && hP && has_lower && has_upper) {
       int lo_i = (int)blo + (lower_strict ? 1 : 0);
       int hi_i = (int)bhi - (upper_strict ? 1 : 0);

@@ -1400,9 +1400,16 @@ static int eval_binary_arith(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LI
     int k = (int)parse_int(a[2]); char b[65]; int len = (int)strlen(a[0]);
     for (int i = 0; i < len && i < 64; ++i) b[i] = a[0][i]; b[len] = 0;
     bool left = a[1][0] == 'l' || a[1][0] == '+';
-    for (int step = 0; step < k; ++step) {
-      if (left) { for (int i = 0; i < len - 1; ++i) b[i] = b[i+1]; b[len-1] = '0'; }
-      else { for (int i = len - 1; i > 0; --i) b[i] = b[i-1]; b[0] = '0'; }
+    bool grow = na >= 4 && starts(a[3], "grow");
+    if (left && grow) {
+      int nlen = len + k; if (nlen > 64) nlen = 64;
+      for (int i = len; i < nlen; ++i) b[i] = '0';
+      b[nlen] = 0;
+    } else {
+      for (int step = 0; step < k; ++step) {
+        if (left) { for (int i = 0; i < len - 1; ++i) b[i] = b[i+1]; b[len-1] = '0'; }
+        else { for (int i = len - 1; i > 0; --i) b[i] = b[i-1]; b[0] = '0'; }
+      }
     }
     int n = add(out, 0, left ? "Logical left shift: move bits left, fill right with 0." : "Logical right shift: move bits right, fill left with 0.");
     n = add(out, n, "%s shifted %s by %d = %s", a[0], left ? "left" : "right", k, b);
@@ -5839,7 +5846,12 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   if (has(t, "shift") && nb >= 1 && nv >= 1) {
     double sh = v[nv-1]; scan_after_word_num(t, "by", &sh);
-    sprintf(cmd, "shift(%s,%s,%lld)", bits[0], has(t, "right") ? "right" : "left", (long long)sh); return eval_binary_arith(cmd, out);
+    double bw = 0;
+    bool fixed = has(t, "fixed") || has(t, "register") ||
+                 (scan_before_word_num(t, "bit", &bw) && bw >= (double)strlen(bits[0]) && (long long)bw != (long long)sh);
+    sprintf(cmd, "shift(%s,%s,%lld%s)", bits[0], has(t, "right") ? "right" : "left",
+            (long long)sh, (!fixed && !has(t, "right") && !has(t, "logical")) ? ",grow" : "");
+    return eval_binary_arith(cmd, out);
   }
   if (has(t, "parity") && nb >= 1) {
     sprintf(cmd, "parity(%s,%s)", bits[0], has(t, "odd") ? "odd" : "even"); return eval_binary_arith(cmd, out);
