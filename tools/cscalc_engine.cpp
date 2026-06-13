@@ -1433,6 +1433,20 @@ static int eval_twos(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN])
     n = add(out, n, "magnitude bits %s = %d.", a[0] + 1, mag);
     return add(out, n, "%s = %d", a[0], val);
   }
+  if (starts3(s, "onesdec(", "onescompdec(", "onescomplementdec(") && na == 1) {
+    int w = (int)strlen(a[0]);
+    int val = 0;
+    if (a[0][0] == '0') val = bin_unsigned(a[0]);
+    else {
+      char inv[65];
+      for (int i = 0; i < w && i < 64; ++i) inv[i] = a[0][i] == '1' ? '0' : '1';
+      inv[w] = 0;
+      val = -bin_unsigned(inv);
+    }
+    int n = add(out, 0, "One's complement: positive numbers are ordinary binary.");
+    if (a[0][0] == '1') n = add(out, n, "MSB=1, so invert all bits and make the value negative.");
+    return add(out, n, "%s = %d", a[0], val);
+  }
   if ((starts(s, "twosdec(") || starts(s, "tcdec(") || starts(s, "twosdecode(")) && na == 1) {
     int n = add(out, 0, "MSB is sign bit.");
     if (a[0][0] == '0') n = add(out, n, "MSB=0, so use unsigned place values.");
@@ -1448,6 +1462,17 @@ static int eval_twos(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN])
     int n = add(out, 0, "%d-bit sign-and-magnitude.", w);
     n = add(out, n, "sign bit = %d because the value is %s.", v < 0 ? 1 : 0, v < 0 ? "negative" : "positive");
     n = add(out, n, "magnitude = |%lld| = %lld -> %s", v, mag, mb);
+    return add(out, n, "%lld -> %s", v, b);
+  }
+  if (starts3(s, "ones(", "onescomp(", "onescomplement(") && na >= 2) {
+    long long v = parse_int(a[0]); int w = (int)parse_int(a[1]); char b[65];
+    long long mag = v < 0 ? -v : v;
+    to_bin(mag, w, b);
+    int n = add(out, 0, "%d-bit one's complement.", w);
+    if (v < 0) {
+      for (int i = 0; i < w && b[i]; ++i) b[i] = b[i] == '1' ? '0' : '1';
+      n = add(out, n, "Write |%lld| in binary, then invert every bit.", v);
+    }
     return add(out, n, "%lld -> %s", v, b);
   }
   if ((starts(s, "twos(") || starts(s, "tc(") || starts(s, "twoscomp(")) && na >= 2) {
@@ -5788,6 +5813,8 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   bool tc = tc_hint;
   bool sm = has(t, "signmagnitude") || (has(t, "sign") && has(t, "magnitude"));
+  bool oc = has(t, "onescomplement") || has(t, "onecomplement") ||
+            (has(t, "one") && has(t, "complement")) || has(t, "1scomplement");
   if (tc && (has(t, "add") || has(t, "sum") || has(t, "plus")) &&
       !has(t, "subtract") && !has(t, "minus") && nb >= 2) {
     sprintf(cmd, "twosadd(%s,%s)", bits[0], bits[1]);
@@ -6259,6 +6286,20 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if (sm && nb >= 1 && (has(t, "decode") || has(t, "denary") || has(t, "decimal"))) {
     sprintf(cmd, "signmagdec(%s)", bits[0]); return eval_twos(cmd, out);
   }
+  if (oc && nb >= 1 && (has(t, "decode") || has(t, "denary") || has(t, "decimal"))) {
+    sprintf(cmd, "onesdec(%s)", bits[0]); return eval_twos(cmd, out);
+  }
+  if (oc && nv >= 2 && nb == 0 &&
+      (has(t, "represent") || has(t, "encode") || has(t, "convert")) &&
+      (has(t, "bit") || has(t, "bits"))) {
+    double bw = 0; long long bitsw = (long long)v[0], val = (long long)v[1];
+    if ((scan_before_word_num(t, "bit", &bw) || scan_before_word_num(t, "bits", &bw)) && bw > 0) {
+      bitsw = (long long)bw;
+      for (int i = 0; i < nv; ++i) if ((long long)v[i] != bitsw) { val = (long long)v[i]; break; }
+    }
+    if ((has(t, "minus") || has(t, "negative")) && val > 0) val = -val;
+    sprintf(cmd, "ones(%lld,%lld)", val, bitsw); return eval_twos(cmd, out);
+  }
   if (sm && nv >= 2 && nb == 0 &&
       (has(t, "represent") || has(t, "encode") || has(t, "convert")) &&
       (has(t, "bit") || has(t, "bits"))) {
@@ -6472,12 +6513,19 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     const char *dp = strstr(t, "digits");
     const char *wp = strstr(t, "weights");
     if (!wp) wp = strstr(t, "weight");
-    if (dp && wp && wp > dp) {
+    if (dp && wp) {
       char dseg[160], wseg[160];
-      int dl = (int)(wp - dp);
-      if (dl >= (int)sizeof(dseg)) dl = (int)sizeof(dseg) - 1;
-      memcpy(dseg, dp, dl); dseg[dl] = 0;
-      strncpy(wseg, wp, sizeof(wseg) - 1); wseg[sizeof(wseg) - 1] = 0;
+      if (wp > dp) {
+        int dl = (int)(wp - dp);
+        if (dl >= (int)sizeof(dseg)) dl = (int)sizeof(dseg) - 1;
+        memcpy(dseg, dp, dl); dseg[dl] = 0;
+        strncpy(wseg, wp, sizeof(wseg) - 1); wseg[sizeof(wseg) - 1] = 0;
+      } else {
+        int wl = (int)(dp - wp);
+        if (wl >= (int)sizeof(wseg)) wl = (int)sizeof(wseg) - 1;
+        memcpy(wseg, wp, wl); wseg[wl] = 0;
+        strncpy(dseg, dp, sizeof(dseg) - 1); dseg[sizeof(dseg) - 1] = 0;
+      }
       double ds[16], ws[16];
       int nd = scan_nums(dseg, ds, 16), nw = scan_nums(wseg, ws, 16);
       if (nd > 0 && nw >= nd) {
@@ -6782,6 +6830,50 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       return add(out, n, "percentage reduction = %.6g%%", (oldb - newb) * 100.0 / oldb);
     }
     sprintf(cmd, "compress(%.10g,%.10g)", v[0], v[1]); return eval_storage(cmd, out);
+  }
+  if ((has(t, "huffman") || has(t, "huffmancode")) && has(t, "code") && has(t, "encode")) {
+    char code[26][24]; for (int i = 0; i < 26; ++i) code[i][0] = 0;
+    for (int i = 0; input[i]; ++i) {
+      if (!isalpha((unsigned char)input[i])) continue;
+      int sym = toupper((unsigned char)input[i]) - 'A';
+      int q = i + 1;
+      while (input[q] == ' ' || input[q] == '\t') ++q;
+      if (input[q] != '=') continue;
+      ++q;
+      while (input[q] == ' ' || input[q] == '\t') ++q;
+      int k = 0;
+      while ((input[q] == '0' || input[q] == '1') && k + 1 < 24) code[sym][k++] = input[q++];
+      code[sym][k] = 0;
+    }
+    const char *raw = 0;
+    for (int i = 0; input[i]; ++i) {
+      if (tolower((unsigned char)input[i]) == 'e' && tolower((unsigned char)input[i+1]) == 'n' &&
+          tolower((unsigned char)input[i+2]) == 'c' && tolower((unsigned char)input[i+3]) == 'o' &&
+          tolower((unsigned char)input[i+4]) == 'd' && tolower((unsigned char)input[i+5]) == 'e') {
+        raw = input + i + 6;
+        break;
+      }
+    }
+    if (raw) {
+      char msg[64]; int mp = 0;
+      for (int i = 0; raw[i] && mp + 1 < (int)sizeof(msg); ++i) {
+        if (isalpha((unsigned char)raw[i])) msg[mp++] = (char)toupper((unsigned char)raw[i]);
+        else if (mp > 0 && (raw[i] == '.' || raw[i] == ',')) break;
+      }
+      msg[mp] = 0;
+      char bitsout[160]; int bp = 0; bool ok = mp > 0;
+      for (int i = 0; msg[i] && ok; ++i) {
+        int sym = msg[i] - 'A';
+        if (sym < 0 || sym >= 26 || !code[sym][0]) { ok = false; break; }
+        for (int j = 0; code[sym][j] && bp + 1 < (int)sizeof(bitsout); ++j) bitsout[bp++] = code[sym][j];
+      }
+      bitsout[bp] = 0;
+      if (ok) {
+        int n = add(out, 0, "Use the given Huffman code table.");
+        n = add(out, n, "Replace each symbol by its code.");
+        return add(out, n, "%s -> %s", msg, bitsout);
+      }
+    }
   }
   if ((has(t, "huffman") || has(t, "huffmancode")) && nv >= 2) {
     int p = sprintf(cmd, "huffman(%.10g", v[0]);
