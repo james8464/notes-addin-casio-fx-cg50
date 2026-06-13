@@ -38,6 +38,22 @@ static int contains_ci(const char *s, const char *needle) {
   return 0;
 }
 
+static void lower_in_place(char *s) {
+  for (int i = 0; s[i]; ++i) s[i] = lower_char(s[i]);
+}
+
+static int contains_lc(const char *s, const char *needle_lc) {
+  if (!needle_lc || !needle_lc[0]) return 1;
+  int first = needle_lc[0];
+  for (int i = 0; s[i]; ++i) {
+    if (lower_char(s[i]) != first) continue;
+    int j = 1;
+    while (needle_lc[j] && s[i + j] && lower_char(s[i + j]) == needle_lc[j]) ++j;
+    if (!needle_lc[j]) return 1;
+  }
+  return 0;
+}
+
 static int ends_with(const char *s, const char *tail) {
   int n = strlen(s), m = strlen(tail);
   if (n < m) return 0;
@@ -185,13 +201,14 @@ static void wait_text_page(const char *title, const char *const *lines, int coun
     if (key == KEY_CTRL_F1) {
       char q[32] = "";
       if (ui_input("Find text", q, sizeof(q), tick) && q[0]) {
+        lower_in_place(q);
         int found = -1;
         for (int i = top + 1; i < count; ++i) {
-          if (contains_ci(lines[i], q)) { found = i; break; }
+          if (contains_lc(lines[i], q)) { found = i; break; }
         }
         if (found < 0) {
           for (int i = 0; i <= top && i < count; ++i) {
-            if (contains_ci(lines[i], q)) { found = i; break; }
+            if (contains_lc(lines[i], q)) { found = i; break; }
           }
         }
         if (found >= 0) {
@@ -230,7 +247,7 @@ static int file_contains_text(const char *path, const char *q) {
     if (got <= 0) break;
     int total = tail_len + got;
     file_buf[total] = 0;
-    if (contains_ci(file_buf, q)) {
+    if (contains_lc(file_buf, q)) {
       Bfile_CloseFile_OS(h);
       return 1;
     }
@@ -277,9 +294,9 @@ static int search_all_rec(const char *dir, const char *q, int depth, int n) {
         join_str(child, sizeof(child), full, "\\");
         n = search_all_rec(child, q, depth + 1, n);
       } else if (ends_with(name, ".txt")) {
-        int by_name = contains_ci(name, q) || contains_ci(full, q);
-        int by_text = file_contains_text(full, q);
-        if (by_name || by_text) n = add_search_result(n, full, by_text ? "text" : "name");
+        int by_name = contains_lc(name, q) || contains_lc(full, q);
+        if (by_name) n = add_search_result(n, full, "name");
+        else if (file_contains_text(full, q)) n = add_search_result(n, full, "text");
       }
     }
     ret = Bfile_FindNext_NON_SMEM(handle, found, (char *)&info);
@@ -291,6 +308,7 @@ static int search_all_rec(const char *dir, const char *q, int depth, int n) {
 static void search_all_notes(unsigned *tick) {
   char q[32] = "";
   if (!ui_input("Find all text", q, sizeof(q), tick) || !q[0]) return;
+  lower_in_place(q);
   int n = search_all_rec("\\\\fls0\\", q, 0, 0);
   if (!n) {
     static const char *const none[] = {"No matching text file."};
