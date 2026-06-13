@@ -1,5 +1,38 @@
 # Checkpoint
 
+## 2026-06-13 P3/CS General Parser Finalisation Slice
+
+Completed:
+- Hardened CASP3 chi-squared goodness-of-fit free text so expected ratios/probabilities are scaled to observed totals.
+- Added CASP3 generic histogram class-interval frequency handling, grouped quartile labelled interpolation, and loaded uniform-rod centre-of-mass route.
+- Added CSCALC generic free-text CRC, growing-width binary addition, binary multiplication, decimal-fraction-to-binary fallback, and robust floating mantissa/exponent width parsing.
+- Fixed fixed-binary scanning so decimal values like `0.1875` are not partially read as binary `0.1`.
+- Added regressions and rebuilt calculator-ready app files.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 519636 bytes`
+  - `CSCALC.g3a: 289144 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: 18178 bytes`
+- Artifact hashes:
+  - `CASP3.g3a: 6079e07bcee428ffebea3bf4a9724fddd8b97e3befd522ec04af4a8a7d5bd312`
+  - `CSCALC.g3a: 8f68423d99a239f62e60da32d452f04e1cf4024c8c9c2f2bbbf788a70ba2be86`
+
+Drift check:
+- Stayed inside CASP3/CSCALC parser hardening, tests, checkpoint, and rebuilt artifacts.
+- No Pure CAS source, NOTES source, menus, or shared UI/status code changed.
+- Active goal remains open for further unseen-case hardening.
+
 ## 2026-06-13 Boolean Gate And Binomial Parameter Slice
 
 Completed:

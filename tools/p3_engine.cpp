@@ -2678,7 +2678,16 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       double obs[10], ex[10];
       int no = scan_nums(oseg, obs, 10);
       int ne = scan_nums(eseg, ex, 10);
-      if (no > 1 && ne >= no) return add_chi_gof_lines(out, obs, ex, no, alpha);
+      if (no > 1 && ne >= no) {
+        double ot = 0, et = 0;
+        for (int i = 0; i < no; ++i) { ot += obs[i]; et += ex[i]; }
+        if (et > 0 && (has(t, "ratio") || has(t, "proportion") || has(t, "probabilit") ||
+                       (et > 0.99 && et < 1.01) || abs_num(et - ot) > 1e-9)) {
+          double scale = ot / et;
+          for (int i = 0; i < no; ++i) ex[i] *= scale;
+        }
+        return add_chi_gof_lines(out, obs, ex, no, alpha);
+      }
     }
     if ((has(t, "contingency") || has(t, "independence") || has(t, "association") || has(t, "twoway") ||
          has(t, "2x2")) && nv >= 4) {
@@ -5676,7 +5685,12 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     sprintf(cmd, "force(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
   }
   if (has(t, "weight") && nv >= 1) {
+    if (has(t, "rod") || has(t, "centreofmass") || has(t, "centerofmass") ||
+        ((has(t, "centre") || has(t, "center")) && has(t, "mass"))) {
+      /* Let the centre-of-mass handlers below own these questions. */
+    } else {
     sprintf(cmd, "weight(%.10g)", v[0]); return eval_mech(cmd, out);
+    }
   }
   if ((has(t, "incline") || has(t, "inclined") || has(t, "slope") || has(t, "plane")) &&
       (has(t, "resistance") || has(t, "resistive")) &&
@@ -6305,6 +6319,49 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "mass = integral lambda dx = %.10g", mass);
     n = add(out, n, "moment = integral x*lambda dx = %.10g", moment);
     return add(out, n, "xbar = %.10g/%.10g = %.10g", moment, mass, mass ? moment/mass : 0);
+  }
+  if ((has(t, "centreofmass") || has(t, "centerofmass") || ((has(t, "centre") || has(t, "center")) && has(t, "mass"))) &&
+      (has(t, "rod") || has(t, "wire")) && nv >= 3) {
+    double L = 0, rodW = 0;
+    bool hL = word_num(input, "length", &L) || prev_word_num(input, "m", &L);
+    bool hW = word_num(input, "weight", &rodW);
+    if (!hL) L = v[0];
+    if (!hW) rodW = v[1];
+    double msum = rodW, moment = rodW * L / 2.0;
+    int usedL = -1, usedW = -1;
+    for (int i = 0; i < nv; ++i) {
+      if (usedL < 0 && near_num(v[i], L)) { usedL = i; continue; }
+      if (usedW < 0 && near_num(v[i], rodW)) { usedW = i; continue; }
+    }
+    if ((has(t, "ata") || has(t, "at a") || has(c, "ata")) &&
+        (has(t, "atb") || has(t, "at b") || has(c, "atb"))) {
+      double loads[2]; int lc = 0;
+      for (int i = 0; i < nv && lc < 2; ++i)
+        if (i != usedL && i != usedW) loads[lc++] = v[i];
+      if (lc >= 2) {
+        msum += loads[0] + loads[1];
+        moment += loads[1] * L;
+        int n = add(out, 0, "For a loaded uniform rod, take moments about A.");
+        n = add(out, n, "rod weight %.10g acts at midpoint %.10g", rodW, L/2.0);
+        n = add(out, n, "load at A has zero moment; load at B has moment %.10g*%.10g", loads[1], L);
+        n = add(out, n, "total weight = %.10g", msum);
+        n = add(out, n, "total moment about A = %.10g", moment);
+        return add(out, n, "centre of mass from A = %.10g/%.10g = %.10g", moment, msum, msum ? moment/msum : 0);
+      }
+    }
+    for (int i = 0; i < nv; ++i) {
+      if (i == usedL || i == usedW) continue;
+      double w = v[i], x = 0;
+      if ((has(t, " atb") || has(t, " at b") || has(t, "atb")) && i == nv - 1) x = L;
+      else if (i + 1 < nv && i + 1 != usedL && i + 1 != usedW) x = v[++i];
+      else x = 0;
+      msum += w; moment += w * x;
+    }
+    int n = add(out, 0, "For a loaded uniform rod, take moments about A.");
+    n = add(out, n, "rod weight %.10g acts at midpoint %.10g", rodW, L/2.0);
+    n = add(out, n, "total weight = %.10g", msum);
+    n = add(out, n, "total moment about A = %.10g", moment);
+    return add(out, n, "centre of mass from A = %.10g/%.10g = %.10g", moment, msum, msum ? moment/msum : 0);
   }
   if ((has(t, "centreofmass") || has(t, "centerofmass") || ((has(t, "centre") || has(t, "center")) && has(t, "mass"))) &&
       (has(t, "lamina") || has(t, "rectangle") || has(t, "square")) && has(t, "removed") && nv >= 4) {
@@ -9625,10 +9682,25 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     sprintf(cmd, "groupmedian(%.10g,%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3], v[4]); return eval_stats(cmd, out);
   }
   if ((has(t, "grouped") || has(t, "interpolate") || has(t, "interpolation")) && (has(t, "quartile") || has(t, "quantile")) && nv >= 5) {
+    double total=0, L=0, U=0, cf=0, f=0;
+    bool hT = word_num(input, "total", &total) || word_num(input, "n", &total);
+    bool hF = word_num(input, "frequency", &f);
+    bool hC = word_num(input, "cumulativebefore", &cf) || word_num(input, "before", &cf);
+    (void)hC;
+    bool hClass = word_num(input, "class", &L);
+    bool hU = word_num(input, "to", &U);
+    if (hClass && !hU) {
+      for (int i = 0; i + 1 < nv; ++i) if (near_num(v[i], L)) { U = abs_num(v[i+1]); hU = true; break; }
+    }
+    if (hClass && hU && hT && hF) {
+      double q = has(t, "upper") || has(t, "q3") ? 0.75 : (has(t, "lower") || has(t, "q1") ? 0.25 : 0.5);
+      sprintf(cmd, "groupquantile(%.10g,%.10g,%.10g,%.10g,%.10g,%.10g)", L, cf, f, U-L, total, q);
+      return eval_stats(cmd, out);
+    }
     double q = nv >= 6 ? v[5] : (has(t, "upper") || has(t, "q3") ? 0.75 : (has(t, "lower") || has(t, "q1") ? 0.25 : 0.5));
     sprintf(cmd, "groupquantile(%.10g,%.10g,%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3], v[4], q); return eval_stats(cmd, out);
   }
-  if ((has(t, "histogram") || has(t, "frequencydensity") || has(t, "classwidth")) && (has(t, "density") || has(t, "densities") || has(t, "frequencydensity") || has(t, "width")) && nv >= 2) {
+  if ((has(t, "histogram") || has(t, "frequencydensity") || has(c, "frequencydensity") || has(t, "classwidth")) && (has(t, "density") || has(t, "densities") || has(t, "frequencydensity") || has(c, "frequencydensity") || has(t, "width")) && nv >= 2) {
     if (has(t, "class") && has(t, "density") &&
         !has(c, "findfrequencydensity") && !has(c, "calculatefrequencydensity") &&
         (has(c, "findfrequencies") || has(c, "findthefrequencies") || has(c, "findfrequency")) &&
@@ -9676,6 +9748,15 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
         !has(c, "findfrequencydensity") &&
         (has(c, "findfrequency") || has(c, "calculatefrequency") || !hF)) {
       double lo = v[0], hi = v[1] < 0 ? -v[1] : v[1];
+      if (hi < lo) { double q = lo; lo = hi; hi = q; }
+      width0 = hi - lo;
+      int n = add(out, 0, "For a histogram, frequency = frequency density * class width.");
+      n = add(out, n, "class width = %.10g - %.10g = %.10g", hi, lo, width0);
+      return add(out, n, "frequency = %.10g*%.10g = %.10g", dens, width0, dens * width0);
+    }
+    if (has(t, "class") && (has(t, "frequencydensity") || has(c, "frequencydensity")) && hD &&
+        (has(c, "findfrequency") || has(c, "calculatefrequency")) && nv >= 3) {
+      double lo = abs_num(v[0]), hi = abs_num(v[1]);
       if (hi < lo) { double q = lo; lo = hi; hi = q; }
       width0 = hi - lo;
       int n = add(out, 0, "For a histogram, frequency = frequency density * class width.");

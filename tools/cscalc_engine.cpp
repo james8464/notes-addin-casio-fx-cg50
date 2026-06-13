@@ -286,16 +286,17 @@ static int scan_hex_tokens_all(const char *s, char out[][32], int maxn) {
 static bool scan_fixed_bits(const char *s, char *buf, int cap) {
   for (int i = 0; s[i]; ++i) {
     if (s[i] != '0' && s[i] != '1') continue;
-    int j = i, k = 0; bool dot = false;
+    int j = i, k = 0, dotpos = -1; bool dot = false;
     while ((s[j] == '0' || s[j] == '1' || s[j] == '.') && k + 1 < cap) {
       if (s[j] == '.') {
         if (dot) break;
+        dotpos = k;
         dot = true;
       }
       buf[k++] = s[j++];
     }
     buf[k] = 0;
-    if (dot && k > 2) return true;
+    if (dot && dotpos > 0 && dotpos + 1 < k && !isalnum((unsigned char)s[j])) return true;
     i = j;
   }
   return false;
@@ -617,6 +618,35 @@ static double pow2(int e) {
 
 static double round_nearest(double x) {
   return x >= 0 ? (long long)(x + 0.5) : (long long)(x - 0.5);
+}
+
+static void parse_float_widths_value(const char *t, const double v[], int nv, double *value, double *mb, double *eb) {
+  double tmp = 0;
+  bool hM = false, hE = false;
+  if (scan_bit_width_before_label(t, "mantissa", &tmp) && tmp > 0) { *mb = tmp; hM = true; }
+  if (!hM && scan_before_word_num(t, "mantissa", &tmp) && tmp > 0) { *mb = tmp; hM = true; }
+  if (!hM && scan_after_word_num(t, "mantissa", &tmp) && tmp > 0) { *mb = tmp; hM = true; }
+  if (!hM && scan_near_after_word_num(t, "mantissa", &tmp) && tmp > 0) { *mb = tmp; hM = true; }
+  if (scan_after_word_num(t, "exponent", &tmp) && tmp > 0) { *eb = tmp; hE = true; }
+  if (!hE && scan_bit_width_before_label(t, "exponent", &tmp) && tmp > 0) { *eb = tmp; hE = true; }
+  if (!hE && scan_before_word_num(t, "exponent", &tmp) && tmp > 0) { *eb = tmp; hE = true; }
+  if (!hE && scan_near_after_word_num(t, "exponent", &tmp) && tmp > 0) { *eb = tmp; hE = true; }
+  int vi = -1;
+  for (int i = 0; i < nv; ++i) {
+    long long q = (long long)v[i];
+    if (v[i] < 0 || v[i] != (double)q || (v[i] > -1 && v[i] < 1 && v[i] != 0)) { vi = i; break; }
+  }
+  if (vi >= 0) *value = v[vi];
+  int wi[2], wc = 0;
+  for (int i = 0; i < nv && wc < 2; ++i) {
+    if (i == vi) continue;
+    long long q = (long long)v[i];
+    if (v[i] > 0 && v[i] == (double)q) wi[wc++] = (int)q;
+  }
+  if (!hM && wc >= 1) *mb = wi[0];
+  if (!hE && wc >= 2) *eb = wi[1];
+  if (*mb < 1 && nv >= 2) *mb = v[nv-2];
+  if (*eb < 1 && nv >= 1) *eb = v[nv-1];
 }
 
 static int bin_unsigned(const char *s) {
@@ -1270,6 +1300,64 @@ static void to_bin(long long v, int width, char *buf) {
   unsigned long long u = ((unsigned long long)v) & mask;
   for (int i = width - 1, j = 0; i >= 0; --i, ++j) buf[j] = ((u >> i) & 1) ? '1' : '0';
   buf[width] = 0;
+}
+
+static double fixed_binary_value(const char *s) {
+  double val = 0, place = 1;
+  const char *dot = strchr(s, '.');
+  for (const char *p = s; *p && *p != '.'; ++p) if (*p == '0' || *p == '1') val = val * 2 + (*p - '0');
+  if (dot) for (const char *p = dot + 1; *p; ++p) if (*p == '0' || *p == '1') { place /= 2.0; if (*p == '1') val += place; }
+  return val;
+}
+
+static int add_fraction_binary_lines(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN], double x) {
+  long long whole = (long long)x;
+  double frac = x - whole;
+  char wb[65]; to_bin(whole, whole < 256 ? 8 : 16, wb);
+  char fb[40]; int fp = 0;
+  double work = frac;
+  for (int i = 0; i < 16 && work > 1e-12 && fp + 1 < (int)sizeof(fb); ++i) {
+    work *= 2.0;
+    if (work >= 1.0) { fb[fp++] = '1'; work -= 1.0; }
+    else fb[fp++] = '0';
+  }
+  if (!fp) fb[fp++] = '0';
+  fb[fp] = 0;
+  int n = add(out, 0, "Convert the whole part by repeated division and the fractional part by repeated multiplication by 2.");
+  n = add(out, n, "whole part %.0f -> %s", (double)whole, wb);
+  n = add(out, n, "fractional bits = %s", fb);
+  return add(out, n, "%.10g_10 = %lld.%s_2", x, whole, fb);
+}
+
+static int add_crc_lines(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN], const char *data, const char *divisor) {
+  int dl = (int)strlen(data), gl = (int)strlen(divisor);
+  if (dl <= 0 || gl <= 1) return 0;
+  char work[128]; int wl = dl + gl - 1;
+  if (wl >= (int)sizeof(work)) wl = sizeof(work) - 1;
+  for (int i = 0; i < wl; ++i) work[i] = i < dl ? data[i] : '0';
+  work[wl] = 0;
+  int n = add(out, 0, "CRC: append %d zeros, then divide by the generator using XOR.", gl - 1);
+  n = add(out, n, "data with zeros = %s", work);
+  for (int i = 0; i <= wl - gl; ++i) {
+    if (work[i] != '1') continue;
+    for (int j = 0; j < gl; ++j) work[i+j] = (work[i+j] == divisor[j]) ? '0' : '1';
+  }
+  char rem[48]; int rp = 0;
+  for (int i = wl - (gl - 1); i < wl && rp + 1 < (int)sizeof(rem); ++i) rem[rp++] = work[i];
+  rem[rp] = 0;
+  n = add(out, n, "generator = %s", divisor);
+  n = add(out, n, "remainder = %s", rem);
+  return add(out, n, "transmitted codeword = %s%s", data, rem);
+}
+
+static int add_binary_multiply_lines(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN], const char *a, const char *b) {
+  long long x = bin_unsigned(a), y = bin_unsigned(b), prod = x * y;
+  int width = (int)(strlen(a) + strlen(b));
+  char bits[65]; to_bin(prod, width, bits);
+  int n = add(out, 0, "Binary multiplication uses shifted partial products.");
+  n = add(out, n, "%s_2 = %lld, %s_2 = %lld", a, x, b, y);
+  n = add(out, n, "%lld * %lld = %lld", x, y, prod);
+  return add(out, n, "result = %s_2", bits);
 }
 
 static void insert_point(const char *bits, int whole, char *buf) {
@@ -4077,6 +4165,63 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   bool tc_hint = has(t, "twos") || (has(t, "two") && has(t, "complement"));
   double width=0, height=0, depth=0;
   int prefix = 0;
+  if ((has(t, "crc") || (has(t, "cyclic") && has(t, "redundancy"))) && nb >= 2)
+    return add_crc_lines(out, bits[0], bits[1]);
+  if ((has(t, "multiply") || has(t, "multiplication") || has(t, "times") || has(t, "product")) &&
+      nb >= 2 && !has(t, "booth") && !(has(t, "float") || has(t, "floating")))
+    return add_binary_multiply_lines(out, bits[0], bits[1]);
+  if ((has(t, "normalise") || has(t, "normalize")) &&
+      (has(t, "float") || has(t, "floating") || has(t, "mantissa") || has(t, "exponent")) &&
+      nv >= 2 &&
+      !(has(t, "represent") || has(t, "represented") || has(t, "representable") ||
+        has(t, "explain") || has(t, "canbe") || has(t, "add") || has(t, "subtract") ||
+        has(t, "minus") || has(t, "multiply") || has(t, "times") || has(t, "divide"))) {
+    char fx[48];
+    if (scan_fixed_bits(t, fx, sizeof(fx))) {
+      double mb=0, eb=0, tmp=0;
+      bool hM = false, hE = false;
+      if (scan_after_word_num(t, "mantissa", &tmp) && tmp > 0) { mb = tmp; hM = true; }
+      if (!hM && scan_near_after_word_num(t, "mantissa", &tmp) && tmp > 0) { mb = tmp; hM = true; }
+      if (!hM && scan_bit_width_before_label(t, "mantissa", &tmp) && tmp > 0) { mb = tmp; hM = true; }
+      if (!hM && scan_before_word_num(t, "mantissa", &tmp) && tmp > 0) { mb = tmp; hM = true; }
+      if (scan_after_word_num(t, "exponent", &tmp) && tmp > 0) { eb = tmp; hE = true; }
+      if (!hE && scan_near_after_word_num(t, "exponent", &tmp) && tmp > 0) { eb = tmp; hE = true; }
+      if (!hE && scan_bit_width_before_label(t, "exponent", &tmp) && tmp > 0) { eb = tmp; hE = true; }
+      if (!hE && scan_before_word_num(t, "exponent", &tmp) && tmp > 0) { eb = tmp; hE = true; }
+      if (!hM) mb = v[nv >= 2 ? nv-2 : 0];
+      if (!hE) eb = v[nv >= 1 ? nv-1 : 0];
+      if (mb < 1 && nv >= 3) mb = v[nv-2];
+      if (eb < 1 && nv >= 2) eb = v[nv-1];
+      sprintf(cmd, "floatenc(%.10g,%lld,%lld)", fixed_binary_value(fx), (long long)mb, (long long)eb);
+      return eval_float(cmd, out);
+    }
+  }
+  if ((has(t, "denary") || has(t, "decimal")) && has(t, "binary") && nv >= 1) {
+    double value = v[0];
+    double bw_hint = 0;
+    bool explicit_bits = scan_before_word_num(t, "bit", &bw_hint) || scan_before_word_num(t, "bits", &bw_hint);
+    bool frac_value = false;
+    for (int i = 0; i < nv; ++i) {
+      if (v[i] > -1 && v[i] < 1 && !near_num(v[i], 0)) { value = v[i]; frac_value = true; break; }
+    }
+    if (frac_value && !explicit_bits && !(has(t, "fixed") || has(t, "mantissa") || has(t, "floating") || has(t, "float")))
+      return add_fraction_binary_lines(out, value);
+  }
+  if ((has(t, "add") || has(t, "sum") || has(t, "plus")) && nb >= 2 &&
+      (has(t, "binary") || has(t, "bits")) && !tc_hint && !has(t, "unsigned") && !has(t, "overflow")) {
+    double bw = 0;
+    bool fixed_width = scan_before_word_num(t, "bit", &bw) || scan_before_word_num(t, "bits", &bw) ||
+                       has(t, "fixed") || has(t, "register");
+    if (!fixed_width) {
+      long long a0 = bin_unsigned(bits[0]), b0 = bin_unsigned(bits[1]), sum = a0 + b0;
+      int w = (int)strlen(bits[0]) > (int)strlen(bits[1]) ? (int)strlen(bits[0]) : (int)strlen(bits[1]);
+      char rb[65]; to_bin(sum, w + 1, rb);
+      int n = add(out, 0, "Add binary place values.");
+      n = add(out, n, "%s_2 = %lld, %s_2 = %lld", bits[0], a0, bits[1], b0);
+      n = add(out, n, "%lld + %lld = %lld", a0, b0, sum);
+      return add(out, n, "result = %s_2", rb);
+    }
+  }
   if (has(t, "halfadder") || (has(t, "half") && has(t, "adder"))) return add_half_adder_lines(out);
   if (has(t, "fulladder") || (has(t, "full") && has(t, "adder"))) return add_full_adder_lines(out);
   if ((has(t, "overflow") || has(t, "overflowbit")) && has(t, "sign") &&
@@ -5882,26 +6027,16 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if ((has(t, "encode") || has(t, "convert") || has(t, "round") || (has(t, "represent") && !has(t, "representable") && !has(t, "represented") && !has(t, "closest") && !has(t, "explain"))) && (has(t, "floating") || has(t, "mantissa")) &&
       (has(t, "mantissa") && has(t, "exponent")) && nv >= 3) {
     double mb=0, eb=0, tmp=0, value=v[0];
-    bool hM = scan_bit_width_before_label(t, "mantissa", &tmp) || scan_before_word_num(t, "mantissa", &tmp); if (hM) mb = tmp;
-    bool hE = scan_bit_width_before_label(t, "exponent", &tmp) || scan_before_word_num(t, "exponent", &tmp); if (hE) eb = tmp;
-    if (!hM) mb = v[0];
-    if (!hE) eb = v[1];
-    for (int i = 0; i < nv; ++i) {
-      double dm = v[i] > mb ? v[i] - mb : mb - v[i];
-      double de = v[i] > eb ? v[i] - eb : eb - v[i];
-      if (dm > 1e-9 && de > 1e-9) { value = v[i]; break; }
-    }
+    (void)tmp;
+    parse_float_widths_value(t, v, nv, &value, &mb, &eb);
     sprintf(cmd, "floatenc(%.10g,%lld,%lld)", value, (long long)mb, (long long)eb);
     return eval_float(cmd, out);
   }
   if ((has(t, "normalise") || has(t, "normalize")) && (has(t, "denary") || has(t, "decimal") || has(t, "value")) &&
       (has(t, "mantissa") || has(t, "exponent") || has(t, "floating")) && nv >= 3) {
-    double mb=0, eb=0, tmp=0;
-    bool hM = scan_bit_width_before_label(t, "mantissa", &tmp) || scan_before_word_num(t, "mantissa", &tmp); if (hM) mb = tmp;
-    bool hE = scan_bit_width_before_label(t, "exponent", &tmp) || scan_before_word_num(t, "exponent", &tmp); if (hE) eb = tmp;
-    if (!hM) mb = v[1];
-    if (!hE) eb = v[2];
-    sprintf(cmd, "floatenc(%.10g,%lld,%lld)", v[0], (long long)mb, (long long)eb);
+    double mb=0, eb=0, value=v[0];
+    parse_float_widths_value(t, v, nv, &value, &mb, &eb);
+    sprintf(cmd, "floatenc(%.10g,%lld,%lld)", value, (long long)mb, (long long)eb);
     return eval_float(cmd, out);
   }
   if ((has(t, "normalise") || has(t, "normalize")) && !has(t, "normalised") && !has(t, "normalized") && nb >= 2) {
@@ -6730,14 +6865,8 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       (has(t, "float") || has(t, "floating") || (has(t, "mantissa") && has(t, "exponent"))) &&
       nv >= 3 && nb < 2 &&
       !(has(t, "represent") || has(t, "represented") || has(t, "representable") || has(t, "explain") || has(t, "canbe"))) {
-    double mb = v[1], eb = v[2], value = v[0], tmp = 0;
-    bool hM = scan_bit_width_before_label(t, "mantissa", &tmp) || scan_before_word_num(t, "mantissa", &tmp); if (hM) mb = tmp;
-    bool hE = scan_bit_width_before_label(t, "exponent", &tmp) || scan_before_word_num(t, "exponent", &tmp); if (hE) eb = tmp;
-    if (hM || hE) for (int i = 0; i < nv; ++i) {
-      if ((hM && (long long)v[i] == (long long)mb) || (hE && (long long)v[i] == (long long)eb)) continue;
-      value = v[i];
-      break;
-    }
+    double mb = 0, eb = 0, value = v[0];
+    parse_float_widths_value(t, v, nv, &value, &mb, &eb);
     sprintf(cmd, "floatenc(%.10g,%lld,%lld)", value, (long long)mb, (long long)eb);
     return eval_float(cmd, out);
   }
@@ -6748,13 +6877,8 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       (has(t, "float") || has(t, "floating") || has(t, "normalised") || has(t, "normalized") || (has(t, "mantissa") && has(t, "exponent"))) &&
       !(has(t, "closest") || has(t, "nearest")) &&
       nv >= 3) {
-    double value = v[0], mb = v[1], eb = v[2], tmp = 0;
-    bool hM = scan_bit_width_before_label(t, "mantissa", &tmp) || scan_before_word_num(t, "mantissa", &tmp); if (hM) mb = tmp;
-    bool hE = scan_bit_width_before_label(t, "exponent", &tmp) || scan_before_word_num(t, "exponent", &tmp); if (hE) eb = tmp;
-    if (hM || hE) for (int i = 0; i < nv; ++i) {
-      if ((hM && (long long)v[i] == (long long)mb) || (hE && (long long)v[i] == (long long)eb)) continue;
-      value = v[i];
-    }
+    double value = v[0], mb = 0, eb = 0;
+    parse_float_widths_value(t, v, nv, &value, &mb, &eb);
     sprintf(cmd, "floatcanrepresent(%.10g,%lld,%lld)", value, (long long)mb, (long long)eb); return eval_float(cmd, out);
   }
   if ((has(t, "float") || has(t, "floating") || has(t, "normalised") || has(t, "normalized") || (has(t, "mantissa") && has(t, "exponent"))) &&
