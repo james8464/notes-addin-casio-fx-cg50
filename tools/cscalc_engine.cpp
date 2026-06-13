@@ -5296,6 +5296,17 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       return eval_storage(cmd, out);
     }
   }
+  if ((has(t, "transfer") || has(t, "download") || has(t, "transmit") || has(t, "transmission") ||
+       has_word(t, "send") || has_word(t, "sent") || has_word(t, "over")) &&
+      (has(t, "find") || has(t, "calculate") || has(t, "time") || has(t, "howlong") || has(compact, "howlong")) &&
+      (has(t, "file") || has(t, "download") || has(t, "transmit") || has(t, "sent")) &&
+      !has(t, "overhead") &&
+      !has(compact, "bitrate") && !has(compact, "datarate") && !(has(t, "bit") && has(t, "rate")) &&
+      (has(t, "gib") || has(t, "mib") || has(t, "kib") || has(t, "gb") || has(t, "mb") || has(t, "kb")) &&
+      (has(t, "gbps") || has(t, "mbps") || has(t, "kbps") || has(t, "gbit") || has(t, "mbit") || has(t, "kbit"))) {
+    int scanned = add_transfer_scanned_unit_lines(out, t);
+    if (scanned) return scanned;
+  }
   if ((has(compact, "bitrate") || has(compact, "datarate") || (has(t, "bit") && has(t, "rate")) || (has(t, "network") && (has(t, "sends") || has_word(t, "sent")))) &&
       (has(t, "calculate") || has(t, "find") || has(t, "what")) &&
       !has(compact, "filesize") &&

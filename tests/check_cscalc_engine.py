@@ -286,6 +286,7 @@ def main():
     require("A 700 MB file downloads at 56 megabits per second find transfer time", ["700 MB = 5600000000 bits", "time = 5600000000/56000000 = 100 s"])
     require("A 4 GiB file is downloaded over 80 megabits per second find the time", ["4 GiB = 3.435973837e+10 bits", "80 Mbit/s = 80000000 bit/s", "429.4967296 s"])
     require("A file of 3.5 GiB is transferred at 100 Mbit/s. Calculate the time in minutes.", ["3.5 GiB =", "100 Mbit/s =", "= 5.010795179 minutes"])
+    require("A file of 25 MiB is sent over 100 Mbps network. Find time in seconds.", ["25 MiB = 209715200 bits", "100 Mbit/s = 100000000 bit/s", "time = 209715200/100000000 = 2.097152 s"])
     require("A packet travels 750 km through fibre at 2.0e8 m/s. Calculate latency.", ["750 km = 750000 m", "speed = 200000000 m/s", "latency = 750000/200000000 = 0.00375 s", "= 3.75 ms"])
     require("A 10 MiB file is sent with 12 percent packet overhead over a 5 Mbit/s link. Calculate transmission time.", ["payload bits plus packet overhead", "transmitted bits = 83886080*1.12 = 93952409.6", "time = 93952409.6/5000000 = 18.79048192 s"])
     require("How long to transmit 20 MB at 100 Mbps with 10 percent overhead.", ["include 10% overhead", "100 Mbit/s = 100000000 bit/s", "time = 176000000/100000000 = 1.76 s"])

@@ -5513,6 +5513,39 @@ Drift check:
 - Kept changes to CASP3/CSCALC general free-text handling, regressions, generated app outputs, and this checkpoint.
 - Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.
 
+## 2026-06-13 Transfer-Time and Rough-Pulley Slice
+
+Completed:
+- Fixed CSCALC prose routing so `sent over 100 Mbps ... find time` is treated as transfer time, not bit-rate.
+- Preserved explicit bit-rate and overhead transmission routes by excluding those from the new early transfer guard.
+- Fixed CASP3 pulley rough-table prose so `table rough coefficient ...` includes friction even without explicit `hangs freely` wording.
+- Added regressions for both failures and rebuilt changed calculator files.
+
+Evidence:
+- Fresh probes fixed:
+  - `A file of 25 MiB is sent over 100 Mbps network. Find time in seconds.`
+  - `Two particles 2kg and 7kg connected over a pulley, table rough coefficient 0.3. Find acceleration and tension.`
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 499468 bytes`
+  - `CSCALC.g3a: 275836 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: records=48 bytes=18178`
+  - `CASP3.g3a sha256: 55b0babb0f7e21407672b13feccaf2ef2bd482b3ea0f0cf019655b79d57c2b74`
+  - `CSCALC.g3a sha256: 60ac097070ff264d9ac1c123232f5f955a6859e09d2290e82beecc8adf697a04`
+
+Drift check:
+- Kept changes to CASP3/CSCALC generic free-text routing, regressions, generated app outputs, and this checkpoint.
+- Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.
+
 ## 2026-06-12 Two's Complement, Word Addressing, and Inverse Binomial Slice
 
 Completed:
