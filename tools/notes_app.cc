@@ -182,9 +182,7 @@ static int load_text(const char *path) {
 }
 
 static void notes_menu(const char *title, const char *const *items, int count, int top, int sel, bool rv) {
-  ui_menu(title, items, count, top, sel, rv);
-  ui_text_fkey(1, "FIND");
-  ui_flush();
+  ui_menu_keys(title, items, count, top, sel, rv, "OPEN", "FIND", "", "", "", "BACK");
 }
 
 static void notes_text_page(const char *title, const char *const *lines, int count, int top, bool rv) {
@@ -193,6 +191,7 @@ static void notes_text_page(const char *title, const char *const *lines, int cou
   ui_text_fkey(1, "BACK");
   ui_text_fkey(2, "UP");
   ui_text_fkey(3, "DOWN");
+  ui_text_fkey(5, "BACK");
   for (int i = 0; i < 8 && top + i < count; ++i)
     ui_print(14, 55 + i * 17, lines[top + i]);
   ui_flush();
@@ -209,7 +208,7 @@ static void wait_text_page(const char *title, const char *const *lines, int coun
       rv = nr;
       notes_text_page(title, lines, count, top, rv);
     }
-    if (key == KEY_CTRL_EXIT || key == KEY_CTRL_AC) return;
+    if (key == KEY_CTRL_EXIT || key == KEY_CTRL_AC || key == KEY_CTRL_F2 || key == KEY_CTRL_F6) return;
     if (key == KEY_CTRL_UP && top > 0) notes_text_page(title, lines, count, --top, rv);
     if (key == KEY_CTRL_DOWN && top + 8 < count) notes_text_page(title, lines, count, ++top, rv);
     if (key == KEY_CTRL_F1) {
@@ -351,7 +350,7 @@ int main() {
     bool nr = ui_r_visible(tick);
     if (nr != rv) rv = nr;
     if (key == KEY_CTRL_MENU || key == KEY_CTRL_AC) return 0;
-    if (key == KEY_CTRL_EXIT) { up_folder(); sel = top = 0; scan_dir(); }
+    if (key == KEY_CTRL_EXIT || key == KEY_CTRL_F6) { up_folder(); sel = top = 0; scan_dir(); }
     if (key == KEY_CTRL_UP && sel > 0) { --sel; if (sel < top) --top; }
     if (key == KEY_CTRL_DOWN && sel + 1 < entry_count) { ++sel; if (sel >= top + 7) ++top; }
     if (key == KEY_CTRL_F2) search_all_notes(&tick);

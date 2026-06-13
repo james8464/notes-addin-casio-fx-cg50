@@ -18,6 +18,9 @@ static const unsigned short UI_WHITE = COLOR_WHITE;
 static const unsigned short UI_BLACK = COLOR_BLACK;
 static const unsigned short UI_PINK = 0xF81F;
 static const unsigned short UI_BLUE = COLOR_BLUE;
+static const unsigned short UI_FRAME = RGB565(74, 74, 82);
+static const unsigned UI_R_BLINK_PERIOD = 384;
+static const unsigned UI_R_VISIBLE_TICKS = 256;
 
 static void ui_pixel(int x, int y, unsigned short color) {
   if (x < 0 || x >= LCD_WIDTH_PX || y < 0 || y >= LCD_HEIGHT_PX) return;
@@ -28,6 +31,10 @@ static void ui_fill(int x, int y, int w, int h, unsigned short color) {
   for (int yy = y; yy < y + h; ++yy)
     for (int xx = x; xx < x + w; ++xx)
       ui_pixel(xx, yy, color);
+}
+
+static void ui_hline(int x1, int x2, int y, unsigned short color) {
+  for (int x = x1; x <= x2; ++x) ui_pixel(x, y, color);
 }
 
 static void ui_border() {
@@ -54,11 +61,13 @@ static void ui_status(bool r_visible) {
   } else {
     ui_fill(339, 0, 21, 23, UI_WHITE);
   }
+  ui_fill(339, 23, 21, 2, UI_WHITE);
+  ui_hline(339, 359, 23, UI_BLACK);
 }
 
 static bool ui_r_visible(unsigned start_tick) {
-  unsigned phase = ((unsigned)RTC_GetTicks() - start_tick) % 384;
-  return phase < 256;
+  unsigned phase = ((unsigned)RTC_GetTicks() - start_tick) % UI_R_BLINK_PERIOD;
+  return phase < UI_R_VISIBLE_TICKS;
 }
 
 static int ui_key_poll() {
@@ -81,7 +90,18 @@ static void ui_fkey(int slot, int id) {
 static void ui_text_fkey(int slot, const char *text) {
   ui_fkey(slot, 0x38);
   ui_fill(slot * 64 + 2, 198, 60, 16, UI_BLACK);
-  Bdisp_MMPrint(slot * 64 + 8, 196, text, 0x40, 0xffffffff, 0, 0, UI_WHITE, UI_BLACK, 1, 0);
+  int x = slot * 64 + 8;
+  int n = (int)strlen(text);
+  if (n <= 3) x += 8;
+  else if (n >= 6) x -= 3;
+  Bdisp_MMPrint(x, 196, text, 0x40, 0xffffffff, 0, 0, UI_WHITE, UI_BLACK, 1, 0);
+}
+
+static void ui_softkeys(const char *f1, const char *f2, const char *f3, const char *f4, const char *f5, const char *f6) {
+  const char *v[6] = {f1, f2, f3, f4, f5, f6};
+  for (int i = 0; i < 6; ++i) {
+    if (v[i] && v[i][0]) ui_text_fkey(i, v[i]);
+  }
 }
 
 static void ui_chrome(const char *title, bool r_visible) {
@@ -89,19 +109,17 @@ static void ui_chrome(const char *title, bool r_visible) {
   ui_fill(0, 0, LCD_WIDTH_PX, LCD_HEIGHT_PX, UI_WHITE);
   ui_status(r_visible);
   Bdisp_MMPrint(10, 28, title, 0x40, 0xffffffff, 0, 0, UI_BLACK, UI_WHITE, 1, 0);
-  DirectDrawRectangle(8, 47, 387, 49, RGB565(70, 70, 80));
-  ui_text_fkey(0, "OPEN");
-  ui_text_fkey(1, "BACK");
-  ui_text_fkey(2, "UP");
-  ui_text_fkey(3, "DOWN");
+  DirectDrawRectangle(8, 47, 387, 49, UI_FRAME);
 }
 
 static void ui_print(int x, int y, const char *s) {
   Bdisp_MMPrint(x, y, s, 0x40, 0xffffffff, 0, 0, UI_BLACK, UI_WHITE, 1, 0);
 }
 
-static void ui_menu(const char *title, const char *const *items, int count, int top, int sel, bool r_visible) {
+static void ui_menu_keys(const char *title, const char *const *items, int count, int top, int sel, bool r_visible,
+                         const char *f1, const char *f2, const char *f3, const char *f4, const char *f5, const char *f6) {
   ui_chrome(title, r_visible);
+  ui_softkeys(f1, f2, f3, f4, f5, f6);
   for (int i = 0; i < 7 && top + i < count; ++i) {
     int y = 56 + i * 18;
     if (top + i == sel) {
@@ -114,8 +132,13 @@ static void ui_menu(const char *title, const char *const *items, int count, int 
   ui_flush();
 }
 
+static void ui_menu(const char *title, const char *const *items, int count, int top, int sel, bool r_visible) {
+  ui_menu_keys(title, items, count, top, sel, r_visible, "OPEN", "", "", "", "", "BACK");
+}
+
 static void ui_page(const char *title, const char *const *lines, int count, int top, bool r_visible) {
   ui_chrome(title, r_visible);
+  ui_softkeys("", "BACK", "UP", "DOWN", "", "");
   for (int i = 0; i < 8 && top + i < count; ++i)
     ui_print(14, 55 + i * 17, lines[top + i]);
   ui_flush();
@@ -132,7 +155,7 @@ static void ui_wait_page(const char *title, const char *const *lines, int count,
       rv = nr;
       ui_page(title, lines, count, top, rv);
     }
-    if (key == KEY_CTRL_EXIT || key == KEY_CTRL_AC) return;
+    if (key == KEY_CTRL_EXIT || key == KEY_CTRL_AC || key == KEY_CTRL_F6) return;
     if (key == KEY_CTRL_UP && top > 0) ui_page(title, lines, count, --top, rv);
     if (key == KEY_CTRL_DOWN && top + 8 < count) ui_page(title, lines, count, ++top, rv);
     OS_InnerWait_ms(35);
@@ -155,6 +178,9 @@ static int ui_key_char(int key) {
 
 static bool ui_input(const char *title, char *buf, int cap, unsigned *tick) {
   int len = (int)strlen(buf);
+  static char hist[6][96];
+  static int hist_count = 0;
+  int hist_pos = hist_count;
   bool rv = ui_r_visible(*tick);
   for (;;) {
     Bdisp_AllClr_VRAM();
@@ -165,16 +191,34 @@ static bool ui_input(const char *title, char *buf, int cap, unsigned *tick) {
     ui_print(14, 58, "Type command, EXE runs.");
     ui_fill(12, 82, 370, 38, RGB565(245, 245, 245));
     Bdisp_MMPrint(16, 90, buf, 0x40, 0xffffffff, 0, 0, UI_BLACK, RGB565(245, 245, 245), 1, 0);
-    ui_text_fkey(0, "RUN");
-    ui_text_fkey(1, "BACK");
-    ui_text_fkey(2, "DEL");
+    ui_softkeys("RUN", "BACK", "DEL", "PREV", "NEXT", "");
     ui_flush();
     int key = ui_key_poll();
     bool nr = ui_r_visible(*tick);
     if (nr != rv) { rv = nr; continue; }
-    if (key == KEY_CTRL_EXIT || key == KEY_CTRL_AC) return false;
-    if (key == KEY_CTRL_EXE || key == KEY_CTRL_F1) return true;
+    if (key == KEY_CTRL_EXIT || key == KEY_CTRL_AC || key == KEY_CTRL_F2 || key == KEY_CTRL_F6) return false;
+    if (key == KEY_CTRL_EXE || key == KEY_CTRL_F1) {
+      if (buf[0] && (hist_count == 0 || strcmp(hist[(hist_count - 1) % 6], buf))) {
+        strncpy(hist[hist_count % 6], buf, 95);
+        hist[hist_count % 6][95] = 0;
+        ++hist_count;
+      }
+      return true;
+    }
     if ((key == KEY_CTRL_DEL || key == KEY_CTRL_F3) && len > 0) buf[--len] = 0;
+    if ((key == KEY_CTRL_UP || key == KEY_CTRL_F4) && hist_count > 0) {
+      int hist_min = hist_count > 6 ? hist_count - 6 : 0;
+      if (hist_pos > hist_min) --hist_pos;
+      strncpy(buf, hist[hist_pos % 6], cap - 1);
+      buf[cap - 1] = 0;
+      len = (int)strlen(buf);
+    }
+    if ((key == KEY_CTRL_DOWN || key == KEY_CTRL_F5) && hist_count > 0) {
+      if (hist_pos + 1 < hist_count) ++hist_pos;
+      strncpy(buf, hist[hist_pos % 6], cap - 1);
+      buf[cap - 1] = 0;
+      len = (int)strlen(buf);
+    }
     int ch = ui_key_char(key);
     if (ch && len + 1 < cap) { buf[len++] = (char)ch; buf[len] = 0; }
     OS_InnerWait_ms(35);

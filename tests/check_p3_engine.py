@@ -777,6 +777,11 @@ def main():
     require("A random variable X has pdf f(x)=kx for 1<x<4. Find k and the median.", ["integral from 1 to 4 of kx dx = 1", "k = 0.1333333333", "For the median m", "m = 2.915475947"])
     require("For X~Poisson(3.2), find P(X is at least 2 but less than 6).", ["P(2<=X<=5)=P(X<=5)-P(X<=1)", "= 0.7233906378"])
     require("A ladder length 5m weight 100N rests against a rough wall and rough ground at 60 degrees. Coefficient at both contacts is 0.2. Find if equilibrium is possible.", ["Rough wall and rough floor", "need G <= mu S and F=S <= mu R", "No value of wall friction satisfies both limits"])
+    require("samplemean(50,10,25,45,55)", ["For a sample mean", "Xbar ~ N(50, (10/sqrt(25))^2)", "NormalCD(lower=45, upper=55"])
+    require("samplemeantail(50,10,25,55,1)", ["For a sample mean", "standard error = 10/sqrt(25) = 2", "P(Xbar>=55)"])
+    require("normalcrit(0.95,50,10)", ["inverse normal", "InvNorm(0.95, 10, 50)", "x = 50"])
+    require("binomcrit(20,0.4,0.05,-1)", ["Let X ~ B(20, 0.4).", "Lower tail", "critical region"])
+    require("largebinomnormal(100,0.4,35,45)", ["Use normal approximation to X ~ B(100, 0.4).", "continuity correction", "NormalCD(lower=34.5"])
     print("OK p3 engine")
 
 

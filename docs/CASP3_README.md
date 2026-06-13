@@ -10,9 +10,11 @@
 
 ## Controls
 
-- `EXE`: insert the selected command template.
+- `EXE` or `F2`: insert/run the selected command template.
 - `F1`: help sheet for the selected topic.
-- `EXIT`: back.
+- `F3`: examples for the selected topic.
+- `F4/F5` in input: previous/next command history.
+- `EXIT` or `F6`: back.
 
 ## Mechanics Commands
 
@@ -141,6 +143,10 @@ Example:
 
 `critbinom(n,p,alpha,tail)`
 
+`binomcrit(n,p,alpha,tail)`
+
+`binomnorm(n,p,lo,hi)`
+
 Examples:
 
 - `binom(10,0.4,3)` exact `P(X=3)`.
@@ -148,6 +154,8 @@ Examples:
 - `binomtail(10,0.4,3,1)` upper tail `P(X>=3)`.
 - `binomstats(20,0.35)` mean and variance.
 - `critbinom(20,0.4,0.05,-1)` lower critical region.
+- `binomcrit(20,0.4,0.05,1)` upper critical region.
+- `binomnorm(100,0.4,35,45)` normal approximation with continuity correction.
 
 ### Hypothesis Testing
 
@@ -179,6 +187,12 @@ Output defines distribution, hypotheses, tail probability/critical comparison, a
 
 `invnormal(p,mu,sigma)`
 
+`normalcrit(p,mu,sigma)`
+
+`samplemean(mu,sigma,n,lo,hi)`
+
+`samplemeantail(mu,sigma,n,x,tail)`
+
 `normalparams(mean,sd,n)`
 
 Examples:
@@ -188,6 +202,9 @@ Examples:
 - `normaltail(65,50,10,1)` upper tail.
 - `normaltail(35,50,10,-1)` lower tail.
 - `invnormal(0.95,50,10)` inverse normal.
+- `normalcrit(0.95,50,10)` same inverse normal critical-value route.
+- `samplemean(50,10,25,45,55)` interval probability for `Xbar`.
+- `samplemeantail(50,10,25,55,1)` upper-tail probability for `Xbar`.
 - `normalparams(50,10,25)` sample mean standard error route.
 
 ### Probability
@@ -256,4 +273,3 @@ Examples:
 ## Natural Text
 
 Some short worded inputs are recognised, but command syntax is the reliable path. The app is designed for calculator-style command entry, not long natural-language extraction.
-

@@ -187,6 +187,62 @@ static const char *const algos[] = {
   "Outputs each comparison/pass."
 };
 
+static const char *const base_ex[] = {
+  "convert(45,10,16)",
+  "convert(101101,2,10)",
+  "convert(2D,16,2)",
+  "bitsneeded(-5,signed)",
+  "unsignedrange(8)"
+};
+
+static const char *const signed_ex[] = {
+  "twos(-5,8)",
+  "twosdec(11111011)",
+  "twosrange(8)",
+  "twosadd(11111011,00000011,8)",
+  "twossub(5,9,8)"
+};
+
+static const char *const binary_ex[] = {
+  "binadd(1011,0110,4)",
+  "binsub(1011,0110,4)",
+  "shift(00101100,left,2)",
+  "shift(00101100,right,2)",
+  "arithshift(11101100,right,2)"
+};
+
+static const char *const fixed_ex[] = {
+  "fixed(101.101)",
+  "fixedtc(1101.10)",
+  "fixedenc(5.625,3,3)",
+  "fixedfrac(3,8,4)",
+  "fixedtcenc(-2.5,4,3)"
+};
+
+static const char *const float_ex[] = {
+  "floatdec(0101100,11101)",
+  "floatenc(12.75,8,4)",
+  "floatnorm(00011010,0110)",
+  "floatrange(8,4)",
+  "floatnearest(0.1,8,4)"
+};
+
+static const char *const storage_ex[] = {
+  "image(800,600,24)",
+  "sound(44100,60,16,2)",
+  "bitrate(48000000,12)",
+  "imagesize(1024,768,8)",
+  "soundsize(8000,30,8)"
+};
+
+static const char *const misc_ex[] = {
+  "compress(1000,250)",
+  "chars(120,8)",
+  "records(1200,32)",
+  "binarysearch(7,1,3,5,7,9)",
+  "bubblesort(5,1,4,2)"
+};
+
 static void copy_initial(char *dst, int dst_len, const char *src) {
   int i = 0;
   if (!src) src = "";
@@ -225,21 +281,32 @@ static void open_item(int sel, bool help, unsigned *tick) {
   else ui_wait_page("Algorithms", algos, sizeof(algos)/sizeof(algos[0]), tick);
 }
 
+static void open_examples(int sel, unsigned *tick) {
+  if (sel == 0 || sel == 1) ui_wait_page("Base examples", base_ex, sizeof(base_ex)/sizeof(base_ex[0]), tick);
+  else if (sel == 2) ui_wait_page("Signed examples", signed_ex, sizeof(signed_ex)/sizeof(signed_ex[0]), tick);
+  else if (sel == 3) ui_wait_page("Binary examples", binary_ex, sizeof(binary_ex)/sizeof(binary_ex[0]), tick);
+  else if (sel == 4) ui_wait_page("Fixed examples", fixed_ex, sizeof(fixed_ex)/sizeof(fixed_ex[0]), tick);
+  else if (sel >= 5 && sel <= 8) ui_wait_page("Float examples", float_ex, sizeof(float_ex)/sizeof(float_ex[0]), tick);
+  else if (sel >= 9 && sel <= 11) ui_wait_page("Storage examples", storage_ex, sizeof(storage_ex)/sizeof(storage_ex[0]), tick);
+  else ui_wait_page("More examples", misc_ex, sizeof(misc_ex)/sizeof(misc_ex[0]), tick);
+}
+
 int main() {
   Bdisp_EnableColor(1);
   unsigned tick = (unsigned)RTC_GetTicks();
   int sel = 0, top = 0, count = sizeof(menu_items)/sizeof(menu_items[0]);
   bool rv = ui_r_visible(tick);
-  ui_menu("AQA CS Calc", menu_items, count, top, sel, rv);
+  ui_menu_keys("AQA CS Calc", menu_items, count, top, sel, rv, "HELP", "RUN", "EXS", "", "", "BACK");
   for (;;) {
     int key = ui_key_poll();
     bool nr = ui_r_visible(tick);
-    if (nr != rv) { rv = nr; ui_menu("AQA CS Calc", menu_items, count, top, sel, rv); }
-    if (key == KEY_CTRL_EXIT || key == KEY_CTRL_AC || key == KEY_CTRL_MENU) return 0;
-    if (key == KEY_CTRL_UP && sel > 0) { --sel; if (sel < top) --top; ui_menu("AQA CS Calc", menu_items, count, top, sel, rv); }
-    if (key == KEY_CTRL_DOWN && sel + 1 < count) { ++sel; if (sel >= top + 7) ++top; ui_menu("AQA CS Calc", menu_items, count, top, sel, rv); }
-    if (key == KEY_CTRL_EXE) { open_item(sel, false, &tick); rv = ui_r_visible(tick); ui_menu("AQA CS Calc", menu_items, count, top, sel, rv); }
-    if (key == KEY_CTRL_F1) { open_item(sel, true, &tick); rv = ui_r_visible(tick); ui_menu("AQA CS Calc", menu_items, count, top, sel, rv); }
+    if (nr != rv) { rv = nr; ui_menu_keys("AQA CS Calc", menu_items, count, top, sel, rv, "HELP", "RUN", "EXS", "", "", "BACK"); }
+    if (key == KEY_CTRL_EXIT || key == KEY_CTRL_AC || key == KEY_CTRL_MENU || key == KEY_CTRL_F6) return 0;
+    if (key == KEY_CTRL_UP && sel > 0) { --sel; if (sel < top) --top; ui_menu_keys("AQA CS Calc", menu_items, count, top, sel, rv, "HELP", "RUN", "EXS", "", "", "BACK"); }
+    if (key == KEY_CTRL_DOWN && sel + 1 < count) { ++sel; if (sel >= top + 7) ++top; ui_menu_keys("AQA CS Calc", menu_items, count, top, sel, rv, "HELP", "RUN", "EXS", "", "", "BACK"); }
+    if (key == KEY_CTRL_EXE || key == KEY_CTRL_F2) { open_item(sel, false, &tick); rv = ui_r_visible(tick); ui_menu_keys("AQA CS Calc", menu_items, count, top, sel, rv, "HELP", "RUN", "EXS", "", "", "BACK"); }
+    if (key == KEY_CTRL_F1) { open_item(sel, true, &tick); rv = ui_r_visible(tick); ui_menu_keys("AQA CS Calc", menu_items, count, top, sel, rv, "HELP", "RUN", "EXS", "", "", "BACK"); }
+    if (key == KEY_CTRL_F3) { open_examples(sel, &tick); rv = ui_r_visible(tick); ui_menu_keys("AQA CS Calc", menu_items, count, top, sel, rv, "HELP", "RUN", "EXS", "", "", "BACK"); }
     OS_InnerWait_ms(35);
   }
 }

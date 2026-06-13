@@ -40,14 +40,14 @@ Main browser:
 - `UP/DOWN`: move selection.
 - `EXE` or `F1`: open selected folder/text file.
 - `F2`: search all text files.
-- `EXIT`: parent folder.
+- `F6` or `EXIT`: parent folder.
 - `MENU` or `AC`: quit.
 
 Text viewer:
 
 - `UP/DOWN`: scroll.
 - `F1`: find inside current opened file.
-- `EXIT` or `AC`: back.
+- `F2`, `F6`, `EXIT`, or `AC`: back.
 
 ## Search All Text Files
 
@@ -113,4 +113,3 @@ References:
 - Search depth is capped to avoid runaway traversal.
 - Result list is capped to fit the calculator page buffer.
 - Very long text files can be opened only up to the viewer buffer, but all-file search scans the full file contents in chunks.
-

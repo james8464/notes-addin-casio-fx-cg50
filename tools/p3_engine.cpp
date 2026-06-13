@@ -2240,7 +2240,7 @@ static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     n = add(out, n, tail == 2 ? "P(X>%d)" : tail == 1 ? "P(X>=%d)" : tail == -2 ? "P(X<%d)" : "P(X<=%d)", r);
     return add(out, n, "sum from %d to %d = %.10g", lo, hi, ans);
   }
-  if (starts3(s, "binomnorm(", "normalapproxbinom(", "binomnormal(") && na >= 4) {
+  if ((starts3(s, "binomnorm(", "normalapproxbinom(", "binomnormal(") || starts2(s, "largebinomnormal(", "binomapprox(")) && na >= 4) {
     int N=(int)num(a[0]); double p=num(a[1]), lo=num(a[2]), hi=num(a[3]);
     double mu=N*p, sig=root(N*p*(1-p)), clo=lo-0.5, chi=hi+0.5;
     int n = add(out, 0, "Use normal approximation to X ~ B(%d, %.6g).", N, p);
@@ -2261,7 +2261,7 @@ static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     n = add(out, n, tail == 2 ? "Use P(Y>%d)" : tail == 1 ? "Use P(Y>=%d)" : tail == -2 ? "Use P(Y<%d)" : tail == -1 ? "Use P(Y<=%d)" : "Use P(Y=%d)", r);
     return add(out, n, "approx probability = %.10g", ans);
   }
-  if (starts3(s, "critbinom(", "criticalbinom(", "criticalregion(") && na >= 4) {
+  if ((starts3(s, "critbinom(", "criticalbinom(", "criticalregion(") || starts(s, "binomcrit(")) && na >= 4) {
     int N=(int)num(a[0]); double p=num(a[1]), alpha=num(a[2]), tail=num(a[3]);
     double cum = 0, bestp = 0; int crit = tail < 0 ? -1 : N + 1;
     if (tail < 0) {
@@ -2326,6 +2326,33 @@ static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     n = add(out, n, "z2=(%.6g-%.6g)/%.6g = %.6g", hi, mu, sig, (hi-mu)/sig);
     n = add(out, n, "Use fx-CG50 Normal CDF with lower, upper, sigma, mu.");
     return add(out, n, "NormalCD(lower=%.6g, upper=%.6g, sigma=%.6g, mu=%.6g)", lo, hi, sig, mu);
+  }
+  if (starts3(s, "samplemean(", "xbarprob(", "samplemeanprob(") && na >= 4) {
+    double mu=num(a[0]), sig=num(a[1]), n0=num(a[2]), se=sig/root(n0);
+    int n = add(out, 0, "For a sample mean, use the sampling distribution.");
+    n = add(out, n, "Xbar ~ N(%.6g, (%.6g/sqrt(%.6g))^2)", mu, sig, n0);
+    n = add(out, n, "standard error = %.6g/sqrt(%.6g) = %.10g", sig, n0, se);
+    if (na >= 5) {
+      double lo=num(a[3]), hi=num(a[4]);
+      if (hi < lo) { double q = lo; lo = hi; hi = q; }
+      n = add(out, n, "Required probability is P(%.6g<Xbar<%.6g).", lo, hi);
+      n = add(out, n, "z1=(%.6g-%.6g)/%.10g = %.10g", lo, mu, se, se ? (lo-mu)/se : 0);
+      n = add(out, n, "z2=(%.6g-%.6g)/%.10g = %.10g", hi, mu, se, se ? (hi-mu)/se : 0);
+      return add(out, n, "NormalCD(lower=%.6g, upper=%.6g, sigma=%.10g, mu=%.6g)", lo, hi, se, mu);
+    }
+    double x=num(a[3]), tail=na >= 5 ? num(a[4]) : -1;
+    n = add(out, n, tail >= 0 ? "Required probability is P(Xbar>=%.6g)." : "Required probability is P(Xbar<=%.6g).", x);
+    n = add(out, n, "z=(%.6g-%.6g)/%.10g = %.10g", x, mu, se, se ? (x-mu)/se : 0);
+    return add(out, n, tail >= 0 ? "Use NormalCD(lower=%.6g, upper=1E99, sigma=%.10g, mu=%.6g)" : "Use NormalCD(lower=-1E99, upper=%.6g, sigma=%.10g, mu=%.6g)", x, se, mu);
+  }
+  if (starts3(s, "samplemeantail(", "xbartail(", "sampletail(") && na >= 5) {
+    double mu=num(a[0]), sig=num(a[1]), n0=num(a[2]), x=num(a[3]), tail=num(a[4]), se=sig/root(n0);
+    int n = add(out, 0, "For a sample mean, use the sampling distribution.");
+    n = add(out, n, "Xbar ~ N(%.6g, (%.6g/sqrt(%.6g))^2)", mu, sig, n0);
+    n = add(out, n, "standard error = %.6g/sqrt(%.6g) = %.10g", sig, n0, se);
+    n = add(out, n, tail >= 0 ? "Required probability is P(Xbar>=%.6g)." : "Required probability is P(Xbar<=%.6g).", x);
+    n = add(out, n, "z=(%.6g-%.6g)/%.10g = %.10g", x, mu, se, se ? (x-mu)/se : 0);
+    return add(out, n, tail >= 0 ? "Use NormalCD(lower=%.6g, upper=1E99, sigma=%.10g, mu=%.6g)" : "Use NormalCD(lower=-1E99, upper=%.6g, sigma=%.10g, mu=%.6g)", x, se, mu);
   }
   if (starts3(s, "normalprobvar(", "normalcdfvar(", "normintvar(") && na >= 4) {
     double lo=num(a[0]), hi=num(a[1]), mu=num(a[2]), var=num(a[3]), sig=root(var);
@@ -2393,7 +2420,7 @@ static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     n = add(out, n, "P(A|B)=%.10g/%.10g", nume, den);
     return add(out, n, "conditional probability = %.10g", den ? nume/den : 0);
   }
-  if (starts3(s, "invnormal(", "inversenormal(", "normalinv(") && na >= 3) {
+  if ((starts3(s, "invnormal(", "inversenormal(", "normalinv(") || starts(s, "normalcrit(")) && na >= 3) {
     double area=num(a[0]), mu=num(a[1]), sig=num(a[2]);
     double z = inv_norm_left(area);
     int n = add(out, 0, "For X~N(mu,sigma^2), use inverse normal for a critical value.");

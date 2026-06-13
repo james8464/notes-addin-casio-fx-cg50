@@ -19,25 +19,21 @@
 
 ## CASP3.g3a
 
-1. Add `normalcrit()` / `binomcrit()` wrappers with clearer critical-region wording.
-   This is useful for hypothesis-test questions where the marks are for region setup, not the arithmetic.
+Implemented:
 
-2. Add `samplemean()` command.
-   Example: `samplemean(mu,sigma,n,lo,hi)` should show `Xbar ~ N(mu,sigma^2/n)`.
+- `normalcrit()` alias for inverse normal critical-value work.
+- `binomcrit()` alias for binomial critical regions.
+- `samplemean(mu,sigma,n,lo,hi)` and `samplemeantail(mu,sigma,n,x,tail)`.
+- `largebinomnormal()` alias for normal approximation to binomial.
+- `connected()` connected-particle route.
+- `ladder()` moments/friction route.
 
-3. Add `largebinomnormal()` command.
-   Example: `largebinomnormal(n,p,lo,hi)` should show normal approximation to binomial, including continuity correction.
+Remaining useful additions:
 
-4. Add `projectilefromheight()` alias.
+1. Add `projectilefromheight()` alias.
    Current projectile commands support initial height in parameter forms, but a named alias would help users pick it quickly.
 
-5. Add `connected()` command for general connected-particle equations.
-   It should show two `F=ma` equations and solve simultaneously for tension and acceleration.
-
-6. Add `ladder()` moments/friction route.
-   This is a common Paper 3 mechanics style: resolve at wall/floor, friction limiting, take moments.
-
-7. Add `vectorforces()` command.
+2. Add `vectorforces()` command.
    Useful for resolving forces in `i,j` form and finding acceleration/resultant.
 
 ## CSCALC.g3a
@@ -56,4 +52,3 @@
 
 5. Add `overflowcheck()` command.
    It should compare unsigned, sign-magnitude, one's complement, and two's complement range for the same bit width.
-

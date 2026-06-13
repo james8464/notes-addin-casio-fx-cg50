@@ -10,9 +10,11 @@
 
 ## Controls
 
-- `EXE`: insert selected command template.
+- `EXE` or `F2`: insert/run selected command template.
 - `F1`: help sheet.
-- `EXIT`: back.
+- `F3`: examples.
+- `F4/F5` in input: previous/next command history.
+- `EXIT` or `F6`: back.
 
 ## Base / Number Representation
 
@@ -406,4 +408,3 @@ Examples:
 ## Natural Text
 
 Some short question-like inputs are recognised, but command syntax is the reliable path.
-

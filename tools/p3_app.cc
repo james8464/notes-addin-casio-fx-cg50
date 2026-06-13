@@ -159,6 +159,58 @@ static const char *const grouped[] = {
   "Histogram density = f / class width."
 };
 
+static const char *const suvat_ex[] = {
+  "suvat(u=2,a=3,t=4)",
+  "suvat(u=5,v=17,t=3)",
+  "suvat(u=4,v=10,a=2)",
+  "suvat(s=40,u=5,t=4)",
+  "suvat(v=20,a=3,s=50)"
+};
+
+static const char *const proj_ex[] = {
+  "projectile(20,30)",
+  "projectile(20,30,9.81)",
+  "projectileh(20,30,5)",
+  "projectiley(20,30,0,2)",
+  "projectileat(20,30,15,0)",
+  "projectileangle(20,30,5,0)"
+};
+
+static const char *const mech_ex[] = {
+  "force(12,3)",
+  "weight(6)",
+  "friction(0.4,25)",
+  "incline(5,30,0.2)",
+  "inclineacc(5,30,0.2)",
+  "pulley(3,5)",
+  "connected(2,3,10)"
+};
+
+static const char *const moments_ex[] = {
+  "beam(10,30,4,20)",
+  "moment(50,2.5)",
+  "ladder(5,100,60)",
+  "ladder(5,100,60,50,3)"
+};
+
+static const char *const stats_ex[] = {
+  "hypbinom(20,0.4,4,0.05,-1)",
+  "hypbinom(20,0.4,14,0.05,1)",
+  "critbinom(20,0.4,0.05,-1)",
+  "binomnorm(100,0.4,35,45)",
+  "samplemean(50,10,25,45,55)",
+  "normalprob(40,60,50,10)"
+};
+
+static const char *const data_ex[] = {
+  "binom(10,0.4,3)",
+  "poisson(3,2)",
+  "cond(0.2,0.5)",
+  "regresscalc(5,20,30,100,220,140)",
+  "groupmean(5,12,15,30,25,18)",
+  "histdensity(24,6)"
+};
+
 static void copy_initial(char *dst, int dst_len, const char *src) {
   int i = 0;
   if (!src) src = "";
@@ -196,21 +248,32 @@ static void open_item(int sel, bool help, unsigned *tick) {
   else ui_wait_page("Grouped data", grouped, sizeof(grouped)/sizeof(grouped[0]), tick);
 }
 
+static void open_examples(int sel, unsigned *tick) {
+  if (sel == 0 || sel == 1) ui_wait_page("SUVAT examples", suvat_ex, sizeof(suvat_ex)/sizeof(suvat_ex[0]), tick);
+  else if (sel == 2) ui_wait_page("Projectile examples", proj_ex, sizeof(proj_ex)/sizeof(proj_ex[0]), tick);
+  else if (sel == 3 || sel == 4 || sel == 5) ui_wait_page("Mechanics examples", mech_ex, sizeof(mech_ex)/sizeof(mech_ex[0]), tick);
+  else if (sel == 6) ui_wait_page("Moment examples", moments_ex, sizeof(moments_ex)/sizeof(moments_ex[0]), tick);
+  else if (sel == 7) ui_wait_page("Var accel examples", varacc, sizeof(varacc)/sizeof(varacc[0]), tick);
+  else if (sel >= 8 && sel <= 10) ui_wait_page("Stats examples", stats_ex, sizeof(stats_ex)/sizeof(stats_ex[0]), tick);
+  else ui_wait_page("Data examples", data_ex, sizeof(data_ex)/sizeof(data_ex[0]), tick);
+}
+
 int main() {
   Bdisp_EnableColor(1);
   unsigned tick = (unsigned)RTC_GetTicks();
   int sel = 0, top = 0, count = sizeof(menu_items)/sizeof(menu_items[0]);
   bool rv = ui_r_visible(tick);
-  ui_menu("CASP3 Paper 3", menu_items, count, top, sel, rv);
+  ui_menu_keys("CASP3 Paper 3", menu_items, count, top, sel, rv, "HELP", "RUN", "EXS", "", "", "BACK");
   for (;;) {
     int key = ui_key_poll();
     bool nr = ui_r_visible(tick);
-    if (nr != rv) { rv = nr; ui_menu("CASP3 Paper 3", menu_items, count, top, sel, rv); }
-    if (key == KEY_CTRL_EXIT || key == KEY_CTRL_AC || key == KEY_CTRL_MENU) return 0;
-    if (key == KEY_CTRL_UP && sel > 0) { --sel; if (sel < top) --top; ui_menu("CASP3 Paper 3", menu_items, count, top, sel, rv); }
-    if (key == KEY_CTRL_DOWN && sel + 1 < count) { ++sel; if (sel >= top + 7) ++top; ui_menu("CASP3 Paper 3", menu_items, count, top, sel, rv); }
-    if (key == KEY_CTRL_EXE) { open_item(sel, false, &tick); rv = ui_r_visible(tick); ui_menu("CASP3 Paper 3", menu_items, count, top, sel, rv); }
-    if (key == KEY_CTRL_F1) { open_item(sel, true, &tick); rv = ui_r_visible(tick); ui_menu("CASP3 Paper 3", menu_items, count, top, sel, rv); }
+    if (nr != rv) { rv = nr; ui_menu_keys("CASP3 Paper 3", menu_items, count, top, sel, rv, "HELP", "RUN", "EXS", "", "", "BACK"); }
+    if (key == KEY_CTRL_EXIT || key == KEY_CTRL_AC || key == KEY_CTRL_MENU || key == KEY_CTRL_F6) return 0;
+    if (key == KEY_CTRL_UP && sel > 0) { --sel; if (sel < top) --top; ui_menu_keys("CASP3 Paper 3", menu_items, count, top, sel, rv, "HELP", "RUN", "EXS", "", "", "BACK"); }
+    if (key == KEY_CTRL_DOWN && sel + 1 < count) { ++sel; if (sel >= top + 7) ++top; ui_menu_keys("CASP3 Paper 3", menu_items, count, top, sel, rv, "HELP", "RUN", "EXS", "", "", "BACK"); }
+    if (key == KEY_CTRL_EXE || key == KEY_CTRL_F2) { open_item(sel, false, &tick); rv = ui_r_visible(tick); ui_menu_keys("CASP3 Paper 3", menu_items, count, top, sel, rv, "HELP", "RUN", "EXS", "", "", "BACK"); }
+    if (key == KEY_CTRL_F1) { open_item(sel, true, &tick); rv = ui_r_visible(tick); ui_menu_keys("CASP3 Paper 3", menu_items, count, top, sel, rv, "HELP", "RUN", "EXS", "", "", "BACK"); }
+    if (key == KEY_CTRL_F3) { open_examples(sel, &tick); rv = ui_r_visible(tick); ui_menu_keys("CASP3 Paper 3", menu_items, count, top, sel, rv, "HELP", "RUN", "EXS", "", "", "BACK"); }
     OS_InnerWait_ms(35);
   }
 }
