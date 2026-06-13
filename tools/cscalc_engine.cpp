@@ -527,7 +527,7 @@ static bool label_num(const char *s, const char *name, double *v) {
 
 static void scale_time_unit(const char *t, double *seconds) {
   if (has(t, "millisecond") || has(t, "ms")) *seconds /= 1000.0;
-  else if (has(t, "minute") || has(t, "mins")) *seconds *= 60.0;
+  else if (has(t, "minute") || has(t, "mins") || has_word(t, "min")) *seconds *= 60.0;
   else if (has(t, "hour")) *seconds *= 3600.0;
 }
 
@@ -5349,11 +5349,11 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     bool wordDur = num_before_unit_raw(input, "minutes", &dur) || num_before_unit_raw(input, "minute", &dur) ||
                    num_before_unit_raw(input, "mins", &dur) || num_before_unit_raw(input, "seconds", &dur) ||
                    num_before_unit_raw(input, "second", &dur) || num_before_unit_raw(input, "hours", &dur) ||
-                   num_before_unit_raw(input, "hour", &dur) ||
+                   num_before_unit_raw(input, "hour", &dur) || num_before_unit_raw(input, "min", &dur) ||
                    scan_before_word_num(t, "minutes", &dur) || scan_before_word_num(t, "minute", &dur) ||
                    scan_before_word_num(t, "mins", &dur) || scan_before_word_num(t, "seconds", &dur) ||
                    scan_before_word_num(t, "second", &dur) || scan_before_word_num(t, "hours", &dur) ||
-                   scan_before_word_num(t, "hour", &dur);
+                   scan_before_word_num(t, "hour", &dur) || scan_before_word_num(t, "min", &dur);
     double labelled = 0;
     if (scan_near_after_word_num(t, "duration", &labelled) || scan_near_after_word_num(t, "time", &labelled)) {
       dur = labelled;
@@ -6849,9 +6849,11 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     return eval_minterms(cmd, out);
   }
   if (nv == 0 && ((has(compact, "nand") && (has(compact, "only") || has(compact, "form") || has(compact, "convert"))) || starts(compact, "nandform") || starts(compact, "onlynand"))) {
+    if (make_named_bool_rhs_cmd(compact, "nandform", cmd, sizeof(cmd))) return eval_gate_form(cmd, out);
     if (make_gate_form_cmd(input, true, cmd, sizeof(cmd))) return eval_gate_form(cmd, out);
   }
   if (nv == 0 && ((has(compact, "nor") && (has(compact, "only") || has(compact, "form") || has(compact, "convert"))) || starts(compact, "norform") || starts(compact, "onlynor"))) {
+    if (make_named_bool_rhs_cmd(compact, "norform", cmd, sizeof(cmd))) return eval_gate_form(cmd, out);
     if (make_gate_form_cmd(input, false, cmd, sizeof(cmd))) return eval_gate_form(cmd, out);
   }
   if (nv == 0 && (starts(compact, "posform") || starts(compact, "cnf") ||

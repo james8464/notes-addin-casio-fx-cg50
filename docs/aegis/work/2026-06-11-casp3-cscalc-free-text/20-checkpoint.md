@@ -5513,6 +5513,37 @@ Drift check:
 - Kept changes to CASP3/CSCALC general free-text handling, regressions, generated app outputs, and this checkpoint.
 - Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.
 
+## 2026-06-13 Superscript, Not-Equal, Minute, and Gate Assignment Slice
+
+Completed:
+- Added CASP3 pasted notation normalization for `≠`, `²`, and `³`.
+- Reused the existing CASP3 not-equal complement route for `P(X≠r)`.
+- Fixed normal variance forms like `10²` so `sigma = sqrt(100)`, not `sqrt(10)`.
+- Treated standalone `min` as minutes in CSCALC time scaling and sound free-text duration parsing.
+- Routed named Boolean outputs like `F=A∨B` through the RHS before NAND/NOR conversion.
+- Added regression tests and rebuilt calculator files.
+
+Evidence:
+- Fresh probes fixed: `P(X≠6)`, `X~N(50,10²), P(X≤65)`, `44.1 kHz, 16 bit, stereo, 3 min`, `F=A∨B to NAND only`.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `CASP3.g3a: 504036 bytes`
+  - `CSCALC.g3a: 278036 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CASP3.g3a sha256: 2b5eb5703a18972c2b18538be513cbed90578f1475f4055633e828b7e832f279`
+  - `CSCALC.g3a sha256: 2f32ee8dbe9ace1f4ce3704c4e311a33423d55730f4420294be8137b17035b23`
+
+Drift check:
+- Kept changes to CASP3/CSCALC parser generalisation, regressions, generated app outputs, and this checkpoint.
+- Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.
+
 ## 2026-06-13 Pasted Symbol and Boolean Truth Slice
 
 Completed:

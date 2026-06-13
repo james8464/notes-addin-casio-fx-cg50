@@ -27,9 +27,12 @@ static bool p3_utf_token(const char *s, const char **tok, int *len) {
   unsigned char a = (unsigned char)s[0], b = (unsigned char)s[1], c = (unsigned char)s[2];
   if (a == 0xe2 && b == 0x89 && c == 0xa4) { *tok = "<="; *len = 3; return true; }
   if (a == 0xe2 && b == 0x89 && c == 0xa5) { *tok = ">="; *len = 3; return true; }
+  if (a == 0xe2 && b == 0x89 && c == 0xa0) { *tok = "!="; *len = 3; return true; }
   if (a == 0xe2 && b == 0x88 && c == 0x92) { *tok = "-"; *len = 3; return true; }
   if (a == 0xe2 && b == 0x80 && (c == 0x93 || c == 0x94)) { *tok = "-"; *len = 3; return true; }
   if (a == 0xc2 && b == 0xb0) { *tok = " degrees "; *len = 2; return true; }
+  if (a == 0xc2 && b == 0xb2) { *tok = "^2"; *len = 2; return true; }
+  if (a == 0xc2 && b == 0xb3) { *tok = "^3"; *len = 2; return true; }
   if (a == 0xce && b == 0xbc) { *tok = "mu"; *len = 2; return true; }
   if (a == 0xc2 && b == 0xb5) { *tok = "mu"; *len = 2; return true; }
   if (a == 0xcf && b == 0x83) { *tok = "sigma"; *len = 2; return true; }
