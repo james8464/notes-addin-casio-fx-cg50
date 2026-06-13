@@ -1,5 +1,41 @@
 # Checkpoint
 
+## 2026-06-13 Final Parser Gap Sweep Slice
+
+Completed:
+- Fixed CASP3 histogram interval wording like `from 12 to 20 ... frequency 36` so width is parsed as `20-12`.
+- Fixed CASP3 grouped quartile interpolation when `cumulative frequency before class` is supplied in natural wording.
+- Fixed CASP3 loaded uniform-rod centre of mass when particles are at A, midpoint, and B.
+- Added CASP3 absolute normal probability handling for wording like `absolute X minus 30 less than 6`.
+- Fixed CSCALC decimal whole+fraction conversion such as `13.625 to binary`, without stealing binary-to-denary fixed-point prompts.
+- Fixed CSCALC binary addition when the second addend is a single bit.
+- Fixed CSCALC Boolean set-notation dont-care parsing for `Σm(...) with dont cares 1 5`.
+- Rebuilt calculator-ready CASP3 and CSCALC artifacts.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 522196 bytes`
+  - `CSCALC.g3a: 290456 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: 18178 bytes`
+- Artifact hashes:
+  - `CASP3.g3a: effd86ef6bf150b4b85d89dd731c892d97f280817ca802509e8dd3d03ed1727a`
+  - `CSCALC.g3a: a23bb3352e80937397958d2258c206956ebe268dad8e4e4657873d1512ea999e`
+
+Drift check:
+- Stayed inside CASP3/CSCALC parser hardening, tests, checkpoint, and rebuilt app artifacts.
+- No Pure CAS source, NOTES source, menus, session sharing, or shared UI/status code changed.
+- Active goal remains open for further unseen-case hardening if needed.
+
 ## 2026-06-13 P3/CS General Parser Finalisation Slice
 
 Completed:

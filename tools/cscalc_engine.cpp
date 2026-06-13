@@ -1247,6 +1247,19 @@ static bool make_bool_set_notation_cmd(const char *in, char *cmd, int cap) {
   if (!dp) dp = strstr(mp, "+dc(");
   if (!dp) dp = strstr(mp, "dontcare(");
   if (dp) append_ints_in_parens(dp, dcs, &nd, 32);
+  if (!nd && (has(c, "dont") || has(c, "dc"))) {
+    char rt[192]; raw_clean(in, rt, sizeof(rt));
+    const char *tail = strstr(rt, "dont");
+    if (!tail) tail = strstr(rt, "dc");
+    double all[48]; int an = tail ? scan_nums(tail, all, 48) : 0;
+    for (int i = 0; i < an && nd < 32; ++i) {
+      int q = (int)(all[i] + (all[i] >= 0 ? 0.5 : -0.5));
+      bool is_val = false, seen = false;
+      for (int j = 0; j < nv; ++j) if (vals[j] == q) is_val = true;
+      for (int j = 0; j < nd; ++j) if (dcs[j] == q) seen = true;
+      if (!is_val && !seen) dcs[nd++] = q;
+    }
+  }
   if (!vc) {
     int maxv = 0;
     for (int i = 0; i < nv; ++i) if (vals[i] > maxv) maxv = vals[i];
@@ -1323,10 +1336,12 @@ static int add_fraction_binary_lines(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]
   }
   if (!fp) fb[fp++] = '0';
   fb[fp] = 0;
+  const char *whole_bits = wb;
+  while (whole_bits[0] == '0' && whole_bits[1]) ++whole_bits;
   int n = add(out, 0, "Convert the whole part by repeated division and the fractional part by repeated multiplication by 2.");
   n = add(out, n, "whole part %.0f -> %s", (double)whole, wb);
   n = add(out, n, "fractional bits = %s", fb);
-  return add(out, n, "%.10g_10 = %lld.%s_2", x, whole, fb);
+  return add(out, n, "%.10g_10 = %s.%s_2", x, whole_bits, fb);
 }
 
 static int add_crc_lines(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN], const char *data, const char *divisor) {
@@ -4196,13 +4211,17 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       return eval_float(cmd, out);
     }
   }
-  if ((has(t, "denary") || has(t, "decimal")) && has(t, "binary") && nv >= 1) {
+  if ((has(t, "denary") || has(t, "decimal")) && has(t, "binary") && nv >= 1 &&
+      !(has(t, "to,denary") || has(t, "to,decimal") || strstr(input, "to denary") || strstr(input, "to decimal"))) {
     double value = v[0];
     double bw_hint = 0;
     bool explicit_bits = scan_before_word_num(t, "bit", &bw_hint) || scan_before_word_num(t, "bits", &bw_hint);
     bool frac_value = false;
     for (int i = 0; i < nv; ++i) {
-      if (v[i] > -1 && v[i] < 1 && !near_num(v[i], 0)) { value = v[i]; frac_value = true; break; }
+      long long whole = (long long)v[i];
+      if (!near_num(v[i], (double)whole) || (v[i] > -1 && v[i] < 1 && !near_num(v[i], 0))) {
+        value = v[i]; frac_value = true; break;
+      }
     }
     if (frac_value && !explicit_bits && !(has(t, "fixed") || has(t, "mantissa") || has(t, "floating") || has(t, "float")))
       return add_fraction_binary_lines(out, value);
@@ -4218,6 +4237,21 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       char rb[65]; to_bin(sum, w + 1, rb);
       int n = add(out, 0, "Add binary place values.");
       n = add(out, n, "%s_2 = %lld, %s_2 = %lld", bits[0], a0, bits[1], b0);
+      n = add(out, n, "%lld + %lld = %lld", a0, b0, sum);
+      return add(out, n, "result = %s_2", rb);
+    }
+  }
+  if ((has(t, "add") || has(t, "sum") || has(t, "plus")) && nb == 1 &&
+      (has(t, "binary") || has(t, "bits")) && !tc_hint && !has(t, "overflow") && nv >= 1) {
+    long long b0 = -1;
+    for (int i = nv - 1; i >= 0; --i) if ((near_num(v[i], 0) || near_num(v[i], 1)) && !near_num(v[i], bin_unsigned(bits[0]))) { b0 = (long long)v[i]; break; }
+    if (b0 >= 0) {
+      long long a0 = bin_unsigned(bits[0]), sum = a0 + b0;
+      int w = (int)strlen(bits[0]) + 1;
+      char rb[65], bb[2]; bb[0] = b0 ? '1' : '0'; bb[1] = 0;
+      to_bin(sum, w, rb);
+      int n = add(out, 0, "Add binary place values.");
+      n = add(out, n, "%s_2 = %lld, %s_2 = %lld", bits[0], a0, bb, b0);
       n = add(out, n, "%lld + %lld = %lld", a0, b0, sum);
       return add(out, n, "result = %s_2", rb);
     }

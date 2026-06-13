@@ -6335,9 +6335,20 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     }
     if ((has(t, "ata") || has(t, "at a") || has(c, "ata")) &&
         (has(t, "atb") || has(t, "at b") || has(c, "atb"))) {
-      double loads[2]; int lc = 0;
-      for (int i = 0; i < nv && lc < 2; ++i)
+      double loads[3]; int lc = 0;
+      for (int i = 0; i < nv && lc < 3; ++i)
         if (i != usedL && i != usedW) loads[lc++] = v[i];
+      if (lc >= 3 && (has(t, "midpoint") || has(t, "middle") || has(t, "mid"))) {
+        msum += loads[0] + loads[1] + loads[2];
+        moment += loads[1] * (L/2.0) + loads[2] * L;
+        int n = add(out, 0, "For a loaded uniform rod, take moments about A.");
+        n = add(out, n, "rod weight %.10g acts at midpoint %.10g", rodW, L/2.0);
+        n = add(out, n, "load at A has zero moment; midpoint load has moment %.10g*%.10g", loads[1], L/2.0);
+        n = add(out, n, "load at B has moment %.10g*%.10g", loads[2], L);
+        n = add(out, n, "total weight = %.10g", msum);
+        n = add(out, n, "total moment about A = %.10g", moment);
+        return add(out, n, "centre of mass from A = %.10g/%.10g = %.10g", moment, msum, msum ? moment/msum : 0);
+      }
       if (lc >= 2) {
         msum += loads[0] + loads[1];
         moment += loads[1] * L;
@@ -7181,6 +7192,30 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
         int n = add(out, 0, "P(|X-%.6g|<%.6g) means %.6g-%.6g < X < %.6g+%.6g.", centre, radius, centre, radius, centre, radius);
         if (hVar) n = add(out, n, "sigma = sqrt(%.6g) = %.10g", var, sd);
         n = add(out, n, "So %.10g < X < %.10g.", lo2, hi2);
+        n = add(out, n, "z1=(%.10g-%.6g)/%.10g = %.10g", lo2, mu, sd, z1);
+        n = add(out, n, "z2=(%.10g-%.6g)/%.10g = %.10g", hi2, mu, sd, z2);
+        return add(out, n, "probability = %.10g", ans);
+      }
+    }
+    if ((has(t, "absolute") || has(t, "modulus")) && has(t, "minus") &&
+        (has(c, "lessthan") || has(c, "<")) && hMu && (hSig || hVar)) {
+      double centre = mu, radius = 0;
+      bool hCentre = word_num(input, "minus", &centre);
+      bool hRadius = word_num(input, "lessthan", &radius) || word_num(input, "less", &radius);
+      if (!hCentre || !hRadius) {
+        for (int i = 0; i < nv; ++i) {
+          if ((hSig && near_num(v[i], sig)) || (hVar && near_num(v[i], var))) continue;
+          if (!hCentre && !near_num(v[i], mu)) { centre = v[i]; hCentre = true; continue; }
+          if (!hRadius && !near_num(v[i], centre) && !near_num(v[i], mu)) { radius = v[i]; hRadius = true; }
+        }
+      }
+      if (hRadius && radius > 0) {
+        double sd = hSig ? sig : root(var);
+        double lo2 = centre - radius, hi2 = centre + radius;
+        double z1 = (lo2 - mu) / sd, z2 = (hi2 - mu) / sd;
+        double ans = normal_cdf(z2) - normal_cdf(z1);
+        int n = add(out, 0, "P(|X-%.6g|<%.6g) means %.6g < X < %.6g.", centre, radius, lo2, hi2);
+        if (hVar) n = add(out, n, "sigma = sqrt(%.6g) = %.10g", var, sd);
         n = add(out, n, "z1=(%.10g-%.6g)/%.10g = %.10g", lo2, mu, sd, z1);
         n = add(out, n, "z2=(%.10g-%.6g)/%.10g = %.10g", hi2, mu, sd, z2);
         return add(out, n, "probability = %.10g", ans);
@@ -9686,11 +9721,17 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     bool hT = word_num(input, "total", &total) || word_num(input, "n", &total);
     bool hF = word_num(input, "frequency", &f);
     bool hC = word_num(input, "cumulativebefore", &cf) || word_num(input, "before", &cf);
-    (void)hC;
     bool hClass = word_num(input, "class", &L);
     bool hU = word_num(input, "to", &U);
     if (hClass && !hU) {
       for (int i = 0; i + 1 < nv; ++i) if (near_num(v[i], L)) { U = abs_num(v[i+1]); hU = true; break; }
+    }
+    if (!hC) {
+      for (int i = 0; i < nv; ++i) {
+        if ((hT && near_num(v[i], total)) || (hF && near_num(v[i], f)) ||
+            (hClass && near_num(v[i], L)) || (hU && near_num(v[i], U))) continue;
+        cf = v[i]; hC = true; break;
+      }
     }
     if (hClass && hU && hT && hF) {
       double q = has(t, "upper") || has(t, "q3") ? 0.75 : (has(t, "lower") || has(t, "q1") ? 0.25 : 0.5);
@@ -9743,6 +9784,13 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     bool hW = word_num(input,"classwidth",&width0) || word_num(input,"width",&width0);
     bool hD = word_num(input,"frequencydensity",&dens) || word_num(input,"density",&dens);
     bool hF = word_num(input,"frequency",&freq);
+    if (!hW && (has(t, "from") || has(t, "to"))) {
+      double lo=0, hi=0;
+      if (word_num(input, "from", &lo) && word_num(input, "to", &hi) && !near_num(lo, hi)) {
+        width0 = hi > lo ? hi - lo : lo - hi;
+        hW = true;
+      }
+    }
     if ((has(t, "classinterval") || (has(t, "class") && has(t, "interval"))) &&
         has(t, "frequency") && hD && nv >= 3 &&
         !has(c, "findfrequencydensity") &&
