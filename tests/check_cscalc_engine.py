@@ -263,6 +263,8 @@ def main():
     require("Calculate the bit rate needed to stream a 24 MB file in 12 seconds.", ["24 MB = 192 Mbit", "bit rate = 192/12 = 16 Mbit/s"])
     require("calculate bit rate needed to stream a 50 MiB video in 20 seconds", ["50 MiB = 419430400 bits", "bit rate = 419430400/20 = 20971520 bit/s"])
     require("bit rate for file size 12 megabytes transmitted in 2 minutes", ["12 MB = 96 Mbit", "bit rate = 96/120 = 0.8 Mbit/s"])
+    require("Calculate the bit rate for video 1920 by 1080 24 bit colour at 30 fps.", ["Video bit rate", "bits per frame = 2073600*24", "= 1492.992 Mbit/s"])
+    require("Calculate uncompressed video file size for 1920 by 1080 24 bit colour at 30 fps for 10 seconds.", ["Uncompressed video size", "file bits = 1492992000*10", "= 1779.785156 MiB"])
     require("calculate bit rate for 5 MiB file sent in 4 seconds", ["5 MiB", "bit rate ="])
     require("A network sends 2 GiB in 3 minutes. Calculate bit rate in Mbit/s.", ["2 GiB =", "bit rate =", "= 95.44371769 Mbit/s"])
     require("bitratekb(500,2)", ["500 KB = 4000 kbit", "2000 kbit/s"])

@@ -1247,10 +1247,12 @@ static int prob_tail(const char *c, const char *t) {
   if (has(c, "nomorethan") || has(c, "notmorethan")) return -1;
   if (has(c, "p(x<=") || has(c, "p(x=<") || has(c, "x<=") ||
       has(c, "lessthanorequal") || has(c, "atmost")) return -1;
-  if (has(c, "p(x<") || has(c, "x<") || has(c, "lessthan") || has(t, "fewer")) return -2;
+  if (has(c, "p(x<") || has(c, "x<") || has(c, "lessthan") || has(t, "fewer") ||
+      has(c, "below") || has(c, "under")) return -2;
   if (has(c, "p(x>=") || has(c, "p(x=>") || has(c, "x>=") ||
       has(c, "greaterthanorequal") || has(c, "atleast")) return 1;
-  if (has(c, "p(x>") || has(c, "x>") || has(c, "greaterthan") || has(c, "morethan")) return 2;
+  if (has(c, "p(x>") || has(c, "x>") || has(c, "greaterthan") || has(c, "morethan") ||
+      has(c, "exceeds") || has(c, "exceed") || has(c, "above")) return 2;
   return 0;
 }
 
@@ -2047,6 +2049,7 @@ static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     double x=num(a[0]), mu=num(a[1]), sig=num(a[2]), tail=num(a[3]);
     int n = add(out, 0, "For X~N(mu,sigma^2), choose the correct tail.");
     n = add(out, n, "z=(%.6g-%.6g)/%.6g = %.6g", x, mu, sig, (x-mu)/sig);
+    n = add(out, n, tail >= 0 ? "This is an upper-tail probability." : "This is a lower-tail probability.");
     n = add(out, n, tail >= 0 ? "Required probability is P(X>=%.6g)." : "Required probability is P(X<=%.6g).", x);
     return add(out, n, tail >= 0 ? "Use NormalCD(lower=%.6g, upper=1E99, sigma=%.6g, mu=%.6g)" : "Use NormalCD(lower=-1E99, upper=%.6g, sigma=%.6g, mu=%.6g)", x, sig, mu);
   }
@@ -2055,6 +2058,7 @@ static int eval_stats(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
     int n = add(out, 0, "Convert variance to standard deviation first.");
     n = add(out, n, "sigma = sqrt(%.6g) = %.6g", var, sig);
     n = add(out, n, "z=(%.6g-%.6g)/%.6g = %.6g", x, mu, sig, (x-mu)/sig);
+    n = add(out, n, tail >= 0 ? "This is an upper-tail probability." : "This is a lower-tail probability.");
     n = add(out, n, tail >= 0 ? "Required probability is P(X>=%.6g)." : "Required probability is P(X<=%.6g).", x);
     return add(out, n, tail >= 0 ? "Use NormalCD(lower=%.6g, upper=1E99, sigma=%.6g, mu=%.6g)" : "Use NormalCD(lower=-1E99, upper=%.6g, sigma=%.6g, mu=%.6g)", x, sig, mu);
   }
@@ -6494,7 +6498,9 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       }
     }
     if (!hX && hMu && (hSig || hVar) && nv >= 1 &&
-        (has(c, "morethan") || has(c, "greaterthan") || has(c, "atleast") || has(c, "lessthan") || has(c, "atmost"))) {
+        (has(c, "morethan") || has(c, "greaterthan") || has(c, "exceeds") || has(c, "exceed") ||
+         has(c, "above") || has(c, "atleast") || has(c, "lessthan") || has(c, "below") ||
+         has(c, "under") || has(c, "atmost"))) {
       for (int i = 0; i < nv; ++i) {
         if (near_num(v[i], mu) || (hSig && near_num(v[i], sig)) || (hVar && near_num(v[i], var))) continue;
         x = v[i]; hX = true; break;
@@ -6510,8 +6516,11 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       return eval_stats(cmd, out);
     }
     if (hX && hMu && (hSig || hVar) && !(has(t, "conditional") || has(t, "given")) &&
-        (has(c, "morethan") || has(c, "greaterthan") || has(c, "atleast") || has(c, "lessthan") || has(c, "atmost"))) {
-      double ttail = (has(c, "morethan") || has(c, "greaterthan") || has(c, "atleast")) ? 1 : -1;
+        (has(c, "morethan") || has(c, "greaterthan") || has(c, "exceeds") || has(c, "exceed") ||
+         has(c, "above") || has(c, "atleast") || has(c, "lessthan") || has(c, "below") ||
+         has(c, "under") || has(c, "atmost"))) {
+      double ttail = (has(c, "morethan") || has(c, "greaterthan") || has(c, "exceeds") ||
+                      has(c, "exceed") || has(c, "above") || has(c, "atleast")) ? 1 : -1;
       sprintf(cmd, hSig ? "normaltail(%.10g,%.10g,%.10g,%.0f)" : "normaltailvar(%.10g,%.10g,%.10g,%.0f)", x, mu, hSig ? sig : var, ttail);
       return eval_stats(cmd, out);
     }
@@ -6554,18 +6563,23 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   double bx = 0; int btail = 0; bool hBound = prob_x_bound(c, &bx, &btail);
   if (has(t, "normal") && has(t, "variance") &&
-      (hBound || has(c, "morethan") || has(c, "greaterthan") || has(c, "atleast") || has(c, "lessthan") || has(c, "atmost")) && nv >= 3) {
+      (hBound || has(c, "morethan") || has(c, "greaterthan") || has(c, "exceeds") || has(c, "exceed") ||
+       has(c, "above") || has(c, "atleast") || has(c, "lessthan") || has(c, "below") ||
+       has(c, "under") || has(c, "atmost")) && nv >= 3) {
     double x = hBound ? bx : v[0], mu = 0, var = 0;
     bool hMu = label_num(input, "mean", &mu) || word_num(input, "mean", &mu);
     bool hVar = label_num(input, "variance", &var) || word_num(input, "variance", &var);
     if (!hMu) mu = hBound ? v[0] : v[1];
     if (!hVar) var = hBound ? v[1] : v[2];
     if (!hBound) for (int i = 0; i < nv; ++i) if (!near_num(v[i], mu) && !near_num(v[i], var)) { x = v[i]; break; }
-    double tail = hBound ? btail : ((has(c, "morethan") || has(c, "greaterthan") || has(c, "atleast")) ? 1 : -1);
+    double tail = hBound ? btail : ((has(c, "morethan") || has(c, "greaterthan") || has(c, "exceeds") ||
+                                     has(c, "exceed") || has(c, "above") || has(c, "atleast")) ? 1 : -1);
     sprintf(cmd, "normaltailvar(%.10g,%.10g,%.10g,%.0f)", x, mu, var, tail); return eval_stats(cmd, out);
   }
   if (has(t, "normal") &&
-      (hBound || has(c, "morethan") || has(c, "greaterthan") || has(c, "atleast") || has(c, "lessthan") || has(c, "atmost")) && nv >= 3) {
+      (hBound || has(c, "morethan") || has(c, "greaterthan") || has(c, "exceeds") || has(c, "exceed") ||
+       has(c, "above") || has(c, "atleast") || has(c, "lessthan") || has(c, "below") ||
+       has(c, "under") || has(c, "atmost")) && nv >= 3) {
     double x = hBound ? bx : v[0], mu = 0, sig = 0;
     bool hMu = label_num(input, "mean", &mu) || word_num(input, "mean", &mu);
     bool hSig = label_num(input, "sd", &sig) || label_num(input, "sigma", &sig) || label_num(input, "standarddeviation", &sig) ||
@@ -6573,7 +6587,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     if (!hMu) mu = hBound ? v[0] : v[1];
     if (!hSig) sig = hBound ? v[1] : v[2];
     if (!hBound) for (int i = 0; i < nv; ++i) if (!near_num(v[i], mu) && !near_num(v[i], sig)) { x = v[i]; break; }
-    double tail = hBound ? btail : ((has(c, "morethan") || has(c, "greaterthan") || has(c, "atleast")) ? 1 : -1);
+    double tail = hBound ? btail : ((has(c, "morethan") || has(c, "greaterthan") || has(c, "exceeds") ||
+                                     has(c, "exceed") || has(c, "above") || has(c, "atleast")) ? 1 : -1);
     sprintf(cmd, "normaltail(%.10g,%.10g,%.10g,%.0f)", x, mu, sig, tail); return eval_stats(cmd, out);
   }
   if ((has(c, "invnormal") || has(c, "inversenormal") || (has(c, "normal") && (has(c, "critical") || has(c, "percentile")))) && has(t, "variance") && nv >= 3) {

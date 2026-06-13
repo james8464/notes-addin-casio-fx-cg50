@@ -224,6 +224,8 @@ def main():
     require("standardise 65 mean 50 sd 10", ["Standardise", "1.5"])
     require("normalvar(65,50,100)", ["Convert variance", "sigma = sqrt(100) = 10", "z = (65-50)/10 = 1.5"])
     require("standardise 65 mean 50 variance 100", ["Convert variance", "sigma = sqrt(100) = 10", "1.5"])
+    require("X is normally distributed with mean 50 and standard deviation 8. Find probability that X exceeds 63.", ["P(X>=63)", "z=(63-50)/8", "upper-tail"])
+    require("A normal random variable has mean 50 and sd 8. Find probability that X is below 42.", ["P(X<=42)", "z=(42-50)/8", "lower-tail"])
     require("binom(10,0.3,4)", ["X ~ B", "10C4"])
     require("binomial(10,0.3,4)", ["X ~ B", "10C4"])
     require("binom_work(10,0.3,4)", ["X ~ B", "10C4"])

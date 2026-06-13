@@ -4774,6 +4774,38 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     sprintf(cmd + p, ")");
     return eval_trace(cmd, out);
   }
+  if (has(t, "video") && (has(t, "fps") || has(t, "frame") || has(t, "frames")) &&
+      (has(t, "file") || has(t, "size") || has(t, "storage")) &&
+      (has(t, "second") || has(t, "minute") || has(t, "hour") || has(t, "duration") || has(t, "time")) &&
+      nv >= 5) {
+    double w = v[0], h = v[1], depth = v[2], fps = v[3], seconds = v[4];
+    double labelled = 0;
+    if (scan_before_word_num(t, "minutes", &labelled) || scan_before_word_num(t, "minute", &labelled) ||
+        scan_before_word_num(t, "hours", &labelled) || scan_before_word_num(t, "hour", &labelled) ||
+        scan_before_word_num(t, "seconds", &labelled) || scan_before_word_num(t, "second", &labelled) ||
+        scan_near_after_word_num(t, "duration", &labelled) || scan_near_after_word_num(t, "time", &labelled)) {
+      seconds = labelled;
+      scale_time_unit(t, &seconds);
+    }
+    double bpf = w * h * depth, bps = bpf * fps, bits = bps * seconds, bytes = bits / 8.0;
+    int n = add(out, 0, "Uncompressed video size = width * height * colour depth * fps * seconds.");
+    n = add(out, n, "bits per frame = %.10g*%.10g*%.10g = %.10g bits", w, h, depth, bpf);
+    n = add(out, n, "bit rate = %.10g*%.10g = %.10g bit/s", bpf, fps, bps);
+    n = add(out, n, "file bits = %.10g*%.10g = %.10g bits", bps, seconds, bits);
+    n = add(out, n, "= %.10g MB", bytes / 1000000.0);
+    return add(out, n, "= %.10g MiB", bytes / 1048576.0);
+  }
+  if (has(t, "video") && (has(t, "fps") || has(t, "frame") || has(t, "frames")) &&
+      (has(compact, "bitrate") || has(compact, "datarate") || (has(t, "bit") && has(t, "rate"))) &&
+      nv >= 4) {
+    double w = v[0], h = v[1], depth = v[2], fps = v[3];
+    double bps = w * h * depth * fps;
+    int n = add(out, 0, "Video bit rate = width * height * colour depth * frames per second.");
+    n = add(out, n, "pixels per frame = %.10g*%.10g = %.10g", w, h, w*h);
+    n = add(out, n, "bits per frame = %.10g*%.10g = %.10g bits", w*h, depth, w*h*depth);
+    n = add(out, n, "bit rate = %.10g*%.10g = %.10g bit/s", w*h*depth, fps, bps);
+    return add(out, n, "= %.10g Mbit/s", bps / 1000000.0);
+  }
   if ((has(t, "image") || has(t, "bitmap")) &&
       (has(t, "colours") || has(t, "colors")) &&
       (has(t, "file") || has(t, "size")) &&
