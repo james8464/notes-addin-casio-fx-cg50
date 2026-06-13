@@ -4259,15 +4259,33 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       return eval_stats(cmd, out);
     }
     double lo = 0, hi = 0;
-    if (prob_x_interval(c, &lo, &hi)) {
-      sprintf(cmd, "poissonrange(%.10g,%d,%d)", lam, (int)lo, (int)hi);
-      return eval_stats(cmd, out);
-    }
-    if (has(t, "between") && nv >= 3) {
-      sprintf(cmd, "poissonrange(%.10g,%d,%d)", lam, (int)v[nv-2], (int)v[nv-1]);
-      return eval_stats(cmd, out);
-    }
-    if ((has(c, "fewerthan") || has(c, "lessthan")) && (has(c, "greaterthan") || has(c, "morethan"))) {
+	    if (prob_x_interval(c, &lo, &hi)) {
+	      sprintf(cmd, "poissonrange(%.10g,%d,%d)", lam, (int)lo, (int)hi);
+	      return eval_stats(cmd, out);
+	    }
+	    if (has(t, "between") && nv >= 3) {
+	      sprintf(cmd, "poissonrange(%.10g,%d,%d)", lam, (int)v[nv-2], (int)v[nv-1]);
+	      return eval_stats(cmd, out);
+	    }
+	    if ((has(c, "atleast") || has(c, "greaterthan") || has(c, "morethan")) &&
+	        (has(c, "lessthan") || has(c, "fewerthan") || has(c, "atmost"))) {
+	      double lowb = 0, highb = 0; int lo_inc = 1, hi_inc = 0;
+	      const char *lp = strstr(c, "atleast");
+	      if (lp) { lowb = read_num(lp + 7); lo_inc = 1; }
+	      else if ((lp = strstr(c, "greaterthan"))) { lowb = read_num(lp + 11); lo_inc = 0; }
+	      else if ((lp = strstr(c, "morethan"))) { lowb = read_num(lp + 8); lo_inc = 0; }
+	      const char *hp = strstr(c, "lessthan");
+	      if (hp) { highb = read_num(hp + 8); hi_inc = 0; }
+	      else if ((hp = strstr(c, "fewerthan"))) { highb = read_num(hp + 9); hi_inc = 0; }
+	      else if ((hp = strstr(c, "atmost"))) { highb = read_num(hp + 6); hi_inc = 1; }
+	      int ilo = (int)lowb + (lo_inc ? 0 : 1);
+	      int ihi = (int)highb - (hi_inc ? 0 : 1);
+	      if (ihi >= ilo) {
+	        sprintf(cmd, "poissonrange(%.10g,%d,%d)", lam, ilo, ihi);
+	        return eval_stats(cmd, out);
+	      }
+	    }
+	    if ((has(c, "fewerthan") || has(c, "lessthan")) && (has(c, "greaterthan") || has(c, "morethan"))) {
       double lowb = 0, highb = 0;
       const char *fp = strstr(c, "fewerthan");
       if (!fp) fp = strstr(c, "lessthan");
@@ -5485,18 +5503,41 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     bool ha=label_num(input,"angle",&ang) || word_num(input,"angle",&ang) || prev_word_num(input,"degrees",&ang);
     bool hP=label_num(input,"load",&P) || label_num(input,"person",&P);
     bool hd=label_num(input,"distance",&d);
-    if (has(c, "roughwall") && (has(c, "roughfloor") || has(c, "floorrough"))) {
-      if (!hL && nv > 0) L = v[0];
-      if (!hW && nv > 1) W = v[1];
-      if (!ha && nv > 2) ang = v[2];
-      int n = add(out, 0, "Rough wall and rough floor: include friction at both contacts.");
-      n = add(out, n, "At the floor: normal R, friction F. At the wall: normal S, friction G.");
-      n = add(out, n, "Vertical equilibrium: R + G = W.");
-      n = add(out, n, "Horizontal equilibrium: F = S.");
-      n = add(out, n, "Moments about the foot: S*L sin(theta) + G*L cos(theta) = W*(L/2)cos(theta).");
-      if (has(t, "coefficient") || has(t, "mu")) n = add(out, n, "Use limiting friction only at contacts stated to be limiting, e.g. F=mu R.");
-      return add(out, n, "A second contact condition is needed to find a unique wall friction.");
-    }
+	    if (has(c, "roughwall") && (has(c, "roughfloor") || has(c, "floorrough") || has(c, "roughground") || has(c, "groundrough"))) {
+	      if (!hL && nv > 0) L = v[0];
+	      if (!hW && nv > 1) W = v[1];
+	      if (!ha && nv > 2) ang = v[2];
+	      int n = add(out, 0, "Rough wall and rough floor: include friction at both contacts.");
+	      n = add(out, n, "At the floor: normal R, friction F. At the wall: normal S, friction G.");
+	      n = add(out, n, "Vertical equilibrium: R + G = W.");
+	      n = add(out, n, "Horizontal equilibrium: F = S.");
+	      n = add(out, n, "Moments about the foot: S*L sin(theta) + G*L cos(theta) = W*(L/2)cos(theta).");
+	      if ((has(t, "possible") || has(t, "whether") || has(t, "check")) &&
+	          (has(t, "coefficient") || has(t, "mu"))) {
+	        double mu = 0;
+	        if (!label_num(input, "mu", &mu) && !label_num(input, "coefficient", &mu)) {
+	          for (int i = 0; i < nv; ++i)
+	            if (!near_num(v[i], L) && !near_num(v[i], W) && !near_num(v[i], ang) && v[i] > 0 && v[i] < 1) { mu = v[i]; break; }
+	        }
+	        double bestG = -1, bestS = 0, bestR = 0;
+	        for (int j = 0; j <= 200; ++j) {
+	          double G = W * j / 200.0;
+	          double S = (W * 0.5 * deg_cosine(ang) - G * deg_cosine(ang)) / deg_sine(ang);
+	          double R = W - G;
+	          if (S >= -1e-9 && R >= -1e-9 && G <= mu*S + 1e-9 && S <= mu*R + 1e-9) {
+	            bestG = G; bestS = S; bestR = R; break;
+	          }
+	        }
+	        n = add(out, n, "For equilibrium, need G <= mu S and F=S <= mu R.");
+	        n = add(out, n, "Test 0 <= G <= W with S=(W/2-G)cot(theta), R=W-G.");
+	        if (bestG >= 0) {
+	          n = add(out, n, "One possible set: G=%.10g, S=%.10g, R=%.10g.", bestG, bestS, bestR);
+	          return add(out, n, "Both friction inequalities hold, so equilibrium is possible.");
+	        }
+	        return add(out, n, "No value of wall friction satisfies both limits, so equilibrium is not possible.");
+	      }
+	      return add(out, n, "A second contact condition is needed to find the exact wall friction.");
+	    }
     if (!ha && (has(t, "limiting") || has(t, "minimum")) && (has(t, "coefficient") || has(t, "mu")) && nv >= 2) {
       double mu = v[1], theta = arctan(1.0/(2.0*mu))*180.0/M_PI;
       int n = add(out, 0, "Ladder in limiting equilibrium: smooth wall, rough ground.");
@@ -6816,7 +6857,11 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     if (!hm) for (int i = 0; i < nv; ++i) if (v[i] > m) m = v[i];
     if (!ha) for (int i = 0; i < nv; ++i) if (!near_num(v[i], m)) { a0 = v[i]; break; }
     int n = add(out, 0, "For the lift, apply Newton's second law vertically.");
-    if (has(t, "down") || has(t, "descend") || (has(t, "decelerat") && (has(t, "upward") || has(t, "upwards"))) ) {
+    bool decel = has(t, "decelerat");
+    bool moving_down = has(t, "down") || has(t, "downward") || has(t, "downwards") || has(t, "descend");
+    bool moving_up = has(t, "up") || has(t, "upward") || has(t, "upwards") || has(t, "ascend");
+    bool acc_down = (!decel && moving_down) || (decel && moving_up);
+    if (acc_down) {
       n = add(out, n, "Taking upward positive: T - mg = -ma.");
       return add(out, n, "T = m(g-a) = %.6g(%.6g-%.6g) = %.10g N", m, g, a0, m*(g-a0));
     }
@@ -9696,8 +9741,41 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     if (lt) return add(out, n, "P(X<%.6g) = %.10g", bound, prob);
     return add(out, n, "= %.10g", prob);
   }
-  if ((has(t, "pdf") || has(t, "density") || has(t, "continuous")) &&
-      has(c, "kx^") && extract_x_interval(c, &pdf_lo, &pdf_hi)) {
+	  if ((has(t, "pdf") || has(t, "density") || has(t, "continuous")) &&
+	      (has(c, "f(x)=kx") || has(c, "f(x)=k*x")) && !has(c, "kx^") && !has(c, "k*x^") &&
+	      !has(c, "kx(") && !has(c, "k*x(") && extract_x_interval(c, &pdf_lo, &pdf_hi)) {
+	    int pow = 1;
+	    double area = (pwr(pdf_hi, pow + 1) - pwr(pdf_lo, pow + 1)) / (pow + 1);
+	    double k = area ? 1.0 / area : 0;
+	    int n = add(out, 0, "For a pdf, total area under f(x) is 1.");
+	    n = add(out, n, "integral from %.6g to %.6g of kx dx = 1", pdf_lo, pdf_hi);
+	    n = add(out, n, "k = %.10g", k);
+	    if (has(t, "median")) {
+	      double rhs = 0.5 * (pwr(pdf_hi, pow + 1) - pwr(pdf_lo, pow + 1)) + pwr(pdf_lo, pow + 1);
+	      double med = nth_root(rhs, pow + 1);
+	    n = add(out, n, "For the median m, integral from %.6g to m of f(x) dx = 0.5.", pdf_lo);
+	    n = add(out, n, "%.10g*m^2/2 - %.10g*%.10g^2/2 = 0.5", k, k, pdf_lo);
+	    return add(out, n, "m = %.10g", med);
+	    }
+	    if (has(t, "mean") || has(c, "e(x)")) {
+	      double mean = k * (pwr(pdf_hi, 3) - pwr(pdf_lo, 3)) / 3.0;
+	      n = add(out, n, "E(X)=integral from %.6g to %.6g of x*f(x) dx", pdf_lo, pdf_hi);
+	      return add(out, n, "mean = %.10g", mean);
+	    }
+	    const char *gt = strstr(c, "p(x>");
+	    const char *lt = strstr(c, "p(x<");
+	    if (gt || lt) {
+	      double bound = read_num((gt ? gt : lt) + 4);
+	      double a = gt ? bound : pdf_lo, b = gt ? pdf_hi : bound;
+	      double prob = k * (b*b - a*a) / 2.0;
+	      n = add(out, n, gt ? "P(X>%.6g)=integral from %.6g to %.6g of %.10g*x dx" :
+	                           "P(X<%.6g)=integral from %.6g to %.6g of %.10g*x dx", bound, a, b, k);
+	      return add(out, n, gt ? "P(X>%.6g) = %.10g" : "P(X<%.6g) = %.10g", bound, prob);
+	    }
+	    return n;
+	  }
+	  if ((has(t, "pdf") || has(t, "density") || has(t, "continuous")) &&
+	      has(c, "kx^") && extract_x_interval(c, &pdf_lo, &pdf_hi)) {
     const char *kp = strstr(c, "kx^");
     int pow = kp && isdigit((unsigned char)kp[3]) ? kp[3] - '0' : 1;
     double area = (pwr(pdf_hi, pow + 1) - pwr(pdf_lo, pow + 1)) / (pow + 1);

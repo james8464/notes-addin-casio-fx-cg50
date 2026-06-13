@@ -765,6 +765,10 @@ def main():
     require("A particle of mass 2kg is held in equilibrium on a rough plane inclined at 25 degrees by a force P acting up the plane. The coefficient of friction is 0.4. Find the least value of P.", ["At limiting equilibrium", "friction = mu R = 0.4*17.76346646", "least force up the plane = 8.283317899 - 7.105386584 = 1.177931315 N"])
     require("A particle of mass 0.5kg is attached to an elastic string of natural length 0.8m and modulus 12N. It is stretched to length 1.1m. Find the elastic potential energy.", ["extension = 1.1 - 0.8 = 0.3 m", "elastic potential energy is lambda*x^2/(2l)", "EPE = 12*0.3^2/(2*0.8) = 0.675 J"])
     require("A random variable X has pdf f(x)=kx^2 for 0<x<3. Find k and the median.", ["integral from 0 to 3 of kx^2 dx = 1", "k = 0.1111111111", "For the median m", "m = 2.381101578"])
+    require("A lift of mass 500kg moves downwards and decelerates at 0.4 m/s^2. Find the tension in the cable.", ["Taking upward positive: T - mg = ma.", "T = m(g+a) = 500(9.8+0.4) = 5100 N"])
+    require("A random variable X has pdf f(x)=kx for 1<x<4. Find k and the median.", ["integral from 1 to 4 of kx dx = 1", "k = 0.1333333333", "For the median m", "m = 2.915475947"])
+    require("For X~Poisson(3.2), find P(X is at least 2 but less than 6).", ["P(2<=X<=5)=P(X<=5)-P(X<=1)", "= 0.7233906378"])
+    require("A ladder length 5m weight 100N rests against a rough wall and rough ground at 60 degrees. Coefficient at both contacts is 0.2. Find if equilibrium is possible.", ["Rough wall and rough floor", "need G <= mu S and F=S <= mu R", "No value of wall friction satisfies both limits"])
     print("OK p3 engine")
 
 
