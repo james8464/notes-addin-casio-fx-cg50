@@ -172,6 +172,8 @@ def main():
     require("A particle P of mass 0.5 kg is moving with velocity 8 m/s when it receives an impulse of magnitude 3 Ns in the opposite direction. Find its speed after the impulse.", ["Impulse equals change", "opposite to the motion", "v = 2"])
     require("A particle of mass 2 kg has velocity 3i+4j and receives impulse -2i+j. Find its speed after the impulse.", ["component by component", "v = 2 i + 4.5 j", "speed = sqrt"])
     require("A particle mass 0.4kg changes velocity from 3i-2j to -i+4j. Find impulse.", ["component by component", "I = 0.4((-1-3)i + (4--2)j)", "I = -1.6 i + 2.4 j Ns"])
+    require("A particle mass 0.4kg initial velocity 3i-2j final velocity -i+4j. Find impulse.", ["component by component", "I = -1.6 i + 2.4 j Ns"])
+    require("Find impulse when a 0.5kg particle velocity changes from 4i+j to 2i-3j.", ["component by component", "I = -1 i + -2 j Ns"])
     require("momentum(2,5,3,-1,1)", ["conservation of linear momentum", "m1u1 + m2u2", "v2 ="])
     require("conservation of momentum m1=2 u1=5 m2=3 u2=-1 v1=1", ["conservation of linear momentum", "2*5", "1.666"])
     require("commonvelocity(2,5,3,-1)", ["Particles move together", "(m1+m2)v", "1.4"])

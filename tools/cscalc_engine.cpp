@@ -3590,6 +3590,9 @@ static const char *skip_bool_words(const char *e) {
     if (starts(e, "boolean")) { e += 7; moved = true; }
     if (starts(e, "expression")) { e += 10; moved = true; }
     if (starts(e, "logic")) { e += 5; moved = true; }
+    if (starts(e, "sumofproducts")) { e += 13; moved = true; }
+    if (starts(e, "sopform")) { e += 7; moved = true; }
+    if (starts(e, "sop")) { e += 3; moved = true; }
     if (starts(e, "productofsums")) { e += 13; moved = true; }
     if (starts(e, "karnaugh")) { e += 8; moved = true; }
     if (starts(e, "kmap")) { e += 4; moved = true; }
@@ -6560,12 +6563,20 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
                                            has(compact, "+") || has(compact, "^"))))) {
     const char *e = skip_bool_words(compact); char ce[96];
     const char *eq = strchr(e, '=');
-    if (eq && eq > e && eq[1] && isalpha((unsigned char)e[0]) && e[1] == '(') {
+    if (eq && eq > e && eq[1] && isalpha((unsigned char)e[0]) && (e[1] == '(' || e[1] == '=')) {
       bool_clean_tail(eq + 1, ce, sizeof(ce));
       sprintf(cmd, "posform(%s)", ce); return eval_posform(cmd, out);
     }
     bool_clean_tail(e, ce, sizeof(ce));
     sprintf(cmd, "posform(%s)", ce); return eval_posform(cmd, out);
+  }
+  if (nv == 0 && (has(compact, "sumofproducts") || has(compact, "sopform") || has(compact, "sop"))) {
+    const char *e = skip_bool_words(compact); char ce[96], ne[96];
+    const char *eq = strchr(e, '=');
+    if (eq && eq > e && eq[1] && isalpha((unsigned char)e[0]) && (e[1] == '(' || e[1] == '=')) e = eq + 1;
+    bool_clean_tail(e, ce, sizeof(ce));
+    bool_arg_for_cmd(ce, ne, sizeof(ne));
+    sprintf(cmd, "bool(%s)", ne); return eval_bool(cmd, out);
   }
   if ((has(compact, "simplify") || has(compact, "boolean") || has(compact, "logic") || has(compact, "output") ||
        has(compact, "evaluate") || has(compact, "value")) &&

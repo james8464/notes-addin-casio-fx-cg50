@@ -2758,8 +2758,9 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       (has(t, "i") || has(t, "j"))) {
     double xs[4], ys[4]; int vc = scan_ij_vectors(input, xs, ys, 4);
     double m0 = 0;
-    if ((word_num(input,"mass",&m0) || label_num(input,"mass",&m0)) && vc >= 2 &&
-        (has(t, "before") || has(t, "from") || has(t, "to") ||
+    bool hm0 = word_num(input,"mass",&m0) || label_num(input,"mass",&m0) || num_before_unit(input, "kg", &m0);
+    if (hm0 && vc >= 2 &&
+        (has(t, "initial") || has(t, "final") || has(t, "before") || has(t, "from") || has(t, "to") ||
          has(t, "change") || has(t, "changes") || has(t, "changeinvelocity") ||
          has(t, "beforeimpact") || has(t, "afterimpact"))) {
       double ix = m0*(xs[1]-xs[0]), iy = m0*(ys[1]-ys[0]);

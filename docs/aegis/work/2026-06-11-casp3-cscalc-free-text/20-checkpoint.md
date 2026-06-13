@@ -1,5 +1,35 @@
 # Checkpoint
 
+## 2026-06-13 SOP/POS Assignment And Vector Mass Wording Slice
+
+Completed:
+- Probed more same-family unseen wording after the previous commit.
+- Fixed CSCALC so `SOP form for ...`, `Find sum of products for F=...`, and `Find product of sums for F=...` ignore command words and assignment labels instead of treating them as Boolean variables.
+- Fixed CASP3 vector impulse so `initial velocity ... final velocity ...` and `0.5kg particle velocity changes from ... to ...` route to component impulse working.
+- Added regressions and rebuilt calculator-ready outputs.
+
+Evidence:
+- Targeted probes for SOP/POS assignment forms and kg vector impulse wording: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 472752 bytes`
+  - `CSCALC.g3a: 268152 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: 18178 bytes`
+
+Drift check:
+- Stayed inside generic command-word/assignment cleanup and vector mechanics parser hardening.
+- No menu/UI/session behavior changed.
+- Active goal remains open for further unseen-case hardening.
+
 ## 2026-06-13 Boolean SOP And Vector Impulse Parser Slice
 
 Completed:
