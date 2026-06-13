@@ -4927,17 +4927,25 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   if ((has(t, "vigenere") || has(t, "vigenerecipher")) && (has(t, "encrypt") || has(t, "decrypt"))) {
     char words[8][40]; int wc = 0;
+    char key_word[40] = "";
     for (int i = 0; input[i] && wc < 8;) {
       while (input[i] && !isalpha((unsigned char)input[i])) ++i;
       char tmp[40]; int j = 0;
       while (isalpha((unsigned char)input[i]) && j + 1 < (int)sizeof(tmp)) tmp[j++] = (char)tolower((unsigned char)input[i++]);
       tmp[j] = 0;
+      bool after_key = wc > 0 && word_is(words[wc - 1], "key");
+      if (after_key && j > 0) strcpy(key_word, tmp);
       if (j > 1 && !word_is(tmp, "vigenere") && !word_is(tmp, "cipher") && !word_is(tmp, "encrypt") &&
           !word_is(tmp, "decrypt") && !word_is(tmp, "using") && !word_is(tmp, "with") && !word_is(tmp, "the") &&
           !word_is(tmp, "key") && !word_is(tmp, "to") && !word_is(tmp, "use")) strcpy(words[wc++], tmp);
+      else if (j > 1 && wc < 8 && word_is(tmp, "key")) strcpy(words[wc++], tmp);
     }
     if (wc >= 2) {
-      const char *key = words[0], *msg = words[wc - 1];
+      const char *key = key_word[0] ? key_word : words[0];
+      const char *msg = words[wc - 1];
+      if (key_word[0]) {
+        for (int i = 0; i < wc; ++i) if (!word_is(words[i], "key") && !word_is(words[i], key_word)) { msg = words[i]; break; }
+      }
       char enc[64]; int ep = 0, kl = (int)strlen(key);
       for (int i = 0; msg[i] && ep + 1 < (int)sizeof(enc); ++i) {
         int sh = key[i % kl] - 'a';
@@ -6632,6 +6640,18 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     return eval_binary_arith(cmd, out);
   }
   if (has(t, "parity") && nb >= 1) {
+    if ((has(t, "check") || has(t, "valid") || has(t, "validate")) && nv >= 1) {
+      int ones = 0; for (int i = 0; bits[0][i]; ++i) if (bits[0][i] == '1') ones++;
+      int pbit = (int)v[nv - 1] & 1;
+      bool odd = has(t, "odd");
+      int total = ones + pbit;
+      int ok = odd ? (total % 2 == 1) : (total % 2 == 0);
+      int n = add(out, 0, odd ? "Odd parity: data bits plus parity bit must contain an odd number of 1s." :
+                                "Even parity: data bits plus parity bit must contain an even number of 1s.");
+      n = add(out, n, "%s has %d one-bits; parity bit = %d.", bits[0], ones, pbit);
+      n = add(out, n, "total one-bits = %d", total);
+      return add(out, n, ok ? "parity check passes." : "parity check fails: an error is detected.");
+    }
     sprintf(cmd, "parity(%s,%s)", bits[0], has(t, "odd") ? "odd" : "even"); return eval_binary_arith(cmd, out);
   }
   if ((has(t, "isbn") || has(t, "ean")) && (has(t, "checkdigit") || (has(t, "check") && has(t, "digit"))) && nv >= 1) {

@@ -226,6 +226,54 @@ static int scan_nums(const char *s, double v[], int maxv) {
   return n;
 }
 
+static double chi_critical(double alpha, int df) {
+  static const double p10[] = {0, 2.706, 4.605, 6.251, 7.779, 9.236, 10.645, 12.017, 13.362, 14.684, 15.987};
+  static const double p05[] = {0, 3.841, 5.991, 7.815, 9.488, 11.070, 12.592, 14.067, 15.507, 16.919, 18.307};
+  static const double p01[] = {0, 6.635, 9.210, 11.345, 13.277, 15.086, 16.812, 18.475, 20.090, 21.666, 23.209};
+  if (df < 1) df = 1;
+  if (df > 10) df = 10;
+  if (alpha <= 0.011) return p01[df];
+  if (alpha <= 0.055) return p05[df];
+  return p10[df];
+}
+
+static int add_chi_gof_lines(char out[P3_MAX_LINES][P3_LINE_LEN], const double obs[], const double exp[], int k, double alpha) {
+  if (k < 2) return 0;
+  double stat = 0;
+  int n = add(out, 0, "Use chi-squared goodness-of-fit: sum((O-E)^2/E).");
+  for (int i = 0; i < k && n < P3_MAX_LINES; ++i) {
+    double term = exp[i] ? (obs[i]-exp[i])*(obs[i]-exp[i])/exp[i] : 0;
+    stat += term;
+    n = add(out, n, "class %d: (%.6g-%.6g)^2/%.6g = %.10g", i + 1, obs[i], exp[i], exp[i], term);
+  }
+  int df = k - 1;
+  double crit = chi_critical(alpha, df);
+  n = add(out, n, "test statistic X^2 = %.10g", stat);
+  n = add(out, n, "degrees of freedom = %d", df);
+  n = add(out, n, "critical value at %.6g significance = %.3f", alpha, crit);
+  return add(out, n, stat > crit ? "Reject H0." : "Do not reject H0.");
+}
+
+static int add_chi_2x2_lines(char out[P3_MAX_LINES][P3_LINE_LEN], double a, double b, double c, double d, double alpha) {
+  double r1 = a+b, r2 = c+d, c1 = a+c, c2 = b+d, total = r1+r2;
+  if (total <= 0) return 0;
+  double e[4] = {r1*c1/total, r1*c2/total, r2*c1/total, r2*c2/total};
+  double o[4] = {a,b,c,d}, stat = 0;
+  int n = add(out, 0, "Use chi-squared test for independence.");
+  n = add(out, n, "Expected frequency = row total * column total / grand total.");
+  n = add(out, n, "row totals %.6g, %.6g; column totals %.6g, %.6g; total %.6g", r1, r2, c1, c2, total);
+  for (int i = 0; i < 4 && n < P3_MAX_LINES; ++i) {
+    double term = e[i] ? (o[i]-e[i])*(o[i]-e[i])/e[i] : 0;
+    stat += term;
+    n = add(out, n, "(%.6g-%.6g)^2/%.6g = %.10g", o[i], e[i], e[i], term);
+  }
+  double crit = chi_critical(alpha, 1);
+  n = add(out, n, "test statistic X^2 = %.10g", stat);
+  n = add(out, n, "degrees of freedom = (2-1)(2-1) = 1");
+  n = add(out, n, "critical value at %.6g significance = %.3f", alpha, crit);
+  return add(out, n, stat > crit ? "Reject H0: evidence of association." : "Do not reject H0: insufficient evidence of association.");
+}
+
 static bool kv(char a[][48], int na, const char *name, double *v) {
   int nl = (int)strlen(name);
   for (int i = 0; i < na; ++i) if (strncmp(a[i], name, nl) == 0 && a[i][nl] == '=') {
@@ -2610,6 +2658,32 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
         sprintf(cmd, "normalcond(%.10g,%.10g,%.10g,%.10g,-1)", x0, g0, mu0, sd0);
         return eval_stats(cmd, out);
       }
+    }
+  }
+
+  if ((has(t, "chi") || has(t, "chisquared") || has(t, "chi-squared") || has(t, "goodnessoffit") ||
+       has(t, "contingency")) && (has(t, "test") || has(t, "expected") || has(t, "observed") ||
+       has(t, "independence") || has(t, "association"))) {
+    double alpha = has(t, "1percent") ? 0.01 : (has(t, "10percent") ? 0.10 : 0.05);
+    for (int i = 0; i < nv; ++i) if (v[i] > 0 && v[i] <= 10 && (has(t, "percent") || has(c, "%"))) { alpha = v[i] / 100.0; break; }
+    const char *op = strstr(t, "observed");
+    const char *ep = strstr(t, "expected");
+    if (op && ep && ep > op) {
+      char oseg[160], eseg[160];
+      int ol = (int)(ep - op);
+      if (ol >= (int)sizeof(oseg)) ol = (int)sizeof(oseg) - 1;
+      memcpy(oseg, op, ol); oseg[ol] = 0;
+      strncpy(eseg, ep, sizeof(eseg) - 1); eseg[sizeof(eseg) - 1] = 0;
+      double obs[10], ex[10];
+      int no = scan_nums(oseg, obs, 10);
+      int ne = scan_nums(eseg, ex, 10);
+      if (no > 1 && ne >= no) return add_chi_gof_lines(out, obs, ex, no, alpha);
+    }
+    if ((has(t, "contingency") || has(t, "independence") || has(t, "association") || has(t, "twoway") ||
+         has(t, "2x2")) && nv >= 4) {
+      double cells[4]; int cc = 0;
+      for (int i = 0; i < nv && cc < 4; ++i) cells[cc++] = v[i];
+      if (cc == 4) return add_chi_2x2_lines(out, cells[0], cells[1], cells[2], cells[3], alpha);
     }
   }
 

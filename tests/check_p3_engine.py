@@ -459,6 +459,8 @@ def main():
     require("The product moment correlation coefficient for a sample of 12 is r=0.62. The critical value at 5 percent is 0.497. Test whether there is positive correlation.", ["H1: rho > 0", "critical value 0.497", "Reject H0"])
     require("A sample of 50 has product moment correlation coefficient r=0.42. Test at 5 percent whether there is positive correlation.", ["H0: rho = 0", "H1: rho > 0", "Use t = r*sqrt(n-2)/sqrt(1-r^2)", "Reject H0"])
     require("spearman rank correlation test r=-0.72 critical value 0.648 negative", ["H1: rho < 0", "negative tail", "Reject H0"])
+    require("chi squared goodness of fit observed 18 22 20 expected 20 20 20 test at 5 percent", ["goodness-of-fit", "sum((O-E)^2/E)", "degrees of freedom = 2"])
+    require("contingency table chi squared observed 10 20 30 40 test independence", ["chi-squared test for independence", "Expected frequency", "degrees of freedom = (2-1)(2-1) = 1"])
     require("meanvar(5,20,90)", ["mean = Sx/n", "variance"])
     require("mean variance n 5 sx 20 sx2 90", ["mean = Sx/n", "variance"])
     require("groupmean(10,2,20,3,30,5)", ["grouped data", "sum f = 10", "sum fx", "mean = sum fx / sum f = 23", "sd ="])
