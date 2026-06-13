@@ -1,5 +1,41 @@
 # Checkpoint
 
+## 2026-06-13 P3 Unseen Prompt Sweep Slice
+
+Completed:
+- Probed unseen CASP3 and CSCALC free-text prompts across normal, binomial, Poisson, SUVAT, pulleys, histograms, binary, floating point, storage, sound, and Boolean algebra.
+- Fixed CASP3 absolute normal wording `within k of the mean` without breaking `within k standard deviations`.
+- Fixed CASP3 normal unknown-mean prompts with compact wording like `P(X less than 40)=0.2`.
+- Fixed CASP3 SUVAT requested final speed from `u`, `a`, and `s` so requested unknowns are not treated as given values.
+- Fixed CASP3 rough pulley/free-text connected-particle prompts before the generic friction fallback.
+- Fixed CASP3 histogram hyphen class intervals like `class 15-25 frequency 40 find density`.
+- Added regressions and rebuilt calculator-ready outputs.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 526464 bytes`
+  - `CSCALC.g3a: 290456 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: 18178 bytes`
+- Artifact hashes:
+  - `CASP3.g3a: 3f7a3961c87740200a5a6e6ba8a78fc1f681e96e9b5322c9e84c41c0c84bda83`
+  - `CSCALC.g3a: a23bb3352e80937397958d2258c206956ebe268dad8e4e4657873d1512ea999e`
+
+Drift check:
+- Stayed inside CASP3 parser hardening, tests, checkpoint, and rebuilt app artifacts.
+- CSCALC probes passed and no CSCALC source changes were needed in this slice.
+- No Pure CAS source, NOTES source, menus, session sharing, or shared UI/status code changed.
+- Active goal remains open; production readiness is still not globally proven for arbitrary paper prompts.
+
 ## 2026-06-13 Final Parser Gap Sweep Slice
 
 Completed:

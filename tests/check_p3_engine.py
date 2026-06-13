@@ -728,6 +728,11 @@ def main():
     require("Use linear interpolation with points (2,5) and (8,17) estimate y at x=5.", ["Use linear interpolation", "gradient = (17-5)/(8-2)", "y = 11"])
     require("X~N(50,16). Find P(X>60 | X>45).", ["Use conditional probability", "A: X>=60, B: X>=45", "conditional probability"])
     require("A sample mean of size 36 from normal population mean 100 sd 12. Find P(sample mean > 103).", ["For a sample mean", "standard error = 12/sqrt(36) = 2", "P(Xbar>=103)"])
+    require("normal distribution mean 100 standard deviation 12 find P(X within 10 of the mean)", ["Within 10 of the mean", "90", "110", "probability = 0.595343"])
+    require("suvat particle starts from rest acceleration 2 distance 25 find final speed", ["From rest gives u = 0.", "v^2 = u^2 + 2as", "v = 10"])
+    require("two particles masses 3kg and 5kg connected over pulley coefficient friction 0.2 find acceleration", ["connected particles over a pulley", "friction on rough contact", "a = (49-5.88)/(3+5) = 5.39"])
+    require("normal mean unknown sd 8 P(X less than 40)=0.2 find mean", ["Use z=(x-mu)/sigma", "area to the left = 0.2", "mu = 46.73296833"])
+    require("histogram class 15-25 frequency 40 find density", ["frequency density = frequency / class width", "40/10 = 4"])
     print("OK p3 engine")
 
 

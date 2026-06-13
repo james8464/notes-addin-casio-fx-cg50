@@ -4499,6 +4499,14 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
         has(c, "finalspeed") || has(c, "finalvelocity"))) { vv = v[0]; hv = true; }
     if (ht && (has(t, "minute") || has(t, "minutes"))) time *= 60.0;
     if (ht && (has(t, "hour") || has(t, "hours"))) time *= 3600.0;
+    if ((has(c, "findfinalspeed") || has(c, "findfinalvelocity") || has(c, "finalspeed") || has(c, "finalvelocity")) &&
+        hu && ha && hs && !ht) {
+      int n = add(out, 0, "List known values and choose a SUVAT equation.");
+      if (rest) n = add(out, n, "From rest gives u = 0.");
+      n = add(out, n, "v^2 = u^2 + 2as");
+      n = add(out, n, "v^2 = %.6g^2 + 2*%.6g*%.6g", u, acc, dist);
+      return add(out, n, "v = %.10g", root(u*u + 2*acc*dist));
+    }
     int known = (hu?1:0) + (hv?1:0) + (ha?1:0) + (hs?1:0) + (ht?1:0);
     bool wants_dist = has(t, "distance") || has(t, "displacement") || has(t, "travelled") || has(t, "traveled");
     bool wants_v = has(c, "finalspeed") || has(c, "finalvelocity") || has(c, "speedanddistance") || has(c, "velocityanddistance");
@@ -6059,6 +6067,27 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "For table particle: T - friction = m a.");
     return add(out, n, "T = %.6g*%.10g + %.10g = %.10g N", m1, acc, fr, T);
   }
+  if ((has(t, "pulley") || has(t, "connected")) &&
+      (has(t, "rough") || has(t, "friction") || has(t, "coefficient")) && nv >= 3) {
+    double mu = 0, masses[4]; int mc = 0;
+    for (int i = 0; i < nv; ++i) {
+      if (v[i] > 0 && v[i] < 1) { mu = v[i]; continue; }
+      if (mc < 4) masses[mc++] = v[i];
+    }
+    if (mc >= 2 && mu > 0) {
+      double m1 = masses[0], m2 = masses[1];
+      double fr = mu * m1 * 9.8;
+      double drive = m2 * 9.8;
+      double acc = (drive - fr) / (m1 + m2);
+      double T = m1 * acc + fr;
+      int n = add(out, 0, "For connected particles over a pulley, treat both particles as one system.");
+      n = add(out, n, "friction on rough contact = mu R = %.6g*%.6g*9.8 = %.10g N", mu, m1, fr);
+      n = add(out, n, "driving force = %.6g*9.8 = %.10g N", m2, drive);
+      n = add(out, n, "a = (%.10g-%.10g)/(%.6g+%.6g) = %.10g m/s^2", drive, fr, m1, m2, acc);
+      n = add(out, n, "For the rough-contact particle: T - friction = m a.");
+      return add(out, n, "T = %.6g*%.10g + %.10g = %.10g N", m1, acc, fr, T);
+    }
+  }
   if ((has(t, "friction") || has(t, "coefficientoffriction")) && !has(t, "ladder") && nv >= 2) {
     sprintf(cmd, "friction(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
   }
@@ -7066,6 +7095,31 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       hMu = hSig = true;
       hVar = false;
     }
+    if ((has(c, "meanunknown") || (has(t, "mean") && has(t, "unknown")) ||
+         has(c, "findmean") || has(c, "findthemean")) &&
+        (hSig || hVar) && !hDist) {
+      double sd = hSig ? sig : root(var), bound = 0, prob = 0;
+      int ptail = 0;
+      bool hb = prob_x_bound(c, &bound, &ptail) || word_num(input, "less than", &bound) ||
+                word_num(input, "greater than", &bound);
+      const char *bp = 0;
+      if (!hb && (bp = strstr(c, "xlessthan"))) { bound = read_num(bp + 9); ptail = -2; hb = true; }
+      if (!hb && (bp = strstr(c, "xgreaterthan"))) { bound = read_num(bp + 12); ptail = 2; hb = true; }
+      for (int i = 0; i < nv; ++i) {
+        if ((hSig && near_num(v[i], sig)) || (hVar && near_num(v[i], var)) || (hb && near_num(v[i], bound))) continue;
+        if (v[i] > 0 && v[i] < 1) { prob = v[i]; break; }
+      }
+      if (hb && prob > 0) {
+        double left_area = (ptail > 0 || has(c, "x>") || has(t, "greater")) ? 1 - prob : prob;
+        double z = inv_norm_left(left_area);
+        double mean = bound - z * sd;
+        int n = add(out, 0, "Let X~N(mu,sigma^2). Use z=(x-mu)/sigma.");
+        n = add(out, n, "sigma = %.6g, x = %.6g", sd, bound);
+        n = add(out, n, "area to the left = %.10g, so z = InvNorm(%.10g) = %.10g", left_area, left_area, z);
+        n = add(out, n, "(%.6g-mu)/%.6g = %.10g", bound, sd, z);
+        return add(out, n, "mu = %.10g", mean);
+      }
+    }
     if ((has(t, "samplemean") || (has(t, "sample") && has(t, "mean")) || has(t, "xbar")) &&
         (has(t, "probability") || has(c, "p(") || has(t, "more") || has(t, "greater") || has(t, "less")) &&
         hMu && (hSig || hVar) && hN && !has(t, "hypothesis") && !has(t, "test")) {
@@ -7114,6 +7168,27 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
         g0 = read_num(rp + (rp[2] == '=' ? 3 : 2));
         sprintf(cmd, "normalcond(%.10g,%.10g,%.10g,%.10g,-1)", x0, g0, mu, sd);
         return eval_stats(cmd, out);
+      }
+    }
+    const char *within_pos = strstr(c, "within");
+    const char *within_sd = within_pos ? strstr(within_pos, "standarddeviation") : 0;
+    if (has(t, "within") && hMu && (hSig || hVar) && !within_sd &&
+        (has(c, "ofthemean") || !(has(t, "standarddeviation") ||
+          (has(t, "standard") && has(t, "deviation")) || has(t, "sd") || has(t, "sigma")))) {
+      double k = 0;
+      if (!word_num(input, "within", &k)) {
+        for (int i = 0; i < nv; ++i)
+          if (!near_num(v[i], mu) && (!hSig || !near_num(v[i], sig)) && (!hVar || !near_num(v[i], var))) { k = v[i]; break; }
+      }
+      if (k > 0) {
+        double sd = hSig ? sig : root(var), lo0 = mu - k, hi0 = mu + k;
+        double z1 = (lo0 - mu) / sd, z2 = (hi0 - mu) / sd;
+        int n = add(out, 0, "Within %.10g of the mean means mu-%.10g < X < mu+%.10g.", k, k, k);
+        n = add(out, n, "lower = %.10g - %.10g = %.10g", mu, k, lo0);
+        n = add(out, n, "upper = %.10g + %.10g = %.10g", mu, k, hi0);
+        n = add(out, n, "z1=(%.10g-%.6g)/%.10g = %.10g", lo0, mu, sd, z1);
+        n = add(out, n, "z2=(%.10g-%.6g)/%.10g = %.10g", hi0, mu, sd, z2);
+        return add(out, n, "probability = %.10g", normal_cdf(z2) - normal_cdf(z1));
       }
     }
     if (has(t, "within") &&
@@ -9787,6 +9862,13 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     if (!hW && (has(t, "from") || has(t, "to"))) {
       double lo=0, hi=0;
       if (word_num(input, "from", &lo) && word_num(input, "to", &hi) && !near_num(lo, hi)) {
+        width0 = hi > lo ? hi - lo : lo - hi;
+        hW = true;
+      }
+    }
+    if (!hW && has(t, "class") && nv >= 3) {
+      double lo = abs_num(v[0]), hi = abs_num(v[1]);
+      if (!near_num(lo, hi)) {
         width0 = hi > lo ? hi - lo : lo - hi;
         hW = true;
       }
