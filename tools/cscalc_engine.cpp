@@ -683,7 +683,7 @@ static bool rle_skip_word(const char *w) {
 }
 
 static bool find_rle_sequence(const char *in, char *seq, int cap) {
-  int best = 0; seq[0] = 0;
+  int best = 0, fallback = 0; char fb[48]; fb[0] = 0; seq[0] = 0;
   for (int i = 0; in && in[i];) {
     while (in[i] && !isalpha((unsigned char)in[i])) ++i;
     char w[48]; int j = 0;
@@ -692,7 +692,9 @@ static bool find_rle_sequence(const char *in, char *seq, int cap) {
     if (j <= 1 || rle_skip_word(w)) continue;
     bool repeated = false; for (int k = 1; k < j; ++k) if (w[k] == w[k-1]) repeated = true;
     if (repeated && j < cap && j > best) { strcpy(seq, w); best = j; }
+    if (j < cap && j > fallback) { strcpy(fb, w); fallback = j; }
   }
+  if (!best && fallback > 0) { strcpy(seq, fb); return true; }
   return best > 0;
 }
 
@@ -1424,6 +1426,12 @@ static int eval_twos(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN])
   if (starts3(s, "twosrange(", "tcrange(", "twoscomprange(") && na == 1) {
     int w = (int)parse_int(a[0]);
     return add(out, add(out, 0, "n-bit two's complement range:"), "-2^(%d) to 2^(%d)-1 = %d to %d", w-1, w-1, -(1<<(w-1)), (1<<(w-1))-1);
+  }
+  if (starts3(s, "onesrange(", "onescomprange(", "onescomplementrange(") && na == 1) {
+    int w = (int)parse_int(a[0]), m = (1 << (w - 1)) - 1;
+    int n = add(out, 0, "n-bit one's complement range:");
+    n = add(out, n, "1 sign bit and %d value bits, with +0 and -0.", w - 1);
+    return add(out, n, "-(2^%d-1) to +(2^%d-1) = -%d to %d", w - 1, w - 1, m, m);
   }
   if (starts3(s, "signmagdec(", "signmagnitudedec(", "smdec(") && na == 1) {
     int mag = bin_unsigned(a[0] + 1);
@@ -4917,6 +4925,32 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if (has(t, "dijkstra") || (has(t, "shortest") && (has(t, "path") || has(t, "route")))) {
     if (make_dijkstra_cmd(input, cmd, sizeof(cmd))) return eval_trace(cmd, out);
   }
+  if ((has(t, "vigenere") || has(t, "vigenerecipher")) && (has(t, "encrypt") || has(t, "decrypt"))) {
+    char words[8][40]; int wc = 0;
+    for (int i = 0; input[i] && wc < 8;) {
+      while (input[i] && !isalpha((unsigned char)input[i])) ++i;
+      char tmp[40]; int j = 0;
+      while (isalpha((unsigned char)input[i]) && j + 1 < (int)sizeof(tmp)) tmp[j++] = (char)tolower((unsigned char)input[i++]);
+      tmp[j] = 0;
+      if (j > 1 && !word_is(tmp, "vigenere") && !word_is(tmp, "cipher") && !word_is(tmp, "encrypt") &&
+          !word_is(tmp, "decrypt") && !word_is(tmp, "using") && !word_is(tmp, "with") && !word_is(tmp, "the") &&
+          !word_is(tmp, "key") && !word_is(tmp, "to") && !word_is(tmp, "use")) strcpy(words[wc++], tmp);
+    }
+    if (wc >= 2) {
+      const char *key = words[0], *msg = words[wc - 1];
+      char enc[64]; int ep = 0, kl = (int)strlen(key);
+      for (int i = 0; msg[i] && ep + 1 < (int)sizeof(enc); ++i) {
+        int sh = key[i % kl] - 'a';
+        if (has(t, "decrypt")) sh = -sh;
+        enc[ep++] = (char)('A' + (msg[i] - 'a' + sh + 26) % 26);
+      }
+      enc[ep] = 0;
+      int n = add(out, 0, "Vigenere uses a repeated keyword as Caesar shifts.");
+      n = add(out, n, "keyword = %s", key);
+      n = add(out, n, "%s -> %s", msg, enc);
+      return add(out, n, "%s text = %s", has(t, "decrypt") ? "decrypted" : "encrypted", enc);
+    }
+  }
   if (has(t, "caesar") && (has(t, "encrypt") || has(t, "decrypt")) && nv >= 1) {
     char word[40] = "";
     for (int i = 0; input[i];) {
@@ -6270,6 +6304,9 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if (sm && has(t, "range") && nv >= 1) {
     sprintf(cmd, "signmagrange(%lld)", (long long)v[0]); return eval_twos(cmd, out);
   }
+  if (oc && has(t, "range") && nv >= 1) {
+    sprintf(cmd, "onesrange(%lld)", (long long)v[0]); return eval_twos(cmd, out);
+  }
   if (!has(t, "mantissa") && !has(t, "exponent") &&
       !has(t, "address") && !has(t, "memory") && !has(t, "ram") &&
       !has(t, "character") && !has(t, "symbol") && !has(t, "alphabet") &&
@@ -6528,10 +6565,12 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       }
       double ds[16], ws[16];
       int nd = scan_nums(dseg, ds, 16), nw = scan_nums(wseg, ws, 16);
-      if (nd > 0 && nw >= nd) {
+      int m = nd < nw ? nd : nw;
+      if (m > 0) {
         int sum = 0, n = add(out, 0, "Use weighted modulo check digit.");
         n = add(out, n, "Multiply each digit by its stated weight and add.");
-        for (int i = 0; i < nd; ++i) {
+        if (nd != nw) n = add(out, n, "Use the %d stated digit-weight pairs.", m);
+        for (int i = 0; i < m; ++i) {
           int d = (int)ds[i], w = (int)ws[i];
           sum += d * w;
           n = add(out, n, "%d*%d", d, w);
@@ -6976,6 +7015,12 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   if (make_bool_set_notation_cmd(input, cmd, sizeof(cmd))) {
     return eval_minterms(cmd, out);
+  }
+  if ((has(t, "truthtable") || (has(t, "truth") && has(t, "table")) || has(t, "outputcolumn")) &&
+      (has(t, "output") || has(t, "column")) && nb >= 1 &&
+      (has(t, "variables") || has(t, "vars"))) {
+    truthbits_cmd_from_text(t, bits[0], cmd, sizeof(cmd));
+    return eval_truthbits(cmd, out);
   }
   if ((has(t, "maxterm") || has(t, "maxterms") || has(t, "zeros")) && make_minterm_cmd(input, cmd, sizeof(cmd))) {
     char tmp[160]; sprintf(tmp, "maxterms(%s", cmd + 9);

@@ -733,6 +733,30 @@ static bool parse_velocity_quad(const char *input, double *A, double *B, double 
   return any;
 }
 
+static bool parse_poly_segment(const char *start, const char *end, double *A, double *B, double *C) {
+  char expr[96]; int k = 0;
+  for (const char *p = start; p && p < end && *p && k + 1 < (int)sizeof(expr); ++p) {
+    char ch = (char)tolower((unsigned char)*p);
+    if (ch == '(' || ch == ')' || ch == ' ' || ch == '\t' || ch == ',') continue;
+    if (isdigit((unsigned char)ch) || ch == 't' || ch == '+' || ch == '-' || ch == '.' || ch == '^' || ch == '*')
+      expr[k++] = ch;
+  }
+  expr[k] = 0;
+  return k > 0 && parse_velocity_quad(expr, A, B, C);
+}
+
+static bool numeric_pair_after_word(const char *s, const char *word, double *x, double *y) {
+  const char *p = strstr(s, word);
+  if (!p) return false;
+  p = strchr(p, '(');
+  if (!p) return false;
+  *x = read_num(p + 1);
+  const char *comma = strchr(p, ',');
+  if (!comma) return false;
+  *y = read_num(comma + 1);
+  return true;
+}
+
 static bool parse_poly_after_word(const char *input, const char *word, double *A, double *B, double *C) {
   int wl = (int)strlen(word);
   for (int i = 0; input && input[i]; ++i) {
@@ -1220,6 +1244,8 @@ static double median_slice(const double *a, int lo, int hi) {
 }
 
 static bool is_projectile_text(const char *t) {
+  if (has(t, "die") || has(t, "dice") || has(t, "normalapprox") ||
+      has(t, "normalapproximation") || has(t, "probability")) return false;
   return has(t, "projectile") || has(t, "projectiles") || has(t, "projected") || has(t, "projection") ||
          has(t, "thrown") || has(t, "fired") || has(t, "launched");
 }
@@ -3053,6 +3079,31 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       return add(out, n, "r = %.10g i %+.10g j", x, y);
     }
   }
+  if ((has(t, "velocityvector") || has(c, "v=") || (has(t, "velocity") && has(t, "i") && has(t, "j"))) &&
+      (has(t, "findposition") || (has(t, "find") && has(t, "position")) || has(t, "positionat")) &&
+      has(t, "i") && has(t, "j")) {
+    const char *base = strstr(c, "v=");
+    if (!base) base = strstr(c, "velocity");
+    const char *ip = base ? strchr(base, 'i') : 0;
+    const char *jp = ip ? strchr(ip, 'j') : 0;
+    double ax=0,bx=0,cx=0, ay=0,by=0,cy=0, x0=0,y0=0, t0=0, tt=0;
+    if (base && ip && jp && parse_poly_segment(base, ip, &ax, &bx, &cx) &&
+        parse_poly_segment(ip + 1, jp, &ay, &by, &cy) &&
+        numeric_pair_after_word(input, "position", &x0, &y0) &&
+        (last_label_num(input, "t", &tt) || word_num_with_t(input, "at", &tt) || word_num(input, "time", &tt) || nv > 0)) {
+      if (tt == 0 && nv > 0) tt = v[nv-1];
+      double vx0 = ax*t0*t0*t0/3.0 + bx*t0*t0/2.0 + cx*t0;
+      double vy0 = ay*t0*t0*t0/3.0 + by*t0*t0/2.0 + cy*t0;
+      double kx = x0 - vx0, ky = y0 - vy0;
+      double x = ax*tt*tt*tt/3.0 + bx*tt*tt/2.0 + cx*tt + kx;
+      double y = ay*tt*tt*tt/3.0 + by*tt*tt/2.0 + cy*tt + ky;
+      int n = add(out, 0, "Integrate the velocity vector component by component.");
+      n = add(out, n, "v = (%.6g t^2 %+.6g t %+.6g)i + (%.6g t^2 %+.6g t %+.6g)j", ax, bx, cx, ay, by, cy);
+      n = add(out, n, "r = (%.6g/3 t^3 %+.6g/2 t^2 %+.6g t + C1)i + (%.6g/3 t^3 %+.6g/2 t^2 %+.6g t + C2)j", ax, bx, cx, ay, by, cy);
+      n = add(out, n, "r(0) = %.6g i %+.6g j gives C1=%.10g, C2=%.10g", x0, y0, kx, ky);
+      return add(out, n, "r(%.6g) = %.10g i %+.10g j", tt, x, y);
+    }
+  }
   if ((has(t, "velocityvector") || (has(t, "velocity") && has(t, "vector"))) &&
       (has(t, "displacement") || has(t, "acceleration")) &&
       (has(c, "t^2i") || has(c, "t^2*i")) && nv >= 5) {
@@ -3378,7 +3429,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       return add(out, n, "at t=%.10g, a = %.10g", r2, 2*qa*r2 + qb);
     }
   }
-  if (has(t, "displacement") && has(t, "acceleration") &&
+  if (has(t, "displacement") && has(t, "acceleration") && !has(t, "vector") &&
       (has(t, "att") || has(t, "at")) && has(c, "t") && !has(t, "from")) {
     double A=0, B=0, C=0, time=0;
     if (!(word_num_with_t(input, "at", &time) || first_num_after_word(input, "at", &time))) time = nv > 0 ? v[nv-1] : 0;
@@ -4077,6 +4128,30 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     }
   }
   if ((has(t, "accelerating") || has(t, "accelerates") || has(t, "accelerated")) &&
+      (has(t, "constant") || has(t, "uniform")) &&
+      !(has(t, "rest") || has(c, "fromrest") || has(c, "torest")) &&
+      (has(t, "totaldistance") || (has(t, "total") && has(t, "distance"))) &&
+      (has(t, "speed") || has(t, "velocity") || has(t, "m/s") || has(c, "m/s")) && nv >= 4) {
+    double t1 = 0, u0 = 0, v1 = 0, t2 = 0;
+    bool ht1 = word_num(input, "for", &t1);
+    bool hu = word_num(input, "speed", &u0) || word_num(input, "velocity", &u0);
+    bool hv = word_num(input, "to", &v1);
+    bool ht2 = word_num(input, "in", &t2);
+    if (!ht1 || !hu || !hv || !ht2) {
+      t1 = v[0]; u0 = v[1]; v1 = v[2]; t2 = v[3];
+      if (has(c, "travelsat") || has(c, "movesat")) { u0 = v[0]; t1 = v[1]; v1 = v[2]; t2 = v[3]; }
+    }
+    if (t1 > 0 && t2 > 0) {
+      double s1 = u0 * t1;
+      double s2 = 0.5 * (u0 + v1) * t2;
+      int n = add(out, 0, "Split the journey into constant-speed and accelerating stages.");
+      n = add(out, n, "Stage 1: distance = speed*time = %.6g*%.6g = %.10g", u0, t1, s1);
+      n = add(out, n, "Stage 2: s = 1/2(u+v)t");
+      n = add(out, n, "s2 = 1/2(%.6g+%.6g)*%.6g = %.10g", u0, v1, t2, s2);
+      return add(out, n, "total distance = %.10g", s1 + s2);
+    }
+  }
+  if ((has(t, "accelerating") || has(t, "accelerates") || has(t, "accelerated")) &&
       (has(t, "decelerating") || has(t, "decelerates") || has(t, "decelerated")) &&
       (has(c, "torest") || has(t, "rest")) && (has(t, "totaldistance") || (has(t, "total") && has(t, "distance"))) &&
       nv >= 3) {
@@ -4117,6 +4192,28 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       n = add(out, n, "t1 = 2*%.10g/(%.6g+%.6g) = %.10g s", first_s, u0, v0, t1);
       n = add(out, n, "For deceleration to rest, t2 = 2*%.6g/(%.6g+0) = %.10g s", final_s, v0, t2);
       return add(out, n, "total time = %.10g s", t1 + t2);
+    }
+  }
+  if ((has(t, "decelerating") || has(t, "decelerates") || has(t, "decelerated")) &&
+      (has(c, "torest") || has(t, "rest")) &&
+      (has(t, "totaldistance") || (has(t, "total") && has(t, "distance"))) &&
+      (has(t, "speed") || has(t, "velocity") || has(t, "m/s") || has(c, "m/s")) && nv >= 3) {
+    double u0 = 0, t1 = 0, t2 = 0;
+    bool hu = word_num(input, "speed", &u0) || word_num(input, "velocity", &u0) || word_num(input, "at", &u0);
+    bool ht1 = word_num(input, "for", &t1);
+    bool ht2 = word_num(input, "in", &t2);
+    if (!hu || !ht1 || !ht2) {
+      if (has(c, "travelsat") || has(c, "movesat")) { u0 = v[0]; t1 = v[1]; t2 = v[nv-1]; }
+      else { t1 = v[0]; u0 = v[1]; t2 = v[nv-1]; }
+    }
+    if (u0 > 0 && t1 > 0 && t2 > 0) {
+      double s1 = u0 * t1;
+      double s2 = 0.5 * u0 * t2;
+      int n = add(out, 0, "Split the journey into constant-speed and deceleration stages.");
+      n = add(out, n, "Stage 1: distance = speed*time = %.6g*%.6g = %.10g", u0, t1, s1);
+      n = add(out, n, "Stage 2: average speed = (%.6g+0)/2", u0);
+      n = add(out, n, "s2 = %.10g*%.6g = %.10g", 0.5*u0, t2, s2);
+      return add(out, n, "total distance = %.10g", s1 + s2);
     }
   }
   if ((has(t, "slope") || has(t, "incline") || has(t, "inclined") || has(t, "plane")) &&
@@ -4700,22 +4797,26 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       (has(t, "magnitude") || has(t, "direction") || has(t, "resultant")) && nv >= 2) {
     sprintf(cmd, "vector(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
   }
-  if ((has(t, "positionvector") || (has(t, "position") && has(t, "vector"))) &&
+  if ((has(t, "positionvector") || has(t, "displacementvector") ||
+       ((has(t, "position") || has(t, "displacement")) && has(t, "vector"))) &&
       (has(t, "velocity") || has(t, "acceleration")) && has(t, "i") && has(t, "j") && nv >= 5) {
-    double ax = v[0], bx = v[1], ay = 1, by = v[3], tt = v[nv-1];
-    const char *yp = strstr(c, "t^2");
-    if (yp && yp > c && isdigit((unsigned char)yp[-1])) {
-      const char *a = yp - 1;
-      while (a > c && (isdigit((unsigned char)a[-1]) || a[-1] == '.')) --a;
-      ay = read_num(a);
-    }
-    double vx = ax, vy = 2*ay*tt + by, axn = 0, ayn = 2*ay;
+    const char *base = strstr(c, "r=");
+    if (!base) base = strstr(c, "positionvector");
+    if (!base) base = c;
+    const char *ip = strchr(base, 'i'), *jp = ip ? strchr(ip, 'j') : 0;
+    double ax2=0, ax1=0, ax0=0, ay2=0, ay1=0, ay0=0, tt = v[nv-1];
+    if (ip && jp && parse_poly_segment(base, ip, &ax2, &ax1, &ax0) &&
+        parse_poly_segment(ip + 1, jp, &ay2, &ay1, &ay0)) {
+    double vx = 2*ax2*tt + ax1, vy = 2*ay2*tt + ay1, axn = 2*ax2, ayn = 2*ay2;
+    double sp = root(vx*vx + vy*vy);
     int n = add(out, 0, "Differentiate the position vector component by component.");
-    n = add(out, n, "r = (%.6g t %+.6g)i + (%.6g t^2 %+.6g t)j", ax, bx, ay, by);
-    n = add(out, n, "v = dr/dt = %.6g i + (%.6g t %+.6g)j", vx, 2*ay, by);
+    n = add(out, n, "r = (%.6g t^2 %+.6g t %+.6g)i + (%.6g t^2 %+.6g t %+.6g)j", ax2, ax1, ax0, ay2, ay1, ay0);
+    n = add(out, n, "v = dr/dt = (%.6g t %+.6g)i + (%.6g t %+.6g)j", 2*ax2, ax1, 2*ay2, ay1);
     n = add(out, n, "a = dv/dt = %.6g i + %.6g j", axn, ayn);
     n = add(out, n, "at t=%.6g, v = %.10g i + %.10g j", tt, vx, vy);
+    if (has(t, "speed")) n = add(out, n, "speed = sqrt(%.10g^2+%.10g^2) = %.10g", vx, vy, sp);
     return add(out, n, "at t=%.6g, a = %.10g i + %.10g j", tt, axn, ayn);
+    }
   }
   if ((has(t, "equilibrium") || has(t, "balance")) && (has(t, "angle") || has(t, "bearing") || has(t, "degree")) &&
       !has(t, "ladder") && nv >= 4) {
@@ -7245,6 +7346,22 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
         x0 = read_num(lp + (lp[2] == '=' ? 3 : 2));
         g0 = read_num(rp + (rp[2] == '=' ? 3 : 2));
         sprintf(cmd, "normalcond(%.10g,%.10g,%.10g,%.10g,-1)", x0, g0, mu, sd);
+        return eval_stats(cmd, out);
+      }
+    }
+    if (hMu && (hSig || hVar) && (has(c, "findp(x<") || has(c, "findp(x>") ||
+        has(c, "findprobabilitythatx<") || has(c, "findprobabilitythatx>"))) {
+      const char *fp = strstr(c, "findp(x<");
+      int right = 0, skip = 8;
+      if (!fp) { fp = strstr(c, "findp(x>"); right = 1; skip = 8; }
+      if (!fp) { fp = strstr(c, "findprobabilitythatx<"); right = 0; skip = 21; }
+      if (!fp) { fp = strstr(c, "findprobabilitythatx>"); right = 1; skip = 21; }
+      if (fp) {
+        const char *bp = fp + skip;
+        while (*bp == '<' || *bp == '>' || *bp == '=') ++bp;
+        double bound = read_num(bp);
+        sprintf(cmd, hSig ? "normaltail(%.10g,%.10g,%.10g,%d)" : "normaltailvar(%.10g,%.10g,%.10g,%d)",
+                bound, mu, hSig ? sig : var, right ? 1 : -1);
         return eval_stats(cmd, out);
       }
     }

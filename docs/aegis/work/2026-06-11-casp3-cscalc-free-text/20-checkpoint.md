@@ -6359,3 +6359,44 @@ Evidence:
 Drift check:
 - Kept changes to CASP3/CSCALC parser/working logic, regressions, generated app outputs, and this checkpoint.
 - Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.
+
+## 2026-06-13 Vector, Normal, Boolean, and Encoding Free Text Slice
+
+Completed:
+- Added generic CASP3 polynomial vector parsing for `r=(... )i+(... )j` and `v=(... )i+(... )j` free text.
+- Stopped scalar displacement calculus from stealing vector displacement questions.
+- Added CASP3 constant-speed then acceleration/deceleration staged journey working.
+- Stopped die/normal-approximation wording from being routed as projectile motion.
+- Added known-parameter normal probability parsing so stated `mean/sd` cases do not become unknown-parameter solves.
+- Added CSCALC one’s-complement range working.
+- Added CSCALC Vigenere cipher encrypt/decrypt working.
+- Hardened CSCALC truth-table output-column/maxterm routing so `variables A B` is used instead of words from the prompt.
+- Added regressions for the fixed free-text variants and rebuilt calculator outputs.
+
+Evidence:
+- Probe-fixed cases: CASP3 vector derivative/speed, velocity-vector integration to position, staged journeys, die normal approximation, known-parameter normal tails.
+- Probe-fixed cases: CSCALC explicit weighted check digit, plain-text RLE, Vigenere, one’s-complement range, maxterms from output bits.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 513380 bytes`
+  - `CSCALC.g3a: 284620 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: records=48 bytes=18178`
+  - `CAS.g3a sha256: 15f3aa342df2f8e9f3608032a17e116254df92d19141c271e45553de0b01a39e`
+  - `RUNMAT.g3a sha256: 084e197a81a047efbabaff2d2c051c5fab4c2180667967074f7075665ad39d70`
+  - `CASP3.g3a sha256: 2ab85f2112c0052f0d8c300272151b8c50873e93a4845c535eb9e095f76e0037`
+  - `CSCALC.g3a sha256: 353fa0eb76b830ce8095df01b96c20e8b6fe153caff965e930d9e178f577980f`
+  - `NOTES.g3a sha256: 203cf9cf42777fdab91639e9791b5ce202478fc54471e0addf68add34b5745e6`
+  - `CAS.PAK sha256: 4cf970de9480f9f3b06c80e60afe4b69f4d864067a068071cd974474a57f24d2`
+
+Drift check:
+- Kept changes to CASP3/CSCALC parser/working logic, regressions, generated app outputs, and this checkpoint.
+- Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.
