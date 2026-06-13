@@ -2452,6 +2452,31 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       return add(out, n, "displacement = %.10g - %.10g = %.10g", F2, F1, F2-F1);
     }
   }
+  if (has(t, "velocity") && (has(t, "displacement") || (has(t, "distance") && !has(t, "total"))) &&
+      has(t, "from") && has(t, "to") && !has(t, "vector")) {
+    double A=0, B=0, C=0, t1=0, t2=0;
+    if (parse_poly_after_word(input, "velocity", &A, &B, &C) &&
+        (word_num_with_t(input, "from", &t1) || word_num(input, "from", &t1) || (nv >= 2 && (t1 = v[nv-2], true))) &&
+        (word_num_with_t(input, "to", &t2) || word_num(input, "to", &t2) || (nv >= 2 && (t2 = v[nv-1], true)))) {
+      double F1 = A*t1*t1*t1/3.0 + B*t1*t1/2.0 + C*t1;
+      double F2 = A*t2*t2*t2/3.0 + B*t2*t2/2.0 + C*t2;
+      int n = add(out, 0, "Displacement is the integral of velocity.");
+      if (near_num(A, 0)) n = add(out, n, "v = %.6g t %+.6g", B, C);
+      else n = add(out, n, "v = %.6g t^2 %+.6g t %+.6g", A, B, C);
+      if (has(t, "acceleration")) {
+        double ta = 0;
+        if (!(word_num_with_t(input, "at", &ta) || word_num(input, "at", &ta))) ta = t1;
+        n = add(out, n, "a = dv/dt = %.6g t %+.6g", 2*A, B);
+        n = add(out, n, "at t=%.6g, a = %.10g", ta, 2*A*ta + B);
+      }
+      n = add(out, n, "s = integral(v) dt = %.6g t^3 %+.6g t^2 %+.6g t", A/3.0, B/2.0, C);
+      n = add(out, n, "displacement = [s] from t=%.6g to t=%.6g", t1, t2);
+      double disp = F2 - F1;
+      if (has(t, "distance")) n = add(out, n, "distance = |%.10g - %.10g|", F2, F1);
+      else n = add(out, n, "displacement = %.10g - %.10g = %.10g", F2, F1, disp);
+      return add(out, n, has(t, "distance") ? "distance = %.10g" : "displacement = %.10g", disp < 0 && has(t, "distance") ? -disp : disp);
+    }
+  }
   if ((has(t, "workdone") || has(t, "work")) && !has(c, "/(") && (has(c, "f=(") || has(c, ")^")) && has(c, "x")) {
     double lo=0, hi=0;
     if ((word_num_with_t(input, "from", &lo) || word_num(input, "from", &lo) || (nv >= 2 && (lo = v[nv-2], true))) &&
@@ -3122,6 +3147,10 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     if (!parsed_acc && has(c, "a=")) parsed_acc = parse_velocity_quad(input, &A, &B, &C);
     if (parsed_acc) {
       double v0 = v[nv-3], t0 = v[nv-2], tfind = v[nv-1];
+      if ((has(t, "starts") || has(t, "initially")) && has(t, "rest")) {
+        v0 = 0; t0 = 0;
+        word_num(input, "after", &tfind) || word_num_with_t(input, "at", &tfind) || word_num(input, "time", &tfind);
+      }
       double ant0 = A*t0*t0*t0/3.0 + B*t0*t0/2.0 + C*t0;
       double K = v0 - ant0;
       double ans = A*tfind*tfind*tfind/3.0 + B*tfind*tfind/2.0 + C*tfind + K;

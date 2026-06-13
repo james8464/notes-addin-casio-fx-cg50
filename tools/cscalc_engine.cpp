@@ -1058,6 +1058,66 @@ static bool make_minterm_cmd(const char *in, char *cmd, int cap) {
   return true;
 }
 
+static bool append_ints_in_parens(const char *p, int vals[], int *count, int maxc) {
+  const char *l = strchr(p, '('), *r = l ? strchr(l, ')') : 0;
+  if (!l || !r || r <= l) return false;
+  for (const char *q = l + 1; q < r && *count < maxc; ++q) {
+    if (*q == '-' || isdigit((unsigned char)*q)) {
+      vals[(*count)++] = (int)strtol(q, (char **)&q, 10);
+    }
+  }
+  return true;
+}
+
+static bool make_bool_set_notation_cmd(const char *in, char *cmd, int cap) {
+  char c[192]; clean(in, c, sizeof(c));
+  const char *mp = strstr(c, "Σm(");
+  if (!mp) mp = strstr(c, "∑m(");
+  if (!mp) mp = strstr(c, "sigmam(");
+  bool maxterm = false;
+  const char *xp = strstr(c, "πm(");
+  if (!xp) xp = strstr(c, "pim(");
+  if (!xp) xp = strstr(c, "productm(");
+  if (xp && (!mp || xp < mp)) { mp = xp; maxterm = true; }
+  if (!mp) return false;
+  char vars[8] = ""; int vc = 0;
+  const char *fp = strchr(c, '('), *fq = fp ? strchr(fp, ')') : 0;
+  if (fp && fq && fq < mp) {
+    for (const char *p = fp + 1; p < fq && vc < 6; ++p) {
+      if (isalpha((unsigned char)*p)) {
+        char v = (char)toupper((unsigned char)*p);
+        bool seen = false; for (int i = 0; i < vc; ++i) if (vars[i] == v) seen = true;
+        if (!seen) { vars[vc++] = v; vars[vc] = 0; }
+      }
+    }
+  }
+  int vals[32], nv = 0, dcs[32], nd = 0;
+  if (!append_ints_in_parens(mp, vals, &nv, 32) || !nv) return false;
+  const char *dp = strstr(mp, "+d(");
+  if (!dp) dp = strstr(mp, "+dc(");
+  if (!dp) dp = strstr(mp, "dontcare(");
+  if (dp) append_ints_in_parens(dp, dcs, &nd, 32);
+  if (!vc) {
+    int maxv = 0;
+    for (int i = 0; i < nv; ++i) if (vals[i] > maxv) maxv = vals[i];
+    for (int i = 0; i < nd; ++i) if (dcs[i] > maxv) maxv = dcs[i];
+    while ((1 << vc) <= maxv && vc < 6) ++vc;
+    if (vc < 1) vc = 1;
+    for (int i = 0; i < vc; ++i) vars[i] = (char)('A' + i);
+    vars[vc] = 0;
+  }
+  int p = sprintf(cmd, maxterm ? "maxterms(" : "minterms(");
+  for (int i = 0; i < vc && p < cap - 24; ++i) p += sprintf(cmd + p, "%s%c", i ? "," : "", vars[i]);
+  for (int i = 0; i < nv && p < cap - 24; ++i) p += sprintf(cmd + p, ",%d", vals[i]);
+  if (nd && p < cap - 24) {
+    p += sprintf(cmd + p, ",dc");
+    for (int i = 0; i < nd && p < cap - 24; ++i) p += sprintf(cmd + p, ",%d", dcs[i]);
+  }
+  if (p >= cap - 2) return false;
+  cmd[p++] = ')'; cmd[p] = 0;
+  return true;
+}
+
 static int is_bits(const char *s) {
   if (!s || !*s) return 0;
   for (int i = 0; s[i]; ++i) if (s[i] != '0' && s[i] != '1' && s[i] != '.') return 0;
@@ -3448,6 +3508,9 @@ static const char *skip_bool_words(const char *e) {
   bool moved = true;
   while (moved) {
     moved = false;
+    if (starts(e, "whatis")) { e += 6; moved = true; }
+    if (starts(e, "what")) { e += 4; moved = true; }
+    if (starts(e, "calculate")) { e += 9; moved = true; }
     if (starts(e, "simplify")) { e += 8; moved = true; }
     if (starts(e, "draw")) { e += 4; moved = true; }
     if (starts(e, "find")) { e += 4; moved = true; }
@@ -6011,6 +6074,9 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       sprintf(cmd, "charset(%lld,%lld)", (long long)v[0], (long long)v[1]); return eval_storage(cmd, out);
     }
     sprintf(cmd, "chars(%lld,%lld)", (long long)v[0], (long long)v[1]); return eval_storage(cmd, out);
+  }
+  if (make_bool_set_notation_cmd(input, cmd, sizeof(cmd))) {
+    return eval_minterms(cmd, out);
   }
   if ((has(t, "maxterm") || has(t, "maxterms") || has(t, "zeros")) && make_minterm_cmd(input, cmd, sizeof(cmd))) {
     char tmp[160]; sprintf(tmp, "maxterms(%s", cmd + 9);

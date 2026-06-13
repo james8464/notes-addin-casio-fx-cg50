@@ -527,6 +527,9 @@ def main():
     require("An image is 1280 by 720 with 12 bits per pixel. Calculate file size in MiB.", ["1280*720*12 = 11059200 bits", "= 1.31836 MiB"])
     require("A sound file is 5 MiB, mono, 8 bit resolution, sampled at 22.05 kHz. Find duration.", ["5 MiB = 41943040 bits", "duration = 41943040/(22050*8*1)", "= 237.7723356 s"])
     require("Convert Boolean expression A.B + A.C to product of sums.", ["variables: A,B,C", "simplified POS = (A)&(B+C)"])
+    require("What is NOT A AND B OR C", ["minterms: 1,2,3,5,7", "simplified = C+A'B"])
+    require("Simplify F(A,B,C)=pi M(0,2,4,6)", ["Maxterm/POS method", "M0 = (A+B+C)", "simplified = C"])
+    require("Use a Karnaugh map for F(A,B,C)=Σm(1,3,7)+d(5)", ["don't-care rows: 5", "simplified = C"])
     print("OK cscalc engine")
 
 
