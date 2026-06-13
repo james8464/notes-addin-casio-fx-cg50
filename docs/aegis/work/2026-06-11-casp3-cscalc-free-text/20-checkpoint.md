@@ -6536,6 +6536,42 @@ Drift check:
 - Kept changes to CASP3/CSCALC parser/working logic, regressions, generated app outputs, and this checkpoint.
 - Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.
 
+## 2026-06-13 CASP3 Cubic Vector and CF Tail Hardening Slice
+
+Completed:
+- Reviewed legacy Boolean Python/native history; current CSCALC already covers the useful simplification/proof/gate routes from it.
+- Added CASP3 cubic position-vector differentiation for `r=(...t^3...)i+(...)j` prompts.
+- Fixed CASP3 binomial hypothesis free text so two-tailed/two-sided wording overrides observed-value upper/lower inference.
+- Added CASP3 cumulative-frequency interpolation when CF values are listed first and x-values follow after `at x`.
+- Added regressions and rebuilt calculator outputs.
+
+Evidence:
+- Probe-fixed cases: cubic vector acceleration/speed, binomial two-tailed test, CF x-value IQR interpolation.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 536088 bytes`
+  - `CSCALC.g3a: 291940 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: records=48 bytes=18178`
+  - `CAS.g3a sha256: 15f3aa342df2f8e9f3608032a17e116254df92d19141c271e45553de0b01a39e`
+  - `RUNMAT.g3a sha256: 084e197a81a047efbabaff2d2c051c5fab4c2180667967074f7075665ad39d70`
+  - `CASP3.g3a sha256: 52f5740c2e369dcdffceddf3238ad7342a516cf6eeb19901afe758959048359a`
+  - `CSCALC.g3a sha256: 7c730bdb2e3760d0e0ecefe9aec3ede2d1f257a07011b138e354cdf26665d8e8`
+  - `NOTES.g3a sha256: 203cf9cf42777fdab91639e9791b5ce202478fc54471e0addf68add34b5745e6`
+  - `CAS.PAK sha256: 4cf970de9480f9f3b06c80e60afe4b69f4d864067a068071cd974474a57f24d2`
+
+Drift check:
+- Kept changes to CASP3 parser/working logic, regressions, generated app output, and this checkpoint.
+- Did not touch CAS Pure behavior, CSCALC source, menus, NOTES source, or shared UI/status code.
+
 ## 2026-06-13 P3/CS More Free-Text Edge Hardening Slice
 
 Completed:

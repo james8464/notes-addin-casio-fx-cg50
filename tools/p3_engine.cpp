@@ -793,6 +793,47 @@ static bool parse_poly_segment(const char *start, const char *end, double *A, do
   return k > 0 && parse_velocity_quad(expr, A, B, C);
 }
 
+static bool parse_poly_segment_cubic(const char *start, const char *end, double *A3, double *A2, double *A1, double *A0) {
+  char e[128]; int k = 0;
+  for (const char *p = start; p && p < end && *p && k + 1 < (int)sizeof(e); ++p) {
+    char ch = (char)tolower((unsigned char)*p);
+    if (ch == '(' || ch == ')' || ch == ' ' || ch == '\t' || ch == ',') continue;
+    if (isdigit((unsigned char)ch) || ch == 't' || ch == '+' || ch == '-' || ch == '.' || ch == '^' || ch == '*')
+      e[k++] = ch;
+  }
+  e[k] = 0;
+  *A3 = *A2 = *A1 = *A0 = 0;
+  bool any = false;
+  for (int i = 0; e[i]; ) {
+    int sign = 1;
+    if (e[i] == '+') ++i;
+    else if (e[i] == '-') { sign = -1; ++i; }
+    int starti = i;
+    while (e[i] && e[i] != '+' && e[i] != '-') ++i;
+    int len = i - starti;
+    if (len <= 0) continue;
+    const char *term = e + starti;
+    const char *tp = (const char*)memchr(term, 't', len);
+    if (tp) {
+      double cf = sign * term_coeff(term, (int)(tp - term));
+      if (tp + 1 < term + len && tp[1] == '^') {
+        if (tp + 2 >= term + len) return false;
+        if (tp[2] == '3') *A3 += cf;
+        else if (tp[2] == '2') *A2 += cf;
+        else if (tp[2] == '1') *A1 += cf;
+        else return false;
+      } else *A1 += cf;
+      any = true;
+    } else if (isdigit((unsigned char)term[0]) || term[0] == '.') {
+      char tmp[32]; int n = len < 31 ? len : 31;
+      memcpy(tmp, term, n); tmp[n] = 0;
+      *A0 += sign * read_num(tmp);
+      any = true;
+    }
+  }
+  return any;
+}
+
 static bool numeric_pair_after_word(const char *s, const char *word, double *x, double *y) {
   const char *p = strstr(s, word);
   if (!p) return false;
@@ -4914,6 +4955,28 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     sprintf(cmd, "vector(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
   }
   if ((has(t, "position") || has(c, "r=")) && has(t, "i") && has(t, "j") &&
+      (has(t, "speed") || has(t, "velocity") || has(t, "acceleration")) && has(c, "t^3")) {
+    const char *base = strstr(c, "r=");
+    if (!base) base = strstr(c, "position");
+    if (!base) base = c;
+    const char *ip = strchr(base, 'i'), *jp = ip ? strchr(ip, 'j') : 0;
+    double x3=0,x2=0,x1=0,x0=0,y3=0,y2=0,y1=0,y0=0, tt = nv ? v[nv-1] : 0;
+    last_label_num(input, "t", &tt); word_num_with_t(input, "at", &tt); word_num(input, "time", &tt);
+    if (ip && jp && parse_poly_segment_cubic(base, ip, &x3, &x2, &x1, &x0) &&
+        parse_poly_segment_cubic(ip + 1, jp, &y3, &y2, &y1, &y0)) {
+      double vx = 3*x3*tt*tt + 2*x2*tt + x1, vy = 3*y3*tt*tt + 2*y2*tt + y1;
+      double axn = 6*x3*tt + 2*x2, ayn = 6*y3*tt + 2*y2, sp = root(vx*vx + vy*vy);
+      int n = add(out, 0, "Differentiate the position vector component by component.");
+      n = add(out, n, "r = (%.6g t^3 %+.6g t^2 %+.6g t %+.6g)i + (%.6g t^3 %+.6g t^2 %+.6g t %+.6g)j", x3, x2, x1, x0, y3, y2, y1, y0);
+      n = add(out, n, "v = dr/dt = (%.6g t^2 %+.6g t %+.6g)i + (%.6g t^2 %+.6g t %+.6g)j", 3*x3, 2*x2, x1, 3*y3, 2*y2, y1);
+      n = add(out, n, "a = dv/dt = (%.6g t %+.6g)i + (%.6g t %+.6g)j", 6*x3, 2*x2, 6*y3, 2*y2);
+      n = add(out, n, "at t=%.6g, v = %.10g i %+.10g j", tt, vx, vy);
+      n = add(out, n, "at t=%.6g, a = %.10g i %+.10g j", tt, axn, ayn);
+      if (has(t, "speed")) return add(out, n, "speed = sqrt(%.10g^2+%.10g^2) = %.10g", vx, vy, sp);
+      return n;
+    }
+  }
+  if ((has(t, "position") || has(c, "r=")) && has(t, "i") && has(t, "j") &&
       (has(t, "speed") || has(t, "velocity") || has(t, "acceleration")) && nv >= 3) {
     const char *base = strstr(c, "r=");
     if (!base) base = strstr(c, "position");
@@ -6575,7 +6638,10 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       if (v[i] > 0 && v[i] <= 10) { alpha = v[i]/100.0; break; }
       if (v[i] > 0 && v[i] <= 1) { alpha = v[i]; break; }
     }
-    double tail = (has(t, "increased") || has(t, "increase") || has(t, "greater") || has(t, "more")) ? 1.0 :
+    double tail = (has(t, "twotailed") || has(t, "twosided") ||
+                  (has(t, "two") && (has(t, "tailed") || has(t, "sided"))) ||
+                  has(t, "different") || has(t, "notequal")) ? 0.0 :
+                  (has(t, "increased") || has(t, "increase") || has(t, "greater") || has(t, "more")) ? 1.0 :
                   ((has(t, "decreased") || has(t, "decrease") || has(t, "less") || has(t, "fewer") || has(t, "smaller")) ? -1.0 :
                    (hx && hp && x > N * pv ? 1.0 : -1.0));
     sprintf(cmd, "hypbinom(%d,%.10g,%d,%.10g,%.0f)", (int)N, pv, (int)x, alpha, tail);
@@ -7086,7 +7152,10 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     }
     if (rawp > 0 && rawp < 100 && N >= 1 && x >= 0) {
       double pv = rawp / 100.0;
-      double htail = (has(t, "increase") || has(t, "increased") || has(t, "greater") || has(t, "more") || x > N*pv) ? 1.0 : -1.0;
+      double htail = (has(t, "twotailed") || has(t, "twosided") ||
+                      (has(t, "two") && (has(t, "tailed") || has(t, "sided"))) ||
+                      has(t, "different") || has(t, "notequal")) ? 0.0 :
+                     ((has(t, "increase") || has(t, "increased") || has(t, "greater") || has(t, "more") || x > N*pv) ? 1.0 : -1.0);
       sprintf(cmd, "hypbinom(%d,%.10g,%d,%.10g,%.0f)", (int)N, pv, (int)x, alpha, htail);
 	      return eval_stats(cmd, out);
 	    }
@@ -8950,6 +9019,38 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       n = add(out, n, "k(m^%d-%.6g^%d)=0.5", pow, cdf_lo, pow);
       return add(out, n, "m = %.10g", med);
     }
+  }
+  if (has(t, "cumulative") && (has(t, "frequency") || has(t, "frequencies")) &&
+      (has(c, "atx") || has(t, "x values") || has(t, "xvalues")) &&
+      (has(t, "median") || has(t, "quartile") || has(t, "interquartile") || has(t, "iqr")) &&
+      nv >= 6 && nv % 2 == 0) {
+    int m = nv / 2;
+    double *cf = v, *b = v + m;
+    double total = cf[m - 1];
+    int n = add(out, 0, "Use linear interpolation on the cumulative-frequency table.");
+    n = add(out, n, "x-values are matched with the cumulative frequencies.");
+    n = add(out, n, "total frequency n = %.10g", total);
+    double qs[3], vals[3]; const char *names[3]; int qc = 0;
+    if (has(t, "lowerquartile") || has(t, "q1") || has(t, "interquartile") || has(t, "iqr")) { qs[qc] = 0.25; names[qc++] = "Q1"; }
+    if (has(t, "median")) { qs[qc] = 0.5; names[qc++] = "median"; }
+    if (has(t, "upperquartile") || has(t, "q3") || has(t, "interquartile") || has(t, "iqr")) { qs[qc] = 0.75; names[qc++] = "Q3"; }
+    if (qc == 0) { qs[qc] = 0.5; names[qc++] = "median"; }
+    for (int q = 0; q < qc && n < P3_MAX_LINES - 2; ++q) {
+      double pos = qs[q] * total, prev = cf[0], ans = b[0];
+      for (int i = 1; i < m; ++i) {
+        if (cf[i] >= pos) {
+          double f = cf[i] - prev, w = b[i] - b[i-1];
+          ans = b[i-1] + ((pos - prev) / f) * w;
+          n = add(out, n, "%s position = %.6g*n = %.10g", names[q], qs[q], pos);
+          n = add(out, n, "%s class %.6g to %.6g: %.10g", names[q], b[i-1], b[i], ans);
+          break;
+        }
+        prev = cf[i];
+      }
+      vals[q] = ans;
+    }
+    if (has(t, "iqr") || has(t, "interquartile")) return add(out, n, "IQR = Q3 - Q1 = %.10g", vals[qc-1] - vals[0]);
+    return n;
   }
   if (has(t, "cumulative") && (has(t, "frequency") || has(t, "frequencies")) &&
       (has(t, "boundary") || has(t, "boundaries") || has(t, "class")) && nv >= 6 && nv % 2 == 0) {
