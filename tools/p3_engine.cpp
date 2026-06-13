@@ -66,6 +66,17 @@ static void raw_clean(const char *in, char *out, int cap) {
   out[j] = 0;
 }
 
+static void normalize_text(const char *in, char *out, int cap) {
+  int j = 0;
+  for (int i = 0; in && in[i] && j + 1 < cap; ++i) {
+    const char *tok = 0; int len = 0;
+    if (p3_utf_token(in + i, &tok, &len)) { append_tok(out, &j, cap, tok); i += len - 1; continue; }
+    unsigned char c = (unsigned char)in[i];
+    out[j++] = (char)(c < 128 ? tolower(c) : c);
+  }
+  out[j] = 0;
+}
+
 static bool starts(const char *s, const char *p) { return strncmp(s, p, strlen(p)) == 0; }
 static bool has(const char *s, const char *p) { return strstr(s, p) != 0; }
 
@@ -9397,25 +9408,26 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
 int p3_eval(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   for (int i=0;i<P3_MAX_LINES;++i) out[i][0]=0;
   char s[192]; clean(input, s, sizeof(s));
+  char h[384]; normalize_text(input, h, sizeof(h));
   if (!s[0]) return add(out, 0, "Enter a Paper 3 command.");
   if ((has(s, "acceleration") || has(s, "accn")) && has(s, "/")) {
-    int nf = eval_free_text(input, out); if (nf) return nf;
+    int nf = eval_free_text(h, out); if (nf) return nf;
   }
   if (has(s, "given") && has(s, "n(")) {
     int ns = eval_stats(s, out); if (ns) return ns;
-    int nf = eval_free_text(input, out); if (nf) return nf;
+    int nf = eval_free_text(h, out); if (nf) return nf;
   }
   if (has(s, "|") && (has(s, "~n(") || has(s, "normal"))) {
-    int nf = eval_free_text(input, out); if (nf) return nf;
+    int nf = eval_free_text(h, out); if (nf) return nf;
   }
   if ((has(s, "samplemean") || (has(s, "sample") && has(s, "mean"))) &&
       (has(s, "normal") || has(s, "~n(") || has(s, "populationmean"))) {
-    int nf = eval_free_text(input, out); if (nf) return nf;
+    int nf = eval_free_text(h, out); if (nf) return nf;
   }
   int n = eval_suvat(s, out); if (n) return n;
   n = eval_mech(s, out); if (n) return n;
   n = eval_stats(s, out); if (n) return n;
-  n = eval_free_text(input, out); if (n) return n;
+  n = eval_free_text(h, out); if (n) return n;
   n = add(out, 0, "Supported:");
   n = add(out, n, "suvat projectile projectileh projectileat projectileangle force weight friction moment incline inclineacc");
   n = add(out, n, "beam ladder connected pulley impulse momentum work power energy workenergyforce restitution vector resolve vectorkin varacc");

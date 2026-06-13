@@ -5550,6 +5550,39 @@ Drift check:
 - Kept changes to CASP3/CSCALC parser generalisation, regressions, generated app outputs, and this checkpoint.
 - Did not touch CAS Pure source, menus, NOTES source, or shared UI/status code.
 
+## 2026-06-13 CASP3 Free-Text Normalisation Slice
+
+Completed:
+- Added a normalised human-text buffer for CASP3 free-text parsing.
+- Free-text routes now receive pasted math symbols normalised before helper parsing, instead of only direct command parsing.
+- This fixes prose values such as Unicode negative initial velocity without patching each helper separately.
+- Added regression coverage for Unicode-negative SUVAT prose.
+
+Evidence:
+- Fresh probe fixed:
+  - `constant acceleration initial velocity −5 acceleration 2 time 3 find final velocity` now gives `v = -5 + 2*3` and `v = 1`.
+- Existing pasted projectile probe still passes:
+  - `A particle is projected with speed 20 m s−1 at 30° above the horizontal. Find range.`
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 503968 bytes`
+  - `CSCALC.g3a: 277756 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: records=48 bytes=18178`
+  - `CASP3.g3a sha256: 2f2b0a0bdca8eef9cf47e1cb37ccb58a29d8deb7ec4477b75fcadd58e187320a`
+
+Drift check:
+- Kept changes to CASP3 parser generalisation, regression, generated CASP3 output, and this checkpoint.
+- Did not touch CAS Pure source, menus, CSCALC source, NOTES source, or shared UI/status code.
+
 ## 2026-06-13 CASP3 Pasted Maths Notation Slice
 
 Completed:
