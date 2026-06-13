@@ -5513,6 +5513,36 @@ Drift check:
 - Kept changes to CASP3/CSCALC general free-text handling, regressions, generated app outputs, and this checkpoint.
 - Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.
 
+## 2026-06-13 Summary Stats and Instruction Address Slice
+
+Completed:
+- Stopped the CASP3 generic sample-total route from stealing summary-statistics prompts with `sum x` and `sum x^2`.
+- Added CASP3 recognition for pasted `sum x^2` summary notation.
+- Added CSCALC instruction/opcode address-count working when the address-field width is implied.
+- Added regression tests and rebuilt calculator-ready outputs.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 504868 bytes`
+  - `CSCALC.g3a: 280756 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: records=48 bytes=18178`
+  - `CASP3.g3a sha256: fa5c4ad10e1b98ea6a646b171c28fc43af781740f2c4a83be382a56aa0a82feb`
+  - `CSCALC.g3a sha256: 6e913cd6a7cde40bf93c0bf5cfbb8aff0250da1913e2aa7e28ad377d6e491657`
+
+Drift check:
+- Kept changes to CASP3/CSCALC general free-text handling, regressions, generated CASP3/CSCALC outputs, and this checkpoint.
+- Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.
+
 ## 2026-06-13 Superscript, Not-Equal, Minute, and Gate Assignment Slice
 
 Completed:

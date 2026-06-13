@@ -566,6 +566,7 @@ def main():
     require("A 20 MB file is compressed by 35 percent. Find the compressed file size.", ["Compressed by 35% means keep 65%", "compressed size = 20*(1-35/100)", "compressed size = 13"])
     require("A file of size 800 KiB is transmitted at 2 Mib/s. Find the time taken.", ["800 KiB = 6553600 bits", "2 Mbit/s = 2000000 bit/s", "time = 6553600/2000000 = 3.2768 s"])
     require("A 24-bit address bus and 16-bit data bus memory has word addressed memory. Calculate addressable memory in MiB.", ["address bus 24 bits", "memory size = 16777216*16", "= 33554432 bytes", "= 32 MiB"])
+    require("A 24-bit instruction has 6-bit opcode. How many addresses can be represented?", ["Address field bits = instruction bits - opcode bits.", "address bits = 24 - 6 = 18", "number of addresses = 2^18 = 262144"])
     require("A 32 bit instruction has opcode 6 bits and address field 20 bits. How many register bits remain?", ["Instruction fields", "remaining bits = 32 - 6 - 20 = 6 bits"])
     require("A 3 GHz CPU executes 120 million instructions at 2 cycles per instruction. Calculate execution time.", ["Execution time = instructions * cycles per instruction / clock rate.", "cycles = 120000000*2 = 240000000", "time = 240000000/3000000000 = 0.08 s"])
     require("A CPU executes 2.5 billion instructions at 3.2 GHz. Calculate execution time.", ["No CPI is stated, so use CPI = 1", "instructions = 2500000000", "clock rate = 3200000000", "time = 2500000000/3200000000 = 0.78125 s"])

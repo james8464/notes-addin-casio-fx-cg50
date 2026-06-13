@@ -4516,6 +4516,23 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   if ((has(t, "instruction") || has(t, "instructions")) &&
       (has(t, "opcode") || has(t, "operationcode")) &&
+      (has(t, "address") || has(t, "addresses")) &&
+      (has(t, "represent") || has(t, "represented") || has(t, "howmany")) &&
+      !(has(t, "addressfield") || (has(t, "address") && has(t, "field"))) && nv >= 2) {
+    double total = 0, opcode = 0;
+    bool ht = scan_before_word_num(t, "instruction", &total) || scan_before_word_num(t, "instructions", &total) ||
+              scan_before_word_num(t, "bit", &total) || scan_before_word_num(t, "bits", &total);
+    bool ho = scan_before_word_num(t, "opcode", &opcode) || scan_before_word_num(t, "operationcode", &opcode);
+    if (!ht) total = v[0];
+    if (!ho) opcode = v[1];
+    double address_bits = total - opcode;
+    double addresses = pow2((int)(address_bits + 0.5));
+    int n = add(out, 0, "Address field bits = instruction bits - opcode bits.");
+    n = add(out, n, "address bits = %.0f - %.0f = %.0f", total, opcode, address_bits);
+    return add(out, n, "number of addresses = 2^%.0f = %.0f", address_bits, addresses);
+  }
+  if ((has(t, "instruction") || has(t, "instructions")) &&
+      (has(t, "opcode") || has(t, "operationcode")) &&
       (has(t, "addressfield") || (has(t, "address") && has(t, "field"))) &&
       (has(t, "remain") || has(t, "remaining") || has(t, "register")) && nv >= 3) {
     double total = 0, opcode = 0, address = 0;

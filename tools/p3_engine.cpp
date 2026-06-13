@@ -9128,6 +9128,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     return n;
   }
   if ((has(t, "summarystatistics") || has(t, "summary") || has(t, "sumx") || has(t, "sumofsquares") ||
+       has(c, "sumx") || has(c, "sumx^2") || has(c, "sumxsquared") || has(c, "sumxsquare") ||
        (has(t, "sum") && (has(t, "squared") || has(t, "squares")))) &&
       (has(t, "mean") || has(t, "variance") || has(t, "standarddeviation") || has(t, "sd")) &&
       !has(t, "added") && !has(t, "add") && !has(t, "removed") && !has(t, "remove") &&
@@ -9136,6 +9137,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     bool hn = label_num(input, "n", &n0) || word_num(input, "n", &n0) || word_num(input, "sample", &n0);
     bool hsx = label_num(input, "sumx", &sx) || label_num(input, "sx", &sx) || word_num(input, "sumx", &sx);
     bool hsx2 = label_num(input, "sumx2", &sx2) || label_num(input, "sx2", &sx2) ||
+                label_num(input, "sumx^2", &sx2) ||
                 label_num(input, "sumxsquared", &sx2) || label_num(input, "sumofsquares", &sx2) ||
                 word_num(input, "sumxsquared", &sx2) || word_num(input, "sumofsquares", &sx2);
     if (!hn && nv >= 1) n0 = v[0];
@@ -9246,6 +9248,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     return add(out, n, "combined mean = %.10g/%.10g = %.10g", total1 + total2, n1 + n2, combined);
   }
   if ((has(t, "total") || has(t, "sum")) && has(t, "sample") && has(t, "mean") &&
+      !has(c, "sumx") && !has(c, "sumx^2") && !has(c, "sumxsquared") &&
+      !has(c, "sumxsquare") && !has(t, "sumofsquares") &&
       nv >= 2 && !has(t, "normal") && !has(t, "binom") && !has(t, "poisson")) {
     double count = 0, mean = 0;
     bool hc = word_num(input, "sampleof", &count) || word_num(input, "sample", &count) || label_num(input, "n", &count);

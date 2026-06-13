@@ -650,6 +650,7 @@ def main():
     require("Events A and B are independent with P(A)=0.45 and P(neither)=0.22. Find P(B).", ["P(neither) = P(A')P(B')", "P(B) = 1 - 0.22/(1-0.45) = 0.6"])
     require("A sample of 12 observations has mean 7 and standard deviation 2. One observation 10 is removed. Find new mean and standard deviation.", ["old sum x^2 = 12*(4+7^2) = 636", "new mean = 74/11 = 6.727272727", "sd = sqrt(variance) = 1.863081957"])
     require("A sample of 8 values has sum x=52 and sum x squared=380. Find mean and standard deviation.", ["Use summary statistics formulae.", "mean = Sx/n = 52/8 = 6.5", "sd = sqrt(variance) = 2.291287847"])
+    require("A sample has n=12, sum x=84, sum x^2=650. Find mean and variance.", ["Use summary statistics formulae.", "mean = Sx/n = 84/12 = 7", "variance = 650/12 - 7^2 = 5.166666667"])
     require("A sample has values 2 4 6 8 10 find standard deviation.", ["For raw data", "sum x = 30", "variance = sum x^2/n - mean^2", "sd = sqrt(variance) = 2.828427125"])
     require("A particle of mass 3kg is pulled up a rough plane angle 20 degrees by a force 25N parallel to the plane. It accelerates at 1.2 m/s^2. Find coefficient of friction.", ["Use F=ma along the plane and friction = mu R.", "25 - 10.05539221 - mu*27.62647834 = 3*1.2", "mu = 0.410642"])
     require("A lift of mass 600kg decelerates upwards at 0.4 m/s^2. Find the tension in the cable.", ["For the lift, apply Newton's second law vertically.", "T - mg = -ma", "T = m(g-a) = 600(9.8-0.4) = 5640 N"])
