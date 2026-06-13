@@ -2491,11 +2491,13 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     }
   }
   if (has(t, "power") && (has(t, "resistance") || has(t, "resistive")) &&
-      (has(t, "acceleration") || has(t, "accelerate")) && (has(t, "speed") || has(t, "velocity")) && nv >= 4) {
+      (has(t, "acceleration") || has(t, "accelerate")) &&
+      !has(t, "incline") && !has(t, "slope") && !has(t, "plane") &&
+      (has(t, "speed") || has(t, "velocity") || has(t, "m/s") || has(t, "ms^-1") || has(t, "moves") || has(t, "travels")) && nv >= 4) {
     double m=0, P=0, sp=0, R=0;
     bool hm=word_num(input,"mass",&m) || label_num(input,"mass",&m);
-    bool hP=word_num(input,"power",&P) || label_num(input,"power",&P);
-    bool hs=word_num(input,"speed",&sp) || word_num(input,"velocity",&sp);
+    bool hP=word_num(input,"power",&P) || label_num(input,"power",&P) || prev_word_num(input,"kw",&P) || prev_word_num(input,"kilowatt",&P);
+    bool hs=num_before_unit(input,"m/s",&sp) || num_before_unit(input,"ms^-1",&sp) || word_num(input,"speed",&sp) || word_num(input,"velocity",&sp);
     bool hR=word_num(input,"resistance",&R) || label_num(input,"resistance",&R);
     if (!hm) m = v[0];
     if (!hP) P = v[1];
@@ -3545,6 +3547,10 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       sprintf(cmd, "poissonrange(%.10g,%d,%d)", lam, (int)lo, (int)hi);
       return eval_stats(cmd, out);
     }
+    if (has(t, "between") && nv >= 3) {
+      sprintf(cmd, "poissonrange(%.10g,%d,%d)", lam, (int)v[nv-2], (int)v[nv-1]);
+      return eval_stats(cmd, out);
+    }
     if ((has(c, "fewerthan") || has(c, "lessthan")) && (has(c, "greaterthan") || has(c, "morethan"))) {
       double lowb = 0, highb = 0;
       const char *fp = strstr(c, "fewerthan");
@@ -4182,6 +4188,46 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     }
     const char *loads_p = strstr(t, "loads");
     const char *act_p = loads_p ? strstr(loads_p, "act") : 0;
+    const char *at_p = loads_p ? strstr(loads_p, "at") : 0;
+    if (loads_p && at_p && (!act_p || at_p < act_p)) {
+      char rt[260]; raw_clean(input, rt, sizeof(rt));
+      char *rl = strstr(rt, "loads,");
+      char *ra = rl ? strstr(rl, ",at,") : 0;
+      char *rf = ra ? strstr(ra + 4, ",from,") : 0;
+      if (rl && ra) {
+        char load_seg[160], pos_seg[160];
+        int llen = (int)(ra - rl);
+        if (llen >= (int)sizeof(load_seg)) llen = (int)sizeof(load_seg) - 1;
+        memcpy(load_seg, rl, llen); load_seg[llen] = 0;
+        const char *pend = rf ? rf : rt + strlen(rt);
+        int plen = (int)(pend - (ra + 4));
+        if (plen >= (int)sizeof(pos_seg)) plen = (int)sizeof(pos_seg) - 1;
+        memcpy(pos_seg, ra + 4, plen); pos_seg[plen] = 0;
+        double loads[8], pos[8];
+        int nl = scan_nums(load_seg, loads, 8), np = scan_nums(pos_seg, pos, 8);
+        double L = 0, bw = 0, bm = 0;
+        bool hL = label_num(input, "length", &L) || word_num(input, "length", &L);
+        bool hb = word_num(input, "weight", &bw) || prev_word_num(input, "weight", &bw);
+        if (!hb && (word_num(input, "mass", &bm) || prev_word_num(input, "mass", &bm))) { bw = 9.8*bm; hb = true; }
+        if (hL && nl > 0 && np >= nl) {
+          double sumW = hb ? bw : 0, moment = hb ? bw * L / 2.0 : 0;
+          int n = add(out, 0, "For a horizontal beam in equilibrium, use moments and vertical forces.");
+          n = add(out, n, "Take moments about the left support A.");
+          char rhs[180]; rhs[0] = 0; int p = 0;
+          if (hb) p += sprintf(rhs+p, "%.10g*(%.10g/2)", bw, L);
+          for (int i = 0; i < nl && i < np; ++i) {
+            double W = loads[i], x = abs_num(pos[i]);
+            sumW += W; moment += W*x;
+            if (p < (int)sizeof(rhs) - 36) p += sprintf(rhs+p, "%s%.10g*%.10g", p ? " + " : "", W, x);
+          }
+          double RB = L ? moment/L : 0, RA = sumW - RB;
+          n = add(out, n, "R_B*%.10g = %s", L, rhs);
+          n = add(out, n, "R_B = %.10g N", RB);
+          n = add(out, n, "Vertical equilibrium: R_A + R_B = %.10g", sumW);
+          return add(out, n, "R_A = %.10g N", RA);
+        }
+      }
+    }
     if (loads_p && act_p) {
       char load_seg[160], pos_seg[160];
       int llen = (int)(act_p - loads_p);
@@ -5073,7 +5119,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "driving force = resistance = %.10g N", r);
     return add(out, n, "Power = Fv = %.10g*%.10g = %.10g W", r, spd, r*spd);
   }
-  if (has(t, "power") && !(has(t, "resistance") && (has(t, "acceleration") || has(t, "accelerate")) && (has(t, "speed") || has(t, "velocity") || has(t, "travels") || has(t, "travelling"))) && nv >= 2) {
+  if (has(t, "power") && !(has(t, "resistance") && (has(t, "acceleration") || has(t, "accelerate"))) && nv >= 2) {
     sprintf(cmd, "power(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
   }
   if ((has(t, "kinetic") || has(t, "energy") || has(t, "workenergy")) && nv >= 2) {
@@ -5162,7 +5208,9 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     sprintf(cmd, "resolve(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
   }
   if (has(t, "power") && (has(t, "resistance") || has(t, "resistive")) &&
-      (has(t, "acceleration") || has(t, "accelerate")) && (has(t, "speed") || has(t, "velocity") || has(t, "travels") || has(t, "travelling")) && nv >= 4) {
+      (has(t, "acceleration") || has(t, "accelerate")) &&
+      !has(t, "incline") && !has(t, "slope") && !has(t, "plane") &&
+      (has(t, "speed") || has(t, "velocity") || has(t, "travels") || has(t, "travelling")) && nv >= 4) {
     double m=0, P=0, sp=0, R=0;
     bool hm=word_num(input,"mass",&m) || label_num(input,"mass",&m);
     bool hP=word_num(input,"power",&P) || label_num(input,"power",&P);
@@ -6683,6 +6731,10 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     double lo=0, hi=0;
     if (prob_x_interval(c, &lo, &hi)) {
       sprintf(cmd, "poissonrange(%.10g,%d,%d)", v[0], (int)lo, (int)hi);
+      return eval_stats(cmd, out);
+    }
+    if (has(t, "between") && nv >= 3) {
+      sprintf(cmd, "poissonrange(%.10g,%d,%d)", v[0], (int)v[nv-2], (int)v[nv-1]);
       return eval_stats(cmd, out);
     }
     int tail = prob_tail(c, t);
