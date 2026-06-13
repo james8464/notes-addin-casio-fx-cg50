@@ -1,5 +1,33 @@
 # Checkpoint
 
+## 2026-06-13 CSCALC Explicit Check Digit Weights Slice
+
+Completed:
+- Fixed check-digit free-text prompts with explicit digit and weight lists so stated weights are used instead of default descending weights.
+- Added regression and rebuilt calculator-ready outputs.
+
+Evidence:
+- `digits 3 7 1 4 weights 5 4 3 2 mod 11` now gives `weighted sum = 54` and `check digit = (11-10) mod 11 = 1`.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 489784 bytes`
+  - `CSCALC.g3a: 275036 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: 18178 bytes`
+
+Drift check:
+- Stayed inside CSCALC check-digit free-text parsing, CS tests, checkpoint, and rebuilt CSCALC artifact.
+- No Pure CAS source, CASP3 source, menu/UI/session, NOTES source, or shared status-bar behavior changed.
+- Active goal remains open for further unseen-case hardening.
+
 ## 2026-06-13 Parser Guard Sweep Slice
 
 Completed:

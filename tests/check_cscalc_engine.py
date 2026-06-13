@@ -126,6 +126,7 @@ def main():
     require("Check whether 79927398713 is valid using Luhn.", ["Luhn validation", "processed sum = 70", "79927398713 is valid"])
     require("checkdigit(12345,11,6,5,4,3,2)", ["weighted modulo", "sum = 50", "remainder", "mod 11 = 5"])
     require("check digit for 12345 weights 6 5 4 3 2 mod 11", ["weighted modulo", "sum = 50", "mod 11 = 5"])
+    require("Calculate check digit modulo 11 for digits 3 7 1 4 weights 5 4 3 2.", ["stated weight", "weighted sum = 54", "check digit = (11-10) mod 11 = 1"])
     require("Find check digit using ISBN 978030640615", ["ISBN-13/EAN", "weighted sum of first 12 digits = 93", "check digit = 7"])
     require("rpn(3,4,+,5,*)", ["postfix/RPN", "3 + 4 = 7", "7 * 5 = 35", "answer = 35"])
     require("evaluate RPN 3 4 + 5 *", ["postfix/RPN", "3 + 4 = 7", "answer = 35"])

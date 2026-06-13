@@ -6276,6 +6276,31 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       (has(t, "modulo") || has(t, "mod")) && nv >= 2) {
     int mod = 11; double md = 0;
     if (scan_after_word_num(t, "modulo", &md) || scan_after_word_num(t, "mod", &md)) mod = (int)md;
+    const char *dp = strstr(t, "digits");
+    const char *wp = strstr(t, "weights");
+    if (!wp) wp = strstr(t, "weight");
+    if (dp && wp && wp > dp) {
+      char dseg[160], wseg[160];
+      int dl = (int)(wp - dp);
+      if (dl >= (int)sizeof(dseg)) dl = (int)sizeof(dseg) - 1;
+      memcpy(dseg, dp, dl); dseg[dl] = 0;
+      strncpy(wseg, wp, sizeof(wseg) - 1); wseg[sizeof(wseg) - 1] = 0;
+      double ds[16], ws[16];
+      int nd = scan_nums(dseg, ds, 16), nw = scan_nums(wseg, ws, 16);
+      if (nd > 0 && nw >= nd) {
+        int sum = 0, n = add(out, 0, "Use weighted modulo check digit.");
+        n = add(out, n, "Multiply each digit by its stated weight and add.");
+        for (int i = 0; i < nd; ++i) {
+          int d = (int)ds[i], w = (int)ws[i];
+          sum += d * w;
+          n = add(out, n, "%d*%d", d, w);
+        }
+        int rem = mod ? sum % mod : 0;
+        int digit = mod ? (mod - rem) % mod : 0;
+        n = add(out, n, "weighted sum = %d, remainder on division by %d is %d", sum, mod, rem);
+        return add(out, n, "check digit = (%d-%d) mod %d = %d", mod, rem, mod, digit);
+      }
+    }
     char digits[40]; digits[0] = 0; int best = 0;
     for (int i = 0; input[i]; ++i) {
       if (!isdigit((unsigned char)input[i])) continue;
