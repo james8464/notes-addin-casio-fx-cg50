@@ -1,5 +1,39 @@
 # Checkpoint
 
+## 2026-06-13 Bits Float Power And Pull Wording Slice
+
+Completed:
+- Ran another compact unseen wording probe batch after the prior commit.
+- Fixed CSCALC `number of bits needed` wording for unsigned widths.
+- Fixed CSCALC signed fixed-point decode when the prompt gives an integer bitstring plus fractional-bit count.
+- Fixed CSCALC concatenated floating-point decode when mantissa/exponent widths are stated in prose.
+- Kept floating-point absolute-error prompts on the error route instead of the plain decode route.
+- Fixed CASP3 rough-horizontal prompts like `pulled by 30N at 20 degrees`.
+- Fixed CASP3 `find engine power` on slopes at constant speed without hijacking `find angle given power`.
+- Added regressions and rebuilt calculator-ready outputs.
+
+Evidence:
+- Targeted probes for bits-needed, signed fixed decode, concatenated float decode, rough horizontal pull, and slope engine power: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 479036 bytes`
+  - `CSCALC.g3a: 273080 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: 18178 bytes`
+
+Drift check:
+- Stayed inside CASP3/CSCALC free-text parser hardening, tests, checkpoint, and generated calculator files.
+- No Pure CAS, menu/UI/session, NOTES source, or shared status-bar behavior changed.
+- Active goal remains open for further unseen-case hardening.
+
 ## 2026-06-13 Sets Fixed-Point And Stratified Wording Slice
 
 Completed:

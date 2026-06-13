@@ -5640,8 +5640,10 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if ((has(t, "float") || has(t, "floating") || (has(t, "mantissa") && has(t, "exponent"))) &&
       (has(t, "decode") || has(t, "denary") || has(t, "decimal") || has(t, "number")) && nb == 1) {
     double mbw=0, ebw=0, tmp=0;
-    bool hM = scan_bit_width_before_label(t, "mantissa", &tmp) || scan_before_word_num(t, "mantissa", &tmp); if (hM) mbw = tmp;
-    bool hE = scan_bit_width_before_label(t, "exponent", &tmp) || scan_before_word_num(t, "exponent", &tmp); if (hE) ebw = tmp;
+    bool hM = scan_bit_width_before_label(t, "mantissa", &tmp) || scan_before_word_num(t, "mantissa", &tmp) ||
+              scan_after_word_num(t, "mantissa", &tmp) || scan_near_after_word_num(t, "mantissa", &tmp); if (hM) mbw = tmp;
+    bool hE = scan_bit_width_before_label(t, "exponent", &tmp) || scan_before_word_num(t, "exponent", &tmp) ||
+              scan_after_word_num(t, "exponent", &tmp) || scan_near_after_word_num(t, "exponent", &tmp); if (hE) ebw = tmp;
     int len = (int)strlen(bits[0]);
     if (hM && hE && (int)(mbw + ebw) == len && mbw > 0 && ebw > 0 && mbw < 48 && ebw < 48) {
       char mant[48], exp[48];
@@ -5901,6 +5903,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       (has(t, "after") || has(t, "fractional") || has(t, "fraction"))) {
     double fracd = 0;
     bool hf = scan_before_word_num(t, "bits", &fracd) || scan_before_word_num(t, "bit", &fracd) ||
+              scan_before_word_num(t, "fractional", &fracd) || scan_before_word_num(t, "fraction", &fracd) ||
               scan_near_after_word_num(t, "after", &fracd) || scan_near_after_word_num(t, "fractional", &fracd);
     int frac = hf ? (int)(fracd + 0.5) : 0;
     int len = (int)strlen(bits[0]);
@@ -5986,6 +5989,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       (has(t, "bitsneeded") || has(t, "bitwidth") || (has(t, "minimum") && has(t, "bits")) ||
        (has(t, "fewest") && has(t, "bits")) || (has(t, "smallest") && has(t, "bits")) ||
        has(t, "bits,are,needed") || has(t, "bits,needed,to") ||
+       (has(t, "number") && has(t, "bits") && has(t, "needed")) ||
        (has(t, "how,many") && has(t, "bits") && has(t, "needed"))) && nv >= 1) {
     if (tc) sprintf(cmd, "bitsneeded(%lld,twos)", (long long)v[0]);
     else if (sm) sprintf(cmd, "bitsneeded(%lld,signmag)", (long long)v[0]);
@@ -6400,6 +6404,24 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   if ((has(t, "precision") || has(t, "smallestchange") || has(t, "step")) && (has(t, "float") || has(t, "mantissa")) && nv >= 2) {
     sprintf(cmd, "floatprecision(%lld,%lld)", (long long)v[0], (long long)v[1]); return eval_float(cmd, out);
+  }
+  if ((has(t, "mantissa") || has(t, "floating") || has(t, "float")) && has(t, "exponent") &&
+      (has(t, "decode") || has(t, "denary") || has(t, "decimal")) && nb == 1 && nv >= 3) {
+    double mbd = 0, ebd = 0;
+    bool hm = scan_bit_width_before_label(t, "mantissa", &mbd) || scan_before_word_num(t, "mantissa", &mbd) ||
+              scan_after_word_num(t, "mantissa", &mbd) || scan_near_after_word_num(t, "mantissa", &mbd);
+    bool he = scan_bit_width_before_label(t, "exponent", &ebd) || scan_before_word_num(t, "exponent", &ebd) ||
+              scan_after_word_num(t, "exponent", &ebd) || scan_near_after_word_num(t, "exponent", &ebd);
+    int mb = hm ? (int)(mbd + 0.5) : (int)v[nv - 2];
+    int eb = he ? (int)(ebd + 0.5) : (int)v[nv - 1];
+    int len = (int)strlen(bits[0]);
+    if (mb > 0 && eb > 0 && mb + eb == len && mb < 48 && eb < 48) {
+      char mant[48], exp[48];
+      memcpy(mant, bits[0], mb); mant[mb] = 0;
+      memcpy(exp, bits[0] + mb, eb); exp[eb] = 0;
+      sprintf(cmd, "floatdec(%s,%s)", mant, exp);
+      return eval_float(cmd, out);
+    }
   }
   if ((has(t, "mantissa") || has(t, "floating") || has(t, "float")) && has(t, "exponent") && nb >= 2) {
     sprintf(cmd, "floatdec(%s,%s)", bits[0], bits[1]); return eval_float(cmd, out);
@@ -6845,14 +6867,55 @@ int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
   for (int i = 0; i < CSCALC_MAX_LINES; ++i) out[i][0] = 0;
   char s[192]; clean(input, s, sizeof(s));
   if (!s[0]) return add(out, 0, "Enter a CS calculation command.");
+  if ((has(s, "float") || has(s, "floating")) && has(s, "mantissa") && has(s, "exponent") &&
+      (has(s, "decode") || has(s, "denary") || has(s, "decimal")) &&
+      !(has(s, "error") || has(s, "actual"))) {
+    double mbd = 0, ebd = 0;
+    bool hm = scan_after_label_compact(s, "mantissa", &mbd);
+    bool he = scan_after_label_compact(s, "exponent", &ebd);
+    int need = (int)(mbd + ebd + 0.5);
+    if (hm && he && need > 1 && need < 48) {
+      for (int i = 0; s[i]; ++i) {
+        if (s[i] != '0' && s[i] != '1') continue;
+        int j = i;
+        while (s[j] == '0' || s[j] == '1') ++j;
+        if (j - i == need) {
+          char mant[48], exp[48], fcmd[120];
+          int mb = (int)(mbd + 0.5), eb = (int)(ebd + 0.5);
+          memcpy(mant, s + i, mb); mant[mb] = 0;
+          memcpy(exp, s + i + mb, eb); exp[eb] = 0;
+          sprintf(fcmd, "floatdec(%s,%s)", mant, exp);
+          int fn = eval_float(fcmd, out);
+          if (fn) return fn;
+        }
+        i = j;
+      }
+    }
+  }
   {
     char rt[192]; raw_clean(input, rt, sizeof(rt));
     if ((has(rt, "float") || has(rt, "floating") || has(rt, "normalised") || has(rt, "normalized") || (has(rt, "mantissa") && has(rt, "exponent"))) &&
-        (has(rt, "decode") || has(rt, "denary") || has(rt, "decimal") || has(rt, "number") || has(rt, "value"))) {
+        (has(rt, "decode") || has(rt, "denary") || has(rt, "decimal") || has(rt, "number") || has(rt, "value")) &&
+        !(has(rt, "error") || has(rt, "actual"))) {
       char rb[4][48]; int rnb = scan_bits(rt, rb, 4);
       double mbw=0, ebw=0, tmp=0;
       bool hM = (scan_bit_width_before_label(rt, "mantissa", &tmp) || scan_before_word_num(rt, "mantissa", &tmp) || scan_after_word_num(rt, "mantissa", &tmp)) && tmp > 0; if (!hM) { const char *p = strstr(rt, "mantissa,is,"); if (p) { tmp = read_num(p + 12); hM = tmp > 0; } } if (hM) mbw = tmp;
       bool hE = (scan_bit_width_before_label(rt, "exponent", &tmp) || scan_before_word_num(rt, "exponent", &tmp) || scan_after_word_num(rt, "exponent", &tmp)) && tmp > 0; if (!hE) { const char *p = strstr(rt, "exponent,is,"); if (p) { tmp = read_num(p + 12); hE = tmp > 0; } } if (hE) ebw = tmp;
+      if (rnb != 1 && hM && hE) {
+        int need = (int)(mbw + ebw);
+        for (int i = 0; s[i]; ++i) {
+          if (s[i] != '0' && s[i] != '1') continue;
+          int j = i;
+          while (s[j] == '0' || s[j] == '1') ++j;
+          if (j - i == need && need < 48) {
+            memcpy(rb[0], s + i, need);
+            rb[0][need] = 0;
+            rnb = 1;
+            break;
+          }
+          i = j;
+        }
+      }
       if (rnb == 1 && hM && hE && (int)(mbw + ebw) == (int)strlen(rb[0]) && mbw > 0 && ebw > 0 && mbw < 48 && ebw < 48) {
         char mant[48], exp[48], fcmd[120];
         int mi = (int)mbw, ei = (int)ebw;
