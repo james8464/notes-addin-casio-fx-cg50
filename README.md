@@ -8,6 +8,14 @@ Artifact:
 - no `.ac2`
 - copy generated files in `calculator_files/` to the calculator
 
+Program READMEs:
+
+- Pure CAS: [`docs/CAS_README.md`](docs/CAS_README.md)
+- Paper 3: [`docs/CASP3_README.md`](docs/CASP3_README.md)
+- AQA CS calculator: [`docs/CSCALC_README.md`](docs/CSCALC_README.md)
+- Notes browser: [`docs/NOTES_README.md`](docs/NOTES_README.md)
+- Future maths improvements: [`docs/math_program_improvements.md`](docs/math_program_improvements.md)
+
 Build:
 
 ```bash

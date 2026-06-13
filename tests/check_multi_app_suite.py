@@ -18,9 +18,13 @@ def main() -> int:
     require("tools/p3_engine.cpp", ["suvat(", "projectile(", "hypbinom(", "binomcdf(", "incline(", "pulley(", "poisson("])
     require("tools/cscalc_app.cc", ["Command input", "command_templates", "cscalc_eval", "Two's complement", "Floating decode", "Image storage", "Compression"])
     require("tools/cscalc_engine.cpp", ["twosdec(", "twossub(", "floatdec(", "floatenc(", "bool(", "nand", "image("])
-    require("tools/notes_app.cc", ["Bfile_FindFirst_NON_SMEM", ".txt", "load_text", "Find all text", "Find text", "search_all_rec", "file_contains_text", "contains_ci"])
+    require("tools/notes_app.cc", ["Bfile_FindFirst_NON_SMEM", ".txt", "load_text", "Find all text", "Find text", "search_all_rec", "file_contains_text", "SearchPattern", "search_prepare", "search_feed"])
     require("tools/build_g3a.sh", ["CASP3.g3a", "CSCALC.g3a", "NOTES.g3a"])
     require("docs/aqa_cs_calc_scope.md", ["AQA 7517", "floating-point", "two's complement"])
+    require("docs/CAS_README.md", ["diff(expression)", "integrate(expression,x)", "xform(start_expression,target_expression)"])
+    require("docs/CASP3_README.md", ["suvat(known=value", "projectile(u,angle)", "hypbinom(n,p,x,alpha,tail)"])
+    require("docs/CSCALC_README.md", ["convert(value,from_base,to_base)", "floatdec(mantissa,exponent)", "binarysearch(target,list...)"])
+    require("docs/NOTES_README.md", ["Knuth-Morris-Pratt", "O(total path characters + total text bytes + m)", "does not open images"])
     for name in ["CAS.g3a", "CASP3.g3a", "CSCALC.g3a", "NOTES.g3a", "RUNMAT.g3a", "CAS.PAK"]:
         path = ROOT / "calculator_files" / name
         if not path.exists() or path.stat().st_size <= 0:

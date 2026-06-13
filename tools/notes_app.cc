@@ -23,35 +23,49 @@ static char file_buf[8192];
 static const char *view_lines[128];
 static char line_store[128][48];
 
+struct SearchPattern {
+  char pat[32];
+  int fail[32];
+  int len;
+};
+
 static int lower_char(int c) {
   if (c >= 'A' && c <= 'Z') return c + 32;
   return c;
 }
 
-static int contains_ci(const char *s, const char *needle) {
-  if (!needle || !needle[0]) return 1;
-  for (int i = 0; s[i]; ++i) {
-    int j = 0;
-    while (needle[j] && s[i + j] && lower_char(s[i + j]) == lower_char(needle[j])) ++j;
-    if (!needle[j]) return 1;
+static void search_prepare(SearchPattern *sp, const char *q) {
+  int i = 0;
+  while (q && q[i] && i < 31) {
+    sp->pat[i] = (char)lower_char((unsigned char)q[i]);
+    ++i;
   }
-  return 0;
+  sp->pat[i] = 0;
+  sp->len = i;
+  if (sp->len > 31) sp->len = 31;
+  if (sp->len <= 0) return;
+  sp->fail[0] = 0;
+  for (int i = 1; i < sp->len; ++i) {
+    int j = sp->fail[i - 1];
+    while (j > 0 && sp->pat[i] != sp->pat[j]) j = sp->fail[j - 1];
+    if (sp->pat[i] == sp->pat[j]) ++j;
+    sp->fail[i] = j;
+  }
 }
 
-static void lower_in_place(char *s) {
-  for (int i = 0; s[i]; ++i) s[i] = lower_char(s[i]);
+static int search_feed(const SearchPattern *sp, int state, const char *s, int len) {
+  if (sp->len <= 0) return sp->len;
+  for (int i = 0; i < len && s[i]; ++i) {
+    char c = (char)lower_char((unsigned char)s[i]);
+    while (state > 0 && c != sp->pat[state]) state = sp->fail[state - 1];
+    if (c == sp->pat[state]) ++state;
+    if (state == sp->len) return state;
+  }
+  return state;
 }
 
-static int contains_lc(const char *s, const char *needle_lc) {
-  if (!needle_lc || !needle_lc[0]) return 1;
-  int first = needle_lc[0];
-  for (int i = 0; s[i]; ++i) {
-    if (lower_char(s[i]) != first) continue;
-    int j = 1;
-    while (needle_lc[j] && s[i + j] && lower_char(s[i + j]) == needle_lc[j]) ++j;
-    if (!needle_lc[j]) return 1;
-  }
-  return 0;
+static int contains_kmp(const char *s, const SearchPattern *sp) {
+  return search_feed(sp, 0, s, strlen(s)) == sp->len;
 }
 
 static int ends_with(const char *s, const char *tail) {
@@ -201,14 +215,15 @@ static void wait_text_page(const char *title, const char *const *lines, int coun
     if (key == KEY_CTRL_F1) {
       char q[32] = "";
       if (ui_input("Find text", q, sizeof(q), tick) && q[0]) {
-        lower_in_place(q);
+        SearchPattern sp;
+        search_prepare(&sp, q);
         int found = -1;
         for (int i = top + 1; i < count; ++i) {
-          if (contains_lc(lines[i], q)) { found = i; break; }
+          if (contains_kmp(lines[i], &sp)) { found = i; break; }
         }
         if (found < 0) {
           for (int i = 0; i <= top && i < count; ++i) {
-            if (contains_lc(lines[i], q)) { found = i; break; }
+            if (contains_kmp(lines[i], &sp)) { found = i; break; }
           }
         }
         if (found >= 0) {
@@ -228,33 +243,26 @@ static void wait_text_page(const char *title, const char *const *lines, int coun
   }
 }
 
-static int file_contains_text(const char *path, const char *q) {
-  int qlen = strlen(q);
-  if (!qlen) return 1;
+static int file_contains_text(const char *path, const SearchPattern *sp) {
+  if (sp->len <= 0) return 1;
   unsigned short p[300];
   Bfile_StrToName_ncpy(p, (const unsigned char *)path, 300);
   int h = Bfile_OpenFile_OS(p, READWRITE);
   if (h < 0) return 0;
   int sz = Bfile_GetFileSize_OS(h);
-  char tail[32];
-  int tail_len = 0;
   int off = 0;
+  int state = 0;
   while (off < sz) {
-    for (int i = 0; i < tail_len; ++i) file_buf[i] = tail[i];
-    int want = (int)sizeof(file_buf) - tail_len - 1;
+    int want = (int)sizeof(file_buf) - 1;
     if (want > sz - off) want = sz - off;
-    int got = Bfile_ReadFile_OS(h, file_buf + tail_len, want, off);
+    int got = Bfile_ReadFile_OS(h, file_buf, want, off);
     if (got <= 0) break;
-    int total = tail_len + got;
-    file_buf[total] = 0;
-    if (contains_lc(file_buf, q)) {
+    file_buf[got] = 0;
+    state = search_feed(sp, state, file_buf, got);
+    if (state == sp->len) {
       Bfile_CloseFile_OS(h);
       return 1;
     }
-    tail_len = qlen - 1;
-    if (tail_len > 31) tail_len = 31;
-    if (tail_len > total) tail_len = total;
-    for (int i = 0; i < tail_len; ++i) tail[i] = file_buf[total - tail_len + i];
     off += got;
   }
   Bfile_CloseFile_OS(h);
@@ -275,7 +283,7 @@ static int add_search_result(int n, const char *path, const char *why) {
   return n + 1;
 }
 
-static int search_all_rec(const char *dir, const char *q, int depth, int n) {
+static int search_all_rec(const char *dir, const SearchPattern *sp, int depth, int n) {
   if (depth > 8 || n >= 126) return n;
   unsigned short path[300], found[300];
   char query[300], name[300], full[300];
@@ -292,11 +300,11 @@ static int search_all_rec(const char *dir, const char *q, int depth, int n) {
       if (is_folder) {
         char child[300];
         join_str(child, sizeof(child), full, "\\");
-        n = search_all_rec(child, q, depth + 1, n);
+        n = search_all_rec(child, sp, depth + 1, n);
       } else if (ends_with(name, ".txt")) {
-        int by_name = contains_lc(name, q) || contains_lc(full, q);
+        int by_name = contains_kmp(name, sp) || contains_kmp(full, sp);
         if (by_name) n = add_search_result(n, full, "name");
-        else if (file_contains_text(full, q)) n = add_search_result(n, full, "text");
+        else if (file_contains_text(full, sp)) n = add_search_result(n, full, "text");
       }
     }
     ret = Bfile_FindNext_NON_SMEM(handle, found, (char *)&info);
@@ -308,8 +316,9 @@ static int search_all_rec(const char *dir, const char *q, int depth, int n) {
 static void search_all_notes(unsigned *tick) {
   char q[32] = "";
   if (!ui_input("Find all text", q, sizeof(q), tick) || !q[0]) return;
-  lower_in_place(q);
-  int n = search_all_rec("\\\\fls0\\", q, 0, 0);
+  SearchPattern sp;
+  search_prepare(&sp, q);
+  int n = search_all_rec("\\\\fls0\\", &sp, 0, 0);
   if (!n) {
     static const char *const none[] = {"No matching text file."};
     ui_wait_page("Find all", none, 1, tick);
