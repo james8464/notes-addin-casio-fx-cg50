@@ -3339,6 +3339,19 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if ((has(c, "followsb(") || has(c, "~b(") || has(c, "xb(") || has(c, "distributionb(") || has(c, "b(")) && nv >= 2) {
     double Nd=0, pv=0;
     if (!dist2(c, "b(", &Nd, &pv)) { Nd = v[0]; pv = v[1]; }
+    if ((pv <= 0 || pv >= 1) && (has(t, "mean") || has(t, "expected")) && has(t, "variance")) {
+      double mean = 0;
+      bool hm = word_num(input, "mean", &mean) || word_num(input, "expected", &mean);
+      if (!hm) mean = v[1];
+      if (Nd <= 0) Nd = v[0];
+      if (Nd > 0) {
+        pv = mean / Nd;
+        int n = add(out, 0, "For X ~ B(n,p), mean = np.");
+        n = add(out, n, "p = mean/n = %.10g/%.10g = %.10g", mean, Nd, pv);
+        n = add(out, n, "variance = np(1-p)");
+        return add(out, n, "= %.10g*%.10g*(1-%.10g) = %.10g", Nd, pv, pv, Nd*pv*(1-pv));
+      }
+    }
     if ((pv <= 0 || pv >= 1) && has(c, "p)")) {
       double pword = 0;
       if (word_num(input, "greaterthan", &pword) || word_num(input, "morethan", &pword) ||
@@ -5314,10 +5327,14 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if ((has(t, "impulse") || has(t, "momentumchange")) && nv >= 3) {
     sprintf(cmd, "impulse(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_mech(cmd, out);
   }
-  if ((has(t, "collision") || has(t, "collide") || has(t, "collides") || has(t, "impact")) &&
-      (has(t, "together") || has(t, "coalesce") || has(t, "coalesces") || has(t, "stick") || has(t, "sticks")) &&
+  if ((has(t, "together") || has(t, "coalesce") || has(t, "coalesces") || has(t, "stick") || has(t, "sticks")) &&
       nv >= 4) {
-    sprintf(cmd, "commonvelocity(%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3]);
+    if ((has(t, "masses") || has(t, "massesoftwo") || has(t, "mass,of")) &&
+        (has(t, "speeds") || has(t, "velocities"))) {
+      sprintf(cmd, "commonvelocity(%.10g,%.10g,%.10g,%.10g)", v[0], v[2], v[1], v[3]);
+    } else {
+      sprintf(cmd, "commonvelocity(%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3]);
+    }
     return eval_mech(cmd, out);
   }
   if ((has(t, "collision") || has(t, "collide") || has(t, "collides") || has(t, "impact")) &&
@@ -5843,6 +5860,20 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       if (!hv) var = v[1];
       sprintf(cmd, "binomparams(%.10g,%.10g)", mean, var);
       return eval_stats(cmd, out);
+    }
+    if ((has(t, "mean") || has(t, "expected")) && has(t, "variance") &&
+        (has(c, ",p,") || has(c, ",p)") || has(c, "b(") || (has(t, "p") && (!hP || pv == 0))) && nv >= 2) {
+      double mean = 0;
+      bool hm = word_num(input, "mean", &mean) || word_num(input, "expected", &mean);
+      if (!hm) mean = v[1];
+      if (!hN || N <= 0) N = v[0];
+      if (N > 0) {
+        pv = mean / N;
+        int n = add(out, 0, "For X ~ B(n,p), mean = np.");
+        n = add(out, n, "p = mean/n = %.10g/%.10g = %.10g", mean, N, pv);
+        n = add(out, n, "variance = np(1-p)");
+        return add(out, n, "= %.10g*%.10g*(1-%.10g) = %.10g", N, pv, pv, N*pv*(1-pv));
+      }
     }
     if (hN && hP && !hA && (has(t, "critical") || has(t, "criticalregion") || has(t, "significance"))) {
       for (int i = 0; i < nv; ++i) {

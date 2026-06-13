@@ -4338,6 +4338,39 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     return n;
   }
   if ((has(t, "cpu") || has(t, "processor") || has(t, "clock") || has(t, "ghz") || has(t, "mhz")) &&
+      (has(t, "cycle") || has(t, "cycles")) && (has(t, "second") || has(t, "seconds") || has(t, "time") || has(t, "over")) &&
+      !(has(t, "instruction") || has(t, "instructions")) && nv >= 2) {
+    double rate = 0, tm = 0;
+    bool hr = scan_before_word_num(t, "ghz", &rate);
+    if (hr) rate *= 1000000000.0;
+    else if (scan_before_word_num(t, "mhz", &rate)) { hr = true; rate *= 1000000.0; }
+    else if (scan_before_word_num(t, "khz", &rate)) { hr = true; rate *= 1000.0; }
+    else if (scan_before_word_num(t, "hz", &rate)) { hr = true; }
+    bool ht = scan_before_word_num(t, "seconds", &tm) || scan_before_word_num(t, "second", &tm) ||
+              scan_before_word_num(t, "secs", &tm) || scan_before_word_num(t, "sec", &tm);
+    if (!hr) rate = v[0] * (has(t, "ghz") ? 1000000000.0 : has(t, "mhz") ? 1000000.0 : has(t, "khz") ? 1000.0 : 1.0);
+    if (!ht) tm = v[1];
+    int n = add(out, 0, "CPU cycles = clock rate * time.");
+    n = add(out, n, "clock rate = %.10g cycles/s", rate);
+    n = add(out, n, "time = %.10g s", tm);
+    return add(out, n, "cycles = %.10g*%.10g = %.10g", rate, tm, rate * tm);
+  }
+  if (has(t, "mips") && (has(t, "instruction") || has(t, "instructions")) && nv >= 2) {
+    double instr = 0, tm = 0;
+    bool hi = scan_before_word_num(t, "billion", &instr);
+    if (hi) instr *= 1000000000.0;
+    else if (scan_before_word_num(t, "million", &instr)) { hi = true; instr *= 1000000.0; }
+    else if (scan_before_word_num(t, "thousand", &instr)) { hi = true; instr *= 1000.0; }
+    else hi = scan_before_word_num(t, "instructions", &instr) || scan_before_word_num(t, "instruction", &instr);
+    bool ht = scan_before_word_num(t, "seconds", &tm) || scan_before_word_num(t, "second", &tm) ||
+              scan_before_word_num(t, "secs", &tm) || scan_before_word_num(t, "sec", &tm);
+    if (!hi) instr = v[0] * (has(t, "billion") ? 1000000000.0 : has(t, "million") ? 1000000.0 : has(t, "thousand") ? 1000.0 : 1.0);
+    if (!ht) tm = v[1];
+    int n = add(out, 0, "MIPS = instructions / (time * 10^6).");
+    n = add(out, n, "instructions = %.10g, time = %.10g s", instr, tm);
+    return add(out, n, "MIPS = %.10g/(%.10g*10^6) = %.10g", instr, tm, tm ? instr / (tm * 1000000.0) : 0);
+  }
+  if ((has(t, "cpu") || has(t, "processor") || has(t, "clock") || has(t, "ghz") || has(t, "mhz")) &&
       (has(t, "instruction") || has(t, "instructions")) &&
       (has(t, "cycle") || has(t, "cycles") || has(t, "cpi")) && nv >= 3) {
     double rate = 0, instr = 0, cpi = 0;
@@ -4445,6 +4478,30 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     int n = add(out, 0, "For Hamming code parity bits, choose r so 2^r >= data bits + r + 1.");
     n = add(out, n, "Need 2^r >= %d + r + 1", data);
     return add(out, n, "r = %d parity bits", r);
+  }
+  if ((has(t, "ascii") || has(t, "codes") || has(t, "code")) && (has(t, "url") || strstr(input, "http"))) {
+    const char *u = strstr(input, "http");
+    if (!u) u = strstr(input, "URL");
+    if (!u) u = strstr(input, "url");
+    if (u && (u[0] == 'u' || u[0] == 'U')) {
+      while (*u && *u != ' ') ++u;
+      while (*u == ' ') ++u;
+    }
+    if (u && *u) {
+      char codes[CSCALC_LINE_LEN * 4] = "";
+      char pairs[CSCALC_LINE_LEN * 2] = "";
+      int cp = 0, pp = 0, count = 0;
+      for (int i = 0; u[i] && !isspace((unsigned char)u[i]) && count < 32; ++i, ++count) {
+        unsigned char ch = (unsigned char)u[i];
+        if (cp < (int)sizeof(codes) - 8)
+          cp += sprintf(codes + cp, "%s%d", count ? "," : "", (int)ch);
+        if (count < 8 && pp < (int)sizeof(pairs) - 16)
+          pp += sprintf(pairs + pp, "%s%c -> %d", count ? ", " : "", isprint(ch) ? ch : '?', (int)ch);
+      }
+      int n = add(out, 0, "ASCII encodes each URL character separately.");
+      n = add_wrapped(out, n, "first characters: ", pairs);
+      return add_wrapped(out, n, "ASCII codes = ", codes);
+    }
   }
   if ((has(t, "ascii") || has(t, "unicode")) &&
       (has(t, "storage") || has(t, "store") || has(t, "size") || has(t, "encoded") || has(t, "characters") || has(t, "text")) &&
@@ -5494,8 +5551,18 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if (has(t, "base") && has(t, "to") && has(t, "base,10,to,base,2") && nv >= 1) {
     sprintf(cmd, "convert(%lld,10,2)", (long long)v[0]); return eval_base(cmd, out);
   }
-  if ((has(t, "denary") || has(t, "decimal") || has(t, "base,10")) && (has(t, "octal") || has(t, "base,8") || has(t, "base8")) && nv >= 1) {
-    sprintf(cmd, "convert(%lld,10,8)", (long long)v[0]); return eval_base(cmd, out);
+  if ((has(t, "denary") || has(t, "decimal") || has(t, "base,10") || has(t, "base10")) &&
+      (has(t, "octal") || has(t, "base,8") || has(t, "base8")) && nv >= 1) {
+    const char *dp = strstr(t, "decimal");
+    if (!dp) dp = strstr(t, "denary");
+    if (!dp) dp = strstr(t, "base,10");
+    if (!dp) dp = strstr(t, "base10");
+    const char *op = strstr(t, "octal");
+    if (!op) op = strstr(t, "base,8");
+    if (!op) op = strstr(t, "base8");
+    if (op && dp && op < dp) sprintf(cmd, "convert(%lld,8,10)", (long long)v[0]);
+    else sprintf(cmd, "convert(%lld,10,8)", (long long)v[0]);
+    return eval_base(cmd, out);
   }
   if ((has(t, "octal") || has(t, "base,8") || has(t, "base8")) && has(t, "binary")) {
     const char *bp = strstr(t, "binary");
@@ -5888,6 +5955,32 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     int n = add(out, 0, "Modulo checksum: add the decimal digits/blocks, then take the remainder.");
     n = add(out, n, "sum = %d", sum);
     return add(out, n, "checksum = %d mod %d = %d", sum, mod, rem);
+  }
+  if (has(t, "luhn") && (has(t, "checkdigit") || has(t, "check") || has(t, "digit")) && nv >= 1) {
+    char digits[40]; digits[0] = 0; int best = 0;
+    for (int i = 0; input[i]; ++i) {
+      if (!isdigit((unsigned char)input[i])) continue;
+      int j = i, k = 0; char tmp[40];
+      while (isdigit((unsigned char)input[j]) && k + 1 < (int)sizeof(tmp)) tmp[k++] = input[j++];
+      tmp[k] = 0;
+      if (k > best) { strcpy(digits, tmp); best = k; }
+      i = j;
+    }
+    if (best > 0) {
+      int sum = 0, n = add(out, 0, "Luhn check digit doubles alternate digits from the right.");
+      for (int i = best - 1, pos = 0; i >= 0; --i, ++pos) {
+        int d = digits[i] - '0';
+        if ((pos % 2) == 0) {
+          d *= 2;
+          if (d > 9) d -= 9;
+        }
+        sum += d;
+      }
+      int rem = sum % 10, check = (10 - rem) % 10;
+      n = add(out, n, "processed sum = %d", sum);
+      n = add(out, n, "check digit = (10 - %d) mod 10", rem);
+      return add(out, n, "check digit = %d", check);
+    }
   }
   if ((has(t, "checkdigit") || (has(t, "check") && has(t, "digit"))) &&
       (has(t, "modulo") || has(t, "mod")) && nv >= 2) {
