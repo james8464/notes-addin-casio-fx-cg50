@@ -1334,6 +1334,26 @@ static bool prob_x_bound(const char *c, double *x, int *tail) {
   return false;
 }
 
+static bool prob_x_equal_value(const char *c, int *x, double *prob) {
+  const char *p = strstr(c, "p(x=");
+  if (!p) p = strstr(c, "p(x==");
+  if (!p) return false;
+  const char *q = strchr(p, '=');
+  if (!q) return false;
+  while (*q == '=') ++q;
+  char *end = 0;
+  double xv = strtod(q, &end);
+  if (end == q) return false;
+  const char *eq = strchr(end, '=');
+  if (!eq) return false;
+  ++eq;
+  double pv = strtod(eq, &end);
+  if (end == eq || pv <= 0 || pv >= 1) return false;
+  *x = (int)xv;
+  *prob = pv;
+  return true;
+}
+
 static bool prob_x_interval(const char *c, double *lo, double *hi) {
   bool ls = false, rs = false;
   const char *p = strstr(c, "<=x<=");
@@ -3528,6 +3548,47 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     else if (has(c, "greaterthan") || has(c, "morethan")) tail = 2;
     else if (has(c, "lessthanorequal") || has(c, "atmost")) tail = -1;
     else if (has(c, "lessthan") || has(t, "fewer")) tail = -2;
+    if ((has(t, "find") || has(t, "deduce") || has(c, "find") || has(c, "deduce") ||
+         has(c, "solveforp") || has(c, "unknownp") || has(c, ",p)")) && N > 0) {
+      int r = -1; double q = 0;
+      if (prob_x_equal_value(c, &r, &q) && r >= 0 && r <= N) {
+        int n = add(out, 0, "Let X ~ B(%d, p).", N);
+        n = add(out, n, "Use P(X=r)=nCr p^r(1-p)^(n-r).");
+        n = add(out, n, "%dC%d p^%d(1-p)^%d = %.10g", N, r, r, N-r, q);
+        if (r == 0) {
+          double ans = 1.0 - nth_root(q, N);
+          n = add(out, n, "(1-p)^%d = %.10g", N, q);
+          return add(out, n, "p = 1 - %.10g^(1/%d) = %.10g", q, N, ans);
+        }
+        if (r == N) {
+          double ans = nth_root(q, N);
+          n = add(out, n, "p^%d = %.10g", N, q);
+          return add(out, n, "p = %.10g^(1/%d) = %.10g", q, N, ans);
+        }
+        double C = choose(N, r), roots[4]; int rc = 0;
+        double prevx = 0, prevf = C*pwr(0, r)*pwr(1, N-r) - q;
+        for (int step = 1; step <= 100 && rc < 4; ++step) {
+          double x0 = step / 100.0;
+          double fx = C*pwr(x0, r)*pwr(1-x0, N-r) - q;
+          if (prevf == 0) roots[rc++] = prevx;
+          else if ((prevf < 0 && fx > 0) || (prevf > 0 && fx < 0)) {
+            double alo = prevx, ahi = x0, flo = prevf;
+            for (int it = 0; it < 40; ++it) {
+              double mid = (alo + ahi) / 2.0;
+              double fm = C*pwr(mid, r)*pwr(1-mid, N-r) - q;
+              if ((flo < 0 && fm < 0) || (flo > 0 && fm > 0)) { alo = mid; flo = fm; }
+              else ahi = mid;
+            }
+            roots[rc++] = (alo + ahi) / 2.0;
+          }
+          prevx = x0; prevf = fx;
+        }
+        if (!rc) return add(out, n, "No solution with 0 <= p <= 1.");
+        char buf[96]; int bp = sprintf(buf, "p = ");
+        for (int i = 0; i < rc && bp < 80; ++i) bp += sprintf(buf + bp, "%s%.10g", i ? " or " : "", roots[i]);
+        return add(out, n, "%s", buf);
+      }
+    }
     if ((has(t, "smallest") || has(t, "least") || has(t, "minimum") ||
          has(t, "largest") || has(t, "greatest") || has(t, "maximum")) &&
         (has(c, "p(") || has(t, "probability") || has(t, "such")) && nv >= 3) {
@@ -6237,12 +6298,55 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
             word_num(input,"alpha",&alpha) || word_num(input,"significance",&alpha);
     bool hLo=label_num(input,"lower",&lo) || label_num(input,"lo",&lo);
     bool hHi=label_num(input,"upper",&hi) || label_num(input,"hi",&hi);
+    if (!hN && has(c, "b(") && nv >= 1) { N = v[0]; hN = true; }
     int tail = 0;
     if (has(c, "nomorethan")) tail = -1;
     else if (has(c, "morethan") || has(c, "greaterthan")) tail = 2;
     else if (has(c, "atleast") || has(c, "greaterthanorequal")) tail = 1;
     else if (has(c, "lessthanorequal") || has(c, "atmost") || has(t, "cdf")) tail = -1;
     else if (has(c, "lessthan") || has(c, "fewerthan") || has(t, "fewer")) tail = -2;
+    if ((has(t, "find") || has(t, "deduce") || has(c, "find") || has(c, "deduce") ||
+         has(c, "solveforp") || has(c, "unknownp") || has(c, ",p)")) &&
+        hN) {
+      int r = -1; double q = 0;
+      if (prob_x_equal_value(c, &r, &q) && r >= 0 && r <= (int)N) {
+        int n = add(out, 0, "Let X ~ B(%d, p).", (int)N);
+        n = add(out, n, "Use P(X=r)=nCr p^r(1-p)^(n-r).");
+        n = add(out, n, "%dC%d p^%d(1-p)^%d = %.10g", (int)N, r, r, (int)N-r, q);
+        if (r == 0) {
+          double ans = 1.0 - nth_root(q, (int)N);
+          n = add(out, n, "(1-p)^%d = %.10g", (int)N, q);
+          return add(out, n, "p = 1 - %.10g^(1/%d) = %.10g", q, (int)N, ans);
+        }
+        if (r == (int)N) {
+          double ans = nth_root(q, (int)N);
+          n = add(out, n, "p^%d = %.10g", (int)N, q);
+          return add(out, n, "p = %.10g^(1/%d) = %.10g", q, (int)N, ans);
+        }
+        double C = choose((int)N, r), roots[4]; int rc = 0;
+        double prevx = 0, prevf = C*pwr(0, r)*pwr(1, (int)N-r) - q;
+        for (int step = 1; step <= 100 && rc < 4; ++step) {
+          double x0 = step / 100.0;
+          double fx = C*pwr(x0, r)*pwr(1-x0, (int)N-r) - q;
+          if (prevf == 0) roots[rc++] = prevx;
+          else if ((prevf < 0 && fx > 0) || (prevf > 0 && fx < 0)) {
+            double alo = prevx, ahi = x0, flo = prevf;
+            for (int it = 0; it < 40; ++it) {
+              double mid = (alo + ahi) / 2.0;
+              double fm = C*pwr(mid, r)*pwr(1-mid, (int)N-r) - q;
+              if ((flo < 0 && fm < 0) || (flo > 0 && fm > 0)) { alo = mid; flo = fm; }
+              else ahi = mid;
+            }
+            roots[rc++] = (alo + ahi) / 2.0;
+          }
+          prevx = x0; prevf = fx;
+        }
+        if (!rc) return add(out, n, "No solution with 0 <= p <= 1.");
+        char buf[96]; int bp = sprintf(buf, "p = ");
+        for (int i = 0; i < rc && bp < 80; ++i) bp += sprintf(buf + bp, "%s%.10g", i ? " or " : "", roots[i]);
+        return add(out, n, "%s", buf);
+      }
+    }
     if ((has(t, "find") || has(t, "deduce")) && has(t, "mean") && has(t, "variance") && nv >= 2 &&
         !(hN && hP)) {
       double mean = 0, var = 0;

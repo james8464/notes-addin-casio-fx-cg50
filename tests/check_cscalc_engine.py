@@ -481,6 +481,7 @@ def main():
     require("NAND form for A and B", ["Use NAND as a universal gate", "NAND form: (A NAND B) NAND (A NAND B)"])
     require("convert A or B to NOR only", ["Use NOR as a universal gate", "NOR form: (A NOR B) NOR (A NOR B)"])
     require("Find the NOR only form for expression A+B.", ["Use NOR as a universal gate", "NOR form: (A NOR B) NOR (A NOR B)"])
+    require("Write (A+B) in NOR only form.", ["Use NOR as a universal gate", "NOR form: (A NOR B) NOR (A NOR B)"])
     require("NOR form for A or B", ["Use NOR as a universal gate", "NOR form: (A NOR B) NOR (A NOR B)"])
     require("A 10-bit address bus and 8-bit data bus memory has 1024 addresses. Calculate memory size in bytes.", ["address bus 10 bits", "memory size = 1024*8", "= 1024 bytes"])
     require("How many unused address lines are there for a 16 bit address bus with 8 KiB byte addressable memory?", ["memory size = 8192 bytes", "required address lines = ceil(log2(8192)) = 13", "unused address lines = 16 - 13 = 3"])

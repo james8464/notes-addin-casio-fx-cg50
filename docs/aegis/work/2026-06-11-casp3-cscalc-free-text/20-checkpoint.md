@@ -1,5 +1,37 @@
 # Checkpoint
 
+## 2026-06-13 Boolean Gate And Binomial Parameter Slice
+
+Completed:
+- Found old Boolean Python script in git history at `ComputerScience/booleanProgram.py`; checked its law coverage against current CSCALC.
+- Fixed NOR/NAND free-text command cleanup so wording like `in NOR only form` does not leak `I`/`N` into the Boolean expression.
+- Added generic binomial parameter solving for `P(X=r)=q` with symbolic/unknown `p`, including compact `X~B(n,p)` wording.
+- Added regressions for NOR wording and binomial `p` solving at `r=0`, `r=n`, and `find the value of p`.
+
+Evidence:
+- Direct probe `Write (A+B) in NOR only form.` gives `NOR form: (A NOR B) NOR (A NOR B)`.
+- Direct probe `A binomial variable has P(X=0)=0.1073741824 and n=10. Find p.` gives `p = 0.2`.
+- Direct probe `A binomial variable has P(X=10)=0.0009765625 and n=10. Find p.` gives `p = 0.5`.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 499512 bytes`
+  - `CSCALC.g3a: 275260 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: 18178 bytes`
+
+Drift check:
+- Stayed inside CASP3/CSCALC parser hardening, tests, checkpoint, and rebuilt app artifacts.
+- No Pure CAS source, NOTES source, menus, or shared UI/status code changed.
+- Active goal remains open.
+
 ## 2026-06-13 CASP3 Normal Parameter Routing Slice
 
 Completed:
