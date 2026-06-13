@@ -1323,13 +1323,15 @@ static double fixed_binary_value(const char *s) {
   return val;
 }
 
-static int add_fraction_binary_lines(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN], double x) {
+static int add_fraction_binary_lines(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN], double x, int maxbits = 16) {
   long long whole = (long long)x;
   double frac = x - whole;
   char wb[65]; to_bin(whole, whole < 256 ? 8 : 16, wb);
   char fb[40]; int fp = 0;
   double work = frac;
-  for (int i = 0; i < 16 && work > 1e-12 && fp + 1 < (int)sizeof(fb); ++i) {
+  if (maxbits < 1) maxbits = 16;
+  if (maxbits > 32) maxbits = 32;
+  for (int i = 0; i < maxbits && work > 1e-12 && fp + 1 < (int)sizeof(fb); ++i) {
     work *= 2.0;
     if (work >= 1.0) { fb[fp++] = '1'; work -= 1.0; }
     else fb[fp++] = '0';
@@ -1338,7 +1340,7 @@ static int add_fraction_binary_lines(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]
   fb[fp] = 0;
   const char *whole_bits = wb;
   while (whole_bits[0] == '0' && whole_bits[1]) ++whole_bits;
-  int n = add(out, 0, "Convert the whole part by repeated division and the fractional part by repeated multiplication by 2.");
+  int n = add(out, 0, "Whole: divide by 2. Fraction: repeatedly multiply by 2.");
   n = add(out, n, "whole part %.0f -> %s", (double)whole, wb);
   n = add(out, n, "fractional bits = %s", fb);
   return add(out, n, "%.10g_10 = %s.%s_2", x, whole_bits, fb);
@@ -4276,8 +4278,10 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
         value = v[i]; frac_value = true; break;
       }
     }
+    double places = 0;
+    bool hPlaces = scan_before_word_num(t, "places", &places) || scan_before_word_num(t, "place", &places);
     if (frac_value && !explicit_bits && !(has(t, "fixed") || has(t, "mantissa") || has(t, "floating") || has(t, "float")))
-      return add_fraction_binary_lines(out, value);
+      return add_fraction_binary_lines(out, value, hPlaces ? (int)places : 16);
   }
   if ((has(t, "add") || has(t, "sum") || has(t, "plus")) && nb >= 2 &&
       (has(t, "binary") || has(t, "bits")) && !tc_hint && !has(t, "unsigned") && !has(t, "overflow")) {
@@ -5191,7 +5195,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       return add(out, n, "%s text = %s", has(t, "decrypt") ? "decrypted" : "encrypted", enc);
     }
   }
-  if (has(t, "caesar") && (has(t, "encrypt") || has(t, "decrypt")) && nv >= 1) {
+  if (has(t, "caesar") && (has(t, "encrypt") || has(t, "decrypt") || has(t, "apply") || has(t, "shift")) && nv >= 1) {
     char word[40] = "";
     for (int i = 0; input[i];) {
       while (input[i] && !isalpha((unsigned char)input[i])) ++i;
@@ -5199,7 +5203,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       while (isalpha((unsigned char)input[i]) && j + 1 < (int)sizeof(tmp)) tmp[j++] = (char)tolower((unsigned char)input[i++]);
       tmp[j] = 0;
       if (j > 1 && !word_is(tmp, "caesar") && !word_is(tmp, "shift") && !word_is(tmp, "encrypt") &&
-          !word_is(tmp, "decrypt") && !word_is(tmp, "using") && !word_is(tmp, "with") && !word_is(tmp, "the")) strcpy(word, tmp);
+          !word_is(tmp, "decrypt") && !word_is(tmp, "apply") && !word_is(tmp, "using") && !word_is(tmp, "with") && !word_is(tmp, "the") && !word_is(tmp, "to")) strcpy(word, tmp);
     }
     if (word[0]) {
       int sh = (int)v[0] % 26; if (has(t, "decrypt")) sh = -sh;
@@ -5369,6 +5373,17 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     n = add(out, n, "bits per frame = %.10g*%.10g = %.10g bits", w*h, depth, w*h*depth);
     n = add(out, n, "bit rate = %.10g*%.10g = %.10g bit/s", w*h*depth, fps, bps);
     return add(out, n, "= %.10g Mbit/s", bps / 1000000.0);
+  }
+  if ((has(t, "image") || has(t, "bitmap") || has(t, "photo")) &&
+      (has(t, "dpi") || has(t, "dotsperinch")) && (has(t, "inch") || has(t, "inches")) && nv >= 4) {
+    double dpi = v[0], win = v[1], hin = v[2], depth = v[3];
+    double wpx = dpi * win, hpx = dpi * hin, bits_total = wpx * hpx * depth, bytes = bits_total / 8.0;
+    int n = add(out, 0, "Convert physical size to pixels first: pixels = inches * dpi.");
+    n = add(out, n, "width = %.10g*%.10g = %.10g pixels", win, dpi, wpx);
+    n = add(out, n, "height = %.10g*%.10g = %.10g pixels", hin, dpi, hpx);
+    n = add(out, n, "bits = %.10g*%.10g*%.10g = %.10g bits", wpx, hpx, depth, bits_total);
+    n = add(out, n, "= %.10g bytes", bytes);
+    return add(out, n, "= %.10g MiB", bytes / 1048576.0);
   }
   if ((has(t, "image") || has(t, "bitmap")) &&
       (has(t, "colours") || has(t, "colors")) &&

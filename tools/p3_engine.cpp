@@ -4913,6 +4913,27 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       (has(t, "magnitude") || has(t, "direction") || has(t, "resultant")) && nv >= 2) {
     sprintf(cmd, "vector(%.10g,%.10g)", v[0], v[1]); return eval_mech(cmd, out);
   }
+  if ((has(t, "position") || has(c, "r=")) && has(t, "i") && has(t, "j") &&
+      (has(t, "speed") || has(t, "velocity") || has(t, "acceleration")) && nv >= 3) {
+    const char *base = strstr(c, "r=");
+    if (!base) base = strstr(c, "position");
+    if (!base) base = c;
+    const char *ip = strchr(base, 'i'), *jp = ip ? strchr(ip, 'j') : 0;
+    double ax2=0, ax1=0, ax0=0, ay2=0, ay1=0, ay0=0, tt = v[nv-1];
+    last_label_num(input, "t", &tt); word_num_with_t(input, "at", &tt); word_num(input, "time", &tt);
+    if (ip && jp && parse_poly_segment(base, ip, &ax2, &ax1, &ax0) &&
+        parse_poly_segment(ip + 1, jp, &ay2, &ay1, &ay0)) {
+      double vx = 2*ax2*tt + ax1, vy = 2*ay2*tt + ay1;
+      double axn = 2*ax2, ayn = 2*ay2, sp = root(vx*vx + vy*vy);
+      int n = add(out, 0, "Differentiate the position vector component by component.");
+      n = add(out, n, "r = (%.6g t^2 %+.6g t %+.6g)i + (%.6g t^2 %+.6g t %+.6g)j", ax2, ax1, ax0, ay2, ay1, ay0);
+      n = add(out, n, "v = dr/dt = (%.6g t %+.6g)i + (%.6g t %+.6g)j", 2*ax2, ax1, 2*ay2, ay1);
+      n = add(out, n, "a = dv/dt = %.6g i + %.6g j", axn, ayn);
+      n = add(out, n, "at t=%.6g, v = %.10g i + %.10g j", tt, vx, vy);
+      if (has(t, "speed")) n = add(out, n, "speed = sqrt(%.10g^2+%.10g^2) = %.10g", vx, vy, sp);
+      return add(out, n, "at t=%.6g, a = %.10g i + %.10g j", tt, axn, ayn);
+    }
+  }
   if ((has(t, "positionvector") || has(t, "displacementvector") ||
        ((has(t, "position") || has(t, "displacement")) && has(t, "vector"))) &&
       (has(t, "velocity") || has(t, "acceleration")) && has(t, "i") && has(t, "j") && nv >= 5) {
@@ -5673,6 +5694,15 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       }
     } else {
       n = add(out, n, "Vertical equilibrium gives R = mg = %.6g*9.8 = %.10g N", m, R);
+    }
+    double acc_given = 0;
+    bool hAccGiven = word_num(input, "acceleration", &acc_given) || label_num(input, "a", &acc_given);
+    if (!hmu && !hRes && hAccGiven && (has(t, "coefficient") || has(t, "mu"))) {
+      double friction_needed = drive - m * acc_given;
+      double mu_needed = R ? friction_needed / R : 0;
+      n = add(out, n, "Horizontally: drive - friction = ma.");
+      n = add(out, n, "friction = %.10g - %.6g*%.10g = %.10g N", drive, m, acc_given, friction_needed);
+      return add(out, n, "mu = friction/R = %.10g/%.10g = %.10g", friction_needed, R, mu_needed);
     }
     double friction = hmu ? mu*R : (hRes ? res : 0);
     if (hmu) n = add(out, n, "friction = mu R = %.6g*%.10g = %.10g N", mu, R, friction);
@@ -8430,12 +8460,13 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       double lam = 0, obs = 0, alpha = 0.05;
       bool hLam = word_num(input, "lambda", &lam) || word_num(input, "mean", &lam) || label_num(input, "lambda", &lam);
       bool hObs = word_num(input, "observed", &obs) || word_num(input, "value", &obs) || label_num(input, "x", &obs);
-      bool hA = word_num(input, "alpha", &alpha) || word_num(input, "significance", &alpha) || word_num(input, "percent", &alpha);
+      bool hA = word_num(input, "alpha", &alpha) || word_num(input, "significance", &alpha);
       if (!hLam) lam = v[0];
       if (!hObs) {
         for (int i = 0; i < nv; ++i) if (!near_num(v[i], lam) && v[i] > 0) { obs = v[i]; break; }
       }
-      if (!hA) {
+      if (!hA) alpha = alpha_from_text(input, t, c, v, nv, lam, obs);
+      if (!hA && near_num(alpha, 0.05)) {
         for (int i = 0; i < nv; ++i) {
           if (near_num(v[i], lam) || near_num(v[i], obs)) continue;
           if (v[i] > 0 && v[i] <= 10) { alpha = v[i]; break; }

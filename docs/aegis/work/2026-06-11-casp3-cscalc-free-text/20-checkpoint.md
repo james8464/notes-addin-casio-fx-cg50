@@ -6536,6 +6536,43 @@ Drift check:
 - Kept changes to CASP3/CSCALC parser/working logic, regressions, generated app outputs, and this checkpoint.
 - Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.
 
+## 2026-06-13 P3/CS More Free-Text Edge Hardening Slice
+
+Completed:
+- Fixed CASP3 Poisson hypothesis alpha parsing so `1 percent` is not displayed as `1`.
+- Added CASP3 position-vector polynomial differentiation for `r=(...)i+(...)j` speed/velocity prompts.
+- Added CASP3 coefficient-of-friction solve when horizontal acceleration is given.
+- Added CSCALC decimal-to-binary fraction place-count handling.
+- Added CSCALC Caesar `apply/shift` free-text handling.
+- Added CSCALC DPI/inch image-size working.
+- Added regressions for all patched cases and rebuilt calculator outputs.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 531872 bytes`
+  - `CSCALC.g3a: 291940 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: records=48 bytes=18178`
+  - `CAS.g3a sha256: 15f3aa342df2f8e9f3608032a17e116254df92d19141c271e45553de0b01a39e`
+  - `RUNMAT.g3a sha256: 084e197a81a047efbabaff2d2c051c5fab4c2180667967074f7075665ad39d70`
+  - `CASP3.g3a sha256: 0f0e747c345f17b27815a5461910870a755c96be9ed7e7f84943e71f0a35c56f`
+  - `CSCALC.g3a sha256: 7c730bdb2e3760d0e0ecefe9aec3ede2d1f257a07011b138e354cdf26665d8e8`
+  - `NOTES.g3a sha256: 203cf9cf42777fdab91639e9791b5ce202478fc54471e0addf68add34b5745e6`
+  - `CAS.PAK sha256: 4cf970de9480f9f3b06c80e60afe4b69f4d864067a068071cd974474a57f24d2`
+
+Drift check:
+- Kept changes to CASP3/CSCALC parser/working logic, regressions, generated app outputs, and this checkpoint.
+- Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.
+
 ## 2026-06-13 Chi-Square, Parity, and Vigenere Hardening Slice
 
 Completed:
