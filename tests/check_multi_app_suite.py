@@ -18,7 +18,7 @@ def main() -> int:
     require("tools/p3_engine.cpp", ["suvat(", "projectile(", "hypbinom(", "binomcdf(", "incline(", "pulley(", "poisson("])
     require("tools/cscalc_app.cc", ["Command input", "command_templates", "cscalc_eval", "Two's complement", "Floating decode", "Image storage", "Compression"])
     require("tools/cscalc_engine.cpp", ["twosdec(", "twossub(", "floatdec(", "floatenc(", "bool(", "nand", "image("])
-    require("tools/notes_app.cc", ["Bfile_FindFirst_NON_SMEM", ".txt", ".bmp", "load_text"])
+    require("tools/notes_app.cc", ["Bfile_FindFirst_NON_SMEM", ".txt", ".bmp", "load_text", "show_bmp", "24-bit uncompressed BMP", "Find file", "Find text", "contains_ci"])
     require("tools/build_g3a.sh", ["CASP3.g3a", "CSCALC.g3a", "NOTES.g3a"])
     require("docs/aqa_cs_calc_scope.md", ["AQA 7517", "floating-point", "two's complement"])
     for name in ["CAS.g3a", "CASP3.g3a", "CSCALC.g3a", "NOTES.g3a", "RUNMAT.g3a", "CAS.PAK"]:
