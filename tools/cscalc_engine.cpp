@@ -354,6 +354,29 @@ static bool scan_before_word_num(const char *s, const char *word, double *v) {
   return false;
 }
 
+static bool num_before_unit_raw(const char *s, const char *unit, double *v) {
+  int ul = (int)strlen(unit);
+  for (int i = 0; s && s[i]; ++i) {
+    int j = 0;
+    while (j < ul && s[i+j] && tolower((unsigned char)s[i+j]) == tolower((unsigned char)unit[j])) ++j;
+    if (j != ul) continue;
+    int k = i - 1;
+    while (k >= 0 && isalpha((unsigned char)s[k])) --k;
+    while (k >= 0 && (s[k] == ' ' || s[k] == '\t' || s[k] == ',')) --k;
+    int end = k;
+    while (k >= 0 && (isdigit((unsigned char)s[k]) || s[k] == '.')) --k;
+    if (end <= k) continue;
+    if (k >= 0 && s[k] == '-') --k;
+    char b[32]; int len = end - k;
+    if (len <= 0 || len >= (int)sizeof(b)) continue;
+    memcpy(b, s + k + 1, len); b[len] = 0;
+    if (b[0] != '-' && !isdigit((unsigned char)b[0])) continue;
+    *v = read_num(b);
+    return true;
+  }
+  return false;
+}
+
 static bool num_before_ptr(const char *base, const char *p, double *v) {
   int j = (int)(p - base) - 1;
   while (j >= 0 && base[j] == ',') --j;
@@ -5240,9 +5263,15 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       sprintf(cmd, "sound(%lld,%lld,%lld,%lld)", (long long)rate, (long long)seconds, (long long)res, (long long)channels);
       return eval_storage(cmd, out);
     }
-    bool wordRate = scan_before_word_num(t, "khz", &rate) || scan_before_word_num(t, "kilohertz", &rate) ||
+    bool wordRate = num_before_unit_raw(input, "khz", &rate) || num_before_unit_raw(input, "kilohertz", &rate) ||
+                    num_before_unit_raw(input, "hz", &rate) || num_before_unit_raw(input, "hertz", &rate) ||
+                    scan_before_word_num(t, "khz", &rate) || scan_before_word_num(t, "kilohertz", &rate) ||
                     scan_before_word_num(t, "hz", &rate) || scan_before_word_num(t, "hertz", &rate);
-    bool wordDur = scan_before_word_num(t, "minutes", &dur) || scan_before_word_num(t, "minute", &dur) ||
+    bool wordDur = num_before_unit_raw(input, "minutes", &dur) || num_before_unit_raw(input, "minute", &dur) ||
+                   num_before_unit_raw(input, "mins", &dur) || num_before_unit_raw(input, "seconds", &dur) ||
+                   num_before_unit_raw(input, "second", &dur) || num_before_unit_raw(input, "hours", &dur) ||
+                   num_before_unit_raw(input, "hour", &dur) ||
+                   scan_before_word_num(t, "minutes", &dur) || scan_before_word_num(t, "minute", &dur) ||
                    scan_before_word_num(t, "mins", &dur) || scan_before_word_num(t, "seconds", &dur) ||
                    scan_before_word_num(t, "second", &dur) || scan_before_word_num(t, "hours", &dur) ||
                    scan_before_word_num(t, "hour", &dur);
@@ -5262,7 +5291,8 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
         return add(out, n, "samples = %.10g", rate * seconds);
       }
       if (nv >= 3) {
-        if (!(scan_before_word_num(t, "bits", &res) || scan_before_word_num(t, "bit", &res) ||
+        if (!(num_before_unit_raw(input, "bits", &res) || num_before_unit_raw(input, "bit", &res) ||
+              scan_before_word_num(t, "bits", &res) || scan_before_word_num(t, "bit", &res) ||
               scan_near_after_word_num(t, "resolution", &res) || scan_near_after_word_num(t, "depth", &res))) {
           for (int i = 0; i < nv; ++i)
             if (v[i] != dur && v[i] != rawRate && v[i] > 1 && v[i] <= 64) { res = v[i]; break; }

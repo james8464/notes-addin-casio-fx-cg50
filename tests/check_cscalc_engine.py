@@ -261,6 +261,7 @@ def main():
     require("audio duration=60 channels=2 resolution=16 sample rate=44100", ["Sound bits", "84672000 bits", "MB"])
     require("calculate file size for a sound sample sampled at 44100 Hz for 30 seconds using 16 bit resolution stereo", ["44100*30*16*2", "42336000 bits"])
     require("calculate file size for a sound file sampled at 44.1 kHz for 2 minutes using 16 bit resolution stereo", ["44100*120*16*2", "169344000 bits"])
+    require("A sound recording is stereo, 16 bit, 44.1kHz for 2 minutes. Calculate file size in MiB.", ["44100*120*16*2 = 169344000 bits", "20.18737793 MiB"])
     require("A sound file has sample rate 44.1 kHz duration 3 minutes resolution 16 bits stereo find size", ["44100*180*16*2", "254016000 bits"])
     require("A sound file is stereo, sample rate 44.1kHz, sample resolution 16 bits, duration 3 minutes. Calculate size in MiB.", ["44100*180*16*2", "254016000 bits", "30.28106689 MiB"])
     require("A sound file is sampled at 44.1 kHz for 3 minutes using 16 bits per sample stereo. Calculate the size in MiB.", ["Sound bits", "44100*180*16*2", "MiB"])

@@ -4058,6 +4058,10 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     if ((has(c, "torest") || has(c, "comestorest") || has(c, "broughttorest") ||
        has(t, "retardation") || has(t, "deceleration") || has(t, "braking") || has(t, "brake")) &&
       (has(t, "distance") || has(t, "travelling") || has(t, "travels") || has(t, "travelling") || has(t, "travelled") || has(t, "metres") || has(t, "meters")) && nv >= 2) {
+    if ((has(t, "incline") || has(t, "inclined") || has(t, "slope") || has(t, "plane")) &&
+        (has(t, "rough") || has(t, "friction") || has(t, "coefficient") || has(t, "mu"))) {
+      /* Let the rough-plane route resolve components and friction. */
+    } else {
     double pos[4]; int np = 0;
     for (int i = 0; i < nv && np < 4; ++i) if (v[i] > 0) pos[np++] = v[i];
     if (np >= 2) {
@@ -4068,6 +4072,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       n = add(out, n, "a = (0^2-%.6g^2)/(2*%.6g) = %.10g", u0, s0, a0);
       n = add(out, n, "deceleration = %.10g", -a0);
       return add(out, n, "t = 2s/(u+v) = 2*%.6g/(%.6g+0) = %.10g", s0, u0, t0);
+    }
     }
   }
   if ((has(t, "acceleration") || has(t, "accn") || has(c, "a=")) && has(t, "t") &&
@@ -4280,7 +4285,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     if (!hu) for (int i = nv - 1; i >= 0; --i) if (!near_num(v[i], m) && !near_num(v[i], ang) && !near_num(v[i], mu)) { u = v[i]; break; }
     double decel = 9.8 * (deg_sine(ang) + mu * deg_cosine(ang));
     double s = decel ? u*u/(2.0*decel) : 0;
-    int n = add(out, 0, "Motion is up a rough inclined plane, so weight component and friction both oppose the motion.");
+    int n = add(out, 0, "Up a rough plane, weight component and friction oppose motion.");
     n = add(out, n, "R = mg cos(theta), friction = mu R.");
     n = add(out, n, "deceleration = g(sin(theta)+mu cos(theta))");
     n = add(out, n, "deceleration = 9.8*(sin(%.6g)+%.6g*cos(%.6g)) = %.10g", ang, mu, ang, decel);
@@ -8790,15 +8795,33 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "= (%.6g/%.6g)[x^2/2] from %.6g to %.6g", coef, denom, lo, hi);
     return add(out, n, "P(%.6g<X<%.6g) = %.10g", lo, hi, ans);
   }
-  if ((has(t, "pdf") || has(t, "density") || has(t, "continuous")) && has(c, "kx") && has(t, "mean") && nv >= 2) {
-    double upper = 0;
-    for (int i = 0; i < nv; ++i) if (v[i] > upper) upper = v[i];
-    if (upper > 0) {
-      double k = 2.0/(upper*upper), mean = k*upper*upper*upper/3.0;
+  if ((has(t, "pdf") || has(t, "density") || has(t, "continuous") || has(t, "randomvariable")) &&
+      has(c, "kx") && !has(c, "kx^") && !has(c, "kx(") && !has(c, "k*x(") &&
+      (has(t, "mean") || has(c, "e(x)") || has(c, "p(x<") || has(c, "p(x>") ||
+       has(t, "findk") || has(t, "probability")) && nv >= 2) {
+    double lower = 0, upper = 0;
+    if (!extract_x_interval(c, &lower, &upper))
+      for (int i = 0; i < nv; ++i) if (v[i] > upper) upper = v[i];
+    if (upper > lower) {
+      double area = (upper*upper - lower*lower)/2.0;
+      double k = area ? 1.0/area : 0;
+      double mean = k*(upper*upper*upper - lower*lower*lower)/3.0;
       int n = add(out, 0, "For a pdf, total area under f(x) is 1.");
-      n = add(out, n, "integral from 0 to %.6g of kx dx = 1", upper);
-      n = add(out, n, "k*x^2/2 from 0 to %.6g gives k*%.6g/2 = 1", upper, upper*upper);
+      n = add(out, n, "integral from %.6g to %.6g of kx dx = 1", lower, upper);
+      n = add(out, n, "k*x^2/2 from %.6g to %.6g gives k*%.6g/2 = 1", lower, upper, upper*upper - lower*lower);
       n = add(out, n, "k = %.10g", k);
+      const char *gt = strstr(c, "p(x>");
+      const char *lt = strstr(c, "p(x<");
+      if (gt || lt) {
+        double bound = read_num((gt ? gt : lt) + 4);
+        double a = gt ? bound : lower, b = gt ? upper : bound;
+        if (a < lower) a = lower;
+        if (b > upper) b = upper;
+        double prob = k*(b*b - a*a)/2.0;
+        n = add(out, n, gt ? "P(X>%.6g)=integral from %.6g to %.6g of %.10g*x dx" :
+                             "P(X<%.6g)=integral from %.6g to %.6g of %.10g*x dx", bound, a, b, k);
+        return add(out, n, gt ? "P(X>%.6g) = %.10g" : "P(X<%.6g) = %.10g", bound, prob);
+      }
       n = add(out, n, "E(X) = integral x*f(x) dx = integral %.10g*x^2 dx", k);
       return add(out, n, "mean = %.10g", mean);
     }

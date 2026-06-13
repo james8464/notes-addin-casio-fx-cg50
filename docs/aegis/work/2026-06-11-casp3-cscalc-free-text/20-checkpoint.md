@@ -5513,6 +5513,42 @@ Drift check:
 - Kept changes to CASP3/CSCALC general free-text handling, regressions, generated app outputs, and this checkpoint.
 - Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.
 
+## 2026-06-13 Rough Plane, Linear PDF, and Sound Unit Slice
+
+Completed:
+- Stopped generic SUVAT deceleration routing from stealing rough/inclined/friction plane questions.
+- Shortened rough-plane first line to avoid calculator-width truncation.
+- Extended bare linear PDF parsing (`f(x)=kx`) to find `k` and requested probabilities such as `P(X<2)`.
+- Added CSCALC raw unit scanning so attached units like `44.1kHz`, `16 bit`, and `2 minutes` parse correctly.
+- Added regressions for rough-plane stopping distance, linear PDF probability, and stereo sound file size in MiB.
+
+Evidence:
+- Fresh probes fixed: rough-plane projected stopping distance, bare `kx` PDF probability, and attached-unit sound storage.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `git diff --check`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 500796 bytes`
+  - `CSCALC.g3a: 276356 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: records=48 bytes=18178`
+  - `CAS.g3a sha256: 15f3aa342df2f8e9f3608032a17e116254df92d19141c271e45553de0b01a39e`
+  - `RUNMAT.g3a sha256: 084e197a81a047efbabaff2d2c051c5fab4c2180667967074f7075665ad39d70`
+  - `CASP3.g3a sha256: da7322fa15fadcf61c5646ab8cfe2652a464a441228e741a1775ce41472fe26f`
+  - `CSCALC.g3a sha256: d101773461be7a96d38dbafa48d4c96540759168b325227501bba4224e0b46d8`
+  - `NOTES.g3a sha256: 203cf9cf42777fdab91639e9791b5ce202478fc54471e0addf68add34b5745e6`
+  - `CAS.PAK sha256: 4cf970de9480f9f3b06c80e60afe4b69f4d864067a068071cd974474a57f24d2`
+
+Drift check:
+- Kept changes to CASP3/CSCALC free-text handling, regressions, generated app outputs, and this checkpoint.
+- Did not touch CAS Pure source, menus, NOTES source, or shared UI/status code.
+
 ## 2026-06-13 Transfer-Time and Rough-Pulley Slice
 
 Completed:
