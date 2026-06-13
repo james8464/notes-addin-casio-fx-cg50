@@ -568,6 +568,7 @@ def main():
     require("Evaluate (A+B).C where A=1, B=0 and C=1", ["Substitute the given values", "new expression = (1+0)&1", "output = 1"])
     require("What is the value of A XOR B when A=1 and B=0", ["new expression = 1^0", "output = 1"])
     require("Convert A + BC to NAND only", ["Use NAND as a universal gate", "NAND form:", "B NAND C"])
+    require("Find NAND only implementation of A.B + C.", ["Use NAND as a universal gate", "NAND form:", "A NAND B", "C NAND C"])
     print("OK cscalc engine")
 
 

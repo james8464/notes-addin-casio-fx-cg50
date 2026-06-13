@@ -3781,8 +3781,9 @@ static bool make_gate_form_cmd(const char *input, bool nand, char *cmd, int cap)
       if (word_is(w, "find") || word_is(w, "the") || word_is(w, "write") ||
           word_is(w, "convert") || word_is(w, "to") || word_is(w, "using") || word_is(w, "use") ||
           word_is(w, "produce") ||
-          word_is(w, "only") || word_is(w, "form") || word_is(w, "for") || word_is(w, "expression") ||
-          word_is(w, "express") || word_is(w, "make") || word_is(w, "implement") || word_is(w, "with") ||
+          word_is(w, "only") || word_is(w, "form") || word_is(w, "for") || word_is(w, "of") || word_is(w, "expression") ||
+          word_is(w, "express") || word_is(w, "make") || word_is(w, "implement") ||
+          word_is(w, "implementation") || word_is(w, "with") ||
           word_is(w, "gate") || word_is(w, "gates") || word_is(w, "circuit") ||
           word_is(w, "boolean") || word_is(w, "logic") || word_is(w, nand ? "nand" : "nor")) continue;
       if (w[0] && !w[1]) expr[p++] = w[0];

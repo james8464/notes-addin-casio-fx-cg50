@@ -3392,8 +3392,9 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     int tail = prob_tail(c, t);
     int x = has(c, "one") ? 1 : 0;
     if (has(c, "nomorethan")) tail = -1;
-    else if (has(c, "morethan")) tail = 2;
+    else if (has(c, "morethan") || has(c, "greaterthan")) tail = 2;
     else if (has(c, "atleast") || has(c, "greaterthanorequal")) tail = 1;
+    else if (has(c, "greaterthan") || has(c, "morethan")) tail = 2;
     else if (has(c, "lessthanorequal") || has(c, "atmost")) tail = -1;
     else if (has(c, "lessthan") || has(t, "fewer")) tail = -2;
     if ((has(t, "smallest") || has(t, "least") || has(t, "minimum") ||
@@ -5302,7 +5303,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       double net = known_drive - down - r;
       int n = add(out, 0, "Resolve along the inclined plane.");
       n = add(out, n, "Down-plane weight component = mg sin(theta) = %.6g*9.8 sin(%.6g) = %.10g N", m, ang, down);
-      n = add(out, n, "Taking up the plane as positive: F = driving force - weight component - resistance.");
+      n = add(out, n, "Up the plane: F = drive - weight component - resistance.");
       n = add(out, n, "F = %.10g - %.10g - %.10g = %.10g N", known_drive, down, r, net);
       return add(out, n, "a = F/m = %.10g/%.6g = %.10g m/s^2", net, m, net/m);
     }
@@ -5917,7 +5918,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     bool hHi=label_num(input,"upper",&hi) || label_num(input,"hi",&hi);
     int tail = 0;
     if (has(c, "nomorethan")) tail = -1;
-    else if (has(c, "morethan")) tail = 2;
+    else if (has(c, "morethan") || has(c, "greaterthan")) tail = 2;
     else if (has(c, "atleast") || has(c, "greaterthanorequal")) tail = 1;
     else if (has(c, "lessthanorequal") || has(c, "atmost") || has(t, "cdf")) tail = -1;
     else if (has(c, "lessthan") || has(c, "fewerthan") || has(t, "fewer")) tail = -2;
