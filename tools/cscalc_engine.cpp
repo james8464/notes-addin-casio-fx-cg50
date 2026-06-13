@@ -3780,9 +3780,10 @@ static bool make_gate_form_cmd(const char *input, bool nand, char *cmd, int cap)
       if (word_is(w, "not")) { expr[p++] = '!'; continue; }
       if (word_is(w, "find") || word_is(w, "the") || word_is(w, "write") ||
           word_is(w, "convert") || word_is(w, "to") || word_is(w, "using") || word_is(w, "use") ||
+          word_is(w, "produce") ||
           word_is(w, "only") || word_is(w, "form") || word_is(w, "for") || word_is(w, "expression") ||
           word_is(w, "express") || word_is(w, "make") || word_is(w, "implement") || word_is(w, "with") ||
-          word_is(w, "gate") || word_is(w, "gates") ||
+          word_is(w, "gate") || word_is(w, "gates") || word_is(w, "circuit") ||
           word_is(w, "boolean") || word_is(w, "logic") || word_is(w, nand ? "nand" : "nor")) continue;
       if (w[0] && !w[1]) expr[p++] = w[0];
       else for (int k = 0; w[k] && p + 2 < (int)sizeof(expr); ++k) {
@@ -4155,7 +4156,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     else sprintf(cmd, "floatnorm(%s,%s)", bits[0], nb >= 2 ? bits[1] : "0");
     return eval_float(cmd, out);
   }
-  if ((has(t, "subnet") || has(t, "ipv4") || has(t, "cidr") || strchr(input, '/')) && cidr_prefix_from_text(input, &prefix)) {
+  if ((has(t, "subnet") || has(t, "ipv4") || has(t, "cidr") || has(t, "slash") || strchr(input, '/')) && cidr_prefix_from_text(input, &prefix)) {
     unsigned long ip = 0; int oct[4];
     if ((has(t, "network") || has(t, "broadcast")) && ipv4_from_text(input, &ip, oct)) {
       unsigned long mask = prefix == 0 ? 0UL : (0xffffffffUL << (32 - prefix)) & 0xffffffffUL;
@@ -6547,6 +6548,15 @@ int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
       !(has(s, "added") || has(s, "add") || has(s, "need") || has(s, "needed") || has(s, "exact"))) {
     double fv[8]; int fn = scan_nums(s, fv, 8);
     if (fn >= 2) {
+      if (has(s, "denormalised") || has(s, "denormalized")) {
+        int mb = (int)fv[0], eb = (int)fv[1];
+        int emin = -(1 << (eb - 1));
+        double step = pow2(emin - (mb - 1));
+        int n = add(out, 0, "For denormalised values, use minimum exponent and one mantissa step.");
+        n = add(out, n, "minimum exponent = -2^(%d-1) = %d", eb, emin);
+        n = add(out, n, "mantissa step = 2^-(%d-1)", mb);
+        return add(out, n, "smallest positive denormalised value = 2^%d * 2^-(%d-1) = %.10g", emin, mb, step);
+      }
       char fcmd[48];
       sprintf(fcmd, "floatrange(%lld,%lld)", (long long)fv[0], (long long)fv[1]);
       int fr = eval_float(fcmd, out);

@@ -4636,14 +4636,17 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if ((has(t, "shm") || has(t, "simpleharmonic") || (has(t, "simple") && has(t, "harmonic"))) &&
       (has(t, "amplitude") || has(t, "angularspeed") || has(t, "omega") || has(t, "maximum")) && nv >= 2) {
-    double A=0,w=0;
+    double A=0,w=0,T=0;
     bool hA=word_num(input,"amplitude",&A) || label_num(input,"amplitude",&A) || label_num(input,"a",&A);
     bool hw=word_num(input,"angularspeed",&w) || label_num(input,"omega",&w);
+    bool hT=word_num(input,"period",&T) || label_num(input,"period",&T);
     if (!hA) A = v[0];
+    if (hT && !hw) w = T ? 2.0*M_PI/T : 0;
     if (!hw) {
-      for (int i = 0; i < nv; ++i) if (!near_num(v[i], A)) { w = v[i]; break; }
+      if (!hT) for (int i = 0; i < nv; ++i) if (!near_num(v[i], A)) { w = v[i]; break; }
     }
     int n = add(out, 0, "For SHM, maximum speed is A*omega and maximum acceleration is A*omega^2.");
+    if (hT) n = add(out, n, "omega = 2*pi/T = 2*pi/%.10g = %.10g", T, w);
     n = add(out, n, "maximum speed = %.10g*%.10g = %.10g", A, w, A*w);
     return add(out, n, "maximum acceleration = %.10g*%.10g^2 = %.10g", A, w, A*w*w);
   }
@@ -5387,6 +5390,15 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   if ((has(t, "workdone") || has(t, "work")) && nv >= 2) {
     double A=0, B=0, C=0, D=0, lo=0, hi=0;
     double rb=0, rd=0; int rpow=0;
+    if ((has(t, "force") || has(t, "displacement")) && has(t, "i") && has(t, "j")) {
+      double xs[4], ys[4]; int vc = scan_ij_vectors(input, xs, ys, 4);
+      if (vc >= 2) {
+        double W = xs[0]*xs[1] + ys[0]*ys[1];
+        int n = add(out, 0, "Work done by a constant vector force is the scalar product F dot s.");
+        n = add(out, n, "F = %.10g i %+.10g j, s = %.10g i %+.10g j", xs[0], ys[0], xs[1], ys[1]);
+        return add(out, n, "W = %.10g*%.10g + %.10g*%.10g = %.10g J", xs[0], xs[1], ys[0], ys[1], W);
+      }
+    }
     if (has(c, "/(") && parse_linear_den_power(c, 'x', &rb, &rd, &rpow) && rpow >= 1 &&
         ((word_num_with_t(input, "from", &lo) || word_num(input, "from", &lo) || (nv >= 2 && (lo = v[nv-2], true))) &&
          (word_num_with_t(input, "to", &hi) || word_num(input, "to", &hi) || (nv >= 2 && (hi = v[nv-1], true))))) {
@@ -5480,6 +5492,30 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
   }
   if ((has(t, "restitution") || has(t, "collision") || has(t, "impact")) && nv >= 4) {
     sprintf(cmd, "restitution(%.10g,%.10g,%.10g,%.10g)", v[0], v[1], v[2], v[3]); return eval_mech(cmd, out);
+  }
+  if ((has(t, "centreofmass") || has(t, "centerofmass") || ((has(t, "centre") || has(t, "center")) && has(t, "mass"))) &&
+      (has(t, "triangle") || has(t, "triangular")) && nv >= 6) {
+    double xbar = (v[0] + v[2] + v[4]) / 3.0;
+    double ybar = (v[1] + v[3] + v[5]) / 3.0;
+    int n = add(out, 0, "The centre of mass of a uniform triangular lamina is the centroid.");
+    n = add(out, n, "xbar = (%.10g+%.10g+%.10g)/3 = %.10g", v[0], v[2], v[4], xbar);
+    n = add(out, n, "ybar = (%.10g+%.10g+%.10g)/3 = %.10g", v[1], v[3], v[5], ybar);
+    return add(out, n, "centre of mass = (%.10g, %.10g)", xbar, ybar);
+  }
+  if ((has(t, "centreofmass") || has(t, "centerofmass") || ((has(t, "centre") || has(t, "center")) && has(t, "mass"))) &&
+      (has(t, "rod") || has(t, "wire")) && (has(t, "density") || has(t, "lambda")) && has(t, "x") && nv >= 3) {
+    double L = v[0], a = v[1], b = v[2];
+    if (label_num(input, "length", &L)) {
+      int got = 0;
+      for (int i = 0; i < nv; ++i) if (!near_num(v[i], L)) { if (!got++) a = v[i]; else { b = v[i]; break; } }
+    }
+    double mass = a*L*L/2.0 + b*L;
+    double moment = a*L*L*L/3.0 + b*L*L/2.0;
+    int n = add(out, 0, "For a non-uniform rod, xbar = integral x*lambda dx / integral lambda dx.");
+    n = add(out, n, "lambda(x) = %.10g x %+.10g, 0 <= x <= %.10g", a, b, L);
+    n = add(out, n, "mass = integral lambda dx = %.10g", mass);
+    n = add(out, n, "moment = integral x*lambda dx = %.10g", moment);
+    return add(out, n, "xbar = %.10g/%.10g = %.10g", moment, mass, mass ? moment/mass : 0);
   }
   if ((has(t, "centreofmass") || has(t, "centerofmass") || ((has(t, "centre") || has(t, "center")) && has(t, "mass"))) &&
       (has(t, "lamina") || has(t, "rectangle") || has(t, "square")) && has(t, "removed") && nv >= 4) {
