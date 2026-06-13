@@ -4475,7 +4475,7 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
               scan_before_word_num(t, "bytes", &cache);
     bool hb = scan_before_word_num(t, "block", &block) || scan_before_word_num(t, "bytes", &block);
     bool hw = scan_before_word_num(t, "way", &ways) || scan_before_word_num(t, "associativity", &ways);
-    bool ha = scan_before_word_num(t, "bitaddress", &addr) || scan_before_word_num(t, "address", &addr);
+    bool ha = scan_bit_width_before_label(t, "address", &addr) || scan_before_word_num(t, "bitaddress", &addr);
     if (!hc) cache = v[0];
     if (!hb) block = v[1];
     if (!hw) {
@@ -5308,6 +5308,12 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   if ((has(t, "transfer") || has(t, "download") || has(t, "transmit") || has(t, "transmission") || has_word(t, "sent")) &&
       has(t, "overhead") && has(t, "percent") && nv >= 3) {
     double size = v[0], overhead = v[1], rate = v[2];
+    double tmp = 0;
+    if (scan_before_word_num(t, "percent", &tmp)) overhead = tmp;
+    if (scan_before_word_num(t, "gbps", &tmp) || scan_before_word_num(t, "gbit", &tmp) ||
+        scan_before_word_num(t, "mbps", &tmp) || scan_before_word_num(t, "mbit", &tmp) ||
+        scan_before_word_num(t, "kbps", &tmp) || scan_before_word_num(t, "kbit", &tmp) ||
+        scan_before_word_num(t, "bps", &tmp) || scan_before_word_num(t, "bit/s", &tmp)) rate = tmp;
     double bits=0, bps=0; const char *su="", *ru="";
     if (storage_size_bits(t, size, &bits, &su) && storage_rate_bits(t, rate, &bps, &ru) && bps != 0) {
       double tx = bits * (1.0 + overhead / 100.0);

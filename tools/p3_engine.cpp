@@ -6404,17 +6404,31 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       const char *ltp = strstr(c, "p(x<");
       const char *gtp = strstr(c, "p(x>");
       if (given) {
-        if (ltp && strstr(given, "x>")) {
+        const char *gxgt = strstr(given, "x>");
+        const char *gxlt = strstr(given, "x<");
+        const char *gphrasegt = strstr(given, "xisgreaterthan");
+        if (!gphrasegt) gphrasegt = strstr(given, "xgreaterthan");
+        if (!gphrasegt) gphrasegt = strstr(given, "xismorethan");
+        if (!gphrasegt) gphrasegt = strstr(given, "xmorethan");
+        const char *gphraselt = strstr(given, "xislessthan");
+        if (!gphraselt) gphraselt = strstr(given, "xlessthan");
+        if (!gphraselt) gphraselt = strstr(given, "xisbelow");
+        if (!gphraselt) gphraselt = strstr(given, "xbelow");
+        if (ltp && (gxgt || gphrasegt)) {
           double upper = read_num(ltp + (ltp[4] == '=' ? 5 : 4));
-          const char *gp = strstr(given, "x>");
-          double lower = read_num(gp + (gp[2] == '=' ? 3 : 2));
+          int skip = starts(gphrasegt ? gphrasegt : "", "xisgreaterthan") ? 14 :
+                     starts(gphrasegt ? gphrasegt : "", "xgreaterthan") ? 12 :
+                     starts(gphrasegt ? gphrasegt : "", "xismorethan") ? 11 : 9;
+          double lower = gxgt ? read_num(gxgt + (gxgt[2] == '=' ? 3 : 2)) : read_num(gphrasegt + skip);
           sprintf(cmd, "normalcondbetween(%.10g,%.10g,%.10g,%.10g,%.10g,1)", lower, upper, lower, mu, sd);
           return eval_stats(cmd, out);
         }
-        if (gtp && strstr(given, "x<")) {
+        if (gtp && (gxlt || gphraselt)) {
           double lower = read_num(gtp + (gtp[4] == '=' ? 5 : 4));
-          const char *gp = strstr(given, "x<");
-          double upper = read_num(gp + (gp[2] == '=' ? 3 : 2));
+          int skip = starts(gphraselt ? gphraselt : "", "xislessthan") ? 11 :
+                     starts(gphraselt ? gphraselt : "", "xlessthan") ? 9 :
+                     starts(gphraselt ? gphraselt : "", "xisbelow") ? 8 : 6;
+          double upper = gxlt ? read_num(gxlt + (gxlt[2] == '=' ? 3 : 2)) : read_num(gphraselt + skip);
           sprintf(cmd, "normalcondbetween(%.10g,%.10g,%.10g,%.10g,%.10g,-1)", lower, upper, upper, mu, sd);
           return eval_stats(cmd, out);
         }
@@ -8515,6 +8529,16 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     sprintf(cmd, "meanvar(%.10g,%.10g,%.10g)", v[0], v[1], v[2]); return eval_stats(cmd, out);
   }
   if ((has(t, "stratified") || has(t, "stratum")) && nv >= 3) {
+    if ((has(c, "groupsizes") || (has(t, "group") && has(t, "sizes"))) &&
+        (has(c, "totalpopulation") || (has(t, "total") && has(t, "population"))) &&
+        (has(c, "totalsample") || (has(t, "total") && has(t, "sample"))) && nv >= 4) {
+      double total = v[0], sample = v[1];
+      int n = add(out, 0, "For stratified sampling, use stratum size / total population * sample size.");
+      n = add(out, n, "total population = %.10g", total);
+      for (int i = 2; i < nv && n < P3_MAX_LINES - 1; ++i)
+        n = add(out, n, "stratum %d: %.6g/%.6g * %.6g = %.10g", i - 1, v[i], total, sample, total ? v[i]/total*sample : 0);
+      return add(out, n, "round sensibly so the samples add to %.10g.", sample);
+    }
     if ((has(t, "sizes") || has(t, "strata") || has(t, "stratums")) && nv >= 4) {
       double sample = v[nv - 1], total = 0;
       for (int i = 0; i < nv - 1; ++i) total += v[i];

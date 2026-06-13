@@ -1,5 +1,37 @@
 # Checkpoint
 
+## 2026-06-13 Cache Transfer Normal Conditional Stratified Slice
+
+Completed:
+- Probed fresh CS/P3 free-text variants for cache address fields, packet-overhead transfer time, conditional normal probability, and labelled stratified sampling.
+- Fixed CSCALC cache parsing so `32 bit address` is used for tag bits instead of the first earlier numeric value.
+- Fixed CSCALC transfer-time overhead parsing so percentage and rate values are taken from labelled units, not raw numeric order.
+- Fixed CASP3 normal conditional probability wording for `Given X is less than ..., find P(X>...)`.
+- Fixed CASP3 stratified sampling when prompts give total population, total sample, then group sizes.
+- Added regressions and rebuilt calculator-ready outputs.
+
+Evidence:
+- Targeted host probes for cache, overhead transfer, normal conditional, and stratified wording: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 473668 bytes`
+  - `CSCALC.g3a: 268368 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: 18178 bytes`
+
+Drift check:
+- Stayed inside CASP3/CSCALC free-text parser hardening, tests, checkpoint, and generated calculator files.
+- No Pure CAS, menu/UI/session, NOTES source, or shared status-bar behavior changed.
+- Active goal remains open for further unseen-case hardening.
+
 ## 2026-06-13 SOP/POS Assignment And Vector Mass Wording Slice
 
 Completed:
