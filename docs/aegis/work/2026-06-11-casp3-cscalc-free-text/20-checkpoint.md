@@ -1,5 +1,42 @@
 # Checkpoint
 
+## 2026-06-13 P3 CS Wording Precedence Slice
+
+Completed:
+- Ran another source-like P3/CS probe batch.
+- Added normal-approximation precedence for coin/toss wording with stated probability.
+- Added Poisson `not equal` complement working for `X~Po(...)` notation.
+- Extended regression-line parsing from `mx+c` to `c+mx` forms.
+- Added CSCALC instruction-field remaining-bit working.
+- Added explicit RLE encoded-string output.
+- Added regressions and rebuilt calculator-ready outputs.
+
+Evidence:
+- Coin normal-approx prompt now gives `29.5 < Y < 60.5` and `NormalCD`.
+- Poisson not-equal prompt now gives `P(X!=0)=1-P(X=0)`.
+- Regression prompt `y=2.5+0.8x` now estimates from the given line.
+- Instruction prompt now gives `remaining bits = 32 - 6 - 20 = 6 bits`.
+- RLE prompt now gives `encoded string = 4A2B2C1D2A`.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 488568 bytes`
+  - `CSCALC.g3a: 273336 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: 18178 bytes`
+
+Drift check:
+- Stayed inside CASP3/CSCALC free-text routing, tests, checkpoint, and rebuilt generated artifacts.
+- No Pure CAS source, menu/UI/session, NOTES source, or shared status-bar behavior changed.
+- Active goal remains open for further unseen-case hardening.
+
 ## 2026-06-13 P3 Route Precedence And Raw Data Slice
 
 Completed:

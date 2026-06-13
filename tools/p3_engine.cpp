@@ -777,6 +777,20 @@ static bool parse_regression_line(const char *compact, double *m, double *b) {
   if (!p) return false;
   p += 2;
   char *endp = 0;
+  double first = strtod(p, &endp);
+  if (endp != p && (*endp == '+' || *endp == '-')) {
+    const char *q = endp;
+    double slope2 = strtod(q, &endp);
+    if (endp != q) {
+      q = endp;
+      while (*q == '*') ++q;
+      if (*q == 'x') {
+        *m = slope2;
+        *b = first;
+        return true;
+      }
+    }
+  }
   double slope = strtod(p, &endp);
   if (endp == p) {
     if (*p == 'x') slope = 1;
@@ -3834,6 +3848,14 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
         return add(out, n, "= %.10g", ans);
       }
     }
+    if (has(c, "notequal") || has(c, "not=") || has(c, "!=")) {
+      double px = poissonp(lam, x);
+      int n = add(out, 0, "Use the complement for not equal.");
+      n = add(out, n, "Let X ~ Po(%.6g).", lam);
+      n = add(out, n, "P(X!=%d)=1-P(X=%d)", x, x);
+      n = add(out, n, "P(X=%d) = %.10g", x, px);
+      return add(out, n, "P(X!=%d) = %.10g", x, 1 - px);
+    }
     if (tail) sprintf(cmd, "poissontail(%.10g,%d,%d)", lam, x, tail);
     else sprintf(cmd, "poisson(%.10g,%d)", lam, x);
     return eval_stats(cmd, out);
@@ -6015,6 +6037,13 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       else if (has(c, "atleast") || has(c, "greaterthanorequal")) tail = 1;
       else if (has(c, "lessthanorequal") || has(c, "atmost")) tail = -1;
       else if (has(c, "lessthan") || has(t, "fewer")) tail = -2;
+      if ((has(t, "normal") || has(t, "approx") || has(t, "approximation")) && tail) {
+        double nlo = tail < 0 ? 0 : x, nhi = tail < 0 ? x : N;
+        if (tail == 2) nlo = x + 1;
+        if (tail == -2) nhi = x - 1;
+        sprintf(cmd, "binomnorm(%d,%.10g,%.10g,%.10g)", (int)N, pv, nlo, nhi);
+        return eval_stats(cmd, out);
+      }
       if (tail) sprintf(cmd, "binomtail(%d,%.10g,%d,%d)", (int)N, pv, (int)x, tail);
       else sprintf(cmd, "binom(%d,%.10g,%d)", (int)N, pv, (int)x);
       return eval_stats(cmd, out);
@@ -7575,6 +7604,15 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       return eval_stats(cmd, out);
     }
     int tail = prob_tail(c, t);
+    if (has(c, "notequal") || has(c, "not=") || has(c, "!=")) {
+      int x = (int)v[1];
+      double px = poissonp(v[0], x);
+      int n = add(out, 0, "Use the complement for not equal.");
+      n = add(out, n, "Let X ~ Po(%.6g).", v[0]);
+      n = add(out, n, "P(X!=%d)=1-P(X=%d)", x, x);
+      n = add(out, n, "P(X=%d) = %.10g", x, px);
+      return add(out, n, "P(X!=%d) = %.10g", x, 1 - px);
+    }
     if (has(c, "nomorethan") || has(t, "cdf")) tail = -1;
     if (tail) { sprintf(cmd, "poissontail(%.10g,%d,%d)", v[0], (int)v[1], tail); return eval_stats(cmd, out); }
     sprintf(cmd, "poisson(%.10g,%d)", v[0], (int)v[1]); return eval_stats(cmd, out);

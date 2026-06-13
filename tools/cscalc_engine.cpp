@@ -2053,16 +2053,20 @@ static int eval_storage(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LE
   if (starts3(s, "rletext(", "rlestring(", "runencode(") && na >= 3) {
     int runs = 0, len = (int)strlen(a[0]);
     char summary[72] = ""; int sp = 0;
+    char encoded[72] = ""; int ep = 0;
     for (int i = 0; i < len;) {
       int j = i + 1; while (j < len && a[0][j] == a[0][i]) ++j;
+      int c = j - i;
       if (runs && sp + 1 < 72) summary[sp++] = ',';
-      if (sp + 8 < 72) { summary[sp++] = a[0][i]; summary[sp++] = 'x'; int c = j - i; if (c >= 10) summary[sp++] = (char)('0' + c / 10); summary[sp++] = (char)('0' + c % 10); summary[sp] = 0; }
+      if (sp + 8 < 72) { summary[sp++] = a[0][i]; summary[sp++] = 'x'; if (c >= 10) summary[sp++] = (char)('0' + c / 10); summary[sp++] = (char)('0' + c % 10); summary[sp] = 0; }
+      if (ep + 8 < 72) { if (c >= 10) encoded[ep++] = (char)('0' + c / 10); encoded[ep++] = (char)('0' + c % 10); encoded[ep++] = a[0][i]; encoded[ep] = 0; }
       runs++; i = j;
     }
     long long orig = (long long)len * parse_int(a[1]);
     long long enc = (long long)runs * (parse_int(a[1]) + parse_int(a[2]));
     int n = add(out, 0, "Run-length encode consecutive repeated symbols.");
     n = add(out, n, "runs: %s", summary);
+    n = add(out, n, "encoded string = %s", encoded);
     n = add(out, n, "original bits = %d*%s = %lld", len, a[1], orig);
     return add(out, n, "compressed bits = encoded bits = %d*(%s+%s) = %lld", runs, a[1], a[2], enc);
   }
@@ -4367,6 +4371,22 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     if (bytes >= 1024.0) return add(out, n, "= %.10g KiB", bytes / 1024.0);
     return n;
   }
+  if ((has(t, "instruction") || has(t, "instructions")) &&
+      (has(t, "opcode") || has(t, "operationcode")) &&
+      (has(t, "addressfield") || (has(t, "address") && has(t, "field"))) &&
+      (has(t, "remain") || has(t, "remaining") || has(t, "register")) && nv >= 3) {
+    double total = 0, opcode = 0, address = 0;
+    bool ht = scan_before_word_num(t, "instruction", &total) || scan_before_word_num(t, "instructions", &total) ||
+              scan_before_word_num(t, "bit", &total) || scan_before_word_num(t, "bits", &total);
+    bool ho = scan_before_word_num(t, "opcode", &opcode) || scan_before_word_num(t, "operationcode", &opcode);
+    bool ha = scan_before_word_num(t, "addressfield", &address) || scan_before_word_num(t, "address", &address);
+    if (!ht) total = v[0];
+    if (!ho) opcode = v[1];
+    if (!ha) address = v[2];
+    int n = add(out, 0, "Instruction fields must add to the instruction length.");
+    n = add(out, n, "remaining bits = instruction bits - opcode bits - address bits");
+    return add(out, n, "remaining bits = %.0f - %.0f - %.0f = %.0f bits", total, opcode, address, total - opcode - address);
+  }
   if ((has(t, "cpu") || has(t, "processor") || has(t, "clock") || has(t, "ghz") || has(t, "mhz")) &&
       (has(t, "cycle") || has(t, "cycles")) && (has(t, "second") || has(t, "seconds") || has(t, "time") || has(t, "over")) &&
       !(has(t, "instruction") || has(t, "instructions")) && nv >= 2) {
@@ -6534,19 +6554,23 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
   }
   if ((has(t, "runlength") || has(t, "rle") || (has(t, "run") && has(t, "length")))) {
     char seq[48];
-    if (find_rle_sequence(input, seq, sizeof(seq))) {
+      if (find_rle_sequence(input, seq, sizeof(seq))) {
       if (nv >= 2) {
         sprintf(cmd, "rletext(%s,%lld,%lld)", seq, (long long)v[0], (long long)v[1]); return eval_storage(cmd, out);
       }
       char summary[72] = ""; int sp = 0, runs = 0, len = (int)strlen(seq);
+      char encoded[72] = ""; int ep = 0;
       for (int i = 0; i < len;) {
         int j = i + 1; while (j < len && seq[j] == seq[i]) ++j;
+        int c0 = j - i;
         if (runs && sp + 1 < 72) summary[sp++] = ',';
-        if (sp + 8 < 72) { summary[sp++] = (char)toupper((unsigned char)seq[i]); summary[sp++] = 'x'; int c0 = j - i; if (c0 >= 10) summary[sp++] = (char)('0' + c0 / 10); summary[sp++] = (char)('0' + c0 % 10); summary[sp] = 0; }
+        if (sp + 8 < 72) { summary[sp++] = (char)toupper((unsigned char)seq[i]); summary[sp++] = 'x'; if (c0 >= 10) summary[sp++] = (char)('0' + c0 / 10); summary[sp++] = (char)('0' + c0 % 10); summary[sp] = 0; }
+        if (ep + 8 < 72) { if (c0 >= 10) encoded[ep++] = (char)('0' + c0 / 10); encoded[ep++] = (char)('0' + c0 % 10); encoded[ep++] = (char)toupper((unsigned char)seq[i]); encoded[ep] = 0; }
         runs++; i = j;
       }
       int n = add(out, 0, "Run-length encode consecutive repeated symbols.");
       n = add(out, n, "runs: %s", summary);
+      n = add(out, n, "encoded string = %s", encoded);
       return add(out, n, "compressed form uses %d runs.", runs);
     }
   }
