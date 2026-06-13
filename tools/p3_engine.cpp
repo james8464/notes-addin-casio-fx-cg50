@@ -5107,10 +5107,12 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       (has(t, "pull") || has(t, "force")) && (has(t, "above") || has(t, "below")) &&
       (has(t, "acceleration") || has(t, "accelerate")) && nv >= 5) {
     double m=0, theta=0, F=0, phi=0, mu=0;
-    bool hm=word_num(input,"mass",&m) || label_num(input,"mass",&m);
-    bool hF=word_num(input,"force",&F) || label_num(input,"force",&F);
+    bool hm=word_num(input,"mass",&m) || label_num(input,"mass",&m) || num_before_unit(input,"kg",&m);
+    bool hF=word_num(input,"force",&F) || label_num(input,"force",&F) || num_before_unit(input,"n",&F);
     bool hmu=word_num(input,"coefficient",&mu) || label_num(input,"mu",&mu) || label_num(input,"coefficient",&mu);
-    if (!hm) m = v[0];
+    if (!hm) {
+      for (int i = 0; i < nv; ++i) if (!near_num(v[i], F) && v[i] > 0) { m = v[i]; hm = true; break; }
+    }
     if (!hF) F = v[2];
     if (!hmu) for (int i = 0; i < nv; ++i) if (v[i] > 0 && v[i] < 1) { mu = v[i]; hmu = true; break; }
     theta = v[1];
@@ -5201,16 +5203,19 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       !has(t, "coefficient") && !has(t, "friction") &&
       !has(t, "resistance") && !has(t, "resistive") && !has(t, "braking")) {
     double m=0, theta=0, F=0;
-    bool hm=word_num(input,"mass",&m) || label_num(input,"mass",&m);
-    bool hF=word_num(input,"force",&F) || label_num(input,"force",&F);
+    bool hm=word_num(input,"mass",&m) || label_num(input,"mass",&m) || num_before_unit(input,"kg",&m);
+    bool hF=word_num(input,"force",&F) || label_num(input,"force",&F) || num_before_unit(input,"n",&F);
     bool hA=word_num(input,"angle",&theta) || label_num(input,"angle",&theta) || prev_word_num(input,"degrees",&theta);
-    if (!hm) m = v[0];
+    if (!hm) {
+      for (int i = 0; i < nv; ++i) if (!near_num(v[i], F) && v[i] > 0) { m = v[i]; hm = true; break; }
+    }
     if (!hA) {
       for (int i = 0; i < nv; ++i) if (!near_num(v[i], m) && !near_num(v[i], F) && v[i] > 0 && v[i] <= 90) { theta = v[i]; hA = true; break; }
     }
     if (!hF) {
       for (int i = nv - 1; i >= 0; --i) if (!near_num(v[i], m) && !near_num(v[i], theta)) { F = v[i]; hF = true; break; }
     }
+    if (!hm) m = v[0];
     double down = m*9.8*deg_sine(theta), net = F - down;
     int n = add(out, 0, "Smooth inclined plane: resolve along the plane and use F=ma.");
     n = add(out, n, "Down-plane weight component = mg sin(theta) = %.6g*9.8 sin(%.6g) = %.10g N", m, theta, down);
@@ -5363,12 +5368,20 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     }
     return n;
   }
-  if ((has(t, "incline") || has(t, "slope") || has(t, "plane")) && (has(t, "acceleration") || has(t, "accelerate") || has(t, "rough")) && nv >= 3) {
+  if ((has(t, "incline") || has(t, "slope") || has(t, "plane")) && (has(t, "acceleration") || has(t, "accelerate") || has(t, "rough")) && nv >= 2) {
     double m=0, ang=0, mu=0;
     bool hm=label_num(input,"mass",&m) || word_num(input,"mass",&m) || label_num(input,"m",&m);
     bool ha=label_num(input,"angle",&ang) || word_num(input,"angle",&ang) || label_num(input,"theta",&ang);
-    bool hmu=label_num(input,"mu",&mu) || word_num(input,"mu",&mu) || word_num(input,"friction",&mu) || label_num(input,"coefficient",&mu);
+    bool hmu=label_num(input,"mu",&mu) || word_num(input,"mu",&mu) || word_num(input,"friction",&mu) ||
+              word_num(input,"coefficient",&mu) || label_num(input,"coefficient",&mu);
+    if (!hm && ha && hmu && (has(t, "slide") || has(t, "slides") || has(t, "down"))) {
+      double acc = 9.8 * (deg_sine(ang) - mu * deg_cosine(ang));
+      int n = add(out, 0, "For sliding down a rough plane, mass cancels in F=ma.");
+      n = add(out, n, "a = g(sin(theta) - mu cos(theta))");
+      return add(out, n, "a = 9.8*(sin(%.6g) - %.6g*cos(%.6g)) = %.10g m/s^2", ang, mu, ang, acc);
+    }
     if (hm && ha && hmu) sprintf(cmd, "inclineacc(%.10g,%.10g,%.10g)", m, ang, mu);
+    else if (nv < 3) return 0;
     else if (nv >= 3 && v[1] > 0 && v[1] < 1.5 && v[2] > 1.5) sprintf(cmd, "inclineacc(%.10g,%.10g,%.10g)", v[0], v[2], v[1]);
     else sprintf(cmd, "inclineacc(%.10g,%.10g,%.10g)", v[0], v[1], v[2]);
     return eval_mech(cmd, out);

@@ -1,5 +1,37 @@
 # Checkpoint
 
+## 2026-06-13 Send Line-Size And Plane Unit Wording Slice
+
+Completed:
+- Ran fresh CS/P3 free-text probes around transfer verbs, cache line-size wording, attached units, and no-mass rough-plane acceleration.
+- Fixed CSCALC transfer routes so `send` is accepted as a transfer-time verb.
+- Fixed CSCALC cache parsing so `line size` is treated as block size and MiB/MB cache capacities are scaled correctly.
+- Fixed CASP3 smooth-plane force/mass parsing for attached units like `20N` and `5kg`.
+- Fixed CASP3 rough-plane no-mass acceleration prompts using the mass-cancels formula.
+- Added regressions and rebuilt calculator-ready outputs.
+
+Evidence:
+- Targeted host probes for send/GiB transfer, line-size cache, MiB byte-addressable cache, attached-unit smooth plane, and no-mass rough plane: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 476696 bytes`
+  - `CSCALC.g3a: 269692 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: 18178 bytes`
+
+Drift check:
+- Stayed inside CASP3/CSCALC free-text parser hardening, tests, checkpoint, and generated calculator files.
+- No Pure CAS, menu/UI/session, NOTES source, or shared status-bar behavior changed.
+- Active goal remains open for further unseen-case hardening.
+
 ## 2026-06-13 Adjacent Units And Slope Resistance Slice
 
 Completed:

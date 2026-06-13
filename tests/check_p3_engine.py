@@ -479,6 +479,8 @@ def main():
     require("The mean of 10 values is 23. One value 18 is removed. Find the new mean.", ["old total = 10*23 = 230", "new total = 230 - 18 = 212", "new mean = 212/9 = 23.55555556"])
     require("code(35,10,20,5)", ["For coded data Y=(X-a)/b", "mean Y = (35-20)/5 = 3", "sd Y = sd X/|b| = 10/5 = 2"])
     require("A particle of mass 3kg is pulled up a smooth plane inclined at 20 degrees by a force 30N parallel to the plane. Find acceleration.", ["Smooth inclined plane", "Resultant up the plane", "6.648"])
+    require("A force of 20N pulls a 5kg particle up a smooth plane inclined at 30 degrees. Find acceleration.", ["Down-plane weight component = mg sin(theta) = 5*9.8", "a = F/m = -4.499999602/5 = -0.8999999203"])
+    require("A particle slides down a rough plane angle 20 degrees with coefficient of friction 0.15. Find acceleration.", ["mass cancels in F=ma", "a = 9.8*(sin(20) - 0.15*cos(20)) = 1.970473486"])
     require("A ladder of length 5m and weight 100N rests against a smooth wall at 60 degrees. The coefficient of friction at the ground is 0.4. Find whether it is in equilibrium.", ["smooth wall and rough ground", "Maximum friction", "can be in equilibrium"])
     require("Given P(A)=0.6, P(B)=0.5 and P(A and B)=0.2, find P(A or B) and say whether A and B are independent.", ["P(A or B)=0.6+0.5-0.2=0.9", "A and B are not independent"])
     require("Given P(A)=0.7 P(B)=0.4 P(A given B)=0.5 test independence.", ["P(A and B)=P(A|B)P(B)=0.5*0.4=0.2", "P(A)P(B)=0.7*0.4=0.28", "A and B are not independent"])

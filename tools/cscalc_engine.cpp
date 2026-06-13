@@ -4477,13 +4477,15 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     n = add(out, n, "cycles = %.10g*%.10g = %.10g", instr, cpi, cycles);
     return add(out, n, "time = %.10g/%.10g = %.10g s", cycles, rate, time);
   }
-  if (has(t, "cache") && has(t, "block") && nv >= 2) {
+  if (has(t, "cache") && (has(t, "block") || has(t, "line")) && nv >= 2) {
     double cache = 0, block = 0, ways = 1, addr = 0;
-    bool hc = scan_before_word_num(t, "kib", &cache) || scan_before_word_num(t, "kb", &cache) ||
+    bool hc = scan_before_word_num(t, "mib", &cache) || scan_before_word_num(t, "mb", &cache) ||
+              scan_before_word_num(t, "kib", &cache) || scan_before_word_num(t, "kb", &cache) ||
               scan_before_word_num(t, "bytes", &cache);
     bool hb = scan_before_word_num(t, "block", &block) || scan_before_word_num(t, "bytes", &block) ||
               scan_before_word_num(t, "byte", &block) ||
-              scan_near_after_word_num(t, "block", &block) || scan_near_after_word_num(t, "blocks", &block);
+              scan_near_after_word_num(t, "block", &block) || scan_near_after_word_num(t, "blocks", &block) ||
+              scan_near_after_word_num(t, "line", &block) || scan_near_after_word_num(t, "lines", &block);
     bool hw = scan_before_word_num(t, "way", &ways) || scan_before_word_num(t, "associativity", &ways);
     if (!hw && has(t, "direct") && has(t, "mapped")) { ways = 1; hw = true; }
     bool ha = scan_bit_width_before_label(t, "address", &addr) || scan_before_word_num(t, "bitaddress", &addr);
@@ -4507,7 +4509,9 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
         if (db > 1e-9 && dw > 1e-9 && v[i] >= 8 && v[i] <= 64) { addr = v[i]; ha = true; break; }
       }
     }
-    if (has(t, "kib") || has(t, "kb")) cache *= 1024.0;
+    if (has(t, "mib")) cache *= 1048576.0;
+    else if (has(t, "mb")) cache *= 1000000.0;
+    else if (has(t, "kib") || has(t, "kb")) cache *= 1024.0;
     double blocks = block ? cache / block : 0;
     double sets = ways ? blocks / ways : blocks;
     int off = ceil_log2_ll((long long)(block + 0.5));
@@ -5320,7 +5324,8 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
       return add(out, n, "= %.10g KiB", total / 1024.0);
     }
   }
-  if ((has(t, "transfer") || has(t, "download") || has(t, "transmit") || has(t, "transmission") || has_word(t, "sent")) &&
+  if ((has(t, "transfer") || has(t, "download") || has(t, "transmit") || has(t, "transmission") ||
+       has_word(t, "send") || has_word(t, "sent")) &&
       has(t, "overhead") && has(t, "percent") && nv >= 3) {
     double size = v[0], overhead = v[1], rate = v[2];
     double tmp = 0;
@@ -5370,7 +5375,8 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     n = add(out, n, "total bits = %.10g characters * %.10g bits = %.10g bits", chars, bits_per_char, total);
     return add(out, n, "time = %.10g/%.10g = %.10g s", total, rate, rate ? total / rate : 0);
   }
-  if (has(t, "transfer") || has(t, "download") || has(t, "transmit") || has(t, "transmission") || has_word(t, "sent")) {
+  if (has(t, "transfer") || has(t, "download") || has(t, "transmit") || has(t, "transmission") ||
+      has_word(t, "send") || has_word(t, "sent")) {
     int scanned = add_transfer_scanned_unit_lines(out, t);
     if (scanned) return scanned;
     double size=0, rate=0;
@@ -6406,7 +6412,9 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     scale_time_unit(t, &seconds);
     sprintf(cmd, "sound(%lld,%lld,%lld,%d)", (long long)rate, (long long)seconds, (long long)v[2], ch); return eval_storage(cmd, out);
   }
-  if ((has(t, "transfer") || has(t, "download") || has(t, "transmit") || has_word(t, "sent")) && (has(t, "time") || has(t, "second") || has(t, "minute") || has(t, "hour")) && nv >= 2) {
+  if ((has(t, "transfer") || has(t, "download") || has(t, "transmit") ||
+       has_word(t, "send") || has_word(t, "sent")) &&
+      (has(t, "time") || has(t, "second") || has(t, "minute") || has(t, "hour")) && nv >= 2) {
     int scanned = add_transfer_scanned_unit_lines(out, t);
     if (scanned) return scanned;
     int rn = add_transfer_unit_lines(out, v[0], v[1], t);
