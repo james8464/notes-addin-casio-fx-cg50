@@ -4371,6 +4371,29 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     n = add(out, n, "instructions = %.10g, time = %.10g s", instr, tm);
     return add(out, n, "MIPS = %.10g/(%.10g*10^6) = %.10g", instr, tm, tm ? instr / (tm * 1000000.0) : 0);
   }
+  if ((has(t, "cpu") || has(t, "processor") || has(t, "clock") || has(t, "ghz") || has(t, "mhz")) &&
+      (has(t, "instruction") || has(t, "instructions")) &&
+      (has(t, "time") || has(t, "execute") || has(t, "executes") || has(t, "execution")) &&
+      !(has(t, "cpi") || has(t, "cycle") || has(t, "cycles")) && nv >= 2) {
+    double rate = 0, instr = 0;
+    bool hr = scan_before_word_num(t, "ghz", &rate);
+    if (hr) rate *= 1000000000.0;
+    else if (scan_before_word_num(t, "mhz", &rate)) { hr = true; rate *= 1000000.0; }
+    else if (scan_before_word_num(t, "hz", &rate)) { hr = true; }
+    bool hi = scan_before_word_num(t, "billion", &instr);
+    if (hi) instr *= 1000000000.0;
+    else if (scan_before_word_num(t, "million", &instr)) { hi = true; instr *= 1000000.0; }
+    else if (scan_before_word_num(t, "thousand", &instr)) { hi = true; instr *= 1000.0; }
+    else hi = scan_before_word_num(t, "instructions", &instr) || scan_before_word_num(t, "instruction", &instr);
+    if (!hr) rate = v[1] * (has(t, "ghz") ? 1000000000.0 : has(t, "mhz") ? 1000000.0 : 1.0);
+    if (!hi) instr = v[0] * (has(t, "billion") ? 1000000000.0 : has(t, "million") ? 1000000.0 : has(t, "thousand") ? 1000.0 : 1.0);
+    double cycles = instr, time = rate ? cycles / rate : 0;
+    int n = add(out, 0, "Execution time = instructions * CPI / clock rate.");
+    n = add(out, n, "No CPI is stated, so use CPI = 1.");
+    n = add(out, n, "instructions = %.10g", instr);
+    n = add(out, n, "clock rate = %.10g cycles/s", rate);
+    return add(out, n, "time = %.10g/%.10g = %.10g s", cycles, rate, time);
+  }
   if ((has(compact, "calculateclockspeed") || has(compact, "findclockspeed") || has(compact, "clockspeedin")) &&
       !has(compact, "executiontime") &&
       (has(t, "instruction") || has(t, "instructions")) &&

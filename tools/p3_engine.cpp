@@ -6116,7 +6116,32 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     sprintf(cmd, tail ? "poissontail(%.10g,%d,%d)" : "poisson(%.10g,%d)", lam, (int)x, tail);
     return eval_stats(cmd, out);
   }
-	  if ((has(t, "hypothesis") || has(t, "significance") || has(t, "test")) &&
+  if ((has(t, "exponential") || has(t, "exponentially")) &&
+      !has(t, "pdf") && !has(t, "density") && !has(c, "exp(-") && nv >= 2) {
+    double mean = 0, lam = 0, bound = 0;
+    bool hm = word_num(input, "mean", &mean) || word_num(input, "average", &mean);
+    bool hl = word_num(input, "lambda", &lam) || word_num(input, "rate", &lam);
+    if (!hm && !hl) mean = v[0];
+    if (!hl) lam = mean ? 1.0 / mean : 0;
+    int tail = prob_tail(c, t);
+    if (!prob_x_bound(c, &bound, &tail)) {
+      for (int i = 0; i < nv; ++i)
+        if (!near_num(v[i], mean) && !near_num(v[i], lam)) { bound = v[i]; break; }
+    }
+    if (lam > 0 && bound >= 0 && tail) {
+      double ans = tail > 0 ? exp_approx(-lam * bound) : 1.0 - exp_approx(-lam * bound);
+      int n = add(out, 0, "For X exponential, lambda = 1/mean.");
+      if (hm || !hl) n = add(out, n, "lambda = 1/%.10g = %.10g", mean, lam);
+      else n = add(out, n, "lambda = %.10g", lam);
+      if (tail > 0) {
+        n = add(out, n, "P(X>%.6g)=exp(-lambda*x)", bound);
+        return add(out, n, "P(X>%.6g)=exp(-%.10g*%.6g)=%.10g", bound, lam, bound, ans);
+      }
+      n = add(out, n, "P(X<%.6g)=1-exp(-lambda*x)", bound);
+      return add(out, n, "P(X<%.6g)=1-exp(-%.10g*%.6g)=%.10g", bound, lam, bound, ans);
+    }
+  }
+  if ((has(t, "hypothesis") || has(t, "significance") || has(t, "test")) &&
 	      (has(t, "percent") || has(t, "proportion") || has(t, "percentage")) &&
 	      (has(t, "proportion") || has(t, "percentage") || has(t, "prefer") || has(t, "customers") || has(t, "success")) &&
 	      (has(t, "sample") || has(t, "customers") || has(t, "people") || has(t, "students")) && nv >= 4) {
@@ -8302,6 +8327,28 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "gradient = (%.6g-%.6g)/(%.6g-%.6g)", y2, y1, x2, x1);
     n = add(out, n, "y = %.6g + (%.6g-%.6g)*(%.6g-%.6g)/(%.6g-%.6g)", y1, x, x1, y2, y1, x2, x1);
     return add(out, n, "y = %.10g", y);
+  }
+  if ((has(t, "data") || has(t, "values") || has(t, "observations")) &&
+      (has(t, "mean") || has(t, "variance") || has(t, "standarddeviation") ||
+       (has(t, "standard") && has(t, "deviation")) || has(t, "sd")) &&
+      !has(t, "sumx") && !has(t, "sumofsquares") && !has(c, "sumx") &&
+      !has(c, "sumxsquared") && !has(c, "sumxsquare") &&
+      !has(t, "normal") && !has(t, "binom") &&
+      !has(t, "poisson") && !has(t, "added") && !has(t, "add") &&
+      !has(t, "removed") && !has(t, "remove") && !has(t, "combined") &&
+      !has(t, "another") && !has(c, "hasmean") && !has(c, "havemean") &&
+      !has(c, "meanof") && nv >= 2) {
+    double sx = 0, sx2 = 0;
+    for (int i = 0; i < nv; ++i) { sx += v[i]; sx2 += v[i] * v[i]; }
+    double n0 = nv, mean = sx / n0, var = sx2 / n0 - mean * mean;
+    int n = add(out, 0, "For raw data, first find sum x and sum x^2.");
+    n = add(out, n, "n = %.0f, sum x = %.10g", n0, sx);
+    n = add(out, n, "sum x^2 = %.10g", sx2);
+    n = add(out, n, "mean = sum x/n = %.10g/%.0f = %.10g", sx, n0, mean);
+    n = add(out, n, "variance = sum x^2/n - mean^2 = %.10g/%.0f - %.10g^2 = %.10g", sx2, n0, mean, var);
+    if (has(t, "standarddeviation") || (has(t, "standard") && has(t, "deviation")) || has(t, "sd"))
+      return add(out, n, "sd = sqrt(variance) = %.10g", root(var));
+    return n;
   }
   if ((has(t, "summarystatistics") || has(t, "summary") || has(t, "sumx") || has(t, "sumofsquares") ||
        (has(t, "sum") && (has(t, "squared") || has(t, "squares")))) &&

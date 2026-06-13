@@ -520,6 +520,7 @@ def main():
     require("A file of size 800 KiB is transmitted at 2 Mib/s. Find the time taken.", ["800 KiB = 6553600 bits", "2 Mbit/s = 2000000 bit/s", "time = 6553600/2000000 = 3.2768 s"])
     require("A 24-bit address bus and 16-bit data bus memory has word addressed memory. Calculate addressable memory in MiB.", ["address bus 24 bits", "memory size = 16777216*16", "= 33554432 bytes", "= 32 MiB"])
     require("A 3 GHz CPU executes 120 million instructions at 2 cycles per instruction. Calculate execution time.", ["Execution time = instructions * cycles per instruction / clock rate.", "cycles = 120000000*2 = 240000000", "time = 240000000/3000000000 = 0.08 s"])
+    require("A CPU executes 2.5 billion instructions at 3.2 GHz. Calculate execution time.", ["No CPI is stated, so use CPI = 1", "instructions = 2500000000", "clock rate = 3200000000", "time = 2500000000/3200000000 = 0.78125 s"])
     require("A processor executes 2 million instructions with CPI 3 at clock speed 1.5 GHz. Calculate execution time.", ["clock rate = 1500000000 cycles/s", "cycles = 2000000*3 = 6000000", "time = 6000000/1500000000 = 0.004 s"])
     require("Calculate CPU cycles for 2.5 GHz over 0.004 seconds.", ["CPU cycles = clock rate * time", "cycles = 2500000000*0.004 = 10000000"])
     require("Calculate MIPS for 120 million instructions in 0.08 seconds.", ["MIPS = instructions / (time * 10^6)", "MIPS = 120000000/(0.08*10^6) = 1500"])
