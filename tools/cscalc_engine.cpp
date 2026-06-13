@@ -968,7 +968,7 @@ static bool minterm_dc_word(const char *w) {
 static bool make_minterm_cmd(const char *in, char *cmd, int cap) {
   char t[192]; raw_clean(in, t, sizeof(t));
   char vars[8] = ""; int vc = 0, mins[32], mc = 0, dcs[32], dc = 0;
-  bool dcpart = false, varpart = false;
+  bool dcpart = false, varpart = false, seen_list = false, skip_output_value = false;
   const char *fp = strchr(in, '(');
   const char *fq = fp ? strchr(fp, ')') : 0;
   if (fp && fq && fq > fp) {
@@ -987,9 +987,15 @@ static bool make_minterm_cmd(const char *in, char *cmd, int cap) {
     while (t[i] && t[i] != ',' && j + 1 < (int)sizeof(w)) w[j++] = t[i++];
     w[j] = 0;
     while (j > 0 && !isalnum((unsigned char)w[j-1])) w[--j] = 0;
-    if (word_is(w, "minterm") || word_is(w, "minterms") || word_is(w, "ones")) {
+    if (word_is(w, "output")) {
+      skip_output_value = true;
+      continue;
+    }
+    if (word_is(w, "minterm") || word_is(w, "minterms") || word_is(w, "ones") ||
+        word_is(w, "maxterm") || word_is(w, "maxterms") || word_is(w, "zeros")) {
       dcpart = false;
       varpart = false;
+      seen_list = true;
       continue;
     }
     if (word_is(w, "variable") || word_is(w, "variables") || word_is(w, "vars")) {
@@ -1009,8 +1015,15 @@ static bool make_minterm_cmd(const char *in, char *cmd, int cap) {
     if (minterm_dc_word(w)) { dcpart = true; continue; }
     if (!w[0] || (!varpart && minterm_skip_word(w))) continue;
     if ((w[0] == '-' && isdigit((unsigned char)w[1])) || isdigit((unsigned char)w[0])) {
+      if (skip_output_value && !seen_list) {
+        skip_output_value = false;
+        continue;
+      }
+      if (!seen_list && !dcpart && !explicit_vars && !has(in, "kmap") && !has(in, "karnaugh"))
+        continue;
       if (dcpart) { if (dc < 32) dcs[dc++] = (int)parse_int(w); }
       else if (mc < 32) mins[mc++] = (int)parse_int(w);
+      skip_output_value = false;
       continue;
     }
     if (varpart && !(j == 1 && isalpha((unsigned char)w[0]))) continue;

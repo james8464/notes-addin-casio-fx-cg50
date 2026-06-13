@@ -817,6 +817,39 @@ static bool extract_xy_lists_after_words(const char *input, double *xs, double *
   return true;
 }
 
+static bool extract_two_lists_around_and(const char *input, double *xs, double *ys, int *n) {
+  char t[240]; raw_clean(input, t, sizeof(t));
+  const char *ap = strstr(t, ",and,");
+  if (!ap) return false;
+  char left[160], right[160];
+  int llen = (int)(ap - t);
+  if (llen >= (int)sizeof(left)) llen = (int)sizeof(left) - 1;
+  memcpy(left, t, llen); left[llen] = 0;
+  strncpy(right, ap + 5, sizeof(right) - 1); right[sizeof(right) - 1] = 0;
+  double lx[16], ry[16];
+  int nx = scan_nums(left, lx, 16), ny = scan_nums(right, ry, 16);
+  if (nx < 2 || ny != nx) return false;
+  for (int i = 0; i < nx; ++i) { xs[i] = lx[i]; ys[i] = ry[i]; }
+  *n = nx;
+  return true;
+}
+
+static bool extract_point_pairs_after_word(const char *input, double *xs, double *ys, int *n) {
+  char t[260]; raw_clean(input, t, sizeof(t));
+  const char *p = strstr(t, "points,");
+  if (!p) p = strstr(t, "pairs,");
+  if (!p) p = strstr(t, "data,");
+  if (!p) return false;
+  double vals[32];
+  int nv = scan_nums(p, vals, 32);
+  if (nv < 4 || (nv & 1)) return false;
+  int count = nv / 2;
+  if (count > 16) count = 16;
+  for (int i = 0; i < count; ++i) { xs[i] = vals[2*i]; ys[i] = vals[2*i + 1]; }
+  *n = count;
+  return true;
+}
+
 static bool parse_linear_inside(const char *p, char var, double *b, double *d, const char **endp) {
   *b = 1; *d = 0;
   if (*p == var) {
@@ -4201,7 +4234,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     }
     double L=0,W=0,x=0,bw=0;
     bool hL=label_num(input,"length",&L) || word_num(input,"length",&L);
-    bool hW=label_num(input,"load",&W) || prev_word_num(input,"load",&W) || word_num(input,"load",&W);
+    bool hW=label_num(input,"load",&W) || word_num(input,"load",&W) || prev_word_num(input,"load",&W);
     bool hx=label_num(input,"distance",&x) || word_num(input,"from",&x) || prev_word_num(input,"from",&x);
     bool hb=label_num(input,"beamweight",&bw) || label_num(input,"bw",&bw) ||
             ((has(t, "uniform") || has(t, "rod") || has(t, "beam")) && (word_num(input,"weight",&bw) || prev_word_num(input,"weight",&bw)));
@@ -6667,6 +6700,9 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     if (extract_xy_lists_after_words(input, xs, ys, &count)) {
       return add_raw_spearman_lines(out, xs, ys, count);
     }
+    if (extract_two_lists_around_and(input, xs, ys, &count)) {
+      return add_raw_spearman_lines(out, xs, ys, count);
+    }
     double n0=0, sd2=0;
     if (label_num(input,"n",&n0) && (label_num(input,"sumd2",&sd2) || label_num(input,"d2",&sd2))) {
       sprintf(cmd, "spearman(%.10g,%.10g)", n0, sd2); return eval_stats(cmd, out);
@@ -6696,6 +6732,9 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     bool x_on_y = has(c, "xony") || has(c, "xonthey") || has(c, "regressionlineofx");
     double xs[16], ys[16]; int count = 0;
     if (extract_xy_lists_after_words(input, xs, ys, &count)) {
+      return add_raw_regression_lines(out, xs, ys, count, x_on_y, x_on_y ? hy : hx, x_on_y ? y : x);
+    }
+    if (extract_point_pairs_after_word(input, xs, ys, &count)) {
       return add_raw_regression_lines(out, xs, ys, count, x_on_y, x_on_y ? hy : hx, x_on_y ? y : x);
     }
     double m=0, b=0;
