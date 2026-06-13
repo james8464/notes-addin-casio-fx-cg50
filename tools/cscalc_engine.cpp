@@ -465,6 +465,10 @@ static bool fixed_total_frac_words(const char *compact, long long *whole, long l
   if (!fp) fp = strstr(compact, "bitafter");
   if (!fp) fp = strstr(compact, "bits,after");
   if (!fp) fp = strstr(compact, "bit,after");
+  if (!fp) fp = strstr(compact, "fractionalbits");
+  if (!fp) fp = strstr(compact, "fractionalbit");
+  if (!fp) fp = strstr(compact, "fractionbits");
+  if (!fp) fp = strstr(compact, "fractionbit");
   if (!tp || !fp) return false;
   if (!num_before_ptr(compact, tp, &total) || !num_before_ptr(compact, fp, &fb)) return false;
   if (total <= fb || fb < 0) return false;
@@ -6511,6 +6515,18 @@ static int eval_free_text(const char *input, const char *compact, char out[CSCAL
     }
     frac_bits[fp] = 0;
     return add(out, n, "%.10g_10 = %s.%s_2", value, whole_bits, fp ? frac_bits : "0");
+  }
+  if (has(t, "fixed") && (has(t, "encode") || has(t, "represent") || has(t, "convert")) &&
+      (has(t, "decimal") || has(t, "denary")) && nv >= 3) {
+    long long whole = 0, frac = 0;
+    if (fixed_total_frac_words(compact, &whole, &frac)) {
+      double value = v[0];
+      for (int i = 0; i < nv; ++i) {
+        if (v[i] != whole + frac && v[i] != frac) { value = v[i]; break; }
+      }
+      sprintf(cmd, (tc || has(t, "signed") || has(t, "negative") || value < 0) ? "fixedtcenc(%.10g,%lld,%lld)" : "fixedenc(%.10g,%lld,%lld)", value, whole, frac);
+      return eval_float(cmd, out);
+    }
   }
   if (has(t, "fixed") && (has(t, "encode") || has(t, "represent") || has(t, "convert")) &&
       (has(t, "decimal") || has(t, "denary")) && (has(t, "fractional") || has(t, "fraction") || has(t, "after")) &&

@@ -208,6 +208,7 @@ def main():
     require("encode decimal -2.75 as two complement fixed point with 4 whole bits and 2 fractional bits", ["signed fixed point", "fixed point ="])
     require("Represent -5.75 in fixed point binary using 8 bits with 4 bits after the binary point.", ["write -92 in 8-bit two's complement", "fixed point = 1010.0100"])
     require("Represent denary -0.625 in 8 bit fixed point with 4 bits after the point.", ["scaled integer = -0.625 * 2^4 = -10", "write -10 in 8-bit two's complement", "fixed point = 1111.0110"])
+    require("Convert denary -37.625 to 12 bit fixed point with 5 fractional bits.", ["scaled integer = -37.625 * 2^5 = -1204", "write -1204 in 12-bit two's complement", "fixed point = 1011010.01100"])
     require("Using fixed point with 4 bits after point, represent -0.625.", ["scaled integer = -0.625 * 2^4 = -10", "fixed point ="])
     require("Calculate the range and precision of fixed point with 8 bits and 3 fractional bits.", ["Signed fixed-point range", "precision = 2^-3 = 0.125", "range = -16 to 15.875"])
     require("floatdec(0101100,11101)", ["mantissa", "exponent", "0.0859375"])

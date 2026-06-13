@@ -3785,7 +3785,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     double A=0, B=0, C=0, u=0, s0=0, time=0;
     bool parsed_acc = parse_poly_after_word(input, "acceleration", &A, &B, &C);
     if (!parsed_acc && has(c, "a=")) parsed_acc = parse_velocity_quad(input, &A, &B, &C);
-    bool has_u = label_num(input, "v", &u) || label_num(input, "u", &u) ||
+    bool has_u = word_num(input, "initialvelocity", &u) || word_num(input, "initialspeed", &u) ||
+                 label_num(input, "v", &u) || label_num(input, "u", &u) ||
                  word_num(input, "velocity", &u) || word_num(input, "speed", &u) || word_num(input, "u", &u);
     label_num(input, "s", &s0);
     if (!has_u && has(t, "rest")) { u = 0; has_u = true; }
@@ -3810,15 +3811,18 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       n = add(out, n, "initial position gives C = %.6g", s0);
       return add(out, n, "at t=%.6g, s = %.10g", time, ss);
     }
-    if (parsed_acc && has_u && (has(t, "comestorest") || has(t, "comes") || has(t, "rest"))) {
+    if (parsed_acc && has_u && (has(t, "comestorest") || has(t, "comes") || has(t, "rest") ||
+        has(c, "velocityis0") || has(c, "velocityzero") || has(c, "velocity=0") ||
+        (has(t, "velocity") && (has(t, "zero") || has(c, "=0"))))) {
       double aa = B/2.0, bb = C, cc = u;
       double rt = 0, disc = bb*bb - 4*aa*cc;
-      if (!near_num(aa, 0) && disc >= 0) {
-        double r1 = (-bb - root(disc))/(2*aa), r2 = (-bb + root(disc))/(2*aa);
-        if (r1 > 0 && (rt == 0 || r1 < rt)) rt = r1;
-        if (r2 > 0 && (rt == 0 || r2 < rt)) rt = r2;
+      if (!near_num(aa, 0)) {
+        if (disc >= 0) {
+          double r1 = (-bb - root(disc))/(2*aa), r2 = (-bb + root(disc))/(2*aa);
+          if (r1 > 0 && (rt == 0 || r1 < rt)) rt = r1;
+          if (r2 > 0 && (rt == 0 || r2 < rt)) rt = r2;
+        }
       } else if (!near_num(bb, 0)) rt = -cc/bb;
-      double ss = A*rt*rt*rt*rt/12.0 + B*rt*rt*rt/6.0 + C*rt*rt/2.0 + u*rt;
       int n = add(out, 0, "Variable acceleration: integrate a(t) to get v(t).");
       if (near_num(A, 0)) {
         n = add(out, n, "a = %.6g t %+.6g", B, C);
@@ -3827,6 +3831,8 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
         n = add(out, n, "a = %.6g t^2 %+.6g t %+.6g", A, B, C);
         n = add(out, n, "v = (%.6g/3)t^3 + (%.6g/2)t^2 + %.6g t + %.6g", A, B, C, u);
       }
+      if (rt <= 0) return add(out, n, "v=0 has no positive real solution.");
+      double ss = A*rt*rt*rt*rt/12.0 + B*rt*rt*rt/6.0 + C*rt*rt/2.0 + u*rt;
       n = add(out, n, "comes to rest when v=0, so t = %.10g", rt);
       n = add(out, n, "distance = integral(v) from 0 to %.10g", rt);
       return add(out, n, "distance = %.10g", ss < 0 ? -ss : ss);
@@ -8380,6 +8386,45 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "same-colour ways = sum C(group size,2) = %.10g", same);
     n = add(out, n, "total ways = C(%.0f,2) = %.10g", total, all);
     return add(out, n, "P(different colour)=%.10g/%.10g=%.10g", diff, all, all ? diff/all : 0);
+  }
+  if ((has(t, "withoutreplacement") || (has(t, "without") && has(t, "replacement")) || has(t, "chosen") || has(t, "selected")) &&
+      (has(c, "exactlyone") || has(c, "exactly1") || (has(t, "exactly") && has(t, "one"))) && nv >= 2) {
+    double counts[8]; int cc = 0; const char *target_name = "target"; double target = 0;
+    const char *cols[] = {"red","blue","green","yellow","white","black","orange","purple"};
+    int requested = -1;
+    for (int i = 0; i < 8; ++i) {
+      char key1[48], key2[48];
+      sprintf(key1, "exactlyone%s", cols[i]);
+      sprintf(key2, "exactly1%s", cols[i]);
+      if (has(c, key1) || has(c, key2)) { requested = i; break; }
+    }
+    for (int i = 0; i < 8; ++i) {
+      double q = 0;
+      if (prev_word_num(input, cols[i], &q) && q > 0) {
+        counts[cc++] = q;
+        if (!target && (requested == i || (requested < 0 && i == 0))) {
+          target = q; target_name = cols[i];
+        }
+      }
+    }
+    if (cc < 2) {
+      cc = 0;
+      for (int i = 0; i < nv && cc < 8; ++i) if (v[i] > 0) counts[cc++] = v[i];
+      if (!target && cc) target = counts[0];
+    }
+    double total = 0;
+    for (int i = 0; i < cc; ++i) total += counts[i];
+    if (!target && cc) target = counts[0];
+    double other = total - target;
+    int draws = 2;
+    if (has(t, "three") || has(c, "3are") || has(c, "3balls") || has(c, "3counters")) draws = 3;
+    if (has(t, "four") || has(c, "4are") || has(c, "4balls") || has(c, "4counters")) draws = 4;
+    double ways = target * choose((int)other, draws - 1);
+    double all = choose((int)total, draws);
+    int n = add(out, 0, "Without replacement and order not specified, use combinations.");
+    n = add(out, n, "exactly one %s ways = C(%.0f,1)*C(%.0f,%d) = %.10g", target_name, target, other, draws - 1, ways);
+    n = add(out, n, "total ways = C(%.0f,%d) = %.10g", total, draws, all);
+    return add(out, n, "P(exactly one %s)=%.10g/%.10g=%.10g", target_name, ways, all, all ? ways/all : 0);
   }
   if ((has(t, "withoutreplacement") || (has(t, "without") && has(t, "replacement")) || has(t, "chosen") || has(t, "selected")) &&
       (has(c, "exactlytwo") || has(c, "exactly2") || (has(t, "exactly") && has(t, "two"))) && nv >= 2) {

@@ -6571,6 +6571,37 @@ Drift check:
 - Kept changes to CASP3/CSCALC parser/working logic, regressions, generated app outputs, and this checkpoint.
 - Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.
 
+## 2026-06-13 Finalization Edge Probe Slice
+
+Completed:
+- Fixed CASP3 without-replacement `exactly one <colour>` combination handling.
+- Fixed CASP3 variable-acceleration `v=0` solve so no-real-root cases are not forced through a linear fallback.
+- Added CASP3 regression for a valid rest-time variable-acceleration case.
+- Fixed CSCALC fixed-point encoding when prompts specify total bits plus fractional bits, e.g. `12 bit fixed point with 5 fractional bits`.
+- Added regressions and rebuilt calculator outputs.
+
+Evidence:
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 553500 bytes`
+  - `CSCALC.g3a: 295908 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: records=48 bytes=18178`
+  - `CASP3.g3a sha256: e59aac5a326c64f20c687f9f2b91e4e411c97bf0e88f6d622ef89ec1c4cabcbd`
+  - `CSCALC.g3a sha256: 146fb1e89353b1e296c4b2863050a669b4468741e764876b6071721238211460`
+
+Drift check:
+- Kept changes to CASP3/CSCALC parser/working logic, regressions, generated app outputs, and this checkpoint.
+- Did not touch CAS Pure behavior, menus, NOTES source, or shared UI/status code.
+
 ## 2026-06-13 P3/CS Semantic Probe Hardening Slice
 
 Completed:
