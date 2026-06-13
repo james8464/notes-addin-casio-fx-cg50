@@ -4283,6 +4283,11 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     if (disc < 0) return add(out, n, "No real time reaches the ground.");
     double time = (uy + root(disc)) / g;
     n = add(out, n, "positive time t = %.10g s", time);
+    if (has(t, "greatest") || has(t, "maximum") || has(t, "maxheight")) {
+      double maxh = h0 + (uy > 0 ? uy*uy/(2*g) : 0);
+      n = add(out, n, "At greatest height, vertical velocity is zero.");
+      n = add(out, n, "greatest height above ground = %.10g + %.10g^2/(2*%.6g) = %.10g m", h0, uy, g, maxh);
+    }
     return add(out, n, "range = u_x t = %.10g m", ux*time);
   }
   if (is_projectile_text(t) &&
@@ -4941,7 +4946,25 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     n = add(out, n, "F = %.6g*%.6g^2/%.6g", m, u, r);
     return add(out, n, "centripetal force = %.10g N", F);
   }
-  if ((has(t, "elastic") || has(t, "string")) && (has(t, "modulus") || has(t, "extension") || has(t, "tension")) && nv >= 3) {
+  if ((has(t, "connected") || (has(t, "two") && has(t, "particles"))) &&
+      (has(t, "smooth") || has(t, "table") || has(t, "horizontal")) &&
+      (has(t, "force") || has(t, "pull") || has(t, "tension") || has(t, "acceleration")) &&
+      !has(t, "pulley") && !has(t, "incline") && !has(t, "inclined") && !has(t, "plane") &&
+      !has(t, "rough") && !has(t, "friction") && !has(t, "coefficient") && nv >= 3) {
+    double m1 = v[0], m2 = v[1], F = v[nv-1];
+    double q = 0;
+    if (word_num(input, "force", &q) || word_num(input, "pull", &q) || num_before_unit(input, "n", &q)) F = q;
+    double ares = F / (m1 + m2);
+    double T = m1 * ares;
+    int n = add(out, 0, "Connected particles on a smooth table have the same acceleration.");
+    n = add(out, n, "Treat both particles as one system: F = (m1+m2)a.");
+    n = add(out, n, "a = %.10g/(%.10g+%.10g) = %.10g m/s^2", F, m1, m2, ares);
+    n = add(out, n, "Use one particle to find the string tension.");
+    return add(out, n, "T = m1*a = %.10g*%.10g = %.10g N", m1, ares, T);
+  }
+  if ((has(t, "elastic") || has(t, "modulus") || has(t, "extension") || has(t, "naturallength") ||
+       (has(t, "string") && has(t, "tension"))) &&
+      (has(t, "modulus") || has(t, "extension") || has(t, "tension") || has(t, "naturallength") || has(t, "lambda")) && nv >= 3) {
     double l=0, lam=0, x=0;
     bool hl=word_num(input,"naturallength",&l) || word_num(input,"length",&l) || label_num(input,"length",&l);
     bool hla=word_num(input,"modulus",&lam) || label_num(input,"modulus",&lam) || word_num(input,"lambda",&lam);
@@ -6930,7 +6953,7 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
     return eval_stats(cmd, out);
   }
   if ((has(t, "median") || has(t, "quartile") || has(t, "interquartile") || has(t, "iqr")) &&
-      (has(t, "data") || has(t, "values")) &&
+      (has(t, "data") || has(t, "values") || has(t, "coding") || has(t, "questionnaire") || has(t, "observations")) &&
       !has(t, "grouped") && !has(t, "group") && !has(t, "class") && !has(t, "classes") &&
       !has(t, "frequency") && !has(t, "frequencies") && !has(t, "cumulative") && nv >= 3) {
     double a[32]; int m = nv < 32 ? nv : 32;

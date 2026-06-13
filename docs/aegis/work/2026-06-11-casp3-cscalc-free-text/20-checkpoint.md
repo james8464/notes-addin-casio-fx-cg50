@@ -1,5 +1,39 @@
 # Checkpoint
 
+## 2026-06-13 P3 Route Precedence And Raw Data Slice
+
+Completed:
+- Ran source-like P3/CS probe batch after the previous commit.
+- Fixed connected smooth-table particle wording so it gives system acceleration and tension instead of falling into elastic-string working.
+- Narrowed elastic-string detection so Poisson `lambda` hypothesis tests are not stolen by Hooke's-law routes.
+- Added greatest-height output when projectile ground-hit prompts also ask for greatest/maximum height.
+- Extended raw-data median/IQR routing to questionnaire/coding/observation wording.
+- Added regressions and rebuilt calculator-ready outputs.
+
+Evidence:
+- Targeted connected prompt now gives `a = 25/(2+3) = 5` and `T = m1*a`.
+- Targeted projectile prompt now includes `At greatest height` and the height line before range.
+- Targeted questionnaire coding prompt now gives sorted raw-data median/IQR working.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 487604 bytes`
+  - `CSCALC.g3a: 273872 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: 18178 bytes`
+
+Drift check:
+- Stayed inside CASP3 route precedence/free-text parsing, P3 tests, checkpoint, and rebuilt CASP3 artifact.
+- No Pure CAS source, CSCALC source, menu/UI/session, NOTES source, or shared status-bar behavior changed.
+- Active goal remains open for further unseen-case hardening.
+
 ## 2026-06-13 P3 Normal Vector Power Slice
 
 Completed:
