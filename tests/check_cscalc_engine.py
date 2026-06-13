@@ -380,6 +380,7 @@ def main():
     require("Prove by De Morgan that not(A or B)=not A and not B.", ["Use De Morgan's law", "not(A or B) = not A and not B", "Same output rows"])
     require("bool(A B + A C)", ["Boolean algebra", "Distributive law", "a&(b+c)", "simplified"])
     require("bool((A+B)(A+C))", ["Boolean algebra", "Distributive law", "a+b&c", "simplified"])
+    require("Convert (A+B)(A+C) into sum of products.", ["Distributive law", "simplified = A+BC"])
     require("bool((A+B)(A+B+C))", ["Boolean algebra", "Absorption law", "a+b", "simplified"])
     require("bool(A xor B)", ["Boolean algebra", "XOR identity", "a'&b+a&b'", "simplified"])
     require("Using Boolean algebra simplify (A and B) or (A and not B).", ["Simplify by Boolean algebra", "simplified = A"])

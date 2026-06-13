@@ -3640,7 +3640,8 @@ static void bool_clean_tail(const char *src, char *dst, int cap) {
     "using", "bydemorgan", "demorgan", "demorgans", "law", "method",
     "totruthtable", "totruth", "totable",
     "toatruthtable", "truth", "table", "astruthtable", "intoatruthtable",
-    "tokmap", "karnaugh", "map", "tosop", "topos", "toproductofsums",
+    "tokmap", "karnaugh", "map", "intosumofproducts", "tosumofproducts",
+    "intosop", "tosop", "intoproductofsums", "toproductofsums", "topos",
     "productofsums", "tonand", "tonor"
   };
   for (int i = 0; i < (int)(sizeof(cut) / sizeof(cut[0])); ++i) {

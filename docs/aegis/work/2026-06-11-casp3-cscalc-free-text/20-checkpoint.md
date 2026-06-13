@@ -1,5 +1,35 @@
 # Checkpoint
 
+## 2026-06-13 Boolean SOP And Vector Impulse Parser Slice
+
+Completed:
+- Probed fresh unseen-style CASP3/CSCALC prompts across Boolean SOP/POS conversion, address lines, Dijkstra, hashing, braking, grouped stats, trapezium rule, Spearman, and variable acceleration.
+- Fixed CSCALC Boolean expression cleaning so `into sum of products` / `into product of sums` does not leave `in`/`into` as fake Boolean variables.
+- Fixed CASP3 vector impulse routing so `changes velocity from ai+bj to ci+dj` uses full component-by-component impulse instead of falling through to a scalar route.
+- Added regressions and rebuilt calculator-ready outputs.
+
+Evidence:
+- Targeted probes for `Convert (A+B)(A+C) into sum of products.` and vector impulse `from 3i-2j to -i+4j`: passed.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size/hash evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 472940 bytes`
+  - `CSCALC.g3a: 267868 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: 18178 bytes`
+
+Drift check:
+- Stayed inside broad parser hardening and tests.
+- No menu/UI/session behavior changed.
+- Active goal remains open for further overnight unseen-case hardening.
+
 ## 2026-06-13 Geometric, Braking, And K-Map Wording Slice
 
 Completed:
