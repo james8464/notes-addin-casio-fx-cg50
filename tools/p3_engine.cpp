@@ -3937,6 +3937,25 @@ static int eval_free_text(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]
       return add(out, n, "total time = %.10g s", t1 + t2);
     }
   }
+  if ((has(t, "slope") || has(t, "incline") || has(t, "inclined") || has(t, "plane")) &&
+      (has(t, "braking") || has(t, "brake")) &&
+      (has(t, "constant") || has(t, "speed")) &&
+      (has(t, "resistance") || has(t, "resistive")) && nv >= 3) {
+    double m = 0, theta = 0, r = 0;
+    bool hm = word_num(input, "mass", &m) || label_num(input, "mass", &m) || prev_word_num(input, "kg", &m);
+    bool ha = word_num(input, "angle", &theta) || label_num(input, "angle", &theta) || prev_word_num(input, "degrees", &theta);
+    bool hr = word_num(input, "resistance", &r) || label_num(input, "resistance", &r);
+    if (!hm) for (int i = 0; i < nv; ++i) if (v[i] > 90) { m = v[i]; hm = true; break; }
+    if (!ha) for (int i = 0; i < nv; ++i) if (!near_num(v[i], m) && v[i] > 0 && v[i] <= 90) { theta = v[i]; ha = true; break; }
+    if (!hr) for (int i = 0; i < nv; ++i) if (!near_num(v[i], m) && !near_num(v[i], theta)) { r = v[i]; hr = true; break; }
+    double down = m * 9.8 * deg_sine(theta);
+    double brake = down - r;
+    int n = add(out, 0, "At constant speed down the slope, resultant force along the plane is zero.");
+    n = add(out, n, "Down-plane weight component = mg sin(theta) = %.6g*9.8 sin(%.6g) = %.10g N", m, theta, down);
+    n = add(out, n, "Resistance and braking force act up the plane.");
+    n = add(out, n, "mg sin(theta) = resistance + braking force");
+    return add(out, n, "braking force = %.10g - %.10g = %.10g N", down, r, brake);
+  }
     if ((has(c, "torest") || has(c, "comestorest") || has(c, "broughttorest") ||
        has(t, "retardation") || has(t, "deceleration") || has(t, "braking") || has(t, "brake")) &&
       (has(t, "distance") || has(t, "travelling") || has(t, "travels") || has(t, "travelling") || has(t, "travelled") || has(t, "metres") || has(t, "meters")) && nv >= 2) {

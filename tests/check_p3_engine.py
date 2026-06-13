@@ -144,6 +144,7 @@ def main():
     require("A car mass 1000kg travels up a 4 degree slope at constant speed with resistance 300N. Find engine power at 20m/s.", ["Driving force = mg sin(theta) + resistance", "Power = Fv", "19672.268"])
     require("A car of mass 1200 kg travels up a slope inclined at 5 degrees. Resistance is 300 N. Find the driving force needed for acceleration 0.8 m/s^2.", ["Driving force - 1024.951535 - 300 = ma = 1200*0.8", "Driving force = 2284.951535 N"])
     require("A car of mass 900 kg moves down a 10 degree slope with resistance 250 N and braking force 500 N. Find acceleration.", ["Taking down the plane as positive", "resultant = 1531.576927 - 250 - 500", "a = F/m = 781.576927/900 = 0.868"])
+    require("A car travels down a slope angle 6 degrees at constant speed with resistance 700N. Find braking force if mass 1500kg.", ["constant speed down the slope", "mg sin(theta) = resistance + braking force", "braking force ="])
     require("connected(2,3,10)", ["Connected particles", "one system", "a = 2", "tension"])
     require("connected particles mass 2 mass 3 force 10", ["one system", "a = 2", "tension"])
     require("Two particles of masses 2kg and 3kg connected by a light string lie on a smooth table. A force 25N pulls the 3kg particle. Find acceleration and tension.", ["same acceleration", "a = 25/(2+3) = 5", "T = m1*a"])

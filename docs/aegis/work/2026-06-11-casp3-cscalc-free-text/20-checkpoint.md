@@ -1,5 +1,34 @@
 # Checkpoint
 
+## 2026-06-13 P3 Braking Route Precedence Slice
+
+Completed:
+- Fixed down-slope constant-speed braking-force prompts so they route before generic SUVAT deceleration.
+- Added explicit force-balance working: down-plane weight component, resistance/braking up the plane, and `mg sin(theta) = resistance + braking force`.
+- Added regression and rebuilt calculator-ready outputs.
+
+Evidence:
+- Targeted braking prompt now gives `constant speed down the slope`, `mg sin(theta) = resistance + braking force`, and `braking force =`.
+- `python3 tests/check_p3_engine.py`: passed.
+- `python3 tests/check_cscalc_engine.py`: passed.
+- `python3 tests/check_multi_app_suite.py`: passed.
+- `python3 tools/check_catalog_scope.py`: passed.
+- `python3 tools/check_removed_features.py`: passed.
+- `git diff --check`: passed.
+- `./compile`: passed.
+- Size evidence:
+  - `CAS.g3a: 2087936 bytes`
+  - `RUNMAT.g3a: 30216 bytes`
+  - `CASP3.g3a: 489492 bytes`
+  - `CSCALC.g3a: 273336 bytes`
+  - `NOTES.g3a: 46952 bytes`
+  - `CAS.PAK: 18178 bytes`
+
+Drift check:
+- Stayed inside CASP3 route precedence, P3 tests, checkpoint, and rebuilt CASP3 artifact.
+- No Pure CAS source, CSCALC source, menu/UI/session, NOTES source, or shared status-bar behavior changed.
+- Active goal remains open for further unseen-case hardening.
+
 ## 2026-06-13 P3 CS Wording Precedence Slice
 
 Completed:
