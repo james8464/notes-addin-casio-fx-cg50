@@ -250,15 +250,16 @@ static void copy_initial(char *dst, int dst_len, const char *src) {
   dst[i] = 0;
 }
 
-static void run_input(const char *initial, unsigned *tick) {
+static bool run_input(const char *initial, unsigned *tick) {
   char input[96];
   copy_initial(input, sizeof(input), initial);
-  if (!ui_input("CSCalc input", input, sizeof(input), tick)) return;
+  if (!ui_input("CSCalc", input, sizeof(input), tick)) return false;
   char lines[CSCALC_MAX_LINES][CSCALC_LINE_LEN];
   int count = cscalc_eval(input, lines);
   const char *ptrs[CSCALC_MAX_LINES];
   for (int i = 0; i < count; ++i) ptrs[i] = lines[i];
   ui_wait_page("Working", ptrs, count, tick);
+  return true;
 }
 
 static void open_item(int sel, bool help, unsigned *tick) {
@@ -294,14 +295,6 @@ static void open_examples(int sel, unsigned *tick) {
 int main() {
   Bdisp_EnableColor(1);
   unsigned tick = (unsigned)RTC_GetTicks();
-  int sel = 0, top = 0, count = sizeof(menu_items)/sizeof(menu_items[0]);
-  ui_menu_keys("AQA CS Calc", menu_items, count, top, sel, "HELP", "RUN", "EXS", "", "", "BACK");
-  for (;;) {
-    int key = ui_key_poll();
-    if (key == KEY_CTRL_EXIT || key == KEY_CTRL_AC || key == KEY_CTRL_MENU || key == KEY_CTRL_F6) return 0;
-    if (ui_menu_handle_key(key, count, UI_MENU_ROWS, &sel, &top)) ui_menu_keys("AQA CS Calc", menu_items, count, top, sel, "HELP", "RUN", "EXS", "", "", "BACK");
-    if (key == KEY_CTRL_EXE || key == KEY_CTRL_F2) { open_item(sel, false, &tick); ui_menu_keys("AQA CS Calc", menu_items, count, top, sel, "HELP", "RUN", "EXS", "", "", "BACK"); }
-    if (key == KEY_CTRL_F1) { open_item(sel, true, &tick); ui_menu_keys("AQA CS Calc", menu_items, count, top, sel, "HELP", "RUN", "EXS", "", "", "BACK"); }
-    if (key == KEY_CTRL_F3) { open_examples(sel, &tick); ui_menu_keys("AQA CS Calc", menu_items, count, top, sel, "HELP", "RUN", "EXS", "", "", "BACK"); }
-  }
+  while (run_input("", &tick)) {}
+  return 0;
 }

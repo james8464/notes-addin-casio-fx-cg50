@@ -10,11 +10,12 @@
 
 ## Controls
 
-- `EXE` or `F2`: insert/run the selected command template.
-- `F1`: help sheet for the selected topic.
-- `F3`: examples for the selected topic.
-- `F4/F5` in input: previous/next command history.
-- `EXIT` or `F6`: back.
+- Type a command at the prompt, e.g. `suvat(u=2,a=3,t=4)`.
+- `EXE` or `F1`: run command.
+- `F2`, `EXIT`, or `AC` at the prompt: quit/back.
+- `F3`: delete one character.
+- `F4/F5`: previous/next command history.
+- On a working page, `UP/DOWN` scroll and `F6`, `EXIT`, or `AC` returns to the prompt.
 
 ## Mechanics Commands
 
@@ -272,7 +273,7 @@ Examples:
 
 ## Command-Only Input
 
-This app is command-only. Use the menu templates or type one of the command forms below.
+This app is command-only. It starts at an input prompt like KhiCAS: type the function and parameters, press `EXE`, then read the working lines.
 
 ## Full Command / Alias Index
 
