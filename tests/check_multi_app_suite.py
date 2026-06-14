@@ -16,11 +16,11 @@ def require(path: str, needles: list[str]) -> None:
 def main() -> int:
     require(
         "tools/casio_suite_ui.hpp",
-        ["ui_status()", "ui_menu_keys", "ui_softkeys", "ui_print_mini_grid(0, 58, menu, 4)", "ui_mprintxy", "TScrollbar", "PREV", "NEXT"],
+        ["ui_status()", "ui_menu_keys", "ui_softkeys", "ui_print_mini_grid(0, 58, menu, 4)", "ui_khicas_fkeys", "| view | cmds | A<>a | File ", "ui_console_input", "ui_console_wait_page", "ui_mprintxy", "TScrollbar", "PREV", "NEXT"],
     )
-    require("tools/p3_app.cc", ["while (run_input(\"\", &tick))", "command_templates", "p3_eval", "SUVAT", "Projectiles", "Hypothesis tests", "Normal dist", "Regression"])
+    require("tools/p3_app.cc", ["while (run_input(\"\", &tick))", "ui_console_input", "ui_console_wait_page", "command_templates", "p3_eval", "SUVAT", "Projectiles", "Hypothesis tests", "Normal dist", "Regression"])
     require("tools/p3_engine.cpp", ["suvat(", "projectile(", "hypbinom(", "binomcdf(", "incline(", "pulley(", "poisson("])
-    require("tools/cscalc_app.cc", ["while (run_input(\"\", &tick))", "command_templates", "cscalc_eval", "Two's complement", "Floating decode", "Image storage", "Compression"])
+    require("tools/cscalc_app.cc", ["while (run_input(\"\", &tick))", "ui_console_input", "ui_console_wait_page", "command_templates", "cscalc_eval", "Two's complement", "Floating decode", "Image storage", "Compression"])
     require("tools/cscalc_engine.cpp", ["twosdec(", "twossub(", "floatdec(", "floatenc(", "bool(", "nand", "image("])
     require("tools/notes_app.cc", ["Bfile_FindFirst_NON_SMEM", ".txt", "load_file_buf", "Find all text", "Find text", "search_all_rec", "file_text_matches", "SearchPattern", "search_prepare", "search_step", "search_results_menu", "ui_menu_keys", "hidden_system_folder", ".Trashes", ".fseventsd", "SAVE-F", "NOTES_ROOT", r"\\\\fls0\\NOTES\\"])
     require("tools/build_g3a.sh", ["CASP3.g3a", "CSCALC.g3a", "NOTES.g3a"])

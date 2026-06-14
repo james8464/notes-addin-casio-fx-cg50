@@ -6,6 +6,7 @@
 #include <fxcg/misc.h>
 #include <fxcg/system.h>
 #include <ctype.h>
+#include <stdio.h>
 #include <string.h>
 
 extern "C" {
@@ -133,6 +134,16 @@ static void ui_print_mini_grid(int x, int y, const char *s, int mode) {
   x *= 3;
   y *= 3;
   PrintMini(&x, &y, (unsigned char *)(s ? s : ""), mode, 0xffffffff, 0, 0, UI_BLACK, UI_WHITE, 1, 0);
+}
+
+static void ui_print_mini_px(int x, int y, const char *s, int mode) {
+  PrintMini(&x, &y, (unsigned char *)(s ? s : ""), mode, 0xffffffff, 0, 0, UI_BLACK, UI_WHITE, 1, 0);
+}
+
+static void ui_khicas_fkeys(const char *f1, const char *f2) {
+  char menu[64];
+  sprintf(menu, " %-6.6s| %-6.6s| view | cmds | A<>a | File ", f1 ? f1 : "", f2 ? f2 : "");
+  ui_print_mini_px(0, 58 * 3, menu, 4);
 }
 
 static void ui_softkeys(const char *f1, const char *f2, const char *f3, const char *f4, const char *f5, const char *f6) {
@@ -297,6 +308,84 @@ static bool ui_input(const char *title, char *buf, int cap, unsigned *tick) {
     }
     int ch = ui_key_char(key);
     if (ch && len + 1 < cap) { buf[len++] = (char)ch; buf[len] = 0; }
+  }
+}
+
+static void ui_console_chrome() {
+  Bdisp_AllClr_VRAM();
+  ui_fill(0, 0, LCD_WIDTH_PX, LCD_HEIGHT_PX, UI_WHITE);
+}
+
+static void ui_console_draw_input(const char *buf) {
+  ui_console_chrome();
+  ui_print_mini_px(0, 18, ">", 0);
+  ui_print_mini_px(12, 18, buf ? buf : "", 0);
+  int cursor = 12 + 12 * (int)strlen(buf ? buf : "");
+  if (cursor > LCD_WIDTH_PX - 8) cursor = LCD_WIDTH_PX - 8;
+  ui_fill(cursor, 18, 2, 18, UI_BLACK);
+  ui_khicas_fkeys("RUN", "");
+  ui_status();
+  ui_flush();
+}
+
+static bool ui_console_input(char *buf, int cap) {
+  int len = (int)strlen(buf);
+  static char hist[6][96];
+  static int hist_count = 0;
+  int hist_pos = hist_count;
+  for (;;) {
+    ui_console_draw_input(buf);
+    int key = ui_key_poll();
+    if (key == KEY_CTRL_EXIT || key == KEY_CTRL_AC || key == KEY_CTRL_F6) return false;
+    if (key == KEY_CTRL_EXE || key == KEY_CTRL_F1) {
+      if (buf[0] && (hist_count == 0 || strcmp(hist[(hist_count - 1) % 6], buf))) {
+        strncpy(hist[hist_count % 6], buf, 95);
+        hist[hist_count % 6][95] = 0;
+        ++hist_count;
+      }
+      return true;
+    }
+    if (key == KEY_CTRL_DEL && len > 0) buf[--len] = 0;
+    if (key == KEY_CTRL_UP && hist_count > 0) {
+      int hist_min = hist_count > 6 ? hist_count - 6 : 0;
+      if (hist_pos > hist_min) --hist_pos;
+      strncpy(buf, hist[hist_pos % 6], cap - 1);
+      buf[cap - 1] = 0;
+      len = (int)strlen(buf);
+      continue;
+    }
+    if (key == KEY_CTRL_DOWN && hist_count > 0) {
+      if (hist_pos + 1 < hist_count) ++hist_pos;
+      strncpy(buf, hist[hist_pos % 6], cap - 1);
+      buf[cap - 1] = 0;
+      len = (int)strlen(buf);
+      continue;
+    }
+    int ch = ui_key_char(key);
+    if (ch && len + 1 < cap) {
+      buf[len++] = (char)ch;
+      buf[len] = 0;
+    }
+  }
+}
+
+static void ui_console_draw_page(const char *const *lines, int count, int top) {
+  ui_console_chrome();
+  for (int i = 0; i < 9 && top + i < count; ++i)
+    ui_print_mini_px(0, i * 18, lines[top + i], 0);
+  ui_khicas_fkeys("", "BACK");
+  ui_status();
+  ui_flush();
+}
+
+static void ui_console_wait_page(const char *const *lines, int count) {
+  int top = 0;
+  ui_console_draw_page(lines, count, top);
+  for (;;) {
+    int key = ui_key_poll();
+    if (key == KEY_CTRL_EXIT || key == KEY_CTRL_AC || key == KEY_CTRL_F2 || key == KEY_CTRL_F6) return;
+    if (key == KEY_CTRL_UP && top > 0) ui_console_draw_page(lines, count, --top);
+    if (key == KEY_CTRL_DOWN && top + 9 < count) ui_console_draw_page(lines, count, ++top);
   }
 }
 

@@ -219,14 +219,18 @@ static void copy_initial(char *dst, int dst_len, const char *src) {
 }
 
 static bool run_input(const char *initial, unsigned *tick) {
+  (void)tick;
   char input[96];
   copy_initial(input, sizeof(input), initial);
-  if (!ui_input("CASP3", input, sizeof(input), tick)) return false;
+  if (!ui_console_input(input, sizeof(input))) return false;
   char lines[P3_MAX_LINES][P3_LINE_LEN];
   int count = p3_eval(input, lines);
-  const char *ptrs[P3_MAX_LINES];
-  for (int i = 0; i < count; ++i) ptrs[i] = lines[i];
-  ui_wait_page("Working", ptrs, count, tick);
+  char prompt[112];
+  sprintf(prompt, ">%s", input);
+  const char *ptrs[P3_MAX_LINES + 1];
+  ptrs[0] = prompt;
+  for (int i = 0; i < count; ++i) ptrs[i + 1] = lines[i];
+  ui_console_wait_page(ptrs, count + 1);
   return true;
 }
 
