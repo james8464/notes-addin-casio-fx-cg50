@@ -262,17 +262,13 @@ int main() {
   Bdisp_EnableColor(1);
   unsigned tick = (unsigned)RTC_GetTicks();
   int sel = 0, top = 0, count = sizeof(menu_items)/sizeof(menu_items[0]);
-  bool rv = ui_r_visible(tick);
-  ui_menu_keys("CASP3 Paper 3", menu_items, count, top, sel, rv, "HELP", "RUN", "EXS", "", "", "BACK");
+  ui_menu_keys("CASP3 Paper 3", menu_items, count, top, sel, "HELP", "RUN", "EXS", "", "", "BACK");
   for (;;) {
     int key = ui_key_poll();
-    bool nr = ui_r_visible(tick);
-    if (nr != rv) { rv = nr; ui_menu_keys("CASP3 Paper 3", menu_items, count, top, sel, rv, "HELP", "RUN", "EXS", "", "", "BACK"); }
     if (key == KEY_CTRL_EXIT || key == KEY_CTRL_AC || key == KEY_CTRL_MENU || key == KEY_CTRL_F6) return 0;
-    if (ui_menu_handle_key(key, count, UI_MENU_ROWS, &sel, &top)) ui_menu_keys("CASP3 Paper 3", menu_items, count, top, sel, rv, "HELP", "RUN", "EXS", "", "", "BACK");
-    if (key == KEY_CTRL_EXE || key == KEY_CTRL_F2) { open_item(sel, false, &tick); rv = ui_r_visible(tick); ui_menu_keys("CASP3 Paper 3", menu_items, count, top, sel, rv, "HELP", "RUN", "EXS", "", "", "BACK"); }
-    if (key == KEY_CTRL_F1) { open_item(sel, true, &tick); rv = ui_r_visible(tick); ui_menu_keys("CASP3 Paper 3", menu_items, count, top, sel, rv, "HELP", "RUN", "EXS", "", "", "BACK"); }
-    if (key == KEY_CTRL_F3) { open_examples(sel, &tick); rv = ui_r_visible(tick); ui_menu_keys("CASP3 Paper 3", menu_items, count, top, sel, rv, "HELP", "RUN", "EXS", "", "", "BACK"); }
-    OS_InnerWait_ms(35);
+    if (ui_menu_handle_key(key, count, UI_MENU_ROWS, &sel, &top)) ui_menu_keys("CASP3 Paper 3", menu_items, count, top, sel, "HELP", "RUN", "EXS", "", "", "BACK");
+    if (key == KEY_CTRL_EXE || key == KEY_CTRL_F2) { open_item(sel, false, &tick); ui_menu_keys("CASP3 Paper 3", menu_items, count, top, sel, "HELP", "RUN", "EXS", "", "", "BACK"); }
+    if (key == KEY_CTRL_F1) { open_item(sel, true, &tick); ui_menu_keys("CASP3 Paper 3", menu_items, count, top, sel, "HELP", "RUN", "EXS", "", "", "BACK"); }
+    if (key == KEY_CTRL_F3) { open_examples(sel, &tick); ui_menu_keys("CASP3 Paper 3", menu_items, count, top, sel, "HELP", "RUN", "EXS", "", "", "BACK"); }
   }
 }

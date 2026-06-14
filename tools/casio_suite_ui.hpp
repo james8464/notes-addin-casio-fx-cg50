@@ -23,8 +23,6 @@ static const unsigned short UI_BLUE = COLOR_BLUE;
 static const unsigned short UI_LIGHT = RGB565(242, 243, 245);
 static const unsigned short UI_GRAY = RGB565(210, 213, 218);
 static const unsigned short UI_FRAME = RGB565(74, 74, 82);
-static const unsigned UI_R_BLINK_PERIOD = 384;
-static const unsigned UI_R_VISIBLE_TICKS = 256;
 static const int UI_MENU_ROWS = 7;
 typedef scrollbar TScrollbar;
 
@@ -53,26 +51,13 @@ static void ui_flush() {
   Bdisp_PutDisp_DD();
 }
 
-static void ui_status(bool r_visible) {
+static void ui_status() {
   DefineStatusAreaFlags(3,
                         SAF_BATTERY | SAF_SETUP_INPUT_OUTPUT | SAF_SETUP_FRAC_RESULT |
                             SAF_SETUP_ANGLE | SAF_SETUP_COMPLEX_MODE | SAF_SETUP_DISPLAY,
                         0, 0);
   EnableStatusArea(2);
   DisplayStatusArea();
-  if (r_visible) {
-    ui_fill(339, 0, 21, 23, UI_BLUE);
-    PrintCXY(342, 1, "R", 0x40, -1, UI_WHITE, UI_BLUE, 1, 0);
-  } else {
-    ui_fill(339, 0, 21, 23, UI_WHITE);
-  }
-  ui_fill(339, 23, 21, 2, UI_WHITE);
-  ui_hline(339, 359, 23, UI_BLACK);
-}
-
-static bool ui_r_visible(unsigned start_tick) {
-  unsigned phase = ((unsigned)RTC_GetTicks() - start_tick) % UI_R_BLINK_PERIOD;
-  return phase < UI_R_VISIBLE_TICKS;
 }
 
 static int ui_key_poll() {
@@ -175,10 +160,10 @@ static void ui_softkeys(const char *f1, const char *f2, const char *f3, const ch
   ui_print_mini_grid(0, 58, menu, 4);
 }
 
-static void ui_chrome(const char *title, bool r_visible) {
+static void ui_chrome(const char *title) {
   Bdisp_AllClr_VRAM();
   ui_fill(0, 0, LCD_WIDTH_PX, LCD_HEIGHT_PX, UI_WHITE);
-  ui_status(r_visible);
+  ui_status();
   if (title && title[0]) {
     ui_mprintxy(1, 1, title, 0, COLOR_BLUE);
   }
@@ -188,9 +173,9 @@ static void ui_print(int x, int y, const char *s) {
   Bdisp_MMPrint(x, y, s, 0x40, 0xffffffff, 0, 0, UI_BLACK, UI_WHITE, 1, 0);
 }
 
-static void ui_menu_keys(const char *title, const char *const *items, int count, int top, int sel, bool r_visible,
+static void ui_menu_keys(const char *title, const char *const *items, int count, int top, int sel,
                          const char *f1, const char *f2, const char *f3, const char *f4, const char *f5, const char *f6) {
-  ui_chrome(title, r_visible);
+  ui_chrome(title);
   ui_softkeys(f1, f2, f3, f4, f5, f6);
   int visible = UI_MENU_ROWS;
   if (sel >= top + visible) top = sel - visible + 1;
@@ -234,12 +219,12 @@ static void ui_menu_keys(const char *title, const char *const *items, int count,
   ui_flush();
 }
 
-static void ui_menu(const char *title, const char *const *items, int count, int top, int sel, bool r_visible) {
-  ui_menu_keys(title, items, count, top, sel, r_visible, "OPEN", "", "", "", "", "BACK");
+static void ui_menu(const char *title, const char *const *items, int count, int top, int sel) {
+  ui_menu_keys(title, items, count, top, sel, "OPEN", "", "", "", "", "BACK");
 }
 
-static void ui_page(const char *title, const char *const *lines, int count, int top, bool r_visible) {
-  ui_chrome(title, r_visible);
+static void ui_page(const char *title, const char *const *lines, int count, int top) {
+  ui_chrome(title);
   ui_softkeys("", "BACK", "UP", "DOWN", "", "");
   for (int i = 0; i < 8 && top + i < count; ++i)
     ui_print(14, 55 + i * 17, lines[top + i]);
@@ -247,20 +232,14 @@ static void ui_page(const char *title, const char *const *lines, int count, int 
 }
 
 static void ui_wait_page(const char *title, const char *const *lines, int count, unsigned *tick) {
+  (void)tick;
   int top = 0;
-  bool rv = ui_r_visible(*tick);
-  ui_page(title, lines, count, top, rv);
+  ui_page(title, lines, count, top);
   for (;;) {
     int key = ui_key_poll();
-    bool nr = ui_r_visible(*tick);
-    if (nr != rv) {
-      rv = nr;
-      ui_page(title, lines, count, top, rv);
-    }
     if (key == KEY_CTRL_EXIT || key == KEY_CTRL_AC || key == KEY_CTRL_F6) return;
-    if (key == KEY_CTRL_UP && top > 0) ui_page(title, lines, count, --top, rv);
-    if (key == KEY_CTRL_DOWN && top + 8 < count) ui_page(title, lines, count, ++top, rv);
-    OS_InnerWait_ms(35);
+    if (key == KEY_CTRL_UP && top > 0) ui_page(title, lines, count, --top);
+    if (key == KEY_CTRL_DOWN && top + 8 < count) ui_page(title, lines, count, ++top);
   }
 }
 
@@ -279,13 +258,13 @@ static int ui_key_char(int key) {
 }
 
 static bool ui_input(const char *title, char *buf, int cap, unsigned *tick) {
+  (void)tick;
   int len = (int)strlen(buf);
   static char hist[6][96];
   static int hist_count = 0;
   int hist_pos = hist_count;
-  bool rv = ui_r_visible(*tick);
   for (;;) {
-    ui_chrome(title, rv);
+    ui_chrome(title);
     ui_print(14, 48, "EXE runs command.");
     DirectDrawRectangle(12, 75, 382, 116, UI_BLACK);
     ui_fill(13, 76, 369, 40, UI_LIGHT);
@@ -293,8 +272,6 @@ static bool ui_input(const char *title, char *buf, int cap, unsigned *tick) {
     ui_softkeys("RUN", "BACK", "DEL", "PREV", "NEXT", "");
     ui_flush();
     int key = ui_key_poll();
-    bool nr = ui_r_visible(*tick);
-    if (nr != rv) { rv = nr; continue; }
     if (key == KEY_CTRL_EXIT || key == KEY_CTRL_AC || key == KEY_CTRL_F2 || key == KEY_CTRL_F6) return false;
     if (key == KEY_CTRL_EXE || key == KEY_CTRL_F1) {
       if (buf[0] && (hist_count == 0 || strcmp(hist[(hist_count - 1) % 6], buf))) {
@@ -320,7 +297,6 @@ static bool ui_input(const char *title, char *buf, int cap, unsigned *tick) {
     }
     int ch = ui_key_char(key);
     if (ch && len + 1 < cap) { buf[len++] = (char)ch; buf[len] = 0; }
-    OS_InnerWait_ms(35);
   }
 }
 

@@ -257,13 +257,13 @@ static int build_view_lines(int hscroll) {
   return line;
 }
 
-static void notes_menu(const char *title, const char *const *items, int count, int top, int sel, bool rv,
+static void notes_menu(const char *title, const char *const *items, int count, int top, int sel,
                        const char *f1, const char *f2, const char *f3, const char *f4, const char *f5, const char *f6) {
-  ui_menu_keys(title, items, count, top, sel, rv, f1, f2, f3, f4, f5, f6);
+  ui_menu_keys(title, items, count, top, sel, f1, f2, f3, f4, f5, f6);
 }
 
-static void notes_message(const char *title, const char *a, const char *b, const char *c, bool rv) {
-  ui_chrome(title, rv);
+static void notes_message(const char *title, const char *a, const char *b, const char *c) {
+  ui_chrome(title);
   ui_softkeys("", "", "", "", "", "BACK");
   if (a) ui_print(18, 55, a);
   if (b) ui_print(18, 72, b);
@@ -271,8 +271,8 @@ static void notes_message(const char *title, const char *a, const char *b, const
   ui_flush();
 }
 
-static void notes_text_page(const char *title, const char *const *lines, int count, int top, int hscroll, bool rv) {
-  ui_chrome(title, rv);
+static void notes_text_page(const char *title, const char *const *lines, int count, int top, int hscroll) {
+  ui_chrome(title);
   ui_softkeys("NEXT", "PREV", "PGUP", "PGDN", "FIND", "BACK");
   char pos[48];
   sprintf(pos, "%d/%d", count ? top + 1 : 0, count);
@@ -296,6 +296,7 @@ static int find_line(const char *const *lines, int count, const SearchPattern *s
 }
 
 static void wait_text_page(const char *title, const char *path, const char *initial_query, unsigned *tick) {
+  (void)tick;
   int top = 0, hscroll = 0;
   SearchPattern sp;
   search_prepare(&sp, initial_query && initial_query[0] ? initial_query : "");
@@ -305,37 +306,31 @@ static void wait_text_page(const char *title, const char *path, const char *init
     if (f >= 0) top = f;
   }
   if (top + PAGE_LINES > lines) top = max_int(0, lines - PAGE_LINES);
-  bool rv = ui_r_visible(*tick);
-  notes_text_page(title, view_lines, lines, top, hscroll, rv);
+  notes_text_page(title, view_lines, lines, top, hscroll);
   for (;;) {
     int key = ui_key_poll();
-    bool nr = ui_r_visible(*tick);
-    if (nr != rv) {
-      rv = nr;
-      notes_text_page(title, view_lines, lines, top, hscroll, rv);
-    }
     if (key == KEY_CTRL_EXIT || key == KEY_CTRL_AC || key == KEY_CTRL_F6) return;
-    if (key == KEY_CTRL_UP && top > 0) notes_text_page(title, view_lines, lines, --top, hscroll, rv);
-    if (key == KEY_CTRL_DOWN && top + PAGE_LINES < lines) notes_text_page(title, view_lines, lines, ++top, hscroll, rv);
+    if (key == KEY_CTRL_UP && top > 0) notes_text_page(title, view_lines, lines, --top, hscroll);
+    if (key == KEY_CTRL_DOWN && top + PAGE_LINES < lines) notes_text_page(title, view_lines, lines, ++top, hscroll);
     if ((key == KEY_CTRL_PAGEUP || key == KEY_CTRL_F3) && top > 0) {
       top = max_int(0, top - PAGE_LINES);
-      notes_text_page(title, view_lines, lines, top, hscroll, rv);
+      notes_text_page(title, view_lines, lines, top, hscroll);
     }
     if ((key == KEY_CTRL_PAGEDOWN || key == KEY_CTRL_F4) && top + PAGE_LINES < lines) {
       top = min_int(max_int(0, lines - PAGE_LINES), top + PAGE_LINES);
-      notes_text_page(title, view_lines, lines, top, hscroll, rv);
+      notes_text_page(title, view_lines, lines, top, hscroll);
     }
     if (key == KEY_CTRL_RIGHT) {
       hscroll += 8;
       lines = build_view_lines(hscroll);
       top = min_int(top, max_int(0, lines - PAGE_LINES));
-      notes_text_page(title, view_lines, lines, top, hscroll, rv);
+      notes_text_page(title, view_lines, lines, top, hscroll);
     }
     if (key == KEY_CTRL_LEFT && hscroll > 0) {
       hscroll = max_int(0, hscroll - 8);
       lines = build_view_lines(hscroll);
       top = min_int(top, max_int(0, lines - PAGE_LINES));
-      notes_text_page(title, view_lines, lines, top, hscroll, rv);
+      notes_text_page(title, view_lines, lines, top, hscroll);
     }
     if (key == KEY_CTRL_F5) {
       char q[32];
@@ -346,22 +341,21 @@ static void wait_text_page(const char *title, const char *path, const char *init
         int f = find_line(view_lines, lines, &sp, top, 1);
         if (f >= 0) top = min_int(f, max_int(0, lines - PAGE_LINES));
       }
-      notes_text_page(title, view_lines, lines, top, hscroll, rv);
+      notes_text_page(title, view_lines, lines, top, hscroll);
     }
     if (key == KEY_CTRL_F1) {
       if (sp.len <= 0 && last_query[0]) search_prepare(&sp, last_query);
       int f = find_line(view_lines, lines, &sp, top + 1, 1);
       if (f >= 0) top = min_int(f, max_int(0, lines - PAGE_LINES));
-      notes_text_page(title, view_lines, lines, top, hscroll, rv);
+      notes_text_page(title, view_lines, lines, top, hscroll);
     }
     if (key == KEY_CTRL_F2) {
       if (sp.len <= 0 && last_query[0]) search_prepare(&sp, last_query);
       int f = find_line(view_lines, lines, &sp, top - 1, -1);
       if (f >= 0) top = min_int(f, max_int(0, lines - PAGE_LINES));
-      notes_text_page(title, view_lines, lines, top, hscroll, rv);
+      notes_text_page(title, view_lines, lines, top, hscroll);
     }
     (void)path;
-    OS_InnerWait_ms(35);
   }
 }
 
@@ -467,8 +461,8 @@ static void show_file_path(const char *path, const char *name, const char *query
 }
 
 static int search_results_menu(unsigned *tick) {
+  (void)tick;
   int sel = 0, top = 0;
-  bool rv = ui_r_visible(*tick);
   bool dirty = true;
   for (;;) {
     if (dirty) {
@@ -476,12 +470,10 @@ static int search_results_menu(unsigned *tick) {
       for (int i = 0; i < result_count; ++i) items[i] = results[i].label;
       char title[48];
       sprintf(title, "Find: %.24s", last_query);
-      notes_menu(title, items, result_count, top, sel, rv, "OPEN", "NEW", "", "", "", "BACK");
+      notes_menu(title, items, result_count, top, sel, "OPEN", "NEW", "", "", "", "BACK");
       dirty = false;
     }
     int key = ui_key_poll();
-    bool nr = ui_r_visible(*tick);
-    if (nr != rv) { rv = nr; dirty = true; }
     if (key == KEY_CTRL_EXIT || key == KEY_CTRL_AC || key == KEY_CTRL_F6) return 0;
     if (ui_menu_handle_key(key, result_count, MENU_ROWS, &sel, &top)) dirty = true;
     if (key == KEY_CTRL_F2) return 1;
@@ -489,7 +481,6 @@ static int search_results_menu(unsigned *tick) {
       show_file_path(results[sel].path, results[sel].name, last_query, tick);
       dirty = true;
     }
-    OS_InnerWait_ms(35);
   }
 }
 
@@ -502,11 +493,11 @@ static void search_all_notes(unsigned *tick) {
     SearchPattern sp;
     search_prepare(&sp, q);
     result_count = 0;
-    notes_message("Find all", "Searching all .txt files...", q, 0, ui_r_visible(*tick));
+    notes_message("Find all", "Searching all .txt files...", q, 0);
     search_all_rec("\\\\fls0\\", &sp, 0, tick);
     refresh_result_labels();
     if (!result_count) {
-      notes_message("Find all", "No results found.", q, "F6 returns.", ui_r_visible(*tick));
+      notes_message("Find all", "No results found.", q, "F6 returns.");
       for (;;) {
         int key = ui_key_poll();
         if (key == KEY_CTRL_EXIT || key == KEY_CTRL_AC || key == KEY_CTRL_F6 || key == KEY_CTRL_EXE) break;
@@ -526,21 +517,18 @@ int main() {
   unsigned tick = (unsigned)RTC_GetTicks();
   int sel = 0, top = 0;
   scan_dir();
-  bool rv = ui_r_visible(tick);
   bool dirty = true;
   for (;;) {
     if (dirty) {
       const char *names[MAX_ENTRIES];
       for (int i = 0; i < entry_count; ++i) names[i] = entries[i].name;
       if (entry_count)
-        notes_menu("NOTES", names, entry_count, top, sel, rv, "OPEN", "FIND", "", "", "", "BACK");
+        notes_menu("NOTES", names, entry_count, top, sel, "OPEN", "FIND", "", "", "", "BACK");
       else
-        notes_message("NOTES", "No .txt files here.", "F6 goes back.", 0, rv);
+        notes_message("NOTES", "No .txt files here.", "F6 goes back.", 0);
       dirty = false;
     }
     int key = ui_key_poll();
-    bool nr = ui_r_visible(tick);
-    if (nr != rv) { rv = nr; dirty = true; }
     if (key == KEY_CTRL_MENU || key == KEY_CTRL_AC) return 0;
     if (key == KEY_CTRL_EXIT || key == KEY_CTRL_F6) { up_folder(); sel = top = 0; scan_dir(); dirty = true; }
     if (ui_menu_handle_key(key, entry_count, MENU_ROWS, &sel, &top)) dirty = true;
@@ -549,6 +537,5 @@ int main() {
       if (entries[sel].is_folder) { copy_str(cwd_path, sizeof(cwd_path), entries[sel].path); sel = top = 0; scan_dir(); dirty = true; }
       else { show_file(&entries[sel], &tick); dirty = true; }
     }
-    OS_InnerWait_ms(35);
   }
 }
