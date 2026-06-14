@@ -21,16 +21,20 @@ Unsupported:
 
 ## Folder Layout
 
-Copy folders and `.txt` files to calculator storage. The app starts at:
+Create a top-level folder called `NOTES` in calculator storage. Copy all note folders and `.txt` files inside it.
 
-`\\fls0\\`
+The app starts at:
+
+`\\fls0\\NOTES\\`
+
+It cannot browse or search outside this folder.
 
 Example:
 
 ```text
-\\fls0\\Maths\\Pure\\integration.txt
-\\fls0\\Maths\\Stats\\normal.txt
-\\fls0\\CS\\FloatingPoint\\examples.txt
+\\fls0\\NOTES\\Maths\\Pure\\integration.txt
+\\fls0\\NOTES\\Maths\\Stats\\normal.txt
+\\fls0\\NOTES\\CS\\FloatingPoint\\examples.txt
 ```
 
 ## Controls
@@ -62,7 +66,7 @@ Search covers:
 
 - folder names in the path,
 - file names,
-- contents of every `.txt` file in every folder under `\\fls0\\`.
+- contents of every `.txt` file in every folder under `\\fls0\\NOTES\\`.
 
 The last search query is kept. Pressing `F2` again pre-fills the previous query, so it can be edited or rerun without retyping.
 

@@ -45,7 +45,8 @@ static NoteEntry entries[MAX_ENTRIES];
 static SearchResult results[MAX_RESULTS];
 static int entry_count = 0;
 static int result_count = 0;
-static char cwd_path[280] = "\\\\fls0\\";
+static const char NOTES_ROOT[] = "\\\\fls0\\NOTES\\";
+static char cwd_path[280] = "\\\\fls0\\NOTES\\";
 static char file_buf[FILE_BUF_SIZE];
 static int file_buf_len = 0;
 static const char *view_lines[MAX_VIEW_LINES];
@@ -129,6 +130,22 @@ static int ends_with(const char *s, const char *tail) {
   return 1;
 }
 
+static int same_name_ci(const char *a, const char *b) {
+  int i = 0;
+  while (a[i] && b[i]) {
+    if (lower_char((unsigned char)a[i]) != lower_char((unsigned char)b[i])) return 0;
+    ++i;
+  }
+  return a[i] == 0 && b[i] == 0;
+}
+
+static int hidden_system_folder(const char *name) {
+  return same_name_ci(name, "CASIO") ||
+         same_name_ci(name, ".Trashes") ||
+         same_name_ci(name, "SAVE-F") ||
+         same_name_ci(name, ".fseventsd");
+}
+
 static void name_only(const char *path, char *out) {
   int i = strlen(path) - 1;
   while (i >= 0 && path[i] != '\\') --i;
@@ -137,11 +154,13 @@ static void name_only(const char *path, char *out) {
 
 static void up_folder() {
   int n = strlen(cwd_path);
-  if (n <= 7) return;
+  int root_len = strlen(NOTES_ROOT);
+  if (n <= root_len) return;
   if (cwd_path[n - 1] == '\\') cwd_path[n - 1] = 0;
   n = strlen(cwd_path) - 1;
-  while (n >= 7 && cwd_path[n] != '\\') --n;
+  while (n >= root_len && cwd_path[n] != '\\') --n;
   cwd_path[n + 1] = 0;
+  if ((int)strlen(cwd_path) < root_len) copy_str(cwd_path, sizeof(cwd_path), NOTES_ROOT);
 }
 
 static int scan_dir() {
@@ -158,7 +177,7 @@ static int scan_dir() {
     Bfile_NameToStr_ncpy((unsigned char *)name, found, 300);
     if (strcmp(name, ".") && strcmp(name, "..") && strcmp(name, "@MainMem")) {
       int is_folder = info.fsize == 0;
-      if (is_folder || ends_with(name, ".txt")) {
+      if ((is_folder && !hidden_system_folder(name)) || (!is_folder && ends_with(name, ".txt"))) {
         copy_str(entries[entry_count].name, sizeof(entries[entry_count].name), name);
         copy_str(entries[entry_count].path, sizeof(entries[entry_count].path), cwd_path);
         append_str(entries[entry_count].path, sizeof(entries[entry_count].path), name);
@@ -431,9 +450,11 @@ static int search_all_rec(const char *dir, const SearchPattern *sp, int depth, u
       int is_folder = info.fsize == 0;
       join_str(full, sizeof(full), dir, name);
       if (is_folder) {
-        char child[300];
-        join_str(child, sizeof(child), full, "\\");
-        search_all_rec(child, sp, depth + 1, tick);
+        if (!hidden_system_folder(name)) {
+          char child[300];
+          join_str(child, sizeof(child), full, "\\");
+          search_all_rec(child, sp, depth + 1, tick);
+        }
       } else if (ends_with(name, ".txt")) {
         int first = -1, hits = 0;
         int by_name = contains_kmp(name, sp);
@@ -494,7 +515,7 @@ static void search_all_notes(unsigned *tick) {
     search_prepare(&sp, q);
     result_count = 0;
     notes_message("Find all", "Searching all .txt files...", q, 0);
-    search_all_rec("\\\\fls0\\", &sp, 0, tick);
+    search_all_rec(NOTES_ROOT, &sp, 0, tick);
     refresh_result_labels();
     if (!result_count) {
       notes_message("Find all", "No results found.", q, "F6 returns.");
@@ -525,7 +546,7 @@ int main() {
       if (entry_count)
         notes_menu("NOTES", names, entry_count, top, sel, "OPEN", "FIND", "", "", "", "BACK");
       else
-        notes_message("NOTES", "No .txt files here.", "F6 goes back.", 0);
+        notes_message("NOTES", "Put notes in", "\\\\fls0\\NOTES\\", "then reopen.");
       dirty = false;
     }
     int key = ui_key_poll();
