@@ -147,8 +147,8 @@ static int scan_dir() {
   entry_count = 0;
   unsigned short path[300], found[300];
   char query[300], name[300];
-  strcpy(query, cwd_path);
-  strcat(query, "*");
+  copy_str(query, sizeof(query), cwd_path);
+  append_str(query, sizeof(query), "*");
   Bfile_StrToName_ncpy(path, (const unsigned char *)query, 300);
   int handle = 0;
   file_type_t info;
@@ -159,9 +159,9 @@ static int scan_dir() {
       int is_folder = info.fsize == 0;
       if (is_folder || ends_with(name, ".txt")) {
         copy_str(entries[entry_count].name, sizeof(entries[entry_count].name), name);
-        strcpy(entries[entry_count].path, cwd_path);
-        strcat(entries[entry_count].path, name);
-        if (is_folder) strcat(entries[entry_count].path, "\\");
+        copy_str(entries[entry_count].path, sizeof(entries[entry_count].path), cwd_path);
+        append_str(entries[entry_count].path, sizeof(entries[entry_count].path), name);
+        if (is_folder) append_str(entries[entry_count].path, sizeof(entries[entry_count].path), "\\");
         entries[entry_count].is_folder = is_folder;
         entries[entry_count].size = info.fsize;
         ++entry_count;
@@ -526,7 +526,7 @@ int main() {
     if (ui_menu_handle_key(key, entry_count, 7, &sel, &top)) {}
     if (key == KEY_CTRL_F2) search_all_notes(&tick);
     if ((key == KEY_CTRL_EXE || key == KEY_CTRL_F1) && entry_count) {
-      if (entries[sel].is_folder) { strcpy(cwd_path, entries[sel].path); sel = top = 0; scan_dir(); }
+      if (entries[sel].is_folder) { copy_str(cwd_path, sizeof(cwd_path), entries[sel].path); sel = top = 0; scan_dir(); }
       else show_file(&entries[sel], &tick);
     }
     OS_InnerWait_ms(35);

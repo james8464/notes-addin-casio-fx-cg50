@@ -3459,6 +3459,43 @@ static bool bool_arg_is_varlist(const char *s) {
   return any;
 }
 
+static void add_var_unique(char *vars, int *vc, char v, int maxv) {
+  v = (char)toupper((unsigned char)v);
+  if (v < 'A' || v > 'Z') return;
+  for (int i = 0; i < *vc; ++i) if (vars[i] == v) return;
+  if (*vc < maxv) { vars[(*vc)++] = v; vars[*vc] = 0; }
+}
+
+static void collect_arg_vars_into(const char *s, char *vars, int *vc, int maxv) {
+  for (int i = 0; s && s[i] && *vc < maxv; ++i)
+    if (isalpha((unsigned char)s[i])) add_var_unique(vars, vc, s[i], maxv);
+}
+
+static void default_vars(char *vars, int vc) {
+  for (int i = 0; i < vc; ++i) vars[i] = (char)('A' + i);
+  vars[vc] = 0;
+}
+
+static void set_parser_vars(BParser &p, const char *vars, int vc) {
+  for (int i = 0; i < vc; ++i) p.vars[i] = vars[i];
+}
+
+static void vars_csv(const char *vars, int vc, char *buf, int cap) {
+  int p = 0; buf[0] = 0;
+  for (int i = 0; i < vc; ++i) {
+    if (i) app_ch(buf, &p, cap, ',');
+    app_ch(buf, &p, cap, vars[i]);
+  }
+}
+
+static void ints_csv(const int *vals, int count, char *buf, int cap) {
+  int p = 0; buf[0] = 0;
+  for (int i = 0; i < count; ++i) {
+    if (i) app_ch(buf, &p, cap, ',');
+    app_int(buf, &p, cap, vals[i]);
+  }
+}
+
 static void imp_pos_text(const Imp &p, const char *vars, int vc, char *buf, int cap) {
   int pos = 0, parts = 0;
   app_ch(buf, &pos, cap, '(');
@@ -3502,13 +3539,7 @@ static int eval_bool(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN])
   expr = exprbuf;
   char vars[8]; int vc = 0;
   if (has_var_arg) {
-    for (int i = 0; a[1][i] && vc < 6; ++i) {
-      if (!isalpha((unsigned char)a[1][i])) continue;
-      char v = (char)toupper((unsigned char)a[1][i]);
-      bool seen = false; for (int j = 0; j < vc; ++j) if (vars[j] == v) seen = true;
-      if (!seen) vars[vc++] = v;
-    }
-    vars[vc] = 0;
+    collect_arg_vars_into(a[1], vars, &vc, 6);
   }
   if (!vc) collect_vars(expr, vars, &vc);
   if (vc == 0) {
@@ -3523,7 +3554,7 @@ static int eval_bool(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN])
   int vals[64];
   for (int m = 0; m < rows; ++m) {
     BParser p = { expr, 0, m, {0}, vc };
-    for (int i = 0; i < vc; ++i) p.vars[i] = vars[i];
+    set_parser_vars(p, vars, vc);
     vals[m] = p.expr() ? 1 : 0;
     if (vals[m]) mins[mc++] = m;
   }
@@ -3551,11 +3582,7 @@ static int eval_bool(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN])
     }
   }
   n = add(out, n, "Make truth table, list rows where output is 1.");
-  char ml[80] = ""; int pos = 0;
-  for (int i = 0; i < mc; ++i) {
-    if (i) app_ch(ml, &pos, 80, ',');
-    app_int(ml, &pos, 80, mins[i]);
-  }
+  char ml[80]; ints_csv(mins, mc, ml, sizeof(ml));
   n = add(out, n, "minterms: %s", mc ? ml : "none");
   if (mc == 0) return add(out, n, "simplified = 0");
   if (mc == rows) return add(out, n, "simplified = 1");
@@ -3629,28 +3656,20 @@ static int eval_posform(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LE
   char exprbuf[96]; bool_norm(a[0], exprbuf, sizeof(exprbuf));
   char vars[8]; int vc = 0;
   if (na >= 2) {
-    for (int i = 0; a[1][i] && vc < 6; ++i) {
-      if (!isalpha((unsigned char)a[1][i])) continue;
-      char v = (char)toupper((unsigned char)a[1][i]);
-      bool seen = false; for (int j = 0; j < vc; ++j) if (vars[j] == v) seen = true;
-      if (!seen) vars[vc++] = v;
-    }
-    vars[vc] = 0;
+    collect_arg_vars_into(a[1], vars, &vc, 6);
   }
   if (!vc) collect_vars(exprbuf, vars, &vc);
   if (vc == 0 || vc > 6) return add(out, 0, "Use up to 6 Boolean variables.");
   int rows = 1 << vc, zeros[64], zc = 0;
   for (int m = 0; m < rows; ++m) {
     BParser p = { exprbuf, 0, m, {0}, vc };
-    for (int i = 0; i < vc; ++i) p.vars[i] = vars[i];
+    set_parser_vars(p, vars, vc);
     if (!p.expr()) zeros[zc++] = m;
   }
   int n = add(out, 0, "Product-of-sums method: make a truth table and list 0-cells.");
-  char vl[32] = ""; int vp = 0;
-  for (int i = 0; i < vc; ++i) { if (i) app_ch(vl, &vp, sizeof(vl), ','); app_ch(vl, &vp, sizeof(vl), vars[i]); }
+  char vl[32]; vars_csv(vars, vc, vl, sizeof(vl));
   n = add(out, n, "variables: %s", vl);
-  char zl[96] = ""; int zp = 0;
-  for (int i = 0; i < zc; ++i) { if (i) app_ch(zl, &zp, sizeof(zl), ','); app_int(zl, &zp, sizeof(zl), zeros[i]); }
+  char zl[96]; ints_csv(zeros, zc, zl, sizeof(zl));
   n = add(out, n, "zero rows: %s", zc ? zl : "none");
   if (!zc) return add(out, n, "POS = 1");
   if (zc == rows) return add(out, n, "POS = 0");
@@ -3687,13 +3706,12 @@ static int eval_truthbits(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_
   int mins[64], zeros[64], mc = 0, zc = 0;
   for (int i = 0; i < rows; ++i) (bits[i] == '1' ? mins[mc++] : zeros[zc++]) = i;
   int n = add(out, 0, "Truth-table output-column method.");
-  char vl[32] = ""; int vp = 0;
-  for (int i = 0; i < vc; ++i) { if (i) app_ch(vl, &vp, sizeof(vl), ','); app_ch(vl, &vp, sizeof(vl), vars[i]); }
+  char vl[32]; vars_csv(vars, vc, vl, sizeof(vl));
   n = add(out, n, "variables: %s", vl);
   n = add(out, n, "output bits: %s", bits);
-  char ml[96] = "", zl[96] = ""; int mp = 0, zp = 0;
-  for (int i = 0; i < mc; ++i) { if (i) app_ch(ml, &mp, sizeof(ml), ','); app_int(ml, &mp, sizeof(ml), mins[i]); }
-  for (int i = 0; i < zc; ++i) { if (i) app_ch(zl, &zp, sizeof(zl), ','); app_int(zl, &zp, sizeof(zl), zeros[i]); }
+  char ml[96], zl[96];
+  ints_csv(mins, mc, ml, sizeof(ml));
+  ints_csv(zeros, zc, zl, sizeof(zl));
   n = add(out, n, "1-cells/minterms: %s", mc ? ml : "none");
   n = add(out, n, "0-cells/maxterms: %s", zc ? zl : "none");
   if (!mc) return add(out, n, "simplified = 0");
@@ -3735,11 +3753,7 @@ static int eval_minterms(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_L
   for (int i = 0; i < na; ++i) {
     if (minterm_dc_word(a[i])) { dcpart = true; continue; }
     if (isalpha((unsigned char)a[i][0])) {
-      for (int j = 0; a[i][j] && vc < 6; ++j) if (isalpha((unsigned char)a[i][j])) {
-        char c = (char)toupper((unsigned char)a[i][j]);
-        bool seen = false; for (int k = 0; k < vc; ++k) if (vars[k] == c) seen = true;
-        if (!seen) { vars[vc++] = c; vars[vc] = 0; }
-      }
+      collect_arg_vars_into(a[i], vars, &vc, 6);
     } else if (dcpart) {
       if (dc < 32) dcs[dc++] = (int)parse_int(a[i]);
     } else if (mc < 32) mins[mc++] = (int)parse_int(a[i]);
@@ -3749,15 +3763,13 @@ static int eval_minterms(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_L
     int maxm = 0; for (int i = 0; i < mc; ++i) if (mins[i] > maxm) maxm = mins[i];
     while ((1 << vc) <= maxm && vc < 6) ++vc;
     if (vc < 1) vc = 1;
-    for (int i = 0; i < vc; ++i) vars[i] = (char)('A' + i);
-    vars[vc] = 0;
+    default_vars(vars, vc);
   }
   int rows = 1 << vc;
   if (maxmode) {
     char pos[112] = ""; int pp = 0;
     int n = add(out, 0, "Maxterm/POS method: write 0-cells as sum factors.");
-    char vl[32] = ""; int vp = 0;
-    for (int i = 0; i < vc; ++i) { if (i) app_ch(vl, &vp, sizeof(vl), ','); app_ch(vl, &vp, sizeof(vl), vars[i]); }
+    char vl[32]; vars_csv(vars, vc, vl, sizeof(vl));
     n = add(out, n, "variables: %s", vl);
     for (int i = 0; i < mc; ++i) {
       if (mins[i] < 0 || mins[i] >= rows) return add(out, n, "maxterm %d is outside 0 to %d.", mins[i], rows - 1);
@@ -3768,12 +3780,10 @@ static int eval_minterms(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_L
     }
     n = add(out, n, "POS = %s", pos);
     if (dc) {
-      char dl[80] = ""; int dp = 0;
       for (int i = 0; i < dc; ++i) {
         if (dcs[i] < 0 || dcs[i] >= rows) return add(out, n, "don't-care row %d is outside 0 to %d.", dcs[i], rows - 1);
-        if (i) app_ch(dl, &dp, sizeof(dl), ',');
-        app_int(dl, &dp, sizeof(dl), dcs[i]);
       }
+      char dl[80]; ints_csv(dcs, dc, dl, sizeof(dl));
       n = add(out, n, "don't-care rows: %s", dl);
       n = add(out, n, "Use don't-cares only if they make larger zero groups.");
       Imp chosen[32]; int chc = minimise_rows(mins, mc, dcs, dc, chosen, 32);
@@ -3791,8 +3801,7 @@ static int eval_minterms(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_L
   }
   char sop[96] = ""; int sp = 0;
   int n = add(out, 0, "K-map/minterm method: write 1-cells as SOP terms.");
-  char vl[32] = ""; int vp = 0;
-  for (int i = 0; i < vc; ++i) { if (i) app_ch(vl, &vp, sizeof(vl), ','); app_ch(vl, &vp, sizeof(vl), vars[i]); }
+  char vl[32]; vars_csv(vars, vc, vl, sizeof(vl));
   n = add(out, n, "variables: %s", vl);
   for (int i = 0; i < mc; ++i) {
     if (mins[i] < 0 || mins[i] >= rows) return add(out, n, "minterm %d is outside 0 to %d.", mins[i], rows - 1);
@@ -3803,13 +3812,11 @@ static int eval_minterms(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_L
   }
   n = add(out, n, "SOP = %s", sop);
   if (dc) {
-    char dl[80] = ""; int dp = 0;
     for (int i = 0; i < dc; ++i) {
       if (dcs[i] < 0 || dcs[i] >= rows) return add(out, n, "don't-care row %d is outside 0 to %d.", dcs[i], rows - 1);
       if (int_seen(mins, mc, dcs[i])) return add(out, n, "row %d cannot be both 1 and don't-care.", dcs[i]);
-      if (i) app_ch(dl, &dp, sizeof(dl), ',');
-      app_int(dl, &dp, sizeof(dl), dcs[i]);
     }
+    char dl[80]; ints_csv(dcs, dc, dl, sizeof(dl));
     n = add(out, n, "don't-care rows: %s", dl);
     n = add(out, n, "Use don't-cares only if they make larger groups.");
     Imp chosen[32]; int chc = minimise_rows(mins, mc, dcs, dc, chosen, 32);
