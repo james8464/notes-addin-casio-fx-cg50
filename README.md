@@ -30,7 +30,6 @@ python3 tools/check_runmat_mock.py
 python3 tests/check_help_examples.py
 python3 tests/run_exact_queue.py --engine production --workers 2
 python3 tests/run_exact_queue.py --engine production --workers 2 --strict-markers
-python3 tools/audit_progress_tui.py --fps 12
 ```
 
 Current status:
@@ -38,10 +37,10 @@ Current status:
 - app name: `CAS`
 - file: `CAS.g3a`
 - companion visual mock: `RUNMAT.g3a`
-- size: `2,096,992` bytes
-- hard limit headroom: `160` bytes under `2,097,152`
-- sha256: `3856132726e1d2fa7786fd45a9ba161cc75007aa212f3226fcafe6f97af8c597`
-- help pack: `CAS.PAK`, `18,515` bytes, sha256 `b816944d708f90aa8d922f7657d47f482d4eb5060f594a6cd2ce9ece9104a533`
+- size: `2,087,936` bytes
+- hard limit headroom: `9,216` bytes under `2,097,152`
+- sha256: `15f3aa342df2f8e9f3608032a17e116254df92d19141c271e45553de0b01a39e`
+- help pack: `CAS.PAK`, `18,178` bytes, sha256 `4cf970de9480f9f3b06c80e60afe4b69f4d864067a068071cd974474a57f24d2`
 - last completed strict exact queue: `51,838/52,334` accepted, `bad=0`, `invalid=496`
 - strict marker quality: enforced for accepted rows; invalid rows are classified
 - online challenge source coverage: MadAsMaths exact rows in queue; Daily Integral hard-integration style probes inspected from `https://dailyintegral.com/archive`
@@ -111,13 +110,11 @@ Notable routes:
 - catalogue Help on command screen shows spaced sections and F2/F3 examples
 - F6 uses the upstream full-screen `doMenu` pattern, pruned to `Clear history`, `Config shift-SETUP`, and `Alt labels`
 - the recording `R` draw path is disabled
-- `/Users/james/Developer/CASIO/tools/audit_progress_tui.py` shows animated status badges, side-by-side panels on wide terminals, phase lanes, health score, gate board, repo sync, last commit, change counts, state age, artifact headroom, live queue rate/ETA, pass/fail bars, strict-marker ratios, strict-gap bar maps, freshness rows, animated scan/meter lines, cleanup byte totals, cleanup command, project hygiene, tooling inventory, transfer path, quality clusters with first gap samples, test checkpoint rows, release blockers, risk, ignored workspace, active-tool counts, next action, recent events, and run-command panels
 
 Active tools:
 
 - `tools/build_g3a.sh` regenerates ignored KhiCAS icon PNGs from tracked BMPs before Make runs
 - `tools/docker/Dockerfile.khicas-source`
-- `tools/audit_progress_tui.py`
 - `tools/khicas_host_runner`
 - `tools/check_g3a_metadata.py`
 - `tools/check_g3a_size.py`
@@ -128,6 +125,5 @@ Active tools:
 - `tests/check_targeted_working_gaps.py`
 - `tests/random_working_fuzzer.py`
 
-All current `tools/` files are referenced by build, tests, audit, or docs. Historical worker notes, batch JSONs, stale append helpers, retired checks, and the old CMake host wrapper were pruned. The canonical test source is now `tests/golden/exact_calculator_input_queue.jsonl`.
-Empty `.gitkeep` placeholders were removed from non-empty tracked folders. Active `tools/` scripts are all still referenced by build, tests, or audit docs.
-Generated caches are ignored and were removed from the working tree; transfer/report artifacts are kept ignored because they are used for calculator transfer and live audit status.
+All current `tools/` files are referenced by build, tests, or docs. Historical worker notes, batch JSONs, stale audit UI, retired checks, and the old CMake host wrapper are pruned. The canonical test source is `tests/golden/exact_calculator_input_queue.jsonl`.
+Generated caches, transfer reports, and live test reports stay ignored and are recreated only when needed.

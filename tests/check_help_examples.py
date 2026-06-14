@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+import os
 import subprocess
 from pathlib import Path
 
@@ -25,8 +26,9 @@ def examples() -> list[tuple[str, str]]:
 
 def main() -> int:
     bad: list[tuple[str, str, str]] = []
+    env = dict(os.environ, CASCAS_HOST_PRODUCTION="1")
     for name, expr in examples():
-        proc = subprocess.run([str(RUNNER), expr], cwd=ROOT, text=True, capture_output=True)
+        proc = subprocess.run([str(RUNNER), expr], cwd=ROOT, text=True, capture_output=True, env=env)
         text = (proc.stdout or "") + (proc.stderr or "")
         if "Err: unsupported" in text or "Check: normal" in text or proc.returncode:
             bad.append((name, expr, text.splitlines()[0] if text.splitlines() else ""))

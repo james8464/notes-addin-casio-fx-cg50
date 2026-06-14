@@ -85,16 +85,12 @@ graph TD
 graph TD
   Online["MadAsMaths + Daily Integral challenge style"] --> Queue["exact_calculator_input_queue.jsonl"]
   Queue --> Runner["tests/run_exact_queue.py"]
-  Runner --> Live["progress/exact_queue_latest.json"]
-  Runner --> Report["tests/reports/.../latest.jsonl"]
-  Live --> TUI["tools/audit_progress_tui.py"]
-  Report --> TUI
+  Runner --> Report["tests/reports/... generated reports"]
   Queue --> Chaos["tests/random_working_fuzzer.py --chaos"]
   Chaos --> Transcript["tests/reports/random_chaos_latest.txt reset each run with full input/output"]
   Chaos --> FuzzReport["tests/reports/random_chaos_latest.jsonl"]
   Chaos --> Modes["finite --count N or indefinite --forever"]
   Chaos --> FinalStrict["2026-06-02 strict full pass: 45 visible commands * 500 = 22,500; bad=0"]
-  TUI --> Panels["animated panels: status badges, wide side-by-side layout, phase lanes, health score, gate board, sync, last commit, change counts, state age, artifact headroom, live rate and ETA, queue bars, strict-marker ratios, strict-gap bar map, freshness rows, animated scan/meter lines, cleanup byte totals and cleanup command, project hygiene, tooling inventory, transfer path, strict clusters with first gap samples, test checkpoints, release blockers, risk, ignored workspace, active-tool counts, next action, command panel"]
   Runner --> Runtime["last completed strict queue: 51,838/52,334 accepted, bad=0, invalid=496"]
   Runner --> Strict["strict marker checks enforced for accepted rows; classified invalid rows are reported"]
   Strict --> Remaining["current hard headroom: 160 B"]
@@ -105,7 +101,7 @@ graph TD
 ```mermaid
 graph TD
   Canon["canonical queue"] --> Golden["tests/golden/exact_calculator_input_queue.jsonl"]
-  Tooling["active tooling"] --> Build["build/check/audit/host runner; no dead tools kept"]
+  Tooling["active tooling"] --> Build["build/check/host runner; no dead tools kept"]
   Old["old VM worker notes, batch JSONs, append helper, retired checks, CMake host wrapper, duplicate keepers, lexer backup"] --> Pruned["removed from tracked project"]
   Reports["ignored generated outputs"] --> Recreate["build/, graphify-out/, tests/reports/ recreated only when needed"]
 ```
