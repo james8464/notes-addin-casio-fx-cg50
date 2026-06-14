@@ -1,5 +1,6 @@
 #include "casio_suite_ui.hpp"
 #include <fxcg/file.h>
+#include <stdio.h>
 #include <string.h>
 
 typedef struct {
@@ -9,6 +10,14 @@ typedef struct {
   unsigned long address;
 } file_type_t;
 
+static const int MAX_ENTRIES = 80;
+static const int MAX_RESULTS = 64;
+static const int FILE_BUF_SIZE = 8192;
+static const int MAX_VIEW_LINES = 160;
+static const int LINE_CAP = 64;
+static const int WRAP_COLS = 54;
+static const int PAGE_LINES = 11;
+
 struct NoteEntry {
   char name[64];
   char path[280];
@@ -16,75 +25,35 @@ struct NoteEntry {
   int size;
 };
 
-static NoteEntry entries[80];
-static int entry_count = 0;
-static char cwd_path[280] = "\\\\fls0\\";
-static char file_buf[8192];
-static const char *view_lines[128];
-static char line_store[128][48];
-
 struct SearchPattern {
   char pat[32];
   int fail[32];
   int len;
 };
 
+struct SearchResult {
+  char name[64];
+  char path[280];
+  char label[64];
+  int score;
+  int first_line;
+  int text_hits;
+};
+
+static NoteEntry entries[MAX_ENTRIES];
+static SearchResult results[MAX_RESULTS];
+static int entry_count = 0;
+static int result_count = 0;
+static char cwd_path[280] = "\\\\fls0\\";
+static char file_buf[FILE_BUF_SIZE];
+static int file_buf_len = 0;
+static const char *view_lines[MAX_VIEW_LINES];
+static char line_store[MAX_VIEW_LINES][LINE_CAP];
+static char last_query[32] = "";
+
 static int lower_char(int c) {
   if (c >= 'A' && c <= 'Z') return c + 32;
   return c;
-}
-
-static void search_prepare(SearchPattern *sp, const char *q) {
-  int i = 0;
-  while (q && q[i] && i < 31) {
-    sp->pat[i] = (char)lower_char((unsigned char)q[i]);
-    ++i;
-  }
-  sp->pat[i] = 0;
-  sp->len = i;
-  if (sp->len > 31) sp->len = 31;
-  if (sp->len <= 0) return;
-  sp->fail[0] = 0;
-  for (int i = 1; i < sp->len; ++i) {
-    int j = sp->fail[i - 1];
-    while (j > 0 && sp->pat[i] != sp->pat[j]) j = sp->fail[j - 1];
-    if (sp->pat[i] == sp->pat[j]) ++j;
-    sp->fail[i] = j;
-  }
-}
-
-static int search_feed(const SearchPattern *sp, int state, const char *s, int len) {
-  if (sp->len <= 0) return sp->len;
-  for (int i = 0; i < len && s[i]; ++i) {
-    char c = (char)lower_char((unsigned char)s[i]);
-    while (state > 0 && c != sp->pat[state]) state = sp->fail[state - 1];
-    if (c == sp->pat[state]) ++state;
-    if (state == sp->len) return state;
-  }
-  return state;
-}
-
-static int contains_kmp(const char *s, const SearchPattern *sp) {
-  return search_feed(sp, 0, s, strlen(s)) == sp->len;
-}
-
-static int ends_with(const char *s, const char *tail) {
-  int n = strlen(s), m = strlen(tail);
-  if (n < m) return 0;
-  for (int i = 0; i < m; ++i) {
-    char a = s[n - m + i], b = tail[i];
-    if (a >= 'A' && a <= 'Z') a += 32;
-    if (b >= 'A' && b <= 'Z') b += 32;
-    if (a != b) return 0;
-  }
-  return 1;
-}
-
-static void name_only(const char *path, char *out) {
-  int i = strlen(path) - 1;
-  while (i >= 0 && path[i] != '\\') --i;
-  strncpy(out, path + i + 1, 63);
-  out[63] = 0;
 }
 
 static void copy_str(char *dst, int cap, const char *src) {
@@ -109,6 +78,62 @@ static void join_str(char *dst, int cap, const char *a, const char *b) {
   append_str(dst, cap, b);
 }
 
+static int min_int(int a, int b) { return a < b ? a : b; }
+static int max_int(int a, int b) { return a > b ? a : b; }
+
+static void search_prepare(SearchPattern *sp, const char *q) {
+  int i = 0;
+  while (q && q[i] && i < 31) {
+    sp->pat[i] = (char)lower_char((unsigned char)q[i]);
+    ++i;
+  }
+  sp->pat[i] = 0;
+  sp->len = i;
+  if (sp->len <= 0) return;
+  sp->fail[0] = 0;
+  for (int k = 1; k < sp->len; ++k) {
+    int j = sp->fail[k - 1];
+    while (j > 0 && sp->pat[k] != sp->pat[j]) j = sp->fail[j - 1];
+    if (sp->pat[k] == sp->pat[j]) ++j;
+    sp->fail[k] = j;
+  }
+}
+
+static int search_step(const SearchPattern *sp, int state, char raw) {
+  char c = (char)lower_char((unsigned char)raw);
+  while (state > 0 && c != sp->pat[state]) state = sp->fail[state - 1];
+  if (c == sp->pat[state]) ++state;
+  return state;
+}
+
+static int contains_kmp(const char *s, const SearchPattern *sp) {
+  if (sp->len <= 0) return 1;
+  int state = 0;
+  for (int i = 0; s[i]; ++i) {
+    state = search_step(sp, state, s[i]);
+    if (state == sp->len) return 1;
+  }
+  return 0;
+}
+
+static int ends_with(const char *s, const char *tail) {
+  int n = strlen(s), m = strlen(tail);
+  if (n < m) return 0;
+  for (int i = 0; i < m; ++i) {
+    char a = s[n - m + i], b = tail[i];
+    if (a >= 'A' && a <= 'Z') a += 32;
+    if (b >= 'A' && b <= 'Z') b += 32;
+    if (a != b) return 0;
+  }
+  return 1;
+}
+
+static void name_only(const char *path, char *out) {
+  int i = strlen(path) - 1;
+  while (i >= 0 && path[i] != '\\') --i;
+  copy_str(out, 64, path + i + 1);
+}
+
 static void up_folder() {
   int n = strlen(cwd_path);
   if (n <= 7) return;
@@ -128,13 +153,12 @@ static int scan_dir() {
   int handle = 0;
   file_type_t info;
   int ret = Bfile_FindFirst_NON_SMEM(path, &handle, found, &info);
-  while (!ret && entry_count < 80) {
+  while (!ret && entry_count < MAX_ENTRIES) {
     Bfile_NameToStr_ncpy((unsigned char *)name, found, 300);
     if (strcmp(name, ".") && strcmp(name, "..") && strcmp(name, "@MainMem")) {
       int is_folder = info.fsize == 0;
       if (is_folder || ends_with(name, ".txt")) {
-        strncpy(entries[entry_count].name, name, 63);
-        entries[entry_count].name[63] = 0;
+        copy_str(entries[entry_count].name, sizeof(entries[entry_count].name), name);
         strcpy(entries[entry_count].path, cwd_path);
         strcat(entries[entry_count].path, name);
         if (is_folder) strcat(entries[entry_count].path, "\\");
@@ -149,141 +173,247 @@ static int scan_dir() {
   return entry_count;
 }
 
-static int load_text(const char *path) {
+static int load_file_buf(const char *path) {
   unsigned short p[300];
   Bfile_StrToName_ncpy(p, (const unsigned char *)path, 300);
   int h = Bfile_OpenFile_OS(p, READWRITE);
   if (h < 0) return 0;
   int sz = Bfile_GetFileSize_OS(h);
-  if (sz > (int)sizeof(file_buf) - 1) sz = sizeof(file_buf) - 1;
+  if (sz > FILE_BUF_SIZE - 1) sz = FILE_BUF_SIZE - 1;
   int got = Bfile_ReadFile_OS(h, file_buf, sz, 0);
   Bfile_CloseFile_OS(h);
   if (got < 0) return 0;
   file_buf[got] = 0;
-  int line = 0, col = 0;
-  for (int i = 0; i < got && line < 128; ++i) {
-    char c = file_buf[i];
-    if (c == '\r') continue;
-    if (c == '\n' || col >= 43) {
-      line_store[line][col] = 0;
-      view_lines[line] = line_store[line];
-      ++line;
-      col = 0;
-      if (c == '\n') continue;
-    }
-    if (c >= 32 && c <= 126 && line < 128) line_store[line][col++] = c;
+  file_buf_len = got;
+  return got;
+}
+
+static int table_like(const char *s, int len) {
+  int bars = 0, commas = 0, tab = 0, gaps = 0;
+  for (int i = 0; i < len; ++i) {
+    if (s[i] == '|') ++bars;
+    if (s[i] == ',') ++commas;
+    if (s[i] == '\t') tab = 1;
+    if (i + 1 < len && s[i] == ' ' && s[i + 1] == ' ') ++gaps;
   }
-  if (line < 128 && col) {
-    line_store[line][col] = 0;
-    view_lines[line] = line_store[line];
-    ++line;
+  return tab || bars >= 2 || commas >= 3 || gaps >= 2;
+}
+
+static void add_display_line(int *line, const char *s, int len, int hscroll, int preserve) {
+  if (*line >= MAX_VIEW_LINES || len < 0) return;
+  if (preserve) {
+    int start = min_int(hscroll, len);
+    int take = min_int(WRAP_COLS, len - start);
+    int col = 0;
+    for (int i = 0; i < take && col + 1 < LINE_CAP; ++i) {
+      char c = s[start + i] == '\t' ? ' ' : s[start + i];
+      if (c >= 32 && c <= 126) line_store[*line][col++] = c;
+    }
+    line_store[*line][col] = 0;
+    view_lines[*line] = line_store[*line];
+    ++(*line);
+    return;
+  }
+  int pos = 0;
+  while (pos < len && *line < MAX_VIEW_LINES) {
+    while (pos < len && s[pos] == ' ') ++pos;
+    int limit = min_int(len, pos + WRAP_COLS);
+    int cut = limit;
+    if (limit < len) {
+      for (int j = limit; j > pos + 12; --j) {
+        if (s[j] == ' ') { cut = j; break; }
+      }
+    }
+    int col = 0;
+    for (int i = pos; i < cut && col + 1 < LINE_CAP; ++i) {
+      char c = s[i] == '\t' ? ' ' : s[i];
+      if (c >= 32 && c <= 126) line_store[*line][col++] = c;
+    }
+    line_store[*line][col] = 0;
+    view_lines[*line] = line_store[*line];
+    ++(*line);
+    pos = cut;
+  }
+}
+
+static int build_view_lines(int hscroll) {
+  int line = 0, start = 0;
+  for (int i = 0; i <= file_buf_len && line < MAX_VIEW_LINES; ++i) {
+    char c = i < file_buf_len ? file_buf[i] : '\n';
+    if (c == '\r') continue;
+    if (c == '\n') {
+      int len = i - start;
+      if (len <= 0) {
+        line_store[line][0] = 0;
+        view_lines[line] = line_store[line];
+        ++line;
+      } else {
+        add_display_line(&line, file_buf + start, len, hscroll, table_like(file_buf + start, len));
+      }
+      start = i + 1;
+    }
   }
   return line;
 }
 
-static void notes_menu(const char *title, const char *const *items, int count, int top, int sel, bool rv) {
-  ui_menu_keys(title, items, count, top, sel, rv, "OPEN", "FIND", "", "", "", "BACK");
+static void notes_menu(const char *title, const char *const *items, int count, int top, int sel, bool rv,
+                       const char *f1, const char *f2, const char *f3, const char *f4, const char *f5, const char *f6) {
+  ui_menu_keys(title, items, count, top, sel, rv, f1, f2, f3, f4, f5, f6);
 }
 
-static void notes_text_page(const char *title, const char *const *lines, int count, int top, bool rv) {
+static void notes_text_page(const char *title, const char *const *lines, int count, int top, int hscroll, bool rv) {
   ui_chrome(title, rv);
-  ui_text_fkey(0, "FIND");
-  ui_text_fkey(1, "BACK");
-  ui_text_fkey(2, "UP");
-  ui_text_fkey(3, "DOWN");
-  ui_text_fkey(5, "BACK");
-  for (int i = 0; i < 8 && top + i < count; ++i)
-    ui_print(14, 55 + i * 17, lines[top + i]);
+  ui_softkeys("NEXT", "PREV", "PGUP", "PGDN", "FIND", "BACK");
+  char pos[48];
+  sprintf(pos, "%d/%d", count ? top + 1 : 0, count);
+  ui_print(310, 28, pos);
+  if (hscroll > 0) ui_print(250, 28, ">");
+  for (int i = 0; i < PAGE_LINES && top + i < count; ++i)
+    ui_print(12, 52 + i * 13, lines[top + i]);
   ui_flush();
 }
 
-static void wait_text_page(const char *title, const char *const *lines, int count, unsigned *tick) {
-  int top = 0;
+static int find_line(const char *const *lines, int count, const SearchPattern *sp, int start, int dir) {
+  if (sp->len <= 0 || count <= 0) return -1;
+  int i = start;
+  for (int seen = 0; seen < count; ++seen) {
+    if (i < 0) i = count - 1;
+    if (i >= count) i = 0;
+    if (contains_kmp(lines[i], sp)) return i;
+    i += dir;
+  }
+  return -1;
+}
+
+static void wait_text_page(const char *title, const char *path, const char *initial_query, unsigned *tick) {
+  int top = 0, hscroll = 0;
+  SearchPattern sp;
+  search_prepare(&sp, initial_query && initial_query[0] ? initial_query : "");
+  int lines = build_view_lines(hscroll);
+  if (sp.len > 0) {
+    int f = find_line(view_lines, lines, &sp, 0, 1);
+    if (f >= 0) top = f;
+  }
+  if (top + PAGE_LINES > lines) top = max_int(0, lines - PAGE_LINES);
   bool rv = ui_r_visible(*tick);
-  notes_text_page(title, lines, count, top, rv);
+  notes_text_page(title, view_lines, lines, top, hscroll, rv);
   for (;;) {
     int key = ui_key_poll();
     bool nr = ui_r_visible(*tick);
     if (nr != rv) {
       rv = nr;
-      notes_text_page(title, lines, count, top, rv);
+      notes_text_page(title, view_lines, lines, top, hscroll, rv);
     }
-    if (key == KEY_CTRL_EXIT || key == KEY_CTRL_AC || key == KEY_CTRL_F2 || key == KEY_CTRL_F6) return;
-    if (key == KEY_CTRL_UP && top > 0) notes_text_page(title, lines, count, --top, rv);
-    if (key == KEY_CTRL_DOWN && top + 8 < count) notes_text_page(title, lines, count, ++top, rv);
-    if (key == KEY_CTRL_F1) {
-      char q[32] = "";
+    if (key == KEY_CTRL_EXIT || key == KEY_CTRL_AC || key == KEY_CTRL_F6) return;
+    if (key == KEY_CTRL_UP && top > 0) notes_text_page(title, view_lines, lines, --top, hscroll, rv);
+    if (key == KEY_CTRL_DOWN && top + PAGE_LINES < lines) notes_text_page(title, view_lines, lines, ++top, hscroll, rv);
+    if ((key == KEY_CTRL_PAGEUP || key == KEY_CTRL_F3) && top > 0) {
+      top = max_int(0, top - PAGE_LINES);
+      notes_text_page(title, view_lines, lines, top, hscroll, rv);
+    }
+    if ((key == KEY_CTRL_PAGEDOWN || key == KEY_CTRL_F4) && top + PAGE_LINES < lines) {
+      top = min_int(max_int(0, lines - PAGE_LINES), top + PAGE_LINES);
+      notes_text_page(title, view_lines, lines, top, hscroll, rv);
+    }
+    if (key == KEY_CTRL_RIGHT) {
+      hscroll += 8;
+      lines = build_view_lines(hscroll);
+      top = min_int(top, max_int(0, lines - PAGE_LINES));
+      notes_text_page(title, view_lines, lines, top, hscroll, rv);
+    }
+    if (key == KEY_CTRL_LEFT && hscroll > 0) {
+      hscroll = max_int(0, hscroll - 8);
+      lines = build_view_lines(hscroll);
+      top = min_int(top, max_int(0, lines - PAGE_LINES));
+      notes_text_page(title, view_lines, lines, top, hscroll, rv);
+    }
+    if (key == KEY_CTRL_F5) {
+      char q[32];
+      copy_str(q, sizeof(q), last_query);
       if (ui_input("Find text", q, sizeof(q), tick) && q[0]) {
-        SearchPattern sp;
+        copy_str(last_query, sizeof(last_query), q);
         search_prepare(&sp, q);
-        int found = -1;
-        for (int i = top + 1; i < count; ++i) {
-          if (contains_kmp(lines[i], &sp)) { found = i; break; }
-        }
-        if (found < 0) {
-          for (int i = 0; i <= top && i < count; ++i) {
-            if (contains_kmp(lines[i], &sp)) { found = i; break; }
-          }
-        }
-        if (found >= 0) {
-          top = found;
-          if (top + 8 > count) top = count > 8 ? count - 8 : 0;
-          notes_text_page(title, lines, count, top, rv);
-        } else {
-          static const char *const none[] = {"No matching text."};
-          ui_wait_page("Find text", none, 1, tick);
-          notes_text_page(title, lines, count, top, rv);
-        }
-      } else {
-        notes_text_page(title, lines, count, top, rv);
+        int f = find_line(view_lines, lines, &sp, top, 1);
+        if (f >= 0) top = min_int(f, max_int(0, lines - PAGE_LINES));
       }
+      notes_text_page(title, view_lines, lines, top, hscroll, rv);
     }
+    if (key == KEY_CTRL_F1) {
+      if (sp.len <= 0 && last_query[0]) search_prepare(&sp, last_query);
+      int f = find_line(view_lines, lines, &sp, top + 1, 1);
+      if (f >= 0) top = min_int(f, max_int(0, lines - PAGE_LINES));
+      notes_text_page(title, view_lines, lines, top, hscroll, rv);
+    }
+    if (key == KEY_CTRL_F2) {
+      if (sp.len <= 0 && last_query[0]) search_prepare(&sp, last_query);
+      int f = find_line(view_lines, lines, &sp, top - 1, -1);
+      if (f >= 0) top = min_int(f, max_int(0, lines - PAGE_LINES));
+      notes_text_page(title, view_lines, lines, top, hscroll, rv);
+    }
+    (void)path;
     OS_InnerWait_ms(35);
   }
 }
 
-static int file_contains_text(const char *path, const SearchPattern *sp) {
-  if (sp->len <= 0) return 1;
+static int file_text_matches(const char *path, const SearchPattern *sp, int *first_line, int *hits) {
+  *first_line = -1;
+  *hits = 0;
+  if (sp->len <= 0) return 0;
   unsigned short p[300];
   Bfile_StrToName_ncpy(p, (const unsigned char *)path, 300);
   int h = Bfile_OpenFile_OS(p, READWRITE);
   if (h < 0) return 0;
   int sz = Bfile_GetFileSize_OS(h);
-  int off = 0;
-  int state = 0;
+  int off = 0, state = 0, line = 0;
   while (off < sz) {
-    int want = (int)sizeof(file_buf) - 1;
+    int want = FILE_BUF_SIZE - 1;
     if (want > sz - off) want = sz - off;
     int got = Bfile_ReadFile_OS(h, file_buf, want, off);
     if (got <= 0) break;
-    file_buf[got] = 0;
-    state = search_feed(sp, state, file_buf, got);
-    if (state == sp->len) {
-      Bfile_CloseFile_OS(h);
-      return 1;
+    for (int i = 0; i < got; ++i) {
+      state = search_step(sp, state, file_buf[i]);
+      if (state == sp->len) {
+        if (*first_line < 0) *first_line = line;
+        if (*hits < 9) ++(*hits);
+        state = sp->fail[state - 1];
+      }
+      if (file_buf[i] == '\n') ++line;
     }
     off += got;
+    if (*hits >= 9) break;
   }
   Bfile_CloseFile_OS(h);
-  return 0;
+  return *hits > 0;
 }
 
-static int add_search_result(int n, const char *path, const char *why) {
-  if (n >= 126) return n;
+static void refresh_result_labels() {
+  for (int i = 0; i < result_count; ++i) {
+    char line_no[16] = "";
+    if (results[i].first_line >= 0) sprintf(line_no, " L%d", results[i].first_line + 1);
+    copy_str(results[i].label, sizeof(results[i].label), results[i].text_hits > 0 ? "T " : "N ");
+    append_str(results[i].label, sizeof(results[i].label), results[i].name);
+    append_str(results[i].label, sizeof(results[i].label), line_no);
+  }
+}
+
+static void add_ranked_result(const char *path, int score, int first_line, int hits) {
   char name[64];
   name_only(path, name);
-  copy_str(line_store[n], sizeof(line_store[n]), why);
-  append_str(line_store[n], sizeof(line_store[n]), ": ");
-  append_str(line_store[n], sizeof(line_store[n]), name);
-  view_lines[n] = line_store[n];
-  ++n;
-  copy_str(line_store[n], sizeof(line_store[n]), path);
-  view_lines[n] = line_store[n];
-  return n + 1;
+  if (result_count >= MAX_RESULTS && score <= results[result_count - 1].score) return;
+  int pos = result_count < MAX_RESULTS ? result_count++ : MAX_RESULTS - 1;
+  while (pos > 0 && results[pos - 1].score < score) {
+    results[pos] = results[pos - 1];
+    --pos;
+  }
+  copy_str(results[pos].name, sizeof(results[pos].name), name);
+  copy_str(results[pos].path, sizeof(results[pos].path), path);
+  results[pos].score = score;
+  results[pos].first_line = first_line;
+  results[pos].text_hits = hits;
 }
 
-static int search_all_rec(const char *dir, const SearchPattern *sp, int depth, int n) {
-  if (depth > 8 || n >= 126) return n;
+static int search_all_rec(const char *dir, const SearchPattern *sp, int depth, unsigned *tick) {
+  if (depth > 8 || result_count >= MAX_RESULTS) return result_count;
   unsigned short path[300], found[300];
   char query[300], name[300], full[300];
   join_str(query, sizeof(query), dir, "*");
@@ -291,7 +421,9 @@ static int search_all_rec(const char *dir, const SearchPattern *sp, int depth, i
   int handle = 0;
   file_type_t info;
   int ret = Bfile_FindFirst_NON_SMEM(path, &handle, found, &info);
-  while (!ret && n < 126) {
+  while (!ret && result_count < MAX_RESULTS) {
+    int key = ui_key_poll();
+    if (key == KEY_CTRL_EXIT || key == KEY_CTRL_AC) break;
     Bfile_NameToStr_ncpy((unsigned char *)name, found, 300);
     if (strcmp(name, ".") && strcmp(name, "..") && strcmp(name, "@MainMem")) {
       int is_folder = info.fsize == 0;
@@ -299,41 +431,88 @@ static int search_all_rec(const char *dir, const SearchPattern *sp, int depth, i
       if (is_folder) {
         char child[300];
         join_str(child, sizeof(child), full, "\\");
-        n = search_all_rec(child, sp, depth + 1, n);
+        search_all_rec(child, sp, depth + 1, tick);
       } else if (ends_with(name, ".txt")) {
-        int by_name = contains_kmp(name, sp) || contains_kmp(full, sp);
-        if (by_name) n = add_search_result(n, full, "name");
-        else if (file_contains_text(full, sp)) n = add_search_result(n, full, "text");
+        int first = -1, hits = 0;
+        int by_name = contains_kmp(name, sp);
+        int by_path = contains_kmp(full, sp);
+        int score = by_name ? 10000 : (by_path ? 7000 : 0);
+        if (!score && file_text_matches(full, sp, &first, &hits))
+          score = 4000 + hits * 150 - min_int(first, 50);
+        if (score) add_ranked_result(full, score, first, hits);
       }
     }
     ret = Bfile_FindNext_NON_SMEM(handle, found, (char *)&info);
+    (void)tick;
   }
   Bfile_FindClose(handle);
-  return n;
+  return result_count;
 }
 
-static void search_all_notes(unsigned *tick) {
-  char q[32] = "";
-  if (!ui_input("Find all text", q, sizeof(q), tick) || !q[0]) return;
-  SearchPattern sp;
-  search_prepare(&sp, q);
-  int n = search_all_rec("\\\\fls0\\", &sp, 0, 0);
-  if (!n) {
-    static const char *const none[] = {"No matching text file."};
-    ui_wait_page("Find all", none, 1, tick);
-    return;
-  }
-  ui_wait_page("Find all", view_lines, n, tick);
-}
-
-static void show_file(NoteEntry *e, unsigned *tick) {
-  int lines = load_text(e->path);
-  if (!lines) {
+static void show_file_path(const char *path, const char *name, const char *query, unsigned *tick) {
+  if (!load_file_buf(path)) {
     static const char *const err[] = {"Could not open text file."};
     ui_wait_page("NOTES", err, 1, tick);
     return;
   }
-  wait_text_page(e->name, view_lines, lines, tick);
+  wait_text_page(name, path, query, tick);
+}
+
+static int search_results_menu(unsigned *tick) {
+  int sel = 0, top = 0;
+  bool rv = ui_r_visible(*tick);
+  for (;;) {
+    const char *items[MAX_RESULTS];
+    for (int i = 0; i < result_count; ++i) items[i] = results[i].label;
+    char title[48];
+    sprintf(title, "Find: %.24s", last_query);
+    notes_menu(title, items, result_count, top, sel, rv, "OPEN", "NEW", "PGUP", "PGDN", "", "BACK");
+    int key = ui_key_poll();
+    bool nr = ui_r_visible(*tick);
+    if (nr != rv) rv = nr;
+    if (key == KEY_CTRL_EXIT || key == KEY_CTRL_AC || key == KEY_CTRL_F6) return 0;
+    if (key == KEY_CTRL_UP && sel > 0) { --sel; if (sel < top) --top; }
+    if (key == KEY_CTRL_DOWN && sel + 1 < result_count) { ++sel; if (sel >= top + 7) ++top; }
+    if ((key == KEY_CTRL_PAGEUP || key == KEY_CTRL_F3) && sel > 0) {
+      sel = max_int(0, sel - 7);
+      top = max_int(0, top - 7);
+    }
+    if ((key == KEY_CTRL_PAGEDOWN || key == KEY_CTRL_F4) && sel + 1 < result_count) {
+      sel = min_int(result_count - 1, sel + 7);
+      top = min_int(max_int(0, result_count - 7), top + 7);
+    }
+    if (key == KEY_CTRL_F2) return 1;
+    if ((key == KEY_CTRL_EXE || key == KEY_CTRL_F1) && result_count) {
+      show_file_path(results[sel].path, results[sel].name, last_query, tick);
+    }
+    OS_InnerWait_ms(35);
+  }
+}
+
+static void search_all_notes(unsigned *tick) {
+  for (;;) {
+    char q[32];
+    copy_str(q, sizeof(q), last_query);
+    if (!ui_input("Find all text", q, sizeof(q), tick) || !q[0]) return;
+    copy_str(last_query, sizeof(last_query), q);
+    SearchPattern sp;
+    search_prepare(&sp, q);
+    result_count = 0;
+    static const char *const searching[] = {"Searching...", "EXIT cancels."};
+    ui_page("Find all", searching, 2, 0, ui_r_visible(*tick));
+    search_all_rec("\\\\fls0\\", &sp, 0, tick);
+    refresh_result_labels();
+    if (!result_count) {
+      static const char *const none[] = {"No matching text file."};
+      ui_wait_page("Find all", none, 1, tick);
+      return;
+    }
+    if (!search_results_menu(tick)) return;
+  }
+}
+
+static void show_file(NoteEntry *e, unsigned *tick) {
+  show_file_path(e->path, e->name, "", tick);
 }
 
 int main() {
@@ -343,9 +522,9 @@ int main() {
   scan_dir();
   bool rv = ui_r_visible(tick);
   for (;;) {
-    const char *names[80];
+    const char *names[MAX_ENTRIES];
     for (int i = 0; i < entry_count; ++i) names[i] = entries[i].name;
-    notes_menu("NOTES", names, entry_count, top, sel, rv);
+    notes_menu("NOTES", names, entry_count, top, sel, rv, "OPEN", "FIND", "", "", "", "BACK");
     int key = ui_key_poll();
     bool nr = ui_r_visible(tick);
     if (nr != rv) rv = nr;
