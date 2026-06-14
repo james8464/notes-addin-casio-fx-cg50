@@ -137,21 +137,31 @@ static void ui_fkey(int slot, int id) {
   FKey_Display(slot, (int *)ptr);
 }
 
-static void ui_text_fkey(int slot, const char *text) {
-  ui_fkey(slot, 0x38);
-  ui_fill(slot * 64 + 2, 198, 60, 16, UI_BLACK);
-  int x = slot * 64 + 8;
-  int n = (int)strlen(text);
-  if (n <= 3) x += 8;
-  else if (n >= 6) x -= 3;
-  Bdisp_MMPrint(x, 196, text, 0x40, 0xffffffff, 0, 0, UI_WHITE, UI_BLACK, 1, 0);
+static void ui_append_softkey(char *dst, int *pos, const char *text) {
+  char cell[7] = "      ";
+  int n = text ? (int)strlen(text) : 0;
+  if (n > 6) n = 6;
+  int left = (6 - n) / 2;
+  for (int i = 0; i < n; ++i) cell[left + i] = text[i];
+  for (int i = 0; i < 6; ++i) dst[(*pos)++] = cell[i];
 }
 
 static void ui_softkeys(const char *f1, const char *f2, const char *f3, const char *f4, const char *f5, const char *f6) {
   const char *v[6] = {f1, f2, f3, f4, f5, f6};
+  char bar[64];
+  int pos = 0;
+  bar[pos++] = ' ';
   for (int i = 0; i < 6; ++i) {
-    if (v[i] && v[i][0]) ui_text_fkey(i, v[i]);
+    ui_append_softkey(bar, &pos, v[i]);
+    if (i != 5) {
+      bar[pos++] = '|';
+      bar[pos++] = ' ';
+    }
   }
+  bar[pos] = 0;
+  ui_fill(0, 172, LCD_WIDTH_PX, 24, UI_WHITE);
+  int x = 0, y = 174;
+  PrintMini(&x, &y, (unsigned char *)bar, 4, 0xffffffff, 0, 0, UI_BLACK, UI_WHITE, 1, 0);
 }
 
 static void ui_chrome(const char *title, bool r_visible) {
