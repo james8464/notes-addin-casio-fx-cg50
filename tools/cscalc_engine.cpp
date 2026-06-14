@@ -3001,7 +3001,8 @@ static void bool_norm(const char *src, char *dst, int cap) {
     if (strncmp(src + i, "or", 2) == 0) { dst[j++] = '+'; i += 2; continue; }
     if (src[i] == '.' || src[i] == '*') { dst[j++] = '&'; ++i; continue; }
     if (src[i] == ',') { dst[j++] = '\''; ++i; continue; }
-    dst[j++] = src[i++];
+    dst[j++] = isalpha((unsigned char)src[i]) ? (char)toupper((unsigned char)src[i]) : src[i];
+    ++i;
   }
   dst[j] = 0;
   char tmp[96]; int k = 0;
@@ -3144,6 +3145,22 @@ static void join_except(char parts[][40], int count, int skip, char op, char *re
 
 static bool bool_law_once(const char *expr, char *res, char *law) {
   char e[96]; strip_outer(expr, e, sizeof(e));
+  int elen = (int)strlen(e);
+  if (elen > 3 && e[0] == '(' && e[elen - 2] == ')' && e[elen - 1] == '\'') {
+    char inner[80];
+    int ilen = elen - 3; if (ilen > 79) ilen = 79;
+    memcpy(inner, e + 1, ilen); inner[ilen] = 0;
+    int p = top_op(inner, '&');
+    if (p < 0) p = top_op(inner, '+');
+    if (p > 0) {
+      char a[40], b[40]; int op = inner[p];
+      memcpy(a, inner, p); a[p] = 0; strcpy(b, inner + p + 1);
+      int rp = 0; app_str(res, &rp, 80, a); app_ch(res, &rp, 80, '\'');
+      app_ch(res, &rp, 80, op == '&' ? '+' : '&');
+      app_str(res, &rp, 80, b); app_ch(res, &rp, 80, '\'');
+      strcpy(law, "De Morgan's law"); return true;
+    }
+  }
   if (e[0] == '!' && e[1] == '!') {
     strcpy(law, "Double complement"); strcpy(res, e + 2); return true;
   }
@@ -3403,6 +3420,27 @@ static void imp_sop_list(const Imp *chosen, int chc, const char *vars, int vc, c
   }
 }
 
+static void imp_pos_text(const Imp &p, const char *vars, int vc, char *buf, int cap);
+
+static int add_implicant_groups(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN], int n,
+                                const Imp *chosen, int chc, const int *cells, int cellc,
+                                const char *vars, int vc, bool pos) {
+  if (chc <= 0) return n;
+  n = add(out, n, "Group cells that differ in one variable; drop the changing variable.");
+  for (int i = 0; i < chc && n < CSCALC_MAX_LINES - 2; ++i) {
+    char rows[80] = ""; int rp = 0;
+    for (int j = 0; j < cellc; ++j) if (covers(chosen[i], cells[j])) {
+      if (rp) app_ch(rows, &rp, sizeof(rows), ',');
+      app_int(rows, &rp, sizeof(rows), cells[j]);
+    }
+    char term[32];
+    if (pos) imp_pos_text(chosen[i], vars, vc, term, sizeof(term));
+    else imp_text(chosen[i], vars, vc, term);
+    n = add(out, n, "group %s -> %s", rows, term);
+  }
+  return n;
+}
+
 static void bool_simplified_from_rows(const int *mins, int mc, int rows, const char *vars, int vc, char *buf, int cap) {
   if (mc == 0) { strncpy(buf, "0", cap - 1); buf[cap - 1] = 0; return; }
   if (mc == rows) { strncpy(buf, "1", cap - 1); buf[cap - 1] = 0; return; }
@@ -3558,6 +3596,7 @@ static int eval_bool(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN])
     if (i) app_ch(sim, &sp, 80, '+');
     app_str(sim, &sp, 80, t);
   }
+  n = add_implicant_groups(out, n, chosen, chc, mins, mc, vars, vc, false);
   return add(out, n, "simplified = %s", sim);
 }
 
@@ -3625,6 +3664,7 @@ static int eval_posform(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LE
   n = add(out, n, "POS = %s", pos);
   Imp chosen[32]; int chc = minimise_rows(zeros, zc, 0, 0, chosen, 32);
   char sim[96]; imp_pos_list(chosen, chc, vars, vc, sim, sizeof(sim));
+  n = add_implicant_groups(out, n, chosen, chc, zeros, zc, vars, vc, true);
   return add(out, n, "simplified POS = %s", chc ? sim : "1");
 }
 
@@ -3667,6 +3707,7 @@ static int eval_truthbits(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_
   n = add(out, n, "SOP = %s", sop);
   Imp chosen[32]; int chc = minimise_rows(mins, mc, 0, 0, chosen, 32);
   char sim[96]; imp_sop_list(chosen, chc, vars, vc, sim, sizeof(sim));
+  n = add_implicant_groups(out, n, chosen, chc, mins, mc, vars, vc, false);
   n = add(out, n, "simplified SOP = %s", chc ? sim : "0");
   if (zc) {
     char pos[112] = ""; int pp = 0;
@@ -3678,6 +3719,7 @@ static int eval_truthbits(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_
     n = add(out, n, "POS = %s", pos);
     Imp pchosen[32]; int pc = minimise_rows(zeros, zc, 0, 0, pchosen, 32);
     char psim[96]; imp_pos_list(pchosen, pc, vars, vc, psim, sizeof(psim));
+    n = add_implicant_groups(out, n, pchosen, pc, zeros, zc, vars, vc, true);
     n = add(out, n, "simplified POS = %s", pc ? psim : "1");
   }
   return n;
@@ -3736,6 +3778,7 @@ static int eval_minterms(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_L
       n = add(out, n, "Use don't-cares only if they make larger zero groups.");
       Imp chosen[32]; int chc = minimise_rows(mins, mc, dcs, dc, chosen, 32);
       char sim[96]; imp_pos_list(chosen, chc, vars, vc, sim, sizeof(sim));
+      n = add_implicant_groups(out, n, chosen, chc, mins, mc, vars, vc, true);
       return add(out, n, "simplified POS = %s", chc ? sim : "1");
     }
     char cmd[128]; sprintf(cmd, "bool(%s)", pos);
@@ -3771,6 +3814,7 @@ static int eval_minterms(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_L
     n = add(out, n, "Use don't-cares only if they make larger groups.");
     Imp chosen[32]; int chc = minimise_rows(mins, mc, dcs, dc, chosen, 32);
     char sim[96]; imp_sop_list(chosen, chc, vars, vc, sim, sizeof(sim));
+    n = add_implicant_groups(out, n, chosen, chc, mins, mc, vars, vc, false);
     return add(out, n, "simplified = %s", chc ? sim : "0");
   }
   char cmd[112]; sprintf(cmd, "bool(%s)", sop);
