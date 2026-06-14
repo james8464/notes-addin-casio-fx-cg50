@@ -16,7 +16,7 @@ def require(path: str, needles: list[str]) -> None:
 def main() -> int:
     require(
         "tools/casio_suite_ui.hpp",
-        ["ui_menu_keys", "ui_softkeys", "ui_print_mini(0, 58, menu, 4)", "UI_R_BLINK_PERIOD", "PREV", "NEXT"],
+        ["ui_menu_keys", "ui_softkeys", "GetFKeyPtr", "FKey_Display", "UI_FKEY_BLANK", "UI_R_BLINK_PERIOD", "PREV", "NEXT"],
     )
     require("tools/p3_app.cc", ["Command input", "command_templates", "p3_eval", "SUVAT", "Projectiles", "Hypothesis tests", "Normal dist", "Regression", "open_examples", "\"EXS\""])
     require("tools/p3_engine.cpp", ["suvat(", "projectile(", "hypbinom(", "binomcdf(", "incline(", "pulley(", "poisson("])

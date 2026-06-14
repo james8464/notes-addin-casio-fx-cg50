@@ -17,6 +17,7 @@ static const int MAX_VIEW_LINES = 160;
 static const int LINE_CAP = 64;
 static const int WRAP_COLS = 54;
 static const int PAGE_LINES = 11;
+static const int MENU_ROWS = 10;
 
 struct NoteEntry {
   char name[64];
@@ -261,6 +262,15 @@ static void notes_menu(const char *title, const char *const *items, int count, i
   ui_menu_keys(title, items, count, top, sel, rv, f1, f2, f3, f4, f5, f6);
 }
 
+static void notes_message(const char *title, const char *a, const char *b, const char *c, bool rv) {
+  ui_chrome(title, rv);
+  ui_softkeys("", "", "", "", "", "BACK");
+  if (a) ui_print(18, 55, a);
+  if (b) ui_print(18, 72, b);
+  if (c) ui_print(18, 89, c);
+  ui_flush();
+}
+
 static void notes_text_page(const char *title, const char *const *lines, int count, int top, int hscroll, bool rv) {
   ui_chrome(title, rv);
   ui_softkeys("NEXT", "PREV", "PGUP", "PGDN", "FIND", "BACK");
@@ -422,8 +432,6 @@ static int search_all_rec(const char *dir, const SearchPattern *sp, int depth, u
   file_type_t info;
   int ret = Bfile_FindFirst_NON_SMEM(path, &handle, found, &info);
   while (!ret && result_count < MAX_RESULTS) {
-    int key = ui_key_poll();
-    if (key == KEY_CTRL_EXIT || key == KEY_CTRL_AC) break;
     Bfile_NameToStr_ncpy((unsigned char *)name, found, 300);
     if (strcmp(name, ".") && strcmp(name, "..") && strcmp(name, "@MainMem")) {
       int is_folder = info.fsize == 0;
@@ -461,22 +469,25 @@ static void show_file_path(const char *path, const char *name, const char *query
 static int search_results_menu(unsigned *tick) {
   int sel = 0, top = 0;
   bool rv = ui_r_visible(*tick);
+  bool dirty = true;
   for (;;) {
-    const char *items[MAX_RESULTS];
-    for (int i = 0; i < result_count; ++i) items[i] = results[i].label;
-    char title[48];
-    sprintf(title, "Find: %.24s", last_query);
-    notes_menu(title, items, result_count, top, sel, rv, "OPEN", "NEW", "PGUP", "PGDN", "", "BACK");
+    if (dirty) {
+      const char *items[MAX_RESULTS];
+      for (int i = 0; i < result_count; ++i) items[i] = results[i].label;
+      char title[48];
+      sprintf(title, "Find: %.24s", last_query);
+      notes_menu(title, items, result_count, top, sel, rv, "OPEN", "NEW", "", "", "", "BACK");
+      dirty = false;
+    }
     int key = ui_key_poll();
     bool nr = ui_r_visible(*tick);
-    if (nr != rv) rv = nr;
+    if (nr != rv) { rv = nr; dirty = true; }
     if (key == KEY_CTRL_EXIT || key == KEY_CTRL_AC || key == KEY_CTRL_F6) return 0;
-    if (ui_menu_handle_key(key, result_count, 7, &sel, &top)) {}
-    if (key == KEY_CTRL_F3 && result_count) ui_menu_handle_key(KEY_CTRL_PAGEUP, result_count, 7, &sel, &top);
-    if (key == KEY_CTRL_F4 && result_count) ui_menu_handle_key(KEY_CTRL_PAGEDOWN, result_count, 7, &sel, &top);
+    if (ui_menu_handle_key(key, result_count, MENU_ROWS, &sel, &top)) dirty = true;
     if (key == KEY_CTRL_F2) return 1;
     if ((key == KEY_CTRL_EXE || key == KEY_CTRL_F1) && result_count) {
       show_file_path(results[sel].path, results[sel].name, last_query, tick);
+      dirty = true;
     }
     OS_InnerWait_ms(35);
   }
@@ -491,13 +502,15 @@ static void search_all_notes(unsigned *tick) {
     SearchPattern sp;
     search_prepare(&sp, q);
     result_count = 0;
-    static const char *const searching[] = {"Searching...", "EXIT cancels."};
-    ui_page("Find all", searching, 2, 0, ui_r_visible(*tick));
+    notes_message("Find all", "Searching all .txt files...", q, 0, ui_r_visible(*tick));
     search_all_rec("\\\\fls0\\", &sp, 0, tick);
     refresh_result_labels();
     if (!result_count) {
-      static const char *const none[] = {"No matching text file."};
-      ui_wait_page("Find all", none, 1, tick);
+      notes_message("Find all", "No results found.", q, "F6 returns.", ui_r_visible(*tick));
+      for (;;) {
+        int key = ui_key_poll();
+        if (key == KEY_CTRL_EXIT || key == KEY_CTRL_AC || key == KEY_CTRL_F6 || key == KEY_CTRL_EXE) break;
+      }
       return;
     }
     if (!search_results_menu(tick)) return;
@@ -514,20 +527,27 @@ int main() {
   int sel = 0, top = 0;
   scan_dir();
   bool rv = ui_r_visible(tick);
+  bool dirty = true;
   for (;;) {
-    const char *names[MAX_ENTRIES];
-    for (int i = 0; i < entry_count; ++i) names[i] = entries[i].name;
-    notes_menu("NOTES", names, entry_count, top, sel, rv, "OPEN", "FIND", "", "", "", "BACK");
+    if (dirty) {
+      const char *names[MAX_ENTRIES];
+      for (int i = 0; i < entry_count; ++i) names[i] = entries[i].name;
+      if (entry_count)
+        notes_menu("NOTES", names, entry_count, top, sel, rv, "OPEN", "FIND", "", "", "", "BACK");
+      else
+        notes_message("NOTES", "No .txt files here.", "F6 goes back.", 0, rv);
+      dirty = false;
+    }
     int key = ui_key_poll();
     bool nr = ui_r_visible(tick);
-    if (nr != rv) rv = nr;
+    if (nr != rv) { rv = nr; dirty = true; }
     if (key == KEY_CTRL_MENU || key == KEY_CTRL_AC) return 0;
-    if (key == KEY_CTRL_EXIT || key == KEY_CTRL_F6) { up_folder(); sel = top = 0; scan_dir(); }
-    if (ui_menu_handle_key(key, entry_count, 7, &sel, &top)) {}
-    if (key == KEY_CTRL_F2) search_all_notes(&tick);
+    if (key == KEY_CTRL_EXIT || key == KEY_CTRL_F6) { up_folder(); sel = top = 0; scan_dir(); dirty = true; }
+    if (ui_menu_handle_key(key, entry_count, MENU_ROWS, &sel, &top)) dirty = true;
+    if (key == KEY_CTRL_F2) { search_all_notes(&tick); dirty = true; }
     if ((key == KEY_CTRL_EXE || key == KEY_CTRL_F1) && entry_count) {
-      if (entries[sel].is_folder) { copy_str(cwd_path, sizeof(cwd_path), entries[sel].path); sel = top = 0; scan_dir(); }
-      else show_file(&entries[sel], &tick);
+      if (entries[sel].is_folder) { copy_str(cwd_path, sizeof(cwd_path), entries[sel].path); sel = top = 0; scan_dir(); dirty = true; }
+      else { show_file(&entries[sel], &tick); dirty = true; }
     }
     OS_InnerWait_ms(35);
   }

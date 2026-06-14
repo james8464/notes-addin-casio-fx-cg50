@@ -23,6 +23,7 @@ static const unsigned short UI_GRAY = RGB565(210, 213, 218);
 static const unsigned short UI_FRAME = RGB565(74, 74, 82);
 static const unsigned UI_R_BLINK_PERIOD = 384;
 static const unsigned UI_R_VISIBLE_TICKS = 256;
+static const int UI_FKEY_BLANK = 0x38;
 
 static void ui_pixel(int x, int y, unsigned short color) {
   if (x < 0 || x >= LCD_WIDTH_PX || y < 0 || y >= LCD_HEIGHT_PX) return;
@@ -131,39 +132,47 @@ static bool ui_menu_handle_key(int key, int count, int visible, int *sel, int *t
   return false;
 }
 
-static void ui_print_mini(int x, int y, const char *s, int mode) {
-  x *= 3;
-  y *= 3;
-  PrintMini(&x, &y, (unsigned char *)s, mode, 0xffffffff, 0, 0, UI_BLACK, UI_WHITE, 1, 0);
+static void ui_fkey_bitmap(int slot, int id) {
+  int ptr = 0;
+  GetFKeyPtr(id, &ptr);
+  FKey_Display(slot, (int *)ptr);
+}
+
+static void ui_fkey_text(int slot, const char *text) {
+  if (!text || !text[0]) {
+    ui_fkey_bitmap(slot, UI_FKEY_BLANK);
+    return;
+  }
+  char label[7];
+  int n = (int)strlen(text);
+  if (n > 6) n = 6;
+  for (int i = 0; i < n; ++i) label[i] = text[i];
+  label[n] = 0;
+  ui_fkey_bitmap(slot, UI_FKEY_BLANK);
+  ui_fill(slot * 64 + 2, 198, 60, 16, UI_BLACK);
+  int x = slot * 64 + 32 - n * 4;
+  if (x < slot * 64 + 4) x = slot * 64 + 4;
+  Bdisp_MMPrint(x, 196, label, 0x40, 0xffffffff, 0, 0, UI_WHITE, UI_BLACK, 1, 0);
 }
 
 static void ui_softkeys(const char *f1, const char *f2, const char *f3, const char *f4, const char *f5, const char *f6) {
   const char *v[6] = {f1, f2, f3, f4, f5, f6};
-  char menu[48];
-  int pos = 0;
-  menu[pos++] = ' ';
-  for (int i = 0; i < 6; ++i) {
-    const char *label = v[i] ? v[i] : "";
-    int n = (int)strlen(label);
-    if (n > 5) n = 5;
-    for (int j = 0; j < n && pos < (int)sizeof(menu) - 1; ++j) menu[pos++] = label[j];
-    int target = 6 + i * 7;
-    while (pos < target && pos < (int)sizeof(menu) - 1) menu[pos++] = ' ';
-    if (i != 5 && pos < (int)sizeof(menu) - 2) {
-      menu[pos++] = '|';
-      menu[pos++] = ' ';
-    }
-  }
-  menu[pos] = 0;
-  ui_print_mini(0, 58, menu, 4);
+  for (int i = 0; i < 6; ++i) ui_fkey_text(i, v[i]);
 }
 
 static void ui_chrome(const char *title, bool r_visible) {
   Bdisp_AllClr_VRAM();
   ui_fill(0, 0, LCD_WIDTH_PX, LCD_HEIGHT_PX, UI_WHITE);
   ui_status(r_visible);
-  Bdisp_MMPrint(18, 24, title, 0x40, 0xffffffff, 0, 0, UI_BLUE, UI_WHITE, 1, 0);
-  ui_hline(18, 377, 47, UI_BLACK);
+  if (title && title[0]) {
+    char t[24];
+    int i = 0;
+    t[i++] = ' ';
+    t[i++] = ' ';
+    for (int j = 0; title[j] && i < 23; ++j) t[i++] = title[j];
+    t[i] = 0;
+    PrintXY(1, 1, t, 0, COLOR_BLUE);
+  }
 }
 
 static void ui_print(int x, int y, const char *s) {
@@ -174,9 +183,9 @@ static void ui_menu_keys(const char *title, const char *const *items, int count,
                          const char *f1, const char *f2, const char *f3, const char *f4, const char *f5, const char *f6) {
   ui_chrome(title, r_visible);
   ui_softkeys(f1, f2, f3, f4, f5, f6);
-  for (int i = 0; i < 7 && top + i < count; ++i) {
+  for (int i = 0; i < 10 && top + i < count; ++i) {
     int idx = top + i;
-    int y = 54 + i * 20;
+    int y = 43 + i * 14;
     char line[72];
     if (count < 10) {
       line[0] = (char)('1' + idx);
@@ -190,21 +199,21 @@ static void ui_menu_keys(const char *title, const char *const *items, int count,
     }
     strncat(line, items[idx], sizeof(line) - strlen(line) - 1);
     if (idx == sel) {
-      ui_fill(18, y - 2, 342, 18, UI_BLUE);
-      Bdisp_MMPrint(22, y, line, 0x40, 0xffffffff, 0, 0, UI_WHITE, UI_BLUE, 1, 0);
+      ui_fill(10, y - 1, 364, 13, UI_BLUE);
+      Bdisp_MMPrint(14, y, line, 0x40, 0xffffffff, 0, 0, UI_WHITE, UI_BLUE, 1, 0);
     } else {
-      Bdisp_MMPrint(22, y, line, 0x40, 0xffffffff, 0, 0, UI_BLACK, UI_WHITE, 1, 0);
+      Bdisp_MMPrint(14, y, line, 0x40, 0xffffffff, 0, 0, UI_BLACK, UI_WHITE, 1, 0);
     }
   }
-  if (count > 7) {
-    int bar_top = 54;
-    int bar_h = 138;
-    int thumb_h = (7 * bar_h) / count;
+  if (count > 10) {
+    int bar_top = 43;
+    int bar_h = 140;
+    int thumb_h = (10 * bar_h) / count;
     if (thumb_h < 12) thumb_h = 12;
-    int max_top = count - 7;
+    int max_top = count - 10;
     int thumb_y = bar_top + (max_top > 0 ? (top * (bar_h - thumb_h)) / max_top : 0);
-    ui_fill(372, bar_top, 5, bar_h, UI_GRAY);
-    ui_fill(372, thumb_y, 5, thumb_h, UI_BLUE);
+    ui_fill(379, bar_top, 4, bar_h, UI_GRAY);
+    ui_fill(379, thumb_y, 4, thumb_h, UI_BLUE);
   }
   ui_flush();
 }
@@ -260,14 +269,11 @@ static bool ui_input(const char *title, char *buf, int cap, unsigned *tick) {
   int hist_pos = hist_count;
   bool rv = ui_r_visible(*tick);
   for (;;) {
-    Bdisp_AllClr_VRAM();
-    ui_fill(0, 0, LCD_WIDTH_PX, LCD_HEIGHT_PX, UI_WHITE);
-    ui_status(rv);
-    Bdisp_MMPrint(10, 28, title, 0x40, 0xffffffff, 0, 0, UI_BLACK, UI_WHITE, 1, 0);
-    DirectDrawRectangle(8, 47, 387, 49, RGB565(70, 70, 80));
-    ui_print(14, 58, "Type command, EXE runs.");
-    ui_fill(12, 82, 370, 38, RGB565(245, 245, 245));
-    Bdisp_MMPrint(16, 90, buf, 0x40, 0xffffffff, 0, 0, UI_BLACK, RGB565(245, 245, 245), 1, 0);
+    ui_chrome(title, rv);
+    ui_print(14, 48, "EXE runs command.");
+    DirectDrawRectangle(12, 75, 382, 116, UI_BLACK);
+    ui_fill(13, 76, 369, 40, UI_LIGHT);
+    Bdisp_MMPrint(18, 88, buf, 0x40, 0xffffffff, 0, 0, UI_BLACK, UI_LIGHT, 1, 0);
     ui_softkeys("RUN", "BACK", "DEL", "PREV", "NEXT", "");
     ui_flush();
     int key = ui_key_poll();
