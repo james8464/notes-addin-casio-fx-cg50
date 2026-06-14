@@ -17,7 +17,7 @@ static const int MAX_VIEW_LINES = 160;
 static const int LINE_CAP = 64;
 static const int WRAP_COLS = 54;
 static const int PAGE_LINES = 11;
-static const int MENU_ROWS = 10;
+static const int MENU_ROWS = UI_MENU_ROWS;
 
 struct NoteEntry {
   char name[64];

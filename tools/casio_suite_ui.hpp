@@ -3,7 +3,9 @@
 
 #include <fxcg/display.h>
 #include <fxcg/keyboard.h>
+#include <fxcg/misc.h>
 #include <fxcg/system.h>
+#include <ctype.h>
 #include <string.h>
 
 extern "C" {
@@ -23,7 +25,8 @@ static const unsigned short UI_GRAY = RGB565(210, 213, 218);
 static const unsigned short UI_FRAME = RGB565(74, 74, 82);
 static const unsigned UI_R_BLINK_PERIOD = 384;
 static const unsigned UI_R_VISIBLE_TICKS = 256;
-static const int UI_FKEY_BLANK = 0x38;
+static const int UI_MENU_ROWS = 7;
+typedef scrollbar TScrollbar;
 
 static void ui_pixel(int x, int y, unsigned short color) {
   if (x < 0 || x >= LCD_WIDTH_PX || y < 0 || y >= LCD_HEIGHT_PX) return;
@@ -132,32 +135,44 @@ static bool ui_menu_handle_key(int key, int count, int visible, int *sel, int *t
   return false;
 }
 
-static void ui_fkey_bitmap(int slot, int id) {
-  int ptr = 0;
-  GetFKeyPtr(id, &ptr);
-  FKey_Display(slot, (int *)ptr);
+static void ui_mprintxy(int x, int y, const char *msg, int mode, int color) {
+  char nmsg[50];
+  nmsg[0] = ' ';
+  nmsg[1] = ' ';
+  nmsg[2] = 0;
+  strncat(nmsg, msg ? msg : "", 47);
+  PrintXY(x, y, nmsg, mode, color);
 }
 
-static void ui_fkey_text(int slot, const char *text) {
-  if (!text || !text[0]) {
-    ui_fkey_bitmap(slot, UI_FKEY_BLANK);
-    return;
-  }
-  char label[7];
-  int n = (int)strlen(text);
-  if (n > 6) n = 6;
-  for (int i = 0; i < n; ++i) label[i] = text[i];
-  label[n] = 0;
-  ui_fkey_bitmap(slot, UI_FKEY_BLANK);
-  ui_fill(slot * 64 + 2, 198, 60, 16, UI_BLACK);
-  int x = slot * 64 + 32 - n * 4;
-  if (x < slot * 64 + 4) x = slot * 64 + 4;
-  Bdisp_MMPrint(x, 196, label, 0x40, 0xffffffff, 0, 0, UI_WHITE, UI_BLACK, 1, 0);
+static void ui_print_mini_grid(int x, int y, const char *s, int mode) {
+  x *= 3;
+  y *= 3;
+  PrintMini(&x, &y, (unsigned char *)(s ? s : ""), mode, 0xffffffff, 0, 0, UI_BLACK, UI_WHITE, 1, 0);
 }
 
 static void ui_softkeys(const char *f1, const char *f2, const char *f3, const char *f4, const char *f5, const char *f6) {
   const char *v[6] = {f1, f2, f3, f4, f5, f6};
-  for (int i = 0; i < 6; ++i) ui_fkey_text(i, v[i]);
+  char menu[48];
+  int pos = 0;
+  for (int i = 0; i < 6; ++i) {
+    if (i) {
+      if (pos < (int)sizeof(menu) - 1) menu[pos++] = '|';
+    }
+    const char *label = v[i] ? v[i] : "";
+    int n = (int)strlen(label);
+    if (n > 6) n = 6;
+    if (i < 5) {
+      menu[pos++] = ' ';
+      for (int j = 0; j < 5 && pos < (int)sizeof(menu) - 1; ++j)
+        menu[pos++] = j < n ? label[j] : ' ';
+      if (pos < (int)sizeof(menu) - 1) menu[pos++] = ' ';
+    } else {
+      for (int j = 0; j < 5 && pos < (int)sizeof(menu) - 1; ++j)
+        menu[pos++] = j < n ? label[j] : ' ';
+    }
+  }
+  menu[pos] = 0;
+  ui_print_mini_grid(0, 58, menu, 4);
 }
 
 static void ui_chrome(const char *title, bool r_visible) {
@@ -165,13 +180,7 @@ static void ui_chrome(const char *title, bool r_visible) {
   ui_fill(0, 0, LCD_WIDTH_PX, LCD_HEIGHT_PX, UI_WHITE);
   ui_status(r_visible);
   if (title && title[0]) {
-    char t[24];
-    int i = 0;
-    t[i++] = ' ';
-    t[i++] = ' ';
-    for (int j = 0; title[j] && i < 23; ++j) t[i++] = title[j];
-    t[i] = 0;
-    PrintXY(1, 1, t, 0, COLOR_BLUE);
+    ui_mprintxy(1, 1, title, 0, COLOR_BLUE);
   }
 }
 
@@ -183,37 +192,44 @@ static void ui_menu_keys(const char *title, const char *const *items, int count,
                          const char *f1, const char *f2, const char *f3, const char *f4, const char *f5, const char *f6) {
   ui_chrome(title, r_visible);
   ui_softkeys(f1, f2, f3, f4, f5, f6);
-  for (int i = 0; i < 10 && top + i < count; ++i) {
+  int visible = UI_MENU_ROWS;
+  if (sel >= top + visible) top = sel - visible + 1;
+  if (sel < top) top = sel;
+  for (int i = 0; i < visible && top + i < count; ++i) {
     int idx = top + i;
-    int y = 43 + i * 14;
     char line[72];
+    int cur = idx + 1;
     if (count < 10) {
-      line[0] = (char)('1' + idx);
+      line[0] = (char)('0' + cur);
       line[1] = ' ';
       line[2] = 0;
     } else {
-      line[0] = idx + 1 >= 10 ? (char)('0' + ((idx + 1) / 10)) : ' ';
-      line[1] = (char)('0' + ((idx + 1) % 10));
+      line[0] = cur >= 10 ? (char)('0' + (cur / 10)) : ' ';
+      line[1] = (char)('0' + (cur % 10));
       line[2] = ' ';
       line[3] = 0;
     }
     strncat(line, items[idx], sizeof(line) - strlen(line) - 1);
     if (idx == sel) {
-      ui_fill(10, y - 1, 364, 13, UI_BLUE);
-      Bdisp_MMPrint(14, y, line, 0x40, 0xffffffff, 0, 0, UI_WHITE, UI_BLUE, 1, 0);
+      int fill = 21 - MB_ElementCount((char *)(items[idx] ? items[idx] : "")) - 3;
+      for (int j = 0; j < fill && strlen(line) < sizeof(line) - 1; ++j) strcat(line, " ");
+      ui_mprintxy(1, i + 2, line, 1, COLOR_BLACK);
     } else {
-      Bdisp_MMPrint(14, y, line, 0x40, 0xffffffff, 0, 0, UI_BLACK, UI_WHITE, 1, 0);
+      ui_mprintxy(1, i + 2, line, 0, COLOR_BLACK);
     }
   }
-  if (count > 10) {
-    int bar_top = 43;
-    int bar_h = 140;
-    int thumb_h = (10 * bar_h) / count;
-    if (thumb_h < 12) thumb_h = 12;
-    int max_top = count - 10;
-    int thumb_y = bar_top + (max_top > 0 ? (top * (bar_h - thumb_h)) / max_top : 0);
-    ui_fill(379, bar_top, 4, bar_h, UI_GRAY);
-    ui_fill(379, thumb_y, 4, thumb_h, UI_BLUE);
+  if (count > visible) {
+    TScrollbar sb;
+    sb.I1 = 0;
+    sb.I5 = 0;
+    sb.indicatormaximum = count;
+    sb.indicatorheight = visible;
+    sb.indicatorpos = top;
+    sb.barheight = visible * 24;
+    sb.bartop = 24;
+    sb.barleft = 18 * 21 - 5;
+    sb.barwidth = 6;
+    Scrollbar(&sb);
   }
   ui_flush();
 }
