@@ -14,7 +14,10 @@ def require(path: str, needles: list[str]) -> None:
 
 
 def main() -> int:
-    require("tools/casio_suite_ui.hpp", ["ui_menu_keys", "ui_softkeys", "UI_R_BLINK_PERIOD", "PREV", "NEXT"])
+    require(
+        "tools/casio_suite_ui.hpp",
+        ["ui_menu_keys", "ui_softkeys", "ui_print_mini(0, 58, menu, 4)", "UI_R_BLINK_PERIOD", "PREV", "NEXT"],
+    )
     require("tools/p3_app.cc", ["Command input", "command_templates", "p3_eval", "SUVAT", "Projectiles", "Hypothesis tests", "Normal dist", "Regression", "open_examples", "\"EXS\""])
     require("tools/p3_engine.cpp", ["suvat(", "projectile(", "hypbinom(", "binomcdf(", "incline(", "pulley(", "poisson("])
     require("tools/cscalc_app.cc", ["Command input", "command_templates", "cscalc_eval", "Two's complement", "Floating decode", "Image storage", "Compression", "open_examples", "\"EXS\""])

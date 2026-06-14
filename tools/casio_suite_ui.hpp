@@ -131,32 +131,31 @@ static bool ui_menu_handle_key(int key, int count, int visible, int *sel, int *t
   return false;
 }
 
-static void ui_fkey(int slot, int id) {
-  int ptr = 0;
-  GetFKeyPtr(id, &ptr);
-  FKey_Display(slot, (int *)ptr);
-}
-
-static void ui_label_fkey(int slot, const char *text) {
-  if (!text || !text[0]) return;
-  char label[7];
-  int n = (int)strlen(text);
-  if (n > 6) n = 6;
-  for (int i = 0; i < n; ++i) label[i] = text[i];
-  label[n] = 0;
-  ui_fkey(slot, 0x38);
-  ui_fill(slot * 64 + 4, 200, 56, 12, UI_BLACK);
-  int x = slot * 64 + 32 - n * 3;
-  if (x < slot * 64 + 4) x = slot * 64 + 4;
-  int y = 177;
-  PrintMini(&x, &y, (unsigned char *)label, 0, 0xffffffff, 0, 0, UI_WHITE, UI_BLACK, 1, 0);
+static void ui_print_mini(int x, int y, const char *s, int mode) {
+  x *= 3;
+  y *= 3;
+  PrintMini(&x, &y, (unsigned char *)s, mode, 0xffffffff, 0, 0, UI_BLACK, UI_WHITE, 1, 0);
 }
 
 static void ui_softkeys(const char *f1, const char *f2, const char *f3, const char *f4, const char *f5, const char *f6) {
   const char *v[6] = {f1, f2, f3, f4, f5, f6};
+  char menu[48];
+  int pos = 0;
+  menu[pos++] = ' ';
   for (int i = 0; i < 6; ++i) {
-    if (v[i] && v[i][0]) ui_label_fkey(i, v[i]);
+    const char *label = v[i] ? v[i] : "";
+    int n = (int)strlen(label);
+    if (n > 5) n = 5;
+    for (int j = 0; j < n && pos < (int)sizeof(menu) - 1; ++j) menu[pos++] = label[j];
+    int target = 6 + i * 7;
+    while (pos < target && pos < (int)sizeof(menu) - 1) menu[pos++] = ' ';
+    if (i != 5 && pos < (int)sizeof(menu) - 2) {
+      menu[pos++] = '|';
+      menu[pos++] = ' ';
+    }
   }
+  menu[pos] = 0;
+  ui_print_mini(0, 58, menu, 4);
 }
 
 static void ui_chrome(const char *title, bool r_visible) {

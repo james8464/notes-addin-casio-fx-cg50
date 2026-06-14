@@ -108,7 +108,11 @@ def draw_app_icon(label: str, accent: tuple[int, int, int], selected: bool) -> I
                            outline=accent, width=2 * SCALE)
     rect(draw, (18, 11, 74, 19), fill=accent)
 
-    if label == "P3":
+    if label == "CAS":
+        text(draw, (27, 23), "CAS", accent, 14, True)
+        line(draw, (28, 42, 64, 42), muted, 1)
+        text(draw, (29, 44), "pure", ink, 7, True)
+    elif label == "P3":
         line(draw, (26, 43, 40, 34), accent, 2)
         line(draw, (40, 34, 52, 38), accent, 2)
         line(draw, (52, 38, 66, 25), accent, 2)
@@ -129,6 +133,7 @@ def main() -> int:
     draw_icon(False).save(OUT_DIR / "runmat_icon.png", optimize=True, compress_level=9)
     draw_icon(True).save(OUT_DIR / "runmat_icon_selected.png", optimize=True, compress_level=9)
     specs = {
+        "cas": ("CAS", (116, 72, 196)),
         "casp3": ("P3", (45, 113, 219)),
         "cscalc": ("CS", (65, 132, 94)),
         "notes": ("NT", (228, 171, 48)),

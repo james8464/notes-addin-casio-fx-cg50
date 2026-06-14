@@ -95,8 +95,8 @@ khicasen.g3a: khicasen.bin
 	mkg3a -n basic:Khicasen -n internal:KHICASEN -V 1.5.2 -i uns:khicasio.png -i sel:khicasio1.png $^ $@
 	/bin/cp khicasen.g3a ~/.wine/drive_c
 
-CAS.g3a: khicasen.bin
-	mkg3a -n basic:CAS -n internal:CAS -V 1.5.2 -i uns:khicasio.png -i sel:khicasio1.png $^ $@
+CAS.g3a: khicasen.bin cas_icon.png cas_icon_selected.png
+	mkg3a -n basic:CAS -n internal:CAS -V 1.5.2 -i uns:cas_icon.png -i sel:cas_icon_selected.png khicasen.bin $@
 	/bin/cp CAS.g3a ~/.wine/drive_c
 
 runmat_mock.elf: runmat_mock.o
