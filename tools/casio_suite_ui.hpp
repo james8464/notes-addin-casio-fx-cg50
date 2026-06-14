@@ -18,6 +18,8 @@ static const unsigned short UI_WHITE = COLOR_WHITE;
 static const unsigned short UI_BLACK = COLOR_BLACK;
 static const unsigned short UI_PINK = 0xF81F;
 static const unsigned short UI_BLUE = COLOR_BLUE;
+static const unsigned short UI_LIGHT = RGB565(242, 243, 245);
+static const unsigned short UI_GRAY = RGB565(210, 213, 218);
 static const unsigned short UI_FRAME = RGB565(74, 74, 82);
 static const unsigned UI_R_BLINK_PERIOD = 384;
 static const unsigned UI_R_VISIBLE_TICKS = 256;
@@ -45,7 +47,6 @@ static void ui_border() {
 
 static void ui_flush() {
   Bdisp_PutDisp_DD();
-  ui_border();
 }
 
 static void ui_status(bool r_visible) {
@@ -156,9 +157,10 @@ static void ui_softkeys(const char *f1, const char *f2, const char *f3, const ch
 static void ui_chrome(const char *title, bool r_visible) {
   Bdisp_AllClr_VRAM();
   ui_fill(0, 0, LCD_WIDTH_PX, LCD_HEIGHT_PX, UI_WHITE);
-  ui_status(r_visible);
-  Bdisp_MMPrint(10, 28, title, 0x40, 0xffffffff, 0, 0, UI_BLACK, UI_WHITE, 1, 0);
-  DirectDrawRectangle(8, 47, 387, 49, UI_FRAME);
+  ui_status(false);
+  (void)r_visible;
+  Bdisp_MMPrint(18, 24, title, 0x40, 0xffffffff, 0, 0, UI_BLUE, UI_WHITE, 1, 0);
+  ui_hline(18, 377, 47, UI_BLACK);
 }
 
 static void ui_print(int x, int y, const char *s) {
@@ -170,13 +172,36 @@ static void ui_menu_keys(const char *title, const char *const *items, int count,
   ui_chrome(title, r_visible);
   ui_softkeys(f1, f2, f3, f4, f5, f6);
   for (int i = 0; i < 7 && top + i < count; ++i) {
-    int y = 56 + i * 18;
-    if (top + i == sel) {
-      ui_fill(11, y - 2, 370, 17, UI_BLUE);
-      Bdisp_MMPrint(16, y, items[top + i], 0x40, 0xffffffff, 0, 0, UI_WHITE, UI_BLUE, 1, 0);
+    int idx = top + i;
+    int y = 54 + i * 20;
+    char line[72];
+    if (count < 10) {
+      line[0] = (char)('1' + idx);
+      line[1] = ' ';
+      line[2] = 0;
     } else {
-      ui_print(16, y, items[top + i]);
+      line[0] = idx + 1 >= 10 ? (char)('0' + ((idx + 1) / 10)) : ' ';
+      line[1] = (char)('0' + ((idx + 1) % 10));
+      line[2] = ' ';
+      line[3] = 0;
     }
+    strncat(line, items[idx], sizeof(line) - strlen(line) - 1);
+    if (idx == sel) {
+      ui_fill(18, y - 2, 342, 18, UI_BLUE);
+      Bdisp_MMPrint(22, y, line, 0x40, 0xffffffff, 0, 0, UI_WHITE, UI_BLUE, 1, 0);
+    } else {
+      Bdisp_MMPrint(22, y, line, 0x40, 0xffffffff, 0, 0, UI_BLACK, UI_WHITE, 1, 0);
+    }
+  }
+  if (count > 7) {
+    int bar_top = 54;
+    int bar_h = 138;
+    int thumb_h = (7 * bar_h) / count;
+    if (thumb_h < 12) thumb_h = 12;
+    int max_top = count - 7;
+    int thumb_y = bar_top + (max_top > 0 ? (top * (bar_h - thumb_h)) / max_top : 0);
+    ui_fill(372, bar_top, 5, bar_h, UI_GRAY);
+    ui_fill(372, thumb_y, 5, thumb_h, UI_BLUE);
   }
   ui_flush();
 }
@@ -234,7 +259,8 @@ static bool ui_input(const char *title, char *buf, int cap, unsigned *tick) {
   for (;;) {
     Bdisp_AllClr_VRAM();
     ui_fill(0, 0, LCD_WIDTH_PX, LCD_HEIGHT_PX, UI_WHITE);
-    ui_status(rv);
+    ui_status(false);
+    (void)rv;
     Bdisp_MMPrint(10, 28, title, 0x40, 0xffffffff, 0, 0, UI_BLACK, UI_WHITE, 1, 0);
     DirectDrawRectangle(8, 47, 387, 49, RGB565(70, 70, 80));
     ui_print(14, 58, "Type command, EXE runs.");

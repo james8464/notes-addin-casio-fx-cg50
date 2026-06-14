@@ -88,10 +88,54 @@ def draw_icon(selected: bool) -> Image.Image:
     return quantized(image)
 
 
+def draw_app_icon(label: str, accent: tuple[int, int, int], selected: bool) -> Image.Image:
+    bg1 = (246, 247, 250) if not selected else tuple(max(0, v - 34) for v in accent)
+    bg2 = (218, 221, 228) if not selected else tuple(max(0, v - 82) for v in accent)
+    card = (255, 255, 255) if not selected else (248, 250, 255)
+    ink = (25, 28, 35)
+    muted = (120, 126, 138)
+
+    image = Image.new("RGB", (SIZE[0] * SCALE, SIZE[1] * SCALE), bg1)
+    draw = ImageDraw.Draw(image)
+    for y in range(SIZE[1] * SCALE):
+        t = y / (SIZE[1] * SCALE - 1)
+        color = tuple(round(bg1[i] * (1 - t) + bg2[i] * t) for i in range(3))
+        draw.line((0, y, SIZE[0] * SCALE, y), fill=color)
+
+    draw.rounded_rectangle((13 * SCALE, 6 * SCALE, 79 * SCALE, 58 * SCALE), radius=14 * SCALE,
+                           fill=card, outline=(175, 180, 190), width=SCALE)
+    draw.rounded_rectangle((18 * SCALE, 11 * SCALE, 74 * SCALE, 53 * SCALE), radius=9 * SCALE,
+                           outline=accent, width=2 * SCALE)
+    rect(draw, (18, 11, 74, 19), fill=accent)
+
+    if label == "P3":
+        line(draw, (26, 43, 40, 34), accent, 2)
+        line(draw, (40, 34, 52, 38), accent, 2)
+        line(draw, (52, 38, 66, 25), accent, 2)
+        text(draw, (29, 22), "P3", ink, 18, True)
+    elif label == "CS":
+        text(draw, (27, 22), "01", accent, 16, True)
+        text(draw, (34, 39), "CS", ink, 8, True)
+    else:
+        for yy in (25, 32, 39):
+            line(draw, (28, yy, 64, yy), muted if yy != 25 else accent, 2)
+        text(draw, (31, 43), "TXT", ink, 7, True)
+
+    return quantized(image)
+
+
 def main() -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     draw_icon(False).save(OUT_DIR / "runmat_icon.png", optimize=True, compress_level=9)
     draw_icon(True).save(OUT_DIR / "runmat_icon_selected.png", optimize=True, compress_level=9)
+    specs = {
+        "casp3": ("P3", (45, 113, 219)),
+        "cscalc": ("CS", (65, 132, 94)),
+        "notes": ("NT", (228, 171, 48)),
+    }
+    for name, (label, accent) in specs.items():
+        draw_app_icon(label, accent, False).save(OUT_DIR / f"{name}_icon.png", optimize=True, compress_level=9)
+        draw_app_icon(label, accent, True).save(OUT_DIR / f"{name}_icon_selected.png", optimize=True, compress_level=9)
     return 0
 
 

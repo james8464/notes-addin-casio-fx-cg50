@@ -121,8 +121,8 @@ CASP3.elf: casio_p3_app.o p3_engine.o
 CASP3.bin: CASP3.elf
 	$(OBJCOPY) $(OBJFLAGS) CASP3.elf CASP3.bin
 
-CASP3.g3a: CASP3.bin runmat_icon.png runmat_icon_selected.png
-	mkg3a -n basic:CASP3 -n internal:CASP3 -V 1.0.0 -i uns:runmat_icon.png -i sel:runmat_icon_selected.png CASP3.bin $@
+CASP3.g3a: CASP3.bin casp3_icon.png casp3_icon_selected.png
+	mkg3a -n basic:CASP3 -n internal:CASP3 -V 1.0.0 -i uns:casp3_icon.png -i sel:casp3_icon_selected.png CASP3.bin $@
 	/bin/cp CASP3.g3a ~/.wine/drive_c
 
 CSCALC.elf: casio_cscalc_app.o cscalc_engine.o
@@ -134,8 +134,8 @@ CSCALC.elf: casio_cscalc_app.o cscalc_engine.o
 CSCALC.bin: CSCALC.elf
 	$(OBJCOPY) $(OBJFLAGS) CSCALC.elf CSCALC.bin
 
-CSCALC.g3a: CSCALC.bin runmat_icon.png runmat_icon_selected.png
-	mkg3a -n basic:CSCalc -n internal:CSCALC -V 1.0.0 -i uns:runmat_icon.png -i sel:runmat_icon_selected.png CSCALC.bin $@
+CSCALC.g3a: CSCALC.bin cscalc_icon.png cscalc_icon_selected.png
+	mkg3a -n basic:CSCalc -n internal:CSCALC -V 1.0.0 -i uns:cscalc_icon.png -i sel:cscalc_icon_selected.png CSCALC.bin $@
 	/bin/cp CSCALC.g3a ~/.wine/drive_c
 
 NOTES.elf: casio_notes_app.o
@@ -147,8 +147,8 @@ NOTES.elf: casio_notes_app.o
 NOTES.bin: NOTES.elf
 	$(OBJCOPY) $(OBJFLAGS) NOTES.elf NOTES.bin
 
-NOTES.g3a: NOTES.bin runmat_icon.png runmat_icon_selected.png
-	mkg3a -n basic:Notes -n internal:NOTES -V 1.0.0 -i uns:runmat_icon.png -i sel:runmat_icon_selected.png NOTES.bin $@
+NOTES.g3a: NOTES.bin notes_icon.png notes_icon_selected.png
+	mkg3a -n basic:Notes -n internal:NOTES -V 1.0.0 -i uns:notes_icon.png -i sel:notes_icon_selected.png NOTES.bin $@
 	/bin/cp NOTES.g3a ~/.wine/drive_c
 
 clean:
