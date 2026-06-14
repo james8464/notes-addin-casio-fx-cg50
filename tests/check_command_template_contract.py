@@ -56,7 +56,7 @@ def build() -> None:
 
 def require_source(path: str, templates: list[str]) -> None:
     text = (ROOT / path).read_text(errors="ignore")
-    for needle in ["Command input", "command_templates", "KEY_CTRL_EXE", "KEY_CTRL_F1"]:
+    for needle in ["P3_COMMANDS", "CS_COMMANDS", "P3_FOLDERS", "CS_FOLDERS", "doCatalogMenu"]:
         if needle not in text:
             raise AssertionError(f"{path}: missing {needle}")
     for template in templates:
@@ -74,8 +74,8 @@ def require_eval(host: Path, expr: str) -> None:
 
 
 def main() -> int:
-    require_source("tools/p3_app.cc", P3_TEMPLATES)
-    require_source("tools/cscalc_app.cc", CS_TEMPLATES)
+    require_source("tools/khicas_suite_catalog.py", P3_TEMPLATES)
+    require_source("tools/khicas_suite_catalog.py", CS_TEMPLATES)
     build()
     for expr in P3_TEMPLATES:
         require_eval(P3_HOST, expr)

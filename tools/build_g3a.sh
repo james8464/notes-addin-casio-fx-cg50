@@ -40,6 +40,7 @@ clean_source_outputs() {
 prepare_icons() {
   python3 - "${SRC_DIR}" <<'PY'
 from pathlib import Path
+import re
 import sys
 
 root = Path(sys.argv[1])
@@ -67,8 +68,8 @@ cp "${ROOT_DIR}/tools/p3_engine.hpp" "${SRC_DIR}/p3_engine.hpp"
 cp "${ROOT_DIR}/tools/p3_engine.cpp" "${SRC_DIR}/p3_engine.cpp"
 cp "${ROOT_DIR}/tools/cscalc_engine.hpp" "${SRC_DIR}/cscalc_engine.hpp"
 cp "${ROOT_DIR}/tools/cscalc_engine.cpp" "${SRC_DIR}/cscalc_engine.cpp"
-cp "${ROOT_DIR}/tools/p3_app.cc" "${SRC_DIR}/p3_app.cc"
-cp "${ROOT_DIR}/tools/cscalc_app.cc" "${SRC_DIR}/cscalc_app.cc"
+cp "${ROOT_DIR}/tools/khicas_suite_bridge.hpp" "${SRC_DIR}/khicas_suite_bridge.hpp"
+cp "${ROOT_DIR}/tools/khicas_suite_bridge.cpp" "${SRC_DIR}/khicas_suite_bridge.cpp"
 cp "${ROOT_DIR}/tools/notes_app.cc" "${SRC_DIR}/notes_app.cc"
 
 cat > "${DOCKER_BUILD_SCRIPT}" <<'SH'
@@ -88,17 +89,91 @@ cp -a /work/khicas/upstream/giac90_1addin /tmp/giac90_1addin
 cd /tmp/giac90_1addin
 
 make clean
-rm -f "${CASIO_KHICAS_TARGET}" "${CASIO_RUNMAT_TARGET}" "${CASIO_P3_TARGET}" "${CASIO_CS_TARGET}" "${CASIO_NOTES_TARGET}"
-make -j"${CASIO_MAKE_JOBS}" "${CASIO_KHICAS_TARGET}" "${CASIO_RUNMAT_TARGET}" "${CASIO_P3_TARGET}" "${CASIO_CS_TARGET}" "${CASIO_NOTES_TARGET}"
+rm -f "${CASIO_KHICAS_TARGET}" "${CASIO_RUNMAT_TARGET}" "${CASIO_NOTES_TARGET}"
+make -j"${CASIO_MAKE_JOBS}" "${CASIO_KHICAS_TARGET}" "${CASIO_RUNMAT_TARGET}" "${CASIO_NOTES_TARGET}"
+
+build_suite_app() {
+  local app="$1"
+  local target="$2"
+  local macro="$3"
+  local engine_obj="$4"
+  local catalog_kind="$5"
+  local icon="$6"
+  local icon_sel="$7"
+  local tree="/tmp/giac90_1addin_${app}"
+  rm -rf "${tree}"
+  cp -a /work/khicas/upstream/giac90_1addin "${tree}"
+  cd "${tree}"
+  make clean
+  cp /work/tools/khicas_suite_bridge.hpp .
+  cp /work/tools/khicas_suite_bridge.cpp .
+  cp /work/tools/p3_engine.hpp /work/tools/p3_engine.cpp .
+  cp /work/tools/cscalc_engine.hpp /work/tools/cscalc_engine.cpp .
+  python3 /work/tools/khicas_suite_catalog.py "${catalog_kind}" catalogen.cpp
+  python3 /work/tools/patch_khicas_suite_main.py main.cc
+  python3 - "${target}" "${macro}" "${engine_obj}" "${icon}" "${icon_sel}" <<'PY'
+from pathlib import Path
+import re
+import sys
+
+target, macro, engine_obj, icon, icon_sel = sys.argv[1:]
+basic_name = target[:-4]
+if basic_name == "CSCALC":
+    basic_name = "CSCalc"
+make = Path("Makefile")
+text = make.read_text()
+for stale in (
+    r"\ncasio_p3_app\.o:.*?(?=\n\S)",
+    r"\ncasio_cscalc_app\.o:.*?(?=\n\S)",
+    r"\nCASP3\.elf:.*?(?=\n\S)",
+    r"\nCASP3\.bin:.*?(?=\n\S)",
+    r"\nCASP3\.g3a:.*?(?=\n\S)",
+    r"\nCSCALC\.elf:.*?(?=\n\S)",
+    r"\nCSCALC\.bin:.*?(?=\n\S)",
+    r"\nCSCALC\.g3a:.*?(?=\n\S)",
+):
+    text = re.sub(stale, "\n", text, flags=re.S)
+text = text.replace(
+    "GUI_OBJS = fileGUI.o menuGUI.o textGUI.o fileProvider.o graphicsProvider.o stringsProvider.o kdisplay.o console.o cascas_working.o main.o",
+    f"GUI_OBJS = fileGUI.o menuGUI.o textGUI.o fileProvider.o graphicsProvider.o stringsProvider.o kdisplay.o console.o cascas_working.o main.o khicas_suite_bridge.o {engine_obj}",
+)
+engine_rule = ""
+if f"\n{engine_obj}:" not in text:
+    engine_rule = f"""
+
+{engine_obj}: {engine_obj[:-2]}.cpp {engine_obj[:-2]}.hpp
+\t$(CXX) $(RUNMAT_CXXFLAGS) -c $< -o $@
+"""
+text += f"""
+
+khicas_suite_bridge.o: khicas_suite_bridge.cpp khicas_suite_bridge.hpp p3_engine.hpp cscalc_engine.hpp
+\t$(CXX) $(CXXFLAGS) -D{macro} -c $<
+{engine_rule}
+
+{target}: khicasen.bin {icon} {icon_sel}
+\tmkg3a -n basic:{basic_name} -n internal:{target[:-4].upper()} -V 1.0.0 -i uns:{icon} -i sel:{icon_sel} khicasen.bin $@
+\t/bin/cp {target} ~/.wine/drive_c
+"""
+make.write_text(text)
+PY
+  rm -f "${target}"
+  make -j"${CASIO_MAKE_JOBS}" "${target}"
+  cp "${target}" "/work/khicas/upstream/giac90_1addin/${target}"
+  cp khicasen.bin "/work/khicas/upstream/giac90_1addin/${app}.bin"
+  cp khicasen.elf "/work/khicas/upstream/giac90_1addin/${app}.elf"
+  cp khicasen.map "/work/khicas/upstream/giac90_1addin/${app}.map"
+  cd /tmp/giac90_1addin
+}
+
+build_suite_app CASP3 "${CASIO_P3_TARGET}" SUITE_APP_P3 p3_engine.o p3 casp3_icon.png casp3_icon_selected.png
+build_suite_app CSCALC "${CASIO_CS_TARGET}" SUITE_APP_CS cscalc_engine.o cs cscalc_icon.png cscalc_icon_selected.png
 
 cp "${CASIO_KHICAS_TARGET}" /work/khicas/upstream/giac90_1addin/
 cp "${CASIO_RUNMAT_TARGET}" /work/khicas/upstream/giac90_1addin/
-cp "${CASIO_P3_TARGET}" /work/khicas/upstream/giac90_1addin/
-cp "${CASIO_CS_TARGET}" /work/khicas/upstream/giac90_1addin/
 cp "${CASIO_NOTES_TARGET}" /work/khicas/upstream/giac90_1addin/
 cp khicasen.bin khicasen.elf khicasen.map /work/khicas/upstream/giac90_1addin/
 cp runmat_mock.bin runmat_mock.elf runmat_mock.map /work/khicas/upstream/giac90_1addin/
-for app in CASP3 CSCALC NOTES; do
+for app in NOTES; do
   cp "${app}.bin" "${app}.elf" "${app}.map" /work/khicas/upstream/giac90_1addin/
 done
 SH
@@ -182,7 +257,8 @@ rm -f "${SRC_DIR}/khicasio.png" "${SRC_DIR}/khicasio1.png" \
   "${SRC_DIR}/casio_suite_ui.hpp" \
   "${SRC_DIR}/p3_engine.hpp" "${SRC_DIR}/p3_engine.cpp" \
   "${SRC_DIR}/cscalc_engine.hpp" "${SRC_DIR}/cscalc_engine.cpp" \
-  "${SRC_DIR}/p3_app.cc" "${SRC_DIR}/cscalc_app.cc" "${SRC_DIR}/notes_app.cc"
+  "${SRC_DIR}/khicas_suite_bridge.hpp" "${SRC_DIR}/khicas_suite_bridge.cpp" \
+  "${SRC_DIR}/notes_app.cc"
 
 ls -lh "${TRANSFER_DIR}/${TARGET}" "${TRANSFER_DIR}/${RUNMAT_TARGET}" "${TRANSFER_DIR}/${P3_TARGET}" "${TRANSFER_DIR}/${CS_TARGET}" "${TRANSFER_DIR}/${NOTES_TARGET}" "${TRANSFER_DIR}/${PACK_TARGET}"
 shasum -a 256 "${TRANSFER_DIR}/${TARGET}" "${TRANSFER_DIR}/${RUNMAT_TARGET}" "${TRANSFER_DIR}/${P3_TARGET}" "${TRANSFER_DIR}/${CS_TARGET}" "${TRANSFER_DIR}/${NOTES_TARGET}" "${TRANSFER_DIR}/${PACK_TARGET}"

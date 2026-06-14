@@ -10,12 +10,10 @@
 
 ## Controls
 
-- Type a command at the prompt, e.g. `suvat(u=2,a=3,t=4)`.
-- `EXE` or `F1`: run command.
-- `F2`, `EXIT`, or `AC` at the prompt: quit/back.
-- `F3`: delete one character.
-- `F4/F5`: previous/next command history.
-- On a working page, `UP/DOWN` scroll and `F6`, `EXIT`, or `AC` returns to the prompt.
+- Same console shell as KhiCAS.
+- Type a command at the prompt, e.g. `suvat(u=2,a=3,t=4)`, then press `EXE`.
+- Use the KhiCAS catalog/menu keys to insert commands; the CASP3 catalog contains only Paper 3 commands.
+- History, cursor movement, delete, redraw, and scrolling follow the original KhiCAS controls.
 
 ## Mechanics Commands
 
