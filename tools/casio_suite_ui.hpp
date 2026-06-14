@@ -137,38 +137,32 @@ static void ui_fkey(int slot, int id) {
   FKey_Display(slot, (int *)ptr);
 }
 
-static void ui_append_softkey(char *dst, int *pos, const char *text) {
-  char cell[7] = "      ";
-  int n = text ? (int)strlen(text) : 0;
+static void ui_label_fkey(int slot, const char *text) {
+  if (!text || !text[0]) return;
+  char label[7];
+  int n = (int)strlen(text);
   if (n > 6) n = 6;
-  int left = (6 - n) / 2;
-  for (int i = 0; i < n; ++i) cell[left + i] = text[i];
-  for (int i = 0; i < 6; ++i) dst[(*pos)++] = cell[i];
+  for (int i = 0; i < n; ++i) label[i] = text[i];
+  label[n] = 0;
+  ui_fkey(slot, 0x38);
+  ui_fill(slot * 64 + 4, 200, 56, 12, UI_BLACK);
+  int x = slot * 64 + 32 - n * 3;
+  if (x < slot * 64 + 4) x = slot * 64 + 4;
+  int y = 177;
+  PrintMini(&x, &y, (unsigned char *)label, 0, 0xffffffff, 0, 0, UI_WHITE, UI_BLACK, 1, 0);
 }
 
 static void ui_softkeys(const char *f1, const char *f2, const char *f3, const char *f4, const char *f5, const char *f6) {
   const char *v[6] = {f1, f2, f3, f4, f5, f6};
-  char bar[64];
-  int pos = 0;
-  bar[pos++] = ' ';
   for (int i = 0; i < 6; ++i) {
-    ui_append_softkey(bar, &pos, v[i]);
-    if (i != 5) {
-      bar[pos++] = '|';
-      bar[pos++] = ' ';
-    }
+    if (v[i] && v[i][0]) ui_label_fkey(i, v[i]);
   }
-  bar[pos] = 0;
-  ui_fill(0, 172, LCD_WIDTH_PX, 24, UI_WHITE);
-  int x = 0, y = 174;
-  PrintMini(&x, &y, (unsigned char *)bar, 4, 0xffffffff, 0, 0, UI_BLACK, UI_WHITE, 1, 0);
 }
 
 static void ui_chrome(const char *title, bool r_visible) {
   Bdisp_AllClr_VRAM();
   ui_fill(0, 0, LCD_WIDTH_PX, LCD_HEIGHT_PX, UI_WHITE);
-  ui_status(false);
-  (void)r_visible;
+  ui_status(r_visible);
   Bdisp_MMPrint(18, 24, title, 0x40, 0xffffffff, 0, 0, UI_BLUE, UI_WHITE, 1, 0);
   ui_hline(18, 377, 47, UI_BLACK);
 }
@@ -269,8 +263,7 @@ static bool ui_input(const char *title, char *buf, int cap, unsigned *tick) {
   for (;;) {
     Bdisp_AllClr_VRAM();
     ui_fill(0, 0, LCD_WIDTH_PX, LCD_HEIGHT_PX, UI_WHITE);
-    ui_status(false);
-    (void)rv;
+    ui_status(rv);
     Bdisp_MMPrint(10, 28, title, 0x40, 0xffffffff, 0, 0, UI_BLACK, UI_WHITE, 1, 0);
     DirectDrawRectangle(8, 47, 387, 49, RGB565(70, 70, 80));
     ui_print(14, 58, "Type command, EXE runs.");
