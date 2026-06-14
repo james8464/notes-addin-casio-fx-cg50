@@ -302,8 +302,7 @@ int main() {
     bool nr = ui_r_visible(tick);
     if (nr != rv) { rv = nr; ui_menu_keys("AQA CS Calc", menu_items, count, top, sel, rv, "HELP", "RUN", "EXS", "", "", "BACK"); }
     if (key == KEY_CTRL_EXIT || key == KEY_CTRL_AC || key == KEY_CTRL_MENU || key == KEY_CTRL_F6) return 0;
-    if (key == KEY_CTRL_UP && sel > 0) { --sel; if (sel < top) --top; ui_menu_keys("AQA CS Calc", menu_items, count, top, sel, rv, "HELP", "RUN", "EXS", "", "", "BACK"); }
-    if (key == KEY_CTRL_DOWN && sel + 1 < count) { ++sel; if (sel >= top + 7) ++top; ui_menu_keys("AQA CS Calc", menu_items, count, top, sel, rv, "HELP", "RUN", "EXS", "", "", "BACK"); }
+    if (ui_menu_handle_key(key, count, 7, &sel, &top)) ui_menu_keys("AQA CS Calc", menu_items, count, top, sel, rv, "HELP", "RUN", "EXS", "", "", "BACK");
     if (key == KEY_CTRL_EXE || key == KEY_CTRL_F2) { open_item(sel, false, &tick); rv = ui_r_visible(tick); ui_menu_keys("AQA CS Calc", menu_items, count, top, sel, rv, "HELP", "RUN", "EXS", "", "", "BACK"); }
     if (key == KEY_CTRL_F1) { open_item(sel, true, &tick); rv = ui_r_visible(tick); ui_menu_keys("AQA CS Calc", menu_items, count, top, sel, rv, "HELP", "RUN", "EXS", "", "", "BACK"); }
     if (key == KEY_CTRL_F3) { open_examples(sel, &tick); rv = ui_r_visible(tick); ui_menu_keys("AQA CS Calc", menu_items, count, top, sel, rv, "HELP", "RUN", "EXS", "", "", "BACK"); }

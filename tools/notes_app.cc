@@ -471,16 +471,9 @@ static int search_results_menu(unsigned *tick) {
     bool nr = ui_r_visible(*tick);
     if (nr != rv) rv = nr;
     if (key == KEY_CTRL_EXIT || key == KEY_CTRL_AC || key == KEY_CTRL_F6) return 0;
-    if (key == KEY_CTRL_UP && sel > 0) { --sel; if (sel < top) --top; }
-    if (key == KEY_CTRL_DOWN && sel + 1 < result_count) { ++sel; if (sel >= top + 7) ++top; }
-    if ((key == KEY_CTRL_PAGEUP || key == KEY_CTRL_F3) && sel > 0) {
-      sel = max_int(0, sel - 7);
-      top = max_int(0, top - 7);
-    }
-    if ((key == KEY_CTRL_PAGEDOWN || key == KEY_CTRL_F4) && sel + 1 < result_count) {
-      sel = min_int(result_count - 1, sel + 7);
-      top = min_int(max_int(0, result_count - 7), top + 7);
-    }
+    if (ui_menu_handle_key(key, result_count, 7, &sel, &top)) {}
+    if (key == KEY_CTRL_F3 && result_count) ui_menu_handle_key(KEY_CTRL_PAGEUP, result_count, 7, &sel, &top);
+    if (key == KEY_CTRL_F4 && result_count) ui_menu_handle_key(KEY_CTRL_PAGEDOWN, result_count, 7, &sel, &top);
     if (key == KEY_CTRL_F2) return 1;
     if ((key == KEY_CTRL_EXE || key == KEY_CTRL_F1) && result_count) {
       show_file_path(results[sel].path, results[sel].name, last_query, tick);
@@ -530,8 +523,7 @@ int main() {
     if (nr != rv) rv = nr;
     if (key == KEY_CTRL_MENU || key == KEY_CTRL_AC) return 0;
     if (key == KEY_CTRL_EXIT || key == KEY_CTRL_F6) { up_folder(); sel = top = 0; scan_dir(); }
-    if (key == KEY_CTRL_UP && sel > 0) { --sel; if (sel < top) --top; }
-    if (key == KEY_CTRL_DOWN && sel + 1 < entry_count) { ++sel; if (sel >= top + 7) ++top; }
+    if (ui_menu_handle_key(key, entry_count, 7, &sel, &top)) {}
     if (key == KEY_CTRL_F2) search_all_notes(&tick);
     if ((key == KEY_CTRL_EXE || key == KEY_CTRL_F1) && entry_count) {
       if (entries[sel].is_folder) { strcpy(cwd_path, entries[sel].path); sel = top = 0; scan_dir(); }

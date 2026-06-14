@@ -71,14 +71,63 @@ static bool ui_r_visible(unsigned start_tick) {
 }
 
 static int ui_key_poll() {
-  int col = 0, row = 0;
-  unsigned short keycode = 0;
-  int ret = GetKeyWait_OS(&col, &row, KEYWAIT_HALTOFF_TIMEROFF, 0, 1, &keycode);
-  if (ret != KEYREP_KEYEVENT) return KEY_CTRL_NOP;
-  if (col == 1) return KEY_CTRL_AC;
-  if (col == 4 && row == 9) return KEY_CTRL_MENU;
-  if (col == 4 && row == 8) return KEY_CTRL_EXIT;
-  return keycode;
+  int key = 0;
+  GetKey(&key);
+  return key;
+}
+
+static bool ui_menu_handle_key(int key, int count, int visible, int *sel, int *top) {
+  if (count <= 0) return false;
+  switch (key) {
+    case KEY_CTRL_DOWN:
+      if (*sel + 1 >= count) {
+        *sel = 0;
+        *top = 0;
+      } else {
+        ++(*sel);
+        if (*sel >= *top + visible) *top = *sel - visible + 1;
+      }
+      return true;
+    case KEY_CTRL_UP:
+      if (*sel <= 0) {
+        *sel = count - 1;
+        *top = count > visible ? count - visible : 0;
+      } else {
+        --(*sel);
+        if (*sel < *top) *top = *sel;
+      }
+      return true;
+    case KEY_CTRL_PAGEDOWN:
+      *sel += 6;
+      if (*sel >= count) *sel = count - 1;
+      if (*sel >= *top + visible) *top = *sel - visible + 1;
+      return true;
+    case KEY_CTRL_PAGEUP:
+      *sel -= 6;
+      if (*sel < 0) *sel = 0;
+      if (*sel < *top) *top = *sel;
+      return true;
+    case KEY_CHAR_1: case KEY_CHAR_2: case KEY_CHAR_3:
+    case KEY_CHAR_4: case KEY_CHAR_5: case KEY_CHAR_6:
+    case KEY_CHAR_7: case KEY_CHAR_8: case KEY_CHAR_9: {
+      int n = key - KEY_CHAR_0;
+      if (n <= count) {
+        *sel = n - 1;
+        if (*sel < *top) *top = *sel;
+        if (*sel >= *top + visible) *top = *sel - visible + 1;
+        return true;
+      }
+      break;
+    }
+    case KEY_CHAR_0:
+      if (count >= 10) {
+        *sel = 9;
+        if (*sel >= *top + visible) *top = *sel - visible + 1;
+        return true;
+      }
+      break;
+  }
+  return false;
 }
 
 static void ui_fkey(int slot, int id) {
