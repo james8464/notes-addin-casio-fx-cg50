@@ -18,10 +18,10 @@ def main() -> int:
         "tools/casio_suite_ui.hpp",
         ["ui_status()", "ui_menu_keys", "ui_softkeys", "ui_print_mini_grid(0, 58, menu, 4)", "ui_khicas_fkeys", "| view | cmds | A<>a | File ", "ui_console_input", "ui_console_wait_page", "ui_mprintxy", "TScrollbar", "PREV", "NEXT"],
     )
-    require("tools/khicas_suite_bridge.cpp", ["suite_eval_with_working", "Console_Output", "Console_NewLine", "p3_eval", "cscalc_eval", "SUITE_APP_P3", "SUITE_APP_CS"])
-    require("tools/khicas_suite_catalog.py", ["suvat(", "projectile(", "hypbinom(", "normalprob(", "Mechanics", "Statistics", "Data/prob"])
+    require("tools/khicas_suite_bridge.cpp", ["suite_eval_with_working", "Console_Output", "Console_NewLine", "suite_console_fmenu_config", "suite_register_lexer_symbols", "lexer_functions_register", "p3_eval", "cscalc_eval", "SUITE_APP_P3", "SUITE_APP_CS"])
+    require("tools/khicas_suite_catalog.py", ["suvat(", "projectile(", "hypbinom(", "normalprob(", "Mechanics", "Statistics", "Data/prob", "Command help", "doTextArea", "KEY_CTRL_F6"])
     require("tools/p3_engine.cpp", ["suvat(", "projectile(", "hypbinom(", "binomcdf(", "incline(", "pulley(", "poisson("])
-    require("tools/patch_khicas_suite_main.py", ["suite_eval_with_working((const char *)expr)", "cascas::eval_with_working", "Err: unsupported"])
+    require("tools/patch_khicas_suite_main.py", ["suite_eval_with_working((const char *)expr)", "suite_register_lexer_symbols();", "suite_console_fmenu_config()", "menu_f1,menu_f2,menu_f3,menu_f4,menu_f5,menu_f6", "cascas::eval_with_working", "Err: unsupported"])
     require("tools/khicas_suite_catalog.py", ["convert(", "twosdec(", "floatdec(", "image(", "binarysearch(", "Number", "Float/fixed", "Boolean"])
     require("tools/cscalc_engine.cpp", ["twosdec(", "twossub(", "floatdec(", "floatenc(", "bool(", "nand", "image("])
     require("tools/notes_app.cc", ["Bfile_FindFirst_NON_SMEM", ".txt", "load_file_buf", "Find all text", "Find text", "search_all_rec", "file_text_matches", "SearchPattern", "search_prepare", "search_step", "search_results_menu", "ui_menu_keys", "hidden_system_folder", ".Trashes", ".fseventsd", "SAVE-F", "NOTES_ROOT", r"\\\\fls0\\NOTES\\"])

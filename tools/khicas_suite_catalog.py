@@ -170,7 +170,87 @@ def emit(app: str) -> str:
         raise SystemExit("usage: khicas_suite_catalog.py p3|cs")
 
     cat_defs = "\n".join(f"#define {name} {value}" for name, value in CATEGORIES.items())
-    command_rows = "\n".join(f'  {{(char*)"{name}", {cat}}},' for name, cat in commands)
+    def esc(s: str) -> str:
+        return s.replace("\\", "\\\\").replace('"', '\\"')
+
+    def base_name(s: str) -> str:
+        return s.split("(", 1)[0]
+
+    def insert_text(s: str) -> str:
+        b = base_name(s)
+        return b + "(" if "(" in s else b
+
+    def desc(s: str) -> str:
+        b = base_name(s)
+        if app == "p3":
+            if b in {"suvat", "varacct", "varaccx"}:
+                return "Mechanics working: formula, substitution, answer."
+            if b.startswith("projectile"):
+                return "Projectile working with components and suvat."
+            if b in {"force", "weight", "friction", "incline", "inclineacc", "pulley", "connected"}:
+                return "Forces working with Newton's second law."
+            if b in {"beam", "moment", "ladder"}:
+                return "Moments/equilibrium working."
+            if b in {"hypbinom", "critbinom", "binomcrit"}:
+                return "Binomial hypothesis test working and conclusion."
+            if b.startswith("normal") or b.startswith("sample"):
+                return "Normal distribution setup and standardisation."
+            if b.startswith("binom") or b.startswith("poisson"):
+                return "Discrete distribution setup and probability."
+            return "Stats/data working with formula and substitution."
+        if b in {"convert", "base", "bin", "hex", "den", "bitsneeded"}:
+            return "Number-base working."
+        if "twos" in b or b in {"signmag", "signmagdec", "ones", "onesdec", "binadd", "binsub", "shift", "arithshift"}:
+            return "Binary integer working with range/overflow where needed."
+        if b.startswith("fixed") or b.startswith("float"):
+            return "Fixed/floating point working."
+        if b in {"image", "imagesize", "sound", "soundsize", "bitrate", "compress", "chars", "records", "ascii"}:
+            return "Storage/data-size working."
+        if b in {"bool", "truth", "demorgan", "nand"}:
+            return "Boolean algebra working with rule names."
+        return "Algorithm/data-structure working."
+
+    def example(s: str) -> str:
+        if "(" in s and ")" in s:
+            return "#" + s
+        examples = {
+            "suvat(": "suvat(u=2,a=3,t=4)",
+            "projectile(": "projectile(20,30)",
+            "force(": "force(12,3)",
+            "incline(": "incline(5,30,0.2)",
+            "pulley(": "pulley(3,5)",
+            "beam(": "beam(10,30,4,20)",
+            "varacct(": "varacct(6,-4,0,3,5)",
+            "hypbinom(": "hypbinom(20,0.4,4,0.05,-1)",
+            "normalprob(": "normalprob(40,60,50,10)",
+            "binom(": "binom(10,0.4,3)",
+            "cond(": "cond(0.2,0.5)",
+            "regresscalc(": "regresscalc(5,20,30,10,18,8)",
+            "groupmean(": "groupmean(5,12,15,30,25,18)",
+            "convert(": "convert(45,10,16)",
+            "bitsneeded(": "bitsneeded(127)",
+            "twos(": "twos(-5,8)",
+            "twossub(": "twossub(5,9,8)",
+            "binadd(": "binadd(1011,0110,4)",
+            "fixedenc(": "fixedenc(5.625,3,3)",
+            "floatdec(": "floatdec(0101100,11101)",
+            "floatenc(": "floatenc(12.75,8,4)",
+            "floatnorm(": "floatnorm(00011010,0110)",
+            "floatrange(": "floatrange(8,4)",
+            "image(": "image(800,600,24)",
+            "sound(": "sound(44100,60,16,2)",
+            "bitrate(": "bitrate(48000000,12)",
+            "compress(": "compress(1000,250)",
+            "chars(": "chars(120,8)",
+            "records(": "records(1200,32)",
+            "binarysearch(": "binarysearch(7,1,3,5,7,9)",
+        }
+        return "#" + examples.get(s, insert_text(s) + ")")
+
+    command_rows = "\n".join(
+        f'  {{(char*)"{esc(name)}", (char*)"{esc(insert_text(name))}", (char*)"{esc(desc(name))}", (char*)"{esc(example(name))}", 0, {cat}}},'
+        for name, cat in commands
+    )
     folder_rows = "\n".join(f'  {{(char*)"{name}", {cat}}},' for name, cat in folders)
     return f'''#include <stdio.h>
 #include <fxcg/keyboard.h>
@@ -195,9 +275,9 @@ extern "C" {{
 
 #include "history.h"
 #include "dConsole.h"
-#define CASCAS_MIN_CATALOG
 #include "catalogGUI.hpp"
 #include "fileGUI.hpp"
+#include "textGUI.hpp"
 #include "graphicsProvider.hpp"
 #include "constantsProvider.hpp"
 #include "kdisplay.h"
@@ -241,11 +321,7 @@ int CAT_COMPLETE_COUNT=sizeof(completeCat)/sizeof(catalogFunc);
 int CAT_FOLDER_COUNT=sizeof(catalogFolders)/sizeof(catalogFolder);
 
 ustl::string insert_string(int index){{
-  ustl::string s=completeCat[index].name;
-  int pos=s.find('(');
-  if (pos>=0 && pos<s.size())
-    s=s.substr(0,pos+1);
-  return s;
+  return completeCat[index].insert;
 }}
 
 int showCatalog(char* insertText,int preselect,int menupos) {{
@@ -263,7 +339,7 @@ static int catalog_count_for_category(int category){{
 }}
 
 static void draw_catalog_fkeys(bool folders){{
-  drawFkeyLabels(folders?0:0x03FC,0,0,0,0,folders?0:0x03FD);
+  drawFkeyLabels(folders?0:0x03FC,folders?0:0x03fc,0,0,0,folders?0:0x03FD);
 }}
 
 int doCatalogMenu(char* insertText, char* title, int category,const char * cmdname) {{
@@ -317,7 +393,29 @@ int doCatalogMenu(char* insertText, char* title, int category,const char * cmdna
     }}
     int index=menuitems[menu.selection-1].isfolder;
     if(category!=CAT_CATEGORY_ALL && sres == KEY_CTRL_F6) {{
-      sres=KEY_CTRL_F1;
+      textArea text;
+      text.editable=false;
+      text.clipline=-1;
+      text.title = (char*)"Command help";
+      text.allowF1=true;
+      text.python=python_compat(contextptr);
+      ustl::vector<textElement> & elem=text.elements;
+      elem = ustl::vector<textElement>(3);
+      elem[0].s = completeCat[index].name;
+      elem[0].color = COLOR_BLUE;
+      elem[1].newLine = 1;
+      elem[1].lineSpacing = 3;
+      elem[1].s = completeCat[index].desc;
+      elem[2].newLine = 1;
+      elem[2].lineSpacing = 3;
+      elem[2].s = ustl::string("Ex. (F2): ") + (completeCat[index].example[0]=='#' ? completeCat[index].example+1 : completeCat[index].example);
+      sres=doTextArea(&text);
+    }}
+    if(category!=CAT_CATEGORY_ALL && sres == KEY_CTRL_F2) {{
+      reset_alpha();
+      char * example=completeCat[index].example;
+      strcpy(insertText, example && example[0]=='#' ? example+1 : insert_string(index).c_str());
+      return 1;
     }}
     if(sres == MENU_RETURN_SELECTION || sres == KEY_CTRL_F1) {{
       if (category==CAT_CATEGORY_ALL){{
