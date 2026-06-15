@@ -391,11 +391,33 @@ Examples:
 
 `bool_simplify(expression[, variables])`
 
-Simplifies a Boolean expression and shows named rule/row working.
+Simplifies a Boolean expression and shows exam-style working.
+
+Supported syntax:
+
+- `and`, `or`, `not`
+- `xor`, `nand`, `nor`, `implies`
+- `*`, `.`, `+`
+- apostrophe complement, e.g. `A'`
+- brackets
+- optional variable order, e.g. `A,B,C`
+
+Method:
+
+- normalises the expression into standard Boolean notation
+- applies named laws where possible: identity, null/dominance, idempotent, complement, double complement, De Morgan, absorption, covering, distributive, bracket expansion, consensus, XOR, NAND, NOR and implication identities
+- if laws stall before the shortest form, builds the truth table and performs exact K-map/minterm grouping
+- prints the rule used beside each algebra line
+- prints `Result:` as the final simplified form
 
 Examples:
 - `bool_simplify(A and not B)`
 - `bool_simplify((A+B)*(A+C),A,B,C)`
+- `bool_simplify(A*B+A*B'+A'*B)`
+- `bool_simplify(A nand B)`
+- `bool_simplify(A implies B)`
+- `bool_simplify(not(not A and not B))`
+- `bool_simplify((not A and not B) or (A and not B))`
 
 `bool(expression)`
 

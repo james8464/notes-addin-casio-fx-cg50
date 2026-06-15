@@ -70,10 +70,7 @@ Search covers:
 
 The last search query is kept. Pressing `F2` again pre-fills the previous query, so it can be edited or rerun without retyping.
 
-Result labels:
-
-- `NAME` means the match was in the file name or path.
-- `TEXT<number>` means the match was in the file contents and shows the number of counted hits.
+Result labels show the file name. If the search term appears more than once in the file contents, the hit count is shown in brackets.
 
 Example search:
 
@@ -84,8 +81,8 @@ normal
 Possible result:
 
 ```text
-NAME normal.txt
-TEXT3 notes.txt
+normal.txt
+notes.txt (3)
 ```
 
 Search results are ranked:
@@ -114,14 +111,17 @@ Text is rendered with a deliberately small markdown-like formatter using the cal
 The viewer:
 
 - shows the current folder/file name in the top title bar,
-- recognises `# heading` and `## heading` lines,
+- recognises nested headings from `# heading` through `#### heading` and styles each level differently,
 - recognises `- item` and `* item` bullets,
+- recognises numbered lists such as `1. item` or `1) item`,
+- recognises quote/callout lines beginning `> text`,
+- recognises simple divider lines such as `---`,
 - wraps ordinary lines at word boundaries,
 - preserves indentation,
 - turns tabs into spaces,
 - keeps table-like/code lines unwrapped,
-- supports horizontal scrolling for wide lines and tables with `LEFT/RIGHT`,
-- marks search hits with a simple yellow marker in the left margin,
+- supports horizontal scrolling for wide lines and tables with `LEFT/RIGHT`, including snapping to the final reachable offset,
+- colours the matched search text directly,
 - does not show line numbers in the file viewer.
 
 `F1/F2` move between search matches when a search is active. Otherwise, they page down/up.
@@ -132,10 +132,14 @@ Formatter design:
 
 - one file read into a fixed-size buffer,
 - one pass over the file to split display lines,
-- word wrapping by fixed character budget,
+- word wrapping by `PrintMini` preview width,
+- 17 px display rows with 9 visible rows, matching common fx-CG `PrintMini` text-area spacing,
 - no per-word background redraws,
-- wide-line horizontal scroll is capped at the longest source line,
-- all search/file searches use linear KMP matching.
+- wide-line horizontal scroll is capped by visible mini-font width, with a small right margin for the physical fx-CG screen,
+- all search/file searches use linear KMP matching,
+- file-content search scans the same normalised text that the viewer displays,
+- in-file search tracks source lines, so hits inside horizontally scrolled table/code lines open on the correct source line,
+- common UTF-8 note characters are normalised to calculator-safe ASCII before display, e.g. smart quotes, long dashes, arrows, ellipses, bullets, and common set symbols.
 
 The folder browser ignores calculator/macOS system files such as `.DS_Store`, `.Trashes`, `.fseventsd`, and `._*.txt` AppleDouble files. Folders are shown before files, and entries are sorted alphabetically.
 
@@ -174,4 +178,4 @@ References:
 - Result list is capped at 64 ranked results.
 - Opened text is cached up to 16 KB for viewing.
 - Very long text files can be opened only up to the viewer buffer, but all-file search scans the full file contents in chunks.
-- The viewer stores up to 320 displayed lines after wrapping.
+- The viewer stores up to 768 displayed lines after wrapping.

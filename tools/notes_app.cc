@@ -13,30 +13,36 @@ typedef struct {
 static const int MAX_ENTRIES = 80;
 static const int MAX_RESULTS = 64;
 static const int FILE_BUF_SIZE = 16384;
-static const int MAX_VIEW_LINES = 320;
+static const int MAX_VIEW_LINES = 768;
 static const int LINE_CAP = 96;
 static const int VIEW_X = 4;
 static const int VIEW_TOP = 25;
-static const int VIEW_ROW_H = 15;
-static const int WRAP_COLS = 34;
-static const int PAGE_LINES = 10;
-static const int STYLE_BAND_H = 14;
-static const int NOTE_CHAR_PX = 11;
+static const int VIEW_ROW_H = 17;
+static const int WRAP_COLS = 32;
+static const int PAGE_LINES = 9;
 static const int MENU_PAGE_ROWS = 7;
 static const int MENU_ROWS = MENU_PAGE_ROWS;
 static const int STATUS_LABEL_CHARS = 40;
 static const int STATUS_MARQUEE_GAP = 4;
 static const unsigned STATUS_MARQUEE_TICKS = 48;
+static const unsigned NOTE_X_LIMIT = LCD_WIDTH_PX - 18;
 static const unsigned short UI_MATCH_TEXT = RGB565(210, 0, 0);
-static const unsigned short UI_MATCH_ON_BLUE = RGB565(255, 245, 80);
+static const unsigned short UI_H2_TEXT = RGB565(0, 80, 160);
+static const unsigned short UI_H3_TEXT = RGB565(70, 70, 85);
+static const unsigned short UI_H4_TEXT = RGB565(115, 80, 120);
 
 enum NoteLineStyle {
   NOTE_TEXT = 0,
   NOTE_H1 = 1,
   NOTE_H2 = 2,
-  NOTE_BULLET = 3,
-  NOTE_CODE = 4,
-  NOTE_TABLE = 5
+  NOTE_H3 = 3,
+  NOTE_H4 = 4,
+  NOTE_BULLET = 5,
+  NOTE_ORDERED = 6,
+  NOTE_QUOTE = 7,
+  NOTE_RULE = 8,
+  NOTE_CODE = 9,
+  NOTE_TABLE = 10
 };
 
 struct NoteEntry {
@@ -72,11 +78,64 @@ static int file_buf_len = 0;
 static const char *view_lines[MAX_VIEW_LINES];
 static char line_store[MAX_VIEW_LINES][LINE_CAP];
 static unsigned char view_style[MAX_VIEW_LINES];
+static short view_source_line[MAX_VIEW_LINES];
 static char last_query[32] = "";
 
 static int lower_char(int c) {
   if (c >= 'A' && c <= 'Z') return c + 32;
   return c;
+}
+
+static bool bytes_at(int i, unsigned char a, unsigned char b) {
+  return i + 1 < file_buf_len &&
+         (unsigned char)file_buf[i] == a &&
+         (unsigned char)file_buf[i + 1] == b;
+}
+
+static bool bytes_at3(int i, unsigned char a, unsigned char b, unsigned char c) {
+  return i + 2 < file_buf_len &&
+         (unsigned char)file_buf[i] == a &&
+         (unsigned char)file_buf[i + 1] == b &&
+         (unsigned char)file_buf[i + 2] == c;
+}
+
+static void ascii_append(char *dst, int *n, int cap, const char *s) {
+  for (int i = 0; s && s[i] && *n + 1 < cap; ++i) dst[(*n)++] = s[i];
+}
+
+static void normalize_file_buf() {
+  static char clean[FILE_BUF_SIZE];
+  int out = 0;
+  for (int i = 0; i < file_buf_len && out + 1 < FILE_BUF_SIZE;) {
+    unsigned char c = (unsigned char)file_buf[i];
+    if (c < 128) {
+      clean[out++] = (char)c;
+      ++i;
+      continue;
+    }
+    if (bytes_at(i, 0xc2, 0xa0)) { clean[out++] = ' '; i += 2; continue; }
+    if (bytes_at(i, 0xc2, 0xb1)) { ascii_append(clean, &out, FILE_BUF_SIZE, "+/-"); i += 2; continue; }
+    if (bytes_at(i, 0xc3, 0x97)) { clean[out++] = 'x'; i += 2; continue; }
+    if (bytes_at3(i, 0xe2, 0x80, 0x98) || bytes_at3(i, 0xe2, 0x80, 0x99)) { clean[out++] = '\''; i += 3; continue; }
+    if (bytes_at3(i, 0xe2, 0x80, 0x9c) || bytes_at3(i, 0xe2, 0x80, 0x9d)) { clean[out++] = '"'; i += 3; continue; }
+    if (bytes_at3(i, 0xe2, 0x80, 0x93) || bytes_at3(i, 0xe2, 0x80, 0x94)) { clean[out++] = '-'; i += 3; continue; }
+    if (bytes_at3(i, 0xe2, 0x80, 0xa2)) { ascii_append(clean, &out, FILE_BUF_SIZE, "- "); i += 3; continue; }
+    if (bytes_at3(i, 0xe2, 0x80, 0xa6)) { ascii_append(clean, &out, FILE_BUF_SIZE, "..."); i += 3; continue; }
+    if (bytes_at3(i, 0xe2, 0x86, 0x92)) { ascii_append(clean, &out, FILE_BUF_SIZE, "->"); i += 3; continue; }
+    if (bytes_at3(i, 0xe2, 0x86, 0x90)) { ascii_append(clean, &out, FILE_BUF_SIZE, "<-"); i += 3; continue; }
+    if (bytes_at3(i, 0xe2, 0x87, 0x92)) { ascii_append(clean, &out, FILE_BUF_SIZE, "=>"); i += 3; continue; }
+    if (bytes_at3(i, 0xe2, 0x89, 0xa0)) { ascii_append(clean, &out, FILE_BUF_SIZE, "!="); i += 3; continue; }
+    if (bytes_at3(i, 0xe2, 0x89, 0xa4)) { ascii_append(clean, &out, FILE_BUF_SIZE, "<="); i += 3; continue; }
+    if (bytes_at3(i, 0xe2, 0x89, 0xa5)) { ascii_append(clean, &out, FILE_BUF_SIZE, ">="); i += 3; continue; }
+    if (bytes_at3(i, 0xe2, 0x84, 0x95)) { clean[out++] = 'N'; i += 3; continue; }
+    if (bytes_at3(i, 0xe2, 0x84, 0x9a)) { clean[out++] = 'Q'; i += 3; continue; }
+    if (bytes_at3(i, 0xe2, 0x84, 0x9d)) { clean[out++] = 'R'; i += 3; continue; }
+    if (bytes_at3(i, 0xe2, 0x84, 0xa4)) { clean[out++] = 'Z'; i += 3; continue; }
+    ++i;
+  }
+  clean[out] = 0;
+  memcpy(file_buf, clean, out + 1);
+  file_buf_len = out;
 }
 
 static void copy_str(char *dst, int cap, const char *src) {
@@ -137,6 +196,16 @@ static int contains_kmp(const char *s, const SearchPattern *sp) {
     if (state == sp->len) return 1;
   }
   return 0;
+}
+
+static int find_in_span(const char *s, int len, const SearchPattern *sp) {
+  if (!s || !sp || sp->len <= 0 || len <= 0) return -1;
+  int state = 0;
+  for (int i = 0; i < len; ++i) {
+    state = search_step(sp, state, s[i]);
+    if (state == sp->len) return i - sp->len + 1;
+  }
+  return -1;
 }
 
 static int ends_with(const char *s, const char *tail) {
@@ -324,7 +393,8 @@ static int load_file_buf(const char *path) {
   if (got < 0) return 0;
   file_buf[got] = 0;
   file_buf_len = got;
-  return got;
+  normalize_file_buf();
+  return 1;
 }
 
 static int table_like(const char *s, int len) {
@@ -336,6 +406,28 @@ static int table_like(const char *s, int len) {
     if (s[i] == '-') ++dashes;
   }
   return tab || bars >= 2 || (plus >= 2 && dashes >= 3);
+}
+
+static int ordered_list_marker(const char *s, int len) {
+  int p = 0;
+  while (p < len && s[p] >= '0' && s[p] <= '9') ++p;
+  if (p <= 0 || p > 3 || p + 1 >= len) return 0;
+  if ((s[p] == '.' || s[p] == ')') && s[p + 1] == ' ') return p + 2;
+  return 0;
+}
+
+static int rule_like(const char *s, int len) {
+  int p = 0;
+  while (p < len && s[p] == ' ') ++p;
+  if (p + 2 >= len) return 0;
+  char c = s[p];
+  if (c != '-' && c != '=' && c != '*') return 0;
+  int count = 0;
+  for (int i = p; i < len; ++i) {
+    if (s[i] == c) ++count;
+    else if (s[i] != ' ') return 0;
+  }
+  return count >= 3;
 }
 
 static int starts_with_ci(const char *s, int len, const char *pfx) {
@@ -354,6 +446,41 @@ static int code_like(const char *s, int len, int indent) {
          starts_with_ci(s, len, "$ ");
 }
 
+static int mini_width(const char *s, int len) {
+  if (!s || len <= 0) return 0;
+  char tmp[LINE_CAP];
+  int n = min_int(len, LINE_CAP - 1);
+  memcpy(tmp, s, n);
+  tmp[n] = 0;
+  int x = 0, y = 0;
+  PrintMini(&x, &y, (unsigned char *)tmp, 0, 0xffffffff, 0, 0, UI_BLACK, UI_WHITE, 0, 0);
+  return x;
+}
+
+static int segment_fits_screen(const char *s, int start, int end, int indent) {
+  char tmp[LINE_CAP];
+  int col = 0;
+  for (int i = 0; i < indent && col + 1 < LINE_CAP; ++i) tmp[col++] = ' ';
+  for (int i = start; i < end && col + 1 < LINE_CAP; ++i) {
+    char c = s[i] == '\t' ? ' ' : s[i];
+    if (c >= 32 && c <= 126) tmp[col++] = c;
+  }
+  tmp[col] = 0;
+  return mini_width(tmp, col) <= (int)(NOTE_X_LIMIT - VIEW_X);
+}
+
+static int fit_visible_chars(const char *s, int len, int indent) {
+  if (!s || len <= 0) return 0;
+  int take = 0;
+  int cap = LINE_CAP - indent - 1;
+  if (cap < 1) cap = 1;
+  for (int i = 1; i <= len && i <= cap; ++i) {
+    if (!segment_fits_screen(s, 0, i, indent)) break;
+    take = i;
+  }
+  return take > 0 ? take : 1;
+}
+
 static int markdown_line(const char *s, int len, int *skip, int *style) {
   int p = 0;
   while (p < len && s[p] == ' ') ++p;
@@ -364,13 +491,28 @@ static int markdown_line(const char *s, int len, int *skip, int *style) {
     while (p + hashes < len && s[p + hashes] == '#') ++hashes;
     if (p + hashes < len && s[p + hashes] == ' ') {
       *skip = p + hashes + 1;
-      *style = hashes == 1 ? NOTE_H1 : NOTE_H2;
+      *style = hashes <= 1 ? NOTE_H1 : (hashes == 2 ? NOTE_H2 : (hashes == 3 ? NOTE_H3 : NOTE_H4));
       return 1;
     }
   }
   if (p + 1 < len && (s[p] == '-' || s[p] == '*') && s[p + 1] == ' ') {
     *skip = p + 2;
     *style = NOTE_BULLET;
+    return 1;
+  }
+  if (ordered_list_marker(s + p, len - p)) {
+    *skip = p;
+    *style = NOTE_ORDERED;
+    return 1;
+  }
+  if (p + 1 < len && s[p] == '>' && s[p + 1] == ' ') {
+    *skip = p;
+    *style = NOTE_QUOTE;
+    return 1;
+  }
+  if (rule_like(s, len)) {
+    *skip = p;
+    *style = NOTE_RULE;
     return 1;
   }
   if (code_like(s + p, len - p, p)) {
@@ -384,7 +526,7 @@ static int markdown_line(const char *s, int len, int *skip, int *style) {
   return 0;
 }
 
-static void push_view_line(int *line, const char *s, int len, int style) {
+static void push_view_line(int *line, const char *s, int len, int style, int source_line) {
   if (*line >= MAX_VIEW_LINES) return;
   int col = 0;
   for (int i = 0; i < len && col + 1 < LINE_CAP; ++i) {
@@ -403,15 +545,16 @@ static void push_view_line(int *line, const char *s, int len, int style) {
   line_store[*line][col] = 0;
   view_lines[*line] = line_store[*line];
   view_style[*line] = (unsigned char)style;
+  view_source_line[*line] = (short)source_line;
   ++(*line);
 }
 
-static void add_display_line(int *line, const char *s, int len, int hscroll, int preserve, int style) {
+static void add_display_line(int *line, const char *s, int len, int hscroll, int preserve, int style, int source_line) {
   if (*line >= MAX_VIEW_LINES || len < 0) return;
   if (preserve) {
     int start = min_int(hscroll, len);
-    int take = min_int(WRAP_COLS, len - start);
-    push_view_line(line, s + start, take, style);
+    int take = fit_visible_chars(s + start, len - start, 0);
+    push_view_line(line, s + start, take, style, source_line);
     return;
   }
   int base_indent = 0;
@@ -425,13 +568,18 @@ static void add_display_line(int *line, const char *s, int len, int hscroll, int
     if (style == NOTE_BULLET && pos != base_indent) indent += 2;
     usable -= indent;
     if (usable < 16) usable = 16;
-    int limit = min_int(len, pos + usable);
-    int cut = limit;
-    if (limit < len) {
-      for (int j = limit; j > pos + 12; --j) {
-        if (s[j] == ' ') { cut = j; break; }
+    int cut = pos;
+    int last_space = -1;
+    for (int i = pos; i < len; ++i) {
+      if (s[i] == ' ') last_space = i;
+      if (!segment_fits_screen(s, pos, i + 1, indent)) {
+        if (last_space > pos + 1) cut = last_space;
+        else cut = max_int(pos + 1, i);
+        break;
       }
+      cut = i + 1;
     }
+    if (cut <= pos) cut = min_int(len, pos + usable);
     int col = 0;
     for (int k = 0; k < indent && col + 1 < LINE_CAP; ++k) line_store[*line][col++] = ' ';
     for (int i = pos; i < cut && col + 1 < LINE_CAP; ++i) {
@@ -450,13 +598,14 @@ static void add_display_line(int *line, const char *s, int len, int hscroll, int
     line_store[*line][col] = 0;
     view_lines[*line] = line_store[*line];
     view_style[*line] = (unsigned char)style;
+    view_source_line[*line] = (short)source_line;
     ++(*line);
     pos = cut;
   }
 }
 
 static int build_view_lines(int hscroll) {
-  int line = 0, start = 0;
+  int line = 0, start = 0, source_line = 0;
   for (int i = 0; i <= file_buf_len && line < MAX_VIEW_LINES; ++i) {
     char c = i < file_buf_len ? file_buf[i] : '\n';
     if (c == '\r') continue;
@@ -466,6 +615,7 @@ static int build_view_lines(int hscroll) {
         line_store[line][0] = 0;
         view_lines[line] = line_store[line];
         view_style[line] = NOTE_TEXT;
+        view_source_line[line] = (short)source_line;
         ++line;
       } else {
         int skip = 0, style = NOTE_TEXT;
@@ -487,27 +637,111 @@ static int build_view_lines(int hscroll) {
             src_len = n + 2;
           }
         }
-        add_display_line(&line, src, src_len, hscroll, hscroll > 0 || style == NOTE_TABLE || style == NOTE_CODE, style);
+        add_display_line(&line, src, src_len, hscroll, hscroll > 0 || style == NOTE_TABLE || style == NOTE_CODE, style, source_line);
       }
       start = i + 1;
+      ++source_line;
     }
   }
   return line;
 }
 
-static int max_file_line_len() {
-  int max_len = 0, start = 0;
+static int source_line_count() {
+  if (file_buf_len <= 0) return 1;
+  int count = 1;
+  for (int i = 0; i < file_buf_len; ++i) {
+    if (file_buf[i] == '\n') ++count;
+  }
+  return count;
+}
+
+static int source_line_bounds(int target, int *start_out, int *len_out) {
+  int line = 0, start = 0;
+  for (int i = 0; i <= file_buf_len; ++i) {
+    char c = i < file_buf_len ? file_buf[i] : '\n';
+    if (c == '\r') continue;
+    if (c == '\n') {
+      if (line == target) {
+        *start_out = start;
+        *len_out = i - start;
+        return 1;
+      }
+      start = i + 1;
+      ++line;
+    }
+  }
+  return 0;
+}
+
+static int source_line_style(int source_line) {
+  int start = 0, len = 0;
+  int skip = 0, style = NOTE_TEXT;
+  if (!source_line_bounds(source_line, &start, &len)) return NOTE_TEXT;
+  markdown_line(file_buf + start, len, &skip, &style);
+  return style;
+}
+
+static int find_source_match(const SearchPattern *sp, int start_line, int dir, int *line_out, int *offset_out) {
+  int count = source_line_count();
+  if (!sp || sp->len <= 0 || count <= 0) return 0;
+  int line = start_line;
+  for (int seen = 0; seen < count; ++seen) {
+    if (line < 0) line = count - 1;
+    if (line >= count) line = 0;
+    int start = 0, len = 0;
+    if (source_line_bounds(line, &start, &len)) {
+      int off = find_in_span(file_buf + start, len, sp);
+      if (off >= 0) {
+        *line_out = line;
+        *offset_out = off;
+        return 1;
+      }
+    }
+    line += dir;
+  }
+  return 0;
+}
+
+static int view_line_for_source_match(int source_line, const SearchPattern *sp, int lines) {
+  int fallback = -1;
+  for (int i = 0; i < lines; ++i) {
+    if (view_source_line[i] != source_line) continue;
+    if (fallback < 0) fallback = i;
+    if (contains_kmp(view_lines[i], sp)) return i;
+  }
+  return fallback;
+}
+
+static int max_file_line_scroll() {
+  int max_scroll = 0, start = 0;
   for (int i = 0; i <= file_buf_len; ++i) {
     char c = i < file_buf_len ? file_buf[i] : '\n';
     if (c == '\r') continue;
     if (c == '\n') {
       int len = i - start;
-      if (len > max_len) max_len = len;
+      if (len > 0) {
+        int visible = fit_visible_chars(file_buf + start, len, 0);
+        int scroll = len - visible;
+        if (scroll > max_scroll) max_scroll = scroll;
+      }
       start = i + 1;
     }
   }
-  return max_len;
+  return max_scroll;
 }
+
+static int jump_to_match(const SearchPattern *sp, int start_source_line, int dir, int *top, int *hscroll, int *lines, int max_line) {
+  int source_line = 0, offset = 0;
+  if (!find_source_match(sp, start_source_line, dir, &source_line, &offset)) return 0;
+  int style = source_line_style(source_line);
+  *hscroll = (style == NOTE_TABLE || style == NOTE_CODE) ? max_int(0, offset - 4) : 0;
+  if (*hscroll > max_line) *hscroll = max_line;
+  *lines = build_view_lines(*hscroll);
+  int view_line = view_line_for_source_match(source_line, sp, *lines);
+  if (view_line >= 0) *top = min_int(view_line, max_int(0, *lines - PAGE_LINES));
+  return 1;
+}
+
 
 static void notes_menu(const char *title, const char *const *items, int count, int top, int sel,
                        const char *f1, const char *f2, const char *f3, const char *f4, const char *f5, const char *f6) {
@@ -624,7 +858,7 @@ static bool notes_input(const char *title, char *buf, int cap, unsigned *tick) {
 }
 
 static void notes_print_mini(int x, int y, const char *s, int fg, int bg) {
-  PrintMini(&x, &y, (unsigned char *)(s ? s : ""), 0, 0xffffffff, 0, 0, fg, bg, 1, 0);
+  PrintMini(&x, &y, (unsigned char *)(s ? s : ""), 0, NOTE_X_LIMIT, 0, 0, fg, bg, 1, 0);
 }
 
 static int match_at_ci(const char *s, const SearchPattern *sp, int pos) {
@@ -637,12 +871,14 @@ static int match_at_ci(const char *s, const SearchPattern *sp, int pos) {
 }
 
 static void notes_print_span(int *x, int y, const char *s, int len, int fg, int bg) {
-  if (!s || len <= 0) return;
+  if (!s || len <= 0 || *x >= (int)NOTE_X_LIMIT) return;
   char tmp[LINE_CAP];
   int n = min_int(len, LINE_CAP - 1);
   memcpy(tmp, s, n);
   tmp[n] = 0;
-  PrintMini(x, &y, (unsigned char *)tmp, 0, 0xffffffff, 0, 0, fg, bg, 1, 0);
+  int before = *x;
+  PrintMini(x, &y, (unsigned char *)tmp, 0, NOTE_X_LIMIT, 0, 0, fg, bg, 1, 0);
+  if (*x <= before) *x = before + mini_width(tmp, n);
 }
 
 static void notes_print_with_matches(int x, int y, const char *line, int fg, int bg, int match_fg, const SearchPattern *sp) {
@@ -655,6 +891,7 @@ static void notes_print_with_matches(int x, int y, const char *line, int fg, int
   int pos = 0;
   int px = x;
   while (pos < n) {
+    if (px >= (int)NOTE_X_LIMIT) break;
     if (match_at_ci(line, sp, pos)) {
       notes_print_span(&px, y, line + pos, sp->len, match_fg, bg);
       pos += sp->len;
@@ -670,12 +907,23 @@ static void print_note_line(int x, int y, const char *line, int style, const Sea
   int fg = UI_BLACK, bg = UI_WHITE;
   int match_fg = UI_MATCH_TEXT;
   if (style == NOTE_H1) {
-    ui_fill(0, y - 1, LCD_WIDTH_PX, STYLE_BAND_H, UI_BLUE);
-    fg = UI_WHITE;
-    bg = UI_BLUE;
-    match_fg = UI_MATCH_ON_BLUE;
-  } else if (style == NOTE_H2) {
     fg = UI_BLUE;
+  } else if (style == NOTE_H2) {
+    fg = UI_H2_TEXT;
+    x += 4;
+  } else if (style == NOTE_H3) {
+    fg = UI_H3_TEXT;
+    x += 8;
+  } else if (style == NOTE_H4) {
+    fg = UI_H4_TEXT;
+    x += 12;
+  } else if (style == NOTE_QUOTE) {
+    fg = UI_H3_TEXT;
+    x += 4;
+  } else if (style == NOTE_RULE) {
+    fg = UI_GRAY;
+  } else if (style == NOTE_TABLE || style == NOTE_CODE) {
+    fg = UI_H3_TEXT;
   }
   int p = 0;
   while (line && line[p] == ' ') ++p;
@@ -685,16 +933,31 @@ static void print_note_line(int x, int y, const char *line, int style, const Sea
     notes_print_span(&px, y, "-", 1, UI_BLUE, bg);
     notes_print_span(&px, y, " ", 1, fg, bg);
     notes_print_with_matches(px, y, line + p + 2, fg, bg, match_fg, sp);
+  } else if (style == NOTE_ORDERED && line) {
+    int mark = ordered_list_marker(line + p, (int)strlen(line + p));
+    int px = x;
+    notes_print_span(&px, y, line, p, fg, bg);
+    if (mark > 0) {
+      notes_print_span(&px, y, line + p, mark, UI_BLUE, bg);
+      notes_print_with_matches(px, y, line + p + mark, fg, bg, match_fg, sp);
+    } else {
+      notes_print_with_matches(px, y, line + p, fg, bg, match_fg, sp);
+    }
+  } else if (style == NOTE_QUOTE && line[p] == '>' && line[p + 1] == ' ') {
+    int px = x;
+    notes_print_span(&px, y, line, p, fg, bg);
+    notes_print_span(&px, y, ">", 1, UI_BLUE, bg);
+    notes_print_span(&px, y, " ", 1, fg, bg);
+    notes_print_with_matches(px, y, line + p + 2, fg, bg, match_fg, sp);
   } else {
     notes_print_with_matches(x, y, line ? line : "", fg, bg, match_fg, sp);
   }
 }
 
 static void notes_text_page(const char *title, const char *const *lines, int count, int top, int hscroll, const SearchPattern *sp) {
+  (void)hscroll;
   notes_chrome(title);
   notes_softkeys("NEXT", "PREV", "PGUP", "PGDN", "FIND", "BACK");
-  if (hscroll > 0) ui_print_mini_px(360, 27, "<", 0);
-  if (count > 0) ui_print_mini_px(372, 27, ">", 0);
   for (int i = 0; i < PAGE_LINES && top + i < count; ++i) {
     const char *line = lines[top + i];
     int y = VIEW_TOP + i * VIEW_ROW_H;
@@ -704,30 +967,15 @@ static void notes_text_page(const char *title, const char *const *lines, int cou
   ui_flush();
 }
 
-static int find_line(const char *const *lines, int count, const SearchPattern *sp, int start, int dir) {
-  if (sp->len <= 0 || count <= 0) return -1;
-  int i = start;
-  for (int seen = 0; seen < count; ++seen) {
-    if (i < 0) i = count - 1;
-    if (i >= count) i = 0;
-    if (contains_kmp(lines[i], sp)) return i;
-    i += dir;
-  }
-  return -1;
-}
-
 static void wait_text_page(const char *title, const char *path, const char *initial_query, unsigned *tick) {
   (void)tick;
   int top = 0, hscroll = 0;
   SearchPattern sp;
   search_prepare(&sp, initial_query && initial_query[0] ? initial_query : "");
   int active_search = sp.len > 0;
-  int max_line = max_file_line_len();
+  int max_line = max_file_line_scroll();
   int lines = build_view_lines(hscroll);
-  if (sp.len > 0) {
-    int f = find_line(view_lines, lines, &sp, 0, 1);
-    if (f >= 0) top = f;
-  }
+  if (sp.len > 0) jump_to_match(&sp, 0, 1, &top, &hscroll, &lines, max_line);
   if (top + PAGE_LINES > lines) top = max_int(0, lines - PAGE_LINES);
   notes_text_page(title, view_lines, lines, top, hscroll, &sp);
   int animate_title = status_title_needs_marquee(title);
@@ -755,7 +1003,7 @@ static void wait_text_page(const char *title, const char *path, const char *init
       notes_text_page(title, view_lines, lines, top, hscroll, &sp);
     }
     if (key == KEY_CTRL_RIGHT) {
-      if (hscroll + 8 < max_line) hscroll += 8;
+      if (hscroll < max_line) hscroll = min_int(max_line, hscroll + 8);
       lines = build_view_lines(hscroll);
       top = min_int(top, max_int(0, lines - PAGE_LINES));
       notes_text_page(title, view_lines, lines, top, hscroll, &sp);
@@ -773,15 +1021,21 @@ static void wait_text_page(const char *title, const char *path, const char *init
         copy_str(last_query, sizeof(last_query), q);
         search_prepare(&sp, q);
         active_search = 1;
-        int f = find_line(view_lines, lines, &sp, top, 1);
-        if (f >= 0) top = min_int(f, max_int(0, lines - PAGE_LINES));
+        int start_source = lines > 0 ? view_source_line[min_int(top, max_int(0, lines - 1))] : 0;
+        if (!jump_to_match(&sp, start_source, 1, &top, &hscroll, &lines, max_line)) {
+          notes_message("Find text", "No results found.", q, "F6 returns.");
+          for (;;) {
+            int k = ui_key_poll();
+            if (k == KEY_CTRL_EXIT || k == KEY_CTRL_AC || k == KEY_CTRL_F6 || k == KEY_CTRL_EXE) break;
+          }
+        }
       }
       notes_text_page(title, view_lines, lines, top, hscroll, &sp);
     }
     if (key == KEY_CTRL_F1) {
       if (active_search) {
-        int f = find_line(view_lines, lines, &sp, top + 1, 1);
-        if (f >= 0) top = min_int(f, max_int(0, lines - PAGE_LINES));
+        int start_source = lines > 0 ? view_source_line[min_int(top, max_int(0, lines - 1))] + 1 : 0;
+        jump_to_match(&sp, start_source, 1, &top, &hscroll, &lines, max_line);
       } else {
         top = min_int(max_int(0, lines - PAGE_LINES), top + PAGE_LINES);
       }
@@ -789,8 +1043,8 @@ static void wait_text_page(const char *title, const char *path, const char *init
     }
     if (key == KEY_CTRL_F2) {
       if (active_search) {
-        int f = find_line(view_lines, lines, &sp, top - 1, -1);
-        if (f >= 0) top = min_int(f, max_int(0, lines - PAGE_LINES));
+        int start_source = lines > 0 ? view_source_line[min_int(top, max_int(0, lines - 1))] - 1 : 0;
+        jump_to_match(&sp, start_source, -1, &top, &hscroll, &lines, max_line);
       } else {
         top = max_int(0, top - PAGE_LINES);
       }
@@ -804,30 +1058,18 @@ static int file_text_matches(const char *path, const SearchPattern *sp, int *fir
   *first_line = -1;
   *hits = 0;
   if (sp->len <= 0) return 0;
-  unsigned short p[300];
-  Bfile_StrToName_ncpy(p, (const unsigned char *)path, 300);
-  int h = Bfile_OpenFile_OS(p, READWRITE);
-  if (h < 0) return 0;
-  int sz = Bfile_GetFileSize_OS(h);
-  int off = 0, state = 0, line = 0;
-  while (off < sz) {
-    int want = FILE_BUF_SIZE - 1;
-    if (want > sz - off) want = sz - off;
-    int got = Bfile_ReadFile_OS(h, file_buf, want, off);
-    if (got <= 0) break;
-    for (int i = 0; i < got; ++i) {
-      state = search_step(sp, state, file_buf[i]);
-      if (state == sp->len) {
-        if (*first_line < 0) *first_line = line;
-        if (*hits < 9) ++(*hits);
-        state = sp->fail[state - 1];
-      }
-      if (file_buf[i] == '\n') ++line;
+  if (!load_file_buf(path)) return 0;
+  int state = 0, line = 0;
+  for (int i = 0; i < file_buf_len; ++i) {
+    state = search_step(sp, state, file_buf[i]);
+    if (state == sp->len) {
+      if (*first_line < 0) *first_line = line;
+      if (*hits < 9) ++(*hits);
+      state = sp->fail[state - 1];
     }
-    off += got;
+    if (file_buf[i] == '\n') ++line;
     if (*hits >= 9) break;
   }
-  Bfile_CloseFile_OS(h);
   return *hits > 0;
 }
 

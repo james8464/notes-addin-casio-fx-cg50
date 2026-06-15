@@ -430,7 +430,7 @@ def emit(app: str) -> str:
             return (f"{b}(expression[,variables])",
                     "Boolean expressions use and/or/not, +, *, ', brackets. Variable list is optional.",
                     "Boolean simplification, proof, table, K-map or gate form.",
-                    "Builds rows/minterms, applies Boolean laws, names rules, then gives simplified form.",
+                    "Applies named laws first, including bracket expansion, then exact truth-table/K-map grouping if shorter.",
                     ex)
         return (f"{b}(...)",
                 "Use the parameters shown in the example.",

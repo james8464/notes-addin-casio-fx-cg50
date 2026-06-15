@@ -144,7 +144,7 @@ static const HelpSheet cs_help[] = {
   {"algorithm","binarysearch linearsearch bubblesort insertionsort selectionsort mergesort stack queue dijkstra rpn fsm","Algorithms","binarysearch(target,list...)","Target and list/items/graph triples.",
    "Exam-style traces for searches, sorts, stacks, queues, trees, RPN, FSM and Dijkstra.","Shows each comparison/pass/update, then final result or path.","binarysearch(7,1,3,5,7,9), dijkstra(A,D,A,B,4,C,D,5)"},
   {"bool","bool bool_simplify boolsimplify truth truthbits minterms maxterms kmap kmapdc posform nandform norform demorgan nand","Boolean Logic","bool_simplify(expression), truth(expression)","Boolean expression using and/or/not, +, *, '. Optional second argument fixes variable order, e.g. A,B,C.",
-   "Simplifies logic, builds truth tables/forms and names common rules.","Uses identities such as De Morgan, absorption, idempotent, complement and distribution.","bool_simplify(A and not B), truth(A and B)"},
+   "Simplifies logic, builds truth tables/forms and names common rules.","Uses De Morgan, absorption, idempotent, complement, distributive, expansion, consensus and exact K-map grouping when laws stall.","bool_simplify(A*B+A*B'+A'*B), truth(A and B)"},
   {0,0,0,0,0,0,0,0}
 };
 
@@ -237,6 +237,21 @@ static int args(const char *s, char a[][48], int maxa) {
     if (*p == ',' && depth == 0) {
       a[n][j] = 0; n++; j = 0;
     } else if (j < 47) a[n][j++] = *p;
+  }
+  if (n < maxa) { a[n][j] = 0; n++; }
+  return n;
+}
+
+static int args_long(const char *s, char a[][160], int maxa) {
+  const char *l = strchr(s, '('), *r = strrchr(s, ')');
+  if (!l || !r || r <= l) return 0;
+  int n = 0, j = 0, depth = 0;
+  for (const char *p = l + 1; p < r && n < maxa; ++p) {
+    if (*p == '(') depth++;
+    if (*p == ')') depth--;
+    if (*p == ',' && depth == 0) {
+      a[n][j] = 0; n++; j = 0;
+    } else if (j < 159) a[n][j++] = *p;
   }
   if (n < maxa) { a[n][j] = 0; n++; }
   return n;
@@ -3101,7 +3116,7 @@ static void bool_norm(const char *src, char *dst, int cap) {
     ++i;
   }
   dst[j] = 0;
-  char tmp[96]; int k = 0;
+  char tmp[192]; int k = 0;
   for (int i = 0; dst[i] && k + 2 < (int)sizeof(tmp); ++i) {
     char c = dst[i], n = dst[i+1];
     tmp[k++] = c;
@@ -3177,8 +3192,28 @@ static int top_op(const char *s, char op) {
 
 static bool is_comp_pair(const char *a, const char *b) {
   int la = (int)strlen(a), lb = (int)strlen(b);
+  if (la == lb + 1 && a[0] == '!' && strcmp(a + 1, b) == 0) return true;
+  if (lb == la + 1 && b[0] == '!' && strcmp(b + 1, a) == 0) return true;
   return (la == lb + 1 && a[la-1] == '\'' && strncmp(a, b, lb) == 0) ||
          (lb == la + 1 && b[lb-1] == '\'' && strncmp(b, a, la) == 0);
+}
+
+static void app_bool_not(char *res, int *rp, int cap, const char *x) {
+  int len = (int)strlen(x);
+  if (len == 2 && x[0] == '!' && isalpha((unsigned char)x[1])) {
+    app_ch(res, rp, cap, x[1]);
+    return;
+  }
+  if (len == 2 && isalpha((unsigned char)x[0]) && x[1] == '\'') {
+    app_ch(res, rp, cap, x[0]);
+    return;
+  }
+  bool wrap = top_op(x, '+') > 0 || top_op(x, '&') > 0 || top_op(x, '^') > 0 ||
+              top_op(x, '@') > 0 || top_op(x, '#') > 0 || top_op(x, '>') > 0;
+  if (wrap) app_ch(res, rp, cap, '(');
+  app_str(res, rp, cap, x);
+  if (wrap) app_ch(res, rp, cap, ')');
+  app_ch(res, rp, cap, '\'');
 }
 
 static int split_top_parts(const char *s, char op, char parts[][40], int maxp) {
@@ -3239,6 +3274,55 @@ static void join_except(char parts[][40], int count, int skip, char op, char *re
   if (!p) app_ch(res, &p, cap, '1');
 }
 
+static bool bool_try_expansion(const char *e, char *res, int cap) {
+  char factors[6][40]; int fc = split_top_parts(e, '&', factors, 6);
+  if (fc >= 2) {
+    for (int i = 0; i < fc; ++i) {
+      char terms[6][40]; int tc = split_top_parts(factors[i], '+', terms, 6);
+      if (tc < 2) continue;
+      int p = 0; res[0] = 0;
+      for (int t = 0; t < tc; ++t) {
+        if (t) app_ch(res, &p, cap, '+');
+        bool wrote = false;
+        for (int j = 0; j < fc; ++j) if (j != i) {
+          if (wrote) app_ch(res, &p, cap, '&');
+          bool wrap = top_op(factors[j], '+') > 0;
+          if (wrap) app_ch(res, &p, cap, '(');
+          app_str(res, &p, cap, factors[j]);
+          if (wrap) app_ch(res, &p, cap, ')');
+          wrote = true;
+        }
+        if (wrote) app_ch(res, &p, cap, '&');
+        app_str(res, &p, cap, terms[t]);
+      }
+      if ((int)strlen(res) <= (int)strlen(e) && bool_equiv_expr(e, res)) return true;
+    }
+  }
+  char sums[6][40]; int sc = split_top_parts(e, '+', sums, 6);
+  if (sc >= 2) {
+    for (int i = 0; i < sc; ++i) {
+      char terms[6][40]; int tc = split_top_parts(sums[i], '&', terms, 6);
+      if (tc < 2) continue;
+      int p = 0; res[0] = 0;
+      for (int t = 0; t < tc; ++t) {
+        if (t) app_ch(res, &p, cap, '&');
+        app_ch(res, &p, cap, '(');
+        bool wrote = false;
+        for (int j = 0; j < sc; ++j) if (j != i) {
+          if (wrote) app_ch(res, &p, cap, '+');
+          app_str(res, &p, cap, sums[j]);
+          wrote = true;
+        }
+        if (wrote) app_ch(res, &p, cap, '+');
+        app_str(res, &p, cap, terms[t]);
+        app_ch(res, &p, cap, ')');
+      }
+      if ((int)strlen(res) <= (int)strlen(e) && bool_equiv_expr(e, res)) return true;
+    }
+  }
+  return false;
+}
+
 static bool bool_law_once(const char *expr, char *res, char *law) {
   char e[96]; strip_outer(expr, e, sizeof(e));
   int elen = (int)strlen(e);
@@ -3251,9 +3335,9 @@ static bool bool_law_once(const char *expr, char *res, char *law) {
     if (p > 0) {
       char a[40], b[40]; int op = inner[p];
       memcpy(a, inner, p); a[p] = 0; strcpy(b, inner + p + 1);
-      int rp = 0; app_str(res, &rp, 80, a); app_ch(res, &rp, 80, '\'');
+      int rp = 0; app_bool_not(res, &rp, 80, a);
       app_ch(res, &rp, 80, op == '&' ? '+' : '&');
-      app_str(res, &rp, 80, b); app_ch(res, &rp, 80, '\'');
+      app_bool_not(res, &rp, 80, b);
       strcpy(law, "De Morgan's law"); return true;
     }
   }
@@ -3267,9 +3351,9 @@ static bool bool_law_once(const char *expr, char *res, char *law) {
     if (p > 0) {
       char a[40], b[40]; int op = inner[p];
       memcpy(a, inner, p); a[p] = 0; strcpy(b, inner + p + 1);
-      int rp = 0; app_str(res, &rp, 80, a); app_ch(res, &rp, 80, '\'');
+      int rp = 0; app_bool_not(res, &rp, 80, a);
       app_ch(res, &rp, 80, op == '&' ? '+' : '&');
-      app_str(res, &rp, 80, b); app_ch(res, &rp, 80, '\'');
+      app_bool_not(res, &rp, 80, b);
       strcpy(law, "De Morgan's law"); return true;
     }
   }
@@ -3284,6 +3368,39 @@ static bool bool_law_once(const char *expr, char *res, char *law) {
       app_ch(res, &rp, 80, '&'); app_str(res, &rp, 80, b);
       app_ch(res, &rp, 80, '\'');
       strcpy(law, "XOR identity"); return true;
+    }
+  }
+  {
+    int p = top_op(e, '@');
+    if (p > 0) {
+      char a[40], b[40]; memcpy(a, e, p); a[p] = 0; strcpy(b, e + p + 1);
+      int rp = 0; res[0] = 0;
+      app_bool_not(res, &rp, 80, a);
+      app_ch(res, &rp, 80, '+');
+      app_bool_not(res, &rp, 80, b);
+      strcpy(law, "NAND identity"); return true;
+    }
+  }
+  {
+    int p = top_op(e, '#');
+    if (p > 0) {
+      char a[40], b[40]; memcpy(a, e, p); a[p] = 0; strcpy(b, e + p + 1);
+      int rp = 0; res[0] = 0;
+      app_bool_not(res, &rp, 80, a);
+      app_ch(res, &rp, 80, '&');
+      app_bool_not(res, &rp, 80, b);
+      strcpy(law, "NOR identity"); return true;
+    }
+  }
+  {
+    int p = top_op(e, '>');
+    if (p > 0) {
+      char a[40], b[40]; memcpy(a, e, p); a[p] = 0; strcpy(b, e + p + 1);
+      int rp = 0; res[0] = 0;
+      app_bool_not(res, &rp, 80, a);
+      app_ch(res, &rp, 80, '+');
+      app_str(res, &rp, 80, b);
+      strcpy(law, "Implication identity"); return true;
     }
   }
   for (int oi = 0; oi < 2; ++oi) {
@@ -3434,6 +3551,10 @@ static bool bool_law_once(const char *expr, char *res, char *law) {
       }
     }
   }
+  if (bool_try_expansion(e, res, 80)) {
+    strcpy(law, "Expansion of brackets");
+    return true;
+  }
   return false;
 }
 
@@ -3484,20 +3605,85 @@ static const char *bool_old_law_name(const char *law) {
   return law;
 }
 
+static int minimise_rows(const int *ones, int oc, const int *dcs, int dc, int vc, Imp *chosen, int maxchosen);
+static void bool_simplified_from_rows(const int *mins, int mc, int rows, const char *vars, int vc, char *buf, int cap);
+static int add_implicant_groups(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN], int n,
+                                const Imp *chosen, int chc, const int *cells, int cellc,
+                                const char *vars, int vc, bool pos);
+static void set_parser_vars(BParser &p, const char *vars, int vc);
+static void ints_csv(const int *vals, int count, char *buf, int cap);
+
+static int bool_literal_count_text(const char *s) {
+  int n = 0;
+  for (int i = 0; s && s[i]; ++i)
+    if (isalpha((unsigned char)s[i])) ++n;
+  return n;
+}
+
+static void bool_no_parens(const char *s, char *out, int cap) {
+  int p = 0;
+  for (int i = 0; s && s[i] && p + 1 < cap; ++i)
+    if (s[i] != '(' && s[i] != ')') out[p++] = s[i];
+  out[p] = 0;
+}
+
+static bool seen_bool_form(char seen[][192], int count, const char *s) {
+  char fs[192]; bool_no_parens(s, fs, sizeof(fs));
+  for (int i = 0; i < count; ++i) {
+    if (strcmp(seen[i], s) == 0) return true;
+    char fi[192]; bool_no_parens(seen[i], fi, sizeof(fi));
+    if (strcmp(fi, fs) == 0) return true;
+  }
+  return false;
+}
+
 static int eval_bool_simplify_old_style(const char *expr, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
-  char cur[96], next[96], law[32], shown[96], shown_next[96];
+  char orig[192], cur[192], next[192], law[32], shown[192], shown_next[192];
+  strncpy(orig, expr, sizeof(orig) - 1); orig[sizeof(orig) - 1] = 0;
   strncpy(cur, expr, sizeof(cur) - 1); cur[sizeof(cur) - 1] = 0;
+  char seen[32][192]; int seenc = 0;
+  strncpy(seen[seenc++], cur, sizeof(seen[0]) - 1); seen[0][sizeof(seen[0]) - 1] = 0;
   bool_old_show(cur, shown, sizeof(shown));
   int n = add(out, 0, "Using: %s", shown);
   n = add(out, n, "1. %s", shown);
   int line = 2;
-  for (int step = 0; step < 30 && n < CSCALC_MAX_LINES - 2; ++step) {
+  for (int step = 0; strlen(cur) < 90 && step < 30 && n < CSCALC_MAX_LINES - 2; ++step) {
     if (!bool_law_once(cur, next, law)) break;
     if (!strcmp(cur, next)) break;
+    if (seen_bool_form(seen, seenc, next)) break;
     if (strcmp(law, "XOR identity") != 0 && !bool_equiv_expr(cur, next)) break;
     bool_old_show(next, shown_next, sizeof(shown_next));
     n = add(out, n, "%d. %s    (%s)", line++, shown_next, bool_old_law_name(law));
     strncpy(cur, next, sizeof(cur) - 1); cur[sizeof(cur) - 1] = 0;
+    if (seenc < 32) {
+      strncpy(seen[seenc], cur, sizeof(seen[seenc]) - 1);
+      seen[seenc][sizeof(seen[seenc]) - 1] = 0;
+      ++seenc;
+    }
+  }
+  char vars[8]; int vc = 0;
+  collect_vars(orig, vars, &vc);
+  if (vc > 0 && vc <= 6) {
+    int rows = 1 << vc, mins[64], mc = 0;
+    for (int m = 0; m < rows; ++m) {
+      BParser p = { orig, 0, m, {0}, vc };
+      set_parser_vars(p, vars, vc);
+      if (p.expr()) mins[mc++] = m;
+    }
+    char minimal[80];
+    bool_simplified_from_rows(mins, mc, rows, vars, vc, minimal, sizeof(minimal));
+    if (minimal[0] && strcmp(cur, minimal) &&
+        bool_literal_count_text(minimal) < bool_literal_count_text(cur)) {
+      char ml[96]; ints_csv(mins, mc, ml, sizeof(ml));
+      n = add(out, n, "Truth table: 1-rows %s", mc ? ml : "none");
+      if (mc > 0 && mc < rows) {
+        Imp chosen[32]; int chc = minimise_rows(mins, mc, 0, 0, vc, chosen, 32);
+        n = add_implicant_groups(out, n, chosen, chc, mins, mc, vars, vc, false);
+      }
+      bool_old_show(minimal, shown_next, sizeof(shown_next));
+      n = add(out, n, "%d. %s    (K-map grouping)", line++, shown_next);
+      strncpy(cur, minimal, sizeof(cur) - 1); cur[sizeof(cur) - 1] = 0;
+    }
   }
   bool_old_show(cur, shown, sizeof(shown));
   return add(out, n, "Result: %s", shown);
@@ -3508,7 +3694,7 @@ static bool int_seen(const int *v, int n, int x) {
   return false;
 }
 
-static int minimise_rows(const int *ones, int oc, const int *dcs, int dc, Imp *chosen, int maxchosen) {
+static int minimise_rows(const int *ones, int oc, const int *dcs, int dc, int vc, Imp *chosen, int maxchosen) {
   Imp cur[256], next[256], primes[256]; int cc = 0, pc = 0;
   for (int i = 0; i < oc && cc < 256; ++i)
     if (!int_seen(ones, i, ones[i])) cur[cc++] = { ones[i], 0, 0 };
@@ -3531,6 +3717,46 @@ static int minimise_rows(const int *ones, int oc, const int *dcs, int dc, Imp *c
     if (!nc) break;
     for (int i = 0; i < nc; ++i) cur[i] = next[i];
     cc = nc;
+  }
+  if (pc > 0 && oc > 0 && oc < 63 && pc < 31) {
+    unsigned long long cover[256];
+    int lit[256];
+    for (int i = 0; i < pc; ++i) {
+      cover[i] = 0;
+      for (int j = 0; j < oc; ++j) if (covers(primes[i], ones[j])) cover[i] |= 1ULL << j;
+      lit[i] = vc - bitcount(primes[i].mask & ((1 << vc) - 1));
+    }
+    unsigned long long full = (1ULL << oc) - 1;
+    int bestidx[32], curidx[32], bestn = 99, bestlit = 999;
+    struct Search {
+      static void dfs(int pc, unsigned long long full, const unsigned long long *cover, const int *lit,
+                      int *curidx, int curn, int curlit, unsigned long long have,
+                      int *bestidx, int *bestn, int *bestlit) {
+        if (have == full) {
+          if (curlit < *bestlit || (curlit == *bestlit && curn < *bestn)) {
+            *bestlit = curlit; *bestn = curn;
+            for (int i = 0; i < curn; ++i) bestidx[i] = curidx[i];
+          }
+          return;
+        }
+        if (curlit >= *bestlit || curn + 1 >= *bestn || curn >= 31) return;
+        int first = 0;
+        while (first < 63 && (have & (1ULL << first))) ++first;
+        for (int i = 0; i < pc; ++i) {
+          if (!(cover[i] & (1ULL << first))) continue;
+          unsigned long long next = have | cover[i];
+          if (next == have) continue;
+          curidx[curn] = i;
+          dfs(pc, full, cover, lit, curidx, curn + 1, curlit + lit[i], next, bestidx, bestn, bestlit);
+        }
+      }
+    };
+    Search::dfs(pc, full, cover, lit, curidx, 0, 0, 0, bestidx, &bestn, &bestlit);
+    if (bestn < 99) {
+      int outn = bestn < maxchosen ? bestn : maxchosen;
+      for (int i = 0; i < outn; ++i) chosen[i] = primes[bestidx[i]];
+      return outn;
+    }
   }
   bool covered[64] = {0}; int chc = 0;
   while (true) {
@@ -3587,7 +3813,7 @@ static int add_implicant_groups(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN], int
 static void bool_simplified_from_rows(const int *mins, int mc, int rows, const char *vars, int vc, char *buf, int cap) {
   if (mc == 0) { strncpy(buf, "0", cap - 1); buf[cap - 1] = 0; return; }
   if (mc == rows) { strncpy(buf, "1", cap - 1); buf[cap - 1] = 0; return; }
-  Imp chosen[32]; int chc = minimise_rows(mins, mc, 0, 0, chosen, 32);
+  Imp chosen[32]; int chc = minimise_rows(mins, mc, 0, 0, vc, chosen, 32);
   imp_sop_list(chosen, chc, vars, vc, buf, cap);
 }
 
@@ -3671,8 +3897,8 @@ static void imp_pos_list(const Imp *chosen, int chc, const char *vars, int vc, c
 }
 
 static int eval_bool(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
-  char a[8][48]; int na = args(s, a, 8);
-  char exprbuf[96], inner[96];
+  char a[8][160]; int na = args_long(s, a, 8);
+  char exprbuf[192], inner[192];
   bool simplmode = starts(s, "bool_simplify(") || starts(s, "boolsimplify(");
   bool truthmode = starts(s, "truth(") || starts(s, "truthtable(") || starts(s, "truthrows(");
   bool has_var_arg = na >= 2;
@@ -3833,7 +4059,7 @@ static int eval_posform(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LE
     if (n < CSCALC_MAX_LINES - 5) n = add(out, n, "M%d = %s", zeros[i], term);
   }
   n = add(out, n, "POS = %s", pos);
-  Imp chosen[32]; int chc = minimise_rows(zeros, zc, 0, 0, chosen, 32);
+  Imp chosen[32]; int chc = minimise_rows(zeros, zc, 0, 0, vc, chosen, 32);
   char sim[96]; imp_pos_list(chosen, chc, vars, vc, sim, sizeof(sim));
   n = add_implicant_groups(out, n, chosen, chc, zeros, zc, vars, vc, true);
   return add(out, n, "simplified POS = %s", chc ? sim : "1");
@@ -3875,7 +4101,7 @@ static int eval_truthbits(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_
     app_str(sop, &sp, sizeof(sop), term);
   }
   n = add(out, n, "SOP = %s", sop);
-  Imp chosen[32]; int chc = minimise_rows(mins, mc, 0, 0, chosen, 32);
+  Imp chosen[32]; int chc = minimise_rows(mins, mc, 0, 0, vc, chosen, 32);
   char sim[96]; imp_sop_list(chosen, chc, vars, vc, sim, sizeof(sim));
   n = add_implicant_groups(out, n, chosen, chc, mins, mc, vars, vc, false);
   n = add(out, n, "simplified SOP = %s", chc ? sim : "0");
@@ -3887,7 +4113,7 @@ static int eval_truthbits(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_
       app_str(pos, &pp, sizeof(pos), term);
     }
     n = add(out, n, "POS = %s", pos);
-    Imp pchosen[32]; int pc = minimise_rows(zeros, zc, 0, 0, pchosen, 32);
+    Imp pchosen[32]; int pc = minimise_rows(zeros, zc, 0, 0, vc, pchosen, 32);
     char psim[96]; imp_pos_list(pchosen, pc, vars, vc, psim, sizeof(psim));
     n = add_implicant_groups(out, n, pchosen, pc, zeros, zc, vars, vc, true);
     n = add(out, n, "simplified POS = %s", pc ? psim : "1");
@@ -3938,7 +4164,7 @@ static int eval_minterms(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_L
       char dl[80]; ints_csv(dcs, dc, dl, sizeof(dl));
       n = add(out, n, "don't-care rows: %s", dl);
       n = add(out, n, "Use don't-cares only if they make larger zero groups.");
-      Imp chosen[32]; int chc = minimise_rows(mins, mc, dcs, dc, chosen, 32);
+      Imp chosen[32]; int chc = minimise_rows(mins, mc, dcs, dc, vc, chosen, 32);
       char sim[96]; imp_pos_list(chosen, chc, vars, vc, sim, sizeof(sim));
       n = add_implicant_groups(out, n, chosen, chc, mins, mc, vars, vc, true);
       return add(out, n, "simplified POS = %s", chc ? sim : "1");
@@ -3971,7 +4197,7 @@ static int eval_minterms(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_L
     char dl[80]; ints_csv(dcs, dc, dl, sizeof(dl));
     n = add(out, n, "don't-care rows: %s", dl);
     n = add(out, n, "Use don't-cares only if they make larger groups.");
-    Imp chosen[32]; int chc = minimise_rows(mins, mc, dcs, dc, chosen, 32);
+    Imp chosen[32]; int chc = minimise_rows(mins, mc, dcs, dc, vc, chosen, 32);
     char sim[96]; imp_sop_list(chosen, chc, vars, vc, sim, sizeof(sim));
     n = add_implicant_groups(out, n, chosen, chc, mins, mc, vars, vc, false);
     return add(out, n, "simplified = %s", chc ? sim : "0");
@@ -4122,9 +4348,9 @@ static int eval_gate_form(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_
 }
 
 static int eval_bool_prove(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
-  char a[2][48]; int na = args(s, a, 2);
+  char a[2][160]; int na = args_long(s, a, 2);
   if (!starts3(s, "boolprove(", "provebool(", "logicprove(") || na < 2) return 0;
-  char lbuf[96], rbuf[96], both[192];
+  char lbuf[192], rbuf[192], both[384];
   bool_norm(a[0], lbuf, sizeof(lbuf));
   bool_norm(a[1], rbuf, sizeof(rbuf));
   sprintf(both, "%s%s", lbuf, rbuf);
