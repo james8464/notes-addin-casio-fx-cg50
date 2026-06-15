@@ -52,9 +52,9 @@ Text viewer:
 - `UP/DOWN`: scroll.
 - `PAGEUP` or `F3`: page up.
 - `PAGEDOWN` or `F4`: page down.
-- `LEFT/RIGHT`: horizontal scroll for wide table-like lines.
-- `F1`: next match for the active search query.
-- `F2`: previous match for the active search query.
+- `LEFT/RIGHT`: horizontal scroll for wide lines and tables.
+- `F1`: next search match if searching, otherwise next page.
+- `F2`: previous search match if searching, otherwise previous page.
 - `F5`: enter a new search inside the current file.
 - `F6`, `EXIT`, or `AC`: back.
 
@@ -72,9 +72,8 @@ The last search query is kept. Pressing `F2` again pre-fills the previous query,
 
 Result labels:
 
-- `N` means the match was in the file name or path.
-- `T` means the match was in the file contents.
-- `L<number>` shows the first matching content line when available.
+- `NAME` means the match was in the file name or path.
+- `TEXT<number>` means the match was in the file contents and shows the number of counted hits.
 
 Example search:
 
@@ -85,15 +84,15 @@ normal
 Possible result:
 
 ```text
-N normal.txt
-T notes.txt L14
+NAME normal.txt
+TEXT3 notes.txt
 ```
 
 Search results are ranked:
 
 - file-name matches first,
 - path/folder matches next,
-- content matches after that,
+- content matches add relevance even when the file name/path also matches,
 - repeated content matches rank higher,
 - earlier content matches rank higher.
 
@@ -110,18 +109,35 @@ Opening a content result opens the file and jumps to the first displayed matchin
 
 ## Text Display
 
-Text is rendered in the same small calculator-style font used by the suite UI, so more lines fit on screen.
+Text is rendered with a deliberately small markdown-like formatter using the calculator mini font. This keeps the viewer predictable and avoids spacing issues on the fx-CG50 screen.
 
 The viewer:
 
-- wraps ordinary text at word boundaries,
+- shows the current folder/file name in the top title bar,
+- recognises `# heading` and `## heading` lines,
+- recognises `- item` and `* item` bullets,
+- wraps ordinary lines at word boundaries,
 - preserves indentation,
 - turns tabs into spaces,
-- keeps table-like lines unwrapped,
-- supports horizontal scrolling for wide tables with `LEFT/RIGHT`,
-- shows the current displayed line count at the top.
+- keeps table-like/code lines unwrapped,
+- supports horizontal scrolling for wide lines and tables with `LEFT/RIGHT`,
+- marks search hits with a simple yellow marker in the left margin,
+- does not show line numbers in the file viewer.
 
-Table-like lines are detected when a line contains repeated column separators such as tabs, multiple `|` characters, several commas, or repeated spaces.
+`F1/F2` move between search matches when a search is active. Otherwise, they page down/up.
+
+Table-like lines are detected when a line contains explicit column separators such as tabs, multiple `|` characters, or ASCII table borders. Ordinary prose with commas or repeated spaces is not treated as a table.
+
+Formatter design:
+
+- one file read into a fixed-size buffer,
+- one pass over the file to split display lines,
+- word wrapping by fixed character budget,
+- no per-word background redraws,
+- wide-line horizontal scroll is capped at the longest source line,
+- all search/file searches use linear KMP matching.
+
+The folder browser ignores calculator/macOS system files such as `.DS_Store`, `.Trashes`, `.fseventsd`, and `._*.txt` AppleDouble files. Folders are shown before files, and entries are sorted alphabetically.
 
 ## Search Algorithm
 
@@ -140,23 +156,22 @@ Why KMP:
 Practical speed choices:
 
 - The query is normalised to lower-case once.
-- File name/path is searched before opening file contents.
-- If file name/path matches, the file is not opened.
-- File content is read in 8 KB chunks.
+- File name/path and file contents both contribute to ranking.
+- File content is read in 16 KB chunks.
 - Content scanning records the first matching line and counts repeated matches up to a small cap for ranking.
-- Search stops when the result list is full.
-- `EXIT` or `AC` can cancel a scan.
+- The full notes tree is still scanned so the best 64 ranked results are kept.
 
 References:
 
 - KMP/prefix-function: https://cp-algorithms.com/string/prefix-function.html
 - KMP worst-case: https://www.geeksforgeeks.org/dsa/kmp-algorithm-for-pattern-searching/
 - BMH worst-case comparison: https://www.boost.org/doc/libs/latest/libs/algorithm/doc/html/the_boost_algorithm_library/Searching/BoyerMooreHorspool.html
+- fx-CG add-in text rendering inspiration: https://github.com/Konsl/utilities-fxcg50
 
 ## Limits
 
 - Search depth is capped to avoid runaway traversal.
 - Result list is capped at 64 ranked results.
-- Opened text is cached up to 8 KB for viewing.
+- Opened text is cached up to 16 KB for viewing.
 - Very long text files can be opened only up to the viewer buffer, but all-file search scans the full file contents in chunks.
-- The viewer stores up to 160 displayed lines after wrapping.
+- The viewer stores up to 320 displayed lines after wrapping.

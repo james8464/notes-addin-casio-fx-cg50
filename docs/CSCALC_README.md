@@ -389,6 +389,14 @@ Examples:
 
 ## Boolean / Logic
 
+`bool_simplify(expression[, variables])`
+
+Simplifies a Boolean expression and shows named rule/row working.
+
+Examples:
+- `bool_simplify(A and not B)`
+- `bool_simplify((A+B)*(A+C),A,B,C)`
+
 `bool(expression)`
 
 `truth(expression)`
@@ -421,4 +429,4 @@ Aliases call the same feature as their primary command.
 - Text/compression: `ascii`, `charcode`, `codepoint`, `unicode`, `unicodepoint`, `ucode`, `chars`, `textsize`, `characters`, `charset`, `charsetsize`, `textsymbols`, `compress`, `compression`, `ratio`, `dictcompress`, `dictionary`, `lzdict`, `rle`, `runlength`, `runlengthencoding`, `rletext`, `rlestring`, `runencode`, `huffman`, `huff`, `huffmancode`
 - Data/memory/hash: `sqlselect`, `selectwhere`, `sqlquery`, `sqlcount`, `countwhere`, `countrecords`, `records`, `recordsize`, `database`, `addressspace`, `addresses`, `addressbus`, `addressbits`, `minaddressbits`, `addresslines`, `memorycapacity`, `addresscapacity`, `memorybus`, `hashmod`, `hashtable`, `modhash`, `hashlinear`, `linearprobe`, `hashprobe`, `hashquadratic`, `quadraticprobe`, `quadprobe`
 - Algorithms/tracing: `rpn`, `postfix`, `reversepolish`, `fsm`, `dfa`, `fsmout`, `mealy`, `dijkstra`, `shortestpath`, `shortpath`, `preordertree`, `treeprelinks`, `prelinks`, `inordertree`, `treeinlinks`, `inlinks`, `postordertree`, `treepostlinks`, `postlinks`, `preorder`, `treepre`, `pretraverse`, `inorder`, `treein`, `intraverse`, `postorder`, `treepost`, `posttraverse`, `stack`, `stacktrace`, `pushpop`, `queue`, `queuetrace`, `enqueue`, `binarysearch`, `binsearch`, `bsearch`, `linearsearch`, `linsearch`, `seqsearch`, `bubblesort`, `bubble`, `insertionsort`, `insertion`, `selectionsort`, `selection`, `mergesort`, `merge`
-- Boolean/logic: `truth`, `truthtable`, `truthrows`, `bool`, `boolean`, `logic`, `posform`, `cnf`, `productofsums`, `truthbits`, `truthout`, `outputbits`, `maxterms`, `pos`, `zeros`, `minterms`, `kmap`, `karnaugh`, `kmapdc`, `mintermsdc`, `dcminterms`, `dontcare`, `nandform`, `onlynand`, `norform`, `onlynor`, `boolprove`, `provebool`, `logicprove`
+- Boolean/logic: `truth`, `truthtable`, `truthrows`, `bool`, `bool_simplify`, `boolsimplify`, `boolean`, `logic`, `posform`, `cnf`, `productofsums`, `truthbits`, `truthout`, `outputbits`, `maxterms`, `pos`, `zeros`, `minterms`, `kmap`, `karnaugh`, `kmapdc`, `mintermsdc`, `dcminterms`, `dontcare`, `nandform`, `onlynand`, `norform`, `onlynor`, `boolprove`, `provebool`, `logicprove`

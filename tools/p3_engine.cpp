@@ -23,6 +23,33 @@ static int add(char out[P3_MAX_LINES][P3_LINE_LEN], int n, const char *fmt, ...)
   return n + 1;
 }
 
+static int add_wrapped(char out[P3_MAX_LINES][P3_LINE_LEN], int n, const char *prefix, const char *text) {
+  int room = P3_LINE_LEN - 1;
+  int plen = (int)strlen(prefix), len = (int)strlen(text);
+  if (plen + len < room) return add(out, n, "%s%s", prefix, text);
+  char head[P3_LINE_LEN];
+  int hcopy = plen < P3_LINE_LEN - 1 ? plen : P3_LINE_LEN - 1;
+  memcpy(head, prefix, hcopy);
+  head[hcopy] = 0;
+  int hp = (int)strlen(head);
+  while (hp > 0 && head[hp - 1] == ' ') head[--hp] = 0;
+  n = add(out, n, "%s", head);
+  for (int i = 0; text[i] && n < P3_MAX_LINES; ) {
+    int take = room - 2, rem = (int)strlen(text + i);
+    if (rem <= take) return add(out, n, "  %s", text + i);
+    int cut = take;
+    while (cut > 20 && text[i + cut] != ' ') --cut;
+    if (cut <= 20) cut = take;
+    char part[P3_LINE_LEN];
+    memcpy(part, text + i, cut);
+    part[cut] = 0;
+    n = add(out, n, "  %s", part);
+    i += cut;
+    while (text[i] == ' ') ++i;
+  }
+  return n;
+}
+
 static bool p3_utf_token(const char *s, const char **tok, int *len) {
   unsigned char a = (unsigned char)s[0], b = (unsigned char)s[1], c = (unsigned char)s[2];
   if (a == 0xe2 && b == 0x89 && c == 0xa4) { *tok = "<="; *len = 3; return true; }
@@ -116,6 +143,99 @@ static double nth_root(double x, int n) {
     if (pwr(mid, n) < x) lo = mid; else hi = mid;
   }
   return (lo + hi) / 2.0;
+}
+
+struct HelpSheet {
+  const char *key;
+  const char *aliases;
+  const char *title;
+  const char *syntax;
+  const char *args;
+  const char *does;
+  const char *work;
+  const char *examples;
+};
+
+static const HelpSheet p3_help[] = {
+  {"suvat","suvat","SUVAT","suvat(u=...,a=...,t=...)","Any 3 of s,u,v,a,t.",
+   "Finds the missing constant-acceleration values.","Chooses a SUVAT formula, substitutes known values, solves, then states units if implied.","suvat(u=2,a=3,t=4)"},
+  {"projectile","projectile projectileh projectiley projectileat projectileangle","Projectiles","projectile(u,angle[,g])","Speed, angle in degrees, optional g.",
+   "Resolves velocity and computes flight/range/height routes.","Uses ux=u cos(theta), uy=u sin(theta), horizontal x=uxt, vertical y=h0+uyt-gt^2/2.","projectile(20,30), projectileh(20,30,5)"},
+  {"force","force weight friction resolve vector","Forces","force(m,a), weight(m), friction(mu,R)","Mass/acceleration or coefficient/reaction.",
+   "Gives Newton's second law, weight and friction working.","Writes the formula first, substitutes values, resolves components where needed.","force(12,3), weight(6), friction(.4,25)"},
+  {"incline","incline inclineacc","Inclined Plane","incline(m,angle,mu)","Mass, angle in degrees, coefficient of friction.",
+   "Resolves weight parallel/perpendicular to plane.","Uses mg sin(theta), mg cos(theta), F<=mu R, then resultant/acceleration.","incline(5,30,.2), inclineacc(5,30,.2)"},
+  {"pulley","pulley connected","Pulleys","pulley(m1,m2[,mu])","Two masses, optional friction coefficient.",
+   "Connected-particle acceleration and tension.","Writes equations of motion for each mass, combines them, then finds tension.","pulley(3,5)"},
+  {"moment","moment beam ladder","Moments","moment(F,d), beam(L,F,d,W)","Force and perpendicular distance.",
+   "Calculates moment or balances moments for beams/ladders.","Uses moment = force*perpendicular distance and equilibrium about a pivot.","moment(50,2.5), beam(10,30,4,20)"},
+  {"varacc","varacct varaccx","Variable Acceleration","varacct(a,b,v0,t0,t)","Linear model constants and initial value.",
+   "Integrates acceleration to velocity/displacement.","Uses v=int a dt or a=v dv/dx, applies constants, substitutes endpoint.","varacct(6,-4,0,3,5)"},
+  {"vectorkin","vectorkin vectorsuvat vectormotion","Vector Kinematics","vectorkin(x0,y0,vx,vy,ax,ay,t)","Initial position, velocity, acceleration, time.",
+   "Finds vector position and velocity.","Applies r=r0+vt+at^2/2 and v=u+at component by component.","vectorkin(0,0,3,4,0,-9.8,2)"},
+  {"binom","binom binomtail binomstats critbinom binomcrit binomnorm","Binomial","binom(n,p,r), binomtail(n,p,r,tail)","n trials, probability p, value r, tail -1/1.",
+   "Exact binomial probabilities, tails, statistics and critical regions.","Shows distribution, formula nCr p^r(1-p)^(n-r), sums tails or uses normal approximation.","binom(10,.4,3), critbinom(20,.4,.05,-1)"},
+  {"hypbinom","hypbinom hyp_test","Binomial Hyp Test","hypbinom(n,p,x,alpha,tail)","Trial count, H0 probability, observed value, alpha, tail.",
+   "Gives hypotheses, p-value/critical comparison and conclusion.","States H0/H1, computes tail probability, compares with alpha in context-neutral wording.","hypbinom(20,.4,4,.05,-1)"},
+  {"normal","normalprob normalprobvar normaltail invnormal normalcrit samplemean samplemeantail normalparams","Normal","normalprob(lo,hi,mu,sigma)","Bounds, mean and standard deviation.",
+   "Normal probabilities, inverse normal and sample-mean routes.","Standardises with z=(x-mu)/sigma; for sample mean uses sigma/sqrt(n).","normalprob(40,60,50,10), invnormal(.95,50,10)"},
+  {"prob","cond probor bayes independent","Probability","cond(PAandB,PB), probor(PA,PB,PAandB)","Given probabilities.",
+   "Conditional probability, union, Bayes and independence checks.","Writes the probability rule, substitutes values, then simplifies.","cond(.2,.5), probor(.4,.3,.1)"},
+  {"regress","regresscalc pmcc spearman","Regression","regresscalc(n,Sx,Sy,Sx2,Sy2,Sxy)","Summary statistics.",
+   "Regression line, PMCC and rank correlation.","Shows formula, substitutes summary totals, then gives coefficient/intercept or correlation.","regresscalc(5,20,30,100,220,140)"},
+  {"grouped","groupmean groupmedian histdensity meanvar discrete stratified","Grouped Data","groupmean(mid1,f1,...), histdensity(f,w)","Pairs or grouped-table values.",
+   "Grouped mean, median interpolation, histogram density and discrete mean/variance.","Uses sum fx/sum f, interpolation or density=f/class width as required.","groupmean(5,12,15,30), histdensity(24,6)"},
+  {"poisson","poisson poissontail poissonstats critpoisson hyppoisson poissonnorm","Poisson","poisson(lambda,r), poissontail(lambda,r,tail)","Rate lambda, value r, tail -1/1.",
+   "Poisson probabilities, tails, statistics and hypothesis routes.","Uses e^-lambda lambda^r/r!, sums tails, compares with alpha for tests.","poisson(3,2), poissontail(3,2,-1)"},
+  {0,0,0,0,0,0,0,0}
+};
+
+static bool help_alias_match(const char *aliases, const char *key) {
+  if (!aliases || !key || !*key) return false;
+  int kl = (int)strlen(key);
+  for (const char *p = aliases; *p; ) {
+    while (*p == ' ') ++p;
+    const char *q = p;
+    while (*q && *q != ' ') ++q;
+    if (q - p == kl && strncmp(p, key, kl) == 0) return true;
+    p = q;
+  }
+  return false;
+}
+
+static void help_arg(const char *s, char *key, int cap) {
+  key[0] = 0;
+  const char *a = strchr(s, '(');
+  if (!a) return;
+  ++a;
+  int i = 0;
+  while (*a && *a != ')' && *a != ',' && i + 1 < cap) {
+    if (isalnum((unsigned char)*a) || *a == '_') key[i++] = *a;
+    ++a;
+  }
+  key[i] = 0;
+}
+
+static int p3_help_eval(const char *s, char out[P3_MAX_LINES][P3_LINE_LEN]) {
+  if (!starts(s, "help")) return 0;
+  char key[32]; help_arg(s, key, sizeof(key));
+  if (!key[0]) {
+    int n = add(out, 0, "Paper 3 help: use help(command).");
+    n = add(out, n, "Mechanics: suvat projectile force incline pulley moment varacc vectorkin");
+    n = add(out, n, "Stats: binom hypbinom normal prob regress grouped poisson");
+    return add(out, n, "Example: help(suvat)");
+  }
+  for (int i = 0; p3_help[i].key; ++i) {
+    if (strcmp(key, p3_help[i].key) && !help_alias_match(p3_help[i].aliases, key)) continue;
+    int n = add(out, 0, "%s", p3_help[i].title);
+    n = add(out, n, "Syntax: %s", p3_help[i].syntax);
+    n = add_wrapped(out, n, "Args: ", p3_help[i].args);
+    n = add_wrapped(out, n, "Does: ", p3_help[i].does);
+    n = add_wrapped(out, n, "Working: ", p3_help[i].work);
+    return add_wrapped(out, n, "Examples: ", p3_help[i].examples);
+  }
+  int n = add(out, 0, "No help sheet for %s.", key);
+  return add(out, n, "Use help() for command groups.");
 }
 
 static double exp_approx(double x) {
@@ -10658,6 +10778,7 @@ int p3_eval(const char *input, char out[P3_MAX_LINES][P3_LINE_LEN]) {
   for (int i=0;i<P3_MAX_LINES;++i) out[i][0]=0;
   char s[192]; clean(input, s, sizeof(s));
   if (!s[0]) return add(out, 0, "Enter a Paper 3 command.");
+  int hn = p3_help_eval(s, out); if (hn) return hn;
   if (has(s, "given") && has(s, "n(")) {
     int ns = eval_stats(s, out); if (ns) return ns;
   }

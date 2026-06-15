@@ -105,6 +105,97 @@ static bool has_word(const char *s, const char *w) {
   return false;
 }
 
+struct HelpSheet {
+  const char *key;
+  const char *aliases;
+  const char *title;
+  const char *syntax;
+  const char *args;
+  const char *does;
+  const char *work;
+  const char *examples;
+};
+
+static const HelpSheet cs_help[] = {
+  {"convert","convert base bin hex den","Base Conversion","convert(value,from_base,to_base)","Value plus bases 2,8,10,16.",
+   "Converts between binary, octal, denary and hexadecimal.","Converts to denary by place value, then repeatedly divides/groups for the target base.","convert(45,10,16), den(2D,16)"},
+  {"bits","bitsneeded unsignedrange","Bit Width / Unsigned","bitsneeded(value), unsignedrange(bits)","Integer value or bit width.",
+   "Finds required bits or unsigned range.","Uses 0 to 2^n-1; signed option uses two's-complement bounds.","bitsneeded(127), unsignedrange(8)"},
+  {"twos","twos twosdec twosrange twosadd twossub","Two's Complement","twos(value,bits), twosdec(bits)","Signed integer and width, or bit pattern.",
+   "Encodes/decodes signed binary and performs signed binary arithmetic.","Negative encode uses 2^n + value; decode uses MSB weight -2^(n-1); arithmetic checks overflow.","twos(-5,8), twosdec(11111011)"},
+  {"signmag","signmag signmagdec ones onesdec onesrange signmagrange","Other Signed Forms","signmag(value,bits), ones(value,bits)","Signed integer or encoded bits.",
+   "Handles sign-magnitude and one's-complement representation.","Separates sign bit from magnitude, or inverts bits for one's complement negatives.","signmag(-5,8), onesdec(11111010)"},
+  {"binary","binadd binsub shift arithshift xorbits andbits orbits notbits","Binary Operations","binadd(a,b,width), shift(bits,left,amount)","Bit strings and optional width.",
+   "Adds, subtracts, shifts and applies bitwise logic.","Shows aligned binary working, carry/borrow or sign-preserving shift where relevant.","binadd(1011,0110,4), arithshift(11101100,right,2)"},
+  {"fixed","fixed fixedtc fixedenc fixedfrac fixedtcenc","Fixed Point","fixed(bits), fixedenc(value,left,right)","Fixed binary with point, or value and bit split.",
+   "Decodes and encodes unsigned or two's-complement fixed point.","Uses place values left/right of point; signed form decodes whole part as two's complement.","fixed(101.101), fixedtcenc(-2.5,4,3)"},
+  {"float","floatdec floatenc floatnorm normal floatrange floatnearest floatcanrepresent floatprecision","Floating Point","floatdec(mantissa,exponent)","Mantissa/exponent bits or value and widths.",
+   "Decodes, encodes, normalises and checks floating-point range/precision.","Decodes exponent as two's complement, shifts binary point, normalises mantissa then rounds to fit.","floatdec(0101100,11101), floatenc(12.75,8,4)"},
+  {"floatarith","floatadd floatsub floatmul floatdiv","Floating Arithmetic","floatadd(a,b,mantissa_bits,exponent_bits)","Two values plus mantissa/exponent widths.",
+   "Adds/subtracts/multiplies/divides with floating-point method lines.","Aligns exponents for add/subtract; combines mantissas and exponents for multiply/divide, then normalises.","floatadd(1.5,2.25,8,4)"},
+  {"error","parity repeatenc repeatdec hamming hammingenc checksum checkdigit grayenc graydec","Error Detection / Codes","parity(bits,even), hammingenc(data4bits)","Bit strings and scheme parameters.",
+   "Parity, repetition, Hamming, checksum/check digit and Gray code routes.","Shows parity/check bits, recomputation and whether an error is detected/corrected.","parity(1011001,even), hammingenc(1011)"},
+  {"storage","image imagesize imagecolors colourdepth colourcount sound soundsize bitrate transfer compress","Storage / Transfer","image(w,h,depth), sound(rate,dur,res,ch)","Dimensions, rates, depths and times.",
+   "File size, bit rate, transfer time and compression calculations.","Multiplies samples/pixels by bit depth, converts units, and uses ratio = original/compressed.","image(800,600,24), sound(44100,60,16,2)"},
+  {"chars","ascii unicode chars charset symbolbits","Characters","chars(count,bits), ascii(code), unicode(code)","Character count/code or symbol set size.",
+   "Character storage and code conversion.","Uses characters*bits per character; symbolbits finds minimum n with 2^n >= symbols.","ascii(65), chars(120,8)"},
+  {"database","records sqlselect sqlcount hashmod hashlinear hashquadratic addressspace addressbits memorycapacity","Databases / Memory","records(count,size), hashmod(size,keys...)","Record counts, sizes, addresses or hash keys.",
+   "Record storage, address capacity and hash-table traces.","Uses count*record size, 2^address_bits capacity, and stated hash/probing rule.","records(1200,32), hashlinear(10,27,18)"},
+  {"algorithm","binarysearch linearsearch bubblesort insertionsort selectionsort mergesort stack queue dijkstra rpn fsm","Algorithms","binarysearch(target,list...)","Target and list/items/graph triples.",
+   "Exam-style traces for searches, sorts, stacks, queues, trees, RPN, FSM and Dijkstra.","Shows each comparison/pass/update, then final result or path.","binarysearch(7,1,3,5,7,9), dijkstra(A,D,A,B,4,C,D,5)"},
+  {"bool","bool bool_simplify boolsimplify truth truthbits minterms maxterms kmap kmapdc posform nandform norform demorgan nand","Boolean Logic","bool_simplify(expression), truth(expression)","Boolean expression using and/or/not, +, *, '. Optional second argument fixes variable order, e.g. A,B,C.",
+   "Simplifies logic, builds truth tables/forms and names common rules.","Uses identities such as De Morgan, absorption, idempotent, complement and distribution.","bool_simplify(A and not B), truth(A and B)"},
+  {0,0,0,0,0,0,0,0}
+};
+
+static bool cs_help_alias_match(const char *aliases, const char *key) {
+  if (!aliases || !key || !*key) return false;
+  int kl = (int)strlen(key);
+  for (const char *p = aliases; *p; ) {
+    while (*p == ' ') ++p;
+    const char *q = p;
+    while (*q && *q != ' ') ++q;
+    if (q - p == kl && strncmp(p, key, kl) == 0) return true;
+    p = q;
+  }
+  return false;
+}
+
+static void cs_help_arg(const char *s, char *key, int cap) {
+  key[0] = 0;
+  const char *a = strchr(s, '(');
+  if (!a) return;
+  ++a;
+  int i = 0;
+  while (*a && *a != ')' && *a != ',' && i + 1 < cap) {
+    if (isalnum((unsigned char)*a) || *a == '_') key[i++] = *a;
+    ++a;
+  }
+  key[i] = 0;
+}
+
+static int cs_help_eval(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
+  if (!starts(s, "help")) return 0;
+  char key[32]; cs_help_arg(s, key, sizeof(key));
+  if (!key[0]) {
+    int n = add(out, 0, "CSCalc Boolean help: use help(bool).");
+    n = add(out, n, "Commands: bool_simplify truth truthbits");
+    n = add(out, n, "More: minterms maxterms kmap kmapdc");
+    return add(out, n, "Forms: posform nandform norform boolprove");
+  }
+  for (int i = 0; cs_help[i].key; ++i) {
+    if (strcmp(key, cs_help[i].key) && !cs_help_alias_match(cs_help[i].aliases, key)) continue;
+    int n = add(out, 0, "%s", cs_help[i].title);
+    n = add(out, n, "Syntax: %s", cs_help[i].syntax);
+    n = add_wrapped(out, n, "Args: ", cs_help[i].args);
+    n = add_wrapped(out, n, "Does: ", cs_help[i].does);
+    n = add_wrapped(out, n, "Working: ", cs_help[i].work);
+    return add_wrapped(out, n, "Examples: ", cs_help[i].examples);
+  }
+  int n = add(out, 0, "No help sheet for %s.", key);
+  return add(out, n, "Use help() for command groups.");
+}
+
 static bool scan_subscript_number(const char *s, char *val, int cap, int *base) {
   for (int i = 0; s && s[i]; ++i) {
     if (!((unsigned char)s[i] == 0xe2 && (unsigned char)s[i+1] == 0x82 &&
@@ -2901,10 +2992,15 @@ struct BParser {
   bool eat(char c) { if (s[pos] == c) { pos++; return true; } return false; }
   int factor() {
     if (eat('!') || eat('~')) return !factor();
-    if (eat('(')) { int v = expr(); eat(')'); if (eat('\'')) v = !v; return v; }
+    if (eat('(')) {
+      int v = expr();
+      eat(')');
+      while (eat('\'')) v = !v;
+      return v;
+    }
     char c = s[pos++];
     int v = isalpha((unsigned char)c) ? var_value(c) : (c == '1');
-    if (eat('\'')) v = !v;
+    while (eat('\'')) v = !v;
     return v;
   }
   int term() {
@@ -3368,6 +3464,45 @@ static int add_named_bool_law_trace(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN],
   return n;
 }
 
+static void bool_old_show(const char *src, char *dst, int cap) {
+  int p = 0;
+  for (int i = 0; src[i] && p + 1 < cap; ++i) {
+    char c = src[i];
+    if (c == '&') c = '.';
+    else if (c == '\'') c = ',';
+    dst[p++] = c;
+  }
+  dst[p] = 0;
+}
+
+static const char *bool_old_law_name(const char *law) {
+  if (!strcmp(law, "Idempotent law")) return "Tautology";
+  if (!strcmp(law, "Complement law")) return "Tautology";
+  if (!strcmp(law, "Identity law")) return "Common sense";
+  if (!strcmp(law, "Dominance law")) return "Common sense";
+  if (!strcmp(law, "Absorption law")) return "Absorption";
+  return law;
+}
+
+static int eval_bool_simplify_old_style(const char *expr, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
+  char cur[96], next[96], law[32], shown[96], shown_next[96];
+  strncpy(cur, expr, sizeof(cur) - 1); cur[sizeof(cur) - 1] = 0;
+  bool_old_show(cur, shown, sizeof(shown));
+  int n = add(out, 0, "Using: %s", shown);
+  n = add(out, n, "1. %s", shown);
+  int line = 2;
+  for (int step = 0; step < 30 && n < CSCALC_MAX_LINES - 2; ++step) {
+    if (!bool_law_once(cur, next, law)) break;
+    if (!strcmp(cur, next)) break;
+    if (strcmp(law, "XOR identity") != 0 && !bool_equiv_expr(cur, next)) break;
+    bool_old_show(next, shown_next, sizeof(shown_next));
+    n = add(out, n, "%d. %s    (%s)", line++, shown_next, bool_old_law_name(law));
+    strncpy(cur, next, sizeof(cur) - 1); cur[sizeof(cur) - 1] = 0;
+  }
+  bool_old_show(cur, shown, sizeof(shown));
+  return add(out, n, "Result: %s", shown);
+}
+
 static bool int_seen(const int *v, int n, int x) {
   for (int i = 0; i < n; ++i) if (v[i] == x) return true;
   return false;
@@ -3412,11 +3547,19 @@ static int minimise_rows(const int *ones, int oc, const int *dcs, int dc, Imp *c
 }
 
 static void imp_sop_list(const Imp *chosen, int chc, const char *vars, int vc, char *buf, int cap) {
+  char terms[32][32];
+  for (int i = 0; i < chc; ++i) {
+    imp_text(chosen[i], vars, vc, terms[i]);
+  }
+  for (int i = 0; i < chc; ++i) for (int j = i + 1; j < chc; ++j) {
+    if (strcmp(terms[j], terms[i]) < 0) {
+      char tmp[32]; strcpy(tmp, terms[i]); strcpy(terms[i], terms[j]); strcpy(terms[j], tmp);
+    }
+  }
   int p = 0; buf[0] = 0;
   for (int i = 0; i < chc; ++i) {
-    char t[32]; imp_text(chosen[i], vars, vc, t);
     if (i) app_ch(buf, &p, cap, '+');
-    app_str(buf, &p, cap, t);
+    app_str(buf, &p, cap, terms[i]);
   }
 }
 
@@ -3511,22 +3654,33 @@ static void imp_pos_text(const Imp &p, const char *vars, int vc, char *buf, int 
 }
 
 static void imp_pos_list(const Imp *chosen, int chc, const char *vars, int vc, char *buf, int cap) {
+  char terms[32][32];
+  for (int i = 0; i < chc; ++i) {
+    imp_pos_text(chosen[i], vars, vc, terms[i], sizeof(terms[i]));
+  }
+  for (int i = 0; i < chc; ++i) for (int j = i + 1; j < chc; ++j) {
+    if (strcmp(terms[j], terms[i]) < 0) {
+      char tmp[32]; strcpy(tmp, terms[i]); strcpy(terms[i], terms[j]); strcpy(terms[j], tmp);
+    }
+  }
   int p = 0; buf[0] = 0;
   for (int i = 0; i < chc; ++i) {
-    char t[32]; imp_pos_text(chosen[i], vars, vc, t, sizeof(t));
     if (i) app_ch(buf, &p, cap, '&');
-    app_str(buf, &p, cap, t);
+    app_str(buf, &p, cap, terms[i]);
   }
 }
 
 static int eval_bool(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
-  char a[2][48]; int na = args(s, a, 2);
+  char a[8][48]; int na = args(s, a, 8);
   char exprbuf[96], inner[96];
+  bool simplmode = starts(s, "bool_simplify(") || starts(s, "boolsimplify(");
   bool truthmode = starts(s, "truth(") || starts(s, "truthtable(") || starts(s, "truthrows(");
-  bool has_var_arg = na >= 2 && bool_arg_is_varlist(a[1]);
-  const char *expr = (starts(s, "bool(") || truthmode || starts(s, "boolean(") || starts(s, "logic(")) && na ? a[0] : 0;
+  bool has_var_arg = na >= 2;
+  for (int i = 1; i < na && has_var_arg; ++i)
+    has_var_arg = bool_arg_is_varlist(a[i]);
+  const char *expr = (starts(s, "bool(") || simplmode || truthmode || starts(s, "boolean(") || starts(s, "logic(")) && na ? a[0] : 0;
   if ((na <= 1 || !has_var_arg) &&
-      (starts(s, "bool(") || truthmode || starts(s, "boolean(") || starts(s, "logic(")) &&
+      (starts(s, "bool(") || simplmode || truthmode || starts(s, "boolean(") || starts(s, "logic(")) &&
       strchr(s, '(') && strrchr(s, ')')) {
     const char *l = strchr(s, '('), *r = strrchr(s, ')');
     int p = 0;
@@ -3537,9 +3691,11 @@ static int eval_bool(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN])
   if (!expr) return 0;
   bool_norm(expr, exprbuf, sizeof(exprbuf));
   expr = exprbuf;
+  if (simplmode) return eval_bool_simplify_old_style(expr, out);
   char vars[8]; int vc = 0;
   if (has_var_arg) {
-    collect_arg_vars_into(a[1], vars, &vc, 6);
+    for (int i = 1; i < na; ++i)
+      collect_arg_vars_into(a[i], vars, &vc, 6);
   }
   if (!vc) collect_vars(expr, vars, &vc);
   if (vc == 0) {
@@ -3617,12 +3773,8 @@ static int eval_bool(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN])
     chosen[chc++] = primes[best];
     for (int j = 0; j < mc; ++j) if (covers(primes[best], mins[j])) covered[j] = true;
   }
-  char sim[80] = ""; int sp = 0;
-  for (int i = 0; i < chc; ++i) {
-    char t[32]; imp_text(chosen[i], vars, vc, t);
-    if (i) app_ch(sim, &sp, 80, '+');
-    app_str(sim, &sp, 80, t);
-  }
+  char sim[80] = "";
+  imp_sop_list(chosen, chc, vars, vc, sim, sizeof(sim));
   n = add_implicant_groups(out, n, chosen, chc, mins, mc, vars, vc, false);
   return add(out, n, "simplified = %s", sim);
 }
@@ -7802,6 +7954,7 @@ int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
   for (int i = 0; i < CSCALC_MAX_LINES; ++i) out[i][0] = 0;
   char s[192]; clean(input, s, sizeof(s));
   if (!s[0]) return add(out, 0, "Enter a CS calculation command.");
+  int hn = cs_help_eval(s, out); if (hn) return hn;
   if ((has(s, "float") || has(s, "floating")) && has(s, "mantissa") && has(s, "exponent") &&
       (has(s, "decode") || has(s, "denary") || has(s, "decimal")) &&
       !(has(s, "error") || has(s, "actual"))) {
@@ -7927,7 +8080,7 @@ int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
   n = eval_bool_prove(s, out); if (n) return n;
   n = eval_bool(s, out); if (n) return n;
   n = add(out, 0, "Supported:");
-  n = add(out, n, "bin hex den convert twos twosdec twosadd twossub signmag signmagdec fixed fixedenc parity repeatenc repeatdec shift arithshift xorbits andbits orbits notbits grayenc graydec hamming hammingenc checksum checkdigit rpn");
-  n = add(out, n, "floatdec floatadd floatsub floatmul floatdiv floatrange floatbitsadd normal image sound bitrate transfer");
-  return add(out, n, "compress dictcompress huffman rle records sqlselect sqlcount hashmod hashlinear hashquadratic addressspace addressbits chars ascii unicode stack queue preorder inorder postorder dijkstra fsm fsmout binarysearch bubblesort selectionsort mergesort bool truth truthbits minterms maxterms kmap kmapdc posform nandform norform");
+  n = add(out, n, "Boolean commands: bool_simplify bool truth truthbits");
+  n = add(out, n, "minterms maxterms kmap kmapdc");
+  return add(out, n, "posform nandform norform boolprove");
 }

@@ -65,7 +65,15 @@ NEW_LABELS = """  {
         menu += " ";
     }
     PrintMini(0,58,menu.c_str(),4);
-  }
+}
+"""
+
+OLD_COLOR = """      couleur=linecomment?5:find_color(singleword);
+"""
+
+NEW_COLOR = """      couleur=linecomment?5:find_color(singleword);
+      if (!linecomment && couleur==0 && suite_is_custom_command(singleword))
+        couleur=1;
 """
 
 
@@ -96,7 +104,10 @@ def main() -> int:
     ctext = ctext.replace(OLD_CFG, NEW_CFG, 1)
     if OLD_LABELS not in ctext:
         raise SystemExit("console.cc fkey label block not found")
-    console.write_text(ctext.replace(OLD_LABELS, NEW_LABELS, 1))
+    ctext = ctext.replace(OLD_LABELS, NEW_LABELS, 1)
+    if OLD_COLOR not in ctext:
+        raise SystemExit("console.cc syntax colour block not found")
+    console.write_text(ctext.replace(OLD_COLOR, NEW_COLOR, 1))
     return 0
 
 

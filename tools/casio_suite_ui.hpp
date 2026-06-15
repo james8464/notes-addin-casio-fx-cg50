@@ -148,23 +148,27 @@ static void ui_khicas_fkeys(const char *f1, const char *f2) {
 
 static void ui_softkeys(const char *f1, const char *f2, const char *f3, const char *f4, const char *f5, const char *f6) {
   const char *v[6] = {f1, f2, f3, f4, f5, f6};
+  const int widths[6] = {7, 7, 6, 6, 6, 5};
+  const int maxchars[6] = {5, 5, 4, 4, 4, 4};
   char menu[48];
   int pos = 0;
   for (int i = 0; i < 6; ++i) {
-    if (i) {
-      if (pos < (int)sizeof(menu) - 1) menu[pos++] = '|';
-    }
+    if (i && pos < (int)sizeof(menu) - 1) menu[pos++] = '|';
     const char *label = v[i] ? v[i] : "";
     int n = (int)strlen(label);
-    if (n > 6) n = 6;
-    if (i < 5) {
+    if (n > maxchars[i]) n = maxchars[i];
+    int used = 0;
+    if (i < 5 && pos < (int)sizeof(menu) - 1) {
       menu[pos++] = ' ';
-      for (int j = 0; j < 5 && pos < (int)sizeof(menu) - 1; ++j)
-        menu[pos++] = j < n ? label[j] : ' ';
-      if (pos < (int)sizeof(menu) - 1) menu[pos++] = ' ';
-    } else {
-      for (int j = 0; j < 5 && pos < (int)sizeof(menu) - 1; ++j)
-        menu[pos++] = j < n ? label[j] : ' ';
+      ++used;
+    }
+    for (int j = 0; j < n && pos < (int)sizeof(menu) - 1; ++j) {
+      menu[pos++] = label[j];
+      ++used;
+    }
+    while (used < widths[i] && pos < (int)sizeof(menu) - 1) {
+      menu[pos++] = ' ';
+      ++used;
     }
   }
   menu[pos] = 0;
@@ -182,6 +186,14 @@ static void ui_chrome(const char *title) {
 
 static void ui_print(int x, int y, const char *s) {
   Bdisp_MMPrint(x, y, s, 0x40, 0xffffffff, 0, 0, UI_BLACK, UI_WHITE, 1, 0);
+}
+
+static void ui_print_color(int x, int y, const char *s, int color) {
+  Bdisp_MMPrint(x, y, s, 0x40, 0xffffffff, 0, 0, color, UI_WHITE, 1, 0);
+}
+
+static void ui_print_mini_color(int x, int y, const char *s, int fg, int bg) {
+  PrintMini(&x, &y, (unsigned char *)(s ? s : ""), 0, 0xffffffff, 0, 0, fg, bg, 1, 0);
 }
 
 static void ui_menu_keys(const char *title, const char *const *items, int count, int top, int sel,
