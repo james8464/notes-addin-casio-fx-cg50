@@ -501,12 +501,12 @@ static int markdown_line(const char *s, int len, int *skip, int *style) {
     return 1;
   }
   if (ordered_list_marker(s + p, len - p)) {
-    *skip = p;
+    *skip = 0;
     *style = NOTE_ORDERED;
     return 1;
   }
   if (p + 1 < len && s[p] == '>' && s[p + 1] == ' ') {
-    *skip = p;
+    *skip = 0;
     *style = NOTE_QUOTE;
     return 1;
   }
@@ -566,6 +566,8 @@ static void add_display_line(int *line, const char *s, int len, int hscroll, int
     int usable = WRAP_COLS;
     int indent = pos == base_indent ? base_indent : base_indent + 2;
     if (style == NOTE_BULLET && pos != base_indent) indent += 2;
+    if (style == NOTE_ORDERED && pos != base_indent) indent += 3;
+    if (style == NOTE_QUOTE && pos != base_indent) indent += 2;
     usable -= indent;
     if (usable < 16) usable = 16;
     int cut = pos;
@@ -721,7 +723,7 @@ static int max_file_line_scroll() {
       int len = i - start;
       if (len > 0) {
         int visible = fit_visible_chars(file_buf + start, len, 0);
-        int scroll = len - visible;
+        int scroll = len > visible ? len - 1 : 0;
         if (scroll > max_scroll) max_scroll = scroll;
       }
       start = i + 1;

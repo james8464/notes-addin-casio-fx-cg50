@@ -55,11 +55,18 @@ def main() -> int:
     for required in ["NOTE_ORDERED", "NOTE_QUOTE", "NOTE_RULE", "ordered_list_marker", "rule_like"]:
         if required not in notes_src:
             raise AssertionError(f"notes renderer must support basic markdown reading styles: {required}")
+    if "*skip = p;\n    *style = NOTE_ORDERED" in notes_src or "*skip = p;\n    *style = NOTE_QUOTE" in notes_src:
+        raise AssertionError("nested ordered lists and block quotes must preserve source indentation")
+    for required in ["style == NOTE_ORDERED && pos != base_indent", "style == NOTE_QUOTE && pos != base_indent"]:
+        if required not in notes_src:
+            raise AssertionError(f"notes wrapped continuations must align nested markdown content: {required}")
     if "hscroll > 0 || style == NOTE_TABLE || style == NOTE_CODE" not in notes_src:
         raise AssertionError("notes horizontal scroll must work beyond table-only lines")
     for required in ["mini_width", "segment_fits_screen", "fit_visible_chars", "max_file_line_scroll", "NOTE_X_LIMIT"]:
         if required not in notes_src:
             raise AssertionError(f"notes wrapping must use PrintMini pixel preview: {required}")
+    if "int scroll = len - visible;" in notes_src:
+        raise AssertionError("notes horizontal scroll must not cap before the final source character")
     for required in ["view_source_line", "source_line_bounds", "find_source_match", "view_line_for_source_match", "jump_to_match(&sp"]:
         if required not in notes_src:
             raise AssertionError(f"notes search jump must track source lines: {required}")
