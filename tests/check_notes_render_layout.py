@@ -125,6 +125,12 @@ def table_start_kind(lines: list[str], index: int) -> str:
 def source_code_like(line: str) -> bool:
     p = len(line) - len(md_lstrip(line))
     s = line[p:]
+    if (
+        s.startswith(("- ", "* ", "+ ", "> "))
+        or re.match(r"#{1,6} ", s)
+        or re.match(r"\d{1,3}[.)] ", s)
+    ):
+        return False
     return (
         p >= 4
         or s.startswith("```")
@@ -479,6 +485,10 @@ def main() -> int:
         errors.append("single nonempty pipe cell must not be treated as a table")
     if not source_code_like("    code | not table"):
         errors.append("indented code lines must be recognised before table detection")
+    if source_code_like("    - deeply nested bullet"):
+        errors.append("4-space nested bullets must render as bullets, not code")
+    if source_code_like("    ### deeply nested heading"):
+        errors.append("4-space nested headings must render as headings, not code")
     if markdown_skip_style("\t- nested bullet")[1] != "bullet":
         errors.append("tab-indented markdown bullets must render as bullets")
     if markdown_skip_style("\t## nested heading")[1] != "heading":

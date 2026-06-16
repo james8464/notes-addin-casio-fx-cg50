@@ -571,6 +571,21 @@ static int fence_like(const char *s, int len) {
 static int source_code_like(const char *s, int len) {
   int p = trim_left_pos(s, len);
   if (fence_like(s, len)) return 1;
+  if (p < len) {
+    if (p + 1 < len && (s[p] == '-' || s[p] == '*' || s[p] == '+') && s[p + 1] == ' ')
+      return 0;
+    if (s[p] == '#') {
+      int hashes = 0;
+      while (p + hashes < len && s[p + hashes] == '#') ++hashes;
+      if (p + hashes < len && s[p + hashes] == ' ') return 0;
+    }
+    if (p + 1 < len && s[p] == '>' && s[p + 1] == ' ') return 0;
+    int q = p;
+    while (q < len && s[q] >= '0' && s[q] <= '9') ++q;
+    if (q > p && q <= p + 3 && q + 1 < len &&
+        (s[q] == '.' || s[q] == ')') && s[q + 1] == ' ')
+      return 0;
+  }
   if (p >= 4) return 1;
   return (p + 2 < len && s[p] == '>' && s[p + 1] == '>' && s[p + 2] == '>') ||
          (p + 1 < len && s[p] == '$' && s[p + 1] == ' ') ||
