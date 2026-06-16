@@ -89,7 +89,7 @@ def main() -> int:
         raise AssertionError("notes horizontal-scroll markers must not overlap the first text row")
     if "hscroll = min_int(max_line, hscroll + 8);" not in notes_src:
         raise AssertionError("notes horizontal scroll must advance to the final reachable offset")
-    if "static const int VIEW_ROW_H = 17;" not in notes_src or "static const int PAGE_LINES = 9;" not in notes_src:
+    if "static const int VIEW_ROW_H = 17;" not in notes_src or "static const int PAGE_LINES = 8;" not in notes_src:
         raise AssertionError("notes text rows must use safe PrintMini spacing")
     if "static const int MAX_VIEW_LINES = 768;" not in notes_src:
         raise AssertionError("notes viewer must keep the larger 768-line display cache")

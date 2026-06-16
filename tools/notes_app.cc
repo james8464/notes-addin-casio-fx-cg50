@@ -25,7 +25,7 @@ static const int VIEW_X = 4;
 static const int VIEW_TOP = 25;
 static const int VIEW_ROW_H = 17;
 static const int WRAP_COLS = 32;
-static const int PAGE_LINES = 9;
+static const int PAGE_LINES = 8;
 static const int MENU_PAGE_ROWS = 7;
 static const int MENU_ROWS = MENU_PAGE_ROWS;
 static const int STATUS_LABEL_CHARS = 40;
@@ -1185,8 +1185,11 @@ static void notes_print_span_limit(int *x, int y, const char *s, int len, int fg
     --len;
   }
   if (len <= 0 || *x >= xlimit) return;
-  char tmp[LINE_CAP];
+  int avail = xlimit - *x;
   int n = min_int(len, LINE_CAP - 1);
+  while (n > 0 && mini_width(s, n) > avail) --n;
+  if (n <= 0) return;
+  char tmp[LINE_CAP];
   memcpy(tmp, s, n);
   tmp[n] = 0;
   int before = *x;

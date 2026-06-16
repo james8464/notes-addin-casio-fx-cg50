@@ -71,6 +71,8 @@ def main() -> int:
         first = next((line for line in lines if line.strip()), "")
         if not first.startswith("# "):
             errors.append(f"{path}: first content line must be a level-1 heading")
+        elif first[2:].strip() != path.stem:
+            errors.append(f"{path}: first heading {first[2:].strip()!r} must match filename {path.stem!r}")
         i = 0
         while i < len(lines):
             if not lines[i].lstrip().startswith("|"):

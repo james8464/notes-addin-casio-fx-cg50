@@ -1,67 +1,78 @@
 # Client server model
 
-## Client-server Networking
+## How It Works
 
-### Definition
+- On the basic principle of sender and receiver
+- To initiate any communication and sharing of resources, the client must make a request to the server
+- The server then responds to that request, providing the requested resources
+- Different servers specialise in different things
+  - E.g., database servers, file servers, emails servers
 
-- one or more central servers provide services to clients
-- clients request services from the server, which responds
-- resources are stored on the server
-- server provides services such as:
-  - file storage
-  - email management
-  - user accounts
-  - print queues
+## The Websocket Protocol
 
-### Characteristics
-
-- centralised security management
-- centralised administration
-- clients access resources from server
-- server provides resources in response to requests
-
-### Pros & Cons
-
-| Advantages | Disadvantages |
-| --- | --- |
-| Centralised + more control over management of security + access rights; Easier administration (users, files, permissions); All data stored centrally; accessible from any device; Centralised backup (easier to backup data); Centralised/remote installation and updating of software; Server can be optimised for tasks (e.g., file handling); Suitable for large number of users/devices | Configuration/setup more complex; Requires greater expertise to manage than P2P; More expensive (server hardware required); Dependency on server |
+- An example of an API
+- Operates in the application layer of the TCP/IP stack
+- Provides a constant stream of information between 2 devices (usually client's web browser and a server)
+- The connection is full-duplex (data can be transmitted in both directions simultaneously)
+- Allows the client and server to communicate on an ongoing bases without the need to constantly refresh a full web page
+- Allows for fast transmission of data by reducing the size of packet headers
 
 ### Where Used?
 
-- Schools, businesses, organisations
-- Where:
-  - many users need managing
-  - confidential data is stored
-  - different users need different access rights
-  - central control is required
+- Video streaming
+- Online games
+- Instant messaging
 
-## Peer-to-peer (p2p) Networking
+## Crud
 
-### Definition
+- Its an acronym
+- Stands for:
+  - Create
+  - Retrieve
+  - Update
+  - Delete
+- These are the operations you can perform on data (e.g. in a database)
+- Each CRUD command thus has a SQL equivalent:
 
-- no central server
-- resources are stored on each individual computer/device/peer
-- each device can act as a client or a server
-- devices communicate directly with each other
-
-### Characteristics
-
-- each computer has equal status
-- any device can share/access resources with any other
-- files can be distributed across computers
-- No dependence on a server
-
-### Pros & Cons
-
-| Advantages | Disadvantages |
+| CRUD | SQL |
 | --- | --- |
-| More cost effective (no server needed); Easier to setup and maintain; No single point of failure (no central server); Useful for file sharing networks/multimedia sharing | Management of security/administration is more difficult; No central control of access rights; Data is only available when the device storing it is switched on; If device fails -> its resources are unavailable; No central backups; Not suitable for large networks |
+| Create | INSERT |
+| Retrieve | SELECT |
+| Update | UPDATE |
+| Delete | DELETE |
 
-### Where Used?
+## Rest
 
-- Small/home networks
-- File sharing (e.g., media sharing)
-- Where:
-  - Low cost is important
-  - Simple setup is needed
-  - Few users
+- Its an acronym
+- Stands for:
+  - Representational state transfer
+- Its a design methodology for online database applications that are queried with a web browser
+- A way of designing how systems communicate over a network
+- It uses 4 HTTP request methods to query databases:
+
+| HTTP | SQL |
+| --- | --- |
+| POST | INSERT |
+| GET | SELECT |
+| PUT | UPDATE |
+| DELETE | DELETE |
+
+### Key Difference (this Is What Examiners Want)
+
+- CRUD -> what you want to do to data
+- REST -> how you do it over a network
+
+### Xml vs Json
+
+| Feature | XML (extensible markup language) | JSON (JavaScript object notation) |
+| --- | --- | --- |
+| Format type | Markup language (tag-based) | Data-interchange format (key-value pairs) |
+| Structure | Uses nested tags | Uses objects and arrays |
+| Readability (human POV) | More verbose, harder to read | More compact, easier to read |
+| Size | Larger (more tags -> more data) | Smaller (less overhead) |
+| Processing speed | Slower to parse | Faster to parse |
+| Ease of use | More complex syntax | Simpler syntax |
+| Flexibility | Very flexible (custom tags) | Less flexible but sufficient for most uses |
+| Data types | All data treated as text | Supports multiple data types (numbers, strings, arrays, etc) |
+| Usage | Older systems, document storage | Web APIs, modern applications |
+| Example | <name>Bob</name> | "name": "Bob" |

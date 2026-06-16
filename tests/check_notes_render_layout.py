@@ -21,6 +21,9 @@ def const_int(source: str, name: str) -> int:
         "MAX_TABLE_COLS": globals().get("MAX_TABLE_COLS"),
         "MAX_TABLE_ROWS": globals().get("MAX_TABLE_ROWS"),
         "TABLE_CELL_CAP": globals().get("TABLE_CELL_CAP"),
+        "VIEW_TOP": globals().get("VIEW_TOP"),
+        "VIEW_ROW_H": globals().get("VIEW_ROW_H"),
+        "PAGE_LINES": globals().get("PAGE_LINES"),
     }
     if expr.isdigit():
         return int(expr)
@@ -39,6 +42,9 @@ MAX_TABLE_COLS = const_int(APP_SOURCE, "MAX_TABLE_COLS")
 MAX_TABLE_ROWS = const_int(APP_SOURCE, "MAX_TABLE_ROWS")
 TABLE_CELL_CAP = const_int(APP_SOURCE, "TABLE_CELL_CAP")
 TABLE_MAX_CHARS = const_int(APP_SOURCE, "TABLE_MAX_CHARS")
+VIEW_TOP = const_int(APP_SOURCE, "VIEW_TOP")
+VIEW_ROW_H = const_int(APP_SOURCE, "VIEW_ROW_H")
+PAGE_LINES = const_int(APP_SOURCE, "PAGE_LINES")
 
 
 def table_like(line: str) -> bool:
@@ -216,6 +222,12 @@ def main() -> int:
         errors.append("table parse scratch cells must not be allocated on the fx-CG stack")
     if "      char segs[MAX_TABLE_COLS][TABLE_CELL_CAP];" in APP_SOURCE:
         errors.append("table segment scratch cells must not be allocated on the fx-CG stack")
+    softkey_y = 58 * 3
+    last_table_bottom = VIEW_TOP + (PAGE_LINES - 1) * VIEW_ROW_H + VIEW_ROW_H - 2
+    if last_table_bottom >= softkey_y:
+        errors.append("note page lines can overlap the softkey row")
+    if "while (n > 0 && mini_width(s, n) > avail) --n;" not in APP_SOURCE:
+        errors.append("table/limited text must shrink before PrintMini clipping")
     for path in sorted(NOTES.rglob("*.txt")):
         errors.extend(audit_file(path))
     if errors:
