@@ -146,6 +146,7 @@ def clean_inline(text: str) -> str:
         "\u201c": '"',
         "\u201d": '"',
         "\u2022": "*",
+        "\u2026": "...",
         "\u2190": "<-",
         "\u2192": "->",
         "\u2194": "<->",
@@ -560,6 +561,8 @@ def main() -> int:
         errors.append("inline markdown cleanup must keep common UTF-8 symbols readable")
     if clean_inline("25\u00b0C \u00f7 5 \u2194 ok \u21d4 yes") != "25 degC / 5 <-> ok <=> yes":
         errors.append("inline markdown cleanup must keep degree/divide/bidirectional arrows readable")
+    if clean_inline("Wait\u2026 done") != "Wait... done":
+        errors.append("inline markdown cleanup must transliterate ellipsis consistently with file load")
     if clean_inline("Keep 2 * 3 * 4 readable") != "Keep 2 * 3 * 4 readable":
         errors.append("inline markdown cleanup must not strip spaced multiplication")
     if clean_inline("Keep 2 ** 3 readable") != "Keep 2 ** 3 readable":

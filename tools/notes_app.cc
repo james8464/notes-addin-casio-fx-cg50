@@ -603,6 +603,7 @@ static int utf8_ascii_at(const char *s, int i, int len, const char **out) {
       if (c == 0x98 || c == 0x99) { *out = "'"; return 3; }
       if (c == 0x9c || c == 0x9d) { *out = "\""; return 3; }
       if (c == 0xa2) { *out = "*"; return 3; }
+      if (c == 0xa6) { *out = "..."; return 3; }
     }
     if (b == 0x86) {
       if (c == 0x90) { *out = "<-"; return 3; }
