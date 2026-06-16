@@ -503,6 +503,8 @@ def main() -> int:
         errors.append("notes renderer must support markdown fenced code blocks")
     if "html_break_len" not in APP_SOURCE:
         errors.append("notes renderer must handle common html line breaks without duplicated parsing")
+    if "while (p < len && (s[p] == ' ' || s[p] == '\\t')) ++p;" not in APP_SOURCE:
+        errors.append("notes renderer must accept spaced html break tags")
     if "html_entity_at" not in APP_SOURCE:
         errors.append("notes renderer must decode common html entities in copied text")
     if "utf8_ascii_at" not in APP_SOURCE:
@@ -550,6 +552,8 @@ def main() -> int:
         errors.append("inline markdown cleanup model must preserve readable text")
     if clean_inline("Use `*literal*` and keep ` unmatched") != "Use *literal* and keep ` unmatched":
         errors.append("inline markdown cleanup must keep code-span contents and unmatched backticks literal")
+    if clean_inline("alpha<BR   />beta<br >gamma") != "alpha; beta; gamma":
+        errors.append("inline markdown cleanup must support spaced and uppercase html break tags")
     if clean_inline("A &amp; B &lt; C &gt; D &quot;x&quot; &apos;y&apos;") != "A & B < C > D \"x\" 'y'":
         errors.append("inline markdown cleanup must decode common html entities")
     if clean_inline("A \u2192 B \u2264 C \u201cok\u201d") != 'A -> B <= C "ok"':

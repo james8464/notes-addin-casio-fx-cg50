@@ -64,6 +64,8 @@ def main() -> int:
             raise AssertionError(f"notes renderer must support generic markdown text features: {required}")
     if "html_entity_at" not in notes_src:
         raise AssertionError("notes renderer must decode common html entities in copied text")
+    if "while (p < len && (s[p] == ' ' || s[p] == '\\t')) ++p;" not in notes_src:
+        raise AssertionError("notes renderer must accept spaced html break tags")
     if "utf8_ascii_at" not in notes_src:
         raise AssertionError("notes renderer must transliterate common UTF-8 symbols before display")
     for required in ["bytes_at(i, 0xc2, 0xb0)", "bytes_at(i, 0xc3, 0xb7)", "bytes_at3(i, 0xe2, 0x86, 0x94)", "bytes_at3(i, 0xe2, 0x87, 0x94)"]:

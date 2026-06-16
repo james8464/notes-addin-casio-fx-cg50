@@ -556,10 +556,12 @@ static int html_break_len(const char *s, int i, int len) {
       lower_char((unsigned char)s[i + 2]) != 'r')
     return 0;
   int p = i + 3;
-  if (p < len && s[p] == '/') ++p;
+  while (p < len && (s[p] == ' ' || s[p] == '\t')) ++p;
+  if (p < len && s[p] == '/') {
+    ++p;
+    while (p < len && (s[p] == ' ' || s[p] == '\t')) ++p;
+  }
   if (p < len && s[p] == '>') return p - i + 1;
-  if (p + 2 < len && s[p] == ' ' && s[p + 1] == '/' && s[p + 2] == '>')
-    return p - i + 3;
   return 0;
 }
 
