@@ -48,6 +48,7 @@ def normalise(text: str) -> str:
         .replace("\u2192", "->")
         .replace("\u00d7", "x")
         .replace("\u211d", "R")
+        .replace("\u00e0", "->")
     )
     text = text.replace(" the have ", " they have ").replace(" nd returns ", " and returns ")
     return re.sub(r"[^a-z0-9]+", " ", text.lower()).strip()
@@ -151,7 +152,17 @@ def main() -> int:
             if not note_path.read_text(errors="ignore").strip():
                 missing.append(f"{path.name}:{table_name}: expected note file is empty")
                 continue
+            table_note_norm = normalise(note_path.read_text(errors="ignore"))
             detail_col = table_detail_column(table)
+            for row in table.rows:
+                for cell in note_detail_cells(row):
+                    for raw in cell.splitlines():
+                        line = raw.strip()
+                        norm = normalise(line)
+                        if len(norm) < 8 or norm in ignored:
+                            continue
+                        if norm not in table_note_norm:
+                            missing.append(f"{path.name}:{table_name}: misplaced/missing from table note: {line}")
             rows_with_nested = []
             for row_index, row in enumerate(table.rows[1:], 2):
                 if detail_col >= len(row.cells):

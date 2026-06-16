@@ -2,34 +2,29 @@
 
 ## Function type
 
-- If f: A -> B, the function type is A -> B.
-- A is the argument type.
-- B is the result type.
-- Function = rule that for each element in set A of inputs, assigns an output chosen from set B.
-- Not all elements of set B will be used.
-- A function maps a set of inputs, called the domain, to a set of possible outputs, called the co-domain.
-- Functions only calculate something and return a result.
-- Functions have no side effects, so they cannot change the data / memory.
-- Every time the same function is called with the same arguments / values, it will always return the same result.
-- Domain = set that a function takes input values from.
-- Co-domain = set that function output values are from.
+- If f: A -> B, we say that the function type is A -> B where A is the argument type and B is the result type.
+- Function = rule that for each element in set A of inputs, assigns an output chosen from set B; not all elements of set B will be used.
+- A function is a mapping from a set of inputs, called the domain, to a set of possible outputs, known as the co-domain.
+- The only thing they do is calculate something and return a result; they have no side effects ie they cannot change the data / memory.
+- So every time the same function is called with the same arguments / values, it will always return the same result.
+- domain = set that a function takes input values from.
+- Co-domain = set that a function output values are from.
 - Types are integer / float / bool / char values.
-- Typeclasses are sets of types, such as Integer, Float, Bool, Char.
+- Typeclasses are sets of types, so Integer, Float, Bool, Char.
 
 ### Type declaration
 
 - Can be implicit - set by the programming language in the background.
-- Can be explicit - set by the programmer.
-
-### Explicit type declaration example
+- ..or explicit - set by the programmer.
+- Eg: explicit type declaration:
 
     isEqual :: Int -> Int -> Bool
     isEqual x y = x == y
 
 ### Co-domain PPQ
 
-- Describe the co-domain of function f: N -> R.
-- Answer: the set of real numbers / the set of all possible real-world quantities.
+- Describe the co-domain of function f: N -> R (PPQ).
+- The set of real numbers // the set of all possible real-world quantities;
 - A. real numbers
 - A. numbers that represent any quantity along an infinite number line
 - A. all numbers excluding imaginary/complex numbers
@@ -39,146 +34,101 @@
 
 ## First-class object
 
-- First-class objects, or values, are objects that may:
+- First-class objects (or values) are objects that may:
   - Appear in expressions
   - Be assigned to a variable
   - Be assigned as arguments
   - Be returned in function calls
-- Note: the object term here is not related to OOP.
+- NOTE: the 'object' term here is NOT related to OOP.
 - Examples: integers, floating point values, characters, strings, functions.
 
 ## Function application
 
 - Function application = a function applied to its arguments.
-- Giving particular inputs to a function is function application.
-- Example: add(3,4) is the application of function add to integer arguments 3 and 4.
-- The type of this function is f: integer x integer -> integer.
-- integer x integer is the cartesian product of set Integer with itself.
+- Giving particular inputs to a function, eg add(3,4) is the application of function add to integer arguments 3 and 4.
+- The type of this function is f: integer x integer -> integer, where integer x integer is the cartesian product of set Integer with itself.
 
 ## Partial function application
 
-- In the add example function above, it takes two integers as arguments and returns an integer as a result.
+- In the add example function above, it takes two integers as arguments, and returns an integer as a result.
 - As a partial function application, this is viewed as:
 
     add : integer -> (integer -> integer)
 
-- This means add 4 returns a function which, when applied to another integer, adds 4 to that integer.
+- ...which means...
+- add 4 returns a function which when applied to another integer, adds 4 to that integer.
 - This is why add function type is integer -> integer -> integer.
-- It takes one argument after another and returns a result of data type integer.
+- ...taking one argument after another, and returning a result of data type integer.
 
 ## Composition of functions
 
 - Functional composition combines two functions to get a new function.
-- If f : A -> B, and g : B -> C, then g o f is called the composition of g and f.
-- g o f is a function whose domain is A and co-domain is C.
+- Eg if f : A -> B, and g : B -> C, then
+- g o f is called the composition of g and f, and is a function whose domain is A and co-domain is C.
 - Composition is possible because the co-domain of f is the same as the domain of g.
 
 ## Higher order functions
 
-- Higher order function = a function that takes a function as an argument.
-- Higher order function = a function that returns a function as a result.
-- Higher order function = a function that takes a function as an argument and returns a function as a result.
-- A. Parameter / input for argument.
+- Higher order function = A function that takes a function as an argument // returns a function as a result // takes a function as an argument and returns a function as a result;
+- A. Parameter, input for argument.
 - NE. A function that uses another function.
 - R. Explanations that are specifically of the map function.
 
-### Higher order function example
+### An example
 
     applyTwice :: (a -> a) -> a -> a
     applyTwice f x = f( f x)
 
-- Parentheses are required and define the type declaration of function f.
+- Parenthesis are required and define the type declaration of function f.
 - 'a' denotes a type - they have to be the same.
+- Once defined, we can use it like this:
 
-### applyTwice examples
-
-    applyTwice (+3) 10
-
-- Returns 16.
-
-    applyTwice (++ " HAHA") "HEY"
-
-- Returns "HEY HAHA HAHA".
-
-    applyTwice ("HAHA " ++) "HEY"
-
-- Returns "HAHA HAHA HEY".
-
-    applyTwice (multThree 2 2) 9
-
-- Returns 144, with multThree previously defined to multiply three input values.
-
-    applyTwice (3: ) [1]
-
-- Returns [3,3,1].
+    applyTwice (+3) 10 -- this will return 16
+    applyTwice (++ " HAHA") "HEY" -- this will return "HEY HAHA HAHA"
+    applyTwice ("HAHA " ++) "HEY" -- this will return "HAHA HAHA HEY"
+    applyTwice (multThree 2 2) 9 -- this will return 144 (multThree having been previously defined to multiply three input values)
+    applyTwice (3: ) [1] -- this will return [3,3,1]
 
 ## Map, filter and reduce
 
 - map is the name of a higher-order function that applies a given function to each element of a list, returning a list of results.
 - filter is the name of a higher-order function that processes a data structure, typically a list, in some order to produce a new data structure containing exactly those elements of the original data structure that match a given condition.
-- reduce or fold is the name of a higher-order function which takes a list of values and a function as arguments.
-- reduce or fold repeatedly applies, using recursion, that combining function to each element of the list.
-- reduce or fold returns a single value.
-- Then practise, practise, practise.
+- reduce or fold is the name of a higher-order function which takes a list of values and a function as arguments, and applies repeatedly (using recursion) that combining function to each element of the list, returning a single value.
+- Then....
+- ....Practise, practise, practise
 
 ## Lists and immutability
 
 - List = a collection of elements of a similar type, such as integers, characters or strings, enclosed in square brackets.
 - Head = first element of the list.
 - Tail = remainder of the list if you removed the head.
-- A list can be written as head : tail.
-- This is the concatenation of head and tail.
+- A list can be written as head : tail (this is the concatenation of head and tail).
 - Empty list = a list with no elements; [].
 - length(listA) = number of elements in listA.
 
-### List example
+### Example
 
-- Say that listA = [3,4,5,6].
+- Example: say that listA = [3,4,5,6].
+- head(listA) will return 3.
+- tail(listA) will return [4,5,6].
+- tail(tail((tail(tail(listA)))) will return [].
+- null(listA) will return False.
+- B = [] will define the empty list B.
 
-    head(listA)
+## Pre-pending a list
 
-- returns 3.
-
-    tail(listA)
-
-- returns [4,5,6].
-
-    tail(tail((tail(tail(listA))))
-
-- returns [].
-
-    null(listA)
-
-- returns False.
-
-    B = []
-
-- defines the empty list B.
-
-### Pre-pending a list
-
-- Pre-pending a list = adding element(s) to the front of the list.
+- Pre-pending a list = adding element(s) to the front of the list:
 - The operator is : for a single element.
+- Eg 5 : [1,2,3] will return [5,1,2,3].
+- ...and ++ for a list.
+- Eg [5,4] ++ [1,2,3] will return [5,4,1,2,3].
 
-    5 : [1,2,3]
-
-- returns [5,1,2,3].
-- The operator is ++ for a list.
-
-    [5,4] ++ [1,2,3]
-
-- returns [5,4,1,2,3].
-
-### Appending a list
+## Appending a list
 
 - Appending a list = adding element(s) to the end of the list.
 - The operator is ++ as you can only append a list to the existing list.
 - Remember the original list will NOT change its contents.
-
-    A = [1,2,3]
-    A ++ [4,5]
-
-- returns [1,2,3,4,5].
-- The contents of list A remain the same.
+- Eg if A = [1,2,3], then A ++ [4,5] will return [1,2,3,4,5].
+- ...but contents of list A remains the same.
 - This is the concept of immutability.
-- Concatenating lists also uses the ++ operator.
+- Concatenating lists - use also the ++ operator.
