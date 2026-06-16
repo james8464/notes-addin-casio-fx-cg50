@@ -48,8 +48,12 @@ VIEW_ROW_H = const_int(APP_SOURCE, "VIEW_ROW_H")
 PAGE_LINES = const_int(APP_SOURCE, "PAGE_LINES")
 
 
+def md_lstrip(text: str) -> str:
+    return text.lstrip(" \t")
+
+
 def table_like(line: str) -> bool:
-    s = line.lstrip(" ")
+    s = md_lstrip(line)
     if "\t" in line:
         return sum(1 for cell in line.split("\t") if cell.strip()) >= 2
     if s.startswith("+"):
@@ -89,7 +93,7 @@ def table_start_like(lines: list[str], index: int) -> bool:
 
 
 def source_code_like(line: str) -> bool:
-    p = len(line) - len(line.lstrip(" "))
+    p = len(line) - len(md_lstrip(line))
     s = line[p:]
     return (
         p >= 4
@@ -296,7 +300,7 @@ def norm(text: str) -> str:
 
 
 def markdown_skip_style(line: str) -> tuple[int, str]:
-    p = len(line) - len(line.lstrip(" "))
+    p = len(line) - len(md_lstrip(line))
     s = line[p:]
     if s.startswith("#"):
         hashes = len(s) - len(s.lstrip("#"))
@@ -436,6 +440,12 @@ def main() -> int:
         errors.append("single nonempty pipe cell must not be treated as a table")
     if not source_code_like("    code | not table"):
         errors.append("indented code lines must be recognised before table detection")
+    if markdown_skip_style("\t- nested bullet")[1] != "bullet":
+        errors.append("tab-indented markdown bullets must render as bullets")
+    if markdown_skip_style("\t## nested heading")[1] != "heading":
+        errors.append("tab-indented markdown headings must render as headings")
+    if "static int md_space(char c)" not in APP_SOURCE:
+        errors.append("notes renderer must centralise markdown whitespace handling")
     if not source_code_like(">>> code | not table"):
         errors.append("prompt code lines must be recognised before table detection")
     if not source_code_like("```"):

@@ -199,6 +199,7 @@ static void join_str(char *dst, int cap, const char *a, const char *b) {
 
 static int min_int(int a, int b) { return a < b ? a : b; }
 static int max_int(int a, int b) { return a > b ? a : b; }
+static int md_space(char c) { return c == ' ' || c == '\t'; }
 
 static void search_prepare(SearchPattern *sp, const char *q) {
   int i = 0;
@@ -464,7 +465,7 @@ static int markdown_escaped_at(const char *s, int i) {
 
 static int tab_separated_cells(const char *s, int len) {
   int p = 0;
-  while (p < len && s[p] == ' ') ++p;
+  while (p < len && md_space(s[p])) ++p;
   int cells = 0, cell_has_text = 0, tab_seen = 0;
   for (int i = p; i <= len; ++i) {
     if (i == len || s[i] == '\t') {
@@ -480,7 +481,7 @@ static int tab_separated_cells(const char *s, int len) {
 
 static int pipe_separated_cells(const char *s, int len) {
   int p = 0;
-  while (p < len && s[p] == ' ') ++p;
+  while (p < len && md_space(s[p])) ++p;
   int cells = 0, cell_has_text = 0, pipe_seen = 0;
   for (int i = p; i <= len; ++i) {
     if (i == len || (s[i] == '|' && !markdown_escaped_at(s, i))) {
@@ -497,7 +498,7 @@ static int pipe_separated_cells(const char *s, int len) {
 static int table_like(const char *s, int len) {
   int tab = 0, plus = 0, dashes = 0;
   int first = 0;
-  while (first < len && s[first] == ' ') ++first;
+  while (first < len && md_space(s[first])) ++first;
   for (int i = 0; i < len; ++i) {
     if (s[i] == '\t') tab = 1;
     if (s[i] == '+') ++plus;
@@ -514,7 +515,7 @@ static int table_block_row_like(const char *s, int len) {
 
 static int plus_separator_row(const char *s, int len) {
   int p = 0;
-  while (p < len && s[p] == ' ') ++p;
+  while (p < len && md_space(s[p])) ++p;
   if (p >= len || s[p] != '+') return 0;
   int plus = 0, rule = 0;
   for (int i = p; i < len; ++i) {
@@ -528,12 +529,12 @@ static int plus_separator_row(const char *s, int len) {
 
 static int trim_left_pos(const char *s, int len) {
   int p = 0;
-  while (p < len && s[p] == ' ') ++p;
+  while (p < len && md_space(s[p])) ++p;
   return p;
 }
 
 static int trim_right_len(const char *s, int len) {
-  while (len > 0 && s[len - 1] == ' ') --len;
+  while (len > 0 && md_space(s[len - 1])) --len;
   return len;
 }
 
@@ -659,10 +660,10 @@ static int single_marker_at(const char *s, int i, int len, char c) {
   if (s[i] != c) return 0;
   if (i + 1 < len && s[i + 1] == ' ') {
     int p = i - 1;
-    while (p >= 0 && s[p] == ' ') --p;
+    while (p >= 0 && md_space(s[p])) --p;
     if (p < 0) return 0;
   }
-  if ((i <= 0 || s[i - 1] == ' ') && (i + 1 >= len || s[i + 1] == ' ')) return 0;
+  if ((i <= 0 || md_space(s[i - 1])) && (i + 1 >= len || md_space(s[i + 1]))) return 0;
   if (i > 0 && i + 1 < len && ascii_alnum(s[i - 1]) && ascii_alnum(s[i + 1]))
     return 0;
   if (c == '_' && ((i > 0 && ascii_alnum(s[i - 1])) || (i + 1 < len && ascii_alnum(s[i + 1]))))
@@ -672,7 +673,7 @@ static int single_marker_at(const char *s, int i, int len, char c) {
 
 static int double_marker_at(const char *s, int i, int len, char c) {
   if (i + 1 >= len || s[i] != c || s[i + 1] != c) return 0;
-  if ((i <= 0 || s[i - 1] == ' ') && (i + 2 >= len || s[i + 2] == ' ')) return 0;
+  if ((i <= 0 || md_space(s[i - 1])) && (i + 2 >= len || md_space(s[i + 2]))) return 0;
   if (c == '_' && ((i > 0 && ascii_alnum(s[i - 1])) || (i + 2 < len && ascii_alnum(s[i + 2]))))
     return 0;
   for (int p = i + 2; p + 1 < len; ++p)
@@ -1020,7 +1021,7 @@ static int ordered_list_marker(const char *s, int len) {
 
 static int rule_like(const char *s, int len) {
   int p = 0;
-  while (p < len && s[p] == ' ') ++p;
+  while (p < len && md_space(s[p])) ++p;
   if (p + 2 >= len) return 0;
   char c = s[p];
   if (c != '-' && c != '=' && c != '*') return 0;
@@ -1100,7 +1101,7 @@ static int line_end_hscroll(const char *s, int len, int style) {
 
 static int markdown_line(const char *s, int len, int *skip, int *style) {
   int p = 0;
-  while (p < len && s[p] == ' ') ++p;
+  while (p < len && md_space(s[p])) ++p;
   *skip = p;
   *style = NOTE_TEXT;
   if (p < len && s[p] == '#') {
@@ -1227,7 +1228,7 @@ static void add_display_line(int *line, const char *s, int len, int hscroll, int
     return;
   }
   int base_indent = 0;
-  while (base_indent < len && base_indent < 10 && s[base_indent] == ' ') ++base_indent;
+  while (base_indent < len && base_indent < 10 && md_space(s[base_indent])) ++base_indent;
   int ordered_indent = 3;
   if (style == NOTE_ORDERED) {
     int mark = ordered_list_marker(s + base_indent, len - base_indent);

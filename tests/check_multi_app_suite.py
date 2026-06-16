@@ -62,6 +62,8 @@ def main() -> int:
     for required in ["fence_like", "html_break_len", "(line[p] == '-' || line[p] == '*' || line[p] == '+')"]:
         if required not in notes_src:
             raise AssertionError(f"notes renderer must support generic markdown text features: {required}")
+    if "static int md_space(char c)" not in notes_src or "while (p < len && md_space(s[p])) ++p;" not in notes_src:
+        raise AssertionError("notes renderer must handle tab-indented markdown with one whitespace helper")
     if "html_entity_at" not in notes_src:
         raise AssertionError("notes renderer must decode common html entities in copied text")
     if "while (p < len && (s[p] == ' ' || s[p] == '\\t')) ++p;" not in notes_src:
