@@ -145,6 +145,12 @@ def main() -> int:
                             missing.append(f"{path.name}: {line}")
         for table, table_name in zip(doc.tables, expected_names):
             note_path = NOTES / path.stem / f"{slug_safe(table_name)}.txt"
+            if not note_path.exists():
+                missing.append(f"{path.name}:{table_name}: expected note file missing")
+                continue
+            if not note_path.read_text(errors="ignore").strip():
+                missing.append(f"{path.name}:{table_name}: expected note file is empty")
+                continue
             detail_col = table_detail_column(table)
             rows_with_nested = []
             for row_index, row in enumerate(table.rows[1:], 2):
@@ -154,9 +160,6 @@ def main() -> int:
                 if blocks:
                     rows_with_nested.append((row_index, blocks))
             if not rows_with_nested:
-                continue
-            if not note_path.exists():
-                missing.append(f"{path.name}:{table_name}: note file missing for nested table content")
                 continue
             table_rows = note_table_rows(note_path.read_text(errors="ignore"))
             for row_index, nested_blocks in rows_with_nested:

@@ -230,6 +230,8 @@ def main() -> int:
         errors.append("table/limited text must shrink before PrintMini clipping")
     if "int scroll = len > visible ? len - 1 : 0;" not in APP_SOURCE:
         errors.append("wide-line horizontal scroll must be able to reach the final source character")
+    if "int scroll = len - visible;" in APP_SOURCE:
+        errors.append("wide-line horizontal scroll must not stop before the final source character")
     if "int start = min_int(hscroll, max_int(0, len - 1));" not in APP_SOURCE:
         errors.append("wide-line rendering must clamp to the final source character, not stop early")
     if "fit_visible_chars(s + start, len - start, 0)" not in APP_SOURCE:
