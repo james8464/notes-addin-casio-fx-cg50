@@ -3815,6 +3815,13 @@ struct OldBoolEngine {
 
   bool same(int a, int b) const { return sig(a) == sig(b); }
 
+  bool seen_sig(const cs_bool::vector<cs_bool::string> &seen, int node) const {
+    cs_bool::string s = sig(node);
+    for (size_t i = 0; i < seen.size(); ++i)
+      if (seen[i] == s) return true;
+    return false;
+  }
+
   bool comp(int a, int b) const {
     return (nodes[a].kind == 'n' && same(nodes[a].child[0], b)) ||
            (nodes[b].kind == 'n' && same(nodes[b].child[0], a));
@@ -4327,14 +4334,70 @@ struct OldBoolEngine {
     return mk(kind, outv);
   }
 
+  bool has_var(const cs_bool::vector<cs_bool::string> &vars, const cs_bool::string &name) const {
+    for (size_t i = 0; i < vars.size(); ++i)
+      if (vars[i] == name) return true;
+    return false;
+  }
+
+  void collect_vars(int node, cs_bool::vector<cs_bool::string> *vars) const {
+    char kind = nodes[node].kind;
+    if (kind == 'v') {
+      if (!has_var(*vars, nodes[node].value)) vars->push_back(nodes[node].value);
+      return;
+    }
+    if (kind == 'c') return;
+    for (size_t i = 0; i < nodes[node].child.size(); ++i)
+      collect_vars(nodes[node].child[i], vars);
+  }
+
+  bool var_value(const cs_bool::vector<cs_bool::string> &vars,
+                 const cs_bool::string &name, int mask) const {
+    for (size_t i = 0; i < vars.size(); ++i)
+      if (vars[i] == name) return (mask & (1 << i)) != 0;
+    return false;
+  }
+
+  bool eval_node(int node, const cs_bool::vector<cs_bool::string> &vars, int mask) const {
+    char kind = nodes[node].kind;
+    if (kind == 'c') return nodes[node].value == "1";
+    if (kind == 'v') return var_value(vars, nodes[node].value, mask);
+    if (kind == 'n') return !eval_node(nodes[node].child[0], vars, mask);
+    if (kind == 'a') {
+      cs_bool::vector<int> ch = kids(node, 'a');
+      for (size_t i = 0; i < ch.size(); ++i)
+        if (!eval_node(ch[i], vars, mask)) return false;
+      return true;
+    }
+    cs_bool::vector<int> ch = kids(node, 'o');
+    for (size_t i = 0; i < ch.size(); ++i)
+      if (eval_node(ch[i], vars, mask)) return true;
+    return false;
+  }
+
+  bool equivalent(int a, int b) const {
+    cs_bool::vector<cs_bool::string> vars;
+    collect_vars(a, &vars);
+    collect_vars(b, &vars);
+    if (vars.size() > 12) return false;
+    int rows = 1 << vars.size();
+    for (int mask = 0; mask < rows; ++mask)
+      if (eval_node(a, vars, mask) != eval_node(b, vars, mask)) return false;
+    return true;
+  }
+
   void prove_both(int node, int max_steps, int *final_node,
                   cs_bool::vector<cs_bool::pair<cs_bool::string, cs_bool::string> > *steps) {
     int cur = node;
+    cs_bool::vector<cs_bool::string> seen;
+    seen.push_back(sig(cur));
     for (int n = 1; n <= max_steps; ++n) {
       int next = -1;
       cs_bool::string law;
       if (!step(cur, &next, &law)) break;
+      if (seen_sig(seen, next)) break;
       cur = next;
+      seen.push_back(sig(cur));
       steps->push_back(cs_bool::make_pair(show(cur), law));
     }
     *final_node = cur;
@@ -4347,11 +4410,15 @@ static int eval_bool_simplify_old_style(const char *expr, char out[CSCALC_MAX_LI
   if (!engine.parse(expr, &cur))
     return add(out, 0, "Input error: %s", engine.err.c_str());
   int n = add(out, 0, "1. %s", engine.show(cur).c_str());
+  cs_bool::vector<cs_bool::string> seen;
+  seen.push_back(engine.sig(cur));
   for (int line = 2; line <= 50 && n < CSCALC_MAX_LINES - 1; ++line) {
     int next = -1;
     cs_bool::string law;
     if (!engine.step(cur, &next, &law)) break;
+    if (engine.seen_sig(seen, next)) break;
     cur = next;
+    seen.push_back(engine.sig(cur));
     n = add(out, n, "%d. %s    (%s)", line, engine.show(cur).c_str(), law.c_str());
   }
   return add(out, n, "Result: %s", engine.show(cur).c_str());
@@ -4451,6 +4518,8 @@ static int eval_old_bool_prove(const char *s, char out[CSCALC_MAX_LINES][CSCALC_
   n = add(out, n, "%d. ", line++);
   if (engine.same(lfinal, rfinal))
     return add(out, n, "%d. Both simplify to: %s", line, engine.show(lfinal).c_str());
+  if (engine.equivalent(lfinal, rfinal))
+    return add(out, n, "%d. Same output rows", line);
   n = add(out, n, "%d. LHS final: %s", line++, engine.show(lfinal).c_str());
   n = add(out, n, "%d. RHS final: %s", line++, engine.show(rfinal).c_str());
   if (engine.comp(lfinal, rfinal))
