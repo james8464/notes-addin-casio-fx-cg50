@@ -51,7 +51,7 @@ PAGE_LINES = const_int(APP_SOURCE, "PAGE_LINES")
 def table_like(line: str) -> bool:
     s = line.lstrip(" ")
     if "\t" in line:
-        return True
+        return sum(1 for cell in line.split("\t") if cell.strip()) >= 2
     if s.startswith("|"):
         return line.count("|") >= 2
     if s.startswith("+"):
@@ -81,6 +81,8 @@ def table_cells(line: str) -> list[str]:
     cells = [clean_cell(c) for c in re.split(r"[|\t]", s)]
     while cells and not cells[-1]:
         cells.pop()
+    if len(cells) > MAX_TABLE_COLS:
+        cells = cells[:MAX_TABLE_COLS - 1] + [" | ".join(cells[MAX_TABLE_COLS - 1:])]
     return cells
 
 
@@ -240,6 +242,10 @@ def audit_file(path: Path) -> list[str]:
 
 def main() -> int:
     errors: list[str] = []
+    if table_like("\tindented code block"):
+        errors.append("single-tab indented prose must not be treated as a table")
+    if not table_like("Header\tValue"):
+        errors.append("real tab-separated rows must be treated as tables")
     if "min_int(src_len, LINE_CAP - 3)" in APP_SOURCE:
         errors.append("top-level bullet rendering still has LINE_CAP pre-truncation")
     if "clean[out++] = '?';" not in APP_SOURCE:
@@ -276,6 +282,8 @@ def main() -> int:
         errors.append("wide-line fitting must account for heading/quote x offsets")
     if "if (sz > FILE_BUF_SIZE - 1) sz = FILE_BUF_SIZE - 1;" in APP_SOURCE:
         errors.append("oversize note files must be rejected, not silently truncated")
+    if "if (c == '\\r')" not in APP_SOURCE or "clean[out++] = '\\n';" not in APP_SOURCE:
+        errors.append("CR and CRLF files must be normalized for generic text-file viewing")
     if "return -1;" not in APP_SOURCE or '"File too large."' not in APP_SOURCE:
         errors.append("oversize note files must show an explicit file-too-large message")
     if "int visible = fit_visible_chars(file_buf + pos, len, 0);" in APP_SOURCE:
@@ -284,6 +292,8 @@ def main() -> int:
         errors.append("wrapped lines must cap copied text before line_store writes")
     if "return over > 0 ? (over + TABLE_CHAR_PX - 1) / TABLE_CHAR_PX : 0;" not in APP_SOURCE:
         errors.append("table horizontal scroll must round up to reveal the final table edge")
+    if "!table_like(file_buf + next_pos, next_end - next_pos)" not in APP_SOURCE:
+        errors.append("long tables must not gain artificial blank rows when chunked")
     if "note_fill_clip" in APP_SOURCE[APP_SOURCE.find("static void notes_print_with_matches_limit"):APP_SOURCE.find("static void notes_print_with_matches(")]:
         errors.append("search matches must use text colour only, not fill/background highlights")
     if 'if (!jump_to_match(&sp, start_source, 1, &top, &hscroll, &lines, max_line)) {\n          search_prepare(&sp, "");\n          active_search = 0;' not in APP_SOURCE:

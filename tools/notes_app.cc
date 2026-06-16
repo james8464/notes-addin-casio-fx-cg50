@@ -15,7 +15,7 @@ static const int MAX_RESULTS = 96;
 static const int FILE_BUF_SIZE = 16384;
 static const int MAX_VIEW_LINES = 768;
 static const int LINE_CAP = 96;
-static const int MAX_TABLE_COLS = 6;
+static const int MAX_TABLE_COLS = 8;
 static const int MAX_TABLE_ROWS = 24;
 static const int TABLE_CELL_CAP = 416;
 static const int TABLE_MAX_CHARS = LINE_CAP - 4;
@@ -129,6 +129,12 @@ static void normalize_file_buf() {
   int out = 0;
   for (int i = 0; i < file_buf_len && out + 1 < FILE_BUF_SIZE;) {
     unsigned char c = (unsigned char)file_buf[i];
+    if (c == '\r') {
+      clean[out++] = '\n';
+      if (i + 1 < file_buf_len && file_buf[i + 1] == '\n') i += 2;
+      else ++i;
+      continue;
+    }
     if (c < 128) {
       clean[out++] = (char)c;
       ++i;
@@ -274,7 +280,12 @@ static void clean_label(char *out, int cap, const char *name) {
   }
   out[n] = 0;
   int len = strlen(out);
-  if (len > 4 && !strcmp(out + len - 4, ".txt")) out[len - 4] = 0;
+  if (len > 4 &&
+      out[len - 4] == '.' &&
+      lower_char((unsigned char)out[len - 3]) == 't' &&
+      lower_char((unsigned char)out[len - 2]) == 'x' &&
+      lower_char((unsigned char)out[len - 1]) == 't')
+    out[len - 4] = 0;
 }
 
 static void status_label(char *out, int cap, const char *title) {
@@ -498,6 +509,11 @@ static int parse_table_row(const char *s, int len, char cells[MAX_TABLE_COLS][TA
   int cols = 0;
   while (p <= len && cols < MAX_TABLE_COLS) {
     int start = p;
+    if (cols == MAX_TABLE_COLS - 1) {
+      clean_cell_copy(cells[cols], TABLE_CELL_CAP, s + start, len - start);
+      ++cols;
+      break;
+    }
     while (p < len && s[p] != '|' && s[p] != '\t') ++p;
     clean_cell_copy(cells[cols], TABLE_CELL_CAP, s + start, p - start);
     ++cols;
@@ -955,7 +971,8 @@ static int build_view_lines(int hscroll) {
       if (collect_table_block(pos, source_line, rows, &row_count, &cols, &next_pos, &next_source)) {
         push_table_block(&line, rows, row_count, cols, hscroll);
         int next_end = next_pos <= file_buf_len ? source_line_end_from(next_pos) : next_pos;
-        if (next_pos < file_buf_len && next_end > next_pos)
+        if (next_pos < file_buf_len && next_end > next_pos &&
+            !table_like(file_buf + next_pos, next_end - next_pos))
           push_blank_line(&line, next_source);
         pos = next_pos;
         source_line = next_source;

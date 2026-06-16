@@ -75,6 +75,16 @@ def main() -> int:
         raise AssertionError("notes table detection must not treat every tab-indented line as a table")
     if "tab_separated_cells" not in notes_src:
         raise AssertionError("notes table detection must require real tab-separated cells")
+    if "if (c == '\\r')" not in notes_src or "clean[out++] = '\\n';" not in notes_src:
+        raise AssertionError("notes viewer must normalize CR/CRLF input to LF")
+    if "!table_like(file_buf + next_pos, next_end - next_pos)" not in notes_src:
+        raise AssertionError("notes long tables must not gain blank rows between chunks")
+    if "lower_char((unsigned char)out[len - 3]) == 't'" not in notes_src:
+        raise AssertionError("notes labels must strip .txt extension case-insensitively")
+    if "static const int MAX_TABLE_COLS = 8;" not in notes_src:
+        raise AssertionError("notes table renderer must support wider markdown tables")
+    if "cols == MAX_TABLE_COLS - 1" not in notes_src:
+        raise AssertionError("notes table overflow columns must be preserved in final column")
     if "*hscroll = (style == NOTE_TABLE" in notes_src:
         raise AssertionError("notes search jumps must not horizontally offset wrapped table rows")
     if "hscroll > 0 || style == NOTE_CODE" not in notes_src:
