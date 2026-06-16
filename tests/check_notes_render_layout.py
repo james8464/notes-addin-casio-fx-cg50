@@ -260,8 +260,8 @@ def main() -> int:
         errors.append("wide-line rendering must clamp to the final source character, not stop early")
     if "fit_visible_chars(s + start, len - start, 0)" not in APP_SOURCE:
         errors.append("wide-line rendering must pixel-fit the visible suffix after horizontal scroll")
-    if "int scroll = src_len > visible ? src_len - 1 : 0;" not in APP_SOURCE:
-        errors.append("wide-line horizontal scroll must use displayed markdown-stripped text length")
+    if "fit_suffix_chars" not in APP_SOURCE or "line_end_hscroll(src, src_len)" not in APP_SOURCE:
+        errors.append("wide-line horizontal scroll must use the pixel-fitted displayed suffix")
     if "int visible = fit_visible_chars(file_buf + pos, len, 0);" in APP_SOURCE:
         errors.append("wide-line scroll must not use raw source length for markdown-formatted lines")
     if "int cap_cut = pos + max_int(1, LINE_CAP - indent - 1);" not in APP_SOURCE:

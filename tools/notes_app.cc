@@ -715,6 +715,23 @@ static int fit_visible_chars(const char *s, int len, int indent) {
   return take > 0 ? take : 1;
 }
 
+static int fit_suffix_chars(const char *s, int len, int indent) {
+  if (!s || len <= 0) return 0;
+  int take = 0;
+  int cap = LINE_CAP - indent - 1;
+  if (cap < 1) cap = 1;
+  for (int i = 1; i <= len && i <= cap; ++i) {
+    if (!segment_fits_screen(s, len - i, len, indent)) break;
+    take = i;
+  }
+  return take > 0 ? take : 1;
+}
+
+static int line_end_hscroll(const char *s, int len) {
+  int visible = fit_suffix_chars(s, len, 0);
+  return len > visible ? len - visible : 0;
+}
+
 static int markdown_line(const char *s, int len, int *skip, int *style) {
   int p = 0;
   while (p < len && s[p] == ' ') ++p;
@@ -1031,8 +1048,7 @@ static int max_file_line_scroll() {
         src = file_buf + pos;
         src_len = len;
       }
-      int visible = fit_visible_chars(src, src_len, 0);
-      int scroll = src_len > visible ? src_len - 1 : 0;
+      int scroll = line_end_hscroll(src, src_len);
       if (scroll > max_scroll) max_scroll = scroll;
     }
     pos = source_next_line_from(end);
