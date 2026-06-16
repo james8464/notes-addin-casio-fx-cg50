@@ -822,6 +822,10 @@ static void push_table_block(int *line, TableRow *rows, int row_count, int cols,
   }
 }
 
+static void push_blank_line(int *line, int source_line) {
+  push_view_line(line, "", 0, NOTE_TEXT, source_line);
+}
+
 static void add_display_line(int *line, const char *s, int len, int hscroll, int preserve, int style, int source_line) {
   if (*line >= MAX_VIEW_LINES || len < 0) return;
   if (preserve) {
@@ -890,6 +894,9 @@ static int build_view_lines(int hscroll) {
       int row_count = 0, cols = 0, next_pos = pos, next_source = source_line;
       if (collect_table_block(pos, source_line, rows, &row_count, &cols, &next_pos, &next_source)) {
         push_table_block(&line, rows, row_count, cols, hscroll);
+        int next_end = next_pos <= file_buf_len ? source_line_end_from(next_pos) : next_pos;
+        if (next_pos < file_buf_len && next_end > next_pos)
+          push_blank_line(&line, next_source);
         pos = next_pos;
         source_line = next_source;
         continue;
@@ -1168,37 +1175,55 @@ static int match_at_ci(const char *s, const SearchPattern *sp, int pos) {
   return 1;
 }
 
-static void notes_print_span(int *x, int y, const char *s, int len, int fg, int bg) {
-  if (!s || len <= 0 || *x >= (int)NOTE_X_LIMIT) return;
+static void notes_print_span_limit(int *x, int y, const char *s, int len, int fg, int bg, int xlimit) {
+  if (xlimit > (int)NOTE_X_LIMIT) xlimit = NOTE_X_LIMIT;
+  if (!s || len <= 0 || *x >= xlimit) return;
+  while (*x < VIEW_X && len > 0) {
+    *x += TABLE_CHAR_PX;
+    ++s;
+    --len;
+  }
+  if (len <= 0 || *x >= xlimit) return;
   char tmp[LINE_CAP];
   int n = min_int(len, LINE_CAP - 1);
   memcpy(tmp, s, n);
   tmp[n] = 0;
   int before = *x;
-  PrintMini(x, &y, (unsigned char *)tmp, 0, NOTE_X_LIMIT, 0, 0, fg, bg, 1, 0);
+  PrintMini(x, &y, (unsigned char *)tmp, 0, xlimit, 0, 0, fg, bg, 1, 0);
   if (*x <= before) *x = before + mini_width(tmp, n);
 }
 
-static void notes_print_with_matches(int x, int y, const char *line, int fg, int bg, int match_fg, const SearchPattern *sp) {
+static void notes_print_span(int *x, int y, const char *s, int len, int fg, int bg) {
+  notes_print_span_limit(x, y, s, len, fg, bg, NOTE_X_LIMIT);
+}
+
+static void notes_print_with_matches_limit(int x, int y, const char *line, int fg, int bg,
+                                           int match_fg, const SearchPattern *sp, int xlimit) {
+  if (xlimit > (int)NOTE_X_LIMIT) xlimit = NOTE_X_LIMIT;
   if (!line || !line[0]) return;
   if (!sp || sp->len <= 0) {
-    notes_print_mini(x, y, line, fg, bg);
+    int px = x;
+    notes_print_span_limit(&px, y, line, (int)strlen(line), fg, bg, xlimit);
     return;
   }
   int n = strlen(line);
   int pos = 0;
   int px = x;
   while (pos < n) {
-    if (px >= (int)NOTE_X_LIMIT) break;
+    if (px >= xlimit) break;
     if (match_at_ci(line, sp, pos)) {
-      notes_print_span(&px, y, line + pos, sp->len, match_fg, bg);
+      notes_print_span_limit(&px, y, line + pos, sp->len, match_fg, bg, xlimit);
       pos += sp->len;
       continue;
     }
     int start = pos;
     while (pos < n && !match_at_ci(line, sp, pos)) ++pos;
-    notes_print_span(&px, y, line + start, pos - start, fg, bg);
+    notes_print_span_limit(&px, y, line + start, pos - start, fg, bg, xlimit);
   }
+}
+
+static void notes_print_with_matches(int x, int y, const char *line, int fg, int bg, int match_fg, const SearchPattern *sp) {
+  notes_print_with_matches_limit(x, y, line, fg, bg, match_fg, sp, NOTE_X_LIMIT);
 }
 
 static void note_vline(int x, int y1, int y2, unsigned short color) {
@@ -1262,6 +1287,8 @@ static void print_table_line(int idx, int y, const SearchPattern *sp) {
     int tx = VIEW_X + view_table_colpos[idx][c] + TABLE_PAD_X;
     int cell_right = VIEW_X + view_table_colpos[idx][c + 1] - TABLE_PAD_X;
     if (cell_right < VIEW_X || tx > (int)NOTE_X_LIMIT) continue;
+    int xlimit = min_int((int)NOTE_X_LIMIT, cell_right);
+    if (tx >= xlimit) continue;
     int len = 0;
     const char *cell = table_cell_span(view_lines[idx], c, &len);
     if (len <= 0) continue;
@@ -1269,10 +1296,10 @@ static void print_table_line(int idx, int y, const SearchPattern *sp) {
     int n = min_int(len, TABLE_CELL_CAP - 1);
     memcpy(tmp, cell, n);
     tmp[n] = 0;
-    notes_print_with_matches(tx, y, tmp,
-                             view_table_header[idx] ? UI_BLUE : UI_BLACK,
-                             view_table_header[idx] ? RGB565(233, 241, 252) : UI_WHITE,
-                             UI_MATCH_TEXT, sp);
+    notes_print_with_matches_limit(tx, y, tmp,
+                                   view_table_header[idx] ? UI_BLUE : UI_BLACK,
+                                   view_table_header[idx] ? RGB565(233, 241, 252) : UI_WHITE,
+                                   UI_MATCH_TEXT, sp, xlimit);
   }
 }
 
