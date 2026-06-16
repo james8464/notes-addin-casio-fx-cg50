@@ -121,6 +121,25 @@ def separator(cells: list[str]) -> bool:
     return bool(cells) and all(c and "-" in c and set(c) <= set("-: ") for c in cells)
 
 
+def setext_underline_style(line: str) -> str:
+    s = line.strip()
+    if len(s) < 3:
+        return ""
+    if set(s) == {"="}:
+        return "h1"
+    if set(s) == {"-"}:
+        return "h2"
+    return ""
+
+
+def setext_heading_style(lines: list[str], index: int) -> str:
+    if index + 1 >= len(lines):
+        return ""
+    if not lines[index].strip() or source_code_like(lines[index]) or table_like(lines[index]):
+        return ""
+    return setext_underline_style(lines[index + 1])
+
+
 def table_col_cap(cols: int) -> int:
     if cols <= 2:
         return 30
@@ -221,6 +240,13 @@ def audit_file(path: Path) -> list[str]:
     i = 0
     while i < len(src_lines):
         line = src_lines[i]
+        if setext_heading_style(src_lines, i):
+            segs = wrapped_non_table_segments(line.strip())
+            if norm("".join(segs)) != norm(line.strip()):
+                errors.append(f"{path}:{i + 1}: setext heading reconstruction loses text")
+            rendered += len(segs)
+            i += 2
+            continue
         if table_start_like(src_lines, i) and not source_code_like(line):
             start = i + 1
             block: list[tuple[int, list[str]]] = []
@@ -287,6 +313,12 @@ def main() -> int:
         errors.append("plain prose containing a pipe must not be treated as a table")
     if table_start_like(["Header | Value", "ordinary text"], 0):
         errors.append("plain prose containing a pipe must not start a table without a separator row")
+    if setext_heading_style(["Main heading", "==="], 0) != "h1":
+        errors.append("setext '=' headings must render as H1")
+    if setext_heading_style(["Subheading", "---"], 0) != "h2":
+        errors.append("setext '-' headings must render as H2")
+    if setext_heading_style(["Table | Header", "--- | ---"], 0):
+        errors.append("pipe tables must not be misread as setext headings")
     if table_like("- || meaning or"):
         errors.append("bullets containing || must not be treated as tables")
     if table_like("Not a table | "):
@@ -371,6 +403,10 @@ def main() -> int:
         errors.append("bullet rendering must support '-', '*', and '+' markdown bullets")
     if "NOTE_H1 : (hashes == 2 ? NOTE_H2 : (hashes == 3 ? NOTE_H3 : NOTE_H4))" not in APP_SOURCE:
         errors.append("markdown headings must map H1/H2/H3/H4 to distinct renderer styles")
+    if "setext_underline_style" not in APP_SOURCE or "setext_heading_style_at" not in APP_SOURCE:
+        errors.append("notes renderer must support markdown setext headings")
+    if "source_line += 2;" not in APP_SOURCE:
+        errors.append("setext heading underline must be consumed with its heading")
     for marker in ("if (style == NOTE_H1)", "else if (style == NOTE_H2)", "else if (style == NOTE_H3)", "else if (style == NOTE_H4)"):
         if marker not in APP_SOURCE:
             errors.append(f"renderer missing distinct heading branch: {marker}")

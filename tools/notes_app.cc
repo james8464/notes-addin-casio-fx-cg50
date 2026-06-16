@@ -605,6 +605,30 @@ static int source_next_line_from(int end) {
   return end + 1;
 }
 
+static int setext_underline_style(const char *s, int len) {
+  int p = trim_left_pos(s, len);
+  len = trim_right_len(s + p, len - p);
+  if (len < 3) return 0;
+  char c = s[p];
+  if (c != '=' && c != '-') return 0;
+  for (int i = 0; i < len; ++i)
+    if (s[p + i] != c) return 0;
+  return c == '=' ? NOTE_H1 : NOTE_H2;
+}
+
+static int setext_heading_style_at(int pos, int len, int *next_pos_out) {
+  if (len <= 0 || source_code_like(file_buf + pos, len) || table_like(file_buf + pos, len)) return 0;
+  int end = source_line_end_from(pos);
+  int next = source_next_line_from(end);
+  if (next > file_buf_len) return 0;
+  int next_end = source_line_end_from(next);
+  int next_len = next_end - next;
+  int style = setext_underline_style(file_buf + next, next_len);
+  if (!style) return 0;
+  if (next_pos_out) *next_pos_out = source_next_line_from(next_end);
+  return style;
+}
+
 static int table_start_like_at(int pos, int len) {
   if (table_like(file_buf + pos, len)) return 1;
   if (!pipe_separated_cells(file_buf + pos, len)) return 0;
@@ -1038,6 +1062,16 @@ static int build_view_lines(int hscroll) {
         continue;
       }
     }
+    int setext_next = 0;
+    int setext_style = setext_heading_style_at(pos, len, &setext_next);
+    if (setext_style) {
+      int start = trim_left_pos(file_buf + pos, len);
+      int src_len = trim_right_len(file_buf + pos + start, len - start);
+      add_display_line(&line, file_buf + pos + start, src_len, hscroll, hscroll > 0, setext_style, source_line);
+      pos = setext_next;
+      source_line += 2;
+      continue;
+    }
     if (len <= 0) {
       line_store[line][0] = 0;
       view_lines[line] = line_store[line];
@@ -1098,6 +1132,8 @@ static int source_line_style(int source_line) {
     if (line == source_line) {
       if (in_fence || (len > 0 && fence_like(file_buf + pos, len))) return NOTE_CODE;
       if (len > 0 && !source_code_like(file_buf + pos, len) && table_start_like_at(pos, len)) return NOTE_TABLE;
+      int setext_style = setext_heading_style_at(pos, len, 0);
+      if (setext_style) return setext_style;
       int skip = 0, style = NOTE_TEXT;
       markdown_line(file_buf + pos, len, &skip, &style);
       return style;
@@ -1168,6 +1204,17 @@ static int max_file_line_scroll() {
         source_line = next_source;
         continue;
       }
+    }
+    int setext_next = 0;
+    int setext_style = setext_heading_style_at(pos, len, &setext_next);
+    if (setext_style) {
+      int start = trim_left_pos(file_buf + pos, len);
+      int src_len = trim_right_len(file_buf + pos + start, len - start);
+      int scroll = line_end_hscroll(file_buf + pos + start, src_len, setext_style);
+      if (scroll > max_scroll) max_scroll = scroll;
+      pos = setext_next;
+      source_line += 2;
+      continue;
     }
     if (len > 0) {
       int skip = 0, style = NOTE_TEXT;

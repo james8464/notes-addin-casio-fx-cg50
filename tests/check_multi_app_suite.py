@@ -84,6 +84,8 @@ def main() -> int:
         raise AssertionError("notes pipe table detection must require a separator row")
     if "static int table_start_like_at" not in notes_src or "table_separator_row(table_parse_cells, cols)" not in notes_src:
         raise AssertionError("notes renderer must support no-leading-pipe markdown tables only with a separator row")
+    if "setext_underline_style" not in notes_src or "setext_heading_style_at" not in notes_src:
+        raise AssertionError("notes renderer must support markdown setext headings")
     if "source_code_like" not in notes_src:
         raise AssertionError("notes renderer must detect code-like rows before table detection")
     if "if (c == '\\r')" not in notes_src or "clean[out++] = '\\n';" not in notes_src:
