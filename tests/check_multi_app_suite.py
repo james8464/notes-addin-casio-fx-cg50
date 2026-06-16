@@ -103,8 +103,8 @@ def main() -> int:
         raise AssertionError("notes table overflow columns must be preserved in final column")
     if "*hscroll = (style == NOTE_TABLE" in notes_src:
         raise AssertionError("notes search jumps must not horizontally offset wrapped table rows")
-    if "hscroll > 0 || style == NOTE_CODE" not in notes_src:
-        raise AssertionError("notes horizontal scroll must work for non-table wide lines")
+    if "style_uses_hscroll" not in notes_src or "hscroll > 0 || style == NOTE_CODE" in notes_src:
+        raise AssertionError("notes horizontal scroll must be limited to scrollable block styles")
     for required in ["mini_width", "segment_fits_screen", "fit_visible_chars", "max_file_line_scroll", "NOTE_X_LIMIT"]:
         if required not in notes_src:
             raise AssertionError(f"notes wrapping must use PrintMini pixel preview: {required}")

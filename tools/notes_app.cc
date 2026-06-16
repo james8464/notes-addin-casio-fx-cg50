@@ -892,6 +892,10 @@ static int style_x_offset(int style) {
   return 0;
 }
 
+static int style_uses_hscroll(int style) {
+  return style == NOTE_CODE;
+}
+
 static int segment_fits_screen(const char *s, int start, int end, int indent, int xpad, int strip_inline) {
   char tmp[LINE_CAP];
   int col = 0;
@@ -1129,7 +1133,7 @@ static int build_view_lines(int hscroll) {
     if (setext_style) {
       int start = trim_left_pos(file_buf + pos, len);
       int src_len = trim_right_len(file_buf + pos + start, len - start);
-      add_display_line(&line, file_buf + pos + start, src_len, hscroll, hscroll > 0, setext_style, source_line);
+      add_display_line(&line, file_buf + pos + start, src_len, hscroll, style_uses_hscroll(setext_style), setext_style, source_line);
       pos = setext_next;
       source_line += 2;
       continue;
@@ -1150,7 +1154,7 @@ static int build_view_lines(int hscroll) {
         src = file_buf + pos;
         src_len = len;
       }
-      add_display_line(&line, src, src_len, hscroll, hscroll > 0 || style == NOTE_CODE, style, source_line);
+      add_display_line(&line, src, src_len, hscroll, style_uses_hscroll(style), style, source_line);
     }
     pos = source_next_line_from(end);
     ++source_line;
@@ -1270,10 +1274,6 @@ static int max_file_line_scroll() {
     int setext_next = 0;
     int setext_style = setext_heading_style_at(pos, len, &setext_next);
     if (setext_style) {
-      int start = trim_left_pos(file_buf + pos, len);
-      int src_len = trim_right_len(file_buf + pos + start, len - start);
-      int scroll = line_end_hscroll(file_buf + pos + start, src_len, setext_style);
-      if (scroll > max_scroll) max_scroll = scroll;
       pos = setext_next;
       source_line += 2;
       continue;
@@ -1281,14 +1281,12 @@ static int max_file_line_scroll() {
     if (len > 0) {
       int skip = 0, style = NOTE_TEXT;
       markdown_line(file_buf + pos, len, &skip, &style);
-      const char *src = file_buf + pos + skip;
-      int src_len = len - skip;
-      if (style == NOTE_BULLET) {
-        src = file_buf + pos;
-        src_len = len;
+      if (style_uses_hscroll(style)) {
+        const char *src = file_buf + pos + skip;
+        int src_len = len - skip;
+        int scroll = line_end_hscroll(src, src_len, style);
+        if (scroll > max_scroll) max_scroll = scroll;
       }
-      int scroll = line_end_hscroll(src, src_len, style);
-      if (scroll > max_scroll) max_scroll = scroll;
     }
     pos = source_next_line_from(end);
     ++source_line;

@@ -394,6 +394,10 @@ def main() -> int:
         errors.append("wide-line rendering must pixel-fit the visible suffix after horizontal scroll")
     if "fit_suffix_chars" not in APP_SOURCE or "line_end_hscroll(src, src_len, style)" not in APP_SOURCE:
         errors.append("wide-line horizontal scroll must use the pixel-fitted displayed suffix")
+    if "style_uses_hscroll" not in APP_SOURCE:
+        errors.append("notes renderer must centralise which markdown styles use horizontal scrolling")
+    if "hscroll > 0 || style == NOTE_CODE" in APP_SOURCE or "hscroll > 0, setext_style" in APP_SOURCE:
+        errors.append("ordinary markdown text must keep wrapping when code/table horizontal scroll is active")
     if "style_x_offset(style)" not in APP_SOURCE or "NOTE_X_LIMIT - VIEW_X - xpad" not in APP_SOURCE:
         errors.append("wide-line fitting must account for heading/quote x offsets")
     if "if (sz > FILE_BUF_SIZE - 1) sz = FILE_BUF_SIZE - 1;" in APP_SOURCE:
