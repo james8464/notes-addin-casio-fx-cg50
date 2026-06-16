@@ -242,6 +242,8 @@ def main() -> int:
     errors: list[str] = []
     if "min_int(src_len, LINE_CAP - 3)" in APP_SOURCE:
         errors.append("top-level bullet rendering still has LINE_CAP pre-truncation")
+    if "clean[out++] = '?';" not in APP_SOURCE:
+        errors.append("unsupported UTF-8 bytes must be shown as '?' rather than silently deleted")
     if MAX_ENTRIES < 120:
         errors.append("directory browser should support at least 120 entries")
     if MAX_RESULTS < 96:

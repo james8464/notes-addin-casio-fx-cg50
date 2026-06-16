@@ -152,7 +152,11 @@ static void normalize_file_buf() {
     if (bytes_at3(i, 0xe2, 0x84, 0x9a)) { clean[out++] = 'Q'; i += 3; continue; }
     if (bytes_at3(i, 0xe2, 0x84, 0x9d)) { clean[out++] = 'R'; i += 3; continue; }
     if (bytes_at3(i, 0xe2, 0x84, 0xa4)) { clean[out++] = 'Z'; i += 3; continue; }
-    ++i;
+    clean[out++] = '?';
+    if ((c & 0xe0) == 0xc0 && i + 1 < file_buf_len) i += 2;
+    else if ((c & 0xf0) == 0xe0 && i + 2 < file_buf_len) i += 3;
+    else if ((c & 0xf8) == 0xf0 && i + 3 < file_buf_len) i += 4;
+    else ++i;
   }
   clean[out] = 0;
   memcpy(file_buf, clean, out + 1);
