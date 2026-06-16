@@ -57,7 +57,7 @@ PY
 mkdir -p "${OUT_DIR}" "${TRANSFER_DIR}"
 rm -rf "${OUT_DIR:?}"/*
 find "${TRANSFER_DIR}" -mindepth 1 \
-  \( -name 'NOTES' -o -name '.gitkeep' \) -prune \
+  \( -name 'NOTES' -o -name '.gitkeep' -o -name 'boolean.py' -o -name 'booleanProgram.mpy' \) -prune \
   -o -exec rm -rf {} +
 touch "${TRANSFER_DIR}/.gitkeep"
 

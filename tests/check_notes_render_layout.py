@@ -80,6 +80,27 @@ def plus_separator(line: str) -> bool:
     )
 
 
+def table_row_kind(line: str) -> str:
+    s = md_lstrip(line)
+    if "\t" in line and table_like(line):
+        return "tab"
+    if s.startswith("+") and plus_separator(line):
+        return "grid"
+    if pipe_cells(line):
+        return "pipe"
+    return ""
+
+
+def table_row_matches_kind(line: str, kind: str) -> bool:
+    if kind == "tab":
+        return "\t" in line and table_like(line)
+    if kind == "pipe":
+        return pipe_cells(line)
+    if kind == "grid":
+        return plus_separator(line) or pipe_cells(line)
+    return table_block_row_like(line)
+
+
 def table_start_like(lines: list[str], index: int) -> bool:
     line = lines[index]
     if table_like(line):
@@ -90,6 +111,12 @@ def table_start_like(lines: list[str], index: int) -> bool:
         return False
     cells = table_cells(lines[index + 1])
     return bool(cells) and separator(cells)
+
+
+def table_start_kind(lines: list[str], index: int) -> str:
+    if not table_start_like(lines, index):
+        return ""
+    return table_row_kind(lines[index]) or "pipe"
 
 
 def source_code_like(line: str) -> bool:
@@ -354,10 +381,11 @@ def audit_file(path: Path) -> list[str]:
             rendered += len(segs)
             i += 2
             continue
-        if table_start_like(src_lines, i) and not source_code_like(line):
+        kind = table_start_kind(src_lines, i)
+        if kind and not source_code_like(line):
             start = i + 1
             block: list[tuple[int, list[str]]] = []
-            while i < len(src_lines) and table_block_row_like(src_lines[i]):
+            while i < len(src_lines) and table_row_matches_kind(src_lines[i], kind):
                 if plus_separator(src_lines[i]):
                     i += 1
                     continue
@@ -421,6 +449,12 @@ def main() -> int:
     grid = ["+---+---+", "| H | V |", "+---+---+", "| A | B |", "+---+---+"]
     if not table_start_like(grid, 0):
         errors.append("grid-style +---+ tables must be recognised")
+    if table_row_matches_kind("ordinary | prose", "tab"):
+        errors.append("tab tables must not absorb following pipe prose")
+    if table_row_matches_kind("A\tB", "pipe"):
+        errors.append("pipe tables must not absorb following tab rows")
+    if "table_row_kind" not in APP_SOURCE or "table_row_matches_kind" not in APP_SOURCE:
+        errors.append("table blocks must keep one table kind while collecting rows")
     grid_rows = [table_cells(row) for row in grid if table_block_row_like(row) and not plus_separator(row)]
     if grid_rows != [["H", "V"], ["A", "B"]]:
         errors.append("grid-style +---+ separator rows must not render as table data")
