@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import math
 import re
 from pathlib import Path
 
@@ -63,6 +62,12 @@ def clean_cell(text: str) -> str:
     text = re.sub(r"<br>", "; ", text, flags=re.I)
     text = "".join(ch for ch in text if 32 <= ord(ch) <= 126)
     return text.strip()
+
+
+def clean_inline(text: str) -> str:
+    text = text.replace("\t", " ")
+    text = re.sub(r"<br>", "; ", text, flags=re.I)
+    return "".join(ch for ch in text if 32 <= ord(ch) <= 126)
 
 
 def table_cells(line: str) -> list[str]:
@@ -154,13 +159,24 @@ def markdown_skip_style(line: str) -> tuple[int, str]:
 
 
 def wrapped_non_table_count(line: str) -> int:
+    return len(wrapped_non_table_segments(line))
+
+
+def display_source(line: str) -> str:
+    skip, style = markdown_skip_style(line)
+    if style == "bullet":
+        return line
+    return line[skip:]
+
+
+def wrapped_non_table_segments(line: str) -> list[str]:
     if not line:
-        return 1
-    skip, _style = markdown_skip_style(line)
-    text = line[skip:]
+        return [""]
+    text = display_source(line)
     # Conservative lower width than the app's pixel wrapping, so this overestimates.
     width = 16
-    return max(1, math.ceil(max(1, len(text)) / width))
+    out = [clean_inline(text[i:i + width]) for i in range(0, max(1, len(text)), width)]
+    return out or [""]
 
 
 def audit_file(path: Path) -> list[str]:
@@ -207,6 +223,12 @@ def audit_file(path: Path) -> list[str]:
             if i < len(src_lines) and src_lines[i].strip():
                 rendered += 1
             continue
+        segs = wrapped_non_table_segments(line)
+        if norm("".join(segs)) != norm(display_source(line)):
+            errors.append(f"{path}:{i + 1}: wrapped note line reconstruction loses text")
+        for seg in segs:
+            if len(seg) >= LINE_CAP:
+                errors.append(f"{path}:{i + 1}: wrapped note line exceeds line_store cap")
         rendered += wrapped_non_table_count(line)
         i += 1
     if rendered >= MAX_VIEW_LINES:
