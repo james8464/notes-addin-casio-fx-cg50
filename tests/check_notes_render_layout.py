@@ -228,6 +228,14 @@ def main() -> int:
         errors.append("note page lines can overlap the softkey row")
     if "while (n > 0 && mini_width(s, n) > avail) --n;" not in APP_SOURCE:
         errors.append("table/limited text must shrink before PrintMini clipping")
+    if "int scroll = len > visible ? len - 1 : 0;" not in APP_SOURCE:
+        errors.append("wide-line horizontal scroll must be able to reach the final source character")
+    if "int start = min_int(hscroll, max_int(0, len - 1));" not in APP_SOURCE:
+        errors.append("wide-line rendering must clamp to the final source character, not stop early")
+    if "fit_visible_chars(s + start, len - start, 0)" not in APP_SOURCE:
+        errors.append("wide-line rendering must pixel-fit the visible suffix after horizontal scroll")
+    if "return over > 0 ? (over + TABLE_CHAR_PX - 1) / TABLE_CHAR_PX : 0;" not in APP_SOURCE:
+        errors.append("table horizontal scroll must round up to reveal the final table edge")
     for path in sorted(NOTES.rglob("*.txt")):
         errors.extend(audit_file(path))
     if errors:

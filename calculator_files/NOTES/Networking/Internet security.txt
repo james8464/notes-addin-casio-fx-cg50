@@ -57,12 +57,15 @@
 
 ### Process
 
-      - At SENDER device
+#### At Sender Device
+
 - Sender applies hashing algorithm to plain text to make message digest
 - Message digest is encrypted with senders private key to make digital signature
 - This is appended to the plain text
 - This is encrypted with the receivers public key
-      - At RECEIVER device
+
+#### At Receiver Device
+
 - Receivers private key used to decrypt ciphertext (leaves plaintext and digital signature)
 - The plaintext is used to create a new message digest (using same hashing algorithm)
 - Senders public key is used to decrypt the digital signature to get the received message digest
