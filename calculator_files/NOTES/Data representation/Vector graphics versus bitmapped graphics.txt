@@ -4,8 +4,18 @@
 
 |  | Bitmapped (raster) graphics | Vector graphics |
 | --- | --- | --- |
-| Advantages | Very realistic images (good for photos); High detail and subtle colour variation; Easy to edit at pixel level; Widely supported formats (JPEG, PNG); Simple to capture (cameras); No processing needed to render (just display pixels) | Can be scaled without loss of quality (resolution independent); Smaller file sizes; Sharp, clean lines; Easy to edit objects (move, resize shapes); Ideal for logos, icons, diagrams; Good for printing at any size; Lower memory usage when stored |
-| Disadvantages | Large file sizes (especially high resolution); Pixelation when enlarged; Quality depends on resolution; Not easily scalable; Editing large images can be slow | Not suitable for realistic images/photos; Cannot represent fine detail or complex textures well; More processing required to render; Limited colour realism compared to bitmaps |
+| Advantage 1 | Very realistic images (good for photos) | Can be scaled without loss of quality (resolution independent) |
+| Advantage 2 | High detail and subtle colour variation | Smaller file sizes |
+| Advantage 3 | Easy to edit at pixel level | Sharp, clean lines |
+| Advantage 4 | Widely supported formats (JPEG, PNG) | Easy to edit objects (move, resize shapes) |
+| Advantage 5 | Simple to capture (cameras) | Ideal for logos, icons, diagrams |
+| Advantage 6 | No processing needed to render (just display pixels) | Good for printing at any size |
+| Advantage 7 |  | Lower memory usage when stored |
+| Disadvantage 1 | Large file sizes (especially high resolution) | Not suitable for realistic images/photos |
+| Disadvantage 2 | Pixelation when enlarged | Cannot represent fine detail or complex textures well |
+| Disadvantage 3 | Quality depends on resolution | More processing required to render |
+| Disadvantage 4 | Not easily scalable | Limited colour realism compared to bitmaps |
+| Disadvantage 5 | Editing large images can be slow |  |
 
 ## Uses for Bitmap Images
 

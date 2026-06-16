@@ -9,6 +9,8 @@ FILE_BUF_SIZE = 16384
 MAX_TABLE_COLS = 6
 MAX_TABLE_ROWS = 16
 TABLE_CELL_CAP = 416
+READABLE_LINE_CAP = 360
+READABLE_TABLE_ROW_CAP = 360
 
 
 def table_cells(line: str) -> list[str]:
@@ -39,6 +41,8 @@ def check_table(path: Path, start: int, block: list[tuple[int, str]]) -> list[st
     if widths[0] > MAX_TABLE_COLS:
         errors.append(f"{path}:{start}: table has {widths[0]} columns, renderer supports {MAX_TABLE_COLS}")
     for line_no, line in block:
+        if len(line) > READABLE_TABLE_ROW_CAP:
+            errors.append(f"{path}:{line_no}: table row has {len(line)} chars, split it for calculator readability")
         if table_separator(line):
             continue
         for cell in table_cells(line):
@@ -68,6 +72,9 @@ def main() -> int:
         if "Source:" in text or "Syllabus content" in text or "Notes / details of vocab and knowledge" in text:
             errors.append(f"{path}: contains conversion metadata or syllabus-column heading")
         lines = text.splitlines()
+        for line_no, line in enumerate(lines, 1):
+            if len(line) > READABLE_LINE_CAP:
+                errors.append(f"{path}:{line_no}: line has {len(line)} chars, split it for calculator readability")
         first = next((line for line in lines if line.strip()), "")
         if not first.startswith("# "):
             errors.append(f"{path}: first content line must be a level-1 heading")

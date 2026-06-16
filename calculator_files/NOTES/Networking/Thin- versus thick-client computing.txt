@@ -52,4 +52,10 @@
 |  | Advantages | Disadvantages |
 | --- | --- | --- |
 | THICK client computing | No reliance on network/server for processing; Can work offline; Faster local performance for some tasks | More expensive hardware; Harder to maintain (updates on each device); Less centralised control; Higher power consumption |
-| THIN client computing | Cheaper clients (lower hardware requirements); Easier to configure/add/replace clients; Simpler software installation/updates (only on server); More secure (cannot install unauthorised software easily); Lower power consumption; Cheaper licensing (per user rather than per device); Less maintenance required (fewer failures) | Requires:; Powerful server; High bandwidth network; Dependent on:; Network reliability; Server performance |
+| THIN client computing 1 | Cheaper clients (lower hardware requirements) | Requires powerful server |
+| THIN client computing 2 | Easier to configure/add/replace clients | Requires high bandwidth network |
+| THIN client computing 3 | Simpler software installation/updates (only on server) | Dependent on network reliability |
+| THIN client computing 4 | More secure (cannot install unauthorised software easily) | Dependent on server performance |
+| THIN client computing 5 | Lower power consumption |  |
+| THIN client computing 6 | Cheaper licensing (per user rather than per device) |  |
+| THIN client computing 7 | Less maintenance required (fewer failures) |  |

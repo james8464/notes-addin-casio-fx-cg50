@@ -50,8 +50,19 @@
 
 |  | Machine code | Assembly language |
 | --- | --- | --- |
-| Advantages | Executed directly by processor (no translation needed); Very fast execution times (no translation needed); Can directly manipulate hardware; Efficient for real-time and embedded systems; No need for a translator program at runtime | Uses mnemonics (easier for humans to understand than binary); Easier to write/debug/maintain; Still allows low-level hardware access; More compact code; May use fewer instructions than compiled HLL code; Can produce fast, efficient machine code; 1:1 relationship with machine instructions (predictable behaviour) |
-| Disadvantages | Difficult/impossible for humans to read/write; Very error-prone + hard to debug; Time consuming to program; Not portable (processor-specific); Difficult to maintain/modify; No abstraction (must manage everything manually) | Still difficult to learn compared to high-level languages; Mnemonics are not always intuitive; Requires an assembler for translation to machine code; Processor specific (not portable); Slower to develop than high-level languages; More error-prone than high level languages |
+| Advantage 1 | Executed directly by processor (no translation needed) | Uses mnemonics (easier for humans to understand than binary) |
+| Advantage 2 | Very fast execution times (no translation needed) | Easier to write/debug/maintain |
+| Advantage 3 | Can directly manipulate hardware | Still allows low-level hardware access |
+| Advantage 4 | Efficient for real-time and embedded systems | More compact code |
+| Advantage 5 | No need for a translator program at runtime | May use fewer instructions than compiled HLL code |
+| Advantage 6 |  | Can produce fast, efficient machine code |
+| Advantage 7 |  | 1:1 relationship with machine instructions (predictable behaviour) |
+| Disadvantage 1 | Difficult/impossible for humans to read/write | Still difficult to learn compared to high-level languages |
+| Disadvantage 2 | Very error-prone + hard to debug | Mnemonics are not always intuitive |
+| Disadvantage 3 | Time consuming to program | Requires an assembler for translation to machine code |
+| Disadvantage 4 | Not portable (processor-specific) | Processor specific (not portable) |
+| Disadvantage 5 | Difficult to maintain/modify | Slower to develop than high-level languages |
+| Disadvantage 6 | No abstraction (must manage everything manually) | More error-prone than high level languages |
 
   - a program is a sequence of instructions
   - instructions describe how the computer should complete a task

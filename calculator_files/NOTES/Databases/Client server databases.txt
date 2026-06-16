@@ -19,7 +19,9 @@
 
 - allow transactions on a particular database to take place one at a time, in serial format.
 - Process managed by the DBMS, ensures that each transaction is carried out in the correct sequence to avoid compromising the integrity of the data.
-- For example, a typical transaction may be to read data to or from a record. If another transaction is taking place on that record at the same time, then serialisation ensures that the two transactions take place one after each other in the correct order. The DBMS will be used to identify which transactions need serialising and also provide a schedule for dealing with them.
+- For example, a typical transaction may be to read data to or from a record.
+  - If another transaction is taking place on that record at the same time, then serialisation ensures that the two transactions take place one after each other in the correct order.
+  - The DBMS will be used to identify which transactions need serialising and also provide a schedule for dealing with them.
 
 ### Ppq: Timestamp Ordering
 
