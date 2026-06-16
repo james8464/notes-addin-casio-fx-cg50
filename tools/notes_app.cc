@@ -1071,11 +1071,47 @@ static int max_file_line_scroll() {
   return max_scroll;
 }
 
+static int table_hscroll_for_match(const SearchPattern *sp, int target_source_line) {
+  int pos = 0, source_line = 0;
+  while (pos <= file_buf_len) {
+    int end = source_line_end_from(pos);
+    int len = end - pos;
+    if (len > 0 && table_like(file_buf + pos, len)) {
+      TableRow *rows = table_rows;
+      int row_count = 0, cols = 0, next_pos = pos, next_source = source_line;
+      if (collect_table_block(pos, source_line, rows, &row_count, &cols, &next_pos, &next_source)) {
+        for (int r = 0; r < row_count; ++r) {
+          if (rows[r].source_line != target_source_line) continue;
+          int widths[MAX_TABLE_COLS], colpos[MAX_TABLE_COLS + 1];
+          table_compute_widths(rows, row_count, cols, widths);
+          table_col_positions(widths, cols, colpos);
+          for (int c = 0; c < cols; ++c) {
+            int cell_len = strlen(rows[r].cells[c]);
+            if (find_in_span(rows[r].cells[c], cell_len, sp) >= 0)
+              return max_int(0, colpos[c] / TABLE_CHAR_PX - 1);
+          }
+          return 0;
+        }
+        pos = next_pos;
+        source_line = next_source;
+        continue;
+      }
+    }
+    pos = source_next_line_from(end);
+    ++source_line;
+    if (pos > file_buf_len) break;
+  }
+  return 0;
+}
+
 static int jump_to_match(const SearchPattern *sp, int start_source_line, int dir, int *top, int *hscroll, int *lines, int max_line) {
   int source_line = 0, offset = 0;
   if (!find_source_match(sp, start_source_line, dir, &source_line, &offset)) return 0;
   int style = source_line_style(source_line);
-  *hscroll = (style == NOTE_CODE || style == NOTE_TABLE) ? max_int(0, offset - 6) : 0;
+  if (style == NOTE_TABLE)
+    *hscroll = table_hscroll_for_match(sp, source_line);
+  else
+    *hscroll = style == NOTE_CODE ? max_int(0, offset - 6) : 0;
   if (*hscroll > max_line) *hscroll = max_line;
   *lines = build_view_lines(*hscroll);
   int view_line = view_line_for_source_match(source_line, sp, *lines);
@@ -1366,10 +1402,10 @@ static void print_note_line(int idx, int x, int y, const char *line, int style, 
   }
   int p = 0;
   while (line && line[p] == ' ') ++p;
-  if (style == NOTE_BULLET && line && line[p] == '-' && line[p + 1] == ' ') {
+  if (style == NOTE_BULLET && line && (line[p] == '-' || line[p] == '*') && line[p + 1] == ' ') {
     int px = x;
     notes_print_span(&px, y, line, p, fg, bg);
-    notes_print_span(&px, y, "-", 1, UI_BLUE, bg);
+    notes_print_span(&px, y, line + p, 1, UI_BLUE, bg);
     notes_print_span(&px, y, " ", 1, fg, bg);
     notes_print_with_matches(px, y, line + p + 2, fg, bg, match_fg, sp);
   } else if (style == NOTE_ORDERED && line) {

@@ -280,8 +280,12 @@ def main() -> int:
         errors.append("failed in-file search must reset search mode so NEXT/PREV keep paging")
     if "if (len > 0 && table_like(file_buf + start, len)) return NOTE_TABLE;" not in APP_SOURCE:
         errors.append("search jump styling must detect table source rows")
-    if "(style == NOTE_CODE || style == NOTE_TABLE)" not in APP_SOURCE:
-        errors.append("search jumps must horizontally scroll to matches in wide tables as well as code lines")
+    if "table_hscroll_for_match" not in APP_SOURCE or "colpos[c] / TABLE_CHAR_PX - 1" not in APP_SOURCE:
+        errors.append("search jumps in tables must scroll to the matched table column")
+    if "style == NOTE_CODE ? max_int(0, offset - 6) : 0" not in APP_SOURCE:
+        errors.append("search jumps in code lines must preserve code horizontal scrolling")
+    if "(line[p] == '-' || line[p] == '*')" not in APP_SOURCE:
+        errors.append("bullet rendering must support both '-' and '*' markdown bullets")
     if "NOTE_H1 : (hashes == 2 ? NOTE_H2 : (hashes == 3 ? NOTE_H3 : NOTE_H4))" not in APP_SOURCE:
         errors.append("markdown headings must map H1/H2/H3/H4 to distinct renderer styles")
     for marker in ("if (style == NOTE_H1)", "else if (style == NOTE_H2)", "else if (style == NOTE_H3)", "else if (style == NOTE_H4)"):
