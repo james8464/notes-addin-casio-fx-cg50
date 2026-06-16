@@ -134,6 +134,28 @@ def clean_inline(text: str) -> str:
                 .replace("&quot;", '"')
                 .replace("&apos;", "'")
                 .replace("&nbsp;", " "))
+    for src, dst in {
+        "\u00a0": " ",
+        "\u00b0": " deg",
+        "\u00d7": "x",
+        "\u00f7": "/",
+        "\u2013": "-",
+        "\u2014": "-",
+        "\u2018": "'",
+        "\u2019": "'",
+        "\u201c": '"',
+        "\u201d": '"',
+        "\u2022": "*",
+        "\u2190": "<-",
+        "\u2192": "->",
+        "\u2194": "<->",
+        "\u21d2": "=>",
+        "\u21d4": "<=>",
+        "\u2260": "!=",
+        "\u2264": "<=",
+        "\u2265": ">=",
+    }.items():
+        text = text.replace(src, dst)
     text, saved = protect_escapes(text)
     text = re.sub(r"!\[([^\]]*)\]\([^)]+\)", r"\1", text)
     text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)
@@ -316,7 +338,7 @@ def audit_file(path: Path) -> list[str]:
         line = src_lines[i]
         if setext_heading_style(src_lines, i):
             segs = wrapped_non_table_segments(line.strip())
-            if norm("".join(segs)) != norm(line.strip()):
+            if norm("".join(segs)) != norm(clean_inline(line.strip())):
                 errors.append(f"{path}:{i + 1}: setext heading reconstruction loses text")
             rendered += len(segs)
             i += 2
@@ -361,7 +383,7 @@ def audit_file(path: Path) -> list[str]:
                 rendered += 1
             continue
         segs = wrapped_non_table_segments(line)
-        if norm("".join(segs)) != norm(display_source(line)):
+        if norm("".join(segs)) != norm(clean_inline(display_source(line))):
             errors.append(f"{path}:{i + 1}: wrapped note line reconstruction loses text")
         for seg in segs:
             if len(seg) >= LINE_CAP:
@@ -477,6 +499,8 @@ def main() -> int:
         errors.append("notes renderer must handle common html line breaks without duplicated parsing")
     if "html_entity_at" not in APP_SOURCE:
         errors.append("notes renderer must decode common html entities in copied text")
+    if "utf8_ascii_at" not in APP_SOURCE:
+        errors.append("notes renderer must transliterate common UTF-8 symbols before display")
     if "copy_display_text" not in APP_SOURCE or "markdown_link_at" not in APP_SOURCE or "single_marker_at" not in APP_SOURCE:
         errors.append("notes renderer must strip simple inline markdown markers through one shared display-copy path")
     if "markdown_escapable" not in APP_SOURCE or "markdown_escaped_at" not in APP_SOURCE:
@@ -491,6 +515,8 @@ def main() -> int:
         errors.append("inline markdown cleanup model must preserve readable text")
     if clean_inline("A &amp; B &lt; C &gt; D &quot;x&quot; &apos;y&apos;") != "A & B < C > D \"x\" 'y'":
         errors.append("inline markdown cleanup must decode common html entities")
+    if clean_inline("A \u2192 B \u2264 C \u201cok\u201d") != 'A -> B <= C "ok"':
+        errors.append("inline markdown cleanup must keep common UTF-8 symbols readable")
     if clean_inline("Keep 2 * 3 * 4 readable") != "Keep 2 * 3 * 4 readable":
         errors.append("inline markdown cleanup must not strip spaced multiplication")
     if clean_inline(r"Show \*literal\* and A \| B") != "Show *literal* and A | B":

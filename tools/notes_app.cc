@@ -575,6 +575,46 @@ static int html_entity_at(const char *s, int i, int len, char *out) {
   return 0;
 }
 
+static int utf8_ascii_at(const char *s, int i, int len, const char **out) {
+  if (i >= len) return 0;
+  unsigned char a = (unsigned char)s[i];
+  if (a == 0xc2 && i + 1 < len) {
+    unsigned char b = (unsigned char)s[i + 1];
+    if (b == 0xa0) { *out = " "; return 2; }
+    if (b == 0xb0) { *out = " deg"; return 2; }
+  }
+  if (a == 0xc3 && i + 1 < len) {
+    unsigned char b = (unsigned char)s[i + 1];
+    if (b == 0x97) { *out = "x"; return 2; }
+    if (b == 0xb7) { *out = "/"; return 2; }
+  }
+  if (a == 0xe2 && i + 2 < len) {
+    unsigned char b = (unsigned char)s[i + 1];
+    unsigned char c = (unsigned char)s[i + 2];
+    if (b == 0x80) {
+      if (c == 0x93 || c == 0x94) { *out = "-"; return 3; }
+      if (c == 0x98 || c == 0x99) { *out = "'"; return 3; }
+      if (c == 0x9c || c == 0x9d) { *out = "\""; return 3; }
+      if (c == 0xa2) { *out = "*"; return 3; }
+    }
+    if (b == 0x86) {
+      if (c == 0x90) { *out = "<-"; return 3; }
+      if (c == 0x92) { *out = "->"; return 3; }
+      if (c == 0x94) { *out = "<->"; return 3; }
+    }
+    if (b == 0x87) {
+      if (c == 0x92) { *out = "=>"; return 3; }
+      if (c == 0x94) { *out = "<=>"; return 3; }
+    }
+    if (b == 0x89) {
+      if (c == 0xa0) { *out = "!="; return 3; }
+      if (c == 0xa4) { *out = "<="; return 3; }
+      if (c == 0xa5) { *out = ">="; return 3; }
+    }
+  }
+  return 0;
+}
+
 static int ascii_alnum(char c) {
   return (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
 }
@@ -631,6 +671,13 @@ static int copy_display_text(char *dst, int cap, const char *src, int len, int s
     if (entity_len) {
       dst[n++] = entity;
       i += entity_len - 1;
+      continue;
+    }
+    const char *ascii = 0;
+    int utf8_len = utf8_ascii_at(src, i, len, &ascii);
+    if (utf8_len) {
+      for (int j = 0; ascii[j] && n + 1 < cap; ++j) dst[n++] = ascii[j];
+      i += utf8_len - 1;
       continue;
     }
     if (strip_inline) {
