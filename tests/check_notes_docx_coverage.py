@@ -124,13 +124,11 @@ def cell_covers(source: str, candidate: str) -> bool:
     candidate = normalise(candidate)
     if not source:
         return True
-    if source == candidate or source in candidate or candidate in source:
+    if source == candidate or source in candidate:
         return True
     source_tokens = set(source.split())
     candidate_tokens = set(candidate.split())
-    return bool(source_tokens) and (
-        source_tokens <= candidate_tokens or candidate_tokens <= source_tokens
-    )
+    return bool(source_tokens) and source_tokens <= candidate_tokens
 
 
 def row_present(source_cells: list[str], candidate_rows: list[list[str]]) -> bool:
@@ -139,6 +137,10 @@ def row_present(source_cells: list[str], candidate_rows: list[list[str]]) -> boo
             continue
         if all(cell_covers(cell, row[i]) for i, cell in enumerate(source_cells) if normalise(cell)):
             return True
+    for start in range(len(candidate_rows)):
+        for end in range(start + 2, len(candidate_rows) + 1):
+            if rows_cover(source_cells, candidate_rows[start:end]):
+                return True
     return False
 
 
