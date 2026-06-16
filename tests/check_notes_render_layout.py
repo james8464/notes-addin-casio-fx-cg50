@@ -505,6 +505,13 @@ def main() -> int:
         errors.append("notes search must use displayed text, not raw markdown source text")
     if "find_in_span(file_buf + start, len, sp)" in APP_SOURCE:
         errors.append("in-file search must not search raw source lines directly")
+    display_helper = APP_SOURCE[APP_SOURCE.find("static int source_line_display_text"):APP_SOURCE.find("static int find_source_match")]
+    if "int style = source_line_style(source_line);" not in display_helper:
+        errors.append("search display text must use full source-line render context")
+    if "if (style == NOTE_TABLE)" not in display_helper or "table_separator_row(table_parse_cells, cols)" not in display_helper:
+        errors.append("search display text must ignore table rule rows and search rendered table cells")
+    if "if (style == NOTE_CODE)" not in display_helper or "style != NOTE_CODE" not in display_helper:
+        errors.append("search display text must keep fenced/code text literal")
     if "copy_display_text" not in APP_SOURCE or "markdown_link_at" not in APP_SOURCE or "single_marker_at" not in APP_SOURCE:
         errors.append("notes renderer must strip simple inline markdown markers through one shared display-copy path")
     if "markdown_escapable" not in APP_SOURCE or "markdown_escaped_at" not in APP_SOURCE:

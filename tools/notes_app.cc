@@ -1339,8 +1339,34 @@ static int source_line_display_text(int source_line, char *out, int cap) {
     if (cap > 0) out[0] = 0;
     return 0;
   }
-  int skip = 0, style = NOTE_TEXT;
-  markdown_line(file_buf + start, len, &skip, &style);
+  int style = source_line_style(source_line);
+  if (style == NOTE_TABLE) {
+    if (plus_separator_row(file_buf + start, len)) {
+      if (cap > 0) out[0] = 0;
+      return 0;
+    }
+    int cols = parse_table_row(file_buf + start, len, table_parse_cells);
+    if (cols <= 0 || table_separator_row(table_parse_cells, cols)) {
+      if (cap > 0) out[0] = 0;
+      return 0;
+    }
+    int n = 0;
+    for (int c = 0; c < cols && n + 1 < cap; ++c) {
+      if (c && n + 1 < cap) out[n++] = ' ';
+      for (int i = 0; table_parse_cells[c][i] && n + 1 < cap; ++i)
+        out[n++] = table_parse_cells[c][i];
+    }
+    out[n] = 0;
+    return n;
+  }
+  int skip = 0;
+  int parsed_style = NOTE_TEXT;
+  markdown_line(file_buf + start, len, &skip, &parsed_style);
+  if (style == NOTE_CODE) {
+    skip = 0;
+  } else if (style >= NOTE_H1 && style <= NOTE_H4 && !(parsed_style >= NOTE_H1 && parsed_style <= NOTE_H4)) {
+    skip = trim_left_pos(file_buf + start, len);
+  }
   const char *src = file_buf + start + skip;
   int src_len = len - skip;
   if (style == NOTE_BULLET || style == NOTE_ORDERED || style == NOTE_QUOTE) {

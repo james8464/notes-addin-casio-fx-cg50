@@ -70,6 +70,13 @@ def main() -> int:
         raise AssertionError("notes search must use displayed text, not raw markdown source text")
     if "find_in_span(file_buf + start, len, sp)" in notes_src:
         raise AssertionError("notes in-file search must not search raw source lines directly")
+    display_helper = notes_src[notes_src.find("static int source_line_display_text"):notes_src.find("static int find_source_match")]
+    if "int style = source_line_style(source_line);" not in display_helper:
+        raise AssertionError("notes search display text must use full source-line render context")
+    if "if (style == NOTE_TABLE)" not in display_helper or "table_separator_row(table_parse_cells, cols)" not in display_helper:
+        raise AssertionError("notes search display text must search rendered table cells, not rule rows")
+    if "if (style == NOTE_CODE)" not in display_helper or "style != NOTE_CODE" not in display_helper:
+        raise AssertionError("notes search display text must keep fenced/code text literal")
     for required in ["copy_display_text", "markdown_link_at", "single_marker_at"]:
         if required not in notes_src:
             raise AssertionError(f"notes renderer must clean simple inline markdown generically: {required}")
