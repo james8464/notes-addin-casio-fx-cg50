@@ -1,0 +1,21 @@
+# Analogue digital conversion
+
+## How Does ADC Work?
+
+- ADC takes samples of the analogue data at regular intervals
+  - The frequency that the samples are taken is measured in Hz
+  - Higher frequency = better reproduction of the analogue signal
+- The samples are quantised (the amplitude of each sample is approximated to an integer value)
+- Each sample is assigned/encoded to a binary value
+
+## How Does Dac Work?
+
+- The DAC takes digital binary data as input
+- Each binary value is converted into a corresponding analogue voltage level
+- The voltages are output in sequence to reconstruct the signal
+- The signal is smoothed (e.g. using a low-pass filter) to produce a continuous analogue waveform
+
+Many sensors (eg temperature sensors and microphones) output an analogue signal.
+An ADC would be required here so that the computer can actually make use of the data.
+
+The most common use for a DAC is to convert a digital audio signal to an analogue signal

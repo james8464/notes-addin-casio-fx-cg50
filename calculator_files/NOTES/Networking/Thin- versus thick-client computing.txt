@@ -1,0 +1,55 @@
+# Thin- versus thick-client computing
+
+## What Is Thick & Thin Client Computing
+
+### Thick Client
+
+- Applications run locally on the client computer
+- Processing is done on the client device
+- Software is installed on each client
+
+### Thin Client
+
+- All/most processing done on a central server
+- Applications are NOT installed on client devices
+- Clients act as interfaces only
+- User input (keyboard/mouse) sent to server
+- Server sends back data/images for display
+- OS may be loaded from server at boot
+
+### How They Work (key Differences)
+
+| Feature | Thick client | Thin client |
+| --- | --- | --- |
+| Processing | Done on client | Done on server |
+| Software | Installed locally | Runs on server |
+| Data handling | Local processing | Sent to/from server |
+| Client role | Independent device | Interface/terminal |
+| Network use | Lower | Higher (constant communication) |
+
+## Hardware Differences
+
+### Thick Client
+
+- Clients:
+  - High specialisation devices
+- Server:
+  - Less critical (may not be needed)
+
+### Thin Client
+
+- Requires:
+  - High bandwidth network
+  - Switch (not hub)
+- Client devices:
+  - Low spec (low RAM, slower SPU, no HDD needed)
+  - Often called "dumb terminals"
+- Server:
+  - Very powerful (high RAM, multiple processors)
+
+### Pros & Cons of Each
+
+|  | Advantages | Disadvantages |
+| --- | --- | --- |
+| THICK client computing | No reliance on network/server for processing; Can work offline; Faster local performance for some tasks | More expensive hardware; Harder to maintain (updates on each device); Less centralised control; Higher power consumption |
+| THIN client computing | Cheaper clients (lower hardware requirements); Easier to configure/add/replace clients; Simpler software installation/updates (only on server); More secure (cannot install unauthorised software easily); Lower power consumption; Cheaper licensing (per user rather than per device); Less maintenance required (fewer failures) | Requires:; Powerful server; High bandwidth network; Dependent on:; Network reliability; Server performance |

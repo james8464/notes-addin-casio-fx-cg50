@@ -1,0 +1,71 @@
+# Structured Query Language (SQL)
+
+## The Select Command
+
+- Retrieves data from a table
+  - SELECT <attribute>
+  - FROM <table>
+  - WHERE <condition>
+  - ORDER BY <ASC/DESC> -- optional
+
+## The Update Command
+
+- Modifies the attributes of an existing entity
+- Usually uses the primary key to identify the entities to update, but it can also be used with more general conditions
+  - UPDATE <table>
+  - SET <attribute> = <value>
+  - WHERE <attribute> = <value>
+
+## The Delete Command
+
+- Removes entities from a database
+  - DELETE
+  - FROM <table>
+  - WHERE <condition>
+
+## The Insert Command
+
+- Adds new records to an existing table
+  - INSERT INTO <table>
+  - VALUES <values>
+
+## Wildcards
+
+- Used to specify any possible value
+- Eg rather than selecting a specific attribute in the SELECT command, you could use a wildcard to return all attributes
+- Wildcards are notated using an asterix (ie a * symbol)
+
+### Example
+
+  - SELECT *
+  - FROM <Cars>
+  - WHERE (Price > 4000)
+  - The example above would return all of the details of each car that costs more than 4000
+
+## The Create Command
+
+- Used to create new database tables
+- Specifies the name of the new table, its attributes (columns) and data types of each attribute, and identifiers (eg primary key)
+  - CREATE TABLE <tableName> (
+      - <attribute1> <dataType1>,
+      - <attribute2> <dataType2>,
+      - <attribute3> <dataType3>,
+      - PRIMARY KEY (<attribute1>,<attribute2>) -- shows how to define a table with a composite PK
+      - )
+- CREATE TABLE syntax and marking points (remember you need a COMMA after each line)
+
+### SQL Data Types
+
+| Data type | SQL | Description |
+| --- | --- | --- |
+| Fixed length string | CHAR(size) | A string with a specified num of characters |
+| Variable length string | VARCHAR(size) | A string with any num of characters up to the specified num |
+| Integer | INT(size) | A whole number stored using a specified num of bits |
+| Number with fractional part | FLOAT(size, precision) | Number stored using specified num of bits with a specified num of digits after the decimal point |
+| Date | DATE | A date in the format:
+YYYY-MM-DD |
+| Date and time | DATETIME | A date and time combined in the format:; YYYY-MM-DD HH:MM:SS |
+| Time | TIME | A time in the format HH:MM:SS |
+| Year | YEAR | A year in one of the two formats below:
+YY
+YYYY |

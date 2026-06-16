@@ -1,0 +1,67 @@
+# Client server model
+
+## Client-server Networking
+
+### Definition
+
+- one or more central servers provide services to clients
+- clients request services from the server, which responds
+- resources are stored on the server
+- server provides services such as:
+  - file storage
+  - email management
+  - user accounts
+  - print queues
+
+### Characteristics
+
+- centralised security management
+- centralised administration
+- clients access resources from server
+- server provides resources in response to requests
+
+### Pros & Cons
+
+| Advantages | Disadvantages |
+| --- | --- |
+| Centralised + more control over management of security + access rights; Easier administration (users, files, permissions); All data stored centrally; accessible from any device; Centralised backup (easier to backup data); Centralised/remote installation and updating of software; Server can be optimised for tasks (e.g., file handling); Suitable for large number of users/devices | Configuration/setup more complex; Requires greater expertise to manage than P2P; More expensive (server hardware required); Dependency on server |
+
+### Where Used?
+
+- Schools, businesses, organisations
+- Where:
+  - many users need managing
+  - confidential data is stored
+  - different users need different access rights
+  - central control is required
+
+## Peer-to-peer (p2p) Networking
+
+### Definition
+
+- no central server
+- resources are stored on each individual computer/device/peer
+- each device can act as a client or a server
+- devices communicate directly with each other
+
+### Characteristics
+
+- each computer has equal status
+- any device can share/access resources with any other
+- files can be distributed across computers
+- No dependence on a server
+
+### Pros & Cons
+
+| Advantages | Disadvantages |
+| --- | --- |
+| More cost effective (no server needed); Easier to setup and maintain; No single point of failure (no central server); Useful for file sharing networks/multimedia sharing | Management of security/administration is more difficult; No central control of access rights; Data is only available when the device storing it is switched on; If device fails -> its resources are unavailable; No central backups; Not suitable for large networks |
+
+### Where Used?
+
+- Small/home networks
+- File sharing (e.g., media sharing)
+- Where:
+  - Low cost is important
+  - Simple setup is needed
+  - Few users

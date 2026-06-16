@@ -60,8 +60,10 @@ def main() -> int:
     for required in ["style == NOTE_ORDERED && pos != base_indent", "style == NOTE_QUOTE && pos != base_indent"]:
         if required not in notes_src:
             raise AssertionError(f"notes wrapped continuations must align nested markdown content: {required}")
-    if "hscroll > 0 || style == NOTE_TABLE || style == NOTE_CODE" not in notes_src:
-        raise AssertionError("notes horizontal scroll must work beyond table-only lines")
+    if "push_table_block(&line, rows, row_count, cols, hscroll)" not in notes_src:
+        raise AssertionError("notes table horizontal scroll must use the table renderer")
+    if "hscroll > 0 || style == NOTE_CODE" not in notes_src:
+        raise AssertionError("notes horizontal scroll must work for non-table wide lines")
     for required in ["mini_width", "segment_fits_screen", "fit_visible_chars", "max_file_line_scroll", "NOTE_X_LIMIT"]:
         if required not in notes_src:
             raise AssertionError(f"notes wrapping must use PrintMini pixel preview: {required}")
@@ -90,7 +92,7 @@ def main() -> int:
     require("docs/CASP3_README.md", ["suvat(known=value", "projectile(u,angle)", "hypbinom(n,p,x,alpha,tail)", "samplemean(mu,sigma,n,lo,hi)", "normalcrit(p,mu,sigma)"])
     require("docs/CSCALC_README.md", ["convert(value,from_base,to_base)", "floatdec(mantissa,exponent)", "binarysearch(target,list...)"])
     require("docs/NOTES_README.md", ["Knuth-Morris-Pratt", "O(total path characters + total text bytes + m)", "does not open images", "fx-CG add-in text rendering inspiration", "wide-line horizontal scroll is capped"])
-    notes_dir = Path.home() / "Downloads" / "NOTES"
+    notes_dir = ROOT / "calculator_files" / "NOTES"
     if notes_dir.exists():
         note_files = list(notes_dir.rglob("*.txt"))
         if not note_files:

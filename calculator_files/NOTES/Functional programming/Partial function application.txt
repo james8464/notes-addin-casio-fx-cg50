@@ -1,0 +1,5 @@
+# Partial function application
+
+NOTE: This is a topic where students often lose marks
+= the process of fixing a number of arguments to a function and then producing another function which only takes the remaining arguments
+Makes a general function more specific, allowing it to be used with greater ease in the program.

@@ -1,0 +1,7 @@
+# Public and private IP addresses
+
+| Routable (public) | Non-routable (private) |
+| --- | --- |
+| Globally unique | Many devices can have the same address (just on different LANs) |
+| Allocated by central issuing authority | Allocated by a home/company user |
+| Can be connected to via the internet | Impossible to connect to over internet, must use NAT and port forwarding |

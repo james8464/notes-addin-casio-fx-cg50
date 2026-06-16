@@ -1,0 +1,71 @@
+# Hardware and software
+
+Software = name given to programs/code/instructions that are executed in order to perform a task
+Hardware = physical components of a computer system
+  - If you can touch it, its hardware
+Relationship: software runs on hardware
+
+## Examples
+
+| Hardware | Software | Hardware & software |
+| --- | --- | --- |
+| Monitor | Word processor | Wireless router |
+| Processor | Web browser | Wireless keyboard |
+| Graphics card | Image editor |  |
+| Webcam | Video editor |  |
+
+## Application Software
+
+- Programs that complete a specific task for the user
+
+### Examples
+
+- Word processors
+- Web browsers
+- Spreadsheet software
+
+## System Software
+
+- Operates, controls, and maintains the computer + its components
+
+### What Does It Include?
+
+- Operating system
+- Utility programs
+- Library programs
+- Translators
+
+### Operating System
+
+- Allocates processors/cores to processes
+- Allocates memory/RAM to processes
+- Allocates I/O devices to processes
+- Allocates space on a storage device to files
+- Allows for the installation of new software
+- Security management (eg authenticating users, managing file permissions etc)
+- Hides the complexities of the hardware from the user
+- Handles interrupts
+
+### Utility Programs
+
+### Housekeeping Tasks in a Computer System
+
+### Examples
+
+- Encryption software
+- Defragmentation software
+- Data compression software
+- Backup software
+- Antivirus programs
+
+### Library Programs
+
+      - Contains useful functions that are frequently used by a program
+
+### Translators (note: Covered in More Detail in 4.6.3)
+
+      - Pieces of software that translate between different types of language
+      - Three types:
+- Compilers
+- Interpreters
+- assemblers

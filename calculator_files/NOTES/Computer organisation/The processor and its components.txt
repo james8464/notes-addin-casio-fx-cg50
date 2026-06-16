@@ -1,0 +1,28 @@
+# The processor and its components
+
+## Major Processor Components
+
+| Component | Role + Operation |
+| --- | --- |
+| ALU | Arithmetic logic unit; Performs arithmetic + logical operations on data; Does NOT do the execution (that's done by the processor) |
+| CU | Control unit; Controls fetch/load/store operations; Decodes instructions; Manages the execution of instructions; Runs the FE cycle; Sends control signals to other components; Stores the state of the processor when an interrupt occurs |
+| Clock | Generates signals; synchronises the operation of the processor and the movement of data around the other components of the computer; A CPU cannot perform operations faster than clock cycle |
+| General-purpose registers | stores values that need to be accessed frequently; stores values that instructions can/will use as operands; the programmer determines the role of each register |
+
+### Register
+
+- high-speed memory locations
+- located in the processor/CPU
+- used by the processor to store small amounts of data that are needed during processing
+
+## Special Purpose Registers
+
+| Component | Role + Operation |
+| --- | --- |
+| PC | Program counter; Stores the address of the next instruction |
+| MAR | Memory address register; Stores the address of the instruction currently being fetched |
+| MBR/MDR | Memory buffer/data register; Stores the contents of the memory address in the MAR |
+| CIR | Current instruction register; Stores the instruction currently being decoded/executed |
+| ACC | Accumulator; Stores the result of the calculation once the instruction is executed in the ALU |
+| SR | Status register; Contains information about the result of the last instruction; Contents are used to affect the behaviour of the next instruction; Stores bits/flags which affect the operation of the control unit |
+| IR | Interrupt register; Stores signals that have been received by the processor from other components |

@@ -1,0 +1,86 @@
+# Wireless networking
+
+WiFi = short for 'Wireless Fidelity'
+- a wireless local area network that is based on international standards
+
+## Purpose
+
+- enables devices to communicate over a wireless LAN
+- based on international standards
+  - allows a device made in one part of the world to connect seamlessly to wireless networks all over the world
+
+## Components for Wireless Networking
+
+- wireless network adapter
+  - a device that lets devices connect to a network wirelessly
+- wireless access point
+  - device that allows a WiFi compliant device to connect to a wired network
+- wireless medium/frequency band
+  - 2.4GHz frequency band is used for home networks
+  - 5GHz is mainly used for military/weather radar systems
+  - 6GHz used for radio frequency bands
+
+## Securing Wireless Networks
+
+- Use WPA or WPA
+  - stands for: WiFi protected access
+  - means that a new wireless client must enter a password to connect to the network
+  - encrypts transmission so it cant be understood by unauthorised parties
+- Disable SSID broadcast
+  - stands for: service set identifier
+  - it is used to identify a network
+  - not broadcasting SSID means wireless devices (in range) wont see the network as available (e.g., in the list of 'available' WiFi's in settings)
+  - means that if someone wants to join, they need to know the SSID and manually enter it to connect
+  - e.g., it wont show up in the list below
+- Use a MAC address whitelist/blacklist
+  - can be created to allow only certain devices to join a network (since each device has its own unique MAC address)
+  - can also be created to block certain devices from joining a network
+
+## What Is It?
+
+- stands for: carrier sense multiple access with collision avoidance
+- it's a protocol used in wireless networks
+- aim is to avoid data collisions caused by multiple devices communicating at the same time
+
+### Process (without Rts/cts)
+
+- computer with data to send listens to the channel
+  - checks to see if the channel is idle or busy
+- if the channel is idle -> transmit immediately
+- if the channel is busy -> wait for a random amount of time
+  - random amount of time reduces the chance of collision
+  - sometimes, "exponential backoff" is used (ie waiting time increases after each failed attempt)
+- repeat the process
+  - after waiting, the device checks the channel again
+
+### Process (with Rts/cts)
+
+- computer with data to send listens to the channel
+  - checks to see if the channel is idle or busy
+- if busy -> wait + random backoff
+- if idle -> send RTS (request to send)
+  - a short control message requesting permission to transmit
+- receiver replies with CTS (clear to send)
+  - confirms it is ready to receive data
+- if CTS is not received, sender will continue to wait
+- other devices hear the CTS and remain silent
+  - they defer transmission for the specified time
+- sender transmits the data
+  - now, the channel is effectively reserved
+- receiver sends acknowledgement (ACK) to confirm successful transmission
+- the sender waits to receive the ACK
+  - if it doesn't get it within a reasonable time period, then it will retransmit (ie start the process again)
+
+### Purpose of Rts/cts
+
+- it solves the "hidden node" problem
+  - Imagine a situation where the channel is clear/idle, and there are two computers waiting to send data
+  - in that situation, both senders would detect that the channel is idle, and will both begin to send data
+  - this will cause a collision
+  - With RTS/CTS, the receiver essentially controls who is sending the data at one given time
+
+SSID - stands for Service Set Identifier
+- It is a Unique identifier for a Wireless Network.
+- Purpose:
+  - Allows devices to wirelessly connect to the specific/preferred network from a number of available wireless networks.
+  - It can be configured to be hidden to be hard to detect.

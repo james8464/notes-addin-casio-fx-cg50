@@ -28,6 +28,30 @@ def require(expr, needles):
             raise SystemExit(f"{expr!r} contains banned {bad!r}\n{out}")
 
 
+def result_expr(out):
+    lines = out.splitlines()
+    for i, line in enumerate(lines):
+        if line.startswith("Result: "):
+            parts = [line[len("Result: "):]]
+            j = i + 1
+            while j < len(lines) and lines[j].startswith("  "):
+                parts.append(lines[j].strip())
+                j += 1
+            return "".join(parts).replace(",", "'").replace(".", "*")
+    raise SystemExit(f"missing Result line\n{out}")
+
+
+def require_bool_simplify_equiv(expr):
+    out = run(f"bool_simplify({expr})")
+    res = result_expr(out)
+    prove = run(f"boolprove({expr},{res})")
+    if "Same output rows" not in prove:
+        raise SystemExit(f"bool_simplify result is not equivalent\nexpr={expr}\nresult={res}\n{out}\n{prove}")
+    for line in out.splitlines():
+        if len(line) >= 79 and not line.startswith("  "):
+            raise SystemExit(f"long Boolean line was not wrapped\n{out}")
+
+
 def main():
     build()
     require("bin(45)", ["Repeated division", "45_10"])
@@ -137,6 +161,8 @@ def main():
     require("boolprove((A+B)*(A+C),A+B*C)", ["LHS simplifies to A+BC", "Same output rows"])
     require("bool_simplify((A+B),)", ["Using: (A+B),", "De Morgan's law", "Result: A,.B,"])
     require("bool_simplify(A+A*B)", ["Using: A+A.B", "Absorption", "Result: A"])
+    require_bool_simplify_equiv("(A xor (B implies C))")
+    require_bool_simplify_equiv("((((E nand B')*(not B*E))+((E')'*(B' nand C))) xor (((B' nor not D) xor (B*C))+(F' xor B)))")
     require("bool(A,,)", ["simplified = A"])
     require("bool(A,,,)", ["simplified = A'"])
     require("bool(A+0)", ["Identity law", "simplified = A"])

@@ -1,0 +1,22 @@
+# Function type
+
+## What Are Functions
+
+- a rule / set of instructions
+- applied to each element in set A (i.e., the input. Also known as the argument)
+- set B is the result value (output)
+Domain = the inputs into a function
+Co-domain = the outputs from a function <-- known as the range in maths
+
+## Function Types
+
+- denotes the kind of inputs that a function can take
+- also denotes the kind of outputs a function can give
+
+### Example
+
+- add function may look something like this:
+
+    add :: Int -> Int -> Int
+    add x y =
+      x + y

@@ -3093,6 +3093,7 @@ static bool has_bool_utf_op(const char *s) {
 static void bool_norm(const char *src, char *dst, int cap) {
   int j = 0;
   for (int i = 0; src[i] && j + 2 < cap;) {
+    if (isspace((unsigned char)src[i])) { ++i; continue; }
     char op; int oplen;
     if (bool_utf_op(src + i, &op, &oplen)) { dst[j++] = op; i += oplen; continue; }
     if (strncmp(src + i, "nand", 4) == 0) { dst[j++] = '@'; i += 4; continue; }
@@ -3214,6 +3215,14 @@ static void app_bool_not(char *res, int *rp, int cap, const char *x) {
   app_str(res, rp, cap, x);
   if (wrap) app_ch(res, rp, cap, ')');
   app_ch(res, rp, cap, '\'');
+}
+
+static void app_bool_operand(char *res, int *rp, int cap, const char *x) {
+  bool wrap = top_op(x, '+') > 0 || top_op(x, '&') > 0 || top_op(x, '^') > 0 ||
+              top_op(x, '@') > 0 || top_op(x, '#') > 0 || top_op(x, '>') > 0;
+  if (wrap) app_ch(res, rp, cap, '(');
+  app_str(res, rp, cap, x);
+  if (wrap) app_ch(res, rp, cap, ')');
 }
 
 static int split_top_parts(const char *s, char op, char parts[][40], int maxp) {
@@ -3362,11 +3371,10 @@ static bool bool_law_once(const char *expr, char *res, char *law) {
     if (p > 0) {
       char a[40], b[40]; memcpy(a, e, p); a[p] = 0; strcpy(b, e + p + 1);
       int rp = 0; res[0] = 0;
-      app_str(res, &rp, 80, a); app_ch(res, &rp, 80, '\'');
-      app_ch(res, &rp, 80, '&'); app_str(res, &rp, 80, b);
-      app_ch(res, &rp, 80, '+'); app_str(res, &rp, 80, a);
-      app_ch(res, &rp, 80, '&'); app_str(res, &rp, 80, b);
-      app_ch(res, &rp, 80, '\'');
+      app_bool_not(res, &rp, 80, a);
+      app_ch(res, &rp, 80, '&'); app_bool_operand(res, &rp, 80, b);
+      app_ch(res, &rp, 80, '+'); app_bool_operand(res, &rp, 80, a);
+      app_ch(res, &rp, 80, '&'); app_bool_not(res, &rp, 80, b);
       strcpy(law, "XOR identity"); return true;
     }
   }
@@ -3399,7 +3407,7 @@ static bool bool_law_once(const char *expr, char *res, char *law) {
       int rp = 0; res[0] = 0;
       app_bool_not(res, &rp, 80, a);
       app_ch(res, &rp, 80, '+');
-      app_str(res, &rp, 80, b);
+      app_bool_operand(res, &rp, 80, b);
       strcpy(law, "Implication identity"); return true;
     }
   }
@@ -3564,7 +3572,7 @@ static int add_bool_law_trace(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN], int n
   for (int step = 0; step < 10; ++step) {
     if (!bool_law_once(cur, next, law)) break;
     if (strcmp(cur, next) == 0) break;
-    if (strcmp(law, "XOR identity") != 0 && !bool_equiv_expr(cur, next)) break;
+    if (!bool_equiv_expr(cur, next)) break;
     if (step == 0) n = add(out, n, "Simplify by Boolean algebra.");
     n = add(out, n, "%s -> %s (%s)", cur, next, law);
     strncpy(cur, next, sizeof(cur) - 1); cur[sizeof(cur) - 1] = 0;
@@ -3578,7 +3586,7 @@ static int add_named_bool_law_trace(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN],
   for (int step = 0; step < 10; ++step) {
     if (!bool_law_once(cur, next, law)) break;
     if (strcmp(cur, next) == 0) break;
-    if (strcmp(law, "XOR identity") != 0 && !bool_equiv_expr(cur, next)) break;
+    if (!bool_equiv_expr(cur, next)) break;
     n = add(out, n, "%s: %s -> %s (%s)", name, cur, next, law);
     strncpy(cur, next, sizeof(cur) - 1); cur[sizeof(cur) - 1] = 0;
   }
@@ -3603,6 +3611,39 @@ static const char *bool_old_law_name(const char *law) {
   if (!strcmp(law, "Dominance law")) return "Common sense";
   if (!strcmp(law, "Absorption law")) return "Absorption";
   return law;
+}
+
+static int add_bool_wrapped(char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN], int n,
+                            const char *prefix, const char *text) {
+  if (n >= CSCALC_MAX_LINES) return n;
+  int room = CSCALC_LINE_LEN - 1;
+  int plen = (int)strlen(prefix);
+  int len = (int)strlen(text);
+  if (plen + len < room) return add(out, n, "%s%s", prefix, text);
+  int pos = 0;
+  int first = 1;
+  while (pos < len && n < CSCALC_MAX_LINES) {
+    int head = first ? plen : 2;
+    int take = room - head;
+    if (take < 12) take = 12;
+    if (take > len - pos) take = len - pos;
+    char part[CSCALC_LINE_LEN];
+    memcpy(part, text + pos, take);
+    part[take] = 0;
+    if (first) n = add(out, n, "%s%s", prefix, part);
+    else n = add(out, n, "  %s", part);
+    pos += take;
+    first = 0;
+  }
+  return n;
+}
+
+static void bool_step_text(char *dst, int cap, const char *expr, const char *law) {
+  int p = 0; dst[0] = 0;
+  app_str(dst, &p, cap, expr);
+  app_str(dst, &p, cap, "    (");
+  app_str(dst, &p, cap, law);
+  app_ch(dst, &p, cap, ')');
 }
 
 static int minimise_rows(const int *ones, int oc, const int *dcs, int dc, int vc, Imp *chosen, int maxchosen);
@@ -3644,16 +3685,19 @@ static int eval_bool_simplify_old_style(const char *expr, char out[CSCALC_MAX_LI
   char seen[32][192]; int seenc = 0;
   strncpy(seen[seenc++], cur, sizeof(seen[0]) - 1); seen[0][sizeof(seen[0]) - 1] = 0;
   bool_old_show(cur, shown, sizeof(shown));
-  int n = add(out, 0, "Using: %s", shown);
-  n = add(out, n, "1. %s", shown);
+  int n = add_bool_wrapped(out, 0, "Using: ", shown);
+  n = add_bool_wrapped(out, n, "1. ", shown);
   int line = 2;
   for (int step = 0; strlen(cur) < 90 && step < 30 && n < CSCALC_MAX_LINES - 2; ++step) {
     if (!bool_law_once(cur, next, law)) break;
     if (!strcmp(cur, next)) break;
     if (seen_bool_form(seen, seenc, next)) break;
-    if (strcmp(law, "XOR identity") != 0 && !bool_equiv_expr(cur, next)) break;
+    if (!bool_equiv_expr(cur, next)) break;
     bool_old_show(next, shown_next, sizeof(shown_next));
-    n = add(out, n, "%d. %s    (%s)", line++, shown_next, bool_old_law_name(law));
+    char prefix[12], step_text[240];
+    sprintf(prefix, "%d. ", line++);
+    bool_step_text(step_text, sizeof(step_text), shown_next, bool_old_law_name(law));
+    n = add_bool_wrapped(out, n, prefix, step_text);
     strncpy(cur, next, sizeof(cur) - 1); cur[sizeof(cur) - 1] = 0;
     if (seenc < 32) {
       strncpy(seen[seenc], cur, sizeof(seen[seenc]) - 1);
@@ -3681,12 +3725,15 @@ static int eval_bool_simplify_old_style(const char *expr, char out[CSCALC_MAX_LI
         n = add_implicant_groups(out, n, chosen, chc, mins, mc, vars, vc, false);
       }
       bool_old_show(minimal, shown_next, sizeof(shown_next));
-      n = add(out, n, "%d. %s    (K-map grouping)", line++, shown_next);
+      char prefix[12], step_text[160];
+      sprintf(prefix, "%d. ", line++);
+      bool_step_text(step_text, sizeof(step_text), shown_next, "K-map grouping");
+      n = add_bool_wrapped(out, n, prefix, step_text);
       strncpy(cur, minimal, sizeof(cur) - 1); cur[sizeof(cur) - 1] = 0;
     }
   }
   bool_old_show(cur, shown, sizeof(shown));
-  return add(out, n, "Result: %s", shown);
+  return add_bool_wrapped(out, n, "Result: ", shown);
 }
 
 static bool int_seen(const int *v, int n, int x) {

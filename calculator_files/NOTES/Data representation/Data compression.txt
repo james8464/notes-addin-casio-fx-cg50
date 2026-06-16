@@ -1,0 +1,57 @@
+# Data compression
+
+## Why?
+
+- reduces storage requirements of files
+- faster transmission times
+- lowering cloud storage costs
+- enhances network bandwidth efficiency
+- faster backups
+- email attachments (reducing document size to stay within attachment limits)
+
+## Common Formats
+
+- ZIP
+- RAR
+- MP3
+- JPEG
+- MP4
+
+## Lossy Compression
+
+- Some information is lost in the process
+  - Eg reducing resolution of an image, or lowering sample resolution of a sampled audio file
+- Original data cannot be recovered if lossy compression has been used
+  - NOTE: its not enough to just say 'data is lost' or 'quality is reduced' anymore
+
+## Lossless Compression
+
+- There is no loss of information
+- Size of a file is reduced without decreasing its quality
+- Original data can be fully recovered if lossless compression was used
+  - NOTE: its not enough to just say 'no data is lost' or 'no loss of quality' anymore
+
+### Comparison
+
+| Lossy compression | Lossless compression |
+| --- | --- |
+| Some information is lost in the compression process | No loss of information |
+| Quality of file is reduced | No loss of quality |
+| The extend to which file size can be reduced is not limited | There is a limit to how much a file can be compressed |
+
+## Run-length Encoding
+
+  - = identifies repeated information, and replaces it with one occurrence of the repeated information, followed by the number of times it is to be repeated
+  - Run = a sequence/series of a particular piece of data
+      - Eg in an image, there might be a run of pixels that are the same
+      - Here, the number of consecutive pixels of the same colour would be counted
+
+### Example
+
+## Dictionary-based Methods
+
+- Repeated patterns of data are identified and stored in a dictionary
+- The repeated data is replaced with the key to that data in the dictionary
+- Not as effective for text files since there is often little repetition
+
+### Example

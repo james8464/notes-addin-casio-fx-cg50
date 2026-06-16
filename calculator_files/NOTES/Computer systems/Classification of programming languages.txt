@@ -1,0 +1,89 @@
+# Classification of programming languages
+
+## Low-level Languages
+
+- Directly manipulate hardware
+- Steeper learning curve for the programmer
+- More prone to errors due to higher complexity
+
+### Examples
+
+- Machine code (ie binary)
+- Assembly
+
+### Portability
+
+- NOT portable -> they are processor specific
+  - each processor has its own instruction set (set of machine code instructions it understands)
+  - machine code instructions wont work on another processor with a different instruction set
+- assembly has a 1-to-1 relationship with machine code instructions, so it is also tied to a specific processor once assembled
+  - a different assembler must exist for each type of processor instruction set
+
+## High-level Languages
+
+- Makes programming easier
+- Statements are closer to the English language (so easier to understand what a particular section of code does)
+
+### Examples
+
+- Python
+- Swift
+- C#
+
+## Machine Code
+
+- uses only binary digits (ie 1's and 0's)
+- Code is very long and extremely difficult for humans to understand
+- Prone to errors
+- Difficult to debug
+- Directly manipulates hardware
+- VERY FAST execution times as no need for translation
+
+## Assembly
+
+- Uses mnemonics
+- Intention = simplify the process of writing computer programs
+- More compact and less error prone than machine code
+- Each assembly instruction has a 1-to-1 correlation to a machine code instruction
+
+## Comparison
+
+|  | Machine code | Assembly language |
+| --- | --- | --- |
+| Advantages | Executed directly by processor (no translation needed); Very fast execution times (no translation needed); Can directly manipulate hardware; Efficient for real-time and embedded systems; No need for a translator program at runtime | Uses mnemonics (easier for humans to understand than binary); Easier to write/debug/maintain; Still allows low-level hardware access; More compact code; May use fewer instructions than compiled HLL code; Can produce fast, efficient machine code; 1:1 relationship with machine instructions (predictable behaviour) |
+| Disadvantages | Difficult/impossible for humans to read/write; Very error-prone + hard to debug; Time consuming to program; Not portable (processor-specific); Difficult to maintain/modify; No abstraction (must manage everything manually) | Still difficult to learn compared to high-level languages; Mnemonics are not always intuitive; Requires an assembler for translation to machine code; Processor specific (not portable); Slower to develop than high-level languages; More error-prone than high level languages |
+
+  - a program is a sequence of instructions
+  - instructions describe how the computer should complete a task
+  - each instruction is a step in the process
+  - instructions can change the state of the program
+  - instructions are executed in a programmer-defined sequence/order
+
+### Main Features
+
+  - English-like commands and mathematical symbols
+  - Easier for humans to read, write and debug
+  - Includes constructs like:
+    - Selection (if statements)
+    - Iteration (loops)
+    - Variables
+
+### Relationship to Low-level Langs
+
+  - High-level langs must be translated into machine code before execution
+    - done by either interpreter or compiler
+  - One high level lang instruction is translated into one or more low level language instructions
+
+### Adv of High-level Langs
+
+  - Program code is easier to understand/maintain/debug
+  - Faster development time
+  - Facilitates collaborative working
+  - Programs are portable (to other hardware platforms)
+  - Availability of flow control structures
+  - Improved features for supporting modularity (eg can use subroutines)
+  - Built-in support for data structures
+  - Language is problem-oriented
+  - Support for different paradigms
+  - Improved features for supporting modularity
+  - Availability of built-in functions

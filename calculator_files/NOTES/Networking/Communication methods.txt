@@ -1,0 +1,37 @@
+# Communication methods
+
+## Serial Data Transmission
+
+- data is sent one bit at a time
+- single wire used
+
+## Parallel Data Transmission
+
+- multiple bits sent simultaneously
+- multiple wires used
+
+## Comparison
+
+|  | Serial Transmission | Parallel Transmission |
+| --- | --- | --- |
+| Advantages | Doesn't suffer from skew or crosstalk; more reliable; Suitable for medium to long distances; Cheaper to manufacture/buy (less materials needed); Cabling allows more flexibility over positioning; Cables can be longer | Can send multiple bits simultaneously; Faster transmission rate over short distances; More data can be transferred at the same time; Used internally (e.g., data bus) where high speed is required |
+| Disadvantages | Slower than parallel since it only sends one bit at a time | Data skew may occur (bits arrive out of sync); worse over long distances; Data corruption (e.g., crosstalk) more likely; More expensive cables than serial; Less reliable over long distances |
+
+## Synchronous Data Transmission
+
+- data transferred at regular intervals
+- timed by a clock signal
+- allows for constant and reliable transmission for time-sensitive data (e.g., real-time video or voice)
+- the data sent will always be received in the same order that they were sent
+- used within the busses of a computer's processor in the FE cycle
+
+## Asynchronous Data Transmission
+
+- no requirement for a shared clock signal
+- receiver and transmitter (clock) do not need to be exactly synchronised to transmit data
+- receiver and transmitter clock only synchronised at start of data transmission
+
+### Purpose of Start/stop Bits
+
+  - Start bit = starts the receiver clock
+  - Stop bit = allows the next start bit to be recognised

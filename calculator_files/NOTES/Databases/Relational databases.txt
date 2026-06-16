@@ -1,0 +1,21 @@
+# Relational databases
+
+## Relational Databases
+
+- A database that stores data in tables (relations)
+- Each table stores information about a particular entity (e.g. Customer, Product, Employee)
+- Tables consist of records (rows) and attributes (columns)
+- Each record is uniquely identified by a primary key
+- Tables are linked together using foreign keys
+- Relationships can be one-to-one, one-to-many, or many-to-many
+- Data is stored in a structured format
+- Data can be queried and manipulated using SQL
+
+Relation/table/entity = a category of objects about which data will be stored
+Attribute = characteristic about an entity, which would be stored as a field. They are the 'columns' in a table.
+Record = all characteristics of a specific object. They are the rows in a table (except the top row which represents the attribute names)
+PK = attribute that uniquely identifies every record
+Composite PK = PK made of two or more attributes
+FK = attribute used to link two tables; it must be the PK in the primary table
+Relationship = 121, 12many, many2many
+Relational database = used to store data in a structured way

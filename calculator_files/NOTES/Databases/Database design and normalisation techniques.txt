@@ -1,0 +1,33 @@
+# Database design and normalisation techniques
+
+### First Normal Form (1nf)
+
+- data must be atomic
+- Atomic data refers to a value that the database treats as a single unit rather than something that should be split into multiple values for the intended use
+
+### Second Normal Form (2nf)
+
+- everything in 1NF
+- every non-key attribute must be dependent on the WHOLE of the PK
+
+### Third Normal Form (3nf)
+
+- everything in 2NF
+- non-key attributes are functionally independent
+
+### 'why Are Databases Normalised?' (ppq)
+
+- Minimises data duplication (don't say eliminates...)
+- Avoids inconsistency problems
+- Eliminate update anomalies
+- Eliminate insertion anomalies
+- Eliminate deletion anomalies
+
+### 'describe Two Problems That Can Occur with Databases That Are Not Fully Normalised' (ppq)
+
+- Redundant/duplicated data may waste storage space
+- If data is stored more than once then it could be inconsistent
+- If data is stored more than once then each copy of the data would need to be updated if it changed
+- It might not be possible to store data about one type of entity without creating a record for another type of entity
+- When a record for one type of entity is deleted it might delete the data about another type of entity
+- May be difficult to select/edit data if it is not atomic

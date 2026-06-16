@@ -1,0 +1,14 @@
+# Analogue and digital
+
+## Analogue
+
+- Continuous
+- Can take any value in a given range
+- Between any two analogue values, there is another value
+- Eg sound
+
+## Digital
+
+- Discrete
+- It can only take particular values
+- Can only change value at specified intervals

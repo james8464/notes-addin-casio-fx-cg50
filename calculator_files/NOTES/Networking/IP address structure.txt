@@ -1,0 +1,12 @@
+# IP address structure
+
+### Network Identifier Part
+
+- identifies the network
+
+### Host Identifier Part
+
+- identifies the device on the network
+- Each device on a network shares the name network identifier, but has its own host identifier
+- if more bits are allocated to the network identifier part, then there can be more subnets on the network
+- if more bits are allocated to the host identifier part, then more different devices can connect to each subnet simultaneously

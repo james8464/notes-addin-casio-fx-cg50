@@ -15,6 +15,12 @@ static const int MAX_RESULTS = 64;
 static const int FILE_BUF_SIZE = 16384;
 static const int MAX_VIEW_LINES = 768;
 static const int LINE_CAP = 96;
+static const int MAX_TABLE_COLS = 6;
+static const int MAX_TABLE_ROWS = 36;
+static const int TABLE_CELL_CAP = 52;
+static const int TABLE_MAX_CHARS = LINE_CAP - 4;
+static const int TABLE_CHAR_PX = 8;
+static const int TABLE_PAD_X = 3;
 static const int VIEW_X = 4;
 static const int VIEW_TOP = 25;
 static const int VIEW_ROW_H = 17;
@@ -67,6 +73,13 @@ struct SearchResult {
   int text_hits;
 };
 
+struct TableRow {
+  char cells[MAX_TABLE_COLS][TABLE_CELL_CAP];
+  int cols;
+  int source_line;
+  int header;
+};
+
 static NoteEntry entries[MAX_ENTRIES];
 static SearchResult results[MAX_RESULTS];
 static int entry_count = 0;
@@ -79,6 +92,11 @@ static const char *view_lines[MAX_VIEW_LINES];
 static char line_store[MAX_VIEW_LINES][LINE_CAP];
 static unsigned char view_style[MAX_VIEW_LINES];
 static short view_source_line[MAX_VIEW_LINES];
+static unsigned char view_table_cols[MAX_VIEW_LINES];
+static unsigned char view_table_top[MAX_VIEW_LINES];
+static unsigned char view_table_bottom[MAX_VIEW_LINES];
+static unsigned char view_table_header[MAX_VIEW_LINES];
+static short view_table_colpos[MAX_VIEW_LINES][MAX_TABLE_COLS + 1];
 static char last_query[32] = "";
 
 static int lower_char(int c) {
@@ -408,6 +426,210 @@ static int table_like(const char *s, int len) {
   return tab || bars >= 2 || (plus >= 2 && dashes >= 3);
 }
 
+static int trim_left_pos(const char *s, int len) {
+  int p = 0;
+  while (p < len && s[p] == ' ') ++p;
+  return p;
+}
+
+static int trim_right_len(const char *s, int len) {
+  while (len > 0 && s[len - 1] == ' ') --len;
+  return len;
+}
+
+static int clean_cell_copy(char *dst, int cap, const char *src, int len) {
+  int start = trim_left_pos(src, len);
+  len = trim_right_len(src + start, len - start);
+  int n = 0;
+  for (int i = 0; i < len && n + 1 < cap; ++i) {
+    if (i + 3 < len && src[start + i] == '<' &&
+        lower_char((unsigned char)src[start + i + 1]) == 'b' &&
+        lower_char((unsigned char)src[start + i + 2]) == 'r' &&
+        src[start + i + 3] == '>') {
+      if (n + 2 < cap) {
+        dst[n++] = ';';
+        dst[n++] = ' ';
+      }
+      i += 3;
+      continue;
+    }
+    char c = src[start + i] == '\t' ? ' ' : src[start + i];
+    if (c >= 32 && c <= 126) dst[n++] = c;
+  }
+  while (n > 0 && dst[n - 1] == ' ') --n;
+  dst[n] = 0;
+  return n;
+}
+
+static int parse_table_row(const char *s, int len, char cells[MAX_TABLE_COLS][TABLE_CELL_CAP]) {
+  int p = trim_left_pos(s, len);
+  if (p < len && s[p] == '|') ++p;
+  int cols = 0;
+  while (p <= len && cols < MAX_TABLE_COLS) {
+    int start = p;
+    while (p < len && s[p] != '|' && s[p] != '\t') ++p;
+    clean_cell_copy(cells[cols], TABLE_CELL_CAP, s + start, p - start);
+    ++cols;
+    if (p >= len) break;
+    ++p;
+  }
+  while (cols > 0 && !cells[cols - 1][0]) --cols;
+  return cols;
+}
+
+static int table_separator_row(char cells[MAX_TABLE_COLS][TABLE_CELL_CAP], int cols) {
+  if (cols <= 0) return 0;
+  int dashed = 0;
+  for (int c = 0; c < cols; ++c) {
+    int has_dash = 0;
+    for (int i = 0; cells[c][i]; ++i) {
+      char ch = cells[c][i];
+      if (ch == '-') {
+        has_dash = 1;
+        dashed = 1;
+      } else if (ch != ':' && ch != ' ') {
+        return 0;
+      }
+    }
+    if (!has_dash) return 0;
+  }
+  return dashed;
+}
+
+static int source_line_end_from(int pos) {
+  int end = pos;
+  while (end < file_buf_len && file_buf[end] != '\n' && file_buf[end] != '\r') ++end;
+  return end;
+}
+
+static int source_next_line_from(int end) {
+  if (end >= file_buf_len) return file_buf_len + 1;
+  if (file_buf[end] == '\r' && end + 1 < file_buf_len && file_buf[end + 1] == '\n') return end + 2;
+  return end + 1;
+}
+
+static int table_col_cap(int cols) {
+  if (cols <= 2) return 30;
+  if (cols == 3) return 22;
+  if (cols == 4) return 16;
+  return 12;
+}
+
+static int table_total_chars(const int *widths, int cols) {
+  int total = 1;
+  for (int c = 0; c < cols; ++c) total += widths[c] + 3;
+  return total;
+}
+
+static void table_fit_widths(int *widths, int cols) {
+  int minw = cols >= 5 ? 4 : 5;
+  while (table_total_chars(widths, cols) > TABLE_MAX_CHARS) {
+    int widest = -1;
+    for (int c = 0; c < cols; ++c)
+      if (widths[c] > minw && (widest < 0 || widths[c] > widths[widest])) widest = c;
+    if (widest < 0) break;
+    --widths[widest];
+  }
+}
+
+static void table_compute_widths(TableRow *rows, int row_count, int cols, int *widths) {
+  int cap = table_col_cap(cols);
+  for (int c = 0; c < cols; ++c) widths[c] = cols >= 5 ? 4 : 5;
+  for (int r = 0; r < row_count; ++r) {
+    for (int c = 0; c < cols; ++c) {
+      int n = strlen(rows[r].cells[c]);
+      if (n > cap) n = cap;
+      if (n > widths[c]) widths[c] = n;
+    }
+  }
+  if (cols <= 3) table_fit_widths(widths, cols);
+}
+
+static int table_pixel_width(const int *widths, int cols) {
+  int total = 1;
+  for (int c = 0; c < cols; ++c) total += widths[c] * TABLE_CHAR_PX + TABLE_PAD_X * 2 + 1;
+  return total;
+}
+
+static void table_col_positions(const int *widths, int cols, int *colpos) {
+  colpos[0] = 0;
+  for (int c = 0; c < cols; ++c)
+    colpos[c + 1] = colpos[c] + widths[c] * TABLE_CHAR_PX + TABLE_PAD_X * 2 + 1;
+}
+
+static int collect_table_block(int pos, int source_line, TableRow *rows, int *row_count,
+                               int *cols_out, int *next_pos, int *next_source_line) {
+  int count = 0, cols = 0, cur = pos, line_no = source_line;
+  while (cur <= file_buf_len && count < MAX_TABLE_ROWS) {
+    int end = source_line_end_from(cur);
+    int len = end - cur;
+    if (len <= 0 || !table_like(file_buf + cur, len)) break;
+    char cells[MAX_TABLE_COLS][TABLE_CELL_CAP];
+    int row_cols = parse_table_row(file_buf + cur, len, cells);
+    if (row_cols <= 0) break;
+    if (table_separator_row(cells, row_cols)) {
+      if (count > 0) rows[count - 1].header = 1;
+    } else {
+      rows[count].cols = row_cols;
+      rows[count].source_line = line_no;
+      rows[count].header = 0;
+      for (int c = 0; c < MAX_TABLE_COLS; ++c)
+        copy_str(rows[count].cells[c], TABLE_CELL_CAP, c < row_cols ? cells[c] : "");
+      if (row_cols > cols) cols = row_cols;
+      ++count;
+    }
+    cur = source_next_line_from(end);
+    ++line_no;
+    if (cur > file_buf_len) break;
+  }
+  *row_count = count;
+  *cols_out = cols;
+  *next_pos = cur;
+  *next_source_line = line_no;
+  return count > 0 && cols > 0;
+}
+
+static int table_segment_count(const char *s, int width) {
+  int len = strlen(s);
+  if (len <= 0) return 1;
+  int count = 0, pos = 0;
+  while (pos < len) {
+    while (pos < len && s[pos] == ' ') ++pos;
+    if (pos >= len) break;
+    int cut = min_int(len, pos + width);
+    int last_space = -1;
+    for (int i = pos; i < cut; ++i)
+      if (s[i] == ' ') last_space = i;
+    if (cut < len && last_space > pos) cut = last_space;
+    if (cut <= pos) cut = min_int(len, pos + width);
+    ++count;
+    pos = cut;
+  }
+  return count > 0 ? count : 1;
+}
+
+static void table_segment_at(const char *s, int width, int wanted, char *out, int cap) {
+  int len = strlen(s);
+  int count = 0, pos = 0;
+  out[0] = 0;
+  while (pos < len) {
+    while (pos < len && s[pos] == ' ') ++pos;
+    if (pos >= len) break;
+    int cut = min_int(len, pos + width);
+    int last_space = -1;
+    for (int i = pos; i < cut; ++i)
+      if (s[i] == ' ') last_space = i;
+    if (cut < len && last_space > pos) cut = last_space;
+    if (cut <= pos) cut = min_int(len, pos + width);
+    if (count == wanted) {
+      clean_cell_copy(out, cap, s + pos, cut - pos);
+      return;
+    }
+    ++count;
+    pos = cut;
+  }
+}
+
 static int ordered_list_marker(const char *s, int len) {
   int p = 0;
   while (p < len && s[p] >= '0' && s[p] <= '9') ++p;
@@ -526,6 +748,14 @@ static int markdown_line(const char *s, int len, int *skip, int *style) {
   return 0;
 }
 
+static void clear_table_meta(int idx) {
+  view_table_cols[idx] = 0;
+  view_table_top[idx] = 0;
+  view_table_bottom[idx] = 0;
+  view_table_header[idx] = 0;
+  for (int c = 0; c <= MAX_TABLE_COLS; ++c) view_table_colpos[idx][c] = 0;
+}
+
 static void push_view_line(int *line, const char *s, int len, int style, int source_line) {
   if (*line >= MAX_VIEW_LINES) return;
   int col = 0;
@@ -546,7 +776,50 @@ static void push_view_line(int *line, const char *s, int len, int style, int sou
   view_lines[*line] = line_store[*line];
   view_style[*line] = (unsigned char)style;
   view_source_line[*line] = (short)source_line;
+  clear_table_meta(*line);
   ++(*line);
+}
+
+static void push_table_line(int *line, const char cells[MAX_TABLE_COLS][TABLE_CELL_CAP],
+                            int source_line, int cols, const int *colpos, int hscroll,
+                            int top, int bottom, int header) {
+  if (*line >= MAX_VIEW_LINES) return;
+  int n = 0;
+  for (int c = 0; c < cols && n + 1 < LINE_CAP; ++c) {
+    if (c) line_store[*line][n++] = '\t';
+    for (int i = 0; cells[c][i] && n + 1 < LINE_CAP; ++i)
+      line_store[*line][n++] = cells[c][i];
+  }
+  line_store[*line][n] = 0;
+  view_lines[*line] = line_store[*line];
+  view_style[*line] = NOTE_TABLE;
+  view_source_line[*line] = (short)source_line;
+  view_table_cols[*line] = (unsigned char)cols;
+  view_table_top[*line] = (unsigned char)top;
+  view_table_bottom[*line] = (unsigned char)bottom;
+  view_table_header[*line] = (unsigned char)header;
+  for (int c = 0; c <= MAX_TABLE_COLS; ++c)
+    view_table_colpos[*line][c] = c <= cols ? (short)(colpos[c] - hscroll * TABLE_CHAR_PX) : 0;
+  ++(*line);
+}
+
+static void push_table_block(int *line, TableRow *rows, int row_count, int cols, int hscroll) {
+  int widths[MAX_TABLE_COLS], colpos[MAX_TABLE_COLS + 1];
+  table_compute_widths(rows, row_count, cols, widths);
+  table_col_positions(widths, cols, colpos);
+  for (int r = 0; r < row_count && *line < MAX_VIEW_LINES; ++r) {
+    int parts = 1;
+    for (int c = 0; c < cols; ++c)
+      parts = max_int(parts, table_segment_count(rows[r].cells[c], widths[c]));
+    for (int part = 0; part < parts && *line < MAX_VIEW_LINES; ++part) {
+      char segs[MAX_TABLE_COLS][TABLE_CELL_CAP];
+      for (int c = 0; c < MAX_TABLE_COLS; ++c) segs[c][0] = 0;
+      for (int c = 0; c < cols; ++c)
+        table_segment_at(rows[r].cells[c], widths[c], part, segs[c], TABLE_CELL_CAP);
+      push_table_line(line, segs, rows[r].source_line, cols, colpos, hscroll,
+                      part == 0, part == parts - 1, rows[r].header);
+    }
+  }
 }
 
 static void add_display_line(int *line, const char *s, int len, int hscroll, int preserve, int style, int source_line) {
@@ -601,49 +874,59 @@ static void add_display_line(int *line, const char *s, int len, int hscroll, int
     view_lines[*line] = line_store[*line];
     view_style[*line] = (unsigned char)style;
     view_source_line[*line] = (short)source_line;
+    clear_table_meta(*line);
     ++(*line);
     pos = cut;
   }
 }
 
 static int build_view_lines(int hscroll) {
-  int line = 0, start = 0, source_line = 0;
-  for (int i = 0; i <= file_buf_len && line < MAX_VIEW_LINES; ++i) {
-    char c = i < file_buf_len ? file_buf[i] : '\n';
-    if (c == '\r') continue;
-    if (c == '\n') {
-      int len = i - start;
-      if (len <= 0) {
-        line_store[line][0] = 0;
-        view_lines[line] = line_store[line];
-        view_style[line] = NOTE_TEXT;
-        view_source_line[line] = (short)source_line;
-        ++line;
-      } else {
-        int skip = 0, style = NOTE_TEXT;
-        markdown_line(file_buf + start, len, &skip, &style);
-        char tmp[LINE_CAP];
-        const char *src = file_buf + start + skip;
-        int src_len = len - skip;
-        if (style == NOTE_BULLET) {
-          if (skip > 2) {
-            src = file_buf + start;
-            src_len = len;
-          } else {
-            tmp[0] = '-';
-            tmp[1] = ' ';
-            int n = min_int(src_len, LINE_CAP - 3);
-            memcpy(tmp + 2, src, n);
-            tmp[n + 2] = 0;
-            src = tmp;
-            src_len = n + 2;
-          }
-        }
-        add_display_line(&line, src, src_len, hscroll, hscroll > 0 || style == NOTE_TABLE || style == NOTE_CODE, style, source_line);
+  int line = 0, pos = 0, source_line = 0;
+  while (pos <= file_buf_len && line < MAX_VIEW_LINES) {
+    int end = source_line_end_from(pos);
+    int len = end - pos;
+    if (len > 0 && table_like(file_buf + pos, len)) {
+      TableRow rows[MAX_TABLE_ROWS];
+      int row_count = 0, cols = 0, next_pos = pos, next_source = source_line;
+      if (collect_table_block(pos, source_line, rows, &row_count, &cols, &next_pos, &next_source)) {
+        push_table_block(&line, rows, row_count, cols, hscroll);
+        pos = next_pos;
+        source_line = next_source;
+        continue;
       }
-      start = i + 1;
-      ++source_line;
     }
+    if (len <= 0) {
+      line_store[line][0] = 0;
+      view_lines[line] = line_store[line];
+      view_style[line] = NOTE_TEXT;
+      view_source_line[line] = (short)source_line;
+      clear_table_meta(line);
+      ++line;
+    } else {
+      int skip = 0, style = NOTE_TEXT;
+      markdown_line(file_buf + pos, len, &skip, &style);
+      char tmp[LINE_CAP];
+      const char *src = file_buf + pos + skip;
+      int src_len = len - skip;
+      if (style == NOTE_BULLET) {
+        if (skip > 2) {
+          src = file_buf + pos;
+          src_len = len;
+        } else {
+          tmp[0] = '-';
+          tmp[1] = ' ';
+          int n = min_int(src_len, LINE_CAP - 3);
+          memcpy(tmp + 2, src, n);
+          tmp[n + 2] = 0;
+          src = tmp;
+          src_len = n + 2;
+        }
+      }
+      add_display_line(&line, src, src_len, hscroll, hscroll > 0 || style == NOTE_CODE, style, source_line);
+    }
+    pos = source_next_line_from(end);
+    ++source_line;
+    if (pos > file_buf_len) break;
   }
   return line;
 }
@@ -715,19 +998,32 @@ static int view_line_for_source_match(int source_line, const SearchPattern *sp, 
 }
 
 static int max_file_line_scroll() {
-  int max_scroll = 0, start = 0;
-  for (int i = 0; i <= file_buf_len; ++i) {
-    char c = i < file_buf_len ? file_buf[i] : '\n';
-    if (c == '\r') continue;
-    if (c == '\n') {
-      int len = i - start;
-      if (len > 0) {
-        int visible = fit_visible_chars(file_buf + start, len, 0);
-        int scroll = len > visible ? len - 1 : 0;
+  int max_scroll = 0, pos = 0, source_line = 0;
+  while (pos <= file_buf_len) {
+    int end = source_line_end_from(pos);
+    int len = end - pos;
+    if (len > 0 && table_like(file_buf + pos, len)) {
+      TableRow rows[MAX_TABLE_ROWS];
+      int row_count = 0, cols = 0, next_pos = pos, next_source = source_line;
+      if (collect_table_block(pos, source_line, rows, &row_count, &cols, &next_pos, &next_source)) {
+        int widths[MAX_TABLE_COLS];
+        table_compute_widths(rows, row_count, cols, widths);
+        int over = table_pixel_width(widths, cols) - ((int)NOTE_X_LIMIT - VIEW_X);
+        int scroll = over > 0 ? (over + TABLE_CHAR_PX - 1) / TABLE_CHAR_PX : 0;
         if (scroll > max_scroll) max_scroll = scroll;
+        pos = next_pos;
+        source_line = next_source;
+        continue;
       }
-      start = i + 1;
     }
+    if (len > 0) {
+      int visible = fit_visible_chars(file_buf + pos, len, 0);
+      int scroll = len > visible ? len - 1 : 0;
+      if (scroll > max_scroll) max_scroll = scroll;
+    }
+    pos = source_next_line_from(end);
+    ++source_line;
+    if (pos > file_buf_len) break;
   }
   return max_scroll;
 }
@@ -905,7 +1201,86 @@ static void notes_print_with_matches(int x, int y, const char *line, int fg, int
   }
 }
 
-static void print_note_line(int x, int y, const char *line, int style, const SearchPattern *sp) {
+static void note_vline(int x, int y1, int y2, unsigned short color) {
+  if (x < 0 || x >= LCD_WIDTH_PX) return;
+  if (y1 < 24) y1 = 24;
+  if (y2 >= LCD_HEIGHT_PX - 18) y2 = LCD_HEIGHT_PX - 19;
+  for (int y = y1; y <= y2; ++y) ui_pixel(x, y, color);
+}
+
+static void note_hline_clip(int x1, int x2, int y, unsigned short color) {
+  if (y < 24 || y >= LCD_HEIGHT_PX - 18) return;
+  if (x1 < VIEW_X) x1 = VIEW_X;
+  if (x2 > (int)NOTE_X_LIMIT) x2 = NOTE_X_LIMIT;
+  if (x1 > x2) return;
+  ui_hline(x1, x2, y, color);
+}
+
+static void note_fill_clip(int x1, int y1, int x2, int y2, unsigned short color) {
+  if (x1 < VIEW_X) x1 = VIEW_X;
+  if (x2 > (int)NOTE_X_LIMIT) x2 = NOTE_X_LIMIT;
+  if (y1 < 24) y1 = 24;
+  if (y2 >= LCD_HEIGHT_PX - 18) y2 = LCD_HEIGHT_PX - 19;
+  if (x1 >= x2 || y1 >= y2) return;
+  ui_fill(x1, y1, x2 - x1, y2 - y1, color);
+}
+
+static const char *table_cell_span(const char *line, int col, int *len) {
+  static char empty[] = "";
+  int cur = 0, start = 0, i = 0;
+  while (line && line[i]) {
+    if (line[i] == '\t') {
+      if (cur == col) {
+        *len = i - start;
+        return line + start;
+      }
+      ++cur;
+      start = i + 1;
+    }
+    ++i;
+  }
+  if (cur == col) {
+    *len = i - start;
+    return line + start;
+  }
+  *len = 0;
+  return empty;
+}
+
+static void print_table_line(int idx, int y, const SearchPattern *sp) {
+  int cols = view_table_cols[idx];
+  if (cols <= 0) return;
+  int top = y - 2, bottom = y + VIEW_ROW_H - 2;
+  int x0 = VIEW_X + view_table_colpos[idx][0];
+  int x1 = VIEW_X + view_table_colpos[idx][cols];
+  if (view_table_header[idx]) note_fill_clip(x0, top + 1, x1, bottom, RGB565(233, 241, 252));
+  for (int c = 0; c <= cols; ++c)
+    note_vline(VIEW_X + view_table_colpos[idx][c], top, bottom, UI_GRAY);
+  if (view_table_top[idx]) note_hline_clip(x0, x1, top, UI_GRAY);
+  if (view_table_bottom[idx]) note_hline_clip(x0, x1, bottom, UI_GRAY);
+  for (int c = 0; c < cols; ++c) {
+    int tx = VIEW_X + view_table_colpos[idx][c] + TABLE_PAD_X;
+    int cell_right = VIEW_X + view_table_colpos[idx][c + 1] - TABLE_PAD_X;
+    if (cell_right < VIEW_X || tx > (int)NOTE_X_LIMIT) continue;
+    int len = 0;
+    const char *cell = table_cell_span(view_lines[idx], c, &len);
+    if (len <= 0) continue;
+    char tmp[TABLE_CELL_CAP];
+    int n = min_int(len, TABLE_CELL_CAP - 1);
+    memcpy(tmp, cell, n);
+    tmp[n] = 0;
+    notes_print_with_matches(tx, y, tmp,
+                             view_table_header[idx] ? UI_BLUE : UI_BLACK,
+                             view_table_header[idx] ? RGB565(233, 241, 252) : UI_WHITE,
+                             UI_MATCH_TEXT, sp);
+  }
+}
+
+static void print_note_line(int idx, int x, int y, const char *line, int style, const SearchPattern *sp) {
+  if (style == NOTE_TABLE) {
+    print_table_line(idx, y, sp);
+    return;
+  }
   int fg = UI_BLACK, bg = UI_WHITE;
   int match_fg = UI_MATCH_TEXT;
   if (style == NOTE_H1) {
@@ -924,7 +1299,7 @@ static void print_note_line(int x, int y, const char *line, int style, const Sea
     x += 4;
   } else if (style == NOTE_RULE) {
     fg = UI_GRAY;
-  } else if (style == NOTE_TABLE || style == NOTE_CODE) {
+  } else if (style == NOTE_CODE) {
     fg = UI_H3_TEXT;
   }
   int p = 0;
@@ -964,7 +1339,7 @@ static void notes_text_page(const char *title, const char *const *lines, int cou
     const char *line = lines[top + i];
     int y = VIEW_TOP + i * VIEW_ROW_H;
     if (!line[0]) continue;
-    print_note_line(VIEW_X, y, line, view_style[top + i], sp);
+    print_note_line(top + i, VIEW_X, y, line, view_style[top + i], sp);
   }
   ui_flush();
 }

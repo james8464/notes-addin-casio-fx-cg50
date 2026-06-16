@@ -1,0 +1,17 @@
+# Subnet masking
+
+Networks can be divided into smaller networks, called subnets
+
+## Subnet Masks
+
+- Purpose: work out the network identifier part of IP address
+- essentially once the process has been applied, what remains is the network identifier
+
+### Process (using Example Subnet Mask, But Could Be Something Else)
+
+  - NOTE: each subnet has 2 reserved host numbers that cannot be given to devices joining the subnet
+      - These are:
+- Broadcast IP address
+- Network IP address
+      - So, when calculating the max num of hosts a subnet can hold, use the formula:
+        - 2^n -2 (where n is the number of host bits in subnet mask)

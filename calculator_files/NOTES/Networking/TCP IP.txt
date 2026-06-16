@@ -1,0 +1,104 @@
+# TCP IP
+
+= set of communication protocols used to connect hosts on a network
+- allows computers on the same network to identify and communicate with each other
+- TCP - responsible for end-to-end communication
+- IP - responsible for routing packets from host to host
+
+## The Layers
+
+| Layer | Role |
+| --- | --- |
+| Application | Selects and uses the correct protocol to transmit data; Interacts with the user via application software (e.g., a browser) |
+| Transport | Establishes end-to-end connection between sender and receiver; Then it splits the data into packets and adds header information (e.g., port number); Performs error detection |
+| Network | Provides the correct IP addresses for each packet's source + destination; i.e., adds source/destination IP addresses to packet; Routers work within the network layer, so all the functions of the router can be said to be functions of the network layer.; i.e., performs routing (choosing next hop), performs error detection on the packet header |
+| Link | Controls physical connections between pieces of hardware in a network; Adds MAC addresses to packets received from network layer |
+
+## The Process
+
+- The file is passed down each layer in turn
+- Application layer
+  - Application software (e.g., file server) prepares the file
+  - Selects protocol (e.g., FTP, SMB etc)
+  - Data is passed to transport layer
+- Transport layer
+  - Establishes an end-to-end connection
+  - Splits the file into packets
+  - Adds:
+    - Sequence numbers
+    - Port numbers
+  - Passes packets to the network layer
+- Network layer
+  - Adds:
+    - Source IP address
+    - Destination IP address
+  - Determines routing across networks
+  - Passes packets to the link layer
+- Link layer
+  - Adds:
+    - Source MAC address
+    - Destination MAC address
+  - Sends data onto physical medium (e.g., cable)
+- Receiving device - link layer
+  - Receives data from medium
+  - Removes MAC address
+  - Passes packet up
+- Network layer
+  - Removes IP addresses
+  - Passes packet up
+- Transport layer
+  - Uses port number to identify application
+  - Uses sequence numbers to reorder packets
+  - Reassembles data
+- Application layer
+  - Receives complete data
+  - Reconstructs the file
+  - Presents it to the user
+
+= a combination of an IP address and a port number
+
+### Written as
+
+  - IP address : port number
+  - E.g.,
+  - 114.26.20.199:443 <- known as a 'socket address'
+
+## Purpose?
+
+- Specifies which host (IP address) and which application/service on that host (port number) the data should be sent to
+
+## How Sockets Are Used in Communication
+
+### Sending Data
+
+- Application chooses a port number
+- Device has an IP address
+- These combine to form a socket
+- Socket is added to outgoing packets
+
+### Receiving Data
+
+- Packet arrives at device (using IP address)
+- Transport layer reads port number
+- Socket identifies which application should receive the data
+
+= media access control
+
+## Purpose?
+
+- Identifies the hardware a packet should be sent to
+- In routing, its changed with every hop through a network as it needs to be sent to a different router after each hop
+- Unique to every hardware device
+- The physical MAC address is on the NIC
+
+= port numbers with a specific purpose, assigned by IANA
+Below is a table summarising some main port numbers. MEMORISE at least THREE
+
+| Protocol | Port(s) | Purpose |
+| --- | --- | --- |
+| FTP - file transfer protocol | 20 & 21 | Used for sending files between devices; Used for the connection between an FTP server and a client |
+| SSH - secure shell | 22 | Used for remote management of devices; Requires username + password; Information is encrypted during transmission; Essentially, you can run commands from another computer |
+| HTTP - hypertext transfer protocol | 80 | i.e., for loading webpages |
+| HTTPS - hypertext transfer protocol secure | 443 | Same as HTTP, but with encryption |
+| POP3 - post office protocol 3 | 110 & 995 | Used for retrieving emails from an email server |
+| SMTP - simple mail transfer protocol | 25 & 587 & 465 | Used to send/transmit/receive emails |

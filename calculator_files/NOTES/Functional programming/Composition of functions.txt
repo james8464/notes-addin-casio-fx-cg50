@@ -1,0 +1,10 @@
+# Composition of functions
+
+= the process of combining a series of functions into a single function
+NOTE: its exactly the same as function composition in maths
+
+### Example
+
+  - f(x) = 2x + 3
+  - g(x) = 4x
+  - g(f(x)) = 4( 2x + 3 )

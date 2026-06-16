@@ -1,0 +1,110 @@
+# Functional language programs
+
+The following symbols can be used, same as python...
+- +
+- -
+- *
+- /
+
+### Example
+
+ghci> 2 + 15
+17
+ghci> 49 * 100
+4900
+ghci> 1892 - 1472
+420
+ghci> 5 / 2
+2.5
+ghci>
+
+Same as in python.
+Used to make the precedence explicit or change it
+Also makes the code more readable for humans
+
+### Example
+
+ghci> (50 * 100) - 4999
+1
+ghci> 50 * 100 - 4999
+1
+ghci> 50 * (100 - 4999)
+-244950
+
+### The Available Operations Are
+
+- && meaning and
+- || meaning or
+- NOT which negates a True or a False
+
+### Example
+
+ghci> True && False
+False
+ghci> True && True
+True
+ghci> False || True
+True
+ghci> not False
+True
+ghci> not (True && True)
+False
+The following equality comparisons can be used in addition:
+- '==' which means is equal to
+- '/=' which means is not equal to
+
+### Example
+
+ghci> 5 == 5
+True
+ghci> 1 == 0
+False
+ghci> 5 /= 5
+False
+ghci> 5 /= 4
+True
+ghci> "hello" == "hello"
+True
+
+### 'succ'
+
+- Takes anything that has a defined successor
+- returns that successor
+
+### Example
+
+ghci> succ 8
+9
+
+### 'min' and 'max'
+
+- Takes two inputs
+- 'min' returns the one that is lesser
+- 'max' returns the one that is greater
+
+### Example
+
+ghci> min 9 10
+9
+ghci> max 100 101
+101
+
+## Example 1
+
+doubleMe x = x + x
+  - When that file is run, it can be used like following:
+ghci> doubleMe 9
+18
+ghci> doubleMe 8.3
+16.6
+
+## Example 2
+
+doubleUs x y = x*2 + y*2
+  - When that file is run, it might look like the following:
+ghci> doubleUs 4 9
+26
+ghci> doubleUs 2.3 34.2
+73.0
+ghci> doubleUs 28 88 + doubleMe 123
+478

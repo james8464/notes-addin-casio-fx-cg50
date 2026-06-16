@@ -1,0 +1,35 @@
+# Network Address Translation (NAT)
+
+= network address translation
+- maps multiple private IP addresses in a LAN to a single public IP address for internet access
+
+## Process
+
+  - Imagine a device on a LAN wants to load a webpage:
+- The device sends the request
+  - Uses its private IP address
+  - Sends the packet to the router
+- The router performs NAT
+  - The request if recorded in a NAT table
+  - This stores:
+    - Private IP address
+    - Port number (i.e., identifying the app the request is coming from on the host)
+- The router replaces the source IP address
+  - Replaces private IP with its own public IP address
+  - May also change the port number
+- The packet is sent to the internet
+  - To the internet, it appears to come from the router (since that's what the public IP on the request links back to)
+  - Not the original device
+- The web server responds
+  - Sends response back to the router's public IP
+- The router receives the response
+  - Checks the NAT table
+  - Finds which internal device made the request
+- The router translates the address back
+  - Replaces
+    - Public IP -> private IP
+  - Uses stored port number to identify correct device
+- The router forwards the response
+- The device receives the webpage
+  - Data is passed to the correct application (via the port number)
+  - Web browser loads/renders the HTML webpage to a user-friendly format

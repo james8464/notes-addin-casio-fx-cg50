@@ -1,0 +1,12 @@
+# Function application
+
+### Define the Term 'function Application'
+
+- applying the function rule to the arguments of a function
+  - E.g.,
+  - Consider this function:
+      - add3Integers x y z = x + y + z
+      - type declaration:
+      - add3Integers :: integer -> integer -> integer-> integer
+      - Using partial function application
+      - add3Integers :: integer -> (integer -> (integer -> integer))

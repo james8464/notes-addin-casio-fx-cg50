@@ -1,0 +1,44 @@
+# MIDI
+
+## What Is MIDI
+
+- musical instrument digital interface
+- a protocol that allows computers, musical instruments and other hardware to communicate
+- a communication standard that allows digital music gear to speak the same language
+
+## How Does MIDI Work
+
+- music is represented as a sequence of MIDI (event) messages
+- Examples of data that might be included in a message:
+  - Channel
+  - Note on/off
+  - Pitch/frequency/note number
+  - Volume
+  - Duration
+  - Velocity
+  - Key pressure
+  - Timbre
+  - Instrument
+  - Pedal effects
+  - Pitch bend
+  - Note envelope
+- event messages essentially represent an event in a piece of music (think of it as a series of instructions which could be used to recreate a piece of music)
+
+## Advantages of Using MIDI
+
+- More compact representation
+- Easy to modify/edit notes
+- Simple method to compose algorithmically
+- Musical score can be generated directly from a MIDI file
+- No data lost about musical notes (technically lossless)
+- No background noise recorded
+- MIDI files are often smaller in size as only instructions to recreate each sound are stored
+DISADVANTAGES OF USING MIDI (not technically in the spec, but good to know)
+- Not suitable for recording real sound/audio
+- Limited realism
+  - Hard to accurately replicate expressive, natural sounds (e.g., human voice or live instruments)
+- No recording of ambient sound (ie real world context)
+- Requires compatible software/hardware to play properly
+- Can sound artificial/computer-generated
+- Limited to musical note data
+  - Cannot store full audio effects like reverb, distortion or nuanced timbre in detail

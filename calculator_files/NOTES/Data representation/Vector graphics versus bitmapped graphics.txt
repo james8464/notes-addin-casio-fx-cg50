@@ -1,0 +1,20 @@
+# Vector graphics versus bitmapped graphics
+
+## Comparison
+
+|  | Bitmapped (raster) graphics | Vector graphics |
+| --- | --- | --- |
+| Advantages | Very realistic images (good for photos); High detail and subtle colour variation; Easy to edit at pixel level; Widely supported formats (JPEG, PNG); Simple to capture (cameras); No processing needed to render (just display pixels) | Can be scaled without loss of quality (resolution independent); Smaller file sizes; Sharp, clean lines; Easy to edit objects (move, resize shapes); Ideal for logos, icons, diagrams; Good for printing at any size; Lower memory usage when stored |
+| Disadvantages | Large file sizes (especially high resolution); Pixelation when enlarged; Quality depends on resolution; Not easily scalable; Editing large images can be slow | Not suitable for realistic images/photos; Cannot represent fine detail or complex textures well; More processing required to render; Limited colour realism compared to bitmaps |
+
+## Uses for Bitmap Images
+
+- Real-world photography
+- Photos of people
+
+## Uses for Vector Graphics
+
+- Company logos
+- Diagrams
+- Charts
+- icons

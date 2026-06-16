@@ -9,6 +9,8 @@
 dump*
 calculator_files/*
 !calculator_files/.gitkeep
+!calculator_files/NOTES/
+!calculator_files/NOTES/**
 build/
 graphify-out/
 .DS_Store

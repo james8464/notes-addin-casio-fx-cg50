@@ -1,0 +1,214 @@
+# Input and output devices
+
+## Characteristics
+
+- Optical scanner
+  - uses light to read printed barcodes and converts them to digital data
+- Types:
+  - Pen-type readers
+  - Laser scanners
+  - CCD (charged-coupled device) readers
+  - Camera-based readers
+- Accuracy:
+  - Very accurate
+  - Can quickly capture data, reducing human error
+- Portability
+  - Portable and can be handheld
+  - Convenient for use
+
+## Purposes
+
+- Inventory management
+  - retail and warehouses use it for tracking inventory and managing stock levels
+- Point of Sale (POS)
+  - checkout systems for scanning products and processing sales transactions
+- Asset tracking
+  - tracking assets and equipment in various industries
+  - ensures accurate record-keeping
+- Logistics
+  - tracks shipments and manages the movement of goods
+  - widely used in supply chain management
+
+## Suitability
+
+- Retail
+  - quick + accurate scanning of products is essential for efficient checkout and inventory management
+- Warehousing
+  - streamline inventory tracking
+  - reduces errors in stock management
+- Healthcare
+  - e.g., tracking medications, patient records, medical equipment, etc
+
+## Principles of Operation
+
+- A light source (ie laser) is shone at barcode
+- A moving prism moves light beam across barcode (or the user moves reader across)
+- Light is reflected back (ie from the barcode, back to the reader)
+  - Black bars absorb more light
+  - White spaces reflect more light
+- A light sensor detects the reflected light and converts it into an electrical signal
+- The electrical signal is processed and translated into binary data via ADC
+- The binary data is sent to a connected device (e.g., a computer) for further processing
+
+## Characteristics
+
+- Resolution
+  - images are captured in megapixels (MP)
+  - higher MP = better quality
+  - common resolutions range from 12 MP to over 50 MP
+- Storage
+  - images are stored on memory cards (e.g., SD cards)
+- LCD screen
+  - allows users to preview and review images
+- Zoom
+  - optical and digital zoom
+  - optical zoom - camera's lens used to magnify image
+  - digital zoom - image is enlarged digitally
+- Shooting modes
+  - various shooting modes (e.g., portrait, landscape, night mode)
+  - allows for different styles of photography
+
+## Purposes
+
+- Photography
+  - capturing images for personal, professional or artistic purposes
+- Videography
+  - can record high-definition video
+- Documentation
+  - can be useful to document events so they can be remembered/referenced
+- Content creation
+  - e.g., producing media for social platforms
+
+## Suitability
+
+- Professional use
+  - offers advanced features and high resolution that professionals can take advantage of
+- Amateur photography
+  - anybody can learn photography, starting from nowhere
+- Travel/everyday use
+  - compact digital cameras are convenient for everyday use + travel
+
+## Principles of Operation
+
+- The camera's lens focuses light onto the sensor
+  - The amount of light is controlled by the aperture/diapgragm
+  - The duration of exposure is controlled by the shutter speed
+- The sensor (e.g., a CCD) converts the light into electrical signals
+  - Each photosite on the sensor corresponds to a pixel in the final image
+- The electrical signals are converted to digital data via an ADC
+- The digital data is processed by the camera's image processor
+  - Adjusts colour, contrast and sharpness
+- The processed image is stored on the memory card
+- The captured image can be viewed on the camera's LCD screen, and can be transferred from the memory card onto an external supported device
+
+## Characteristics
+
+- Print quality
+  - high quality printouts
+  - excellent resolution and sharpness (better than inkjet printers)
+  - ideal for text and graphics
+- Speed
+  - known for having EXTREMELY fast printing speeds
+  - can print multiple pages per minute
+  - significantly faster than inkjet printers
+- Cost efficiency
+  - initial costs can be high (i.e. the printer itself)
+  - cost per page is very low (so good for high-volume printing)
+- Durability/reliability
+  - can handle large print volumes without frequent maintenance
+- Noise level
+  - operate quietly compared to inkjet printers
+
+## Purposes
+
+- It prints ...
+
+## Suitability
+
+- Office printing
+  - high speed + efficiency + low cost per page
+- High volume printing
+  - e.g., in schools, businesses and print shops
+- Professional documents
+  - e.g., brochures, flyers and business cards
+
+## Principles of Operation
+
+- A laser beam projects an image of the page onto a photosensitive drum coated with a photoconductive material
+- The drum is given a uniform electrostatic charge
+- The laser beam discharges certain areas of the drum
+  - It moves across the drum via a prism (or rotating mirror)
+  - Creates an electrostatic image of the page
+- Toner (a fine powder) is attracted to the charged areas of the drum
+- The toner adheres to the electrostatic image of the drum
+- The toner image is transferred from the drum to a sheet of paper
+- The paper then passes through a pair of heated rollers
+  - The toner is melted onto the paper, creating a permanent image
+
+## Characteristics
+
+- Non-contact communication
+  - relies on electromagnetic waves
+  - the waves communicate between the RFID tag and the reader
+  - no need for physical contact
+- Speed
+  - can read/write data extremely quickly
+  - often in less than 100 milliseconds
+- Uniqueness
+  - each RFID tag has a unique identifier
+  - ensures precise identification of objects
+- Versatility
+  - RFID tags can be passive, active, or semi-passive
+
+## Purposes
+
+- Inventory management
+  - widely used for tracking inventory in warehouses and retail stores
+  - provides real-time data on stock levels
+- Access control
+  - used in security systems for controlling access to buildings/restricted areas
+- Asset tracking
+  - used to track valuable assets (e.g., equipment, vehicles)
+  - ensures their location is always known
+- Supply chain management
+  - improves efficiency in supply chains
+  - automates the tracking of goods from production to delivery
+
+## Suitability
+
+- High-speed identification
+  - can rapidly identity many items
+  - useful in logistics and retail
+- Automation
+  - ideal for automating processes
+  - reduces the need for manual intervention, increasing efficiency
+- Complex environments
+  - can operate effectively in various environments, including those with high-speed moving objects and multiple tags
+
+## Principles of Operation
+
+- RFID tags
+  - contains microchip and an antenna
+  - microchip stores data
+  - antenna transmits and receives signals
+- RFID readers
+  - emit radio waves that activate RFID tags
+  - the tags respond by sending their stored data back to the reader
+- Communication
+  - reader processes the received data
+  - reader can interact with backend databases to update/retrieve information
+
+### Types of Tags
+
+- Passive
+  - powered by the reader's signal
+  - short range
+  - used for applications like inventory tracking
+- Active
+  - powered by an internal battery
+  - longer range than passive tags
+  - used for tracking assets over larger distances
+- Semi-passive
+  - combines features of both active and passive tags
+  - uses an internal battery to power microchip
+  - still relies on reader's signal to activate

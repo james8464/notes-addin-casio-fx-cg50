@@ -1,0 +1,29 @@
+# Units
+
+## Names and Symbols for Powers of 2
+
+| Name | Symbol | Power |
+| --- | --- | --- |
+| Kibi | Ki | 2^10 |
+| Mebi | Mi | 2^20 |
+| Gibi | Gi | 2^30 |
+| Tebi | Ti | 2^40 |
+
+## Names and Symbols for Powers of 10
+
+| Name | Symbol | Power |
+| --- | --- | --- |
+| Kilo | K | 10^3 |
+| Mega | M | 10^6 |
+| Giga | G | 10^9 |
+| Tera | T | 10^12 |
+
+## Useful Acronym
+
+  - Brilliant = byte
+  - Katie = kibi/kilo
+  - Managed = mebi/mega
+  - Gardening = gibi/giga
+  - Tasks = tebi/tera
+  - Perfectly, = pebi/peba // BEYOND A-LEVEL SYLLABUS
+  - Exciting! = exi/exa // BEYOND A-LEVEL SYLLABUS

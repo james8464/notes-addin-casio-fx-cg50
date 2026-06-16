@@ -1,0 +1,14 @@
+# Vector graphics
+
+  - Represents images using geometric objects/shapes
+    - E.g., rectangles, lines, circles ...
+  - Properties (e.g., fill colour, fill style, dimensions, position) are stored in a list for each object
+
+See the example below, taken from PMT
+
+## Uses
+
+- CAD packages
+- 2D/3D programs
+- Chart, logo, map, plan, clipart
+- SVG images

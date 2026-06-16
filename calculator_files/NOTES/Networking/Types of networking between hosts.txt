@@ -1,0 +1,78 @@
+# Types of networking between hosts
+
+## How It Works
+
+- On the basic principle of sender and receiver
+- To initiate any communication and sharing of resources, the client must make a request to the server
+- The server then responds to that request, providing the requested resources
+- Different servers specialise in different things
+  - E.g., database servers, file servers, emails servers
+
+## The Websocket Protocol
+
+- An example of an API
+- Operates in the application layer of the TCP/IP stack
+- Provides a constant stream of information between 2 devices (usually client's web browser and a server)
+- The connection is full-duplex (data can be transmitted in both directions simultaneously)
+- Allows the client and server to communicate on an ongoing bases without the need to constantly refresh a full web page
+- Allows for fast transmission of data by reducing the size of packet headers
+
+### Where Used?
+
+- Video streaming
+- Online games
+- Instant messaging
+
+## Crud
+
+- Its an acronym
+- Stands for:
+  - Create
+  - Retrieve
+  - Update
+  - Delete
+- These are the operations you can perform on data (e.g. in a database)
+- Each CRUD command thus has a SQL equivalent:
+
+| CRUD | SQL |
+| --- | --- |
+| Create | INSERT |
+| Retrieve | SELECT |
+| Update | UPDATE |
+| Delete | DELETE |
+
+## Rest
+
+- Its an acronym
+- Stands for:
+  - Representational state transfer
+- Its a design methodology for online database applications that are queried with a web browser
+- A way of designing how systems communicate over a network
+- It uses 4 HTTP request methods to query databases:
+
+| HTTP | SQL |
+| --- | --- |
+| POST | INSERT |
+| GET | SELECT |
+| PUT | UPDATE |
+| DELETE | DELETE |
+
+### 🧠 Key Difference (this Is What Examiners Want)
+
+- CRUD -> what you want to do to data
+- REST -> how you do it over a network
+
+### Xml vs Json
+
+| Feature | XML (extensible markup language) | JSON (JavaScript object notation) |
+| --- | --- | --- |
+| Format type | Markup language (tag-based) | Data-interchange format (key-value pairs) |
+| Structure | Uses nested tags | Uses objects and arrays |
+| Readability (human POV) | More verbose, harder to read | More compact, easier to read |
+| Size | Larger (more tags -> more data) | Smaller (less overhead) |
+| Processing speed | Slower to parse | Faster to parse |
+| Ease of use | More complex syntax | Simpler syntax |
+| Flexibility | Very flexible (custom tags) | Less flexible but sufficient for most uses |
+| Data types | All data treated as text | Supports multiple data types (numbers, strings, arrays, etc) |
+| Usage | Older systems, document storage | Web APIs, modern applications |
+| Example | <name>Bob</name> | "name": "Bob" |
