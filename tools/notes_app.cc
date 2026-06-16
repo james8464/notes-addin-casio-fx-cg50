@@ -870,44 +870,42 @@ static int style_x_offset(int style) {
   return 0;
 }
 
-static int segment_fits_screen(const char *s, int start, int end, int indent, int xpad) {
+static int segment_fits_screen(const char *s, int start, int end, int indent, int xpad, int strip_inline) {
   char tmp[LINE_CAP];
   int col = 0;
   for (int i = 0; i < indent && col + 1 < LINE_CAP; ++i) tmp[col++] = ' ';
-  for (int i = start; i < end && col + 1 < LINE_CAP; ++i) {
-    char c = s[i] == '\t' ? ' ' : s[i];
-    if (c >= 32 && c <= 126) tmp[col++] = c;
-  }
+  if (col + 1 < LINE_CAP)
+    col += copy_display_text(tmp + col, LINE_CAP - col, s + start, end - start, strip_inline);
   tmp[col] = 0;
   return mini_width(tmp, col) <= (int)(NOTE_X_LIMIT - VIEW_X - xpad);
 }
 
-static int fit_visible_chars(const char *s, int len, int indent, int xpad) {
+static int fit_visible_chars(const char *s, int len, int indent, int xpad, int strip_inline) {
   if (!s || len <= 0) return 0;
   int take = 0;
   int cap = LINE_CAP - indent - 1;
   if (cap < 1) cap = 1;
   for (int i = 1; i <= len && i <= cap; ++i) {
-    if (!segment_fits_screen(s, 0, i, indent, xpad)) break;
+    if (!segment_fits_screen(s, 0, i, indent, xpad, strip_inline)) break;
     take = i;
   }
   return take > 0 ? take : 1;
 }
 
-static int fit_suffix_chars(const char *s, int len, int indent, int xpad) {
+static int fit_suffix_chars(const char *s, int len, int indent, int xpad, int strip_inline) {
   if (!s || len <= 0) return 0;
   int take = 0;
   int cap = LINE_CAP - indent - 1;
   if (cap < 1) cap = 1;
   for (int i = 1; i <= len && i <= cap; ++i) {
-    if (!segment_fits_screen(s, len - i, len, indent, xpad)) break;
+    if (!segment_fits_screen(s, len - i, len, indent, xpad, strip_inline)) break;
     take = i;
   }
   return take > 0 ? take : 1;
 }
 
 static int line_end_hscroll(const char *s, int len, int style) {
-  int visible = fit_suffix_chars(s, len, 0, style_x_offset(style));
+  int visible = fit_suffix_chars(s, len, 0, style_x_offset(style), style != NOTE_CODE);
   return len > visible ? len - visible : 0;
 }
 
@@ -1022,7 +1020,7 @@ static void add_display_line(int *line, const char *s, int len, int hscroll, int
   int xpad = style_x_offset(style);
   if (preserve) {
     int start = min_int(hscroll, max_int(0, len - 1));
-    int take = fit_visible_chars(s + start, len - start, 0, xpad);
+    int take = fit_visible_chars(s + start, len - start, 0, xpad, style != NOTE_CODE);
     push_view_line(line, s + start, take, style, source_line);
     return;
   }
@@ -1043,7 +1041,7 @@ static void add_display_line(int *line, const char *s, int len, int hscroll, int
     int last_space = -1;
     for (int i = pos; i < len; ++i) {
       if (s[i] == ' ') last_space = i;
-      if (!segment_fits_screen(s, pos, i + 1, indent, xpad)) {
+      if (!segment_fits_screen(s, pos, i + 1, indent, xpad, style != NOTE_CODE)) {
         if (last_space > pos + 1) cut = last_space;
         else cut = max_int(pos + 1, i);
         break;
