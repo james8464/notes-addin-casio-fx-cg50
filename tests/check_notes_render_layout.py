@@ -250,6 +250,8 @@ def main() -> int:
         errors.append("note page lines can overlap the softkey row")
     if "while (n > 0 && mini_width(s, n) > avail) --n;" not in APP_SOURCE:
         errors.append("table/limited text must shrink before PrintMini clipping")
+    if "if (table_like(s + p, len - p))" in APP_SOURCE:
+        errors.append("markdown fallback must not mark table-like lines as NOTE_TABLE without table metadata")
     if "int scroll = len > visible ? len - 1 : 0;" in APP_SOURCE:
         errors.append("wide-line horizontal scroll must be based on displayed text, not raw source text")
     if "int scroll = len - visible;" in APP_SOURCE:

@@ -753,10 +753,6 @@ static int markdown_line(const char *s, int len, int *skip, int *style) {
     *style = NOTE_CODE;
     return 1;
   }
-  if (table_like(s + p, len - p)) {
-    *style = NOTE_TABLE;
-    return 1;
-  }
   return 0;
 }
 
