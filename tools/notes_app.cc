@@ -99,6 +99,8 @@ static unsigned char view_table_header[MAX_VIEW_LINES];
 static short view_table_colpos[MAX_VIEW_LINES][MAX_TABLE_COLS + 1];
 static char last_query[32] = "";
 static TableRow table_rows[MAX_TABLE_ROWS];
+static char table_parse_cells[MAX_TABLE_COLS][TABLE_CELL_CAP];
+static char table_segment_cells[MAX_TABLE_COLS][TABLE_CELL_CAP];
 
 static int lower_char(int c) {
   if (c >= 'A' && c <= 'Z') return c + 32;
@@ -575,17 +577,16 @@ static int collect_table_block(int pos, int source_line, TableRow *rows, int *ro
     int end = source_line_end_from(cur);
     int len = end - cur;
     if (len <= 0 || !table_like(file_buf + cur, len)) break;
-    char cells[MAX_TABLE_COLS][TABLE_CELL_CAP];
-    int row_cols = parse_table_row(file_buf + cur, len, cells);
+    int row_cols = parse_table_row(file_buf + cur, len, table_parse_cells);
     if (row_cols <= 0) break;
-    if (table_separator_row(cells, row_cols)) {
+    if (table_separator_row(table_parse_cells, row_cols)) {
       if (count > 0) rows[count - 1].header = 1;
     } else {
       rows[count].cols = row_cols;
       rows[count].source_line = line_no;
       rows[count].header = 0;
       for (int c = 0; c < MAX_TABLE_COLS; ++c)
-        copy_str(rows[count].cells[c], TABLE_CELL_CAP, c < row_cols ? cells[c] : "");
+        copy_str(rows[count].cells[c], TABLE_CELL_CAP, c < row_cols ? table_parse_cells[c] : "");
       if (row_cols > cols) cols = row_cols;
       ++count;
     }
@@ -824,7 +825,7 @@ static void push_table_block(int *line, TableRow *rows, int row_count, int cols,
     for (int c = 0; c < cols; ++c)
       parts = max_int(parts, table_segment_count(rows[r].cells[c], widths[c]));
     for (int part = 0; part < parts && *line < MAX_VIEW_LINES; ++part) {
-      char segs[MAX_TABLE_COLS][TABLE_CELL_CAP];
+      char (*segs)[TABLE_CELL_CAP] = table_segment_cells;
       for (int c = 0; c < MAX_TABLE_COLS; ++c) segs[c][0] = 0;
       for (int c = 0; c < cols; ++c)
         table_segment_at(rows[r].cells[c], widths[c], part, segs[c], TABLE_CELL_CAP);
@@ -924,22 +925,11 @@ static int build_view_lines(int hscroll) {
     } else {
       int skip = 0, style = NOTE_TEXT;
       markdown_line(file_buf + pos, len, &skip, &style);
-      char tmp[LINE_CAP];
       const char *src = file_buf + pos + skip;
       int src_len = len - skip;
       if (style == NOTE_BULLET) {
-        if (skip > 2) {
-          src = file_buf + pos;
-          src_len = len;
-        } else {
-          tmp[0] = '-';
-          tmp[1] = ' ';
-          int n = min_int(src_len, LINE_CAP - 3);
-          memcpy(tmp + 2, src, n);
-          tmp[n + 2] = 0;
-          src = tmp;
-          src_len = n + 2;
-        }
+        src = file_buf + pos;
+        src_len = len;
       }
       add_display_line(&line, src, src_len, hscroll, hscroll > 0 || style == NOTE_CODE, style, source_line);
     }

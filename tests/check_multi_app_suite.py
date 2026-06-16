@@ -47,6 +47,10 @@ def main() -> int:
         raise AssertionError("notes search results must show file names, not old TEXT/NAME prefixes")
     if "static int find_line(" in notes_src:
         raise AssertionError("notes file-view search must use source-line matching, not stale wrapped-line search")
+    if "min_int(src_len, LINE_CAP - 3)" in notes_src:
+        raise AssertionError("notes top-level bullet lines must wrap from source, not a capped temporary buffer")
+    if "    char cells[MAX_TABLE_COLS][TABLE_CELL_CAP];" in notes_src or "      char segs[MAX_TABLE_COLS][TABLE_CELL_CAP];" in notes_src:
+        raise AssertionError("notes table scratch buffers must stay static to avoid fx-CG stack corruption")
     if "static const unsigned NOTE_X_LIMIT = LCD_WIDTH_PX - 18;" not in notes_src:
         raise AssertionError("notes text must leave a safe right margin on physical fx-CG screens")
     for required in ["NOTE_H3", "NOTE_H4", "hashes <= 1", "hashes == 2", "hashes == 3"]:
