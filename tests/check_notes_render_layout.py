@@ -268,6 +268,14 @@ def main() -> int:
         errors.append("wrapped lines must cap copied text before line_store writes")
     if "return over > 0 ? (over + TABLE_CHAR_PX - 1) / TABLE_CHAR_PX : 0;" not in APP_SOURCE:
         errors.append("table horizontal scroll must round up to reveal the final table edge")
+    if "NOTE_H1 : (hashes == 2 ? NOTE_H2 : (hashes == 3 ? NOTE_H3 : NOTE_H4))" not in APP_SOURCE:
+        errors.append("markdown headings must map H1/H2/H3/H4 to distinct renderer styles")
+    for marker in ("if (style == NOTE_H1)", "else if (style == NOTE_H2)", "else if (style == NOTE_H3)", "else if (style == NOTE_H4)"):
+        if marker not in APP_SOURCE:
+            errors.append(f"renderer missing distinct heading branch: {marker}")
+    for indent in ("x += 4;", "x += 8;", "x += 12;"):
+        if indent not in APP_SOURCE:
+            errors.append(f"subheading renderer missing indentation: {indent}")
     for path in sorted(NOTES.rglob("*.txt")):
         errors.extend(audit_file(path))
     if errors:

@@ -1,10 +1,10 @@
 # IP address structure
 
-### Network Identifier Part
+## Network Identifier Part
 
 - identifies the network
 
-### Host Identifier Part
+## Host Identifier Part
 
 - identifies the device on the network
 - Each device on a network shares the name network identifier, but has its own host identifier

@@ -11,7 +11,7 @@
   - If the colour depth is n, 2^n colours can be represented
   - Eg a colour depth of 1 (ie 1 bit to represent the colour per pixel) would support 2 colours (2^1)
 
-### Formula to Calculate File Size (of Bitmap Image)
+## Formula to Calculate File Size (of Bitmap Image)
 
   - File size = Resolution * colour depth
   - However, this value is a minimum. In reality, it will be higher due to metadata

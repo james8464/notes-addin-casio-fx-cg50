@@ -1,6 +1,6 @@
 # Network topology
 
-### Physical vs Logical Topology
+## Physical vs Logical Topology
 
 ### Physical Topology
 

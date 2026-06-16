@@ -4,7 +4,7 @@
 - uses TCP/IP for communication
 - primarily a wired infrastructure (e.g., undersea cables connecting continents)
 
-### Isp Hierarchy
+## Isp Hierarchy
 
 - national ISPs provide backbone infrastructure
 - regional/local ISPs connect homes and businesses
@@ -34,6 +34,8 @@
 - routing tables are updated dynamically
 - each packet may take a different route, so they might arrive out of order
   - hence why there is a sequence number in the header
+
+## Packet
 
 - Packet = a container in which data is transmitted over networks
   - e.g., an envelope in the postal system

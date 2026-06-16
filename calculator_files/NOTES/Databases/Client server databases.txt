@@ -1,6 +1,6 @@
 # Client server databases
 
-### Ppq: Concurrent Access Problems
+## Ppq: Concurrent Access Problems
 
 - Two users (read and) edit a record/the same data simultaneously;
 - The update made by the user who saved (the record) first will be lost //
@@ -10,12 +10,12 @@
 - One user writes the record/data back/saves then the other user writes the record/data back/saves;
 - One user's update is lost // only one user's update is the kept; NE. data is lost
 
-### Ppq: Record Locks
+## Ppq: Record Locks
 
 - When a transaction on a record starts / when a user starts to edit a record an (exclusive) lock is set on the record;
 - Other transactions/users cannot edit (A. access) the record/data until the lock is released/while the lock is in place/until the first edit is completed;
 
-### Serialisation
+## Serialisation
 
 - allow transactions on a particular database to take place one at a time, in serial format.
 - Process managed by the DBMS, ensures that each transaction is carried out in the correct sequence to avoid compromising the integrity of the data.
@@ -23,13 +23,13 @@
   - If another transaction is taking place on that record at the same time, then serialisation ensures that the two transactions take place one after each other in the correct order.
   - The DBMS will be used to identify which transactions need serialising and also provide a schedule for dealing with them.
 
-### Ppq: Timestamp Ordering
+## Ppq: Timestamp Ordering
 
 - Timestamps are generated for each transaction // timestamps indicate the order that transactions occurred in;
 - Database records timestamp of last read / last write transaction for each record / data item;
 - Database server applies rules to determine if processing a transaction will result in loss of data integrity/inconsistency (and if so aborts the transaction);
 
-### Commitment Ordering
+## Commitment Ordering
 
 - look at each transaction it has been asked to execute on the database in terms of when it was made but also in terms of whether it should take precedence over other transactions.
 - This depends on the nature of the transaction and what the impact of it is on the database.

@@ -1,6 +1,6 @@
 # IP standards
 
-### Ipv4
+## Ipv4
 
 - dotted quad numbers
 - consists of 4 parts
@@ -12,7 +12,7 @@
 
 ### Example
 
-### Ipv6
+## Ipv6
 
 - consists of 8 parts
 - separated by colons
@@ -22,11 +22,11 @@
 
 ### Example
 
-### Why replacement of IPv4 with IPv6 would mean that NAT is no longer necessary (PPQ)
+## Why replacement of IPv4 with IPv6 would mean that NAT is no longer necessary (PPQ)
 - There are enough (IPv6) addresses for every device (in the world) to have a unique/public/routable (IP) address
   - NE. there are more IPv6 addresses
 
-### Why Was Ipv6 Introduced (ppq)
+## Why Was Ipv6 Introduced (ppq)
 
 - Not enough unique addresses in IPv4
 - Eliminates need for NAT

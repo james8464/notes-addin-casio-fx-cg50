@@ -14,7 +14,7 @@
 
 - Composition is possible because the co-domain of f is the same as the domain of g.
 
-### Example
+## Example
 
   - f(x) = 2x + 3
   - g(x) = 4x

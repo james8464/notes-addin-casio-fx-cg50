@@ -82,6 +82,7 @@ def main() -> int:
         if "Source:" in text or "Syllabus content" in text or "Notes / details of vocab and knowledge" in text:
             errors.append(f"{path}: contains conversion metadata or syllabus-column heading")
         lines = text.splitlines()
+        seen_heading_levels = {1}
         for line_no, line in enumerate(lines, 1):
             if len(line) > READABLE_LINE_CAP:
                 errors.append(f"{path}:{line_no}: line has {len(line)} chars, split it for calculator readability")
@@ -106,6 +107,17 @@ def main() -> int:
                 errors.append(f"{path}:{line_no}: label bullet should be a heading or specific sentence")
             if stripped.lower() in {"## below...", "### below..."}:
                 errors.append(f"{path}:{line_no}: placeholder heading must be replaced")
+            if stripped.startswith("#"):
+                level = len(stripped) - len(stripped.lstrip("#"))
+                if level > 4:
+                    errors.append(f"{path}:{line_no}: heading level {level} is deeper than renderer support")
+                if not stripped[level:].startswith(" "):
+                    errors.append(f"{path}:{line_no}: heading marker must be followed by one space")
+                if not stripped[level:].strip():
+                    errors.append(f"{path}:{line_no}: empty heading")
+                if level > 1 and (level - 1) not in seen_heading_levels:
+                    errors.append(f"{path}:{line_no}: heading level jumps from H{level - 2} to H{level}")
+                seen_heading_levels.add(level)
         first = next((line for line in lines if line.strip()), "")
         if not first.startswith("# "):
             errors.append(f"{path}: first content line must be a level-1 heading")

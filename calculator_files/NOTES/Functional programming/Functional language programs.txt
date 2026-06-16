@@ -6,7 +6,7 @@
 - *
 - /
 
-### Arithmetic Examples
+## Arithmetic Examples
 
 ghci> 2 + 15
 17
@@ -22,7 +22,7 @@ ghci>
 - Used to make the precedence explicit or change it
 - Also makes the code more readable for humans
 
-### Bracket Precedence Examples
+## Bracket Precedence Examples
 
 ghci> (50 * 100) - 4999
 1
@@ -31,13 +31,13 @@ ghci> 50 * 100 - 4999
 ghci> 50 * (100 - 4999)
 -244950
 
-### The Available Operations Are
+## The Available Operations Are
 
 - && meaning and
 - || meaning or
 - NOT which negates a True or a False
 
-### Boolean Examples
+## Boolean Examples
 
 ghci> True && False
 False
@@ -53,7 +53,7 @@ False
 - '==' which means is equal to
 - '/=' which means is not equal to
 
-### Equality Examples
+## Equality Examples
 
 ghci> 5 == 5
 True
@@ -66,23 +66,23 @@ True
 ghci> "hello" == "hello"
 True
 
-### 'succ'
+## 'succ'
 
 - Takes anything that has a defined successor
 - returns that successor
 
-### Succ Example
+## Succ Example
 
 ghci> succ 8
 9
 
-### 'min' and 'max'
+## 'min' and 'max'
 
 - Takes two inputs
 - 'min' returns the one that is lesser
 - 'max' returns the one that is greater
 
-### Min and Max Example
+## Min and Max Example
 
 ghci> min 9 10
 9

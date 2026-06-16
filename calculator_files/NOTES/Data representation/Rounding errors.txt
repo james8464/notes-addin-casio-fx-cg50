@@ -4,7 +4,7 @@
 
 - can never allocate enough bits to store that number since it never ends
 
-### Define the Term 'rounding Error' (re-worded Ppq)
+## Define the Term 'rounding Error' (re-worded Ppq)
 
 - A value cannot be represented exactly in the available number of bits / digits
 - The stored value is rounded or truncated to the nearest representable value, creating a difference between the actual value and the stored value

@@ -426,6 +426,23 @@ def remove_empty_level3_headings(text: str) -> str:
     return clean_note_text("\n".join(line for line, ok in zip(lines, keep) if ok))
 
 
+def normalize_heading_hierarchy(text: str) -> str:
+    lines = text.splitlines()
+    seen = {1}
+    out: list[str] = []
+    for line in lines:
+        if line.startswith("#"):
+            level = len(line) - len(line.lstrip("#"))
+            title = line[level:]
+            while level > 1 and (level - 1) not in seen:
+                level -= 1
+            seen.add(level)
+            out.append("#" * level + title)
+        else:
+            out.append(line)
+    return clean_note_text("\n".join(out))
+
+
 def table_detail_column(table) -> int:
     if not table.rows:
         return 0
@@ -482,7 +499,8 @@ def extract_doc_tables(doc_path: Path, table_names: list[str]) -> list[dict[str,
             elif sections[-1] != "":
                 sections.append("")
             sections.append(text)
-        result.append({"name": table_name, "text": remove_empty_level3_headings(clean_note_text("\n".join(sections))) + "\n"})
+        text = remove_empty_level3_headings(clean_note_text("\n".join(sections)))
+        result.append({"name": table_name, "text": normalize_heading_hierarchy(text) + "\n"})
     return result
 
 

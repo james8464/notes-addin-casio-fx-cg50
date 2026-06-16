@@ -4,7 +4,7 @@
 - each type of processor has its own instruction set
 - instructions for one processor may not be compatible with other processors
 
-### Typically Includes
+## Typically Includes
 
 - data transfer such as LOAD and STORE
 - arithmetic operations such as ADD and SUBTRACT

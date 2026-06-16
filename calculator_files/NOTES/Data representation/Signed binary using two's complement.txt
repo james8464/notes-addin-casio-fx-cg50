@@ -4,12 +4,12 @@
 - AQA uses two's complement
   - It allows for the representation of both positive and negative numbers in binary
 
-### Placeholders in Two's Complement
+## Placeholders in Two's Complement
 
 - The MSB is given a negative place value
 - E.g., the placeholders of a nybble (4 bits) would be:
 
-### Converting to Two's Complement
+## Converting to Two's Complement
 
 - Invert all bits, making 0 -> 1 and 1 -> 0
 - Add one to the number

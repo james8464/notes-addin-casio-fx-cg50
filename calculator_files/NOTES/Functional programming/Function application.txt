@@ -1,6 +1,6 @@
 # Function application
 
-### Define the Term 'function Application'
+## Define the Term 'function Application'
 
 - applying the function rule to the arguments of a function
 - Function application = a function applied to its arguments

@@ -1,6 +1,6 @@
 # The meaning of the stored program concept
 
-### Ppq: Stored Program Concept
+## Ppq: Stored Program Concept
 
 - (Machine code) instructions (A. programs) stored in (main) memory (A. RAM);
 - Instructions (R. programs) are fetched and executed serially/sequentially/in order by a processor (that performs arithmetic and logical operations);
