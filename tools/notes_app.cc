@@ -1055,19 +1055,8 @@ static void add_display_line(int *line, const char *s, int len, int hscroll, int
     if (cut > cap_cut) cut = cap_cut;
     int col = 0;
     for (int k = 0; k < indent && col + 1 < LINE_CAP; ++k) line_store[*line][col++] = ' ';
-    for (int i = pos; i < cut && col + 1 < LINE_CAP; ++i) {
-      int br = html_break_len(s, i, len);
-      if (br) {
-        if (col + 2 < LINE_CAP) {
-          line_store[*line][col++] = ';';
-          line_store[*line][col++] = ' ';
-        }
-        i += br - 1;
-        continue;
-      }
-      char c = s[i] == '\t' ? ' ' : s[i];
-      if (c >= 32 && c <= 126) line_store[*line][col++] = c;
-    }
+    if (col + 1 < LINE_CAP)
+      col += copy_display_text(line_store[*line] + col, LINE_CAP - col, s + pos, cut - pos, style != NOTE_CODE);
     line_store[*line][col] = 0;
     view_lines[*line] = line_store[*line];
     view_style[*line] = (unsigned char)style;

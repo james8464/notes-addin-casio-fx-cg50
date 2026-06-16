@@ -393,6 +393,8 @@ def main() -> int:
         errors.append("notes renderer must handle common html line breaks without duplicated parsing")
     if "copy_display_text" not in APP_SOURCE or "markdown_link_at" not in APP_SOURCE or "single_marker_at" not in APP_SOURCE:
         errors.append("notes renderer must strip simple inline markdown markers through one shared display-copy path")
+    if "copy_display_text(line_store[*line] + col, LINE_CAP - col, s + pos, cut - pos, style != NOTE_CODE)" not in APP_SOURCE:
+        errors.append("wrapped body lines must use the shared markdown display-copy path")
     if clean_inline("Use **bold**, *em*, `code`, [label](url), ![alt](img)") != "Use bold, em, code, label, alt":
         errors.append("inline markdown cleanup model must preserve readable text")
     if clean_inline("Keep 2 * 3 * 4 readable") != "Keep 2 * 3 * 4 readable":
