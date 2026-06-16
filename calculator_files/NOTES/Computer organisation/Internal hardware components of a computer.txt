@@ -1,6 +1,6 @@
 # Internal hardware components of a computer
 
-## Below...
+## Components
 
 | Component | Role |
 | --- | --- |
@@ -52,4 +52,6 @@ Control bus = caries control signals between the CPU and I/O controllers and mem
       - NE. So programs/tasks will run faster
       - NE. More efficient
 
-= the concept of storing data and instruction in a memory with discrete, unique addresses
+## Stored program concept
+
+- Definition: the concept of storing data and instruction in a memory with discrete, unique addresses

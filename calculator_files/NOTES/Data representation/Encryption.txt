@@ -1,6 +1,6 @@
 # Encryption
 
-= the encoding of a message so that the message can only be decrypted and read by the authorised receiver(s)
+- Definition: the encoding of a message so that the message can only be decrypted and read by the authorised receiver(s)
 - Scrambles the data so it cannot be understood if intercepted
 - Keeps data secure during transmission
 Plaintext = the unencrypted message/data

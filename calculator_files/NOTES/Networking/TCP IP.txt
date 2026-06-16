@@ -1,6 +1,6 @@
 # TCP IP
 
-= set of communication protocols used to connect hosts on a network
+- Definition: set of communication protocols used to connect hosts on a network
 - allows computers on the same network to identify and communicate with each other
 - TCP - responsible for end-to-end communication
 - IP - responsible for routing packets from host to host
@@ -62,7 +62,9 @@
   - Reconstructs the file
   - Presents it to the user
 
-= a combination of an IP address and a port number
+## Socket
+
+- Definition: a combination of an IP address and a port number
 
 ### Written as
 
@@ -70,7 +72,7 @@
   - E.g.,
   - 114.26.20.199:443 <- known as a 'socket address'
 
-## Purpose?
+### Socket purpose
 
 - Specifies which host (IP address) and which application/service on that host (port number) the data should be sent to
 
@@ -89,17 +91,21 @@
 - Transport layer reads port number
 - Socket identifies which application should receive the data
 
-= media access control
+## MAC address
 
-## Purpose?
+- Definition: media access control
+
+### MAC address purpose
 
 - Identifies the hardware a packet should be sent to
 - In routing, its changed with every hop through a network as it needs to be sent to a different router after each hop
 - Unique to every hardware device
 - The physical MAC address is on the NIC
 
-= port numbers with a specific purpose, assigned by IANA
-Below is a table summarising some main port numbers. MEMORISE at least THREE
+## Well-known ports
+
+- Definition: port numbers with a specific purpose, assigned by IANA
+- Below is a table summarising some main port numbers. MEMORISE at least THREE
 
 | Protocol | Port(s) | Purpose |
 | --- | --- | --- |

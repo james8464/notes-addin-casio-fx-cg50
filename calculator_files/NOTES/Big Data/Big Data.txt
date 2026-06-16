@@ -1,7 +1,7 @@
 # Big Data
 
-= a catch-all-term for data that doesn't fit the usual containers
-needs processing on multiple devices
+- Definition: a catch-all-term for data that doesn't fit the usual containers
+- needs processing on multiple devices
 
 ## Defining Characteristics
 

@@ -81,6 +81,11 @@ def main() -> int:
         for line_no, line in enumerate(lines, 1):
             if len(line) > READABLE_LINE_CAP:
                 errors.append(f"{path}:{line_no}: line has {len(line)} chars, split it for calculator readability")
+            stripped = line.strip()
+            if stripped.startswith("= "):
+                errors.append(f"{path}:{line_no}: raw definition line must use '- Definition:'")
+            if stripped.lower() in {"## below...", "### below..."}:
+                errors.append(f"{path}:{line_no}: placeholder heading must be replaced")
         first = next((line for line in lines if line.strip()), "")
         if not first.startswith("# "):
             errors.append(f"{path}: first content line must be a level-1 heading")

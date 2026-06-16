@@ -19,7 +19,7 @@ FTP = Method used for transferring files/data across a network, often the intern
 - Most FTP sites require a username and password to authenticate the user, but some sites could be configured to allow anonymous use without the need to login.
 1. Toolbar, 2. Quick connect bar, 3. Message log, 4. Local pane, 5. Remote pane, 6. Transfer queue
 
-= an encrypted protocol that allows secure communication between nodes across a network
+- Definition: an encrypted protocol that allows secure communication between nodes across a network
 
 ## SSH Clients
 

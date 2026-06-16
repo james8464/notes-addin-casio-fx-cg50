@@ -1,6 +1,6 @@
 # Port forwarding
 
-= allows external devices to access internal services
+- Definition: allows external devices to access internal services
 
 ## Why Used
 

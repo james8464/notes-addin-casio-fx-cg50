@@ -1,6 +1,6 @@
 # The Internet and how it works
 
-= global network of interconnected computer networks
+- Definition: global network of interconnected computer networks
 - uses TCP/IP for communication
 - primarily a wired infrastructure (e.g., undersea cables connecting continents)
 

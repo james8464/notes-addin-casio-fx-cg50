@@ -1,6 +1,6 @@
 # Composition of functions
 
-= the process of combining a series of functions into a single function
+- Definition: the process of combining a series of functions into a single function
 
 NOTE: its exactly the same as function composition in maths
 

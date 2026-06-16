@@ -1,6 +1,6 @@
 # Network Address Translation (NAT)
 
-= network address translation
+- Definition: network address translation
 - maps multiple private IP addresses in a LAN to a single public IP address for internet access
 
 ## Process
