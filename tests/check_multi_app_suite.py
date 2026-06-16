@@ -77,10 +77,12 @@ def main() -> int:
         raise AssertionError("notes table detection must require real tab-separated cells")
     if "pipe_separated_cells" not in notes_src:
         raise AssertionError("notes table detection must support markdown pipe tables without leading pipes")
+    if "source_code_like" not in notes_src:
+        raise AssertionError("notes renderer must detect code-like rows before table detection")
     if "if (c == '\\r')" not in notes_src or "clean[out++] = '\\n';" not in notes_src:
         raise AssertionError("notes viewer must normalize CR/CRLF input to LF")
-    if "!table_like(file_buf + next_pos, next_end - next_pos)" not in notes_src:
-        raise AssertionError("notes long tables must not gain blank rows between chunks")
+    if "source_code_like(file_buf + next_pos, next_end - next_pos)" not in notes_src:
+        raise AssertionError("notes long tables must not absorb following code-like rows")
     if "lower_char((unsigned char)out[len - 3]) == 't'" not in notes_src:
         raise AssertionError("notes labels must strip .txt extension case-insensitively")
     if "static const int MAX_TABLE_COLS = 8;" not in notes_src:

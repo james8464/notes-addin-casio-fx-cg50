@@ -59,6 +59,12 @@ def table_like(line: str) -> bool:
     return False
 
 
+def source_code_like(line: str) -> bool:
+    p = len(line) - len(line.lstrip(" "))
+    s = line[p:]
+    return p >= 4 or s.startswith(">>>") or s.startswith("$ ") or s.lower().startswith("ghci>")
+
+
 def clean_cell(text: str) -> str:
     text = text.strip().replace("\t", " ")
     text = re.sub(r"<br>", "; ", text, flags=re.I)
@@ -190,7 +196,7 @@ def audit_file(path: Path) -> list[str]:
     i = 0
     while i < len(src_lines):
         line = src_lines[i]
-        if table_like(line):
+        if table_like(line) and not source_code_like(line):
             start = i + 1
             block: list[tuple[int, list[str]]] = []
             while i < len(src_lines) and table_like(src_lines[i]):
@@ -250,6 +256,10 @@ def main() -> int:
         errors.append("markdown pipe tables without a leading pipe must be treated as tables")
     if table_like("Not a table | "):
         errors.append("single nonempty pipe cell must not be treated as a table")
+    if not source_code_like("    code | not table"):
+        errors.append("indented code lines must be recognised before table detection")
+    if not source_code_like(">>> code | not table"):
+        errors.append("prompt code lines must be recognised before table detection")
     if "min_int(src_len, LINE_CAP - 3)" in APP_SOURCE:
         errors.append("top-level bullet rendering still has LINE_CAP pre-truncation")
     if "clean[out++] = '?';" not in APP_SOURCE:
@@ -298,14 +308,14 @@ def main() -> int:
         errors.append("table horizontal scroll must round up to reveal the final table edge")
     if "pipe_separated_cells" not in APP_SOURCE:
         errors.append("notes table detection must support markdown pipe tables without leading pipes")
-    if "!table_like(file_buf + next_pos, next_end - next_pos)" not in APP_SOURCE:
-        errors.append("long tables must not gain artificial blank rows when chunked")
+    if "source_code_like(file_buf + next_pos, next_end - next_pos)" not in APP_SOURCE:
+        errors.append("long table chunking must not absorb following code-like rows")
     if "note_fill_clip" in APP_SOURCE[APP_SOURCE.find("static void notes_print_with_matches_limit"):APP_SOURCE.find("static void notes_print_with_matches(")]:
         errors.append("search matches must use text colour only, not fill/background highlights")
     if 'if (!jump_to_match(&sp, start_source, 1, &top, &hscroll, &lines, max_line)) {\n          search_prepare(&sp, "");\n          active_search = 0;' not in APP_SOURCE:
         errors.append("failed in-file search must reset search mode so NEXT/PREV keep paging")
-    if "if (len > 0 && table_like(file_buf + start, len)) return NOTE_TABLE;" not in APP_SOURCE:
-        errors.append("search jump styling must detect table source rows")
+    if "if (len > 0 && !source_code_like(file_buf + start, len) && table_like(file_buf + start, len)) return NOTE_TABLE;" not in APP_SOURCE:
+        errors.append("search jump styling must detect table source rows without overriding code rows")
     if "table_hscroll_for_match" not in APP_SOURCE or "colpos[c] / TABLE_CHAR_PX - 1" not in APP_SOURCE:
         errors.append("search jumps in tables must scroll to the matched table column")
     if "style == NOTE_CODE ? max_int(0, offset - 6) : 0" not in APP_SOURCE:
