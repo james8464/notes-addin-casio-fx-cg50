@@ -437,6 +437,18 @@ static int load_file_buf(const char *path) {
   return 1;
 }
 
+static int markdown_escapable(char c) {
+  return c == '\\' || c == '`' || c == '*' || c == '_' || c == '{' || c == '}' ||
+         c == '[' || c == ']' || c == '(' || c == ')' || c == '#' || c == '+' ||
+         c == '-' || c == '.' || c == '!' || c == '|';
+}
+
+static int markdown_escaped_at(const char *s, int i) {
+  int n = 0;
+  for (int p = i - 1; p >= 0 && s[p] == '\\'; --p) ++n;
+  return n & 1;
+}
+
 static int tab_separated_cells(const char *s, int len) {
   int p = 0;
   while (p < len && s[p] == ' ') ++p;
@@ -458,7 +470,7 @@ static int pipe_separated_cells(const char *s, int len) {
   while (p < len && s[p] == ' ') ++p;
   int cells = 0, cell_has_text = 0, pipe_seen = 0;
   for (int i = p; i <= len; ++i) {
-    if (i == len || s[i] == '|') {
+    if (i == len || (s[i] == '|' && !markdown_escaped_at(s, i))) {
       if (cell_has_text) ++cells;
       cell_has_text = 0;
       if (i < len) pipe_seen = 1;
@@ -598,6 +610,10 @@ static int copy_display_text(char *dst, int cap, const char *src, int len, int s
       continue;
     }
     if (strip_inline) {
+      if (src[i] == '\\' && i + 1 < len && markdown_escapable(src[i + 1])) {
+        dst[n++] = src[++i];
+        continue;
+      }
       int label_start = 0, label_len = 0, end = 0;
       if (markdown_link_at(src, i, len, &label_start, &label_len, &end)) {
         n += copy_display_text(dst + n, cap - n, src + label_start, label_len, 1);
@@ -638,7 +654,10 @@ static int parse_table_row(const char *s, int len, char cells[MAX_TABLE_COLS][TA
       ++cols;
       break;
     }
-    while (p < len && s[p] != '|' && s[p] != '\t') ++p;
+    while (p < len) {
+      if ((s[p] == '|' && !markdown_escaped_at(s, p)) || s[p] == '\t') break;
+      ++p;
+    }
     clean_cell_copy(cells[cols], TABLE_CELL_CAP, s + start, p - start);
     ++cols;
     if (p >= len) break;

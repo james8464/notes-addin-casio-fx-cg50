@@ -101,32 +101,79 @@ def source_code_like(line: str) -> bool:
     )
 
 
-def clean_cell(text: str) -> str:
-    text = text.strip().replace("\t", " ")
-    text = re.sub(r"<br\s*/?>", "; ", text, flags=re.I)
-    text = "".join(ch for ch in text if 32 <= ord(ch) <= 126)
-    return text.strip()
+ESCAPABLE = set(r"\`*_{}[]()#+-.!|")
+
+
+def protect_escapes(text: str) -> tuple[str, list[str]]:
+    chars: list[str] = []
+    saved: list[str] = []
+    i = 0
+    while i < len(text):
+        if text[i] == "\\" and i + 1 < len(text) and text[i + 1] in ESCAPABLE:
+            saved.append(text[i + 1])
+            chars.append(chr(len(saved)))
+            i += 2
+        else:
+            chars.append(text[i])
+            i += 1
+    return "".join(chars), saved
+
+
+def restore_escapes(text: str, saved: list[str]) -> str:
+    for i, ch in enumerate(saved, start=1):
+        text = text.replace(chr(i), ch)
+    return text
 
 
 def clean_inline(text: str) -> str:
     text = text.replace("\t", " ")
     text = re.sub(r"<br\s*/?>", "; ", text, flags=re.I)
+    text, saved = protect_escapes(text)
     text = re.sub(r"!\[([^\]]*)\]\([^)]+\)", r"\1", text)
     text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)
     text = re.sub(r"`([^`]*)`", r"\1", text)
     text = re.sub(r"\*\*([^*]+)\*\*", r"\1", text)
     text = re.sub(r"__([^_]+)__", r"\1", text)
     text = re.sub(r"(^|[^A-Za-z0-9])\*([^*\s](?:[^*]*[^*\s])?)\*([^A-Za-z0-9]|$)", r"\1\2\3", text)
+    text = restore_escapes(text, saved)
     return "".join(ch for ch in text if 32 <= ord(ch) <= 126)
+
+
+def clean_cell(text: str) -> str:
+    return clean_inline(text.strip()).strip()
+
+
+def escaped_at(s: str, i: int) -> bool:
+    count = 0
+    p = i - 1
+    while p >= 0 and s[p] == "\\":
+        count += 1
+        p -= 1
+    return bool(count & 1)
+
+
+def split_table_cells(s: str) -> list[str]:
+    out: list[str] = []
+    cur: list[str] = []
+    if s.startswith("|"):
+        s = s[1:]
+    if s.endswith("|") and not escaped_at(s, len(s) - 1):
+        s = s[:-1]
+    i = 0
+    while i < len(s):
+        if s[i] in "|\t" and (s[i] == "\t" or not escaped_at(s, i)):
+            out.append("".join(cur))
+            cur = []
+        else:
+            cur.append(s[i])
+        i += 1
+    out.append("".join(cur))
+    return out
 
 
 def table_cells(line: str) -> list[str]:
     s = line.strip()
-    if s.startswith("|"):
-        s = s[1:]
-    if s.endswith("|"):
-        s = s[:-1]
-    cells = [clean_cell(c) for c in re.split(r"[|\t]", s)]
+    cells = [clean_cell(c) for c in split_table_cells(s)]
     while cells and not cells[-1]:
         cells.pop()
     if len(cells) > MAX_TABLE_COLS:
@@ -424,6 +471,8 @@ def main() -> int:
         errors.append("notes renderer must handle common html line breaks without duplicated parsing")
     if "copy_display_text" not in APP_SOURCE or "markdown_link_at" not in APP_SOURCE or "single_marker_at" not in APP_SOURCE:
         errors.append("notes renderer must strip simple inline markdown markers through one shared display-copy path")
+    if "markdown_escapable" not in APP_SOURCE or "markdown_escaped_at" not in APP_SOURCE:
+        errors.append("notes renderer must display escaped markdown punctuation literally")
     if "copy_display_text(display_line_buf, FILE_BUF_SIZE, s, len, 1)" not in APP_SOURCE:
         errors.append("wrapped markdown lines must be converted to display text before choosing wrap cuts")
     if "copy_display_text(line_store[*line] + col, LINE_CAP - col, s + pos, cut - pos, 0)" not in APP_SOURCE:
@@ -434,6 +483,10 @@ def main() -> int:
         errors.append("inline markdown cleanup model must preserve readable text")
     if clean_inline("Keep 2 * 3 * 4 readable") != "Keep 2 * 3 * 4 readable":
         errors.append("inline markdown cleanup must not strip spaced multiplication")
+    if clean_inline(r"Show \*literal\* and A \| B") != "Show *literal* and A | B":
+        errors.append("inline markdown cleanup must unescape escaped punctuation")
+    if table_cells(r"| A \| B | C |") != ["A | B", "C"]:
+        errors.append("markdown table parser must not split escaped pipes")
     if "source_code_like(file_buf + next_pos, next_end - next_pos)" not in APP_SOURCE:
         errors.append("long table chunking must not absorb following code-like rows")
     if "table_continues_at" not in APP_SOURCE or "table_chunk_start_at" not in APP_SOURCE:
