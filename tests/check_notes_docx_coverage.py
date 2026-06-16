@@ -9,6 +9,7 @@ from pathlib import Path
 try:
     from docx import Document
     from docx.table import Table
+    from docx.text.paragraph import Paragraph
 except ModuleNotFoundError:
     print("SKIP notes docx coverage: python-docx unavailable")
     raise SystemExit(0)
@@ -17,6 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from tools.regroup_notes_by_docx_table import (  # noqa: E402
     DOC_TABLE_NAMES,
+    clean_text,
     iter_block_items,
     markdown_table,
     slug_safe,
@@ -125,6 +127,7 @@ def main() -> int:
     notes_norm = normalise(notes_text)
     ignored = {
         "below",
+        "extra info for you codex to add to the text files avoiding duplication",
         "notes details of vocab and knowledge",
         "syllabus content",
         "syll ref",
@@ -141,6 +144,16 @@ def main() -> int:
             actual_files = {p.name for p in topic_dir.glob("*.txt")}
             for extra in sorted(actual_files - expected_files):
                 missing.append(f"{path.name}:{extra}: unexpected extra note file")
+        for block in iter_block_items(doc):
+            if not isinstance(block, Paragraph):
+                continue
+            for raw in clean_text(block.text).splitlines():
+                line = raw.strip()
+                norm = normalise(line)
+                if len(norm) < 3 or norm in ignored:
+                    continue
+                if norm not in notes_norm:
+                    missing.append(f"{path.name}: top-level paragraph missing: {line}")
         for table in doc.tables:
             for row in table.rows:
                 for cell in note_detail_cells(row):

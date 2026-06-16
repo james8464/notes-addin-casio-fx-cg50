@@ -1,5 +1,8 @@
 # Functional language programs
 
+- Since paper 2 is paper-based, any question asking you to write lines of code in Haskell will be done on paper, not a computer.
+- Useful website: https://learnyouahaskell.github.io/chapters.html
+
 - The following symbols can be used, same as python...
 - +
 - -

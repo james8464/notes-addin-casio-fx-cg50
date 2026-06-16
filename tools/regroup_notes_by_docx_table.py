@@ -636,6 +636,15 @@ def replace_section(text: str, start_heading: str, end_heading: str, new: str) -
 
 
 def apply_manual_updates(doc_name: str, table_name: str, text: str) -> str:
+    if doc_name == "Functional programming" and table_name == "Functional language programs":
+        extra = """# Functional language programs
+
+- Since paper 2 is paper-based, any question asking you to write lines of code in Haskell will be done on paper, not a computer.
+- Useful website: https://learnyouahaskell.github.io/chapters.html"""
+        if "Since paper 2 is paper-based" not in text:
+            text = text.replace("# Functional language programs", extra, 1)
+        return text
+
     if doc_name == "Computer organisation" and table_name == "Secondary storage devices":
         old = """### Principles Of Operation
 
