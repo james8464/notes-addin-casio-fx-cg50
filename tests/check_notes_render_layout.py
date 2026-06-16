@@ -514,6 +514,8 @@ def main() -> int:
         errors.append("search display text must keep fenced/code text literal")
     if "copy_display_text" not in APP_SOURCE or "markdown_link_at" not in APP_SOURCE or "single_marker_at" not in APP_SOURCE:
         errors.append("notes renderer must strip simple inline markdown markers through one shared display-copy path")
+    if "double_marker_at" not in APP_SOURCE:
+        errors.append("bold marker stripping must not remove ordinary spaced ** text")
     if "markdown_escapable" not in APP_SOURCE or "markdown_escaped_at" not in APP_SOURCE:
         errors.append("notes renderer must display escaped markdown punctuation literally")
     if "copy_display_text(display_line_buf, FILE_BUF_SIZE, s, len, 1)" not in APP_SOURCE:
@@ -530,6 +532,8 @@ def main() -> int:
         errors.append("inline markdown cleanup must keep common UTF-8 symbols readable")
     if clean_inline("Keep 2 * 3 * 4 readable") != "Keep 2 * 3 * 4 readable":
         errors.append("inline markdown cleanup must not strip spaced multiplication")
+    if clean_inline("Keep 2 ** 3 readable") != "Keep 2 ** 3 readable":
+        errors.append("inline markdown cleanup must not strip spaced double-star text")
     if clean_inline(r"Show \*literal\* and A \| B") != "Show *literal* and A | B":
         errors.append("inline markdown cleanup must unescape escaped punctuation")
     if table_cells(r"| A \| B | C |") != ["A | B", "C"]:

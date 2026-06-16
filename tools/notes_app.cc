@@ -655,6 +655,18 @@ static int single_marker_at(const char *s, int i, int len, char c) {
   return find_char_from(s, i + 1, len, c) >= 0 || find_char_from(s, 0, i, c) >= 0;
 }
 
+static int double_marker_at(const char *s, int i, int len, char c) {
+  if (i + 1 >= len || s[i] != c || s[i + 1] != c) return 0;
+  if ((i <= 0 || s[i - 1] == ' ') && (i + 2 >= len || s[i + 2] == ' ')) return 0;
+  if (c == '_' && ((i > 0 && ascii_alnum(s[i - 1])) || (i + 2 < len && ascii_alnum(s[i + 2]))))
+    return 0;
+  for (int p = i + 2; p + 1 < len; ++p)
+    if (s[p] == c && s[p + 1] == c) return 1;
+  for (int p = 0; p + 1 < i; ++p)
+    if (s[p] == c && s[p + 1] == c) return 1;
+  return 0;
+}
+
 static int copy_display_text(char *dst, int cap, const char *src, int len, int strip_inline) {
   int n = 0;
   for (int i = 0; i < len && n + 1 < cap; ++i) {
@@ -693,7 +705,7 @@ static int copy_display_text(char *dst, int cap, const char *src, int len, int s
         continue;
       }
       if (src[i] == '`') continue;
-      if ((src[i] == '*' || src[i] == '_') && i + 1 < len && src[i + 1] == src[i]) {
+      if ((src[i] == '*' || src[i] == '_') && double_marker_at(src, i, len, src[i])) {
         ++i;
         continue;
       }
