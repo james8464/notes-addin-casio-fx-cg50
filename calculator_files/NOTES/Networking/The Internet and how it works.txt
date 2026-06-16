@@ -35,7 +35,7 @@
 - each packet may take a different route, so they might arrive out of order
   - hence why there is a sequence number in the header
 
-Packet = a container in which data is transmitted over networks
+- Packet = a container in which data is transmitted over networks
   - e.g., an envelope in the postal system
 
 ### Header
@@ -79,7 +79,7 @@ Packet = a container in which data is transmitted over networks
 - device that connects networks that use different protocols together
 - removes packet header info, then rebuilds the packet to match the format the new protocol expects
 
-URL = uniform resource locator
+- URL = uniform resource locator
 - a text-based address used to locate a resource on the internet
 
 ### Components (must Know)

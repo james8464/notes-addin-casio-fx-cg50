@@ -1,12 +1,12 @@
 # Bitmapped graphics
 
-Images are made from pixels
-Pixel = smallest addressable picture element. Contains one colour
-Types of bitmap files: .bmp, .jpg, .gif, .png, .tiff
-Resolution = number of pixels used to make the bitmap
+- Images are made from pixels
+- Pixel = smallest addressable picture element. Contains one colour
+- Types of bitmap files: .bmp, .jpg, .gif, .png, .tiff
+- Resolution = number of pixels used to make the bitmap
   - Width x height in pixels
   - Measured in dpi (dots per inch)
-Colour depth = num of bits allocated to represent the colour of each pixel
+- Colour depth = num of bits allocated to represent the colour of each pixel
   - Larger colour depth = larger file size + more unique colours can be represented
   - If the colour depth is n, 2^n colours can be represented
   - Eg a colour depth of 1 (ie 1 bit to represent the colour per pixel) would support 2 colours (2^1)

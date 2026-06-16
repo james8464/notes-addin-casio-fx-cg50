@@ -1,6 +1,6 @@
 # Information coding systems
 
-Character code = a unique number/value used to represent a character
+- Character code = a unique number/value used to represent a character
 
 ## Ascii
 

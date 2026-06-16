@@ -12,7 +12,7 @@
 | POP3 - post office protocol 3 | 110 & 995 | Used for retrieving emails from an email server |
 | SMTP - simple mail transfer protocol | 25 & 587 & 465 | Used for sending emails |
 
-FTP = Method used for transferring files/data across a network, often the internet
+- FTP = Method used for transferring files/data across a network, often the internet
 - An Application Layer Protocol
 - Files can be dragged from the folder structure of the remote site or server (SEE BELOW)
 - FTP sites may also be used by software companies offering large updates, or by press photographers to upload their latest photographs to a remote newspaper headquarters.

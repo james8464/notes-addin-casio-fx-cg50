@@ -21,7 +21,7 @@
 - Translates line-by-line
 - Checks for errors as they go (ie line-by-line)
 - Interpreter translates a program each time its executed
-COMPARISON (between compiler and interpreter)
+## Comparison Between Compiler and Interpreter
 
 | Compiler | Interpreter |
 | --- | --- |
@@ -45,5 +45,5 @@ COMPARISON (between compiler and interpreter)
 - the code (now translated to the intermediate lang, eg bytecode) is executed by a virtual machine
 - each different processor instruction set will have its own VM
 
-Source code = the input to a translator (ie what the programmer writes)
-Object code = the output from a translator
+- Source code = the input to a translator (ie what the programmer writes)
+- Object code = the output from a translator

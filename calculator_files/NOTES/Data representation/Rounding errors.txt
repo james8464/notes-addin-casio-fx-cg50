@@ -1,8 +1,8 @@
 # Rounding errors
 
-Eg 1/3 (decimal = 0.3333333...) cant be EXACTLY represented, only approximately
+- Eg 1/3 (decimal = 0.3333333...) cant be EXACTLY represented, only approximately
 
-can never allocate enough bits to store that number since it never ends
+- can never allocate enough bits to store that number since it never ends
 
 ### Define the Term 'rounding Error' (re-worded Ppq)
 

@@ -1,6 +1,6 @@
 # The processor instruction set
 
-Instruction set = all instructions that can be carried out by a processor
+- Instruction set = all instructions that can be carried out by a processor
 - each type of processor has its own instruction set
 - instructions for one processor may not be compatible with other processors
 
@@ -13,6 +13,6 @@ Instruction set = all instructions that can be carried out by a processor
 - Branching conditional and unconditional
 - Logical shift bits left/right
 
-Opcode = the type of operation to be carried out (e.g., addition)
-Operand = the pieces of data on which the operation is performed
+- Opcode = the type of operation to be carried out (e.g., addition)
+- Operand = the pieces of data on which the operation is performed
 - See 4.7.3.4 regarding addressing modes

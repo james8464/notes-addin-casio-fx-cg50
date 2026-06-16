@@ -22,10 +22,10 @@
 - Checks if data received from peripheral is corrupted or not
 - Generates an interrupt when data is ready to be transferred from an I/O device
 
-System bus = a set of wires, each wire carries a single bit at any one time
-Data bus = carries data and instructions between memory, I/O controllers, and the CPU; bidirectional
-Address bus = carries addresses from the CPU to memory, so it is unidirectional
-Control bus = caries control signals between the CPU and I/O controllers and memory
+- System bus = a set of wires, each wire carries a single bit at any one time
+- Data bus = carries data and instructions between memory, I/O controllers, and the CPU; bidirectional
+- Address bus = carries addresses from the CPU to memory, so it is unidirectional
+- Control bus = caries control signals between the CPU and I/O controllers and memory
 
 ## Von Neumann
 

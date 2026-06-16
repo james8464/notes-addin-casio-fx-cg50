@@ -1,6 +1,6 @@
 # Wireless networking
 
-WiFi = short for 'Wireless Fidelity'
+- WiFi = short for 'Wireless Fidelity'
 - a wireless local area network that is based on international standards
 
 ## Purpose
@@ -79,7 +79,7 @@ WiFi = short for 'Wireless Fidelity'
   - this will cause a collision
   - With RTS/CTS, the receiver essentially controls who is sending the data at one given time
 
-SSID - stands for Service Set Identifier
+- SSID - stands for Service Set Identifier
 - It is a Unique identifier for a Wireless Network.
 - Purpose:
   - Allows devices to wirelessly connect to the specific/preferred network from a number of available wireless networks.

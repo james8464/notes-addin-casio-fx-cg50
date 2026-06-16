@@ -91,7 +91,7 @@ ghci> max 100 101
 
 ## Example 1
 
-doubleMe x = x + x
+    doubleMe x = x + x
   - When that file is run, it can be used like following:
 ghci> doubleMe 9
 18
@@ -100,7 +100,7 @@ ghci> doubleMe 8.3
 
 ## Example 2
 
-doubleUs x y = x*2 + y*2
+    doubleUs x y = x*2 + y*2
   - When that file is run, it might look like the following:
 ghci> doubleUs 4 9
 26

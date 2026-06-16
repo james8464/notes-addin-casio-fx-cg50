@@ -5,34 +5,34 @@
 - a rule / set of instructions
 - applied to each element in set A (i.e., the input. Also known as the argument)
 - set B is the result value (output)
-Domain = the inputs into a function
+- Domain = the inputs into a function
 
-domain = set that a function takes input values from
+- domain = set that a function takes input values from
 
-Co-domain = the outputs from a function <-- known as the range in maths
+- Co-domain = the outputs from a function <-- known as the range in maths
 
-Co-domain = set that a function output values are from
+- Co-domain = set that a function output values are from
 
-Function = rule that for each element in set A of inputs, assigns an output chosen from set B; not all elements of set B will be used
+- Function = rule that for each element in set A of inputs, assigns an output chosen from set B; not all elements of set B will be used
 
-A function is a mapping from a set of inputs, called the domain, to a set of possible outputs, known as the co-domain.
+- A function is a mapping from a set of inputs, called the domain, to a set of possible outputs, known as the co-domain.
 
-The only thing they do is calculate something and return a result; they have no side effects ie they cannot change the data / memory.
+- The only thing they do is calculate something and return a result; they have no side effects ie they cannot change the data / memory.
 
-So every time the same function is called with the same arguments / values, it will always return the same result.
+- So every time the same function is called with the same arguments / values, it will always return the same result.
 
 ## Function Types
 
 - denotes the kind of inputs that a function can take
 - also denotes the kind of outputs a function can give
 
-If f: A -> B, we say that the function type is A -> B where A is the argument type and B is the result type.
+- If f: A -> B, we say that the function type is A -> B where A is the argument type and B is the result type.
 
-In FP the domain is known as the argument type and co-domain as result type.
+- In FP the domain is known as the argument type and co-domain as result type.
 
-Types are integer / float / bool / char values.
+- Types are integer / float / bool / char values.
 
-Typeclasses are sets of types, so Integer, Float, Bool, Char.
+- Typeclasses are sets of types, so Integer, Float, Bool, Char.
 
 Type declaration:
 - Can be implicit - set by the programming language in the background
@@ -48,20 +48,20 @@ Type declaration:
 
 ### Explicit Type Declaration Example
 
-Eg: explicit type declaration:
+- Eg: explicit type declaration:
 
     isEqual :: Int -> Int -> Bool
     isEqual x y = x == y
 
 ### Co-domain PPQ
 
-Describe the co-domain of function f: N -> R.
+- Describe the co-domain of function f: N -> R.
 
-Describe the co-domain of function f: N --> R (PPQ)
+- Describe the co-domain of function f: N --> R (PPQ)
 
-Answer: the set of real numbers / the set of all possible real-world quantities.
+- Answer: the set of real numbers / the set of all possible real-world quantities.
 
-Accepted wording:
+- Accepted wording:
 - A. real numbers
 - A. numbers that represent any quantity along an infinite number line
 - A. all numbers excluding imaginary/complex numbers

@@ -12,9 +12,9 @@
 - A measure of uncertainty in a given value compared to the actual value
 - Relative to the size of the given value
 
-Larger actual value = smaller relative error
+- Larger actual value = smaller relative error
 
-just think about it....
+- just think about it....
 
 ## Fixed Point
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -13,6 +14,7 @@ READABLE_LINE_CAP = 360
 READABLE_TABLE_CELL_SEMICOLON_CAP = 2
 READABLE_TABLE_CELL_CAP = 180
 READABLE_TABLE_ROW_CAP = 360
+RAW_DEFINITION_RE = re.compile(r"^[A-Za-z][A-Za-z0-9 /()+.-]{0,60} = ")
 
 
 def table_cells(line: str) -> list[str]:
@@ -84,6 +86,10 @@ def main() -> int:
             stripped = line.strip()
             if stripped.startswith("= "):
                 errors.append(f"{path}:{line_no}: raw definition line must use '- Definition:'")
+            if line == stripped and stripped.startswith("NOTE:"):
+                errors.append(f"{path}:{line_no}: note line must use '- Note:'")
+            if line == stripped and RAW_DEFINITION_RE.match(stripped):
+                errors.append(f"{path}:{line_no}: raw definition line must be a bullet or code block")
             if stripped.lower() in {"## below...", "### below..."}:
                 errors.append(f"{path}:{line_no}: placeholder heading must be replaced")
         first = next((line for line in lines if line.strip()), "")

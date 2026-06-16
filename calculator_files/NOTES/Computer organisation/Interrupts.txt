@@ -15,12 +15,13 @@
 
 ### Purpose?
 
+- allows the currently executing process to be suspended
 - So that a device/source that needs immediate attention of the processor can be serviced
 - Allows computers to multitask
 
 ## Interrupt Service Routine (isr)
 
-  - = software routine the processor invokes in response to an interrupt
+- Interrupt service routine = software routine the processor invokes in response to an interrupt
 - designed to process each interrupt
 - The origin of the interrupt is identified so that the appropriate ISR is called
 - All other lower-priority interrupts are put on hold to allow the ISR to finish running

@@ -1,12 +1,12 @@
 # Higher order functions
 
-Higher order function = A function that takes a function as an argument / returns a function as a result / takes a function as an argument and returns a function as a result.
+- Higher order function = A function that takes a function as an argument / returns a function as a result / takes a function as an argument and returns a function as a result.
 
-Accepted wording:
+- Accepted wording:
 - parameter or input can be used for argument
 - A. "Parameter", "Input" for "Argument"
 
-Do not only say:
+- Do not only say:
 - a function that uses another function
 - explanations that are specifically of the map function
 - NE. A function that uses another function

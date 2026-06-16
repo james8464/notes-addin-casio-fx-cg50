@@ -1,9 +1,9 @@
 # Hardware and software
 
-Software = name given to programs/code/instructions that are executed in order to perform a task
-Hardware = physical components of a computer system
+- Software = name given to programs/code/instructions that are executed in order to perform a task
+- Hardware = physical components of a computer system
   - If you can touch it, its hardware
-Relationship: software runs on hardware
+- Relationship: software runs on hardware
 
 ## Examples
 
@@ -60,12 +60,12 @@ Relationship: software runs on hardware
 
 ### Library Programs
 
-      - Contains useful functions that are frequently used by a program
+  - Contains useful functions that are frequently used by a program
 
 ### Translators (note: Covered in More Detail in 4.6.3)
 
-      - Pieces of software that translate between different types of language
-      - Three types:
-- Compilers
-- Interpreters
-- assemblers
+  - Pieces of software that translate between different types of language
+  - Three types:
+    - Compilers
+    - Interpreters
+    - assemblers
