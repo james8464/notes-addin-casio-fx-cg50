@@ -5,7 +5,11 @@
 | Term | Definition |
 | --- | --- |
 | Baud rate | Number of signal changes per second |
-| Bit rate | Number of bits transferred per second; Equation:; Bit rate = baud rate * num of bits per signal (common sense...); So... how when will bit rate be higher than baud rate? (PPQ); when num of bits transferred per signal is greater than one |
+| Bit rate | Number of bits transferred per second |
+| Bit rate | Equation: |
+| Bit rate | Bit rate = baud rate * num of bits per signal (common sense...) |
+| Bit rate | So... how when will bit rate be higher than baud rate? (PPQ) |
+| Bit rate | when num of bits transferred per signal is greater than one |
 | Bandwidth | A range of frequencies within a given band used for transmission of a signal |
 | Latency | Time delay between the moment transmission is initiated and the moment its first effect begins.; Usually increases with distance |
 | Protocol | A set of rules relating to communication between devices. |

@@ -3,7 +3,10 @@
 | Protocol | Port(s) | Purpose |
 | --- | --- | --- |
 | FTP - file transfer protocol | 20 & 21 | Used for sending files between devices; Used for the connection between an FTP server and a client |
-| SSH - secure shell | 22 | Used for remote management of devices; Requires username + password; Information is encrypted during transmission; Essentially, you can run commands from another computer |
+| SSH - secure shell | 22 | Used for remote management of devices |
+| SSH - secure shell | 22 | Requires username + password |
+| SSH - secure shell | 22 | Information is encrypted during transmission |
+| SSH - secure shell | 22 | Essentially, you can run commands from another computer |
 | HTTP - hypertext transfer protocol | 80 | i.e., for loading webpages |
 | HTTPS - hypertext transfer protocol secure | 443 | Same as HTTP, but with encryption |
 | POP3 - post office protocol 3 | 110 & 995 | Used for retrieving emails from an email server |

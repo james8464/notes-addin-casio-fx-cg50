@@ -5,7 +5,9 @@
 | Component | Role |
 | --- | --- |
 | Processor | carries out computation on data by following instructions; handles all of the instructions received from user + hardware + software |
-| Main memory | stores data/instructions that are currently in use / will be used by the processor; returns the instructions/data/value stored in a memory location; stores any value/data resulting from the execution of a program |
+| Main memory | stores data/instructions that are currently in use / will be used by the processor |
+| Main memory | returns the instructions/data/value stored in a memory location |
+| Main memory | stores any value/data resulting from the execution of a program |
 | Address bus | single-directional; carries address signals from CPU to main memory and I/O devices |
 | Data bus | bi-directional; moves data/instructions between system components |
 | Control bus | bi-directional; transmits command, timing and specific status information between system components |

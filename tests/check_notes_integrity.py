@@ -10,6 +10,8 @@ MAX_TABLE_COLS = 6
 MAX_TABLE_ROWS = 16
 TABLE_CELL_CAP = 416
 READABLE_LINE_CAP = 360
+READABLE_TABLE_CELL_SEMICOLON_CAP = 2
+READABLE_TABLE_CELL_CAP = 180
 READABLE_TABLE_ROW_CAP = 360
 
 
@@ -46,6 +48,10 @@ def check_table(path: Path, start: int, block: list[tuple[int, str]]) -> list[st
         if table_separator(line):
             continue
         for cell in table_cells(line):
+            if len(cell) > READABLE_TABLE_CELL_CAP:
+                errors.append(f"{path}:{line_no}: table cell has {len(cell)} chars, split it for calculator readability")
+            if cell.count(";") > READABLE_TABLE_CELL_SEMICOLON_CAP:
+                errors.append(f"{path}:{line_no}: table cell has too many semicolon-separated facts")
             if len(cell) >= TABLE_CELL_CAP:
                 errors.append(
                     f"{path}:{line_no}: table cell has {len(cell)} chars, renderer cap is {TABLE_CELL_CAP - 1}"
