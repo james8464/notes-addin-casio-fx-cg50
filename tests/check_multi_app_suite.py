@@ -75,6 +75,8 @@ def main() -> int:
         raise AssertionError("notes table detection must not treat every tab-indented line as a table")
     if "tab_separated_cells" not in notes_src:
         raise AssertionError("notes table detection must require real tab-separated cells")
+    if "pipe_separated_cells" not in notes_src:
+        raise AssertionError("notes table detection must support markdown pipe tables without leading pipes")
     if "if (c == '\\r')" not in notes_src or "clean[out++] = '\\n';" not in notes_src:
         raise AssertionError("notes viewer must normalize CR/CRLF input to LF")
     if "!table_like(file_buf + next_pos, next_end - next_pos)" not in notes_src:

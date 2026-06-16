@@ -452,6 +452,22 @@ static int tab_separated_cells(const char *s, int len) {
   return tab_seen && cells >= 2;
 }
 
+static int pipe_separated_cells(const char *s, int len) {
+  int p = 0;
+  while (p < len && s[p] == ' ') ++p;
+  int cells = 0, cell_has_text = 0, pipe_seen = 0;
+  for (int i = p; i <= len; ++i) {
+    if (i == len || s[i] == '|') {
+      if (cell_has_text) ++cells;
+      cell_has_text = 0;
+      if (i < len) pipe_seen = 1;
+    } else if (s[i] != ' ') {
+      cell_has_text = 1;
+    }
+  }
+  return pipe_seen && cells >= 2;
+}
+
 static int table_like(const char *s, int len) {
   int bars = 0, tab = 0, plus = 0, dashes = 0;
   int first = 0;
@@ -463,7 +479,7 @@ static int table_like(const char *s, int len) {
     if (s[i] == '-') ++dashes;
   }
   if (tab) return tab_separated_cells(s, len);
-  if (first < len && s[first] == '|') return bars >= 2;
+  if (bars) return pipe_separated_cells(s, len);
   if (first < len && s[first] == '+') return plus >= 2 && dashes >= 3;
   return 0;
 }

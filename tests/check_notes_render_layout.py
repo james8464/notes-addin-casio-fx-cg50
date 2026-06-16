@@ -52,8 +52,8 @@ def table_like(line: str) -> bool:
     s = line.lstrip(" ")
     if "\t" in line:
         return sum(1 for cell in line.split("\t") if cell.strip()) >= 2
-    if s.startswith("|"):
-        return line.count("|") >= 2
+    if "|" in line:
+        return sum(1 for cell in line.split("|") if cell.strip()) >= 2
     if s.startswith("+"):
         return line.count("+") >= 2 and line.count("-") >= 3
     return False
@@ -246,6 +246,10 @@ def main() -> int:
         errors.append("single-tab indented prose must not be treated as a table")
     if not table_like("Header\tValue"):
         errors.append("real tab-separated rows must be treated as tables")
+    if not table_like("Header | Value"):
+        errors.append("markdown pipe tables without a leading pipe must be treated as tables")
+    if table_like("Not a table | "):
+        errors.append("single nonempty pipe cell must not be treated as a table")
     if "min_int(src_len, LINE_CAP - 3)" in APP_SOURCE:
         errors.append("top-level bullet rendering still has LINE_CAP pre-truncation")
     if "clean[out++] = '?';" not in APP_SOURCE:
@@ -292,6 +296,8 @@ def main() -> int:
         errors.append("wrapped lines must cap copied text before line_store writes")
     if "return over > 0 ? (over + TABLE_CHAR_PX - 1) / TABLE_CHAR_PX : 0;" not in APP_SOURCE:
         errors.append("table horizontal scroll must round up to reveal the final table edge")
+    if "pipe_separated_cells" not in APP_SOURCE:
+        errors.append("notes table detection must support markdown pipe tables without leading pipes")
     if "!table_like(file_buf + next_pos, next_end - next_pos)" not in APP_SOURCE:
         errors.append("long tables must not gain artificial blank rows when chunked")
     if "note_fill_clip" in APP_SOURCE[APP_SOURCE.find("static void notes_print_with_matches_limit"):APP_SOURCE.find("static void notes_print_with_matches(")]:
