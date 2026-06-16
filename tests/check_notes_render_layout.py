@@ -100,6 +100,12 @@ def clean_cell(text: str) -> str:
 def clean_inline(text: str) -> str:
     text = text.replace("\t", " ")
     text = re.sub(r"<br\s*/?>", "; ", text, flags=re.I)
+    text = re.sub(r"!\[([^\]]*)\]\([^)]+\)", r"\1", text)
+    text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)
+    text = re.sub(r"`([^`]*)`", r"\1", text)
+    text = re.sub(r"\*\*([^*]+)\*\*", r"\1", text)
+    text = re.sub(r"__([^_]+)__", r"\1", text)
+    text = re.sub(r"(^|[^A-Za-z0-9])\*([^*\s](?:[^*]*[^*\s])?)\*([^A-Za-z0-9]|$)", r"\1\2\3", text)
     return "".join(ch for ch in text if 32 <= ord(ch) <= 126)
 
 
@@ -385,6 +391,12 @@ def main() -> int:
         errors.append("notes renderer must support markdown fenced code blocks")
     if "html_break_len" not in APP_SOURCE:
         errors.append("notes renderer must handle common html line breaks without duplicated parsing")
+    if "copy_display_text" not in APP_SOURCE or "markdown_link_at" not in APP_SOURCE or "single_marker_at" not in APP_SOURCE:
+        errors.append("notes renderer must strip simple inline markdown markers through one shared display-copy path")
+    if clean_inline("Use **bold**, *em*, `code`, [label](url), ![alt](img)") != "Use bold, em, code, label, alt":
+        errors.append("inline markdown cleanup model must preserve readable text")
+    if clean_inline("Keep 2 * 3 * 4 readable") != "Keep 2 * 3 * 4 readable":
+        errors.append("inline markdown cleanup must not strip spaced multiplication")
     if "source_code_like(file_buf + next_pos, next_end - next_pos)" not in APP_SOURCE:
         errors.append("long table chunking must not absorb following code-like rows")
     if "static int starts_with_ci" in APP_SOURCE or "static int code_like" in APP_SOURCE:

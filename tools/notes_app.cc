@@ -531,12 +531,49 @@ static int html_break_len(const char *s, int i, int len) {
   return 0;
 }
 
-static int clean_cell_copy(char *dst, int cap, const char *src, int len) {
-  int start = trim_left_pos(src, len);
-  len = trim_right_len(src + start, len - start);
+static int ascii_alnum(char c) {
+  return (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
+}
+
+static int find_char_from(const char *s, int from, int len, char target) {
+  for (int i = from; i < len; ++i)
+    if (s[i] == target) return i;
+  return -1;
+}
+
+static int markdown_link_at(const char *s, int i, int len, int *label_start, int *label_len, int *end) {
+  int open = i;
+  if (i < len && s[i] == '!' && i + 1 < len && s[i + 1] == '[') open = i + 1;
+  else if (i >= len || s[i] != '[') return 0;
+  int close_label = find_char_from(s, open + 1, len, ']');
+  if (close_label < 0 || close_label + 1 >= len || s[close_label + 1] != '(') return 0;
+  int close_url = find_char_from(s, close_label + 2, len, ')');
+  if (close_url < 0) return 0;
+  *label_start = open + 1;
+  *label_len = close_label - open - 1;
+  *end = close_url + 1;
+  return 1;
+}
+
+static int single_marker_at(const char *s, int i, int len, char c) {
+  if (s[i] != c) return 0;
+  if (i + 1 < len && s[i + 1] == ' ') {
+    int p = i - 1;
+    while (p >= 0 && s[p] == ' ') --p;
+    if (p < 0) return 0;
+  }
+  if ((i <= 0 || s[i - 1] == ' ') && (i + 1 >= len || s[i + 1] == ' ')) return 0;
+  if (i > 0 && i + 1 < len && ascii_alnum(s[i - 1]) && ascii_alnum(s[i + 1]))
+    return 0;
+  if (c == '_' && ((i > 0 && ascii_alnum(s[i - 1])) || (i + 1 < len && ascii_alnum(s[i + 1]))))
+    return 0;
+  return find_char_from(s, i + 1, len, c) >= 0 || find_char_from(s, 0, i, c) >= 0;
+}
+
+static int copy_display_text(char *dst, int cap, const char *src, int len, int strip_inline) {
   int n = 0;
   for (int i = 0; i < len && n + 1 < cap; ++i) {
-    int br = html_break_len(src + start, i, len);
+    int br = html_break_len(src, i, len);
     if (br) {
       if (n + 2 < cap) {
         dst[n++] = ';';
@@ -545,9 +582,31 @@ static int clean_cell_copy(char *dst, int cap, const char *src, int len) {
       i += br - 1;
       continue;
     }
-    char c = src[start + i] == '\t' ? ' ' : src[start + i];
+    if (strip_inline) {
+      int label_start = 0, label_len = 0, end = 0;
+      if (markdown_link_at(src, i, len, &label_start, &label_len, &end)) {
+        n += copy_display_text(dst + n, cap - n, src + label_start, label_len, 1);
+        i = end - 1;
+        continue;
+      }
+      if (src[i] == '`') continue;
+      if ((src[i] == '*' || src[i] == '_') && i + 1 < len && src[i + 1] == src[i]) {
+        ++i;
+        continue;
+      }
+      if ((src[i] == '*' || src[i] == '_') && single_marker_at(src, i, len, src[i])) continue;
+    }
+    char c = src[i] == '\t' ? ' ' : src[i];
     if (c >= 32 && c <= 126) dst[n++] = c;
   }
+  dst[n] = 0;
+  return n;
+}
+
+static int clean_cell_copy(char *dst, int cap, const char *src, int len) {
+  int start = trim_left_pos(src, len);
+  len = trim_right_len(src + start, len - start);
+  int n = copy_display_text(dst, cap, src + start, len, 1);
   while (n > 0 && dst[n - 1] == ' ') --n;
   dst[n] = 0;
   return n;
@@ -903,21 +962,7 @@ static void clear_table_meta(int idx) {
 
 static void push_view_line(int *line, const char *s, int len, int style, int source_line) {
   if (*line >= MAX_VIEW_LINES) return;
-  int col = 0;
-  for (int i = 0; i < len && col + 1 < LINE_CAP; ++i) {
-    int br = html_break_len(s, i, len);
-    if (br) {
-      if (col + 2 < LINE_CAP) {
-        line_store[*line][col++] = ';';
-        line_store[*line][col++] = ' ';
-      }
-      i += br - 1;
-      continue;
-    }
-    char c = s[i] == '\t' ? ' ' : s[i];
-    if (c >= 32 && c <= 126) line_store[*line][col++] = c;
-  }
-  line_store[*line][col] = 0;
+  copy_display_text(line_store[*line], LINE_CAP, s, len, style != NOTE_CODE);
   view_lines[*line] = line_store[*line];
   view_style[*line] = (unsigned char)style;
   view_source_line[*line] = (short)source_line;
