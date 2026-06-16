@@ -71,8 +71,14 @@
 
 - Higher order function = A function that takes a function as an argument // returns a function as a result // takes a function as an argument and returns a function as a result;
 - A. Parameter, input for argument.
+- parameter or input can be used for argument.
 - NE. A function that uses another function.
 - R. Explanations that are specifically of the map function.
+
+### Do not only say
+
+- a function that uses another function.
+- explanations that are specifically of the map function.
 
 ### An example
 
@@ -91,6 +97,7 @@
 
 ## Map, filter and reduce
 
+- Map filter reduce.
 - map is the name of a higher-order function that applies a given function to each element of a list, returning a list of results.
 - filter is the name of a higher-order function that processes a data structure, typically a list, in some order to produce a new data structure containing exactly those elements of the original data structure that match a given condition.
 - reduce or fold is the name of a higher-order function which takes a list of values and a function as arguments, and applies repeatedly (using recursion) that combining function to each element of the list, returning a single value.
@@ -121,7 +128,16 @@
 - The operator is : for a single element.
 - Eg 5 : [1,2,3] will return [5,1,2,3].
 - ...and ++ for a list.
+- The operator is ++ for a list.
 - Eg [5,4] ++ [1,2,3] will return [5,4,1,2,3].
+
+### Example: Pre-pending One Element
+
+    5 : [1,2,3]
+
+### Example: Pre-pending a List
+
+    [5,4] ++ [1,2,3]
 
 ## Appending a list
 
@@ -132,3 +148,9 @@
 - ...but contents of list A remains the same.
 - This is the concept of immutability.
 - Concatenating lists - use also the ++ operator.
+- Concatenating lists also uses the ++ operator.
+
+### Example: Appending a List
+
+    A = [1,2,3]
+    A ++ [4,5]

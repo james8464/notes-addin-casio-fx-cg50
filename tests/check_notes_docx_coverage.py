@@ -134,6 +134,12 @@ def main() -> int:
         expected_names = DOC_TABLE_NAMES.get(path.stem, [])
         if expected_names and len(doc.tables) != len(expected_names):
             missing.append(f"{path.name}: expected {len(expected_names)} source tables, found {len(doc.tables)}")
+        if expected_names:
+            topic_dir = NOTES / path.stem
+            expected_files = {f"{slug_safe(name)}.txt" for name in expected_names}
+            actual_files = {p.name for p in topic_dir.glob("*.txt")}
+            for extra in sorted(actual_files - expected_files):
+                missing.append(f"{path.name}:{extra}: unexpected extra note file")
         for table in doc.tables:
             for row in table.rows:
                 for cell in note_detail_cells(row):
