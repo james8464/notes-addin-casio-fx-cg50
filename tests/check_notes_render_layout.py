@@ -258,16 +258,22 @@ def main() -> int:
         errors.append("wide-line horizontal scroll must not stop before the final source character")
     if "int start = min_int(hscroll, max_int(0, len - 1));" not in APP_SOURCE:
         errors.append("wide-line rendering must clamp to the final source character, not stop early")
-    if "fit_visible_chars(s + start, len - start, 0)" not in APP_SOURCE:
+    if "fit_visible_chars(s + start, len - start, 0, xpad)" not in APP_SOURCE:
         errors.append("wide-line rendering must pixel-fit the visible suffix after horizontal scroll")
-    if "fit_suffix_chars" not in APP_SOURCE or "line_end_hscroll(src, src_len)" not in APP_SOURCE:
+    if "fit_suffix_chars" not in APP_SOURCE or "line_end_hscroll(src, src_len, style)" not in APP_SOURCE:
         errors.append("wide-line horizontal scroll must use the pixel-fitted displayed suffix")
+    if "style_x_offset(style)" not in APP_SOURCE or "NOTE_X_LIMIT - VIEW_X - xpad" not in APP_SOURCE:
+        errors.append("wide-line fitting must account for heading/quote x offsets")
     if "int visible = fit_visible_chars(file_buf + pos, len, 0);" in APP_SOURCE:
         errors.append("wide-line scroll must not use raw source length for markdown-formatted lines")
     if "int cap_cut = pos + max_int(1, LINE_CAP - indent - 1);" not in APP_SOURCE:
         errors.append("wrapped lines must cap copied text before line_store writes")
     if "return over > 0 ? (over + TABLE_CHAR_PX - 1) / TABLE_CHAR_PX : 0;" not in APP_SOURCE:
         errors.append("table horizontal scroll must round up to reveal the final table edge")
+    if "note_fill_clip" in APP_SOURCE[APP_SOURCE.find("static void notes_print_with_matches_limit"):APP_SOURCE.find("static void notes_print_with_matches(")]:
+        errors.append("search matches must use text colour only, not fill/background highlights")
+    if 'if (!jump_to_match(&sp, start_source, 1, &top, &hscroll, &lines, max_line)) {\n          search_prepare(&sp, "");\n          active_search = 0;' not in APP_SOURCE:
+        errors.append("failed in-file search must reset search mode so NEXT/PREV keep paging")
     if "NOTE_H1 : (hashes == 2 ? NOTE_H2 : (hashes == 3 ? NOTE_H3 : NOTE_H4))" not in APP_SOURCE:
         errors.append("markdown headings must map H1/H2/H3/H4 to distinct renderer styles")
     for marker in ("if (style == NOTE_H1)", "else if (style == NOTE_H2)", "else if (style == NOTE_H3)", "else if (style == NOTE_H4)"):
