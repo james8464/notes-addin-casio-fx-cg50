@@ -17,7 +17,7 @@ Function = rule that for each element in set A of inputs, assigns an output chos
 
 A function is a mapping from a set of inputs, called the domain, to a set of possible outputs, known as the co-domain.
 
-The only thing functions do is calculate something and return a result; they have no side effects, i.e., they cannot change the data / memory.
+The only thing they do is calculate something and return a result; they have no side effects ie they cannot change the data / memory.
 
 So every time the same function is called with the same arguments / values, it will always return the same result.
 

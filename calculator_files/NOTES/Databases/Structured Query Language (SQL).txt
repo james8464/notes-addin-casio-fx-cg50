@@ -62,10 +62,7 @@
 | Variable length string | VARCHAR(size) | A string with any num of characters up to the specified num |
 | Integer | INT(size) | A whole number stored using a specified num of bits |
 | Number with fractional part | FLOAT(size, precision) | Number stored using specified num of bits with a specified num of digits after the decimal point |
-| Date | DATE | A date in the format:
-YYYY-MM-DD |
+| Date | DATE | A date in the format: YYYY-MM-DD |
 | Date and time | DATETIME | A date and time combined in the format:; YYYY-MM-DD HH:MM:SS |
 | Time | TIME | A time in the format HH:MM:SS |
-| Year | YEAR | A year in one of the two formats below:
-YY
-YYYY |
+| Year | YEAR | A year in one of the two formats below: YY or YYYY |
