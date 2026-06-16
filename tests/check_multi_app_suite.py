@@ -80,8 +80,8 @@ def main() -> int:
         raise AssertionError("notes table detection must not treat every tab-indented line as a table")
     if "tab_separated_cells" not in notes_src:
         raise AssertionError("notes table detection must require real tab-separated cells")
-    if "s[first] == '|' && pipe_separated_cells(s, len)" not in notes_src:
-        raise AssertionError("notes pipe table detection must require markdown table syntax")
+    if "if (bars)" in notes_src:
+        raise AssertionError("notes pipe table detection must require a separator row")
     if "static int table_start_like_at" not in notes_src or "table_separator_row(table_parse_cells, cols)" not in notes_src:
         raise AssertionError("notes renderer must support no-leading-pipe markdown tables only with a separator row")
     if "source_code_like" not in notes_src:

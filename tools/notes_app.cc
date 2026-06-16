@@ -469,17 +469,15 @@ static int pipe_separated_cells(const char *s, int len) {
 }
 
 static int table_like(const char *s, int len) {
-  int bars = 0, tab = 0, plus = 0, dashes = 0;
+  int tab = 0, plus = 0, dashes = 0;
   int first = 0;
   while (first < len && s[first] == ' ') ++first;
   for (int i = 0; i < len; ++i) {
-    if (s[i] == '|') ++bars;
     if (s[i] == '\t') tab = 1;
     if (s[i] == '+') ++plus;
     if (s[i] == '-') ++dashes;
   }
   if (tab) return tab_separated_cells(s, len);
-  if (bars) return first < len && s[first] == '|' && pipe_separated_cells(s, len);
   if (first < len && s[first] == '+') return plus >= 2 && dashes >= 3;
   return 0;
 }
@@ -610,6 +608,8 @@ static int source_next_line_from(int end) {
 static int table_start_like_at(int pos, int len) {
   if (table_like(file_buf + pos, len)) return 1;
   if (!pipe_separated_cells(file_buf + pos, len)) return 0;
+  int row_cols = parse_table_row(file_buf + pos, len, table_parse_cells);
+  if (row_cols <= 0) return 0;
   int end = source_line_end_from(pos);
   int next = source_next_line_from(end);
   if (next > file_buf_len) return 0;
@@ -617,7 +617,7 @@ static int table_start_like_at(int pos, int len) {
   int next_len = next_end - next;
   if (next_len <= 0 || source_code_like(file_buf + next, next_len)) return 0;
   int cols = parse_table_row(file_buf + next, next_len, table_parse_cells);
-  return table_separator_row(table_parse_cells, cols);
+  return cols >= row_cols && table_separator_row(table_parse_cells, cols);
 }
 
 static int table_col_cap(int cols) {

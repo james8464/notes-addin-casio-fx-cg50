@@ -52,8 +52,6 @@ def table_like(line: str) -> bool:
     s = line.lstrip(" ")
     if "\t" in line:
         return sum(1 for cell in line.split("\t") if cell.strip()) >= 2
-    if "|" in line:
-        return s.startswith("|") and sum(1 for cell in line.split("|") if cell.strip()) >= 2
     if s.startswith("+"):
         return line.count("+") >= 2 and line.count("-") >= 3
     return False
@@ -279,8 +277,10 @@ def main() -> int:
         errors.append("single-tab indented prose must not be treated as a table")
     if not table_like("Header\tValue"):
         errors.append("real tab-separated rows must be treated as tables")
-    if not table_like("| Header | Value |"):
-        errors.append("markdown pipe tables with a leading pipe must be treated as tables")
+    if table_like("| Header | Value |"):
+        errors.append("single markdown pipe rows must not be tables without a separator row")
+    if not table_start_like(["| Header | Value |", "| --- | --- |", "| A | B |"], 0):
+        errors.append("markdown pipe tables with a leading pipe must work when followed by a separator row")
     if not table_start_like(["Header | Value", "--- | ---", "A | B"], 0):
         errors.append("markdown pipe tables without a leading pipe must work when followed by a separator row")
     if table_like("Header | Value"):
@@ -345,8 +345,8 @@ def main() -> int:
         errors.append("wrapped lines must cap copied text before line_store writes")
     if "return over > 0 ? (over + TABLE_CHAR_PX - 1) / TABLE_CHAR_PX : 0;" not in APP_SOURCE:
         errors.append("table horizontal scroll must round up to reveal the final table edge")
-    if "s[first] == '|' && pipe_separated_cells(s, len)" not in APP_SOURCE:
-        errors.append("notes pipe table detection must require markdown table syntax")
+    if "if (bars)" in APP_SOURCE:
+        errors.append("single pipe-delimited rows must not be treated as tables without a separator row")
     if "static int table_start_like_at" not in APP_SOURCE or "table_separator_row(table_parse_cells, cols)" not in APP_SOURCE:
         errors.append("notes renderer must support no-leading-pipe markdown tables only with a separator row")
     if "fence_like" not in APP_SOURCE:
