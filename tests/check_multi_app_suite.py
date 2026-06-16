@@ -71,6 +71,10 @@ def main() -> int:
             raise AssertionError(f"notes table cells must clip text and reserve spacing: {required}")
     if "return tab || bars >= 2" in notes_src:
         raise AssertionError("notes table detection must not treat prose containing || as a table")
+    if "if (tab) return 1;" in notes_src:
+        raise AssertionError("notes table detection must not treat every tab-indented line as a table")
+    if "tab_separated_cells" not in notes_src:
+        raise AssertionError("notes table detection must require real tab-separated cells")
     if "*hscroll = (style == NOTE_TABLE" in notes_src:
         raise AssertionError("notes search jumps must not horizontally offset wrapped table rows")
     if "hscroll > 0 || style == NOTE_CODE" not in notes_src:

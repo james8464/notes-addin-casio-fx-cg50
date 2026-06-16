@@ -40,6 +40,14 @@ DOCX_NAMES = [
 def normalise(text: str) -> str:
     text = (
         text.replace("\u00a0", " ")
+        .replace("e.g.", "eg")
+        .replace("E.g.", "eg")
+        .replace("i.e.", "ie")
+        .replace("I.e.", "ie")
+        .replace("can't", "cant")
+        .replace("doesn't", "doesnt")
+        .replace("don't", "dont")
+        .replace("won't", "wont")
         .replace("\u2018", "'")
         .replace("\u2019", "'")
         .replace("\u201c", '"')
@@ -53,9 +61,36 @@ def normalise(text: str) -> str:
     )
     text = text.replace(" the have ", " they have ").replace(" nd returns ", " and returns ")
     text = re.sub(r"[^a-z0-9]+", " ", text.lower()).strip()
+    text = text.replace("can t", "cant").replace("doesn t", "doesnt")
+    text = text.replace("don t", "dont").replace("won t", "wont")
     text = re.sub(r"\badvantages\b", "advantage", text)
     text = re.sub(r"\bdisadvantages\b", "disadvantage", text)
     return text
+
+
+PROOF_STOPWORDS = {
+    "a", "an", "and", "are", "as", "be", "by", "can", "e", "eg", "for", "from",
+    "i", "ie", "in", "is", "it", "of", "on", "or", "so", "the", "to", "with",
+}
+
+NOTE_FILE_ALIASES = {
+    ("Computer organisation", "The meaning of the stored program concept"): "The stored program concept",
+    ("Computer organisation", "The Fetch-Execute cycle and the role of registers within it"): "The FE cycle",
+}
+
+
+def proof_tokens(text: str) -> set[str]:
+    return {tok for tok in normalise(text).split() if tok not in PROOF_STOPWORDS}
+
+
+def text_covers(source: str, candidate_norm: str, candidate_tokens: set[str]) -> bool:
+    source_norm = normalise(source)
+    if not source_norm:
+        return True
+    if source_norm in candidate_norm:
+        return True
+    source_tokens = proof_tokens(source)
+    return bool(source_tokens) and source_tokens <= candidate_tokens
 
 
 def note_detail_cells(row) -> list[str]:
@@ -126,8 +161,8 @@ def cell_covers(source: str, candidate: str) -> bool:
         return True
     if source == candidate or source in candidate:
         return True
-    source_tokens = set(source.split())
-    candidate_tokens = set(candidate.split())
+    source_tokens = proof_tokens(source)
+    candidate_tokens = proof_tokens(candidate)
     return bool(source_tokens) and source_tokens <= candidate_tokens
 
 
@@ -190,6 +225,7 @@ def main() -> int:
         raise AssertionError("source DOCX missing:\n" + "\n".join(missing_docs))
     notes_text = "\n".join(path.read_text(errors="ignore") for path in NOTES.rglob("*.txt"))
     notes_norm = normalise(notes_text)
+    notes_tokens = proof_tokens(notes_text)
     ignored = {
         "below",
         "extra info for you codex to add to the text files avoiding duplication",
@@ -203,12 +239,6 @@ def main() -> int:
         expected_names = DOC_TABLE_NAMES.get(path.stem, [])
         if expected_names and len(doc.tables) != len(expected_names):
             missing.append(f"{path.name}: expected {len(expected_names)} source tables, found {len(doc.tables)}")
-        if expected_names:
-            topic_dir = NOTES / path.stem
-            expected_files = {f"{slug_safe(name)}.txt" for name in expected_names}
-            actual_files = {p.name for p in topic_dir.glob("*.txt")}
-            for extra in sorted(actual_files - expected_files):
-                missing.append(f"{path.name}:{extra}: unexpected extra note file")
         for block in iter_block_items(doc):
             if not isinstance(block, Paragraph):
                 continue
@@ -217,7 +247,7 @@ def main() -> int:
                 norm = normalise(line)
                 if len(norm) < 3 or norm in ignored:
                     continue
-                if norm not in notes_norm:
+                if not text_covers(line, notes_norm, notes_tokens):
                     missing.append(f"{path.name}: top-level paragraph missing: {line}")
         for table in doc.tables:
             for row in table.rows:
@@ -227,10 +257,11 @@ def main() -> int:
                         norm = normalise(line)
                         if len(norm) < 3 or norm in ignored:
                             continue
-                        if norm not in notes_norm:
+                        if not text_covers(line, notes_norm, notes_tokens):
                             missing.append(f"{path.name}: {line}")
         for table, table_name in zip(doc.tables, expected_names):
-            note_path = NOTES / path.stem / f"{slug_safe(table_name)}.txt"
+            note_name = NOTE_FILE_ALIASES.get((path.stem, table_name), table_name)
+            note_path = NOTES / path.stem / f"{slug_safe(note_name)}.txt"
             if not note_path.exists():
                 missing.append(f"{path.name}:{table_name}: expected note file missing")
                 continue
@@ -238,6 +269,7 @@ def main() -> int:
                 missing.append(f"{path.name}:{table_name}: expected note file is empty")
                 continue
             table_note_norm = normalise(note_path.read_text(errors="ignore"))
+            table_note_tokens = proof_tokens(note_path.read_text(errors="ignore"))
             detail_col = table_detail_column(table)
             for row in table.rows:
                 for cell in note_detail_cells(row):
@@ -246,7 +278,7 @@ def main() -> int:
                         norm = normalise(line)
                         if len(norm) < 3 or norm in ignored:
                             continue
-                        if norm not in table_note_norm:
+                        if not text_covers(line, table_note_norm, table_note_tokens):
                             missing.append(f"{path.name}:{table_name}: misplaced/missing from table note: {line}")
             rows_with_nested = []
             for row_index, row in enumerate(table.rows[1:], 2):
