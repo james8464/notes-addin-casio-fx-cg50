@@ -495,8 +495,16 @@ static int trim_right_len(const char *s, int len) {
   return len;
 }
 
+static int fence_like(const char *s, int len) {
+  int p = trim_left_pos(s, len);
+  if (p + 2 >= len) return 0;
+  char c = s[p];
+  return (c == '`' || c == '~') && s[p + 1] == c && s[p + 2] == c;
+}
+
 static int source_code_like(const char *s, int len) {
   int p = trim_left_pos(s, len);
+  if (fence_like(s, len)) return 1;
   if (p >= 4) return 1;
   return (p + 2 < len && s[p] == '>' && s[p + 1] == '>' && s[p + 2] == '>') ||
          (p + 1 < len && s[p] == '$' && s[p + 1] == ' ') ||
@@ -508,20 +516,31 @@ static int source_code_like(const char *s, int len) {
           s[p + 4] == '>');
 }
 
+static int html_break_len(const char *s, int i, int len) {
+  if (i + 3 >= len || s[i] != '<' ||
+      lower_char((unsigned char)s[i + 1]) != 'b' ||
+      lower_char((unsigned char)s[i + 2]) != 'r')
+    return 0;
+  int p = i + 3;
+  if (p < len && s[p] == '/') ++p;
+  if (p < len && s[p] == '>') return p - i + 1;
+  if (p + 2 < len && s[p] == ' ' && s[p + 1] == '/' && s[p + 2] == '>')
+    return p - i + 3;
+  return 0;
+}
+
 static int clean_cell_copy(char *dst, int cap, const char *src, int len) {
   int start = trim_left_pos(src, len);
   len = trim_right_len(src + start, len - start);
   int n = 0;
   for (int i = 0; i < len && n + 1 < cap; ++i) {
-    if (i + 3 < len && src[start + i] == '<' &&
-        lower_char((unsigned char)src[start + i + 1]) == 'b' &&
-        lower_char((unsigned char)src[start + i + 2]) == 'r' &&
-        src[start + i + 3] == '>') {
+    int br = html_break_len(src + start, i, len);
+    if (br) {
       if (n + 2 < cap) {
         dst[n++] = ';';
         dst[n++] = ' ';
       }
-      i += 3;
+      i += br - 1;
       continue;
     }
     char c = src[start + i] == '\t' ? ' ' : src[start + i];
@@ -732,22 +751,6 @@ static int rule_like(const char *s, int len) {
   return count >= 3;
 }
 
-static int starts_with_ci(const char *s, int len, const char *pfx) {
-  int n = strlen(pfx);
-  if (len < n) return 0;
-  for (int i = 0; i < n; ++i) {
-    if (lower_char((unsigned char)s[i]) != lower_char((unsigned char)pfx[i])) return 0;
-  }
-  return 1;
-}
-
-static int code_like(const char *s, int len, int indent) {
-  if (indent >= 4) return 1;
-  return starts_with_ci(s, len, "ghci>") ||
-         starts_with_ci(s, len, ">>>") ||
-         starts_with_ci(s, len, "$ ");
-}
-
 static int mini_width(const char *s, int len) {
   if (!s || len <= 0) return 0;
   char tmp[LINE_CAP];
@@ -822,7 +825,7 @@ static int markdown_line(const char *s, int len, int *skip, int *style) {
       return 1;
     }
   }
-  if (p + 1 < len && (s[p] == '-' || s[p] == '*') && s[p + 1] == ' ') {
+  if (p + 1 < len && (s[p] == '-' || s[p] == '*' || s[p] == '+') && s[p + 1] == ' ') {
     *skip = p + 2;
     *style = NOTE_BULLET;
     return 1;
@@ -842,7 +845,7 @@ static int markdown_line(const char *s, int len, int *skip, int *style) {
     *style = NOTE_RULE;
     return 1;
   }
-  if (code_like(s + p, len - p, p)) {
+  if (source_code_like(s, len)) {
     *style = NOTE_CODE;
     return 1;
   }
@@ -861,13 +864,13 @@ static void push_view_line(int *line, const char *s, int len, int style, int sou
   if (*line >= MAX_VIEW_LINES) return;
   int col = 0;
   for (int i = 0; i < len && col + 1 < LINE_CAP; ++i) {
-    if (i + 3 < len && s[i] == '<' && lower_char((unsigned char)s[i + 1]) == 'b' &&
-        lower_char((unsigned char)s[i + 2]) == 'r' && s[i + 3] == '>') {
+    int br = html_break_len(s, i, len);
+    if (br) {
       if (col + 2 < LINE_CAP) {
         line_store[*line][col++] = ';';
         line_store[*line][col++] = ' ';
       }
-      i += 3;
+      i += br - 1;
       continue;
     }
     char c = s[i] == '\t' ? ' ' : s[i];
@@ -967,13 +970,13 @@ static void add_display_line(int *line, const char *s, int len, int hscroll, int
     int col = 0;
     for (int k = 0; k < indent && col + 1 < LINE_CAP; ++k) line_store[*line][col++] = ' ';
     for (int i = pos; i < cut && col + 1 < LINE_CAP; ++i) {
-      if (i + 3 < len && s[i] == '<' && lower_char((unsigned char)s[i + 1]) == 'b' &&
-          lower_char((unsigned char)s[i + 2]) == 'r' && s[i + 3] == '>') {
+      int br = html_break_len(s, i, len);
+      if (br) {
         if (col + 2 < LINE_CAP) {
           line_store[*line][col++] = ';';
           line_store[*line][col++] = ' ';
         }
-        i += 3;
+        i += br - 1;
         continue;
       }
       char c = s[i] == '\t' ? ' ' : s[i];
@@ -991,9 +994,18 @@ static void add_display_line(int *line, const char *s, int len, int hscroll, int
 
 static int build_view_lines(int hscroll) {
   int line = 0, pos = 0, source_line = 0;
+  int in_fence = 0;
   while (pos <= file_buf_len && line < MAX_VIEW_LINES) {
     int end = source_line_end_from(pos);
     int len = end - pos;
+    if (in_fence || (len > 0 && fence_like(file_buf + pos, len))) {
+      add_display_line(&line, file_buf + pos, len, hscroll, 1, NOTE_CODE, source_line);
+      if (len > 0 && fence_like(file_buf + pos, len)) in_fence = !in_fence;
+      pos = source_next_line_from(end);
+      ++source_line;
+      if (pos > file_buf_len) break;
+      continue;
+    }
     if (len > 0 && !source_code_like(file_buf + pos, len) && table_like(file_buf + pos, len)) {
       TableRow *rows = table_rows;
       int row_count = 0, cols = 0, next_pos = pos, next_source = source_line;
@@ -1062,12 +1074,23 @@ static int source_line_bounds(int target, int *start_out, int *len_out) {
 }
 
 static int source_line_style(int source_line) {
-  int start = 0, len = 0;
-  int skip = 0, style = NOTE_TEXT;
-  if (!source_line_bounds(source_line, &start, &len)) return NOTE_TEXT;
-  if (len > 0 && !source_code_like(file_buf + start, len) && table_like(file_buf + start, len)) return NOTE_TABLE;
-  markdown_line(file_buf + start, len, &skip, &style);
-  return style;
+  int line = 0, pos = 0, in_fence = 0;
+  while (pos <= file_buf_len) {
+    int end = source_line_end_from(pos);
+    int len = end - pos;
+    if (line == source_line) {
+      if (in_fence || (len > 0 && fence_like(file_buf + pos, len))) return NOTE_CODE;
+      if (len > 0 && !source_code_like(file_buf + pos, len) && table_like(file_buf + pos, len)) return NOTE_TABLE;
+      int skip = 0, style = NOTE_TEXT;
+      markdown_line(file_buf + pos, len, &skip, &style);
+      return style;
+    }
+    if (len > 0 && fence_like(file_buf + pos, len)) in_fence = !in_fence;
+    pos = source_next_line_from(end);
+    ++line;
+    if (pos > file_buf_len) break;
+  }
+  return NOTE_TEXT;
 }
 
 static int find_source_match(const SearchPattern *sp, int start_line, int dir, int *line_out, int *offset_out) {
@@ -1103,9 +1126,19 @@ static int view_line_for_source_match(int source_line, const SearchPattern *sp, 
 
 static int max_file_line_scroll() {
   int max_scroll = 0, pos = 0, source_line = 0;
+  int in_fence = 0;
   while (pos <= file_buf_len) {
     int end = source_line_end_from(pos);
     int len = end - pos;
+    if (in_fence || (len > 0 && fence_like(file_buf + pos, len))) {
+      int scroll = line_end_hscroll(file_buf + pos, len, NOTE_CODE);
+      if (scroll > max_scroll) max_scroll = scroll;
+      if (len > 0 && fence_like(file_buf + pos, len)) in_fence = !in_fence;
+      pos = source_next_line_from(end);
+      ++source_line;
+      if (pos > file_buf_len) break;
+      continue;
+    }
     if (len > 0 && !source_code_like(file_buf + pos, len) && table_like(file_buf + pos, len)) {
       TableRow *rows = table_rows;
       int row_count = 0, cols = 0, next_pos = pos, next_source = source_line;
@@ -1468,7 +1501,7 @@ static void print_note_line(int idx, int x, int y, const char *line, int style, 
   }
   int p = 0;
   while (line && line[p] == ' ') ++p;
-  if (style == NOTE_BULLET && line && (line[p] == '-' || line[p] == '*') && line[p + 1] == ' ') {
+  if (style == NOTE_BULLET && line && (line[p] == '-' || line[p] == '*' || line[p] == '+') && line[p + 1] == ' ') {
     int px = x;
     notes_print_span(&px, y, line, p, fg, bg);
     notes_print_span(&px, y, line + p, 1, UI_BLUE, bg);

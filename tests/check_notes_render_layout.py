@@ -62,19 +62,26 @@ def table_like(line: str) -> bool:
 def source_code_like(line: str) -> bool:
     p = len(line) - len(line.lstrip(" "))
     s = line[p:]
-    return p >= 4 or s.startswith(">>>") or s.startswith("$ ") or s.lower().startswith("ghci>")
+    return (
+        p >= 4
+        or s.startswith("```")
+        or s.startswith("~~~")
+        or s.startswith(">>>")
+        or s.startswith("$ ")
+        or s.lower().startswith("ghci>")
+    )
 
 
 def clean_cell(text: str) -> str:
     text = text.strip().replace("\t", " ")
-    text = re.sub(r"<br>", "; ", text, flags=re.I)
+    text = re.sub(r"<br\s*/?>", "; ", text, flags=re.I)
     text = "".join(ch for ch in text if 32 <= ord(ch) <= 126)
     return text.strip()
 
 
 def clean_inline(text: str) -> str:
     text = text.replace("\t", " ")
-    text = re.sub(r"<br>", "; ", text, flags=re.I)
+    text = re.sub(r"<br\s*/?>", "; ", text, flags=re.I)
     return "".join(ch for ch in text if 32 <= ord(ch) <= 126)
 
 
@@ -159,7 +166,7 @@ def markdown_skip_style(line: str) -> tuple[int, str]:
         hashes = len(s) - len(s.lstrip("#"))
         if hashes < len(s) and s[hashes:hashes + 1] == " ":
             return p + hashes + 1, "heading"
-    if len(s) > 2 and s[0] in "-*" and s[1] == " ":
+    if len(s) > 2 and s[0] in "-*+" and s[1] == " ":
         return 0, "bullet"
     if re.match(r"\d{1,3}[.)] ", s):
         return 0, "ordered"
@@ -260,6 +267,10 @@ def main() -> int:
         errors.append("indented code lines must be recognised before table detection")
     if not source_code_like(">>> code | not table"):
         errors.append("prompt code lines must be recognised before table detection")
+    if not source_code_like("```"):
+        errors.append("fenced code starts must be recognised before table detection")
+    if not source_code_like("~~~"):
+        errors.append("tilde fenced code starts must be recognised before table detection")
     if "min_int(src_len, LINE_CAP - 3)" in APP_SOURCE:
         errors.append("top-level bullet rendering still has LINE_CAP pre-truncation")
     if "clean[out++] = '?';" not in APP_SOURCE:
@@ -308,20 +319,26 @@ def main() -> int:
         errors.append("table horizontal scroll must round up to reveal the final table edge")
     if "pipe_separated_cells" not in APP_SOURCE:
         errors.append("notes table detection must support markdown pipe tables without leading pipes")
+    if "fence_like" not in APP_SOURCE:
+        errors.append("notes renderer must support markdown fenced code blocks")
+    if "html_break_len" not in APP_SOURCE:
+        errors.append("notes renderer must handle common html line breaks without duplicated parsing")
     if "source_code_like(file_buf + next_pos, next_end - next_pos)" not in APP_SOURCE:
         errors.append("long table chunking must not absorb following code-like rows")
+    if "static int starts_with_ci" in APP_SOURCE or "static int code_like" in APP_SOURCE:
+        errors.append("notes renderer should keep one simple source_code_like path")
     if "note_fill_clip" in APP_SOURCE[APP_SOURCE.find("static void notes_print_with_matches_limit"):APP_SOURCE.find("static void notes_print_with_matches(")]:
         errors.append("search matches must use text colour only, not fill/background highlights")
     if 'if (!jump_to_match(&sp, start_source, 1, &top, &hscroll, &lines, max_line)) {\n          search_prepare(&sp, "");\n          active_search = 0;' not in APP_SOURCE:
         errors.append("failed in-file search must reset search mode so NEXT/PREV keep paging")
-    if "if (len > 0 && !source_code_like(file_buf + start, len) && table_like(file_buf + start, len)) return NOTE_TABLE;" not in APP_SOURCE:
+    if "if (len > 0 && !source_code_like(file_buf + pos, len) && table_like(file_buf + pos, len)) return NOTE_TABLE;" not in APP_SOURCE:
         errors.append("search jump styling must detect table source rows without overriding code rows")
     if "table_hscroll_for_match" not in APP_SOURCE or "colpos[c] / TABLE_CHAR_PX - 1" not in APP_SOURCE:
         errors.append("search jumps in tables must scroll to the matched table column")
     if "style == NOTE_CODE ? max_int(0, offset - 6) : 0" not in APP_SOURCE:
         errors.append("search jumps in code lines must preserve code horizontal scrolling")
-    if "(line[p] == '-' || line[p] == '*')" not in APP_SOURCE:
-        errors.append("bullet rendering must support both '-' and '*' markdown bullets")
+    if "(line[p] == '-' || line[p] == '*' || line[p] == '+')" not in APP_SOURCE:
+        errors.append("bullet rendering must support '-', '*', and '+' markdown bullets")
     if "NOTE_H1 : (hashes == 2 ? NOTE_H2 : (hashes == 3 ? NOTE_H3 : NOTE_H4))" not in APP_SOURCE:
         errors.append("markdown headings must map H1/H2/H3/H4 to distinct renderer styles")
     for marker in ("if (style == NOTE_H1)", "else if (style == NOTE_H2)", "else if (style == NOTE_H3)", "else if (style == NOTE_H4)"):
