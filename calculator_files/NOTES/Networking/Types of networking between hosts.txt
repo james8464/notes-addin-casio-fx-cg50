@@ -2,8 +2,6 @@
 
 ## Client-server Networking
 
-### Definition
-
 - one or more central servers provide services to clients
 - clients request services from the server, which responds
 - resources are stored on the server
@@ -20,17 +18,21 @@
 - clients access resources from server
 - server provides resources in response to requests
 
-### Pros & Cons
+### Advantages
 
-| Advantages | Disadvantages |
-| --- | --- |
-| Centralised + more control over management of security + access rights | Configuration/setup more complex |
-| Easier administration (users, files, permissions) | Requires greater expertise to manage than P2P |
-| All data stored centrally; accessible from any device | More expensive (server hardware required) |
-| Centralised backup (easier to backup data) | Dependency on server |
-| Centralised/remote installation and updating of software |  |
-| Server can be optimised for tasks (e.g., file handling) |  |
-| Suitable for large number of users/devices |  |
+- centralised + more control over management of security + access rights
+- easier administration (users, files, permissions)
+- all data is stored centrally, and is accessible from any device
+- centralised backups make it easier to backup data
+- centralised/remote installation and updating of software is possible
+- server can be optimised for specific tasks, eg file handling
+- suitable for large number of users/devices
+
+### Disadvantages
+
+- configuration/setup can be more complicated and require expertise
+- more expensive (server hardware required)
+- dependency on the server introduced
 
 ### Where Used?
 
@@ -41,9 +43,12 @@
   - different users need different access rights
   - central control is required
 
-## Peer-to-peer (p2p) Networking
 
-### Definition
+
+
+
+
+## Peer to peer (p2p) Networking
 
 - no central server
 - resources are stored on each individual computer/device/peer
@@ -57,16 +62,21 @@
 - files can be distributed across computers
 - No dependence on a server
 
-### Pros & Cons
+### Advantages
 
-| Advantages | Disadvantages |
-| --- | --- |
-| More cost effective (no server needed) | Management of security/administration is more difficult |
-| Easier to setup and maintain | No central control of access rights |
-| No single point of failure (no central server) | Data is only available when the device storing it is switched on |
-| Useful for file sharing networks/multimedia sharing | If device fails -> its resources are unavailable |
-|  | No central backups |
-|  | Not suitable for large networks |
+- more cost effective as no server is needed
+- easier to setup and maintain, not necessarily requiring expertise
+- no single point of failure (no central server)
+- useful for file sharing networks/multimedia sharing
+
+### Disadvantages
+
+- management of security/administration is more difficult
+- no central control of access rights
+- data is only available when the device storing it is switched on 
+- if a device fails or is switched off, the resources stored on the device become unavailable to other devices connected to the P2P network
+- no central backups
+- not suitable for large networks
 
 ### Where Used?
 

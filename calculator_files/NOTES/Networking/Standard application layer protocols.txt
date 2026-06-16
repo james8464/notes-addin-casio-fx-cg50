@@ -1,25 +1,50 @@
 # Standard application layer protocols
 
-| Protocol | Port(s) | Purpose |
-| --- | --- | --- |
-| FTP - file transfer protocol | 20 & 21 | Used for sending files between devices; Used for the connection between an FTP server and a client |
-| SSH - secure shell | 22 | Used for remote management of devices |
-| SSH - secure shell | 22 | Requires username + password |
-| SSH - secure shell | 22 | Information is encrypted during transmission |
-| SSH - secure shell | 22 | Essentially, you can run commands from another computer |
-| HTTP - hypertext transfer protocol | 80 | i.e., for loading webpages |
-| HTTPS - hypertext transfer protocol secure | 443 | Same as HTTP, but with encryption |
-| POP3 - post office protocol 3 | 110 & 995 | Used for retrieving emails from an email server |
-| SMTP - simple mail transfer protocol | 25 & 587 & 465 | Used for sending emails |
+- FTP
+  - file transfer protocol
+  - port 20 and 21
+  - used for sending files between devices
+  - used for the connection between a FTP server and a client
+- SSH
+  - secure shell
+  - port 22
+  - used for remote management of devices
+  - requires username + password
+  - information is encrypted during transmission
+- HTTP
+  - hypertext transfer protocol
+  - port 80
+  - for loading webpages
+- HTTPS
+  - hypertext transfer protocol secure
+  - port 443
+  - same as HTTP, but with encryption
+- POP3
+  - post office protocol 3
+  - ports 110 and 995
+  - used for retrieving emails from an email server
+- SMTP
+  - simple mail transfer protocol
+  - ports 25, 587, 465
+  - used to send/transmit/receive emails
+- IMAP
+  - internet message access protocol
+  - port 143
+  - unencrypted connections
+  
 
-- FTP = Method used for transferring files/data across a network, often the internet
-- An Application Layer Protocol
-- Files can be dragged from the folder structure of the remote site or server (SEE BELOW)
+## FTP client software and FTP servers
+
+- FTP = method used for transferring files/data across a network, often the internet
+- an Application Layer Protocol
+- files can be dragged from the folder structure of the remote site or server
 - FTP sites may also be used by software companies offering large updates, or by press photographers to upload their latest photographs to a remote newspaper headquarters.
-- Most FTP sites require a username and password to authenticate the user, but some sites could be configured to allow anonymous use without the need to login.
-1. Toolbar, 2. Quick connect bar, 3. Message log, 4. Local pane, 5. Remote pane, 6. Transfer queue
+- most FTP sites require a username and password to authenticate the user, but some sites could be configured to allow anonymous use without the need to login.
 
-- Definition: an encrypted protocol that allows secure communication between nodes across a network
+
+# SSH used for remote management
+
+- = an encrypted protocol that allows secure communication between nodes across a network
 
 ## SSH Clients
 
@@ -27,14 +52,19 @@
 - used to make a TCP connection to a remote port (via port 22)
 - this connection allows commands for application-level protocols to be sent to the remote server
 
+
+
+
+
+
 ### Role of a Web Server
 
-- Stores web pages (HTML files)
-- Receives requests for those pages
-- Responds to the requests by sending pages as text using HTTP/HTTPS
+- stores web pages (HTML files)
+- receives requests for those pages
+- responds to the requests by sending pages as text using HTTP/HTTPS
 
 ### Role of a Web Browser
 
-- A web browser sends requests to a web server asking for web pages;
-- It then receives the HTML text and all other resources (images, CSS, scripts) needed for the page;
-- The browser downloads these files, interprets them, and renders the finished web page to the user;
+- a web browser sends requests to a web server asking for web pages
+- it then receives the HTML text and all other resources (images, CSS, scripts) needed for the page
+- browser downloads these files, interprets them, and renders the finished web page to the user

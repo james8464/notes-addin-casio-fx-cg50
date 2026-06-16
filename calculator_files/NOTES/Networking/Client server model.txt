@@ -1,78 +1,163 @@
 # Client server model
 
-## How It Works
+## Main Principle
 
-- On the basic principle of sender and receiver
-- To initiate any communication and sharing of resources, the client must make a request to the server
-- The server then responds to that request, providing the requested resources
-- Different servers specialise in different things
-  - E.g., database servers, file servers, emails servers
+- based on sender and receiver
+- client initiates communication by sending a request
+- server responds with a response message
+- server provides the requested resource/service
 
-## The Websocket Protocol
 
-- An example of an API
-- Operates in the application layer of the TCP/IP stack
-- Provides a constant stream of information between 2 devices (usually client's web browser and a server)
-- The connection is full-duplex (data can be transmitted in both directions simultaneously)
-- Allows the client and server to communicate on an ongoing bases without the need to constantly refresh a full web page
-- Allows for fast transmission of data by reducing the size of packet headers
 
-### Where Used?
+## Servers
 
-- Video streaming
-- Online games
-- Instant messaging
+### Purpose
 
-## Crud
+- provide services and resources to clients
+- specialise in particular tasks
 
-- Its an acronym
-- Stands for:
-  - Create
-  - Retrieve
-  - Update
-  - Delete
-- These are the operations you can perform on data (e.g. in a database)
-- Each CRUD command thus has a SQL equivalent:
+### Examples
 
-| CRUD | SQL |
-| --- | --- |
-| Create | INSERT |
-| Retrieve | SELECT |
-| Update | UPDATE |
-| Delete | DELETE |
+- database servers
+- file servers
+- email servers
 
-## Rest
 
-- Its an acronym
-- Stands for:
-  - Representational state transfer
-- Its a design methodology for online database applications that are queried with a web browser
-- A way of designing how systems communicate over a network
-- It uses 4 HTTP request methods to query databases:
 
-| HTTP | SQL |
-| --- | --- |
-| POST | INSERT |
-| GET | SELECT |
-| PUT | UPDATE |
-| DELETE | DELETE |
 
-### Key Difference (this Is What Examiners Want)
+## Websocket Protocol
 
-- CRUD -> what you want to do to data
-- REST -> how you do it over a network
+### Main Characteristics
 
-### Xml vs Json
+- an example of an API
+- operates in the application layer of the TCP/IP stack
+- creates a persistent connection between client and server
+- provides a constant stream of information between two devices
+- usually connects a web browser and a server
+- establishes a full-duplex communication channel
+- data can be transmitted in both directions simultaneously
+- allows ongoing communication without repeatedly refreshing a web page
+- reduces overhead caused by repeated HTTP requests
+- allows fast transmission of data by reducing packet-header overhead
 
-| Feature | XML (extensible markup language) | JSON (JavaScript object notation) |
-| --- | --- | --- |
-| Format type | Markup language (tag-based) | Data-interchange format (key-value pairs) |
-| Structure | Uses nested tags | Uses objects and arrays |
-| Readability (human POV) | More verbose, harder to read | More compact, easier to read |
-| Size | Larger (more tags -> more data) | Smaller (less overhead) |
-| Processing speed | Slower to parse | Faster to parse |
-| Ease of use | More complex syntax | Simpler syntax |
-| Flexibility | Very flexible (custom tags) | Less flexible but sufficient for most uses |
-| Data types | All data treated as text | Supports multiple data types (numbers, strings, arrays, etc) |
-| Usage | Older systems, document storage | Web APIs, modern applications |
-| Example | <name>Bob</name> | "name": "Bob" |
+### Why Used
+
+- real-time communication
+- continuous data exchange
+- low latency communication
+
+### Where Used
+
+- video streaming
+- online games
+- instant messaging
+- live updates and notifications
+
+
+
+
+
+
+## CRUD
+
+### Meaning
+
+- acronym for:
+    - Create
+    - Retrieve
+    - Update
+    - Delete
+
+### Purpose
+
+- defines the operations that can be performed on data
+- commonly used when interacting with databases
+
+### CRUD → SQL Mapping
+
+- Create → INSERT
+- Retrieve → SELECT
+- Update → UPDATE
+- Delete → DELETE
+
+
+
+
+
+
+
+## REST
+
+### Meaning
+
+- Representational State Transfer
+
+### Main Characteristics
+
+- design methodology for online database applications
+- used when databases are accessed through a web browser
+- provides a standard way for systems to communicate over a network
+- relies on HTTP request methods
+- allows JavaScript to communicate with servers through HTTP
+- REST APIs are created and run on the server
+- browser JavaScript calls the REST API
+- resources are represented by URLs
+- entering a URL can cause the server to retrieve data from a database
+
+### HTTP → SQL Mapping
+
+- POST → INSERT
+- GET → SELECT
+- PUT → UPDATE
+- DELETE → DELETE
+
+### Key Difference (Exam Point)
+
+- CRUD = what operation you want to perform on data
+- REST = how that operation is performed over a network
+
+
+
+
+
+
+## JSON vs XML
+
+### XML (Extensible Markup Language)
+
+- markup language
+- uses nested tags
+- more verbose
+- larger file size due to tags
+- slower to parse
+- more complex syntax
+- very flexible through custom tags
+- data typically stored as text
+- commonly used in older systems and document storage
+- example:
+    - <name>Bob</name>
+
+### JSON (JavaScript Object Notation)
+
+- data-interchange format
+- uses key-value pairs
+- uses objects and arrays
+- more compact
+- easier for humans to read
+- smaller file size
+- faster to parse
+- simpler syntax
+- supports multiple data types
+- commonly used in web APIs and modern applications
+- example:
+    - "name": "Bob"
+
+### Advantages of JSON over XML
+
+- easier for humans to read
+- more compact
+- easier to create
+- easier for computers to parse
+- quicker to parse
+- typically requires less storage space
+- facilitates faster transmission

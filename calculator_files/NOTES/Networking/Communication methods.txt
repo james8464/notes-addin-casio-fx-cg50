@@ -2,36 +2,38 @@
 
 ## Serial Data Transmission
 
-- data is sent one bit at a time
-- single wire used
+- data is sent one bit at a time over a single wire
+- does not suffer from skew (bits arriving out of order)
+- suitable for medium to long distances
+- cheaper to manufacture/buy as less materials are needed
+- cabling allows more flexibility over positioning
+- slower than parallel as only one bit is sent simultaneously
+
 
 ## Parallel Data Transmission
 
-- multiple bits sent simultaneously
-- multiple wires used
+- multiple bits sent simultaneously across multiple wires
+- faster transmission rate than serial transmission
+- more data can be transferred simultaneously
+- used internally where high speed is required, eg the data bus
+- data skew may occur (bits arriving out of sync)
+- data corruption is more likely over longer distances
+- more expensive
+- less reliable over long distances
 
-## Comparison
 
-|  | Serial Transmission | Parallel Transmission |
-| --- | --- | --- |
-| Advantage 1 | Doesn't suffer from skew or crosstalk | Can send multiple bits simultaneously |
-| Advantage 2 | More reliable | Faster transmission rate over short distances |
-| Advantage 3 | Suitable for medium to long distances | More data can be transferred at the same time |
-| Advantage 4 | Cheaper to manufacture/buy (less materials needed) | Used internally (e.g., data bus) where high speed is required |
-| Advantage 5 | Cabling allows more flexibility over positioning |  |
-| Advantage 6 | Cables can be longer |  |
-| Disadvantage 1 | Slower than parallel since it only sends one bit at a time | Data skew may occur (bits arrive out of sync); worse over long distances |
-| Disadvantage 2 |  | Data corruption (e.g., crosstalk) more likely |
-| Disadvantage 3 |  | More expensive cables than serial |
-| Disadvantage 4 |  | Less reliable over long distances |
+
+
 
 ## Synchronous Data Transmission
 
 - data transferred at regular intervals
 - timed by a clock signal
-- allows for constant and reliable transmission for time-sensitive data (e.g., real-time video or voice)
+- allows for constant and reliable transmission for time-sensitive data (eg real-time video or voice)
 - the data sent will always be received in the same order that they were sent
 - used within the busses of a computer's processor in the FE cycle
+
+
 
 ## Asynchronous Data Transmission
 
@@ -39,7 +41,7 @@
 - receiver and transmitter (clock) do not need to be exactly synchronised to transmit data
 - receiver and transmitter clock only synchronised at start of data transmission
 
-### Purpose of Start/stop Bits
+### Purpose of start/stop bits
 
   - Start bit = starts the receiver clock
   - Stop bit = allows the next start bit to be recognised

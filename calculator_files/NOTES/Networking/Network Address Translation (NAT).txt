@@ -13,7 +13,7 @@
   - The request if recorded in a NAT table
   - This stores:
     - Private IP address
-    - Port number (i.e., identifying the app the request is coming from on the host)
+    - Port number (ie identifying the app the request is coming from on the host)
 - The router replaces the source IP address
   - Replaces private IP with its own public IP address
   - May also change the port number

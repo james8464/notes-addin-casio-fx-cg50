@@ -1,28 +1,26 @@
 # Network topology
 
-## Physical vs Logical Topology
-
-### Physical Topology
+## Physical Topology
 
 - the physical layout of the cabling/wiring/connections
-- shows how devices are actually connected (cables, hardware)
+- shows how devices are actually connected 
 
-### Logical Topology
+
+
+## Logical Topology
 
 - how data flows around/through the network
 - not necessarily the same as the physical layout
 - describes the path data takes
 
-### Key Idea
 
-- Physical = what it looks like
-- Logical = how it works
 
-## Topology Structures
 
-### Star Topology
 
-- all devices connect to a central device (e.g., switch/hub)
+
+## Star Topology
+
+- all devices connect to a central device (eg switch/hub)
 
 ### Advantages
 
@@ -37,7 +35,12 @@
 - requires more cabling (regarding the physical topology)
 - more expensive
 
-### Bus Topology
+
+
+
+
+
+## Bus Topology
 
 - all devices connected to a single main cable (backbone)
 
@@ -53,17 +56,4 @@
 - performance slows with more devices
 - harder to troubleshoot faults
 
-### Ring Topology (beyond Spec)
 
-- devices are connected in a closed loop
-- data travels in one direction
-
-### Advantages
-
-- no collisions (data flows in one direction)
-- predictable performance
-
-### Disadvantages
-
-- if one device/cable fails -> can break network
-- harder to add/remove devices

@@ -2,23 +2,72 @@
 
 ## Purpose
 
-- To automate the configuration of hosts connecting to a TCP/IP network
-- Allocates IP addresses to hosts
+- automates the configuration of hosts connecting to a TCP/IP network
+- automatically allocates:
+    - IP address
+    - subnet mask
+    - default gateway
+- enables devices to join a network without manual configuration
 
 ## Why Used
 
-- Reduces need for expert knowledge when configuring a host
-- Reduces the time requires to configure hosts
-- Facilitates efficient use of a limited pool of IP addresses
+- reduces need for expert knowledge when configuring a host
+- reduces time required to configure hosts
+- facilitates efficient use of a limited pool of IP addresses
+- enables reuse of IP addresses when devices disconnect from the network
+- helps avoid configuration errors
+- prevents duplicate IP addresses being assigned
+- reduces risk of incorrect network settings being entered manually
 
-## Process
+## Configuration Information Provided
 
-- Host sends request to discover a DHCP server
-- The DHCP server offers a configuration to the host
-- The host accepted the offer from the DHCP server by echoing the accepted configuration back to the server
-- The DHCP server confirms the configuration has been allocated to the host
-### Why it might be undesirable to allow the network settings of the web server to be defined by a DHCP server (PPQ)
-- The IP address of the web server might be changed (by the DHCP server);
-- If the IP address of the web server changes the router will not be able to forward data to it // port forwarding will no longer work;
-  - A. DHCP server / router would need to be configured to allocate a fixed / static IP address to the web server
-  - A. just "IP" for "IP address" as BOD
+- IP address
+- subnet mask
+- default gateway
+- other network settings if required
+
+
+
+
+## DHCP Process
+
+### Step 1
+
+- host sends a request to discover a DHCP server
+- host requests network configuration
+
+### Step 2
+
+- DHCP server offers configuration information to the host
+- offer usually includes an available IP address
+
+### Step 3
+
+- host accepts the offered configuration
+- host echoes the accepted configuration back to the DHCP server
+
+### Step 4
+
+- DHCP server confirms the configuration has been allocated
+- host can now communicate on the network using the assigned settings
+
+
+
+
+## Why DHCP is Useful
+
+- allows large numbers of devices to be configured automatically
+- simplifies network administration
+- makes adding new devices to a network easier
+- reduces setup time
+
+
+
+
+## Why its undesirable to let network settings of a web server to be defined by a DHCP server (PPQ)
+
+- the IP address of the web server might be changed by the DHCP server
+- port forwarding rules depend on the web server having a known IP address
+- if the IP address changes, the router may no longer forward requests to the web server
+- external users may be unable to access the website
+- web servers typically require a fixed/static IP address

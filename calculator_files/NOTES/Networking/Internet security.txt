@@ -2,8 +2,7 @@
 
 ## Firewalls
 
-### Purpose
-
+- a network security device or software that acts as a barrier between a trusted internal network and an untrusted external network
 - sits between a device and the internet
 - regulates the packets that pass through it
 - can be either software or hardware
@@ -19,10 +18,16 @@
   - contents of packet (ie payload) is examined before deciding whether to allow it
   - some firewalls keep a record of current connections in a network
     - this means it can filter out packets that aren't related to any activity on the network
-  - can block/detect advanced threats, e.g., malware hidden in encrypted traffic
+  - can block/detect advanced threats, eg malware hidden in encrypted traffic
 - Proxy server
   - = a server that sits between a public network and a private network
   - manages every packet that passes between the two networks
+
+
+
+
+
+
 
 ## Symmetric Encryption
 
@@ -38,10 +43,10 @@
 - Cipher text is sent to the receiver
 - Receiver decrypts the cipher text using the same key (step 1)
 
-### Weakness
 
-- Vulnerable to interception by eavesdroppers/hackers
-- If they intercept the key when its shared, then the encryption is pointless
+
+
+
 
 ## Asymmetric Encryption
 
@@ -72,6 +77,9 @@
 - The two digests are compared
   - If they match, then it confirms that the sender sent the message and there were no errors in transmission
 
+
+
+
 ### Digital Certificates?
 
 - it verifies ownership of a key pair used in asymmetric encryption
@@ -83,6 +91,11 @@
   - expiry date
   - owner's public key
   - certificate authority's digital signature
+
+
+
+
+
 
 ## Worms
 
@@ -103,12 +116,12 @@
 - a piece of code that replicates itself, spreading to other files
 - can be used to damage the system/hardware
 - requires a host file to reside (typically executable files)
-- can spread between computers, private networks, the internet, or even through physical media (e.g., dark drives)
+- can spread between computers, private networks, the internet, or even through physical media (eg dark drives)
 
 ## Spyware
 
 - finds out information about the user and sends to hacker
-- E.g., keyloggers
+- eg keyloggers
 
 ## Adware
 
@@ -118,7 +131,11 @@
 
 - encrypts user's files
 - demands a ransom payment to decrypt the files
-- usually demands payment through digital currencies (e.g., bitcoin) as it's a decentralised and anonymous platform
+- usually demands payment through digital currencies (eg bitcoin) as it's a decentralised and anonymous platform
+
+
+
+
 
 ### Solutions to the Malware's Listed Above
 
@@ -136,10 +153,10 @@
   - can look into packet contents and block certain ports
 - Use access levels
   - determines the permissions that each user/application has in regards to data on the device
-  - e.g., you may block terminal from modifying content in your 'Home' folder
+  - eg you may block terminal from modifying content in your 'Home' folder
 - Review privacy settings regularly
   - helps prevent the effectiveness of hacking attempts
-  - e.g., turning off microphone/camera for certain apps, changing passwords regularly, 2FA, etc
+  - eg turning off microphone/camera for certain apps, changing passwords regularly, 2FA, etc
 - Enable automatic updates of applications/OS
   - ensures any code vulnerably/improvements fixed by the developer are applied to the app
 - Review code quality

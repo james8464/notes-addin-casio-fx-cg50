@@ -558,6 +558,23 @@ static int html_break_len(const char *s, int i, int len) {
   return 0;
 }
 
+static int html_entity_at(const char *s, int i, int len, char *out) {
+  if (i >= len || s[i] != '&') return 0;
+  struct Ent { const char *name; char value; };
+  static const Ent ents[] = {
+    {"&amp;", '&'}, {"&lt;", '<'}, {"&gt;", '>'},
+    {"&quot;", '"'}, {"&apos;", '\''}, {"&nbsp;", ' '}
+  };
+  for (unsigned e = 0; e < sizeof(ents) / sizeof(ents[0]); ++e) {
+    int n = strlen(ents[e].name);
+    if (i + n <= len && !strncmp(s + i, ents[e].name, n)) {
+      *out = ents[e].value;
+      return n;
+    }
+  }
+  return 0;
+}
+
 static int ascii_alnum(char c) {
   return (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
 }
@@ -607,6 +624,13 @@ static int copy_display_text(char *dst, int cap, const char *src, int len, int s
         dst[n++] = ' ';
       }
       i += br - 1;
+      continue;
+    }
+    char entity = 0;
+    int entity_len = html_entity_at(src, i, len, &entity);
+    if (entity_len) {
+      dst[n++] = entity;
+      i += entity_len - 1;
       continue;
     }
     if (strip_inline) {

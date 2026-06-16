@@ -1,14 +1,17 @@
 # The Internet and how it works
 
-- Definition: global network of interconnected computer networks
+- = global network of interconnected computer networks
 - uses TCP/IP for communication
-- primarily a wired infrastructure (e.g., undersea cables connecting continents)
+- primarily a wired infrastructure (eg undersea cables connecting continents)
 
-## Isp Hierarchy
+## ISP Hierarchy
 
 - national ISPs provide backbone infrastructure
 - regional/local ISPs connect homes and businesses
 - shows internet is hierarchical and decentralised
+
+
+
 
 ## Packet Switching
 
@@ -17,13 +20,7 @@
 - each takes the best available route (fastest/shortest/most efficient)
 - packets are reassembled at the destination according to their sequence numbers
 
-### Advantages
-
-- efficient use of bandwidth
-- fault tolerant (rerouting possible)
-- supports multiple simultaneous transmissions
-
-## Routers
+## How routers are involved
 
 - packets pass through multiple routers (hops)
 - router:
@@ -35,10 +32,27 @@
 - each packet may take a different route, so they might arrive out of order
   - hence why there is a sequence number in the header
 
+### Advantages
+
+- efficient use of bandwidth
+- fault tolerant (rerouting possible)
+- supports multiple simultaneous transmissions
+
+### Disadvantages
+
+- packets can arrive out of order, requiring reassembly at the destination
+- packets may be delayed due to network congestion
+- packets can be dropped if their TTL expires or network issues occur
+- missing packets must be retransmitted, increasing transmission time
+
+
+
+
+
 ## Packet
 
-- Packet = a container in which data is transmitted over networks
-  - e.g., an envelope in the postal system
+- packet = a container in which data is transmitted over networks
+- contains a header, payload, and trailer
 
 ### Header
 
@@ -64,10 +78,15 @@
 ### Trailer
 
 - End of packet signal
-- Error correction (e.g., checksum)
+- Error correction (eg checksum)
   - Purpose: to check if the contents of the packet/data have been corrupted during transmission
 
-## Router
+
+
+
+
+
+## Define router
 
 - device that connects networks together
 - determines next hop using routing tables
@@ -76,21 +95,28 @@
 - modifies MAC address for next hop
 - drops packets when TTL expires
 
-## Gateway
+## Define gateway
 
 - device that connects networks that use different protocols together
 - removes packet header info, then rebuilds the packet to match the format the new protocol expects
 
-- URL = uniform resource locator
-- a text-based address used to locate a resource on the internet
 
-### Components (must Know)
 
-- Protocol - e.g., HTTP or HTTPS
-- Subdomain - e.g., www
-- Domain - e.g., bbc.co.uk
-- Path - e.g., /news/technology
-- File name + extension - e.g., index.html
+
+
+
+
+## Uniform Resource Locator (URL)
+
+- text-based address used to locate a resource on the internet
+
+### Components
+
+- Protocol - eg HTTP or HTTPS
+- Subdomain/host - eg www
+- Domain - eg bbc.co.uk
+- Path - eg /news/technology
+- File name + extension - eg index.html
 
 ## Domain Names
 
@@ -98,40 +124,34 @@
 - uses alphanumeric characters, making it easier for humans to remember + type without errors
 - maps to an IP address
 
-## Fqdn
-
-- stands for: fully qualified domain name
-- same as the domain name, but MUST include the server's host name (e.g., www.)
-
-### Example
-
-## IP Address
-
-- a unique numerical identifier for devices on a network
-- can be IPv4 or IPv6
-- not easy for humans to remember, which is why domain names are used
-  - domain names map to IP addresses
-
-  - domain names are hierarchically organised
-
-### Structure
-
+- domain names are hierarchically organised
   - Top-level domain (TLD)
-    - e.g., .com
+    - eg .com
   - Second-level domain (SLD)
-    - e.g., .co
+    - eg .co
   - Subdomains
-    - e.g.,
+    - eg
       - bbc
       - .co
       - .uk
 
+
+## FQDN
+
+- stands for: fully qualified domain name
+- same as the domain name, but MUST include the server's host name (eg www.)
+- eg: https://www.bbc.co.uk/news/index.html
+
+
+
+
 ## Domain Name Servers
 
-  - Purpose: translate the domain name into its corresponding IP address
+- translates domain name into its corresponding IP address
 - domain name servers store a table of domain names and their corresponding IP address
 - if that server doesn't have a record of the domain your trying to access, the request it passed onto another DNS
 - websites that are rarely visited will take longer to load since the request goes through more servers until the record is found
+
 
 ### Specific Functions
 
@@ -142,10 +162,11 @@
   - i.e., root, top level, 2LDs
   - managing name spaces
 
-## How Domain Names Are Resolved
+
+### How Domain Names Are Resolved
 
 - The user types the FQDN into their browser
-  - e.g., www.certbros.com
+  - eg www.certbros.com
 - Check local cache first
   - the browser checks:
     - browser cache
@@ -164,7 +185,7 @@
     - move to next step
 - Query root DNS server
   - this doesn't actually know IP addresses
-  - it just tells the resolver where to find the TLD server (e.g., .com)
+  - it just tells the resolver where to find the TLD server (eg .com)
 - Query TLD server
   - this knows where the domain is managed
   - it returns the authoritative name server
@@ -175,6 +196,11 @@
   - resolver sends IP back to computer
   - IP is cached for future use
   - browser loads the website
+
+
+
+
+
 
 ## Internet Registries
 
@@ -189,3 +215,16 @@
 - ensures domain names are unique
 - needed to actually map a domain name to an IP address and store in the DNS system
 - ensures efficient use of address space (eg reuses unused Ips before issuing new ones)
+
+
+
+
+
+
+
+## IP Address
+
+- a unique numerical identifier for devices on a network
+- can be IPv4 or IPv6
+- not easy for humans to remember, which is why domain names are used
+  - domain names map to IP addresses

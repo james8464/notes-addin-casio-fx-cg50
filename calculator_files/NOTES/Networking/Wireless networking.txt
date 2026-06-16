@@ -9,6 +9,8 @@
 - based on international standards
   - allows a device made in one part of the world to connect seamlessly to wireless networks all over the world
 
+
+
 ## Components for Wireless Networking
 
 - wireless network adapter
@@ -19,6 +21,8 @@
   - 2.4GHz frequency band is used for home networks
   - 5GHz is mainly used for military/weather radar systems
   - 6GHz used for radio frequency bands
+
+
 
 ## Securing Wireless Networks
 
@@ -36,13 +40,20 @@
   - can be created to allow only certain devices to join a network (since each device has its own unique MAC address)
   - can also be created to block certain devices from joining a network
 
-## What Is It?
+
+
+
+
+
+
+## CSMA/CA with and without RTS/CTS
 
 - stands for: carrier sense multiple access with collision avoidance
-- it's a protocol used in wireless networks
+- a protocol used in wireless networks
 - aim is to avoid data collisions caused by multiple devices communicating at the same time
 
-### Process (without Rts/cts)
+
+### Process (WITHOUT Rts/cts)
 
 - computer with data to send listens to the channel
   - checks to see if the channel is idle or busy
@@ -53,7 +64,8 @@
 - repeat the process
   - after waiting, the device checks the channel again
 
-### Process (with Rts/cts)
+
+### Process (WITH Rts/cts)
 
 - computer with data to send listens to the channel
   - checks to see if the channel is idle or busy
@@ -71,13 +83,21 @@
 - the sender waits to receive the ACK
   - if it doesn't get it within a reasonable time period, then it will retransmit (ie start the process again)
 
-### Purpose of Rts/cts
+
+
+### Purpose of RTS/CTS
 
 - it solves the "hidden node" problem
   - Imagine a situation where the channel is clear/idle, and there are two computers waiting to send data
   - in that situation, both senders would detect that the channel is idle, and will both begin to send data
   - this will cause a collision
   - With RTS/CTS, the receiver essentially controls who is sending the data at one given time
+
+
+
+
+
+## What is SSID
 
 - SSID - stands for Service Set Identifier
 - It is a Unique identifier for a Wireless Network.

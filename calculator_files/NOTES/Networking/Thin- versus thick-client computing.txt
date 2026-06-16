@@ -4,61 +4,150 @@
 
 ### Thick Client
 
-- Applications run locally on the client computer
-- Processing is done on the client device
-- Software is installed on each client
+- processing performed on the client device
+- applications run locally on the client computer
+- software installed on each client device
+- client provides most of the processing power
+- storage is often local to the client
+- may still use servers for shared resources
 
 ### Thin Client
 
-- All/most processing done on a central server
-- Applications are NOT installed on client devices
-- Clients act as interfaces only
-- User input (keyboard/mouse) sent to server
-- Server sends back data/images for display
-- OS may be loaded from server at boot
+- all/most processing performed on a central server
+- applications run on the server
+- applications are generally not installed locally
+- clients mainly provide input and output
+- user input sent to server for processing
+- server sends results/images/screens back to the client
+- operating system may be loaded from the server during boot
+- relies heavily on network communication
 
-### How They Work (key Differences)
 
-| Feature | Thick client | Thin client |
-| --- | --- | --- |
-| Processing | Done on client | Done on server |
-| Software | Installed locally | Runs on server |
-| Data handling | Local processing | Sent to/from server |
-| Client role | Independent device | Interface/terminal |
-| Network use | Lower | Higher (constant communication) |
 
-## Hardware Differences
+## Key Differences
+
+### Processing
+
+- thick client -> processing performed locally
+- thin client -> processing performed on server
+
+### Software
+
+- thick client -> software installed locally
+- thin client -> software runs on server
+
+### Data Handling
+
+- thick client -> data processed locally
+- thin client -> data constantly sent between client and server
+
+### Network Dependency
+
+- thick client -> less dependent on network
+- thin client -> highly dependent on network
+
+### Client Role
+
+- thick client -> largely independent device
+- thin client -> acts mainly as an interface/terminal
+
+## Hardware Requirements
 
 ### Thick Client
 
-- Clients:
-  - High specialisation devices
-- Server:
-  - Less critical (may not be needed)
+#### Client Devices
+
+- higher specification hardware
+- more RAM required
+- faster processor required
+- local storage usually required
+- capable of running applications independently
+
+#### Server
+
+- less critical
+- may not be required in some situations
+- often only used for shared files/services
 
 ### Thin Client
 
-- Requires:
-  - High bandwidth network
-  - Switch (not hub)
-- Client devices:
-  - Low spec (low RAM, slower SPU, no HDD needed)
-  - Often called "dumb terminals"
-- Server:
-  - Very powerful (high RAM, multiple processors)
+#### Client Devices
 
-### Pros & Cons of Each
+- low specification hardware
+- less RAM required
+- slower processor acceptable
+- may not require a hard drive
+- often referred to as dumb terminals
 
-|  | Advantages | Disadvantages |
-| --- | --- | --- |
-| THICK client computing 1 | No reliance on network/server for processing | More expensive hardware |
-| THICK client computing 2 | Can work offline | Harder to maintain (updates on each device) |
-| THICK client computing 3 | Faster local performance for some tasks | Less centralised control |
-| THICK client computing 4 |  | Higher power consumption |
-| THIN client computing 1 | Cheaper clients (lower hardware requirements) | Requires powerful server |
-| THIN client computing 2 | Easier to configure/add/replace clients | Requires high bandwidth network |
-| THIN client computing 3 | Simpler software installation/updates (only on server) | Dependent on network reliability |
-| THIN client computing 4 | More secure (cannot install unauthorised software easily) | Dependent on server performance |
-| THIN client computing 5 | Lower power consumption |  |
-| THIN client computing 6 | Cheaper licensing (per user rather than per device) |  |
-| THIN client computing 7 | Less maintenance required (fewer failures) |  |
+#### Network
+
+- requires high bandwidth network
+- low latency desirable
+- switch preferred over hub
+- network reliability is important
+
+#### Server
+
+- very powerful server required
+- large amounts of RAM
+- multiple processors/cores
+- handles processing for many clients simultaneously
+
+
+
+
+
+
+
+
+
+
+## Advantages and Disadvantages
+
+### Thick Client Advantages
+
+- no reliance on network/server for processing
+- can continue working if network connection fails
+- can work offline
+- faster local performance for some applications
+- less network traffic generated
+- failure of a central server has less impact
+
+### Thick Client Disadvantages
+
+- more expensive client hardware
+- software must be installed on each device
+- harder to maintain
+- updates must be deployed to each client
+- less centralised control
+- higher power consumption
+- greater hardware replacement costs
+
+### Thin Client Advantages
+
+- cheaper client hardware
+- easier to configure new clients
+- easier to replace failed clients
+- centralised software installation
+- centralised software updates
+- easier network administration
+- more secure (users cannot easily install unauthorised software)
+- lower power consumption
+- lower maintenance requirements
+- fewer hardware failures
+- cheaper software licensing in some situations
+- easier backup and data management
+
+### Thin Client Disadvantages
+
+- requires powerful server hardware
+- requires high bandwidth network
+- dependent on network reliability
+- dependent on server performance
+- server failure can affect many users simultaneously
+- poor network performance can reduce responsiveness
+- limited ability to work offline
+
+
+
+

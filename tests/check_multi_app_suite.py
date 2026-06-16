@@ -62,6 +62,8 @@ def main() -> int:
     for required in ["fence_like", "html_break_len", "(line[p] == '-' || line[p] == '*' || line[p] == '+')"]:
         if required not in notes_src:
             raise AssertionError(f"notes renderer must support generic markdown text features: {required}")
+    if "html_entity_at" not in notes_src:
+        raise AssertionError("notes renderer must decode common html entities in copied text")
     for required in ["copy_display_text", "markdown_link_at", "single_marker_at"]:
         if required not in notes_src:
             raise AssertionError(f"notes renderer must clean simple inline markdown generically: {required}")

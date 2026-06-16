@@ -5,7 +5,7 @@
 ## Why Used
 
 - Allows access to services inside a private network
-  - E.g., for CCTV systems
+  - eg for CCTV systems
 - Needed since private IP addresses are not routable on the internet
 
 ## Process
@@ -13,7 +13,7 @@
   - Imagine a client on the internet wants to access a server inside a private network
 - The client sends a request
   - Sent to the public IP address of the router
-  - Includes a destination port number (e.g., 80 for HTTP)
+  - Includes a destination port number (eg 80 for HTTP)
 - The router receives the packet
   - Sees:
     - Public IP (its own)
@@ -25,22 +25,22 @@
     - Public IP -> private IP of server
   - Sends packet to the correct device on the LAN
 - The internal server receives the request
-  - Processes it (e.g., web server returns webpage)
+  - Processes it (eg web server returns webpage)
 - The server sends a response
   - Response goes back to the router
 - The router forwards the response to the client
   - Uses its public IP
   - Sends data back to the original client
 
-## Difference Between NAT and Port Forwarding
 
-| Feature | NAT (network address translation) | Port forwarding |
-| --- | --- | --- |
-| Purpose | Allows devices on a LAN to access the internet | Allows external devices to access a device on a LAN |
-| Direction | Outgoing (LAN -> internet) | Incoming (internet -> LAN) |
-| IP address used | Replaces private IP with router's public IP | Uses routers public IP, then forwards to private IP |
-| Port usage |  | Uses specific port mapping |
-| Mapping type | Dynamic (created automatically per session) | Static (configured manually) |
-| Key function | Hides internal network structure | Exposes a specific internal service |
-| Security | Improves security (devices not directly accessible) | Reduces security (opens access to internal device) |
-| Example | Loading a webpage from your laptop | Hosting a web server at home |
+
+## Between NAT vs Port Forwarding
+
+- NAT allows devices on a LAN to access the internet
+- port forwarding allows external devices to access a device on a LAN
+- NAT replaces private IP with router's public IP
+- port forwarding uses router's public IP, then forwards to the private IP
+- NAT uses dynamic mapping type (created automatically per session)
+- port forwarding uses static mapping type (configured manually)
+- NAT improves security 
+- port forwarding reduces security

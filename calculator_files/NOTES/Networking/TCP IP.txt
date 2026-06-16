@@ -1,32 +1,36 @@
 # TCP IP
 
-- Definition: set of communication protocols used to connect hosts on a network
+- set of communication protocols used to connect hosts on a network
 - allows computers on the same network to identify and communicate with each other
 - TCP - responsible for end-to-end communication
 - IP - responsible for routing packets from host to host
 
+
 ## The Layers
 
-| Layer | Role |
-| --- | --- |
-| Application | Selects and uses the correct protocol to transmit data |
-| Application | Interacts with the user via application software (e.g., a browser) |
-| Transport | Establishes end-to-end connection between sender and receiver |
-| Transport | Then it splits the data into packets and adds header information (e.g., port number) |
-| Transport | Performs error detection |
-| Network | Provides the correct IP addresses for each packet's source + destination |
-| Network | i.e., adds source/destination IP addresses to packet |
-| Network | Routers work within the network layer, so all the functions of the router can be said to be functions of the network layer. |
-| Network | i.e., performs routing (choosing next hop), performs error detection on the packet header |
-| Link | Controls physical connections between pieces of hardware in a network |
-| Link | Adds MAC addresses to packets received from network layer |
+- application layer
+  - selects and uses the correct protocol to transmit data
+  - interacts with the user via application software (eg a browser)
+- transport layer
+  - establishes an end to end connection between the sender and receiver
+  - splits the data into packets and adds header information (eg port number)
+  - performs error detection
+- network layer
+  - adds source and IP addresses to packets
+  - routers work within the network layer, so all functions of the router can be said to be functions of the network layer
+    - eg performing routing, error detection on the packet header, etc
+- link layer
+  - controls physical connections between pieces of hardware in a network
+  - adds MAC addresses to packets received from network layer
+  
+  
 
 ## The Process
 
 - The file is passed down each layer in turn
 - Application layer
-  - Application software (e.g., file server) prepares the file
-  - Selects protocol (e.g., FTP, SMB etc)
+  - Application software (eg file server) prepares the file
+  - Selects protocol (eg FTP, SMB etc)
   - Data is passed to transport layer
 - Transport layer
   - Establishes an end-to-end connection
@@ -45,7 +49,7 @@
   - Adds:
     - Source MAC address
     - Destination MAC address
-  - Sends data onto physical medium (e.g., cable)
+  - Sends data onto physical medium (eg cable)
 - Receiving device - link layer
   - Receives data from medium
   - Removes MAC address
@@ -62,6 +66,8 @@
   - Reconstructs the file
   - Presents it to the user
 
+
+
 ## Socket
 
 - Definition: a combination of an IP address and a port number
@@ -69,7 +75,7 @@
 ### Written as
 
   - IP address : port number
-  - E.g.,
+  - eg
   - 114.26.20.199:443 <- known as a 'socket address'
 
 ### Socket purpose
@@ -91,6 +97,10 @@
 - Transport layer reads port number
 - Socket identifies which application should receive the data
 
+
+
+
+
 ## MAC address
 
 - Definition: media access control
@@ -105,16 +115,32 @@
 ## Well-known ports
 
 - Definition: port numbers with a specific purpose, assigned by IANA
-- Below is a table summarising some main port numbers. MEMORISE at least THREE
+- FTP
+  - file transfer protocol
+  - port 20 and 21
+  - used for sending files between devices
+  - used for the connection between a FTP server and a client
+- SSH
+  - secure shell
+  - port 22
+  - used for remote management of devices
+  - requires username + password
+  - information is encrypted during transmission
+- HTTP
+  - hypertext transfer protocol
+  - port 80
+  - for loading webpages
+- HTTPS
+  - hypertext transfer protocol secure
+  - port 443
+  - same as HTTP, but with encryption
+- POP3
+  - post office protocol 3
+  - ports 110 and 995
+  - used for retrieving emails from an email server
+- SMTP
+  - simple mail transfer protocol
+  - ports 25, 587, 465
+  - used to send/transmit/receive emails 
 
-| Protocol | Port(s) | Purpose |
-| --- | --- | --- |
-| FTP - file transfer protocol | 20 & 21 | Used for sending files between devices; Used for the connection between an FTP server and a client |
-| SSH - secure shell | 22 | Used for remote management of devices |
-| SSH - secure shell | 22 | Requires username + password |
-| SSH - secure shell | 22 | Information is encrypted during transmission |
-| SSH - secure shell | 22 | Essentially, you can run commands from another computer |
-| HTTP - hypertext transfer protocol | 80 | i.e., for loading webpages |
-| HTTPS - hypertext transfer protocol secure | 443 | Same as HTTP, but with encryption |
-| POP3 - post office protocol 3 | 110 & 995 | Used for retrieving emails from an email server |
-| SMTP - simple mail transfer protocol | 25 & 587 & 465 | Used to send/transmit/receive emails |
+

@@ -128,6 +128,12 @@ def restore_escapes(text: str, saved: list[str]) -> str:
 def clean_inline(text: str) -> str:
     text = text.replace("\t", " ")
     text = re.sub(r"<br\s*/?>", "; ", text, flags=re.I)
+    text = (text.replace("&amp;", "&")
+                .replace("&lt;", "<")
+                .replace("&gt;", ">")
+                .replace("&quot;", '"')
+                .replace("&apos;", "'")
+                .replace("&nbsp;", " "))
     text, saved = protect_escapes(text)
     text = re.sub(r"!\[([^\]]*)\]\([^)]+\)", r"\1", text)
     text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)
@@ -469,6 +475,8 @@ def main() -> int:
         errors.append("notes renderer must support markdown fenced code blocks")
     if "html_break_len" not in APP_SOURCE:
         errors.append("notes renderer must handle common html line breaks without duplicated parsing")
+    if "html_entity_at" not in APP_SOURCE:
+        errors.append("notes renderer must decode common html entities in copied text")
     if "copy_display_text" not in APP_SOURCE or "markdown_link_at" not in APP_SOURCE or "single_marker_at" not in APP_SOURCE:
         errors.append("notes renderer must strip simple inline markdown markers through one shared display-copy path")
     if "markdown_escapable" not in APP_SOURCE or "markdown_escaped_at" not in APP_SOURCE:
@@ -481,6 +489,8 @@ def main() -> int:
         errors.append("line width fitting must measure rendered markdown text, not raw source markers")
     if clean_inline("Use **bold**, *em*, `code`, [label](url), ![alt](img)") != "Use bold, em, code, label, alt":
         errors.append("inline markdown cleanup model must preserve readable text")
+    if clean_inline("A &amp; B &lt; C &gt; D &quot;x&quot; &apos;y&apos;") != "A & B < C > D \"x\" 'y'":
+        errors.append("inline markdown cleanup must decode common html entities")
     if clean_inline("Keep 2 * 3 * 4 readable") != "Keep 2 * 3 * 4 readable":
         errors.append("inline markdown cleanup must not strip spaced multiplication")
     if clean_inline(r"Show \*literal\* and A \| B") != "Show *literal* and A | B":

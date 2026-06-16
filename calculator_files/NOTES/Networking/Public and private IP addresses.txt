@@ -1,7 +1,21 @@
 # Public and private IP addresses
 
-| Routable (public) | Non-routable (private) |
-| --- | --- |
-| Globally unique | Many devices can have the same address (just on different LANs) |
-| Allocated by central issuing authority | Allocated by a home/company user |
-| Can be connected to via the internet | Impossible to connect to over internet, must use NAT and port forwarding |
+## Public/routable IP addresses
+
+- globally unique
+- allocated by a central issuing authority
+- can be routed across the internet
+- can be used to uniquely identify a device on the internet
+- required for direct communication over the internet
+- assigned by an ISP or other authorised organisation
+
+## Private/non-routable IP addresses
+
+- used within local/private networks
+- many devices can have the same private IP address if they are on different networks
+- cannot be routed across the internet
+- cannot be used to uniquely identify a device on the internet
+- typically assigned by a router or DHCP server
+- conserve the limited number of public IPv4 addresses
+- require NAT to communicate with devices on the internet
+
