@@ -278,6 +278,10 @@ def main() -> int:
         errors.append("search matches must use text colour only, not fill/background highlights")
     if 'if (!jump_to_match(&sp, start_source, 1, &top, &hscroll, &lines, max_line)) {\n          search_prepare(&sp, "");\n          active_search = 0;' not in APP_SOURCE:
         errors.append("failed in-file search must reset search mode so NEXT/PREV keep paging")
+    if "if (len > 0 && table_like(file_buf + start, len)) return NOTE_TABLE;" not in APP_SOURCE:
+        errors.append("search jump styling must detect table source rows")
+    if "(style == NOTE_CODE || style == NOTE_TABLE)" not in APP_SOURCE:
+        errors.append("search jumps must horizontally scroll to matches in wide tables as well as code lines")
     if "NOTE_H1 : (hashes == 2 ? NOTE_H2 : (hashes == 3 ? NOTE_H3 : NOTE_H4))" not in APP_SOURCE:
         errors.append("markdown headings must map H1/H2/H3/H4 to distinct renderer styles")
     for marker in ("if (style == NOTE_H1)", "else if (style == NOTE_H2)", "else if (style == NOTE_H3)", "else if (style == NOTE_H4)"):

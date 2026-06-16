@@ -998,6 +998,7 @@ static int source_line_style(int source_line) {
   int start = 0, len = 0;
   int skip = 0, style = NOTE_TEXT;
   if (!source_line_bounds(source_line, &start, &len)) return NOTE_TEXT;
+  if (len > 0 && table_like(file_buf + start, len)) return NOTE_TABLE;
   markdown_line(file_buf + start, len, &skip, &style);
   return style;
 }
@@ -1074,7 +1075,7 @@ static int jump_to_match(const SearchPattern *sp, int start_source_line, int dir
   int source_line = 0, offset = 0;
   if (!find_source_match(sp, start_source_line, dir, &source_line, &offset)) return 0;
   int style = source_line_style(source_line);
-  *hscroll = style == NOTE_CODE ? max_int(0, offset - 4) : 0;
+  *hscroll = (style == NOTE_CODE || style == NOTE_TABLE) ? max_int(0, offset - 6) : 0;
   if (*hscroll > max_line) *hscroll = max_line;
   *lines = build_view_lines(*hscroll);
   int view_line = view_line_for_source_match(source_line, sp, *lines);
