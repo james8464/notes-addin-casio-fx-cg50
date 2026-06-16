@@ -872,6 +872,8 @@ static void add_display_line(int *line, const char *s, int len, int hscroll, int
       cut = i + 1;
     }
     if (cut <= pos) cut = min_int(len, pos + usable);
+    int cap_cut = pos + max_int(1, LINE_CAP - indent - 1);
+    if (cut > cap_cut) cut = cap_cut;
     int col = 0;
     for (int k = 0; k < indent && col + 1 < LINE_CAP; ++k) line_store[*line][col++] = ' ';
     for (int i = pos; i < cut && col + 1 < LINE_CAP; ++i) {
