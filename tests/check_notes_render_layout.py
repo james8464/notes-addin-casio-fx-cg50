@@ -276,32 +276,31 @@ def audit_file(path: Path) -> list[str]:
                 if cells and not separator(cells):
                     block.append((i + 1, cells))
                 i += 1
-            if len(block) > MAX_TABLE_ROWS:
-                errors.append(f"{path}:{start}: table exceeds row cap")
-                continue
             cols = max((len(cells) for _line, cells in block), default=0)
             if cols > MAX_TABLE_COLS:
                 errors.append(f"{path}:{start}: table exceeds column cap")
                 continue
-            rows = [cells + [""] * (cols - len(cells)) for _line, cells in block]
-            widths = table_widths(rows, cols)
-            for line_no, cells in block:
-                row_parts = 1
-                row_segments: list[list[str]] = []
-                for c, cell in enumerate(cells + [""] * (cols - len(cells))):
-                    if len(cell) >= TABLE_CELL_CAP:
-                        errors.append(f"{path}:{line_no}: cell exceeds renderer cap")
-                    segs = table_segments(cell, widths[c])
-                    row_segments.append(segs)
-                    row_parts = max(row_parts, len(segs))
-                    if norm(" ".join(segs)) != norm(cell):
-                        errors.append(f"{path}:{line_no}: table cell segmentation loses text")
-                for part in range(row_parts):
-                    line_len = sum(len(segs[part]) if part < len(segs) else 0 for segs in row_segments)
-                    line_len += max(0, cols - 1)
-                    if line_len >= LINE_CAP:
-                        errors.append(f"{path}:{line_no}: rendered table row exceeds line_store cap")
-                    rendered += 1
+            for chunk_start in range(0, len(block), MAX_TABLE_ROWS):
+                chunk = block[chunk_start:chunk_start + MAX_TABLE_ROWS]
+                rows = [cells + [""] * (cols - len(cells)) for _line, cells in chunk]
+                widths = table_widths(rows, cols)
+                for line_no, cells in chunk:
+                    row_parts = 1
+                    row_segments: list[list[str]] = []
+                    for c, cell in enumerate(cells + [""] * (cols - len(cells))):
+                        if len(cell) >= TABLE_CELL_CAP:
+                            errors.append(f"{path}:{line_no}: cell exceeds renderer cap")
+                        segs = table_segments(cell, widths[c])
+                        row_segments.append(segs)
+                        row_parts = max(row_parts, len(segs))
+                        if norm(" ".join(segs)) != norm(cell):
+                            errors.append(f"{path}:{line_no}: table cell segmentation loses text")
+                    for part in range(row_parts):
+                        line_len = sum(len(segs[part]) if part < len(segs) else 0 for segs in row_segments)
+                        line_len += max(0, cols - 1)
+                        if line_len >= LINE_CAP:
+                            errors.append(f"{path}:{line_no}: rendered table row exceeds line_store cap")
+                        rendered += 1
             if i < len(src_lines) and src_lines[i].strip():
                 rendered += 1
             continue
@@ -434,13 +433,15 @@ def main() -> int:
         errors.append("inline markdown cleanup must not strip spaced multiplication")
     if "source_code_like(file_buf + next_pos, next_end - next_pos)" not in APP_SOURCE:
         errors.append("long table chunking must not absorb following code-like rows")
+    if "table_continues_at" not in APP_SOURCE or "table_chunk_start_at" not in APP_SOURCE:
+        errors.append("long markdown pipe tables must continue after the fixed row-buffer chunk")
     if "static int starts_with_ci" in APP_SOURCE or "static int code_like" in APP_SOURCE:
         errors.append("notes renderer should keep one simple source_code_like path")
     if "note_fill_clip" in APP_SOURCE[APP_SOURCE.find("static void notes_print_with_matches_limit"):APP_SOURCE.find("static void notes_print_with_matches(")]:
         errors.append("search matches must use text colour only, not fill/background highlights")
     if 'if (!jump_to_match(&sp, start_source, 1, &top, &hscroll, &lines, max_line)) {\n          search_prepare(&sp, "");\n          active_search = 0;' not in APP_SOURCE:
         errors.append("failed in-file search must reset search mode so NEXT/PREV keep paging")
-    if "if (len > 0 && !source_code_like(file_buf + pos, len) && table_start_like_at(pos, len)) return NOTE_TABLE;" not in APP_SOURCE:
+    if "if (table_row) return NOTE_TABLE;" not in APP_SOURCE:
         errors.append("search jump styling must detect table source rows without overriding code rows")
     if "table_hscroll_for_match" not in APP_SOURCE or "colpos[c] / TABLE_CHAR_PX - 1" not in APP_SOURCE:
         errors.append("search jumps in tables must scroll to the matched table column")

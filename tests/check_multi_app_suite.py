@@ -95,6 +95,8 @@ def main() -> int:
         raise AssertionError("notes viewer must normalize CR/CRLF input to LF")
     if "source_code_like(file_buf + next_pos, next_end - next_pos)" not in notes_src:
         raise AssertionError("notes long tables must not absorb following code-like rows")
+    if "table_continues_at" not in notes_src or "table_chunk_start_at" not in notes_src:
+        raise AssertionError("notes long markdown tables must continue after fixed row-buffer chunks")
     if "lower_char((unsigned char)out[len - 3]) == 't'" not in notes_src:
         raise AssertionError("notes labels must strip .txt extension case-insensitively")
     if "static const int MAX_TABLE_COLS = 8;" not in notes_src:

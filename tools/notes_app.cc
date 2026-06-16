@@ -718,6 +718,18 @@ static int table_start_like_at(int pos, int len) {
   return cols >= row_cols && table_separator_row(table_parse_cells, cols);
 }
 
+static int table_continues_at(int pos) {
+  if (pos > file_buf_len) return 0;
+  int end = source_line_end_from(pos);
+  int len = end - pos;
+  return len > 0 && !source_code_like(file_buf + pos, len) && table_block_row_like(file_buf + pos, len);
+}
+
+static int table_chunk_start_at(int pos, int len, int continuing_table) {
+  if (len <= 0 || source_code_like(file_buf + pos, len)) return 0;
+  return continuing_table ? table_block_row_like(file_buf + pos, len) : table_start_like_at(pos, len);
+}
+
 static int table_col_cap(int cols) {
   if (cols <= 2) return 30;
   if (cols == 3) return 22;
@@ -1102,10 +1114,12 @@ static void add_display_line(int *line, const char *s, int len, int hscroll, int
 static int build_view_lines(int hscroll) {
   int line = 0, pos = 0, source_line = 0;
   int in_fence = 0;
+  int continuing_table = 0;
   while (pos <= file_buf_len && line < MAX_VIEW_LINES) {
     int end = source_line_end_from(pos);
     int len = end - pos;
     if (in_fence || (len > 0 && fence_like(file_buf + pos, len))) {
+      continuing_table = 0;
       add_display_line(&line, file_buf + pos, len, hscroll, 1, NOTE_CODE, source_line);
       if (len > 0 && fence_like(file_buf + pos, len)) in_fence = !in_fence;
       pos = source_next_line_from(end);
@@ -1113,13 +1127,15 @@ static int build_view_lines(int hscroll) {
       if (pos > file_buf_len) break;
       continue;
     }
-    if (len > 0 && !source_code_like(file_buf + pos, len) && table_start_like_at(pos, len)) {
+    if (table_chunk_start_at(pos, len, continuing_table)) {
       TableRow *rows = table_rows;
       int row_count = 0, cols = 0, next_pos = pos, next_source = source_line;
       if (collect_table_block(pos, source_line, rows, &row_count, &cols, &next_pos, &next_source)) {
         push_table_block(&line, rows, row_count, cols, hscroll);
         int next_end = next_pos <= file_buf_len ? source_line_end_from(next_pos) : next_pos;
+        continuing_table = table_continues_at(next_pos);
         if (next_pos < file_buf_len && next_end > next_pos &&
+            !continuing_table &&
             (source_code_like(file_buf + next_pos, next_end - next_pos) ||
              !table_start_like_at(next_pos, next_end - next_pos)))
           push_blank_line(&line, next_source);
@@ -1128,6 +1144,7 @@ static int build_view_lines(int hscroll) {
         continue;
       }
     }
+    continuing_table = 0;
     int setext_next = 0;
     int setext_style = setext_heading_style_at(pos, len, &setext_next);
     if (setext_style) {
@@ -1191,13 +1208,14 @@ static int source_line_bounds(int target, int *start_out, int *len_out) {
 }
 
 static int source_line_style(int source_line) {
-  int line = 0, pos = 0, in_fence = 0;
+  int line = 0, pos = 0, in_fence = 0, continuing_table = 0;
   while (pos <= file_buf_len) {
     int end = source_line_end_from(pos);
     int len = end - pos;
+    int table_row = table_chunk_start_at(pos, len, continuing_table);
     if (line == source_line) {
       if (in_fence || (len > 0 && fence_like(file_buf + pos, len))) return NOTE_CODE;
-      if (len > 0 && !source_code_like(file_buf + pos, len) && table_start_like_at(pos, len)) return NOTE_TABLE;
+      if (table_row) return NOTE_TABLE;
       int setext_style = setext_heading_style_at(pos, len, 0);
       if (setext_style) return setext_style;
       int skip = 0, style = NOTE_TEXT;
@@ -1205,6 +1223,7 @@ static int source_line_style(int source_line) {
       return style;
     }
     if (len > 0 && fence_like(file_buf + pos, len)) in_fence = !in_fence;
+    continuing_table = table_row && table_continues_at(source_next_line_from(end));
     pos = source_next_line_from(end);
     ++line;
     if (pos > file_buf_len) break;
@@ -1246,10 +1265,12 @@ static int view_line_for_source_match(int source_line, const SearchPattern *sp, 
 static int max_file_line_scroll() {
   int max_scroll = 0, pos = 0, source_line = 0;
   int in_fence = 0;
+  int continuing_table = 0;
   while (pos <= file_buf_len) {
     int end = source_line_end_from(pos);
     int len = end - pos;
     if (in_fence || (len > 0 && fence_like(file_buf + pos, len))) {
+      continuing_table = 0;
       int scroll = line_end_hscroll(file_buf + pos, len, NOTE_CODE);
       if (scroll > max_scroll) max_scroll = scroll;
       if (len > 0 && fence_like(file_buf + pos, len)) in_fence = !in_fence;
@@ -1258,7 +1279,7 @@ static int max_file_line_scroll() {
       if (pos > file_buf_len) break;
       continue;
     }
-    if (len > 0 && !source_code_like(file_buf + pos, len) && table_start_like_at(pos, len)) {
+    if (table_chunk_start_at(pos, len, continuing_table)) {
       TableRow *rows = table_rows;
       int row_count = 0, cols = 0, next_pos = pos, next_source = source_line;
       if (collect_table_block(pos, source_line, rows, &row_count, &cols, &next_pos, &next_source)) {
@@ -1266,11 +1287,13 @@ static int max_file_line_scroll() {
         table_compute_widths(rows, row_count, cols, widths);
         int scroll = table_max_hscroll(widths, cols);
         if (scroll > max_scroll) max_scroll = scroll;
+        continuing_table = table_continues_at(next_pos);
         pos = next_pos;
         source_line = next_source;
         continue;
       }
     }
+    continuing_table = 0;
     int setext_next = 0;
     int setext_style = setext_heading_style_at(pos, len, &setext_next);
     if (setext_style) {
@@ -1296,11 +1319,11 @@ static int max_file_line_scroll() {
 }
 
 static int table_hscroll_for_match(const SearchPattern *sp, int target_source_line) {
-  int pos = 0, source_line = 0;
+  int pos = 0, source_line = 0, continuing_table = 0;
   while (pos <= file_buf_len) {
     int end = source_line_end_from(pos);
     int len = end - pos;
-    if (len > 0 && !source_code_like(file_buf + pos, len) && table_start_like_at(pos, len)) {
+    if (table_chunk_start_at(pos, len, continuing_table)) {
       TableRow *rows = table_rows;
       int row_count = 0, cols = 0, next_pos = pos, next_source = source_line;
       if (collect_table_block(pos, source_line, rows, &row_count, &cols, &next_pos, &next_source)) {
@@ -1316,11 +1339,13 @@ static int table_hscroll_for_match(const SearchPattern *sp, int target_source_li
           }
           return 0;
         }
+        continuing_table = table_continues_at(next_pos);
         pos = next_pos;
         source_line = next_source;
         continue;
       }
     }
+    continuing_table = 0;
     pos = source_next_line_from(end);
     ++source_line;
     if (pos > file_buf_len) break;
