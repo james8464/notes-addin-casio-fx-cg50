@@ -484,6 +484,10 @@ static int table_like(const char *s, int len) {
   return 0;
 }
 
+static int table_block_row_like(const char *s, int len) {
+  return table_like(s, len) || pipe_separated_cells(s, len);
+}
+
 static int trim_left_pos(const char *s, int len) {
   int p = 0;
   while (p < len && s[p] == ' ') ++p;
@@ -603,6 +607,19 @@ static int source_next_line_from(int end) {
   return end + 1;
 }
 
+static int table_start_like_at(int pos, int len) {
+  if (table_like(file_buf + pos, len)) return 1;
+  if (!pipe_separated_cells(file_buf + pos, len)) return 0;
+  int end = source_line_end_from(pos);
+  int next = source_next_line_from(end);
+  if (next > file_buf_len) return 0;
+  int next_end = source_line_end_from(next);
+  int next_len = next_end - next;
+  if (next_len <= 0 || source_code_like(file_buf + next, next_len)) return 0;
+  int cols = parse_table_row(file_buf + next, next_len, table_parse_cells);
+  return table_separator_row(table_parse_cells, cols);
+}
+
 static int table_col_cap(int cols) {
   if (cols <= 2) return 30;
   if (cols == 3) return 22;
@@ -663,7 +680,7 @@ static int collect_table_block(int pos, int source_line, TableRow *rows, int *ro
   while (cur <= file_buf_len && count < MAX_TABLE_ROWS) {
     int end = source_line_end_from(cur);
     int len = end - cur;
-    if (len <= 0 || source_code_like(file_buf + cur, len) || !table_like(file_buf + cur, len)) break;
+    if (len <= 0 || source_code_like(file_buf + cur, len) || !table_block_row_like(file_buf + cur, len)) break;
     int row_cols = parse_table_row(file_buf + cur, len, table_parse_cells);
     if (row_cols <= 0) break;
     if (table_separator_row(table_parse_cells, row_cols)) {
@@ -1006,7 +1023,7 @@ static int build_view_lines(int hscroll) {
       if (pos > file_buf_len) break;
       continue;
     }
-    if (len > 0 && !source_code_like(file_buf + pos, len) && table_like(file_buf + pos, len)) {
+    if (len > 0 && !source_code_like(file_buf + pos, len) && table_start_like_at(pos, len)) {
       TableRow *rows = table_rows;
       int row_count = 0, cols = 0, next_pos = pos, next_source = source_line;
       if (collect_table_block(pos, source_line, rows, &row_count, &cols, &next_pos, &next_source)) {
@@ -1014,7 +1031,7 @@ static int build_view_lines(int hscroll) {
         int next_end = next_pos <= file_buf_len ? source_line_end_from(next_pos) : next_pos;
         if (next_pos < file_buf_len && next_end > next_pos &&
             (source_code_like(file_buf + next_pos, next_end - next_pos) ||
-             !table_like(file_buf + next_pos, next_end - next_pos)))
+             !table_start_like_at(next_pos, next_end - next_pos)))
           push_blank_line(&line, next_source);
         pos = next_pos;
         source_line = next_source;
@@ -1080,7 +1097,7 @@ static int source_line_style(int source_line) {
     int len = end - pos;
     if (line == source_line) {
       if (in_fence || (len > 0 && fence_like(file_buf + pos, len))) return NOTE_CODE;
-      if (len > 0 && !source_code_like(file_buf + pos, len) && table_like(file_buf + pos, len)) return NOTE_TABLE;
+      if (len > 0 && !source_code_like(file_buf + pos, len) && table_start_like_at(pos, len)) return NOTE_TABLE;
       int skip = 0, style = NOTE_TEXT;
       markdown_line(file_buf + pos, len, &skip, &style);
       return style;
@@ -1139,7 +1156,7 @@ static int max_file_line_scroll() {
       if (pos > file_buf_len) break;
       continue;
     }
-    if (len > 0 && !source_code_like(file_buf + pos, len) && table_like(file_buf + pos, len)) {
+    if (len > 0 && !source_code_like(file_buf + pos, len) && table_start_like_at(pos, len)) {
       TableRow *rows = table_rows;
       int row_count = 0, cols = 0, next_pos = pos, next_source = source_line;
       if (collect_table_block(pos, source_line, rows, &row_count, &cols, &next_pos, &next_source)) {
@@ -1176,7 +1193,7 @@ static int table_hscroll_for_match(const SearchPattern *sp, int target_source_li
   while (pos <= file_buf_len) {
     int end = source_line_end_from(pos);
     int len = end - pos;
-    if (len > 0 && !source_code_like(file_buf + pos, len) && table_like(file_buf + pos, len)) {
+    if (len > 0 && !source_code_like(file_buf + pos, len) && table_start_like_at(pos, len)) {
       TableRow *rows = table_rows;
       int row_count = 0, cols = 0, next_pos = pos, next_source = source_line;
       if (collect_table_block(pos, source_line, rows, &row_count, &cols, &next_pos, &next_source)) {

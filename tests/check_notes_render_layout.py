@@ -59,6 +59,26 @@ def table_like(line: str) -> bool:
     return False
 
 
+def pipe_cells(line: str) -> bool:
+    return sum(1 for cell in line.split("|") if cell.strip()) >= 2
+
+
+def table_block_row_like(line: str) -> bool:
+    return table_like(line) or pipe_cells(line)
+
+
+def table_start_like(lines: list[str], index: int) -> bool:
+    line = lines[index]
+    if table_like(line):
+        return True
+    if not pipe_cells(line):
+        return False
+    if index + 1 >= len(lines):
+        return False
+    cells = table_cells(lines[index + 1])
+    return bool(cells) and separator(cells)
+
+
 def source_code_like(line: str) -> bool:
     p = len(line) - len(line.lstrip(" "))
     s = line[p:]
@@ -203,10 +223,10 @@ def audit_file(path: Path) -> list[str]:
     i = 0
     while i < len(src_lines):
         line = src_lines[i]
-        if table_like(line) and not source_code_like(line):
+        if table_start_like(src_lines, i) and not source_code_like(line):
             start = i + 1
             block: list[tuple[int, list[str]]] = []
-            while i < len(src_lines) and table_like(src_lines[i]):
+            while i < len(src_lines) and table_block_row_like(src_lines[i]):
                 cells = table_cells(src_lines[i])
                 if cells and not separator(cells):
                     block.append((i + 1, cells))
@@ -261,8 +281,12 @@ def main() -> int:
         errors.append("real tab-separated rows must be treated as tables")
     if not table_like("| Header | Value |"):
         errors.append("markdown pipe tables with a leading pipe must be treated as tables")
+    if not table_start_like(["Header | Value", "--- | ---", "A | B"], 0):
+        errors.append("markdown pipe tables without a leading pipe must work when followed by a separator row")
     if table_like("Header | Value"):
         errors.append("plain prose containing a pipe must not be treated as a table")
+    if table_start_like(["Header | Value", "ordinary text"], 0):
+        errors.append("plain prose containing a pipe must not start a table without a separator row")
     if table_like("- || meaning or"):
         errors.append("bullets containing || must not be treated as tables")
     if table_like("Not a table | "):
@@ -323,6 +347,8 @@ def main() -> int:
         errors.append("table horizontal scroll must round up to reveal the final table edge")
     if "s[first] == '|' && pipe_separated_cells(s, len)" not in APP_SOURCE:
         errors.append("notes pipe table detection must require markdown table syntax")
+    if "static int table_start_like_at" not in APP_SOURCE or "table_separator_row(table_parse_cells, cols)" not in APP_SOURCE:
+        errors.append("notes renderer must support no-leading-pipe markdown tables only with a separator row")
     if "fence_like" not in APP_SOURCE:
         errors.append("notes renderer must support markdown fenced code blocks")
     if "html_break_len" not in APP_SOURCE:
@@ -335,7 +361,7 @@ def main() -> int:
         errors.append("search matches must use text colour only, not fill/background highlights")
     if 'if (!jump_to_match(&sp, start_source, 1, &top, &hscroll, &lines, max_line)) {\n          search_prepare(&sp, "");\n          active_search = 0;' not in APP_SOURCE:
         errors.append("failed in-file search must reset search mode so NEXT/PREV keep paging")
-    if "if (len > 0 && !source_code_like(file_buf + pos, len) && table_like(file_buf + pos, len)) return NOTE_TABLE;" not in APP_SOURCE:
+    if "if (len > 0 && !source_code_like(file_buf + pos, len) && table_start_like_at(pos, len)) return NOTE_TABLE;" not in APP_SOURCE:
         errors.append("search jump styling must detect table source rows without overriding code rows")
     if "table_hscroll_for_match" not in APP_SOURCE or "colpos[c] / TABLE_CHAR_PX - 1" not in APP_SOURCE:
         errors.append("search jumps in tables must scroll to the matched table column")
