@@ -1,0 +1,46 @@
+# Higher order functions
+
+Higher order function = A function that takes a function as an argument / returns a function as a result / takes a function as an argument and returns a function as a result.
+
+Accepted wording:
+- parameter or input can be used for argument
+- A. "Parameter", "Input" for "Argument"
+
+Do not only say:
+- a function that uses another function
+- explanations that are specifically of the map function
+- NE. A function that uses another function
+- R. Explanations that are specifically of the map function
+
+### Example
+
+    applyTwice :: (a -> a) -> a -> a
+    applyTwice f x = f( f x)
+
+Parenthesis are required and define the type declaration of function f.
+
+'a' denotes a type - they have to be the same.
+
+Once defined, we can use it like this:
+
+    applyTwice (+3) 10
+
+This will return 16.
+
+    applyTwice (++ " HAHA") "HEY"
+
+This will return "HEY HAHA HAHA".
+
+    applyTwice ("HAHA " ++) "HEY"
+
+This will return "HAHA HAHA HEY".
+
+    applyTwice (multThree 2 2) 9
+
+This will return 144, with multThree having been previously defined to multiply three input values.
+
+applyTwice (multThree 2 2) 9 -- this will return 144 (multThree having been previously defined to multiply three input values)
+
+    applyTwice (3: ) [1]
+
+This will return [3,3,1].

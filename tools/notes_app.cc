@@ -417,13 +417,18 @@ static int load_file_buf(const char *path) {
 
 static int table_like(const char *s, int len) {
   int bars = 0, tab = 0, plus = 0, dashes = 0;
+  int first = 0;
+  while (first < len && s[first] == ' ') ++first;
   for (int i = 0; i < len; ++i) {
     if (s[i] == '|') ++bars;
     if (s[i] == '\t') tab = 1;
     if (s[i] == '+') ++plus;
     if (s[i] == '-') ++dashes;
   }
-  return tab || bars >= 2 || (plus >= 2 && dashes >= 3);
+  if (tab) return 1;
+  if (first < len && s[first] == '|') return bars >= 2;
+  if (first < len && s[first] == '+') return plus >= 2 && dashes >= 3;
+  return 0;
 }
 
 static int trim_left_pos(const char *s, int len) {
@@ -549,6 +554,11 @@ static int table_pixel_width(const int *widths, int cols) {
   int total = 1;
   for (int c = 0; c < cols; ++c) total += widths[c] * TABLE_CHAR_PX + TABLE_PAD_X * 2 + 1;
   return total;
+}
+
+static int table_max_hscroll(const int *widths, int cols) {
+  int over = table_pixel_width(widths, cols) - ((int)NOTE_X_LIMIT - VIEW_X);
+  return over > 0 ? (over + TABLE_CHAR_PX - 1) / TABLE_CHAR_PX : 0;
 }
 
 static void table_col_positions(const int *widths, int cols, int *colpos) {
@@ -807,6 +817,7 @@ static void push_table_block(int *line, TableRow *rows, int row_count, int cols,
   int widths[MAX_TABLE_COLS], colpos[MAX_TABLE_COLS + 1];
   table_compute_widths(rows, row_count, cols, widths);
   table_col_positions(widths, cols, colpos);
+  int local_hscroll = min_int(hscroll, table_max_hscroll(widths, cols));
   for (int r = 0; r < row_count && *line < MAX_VIEW_LINES; ++r) {
     int parts = 1;
     for (int c = 0; c < cols; ++c)
@@ -816,7 +827,7 @@ static void push_table_block(int *line, TableRow *rows, int row_count, int cols,
       for (int c = 0; c < MAX_TABLE_COLS; ++c) segs[c][0] = 0;
       for (int c = 0; c < cols; ++c)
         table_segment_at(rows[r].cells[c], widths[c], part, segs[c], TABLE_CELL_CAP);
-      push_table_line(line, segs, rows[r].source_line, cols, colpos, hscroll,
+      push_table_line(line, segs, rows[r].source_line, cols, colpos, local_hscroll,
                       part == 0, part == parts - 1, rows[r].header);
     }
   }
@@ -829,7 +840,7 @@ static void push_blank_line(int *line, int source_line) {
 static void add_display_line(int *line, const char *s, int len, int hscroll, int preserve, int style, int source_line) {
   if (*line >= MAX_VIEW_LINES || len < 0) return;
   if (preserve) {
-    int start = min_int(hscroll, len);
+    int start = min_int(hscroll, max_int(0, len - 1));
     int take = fit_visible_chars(s + start, len - start, 0);
     push_view_line(line, s + start, take, style, source_line);
     return;
@@ -1015,8 +1026,7 @@ static int max_file_line_scroll() {
       if (collect_table_block(pos, source_line, rows, &row_count, &cols, &next_pos, &next_source)) {
         int widths[MAX_TABLE_COLS];
         table_compute_widths(rows, row_count, cols, widths);
-        int over = table_pixel_width(widths, cols) - ((int)NOTE_X_LIMIT - VIEW_X);
-        int scroll = over > 0 ? (over + TABLE_CHAR_PX - 1) / TABLE_CHAR_PX : 0;
+        int scroll = table_max_hscroll(widths, cols);
         if (scroll > max_scroll) max_scroll = scroll;
         pos = next_pos;
         source_line = next_source;
@@ -1039,7 +1049,7 @@ static int jump_to_match(const SearchPattern *sp, int start_source_line, int dir
   int source_line = 0, offset = 0;
   if (!find_source_match(sp, start_source_line, dir, &source_line, &offset)) return 0;
   int style = source_line_style(source_line);
-  *hscroll = (style == NOTE_TABLE || style == NOTE_CODE) ? max_int(0, offset - 4) : 0;
+  *hscroll = style == NOTE_CODE ? max_int(0, offset - 4) : 0;
   if (*hscroll > max_line) *hscroll = max_line;
   *lines = build_view_lines(*hscroll);
   int view_line = view_line_for_source_match(source_line, sp, *lines);

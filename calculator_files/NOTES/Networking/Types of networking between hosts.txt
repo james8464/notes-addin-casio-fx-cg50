@@ -57,7 +57,7 @@
 | PUT | UPDATE |
 | DELETE | DELETE |
 
-### 🧠 Key Difference (this Is What Examiners Want)
+### Key Difference (this Is What Examiners Want)
 
 - CRUD -> what you want to do to data
 - REST -> how you do it over a network

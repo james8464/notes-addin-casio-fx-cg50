@@ -1,0 +1,9 @@
+# Map filter reduce
+
+map is the name of a higher-order function that applies a given function to each element of a list, returning a list of results.
+
+filter is the name of a higher-order function that processes a data structure, typically a list, in some order to produce a new data structure containing exactly those elements of the original data structure that match a given condition.
+
+reduce or fold is the name of a higher-order function which takes a list of values and a function as arguments, and applies repeatedly, using recursion, that combining function to each element of the list, returning a single value.
+
+Then practise, practise, practise.

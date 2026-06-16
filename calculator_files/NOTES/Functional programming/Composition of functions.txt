@@ -1,7 +1,18 @@
 # Composition of functions
 
 = the process of combining a series of functions into a single function
+
 NOTE: its exactly the same as function composition in maths
+
+Functional composition combines two functions to get a new function.
+
+Eg if f : A -> B, and g : B -> C, then:
+
+    g o f
+
+is called the composition of g and f, and is a function whose domain is A and co-domain is C.
+
+Composition is possible because the co-domain of f is the same as the domain of g.
 
 ### Example
 

@@ -62,9 +62,13 @@ def main() -> int:
             raise AssertionError(f"notes wrapped continuations must align nested markdown content: {required}")
     if "push_table_block(&line, rows, row_count, cols, hscroll)" not in notes_src:
         raise AssertionError("notes table horizontal scroll must use the table renderer")
-    for required in ["notes_print_with_matches_limit", "notes_print_span_limit", "xlimit", "push_blank_line(&line, next_source)"]:
+    for required in ["notes_print_with_matches_limit", "notes_print_span_limit", "xlimit", "push_blank_line(&line, next_source)", "table_max_hscroll(widths, cols)", "local_hscroll"]:
         if required not in notes_src:
             raise AssertionError(f"notes table cells must clip text and reserve spacing: {required}")
+    if "return tab || bars >= 2" in notes_src:
+        raise AssertionError("notes table detection must not treat prose containing || as a table")
+    if "*hscroll = (style == NOTE_TABLE" in notes_src:
+        raise AssertionError("notes search jumps must not horizontally offset wrapped table rows")
     if "hscroll > 0 || style == NOTE_CODE" not in notes_src:
         raise AssertionError("notes horizontal scroll must work for non-table wide lines")
     for required in ["mini_width", "segment_fits_screen", "fit_visible_chars", "max_file_line_scroll", "NOTE_X_LIMIT"]:

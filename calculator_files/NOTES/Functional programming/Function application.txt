@@ -3,6 +3,9 @@
 ### Define the Term 'function Application'
 
 - applying the function rule to the arguments of a function
+- Function application = a function applied to its arguments
+- Giving particular inputs to a function, eg add(3,4), is the application of function add to integer arguments 3 and 4
+- The type of this function is f: integer x integer -> integer, where integer x integer is the cartesian product of set Integer with itself
   - E.g.,
   - Consider this function:
       - add3Integers x y z = x + y + z
