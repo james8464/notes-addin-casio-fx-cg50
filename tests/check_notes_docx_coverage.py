@@ -11,8 +11,7 @@ try:
     from docx.table import Table
     from docx.text.paragraph import Paragraph
 except ModuleNotFoundError:
-    print("SKIP notes docx coverage: python-docx unavailable")
-    raise SystemExit(0)
+    raise SystemExit("FAIL notes docx coverage: python-docx unavailable")
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -183,10 +182,10 @@ def nested_tables(cell) -> list[Table]:
 
 
 def main() -> int:
-    paths = [DOCX_DIR / name for name in DOCX_NAMES if (DOCX_DIR / name).exists()]
-    if not paths:
-        print(f"SKIP notes docx coverage: no source docs in {DOCX_DIR}")
-        return 0
+    paths = [DOCX_DIR / name for name in DOCX_NAMES]
+    missing_docs = [str(path) for path in paths if not path.exists()]
+    if missing_docs:
+        raise AssertionError("source DOCX missing:\n" + "\n".join(missing_docs))
     notes_text = "\n".join(path.read_text(errors="ignore") for path in NOTES.rglob("*.txt"))
     notes_norm = normalise(notes_text)
     ignored = {
