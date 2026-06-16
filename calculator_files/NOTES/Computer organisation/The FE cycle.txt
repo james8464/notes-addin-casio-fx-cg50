@@ -3,11 +3,14 @@
 ## Fetch
 
 - Contents of PC transferred to MAR
+- MAR stores address of next instruction
 - Address bus transfers this address to main memory
-- Contents of addressed memory location loaded into the MBR via data bus
 - Control signal (eg READ) is sent via control bus
-- PC is incremented
+- Contents of addressed memory location loaded into the MBR via data bus
+- MBR now contains the fetched instruction
 - Content in MBR is transferred to the CIR
+- CIR stores the instruction currently being decoded/executed
+- PC is incremented so it points to the next instruction
 
 ## Decode
 
@@ -16,11 +19,12 @@
 
 ## Execute
 
-- If necessary, more fetches are performed
-  - opcode identifies the type of instruction to be performed by the processor
-- instruction is executed by relevant part of processor (eg ALU)
-- Result may be stored in accumulator
+- Opcode identifies the type of instruction to be performed by the processor
+- If necessary, additional data is fetched from memory
+- Instruction is executed by the relevant part of the processor (eg ALU)
+- Result may be stored in accumulator/register/main memory
 - Status register updated
+- If a branch/jump instruction is executed, the PC is updated with the new address
 
 
 ### PPQ: Why can't an instruction be directly processed from the MBR (so needs to be in CIR)

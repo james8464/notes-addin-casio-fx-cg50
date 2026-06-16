@@ -65,6 +65,17 @@ def table_block_row_like(line: str) -> bool:
     return table_like(line) or pipe_cells(line)
 
 
+def plus_separator(line: str) -> bool:
+    s = line.strip()
+    return (
+        len(s) >= 3
+        and s.startswith("+")
+        and s.count("+") >= 2
+        and sum(1 for ch in s if ch in "-=") >= 3
+        and all(ch in "+-=: " for ch in s)
+    )
+
+
 def table_start_like(lines: list[str], index: int) -> bool:
     line = lines[index]
     if table_like(line):
@@ -258,6 +269,9 @@ def audit_file(path: Path) -> list[str]:
             start = i + 1
             block: list[tuple[int, list[str]]] = []
             while i < len(src_lines) and table_block_row_like(src_lines[i]):
+                if plus_separator(src_lines[i]):
+                    i += 1
+                    continue
                 cells = table_cells(src_lines[i])
                 if cells and not separator(cells):
                     block.append((i + 1, cells))
@@ -316,6 +330,12 @@ def main() -> int:
         errors.append("markdown pipe tables with a leading pipe must work when followed by a separator row")
     if not table_start_like(["Header | Value", "--- | ---", "A | B"], 0):
         errors.append("markdown pipe tables without a leading pipe must work when followed by a separator row")
+    grid = ["+---+---+", "| H | V |", "+---+---+", "| A | B |", "+---+---+"]
+    if not table_start_like(grid, 0):
+        errors.append("grid-style +---+ tables must be recognised")
+    grid_rows = [table_cells(row) for row in grid if table_block_row_like(row) and not plus_separator(row)]
+    if grid_rows != [["H", "V"], ["A", "B"]]:
+        errors.append("grid-style +---+ separator rows must not render as table data")
     if table_like("Header | Value"):
         errors.append("plain prose containing a pipe must not be treated as a table")
     if table_start_like(["Header | Value", "ordinary text"], 0):
@@ -348,6 +368,10 @@ def main() -> int:
         errors.append("search result list should support at least 96 matches")
     if MAX_TABLE_ROWS < 24:
         errors.append("table renderer should support at least 24 rows")
+    if LINE_CAP < MAX_TABLE_COLS * 12 + MAX_TABLE_COLS:
+        errors.append("line_store must be wide enough for every segmented max-column table row")
+    if "plus_separator_row" not in APP_SOURCE:
+        errors.append("grid-style +---+ table separator rows must not render as table data")
     if "    char cells[MAX_TABLE_COLS][TABLE_CELL_CAP];" in APP_SOURCE:
         errors.append("table parse scratch cells must not be allocated on the fx-CG stack")
     if "      char segs[MAX_TABLE_COLS][TABLE_CELL_CAP];" in APP_SOURCE:

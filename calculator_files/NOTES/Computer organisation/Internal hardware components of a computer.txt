@@ -2,16 +2,27 @@
 
 ## Components
 
-| Component | Role |
-| --- | --- |
-| Processor | carries out computation on data by following instructions; handles all of the instructions received from user + hardware + software |
-| Main memory | stores data/instructions that are currently in use / will be used by the processor |
-| Main memory | returns the instructions/data/value stored in a memory location |
-| Main memory | stores any value/data resulting from the execution of a program |
-| Address bus | single-directional; carries address signals from CPU to main memory and I/O devices |
-| Data bus | bi-directional; moves data/instructions between system components |
-| Control bus | bi-directional; transmits command, timing and specific status information between system components |
-| I/O controllers | located between the processor and the I/O device; controls the flow of data between the processor and I/O |
+- processor
+  - carries out computation on data by following instructions
+  - handles all of the instructions received from user + hardware + software
+- main memory
+  - stores data/instructions that are currently or will be used by the processor
+  - returns the instructions/data/value stored in a memory location
+  - stores any value/data resulting from the execution of a program
+- address bus
+  - uni-directional
+  - carries address signals from CPU to main memory and I/O devices
+- data bus
+  - bi-directional
+  - carries data and instructions between memory, I/O controllers, and the CPU
+- control bus
+  - bi-directional
+  - transmits command, timing and specific status information between system components
+- I/O controllers
+  - located between the processor and the I/O device
+  - controls the flow of data between the processor and I/O
+
+
 
 ## Roles of an I/O Controller
 
@@ -22,12 +33,7 @@
 - checks if data received from peripheral is corrupted or not
 - generates an interrupt when data is ready to be transferred from an I/O device
 
-# Definition of buses
 
-- System bus = a set of wires, each wire carries a single bit at any one time
-- Data bus = carries data and instructions between memory, I/O controllers, and the CPU; bidirectional
-- Address bus = carries addresses from the CPU to memory, so it is unidirectional
-- Control bus = caries control signals between the CPU and I/O controllers and memory
 
 
 
@@ -38,16 +44,17 @@
 - data and instructions are stored in same memory
 - shared bus system results in a bottlenecking issue
 - shared bus system -> worse performance than Harvard architecture
-- Used in everyday general-purpose computer systems (e.g., laptops + smartphones)
-- Stored program concept = the concept of storing data and instruction in a memory with discrete, unique addresses
+- used in everyday general-purpose computer systems (eg laptops + smartphones)
+- stored program concept = the concept of storing data and instruction in a memory with discrete, unique addresses
 
 ## Harvard Architecture
 
 - data and instructions are stored in separate memories
 - separate bus system
-- Different word lengths can be used for data/instructions
-- Different sized memory spaced, registers, and word lengths can be used for data/instructions
-- Mainly used in embedded systems
+- different word lengths can be used for data/instructions
+- different sized memory spaced, registers, and word lengths can be used for data/instructions
+- mainly used in embedded systems
+
 
 ## PPQ: Reasons to Use Harvard Rather Than Von Neumann
 
@@ -61,7 +68,5 @@
 - Different technologies can be used to implement instruction and data memory
 - Different quantities of instruction and data memory means that address lengths can differ between the two 
 - memory address structures can differ
-- NE: So programs/tasks will run faster
-- NE: More efficient
-      
+
 

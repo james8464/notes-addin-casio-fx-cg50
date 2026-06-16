@@ -27,7 +27,7 @@
 - Speed
   - slower read/write speeds than SSD's
   - avg read/write speeds are around 100/200 MB/s
-  - the presence of moving parts (e.g., spinning platters) contributes to slower access times
+  - the presence of moving parts (eg spinning platters) contributes to slower access times
 - Durability
   - susceptible to mechanical failure due to their moving parts
   - sensitive to physical shocks and vibrations
@@ -40,14 +40,14 @@
 ### Purposes
 
 - Data storage
-- Backups (e.g., Time Machine)
+- Backups (eg Time Machine)
 - Mass storage
 
 ### Suitability
 
 - Cost-effective storage
   - for users who need large storage capacities at a low cost and don't care about slow access speed
-  - e.g., for storing backups or virtual machines
+  - eg for storing backups or virtual machines
 - Non performance critical applications
   - some ppl may want to store large applications here rather than on their device
 
@@ -126,7 +126,7 @@
     - leads to longer battery life in laptops and lower energy costs in data centres
 - Size and weight
   - smaller + lighter than HDDs
-  - ideal for portable devices (e.g., laptops and tablets)
+  - ideal for portable devices (eg laptops and tablets)
 - Noise
   - operate completely silently (since there are no moving parts)
   - can get hot though, so if you buy a separate enclosure with it, the enclosure may have some fans
@@ -147,7 +147,7 @@
 
 - Performance-critical applications
   - suitable for applications that require fast data access and high performance
-  - e.g., video editing, gaming, and software development
+  - eg video editing, gaming, and software development
 - Portable devices
   - due to their small size, light weight and good durability
 - Enterprise use

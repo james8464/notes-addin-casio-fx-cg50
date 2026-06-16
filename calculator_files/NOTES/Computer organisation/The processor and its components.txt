@@ -2,40 +2,87 @@
 
 ## Major Processor Components
 
-| Component | Role + Operation |
-| --- | --- |
-| ALU | Arithmetic logic unit; Performs arithmetic + logical operations on data; Does NOT do the execution (that's done by the processor) |
-| CU | Control unit |
-| CU | Controls fetch/load/store operations |
-| CU | Decodes instructions |
-| CU | Manages the execution of instructions |
-| CU | Runs the FE cycle |
-| CU | Sends control signals to other components |
-| CU | Stores the state of the processor when an interrupt occurs |
-| Clock | Generates signals |
-| Clock | synchronises the operation of the processor and the movement of data around the other components of the computer |
-| Clock | A CPU cannot perform operations faster than clock cycle |
-| General-purpose registers | stores values that need to be accessed frequently |
-| General-purpose registers | stores values that instructions can/will use as operands |
-| General-purpose registers | the programmer determines the role of each register |
+### ALU
 
-## Register
+- arithmetic logic unit
+- performs arithmetic and logical operations on data
+- does NOT do the execution (execution is performed by the processor)
+
+
+
+
+### CU
+
+- control unit
+- controls fetch/load/store operations
+- decodes instructions
+- manages the execution of instructions
+- runs the FE cycle
+- sends control signals to other components
+- stores the state of the processor when an interrupt occurs
+
+
+
+
+### Clock
+
+- generates signals
+- synchronises the operation of the processor and the movement of data around the other components of the computer
+- a CPU cannot perform operations faster than the clock cycle
+
+
+
+
+### General-purpose Registers
+
+- store values that need to be accessed frequently
+- store values that instructions can/will use as operands
+- programmer determines the role of each register
+
+## Registers
 
 - high-speed memory locations
 - located in the processor/CPU
-- used by the processor to store small amounts of data that are needed during processing
+- used by the processor to store small amounts of data needed during processing
+
+
+
 
 ### Special Purpose Registers
 
-| Component | Role + Operation |
-| --- | --- |
-| PC | Program counter; Stores the address of the next instruction |
-| MAR | Memory address register; Stores the address of the instruction currently being fetched |
-| MBR/MDR | Memory buffer/data register; Stores the contents of the memory address in the MAR |
-| CIR | Current instruction register; Stores the instruction currently being decoded/executed |
-| ACC | Accumulator; Stores the result of the calculation once the instruction is executed in the ALU |
-| SR | Status register |
-| SR | Contains information about the result of the last instruction |
-| SR | Contents are used to affect the behaviour of the next instruction |
-| SR | Stores bits/flags which affect the operation of the control unit |
-| IR | Interrupt register; Stores signals that have been received by the processor from other components |
+PC:
+
+- program counter
+- stores the address of the next instruction
+
+MAR:
+
+- memory address register
+- stores the address of the instruction currently being fetched
+
+MBR / MDR:
+
+- memory buffer register 
+- stores the contents of the memory address in the MAR
+
+CIR:
+
+- current instruction register
+- stores the instruction currently being decoded/executed
+
+ACC:
+
+- accumulator
+- stores the result of a calculation once the instruction is executed in the ALU
+
+SR:
+
+- status register
+- contains information about the result of the last instruction
+- contents are used to affect the behaviour of the next instruction
+- stores bits/flags which affect the operation of the control unit
+
+IR:
+
+- interrupt register
+- stores signals that have been received by the processor from other components

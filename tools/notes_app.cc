@@ -14,7 +14,7 @@ static const int MAX_ENTRIES = 120;
 static const int MAX_RESULTS = 96;
 static const int FILE_BUF_SIZE = 16384;
 static const int MAX_VIEW_LINES = 768;
-static const int LINE_CAP = 96;
+static const int LINE_CAP = 128;
 static const int MAX_TABLE_COLS = 8;
 static const int MAX_TABLE_ROWS = 24;
 static const int TABLE_CELL_CAP = 416;
@@ -487,6 +487,20 @@ static int table_block_row_like(const char *s, int len) {
   return table_like(s, len) || pipe_separated_cells(s, len);
 }
 
+static int plus_separator_row(const char *s, int len) {
+  int p = 0;
+  while (p < len && s[p] == ' ') ++p;
+  if (p >= len || s[p] != '+') return 0;
+  int plus = 0, rule = 0;
+  for (int i = p; i < len; ++i) {
+    char c = s[i];
+    if (c == '+') ++plus;
+    else if (c == '-' || c == '=') ++rule;
+    else if (c != ':' && c != ' ') return 0;
+  }
+  return plus >= 2 && rule >= 3;
+}
+
 static int trim_left_pos(const char *s, int len) {
   int p = 0;
   while (p < len && s[p] == ' ') ++p;
@@ -765,6 +779,13 @@ static int collect_table_block(int pos, int source_line, TableRow *rows, int *ro
     int end = source_line_end_from(cur);
     int len = end - cur;
     if (len <= 0 || source_code_like(file_buf + cur, len) || !table_block_row_like(file_buf + cur, len)) break;
+    if (plus_separator_row(file_buf + cur, len)) {
+      if (count > 0) rows[count - 1].header = 1;
+      cur = source_next_line_from(end);
+      ++line_no;
+      if (cur > file_buf_len) break;
+      continue;
+    }
     int row_cols = parse_table_row(file_buf + cur, len, table_parse_cells);
     if (row_cols <= 0) break;
     if (table_separator_row(table_parse_cells, row_cols)) {

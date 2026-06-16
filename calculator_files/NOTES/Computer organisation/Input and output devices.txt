@@ -53,6 +53,10 @@
 - The binary data is sent to a connected device (eg a computer) for further processing
 
 
+
+
+
+
 ## DIGITAL CAMERAS
 
 ### Characteristics
@@ -106,6 +110,13 @@
 - The processed image is stored on the memory card
 - The captured image can be viewed on the camera's LCD screen, and can be transferred from the memory card onto an external supported device
 
+
+
+
+
+
+
+
 ## LASER PRINTERS
 
 ### Characteristics
@@ -149,6 +160,13 @@
 - The toner image is transferred from the drum to a sheet of paper
 - The paper then passes through a pair of heated rollers
   - The toner is melted onto the paper, creating a permanent image
+
+
+
+
+
+
+
 
 ## RFID
 
