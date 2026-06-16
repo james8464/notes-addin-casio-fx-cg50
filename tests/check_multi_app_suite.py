@@ -22,8 +22,8 @@ def main() -> int:
     require("tools/khicas_suite_catalog.py", ["suvat(", "projectile(", "hypbinom(", "normalprob(", "Mechanics", "Statistics", "Data/prob", "Command help", "doTextArea", "KEY_CTRL_F6"])
     require("tools/p3_engine.cpp", ["suvat(", "projectile(", "hypbinom(", "binomcdf(", "incline(", "pulley(", "poisson("])
     require("tools/patch_khicas_suite_main.py", ["suite_eval_with_working((const char *)expr)", "suite_register_lexer_symbols();", "suite_console_fmenu_config()", "menu_f1,menu_f2,menu_f3,menu_f4,menu_f5,menu_f6", "cascas::eval_with_working", "Err: unsupported"])
-    require("tools/khicas_suite_catalog.py", ["convert(", "twosdec(", "floatdec(", "image(", "binarysearch(", "Number", "Float/fixed", "Boolean"])
-    require("tools/cscalc_engine.cpp", ["twosdec(", "twossub(", "floatdec(", "floatenc(", "bool(", "nand", "image("])
+    require("tools/khicas_suite_catalog.py", ["Computer Science", "bool_simplify(expression)", "nandform(expression)", "norform(expression)", "boolprove(lhs,rhs)"])
+    require("tools/cscalc_engine.cpp", ["eval_bool_simplify_old_style", "OldBoolEngine", "nandform(", "norform(", "boolprove("])
     require("tools/notes_app.cc", ["Bfile_FindFirst_NON_SMEM", ".txt", "load_file_buf", "Find all text", "Find text", "notes_input", "search_all_rec", "file_text_matches", "SearchPattern", "search_prepare", "search_step", "search_results_menu", "ui_menu_keys", "hidden_system_folder", ".Trashes", ".fseventsd", "SAVE-F", "NOTES_ROOT", r"\\\\fls0\\NOTES\\"])
     notes_src = (ROOT / "tools/notes_app.cc").read_text(errors="ignore")
     for forbidden in ["ui_input(", "ui_wait_page(", "ui_chrome(", "ui_status(", "ui_page(", "ui_menu(", "ui_khicas_fkeys(", "SAF_SETUP_"]:
@@ -101,7 +101,7 @@ def main() -> int:
     require("docs/aqa_cs_calc_scope.md", ["AQA 7517", "floating-point", "two's complement"])
     require("docs/CAS_README.md", ["diff(expression)", "integrate(expression,x)", "xform(start_expression,target_expression)"])
     require("docs/CASP3_README.md", ["suvat(known=value", "projectile(u,angle)", "hypbinom(n,p,x,alpha,tail)", "samplemean(mu,sigma,n,lo,hi)", "normalcrit(p,mu,sigma)"])
-    require("docs/CSCALC_README.md", ["convert(value,from_base,to_base)", "floatdec(mantissa,exponent)", "binarysearch(target,list...)"])
+    require("docs/CSCALC_README.md", ["Same console shell, function keys, and mini menus as KhiCAS", "Computer Science", "bool_simplify(expression)", "nandform(expression)", "boolprove(lhs,rhs)"])
     require("docs/NOTES_README.md", ["Knuth-Morris-Pratt", "O(total path characters + total text bytes + m)", "does not open images", "fx-CG add-in text rendering inspiration", "wide-line horizontal scroll is capped"])
     notes_dir = ROOT / "calculator_files" / "NOTES"
     if notes_dir.exists():

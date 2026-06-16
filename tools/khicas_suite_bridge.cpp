@@ -28,30 +28,7 @@ static const char *const p3_commands[] = {
     "histdensity", "meanvar", "discrete", "stratified", 0};
 
 static const char *const cs_commands[] = {
-    "convert", "base", "bin", "hex", "den", "bitsneeded", "unsignedrange",
-    "twosrange", "signmagrange", "onesrange", "twos", "twosdec", "twosadd",
-    "twossub", "signmag", "signmagdec", "ones", "onesdec", "binadd",
-    "binsub", "shift", "arithshift", "xorbits", "andbits", "orbits",
-    "notbits", "parity", "paritybit", "repeatenc", "repeatdec",
-    "hamming", "hammingenc", "checksum", "checkdigit", "grayenc",
-    "graydec", "rpn", "postfix", "fixed", "fixedtc", "fixedenc",
-    "fixedfrac", "fixedtcenc", "floatdec", "floatenc", "floatnorm",
-    "normal", "floatrange", "floatnearest", "floatprecision",
-    "floatbitsadd", "floatcanrepresent", "floatadd", "floatsub",
-    "floatmul", "floatdiv", "image", "imagesize", "imagecolors",
-    "colourdepth", "colourcount", "sound", "soundsize", "bitrate",
-    "transfer", "transfermb", "transferkb", "compress", "dictcompress",
-    "huffman", "rle", "chars", "records", "ascii", "unicode",
-    "symbolbits", "sqlselect", "sqlcount", "hashmod", "hashlinear",
-    "hashquadratic", "addressspace", "addressbits", "memorycapacity",
-    "binarysearch", "linearsearch", "bubblesort", "insertionsort",
-    "selectionsort", "mergesort", "stack", "queue", "preorder", "inorder",
-    "postorder", "dijkstra", "fsm", "fsmout", "bool", "bool_simplify",
-    "boolean", "logic", "truth", "truthtable", "truthrows", "truthbits",
-    "truthout", "outputbits", "minterms", "maxterms", "pos", "zeros",
-    "kmap", "karnaugh", "kmapdc", "mintermsdc", "dcminterms", "dontcare",
-    "posform", "cnf", "productofsums", "nandform", "onlynand", "norform",
-    "onlynor", "boolprove", "provebool", "logicprove", "demorgan", "nand", 0};
+    "bool_simplify", "boolsimplify", "nandform", "norform", "boolprove", 0};
 
 static const char p3_fmenu[] =
     "F1 mech\n"
@@ -66,25 +43,11 @@ static const char p3_fmenu[] =
     "F6 more\n"
     "catalog\nhelp(\nrestart\n";
 
-static const char cs_fmenu[] =
-    "F1 simp\n"
-    "bool_simplify(\nbool(\nboolsimplify(\ndemorgan(\n"
-    "F2 table\n"
-    "truth(\ntruthtable(\ntruthbits(\nminterms(\nmaxterms(\n"
-    "F3 kmap\n"
-    "kmap(\nkmapdc(\nmintermsdc(\ndcminterms(\ndontcare(\n"
-    "F4 forms\n"
-    "posform(\nnandform(\nnorform(\ncnf(\nproductofsums(\n"
-    "F5 prove\n"
-    "boolprove(\nprovebool(\nlogicprove(\n"
-    "F6 more\n"
-    "catalog\nhelp(\nrestart\n";
-
 const char *suite_console_fmenu_config() {
 #if defined(SUITE_APP_P3)
   return p3_fmenu;
 #elif defined(SUITE_APP_CS)
-  return cs_fmenu;
+  return 0;
 #else
   return 0;
 #endif

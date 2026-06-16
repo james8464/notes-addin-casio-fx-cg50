@@ -1027,8 +1027,16 @@ static int max_file_line_scroll() {
       }
     }
     if (len > 0) {
-      int visible = fit_visible_chars(file_buf + pos, len, 0);
-      int scroll = len > visible ? len - 1 : 0;
+      int skip = 0, style = NOTE_TEXT;
+      markdown_line(file_buf + pos, len, &skip, &style);
+      const char *src = file_buf + pos + skip;
+      int src_len = len - skip;
+      if (style == NOTE_BULLET) {
+        src = file_buf + pos;
+        src_len = len;
+      }
+      int visible = fit_visible_chars(src, src_len, 0);
+      int scroll = src_len > visible ? src_len - 1 : 0;
       if (scroll > max_scroll) max_scroll = scroll;
     }
     pos = source_next_line_from(end);

@@ -22,22 +22,19 @@ P3_TEMPLATES = [
     "groupmean(5,12,15,30,25,18)",
 ]
 
-CS_TEMPLATES = [
-    "floatdec(0101100,11101)",
-    "convert(45,10,16)",
-    "twos(-5,8)",
-    "binadd(1011,0110,4)",
-    "fixedenc(5.625,3,3)",
-    "floatenc(12.75,8,4)",
-    "floatnorm(00011010,0110)",
-    "floatrange(8,4)",
-    "image(800,600,24)",
-    "sound(44100,60,16,2)",
-    "bitrate(48000000,12)",
-    "compress(1000,250)",
-    "chars(120,8)",
-    "records(1200,32)",
-    "binarysearch(7,1,3,5,7,9)",
+CS_SOURCE_TEMPLATES = [
+    "bool_simplify(expression)",
+    "nandform(expression)",
+    "norform(expression)",
+    "boolprove(lhs,rhs)",
+]
+
+CS_EVAL_TEMPLATES = [
+    "bool_simplify(A+A)",
+    "bool_simplify(A+A.B)",
+    "nandform(A.B)",
+    "norform(A+B)",
+    "boolprove(A.(B+C),A.B+A.C)",
 ]
 
 BANNED = ["Verified", "not checked", "syntax error", "Bad Argument", "Unsupported"]
@@ -75,11 +72,11 @@ def require_eval(host: Path, expr: str) -> None:
 
 def main() -> int:
     require_source("tools/khicas_suite_catalog.py", P3_TEMPLATES)
-    require_source("tools/khicas_suite_catalog.py", CS_TEMPLATES)
+    require_source("tools/khicas_suite_catalog.py", CS_SOURCE_TEMPLATES)
     build()
     for expr in P3_TEMPLATES:
         require_eval(P3_HOST, expr)
-    for expr in CS_TEMPLATES:
+    for expr in CS_EVAL_TEMPLATES:
         require_eval(CS_HOST, expr)
     print("OK command template contract")
     return 0

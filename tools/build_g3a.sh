@@ -97,6 +97,7 @@ make -j"${CASIO_MAKE_JOBS}" "${CASIO_KHICAS_TARGET}" "${CASIO_RUNMAT_TARGET}" "$
 
 build_suite_app() {
   local app="$1"
+  local output_prefix="$1"
   local target="$2"
   local macro="$3"
   local engine_obj="$4"
@@ -162,14 +163,27 @@ PY
   rm -f "${target}"
   make -j"${CASIO_MAKE_JOBS}" "${target}"
   cp "${target}" "/work/khicas/upstream/giac90_1addin/${target}"
-  cp khicasen.bin "/work/khicas/upstream/giac90_1addin/${app}.bin"
-  cp khicasen.elf "/work/khicas/upstream/giac90_1addin/${app}.elf"
-  cp khicasen.map "/work/khicas/upstream/giac90_1addin/${app}.map"
+  cp khicasen.bin "/work/khicas/upstream/giac90_1addin/${output_prefix}.bin"
+  cp khicasen.elf "/work/khicas/upstream/giac90_1addin/${output_prefix}.elf"
+  cp khicasen.map "/work/khicas/upstream/giac90_1addin/${output_prefix}.map"
   cd /tmp/giac90_1addin
 }
 
 build_suite_app CASP3 "${CASIO_P3_TARGET}" SUITE_APP_P3 p3_engine.o p3 casp3_icon.png casp3_icon_selected.png
 build_suite_app CSCALC "${CASIO_CS_TARGET}" SUITE_APP_CS cscalc_engine.o cs cscalc_icon.png cscalc_icon_selected.png
+
+copy_suite_outputs() {
+  local app="$1"
+  local target="$2"
+  local tree="/tmp/giac90_1addin_${app}"
+  [ -f "/work/khicas/upstream/giac90_1addin/${target}" ] || cp "${tree}/${target}" "/work/khicas/upstream/giac90_1addin/${target}"
+  for ext in bin elf map; do
+    [ -f "/work/khicas/upstream/giac90_1addin/${app}.${ext}" ] || cp "${tree}/khicasen.${ext}" "/work/khicas/upstream/giac90_1addin/${app}.${ext}"
+  done
+}
+
+copy_suite_outputs CASP3 "${CASIO_P3_TARGET}"
+copy_suite_outputs CSCALC "${CASIO_CS_TARGET}"
 
 cp "${CASIO_KHICAS_TARGET}" /work/khicas/upstream/giac90_1addin/
 cp "${CASIO_RUNMAT_TARGET}" /work/khicas/upstream/giac90_1addin/

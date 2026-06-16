@@ -16,7 +16,7 @@ CXXFLAGS = -Os -mb -m4a-nofpu  -mhitachi -std=c++11 -fpermissive -flto -fno-inli
 LDFLAGS = -static -nostdlib -Tprizm.ld -Wl,--gc-sections,--relax,--print-memory-usage
 
 LIBS = -L. -L/home/parisse/casiolocal/lib -Wl,--start-group -lgui -lcas -ltommath -lustl -lm -lc -lgcc -Wl,--end-group
-RUNMAT_CXXFLAGS = -Os -mb -m4a-nofpu -mhitachi -std=c++11 -fno-use-cxa-atexit -fno-threadsafe-statics -fomit-frame-pointer -fno-strict-aliasing -fno-rtti -fno-exceptions -fno-unwind-tables -fno-asynchronous-unwind-tables -ffunction-sections -fdata-sections -I/home/parisse/casiolocal/include -I/home/parisse/casiolocal/include/fxcg
+RUNMAT_CXXFLAGS = -Os -mb -m4a-nofpu -mhitachi -std=c++11 -DCSCALC_USE_USTL -fno-use-cxa-atexit -fno-threadsafe-statics -fomit-frame-pointer -fno-strict-aliasing -fno-rtti -fno-exceptions -fno-unwind-tables -fno-asynchronous-unwind-tables -ffunction-sections -fdata-sections -I/home/parisse/casiolocal/include -I/home/parisse/casiolocal/include/fxcg -I/home/parisse/casiolocal/include/ustl
 RUNMAT_LDFLAGS = -static -nostdlib -Tprizm.ld -Wl,--gc-sections,--relax,--print-memory-usage,--allow-multiple-definition
 RUNMAT_LIBS = -L/home/parisse/casiolocal/lib -Wl,--start-group -lfxcg -lc -lgcc -Wl,--end-group
 LINK_TMP = /tmp/casio-link

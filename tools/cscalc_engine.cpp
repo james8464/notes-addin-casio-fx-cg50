@@ -6,6 +6,16 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <algorithm>
+#include <string>
+#include <vector>
+
+#if defined(CSCALC_USE_USTL)
+namespace cs_bool = ustl;
+#else
+namespace cs_bool = std;
+#endif
+
 #ifdef __clang__
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
 #endif
@@ -178,11 +188,32 @@ static int cs_help_eval(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LE
   if (!starts(s, "help")) return 0;
   char key[32]; cs_help_arg(s, key, sizeof(key));
   if (!key[0]) {
-    int n = add(out, 0, "CSCalc Boolean help: use help(bool).");
-    n = add(out, n, "Commands: bool_simplify truth truthbits");
-    n = add(out, n, "More: minterms maxterms kmap kmapdc");
-    return add(out, n, "Forms: posform nandform norform boolprove");
+    int n = add(out, 0, "CSCalc Boolean help.");
+    n = add(out, n, "Commands: bool_simplify nandform");
+    return add(out, n, "More: norform boolprove");
   }
+  if (!strcmp(key, "bool_simplify") || !strcmp(key, "boolsimplify") || !strcmp(key, "bool")) {
+    int n = add(out, 0, "Boolean simplification");
+    n = add(out, n, "Syntax: bool_simplify(expression)");
+    n = add(out, n, "Use , for NOT, . for AND, + for OR.");
+    return add(out, n, "Example: bool_simplify(A+A.B)");
+  }
+  if (!strcmp(key, "nandform")) {
+    int n = add(out, 0, "NAND form");
+    n = add(out, n, "Syntax: nandform(expression)");
+    return add(out, n, "Example: nandform(A.B)");
+  }
+  if (!strcmp(key, "norform")) {
+    int n = add(out, 0, "NOR form");
+    n = add(out, n, "Syntax: norform(expression)");
+    return add(out, n, "Example: norform(A+B)");
+  }
+  if (!strcmp(key, "boolprove")) {
+    int n = add(out, 0, "Boolean proof");
+    n = add(out, n, "Syntax: boolprove(lhs,rhs)");
+    return add(out, n, "Example: boolprove(A.(B+C),A.B+A.C)");
+  }
+  return 0;
   for (int i = 0; cs_help[i].key; ++i) {
     if (strcmp(key, cs_help[i].key) && !cs_help_alias_match(cs_help[i].aliases, key)) continue;
     int n = add(out, 0, "%s", cs_help[i].title);
@@ -3678,62 +3709,753 @@ static bool seen_bool_form(char seen[][192], int count, const char *s) {
   return false;
 }
 
-static int eval_bool_simplify_old_style(const char *expr, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
-  char orig[192], cur[192], next[192], law[32], shown[192], shown_next[192];
-  strncpy(orig, expr, sizeof(orig) - 1); orig[sizeof(orig) - 1] = 0;
-  strncpy(cur, expr, sizeof(cur) - 1); cur[sizeof(cur) - 1] = 0;
-  char seen[32][192]; int seenc = 0;
-  strncpy(seen[seenc++], cur, sizeof(seen[0]) - 1); seen[0][sizeof(seen[0]) - 1] = 0;
-  bool_old_show(cur, shown, sizeof(shown));
-  int n = add_bool_wrapped(out, 0, "Using: ", shown);
-  n = add_bool_wrapped(out, n, "1. ", shown);
-  int line = 2;
-  for (int step = 0; strlen(cur) < 90 && step < 30 && n < CSCALC_MAX_LINES - 2; ++step) {
-    if (!bool_law_once(cur, next, law)) break;
-    if (!strcmp(cur, next)) break;
-    if (seen_bool_form(seen, seenc, next)) break;
-    if (!bool_equiv_expr(cur, next)) break;
-    bool_old_show(next, shown_next, sizeof(shown_next));
-    char prefix[12], step_text[240];
-    sprintf(prefix, "%d. ", line++);
-    bool_step_text(step_text, sizeof(step_text), shown_next, bool_old_law_name(law));
-    n = add_bool_wrapped(out, n, prefix, step_text);
-    strncpy(cur, next, sizeof(cur) - 1); cur[sizeof(cur) - 1] = 0;
-    if (seenc < 32) {
-      strncpy(seen[seenc], cur, sizeof(seen[seenc]) - 1);
-      seen[seenc][sizeof(seen[seenc]) - 1] = 0;
-      ++seenc;
-    }
+struct OldBoolNode {
+  char kind;
+  cs_bool::string value;
+  cs_bool::vector<int> child;
+};
+
+struct OldBoolEngine {
+  cs_bool::vector<OldBoolNode> nodes;
+  cs_bool::vector<cs_bool::string> toks;
+  size_t pos;
+  cs_bool::string err;
+
+  int make_const(const char *v) {
+    OldBoolNode n;
+    n.kind = 'c';
+    n.value = v;
+    nodes.push_back(n);
+    return (int)nodes.size() - 1;
   }
-  char vars[8]; int vc = 0;
-  collect_vars(orig, vars, &vc);
-  if (vc > 0 && vc <= 6) {
-    int rows = 1 << vc, mins[64], mc = 0;
-    for (int m = 0; m < rows; ++m) {
-      BParser p = { orig, 0, m, {0}, vc };
-      set_parser_vars(p, vars, vc);
-      if (p.expr()) mins[mc++] = m;
+
+  int make_var(const cs_bool::string &v) {
+    OldBoolNode n;
+    n.kind = 'v';
+    n.value = v;
+    nodes.push_back(n);
+    return (int)nodes.size() - 1;
+  }
+
+  int make_node(char kind, const cs_bool::vector<int> &child) {
+    OldBoolNode n;
+    n.kind = kind;
+    n.child = child;
+    nodes.push_back(n);
+    return (int)nodes.size() - 1;
+  }
+
+  int zero() { return make_const("0"); }
+  int one() { return make_const("1"); }
+  int make_not(int x) { return make_node('n', cs_bool::vector<int>(1, x)); }
+
+  cs_bool::vector<int> kids(int node, char kind) const {
+    cs_bool::vector<int> out;
+    if (nodes[node].kind != kind) {
+      out.push_back(node);
+      return out;
     }
-    char minimal[80];
-    bool_simplified_from_rows(mins, mc, rows, vars, vc, minimal, sizeof(minimal));
-    if (minimal[0] && strcmp(cur, minimal) &&
-        bool_literal_count_text(minimal) < bool_literal_count_text(cur)) {
-      char ml[96]; ints_csv(mins, mc, ml, sizeof(ml));
-      n = add(out, n, "Truth table: 1-rows %s", mc ? ml : "none");
-      if (mc > 0 && mc < rows) {
-        Imp chosen[32]; int chc = minimise_rows(mins, mc, 0, 0, vc, chosen, 32);
-        n = add_implicant_groups(out, n, chosen, chc, mins, mc, vars, vc, false);
+    for (size_t i = 0; i < nodes[node].child.size(); ++i) {
+      int c = nodes[node].child[i];
+      if (nodes[c].kind == kind) {
+        cs_bool::vector<int> sub = kids(c, kind);
+        out.insert(out.end(), sub.begin(), sub.end());
+      } else {
+        out.push_back(c);
       }
-      bool_old_show(minimal, shown_next, sizeof(shown_next));
-      char prefix[12], step_text[160];
-      sprintf(prefix, "%d. ", line++);
-      bool_step_text(step_text, sizeof(step_text), shown_next, "K-map grouping");
-      n = add_bool_wrapped(out, n, prefix, step_text);
-      strncpy(cur, minimal, sizeof(cur) - 1); cur[sizeof(cur) - 1] = 0;
+    }
+    return out;
+  }
+
+  int mk(char kind, const cs_bool::vector<int> &items) {
+    cs_bool::vector<int> flat;
+    for (size_t i = 0; i < items.size(); ++i) {
+      int item = items[i];
+      if (nodes[item].kind == kind) {
+        const cs_bool::vector<int> &ch = nodes[item].child;
+        flat.insert(flat.end(), ch.begin(), ch.end());
+      } else {
+        flat.push_back(item);
+      }
+    }
+    if (flat.empty()) return kind == 'a' ? one() : zero();
+    if (flat.size() == 1) return flat[0];
+    return make_node(kind, flat);
+  }
+
+  int prio(int node) const {
+    char k = nodes[node].kind;
+    if (k == 'c' || k == 'v') return 4;
+    if (k == 'n') return 3;
+    if (k == 'a') return 2;
+    return 1;
+  }
+
+  bool simple_not(int node) const {
+    char k = nodes[node].kind;
+    return k == 'c' || k == 'v' || k == 'n';
+  }
+
+  cs_bool::string sig(int node) const {
+    char k = nodes[node].kind;
+    if (k == 'c' || k == 'v') return nodes[node].value;
+    if (k == 'n') return cs_bool::string("n(") + sig(nodes[node].child[0]) + ")";
+    cs_bool::vector<cs_bool::string> parts;
+    cs_bool::vector<int> ch = kids(node, k);
+    for (size_t i = 0; i < ch.size(); ++i) parts.push_back(sig(ch[i]));
+    cs_bool::sort(parts.begin(), parts.end());
+    cs_bool::string out = k == 'a' ? "a(" : "o(";
+    for (size_t i = 0; i < parts.size(); ++i) {
+      if (i) out += ",";
+      out += parts[i];
+    }
+    out += ")";
+    return out;
+  }
+
+  bool same(int a, int b) const { return sig(a) == sig(b); }
+
+  bool comp(int a, int b) const {
+    return (nodes[a].kind == 'n' && same(nodes[a].child[0], b)) ||
+           (nodes[b].kind == 'n' && same(nodes[b].child[0], a));
+  }
+
+  bool has(const cs_bool::vector<int> &items, int target) const {
+    for (size_t i = 0; i < items.size(); ++i)
+      if (same(items[i], target)) return true;
+    return false;
+  }
+
+  bool subset(const cs_bool::vector<int> &a, const cs_bool::vector<int> &b) const {
+    for (size_t i = 0; i < a.size(); ++i)
+      if (!has(b, a[i])) return false;
+    return true;
+  }
+
+  cs_bool::vector<int> rem1(cs_bool::vector<int> items, int target) const {
+    cs_bool::vector<int> out;
+    bool done = false;
+    for (size_t i = 0; i < items.size(); ++i) {
+      if (!done && same(items[i], target)) {
+        done = true;
+      } else {
+        out.push_back(items[i]);
+      }
+    }
+    return out;
+  }
+
+  cs_bool::string show(int node, int parent = 0) const {
+    char k = nodes[node].kind;
+    cs_bool::string text;
+    if (k == 'c' || k == 'v') {
+      text = nodes[node].value;
+    } else if (k == 'n') {
+      int child = nodes[node].child[0];
+      text = show(child, 0);
+      if (simple_not(child)) text += ",";
+      else text = "(" + text + "),";
+    } else {
+      const char *joiner = k == 'o' ? " + " : ".";
+      cs_bool::vector<int> ch = kids(node, k);
+      for (size_t i = 0; i < ch.size(); ++i) {
+        cs_bool::string part = show(ch[i], 0);
+        if (prio(ch[i]) < prio(node)) part = "(" + part + ")";
+        if (i) text += joiner;
+        text += part;
+      }
+    }
+    if (prio(node) < parent) return "(" + text + ")";
+    return text;
+  }
+
+  cs_bool::string short_show(int node) const {
+    cs_bool::string s = show(node);
+    cs_bool::string out;
+    for (size_t i = 0; i < s.size(); ++i)
+      if (s[i] != ' ') out.push_back(s[i]);
+    return out;
+  }
+
+  void tokenize(const char *text) {
+    toks.clear();
+    err.clear();
+    for (int i = 0; text && text[i]; ) {
+      unsigned char ch = (unsigned char)text[i];
+      if (isspace(ch)) {
+        ++i;
+      } else if (strchr("(),+.!&*'", text[i])) {
+        char op = text[i++];
+        if (op == '&' || op == '*') op = '.';
+        if (op == '\'') op = ',';
+        toks.push_back(cs_bool::string(1, op));
+      } else if (ch == '0' || ch == '1') {
+        toks.push_back(cs_bool::string(1, (char)ch));
+        ++i;
+      } else if (isalpha(ch) || ch == '_') {
+        int j = i + 1;
+        while (text[j] && (isalnum((unsigned char)text[j]) || text[j] == '_')) ++j;
+        cs_bool::string word(text + i, text + j);
+        cs_bool::string lower;
+        for (size_t k = 0; k < word.size(); ++k) lower.push_back((char)tolower((unsigned char)word[k]));
+        if (lower == "and") toks.push_back(".");
+        else if (lower == "or") toks.push_back("+");
+        else if (lower == "not") toks.push_back("!");
+        else {
+          cs_bool::string up;
+          for (size_t k = 0; k < word.size(); ++k) up.push_back((char)toupper((unsigned char)word[k]));
+          if (up.size() <= 1) {
+            toks.push_back(up);
+          } else {
+            cs_bool::string current(1, up[0]);
+            for (size_t k = 1; k < up.size(); ++k) {
+              if (up[k] >= 'A' && up[k] <= 'Z') {
+                toks.push_back(current);
+                toks.push_back(".");
+                current = cs_bool::string(1, up[k]);
+              } else {
+                current.push_back(up[k]);
+              }
+            }
+            toks.push_back(current);
+          }
+        }
+        i = j;
+      } else {
+        err = cs_bool::string("Unexpected character: ") + (char)ch;
+        return;
+      }
+    }
+    pos = 0;
+  }
+
+  cs_bool::string cur() const {
+    return pos >= toks.size() ? cs_bool::string() : toks[pos];
+  }
+
+  bool eat(const char *x) {
+    if (cur() != x) {
+      err = cs_bool::string("Expected '") + x + "' but found '" + cur() + "'.";
+      return false;
+    }
+    ++pos;
+    return true;
+  }
+
+  int atom() {
+    cs_bool::string t = cur();
+    int node = -1;
+    if (t == "!") {
+      ++pos;
+      int child = atom();
+      if (child < 0) return -1;
+      node = make_not(child);
+    } else if (t == "(") {
+      if (!eat("(")) return -1;
+      node = expr();
+      if (node < 0 || !eat(")")) return -1;
+    } else if (t == "0") {
+      ++pos;
+      node = zero();
+    } else if (t == "1") {
+      ++pos;
+      node = one();
+    } else if (!t.empty() && t.find_first_of("(),+.!") == cs_bool::string::npos) {
+      ++pos;
+      node = make_var(t);
+    } else {
+      err = cs_bool::string("Unexpected token: ") + t;
+      return -1;
+    }
+    while (cur() == ",") {
+      ++pos;
+      node = make_not(node);
+    }
+    return node;
+  }
+
+  int term() {
+    int node = atom();
+    if (node < 0) return -1;
+    cs_bool::vector<int> parts(1, node);
+    while (cur() == ".") {
+      ++pos;
+      int a = atom();
+      if (a < 0) return -1;
+      parts.push_back(a);
+    }
+    return mk('a', parts);
+  }
+
+  int expr() {
+    int node = term();
+    if (node < 0) return -1;
+    cs_bool::vector<int> parts(1, node);
+    while (cur() == "+") {
+      ++pos;
+      int t = term();
+      if (t < 0) return -1;
+      parts.push_back(t);
+    }
+    return mk('o', parts);
+  }
+
+  bool parse(const char *text, int *out) {
+    tokenize(text);
+    if (!err.empty()) return false;
+    int node = expr();
+    if (node < 0) return false;
+    if (!cur().empty()) {
+      err = cs_bool::string("Unexpected token: ") + cur();
+      return false;
+    }
+    *out = node;
+    return true;
+  }
+
+  bool step(int node, int *out, cs_bool::string *law) {
+    char kind = nodes[node].kind;
+    if (kind == 'c' || kind == 'v') return false;
+
+    if (kind == 'n') {
+      int child = nodes[node].child[0], hit = -1;
+      if (step(child, &hit, law)) {
+        *out = make_not(hit);
+        return true;
+      }
+      if (same(child, zero()) || same(child, one())) {
+        *out = same(child, zero()) ? one() : zero();
+        *law = "Common sense";
+        return true;
+      }
+      if (nodes[child].kind == 'n') {
+        *out = nodes[child].child[0];
+        *law = "Double complement";
+        return true;
+      }
+      if (nodes[child].kind == 'a') {
+        cs_bool::vector<int> outv;
+        cs_bool::vector<int> ch = kids(child, 'a');
+        for (size_t i = 0; i < ch.size(); ++i) outv.push_back(make_not(ch[i]));
+        *out = mk('o', outv);
+        *law = "De Morgan's law";
+        return true;
+      }
+      if (nodes[child].kind == 'o') {
+        cs_bool::vector<int> outv;
+        cs_bool::vector<int> ch = kids(child, 'o');
+        for (size_t i = 0; i < ch.size(); ++i) outv.push_back(make_not(ch[i]));
+        *out = mk('a', outv);
+        *law = "De Morgan's law";
+        return true;
+      }
+      return false;
+    }
+
+    cs_bool::vector<int> parts = kids(node, kind);
+    for (size_t i = 0; i < parts.size(); ++i) {
+      int hit = -1;
+      if (step(parts[i], &hit, law)) {
+        cs_bool::vector<int> nw = parts;
+        nw[i] = hit;
+        *out = mk(kind, nw);
+        return true;
+      }
+    }
+
+    if (kind == 'o') {
+      for (size_t i = 0; i < parts.size(); ++i) {
+        if (same(parts[i], one())) {
+          *out = one();
+          *law = "Common sense";
+          return true;
+        }
+      }
+      for (size_t i = 0; i < parts.size(); ++i) {
+        if (same(parts[i], zero()) && parts.size() > 1) {
+          cs_bool::vector<int> nw = parts;
+          nw.erase(nw.begin() + i);
+          *out = mk('o', nw);
+          *law = "Common sense";
+          return true;
+        }
+      }
+    } else {
+      for (size_t i = 0; i < parts.size(); ++i) {
+        if (same(parts[i], zero())) {
+          *out = zero();
+          *law = "Common sense";
+          return true;
+        }
+      }
+      for (size_t i = 0; i < parts.size(); ++i) {
+        if (same(parts[i], one()) && parts.size() > 1) {
+          cs_bool::vector<int> nw = parts;
+          nw.erase(nw.begin() + i);
+          *out = mk('a', nw);
+          *law = "Common sense";
+          return true;
+        }
+      }
+    }
+
+    for (size_t i = 0; i < parts.size(); ++i) {
+      for (size_t j = i + 1; j < parts.size(); ++j) {
+        if (same(parts[i], parts[j])) {
+          cs_bool::vector<int> nw = parts;
+          nw.erase(nw.begin() + j);
+          *out = mk(kind, nw);
+          *law = "Tautology";
+          return true;
+        }
+        if (comp(parts[i], parts[j])) {
+          if (parts.size() == 2) {
+            *out = kind == 'o' ? one() : zero();
+          } else {
+            cs_bool::vector<int> nw = parts;
+            nw[i] = kind == 'o' ? one() : zero();
+            nw.erase(nw.begin() + j);
+            *out = mk(kind, nw);
+          }
+          *law = "Tautology";
+          return true;
+        }
+      }
+    }
+
+    if (kind == 'o') {
+      for (size_t i = 0; i < parts.size(); ++i) {
+        cs_bool::vector<int> small = kids(parts[i], 'a');
+        for (size_t j = 0; j < parts.size(); ++j) {
+          if (i == j) continue;
+          cs_bool::vector<int> big = kids(parts[j], 'a');
+          if (big.size() > small.size() && subset(small, big)) {
+            cs_bool::vector<int> nw = parts;
+            nw.erase(nw.begin() + j);
+            *out = mk('o', nw);
+            *law = "Absorption";
+            return true;
+          }
+        }
+      }
+    } else {
+      for (size_t i = 0; i < parts.size(); ++i) {
+        cs_bool::vector<int> small = kids(parts[i], 'o');
+        for (size_t j = 0; j < parts.size(); ++j) {
+          if (i == j) continue;
+          cs_bool::vector<int> big = kids(parts[j], 'o');
+          if (big.size() > small.size() && subset(small, big)) {
+            cs_bool::vector<int> nw = parts;
+            nw.erase(nw.begin() + j);
+            *out = mk('a', nw);
+            *law = "Absorption";
+            return true;
+          }
+        }
+      }
+    }
+
+    if (kind == 'o') {
+      for (size_t i = 0; i < parts.size(); ++i) {
+        cs_bool::vector<int> left = kids(parts[i], 'a');
+        for (size_t j = i + 1; j < parts.size(); ++j) {
+          cs_bool::vector<int> right = kids(parts[j], 'a');
+          for (size_t li = 0; li < left.size(); ++li) {
+            for (size_t rj = 0; rj < right.size(); ++rj) {
+              if (!comp(left[li], right[rj])) continue;
+              cs_bool::vector<int> rest_l = rem1(left, left[li]);
+              cs_bool::vector<int> rest_r = rem1(right, right[rj]);
+              if (rest_l.empty() || rest_r.empty()) continue;
+              cs_bool::vector<int> both = rest_l;
+              both.insert(both.end(), rest_r.begin(), rest_r.end());
+              int consensus = mk('a', both);
+              for (size_t k = 0; k < parts.size(); ++k) {
+                if (k != i && k != j && same(parts[k], consensus)) {
+                  cs_bool::vector<int> nw = parts;
+                  nw.erase(nw.begin() + k);
+                  *out = mk('o', nw);
+                  *law = "Consensus theorem";
+                  return true;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    for (size_t i = 0; i < parts.size(); ++i) {
+      cs_bool::vector<int> left = kids(parts[i], kind == 'o' ? 'a' : 'o');
+      for (size_t j = i + 1; j < parts.size(); ++j) {
+        cs_bool::vector<int> right = kids(parts[j], kind == 'o' ? 'a' : 'o');
+        cs_bool::vector<int> common;
+        for (size_t a = 0; a < left.size(); ++a)
+          if (has(right, left[a]) && !has(common, left[a])) common.push_back(left[a]);
+        if (common.empty()) continue;
+        cs_bool::vector<int> a = left, b = right;
+        for (size_t c = 0; c < common.size(); ++c) {
+          a = rem1(a, common[c]);
+          b = rem1(b, common[c]);
+        }
+        if (a.empty() || b.empty()) continue;
+        int rep;
+        if (kind == 'o') {
+          cs_bool::vector<int> inner;
+          inner.push_back(mk('a', a));
+          inner.push_back(mk('a', b));
+          cs_bool::vector<int> prod;
+          prod.push_back(mk('a', common));
+          prod.push_back(mk('o', inner));
+          rep = mk('a', prod);
+        } else {
+          cs_bool::vector<int> inner;
+          inner.push_back(mk('o', a));
+          inner.push_back(mk('o', b));
+          cs_bool::vector<int> sum;
+          sum.push_back(mk('o', common));
+          sum.push_back(mk('a', inner));
+          rep = mk('o', sum);
+        }
+        cs_bool::vector<int> nw;
+        for (size_t k = 0; k < parts.size(); ++k) {
+          if (k == i) nw.push_back(rep);
+          else if (k != j) nw.push_back(parts[k]);
+        }
+        if (short_show(mk(kind, nw)).size() <= short_show(mk(kind, parts)).size()) {
+          *out = mk(kind, nw);
+          *law = "Distributive law";
+          return true;
+        }
+      }
+    }
+
+    if (kind == 'a') {
+      for (size_t i = 0; i < parts.size(); ++i) {
+        if (nodes[parts[i]].kind != 'o') continue;
+        cs_bool::vector<int> rest;
+        for (size_t j = 0; j < parts.size(); ++j) if (j != i) rest.push_back(parts[j]);
+        cs_bool::vector<int> outv;
+        cs_bool::vector<int> terms = kids(parts[i], 'o');
+        for (size_t t = 0; t < terms.size(); ++t) {
+          cs_bool::vector<int> prod(1, terms[t]);
+          prod.insert(prod.end(), rest.begin(), rest.end());
+          outv.push_back(mk('a', prod));
+        }
+        int cand = mk('o', outv);
+        if (short_show(cand).size() <= short_show(mk(kind, parts)).size()) {
+          *out = cand;
+          *law = "Expansion of brackets";
+          return true;
+        }
+      }
+    } else {
+      for (size_t i = 0; i < parts.size(); ++i) {
+        if (nodes[parts[i]].kind != 'a') continue;
+        cs_bool::vector<int> rest;
+        for (size_t j = 0; j < parts.size(); ++j) if (j != i) rest.push_back(parts[j]);
+        cs_bool::vector<int> outv;
+        cs_bool::vector<int> terms = kids(parts[i], 'a');
+        for (size_t t = 0; t < terms.size(); ++t) {
+          cs_bool::vector<int> sum = rest;
+          sum.push_back(terms[t]);
+          outv.push_back(mk('o', sum));
+        }
+        int cand = mk('a', outv);
+        if (short_show(cand).size() <= short_show(mk(kind, parts)).size()) {
+          *out = cand;
+          *law = "Expansion of brackets";
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  int old_to_nand(int node) {
+    char kind = nodes[node].kind;
+    if (kind == 'c' || kind == 'v') return node;
+    if (kind == 'n') {
+      int child = nodes[node].child[0];
+      if (same(child, zero()) || same(child, one())) return node;
+      return make_not(old_to_nand(child));
+    }
+    if (kind == 'a') {
+      cs_bool::vector<int> outv;
+      cs_bool::vector<int> ch = kids(node, 'a');
+      for (size_t i = 0; i < ch.size(); ++i) outv.push_back(make_not(old_to_nand(ch[i])));
+      return mk('o', outv);
+    }
+    if (kind == 'o') {
+      cs_bool::vector<int> conv;
+      cs_bool::vector<int> ch = kids(node, 'o');
+      for (size_t i = 0; i < ch.size(); ++i) conv.push_back(old_to_nand(ch[i]));
+      return make_not(mk('a', conv));
+    }
+    return node;
+  }
+
+  int old_to_nor(int node) {
+    char kind = nodes[node].kind;
+    if (kind == 'c' || kind == 'v') return node;
+    if (kind == 'n') {
+      int child = nodes[node].child[0];
+      if (same(child, zero()) || same(child, one())) return node;
+      return make_not(old_to_nor(child));
+    }
+    if (kind == 'o') {
+      cs_bool::vector<int> outv;
+      cs_bool::vector<int> ch = kids(node, 'o');
+      for (size_t i = 0; i < ch.size(); ++i) outv.push_back(make_not(old_to_nor(ch[i])));
+      return mk('a', outv);
+    }
+    if (kind == 'a') {
+      cs_bool::vector<int> conv;
+      cs_bool::vector<int> ch = kids(node, 'a');
+      for (size_t i = 0; i < ch.size(); ++i) conv.push_back(old_to_nor(ch[i]));
+      return make_not(mk('o', conv));
+    }
+    return node;
+  }
+
+  int old_normalise(int node) {
+    char kind = nodes[node].kind;
+    if (kind == 'c' || kind == 'v') return node;
+    if (kind == 'n') return make_not(old_normalise(nodes[node].child[0]));
+    cs_bool::vector<int> outv;
+    cs_bool::vector<int> ch = kids(node, kind);
+    for (size_t i = 0; i < ch.size(); ++i) outv.push_back(old_normalise(ch[i]));
+    return mk(kind, outv);
+  }
+
+  void prove_both(int node, int max_steps, int *final_node,
+                  cs_bool::vector<cs_bool::pair<cs_bool::string, cs_bool::string> > *steps) {
+    int cur = node;
+    for (int n = 1; n <= max_steps; ++n) {
+      int next = -1;
+      cs_bool::string law;
+      if (!step(cur, &next, &law)) break;
+      cur = next;
+      steps->push_back(cs_bool::make_pair(show(cur), law));
+    }
+    *final_node = cur;
+  }
+};
+
+static int eval_bool_simplify_old_style(const char *expr, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
+  OldBoolEngine engine;
+  int cur = -1;
+  if (!engine.parse(expr, &cur))
+    return add(out, 0, "Input error: %s", engine.err.c_str());
+  int n = add(out, 0, "1. %s", engine.show(cur).c_str());
+  for (int line = 2; line <= 50 && n < CSCALC_MAX_LINES - 1; ++line) {
+    int next = -1;
+    cs_bool::string law;
+    if (!engine.step(cur, &next, &law)) break;
+    cur = next;
+    n = add(out, n, "%d. %s    (%s)", line, engine.show(cur).c_str(), law.c_str());
+  }
+  return add(out, n, "Result: %s", engine.show(cur).c_str());
+}
+
+static bool command_inner(const char *s, char *dst, int cap) {
+  const char *l = strchr(s, '('), *r = strrchr(s, ')');
+  if (!l || !r || r <= l) return false;
+  int n = (int)(r - l - 1);
+  if (n >= cap) n = cap - 1;
+  memcpy(dst, l + 1, n);
+  dst[n] = 0;
+  return true;
+}
+
+static bool command_two_args(const char *s, char *a, int acap, char *b, int bcap) {
+  char inner[320];
+  if (!command_inner(s, inner, sizeof(inner))) return false;
+  int depth = 0;
+  for (int i = 0; inner[i]; ++i) {
+    if (inner[i] == '(') ++depth;
+    else if (inner[i] == ')') --depth;
+    else if (inner[i] == ',' && depth == 0) {
+      int alen = i;
+      if (alen >= acap) alen = acap - 1;
+      memcpy(a, inner, alen);
+      a[alen] = 0;
+      int blen = (int)strlen(inner + i + 1);
+      if (blen >= bcap) blen = bcap - 1;
+      memcpy(b, inner + i + 1, blen);
+      b[blen] = 0;
+      return true;
     }
   }
-  bool_old_show(cur, shown, sizeof(shown));
-  return add_bool_wrapped(out, n, "Result: ", shown);
+  return false;
+}
+
+static int eval_old_bool_gate(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
+  bool want_nand = starts(s, "nandform(");
+  bool want_nor = starts(s, "norform(");
+  if (!want_nand && !want_nor) return 0;
+  char expr[192];
+  if (!command_inner(s, expr, sizeof(expr))) return add(out, 0, "Input error: missing expression.");
+  OldBoolEngine engine;
+  int cur = -1;
+  if (!engine.parse(expr, &cur))
+    return add(out, 0, "Input error: %s", engine.err.c_str());
+  int n = add(out, 0, "1. %s", engine.show(cur).c_str());
+  int converted = want_nand ? engine.old_to_nand(cur) : engine.old_to_nor(cur);
+  converted = engine.old_normalise(converted);
+  return add(out, n, want_nand ? "2. NAND form: %s" : "2. NOR form: %s",
+             engine.show(converted).c_str());
+}
+
+static int eval_old_bool_prove(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) {
+  if (!starts(s, "boolprove(")) return 0;
+  char lhs[160], rhs[160];
+  if (!command_two_args(s, lhs, sizeof(lhs), rhs, sizeof(rhs)))
+    return add(out, 0, "Input error: use boolprove(lhs,rhs).");
+  OldBoolEngine engine;
+  int lnode = -1, rnode = -1;
+  if (!engine.parse(lhs, &lnode))
+    return add(out, 0, "Error: Parse error: %s", engine.err.c_str());
+  if (!engine.parse(rhs, &rnode))
+    return add(out, 0, "Error: Parse error: %s", engine.err.c_str());
+  lnode = engine.old_normalise(lnode);
+  rnode = engine.old_normalise(rnode);
+  int n = add(out, 0, "1. LHS = %s", lhs);
+  n = add(out, n, "2. RHS = %s", rhs);
+  n = add(out, n, "");
+  int line = 3;
+  if (engine.same(lnode, rnode))
+    return add(out, n, "%d. LHS = RHS (already equal)", line);
+  int lfinal = lnode, rfinal = rnode;
+  cs_bool::vector<cs_bool::pair<cs_bool::string, cs_bool::string> > lsteps, rsteps;
+  engine.prove_both(lnode, 30, &lfinal, &lsteps);
+  engine.prove_both(rnode, 30, &rfinal, &rsteps);
+  if (!lsteps.empty()) {
+    n = add(out, n, "%d. Simplify LHS:", line++);
+    for (size_t i = 0; i < lsteps.size() && n < CSCALC_MAX_LINES - 1; ++i)
+      n = add(out, n, "%d. %d. %s  (%s)", line++, (int)i + 1,
+              lsteps[i].first.c_str(), lsteps[i].second.c_str());
+    n = add(out, n, "%d. = %s", line++, engine.show(lfinal).c_str());
+  } else {
+    n = add(out, n, "%d. LHS final: %s", line++, engine.show(lfinal).c_str());
+  }
+  n = add(out, n, "%d. ", line++);
+  if (!rsteps.empty()) {
+    n = add(out, n, "%d. Simplify RHS:", line++);
+    for (size_t i = 0; i < rsteps.size() && n < CSCALC_MAX_LINES - 1; ++i)
+      n = add(out, n, "%d. %d. %s  (%s)", line++, (int)i + 1,
+              rsteps[i].first.c_str(), rsteps[i].second.c_str());
+    n = add(out, n, "%d. = %s", line++, engine.show(rfinal).c_str());
+  } else {
+    n = add(out, n, "%d. RHS final: %s", line++, engine.show(rfinal).c_str());
+  }
+  n = add(out, n, "%d. ", line++);
+  if (engine.same(lfinal, rfinal))
+    return add(out, n, "%d. Both simplify to: %s", line, engine.show(lfinal).c_str());
+  n = add(out, n, "%d. LHS final: %s", line++, engine.show(lfinal).c_str());
+  n = add(out, n, "%d. RHS final: %s", line++, engine.show(rfinal).c_str());
+  if (engine.comp(lfinal, rfinal))
+    n = add(out, n, "%d. (Both simplify to complement)", line++);
+  return n;
 }
 
 static bool int_seen(const int *v, int n, int x) {
@@ -3962,9 +4684,14 @@ static int eval_bool(const char *s, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN])
     expr = inner;
   }
   if (!expr) return 0;
+  if (simplmode) {
+    char raw[192];
+    if (command_inner(s, raw, sizeof(raw)))
+      return eval_bool_simplify_old_style(raw, out);
+    return eval_bool_simplify_old_style(expr, out);
+  }
   bool_norm(expr, exprbuf, sizeof(exprbuf));
   expr = exprbuf;
-  if (simplmode) return eval_bool_simplify_old_style(expr, out);
   char vars[8]; int vc = 0;
   if (has_var_arg) {
     for (int i = 1; i < na; ++i)
@@ -8228,6 +8955,15 @@ int cscalc_eval(const char *input, char out[CSCALC_MAX_LINES][CSCALC_LINE_LEN]) 
   char s[192]; clean(input, s, sizeof(s));
   if (!s[0]) return add(out, 0, "Enter a CS calculation command.");
   int hn = cs_help_eval(s, out); if (hn) return hn;
+  int oldn = eval_old_bool_prove(s, out); if (oldn) return oldn;
+  oldn = eval_old_bool_gate(s, out); if (oldn) return oldn;
+  if (starts(s, "bool_simplify(") || starts(s, "boolsimplify(")) {
+    oldn = eval_bool(s, out);
+    if (oldn) return oldn;
+  }
+  int supported = add(out, 0, "Supported:");
+  supported = add(out, supported, "bool_simplify nandform norform");
+  return add(out, supported, "boolprove");
   if ((has(s, "float") || has(s, "floating")) && has(s, "mantissa") && has(s, "exponent") &&
       (has(s, "decode") || has(s, "denary") || has(s, "decimal")) &&
       !(has(s, "error") || has(s, "actual"))) {

@@ -221,6 +221,13 @@ CS_FOLDERS = [
     ("Boolean", "CAT_CATEGORY_BOOL"),
 ]
 
+CS_BOOL_COMMANDS = [
+    "bool_simplify(expression)",
+    "nandform(expression)",
+    "norform(expression)",
+    "boolprove(lhs,rhs)",
+]
+
 
 def emit(app: str) -> str:
     if app == "p3":
@@ -653,10 +660,39 @@ int doCatalogMenu(char* insertText, char* title, int category,const char * cmdna
 '''
 
 
+def patch_cs_catalog(path: Path) -> None:
+    text = path.read_text()
+    category = "CAT_CATEGORY_COMPUTER_SCIENCE"
+    if category not in text:
+        marker = "#define CAT_CATEGORY_LOGO 20 // should be the last one\n"
+        if marker not in text:
+            raise SystemExit("catalog category marker missing")
+        text = text.replace(marker, marker + f"#define {category} 21\n", 1)
+
+    if '"bool_simplify(expression)"' not in text:
+        insert = "".join(f'  {{"{name}", {category}}},\n' for name in CS_BOOL_COMMANDS)
+        needle = "\n\n};\n\ntypedef struct {\n  char* title;\n  int category;\n} catalogFolder;\n"
+        if needle not in text:
+            raise SystemExit("completeCat terminator missing")
+        text = text.replace(needle, "\n" + insert + needle, 1)
+
+    if '"Computer Science"' not in text:
+        needle = '  {(char*)"Vectors", CAT_CATEGORY_VECTOR},\n'
+        if needle not in text:
+            raise SystemExit("catalog folder insertion point missing")
+        text = text.replace(needle, needle + f'  {{(char*)"Computer Science", {category}}},\n', 1)
+
+    path.write_text(text)
+
+
 def main() -> int:
     if len(sys.argv) != 3:
         raise SystemExit("usage: khicas_suite_catalog.py p3|cs output")
-    Path(sys.argv[2]).write_text(emit(sys.argv[1]))
+    out = Path(sys.argv[2])
+    if sys.argv[1] == "cs":
+        patch_cs_catalog(out)
+    else:
+        out.write_text(emit(sys.argv[1]))
     return 0
 
 

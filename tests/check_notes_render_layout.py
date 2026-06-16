@@ -250,14 +250,18 @@ def main() -> int:
         errors.append("note page lines can overlap the softkey row")
     if "while (n > 0 && mini_width(s, n) > avail) --n;" not in APP_SOURCE:
         errors.append("table/limited text must shrink before PrintMini clipping")
-    if "int scroll = len > visible ? len - 1 : 0;" not in APP_SOURCE:
-        errors.append("wide-line horizontal scroll must be able to reach the final source character")
+    if "int scroll = len > visible ? len - 1 : 0;" in APP_SOURCE:
+        errors.append("wide-line horizontal scroll must be based on displayed text, not raw source text")
     if "int scroll = len - visible;" in APP_SOURCE:
         errors.append("wide-line horizontal scroll must not stop before the final source character")
     if "int start = min_int(hscroll, max_int(0, len - 1));" not in APP_SOURCE:
         errors.append("wide-line rendering must clamp to the final source character, not stop early")
     if "fit_visible_chars(s + start, len - start, 0)" not in APP_SOURCE:
         errors.append("wide-line rendering must pixel-fit the visible suffix after horizontal scroll")
+    if "int scroll = src_len > visible ? src_len - 1 : 0;" not in APP_SOURCE:
+        errors.append("wide-line horizontal scroll must use displayed markdown-stripped text length")
+    if "int visible = fit_visible_chars(file_buf + pos, len, 0);" in APP_SOURCE:
+        errors.append("wide-line scroll must not use raw source length for markdown-formatted lines")
     if "int cap_cut = pos + max_int(1, LINE_CAP - indent - 1);" not in APP_SOURCE:
         errors.append("wrapped lines must cap copied text before line_store writes")
     if "return over > 0 ? (over + TABLE_CHAR_PX - 1) / TABLE_CHAR_PX : 0;" not in APP_SOURCE:
