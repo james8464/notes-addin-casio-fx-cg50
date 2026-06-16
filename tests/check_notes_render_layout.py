@@ -501,6 +501,14 @@ def main() -> int:
         errors.append("notes renderer must decode common html entities in copied text")
     if "utf8_ascii_at" not in APP_SOURCE:
         errors.append("notes renderer must transliterate common UTF-8 symbols before display")
+    for required in [
+        "bytes_at(i, 0xc2, 0xb0)",
+        "bytes_at(i, 0xc3, 0xb7)",
+        "bytes_at3(i, 0xe2, 0x86, 0x94)",
+        "bytes_at3(i, 0xe2, 0x87, 0x94)",
+    ]:
+        if required not in APP_SOURCE:
+            errors.append(f"file-load UTF-8 normalization must keep searchable display text: {required}")
     if "source_line_display_text" not in APP_SOURCE or "source_line_display_text(line, search_line_buf, FILE_BUF_SIZE)" not in APP_SOURCE:
         errors.append("notes search must use displayed text, not raw markdown source text")
     if "find_in_span(file_buf + start, len, sp)" in APP_SOURCE:
@@ -530,6 +538,8 @@ def main() -> int:
         errors.append("inline markdown cleanup must decode common html entities")
     if clean_inline("A \u2192 B \u2264 C \u201cok\u201d") != 'A -> B <= C "ok"':
         errors.append("inline markdown cleanup must keep common UTF-8 symbols readable")
+    if clean_inline("25\u00b0C \u00f7 5 \u2194 ok \u21d4 yes") != "25 degC / 5 <-> ok <=> yes":
+        errors.append("inline markdown cleanup must keep degree/divide/bidirectional arrows readable")
     if clean_inline("Keep 2 * 3 * 4 readable") != "Keep 2 * 3 * 4 readable":
         errors.append("inline markdown cleanup must not strip spaced multiplication")
     if clean_inline("Keep 2 ** 3 readable") != "Keep 2 ** 3 readable":

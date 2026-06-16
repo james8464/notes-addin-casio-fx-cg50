@@ -144,7 +144,9 @@ static void normalize_file_buf() {
     }
     if (bytes_at(i, 0xc2, 0xa0)) { clean[out++] = ' '; i += 2; continue; }
     if (bytes_at(i, 0xc2, 0xb1)) { ascii_append(clean, &out, FILE_BUF_SIZE, "+/-"); i += 2; continue; }
+    if (bytes_at(i, 0xc2, 0xb0)) { ascii_append(clean, &out, FILE_BUF_SIZE, " deg"); i += 2; continue; }
     if (bytes_at(i, 0xc3, 0x97)) { clean[out++] = 'x'; i += 2; continue; }
+    if (bytes_at(i, 0xc3, 0xb7)) { clean[out++] = '/'; i += 2; continue; }
     if (bytes_at3(i, 0xe2, 0x80, 0x98) || bytes_at3(i, 0xe2, 0x80, 0x99)) { clean[out++] = '\''; i += 3; continue; }
     if (bytes_at3(i, 0xe2, 0x80, 0x9c) || bytes_at3(i, 0xe2, 0x80, 0x9d)) { clean[out++] = '"'; i += 3; continue; }
     if (bytes_at3(i, 0xe2, 0x80, 0x93) || bytes_at3(i, 0xe2, 0x80, 0x94)) { clean[out++] = '-'; i += 3; continue; }
@@ -152,7 +154,9 @@ static void normalize_file_buf() {
     if (bytes_at3(i, 0xe2, 0x80, 0xa6)) { ascii_append(clean, &out, FILE_BUF_SIZE, "..."); i += 3; continue; }
     if (bytes_at3(i, 0xe2, 0x86, 0x92)) { ascii_append(clean, &out, FILE_BUF_SIZE, "->"); i += 3; continue; }
     if (bytes_at3(i, 0xe2, 0x86, 0x90)) { ascii_append(clean, &out, FILE_BUF_SIZE, "<-"); i += 3; continue; }
+    if (bytes_at3(i, 0xe2, 0x86, 0x94)) { ascii_append(clean, &out, FILE_BUF_SIZE, "<->"); i += 3; continue; }
     if (bytes_at3(i, 0xe2, 0x87, 0x92)) { ascii_append(clean, &out, FILE_BUF_SIZE, "=>"); i += 3; continue; }
+    if (bytes_at3(i, 0xe2, 0x87, 0x94)) { ascii_append(clean, &out, FILE_BUF_SIZE, "<=>"); i += 3; continue; }
     if (bytes_at3(i, 0xe2, 0x89, 0xa0)) { ascii_append(clean, &out, FILE_BUF_SIZE, "!="); i += 3; continue; }
     if (bytes_at3(i, 0xe2, 0x89, 0xa4)) { ascii_append(clean, &out, FILE_BUF_SIZE, "<="); i += 3; continue; }
     if (bytes_at3(i, 0xe2, 0x89, 0xa5)) { ascii_append(clean, &out, FILE_BUF_SIZE, ">="); i += 3; continue; }

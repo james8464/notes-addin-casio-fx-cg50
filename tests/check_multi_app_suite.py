@@ -66,6 +66,9 @@ def main() -> int:
         raise AssertionError("notes renderer must decode common html entities in copied text")
     if "utf8_ascii_at" not in notes_src:
         raise AssertionError("notes renderer must transliterate common UTF-8 symbols before display")
+    for required in ["bytes_at(i, 0xc2, 0xb0)", "bytes_at(i, 0xc3, 0xb7)", "bytes_at3(i, 0xe2, 0x86, 0x94)", "bytes_at3(i, 0xe2, 0x87, 0x94)"]:
+        if required not in notes_src:
+            raise AssertionError(f"notes file-load UTF-8 normalization must keep searchable display text: {required}")
     if "source_line_display_text" not in notes_src or "source_line_display_text(line, search_line_buf, FILE_BUF_SIZE)" not in notes_src:
         raise AssertionError("notes search must use displayed text, not raw markdown source text")
     if "find_in_span(file_buf + start, len, sp)" in notes_src:
