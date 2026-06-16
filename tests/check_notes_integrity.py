@@ -7,6 +7,8 @@ ROOT = Path(__file__).resolve().parents[1]
 NOTES = ROOT / "calculator_files" / "NOTES"
 FILE_BUF_SIZE = 16384
 MAX_TABLE_COLS = 6
+MAX_TABLE_ROWS = 16
+TABLE_CELL_CAP = 416
 
 
 def table_cells(line: str) -> list[str]:
@@ -28,12 +30,22 @@ def check_table(path: Path, start: int, block: list[tuple[int, str]]) -> list[st
     widths = [len(table_cells(line)) for _, line in block]
     if len(block) < 2:
         return [f"{path}:{start}: table block is too short"]
+    if len(block) > MAX_TABLE_ROWS:
+        errors.append(f"{path}:{start}: table has {len(block)} rows, renderer supports {MAX_TABLE_ROWS}")
     if not table_separator(block[1][1]):
         errors.append(f"{path}:{block[1][0]}: missing markdown separator row")
     if len(set(widths)) != 1:
         errors.append(f"{path}:{start}: inconsistent table columns {widths}")
     if widths[0] > MAX_TABLE_COLS:
         errors.append(f"{path}:{start}: table has {widths[0]} columns, renderer supports {MAX_TABLE_COLS}")
+    for line_no, line in block:
+        if table_separator(line):
+            continue
+        for cell in table_cells(line):
+            if len(cell) >= TABLE_CELL_CAP:
+                errors.append(
+                    f"{path}:{line_no}: table cell has {len(cell)} chars, renderer cap is {TABLE_CELL_CAP - 1}"
+                )
     return errors
 
 

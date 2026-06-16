@@ -16,8 +16,8 @@ static const int FILE_BUF_SIZE = 16384;
 static const int MAX_VIEW_LINES = 768;
 static const int LINE_CAP = 96;
 static const int MAX_TABLE_COLS = 6;
-static const int MAX_TABLE_ROWS = 36;
-static const int TABLE_CELL_CAP = 52;
+static const int MAX_TABLE_ROWS = 16;
+static const int TABLE_CELL_CAP = 416;
 static const int TABLE_MAX_CHARS = LINE_CAP - 4;
 static const int TABLE_CHAR_PX = 8;
 static const int TABLE_PAD_X = 3;
@@ -98,6 +98,7 @@ static unsigned char view_table_bottom[MAX_VIEW_LINES];
 static unsigned char view_table_header[MAX_VIEW_LINES];
 static short view_table_colpos[MAX_VIEW_LINES][MAX_TABLE_COLS + 1];
 static char last_query[32] = "";
+static TableRow table_rows[MAX_TABLE_ROWS];
 
 static int lower_char(int c) {
   if (c >= 'A' && c <= 'Z') return c + 32;
@@ -901,7 +902,7 @@ static int build_view_lines(int hscroll) {
     int end = source_line_end_from(pos);
     int len = end - pos;
     if (len > 0 && table_like(file_buf + pos, len)) {
-      TableRow rows[MAX_TABLE_ROWS];
+      TableRow *rows = table_rows;
       int row_count = 0, cols = 0, next_pos = pos, next_source = source_line;
       if (collect_table_block(pos, source_line, rows, &row_count, &cols, &next_pos, &next_source)) {
         push_table_block(&line, rows, row_count, cols, hscroll);
@@ -1021,7 +1022,7 @@ static int max_file_line_scroll() {
     int end = source_line_end_from(pos);
     int len = end - pos;
     if (len > 0 && table_like(file_buf + pos, len)) {
-      TableRow rows[MAX_TABLE_ROWS];
+      TableRow *rows = table_rows;
       int row_count = 0, cols = 0, next_pos = pos, next_source = source_line;
       if (collect_table_block(pos, source_line, rows, &row_count, &cols, &next_pos, &next_source)) {
         int widths[MAX_TABLE_COLS];
