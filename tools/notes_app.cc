@@ -875,8 +875,18 @@ static int is_setext_underline_line(int pos, int len) {
 }
 
 static int table_start_like_at(int pos, int len) {
-  if (table_like(file_buf + pos, len)) return 1;
-  if (!pipe_separated_cells(file_buf + pos, len)) return 0;
+  int kind = table_row_kind(file_buf + pos, len);
+  if (kind == TABLE_TAB) return 1;
+  if (kind == TABLE_GRID) {
+    int end = source_line_end_from(pos);
+    int next = source_next_line_from(end);
+    if (next > file_buf_len) return 0;
+    int next_end = source_line_end_from(next);
+    int next_len = next_end - next;
+    return next_len > 0 && !source_code_like(file_buf + next, next_len) &&
+           pipe_separated_cells(file_buf + next, next_len);
+  }
+  if (kind != TABLE_PIPE) return 0;
   int row_cols = parse_table_row(file_buf + pos, len, table_parse_cells);
   if (row_cols <= 0) return 0;
   int end = source_line_end_from(pos);

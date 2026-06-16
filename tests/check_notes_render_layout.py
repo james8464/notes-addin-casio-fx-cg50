@@ -103,9 +103,12 @@ def table_row_matches_kind(line: str, kind: str) -> bool:
 
 def table_start_like(lines: list[str], index: int) -> bool:
     line = lines[index]
-    if table_like(line):
+    kind = table_row_kind(line)
+    if kind == "tab":
         return True
-    if not pipe_cells(line):
+    if kind == "grid":
+        return index + 1 < len(lines) and pipe_cells(lines[index + 1]) and not source_code_like(lines[index + 1])
+    if kind != "pipe":
         return False
     if index + 1 >= len(lines):
         return False
@@ -449,6 +452,8 @@ def main() -> int:
     grid = ["+---+---+", "| H | V |", "+---+---+", "| A | B |", "+---+---+"]
     if not table_start_like(grid, 0):
         errors.append("grid-style +---+ tables must be recognised")
+    if table_start_like(["+---+", "ordinary text"], 0):
+        errors.append("standalone +---+ separators must not start empty grid tables")
     if table_row_matches_kind("ordinary | prose", "tab"):
         errors.append("tab tables must not absorb following pipe prose")
     if table_row_matches_kind("A\tB", "pipe"):
