@@ -595,6 +595,11 @@ def main() -> int:
         errors.append("markdown headings must strip valid closing # markers")
     if "setext_underline_style" not in APP_SOURCE or "setext_heading_style_at" not in APP_SOURCE:
         errors.append("notes renderer must support markdown setext headings")
+    if "is_setext_underline_line" not in APP_SOURCE or "source_line_display_text" not in APP_SOURCE:
+        errors.append("setext underline rows must be hidden from search/display lookups")
+    display_helper = APP_SOURCE[APP_SOURCE.find("static int source_line_display_text"):APP_SOURCE.find("static int find_source_match")]
+    if "is_setext_underline_line(start, len)" not in display_helper:
+        errors.append("search must not jump to invisible setext underline rows")
     if "source_line += 2;" not in APP_SOURCE:
         errors.append("setext heading underline must be consumed with its heading")
     for marker in ("if (style == NOTE_H1)", "else if (style == NOTE_H2)", "else if (style == NOTE_H3)", "else if (style == NOTE_H4)"):

@@ -823,6 +823,25 @@ static int setext_heading_style_at(int pos, int len, int *next_pos_out) {
   return style;
 }
 
+static int previous_source_line_bounds(int pos, int *prev_start, int *prev_len) {
+  int end = pos - 1;
+  if (end >= 0 && file_buf[end] == '\n') --end;
+  if (end < 0) return 0;
+  int start = end;
+  while (start > 0 && file_buf[start - 1] != '\n' && file_buf[start - 1] != '\r') --start;
+  *prev_start = start;
+  *prev_len = end - start + 1;
+  return *prev_len > 0;
+}
+
+static int is_setext_underline_line(int pos, int len) {
+  if (!setext_underline_style(file_buf + pos, len)) return 0;
+  int prev_start = 0, prev_len = 0;
+  if (!previous_source_line_bounds(pos, &prev_start, &prev_len)) return 0;
+  return !source_code_like(file_buf + prev_start, prev_len) &&
+         !table_like(file_buf + prev_start, prev_len);
+}
+
 static int table_start_like_at(int pos, int len) {
   if (table_like(file_buf + pos, len)) return 1;
   if (!pipe_separated_cells(file_buf + pos, len)) return 0;
@@ -1372,6 +1391,10 @@ static int source_line_style(int source_line) {
 static int source_line_display_text(int source_line, char *out, int cap) {
   int start = 0, len = 0;
   if (!source_line_bounds(source_line, &start, &len)) {
+    if (cap > 0) out[0] = 0;
+    return 0;
+  }
+  if (is_setext_underline_line(start, len)) {
     if (cap > 0) out[0] = 0;
     return 0;
   }

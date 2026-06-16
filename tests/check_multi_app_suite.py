@@ -124,6 +124,9 @@ def main() -> int:
         raise AssertionError("notes renderer must support no-leading-pipe markdown tables only with a separator row")
     if "setext_underline_style" not in notes_src or "setext_heading_style_at" not in notes_src:
         raise AssertionError("notes renderer must support markdown setext headings")
+    display_helper = notes_src[notes_src.find("static int source_line_display_text"):notes_src.find("static int find_source_match")]
+    if "is_setext_underline_line(start, len)" not in display_helper:
+        raise AssertionError("notes search must not jump to invisible setext underline rows")
     if "atx_heading_display_len" not in notes_src:
         raise AssertionError("notes renderer must strip valid closing # markers from markdown headings")
     if "source_code_like" not in notes_src:
