@@ -16,6 +16,7 @@ READABLE_TABLE_CELL_CAP = 180
 READABLE_TABLE_ROW_CAP = 360
 RAW_DEFINITION_RE = re.compile(r"^[A-Za-z][A-Za-z0-9 /()+.-]{0,60} = ")
 RAW_LINE_ALLOW_PREFIXES = ("ghci>", "True", "False")
+WEAK_LABEL_BULLETS = {"- Example:", "- Examples:", "- Note:", "- Accepted wording:", "- Do not only say:", "- then:"}
 
 
 def table_cells(line: str) -> list[str]:
@@ -99,6 +100,8 @@ def main() -> int:
                 and not stripped.startswith(RAW_LINE_ALLOW_PREFIXES)
             ):
                 errors.append(f"{path}:{line_no}: plain note line must be a heading, bullet, table, quote, or code block")
+            if stripped in WEAK_LABEL_BULLETS:
+                errors.append(f"{path}:{line_no}: label bullet should be a heading or specific sentence")
             if stripped.lower() in {"## below...", "### below..."}:
                 errors.append(f"{path}:{line_no}: placeholder heading must be replaced")
         first = next((line for line in lines if line.strip()), "")

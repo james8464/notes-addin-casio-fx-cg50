@@ -42,7 +42,7 @@
 
 - The operator is : for a single element.
 
-- Example:
+### Example: Pre-pending One Element
 
     5 : [1,2,3]
 
@@ -54,7 +54,7 @@
 
 - ...and ++ for a list
 
-- Example:
+### Example: Pre-pending a List
 
     [5,4] ++ [1,2,3]
 
@@ -70,11 +70,11 @@
 
 - Remember the original list will NOT change its contents.
 
-- Example:
+### Example: Appending a List
 
     A = [1,2,3]
 
-- then:
+### Then
 
     A ++ [4,5]
 

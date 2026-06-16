@@ -61,7 +61,8 @@
 
 - Answer: the set of real numbers / the set of all possible real-world quantities.
 
-- Accepted wording:
+### Accepted Wording
+
 - A. real numbers
 - A. numbers that represent any quantity along an infinite number line
 - A. all numbers excluding imaginary/complex numbers

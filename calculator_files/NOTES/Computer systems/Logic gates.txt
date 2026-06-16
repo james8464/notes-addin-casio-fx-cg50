@@ -13,11 +13,9 @@
 
 ## Useful Notation
 
-## Practise, Practise, Practise
+## Half Adder
 
-## Practise, Practise, Practise
-
-## Characteristics
+### Characteristics
 
 - two inputs
 - two outputs
@@ -31,7 +29,9 @@
 | 1 | 0 | 1 | 0 |
 | 1 | 1 | 0 | 1 |
 
-## Characteristics
+## Full Adder
+
+### Characteristics
 
 - three inputs
 - two outputs

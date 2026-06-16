@@ -18,7 +18,7 @@
 ## Irrational Numbers
 
 - Any number which cannot be written as a fraction
-- Examples:
+### Examples
   - sqrt(2)
   - Pi
   - e
@@ -31,7 +31,7 @@
 ## Ordinal Numbers
 
 - Used to describe the position of an item in a set
-- Examples:
+### Examples
   - 1st
   - 2nd
   - 3rd ...
