@@ -85,6 +85,8 @@ def main() -> int:
         for line_no, line in enumerate(lines, 1):
             if len(line) > READABLE_LINE_CAP:
                 errors.append(f"{path}:{line_no}: line has {len(line)} chars, split it for calculator readability")
+            if "\t" in line:
+                errors.append(f"{path}:{line_no}: tab characters are unsafe; use spaces or markdown tables")
             stripped = line.strip()
             if stripped.startswith("= "):
                 errors.append(f"{path}:{line_no}: raw definition line must use '- Definition:'")
