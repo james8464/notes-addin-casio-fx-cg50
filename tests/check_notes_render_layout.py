@@ -494,6 +494,10 @@ def main() -> int:
         errors.append("wide-line scroll must not use raw source length for markdown-formatted lines")
     if "int cap_cut = pos + max_int(1, LINE_CAP - indent - 1);" not in APP_SOURCE:
         errors.append("wrapped lines must cap copied text before line_store writes")
+    if "int mark = ordered_list_marker(s + base_indent, len - base_indent)" not in APP_SOURCE:
+        errors.append("ordered-list wrapped continuations must align to the actual marker length")
+    if "ordered_indent = mark" not in APP_SOURCE or "indent += ordered_indent" not in APP_SOURCE:
+        errors.append("ordered-list continuation indent must not be fixed-width")
     if "return over > 0 ? (over + TABLE_CHAR_PX - 1) / TABLE_CHAR_PX : 0;" not in APP_SOURCE:
         errors.append("table horizontal scroll must round up to reveal the final table edge")
     if "if (bars)" in APP_SOURCE:

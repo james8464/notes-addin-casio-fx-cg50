@@ -104,6 +104,10 @@ def main() -> int:
         raise AssertionError("notes renderer must keep one simple source_code_like path")
     if "*skip = p;\n    *style = NOTE_ORDERED" in notes_src or "*skip = p;\n    *style = NOTE_QUOTE" in notes_src:
         raise AssertionError("nested ordered lists and block quotes must preserve source indentation")
+    if "int mark = ordered_list_marker(s + base_indent, len - base_indent)" not in notes_src:
+        raise AssertionError("notes ordered-list continuations must align to the actual marker length")
+    if "ordered_indent = mark" not in notes_src or "indent += ordered_indent" not in notes_src:
+        raise AssertionError("notes ordered-list continuation indent must not be fixed-width")
     for required in ["style == NOTE_ORDERED && pos != base_indent", "style == NOTE_QUOTE && pos != base_indent"]:
         if required not in notes_src:
             raise AssertionError(f"notes wrapped continuations must align nested markdown content: {required}")

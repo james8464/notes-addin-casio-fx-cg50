@@ -1220,6 +1220,11 @@ static void add_display_line(int *line, const char *s, int len, int hscroll, int
   }
   int base_indent = 0;
   while (base_indent < len && base_indent < 10 && s[base_indent] == ' ') ++base_indent;
+  int ordered_indent = 3;
+  if (style == NOTE_ORDERED) {
+    int mark = ordered_list_marker(s + base_indent, len - base_indent);
+    if (mark > 0) ordered_indent = mark;
+  }
   int pos = 0;
   while (pos < len && *line < MAX_VIEW_LINES) {
     if (pos == 0) pos = base_indent;
@@ -1227,7 +1232,7 @@ static void add_display_line(int *line, const char *s, int len, int hscroll, int
     int usable = WRAP_COLS;
     int indent = pos == base_indent ? base_indent : base_indent + 2;
     if (style == NOTE_BULLET && pos != base_indent) indent += 2;
-    if (style == NOTE_ORDERED && pos != base_indent) indent += 3;
+    if (style == NOTE_ORDERED && pos != base_indent) indent += ordered_indent;
     if (style == NOTE_QUOTE && pos != base_indent) indent += 2;
     usable -= indent;
     if (usable < 16) usable = 16;
