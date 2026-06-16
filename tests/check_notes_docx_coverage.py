@@ -53,7 +53,10 @@ def normalise(text: str) -> str:
         .replace("\u00e0", "->")
     )
     text = text.replace(" the have ", " they have ").replace(" nd returns ", " and returns ")
-    return re.sub(r"[^a-z0-9]+", " ", text.lower()).strip()
+    text = re.sub(r"[^a-z0-9]+", " ", text.lower()).strip()
+    text = re.sub(r"\badvantages\b", "advantage", text)
+    text = re.sub(r"\bdisadvantages\b", "disadvantage", text)
+    return text
 
 
 def note_detail_cells(row) -> list[str]:
@@ -91,6 +94,32 @@ def note_table_rows(text: str) -> list[list[str]]:
     return rows
 
 
+def note_table_blocks(text: str) -> list[list[list[str]]]:
+    blocks: list[list[list[str]]] = []
+    cur: list[list[str]] = []
+    for line in text.splitlines():
+        if not line.lstrip().startswith("|"):
+            if cur:
+                blocks.append(cur)
+                cur = []
+            continue
+        cells = table_cells(line)
+        if cells and not table_separator(cells):
+            cur.append(cells)
+    if cur:
+        blocks.append(cur)
+    return blocks
+
+
+def markdown_rows(lines: list[str]) -> list[list[str]]:
+    rows: list[list[str]] = []
+    for line in lines:
+        cells = table_cells(line)
+        if cells and not table_separator(cells):
+            rows.append(cells)
+    return rows
+
+
 def cell_covers(source: str, candidate: str) -> bool:
     source = normalise(source)
     candidate = normalise(candidate)
@@ -110,6 +139,41 @@ def row_present(source_cells: list[str], candidate_rows: list[list[str]]) -> boo
         if len(row) < len(source_cells):
             continue
         if all(cell_covers(cell, row[i]) for i, cell in enumerate(source_cells) if normalise(cell)):
+            return True
+    return False
+
+
+def rows_cover(source_cells: list[str], candidate_rows: list[list[str]]) -> bool:
+    if not candidate_rows:
+        return False
+    cols = max(len(source_cells), max(len(row) for row in candidate_rows))
+    combined = []
+    for col in range(cols):
+        combined.append(" ".join(row[col] for row in candidate_rows if col < len(row)))
+    return all(
+        cell_covers(cell, combined[i])
+        for i, cell in enumerate(source_cells)
+        if i < len(combined) and normalise(cell)
+    )
+
+
+def table_block_present(source_rows: list[list[str]], candidate_blocks: list[list[list[str]]]) -> bool:
+    if not source_rows:
+        return True
+    for block in candidate_blocks:
+        row = 0
+        matched = 0
+        while matched < len(source_rows) and row < len(block):
+            found = False
+            for end in range(row + 1, len(block) + 1):
+                if rows_cover(source_rows[matched], block[row:end]):
+                    row = end
+                    matched += 1
+                    found = True
+                    break
+            if not found:
+                break
+        if matched == len(source_rows):
             return True
     return False
 
@@ -192,9 +256,17 @@ def main() -> int:
                     rows_with_nested.append((row_index, blocks))
             if not rows_with_nested:
                 continue
-            table_rows = note_table_rows(note_path.read_text(errors="ignore"))
+            note_text = note_path.read_text(errors="ignore")
+            table_rows = note_table_rows(note_text)
+            table_blocks = note_table_blocks(note_text)
             for row_index, nested_blocks in rows_with_nested:
                 for nested_index, nested in enumerate(nested_blocks, 1):
+                    source_rows = markdown_rows(markdown_table(nested))
+                    if not table_block_present(source_rows, table_blocks):
+                        missing.append(
+                            f"{path.name}:{table_name}: nested table block missing "
+                            f"(source row {row_index}, nested table {nested_index})"
+                        )
                     for raw in markdown_table(nested):
                         cells = table_cells(raw)
                         if not cells or table_separator(cells):
