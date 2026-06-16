@@ -22,7 +22,7 @@
 
 ### Example
 
-Why replacement of IPv4 with IPv6 would mean that NAT is no longer necessary (PPQ)
+### Why replacement of IPv4 with IPv6 would mean that NAT is no longer necessary (PPQ)
 - There are enough (IPv6) addresses for every device (in the world) to have a unique/public/routable (IP) address
   - NE. there are more IPv6 addresses
 

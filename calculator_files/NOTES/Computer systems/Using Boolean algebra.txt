@@ -4,5 +4,5 @@
 
 ## Summary Sheet of Rules
 
-PYTHON PROGRAM TO CHECK YOUR ATTEMPTS (with working out lines)
-<<boolean.py>>
+- Python program to check your attempts (with working out lines)
+- <<boolean.py>>

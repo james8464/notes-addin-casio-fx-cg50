@@ -1,6 +1,6 @@
 # Digital representation of sound
 
-Sound is represented as a sequence of samples
+- Sound is represented as a sequence of samples
 
 ## Sample Resolution
 

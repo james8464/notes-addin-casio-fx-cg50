@@ -1,6 +1,6 @@
 # Functional language programs
 
-The following symbols can be used, same as python...
+- The following symbols can be used, same as python...
 - +
 - -
 - *
@@ -18,9 +18,9 @@ ghci> 5 / 2
 2.5
 ghci>
 
-Same as in python.
-Used to make the precedence explicit or change it
-Also makes the code more readable for humans
+- Same as in python.
+- Used to make the precedence explicit or change it
+- Also makes the code more readable for humans
 
 ### Example
 
@@ -49,7 +49,7 @@ ghci> not False
 True
 ghci> not (True && True)
 False
-The following equality comparisons can be used in addition:
+- The following equality comparisons can be used in addition:
 - '==' which means is equal to
 - '/=' which means is not equal to
 

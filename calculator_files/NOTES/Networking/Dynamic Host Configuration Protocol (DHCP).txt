@@ -17,7 +17,7 @@
 - The DHCP server offers a configuration to the host
 - The host accepted the offer from the DHCP server by echoing the accepted configuration back to the server
 - The DHCP server confirms the configuration has been allocated to the host
-Why it might be undesirable to allow the network settings of the web server to be defined by a DHCP server (PPQ)
+### Why it might be undesirable to allow the network settings of the web server to be defined by a DHCP server (PPQ)
 - The IP address of the web server might be changed (by the DHCP server);
 - If the IP address of the web server changes the router will not be able to forward data to it // port forwarding will no longer work;
   - A. DHCP server / router would need to be configured to allocate a fixed / static IP address to the web server

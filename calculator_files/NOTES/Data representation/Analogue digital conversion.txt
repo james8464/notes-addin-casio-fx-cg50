@@ -15,7 +15,7 @@
 - The voltages are output in sequence to reconstruct the signal
 - The signal is smoothed (e.g. using a low-pass filter) to produce a continuous analogue waveform
 
-Many sensors (eg temperature sensors and microphones) output an analogue signal.
-An ADC would be required here so that the computer can actually make use of the data.
+- Many sensors (eg temperature sensors and microphones) output an analogue signal.
+- An ADC would be required here so that the computer can actually make use of the data.
 
-The most common use for a DAC is to convert a digital audio signal to an analogue signal
+- The most common use for a DAC is to convert a digital audio signal to an analogue signal

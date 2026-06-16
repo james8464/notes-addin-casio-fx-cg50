@@ -34,7 +34,7 @@
 
 - Typeclasses are sets of types, so Integer, Float, Bool, Char.
 
-Type declaration:
+### Type Declaration
 - Can be implicit - set by the programming language in the background
 - ..or explicit - set by the programmer
 

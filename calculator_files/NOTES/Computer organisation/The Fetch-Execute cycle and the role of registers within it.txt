@@ -21,7 +21,7 @@
 - Execute instruction by relevant part of processor (e.g., ALU)
 - Result may be stored in accumulator
 - Status register updated
-PPQ: Why can't an instruction be directly processed from the MBR (so needs to be in CIR)
+### PPQ: Why can't an instruction be directly processed from the MBR (so needs to be in CIR)
   - To execute/carry out the instruction other data may need to be fetched (from main memory);
   - A. During execute phase MBR used to store other data
   - A. Further instructions may need to be fetched before the instruction has finished executing, if pipelining/parallelisation is referenced explicitly in the response

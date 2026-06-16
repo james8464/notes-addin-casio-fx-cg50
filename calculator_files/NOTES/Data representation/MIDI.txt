@@ -33,7 +33,9 @@
 - No data lost about musical notes (technically lossless)
 - No background noise recorded
 - MIDI files are often smaller in size as only instructions to recreate each sound are stored
-DISADVANTAGES OF USING MIDI (not technically in the spec, but good to know)
+## Disadvantages of Using MIDI
+
+- not technically in the spec, but good to know
 - Not suitable for recording real sound/audio
 - Limited realism
   - Hard to accurately replicate expressive, natural sounds (e.g., human voice or live instruments)

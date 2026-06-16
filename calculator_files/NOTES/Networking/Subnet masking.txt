@@ -1,6 +1,6 @@
 # Subnet masking
 
-Networks can be divided into smaller networks, called subnets
+- Networks can be divided into smaller networks, called subnets
 
 ## Subnet Masks
 

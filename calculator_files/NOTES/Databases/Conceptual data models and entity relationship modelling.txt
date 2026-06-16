@@ -4,5 +4,5 @@
 
 ## Practise, Practise, Practise
 
-To correctly draw the ERD from a given standard form database -> FOLLOW THE PRIMARY KEY; this means, starting from a table, where else does its primary key appear? When found - that's the FK, and that's a one-to-many relationship
-Mark the FKs on the question with a *
+- To correctly draw the ERD from a given standard form database -> FOLLOW THE PRIMARY KEY; this means, starting from a table, where else does its primary key appear? When found - that's the FK, and that's a one-to-many relationship
+- Mark the FKs on the question with a *

@@ -50,7 +50,7 @@
 
 ## D-type Flip-Flop
 
-Can be used as a memory unit for storing one bit
+- Can be used as a memory unit for storing one bit
 
 ### 2 Inputs
 

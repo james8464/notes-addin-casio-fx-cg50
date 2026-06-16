@@ -36,6 +36,6 @@
   - 2nd
   - 3rd ...
 
-Natural numbers are used for counting
-i.e. 1,2,3,4,5...
-Real numbers are used for measurement (since most values that are measured are decimal or in terms of irrational numbers)
+- Natural numbers are used for counting
+- i.e. 1,2,3,4,5...
+- Real numbers are used for measurement (since most values that are measured are decimal or in terms of irrational numbers)

@@ -15,6 +15,7 @@ READABLE_TABLE_CELL_SEMICOLON_CAP = 2
 READABLE_TABLE_CELL_CAP = 180
 READABLE_TABLE_ROW_CAP = 360
 RAW_DEFINITION_RE = re.compile(r"^[A-Za-z][A-Za-z0-9 /()+.-]{0,60} = ")
+RAW_LINE_ALLOW_PREFIXES = ("ghci>", "True", "False")
 
 
 def table_cells(line: str) -> list[str]:
@@ -90,6 +91,14 @@ def main() -> int:
                 errors.append(f"{path}:{line_no}: note line must use '- Note:'")
             if line == stripped and RAW_DEFINITION_RE.match(stripped):
                 errors.append(f"{path}:{line_no}: raw definition line must be a bullet or code block")
+            if (
+                stripped
+                and line == stripped
+                and not stripped.startswith(("#", "-", "|", ">"))
+                and not stripped[0].isdigit()
+                and not stripped.startswith(RAW_LINE_ALLOW_PREFIXES)
+            ):
+                errors.append(f"{path}:{line_no}: plain note line must be a heading, bullet, table, quote, or code block")
             if stripped.lower() in {"## below...", "### below..."}:
                 errors.append(f"{path}:{line_no}: placeholder heading must be replaced")
         first = next((line for line in lines if line.strip()), "")

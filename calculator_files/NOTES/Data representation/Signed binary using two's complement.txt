@@ -1,7 +1,7 @@
 # Signed binary using two's complement
 
-There are a few different coding schemes that can be used for signed binary
-AQA uses two's complement
+- There are a few different coding schemes that can be used for signed binary
+- AQA uses two's complement
   - It allows for the representation of both positive and negative numbers in binary
 
 ### Placeholders in Two's Complement
