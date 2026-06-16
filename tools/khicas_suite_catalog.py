@@ -82,129 +82,10 @@ P3_COMMANDS = [
 ]
 
 CS_COMMANDS = [
-    ("convert(45,10,16)", "CAT_CATEGORY_NUMBER"),
-    ("convert(", "CAT_CATEGORY_NUMBER"),
-    ("base(", "CAT_CATEGORY_NUMBER"),
-    ("bin(", "CAT_CATEGORY_NUMBER"),
-    ("hex(", "CAT_CATEGORY_NUMBER"),
-    ("den(", "CAT_CATEGORY_NUMBER"),
-    ("bitsneeded(127)", "CAT_CATEGORY_NUMBER"),
-    ("bitsneeded(", "CAT_CATEGORY_NUMBER"),
-    ("unsignedrange(", "CAT_CATEGORY_NUMBER"),
-    ("twosrange(", "CAT_CATEGORY_NUMBER"),
-    ("signmagrange(", "CAT_CATEGORY_NUMBER"),
-    ("onesrange(", "CAT_CATEGORY_NUMBER"),
-    ("twos(-5,8)", "CAT_CATEGORY_NUMBER"),
-    ("twos(", "CAT_CATEGORY_NUMBER"),
-    ("twosdec(", "CAT_CATEGORY_NUMBER"),
-    ("twosadd(", "CAT_CATEGORY_NUMBER"),
-    ("twossub(5,9,8)", "CAT_CATEGORY_NUMBER"),
-    ("twossub(", "CAT_CATEGORY_NUMBER"),
-    ("signmag(", "CAT_CATEGORY_NUMBER"),
-    ("signmagdec(", "CAT_CATEGORY_NUMBER"),
-    ("ones(", "CAT_CATEGORY_NUMBER"),
-    ("onesdec(", "CAT_CATEGORY_NUMBER"),
-    ("binadd(1011,0110,4)", "CAT_CATEGORY_NUMBER"),
-    ("binadd(", "CAT_CATEGORY_NUMBER"),
-    ("binsub(", "CAT_CATEGORY_NUMBER"),
-    ("shift(", "CAT_CATEGORY_NUMBER"),
-    ("arithshift(", "CAT_CATEGORY_NUMBER"),
-    ("xorbits(", "CAT_CATEGORY_NUMBER"),
-    ("andbits(", "CAT_CATEGORY_NUMBER"),
-    ("orbits(", "CAT_CATEGORY_NUMBER"),
-    ("notbits(", "CAT_CATEGORY_NUMBER"),
-    ("parity(", "CAT_CATEGORY_NUMBER"),
-    ("repeatenc(", "CAT_CATEGORY_NUMBER"),
-    ("repeatdec(", "CAT_CATEGORY_NUMBER"),
-    ("hamming(", "CAT_CATEGORY_NUMBER"),
-    ("hammingenc(", "CAT_CATEGORY_NUMBER"),
-    ("checksum(", "CAT_CATEGORY_NUMBER"),
-    ("checkdigit(", "CAT_CATEGORY_NUMBER"),
-    ("grayenc(", "CAT_CATEGORY_NUMBER"),
-    ("graydec(", "CAT_CATEGORY_NUMBER"),
-    ("rpn(", "CAT_CATEGORY_NUMBER"),
-    ("fixed(", "CAT_CATEGORY_FLOAT"),
-    ("fixedtc(", "CAT_CATEGORY_FLOAT"),
-    ("fixedenc(5.625,3,3)", "CAT_CATEGORY_FLOAT"),
-    ("fixedenc(", "CAT_CATEGORY_FLOAT"),
-    ("fixedfrac(", "CAT_CATEGORY_FLOAT"),
-    ("fixedtcenc(", "CAT_CATEGORY_FLOAT"),
-    ("floatdec(0101100,11101)", "CAT_CATEGORY_FLOAT"),
-    ("floatdec(", "CAT_CATEGORY_FLOAT"),
-    ("floatenc(12.75,8,4)", "CAT_CATEGORY_FLOAT"),
-    ("floatenc(", "CAT_CATEGORY_FLOAT"),
-    ("floatnorm(00011010,0110)", "CAT_CATEGORY_FLOAT"),
-    ("floatnorm(", "CAT_CATEGORY_FLOAT"),
-    ("normal(", "CAT_CATEGORY_FLOAT"),
-    ("floatrange(8,4)", "CAT_CATEGORY_FLOAT"),
-    ("floatrange(", "CAT_CATEGORY_FLOAT"),
-    ("floatnearest(", "CAT_CATEGORY_FLOAT"),
-    ("floatprecision(", "CAT_CATEGORY_FLOAT"),
-    ("floatbitsadd(", "CAT_CATEGORY_FLOAT"),
-    ("floatcanrepresent(", "CAT_CATEGORY_FLOAT"),
-    ("floatadd(", "CAT_CATEGORY_FLOAT"),
-    ("floatsub(", "CAT_CATEGORY_FLOAT"),
-    ("floatmul(", "CAT_CATEGORY_FLOAT"),
-    ("floatdiv(", "CAT_CATEGORY_FLOAT"),
-    ("image(800,600,24)", "CAT_CATEGORY_STORAGE"),
-    ("image(", "CAT_CATEGORY_STORAGE"),
-    ("imagesize(", "CAT_CATEGORY_STORAGE"),
-    ("imagecolors(", "CAT_CATEGORY_STORAGE"),
-    ("colourdepth(", "CAT_CATEGORY_STORAGE"),
-    ("colourcount(", "CAT_CATEGORY_STORAGE"),
-    ("sound(44100,60,16,2)", "CAT_CATEGORY_STORAGE"),
-    ("sound(", "CAT_CATEGORY_STORAGE"),
-    ("soundsize(", "CAT_CATEGORY_STORAGE"),
-    ("bitrate(48000000,12)", "CAT_CATEGORY_STORAGE"),
-    ("bitrate(", "CAT_CATEGORY_STORAGE"),
-    ("transfer(", "CAT_CATEGORY_STORAGE"),
-    ("compress(1000,250)", "CAT_CATEGORY_STORAGE"),
-    ("compress(", "CAT_CATEGORY_STORAGE"),
-    ("rle(", "CAT_CATEGORY_STORAGE"),
-    ("chars(120,8)", "CAT_CATEGORY_STORAGE"),
-    ("chars(", "CAT_CATEGORY_STORAGE"),
-    ("records(1200,32)", "CAT_CATEGORY_STORAGE"),
-    ("records(", "CAT_CATEGORY_STORAGE"),
-    ("ascii(", "CAT_CATEGORY_STORAGE"),
-    ("unicode(", "CAT_CATEGORY_STORAGE"),
-    ("symbolbits(", "CAT_CATEGORY_STORAGE"),
-    ("sqlselect(", "CAT_CATEGORY_STORAGE"),
-    ("sqlcount(", "CAT_CATEGORY_STORAGE"),
-    ("hashmod(", "CAT_CATEGORY_STORAGE"),
-    ("hashlinear(", "CAT_CATEGORY_STORAGE"),
-    ("hashquadratic(", "CAT_CATEGORY_STORAGE"),
-    ("addressspace(", "CAT_CATEGORY_STORAGE"),
-    ("addressbits(", "CAT_CATEGORY_STORAGE"),
-    ("memorycapacity(", "CAT_CATEGORY_STORAGE"),
-    ("binarysearch(7,1,3,5,7,9)", "CAT_CATEGORY_ALGO"),
-    ("binarysearch(", "CAT_CATEGORY_ALGO"),
-    ("linearsearch(", "CAT_CATEGORY_ALGO"),
-    ("bubblesort(", "CAT_CATEGORY_ALGO"),
-    ("insertionsort(", "CAT_CATEGORY_ALGO"),
-    ("selectionsort(", "CAT_CATEGORY_ALGO"),
-    ("mergesort(", "CAT_CATEGORY_ALGO"),
-    ("stack(", "CAT_CATEGORY_ALGO"),
-    ("queue(", "CAT_CATEGORY_ALGO"),
-    ("preorder(", "CAT_CATEGORY_ALGO"),
-    ("inorder(", "CAT_CATEGORY_ALGO"),
-    ("postorder(", "CAT_CATEGORY_ALGO"),
-    ("dijkstra(", "CAT_CATEGORY_ALGO"),
-    ("fsm(", "CAT_CATEGORY_ALGO"),
-    ("fsmout(", "CAT_CATEGORY_ALGO"),
     ("bool_simplify(", "CAT_CATEGORY_BOOL"),
-    ("bool(", "CAT_CATEGORY_BOOL"),
-    ("truth(", "CAT_CATEGORY_BOOL"),
-    ("truthbits(", "CAT_CATEGORY_BOOL"),
-    ("minterms(", "CAT_CATEGORY_BOOL"),
-    ("maxterms(", "CAT_CATEGORY_BOOL"),
-    ("kmap(", "CAT_CATEGORY_BOOL"),
-    ("kmapdc(", "CAT_CATEGORY_BOOL"),
-    ("posform(", "CAT_CATEGORY_BOOL"),
     ("nandform(", "CAT_CATEGORY_BOOL"),
     ("norform(", "CAT_CATEGORY_BOOL"),
     ("boolprove(", "CAT_CATEGORY_BOOL"),
-    ("demorgan(", "CAT_CATEGORY_BOOL"),
-    ("nand(", "CAT_CATEGORY_BOOL"),
 ]
 
 P3_FOLDERS = [
@@ -214,11 +95,7 @@ P3_FOLDERS = [
 ]
 
 CS_FOLDERS = [
-    ("Number", "CAT_CATEGORY_NUMBER"),
-    ("Float/fixed", "CAT_CATEGORY_FLOAT"),
-    ("Storage", "CAT_CATEGORY_STORAGE"),
-    ("Algorithms", "CAT_CATEGORY_ALGO"),
-    ("Boolean", "CAT_CATEGORY_BOOL"),
+    ("Computer Science", "CAT_CATEGORY_BOOL"),
 ]
 
 CS_BOOL_COMMANDS = [
@@ -233,8 +110,7 @@ def emit(app: str) -> str:
     if app == "p3":
         commands, folders, title, about = P3_COMMANDS, P3_FOLDERS, "CASP3 Catalog", "CASP3"
     elif app == "cs":
-        commands = [c for c in CS_COMMANDS if c[1] == "CAT_CATEGORY_BOOL"]
-        folders, title, about = [("Boolean", "CAT_CATEGORY_BOOL")], "CSCalc Catalog", "CSCalc"
+        commands, folders, title, about = CS_COMMANDS, CS_FOLDERS, "CSCalc Catalog", "CSCalc"
     else:
         raise SystemExit("usage: khicas_suite_catalog.py p3|cs")
 
@@ -267,17 +143,9 @@ def emit(app: str) -> str:
             if b.startswith("binom") or b.startswith("poisson"):
                 return "Discrete distribution setup and probability."
             return "Stats/data working with formula and substitution."
-        if b in {"convert", "base", "bin", "hex", "den", "bitsneeded"}:
-            return "Number-base working."
-        if "twos" in b or b in {"signmag", "signmagdec", "ones", "onesdec", "binadd", "binsub", "shift", "arithshift", "xorbits", "andbits", "orbits", "notbits", "parity", "repeatenc", "repeatdec", "hamming", "hammingenc", "checksum", "checkdigit", "grayenc", "graydec", "rpn"}:
-            return "Binary integer working with range/overflow where needed."
-        if b.startswith("fixed") or b.startswith("float") or b == "normal":
-            return "Fixed/floating point working."
-        if b in {"image", "imagesize", "imagecolors", "colourdepth", "colourcount", "sound", "soundsize", "bitrate", "transfer", "compress", "rle", "chars", "records", "ascii", "unicode", "symbolbits", "sqlselect", "sqlcount", "hashmod", "hashlinear", "hashquadratic", "addressspace", "addressbits", "memorycapacity"}:
-            return "Storage/data-size working."
-        if b in {"bool", "bool_simplify", "truth", "truthbits", "minterms", "maxterms", "kmap", "kmapdc", "posform", "nandform", "norform", "boolprove", "demorgan", "nand"}:
+        if b in {"bool_simplify", "nandform", "norform", "boolprove"}:
             return "Boolean algebra working with rule names."
-        return "Algorithm/data-structure working."
+        return "Computer Science command."
 
     def example(s: str) -> str:
         if "(" in s and ")" in s:
@@ -296,33 +164,10 @@ def emit(app: str) -> str:
             "cond(": "cond(0.2,0.5)",
             "regresscalc(": "regresscalc(5,20,30,10,18,8)",
             "groupmean(": "groupmean(5,12,15,30,25,18)",
-            "convert(": "convert(45,10,16)",
-            "bitsneeded(": "bitsneeded(127)",
-            "twos(": "twos(-5,8)",
-            "twossub(": "twossub(5,9,8)",
-            "binadd(": "binadd(1011,0110,4)",
-            "fixedenc(": "fixedenc(5.625,3,3)",
-            "floatdec(": "floatdec(0101100,11101)",
-            "floatenc(": "floatenc(12.75,8,4)",
-            "floatnorm(": "floatnorm(00011010,0110)",
-            "floatrange(": "floatrange(8,4)",
-            "image(": "image(800,600,24)",
-            "sound(": "sound(44100,60,16,2)",
-            "bitrate(": "bitrate(48000000,12)",
-            "compress(": "compress(1000,250)",
-            "chars(": "chars(120,8)",
-            "records(": "records(1200,32)",
-            "binarysearch(": "binarysearch(7,1,3,5,7,9)",
-            "bool_simplify(": "bool_simplify(A and not B)",
-            "truthbits(": "truthbits(A,B,0110)",
-            "minterms(": "minterms(A,B,C,1,3,7)",
-            "maxterms(": "maxterms(A,B,0,2)",
-            "kmap(": "kmap(A,B,C,1,3,7)",
-            "kmapdc(": "kmapdc(A,B,C,1,3,dc,0)",
-            "posform(": "posform(A+B')",
-            "nandform(": "nandform(A+B)",
-            "norform(": "norform(A*B)",
-            "boolprove(": "boolprove((A*B)',A'+B')",
+            "bool_simplify(": "bool_simplify(A+A.B)",
+            "nandform(": "nandform(A.B)",
+            "norform(": "norform(A+B)",
+            "boolprove(": "boolprove(A.(B+C),A.B+A.C)",
         }
         return "#" + examples.get(s, insert_text(s) + ")")
 
@@ -373,71 +218,23 @@ def emit(app: str) -> str:
                     desc(s),
                     "Writes formula/setup, substitutes values, then gives final answer.",
                     ex)
-        if b in {"convert", "base"}:
-            return ("convert(value,from_base,to_base)",
-                    "Bases can be 2, 8, 10 or 16.",
-                    "Converts number bases.",
-                    "Converts to denary by place value, then converts to target base.",
+        if b == "bool_simplify":
+            return ("bool_simplify(expression)",
+                    "Use , for NOT, . for AND, + for OR.",
+                    "Boolean simplification with line-by-line working.",
+                    "Applies the old Boolean algebra rules and prints each named law.",
                     ex)
-        if b in {"bin", "hex", "den"}:
-            return (f"{b}(value[,base])",
-                    "Value and optional source base.",
-                    "Shortcut base conversion.",
-                    "Uses place-value expansion then groups/divides for the target base.",
+        if b in {"nandform", "norform"}:
+            return (f"{b}(expression)",
+                    "Use , for NOT, . for AND, + for OR.",
+                    "Boolean gate-only form.",
+                    "Rewrites the expression using the requested gate form.",
                     ex)
-        if "twos" in b or b in {"signmag", "signmagdec", "ones", "onesdec"}:
-            return (f"{b}(value_or_bits[,bits])",
-                    "Signed value plus bit width, or encoded bit pattern.",
-                    "Signed binary encode/decode.",
-                    "Uses sign bit/range rule; two's-complement negatives use 2^n+value.",
-                    ex)
-        if b in {"binadd", "binsub", "shift", "arithshift", "xorbits", "andbits", "orbits", "notbits"}:
-            return (f"{b}(bits[,bits_or_amount,width])",
-                    "Bit strings, direction/amount or optional width.",
-                    "Binary arithmetic/logic.",
-                    "Shows aligned operation, carry/borrow or sign-preserving shift.",
-                    ex)
-        if b in {"parity", "repeatenc", "repeatdec", "hamming", "hammingenc", "checksum", "checkdigit", "grayenc", "graydec"}:
-            return (f"{b}(...)",
-                    "Bit strings and scheme-specific options.",
-                    "Error-detection/coding working.",
-                    "Calculates parity/check bits or applies the stated code rule step by step.",
-                    ex)
-        if b.startswith("fixed"):
-            return (f"{b}(...)",
-                    "Fixed-point bits or value plus whole/fraction bit counts.",
-                    "Fixed-point encode/decode.",
-                    "Uses binary place values either side of the point.",
-                    ex)
-        if b.startswith("float") or b == "normal":
-            return (f"{b}(...)",
-                    "Mantissa/exponent bits, widths, or a denary value.",
-                    "Floating-point encode/decode/check.",
-                    "Decodes exponent as two's complement, shifts point, normalises, then rounds/checks.",
-                    ex)
-        if b in {"image", "imagesize", "imagecolors", "colourdepth", "colourcount", "sound", "soundsize", "bitrate", "transfer", "compress", "rle", "chars", "records", "ascii", "unicode", "symbolbits"}:
-            return (f"{b}(...)",
-                    "Counts, dimensions, bit depths, rates or file sizes.",
-                    "Storage/data-size working.",
-                    "Multiplies the relevant counts, converts units, then states final size/time/ratio.",
-                    ex)
-        if b in {"sqlselect", "sqlcount", "hashmod", "hashlinear", "hashquadratic", "addressspace", "addressbits", "memorycapacity"}:
-            return (f"{b}(...)",
-                    "Table/query fields, hash keys or memory/address sizes.",
-                    "Database/memory calculation working.",
-                    "Applies the exact selection/hash/address formula and shows each step.",
-                    ex)
-        if b in {"binarysearch", "linearsearch", "bubblesort", "insertionsort", "selectionsort", "mergesort", "stack", "queue", "preorder", "inorder", "postorder", "dijkstra", "fsm", "fsmout", "rpn"}:
-            return (f"{b}(...)",
-                    "Target/list, operations, graph edges or state transitions.",
-                    "Algorithm trace.",
-                    "Shows comparisons/passes/updates in exam trace order.",
-                    ex)
-        if b in {"bool", "bool_simplify", "truth", "truthbits", "minterms", "maxterms", "kmap", "kmapdc", "posform", "nandform", "norform", "boolprove", "demorgan", "nand"}:
-            return (f"{b}(expression[,variables])",
-                    "Boolean expressions use and/or/not, +, *, ', brackets. Variable list is optional.",
-                    "Boolean simplification, proof, table, K-map or gate form.",
-                    "Applies named laws first, including bracket expansion, then exact truth-table/K-map grouping if shorter.",
+        if b == "boolprove":
+            return ("boolprove(lhs,rhs)",
+                    "Two Boolean expressions separated by a comma.",
+                    "Boolean equivalence proof.",
+                    "Simplifies both sides and shows the working lines.",
                     ex)
         return (f"{b}(...)",
                 "Use the parameters shown in the example.",
