@@ -139,6 +139,8 @@ def main() -> int:
         raise AssertionError("notes viewer must normalize CR/CRLF input to LF")
     if "if (sz == 0)" not in notes_src or "file_buf_len = 0;" not in notes_src:
         raise AssertionError("notes empty .txt files must open as blank notes, not as failed reads")
+    if notes_src.count('int is_txt = ends_with(name, ".txt");') < 2 or notes_src.count("int is_folder = !is_txt && info.fsize == 0;") < 2:
+        raise AssertionError("notes empty .txt files must be listed/searched as files, not size-0 folders")
     if notes_src.count("int opened = !ret;") < 2 or notes_src.count("if (opened) Bfile_FindClose(handle);") < 2:
         raise AssertionError("notes directory scans must not close invalid Bfile search handles")
     if "source_code_like(file_buf + next_pos, next_end - next_pos)" not in notes_src:

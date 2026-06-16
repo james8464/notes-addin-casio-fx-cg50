@@ -492,6 +492,8 @@ def main() -> int:
         errors.append("oversize note files must show an explicit file-too-large message")
     if "if (sz == 0)" not in APP_SOURCE or "file_buf_len = 0;" not in APP_SOURCE:
         errors.append("empty .txt files must open as blank notes, not as failed reads")
+    if APP_SOURCE.count('int is_txt = ends_with(name, ".txt");') < 2 or APP_SOURCE.count("int is_folder = !is_txt && info.fsize == 0;") < 2:
+        errors.append("empty .txt files must be listed/searched as files, not size-0 folders")
     if APP_SOURCE.count("int opened = !ret;") < 2 or APP_SOURCE.count("if (opened) Bfile_FindClose(handle);") < 2:
         errors.append("directory scans must not close invalid Bfile search handles")
     if "int visible = fit_visible_chars(file_buf + pos, len, 0);" in APP_SOURCE:

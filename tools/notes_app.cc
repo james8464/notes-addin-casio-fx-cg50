@@ -406,8 +406,9 @@ static int scan_dir() {
   while (!ret && entry_count < MAX_ENTRIES) {
     Bfile_NameToStr_ncpy((unsigned char *)name, found, 300);
     if (strcmp(name, ".") && strcmp(name, "..") && strcmp(name, "@MainMem") && !hidden_note_name(name)) {
-      int is_folder = info.fsize == 0;
-      if ((is_folder && !hidden_system_folder(name)) || (!is_folder && ends_with(name, ".txt"))) {
+      int is_txt = ends_with(name, ".txt");
+      int is_folder = !is_txt && info.fsize == 0;
+      if ((is_folder && !hidden_system_folder(name)) || is_txt) {
         copy_str(entries[entry_count].name, sizeof(entries[entry_count].name), name);
         copy_str(entries[entry_count].path, sizeof(entries[entry_count].path), cwd_path);
         append_str(entries[entry_count].path, sizeof(entries[entry_count].path), name);
@@ -2055,7 +2056,8 @@ static int search_all_rec(const char *dir, const SearchPattern *sp, int depth) {
   while (!ret) {
     Bfile_NameToStr_ncpy((unsigned char *)name, found, 300);
     if (strcmp(name, ".") && strcmp(name, "..") && strcmp(name, "@MainMem") && !hidden_note_name(name)) {
-      int is_folder = info.fsize == 0;
+      int is_txt = ends_with(name, ".txt");
+      int is_folder = !is_txt && info.fsize == 0;
       join_str(full, sizeof(full), dir, name);
       if (is_folder) {
         if (!hidden_system_folder(name)) {
@@ -2063,7 +2065,7 @@ static int search_all_rec(const char *dir, const SearchPattern *sp, int depth) {
           join_str(child, sizeof(child), full, "\\");
           search_all_rec(child, sp, depth + 1);
         }
-      } else if (ends_with(name, ".txt")) {
+      } else if (is_txt) {
         int first = -1, hits = 0;
         int by_name = contains_kmp(name, sp);
         int by_path = contains_kmp(full, sp);
