@@ -36,6 +36,8 @@ def const_int(source: str, name: str) -> int:
 
 APP_SOURCE = APP.read_text()
 MAX_VIEW_LINES = const_int(APP_SOURCE, "MAX_VIEW_LINES")
+MAX_ENTRIES = const_int(APP_SOURCE, "MAX_ENTRIES")
+MAX_RESULTS = const_int(APP_SOURCE, "MAX_RESULTS")
 LINE_CAP = const_int(APP_SOURCE, "LINE_CAP")
 MAX_TABLE_COLS = const_int(APP_SOURCE, "MAX_TABLE_COLS")
 MAX_TABLE_ROWS = const_int(APP_SOURCE, "MAX_TABLE_ROWS")
@@ -240,6 +242,12 @@ def main() -> int:
     errors: list[str] = []
     if "min_int(src_len, LINE_CAP - 3)" in APP_SOURCE:
         errors.append("top-level bullet rendering still has LINE_CAP pre-truncation")
+    if MAX_ENTRIES < 120:
+        errors.append("directory browser should support at least 120 entries")
+    if MAX_RESULTS < 96:
+        errors.append("search result list should support at least 96 matches")
+    if MAX_TABLE_ROWS < 24:
+        errors.append("table renderer should support at least 24 rows")
     if "    char cells[MAX_TABLE_COLS][TABLE_CELL_CAP];" in APP_SOURCE:
         errors.append("table parse scratch cells must not be allocated on the fx-CG stack")
     if "      char segs[MAX_TABLE_COLS][TABLE_CELL_CAP];" in APP_SOURCE:

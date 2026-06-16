@@ -10,13 +10,13 @@ typedef struct {
   unsigned long address;
 } file_type_t;
 
-static const int MAX_ENTRIES = 80;
-static const int MAX_RESULTS = 64;
+static const int MAX_ENTRIES = 120;
+static const int MAX_RESULTS = 96;
 static const int FILE_BUF_SIZE = 16384;
 static const int MAX_VIEW_LINES = 768;
 static const int LINE_CAP = 96;
 static const int MAX_TABLE_COLS = 6;
-static const int MAX_TABLE_ROWS = 16;
+static const int MAX_TABLE_ROWS = 24;
 static const int TABLE_CELL_CAP = 416;
 static const int TABLE_MAX_CHARS = LINE_CAP - 4;
 static const int TABLE_CHAR_PX = 8;
