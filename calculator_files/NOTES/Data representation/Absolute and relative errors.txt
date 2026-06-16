@@ -5,7 +5,6 @@
 - The actual amount by which a value is inaccurate
 - Calculated by finding the difference between the given value and the actual value
 
-### Example
 
 ## Relative Errors
 
@@ -14,9 +13,18 @@
 
 - Larger actual value = smaller relative error
 
-- just think about it....
+
+## Example
+
+- EXAMPLE
+- just think about it...
 
 ## Fixed Point
+
+- FIXED POINT
+- Numbers are represented exactly
+- Limited range of numbers that can be represented
+- Faster processing times compared to floating point numbers
 
 | Advantages | Disadvantages |
 | --- | --- |
@@ -24,6 +32,12 @@
 | Faster processing times compared to floating point numbers |  |
 
 ## Floating Point
+
+- FLOATING POINT
+- Allows a far greater range of numbers for the same number of bits
+- Rounds off large numbers
+- Can represent very large and very small numbers
+- Slower processing times
 
 | Advantages | Disadvantages |
 | --- | --- |

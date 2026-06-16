@@ -12,15 +12,3 @@
 
   - If you have 3 bits:
   - Possible values = 2^3 = 8
-  - The 8 values which can be represented using 3 bits are:
-
-| Value | Binary |
-| --- | --- |
-| 0 | 000 |
-| 1 | 001 |
-| 2 | 010 |
-| 3 | 011 |
-| 4 | 100 |
-| 5 | 101 |
-| 6 | 110 |
-| 7 | 111 |

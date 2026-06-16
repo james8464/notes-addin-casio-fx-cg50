@@ -9,10 +9,10 @@
 - data transfer such as LOAD and STORE
 - arithmetic operations such as ADD and SUBTRACT
 - comparison operators such as EQUAL, GREATER THAN, LESS THAN
-- logical operations, e.g., AND, OR, NOT, XOR
+- logical operations, eg AND, OR, NOT, XOR
 - Branching conditional and unconditional
 - Logical shift bits left/right
 
-- Opcode = the type of operation to be carried out (e.g., addition)
+- Opcode = the type of operation to be carried out (eg addition)
 - Operand = the pieces of data on which the operation is performed
 - See 4.7.3.4 regarding addressing modes

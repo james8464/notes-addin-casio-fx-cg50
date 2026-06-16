@@ -24,23 +24,23 @@
   - Note envelope
 - event messages essentially represent an event in a piece of music (think of it as a series of instructions which could be used to recreate a piece of music)
 
+
 ## Advantages of Using MIDI
 
-- More compact representation
-- Easy to modify/edit notes
-- Simple method to compose algorithmically
-- Musical score can be generated directly from a MIDI file
-- No data lost about musical notes (technically lossless)
-- No background noise recorded
+- more compact representation
+- easy to modify/edit notes
+- simple method to compose algorithmically
+- musical score can be generated directly from a MIDI file
+- no data lost about musical notes (technically lossless)
+- no background noise recorded
 - MIDI files are often smaller in size as only instructions to recreate each sound are stored
+
+
 ## Disadvantages of Using MIDI
 
-- not technically in the spec, but good to know
-- Not suitable for recording real sound/audio
-- Limited realism
-  - Hard to accurately replicate expressive, natural sounds (e.g., human voice or live instruments)
-- No recording of ambient sound (ie real world context)
-- Requires compatible software/hardware to play properly
-- Can sound artificial/computer-generated
-- Limited to musical note data
-  - Cannot store full audio effects like reverb, distortion or nuanced timbre in detail
+- not suitable for recording real sound/audio
+- hard to accurately replicate expressive, natural sounds (e.g., human voice or live instruments)
+- requires compatible software/hardware to play properly
+- can sound artificial/computer-generated
+- limited to musical note data (can't store full audio effects like reverb, distortion or nuanced timbre in detail)
+

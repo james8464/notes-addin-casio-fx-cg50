@@ -4,6 +4,8 @@
 
 - All the positive integers and zero
 - N = {0, 1, 2, 3, 4, ...}
+- i.e. 1,2,3,4,5...
+- used for counting
 
 ## Integer Numbers (Z)
 
@@ -18,7 +20,7 @@
 ## Irrational Numbers
 
 - Any number which cannot be written as a fraction
-### Examples
+- Examples
   - sqrt(2)
   - Pi
   - e
@@ -27,15 +29,14 @@
 
 - Any number which can be represented in the real world
 - Includes the rationals, irrationals, integers, and natural numbers
+- used for measurements 
+- Real numbers are used for measurement (since most values that are measured are decimal or in terms of irrational numbers)
 
 ## Ordinal Numbers
 
 - Used to describe the position of an item in a set
-### Examples
+- Examples
   - 1st
   - 2nd
-  - 3rd ...
+  - 3rd 
 
-- Natural numbers are used for counting
-- i.e. 1,2,3,4,5...
-- Real numbers are used for measurement (since most values that are measured are decimal or in terms of irrational numbers)

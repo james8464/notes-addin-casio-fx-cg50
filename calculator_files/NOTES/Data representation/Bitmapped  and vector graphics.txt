@@ -1,0 +1,54 @@
+# Bitmapped graphics and vector graphics
+
+# Bitmapped graphics
+
+- images made from pixels
+- pixel = smallest addressable picture element. Contains one colour
+- resolution = num of pixels used to make the bitmap, measured in dots per inch
+- colour depth = num of bits allocated to represent the colour of each pixel
+  - larger colour depth = larger file size + more unique colours can be represented
+  - if the colour depth is n, 2^n colours can be represented
+  - eg a colour depth of 1 (ie 1 bit to represent the colour per pixel) would support 2 colours (2^1)
+- very realistic images
+- high detail and subtle colour variation
+- easy to edit at pixel level
+- no processing needed to render, just display pixels
+- larger file sizes
+- pixelation when enlarged
+- quality depends on resolution
+- not easily scalable
+- editing large images can be slow
+
+## Uses
+
+- real world photography
+- photos of people
+
+
+## Formula to Calculate File Size (of Bitmap Image)
+
+  - File size = Resolution * colour depth
+  - However, this value is a minimum. In reality, its higher due to metadata
+
+
+
+# Vector graphics
+
+- represents images using geometric objects/shapes
+- properties (eg fill colour, fill style, dimensions, position) are stored in a list for each object
+- can be scaled without loss of quality
+- smaller file sizes as only data about the objects need to be stored rather than each pixel
+- easy to edit objects
+- does not result in a void area if an object is deleted
+- cannot represent fine detail or complex textures well
+- more processing required to render
+- limited colour realism compared to bitmaps
+
+
+## Uses
+
+- CAD packages
+- 2D/3D programs
+- Chart, logo, map, plan, clipart
+- SVG images
+

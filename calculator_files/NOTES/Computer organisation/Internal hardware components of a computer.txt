@@ -13,45 +13,55 @@
 | Control bus | bi-directional; transmits command, timing and specific status information between system components |
 | I/O controllers | located between the processor and the I/O device; controls the flow of data between the processor and I/O |
 
-## Roles of an I/o Controller
+## Roles of an I/O Controller
 
-- Allows processor to control/communicate with a peripheral using an I/O port
-- Allows peripheral to appear as a set of memory locations to the processor
-- Translates signals/data from the peripheral into a form that the processor can understand
-- Allows new peripherals to be added without having to redesign the processor/hardware
-- Checks if data received from peripheral is corrupted or not
-- Generates an interrupt when data is ready to be transferred from an I/O device
+- allows processor to control/communicate with a peripheral using an I/O port
+- allows peripheral to appear as a set of memory locations to the processor
+- translates signals/data from the peripheral into a form that the processor can understand
+- allows new peripherals to be added without having to redesign the processor/hardware
+- checks if data received from peripheral is corrupted or not
+- generates an interrupt when data is ready to be transferred from an I/O device
+
+# Definition of buses
 
 - System bus = a set of wires, each wire carries a single bit at any one time
 - Data bus = carries data and instructions between memory, I/O controllers, and the CPU; bidirectional
 - Address bus = carries addresses from the CPU to memory, so it is unidirectional
 - Control bus = caries control signals between the CPU and I/O controllers and memory
 
+
+
+# Von Neumann vs Harvard Architecture
+
 ## Von Neumann
 
-- data and instructions are stored in the same memory
+- data and instructions are stored in same memory
+- shared bus system results in a bottlenecking issue
 - shared bus system -> worse performance than Harvard architecture
 - Used in everyday general-purpose computer systems (e.g., laptops + smartphones)
+- Stored program concept = the concept of storing data and instruction in a memory with discrete, unique addresses
 
 ## Harvard Architecture
 
 - data and instructions are stored in separate memories
 - separate bus system
+- Different word lengths can be used for data/instructions
 - Different sized memory spaced, registers, and word lengths can be used for data/instructions
 - Mainly used in embedded systems
 
-### Ppq: Reasons to Use Harvard Rather Than Von Neumann
+## PPQ: Reasons to Use Harvard Rather Than Von Neumann
 
-- Instructions and data can be accessed simultaneously;
-- Avoid/reduce bottleneck of single data/address bus(es) // avoid/reduce delays waiting for memory fetches;
-- Avoids possibility of data being executed as code (which is one method that can be exploited by hackers);
-- Being able to use exclusively ROM for instruction memory prevents the program being modified/hacked; A. Program cannot be accidentally overwritten (by data)
-- Instruction and data memory can have different word lengths;
-- Different technologies can be used to implement instruction and data memory;
-- Different quantities of instruction and data memory means that address lengths can differ between the two // memory address structures can differ;
-      - NE. So programs/tasks will run faster
-      - NE. More efficient
+- Instructions and data can be accessed simultaneously
+- Reduce bottleneck of single data/address buses
+- Avoid/reduce bottleneck of single data/address bus(es), or avoid/reduce delays waiting for memory fetches
+- Avoids possibility of data being executed as code (which is one method that can be exploited by hackers)
+- Being able to use exclusively ROM for instruction memory prevents the program being modified/hacked
+  - Program cannot be accidentally overwritten by data
+- Instruction and data memory can have different word lengths
+- Different technologies can be used to implement instruction and data memory
+- Different quantities of instruction and data memory means that address lengths can differ between the two 
+- memory address structures can differ
+- NE: So programs/tasks will run faster
+- NE: More efficient
+      
 
-## Stored program concept
-
-- Definition: the concept of storing data and instruction in a memory with discrete, unique addresses

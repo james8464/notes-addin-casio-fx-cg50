@@ -1,6 +1,8 @@
 # Input and output devices
 
-## Characteristics
+## BARCODE READERS
+
+### Characteristics
 
 - Optical scanner
   - uses light to read printed barcodes and converts them to digital data
@@ -16,7 +18,7 @@
   - Portable and can be handheld
   - Convenient for use
 
-## Purposes
+### Purposes
 
 - Inventory management
   - retail and warehouses use it for tracking inventory and managing stock levels
@@ -29,7 +31,7 @@
   - tracks shipments and manages the movement of goods
   - widely used in supply chain management
 
-## Suitability
+### Suitability
 
 - Retail
   - quick + accurate scanning of products is essential for efficient checkout and inventory management
@@ -37,9 +39,9 @@
   - streamline inventory tracking
   - reduces errors in stock management
 - Healthcare
-  - e.g., tracking medications, patient records, medical equipment, etc
+  - eg tracking medications, patient records, medical equipment, etc
 
-## Principles of Operation
+### Principles of Operation
 
 - A light source (ie laser) is shone at barcode
 - A moving prism moves light beam across barcode (or the user moves reader across)
@@ -48,16 +50,19 @@
   - White spaces reflect more light
 - A light sensor detects the reflected light and converts it into an electrical signal
 - The electrical signal is processed and translated into binary data via ADC
-- The binary data is sent to a connected device (e.g., a computer) for further processing
+- The binary data is sent to a connected device (eg a computer) for further processing
 
-## Characteristics
+
+## DIGITAL CAMERAS
+
+### Characteristics
 
 - Resolution
-  - images are captured in megapixels (MP)
+  - images are captured in megapixels 
   - higher MP = better quality
   - common resolutions range from 12 MP to over 50 MP
 - Storage
-  - images are stored on memory cards (e.g., SD cards)
+  - images are stored on memory cards (eg SD cards)
 - LCD screen
   - allows users to preview and review images
 - Zoom
@@ -65,10 +70,10 @@
   - optical zoom - camera's lens used to magnify image
   - digital zoom - image is enlarged digitally
 - Shooting modes
-  - various shooting modes (e.g., portrait, landscape, night mode)
+  - various shooting modes (eg portrait, landscape, night mode)
   - allows for different styles of photography
 
-## Purposes
+### Purposes
 
 - Photography
   - capturing images for personal, professional or artistic purposes
@@ -77,9 +82,9 @@
 - Documentation
   - can be useful to document events so they can be remembered/referenced
 - Content creation
-  - e.g., producing media for social platforms
+  - eg producing media for social platforms
 
-## Suitability
+### Suitability
 
 - Professional use
   - offers advanced features and high resolution that professionals can take advantage of
@@ -88,12 +93,12 @@
 - Travel/everyday use
   - compact digital cameras are convenient for everyday use + travel
 
-## Principles of Operation
+### Principles of Operation
 
 - The camera's lens focuses light onto the sensor
   - The amount of light is controlled by the aperture/diapgragm
   - The duration of exposure is controlled by the shutter speed
-- The sensor (e.g., a CCD) converts the light into electrical signals
+- The sensor (eg a CCD) converts the light into electrical signals
   - Each photosite on the sensor corresponds to a pixel in the final image
 - The electrical signals are converted to digital data via an ADC
 - The digital data is processed by the camera's image processor
@@ -101,7 +106,9 @@
 - The processed image is stored on the memory card
 - The captured image can be viewed on the camera's LCD screen, and can be transferred from the memory card onto an external supported device
 
-## Characteristics
+## LASER PRINTERS
+
+### Characteristics
 
 - Print quality
   - high quality printouts
@@ -119,21 +126,19 @@
 - Noise level
   - operate quietly compared to inkjet printers
 
-## Purposes
 
-- It prints ...
-
-## Suitability
+### Suitability
 
 - Office printing
   - high speed + efficiency + low cost per page
 - High volume printing
-  - e.g., in schools, businesses and print shops
+  - eg in schools, businesses and print shops
 - Professional documents
-  - e.g., brochures, flyers and business cards
+  - eg brochures, flyers and business cards
 
-## Principles of Operation
+### Principles of Operation
 
+- It prints ...
 - A laser beam projects an image of the page onto a photosensitive drum coated with a photoconductive material
 - The drum is given a uniform electrostatic charge
 - The laser beam discharges certain areas of the drum
@@ -145,7 +150,9 @@
 - The paper then passes through a pair of heated rollers
   - The toner is melted onto the paper, creating a permanent image
 
-## Characteristics
+## RFID
+
+### Characteristics
 
 - Non-contact communication
   - relies on electromagnetic waves
@@ -160,7 +167,7 @@
 - Versatility
   - RFID tags can be passive, active, or semi-passive
 
-## Purposes
+### Purposes
 
 - Inventory management
   - widely used for tracking inventory in warehouses and retail stores
@@ -168,16 +175,16 @@
 - Access control
   - used in security systems for controlling access to buildings/restricted areas
 - Asset tracking
-  - used to track valuable assets (e.g., equipment, vehicles)
+  - used to track valuable assets (eg equipment, vehicles)
   - ensures their location is always known
 - Supply chain management
   - improves efficiency in supply chains
   - automates the tracking of goods from production to delivery
 
-## Suitability
+### Suitability
 
 - High-speed identification
-  - can rapidly identity many items
+  - can rapidly identity many items from a distance
   - useful in logistics and retail
 - Automation
   - ideal for automating processes
@@ -185,7 +192,7 @@
 - Complex environments
   - can operate effectively in various environments, including those with high-speed moving objects and multiple tags
 
-## Principles of Operation
+### Principles of Operation
 
 - RFID tags
   - contains microchip and an antenna

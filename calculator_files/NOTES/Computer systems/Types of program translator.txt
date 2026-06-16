@@ -3,47 +3,71 @@
 ## Assembler
 
 - translates ONLY assembly language into machine code
-- due to the 1-to-1 relationship between assembly and machine code, translation is quick + straightforward
+- translation is quick + straightforward due to 1-to-1 relationship between assembly and machine code
 - assemblers are platform specific
-  - different assembler must exist for each different type of processor instruction set
+  - different assembler must exist for different types of processor instruction set
 
 ## Compiler
 
 - translates high-level source code into machine code
-- Translates the entire program at once
-- Creates an executable file (unless there are any errors)
+- translates entire program at once
+- only needs to translate the program once
+- produces executable file (unless there are any errors)
+  - can run without any other software dependencies
   - this can run without needing any other software to be present
-- Provides error report of ALL the errors if there are any
+  - can only run on one type of processor/VM
+- provides error report of ALL errors 
 
 ## Interpreter
 
-- translates high-level source code into machine code also
-- Translates line-by-line
-- Checks for errors as they go (ie line-by-line)
-- Interpreter translates a program each time its executed
-## Comparison Between Compiler and Interpreter
+- translates high-level source code into machine code 
+- executes each line immediately after translating it
+- translates line-by-line
+- checks for errors as they go (ie line-by-line)
+- program is translated each time its executed
 
-| Compiler | Interpreter |
-| --- | --- |
-| Analyses the program as a whole | Analyses program on a line-by-line basis |
-| Produces object code / executable file / machine code / bytecode | Interpreter calls subroutines within its own code to carry out commands |
-| Compiler will not translate any of the program if it encounters an error | Interpreter translates/executes program until first error is encountered |
-| If (unchanged) program executed twice/multiple times, compiler will only need to translate it once | Interpreter translates a program each time it is executed |
-| Once translated, compiled code does not need the compiler to be present to run | An interpreter must always be present for a program that is interpreted to run |
-| Once compiled, code will only run on one type of processor / virtual machine | Interpreter could translate the same instruction multiple times (eg if it is in a loop) |
-| If student has written about compiler outputting bytecode then: bytecode will later be interpreted // executed by a virtual machine // just-in-time-compiled | Interpreter executes each line immediately after translating it |
 
-## Why Intermediate Languages Are Used?
+
+
+## Intermediate Languages (Bytecode)
+
+### Why are Intermediate Languages Used?
 
 - allows processor/platform independence
-- compiler is only required to translate source code once
-- can create intermediate language code for a specific (standardised) virtual machine that all the target machines have installed;
-- VM can perform security checks on the (intermediate language / byte) code without execution, hence it is more secure;
+- improves portability (cross-platform execution)
+- source code only needs to be compiled once
+- same bytecode can run on multiple platforms
+- compiler can generate code for a standardised virtual machine rather than a specific processor
+- VM can perform security checks before execution
+- more secure than directly executing native machine code
+- each processor architecture only needs its own VM/JIT compiler rather than its own compiler
 
-## How Intermediate Languages Are Used?
+### How are Intermediate Languages Used?
 
-- the code (now translated to the intermediate lang, eg bytecode) is executed by a virtual machine
-- each different processor instruction set will have its own VM
+- source code is compiled into an intermediate language (eg bytecode)
+- bytecode is not machine code
+- bytecode cannot be executed directly by the processor
+- bytecode is executed by a virtual machine (VM)
+- each processor architecture has its own VM
+- VM translates/interprets bytecode for the specific processor
+- VM may execute the bytecode directly through interpretation
+- VM may use a JIT (Just-In-Time) compiler
+- JIT compiler translates bytecode into native machine code at runtime
+- JIT improves execution speed compared to pure interpretation
 
-- Source code = the input to a translator (ie what the programmer writes)
-- Object code = the output from a translator
+### Key Exam Comparisons
+
+- machine code -> processor specific
+- bytecode -> platform independent
+- machine code -> executed directly by CPU
+- bytecode -> requires VM/JIT
+- compiler to machine code -> one executable per processor architecture
+- compiler to bytecode -> same bytecode can run on many architectures
+
+### Key Terms
+
+- source code = code written by the programmer
+- object code = output from a translator
+- bytecode = intermediate language produced by some compilers
+- virtual machine (VM) = software that executes/translates bytecode
+- JIT compiler = converts bytecode into machine code during execution

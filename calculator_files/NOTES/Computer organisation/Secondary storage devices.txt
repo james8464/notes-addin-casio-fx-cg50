@@ -2,24 +2,24 @@
 
 ## Recap
 
-  - Primary storage:
-- Volatile (loses its contents when the computer is switched off)
-- E.g., RAM (random access memory)
-  - Secondary storage:
-- Non-volatile
+- Volatile storage loses its contents when the computer is switched off
+  - Eg RAM (random access memory)
+- Non-volatile storage keeps its contents when the computer is switched off
 - Means you can store programs and data for later use
 - Have a much larger capacity than primary storage
 
-### Types of Secondary Storage
+## Types of secondary storage
 
-- Solid state storage devices
-  - e.g., USB memory sticks
-- Optical storage devices
-  - e.g., CD, DVD, and Blu-ray discs
-- Magnetic storage devices
-  - e.g., hard disk drives
+- Magnetic storage:
+  - eg hard disk drives
+- Solid-state storage:
+  - eg USB memory sticks
+- Optical storage:
+  - eg CD, DVD, and Blu-ray discs
 
-## Characteristics
+## Hard disks (HDD)
+
+### Characteristics
 
 - Storage capacity
   - very large storage capacities
@@ -37,13 +37,13 @@
   - more cost effective per GB compared to SSD's
   - it's the better choice if you want lots of storage and don't care about read/write speeds
 
-## Purposes
+### Purposes
 
 - Data storage
 - Backups (e.g., Time Machine)
 - Mass storage
 
-## Suitability
+### Suitability
 
 - Cost-effective storage
   - for users who need large storage capacities at a low cost and don't care about slow access speed
@@ -51,7 +51,9 @@
 - Non performance critical applications
   - some ppl may want to store large applications here rather than on their device
 
-## Principles of Operation
+## Optical disks
+
+### Principles of Operation
 
 - HDDs consist of one or more spinning platters coated with a magnetic material
 - Data is stored on these platters in the form of magnetic patterns
@@ -66,7 +68,9 @@
   - the reading and writing of data
   - error correction and data caching
 
-## Characteristics
+## Optical disks 
+
+### Characteristics
 
 - Storage capacity
   - CDs can store up to 700MB
@@ -82,7 +86,7 @@
 - Compatibility
   - widely compatible with various devices that include a suitable reader device
 
-## Purposes
+### Purposes
 
 - Media distribution
   - movies, music, software and games
@@ -91,12 +95,12 @@
 - Multimedia storage
   - i.e. storing photos, videos and audio files
 
-## Suitability
+### Suitability
 
 - Good for easy distribution
 - Today, it is outdated technology
 
-## Principles of Operation
+### Principles of Operation
 
 - A laser beam is focused onto the surface of the disk
 - Data is stored in the form of microscopic pits and lands
@@ -108,7 +112,9 @@
   - a motor to spin the disk
   - a lens system to focus the laser beam accurately on the data tracks
 
-## Characteristics
+## Solid state drives (SSD)
+
+### Characteristics
 
 - Speed
   - significantly faster read/write speeds than HDD
@@ -125,7 +131,7 @@
   - operate completely silently (since there are no moving parts)
   - can get hot though, so if you buy a separate enclosure with it, the enclosure may have some fans
 
-## Purposes
+### Purposes
 
 - OS drives
   - commonly used as the primary drive for OS due to fast boot times and quick access to system files
@@ -137,7 +143,7 @@
 - Data storage
   - used for storing frequently accessed data due to high speed access
 
-## Suitability
+### Suitability
 
 - Performance-critical applications
   - suitable for applications that require fast data access and high performance
@@ -147,7 +153,7 @@
 - Enterprise use
   - used in data centres and servers where high-speed data access and reliability are crucial
 
-## Principles of Operation
+### Principles of Operation
 
 - NAND flash memory cells are used to store data
 - These cells are made of floating-gate transistors that can retain an electrical charge

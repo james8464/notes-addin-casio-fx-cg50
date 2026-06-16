@@ -2,99 +2,167 @@
 
 ## Low-level Languages
 
-- Directly manipulate hardware
-- Steeper learning curve for the programmer
-- More prone to errors due to higher complexity
+### Main Characteristics
 
-### Examples
+- examples:
+    - machine code
+    - assembly
+- can directly manipulate hardware
+- processor specific due to each processor having its own instruction set
+- each processor has its own instruction set (set of machine code instructions it understands)
+- NOT portable (machine code instructions won't work on processors with different instruction sets)
+- steeper learning curve for the programmer
+- more prone to errors due to higher complexity
 
-- Machine code (ie binary)
-- Assembly
+### Advantages
 
-### Portability
+- can produce highly efficient code
+- suitable for embedded systems and real-time applications
 
-- NOT portable -> they are processor specific
-  - each processor has its own instruction set (set of machine code instructions it understands)
-  - machine code instructions wont work on another processor with a different instruction set
+### Disadvantages
+
+- difficult to learn
+- slower development time
+- harder to debug and maintain
+
+
+
+
+### Machine Code
+
+#### Characteristics
+
+- uses only binary digits (ie 1's and 0's)
+- code is very long and extremely difficult for humans to understand
+- prone to errors
+- difficult to debug
+- directly manipulates hardware
+
+#### Advantages
+
+- executed directly by processor (no translation needed)
+- very fast execution times
+- direct hardware manipulation
+- efficient for real-time and embedded systems
+- no need for a translator program at runtime
+
+#### Disadvantages
+
+- difficult/impossible for humans to read/write
+- very error-prone
+- difficult to debug
+- time consuming to program
+- not portable (processor-specific)
+- difficult to maintain/modify
+- no abstraction (must manage everything manually)
+
+
+
+
+
+### Assembly
+
+#### Characteristics
+
+- uses mnemonics
+- intention = simplify the process of writing computer programs
+- more compact and less error prone than machine code
+- each assembly instruction has a 1-to-1 correlation to a machine code instruction
 - assembly has a 1-to-1 relationship with machine code instructions, so it is also tied to a specific processor once assembled
-  - a different assembler must exist for each type of processor instruction set
+- a different assembler must exist for each type of processor instruction set
+- makes programming easier
+
+#### Advantages
+
+- uses mnemonics (easier for humans to understand than binary)
+- easier to write/debug/maintain
+- still allows low-level hardware access
+- more compact code
+- may use fewer instructions than compiled HLL code
+- can produce fast, efficient machine code
+- 1:1 relationship with machine instructions (predictable behaviour)
+
+#### Disadvantages
+
+- still difficult to learn compared to high-level languages
+- mnemonics are not always intuitive
+- requires an assembler for translation to machine code
+- processor specific (not portable)
+- slower to develop than high-level languages
+- more error-prone than high-level languages
+
+
+
+
+
 
 ## High-level Languages
 
-- Makes programming easier
-- Statements are closer to the English language (so easier to understand what a particular section of code does)
-
-### Examples
-
-- Python
-- Swift
-- C#
-
-## Machine Code
-
-- uses only binary digits (ie 1's and 0's)
-- Code is very long and extremely difficult for humans to understand
-- Prone to errors
-- Difficult to debug
-- Directly manipulates hardware
-- VERY FAST execution times as no need for translation
-
-## Assembly
-
-- Uses mnemonics
-- Intention = simplify the process of writing computer programs
-- More compact and less error prone than machine code
-- Each assembly instruction has a 1-to-1 correlation to a machine code instruction
-
-## Comparison
-
-|  | Machine code | Assembly language |
-| --- | --- | --- |
-| Advantage 1 | Executed directly by processor (no translation needed) | Uses mnemonics (easier for humans to understand than binary) |
-| Advantage 2 | Very fast execution times (no translation needed) | Easier to write/debug/maintain |
-| Advantage 3 | Can directly manipulate hardware | Still allows low-level hardware access |
-| Advantage 4 | Efficient for real-time and embedded systems | More compact code |
-| Advantage 5 | No need for a translator program at runtime | May use fewer instructions than compiled HLL code |
-| Advantage 6 |  | Can produce fast, efficient machine code |
-| Advantage 7 |  | 1:1 relationship with machine instructions (predictable behaviour) |
-| Disadvantage 1 | Difficult/impossible for humans to read/write | Still difficult to learn compared to high-level languages |
-| Disadvantage 2 | Very error-prone + hard to debug | Mnemonics are not always intuitive |
-| Disadvantage 3 | Time consuming to program | Requires an assembler for translation to machine code |
-| Disadvantage 4 | Not portable (processor-specific) | Processor specific (not portable) |
-| Disadvantage 5 | Difficult to maintain/modify | Slower to develop than high-level languages |
-| Disadvantage 6 | No abstraction (must manage everything manually) | More error-prone than high level languages |
-
-  - a program is a sequence of instructions
-  - instructions describe how the computer should complete a task
-  - each instruction is a step in the process
-  - instructions can change the state of the program
-  - instructions are executed in a programmer-defined sequence/order
 
 ### Main Features
 
-  - English-like commands and mathematical symbols
-  - Easier for humans to read, write and debug
-  - Includes constructs like:
-    - Selection (if statements)
-    - Iteration (loops)
-    - Variables
+- statements are closer to the English language (so easier to understand what a particular section of code does)
+- English-like commands and mathematical symbols
+- easier for humans to read, write and debug
+- built around abstraction
+- generally machine independent
+- source code is easier to understand than low-level languages
+- includes constructs like:
+    - selection (if statements)
+    - iteration (loops)
+    - variables
+    - constants
+    - subroutines/functions
+
+
+
+### Advantages of high-level languages
+
+- program code is easier to understand/maintain/debug
+- faster development time
+- facilitates collaborative working
+- programs are portable (to other hardware platforms)
+- availability of flow control structures
+- improved features for supporting modularity
+- can use subroutines
+- built-in support for data structures
+- language is problem-oriented
+- support for different paradigms
+- availability of built-in functions
+
+
+
+### Disadvantages of high-level languages
+
+- must be translated before execution
+- less direct control over hardware
+- compiled/interpreted code may be less efficient than hand-written assembly
+- requires a compiler or interpreter
+- translation can increase execution overhead
+
+
 
 ### Relationship to Low-level Langs
 
-  - High-level langs must be translated into machine code before execution
+- high-level languages must be translated into machine code before execution
     - done by either interpreter or compiler
-  - One high level lang instruction is translated into one or more low level language instructions
+- one high level lang instruction is translated into one or more low level language instructions
+- ultimately all programs execute as machine code
+- one line of HLL code may be translated into many machine code instructions
 
-### Adv of High-level Langs
 
-  - Program code is easier to understand/maintain/debug
-  - Faster development time
-  - Facilitates collaborative working
-  - Programs are portable (to other hardware platforms)
-  - Availability of flow control structures
-  - Improved features for supporting modularity (eg can use subroutines)
-  - Built-in support for data structures
-  - Language is problem-oriented
-  - Support for different paradigms
-  - Improved features for supporting modularity
-  - Availability of built-in functions
+
+
+### Imperative high-level languages
+
+- a program is a sequence of instructions
+- instructions describe how the computer should complete a task
+- each instruction is a step in the process
+- instructions can change the state of the program
+- instructions are executed in a programmer-defined sequence/order
+- based on:
+    - sequence
+    - selection
+    - iteration
+- describes HOW a task should be carried out
+- translated into machine code before execution

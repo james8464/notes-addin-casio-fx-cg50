@@ -2,8 +2,8 @@
 
 ## Importance of Normalisation
 
+- the process of shifting the mantissa so that the first two bits are different, maximising the precision available for a given number of bits
 - Means removing redundant 0s or 1s after the binary point
-- Allows number representation with maximum level of precision for a given number of bits
-- Provides a unique representation of each number
-  - HOW TO INCREASE PRECISION?:
-- Move bits from exponent to mantissa
+- allows number representation with maximum level of precision for a given number of bits
+- provides a unique representation of each number
+- to increase precision, move bits from exponent to mantissa

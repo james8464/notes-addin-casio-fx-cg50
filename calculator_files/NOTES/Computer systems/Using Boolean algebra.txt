@@ -1,8 +1,0 @@
-# Using Boolean algebra
-
-## Practise, Practise, Practise
-
-## Summary Sheet of Rules
-
-- Python program to check your attempts (with working out lines)
-- <<boolean.py>>

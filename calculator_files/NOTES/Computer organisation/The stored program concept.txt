@@ -1,0 +1,11 @@
+# The stored program concept
+
+- PPQ: stored program concept
+- (Machine code) instructions/programs are stored in main memory/RAM
+- Instructions/programs are fetched and executed serially/sequentially/in order by a processor
+  - processor performs arithmetic and logical operations
+- Instructions/programs are fetched and executed serially/sequentially/in order by a processor that performs arithmetic and logical operations
+- Instructions (R. programs) are fetched and executed serially/sequentially/in order by a processor that performs arithmetic and logical operations
+- Note: to achieve this mark, include at least four of the five underlined concepts
+- Note: To achieve this mark a response must include at least four of the five underlined concepts.
+- Programs can be moved into and out of main memory

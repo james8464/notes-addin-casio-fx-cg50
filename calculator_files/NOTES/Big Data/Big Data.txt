@@ -1,6 +1,6 @@
 # Big Data
 
-- Definition: a catch-all-term for data that doesn't fit the usual containers
+- its a catch-all-term for data that doesn't fit usual containers
 - needs processing on multiple devices
 
 ## Defining Characteristics
@@ -9,11 +9,11 @@
   - too much data to fit on conventional hard drive or server
   - data must be stored over multiple servers (each composed of many hard drives)
 - Velocity
-  - data on the servers is to be created and modified rapidly
+  - data on the servers is to be created/modified/processed rapidly
   - servers must respond to frequently changing data in milliseconds
 - Variety
-  - the data consists of many different types of data
-  - e.g., from binary files to multimedia files (such as photos and videos)
+  - data consists of many different types of data
+  - eg from binary files to multimedia files (such as photos and videos)
 
 ### Examples
 
@@ -22,9 +22,9 @@
   - Smartphones
   - Video surveillance
   - Mouse clicks
-  - NHS (e.g., to help find patterns in illness/injury)
-  - Passport control (e.g., to find patterns in border crossings)
-  - Online shopping (e.g., identifying what users are interested in)
+  - NHS (eg to help find patterns in illness/injury)
+  - Passport control (eg to find patterns in border crossings)
+  - Online shopping (eg identifying what users are interested in)
 
 ## Issues Big Data Presents
 
@@ -36,20 +36,10 @@
 - machine learning techniques needed to discern patterns in data (very complex)
 - difficult to split and sync processing across multiple machines with conventional programming paradigms
 
-## Solution - Functional Programming
 
-- functional programming is a solution to processing data over multiple machines
-- functional programs are stateless
-  - i.e., they have no side effects
-- functional programs use immutable data structures
-  - i.e., the values stored in data structures can't change at runtime
-- functional programs support higher-order functions
-  - e.g., map and fold
-  - allows functions to be input as arguments
-  - NOTE: more detail in 4.12.1
+## Ways to Represent Big Data
 
-### Ways to Represent Big Data
-
+- EXAMPLES of how it might be represented:
 - Fact-based model
 - Graph schema
 
@@ -63,8 +53,6 @@
   - this ensures each fact is unique
   - if there were 2 identical pieces of data, the most recent one will be returned when queried for
 
-### Examples of How It Might Be Represented
-
 ### Graph Schema
 
 - uses graphs (consists of nodes and edges) NOTE: see 4.2.4 for more details
@@ -72,6 +60,17 @@
 - edges represent relationships between entities
   - labelled with a brief description of the relationship
 - its assumed each node contains the most recent information available (ie there are usually no timestamps included)
-      - ALTHOUGH there are different methods of representation. See the examples below...
+  - ALTHOUGH there are different methods of representation. See the examples below...
+      
+      
+## Solution - Functional Programming
 
-### Examples of How It Might Be Represented
+- NOTE: more detail in 4.12.1
+- functional programming is a solution to processing data over multiple machines
+- functional programs are stateless
+  - i.e., they have no side effects
+- functional programs use immutable data structures
+  - i.e., the values stored in data structures can't change at runtime
+- functional programs support higher-order functions
+  - eg map and fold
+  - allows functions to be input as arguments

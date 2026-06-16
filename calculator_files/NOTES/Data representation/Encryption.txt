@@ -36,18 +36,16 @@
 
 ### How Does It Work?
 
-- Aligns the characters of the plaintext and the key
-- Converts each character to binary
-- Applies XOR operation to the two bit patterns
-- Converts result back to characters
+- aligns the characters of the plaintext and the key
+- converts each character to binary
+- applies XOR operation to the two bit patterns
+- converts result back to characters
 
-### Example
 
 ### Perfect Security?
 
-- Only cipher mathematically proven to be completely secure
-- Since the keys are random, the ciphertext is rando, so the cipher is completely secure
+- only cipher mathematically proven to be completely secure
+- since the keys are random, the ciphertext is random, so cipher is completely secure
 
-  - All ciphers (other than Vernam cipher) are, in theory, crackable
-    - (but not in a reasonable/useful timeframe given current computing power)
-  - Ciphers that use this form of security are said to rely on computational security
+  - all ciphers (other than Vernam cipher) are, in theory, crackable, but not in a reasonable/useful timeframe given current computing power
+  - ciphers that use this form of security are said to rely on computational security

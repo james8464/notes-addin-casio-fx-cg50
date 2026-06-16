@@ -1,25 +1,34 @@
 # Number bases
 
+## Practice
+
+- PRACTISE, PRACTISE, PRACTISE.
+- NOTE: CASIO FX-CG50 has this functionality built in (can be good for double checking answers)
+
 ## Binary
 
 - Binary is base 2
 - Means that only a 0 or 1 can be used to represent numbers
+- directly understood/processed by computers
+- simple and reliable hardware implementation
+- easy to represent logical values (eg true vs false)
+- no conversion needed for computer processing
+- difficult for humans to understand
+- more prone to errors when writing by humans 
+- less compact than hex or denary
+- long strings
 
 ## Decimal/denary
 
 - Decimal is base 10
 - Means that the numbers 0-9 are used to represent numbers (this is the standard base)
-
-## Hexadecimal
-
-- Hexadecimal is base 16
-- The set used for hex is: {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, A, B, C, D, E, F}
-
-## Practise, Practise, Practise.
-
-- Note: CASIO FX-CG50 has this functionality built in (can be good for double checking answers)
-
-## Denary
+- easier for humans to understand and remember
+- convenient for everyday counting and calculations
+- used globally by humans, allowing for easy international comparisons
+- easier to perform arithmetic operations with for humans
+- not directly understood by computers
+- less suitable for representing individual bits
+- greater screen space required to display the value than hex
 
 | Advantages | Disadvantages |
 | --- | --- |
@@ -28,8 +37,6 @@
 | Used globally worldwide by humans (allowing for easy comparisons internationaly) | Less suitable for representing individual bits |
 | Easier to perform arithmetic manually | Larger storage/display size than binary for computers |
 |  | Does not map directly to hardware states (on/off) |
-
-## Binary
 
 | Advantages of Binary | Disadvantages of Binary |
 | --- | --- |
@@ -41,6 +48,21 @@
 
 ## Hexadecimal
 
+- Hexadecimal is base 16
+- The set used for hex is: {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, A, B, C, D, E, F}
+- much shorter than binary, requiring less characters and screen space
+- easier for humans to remember without error
+- humans are less likely to make mistakes when copying values
+- Commonly used for memory dumps, MAC addresses, and HTML colour codes
+- Less intuitive for beginners than decimal
+- Still needs conversion unlike binary
+- Not as familiar to most users as decimal
+
+## Uses of hex
+
+- USES OF HEX
+- Commonly used for memory dumps, MAC addresses, and HTML colour codes
+
 | Advantages of Hexadecimal | Disadvantages of Hexadecimal |
 | --- | --- |
 | Much shorter than binary (uses fewer characters and screen space) | Less intuitive for beginners than decimal |
@@ -49,9 +71,3 @@
 | Direct conversion to/from binary (1 hex digit = 4 bits) | Uses letters A-F as well as digits, which can be confusing |
 | Makes large binary values easier to display and remember | Less precise representation of bit patterns than writing the actual binary |
 | Commonly used for memory dumps, MAC addresses, and HTML colour codes | Not as familiar to most users as decimal |
-
-## Uses of Hex
-
-- Colour codes in HTML
-- Memory dumps
-- MAC addresses

@@ -1,6 +1,6 @@
 # Digital representation of sound
 
-- Sound is represented as a sequence of samples
+Sound is represented as a sequence of samples
 
 ## Sample Resolution
 
@@ -16,11 +16,9 @@
 
 - states that the sampling rate of a digital audio file should be at least TWICE the frequency of the sound
 - Sound might not be faithfully represented if its less than this
-- Eg:
-  - If the human ear can cope with frequencies of 20Hz - 20kHz, then the analogue signal must be sampled at at least 40kHz
+
 
 ### Formula to Calculate File Size (of Sound File)
 
   - File size = Sample resolution * sample rate * duration (in seconds)
   - However, this value is a minimum. In reality, it will be higher due to metadata
-  - EXAM TIP: show every step even though you will use a calculator for the final answer

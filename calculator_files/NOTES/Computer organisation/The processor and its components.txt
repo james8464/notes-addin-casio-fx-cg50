@@ -19,13 +19,13 @@
 | General-purpose registers | stores values that instructions can/will use as operands |
 | General-purpose registers | the programmer determines the role of each register |
 
-### Register
+## Register
 
 - high-speed memory locations
 - located in the processor/CPU
 - used by the processor to store small amounts of data that are needed during processing
 
-## Special Purpose Registers
+### Special Purpose Registers
 
 | Component | Role + Operation |
 | --- | --- |

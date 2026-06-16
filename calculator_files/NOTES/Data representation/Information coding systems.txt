@@ -1,58 +1,66 @@
 # Information coding systems
 
-- Character code = a unique number/value used to represent a character
+Character code = a unique number/value used to represent a character
 
-## Ascii
+# ASCII
 
 - coding system used to represent all keyboard characters and their combinations
 - uses 7 bits (128 characters) or 8 bits (256 characters, known as 'extended ASCII' )
 - Enough for standard keyboard and English
 
-## Unicode
+# Unicode
 
 - Uses 16 bit codes (4 hex digits)
-- Can represent a much wider range of different characters than ASCII
-- Can now support all characters from all languages
+- can represent a much wider range of different characters than ASCII
 
-### Why Was Unicode Introduced?
+## Why Was Unicode Introduced?
 
 - to support a larger range of characters
 - to represent characters in languages other than English
-- Needed due to increased international communication use of files in multiple countries
-- Facilitates interchange of documents between countries
-- Supports additional symbols (eg emojis, mathematical symbols, etc)
+- needed due to increased international communication use of files in multiple countries
+- support for additional symbols (eg emojis, mathematical symbols, etc)
 
-## Parity Bits
+
+
+
+# Parity Bits
 
 - Parity bit = single bit appended to the end of the data being transmitted
 - Parity bit is determined from the data being transmitted
 - Parity bit is always at the left side (LSB)
 
-### How Does It Work
+## How Does It Work
 
-- Sender and receiver agree on a common parity system (ie odd or even)
-- At the sender, the number of 1's in the data is counted.
+- Sender and receiver agree on a common parity system 
+- At the sender, the number of 1's in the data is counted
 - The parity bit is then added to ensure that the number of 1's match the system parity
-  - Eg, if the system parity was decided to be even, but there are only 13 1's in the data being sent, the parity bit will be 1, so that now, the overall number of bits is even
+  - Eg if the system parity was decided to be even, but there are only 13 1's in the data being sent, the parity bit will be 1, so that now, the overall number of bits is even
 - After transmission, the number of 1's is recounted.
 - If it does not match the agreed upon system parity, then there must have been an error in transmission
   - Eg corruption/interference causing a bit to flip
-  - HOWEVER... if the num of bits changed is even, then the error will not be detected as the number of 1's counted by the receiver will still match the system parity
 
-## Majority Voting
+
+
+
+# Majority Voting
 
 - Each bit is transmitted multiple times (always an odd number of times)
 - The most commonly received value is taken to be correct
-  - HOWEVER... the volume of data to be transferred becomes a lot larger so will take more time
 
-## Checksums
+
+
+
+# Checksums
 
 - at the sender, a value is calculated from all of the data to be sent using a complex algorithm
 - this value is sent with the data
 - the receiver recalculates the checksum value using the same algorithm
 - compares with the received checksum; if the same, assumes correct transmission; if different, signals error and requests retransmission
 
-## Check Digits
+
+
+
+# Check Digits
 
 - Its a type of checksum
 - The difference is that only a single digit is added to the transmitted data

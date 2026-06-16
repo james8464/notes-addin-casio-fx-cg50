@@ -233,9 +233,10 @@ def wrapped_non_table_segments(line: str) -> list[str]:
     if not line:
         return [""]
     text = display_source(line)
+    text = clean_inline(text)
     # Conservative lower width than the app's pixel wrapping, so this overestimates.
     width = 16
-    out = [clean_inline(text[i:i + width]) for i in range(0, max(1, len(text)), width)]
+    out = [text[i:i + width] for i in range(0, max(1, len(text)), width)]
     return out or [""]
 
 
@@ -365,7 +366,7 @@ def main() -> int:
         errors.append("wide-line horizontal scroll must not stop before the final source character")
     if "int start = min_int(hscroll, max_int(0, len - 1));" not in APP_SOURCE:
         errors.append("wide-line rendering must clamp to the final source character, not stop early")
-    if "fit_visible_chars(s + start, len - start, 0, xpad, style != NOTE_CODE)" not in APP_SOURCE:
+    if "fit_visible_chars(s + start, len - start, 0, xpad, 0)" not in APP_SOURCE:
         errors.append("wide-line rendering must pixel-fit the visible suffix after horizontal scroll")
     if "fit_suffix_chars" not in APP_SOURCE or "line_end_hscroll(src, src_len, style)" not in APP_SOURCE:
         errors.append("wide-line horizontal scroll must use the pixel-fitted displayed suffix")
@@ -393,7 +394,9 @@ def main() -> int:
         errors.append("notes renderer must handle common html line breaks without duplicated parsing")
     if "copy_display_text" not in APP_SOURCE or "markdown_link_at" not in APP_SOURCE or "single_marker_at" not in APP_SOURCE:
         errors.append("notes renderer must strip simple inline markdown markers through one shared display-copy path")
-    if "copy_display_text(line_store[*line] + col, LINE_CAP - col, s + pos, cut - pos, style != NOTE_CODE)" not in APP_SOURCE:
+    if "copy_display_text(display_line_buf, FILE_BUF_SIZE, s, len, 1)" not in APP_SOURCE:
+        errors.append("wrapped markdown lines must be converted to display text before choosing wrap cuts")
+    if "copy_display_text(line_store[*line] + col, LINE_CAP - col, s + pos, cut - pos, 0)" not in APP_SOURCE:
         errors.append("wrapped body lines must use the shared markdown display-copy path")
     if "copy_display_text(tmp + col, LINE_CAP - col, s + start, end - start, strip_inline)" not in APP_SOURCE:
         errors.append("line width fitting must measure rendered markdown text, not raw source markers")
