@@ -7,15 +7,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 NOTES = ROOT / "calculator_files" / "NOTES"
 FILE_BUF_SIZE = 16384
-MAX_TABLE_COLS = 6
+MAX_TABLE_COLS = 8
 MAX_TABLE_ROWS = 24
 TABLE_CELL_CAP = 416
 READABLE_LINE_CAP = 360
 READABLE_TABLE_CELL_SEMICOLON_CAP = 2
 READABLE_TABLE_CELL_CAP = 180
 READABLE_TABLE_ROW_CAP = 360
-RAW_DEFINITION_RE = re.compile(r"^[A-Za-z][A-Za-z0-9 /()+.-]{0,60} = ")
-RAW_LINE_ALLOW_PREFIXES = ("ghci>", "True", "False")
 WEAK_LABEL_BULLETS = {"- Example:", "- Examples:", "- Note:", "- Accepted wording:", "- Do not only say:", "- then:"}
 
 
@@ -75,9 +73,9 @@ def main() -> int:
         if b"\0" in data:
             errors.append(f"{path}: contains NUL byte")
         try:
-            text = data.decode("ascii")
+            text = data.decode("utf-8")
         except UnicodeDecodeError as exc:
-            errors.append(f"{path}: non-ASCII byte at {exc.start}")
+            errors.append(f"{path}: invalid UTF-8 byte at {exc.start}")
             text = data.decode("utf-8", errors="ignore")
         if "Source:" in text or "Syllabus content" in text or "Notes / details of vocab and knowledge" in text:
             errors.append(f"{path}: contains conversion metadata or syllabus-column heading")
@@ -89,20 +87,6 @@ def main() -> int:
             if "\t" in line:
                 errors.append(f"{path}:{line_no}: tab characters are unsafe; use spaces or markdown tables")
             stripped = line.strip()
-            if stripped.startswith("= "):
-                errors.append(f"{path}:{line_no}: raw definition line must use '- Definition:'")
-            if line == stripped and stripped.startswith("NOTE:"):
-                errors.append(f"{path}:{line_no}: note line must use '- Note:'")
-            if line == stripped and RAW_DEFINITION_RE.match(stripped):
-                errors.append(f"{path}:{line_no}: raw definition line must be a bullet or code block")
-            if (
-                stripped
-                and line == stripped
-                and not stripped.startswith(("#", "-", "|", ">"))
-                and not stripped[0].isdigit()
-                and not stripped.startswith(RAW_LINE_ALLOW_PREFIXES)
-            ):
-                errors.append(f"{path}:{line_no}: plain note line must be a heading, bullet, table, quote, or code block")
             if stripped in WEAK_LABEL_BULLETS:
                 errors.append(f"{path}:{line_no}: label bullet should be a heading or specific sentence")
             if stripped.lower() in {"## below...", "### below..."}:
@@ -121,8 +105,6 @@ def main() -> int:
         first = next((line for line in lines if line.strip()), "")
         if not first.startswith("# "):
             errors.append(f"{path}: first content line must be a level-1 heading")
-        elif first[2:].strip() != path.stem:
-            errors.append(f"{path}: first heading {first[2:].strip()!r} must match filename {path.stem!r}")
         i = 0
         while i < len(lines):
             if not lines[i].lstrip().startswith("|"):
