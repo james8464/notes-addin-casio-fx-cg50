@@ -137,6 +137,10 @@ def main() -> int:
         raise AssertionError("notes renderer must detect code-like rows before table detection")
     if "if (c == '\\r')" not in notes_src or "clean[out++] = '\\n';" not in notes_src:
         raise AssertionError("notes viewer must normalize CR/CRLF input to LF")
+    if "if (sz == 0)" not in notes_src or "file_buf_len = 0;" not in notes_src:
+        raise AssertionError("notes empty .txt files must open as blank notes, not as failed reads")
+    if notes_src.count("int opened = !ret;") < 2 or notes_src.count("if (opened) Bfile_FindClose(handle);") < 2:
+        raise AssertionError("notes directory scans must not close invalid Bfile search handles")
     if "source_code_like(file_buf + next_pos, next_end - next_pos)" not in notes_src:
         raise AssertionError("notes long tables must not absorb following code-like rows")
     if "table_continues_at" not in notes_src or "table_chunk_start_at" not in notes_src:

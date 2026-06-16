@@ -402,6 +402,7 @@ static int scan_dir() {
   int handle = 0;
   file_type_t info;
   int ret = Bfile_FindFirst_NON_SMEM(path, &handle, found, &info);
+  int opened = !ret;
   while (!ret && entry_count < MAX_ENTRIES) {
     Bfile_NameToStr_ncpy((unsigned char *)name, found, 300);
     if (strcmp(name, ".") && strcmp(name, "..") && strcmp(name, "@MainMem") && !hidden_note_name(name)) {
@@ -418,7 +419,7 @@ static int scan_dir() {
     }
     ret = Bfile_FindNext_NON_SMEM(handle, found, (char *)&info);
   }
-  Bfile_FindClose(handle);
+  if (opened) Bfile_FindClose(handle);
   sort_entries();
   return entry_count;
 }
@@ -432,6 +433,12 @@ static int load_file_buf(const char *path) {
   if (sz > FILE_BUF_SIZE - 1) {
     Bfile_CloseFile_OS(h);
     return -1;
+  }
+  if (sz == 0) {
+    Bfile_CloseFile_OS(h);
+    file_buf[0] = 0;
+    file_buf_len = 0;
+    return 1;
   }
   int got = Bfile_ReadFile_OS(h, file_buf, sz, 0);
   Bfile_CloseFile_OS(h);
@@ -2044,6 +2051,7 @@ static int search_all_rec(const char *dir, const SearchPattern *sp, int depth) {
   int handle = 0;
   file_type_t info;
   int ret = Bfile_FindFirst_NON_SMEM(path, &handle, found, &info);
+  int opened = !ret;
   while (!ret) {
     Bfile_NameToStr_ncpy((unsigned char *)name, found, 300);
     if (strcmp(name, ".") && strcmp(name, "..") && strcmp(name, "@MainMem") && !hidden_note_name(name)) {
@@ -2068,7 +2076,7 @@ static int search_all_rec(const char *dir, const SearchPattern *sp, int depth) {
     }
     ret = Bfile_FindNext_NON_SMEM(handle, found, (char *)&info);
   }
-  Bfile_FindClose(handle);
+  if (opened) Bfile_FindClose(handle);
   return result_count;
 }
 
