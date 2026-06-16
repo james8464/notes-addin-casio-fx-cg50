@@ -479,7 +479,7 @@ static int table_like(const char *s, int len) {
     if (s[i] == '-') ++dashes;
   }
   if (tab) return tab_separated_cells(s, len);
-  if (bars) return pipe_separated_cells(s, len);
+  if (bars) return first < len && s[first] == '|' && pipe_separated_cells(s, len);
   if (first < len && s[first] == '+') return plus >= 2 && dashes >= 3;
   return 0;
 }

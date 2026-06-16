@@ -80,8 +80,8 @@ def main() -> int:
         raise AssertionError("notes table detection must not treat every tab-indented line as a table")
     if "tab_separated_cells" not in notes_src:
         raise AssertionError("notes table detection must require real tab-separated cells")
-    if "pipe_separated_cells" not in notes_src:
-        raise AssertionError("notes table detection must support markdown pipe tables without leading pipes")
+    if "s[first] == '|' && pipe_separated_cells(s, len)" not in notes_src:
+        raise AssertionError("notes pipe table detection must require markdown table syntax")
     if "source_code_like" not in notes_src:
         raise AssertionError("notes renderer must detect code-like rows before table detection")
     if "if (c == '\\r')" not in notes_src or "clean[out++] = '\\n';" not in notes_src:
