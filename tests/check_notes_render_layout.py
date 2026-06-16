@@ -513,6 +513,9 @@ def main() -> int:
         errors.append("notes search must use displayed text, not raw markdown source text")
     if "find_in_span(file_buf + start, len, sp)" in APP_SOURCE:
         errors.append("in-file search must not search raw source lines directly")
+    style_helper = APP_SOURCE[APP_SOURCE.find("static int source_line_style"):APP_SOURCE.find("static int source_line_display_text")]
+    if not (0 <= style_helper.find("if (in_fence || (len > 0 && fence_like(file_buf + pos, len)))") < style_helper.find("int table_row = table_chunk_start_at")):
+        errors.append("source-line styling must handle fenced code before table detection")
     display_helper = APP_SOURCE[APP_SOURCE.find("static int source_line_display_text"):APP_SOURCE.find("static int find_source_match")]
     if "int style = source_line_style(source_line);" not in display_helper:
         errors.append("search display text must use full source-line render context")

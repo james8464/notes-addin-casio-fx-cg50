@@ -1330,9 +1330,17 @@ static int source_line_style(int source_line) {
   while (pos <= file_buf_len) {
     int end = source_line_end_from(pos);
     int len = end - pos;
+    if (in_fence || (len > 0 && fence_like(file_buf + pos, len))) {
+      if (line == source_line) return NOTE_CODE;
+      continuing_table = 0;
+      if (len > 0 && fence_like(file_buf + pos, len)) in_fence = !in_fence;
+      pos = source_next_line_from(end);
+      ++line;
+      if (pos > file_buf_len) break;
+      continue;
+    }
     int table_row = table_chunk_start_at(pos, len, continuing_table);
     if (line == source_line) {
-      if (in_fence || (len > 0 && fence_like(file_buf + pos, len))) return NOTE_CODE;
       if (table_row) return NOTE_TABLE;
       int setext_style = setext_heading_style_at(pos, len, 0);
       if (setext_style) return setext_style;
@@ -1340,7 +1348,6 @@ static int source_line_style(int source_line) {
       markdown_line(file_buf + pos, len, &skip, &style);
       return style;
     }
-    if (len > 0 && fence_like(file_buf + pos, len)) in_fence = !in_fence;
     continuing_table = table_row && table_continues_at(source_next_line_from(end));
     pos = source_next_line_from(end);
     ++line;
