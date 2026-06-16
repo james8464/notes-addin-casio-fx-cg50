@@ -89,6 +89,8 @@ def main() -> int:
         raise AssertionError("notes renderer must support no-leading-pipe markdown tables only with a separator row")
     if "setext_underline_style" not in notes_src or "setext_heading_style_at" not in notes_src:
         raise AssertionError("notes renderer must support markdown setext headings")
+    if "atx_heading_display_len" not in notes_src:
+        raise AssertionError("notes renderer must strip valid closing # markers from markdown headings")
     if "source_code_like" not in notes_src:
         raise AssertionError("notes renderer must detect code-like rows before table detection")
     if "if (c == '\\r')" not in notes_src or "clean[out++] = '\\n';" not in notes_src:

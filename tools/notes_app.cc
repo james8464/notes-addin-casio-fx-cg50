@@ -992,6 +992,15 @@ static int markdown_line(const char *s, int len, int *skip, int *style) {
   return 0;
 }
 
+static int atx_heading_display_len(const char *s, int len, int style) {
+  if (style < NOTE_H1 || style > NOTE_H4) return len;
+  int n = trim_right_len(s, len);
+  int p = n;
+  while (p > 0 && s[p - 1] == '#') --p;
+  if (p == n || p <= 0 || s[p - 1] != ' ') return n;
+  return trim_right_len(s, p - 1);
+}
+
 static void clear_table_meta(int idx) {
   view_table_cols[idx] = 0;
   view_table_top[idx] = 0;
@@ -1170,6 +1179,8 @@ static int build_view_lines(int hscroll) {
       if (style == NOTE_BULLET) {
         src = file_buf + pos;
         src_len = len;
+      } else {
+        src_len = atx_heading_display_len(src, src_len, style);
       }
       add_display_line(&line, src, src_len, hscroll, style_uses_hscroll(style), style, source_line);
     }

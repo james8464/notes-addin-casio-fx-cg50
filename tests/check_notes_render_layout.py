@@ -237,7 +237,10 @@ def display_source(line: str) -> str:
     skip, style = markdown_skip_style(line)
     if style == "bullet":
         return line
-    return line[skip:]
+    text = line[skip:]
+    if style == "heading":
+        return re.sub(r"\s+#+\s*$", "", text.rstrip())
+    return text
 
 
 def wrapped_non_table_segments(line: str) -> list[str]:
@@ -451,6 +454,8 @@ def main() -> int:
         errors.append("bullet rendering must support '-', '*', and '+' markdown bullets")
     if "NOTE_H1 : (hashes == 2 ? NOTE_H2 : (hashes == 3 ? NOTE_H3 : NOTE_H4))" not in APP_SOURCE:
         errors.append("markdown headings must map H1/H2/H3/H4 to distinct renderer styles")
+    if "atx_heading_display_len" not in APP_SOURCE:
+        errors.append("markdown headings must strip valid closing # markers")
     if "setext_underline_style" not in APP_SOURCE or "setext_heading_style_at" not in APP_SOURCE:
         errors.append("notes renderer must support markdown setext headings")
     if "source_line += 2;" not in APP_SOURCE:
