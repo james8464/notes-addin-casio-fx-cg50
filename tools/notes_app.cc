@@ -673,6 +673,7 @@ static int double_marker_at(const char *s, int i, int len, char c) {
 
 static int copy_display_text(char *dst, int cap, const char *src, int len, int strip_inline) {
   int n = 0;
+  int in_code_span = 0;
   for (int i = 0; i < len && n + 1 < cap; ++i) {
     int br = html_break_len(src, i, len);
     if (br) {
@@ -697,7 +698,17 @@ static int copy_display_text(char *dst, int cap, const char *src, int len, int s
       i += utf8_len - 1;
       continue;
     }
-    if (strip_inline) {
+    if (strip_inline && src[i] == '`') {
+      if (in_code_span) {
+        in_code_span = 0;
+        continue;
+      }
+      if (find_char_from(src, i + 1, len, '`') >= 0) {
+        in_code_span = 1;
+        continue;
+      }
+    }
+    if (strip_inline && !in_code_span) {
       if (src[i] == '\\' && i + 1 < len && markdown_escapable(src[i + 1])) {
         dst[n++] = src[++i];
         continue;
@@ -708,7 +719,6 @@ static int copy_display_text(char *dst, int cap, const char *src, int len, int s
         i = end - 1;
         continue;
       }
-      if (src[i] == '`') continue;
       if ((src[i] == '*' || src[i] == '_') && double_marker_at(src, i, len, src[i])) {
         ++i;
         continue;

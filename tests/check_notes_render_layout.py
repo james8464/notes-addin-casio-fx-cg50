@@ -157,12 +157,18 @@ def clean_inline(text: str) -> str:
     }.items():
         text = text.replace(src, dst)
     text, saved = protect_escapes(text)
+    code_saved: list[str] = []
+    def save_code(match: re.Match[str]) -> str:
+        code_saved.append(match.group(1))
+        return f"\x1eC{len(code_saved) - 1}\x1f"
+    text = re.sub(r"`([^`]*)`", save_code, text)
     text = re.sub(r"!\[([^\]]*)\]\([^)]+\)", r"\1", text)
     text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)
-    text = re.sub(r"`([^`]*)`", r"\1", text)
     text = re.sub(r"\*\*([^*]+)\*\*", r"\1", text)
     text = re.sub(r"__([^_]+)__", r"\1", text)
     text = re.sub(r"(^|[^A-Za-z0-9])\*([^*\s](?:[^*]*[^*\s])?)\*([^A-Za-z0-9]|$)", r"\1\2\3", text)
+    for idx, value in enumerate(code_saved):
+        text = text.replace(f"\x1eC{idx}\x1f", value)
     text = restore_escapes(text, saved)
     return "".join(ch for ch in text if 32 <= ord(ch) <= 126)
 
@@ -525,6 +531,11 @@ def main() -> int:
         errors.append("search display text must keep fenced/code text literal")
     if "copy_display_text" not in APP_SOURCE or "markdown_link_at" not in APP_SOURCE or "single_marker_at" not in APP_SOURCE:
         errors.append("notes renderer must strip simple inline markdown markers through one shared display-copy path")
+    if "if (src[i] == '`') continue;" in APP_SOURCE:
+        errors.append("inline code cleanup must not drop unmatched literal backticks")
+    for required in ["in_code_span", "find_char_from(src, i + 1, len, '`')", "strip_inline && !in_code_span"]:
+        if required not in APP_SOURCE:
+            errors.append(f"inline code cleanup must strip only paired code delimiters: {required}")
     if "double_marker_at" not in APP_SOURCE:
         errors.append("bold marker stripping must not remove ordinary spaced ** text")
     if "markdown_escapable" not in APP_SOURCE or "markdown_escaped_at" not in APP_SOURCE:
@@ -537,6 +548,8 @@ def main() -> int:
         errors.append("line width fitting must measure rendered markdown text, not raw source markers")
     if clean_inline("Use **bold**, *em*, `code`, [label](url), ![alt](img)") != "Use bold, em, code, label, alt":
         errors.append("inline markdown cleanup model must preserve readable text")
+    if clean_inline("Use `*literal*` and keep ` unmatched") != "Use *literal* and keep ` unmatched":
+        errors.append("inline markdown cleanup must keep code-span contents and unmatched backticks literal")
     if clean_inline("A &amp; B &lt; C &gt; D &quot;x&quot; &apos;y&apos;") != "A & B < C > D \"x\" 'y'":
         errors.append("inline markdown cleanup must decode common html entities")
     if clean_inline("A \u2192 B \u2264 C \u201cok\u201d") != 'A -> B <= C "ok"':

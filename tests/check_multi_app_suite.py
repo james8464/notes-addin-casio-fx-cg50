@@ -86,6 +86,11 @@ def main() -> int:
     for required in ["copy_display_text", "markdown_link_at", "single_marker_at"]:
         if required not in notes_src:
             raise AssertionError(f"notes renderer must clean simple inline markdown generically: {required}")
+    if "if (src[i] == '`') continue;" in notes_src:
+        raise AssertionError("notes inline code cleanup must not drop unmatched literal backticks")
+    for required in ["in_code_span", "find_char_from(src, i + 1, len, '`')", "strip_inline && !in_code_span"]:
+        if required not in notes_src:
+            raise AssertionError(f"notes inline code cleanup must strip only paired code delimiters: {required}")
     if "double_marker_at" not in notes_src:
         raise AssertionError("notes renderer must not strip ordinary spaced ** text")
     for required in ["markdown_escapable", "markdown_escaped_at"]:
