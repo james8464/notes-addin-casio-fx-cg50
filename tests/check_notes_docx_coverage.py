@@ -124,6 +124,7 @@ def main() -> int:
     notes_text = "\n".join(path.read_text(errors="ignore") for path in NOTES.rglob("*.txt"))
     notes_norm = normalise(notes_text)
     ignored = {
+        "below",
         "notes details of vocab and knowledge",
         "syllabus content",
         "syll ref",
@@ -146,7 +147,7 @@ def main() -> int:
                     for raw in cell.splitlines():
                         line = raw.strip()
                         norm = normalise(line)
-                        if len(norm) < 8 or norm in ignored:
+                        if len(norm) < 3 or norm in ignored:
                             continue
                         if norm not in notes_norm:
                             missing.append(f"{path.name}: {line}")
@@ -165,7 +166,7 @@ def main() -> int:
                     for raw in cell.splitlines():
                         line = raw.strip()
                         norm = normalise(line)
-                        if len(norm) < 8 or norm in ignored:
+                        if len(norm) < 3 or norm in ignored:
                             continue
                         if norm not in table_note_norm:
                             missing.append(f"{path.name}:{table_name}: misplaced/missing from table note: {line}")
