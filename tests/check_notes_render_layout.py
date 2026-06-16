@@ -264,6 +264,10 @@ def main() -> int:
         errors.append("wide-line horizontal scroll must use the pixel-fitted displayed suffix")
     if "style_x_offset(style)" not in APP_SOURCE or "NOTE_X_LIMIT - VIEW_X - xpad" not in APP_SOURCE:
         errors.append("wide-line fitting must account for heading/quote x offsets")
+    if "if (sz > FILE_BUF_SIZE - 1) sz = FILE_BUF_SIZE - 1;" in APP_SOURCE:
+        errors.append("oversize note files must be rejected, not silently truncated")
+    if "return -1;" not in APP_SOURCE or '"File too large."' not in APP_SOURCE:
+        errors.append("oversize note files must show an explicit file-too-large message")
     if "int visible = fit_visible_chars(file_buf + pos, len, 0);" in APP_SOURCE:
         errors.append("wide-line scroll must not use raw source length for markdown-formatted lines")
     if "int cap_cut = pos + max_int(1, LINE_CAP - indent - 1);" not in APP_SOURCE:

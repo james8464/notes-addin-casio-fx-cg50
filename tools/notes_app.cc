@@ -408,7 +408,10 @@ static int load_file_buf(const char *path) {
   int h = Bfile_OpenFile_OS(p, READWRITE);
   if (h < 0) return 0;
   int sz = Bfile_GetFileSize_OS(h);
-  if (sz > FILE_BUF_SIZE - 1) sz = FILE_BUF_SIZE - 1;
+  if (sz > FILE_BUF_SIZE - 1) {
+    Bfile_CloseFile_OS(h);
+    return -1;
+  }
   int got = Bfile_ReadFile_OS(h, file_buf, sz, 0);
   Bfile_CloseFile_OS(h);
   if (got < 0) return 0;
@@ -1495,7 +1498,7 @@ static int file_text_matches(const char *path, const SearchPattern *sp, int *fir
   *first_line = -1;
   *hits = 0;
   if (sp->len <= 0) return 0;
-  if (!load_file_buf(path)) return 0;
+  if (load_file_buf(path) <= 0) return 0;
   int state = 0, line = 0;
   for (int i = 0; i < file_buf_len; ++i) {
     state = search_step(sp, state, file_buf[i]);
@@ -1576,8 +1579,12 @@ static int search_all_rec(const char *dir, const SearchPattern *sp, int depth, u
 }
 
 static void show_file_path(const char *path, const char *name, const char *query, unsigned *tick) {
-  if (!load_file_buf(path)) {
-    notes_message("NOTES", "Could not open", "text file.", 0);
+  int loaded = load_file_buf(path);
+  if (loaded <= 0) {
+    if (loaded < 0)
+      notes_message("NOTES", "File too large.", "Split into smaller", "text files.");
+    else
+      notes_message("NOTES", "Could not open", "text file.", 0);
     for (;;) {
       int key = ui_key_poll();
       if (key == KEY_CTRL_EXIT || key == KEY_CTRL_AC || key == KEY_CTRL_F6 || key == KEY_CTRL_EXE) break;
