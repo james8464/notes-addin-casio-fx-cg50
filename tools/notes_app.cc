@@ -1169,10 +1169,6 @@ static bool notes_input(const char *title, char *buf, int cap, unsigned *tick) {
   }
 }
 
-static void notes_print_mini(int x, int y, const char *s, int fg, int bg) {
-  PrintMini(&x, &y, (unsigned char *)(s ? s : ""), 0, NOTE_X_LIMIT, 0, 0, fg, bg, 1, 0);
-}
-
 static int match_at_ci(const char *s, const SearchPattern *sp, int pos) {
   if (!s || !sp || sp->len <= 0 || pos < 0) return 0;
   for (int i = 0; i < sp->len; ++i) {
