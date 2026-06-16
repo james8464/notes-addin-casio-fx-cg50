@@ -501,6 +501,10 @@ def main() -> int:
         errors.append("notes renderer must decode common html entities in copied text")
     if "utf8_ascii_at" not in APP_SOURCE:
         errors.append("notes renderer must transliterate common UTF-8 symbols before display")
+    if "source_line_display_text" not in APP_SOURCE or "source_line_display_text(line, search_line_buf, FILE_BUF_SIZE)" not in APP_SOURCE:
+        errors.append("notes search must use displayed text, not raw markdown source text")
+    if "find_in_span(file_buf + start, len, sp)" in APP_SOURCE:
+        errors.append("in-file search must not search raw source lines directly")
     if "copy_display_text" not in APP_SOURCE or "markdown_link_at" not in APP_SOURCE or "single_marker_at" not in APP_SOURCE:
         errors.append("notes renderer must strip simple inline markdown markers through one shared display-copy path")
     if "markdown_escapable" not in APP_SOURCE or "markdown_escaped_at" not in APP_SOURCE:

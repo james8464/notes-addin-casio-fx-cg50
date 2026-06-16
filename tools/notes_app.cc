@@ -91,6 +91,7 @@ static int file_buf_len = 0;
 static const char *view_lines[MAX_VIEW_LINES];
 static char line_store[MAX_VIEW_LINES][LINE_CAP];
 static char display_line_buf[FILE_BUF_SIZE];
+static char search_line_buf[FILE_BUF_SIZE];
 static unsigned char view_style[MAX_VIEW_LINES];
 static short view_source_line[MAX_VIEW_LINES];
 static unsigned char view_table_cols[MAX_VIEW_LINES];
@@ -1332,6 +1333,25 @@ static int source_line_style(int source_line) {
   return NOTE_TEXT;
 }
 
+static int source_line_display_text(int source_line, char *out, int cap) {
+  int start = 0, len = 0;
+  if (!source_line_bounds(source_line, &start, &len)) {
+    if (cap > 0) out[0] = 0;
+    return 0;
+  }
+  int skip = 0, style = NOTE_TEXT;
+  markdown_line(file_buf + start, len, &skip, &style);
+  const char *src = file_buf + start + skip;
+  int src_len = len - skip;
+  if (style == NOTE_BULLET || style == NOTE_ORDERED || style == NOTE_QUOTE) {
+    src = file_buf + start;
+    src_len = len;
+  } else {
+    src_len = atx_heading_display_len(src, src_len, style);
+  }
+  return copy_display_text(out, cap, src, src_len, style != NOTE_CODE);
+}
+
 static int find_source_match(const SearchPattern *sp, int start_line, int dir, int *line_out, int *offset_out) {
   int count = source_line_count();
   if (!sp || sp->len <= 0 || count <= 0) return 0;
@@ -1339,9 +1359,9 @@ static int find_source_match(const SearchPattern *sp, int start_line, int dir, i
   for (int seen = 0; seen < count; ++seen) {
     if (line < 0) line = count - 1;
     if (line >= count) line = 0;
-    int start = 0, len = 0;
-    if (source_line_bounds(line, &start, &len)) {
-      int off = find_in_span(file_buf + start, len, sp);
+    int display_len = source_line_display_text(line, search_line_buf, FILE_BUF_SIZE);
+    if (display_len > 0) {
+      int off = find_in_span(search_line_buf, display_len, sp);
       if (off >= 0) {
         *line_out = line;
         *offset_out = off;
@@ -1882,16 +1902,18 @@ static int file_text_matches(const char *path, const SearchPattern *sp, int *fir
   *hits = 0;
   if (sp->len <= 0) return 0;
   if (load_file_buf(path) <= 0) return 0;
-  int state = 0, line = 0;
-  for (int i = 0; i < file_buf_len; ++i) {
-    state = search_step(sp, state, file_buf[i]);
-    if (state == sp->len) {
+  int count = source_line_count();
+  for (int line = 0; line < count; ++line) {
+    int display_len = source_line_display_text(line, search_line_buf, FILE_BUF_SIZE);
+    int state = 0;
+    for (int i = 0; i < display_len; ++i) {
+      state = search_step(sp, state, search_line_buf[i]);
+      if (state != sp->len) continue;
       if (*first_line < 0) *first_line = line;
       if (*hits < 9) ++(*hits);
       state = sp->fail[state - 1];
+      if (*hits >= 9) return 1;
     }
-    if (file_buf[i] == '\n') ++line;
-    if (*hits >= 9) break;
   }
   return *hits > 0;
 }
