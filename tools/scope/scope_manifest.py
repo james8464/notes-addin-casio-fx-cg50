@@ -21,6 +21,7 @@ KEPT_COMMANDS = [
     "exp",
     "factor",
     "floor",
+    "force",
     "friction",
     "fsolve",
     "gcd",

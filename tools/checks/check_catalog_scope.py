@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import sys
+import re
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools" / "scope"))
@@ -23,7 +24,10 @@ def main() -> int:
     if missing:
         raise SystemExit("FAIL catalog missing: " + ", ".join(missing))
 
-    leaked = [name for name in REMOVED_COMMANDS if f'"{name}' in block or f'"{name}(' in block]
+    leaked = [
+        name for name in REMOVED_COMMANDS
+        if re.search(r'"' + re.escape(name) + r'(\(|"|,)', block)
+    ]
     if leaked:
         raise SystemExit("FAIL catalog removed leak: " + ", ".join(leaked[:20]))
 
@@ -40,7 +44,10 @@ def main() -> int:
     if menu_leaks:
         raise SystemExit("FAIL catalog menu leak: " + ", ".join(menu_leaks))
 
-    kept_visible = sum(1 for name in KEPT_COMMANDS if f'"{name}' in block or f'"{name}(' in block)
+    kept_visible = sum(
+        1 for name in KEPT_COMMANDS
+        if re.search(r'"' + re.escape(name) + r'(\(|"|,)', block)
+    )
     print(f"OK catalog scope kept_visible={kept_visible} removed={len(REMOVED_COMMANDS)}")
     return 0
 

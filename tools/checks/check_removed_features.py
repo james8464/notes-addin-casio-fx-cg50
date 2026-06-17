@@ -4,6 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 import subprocess
 import sys
+import re
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools" / "scope"))
@@ -25,7 +26,10 @@ def catalog_leaks() -> list[str]:
         block = text.split("const catalogFunc completeCat[]", 1)[1].split("\n};", 1)[0]
     except IndexError:
         block = text
-    return [name for name in REMOVED_COMMANDS if f'"{name}' in block or f'"{name}(' in block]
+    return [
+        name for name in REMOVED_COMMANDS
+        if re.search(r'"' + re.escape(name) + r'(\(|"|,)', block)
+    ]
 
 
 def runtime_leaks() -> list[str]:

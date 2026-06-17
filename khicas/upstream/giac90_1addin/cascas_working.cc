@@ -6284,6 +6284,14 @@ static bool try_mech_command(const char *input,working_string &out){
     out="Weight\nW = mg\nW = "+rat_s(a)+"*9.8 = "+rat_s(b)+" N";
     return true;
   }
+  if (parse_call(input,"force",args,5,n)){
+    if (!arg_rat(args,n,"m",0,a) || !arg_rat(args,n,"a",1,b)){
+      out="force(m,a)\nF = ma";
+      return true;
+    }
+    out="Newton's second law\nF = ma\nF = "+rat_s(a)+"*"+rat_s(b)+" = "+rat_s(rat_mul(a,b))+" N";
+    return true;
+  }
   if (parse_call(input,"moment",args,5,n)){
     if (!arg_rat(args,n,"f",0,a) || !arg_rat(args,n,"d",1,b)){
       out="moment(F,d)\nM = force * perpendicular distance";
@@ -6303,10 +6311,10 @@ static bool try_mech_command(const char *input,working_string &out){
   if (parse_call(input,"resolve",args,5,n)){
     working_string f=arg_text(args,n,"f",0), th=arg_text(args,n,"theta",1);
     if (f.empty() || th.empty()){
-      out="resolve(F,theta)\nparallel = F*cos(theta)\nperpendicular = F*sin(theta)";
+      out="resolve(F,theta)\nadjacent = F*cos(theta)\nopposite = F*sin(theta)";
       return true;
     }
-    out="Resolve\nparallel = "+f+"*cos("+th+")\nperpendicular = "+f+"*sin("+th+")";
+    out="Resolve\nadjacent = "+f+"*cos("+th+")\nopposite = "+f+"*sin("+th+")";
     return true;
   }
   if (parse_call(input,"incline",args,5,n)){
