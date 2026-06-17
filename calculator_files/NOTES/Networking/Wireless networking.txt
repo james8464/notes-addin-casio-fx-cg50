@@ -1,6 +1,6 @@
 # Wireless networking
 
-- WiFi = short for 'Wireless Fidelity'
+- WiFi = short for 'wireless fidelity'
 - a wireless local area network that is based on international standards
 
 ## Purpose
@@ -18,25 +18,25 @@
 - wireless access point
   - device that allows a WiFi compliant device to connect to a wired network
 - wireless medium/frequency band
-  - 2.4GHz frequency band is used for home networks
-  - 5GHz is mainly used for military/weather radar systems
-  - 6GHz used for radio frequency bands
+  - 2.4ghz frequency band is used for home networks
+  - 5ghz is mainly used for military/weather radar systems
+  - 6ghz used for radio frequency bands
 
 
 
 ## Securing Wireless Networks
 
-- Use WPA or WPA
+- use WPA or WPA
   - stands for: WiFi protected access
   - means that a new wireless client must enter a password to connect to the network
   - encrypts transmission so it cant be understood by unauthorised parties
-- Disable SSID broadcast
+- disable SSID broadcast
   - stands for: service set identifier
   - it is used to identify a network
-  - not broadcasting SSID means wireless devices (in range) wont see the network as available (e.g., in the list of 'available' WiFi's in settings)
+  - not broadcasting SSID means wireless devices (in range) wont see the network as available (eg in the list of 'available' WiFi's in settings)
   - means that if someone wants to join, they need to know the SSID and manually enter it to connect
-  - e.g., it wont show up in the list below
-- Use a MAC address whitelist/blacklist
+  - eg it wont show up in the list below
+- use a MAC address whitelist/blacklist
   - can be created to allow only certain devices to join a network (since each device has its own unique MAC address)
   - can also be created to block certain devices from joining a network
 
@@ -88,10 +88,10 @@
 ### Purpose of RTS/CTS
 
 - it solves the "hidden node" problem
-  - Imagine a situation where the channel is clear/idle, and there are two computers waiting to send data
+  - imagine a situation where the channel is clear/idle, and there are two computers waiting to send data
   - in that situation, both senders would detect that the channel is idle, and will both begin to send data
   - this will cause a collision
-  - With RTS/CTS, the receiver essentially controls who is sending the data at one given time
+  - with RTS/CTS, the receiver essentially controls who is sending the data at one given time
 
 
 
@@ -99,8 +99,8 @@
 
 ## What is SSID
 
-- SSID - stands for Service Set Identifier
-- It is a Unique identifier for a Wireless Network.
-- Purpose:
-  - Allows devices to wirelessly connect to the specific/preferred network from a number of available wireless networks.
-  - It can be configured to be hidden to be hard to detect.
+- SSID - stands for service set identifier
+- it is a unique identifier for a wireless network.
+- purpose:
+  - allows devices to wirelessly connect to the specific/preferred network from a number of available wireless networks.
+  - it can be configured to be hidden to be hard to detect.

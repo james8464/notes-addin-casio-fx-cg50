@@ -2,38 +2,38 @@
 
 ## Fetch
 
-- Contents of PC transferred to MAR
+- contents of PC transferred to MAR
 - MAR stores address of next instruction
-- Address bus transfers this address to main memory
-- Control signal (eg READ) is sent via control bus
-- Contents of addressed memory location loaded into the MBR via data bus
+- address bus transfers this address to main memory
+- control signal (eg read) is sent via control bus
+- contents of addressed memory location loaded into the MBR via data bus
 - MBR now contains the fetched instruction
-- Content in MBR is transferred to the CIR
+- content in MBR is transferred to the CIR
 - CIR stores the instruction currently being decoded/executed
 - PC is incremented so it points to the next instruction
 
 ## Decode
 
 - CU decodes the instruction that is held in CIR
-- Instruction is split into opcode and operand
+- instruction is split into opcode and operand
 
 ## Execute
 
-- Opcode identifies the type of instruction to be performed by the processor
-- If necessary, additional data is fetched from memory
-- Instruction is executed by the relevant part of the processor (eg ALU)
-- Result may be stored in accumulator/register/main memory
-- Status register updated
-- If a branch/jump instruction is executed, the PC is updated with the new address
+- opcode identifies the type of instruction to be performed by the processor
+- if necessary, additional data is fetched from memory
+- instruction is executed by the relevant part of the processor (eg ALU)
+- result may be stored in accumulator/register/main memory
+- status register updated
+- if a branch/jump instruction is executed, the PC is updated with the new address
 
 
 ### PPQ: Why can't an instruction be directly processed from the MBR (so needs to be in CIR)
 
-- To execute/carry out the instruction other data may need to be fetched from main memory
-- During execute phase MBR used to store other data
-- Further instructions may need to be fetched before the instruction has finished executing, if pipelining/parallelisation is referenced explicitly in the response
-- Further memory fetches would overwrite the contents of the MBR
-- The instruction would be overwritten by further memory fetches
-- Writing the result of executing the instruction back to main memory would overwrite the instruction/MBR contents
+- to execute/carry out the instruction other data may need to be fetched from main memory
+- during execute phase MBR used to store other data
+- further instructions may need to be fetched before the instruction has finished executing, if pipelining/parallelisation is referenced explicitly in the response
+- further memory fetches would overwrite the contents of the MBR
+- the instruction would be overwritten by further memory fetches
+- writing the result of executing the instruction back to main memory would overwrite the instruction/MBR contents
 - MBR is not directly wired to the processor components that will execute the instruction which CIR is
 - MBR is not directly wired to the ALU as BOD

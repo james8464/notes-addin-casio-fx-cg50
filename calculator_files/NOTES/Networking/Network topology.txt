@@ -3,7 +3,7 @@
 ## Physical Topology
 
 - the physical layout of the cabling/wiring/connections
-- shows how devices are actually connected 
+- shows how devices are actually connected
 
 
 
@@ -24,7 +24,7 @@
 
 ### Advantages
 
-- if one cable/device fails, the rest of the network is unaffected
+- if one cable/device fails, the REST of the network is unaffected
 - easy to add/remove devices/nodes
 - easy to identify faults
 - good performance (dedicated connections)
@@ -55,5 +55,3 @@
 - data collisions can occur
 - performance slows with more devices
 - harder to troubleshoot faults
-
-

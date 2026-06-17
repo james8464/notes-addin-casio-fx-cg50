@@ -1,14 +1,14 @@
 # Bits and bytes
 
-- A bit is the fundamental unit of information and is represented as either a 0 or 1.
-- A group of 8 bits is called a byte.
-- A group of 4 bits is called a nybble
-- A bit is notated with a lowercase b
-- A byte is notated using a uppercase B
+- a bit is the fundamental unit of information and is represented as either a 0 or 1
+- a group of 8 bits is called a byte
+- a group of 4 bits is called a nybble
+- a bit is notated with a lowercase b
+- a byte is notated using a uppercase B
 
 - 2^n different values can be represented with n bits
 
 ## Example
 
-  - If you have 3 bits:
-  - Possible values = 2^3 = 8
+  - if you have 3 bits:
+  - possible values = 2^3 = 8

@@ -5,47 +5,34 @@
 
 ## Defining Characteristics
 
-- Volume
+- volume
   - too much data to fit on conventional hard drive or server
   - data must be stored over multiple servers (each composed of many hard drives)
-- Velocity
+- velocity
   - data on the servers is to be created/modified/processed rapidly
   - servers must respond to frequently changing data in milliseconds
-- Variety
+- variety
   - data consists of many different types of data
   - eg from binary files to multimedia files (such as photos and videos)
 
-
-
 ### Examples
 
-- Data from:
+- data from:
   - networked sensors
-  - Smartphones
-  - Video surveillance
-  - Mouse clicks
+  - smartphones
+  - video surveillance
+  - mouse clicks
   - NHS (eg to help find patterns in illness/injury)
-  - Passport control (eg to find patterns in border crossings)
-  - Online shopping (eg identifying what users are interested in)
+  - passport control (eg to find patterns in border crossings)
+  - online shopping (eg identifying what users are interested in)
 
-
-
-## Issues Big Data Presents
-
-- lack of structure causes most trouble
-- unstructured nature makes it difficult to analyse data
-- conventional databases require data to conform to a row and column structure
-  - big data cant conform to this
-- conventional databases don't scale well across multiple servers
-- machine learning techniques needed to discern patterns in data (very complex)
-- difficult to split and sync processing across multiple machines with conventional programming paradigms
 
 
 ## Ways to Represent Big Data
 
-- EXAMPLES of how it might be represented:
-- Fact-based model
-- Graph schema
+- examples of how it might be represented:
+- fact-based model
+- graph schema
 
 ### The Fact-based Model
 
@@ -59,19 +46,32 @@
 
 ### Graph Schema
 
-- uses graphs (consists of nodes and edges) NOTE: see 4.2.4 for more details
+- uses graphs (consists of nodes and edges) note: see 4.2.4 for more details
 - nodes represent entities (it may or may not contain the properties of the entity)
 - edges represent relationships between entities
   - labelled with a brief description of the relationship
 - its assumed each node contains the most recent information available (ie there are usually no timestamps included)
-  - ALTHOUGH there are different methods of representation. See the examples below...
-      
-      
+  - although there are different methods of representation. see the examples below...
+
+
+
+
+
+## Issues Big Data Presents
+
+- lack of structure causes most trouble
+- unstructured nature makes it difficult to analyse data
+- conventional databases require data to conform to a row and column structure
+- conventional databases don't scale well across multiple servers
+- machine learning techniques needed to discern patterns in data (very complex)
+- difficult to split and sync processing across multiple machines with conventional programming paradigms
+
+
 ## Solution - Functional Programming
 
 - functional programming is a solution to processing data over multiple machines
 - functional programs are stateless
-  - i.e., they have no side effects
+  - ie they have no side effects
 - functional programs use immutable data structures
   - ie the values stored in data structures can't change at runtime
 - functional programs support higher-order functions

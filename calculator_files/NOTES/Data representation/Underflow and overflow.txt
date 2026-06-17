@@ -2,10 +2,10 @@
 
 ## Underflow
 
-- Result of a calculation is too small to be represented in the number of bits available
-- Eg the result from a calculation is so close to zero that the number is stored as zero
+- result of a calculation is too small to be represented in the number of bits available
+- eg the result from a calculation is so close to zero that the number is stored as zero
 
 ## Overflow
 
-- Result of a calculation is too large to be represented in the number of bits available
-- Eg 11101001 + 10000000 cannot be represented in 8 bits (overflow)
+- result of a calculation is too large to be represented in the number of bits available
+- eg 11101001 + 10000000 cannot be represented in 8 bits (overflow)

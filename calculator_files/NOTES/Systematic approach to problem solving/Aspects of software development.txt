@@ -154,7 +154,7 @@
 - expected/typical inputs
 - should be accepted by the system
 
-Examples:
+examples:
 - age = 25
 - mark = 60
 
@@ -163,7 +163,7 @@ Examples:
 - values at the limits of accepted ranges
 - used to test boundary conditions
 
-Examples:
+examples:
 - minimum valid value
 - maximum valid value
 
@@ -172,7 +172,7 @@ Examples:
 - invalid data
 - should be rejected or handled appropriately
 
-Examples:
+examples:
 - letters entered into a numeric field
 - values outside permitted ranges
 
@@ -257,11 +257,15 @@ Examples:
 - identifies improvements for future versions
 
 
+
+
+
+
 ### Common Evaluation Questions
 
-- Were all requirements met?
-- Did the system solve the original problem?
-- Is the system efficient?
-- Is the system reliable?
-- Is the system easy to use?
-- What improvements could be made?
+- were all requirements met?
+- did the system solve the original problem?
+- is the system efficient?
+- is the system reliable?
+- is the system easy to use?
+- what improvements could be made?

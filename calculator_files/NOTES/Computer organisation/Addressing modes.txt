@@ -1,6 +1,6 @@
 # Addressing modes
 
-- Immediate addressing - value specified in operand is to be treated as the actual value
-  - Indicated with a #, eg #5 means 5 is the number to be operated on
-- Direct addressing - value specified by operand signifies a memory address
-  - Eg 5 means memory address 5 is operated on
+- immediate addressing - value specified in operand is to be treated as the actual value
+  - indicated with a #, eg #5 means 5 is the number to be operated on
+- direct addressing - value specified by operand signifies a memory address
+  - eg 5 means memory address 5 is operated on

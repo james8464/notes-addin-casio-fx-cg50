@@ -1,24 +1,24 @@
 # Digital representation of sound
 
-Sound is represented as a sequence of samples
+sound is represented as a sequence of samples
 
 ## Sample Resolution
 
-- Number of bits allocated to store each sample
-- Higher sample resolution = greater audio quality + higher file size
+- number of bits allocated to store each sample
+- higher sample resolution = greater audio quality + higher file size
 
 ## Sampling Rate
 
-- Number of samples per second
-- Measured in Hz (Hertz)
+- number of samples per second
+- measured in Hz (hertz)
 
 ## Nyquist Theorem
 
-- states that the sampling rate of a digital audio file should be at least TWICE the frequency of the sound
-- Sound might not be faithfully represented if its less than this
+- states that the sampling rate of a digital audio file should be at least twice the frequency of the sound
+- sound might not be faithfully represented if its less than this
 
 
 ### Formula to Calculate File Size (of Sound File)
 
-  - File size = Sample resolution * sample rate * duration (in seconds)
-  - However, this value is a minimum. In reality, it will be higher due to metadata
+  - file size = sample resolution * sample rate * duration (in seconds)
+  - however, this value is a minimum. in reality, it will be higher due to metadata

@@ -8,7 +8,7 @@
 
 - national ISPs provide backbone infrastructure
 - regional/local ISPs connect homes and businesses
-- shows internet is hierarchical and decentralised
+- shows Internet is hierarchical and decentralised
 
 
 
@@ -25,7 +25,7 @@
 - packets pass through multiple routers (hops)
 - router:
   - reads destination IP
-  - chooses next hop (NOT final destination) based on info in routing table
+  - chooses next hop (not final destination) based on info in routing table
   - selects fastest/least congested route
   - decrements packet's TTL value (and deletes/kills it if it reaches 0)
 - routing tables are updated dynamically
@@ -56,30 +56,30 @@
 
 ### Header
 
-- Sender's IP address
-- Receiver's IP address
-- Protocol identifier
-- Packet identifier
-- Sequence number
-- Number of packets in message
+- sender's IP address
+- receiver's IP address
+- protocol identifier
+- packet identifier
+- sequence number
+- number of packets in message
 - TTL (time to live)
   - represents maximum number of hops for that packet
-  - decreases by 1 each hop (i.e., at each router travelled to during the journey to the destination router)
+  - decreases by 1 each hop (ie at each router travelled to during the journey to the destination router)
   - if reaches 0 -> packet is dropped
-  - Purpose: prevents infinite looping
-- Packet size
-- Header length
+  - purpose: prevents infinite looping
+- packet size
+- header length
 - IP version
 
 ### Payload
 
-- The actual data being transmitted in the packet
+- the actual data being transmitted in the packet
 
 ### Trailer
 
-- End of packet signal
-- Error correction (eg checksum)
-  - Purpose: to check if the contents of the packet/data have been corrupted during transmission
+- end of packet signal
+- error correction (eg checksum)
+  - purpose: to check if the contents of the packet/data have been corrupted during transmission
 
 
 
@@ -108,28 +108,28 @@
 
 ## Uniform Resource Locator (URL)
 
-- text-based address used to locate a resource on the internet
+- text-based address used to locate a resource on the Internet
 
 ### Components
 
-- Protocol - eg HTTP or HTTPS
-- Subdomain/host - eg www
-- Domain - eg bbc.co.uk
-- Path - eg /news/technology
-- File name + extension - eg index.html
+- protocol - eg HTTP or HTTPS
+- subdomain/host - eg www
+- domain - eg bbc.co.uk
+- path - eg /news/technology
+- file name + extension - eg index.html
 
 ## Domain Names
 
-- identifies an organisation or individual on the internet
+- identifies an organisation or individual on the Internet
 - uses alphanumeric characters, making it easier for humans to remember + type without errors
 - maps to an IP address
 
 - domain names are hierarchically organised
-  - Top-level domain (TLD)
+  - top-level domain (TLD)
     - eg .com
-  - Second-level domain (SLD)
+  - second-level domain (SLD)
     - eg .co
-  - Subdomains
+  - subdomains
     - eg
       - bbc
       - .co
@@ -139,8 +139,8 @@
 ## FQDN
 
 - stands for: fully qualified domain name
-- same as the domain name, but MUST include the server's host name (eg www.)
-- eg: https://www.bbc.co.uk/news/index.html
+- same as the domain name, but must include the server's host name (eg www.)
+- eg: HTTPS://www.bbc.co.uk/news/index.html
 
 
 
@@ -155,19 +155,19 @@
 
 ### Specific Functions
 
-- Name resolution
-  - i.e., domain name to IP address (forward lookup)
+- name resolution
+  - ie domain name to IP address (forward lookup)
   - also IP address to hostname (reverse lookup)
-- Organising the hierarchical structure of domain names
-  - i.e., root, top level, 2LDs
+- organising the hierarchical structure of domain names
+  - ie root, top level, 2LDs
   - managing name spaces
 
 
 ### How Domain Names Are Resolved
 
-- The user types the FQDN into their browser
+- the user types the FQDN into their browser
   - eg www.certbros.com
-- Check local cache first
+- check local cache first
   - the browser checks:
     - browser cache
     - operating system cache
@@ -176,23 +176,23 @@
     - browser connects to website
   - if not found:
     - move to next step
-- Query recursive resolver (ISP)
+- query recursive resolver (ISP)
   - a request is send to a DNS resolver (usually ISP)
-- Resolver checks its cache
+- resolver checks its cache
   - if found:
     - returns IP address
   - if not found:
     - move to next step
-- Query root DNS server
+- query root DNS server
   - this doesn't actually know IP addresses
   - it just tells the resolver where to find the TLD server (eg .com)
-- Query TLD server
+- query TLD server
   - this knows where the domain is managed
   - it returns the authoritative name server
-- Query authoritative DNS server
+- query authoritative DNS server
   - this stores actual domain records
   - returns the IP address
-- Return IP + cache it
+- return IP + cache it
   - resolver sends IP back to computer
   - IP is cached for future use
   - browser loads the website
@@ -214,7 +214,7 @@
 
 - ensures domain names are unique
 - needed to actually map a domain name to an IP address and store in the DNS system
-- ensures efficient use of address space (eg reuses unused Ips before issuing new ones)
+- ensures efficient use of address space (eg reuses unused ips before issuing new ones)
 
 
 
@@ -225,6 +225,6 @@
 ## IP Address
 
 - a unique numerical identifier for devices on a network
-- can be IPv4 or IPv6
+- can be ipv4 or ipv6
 - not easy for humans to remember, which is why domain names are used
   - domain names map to IP addresses

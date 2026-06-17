@@ -1,47 +1,47 @@
 # Signed binary using two's complement
 
-- There are a few different coding schemes that can be used for signed binary
+- there are a few different coding schemes that can be used for signed binary
 - AQA uses two's complement
-  - It allows for the representation of both positive and negative numbers in binary
+  - it allows for the representation of both positive and negative numbers in binary
 
 ## Placeholders in Two's Complement
 
-- The MSB is given a negative place value
-- E.g., the placeholders of a nybble (4 bits) would be:
+- the MSB is given a negative place value
+- eg the placeholders of a nybble (4 bits) would be:
 
 ## Converting to Two's Complement
 
-- Invert all bits, making 0 -> 1 and 1 -> 0
-- Add one to the number
+- invert all bits, making 0 -> 1 and 1 -> 0
+- add one to the number
 
 ### Example
 
-  - Make 57 negative
+  - make 57 negative
 - 57 in binary is 00111001
-- Invert all bits: 11000110
-- Add one: 11000111
-- Check: (-128) + 64 + 4 + 2 + 1 = -57 -57
+- invert all bits: 11000110
+- add one: 11000111
+- check: (-128) + 64 + 4 + 2 + 1 = -57 -57
 
 ## Subtractions
 
-- Since computers cannot subtract two positive numbers easily, they can make one negative and then perform addition
+- since computers cannot subtract two positive numbers easily, they can make one negative and then perform addition
 
 ### Example
 
-  - Perform 63 - 57
+  - perform 63 - 57
 - 67 in binary is 00111111
 - 57 in binary is 00111001
 - -57 in two's complement is 11000111
-- Perform addition: 100000110
-- Reduce down into original number of bits, in this case 8, so remove the leading 1
-- Check 00000110 in decimal is 6
+- perform addition: 100000110
+- reduce down into original number of bits, in this case 8, so remove the leading 1
+- check 00000110 in decimal is 6
   - 63 - 57 = 6
 
 ## Range
 
-- The range for two's complement for n bits is:
+- the range for two's complement for n bits is:
   - -2^(n-1) to 2^(n-1) -1
 
 ### Example
 
-  - Where n is 8, the range is -128 to 127
+  - where n is 8, the range is -128 to 127

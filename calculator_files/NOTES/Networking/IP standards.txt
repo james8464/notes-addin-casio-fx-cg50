@@ -6,8 +6,8 @@
 - consists of 4 parts
 - separated by dots (periods)
 - each part of the address is assigned 1 byte (so 0 to 255 can be represented)
-- overall, 32 bits (4 bytes) are allocated per IPv4 address
-  - allows for slightly over 4 billion unique IPv4 addresses
+- overall, 32 bits (4 bytes) are allocated per ipv4 address
+  - allows for slightly over 4 billion unique ipv4 addresses
 
 
 ## Ipv6
@@ -15,8 +15,8 @@
 - consists of 8 parts
 - separated by colons
 - each part contains 4 hexadecimal characters
-- overall, 128 bits (16 bytes) are allocated per IPv6 address
-  - allows for FAR MORE unique permutations
+- overall, 128 bits (16 bytes) are allocated per ipv6 address
+  - allows for far more unique permutations
 
 
 
@@ -25,11 +25,11 @@
 
 ## Why Was Ipv6 Introduced (ppq)
 
-- Not enough unique addresses in IPv4
-- Eliminates need for NAT
-- Simplified / more efficient routing is possible
-- Improved facilities for multicasting
-- Automatic configuration possible without DHCP
-- Allows bigger packet sizes
-- Devices can move/roam between location and keep the same IP address
-- Improved support for prioritising traffic by type
+- not enough unique addresses in ipv4
+- eliminates need for NAT
+- simplified / more efficient routing is possible
+- improved facilities for multicasting
+- automatic configuration possible without DHCP
+- allows bigger packet sizes
+- devices can move/roam between location and keep the same IP address
+- improved support for prioritising traffic by type

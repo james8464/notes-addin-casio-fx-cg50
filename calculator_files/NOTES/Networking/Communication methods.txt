@@ -43,5 +43,5 @@
 
 ### Purpose of start/stop bits
 
-  - Start bit = starts the receiver clock
-  - Stop bit = allows the next start bit to be recognised
+  - start bit = starts the receiver clock
+  - stop bit = allows the next start bit to be recognised

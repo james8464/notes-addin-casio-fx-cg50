@@ -20,15 +20,15 @@
 - = software routine the processor invokes in response to an interrupt
 - designed to process each interrupt
 - origin of the interrupt is identified so that the appropriate ISR is called
-- All other lower-priority interrupts are put on hold to allow the ISR to finish running
+- all other lower-priority interrupts are put on hold to allow the ISR to finish running
 - the PC is updated with the address of the first instruction of the ISR
-- The program counter is updated with the address of the first instruction of the ISR
-- The ISR completes its execution
-- The processor registers are reloaded with the values that were saved to memory
-- The lower-priority interrupts that were put on hold are re-established
+- the program counter is updated with the address of the first instruction of the ISR
+- the ISR completes its execution
+- the processor registers are reloaded with the values that were saved to memory
+- the lower-priority interrupts that were put on hold are re-established
 
 ### Note
 
-- When the ISR is processing interrupts, the values of registers may change
+- when the ISR is processing interrupts, the values of registers may change
 - this could cause data loss
-- To prevent this, the data is saved (pushed on top of the system stack) before the interrupt is processed.
+- to prevent this, the data is saved (pushed on top of the system stack) before the interrupt is processed.

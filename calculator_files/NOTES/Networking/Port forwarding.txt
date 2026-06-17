@@ -1,46 +1,46 @@
 # Port forwarding
 
-- Definition: allows external devices to access internal services
+- definition: allows external devices to access internal services
 
 ## Why Used
 
-- Allows access to services inside a private network
+- allows access to services inside a private network
   - eg for CCTV systems
-- Needed since private IP addresses are not routable on the internet
+- needed since private IP addresses are not routable on the Internet
 
 ## Process
 
-  - Imagine a client on the internet wants to access a server inside a private network
-- The client sends a request
-  - Sent to the public IP address of the router
-  - Includes a destination port number (eg 80 for HTTP)
-- The router receives the packet
-  - Sees:
-    - Public IP (its own)
-    - Port number
-- The router checks its port forwarding table
-  - Looks up which internal device + port the request should go to
-- The router forwards the packet
-  - Replaces destination:
-    - Public IP -> private IP of server
-  - Sends packet to the correct device on the LAN
-- The internal server receives the request
-  - Processes it (eg web server returns webpage)
-- The server sends a response
-  - Response goes back to the router
-- The router forwards the response to the client
-  - Uses its public IP
-  - Sends data back to the original client
+  - imagine a client on the Internet wants to access a server inside a private network
+- the client sends a request
+  - sent to the public IP address of the router
+  - includes a destination port number (eg 80 for HTTP)
+- the router receives the packet
+  - sees:
+    - public IP (its own)
+    - port number
+- the router checks its port forwarding table
+  - looks up which internal device + port the request should go to
+- the router forwards the packet
+  - replaces destination:
+    - public IP -> private IP of server
+  - sends packet to the correct device on the LAN
+- the internal server receives the request
+  - processes it (eg web server returns webpage)
+- the server sends a response
+  - response goes back to the router
+- the router forwards the response to the client
+  - uses its public IP
+  - sends data back to the original client
 
 
 
 ## Between NAT vs Port Forwarding
 
-- NAT allows devices on a LAN to access the internet
+- NAT allows devices on a LAN to access the Internet
 - port forwarding allows external devices to access a device on a LAN
 - NAT replaces private IP with router's public IP
 - port forwarding uses router's public IP, then forwards to the private IP
 - NAT uses dynamic mapping type (created automatically per session)
 - port forwarding uses static mapping type (configured manually)
-- NAT improves security 
+- NAT improves security
 - port forwarding reduces security

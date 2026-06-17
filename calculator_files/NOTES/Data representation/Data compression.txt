@@ -29,7 +29,7 @@
 
   - = identifies repeated information, and replaces it with one occurrence of the repeated information, followed by the number of times it is to be repeated
   - a run is a sequence/series of a particular piece of data
-      - Eg in an image, there might be a run of pixels that are the same
+      - eg in an image, there might be a run of pixels that are the same
 
 
 
@@ -39,4 +39,3 @@
 - repeated patterns of data are identified + stored in a dictionary
 - repeated data is replaced with the key to that data in the dictionary
 - not as effective for text files since there is often little repetition
-

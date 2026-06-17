@@ -63,10 +63,10 @@
 ### Meaning
 
 - acronym for:
-    - Create
-    - Retrieve
-    - Update
-    - Delete
+    - create
+    - retrieve
+    - update
+    - delete
 
 ### Purpose
 
@@ -75,10 +75,10 @@
 
 ### CRUD → SQL Mapping
 
-- Create → INSERT
-- Retrieve → SELECT
-- Update → UPDATE
-- Delete → DELETE
+- create → insert
+- retrieve → select
+- update → update
+- delete → delete
 
 
 
@@ -90,7 +90,7 @@
 
 ### Meaning
 
-- Representational State Transfer
+- representational state transfer
 
 ### Main Characteristics
 
@@ -106,14 +106,14 @@
 
 ### HTTP → SQL Mapping
 
-- POST → INSERT
-- GET → SELECT
-- PUT → UPDATE
-- DELETE → DELETE
+- post → insert
+- get → select
+- put → update
+- delete → delete
 
 ### Key Difference (Exam Point)
 
-- CRUD = what operation you want to perform on data
+- crud = what operation you want to perform on data
 - REST = how that operation is performed over a network
 
 

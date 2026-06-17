@@ -2,21 +2,21 @@
 
 ## Function type
 
-- If f: A -> B, we say that the function type is A -> B where A is the argument type and B is the result type.
-- Function = rule that for each element in set A of inputs, assigns an output chosen from set B; not all elements of set B will be used.
-- A function is a mapping from a set of inputs, called the domain, to a set of possible outputs, known as the co-domain.
-- The only thing they do is calculate something and return a result; they have no side effects ie they cannot change the data / memory.
-- So every time the same function is called with the same arguments / values, it will always return the same result.
+- if f: A -> B, we say that the function type is A -> B where a is the argument type and b is the result type.
+- function = rule that for each element in set A of inputs, assigns an output chosen from set B; not all elements of set B will be used.
+- a function is a mapping from a set of inputs, called the domain, to a set of possible outputs, known as the co-domain.
+- the only thing they do is calculate something and return a result; they have no side effects ie they cannot change the data / memory.
+- so every time the same function is called with the same arguments / values, it will always return the same result.
 - domain = set that a function takes input values from.
-- Co-domain = set that a function output values are from.
-- Types are integer / float / bool / char values.
-- Typeclasses are sets of types, so Integer, Float, Bool, Char.
+- co-domain = set that a function output values are from.
+- types are integer / float / bool / char values.
+- typeclasses are sets of types, so Integer, Float, Bool, Char.
 
 ### Type declaration
 
-- Can be implicit - set by the programming language in the background.
+- can be implicit - set by the programming language in the background.
 - ..or explicit - set by the programmer.
-- Eg: explicit type declaration:
+- eg: explicit type declaration:
 
     isEqual :: Int -> Int -> Bool
     isEqual x y = x == y
@@ -26,21 +26,21 @@
 
 ## First class object
 
-- First class objects (or values) are objects that may:
-  - Appear in expressions
-  - Be assigned to a variable
-  - Be assigned as arguments
-  - Be returned in function calls
-- Examples: integers, floating point values, characters, strings, functions.
+- first class objects (or values) are objects that may:
+  - appear in expressions
+  - be assigned to a variable
+  - be assigned as arguments
+  - be returned in function calls
+- examples: integers, floating point values, characters, strings, functions.
 
 
 
 
 ## Function application
 
-- Function application = a function applied to its arguments.
-- Giving particular inputs to a function, eg add(3,4) is the application of function add to integer arguments 3 and 4.
-- The type of this function is f: integer x integer -> integer, where integer x integer is the cartesian product of set Integer with itself.
+- function application = a function applied to its arguments.
+- giving particular inputs to a function, eg add(3,4) is the application of function add to integer arguments 3 and 4.
+- the type of this function is f: integer x integer -> integer, where integer x integer is the cartesian product of set integer with itself.
 
 
 
@@ -48,14 +48,14 @@
 
 ## Partial function application
 
-- In the add example function above, it takes two integers as arguments, and returns an integer as a result.
-- As a partial function application, this is viewed as:
+- in the add example function above, it takes two integers as arguments, and returns an integer as a result.
+- as a partial function application, this is viewed as:
 
     add : integer -> (integer -> integer)
 
 - ...which means...
 - add 4 returns a function which when applied to another integer, adds 4 to that integer.
-- This is why add function type is integer -> integer -> integer.
+- this is why add function type is integer -> integer -> integer.
 - ...taking one argument after another, and returning a result of data type integer.
 
 
@@ -63,10 +63,10 @@
 
 ## Composition of functions
 
-- Functional composition combines two functions to get a new function.
-- Eg if f : A -> B, and g : B -> C, then
-- g o f is called the composition of g and f, and is a function whose domain is A and co-domain is C.
-- Composition is possible because the co-domain of f is the same as the domain of g.
+- functional composition combines two functions to get a new function.
+- eg if f : A -> B, and g : b -> c, then
+- g o f is called the composition of g and f, and is a function whose domain is a and co-domain is c.
+- composition is possible because the co-domain of f is the same as the domain of g.
 
 
 
@@ -74,7 +74,7 @@
 
 ## Higher order functions
 
-- = A function that takes a function as an argument // returns a function as a result // takes a function as an argument and returns a function as a result;
+- = a function that takes a function as an argument // returns a function as a result // takes a function as an argument and returns a function as a result;
 - parameter or input can be used for argument.
 
 ### An example
@@ -82,9 +82,9 @@
     applyTwice :: (a -> a) -> a -> a
     applyTwice f x = f( f x)
 
-- Parenthesis are required and define the type declaration of function f.
+- parenthesis are required and define the type declaration of function f.
 - 'a' denotes a type - they have to be the same.
-- Once defined, we can use it like this:
+- once defined, we can use it like this:
 
     applyTwice (+3) 10 -- this will return 16
     applyTwice (++ " HAHA") "HEY" -- this will return "HEY HAHA HAHA"
@@ -94,39 +94,39 @@
 
 ## Map, filter and reduce
 
-- Map filter reduce.
+- map filter reduce.
 - map is the name of a higher-order function that applies a given function to each element of a list, returning a list of results.
 - filter is the name of a higher-order function that processes a data structure, typically a list, in some order to produce a new data structure containing exactly those elements of the original data structure that match a given condition.
 - reduce or fold is the name of a higher-order function which takes a list of values and a function as arguments, and applies repeatedly (using recursion) that combining function to each element of the list, returning a single value.
-- Then....
-- ....Practise, practise, practise
+- then....
+- ....practise, practise, practise
 
 ## Lists and immutability
 
-- List = a collection of elements of a similar type, such as integers, characters or strings, enclosed in square brackets.
-- Head = first element of the list.
-- Tail = remainder of the list if you removed the head.
-- A list can be written as head : tail (this is the concatenation of head and tail).
-- Empty list = a list with no elements; [].
+- list = a collection of elements of a similar type, such as integers, characters or strings, enclosed in square brackets.
+- head = first element of the list.
+- tail = remainder of the list if you removed the head.
+- a list can be written as head : tail (this is the concatenation of head and tail).
+- empty list = a list with no elements; [].
 - length(listA) = number of elements in listA.
 
 ### Example
 
-- Example: say that listA = [3,4,5,6].
+- example: say that listA = [3,4,5,6].
 - head(listA) will return 3.
 - tail(listA) will return [4,5,6].
 - tail(tail((tail(tail(listA)))) will return [].
 - null(listA) will return False.
-- B = [] will define the empty list B.
+- b = [] will define the empty list b.
 
 ## Pre-pending a list
 
-- Pre-pending a list = adding element(s) to the front of the list:
-- The operator is : for a single element.
-- Eg 5 : [1,2,3] will return [5,1,2,3].
+- pre-pending a list = adding element(s) to the front of the list:
+- the operator is : for a single element.
+- eg 5 : [1,2,3] will return [5,1,2,3].
 - ...and ++ for a list.
-- The operator is ++ for a list.
-- Eg [5,4] ++ [1,2,3] will return [5,4,1,2,3].
+- the operator is ++ for a list.
+- eg [5,4] ++ [1,2,3] will return [5,4,1,2,3].
 
 ### Example: Pre-pending One Element
 
@@ -138,14 +138,14 @@
 
 ## Appending a list
 
-- Appending a list = adding element(s) to the end of the list.
-- The operator is ++ as you can only append a list to the existing list.
-- Remember the original list will NOT change its contents.
-- Eg if A = [1,2,3], then A ++ [4,5] will return [1,2,3,4,5].
-- ...but contents of list A remains the same.
-- This is the concept of immutability.
-- Concatenating lists - use also the ++ operator.
-- Concatenating lists also uses the ++ operator.
+- appending a list = adding element(s) to the end of the list.
+- the operator is ++ as you can only append a list to the existing list.
+- remember the original list will not change its contents.
+- eg if a = [1,2,3], then a ++ [4,5] will return [1,2,3,4,5].
+- ...but contents of list a remains the same.
+- this is the concept of immutability.
+- concatenating lists - use also the ++ operator.
+- concatenating lists also uses the ++ operator.
 
 ### Example: Appending a List
 

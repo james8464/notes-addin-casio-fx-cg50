@@ -2,53 +2,53 @@
 
 ## Recap
 
-- Volatile storage loses its contents when the computer is switched off
-  - Eg RAM (random access memory)
-- Non-volatile storage keeps its contents when the computer is switched off
-- Means you can store programs and data for later use
-- Have a much larger capacity than primary storage
+- volatile storage loses its contents when the computer is switched off
+  - eg RAM (random access memory)
+- non-volatile storage keeps its contents when the computer is switched off
+- means you can store programs and data for later use
+- have a much larger capacity than primary storage
 
 ## Types of secondary storage
 
-- Magnetic storage:
+- magnetic storage:
   - eg hard disk drives
-- Solid-state storage:
+- solid-state storage:
   - eg USB memory sticks
-- Optical storage:
+- optical storage:
   - eg CD, DVD, and Blu-ray discs
 
 ## Hard disks (HDD)
 
 ### Characteristics
 
-- Storage capacity
+- storage capacity
   - very large storage capacities
   - typically ranging from hundreds of GB to several TB
-- Speed
+- speed
   - slower read/write speeds than SSD's
   - avg read/write speeds are around 100/200 MB/s
   - the presence of moving parts (eg spinning platters) contributes to slower access times
-- Durability
+- durability
   - susceptible to mechanical failure due to their moving parts
   - sensitive to physical shocks and vibrations
   - likely to damage if dropped
   - essentially since it has moving parts, its not very durable
-- Cost
+- cost
   - more cost effective per GB compared to SSD's
   - it's the better choice if you want lots of storage and don't care about read/write speeds
 
 ### Purposes
 
-- Data storage
-- Backups (eg Time Machine)
-- Mass storage
+- data storage
+- backups (eg Time Machine)
+- mass storage
 
 ### Suitability
 
-- Cost-effective storage
+- cost-effective storage
   - for users who need large storage capacities at a low cost and don't care about slow access speed
   - eg for storing backups or virtual machines
-- Non performance critical applications
+- non performance critical applications
   - some ppl may want to store large applications here rather than on their device
 
 ## Optical disks
@@ -56,59 +56,59 @@
 ### Principles of Operation
 
 - HDDs consist of one or more spinning platters coated with a magnetic material
-- Data is stored on these platters in the form of magnetic patterns
-- The read/write heads are positioned on an actuator arm that moves across the platters
-- These heads read and write data by detecting and modifying the magnetic patterns on the platters
-- The platters are divided into concentric tracks, which are further divided into sectors
-- Each sector stores a fixed amount of data
-- A motor spins the platters at high speeds, whilst the actuator arm positions the read/write heads over the correct track to access data
-- The HDD controller manages:
+- data is stored on these platters in the form of magnetic patterns
+- the read/write heads are positioned on an actuator arm that moves across the platters
+- these heads read and write data by detecting and modifying the magnetic patterns on the platters
+- the platters are divided into concentric tracks, which are further divided into sectors
+- each sector stores a fixed amount of data
+- a motor spins the platters at high speeds, whilst the actuator arm positions the read/write heads over the correct track to access data
+- the HDD controller manages:
   - the movement of the actuator arm
   - the spinning of the platters
   - the reading and writing of data
   - error correction and data caching
 
-## Optical disks 
+## Optical disks
 
 ### Characteristics
 
-- Storage capacity
-  - CDs can store up to 700MB
-  - DVDs can store up to 4.7GB (single-layer)
-  - Blu-ray discs can story up to 25GB (single-layer)
-- Durability
+- storage capacity
+  - CDs can store up to 700mb
+  - DVDs can store up to 4.7gb (single-layer)
+  - Blu-ray discs can story up to 25gb (single-layer)
+- durability
   - the discs are relatively durable
   - can last for many years if stored properly
   - susceptible to scratches and environmental damage
-- Portability
+- portability
   - light and portable
   - easy to transport and distribute
-- Compatibility
+- compatibility
   - widely compatible with various devices that include a suitable reader device
 
 ### Purposes
 
-- Media distribution
+- media distribution
   - movies, music, software and games
-- Data backup
-- Software installation
-- Multimedia storage
-  - i.e. storing photos, videos and audio files
+- data backup
+- software installation
+- multimedia storage
+  - ie storing photos, videos and audio files
 
 ### Suitability
 
-- Good for easy distribution
-- Today, it is outdated technology
+- good for easy distribution
+- today, it is outdated technology
 
 ### Principles of Operation
 
-- A laser beam is focused onto the surface of the disk
-- Data is stored in the form of microscopic pits and lands
-- The pits and lands represent binary data (0s and 1s)
-- The laser beam detects these variations to read the information stored on the disk
-- When reading data, the laser beam reflects off the surface of the disk, and the reflected light is detected by a sensor
-- When writing data, the laser beam alters the surface of the disk to create the pits and lands
-- The optical drive contains:
+- a laser beam is focused onto the surface of the disk
+- data is stored in the form of microscopic pits and lands
+- the pits and lands represent binary data (0s and 1s)
+- the laser beam detects these variations to read the information stored on the disk
+- when reading data, the laser beam reflects off the surface of the disk, and the reflected light is detected by a sensor
+- when writing data, the laser beam alters the surface of the disk to create the pits and lands
+- the optical drive contains:
   - a motor to spin the disk
   - a lens system to focus the laser beam accurately on the data tracks
 
@@ -116,18 +116,18 @@
 
 ### Characteristics
 
-- Speed
+- speed
   - significantly faster read/write speeds than HDD
   - NVMe SSDs can reach up to 5000 MB/s
-- Reliability
+- reliability
   - no moving parts = more durable + less prone to mechanical failure
-- Energy efficiency
+- energy efficiency
   - consumes less power than HDDs
     - leads to longer battery life in laptops and lower energy costs in data centres
-- Size and weight
+- size and weight
   - smaller + lighter than HDDs
   - ideal for portable devices (eg laptops and tablets)
-- Noise
+- noise
   - operate completely silently (since there are no moving parts)
   - can get hot though, so if you buy a separate enclosure with it, the enclosure may have some fans
 
@@ -135,38 +135,38 @@
 
 - OS drives
   - commonly used as the primary drive for OS due to fast boot times and quick access to system files
-- Application loading
+- application loading
   - applications installed on SSDs load faster
   - improves overall system performance
-- Gaming
+- gaming
   - reduces load times for games
-- Data storage
+- data storage
   - used for storing frequently accessed data due to high speed access
 
 ### Suitability
 
-- Performance-critical applications
+- performance-critical applications
   - suitable for applications that require fast data access and high performance
   - eg video editing, gaming, and software development
-- Portable devices
+- portable devices
   - due to their small size, light weight and good durability
-- Enterprise use
+- enterprise use
   - used in data centres and servers where high-speed data access and reliability are crucial
 
 ### Principles of Operation
 
 - NAND flash memory cells are used to store data
-- These cells are made of floating-gate transistors that can retain an electrical charge
-- When data is written, electrons are forced into the floating gates of the transistors, changing their charge state
-- This change is used to represent binary data
-- When data is read from an SSD, the charge state of the transistors is checked to determine the stored binary data
+- these cells are made of floating-gate transistors that can retain an electrical charge
+- when data is written, electrons are forced into the floating gates of the transistors, changing their charge state
+- this change is used to represent binary data
+- when data is read from an SSD, the charge state of the transistors is checked to determine the stored binary data
 - SSDs have a controller that manages:
   - data storage and retrieval
   - wear levelling
   - error correction
 
-| Storage Type | Capacity | Speed of Access | Suitability |
+| storage type | capacity | speed of access | suitability |
 | --- | --- | --- | --- |
-| HDD | Large storage capacities (hundreds of GB to several TB) | Slower read and write speeds (100-200 MB/s) | Cost-effective for large storage needs, slower performance, suitable for archival storage |
-| Optical Disks (CDs, DVDs, Blu-ray) | Lower storage capacities (up to 700 MB for CDs, up to 4.7 GB for DVDs, up to 25 GB for Blu-ray) | Slower read and write speeds, significantly slower access times than HDDs and SSDs | Distributing media, software, long-term archival storage where data integrity is important |
-| SSDs | Various capacities (128 GB to several TB) | Significantly faster read and write speeds (500-550 MB/s for SATA SSDs, up to 3500-5000 MB/s for NVMe SSDs) | High-performance tasks, operating system drives, application loading, gaming, portable devices |
+| HDD | large storage capacities (hundreds of GB to several TB) | slower read and write speeds (100-200 MB/s) | cost-effective for large storage needs, slower performance, suitable for archival storage |
+| optical disks (CDs, DVDs, Blu-ray) | lower storage capacities (up to 700 MB for CDs, up to 4.7 GB for DVDs, up to 25 GB for Blu-ray) | slower read and write speeds, significantly slower access times than HDDs and SSDs | distributing media, software, long-term archival storage where data integrity is important |
+| SSDs | various capacities (128 GB to several TB) | significantly faster read and write speeds (500-550 MB/s for SATA SSDs, up to 3500-5000 MB/s for NVMe SSDs) | high-performance tasks, operating system drives, application loading, gaming, portable devices |

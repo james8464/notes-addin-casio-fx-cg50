@@ -3,12 +3,9 @@
 # Bitmapped graphics
 
 - images made from pixels
-- pixel = smallest addressable picture element. Contains one colour
+- pixel = smallest addressable picture element. contains one colour
 - resolution = num of pixels used to make the bitmap, measured in dots per inch
 - colour depth = num of bits allocated to represent the colour of each pixel
-  - larger colour depth = larger file size + more unique colours can be represented
-  - if the colour depth is n, 2^n colours can be represented
-  - eg a colour depth of 1 (ie 1 bit to represent the colour per pixel) would support 2 colours (2^1)
 - very realistic images
 - high detail and subtle colour variation
 - easy to edit at pixel level
@@ -27,15 +24,15 @@
 
 ## Formula to Calculate File Size (of Bitmap Image)
 
-  - File size = Resolution * colour depth
-  - However, this value is a minimum. In reality, its higher due to metadata
+  - file size = resolution * colour depth
+  - however, this value is a minimum. in reality, its higher due to metadata
 
 
 
 # Vector graphics
 
-- represents images using geometric objects/shapes
-- properties (eg fill colour, fill style, dimensions, position) are stored in a list for each object
+- represents images using geometric objects
+- properties are stored in a list for each object
 - can be scaled without loss of quality
 - smaller file sizes as only data about the objects need to be stored rather than each pixel
 - easy to edit objects
@@ -48,7 +45,6 @@
 ## Uses
 
 - CAD packages
-- 2D/3D programs
-- Chart, logo, map, plan, clipart
+- 2d/3d programs
+- chart, logo, map, plan, clipart
 - SVG images
-

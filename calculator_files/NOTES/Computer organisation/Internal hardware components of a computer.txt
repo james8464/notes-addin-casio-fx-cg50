@@ -43,7 +43,7 @@
 
 - data and instructions are stored in same memory
 - shared bus system results in a bottlenecking issue
-- shared bus system -> worse performance than Harvard architecture
+- shared bus system -> worse performance than harvard architecture
 - used in everyday general-purpose computer systems (eg laptops + smartphones)
 - stored program concept = the concept of storing data and instruction in a memory with discrete, unique addresses
 
@@ -58,15 +58,13 @@
 
 ## PPQ: Reasons to Use Harvard Rather Than Von Neumann
 
-- Instructions and data can be accessed simultaneously
-- Reduce bottleneck of single data/address buses
-- Avoid/reduce bottleneck of single data/address bus(es), or avoid/reduce delays waiting for memory fetches
-- Avoids possibility of data being executed as code (which is one method that can be exploited by hackers)
-- Being able to use exclusively ROM for instruction memory prevents the program being modified/hacked
-  - Program cannot be accidentally overwritten by data
-- Instruction and data memory can have different word lengths
-- Different technologies can be used to implement instruction and data memory
-- Different quantities of instruction and data memory means that address lengths can differ between the two 
+- instructions and data can be accessed simultaneously
+- reduce bottleneck of single data/address buses
+- avoid/reduce bottleneck of single data/address bus(es), or avoid/reduce delays waiting for memory fetches
+- avoids possibility of data being executed as code (which is one method that can be exploited by hackers)
+- being able to use exclusively ROM for instruction memory prevents the program being modified/hacked
+  - program cannot be accidentally overwritten by data
+- instruction and data memory can have different word lengths
+- different technologies can be used to implement instruction and data memory
+- different quantities of instruction and data memory means that address lengths can differ between the two
 - memory address structures can differ
-
-

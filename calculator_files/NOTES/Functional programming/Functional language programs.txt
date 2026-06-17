@@ -1,9 +1,9 @@
 # Functional language programs
 
-- Since paper 2 is paper-based, any question asking you to write lines of code in Haskell will be done on paper, not a computer.
-- Useful website: https://learnyouahaskell.github.io/chapters.html
+- since paper 2 is paper-based, any question asking you to write lines of code in haskell will be done on paper, not a computer.
+- useful website: HTTPS://learnyouahaskell.github.io/chapters.html
 
-- The following symbols can be used, same as python...
+- the following symbols can be used, same as python...
 - +
 - -
 - *
@@ -21,9 +21,9 @@ ghci> 5 / 2
 2.5
 ghci>
 
-- Same as in python.
-- Used to make the precedence explicit or change it
-- Also makes the code more readable for humans
+- same as in python.
+- used to make the precedence explicit or change it
+- also makes the code more readable for humans
 
 ## Bracket Precedence Examples
 
@@ -38,40 +38,40 @@ ghci> 50 * (100 - 4999)
 
 - && meaning and
 - || meaning or
-- NOT which negates a True or a False
+- not which negates a true or a False
 
 ## Boolean Examples
 
-ghci> True && False
+ghci> true && False
 False
-ghci> True && True
-True
-ghci> False || True
-True
+ghci> true && true
+true
+ghci> False || true
+true
 ghci> not False
-True
-ghci> not (True && True)
+true
+ghci> not (true && true)
 False
-- The following equality comparisons can be used in addition:
+- the following equality comparisons can be used in addition:
 - '==' which means is equal to
 - '/=' which means is not equal to
 
 ## Equality Examples
 
 ghci> 5 == 5
-True
+true
 ghci> 1 == 0
 False
 ghci> 5 /= 5
 False
 ghci> 5 /= 4
-True
+true
 ghci> "hello" == "hello"
-True
+true
 
 ## 'succ'
 
-- Takes anything that has a defined successor
+- takes anything that has a defined successor
 - returns that successor
 
 ## Succ Example
@@ -81,7 +81,7 @@ ghci> succ 8
 
 ## 'min' and 'max'
 
-- Takes two inputs
+- takes two inputs
 - 'min' returns the one that is lesser
 - 'max' returns the one that is greater
 
@@ -95,7 +95,7 @@ ghci> max 100 101
 ## Example 1
 
     doubleMe x = x + x
-  - When that file is run, it can be used like following:
+  - when that file is run, it can be used like following:
 ghci> doubleMe 9
 18
 ghci> doubleMe 8.3
@@ -104,7 +104,7 @@ ghci> doubleMe 8.3
 ## Example 2
 
     doubleUs x y = x*2 + y*2
-  - When that file is run, it might look like the following:
+  - when that file is run, it might look like the following:
 ghci> doubleUs 4 9
 26
 ghci> doubleUs 2.3 34.2

@@ -3,23 +3,23 @@
 ## Firewalls
 
 - a network security device or software that acts as a barrier between a trusted internal network and an untrusted external network
-- sits between a device and the internet
+- sits between a device and the Internet
 - regulates the packets that pass through it
 - can be either software or hardware
 
 ### Types
 
-- Packet filtering
+- packet filtering
   - packets are accepted/blocked
   - looks at the source IP address or the protocol they are using
   - network admin can specify particular IP addresses/protocols to block/allow
   - automatic filtering software can be used
-- Stateful inspection
+- stateful inspection
   - contents of packet (ie payload) is examined before deciding whether to allow it
   - some firewalls keep a record of current connections in a network
     - this means it can filter out packets that aren't related to any activity on the network
   - can block/detect advanced threats, eg malware hidden in encrypted traffic
-- Proxy server
+- proxy server
   - = a server that sits between a public network and a private network
   - manages every packet that passes between the two networks
 
@@ -31,17 +31,17 @@
 
 ## Symmetric Encryption
 
-- relies on ONE key which can encrypt and decrypt the plaintext/ciphertext
+- relies on one key which can encrypt and decrypt the plaintext/ciphertext
 - the sender and receiver share the same key
 
 ### Process
 
-- Before sending any information, the sender and receiver participate in a key exchange
+- before sending any information, the sender and receiver participate in a key exchange
   - ensures they both have a copied of the shared key
-  - BUT vulnerable to interception ...
-- Sender encrypts the plaintext into cipher text
-- Cipher text is sent to the receiver
-- Receiver decrypts the cipher text using the same key (step 1)
+  - but vulnerable to interception ...
+- sender encrypts the plaintext into cipher text
+- cipher text is sent to the receiver
+- receiver decrypts the cipher text using the same key (step 1)
 
 
 
@@ -52,30 +52,30 @@
 
 - overcomes the weakness of symmetric encryption
 - 4 keys are used:
-  - Senders public key
-  - Senders private key
-  - Receivers public key
-  - Receivers private key
+  - senders public key
+  - senders private key
+  - receivers public key
+  - receivers private key
 - the 2 keys each device has are mathematically linked
-- as the names suggest, the private keys are kept private (so only that device knows it), and the public keys are public (i.e., anyone can see it on the Internet)
+- as the names suggest, the private keys are kept private (so only that device knows it), and the public keys are public (ie anyone can see it on the Internet)
   - since the pairs are linked, it means a message encrypted with a public key can only be decrypted by the corresponding private key
 
 ### Process
 
 #### At Sender Device
 
-- Sender applies hashing algorithm to plain text to make message digest
-- Message digest is encrypted with senders private key to make digital signature
-- This is appended to the plain text
-- This is encrypted with the receivers public key
+- sender applies hashing algorithm to plain text to make message digest
+- message digest is encrypted with senders private key to make digital signature
+- this is appended to the plain text
+- this is encrypted with the receivers public key
 
 #### At Receiver Device
 
-- Receivers private key used to decrypt ciphertext (leaves plaintext and digital signature)
-- The plaintext is used to create a new message digest (using same hashing algorithm)
-- Senders public key is used to decrypt the digital signature to get the received message digest
-- The two digests are compared
-  - If they match, then it confirms that the sender sent the message and there were no errors in transmission
+- receivers private key used to decrypt ciphertext (leaves plaintext and digital signature)
+- the plaintext is used to create a new message digest (using same hashing algorithm)
+- senders public key is used to decrypt the digital signature to get the received message digest
+- the two digests are compared
+  - if they match, then it confirms that the sender sent the message and there were no errors in transmission
 
 
 
@@ -116,7 +116,7 @@
 - a piece of code that replicates itself, spreading to other files
 - can be used to damage the system/hardware
 - requires a host file to reside (typically executable files)
-- can spread between computers, private networks, the internet, or even through physical media (eg dark drives)
+- can spread between computers, private networks, the Internet, or even through physical media (eg dark drives)
 
 ## Spyware
 
@@ -139,27 +139,27 @@
 
 ### Solutions to the Malware's Listed Above
 
-- Use anti-malware
+- use anti-malware
   - provides real-time protection
   - when a file is opened/downloaded, it checks it against its known database of malwares
   - malware files are quarantined to prevent it from spreading, then deleted
   - the software dynamically updates the database (for all users) by making a signature of the malware and appending it to the database on the companies servers
   - the software can also check all files on the device for malware
-- Utilise encryption
+- utilise encryption
   - secures data so it cant be understood by eavesdroppers/hackers
-- Use firewalls
+- use firewalls
   - data coming in/out of computer goes through firewall (set of rules)
   - if it does not match the rules, it is dropped
   - can look into packet contents and block certain ports
-- Use access levels
+- use access levels
   - determines the permissions that each user/application has in regards to data on the device
-  - eg you may block terminal from modifying content in your 'Home' folder
-- Review privacy settings regularly
+  - eg you may block terminal from modifying content in your 'home' folder
+- review privacy settings regularly
   - helps prevent the effectiveness of hacking attempts
-  - eg turning off microphone/camera for certain apps, changing passwords regularly, 2FA, etc
-- Enable automatic updates of applications/OS
+  - eg turning off microphone/camera for certain apps, changing passwords regularly, 2fa, etc
+- enable automatic updates of applications/OS
   - ensures any code vulnerably/improvements fixed by the developer are applied to the app
-- Review code quality
+- review code quality
   - ensure code does not allow buffer overflow
   - ensure code prevents programs writing to memory locations not allocated to them
   - test software for security issues / vulnerabilities

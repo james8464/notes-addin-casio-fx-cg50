@@ -2,13 +2,13 @@
 
 ## Analogue data
 
-- Continuous
-- Can take any value in a given range
-- Between any two analogue values, there is another value
-- Eg sound
+- continuous
+- can take any value in a given range
+- between any two analogue values, there is another value
+- eg sound
 
 ## Digital data
 
-- Discrete
-- It can only take particular values
-- Can only change value at specified intervals
+- discrete
+- it can only take particular values
+- can only change value at specified intervals

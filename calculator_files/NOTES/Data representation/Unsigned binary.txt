@@ -6,14 +6,14 @@
 
 ## Signed Binary
 
-- Represents positive and negative numbers
+- represents positive and negative numbers
 
 ## Range of Unsigned Binary Values
 
 - depends on number of bits available
-- For n bits, there are 2^n possible permutations of the bits
+- for n bits, there are 2^n possible permutations of the bits
   - gives a range of decimal numbers from 0 to 2^n -1
 
 ### Example
 
-  - With 8 bits, the decimal numbers 0 to 255 (2^8 - 1) can be represented
+  - with 8 bits, the decimal numbers 0 to 255 (2^8 - 1) can be represented

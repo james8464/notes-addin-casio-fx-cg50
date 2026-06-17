@@ -19,8 +19,8 @@
 
 ### Atomic Data
 
-- Atomic data refers to a value that the database treats as a single unit rather than something that should be split into multiple values for the intended use
-- examples that violate 1NF:
+- atomic data refers to a value that the database treats as a single unit rather than something that should be split into multiple values for the intended use
+- examples that violate 1nf:
     - multiple phone numbers in one field
     - multiple products in one field
 
@@ -31,19 +31,19 @@
 
 ### Requirements
 
-- everything in 1NF
-- every non-key attribute must be dependent on the WHOLE of the primary key
+- everything in 1nf
+- every non-key attribute must be dependent on the whole of the primary key
 - removes partial dependencies
 
 ### Important Note
 
 - mainly applies to tables with composite primary keys
-- if a table has a single-attribute primary key and is already in 1NF, it is automatically in 2NF
+- if a table has a single-attribute primary key and is already in 1nf, it is automatically in 2nf
 
 ### Partial Dependency
 
 - occurs when a non-key attribute depends on only part of a composite primary key
-- these dependencies must be removed to achieve 2NF
+- these dependencies must be removed to achieve 2nf
 
 
 
@@ -52,7 +52,7 @@
 
 ### Requirements
 
-- everything in 2NF
+- everything in 2nf
 - non-key attributes are functionally independent
 - removes transitive dependencies
 
@@ -64,7 +64,7 @@
 ### Transitive Dependency
 
 - occurs when a non-key attribute depends on another non-key attribute
-- these dependencies must be removed to achieve 3NF
+- these dependencies must be removed to achieve 3nf
 
 
 
@@ -74,7 +74,7 @@
 
 ## When Is A Database Fully Normalised?
 
-- when all relations are in 3NF
+- when all relations are in 3nf
 - data is atomic
 - no partial dependencies exist
 - no transitive dependencies exist
@@ -93,7 +93,7 @@
 
 - minimises data duplication
 - reduces unnecessary repeated data
-- do NOT say eliminates duplication
+- do not say eliminates duplication
 
 ### Consistency
 

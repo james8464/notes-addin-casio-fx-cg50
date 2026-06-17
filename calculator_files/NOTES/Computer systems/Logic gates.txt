@@ -6,8 +6,8 @@
 
 - two inputs
 - two outputs
-- two logic gates (AND & XOR)
-- can be used to add two Boolean values
+- two logic gates (and & XOR)
+- can be used to add two boolean values
 
 
 
@@ -18,13 +18,13 @@
 
 - three inputs
 - two outputs
-- Can input 2 Boolean values and a carry bit from a previous, less significant operation
+- can input 2 boolean values and a carry bit from a previous, less significant operation
 
 
 
 ## D-type Flip-Flop
 
-- Can be used as a memory unit for storing one bit
+- can be used as a memory unit for storing one bit
 - has 2 inputs: data and a clock signal/pulse
 - produces 1 output: the value of the stored bit
 

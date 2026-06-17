@@ -22,55 +22,55 @@
 - link layer
   - controls physical connections between pieces of hardware in a network
   - adds MAC addresses to packets received from network layer
-  
-  
+
+
 
 ## The Process
 
-- The file is passed down each layer in turn
-- Application layer
-  - Application software (eg file server) prepares the file
-  - Selects protocol (eg FTP, SMB etc)
-  - Data is passed to transport layer
-- Transport layer
-  - Establishes an end-to-end connection
-  - Splits the file into packets
-  - Adds:
-    - Sequence numbers
-    - Port numbers
-  - Passes packets to the network layer
-- Network layer
-  - Adds:
-    - Source IP address
-    - Destination IP address
-  - Determines routing across networks
-  - Passes packets to the link layer
-- Link layer
-  - Adds:
-    - Source MAC address
-    - Destination MAC address
-  - Sends data onto physical medium (eg cable)
-- Receiving device - link layer
-  - Receives data from medium
-  - Removes MAC address
-  - Passes packet up
-- Network layer
-  - Removes IP addresses
-  - Passes packet up
-- Transport layer
-  - Uses port number to identify application
-  - Uses sequence numbers to reorder packets
-  - Reassembles data
-- Application layer
-  - Receives complete data
-  - Reconstructs the file
-  - Presents it to the user
+- the file is passed down each layer in turn
+- application layer
+  - application software (eg file server) prepares the file
+  - selects protocol (eg FTP, SMB etc)
+  - data is passed to transport layer
+- transport layer
+  - establishes an end-to-end connection
+  - splits the file into packets
+  - adds:
+    - sequence numbers
+    - port numbers
+  - passes packets to the network layer
+- network layer
+  - adds:
+    - source IP address
+    - destination IP address
+  - determines routing across networks
+  - passes packets to the link layer
+- link layer
+  - adds:
+    - source MAC address
+    - destination MAC address
+  - sends data onto physical medium (eg cable)
+- receiving device - link layer
+  - receives data from medium
+  - removes MAC address
+  - passes packet up
+- network layer
+  - removes IP addresses
+  - passes packet up
+- transport layer
+  - uses port number to identify application
+  - uses sequence numbers to reorder packets
+  - reassembles data
+- application layer
+  - receives complete data
+  - reconstructs the file
+  - presents it to the user
 
 
 
 ## Socket
 
-- Definition: a combination of an IP address and a port number
+- definition: a combination of an IP address and a port number
 
 ### Written as
 
@@ -80,22 +80,22 @@
 
 ### Socket purpose
 
-- Specifies which host (IP address) and which application/service on that host (port number) the data should be sent to
+- specifies which host (IP address) and which application/service on that host (port number) the data should be sent to
 
 ## How Sockets Are Used in Communication
 
 ### Sending Data
 
-- Application chooses a port number
-- Device has an IP address
-- These combine to form a socket
-- Socket is added to outgoing packets
+- application chooses a port number
+- device has an IP address
+- these combine to form a socket
+- socket is added to outgoing packets
 
 ### Receiving Data
 
-- Packet arrives at device (using IP address)
-- Transport layer reads port number
-- Socket identifies which application should receive the data
+- packet arrives at device (using IP address)
+- transport layer reads port number
+- socket identifies which application should receive the data
 
 
 
@@ -103,18 +103,18 @@
 
 ## MAC address
 
-- Definition: media access control
+- definition: media access control
 
 ### MAC address purpose
 
-- Identifies the hardware a packet should be sent to
-- In routing, its changed with every hop through a network as it needs to be sent to a different router after each hop
-- Unique to every hardware device
-- The physical MAC address is on the NIC
+- identifies the hardware a packet should be sent to
+- in routing, its changed with every hop through a network as it needs to be sent to a different router after each hop
+- unique to every hardware device
+- the physical MAC address is on the NIC
 
 ## Well-known ports
 
-- Definition: port numbers with a specific purpose, assigned by IANA
+- definition: port numbers with a specific purpose, assigned by IANA
 - FTP
   - file transfer protocol
   - port 20 and 21
@@ -134,13 +134,11 @@
   - hypertext transfer protocol secure
   - port 443
   - same as HTTP, but with encryption
-- POP3
+- pop3
   - post office protocol 3
   - ports 110 and 995
   - used for retrieving emails from an email server
 - SMTP
   - simple mail transfer protocol
   - ports 25, 587, 465
-  - used to send/transmit/receive emails 
-
-
+  - used to send/transmit/receive emails

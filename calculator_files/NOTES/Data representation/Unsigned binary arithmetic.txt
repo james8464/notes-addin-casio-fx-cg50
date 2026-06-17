@@ -7,7 +7,7 @@
 - 0 + 1 = 1
 - 1 + 1 = 0 (carry 1)
 - 1 + 1 + 1 = 1 (carry 1)
-  - Exam tip: after carrying out binary addition, it's a good idea to check your answer by converting to decimal if you have time
+  - exam tip: after carrying out binary addition, it's a good idea to check your answer by converting to decimal if you have time
 
 ## Multiplication
 

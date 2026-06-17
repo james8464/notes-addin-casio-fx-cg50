@@ -1,14 +1,14 @@
-# Range and precision 
+# Range and precision
 
 ## Fixed Point representation
 
-- nums are represented exactly 
+- nums are represented exactly
 - limited range of numbers that can be represented
-- faster processing times 
+- faster processing times
 
 ## Floating Point representation
 
-- allows a far greater range of numbers for the same number of bits 
+- allows a far greater range of numbers for the same number of bits
 - rounds off large numbers
-- can represent very large + very small numbers 
+- can represent very large + very small numbers
 - slower processing times

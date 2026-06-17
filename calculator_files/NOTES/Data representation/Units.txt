@@ -2,28 +2,28 @@
 
 ## Names and Symbols for Powers of 2
 
-| Name | Symbol | Power |
+| name | symbol | power |
 | --- | --- | --- |
-| Kibi | Ki | 2^10 |
-| Mebi | Mi | 2^20 |
-| Gibi | Gi | 2^30 |
-| Tebi | Ti | 2^40 |
+| kibi | ki | 2^10 |
+| mebi | mi | 2^20 |
+| gibi | gi | 2^30 |
+| tebi | ti | 2^40 |
 
 ## Names and Symbols for Powers of 10
 
-| Name | Symbol | Power |
+| name | symbol | power |
 | --- | --- | --- |
-| Kilo | K | 10^3 |
-| Mega | M | 10^6 |
-| Giga | G | 10^9 |
-| Tera | T | 10^12 |
+| kilo | k | 10^3 |
+| mega | m | 10^6 |
+| giga | g | 10^9 |
+| tera | t | 10^12 |
 
 ## Useful Acronym
 
-  - Brilliant = byte
-  - Katie = kibi/kilo
-  - Managed = mebi/mega
-  - Gardening = gibi/giga
-  - Tasks = tebi/tera
-  - Perfectly, = pebi/peba // BEYOND A-LEVEL SYLLABUS
-  - Exciting! = exi/exa // BEYOND A-LEVEL SYLLABUS
+  - brilliant = byte
+  - katie = kibi/kilo
+  - managed = mebi/mega
+  - gardening = gibi/giga
+  - tasks = tebi/tera
+  - perfectly, = pebi/peba // beyond A-level syllabus
+  - exciting! = exi/exa // beyond A-level syllabus

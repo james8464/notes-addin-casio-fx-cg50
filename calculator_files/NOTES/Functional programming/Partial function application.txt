@@ -1,19 +1,19 @@
 # Partial function application
 
-- Definition: the process of fixing a number of arguments to a function and then producing another function which only takes the remaining arguments
+- definition: the process of fixing a number of arguments to a function and then producing another function which only takes the remaining arguments
 
-- Makes a general function more specific, allowing it to be used with greater ease in the program.
+- makes a general function more specific, allowing it to be used with greater ease in the program.
 
-- In the add example function above, it takes two integers as arguments, and returns an integer as a result.
+- in the add example function above, it takes two integers as arguments, and returns an integer as a result.
 
-- As a partial function application, this is viewed as:
+- as a partial function application, this is viewed as:
 
     add : integer -> (integer -> integer)
 
-- This means add 4 returns a function which when applied to another integer, adds 4 to that integer.
+- this means add 4 returns a function which when applied to another integer, adds 4 to that integer.
 
-- This is why add function type is:
+- this is why add function type is:
 
     integer -> integer -> integer
 
-- It is taking one argument after another, and returning a result of data type integer.
+- it is taking one argument after another, and returning a result of data type integer.

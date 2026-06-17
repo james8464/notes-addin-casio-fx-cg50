@@ -3,39 +3,39 @@
 ## What Are Functions
 
 - a rule / set of instructions
-- applied to each element in set A (i.e., the input. Also known as the argument)
+- applied to each element in set A (ie the input. also known as the argument)
 - set B is the result value (output)
-- Domain = the inputs into a function
+- domain = the inputs into a function
 
 - domain = set that a function takes input values from
 
-- Co-domain = the outputs from a function <-- known as the range in maths
+- co-domain = the outputs from a function <-- known as the range in maths
 
-- Co-domain = set that a function output values are from
+- co-domain = set that a function output values are from
 
-- Function = rule that for each element in set A of inputs, assigns an output chosen from set B; not all elements of set B will be used
+- function = rule that for each element in set A of inputs, assigns an output chosen from set B; not all elements of set B will be used
 
-- A function is a mapping from a set of inputs, called the domain, to a set of possible outputs, known as the co-domain.
+- a function is a mapping from a set of inputs, called the domain, to a set of possible outputs, known as the co-domain.
 
-- The only thing they do is calculate something and return a result; they have no side effects ie they cannot change the data / memory.
+- the only thing they do is calculate something and return a result; they have no side effects ie they cannot change the data / memory.
 
-- So every time the same function is called with the same arguments / values, it will always return the same result.
+- so every time the same function is called with the same arguments / values, it will always return the same result.
 
 ## Function Types
 
 - denotes the kind of inputs that a function can take
 - also denotes the kind of outputs a function can give
 
-- If f: A -> B, we say that the function type is A -> B where A is the argument type and B is the result type.
+- if f: A -> B, we say that the function type is A -> B where a is the argument type and b is the result type.
 
-- In FP the domain is known as the argument type and co-domain as result type.
+- in FP the domain is known as the argument type and co-domain as result type.
 
-- Types are integer / float / bool / char values.
+- types are integer / float / bool / char values.
 
-- Typeclasses are sets of types, so Integer, Float, Bool, Char.
+- typeclasses are sets of types, so Integer, Float, Bool, Char.
 
 ### Type Declaration
-- Can be implicit - set by the programming language in the background
+- can be implicit - set by the programming language in the background
 - ..or explicit - set by the programmer
 
 ### Example
@@ -48,8 +48,7 @@
 
 ### Explicit Type Declaration Example
 
-- Eg: explicit type declaration:
+- eg: explicit type declaration:
 
     isEqual :: Int -> Int -> Bool
     isEqual x y = x == y
-

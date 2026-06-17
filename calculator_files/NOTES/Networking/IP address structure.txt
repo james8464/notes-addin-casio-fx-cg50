@@ -3,11 +3,11 @@
 ## IP Address
 
 - a unique numerical identifier for devices on a network
-- can be IPv4 or IPv6
+- can be ipv4 or ipv6
 - not easy for humans to remember, which is why domain names are used
   - domain names map to IP addresses
-  
-  
+
+
 ## Network Identifier Part
 
 - identifies the network
@@ -20,5 +20,3 @@
 - if more bits are allocated to the host identifier part, then more different devices can connect to each subnet simultaneously
 - 2 host numbers are reserved, one for the broadcast IP, and one for the router/network
 - so, when calculating the max num of hosts a subnet can hold, use the formula: 2^n -2
-
-

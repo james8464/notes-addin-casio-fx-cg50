@@ -1,45 +1,95 @@
 # Absolute and relative errors
 
-## Absolute Errors
+## Absolute Error
 
-- The actual amount by which a value is inaccurate
-- Calculated by finding the difference between the given value and the actual value
-
-
-## Relative Errors
-
-- A measure of uncertainty in a given value compared to the actual value
-- Relative to the size of the given value
-
-- Larger actual value = smaller relative error
+- actual amount by which a value is inaccurate
+- difference between the actual value and the stored/calculated value
+- absolute error = |actual value − stored value|
+- measured in the same units as the original value
+- does not take into account the size of the value being measured
 
 
-## Example
 
-- EXAMPLE
-- just think about it...
 
-## Fixed Point
+## Relative Error
 
-- FIXED POINT
-- Numbers are represented exactly
-- Limited range of numbers that can be represented
-- Faster processing times compared to floating point numbers
+- measure of uncertainty in a value compared to the actual value
+- shows how significant the error is relative to the size of the value
+- relative error = absolute error / actual value
+- percentage relative error = (absolute error / actual value) × 100
+- usually expressed as a percentage
+- takes into account the size of the value
+- larger actual value = smaller relative error for the same absolute error
+- smaller actual value = larger relative error for the same absolute error
 
-| Advantages | Disadvantages |
-| --- | --- |
-| Numbers are represented exactly | Limited range of numbers that can be represented |
-| Faster processing times compared to floating point numbers |  |
 
-## Floating Point
 
-- FLOATING POINT
-- Allows a far greater range of numbers for the same number of bits
-- Rounds off large numbers
-- Can represent very large and very small numbers
-- Slower processing times
 
-| Advantages | Disadvantages |
-| --- | --- |
-| Allows a far greater range of numbers for the same number of bits | Rounds off large numbers |
-| Can represent very large and very small numbers | Slower processing times |
+
+## Fixed Point Representation
+
+### Characteristics
+
+- binary point is fixed in one position
+- numbers are represented exactly if they can be stored within the available bits
+- often used when exact precision is important
+- simpler arithmetic than floating point
+- faster calculations than floating point
+
+### Advantages
+
+- numbers can be represented exactly
+- faster processing than floating point
+- simpler hardware implementation
+- no loss of precision due to exponent manipulation
+
+### Disadvantages
+
+- limited range of numbers that can be represented
+- may suffer from overflow or underflow more easily
+- less suitable for very large or very small numbers
+
+
+
+
+## Floating Point Representation
+
+### Characteristics
+
+- uses a mantissa and exponent
+- allows representation of very large and very small numbers
+- provides a much greater range than fixed point for the same number of bits
+- values may need to be rounded to fit into the available bits
+- calculations are generally slower than fixed point
+
+### Advantages
+
+- much larger range of values can be represented
+- suitable for scientific calculations
+- can represent very small and very large values efficiently
+
+### Disadvantages
+
+- numbers may not be represented exactly
+- rounding errors can occur
+- slower processing than fixed point
+- precision may be lost when representing very large numbers
+
+
+
+
+## Fixed Point vs Floating Point
+
+### Fixed Point
+
+- higher precision
+- smaller range
+- faster calculations
+- exact representation possible
+
+### Floating Point
+
+- lower precision
+- larger range
+- slower calculations
+- rounding may occur

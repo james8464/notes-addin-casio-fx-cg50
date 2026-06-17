@@ -6,26 +6,26 @@
 
 ## A First class Object Is an Object/value Which May
 
-- First class objects (or values) are objects that may:
+- first class objects (or values) are objects that may:
 
-- Appear in expressions
-- Be assigned to a variable
-- Be assigned as arguments
-- Be returned in function calls
+- appear in expressions
+- be assigned to a variable
+- be assigned as arguments
+- be returned in function calls
 
-- Note: the 'object' term here is NOT related to OOP.
+- note: the 'object' term here is not related to OOP.
 
 ## Examples
 
-- Integers
-- Floating-point values
-- Characters
-- Strings (list of characters)
-- Booleans
-- Functions
+- integers
+- floating-point values
+- characters
+- strings (list of characters)
+- booleans
+- functions
 
-- Examples: integers, floating point values, characters, strings, functions
+- examples: integers, floating point values, characters, strings, functions
 
 ## Note
 
-      - If a question asks for examples of first class object, you cant just say 'data types'... be specific, avoid generalising
+      - if a question asks for examples of first class object, you cant just say 'data types'... be specific, avoid generalising

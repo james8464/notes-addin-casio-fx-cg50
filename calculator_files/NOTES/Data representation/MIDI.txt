@@ -9,19 +9,19 @@
 ## How Does MIDI Work
 
 - music is represented as a sequence of MIDI (event) messages
-- Examples of data that might be included in a message:
-  - Channel
-  - Note on/off
-  - Pitch/frequency/note number
-  - Volume
-  - Duration
-  - Velocity
-  - Key pressure
-  - Timbre
-  - Instrument
-  - Pedal effects
-  - Pitch bend
-  - Note envelope
+- examples of data that might be included in a message:
+  - channel
+  - note on/off
+  - pitch/frequency/note number
+  - volume
+  - duration
+  - velocity
+  - key pressure
+  - timbre
+  - instrument
+  - pedal effects
+  - pitch bend
+  - note envelope
 - event messages essentially represent an event in a piece of music (think of it as a series of instructions which could be used to recreate a piece of music)
 
 
@@ -39,8 +39,7 @@
 ## Disadvantages of Using MIDI
 
 - not suitable for recording real sound/audio
-- hard to accurately replicate expressive, natural sounds (e.g., human voice or live instruments)
+- hard to accurately replicate expressive, natural sounds (eg human voice or live instruments)
 - requires compatible software/hardware to play properly
 - can sound artificial/computer-generated
 - limited to musical note data (can't store full audio effects like reverb, distortion or nuanced timbre in detail)
-

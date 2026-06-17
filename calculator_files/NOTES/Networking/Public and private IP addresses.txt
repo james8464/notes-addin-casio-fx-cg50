@@ -4,18 +4,17 @@
 
 - globally unique
 - allocated by a central issuing authority
-- can be routed across the internet
-- can be used to uniquely identify a device on the internet
-- required for direct communication over the internet
+- can be routed across the Internet
+- can be used to uniquely identify a device on the Internet
+- required for direct communication over the Internet
 - assigned by an ISP or other authorised organisation
 
 ## Private/non-routable IP addresses
 
 - used within local/private networks
 - many devices can have the same private IP address if they are on different networks
-- cannot be routed across the internet
-- cannot be used to uniquely identify a device on the internet
+- cannot be routed across the Internet
+- cannot be used to uniquely identify a device on the Internet
 - typically assigned by a router or DHCP server
-- conserve the limited number of public IPv4 addresses
-- require NAT to communicate with devices on the internet
-
+- conserve the limited number of public ipv4 addresses
+- require NAT to communicate with devices on the Internet

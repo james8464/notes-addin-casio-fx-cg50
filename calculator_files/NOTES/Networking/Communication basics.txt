@@ -18,7 +18,7 @@
 
 ## Equation for bit rate
 
-- Bit rate = baud rate multiplied by the number of bits per signal
+- bit rate = baud rate multiplied by the number of bits per signal
 
 
 

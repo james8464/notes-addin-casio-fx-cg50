@@ -1,6 +1,5 @@
 # The stored program concept
 
-- Instructions/programs are stored in main memory/RAM
-- Instructions/programs are fetched and executed sequentially by the processor
+- instructions/programs are stored in main memory/RAM
+- instructions/programs are fetched and executed sequentially by the processor
   - processor performs arithmetic and logical operations
-

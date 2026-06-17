@@ -2,33 +2,33 @@
 
 ## Fixed Point Binary
 
-- A specified num of bits are placed before a binary point
-- The remaining bits fall behind the binary point
-- Before the binary point, placeholders still work as normal (ie 2^0, 2^1, 2^2 .. Etc)
-- After the binary point, placeholders work like following:
+- a specified num of bits are placed before a binary point
+- the remaining bits fall behind the binary point
+- before the binary point, placeholders still work as normal (ie 2^0, 2^1, 2^2 .. etc)
+- after the binary point, placeholders work like following:
   - 2^-1, 2^-2, 2^-3 ... etc
 
 ### Example
 
 ## Floating Point Binary
 
-- Contains a mantissa and an exponent
-- Both mantissa and exponent will be represented using two's complement signed binary (see 4.5.4.3)
+- contains a mantissa and an exponent
+- both mantissa and exponent will be represented using two's complement signed binary (see 4.5.4.3)
 
 ### Converting Floating Point Binary -> Decimal
 
-- Convert exponent to decimal
-- Imagine there was a binary point between the first and second digits of the mantissa
-- Move that imaginary binary point the number of positions specified by the exponent
-- Treat this mantissa as a fixed point binary number and convert it to decimal
+- convert exponent to decimal
+- imagine there was a binary point between the first and second digits of the mantissa
+- move that imaginary binary point the number of positions specified by the exponent
+- treat this mantissa as a fixed point binary number and convert it to decimal
 
 ### Example
 
 ### Converting Decimal to Floating Point Binary
 
-- Convert decimal number to fixed point binary
-- Move the binary point until the first two digits of the binary value are different
-  - If the point moves left, the mantissa would be positive
-  - If the point moves right, the mantissa would be negative
+- convert decimal number to fixed point binary
+- move the binary point until the first two digits of the binary value are different
+  - if the point moves left, the mantissa would be positive
+  - if the point moves right, the mantissa would be negative
 
 ### Example

@@ -19,7 +19,7 @@
   - hypertext transfer protocol secure
   - port 443
   - same as HTTP, but with encryption
-- POP3
+- pop3
   - post office protocol 3
   - ports 110 and 995
   - used for retrieving emails from an email server
@@ -28,15 +28,15 @@
   - ports 25, 587, 465
   - used to send/transmit/receive emails
 - IMAP
-  - internet message access protocol
+  - Internet message access protocol
   - port 143
   - unencrypted connections
-  
+
 
 ## FTP client software and FTP servers
 
-- FTP = method used for transferring files/data across a network, often the internet
-- an Application Layer Protocol
+- FTP = method used for transferring files/data across a network, often the Internet
+- an application layer protocol
 - files can be dragged from the folder structure of the remote site or server
 - FTP sites may also be used by software companies offering large updates, or by press photographers to upload their latest photographs to a remote newspaper headquarters.
 - most FTP sites require a username and password to authenticate the user, but some sites could be configured to allow anonymous use without the need to login.
@@ -66,5 +66,5 @@
 ### Role of a Web Browser
 
 - a web browser sends requests to a web server asking for web pages
-- it then receives the HTML text and all other resources (images, CSS, scripts) needed for the page
+- it then receives the HTML text and all other resources (images, css, scripts) needed for the page
 - browser downloads these files, interprets them, and renders the finished web page to the user

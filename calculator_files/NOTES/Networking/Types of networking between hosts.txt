@@ -36,8 +36,8 @@
 
 ### Where Used?
 
-- Schools, businesses, organisations
-- Where:
+- schools, businesses, organisations
+- where:
   - many users need managing
   - confidential data is stored
   - different users need different access rights
@@ -60,7 +60,7 @@
 - each computer has equal status
 - any device can share/access resources with any other
 - files can be distributed across computers
-- No dependence on a server
+- no dependence on a server
 
 ### Advantages
 
@@ -73,16 +73,16 @@
 
 - management of security/administration is more difficult
 - no central control of access rights
-- data is only available when the device storing it is switched on 
-- if a device fails or is switched off, the resources stored on the device become unavailable to other devices connected to the P2P network
+- data is only available when the device storing it is switched on
+- if a device fails or is switched off, the resources stored on the device become unavailable to other devices connected to the p2p network
 - no central backups
 - not suitable for large networks
 
 ### Where Used?
 
-- Small/home networks
-- File sharing (e.g., media sharing)
-- Where:
-  - Low cost is important
-  - Simple setup is needed
-  - Few users
+- small/home networks
+- file sharing (eg media sharing)
+- where:
+  - low cost is important
+  - simple setup is needed
+  - few users

@@ -1,17 +1,17 @@
 # The processor instruction set
 
-- Instruction set = all instructions that can be carried out by a processor
+- instruction set = all instructions that can be carried out by a processor
 - each type of processor has its own instruction set
 - instructions for one processor may not be compatible with other processors
 
 ## Typically Includes
 
-- data transfer such as LOAD and STORE
-- arithmetic operations such as ADD and SUBTRACT
-- comparison operators such as EQUAL, GREATER THAN, LESS THAN
-- logical operations, eg AND, OR, NOT, XOR
-- Branching conditional and unconditional
-- Logical shift bits left/right
+- data transfer such as load and store
+- arithmetic operations such as add and subtract
+- comparison operators such as equal, greater than, less than
+- logical operations, eg and, or, not, XOR
+- branching conditional and unconditional
+- logical shift bits left/right
 
-- Opcode = the type of operation to be carried out 
-- Operand = the pieces of data on which the operation is performed
+- opcode = the type of operation to be carried out
+- operand = the pieces of data on which the operation is performed

@@ -2,7 +2,7 @@
 
 ## Assembler
 
-- translates ONLY assembly language into machine code
+- translates only assembly language into machine code
 - translation is quick + straightforward due to 1-to-1 relationship between assembly and machine code
 - assemblers are platform specific
   - different assembler must exist for different types of processor instruction set
@@ -16,11 +16,11 @@
   - can run without any other software dependencies
   - this can run without needing any other software to be present
   - can only run on one type of processor/VM
-- provides error report of ALL errors 
+- provides error report of all errors
 
 ## Interpreter
 
-- translates high-level source code into machine code 
+- translates high-level source code into machine code
 - executes each line immediately after translating it
 - translates line-by-line
 - checks for errors as they go (ie line-by-line)

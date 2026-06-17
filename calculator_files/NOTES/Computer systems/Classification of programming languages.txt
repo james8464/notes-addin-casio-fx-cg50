@@ -10,7 +10,7 @@
 - can directly manipulate hardware
 - processor specific due to each processor having its own instruction set
 - each processor has its own instruction set (set of machine code instructions it understands)
-- NOT portable (machine code instructions won't work on processors with different instruction sets)
+- not portable (machine code instructions won't work on processors with different instruction sets)
 - steeper learning curve for the programmer
 - more prone to errors due to higher complexity
 
@@ -164,5 +164,5 @@
     - sequence
     - selection
     - iteration
-- describes HOW a task should be carried out
+- describes how a task should be carried out
 - translated into machine code before execution

@@ -147,7 +147,3 @@
 - server failure can affect many users simultaneously
 - poor network performance can reduce responsiveness
 - limited ability to work offline
-
-
-
-

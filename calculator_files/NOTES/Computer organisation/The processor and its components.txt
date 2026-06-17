@@ -6,7 +6,7 @@
 
 - arithmetic logic unit
 - performs arithmetic and logical operations on data
-- does NOT do the execution (execution is performed by the processor)
+- does not do the execution (execution is performed by the processor)
 
 
 
@@ -62,7 +62,7 @@ MAR:
 
 MBR / MDR:
 
-- memory buffer register 
+- memory buffer register
 - stores the contents of the memory address in the MAR
 
 CIR:
