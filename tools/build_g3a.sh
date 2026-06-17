@@ -6,20 +6,57 @@ IMAGE_TAG="${CASIO_KHICAS_IMAGE:-casio-khicas-source:latest}"
 SRC_DIR="${ROOT_DIR}/khicas/upstream/giac90_1addin"
 OUT_DIR="${ROOT_DIR}/build"
 TRANSFER_DIR="${ROOT_DIR}/calculator_files"
-TARGET="${CASIO_KHICAS_TARGET:-CAS.g3a}"
-RUNMAT_TARGET="${CASIO_RUNMAT_TARGET:-RUNMAT.g3a}"
-P3_TARGET="${CASIO_P3_TARGET:-CASP3.g3a}"
-CS_TARGET="${CASIO_CS_TARGET:-CSCALC.g3a}"
-NOTES_TARGET="${CASIO_NOTES_TARGET:-NOTES.g3a}"
-PACK_TARGET="${CASIO_HELP_PACK_TARGET:-${TARGET%.*}.PAK}"
 MAKE_JOBS="${CASIO_MAKE_JOBS:-1}"
 IMAGE_VERSION="runmat-v2"
 DOCKER_BUILD_SCRIPT="${OUT_DIR}/docker_build_g3a.sh"
 
+usage() {
+  cat <<'EOF'
+Usage: ./compile [all|cas|casp3|notes|runmat|khicas]...
+
+Targets:
+  all     build CAS, CASP3, NOTES, RUNMAT, CAS.PAK
+  cas     build CAS.g3a and CAS.PAK
+  casp3   build CASP3.g3a
+  notes   build NOTES.g3a only
+  runmat  build RUNMAT.g3a only
+  khicas  build original Khicasen target
+EOF
+}
+
+want() {
+  local needle="$1"
+  for t in "${TARGETS[@]}"; do
+    [ "$t" = "$needle" ] && return 0
+  done
+  return 1
+}
+
+TARGETS=("$@")
+if [ "${#TARGETS[@]}" -eq 0 ]; then
+  TARGETS=(all)
+fi
+for t in "${TARGETS[@]}"; do
+  case "$t" in
+    all|cas|casp3|notes|runmat|khicas) ;;
+    -h|--help|help) usage; exit 0 ;;
+    *) usage >&2; exit 2 ;;
+  esac
+done
+if want all; then
+  expanded=()
+  for t in "${TARGETS[@]}"; do
+    if [ "$t" = all ]; then
+      expanded+=(cas casp3 notes runmat)
+    else
+      expanded+=("$t")
+    fi
+  done
+  TARGETS=("${expanded[@]}")
+fi
+
 ensure_image() {
-  local current_version=""
-  current_version="$(docker image inspect -f '{{ index .Config.Labels "casio.khicas.image-version" }}' "${IMAGE_TAG}" 2>/dev/null || true)"
-  if [ "${current_version}" != "${IMAGE_VERSION}" ]; then
+  if ! docker image inspect "${IMAGE_TAG}" >/dev/null 2>&1; then
     docker build \
       --platform linux/amd64 \
       -f "${ROOT_DIR}/tools/docker/Dockerfile.khicas-source" \
@@ -40,51 +77,64 @@ clean_source_outputs() {
 prepare_icons() {
   python3 - "${SRC_DIR}" <<'PY'
 from pathlib import Path
-import re
 import sys
-
-root = Path(sys.argv[1])
 from PIL import Image
 
-def draw_icon(selected: bool) -> Image.Image:
-    return Image.new("RGB", (92, 64), (32, 86, 170) if selected else (245, 245, 245))
-
-draw_icon(False).save(root / "khicasio.png", optimize=True, compress_level=9)
-draw_icon(True).save(root / "khicasio1.png", optimize=True, compress_level=9)
+root = Path(sys.argv[1])
+Image.new("RGB", (92, 64), (245, 245, 245)).save(root / "khicasio.png", optimize=True, compress_level=9)
+Image.new("RGB", (92, 64), (32, 86, 170)).save(root / "khicasio1.png", optimize=True, compress_level=9)
 PY
+}
+
+stage_sources() {
+  python3 "${ROOT_DIR}/tools/generate_runmat_icons.py"
+  cp "${ROOT_DIR}/tools/runmat_mock.cc" "${SRC_DIR}/runmat_mock.cc"
+  cp "${ROOT_DIR}/tools/casio_suite_ui.hpp" "${SRC_DIR}/casio_suite_ui.hpp"
+  cp "${ROOT_DIR}/tools/p3_engine.hpp" "${SRC_DIR}/p3_engine.hpp"
+  cp "${ROOT_DIR}/tools/p3_engine.cpp" "${SRC_DIR}/p3_engine.cpp"
+  cp "${ROOT_DIR}/tools/khicas_suite_bridge.hpp" "${SRC_DIR}/khicas_suite_bridge.hpp"
+  cp "${ROOT_DIR}/tools/khicas_suite_bridge.cpp" "${SRC_DIR}/khicas_suite_bridge.cpp"
+  cp "${ROOT_DIR}/tools/notes_app.cc" "${SRC_DIR}/notes_app.cc"
+}
+
+cleanup_staged_sources() {
+  rm -f "${SRC_DIR}/khicasio.png" "${SRC_DIR}/khicasio1.png" \
+    "${SRC_DIR}/casio_suite_ui.hpp" \
+    "${SRC_DIR}/p3_engine.hpp" "${SRC_DIR}/p3_engine.cpp" \
+    "${SRC_DIR}/khicas_suite_bridge.hpp" "${SRC_DIR}/khicas_suite_bridge.cpp" \
+    "${SRC_DIR}/notes_app.cc"
+  clean_source_outputs
 }
 
 mkdir -p "${OUT_DIR}" "${TRANSFER_DIR}"
 rm -rf "${OUT_DIR:?}"/*
 find "${TRANSFER_DIR}" -mindepth 1 \
-  \( -name 'NOTES' -o -name '.gitkeep' -o -name 'boolean.py' -o -name 'booleanProgram.mpy' \) -prune \
+  \( -name 'NOTES' -o -name '.gitkeep' \) -prune \
   -o -exec rm -rf {} +
 touch "${TRANSFER_DIR}/.gitkeep"
 
 ensure_image
 clean_source_outputs
 prepare_icons
-python3 "${ROOT_DIR}/tools/generate_runmat_icons.py"
-cp "${ROOT_DIR}/tools/runmat_mock.cc" "${SRC_DIR}/runmat_mock.cc"
-cp "${ROOT_DIR}/tools/casio_suite_ui.hpp" "${SRC_DIR}/casio_suite_ui.hpp"
-cp "${ROOT_DIR}/tools/p3_engine.hpp" "${SRC_DIR}/p3_engine.hpp"
-cp "${ROOT_DIR}/tools/p3_engine.cpp" "${SRC_DIR}/p3_engine.cpp"
-cp "${ROOT_DIR}/tools/cscalc_engine.hpp" "${SRC_DIR}/cscalc_engine.hpp"
-cp "${ROOT_DIR}/tools/cscalc_engine.cpp" "${SRC_DIR}/cscalc_engine.cpp"
-cp "${ROOT_DIR}/tools/khicas_suite_bridge.hpp" "${SRC_DIR}/khicas_suite_bridge.hpp"
-cp "${ROOT_DIR}/tools/khicas_suite_bridge.cpp" "${SRC_DIR}/khicas_suite_bridge.cpp"
-cp "${ROOT_DIR}/tools/notes_app.cc" "${SRC_DIR}/notes_app.cc"
+stage_sources
+
+DO_CAS=0; DO_CASP3=0; DO_NOTES=0; DO_RUNMAT=0; DO_KHICAS=0
+want cas && DO_CAS=1
+want casp3 && DO_CASP3=1
+want notes && DO_NOTES=1
+want runmat && DO_RUNMAT=1
+want khicas && DO_KHICAS=1
 
 cat > "${DOCKER_BUILD_SCRIPT}" <<'SH'
 #!/usr/bin/env bash
 set -euo pipefail
 
-: "${CASIO_KHICAS_TARGET:=CAS.g3a}"
-: "${CASIO_RUNMAT_TARGET:=RUNMAT.g3a}"
-: "${CASIO_P3_TARGET:=CASP3.g3a}"
-: "${CASIO_CS_TARGET:=CSCALC.g3a}"
-: "${CASIO_NOTES_TARGET:=NOTES.g3a}"
 : "${CASIO_MAKE_JOBS:=1}"
+: "${DO_CAS:=0}"
+: "${DO_CASP3:=0}"
+: "${DO_NOTES:=0}"
+: "${DO_RUNMAT:=0}"
+: "${DO_KHICAS:=0}"
 
 mkdir -p /shared/tmp ~/.wine/drive_c
 rm -rf /tmp/giac90_1addin
@@ -92,19 +142,27 @@ cp -a /work/khicas/upstream/giac90_1addin /tmp/giac90_1addin
 cd /tmp/giac90_1addin
 
 make clean
-rm -f "${CASIO_KHICAS_TARGET}" "${CASIO_RUNMAT_TARGET}" "${CASIO_NOTES_TARGET}"
-make -j"${CASIO_MAKE_JOBS}" "${CASIO_KHICAS_TARGET}" "${CASIO_RUNMAT_TARGET}" "${CASIO_NOTES_TARGET}"
+[ "${DO_CAS}" = 0 ] || make -j"${CASIO_MAKE_JOBS}" CAS.g3a
+[ "${DO_RUNMAT}" = 0 ] || make -j"${CASIO_MAKE_JOBS}" RUNMAT.g3a
+[ "${DO_NOTES}" = 0 ] || make -j"${CASIO_MAKE_JOBS}" NOTES.g3a
+[ "${DO_KHICAS}" = 0 ] || make -j"${CASIO_MAKE_JOBS}" khicasen.g3a
 
-build_suite_app() {
-  local app="$1"
-  local output_prefix="$1"
-  local target="$2"
-  local macro="$3"
-  local engine_obj="$4"
-  local catalog_kind="$5"
-  local icon="$6"
-  local icon_sel="$7"
-  local tree="/tmp/giac90_1addin_${app}"
+copy_base() {
+  local file="$1"
+  [ ! -f "${file}" ] || cp "${file}" /work/khicas/upstream/giac90_1addin/
+}
+copy_base CAS.g3a
+copy_base RUNMAT.g3a
+copy_base NOTES.g3a
+copy_base khicasen.g3a
+for base in khicasen runmat_mock NOTES; do
+  for ext in bin elf map; do
+    [ ! -f "${base}.${ext}" ] || cp "${base}.${ext}" /work/khicas/upstream/giac90_1addin/
+  done
+done
+
+if [ "${DO_CASP3}" = 1 ]; then
+  tree="/tmp/giac90_1addin_CASP3"
   rm -rf "${tree}"
   cp -a /work/khicas/upstream/giac90_1addin "${tree}"
   cd "${tree}"
@@ -112,170 +170,68 @@ build_suite_app() {
   cp /work/tools/khicas_suite_bridge.hpp .
   cp /work/tools/khicas_suite_bridge.cpp .
   cp /work/tools/p3_engine.hpp /work/tools/p3_engine.cpp .
-  cp /work/tools/cscalc_engine.hpp /work/tools/cscalc_engine.cpp .
-  python3 /work/tools/khicas_suite_catalog.py "${catalog_kind}" catalogen.cpp
+  python3 /work/tools/khicas_suite_catalog.py p3 catalogen.cpp
   python3 /work/tools/patch_khicas_suite_main.py main.cc
-  python3 - "${target}" "${macro}" "${engine_obj}" "${icon}" "${icon_sel}" <<'PY'
+  python3 - <<'PY'
 from pathlib import Path
-import re
-import sys
-
-target, macro, engine_obj, icon, icon_sel = sys.argv[1:]
-basic_name = target[:-4]
-if basic_name == "CSCALC":
-    basic_name = "CSCalc"
 make = Path("Makefile")
 text = make.read_text()
-for stale in (
-    r"\ncasio_p3_app\.o:.*?(?=\n\S)",
-    r"\ncasio_cscalc_app\.o:.*?(?=\n\S)",
-    r"\nCASP3\.elf:.*?(?=\n\S)",
-    r"\nCASP3\.bin:.*?(?=\n\S)",
-    r"\nCASP3\.g3a:.*?(?=\n\S)",
-    r"\nCSCALC\.elf:.*?(?=\n\S)",
-    r"\nCSCALC\.bin:.*?(?=\n\S)",
-    r"\nCSCALC\.g3a:.*?(?=\n\S)",
-):
-    text = re.sub(stale, "\n", text, flags=re.S)
 text = text.replace(
     "GUI_OBJS = fileGUI.o menuGUI.o textGUI.o fileProvider.o graphicsProvider.o stringsProvider.o kdisplay.o console.o cascas_working.o main.o",
-    f"GUI_OBJS = fileGUI.o menuGUI.o textGUI.o fileProvider.o graphicsProvider.o stringsProvider.o kdisplay.o console.o cascas_working.o main.o khicas_suite_bridge.o {engine_obj}",
+    "GUI_OBJS = fileGUI.o menuGUI.o textGUI.o fileProvider.o graphicsProvider.o stringsProvider.o kdisplay.o console.o cascas_working.o main.o khicas_suite_bridge.o p3_engine.o",
 )
-engine_rule = ""
-if f"\n{engine_obj}:" not in text:
-    engine_rule = f"""
+text += r'''
 
-{engine_obj}: {engine_obj[:-2]}.cpp {engine_obj[:-2]}.hpp
-\t$(CXX) $(RUNMAT_CXXFLAGS) -c $< -o $@
-"""
-text += f"""
+khicas_suite_bridge.o: khicas_suite_bridge.cpp khicas_suite_bridge.hpp p3_engine.hpp
+	$(CXX) $(CXXFLAGS) -DSUITE_APP_P3 -c $<
 
-khicas_suite_bridge.o: khicas_suite_bridge.cpp khicas_suite_bridge.hpp p3_engine.hpp cscalc_engine.hpp
-\t$(CXX) $(CXXFLAGS) -D{macro} -c $<
-{engine_rule}
-
-{target}: khicasen.bin {icon} {icon_sel}
-\tmkg3a -n basic:{basic_name} -n internal:{target[:-4].upper()} -V 1.0.0 -i uns:{icon} -i sel:{icon_sel} khicasen.bin $@
-\t/bin/cp {target} ~/.wine/drive_c
-"""
+CASP3.g3a: khicasen.bin casp3_icon.png casp3_icon_selected.png
+	mkg3a -n basic:CASP3 -n internal:CASP3 -V 1.0.0 -i uns:casp3_icon.png -i sel:casp3_icon_selected.png khicasen.bin $@
+	/bin/cp CASP3.g3a ~/.wine/drive_c
+'''
 make.write_text(text)
 PY
-  rm -f "${target}"
-  make -j"${CASIO_MAKE_JOBS}" "${target}"
-  cp "${target}" "/work/khicas/upstream/giac90_1addin/${target}"
-  cp khicasen.bin "/work/khicas/upstream/giac90_1addin/${output_prefix}.bin"
-  cp khicasen.elf "/work/khicas/upstream/giac90_1addin/${output_prefix}.elf"
-  cp khicasen.map "/work/khicas/upstream/giac90_1addin/${output_prefix}.map"
-  cd /tmp/giac90_1addin
-}
-
-build_suite_app CASP3 "${CASIO_P3_TARGET}" SUITE_APP_P3 p3_engine.o p3 casp3_icon.png casp3_icon_selected.png
-build_suite_app CSCALC "${CASIO_CS_TARGET}" SUITE_APP_CS cscalc_engine.o cs cscalc_icon.png cscalc_icon_selected.png
-
-copy_suite_outputs() {
-  local app="$1"
-  local target="$2"
-  local tree="/tmp/giac90_1addin_${app}"
-  [ -f "/work/khicas/upstream/giac90_1addin/${target}" ] || cp "${tree}/${target}" "/work/khicas/upstream/giac90_1addin/${target}"
-  for ext in bin elf map; do
-    [ -f "/work/khicas/upstream/giac90_1addin/${app}.${ext}" ] || cp "${tree}/khicasen.${ext}" "/work/khicas/upstream/giac90_1addin/${app}.${ext}"
-  done
-}
-
-copy_suite_outputs CASP3 "${CASIO_P3_TARGET}"
-copy_suite_outputs CSCALC "${CASIO_CS_TARGET}"
-
-cp "${CASIO_KHICAS_TARGET}" /work/khicas/upstream/giac90_1addin/
-cp "${CASIO_RUNMAT_TARGET}" /work/khicas/upstream/giac90_1addin/
-cp "${CASIO_NOTES_TARGET}" /work/khicas/upstream/giac90_1addin/
-cp khicasen.bin khicasen.elf khicasen.map /work/khicas/upstream/giac90_1addin/
-cp runmat_mock.bin runmat_mock.elf runmat_mock.map /work/khicas/upstream/giac90_1addin/
-for app in NOTES; do
-  cp "${app}.bin" "${app}.elf" "${app}.map" /work/khicas/upstream/giac90_1addin/
-done
+  make -j"${CASIO_MAKE_JOBS}" CASP3.g3a
+  cp CASP3.g3a /work/khicas/upstream/giac90_1addin/
+  cp khicasen.bin /work/khicas/upstream/giac90_1addin/CASP3.bin
+  cp khicasen.elf /work/khicas/upstream/giac90_1addin/CASP3.elf
+  cp khicasen.map /work/khicas/upstream/giac90_1addin/CASP3.map
+fi
 SH
 
 docker run --rm \
   --platform linux/amd64 \
   -e CASIO_MAKE_JOBS="${MAKE_JOBS}" \
-  -e CASIO_KHICAS_TARGET="${TARGET}" \
-  -e CASIO_RUNMAT_TARGET="${RUNMAT_TARGET}" \
-  -e CASIO_P3_TARGET="${P3_TARGET}" \
-  -e CASIO_CS_TARGET="${CS_TARGET}" \
-  -e CASIO_NOTES_TARGET="${NOTES_TARGET}" \
+  -e DO_CAS="${DO_CAS}" \
+  -e DO_CASP3="${DO_CASP3}" \
+  -e DO_NOTES="${DO_NOTES}" \
+  -e DO_RUNMAT="${DO_RUNMAT}" \
+  -e DO_KHICAS="${DO_KHICAS}" \
   -v "${ROOT_DIR}:/work" \
   -w /work/khicas/upstream/giac90_1addin \
   "${IMAGE_TAG}" \
   bash /work/build/docker_build_g3a.sh
 
-cp "${SRC_DIR}/${TARGET}" "${OUT_DIR}/${TARGET}"
-cp "${SRC_DIR}/${RUNMAT_TARGET}" "${OUT_DIR}/${RUNMAT_TARGET}"
-cp "${SRC_DIR}/${P3_TARGET}" "${OUT_DIR}/${P3_TARGET}"
-cp "${SRC_DIR}/${CS_TARGET}" "${OUT_DIR}/${CS_TARGET}"
-cp "${SRC_DIR}/${NOTES_TARGET}" "${OUT_DIR}/${NOTES_TARGET}"
-python3 "${ROOT_DIR}/tools/normalize_g3a_metadata.py" \
-  "${OUT_DIR}/${TARGET}" \
-  "${OUT_DIR}/${RUNMAT_TARGET}" \
-  "${OUT_DIR}/${P3_TARGET}" \
-  "${OUT_DIR}/${CS_TARGET}" \
-  "${OUT_DIR}/${NOTES_TARGET}"
-for ext in bin elf map; do
-  src="${SRC_DIR}/khicasen.${ext}"
-  [ ! -f "${src}" ] || cp "${src}" "${OUT_DIR}/khicasen.${ext}"
-done
-for ext in bin elf map; do
-  src="${SRC_DIR}/runmat_mock.${ext}"
-  [ ! -f "${src}" ] || cp "${src}" "${OUT_DIR}/runmat_mock.${ext}"
-done
-for app in CASP3 CSCALC NOTES; do
-  for ext in bin elf map; do
-    src="${SRC_DIR}/${app}.${ext}"
-    [ ! -f "${src}" ] || cp "${src}" "${OUT_DIR}/${app}.${ext}"
-  done
-done
+copy_and_check() {
+  local file="$1" name="$2" internal="$3"
+  [ -f "${SRC_DIR}/${file}" ] || return 0
+  cp "${SRC_DIR}/${file}" "${OUT_DIR}/${file}"
+  python3 "${ROOT_DIR}/tools/normalize_g3a_metadata.py" "${OUT_DIR}/${file}"
+  python3 "${ROOT_DIR}/tools/check_g3a_metadata.py" "${OUT_DIR}/${file}" --name "${name}" --internal "${internal}" --filename "${file}"
+  python3 "${ROOT_DIR}/tools/check_g3a_size.py" "${OUT_DIR}/${file}"
+  cp "${OUT_DIR}/${file}" "${TRANSFER_DIR}/${file}"
+}
 
-python3 "${ROOT_DIR}/tools/check_g3a_metadata.py" "${OUT_DIR}/${TARGET}" \
-  --name CAS \
-  --internal @CAS \
-  --filename "${TARGET}"
-python3 "${ROOT_DIR}/tools/check_g3a_size.py" "${OUT_DIR}/${TARGET}"
-python3 "${ROOT_DIR}/tools/check_g3a_metadata.py" "${OUT_DIR}/${RUNMAT_TARGET}" \
-  --name RunMat \
-  --internal @RUNMAT \
-  --filename "${RUNMAT_TARGET}"
-python3 "${ROOT_DIR}/tools/check_g3a_size.py" "${OUT_DIR}/${RUNMAT_TARGET}"
-python3 "${ROOT_DIR}/tools/check_g3a_metadata.py" "${OUT_DIR}/${P3_TARGET}" \
-  --name CASP3 \
-  --internal @CASP3 \
-  --filename "${P3_TARGET}"
-python3 "${ROOT_DIR}/tools/check_g3a_size.py" "${OUT_DIR}/${P3_TARGET}"
-python3 "${ROOT_DIR}/tools/check_g3a_metadata.py" "${OUT_DIR}/${CS_TARGET}" \
-  --name CSCalc \
-  --internal @CSCALC \
-  --filename "${CS_TARGET}"
-python3 "${ROOT_DIR}/tools/check_g3a_size.py" "${OUT_DIR}/${CS_TARGET}"
-python3 "${ROOT_DIR}/tools/check_g3a_metadata.py" "${OUT_DIR}/${NOTES_TARGET}" \
-  --name Notes \
-  --internal @NOTES \
-  --filename "${NOTES_TARGET}"
-python3 "${ROOT_DIR}/tools/check_g3a_size.py" "${OUT_DIR}/${NOTES_TARGET}"
-python3 "${ROOT_DIR}/tools/build_help_pack.py" \
-  "${ROOT_DIR}/help/functions" \
-  "${OUT_DIR}/${PACK_TARGET}"
+copy_and_check CAS.g3a CAS @CAS
+copy_and_check RUNMAT.g3a RunMat @RUNMAT
+copy_and_check CASP3.g3a CASP3 @CASP3
+copy_and_check NOTES.g3a Notes @NOTES
+copy_and_check khicasen.g3a Khicasen @KHICASEN
 
-cp "${OUT_DIR}/${TARGET}" "${TRANSFER_DIR}/${TARGET}"
-cp "${OUT_DIR}/${RUNMAT_TARGET}" "${TRANSFER_DIR}/${RUNMAT_TARGET}"
-cp "${OUT_DIR}/${P3_TARGET}" "${TRANSFER_DIR}/${P3_TARGET}"
-cp "${OUT_DIR}/${CS_TARGET}" "${TRANSFER_DIR}/${CS_TARGET}"
-cp "${OUT_DIR}/${NOTES_TARGET}" "${TRANSFER_DIR}/${NOTES_TARGET}"
-cp "${OUT_DIR}/${PACK_TARGET}" "${TRANSFER_DIR}/${PACK_TARGET}"
-clean_source_outputs
-rm -f "${SRC_DIR}/khicasio.png" "${SRC_DIR}/khicasio1.png" \
-  "${SRC_DIR}/casio_suite_ui.hpp" \
-  "${SRC_DIR}/p3_engine.hpp" "${SRC_DIR}/p3_engine.cpp" \
-  "${SRC_DIR}/cscalc_engine.hpp" "${SRC_DIR}/cscalc_engine.cpp" \
-  "${SRC_DIR}/khicas_suite_bridge.hpp" "${SRC_DIR}/khicas_suite_bridge.cpp" \
-  "${SRC_DIR}/notes_app.cc"
+if [ "${DO_CAS}" = 1 ]; then
+  python3 "${ROOT_DIR}/tools/build_help_pack.py" "${ROOT_DIR}/help/functions" "${OUT_DIR}/CAS.PAK"
+  cp "${OUT_DIR}/CAS.PAK" "${TRANSFER_DIR}/CAS.PAK"
+fi
 
-ls -lh "${TRANSFER_DIR}/${TARGET}" "${TRANSFER_DIR}/${RUNMAT_TARGET}" "${TRANSFER_DIR}/${P3_TARGET}" "${TRANSFER_DIR}/${CS_TARGET}" "${TRANSFER_DIR}/${NOTES_TARGET}" "${TRANSFER_DIR}/${PACK_TARGET}"
-shasum -a 256 "${TRANSFER_DIR}/${TARGET}" "${TRANSFER_DIR}/${RUNMAT_TARGET}" "${TRANSFER_DIR}/${P3_TARGET}" "${TRANSFER_DIR}/${CS_TARGET}" "${TRANSFER_DIR}/${NOTES_TARGET}" "${TRANSFER_DIR}/${PACK_TARGET}"
+cleanup_staged_sources
+find "${TRANSFER_DIR}" -maxdepth 1 -type f -print | sort | xargs -r ls -lh

@@ -35,20 +35,3 @@ Remaining useful additions:
 
 2. Add `vectorforces()` command.
    Useful for resolving forces in `i,j` form and finding acceleration/resultant.
-
-## CSCALC.g3a
-
-1. Add Karnaugh map simplification for 2, 3, and 4 variables.
-   Useful if AQA asks Boolean simplification visually.
-
-2. Add trace-table helper.
-   Example: `trace(init_i=0,limit=5,step=1)` is probably too broad, but a simple counter-loop template could cover common paper questions.
-
-3. Add `astar()` or `mst()` only if future AQA papers use those algorithms.
-   Current `dijkstra()` is the most useful weighted-graph command.
-
-4. Add `normalfloatsteps()` command.
-   It would show every shift needed to normalise a mantissa/exponent pair, useful for explanation marks.
-
-5. Add `overflowcheck()` command.
-   It should compare unsigned, sign-magnitude, one's complement, and two's complement range for the same bit width.

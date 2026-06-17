@@ -4,7 +4,6 @@ import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 P3_HOST = Path("/tmp/p3_engine_host")
-CS_HOST = Path("/tmp/cscalc_engine_host")
 
 P3_TEMPLATES = [
     "suvat(u=2,a=3,t=4)",
@@ -22,21 +21,6 @@ P3_TEMPLATES = [
     "groupmean(5,12,15,30,25,18)",
 ]
 
-CS_SOURCE_TEMPLATES = [
-    "bool_simplify(expression)",
-    "nandform(expression)",
-    "norform(expression)",
-    "boolprove(lhs,rhs)",
-]
-
-CS_EVAL_TEMPLATES = [
-    "bool_simplify(A+A)",
-    "bool_simplify(A+A.B)",
-    "nandform(A.B)",
-    "norform(A+B)",
-    "boolprove(A.(B+C),A.B+A.C)",
-]
-
 BANNED = ["Verified", "not checked", "syntax error", "Bad Argument", "Unsupported"]
 
 
@@ -45,15 +29,11 @@ def build() -> None:
         "g++", "-std=c++11", "-Wall", "-Wextra", "-Wno-unused-function", "-Itools",
         "tools/p3_engine.cpp", "tools/p3_engine_host.cpp", "-o", str(P3_HOST),
     ], cwd=ROOT)
-    subprocess.check_call([
-        "g++", "-std=c++11", "-Wall", "-Wextra", "-Wno-unused-function", "-Itools",
-        "tools/cscalc_engine.cpp", "tools/cscalc_engine_host.cpp", "-o", str(CS_HOST),
-    ], cwd=ROOT)
 
 
 def require_source(path: str, templates: list[str]) -> None:
     text = (ROOT / path).read_text(errors="ignore")
-    for needle in ["P3_COMMANDS", "CS_COMMANDS", "P3_FOLDERS", "CS_FOLDERS", "doCatalogMenu"]:
+    for needle in ["P3_COMMANDS", "P3_FOLDERS", "doCatalogMenu"]:
         if needle not in text:
             raise AssertionError(f"{path}: missing {needle}")
     for template in templates:
@@ -72,12 +52,9 @@ def require_eval(host: Path, expr: str) -> None:
 
 def main() -> int:
     require_source("tools/khicas_suite_catalog.py", P3_TEMPLATES)
-    require_source("tools/khicas_suite_catalog.py", CS_SOURCE_TEMPLATES)
     build()
     for expr in P3_TEMPLATES:
         require_eval(P3_HOST, expr)
-    for expr in CS_EVAL_TEMPLATES:
-        require_eval(CS_HOST, expr)
     print("OK command template contract")
     return 0
 

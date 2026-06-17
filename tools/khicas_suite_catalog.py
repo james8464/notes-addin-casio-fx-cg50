@@ -10,11 +10,6 @@ CATEGORIES = {
     "CAT_CATEGORY_MECH": 1,
     "CAT_CATEGORY_STATS": 2,
     "CAT_CATEGORY_DATA": 3,
-    "CAT_CATEGORY_NUMBER": 4,
-    "CAT_CATEGORY_FLOAT": 5,
-    "CAT_CATEGORY_STORAGE": 6,
-    "CAT_CATEGORY_ALGO": 7,
-    "CAT_CATEGORY_BOOL": 8,
 }
 
 P3_COMMANDS = [
@@ -81,38 +76,17 @@ P3_COMMANDS = [
     ("meanvar(", "CAT_CATEGORY_DATA"),
 ]
 
-CS_COMMANDS = [
-    ("bool_simplify(", "CAT_CATEGORY_BOOL"),
-    ("nandform(", "CAT_CATEGORY_BOOL"),
-    ("norform(", "CAT_CATEGORY_BOOL"),
-    ("boolprove(", "CAT_CATEGORY_BOOL"),
-]
-
 P3_FOLDERS = [
     ("Mechanics", "CAT_CATEGORY_MECH"),
     ("Statistics", "CAT_CATEGORY_STATS"),
     ("Data/prob", "CAT_CATEGORY_DATA"),
 ]
 
-CS_FOLDERS = [
-    ("Computer Science", "CAT_CATEGORY_BOOL"),
-]
-
-CS_BOOL_COMMANDS = [
-    "bool_simplify(expression)",
-    "nandform(expression)",
-    "norform(expression)",
-    "boolprove(lhs,rhs)",
-]
-
-
 def emit(app: str) -> str:
     if app == "p3":
         commands, folders, title, about = P3_COMMANDS, P3_FOLDERS, "CASP3 Catalog", "CASP3"
-    elif app == "cs":
-        commands, folders, title, about = CS_COMMANDS, CS_FOLDERS, "CSCalc Catalog", "CSCalc"
     else:
-        raise SystemExit("usage: khicas_suite_catalog.py p3|cs")
+        raise SystemExit("usage: khicas_suite_catalog.py p3")
 
     cat_defs = "\n".join(f"#define {name} {value}" for name, value in CATEGORIES.items())
     def esc(s: str) -> str:
@@ -143,9 +117,7 @@ def emit(app: str) -> str:
             if b.startswith("binom") or b.startswith("poisson"):
                 return "Discrete distribution setup and probability."
             return "Stats/data working with formula and substitution."
-        if b in {"bool_simplify", "nandform", "norform", "boolprove"}:
-            return "Boolean algebra working with rule names."
-        return "Computer Science command."
+        return "Paper 3 command."
 
     def example(s: str) -> str:
         if "(" in s and ")" in s:
@@ -164,10 +136,6 @@ def emit(app: str) -> str:
             "cond(": "cond(0.2,0.5)",
             "regresscalc(": "regresscalc(5,20,30,10,18,8)",
             "groupmean(": "groupmean(5,12,15,30,25,18)",
-            "bool_simplify(": "bool_simplify(A+A.B)",
-            "nandform(": "nandform(A.B)",
-            "norform(": "norform(A+B)",
-            "boolprove(": "boolprove(A.(B+C),A.B+A.C)",
         }
         return "#" + examples.get(s, insert_text(s) + ")")
 
@@ -217,24 +185,6 @@ def emit(app: str) -> str:
                     "Use the parameters shown in the example.",
                     desc(s),
                     "Writes formula/setup, substitutes values, then gives final answer.",
-                    ex)
-        if b == "bool_simplify":
-            return ("bool_simplify(expression)",
-                    "Use , for NOT, . for AND, + for OR.",
-                    "Boolean simplification with line-by-line working.",
-                    "Applies the old Boolean algebra rules and prints each named law.",
-                    ex)
-        if b in {"nandform", "norform"}:
-            return (f"{b}(expression)",
-                    "Use , for NOT, . for AND, + for OR.",
-                    "Boolean gate-only form.",
-                    "Rewrites the expression using the requested gate form.",
-                    ex)
-        if b == "boolprove":
-            return ("boolprove(lhs,rhs)",
-                    "Two Boolean expressions separated by a comma.",
-                    "Boolean equivalence proof.",
-                    "Simplifies both sides and shows the working lines.",
                     ex)
         return (f"{b}(...)",
                 "Use the parameters shown in the example.",
@@ -457,39 +407,11 @@ int doCatalogMenu(char* insertText, char* title, int category,const char * cmdna
 '''
 
 
-def patch_cs_catalog(path: Path) -> None:
-    text = path.read_text()
-    category = "CAT_CATEGORY_COMPUTER_SCIENCE"
-    if category not in text:
-        marker = "#define CAT_CATEGORY_LOGO 20 // should be the last one\n"
-        if marker not in text:
-            raise SystemExit("catalog category marker missing")
-        text = text.replace(marker, marker + f"#define {category} 21\n", 1)
-
-    if '"bool_simplify(expression)"' not in text:
-        insert = "".join(f'  {{"{name}", {category}}},\n' for name in CS_BOOL_COMMANDS)
-        needle = "\n\n};\n\ntypedef struct {\n  char* title;\n  int category;\n} catalogFolder;\n"
-        if needle not in text:
-            raise SystemExit("completeCat terminator missing")
-        text = text.replace(needle, "\n" + insert + needle, 1)
-
-    if '"Computer Science"' not in text:
-        needle = '  {(char*)"Vectors", CAT_CATEGORY_VECTOR},\n'
-        if needle not in text:
-            raise SystemExit("catalog folder insertion point missing")
-        text = text.replace(needle, needle + f'  {{(char*)"Computer Science", {category}}},\n', 1)
-
-    path.write_text(text)
-
-
 def main() -> int:
     if len(sys.argv) != 3:
-        raise SystemExit("usage: khicas_suite_catalog.py p3|cs output")
+        raise SystemExit("usage: khicas_suite_catalog.py p3 output")
     out = Path(sys.argv[2])
-    if sys.argv[1] == "cs":
-        patch_cs_catalog(out)
-    else:
-        out.write_text(emit(sys.argv[1]))
+    out.write_text(emit(sys.argv[1]))
     return 0
 
 

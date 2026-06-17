@@ -7,8 +7,6 @@
 
 #if defined(SUITE_APP_P3)
 #include "p3_engine.hpp"
-#elif defined(SUITE_APP_CS)
-#include "cscalc_engine.hpp"
 #endif
 
 #include <string.h>
@@ -27,9 +25,6 @@ static const char *const p3_commands[] = {
     "regresscalc", "pmcc", "spearman", "groupmean", "groupmedian",
     "histdensity", "meanvar", "discrete", "stratified", 0};
 
-static const char *const cs_commands[] = {
-    "bool_simplify", "boolsimplify", "nandform", "norform", "boolprove", 0};
-
 static const char p3_fmenu[] =
     "F1 mech\n"
     "suvat(\nprojectile(\nforce(\nincline(\npulley(\nbeam(\nvaracct(\n"
@@ -46,8 +41,6 @@ static const char p3_fmenu[] =
 const char *suite_console_fmenu_config() {
 #if defined(SUITE_APP_P3)
   return p3_fmenu;
-#elif defined(SUITE_APP_CS)
-  return 0;
 #else
   return 0;
 #endif
@@ -61,8 +54,6 @@ int suite_custom_fkey_label(int fkey) {
 void suite_register_lexer_symbols() {
 #if defined(SUITE_APP_P3)
   const char *const *names = p3_commands;
-#elif defined(SUITE_APP_CS)
-  const char *const *names = cs_commands;
 #else
   const char *const *names = 0;
 #endif
@@ -74,8 +65,6 @@ void suite_register_lexer_symbols() {
 bool suite_is_custom_command(const char *name) {
 #if defined(SUITE_APP_P3)
   const char *const *names = p3_commands;
-#elif defined(SUITE_APP_CS)
-  const char *const *names = cs_commands;
 #else
   const char *const *names = 0;
 #endif
@@ -98,13 +87,6 @@ bool suite_eval_with_working(const char *expr) {
   char lines[P3_MAX_LINES][P3_LINE_LEN];
   int count = p3_eval(expr, lines);
   const char *ptrs[P3_MAX_LINES];
-  for (int i = 0; i < count; ++i) ptrs[i] = lines[i];
-  suite_output_lines(ptrs, count);
-  return true;
-#elif defined(SUITE_APP_CS)
-  char lines[CSCALC_MAX_LINES][CSCALC_LINE_LEN];
-  int count = cscalc_eval(expr, lines);
-  const char *ptrs[CSCALC_MAX_LINES];
   for (int i = 0; i < count; ++i) ptrs[i] = lines[i];
   suite_output_lines(ptrs, count);
   return true;

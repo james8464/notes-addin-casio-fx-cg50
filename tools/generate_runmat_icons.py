@@ -117,9 +117,6 @@ def draw_app_icon(label: str, accent: tuple[int, int, int], selected: bool) -> I
         line(draw, (40, 34, 52, 38), accent, 2)
         line(draw, (52, 38, 66, 25), accent, 2)
         text(draw, (29, 22), "P3", ink, 18, True)
-    elif label == "CS":
-        text(draw, (27, 22), "01", accent, 16, True)
-        text(draw, (34, 39), "CS", ink, 8, True)
     else:
         for yy in (25, 32, 39):
             line(draw, (28, yy, 64, yy), muted if yy != 25 else accent, 2)
@@ -135,7 +132,6 @@ def main() -> int:
     specs = {
         "cas": ("CAS", (116, 72, 196)),
         "casp3": ("P3", (45, 113, 219)),
-        "cscalc": ("CS", (65, 132, 94)),
         "notes": ("NT", (228, 171, 48)),
     }
     for name, (label, accent) in specs.items():

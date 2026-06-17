@@ -12,14 +12,18 @@ Program READMEs:
 
 - Pure CAS: [`docs/CAS_README.md`](docs/CAS_README.md)
 - Paper 3: [`docs/CASP3_README.md`](docs/CASP3_README.md)
-- AQA CS calculator: [`docs/CSCALC_README.md`](docs/CSCALC_README.md)
 - Notes browser: [`docs/NOTES_README.md`](docs/NOTES_README.md)
 - Future maths improvements: [`docs/math_program_improvements.md`](docs/math_program_improvements.md)
 
 Build:
 
 ```bash
-./compile
+./compile all
+./compile notes
+./compile cas
+./compile casp3
+./compile runmat
+./compile khicas
 python3 tools/check_g3a_metadata.py calculator_files/CAS.g3a --name CAS --internal @CAS --filename CAS.g3a
 python3 tools/check_g3a_metadata.py calculator_files/RUNMAT.g3a --name RunMat --internal @RUNMAT --filename RUNMAT.g3a
 python3 tools/check_g3a_size.py calculator_files/CAS.g3a
@@ -114,6 +118,7 @@ Notable routes:
 Active tools:
 
 - `tools/build_g3a.sh` regenerates ignored KhiCAS icon PNGs from tracked BMPs before Make runs
+- `./compile [target]` builds selected add-ins without rebuilding everything
 - `tools/docker/Dockerfile.khicas-source`
 - `tools/khicas_host_runner`
 - `tools/check_g3a_metadata.py`
