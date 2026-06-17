@@ -127,6 +127,14 @@ def preprocess(src: str) -> str:
     return src
 
 
+def parser_locals(src: str) -> dict[str, object]:
+    local = dict(NAMES)
+    for name in re.findall(r"\b[A-Za-z_][A-Za-z0-9_]*\b", src):
+        if name not in local and any(ch.isdigit() or ch == "_" for ch in name):
+            local[name] = sp.Symbol(name)
+    return local
+
+
 def split_args(src: str) -> list[str]:
     args: list[str] = []
     depth = 0
@@ -231,7 +239,7 @@ def parse_math(src: str):
     if listed is not None:
         return listed
     src = src.replace("^", "**")
-    return parse_expr(src, local_dict=NAMES, transformations=TRANSFORMS, evaluate=True)
+    return parse_expr(src, local_dict=parser_locals(src), transformations=TRANSFORMS, evaluate=True)
 
 
 def parse_value(src: str):

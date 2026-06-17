@@ -34,6 +34,9 @@ EDGE_CASES = [
     "suvat(u=sqrt(2),a=1,t=3)",
     "suvat(u=pi,a=0,t=2)",
     "suvat(u=p,a=q,t=r)",
+    "suvat(s=s0,u=u0,a=a0)",
+    "suvat(u=v0,a=a0,t=t0)",
+    "suvat(u=var_v,a=acc_a,t=time_t)",
     "suvat(u=2,a=0,v=2)",
     "suvat(s=0,u=0,v=0)",
     "suvat(s=0,u=5,v=-5)",
@@ -80,6 +83,20 @@ def main() -> int:
             for bad in ("\na=0\n", "\nt=0\n"):
                 if bad in out:
                     raise AssertionError(f"{expr}: branch-only value shown as final value\n{out}")
+        if expr == "suvat(s=s0,u=u0,a=a0)":
+            for needle in ("s=s0", "u=u0", "a=a0", "sqrt(2*a0*s0 + u0^2)"):
+                if needle not in out:
+                    raise AssertionError(f"{expr}: missing symbolic parameter {needle!r}\n{out}")
+            for bad in ("\ns=0\n", "\nu=0\n", "\na=0\n"):
+                if bad in out:
+                    raise AssertionError(f"{expr}: digit-suffixed parameter collapsed to zero\n{out}")
+        if expr == "suvat(u=v0,a=a0,t=t0)":
+            for needle in ("u=v0", "a=a0", "t=t0", "v=a0*t0 + v0"):
+                if needle not in out:
+                    raise AssertionError(f"{expr}: missing symbolic parameter {needle!r}\n{out}")
+            for bad in ("\nu=0\n", "\na=0\n", "\nt=0\n"):
+                if bad in out:
+                    raise AssertionError(f"{expr}: digit-suffixed parameter collapsed to zero\n{out}")
         cases += 1
 
     print(f"OK suvat stress cases={cases}")

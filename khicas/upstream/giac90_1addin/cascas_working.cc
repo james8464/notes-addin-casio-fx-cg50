@@ -6224,11 +6224,16 @@ static const char *suvat_rhs[]={"u+a*t","u*t+1/2*a*t^2","u^2+2*a*s","(u+v)*t/2"}
 static const int suvat_masks[]={0x1e,0x1b,0x0f,0x17};
 
 static bool suvat_refs_unset(const working_string &s,int mask){
-  return (!(mask&1) && contains_var_symbol(s,'s')) ||
-         (!(mask&2) && contains_var_symbol(s,'u')) ||
-         (!(mask&4) && contains_var_symbol(s,'v')) ||
-         (!(mask&8) && contains_var_symbol(s,'a')) ||
-         (!(mask&16) && contains_var_symbol(s,'t'));
+  for (int i=0;i<int(s.size());++i){
+    int bit=s[i]=='s'?1:s[i]=='u'?2:s[i]=='v'?4:s[i]=='a'?8:s[i]=='t'?16:0;
+    if (!bit || (mask&bit))
+      continue;
+    bool left=i>0 && (isalnum((unsigned char)s[i-1]) || s[i-1]=='_');
+    bool right=i+1<int(s.size()) && (isalnum((unsigned char)s[i+1]) || s[i+1]=='_');
+    if (!left && !right)
+      return true;
+  }
+  return false;
 }
 
 static void suvat_add_choice(working_string choices[5][8],int *count,int id,const working_string &raw){
