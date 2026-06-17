@@ -13,7 +13,7 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-RUNNER = ROOT / "tools" / "khicas_host_runner"
+RUNNER = ROOT / "tools" / "host" / "khicas_host_runner"
 HOST_EVAL = ROOT / "tools" / "khicas_host_eval.py"
 PROGRESS = ROOT / "progress" / "state.jsonl"
 

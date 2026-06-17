@@ -6,8 +6,8 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-RUNNER = ROOT / "tools" / "khicas_host_runner"
-PLANNER = ROOT / "tools" / "working_planner.py"
+RUNNER = ROOT / "tools" / "host" / "khicas_host_runner"
+PLANNER = ROOT / "tools" / "working" / "working_planner.py"
 
 
 def compact(s: str) -> str:

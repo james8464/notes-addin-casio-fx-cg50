@@ -4,8 +4,8 @@ from __future__ import annotations
 from pathlib import Path
 import sys
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "tools"))
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "tools" / "scope"))
 
 from scope_manifest import KEPT_COMMANDS, MENU_SIGNATURES, REMOVED_COMMANDS
 

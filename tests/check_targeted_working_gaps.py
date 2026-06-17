@@ -5,7 +5,7 @@ import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-RUNNER = ROOT / "tools" / "khicas_host_runner"
+RUNNER = ROOT / "tools" / "host" / "khicas_host_runner"
 
 SOURCE_MARKERS = {
     "khicas/upstream/giac90_1addin/cascas_working.h": [
@@ -44,7 +44,7 @@ FORBIDDEN_SOURCE_SNIPPETS = {
     "khicas/upstream/giac90_1addin/Makefile": [
         "CASCAS_PRODUCTION_CALLBACK_ONLY",
     ],
-    "tools/khicas_host_runner": [
+    "tools/host/khicas_host_runner": [
         "CASCAS_PRODUCTION_CALLBACK_ONLY",
     ],
     "khicas/upstream/giac90_1addin/cascas_working.cc": [

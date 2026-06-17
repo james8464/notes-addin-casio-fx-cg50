@@ -33,7 +33,7 @@ graph TD
 - Stats/probability/matrices/program/turtle/graph/crypto remain out of scope.
 - Probability/distribution runtime code is stubbed under the source build flag; `binomial(n,k)` remains available for A-level algebra/binomial expansion.
 - Pathological generated inputs must return bounded fallback text instead of hanging.
-- Final `.g3a` outputs are normalized by `tools/normalize_g3a_metadata.py` after source packaging.
+- Final `.g3a` outputs are normalized by `tools/build/normalize_g3a_metadata.py` after source packaging.
 - Working output is routed through guarded CAS working code, then original KhiCAS fallback.
 - Every displayed working route must carry a verification marker where possible.
 - Live calculator/source tooling no longer emits `no route`, `route failed`, or `No verified A-level working route found` wording for kept-command paths.
@@ -104,12 +104,12 @@ Latest background attempts:
 
 ```sh
 ./compile
-python3 tools/check_g3a_size.py calculator_files/CAS.g3a
-python3 tools/check_g3a_metadata.py calculator_files/CAS.g3a --name CAS --internal @CAS --filename CAS.g3a
-python3 tools/check_g3a_metadata.py calculator_files/RUNMAT.g3a --name RunMat --internal @RUNMAT --filename RUNMAT.g3a
-python3 tools/check_calculator_border.py
-python3 tools/check_removed_features.py
-python3 tools/check_catalog_scope.py
+python3 tools/checks/check_g3a_size.py calculator_files/CAS.g3a
+python3 tools/checks/check_g3a_metadata.py calculator_files/CAS.g3a --name CAS --internal @CAS --filename CAS.g3a
+python3 tools/checks/check_g3a_metadata.py calculator_files/RUNMAT.g3a --name RunMat --internal @RUNMAT --filename RUNMAT.g3a
+python3 tools/checks/check_calculator_border.py
+python3 tools/checks/check_removed_features.py
+python3 tools/checks/check_catalog_scope.py
 python3 tests/check_shared_working.py
 python3 tests/run_exact_queue.py --engine production --strict-markers --workers 2
 python3 tests/random_working_fuzzer.py --per-function 20 --strict --timeout 10 --seed 60606 --jsonl tests/reports/random_working_fuzzer_per_function_latest.jsonl --transcript tests/reports/random_working_fuzzer_per_function_latest.txt --print-failures

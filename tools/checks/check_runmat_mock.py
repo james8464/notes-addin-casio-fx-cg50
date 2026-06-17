@@ -4,7 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 import struct
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 SRC = ROOT / "khicas/upstream/giac90_1addin"
 
 
@@ -21,9 +21,9 @@ def png_size(path: Path) -> tuple[int, int]:
 
 
 def main() -> int:
-    source = (ROOT / "tools/runmat_mock.cc").read_text(errors="ignore")
+    source = (ROOT / "apps/runmat/runmat_mock.cc").read_text(errors="ignore")
     makefile = (SRC / "Makefile").read_text(errors="ignore")
-    build = (ROOT / "tools/build_g3a.sh").read_text(errors="ignore")
+    build = (ROOT / "tools/build/build_g3a.sh").read_text(errors="ignore")
     for icon_name in ("runmat_icon.png", "runmat_icon_selected.png"):
         icon_path = SRC / icon_name
         if not icon_path.exists():
@@ -98,11 +98,10 @@ def main() -> int:
     if "RUNMAT_LIBS = " in makefile and ("-lcas" in makefile.split("RUNMAT_LIBS =", 1)[1].split("\n", 1)[0]):
         raise SystemExit("FAIL runmat standalone libs include -lcas")
 
-    require(build, "RUNMAT_TARGET", "build variable")
-    require(build, 'python3 "${ROOT_DIR}/tools/generate_runmat_icons.py"', "RUNMAT icon generation")
-    require(build, 'cp "${ROOT_DIR}/tools/runmat_mock.cc" "${SRC_DIR}/runmat_mock.cc"', "source install")
-    require(build, 'cp "${OUT_DIR}/${RUNMAT_TARGET}" "${TRANSFER_DIR}/${RUNMAT_TARGET}"', "transfer copy")
-    require(build, "--name RunMat", "metadata check")
+    require(build, 'python3 "${ROOT_DIR}/tools/build/generate_runmat_icons.py"', "RUNMAT icon generation")
+    require(build, 'cp "${ROOT_DIR}/apps/runmat/runmat_mock.cc" "${SRC_DIR}/runmat_mock.cc"', "source install")
+    require(build, "copy_and_check RUNMAT.g3a RunMat @RUNMAT", "transfer copy")
+    require(build, "copy_and_check RUNMAT.g3a RunMat @RUNMAT", "metadata check")
     print("OK runmat mock")
     return 0
 

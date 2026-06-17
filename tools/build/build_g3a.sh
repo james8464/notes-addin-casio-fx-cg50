@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 IMAGE_TAG="${CASIO_KHICAS_IMAGE:-casio-khicas-source:latest}"
 SRC_DIR="${ROOT_DIR}/khicas/upstream/giac90_1addin"
 OUT_DIR="${ROOT_DIR}/build"
@@ -87,14 +87,14 @@ PY
 }
 
 stage_sources() {
-  python3 "${ROOT_DIR}/tools/generate_runmat_icons.py"
-  cp "${ROOT_DIR}/tools/runmat_mock.cc" "${SRC_DIR}/runmat_mock.cc"
-  cp "${ROOT_DIR}/tools/casio_suite_ui.hpp" "${SRC_DIR}/casio_suite_ui.hpp"
-  cp "${ROOT_DIR}/tools/p3_engine.hpp" "${SRC_DIR}/p3_engine.hpp"
-  cp "${ROOT_DIR}/tools/p3_engine.cpp" "${SRC_DIR}/p3_engine.cpp"
-  cp "${ROOT_DIR}/tools/khicas_suite_bridge.hpp" "${SRC_DIR}/khicas_suite_bridge.hpp"
-  cp "${ROOT_DIR}/tools/khicas_suite_bridge.cpp" "${SRC_DIR}/khicas_suite_bridge.cpp"
-  cp "${ROOT_DIR}/tools/notes_app.cc" "${SRC_DIR}/notes_app.cc"
+  python3 "${ROOT_DIR}/tools/build/generate_runmat_icons.py"
+  cp "${ROOT_DIR}/apps/runmat/runmat_mock.cc" "${SRC_DIR}/runmat_mock.cc"
+  cp "${ROOT_DIR}/shared/casio/casio_suite_ui.hpp" "${SRC_DIR}/casio_suite_ui.hpp"
+  cp "${ROOT_DIR}/apps/paper3/p3_engine.hpp" "${SRC_DIR}/p3_engine.hpp"
+  cp "${ROOT_DIR}/apps/paper3/p3_engine.cpp" "${SRC_DIR}/p3_engine.cpp"
+  cp "${ROOT_DIR}/apps/khicas-suite/khicas_suite_bridge.hpp" "${SRC_DIR}/khicas_suite_bridge.hpp"
+  cp "${ROOT_DIR}/apps/khicas-suite/khicas_suite_bridge.cpp" "${SRC_DIR}/khicas_suite_bridge.cpp"
+  cp "${ROOT_DIR}/apps/notes/notes_app.cc" "${SRC_DIR}/notes_app.cc"
 }
 
 cleanup_staged_sources() {
@@ -108,9 +108,6 @@ cleanup_staged_sources() {
 
 mkdir -p "${OUT_DIR}" "${TRANSFER_DIR}"
 rm -rf "${OUT_DIR:?}"/*
-find "${TRANSFER_DIR}" -mindepth 1 \
-  \( -name 'NOTES' -o -name '.gitkeep' \) -prune \
-  -o -exec rm -rf {} +
 touch "${TRANSFER_DIR}/.gitkeep"
 
 ensure_image
@@ -124,6 +121,18 @@ want casp3 && DO_CASP3=1
 want notes && DO_NOTES=1
 want runmat && DO_RUNMAT=1
 want khicas && DO_KHICAS=1
+
+if [ "${#TARGETS[@]}" -eq 4 ] && [ "${DO_CAS}" = 1 ] && [ "${DO_CASP3}" = 1 ] && [ "${DO_NOTES}" = 1 ] && [ "${DO_RUNMAT}" = 1 ]; then
+  find "${TRANSFER_DIR}" -mindepth 1 \
+    \( -name 'NOTES' -o -name '.gitkeep' \) -prune \
+    -o -exec rm -rf {} +
+else
+  [ "${DO_CAS}" = 0 ] || rm -f "${TRANSFER_DIR}/CAS.g3a" "${TRANSFER_DIR}/CAS.PAK"
+  [ "${DO_CASP3}" = 0 ] || rm -f "${TRANSFER_DIR}/CASP3.g3a"
+  [ "${DO_NOTES}" = 0 ] || rm -f "${TRANSFER_DIR}/NOTES.g3a"
+  [ "${DO_RUNMAT}" = 0 ] || rm -f "${TRANSFER_DIR}/RUNMAT.g3a"
+  [ "${DO_KHICAS}" = 0 ] || rm -f "${TRANSFER_DIR}/khicasen.g3a"
+fi
 
 cat > "${DOCKER_BUILD_SCRIPT}" <<'SH'
 #!/usr/bin/env bash
@@ -167,11 +176,11 @@ if [ "${DO_CASP3}" = 1 ]; then
   cp -a /work/khicas/upstream/giac90_1addin "${tree}"
   cd "${tree}"
   make clean
-  cp /work/tools/khicas_suite_bridge.hpp .
-  cp /work/tools/khicas_suite_bridge.cpp .
-  cp /work/tools/p3_engine.hpp /work/tools/p3_engine.cpp .
-  python3 /work/tools/khicas_suite_catalog.py p3 catalogen.cpp
-  python3 /work/tools/patch_khicas_suite_main.py main.cc
+  cp /work/apps/khicas-suite/khicas_suite_bridge.hpp .
+  cp /work/apps/khicas-suite/khicas_suite_bridge.cpp .
+  cp /work/apps/paper3/p3_engine.hpp /work/apps/paper3/p3_engine.cpp .
+  python3 /work/apps/khicas-suite/khicas_suite_catalog.py p3 catalogen.cpp
+  python3 /work/apps/khicas-suite/patch_khicas_suite_main.py main.cc
   python3 - <<'PY'
 from pathlib import Path
 make = Path("Makefile")
@@ -216,9 +225,9 @@ copy_and_check() {
   local file="$1" name="$2" internal="$3"
   [ -f "${SRC_DIR}/${file}" ] || return 0
   cp "${SRC_DIR}/${file}" "${OUT_DIR}/${file}"
-  python3 "${ROOT_DIR}/tools/normalize_g3a_metadata.py" "${OUT_DIR}/${file}"
-  python3 "${ROOT_DIR}/tools/check_g3a_metadata.py" "${OUT_DIR}/${file}" --name "${name}" --internal "${internal}" --filename "${file}"
-  python3 "${ROOT_DIR}/tools/check_g3a_size.py" "${OUT_DIR}/${file}"
+  python3 "${ROOT_DIR}/tools/build/normalize_g3a_metadata.py" "${OUT_DIR}/${file}"
+  python3 "${ROOT_DIR}/tools/checks/check_g3a_metadata.py" "${OUT_DIR}/${file}" --name "${name}" --internal "${internal}" --filename "${file}"
+  python3 "${ROOT_DIR}/tools/checks/check_g3a_size.py" "${OUT_DIR}/${file}"
   cp "${OUT_DIR}/${file}" "${TRANSFER_DIR}/${file}"
 }
 
@@ -229,7 +238,7 @@ copy_and_check NOTES.g3a Notes @NOTES
 copy_and_check khicasen.g3a Khicasen @KHICASEN
 
 if [ "${DO_CAS}" = 1 ]; then
-  python3 "${ROOT_DIR}/tools/build_help_pack.py" "${ROOT_DIR}/help/functions" "${OUT_DIR}/CAS.PAK"
+  python3 "${ROOT_DIR}/tools/build/build_help_pack.py" "${ROOT_DIR}/help/functions" "${OUT_DIR}/CAS.PAK"
   cp "${OUT_DIR}/CAS.PAK" "${TRANSFER_DIR}/CAS.PAK"
 fi
 

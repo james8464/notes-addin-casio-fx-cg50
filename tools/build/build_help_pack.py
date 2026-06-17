@@ -9,7 +9,7 @@ MAGIC = b"CASPAK4\0"
 
 def main() -> int:
     if len(sys.argv) != 3:
-        print("usage: tools/build_help_pack.py help/functions output.PAK", file=sys.stderr)
+        print("usage: tools/build/build_help_pack.py help/functions output.PAK", file=sys.stderr)
         return 2
     src = Path(sys.argv[1])
     out = Path(sys.argv[2])

@@ -26,8 +26,8 @@ BANNED = ["Verified", "not checked", "syntax error", "Bad Argument", "Unsupporte
 
 def build() -> None:
     subprocess.check_call([
-        "g++", "-std=c++11", "-Wall", "-Wextra", "-Wno-unused-function", "-Itools",
-        "tools/p3_engine.cpp", "tools/p3_engine_host.cpp", "-o", str(P3_HOST),
+        "g++", "-std=c++11", "-Wall", "-Wextra", "-Wno-unused-function", "-Iapps/paper3",
+        "apps/paper3/p3_engine.cpp", "apps/paper3/p3_engine_host.cpp", "-o", str(P3_HOST),
     ], cwd=ROOT)
 
 
@@ -51,7 +51,7 @@ def require_eval(host: Path, expr: str) -> None:
 
 
 def main() -> int:
-    require_source("tools/khicas_suite_catalog.py", P3_TEMPLATES)
+    require_source("apps/khicas-suite/khicas_suite_catalog.py", P3_TEMPLATES)
     build()
     for expr in P3_TEMPLATES:
         require_eval(P3_HOST, expr)

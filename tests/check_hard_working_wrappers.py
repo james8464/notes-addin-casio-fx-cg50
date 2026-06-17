@@ -62,7 +62,7 @@ CASES: list[tuple[str, list[str]]] = [
 def run(expr: str) -> str:
     env = dict(os.environ, CASCAS_HOST_PRODUCTION="1")
     proc = subprocess.run(
-        [str(ROOT / "tools/khicas_host_runner"), expr],
+        [str(ROOT / "tools/host/khicas_host_runner"), expr],
         cwd=ROOT,
         text=True,
         capture_output=True,

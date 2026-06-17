@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-RUNNER = ROOT / "tools" / "khicas_host_runner"
+RUNNER = ROOT / "tools" / "host" / "khicas_host_runner"
 REPORT = ROOT / "tests" / "reports" / "shared_working_latest.jsonl"
 
 CASES = [

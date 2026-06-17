@@ -22,31 +22,31 @@ def forbid(path: str, needles: list[str]) -> None:
 
 def main() -> int:
     require(
-        "tools/build_g3a.sh",
+        "tools/build/build_g3a.sh",
         ["Usage: ./compile", "casp3", "notes", "runmat", "khicas"],
     )
     require(
         "compile",
-        ['"${ROOT_DIR}/tools/build_g3a.sh" "$@"'],
+        ['"${ROOT_DIR}/tools/build/build_g3a.sh" "$@"'],
     )
     require(
-        "tools/khicas_suite_bridge.cpp",
+        "apps/khicas-suite/khicas_suite_bridge.cpp",
         ["suite_eval_with_working", "p3_eval", "SUITE_APP_P3"],
     )
     require(
-        "tools/khicas_suite_catalog.py",
+        "apps/khicas-suite/khicas_suite_catalog.py",
         ["suvat(", "projectile(", "hypbinom(", "normalprob(", "Mechanics", "Statistics"],
     )
     require(
-        "tools/p3_engine.cpp",
+        "apps/paper3/p3_engine.cpp",
         ["suvat(", "projectile(", "hypbinom(", "binomcdf(", "incline(", "pulley(", "poisson("],
     )
     require(
-        "tools/notes_app.cc",
+        "apps/notes/notes_app.cc",
         ["NOTES_ROOT", r"\\\\fls0\\NOTES\\", "Bfile_FindFirst_NON_SMEM", ".txt", "KEY_CTRL_LEFT", "KEY_CTRL_RIGHT", "search_all_rec"],
     )
     require(
-        "tools/generate_runmat_icons.py",
+        "tools/build/generate_runmat_icons.py",
         ["runmat_icon.png", '"casp3":', '"notes":', 'f"{name}_icon.png"'],
     )
     require(
@@ -63,9 +63,9 @@ def main() -> int:
     )
 
     for rel in [
-        "tools/khicas_suite_bridge.cpp",
-        "tools/khicas_suite_catalog.py",
-        "tools/generate_runmat_icons.py",
+        "apps/khicas-suite/khicas_suite_bridge.cpp",
+        "apps/khicas-suite/khicas_suite_catalog.py",
+        "tools/build/generate_runmat_icons.py",
         "README.md",
     ]:
         forbid(rel, ["CSCALC", "cscalc", "SUITE_APP_CS", "bool_simplify", "booleanProgram"])

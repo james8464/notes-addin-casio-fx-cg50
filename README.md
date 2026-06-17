@@ -1,10 +1,13 @@
-# CAS fx-CG50 Pure Build
+# CASIO fx-CG50 Calculator Suite
 
 Artifact:
 
 - `/Users/james/Developer/CASIO/calculator_files/CAS.g3a`
 - `/Users/james/Developer/CASIO/calculator_files/CAS.PAK`
+- `/Users/james/Developer/CASIO/calculator_files/CASP3.g3a`
+- `/Users/james/Developer/CASIO/calculator_files/NOTES.g3a`
 - `/Users/james/Developer/CASIO/calculator_files/RUNMAT.g3a`
+- `/Users/james/Developer/CASIO/calculator_files/NOTES/`
 - no `.ac2`
 - copy generated files in `calculator_files/` to the calculator
 
@@ -24,16 +27,37 @@ Build:
 ./compile casp3
 ./compile runmat
 ./compile khicas
-python3 tools/check_g3a_metadata.py calculator_files/CAS.g3a --name CAS --internal @CAS --filename CAS.g3a
-python3 tools/check_g3a_metadata.py calculator_files/RUNMAT.g3a --name RunMat --internal @RUNMAT --filename RUNMAT.g3a
-python3 tools/check_g3a_size.py calculator_files/CAS.g3a
-python3 tools/check_g3a_size.py calculator_files/RUNMAT.g3a
-python3 tools/check_catalog_scope.py
-python3 tools/check_calculator_border.py calculator_files/CAS.g3a
-python3 tools/check_runmat_mock.py
+python3 tools/checks/check_g3a_metadata.py calculator_files/CAS.g3a --name CAS --internal @CAS --filename CAS.g3a
+python3 tools/checks/check_g3a_metadata.py calculator_files/RUNMAT.g3a --name RunMat --internal @RUNMAT --filename RUNMAT.g3a
+python3 tools/checks/check_g3a_size.py calculator_files/CAS.g3a
+python3 tools/checks/check_g3a_size.py calculator_files/RUNMAT.g3a
+python3 tools/checks/check_catalog_scope.py
+python3 tools/checks/check_calculator_border.py calculator_files/CAS.g3a
+python3 tools/checks/check_runmat_mock.py
 python3 tests/check_help_examples.py
 python3 tests/run_exact_queue.py --engine production --workers 2
 python3 tests/run_exact_queue.py --engine production --workers 2 --strict-markers
+```
+
+Source layout:
+
+```text
+apps/
+  khicas-suite/   CAS/CASP3 bridge and catalogue patching
+  notes/          NOTES.g3a source
+  paper3/         CASP3 command engine
+  runmat/         RUNMAT visual clone source
+shared/casio/     shared Casio UI helpers
+tools/
+  build/          compile helpers and metadata normalisation
+  checks/         source/artifact validation
+  docker/         source-build image
+  host/           host-side KhiCAS evaluator
+  notes/          one-off notes conversion utilities
+  scope/          kept/removed CAS command manifest
+  working/        host-side working planner probes
+khicas/upstream/  original KhiCAS source tree
+calculator_files/ files to copy to the calculator
 ```
 
 Current status:
@@ -117,16 +141,16 @@ Notable routes:
 
 Active tools:
 
-- `tools/build_g3a.sh` regenerates ignored KhiCAS icon PNGs from tracked BMPs before Make runs
+- `tools/build/build_g3a.sh` regenerates ignored KhiCAS icon PNGs from tracked BMPs before Make runs
 - `./compile [target]` builds selected add-ins without rebuilding everything
 - `tools/docker/Dockerfile.khicas-source`
-- `tools/khicas_host_runner`
-- `tools/check_g3a_metadata.py`
-- `tools/check_g3a_size.py`
-- `tools/check_calculator_border.py`
-- `tools/check_runmat_mock.py`
-- `tools/check_catalog_scope.py`
-- `tools/check_help_quality.py`
+- `tools/host/khicas_host_runner`
+- `tools/checks/check_g3a_metadata.py`
+- `tools/checks/check_g3a_size.py`
+- `tools/checks/check_calculator_border.py`
+- `tools/checks/check_runmat_mock.py`
+- `tools/checks/check_catalog_scope.py`
+- `tools/checks/check_help_quality.py`
 - `tests/check_targeted_working_gaps.py`
 - `tests/random_working_fuzzer.py`
 

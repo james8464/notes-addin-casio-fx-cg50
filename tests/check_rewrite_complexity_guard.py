@@ -6,7 +6,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 FUZZER = ROOT / "tests" / "random_working_fuzzer.py"
-RUNNER = ROOT / "tools" / "khicas_host_runner"
+RUNNER = ROOT / "tools" / "host" / "khicas_host_runner"
 
 spec = importlib.util.spec_from_file_location("random_working_fuzzer", FUZZER)
 fuzzer = importlib.util.module_from_spec(spec)

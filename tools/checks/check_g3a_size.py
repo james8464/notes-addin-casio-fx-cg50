@@ -11,7 +11,7 @@ TARGET_SIZE = int(os.environ.get("CASIO_G3A_TARGET_SIZE", str(HARD_PACKAGE_LIMIT
 
 def main() -> int:
     if len(sys.argv) != 2:
-        print("usage: tools/check_g3a_size.py path/to/file.g3a", file=sys.stderr)
+        print("usage: tools/checks/check_g3a_size.py path/to/file.g3a", file=sys.stderr)
         return 2
     p = Path(sys.argv[1])
     if not p.exists():

@@ -11,7 +11,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 QUEUE = ROOT / "tests/golden/exact_calculator_input_queue.jsonl"
-RUNNER = ROOT / "tools/khicas_host_runner"
+RUNNER = ROOT / "tools/host/khicas_host_runner"
 
 
 @dataclass(frozen=True)

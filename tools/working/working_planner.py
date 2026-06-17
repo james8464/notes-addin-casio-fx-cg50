@@ -12,9 +12,9 @@ from pathlib import Path
 from typing import Iterable
 
 
-ROOT = Path(__file__).resolve().parents[1]
-RULES = ROOT / "tools" / "working_planner_rules.json"
-HOST_EVAL = ROOT / "tools" / "khicas_host_eval.py"
+ROOT = Path(__file__).resolve().parents[2]
+RULES = ROOT / "tools" / "working" / "working_planner_rules.json"
+HOST_EVAL = ROOT / "tools" / "host" / "khicas_host_eval.py"
 
 spec = importlib.util.spec_from_file_location("khicas_host_eval", HOST_EVAL)
 if spec is None or spec.loader is None:

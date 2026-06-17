@@ -112,7 +112,7 @@ def main() -> int:
     env = dict(os.environ, CASCAS_HOST_PRODUCTION="1")
     for expr, want in [("2*x+1", "2*x + 1"), ("coeff((1+x+x^3)^7,x,9)", "252")]:
         proc = subprocess.run(
-            [str(ROOT / "tools/khicas_host_runner"), expr],
+            [str(ROOT / "tools/host/khicas_host_runner"), expr],
             cwd=ROOT,
             text=True,
             capture_output=True,

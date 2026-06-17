@@ -5,13 +5,13 @@ from pathlib import Path
 import subprocess
 import sys
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "tools"))
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "tools" / "scope"))
 
 from scope_manifest import REMOVED_COMMANDS
 
 SRC = ROOT / "khicas/upstream/giac90_1addin"
-RUNNER = ROOT / "tools" / "khicas_host_runner"
+RUNNER = ROOT / "tools" / "host" / "khicas_host_runner"
 
 
 def help_leaks() -> list[str]:

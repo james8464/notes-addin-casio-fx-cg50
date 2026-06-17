@@ -8,8 +8,8 @@ HOST = Path("/tmp/p3_engine_host")
 
 def build():
     subprocess.check_call([
-        "g++", "-std=c++11", "-Wall", "-Wextra", "-Wno-unused-function", "-Itools",
-        "tools/p3_engine.cpp", "tools/p3_engine_host.cpp",
+        "g++", "-std=c++11", "-Wall", "-Wextra", "-Wno-unused-function", "-Iapps/paper3",
+        "apps/paper3/p3_engine.cpp", "apps/paper3/p3_engine_host.cpp",
         "-o", str(HOST),
     ], cwd=ROOT)
 

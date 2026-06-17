@@ -48,7 +48,7 @@ BAD = ("not equivalent", "not verified", "no route")
 
 def run(expr: str) -> str:
     proc = subprocess.run(
-        [str(ROOT / "tools/khicas_host_runner"), expr],
+        [str(ROOT / "tools/host/khicas_host_runner"), expr],
         cwd=ROOT,
         text=True,
         capture_output=True,

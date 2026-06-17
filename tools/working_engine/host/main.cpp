@@ -206,7 +206,7 @@ static std::string shell_quote(std::string const &s)
 static bool host_exact_eval(char const *expr, cascas::working_string &out)
 {
     if(!std::getenv("CASCAS_HOST_PRODUCTION")) return false;
-    std::string cmd = "python3 tools/khicas_host_eval.py " + shell_quote(expr ? expr : "");
+    std::string cmd = "python3 tools/host/khicas_host_eval.py " + shell_quote(expr ? expr : "");
     FILE *pipe = popen(cmd.c_str(), "r");
     if(!pipe) return false;
     char buf[512];
