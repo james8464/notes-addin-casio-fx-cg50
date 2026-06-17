@@ -1,0 +1,8 @@
+power
+Args: power(W,t) or power(F=...,v=...)
+Required: Work W and time t, or force F and speed v.
+Optional: None.
+Does: Finds power.
+Working: Uses P=W/t or P=Fv.
+Checks: Use the force component in the direction of motion.
+Examples: power(120,4); power(F=20,v=3)

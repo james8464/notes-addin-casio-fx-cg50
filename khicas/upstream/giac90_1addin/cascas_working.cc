@@ -6329,6 +6329,19 @@ static bool try_mech_command(const char *input,working_string &out){
     out="Work\nW=Fd\nW="+rat_s(a)+"*"+rat_s(b)+"="+rat_s(rat_mul(a,b))+" J";
     return true;
   }
+  if (parse_call(input,"power",args,5,n)){
+    working_string pc=lower(compact(input));
+    if (contains(pc,"f=") && contains(pc,"v=") && arg_rat(args,n,"f",0,a) && arg_rat(args,n,"v",1,b)){
+      out="Power\nP=Fv\nP="+rat_s(a)+"*"+rat_s(b)+"="+rat_s(rat_mul(a,b))+" W";
+      return true;
+    }
+    if (!arg_rat(args,n,"w",0,a) || !arg_rat(args,n,"t",1,b) || !b.n){
+      out="power(W,t) or power(F=,v=)\nP=W/t or P=Fv";
+      return true;
+    }
+    out="Power\nP=W/t\nP="+rat_s(a)+"/"+rat_s(b)+"="+rat_s(rat_div(a,b))+" W";
+    return true;
+  }
   if (parse_call(input,"impulse",args,5,n)){
     if (!arg_rat(args,n,"m",0,a) || !arg_rat(args,n,"u",1,b) || !arg_rat(args,n,"v",2,c)){
       out="impulse(m,u,v)\nI=m(v-u)";
@@ -18743,12 +18756,6 @@ bool eval_with_working(const char *input,working_string &out){
   if (starts_command(cs,"fsolve") && try_symbolic_command_working(input,out)){
     strip_weak_working_labels(out);
     append_command_marker(cs,out);
-    return true;
-  }
-  if (starts_command(cs,"limit") &&
-      (try_limit_abs_one_sided(input,out) || try_limit_finite_geometric_sum(input,out) ||
-       try_limit_scaled_unit_integral(input,out))){
-    strip_weak_working_labels(out);
     return true;
   }
   if (starts_command(cs,"limit") && try_symbolic_command_working(input,out)){

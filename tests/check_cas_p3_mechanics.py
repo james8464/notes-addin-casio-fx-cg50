@@ -16,6 +16,8 @@ CASES = [
     ("weight(6)", ["Weight", "W=mg", "294/5 N"]),
     ("moment(10,4)", ["Moment", "M=Fd", "40 N m"]),
     ("work(12,5)", ["Work", "W=Fd", "60 J"]),
+    ("power(120,4)", ["Power", "P=W/t", "30 W"]),
+    ("power(F=20,v=3)", ["Power", "P=Fv", "60 W"]),
     ("energy(2,5,3)", ["Energy", "KE=1/2mv^2", "KE=25 J", "GPE=294/5 J"]),
     ("impulse(0.5,4,-2)", ["Impulse", "I=m(v-u)", "-3 Ns"]),
     ("friction(2/5,25)", ["Friction", "Fmax=muR", "10 N"]),

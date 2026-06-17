@@ -38,6 +38,7 @@ KEPT_COMMANDS = [
     "log",
     "moment",
     "partfrac",
+    "power",
     "product",
     "range",
     "resultant",
