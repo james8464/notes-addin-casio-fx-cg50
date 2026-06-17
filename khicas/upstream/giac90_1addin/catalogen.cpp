@@ -25,6 +25,7 @@ extern "C" {
 #define CASCAS_MIN_CATALOG
 #include "catalogGUI.hpp"
 #include "fileGUI.hpp"
+#include "textGUI.hpp"
 #include "graphicsProvider.hpp"
 #include "constantsProvider.hpp"
 #include "kdisplay.h"
@@ -187,6 +188,50 @@ static void draw_catalog_fkeys(bool folders){
   drawFkeyLabels(folders?0:0x03FC,0,0,0,0,folders?0:0x03FD);
 }
 
+static ustl::string catalog_cmd_name(int index){
+  ustl::string s=completeCat[index].name;
+  int p=s.find('(');
+  if (p<0) p=s.find('[');
+  return p>=0?s.substr(0,p):s;
+}
+
+static bool read_cas_help(int index,ustl::string &text){
+  unsigned short pFile[32];
+  const char *fname="\\\\fls0\\CAS.PAK";
+  Bfile_StrToName_ncpy(pFile,(const unsigned char*)fname,strlen(fname)+1);
+  int h=Bfile_OpenFile_OS(pFile,READ);
+  if (h<0) return false;
+  int sz=Bfile_GetFileSize_OS(h);
+  if (sz<16 || sz>65536){ Bfile_CloseFile_OS(h); return false; }
+  unsigned char *buf=(unsigned char*)malloc(sz);
+  if (!buf){ Bfile_CloseFile_OS(h); return false; }
+  int ok=Bfile_ReadFile_OS(h,buf,sz,0)==sz;
+  Bfile_CloseFile_OS(h);
+  if (!ok || memcmp(buf,"CASPAK4",7)!=0 || buf[7]!=0){ free(buf); return false; }
+  int count=buf[8] | (buf[9]<<8);
+  int table=10, base=table+4*(count+1);
+  if (index<0 || index>=count || base>sz){ free(buf); return false; }
+  int a=buf[table+4*index] | (buf[table+4*index+1]<<8) | (buf[table+4*index+2]<<16) | (buf[table+4*index+3]<<24);
+  int b=buf[table+4*(index+1)] | (buf[table+4*(index+1)+1]<<8) | (buf[table+4*(index+1)+2]<<16) | (buf[table+4*(index+1)+3]<<24);
+  if (a<0 || b<a || base+b>sz){ free(buf); return false; }
+  text.clear();
+  for (int i=base+a;i<base+b;++i) text += char(buf[i]);
+  free(buf);
+  return true;
+}
+
+static void show_catalog_help(int index){
+  ustl::string body,title=catalog_cmd_name(index);
+  if (!read_cas_help(index,body))
+    body="No command sheet found.\nCopy CAS.PAK with CAS.g3a.";
+  textArea text;
+  text.editable=false;
+  text.clipline=-1;
+  text.title=title.c_str();
+  add(&text,body);
+  doTextArea(&text);
+}
+
 // 0 on exit, 1 on success
 int doCatalogMenu(char* insertText, char* title, int category,const char * cmdname) {
   int allcmds=CAT_COMPLETE_COUNT;
@@ -239,7 +284,9 @@ int doCatalogMenu(char* insertText, char* title, int category,const char * cmdna
     }
     int index=menuitems[menu.selection-1].isfolder;
     if(category!=CAT_CATEGORY_ALL && sres == KEY_CTRL_F6) {
-      sres=KEY_CTRL_F1;
+      show_catalog_help(index);
+      DisplayStatusArea();
+      continue;
     }
     if(sres == MENU_RETURN_SELECTION || sres == KEY_CTRL_F1) {
       if (category==CAT_CATEGORY_ALL){

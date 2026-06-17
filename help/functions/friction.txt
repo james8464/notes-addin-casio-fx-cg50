@@ -1,8 +1,8 @@
 friction
-Args: friction(mu,R[,F])
+Args: friction(mu,R[,F[,m]])
 Required: Coefficient mu and normal reaction R.
-Optional: Applied force F; named arguments mu=..., R=..., F=... may be used.
-Does: Finds limiting friction and checks sliding if F is supplied.
-Working: Uses Fmax = mu R, then compares F with Fmax.
+Optional: Applied force F and mass m; named arguments mu=..., R=..., F=..., m=... may be used.
+Does: Finds limiting friction, checks sliding, and finds acceleration if F and m are supplied.
+Working: Uses Fmax = mu R, compares F with Fmax, then uses F-Fmax = ma when sliding.
 Checks: For static friction use F <= mu R unless limiting friction is stated.
-Examples: friction(0.4,20); friction(2/5,25,12); friction(mu=2/5,R=20,F=6)
+Examples: friction(0.4,20); friction(2/5,25,12); friction(2/5,25,12,4); friction(mu=2/5,R=20,F=6,m=2)

@@ -9,6 +9,7 @@ TRANSFER_DIR="${ROOT_DIR}/calculator_files"
 MAKE_JOBS="${CASIO_MAKE_JOBS:-1}"
 IMAGE_VERSION="runmat-v2"
 DOCKER_BUILD_SCRIPT="${OUT_DIR}/docker_build_g3a.sh"
+OFFICIAL_KHICASEN_URL="${CASIO_KHICASEN_URL:-https://www-fourier.univ-grenoble-alpes.fr/~parisse/casio/khicasen.g3a}"
 
 usage() {
   cat <<'EOF'
@@ -110,17 +111,17 @@ mkdir -p "${OUT_DIR}" "${TRANSFER_DIR}"
 rm -rf "${OUT_DIR:?}"/*
 touch "${TRANSFER_DIR}/.gitkeep"
 
-ensure_image
-clean_source_outputs
-prepare_icons
-stage_sources
-
 DO_CAS=0; DO_CASP3=0; DO_NOTES=0; DO_RUNMAT=0; DO_KHICAS=0
 want cas && DO_CAS=1
 want casp3 && DO_CASP3=1
 want notes && DO_NOTES=1
 want runmat && DO_RUNMAT=1
 want khicas && DO_KHICAS=1
+DO_KHICAS_DOCKER=0
+DO_SOURCE=0
+if [ "${DO_CAS}" = 1 ] || [ "${DO_CASP3}" = 1 ] || [ "${DO_NOTES}" = 1 ] || [ "${DO_RUNMAT}" = 1 ]; then
+  DO_SOURCE=1
+fi
 
 if [ "${#TARGETS[@]}" -eq 4 ] && [ "${DO_CAS}" = 1 ] && [ "${DO_CASP3}" = 1 ] && [ "${DO_NOTES}" = 1 ] && [ "${DO_RUNMAT}" = 1 ]; then
   find "${TRANSFER_DIR}" -mindepth 1 \
@@ -208,18 +209,25 @@ PY
 fi
 SH
 
-docker run --rm \
-  --platform linux/amd64 \
-  -e CASIO_MAKE_JOBS="${MAKE_JOBS}" \
-  -e DO_CAS="${DO_CAS}" \
-  -e DO_CASP3="${DO_CASP3}" \
-  -e DO_NOTES="${DO_NOTES}" \
-  -e DO_RUNMAT="${DO_RUNMAT}" \
-  -e DO_KHICAS="${DO_KHICAS}" \
-  -v "${ROOT_DIR}:/work" \
-  -w /work/khicas/upstream/giac90_1addin \
-  "${IMAGE_TAG}" \
-  bash /work/build/docker_build_g3a.sh
+if [ "${DO_SOURCE}" = 1 ]; then
+  ensure_image
+  clean_source_outputs
+  prepare_icons
+  stage_sources
+
+  docker run --rm \
+    --platform linux/amd64 \
+    -e CASIO_MAKE_JOBS="${MAKE_JOBS}" \
+    -e DO_CAS="${DO_CAS}" \
+    -e DO_CASP3="${DO_CASP3}" \
+    -e DO_NOTES="${DO_NOTES}" \
+    -e DO_RUNMAT="${DO_RUNMAT}" \
+    -e DO_KHICAS="${DO_KHICAS_DOCKER}" \
+    -v "${ROOT_DIR}:/work" \
+    -w /work/khicas/upstream/giac90_1addin \
+    "${IMAGE_TAG}" \
+    bash /work/build/docker_build_g3a.sh
+fi
 
 copy_and_check() {
   local file="$1" name="$2" internal="$3"
@@ -235,12 +243,21 @@ copy_and_check CAS.g3a CAS @CAS
 copy_and_check RUNMAT.g3a RunMat @RUNMAT
 copy_and_check CASP3.g3a CASP3 @CASP3
 copy_and_check NOTES.g3a Notes @NOTES
-copy_and_check khicasen.g3a Khicasen @KHICASEN
+
+if [ "${DO_KHICAS}" = 1 ]; then
+  curl -L --fail --retry 3 --connect-timeout 20 --max-time 180 \
+    "${OFFICIAL_KHICASEN_URL}" -o "${OUT_DIR}/khicasen.g3a"
+  python3 "${ROOT_DIR}/tools/checks/check_g3a_metadata.py" "${OUT_DIR}/khicasen.g3a" --name Khicasen --internal @KHICASEN --filename khicasen.g3a
+  python3 "${ROOT_DIR}/tools/checks/check_g3a_size.py" "${OUT_DIR}/khicasen.g3a"
+  cp "${OUT_DIR}/khicasen.g3a" "${TRANSFER_DIR}/khicasen.g3a"
+fi
 
 if [ "${DO_CAS}" = 1 ]; then
   python3 "${ROOT_DIR}/tools/build/build_help_pack.py" "${ROOT_DIR}/help/functions" "${OUT_DIR}/CAS.PAK"
   cp "${OUT_DIR}/CAS.PAK" "${TRANSFER_DIR}/CAS.PAK"
 fi
 
-cleanup_staged_sources
+if [ "${DO_SOURCE}" = 1 ]; then
+  cleanup_staged_sources
+fi
 find "${TRANSFER_DIR}" -maxdepth 1 -type f -print | sort | xargs -r ls -lh

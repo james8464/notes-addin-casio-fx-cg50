@@ -6321,6 +6321,8 @@ static bool try_mech_command(const char *input,working_string &out){
   Rat a,b,c,d;
   if (parse_call(input,"weight",args,5,n)){
     if (!arg_rat(args,n,"m",0,a)){
+      working_string m=arg_text(args,n,"m",0);
+      if (!m.empty()){ out="Weight\nW=mg\nW="+m+"*9.8 N"; return true; }
       out="weight(m)\nW=mg";
       return true;
     }
@@ -6330,6 +6332,8 @@ static bool try_mech_command(const char *input,working_string &out){
   }
   if (parse_call(input,"force",args,5,n)){
     if (!arg_rat(args,n,"m",0,a) || !arg_rat(args,n,"a",1,b)){
+      working_string m=arg_text(args,n,"m",0), acc=arg_text(args,n,"a",1);
+      if (!m.empty() && !acc.empty()){ out="Newton II\nF=ma\nF="+m+"*"+acc+" N"; return true; }
       out="force(m,a)\nF=ma";
       return true;
     }
@@ -6399,6 +6403,8 @@ static bool try_mech_command(const char *input,working_string &out){
   }
   if (parse_call(input,"moment",args,5,n)){
     if (!arg_rat(args,n,"f",0,a) || !arg_rat(args,n,"d",1,b)){
+      working_string f=arg_text(args,n,"f",0), dist=arg_text(args,n,"d",1);
+      if (!f.empty() && !dist.empty()){ out="Moment\nM=Fd\nM="+f+"*"+dist+" N m"; return true; }
       out="moment(F,d)\nM=F*d";
       return true;
     }
@@ -6407,6 +6413,8 @@ static bool try_mech_command(const char *input,working_string &out){
   }
   if (parse_call(input,"work",args,5,n)){
     if (!arg_rat(args,n,"f",0,a) || !arg_rat(args,n,"d",1,b)){
+      working_string f=arg_text(args,n,"f",0), dist=arg_text(args,n,"d",1);
+      if (!f.empty() && !dist.empty()){ out="Work\nW=Fd\nW="+f+"*"+dist+" J"; return true; }
       out="work(F,d)\nW=F*d";
       return true;
     }
@@ -6444,6 +6452,8 @@ static bool try_mech_command(const char *input,working_string &out){
   }
   if (parse_call(input,"momentum",args,5,n)){
     if (!arg_rat(args,n,"m",0,a) || !arg_rat(args,n,"v",1,b)){
+      working_string m=arg_text(args,n,"m",0), v=arg_text(args,n,"v",1);
+      if (!m.empty() && !v.empty()){ out="Momentum\np=mv\np="+m+"*"+v+" kg m/s"; return true; }
       out="momentum(m,v)\np=mv";
       return true;
     }
@@ -6469,13 +6479,24 @@ static bool try_mech_command(const char *input,working_string &out){
   }
   if (parse_call(input,"friction",args,5,n)){
     if (!arg_rat(args,n,"mu",0,a) || !arg_rat(args,n,"r",1,b)){
-      out="friction(mu,R[,F])\nlimit:F=muR\nstatic:F<=muR";
+      working_string mu=arg_text(args,n,"mu",0), R=arg_text(args,n,"r",1), F=arg_text(args,n,"f",2), m=arg_text(args,n,"m",3);
+      if (!mu.empty() && !R.empty()){
+        out="Friction\nFmax=muR\nFmax="+mu+"*"+R+" N";
+        if (!F.empty()) out += "\ncompare F with Fmax";
+        if (!F.empty() && !m.empty()) out += "\nif sliding: a=(F-Fmax)/m\na=("+F+"-"+mu+"*"+R+")/"+m+" m/s^2";
+        return true;
+      }
+      out="friction(mu,R[,F[,m]])\nlimit:F=muR\nstatic:F<=muR";
       return true;
     }
     c=rat_mul(a,b);
     out="Friction\nFmax=muR\nFmax="+rat_s(a)+"*"+rat_s(b)+"="+rat_s(c)+" N";
-    if (arg_rat(args,n,"f",2,d))
+    if (arg_rat(args,n,"f",2,d)){
       out += rat_cmp(d,c)<=0 ? "\nF<=Fmax: no sliding" : "\nF>Fmax: sliding";
+      Rat m;
+      if (rat_cmp(d,c)>0 && arg_rat(args,n,"m",3,m) && m.n)
+        out += "\nF-Fmax=ma\na=("+rat_s(d)+"-"+rat_s(c)+")/"+rat_s(m)+"="+rat_s(rat_div(rat_sub(d,c),m))+" m/s^2";
+    }
     return true;
   }
   if (parse_call(input,"resolve",args,5,n)){
