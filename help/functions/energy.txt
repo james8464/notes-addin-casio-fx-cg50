@@ -1,0 +1,8 @@
+energy
+Args: energy(m,v[,h])
+Required: Mass m and speed v.
+Optional: Height h for gravitational potential energy.
+Does: Finds kinetic energy, and GPE if h is given.
+Working: Uses KE = 1/2 mv^2 and GPE = mgh.
+Checks: Uses g = 9.8. Units are joules.
+Examples: energy(2,5); energy(2,5,3)

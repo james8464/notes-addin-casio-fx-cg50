@@ -18,6 +18,7 @@ KEPT_COMMANDS = [
     "domain",
     "dot",
     "exact",
+    "energy",
     "exp",
     "factor",
     "floor",

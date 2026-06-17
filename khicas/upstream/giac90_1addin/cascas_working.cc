@@ -6295,7 +6295,7 @@ static working_string arg_text(working_string *args,int n,const char *key,int po
 static bool try_mech_command(const char *input,working_string &out){
   working_string args[5];
   int n=0;
-  Rat a,b;
+  Rat a,b,c;
   if (parse_call(input,"weight",args,5,n)){
     if (!arg_rat(args,n,"m",0,a)){
       out="weight(m)\nW = mg";
@@ -6327,6 +6327,17 @@ static bool try_mech_command(const char *input,working_string &out){
       return true;
     }
     out="Work done\nW = Fd\nW = "+rat_s(a)+"*"+rat_s(b)+" = "+rat_s(rat_mul(a,b))+" J";
+    return true;
+  }
+  if (parse_call(input,"energy",args,5,n)){
+    if (!arg_rat(args,n,"m",0,a) || !arg_rat(args,n,"v",1,b)){
+      out="energy(m,v[,h])\nKE = 1/2 mv^2\nGPE = mgh";
+      return true;
+    }
+    c=rat_div(rat_mul(rat_mul(a,b),b),rat(2,1));
+    out="Energy\nKE = 1/2 mv^2\nKE = "+rat_s(c)+" J";
+    if (arg_rat(args,n,"h",2,c))
+      out += "\nGPE = mgh\nGPE = "+rat_s(rat_mul(rat_mul(a,rat(49,5)),c))+" J";
     return true;
   }
   if (parse_call(input,"friction",args,5,n)){

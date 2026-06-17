@@ -81,6 +81,7 @@ const catalogFunc completeCat[] = { // scoped A-level Pure catalog
   {"domain", CAT_CATEGORY_SOLVE},
   {"dot", CAT_CATEGORY_VECTOR},
   {"exact", CAT_CATEGORY_REAL},
+  {"energy", CAT_CATEGORY_MECH},
   {"exp", CAT_CATEGORY_ALGEBRA},
   {"factor", CAT_CATEGORY_ALGEBRA},
   {"floor", CAT_CATEGORY_REAL},
