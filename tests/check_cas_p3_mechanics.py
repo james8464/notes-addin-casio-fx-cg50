@@ -17,6 +17,7 @@ CASES = [
     ("pulley(2,3)", ["Pulley", "a=(m2-m1)g/(m1+m2)", "a=(3-2)*49/5/(2+3)=49/25", "T=m1(g+a)=2*(49/5+49/25)=588/25 N"]),
     ("lift(5,2)", ["Lift", "R-mg=ma", "R=m(g+a)", "R=5*(49/5+2)=59 N"]),
     ("varacc(6*t,t,4)", ["Variable acceleration", "v=int a dt", "v=3*t^2+C", "v(0)=4", "v=3*t^2+4"]),
+    ("varacc(6*t,t,4,2)", ["Variable acceleration", "v=3*t^2+4", "s=int v dt", "s(0)=2", "s=t^3+4*t+2"]),
     ("weight(6)", ["Weight", "W=mg", "294/5 N"]),
     ("moment(10,4)", ["Moment", "M=Fd", "40 N m"]),
     ("work(12,5)", ["Work", "W=Fd", "60 J"]),

@@ -1,8 +1,8 @@
 varacc
-Args: varacc(a,t[,v0])
+Args: varacc(a,t[,v0[,s0]])
 Required: Acceleration a in terms of t.
-Optional: Initial velocity v0 at t=0.
-Does: Integrates acceleration to velocity.
-Working: Uses v=int a dt, then adds v0 if supplied.
+Optional: Initial velocity v0 and initial displacement s0 at t=0.
+Does: Integrates acceleration to velocity, and then to displacement if s0 is supplied.
+Working: Uses v=int a dt, then s=int v dt.
 Checks: For non-zero initial time, use integrate directly.
-Examples: varacc(6*t,t); varacc(6*t,t,4)
+Examples: varacc(6*t,t); varacc(6*t,t,4); varacc(6*t,t,4,2)

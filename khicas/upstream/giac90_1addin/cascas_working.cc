@@ -6294,6 +6294,16 @@ static working_string arg_text(working_string *args,int n,const char *key,int po
 
 static working_string mech_clean_integral(working_string s){
   int p=s.find("*(1/");
+  if (p<0){
+    int q=s.find(")/");
+    if (s.size()>4 && s[0]=='(' && q>1){
+      Rat a,b;
+      int star=s.find('*',q+2);
+      if (star>q && parse_rat(s.substr(1,q-1),a) && parse_rat(s.substr(q+2,star-q-2),b) && rat_cmp(a,b)==0)
+        return s.substr(star+1,s.size()-star-1);
+    }
+    return s;
+  }
   if (p<=0 || s.size()<7 || s[s.size()-1]!=')' || s[p+1]!='(' || s[p+2]!='1' || s[p+3]!='/')
     return s;
   int q=s.find('*',p+4);
@@ -6361,9 +6371,9 @@ static bool try_mech_command(const char *input,working_string &out){
     return true;
   }
   if (parse_call(input,"varacc",args,5,n)){
-    working_string acc=n>0?trim(args[0]):"", v=n>1?trim(args[1]):"t", v0=n>2?trim(args[2]):"", F;
+    working_string acc=n>0?trim(args[0]):"", v=n>1?trim(args[1]):"t", v0=n>2?trim(args[2]):"", s0=n>3?trim(args[3]):"", F;
     if (acc.empty()){
-      out="varacc(a,t[,v0])\nv=int a dt";
+      out="varacc(a,t[,v0[,s0]])\nv=int a dt";
       return true;
     }
     if (v.empty())
@@ -6375,6 +6385,15 @@ static bool try_mech_command(const char *input,working_string &out){
     if (!v0.empty()){
       F += (v0[0]=='-'?v0:working_string("+")+v0);
       out += "\nv(0)="+v0+"\nv="+F;
+      if (!s0.empty()){
+        working_string S;
+        if (!try_integral(("integrate("+F+","+v+")").c_str(),S))
+          S="integrate("+F+","+v+")";
+        S=mech_clean_integral(strip_integral_constant(S));
+        S=replace_all_literal(S," + ","+");
+        S += (s0[0]=='-'?s0:working_string("+")+s0);
+        out += "\ns=int v d"+v+"\ns(0)="+s0+"\ns="+S;
+      }
     }
     return true;
   }
