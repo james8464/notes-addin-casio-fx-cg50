@@ -3,6 +3,6 @@ Args: weight(m)
 Required: Mass m in kg.
 Optional: None.
 Does: Finds weight from mass.
-Working: Uses W = mg and substitutes g = 9.8.
+Working: Uses W = mg and KhiCAS simplification with g = 9.8.
 Checks: Returns force in N and keeps exact rational arithmetic where possible.
 Examples: weight(5)

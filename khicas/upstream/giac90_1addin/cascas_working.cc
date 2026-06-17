@@ -29,6 +29,7 @@ static bool split_equal_sides(const working_string &raw,working_string &left,wor
 static bool integer_bound_arg(const working_string &src,long &v);
 static bool parse_power_diff(const working_string &src,working_string &u,working_string &v,long &p);
 static bool try_normal_power_difference_quotient(const char *input,working_string &out);
+static working_string suvat_positive_time(const working_string &src);
 
 static working_string trim(const working_string &s){
   int a=0,b=s.size();
@@ -249,6 +250,7 @@ static bool removed_hash_denied(unsigned h){
     0x813d75aeu, 0xc03183c0u, 0xc9e892e2u, 0xef314037u,
     0x078e35eeu, 0xb5bda71fu, 0x08230495u, 0x0dd0b0beu,
     0x0dc628ceu, 0xbe269f5cu, 0xf7faaee1u, 0x8efe6e31u,
+    0xeb64d5d5u, 0x0f477e9au,
   };
   for (unsigned i=0;i<sizeof(denied)/sizeof(denied[0]);++i)
     if (denied[i]==h)
@@ -6283,13 +6285,24 @@ static bool try_suvat(const char *input,working_string &out){
   for (int i=0;i<keq;++i){ solve+=","; solve+=known_eq[i]; }
   solve+="],[s,u,v,a,t])";
   working_string exact;
-  if (production_exact_command(solve,exact) && compact(exact)!="[]")
-    suvat_apply_solve(exact,val,have);
+  bool no_solution=false;
+  if (production_exact_command(solve,exact)){
+    no_solution=compact(exact)=="[]";
+    if (!no_solution)
+      suvat_apply_solve(exact,val,have);
+  }
   static const char *names[]={"s","u","v","a","t"};
   out="SUVAT\nans:\n";
   for (int i=0;i<5;++i)
     if (have[i]){ out += names[i]; out += "="; out += val[i]; out += "\n"; }
-  if (known<3)
+  if (!no_solution){
+    working_string phys=suvat_positive_time(val[4]);
+    if (!phys.empty())
+      out += "physical t="+phys+"\n";
+  }
+  if (no_solution && known>=3)
+    out += "No solution: check signs / constant acceleration.\n";
+  else if (known<3)
     out += "Need 3 named values.\n";
   else {
     int got=0;
@@ -6302,13 +6315,30 @@ static bool try_suvat(const char *input,working_string &out){
   return true;
 }
 
-static bool arg_rat(working_string *args,int n,const char *key,int pos,Rat &v){
+static working_string suvat_positive_time(const working_string &src){
+  working_string item[8],out;
+  int n=split_exact_list(src,item,8);
+  if (n<=1)
+    return "";
+  for (int i=0;i<n;++i){
+    double v=0;
+    if (exact_approx_double(item[i],v) && v>=-1e-10){
+      if (!out.empty()) out += ", ";
+      out += trim(item[i]);
+    }
+  }
+  if (out.empty())
+    return "";
+  return contains(out,",") ? ("["+out+"]") : out;
+}
+
+static working_string arg_expr(working_string *args,int n,const char *key,int pos){
   for (int i=0;i<n;++i){
     int eq=find_top_equal_any(args[i]);
     if (eq>0 && lower(compact(args[i].substr(0,eq)))==key)
-      return parse_rat(args[i].substr(eq+1,args[i].size()-eq-1),v);
+      return trim(args[i].substr(eq+1,args[i].size()-eq-1));
   }
-  return pos<n && find_top_equal_any(args[pos])<=0 && parse_rat(args[pos],v);
+  return (pos<n && find_top_equal_any(args[pos])<=0)?trim(args[pos]):"";
 }
 
 static working_string arg_text(working_string *args,int n,const char *key,int pos){
@@ -6318,6 +6348,22 @@ static working_string arg_text(working_string *args,int n,const char *key,int po
       return compact(args[i].substr(eq+1,args[i].size()-eq-1));
   }
   return (pos<n && find_top_equal_any(args[pos])<=0)?compact(args[pos]):"";
+}
+
+static working_string mech_simplify(const working_string &expr){
+  working_string r;
+  if (production_exact_command("simplify("+expr+")",r) && !trim(r).empty())
+    return trim(r);
+  return expr;
+}
+
+static int mech_sign(const working_string &expr){
+  double v=0;
+  if (!exact_approx_double(expr,v))
+    return 2;
+  if (v>1e-10) return 1;
+  if (v<-1e-10) return -1;
+  return 0;
 }
 
 static working_string mech_clean_integral(working_string s){
@@ -6346,60 +6392,55 @@ static working_string mech_clean_integral(working_string s){
 static bool try_mech_command(const char *input,working_string &out){
   working_string args[5];
   int n=0;
-  Rat a,b,c,d;
   if (parse_call(input,"weight",args,5,n)){
-    if (!arg_rat(args,n,"m",0,a)){
-      working_string m=arg_text(args,n,"m",0);
-      if (!m.empty()){ out="Weight\nW=mg\nW="+m+"*9.8 N"; return true; }
+    working_string m=arg_expr(args,n,"m",0);
+    if (m.empty()){
       out="weight(m)\nW=mg";
       return true;
     }
-    b=rat_mul(a,rat(49,5));
-    out="Weight\nW=mg\nW="+rat_s(a)+"*9.8="+rat_s(b)+" N";
+    out="Weight\nW=mg\nW="+m+"*9.8="+mech_simplify("("+m+")*49/5")+" N";
     return true;
   }
   if (parse_call(input,"force",args,5,n)){
-    if (!arg_rat(args,n,"m",0,a) || !arg_rat(args,n,"a",1,b)){
-      working_string m=arg_text(args,n,"m",0), acc=arg_text(args,n,"a",1);
-      if (!m.empty() && !acc.empty()){ out="Newton II\nF=ma\nF="+m+"*"+acc+" N"; return true; }
+    working_string m=arg_expr(args,n,"m",0), acc=arg_expr(args,n,"a",1);
+    if (m.empty() || acc.empty()){
       out="force(m,a)\nF=ma";
       return true;
     }
-    out="Newton II\nF=ma\nF="+rat_s(a)+"*"+rat_s(b)+"="+rat_s(rat_mul(a,b))+" N";
+    out="Newton II\nF=ma\nF="+m+"*"+acc+"="+mech_simplify("("+m+")*("+acc+")")+" N";
     return true;
   }
   if (parse_call(input,"connected",args,5,n)){
-    if (!arg_rat(args,n,"m1",0,a) || !arg_rat(args,n,"m2",1,b) || !arg_rat(args,n,"f",2,c)){
+    working_string m1=arg_expr(args,n,"m1",0), m2=arg_expr(args,n,"m2",1), F=arg_expr(args,n,"f",2);
+    if (m1.empty() || m2.empty() || F.empty()){
       out="connected(m1,m2,F)\na=F/(m1+m2)\nT=m1*a";
       return true;
     }
-    Rat acc=rat_div(c,rat_add(a,b));
-    out="Connected\na=F/(m1+m2)\na="+rat_s(c)+"/("+rat_s(a)+"+"+rat_s(b)+")="+rat_s(acc);
-    out += "\nT=m1*a="+rat_s(a)+"*"+rat_s(acc)+"="+rat_s(rat_mul(a,acc))+" N";
+    working_string acc=mech_simplify("("+F+")/(("+m1+")+("+m2+"))");
+    out="Connected\na=F/(m1+m2)\na="+F+"/("+m1+"+"+m2+")="+acc;
+    out += "\nT=m1*a="+m1+"*"+acc+"="+mech_simplify("("+m1+")*("+acc+")")+" N";
     return true;
   }
   if (parse_call(input,"pulley",args,5,n)){
-    Rat g=rat(49,5);
-    if (!arg_rat(args,n,"m1",0,a) || !arg_rat(args,n,"m2",1,b)){
+    working_string m1=arg_expr(args,n,"m1",0), m2=arg_expr(args,n,"m2",1), g=arg_expr(args,n,"g",2);
+    if (m1.empty() || m2.empty()){
       out="pulley(m1,m2[,g])\na=(m2-m1)g/(m1+m2)\nT=m1(g+a)";
       return true;
     }
-    if (arg_rat(args,n,"g",2,c))
-      g=c;
-    Rat acc=rat_div(rat_mul(rat_sub(b,a),g),rat_add(a,b));
-    out="Pulley\na=(m2-m1)g/(m1+m2)\na=("+rat_s(b)+"-"+rat_s(a)+")*"+rat_s(g)+"/("+rat_s(a)+"+"+rat_s(b)+")="+rat_s(acc);
-    out += "\nT=m1(g+a)="+rat_s(a)+"*("+rat_s(g)+"+"+rat_s(acc)+")="+rat_s(rat_mul(a,rat_add(g,acc)))+" N";
+    if (g.empty()) g="49/5";
+    working_string acc=mech_simplify("(("+m2+")-("+m1+"))*("+g+")/(("+m1+")+("+m2+"))");
+    out="Pulley\na=(m2-m1)g/(m1+m2)\na=("+m2+"-"+m1+")*"+g+"/("+m1+"+"+m2+")="+acc;
+    out += "\nT=m1(g+a)="+m1+"*("+g+"+"+acc+")="+mech_simplify("("+m1+")*(("+g+")+("+acc+"))")+" N";
     return true;
   }
   if (parse_call(input,"lift",args,5,n)){
-    Rat g=rat(49,5);
-    if (!arg_rat(args,n,"m",0,a) || !arg_rat(args,n,"a",1,b)){
+    working_string m=arg_expr(args,n,"m",0), acc=arg_expr(args,n,"a",1), g=arg_expr(args,n,"g",2);
+    if (m.empty() || acc.empty()){
       out="lift(m,a[,g])\nR=m(g+a)\nuse a<0 if down";
       return true;
     }
-    if (arg_rat(args,n,"g",2,c))
-      g=c;
-    out="Lift\nR-mg=ma\nR=m(g+a)\nR="+rat_s(a)+"*("+rat_s(g)+"+"+rat_s(b)+")="+rat_s(rat_mul(a,rat_add(g,b)))+" N";
+    if (g.empty()) g="49/5";
+    out="Lift\nR-mg=ma\nR=m(g+a)\nR="+m+"*("+g+"+"+acc+")="+mech_simplify("("+m+")*(("+g+")+("+acc+"))")+" N";
     return true;
   }
   if (parse_call(input,"varacc",args,5,n)){
@@ -6430,100 +6471,100 @@ static bool try_mech_command(const char *input,working_string &out){
     return true;
   }
   if (parse_call(input,"moment",args,5,n)){
-    if (!arg_rat(args,n,"f",0,a) || !arg_rat(args,n,"d",1,b)){
-      working_string f=arg_text(args,n,"f",0), dist=arg_text(args,n,"d",1);
-      if (!f.empty() && !dist.empty()){ out="Moment\nM=Fd\nM="+f+"*"+dist+" N m"; return true; }
+    working_string f=arg_expr(args,n,"f",0), dist=arg_expr(args,n,"d",1);
+    if (f.empty() || dist.empty()){
       out="moment(F,d)\nM=F*d";
       return true;
     }
-    out="Moment\nM=Fd\nM="+rat_s(a)+"*"+rat_s(b)+"="+rat_s(rat_mul(a,b))+" N m";
+    out="Moment\nM=Fd\nM="+f+"*"+dist+"="+mech_simplify("("+f+")*("+dist+")")+" N m";
     return true;
   }
   if (parse_call(input,"work",args,5,n)){
-    if (!arg_rat(args,n,"f",0,a) || !arg_rat(args,n,"d",1,b)){
-      working_string f=arg_text(args,n,"f",0), dist=arg_text(args,n,"d",1);
-      if (!f.empty() && !dist.empty()){ out="Work\nW=Fd\nW="+f+"*"+dist+" J"; return true; }
+    working_string f=arg_expr(args,n,"f",0), dist=arg_expr(args,n,"d",1);
+    if (f.empty() || dist.empty()){
       out="work(F,d)\nW=F*d";
       return true;
     }
-    out="Work\nW=Fd\nW="+rat_s(a)+"*"+rat_s(b)+"="+rat_s(rat_mul(a,b))+" J";
+    out="Work\nW=Fd\nW="+f+"*"+dist+"="+mech_simplify("("+f+")*("+dist+")")+" J";
     return true;
   }
   if (parse_call(input,"power",args,5,n)){
     working_string pc=lower(compact(input));
-    if (contains(pc,"f=") && contains(pc,"v=") && arg_rat(args,n,"f",0,a) && arg_rat(args,n,"v",1,b)){
-      out="Power\nP=Fv\nP="+rat_s(a)+"*"+rat_s(b)+"="+rat_s(rat_mul(a,b))+" W";
+    working_string f=arg_expr(args,n,"f",0), vel=arg_expr(args,n,"v",1);
+    if (contains(pc,"f=") && contains(pc,"v=") && !f.empty() && !vel.empty()){
+      out="Power\nP=Fv\nP="+f+"*"+vel+"="+mech_simplify("("+f+")*("+vel+")")+" W";
       return true;
     }
-    if (!arg_rat(args,n,"w",0,a) || !arg_rat(args,n,"t",1,b) || !b.n){
+    working_string W=arg_expr(args,n,"w",0), t=arg_expr(args,n,"t",1);
+    if (W.empty() || t.empty()){
       out="power(W,t) or power(F=,v=)\nP=W/t or P=Fv";
       return true;
     }
-    out="Power\nP=W/t\nP="+rat_s(a)+"/"+rat_s(b)+"="+rat_s(rat_div(a,b))+" W";
+    out="Power\nP=W/t\nP="+W+"/"+t+"="+mech_simplify("("+W+")/("+t+")")+" W";
     return true;
   }
   if (parse_call(input,"impulse",args,5,n)){
     working_string pc=lower(compact(input));
-    if ((contains(pc,"f=") || n==2) && arg_rat(args,n,"f",0,a) && arg_rat(args,n,"t",1,b)){
-      out="Impulse\nI=Ft\nI="+rat_s(a)+"*"+rat_s(b)+"="+rat_s(rat_mul(a,b))+" Ns";
+    working_string F=arg_expr(args,n,"f",0), t=arg_expr(args,n,"t",1);
+    if ((contains(pc,"f=") || n==2) && !F.empty() && !t.empty()){
+      out="Impulse\nI=Ft\nI="+F+"*"+t+"="+mech_simplify("("+F+")*("+t+")")+" Ns";
       return true;
     }
-    if (!arg_rat(args,n,"m",0,a) || !arg_rat(args,n,"u",1,b) || !arg_rat(args,n,"v",2,c)){
+    working_string m=arg_expr(args,n,"m",0), u=arg_expr(args,n,"u",1), v=arg_expr(args,n,"v",2);
+    if (m.empty() || u.empty() || v.empty()){
       out="impulse(m,u,v) or impulse(F,t)\nI=m(v-u) or I=Ft";
       return true;
     }
-    Rat I=rat_mul(a,rat_sub(c,b));
-    out="Impulse\nI=m(v-u)\nI="+rat_s(a)+"*("+rat_s(c)+"-"+rat_s(b)+")="+rat_s(I)+" Ns";
-    if (arg_rat(args,n,"t",3,d) && d.n)
-      out += "\nF=I/t\nF="+rat_s(I)+"/"+rat_s(d)+"="+rat_s(rat_div(I,d))+" N";
+    working_string I=mech_simplify("("+m+")*(("+v+")-("+u+"))");
+    out="Impulse\nI=m(v-u)\nI="+m+"*("+v+"-"+u+")="+I+" Ns";
+    working_string impact_t=arg_expr(args,n,"t",3);
+    if (!impact_t.empty())
+      out += "\nF=I/t\nF="+I+"/"+impact_t+"="+mech_simplify("("+I+")/("+impact_t+")")+" N";
     return true;
   }
   if (parse_call(input,"momentum",args,5,n)){
-    if (!arg_rat(args,n,"m",0,a) || !arg_rat(args,n,"v",1,b)){
-      working_string m=arg_text(args,n,"m",0), v=arg_text(args,n,"v",1);
-      if (!m.empty() && !v.empty()){ out="Momentum\np=mv\np="+m+"*"+v+" kg m/s"; return true; }
+    working_string m=arg_expr(args,n,"m",0), v=arg_expr(args,n,"v",1);
+    if (m.empty() || v.empty()){
       out="momentum(m,v)\np=mv";
       return true;
     }
-    out="Momentum\np=mv\np="+rat_s(a)+"*"+rat_s(b)+"="+rat_s(rat_mul(a,b))+" kg m/s";
+    out="Momentum\np=mv\np="+m+"*"+v+"="+mech_simplify("("+m+")*("+v+")")+" kg m/s";
     return true;
   }
   if (parse_call(input,"energy",args,5,n)){
     working_string pc=lower(compact(input));
-    if (contains(pc,"u=") && contains(pc,"v=") && arg_rat(args,n,"m",0,a) && arg_rat(args,n,"u",1,b) && arg_rat(args,n,"v",2,c)){
-      d=rat_div(rat_mul(a,rat_sub(rat_mul(c,c),rat_mul(b,b))),rat(2,1));
-      out="Energy\nDelta KE=1/2m(v^2-u^2)\nDelta KE="+rat_s(d)+" J";
+    working_string m=arg_expr(args,n,"m",0), u=arg_expr(args,n,"u",1), v=arg_expr(args,n,"v",2);
+    if (contains(pc,"u=") && contains(pc,"v=") && !m.empty() && !u.empty() && !v.empty()){
+      out="Energy\nDelta KE=1/2m(v^2-u^2)\nDelta KE="+mech_simplify("1/2*("+m+")*(("+v+")^2-("+u+")^2)")+" J";
       return true;
     }
-    if (!arg_rat(args,n,"m",0,a) || !arg_rat(args,n,"v",1,b)){
+    m=arg_expr(args,n,"m",0); v=arg_expr(args,n,"v",1);
+    if (m.empty() || v.empty()){
       out="energy(m,v[,h]) or energy(m=,u=,v=)\nKE=1/2mv^2";
       return true;
     }
-    c=rat_div(rat_mul(rat_mul(a,b),b),rat(2,1));
-    out="Energy\nKE=1/2mv^2\nKE="+rat_s(c)+" J";
-    if (arg_rat(args,n,"h",2,c))
-      out += "\nGPE=mgh\nGPE="+rat_s(rat_mul(rat_mul(a,rat(49,5)),c))+" J";
+    out="Energy\nKE=1/2mv^2\nKE="+mech_simplify("1/2*("+m+")*("+v+")^2")+" J";
+    working_string h=arg_expr(args,n,"h",2);
+    if (!h.empty())
+      out += "\nGPE=mgh\nGPE="+mech_simplify("("+m+")*49/5*("+h+")")+" J";
     return true;
   }
   if (parse_call(input,"friction",args,5,n)){
-    if (!arg_rat(args,n,"mu",0,a) || !arg_rat(args,n,"r",1,b)){
-      working_string mu=arg_text(args,n,"mu",0), R=arg_text(args,n,"r",1), F=arg_text(args,n,"f",2), m=arg_text(args,n,"m",3);
-      if (!mu.empty() && !R.empty()){
-        out="Friction\nFmax=muR\nFmax="+mu+"*"+R+" N";
-        if (!F.empty()) out += "\ncompare F with Fmax";
-        if (!F.empty() && !m.empty()) out += "\nif sliding: a=(F-Fmax)/m\na=("+F+"-"+mu+"*"+R+")/"+m+" m/s^2";
-        return true;
-      }
+    working_string mu=arg_expr(args,n,"mu",0), R=arg_expr(args,n,"r",1), F=arg_expr(args,n,"f",2), m=arg_expr(args,n,"m",3);
+    if (mu.empty() || R.empty()){
       out="friction(mu,R[,F[,m]])\nlimit:F=muR\nstatic:F<=muR";
       return true;
     }
-    c=rat_mul(a,b);
-    out="Friction\nFmax=muR\nFmax="+rat_s(a)+"*"+rat_s(b)+"="+rat_s(c)+" N";
-    if (arg_rat(args,n,"f",2,d)){
-      out += rat_cmp(d,c)<=0 ? "\nF<=Fmax: no sliding" : "\nF>Fmax: sliding";
-      Rat m;
-      if (rat_cmp(d,c)>0 && arg_rat(args,n,"m",3,m) && m.n)
-        out += "\nF-Fmax=ma\na=("+rat_s(d)+"-"+rat_s(c)+")/"+rat_s(m)+"="+rat_s(rat_div(rat_sub(d,c),m))+" m/s^2";
+    working_string lim=mech_simplify("("+mu+")*("+R+")");
+    out="Friction\nFmax=muR\nFmax="+mu+"*"+R+"="+lim+" N";
+    if (!F.empty()){
+      int sgn=mech_sign("("+F+")-("+lim+")");
+      if (sgn==2) out += "\ncompare F with Fmax";
+      else out += sgn<=0 ? "\nF<=Fmax: no sliding" : "\nF>Fmax: sliding";
+      if (!m.empty()){
+        out += sgn==1 ? "\nF-Fmax=ma" : "\nif sliding: a=(F-Fmax)/m";
+        out += "\na=("+F+"-"+lim+")/"+m+"="+mech_simplify("(("+F+")-("+lim+"))/("+m+")")+" m/s^2";
+      }
     }
     return true;
   }
@@ -6534,33 +6575,6 @@ static bool try_mech_command(const char *input,working_string &out){
       return true;
     }
     out="Resolve\nadjacent = "+f+"*cos("+th+")\nopposite = "+f+"*sin("+th+")";
-    return true;
-  }
-  if (parse_call(input,"incline",args,5,n)){
-    working_string m=arg_text(args,n,"m",0), th=arg_text(args,n,"theta",1);
-    if (m.empty() || th.empty()){
-      out="incline(m,theta)\ndown = mg*sin(theta)\nR = mg*cos(theta)";
-      return true;
-    }
-    out="Incline\ndown = "+m+"*g*sin("+th+")\nR = "+m+"*g*cos("+th+")";
-    return true;
-  }
-  if (parse_call(input,"projectile",args,5,n)){
-    working_string u=arg_text(args,n,"u",0), th=arg_text(args,n,"theta",1), t=arg_text(args,n,"t",2);
-    if (u.empty() || th.empty()){
-      out="projectile(u,theta[,t])\nux = u*cos(theta)\nuy = u*sin(theta)";
-      return true;
-    }
-    out="Projectile\nux = "+u+"*cos("+th+")\nuy = "+u+"*sin("+th+")\n";
-    if (!t.empty()){
-      out += "x = ux*t = "+u+"*cos("+th+")*"+t+"\n";
-      out += "y = uy*t - 1/2*g*t^2 = "+u+"*sin("+th+")*"+t+" - 1/2*g*"+t+"^2";
-    }
-    else {
-      out += "T = 2*"+u+"*sin("+th+")/g\n";
-      out += "range = "+u+"^2*sin(2*"+th+")/g\n";
-      out += "Hmax = "+u+"^2*sin("+th+")^2/(2g)";
-    }
     return true;
   }
   return false;

@@ -18,9 +18,11 @@ CASES = [
     ("suvat(u=1/2,a=3/4,t=8)", ["SUVAT", "s=28", "u=1/2", "v=13/2", "a=3/4", "t=8"]),
     ("suvat(u=x,a=2,t=3)", ["SUVAT", "s=3*(x + 3)", "u=x", "v=x + 6", "a=2", "t=3"]),
     ("suvat(u=sin(pi/6),a=1,t=2)", ["SUVAT", "u=1/2", "v=5/2", "s=3"]),
-    ("suvat(s=10,u=2,a=3)", ["SUVAT", "s=10", "u=2", "v=[-8, 8]", "a=3", "t=[-10/3, 2]"]),
-    ("suvat(s=10,v=8,a=3)", ["SUVAT", "s=10", "u=[2, -2]", "v=8", "a=3", "t=[2, 10/3]"]),
+    ("suvat(s=10,u=2,a=3)", ["SUVAT", "s=10", "u=2", "v=[-8, 8]", "a=3", "t=[-10/3, 2]", "physical t=2"]),
+    ("suvat(s=10,v=8,a=3)", ["SUVAT", "s=10", "u=[2, -2]", "v=8", "a=3", "t=[2, 10/3]", "physical t=[2, 10/3]"]),
     ("suvat(u=2,a=3)", ["SUVAT", "u=2", "a=3", "Need 3 named values."]),
+    ("suvat(u=2,a=3,t=4,v=99)", ["SUVAT", "u=2", "v=99", "a=3", "t=4", "No solution"]),
+    ("suvat(s=10,u=2,a=3,t=99)", ["SUVAT", "s=10", "u=2", "a=3", "t=99", "No solution"]),
     ("force(12,3)", ["Newton II", "F=ma", "36 N"]),
     ("force(m=x,a=y)", ["Newton II", "F=ma", "x*y N"]),
     ("force(F=24,m=6)", ["force(m,a)", "F=ma"]),
@@ -47,9 +49,6 @@ CASES = [
     ("friction(2/5,25,12,4)", ["Friction", "Fmax=muR", "10 N", "F>Fmax: sliding", "F-Fmax=ma", "1/2 m/s^2"]),
     ("friction(mu=k,R=r,F=p,m=q)", ["Friction", "Fmax=muR", "k*r N", "if sliding", "(p-k*r)/q"]),
     ("resolve(20,30)", ["Resolve", "adjacent = 20*cos(30)", "opposite = 20*sin(30)"]),
-    ("incline(5,30)", ["Incline", "down =", "R ="]),
-    ("projectile(20,30)", ["Projectile", "ux =", "T =", "range", "Hmax"]),
-    ("projectile(20,30,2)", ["Projectile", "x = ux*t", "y = uy*t - 1/2*g*t^2"]),
 ]
 
 BANNED = ["Verified", "not checked", "syntax error", "Bad Argument", "unsupported"]

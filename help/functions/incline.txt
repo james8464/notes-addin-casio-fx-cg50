@@ -1,8 +1,0 @@
-incline
-Args: incline(m,theta)
-Required: Mass m and slope angle theta.
-Optional: Named arguments m=..., theta=... may be used.
-Does: Gives standard weight components on an inclined plane.
-Working: Gives down-slope component mg*sin(theta) and normal reaction mg*cos(theta).
-Checks: Assumes no other perpendicular forces act.
-Examples: incline(5,30); incline(m=5,theta=30)

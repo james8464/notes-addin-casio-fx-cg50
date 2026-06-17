@@ -3,6 +3,6 @@ Args: impulse(m,u,v[,t]) or impulse(F,t)
 Required: Mass m, initial velocity u, final velocity v; or force F and time t.
 Optional: Named arguments F=..., t=... may be used.
 Does: Finds impulse/change in momentum, and average force if impact time t is supplied.
-Working: Uses I = m(v-u), F=I/t, or I = Ft.
+Working: Uses I = m(v-u), F=I/t, or I = Ft with KhiCAS simplification.
 Checks: Sign shows direction from the chosen positive direction.
 Examples: impulse(0.5,4,-2); impulse(0.5,4,-2,0.1); impulse(F=12,t=1/2)

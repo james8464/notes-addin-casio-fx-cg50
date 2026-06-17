@@ -15,7 +15,7 @@ PROBE = [
     "xform",
     "range",
     "friction",
-    "projectile",
+    "energy",
     "texpand",
     "tcollect",
     "sec",

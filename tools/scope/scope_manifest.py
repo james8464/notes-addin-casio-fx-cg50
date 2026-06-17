@@ -31,7 +31,6 @@ KEPT_COMMANDS = [
     "int",
     "implicit_diff",
     "impulse",
-    "incline",
     "lcm",
     "lcoeff",
     "lift",
@@ -63,7 +62,6 @@ KEPT_COMMANDS = [
     "texpand",
     "varacc",
     "xform",
-    "projectile",
     "weight",
     "work",
 ]
@@ -95,6 +93,9 @@ REMOVED_GROUPS = {
     "hidden_legacy_aliases": [
         "ceiling", "collect", "expand", "pcoeff", "proot", "trigcos",
         "trigsin", "trigtan",
+    ],
+    "question_specific_mechanics": [
+        "incline", "projectile",
     ],
 }
 

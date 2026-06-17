@@ -4,5 +4,5 @@ Required: Any 3 named values from s,u,v,a,t.
 Optional: Extra named values may be supplied; algebraic, trig, exact and fraction values are allowed.
 Does: Uses KhiCAS solve to find obtainable constant-acceleration values and lists equations used.
 Working: Solves v=u+at, s=ut+1/2at^2, v^2=u^2+2as and s=(u+v)t/2 exactly. Quadratic cases can give two times/velocities.
-Checks: Choose the positive direction first. Assumes straight-line motion and constant acceleration.
+Checks: Reports physical t for non-negative time roots. Contradictory inputs give No solution. Choose the positive direction first.
 Examples: suvat(u=2,a=3,t=4); suvat(s=10,u=2,a=3); suvat(u=x,a=2,t=3); suvat(u=2,a=3)

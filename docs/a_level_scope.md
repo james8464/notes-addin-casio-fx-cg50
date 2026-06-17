@@ -20,7 +20,7 @@ Statistics and probability remain out of scope.
 - Integration: powers, exp/log/trig, definite integrals, area, substitution, parts, partial fractions, separable differential equations.
 - Numerical methods: sign change, iteration, Newton-Raphson, trapezium rule.
 - Vectors: 2D/3D component work, magnitude, unit vectors, position vectors, geometry.
-- Paper 3 mechanics: SUVAT as the main supported route; compact support for force, weight, friction, connected particles, pulleys, moments, resolving, inclines, variable acceleration, work/power/energy/impulse/momentum where already present.
+- Paper 3 mechanics: SUVAT as the main supported route; compact support for force, weight, friction, connected particles, pulleys, moments, resolving, variable acceleration, work/power/energy/impulse/momentum where already present.
 
 ## Remove
 
@@ -32,6 +32,7 @@ Statistics and probability remain out of scope.
 - Session save/load.
 - Crypto, Fourier/Laplace, ODE plot fields, special polynomials, resultants, interpolation, EGCD, Jordan, Gram-Schmidt.
 - Hyperbolic and inverse hyperbolic functions.
+- Question-specific mechanics shortcuts such as projectile and incline templates; use SUVAT, resolve, and the core force/energy commands instead.
 
 ## Formula Pack
 

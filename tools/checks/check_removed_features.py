@@ -56,6 +56,8 @@ def runtime_leaks() -> list[str]:
         "trigsin(x)",
         "trigtan(x)",
         "ceiling(1.2)",
+        "incline(5,30)",
+        "projectile(20,30)",
     ]
     for sample in samples:
         out = subprocess.run(

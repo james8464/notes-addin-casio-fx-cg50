@@ -1,8 +1,0 @@
-projectile
-Args: projectile(u,theta[,t])
-Required: Initial speed u and launch angle theta.
-Optional: Time t may be supplied for position at a time.
-Does: Gives projectile setup lines for Paper 3 mechanics.
-Working: Resolves into ux = u*cos(theta), uy = u*sin(theta), then gives time/range/height or x,y at time t.
-Checks: Assumes no air resistance and vertical acceleration g downwards.
-Examples: projectile(20,30); projectile(20,30,2)

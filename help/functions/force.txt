@@ -3,6 +3,6 @@ Args: force(m,a)
 Required: Mass m in kg and acceleration a in m/s^2.
 Optional: Named arguments m=..., a=... may be used.
 Does: Finds resultant force using Newton's second law.
-Working: Uses F = ma and substitutes values.
+Working: Uses F = ma and KhiCAS simplification after substitution.
 Checks: Force is in N. Direction follows the chosen positive direction.
 Examples: force(12,3); force(m=12,a=3)

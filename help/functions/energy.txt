@@ -3,6 +3,6 @@ Args: energy(m,v[,h]) or energy(m=,u=,v=)
 Required: Mass m and speed v, or initial/final speeds u,v.
 Optional: Height h for gravitational potential energy.
 Does: Finds KE, GPE if h is given, or change in KE.
-Working: Uses KE = 1/2mv^2, GPE = mgh, Delta KE = 1/2m(v^2-u^2).
+Working: Uses KE = 1/2mv^2, GPE = mgh, Delta KE = 1/2m(v^2-u^2), with KhiCAS simplification.
 Checks: Uses g = 9.8. Units are joules.
 Examples: energy(2,5); energy(2,5,3); energy(m=2,u=3,v=5)

@@ -3,6 +3,6 @@ Args: momentum(m,v)
 Required: Mass m and velocity v.
 Optional: Named arguments m=..., v=... may be used.
 Does: Finds momentum.
-Working: Uses p=mv.
+Working: Uses p=mv with KhiCAS simplification.
 Checks: Sign shows direction from the chosen positive direction.
 Examples: momentum(3,8); momentum(m=3,v=-8)
