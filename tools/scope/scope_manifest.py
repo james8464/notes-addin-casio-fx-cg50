@@ -34,6 +34,7 @@ KEPT_COMMANDS = [
     "incline",
     "lcm",
     "lcoeff",
+    "lift",
     "limit",
     "ln",
     "log",

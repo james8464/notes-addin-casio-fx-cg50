@@ -6336,6 +6336,17 @@ static bool try_mech_command(const char *input,working_string &out){
     out += "\nT=m1(g+a)="+rat_s(a)+"*("+rat_s(g)+"+"+rat_s(acc)+")="+rat_s(rat_mul(a,rat_add(g,acc)))+" N";
     return true;
   }
+  if (parse_call(input,"lift",args,5,n)){
+    Rat g=rat(49,5);
+    if (!arg_rat(args,n,"m",0,a) || !arg_rat(args,n,"a",1,b)){
+      out="lift(m,a[,g])\nR=m(g+a)\nuse a<0 if down";
+      return true;
+    }
+    if (arg_rat(args,n,"g",2,c))
+      g=c;
+    out="Lift\nR-mg=ma\nR=m(g+a)\nR="+rat_s(a)+"*("+rat_s(g)+"+"+rat_s(b)+")="+rat_s(rat_mul(a,rat_add(g,b)))+" N";
+    return true;
+  }
   if (parse_call(input,"moment",args,5,n)){
     if (!arg_rat(args,n,"f",0,a) || !arg_rat(args,n,"d",1,b)){
       out="moment(F,d)\nM=F*d";

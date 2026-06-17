@@ -97,6 +97,7 @@ const catalogFunc completeCat[] = { // scoped A-level Pure catalog
   {"incline", CAT_CATEGORY_MECH},
   {"lcm", CAT_CATEGORY_ARIT},
   {"lcoeff", CAT_CATEGORY_POLYNOMIAL},
+  {"lift", CAT_CATEGORY_MECH},
   {"limit", CAT_CATEGORY_CALCULUS},
   {"ln", CAT_CATEGORY_ALGEBRA},
   {"log", CAT_CATEGORY_ALGEBRA},
