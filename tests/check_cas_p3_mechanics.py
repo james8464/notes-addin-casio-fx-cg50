@@ -26,6 +26,7 @@ CASES = [
     ("energy(2,5,3)", ["Energy", "KE=1/2mv^2", "KE=25 J", "GPE=294/5 J"]),
     ("impulse(0.5,4,-2)", ["Impulse", "I=m(v-u)", "-3 Ns"]),
     ("impulse(F=12,t=1/2)", ["Impulse", "I=Ft", "12*1/2=6 Ns"]),
+    ("momentum(3,8)", ["Momentum", "p=mv", "24 kg m/s"]),
     ("friction(2/5,25)", ["Friction", "Fmax=muR", "10 N"]),
     ("resolve(20,30)", ["Resolve", "adjacent = 20*cos(30)", "opposite = 20*sin(30)"]),
     ("incline(5,30)", ["Incline", "down =", "R ="]),

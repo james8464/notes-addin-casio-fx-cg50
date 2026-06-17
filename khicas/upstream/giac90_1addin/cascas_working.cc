@@ -6439,6 +6439,14 @@ static bool try_mech_command(const char *input,working_string &out){
     out="Impulse\nI=m(v-u)\nI="+rat_s(a)+"*("+rat_s(c)+"-"+rat_s(b)+")="+rat_s(rat_mul(a,rat_sub(c,b)))+" Ns";
     return true;
   }
+  if (parse_call(input,"momentum",args,5,n)){
+    if (!arg_rat(args,n,"m",0,a) || !arg_rat(args,n,"v",1,b)){
+      out="momentum(m,v)\np=mv";
+      return true;
+    }
+    out="Momentum\np=mv\np="+rat_s(a)+"*"+rat_s(b)+"="+rat_s(rat_mul(a,b))+" kg m/s";
+    return true;
+  }
   if (parse_call(input,"energy",args,5,n)){
     if (!arg_rat(args,n,"m",0,a) || !arg_rat(args,n,"v",1,b)){
       out="energy(m,v[,h])\nKE=1/2mv^2\nGPE=mgh";

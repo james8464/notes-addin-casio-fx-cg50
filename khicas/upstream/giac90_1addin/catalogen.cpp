@@ -102,6 +102,7 @@ const catalogFunc completeCat[] = { // scoped A-level Pure catalog
   {"ln", CAT_CATEGORY_ALGEBRA},
   {"log", CAT_CATEGORY_ALGEBRA},
   {"moment", CAT_CATEGORY_MECH},
+  {"momentum", CAT_CATEGORY_MECH},
   {"partfrac", CAT_CATEGORY_ALGEBRA},
   {"power", CAT_CATEGORY_MECH},
   {"projectile", CAT_CATEGORY_MECH},
