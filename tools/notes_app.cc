@@ -10,13 +10,13 @@ typedef struct {
   unsigned long address;
 } file_type_t;
 
-static const int MAX_ENTRIES = 120;
-static const int MAX_RESULTS = 96;
+static const int MAX_ENTRIES = 80;
+static const int MAX_RESULTS = 64;
 static const int FILE_BUF_SIZE = 16384;
 static const int MAX_VIEW_LINES = 768;
-static const int LINE_CAP = 128;
-static const int MAX_TABLE_COLS = 8;
-static const int MAX_TABLE_ROWS = 24;
+static const int LINE_CAP = 96;
+static const int MAX_TABLE_COLS = 6;
+static const int MAX_TABLE_ROWS = 16;
 static const int TABLE_CELL_CAP = 416;
 static const int TABLE_MAX_CHARS = LINE_CAP - 4;
 static const int TABLE_CHAR_PX = 8;
@@ -90,8 +90,6 @@ static char file_buf[FILE_BUF_SIZE];
 static int file_buf_len = 0;
 static const char *view_lines[MAX_VIEW_LINES];
 static char line_store[MAX_VIEW_LINES][LINE_CAP];
-static char display_line_buf[FILE_BUF_SIZE];
-static char search_line_buf[FILE_BUF_SIZE];
 static unsigned char view_style[MAX_VIEW_LINES];
 static short view_source_line[MAX_VIEW_LINES];
 static unsigned char view_table_cols[MAX_VIEW_LINES];
@@ -131,12 +129,6 @@ static void normalize_file_buf() {
   int out = 0;
   for (int i = 0; i < file_buf_len && out + 1 < FILE_BUF_SIZE;) {
     unsigned char c = (unsigned char)file_buf[i];
-    if (c == '\r') {
-      clean[out++] = '\n';
-      if (i + 1 < file_buf_len && file_buf[i + 1] == '\n') i += 2;
-      else ++i;
-      continue;
-    }
     if (c < 128) {
       clean[out++] = (char)c;
       ++i;
@@ -160,11 +152,7 @@ static void normalize_file_buf() {
     if (bytes_at3(i, 0xe2, 0x84, 0x9a)) { clean[out++] = 'Q'; i += 3; continue; }
     if (bytes_at3(i, 0xe2, 0x84, 0x9d)) { clean[out++] = 'R'; i += 3; continue; }
     if (bytes_at3(i, 0xe2, 0x84, 0xa4)) { clean[out++] = 'Z'; i += 3; continue; }
-    clean[out++] = '?';
-    if ((c & 0xe0) == 0xc0 && i + 1 < file_buf_len) i += 2;
-    else if ((c & 0xf0) == 0xe0 && i + 2 < file_buf_len) i += 3;
-    else if ((c & 0xf8) == 0xf0 && i + 3 < file_buf_len) i += 4;
-    else ++i;
+    ++i;
   }
   clean[out] = 0;
   memcpy(file_buf, clean, out + 1);
@@ -282,12 +270,7 @@ static void clean_label(char *out, int cap, const char *name) {
   }
   out[n] = 0;
   int len = strlen(out);
-  if (len > 4 &&
-      out[len - 4] == '.' &&
-      lower_char((unsigned char)out[len - 3]) == 't' &&
-      lower_char((unsigned char)out[len - 2]) == 'x' &&
-      lower_char((unsigned char)out[len - 1]) == 't')
-    out[len - 4] = 0;
+  if (len > 4 && !strcmp(out + len - 4, ".txt")) out[len - 4] = 0;
 }
 
 static void status_label(char *out, int cap, const char *title) {
@@ -425,10 +408,7 @@ static int load_file_buf(const char *path) {
   int h = Bfile_OpenFile_OS(p, READWRITE);
   if (h < 0) return 0;
   int sz = Bfile_GetFileSize_OS(h);
-  if (sz > FILE_BUF_SIZE - 1) {
-    Bfile_CloseFile_OS(h);
-    return -1;
-  }
+  if (sz > FILE_BUF_SIZE - 1) sz = FILE_BUF_SIZE - 1;
   int got = Bfile_ReadFile_OS(h, file_buf, sz, 0);
   Bfile_CloseFile_OS(h);
   if (got < 0) return 0;
@@ -438,80 +418,20 @@ static int load_file_buf(const char *path) {
   return 1;
 }
 
-static int markdown_escapable(char c) {
-  return c == '\\' || c == '`' || c == '*' || c == '_' || c == '{' || c == '}' ||
-         c == '[' || c == ']' || c == '(' || c == ')' || c == '#' || c == '+' ||
-         c == '-' || c == '.' || c == '!' || c == '|';
-}
-
-static int markdown_escaped_at(const char *s, int i) {
-  int n = 0;
-  for (int p = i - 1; p >= 0 && s[p] == '\\'; --p) ++n;
-  return n & 1;
-}
-
-static int tab_separated_cells(const char *s, int len) {
-  int p = 0;
-  while (p < len && s[p] == ' ') ++p;
-  int cells = 0, cell_has_text = 0, tab_seen = 0;
-  for (int i = p; i <= len; ++i) {
-    if (i == len || s[i] == '\t') {
-      if (cell_has_text) ++cells;
-      cell_has_text = 0;
-      if (i < len) tab_seen = 1;
-    } else if (s[i] != ' ') {
-      cell_has_text = 1;
-    }
-  }
-  return tab_seen && cells >= 2;
-}
-
-static int pipe_separated_cells(const char *s, int len) {
-  int p = 0;
-  while (p < len && s[p] == ' ') ++p;
-  int cells = 0, cell_has_text = 0, pipe_seen = 0;
-  for (int i = p; i <= len; ++i) {
-    if (i == len || (s[i] == '|' && !markdown_escaped_at(s, i))) {
-      if (cell_has_text) ++cells;
-      cell_has_text = 0;
-      if (i < len) pipe_seen = 1;
-    } else if (s[i] != ' ') {
-      cell_has_text = 1;
-    }
-  }
-  return pipe_seen && cells >= 2;
-}
-
 static int table_like(const char *s, int len) {
-  int tab = 0, plus = 0, dashes = 0;
+  int bars = 0, tab = 0, plus = 0, dashes = 0;
   int first = 0;
   while (first < len && s[first] == ' ') ++first;
   for (int i = 0; i < len; ++i) {
+    if (s[i] == '|') ++bars;
     if (s[i] == '\t') tab = 1;
     if (s[i] == '+') ++plus;
     if (s[i] == '-') ++dashes;
   }
-  if (tab) return tab_separated_cells(s, len);
+  if (tab) return 1;
+  if (first < len && s[first] == '|') return bars >= 2;
   if (first < len && s[first] == '+') return plus >= 2 && dashes >= 3;
   return 0;
-}
-
-static int table_block_row_like(const char *s, int len) {
-  return table_like(s, len) || pipe_separated_cells(s, len);
-}
-
-static int plus_separator_row(const char *s, int len) {
-  int p = 0;
-  while (p < len && s[p] == ' ') ++p;
-  if (p >= len || s[p] != '+') return 0;
-  int plus = 0, rule = 0;
-  for (int i = p; i < len; ++i) {
-    char c = s[i];
-    if (c == '+') ++plus;
-    else if (c == '-' || c == '=') ++rule;
-    else if (c != ':' && c != ' ') return 0;
-  }
-  return plus >= 2 && rule >= 3;
 }
 
 static int trim_left_pos(const char *s, int len) {
@@ -525,191 +445,25 @@ static int trim_right_len(const char *s, int len) {
   return len;
 }
 
-static int fence_like(const char *s, int len) {
-  int p = trim_left_pos(s, len);
-  if (p + 2 >= len) return 0;
-  char c = s[p];
-  return (c == '`' || c == '~') && s[p + 1] == c && s[p + 2] == c;
-}
-
-static int source_code_like(const char *s, int len) {
-  int p = trim_left_pos(s, len);
-  if (fence_like(s, len)) return 1;
-  if (p >= 4) return 1;
-  return (p + 2 < len && s[p] == '>' && s[p + 1] == '>' && s[p + 2] == '>') ||
-         (p + 1 < len && s[p] == '$' && s[p + 1] == ' ') ||
-         (p + 4 < len &&
-          lower_char((unsigned char)s[p]) == 'g' &&
-          lower_char((unsigned char)s[p + 1]) == 'h' &&
-          lower_char((unsigned char)s[p + 2]) == 'c' &&
-          lower_char((unsigned char)s[p + 3]) == 'i' &&
-          s[p + 4] == '>');
-}
-
-static int html_break_len(const char *s, int i, int len) {
-  if (i + 3 >= len || s[i] != '<' ||
-      lower_char((unsigned char)s[i + 1]) != 'b' ||
-      lower_char((unsigned char)s[i + 2]) != 'r')
-    return 0;
-  int p = i + 3;
-  if (p < len && s[p] == '/') ++p;
-  if (p < len && s[p] == '>') return p - i + 1;
-  if (p + 2 < len && s[p] == ' ' && s[p + 1] == '/' && s[p + 2] == '>')
-    return p - i + 3;
-  return 0;
-}
-
-static int html_entity_at(const char *s, int i, int len, char *out) {
-  if (i >= len || s[i] != '&') return 0;
-  struct Ent { const char *name; char value; };
-  static const Ent ents[] = {
-    {"&amp;", '&'}, {"&lt;", '<'}, {"&gt;", '>'},
-    {"&quot;", '"'}, {"&apos;", '\''}, {"&nbsp;", ' '}
-  };
-  for (unsigned e = 0; e < sizeof(ents) / sizeof(ents[0]); ++e) {
-    int n = strlen(ents[e].name);
-    if (i + n <= len && !strncmp(s + i, ents[e].name, n)) {
-      *out = ents[e].value;
-      return n;
-    }
-  }
-  return 0;
-}
-
-static int utf8_ascii_at(const char *s, int i, int len, const char **out) {
-  if (i >= len) return 0;
-  unsigned char a = (unsigned char)s[i];
-  if (a == 0xc2 && i + 1 < len) {
-    unsigned char b = (unsigned char)s[i + 1];
-    if (b == 0xa0) { *out = " "; return 2; }
-    if (b == 0xb0) { *out = " deg"; return 2; }
-  }
-  if (a == 0xc3 && i + 1 < len) {
-    unsigned char b = (unsigned char)s[i + 1];
-    if (b == 0x97) { *out = "x"; return 2; }
-    if (b == 0xb7) { *out = "/"; return 2; }
-  }
-  if (a == 0xe2 && i + 2 < len) {
-    unsigned char b = (unsigned char)s[i + 1];
-    unsigned char c = (unsigned char)s[i + 2];
-    if (b == 0x80) {
-      if (c == 0x93 || c == 0x94) { *out = "-"; return 3; }
-      if (c == 0x98 || c == 0x99) { *out = "'"; return 3; }
-      if (c == 0x9c || c == 0x9d) { *out = "\""; return 3; }
-      if (c == 0xa2) { *out = "*"; return 3; }
-    }
-    if (b == 0x86) {
-      if (c == 0x90) { *out = "<-"; return 3; }
-      if (c == 0x92) { *out = "->"; return 3; }
-      if (c == 0x94) { *out = "<->"; return 3; }
-    }
-    if (b == 0x87) {
-      if (c == 0x92) { *out = "=>"; return 3; }
-      if (c == 0x94) { *out = "<=>"; return 3; }
-    }
-    if (b == 0x89) {
-      if (c == 0xa0) { *out = "!="; return 3; }
-      if (c == 0xa4) { *out = "<="; return 3; }
-      if (c == 0xa5) { *out = ">="; return 3; }
-    }
-  }
-  return 0;
-}
-
-static int ascii_alnum(char c) {
-  return (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
-}
-
-static int find_char_from(const char *s, int from, int len, char target) {
-  for (int i = from; i < len; ++i)
-    if (s[i] == target) return i;
-  return -1;
-}
-
-static int markdown_link_at(const char *s, int i, int len, int *label_start, int *label_len, int *end) {
-  int open = i;
-  if (i < len && s[i] == '!' && i + 1 < len && s[i + 1] == '[') open = i + 1;
-  else if (i >= len || s[i] != '[') return 0;
-  int close_label = find_char_from(s, open + 1, len, ']');
-  if (close_label < 0 || close_label + 1 >= len || s[close_label + 1] != '(') return 0;
-  int close_url = find_char_from(s, close_label + 2, len, ')');
-  if (close_url < 0) return 0;
-  *label_start = open + 1;
-  *label_len = close_label - open - 1;
-  *end = close_url + 1;
-  return 1;
-}
-
-static int single_marker_at(const char *s, int i, int len, char c) {
-  if (s[i] != c) return 0;
-  if (i + 1 < len && s[i + 1] == ' ') {
-    int p = i - 1;
-    while (p >= 0 && s[p] == ' ') --p;
-    if (p < 0) return 0;
-  }
-  if ((i <= 0 || s[i - 1] == ' ') && (i + 1 >= len || s[i + 1] == ' ')) return 0;
-  if (i > 0 && i + 1 < len && ascii_alnum(s[i - 1]) && ascii_alnum(s[i + 1]))
-    return 0;
-  if (c == '_' && ((i > 0 && ascii_alnum(s[i - 1])) || (i + 1 < len && ascii_alnum(s[i + 1]))))
-    return 0;
-  return find_char_from(s, i + 1, len, c) >= 0 || find_char_from(s, 0, i, c) >= 0;
-}
-
-static int copy_display_text(char *dst, int cap, const char *src, int len, int strip_inline) {
+static int clean_cell_copy(char *dst, int cap, const char *src, int len) {
+  int start = trim_left_pos(src, len);
+  len = trim_right_len(src + start, len - start);
   int n = 0;
   for (int i = 0; i < len && n + 1 < cap; ++i) {
-    int br = html_break_len(src, i, len);
-    if (br) {
+    if (i + 3 < len && src[start + i] == '<' &&
+        lower_char((unsigned char)src[start + i + 1]) == 'b' &&
+        lower_char((unsigned char)src[start + i + 2]) == 'r' &&
+        src[start + i + 3] == '>') {
       if (n + 2 < cap) {
         dst[n++] = ';';
         dst[n++] = ' ';
       }
-      i += br - 1;
+      i += 3;
       continue;
     }
-    char entity = 0;
-    int entity_len = html_entity_at(src, i, len, &entity);
-    if (entity_len) {
-      dst[n++] = entity;
-      i += entity_len - 1;
-      continue;
-    }
-    const char *ascii = 0;
-    int utf8_len = utf8_ascii_at(src, i, len, &ascii);
-    if (utf8_len) {
-      for (int j = 0; ascii[j] && n + 1 < cap; ++j) dst[n++] = ascii[j];
-      i += utf8_len - 1;
-      continue;
-    }
-    if (strip_inline) {
-      if (src[i] == '\\' && i + 1 < len && markdown_escapable(src[i + 1])) {
-        dst[n++] = src[++i];
-        continue;
-      }
-      int label_start = 0, label_len = 0, end = 0;
-      if (markdown_link_at(src, i, len, &label_start, &label_len, &end)) {
-        n += copy_display_text(dst + n, cap - n, src + label_start, label_len, 1);
-        i = end - 1;
-        continue;
-      }
-      if (src[i] == '`') continue;
-      if ((src[i] == '*' || src[i] == '_') && i + 1 < len && src[i + 1] == src[i]) {
-        ++i;
-        continue;
-      }
-      if ((src[i] == '*' || src[i] == '_') && single_marker_at(src, i, len, src[i])) continue;
-    }
-    char c = src[i] == '\t' ? ' ' : src[i];
+    char c = src[start + i] == '\t' ? ' ' : src[start + i];
     if (c >= 32 && c <= 126) dst[n++] = c;
   }
-  dst[n] = 0;
-  return n;
-}
-
-static int clean_cell_copy(char *dst, int cap, const char *src, int len) {
-  int start = trim_left_pos(src, len);
-  len = trim_right_len(src + start, len - start);
-  int n = copy_display_text(dst, cap, src + start, len, 1);
   while (n > 0 && dst[n - 1] == ' ') --n;
   dst[n] = 0;
   return n;
@@ -721,15 +475,7 @@ static int parse_table_row(const char *s, int len, char cells[MAX_TABLE_COLS][TA
   int cols = 0;
   while (p <= len && cols < MAX_TABLE_COLS) {
     int start = p;
-    if (cols == MAX_TABLE_COLS - 1) {
-      clean_cell_copy(cells[cols], TABLE_CELL_CAP, s + start, len - start);
-      ++cols;
-      break;
-    }
-    while (p < len) {
-      if ((s[p] == '|' && !markdown_escaped_at(s, p)) || s[p] == '\t') break;
-      ++p;
-    }
+    while (p < len && s[p] != '|' && s[p] != '\t') ++p;
     clean_cell_copy(cells[cols], TABLE_CELL_CAP, s + start, p - start);
     ++cols;
     if (p >= len) break;
@@ -768,57 +514,6 @@ static int source_next_line_from(int end) {
   if (end >= file_buf_len) return file_buf_len + 1;
   if (file_buf[end] == '\r' && end + 1 < file_buf_len && file_buf[end + 1] == '\n') return end + 2;
   return end + 1;
-}
-
-static int setext_underline_style(const char *s, int len) {
-  int p = trim_left_pos(s, len);
-  len = trim_right_len(s + p, len - p);
-  if (len < 3) return 0;
-  char c = s[p];
-  if (c != '=' && c != '-') return 0;
-  for (int i = 0; i < len; ++i)
-    if (s[p + i] != c) return 0;
-  return c == '=' ? NOTE_H1 : NOTE_H2;
-}
-
-static int setext_heading_style_at(int pos, int len, int *next_pos_out) {
-  if (len <= 0 || source_code_like(file_buf + pos, len) || table_like(file_buf + pos, len)) return 0;
-  int end = source_line_end_from(pos);
-  int next = source_next_line_from(end);
-  if (next > file_buf_len) return 0;
-  int next_end = source_line_end_from(next);
-  int next_len = next_end - next;
-  int style = setext_underline_style(file_buf + next, next_len);
-  if (!style) return 0;
-  if (next_pos_out) *next_pos_out = source_next_line_from(next_end);
-  return style;
-}
-
-static int table_start_like_at(int pos, int len) {
-  if (table_like(file_buf + pos, len)) return 1;
-  if (!pipe_separated_cells(file_buf + pos, len)) return 0;
-  int row_cols = parse_table_row(file_buf + pos, len, table_parse_cells);
-  if (row_cols <= 0) return 0;
-  int end = source_line_end_from(pos);
-  int next = source_next_line_from(end);
-  if (next > file_buf_len) return 0;
-  int next_end = source_line_end_from(next);
-  int next_len = next_end - next;
-  if (next_len <= 0 || source_code_like(file_buf + next, next_len)) return 0;
-  int cols = parse_table_row(file_buf + next, next_len, table_parse_cells);
-  return cols >= row_cols && table_separator_row(table_parse_cells, cols);
-}
-
-static int table_continues_at(int pos) {
-  if (pos > file_buf_len) return 0;
-  int end = source_line_end_from(pos);
-  int len = end - pos;
-  return len > 0 && !source_code_like(file_buf + pos, len) && table_block_row_like(file_buf + pos, len);
-}
-
-static int table_chunk_start_at(int pos, int len, int continuing_table) {
-  if (len <= 0 || source_code_like(file_buf + pos, len)) return 0;
-  return continuing_table ? table_block_row_like(file_buf + pos, len) : table_start_like_at(pos, len);
 }
 
 static int table_col_cap(int cols) {
@@ -881,14 +576,7 @@ static int collect_table_block(int pos, int source_line, TableRow *rows, int *ro
   while (cur <= file_buf_len && count < MAX_TABLE_ROWS) {
     int end = source_line_end_from(cur);
     int len = end - cur;
-    if (len <= 0 || source_code_like(file_buf + cur, len) || !table_block_row_like(file_buf + cur, len)) break;
-    if (plus_separator_row(file_buf + cur, len)) {
-      if (count > 0) rows[count - 1].header = 1;
-      cur = source_next_line_from(end);
-      ++line_no;
-      if (cur > file_buf_len) break;
-      continue;
-    }
+    if (len <= 0 || !table_like(file_buf + cur, len)) break;
     int row_cols = parse_table_row(file_buf + cur, len, table_parse_cells);
     if (row_cols <= 0) break;
     if (table_separator_row(table_parse_cells, row_cols)) {
@@ -976,6 +664,22 @@ static int rule_like(const char *s, int len) {
   return count >= 3;
 }
 
+static int starts_with_ci(const char *s, int len, const char *pfx) {
+  int n = strlen(pfx);
+  if (len < n) return 0;
+  for (int i = 0; i < n; ++i) {
+    if (lower_char((unsigned char)s[i]) != lower_char((unsigned char)pfx[i])) return 0;
+  }
+  return 1;
+}
+
+static int code_like(const char *s, int len, int indent) {
+  if (indent >= 4) return 1;
+  return starts_with_ci(s, len, "ghci>") ||
+         starts_with_ci(s, len, ">>>") ||
+         starts_with_ci(s, len, "$ ");
+}
+
 static int mini_width(const char *s, int len) {
   if (!s || len <= 0) return 0;
   char tmp[LINE_CAP];
@@ -987,58 +691,44 @@ static int mini_width(const char *s, int len) {
   return x;
 }
 
-static int style_x_offset(int style) {
-  if (style == NOTE_H2) return 4;
-  if (style == NOTE_H3) return 8;
-  if (style == NOTE_H4) return 12;
-  if (style == NOTE_QUOTE) return 4;
-  return 0;
-}
-
-static int style_uses_hscroll(int style) {
-  return style == NOTE_CODE;
-}
-
-static int segment_fits_screen(const char *s, int start, int end, int indent, int xpad, int strip_inline) {
+static int segment_fits_screen(const char *s, int start, int end, int indent) {
   char tmp[LINE_CAP];
   int col = 0;
   for (int i = 0; i < indent && col + 1 < LINE_CAP; ++i) tmp[col++] = ' ';
-  if (col + 1 < LINE_CAP)
-    col += copy_display_text(tmp + col, LINE_CAP - col, s + start, end - start, strip_inline);
+  for (int i = start; i < end && col + 1 < LINE_CAP; ++i) {
+    char c = s[i] == '\t' ? ' ' : s[i];
+    if (c >= 32 && c <= 126) tmp[col++] = c;
+  }
   tmp[col] = 0;
-  return mini_width(tmp, col) <= (int)(NOTE_X_LIMIT - VIEW_X - xpad);
+  return mini_width(tmp, col) <= (int)(NOTE_X_LIMIT - VIEW_X);
 }
 
-static int fit_visible_chars(const char *s, int len, int indent, int xpad, int strip_inline) {
+static int fit_visible_chars(const char *s, int len, int indent) {
   if (!s || len <= 0) return 0;
   int take = 0;
   int cap = LINE_CAP - indent - 1;
   if (cap < 1) cap = 1;
   for (int i = 1; i <= len && i <= cap; ++i) {
-    if (!segment_fits_screen(s, 0, i, indent, xpad, strip_inline)) break;
+    if (!segment_fits_screen(s, 0, i, indent)) break;
     take = i;
   }
   return take > 0 ? take : 1;
 }
 
-static int fit_suffix_chars(const char *s, int len, int indent, int xpad, int strip_inline) {
+static int fit_suffix_chars(const char *s, int len, int indent) {
   if (!s || len <= 0) return 0;
   int take = 0;
   int cap = LINE_CAP - indent - 1;
   if (cap < 1) cap = 1;
   for (int i = 1; i <= len && i <= cap; ++i) {
-    if (!segment_fits_screen(s, len - i, len, indent, xpad, strip_inline)) break;
+    if (!segment_fits_screen(s, len - i, len, indent)) break;
     take = i;
   }
   return take > 0 ? take : 1;
 }
 
-static int line_end_hscroll(const char *s, int len, int style) {
-  if (style != NOTE_CODE) {
-    len = copy_display_text(display_line_buf, FILE_BUF_SIZE, s, len, 1);
-    s = display_line_buf;
-  }
-  int visible = fit_suffix_chars(s, len, 0, style_x_offset(style), 0);
+static int line_end_hscroll(const char *s, int len) {
+  int visible = fit_suffix_chars(s, len, 0);
   return len > visible ? len - visible : 0;
 }
 
@@ -1056,7 +746,7 @@ static int markdown_line(const char *s, int len, int *skip, int *style) {
       return 1;
     }
   }
-  if (p + 1 < len && (s[p] == '-' || s[p] == '*' || s[p] == '+') && s[p + 1] == ' ') {
+  if (p + 1 < len && (s[p] == '-' || s[p] == '*') && s[p + 1] == ' ') {
     *skip = p + 2;
     *style = NOTE_BULLET;
     return 1;
@@ -1076,20 +766,11 @@ static int markdown_line(const char *s, int len, int *skip, int *style) {
     *style = NOTE_RULE;
     return 1;
   }
-  if (source_code_like(s, len)) {
+  if (code_like(s + p, len - p, p)) {
     *style = NOTE_CODE;
     return 1;
   }
   return 0;
-}
-
-static int atx_heading_display_len(const char *s, int len, int style) {
-  if (style < NOTE_H1 || style > NOTE_H4) return len;
-  int n = trim_right_len(s, len);
-  int p = n;
-  while (p > 0 && s[p - 1] == '#') --p;
-  if (p == n || p <= 0 || s[p - 1] != ' ') return n;
-  return trim_right_len(s, p - 1);
 }
 
 static void clear_table_meta(int idx) {
@@ -1102,7 +783,21 @@ static void clear_table_meta(int idx) {
 
 static void push_view_line(int *line, const char *s, int len, int style, int source_line) {
   if (*line >= MAX_VIEW_LINES) return;
-  copy_display_text(line_store[*line], LINE_CAP, s, len, style != NOTE_CODE);
+  int col = 0;
+  for (int i = 0; i < len && col + 1 < LINE_CAP; ++i) {
+    if (i + 3 < len && s[i] == '<' && lower_char((unsigned char)s[i + 1]) == 'b' &&
+        lower_char((unsigned char)s[i + 2]) == 'r' && s[i + 3] == '>') {
+      if (col + 2 < LINE_CAP) {
+        line_store[*line][col++] = ';';
+        line_store[*line][col++] = ' ';
+      }
+      i += 3;
+      continue;
+    }
+    char c = s[i] == '\t' ? ' ' : s[i];
+    if (c >= 32 && c <= 126) line_store[*line][col++] = c;
+  }
+  line_store[*line][col] = 0;
   view_lines[*line] = line_store[*line];
   view_style[*line] = (unsigned char)style;
   view_source_line[*line] = (short)source_line;
@@ -1159,14 +854,9 @@ static void push_blank_line(int *line, int source_line) {
 
 static void add_display_line(int *line, const char *s, int len, int hscroll, int preserve, int style, int source_line) {
   if (*line >= MAX_VIEW_LINES || len < 0) return;
-  if (style != NOTE_CODE) {
-    len = copy_display_text(display_line_buf, FILE_BUF_SIZE, s, len, 1);
-    s = display_line_buf;
-  }
-  int xpad = style_x_offset(style);
   if (preserve) {
     int start = min_int(hscroll, max_int(0, len - 1));
-    int take = fit_visible_chars(s + start, len - start, 0, xpad, 0);
+    int take = fit_visible_chars(s + start, len - start, 0);
     push_view_line(line, s + start, take, style, source_line);
     return;
   }
@@ -1187,7 +877,7 @@ static void add_display_line(int *line, const char *s, int len, int hscroll, int
     int last_space = -1;
     for (int i = pos; i < len; ++i) {
       if (s[i] == ' ') last_space = i;
-      if (!segment_fits_screen(s, pos, i + 1, indent, xpad, 0)) {
+      if (!segment_fits_screen(s, pos, i + 1, indent)) {
         if (last_space > pos + 1) cut = last_space;
         else cut = max_int(pos + 1, i);
         break;
@@ -1199,8 +889,19 @@ static void add_display_line(int *line, const char *s, int len, int hscroll, int
     if (cut > cap_cut) cut = cap_cut;
     int col = 0;
     for (int k = 0; k < indent && col + 1 < LINE_CAP; ++k) line_store[*line][col++] = ' ';
-    if (col + 1 < LINE_CAP)
-      col += copy_display_text(line_store[*line] + col, LINE_CAP - col, s + pos, cut - pos, 0);
+    for (int i = pos; i < cut && col + 1 < LINE_CAP; ++i) {
+      if (i + 3 < len && s[i] == '<' && lower_char((unsigned char)s[i + 1]) == 'b' &&
+          lower_char((unsigned char)s[i + 2]) == 'r' && s[i + 3] == '>') {
+        if (col + 2 < LINE_CAP) {
+          line_store[*line][col++] = ';';
+          line_store[*line][col++] = ' ';
+        }
+        i += 3;
+        continue;
+      }
+      char c = s[i] == '\t' ? ' ' : s[i];
+      if (c >= 32 && c <= 126) line_store[*line][col++] = c;
+    }
     line_store[*line][col] = 0;
     view_lines[*line] = line_store[*line];
     view_style[*line] = (unsigned char)style;
@@ -1213,47 +914,21 @@ static void add_display_line(int *line, const char *s, int len, int hscroll, int
 
 static int build_view_lines(int hscroll) {
   int line = 0, pos = 0, source_line = 0;
-  int in_fence = 0;
-  int continuing_table = 0;
   while (pos <= file_buf_len && line < MAX_VIEW_LINES) {
     int end = source_line_end_from(pos);
     int len = end - pos;
-    if (in_fence || (len > 0 && fence_like(file_buf + pos, len))) {
-      continuing_table = 0;
-      add_display_line(&line, file_buf + pos, len, hscroll, 1, NOTE_CODE, source_line);
-      if (len > 0 && fence_like(file_buf + pos, len)) in_fence = !in_fence;
-      pos = source_next_line_from(end);
-      ++source_line;
-      if (pos > file_buf_len) break;
-      continue;
-    }
-    if (table_chunk_start_at(pos, len, continuing_table)) {
+    if (len > 0 && table_like(file_buf + pos, len)) {
       TableRow *rows = table_rows;
       int row_count = 0, cols = 0, next_pos = pos, next_source = source_line;
       if (collect_table_block(pos, source_line, rows, &row_count, &cols, &next_pos, &next_source)) {
         push_table_block(&line, rows, row_count, cols, hscroll);
         int next_end = next_pos <= file_buf_len ? source_line_end_from(next_pos) : next_pos;
-        continuing_table = table_continues_at(next_pos);
-        if (next_pos < file_buf_len && next_end > next_pos &&
-            !continuing_table &&
-            (source_code_like(file_buf + next_pos, next_end - next_pos) ||
-             !table_start_like_at(next_pos, next_end - next_pos)))
+        if (next_pos < file_buf_len && next_end > next_pos)
           push_blank_line(&line, next_source);
         pos = next_pos;
         source_line = next_source;
         continue;
       }
-    }
-    continuing_table = 0;
-    int setext_next = 0;
-    int setext_style = setext_heading_style_at(pos, len, &setext_next);
-    if (setext_style) {
-      int start = trim_left_pos(file_buf + pos, len);
-      int src_len = trim_right_len(file_buf + pos + start, len - start);
-      add_display_line(&line, file_buf + pos + start, src_len, hscroll, style_uses_hscroll(setext_style), setext_style, source_line);
-      pos = setext_next;
-      source_line += 2;
-      continue;
     }
     if (len <= 0) {
       line_store[line][0] = 0;
@@ -1270,10 +945,8 @@ static int build_view_lines(int hscroll) {
       if (style == NOTE_BULLET) {
         src = file_buf + pos;
         src_len = len;
-      } else {
-        src_len = atx_heading_display_len(src, src_len, style);
       }
-      add_display_line(&line, src, src_len, hscroll, style_uses_hscroll(style), style, source_line);
+      add_display_line(&line, src, src_len, hscroll, hscroll > 0 || style == NOTE_CODE, style, source_line);
     }
     pos = source_next_line_from(end);
     ++source_line;
@@ -1310,72 +983,11 @@ static int source_line_bounds(int target, int *start_out, int *len_out) {
 }
 
 static int source_line_style(int source_line) {
-  int line = 0, pos = 0, in_fence = 0, continuing_table = 0;
-  while (pos <= file_buf_len) {
-    int end = source_line_end_from(pos);
-    int len = end - pos;
-    int table_row = table_chunk_start_at(pos, len, continuing_table);
-    if (line == source_line) {
-      if (in_fence || (len > 0 && fence_like(file_buf + pos, len))) return NOTE_CODE;
-      if (table_row) return NOTE_TABLE;
-      int setext_style = setext_heading_style_at(pos, len, 0);
-      if (setext_style) return setext_style;
-      int skip = 0, style = NOTE_TEXT;
-      markdown_line(file_buf + pos, len, &skip, &style);
-      return style;
-    }
-    if (len > 0 && fence_like(file_buf + pos, len)) in_fence = !in_fence;
-    continuing_table = table_row && table_continues_at(source_next_line_from(end));
-    pos = source_next_line_from(end);
-    ++line;
-    if (pos > file_buf_len) break;
-  }
-  return NOTE_TEXT;
-}
-
-static int source_line_display_text(int source_line, char *out, int cap) {
   int start = 0, len = 0;
-  if (!source_line_bounds(source_line, &start, &len)) {
-    if (cap > 0) out[0] = 0;
-    return 0;
-  }
-  int style = source_line_style(source_line);
-  if (style == NOTE_TABLE) {
-    if (plus_separator_row(file_buf + start, len)) {
-      if (cap > 0) out[0] = 0;
-      return 0;
-    }
-    int cols = parse_table_row(file_buf + start, len, table_parse_cells);
-    if (cols <= 0 || table_separator_row(table_parse_cells, cols)) {
-      if (cap > 0) out[0] = 0;
-      return 0;
-    }
-    int n = 0;
-    for (int c = 0; c < cols && n + 1 < cap; ++c) {
-      if (c && n + 1 < cap) out[n++] = ' ';
-      for (int i = 0; table_parse_cells[c][i] && n + 1 < cap; ++i)
-        out[n++] = table_parse_cells[c][i];
-    }
-    out[n] = 0;
-    return n;
-  }
-  int skip = 0;
-  int parsed_style = NOTE_TEXT;
-  markdown_line(file_buf + start, len, &skip, &parsed_style);
-  if (style == NOTE_CODE) {
-    skip = 0;
-  } else if (style >= NOTE_H1 && style <= NOTE_H4 && !(parsed_style >= NOTE_H1 && parsed_style <= NOTE_H4)) {
-    skip = trim_left_pos(file_buf + start, len);
-  }
-  const char *src = file_buf + start + skip;
-  int src_len = len - skip;
-  if (style == NOTE_BULLET || style == NOTE_ORDERED || style == NOTE_QUOTE) {
-    src = file_buf + start;
-    src_len = len;
-  } else {
-    src_len = atx_heading_display_len(src, src_len, style);
-  }
-  return copy_display_text(out, cap, src, src_len, style != NOTE_CODE);
+  int skip = 0, style = NOTE_TEXT;
+  if (!source_line_bounds(source_line, &start, &len)) return NOTE_TEXT;
+  markdown_line(file_buf + start, len, &skip, &style);
+  return style;
 }
 
 static int find_source_match(const SearchPattern *sp, int start_line, int dir, int *line_out, int *offset_out) {
@@ -1385,9 +997,9 @@ static int find_source_match(const SearchPattern *sp, int start_line, int dir, i
   for (int seen = 0; seen < count; ++seen) {
     if (line < 0) line = count - 1;
     if (line >= count) line = 0;
-    int display_len = source_line_display_text(line, search_line_buf, FILE_BUF_SIZE);
-    if (display_len > 0) {
-      int off = find_in_span(search_line_buf, display_len, sp);
+    int start = 0, len = 0;
+    if (source_line_bounds(line, &start, &len)) {
+      int off = find_in_span(file_buf + start, len, sp);
       if (off >= 0) {
         *line_out = line;
         *offset_out = off;
@@ -1411,22 +1023,10 @@ static int view_line_for_source_match(int source_line, const SearchPattern *sp, 
 
 static int max_file_line_scroll() {
   int max_scroll = 0, pos = 0, source_line = 0;
-  int in_fence = 0;
-  int continuing_table = 0;
   while (pos <= file_buf_len) {
     int end = source_line_end_from(pos);
     int len = end - pos;
-    if (in_fence || (len > 0 && fence_like(file_buf + pos, len))) {
-      continuing_table = 0;
-      int scroll = line_end_hscroll(file_buf + pos, len, NOTE_CODE);
-      if (scroll > max_scroll) max_scroll = scroll;
-      if (len > 0 && fence_like(file_buf + pos, len)) in_fence = !in_fence;
-      pos = source_next_line_from(end);
-      ++source_line;
-      if (pos > file_buf_len) break;
-      continue;
-    }
-    if (table_chunk_start_at(pos, len, continuing_table)) {
+    if (len > 0 && table_like(file_buf + pos, len)) {
       TableRow *rows = table_rows;
       int row_count = 0, cols = 0, next_pos = pos, next_source = source_line;
       if (collect_table_block(pos, source_line, rows, &row_count, &cols, &next_pos, &next_source)) {
@@ -1434,29 +1034,22 @@ static int max_file_line_scroll() {
         table_compute_widths(rows, row_count, cols, widths);
         int scroll = table_max_hscroll(widths, cols);
         if (scroll > max_scroll) max_scroll = scroll;
-        continuing_table = table_continues_at(next_pos);
         pos = next_pos;
         source_line = next_source;
         continue;
       }
     }
-    continuing_table = 0;
-    int setext_next = 0;
-    int setext_style = setext_heading_style_at(pos, len, &setext_next);
-    if (setext_style) {
-      pos = setext_next;
-      source_line += 2;
-      continue;
-    }
     if (len > 0) {
       int skip = 0, style = NOTE_TEXT;
       markdown_line(file_buf + pos, len, &skip, &style);
-      if (style_uses_hscroll(style)) {
-        const char *src = file_buf + pos + skip;
-        int src_len = len - skip;
-        int scroll = line_end_hscroll(src, src_len, style);
-        if (scroll > max_scroll) max_scroll = scroll;
+      const char *src = file_buf + pos + skip;
+      int src_len = len - skip;
+      if (style == NOTE_BULLET) {
+        src = file_buf + pos;
+        src_len = len;
       }
+      int scroll = line_end_hscroll(src, src_len);
+      if (scroll > max_scroll) max_scroll = scroll;
     }
     pos = source_next_line_from(end);
     ++source_line;
@@ -1465,49 +1058,11 @@ static int max_file_line_scroll() {
   return max_scroll;
 }
 
-static int table_hscroll_for_match(const SearchPattern *sp, int target_source_line) {
-  int pos = 0, source_line = 0, continuing_table = 0;
-  while (pos <= file_buf_len) {
-    int end = source_line_end_from(pos);
-    int len = end - pos;
-    if (table_chunk_start_at(pos, len, continuing_table)) {
-      TableRow *rows = table_rows;
-      int row_count = 0, cols = 0, next_pos = pos, next_source = source_line;
-      if (collect_table_block(pos, source_line, rows, &row_count, &cols, &next_pos, &next_source)) {
-        for (int r = 0; r < row_count; ++r) {
-          if (rows[r].source_line != target_source_line) continue;
-          int widths[MAX_TABLE_COLS], colpos[MAX_TABLE_COLS + 1];
-          table_compute_widths(rows, row_count, cols, widths);
-          table_col_positions(widths, cols, colpos);
-          for (int c = 0; c < cols; ++c) {
-            int cell_len = strlen(rows[r].cells[c]);
-            if (find_in_span(rows[r].cells[c], cell_len, sp) >= 0)
-              return max_int(0, colpos[c] / TABLE_CHAR_PX - 1);
-          }
-          return 0;
-        }
-        continuing_table = table_continues_at(next_pos);
-        pos = next_pos;
-        source_line = next_source;
-        continue;
-      }
-    }
-    continuing_table = 0;
-    pos = source_next_line_from(end);
-    ++source_line;
-    if (pos > file_buf_len) break;
-  }
-  return 0;
-}
-
 static int jump_to_match(const SearchPattern *sp, int start_source_line, int dir, int *top, int *hscroll, int *lines, int max_line) {
   int source_line = 0, offset = 0;
   if (!find_source_match(sp, start_source_line, dir, &source_line, &offset)) return 0;
   int style = source_line_style(source_line);
-  if (style == NOTE_TABLE)
-    *hscroll = table_hscroll_for_match(sp, source_line);
-  else
-    *hscroll = style == NOTE_CODE ? max_int(0, offset - 6) : 0;
+  *hscroll = style == NOTE_CODE ? max_int(0, offset - 4) : 0;
   if (*hscroll > max_line) *hscroll = max_line;
   *lines = build_view_lines(*hscroll);
   int view_line = view_line_for_source_match(source_line, sp, *lines);
@@ -1576,7 +1131,8 @@ static void notes_message(const char *title, const char *a, const char *b, const
   ui_flush();
 }
 
-static bool notes_input(const char *title, char *buf, int cap) {
+static bool notes_input(const char *title, char *buf, int cap, unsigned *tick) {
+  (void)tick;
   int start = 0;
   int cursor = (int)strlen(buf);
   static char hist[6][32];
@@ -1797,10 +1353,10 @@ static void print_note_line(int idx, int x, int y, const char *line, int style, 
   }
   int p = 0;
   while (line && line[p] == ' ') ++p;
-  if (style == NOTE_BULLET && line && (line[p] == '-' || line[p] == '*' || line[p] == '+') && line[p + 1] == ' ') {
+  if (style == NOTE_BULLET && line && line[p] == '-' && line[p + 1] == ' ') {
     int px = x;
     notes_print_span(&px, y, line, p, fg, bg);
-    notes_print_span(&px, y, line + p, 1, UI_BLUE, bg);
+    notes_print_span(&px, y, "-", 1, UI_BLUE, bg);
     notes_print_span(&px, y, " ", 1, fg, bg);
     notes_print_with_matches(px, y, line + p + 2, fg, bg, match_fg, sp);
   } else if (style == NOTE_ORDERED && line) {
@@ -1824,7 +1380,8 @@ static void print_note_line(int idx, int x, int y, const char *line, int style, 
   }
 }
 
-static void notes_text_page(const char *title, const char *const *lines, int count, int top, const SearchPattern *sp) {
+static void notes_text_page(const char *title, const char *const *lines, int count, int top, int hscroll, const SearchPattern *sp) {
+  (void)hscroll;
   notes_chrome(title);
   notes_softkeys("NEXT", "PREV", "PGUP", "PGDN", "FIND", "BACK");
   for (int i = 0; i < PAGE_LINES && top + i < count; ++i) {
@@ -1836,7 +1393,8 @@ static void notes_text_page(const char *title, const char *const *lines, int cou
   ui_flush();
 }
 
-static void wait_text_page(const char *title, const char *initial_query) {
+static void wait_text_page(const char *title, const char *path, const char *initial_query, unsigned *tick) {
+  (void)tick;
   int top = 0, hscroll = 0;
   SearchPattern sp;
   search_prepare(&sp, initial_query && initial_query[0] ? initial_query : "");
@@ -1845,7 +1403,7 @@ static void wait_text_page(const char *title, const char *initial_query) {
   int lines = build_view_lines(hscroll);
   if (sp.len > 0) jump_to_match(&sp, 0, 1, &top, &hscroll, &lines, max_line);
   if (top + PAGE_LINES > lines) top = max_int(0, lines - PAGE_LINES);
-  notes_text_page(title, view_lines, lines, top, &sp);
+  notes_text_page(title, view_lines, lines, top, hscroll, &sp);
   int animate_title = status_title_needs_marquee(title);
   unsigned last_title_step = status_marquee_step();
   for (;;) {
@@ -1854,45 +1412,43 @@ static void wait_text_page(const char *title, const char *initial_query) {
       unsigned next_title_step = status_marquee_step();
       if (next_title_step != last_title_step) {
         last_title_step = next_title_step;
-        notes_text_page(title, view_lines, lines, top, &sp);
+        notes_text_page(title, view_lines, lines, top, hscroll, &sp);
       }
       OS_InnerWait_ms(40);
       continue;
     }
     if (key == KEY_CTRL_EXIT || key == KEY_CTRL_AC || key == KEY_CTRL_F6) return;
-    if (key == KEY_CTRL_UP && top > 0) notes_text_page(title, view_lines, lines, --top, &sp);
-    if (key == KEY_CTRL_DOWN && top + PAGE_LINES < lines) notes_text_page(title, view_lines, lines, ++top, &sp);
+    if (key == KEY_CTRL_UP && top > 0) notes_text_page(title, view_lines, lines, --top, hscroll, &sp);
+    if (key == KEY_CTRL_DOWN && top + PAGE_LINES < lines) notes_text_page(title, view_lines, lines, ++top, hscroll, &sp);
     if ((key == KEY_CTRL_PAGEUP || key == KEY_CTRL_F3) && top > 0) {
       top = max_int(0, top - PAGE_LINES);
-      notes_text_page(title, view_lines, lines, top, &sp);
+      notes_text_page(title, view_lines, lines, top, hscroll, &sp);
     }
     if ((key == KEY_CTRL_PAGEDOWN || key == KEY_CTRL_F4) && top + PAGE_LINES < lines) {
       top = min_int(max_int(0, lines - PAGE_LINES), top + PAGE_LINES);
-      notes_text_page(title, view_lines, lines, top, &sp);
+      notes_text_page(title, view_lines, lines, top, hscroll, &sp);
     }
     if (key == KEY_CTRL_RIGHT) {
       if (hscroll < max_line) hscroll = min_int(max_line, hscroll + 8);
       lines = build_view_lines(hscroll);
       top = min_int(top, max_int(0, lines - PAGE_LINES));
-      notes_text_page(title, view_lines, lines, top, &sp);
+      notes_text_page(title, view_lines, lines, top, hscroll, &sp);
     }
     if (key == KEY_CTRL_LEFT && hscroll > 0) {
       hscroll = max_int(0, hscroll - 8);
       lines = build_view_lines(hscroll);
       top = min_int(top, max_int(0, lines - PAGE_LINES));
-      notes_text_page(title, view_lines, lines, top, &sp);
+      notes_text_page(title, view_lines, lines, top, hscroll, &sp);
     }
     if (key == KEY_CTRL_F5) {
       char q[32];
       copy_str(q, sizeof(q), last_query);
-      if (notes_input("Find text", q, sizeof(q)) && q[0]) {
+      if (notes_input("Find text", q, sizeof(q), tick) && q[0]) {
         copy_str(last_query, sizeof(last_query), q);
         search_prepare(&sp, q);
         active_search = 1;
         int start_source = lines > 0 ? view_source_line[min_int(top, max_int(0, lines - 1))] : 0;
         if (!jump_to_match(&sp, start_source, 1, &top, &hscroll, &lines, max_line)) {
-          search_prepare(&sp, "");
-          active_search = 0;
           notes_message("Find text", "No results found.", q, "F6 returns.");
           for (;;) {
             int k = ui_key_poll();
@@ -1900,7 +1456,7 @@ static void wait_text_page(const char *title, const char *initial_query) {
           }
         }
       }
-      notes_text_page(title, view_lines, lines, top, &sp);
+      notes_text_page(title, view_lines, lines, top, hscroll, &sp);
     }
     if (key == KEY_CTRL_F1) {
       if (active_search) {
@@ -1909,7 +1465,7 @@ static void wait_text_page(const char *title, const char *initial_query) {
       } else {
         top = min_int(max_int(0, lines - PAGE_LINES), top + PAGE_LINES);
       }
-      notes_text_page(title, view_lines, lines, top, &sp);
+      notes_text_page(title, view_lines, lines, top, hscroll, &sp);
     }
     if (key == KEY_CTRL_F2) {
       if (active_search) {
@@ -1918,8 +1474,9 @@ static void wait_text_page(const char *title, const char *initial_query) {
       } else {
         top = max_int(0, top - PAGE_LINES);
       }
-      notes_text_page(title, view_lines, lines, top, &sp);
+      notes_text_page(title, view_lines, lines, top, hscroll, &sp);
     }
+    (void)path;
   }
 }
 
@@ -1927,19 +1484,17 @@ static int file_text_matches(const char *path, const SearchPattern *sp, int *fir
   *first_line = -1;
   *hits = 0;
   if (sp->len <= 0) return 0;
-  if (load_file_buf(path) <= 0) return 0;
-  int count = source_line_count();
-  for (int line = 0; line < count; ++line) {
-    int display_len = source_line_display_text(line, search_line_buf, FILE_BUF_SIZE);
-    int state = 0;
-    for (int i = 0; i < display_len; ++i) {
-      state = search_step(sp, state, search_line_buf[i]);
-      if (state != sp->len) continue;
+  if (!load_file_buf(path)) return 0;
+  int state = 0, line = 0;
+  for (int i = 0; i < file_buf_len; ++i) {
+    state = search_step(sp, state, file_buf[i]);
+    if (state == sp->len) {
       if (*first_line < 0) *first_line = line;
       if (*hits < 9) ++(*hits);
       state = sp->fail[state - 1];
-      if (*hits >= 9) return 1;
     }
+    if (file_buf[i] == '\n') ++line;
+    if (*hits >= 9) break;
   }
   return *hits > 0;
 }
@@ -1971,7 +1526,7 @@ static void add_ranked_result(const char *path, int score, int first_line, int h
   results[pos].text_hits = hits;
 }
 
-static int search_all_rec(const char *dir, const SearchPattern *sp, int depth) {
+static int search_all_rec(const char *dir, const SearchPattern *sp, int depth, unsigned *tick) {
   if (depth > 8) return result_count;
   unsigned short path[300], found[300];
   char query[300], name[300], full[300];
@@ -1989,7 +1544,7 @@ static int search_all_rec(const char *dir, const SearchPattern *sp, int depth) {
         if (!hidden_system_folder(name)) {
           char child[300];
           join_str(child, sizeof(child), full, "\\");
-          search_all_rec(child, sp, depth + 1);
+          search_all_rec(child, sp, depth + 1, tick);
         }
       } else if (ends_with(name, ".txt")) {
         int first = -1, hits = 0;
@@ -2003,28 +1558,26 @@ static int search_all_rec(const char *dir, const SearchPattern *sp, int depth) {
       }
     }
     ret = Bfile_FindNext_NON_SMEM(handle, found, (char *)&info);
+    (void)tick;
   }
   Bfile_FindClose(handle);
   return result_count;
 }
 
-static void show_file_path(const char *path, const char *name, const char *query) {
-  int loaded = load_file_buf(path);
-  if (loaded <= 0) {
-    if (loaded < 0)
-      notes_message("NOTES", "File too large.", "Split into smaller", "text files.");
-    else
-      notes_message("NOTES", "Could not open", "text file.", 0);
+static void show_file_path(const char *path, const char *name, const char *query, unsigned *tick) {
+  if (!load_file_buf(path)) {
+    notes_message("NOTES", "Could not open", "text file.", 0);
     for (;;) {
       int key = ui_key_poll();
       if (key == KEY_CTRL_EXIT || key == KEY_CTRL_AC || key == KEY_CTRL_F6 || key == KEY_CTRL_EXE) break;
     }
     return;
   }
-  wait_text_page(name, query);
+  wait_text_page(name, path, query, tick);
 }
 
-static int search_results_menu() {
+static int search_results_menu(unsigned *tick) {
+  (void)tick;
   int sel = 0, top = 0;
   bool dirty = true;
   for (;;) {
@@ -2041,23 +1594,23 @@ static int search_results_menu() {
     if (ui_menu_handle_key(key, result_count, MENU_ROWS, &sel, &top)) dirty = true;
     if (key == KEY_CTRL_F2) return 1;
     if ((key == KEY_CTRL_EXE || key == KEY_CTRL_F1) && result_count) {
-      show_file_path(results[sel].path, results[sel].name, last_query);
+      show_file_path(results[sel].path, results[sel].name, last_query, tick);
       dirty = true;
     }
   }
 }
 
-static void search_all_notes() {
+static void search_all_notes(unsigned *tick) {
   for (;;) {
     char q[32];
     copy_str(q, sizeof(q), last_query);
-    if (!notes_input("Find all text", q, sizeof(q)) || !q[0]) return;
+    if (!notes_input("Find all text", q, sizeof(q), tick) || !q[0]) return;
     copy_str(last_query, sizeof(last_query), q);
     SearchPattern sp;
     search_prepare(&sp, q);
     result_count = 0;
     notes_message("Find all", "Searching all .txt files...", q, 0);
-    search_all_rec(NOTES_ROOT, &sp, 0);
+    search_all_rec(NOTES_ROOT, &sp, 0, tick);
     refresh_result_labels();
     if (!result_count) {
       notes_message("Find all", "No results found.", q, "F6 returns.");
@@ -2067,16 +1620,17 @@ static void search_all_notes() {
       }
       return;
     }
-    if (!search_results_menu()) return;
+    if (!search_results_menu(tick)) return;
   }
 }
 
-static void show_file(NoteEntry *e) {
-  show_file_path(e->path, e->name, "");
+static void show_file(NoteEntry *e, unsigned *tick) {
+  show_file_path(e->path, e->name, "", tick);
 }
 
 int main() {
   Bdisp_EnableColor(1);
+  unsigned tick = (unsigned)RTC_GetTicks();
   int sel = 0, top = 0;
   scan_dir();
   bool dirty = true;
@@ -2094,10 +1648,10 @@ int main() {
     if (key == KEY_CTRL_MENU || key == KEY_CTRL_AC) return 0;
     if (key == KEY_CTRL_EXIT || key == KEY_CTRL_F6) { up_folder(); sel = top = 0; scan_dir(); dirty = true; }
     if (ui_menu_handle_key(key, entry_count, MENU_ROWS, &sel, &top)) dirty = true;
-    if (key == KEY_CTRL_F2) { search_all_notes(); dirty = true; }
+    if (key == KEY_CTRL_F2) { search_all_notes(&tick); dirty = true; }
     if ((key == KEY_CTRL_EXE || key == KEY_CTRL_F1) && entry_count) {
       if (entries[sel].is_folder) { copy_str(cwd_path, sizeof(cwd_path), entries[sel].path); sel = top = 0; scan_dir(); dirty = true; }
-      else { show_file(&entries[sel]); dirty = true; }
+      else { show_file(&entries[sel], &tick); dirty = true; }
     }
   }
 }
