@@ -2,7 +2,7 @@
 
 ## Purpose
 
-`CAS.g3a` is the Pure Maths working-out add-in. It keeps the original KhiCAS calculation core and adds A-level-style working lines for common Pure Maths commands. If a supported working route is known, it prints the method. If not, it falls back to the underlying KhiCAS exact result where possible.
+`CAS.g3a` is the A-level Maths working add-in. It keeps the original KhiCAS calculation core and adds A-level-style output for common Pure Maths commands and Paper 3 mechanics, with SUVAT as the main mechanics route. If a supported working route is known, it prints the method. If not, it falls back to the underlying KhiCAS exact result where possible.
 
 ## Files
 
@@ -18,6 +18,7 @@
 - Use radians unless the question clearly uses degrees and the route says so.
 - Prefer explicit multiplication: `3*x`, `2*sin(x)`.
 - Working commands should be typed directly or inserted from the command menu.
+- For mechanics, choose a positive direction before entering signed values.
 
 ## Main Working Commands
 
@@ -121,6 +122,19 @@ Examples:
 - `domain(ln(x-3))`
 - `domain(sqrt(5-2*x))`
 
+### Paper 3 Mechanics
+
+`suvat(known=value,known=value,known=value)`
+
+Examples:
+
+- `suvat(u=2,a=3,t=4)` gives `s`, `u`, `v`, `a`, `t` on separate lines.
+- `suvat(s=10,u=2,a=3)` gives both possible times and velocities.
+- `suvat(u=x,a=2,t=3)` keeps algebraic values exact where possible.
+- `suvat(u=2,a=3)` lists the known values and says that another named value is needed.
+
+Other compact mechanics commands are available from F4 -> Mechanics: `force`, `weight`, `friction`, `connected`, `pulley`, `lift`, `varacc`, `moment`, `work`, `power`, `impulse`, `momentum`, `energy`, `resolve`, `incline`, `projectile`.
+
 ## Normal KhiCAS Commands Kept Without Working
 
 These behave like normal calculator commands and do not need mark-scheme working:
@@ -129,7 +143,7 @@ These behave like normal calculator commands and do not need mark-scheme working
 
 ## Menus
 
-The F4 command menu keeps the original KhiCAS-style names for visible Pure Maths commands. Hidden topics are intentionally not user-facing.
+The F4 command menu keeps the original KhiCAS-style names for visible commands. Press F6 on a highlighted command to open its help sheet from `CAS.PAK`.
 
 ## Build
 
@@ -140,4 +154,3 @@ The F4 command menu keeps the original KhiCAS-style names for visible Pure Maths
 The fresh calculator files are copied to:
 
 `/Users/james/Developer/CASIO/calculator_files/`
-

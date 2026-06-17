@@ -5,7 +5,8 @@ Source documents:
 - `/Users/james/Downloads/Maths syllabus.pdf`
 - `/Users/james/Downloads/math formula booklet.pdf`
 
-Decision: support Edexcel A-level Pure only. Mechanics, statistics, and probability commands are removed.
+Decision: support Edexcel A-level Pure plus Paper 3 mechanics in `CAS.g3a`.
+Statistics and probability remain out of scope.
 
 ## Keep
 
@@ -19,11 +20,11 @@ Decision: support Edexcel A-level Pure only. Mechanics, statistics, and probabil
 - Integration: powers, exp/log/trig, definite integrals, area, substitution, parts, partial fractions, separable differential equations.
 - Numerical methods: sign change, iteration, Newton-Raphson, trapezium rule.
 - Vectors: 2D/3D component work, magnitude, unit vectors, position vectors, geometry.
+- Paper 3 mechanics: SUVAT as the main supported route; compact support for force, weight, friction, connected particles, pulleys, moments, resolving, inclines, variable acceleration, work/power/energy/impulse/momentum where already present.
 
 ## Remove
 
 - All statistics/probability: distributions, CDFs, tests, regression, sampling, summary stats, random numbers.
-- All mechanics: SUVAT, projectiles, forces/Newton laws, friction, connected particles, moments.
 - Complex-number support and complex solve/factor/partial fractions.
 - Matrix/list algebra beyond parser internals required by GIAC.
 - Plotting, graphs, turtle, pixels, drawing.
@@ -34,4 +35,4 @@ Decision: support Edexcel A-level Pure only. Mechanics, statistics, and probabil
 
 ## Formula Pack
 
-Current crash-fix baseline is pristine upstream `khicasen.g3a`; external formula/help packs are not part of this calculator file.
+`khicasen.g3a` stays pristine upstream/source output. `CAS.g3a` may carry scoped A-level working routes and uses `CAS.PAK` for command help.

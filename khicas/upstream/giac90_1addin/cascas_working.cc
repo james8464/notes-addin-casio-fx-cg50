@@ -6221,11 +6221,15 @@ static working_string suvat_calc(const char *f,working_string *v){
 }
 
 static void suvat_set(int id,const char *f,working_string *v,bool *h){
+  if (h[id])
+    return;
   v[id]=suvat_calc(f,v);
   h[id]=true;
 }
 
 static void suvat_set2(int id,const char *a,const char *b,working_string *v,bool *h){
+  if (h[id])
+    return;
   working_string x=suvat_calc(a,v),y=suvat_calc(b,v);
   v[id]=(x==y)?x:("["+x+", "+y+"]");
   h[id]=true;
@@ -6251,25 +6255,33 @@ static bool try_suvat(const char *input,working_string &out){
     if (!have[id]){ ++known; mask|=1<<id; }
     have[id]=true;
   }
+  static const char *eq_vat="v=u+at";
+  static const char *eq_suat="s=ut+1/2at^2";
+  static const char *eq_v2="v^2=u^2+2as";
+  static const char *eq_suvt="s=(u+v)t/2";
+  const char *eq1=0,*eq2=0;
+#define USED(a,b) do { eq1=(a); eq2=(b); } while (0)
 #define HAS(x) ((mask&(x))==(x))
   if (known>=3){
-    if (HAS(26)){ suvat_set(2,"U+A*T",val,have); suvat_set(0,"U*T+1/2*A*T^2",val,have); }
-    else if (HAS(28)){ suvat_set(1,"V-A*T",val,have); suvat_set(0,"V*T-1/2*A*T^2",val,have); }
-    else if (HAS(22)){ suvat_set(3,"(V-U)/T",val,have); suvat_set(0,"1/2*(U+V)*T",val,have); }
-    else if (HAS(14)){ suvat_set(4,"(V-U)/A",val,have); suvat_set(0,"1/2*(U+V)*T",val,have); }
-    else if (HAS(19)){ suvat_set(3,"2*(S-U*T)/T^2",val,have); suvat_set(2,"U+A*T",val,have); }
-    else if (HAS(21)){ suvat_set(1,"2*S/T-V",val,have); suvat_set(3,"(V-U)/T",val,have); }
-    else if (HAS(25)){ suvat_set(1,"(S-1/2*A*T^2)/T",val,have); suvat_set(2,"U+A*T",val,have); }
-    else if (HAS(7)){ suvat_set(3,"(V^2-U^2)/(2*S)",val,have); suvat_set(4,"2*S/(U+V)",val,have); }
+    if (HAS(26)){ USED(eq_vat,eq_suat); suvat_set(2,"U+A*T",val,have); suvat_set(0,"U*T+1/2*A*T^2",val,have); }
+    else if (HAS(28)){ USED(eq_vat,eq_suvt); suvat_set(1,"V-A*T",val,have); suvat_set(0,"V*T-1/2*A*T^2",val,have); }
+    else if (HAS(22)){ USED(eq_vat,eq_suvt); suvat_set(3,"(V-U)/T",val,have); suvat_set(0,"1/2*(U+V)*T",val,have); }
+    else if (HAS(14)){ USED(eq_vat,eq_suvt); suvat_set(4,"(V-U)/A",val,have); suvat_set(0,"1/2*(U+V)*T",val,have); }
+    else if (HAS(19)){ USED(eq_suat,eq_vat); suvat_set(3,"2*(S-U*T)/T^2",val,have); suvat_set(2,"U+A*T",val,have); }
+    else if (HAS(21)){ USED(eq_suvt,eq_vat); suvat_set(1,"2*S/T-V",val,have); suvat_set(3,"(V-U)/T",val,have); }
+    else if (HAS(25)){ USED(eq_suat,eq_vat); suvat_set(1,"(S-1/2*A*T^2)/T",val,have); suvat_set(2,"U+A*T",val,have); }
+    else if (HAS(7)){ USED(eq_v2,eq_suvt); suvat_set(3,"(V^2-U^2)/(2*S)",val,have); suvat_set(4,"2*S/(U+V)",val,have); }
     else if (HAS(11)){
-      if (compact(val[3])=="0"){ suvat_set(4,"S/U",val,have); val[2]=val[1]; have[2]=true; }
+      USED(eq_suat,eq_vat);
+      if (compact(val[3])=="0"){ suvat_set(4,"S/U",val,have); if (!have[2]){ val[2]=val[1]; have[2]=true; } }
       else {
         suvat_set2(4,"(-U+sqrt(U^2+2*A*S))/A","(-U-sqrt(U^2+2*A*S))/A",val,have);
         suvat_set2(2,"U+A*((-U+sqrt(U^2+2*A*S))/A)","U+A*((-U-sqrt(U^2+2*A*S))/A)",val,have);
       }
     }
     else if (HAS(13)){
-      if (compact(val[3])=="0"){ suvat_set(4,"S/V",val,have); val[1]=val[2]; have[1]=true; }
+      USED(eq_v2,eq_vat);
+      if (compact(val[3])=="0"){ suvat_set(4,"S/V",val,have); if (!have[1]){ val[1]=val[2]; have[1]=true; } }
       else {
         suvat_set2(4,"(V+sqrt(V^2-2*A*S))/A","(V-sqrt(V^2-2*A*S))/A",val,have);
         suvat_set2(1,"V-A*((V+sqrt(V^2-2*A*S))/A)","V-A*((V-sqrt(V^2-2*A*S))/A)",val,have);
@@ -6277,19 +6289,22 @@ static bool try_suvat(const char *input,working_string &out){
     }
   }
 #undef HAS
+#undef USED
   static const char *names[]={"s","u","v","a","t"};
-  out="SUVAT\n";
-  out += "eq:v=u+at;s=ut+1/2at^2;v^2=u^2+2as;s=(u+v)t/2\n";
+  out="SUVAT\nans:\n";
   for (int i=0;i<5;++i)
     if (have[i]){ out += names[i]; out += "="; out += val[i]; out += "\n"; }
   if (known<3)
-    out += "Need 3 named values.";
+    out += "Need 3 named values.\n";
   else {
     int got=0;
     for (int i=0;i<5;++i) if (have[i]) ++got;
     if (got<5)
-      out += "Some values unresolved.";
+      out += "Some values unresolved.\n";
   }
+  out += "eq:\n";
+  if (eq1){ out += eq1; out += "\n"; out += eq2; }
+  else { out += eq_vat; out += "\n"; out += eq_suat; out += "\n"; out += eq_v2; out += "\n"; out += eq_suvt; }
   return true;
 }
 
