@@ -1,0 +1,61 @@
+# paper 3 exam reminders
+
+## general
+
+- read whether the question asks for exact value, decimal places or significant figures
+- keep extra accuracy during working
+- final answer should include units when units are used in the question
+- write conclusions in context, not just as a calculation
+- check whether the model assumptions are reasonable
+- if asked to comment, compare and interpret
+- if asked to justify, give a reason from the data or context
+
+
+
+## statistics wording
+
+- "there is evidence to suggest" is safer than "this proves"
+- "not enough evidence to suggest" is safer than "there is no effect"
+- for a hypothesis test, mention the population parameter in context
+- for correlation, mention strength, direction and whether it is linear
+- for regression, mention whether prediction is interpolation or extrapolation
+- for a model, mention one reason it may be unsuitable
+- for LDS questions, mention location, month, year or variable when relevant
+
+
+
+## mechanics wording
+
+- state modelling assumptions when asked
+- define positive direction before equations if signs may be unclear
+- draw or imagine a force diagram before resolving
+- when resolving, say parallel or perpendicular if a slope is involved
+- when using moments, say which point moments are taken about
+- if equilibrium, state resultant force is 0 and resultant moment is 0
+- if friction is limiting, state F = mu R
+- if friction is not limiting, use F <= mu R
+
+
+
+## common checks
+
+- probability must be between 0 and 1
+- correlation coefficient must be between -1 and 1
+- standard deviation cannot be negative
+- variance cannot be negative
+- area under histogram must match frequency
+- normal probabilities need correct tail direction
+- binomial tests need correct one-tailed or two-tailed setup
+- mechanics acceleration should have sensible sign
+- tension cannot usually be negative
+- normal reaction cannot be negative while contact is maintained
+
+
+
+## calculator use
+
+- use statistics mode for summary statistics
+- use distribution menus for binomial and normal probabilities
+- use exact CAS where algebraic manipulation is needed
+- do not round stored intermediate calculator values too early
+- check angle mode when using mechanics components

@@ -6253,6 +6253,92 @@ static bool try_suvat(const char *input,working_string &out){
   return true;
 }
 
+static bool arg_rat(working_string *args,int n,const char *key,int pos,Rat &v){
+  for (int i=0;i<n;++i){
+    int eq=find_top_equal_any(args[i]);
+    if (eq>0 && lower(compact(args[i].substr(0,eq)))==key)
+      return parse_rat(args[i].substr(eq+1,args[i].size()-eq-1),v);
+  }
+  return pos<n && parse_rat(args[pos],v);
+}
+
+static working_string arg_text(working_string *args,int n,const char *key,int pos){
+  for (int i=0;i<n;++i){
+    int eq=find_top_equal_any(args[i]);
+    if (eq>0 && lower(compact(args[i].substr(0,eq)))==key)
+      return compact(args[i].substr(eq+1,args[i].size()-eq-1));
+  }
+  return pos<n?compact(args[pos]):"";
+}
+
+static bool try_mech_command(const char *input,working_string &out){
+  working_string args[5];
+  int n=0;
+  Rat a,b;
+  if (parse_call(input,"weight",args,5,n)){
+    if (!arg_rat(args,n,"m",0,a)){
+      out="weight(m)\nW = mg";
+      return true;
+    }
+    b=rat_mul(a,rat(49,5));
+    out="Weight\nW = mg\nW = "+rat_s(a)+"*9.8 = "+rat_s(b)+" N";
+    return true;
+  }
+  if (parse_call(input,"moment",args,5,n)){
+    if (!arg_rat(args,n,"f",0,a) || !arg_rat(args,n,"d",1,b)){
+      out="moment(F,d)\nM = force * perpendicular distance";
+      return true;
+    }
+    out="Moment\nM = Fd\nM = "+rat_s(a)+"*"+rat_s(b)+" = "+rat_s(rat_mul(a,b))+" N m";
+    return true;
+  }
+  if (parse_call(input,"friction",args,5,n)){
+    if (!arg_rat(args,n,"mu",0,a) || !arg_rat(args,n,"r",1,b)){
+      out="friction(mu,R)\nlimiting friction: F = mu R\nstatic friction: F <= mu R";
+      return true;
+    }
+    out="Friction\nFmax = mu R\nFmax = "+rat_s(a)+"*"+rat_s(b)+" = "+rat_s(rat_mul(a,b))+" N";
+    return true;
+  }
+  if (parse_call(input,"resolve",args,5,n)){
+    working_string f=arg_text(args,n,"f",0), th=arg_text(args,n,"theta",1);
+    if (f.empty() || th.empty()){
+      out="resolve(F,theta)\nparallel = F*cos(theta)\nperpendicular = F*sin(theta)";
+      return true;
+    }
+    out="Resolve\nparallel = "+f+"*cos("+th+")\nperpendicular = "+f+"*sin("+th+")";
+    return true;
+  }
+  if (parse_call(input,"incline",args,5,n)){
+    working_string m=arg_text(args,n,"m",0), th=arg_text(args,n,"theta",1);
+    if (m.empty() || th.empty()){
+      out="incline(m,theta)\ndown slope = mg*sin(theta)\nnormal reaction = mg*cos(theta)";
+      return true;
+    }
+    out="Incline\nweight down slope = "+m+"*g*sin("+th+")\nnormal reaction = "+m+"*g*cos("+th+")";
+    return true;
+  }
+  if (parse_call(input,"projectile",args,5,n)){
+    working_string u=arg_text(args,n,"u",0), th=arg_text(args,n,"theta",1), t=arg_text(args,n,"t",2);
+    if (u.empty() || th.empty()){
+      out="projectile(u,theta[,t])\nux = u*cos(theta)\nuy = u*sin(theta)";
+      return true;
+    }
+    out="Projectile\nux = "+u+"*cos("+th+")\nuy = "+u+"*sin("+th+")\n";
+    if (!t.empty()){
+      out += "x = ux*t = "+u+"*cos("+th+")*"+t+"\n";
+      out += "y = uy*t - 1/2*g*t^2 = "+u+"*sin("+th+")*"+t+" - 1/2*g*"+t+"^2";
+    }
+    else {
+      out += "time of flight = 2*"+u+"*sin("+th+")/g\n";
+      out += "range = "+u+"^2*sin(2*"+th+")/g\n";
+      out += "max height = "+u+"^2*sin("+th+")^2/(2g)";
+    }
+    return true;
+  }
+  return false;
+}
+
 static bool try_definite_recip_affine(const working_string &expr,const working_string &rawvar,
                                       const working_string &lo,const working_string &hi,
                                       working_string &out){
@@ -18542,6 +18628,10 @@ bool eval_with_working(const char *input,working_string &out){
     return true;
   }
   if (starts_command(cs,"suvat") && try_suvat(input,out)){
+    strip_weak_working_labels(out);
+    return true;
+  }
+  if (try_mech_command(input,out)){
     strip_weak_working_labels(out);
     return true;
   }

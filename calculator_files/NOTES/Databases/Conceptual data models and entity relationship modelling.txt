@@ -1,7 +1,0 @@
-# Conceptual data models and entity relationship modelling
-
-## Three types of relationships:
-
-- one to one
-- many to one
-- many to many

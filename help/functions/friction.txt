@@ -1,0 +1,8 @@
+friction
+Args: friction(mu,R)
+Required: Coefficient mu and normal reaction R.
+Optional: Named arguments mu=..., R=... may be used.
+Does: Finds limiting friction.
+Working: Uses Fmax = mu R and substitutes values.
+Checks: For static friction use F <= mu R unless limiting friction is stated.
+Examples: friction(0.4,20); friction(mu=2/5,R=20)

@@ -53,7 +53,8 @@ extern "C" {
 #define CAT_CATEGORY_PROG 17
 #define CAT_CATEGORY_SOFUS 18 
 #define CAT_CATEGORY_VECTOR 19
-#define CAT_CATEGORY_LOGO 20 // should be the last one
+#define CAT_CATEGORY_LOGO 20
+#define CAT_CATEGORY_MECH 21 // should be the last one
 
 using namespace giac;
 extern giac::context * contextptr;
@@ -83,21 +84,26 @@ const catalogFunc completeCat[] = { // scoped A-level Pure catalog
   {"exp", CAT_CATEGORY_ALGEBRA},
   {"factor", CAT_CATEGORY_ALGEBRA},
   {"floor", CAT_CATEGORY_REAL},
+  {"friction", CAT_CATEGORY_MECH},
   {"fsolve", CAT_CATEGORY_SOLVE},
   {"gcd", CAT_CATEGORY_ARIT},
   {"integrate(f,x)", CAT_CATEGORY_CALCULUS},
   {"int", CAT_CATEGORY_CALCULUS},
   {"implicit_diff", CAT_CATEGORY_CALCULUS},
+  {"incline", CAT_CATEGORY_MECH},
   {"lcm", CAT_CATEGORY_ARIT},
   {"lcoeff", CAT_CATEGORY_POLYNOMIAL},
   {"limit", CAT_CATEGORY_CALCULUS},
   {"ln", CAT_CATEGORY_ALGEBRA},
   {"log", CAT_CATEGORY_ALGEBRA},
+  {"moment", CAT_CATEGORY_MECH},
   {"partfrac", CAT_CATEGORY_ALGEBRA},
+  {"projectile", CAT_CATEGORY_MECH},
   {"product", CAT_CATEGORY_CALCULUS},
   {"range", CAT_CATEGORY_SOLVE},
   {"resultant", CAT_CATEGORY_POLYNOMIAL},
   {"rewrite", CAT_CATEGORY_ALGEBRA},
+  {"resolve", CAT_CATEGORY_MECH},
   {"round", CAT_CATEGORY_REAL},
   {"sec", CAT_CATEGORY_TRIG},
   {"series", CAT_CATEGORY_CALCULUS},
@@ -107,11 +113,13 @@ const catalogFunc completeCat[] = { // scoped A-level Pure catalog
   {"sqrt", CAT_CATEGORY_ALGEBRA},
   {"subst", CAT_CATEGORY_ALGEBRA},
   {"sum", CAT_CATEGORY_CALCULUS},
+  {"suvat", CAT_CATEGORY_MECH},
   {"tan", CAT_CATEGORY_TRIG},
   {"taylor", CAT_CATEGORY_CALCULUS},
   {"tcollect(e)", CAT_CATEGORY_TRIG},
   {"texpand(e)", CAT_CATEGORY_TRIG},
   {"xform(e,t)", CAT_CATEGORY_ALGEBRA},
+  {"weight", CAT_CATEGORY_MECH},
 
 };
 
@@ -129,6 +137,7 @@ const catalogFolder catalogFolders[] = {
   {(char*)"Solve (log)", CAT_CATEGORY_SOLVE},
   {(char*)"Trigonometry (sin)", CAT_CATEGORY_TRIG},
   {(char*)"Vectors", CAT_CATEGORY_VECTOR},
+  {(char*)"Mechanics", CAT_CATEGORY_MECH},
 };
 
 const char chk_restart_string1[]="Keep variables?";

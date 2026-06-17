@@ -1,0 +1,8 @@
+resolve
+Args: resolve(F,theta)
+Required: Force F and angle theta.
+Optional: Named arguments F=..., theta=... may be used.
+Does: Resolves a force into two perpendicular components.
+Working: Gives F*cos(theta) and F*sin(theta) component lines.
+Checks: Choose sine/cosine according to the angle shown in the diagram.
+Examples: resolve(10,30); resolve(F=10,theta=30)
