@@ -61,6 +61,7 @@ KEPT_COMMANDS = [
     "taylor",
     "tcollect",
     "texpand",
+    "varacc",
     "xform",
     "projectile",
     "weight",

@@ -125,6 +125,7 @@ const catalogFunc completeCat[] = { // scoped A-level Pure catalog
   {"taylor", CAT_CATEGORY_CALCULUS},
   {"tcollect(e)", CAT_CATEGORY_TRIG},
   {"texpand(e)", CAT_CATEGORY_TRIG},
+  {"varacc", CAT_CATEGORY_MECH},
   {"xform(e,t)", CAT_CATEGORY_ALGEBRA},
   {"weight", CAT_CATEGORY_MECH},
   {"work", CAT_CATEGORY_MECH},

@@ -6292,6 +6292,19 @@ static working_string arg_text(working_string *args,int n,const char *key,int po
   return pos<n?compact(args[pos]):"";
 }
 
+static working_string mech_clean_integral(working_string s){
+  int p=s.find("*(1/");
+  if (p<=0 || s.size()<7 || s[s.size()-1]!=')' || s[p+1]!='(' || s[p+2]!='1' || s[p+3]!='/')
+    return s;
+  int q=s.find('*',p+4);
+  if (q<0 || q>=int(s.size())-2)
+    return s;
+  Rat k,d;
+  if (!parse_rat(s.substr(0,p),k) || !parse_rat(s.substr(p+4,q-p-4),d) || !d.n)
+    return s;
+  return mul_expr(rat_div(k,d),s.substr(q+1,s.size()-q-2));
+}
+
 static bool try_mech_command(const char *input,working_string &out){
   working_string args[5];
   int n=0;
@@ -6345,6 +6358,24 @@ static bool try_mech_command(const char *input,working_string &out){
     if (arg_rat(args,n,"g",2,c))
       g=c;
     out="Lift\nR-mg=ma\nR=m(g+a)\nR="+rat_s(a)+"*("+rat_s(g)+"+"+rat_s(b)+")="+rat_s(rat_mul(a,rat_add(g,b)))+" N";
+    return true;
+  }
+  if (parse_call(input,"varacc",args,5,n)){
+    working_string acc=n>0?trim(args[0]):"", v=n>1?trim(args[1]):"t", v0=n>2?trim(args[2]):"", F;
+    if (acc.empty()){
+      out="varacc(a,t[,v0])\nv=int a dt";
+      return true;
+    }
+    if (v.empty())
+      v="t";
+    if (!try_integral(("integrate("+acc+","+v+")").c_str(),F))
+      F="integrate("+acc+","+v+")";
+    F=mech_clean_integral(strip_integral_constant(F));
+    out="Variable acceleration\nv=int a d"+v+"\nv="+F+"+C";
+    if (!v0.empty()){
+      F += (v0[0]=='-'?v0:working_string("+")+v0);
+      out += "\nv(0)="+v0+"\nv="+F;
+    }
     return true;
   }
   if (parse_call(input,"moment",args,5,n)){
@@ -18694,14 +18725,6 @@ bool eval_with_working(const char *input,working_string &out){
     return true;
   }
 #endif
-  if (try_identity_method_input(s,out)){
-    strip_weak_working_labels(out);
-    return true;
-  }
-  if (try_parametric_diff_quotient(s,out)){
-    strip_weak_working_labels(out);
-    return true;
-  }
   working_string normal_args[3];
   int normal_n=0;
   if (parse_call(input,"normal",normal_args,3,normal_n)){
@@ -18795,10 +18818,6 @@ bool eval_with_working(const char *input,working_string &out){
   if (starts_command(cs,"limit") && try_symbolic_command_working(input,out)){
     strip_weak_working_labels(out);
     append_command_marker(cs,out);
-    return true;
-  }
-  if (starts_command(cs,"factor") && try_factor_power_difference(input,out)){
-    strip_weak_working_labels(out);
     return true;
   }
   if (try_raw_constant_integral_route(s,out)){
