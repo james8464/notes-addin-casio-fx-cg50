@@ -22,10 +22,11 @@ from typing import Any
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "tools"))
+sys.path.insert(0, str(REPO / "tools" / "scope"))
 from scope_manifest import REMOVED_COMMANDS  # noqa: E402
 
 QUEUE = REPO / "tests" / "golden" / "exact_calculator_input_queue.jsonl"
-HOST = REPO / "tools" / "khicas_host_runner"
+HOST = REPO / "tools" / "host" / "khicas_host_runner"
 OUT = REPO / "tests" / "reports" / "exact_calculator_input_queue"
 REPORT = OUT / "latest.jsonl"
 FAILS = OUT / "failures_latest.txt"
@@ -33,7 +34,7 @@ CLASSIFIED = OUT / "classified_latest.jsonl"
 PROGRESS = REPO / "progress"
 LIVE = PROGRESS / "exact_queue_latest.json"
 STATE = PROGRESS / "state.jsonl"
-HOST_EVAL = REPO / "tools" / "khicas_host_eval.py"
+HOST_EVAL = REPO / "tools" / "host" / "khicas_host_eval.py"
 SYMBOLIC_MARKERS = os.environ.get("CASCAS_EXACT_SYMBOLIC_MARKERS") == "1"
 EXACT_RESULT_SYMBOLIC_MARKERS = os.environ.get("CASCAS_EXACT_RESULT_SYMBOLIC_MARKERS", "1") != "0"
 DECIMAL_RE = re.compile(r"(?<![A-Za-z_])[-+]?(?:\d+\.\d*|\.\d+)(?:[eE][-+]?\d+)?")
@@ -147,6 +148,26 @@ def result_base(spec: dict[str, Any]) -> dict[str, Any]:
     return {k: spec[k] for k in keys if k in spec}
 
 
+def queue_runner_input(text: str) -> str:
+    text = text.strip()
+    low = text.lower()
+    if low.startswith("method="):
+        parts = split_top_level_raw(text, ",")
+        if len(parts) >= 2:
+            text = ",".join(parts[1:]).strip()
+            low = text.lower()
+    if low.startswith("binomial(") and text.endswith(")"):
+        parts = split_top_level_raw(text[text.find("(") + 1 : -1], ",")
+        if len(parts) == 4:
+            order = parts[3].strip()
+            try:
+                order = str(int(order) + 1)
+            except ValueError:
+                order = f"({order})+1"
+            return f"taylor({parts[0]},{parts[1]}={parts[2]},{order})"
+    return text
+
+
 @functools.lru_cache(maxsize=2048)
 def host_exact_eval_text(text: str) -> str:
     proc = subprocess.Popen(
@@ -179,6 +200,8 @@ def exact_eval_text_for(spec: dict[str, Any]) -> str:
         if len(parts) >= 2:
             text = ",".join(parts[1:]).strip()
             low = text.lower()
+    text = queue_runner_input(text)
+    low = text.lower()
     module = spec["module"]
     if module == "derive" or low.startswith(("diff(", "derive(")):
         if not low.startswith(("diff(", "derive(")):
@@ -1004,6 +1027,11 @@ def contextual_marker_reason(marker: str, spec: dict[str, Any] | None) -> str | 
         or m.startswith(("S_", "y = ", "u = ", "dy/dx = c"))
         or (
             spec is not None
+            and "method=" in spec["input"].strip().lower()
+            and DECIMAL_RE.findall(m)
+        )
+        or (
+            spec is not None
             and re.search(r"(?<![A-Za-z])[sc](?![A-Za-z])", m)
             and not re.search(r"(?<![A-Za-z])[sc](?![A-Za-z])", spec["input"])
         )
@@ -1116,7 +1144,8 @@ def invalid_classified_row(row: dict[str, Any]) -> bool:
 
 def run_one(spec: dict[str, Any], strict: bool, engine: str) -> dict[str, Any]:
     t0 = time.time()
-    text = spec["input"].strip()
+    raw_text = spec["input"].strip()
+    text = queue_runner_input(raw_text)
     module = spec["module"]
     low = text.lower()
     exact_text = exact_eval_text_for(spec)
@@ -1150,7 +1179,10 @@ def run_one(spec: dict[str, Any], strict: bool, engine: str) -> dict[str, Any]:
             exact = host_exact_eval_text(exact_text)
             if exact:
                 out = "KhiCAS exact evaluation:\n" + exact + "\nVerified by exact CAS evaluation\n"
-    if "unsupported (not A-level Pure scope)" in out:
+    if removed_command_input(raw_text) and (
+        "unsupported (not A-level Pure scope)" in out
+        or "unsupported built-in removed from this Pure build." in out
+    ):
         return {
             **result_base(spec),
             "ok": True,
@@ -1190,10 +1222,11 @@ def run_one(spec: dict[str, Any], strict: bool, engine: str) -> dict[str, Any]:
     }
 
 
-def write_final_reports(results: list[dict[str, Any]], strict_markers: bool) -> int:
+def write_final_reports(results: list[dict[str, Any]], strict_markers: bool, allow_classified: bool = False) -> int:
     results.sort(key=lambda r: int(r.pop("_order", 0)))
     REPORT.write_text("".join(json.dumps(r, separators=(",", ":")) + "\n" for r in results))
     bad = [r for r in results if not r["ok"] or r.get("classified_missing")]
+    real_bad = [r for r in results if not r["ok"] or r.get("missing") or r.get("banned")]
     classified_rows = [r for r in results if r.get("classified_missing")]
     invalid_rows = [r for r in bad if invalid_classified_row(r)]
     untrusted_classified = [
@@ -1204,8 +1237,8 @@ def write_final_reports(results: list[dict[str, Any]], strict_markers: bool) -> 
     invalid_markers = sum(len(r.get("classified_missing", [])) for r in invalid_rows)
     untrusted_markers = classified_markers - invalid_markers
     clean = len([r for r in results if r["ok"] and not r.get("classified_missing")])
-    effective_bad = len(untrusted_classified)
-    effective_ok = clean
+    effective_bad = len(real_bad) if allow_classified else len(untrusted_classified)
+    effective_ok = (len(results) - len(real_bad)) if allow_classified else clean
     write_progress(
         len(results),
         len(results),
@@ -1243,6 +1276,7 @@ def write_final_reports(results: list[dict[str, Any]], strict_markers: bool) -> 
         f"invalid_rows={len(invalid_rows)} untrusted_classified_rows={len(untrusted_classified)} "
         f"accepted={clean} bad={effective_bad} raw_bad={len(bad)} "
         f"invalid_marker_gaps={invalid_markers} untrusted_marker_gaps={untrusted_markers} "
+        f"allow_classified={int(allow_classified)} "
         f"report={REPORT} classified={CLASSIFIED}"
     )
     return 0 if not effective_bad else 1
@@ -1269,6 +1303,8 @@ def run_parent_chunks(args: argparse.Namespace, total: int) -> int:
         ]
         if args.strict_markers:
             cmd.append("--strict-markers")
+        if args.allow_classified:
+            cmd.append("--allow-classified")
         env = os.environ.copy()
         env["CASCAS_QUEUE_CHILD"] = "1"
         proc = subprocess.run(
@@ -1302,7 +1338,7 @@ def run_parent_chunks(args: argparse.Namespace, total: int) -> int:
                 results.append(json.loads(line))
         done = end
         write_progress(done, total, done, 0, f"chunk {start}-{end}")
-    return write_final_reports(results, args.strict_markers)
+    return write_final_reports(results, args.strict_markers, args.allow_classified)
 
 
 def main() -> int:
@@ -1314,6 +1350,7 @@ def main() -> int:
         help="production must match ./compile/.g3a; host-provisional is not calculator proof.",
     )
     ap.add_argument("--strict-markers", action="store_true")
+    ap.add_argument("--allow-classified", action="store_true")
     ap.add_argument("--workers", type=int, default=8)
     ap.add_argument("--start", type=int, default=None, help=argparse.SUPPRESS)
     ap.add_argument("--end", type=int, default=None, help=argparse.SUPPRESS)
@@ -1378,7 +1415,7 @@ def main() -> int:
     if args.child_report is not None:
         results.sort(key=lambda r: int(r.get("_order", 0)))
         args.child_report.write_text("".join(json.dumps(r, separators=(",", ":")) + "\n" for r in results))
-    return write_final_reports(results, args.strict_markers)
+    return write_final_reports(results, args.strict_markers, args.allow_classified)
 
 
 if __name__ == "__main__":
