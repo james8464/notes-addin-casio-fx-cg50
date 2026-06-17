@@ -58,6 +58,7 @@ KEPT_COMMANDS = [
     "xform",
     "projectile",
     "weight",
+    "work",
 ]
 
 REMOVED_GROUPS = {

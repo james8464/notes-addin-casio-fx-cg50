@@ -121,6 +121,7 @@ const catalogFunc completeCat[] = { // scoped A-level Pure catalog
   {"texpand(e)", CAT_CATEGORY_TRIG},
   {"xform(e,t)", CAT_CATEGORY_ALGEBRA},
   {"weight", CAT_CATEGORY_MECH},
+  {"work", CAT_CATEGORY_MECH},
 
 };
 

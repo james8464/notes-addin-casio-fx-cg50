@@ -15,6 +15,7 @@ CASES = [
     ("force(12,3)", ["Newton's second law", "F = ma", "36 N"]),
     ("weight(6)", ["Weight", "W = mg", "294/5 N"]),
     ("moment(10,4)", ["Moment", "M = Fd", "40 N m"]),
+    ("work(12,5)", ["Work done", "W = Fd", "60 J"]),
     ("friction(2/5,25)", ["Friction", "Fmax = mu R", "10 N"]),
     ("resolve(20,30)", ["Resolve", "adjacent = 20*cos(30)", "opposite = 20*sin(30)"]),
     ("incline(5,30)", ["Incline", "weight down slope", "normal reaction"]),

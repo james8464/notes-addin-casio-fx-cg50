@@ -6321,6 +6321,14 @@ static bool try_mech_command(const char *input,working_string &out){
     out="Moment\nM = Fd\nM = "+rat_s(a)+"*"+rat_s(b)+" = "+rat_s(rat_mul(a,b))+" N m";
     return true;
   }
+  if (parse_call(input,"work",args,5,n)){
+    if (!arg_rat(args,n,"f",0,a) || !arg_rat(args,n,"d",1,b)){
+      out="work(F,d)\nwork done = force * distance";
+      return true;
+    }
+    out="Work done\nW = Fd\nW = "+rat_s(a)+"*"+rat_s(b)+" = "+rat_s(rat_mul(a,b))+" J";
+    return true;
+  }
   if (parse_call(input,"friction",args,5,n)){
     if (!arg_rat(args,n,"mu",0,a) || !arg_rat(args,n,"r",1,b)){
       out="friction(mu,R)\nlimiting friction: F = mu R\nstatic friction: F <= mu R";

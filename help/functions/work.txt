@@ -1,0 +1,8 @@
+work
+Args: work(F,d)
+Required: Force F in N and distance d in m in the direction of the force.
+Optional: Named arguments F=..., d=... may be used.
+Does: Finds work done.
+Working: Uses W = Fd and substitutes values.
+Checks: If force is at an angle, resolve the component in the direction of motion first.
+Examples: work(12,5); work(F=12,d=5)
