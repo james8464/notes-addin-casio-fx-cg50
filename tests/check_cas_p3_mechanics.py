@@ -24,6 +24,7 @@ CASES = [
     ("power(120,4)", ["Power", "P=W/t", "30 W"]),
     ("power(F=20,v=3)", ["Power", "P=Fv", "60 W"]),
     ("energy(2,5,3)", ["Energy", "KE=1/2mv^2", "KE=25 J", "GPE=294/5 J"]),
+    ("energy(m=2,u=3,v=5)", ["Energy", "Delta KE=1/2m(v^2-u^2)", "16 J"]),
     ("impulse(0.5,4,-2)", ["Impulse", "I=m(v-u)", "-3 Ns"]),
     ("impulse(1/2,4,-2,1/10)", ["Impulse", "I=m(v-u)", "-3 Ns", "F=I/t", "-30 N"]),
     ("impulse(F=12,t=1/2)", ["Impulse", "I=Ft", "12*1/2=6 Ns"]),

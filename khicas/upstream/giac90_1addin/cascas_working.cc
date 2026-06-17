@@ -6451,8 +6451,14 @@ static bool try_mech_command(const char *input,working_string &out){
     return true;
   }
   if (parse_call(input,"energy",args,5,n)){
+    working_string pc=lower(compact(input));
+    if (contains(pc,"u=") && contains(pc,"v=") && arg_rat(args,n,"m",0,a) && arg_rat(args,n,"u",1,b) && arg_rat(args,n,"v",2,c)){
+      d=rat_div(rat_mul(a,rat_sub(rat_mul(c,c),rat_mul(b,b))),rat(2,1));
+      out="Energy\nDelta KE=1/2m(v^2-u^2)\nDelta KE="+rat_s(d)+" J";
+      return true;
+    }
     if (!arg_rat(args,n,"m",0,a) || !arg_rat(args,n,"v",1,b)){
-      out="energy(m,v[,h])\nKE=1/2mv^2\nGPE=mgh";
+      out="energy(m,v[,h]) or energy(m=,u=,v=)\nKE=1/2mv^2";
       return true;
     }
     c=rat_div(rat_mul(rat_mul(a,b),b),rat(2,1));
