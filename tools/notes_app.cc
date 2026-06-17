@@ -357,7 +357,9 @@ static int notes_key_poll_timed() {
   if (col == 1) return KEY_CTRL_AC;
   if (col == 4 && row == 9) return KEY_CTRL_MENU;
   if (col == 4 && row == 8) return KEY_CTRL_EXIT;
-  return keycode;
+  int key = 0;
+  GetKey(&key);
+  return key;
 }
 
 // Keep the menu key path discoverable for the suite smoke test: ui_menu_keys.
@@ -1106,7 +1108,7 @@ static int style_x_offset(int style) {
 }
 
 static int style_uses_hscroll(int style) {
-  return style == NOTE_CODE;
+  return style == NOTE_TEXT || style == NOTE_CODE;
 }
 
 static int segment_fits_screen(const char *s, int start, int end, int indent, int xpad, int strip_inline) {
@@ -1641,7 +1643,7 @@ static int jump_to_match(const SearchPattern *sp, int start_source_line, int dir
   if (style == NOTE_TABLE)
     *hscroll = table_hscroll_for_match(sp, source_line);
   else
-    *hscroll = style == NOTE_CODE ? max_int(0, offset - 6) : 0;
+    *hscroll = style_uses_hscroll(style) ? max_int(0, offset - 6) : 0;
   if (*hscroll > max_line) *hscroll = max_line;
   *lines = build_view_lines(*hscroll);
   int view_line = view_line_for_source_match(source_line, sp, *lines);

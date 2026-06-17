@@ -539,6 +539,10 @@ def main() -> int:
         errors.append("wide-line horizontal scroll must use the pixel-fitted displayed suffix")
     if "style_uses_hscroll" not in APP_SOURCE:
         errors.append("notes renderer must centralise which markdown styles use horizontal scrolling")
+    if "return style == NOTE_TEXT || style == NOTE_CODE;" not in APP_SOURCE:
+        errors.append("plain long note lines must be horizontally scrollable, not only code/table lines")
+    if "style_uses_hscroll(style) ? max_int(0, offset - 6) : 0" not in APP_SOURCE:
+        errors.append("search jumps on scrollable long lines must pan horizontally to the match")
     if "hscroll > 0 || style == NOTE_CODE" in APP_SOURCE or "hscroll > 0, setext_style" in APP_SOURCE:
         errors.append("ordinary markdown text must keep wrapping when code/table horizontal scroll is active")
     if "style_x_offset(style)" not in APP_SOURCE or "NOTE_X_LIMIT - VIEW_X - xpad" not in APP_SOURCE:
@@ -571,6 +575,9 @@ def main() -> int:
         errors.append("wide notes must let F1/F2 scroll horizontally when arrow keys are unreliable")
     if "key == KEY_SHIFT_RIGHT" not in APP_SOURCE or "key == KEY_SHIFT_LEFT" not in APP_SOURCE:
         errors.append("wide notes should accept shift-left/right aliases for horizontal scroll")
+    timed_poll = APP_SOURCE[APP_SOURCE.find("static int notes_key_poll_timed"):APP_SOURCE.find("// Keep the menu key path")]
+    if "GetKey(&key);" not in timed_poll or "return key;" not in timed_poll:
+        errors.append("timed note key polling must convert OS key events through GetKey so arrow constants match")
     if "UI_TABLE_GRID" not in APP_SOURCE:
         errors.append("table grid colour must be explicit enough for real-device readability")
     if "if (bars)" in APP_SOURCE:
@@ -662,8 +669,8 @@ def main() -> int:
         errors.append("search jump styling must detect table source rows without overriding code rows")
     if "table_hscroll_for_match" not in APP_SOURCE or "colpos[c] / TABLE_CHAR_PX - 1" not in APP_SOURCE:
         errors.append("search jumps in tables must scroll to the matched table column")
-    if "style == NOTE_CODE ? max_int(0, offset - 6) : 0" not in APP_SOURCE:
-        errors.append("search jumps in code lines must preserve code horizontal scrolling")
+    if "style_uses_hscroll(style) ? max_int(0, offset - 6) : 0" not in APP_SOURCE:
+        errors.append("search jumps in scrollable lines must preserve horizontal scrolling")
     if "(line[p] == '-' || line[p] == '*' || line[p] == '+')" not in APP_SOURCE:
         errors.append("bullet rendering must support '-', '*', and '+' markdown bullets")
     if "NOTE_H1 : (hashes == 2 ? NOTE_H2 : (hashes == 3 ? NOTE_H3 : NOTE_H4))" not in APP_SOURCE:
