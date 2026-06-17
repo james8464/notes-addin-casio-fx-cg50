@@ -6265,7 +6265,7 @@ static bool suvat_cell(const working_string &cell,SuvatSol &sol,working_string c
 
 static bool suvat_apply_solve(const working_string &exact,working_string *val,bool *have,SuvatSol *sols,int &soln,int mask){
   working_string rows[8],cells[10],choices[5][8];
-  int count[5]={0,0,0,0,0}, rn=split_exact_list(exact,rows,8);
+  int count[5]={0,0,0,0,0}, allmask=31, rn=split_exact_list(exact,rows,8);
   soln=0;
   if (rn<=0)
     return false;
@@ -6282,12 +6282,18 @@ static bool suvat_apply_solve(const working_string &exact,working_string *val,bo
     bool any=false;
     for (int c=0;c<cn;++c)
       any = suvat_cell(cells[c],sols[soln],choices,count,mask) || any;
-    if (any)
+    if (any){
+      int branchmask=0;
+      for (int i=0;i<5;++i) if (sols[soln].have[i]) branchmask |= 1<<i;
+      allmask &= branchmask;
       ++soln;
+    }
   }
   bool any=false;
   for (int i=0;i<5;++i){
     if (!count[i])
+      continue;
+    if (soln>1 && !(allmask & (1<<i)))
       continue;
     any=true;
     have[i]=true;
@@ -6403,16 +6409,6 @@ static void suvat_append_sol_values(working_string &out,const SuvatSol &sol){
   }
 }
 
-static void suvat_append_solutions(working_string &out,SuvatSol *sols,int soln){
-  if (soln<=1)
-    return;
-  for (int i=0;i<soln;++i){
-    out += "solution "; out += int_s(i+1); out += ": ";
-    suvat_append_sol_values(out,sols[i]);
-    out += "\n";
-  }
-}
-
 static bool suvat_nonneg(const working_string &src){
   double v=0;
   return exact_approx_double(src,v) && v>=-1e-10;
@@ -6489,7 +6485,6 @@ static bool try_suvat(const char *input,working_string &out){
   out="SUVAT\nans:\n";
   for (int i=0;i<5;++i)
     if (have[i]){ out += suvat_names[i]; out += "="; out += val[i]; out += "\n"; }
-  suvat_append_solutions(out,sols,soln);
   if (!no_solution && soln>0)
     suvat_append_physical(out,sols,soln);
   else if (!no_solution){

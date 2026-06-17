@@ -35,6 +35,7 @@ EDGE_CASES = [
     "suvat(u=pi,a=0,t=2)",
     "suvat(u=p,a=q,t=r)",
     "suvat(u=2,a=0,v=2)",
+    "suvat(s=0,u=0,v=0)",
     "suvat(s=0,u=5,v=-5)",
     "suvat(s=10,u=2,a=3,foo=bar)",
     "suvat(s=10,u=2,a=3,extra)",
@@ -75,6 +76,10 @@ def main() -> int:
         for bad in SYMBOLIC_FINALS:
             if bad in out:
                 raise AssertionError(f"{expr}: symbolic relation shown as final value\n{out}")
+        if expr == "suvat(s=0,u=0,v=0)":
+            for bad in ("\na=0\n", "\nt=0\n"):
+                if bad in out:
+                    raise AssertionError(f"{expr}: branch-only value shown as final value\n{out}")
         cases += 1
 
     print(f"OK suvat stress cases={cases}")
