@@ -6206,8 +6206,8 @@ static bool try_symbolic_command_working(const char *input,working_string &out){
 static int suvat_id(const working_string &k){
   working_string c=lower(compact(k));
   if (c=="s" || c=="d" || c=="x" || c=="distance" || c=="displacement") return 0;
-  if (c=="u" || c=="initial" || c=="start" || c=="initialvelocity") return 1;
-  if (c=="v" || c=="final" || c=="end" || c=="velocity" || c=="finalvelocity") return 2;
+  if (c=="u" || c=="initial" || c=="start") return 1;
+  if (c=="v" || c=="final" || c=="end") return 2;
   if (c=="a" || c=="acc" || c=="acceleration") return 3;
   if (c=="t" || c=="time") return 4;
   return -1;
@@ -6222,6 +6222,14 @@ static const char *suvat_names[]={"s","u","v","a","t"};
 static const char *suvat_lhs[]={"v","s","v^2","s"};
 static const char *suvat_rhs[]={"u+a*t","u*t+1/2*a*t^2","u^2+2*a*s","(u+v)*t/2"};
 static const int suvat_masks[]={0x1e,0x1b,0x0f,0x17};
+
+static bool suvat_refs_unset(const working_string &s,int mask){
+  return (!(mask&1) && contains_var_symbol(s,'s')) ||
+         (!(mask&2) && contains_var_symbol(s,'u')) ||
+         (!(mask&4) && contains_var_symbol(s,'v')) ||
+         (!(mask&8) && contains_var_symbol(s,'a')) ||
+         (!(mask&16) && contains_var_symbol(s,'t'));
+}
 
 static void suvat_add_choice(working_string choices[5][8],int *count,int id,const working_string &raw){
   working_string v=trim(raw);
@@ -6239,7 +6247,7 @@ static void suvat_init_sol(SuvatSol &s){
     s.have[i]=false;
 }
 
-static bool suvat_cell(const working_string &cell,SuvatSol &sol,working_string choices[5][8],int *count){
+static bool suvat_cell(const working_string &cell,SuvatSol &sol,working_string choices[5][8],int *count,int mask){
   int eq=find_top_equal_any(cell);
   if (eq<=0)
     return false;
@@ -6247,13 +6255,15 @@ static bool suvat_cell(const working_string &cell,SuvatSol &sol,working_string c
   if (id<0)
     return false;
   working_string v=trim(cell.substr(eq+1,cell.size()-eq-1));
+  if (suvat_refs_unset(v,mask))
+    return false;
   sol.val[id]=v;
   sol.have[id]=true;
   suvat_add_choice(choices,count,id,v);
   return true;
 }
 
-static bool suvat_apply_solve(const working_string &exact,working_string *val,bool *have,SuvatSol *sols,int &soln){
+static bool suvat_apply_solve(const working_string &exact,working_string *val,bool *have,SuvatSol *sols,int &soln,int mask){
   working_string rows[8],cells[10],choices[5][8];
   int count[5]={0,0,0,0,0}, rn=split_exact_list(exact,rows,8);
   soln=0;
@@ -6263,7 +6273,7 @@ static bool suvat_apply_solve(const working_string &exact,working_string *val,bo
   if (flat){
     suvat_init_sol(sols[0]);
     for (int r=0;r<rn;++r)
-      suvat_cell(rows[r],sols[0],choices,count);
+      suvat_cell(rows[r],sols[0],choices,count,mask);
     soln=1;
   }
   else for (int r=0;r<rn && soln<8;++r){
@@ -6271,7 +6281,7 @@ static bool suvat_apply_solve(const working_string &exact,working_string *val,bo
     suvat_init_sol(sols[soln]);
     bool any=false;
     for (int c=0;c<cn;++c)
-      any = suvat_cell(cells[c],sols[soln],choices,count) || any;
+      any = suvat_cell(cells[c],sols[soln],choices,count,mask) || any;
     if (any)
       ++soln;
   }
@@ -6302,11 +6312,11 @@ static int suvat_have_mask(const bool *have){
   return m;
 }
 
-static bool suvat_extract_candidate(int id,const working_string &raw,working_string &out){
+static bool suvat_extract_candidate(int id,const working_string &raw,working_string &out,int mask){
   working_string s=trim(raw),item[8];
   int n=split_exact_list(s,item,8);
   if (n==1)
-    return suvat_extract_candidate(id,item[0],out);
+    return suvat_extract_candidate(id,item[0],out,mask);
   if (n>1)
     return false;
   int eq=find_top_equal_any(s);
@@ -6316,14 +6326,14 @@ static bool suvat_extract_candidate(int id,const working_string &raw,working_str
     s=s.substr(eq+1,s.size()-eq-1);
   }
   out=trim(s);
-  return !out.empty();
+  return !out.empty() && !suvat_refs_unset(out,mask);
 }
 
-static void suvat_add_exact_candidates(int id,const working_string &exact,working_string choices[5][8],int *count){
+static void suvat_add_exact_candidates(int id,const working_string &exact,working_string choices[5][8],int *count,int mask){
   working_string item[8],cand;
   int n=split_exact_list(exact,item,8);
   if (n<=0){
-    if (suvat_extract_candidate(id,exact,cand))
+    if (suvat_extract_candidate(id,exact,cand,mask))
       suvat_add_choice(choices,count,id,cand);
     return;
   }
@@ -6332,10 +6342,10 @@ static void suvat_add_exact_candidates(int id,const working_string &exact,workin
     int sn=split_exact_list(item[i],sub,8);
     if (sn>0){
       for (int j=0;j<sn;++j)
-        if (suvat_extract_candidate(id,sub[j],cand))
+        if (suvat_extract_candidate(id,sub[j],cand,mask))
           suvat_add_choice(choices,count,id,cand);
     }
-    else if (suvat_extract_candidate(id,item[i],cand))
+    else if (suvat_extract_candidate(id,item[i],cand,mask))
       suvat_add_choice(choices,count,id,cand);
   }
 }
@@ -6355,7 +6365,7 @@ static bool suvat_fallback_solve(working_string *val,bool *have,const working_st
       call+="],"; call+=suvat_names[id]; call+=")";
       working_string exact;
       if (production_exact_command(call,exact) && compact(exact)!="[]")
-        suvat_add_exact_candidates(id,exact,choices,count);
+        suvat_add_exact_candidates(id,exact,choices,count,0);
     }
     if (count[id]==1){
       val[id]=choices[id][0];
@@ -6443,6 +6453,11 @@ static bool try_suvat(const char *input,working_string &out){
       continue;
     }
     val[id]=trim(args[i].substr(eq+1,args[i].size()-eq-1));
+    if (val[id].empty()){
+      if (ign<4)
+        ignored[ign++]=rawk;
+      continue;
+    }
     if (keq<8)
       known_eq[keq++]=working_string(suvat_names[id])+"="+val[id];
     if (!have[id])
@@ -6464,7 +6479,7 @@ static bool try_suvat(const char *input,working_string &out){
     if (production_exact_command(solve,exact)){
       no_solution=compact(exact)=="[]";
       if (!no_solution)
-        suvat_apply_solve(exact,val,have,sols,soln);
+        suvat_apply_solve(exact,val,have,sols,soln,base_mask);
     }
     int got=0;
     for (int i=0;i<5;++i) if (have[i]) ++got;
