@@ -6201,83 +6201,95 @@ static bool try_symbolic_command_working(const char *input,working_string &out){
   return false;
 }
 
+static working_string suvat_expr(const char *f,working_string *v){
+  working_string e;
+  for (;*f;++f){
+    int id=-1;
+    if (*f=='S') id=0; else if (*f=='U') id=1; else if (*f=='V') id=2;
+    else if (*f=='A') id=3; else if (*f=='T') id=4;
+    if (id>=0){ e+="("; e+=v[id]; e+=")"; }
+    else e+=working_string(1,*f);
+  }
+  return e;
+}
+
+static working_string suvat_calc(const char *f,working_string *v){
+  working_string e=suvat_expr(f,v),r;
+  if (production_exact_command("simplify("+e+")",r) && !r.empty())
+    return r;
+  return e;
+}
+
+static void suvat_set(int id,const char *f,working_string *v,bool *h){
+  v[id]=suvat_calc(f,v);
+  h[id]=true;
+}
+
+static void suvat_set2(int id,const char *a,const char *b,working_string *v,bool *h){
+  working_string x=suvat_calc(a,v),y=suvat_calc(b,v);
+  v[id]=(x==y)?x:("["+x+", "+y+"]");
+  h[id]=true;
+}
+
 static bool try_suvat(const char *input,working_string &out){
-  working_string args[8];
-  int n=0;
+  working_string args[8],val[5];
+  bool have[5]={false,false,false,false,false};
+  int n=0,known=0,mask=0;
   if (!parse_call(input,"suvat",args,8,n))
     return false;
-  Rat q[5],r1,r2;
-  bool have[5]={false,false,false,false,false}; // s,u,v,a,t
   for (int i=0;i<n;++i){
     int eq=find_top_equal_any(args[i]);
     if (eq<=0)
       continue;
-    working_string k=compact(args[i].substr(0,eq));
+    working_string k=lower(compact(args[i].substr(0,eq)));
     int id=-1;
     if (k=="s") id=0; else if (k=="u") id=1; else if (k=="v") id=2;
     else if (k=="a") id=3; else if (k=="t") id=4;
-    if (id<0 || !parse_rat(args[i].substr(eq+1,args[i].size()-eq-1),q[id]))
+    if (id<0)
       continue;
+    val[id]=trim(args[i].substr(eq+1,args[i].size()-eq-1));
+    if (!have[id]){ ++known; mask|=1<<id; }
     have[id]=true;
   }
+#define HAS(x) ((mask&(x))==(x))
+  if (known>=3){
+    if (HAS(26)){ suvat_set(2,"U+A*T",val,have); suvat_set(0,"U*T+1/2*A*T^2",val,have); }
+    else if (HAS(28)){ suvat_set(1,"V-A*T",val,have); suvat_set(0,"V*T-1/2*A*T^2",val,have); }
+    else if (HAS(22)){ suvat_set(3,"(V-U)/T",val,have); suvat_set(0,"1/2*(U+V)*T",val,have); }
+    else if (HAS(14)){ suvat_set(4,"(V-U)/A",val,have); suvat_set(0,"1/2*(U+V)*T",val,have); }
+    else if (HAS(19)){ suvat_set(3,"2*(S-U*T)/T^2",val,have); suvat_set(2,"U+A*T",val,have); }
+    else if (HAS(21)){ suvat_set(1,"2*S/T-V",val,have); suvat_set(3,"(V-U)/T",val,have); }
+    else if (HAS(25)){ suvat_set(1,"(S-1/2*A*T^2)/T",val,have); suvat_set(2,"U+A*T",val,have); }
+    else if (HAS(7)){ suvat_set(3,"(V^2-U^2)/(2*S)",val,have); suvat_set(4,"2*S/(U+V)",val,have); }
+    else if (HAS(11)){
+      if (compact(val[3])=="0"){ suvat_set(4,"S/U",val,have); val[2]=val[1]; have[2]=true; }
+      else {
+        suvat_set2(4,"(-U+sqrt(U^2+2*A*S))/A","(-U-sqrt(U^2+2*A*S))/A",val,have);
+        suvat_set2(2,"U+A*((-U+sqrt(U^2+2*A*S))/A)","U+A*((-U-sqrt(U^2+2*A*S))/A)",val,have);
+      }
+    }
+    else if (HAS(13)){
+      if (compact(val[3])=="0"){ suvat_set(4,"S/V",val,have); val[1]=val[2]; have[1]=true; }
+      else {
+        suvat_set2(4,"(V+sqrt(V^2-2*A*S))/A","(V-sqrt(V^2-2*A*S))/A",val,have);
+        suvat_set2(1,"V-A*((V+sqrt(V^2-2*A*S))/A)","V-A*((V-sqrt(V^2-2*A*S))/A)",val,have);
+      }
+    }
+  }
+#undef HAS
+  static const char *names[]={"s","u","v","a","t"};
   out="SUVAT\n";
-  if (have[1] && have[3] && have[4]){
-    r1=rat_add(q[1],rat_mul(q[3],q[4]));
-    r2=rat_add(rat_mul(q[1],q[4]),rat_div(rat_mul(rat_mul(q[3],q[4]),q[4]),rat(2,1)));
-    out += "v = u + at\nv = "+rat_s(q[1])+" + "+rat_s(q[3])+"*"+rat_s(q[4])+" = "+rat_s(r1)+"\n";
-    out += "s = ut + 1/2 at^2\ns = "+rat_s(r2);
-    return true;
+  out += "eq:v=u+at;s=ut+1/2at^2;v^2=u^2+2as;s=(u+v)t/2\n";
+  for (int i=0;i<5;++i)
+    if (have[i]){ out += names[i]; out += "="; out += val[i]; out += "\n"; }
+  if (known<3)
+    out += "Need 3 named values.";
+  else {
+    int got=0;
+    for (int i=0;i<5;++i) if (have[i]) ++got;
+    if (got<5)
+      out += "Some values unresolved.";
   }
-  if (have[1] && have[2] && have[4] && q[4].n){
-    r1=rat_div(rat_sub(q[2],q[1]),q[4]);
-    r2=rat_div(rat_mul(rat_add(q[1],q[2]),q[4]),rat(2,1));
-    out += "a = (v-u)/t\na = "+rat_s(r1)+"\n";
-    out += "s = 1/2(u+v)t\ns = "+rat_s(r2);
-    return true;
-  }
-  if (have[1] && have[2] && have[3] && q[3].n){
-    r1=rat_div(rat_sub(q[2],q[1]),q[3]);
-    r2=rat_div(rat_mul(rat_add(q[1],q[2]),r1),rat(2,1));
-    out += "t = (v-u)/a\nt = "+rat_s(r1)+"\n";
-    out += "s = 1/2(u+v)t\ns = "+rat_s(r2);
-    return true;
-  }
-  if (have[2] && have[3] && have[4]){
-    r1=rat_sub(q[2],rat_mul(q[3],q[4]));
-    r2=rat_sub(rat_mul(q[2],q[4]),rat_div(rat_mul(rat_mul(q[3],q[4]),q[4]),rat(2,1)));
-    out += "u = v - at\nu = "+rat_s(r1)+"\n";
-    out += "s = vt - 1/2 at^2\ns = "+rat_s(r2);
-    return true;
-  }
-  if (have[0] && have[1] && have[4] && q[4].n){
-    r1=rat_div(rat_mul(rat(2,1),rat_sub(q[0],rat_mul(q[1],q[4]))),rat_mul(q[4],q[4]));
-    r2=rat_add(q[1],rat_mul(r1,q[4]));
-    out += "a = 2(s-ut)/t^2\na = "+rat_s(r1)+"\n";
-    out += "v = u + at\nv = "+rat_s(r2);
-    return true;
-  }
-  if (have[0] && have[2] && have[4] && q[4].n){
-    r1=rat_sub(rat_div(rat_mul(rat(2,1),q[0]),q[4]),q[2]);
-    r2=rat_div(rat_sub(q[2],r1),q[4]);
-    out += "u = 2s/t - v\nu = "+rat_s(r1)+"\n";
-    out += "a = (v-u)/t\na = "+rat_s(r2);
-    return true;
-  }
-  if (have[0] && have[3] && have[4] && q[4].n){
-    r1=rat_div(rat_sub(q[0],rat_div(rat_mul(rat_mul(q[3],q[4]),q[4]),rat(2,1))),q[4]);
-    r2=rat_add(r1,rat_mul(q[3],q[4]));
-    out += "u = (s - 1/2 at^2)/t\nu = "+rat_s(r1)+"\n";
-    out += "v = u + at\nv = "+rat_s(r2);
-    return true;
-  }
-  if (have[0] && have[1] && have[2] && q[0].n && rat_add(q[1],q[2]).n){
-    r1=rat_div(rat_sub(rat_mul(q[2],q[2]),rat_mul(q[1],q[1])),rat_mul(rat(2,1),q[0]));
-    r2=rat_div(rat_mul(rat(2,1),q[0]),rat_add(q[1],q[2]));
-    out += "a = (v^2-u^2)/(2s)\na = "+rat_s(r1)+"\n";
-    out += "t = 2s/(u+v)\nt = "+rat_s(r2);
-    return true;
-  }
-  out += "Need any 3 suitable values, e.g. suvat(u=2,a=3,t=4).";
   return true;
 }
 

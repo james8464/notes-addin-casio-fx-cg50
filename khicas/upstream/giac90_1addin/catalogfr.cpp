@@ -347,6 +347,20 @@ const char apropos_string[]="Khicas 1.5.0, (c) 2019 B. Parisse et al. www-fourie
 
 int CAT_COMPLETE_COUNT=sizeof(completeCat)/sizeof(catalogFunc);
 
+bool catalog_has_command(const char *name){
+  if (!name || !*name)
+    return false;
+  for (int i=0;i<CAT_COMPLETE_COUNT;++i){
+    const char *cmd=completeCat[i].name;
+    int j=0;
+    while (name[j] && cmd[j]==name[j])
+      ++j;
+    if (!name[j] && (cmd[j]==0 || cmd[j]=='(' || cmd[j]=='['))
+      return true;
+  }
+  return false;
+}
+
 ustl::string insert_string(int index){
   ustl::string s;
   if (completeCat[index].insert)

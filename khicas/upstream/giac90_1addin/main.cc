@@ -508,10 +508,7 @@ int find_color(const char * s){
   buf[ptr-s]=0;
   if (strcmp(buf,"def")==0)
     return 1;
-  if (strcmp(buf,"xform")==0 || strcmp(buf,"rewrite")==0 || strcmp(buf,"range")==0 || strcmp(buf,"domain")==0 || strcmp(buf,"log")==0 || strcmp(buf,"cosec")==0 || strcmp(buf,"cot")==0 ||
-      strcmp(buf,"suvat")==0 || strcmp(buf,"force")==0 || strcmp(buf,"connected")==0 || strcmp(buf,"pulley")==0 || strcmp(buf,"lift")==0 || strcmp(buf,"varacc")==0 ||
-      strcmp(buf,"moment")==0 || strcmp(buf,"work")==0 || strcmp(buf,"power")==0 || strcmp(buf,"impulse")==0 || strcmp(buf,"momentum")==0 || strcmp(buf,"energy")==0 ||
-      strcmp(buf,"friction")==0 || strcmp(buf,"resolve")==0 || strcmp(buf,"incline")==0 || strcmp(buf,"projectile")==0 || strcmp(buf,"weight")==0)
+  if (catalog_has_command(buf))
     return 3;
   //int pos=dichotomic_search(keywords,sizeof(keywords),buf);
   //if (pos>=0) return 1;

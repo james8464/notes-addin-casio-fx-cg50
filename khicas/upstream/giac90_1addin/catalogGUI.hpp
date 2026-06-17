@@ -36,6 +36,7 @@ typedef struct {
 int showCatalog(char* insertText,int preselect=0,int menupos=0);
 
 int doCatalogMenu(char* insertText, char* title, int category,const char * cmdname=0);
+bool catalog_has_command(const char *name);
 extern const char aide_khicas_string[];
 extern const char chk_restart_string1[];
 extern const char chk_restart_string2[];

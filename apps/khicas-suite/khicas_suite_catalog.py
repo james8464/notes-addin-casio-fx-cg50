@@ -281,11 +281,39 @@ const char apropos_string[]="{about}";
 int CAT_COMPLETE_COUNT=sizeof(completeCat)/sizeof(catalogFunc);
 int CAT_FOLDER_COUNT=sizeof(catalogFolders)/sizeof(catalogFolder);
 
+static int catalog_count_for_category(int category);
+
+static char *catalog_title_for_category(int category){{
+  for (int i=0;i<CAT_FOLDER_COUNT;++i)
+    if (catalogFolders[i].category==category)
+      return catalogFolders[i].title;
+  return 0;
+}}
+
+bool catalog_has_command(const char *name){{
+  if (!name || !*name)
+    return false;
+  for (int i=0;i<CAT_COMPLETE_COUNT;++i){{
+    const char *cmd=completeCat[i].name;
+    int j=0;
+    while (name[j] && cmd[j]==name[j])
+      ++j;
+    if (!name[j] && (cmd[j]==0 || cmd[j]=='(' || cmd[j]=='['))
+      return true;
+  }}
+  return false;
+}}
+
 ustl::string insert_string(int index){{
   return completeCat[index].insert;
 }}
 
 int showCatalog(char* insertText,int preselect,int menupos) {{
+  if (preselect>0 && catalog_count_for_category(preselect)>0){{
+    char *title=catalog_title_for_category(preselect);
+    if (title)
+      return doCatalogMenu(insertText,title,preselect);
+  }}
   return doCatalogMenu(insertText, (char*)"{title}", CAT_CATEGORY_ALL);
 }}
 
@@ -305,12 +333,13 @@ static void draw_catalog_fkeys(bool folders){{
 
 int doCatalogMenu(char* insertText, char* title, int category,const char * cmdname) {{
   int allcmds=CAT_COMPLETE_COUNT;
-  int nitems = catalog_count_for_category(category);
+  bool folders=category==CAT_CATEGORY_ALL && !cmdname;
+  int nitems = folders ? CAT_FOLDER_COUNT : (category==CAT_CATEGORY_ALL ? CAT_COMPLETE_COUNT : catalog_count_for_category(category));
   if (nitems<=0)
     return 0;
   MenuItem* menuitems = (MenuItem*)alloca(sizeof(MenuItem)*nitems);
-  int cur = 0,curmi = 0,menusel=-1;
-  if (category==CAT_CATEGORY_ALL){{
+  int cur = 0,curmi = 0,menusel=-1,cmdl=cmdname?strlen(cmdname):0;
+  if (folders){{
     while(cur<CAT_FOLDER_COUNT) {{
       menuitems[curmi].type = MENUITEM_NORMAL;
       menuitems[curmi].color = TEXT_COLOR_BLUE;
@@ -322,11 +351,14 @@ int doCatalogMenu(char* insertText, char* title, int category,const char * cmdna
   }}
   else {{
     while(cur<allcmds) {{
-      if (completeCat[cur].category==category){{
+      if (category==CAT_CATEGORY_ALL || completeCat[cur].category==category){{
         menuitems[curmi].type = MENUITEM_NORMAL;
         menuitems[curmi].color = TEXT_COLOR_BLACK;
         menuitems[curmi].isfolder = cur;
         menuitems[curmi].text = completeCat[cur].name;
+        if (menusel<0 && cmdname && !strncmp(cmdname,completeCat[cur].name,cmdl) &&
+            (completeCat[cur].name[cmdl]==0 || completeCat[cur].name[cmdl]=='(' || completeCat[cur].name[cmdl]=='['))
+          menusel=curmi;
         curmi++;
       }}
       cur++;
@@ -343,17 +375,17 @@ int doCatalogMenu(char* insertText, char* title, int category,const char * cmdna
   DisplayStatusArea();
   menu.scrollout=1;
   menu.title = title;
-  menu.type = category==CAT_CATEGORY_ALL ? MENUTYPE_NORMAL : MENUTYPE_FKEYS;
+  menu.type = folders ? MENUTYPE_NORMAL : MENUTYPE_FKEYS;
   menu.height = 7;
   while(1) {{
-    draw_catalog_fkeys(category==CAT_CATEGORY_ALL);
+    draw_catalog_fkeys(folders);
     int sres = doMenu(&menu);
     if(sres == MENU_RETURN_EXIT){{
       reset_alpha();
       return 0;
     }}
     int index=menuitems[menu.selection-1].isfolder;
-    if(category!=CAT_CATEGORY_ALL && sres == KEY_CTRL_F6) {{
+    if(!folders && sres == KEY_CTRL_F6) {{
       textArea text;
       text.editable=false;
       text.clipline=-1;
@@ -388,7 +420,7 @@ int doCatalogMenu(char* insertText, char* title, int category,const char * cmdna
       return 1;
     }}
     if(sres == MENU_RETURN_SELECTION || sres == KEY_CTRL_F1) {{
-      if (category==CAT_CATEGORY_ALL){{
+      if (folders){{
         int folder=index-1;
         if (folder>=0 && folder<CAT_FOLDER_COUNT){{
           if (doCatalogMenu(insertText,catalogFolders[folder].title,catalogFolders[folder].category))
