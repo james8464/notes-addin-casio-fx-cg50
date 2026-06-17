@@ -1,73 +1,57 @@
 # Number bases
 
-## Practice
-
-- practise, practise, practise.
-- note: CASIO fx-cg50 has this functionality built in (can be good for double checking answers)
-
 ## Binary
 
 - binary is base 2
-- means that only a 0 or 1 can be used to represent numbers
 - directly understood/processed by computers
 - simple and reliable hardware implementation
-- easy to represent logical values (eg true vs False)
 - no conversion needed for computer processing
-- difficult for humans to understand
-- more prone to errors when writing by humans
-- less compact than hex or denary
-- long strings
+- useful for representing individual bits and logical values
+- difficult for humans to read and write
+- long strings of digits are needed for large values
+- more prone to human transcription errors
+- harder for humans to perform manual calculations
+- less compact than hexadecimal
+
+
 
 ## Decimal/denary
 
-- decimal is base 10
-- means that the numbers 0-9 are used to represent numbers (this is the standard base)
+- decimal/denary is base 10
+- uses the digits 0-9
+- standard number base used by humans
 - easier for humans to understand and remember
 - convenient for everyday counting and calculations
-- used globally by humans, allowing for easy international comparisons
-- easier to perform arithmetic operations with for humans
+- easier for humans to perform arithmetic manually
+- used globally, allowing values to be compared easily
 - not directly understood by computers
+- must be converted to binary for processing
 - less suitable for representing individual bits
-- greater screen space required to display the value than hex
+- does not map directly to hardware states
+- less compact than hexadecimal for displaying large binary values
 
-| advantages | disadvantages |
-| --- | --- |
-| easier for humans to understand and remember | not directly understood by computers |
-| convenient for everyday counting and calculations | must be converted to binary for processing |
-| used globally worldwide by humans (allowing for easy comparisons internationaly) | less suitable for representing individual bits |
-| easier to perform arithmetic manually | larger storage/display size than binary for computers |
-|  | does not map directly to hardware states (on/off) |
 
-| advantages of binary | disadvantages of binary |
-| --- | --- |
-| directly understood and processed by computers | difficult for humans to read and write |
-| matches electronic circuits (on/off states) | long strings of digits for large values |
-| simple and reliable hardware implementation | more prone to human transcription errors |
-| easy to represent logical values (0 = False, 1 = true) | harder to perform manual calculations |
-| no conversion needed for computer processing | less compact than hexadecimal |
 
 ## Hexadecimal
 
 - hexadecimal is base 16
-- the set used for hex is: {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, a, b, c, d, e, f}
-- much shorter than binary, requiring less characters and screen space
-- easier for humans to remember without error
+- uses the digits/symbols:
+- 1 hexadecimal digit represents 4 bits
+- direct conversion to/from binary is simple
+- much shorter than binary
+- requires fewer characters and less screen space
+- makes large binary values easier to display and remember
 - humans are less likely to make mistakes when copying values
-- commonly used for memory dumps, MAC addresses, and HTML colour codes
-- less intuitive for beginners than decimal
-- still needs conversion unlike binary
+- computers do not process hexadecimal directly
+- mainly used for human convenience
+- less intuitive than decimal for beginners
+- letters a-f can be confusing
 - not as familiar to most users as decimal
 
-## Uses of hex
+## Uses of Hexadecimal
 
-- uses of hex
-- commonly used for memory dumps, MAC addresses, and HTML colour codes
-
-| advantages of hexadecimal | disadvantages of hexadecimal |
-| --- | --- |
-| much shorter than binary (uses fewer characters and screen space) | less intuitive for beginners than decimal |
-| easier to remember without error (for humans) since it requires less characters | still needs conversion before arithmetic is usually performed |
-| less likely to make mistakes when copying values | computers do not process hex directly (it is mainly for human convenience) |
-| direct conversion to/from binary (1 hex digit = 4 bits) | uses letters A-F as well as digits, which can be confusing |
-| makes large binary values easier to display and remember | less precise representation of bit patterns than writing the actual binary |
-| commonly used for memory dumps, MAC addresses, and HTML colour codes | not as familiar to most users as decimal |
+- memory dumps
+- MAC addresses
+- HTML colour codes
+- machine code/debugging displays
+- representing long binary values more compactly

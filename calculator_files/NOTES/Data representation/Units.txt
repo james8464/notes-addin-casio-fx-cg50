@@ -2,28 +2,50 @@
 
 ## Names and Symbols for Powers of 2
 
-| name | symbol | power |
-| --- | --- | --- |
-| kibi | ki | 2^10 |
-| mebi | mi | 2^20 |
-| gibi | gi | 2^30 |
-| tebi | ti | 2^40 |
+- powers of 2 are used for binary-based storage/memory sizes
+- kibi:
+  - symbol = ki
+  - power = 2^10
+- mebi:
+  - symbol = mi
+  - power = 2^20
+- gibi:
+  - symbol = gi
+  - power = 2^30
+- tebi:
+  - symbol = ti
+  - power = 2^40
 
 ## Names and Symbols for Powers of 10
 
-| name | symbol | power |
-| --- | --- | --- |
-| kilo | k | 10^3 |
-| mega | m | 10^6 |
-| giga | g | 10^9 |
-| tera | t | 10^12 |
+- powers of 10 are used for decimal-based quantities
+- kilo:
+  - symbol = k
+  - power = 10^3
+- mega:
+  - symbol = m
+  - power = 10^6
+- giga:
+  - symbol = g
+  - power = 10^9
+- tera:
+  - symbol = t
+  - power = 10^12
+
+## Key Difference
+
+- powers of 2 are based on repeated multiplication by 2
+- powers of 10 are based on repeated multiplication by 10
+- kibi is not the same as kilo
+- mebi is not the same as mega
+- binary prefixes are more precise when describing computer memory/storage
 
 ## Useful Acronym
 
-  - brilliant = byte
-  - katie = kibi/kilo
-  - managed = mebi/mega
-  - gardening = gibi/giga
-  - tasks = tebi/tera
-  - perfectly, = pebi/peba // beyond A-level syllabus
-  - exciting! = exi/exa // beyond A-level syllabus
+- brilliant = byte
+- katie = kibi/kilo
+- managed = mebi/mega
+- gardening = gibi/giga
+- tasks = tebi/tera
+- perfectly = pebi/peta
+- exciting = exbi/exa

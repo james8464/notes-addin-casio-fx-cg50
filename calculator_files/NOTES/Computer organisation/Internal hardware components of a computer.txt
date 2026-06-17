@@ -41,26 +41,37 @@
 
 ## Von Neumann
 
-- data and instructions are stored in same memory
-- shared bus system results in a bottlenecking issue
-- shared bus system -> worse performance than harvard architecture
+- data and instructions are stored in the same memory
+- data and instructions share the same address space
+- the same buses are used to fetch instructions and transfer data
+- processor cannot fetch an instruction and access data at the same time
+- shared bus system can cause the Von Neumann bottleneck
+- bottleneck = CPU waits for memory access because instructions/data must use the same route
+- simpler and more flexible than Harvard architecture
 - used in everyday general-purpose computer systems (eg laptops + smartphones)
-- stored program concept = the concept of storing data and instruction in a memory with discrete, unique addresses
+- stored program concept = instructions are stored in main memory with data, using discrete unique addresses
+- program instructions can be loaded, stored and treated like data
 
 ## Harvard Architecture
 
 - data and instructions are stored in separate memories
-- separate bus system
-- different word lengths can be used for data/instructions
-- different sized memory spaced, registers, and word lengths can be used for data/instructions
-- mainly used in embedded systems
+- data and instructions have separate address spaces
+- separate buses are used for instruction fetches and data transfers
+- instructions and data can be accessed at the same time
+- reduces the Von Neumann bottleneck
+- different word lengths can be used for instructions and data
+- different memory sizes and memory technologies can be used for instructions and data
+- instruction memory may use ROM/flash so the program cannot be easily changed
+- harder for data to accidentally overwrite program instructions
+- more complex and less flexible than Von Neumann architecture
+- mainly used in embedded systems and microcontrollers
 
 
 ## PPQ: Reasons to Use Harvard Rather Than Von Neumann
 
 - instructions and data can be accessed simultaneously
-- reduce bottleneck of single data/address buses
-- avoid/reduce bottleneck of single data/address bus(es), or avoid/reduce delays waiting for memory fetches
+- reduces bottleneck caused by shared data/address buses
+- reduces delays waiting for memory fetches
 - avoids possibility of data being executed as code (which is one method that can be exploited by hackers)
 - being able to use exclusively ROM for instruction memory prevents the program being modified/hacked
   - program cannot be accidentally overwritten by data

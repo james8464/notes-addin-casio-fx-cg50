@@ -72,6 +72,16 @@
 
 - defines the operations that can be performed on data
 - commonly used when interacting with databases
+- often used by web applications that create, retrieve, update or delete database records
+- CRUD describes the database operation, not the network protocol
+
+### Web CRUD Exam Points
+
+- browser sends a request to the server
+- server decides which CRUD operation is needed
+- server performs the matching database operation
+- server sends a response back to the browser
+- questions may ask for the meaning of each letter and the HTTP/SQL mapping
 
 ### CRUD → SQL Mapping
 
@@ -96,13 +106,16 @@
 
 - design methodology for online database applications
 - used when databases are accessed through a web browser
+- connects a browser/web application to a database through a server
 - provides a standard way for systems to communicate over a network
 - relies on HTTP request methods
 - allows JavaScript to communicate with servers through HTTP
 - REST APIs are created and run on the server
 - browser JavaScript calls the REST API
 - resources are represented by URLs
+- parameters in a URL/request can identify the record or data being requested
 - entering a URL can cause the server to retrieve data from a database
+- responses often contain JSON or XML for the browser to parse
 
 ### HTTP → SQL Mapping
 
@@ -113,8 +126,18 @@
 
 ### Key Difference (Exam Point)
 
-- crud = what operation you want to perform on data
+- CRUD = what operation you want to perform on data
 - REST = how that operation is performed over a network
+
+### REST Exam Points
+
+- REST API runs on the server
+- browser JavaScript calls the API using HTTP
+- HTTP method indicates the action required
+- URL identifies the resource being acted on
+- server maps the request to a database operation
+- server returns data to the browser, often as JSON or XML
+- browser parses the JSON/XML and updates the page
 
 
 
@@ -151,6 +174,8 @@
 - commonly used in web APIs and modern applications
 - example:
     - "name": "Bob"
+
+
 
 ### Advantages of JSON over XML
 

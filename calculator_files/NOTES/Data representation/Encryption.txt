@@ -13,6 +13,9 @@
   - its theoretically breakable but not in a useful timeframe using current technology
 - the cipher cannot be cracked in a reasonable amount of time
 
+
+
+
 ## Caesar Cipher
 
 - encrypts info by replacing characters
@@ -29,10 +32,16 @@
   - eg some letters will still frequently appear next to each other
   - spaces can be used to analyse word lengths
 
+
+
+
+
+
 ## Vernam Cipher
 
-- each key should only ever be used once
+- each key should only be used once
 - key must be truly random and at least as long as the plaintext that is to be encrypted
+- key must be stored securely
 
 ### How Does It Work?
 
@@ -40,6 +49,7 @@
 - converts each character to binary
 - applies XOR operation to the two bit patterns
 - converts result back to characters
+
 
 
 ### Perfect Security?

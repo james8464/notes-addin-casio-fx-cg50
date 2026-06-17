@@ -8,12 +8,11 @@
 - after the binary point, placeholders work like following:
   - 2^-1, 2^-2, 2^-3 ... etc
 
-### Example
 
 ## Floating Point Binary
 
 - contains a mantissa and an exponent
-- both mantissa and exponent will be represented using two's complement signed binary (see 4.5.4.3)
+- both mantissa and exponent will be represented using two's complement signed binary 
 
 ### Converting Floating Point Binary -> Decimal
 
@@ -22,7 +21,7 @@
 - move that imaginary binary point the number of positions specified by the exponent
 - treat this mantissa as a fixed point binary number and convert it to decimal
 
-### Example
+
 
 ### Converting Decimal to Floating Point Binary
 
@@ -31,4 +30,3 @@
   - if the point moves left, the mantissa would be positive
   - if the point moves right, the mantissa would be negative
 
-### Example

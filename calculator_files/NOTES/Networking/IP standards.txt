@@ -23,7 +23,7 @@
 
 
 
-## Why Was Ipv6 Introduced (ppq)
+## Why Ipv6 was Introduced
 
 - not enough unique addresses in ipv4
 - eliminates need for NAT

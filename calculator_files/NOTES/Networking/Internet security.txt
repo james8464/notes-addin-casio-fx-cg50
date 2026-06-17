@@ -38,7 +38,7 @@
 
 - before sending any information, the sender and receiver participate in a key exchange
   - ensures they both have a copied of the shared key
-  - but vulnerable to interception ...
+  - but vulnerable to interception 
 - sender encrypts the plaintext into cipher text
 - cipher text is sent to the receiver
 - receiver decrypts the cipher text using the same key (step 1)

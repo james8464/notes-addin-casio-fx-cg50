@@ -13,7 +13,6 @@
 - be assigned as arguments
 - be returned in function calls
 
-- note: the 'object' term here is not related to OOP.
 
 ## Examples
 
@@ -23,9 +22,3 @@
 - strings (list of characters)
 - booleans
 - functions
-
-- examples: integers, floating point values, characters, strings, functions
-
-## Note
-
-      - if a question asks for examples of first class object, you cant just say 'data types'... be specific, avoid generalising

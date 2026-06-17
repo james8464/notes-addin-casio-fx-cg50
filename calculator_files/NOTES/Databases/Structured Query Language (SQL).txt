@@ -56,13 +56,11 @@
 
 ### SQL Data Types
 
-| data type | SQL | description |
-| --- | --- | --- |
-| fixed length string | char(size) | a string with a specified num of characters |
-| variable length string | varchar(size) | a string with any num of characters up to the specified num |
-| integer | int(size) | a whole number stored using a specified num of bits |
-| number with fractional part | float(size, precision) | number stored using specified num of bits with a specified num of digits after the decimal point |
-| date | date | a date in the format: YYYY-MM-DD |
-| date and time | datetime | a date and time combined in the format:; YYYY-MM-DD HH:MM:SS |
-| time | time | a time in the format HH:MM:SS |
-| year | year | a year in one of the two formats below: yy or yyyy |
+- CHAR(size)
+- VARCHAR(size)
+- INT(size)
+- FLOAT(size, precision)
+- DATE
+- DATETIME
+- TIME
+- YEAR

@@ -149,7 +149,6 @@
 
 ### Principles of Operation
 
-- it prints ...
 - a laser beam projects an image of the page onto a photosensitive drum coated with a photoconductive material
 - the drum is given a uniform electrostatic charge
 - the laser beam discharges certain areas of the drum

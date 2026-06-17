@@ -17,6 +17,11 @@
 - optical storage:
   - eg CD, DVD, and Blu-ray discs
 
+
+
+
+
+
 ## Hard disks (HDD)
 
 ### Characteristics
@@ -68,6 +73,12 @@
   - the reading and writing of data
   - error correction and data caching
 
+
+
+
+
+
+
 ## Optical disks
 
 ### Characteristics
@@ -111,6 +122,12 @@
 - the optical drive contains:
   - a motor to spin the disk
   - a lens system to focus the laser beam accurately on the data tracks
+
+
+
+
+
+
 
 ## Solid state drives (SSD)
 
@@ -165,8 +182,3 @@
   - wear levelling
   - error correction
 
-| storage type | capacity | speed of access | suitability |
-| --- | --- | --- | --- |
-| HDD | large storage capacities (hundreds of GB to several TB) | slower read and write speeds (100-200 MB/s) | cost-effective for large storage needs, slower performance, suitable for archival storage |
-| optical disks (CDs, DVDs, Blu-ray) | lower storage capacities (up to 700 MB for CDs, up to 4.7 GB for DVDs, up to 25 GB for Blu-ray) | slower read and write speeds, significantly slower access times than HDDs and SSDs | distributing media, software, long-term archival storage where data integrity is important |
-| SSDs | various capacities (128 GB to several TB) | significantly faster read and write speeds (500-550 MB/s for SATA SSDs, up to 3500-5000 MB/s for NVMe SSDs) | high-performance tasks, operating system drives, application loading, gaming, portable devices |

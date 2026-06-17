@@ -32,11 +32,10 @@
 
 #### Characteristics
 
-- uses only binary digits (ie 1's and 0's)
-- code is very long and extremely difficult for humans to understand
-- prone to errors
-- difficult to debug
-- directly manipulates hardware
+- uses only binary digits
+- difficult for humans to understand/debug/maintain
+- prone to errors 
+- can directly manipulates hardware
 
 #### Advantages
 

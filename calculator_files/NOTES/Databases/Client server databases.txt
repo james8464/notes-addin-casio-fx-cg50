@@ -1,11 +1,11 @@
 # Client server databases
 
-## Ppq: Concurrent Access Problems
+## Concurrent Access Problems
 
 - two users (read and) edit a record/the same data simultaneously;
 - the update made by the user who saved (the record) first will be lost
 
-## Ppq: Record Locks
+## Record Locks
 
 - when a user starts to edit a record a lock is set on the record
 - other transactions/users cannot edit the data until the lock is released
@@ -18,7 +18,7 @@
   - if another transaction is taking place on that record at the same time, then serialisation ensures that the two transactions take place one after each other in the correct order.
   - the DBMS will be used to identify which transactions need serialising and also provide a schedule for dealing with them.
 
-## Ppq: Timestamp Ordering
+## Timestamp Ordering
 
 - timestamps are generated for each transaction
 - database records timestamp of last read / last write transaction for each record / data item;
