@@ -565,6 +565,14 @@ def main() -> int:
         errors.append("ordered-list continuation indent must not be fixed-width")
     if "return over > 0 ? (over + TABLE_CHAR_PX - 1) / TABLE_CHAR_PX : 0;" not in APP_SOURCE:
         errors.append("table horizontal scroll must round up to reveal the final table edge")
+    if 'notes_softkeys(max_hscroll > 0 ? "RIGHT" : "NEXT"' not in APP_SOURCE:
+        errors.append("wide notes must expose visible RIGHT/LEFT softkey labels")
+    if "max_line > 0 && key == KEY_CTRL_F1" not in APP_SOURCE or "max_line > 0 && key == KEY_CTRL_F2" not in APP_SOURCE:
+        errors.append("wide notes must let F1/F2 scroll horizontally when arrow keys are unreliable")
+    if "key == KEY_SHIFT_RIGHT" not in APP_SOURCE or "key == KEY_SHIFT_LEFT" not in APP_SOURCE:
+        errors.append("wide notes should accept shift-left/right aliases for horizontal scroll")
+    if "UI_TABLE_GRID" not in APP_SOURCE:
+        errors.append("table grid colour must be explicit enough for real-device readability")
     if "if (bars)" in APP_SOURCE:
         errors.append("single pipe-delimited rows must not be treated as tables without a separator row")
     if "static int table_start_like_at" not in APP_SOURCE or "table_separator_row(table_parse_cells, cols)" not in APP_SOURCE:

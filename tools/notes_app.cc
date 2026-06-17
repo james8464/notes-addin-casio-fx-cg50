@@ -33,6 +33,7 @@ static const int STATUS_MARQUEE_GAP = 4;
 static const unsigned STATUS_MARQUEE_TICKS = 48;
 static const unsigned NOTE_X_LIMIT = LCD_WIDTH_PX - 18;
 static const unsigned short UI_MATCH_TEXT = RGB565(210, 0, 0);
+static const unsigned short UI_TABLE_GRID = RGB565(140, 145, 150);
 static const unsigned short UI_H2_TEXT = RGB565(0, 80, 160);
 static const unsigned short UI_H3_TEXT = RGB565(70, 70, 85);
 static const unsigned short UI_H4_TEXT = RGB565(115, 80, 120);
@@ -1879,9 +1880,9 @@ static void print_table_line(int idx, int y, const SearchPattern *sp) {
   int x1 = VIEW_X + view_table_colpos[idx][cols];
   if (view_table_header[idx]) note_fill_clip(x0, top + 1, x1, bottom, RGB565(233, 241, 252));
   for (int c = 0; c <= cols; ++c)
-    note_vline(VIEW_X + view_table_colpos[idx][c], top, bottom, UI_GRAY);
-  if (view_table_top[idx]) note_hline_clip(x0, x1, top, UI_GRAY);
-  if (view_table_bottom[idx]) note_hline_clip(x0, x1, bottom, UI_GRAY);
+    note_vline(VIEW_X + view_table_colpos[idx][c], top, bottom, UI_TABLE_GRID);
+  if (view_table_top[idx]) note_hline_clip(x0, x1, top, UI_TABLE_GRID);
+  if (view_table_bottom[idx]) note_hline_clip(x0, x1, bottom, UI_TABLE_GRID);
   for (int c = 0; c < cols; ++c) {
     int tx = VIEW_X + view_table_colpos[idx][c] + TABLE_PAD_X;
     int cell_right = VIEW_X + view_table_colpos[idx][c + 1] - TABLE_PAD_X;
@@ -1957,9 +1958,12 @@ static void print_note_line(int idx, int x, int y, const char *line, int style, 
   }
 }
 
-static void notes_text_page(const char *title, const char *const *lines, int count, int top, const SearchPattern *sp) {
+static void notes_text_page(const char *title, const char *const *lines, int count, int top,
+                            const SearchPattern *sp, int max_hscroll) {
   notes_chrome(title);
-  notes_softkeys("NEXT", "PREV", "PGUP", "PGDN", "FIND", "BACK");
+  notes_softkeys(max_hscroll > 0 ? "RIGHT" : "NEXT",
+                 max_hscroll > 0 ? "LEFT" : "PREV",
+                 "PGUP", "PGDN", "FIND", "BACK");
   for (int i = 0; i < PAGE_LINES && top + i < count; ++i) {
     const char *line = lines[top + i];
     int y = VIEW_TOP + i * VIEW_ROW_H;
@@ -1978,7 +1982,7 @@ static void wait_text_page(const char *title, const char *initial_query) {
   int lines = build_view_lines(hscroll);
   if (sp.len > 0) jump_to_match(&sp, 0, 1, &top, &hscroll, &lines, max_line);
   if (top + PAGE_LINES > lines) top = max_int(0, lines - PAGE_LINES);
-  notes_text_page(title, view_lines, lines, top, &sp);
+  notes_text_page(title, view_lines, lines, top, &sp, max_line);
   int animate_title = status_title_needs_marquee(title);
   unsigned last_title_step = status_marquee_step();
   for (;;) {
@@ -1987,33 +1991,36 @@ static void wait_text_page(const char *title, const char *initial_query) {
       unsigned next_title_step = status_marquee_step();
       if (next_title_step != last_title_step) {
         last_title_step = next_title_step;
-        notes_text_page(title, view_lines, lines, top, &sp);
+        notes_text_page(title, view_lines, lines, top, &sp, max_line);
       }
       OS_InnerWait_ms(40);
       continue;
     }
     if (key == KEY_CTRL_EXIT || key == KEY_CTRL_AC || key == KEY_CTRL_F6) return;
-    if (key == KEY_CTRL_UP && top > 0) notes_text_page(title, view_lines, lines, --top, &sp);
-    if (key == KEY_CTRL_DOWN && top + PAGE_LINES < lines) notes_text_page(title, view_lines, lines, ++top, &sp);
+    if (key == KEY_CTRL_UP && top > 0) notes_text_page(title, view_lines, lines, --top, &sp, max_line);
+    if (key == KEY_CTRL_DOWN && top + PAGE_LINES < lines) notes_text_page(title, view_lines, lines, ++top, &sp, max_line);
     if ((key == KEY_CTRL_PAGEUP || key == KEY_CTRL_F3) && top > 0) {
       top = max_int(0, top - PAGE_LINES);
-      notes_text_page(title, view_lines, lines, top, &sp);
+      notes_text_page(title, view_lines, lines, top, &sp, max_line);
     }
     if ((key == KEY_CTRL_PAGEDOWN || key == KEY_CTRL_F4) && top + PAGE_LINES < lines) {
       top = min_int(max_int(0, lines - PAGE_LINES), top + PAGE_LINES);
-      notes_text_page(title, view_lines, lines, top, &sp);
+      notes_text_page(title, view_lines, lines, top, &sp, max_line);
     }
-    if (key == KEY_CTRL_RIGHT) {
+    if (key == KEY_CTRL_RIGHT || key == KEY_SHIFT_RIGHT || (max_line > 0 && key == KEY_CTRL_F1)) {
       if (hscroll < max_line) hscroll = min_int(max_line, hscroll + 8);
       lines = build_view_lines(hscroll);
       top = min_int(top, max_int(0, lines - PAGE_LINES));
-      notes_text_page(title, view_lines, lines, top, &sp);
+      notes_text_page(title, view_lines, lines, top, &sp, max_line);
+      continue;
     }
-    if (key == KEY_CTRL_LEFT && hscroll > 0) {
+    if (key == KEY_CTRL_LEFT || key == KEY_SHIFT_LEFT || (max_line > 0 && key == KEY_CTRL_F2)) {
+      if (hscroll <= 0) continue;
       hscroll = max_int(0, hscroll - 8);
       lines = build_view_lines(hscroll);
       top = min_int(top, max_int(0, lines - PAGE_LINES));
-      notes_text_page(title, view_lines, lines, top, &sp);
+      notes_text_page(title, view_lines, lines, top, &sp, max_line);
+      continue;
     }
     if (key == KEY_CTRL_F5) {
       char q[32];
@@ -2033,7 +2040,7 @@ static void wait_text_page(const char *title, const char *initial_query) {
           }
         }
       }
-      notes_text_page(title, view_lines, lines, top, &sp);
+      notes_text_page(title, view_lines, lines, top, &sp, max_line);
     }
     if (key == KEY_CTRL_F1) {
       if (active_search) {
@@ -2042,7 +2049,7 @@ static void wait_text_page(const char *title, const char *initial_query) {
       } else {
         top = min_int(max_int(0, lines - PAGE_LINES), top + PAGE_LINES);
       }
-      notes_text_page(title, view_lines, lines, top, &sp);
+      notes_text_page(title, view_lines, lines, top, &sp, max_line);
     }
     if (key == KEY_CTRL_F2) {
       if (active_search) {
@@ -2051,7 +2058,7 @@ static void wait_text_page(const char *title, const char *initial_query) {
       } else {
         top = max_int(0, top - PAGE_LINES);
       }
-      notes_text_page(title, view_lines, lines, top, &sp);
+      notes_text_page(title, view_lines, lines, top, &sp, max_line);
     }
   }
 }
