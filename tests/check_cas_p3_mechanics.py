@@ -18,9 +18,18 @@ CASES = [
     ("suvat(u=1/2,a=3/4,t=8)", ["SUVAT", "s=28", "u=1/2", "v=13/2", "a=3/4", "t=8"]),
     ("suvat(u=x,a=2,t=3)", ["SUVAT", "s=3*(x + 3)", "u=x", "v=x + 6", "a=2", "t=3"]),
     ("suvat(u=sin(pi/6),a=1,t=2)", ["SUVAT", "u=1/2", "v=5/2", "s=3"]),
-    ("suvat(s=10,u=2,a=3)", ["SUVAT", "s=10", "u=2", "v=[-8, 8]", "a=3", "t=[-10/3, 2]", "physical t=2"]),
-    ("suvat(s=10,v=8,a=3)", ["SUVAT", "s=10", "u=[2, -2]", "v=8", "a=3", "t=[2, 10/3]", "physical t=[2, 10/3]"]),
-    ("suvat(u=2,a=3)", ["SUVAT", "u=2", "a=3", "Need 3 named values."]),
+    ("suvat(s=10,u=2,a=3)", ["SUVAT", "s=10", "u=2", "v=[-8, 8]", "a=3", "t=[-10/3, 2]", "solution 1:", "solution 2:", "physical: t=2, v=8"]),
+    ("suvat(s=10,v=8,a=3)", ["SUVAT", "s=10", "u=[2, -2]", "v=8", "a=3", "t=[2, 10/3]", "physical: t=2"]),
+    ("suvat(s=10,u=2,v=8)", ["SUVAT", "s=10", "u=2", "v=8", "a=3", "t=2"]),
+    ("suvat(s=10,u=2,t=4)", ["SUVAT", "s=10", "u=2", "v=3", "a=1/4", "t=4"]),
+    ("suvat(u=2,v=8,t=2)", ["SUVAT", "s=10", "u=2", "v=8", "a=3", "t=2"]),
+    ("suvat(displacement=10,initial=2,acceleration=3)", ["SUVAT", "s=10", "u=2", "a=3", "physical: t=2, v=8"]),
+    ("suvat(distance=10,start=2,acc=3)", ["SUVAT", "s=10", "u=2", "a=3", "physical: t=2, v=8"]),
+    ("suvat(u=2,a=0,t=5)", ["SUVAT", "s=10", "u=2", "v=2", "a=0", "t=5"]),
+    ("suvat(u=0,a=5,s=10)", ["SUVAT", "s=10", "u=0", "v=[-10, 10]", "a=5", "t=[-2, 2]", "physical: t=2, v=10"]),
+    ("suvat(u=5,v=0,a=-1)", ["SUVAT", "s=25/2", "u=5", "v=0", "a=-1", "t=5"]),
+    ("suvat(u=2,a=3)", ["SUVAT", "u=2", "a=3", "Need 3 named values."], ["s=v^2", "t=v/"]),
+    ("suvat(10,u=2,a=3)", ["SUVAT", "u=2", "a=3", "Ignored input: 10", "Need 3 named values."], ["s=v^2", "t=v/"]),
     ("suvat(u=2,a=3,t=4,v=99)", ["SUVAT", "u=2", "v=99", "a=3", "t=4", "No solution"]),
     ("suvat(s=10,u=2,a=3,t=99)", ["SUVAT", "s=10", "u=2", "a=3", "t=99", "No solution"]),
     ("force(12,3)", ["Newton II", "F=ma", "36 N"]),
@@ -59,13 +68,18 @@ def run(expr: str) -> str:
 
 
 def main() -> int:
-    for expr, needles in CASES:
+    for case in CASES:
+        expr, needles = case[0], case[1]
+        absent = case[2] if len(case) > 2 else []
         out = run(expr)
         if len([line for line in out.splitlines() if line.strip()]) < 2:
             raise AssertionError(f"{expr}: too few lines\n{out}")
         for needle in needles:
             if needle not in out:
                 raise AssertionError(f"{expr}: missing {needle!r}\n{out}")
+        for needle in absent:
+            if needle in out:
+                raise AssertionError(f"{expr}: should not contain {needle!r}\n{out}")
         for bad in BANNED:
             if bad in out:
                 raise AssertionError(f"{expr}: banned {bad!r}\n{out}")
