@@ -6201,44 +6201,63 @@ static bool try_symbolic_command_working(const char *input,working_string &out){
   return false;
 }
 
-static working_string suvat_expr(const char *f,working_string *v){
-  working_string e;
-  for (;*f;++f){
-    int id=-1;
-    if (*f=='S') id=0; else if (*f=='U') id=1; else if (*f=='V') id=2;
-    else if (*f=='A') id=3; else if (*f=='T') id=4;
-    if (id>=0){ e+="("; e+=v[id]; e+=")"; }
-    else e+=working_string(1,*f);
+static int suvat_id(const working_string &k){
+  if (k=="s") return 0;
+  if (k=="u") return 1;
+  if (k=="v") return 2;
+  if (k=="a") return 3;
+  if (k=="t") return 4;
+  return -1;
+}
+
+static void suvat_add_choice(working_string choices[5][8],int *count,int id,const working_string &raw){
+  working_string v=trim(raw);
+  if (id<0 || id>=5 || v.empty())
+    return;
+  for (int i=0;i<count[id];++i)
+    if (choices[id][i]==v)
+      return;
+  if (count[id]<8)
+    choices[id][count[id]++]=v;
+}
+
+static bool suvat_apply_solve(const working_string &exact,working_string *val,bool *have){
+  working_string rows[8],cells[10],choices[5][8];
+  int count[5]={0,0,0,0,0}, rn=split_exact_list(exact,rows,8);
+  for (int r=0;r<rn;++r){
+    int cn=split_exact_list(rows[r],cells,10);
+    for (int c=0;c<cn;++c){
+      int eq=find_top_equal_any(cells[c]);
+      if (eq<=0)
+        continue;
+      int id=suvat_id(lower(compact(cells[c].substr(0,eq))));
+      suvat_add_choice(choices,count,id,cells[c].substr(eq+1,cells[c].size()-eq-1));
+    }
   }
-  return e;
-}
-
-static working_string suvat_calc(const char *f,working_string *v){
-  working_string e=suvat_expr(f,v),r;
-  if (production_exact_command("simplify("+e+")",r) && !r.empty())
-    return r;
-  return e;
-}
-
-static void suvat_set(int id,const char *f,working_string *v,bool *h){
-  if (h[id])
-    return;
-  v[id]=suvat_calc(f,v);
-  h[id]=true;
-}
-
-static void suvat_set2(int id,const char *a,const char *b,working_string *v,bool *h){
-  if (h[id])
-    return;
-  working_string x=suvat_calc(a,v),y=suvat_calc(b,v);
-  v[id]=(x==y)?x:("["+x+", "+y+"]");
-  h[id]=true;
+  bool any=false;
+  for (int i=0;i<5;++i){
+    if (!count[i])
+      continue;
+    any=true;
+    have[i]=true;
+    if (count[i]==1)
+      val[i]=choices[i][0];
+    else {
+      val[i]="[";
+      for (int j=0;j<count[i];++j){
+        if (j) val[i]+=", ";
+        val[i]+=choices[i][j];
+      }
+      val[i]+="]";
+    }
+  }
+  return any;
 }
 
 static bool try_suvat(const char *input,working_string &out){
-  working_string args[8],val[5];
+  working_string args[8],val[5],known_eq[8];
   bool have[5]={false,false,false,false,false};
-  int n=0,known=0,mask=0;
+  int n=0,known=0,keq=0;
   if (!parse_call(input,"suvat",args,8,n))
     return false;
   for (int i=0;i<n;++i){
@@ -6246,50 +6265,26 @@ static bool try_suvat(const char *input,working_string &out){
     if (eq<=0)
       continue;
     working_string k=lower(compact(args[i].substr(0,eq)));
-    int id=-1;
-    if (k=="s") id=0; else if (k=="u") id=1; else if (k=="v") id=2;
-    else if (k=="a") id=3; else if (k=="t") id=4;
+    int id=suvat_id(k);
     if (id<0)
       continue;
     val[id]=trim(args[i].substr(eq+1,args[i].size()-eq-1));
-    if (!have[id]){ ++known; mask|=1<<id; }
+    if (keq<8)
+      known_eq[keq++]=k+"="+val[id];
+    if (!have[id])
+      ++known;
     have[id]=true;
   }
   static const char *eq_vat="v=u+at";
   static const char *eq_suat="s=ut+1/2at^2";
   static const char *eq_v2="v^2=u^2+2as";
   static const char *eq_suvt="s=(u+v)t/2";
-  const char *eq1=0,*eq2=0;
-#define USED(a,b) do { eq1=(a); eq2=(b); } while (0)
-#define HAS(x) ((mask&(x))==(x))
-  if (known>=3){
-    if (HAS(26)){ USED(eq_vat,eq_suat); suvat_set(2,"U+A*T",val,have); suvat_set(0,"U*T+1/2*A*T^2",val,have); }
-    else if (HAS(28)){ USED(eq_vat,eq_suvt); suvat_set(1,"V-A*T",val,have); suvat_set(0,"V*T-1/2*A*T^2",val,have); }
-    else if (HAS(22)){ USED(eq_vat,eq_suvt); suvat_set(3,"(V-U)/T",val,have); suvat_set(0,"1/2*(U+V)*T",val,have); }
-    else if (HAS(14)){ USED(eq_vat,eq_suvt); suvat_set(4,"(V-U)/A",val,have); suvat_set(0,"1/2*(U+V)*T",val,have); }
-    else if (HAS(19)){ USED(eq_suat,eq_vat); suvat_set(3,"2*(S-U*T)/T^2",val,have); suvat_set(2,"U+A*T",val,have); }
-    else if (HAS(21)){ USED(eq_suvt,eq_vat); suvat_set(1,"2*S/T-V",val,have); suvat_set(3,"(V-U)/T",val,have); }
-    else if (HAS(25)){ USED(eq_suat,eq_vat); suvat_set(1,"(S-1/2*A*T^2)/T",val,have); suvat_set(2,"U+A*T",val,have); }
-    else if (HAS(7)){ USED(eq_v2,eq_suvt); suvat_set(3,"(V^2-U^2)/(2*S)",val,have); suvat_set(4,"2*S/(U+V)",val,have); }
-    else if (HAS(11)){
-      USED(eq_suat,eq_vat);
-      if (compact(val[3])=="0"){ suvat_set(4,"S/U",val,have); if (!have[2]){ val[2]=val[1]; have[2]=true; } }
-      else {
-        suvat_set2(4,"(-U+sqrt(U^2+2*A*S))/A","(-U-sqrt(U^2+2*A*S))/A",val,have);
-        suvat_set2(2,"U+A*((-U+sqrt(U^2+2*A*S))/A)","U+A*((-U-sqrt(U^2+2*A*S))/A)",val,have);
-      }
-    }
-    else if (HAS(13)){
-      USED(eq_v2,eq_vat);
-      if (compact(val[3])=="0"){ suvat_set(4,"S/V",val,have); if (!have[1]){ val[1]=val[2]; have[1]=true; } }
-      else {
-        suvat_set2(4,"(V+sqrt(V^2-2*A*S))/A","(V-sqrt(V^2-2*A*S))/A",val,have);
-        suvat_set2(1,"V-A*((V+sqrt(V^2-2*A*S))/A)","V-A*((V-sqrt(V^2-2*A*S))/A)",val,have);
-      }
-    }
-  }
-#undef HAS
-#undef USED
+  working_string solve="solve([v=u+a*t,s=u*t+1/2*a*t^2,v^2=u^2+2*a*s,s=(u+v)*t/2";
+  for (int i=0;i<keq;++i){ solve+=","; solve+=known_eq[i]; }
+  solve+="],[s,u,v,a,t])";
+  working_string exact;
+  if (production_exact_command(solve,exact) && compact(exact)!="[]")
+    suvat_apply_solve(exact,val,have);
   static const char *names[]={"s","u","v","a","t"};
   out="SUVAT\nans:\n";
   for (int i=0;i<5;++i)
@@ -6303,8 +6298,7 @@ static bool try_suvat(const char *input,working_string &out){
       out += "Some values unresolved.\n";
   }
   out += "eq:\n";
-  if (eq1){ out += eq1; out += "\n"; out += eq2; }
-  else { out += eq_vat; out += "\n"; out += eq_suat; out += "\n"; out += eq_v2; out += "\n"; out += eq_suvt; }
+  out += eq_vat; out += "\n"; out += eq_suat; out += "\n"; out += eq_v2; out += "\n"; out += eq_suvt;
   return true;
 }
 

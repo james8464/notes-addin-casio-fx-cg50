@@ -128,7 +128,7 @@ Examples:
 
 Examples:
 
-- `suvat(u=2,a=3,t=4)` gives `s`, `u`, `v`, `a`, `t` on separate lines.
+- `suvat(u=2,a=3,t=4)` uses KhiCAS exact solve and gives `s`, `u`, `v`, `a`, `t` on separate lines.
 - `suvat(s=10,u=2,a=3)` gives both possible times and velocities.
 - `suvat(u=x,a=2,t=3)` keeps algebraic values exact where possible.
 - `suvat(u=2,a=3)` lists the known values and says that another named value is needed.
