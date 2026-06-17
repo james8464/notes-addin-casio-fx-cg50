@@ -6287,7 +6287,7 @@ static bool arg_rat(working_string *args,int n,const char *key,int pos,Rat &v){
     if (eq>0 && lower(compact(args[i].substr(0,eq)))==key)
       return parse_rat(args[i].substr(eq+1,args[i].size()-eq-1),v);
   }
-  return pos<n && parse_rat(args[pos],v);
+  return pos<n && find_top_equal_any(args[pos])<=0 && parse_rat(args[pos],v);
 }
 
 static working_string arg_text(working_string *args,int n,const char *key,int pos){
@@ -6296,7 +6296,7 @@ static working_string arg_text(working_string *args,int n,const char *key,int po
     if (eq>0 && lower(compact(args[i].substr(0,eq)))==key)
       return compact(args[i].substr(eq+1,args[i].size()-eq-1));
   }
-  return pos<n?compact(args[pos]):"";
+  return (pos<n && find_top_equal_any(args[pos])<=0)?compact(args[pos]):"";
 }
 
 static working_string mech_clean_integral(working_string s){
