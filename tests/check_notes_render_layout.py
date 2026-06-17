@@ -539,8 +539,8 @@ def main() -> int:
         errors.append("wide-line horizontal scroll must use the pixel-fitted displayed suffix")
     if "style_uses_hscroll" not in APP_SOURCE:
         errors.append("notes renderer must centralise which markdown styles use horizontal scrolling")
-    if "return style == NOTE_TEXT || style == NOTE_CODE;" not in APP_SOURCE:
-        errors.append("plain long note lines must be horizontally scrollable, not only code/table lines")
+    if "style == NOTE_BULLET" not in APP_SOURCE or "style == NOTE_ORDERED" not in APP_SOURCE:
+        errors.append("long bullet/list note lines must be horizontally scrollable, not only plain text/code lines")
     if "style_uses_hscroll(style) ? max_int(0, offset - 6) : 0" not in APP_SOURCE:
         errors.append("search jumps on scrollable long lines must pan horizontally to the match")
     if "hscroll > 0 || style == NOTE_CODE" in APP_SOURCE or "hscroll > 0, setext_style" in APP_SOURCE:
@@ -576,8 +576,8 @@ def main() -> int:
     if "key == KEY_SHIFT_RIGHT" not in APP_SOURCE or "key == KEY_SHIFT_LEFT" not in APP_SOURCE:
         errors.append("wide notes should accept shift-left/right aliases for horizontal scroll")
     timed_poll = APP_SOURCE[APP_SOURCE.find("static int notes_key_poll_timed"):APP_SOURCE.find("// Keep the menu key path")]
-    if "GetKey(&key);" not in timed_poll or "return key;" not in timed_poll:
-        errors.append("timed note key polling must convert OS key events through GetKey so arrow constants match")
+    if "return keycode;" not in timed_poll or "GetKey(&key);" in timed_poll:
+        errors.append("timed note key polling must keep the raw GetKeyWait_OS keycode path used by the working notes build")
     if "UI_TABLE_GRID" not in APP_SOURCE:
         errors.append("table grid colour must be explicit enough for real-device readability")
     if "if (bars)" in APP_SOURCE:

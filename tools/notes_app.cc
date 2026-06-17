@@ -357,9 +357,7 @@ static int notes_key_poll_timed() {
   if (col == 1) return KEY_CTRL_AC;
   if (col == 4 && row == 9) return KEY_CTRL_MENU;
   if (col == 4 && row == 8) return KEY_CTRL_EXIT;
-  int key = 0;
-  GetKey(&key);
-  return key;
+  return keycode;
 }
 
 // Keep the menu key path discoverable for the suite smoke test: ui_menu_keys.
@@ -1108,7 +1106,9 @@ static int style_x_offset(int style) {
 }
 
 static int style_uses_hscroll(int style) {
-  return style == NOTE_TEXT || style == NOTE_CODE;
+  return style == NOTE_TEXT || style == NOTE_CODE || style == NOTE_BULLET ||
+         style == NOTE_ORDERED || style == NOTE_QUOTE ||
+         (style >= NOTE_H1 && style <= NOTE_H4);
 }
 
 static int segment_fits_screen(const char *s, int start, int end, int indent, int xpad, int strip_inline) {
