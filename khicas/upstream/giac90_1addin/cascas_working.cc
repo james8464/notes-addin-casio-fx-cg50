@@ -6235,10 +6235,31 @@ static bool try_suvat(const char *input,working_string &out){
     out += "s = 1/2(u+v)t\ns = "+rat_s(r2);
     return true;
   }
+  if (have[2] && have[3] && have[4]){
+    r1=rat_sub(q[2],rat_mul(q[3],q[4]));
+    r2=rat_sub(rat_mul(q[2],q[4]),rat_div(rat_mul(rat_mul(q[3],q[4]),q[4]),rat(2,1)));
+    out += "u = v - at\nu = "+rat_s(r1)+"\n";
+    out += "s = vt - 1/2 at^2\ns = "+rat_s(r2);
+    return true;
+  }
   if (have[0] && have[1] && have[4] && q[4].n){
     r1=rat_div(rat_mul(rat(2,1),rat_sub(q[0],rat_mul(q[1],q[4]))),rat_mul(q[4],q[4]));
     r2=rat_add(q[1],rat_mul(r1,q[4]));
     out += "a = 2(s-ut)/t^2\na = "+rat_s(r1)+"\n";
+    out += "v = u + at\nv = "+rat_s(r2);
+    return true;
+  }
+  if (have[0] && have[2] && have[4] && q[4].n){
+    r1=rat_sub(rat_div(rat_mul(rat(2,1),q[0]),q[4]),q[2]);
+    r2=rat_div(rat_sub(q[2],r1),q[4]);
+    out += "u = 2s/t - v\nu = "+rat_s(r1)+"\n";
+    out += "a = (v-u)/t\na = "+rat_s(r2);
+    return true;
+  }
+  if (have[0] && have[3] && have[4] && q[4].n){
+    r1=rat_div(rat_sub(q[0],rat_div(rat_mul(rat_mul(q[3],q[4]),q[4]),rat(2,1))),q[4]);
+    r2=rat_add(r1,rat_mul(q[3],q[4]));
+    out += "u = (s - 1/2 at^2)/t\nu = "+rat_s(r1)+"\n";
     out += "v = u + at\nv = "+rat_s(r2);
     return true;
   }
