@@ -132,7 +132,7 @@ static bool removed_feature(std::string const &expr)
         "randpoly","egv","egvl","eigenvals","eigenvalues","eigenvects",
         "eigenvectors","svd","ker","kernel","rank","rat_jordan",
         "rat_jordan_block","pcar_hessenberg","det_minor","basis","image",
-        "rref","ref","suvat","projectile","pulley","incline","force","weight",
+        "rref","ref","projectile","pulley","incline","force","weight",
         "moment","resolve","friction"
     };
     for(char const *name : calls) {

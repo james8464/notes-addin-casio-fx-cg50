@@ -45,6 +45,7 @@ KEPT_COMMANDS = [
     "sqrt",
     "subst",
     "sum",
+    "suvat",
     "tan",
     "taylor",
     "tcollect",

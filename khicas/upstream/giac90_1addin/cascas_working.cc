@@ -6201,6 +6201,58 @@ static bool try_symbolic_command_working(const char *input,working_string &out){
   return false;
 }
 
+static bool try_suvat(const char *input,working_string &out){
+  working_string args[8];
+  int n=0;
+  if (!parse_call(input,"suvat",args,8,n))
+    return false;
+  Rat q[5],r1,r2;
+  bool have[5]={false,false,false,false,false}; // s,u,v,a,t
+  for (int i=0;i<n;++i){
+    int eq=find_top_equal_any(args[i]);
+    if (eq<=0)
+      continue;
+    working_string k=compact(args[i].substr(0,eq));
+    int id=-1;
+    if (k=="s") id=0; else if (k=="u") id=1; else if (k=="v") id=2;
+    else if (k=="a") id=3; else if (k=="t") id=4;
+    if (id<0 || !parse_rat(args[i].substr(eq+1,args[i].size()-eq-1),q[id]))
+      continue;
+    have[id]=true;
+  }
+  out="SUVAT\n";
+  if (have[1] && have[3] && have[4]){
+    r1=rat_add(q[1],rat_mul(q[3],q[4]));
+    r2=rat_add(rat_mul(q[1],q[4]),rat_div(rat_mul(rat_mul(q[3],q[4]),q[4]),rat(2,1)));
+    out += "v = u + at\nv = "+rat_s(q[1])+" + "+rat_s(q[3])+"*"+rat_s(q[4])+" = "+rat_s(r1)+"\n";
+    out += "s = ut + 1/2 at^2\ns = "+rat_s(r2);
+    return true;
+  }
+  if (have[1] && have[2] && have[4] && q[4].n){
+    r1=rat_div(rat_sub(q[2],q[1]),q[4]);
+    r2=rat_div(rat_mul(rat_add(q[1],q[2]),q[4]),rat(2,1));
+    out += "a = (v-u)/t\na = "+rat_s(r1)+"\n";
+    out += "s = 1/2(u+v)t\ns = "+rat_s(r2);
+    return true;
+  }
+  if (have[0] && have[1] && have[4] && q[4].n){
+    r1=rat_div(rat_mul(rat(2,1),rat_sub(q[0],rat_mul(q[1],q[4]))),rat_mul(q[4],q[4]));
+    r2=rat_add(q[1],rat_mul(r1,q[4]));
+    out += "a = 2(s-ut)/t^2\na = "+rat_s(r1)+"\n";
+    out += "v = u + at\nv = "+rat_s(r2);
+    return true;
+  }
+  if (have[0] && have[1] && have[2] && q[0].n && rat_add(q[1],q[2]).n){
+    r1=rat_div(rat_sub(rat_mul(q[2],q[2]),rat_mul(q[1],q[1])),rat_mul(rat(2,1),q[0]));
+    r2=rat_div(rat_mul(rat(2,1),q[0]),rat_add(q[1],q[2]));
+    out += "a = (v^2-u^2)/(2s)\na = "+rat_s(r1)+"\n";
+    out += "t = 2s/(u+v)\nt = "+rat_s(r2);
+    return true;
+  }
+  out += "Need any 3 suitable values, e.g. suvat(u=2,a=3,t=4).";
+  return true;
+}
+
 static bool try_definite_recip_affine(const working_string &expr,const working_string &rawvar,
                                       const working_string &lo,const working_string &hi,
                                       working_string &out){
@@ -12122,141 +12174,6 @@ static bool simplify_root_unity(const working_string &src,working_string &out){
   return true;
 }
 
-static bool try_simplify(const char *input,working_string &out){
-  working_string args[2],num,den,nshow,dshow,nfac,dfac;
-  int n=0;
-  if (!parse_call(input,"simplify",args,2,n) || n<1)
-    return false;
-  working_string raw=compact(args[0]);
-  if (constant_exp_surd_too_large(args[0])){
-    out="Err: complexity guard";
-    return true;
-  }
-  if (working_route_too_large(args[0]) || nested_function_expr(args[0],5) ||
-      (nested_function_expr(args[0],1) && contains(raw,"^-")))
-    return try_symbolic_command_working(input,out);
-  working_string e=canonical_expr(args[0]);
-  if (simplify_sqrt_mono_fraction(nospace_lower(args[0]),out))
-    return true;
-  if (simplify_root_unity(args[0],out))
-    return true;
-  if (simplify_diff_quotient(args[0],out))
-    return true;
-  {
-    working_string exact;
-    if (production_exact_command(input?input:"",exact)){
-      exact=trim(exact);
-      if (!exact.empty() && compact(exact)!=compact(args[0]) && !contains(nospace_lower(exact),"simplify(")){
-        out=args[0]+"\n= "+exact+"";
-        return true;
-      }
-    }
-  }
-  if (simplify_numeric_powers(raw,out))
-    return true;
-  if (simplify_exp_log_sum(e,out) || simplify_mono_quotient(e,out) ||
-      simplify_surd_fraction(e,out) || simplify_surd_sum(e,out) ||
-      simplify_numeric_powers(e,out))
-    return true;
-  if (!contains_var_symbol(e,'x')){
-    NumParser np;
-    np.p=e.c_str();
-    np.ok=true;
-    double val=np.expr();
-    np.skip();
-    if (np.ok && !*np.p){
-      if (!finite_double(val)){
-        out=e;
-        return true;
-      }
-      working_string exact;
-      out="";
-      out += rational_approx(val,exact)?exact:double_s(val);
-      return true;
-    }
-  }
-  if (e.size()==1 && isalpha((unsigned char)e[0])){
-    out="Simplification:\n";
-    out += e+" is already simple\n";
-    out += e;
-    return true;
-  }
-  {
-    Rat a,b;
-    char v=first_var(e);
-    if (parse_affine_general(e,v,a,b)){
-      out="Collect:\n";
-      out += ""+fmt_linear_rat(a,b,v);
-      return true;
-    }
-  }
-  {
-    char v=first_var(e);
-    Rat a,b;
-    Rat xc,xp;
-    long coef=0,pow=0;
-    if (parse_x_power_factor(e,xc,xp)){
-      out=rat_power_term_s(xc,xp);
-      return true;
-    }
-    if (parse_power_term_var(e,v,coef,pow)){
-      out=rat_power_term_s(rat(coef,1),rat(pow,1));
-      return true;
-    }
-    working_string arg;
-    const char *fns[]={"sin","cos","tan","ln","exp",0};
-    for (int i=0;fns[i];++i){
-      if (parse_unary_arg(strip_outer_parens(nospace_lower(e)),fns[i],arg) &&
-          (arg.size()==1 || parse_affine_general(arg,first_var(arg),a,b))){
-        out=working_string(fns[i])+"("+fmt_expr_for_working(arg,first_var(arg))+")";
-        return true;
-      }
-    }
-  }
-  if (!split_top_fraction(e,num,den)){
-    out=args[0];
-    return true;
-  }
-  char v=first_var(e);
-  if (!factor_expr_simple(num,v,nshow,nfac) || !factor_expr_simple(den,v,dshow,dfac)){
-    if (try_symbolic_command_working(input,out))
-      return true;
-    out=e;
-    return true;
-  }
-  working_string nt[6],dt[6],ct[6];
-  bool nu[6]={0,0,0,0,0,0},du[6]={0,0,0,0,0,0};
-  int nc=factor_terms(nfac,nt,6), dc=factor_terms(dfac,dt,6), cc=0;
-  Rat scale=rat(1,1);
-  for (int i=0;i<nc;++i){
-    for (int j=0;j<dc;++j){
-      if (nu[i] || du[j])
-        continue;
-      working_string common=nt[i];
-      Rat s=rat(1,1);
-      if (nt[i]==dt[j] || common_linear_factor(nt[i],dt[j],common,s)){
-        nu[i]=du[j]=true;
-        ct[cc++]=common;
-        scale=rat_mul(scale,s);
-        break;
-      }
-    }
-  }
-  if (cc){
-    working_string nr=factor_product(nt,nu,nc), dr=factor_product(dt,du,dc);
-    out="Factor:\n";
-    out += nshow+" = "+display_factors(nt,nu,nc)+"\n";
-    out += dshow+" = "+display_factors(dt,du,dc)+"\n";
-    out += "Cancel ";
-    out += join_cancelled(ct,cc);
-    out += "\n";
-    out += (scale.n==1 && scale.d==1)?quotient_after_cancel(nr,dr):quotient_after_scaled_cancel(scale,nr,dr);
-    return true;
-  }
-  out=e;
-  return true;
-}
-
 static working_string sigfig_s(double v,int sf);
 
 static bool try_numeric(const char *input,working_string &out){
@@ -17509,7 +17426,7 @@ static bool try_xform_rewrite_planner(const working_string &start,const working_
 
 static working_string xform_failure_report(const working_string &start,const working_string &target){
   working_string out="Search:\n";
-  out += insert_coeff_stars(start)+"\nTarget\n"+insert_coeff_stars(target);
+  out += insert_coeff_stars(start)+"\nTarget form:\n"+insert_coeff_stars(target);
   return out;
 }
 
@@ -18622,6 +18539,10 @@ bool eval_with_working(const char *input,working_string &out){
   }
   if (starts_command(cs,"binomial")){
     out="Err: unsupported";
+    return true;
+  }
+  if (starts_command(cs,"suvat") && try_suvat(input,out)){
+    strip_weak_working_labels(out);
     return true;
   }
   if (reject_removed_feature(input)){

@@ -1,0 +1,8 @@
+suvat
+Args: suvat(known=value,known=value,known=value)
+Required: Any 3 of s,u,v,a,t.
+Optional: Extra known values may be supplied to check a route.
+Does: Finds missing constant-acceleration values.
+Working: Chooses the matching SUVAT formula, substitutes exact values, then states the missing values.
+Checks: Uses exact rational arithmetic where possible.
+Examples: suvat(u=2,a=3,t=4); suvat(s=40,u=5,t=4)

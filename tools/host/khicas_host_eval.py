@@ -519,6 +519,13 @@ def eval_call(name: str, args: list[str]):
         eq = top_equal(var_eq)
         if eq >= 0:
             return sp.limit(parse_math(args[0]), parse_math(var_eq[:eq]), parse_math(var_eq[eq + 1 :]))
+        if len(args) >= 3:
+            direction = None
+            if len(args) >= 4:
+                direction = args[3].strip()
+            if direction in {"+", "-"}:
+                return sp.limit(parse_math(args[0]), parse_math(args[1]), parse_math(args[2]), dir=direction)
+            return sp.limit(parse_math(args[0]), parse_math(args[1]), parse_math(args[2]))
     return parse_math(name + "(" + ",".join(args) + ")")
 
 
