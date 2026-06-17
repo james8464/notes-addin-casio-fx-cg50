@@ -6318,7 +6318,7 @@ static working_string mech_clean_integral(working_string s){
 static bool try_mech_command(const char *input,working_string &out){
   working_string args[5];
   int n=0;
-  Rat a,b,c;
+  Rat a,b,c,d;
   if (parse_call(input,"weight",args,5,n)){
     if (!arg_rat(args,n,"m",0,a)){
       out="weight(m)\nW=mg";
@@ -6436,7 +6436,10 @@ static bool try_mech_command(const char *input,working_string &out){
       out="impulse(m,u,v) or impulse(F,t)\nI=m(v-u) or I=Ft";
       return true;
     }
-    out="Impulse\nI=m(v-u)\nI="+rat_s(a)+"*("+rat_s(c)+"-"+rat_s(b)+")="+rat_s(rat_mul(a,rat_sub(c,b)))+" Ns";
+    Rat I=rat_mul(a,rat_sub(c,b));
+    out="Impulse\nI=m(v-u)\nI="+rat_s(a)+"*("+rat_s(c)+"-"+rat_s(b)+")="+rat_s(I)+" Ns";
+    if (arg_rat(args,n,"t",3,d) && d.n)
+      out += "\nF=I/t\nF="+rat_s(I)+"/"+rat_s(d)+"="+rat_s(rat_div(I,d))+" N";
     return true;
   }
   if (parse_call(input,"momentum",args,5,n)){
