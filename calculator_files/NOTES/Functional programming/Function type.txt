@@ -53,18 +53,3 @@
     isEqual :: Int -> Int -> Bool
     isEqual x y = x == y
 
-### Co-domain PPQ
-
-- Describe the co-domain of function f: N -> R.
-
-- Describe the co-domain of function f: N --> R (PPQ)
-
-- Answer: the set of real numbers / the set of all possible real-world quantities.
-
-### Accepted Wording
-
-- A. real numbers
-- A. numbers that represent any quantity along an infinite number line
-- A. all numbers excluding imaginary/complex numbers
-- A. rational and irrational numbers
-- TO. real number stated but then another set described

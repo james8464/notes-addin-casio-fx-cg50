@@ -3,17 +3,12 @@
 ## Ppq: Concurrent Access Problems
 
 - Two users (read and) edit a record/the same data simultaneously;
-- The update made by the user who saved (the record) first will be lost //
-  - only the update made by the user who saved (the record) second will be kept //
-  - the update made by the user who saved second will overwrite the update of the
-  - user who saved first
-- One user writes the record/data back/saves then the other user writes the record/data back/saves;
-- One user's update is lost // only one user's update is the kept; NE. data is lost
+- The update made by the user who saved (the record) first will be lost 
 
 ## Ppq: Record Locks
 
-- When a transaction on a record starts / when a user starts to edit a record an (exclusive) lock is set on the record;
-- Other transactions/users cannot edit (A. access) the record/data until the lock is released/while the lock is in place/until the first edit is completed;
+- When a user starts to edit a record a lock is set on the record
+- Other transactions/users cannot edit the data until the lock is released
 
 ## Serialisation
 
@@ -25,7 +20,7 @@
 
 ## Ppq: Timestamp Ordering
 
-- Timestamps are generated for each transaction // timestamps indicate the order that transactions occurred in;
+- Timestamps are generated for each transaction 
 - Database records timestamp of last read / last write transaction for each record / data item;
 - Database server applies rules to determine if processing a transaction will result in loss of data integrity/inconsistency (and if so aborts the transaction);
 

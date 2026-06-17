@@ -1,6 +1,7 @@
 # Conceptual data models and entity relationship modelling
 
-## Practise, Practise, Practise
+## Three types of relationships:
 
-- To correctly draw the ERD from a given standard form database -> FOLLOW THE PRIMARY KEY; this means, starting from a table, where else does its primary key appear? When found - that's the FK, and that's a one-to-many relationship
-- Mark the FKs on the question with a *
+- one to one
+- many to one
+- many to many

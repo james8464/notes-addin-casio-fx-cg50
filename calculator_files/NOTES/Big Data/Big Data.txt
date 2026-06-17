@@ -15,6 +15,8 @@
   - data consists of many different types of data
   - eg from binary files to multimedia files (such as photos and videos)
 
+
+
 ### Examples
 
 - Data from:
@@ -25,6 +27,8 @@
   - NHS (eg to help find patterns in illness/injury)
   - Passport control (eg to find patterns in border crossings)
   - Online shopping (eg identifying what users are interested in)
+
+
 
 ## Issues Big Data Presents
 
@@ -65,12 +69,11 @@
       
 ## Solution - Functional Programming
 
-- NOTE: more detail in 4.12.1
 - functional programming is a solution to processing data over multiple machines
 - functional programs are stateless
   - i.e., they have no side effects
 - functional programs use immutable data structures
-  - i.e., the values stored in data structures can't change at runtime
+  - ie the values stored in data structures can't change at runtime
 - functional programs support higher-order functions
   - eg map and fold
   - allows functions to be input as arguments
