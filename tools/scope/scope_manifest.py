@@ -29,6 +29,7 @@ KEPT_COMMANDS = [
     "integrate",
     "int",
     "implicit_diff",
+    "impulse",
     "incline",
     "lcm",
     "lcoeff",

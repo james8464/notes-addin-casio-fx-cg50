@@ -6298,54 +6298,62 @@ static bool try_mech_command(const char *input,working_string &out){
   Rat a,b,c;
   if (parse_call(input,"weight",args,5,n)){
     if (!arg_rat(args,n,"m",0,a)){
-      out="weight(m)\nW = mg";
+      out="weight(m)\nW=mg";
       return true;
     }
     b=rat_mul(a,rat(49,5));
-    out="Weight\nW = mg\nW = "+rat_s(a)+"*9.8 = "+rat_s(b)+" N";
+    out="Weight\nW=mg\nW="+rat_s(a)+"*9.8="+rat_s(b)+" N";
     return true;
   }
   if (parse_call(input,"force",args,5,n)){
     if (!arg_rat(args,n,"m",0,a) || !arg_rat(args,n,"a",1,b)){
-      out="force(m,a)\nF = ma";
+      out="force(m,a)\nF=ma";
       return true;
     }
-    out="Newton's second law\nF = ma\nF = "+rat_s(a)+"*"+rat_s(b)+" = "+rat_s(rat_mul(a,b))+" N";
+    out="Newton II\nF=ma\nF="+rat_s(a)+"*"+rat_s(b)+"="+rat_s(rat_mul(a,b))+" N";
     return true;
   }
   if (parse_call(input,"moment",args,5,n)){
     if (!arg_rat(args,n,"f",0,a) || !arg_rat(args,n,"d",1,b)){
-      out="moment(F,d)\nM = force * perpendicular distance";
+      out="moment(F,d)\nM=F*d";
       return true;
     }
-    out="Moment\nM = Fd\nM = "+rat_s(a)+"*"+rat_s(b)+" = "+rat_s(rat_mul(a,b))+" N m";
+    out="Moment\nM=Fd\nM="+rat_s(a)+"*"+rat_s(b)+"="+rat_s(rat_mul(a,b))+" N m";
     return true;
   }
   if (parse_call(input,"work",args,5,n)){
     if (!arg_rat(args,n,"f",0,a) || !arg_rat(args,n,"d",1,b)){
-      out="work(F,d)\nwork done = force * distance";
+      out="work(F,d)\nW=F*d";
       return true;
     }
-    out="Work done\nW = Fd\nW = "+rat_s(a)+"*"+rat_s(b)+" = "+rat_s(rat_mul(a,b))+" J";
+    out="Work\nW=Fd\nW="+rat_s(a)+"*"+rat_s(b)+"="+rat_s(rat_mul(a,b))+" J";
+    return true;
+  }
+  if (parse_call(input,"impulse",args,5,n)){
+    if (!arg_rat(args,n,"m",0,a) || !arg_rat(args,n,"u",1,b) || !arg_rat(args,n,"v",2,c)){
+      out="impulse(m,u,v)\nI=m(v-u)";
+      return true;
+    }
+    out="Impulse\nI=m(v-u)\nI="+rat_s(a)+"*("+rat_s(c)+"-"+rat_s(b)+")="+rat_s(rat_mul(a,rat_sub(c,b)))+" Ns";
     return true;
   }
   if (parse_call(input,"energy",args,5,n)){
     if (!arg_rat(args,n,"m",0,a) || !arg_rat(args,n,"v",1,b)){
-      out="energy(m,v[,h])\nKE = 1/2 mv^2\nGPE = mgh";
+      out="energy(m,v[,h])\nKE=1/2mv^2\nGPE=mgh";
       return true;
     }
     c=rat_div(rat_mul(rat_mul(a,b),b),rat(2,1));
-    out="Energy\nKE = 1/2 mv^2\nKE = "+rat_s(c)+" J";
+    out="Energy\nKE=1/2mv^2\nKE="+rat_s(c)+" J";
     if (arg_rat(args,n,"h",2,c))
-      out += "\nGPE = mgh\nGPE = "+rat_s(rat_mul(rat_mul(a,rat(49,5)),c))+" J";
+      out += "\nGPE=mgh\nGPE="+rat_s(rat_mul(rat_mul(a,rat(49,5)),c))+" J";
     return true;
   }
   if (parse_call(input,"friction",args,5,n)){
     if (!arg_rat(args,n,"mu",0,a) || !arg_rat(args,n,"r",1,b)){
-      out="friction(mu,R)\nlimiting friction: F = mu R\nstatic friction: F <= mu R";
+      out="friction(mu,R)\nlimit:F=muR\nstatic:F<=muR";
       return true;
     }
-    out="Friction\nFmax = mu R\nFmax = "+rat_s(a)+"*"+rat_s(b)+" = "+rat_s(rat_mul(a,b))+" N";
+    out="Friction\nFmax=muR\nFmax="+rat_s(a)+"*"+rat_s(b)+"="+rat_s(rat_mul(a,b))+" N";
     return true;
   }
   if (parse_call(input,"resolve",args,5,n)){
@@ -6360,10 +6368,10 @@ static bool try_mech_command(const char *input,working_string &out){
   if (parse_call(input,"incline",args,5,n)){
     working_string m=arg_text(args,n,"m",0), th=arg_text(args,n,"theta",1);
     if (m.empty() || th.empty()){
-      out="incline(m,theta)\ndown slope = mg*sin(theta)\nnormal reaction = mg*cos(theta)";
+      out="incline(m,theta)\ndown = mg*sin(theta)\nR = mg*cos(theta)";
       return true;
     }
-    out="Incline\nweight down slope = "+m+"*g*sin("+th+")\nnormal reaction = "+m+"*g*cos("+th+")";
+    out="Incline\ndown = "+m+"*g*sin("+th+")\nR = "+m+"*g*cos("+th+")";
     return true;
   }
   if (parse_call(input,"projectile",args,5,n)){
@@ -6378,9 +6386,9 @@ static bool try_mech_command(const char *input,working_string &out){
       out += "y = uy*t - 1/2*g*t^2 = "+u+"*sin("+th+")*"+t+" - 1/2*g*"+t+"^2";
     }
     else {
-      out += "time of flight = 2*"+u+"*sin("+th+")/g\n";
+      out += "T = 2*"+u+"*sin("+th+")/g\n";
       out += "range = "+u+"^2*sin(2*"+th+")/g\n";
-      out += "max height = "+u+"^2*sin("+th+")^2/(2g)";
+      out += "Hmax = "+u+"^2*sin("+th+")^2/(2g)";
     }
     return true;
   }
@@ -18805,10 +18813,6 @@ bool eval_with_working(const char *input,working_string &out){
     }
   }
   if (try_raw_constant_integral_route(s,out) || try_raw_diff_product_route(s,out)){
-    strip_weak_working_labels(out);
-    return true;
-  }
-  if (try_trig_log_tan_sum(input,out)){
     strip_weak_working_labels(out);
     return true;
   }

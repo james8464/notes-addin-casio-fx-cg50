@@ -1,0 +1,8 @@
+impulse
+Args: impulse(m,u,v)
+Required: Mass m, initial velocity u, final velocity v.
+Optional: None.
+Does: Finds impulse/change in momentum.
+Working: Uses I = m(v-u).
+Checks: Sign shows direction from the chosen positive direction.
+Examples: impulse(0.5,4,-2)

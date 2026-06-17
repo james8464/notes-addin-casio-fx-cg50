@@ -92,6 +92,7 @@ const catalogFunc completeCat[] = { // scoped A-level Pure catalog
   {"integrate(f,x)", CAT_CATEGORY_CALCULUS},
   {"int", CAT_CATEGORY_CALCULUS},
   {"implicit_diff", CAT_CATEGORY_CALCULUS},
+  {"impulse", CAT_CATEGORY_MECH},
   {"incline", CAT_CATEGORY_MECH},
   {"lcm", CAT_CATEGORY_ARIT},
   {"lcoeff", CAT_CATEGORY_POLYNOMIAL},
