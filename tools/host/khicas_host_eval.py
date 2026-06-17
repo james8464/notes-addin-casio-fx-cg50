@@ -130,7 +130,7 @@ def preprocess(src: str) -> str:
 def parser_locals(src: str) -> dict[str, object]:
     local = dict(NAMES)
     for name in re.findall(r"\b[A-Za-z_][A-Za-z0-9_]*\b", src):
-        if name not in local and any(ch.isdigit() or ch == "_" for ch in name):
+        if name not in local and (len(name) > 2 or any(ch.isdigit() or ch == "_" for ch in name)):
             local[name] = sp.Symbol(name)
     return local
 

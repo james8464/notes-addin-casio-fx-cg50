@@ -37,6 +37,8 @@ EDGE_CASES = [
     "suvat(s=s0,u=u0,a=a0)",
     "suvat(u=v0,a=a0,t=t0)",
     "suvat(u=var_v,a=acc_a,t=time_t)",
+    "suvat(u=speed,a=accel,t=time)",
+    "suvat(s=dist,u=speed,a=accel)",
     "suvat(u=2,a=0,v=2)",
     "suvat(s=0,u=0,v=0)",
     "suvat(s=0,u=5,v=-5)",
@@ -97,6 +99,20 @@ def main() -> int:
             for bad in ("\nu=0\n", "\na=0\n", "\nt=0\n"):
                 if bad in out:
                     raise AssertionError(f"{expr}: digit-suffixed parameter collapsed to zero\n{out}")
+        if expr == "suvat(u=speed,a=accel,t=time)":
+            for needle in ("u=speed", "a=accel", "t=time", "v=accel*time + speed"):
+                if needle not in out:
+                    raise AssertionError(f"{expr}: missing word-symbol parameter {needle!r}\n{out}")
+            for bad in ("\nu=0\n", "\na=0\n", "\nt=0\n"):
+                if bad in out:
+                    raise AssertionError(f"{expr}: word-symbol parameter collapsed to zero\n{out}")
+        if expr == "suvat(s=dist,u=speed,a=accel)":
+            for needle in ("s=dist", "u=speed", "a=accel", "sqrt(2*accel*dist + speed^2)"):
+                if needle not in out:
+                    raise AssertionError(f"{expr}: missing word-symbol parameter {needle!r}\n{out}")
+            for bad in ("\ns=0\n", "\nu=0\n", "\na=0\n"):
+                if bad in out:
+                    raise AssertionError(f"{expr}: word-symbol parameter collapsed to zero\n{out}")
         cases += 1
 
     print(f"OK suvat stress cases={cases}")
