@@ -30,6 +30,7 @@ CASES = [
     ("impulse(F=12,t=1/2)", ["Impulse", "I=Ft", "12*1/2=6 Ns"]),
     ("momentum(3,8)", ["Momentum", "p=mv", "24 kg m/s"]),
     ("friction(2/5,25)", ["Friction", "Fmax=muR", "10 N"]),
+    ("friction(2/5,25,12)", ["Friction", "Fmax=muR", "10 N", "F>Fmax: sliding"]),
     ("resolve(20,30)", ["Resolve", "adjacent = 20*cos(30)", "opposite = 20*sin(30)"]),
     ("incline(5,30)", ["Incline", "down =", "R ="]),
     ("projectile(20,30)", ["Projectile", "ux =", "T =", "range", "Hmax"]),

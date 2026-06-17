@@ -6469,10 +6469,13 @@ static bool try_mech_command(const char *input,working_string &out){
   }
   if (parse_call(input,"friction",args,5,n)){
     if (!arg_rat(args,n,"mu",0,a) || !arg_rat(args,n,"r",1,b)){
-      out="friction(mu,R)\nlimit:F=muR\nstatic:F<=muR";
+      out="friction(mu,R[,F])\nlimit:F=muR\nstatic:F<=muR";
       return true;
     }
-    out="Friction\nFmax=muR\nFmax="+rat_s(a)+"*"+rat_s(b)+"="+rat_s(rat_mul(a,b))+" N";
+    c=rat_mul(a,b);
+    out="Friction\nFmax=muR\nFmax="+rat_s(a)+"*"+rat_s(b)+"="+rat_s(c)+" N";
+    if (arg_rat(args,n,"f",2,d))
+      out += rat_cmp(d,c)<=0 ? "\nF<=Fmax: no sliding" : "\nF>Fmax: sliding";
     return true;
   }
   if (parse_call(input,"resolve",args,5,n)){
@@ -11961,8 +11964,6 @@ static bool try_algebra(const char *input,working_string &out){
     n=0;
   bool taylor_call=series_call?false:parse_call(input,"taylor",args,6,n);
   if ((series_call || taylor_call) && n>=1){
-    if (taylor_call && try_taylor_symbolic_binomial_cmd(input,out))
-      return true;
     working_string about=n>=4?(compact(args[1])+"="+compact(args[2])):(n>=2?compact(args[1]):"x=0");
     working_string order=n>=4?compact(args[3]):(n>=3?compact(args[2]):"n");
     long oi=0;
@@ -18773,10 +18774,6 @@ bool eval_with_working(const char *input,working_string &out){
       strip_weak_working_labels(out);
       return true;
     }
-    if (try_normal_sum_cubes_identity(input,out)){
-      strip_weak_working_labels(out);
-      return true;
-    }
     if (normal_n!=1){
       out="Err: unsupported";
       return true;
@@ -18804,10 +18801,6 @@ bool eval_with_working(const char *input,working_string &out){
   }
   if (reject_removed_feature(input)){
     out="Err: unsupported";
-    return true;
-  }
-  if (starts_command(cs,"taylor") && try_taylor_symbolic_binomial_cmd(input,out)){
-    strip_weak_working_labels(out);
     return true;
   }
   {
