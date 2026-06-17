@@ -6408,8 +6408,13 @@ static bool try_mech_command(const char *input,working_string &out){
     return true;
   }
   if (parse_call(input,"impulse",args,5,n)){
+    working_string pc=lower(compact(input));
+    if ((contains(pc,"f=") || n==2) && arg_rat(args,n,"f",0,a) && arg_rat(args,n,"t",1,b)){
+      out="Impulse\nI=Ft\nI="+rat_s(a)+"*"+rat_s(b)+"="+rat_s(rat_mul(a,b))+" Ns";
+      return true;
+    }
     if (!arg_rat(args,n,"m",0,a) || !arg_rat(args,n,"u",1,b) || !arg_rat(args,n,"v",2,c)){
-      out="impulse(m,u,v)\nI=m(v-u)";
+      out="impulse(m,u,v) or impulse(F,t)\nI=m(v-u) or I=Ft";
       return true;
     }
     out="Impulse\nI=m(v-u)\nI="+rat_s(a)+"*("+rat_s(c)+"-"+rat_s(b)+")="+rat_s(rat_mul(a,rat_sub(c,b)))+" Ns";

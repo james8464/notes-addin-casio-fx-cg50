@@ -1,8 +1,8 @@
 impulse
-Args: impulse(m,u,v)
-Required: Mass m, initial velocity u, final velocity v.
-Optional: None.
+Args: impulse(m,u,v) or impulse(F,t)
+Required: Mass m, initial velocity u, final velocity v; or force F and time t.
+Optional: Named arguments F=..., t=... may be used.
 Does: Finds impulse/change in momentum.
-Working: Uses I = m(v-u).
+Working: Uses I = m(v-u) or I = Ft.
 Checks: Sign shows direction from the chosen positive direction.
-Examples: impulse(0.5,4,-2)
+Examples: impulse(0.5,4,-2); impulse(F=12,t=1/2)
