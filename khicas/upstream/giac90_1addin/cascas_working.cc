@@ -6313,6 +6313,29 @@ static bool try_mech_command(const char *input,working_string &out){
     out="Newton II\nF=ma\nF="+rat_s(a)+"*"+rat_s(b)+"="+rat_s(rat_mul(a,b))+" N";
     return true;
   }
+  if (parse_call(input,"connected",args,5,n)){
+    if (!arg_rat(args,n,"m1",0,a) || !arg_rat(args,n,"m2",1,b) || !arg_rat(args,n,"f",2,c)){
+      out="connected(m1,m2,F)\na=F/(m1+m2)\nT=m1*a";
+      return true;
+    }
+    Rat acc=rat_div(c,rat_add(a,b));
+    out="Connected\na=F/(m1+m2)\na="+rat_s(c)+"/("+rat_s(a)+"+"+rat_s(b)+")="+rat_s(acc);
+    out += "\nT=m1*a="+rat_s(a)+"*"+rat_s(acc)+"="+rat_s(rat_mul(a,acc))+" N";
+    return true;
+  }
+  if (parse_call(input,"pulley",args,5,n)){
+    Rat g=rat(49,5);
+    if (!arg_rat(args,n,"m1",0,a) || !arg_rat(args,n,"m2",1,b)){
+      out="pulley(m1,m2[,g])\na=(m2-m1)g/(m1+m2)\nT=m1(g+a)";
+      return true;
+    }
+    if (arg_rat(args,n,"g",2,c))
+      g=c;
+    Rat acc=rat_div(rat_mul(rat_sub(b,a),g),rat_add(a,b));
+    out="Pulley\na=(m2-m1)g/(m1+m2)\na=("+rat_s(b)+"-"+rat_s(a)+")*"+rat_s(g)+"/("+rat_s(a)+"+"+rat_s(b)+")="+rat_s(acc);
+    out += "\nT=m1(g+a)="+rat_s(a)+"*("+rat_s(g)+"+"+rat_s(acc)+")="+rat_s(rat_mul(a,rat_add(g,acc)))+" N";
+    return true;
+  }
   if (parse_call(input,"moment",args,5,n)){
     if (!arg_rat(args,n,"f",0,a) || !arg_rat(args,n,"d",1,b)){
       out="moment(F,d)\nM=F*d";

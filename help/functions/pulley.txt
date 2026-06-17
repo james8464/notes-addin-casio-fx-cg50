@@ -1,0 +1,8 @@
+pulley
+Args: pulley(m1,m2[,g])
+Required: Two masses m1,m2.
+Optional: g, default 9.8.
+Does: Finds acceleration and tension for two particles joined over a smooth pulley.
+Working: Uses a=(m2-m1)g/(m1+m2), then T=m1(g+a).
+Checks: Positive acceleration means m2 moves down.
+Examples: pulley(2,3); pulley(2,3,g=10)

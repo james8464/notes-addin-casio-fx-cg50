@@ -132,7 +132,7 @@ static bool removed_feature(std::string const &expr)
         "randpoly","egv","egvl","eigenvals","eigenvalues","eigenvects",
         "eigenvectors","svd","ker","kernel","rank","rat_jordan",
         "rat_jordan_block","pcar_hessenberg","det_minor","basis","image",
-        "rref","ref","pulley"
+        "rref","ref"
     };
     for(char const *name : calls) {
         if(has_call(s, name)) return true;
@@ -175,7 +175,7 @@ static char const *pure_method_fallback(bool removed)
     return removed
         ? "Pure method fallback:\n"
           "unsupported built-in removed from this Pure build.\n"
-          "1. For Paper 3 mechanics try suvat, force, weight, moment, friction, resolve, incline or projectile.\n"
+          "1. For Paper 3 mechanics try suvat, force, connected, pulley, weight, moment, friction, resolve, incline or projectile.\n"
           "2. Otherwise rewrite using algebra, trig, logs or calculus.\n"
           "3. Stats, matrices, plotting and scripts stay outside this CAS build.\n"
         : "General Pure method:\n"

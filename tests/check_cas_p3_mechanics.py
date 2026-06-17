@@ -13,6 +13,8 @@ CASES = [
     ("suvat(s=32,v=14,t=4)", ["SUVAT", "u = 2s/t - v", "u = 2", "a = 3"]),
     ("suvat(s=32,a=3,t=4)", ["SUVAT", "u = (s - 1/2 at^2)/t", "u = 2", "v = 14"]),
     ("force(12,3)", ["Newton II", "F=ma", "36 N"]),
+    ("connected(2,3,10)", ["Connected", "a=F/(m1+m2)", "a=10/(2+3)=2", "T=m1*a=2*2=4 N"]),
+    ("pulley(2,3)", ["Pulley", "a=(m2-m1)g/(m1+m2)", "a=(3-2)*49/5/(2+3)=49/25", "T=m1(g+a)=2*(49/5+49/25)=588/25 N"]),
     ("weight(6)", ["Weight", "W=mg", "294/5 N"]),
     ("moment(10,4)", ["Moment", "M=Fd", "40 N m"]),
     ("work(12,5)", ["Work", "W=Fd", "60 J"]),
