@@ -12,6 +12,7 @@ CASES = [
     ("suvat(v=14,a=3,t=4)", ["SUVAT", "u = v - at", "u = 2", "s = 32"]),
     ("suvat(s=32,v=14,t=4)", ["SUVAT", "u = 2s/t - v", "u = 2", "a = 3"]),
     ("suvat(s=32,a=3,t=4)", ["SUVAT", "u = (s - 1/2 at^2)/t", "u = 2", "v = 14"]),
+    ("suvat(u=4,v=10,a=2)", ["SUVAT", "t = (v-u)/a", "t = 3", "s = 21"]),
     ("force(12,3)", ["Newton II", "F=ma", "36 N"]),
     ("force(m=x,a=y)", ["Newton II", "F=ma", "x*y N"]),
     ("connected(2,3,10)", ["Connected", "a=F/(m1+m2)", "a=10/(2+3)=2", "T=m1*a=2*2=4 N"]),
