@@ -32,10 +32,14 @@ TRANSFORMS = standard_transformations + (
     rationalize,
 )
 
+DEMOIVRE_SOURCE_RE = re.compile(r"\(\s*cos\(([^()]*)\)\s*([+-])\s*i\*sin\(\1\)\s*\)\s*\^\s*(-?\d+)")
+
 NAMES: dict[str, object] = {
     "pi": sp.pi,
     "e": sp.E,
     "E": sp.E,
+    "i": sp.I,
+    "I": sp.I,
     "ln": sp.log,
     "sqrt": sp.sqrt,
     "exp": sp.exp,
@@ -69,8 +73,25 @@ def cas_root(expr, degree=2):
     return expr ** (sp.S.One / degree)
 
 
+def cas_sum(expr, var, lo, hi):
+    return sp.summation(expr, (var, lo, hi))
+
+
+def cas_product(expr, var, lo, hi):
+    return sp.product(expr, (var, lo, hi))
+
+
+def cas_limit(expr, var, point, direction=None):
+    if direction in {"+", "-"}:
+        return sp.limit(expr, var, point, dir=direction)
+    return sp.limit(expr, var, point)
+
+
 NAMES["log"] = cas_log
 NAMES["root"] = cas_root
+NAMES["sum"] = cas_sum
+NAMES["product"] = cas_product
+NAMES["limit"] = cas_limit
 
 for _name in [
     "x",
@@ -133,6 +154,11 @@ NAMES.update({
 
 
 def preprocess(src: str) -> str:
+    def demoivre_repl(match: re.Match[str]) -> str:
+        arg, sign, exponent = match.groups()
+        return f"(cos(({exponent})*({arg})){sign}i*sin(({exponent})*({arg})))"
+
+    src = DEMOIVRE_SOURCE_RE.sub(demoivre_repl, src)
     src = re.sub(r"\blambda\b", "lambda_var", src)
     return src
 

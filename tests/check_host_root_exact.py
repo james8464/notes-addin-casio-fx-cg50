@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regression tests for host exact callback support of KhiCAS root(...)."""
+"""Regression tests for host exact callback parser coverage."""
 
 from __future__ import annotations
 
@@ -16,6 +16,9 @@ CASES = [
     ("simplify(root(2^2,2))", ("2",)),
     ("simplify(root(27,3))", ("3",)),
     ("simplify(root((-8),3))", ("-2",)),
+    ("limit(sum((x/2)^k,k,0,2),x,1)", ("7/4",)),
+    ("simplify((cos(2*pi/10)+i*sin(2*pi/10))^10)", ("1",)),
+    ("simplify((cos(2*pi/30)+i*sin(2*pi/30))^30)", ("1",)),
 ]
 
 
@@ -31,6 +34,7 @@ def main() -> int:
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             check=False,
+            timeout=20,
         )
         out = proc.stdout
         if proc.returncode or "Err:" in out or "unsupported" in out:
