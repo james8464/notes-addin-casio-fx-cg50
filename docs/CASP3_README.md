@@ -21,17 +21,17 @@
 
 `suvat(known=value,known=value,known=value)`
 
-Known symbols: `u`, `v`, `a`, `s`, `t`.
+Known symbols: `s`, `u`, `v`, `a`, `t`.
 
 Examples:
 
-- `suvat(u=2,a=3,t=4)` finds `v` and `s`.
-- `suvat(u=5,v=17,t=3)` finds `a` and `s`.
-- `suvat(u=4,v=10,a=2)` finds `s` and `t`.
-- `suvat(s=40,u=5,t=4)` finds `a` and `v`.
-- `suvat(v=20,a=3,s=50)` finds `u` and `t`.
+- `suvat(u=2,a=3,t=4)` gives `s`, `u`, `v`, `a`, `t` on separate lines.
+- `suvat(s=10,u=2,a=3)` gives both possible times and velocities, plus `phys:t` for non-negative time roots.
+- `suvat(u=v0,a=a0,t=t0)` keeps algebraic parameters exact where KhiCAS can solve them.
+- `suvat(u=sin(pi/6),a=1,t=2)` keeps exact trig values.
+- `suvat(u=2,a=3)` lists known values and all four SUVAT equations.
 
-Output shows selected SUVAT equation, substitution, solved value, and units when implied.
+Output uses KhiCAS solve over the full SUVAT system. Unnamed, unknown, or malformed inputs are ignored with a message. Contradictory inputs give `No sol`.
 
 ### Projectiles
 

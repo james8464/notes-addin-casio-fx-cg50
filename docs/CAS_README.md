@@ -130,10 +130,10 @@ Examples:
 
 - `suvat(u=2,a=3,t=4)` uses KhiCAS exact solve and gives `s`, `u`, `v`, `a`, `t` on separate lines.
 - `suvat(s=10,u=2,a=3)` gives both possible times and velocities, plus `phys:t` for non-negative time roots.
-- `suvat(u=x,a=2,t=3)` keeps algebraic values exact where possible.
+- `suvat(u=x,a=2,t=3)`, `suvat(u=v0,a=a0,t=t0)`, and exact/trig inputs such as `suvat(u=sin(pi/6),a=1,t=2)` keep algebraic values exact where KhiCAS can solve them.
 - `suvat(displacement=10,initial=2,acc=3)` accepts common aliases for `s`, `u`, and `a`.
-- `suvat(u=2,a=3)` lists the known values and says that another named value is needed.
-- Unnamed or unknown inputs are ignored with a message instead of producing parametric junk.
+- `suvat(u=2,a=3)` lists the known values, all four SUVAT equations, and says that another named value is needed.
+- Unnamed, unknown, or malformed inputs are ignored with a message instead of producing parametric junk.
 - Contradictory inputs return `No sol` instead of a silent CAS error.
 
 Other compact mechanics commands are available from F4 -> Mechanics: `force`, `weight`, `friction`, `connected`, `pulley`, `lift`, `varacc`, `moment`, `work`, `power`, `impulse`, `momentum`, `energy`, `resolve`.

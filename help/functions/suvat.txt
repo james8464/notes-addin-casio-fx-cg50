@@ -2,7 +2,7 @@ suvat
 Args: suvat(known=value,known=value,known=value)
 Required: Any 3 named values from s,u,v,a,t.
 Optional: Extra named values may be supplied. Aliases include distance/displacement for s, initial/start for u, final/end for v, acc/acceleration for a, and time for t.
-Does: Uses KhiCAS solve to find obtainable constant-acceleration values and lists equations used.
-Working: Solves v=u+at, s=ut+1/2at^2, v^2=u^2+2as and s=(u+v)t/2 exactly. Quadratic cases show paired solution lines and physical non-negative time branches.
-Checks: Ignores unnamed/unknown inputs with a message. Contradictory inputs give No solution. Choose the positive direction first.
-Examples: suvat(u=2,a=3,t=4); suvat(s=10,u=2,a=3); suvat(displacement=10,initial=2,acc=3); suvat(u=2,a=3)
+Does: Uses KhiCAS solve to obtain every possible constant-acceleration value, then prints s,u,v,a,t on separate lines plus the equations used.
+Working: Solves v=u+at, s=ut+1/2at^2, v^2=u^2+2as and s=(u+v)t/2 exactly. Fractions, surds, trig values and algebraic parameters are kept exact where KhiCAS can solve them.
+Checks: Quadratic cases show all roots and phys:t for non-negative time branches. Too few inputs list known values and all equations. Unknown, unnamed or malformed inputs are ignored with a message. Contradictory inputs give No sol. Choose the positive direction first.
+Examples: suvat(u=2,a=3,t=4); suvat(s=10,u=2,a=3); suvat(u=sin(pi/6),a=1,t=2); suvat(u=v0,a=a0,t=t0); suvat(u=2,a=3)
