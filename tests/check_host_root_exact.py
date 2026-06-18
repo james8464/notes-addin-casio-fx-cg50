@@ -19,6 +19,9 @@ CASES = [
     ("limit(sum((x/2)^k,k,0,2),x,1)", ("7/4",)),
     ("simplify((cos(2*pi/10)+i*sin(2*pi/10))^10)", ("1",)),
     ("simplify((cos(2*pi/30)+i*sin(2*pi/30))^30)", ("1",)),
+    ("simplify(binomial(5,2)+binomial(5,3))", ("20",)),
+    ("limit((abs(x)-x)/x,x,0,+)", ("0",)),
+    ("limit((abs(x)-x)/x,x,0,-)", ("-2",)),
 ]
 
 

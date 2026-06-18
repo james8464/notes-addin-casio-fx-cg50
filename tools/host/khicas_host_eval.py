@@ -149,6 +149,8 @@ NAMES.update({
     "int": _integrate,
     "log10": lambda x: sp.log(x, 10),
     "factorial": sp.factorial,
+    "binomial": sp.binomial,
+    "comb": sp.binomial,
     "exact": lambda x: x,
 })
 

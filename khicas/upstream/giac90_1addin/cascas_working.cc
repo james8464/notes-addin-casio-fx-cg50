@@ -6149,7 +6149,7 @@ static bool try_symbolic_command_exact_small(const working_string &fn,working_st
 static bool try_symbolic_command_working(const char *input,working_string &out){
   const SymbolicCommandRule rules[]={
     {"factor",1,2},
-    {"limit",2,3},
+    {"limit",2,4},
     {"fsolve",1,2},
     {"simplify",1,1},
     {0,0,0}
