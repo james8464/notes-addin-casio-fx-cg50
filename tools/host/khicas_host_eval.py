@@ -81,6 +81,10 @@ def cas_product(expr, var, lo, hi):
     return sp.product(expr, (var, lo, hi))
 
 
+def cas_resultant(p, q, var):
+    return sp.resultant(p, q, var)
+
+
 def cas_limit(expr, var, point, direction=None):
     if direction in {"+", "-"}:
         return sp.limit(expr, var, point, dir=direction)
@@ -91,6 +95,7 @@ NAMES["log"] = cas_log
 NAMES["root"] = cas_root
 NAMES["sum"] = cas_sum
 NAMES["product"] = cas_product
+NAMES["resultant"] = cas_resultant
 NAMES["limit"] = cas_limit
 
 for _name in [

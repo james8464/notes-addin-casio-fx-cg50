@@ -22,6 +22,7 @@ CASES = [
     ("simplify(binomial(5,2)+binomial(5,3))", ("20",)),
     ("limit((abs(x)-x)/x,x,0,+)", ("0",)),
     ("limit((abs(x)-x)/x,x,0,-)", ("-2",)),
+    ("factor(resultant(x^2+a*x+1,x^2+b*x+2,x))", ("2*a^2 - 3*a*b + b^2 + 1",)),
 ]
 
 
