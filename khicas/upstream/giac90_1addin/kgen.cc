@@ -9679,7 +9679,7 @@ namespace giac {
     if ((n.type==_POLY) && (d.type==_POLY)){
       polynome np(*n._POLYptr),dp(*d._POLYptr);
       if (np.dim && dp.dim && np.dim!=dp.dim)
-	return gensizeerr(gettext("simplify: Polynomials do not have the same dimension"));
+	return gensizeerr(gettext("poly dim"));
       polynome g(np.dim);
       g=simplify(np,dp);
       n=np;
@@ -10344,7 +10344,7 @@ namespace giac {
       return a_orig;
     gen res;
     if (!fracmod(a_orig,modulo,res))
-      return gensizeerr(gettext("Reconstructed denominator is not prime with modulo"));
+      return gensizeerr(gettext("mod denominator"));
     return res;
   }
 

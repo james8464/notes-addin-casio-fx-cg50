@@ -764,7 +764,7 @@ namespace giac {
     bool do_pollard=true;
     gen a=ifactor2(n,v,do_pollard,contextptr);
     if (a==-1)
-      return makevecteur(gensizeerr(gettext("Quadratic sieve failure, perhaps number too large")));
+      return makevecteur(gensizeerr(gettext("qsfail")));
     if (is_zero(a))
       return makevecteur(gensizeerr(gettext("Stopped by user interruption")));
     n=1;

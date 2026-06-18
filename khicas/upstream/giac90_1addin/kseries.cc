@@ -2461,7 +2461,7 @@ namespace giac {
       if (f.type!=_VECT || f._VECTptr->size()!=4)
 	return gensizeerr(gettext("Undefined integral"));
       if ((*f._VECTptr)[1]==x)
-	return gensizeerr(gettext("Integration variable and limit variable are the same"));	
+	return gensizeerr(gettext("same int/limit var"));
       if (!is_zero(derive(f._VECTptr->front(),x,contextptr)))
 	return gensizeerr(gettext("Integral in limit not implemented yet"));
     }

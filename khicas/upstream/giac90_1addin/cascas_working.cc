@@ -18728,8 +18728,7 @@ static bool parse_power_diff(const working_string &src,working_string &u,working
     return false;
   u=strip_outer_parens(b1);
   v=strip_outer_parens(b2);
-  return u.size()==1 && isalpha((unsigned char)u[0]) &&
-         ((v.size()==1 && isalpha((unsigned char)v[0])) || v=="1");
+  return !u.empty() && !v.empty();
 }
 
 static working_string power_diff_sum(const working_string &u,const working_string &v,long p){
@@ -18761,6 +18760,22 @@ static bool try_factor_power_difference(const char *input,working_string &out){
       !parse_power_diff(args[0],u,v,p))
     return false;
   out="("+u+"-"+v+")*"+power_diff_sum(u,v,p);
+  return true;
+}
+
+static bool try_limit_power_difference_quotient(const char *input,working_string &out){
+  working_string args[4],num,den,u,v,var;
+  long p=0;
+  int n=0;
+  if (!parse_call(input,"limit",args,4,n) || n<3 ||
+      compact(args[2])!="0" ||
+      !split_top_fraction(strip_outer_parens(nospace_lower(args[0])),num,den) ||
+      !parse_power_diff(num,u,v,p))
+    return false;
+  var=compact(args[1]);
+  if (compact(den)!=var || (u!=var+"+"+v && u!=v+"+"+var))
+    return false;
+  out=int_s(p)+"*"+v+"^"+int_s(p-1);
   return true;
 }
 
@@ -19049,6 +19064,10 @@ bool eval_with_working(const char *input,working_string &out){
     }
   }
   if (try_factor_power_difference(input,out)){
+    strip_weak_working_labels(out);
+    return true;
+  }
+  if (try_limit_power_difference_quotient(input,out)){
     strip_weak_working_labels(out);
     return true;
   }

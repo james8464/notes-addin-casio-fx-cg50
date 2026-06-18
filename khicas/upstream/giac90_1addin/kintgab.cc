@@ -965,7 +965,7 @@ namespace giac {
       if (ck_is_greater(c,a,contextptr) && ck_is_greater(b,c,contextptr))
 	res += quotesubst(A,x,c,contextptr);
       else
-	*logptr(contextptr) << gettext("Warning, Dirac function outside summation interval") << endl;
+	*logptr(contextptr) << gettext("Dirac outside sum") << endl;
       return true;
     }
     if (a==b){
@@ -1893,7 +1893,7 @@ namespace giac {
       if (ck_is_greater(c,a_orig,contextptr) && ck_is_greater(b_orig,c,contextptr))
 	res += quotesubst(A,x,c,contextptr);
       else
-	*logptr(contextptr) << gettext("Warning, Dirac function outside summation interval") << endl;
+	*logptr(contextptr) << gettext("Dirac outside sum") << endl;
       return true;
     }
     // detect Heaviside 

@@ -3190,7 +3190,7 @@ namespace giac {
 	  break;
       }
       if (i!=w.size())
-	return gensizeerr(gettext("fsolve([equations],[variables],[guesses])"));
+	return gensizeerr(gettext("fsolve eq,var,guess"));
       if (s==2 && _sort(lvar(v0),contextptr)==_sort(v[1],contextptr))
 	return evalf(gsolve(*v0._VECTptr,*v[1]._VECTptr,complex_mode(contextptr),evalf_after,contextptr),1,contextptr);
     }

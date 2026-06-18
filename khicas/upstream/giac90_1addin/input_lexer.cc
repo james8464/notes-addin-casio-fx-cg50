@@ -3023,7 +3023,7 @@ case YY_STATE_EOF(backquote):
 
 	default:
 		YY_FATAL_ERROR(
-			"fatal flex scanner internal error--no action found" );
+			"lexer error" );
 	} /* end of action switch */
 		} /* end of scanning one token */
 	} /* end of user's declarations */
@@ -3046,7 +3046,7 @@ static int yy_get_next_buffer (yyscan_t yyscanner)
 
 	if ( yyg->yy_c_buf_p > &YY_CURRENT_BUFFER_LVALUE->yy_ch_buf[yyg->yy_n_chars + 1] )
 		YY_FATAL_ERROR(
-		"fatal flex scanner internal error--end of buffer missed" );
+		"lexer error" );
 
 	if ( YY_CURRENT_BUFFER_LVALUE->yy_fill_buffer == 0 )
 		{ /* Don't try to fill the buffer, so this is an EOF. */
@@ -3157,7 +3157,7 @@ static int yy_get_next_buffer (yyscan_t yyscanner)
 		int new_size = yyg->yy_n_chars + number_to_move + (yyg->yy_n_chars >> 1);
 		YY_CURRENT_BUFFER_LVALUE->yy_ch_buf = (char *) giac_yyrealloc((void *) YY_CURRENT_BUFFER_LVALUE->yy_ch_buf,new_size ,yyscanner );
 		if ( ! YY_CURRENT_BUFFER_LVALUE->yy_ch_buf )
-			YY_FATAL_ERROR( "out of dynamic memory in yy_get_next_buffer()" );
+			YY_FATAL_ERROR( "oom" );
 	}
 
 	yyg->yy_n_chars += number_to_move;
@@ -3422,7 +3422,7 @@ static void giac_yy_load_buffer_state  (yyscan_t yyscanner)
     
 	b = (YY_BUFFER_STATE) giac_yyalloc(sizeof( struct yy_buffer_state ) ,yyscanner );
 	if ( ! b )
-		YY_FATAL_ERROR( "out of dynamic memory in giac_yy_create_buffer()" );
+		YY_FATAL_ERROR( "oom" );
 
 	b->yy_buf_size = (yy_size_t)size;
 
@@ -3431,7 +3431,7 @@ static void giac_yy_load_buffer_state  (yyscan_t yyscanner)
 	 */
 	b->yy_ch_buf = (char *) giac_yyalloc(b->yy_buf_size + 2 ,yyscanner );
 	if ( ! b->yy_ch_buf )
-		YY_FATAL_ERROR( "out of dynamic memory in giac_yy_create_buffer()" );
+		YY_FATAL_ERROR( "oom" );
 
 	b->yy_is_our_buffer = 1;
 
@@ -3590,7 +3590,7 @@ static void giac_yyensure_buffer_stack (yyscan_t yyscanner)
 								(num_to_alloc * sizeof(struct yy_buffer_state*)
 								, yyscanner);
 		if ( ! yyg->yy_buffer_stack )
-			YY_FATAL_ERROR( "out of dynamic memory in giac_yyensure_buffer_stack()" );
+			YY_FATAL_ERROR( "oom" );
 
 		memset(yyg->yy_buffer_stack, 0, num_to_alloc * sizeof(struct yy_buffer_state*));
 
@@ -3610,7 +3610,7 @@ static void giac_yyensure_buffer_stack (yyscan_t yyscanner)
 								num_to_alloc * sizeof(struct yy_buffer_state*)
 								, yyscanner);
 		if ( ! yyg->yy_buffer_stack )
-			YY_FATAL_ERROR( "out of dynamic memory in giac_yyensure_buffer_stack()" );
+			YY_FATAL_ERROR( "oom" );
 
 		/* zero only the new slots.*/
 		memset(yyg->yy_buffer_stack + yyg->yy_buffer_stack_max, 0, grow_size * sizeof(struct yy_buffer_state*));
@@ -3636,7 +3636,7 @@ YY_BUFFER_STATE giac_yy_scan_buffer  (char * base, yy_size_t  size , yyscan_t yy
 
 	b = (YY_BUFFER_STATE) giac_yyalloc(sizeof( struct yy_buffer_state ) ,yyscanner );
 	if ( ! b )
-		YY_FATAL_ERROR( "out of dynamic memory in giac_yy_scan_buffer()" );
+		YY_FATAL_ERROR( "oom" );
 
 	b->yy_buf_size = size - 2;	/* "- 2" to take care of EOB's */
 	b->yy_buf_pos = b->yy_ch_buf = base;
@@ -3685,7 +3685,7 @@ YY_BUFFER_STATE giac_yy_scan_bytes  (yyconst char * yybytes, int  _yybytes_len ,
 	n = (yy_size_t) (_yybytes_len + 2);
 	buf = (char *) giac_yyalloc(n ,yyscanner );
 	if ( ! buf )
-		YY_FATAL_ERROR( "out of dynamic memory in giac_yy_scan_bytes()" );
+		YY_FATAL_ERROR( "oom" );
 
 	for ( i = 0; i < _yybytes_len; ++i )
 		buf[i] = yybytes[i];
@@ -4391,4 +4391,3 @@ void giac_yyfree (void * ptr , yyscan_t yyscanner)
   } // namespace giac
 #endif // ndef NO_NAMESPACE_GIAC
   
-

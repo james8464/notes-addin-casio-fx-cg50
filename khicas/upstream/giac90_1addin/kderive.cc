@@ -799,7 +799,7 @@ namespace giac {
 	continue;
       if (u==at_floor || u==at_ceil || u==at_round || u==at_abs || u==at_sign || u==at_max || u==at_min)
 	continue;
-      *logptr(contextptr) << g << gettext(" function not supported, doing like if it was defined") << endl;
+      *logptr(contextptr) << g << gettext(" unsupported fn") << endl;
     }
   }
   gen domain(const gen & f,const gen & x,int mode,GIAC_CONTEXT){

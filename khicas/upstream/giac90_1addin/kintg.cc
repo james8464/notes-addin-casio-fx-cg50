@@ -2135,7 +2135,7 @@ namespace giac {
       l3.push_back(tmpi);
       l4.push_back(*it);
     }      
-    *logptr(contextptr) << gettext("! Integration of abs or sign assumes constant sign by intervals:\nCheck ") << l1 << endl;
+    *logptr(contextptr) << gettext("Check abs/sign: ") << l1 << endl;
     e=complex_subst(e,l1,l2,contextptr);
     res=integrate_id_rem(e,gen_x,remains_to_integrate,contextptr,intmode);
     gen resadd;
@@ -2411,9 +2411,9 @@ namespace giac {
     if (u==at_sum && f.type==_VECT && f._VECTptr->size()==4){
       vecteur & fv=*f._VECTptr;
       if (!is_zero(derive(fv[1],gen_x,contextptr)))
-	return gensizeerr("Mute variable of sum depends on integration variable");
+	return gensizeerr("bad sum var");
       if (!is_zero(derive(fv[2],gen_x,contextptr)) || !is_zero(derive(fv[3],gen_x,contextptr)) )
-	return gensizeerr("Boundaries of sum depends on integration variables");
+	return gensizeerr("bad sum bounds");
       if (is_inf(fv[2])||is_inf(fv[3]))
 	*logptr(contextptr) << "! assuming integration and sum commutes" << endl;
       gen res=integrate_id_rem(fv[0],gen_x,remains_to_integrate,contextptr,intmode);
