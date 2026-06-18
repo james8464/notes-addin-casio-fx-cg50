@@ -6236,6 +6236,11 @@ static bool suvat_refs_unset(const working_string &s,int mask){
   return false;
 }
 
+static bool suvat_bad_value(const working_string &s){
+  return s.empty() || s[0]=='[' || s[0]=='{' || find_top_equal_any(s)>=0 ||
+         strchr(s.c_str(),'<') || strchr(s.c_str(),'>');
+}
+
 static void suvat_add_choice(working_string choices[5][8],int *count,int id,const working_string &raw){
   working_string v=trim(raw);
   if (id<0 || id>=5 || v.empty())
@@ -6430,7 +6435,7 @@ static void suvat_append_physical(working_string &out,SuvatSol *sols,int soln){
     phys += row;
   }
   if (!phys.empty())
-    out += "physical: "+phys+"\n";
+    out += "phys:"+phys+"\n";
 }
 
 static bool try_suvat(const char *input,working_string &out){
@@ -6454,7 +6459,7 @@ static bool try_suvat(const char *input,working_string &out){
       continue;
     }
     val[id]=trim(args[i].substr(eq+1,args[i].size()-eq-1));
-    if (val[id].empty()){
+    if (suvat_bad_value(val[id])){
       if (ign<4)
         ignored[ign++]=rawk;
       continue;
@@ -6487,7 +6492,7 @@ static bool try_suvat(const char *input,working_string &out){
     if (!no_solution && got<5)
       suvat_fallback_solve(val,have,known_eq,keq,base_mask);
   }
-  out="SUVAT\nans:\n";
+  out="SUVAT\n";
   for (int i=0;i<5;++i)
     if (have[i]){ out += suvat_names[i]; out += "="; out += val[i]; out += "\n"; }
   if (!no_solution && soln>0)
@@ -6495,19 +6500,19 @@ static bool try_suvat(const char *input,working_string &out){
   else if (!no_solution){
     working_string phys=suvat_positive_time(val[4]);
     if (!phys.empty())
-      out += "physical: t="+phys+"\n";
+      out += "phys:t="+phys+"\n";
   }
   for (int i=0;i<ign;++i)
-    out += "Ignored input: "+ignored[i]+"\n";
+    out += "Ignored:"+ignored[i]+"\n";
   if (no_solution && known>=3)
-    out += "No solution: check signs / constant acceleration.\n";
+    out += "No sol\n";
   else if (known<3)
-    out += "Need 3 named values.\n";
+    out += "Need 3\n";
   else {
     int got=0;
     for (int i=0;i<5;++i) if (have[i]) ++got;
     if (got<5)
-      out += "Some values unresolved.\n";
+      out += "Unres\n";
   }
   out += "eq:\n";
   out += eq_vat; out += "\n"; out += eq_suat; out += "\n"; out += eq_v2; out += "\n"; out += eq_suvt;

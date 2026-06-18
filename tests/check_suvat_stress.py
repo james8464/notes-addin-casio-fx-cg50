@@ -29,6 +29,15 @@ EDGE_CASES = [
     "suvat(u=2,a=3,t=)",
     "suvat(U=2,A=3,T=4)",
     "suvat( u = 2 , a = 3 , t = 4 )",
+    "suvat(u=2<3,a=3,t=4)",
+    "suvat(u=2<=3,a=3,t=4)",
+    "suvat(u=2>3,a=3,t=4)",
+    "suvat(u=2>=3,a=3,t=4)",
+    "suvat(u=2==3,a=3,t=4)",
+    "suvat(u=2=3,a=3,t=4)",
+    "suvat(u=2!=3,a=3,t=4)",
+    "suvat(u=[1,2],a=3,t=4)",
+    "suvat(u={1,2},a=3,t=4)",
     "suvat(d=10,start=2,acc=3)",
     "suvat(x=10,start=2,acc=3)",
     "suvat(u=sqrt(2),a=1,t=3)",
@@ -45,6 +54,18 @@ EDGE_CASES = [
     "suvat(s=10,u=2,a=3,foo=bar)",
     "suvat(s=10,u=2,a=3,extra)",
 ]
+
+MALFORMED_VALUE_CASES = {
+    "suvat(u=2<3,a=3,t=4)",
+    "suvat(u=2<=3,a=3,t=4)",
+    "suvat(u=2>3,a=3,t=4)",
+    "suvat(u=2>=3,a=3,t=4)",
+    "suvat(u=2==3,a=3,t=4)",
+    "suvat(u=2=3,a=3,t=4)",
+    "suvat(u=2!=3,a=3,t=4)",
+    "suvat(u=[1,2],a=3,t=4)",
+    "suvat(u={1,2},a=3,t=4)",
+}
 
 
 def run(expr: str) -> str:
@@ -68,7 +89,7 @@ def main() -> int:
                 expr = "suvat(" + ",".join(f"{key}={world[key]}" for key in keys) + ")"
                 out = run(expr)
                 require_common(expr, out)
-                if "No solution" in out or "Some values unresolved." in out:
+                if "No sol" in out or "Unres" in out:
                     raise AssertionError(f"{expr}: failed consistent solve\n{out}")
                 for key in "suvat":
                     if f"{key}=" not in out:
@@ -81,6 +102,13 @@ def main() -> int:
         for bad in SYMBOLIC_FINALS:
             if bad in out:
                 raise AssertionError(f"{expr}: symbolic relation shown as final value\n{out}")
+        if expr in MALFORMED_VALUE_CASES:
+            for bad in ("True", "False", "s=True", "v=True", "s=False", "v=False"):
+                if bad in out:
+                    raise AssertionError(f"{expr}: malformed value became boolean\n{out}")
+            for needle in ("Ignored:u", "Need 3"):
+                if needle not in out:
+                    raise AssertionError(f"{expr}: malformed value was not ignored\n{out}")
         if expr == "suvat(s=0,u=0,v=0)":
             for bad in ("\na=0\n", "\nt=0\n"):
                 if bad in out:
