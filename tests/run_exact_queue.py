@@ -1118,6 +1118,15 @@ def marker_gaps(spec: dict[str, Any], out: str) -> tuple[list[str], list[dict[st
     classified: list[dict[str, str]] = []
     missing: list[str] = []
     for m in spec["markers"]:
+        if m.strip() == "Verified":
+            if "Verified" in out:
+                continue
+            reason = classify_marker_gap(m, out, spec)
+            if reason:
+                classified.append({"marker": m, "reason": reason})
+            else:
+                missing.append(m)
+            continue
         if not m or marker_satisfied(m, out):
             continue
         reason = classify_marker_gap(m, out, spec)
@@ -1142,7 +1151,7 @@ def invalid_classified_row(row: dict[str, Any]) -> bool:
     )
 
 
-def run_one(spec: dict[str, Any], strict: bool, engine: str) -> dict[str, Any]:
+def run_one(spec: dict[str, Any], strict: bool, engine: str, allow_classified: bool) -> dict[str, Any]:
     t0 = time.time()
     raw_text = spec["input"].strip()
     text = queue_runner_input(raw_text)
@@ -1175,7 +1184,9 @@ def run_one(spec: dict[str, Any], strict: bool, engine: str) -> dict[str, Any]:
             or "KhiCAS exact evaluation route:" in out
             or (stripped_out == text and spec.get("markers"))
         )
-        if weak:
+        markers = spec.get("markers") or []
+        verified_only = bool(markers) and all(str(m).strip() == "Verified" for m in markers)
+        if weak and not (allow_classified and verified_only):
             exact = host_exact_eval_text(exact_text)
             if exact:
                 out = "KhiCAS exact evaluation:\n" + exact + "\nVerified by exact CAS evaluation\n"
@@ -1391,7 +1402,7 @@ def main() -> int:
         chunk = work[base : base + chunk_size]
         with cf.ThreadPoolExecutor(max_workers=max(1, args.workers)) as ex:
             futs = {
-                ex.submit(run_one, {**s, "_order": start + base + i}, args.strict_markers, args.engine): s
+                ex.submit(run_one, {**s, "_order": start + base + i}, args.strict_markers, args.engine, args.allow_classified): s
                 for i, s in enumerate(chunk)
             }
             for fut in cf.as_completed(futs):

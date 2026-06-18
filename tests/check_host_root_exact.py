@@ -23,6 +23,7 @@ CASES = [
     ("limit((abs(x)-x)/x,x,0,+)", ("0",)),
     ("limit((abs(x)-x)/x,x,0,-)", ("-2",)),
     ("factor(resultant(x^2+a*x+1,x^2+b*x+2,x))", ("2*a^2 - 3*a*b + b^2 + 1",)),
+    ("factor(x^60-a^60)", ("(x-a)*sum(x^(60-1-k)*a^k,k,0,59)",)),
 ]
 
 

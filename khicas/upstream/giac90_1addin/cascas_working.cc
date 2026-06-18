@@ -18746,14 +18746,10 @@ static bool try_normal_power_difference_quotient(const char *input,working_strin
     return false;
   if (v=="1"){
     working_string q=p==2?u+"+1":(p==3?u+"^2+"+u+"+1":u+"^(n-1)+...+1");
-    out="Diff powers:\n";
-    out += u+"^"+int_s(p)+" - 1 = ("+u+"-1)("+q+")\n";
-    out += q;
+    out=q;
     return true;
   }
-  out="Factor theorem:\n";
-  out += "("+u+"^n-"+v+"^n)/("+u+"-"+v+")\n";
-  out += power_diff_sum(u,v,p)+"";
+  out=power_diff_sum(u,v,p);
   return true;
 }
 
@@ -18764,9 +18760,7 @@ static bool try_factor_power_difference(const char *input,working_string &out){
   if (!parse_call(input,"factor",args,2,n) || n!=1 ||
       !parse_power_diff(args[0],u,v,p))
     return false;
-  out="Diff powers:\n";
-  out += u+"^n - "+v+"^n = ("+u+"-"+v+")*sum("+u+"^(n-1-k)*"+v+"^k)\n";
-  out += "("+u+"-"+v+")*"+power_diff_sum(u,v,p)+"";
+  out="("+u+"-"+v+")*"+power_diff_sum(u,v,p);
   return true;
 }
 
@@ -19053,6 +19047,10 @@ bool eval_with_working(const char *input,working_string &out){
       out=trim(normal_args[0]);
       return true;
     }
+  }
+  if (try_factor_power_difference(input,out)){
+    strip_weak_working_labels(out);
+    return true;
   }
   if (starts_command(cs,"binomial")){
     out="Err: unsupported";
