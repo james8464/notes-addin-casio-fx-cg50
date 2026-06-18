@@ -60,7 +60,17 @@ def cas_log(base_or_arg, arg=None):
     return sp.log(arg, base_or_arg)
 
 
+def cas_root(expr, degree=2):
+    degree = sp.sympify(degree)
+    if getattr(degree, "is_integer", False) and not getattr(degree, "free_symbols", None):
+        n = int(degree)
+        if n and getattr(expr, "is_number", False):
+            return sp.real_root(expr, n)
+    return expr ** (sp.S.One / degree)
+
+
 NAMES["log"] = cas_log
+NAMES["root"] = cas_root
 
 for _name in [
     "x",
