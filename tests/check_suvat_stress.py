@@ -38,6 +38,8 @@ EDGE_CASES = [
     "suvat(u=2!=3,a=3,t=4)",
     "suvat(u=[1,2],a=3,t=4)",
     "suvat(u={1,2},a=3,t=4)",
+    "suvat(u=matrix(1),a=3,t=4)",
+    "suvat(u=matrix([[1]]),a=3,t=4)",
     "suvat(d=10,start=2,acc=3)",
     "suvat(x=10,start=2,acc=3)",
     "suvat(u=sqrt(2),a=1,t=3)",
@@ -65,6 +67,8 @@ MALFORMED_VALUE_CASES = {
     "suvat(u=2!=3,a=3,t=4)",
     "suvat(u=[1,2],a=3,t=4)",
     "suvat(u={1,2},a=3,t=4)",
+    "suvat(u=matrix(1),a=3,t=4)",
+    "suvat(u=matrix([[1]]),a=3,t=4)",
 }
 
 

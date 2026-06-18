@@ -249,7 +249,7 @@ static bool read_cas_help(int index,ustl::string &text){
 static void show_catalog_help(int index){
   ustl::string body,title=catalog_cmd_name(index);
   if (!read_cas_help(index,body))
-    body="No command sheet found.\nCopy CAS.PAK with CAS.g3a.";
+    body="No help.\nCopy CAS.PAK.";
   textArea text;
   text.editable=false;
   text.clipline=-1;

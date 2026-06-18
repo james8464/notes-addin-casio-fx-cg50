@@ -6238,7 +6238,7 @@ static bool suvat_refs_unset(const working_string &s,int mask){
 
 static bool suvat_bad_value(const working_string &s){
   return s.empty() || s[0]=='[' || s[0]=='{' || find_top_equal_any(s)>=0 ||
-         strchr(s.c_str(),'<') || strchr(s.c_str(),'>');
+         strchr(s.c_str(),'<') || strchr(s.c_str(),'>') || reject_removed_feature(s.c_str());
 }
 
 static void suvat_add_choice(working_string choices[5][8],int *count,int id,const working_string &raw){
