@@ -1,8 +1,0 @@
-index
-Args: index
-Required: None.
-Optional: Use catalog folders, type a command directly, or press F6 on a highlighted command.
-Does: Overview page for the CAS command help pack.
-Working: Choose command help from F4 catalog; each sheet lists syntax, required arguments, optional arguments and checking behaviour.
-Checks: Help text is external in CAS.PAK, so detailed sheets do not increase CAS.g3a size.
-Examples: sin(0)

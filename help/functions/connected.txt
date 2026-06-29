@@ -1,8 +1,0 @@
-connected
-Args: connected(m1,m2,F)
-Required: Masses m1,m2 and external force F.
-Optional: None.
-Does: Finds acceleration and tension for two connected particles on a smooth line.
-Working: Treats both particles as one system, then uses KhiCAS simplification for T=m1*a.
-Checks: Force is assumed to pull the two-particle system with m1 behind.
-Examples: connected(2,3,10)

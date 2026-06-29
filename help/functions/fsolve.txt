@@ -1,8 +1,0 @@
-fsolve
-Args: fsolve(eq,var)
-Required: eq: equation/expression; var: unknown.
-Optional: Bounds fsolve(eq,var,a,b) may restrict the numeric search interval.
-Does: Finds numerical solutions when exact solve is not suitable.
-Working: Use exact simplification first, then numerical root finding on the active interval.
-Checks: Numeric roots are substituted back into the equation and domain-checked.
-Examples: fsolve(x^2-2,x)

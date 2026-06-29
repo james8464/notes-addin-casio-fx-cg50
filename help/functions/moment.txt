@@ -1,8 +1,0 @@
-moment
-Args: moment(F,d)
-Required: Force F in N and perpendicular distance d in m.
-Optional: Named arguments F=..., d=... may be used.
-Does: Finds a moment about a point.
-Working: Uses M = Fd and KhiCAS simplification after substitution.
-Checks: Uses perpendicular distance, not distance along a rod.
-Examples: moment(12,3); moment(F=12,d=3)

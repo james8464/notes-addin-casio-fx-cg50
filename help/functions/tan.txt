@@ -1,8 +1,0 @@
-tan
-Args: tan(expr)
-Required: expr: angle; cos(expr) must be non-zero.
-Optional: Exact special angles are simplified where possible.
-Does: Returns tangent and supports trig solving/range routes.
-Working: Rewrite to sin/cos or use tan identities for compound/double-angle work.
-Checks: Domain excludes cos(expr)=0; bounded solve/range routes filter invalid points.
-Examples: tan(pi/4)

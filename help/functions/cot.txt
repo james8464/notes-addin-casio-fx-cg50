@@ -1,8 +1,0 @@
-cot
-Args: cot(expr)
-Required: expr: angle; tan(expr) or sin(expr) must be non-zero.
-Optional: None.
-Does: Returns 1/tan(expr), equivalently cos(expr)/sin(expr).
-Working: Rewrite to sin/cos or reciprocal tangent when simplifying identities.
-Checks: Domain excludes sin(expr)=0; bounded solve/range routes filter invalid points.
-Examples: cot(pi/4)

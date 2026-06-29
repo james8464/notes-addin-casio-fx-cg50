@@ -1,8 +1,0 @@
-ln
-Args: ln(expr)
-Required: expr: positive expression for real logs.
-Optional: None.
-Does: Natural logarithm.
-Working: Use log laws only under valid positive-domain assumptions.
-Checks: Log rewrites and xform steps are checked with domain restrictions.
-Examples: ln(e)

@@ -18,11 +18,5 @@ graphify-out/
 __pycache__/
 *.pyc
 khicas/upstream/giac90_1addin/khicas*
-khicas/upstream/giac90_1addin/emucas*
-khicas/upstream/giac90_1addin/mkhelp
 khicas/upstream/giac90_1addin/*.tmp
 tests/reports/
-tools/working_engine/host/build/
-progress/*.jsonl
-progress/*.json
-!progress/.gitkeep

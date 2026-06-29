@@ -1,8 +1,0 @@
-rewrite
-Args: rewrite(expr)
-Required: expr: expression to normalise.
-Optional: Target form may be accepted by KhiCAS in some syntaxes.
-Does: Rewrites expression into an equivalent simpler or standard form.
-Working: Try algebraic, log, trig, reciprocal and power rewrites, then simplify.
-Checks: Displayed rewrites must simplify back to the same expression under active assumptions.
-Examples: rewrite(sin(x)^2+cos(x)^2)

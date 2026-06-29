@@ -1,8 +1,0 @@
-lift
-Args: lift(m,a[,g])
-Required: Mass m and lift acceleration a.
-Optional: g, default 9.8.
-Does: Finds reaction/apparent weight in a lift.
-Working: Uses R-mg=ma, then KhiCAS simplification for R=m(g+a).
-Checks: Use negative a if the lift accelerates down.
-Examples: lift(5,2); lift(5,-2)

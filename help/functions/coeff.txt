@@ -1,8 +1,0 @@
-coeff
-Args: coeff(poly,var,n)
-Required: poly: polynomial/expression; var: variable; n: requested power.
-Optional: coeff(poly,var) may return coefficient list if KhiCAS accepts it.
-Does: Extracts the coefficient of var^n after expansion/collection.
-Working: Native KhiCAS output; no extra working lines.
-Checks: Coefficient is checked by comparing the collected polynomial term with the original expansion.
-Examples: coeff((2*x+1)^5,x,3)

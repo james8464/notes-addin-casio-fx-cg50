@@ -1,8 +1,0 @@
-sum
-Args: sum(expr,var,a,b)
-Required: expr: term; var: index; a,b: integer bounds.
-Optional: Symbolic/infinite forms may be accepted by KhiCAS if supported.
-Does: Computes finite sum.
-Working: Substitute integer index values over the bounds and add, simplifying exactly.
-Checks: Bounds and index substitutions are checked for finite integer range.
-Examples: sum(k,k,1,4)

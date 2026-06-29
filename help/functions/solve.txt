@@ -1,8 +1,0 @@
-solve
-Args: solve(eq,var)
-Required: eq: equation/expression; var: unknown.
-Optional: solve(eq,var,a,b) filters exact/periodic solutions to interval [a,b].
-Does: Solves equations exactly where possible.
-Working: Normalise equation, apply algebraic/trig/log/surd routes, then use KhiCAS exact solve as final engine.
-Checks: All returned roots are substituted back and checked against domain and interval constraints.
-Examples: solve(cos(x)=0,x,0,pi)

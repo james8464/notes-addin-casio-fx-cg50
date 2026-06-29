@@ -1,8 +1,0 @@
-range
-Args: range(expr,var)
-Required: expr: function expression; var: variable.
-Optional: range(expr,var,a,b) restricts to interval; range(expr,x>0) accepts simple predicates.
-Does: Finds real output range.
-Working: Intersect natural domain with constraints, split at poles/breakpoints, check endpoints, limits and stationary points.
-Checks: The returned range is checked under the same domain/interval constraints.
-Examples: range(ln(x),x,1,inf)

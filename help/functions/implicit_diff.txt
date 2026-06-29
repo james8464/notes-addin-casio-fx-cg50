@@ -1,8 +1,0 @@
-implicit_diff
-Args: implicit_diff(eq,x,y)
-Required: eq: relation in x,y; x: independent variable; y: dependent variable.
-Optional: None.
-Does: Finds dy/dx from an implicit equation.
-Working: Differentiate both sides with respect to x, apply chain rule to y terms, then solve for dy/dx.
-Checks: Result is checked by substituting into the differentiated relation.
-Examples: implicit_diff(x^3+y^3=3*x*y,x,y)

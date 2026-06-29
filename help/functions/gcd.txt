@@ -1,8 +1,0 @@
-gcd
-Args: gcd(a,b)
-Required: a and b: integers or polynomials.
-Optional: More arguments may be accepted by KhiCAS.
-Does: Returns greatest common divisor.
-Working: Native KhiCAS output; no extra working lines.
-Checks: Result divides the inputs; sign/content is normalised.
-Examples: gcd(18,24)

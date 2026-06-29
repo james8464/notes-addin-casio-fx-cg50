@@ -1,8 +1,0 @@
-degree
-Args: degree(poly,var)
-Required: poly: polynomial/expression; var: variable.
-Optional: None.
-Does: Returns the highest power of var after polynomial expansion.
-Working: Native KhiCAS output; no extra working lines.
-Checks: Non-polynomial expressions are left to KhiCAS exact classification.
-Examples: degree(x^5+x,x)

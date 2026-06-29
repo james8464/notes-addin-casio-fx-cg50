@@ -1,8 +1,0 @@
-product
-Args: product(expr,var,a,b)
-Required: expr: term; var: index; a,b: integer bounds.
-Optional: None.
-Does: Computes finite product.
-Working: Native KhiCAS output; no extra working lines.
-Checks: Bounds and index substitutions are checked for finite integer range.
-Examples: product(k,k,1,4)

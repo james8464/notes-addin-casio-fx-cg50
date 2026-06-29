@@ -1,8 +1,0 @@
-cosec
-Args: cosec(expr)
-Required: expr: angle; sin(expr) must be non-zero for real finite output.
-Optional: Alias csc may not be visible; use cosec in this program.
-Does: Returns 1/sin(expr).
-Working: Rewrite to reciprocal sine when simplifying, solving or verifying identities.
-Checks: Domain excludes sin(expr)=0; interval routes filter those singular points.
-Examples: cosec(pi/2)

@@ -1,8 +1,0 @@
-partfrac
-Args: partfrac(expr,var)
-Required: expr: rational expression; var: variable.
-Optional: None.
-Does: Decomposes rational expression into partial fractions.
-Working: Factor denominator, divide first if improper, then solve constants for each factor.
-Checks: Partial fraction form is checked by recombining to the original rational expression.
-Examples: partfrac((2*x+3)/(x^2-1),x)

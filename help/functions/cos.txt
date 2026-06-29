@@ -1,8 +1,0 @@
-cos
-Args: cos(expr)
-Required: expr: angle in radians unless calculator angle mode says otherwise.
-Optional: Exact special angles are simplified where possible.
-Does: Returns cosine and participates in trig identities and equation solving.
-Working: Use reciprocal/Pythagorean/double-angle rewrites through texpand/tcollect when useful.
-Checks: Trig rewrites are equivalence-checked before being shown as checked steps.
-Examples: cos(pi/3)

@@ -1,8 +1,0 @@
-xform
-Args: xform(start,target)
-Required: start: expression/equation; target: desired expression, equation, form or parameter.
-Optional: Target may be a parameter to isolate, e.g. xform(eq,k).
-Does: Finds a transformation route from start to target.
-Working: Search reciprocal/log/trig identities, expand, factor, collect, clear denominators, substitute and solve-for-parameter routes.
-Checks: Only after equivalence or substitution check under domain assumptions; approximation targets are labelled as such.
-Examples: xform((1-cos(x))/sin(x),tan(x/2))

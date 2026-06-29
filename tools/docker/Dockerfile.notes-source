@@ -2,7 +2,7 @@ FROM ubuntu:24.04
 
 ARG DEBIAN_FRONTEND=noninteractive
 ARG FOURIER_BASE=https://www-fourier.univ-grenoble-alpes.fr/~parisse/casio
-LABEL casio.khicas.image-version="runmat-v2"
+LABEL casio.notes.image-version="notes-v1"
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \

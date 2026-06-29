@@ -1,8 +1,0 @@
-limit
-Args: limit(f,var,a)
-Required: f: expression; var: variable; a: approach value.
-Optional: One-sided direction may be accepted by KhiCAS syntax.
-Does: Computes exact limit.
-Working: Simplify first, then use algebraic cancellation, standard limits and one-sided checks where needed.
-Checks: Candidate limit is checked against KhiCAS exact limit and domain behaviour.
-Examples: limit(sin(x)/x,x,0)

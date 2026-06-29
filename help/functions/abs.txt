@@ -1,8 +1,0 @@
-abs
-Args: abs(expr)
-Required: expr: real or symbolic expression.
-Optional: None.
-Does: Returns absolute value. In inequalities/range work, abs is treated as a modulus with sign-change breakpoints.
-Working: Native KhiCAS output; no extra working lines.
-Checks: Roots introduced by branch changes are checked against the active domain.
-Examples: abs(x-3)

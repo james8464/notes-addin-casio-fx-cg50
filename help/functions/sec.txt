@@ -1,8 +1,0 @@
-sec
-Args: sec(expr)
-Required: expr: angle; cos(expr) must be non-zero.
-Optional: None.
-Does: Returns 1/cos(expr).
-Working: Rewrite to reciprocal cosine when simplifying, solving or verifying identities.
-Checks: Domain excludes cos(expr)=0; interval routes filter singular points.
-Examples: sec(0)

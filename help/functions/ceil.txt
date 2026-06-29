@@ -1,8 +1,0 @@
-ceil
-Args: ceil(expr)
-Required: expr: numeric or symbolic real expression.
-Optional: None.
-Does: Returns the least integer greater than or equal to expr.
-Working: Native KhiCAS output; no extra working lines.
-Checks: If expr contains variables, assumptions/domain restrictions are preserved where possible.
-Examples: ceil(3/2)

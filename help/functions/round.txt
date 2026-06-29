@@ -1,8 +1,0 @@
-round
-Args: round(expr)
-Required: expr: numeric expression.
-Optional: Optional precision may be accepted by KhiCAS.
-Does: Rounds numeric value.
-Working: Native KhiCAS output; no extra working lines.
-Checks: Rounding is display-level and is not used as exact proof.
-Examples: round(7/3)

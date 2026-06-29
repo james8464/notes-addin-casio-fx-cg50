@@ -1,8 +1,0 @@
-atan
-Args: atan(expr)
-Required: expr: real or symbolic expression.
-Optional: atan(y,x) may be accepted by KhiCAS for quadrant-aware angle forms.
-Does: Returns inverse tangent in principal range (-pi/2,pi/2).
-Working: Use exact known angles first; otherwise keep exact inverse trig form.
-Checks: For solve/range, periodic tangent solutions are interval-filtered when bounds are supplied.
-Examples: atan(1)

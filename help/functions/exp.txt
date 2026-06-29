@@ -1,8 +1,0 @@
-exp
-Args: exp(expr)
-Required: expr: exponent expression.
-Optional: Use e^expr as equivalent input if parser accepts it.
-Does: Returns e raised to expr.
-Working: Native KhiCAS output; no extra working lines.
-Checks: Log/exp inverse steps are checked with domain restrictions.
-Examples: exp(1)

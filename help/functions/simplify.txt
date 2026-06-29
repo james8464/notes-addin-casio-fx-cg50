@@ -1,8 +1,0 @@
-simplify
-Args: simplify(expr)
-Required: expr: expression.
-Optional: None.
-Does: Simplifies expression exactly.
-Working: Apply algebraic cancellation, factor/collect, trig/log identities and exact arithmetic.
-Checks: Simplified result is checked by equivalence where possible.
-Examples: simplify((x^2-1)/(x-1))

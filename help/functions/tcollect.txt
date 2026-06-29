@@ -1,8 +1,0 @@
-tcollect
-Args: tcollect(expr)
-Required: expr: trig/algebraic expression.
-Optional: None.
-Does: Collects trig expressions into compact identity-based forms.
-Working: Use trig identities, common factors and algebraic collection.
-Checks: Collected form is checked by expanding/simplifying back to the input.
-Examples: tcollect(sin(x)^2+cos(x)^2)
