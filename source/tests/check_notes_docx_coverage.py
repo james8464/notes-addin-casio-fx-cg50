@@ -26,7 +26,7 @@ from tools.regroup_notes_by_docx_table import (  # noqa: E402
 )
 
 NOTES = REPO / "calculator" / "NOTES"
-DOCX_DIR = Path(os.environ.get("NOTES_DOCX_DIR", "/Users/james/Downloads"))
+DOCX_DIR = Path(os.environ.get("NOTES_DOCX_DIR", str(Path.home() / "Downloads")))
 DOCX_NAMES = [
     "Big Data.docx",
     "Computer organisation.docx",

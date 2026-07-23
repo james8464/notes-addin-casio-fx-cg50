@@ -12,7 +12,7 @@ from docx.table import _Cell, Table
 from docx.text.paragraph import Paragraph
 
 
-DOWNLOADS = Path("/Users/james/Downloads")
+DOWNLOADS = Path.home() / "Downloads"
 NOTES_ROOT = DOWNLOADS / "NOTES"
 BACKUP_ROOT = NOTES_ROOT.with_name("NOTES.before_table_regroup")
 
