@@ -16,7 +16,7 @@ README.md     You are here
 2. Create a folder called `NOTES` in `\fls0\` on the calculator and put your `.txt` files in it.
 3. Launch **NOTES** from the Main Menu.
 
-Only `.txt` files are supported. Organise them into subfolders however you like:
+There is an empty `calculator/NOTES\` folder ready for you to fill with your own `.txt` files. Only `.txt` files are supported. Organise them into subfolders however you like:
 
 ```
 \fls0\NOTES\Maths\Pure\integration.txt
