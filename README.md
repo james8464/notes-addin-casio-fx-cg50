@@ -1,6 +1,6 @@
 # NOTES — Casio fx-CG50 Notes Browser
 
-A read-only `.txt` file browser for the fx-CG50 (Prizm). Browse folders, read notes with markdown-like formatting, and search all files at once.
+A read-only `.txt` notes browser add-in for the Casio fx-CG50 (Prizm) graphing calculator. Browse folders, read notes with markdown-like formatting, and search across all files — all using the calculator's built-in keys.
 
 ## Repo layout
 
