@@ -14,6 +14,7 @@ except ModuleNotFoundError:
     raise SystemExit("FAIL notes docx coverage: python-docx unavailable")
 
 ROOT = Path(__file__).resolve().parents[1]
+REPO = ROOT.parent
 sys.path.insert(0, str(ROOT))
 from tools.regroup_notes_by_docx_table import (  # noqa: E402
     DOC_TABLE_NAMES,
@@ -24,7 +25,7 @@ from tools.regroup_notes_by_docx_table import (  # noqa: E402
     table_detail_column,
 )
 
-NOTES = ROOT / "calculator_files" / "NOTES"
+NOTES = REPO / "calculator" / "NOTES"
 DOCX_DIR = Path(os.environ.get("NOTES_DOCX_DIR", "/Users/james/Downloads"))
 DOCX_NAMES = [
     "Big Data.docx",

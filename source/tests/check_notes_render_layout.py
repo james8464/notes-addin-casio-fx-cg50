@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-NOTES = ROOT / "calculator_files" / "NOTES"
+NOTES = ROOT.parent / "calculator" / "NOTES"
 APP = ROOT / "apps" / "notes" / "notes_app.cc"
 
 

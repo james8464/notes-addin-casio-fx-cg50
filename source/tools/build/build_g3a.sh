@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+REPO_DIR="$(cd "${ROOT_DIR}/.." && pwd)"
 IMAGE_TAG="${CASIO_NOTES_IMAGE:-casio-notes-source:latest}"
 SRC_DIR="${ROOT_DIR}/khicas/upstream/giac90_1addin"
 OUT_DIR="${ROOT_DIR}/build"
-TRANSFER_DIR="${ROOT_DIR}/calculator_files"
+TRANSFER_DIR="${REPO_DIR}/calculator"
 MAKE_JOBS="${CASIO_MAKE_JOBS:-1}"
 IMAGE_VERSION="notes-v1"
 DOCKER_BUILD_SCRIPT="${OUT_DIR}/docker_build_notes.sh"
@@ -69,9 +71,8 @@ cleanup_staged_sources() {
 
 mkdir -p "${OUT_DIR}" "${TRANSFER_DIR}"
 rm -rf "${OUT_DIR:?}"/*
-touch "${TRANSFER_DIR}/.gitkeep"
 find "${TRANSFER_DIR}" -mindepth 1 \
-  \( -name 'NOTES' -o -name '.gitkeep' \) -prune \
+  -name 'NOTES' -prune \
   -o -exec rm -rf {} +
 
 cat > "${DOCKER_BUILD_SCRIPT}" <<'SH'

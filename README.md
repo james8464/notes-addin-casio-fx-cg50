@@ -1,72 +1,71 @@
-# NOTES.g3a — Casio fx-CG50 Notes Browser
+# NOTES — Casio fx-CG50 Notes Browser
 
-Read-only notes browser for `.txt` files on the fx-CG50 (Prizm). Browse folders, read notes, and search all files instantly.
+A read-only `.txt` file browser for the fx-CG50 (Prizm). Browse folders, read notes with markdown-like formatting, and search all files at once.
 
-## Quick start
-
-### 1. Install the app
-
-Download `NOTES.g3a` from the [latest release](https://github.com/james8464/casio_program/releases/latest).
-
-Copy it to your calculator using **FA-124** or Casio **Link Module**:
-
-- **FA-124:** open the `.g3a`, select your calculator under "Connected devices", click the arrow to send.
-- **USB Mass Storage:** drag `NOTES.g3a` to the calculator's `@MainMem\` folder.
-
-### 2. Place your notes
-
-Create a top-level folder called `NOTES` in calculator storage. Copy your `.txt` files inside it, organised however you like:
+## Repo layout
 
 ```
-\\fls0\\NOTES\\
-\\fls0\\NOTES\\Maths\\Pure\\integration.txt
-\\fls0\\NOTES\\Maths\\Stats\\normal.txt
-\\fls0\\NOTES\\CS\\FloatingPoint\\examples.txt
+source/       Build environment, source code, tools, tests
+calculator/   Ready to copy to your calculator — drop this onto the calc
+README.md     You are here
 ```
 
-Only `.txt` files are supported. No images, no rich text, no editing.
+## Install
 
-### 3. Launch
+1. Copy `calculator/NOTES.g3a` to the calculator's `@MainMem\` folder (via FA-124 or USB mass storage).
+2. Copy the entire `calculator/NOTES\` folder (or your own notes) to `\fls0\NOTES\` on the calculator.
+3. Launch **NOTES** from the Main Menu.
 
-Find `NOTES` on the calculator's Main Menu and press `EXE`.
+Only `.txt` files are supported. Organise them into subfolders however you like:
+
+```
+\fls0\NOTES\Maths\Pure\integration.txt
+\fls0\NOTES\Maths\Stats\normal.txt
+\fls0\NOTES\CS\FloatingPoint\examples.txt
+```
 
 ## Controls
 
+### File browser
+
 | Button | Action |
-|---|---|
+|--------|--------|
 | `UP` / `DOWN` | Move selection |
 | `EXE` or `F1` | Open folder / file |
-| `F2` | Search all text files |
-| `F6` or `EXIT` | Back / parent folder |
+| `F2` | Search all `.txt` files |
+| `F6` or `EXIT` | Parent folder |
 | `MENU` or `AC` | Quit |
 
-In the **text viewer**:
+### Text viewer
 
 | Button | Action |
-|---|---|
-| `UP` / `DOWN` | Scroll |
-| `F3` / `F4` | Page up / down |
-| `LEFT` / `RIGHT` | Horizontal scroll (wide lines and tables) |
-| `F1` / `F2` | Next / previous search match |
-| `F5` | New search inside current file |
-| `F6` or `EXIT` | Back |
+|--------|--------|
+| `UP` / `DOWN` | Scroll line by line |
+| `LEFT` / `RIGHT` | Horizontal scroll (unwrap wide lines) |
+| `F3` | Page up |
+| `F4` | Page down |
+| `F1` | Next search match / next page |
+| `F2` | Previous search match / previous page |
+| `F5` | Find text in current file |
+| `F6` or `EXIT` | Back to file browser |
 
-Search results are ranked — file-name matches first, content matches next, repeated matches rank higher.
+## Features
 
-## What's in the repo
-
-```
-apps/notes/notes_app.cc         Source code
-khicas/upstream/giac90_1addin/  Build infrastructure (Makefile, linker script, icons)
-tools/build/                    Build scripts
-tools/docker/                   SH3 cross-compiler Docker image
-calculator_files/NOTES/         Example notes to copy to your calculator
-```
+- **Markdown formatting**: headings (`#`–`####`), bullets (`-` / `*`), numbered lists, blockquotes (`>`), horizontal rules (`---`)
+- **Word wrapping**: ordinary prose wraps at word boundaries
+- **Preserve mode**: code-like lines (long unbroken strings) display unwrapped; press `RIGHT` to shift view horizontally, `LEFT` to shift back
+- **In-file search** (`F5`): case-insensitive, highlights matches, `F1`/`F2` to jump between hits
+- **Search all files** (`F2` in browser): scans filenames, folder names, and file contents; results ranked by relevance (name match > content match > more hits = higher)
+- **Search history**: last query is remembered; `UP`/`DOWN` in the search box recalls past queries
+- **Long filenames**: auto-scroll marquee in the title bar
+- **File limits**: 16 KB per file, 768 displayed lines, 64 search results
+- **System file filtering**: ignores `.DS_Store`, `._*`, `.Trashes`, etc.
+- **Alphabetical sort**: folders listed before files
 
 ## Build from source
 
 ```bash
-./compile notes
+./source/compile notes
 ```
 
-Requires Docker. See `tools/docker/Dockerfile.notes-source` for the cross-compiler image.
+Requires Docker. See `source/tools/docker/Dockerfile.notes-source` for the cross-compiler image.

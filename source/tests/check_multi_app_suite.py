@@ -27,7 +27,7 @@ def main() -> int:
         ["does not open images", "search all text files", "wide-line horizontal scroll"],
     )
 
-    notes_dir = ROOT / "calculator_files" / "NOTES"
+    notes_dir = ROOT.parent / "calculator" / "NOTES"
     if notes_dir.exists():
         note_files = list(notes_dir.rglob("*.txt"))
         if not note_files:

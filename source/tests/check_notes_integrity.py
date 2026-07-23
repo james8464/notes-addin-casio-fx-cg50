@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-NOTES = ROOT / "calculator_files" / "NOTES"
+NOTES = ROOT.parent / "calculator" / "NOTES"
 FILE_BUF_SIZE = 16384
 MAX_TABLE_COLS = 8
 MAX_TABLE_ROWS = 24

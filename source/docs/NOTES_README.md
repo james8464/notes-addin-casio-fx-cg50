@@ -6,7 +6,7 @@
 
 ## Files
 
-- Calculator app: `/Users/james/Developer/CASIO/calculator_files/NOTES.g3a`
+- Calculator app: `calculator/NOTES.g3a`
 
 ## Supported Files
 
