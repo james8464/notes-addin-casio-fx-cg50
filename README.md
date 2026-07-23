@@ -6,21 +6,21 @@ A read-only `.txt` file browser for the fx-CG50 (Prizm). Browse folders, read no
 
 ```
 source/       Build environment, source code, tools, tests
-calculator/   Ready to copy to your calculator — drop this onto the calc
+calculator/   NOTES.g3a app file, ready to copy to your calculator
 README.md     You are here
 ```
 
 ## Install
 
 1. Copy `calculator/NOTES.g3a` to the calculator's `@MainMem\` folder (via FA-124 or USB mass storage).
-2. Copy the entire `calculator/NOTES\` folder (or your own notes) to `\fls0\NOTES\` on the calculator.
+2. Create a folder called `NOTES` in `\fls0\` on the calculator and put your `.txt` files in it.
 3. Launch **NOTES** from the Main Menu.
 
 Only `.txt` files are supported. Organise them into subfolders however you like:
 
 ```
 \fls0\NOTES\Maths\Pure\integration.txt
-\fls0\NOTES\Maths\Stats\normal.txt
+\fls0\NOTES\French\vocab.txt
 \fls0\NOTES\CS\FloatingPoint\examples.txt
 ```
 

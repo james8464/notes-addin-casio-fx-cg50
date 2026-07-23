@@ -52,11 +52,10 @@ def main() -> int:
         raise AssertionError("render line cap is too small for horizontal scrolling")
 
     files = sorted(NOTES.rglob("*.txt"))
-    if not files:
-        raise AssertionError(f"{NOTES}: no notes text files")
-    oversized = [p for p in files if p.stat().st_size >= const_int(source, "FILE_BUF_SIZE")]
-    if oversized:
-        raise AssertionError(f"notes files exceed app buffer: {[str(p) for p in oversized[:5]]}")
+    if files:
+        oversized = [p for p in files if p.stat().st_size >= const_int(source, "FILE_BUF_SIZE")]
+        if oversized:
+            raise AssertionError(f"notes files exceed app buffer: {[str(p) for p in oversized[:5]]}")
     print("OK notes render layout")
     return 0
 

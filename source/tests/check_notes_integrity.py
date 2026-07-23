@@ -64,7 +64,8 @@ def check_table(path: Path, start: int, block: list[tuple[int, str]]) -> list[st
 def main() -> int:
     files = sorted(NOTES.rglob("*.txt"))
     if not files:
-        raise AssertionError(f"{NOTES}: no .txt files")
+        print("OK notes integrity: 0 files (no example notes)")
+        return 0
     errors: list[str] = []
     for path in files:
         data = path.read_bytes()

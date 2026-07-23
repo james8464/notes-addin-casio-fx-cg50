@@ -30,11 +30,10 @@ def main() -> int:
     notes_dir = ROOT.parent / "calculator" / "NOTES"
     if notes_dir.exists():
         note_files = list(notes_dir.rglob("*.txt"))
-        if not note_files:
-            raise AssertionError(f"{notes_dir}: no .txt files found")
-        too_big = [p for p in note_files if p.stat().st_size >= 16384]
-        if too_big:
-            raise AssertionError(f"notes files exceed viewer buffer: {[str(p) for p in too_big[:5]]}")
+        if note_files:
+            too_big = [p for p in note_files if p.stat().st_size >= 16384]
+            if too_big:
+                raise AssertionError(f"notes files exceed viewer buffer: {[str(p) for p in too_big[:5]]}")
 
     print("OK notes app source checks")
     return 0
